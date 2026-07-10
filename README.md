@@ -4,10 +4,10 @@ Standalone technique-analysis app for **running** (side view) and **cycling
 position** (side view), extracted from the Motus platform. Computer-vision
 pose estimation (MediaPipe BlazePose) → biomechanics → technique score.
 
-> Status: **Milestone 1 complete** — the analysis core runs autonomously and
-> produces a numeric result (angles, issues, metrics, 0–100 score + grade)
-> from a local video file. No API / DB / storage / LLM / overlay yet — those
-> are later milestones.
+> Status: **Milestones 1–2 complete** — the analysis core runs autonomously
+> (angles, issues, metrics, 0–100 score + grade) from a local video file, and
+> can render an annotated **overlay video** (skeleton + angle labels + score
+> per frame). No API / DB / storage / LLM yet — those are later milestones.
 
 ## Layout
 
@@ -18,9 +18,10 @@ backend/
 │   └── services/video_analysis/
 │       ├── detectors/                     # MediaPipe pose detector (abstracted)
 │       ├── biomechanics/                  # analyzers, filters, scoring, quality gate
-│       └── pipeline.py                    # stub: shared constants only
+│       ├── video_visualizer.py            # overlay renderer (M2)
+│       └── pipeline.py                    # shared constants + overlay-draw helpers
 ├── models/                                # pose_landmarker_heavy.task goes here (git-ignored)
-├── scripts/analyze_local.py               # CLI driver (Milestone 1)
+├── scripts/analyze_local.py               # CLI driver (analysis + optional overlay)
 └── requirements.txt
 ```
 
@@ -38,7 +39,15 @@ pip install -r requirements.txt
 # Analyze a local clip (side view):
 python scripts/analyze_local.py <path/to/run.mp4>  run
 python scripts/analyze_local.py <path/to/bike.mp4> bike --position road_hoods
+
+# Also render an annotated overlay video (skeleton + angles + score):
+python scripts/analyze_local.py <path/to/run.mp4> run --overlay
+#   -> writes <path/to/run>_overlay.mp4  (or pass an explicit path: --overlay out.mp4)
 ```
+
+**ffmpeg (optional):** if `ffmpeg` is on `PATH`, overlays are re-encoded to
+web-safe H.264; otherwise they are written directly via OpenCV (`mp4v`), which
+plays in VLC/most players. Install ffmpeg for browser-embeddable output.
 
 Cycling positions: `road_hoods` (default) · `road_drops` · `tt_aero` ·
 `triathlon` · `casual`.
@@ -48,9 +57,10 @@ Output is JSON: `technique_score`, `letter_grade`, `angle_statistics`,
 (never `0`) — a landmark that was not reliably detected is NaN upstream and
 serialized as `null`.
 
-## Roadmap (post-M1)
+## Roadmap
 
-- **M2** — annotated overlay video (skeleton + angles + score per frame)
+- **M1** — ✅ standalone analysis core (run + bike, side view)
+- **M2** — ✅ annotated overlay video (skeleton + angles + score per frame)
 - **M3** — FastAPI service (upload → analyze → JSON + overlay)
 - **M4** — storage (local dev, S3/R2 in prod) + deploy to Railway
 - **M5** — LLM coaching recommendations from the metrics

@@ -388,8 +388,15 @@ def _json_safe(obj: Any) -> Any:
     return str(obj)
 
 
-def analyze(video_path: str, sport_type: str, cycling_position: str | None) -> dict[str, Any]:
-    """Reproduce the proven Motus side-view path and return a result dict."""
+def analyze(
+    video_path: str, sport_type: str, cycling_position: str | None,
+    overlay_path: str | None = None,
+) -> dict[str, Any]:
+    """Reproduce the proven Motus side-view path and return a result dict.
+
+    If ``overlay_path`` is given, also render an annotated overlay video
+    (skeleton + angle arcs/labels + score badge) to that path.
+    """
     camera_angle = None   # side view only in Milestone 1
     camera_view = None    # None == side view (implicit default in Motus)
 
@@ -543,6 +550,38 @@ def analyze(video_path: str, sport_type: str, cycling_position: str | None) -> d
     summary["quality_warnings"] = quality_warnings
     summary["quality_gate"] = quality_gate_result
 
+    # Step 6 (Milestone 2): optional annotated overlay video. Wrapped so a
+    # rendering failure never kills the analysis result.
+    overlay_video_path = None
+    if overlay_path:
+        try:
+            from app.services.video_analysis.video_visualizer import VideoVisualizer
+            out_dir = str(Path(overlay_path).resolve().parent)
+            analysis_name = Path(overlay_path).stem  # str stem -> writes <stem>.mp4
+            visualizer = VideoVisualizer(
+                video_path=video_path,
+                frame_data_list=raw_frame_data,
+                analyzer=analyzer,
+                sport_type=sport_type,
+                cycling_position=cycling_position,
+                output_dir=out_dir,
+                analysis_id=analysis_name,
+                technique_score=(
+                    scoring["overall_score"]
+                    if scoring.get("overall_score") is not None else 0
+                ),
+                letter_grade=scoring.get("letter_grade") or "--",
+                angle_stats=angle_stats,
+                summary=summary,
+            )
+            overlay_video_path = visualizer.generate()
+            if overlay_video_path:
+                logger.info("OVERLAY_OK", path=overlay_video_path)
+            else:
+                logger.warning("OVERLAY_NONE", hint="overlay writer returned None (see logs)")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("OVERLAY_FAILED", err=str(e))
+
     return {
         "status": "completed",
         "sport_type": sport_type,
@@ -553,6 +592,7 @@ def analyze(video_path: str, sport_type: str, cycling_position: str | None) -> d
         "letter_grade": scoring.get("letter_grade"),
         "score_breakdown": scoring.get("component_scores"),
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
+        "overlay_video_path": overlay_video_path,
         "angle_statistics": angle_stats,
         "detected_issues": issues,
         "sport_specific_metrics": summary,
@@ -571,6 +611,15 @@ def main() -> int:
             "Cycling position (bike only): "
             "road_hoods | road_drops | tt_aero | triathlon | casual. "
             f"Default: {DEFAULT_BIKE_POSITION}."
+        ),
+    )
+    parser.add_argument(
+        "--overlay", nargs="?", const="__DEFAULT__", default=None, metavar="PATH",
+        help=(
+            "Also render an annotated overlay video (skeleton + angles + score). "
+            "Optionally give an output .mp4 path; default: <video>_overlay.mp4 "
+            "next to the input. With ffmpeg on PATH the output is web-safe H.264; "
+            "otherwise it is written directly via OpenCV (mp4v)."
         ),
     )
     args = parser.parse_args()
@@ -603,13 +652,23 @@ def main() -> int:
             file=sys.stderr,
         )
 
+    overlay_path: str | None = None
+    if args.overlay is not None:
+        if args.overlay == "__DEFAULT__":
+            vp = Path(video_path)
+            overlay_path = str(vp.with_name(f"{vp.stem}_overlay.mp4"))
+        else:
+            overlay_path = args.overlay
+
     try:
-        result = analyze(video_path, sport_type, cycling_position)
+        result = analyze(video_path, sport_type, cycling_position, overlay_path=overlay_path)
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
 
     print(json.dumps(_json_safe(result), indent=2, ensure_ascii=False))
+    if result.get("overlay_video_path"):
+        print(f"\nOverlay video: {result['overlay_video_path']}", file=sys.stderr)
     return 0 if result.get("status") == "completed" else 1
 
 
