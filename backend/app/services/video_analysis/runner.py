@@ -373,7 +373,7 @@ def _json_safe(obj: Any) -> Any:
 
 def run_analysis(
     video_path: str, sport_type: str, cycling_position: str | None,
-    overlay_path: str | None = None,
+    overlay_path: str | None = None, recommendations: bool = True,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -565,6 +565,23 @@ def run_analysis(
         except Exception as e:  # noqa: BLE001
             logger.warning("OVERLAY_FAILED", err=str(e))
 
+    # Step 7 (Milestone 5): LLM coaching recommendations. Skips gracefully when
+    # no API key is configured or the call fails -- never blocks the result.
+    ai_recommendations = None
+    if recommendations:
+        from app.services.video_analysis.llm_recommendations import (
+            generate_recommendations,
+        )
+        ai_recommendations = generate_recommendations(
+            sport_type=sport_type,
+            technique_score=scoring.get("overall_score"),
+            letter_grade=scoring.get("letter_grade"),
+            detected_issues=issues,
+            angle_statistics=angle_stats,
+            sport_specific_metrics=summary,
+            cycling_position=cycling_position if is_bike else None,
+        )
+
     return {
         "status": "completed",
         "sport_type": sport_type,
@@ -576,6 +593,7 @@ def run_analysis(
         "score_breakdown": scoring.get("component_scores"),
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
         "overlay_video_path": overlay_video_path,
+        "ai_recommendations": ai_recommendations,
         "angle_statistics": angle_stats,
         "detected_issues": issues,
         "sport_specific_metrics": summary,

@@ -60,6 +60,10 @@ def main() -> int:
             "otherwise it is written directly via OpenCV (mp4v)."
         ),
     )
+    parser.add_argument(
+        "--no-llm", action="store_true",
+        help="Skip the Gemini coaching recommendations (also skipped if no GEMINI_API_KEY).",
+    )
     args = parser.parse_args()
 
     video_path = args.video_path
@@ -101,6 +105,7 @@ def main() -> int:
     try:
         result = run_analysis(
             video_path, sport_type, cycling_position, overlay_path=overlay_path,
+            recommendations=not args.no_llm,
         )
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)

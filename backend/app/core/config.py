@@ -39,9 +39,18 @@ class Settings:
     # Where the API stores uploaded clips + generated overlays (M3).
     uploads_dir: Path = BACKEND_DIR / "uploads"
 
+    # LLM coaching (M5). Read from env; never hard-code the key. When absent,
+    # recommendations are skipped gracefully and analysis still works.
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"
+
     @property
     def model_path(self) -> Path:
         return self.models_dir / self.model_filename
+
+    @property
+    def llm_enabled(self) -> bool:
+        return bool(self.gemini_api_key)
 
 
 def _load_settings() -> Settings:
@@ -50,6 +59,8 @@ def _load_settings() -> Settings:
     return Settings(
         models_dir=Path(models_dir).resolve() if models_dir else Settings.models_dir,
         uploads_dir=Path(uploads_dir).resolve() if uploads_dir else Settings.uploads_dir,
+        gemini_api_key=os.environ.get("GEMINI_API_KEY") or None,
+        gemini_model=os.environ.get("GEMINI_MODEL") or Settings.gemini_model,
     )
 
 
