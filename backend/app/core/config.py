@@ -36,6 +36,9 @@ class Settings:
     # baked into the frame extractor). Kept here so it is tunable later.
     max_analysis_frames: int = 450
 
+    # Where the API stores uploaded clips + generated overlays (M3).
+    uploads_dir: Path = BACKEND_DIR / "uploads"
+
     @property
     def model_path(self) -> Path:
         return self.models_dir / self.model_filename
@@ -43,8 +46,10 @@ class Settings:
 
 def _load_settings() -> Settings:
     models_dir = os.environ.get("VA_MODELS_DIR")
+    uploads_dir = os.environ.get("VA_UPLOADS_DIR")
     return Settings(
         models_dir=Path(models_dir).resolve() if models_dir else Settings.models_dir,
+        uploads_dir=Path(uploads_dir).resolve() if uploads_dir else Settings.uploads_dir,
     )
 
 

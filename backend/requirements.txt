@@ -14,3 +14,9 @@ opencv-contrib-python==4.13.0.92
 numpy==2.4.6
 scipy==1.17.1
 structlog==25.5.0
+
+# --- API (Milestone 3): upload -> analyze -> JSON + overlay ---
+fastapi==0.136.1
+uvicorn[standard]==0.47.0
+python-multipart==0.0.29
+pydantic==2.13.4

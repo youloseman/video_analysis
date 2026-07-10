@@ -4,24 +4,27 @@ Standalone technique-analysis app for **running** (side view) and **cycling
 position** (side view), extracted from the Motus platform. Computer-vision
 pose estimation (MediaPipe BlazePose) → biomechanics → technique score.
 
-> Status: **Milestones 1–2 complete** — the analysis core runs autonomously
-> (angles, issues, metrics, 0–100 score + grade) from a local video file, and
-> can render an annotated **overlay video** (skeleton + angle labels + score
-> per frame). No API / DB / storage / LLM yet — those are later milestones.
+> Status: **Milestones 1–3 complete** — the analysis core runs autonomously
+> (angles, issues, metrics, 0–100 score + grade), renders an annotated
+> **overlay video** (skeleton + angle labels + score per frame), and is exposed
+> over a **FastAPI service** (upload → poll → JSON + overlay). No DB / cloud
+> storage / LLM yet — those are later milestones.
 
 ## Layout
 
 ```
 backend/
 ├── app/
-│   ├── core/config.py                     # minimal settings (core reads no settings.*)
+│   ├── main.py                            # FastAPI service (M3)
+│   ├── core/config.py                     # minimal settings
 │   └── services/video_analysis/
 │       ├── detectors/                     # MediaPipe pose detector (abstracted)
 │       ├── biomechanics/                  # analyzers, filters, scoring, quality gate
+│       ├── runner.py                      # shared analysis service (CLI + API call this)
 │       ├── video_visualizer.py            # overlay renderer (M2)
 │       └── pipeline.py                    # shared constants + overlay-draw helpers
 ├── models/                                # pose_landmarker_heavy.task goes here (git-ignored)
-├── scripts/analyze_local.py               # CLI driver (analysis + optional overlay)
+├── scripts/analyze_local.py               # thin CLI over runner.run_analysis
 └── requirements.txt
 ```
 
@@ -57,12 +60,40 @@ Output is JSON: `technique_score`, `letter_grade`, `angle_statistics`,
 (never `0`) — a landmark that was not reliably detected is NaN upstream and
 serialized as `null`.
 
+## API (Milestone 3)
+
+Run the service:
+
+```bash
+cd backend
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+# interactive docs at http://localhost:8000/docs
+```
+
+Analyze a clip (async job — upload, poll, fetch):
+
+```bash
+# 1) upload -> {"job_id": "...", "poll_url": "/jobs/<id>"}
+curl -s -X POST http://localhost:8000/analyze \
+  -F "video=@bike.mp4" -F "sport=bike" -F "position=triathlon" -F "overlay=true"
+
+# 2) poll until status == "completed" (analysis is ~30-60s)
+curl -s http://localhost:8000/jobs/<job_id>
+
+# 3) download the annotated overlay
+curl -s http://localhost:8000/jobs/<job_id>/overlay -o overlay.mp4
+```
+
+`GET /health` reports liveness + whether the pose model is installed. Job state
+is in-memory (single-worker MVP — not persisted across restarts); uploads +
+overlays are stored under `backend/uploads/` (git-ignored).
+
 ## Roadmap
 
 - **M1** — ✅ standalone analysis core (run + bike, side view)
 - **M2** — ✅ annotated overlay video (skeleton + angles + score per frame)
-- **M3** — FastAPI service (upload → analyze → JSON + overlay)
-- **M4** — storage (local dev, S3/R2 in prod) + deploy to Railway
+- **M3** — ✅ FastAPI service (upload → poll → JSON + overlay; in-memory jobs)
+- **M4** — persistence (job store + S3/R2 storage) + deploy to Railway
 - **M5** — LLM coaching recommendations from the metrics
 - **M6** — web frontend (upload UI + results + overlay player)
 - **later** — rear-view running, swimming (re-add the trimmed analyzers)
