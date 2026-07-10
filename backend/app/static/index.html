@@ -151,6 +151,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .filepreview{display:none;background:var(--c-panel);border-radius:var(--radius);padding:16px;gap:24px;align-items:center}
 .filepreview.show{display:flex}
 .filepreview video{width:224px;aspect-ratio:16/9;height:auto;object-fit:contain;border-radius:var(--radius-btn);background:#0d1420;flex:none}
+.filepreview img#previewImg{width:168px;aspect-ratio:3/4;height:auto;object-fit:cover;border-radius:var(--radius-btn);background:#0d1420;flex:none}
 .fmeta{min-width:0}
 .fmeta .fname{font-weight:800;overflow-wrap:anywhere}
 .fmeta .fsize{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft);margin-top:4px}
@@ -335,6 +336,7 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
   .drop{padding:32px 16px}
   .filepreview{flex-direction:column;align-items:stretch}
   .filepreview video{width:100%}
+  .filepreview img#previewImg{width:100%;max-width:260px;margin:0 auto}
   .controls{grid-template-columns:1fr;gap:24px}
   .seg{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .actions{flex-direction:column;align-items:stretch}
@@ -408,23 +410,32 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
     <div class="card uploader">
       <div class="cardhead">
         <div>
-          <div class="eyebrow">Your clip</div>
+          <div class="eyebrow" id="uploaderEyebrow">Your clip</div>
           <h2 class="sec" id="uploaderTitle" tabindex="-1">Analyze a clip</h2>
           <div class="speedline"></div>
         </div>
         <div class="quota" id="quota">Free · <b>3</b> analyses per day</div>
       </div>
 
+      <div class="field" id="modeField">
+        <span class="fieldlabel" id="modeLabel">Input</span>
+        <div class="seg" id="modeSeg" role="group" aria-label="Input type — choose one">
+          <button type="button" data-mode="video" aria-pressed="true">Video</button>
+          <button type="button" data-mode="photo" aria-pressed="false">Photo</button>
+        </div>
+      </div>
+
       <input type="file" id="file" class="visually-hidden" accept="video/*"
              aria-describedby="dropHelp">
       <label class="drop" id="drop" for="file">
         <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
-        <b>Drop a video here</b> or click to browse
+        <b id="dropTitle">Drop a video here</b> or click to browse
         <small id="dropHelp">Side view, one athlete in frame · mp4 / mov / webm · up to 200 MB · 5–15 s works best</small>
       </label>
 
       <div class="filepreview" id="filepreview">
         <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
+        <img id="previewImg" class="hidden" alt="Preview of your selected photo">
         <div class="fmeta">
           <div class="fname" id="fname">clip.mp4</div>
           <div class="fsize" id="fsize">—</div>
@@ -460,7 +471,7 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
       </div>
 
       <div class="actions">
-        <div>
+        <div id="overlayField">
           <label class="switch"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>Render overlay video</label>
           <p class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</p>
         </div>
@@ -587,6 +598,76 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
     </div>
   </section>
 
+  <!-- ============ PHOTO RESULTS ============ -->
+  <section id="photoResults" class="hidden" aria-labelledby="pResultsTitle">
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Report</div>
+      <h2 class="sec" id="pResultsTitle" tabindex="-1" style="margin-bottom:8px">Your results</h2>
+      <div class="speedline"></div>
+    </div>
+
+    <div class="result-top">
+      <div class="card scorecard">
+        <span class="pill" id="pSportTag"><span class="dot" aria-hidden="true"></span><span id="pSportTagText">Bike</span></span>
+        <div class="score-label">Technique score</div>
+        <div class="score-num" id="pScoreNum">—<small>/100</small></div>
+        <div class="graderow">
+          <span class="grade" id="pGrade" role="img" aria-label="Grade">—</span>
+          <div><div class="gradelbl">Grade</div></div>
+        </div>
+        <div class="score-meta" id="pScoreMeta"></div>
+      </div>
+      <div>
+        <div class="videoframe">
+          <img id="pImage" alt="Annotated form analysis — skeleton and joint angles on your photo"
+               style="display:block;width:100%;background:#0d1420">
+          <div class="videocap">
+            <span>Annotated photo · skeleton + joint angles<br>
+              <span class="note">Results aren’t stored — download to keep it.</span></span>
+            <a class="btn btn-ghost btn-sm" id="pDownload" download="flapp-analysis.png">
+              <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .png
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pWarnings"></div>
+
+    <div class="block" id="pCoachBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
+        <h3>Coach’s notes</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="coach" id="pCoach"></div>
+    </div>
+
+    <div class="block">
+      <div class="blockhead">
+        <div class="eyebrow">Detail</div>
+        <h3>Joint angles</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="tablewrap">
+        <table class="data">
+          <caption class="visually-hidden">Joint angles with measured value, optimal range and status</caption>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th></tr></thead>
+          <tbody id="pAngleRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <details class="raw hidden" id="pRawBlock"><summary>Raw result JSON</summary><pre id="pRawJson"></pre></details>
+
+    <div class="again-row">
+      <button class="btn btn-primary" id="pAgain" type="button">
+        <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Analyze another
+      </button>
+      <span class="quota" id="quotaPhotoResults"></span>
+    </div>
+  </section>
+
   <!-- ============ ERROR ============ -->
   <section id="error" class="hidden" aria-labelledby="errTitle">
     <div class="card error-card" id="errorCard" role="alert">
@@ -625,7 +706,7 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0 };
+const state = { file:null, sport:'bike', mode:'video', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
@@ -638,12 +719,14 @@ const POSITION_NAMES = { road_hoods:'Road · Hoods', road_drops:'Road · Drops',
    State machine: upload | progress | results | error
    ============================================================ */
 const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Analyzing… — Flapp',
-  results:'Results — Flapp', error:'Flapp'};
+  results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp'};
+const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error'};
 function setState(name, {focus=null}={}){
   document.body.dataset.state = name;
   document.title = TITLES[name] || TITLES.upload;
-  ['uploader','progress','results','error'].forEach(id=>{
-    $('#'+id).classList.toggle('hidden', id !== (name==='upload'?'uploader':name));
+  const showId = SECTIONS[name];
+  Object.values(SECTIONS).forEach(id=>{
+    $('#'+id).classList.toggle('hidden', id !== showId);
   });
   window.scrollTo({top:0, behavior: REDUCED ? 'auto' : 'smooth'});
   if(focus){ const el=$(focus); if(el) el.focus({preventScroll:true}); }
@@ -670,7 +753,7 @@ function renderQuota(){
   const q=quotaLoad();
   const txt = q ? `<b>${q.remaining}</b> of <b>${q.limit}</b> analyses left today`
                : `Free · <b>3</b> analyses per day`;
-  ['#quota','#quotaResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
+  ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
 }
 
 /* ============================================================
@@ -694,18 +777,34 @@ function rejectFile(msg){
   drop.classList.add('err');
   hintMsg(msg,true);
 }
+const MAX_PHOTO_MB=25;
 function setFile(f){
   drop.classList.remove('err');
-  if(!f.type.startsWith('video/')){
-    rejectFile('That doesn’t look like a video — please choose an mp4, mov or webm clip.');
-    return;
-  }
-  if(f.size > MAX_MB*1048576){
-    rejectFile(`This clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB. Trim it to 5–15 s and try again.`);
-    return;
+  const photo = state.mode==='photo';
+  if(photo){
+    if(!f.type.startsWith('image/')){
+      rejectFile('That doesn’t look like a photo — please choose a jpg, png or heic image.');
+      return;
+    }
+    if(f.size > MAX_PHOTO_MB*1048576){
+      rejectFile(`This image is ${fmtSize(f.size)} — the limit is ${MAX_PHOTO_MB} MB.`);
+      return;
+    }
+  } else {
+    if(!f.type.startsWith('video/')){
+      rejectFile('That doesn’t look like a video — please choose an mp4, mov or webm clip.');
+      return;
+    }
+    if(f.size > MAX_MB*1048576){
+      rejectFile(`This clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB. Trim it to 5–15 s and try again.`);
+      return;
+    }
   }
   state.file=f;
-  $('#preview').src=URL.createObjectURL(f);
+  const url=URL.createObjectURL(f);
+  const vid=$('#preview'), img=$('#previewImg');
+  if(photo){ img.src=url; img.classList.remove('hidden'); vid.classList.add('hidden'); vid.removeAttribute('src'); }
+  else { vid.src=url; vid.classList.remove('hidden'); img.classList.add('hidden'); img.removeAttribute('src'); }
   $('#fname').textContent=f.name;
   $('#fsize').textContent=fmtSize(f.size);
   drop.classList.add('hidden'); fprev.classList.add('show');
@@ -714,10 +813,31 @@ function setFile(f){
   readyHint();
 }
 function readyHint(){
-  if(!state.file){ hintMsg('Pick a clip to start.'); return; }
+  const noun = state.mode==='photo' ? 'photo' : 'clip';
+  if(!state.file){ hintMsg(`Pick a ${noun} to start.`); return; }
   const sportTxt = state.sport==='bike' ? `Bike — ${POSITION_NAMES[$('#position').value]}` : 'Run';
   hintMsg(`Ready to analyze · ${sportTxt}`);
 }
+
+/* ---- input mode toggle (video / photo) ---- */
+$('#modeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const photo=b.dataset.mode==='photo';
+  if(state.mode===b.dataset.mode) return;
+  [...$('#modeSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  reset();                        // clears the old-mode file first
+  state.mode=b.dataset.mode;
+  fileInput.setAttribute('accept', photo?'image/*':'video/*');
+  $('#dropTitle').textContent = photo?'Drop a photo here':'Drop a video here';
+  $('#dropHelp').textContent = photo
+    ? 'Side view, full body in frame · jpg / png / heic · up to 25 MB'
+    : 'Side view, one athlete in frame · mp4 / mov / webm · up to 200 MB · 5–15 s works best';
+  $('#change').textContent = photo?'Change photo':'Change clip';
+  $('#uploaderEyebrow').textContent = photo?'Your photo':'Your clip';
+  $('#uploaderTitle').textContent = photo?'Analyze a photo':'Analyze a clip';
+  $('#overlayField').classList.toggle('hidden', photo);
+  readyHint();
+});
 
 /* ---- sport toggle ---- */
 $('#sportSeg').addEventListener('click',e=>{
@@ -729,6 +849,7 @@ $('#sportSeg').addEventListener('click',e=>{
   readyHint();
 });
 $('#position').addEventListener('change',readyHint);
+$('#pAgain').addEventListener('click',()=>reset());
 
 /* ============================================================
    Analyze: real upload progress (XHR) + staged status
@@ -765,6 +886,7 @@ function announce(text){ // SR live region: only meaningful transitions, never p
 }
 
 function analyze(){
+  if(state.mode==='photo') return analyzePhoto();
   const fd=new FormData();
   fd.append('video',state.file);
   fd.append('sport',state.sport);
@@ -776,6 +898,7 @@ function analyze(){
     <span class="pill ${state.sport==='run'?'pill-run':'pill-bike'}"><span class="dot" aria-hidden="true"></span>${esc(sportTxt)}</span>`;
 
   setState('progress',{focus:'#progTitle'});
+  $('#progTitle').textContent='Analyzing your clip';
   setSteps(1);
   const pbar=$('#pbar');
   pbar.classList.remove('indet'); pbar.setAttribute('aria-valuenow','0');
@@ -861,7 +984,7 @@ function fail(msg,{tips=false,keepFile=false,counted=false}={}){
   $('#errText').textContent=msg;
   $('#errNote').classList.toggle('hidden',!counted);
   $('#errTips').classList.toggle('hidden',!tips);
-  $('#errAgainLbl').textContent = keepFile ? 'Try again' : 'Try another clip';
+  $('#errAgainLbl').textContent = keepFile ? 'Try again' : (state.mode==='photo'?'Try another photo':'Try another clip');
   $('#errAgain').classList.remove('hidden');
   $('#errBack').classList.add('hidden');
   renderQuota();
@@ -979,6 +1102,105 @@ function runTiles(s){
   return t;
 }
 
+/* ============================================================
+   Photo analysis: synchronous POST /analyze-photo (~5 s)
+   ============================================================ */
+async function analyzePhoto(){
+  const fd=new FormData();
+  fd.append('photo',state.file);
+  fd.append('sport',state.sport);
+  if(state.sport==='bike') fd.append('position',$('#position').value);
+  fd.append('coaching','true');
+
+  const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[$('#position').value]}` : 'Run';
+  $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
+    <span class="pill ${state.sport==='run'?'pill-run':'pill-bike'}"><span class="dot" aria-hidden="true"></span>${esc(sportTxt)}</span>`;
+
+  setState('progress',{focus:'#progTitle'});
+  $('#progTitle').textContent='Analyzing your photo';
+  setSteps(2);
+  const pbar=$('#pbar');
+  pbar.classList.add('indet'); pbar.removeAttribute('aria-valuenow');
+  pbar.setAttribute('aria-valuetext','Analyzing, please wait');
+  stage('Detecting pose &amp; measuring joint angles… usually takes <b>~5 s</b>');
+
+  try{
+    const r=await fetch('/analyze-photo',{method:'POST',body:fd});
+    const limit=r.headers.get('X-RateLimit-Limit'), rem=r.headers.get('X-RateLimit-Remaining');
+    if(limit!=null && rem!=null){ state.remaining=rem; quotaSave(+limit,+rem); }
+    if(r.status===429){
+      const j=await r.json().catch(()=>({}));
+      showLimit(j.detail, r.headers.get('Retry-After')); return;
+    }
+    if(!r.ok){
+      const j=await r.json().catch(()=>({detail:r.statusText}));
+      // 422 = no pose detected / bad capture → actionable tips
+      fail(j.detail || ('Photo analysis failed (HTTP '+r.status+').'), {tips:r.status===422, counted:r.ok});
+      return;
+    }
+    renderPhoto(await r.json());
+  }catch(err){
+    fail('Network error while analyzing — check your connection and try again.',{keepFile:true});
+  }
+}
+
+const P_STATUS_CLS={optimal:'good','in_range':'good',good:'good',
+  too_low:'medium',too_high:'medium',low:'medium',high:'medium',slightly_low:'medium',slightly_high:'medium',
+  out_of_range:'high',poor:'high'};
+function renderPhoto(res){
+  const sport=res.sport||state.sport;
+  const sc=res.score||{}; const score=sc.overall_score;
+  $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
+
+  const letter=sc.grade||'—';
+  const g=$('#pGrade'); g.textContent=letter; g.setAttribute('aria-label','Grade '+letter);
+  const gc=GRADE_COLORS[letter]||C.navy; g.style.borderColor=gc; g.style.color=gc;
+
+  const st=$('#pSportTag');
+  st.classList.remove('pill-run','pill-bike');
+  st.classList.add(sport==='run'?'pill-run':'pill-bike');
+  $('#pSportTagText').textContent = sport==='run'?'Run':'Bike';
+
+  const parts=[];
+  if(res.camera_side) parts.push(`Camera: <b>${esc(res.camera_side)} side</b>`);
+  if(sport==='bike'&&res.cycling_position) parts.push(`Position: <b>${esc(res.cycling_position_label||POSITION_NAMES[res.cycling_position]||pretty(res.cycling_position))}</b>`);
+  if(sport==='bike'&&res.pedal_phase) parts.push(`Pedal: <b>${esc(String(res.pedal_phase).replace(/_/g,' '))}</b>`);
+  $('#pScoreMeta').innerHTML=parts.join('<br>');
+
+  const img=res.thumbnail_base64||'';
+  $('#pImage').src=img; $('#pDownload').href=img||'#';
+
+  const warns=res.warnings||[];
+  $('#pWarnings').innerHTML = warns.length
+    ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
+    : `<div class="banner ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
+
+  const cb=$('#pCoachBlock'); const rec=res.ai_recommendations;
+  if(rec && rec.report){
+    $('#pCoach').innerHTML=mdToHtml(rec.report)+
+      `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.</div>`;
+    cb.classList.remove('hidden');
+  } else cb.classList.add('hidden');
+
+  const A=res.angles_with_context||{};
+  const rows=Object.keys(A).map(k=>{
+    const a=A[k]; const stt=a.status||'unknown';
+    const cls=P_STATUS_CLS[stt]||'low';
+    const val=a.value==null?'—':(typeof a.value==='number'?Math.round(a.value*10)/10:a.value);
+    const opt=(a.optimal_min!=null&&a.optimal_max!=null)?`${a.optimal_min}–${a.optimal_max}`:'—';
+    return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
+      <td class="num">${val}</td><td class="num">${opt}</td>
+      <td><span class="pill pill-${cls}"><span class="dot" aria-hidden="true"></span>${esc(stt.replace(/_/g,' '))}</span></td></tr>`;
+  }).join('');
+  $('#pAngleRows').innerHTML=rows||'<tr><td colspan="4" class="muted">No angle data.</td></tr>';
+
+  if(DEBUG){ $('#pRawBlock').classList.remove('hidden');
+    $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2); }
+
+  renderQuota();
+  setState('photoresults',{focus:'#pResultsTitle'});
+}
+
 function render(job){
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
   const sport=r.sport_type||state.sport;
@@ -1090,8 +1312,9 @@ function reset(keepFile=false){
     state.file=null;
     fileInput.value=''; fileInput.removeAttribute('tabindex');
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');
+    const pi=$('#previewImg'); pi.classList.add('hidden'); pi.removeAttribute('src');
     $('#analyze').setAttribute('aria-disabled','true');
-    hintMsg('Pick a clip to start.');
+    hintMsg(`Pick a ${state.mode==='photo'?'photo':'clip'} to start.`);
   }
   if(keepFile && state.file) readyHint();
   const ov=$('#overlayVideo'); ov.pause(); ov.removeAttribute('src'); ov.load();
@@ -1112,7 +1335,7 @@ function reset(keepFile=false){
 })();
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,fail,showLimit,setSteps,stage};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage};
 </script>
 </body>
 </html>
