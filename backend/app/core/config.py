@@ -44,6 +44,9 @@ class Settings:
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
 
+    # Abuse guard: max analyses per client (IP) per rolling 24h. 0 disables.
+    rate_limit_per_day: int = 3
+
     @property
     def model_path(self) -> Path:
         return self.models_dir / self.model_filename
@@ -51,6 +54,16 @@ class Settings:
     @property
     def llm_enabled(self) -> bool:
         return bool(self.gemini_api_key)
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
 
 
 def _load_settings() -> Settings:
@@ -61,6 +74,7 @@ def _load_settings() -> Settings:
         uploads_dir=Path(uploads_dir).resolve() if uploads_dir else Settings.uploads_dir,
         gemini_api_key=os.environ.get("GEMINI_API_KEY") or None,
         gemini_model=os.environ.get("GEMINI_MODEL") or Settings.gemini_model,
+        rate_limit_per_day=_int_env("VA_RATE_LIMIT_PER_DAY", Settings.rate_limit_per_day),
     )
 
 

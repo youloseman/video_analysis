@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Technique — Running &amp; Cycling Form Analysis</title>
+<title>Flapp — Running &amp; Cycling Form Analysis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -207,7 +207,7 @@ footer a{color:var(--c-blue);text-decoration:none}
 
 <header>
   <div class="wrap">
-    <div class="wordmark">Technique<span class="dot"></span></div>
+    <div class="wordmark">Flapp<span class="dot"></span></div>
     <nav><a href="/docs" target="_blank">API docs ↗</a></nav>
   </div>
 </header>
@@ -353,12 +353,12 @@ footer a{color:var(--c-blue);text-decoration:none}
 </main>
 
 <footer>
-  <div class="wrap">Technique · side-view running &amp; cycling form analysis · <a href="/docs" target="_blank">API</a> · <a href="/health" target="_blank">status</a></div>
+  <div class="wrap">Flapp · side-view running &amp; cycling form analysis · <a href="/docs" target="_blank">API</a> · <a href="/health" target="_blank">status</a></div>
 </footer>
 
 <script>
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', jobId:null, polling:null };
+const state = { file:null, sport:'bike', jobId:null, polling:null, remaining:null };
 
 // ---- brand colors for JS ----
 const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', ok:'#2E9E5B', warn:'#F2A33C', run:'#EF5B5B', bike:'#F2A33C' };
@@ -414,6 +414,7 @@ async function analyze(){
     const r=await fetch('/analyze',{method:'POST',body:fd});
     if(!r.ok){ const t=await r.json().catch(()=>({detail:r.statusText})); throw new Error(t.detail||('HTTP '+r.status)); }
     const j=await r.json();
+    state.remaining=r.headers.get('X-RateLimit-Remaining');
     state.jobId=j.job_id;
     poll();
   }catch(err){ fail(err.message); }
@@ -505,6 +506,7 @@ function render(job){
   parts.push(`Camera side: <b>${r.camera_side||'—'}</b>`);
   parts.push(`Frames: <b>${r.frames_analyzed??'—'}</b>`);
   if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${r.cycling_position}</b>`);
+  if(state.remaining!=null && state.remaining!=='') parts.push(`<b>${state.remaining}</b> left today`);
   $('#scoreMeta').innerHTML=parts.join(' &nbsp;·&nbsp; ');
 
   // overlay video

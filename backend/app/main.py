@@ -20,12 +20,23 @@ persistence + multi-worker scaling (M4).
 from __future__ import annotations
 
 import os
+import time
 import uuid
+from collections import deque
 from pathlib import Path
 from typing import Any
 
 import structlog
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -47,10 +58,41 @@ ALLOWED_SUFFIXES = {".mp4", ".mov", ".avi", ".m4v", ".mkv", ".webm"}
 # In-memory job store. job_id -> job dict.
 JOBS: dict[str, dict[str, Any]] = {}
 
+# Per-IP rate limiter (rolling 24h). In-memory: single-instance only, resets on
+# restart -- consistent with the in-memory job store. Move to Redis when we
+# scale past one replica (M4b).
+_RATE_WINDOW_S = 24 * 3600
+_rate_hits: dict[str, deque] = {}
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort client IP. Railway sits behind a proxy, so prefer XFF."""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_state(ip: str) -> tuple[int, int]:
+    """Return (used, retry_after_seconds) for this IP after pruning old hits."""
+    if settings.rate_limit_per_day <= 0:
+        return 0, 0
+    now = time.time()
+    dq = _rate_hits.setdefault(ip, deque())
+    while dq and now - dq[0] > _RATE_WINDOW_S:
+        dq.popleft()
+    retry = int(_RATE_WINDOW_S - (now - dq[0])) + 1 if dq else 0
+    return len(dq), retry
+
+
+def _rate_record(ip: str) -> None:
+    _rate_hits.setdefault(ip, deque()).append(time.time())
+
+
 app = FastAPI(
-    title="Video Technique Analysis",
-    version="0.3.0",
-    description="Side-view running + cycling technique analysis (standalone).",
+    title="Flapp",
+    version="0.5.0",
+    description="Flapp — side-view running & cycling form analysis with AI coaching.",
 )
 
 # Permissive CORS so a browser frontend (M6) can call this directly. Lock the
@@ -147,6 +189,8 @@ def health() -> dict[str, Any]:
 @app.post("/analyze", response_model=JobCreated, status_code=202)
 async def analyze_endpoint(
     background_tasks: BackgroundTasks,
+    request: Request,
+    response: Response,
     video: UploadFile = File(..., description="Side-view video clip (mp4/mov/...)."),
     sport: str = Form(..., description="run | bike"),
     position: str | None = Form(
@@ -158,6 +202,21 @@ async def analyze_endpoint(
     ),
 ) -> JobCreated:
     """Accept a clip + params, kick off analysis, return a job id to poll."""
+    ip = _client_ip(request)
+    limit = settings.rate_limit_per_day
+    used, retry_after = _rate_state(ip)
+    if limit > 0 and used >= limit:
+        hours = max(1, round(retry_after / 3600))
+        logger.info("RATE_LIMITED", ip=ip, used=used, limit=limit)
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Daily limit reached — you can analyze {limit} clips per day. "
+                f"Try again in about {hours}h."
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
+
     if sport not in ("run", "bike"):
         raise HTTPException(400, "sport must be 'run' or 'bike'")
 
@@ -207,7 +266,11 @@ async def analyze_endpoint(
     background_tasks.add_task(
         _process_job, job_id, str(input_path), sport, cycling_position, overlay_path,
     )
-    logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data))
+    if limit > 0:
+        _rate_record(ip)
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used - 1))
+    logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
     return JobCreated(job_id=job_id, status="queued", poll_url=f"/jobs/{job_id}")
 
 
