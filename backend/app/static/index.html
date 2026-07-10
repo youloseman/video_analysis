@@ -141,6 +141,14 @@ select{font-family:var(--f-body);font-size:14px;font-weight:700;color:var(--c-in
 .videoframe video{display:block;width:100%;max-height:520px;background:#0d1420}
 .videocap{font-size:12px;color:var(--c-ink-soft);padding:10px 14px;background:#fff;border-top:1px solid var(--c-line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .videocap a{color:var(--c-blue);font-weight:700;text-decoration:none}
+.photoframe{border-radius:var(--radius);overflow:hidden;border:1px solid var(--c-line);background:#0d1420}
+.photoframe img{display:block;width:100%;max-height:560px;object-fit:contain;background:#0d1420}
+.grade.word{width:auto;min-width:0;padding:0 16px;height:44px;border-radius:11px;font-size:18px}
+.pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px;color:#fff}
+.pill.optimal{background:var(--c-ok)}
+.pill.acceptable{background:var(--c-blue)}
+.pill.needs_work{background:var(--c-coral)}
+.pill.unknown{background:#AEB6C2}
 
 .banner{border-radius:var(--radius);padding:14px 18px;font-size:14px;margin-top:24px;display:flex;gap:10px;align-items:flex-start}
 .banner.warn{background:#FEF4E7;border-left:4px solid var(--c-warn);color:#7a5a1f}
@@ -227,19 +235,28 @@ footer a{color:var(--c-blue);text-decoration:none}
   <section id="uploader">
     <div class="card uploader">
       <div class="eyebrow section-eyebrow">Step 1 · Your clip</div>
-      <h2 class="sec">Analyze a clip</h2>
+      <h2 class="sec">Analyze your form</h2>
       <div class="speedline"></div>
+
+      <div class="field" style="margin:20px 0 6px">
+        <label>Input</label>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-mode="video" aria-pressed="true">Video</button>
+          <button type="button" data-mode="photo" aria-pressed="false">Photo</button>
+        </div>
+      </div>
 
       <div class="drop" id="drop">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-        <b>Drop a video here</b> or click to browse
-        <small>Side view, one athlete in frame · mp4/mov · 5–15 s works best</small>
+        <b id="dropTitle">Drop a video here</b> or click to browse
+        <small id="dropHint">Side view, one athlete in frame · mp4/mov · 5–15 s works best</small>
       </div>
       <input type="file" id="file" accept="video/*" class="hidden">
 
       <div class="filepreview" id="filepreview">
         <video id="preview" muted playsinline></video>
+        <img id="previewImg" class="hidden" style="width:150px;height:200px;object-fit:cover;border-radius:8px;background:#000;flex:none">
         <div class="fmeta">
           <div class="fname" id="fname">clip.mp4</div>
           <div class="fsize" id="fsize">—</div>
@@ -268,7 +285,7 @@ footer a{color:var(--c-blue);text-decoration:none}
       </div>
 
       <div class="actions">
-        <label class="switch"><input type="checkbox" id="overlay" checked><span class="box"></span>Render overlay video</label>
+        <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box"></span>Render overlay video</label>
         <div style="flex:1"></div>
         <button class="btn btn-go is-disabled" id="analyze" disabled>Analyze
           <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 6h13M9 1l5 5-5 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -340,6 +357,47 @@ footer a{color:var(--c-blue);text-decoration:none}
     <div style="margin-top:30px"><button class="btn btn-ghost" id="again" type="button">← Analyze another clip</button></div>
   </section>
 
+  <!-- PHOTO RESULTS -->
+  <section id="photoResults" class="results">
+    <div class="result-top">
+      <div class="card scorecard">
+        <span class="sport-tag" id="pSportTag"><span class="t"></span><span id="pSportTagText">Bike</span></span>
+        <div class="score-num" id="pScoreNum">—<small>/100</small></div>
+        <div class="grade word" id="pGrade">—</div>
+        <div class="score-meta" id="pScoreMeta"></div>
+      </div>
+      <div>
+        <div class="photoframe" id="pPhotoframe">
+          <img id="pImage" alt="Annotated form analysis">
+          <div class="videocap">
+            <span>Annotated photo · skeleton + joint angles</span>
+            <a id="pDownload" download="flapp-analysis.png">Download ↓</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pWarnings"></div>
+
+    <div class="block" id="pCoachBlock">
+      <div class="eyebrow" style="margin-bottom:10px">🤖 AI Coach</div>
+      <div class="card coach" id="pCoach"></div>
+    </div>
+
+    <div class="block">
+      <h3>Joint angles</h3>
+      <div class="tablewrap">
+        <table class="data">
+          <thead><tr><th>Angle</th><th class="num">Value</th><th class="num">Optimal</th><th>Status</th></tr></thead>
+          <tbody id="pAngleRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <details class="raw"><summary>Raw result JSON</summary><pre id="pRawJson"></pre></details>
+    <div style="margin-top:30px"><button class="btn btn-ghost" id="pAgain" type="button">← Analyze another</button></div>
+  </section>
+
   <!-- ERROR -->
   <section id="error" class="hidden">
     <div class="card error-card">
@@ -358,7 +416,7 @@ footer a{color:var(--c-blue);text-decoration:none}
 
 <script>
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', jobId:null, polling:null, remaining:null };
+const state = { file:null, sport:'bike', mode:'video', jobId:null, polling:null, remaining:null };
 
 // ---- brand colors for JS ----
 const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', ok:'#2E9E5B', warn:'#F2A33C', run:'#EF5B5B', bike:'#F2A33C' };
@@ -375,15 +433,33 @@ fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) setFile(fileInp
 
 function fmtSize(b){ return b>1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB'; }
 function setFile(f){
-  if(!f.type.startsWith('video/')){ alert('Please choose a video file.'); return; }
+  const isVideo = state.mode==='video';
+  if(isVideo && !f.type.startsWith('video/')){ alert('Please choose a video file.'); return; }
+  if(!isVideo && !f.type.startsWith('image/')){ alert('Please choose an image file.'); return; }
   state.file=f;
-  $('#preview').src=URL.createObjectURL(f);
+  const url=URL.createObjectURL(f); const vid=$('#preview'), img=$('#previewImg');
+  if(isVideo){ vid.src=url; vid.classList.remove('hidden'); img.classList.add('hidden'); }
+  else { img.src=url; img.classList.remove('hidden'); vid.classList.add('hidden'); }
   $('#fname').textContent=f.name;
   $('#fsize').textContent=fmtSize(f.size);
   drop.classList.add('hidden'); fprev.classList.add('show');
   $('#analyze').disabled=false; $('#analyze').classList.remove('is-disabled');
   $('#hint').textContent='Ready — pick sport, then hit Analyze.';
 }
+
+$('#modeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const photo=b.dataset.mode==='photo';
+  [...$('#modeSeg').children].forEach(x=>x.setAttribute('aria-pressed', x===b));
+  reset();                       // clears file (uses old mode), then switch:
+  state.mode=b.dataset.mode;
+  fileInput.setAttribute('accept', photo?'image/*':'video/*');
+  $('#dropTitle').textContent = photo?'Drop a photo here':'Drop a video here';
+  $('#dropHint').textContent = photo
+    ? 'Side view, full body in frame · jpg / png / heic'
+    : 'Side view, one athlete in frame · mp4 / mov · 5–15 s works best';
+  $('#overlayField').style.display = photo?'none':'';
+});
 
 // ---- sport toggle ----
 $('#sportSeg').addEventListener('click',e=>{
@@ -398,12 +474,14 @@ $('#analyze').addEventListener('click',analyze);
 $('#again').addEventListener('click',reset);
 $('#errAgain').addEventListener('click',reset);
 
-function show(id){ ['uploader','progress','results','error'].forEach(s=>{
-  const el=$('#'+s); if(s===id){ el.classList.remove('hidden'); el.classList.add(s==='results'?'show':'x'); }
+function show(id){ ['uploader','progress','results','photoResults','error'].forEach(s=>{
+  const el=$('#'+s); if(!el) return;
+  if(s===id){ el.classList.remove('hidden'); if(s==='results'||s==='photoResults') el.classList.add('show'); }
   else { el.classList.add('hidden'); el.classList.remove('show'); } }); window.scrollTo({top:0,behavior:'smooth'}); }
 
 async function analyze(){
   if(!state.file) return;
+  if(state.mode==='photo') return analyzePhoto();
   const fd=new FormData();
   fd.append('video',state.file);
   fd.append('sport',state.sport);
@@ -566,14 +644,63 @@ function render(job){
   show('results');
 }
 
+const scoreColor = s => s==null?C.navy : s>=85?C.ok : s>=70?C.blue : s>=55?C.warn : C.coral;
+
+async function analyzePhoto(){
+  const fd=new FormData();
+  fd.append('photo',state.file);
+  fd.append('sport',state.sport);
+  if(state.sport==='bike') fd.append('position',$('#position').value);
+  fd.append('coaching','true');
+  $('#progTitle').textContent='Analyzing photo…';
+  $('#progText').textContent='Detecting pose and measuring joint angles. ~5 seconds.';
+  show('progress');
+  try{
+    const r=await fetch('/analyze-photo',{method:'POST',body:fd});
+    if(!r.ok){ const t=await r.json().catch(()=>({detail:r.statusText})); throw new Error(t.detail||('HTTP '+r.status)); }
+    state.remaining=r.headers.get('X-RateLimit-Remaining');
+    renderPhoto(await r.json());
+  }catch(err){ fail(err.message); }
+}
+
+function renderPhoto(res){
+  const sport=res.sport||state.sport; const sc=res.score||{}; const score=sc.overall_score;
+  $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
+  const g=$('#pGrade'); g.textContent=sc.grade||'—'; g.style.background=scoreColor(score);
+  $('#pSportTag').style.background = sport==='run'?C.run:C.bike;
+  $('#pSportTagText').textContent = sport==='run'?'Run':'Bike';
+  const parts=[`Camera side: <b>${res.camera_side||'—'}</b>`];
+  if(sport==='bike'&&res.cycling_position) parts.push(`Position: <b>${res.cycling_position_label||res.cycling_position}</b>`);
+  if(sport==='bike'&&res.pedal_phase) parts.push(`Pedal: <b>${String(res.pedal_phase).replace(/_/g,' ')}</b>`);
+  if(state.remaining!=null&&state.remaining!=='') parts.push(`<b>${state.remaining}</b> left today`);
+  $('#pScoreMeta').innerHTML=parts.join(' &nbsp;·&nbsp; ');
+  $('#pImage').src=res.thumbnail_base64||''; $('#pDownload').href=res.thumbnail_base64||'#';
+  const warns=res.warnings||[];
+  $('#pWarnings').innerHTML = warns.length ? `<div class="banner warn">⚠ ${warns.join(' ')}</div>`
+    : `<div class="banner ok">✓ Clean side-view capture.</div>`;
+  const cb=$('#pCoachBlock'); const rec=res.ai_recommendations;
+  if(rec&&rec.report){ $('#pCoach').innerHTML=mdToHtml(rec.report)+`<div class="model">Generated by ${rec.model||'AI'}</div>`; cb.style.display=''; }
+  else cb.style.display='none';
+  const A=res.angles_with_context||{};
+  $('#pAngleRows').innerHTML=Object.keys(A).map(k=>{
+    const a=A[k]; const st=a.status||'unknown';
+    const val=a.value==null?'—':(typeof a.value==='number'?(Math.round(a.value*10)/10):a.value);
+    return `<tr><td>${a.label||pretty(k)}</td><td class="num">${val}</td><td class="num">${a.optimal_min}–${a.optimal_max}</td><td><span class="pill ${st}">${st.replace(/_/g,' ')}</span></td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="muted">No angle data.</td></tr>';
+  $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2);
+  show('photoResults');
+}
+
 function reset(){
   clearInterval(state.polling); state.file=null; state.jobId=null;
   fileInput.value=''; drop.classList.remove('hidden'); fprev.classList.remove('show');
   $('#analyze').disabled=true; $('#analyze').classList.add('is-disabled');
-  $('#hint').textContent='Pick a clip to start.';
+  $('#hint').textContent='Pick a file to start.';
   const ov=$('#overlayVideo'); ov.pause(); ov.removeAttribute('src'); ov.load();
+  const pi=$('#previewImg'); if(pi) pi.removeAttribute('src');
   show('uploader');
 }
+$('#pAgain').addEventListener('click',reset);
 </script>
 </body>
 </html>

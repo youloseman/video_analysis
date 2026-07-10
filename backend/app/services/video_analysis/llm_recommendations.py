@@ -172,3 +172,68 @@ def generate_recommendations(
     except Exception as e:  # noqa: BLE001
         logger.warning("LLM_FAILED", err=str(e))
         return None
+
+
+def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
+    sc = res.get("score", {}) or {}
+    sport_label = "cycling" if sport == "bike" else sport
+    lines = [
+        f"Sport: {sport_label} | SINGLE STILL PHOTO (a snapshot -- no cadence "
+        "or dynamics available).",
+        f"Overall score: {sc.get('overall_score')}/100 ({sc.get('grade')})",
+    ]
+    if sport == "bike":
+        lines.append(
+            f"Position: {res.get('cycling_position_label') or res.get('cycling_position')} "
+            f"| pedal phase in this photo: {res.get('pedal_phase')}"
+        )
+    lines.append("Joint angles (value vs optimal, status):")
+    for k, v in (res.get("angles_with_context") or {}).items():
+        lines.append(
+            f"- {v.get('label', k)}: {v.get('value')} "
+            f"(optimal {v.get('optimal_min')}-{v.get('optimal_max')}, {v.get('status')})"
+        )
+    warns = res.get("warnings") or []
+    if warns:
+        lines.append("Capture notes: " + "; ".join(warns))
+    return "\n".join(lines) + (
+        "\n\nWrite the coaching feedback now, following the required section "
+        "structure. Note this is a single still, so avoid advice that needs video."
+    )
+
+
+def generate_photo_recommendations(
+    sport: str, photo_result: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Coaching from a single-photo analysis. Returns {report, model} or None."""
+    if not settings.gemini_api_key:
+        logger.info("LLM_SKIP", reason="no_api_key")
+        return None
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError:
+        logger.warning("LLM_SKIP", reason="google-genai not installed")
+        return None
+
+    prompt = _build_photo_prompt(sport, photo_result)
+    try:
+        client = genai.Client(api_key=settings.gemini_api_key)
+        resp = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.3,
+                max_output_tokens=1200,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        text = (getattr(resp, "text", None) or "").strip()
+        if not text:
+            return None
+        logger.info("LLM_PHOTO_OK", model=settings.gemini_model, chars=len(text))
+        return {"report": text, "model": settings.gemini_model}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("LLM_PHOTO_FAILED", err=str(e))
+        return None

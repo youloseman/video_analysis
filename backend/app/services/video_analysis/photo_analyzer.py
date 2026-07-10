@@ -1,0 +1,1101 @@
+"""Single-photo body position analysis with scoring and annotated thumbnail.
+
+Unlike video analysis (multi-frame, temporal, background task, DB storage),
+photo analysis is:
+- Single frame (static_image_mode=True in MediaPipe)
+- Synchronous (returns JSON directly)
+- No DB storage (instant feedback)
+- Reuses the same angle calculation functions from the video pipeline
+"""
+
+import base64
+import io
+import math
+import time
+from typing import Any
+
+import numpy as np
+import structlog
+from PIL import Image, ImageOps
+
+from app.services.video_analysis.biomechanics.angle_calculator import (
+    MIN_LANDMARK_VISIBILITY,
+    calculate_angle_2d,
+    calculate_angle_3d,
+    calculate_body_rotation,
+    calculate_forearm_tilt_2d,
+    calculate_head_alignment_2d,
+    calculate_segment_to_vertical,
+)
+from app.services.video_analysis.biomechanics.cycling_positions import (
+    get_cycling_reference,
+    get_position_label,
+)
+from app.services.video_analysis.pipeline import _draw_dashed_line
+from app.services.video_analysis.biomechanics.sport_configs import (
+    RUNNING_REFERENCE,
+    SWIMMING_REFERENCE,
+)
+from app.core.config import settings
+
+logger = structlog.get_logger()
+
+# ---------------------------------------------------------------------------
+# Angle landmark triplets per sport
+# ---------------------------------------------------------------------------
+
+# Running: near-side only, unprefixed keys (matches running_analyzer.py)
+RUNNING_PHOTO_ANGLES: dict[str, dict[str, tuple[int, int, int]]] = {
+    "left": {
+        "knee": (23, 25, 27),   # LEFT_HIP, LEFT_KNEE, LEFT_ANKLE
+        "hip": (11, 23, 25),    # LEFT_SHOULDER, LEFT_HIP, LEFT_KNEE
+        "ankle": (25, 27, 29),  # LEFT_KNEE, LEFT_ANKLE, LEFT_HEEL
+        "elbow": (11, 13, 15),  # LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST
+    },
+    "right": {
+        "knee": (24, 26, 28),
+        "hip": (12, 24, 26),
+        "ankle": (26, 28, 30),
+        "elbow": (12, 14, 16),
+    },
+}
+
+RUNNING_TRUNK_LANDMARKS: dict[str, tuple[int, int]] = {
+    "left": (11, 23),
+    "right": (12, 24),
+}
+
+# Cycling: near-side only, unprefixed keys (matches cycling_analyzer.py)
+CYCLING_PHOTO_ANGLES: dict[str, dict[str, tuple[int, int, int]]] = {
+    "left": {
+        "knee": (23, 25, 27),
+        "hip": (11, 23, 25),
+        "ankle": (25, 27, 31),   # KNEE, ANKLE, FOOT_INDEX
+        "elbow": (11, 13, 15),
+        "shoulder": (13, 11, 23),  # ELBOW -> SHOULDER -> HIP
+    },
+    "right": {
+        "knee": (24, 26, 28),
+        "hip": (12, 24, 26),
+        "ankle": (26, 28, 32),
+        "elbow": (12, 14, 16),
+        "shoulder": (14, 12, 24),  # ELBOW -> SHOULDER -> HIP
+    },
+}
+
+# Swimming: both sides, prefixed keys, uses 3D angles
+SWIMMING_PHOTO_ANGLES: dict[str, tuple[int, int, int]] = {
+    "left_shoulder": (23, 11, 13),   # HIP -> SHOULDER -> ELBOW
+    "right_shoulder": (24, 12, 14),
+    "left_elbow": (11, 13, 15),      # SHOULDER -> ELBOW -> WRIST
+    "right_elbow": (12, 14, 16),
+    "left_knee": (23, 25, 27),       # HIP -> KNEE -> ANKLE
+    "right_knee": (24, 26, 28),
+}
+
+# ---------------------------------------------------------------------------
+# Human-readable labels
+# ---------------------------------------------------------------------------
+
+_ANGLE_LABELS: dict[str, dict[str, str]] = {
+    "run": {
+        "knee": "Knee Angle",
+        "hip": "Hip Angle",
+        "ankle": "Ankle Angle",
+        "elbow": "Elbow Angle",
+        "trunk": "Trunk Lean",
+    },
+    "bike": {
+        "knee": "Knee Angle",
+        "hip": "Hip Angle",
+        "ankle": "Ankle Angle",
+        "elbow": "Elbow Angle",
+        "trunk": "Trunk Angle",
+        "shoulder": "Shoulder Angle",
+        "forearm_tilt": "Forearm Tilt",
+        "head_alignment": "Head Tuck",
+        "pelvic_ratio": "Pelvic Rotation",
+    },
+    "swim": {
+        "left_shoulder": "Left Shoulder",
+        "right_shoulder": "Right Shoulder",
+        "left_elbow": "Left Elbow",
+        "right_elbow": "Right Elbow",
+        "left_knee": "Left Knee",
+        "right_knee": "Right Knee",
+        "body_rotation": "Body Rotation",
+        "streamline": "Streamline",
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Optimal ranges per sport
+# ---------------------------------------------------------------------------
+
+
+def _get_running_optimal_ranges() -> dict[str, tuple[float, float]]:
+    """Optimal ranges for running photo (generic, not gait-phase-specific)."""
+    return {
+        "knee": (80, 175),   # Wide -- photo captures one unknown gait instant
+        "hip": (150, 180),
+        "trunk": RUNNING_REFERENCE["trunk_lean"],       # (4, 8)
+        "elbow": RUNNING_REFERENCE["elbow_angle"],      # (85, 100)
+        "ankle": (90, 120),
+    }
+
+
+def _get_cycling_optimal_ranges(
+    cycling_position: str | None,
+    pedal_phase: str = "near_bdc",
+) -> dict[str, tuple[float, float]]:
+    """Position-dependent cycling ranges with pedal-phase-aware knee range."""
+    ref = get_cycling_reference(cycling_position)
+    if pedal_phase == "near_bdc":
+        knee_range = (ref["knee_at_bdc"][0] - 10, ref["knee_at_bdc"][1])
+    elif pedal_phase == "near_tdc":
+        knee_range = (ref["knee_at_tdc"][0] - 10, ref["knee_at_tdc"][1])
+    else:
+        # Mid-stroke: very wide range -- cannot reliably score
+        knee_range = (60, 155)
+    return {
+        "knee": knee_range,
+        "hip": ref["hip_angle_max"],
+        "trunk": ref["trunk_angle"],
+        "elbow": ref["elbow_angle"],
+        "ankle": (70, 110),
+        "shoulder": ref["shoulder_angle"],
+        "forearm_tilt": ref["forearm_tilt"],
+        "head_alignment": ref["head_alignment"],
+        "pelvic_ratio": ref["pelvic_ratio"],
+    }
+
+
+def _get_swimming_optimal_ranges() -> dict[str, tuple[float, float]]:
+    return {
+        "left_shoulder": (120, 180),
+        "right_shoulder": (120, 180),
+        "left_elbow": SWIMMING_REFERENCE["elbow_at_catch"],   # (90, 120)
+        "right_elbow": SWIMMING_REFERENCE["elbow_at_catch"],
+        "left_knee": (150, 180),
+        "right_knee": (150, 180),
+        "body_rotation": SWIMMING_REFERENCE["body_rotation"],  # (40, 60)
+        "streamline": SWIMMING_REFERENCE["streamline"],        # (0, 10)
+    }
+
+
+# ---------------------------------------------------------------------------
+# Scoring
+# ---------------------------------------------------------------------------
+
+PHOTO_RUNNING_WEIGHTS = {
+    "knee": 0.30, "trunk": 0.25, "elbow": 0.20, "hip": 0.15, "ankle": 0.10,
+}
+PHOTO_CYCLING_WEIGHTS = {
+    "knee": 0.22, "trunk": 0.18, "shoulder": 0.12, "head_alignment": 0.10,
+    "elbow": 0.10, "hip": 0.08, "pelvic_ratio": 0.07, "forearm_tilt": 0.05,
+    "ankle": 0.08,
+}
+# Mid-stroke: knee unreliable, redistribute weight to trunk + hip
+PHOTO_CYCLING_WEIGHTS_MIDSTROKE = {
+    "knee": 0.05, "trunk": 0.24, "shoulder": 0.12, "head_alignment": 0.10,
+    "elbow": 0.10, "hip": 0.19, "pelvic_ratio": 0.07, "forearm_tilt": 0.05,
+    "ankle": 0.08,
+}
+PHOTO_SWIMMING_WEIGHTS = {
+    "left_elbow": 0.20, "right_elbow": 0.10,
+    "body_rotation": 0.25, "streamline": 0.25,
+    "left_shoulder": 0.10, "right_shoulder": 0.10,
+}
+
+_PHOTO_WEIGHTS = {
+    "run": PHOTO_RUNNING_WEIGHTS,
+    "bike": PHOTO_CYCLING_WEIGHTS,
+    "swim": PHOTO_SWIMMING_WEIGHTS,
+}
+
+
+def _score_single_angle(
+    value: float, optimal_min: float, optimal_max: float,
+) -> int | None:
+    """Score one angle 0-100 based on distance from optimal range."""
+    if math.isnan(value):
+        return None
+
+    if optimal_min <= value <= optimal_max:
+        return 100
+
+    distance = min(abs(value - optimal_min), abs(value - optimal_max))
+
+    if distance <= 5:
+        return 80
+    elif distance <= 10:
+        return 60
+    elif distance <= 15:
+        return 40
+    else:
+        return 20
+
+
+def _assign_photo_grade(score: int) -> str:
+    """Convert 0-100 score to grade label."""
+    if score >= 90:
+        return "Excellent"
+    elif score >= 75:
+        return "Good"
+    elif score >= 60:
+        return "Fair"
+    else:
+        return "Needs Work"
+
+
+def _score_photo_angles(
+    angles: dict[str, float],
+    optimal_ranges: dict[str, tuple[float, float]],
+    sport: str,
+    weights_override: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Score all angles and compute weighted overall score."""
+    weights = weights_override or _PHOTO_WEIGHTS.get(sport, PHOTO_RUNNING_WEIGHTS)
+    per_angle: dict[str, dict[str, Any]] = {}
+    total_weight = 0.0
+    weighted_sum = 0.0
+
+    for angle_key, weight in weights.items():
+        value = angles.get(angle_key)
+        if value is None or angle_key not in optimal_ranges:
+            continue
+
+        opt_min, opt_max = optimal_ranges[angle_key]
+        score = _score_single_angle(value, opt_min, opt_max)
+        if score is None:
+            continue
+
+        per_angle[angle_key] = {
+            "score": score,
+            "weight": weight,
+            "weighted": round(score * weight, 1),
+        }
+        weighted_sum += score * weight
+        total_weight += weight
+
+    if total_weight > 0:
+        overall = int(round(weighted_sum / total_weight))
+    else:
+        overall = 50
+
+    overall = max(0, min(100, overall))
+
+    return {
+        "overall_score": overall,
+        "grade": _assign_photo_grade(overall),
+        "per_angle": per_angle,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Thumbnail generation
+# ---------------------------------------------------------------------------
+
+# Skeleton connections (from pipeline.py)
+_POSE_CONNECTIONS = [
+    (0, 1), (1, 2), (2, 3), (3, 7),
+    (0, 4), (4, 5), (5, 6), (6, 8),
+    (9, 10),
+    (11, 12),
+    (11, 13), (13, 15),
+    (12, 14), (14, 16),
+    (11, 23), (12, 24), (23, 24),
+    (23, 25), (25, 27),
+    (24, 26), (26, 28),
+    (15, 17), (16, 18), (15, 19), (16, 20),
+    (15, 21), (16, 22), (17, 19), (18, 20),
+    (19, 21), (20, 22),
+    (27, 29), (28, 30), (27, 31), (28, 32),
+    (29, 31), (30, 32),
+]
+
+_LEFT_SIDE = {1, 2, 3, 7, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31}
+_RIGHT_SIDE = {4, 5, 6, 8, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32}
+_MIDLINE = {0, 9, 10}
+_VIS_THRESHOLD = 0.5
+
+# Label positioning: landmark index + offset direction per angle key
+_LABEL_CONFIGS: dict[str, dict[str, dict[str, Any]]] = {
+    "run": {
+        "left": {
+            "knee":  {"idx": 25, "offset_dir": "left"},
+            "hip":   {"idx": 23, "offset_dir": "up-left"},
+            "trunk": {"idx": 11, "offset_dir": "up"},
+            "elbow": {"idx": 13, "offset_dir": "up-left"},
+            "ankle": {"idx": 27, "offset_dir": "down-left"},
+        },
+        "right": {
+            "knee":  {"idx": 26, "offset_dir": "right"},
+            "hip":   {"idx": 24, "offset_dir": "up-right"},
+            "trunk": {"idx": 12, "offset_dir": "up"},
+            "elbow": {"idx": 14, "offset_dir": "up-right"},
+            "ankle": {"idx": 28, "offset_dir": "down-right"},
+        },
+    },
+    "bike": {
+        "left": {
+            "knee":         {"idx": 25, "offset_dir": "left"},
+            "hip":          {"idx": 23, "offset_dir": "up-left"},
+            "trunk":        {"idx": 11, "offset_dir": "up"},
+            "elbow":        {"idx": 13, "offset_dir": "up-left"},
+            "ankle":        {"idx": 27, "offset_dir": "down-left"},
+            "shoulder":     {"idx": 11, "offset_dir": "right"},
+            "forearm_tilt": {"idx": 15, "offset_dir": "down-right"},
+        },
+        "right": {
+            "knee":         {"idx": 26, "offset_dir": "right"},
+            "hip":          {"idx": 24, "offset_dir": "up-right"},
+            "trunk":        {"idx": 12, "offset_dir": "up"},
+            "elbow":        {"idx": 14, "offset_dir": "up-right"},
+            "ankle":        {"idx": 28, "offset_dir": "down-right"},
+            "shoulder":     {"idx": 12, "offset_dir": "left"},
+            "forearm_tilt": {"idx": 16, "offset_dir": "down-left"},
+        },
+    },
+    "swim": {
+        "any": {
+            "left_shoulder":  {"idx": 11, "offset_dir": "up"},
+            "right_shoulder": {"idx": 12, "offset_dir": "up-right"},
+            "left_elbow":     {"idx": 13, "offset_dir": "left"},
+            "right_elbow":    {"idx": 14, "offset_dir": "right"},
+            "left_knee":      {"idx": 25, "offset_dir": "down-left"},
+            "right_knee":     {"idx": 26, "offset_dir": "down-right"},
+        },
+    },
+}
+
+
+def _is_near_side(idx: int, camera_side: str | None) -> bool:
+    """Check if a landmark index belongs to the near side."""
+    if idx in _MIDLINE:
+        return True
+    if camera_side == "left":
+        return idx in _LEFT_SIDE
+    elif camera_side == "right":
+        return idx in _RIGHT_SIDE
+    return True
+
+
+def _score_to_color(score: int | None) -> tuple[int, int, int]:
+    """Map score to BGR color for thumbnail drawing."""
+    if score is None:
+        return (180, 180, 180)  # Gray for N/A
+    if score >= 80:
+        return (0, 220, 0)     # Green
+    elif score >= 60:
+        return (0, 200, 255)   # Orange
+    else:
+        return (0, 0, 255)     # Red
+
+
+def _draw_arc(
+    cv2_mod, frame, pixel_coords: list[tuple[int, int, float]],
+    prox_idx: int, vert_idx: int, dist_idx: int,
+    color: tuple[int, int, int], body_height_px: float,
+) -> None:
+    """Draw angle arc at joint vertex (same algorithm as pipeline._draw_angle_arc)."""
+    max_idx = max(prox_idx, vert_idx, dist_idx)
+    if max_idx >= len(pixel_coords):
+        return
+
+    px, py, pv = pixel_coords[prox_idx]
+    vx, vy, vv = pixel_coords[vert_idx]
+    dx, dy, dv = pixel_coords[dist_idx]
+
+    if min(pv, vv, dv) < _VIS_THRESHOLD:
+        return
+
+    v1x, v1y = px - vx, py - vy
+    v2x, v2y = dx - vx, dy - vy
+
+    ang1 = math.degrees(math.atan2(v1y, v1x))
+    ang2 = math.degrees(math.atan2(v2y, v2x))
+
+    start = min(ang1, ang2)
+    end = max(ang1, ang2)
+    if end - start > 180:
+        start, end = end, start + 360
+
+    radius = max(12, int(body_height_px * 0.08))
+    cv2_mod.ellipse(
+        frame, (vx, vy), (radius, radius), 0,
+        start, end, color, 1, cv2_mod.LINE_AA,
+    )
+
+
+def _generate_photo_thumbnail(
+    cv2_mod, image, normalized_landmarks,
+    angles: dict[str, float],
+    score_data: dict[str, Any],
+    camera_side: str,
+    sport: str,
+    arc_triplets: dict[str, tuple[int, int, int]],
+    cycling_position: str | None = None,
+) -> bytes:
+    """Generate annotated thumbnail with skeleton, angle labels, and score badge.
+
+    Returns PNG image as bytes.
+    """
+    frame = image.copy()
+    h, w = frame.shape[:2]
+
+    # Convert normalized landmarks to pixel coordinates
+    pixel_coords: list[tuple[int, int, float]] = []
+    for lm in normalized_landmarks:
+        px = int(lm.x * w)
+        py = int(lm.y * h)
+        vis = getattr(lm, "visibility", 1.0)
+        pixel_coords.append((px, py, float(vis)))
+
+    # --- 1. DRAW SKELETON ---
+    side_filter = camera_side if sport in ("run", "bike") else None
+    near_color = (180, 255, 180)
+    near_dot = (0, 255, 200)
+
+    for start_idx, end_idx in _POSE_CONNECTIONS:
+        if start_idx >= len(pixel_coords) or end_idx >= len(pixel_coords):
+            continue
+        sx, sy, sv = pixel_coords[start_idx]
+        ex, ey, ev = pixel_coords[end_idx]
+        if sv < _VIS_THRESHOLD or ev < _VIS_THRESHOLD:
+            continue
+        if side_filter and not (
+            _is_near_side(start_idx, side_filter)
+            and _is_near_side(end_idx, side_filter)
+        ):
+            continue
+        cv2_mod.line(frame, (sx, sy), (ex, ey), near_color, 1, cv2_mod.LINE_AA)
+
+    for i, (px, py, vis) in enumerate(pixel_coords):
+        if vis < _VIS_THRESHOLD:
+            continue
+        if side_filter and not _is_near_side(i, side_filter):
+            continue
+        cv2_mod.circle(frame, (px, py), 2, near_dot, -1, cv2_mod.LINE_AA)
+
+    # --- 2. ANGLE ARCS + LABELS ---
+    if len(pixel_coords) > 25:
+        # Body size reference for adaptive scaling
+        s11x, s11y, _ = pixel_coords[11]
+        h23x, h23y, _ = pixel_coords[23]
+        body_height_px = max(50.0, abs(s11y - h23y))
+        font_scale = max(0.35, min(0.55, body_height_px / 400))
+        thickness_t = 1 if font_scale < 0.45 else 2
+        offset_px = max(70, int(body_height_px * 0.5))
+
+        offset_vectors = {
+            "left":       (-offset_px, 0),
+            "right":      (offset_px, 0),
+            "up":         (0, -offset_px),
+            "down":       (0, offset_px),
+            "up-left":    (-offset_px, -int(offset_px * 0.7)),
+            "up-right":   (offset_px, -int(offset_px * 0.7)),
+            "down-left":  (-offset_px, int(offset_px * 0.7)),
+            "down-right": (offset_px, int(offset_px * 0.7)),
+        }
+
+        font = cv2_mod.FONT_HERSHEY_SIMPLEX
+        per_angle = score_data.get("per_angle", {})
+        labels = _ANGLE_LABELS.get(sport, {})
+
+        # Get label configs for this sport + camera side
+        if sport == "swim":
+            label_cfg = _LABEL_CONFIGS.get("swim", {}).get("any", {})
+        else:
+            label_cfg = _LABEL_CONFIGS.get(sport, {}).get(camera_side, {})
+
+        for angle_key, angle_value in angles.items():
+            if math.isnan(angle_value):
+                continue
+            cfg = label_cfg.get(angle_key)
+            if not cfg:
+                continue
+
+            lm_idx = cfg["idx"]
+            if lm_idx >= len(pixel_coords):
+                continue
+            _, _, lm_vis = pixel_coords[lm_idx]
+            if lm_vis < _VIS_THRESHOLD:
+                continue
+
+            # Color based on score
+            angle_score_data = per_angle.get(angle_key)
+            score_val = angle_score_data["score"] if angle_score_data else None
+            color = _score_to_color(score_val)
+
+            # Draw arc at joint
+            triplet = arc_triplets.get(angle_key)
+            if triplet:
+                _draw_arc(
+                    cv2_mod, frame, pixel_coords,
+                    *triplet, color, body_height_px,
+                )
+
+            # Callout line + label
+            jx, jy, _ = pixel_coords[lm_idx]
+            dx, dy = offset_vectors.get(cfg["offset_dir"], (offset_px, 0))
+            lx = max(5, min(w - 130, jx + dx))
+            ly = max(20, min(h - 10, jy + dy))
+
+            cv2_mod.line(frame, (jx, jy), (lx, ly),
+                         (200, 200, 200), 1, cv2_mod.LINE_AA)
+            cv2_mod.circle(frame, (jx, jy), 3, color, -1, cv2_mod.LINE_AA)
+
+            label_name = labels.get(angle_key, angle_key.replace("_", " ").title())
+            text = f"{label_name} {angle_value:.0f}"
+            (tw, th_t), _ = cv2_mod.getTextSize(text, font, font_scale, thickness_t)
+            pad = 3
+            cv2_mod.rectangle(
+                frame,
+                (lx - pad, ly - th_t - pad),
+                (lx + tw + pad, ly + pad),
+                (0, 0, 0), -1,
+            )
+            cv2_mod.putText(
+                frame, text, (lx, ly),
+                font, font_scale, color, thickness_t, cv2_mod.LINE_AA,
+            )
+
+    # --- 2b. HEAD ALIGNMENT + PELVIC RATIO overlays (bike only) ---
+    if sport == "bike" and len(pixel_coords) > 25:
+        s11x, s11y, _ = pixel_coords[11]
+        h23x, h23y, _ = pixel_coords[23]
+        bh_px = max(50.0, abs(s11y - h23y))
+        small_scale = max(0.28, min(0.45, bh_px / 500))
+        font_hl = cv2_mod.FONT_HERSHEY_SIMPLEX
+
+        # Head alignment: dashed back-line + score near ear
+        head_val = angles.get("head_alignment")
+        if head_val is not None and not math.isnan(head_val) and head_val > 0 and bh_px > 40:
+            if camera_side == "left":
+                sh_i, hp_i, ear_i = 11, 23, 7
+            else:
+                sh_i, hp_i, ear_i = 12, 24, 8
+
+            shx, shy, shv = pixel_coords[sh_i]
+            hpx, hpy, hpv = pixel_coords[hp_i]
+            eax, eay, eav = pixel_coords[ear_i]
+
+            if shv >= _VIS_THRESHOLD and hpv >= _VIS_THRESHOLD:
+                _draw_dashed_line(cv2_mod, frame, (hpx, hpy), (shx, shy), (180, 180, 255), 1)
+                dx_ext = shx - hpx
+                dy_ext = shy - hpy
+                ext_x = shx + int(dx_ext * 0.5)
+                ext_y = shy + int(dy_ext * 0.5)
+                _draw_dashed_line(cv2_mod, frame, (shx, shy), (ext_x, ext_y), (180, 180, 255), 1)
+
+                if eav >= _VIS_THRESHOLD:
+                    h_color = (0, 220, 0) if head_val >= 75 else ((0, 200, 255) if head_val >= 50 else (0, 0, 255))
+                    h_text = f"Head {head_val:.0f}/100"
+                    (htw, hth), _ = cv2_mod.getTextSize(h_text, font_hl, small_scale, 1)
+                    hlx = max(5, min(w - htw - 5, eax + 10))
+                    hly = max(hth + 5, min(h - 5, eay - 10))
+                    cv2_mod.rectangle(frame, (hlx - 2, hly - hth - 2), (hlx + htw + 2, hly + 2), (0, 0, 0), -1)
+                    cv2_mod.putText(frame, h_text, (hlx, hly), font_hl, small_scale, h_color, 1, cv2_mod.LINE_AA)
+
+        # Pelvic ratio: small label near hip
+        pelvic_val = angles.get("pelvic_ratio")
+        if pelvic_val is not None and not math.isnan(pelvic_val) and pelvic_val > 0 and bh_px > 40:
+            ref_p = get_cycling_reference(cycling_position)
+            p_min, p_max = ref_p["pelvic_ratio"]
+            if p_min <= pelvic_val <= p_max:
+                p_color = (0, 220, 0)
+            elif abs(pelvic_val - p_min) < 0.5 or abs(pelvic_val - p_max) < 0.5:
+                p_color = (0, 200, 255)
+            else:
+                p_color = (0, 0, 255)
+            p_text = f"Pelvic {pelvic_val:.1f}x"
+            (ptw, pth), _ = cv2_mod.getTextSize(p_text, font_hl, small_scale, 1)
+            hp_i2 = 23 if camera_side == "left" else 24
+            hpx2, hpy2, _ = pixel_coords[hp_i2]
+            off_px = max(50, int(bh_px * 0.35))
+            plx = max(5, min(w - ptw - 5, hpx2 + int(off_px * 0.3)))
+            ply = max(pth + 5, min(h - 5, hpy2 + int(off_px * 0.6)))
+            cv2_mod.rectangle(frame, (plx - 2, ply - pth - 2), (plx + ptw + 2, ply + 2), (0, 0, 0), -1)
+            cv2_mod.putText(frame, p_text, (plx, ply), font_hl, small_scale, p_color, 1, cv2_mod.LINE_AA)
+
+    # --- 3. SCORE BADGE (top-left) ---
+    sport_labels = {"run": "RUN", "bike": "BIKE", "swim": "SWIM"}
+    overall = score_data.get("overall_score", 0)
+    grade = score_data.get("grade", "")
+    badge_text = f"{sport_labels.get(sport, sport.upper())}  {overall}/100  {grade}"
+
+    badge_font = cv2_mod.FONT_HERSHEY_SIMPLEX
+    badge_scale = 0.5
+    (btw, bth), _ = cv2_mod.getTextSize(badge_text, badge_font, badge_scale, 1)
+    badge_pad = 8
+    bx, by = 10, 10
+
+    overlay = frame.copy()
+    cv2_mod.rectangle(
+        overlay,
+        (bx, by),
+        (bx + btw + badge_pad * 2, by + bth + badge_pad * 2),
+        (0, 0, 0), -1,
+    )
+    cv2_mod.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+    cv2_mod.putText(
+        frame, badge_text,
+        (bx + badge_pad, by + bth + badge_pad),
+        badge_font, badge_scale, (0, 255, 255), 1, cv2_mod.LINE_AA,
+    )
+
+    # --- 4. CAMERA SIDE LABEL ---
+    if sport in ("run", "bike"):
+        side_text = f"{camera_side.title()} side analyzed"
+        cv2_mod.putText(
+            frame, side_text,
+            (bx + badge_pad, by + bth + badge_pad * 2 + 18),
+            badge_font, 0.35, (200, 200, 200), 1, cv2_mod.LINE_AA,
+        )
+
+    # Encode to PNG
+    success, buf = cv2_mod.imencode(".png", frame, [cv2_mod.IMWRITE_PNG_COMPRESSION, 6])
+    if not success:
+        raise ValueError("Failed to encode thumbnail image")
+    return buf.tobytes()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _detect_camera_side(world_landmarks) -> str:
+    """Detect which body side faces the camera (single frame).
+
+    Same logic as base_analyzer.detect_camera_side():
+    Z increases AWAY from camera; smaller Z = closer.
+    """
+    left_z = (world_landmarks[11].z + world_landmarks[23].z) / 2
+    right_z = (world_landmarks[12].z + world_landmarks[24].z) / 2
+    return "left" if left_z < right_z else "right"
+
+
+def _classify_angle_status(
+    value: float, optimal_min: float, optimal_max: float,
+) -> str:
+    """Classify angle measurement: optimal / acceptable / needs_work."""
+    if math.isnan(value):
+        return "insufficient_visibility"
+
+    if optimal_min <= value <= optimal_max:
+        return "optimal"
+
+    range_width = optimal_max - optimal_min
+    margin = max(range_width * 0.10, 3.0)  # At least 3 deg margin
+
+    if (optimal_min - margin) <= value <= (optimal_max + margin):
+        return "acceptable"
+
+    return "needs_work"
+
+
+def _auto_detect_cycling_position(trunk_angle: float) -> str:
+    """Guess cycling position from trunk angle."""
+    if math.isnan(trunk_angle):
+        return "road_hoods"
+
+    if trunk_angle < 22:
+        return "tt_aero"
+    elif trunk_angle < 33:
+        return "road_drops"
+    elif trunk_angle < 46:
+        return "road_hoods"
+    else:
+        return "casual"
+
+
+def _estimate_pedal_phase(knee_angle: float) -> str:
+    """Estimate pedal phase from single-photo knee angle.
+
+    Returns: 'near_bdc', 'near_tdc', or 'mid_stroke'.
+    BDC = leg extended (high angle), TDC = leg flexed (low angle).
+    """
+    if math.isnan(knee_angle):
+        return "mid_stroke"
+    if knee_angle >= 125:
+        return "near_bdc"
+    elif knee_angle <= 85:
+        return "near_tdc"
+    else:
+        return "mid_stroke"
+
+
+def _safe_round(value: float, decimals: int = 1) -> float:
+    """Round a value, returning NaN as-is."""
+    if math.isnan(value):
+        return value
+    return round(value, decimals)
+
+
+def _build_arc_triplets(
+    sport: str, camera_side: str,
+) -> dict[str, tuple[int, int, int]]:
+    """Build arc triplet dict for thumbnail drawing."""
+    if sport == "run":
+        return dict(RUNNING_PHOTO_ANGLES[camera_side])
+    elif sport == "bike":
+        return dict(CYCLING_PHOTO_ANGLES[camera_side])
+    elif sport == "swim":
+        return dict(SWIMMING_PHOTO_ANGLES)
+    return {}
+
+
+# ---------------------------------------------------------------------------
+# Main function
+# ---------------------------------------------------------------------------
+
+
+def _preprocess_image_bytes(image_bytes: bytes) -> bytes:
+    """Preprocess image: convert HEIC/HEIF to JPEG, apply EXIF orientation.
+
+    Returns processed bytes suitable for cv2.imdecode.
+    """
+    # Check for HEIC/HEIF (ftyp box at offset 4)
+    is_heic = (
+        len(image_bytes) > 12
+        and image_bytes[4:8] == b"ftyp"
+    )
+
+    if is_heic:
+        try:
+            from pillow_heif import register_heif_opener
+            register_heif_opener()
+        except ImportError:
+            logger.warning("HEIC_UNSUPPORTED", reason="pillow-heif not installed")
+            return image_bytes
+
+        img = Image.open(io.BytesIO(image_bytes))
+        img = img.convert("RGB")
+        img = ImageOps.exif_transpose(img)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=95)
+        return buf.getvalue()
+
+    # For all other formats: apply EXIF auto-orientation if needed
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        transposed = ImageOps.exif_transpose(img)
+        if transposed is not img:
+            buf = io.BytesIO()
+            fmt = img.format or "JPEG"
+            if fmt.upper() == "MPO":
+                fmt = "JPEG"
+            transposed.save(buf, format=fmt, quality=95)
+            return buf.getvalue()
+    except Exception:
+        logger.debug("Image EXIF auto-orient failed, using original", exc_info=True)
+
+    return image_bytes
+
+
+def analyze_photo(
+    image_bytes: bytes,
+    sport: str,
+    cycling_position: str | None = None,
+) -> dict[str, Any]:
+    """Analyze a single photo for body position feedback.
+
+    This is a BLOCKING function (MediaPipe CPU work).
+    The API endpoint wraps it in asyncio.to_thread().
+
+    Args:
+        image_bytes: Raw image file bytes (JPEG/PNG/WebP)
+        sport: "run", "bike", or "swim"
+        cycling_position: Optional cycling position for bike
+
+    Returns:
+        Dict matching PhotoAnalysisResponse schema.
+
+    Raises:
+        ValueError: If image invalid or no pose detected.
+    """
+    import cv2
+    import mediapipe as mp
+
+    start_time = time.time()
+
+    # 0. Preprocess: HEIC conversion + EXIF auto-orientation
+    image_bytes = _preprocess_image_bytes(image_bytes)
+
+    # 1. Decode image
+    img_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    if image is None:
+        raise ValueError(
+            "Could not decode image. Ensure it is a valid JPEG, PNG, WebP, or HEIC file."
+        )
+
+    warnings: list[str] = []
+
+    # Warning: low resolution
+    h_img, w_img = image.shape[:2]
+    if min(h_img, w_img) < 480:
+        warnings.append(
+            "Low resolution image detected. "
+            "Higher resolution photos provide more precise measurements."
+        )
+
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # 2. Run MediaPipe Pose — Tasks API (works with mediapipe >=0.10.14)
+    wl = None
+    nl = None
+
+    try:
+        from pathlib import Path as _Path
+        from mediapipe.tasks.python import BaseOptions
+        from mediapipe.tasks.python.vision import (
+            PoseLandmarker,
+            PoseLandmarkerOptions,
+            RunningMode,
+        )
+
+        _model_paths = [
+            settings.model_path,  # Flapp: backend/models/ (see core/config.py)
+            _Path(__file__).parent / "models" / "pose_landmarker_heavy.task",
+            _Path("/app/models/pose_landmarker_heavy.task"),
+            _Path("pose_landmarker_heavy.task"),
+        ]
+        _model_path = None
+        for _p in _model_paths:
+            if _p.exists():
+                _model_path = str(_p)
+                break
+
+        if _model_path:
+            options = PoseLandmarkerOptions(
+                base_options=BaseOptions(model_asset_path=_model_path),
+                running_mode=RunningMode.IMAGE,
+                num_poses=1,
+                min_pose_detection_confidence=0.5,
+                min_pose_presence_confidence=0.5,
+            )
+            landmarker = PoseLandmarker.create_from_options(options)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+            result = landmarker.detect(mp_image)
+            landmarker.close()
+
+            if result.pose_world_landmarks:
+                wl = result.pose_world_landmarks[0]
+                nl = result.pose_landmarks[0]
+    except Exception as tasks_err:
+        logger.warning("Tasks API failed for photo, trying legacy", err=str(tasks_err))
+
+    # Fallback: Legacy Solutions API (mediapipe < 0.10.31)
+    if wl is None:
+        try:
+            mp_pose = mp.solutions.pose
+            with mp_pose.Pose(
+                static_image_mode=True,
+                model_complexity=2,
+                min_detection_confidence=0.5,
+            ) as pose:
+                result = pose.process(image_rgb)
+            if result.pose_world_landmarks:
+                wl = result.pose_world_landmarks.landmark
+                nl = result.pose_landmarks.landmark
+        except AttributeError:
+            pass  # mp.solutions removed in mediapipe >= 0.10.31
+
+    if wl is None:
+        raise ValueError(
+            "No body pose detected in the image. "
+            "Ensure the full body is visible and well-lit."
+        )
+
+    # 3. Detect camera side
+    camera_side = _detect_camera_side(wl)
+
+    # Warning: front/back view (not ideal side view)
+    left_z = (wl[11].z + wl[23].z) / 2   # left shoulder + hip
+    right_z = (wl[12].z + wl[24].z) / 2   # right shoulder + hip
+    if abs(left_z - right_z) < 0.05:
+        warnings.append(
+            "Side view works best for position analysis. "
+            "The photo appears to be from the front or back, "
+            "which may give less accurate angle measurements."
+        )
+
+    # Warning: poor landmark visibility (bad lighting / occlusion)
+    key_indices = [11, 12, 23, 24, 25, 26, 27, 28]
+    avg_vis = sum(nl[i].visibility for i in key_indices) / len(key_indices)
+    if avg_vis < 0.5:
+        warnings.append(
+            "Image quality appears low. "
+            "Try a clearer, well-lit photo for more accurate results."
+        )
+
+    # 4. Compute angles (sport-specific)
+    angles: dict[str, float] = {}
+    pedal_phase: str | None = None  # Only set for cycling
+
+    if sport == "run":
+        for name, (a, b, c) in RUNNING_PHOTO_ANGLES[camera_side].items():
+            val, _ = calculate_angle_2d(wl, a, b, c)
+            angles[name] = _safe_round(val)
+
+        sh_idx, hp_idx = RUNNING_TRUNK_LANDMARKS[camera_side]
+        trunk = calculate_segment_to_vertical(wl, sh_idx, hp_idx)
+        angles["trunk"] = _safe_round(trunk)
+
+        optimal_ranges = _get_running_optimal_ranges()
+
+    elif sport == "bike":
+        for name, (a, b, c) in CYCLING_PHOTO_ANGLES[camera_side].items():
+            val, _ = calculate_angle_2d(wl, a, b, c)
+            angles[name] = _safe_round(val)
+
+        trunk_from_vert = calculate_segment_to_vertical(wl, 11, 23)
+        trunk = 90.0 - trunk_from_vert  # Convert to from-horizontal (bike fitting convention)
+        angles["trunk"] = _safe_round(trunk)
+
+        # Forearm tilt (atan2-based, not standard 3-point angle)
+        if camera_side == "left":
+            forearm_tilt, _ = calculate_forearm_tilt_2d(wl, 13, 15)
+        else:
+            forearm_tilt, _ = calculate_forearm_tilt_2d(wl, 14, 16)
+        angles["forearm_tilt"] = _safe_round(forearm_tilt)
+
+        # Head alignment (score 0-100)
+        if camera_side == "left":
+            head_score, _ = calculate_head_alignment_2d(wl, 11, 23, 7)
+        else:
+            head_score, _ = calculate_head_alignment_2d(wl, 12, 24, 8)
+        angles["head_alignment"] = _safe_round(head_score)
+
+        # Pelvic ratio (derived: hip / trunk)
+        hip_val = angles.get("hip")
+        trunk_val = angles.get("trunk")
+        if (hip_val is not None and trunk_val is not None
+                and trunk_val >= 5
+                and not math.isnan(hip_val) and not math.isnan(trunk_val)):
+            angles["pelvic_ratio"] = round(hip_val / trunk_val, 2)
+
+        # Pedal phase estimation from knee angle
+        knee_val = angles.get("knee")
+        pedal_phase = _estimate_pedal_phase(knee_val) if knee_val is not None else "mid_stroke"
+
+        if not cycling_position:
+            cycling_position = _auto_detect_cycling_position(trunk)
+            logger.info(
+                "PHOTO_CYCLING_AUTODETECT",
+                detected_position=cycling_position,
+                trunk_angle=trunk,
+            )
+
+        optimal_ranges = _get_cycling_optimal_ranges(cycling_position, pedal_phase)
+
+    elif sport == "swim":
+        for name, (a, b, c) in SWIMMING_PHOTO_ANGLES.items():
+            val, _ = calculate_angle_3d(wl, a, b, c)
+            angles[name] = _safe_round(val)
+
+        body_rot = abs(calculate_body_rotation(wl))
+        angles["body_rotation"] = _safe_round(body_rot)
+
+        streamline = calculate_segment_to_vertical(wl, 11, 27)
+        angles["streamline"] = _safe_round(streamline)
+
+        optimal_ranges = _get_swimming_optimal_ranges()
+
+    else:
+        raise ValueError(
+            f"Unsupported sport: {sport}. Must be run, bike, or swim."
+        )
+
+    # Warning: partial body (some angles are NaN)
+    nan_count = sum(1 for v in angles.values() if math.isnan(v))
+    if 0 < nan_count < len(angles):
+        measured = len(angles) - nan_count
+        warnings.append(
+            f"Partial body detected: {measured} of {len(angles)} angles could be measured. "
+            "Ensure full body is visible for complete analysis."
+        )
+
+    # 5. Build angles_with_context
+    labels = _ANGLE_LABELS.get(sport, {})
+    angles_with_context: dict[str, dict[str, Any]] = {}
+
+    for angle_name, angle_value in angles.items():
+        if angle_name not in optimal_ranges:
+            continue
+        opt_min, opt_max = optimal_ranges[angle_name]
+        angles_with_context[angle_name] = {
+            "value": angle_value,
+            "optimal_min": opt_min,
+            "optimal_max": opt_max,
+            "status": _classify_angle_status(angle_value, opt_min, opt_max),
+            "label": labels.get(
+                angle_name, angle_name.replace("_", " ").title()
+            ),
+        }
+
+    # 6. Score (use mid-stroke weights for cycling if knee at mid-stroke)
+    weights_override = None
+    if sport == "bike" and pedal_phase == "mid_stroke":
+        weights_override = PHOTO_CYCLING_WEIGHTS_MIDSTROKE
+    score_data = _score_photo_angles(angles, optimal_ranges, sport, weights_override)
+
+    # 7. Thumbnail
+    arc_triplets = _build_arc_triplets(sport, camera_side)
+    thumbnail_bytes = _generate_photo_thumbnail(
+        cv2, image, nl,
+        angles, score_data, camera_side, sport, arc_triplets,
+        cycling_position=cycling_position,
+    )
+    thumbnail_b64 = f"data:image/png;base64,{base64.b64encode(thumbnail_bytes).decode()}"
+
+    processing_time = round(time.time() - start_time, 3)
+
+    # 8. Build response
+    response: dict[str, Any] = {
+        "sport": sport,
+        "camera_side": camera_side,
+        "angles": angles,
+        "angles_with_context": angles_with_context,
+        "score": score_data,
+        "thumbnail_base64": thumbnail_b64,
+        "processing_time_seconds": processing_time,
+        "warnings": warnings,
+    }
+
+    if sport == "bike":
+        response["cycling_position"] = cycling_position
+        response["cycling_position_label"] = get_position_label(cycling_position)
+        response["pedal_phase"] = pedal_phase
+        if pedal_phase == "mid_stroke":
+            warnings.append(
+                "Knee captured at mid-pedal-stroke -- knee angle scoring is reduced. "
+                "For saddle height assessment, use a photo at the bottom of the pedal stroke."
+            )
+
+        # Position archetype classification
+        from app.services.video_analysis.biomechanics.cycling_positions import detect_position_archetype
+        archetype = detect_position_archetype(
+            shoulder_angle=angles.get("shoulder", 0.0),
+            elbow_angle=angles.get("elbow", 0.0),
+            trunk_angle=angles.get("trunk", 0.0),
+            hip_angle=angles.get("hip", 0.0),
+            cycling_position=cycling_position,
+        )
+        if archetype:
+            response["position_archetype"] = archetype
+
+    logger.info(
+        "PHOTO_ANALYSIS_COMPLETE",
+        sport=sport,
+        camera_side=camera_side,
+        num_angles=len(angles),
+        overall_score=score_data["overall_score"],
+        grade=score_data["grade"],
+        processing_time=processing_time,
+    )
+
+    return response

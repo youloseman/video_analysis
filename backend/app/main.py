@@ -37,6 +37,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -54,6 +55,8 @@ logger = structlog.get_logger()
 # Max upload size (bytes). Phone clips are a few MB; cap to avoid abuse.
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
 ALLOWED_SUFFIXES = {".mp4", ".mov", ".avi", ".m4v", ".mkv", ".webm"}
+ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
+MAX_PHOTO_BYTES = 30 * 1024 * 1024  # 30 MB
 
 # In-memory job store. job_id -> job dict.
 JOBS: dict[str, dict[str, Any]] = {}
@@ -272,6 +275,83 @@ async def analyze_endpoint(
         response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used - 1))
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
     return JobCreated(job_id=job_id, status="queued", poll_url=f"/jobs/{job_id}")
+
+
+@app.post("/analyze-photo", status_code=200)
+async def analyze_photo_endpoint(
+    request: Request,
+    response: Response,
+    photo: UploadFile = File(..., description="Side-view still photo (jpg/png/heic)."),
+    sport: str = Form(..., description="run | bike"),
+    position: str | None = Form(None, description="Cycling position (bike only)."),
+    coaching: bool = Form(True, description="Include AI coaching."),
+) -> dict[str, Any]:
+    """Analyze a single still photo. Synchronous (~5s) -- returns the full
+    result inline, including an annotated image (data URI) + optional coaching.
+    Shares the daily rate limit with video analyses.
+    """
+    ip = _client_ip(request)
+    limit = settings.rate_limit_per_day
+    used, retry_after = _rate_state(ip)
+    if limit > 0 and used >= limit:
+        hours = max(1, round(retry_after / 3600))
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Daily limit reached — you can analyze {limit} clips/photos per "
+                f"day. Try again in about {hours}h."
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    if sport not in ("run", "bike"):
+        raise HTTPException(400, "sport must be 'run' or 'bike'")
+    cycling_position: str | None = None
+    if sport == "bike":
+        cycling_position = position or DEFAULT_BIKE_POSITION
+        if cycling_position not in VALID_POSITIONS:
+            raise HTTPException(400, f"invalid position; valid: {sorted(VALID_POSITIONS)}")
+    if not settings.model_path.exists():
+        raise HTTPException(503, "pose model not installed on the server")
+
+    suffix = Path(photo.filename or "").suffix.lower() or ".jpg"
+    if suffix not in ALLOWED_IMAGE_SUFFIXES:
+        raise HTTPException(
+            400, f"unsupported image type '{suffix}'; allowed: {sorted(ALLOWED_IMAGE_SUFFIXES)}",
+        )
+    data = await photo.read()
+    if len(data) == 0:
+        raise HTTPException(400, "empty upload")
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(413, f"file too large (> {MAX_PHOTO_BYTES // (1024 * 1024)} MB)")
+
+    from app.services.video_analysis.photo_analyzer import analyze_photo
+    try:
+        result = await run_in_threadpool(analyze_photo, data, sport, cycling_position)
+    except ValueError as e:
+        # No pose detected / undecodable image -> user-actionable 422.
+        raise HTTPException(422, str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("PHOTO_FAILED", err=str(e), ip=ip)
+        raise HTTPException(500, "photo analysis failed")
+
+    if coaching:
+        from app.services.video_analysis.llm_recommendations import (
+            generate_photo_recommendations,
+        )
+        result["ai_recommendations"] = await run_in_threadpool(
+            generate_photo_recommendations, sport, result,
+        )
+
+    if limit > 0:
+        _rate_record(ip)
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used - 1))
+    logger.info(
+        "PHOTO_DONE", sport=sport, ip=ip,
+        score=(result.get("score") or {}).get("overall_score"),
+    )
+    return _json_safe(result)
 
 
 @app.get("/jobs/{job_id}", response_model=JobStatus)
