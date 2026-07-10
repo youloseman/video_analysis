@@ -30,6 +30,13 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Local media -- input clips + generated overlays (keep the repo code-only)
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.avi
+
 # Local outputs / scratch
 *.log
 uploads/

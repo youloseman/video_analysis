@@ -64,6 +64,11 @@ from app.services.video_analysis.biomechanics.technique_scorer import (  # noqa:
     score_analysis,
 )
 
+# Route all structlog output to stderr so stdout carries ONLY the result JSON
+# (otherwise the pretty console logs interleave with the JSON and break piping
+# `... > result.json`). MediaPipe's native logs already go to stderr.
+structlog.configure(logger_factory=structlog.PrintLoggerFactory(file=sys.stderr))
+
 logger = structlog.get_logger()
 
 VALID_POSITIONS = {"road_hoods", "road_drops", "tt_aero", "triathlon", "casual"}
