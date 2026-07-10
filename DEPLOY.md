@@ -1,5 +1,9 @@
 # Deploy to Railway (M4a)
 
+> **Current deployment:** https://video-analysis-production-1f54.up.railway.app
+> (Railway project `video-analysis`, workspace *youloseman's Projects*). Every
+> `railway up` / GitHub push redeploys it.
+
 The API ships as a Docker image (`Dockerfile` at the repo root). The pose model
 is downloaded **at build time** and baked in, and `ffmpeg` is installed so
 overlays come out as web-safe H.264. Config is in `railway.json` (Dockerfile
