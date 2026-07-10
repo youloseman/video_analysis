@@ -10,7 +10,8 @@ pose estimation (MediaPipe BlazePose) → biomechanics → technique score.
 > (upload → poll → JSON + overlay) with a **brandbook-styled web frontend**
 > (drag-drop upload → results + overlay player + **AI coaching**), and is
 > **deployed to Railway** as a Docker image (pose model baked in, ffmpeg for
-> web-safe H.264, Gemini for recommendations). No DB / cloud storage yet.
+> web-safe H.264, Gemini for recommendations). Also does **single-photo** form
+> analysis (annotated image + coaching). No DB / cloud storage yet.
 
 ## Layout
 
@@ -99,6 +100,7 @@ overlays are stored under `backend/uploads/` (git-ignored).
 - **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
 - **M6** — ✅ web frontend (drag-drop upload → results + overlay player, brandbook theme)
 - **M5** — ✅ Gemini AI coaching (numbers-vs-optimal feedback; graceful skip without a key)
+- **Photo** — ✅ single-image form check (`POST /analyze-photo` → annotated photo + angle table + coaching)
 - **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
 - **later** — rear-view running, swimming (re-add the trimmed analyzers)
 
