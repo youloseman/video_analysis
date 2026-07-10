@@ -6,14 +6,17 @@
 FROM python:3.11-slim
 
 # System deps:
-#   ffmpeg          -> re-encode overlays to web-safe H.264 (else OpenCV mp4v)
-#   libgl1/libglib  -> runtime libs for opencv-contrib-python (pulled by mediapipe)
-#   curl            -> fetch the pose model at build time
+#   ffmpeg                    -> re-encode overlays to web-safe H.264 (else mp4v)
+#   libgl1/libglib2.0-0/libgomp1 -> opencv + numeric runtime libs
+#   libegl1/libgles2          -> MediaPipe Tasks API needs libEGL/libGLESv2 at init
+#   curl                      -> fetch the pose model at build time
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
         libgl1 \
         libglib2.0-0 \
         libgomp1 \
+        libegl1 \
+        libgles2 \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
