@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brandbook v2 — спортивная светлая тема</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,500;0,700;0,800;0,900;1,700;1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ДИЗАЙН-ТОКЕНЫ v2 — спортивная светлая тема
+   ============================================================ */
+:root{
+  /* --- Базовые цвета --- */
+  --c-blue:       #2F6DE0;  /* Электрик-синий: главные действия, ссылки, активные состояния */
+  --c-navy:       #14294B;  /* Глубокий тёмно-синий: крупные цифры, заголовки, вес */
+  --c-coral:      #F1553F;  /* Коралловый — энергия: акценты, рекорды, «сегодняшняя цель» */
+  --c-ink:        #1E2530;  /* Основной текст */
+  --c-ink-soft:   #5C6675;  /* Подписи, второстепенный текст */
+  --c-panel:      #F3F5F8;  /* Панели-подложки (чуть холоднее, чем чистый серый) */
+  --c-panel-blue: #EAF1FC;  /* Голубая панель: выделение, ховеры */
+  --c-line:       #DCE2EA;  /* Разделители, сетка графиков */
+  --c-bg:         #FFFFFF;  /* Фон. Тема всегда светлая */
+
+  /* --- Цвета дисциплин (триатлон) --- */
+  --c-swim: #35A6D9;  /* Плавание */
+  --c-bike: #F2A33C;  /* Велосипед */
+  --c-run:  #EF5B5B;  /* Бег */
+
+  /* --- Тренировочные зоны Z1–Z5 --- */
+  --z1: #9DB8E8; --z2: #5E8BE0; --z3: #2F6DE0; --z4: #F2A33C; --z5: #F1553F;
+
+  /* --- Шрифты --- */
+  --f-display: 'Archivo', 'Arial Black', sans-serif;  /* Заголовки и крупные цифры */
+  --f-body:    'Manrope', 'Segoe UI', sans-serif;     /* Текст, кнопки, таблицы */
+  --f-mono:    'IBM Plex Mono', monospace;            /* Темп, время, код */
+
+  /* --- Шкала --- */
+  --fs-hero: 64px; --fs-h1: 38px; --fs-h2: 26px; --fs-h3: 19px;
+  --fs-body: 16px; --fs-small: 13px; --fs-micro: 11px;
+
+  /* --- Форма --- */
+  --radius: 10px;       /* карточки — мягче, спортивные приложения живут в руке */
+  --radius-btn: 8px;
+  --space: 8px;
+  --skew: -8deg;        /* фирменный наклон «скорости» для цифр и полос */
+  --shadow: 0 2px 10px rgba(20,41,75,.07);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--f-body);font-size:var(--fs-body);line-height:1.55;
+  color:var(--c-ink);background:var(--c-bg);
+}
+.wrap{max-width:1040px;margin:0 auto;padding:0 32px}
+
+/* ---------- Фирменный элемент: полоса скорости ---------- */
+.speedline{
+  height:6px;width:120px;border-radius:3px;transform:skewX(var(--skew));
+  background:linear-gradient(90deg,var(--c-blue),var(--c-coral));
+}
+
+/* ---------- Обложка ---------- */
+.cover{
+  position:relative;overflow:hidden;color:#fff;
+  background:linear-gradient(135deg,#14294B 0%, #1D3E77 55%, #2F6DE0 100%);
+  padding:96px 0 90px;margin-bottom:72px;
+}
+.cover::after{ /* диагональные полосы движения */
+  content:"";position:absolute;right:-60px;top:0;bottom:0;width:420px;
+  background:
+    linear-gradient(115deg, transparent 40%, rgba(241,85,63,.85) 40%, rgba(241,85,63,.85) 46%, transparent 46%),
+    linear-gradient(115deg, transparent 52%, rgba(255,255,255,.16) 52%, rgba(255,255,255,.16) 57%, transparent 57%),
+    linear-gradient(115deg, transparent 63%, rgba(53,166,217,.55) 63%, rgba(53,166,217,.55) 67%, transparent 67%);
+}
+.cover .wrap{position:relative;z-index:1}
+.cover .eyebrow{color:rgba(255,255,255,.75)}
+.cover h1{
+  font-family:var(--f-display);font-weight:900;font-style:italic;
+  font-size:clamp(44px,7vw,80px);line-height:.98;letter-spacing:-.01em;
+  text-transform:uppercase;margin:16px 0 22px;
+}
+.cover h1 .accent{color:#F1553F}
+.cover p{max-width:560px;font-size:17px;color:rgba(255,255,255,.9)}
+
+/* ---------- Структура ---------- */
+section{margin-bottom:88px}
+.eyebrow{
+  font-size:var(--fs-micro);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:var(--c-blue);margin-bottom:10px;
+}
+h2.sec{
+  font-family:var(--f-display);font-weight:800;color:var(--c-navy);
+  font-size:var(--fs-h1);line-height:1.08;margin-bottom:14px;
+  text-transform:uppercase;letter-spacing:-.01em;
+}
+h2.sec + .speedline{margin-bottom:22px}
+.lede{max-width:680px;color:var(--c-ink-soft);margin-bottom:36px}
+h3.sub{
+  font-family:var(--f-display);font-weight:800;font-size:20px;
+  color:var(--c-ink);margin:44px 0 16px;text-transform:uppercase;letter-spacing:.02em;
+}
+.note{
+  font-size:var(--fs-small);color:var(--c-ink-soft);
+  border-left:3px solid var(--c-coral);padding:6px 0 6px 14px;margin:22px 0;
+  max-width:640px;border-radius:2px;
+}
+
+/* ---------- Палитра ---------- */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+.sw{border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;background:#fff}
+.sw .chip{height:84px}
+.sw .meta{padding:12px 14px}
+.sw .name{font-weight:800;font-size:14px}
+.sw .hex{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);margin:2px 0 6px}
+.sw .use{font-size:12px;color:var(--c-ink-soft);line-height:1.4}
+.ratio-bar{display:flex;height:44px;border-radius:8px;overflow:hidden;margin-top:28px;border:1px solid var(--c-line)}
+.ratio-bar div{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.05em}
+
+/* Дисциплины */
+.disc{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:8px}
+.disc .card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
+.disc .card::after{content:"";position:absolute;right:-14px;top:-14px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.14)}
+.disc .d-name{font-family:var(--f-display);font-weight:900;font-style:italic;text-transform:uppercase;font-size:20px}
+.disc .d-hex{font-family:var(--f-mono);font-size:12px;opacity:.85;margin-top:4px}
+.disc .d-use{font-size:12.5px;opacity:.92;margin-top:8px;line-height:1.45}
+
+/* Зоны */
+.zones{display:flex;border-radius:8px;overflow:hidden;height:56px;margin-top:8px}
+.zones div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+.zones .z{font-family:var(--f-display);font-weight:900;font-size:16px;font-style:italic}
+.zones .zl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.9}
+
+/* ---------- Типографика ---------- */
+.type-row{display:grid;grid-template-columns:210px 1fr;gap:24px;padding:22px 0;border-bottom:1px solid var(--c-line);align-items:baseline}
+.type-row .spec{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);line-height:1.7}
+.t-hero{font-family:var(--f-display);font-size:var(--fs-hero);font-weight:900;font-style:italic;color:var(--c-navy);line-height:1;letter-spacing:-.015em}
+.t-h1{font-family:var(--f-display);font-size:var(--fs-h1);font-weight:800;color:var(--c-navy);line-height:1.1;text-transform:uppercase;letter-spacing:-.01em}
+.t-h2{font-family:var(--f-display);font-size:var(--fs-h2);font-weight:800;color:var(--c-ink);line-height:1.15}
+.t-h3{font-family:var(--f-body);font-size:var(--fs-h3);font-weight:800;color:var(--c-ink)}
+.t-body{font-size:var(--fs-body)}
+.t-small{font-size:var(--fs-small);color:var(--c-ink-soft)}
+.t-eyebrow{font-size:var(--fs-micro);letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue)}
+.t-mono{font-family:var(--f-mono);font-size:22px;font-weight:600;color:var(--c-navy);font-variant-numeric:tabular-nums}
+
+/* ---------- Цифры-статистика ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.stat{background:var(--c-panel);border-radius:var(--radius);padding:26px 24px;position:relative;overflow:hidden}
+.stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c-blue);transform:skewX(var(--skew));margin-left:6px}
+.stat .num{font-family:var(--f-display);font-size:52px;font-weight:900;font-style:italic;line-height:1;color:var(--c-navy);letter-spacing:-.015em}
+.stat .num.blue{color:var(--c-blue)}
+.stat .num.coral{color:var(--c-coral)}
+.stat .lbl{font-size:13px;color:var(--c-ink-soft);margin-top:10px;line-height:1.45}
+.stat .lbl b{color:var(--c-ink)}
+.stat.coral::before{background:var(--c-coral)}
+.stat.dark{background:var(--c-navy)}
+.stat.dark::before{background:var(--c-coral)}
+.stat.dark .num{color:#fff}
+.stat.dark .lbl{color:rgba(255,255,255,.8)}
+.stat.dark .lbl b{color:#fff}
+
+/* Темп / время — моно */
+.pace-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px}
+.pace{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px 20px;min-width:150px}
+.pace .p-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
+.pace .p-val{font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--c-navy);margin-top:4px;font-variant-numeric:tabular-nums}
+.pace .p-val small{font-size:13px;color:var(--c-ink-soft);font-weight:400}
+
+/* ---------- Кнопки ---------- */
+.btn-grid{display:grid;grid-template-columns:240px 1fr;gap:14px 32px;align-items:center;max-width:780px}
+.btn{
+  font-family:var(--f-body);font-size:15px;font-weight:800;letter-spacing:.02em;
+  padding:12px 28px;border-radius:var(--radius-btn);cursor:pointer;
+  border:1.5px solid transparent;transition:all .15s ease;display:inline-block;
+}
+.btn-primary{background:var(--c-blue);color:#fff}
+.btn-primary:hover{background:#2459C2;box-shadow:var(--shadow);transform:translateY(-1px)}
+.btn-secondary{background:#fff;color:var(--c-blue);border-color:var(--c-blue)}
+.btn-secondary:hover{background:var(--c-panel-blue)}
+.btn-tertiary{background:var(--c-panel);color:var(--c-ink)}
+.btn-tertiary:hover{background:#E7EBF1}
+.btn-accent{background:var(--c-coral);color:#fff}
+.btn-accent:hover{background:#D9432E;transform:translateY(-1px);box-shadow:var(--shadow)}
+.btn-link{background:none;color:var(--c-blue);padding:12px 4px}
+.btn-link:hover{color:var(--c-navy);text-decoration:underline;text-underline-offset:4px}
+.btn:disabled,.btn.is-disabled{background:var(--c-panel);color:#AEB6C2;border-color:transparent;cursor:not-allowed;box-shadow:none;transform:none}
+.btn-sm{padding:8px 18px;font-size:13px}
+.btn-lg{padding:15px 36px;font-size:16px}
+.btn-desc{font-size:13px;color:var(--c-ink-soft);line-height:1.45}
+/* Go-кнопка со стрелкой-шевроном */
+.btn-go{display:inline-flex;align-items:center;gap:10px}
+.btn-go svg{transition:transform .15s ease}
+.btn-go:hover svg{transform:translateX(4px)}
+
+/* ---------- Таблицы ---------- */
+table.data{width:100%;border-collapse:collapse;font-size:14px}
+table.data caption{text-align:left;font-family:var(--f-display);font-size:19px;font-weight:800;padding-bottom:12px;color:var(--c-ink);text-transform:uppercase;letter-spacing:.01em}
+table.data thead th{
+  font-size:var(--fs-micro);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--c-ink-soft);font-weight:800;text-align:left;
+  padding:10px 14px;border-bottom:2.5px solid var(--c-navy);
+}
+table.data thead th.num, table.data td.num{text-align:right;font-variant-numeric:tabular-nums}
+table.data td{padding:12px 14px;border-bottom:1px solid var(--c-line)}
+table.data tbody tr:hover{background:var(--c-panel-blue)}
+table.data td.num{font-weight:700;color:var(--c-navy)}
+table.data td.mono{font-family:var(--f-mono);font-weight:500}
+.delta-up{color:var(--c-blue);font-weight:800}
+.delta-hot{color:var(--c-coral);font-weight:800}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.05em;padding:4px 12px;border-radius:999px;text-transform:uppercase;color:#fff}
+.tag i{width:7px;height:7px;border-radius:50%;background:#fff;display:inline-block}
+.tag-swim{background:var(--c-swim)}
+.tag-bike{background:var(--c-bike)}
+.tag-run{background:var(--c-run)}
+
+/* ---------- Графики ---------- */
+.chart-card{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:26px 26px 20px}
+.chart-title{font-weight:800;font-size:15px;margin-bottom:2px}
+.chart-src{font-size:11px;color:var(--c-ink-soft);margin-top:12px}
+.legend{display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--c-ink-soft);margin:8px 0 16px}
+.legend span{display:flex;align-items:center;gap:7px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.charts-2{grid-template-columns:1fr}.type-row{grid-template-columns:1fr}.btn-grid{grid-template-columns:1fr}}
+/* Прогресс-бар недели */
+.progress{margin-top:14px}
+.progress .p-head{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:6px}
+.progress .track{height:10px;background:var(--c-panel);border-radius:999px;overflow:hidden}
+.progress .fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
+
+/* ---------- Цитата ---------- */
+.quote{
+  font-family:var(--f-display);font-weight:800;font-style:italic;
+  font-size:clamp(24px,4vw,34px);line-height:1.2;color:var(--c-navy);
+  max-width:760px;margin:0 0 16px;text-transform:uppercase;letter-spacing:-.005em;
+}
+.quote .accent{color:var(--c-coral)}
+.quote-author{font-size:13px;color:var(--c-ink-soft)}
+.quote-author b{color:var(--c-ink)}
+
+/* ---------- Панели ---------- */
+.panel{background:var(--c-panel);border-radius:var(--radius);padding:24px 26px}
+.panel-blue{background:var(--c-panel-blue)}
+.panel-title{font-size:var(--fs-micro);letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:var(--c-blue);margin-bottom:10px}
+.panels-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+
+/* ---------- Do / Don't ---------- */
+.dd{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.dd{grid-template-columns:1fr}}
+.dd .card{border-radius:var(--radius);padding:20px 22px;font-size:14px}
+.dd .yes{background:var(--c-panel-blue);border-top:4px solid var(--c-blue)}
+.dd .no{background:#FDEEEB;border-top:4px solid var(--c-coral)}
+.dd h4{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;font-weight:800}
+.dd .yes h4{color:var(--c-navy)}
+.dd .no h4{color:var(--c-coral)}
+.dd ul{padding-left:18px;color:var(--c-ink-soft);line-height:1.7}
+
+/* ---------- Код ---------- */
+pre.code{background:var(--c-navy);color:#DCE6F2;font-family:var(--f-mono);font-size:12.5px;line-height:1.65;padding:22px 24px;border-radius:var(--radius);overflow-x:auto}
+pre.code .cm{color:#7FA3E0}
+footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;color:var(--c-ink-soft)}
+</style>
+</head>
+<body>
+
+<!-- ============ ОБЛОЖКА ============ -->
+<div class="cover">
+  <div class="wrap">
+    <div class="eyebrow">Brandbook v2 · Дизайн-система приложения для триатлетов и бегунов</div>
+    <h1>Train Smart,<br><span class="accent">Move Fast</span></h1>
+    <p>Светлая спортивная тема: мощный гротеск с наклоном для заголовков и цифр, электрик-синий как основа, коралловый — как импульс энергии, и три цвета дисциплин: плавание, велосипед, бег.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 1. ПАЛИТРА ============ -->
+<section>
+  <div class="eyebrow">Раздел 01</div>
+  <h2 class="sec">Цветовая палитра</h2>
+  <div class="speedline"></div>
+  <p class="lede">База осталась «издательской» — белый фон, глубокий синий, много воздуха. Но статичный небесно-голубой заменён на энергичный электрик-синий, а вместо малинового — коралловый: цвет пульса, финишной ленты и сегодняшней цели.</p>
+
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#2F6DE0"></div><div class="meta">
+      <div class="name">Electric Blue</div><div class="hex">#2F6DE0 · --c-blue</div>
+      <div class="use">Главные кнопки, ссылки, активные состояния, основная серия данных</div></div></div>
+    <div class="sw"><div class="chip" style="background:#14294B"></div><div class="meta">
+      <div class="name">Deep Navy</div><div class="hex">#14294B · --c-navy</div>
+      <div class="use">Заголовки, крупные цифры, инверсные блоки, шапки таблиц</div></div></div>
+    <div class="sw"><div class="chip" style="background:#F1553F"></div><div class="meta">
+      <div class="name">Coral</div><div class="hex">#F1553F · --c-coral</div>
+      <div class="use">Энергия и импульс: рекорды, цель дня, кнопка «Старт», зона Z5</div></div></div>
+    <div class="sw"><div class="chip" style="background:#1E2530"></div><div class="meta">
+      <div class="name">Ink</div><div class="hex">#1E2530 · --c-ink</div>
+      <div class="use">Основной текст. Не чистый чёрный — мягче на белом фоне</div></div></div>
+    <div class="sw"><div class="chip" style="background:#5C6675"></div><div class="meta">
+      <div class="name">Ink Soft</div><div class="hex">#5C6675 · --c-ink-soft</div>
+      <div class="use">Подписи, вторичный текст, источники под графиками</div></div></div>
+    <div class="sw"><div class="chip" style="background:#F3F5F8"></div><div class="meta">
+      <div class="name">Panel</div><div class="hex">#F3F5F8 · --c-panel</div>
+      <div class="use">Панели-подложки под карточки и блоки статистики</div></div></div>
+    <div class="sw"><div class="chip" style="background:#EAF1FC"></div><div class="meta">
+      <div class="name">Panel Blue</div><div class="hex">#EAF1FC · --c-panel-blue</div>
+      <div class="use">Выделенные блоки, ховер строк таблицы, выбранное состояние</div></div></div>
+    <div class="sw"><div class="chip" style="background:#DCE2EA"></div><div class="meta">
+      <div class="name">Line</div><div class="hex">#DCE2EA · --c-line</div>
+      <div class="use">Разделители, рамки карточек, сетка графиков</div></div></div>
+  </div>
+
+  <h3 class="sub">Цвета дисциплин</h3>
+  <p class="lede" style="margin-bottom:16px">Триатлонная тройка. Эти цвета используются <b>только</b> для маркировки дисциплин — в тегах, легендах графиков и иконках. Они не конкурируют с основной палитрой.</p>
+  <div class="disc">
+    <div class="card" style="background:#35A6D9">
+      <div class="d-name">Swim</div><div class="d-hex">#35A6D9 · --c-swim</div>
+      <div class="d-use">Плавание: теги тренировок, серия на графиках объёма, иконка дисциплины</div>
+    </div>
+    <div class="card" style="background:#F2A33C">
+      <div class="d-name">Bike</div><div class="d-hex">#F2A33C · --c-bike</div>
+      <div class="d-use">Велосипед: те же роли. Тёплый янтарный — читается рядом с синим</div>
+    </div>
+    <div class="card" style="background:#EF5B5B">
+      <div class="d-name">Run</div><div class="d-hex">#EF5B5B · --c-run</div>
+      <div class="d-use">Бег: те же роли. Мягче кораллового акцента, чтобы не спорить с ним</div>
+    </div>
+  </div>
+
+  <h3 class="sub">Тренировочные зоны Z1–Z5</h3>
+  <p class="lede" style="margin-bottom:16px">Градиент интенсивности «холодный → горячий»: восстановление синее, максимум — коралловый. Используется в графиках пульса/мощности и распределении времени по зонам.</p>
+  <div class="zones">
+    <div style="background:#9DB8E8"><span class="z">Z1</span><span class="zl">Recovery</span></div>
+    <div style="background:#5E8BE0"><span class="z">Z2</span><span class="zl">Endurance</span></div>
+    <div style="background:#2F6DE0"><span class="z">Z3</span><span class="zl">Tempo</span></div>
+    <div style="background:#F2A33C"><span class="z">Z4</span><span class="zl">Threshold</span></div>
+    <div style="background:#F1553F"><span class="z">Z5</span><span class="zl">VO2max</span></div>
+  </div>
+
+  <h3 class="sub">Пропорции использования</h3>
+  <div class="ratio-bar">
+    <div style="flex:58;background:#FFF;color:#5C6675;border-right:1px solid #EEE">Белый 60%</div>
+    <div style="flex:18;background:#F3F5F8;color:#5C6675">Панели 18%</div>
+    <div style="flex:10;background:#2F6DE0;color:#fff">Blue 10%</div>
+    <div style="flex:7;background:#14294B;color:#fff">Navy 7%</div>
+    <div style="flex:5;background:#F1553F;color:#fff">5%</div>
+  </div>
+  <p class="note">Коралловый — «пульс» интерфейса: один-два элемента на экран (цель дня, рекорд, кнопка «Старт»). Цвета дисциплин появляются только там, где реально различаются виды спорта.</p>
+</section>
+
+<!-- ============ 2. ТИПОГРАФИКА ============ -->
+<section>
+  <div class="eyebrow">Раздел 02</div>
+  <h2 class="sec">Типографика</h2>
+  <div class="speedline"></div>
+  <p class="lede">Всё без засечек. <b>Archivo</b> — атлетичный, плотный гротеск для заголовков и крупных цифр; наклонное начертание (italic) даёт визуальное ощущение движения. <b>Manrope</b> — дружелюбный и очень читаемый — для текста, кнопок, таблиц. <b>IBM Plex Mono</b> — для темпа, времени и любых «приборных» значений: моноширинные цифры не прыгают при обновлении в реальном времени.</p>
+
+  <div class="type-row">
+    <div class="spec">Display / Цифры<br>Archivo · 900 italic<br>52–72px · lh 1.0<br>letter-spacing −1.5%</div>
+    <div class="t-hero">42:12</div>
+  </div>
+  <div class="type-row">
+    <div class="spec">H1 — заголовок экрана<br>Archivo · 800 · CAPS<br>38px · lh 1.1</div>
+    <div class="t-h1">Неделя 24 · Пик формы</div>
+  </div>
+  <div class="type-row">
+    <div class="spec">H2 — раздел<br>Archivo · 800<br>26px · lh 1.15</div>
+    <div class="t-h2">Динамика нагрузки по дисциплинам</div>
+  </div>
+  <div class="type-row">
+    <div class="spec">H3 — подраздел<br>Manrope · 800 · 19px</div>
+    <div class="t-h3">Ключевые показатели недели</div>
+  </div>
+  <div class="type-row">
+    <div class="spec">Body — текст<br>Manrope · 400 · 16px · lh 1.55</div>
+    <div class="t-body">Основной текст набирается Manrope: он остаётся читаемым на бегу, на ярком солнце и на маленьком экране. Длина строки — не более 70–75 знаков.</div>
+  </div>
+  <div class="type-row">
+    <div class="spec">Data — темп/время<br>IBM Plex Mono · 600<br>tabular-nums</div>
+    <div class="t-mono">4:52 /км · 172 bpm · 245 W</div>
+  </div>
+  <div class="type-row">
+    <div class="spec">Small — подписи<br>Manrope · 400 · 13px</div>
+    <div class="t-small">Данные синхронизированы со Strava сегодня в 08:00.</div>
+  </div>
+  <div class="type-row" style="border-bottom:none">
+    <div class="spec">Eyebrow — надзаголовок<br>Manrope · 800 · 11px<br>caps · +0.2em</div>
+    <div class="t-eyebrow">Еженедельный отчёт · Блок 03</div>
+  </div>
+
+  <p class="note">Правила: Archivo italic — только для больших цифр и hero-заголовков (это «спринт», им нельзя злоупотреблять). Живые метрики (темп, пульс, мощность, время) — всегда Plex Mono с табличными цифрами.</p>
+</section>
+
+<!-- ============ 3. ЦИФРЫ ============ -->
+<section>
+  <div class="eyebrow">Раздел 03</div>
+  <h2 class="sec">Цифры и статистика</h2>
+  <div class="speedline"></div>
+  <p class="lede">Приём тот же, что в финансовых отчётах — огромная цифра + короткая подпись, — но цифра теперь наклонная (эффект скорости), а слева у карточки скошенная цветная полоса-маркер.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="num">255</div><div class="lbl">недель <b>тренировочного стрика</b> без пропусков</div></div>
+    <div class="stat"><div class="num blue">+12%</div><div class="lbl">рост <b>CTL</b> за последние 6 недель</div></div>
+    <div class="stat coral"><div class="num coral">PR!</div><div class="lbl"><b>личный рекорд</b> — коралловый маркер только для таких моментов</div></div>
+    <div class="stat dark"><div class="num">8:42</div><div class="lbl">прогноз на <b>Ironman 70.3</b> — инверсная карточка для главной цели</div></div>
+  </div>
+
+  <h3 class="sub">Приборные значения</h3>
+  <div class="pace-row">
+    <div class="pace"><div class="p-lbl">Темп</div><div class="p-val">4:52 <small>/км</small></div></div>
+    <div class="pace"><div class="p-lbl">Пульс</div><div class="p-val">148 <small>bpm</small></div></div>
+    <div class="pace"><div class="p-lbl">Мощность</div><div class="p-val">245 <small>W</small></div></div>
+    <div class="pace"><div class="p-lbl">TSS</div><div class="p-val">86</div></div>
+  </div>
+  <p class="note">Живые метрики — Plex Mono, tabular-nums: при обновлении каждую секунду цифры не «дёргают» вёрстку.</p>
+</section>
+
+<!-- ============ 4. КНОПКИ ============ -->
+<section>
+  <div class="eyebrow">Раздел 04</div>
+  <h2 class="sec">Кнопки</h2>
+  <div class="speedline"></div>
+  <p class="lede">Manrope 800, скругление 8px — удобно для пальца. Движение — в микровзаимодействиях: при наведении кнопка приподнимается на 1px, а стрелка в кнопке «вперёд» сдвигается вправо.</p>
+
+  <div class="btn-grid">
+    <button class="btn btn-primary">Сохранить тренировку</button>
+    <div class="btn-desc"><b>Primary.</b> Electric Blue → темнее при наведении + подъём 1px. Главное действие, одна на экран.</div>
+
+    <button class="btn btn-accent btn-go">Начать тренировку
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 6h13M9 1l5 5-5 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="btn-desc"><b>Go / Accent.</b> Коралловая, со стрелкой, которая сдвигается при наведении. Только «моменты старта»: начать тренировку, принять план, зарегистрироваться на старт.</div>
+
+    <button class="btn btn-secondary">Экспорт отчёта</button>
+    <div class="btn-desc"><b>Secondary.</b> Белая с синей рамкой 1.5px. Альтернативные действия рядом с Primary.</div>
+
+    <button class="btn btn-tertiary">Отмена</button>
+    <div class="btn-desc"><b>Tertiary.</b> Серая панель без рамки. Нейтральные действия: отмена, назад, «позже».</div>
+
+    <button class="btn btn-link">Смотреть методологию →</button>
+    <div class="btn-desc"><b>Link.</b> Текстовая, Electric Blue 800. Второстепенные переходы.</div>
+
+    <button class="btn btn-primary is-disabled" disabled>Сохранить тренировку</button>
+    <div class="btn-desc"><b>Disabled.</b> Panel-фон, серый текст, без подъёма и тени. Одинаково для всех типов.</div>
+  </div>
+
+  <h3 class="sub">Размеры</h3>
+  <p style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <button class="btn btn-primary btn-sm">Small · 13px</button>
+    <button class="btn btn-primary">Default · 15px</button>
+    <button class="btn btn-primary btn-lg">Large · 16px</button>
+  </p>
+</section>
+
+<!-- ============ 5. ТАБЛИЦЫ ============ -->
+<section>
+  <div class="eyebrow">Раздел 05</div>
+  <h2 class="sec">Таблицы</h2>
+  <div class="speedline"></div>
+  <p class="lede">Издательская дисциплина сохранена: капс в шапке, жирная линия Navy, тонкие разделители, числа справа. Добавились теги-«пилюли» дисциплин и моноширинные колонки времени/темпа.</p>
+
+  <table class="data">
+    <caption>Тренировки этой недели</caption>
+    <thead><tr>
+      <th>День</th><th>Дисциплина</th><th>Тренировка</th>
+      <th class="num">Время</th><th class="num">TSS</th><th class="num">Δ к плану</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Пн</td><td><span class="tag tag-swim"><i></i>Swim</span></td><td>Техника + интервалы 8×100</td><td class="num mono">0:55</td><td class="num">62</td><td class="num delta-up">+4%</td></tr>
+      <tr><td>Ср</td><td><span class="tag tag-bike"><i></i>Bike</span></td><td>Sweet spot 3×15 мин</td><td class="num mono">1:30</td><td class="num">88</td><td class="num delta-up">+2%</td></tr>
+      <tr><td>Сб</td><td><span class="tag tag-run"><i></i>Run</span></td><td>Длительный, Z2</td><td class="num mono">1:45</td><td class="num">104</td><td class="num delta-hot">+11%</td></tr>
+    </tbody>
+  </table>
+  <p class="chart-src">Коралловая дельта — превышение плана, требующее внимания. Колонка «Время» — Plex Mono.</p>
+</section>
+
+<!-- ============ 6. ГРАФИКИ ============ -->
+<section>
+  <div class="eyebrow">Раздел 06</div>
+  <h2 class="sec">Графики</h2>
+  <div class="speedline"></div>
+  <p class="lede">Основные серии — синяя гамма + коралловый для акцента/прогноза. Когда график сравнивает дисциплины — включаются цвета Swim/Bike/Run. Сетка почти невидимая, без 3D и градиентов на данных, источник обязателен.</p>
+
+  <div class="charts-2">
+    <!-- Стек по дисциплинам -->
+    <div class="chart-card">
+      <div class="chart-title">Объём по дисциплинам, часы в неделю</div>
+      <div class="legend">
+        <span><i class="dot" style="background:#35A6D9"></i>Swim</span>
+        <span><i class="dot" style="background:#F2A33C"></i>Bike</span>
+        <span><i class="dot" style="background:#EF5B5B"></i>Run</span>
+      </div>
+      <svg viewBox="0 0 440 240" style="width:100%">
+        <line x1="30" y1="200" x2="430" y2="200" stroke="#DCE2EA"/>
+        <line x1="30" y1="140" x2="430" y2="140" stroke="#EEF1F5"/>
+        <line x1="30" y1="80" x2="430" y2="80" stroke="#EEF1F5"/>
+        <!-- W21 -->
+        <rect x="55" y="168" width="42" height="32" fill="#35A6D9" rx="2"/>
+        <rect x="55" y="118" width="42" height="48" fill="#F2A33C" rx="2"/>
+        <rect x="55" y="82"  width="42" height="34" fill="#EF5B5B" rx="2"/>
+        <!-- W22 -->
+        <rect x="135" y="162" width="42" height="38" fill="#35A6D9" rx="2"/>
+        <rect x="135" y="104" width="42" height="56" fill="#F2A33C" rx="2"/>
+        <rect x="135" y="66"  width="42" height="36" fill="#EF5B5B" rx="2"/>
+        <!-- W23 -->
+        <rect x="215" y="172" width="42" height="28" fill="#35A6D9" rx="2"/>
+        <rect x="215" y="128" width="42" height="42" fill="#F2A33C" rx="2"/>
+        <rect x="215" y="98"  width="42" height="28" fill="#EF5B5B" rx="2"/>
+        <!-- W24 -->
+        <rect x="295" y="158" width="42" height="42" fill="#35A6D9" rx="2"/>
+        <rect x="295" y="92"  width="42" height="64" fill="#F2A33C" rx="2"/>
+        <rect x="295" y="50"  width="42" height="40" fill="#EF5B5B" rx="2"/>
+        <!-- W25 recovery -->
+        <rect x="375" y="178" width="42" height="22" fill="#35A6D9" opacity=".5" rx="2"/>
+        <rect x="375" y="146" width="42" height="30" fill="#F2A33C" opacity=".5" rx="2"/>
+        <rect x="375" y="124" width="42" height="20" fill="#EF5B5B" opacity=".5" rx="2"/>
+        <g font-family="Manrope" font-size="12" fill="#5C6675" text-anchor="middle">
+          <text x="76" y="218">W21</text><text x="156" y="218">W22</text><text x="236" y="218">W23</text>
+          <text x="316" y="218">W24</text><text x="396" y="218">W25*</text>
+        </g>
+      </svg>
+      <div class="chart-src">*W25 — восстановительная неделя, показана прозрачностью 50%.</div>
+    </div>
+
+    <!-- Кольцо прогресса -->
+    <div class="chart-card">
+      <div class="chart-title">Кольцо прогресса: выполнение недели</div>
+      <div class="legend"><span><i class="dot" style="background:linear-gradient(90deg,#2F6DE0,#F1553F)"></i>Выполнено</span><span><i class="dot" style="background:#E7EBF1"></i>Осталось</span></div>
+      <div style="display:flex;align-items:center;gap:28px;padding:8px 0">
+        <svg viewBox="0 0 120 120" style="width:150px;flex:none">
+          <defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#2F6DE0"/><stop offset="100%" stop-color="#F1553F"/>
+          </linearGradient></defs>
+          <circle cx="60" cy="60" r="48" fill="none" stroke="#E7EBF1" stroke-width="14"/>
+          <circle cx="60" cy="60" r="48" fill="none" stroke="url(#ring)" stroke-width="14"
+                  stroke-linecap="round" stroke-dasharray="226 302" transform="rotate(-90 60 60)"/>
+        </svg>
+        <div>
+          <div style="font-family:Archivo,sans-serif;font-size:52px;font-weight:900;font-style:italic;color:#14294B;line-height:1">75%</div>
+          <div style="font-size:13px;color:#5C6675;max-width:220px;margin-top:6px">недельного плана выполнено · осталось <b style="color:#1E2530">2:15</b></div>
+        </div>
+      </div>
+      <div class="progress">
+        <div class="p-head"><span>Часы: 8:05 / 10:20</span><span style="color:#2F6DE0">78%</span></div>
+        <div class="track"><div class="fill" style="width:78%"></div></div>
+      </div>
+      <div class="chart-src">Кольцо с градиентом Blue→Coral и скруглённым концом — фирменный элемент прогресса.</div>
+    </div>
+  </div>
+
+  <p class="note">Правила: до 3 серий базовой палитры на график; цвета дисциплин — только когда сравниваются виды спорта; восстановительные/прогнозные периоды — прозрачность 50% и сноска; источник данных — 11px под графиком.</p>
+</section>
+
+<!-- ============ 7. ЦИТАТЫ И ПАНЕЛИ ============ -->
+<section>
+  <div class="eyebrow">Раздел 07</div>
+  <h2 class="sec">Цитаты и панели</h2>
+  <div class="speedline"></div>
+  <p class="lede">Мотивационные цитаты — капсом, наклонно, с коралловым смысловым ядром. Панели — три уровня: серая (нейтральная), голубая (выделение), navy (главная цель).</p>
+
+  <p class="quote">“Consistency beats intensity — <span class="accent">but today you need both.”</span></p>
+  <p class="quote-author"><b>Coach Insight</b> | Еженедельный отчёт</p>
+
+  <div class="panels-3" style="margin-top:36px">
+    <div class="panel">
+      <div class="panel-title">Серая панель</div>
+      <p style="font-size:14px;color:#5C6675">Стандартная подложка для группировки контента. Радиус 10px, без рамки и тени.</p>
+    </div>
+    <div class="panel panel-blue">
+      <div class="panel-title">Голубая панель</div>
+      <p style="font-size:14px;color:#5C6675">Подсказки тренера, «что нового», выбранное состояние в списках.</p>
+    </div>
+    <div class="panel" style="background:#14294B">
+      <div class="panel-title" style="color:#F1553F">Navy-панель · Цель</div>
+      <p style="font-size:14px;color:rgba(255,255,255,.85)">Инверсная — для главной цели сезона. Заголовок внутри — коралловый.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8. DO / DON'T ============ -->
+<section>
+  <div class="eyebrow">Раздел 08</div>
+  <h2 class="sec">Правила</h2>
+  <div class="speedline"></div>
+  <div class="dd">
+    <div class="card yes">
+      <h4>✓ Делаем</h4>
+      <ul>
+        <li>Тема всегда светлая, много воздуха, отступы кратны 8px</li>
+        <li>Archivo italic — только большие цифры и hero-заголовки</li>
+        <li>Живые метрики (темп/пульс/время) — Plex Mono, tabular-nums</li>
+        <li>Коралловый = импульс: 1–2 элемента на экран</li>
+        <li>Цвета дисциплин — только для маркировки видов спорта</li>
+        <li>Движение через микровзаимодействия: подъём кнопки, сдвиг стрелки</li>
+      </ul>
+    </div>
+    <div class="card no">
+      <h4>✗ Не делаем</h4>
+      <ul>
+        <li>Шрифты с засечками — их в системе больше нет</li>
+        <li>Наклон/капс в основном тексте и таблицах</li>
+        <li>Коралловый в фоновых заливках больших областей</li>
+        <li>Больше 3 серий базовой палитры на одном графике</li>
+        <li>Агрессивные анимации: параллаксы, вращения, мигания</li>
+        <li>Чистый чёрный #000 — только Ink #1E2530</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. ТОКЕНЫ ============ -->
+<section>
+  <div class="eyebrow">Раздел 09</div>
+  <h2 class="sec">CSS-токены</h2>
+  <div class="speedline"></div>
+  <p class="lede">Готовый блок для разработчика. Шрифты — Google Fonts, бесплатные: Archivo (700–900 + italic), Manrope (400–800), IBM Plex Mono (400–600).</p>
+<pre class="code">
+:root {
+  <span class="cm">/* Базовые цвета */</span>
+  --c-blue:       #2F6DE0;   <span class="cm">/* действия, ссылки, данные */</span>
+  --c-navy:       #14294B;   <span class="cm">/* заголовки, цифры */</span>
+  --c-coral:      #F1553F;   <span class="cm">/* энергия: 1–2 шт. на экран */</span>
+  --c-ink:        #1E2530;
+  --c-ink-soft:   #5C6675;
+  --c-panel:      #F3F5F8;
+  --c-panel-blue: #EAF1FC;
+  --c-line:       #DCE2EA;
+  --c-bg:         #FFFFFF;
+
+  <span class="cm">/* Дисциплины */</span>
+  --c-swim: #35A6D9;  --c-bike: #F2A33C;  --c-run: #EF5B5B;
+
+  <span class="cm">/* Тренировочные зоны */</span>
+  --z1: #9DB8E8; --z2: #5E8BE0; --z3: #2F6DE0;
+  --z4: #F2A33C; --z5: #F1553F;
+
+  <span class="cm">/* Шрифты */</span>
+  --f-display: 'Archivo', sans-serif;      <span class="cm">/* 800–900, italic для цифр */</span>
+  --f-body:    'Manrope', sans-serif;      <span class="cm">/* 400–800 */</span>
+  --f-mono:    'IBM Plex Mono', monospace; <span class="cm">/* темп, время, метрики */</span>
+
+  <span class="cm">/* Шкала */</span>
+  --fs-hero: 64px; --fs-h1: 38px; --fs-h2: 26px;
+  --fs-h3: 19px;   --fs-body: 16px; --fs-small: 13px; --fs-micro: 11px;
+
+  <span class="cm">/* Форма и движение */</span>
+  --radius: 10px;  --radius-btn: 8px;  --space: 8px;
+  --skew: -8deg;   <span class="cm">/* наклон «скорости» */</span>
+  --shadow: 0 2px 10px rgba(20,41,75,.07);
+}
+</pre>
+</section>
+
+<footer>Brandbook v2.0 · Спортивная светлая тема для триатлетов и бегунов · Archivo / Manrope / IBM Plex Mono (Google Fonts)</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Milestone 1 -- standalone video-analysis core (run side-view + bike side-view).
+# Only packages actually imported by the copied detector/biomechanics code
+# are listed. Versions are pinned to what Motus runs (its venv, Python 3.11)
+# so the known-good MediaPipe + NumPy 2.x + SciPy combination installs cleanly.
+#
+# Motus requirements.txt uses `>=`; we pin `==` here for a reproducible MVP.
+
+mediapipe==0.10.35
+opencv-python-headless==4.13.0.92
+# mediapipe hard-depends on opencv-contrib-python (unpinned upstream); pin it
+# to the SAME version Motus runs so the fresh resolver doesn't pull an
+# untested newer contrib build (e.g. 5.x) alongside headless 4.13.
+opencv-contrib-python==4.13.0.92
+numpy==2.4.6
+scipy==1.17.1
+structlog==25.5.0

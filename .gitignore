@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Pose model (large ~30 MB; download separately -- see backend/models/README.md)
+*.task
+backend/models/*.task
+
+# Node (future frontend)
+node_modules/
+.next/
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
+secrets/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local outputs / scratch
+*.log
+uploads/
+overlay_videos/
