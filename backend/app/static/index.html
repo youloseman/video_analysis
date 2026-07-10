@@ -3,31 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Flapp — upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay.">
 <title>Flapp — Running &amp; Cycling Form Analysis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+/* ============================================================
+   Tokens — brandbook v2 (colors & fonts unchanged)
+   ============================================================ */
 :root{
-  --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B; --c-coral:#F1553F; --c-coral-dk:#D9432E;
-  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC;
-  --c-line:#DCE2EA; --c-bg:#FFFFFF;
+  --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
+  --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
+  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#8A94A3;
+  --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
   --c-swim:#35A6D9; --c-bike:#F2A33C; --c-run:#EF5B5B;
-  --c-ok:#2E9E5B; --c-warn:#F2A33C;
+  --c-warn:#C97B10;                    /* attention — distinct from --c-bike */
+  --c-warn-text:#9A5E0B;               /* warn as small text on white (AA) */
+  --c-orange:#DE5F33;                  /* grade D — between warn and coral */
   --f-display:'Archivo','Arial Black',sans-serif;
   --f-body:'Manrope','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',monospace;
   --radius:10px; --radius-btn:8px; --skew:-8deg;
   --shadow:0 2px 10px rgba(20,41,75,.07);
   --shadow-lg:0 12px 34px rgba(20,41,75,.12);
+  --ring:0 0 0 3px rgba(47,109,224,.30);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink);background:var(--c-bg)}
 .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
-.speedline{height:6px;width:104px;border-radius:3px;transform:skewX(var(--skew));
+.hidden{display:none!important}
+
+/* ---------- Accessibility primitives ---------- */
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:var(--c-navy);color:#fff;
+  padding:8px 16px;border-radius:0 0 var(--radius-btn) 0;font-weight:700;font-size:14px;text-decoration:none}
+.skip-link:focus{left:0}
+:is(a,button,select,input,summary,[tabindex]):focus-visible{outline:2px solid var(--c-blue);outline-offset:2px;border-radius:4px}
+.btn:focus-visible,.seg button:focus-visible,select:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+.seg button:focus-visible{outline-offset:-2px;z-index:1}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .btn:hover{transform:none!important}
+}
+
+/* ---------- Icons ---------- */
+.ic{width:16px;height:16px;flex:none}
+.ic-lg{width:40px;height:40px}
+
+/* ---------- Shared brand elements ---------- */
+.speedline{height:6px;width:120px;border-radius:3px;transform:skewX(var(--skew));
+  background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
+.speedline-sm{height:4px;width:56px;border-radius:2px;transform:skewX(var(--skew));
   background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
 .eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue)}
+
+/* Tinted pill: colored dot + navy text (AA-safe on any tint) */
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--c-navy);padding:4px 12px;border-radius:999px}
+.pill .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.pill-run{background:#FDE7E7}.pill-run .dot{background:var(--c-run)}
+.pill-bike{background:#FCEED8}.pill-bike .dot{background:var(--c-bike)}
+.pill-high{background:#FDE5E1}.pill-high .dot{background:var(--c-coral)}
+.pill-medium{background:#F7EBD9}.pill-medium .dot{background:var(--c-warn)}
+.pill-low{background:var(--c-panel)}.pill-low .dot{background:var(--c-ink-faint)}
+.pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--c-warn)}
 
 /* ---------- Header ---------- */
 header{border-bottom:1px solid var(--c-line);background:#fff;position:sticky;top:0;z-index:20}
@@ -35,375 +77,536 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;heigh
 .wordmark{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:24px;
   text-transform:uppercase;letter-spacing:-.01em;color:var(--c-navy);display:flex;align-items:center;gap:8px}
 .wordmark .dot{width:9px;height:9px;border-radius:50%;background:var(--c-coral);transform:translateY(-9px)}
-header nav a{color:var(--c-ink-soft);text-decoration:none;font-size:13px;font-weight:700}
+header nav a{color:var(--c-ink-soft);text-decoration:none;font-size:13px;font-weight:700;
+  display:inline-flex;align-items:center;gap:6px;padding:8px 0}
 header nav a:hover{color:var(--c-blue)}
 
-/* ---------- Hero ---------- */
-.hero{background:linear-gradient(135deg,#14294B 0%, #1D3E77 60%, #2F6DE0 100%);
+/* ---------- Hero (collapses after upload state) ---------- */
+.hero{background:linear-gradient(135deg,#14294B 0%,#1D3E77 60%,#2F6DE0 100%);
   color:#fff;position:relative;overflow:hidden}
 .hero::after{content:"";position:absolute;right:-60px;top:0;bottom:0;width:340px;
   background:
     linear-gradient(115deg,transparent 40%,rgba(241,85,63,.85) 40%,rgba(241,85,63,.85) 45%,transparent 45%),
     linear-gradient(115deg,transparent 53%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.14) 57%,transparent 57%),
-    linear-gradient(115deg,transparent 64%,rgba(53,166,217,.5) 64%,rgba(53,166,217,.5) 68%,transparent 68%);}
-.hero .wrap{position:relative;z-index:1;padding:52px 24px 58px}
+    linear-gradient(115deg,transparent 64%,rgba(53,166,217,.5) 64%,rgba(53,166,217,.5) 68%,transparent 68%)}
+.hero .wrap{position:relative;z-index:1;padding:56px 24px 64px}
+.hero .eyebrow{color:rgba(255,255,255,.75)}
 .hero h1{font-family:var(--f-display);font-weight:900;font-style:italic;text-transform:uppercase;
-  font-size:clamp(34px,5.5vw,58px);line-height:.98;letter-spacing:-.01em;margin:12px 0 14px}
+  font-size:clamp(34px,5.5vw,58px);line-height:.98;letter-spacing:-.01em;margin:16px 0 16px}
 .hero h1 .accent{color:var(--c-coral)}
 .hero p{max-width:540px;font-size:16px;color:rgba(255,255,255,.9)}
+body:not([data-state="upload"]) .hero .wrap{padding:16px 24px}
+body:not([data-state="upload"]) .hero h1,
+body:not([data-state="upload"]) .hero p{ /* keep in the a11y tree: h1 stays the page outline root */
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* ---------- Cards / sections ---------- */
+/* ---------- Main / cards / section headers ---------- */
 main{padding:40px 0 72px}
+body:not([data-state="upload"]) main{padding-top:32px}
 .card{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);box-shadow:var(--shadow)}
-.section-eyebrow{margin-bottom:8px}
+.cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 h2.sec{font-family:var(--f-display);font-weight:800;color:var(--c-navy);text-transform:uppercase;
-  font-size:26px;line-height:1.1;letter-spacing:-.01em;margin-bottom:10px}
-h2.sec + .speedline{margin-bottom:20px}
+  font-size:26px;line-height:1.1;letter-spacing:-.01em;margin:8px 0 8px}
+h2.sec + .speedline{margin-bottom:24px}
+.blockhead{margin:48px 0 16px}
+.blockhead .eyebrow{display:inline-flex;align-items:center;gap:8px}
+.blockhead h3{font-family:var(--f-display);font-weight:800;text-transform:uppercase;
+  font-size:19px;color:var(--c-navy);letter-spacing:.02em;margin:8px 0 8px}
+
+/* ---------- Buttons ---------- */
+.btn{font-family:var(--f-body);font-weight:800;letter-spacing:.02em;border-radius:var(--radius-btn);
+  cursor:pointer;border:1.5px solid transparent;transition:all .15s ease;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn svg{transition:transform .15s ease}
+.btn-primary{background:var(--c-blue);color:#fff;font-size:15px;padding:12px 24px}
+.btn-primary:hover{background:var(--c-blue-dk);transform:translateY(-1px);box-shadow:var(--shadow)}
+.btn-go{background:var(--c-coral-btn);color:#fff;font-size:16px;padding:16px 32px}
+.btn-go:hover{background:var(--c-coral-dk);transform:translateY(-1px);box-shadow:var(--shadow)}
+.btn-go:hover svg{transform:translateX(4px)}
+.btn-ghost{background:var(--c-panel);color:var(--c-ink);font-size:14px;padding:12px 24px}
+.btn-ghost:hover{background:#E7EBF1}
+.btn-ghost:hover svg.arr-l{transform:translateX(-4px)}
+.btn-primary:hover svg.arr-l{transform:translateX(-4px)}
+.btn-sm{padding:8px 16px;font-size:13px}
+.btn:active{transform:translateY(0)}
+.btn[aria-disabled="true"],.btn:disabled{background:var(--c-panel);color:var(--c-ink-faint);
+  cursor:not-allowed;box-shadow:none;transform:none}
+.btn[aria-disabled="true"]:hover svg,.btn:disabled:hover svg{transform:none}
 
 /* ---------- Uploader ---------- */
-.uploader{padding:28px 28px 30px;margin-top:-34px;position:relative;z-index:5}
-.drop{border:2px dashed var(--c-line);border-radius:var(--radius);padding:34px 20px;text-align:center;
-  cursor:pointer;transition:.15s;background:var(--c-panel)}
-.drop:hover,.drop.drag{border-color:var(--c-blue);background:var(--c-panel-blue)}
-.drop .ic{width:46px;height:46px;margin:0 auto 12px;color:var(--c-blue)}
-.drop b{color:var(--c-ink);font-weight:800}
-.drop small{display:block;color:var(--c-ink-soft);font-size:13px;margin-top:6px}
-.filepreview{display:none;gap:18px;align-items:center;margin-top:4px}
-.filepreview.show{display:flex}
-.filepreview video{width:150px;height:200px;object-fit:cover;border-radius:8px;background:#000;flex:none}
-.filepreview .fmeta .fname{font-weight:800}
-.filepreview .fmeta .fsize{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft);margin-top:2px}
-.filepreview .change{margin-top:10px}
+.uploader{padding:32px;margin-top:-72px;position:relative;z-index:5}
+.quota{font-size:13px;font-weight:700;color:var(--c-ink-soft);background:var(--c-panel);
+  border-radius:999px;padding:8px 16px;white-space:nowrap}
+.quota b{color:var(--c-navy);font-family:var(--f-mono);font-weight:600}
 
-/* controls */
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:24px}
-@media(max-width:640px){.controls{grid-template-columns:1fr}}
-.field label{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;
-  color:var(--c-ink-soft);margin-bottom:8px}
-.seg{display:inline-flex;border:1.5px solid var(--c-line);border-radius:var(--radius-btn);overflow:hidden}
-.seg button{font-family:var(--f-body);font-weight:800;font-size:14px;padding:10px 22px;border:none;
-  background:#fff;color:var(--c-ink-soft);cursor:pointer;display:flex;align-items:center;gap:8px;transition:.12s}
-.seg button .tag{width:9px;height:9px;border-radius:50%}
+.drop{display:block;border:2px dashed var(--c-line);border-radius:var(--radius);padding:40px 24px;
+  text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--c-panel)}
+.drop:hover,.drop.drag,#file:focus-visible + .drop{border-color:var(--c-blue);background:var(--c-panel-blue)}
+#file:focus-visible + .drop{box-shadow:var(--ring)}
+.drop.err{border-color:var(--c-coral)}
+.drop .ic-lg{margin:0 auto 16px;color:var(--c-blue);display:block}
+.drop b{color:var(--c-ink);font-weight:800}
+.drop small{display:block;color:var(--c-ink-soft);font-size:13px;margin-top:8px}
+
+.filepreview{display:none;background:var(--c-panel);border-radius:var(--radius);padding:16px;gap:24px;align-items:center}
+.filepreview.show{display:flex}
+.filepreview video{width:224px;aspect-ratio:16/9;height:auto;object-fit:contain;border-radius:var(--radius-btn);background:#0d1420;flex:none}
+.fmeta{min-width:0}
+.fmeta .fname{font-weight:800;overflow-wrap:anywhere}
+.fmeta .fsize{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft);margin-top:4px}
+.fmeta .change{margin-top:16px}
+
+.controls{display:grid;grid-template-columns:max-content minmax(240px,320px);gap:24px 48px;margin-top:24px}
+.field label,.field .fieldlabel{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:800;color:var(--c-ink-soft);margin-bottom:8px}
+.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;
+  border:1.5px solid var(--c-line);border-radius:var(--radius-btn);overflow:hidden}
+.seg button{font-family:var(--f-body);font-weight:800;font-size:14px;padding:12px 24px;min-width:104px;border:none;
+  background:#fff;color:var(--c-ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .12s,color .12s}
+.seg button .tag{width:9px;height:9px;border-radius:50%;flex:none}
 .seg button.run .tag{background:var(--c-run)} .seg button.bike .tag{background:var(--c-bike)}
-.seg button[aria-pressed="true"]{color:#fff;background:var(--c-navy)}
+.seg button:not([aria-pressed="true"]):hover{background:var(--c-panel-blue);color:var(--c-ink)}
+.seg button:not([aria-pressed="true"]):active{background:#DFE9F9}
+.seg button[aria-pressed="true"]{color:#fff;background:var(--c-blue)}
 .seg button[aria-pressed="true"] .tag{box-shadow:0 0 0 2px rgba(255,255,255,.5)}
-select{font-family:var(--f-body);font-size:14px;font-weight:700;color:var(--c-ink);padding:10px 14px;
-  border:1.5px solid var(--c-line);border-radius:var(--radius-btn);background:#fff;width:100%;max-width:280px;cursor:pointer}
-.switch{display:inline-flex;align-items:center;gap:10px;font-size:14px;font-weight:700;cursor:pointer;user-select:none}
-.switch input{position:absolute;opacity:0}
-.switch .box{width:42px;height:24px;background:var(--c-line);border-radius:999px;position:relative;transition:.15s}
+
+.selectwrap{position:relative}
+.selectwrap .ic{position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--c-ink-soft)}
+select{appearance:none;-webkit-appearance:none;font-family:var(--f-body);font-size:16px;font-weight:700;color:var(--c-ink);
+  padding:12px 40px 12px 16px;border:1.5px solid var(--c-line);border-radius:var(--radius-btn);background:#fff;width:100%;cursor:pointer;
+  transition:border-color .15s}
+select:hover{border-color:var(--c-blue)}
+
+.runtip{background:var(--c-panel-blue);border-radius:var(--radius);padding:12px 16px;font-size:13px;color:var(--c-ink-soft);line-height:1.5}
+.runtip b{color:var(--c-navy)}
+
+.actions{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-top:32px;flex-wrap:wrap}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;cursor:pointer;user-select:none;padding:8px 0}
+.switch input{position:absolute;opacity:0;width:42px;height:24px;cursor:pointer}
+.switch .box{width:42px;height:24px;background:var(--c-line);border-radius:999px;position:relative;transition:.15s;flex:none}
 .switch .box::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .switch input:checked + .box{background:var(--c-blue)}
 .switch input:checked + .box::after{transform:translateX(18px)}
-
-.actions{display:flex;align-items:center;gap:16px;margin-top:26px;flex-wrap:wrap}
-.btn{font-family:var(--f-body);font-weight:800;letter-spacing:.02em;border-radius:var(--radius-btn);
-  cursor:pointer;border:1.5px solid transparent;transition:.15s;display:inline-flex;align-items:center;gap:10px}
-.btn-go{background:var(--c-coral);color:#fff;font-size:16px;padding:15px 34px}
-.btn-go:hover{background:var(--c-coral-dk);transform:translateY(-1px);box-shadow:var(--shadow)}
-.btn-go svg{transition:transform .15s}
-.btn-go:hover svg{transform:translateX(4px)}
-.btn-ghost{background:var(--c-panel);color:var(--c-ink);font-size:14px;padding:12px 22px}
-.btn-ghost:hover{background:#E7EBF1}
-.btn:disabled,.btn.is-disabled{background:var(--c-panel);color:#AEB6C2;cursor:not-allowed;box-shadow:none;transform:none}
-.hint{font-size:13px;color:var(--c-ink-soft)}
+.switch input:focus-visible + .box{box-shadow:var(--ring)}
+.switch:hover input:not(:checked) + .box{background:#CBD3DE}
+.switch:hover input:checked + .box{background:var(--c-blue-dk)}
+.subhint{font-size:12px;color:var(--c-ink-soft);margin-top:0;max-width:280px}
+.go-cluster{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.hint{font-size:13px;color:var(--c-ink-soft);text-align:right}
+.hint.err{color:var(--c-coral-btn);font-weight:700}
 
 /* ---------- Progress ---------- */
-.progress-card{padding:48px 28px;text-align:center}
-.spinner{width:52px;height:52px;margin:0 auto 22px;border-radius:50%;
-  border:5px solid var(--c-panel-blue);border-top-color:var(--c-blue);animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.progress-card h3{font-family:var(--f-display);font-weight:800;text-transform:uppercase;color:var(--c-navy);font-size:22px}
-.progress-card p{color:var(--c-ink-soft);margin-top:8px}
-.pbar{height:8px;background:var(--c-panel);border-radius:999px;overflow:hidden;max-width:360px;margin:22px auto 0}
-.pbar .fill{height:100%;width:30%;border-radius:999px;background:linear-gradient(90deg,var(--c-blue),var(--c-coral));
-  animation:indet 1.4s ease-in-out infinite}
+.progress-card{padding:40px 32px;max-width:640px;margin:0 auto}
+.progress-card h2{font-family:var(--f-display);font-weight:800;text-transform:uppercase;color:var(--c-navy);font-size:26px;text-align:center}
+.jobchip{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:16px 0 24px}
+.jobchip .fchip{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft);background:var(--c-panel);
+  border-radius:999px;padding:4px 12px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.steps{display:flex;justify-content:center;gap:8px;margin-bottom:24px}
+.step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--c-ink-faint)}
+.step .sdot{width:24px;height:24px;border-radius:50%;border:2px solid var(--c-line);display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:var(--c-ink-faint);background:#fff;flex:none}
+.step.active{color:var(--c-navy)}
+.step.active .sdot{border-color:var(--c-blue);color:var(--c-blue)}
+.step.done{color:var(--c-ink-soft)}
+.step.done .sdot{border-color:var(--c-blue);background:var(--c-blue);color:#fff}
+.step .sline{width:32px;height:2px;background:var(--c-line);flex:none}
+.pbar{height:8px;background:var(--c-panel);border-radius:999px;overflow:hidden;max-width:400px;margin:0 auto}
+.pbar .fill{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--c-blue),var(--c-coral));transition:width .3s ease}
+.pbar.indet .fill{width:30%;animation:indet 1.4s ease-in-out infinite}
 @keyframes indet{0%{margin-left:-30%}100%{margin-left:100%}}
+@media (prefers-reduced-motion:reduce){.pbar.indet .fill{animation:none;width:100%;opacity:.35}}
+.stagetext{text-align:center;color:var(--c-ink-soft);font-size:14px;margin-top:16px;min-height:24px}
+.stagetext b{font-family:var(--f-mono);font-weight:600;color:var(--c-navy)}
+.progress-card .cancelrow{text-align:center;margin-top:24px}
 
 /* ---------- Results ---------- */
-.results{display:none}
-.results.show{display:block}
-.result-top{display:grid;grid-template-columns:320px 1fr;gap:26px;align-items:start}
-@media(max-width:820px){.result-top{grid-template-columns:1fr}}
-.scorecard{padding:26px 26px 24px;position:relative;overflow:hidden}
-.scorecard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;transform:skewX(var(--skew));margin-left:8px;background:var(--c-blue)}
-.scorecard .sport-tag{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;
-  letter-spacing:.06em;text-transform:uppercase;color:#fff;padding:4px 12px;border-radius:999px}
-.scorecard .sport-tag .t{width:7px;height:7px;border-radius:50%;background:#fff}
-.score-num{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:82px;line-height:1;
-  color:var(--c-navy);letter-spacing:-.02em;margin-top:14px}
+.result-top{display:grid;grid-template-columns:328px 1fr;gap:24px;align-items:start;margin-top:16px}
+.result-top.no-video{grid-template-columns:minmax(0,440px)}
+.scorecard{padding:24px;position:relative;overflow:hidden}
+.scorecard::before{content:"";position:absolute;left:8px;top:88px;height:64px;width:5px;
+  transform:skewX(var(--skew));background:var(--c-blue)}
+.score-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:16px}
+.score-num{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:80px;line-height:1;
+  color:var(--c-navy);letter-spacing:-.02em;margin-top:8px}
 .score-num small{font-size:26px;color:var(--c-ink-soft);font-style:normal;font-weight:800}
+.graderow{display:flex;align-items:center;gap:16px;margin-top:16px}
 .grade{display:inline-flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:900;
-  font-style:italic;font-size:34px;width:66px;height:66px;border-radius:14px;color:#fff;margin-top:6px}
-.score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:16px;line-height:1.7}
-.score-meta b{color:var(--c-ink);font-family:var(--f-mono);font-weight:600}
+  font-style:italic;font-size:30px;width:56px;height:56px;border-radius:var(--radius);border:2.5px solid var(--c-navy);color:var(--c-navy);flex:none}
+.gradelbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
+.score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:24px;line-height:1.7;border-top:1px solid var(--c-line);padding-top:16px}
+.score-meta b{color:var(--c-ink);font-weight:700}
+.score-meta .mono{font-family:var(--f-mono);font-weight:600;color:var(--c-navy)}
+
 .videoframe{border-radius:var(--radius);overflow:hidden;border:1px solid var(--c-line);background:#0d1420}
 .videoframe video{display:block;width:100%;max-height:520px;background:#0d1420}
-.videocap{font-size:12px;color:var(--c-ink-soft);padding:10px 14px;background:#fff;border-top:1px solid var(--c-line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.videocap a{color:var(--c-blue);font-weight:700;text-decoration:none}
-.photoframe{border-radius:var(--radius);overflow:hidden;border:1px solid var(--c-line);background:#0d1420}
-.photoframe img{display:block;width:100%;max-height:560px;object-fit:contain;background:#0d1420}
-.grade.word{width:auto;min-width:0;padding:0 16px;height:44px;border-radius:11px;font-size:18px}
-.pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px;color:#fff}
-.pill.optimal{background:var(--c-ok)}
-.pill.acceptable{background:var(--c-blue)}
-.pill.needs_work{background:var(--c-coral)}
-.pill.unknown{background:#AEB6C2}
+.videocap{font-size:12px;color:var(--c-ink-soft);padding:8px 16px;background:#fff;border-top:1px solid var(--c-line);
+  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.videocap .note{color:var(--c-ink-soft)}
 
-.banner{border-radius:var(--radius);padding:14px 18px;font-size:14px;margin-top:24px;display:flex;gap:10px;align-items:flex-start}
-.banner.warn{background:#FEF4E7;border-left:4px solid var(--c-warn);color:#7a5a1f}
+.banner{border-radius:var(--radius);padding:16px;font-size:14px;margin-top:24px;display:flex;gap:8px;align-items:flex-start}
+.banner .ic{margin-top:2px}
+.banner.warn{background:#F9F1E3;border-left:4px solid var(--c-warn);color:var(--c-ink)}
+.banner.warn .ic{color:var(--c-warn)}
 .banner.ok{background:var(--c-panel-blue);border-left:4px solid var(--c-blue);color:var(--c-navy)}
+.banner.ok .ic{color:var(--c-blue)}
 
-/* AI coach panel */
-.coach{padding:22px 26px;border-left:4px solid var(--c-coral)}
-.coach h5{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:13px;letter-spacing:.06em;color:var(--c-navy);margin:16px 0 6px}
-.coach h5:first-child{margin-top:0}
-.coach p{font-size:14.5px;color:var(--c-ink);margin:6px 0;line-height:1.6}
-.coach ul{margin:6px 0 8px;padding-left:20px}
-.coach li{font-size:14.5px;color:var(--c-ink-soft);line-height:1.6;margin:4px 0}
+.coach{background:var(--c-panel-blue);border-radius:var(--radius);padding:24px}
+.coach h4{font-family:var(--f-body);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.18em;color:var(--c-blue);margin:16px 0 8px}
+.coach h4:first-child{margin-top:0}
+.coach p{font-size:14px;color:var(--c-ink);margin:8px 0;line-height:1.6}
+.coach ul{margin:8px 0;padding-left:20px}
+.coach li{font-size:14px;color:var(--c-ink);line-height:1.6;margin:4px 0}
 .coach strong{color:var(--c-navy);font-weight:800}
-.coach .model{font-size:11px;color:var(--c-ink-soft);margin-top:16px;font-family:var(--f-mono)}
+.coach .disclaimer{font-size:12px;color:var(--c-ink-soft);margin-top:16px;padding-top:16px;border-top:1px solid rgba(20,41,75,.12)}
 
-.block{margin-top:34px}
-.block h3{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:18px;color:var(--c-ink);letter-spacing:.02em;margin-bottom:14px}
+.issue{border-radius:var(--radius);padding:16px;background:#fff;border:1px solid var(--c-line);margin-bottom:8px;border-left:4px solid var(--c-ink-faint)}
+.issue.high{border-left-color:var(--c-coral)} .issue.medium{border-left-color:var(--c-warn)}
+.issue .i-top{display:flex;justify-content:space-between;gap:16px;align-items:center}
+.issue .i-type{font-weight:800;color:var(--c-ink)}
+.issue .i-rec{font-size:14px;color:var(--c-ink-soft);margin-top:8px}
+.issue .i-val-lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:8px;display:inline-block}
+.issue .i-val{font-family:var(--f-mono);font-size:12px;color:var(--c-navy)}
 
-/* metric tiles */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:14px}
-.tile{background:var(--c-panel);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden}
-.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;margin-left:6px;transform:skewX(var(--skew));background:var(--c-blue)}
-.tile.good::before{background:var(--c-ok)} .tile.warn::before{background:var(--c-warn)} .tile.bad::before{background:var(--c-coral)}
-.tile .t-lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
-.tile .t-val{font-family:var(--f-mono);font-size:24px;font-weight:600;color:var(--c-navy);margin-top:6px;font-variant-numeric:tabular-nums}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
+.tile{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;min-height:96px}
+.tile .t-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);
+  display:flex;align-items:center;gap:8px}
+.tile .t-lbl .sdot{width:8px;height:8px;border-radius:50%;flex:none}
+.tile.good .t-lbl .sdot{background:var(--c-blue)}
+.tile.warn .t-lbl .sdot{background:var(--c-warn)}
+.tile.bad .t-lbl .sdot{background:var(--c-coral)}
+.tile .t-val{font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--c-navy);margin-top:8px;font-variant-numeric:tabular-nums}
 .tile .t-val small{font-size:13px;color:var(--c-ink-soft);font-weight:400}
+.tile .t-val.txt{font-family:var(--f-body);font-size:16px;font-weight:800;line-height:1.3;margin-top:12px}
 .tile .t-ref{font-size:11px;color:var(--c-ink-soft);margin-top:4px}
+.tile .t-ref .st-good{color:var(--c-blue);font-weight:800}
+.tile .t-ref .st-warn{color:var(--c-warn-text);font-weight:800}
+.tile .t-ref .st-bad{color:var(--c-coral-btn);font-weight:800}
 
-/* table */
 table.data{width:100%;border-collapse:collapse;font-size:14px}
-table.data thead th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--c-ink-soft);
-  font-weight:800;text-align:left;padding:10px 12px;border-bottom:2.5px solid var(--c-navy)}
+table.data thead th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-soft);
+  font-weight:800;text-align:left;padding:8px 16px;border-bottom:2.5px solid var(--c-navy)}
 table.data th.num,table.data td.num{text-align:right;font-variant-numeric:tabular-nums}
-table.data td{padding:11px 12px;border-bottom:1px solid var(--c-line)}
+table.data td,table.data tbody th{padding:12px 16px;border-bottom:1px solid var(--c-line)}
+table.data tbody th{text-align:left;font-weight:600;color:var(--c-ink)}
 table.data tbody tr:hover{background:var(--c-panel-blue)}
 table.data td.num{font-family:var(--f-mono);font-weight:500;color:var(--c-navy)}
-table.data td.muted{color:#AEB6C2}
+table.data td.pct{font-family:var(--f-body);font-weight:700;color:var(--c-navy);text-align:right;font-variant-numeric:tabular-nums}
+table.data td.muted{color:var(--c-ink-soft)}
 .tablewrap{overflow-x:auto}
 
-/* issues */
-.issue{border-radius:var(--radius);padding:16px 18px;background:#fff;border:1px solid var(--c-line);margin-bottom:12px;border-left:4px solid var(--c-blue)}
-.issue.high{border-left-color:var(--c-coral)} .issue.medium{border-left-color:var(--c-warn)}
-.issue .i-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
-.issue .i-type{font-weight:800;color:var(--c-ink)}
-.issue .i-sev{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
-.issue .i-rec{font-size:14px;color:var(--c-ink-soft);margin-top:6px}
-.issue .i-val{font-family:var(--f-mono);font-size:12px;color:var(--c-blue);margin-top:6px}
-
-details.raw{margin-top:28px}
+details.raw{margin-top:32px}
 details.raw summary{cursor:pointer;font-weight:800;font-size:13px;color:var(--c-blue)}
 details.raw pre{background:var(--c-navy);color:#DCE6F2;font-family:var(--f-mono);font-size:12px;line-height:1.6;
-  padding:18px;border-radius:var(--radius);overflow-x:auto;margin-top:12px;max-height:420px}
+  padding:16px;border-radius:var(--radius);overflow-x:auto;margin-top:16px;max-height:420px}
 
-.error-card{padding:34px 28px;border-left:5px solid var(--c-coral)}
-.error-card h3{font-family:var(--f-display);font-weight:800;text-transform:uppercase;color:var(--c-coral);font-size:20px;margin-bottom:8px}
+.again-row{margin-top:48px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.again-row .quota{margin:0}
+
+/* ---------- Error / limit ---------- */
+.error-card{padding:32px;border-left:5px solid var(--c-coral);max-width:640px}
+.error-card h2{font-family:var(--f-display);font-weight:800;text-transform:uppercase;color:var(--c-coral-btn);font-size:19px;margin-bottom:8px}
 .error-card p{color:var(--c-ink-soft)}
+.error-card ul{margin:16px 0 0;padding-left:20px;color:var(--c-ink-soft);font-size:14px;line-height:1.7}
+.error-card .actions-row{margin-top:24px;display:flex;gap:16px;flex-wrap:wrap}
+.limit-card{border-left-color:var(--c-warn)}
+.limit-card h2{color:var(--c-navy)}
+.limit-card .bigwait{font-family:var(--f-mono);font-weight:600;color:var(--c-navy)}
 
-footer{border-top:1px solid var(--c-line);padding:26px 0 44px;font-size:12px;color:var(--c-ink-soft)}
+footer{border-top:1px solid var(--c-line);padding:24px 0 48px;font-size:12px;color:var(--c-ink-soft)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 footer a{color:var(--c-blue);text-decoration:none}
-.hidden{display:none!important}
+footer a:hover{text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- Responsive ---------- */
+@media(max-width:820px){
+  .result-top{grid-template-columns:1fr}
+  .result-top.no-video{grid-template-columns:1fr}
+  .scorecard{max-width:440px}
+}
+@media(max-width:640px){
+  header .wrap{height:56px}
+  .wordmark{font-size:21px}
+  .hero .wrap{padding:40px 24px 48px}
+  main{padding-top:24px}
+  .uploader{padding:24px;margin-top:-48px}
+  .cardhead{flex-direction:column}
+  .drop{padding:32px 16px}
+  .filepreview{flex-direction:column;align-items:stretch}
+  .filepreview video{width:100%}
+  .controls{grid-template-columns:1fr;gap:24px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .actions{flex-direction:column;align-items:stretch}
+  .go-cluster{align-items:stretch}
+  .go-cluster .btn-go{width:100%}
+  .hint{text-align:center}
+  .subhint{max-width:none}
+  .progress-card{padding:32px 24px}
+  .step span.slbl{display:none}
+  .score-num{font-size:64px}
+  .scorecard::before{top:76px;height:56px}
+  .videocap{flex-direction:column;align-items:flex-start}
+  .blockhead{margin-top:40px}
+  .again-row{flex-direction:column;align-items:stretch;text-align:center}
+  table.data{font-size:13px}
+  table.data td,table.data thead th{padding:8px}
+}
 </style>
 </head>
-<body>
+<body data-state="upload">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-check-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-arr-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-arr-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4v12M6 10l6 6 6-6"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 17 17 7M9 7h8v8"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 2.5 19.5h19L12 3z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l2.1 5.6L20 11l-5.9 2.4L12 19l-2.1-5.6L4 11l5.9-2.4L12 3z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></symbol>
+</svg>
 
 <header>
   <div class="wrap">
     <div class="wordmark">Flapp<span class="dot"></span></div>
-    <nav><a href="/docs" target="_blank">API docs ↗</a></nav>
+    <nav aria-label="Site"><a href="/docs" target="_blank" rel="noopener">API docs <svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg></a></nav>
   </div>
 </header>
 
 <div class="hero">
   <div class="wrap">
-    <div class="eyebrow" style="color:rgba(255,255,255,.75)">Video biomechanics · Run &amp; Bike</div>
+    <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
     <h1>Train smart,<br><span class="accent">move fast</span></h1>
-    <p>Upload a side-view clip of your run or ride. Get your joint angles, technique score and an annotated overlay — powered by on-device pose estimation.</p>
+    <p>Upload a side-view clip of your run or ride. Get your joint angles, technique score and an annotated overlay — powered by AI pose estimation. Clips are processed on our servers and aren’t kept.</p>
   </div>
 </div>
 
-<main>
+<main id="main">
 <div class="wrap">
 
-  <!-- UPLOADER -->
-  <section id="uploader">
+  <!-- ============ UPLOADER ============ -->
+  <section id="uploader" aria-labelledby="uploaderTitle">
     <div class="card uploader">
-      <div class="eyebrow section-eyebrow">Step 1 · Your clip</div>
-      <h2 class="sec">Analyze your form</h2>
-      <div class="speedline"></div>
-
-      <div class="field" style="margin:20px 0 6px">
-        <label>Input</label>
-        <div class="seg" id="modeSeg">
-          <button type="button" data-mode="video" aria-pressed="true">Video</button>
-          <button type="button" data-mode="photo" aria-pressed="false">Photo</button>
+      <div class="cardhead">
+        <div>
+          <div class="eyebrow">Your clip</div>
+          <h2 class="sec" id="uploaderTitle" tabindex="-1">Analyze a clip</h2>
+          <div class="speedline"></div>
         </div>
+        <div class="quota" id="quota">Free · <b>3</b> analyses per day</div>
       </div>
 
-      <div class="drop" id="drop">
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-        <b id="dropTitle">Drop a video here</b> or click to browse
-        <small id="dropHint">Side view, one athlete in frame · mp4/mov · 5–15 s works best</small>
-      </div>
-      <input type="file" id="file" accept="video/*" class="hidden">
+      <input type="file" id="file" class="visually-hidden" accept="video/*"
+             aria-describedby="dropHelp">
+      <label class="drop" id="drop" for="file">
+        <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+        <b>Drop a video here</b> or click to browse
+        <small id="dropHelp">Side view, one athlete in frame · mp4 / mov / webm · up to 200 MB · 5–15 s works best</small>
+      </label>
 
       <div class="filepreview" id="filepreview">
-        <video id="preview" muted playsinline></video>
-        <img id="previewImg" class="hidden" style="width:150px;height:200px;object-fit:cover;border-radius:8px;background:#000;flex:none">
+        <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
         <div class="fmeta">
           <div class="fname" id="fname">clip.mp4</div>
           <div class="fsize" id="fsize">—</div>
-          <button class="btn btn-ghost change" id="change" type="button">Change clip</button>
+          <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
         </div>
       </div>
 
       <div class="controls">
         <div class="field">
-          <label>Sport</label>
-          <div class="seg" id="sportSeg">
-            <button type="button" class="run" data-sport="run" aria-pressed="false"><span class="tag"></span>Run</button>
-            <button type="button" class="bike" data-sport="bike" aria-pressed="true"><span class="tag"></span>Bike</button>
+          <span class="fieldlabel" id="sportLabel">Sport</span>
+          <div class="seg" id="sportSeg" role="group" aria-label="Sport — choose one">
+            <button type="button" class="run" data-sport="run" aria-pressed="false"><span class="tag" aria-hidden="true"></span>Run</button>
+            <button type="button" class="bike" data-sport="bike" aria-pressed="true"><span class="tag" aria-hidden="true"></span>Bike</button>
           </div>
         </div>
         <div class="field" id="positionField">
-          <label>Cycling position</label>
-          <select id="position">
-            <option value="road_hoods">Road · Hoods</option>
-            <option value="road_drops">Road · Drops</option>
-            <option value="tt_aero">TT · Aero</option>
-            <option value="triathlon" selected>Triathlon · Aero</option>
-            <option value="casual">Casual / Commuter</option>
-          </select>
+          <label for="position">Cycling position</label>
+          <div class="selectwrap">
+            <select id="position">
+              <option value="road_hoods">Road · Hoods</option>
+              <option value="road_drops">Road · Drops</option>
+              <option value="tt_aero">TT · Aero</option>
+              <option value="triathlon" selected>Triathlon · Aero</option>
+              <option value="casual">Casual / Commuter</option>
+            </select>
+            <svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg>
+          </div>
+        </div>
+        <div class="field hidden" id="runTipField">
+          <span class="fieldlabel">Capture tip</span>
+          <div class="runtip"><b>Best results:</b> film from the side at hip height, whole body in frame, steady pace.</div>
         </div>
       </div>
 
       <div class="actions">
-        <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box"></span>Render overlay video</label>
-        <div style="flex:1"></div>
-        <button class="btn btn-go is-disabled" id="analyze" disabled>Analyze
-          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 6h13M9 1l5 5-5 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div>
+          <label class="switch"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>Render overlay video</label>
+          <p class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</p>
+        </div>
+        <div class="go-cluster">
+          <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
+            Analyze <svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg>
+          </button>
+          <p class="hint" id="hint" role="status" aria-live="polite">Pick a clip to start.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROGRESS ============ -->
+  <section id="progress" class="hidden" aria-labelledby="progTitle">
+    <div class="card progress-card">
+      <h2 id="progTitle" tabindex="-1">Analyzing your clip</h2>
+      <div class="jobchip" id="jobchip"></div>
+      <div class="steps" aria-hidden="true">
+        <div class="step" id="step1"><span class="sdot">1</span><span class="slbl">Upload</span><span class="sline"></span></div>
+        <div class="step" id="step2"><span class="sdot">2</span><span class="slbl">Analyze</span><span class="sline"></span></div>
+        <div class="step" id="step3"><span class="sdot">3</span><span class="slbl">Report</span></div>
+      </div>
+      <div class="pbar" id="pbar" role="progressbar" aria-label="Analysis progress"
+           aria-valuemin="0" aria-valuemax="100"><div class="fill" id="pfill"></div></div>
+      <p class="stagetext" id="stageText">Preparing upload…</p>
+      <p class="visually-hidden" id="srStage" role="status" aria-live="polite"></p>
+      <div class="cancelrow">
+        <button class="btn btn-ghost btn-sm" id="cancel" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg> Cancel
         </button>
       </div>
-      <div class="hint" id="hint" style="margin-top:12px">Pick a clip to start.</div>
     </div>
   </section>
 
-  <!-- PROGRESS -->
-  <section id="progress" class="hidden">
-    <div class="card progress-card">
-      <div class="spinner"></div>
-      <h3 id="progTitle">Analyzing…</h3>
-      <p id="progText">Detecting pose and computing biomechanics. This usually takes 30–60 seconds.</p>
-      <div class="pbar"><div class="fill"></div></div>
+  <!-- ============ RESULTS ============ -->
+  <section id="results" class="hidden" aria-labelledby="resultsTitle">
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Report</div>
+      <h2 class="sec" id="resultsTitle" tabindex="-1" style="margin-bottom:8px">Your results</h2>
+      <div class="speedline"></div>
     </div>
-  </section>
 
-  <!-- RESULTS -->
-  <section id="results" class="results">
-    <div class="result-top">
+    <div class="result-top" id="resultTop">
       <div class="card scorecard">
-        <span class="sport-tag" id="sportTag"><span class="t"></span><span id="sportTagText">Bike</span></span>
+        <span class="pill" id="sportTag"><span class="dot" aria-hidden="true"></span><span id="sportTagText">Bike</span></span>
+        <div class="score-label">Technique score</div>
         <div class="score-num" id="scoreNum">—<small>/100</small></div>
-        <div class="grade" id="grade">—</div>
+        <div class="graderow">
+          <span class="grade" id="grade" role="img" aria-label="Grade">—</span>
+          <div>
+            <div class="gradelbl">Grade</div>
+            <span class="pill pill-warnchip hidden" id="gateChip" style="margin-top:8px"><span class="dot" aria-hidden="true"></span>Reference only</span>
+          </div>
+        </div>
         <div class="score-meta" id="scoreMeta"></div>
       </div>
-      <div>
+      <div id="videoCol">
         <div class="videoframe" id="videoframe">
-          <video id="overlayVideo" controls playsinline></video>
+          <video id="overlayVideo" controls playsinline aria-label="Annotated analysis overlay video"></video>
           <div class="videocap">
-            <span>Annotated overlay · skeleton + joint angles</span>
-            <a id="downloadOverlay" download>Download .mp4 ↓</a>
+            <span>Annotated overlay · skeleton + joint angles<br>
+              <span class="note">Results aren’t stored — download to keep it.</span></span>
+            <a class="btn btn-ghost btn-sm" id="downloadOverlay" download>
+              <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .mp4
+            </a>
           </div>
         </div>
       </div>
     </div>
 
     <div id="gateBanner"></div>
+    <p class="hint hidden" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
 
     <div class="block" id="coachBlock">
-      <div class="eyebrow" style="margin-bottom:10px">🤖 AI Coach</div>
-      <div class="card coach" id="coach"></div>
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
+        <h3>Coach’s notes</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="coach" id="coach"></div>
     </div>
 
     <div class="block" id="issuesBlock">
-      <h3>Findings</h3>
+      <div class="blockhead">
+        <div class="eyebrow">Technique</div>
+        <h3>Findings</h3>
+        <div class="speedline-sm"></div>
+      </div>
       <div id="issues"></div>
     </div>
 
     <div class="block">
-      <h3>Key metrics</h3>
+      <div class="blockhead">
+        <div class="eyebrow">Instrument readings</div>
+        <h3>Key metrics</h3>
+        <div class="speedline-sm"></div>
+      </div>
       <div class="tiles" id="tiles"></div>
     </div>
 
     <div class="block">
-      <h3>Joint angles</h3>
+      <div class="blockhead">
+        <div class="eyebrow">Detail</div>
+        <h3>Joint angles</h3>
+        <div class="speedline-sm"></div>
+      </div>
       <div class="tablewrap">
         <table class="data">
-          <thead><tr><th>Angle</th><th class="num">Min</th><th class="num">Mean</th><th class="num">Max</th><th class="num">Range</th><th class="num">Valid</th></tr></thead>
+          <caption class="visually-hidden">Joint angle statistics: minimum, mean, maximum, range and share of valid frames per angle</caption>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num">Range</th><th scope="col" class="num">Valid</th></tr></thead>
           <tbody id="angleRows"></tbody>
         </table>
       </div>
     </div>
 
-    <details class="raw"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
+    <details class="raw hidden" id="rawBlock"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
 
-    <div style="margin-top:30px"><button class="btn btn-ghost" id="again" type="button">← Analyze another clip</button></div>
+    <div class="again-row">
+      <button class="btn btn-primary" id="again" type="button">
+        <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Analyze another clip
+      </button>
+      <span class="quota" id="quotaResults"></span>
+    </div>
   </section>
 
-  <!-- PHOTO RESULTS -->
-  <section id="photoResults" class="results">
-    <div class="result-top">
-      <div class="card scorecard">
-        <span class="sport-tag" id="pSportTag"><span class="t"></span><span id="pSportTagText">Bike</span></span>
-        <div class="score-num" id="pScoreNum">—<small>/100</small></div>
-        <div class="grade word" id="pGrade">—</div>
-        <div class="score-meta" id="pScoreMeta"></div>
-      </div>
-      <div>
-        <div class="photoframe" id="pPhotoframe">
-          <img id="pImage" alt="Annotated form analysis">
-          <div class="videocap">
-            <span>Annotated photo · skeleton + joint angles</span>
-            <a id="pDownload" download="flapp-analysis.png">Download ↓</a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="pWarnings"></div>
-
-    <div class="block" id="pCoachBlock">
-      <div class="eyebrow" style="margin-bottom:10px">🤖 AI Coach</div>
-      <div class="card coach" id="pCoach"></div>
-    </div>
-
-    <div class="block">
-      <h3>Joint angles</h3>
-      <div class="tablewrap">
-        <table class="data">
-          <thead><tr><th>Angle</th><th class="num">Value</th><th class="num">Optimal</th><th>Status</th></tr></thead>
-          <tbody id="pAngleRows"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <details class="raw"><summary>Raw result JSON</summary><pre id="pRawJson"></pre></details>
-    <div style="margin-top:30px"><button class="btn btn-ghost" id="pAgain" type="button">← Analyze another</button></div>
-  </section>
-
-  <!-- ERROR -->
-  <section id="error" class="hidden">
-    <div class="card error-card">
-      <h3>Analysis failed</h3>
+  <!-- ============ ERROR ============ -->
+  <section id="error" class="hidden" aria-labelledby="errTitle">
+    <div class="card error-card" id="errorCard" role="alert">
+      <h2 id="errTitle" tabindex="-1">Analysis failed</h2>
       <p id="errText">Something went wrong.</p>
-      <div style="margin-top:18px"><button class="btn btn-ghost" id="errAgain" type="button">← Try again</button></div>
+      <p class="hint hidden" id="errNote" style="text-align:left;margin-top:8px">This attempt counted toward your daily limit.</p>
+      <ul id="errTips" class="hidden">
+        <li>Film from the side — the camera should see your full body.</li>
+        <li>Keep one athlete in the frame, in good light.</li>
+        <li>5–15 seconds at a steady pace works best.</li>
+      </ul>
+      <div class="actions-row">
+        <button class="btn btn-primary" id="errAgain" type="button">
+          <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> <span id="errAgainLbl">Try another clip</span>
+        </button>
+        <button class="btn btn-primary hidden" id="errBack" type="button">
+          <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to upload
+        </button>
+        <span class="quota" id="errQuota"></span>
+      </div>
     </div>
   </section>
 
@@ -411,156 +614,362 @@ footer a{color:var(--c-blue);text-decoration:none}
 </main>
 
 <footer>
-  <div class="wrap">Flapp · side-view running &amp; cycling form analysis · <a href="/docs" target="_blank">API</a> · <a href="/health" target="_blank">status</a></div>
+  <div class="wrap">
+    <span>Flapp · side-view running &amp; cycling form analysis</span>
+    <span>Free tier · 3 analyses per day · <a href="/docs" target="_blank" rel="noopener">API</a> · <a href="/health" target="_blank" rel="noopener">status</a></span>
+  </div>
 </footer>
 
+<noscript><div class="wrap" style="padding:24px"><p>Flapp needs JavaScript to upload and analyze clips.</p></div></noscript>
+
 <script>
+'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', mode:'video', jobId:null, polling:null, remaining:null };
+const state = { file:null, sport:'bike', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0 };
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DEBUG = new URLSearchParams(location.search).has('debug');
 
-// ---- brand colors for JS ----
-const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', ok:'#2E9E5B', warn:'#F2A33C', run:'#EF5B5B', bike:'#F2A33C' };
-const gradeColor = g => ({A:C.ok,B:C.blue,C:C.warn,D:C.warn,F:C.coral}[g] || C.navy);
+/* ---- brand colors for JS (mirror of the :root tokens above) ---- */
+const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', coralBtn:'#CE3F2B', warn:'#C97B10', orange:'#DE5F33' };
+const GRADE_COLORS = { A:C.blue, B:C.navy, C:C.warn, D:C.orange, F:C.coral };
+const POSITION_NAMES = { road_hoods:'Road · Hoods', road_drops:'Road · Drops', tt_aero:'TT · Aero', triathlon:'Triathlon · Aero', casual:'Casual / Commuter' };
 
-// ---- file handling ----
-const drop=$('#drop'), fileInput=$('#file'), fprev=$('#filepreview');
-drop.addEventListener('click',()=>fileInput.click());
-$('#change').addEventListener('click',()=>fileInput.click());
+/* ============================================================
+   State machine: upload | progress | results | error
+   ============================================================ */
+const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Analyzing… — Flapp',
+  results:'Results — Flapp', error:'Flapp'};
+function setState(name, {focus=null}={}){
+  document.body.dataset.state = name;
+  document.title = TITLES[name] || TITLES.upload;
+  ['uploader','progress','results','error'].forEach(id=>{
+    $('#'+id).classList.toggle('hidden', id !== (name==='upload'?'uploader':name));
+  });
+  window.scrollTo({top:0, behavior: REDUCED ? 'auto' : 'smooth'});
+  if(focus){ const el=$(focus); if(el) el.focus({preventScroll:true}); }
+}
+
+/* ============================================================
+   Quota (3/day) — surfaced up front, refreshed from headers
+   ============================================================ */
+const QUOTA_KEY='flapp_quota';
+function quotaLoad(){
+  try{
+    const q=JSON.parse(localStorage.getItem(QUOTA_KEY));
+    if(!q) return null;
+    if(q.until && Date.now()>q.until) return null;      // rate window elapsed
+    if(Date.now()-q.at < 24*3600*1000) return q;
+  }catch(e){}
+  return null;
+}
+function quotaSave(limit,remaining,until=null){
+  try{ localStorage.setItem(QUOTA_KEY, JSON.stringify({limit,remaining,at:Date.now(),until})); }catch(e){}
+  renderQuota();
+}
+function renderQuota(){
+  const q=quotaLoad();
+  const txt = q ? `<b>${q.remaining}</b> of <b>${q.limit}</b> analyses left today`
+               : `Free · <b>3</b> analyses per day`;
+  ['#quota','#quotaResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
+}
+
+/* ============================================================
+   File handling
+   ============================================================ */
+const fileInput=$('#file'), drop=$('#drop'), fprev=$('#filepreview');
 ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('drag')}));
 drop.addEventListener('drop',ev=>{ if(ev.dataTransfer.files[0]) setFile(ev.dataTransfer.files[0]); });
 fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) setFile(fileInput.files[0]); });
+$('#change').addEventListener('click',()=>fileInput.click());
 
-function fmtSize(b){ return b>1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB'; }
+const MAX_MB=200;
+function fmtSize(b){ return b>=1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
+function hintMsg(msg,isErr=false){ const h=$('#hint'); h.textContent=msg; h.classList.toggle('err',isErr); }
+
+function rejectFile(msg){
+  // If a valid clip is already loaded, keep it and say so instead of flagging
+  // the (hidden) drop zone — avoids an error message next to a ready CTA.
+  if(state.file){ hintMsg(`${msg} Keeping ${state.file.name}.`,true); return; }
+  drop.classList.add('err');
+  hintMsg(msg,true);
+}
 function setFile(f){
-  const isVideo = state.mode==='video';
-  if(isVideo && !f.type.startsWith('video/')){ alert('Please choose a video file.'); return; }
-  if(!isVideo && !f.type.startsWith('image/')){ alert('Please choose an image file.'); return; }
+  drop.classList.remove('err');
+  if(!f.type.startsWith('video/')){
+    rejectFile('That doesn’t look like a video — please choose an mp4, mov or webm clip.');
+    return;
+  }
+  if(f.size > MAX_MB*1048576){
+    rejectFile(`This clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB. Trim it to 5–15 s and try again.`);
+    return;
+  }
   state.file=f;
-  const url=URL.createObjectURL(f); const vid=$('#preview'), img=$('#previewImg');
-  if(isVideo){ vid.src=url; vid.classList.remove('hidden'); img.classList.add('hidden'); }
-  else { img.src=url; img.classList.remove('hidden'); vid.classList.add('hidden'); }
+  $('#preview').src=URL.createObjectURL(f);
   $('#fname').textContent=f.name;
   $('#fsize').textContent=fmtSize(f.size);
   drop.classList.add('hidden'); fprev.classList.add('show');
-  $('#analyze').disabled=false; $('#analyze').classList.remove('is-disabled');
-  $('#hint').textContent='Ready — pick sport, then hit Analyze.';
+  fileInput.setAttribute('tabindex','-1'); // drop label is hidden; Change clip re-opens the picker
+  $('#analyze').setAttribute('aria-disabled','false');
+  readyHint();
+}
+function readyHint(){
+  if(!state.file){ hintMsg('Pick a clip to start.'); return; }
+  const sportTxt = state.sport==='bike' ? `Bike — ${POSITION_NAMES[$('#position').value]}` : 'Run';
+  hintMsg(`Ready to analyze · ${sportTxt}`);
 }
 
-$('#modeSeg').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b) return;
-  const photo=b.dataset.mode==='photo';
-  [...$('#modeSeg').children].forEach(x=>x.setAttribute('aria-pressed', x===b));
-  reset();                       // clears file (uses old mode), then switch:
-  state.mode=b.dataset.mode;
-  fileInput.setAttribute('accept', photo?'image/*':'video/*');
-  $('#dropTitle').textContent = photo?'Drop a photo here':'Drop a video here';
-  $('#dropHint').textContent = photo
-    ? 'Side view, full body in frame · jpg / png / heic'
-    : 'Side view, one athlete in frame · mp4 / mov · 5–15 s works best';
-  $('#overlayField').style.display = photo?'none':'';
-});
-
-// ---- sport toggle ----
+/* ---- sport toggle ---- */
 $('#sportSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   state.sport=b.dataset.sport;
-  [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', x===b));
-  $('#positionField').style.visibility = state.sport==='bike' ? 'visible':'hidden';
+  [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  $('#positionField').classList.toggle('hidden', state.sport!=='bike');
+  $('#runTipField').classList.toggle('hidden', state.sport!=='run');
+  readyHint();
 });
+$('#position').addEventListener('change',readyHint);
 
-// ---- analyze ----
-$('#analyze').addEventListener('click',analyze);
-$('#again').addEventListener('click',reset);
-$('#errAgain').addEventListener('click',reset);
+/* ============================================================
+   Analyze: real upload progress (XHR) + staged status
+   ============================================================ */
+$('#analyze').addEventListener('click',()=>{
+  if($('#analyze').getAttribute('aria-disabled')==='true' || !state.file) return;
+  analyze();
+});
+$('#again').addEventListener('click',()=>reset());
+$('#errAgain').addEventListener('click',()=>reset(state.keepFileOnRetry));
+$('#errBack').addEventListener('click',()=>reset(true));
+$('#cancel').addEventListener('click',cancelRun);
 
-function show(id){ ['uploader','progress','results','photoResults','error'].forEach(s=>{
-  const el=$('#'+s); if(!el) return;
-  if(s===id){ el.classList.remove('hidden'); if(s==='results'||s==='photoResults') el.classList.add('show'); }
-  else { el.classList.add('hidden'); el.classList.remove('show'); } }); window.scrollTo({top:0,behavior:'smooth'}); }
+const STEP_NAMES={1:'uploading',2:'analyzing',3:'preparing report'};
+function setSteps(n){ // 1=upload 2=analyze 3=report
+  [1,2,3].forEach(i=>{
+    const el=$('#step'+i);
+    el.classList.toggle('done', i<n);
+    el.classList.toggle('active', i===n);
+    el.querySelector('.sdot').innerHTML = i<n
+      ? '<svg class="ic" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check-sm"/></svg>' : i;
+  });
+  announce(`Step ${n} of 3: ${STEP_NAMES[n]}`);
+}
+function stage(msgHtml){
+  const el=$('#stageText');
+  if(el.innerHTML!==msgHtml) el.innerHTML=msgHtml;
+}
+let lastAnnounce='';
+function announce(text){ // SR live region: only meaningful transitions, never per-tick spam
+  if(text===lastAnnounce) return;
+  lastAnnounce=text;
+  $('#srStage').textContent=text;
+}
 
-async function analyze(){
-  if(!state.file) return;
-  if(state.mode==='photo') return analyzePhoto();
+function analyze(){
   const fd=new FormData();
   fd.append('video',state.file);
   fd.append('sport',state.sport);
   if(state.sport==='bike') fd.append('position',$('#position').value);
   fd.append('overlay',$('#overlay').checked ? 'true':'false');
-  show('progress');
-  try{
-    const r=await fetch('/analyze',{method:'POST',body:fd});
-    if(!r.ok){ const t=await r.json().catch(()=>({detail:r.statusText})); throw new Error(t.detail||('HTTP '+r.status)); }
-    const j=await r.json();
-    state.remaining=r.headers.get('X-RateLimit-Remaining');
+
+  const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[$('#position').value]}` : 'Run';
+  $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
+    <span class="pill ${state.sport==='run'?'pill-run':'pill-bike'}"><span class="dot" aria-hidden="true"></span>${esc(sportTxt)}</span>`;
+
+  setState('progress',{focus:'#progTitle'});
+  setSteps(1);
+  const pbar=$('#pbar');
+  pbar.classList.remove('indet'); pbar.setAttribute('aria-valuenow','0');
+  $('#pfill').style.width='0%';
+  stage('Uploading…');
+
+  const xhr=new XMLHttpRequest();
+  state.xhr=xhr;
+  xhr.open('POST','/analyze');
+  xhr.upload.onprogress=e=>{
+    if(!e.lengthComputable) return;
+    const pct=Math.round(e.loaded/e.total*100);
+    $('#pfill').style.width=pct+'%';
+    pbar.setAttribute('aria-valuenow',String(pct));
+    if(e.loaded>=e.total){ stage('Upload received — starting analysis…'); }
+    else stage(`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`);
+    if(pct>=25 && pct<50) announce('Upload 25%');
+    else if(pct>=50 && pct<75) announce('Upload 50%');
+    else if(pct>=75 && pct<100) announce('Upload 75%');
+  };
+  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true});
+  xhr.onload=()=>{
+    state.xhr=null;
+    const limit=xhr.getResponseHeader('X-RateLimit-Limit'), rem=xhr.getResponseHeader('X-RateLimit-Remaining');
+    if(limit!=null && rem!=null) quotaSave(+limit,+rem);
+    let j={}; try{ j=JSON.parse(xhr.responseText); }catch(e){}
+    if(xhr.status===429){ showLimit(j.detail, xhr.getResponseHeader('Retry-After')); return; }
+    if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').')); return; }
     state.jobId=j.job_id;
-    poll();
-  }catch(err){ fail(err.message); }
+    history.replaceState(null,'','#job='+state.jobId);
+    startPolling();
+  };
+  xhr.send(fd);
 }
 
-function poll(){
-  state.polling=setInterval(async()=>{
-    try{
-      const r=await fetch('/jobs/'+state.jobId);
-      if(!r.ok) throw new Error('lost job');
-      const j=await r.json();
-      if(j.status==='completed'){ clearInterval(state.polling); render(j); }
-      else if(j.status==='failed'){ clearInterval(state.polling); fail(j.error||'analysis failed'); }
-    }catch(err){ /* transient; keep polling */ }
-  },2500);
+const ANALYZE_STAGE='Detecting pose &amp; computing biomechanics… usually takes <b>30–60 s</b>';
+function startPolling(){
+  setSteps(2);
+  const pbar=$('#pbar');
+  pbar.classList.add('indet');
+  pbar.removeAttribute('aria-valuenow');
+  pbar.setAttribute('aria-valuetext','Analyzing, please wait');
+  stage(ANALYZE_STAGE);
+  state.pollStart=Date.now(); state.pollMisses=0;
+  clearInterval(state.polling);
+  state.polling=setInterval(pollOnce,2500);
 }
 
-function fail(msg){ clearInterval(state.polling); $('#errText').textContent=msg; show('error'); }
+async function pollOnce(){
+  if(Date.now()-state.pollStart > 6*60*1000){
+    return fail('The analysis is taking longer than expected. Please try again — shorter clips process faster.',{keepFile:true});
+  }
+  try{
+    const r=await fetch('/jobs/'+state.jobId);
+    if(r.status===404 || r.status===410){
+      return fail('We lost track of this analysis (the server may have restarted). Please try again.',{keepFile:true});
+    }
+    if(!r.ok) throw new Error('http '+r.status);
+    state.pollMisses=0;
+    const j=await r.json();
+    if(j.status==='completed'){ clearInterval(state.polling); setSteps(3); render(j); }
+    else if(j.status==='failed'){ clearInterval(state.polling); fail(j.error||'The analysis failed on this clip.',{tips:true,counted:true}); }
+    else if(j.status==='queued'){ stage('Queued — waiting for a free analysis slot…'); }
+    else if(j.status==='processing'){ stage(ANALYZE_STAGE); }
+  }catch(err){
+    if(++state.pollMisses>=8) fail('Lost connection to the server while analyzing. Check your network and try again.',{keepFile:true});
+  }
+}
 
-// ---- render ----
+function cancelRun(){
+  if(state.xhr){ try{state.xhr.abort();}catch(e){} state.xhr=null; }
+  clearInterval(state.polling);
+  history.replaceState(null,'',location.pathname+location.search);
+  setState('upload',{focus:'#uploaderTitle'});
+  readyHint();
+}
+
+function fail(msg,{tips=false,keepFile=false,counted=false}={}){
+  clearInterval(state.polling);
+  state.keepFileOnRetry=keepFile;
+  $('#errorCard').classList.remove('limit-card');
+  $('#errTitle').textContent='Analysis failed';
+  $('#errText').textContent=msg;
+  $('#errNote').classList.toggle('hidden',!counted);
+  $('#errTips').classList.toggle('hidden',!tips);
+  $('#errAgainLbl').textContent = keepFile ? 'Try again' : 'Try another clip';
+  $('#errAgain').classList.remove('hidden');
+  $('#errBack').classList.add('hidden');
+  renderQuota();
+  history.replaceState(null,'',location.pathname+location.search);
+  setState('error',{focus:'#errTitle'});
+}
+
+function showLimit(detail,retryAfter){
+  clearInterval(state.polling);
+  const secs=retryAfter?+retryAfter:null;
+  quotaSave((quotaLoad()||{}).limit || 3, 0, secs?Date.now()+secs*1000:null);
+  $('#errorCard').classList.add('limit-card');
+  $('#errTitle').textContent='Daily limit reached';
+  // Server detail may repeat the card title — strip the duplicate lead-in.
+  const msg=(detail || 'You’ve used all free analyses for today.')
+    .replace(/^daily limit reached\s*[—–-]\s*/i,'');
+  const hrs=secs ? Math.max(1,Math.round(secs/3600)) : null;
+  const addWait=hrs && !/try again/i.test(msg);
+  $('#errText').innerHTML=esc(msg.charAt(0).toUpperCase()+msg.slice(1))+
+    (addWait?` Next analysis available in <span class="bigwait">~${hrs}h</span>.`:'');
+  $('#errNote').classList.add('hidden');
+  $('#errTips').classList.add('hidden');
+  $('#errAgain').classList.add('hidden');
+  $('#errBack').classList.remove('hidden');
+  renderQuota();
+  setState('error',{focus:'#errTitle'});
+}
+
+/* ============================================================
+   Render results
+   ============================================================ */
 const PRETTY = {
   left_knee:'Left knee',right_knee:'Right knee',left_hip:'Left hip',right_hip:'Right hip',
   left_ankle:'Left ankle',right_ankle:'Right ankle',left_shoulder:'Left shoulder',right_shoulder:'Right shoulder',
   left_elbow:'Left elbow',right_elbow:'Right elbow',left_forearm_tilt:'Left forearm tilt',right_forearm_tilt:'Right forearm tilt',
-  trunk_angle:'Trunk angle',trunk:'Trunk',knee:'Knee',hip:'Hip',ankle:'Ankle',elbow:'Elbow'
+  trunk_angle:'Trunk angle',trunk:'Trunk',knee:'Knee',hip:'Hip',ankle:'Ankle',elbow:'Elbow',
+  knee_at_bdc:'Knee at bottom of stroke',knee_at_tdc:'Knee at top of stroke',trunk_avg:'Trunk angle',
+  head_align:'Head alignment',cadence:'Cadence',cadence_spm:'Cadence',
+  vertical_oscillation:'Vertical oscillation',ground_contact_time:'Ground contact',
+  slightly_low:'Slightly low',slightly_high:'Slightly high'
 };
-const pretty = k => PRETTY[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+const pretty = k => PRETTY[k] || String(k).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 const num = (v,d=0) => (v===null||v===undefined||Number.isNaN(v)) ? '—' : (typeof v==='number'? v.toFixed(d): v);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const ANGLE_KEY=/knee|hip|elbow|trunk|shoulder|ankle|angle|lean/i;
+function fmtIssueValue(v){
+  const m=String(v).match(/^\s*([a-z0-9_]+)\s*=\s*(.+)$/i);
+  if(!m) return `<span class="i-val">${esc(v)}</span>`;
+  let key=m[1], unit='';
+  const um=key.match(/_(cm|mm|ms|spm|rpm|deg)$/i);          // unit lives in the key suffix
+  if(um){ key=key.slice(0,-um[0].length); unit=um[1].toLowerCase()==='deg'?'°':' '+um[1].toLowerCase(); }
+  else if(ANGLE_KEY.test(key)) unit='°';
+  return `<span class="i-val-lbl">${esc(pretty(key))}</span> <span class="i-val">${esc(m[2])}${unit}</span>`;
+}
 
 function mdInline(s){ return s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>'); }
 function mdToHtml(md){
-  const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const e=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const lines=String(md).split('\n'); let html='',inList=false;
   for(const raw of lines){
     const line=raw.trim();
     if(!line){ if(inList){html+='</ul>';inList=false;} continue; }
-    if(/^[*-]\s+/.test(line)){ if(!inList){html+='<ul>';inList=true;} html+='<li>'+mdInline(esc(line.replace(/^[*-]\s+/,'')))+'</li>'; continue; }
+    if(/^[*-]\s+/.test(line)){ if(!inList){html+='<ul>';inList=true;} html+='<li>'+mdInline(e(line.replace(/^[*-]\s+/,'')))+'</li>'; continue; }
     if(inList){html+='</ul>';inList=false;}
     const h=line.match(/^\*\*(.+?)\*\*:?$/);
-    if(h){ html+='<h5>'+esc(h[1])+'</h5>'; continue; }
-    html+='<p>'+mdInline(esc(line))+'</p>';
+    if(h){ html+='<h4>'+e(h[1])+'</h4>'; continue; }
+    html+='<p>'+mdInline(e(line))+'</p>';
   }
   if(inList) html+='</ul>';
   return html;
 }
 
-function tile(lbl,val,unit,ref,cls){
-  return `<div class="tile ${cls||''}"><div class="t-lbl">${lbl}</div>
-    <div class="t-val">${val}${unit?` <small>${unit}</small>`:''}</div>${ref?`<div class="t-ref">${ref}</div>`:''}</div>`;
+/* ---- metric tiles ---- */
+function rangeStatus(v,lo,hi,slack){
+  if(v==null) return '';
+  if(v>=lo && v<=hi) return 'good';
+  if(v>=lo-slack && v<=hi+slack) return 'warn';
+  return 'bad';
+}
+const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
+function tile(lbl,val,unit,ref,cls,isText=false){
+  const stWord = cls ? `${ref?' · ':''}<span class="st-${cls}">${ST_WORD[cls]}</span>` : '';
+  const refLine = (ref||cls) ? `<div class="t-ref">${ref?esc(ref):''}${stWord}</div>` : '';
+  const dot = cls ? '<span class="sdot" aria-hidden="true"></span>' : '';
+  const valHtml = isText
+    ? `<div class="t-val txt">${esc(val)}</div>`
+    : `<div class="t-val">${val}${unit?(unit==='°'?'°':` <small>${unit}</small>`):''}</div>`;
+  return `<div class="tile ${cls||''}"><div class="t-lbl">${dot}${esc(lbl)}</div>${valHtml}${refLine}</div>`;
 }
 
 function bikeTiles(s){
   const t=[];
-  if(s.knee_at_bdc!=null) t.push(tile('Knee · BDC',num(s.knee_at_bdc),'°','optimal 138–145'));
-  if(s.knee_at_tdc!=null) t.push(tile('Knee · TDC',num(s.knee_at_tdc),'°','optimal 60–72'));
+  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°','optimal 138–145°',rangeStatus(s.knee_at_bdc,138,145,5)));
+  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°','optimal 60–72°',rangeStatus(s.knee_at_tdc,60,72,6)));
   if(s.hip_angle_max!=null) t.push(tile('Hip angle',num(s.hip_angle_max),'°'));
   if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°'));
   if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°'));
   if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°'));
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
-  if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),''));
-  if(s.saddle_height_assessment) t.push(tile('Saddle height',String(s.saddle_height_assessment).replace(/_/g,' '),''));
-  if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,''));
+  if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
+  if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
+  if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
   return t;
 }
 function runTiles(s){
   const t=[];
-  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm','target 170–185'));
+  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm','target 170–185',rangeStatus(s.cadence_spm,170,185,10)));
   if(s.vertical_oscillation_cm!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_cm,1),'cm'));
   else if(s.vertical_oscillation_m!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_m*100,1),'cm'));
   if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°'));
@@ -573,54 +982,83 @@ function runTiles(s){
 function render(job){
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
   const sport=r.sport_type||state.sport;
+
   // score + grade
   $('#scoreNum').innerHTML = (r.technique_score==null?'—':r.technique_score)+'<small>/100</small>';
-  const g=$('#grade'); g.textContent=r.letter_grade||'—'; g.style.background=gradeColor(r.letter_grade);
+  const g=$('#grade'); const letter=r.letter_grade||'—';
+  g.textContent=letter;
+  g.setAttribute('aria-label','Grade '+letter);
+  const gc=GRADE_COLORS[letter]||C.navy;
+  g.style.borderColor=gc; g.style.color=gc;
+
   // sport tag
-  const tagColor = sport==='run'?C.run:C.bike;
-  const st=$('#sportTag'); st.style.background=tagColor; $('#sportTagText').textContent = sport==='run'?'Run':'Bike';
+  const st=$('#sportTag');
+  st.classList.remove('pill-run','pill-bike');
+  st.classList.add(sport==='run'?'pill-run':'pill-bike');
+  $('#sportTagText').textContent = sport==='run'?'Run':'Bike';
+
+  // gate chip + banner
+  const gated=!!r.quality_gate_triggered;
+  $('#gateChip').classList.toggle('hidden',!gated);
+  const gb=$('#gateBanner');
+  if(gated){
+    const reasons=(s.quality_gate&&s.quality_gate.reasons)||[];
+    gb.innerHTML=`<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <span><b>Partial analysis</b> — capture quality was limited. ${esc(reasons[0]||'Some metrics may be less reliable.')} Treat the score as a reference, not a measurement.</span></div>`;
+  } else {
+    gb.innerHTML=`<div class="banner ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+      <span><b>Full-confidence analysis</b> — pose tracking was clean across the clip.</span></div>`;
+  }
+
   // meta
   const parts=[];
-  parts.push(`Camera side: <b>${r.camera_side||'—'}</b>`);
-  parts.push(`Frames: <b>${r.frames_analyzed??'—'}</b>`);
-  if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${r.cycling_position}</b>`);
-  if(state.remaining!=null && state.remaining!=='') parts.push(`<b>${state.remaining}</b> left today`);
-  $('#scoreMeta').innerHTML=parts.join(' &nbsp;·&nbsp; ');
+  if(r.camera_side) parts.push(`Camera: <b>${esc(r.camera_side)} side</b>`);
+  if(r.frames_analyzed!=null) parts.push(`<span class="mono">${r.frames_analyzed}</span> frames analyzed`);
+  if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position))}</b>`);
+  $('#scoreMeta').innerHTML=parts.join('<br>');
 
-  // overlay video
-  const vf=$('#videoframe');
+  // overlay video (persistence note lives in the video caption; without the
+  // video the report is just as ephemeral — surface the note separately)
   if(job.overlay_url){
     $('#overlayVideo').src=job.overlay_url;
     $('#downloadOverlay').href=job.overlay_url;
-    vf.style.display='';
-  } else { vf.style.display='none'; }
-
-  // quality gate banner
-  const gb=$('#gateBanner');
-  if(r.quality_gate_triggered){
-    const reasons=(s.quality_gate&&s.quality_gate.reasons)||[];
-    gb.innerHTML=`<div class="banner warn">⚠ Partial analysis — capture quality was limited. ${reasons[0]||'Some metrics may be less reliable.'} The score is shown for reference.</div>`;
-  } else { gb.innerHTML=`<div class="banner ok">✓ Full-confidence analysis — pose tracking was clean across the clip.</div>`; }
+    $('#videoCol').classList.remove('hidden');
+    $('#resultTop').classList.remove('no-video');
+    $('#ephemNote').classList.add('hidden');
+  } else {
+    $('#videoCol').classList.add('hidden');
+    $('#resultTop').classList.add('no-video');
+    $('#ephemNote').classList.remove('hidden');
+  }
 
   // AI coach
   const cb=$('#coachBlock'); const rec=r.ai_recommendations;
-  if(rec && rec.report){ $('#coach').innerHTML=mdToHtml(rec.report)+`<div class="model">Generated by ${rec.model||'AI'}</div>`; cb.style.display=''; }
-  else { cb.style.display='none'; }
+  if(rec && rec.report){
+    $('#coach').innerHTML=mdToHtml(rec.report)+
+      `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.</div>`;
+    cb.classList.remove('hidden');
+  } else cb.classList.add('hidden');
 
-  // issues
+  // findings
   const issues=r.detected_issues||[];
   const ib=$('#issues');
   if(issues.length){
-    ib.innerHTML=issues.map(it=>`<div class="issue ${(it.severity||'').toLowerCase()}">
-      <div class="i-top"><span class="i-type">${pretty(it.type||'')}</span><span class="i-sev">${it.severity||''}</span></div>
-      <div class="i-rec">${it.recommendation||''}</div>
-      ${it.value?`<div class="i-val">${it.value}</div>`:''}</div>`).join('');
+    ib.innerHTML=issues.map(it=>{
+      const sev=(it.severity||'').toLowerCase();
+      const sevCls=['high','medium','low'].includes(sev)?sev:'low';
+      return `<div class="issue ${sevCls}">
+        <div class="i-top"><span class="i-type">${esc(pretty(it.type||''))}</span>
+          <span class="pill pill-${sevCls}"><span class="dot" aria-hidden="true"></span>${esc(it.severity||'')}</span></div>
+        <div class="i-rec">${esc(it.recommendation||'')}</div>
+        ${it.value?`<div>${fmtIssueValue(it.value)}</div>`:''}</div>`;
+    }).join('');
   } else {
-    ib.innerHTML=`<div class="banner ok">No major technique issues detected in this clip.</div>`;
+    ib.innerHTML=`<div class="banner ok" style="margin-top:0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+      <span>No major technique issues detected in this clip.</span></div>`;
   }
 
   // tiles
-  $('#tiles').innerHTML=(sport==='bike'?bikeTiles(s):runTiles(s)).join('') || '<p class="hint">No summary metrics available.</p>';
+  $('#tiles').innerHTML=(sport==='bike'?bikeTiles(s):runTiles(s)).join('') || '<p class="hint" style="text-align:left">No summary metrics available.</p>';
 
   // angle table
   const A=r.angle_statistics||{};
@@ -628,79 +1066,53 @@ function render(job){
     const a=A[k]; const valid=a.valid_frames||0; const tot=valid+(a.nan_frames||0);
     const pct=tot?Math.round(valid/tot*100):0;
     const muted=a.mean==null;
-    return `<tr>
-      <td>${pretty(k)}</td>
-      <td class="num ${muted?'muted':''}">${num(a.min,0)}</td>
-      <td class="num ${muted?'muted':''}">${num(a.mean,0)}</td>
-      <td class="num ${muted?'muted':''}">${num(a.max,0)}</td>
-      <td class="num ${muted?'muted':''}">${num(a.range,0)}</td>
-      <td class="num ${muted?'muted':''}">${pct}%</td></tr>`;
+    const cls=muted?'num muted':'num';
+    return `<tr><th scope="row">${esc(pretty(k))}</th>
+      <td class="${cls}">${num(a.min,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
+      <td class="${cls}">${num(a.max,0)}</td><td class="${cls}">${num(a.range,0)}</td>
+      <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
   }).join('');
   $('#angleRows').innerHTML=rows||'<tr><td colspan="6" class="muted">No angle data.</td></tr>';
 
-  // raw json
-  $('#rawJson').textContent=JSON.stringify(r,null,2);
+  // raw json (debug only)
+  if(DEBUG){ $('#rawBlock').classList.remove('hidden'); $('#rawJson').textContent=JSON.stringify(r,null,2); }
 
-  show('results');
+  renderQuota();
+  setState('results',{focus:'#resultsTitle'});
 }
 
-const scoreColor = s => s==null?C.navy : s>=85?C.ok : s>=70?C.blue : s>=55?C.warn : C.coral;
-
-async function analyzePhoto(){
-  const fd=new FormData();
-  fd.append('photo',state.file);
-  fd.append('sport',state.sport);
-  if(state.sport==='bike') fd.append('position',$('#position').value);
-  fd.append('coaching','true');
-  $('#progTitle').textContent='Analyzing photo…';
-  $('#progText').textContent='Detecting pose and measuring joint angles. ~5 seconds.';
-  show('progress');
-  try{
-    const r=await fetch('/analyze-photo',{method:'POST',body:fd});
-    if(!r.ok){ const t=await r.json().catch(()=>({detail:r.statusText})); throw new Error(t.detail||('HTTP '+r.status)); }
-    state.remaining=r.headers.get('X-RateLimit-Remaining');
-    renderPhoto(await r.json());
-  }catch(err){ fail(err.message); }
-}
-
-function renderPhoto(res){
-  const sport=res.sport||state.sport; const sc=res.score||{}; const score=sc.overall_score;
-  $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
-  const g=$('#pGrade'); g.textContent=sc.grade||'—'; g.style.background=scoreColor(score);
-  $('#pSportTag').style.background = sport==='run'?C.run:C.bike;
-  $('#pSportTagText').textContent = sport==='run'?'Run':'Bike';
-  const parts=[`Camera side: <b>${res.camera_side||'—'}</b>`];
-  if(sport==='bike'&&res.cycling_position) parts.push(`Position: <b>${res.cycling_position_label||res.cycling_position}</b>`);
-  if(sport==='bike'&&res.pedal_phase) parts.push(`Pedal: <b>${String(res.pedal_phase).replace(/_/g,' ')}</b>`);
-  if(state.remaining!=null&&state.remaining!=='') parts.push(`<b>${state.remaining}</b> left today`);
-  $('#pScoreMeta').innerHTML=parts.join(' &nbsp;·&nbsp; ');
-  $('#pImage').src=res.thumbnail_base64||''; $('#pDownload').href=res.thumbnail_base64||'#';
-  const warns=res.warnings||[];
-  $('#pWarnings').innerHTML = warns.length ? `<div class="banner warn">⚠ ${warns.join(' ')}</div>`
-    : `<div class="banner ok">✓ Clean side-view capture.</div>`;
-  const cb=$('#pCoachBlock'); const rec=res.ai_recommendations;
-  if(rec&&rec.report){ $('#pCoach').innerHTML=mdToHtml(rec.report)+`<div class="model">Generated by ${rec.model||'AI'}</div>`; cb.style.display=''; }
-  else cb.style.display='none';
-  const A=res.angles_with_context||{};
-  $('#pAngleRows').innerHTML=Object.keys(A).map(k=>{
-    const a=A[k]; const st=a.status||'unknown';
-    const val=a.value==null?'—':(typeof a.value==='number'?(Math.round(a.value*10)/10):a.value);
-    return `<tr><td>${a.label||pretty(k)}</td><td class="num">${val}</td><td class="num">${a.optimal_min}–${a.optimal_max}</td><td><span class="pill ${st}">${st.replace(/_/g,' ')}</span></td></tr>`;
-  }).join('') || '<tr><td colspan="4" class="muted">No angle data.</td></tr>';
-  $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2);
-  show('photoResults');
-}
-
-function reset(){
-  clearInterval(state.polling); state.file=null; state.jobId=null;
-  fileInput.value=''; drop.classList.remove('hidden'); fprev.classList.remove('show');
-  $('#analyze').disabled=true; $('#analyze').classList.add('is-disabled');
-  $('#hint').textContent='Pick a file to start.';
+function reset(keepFile=false){
+  clearInterval(state.polling); state.jobId=null; state.keepFileOnRetry=false;
+  if(keepFile && state.file){
+    // Network-ish failure: keep the clip loaded so "Try again" is one click.
+    drop.classList.remove('err');
+  } else {
+    state.file=null;
+    fileInput.value=''; fileInput.removeAttribute('tabindex');
+    drop.classList.remove('hidden','err'); fprev.classList.remove('show');
+    $('#analyze').setAttribute('aria-disabled','true');
+    hintMsg('Pick a clip to start.');
+  }
+  if(keepFile && state.file) readyHint();
   const ov=$('#overlayVideo'); ov.pause(); ov.removeAttribute('src'); ov.load();
-  const pi=$('#previewImg'); if(pi) pi.removeAttribute('src');
-  show('uploader');
+  history.replaceState(null,'',location.pathname+location.search);
+  setState('upload',{focus:'#uploaderTitle'});
 }
-$('#pAgain').addEventListener('click',reset);
+
+/* ---- rehydrate from #job=… (refresh survives for the job's lifetime) ---- */
+(function init(){
+  renderQuota();
+  const m=location.hash.match(/^#job=([a-z0-9]+)$/i);
+  if(m){
+    state.jobId=m[1];
+    $('#jobchip').innerHTML='<span class="fchip">restored session</span>';
+    setState('progress');
+    startPolling();
+  }
+})();
+
+/* Exposed for testing/screenshots */
+window.__flapp={setState,render,fail,showLimit,setSteps,stage};
 </script>
 </body>
 </html>

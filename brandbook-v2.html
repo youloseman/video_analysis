@@ -649,7 +649,60 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
 </pre>
 </section>
 
-<footer>Brandbook v2.0 · Спортивная светлая тема для триатлетов и бегунов · Archivo / Manrope / IBM Plex Mono (Google Fonts)</footer>
+<!-- ============ 10. РАСШИРЕНИЯ ПРОДУКТА (Flapp) ============ -->
+<section>
+  <div class="eyebrow">Раздел 10</div>
+  <h2 class="sec">Расширения продукта</h2>
+  <div class="speedline"></div>
+  <p class="lede">Токены и компоненты, добавленные в приложении Flapp поверх базовой системы. Они следуют ДНК бренда (тёплые тинты базовых оттенков, navy-текст на тинтах, синий = активное состояние, сетка 8px) и являются официальной частью системы для продуктовых интерфейсов.</p>
+
+  <h3 class="sub">Дополнительные токены</h3>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#CE3F2B"></div><div class="meta">
+      <div class="name">Coral · Interactive</div><div class="hex">#CE3F2B · --c-coral-btn</div>
+      <div class="use">Фон коралловых кнопок (белый текст ≥ 4.5:1, WCAG AA). Ховер — #C13A26. Декоративный коралл остаётся #F1553F</div></div></div>
+    <div class="sw"><div class="chip" style="background:#C97B10"></div><div class="meta">
+      <div class="name">Warn</div><div class="hex">#C97B10 · --c-warn</div>
+      <div class="use">Предупреждения: точки, рамки, баннеры. Не путать с --c-bike #F2A33C — тот только для дисциплины</div></div></div>
+    <div class="sw"><div class="chip" style="background:#9A5E0B"></div><div class="meta">
+      <div class="name">Warn · Text</div><div class="hex">#9A5E0B · --c-warn-text</div>
+      <div class="use">Warn как мелкий текст на белом (≥ 4.5:1). Для точек и рамок используем базовый --c-warn</div></div></div>
+    <div class="sw"><div class="chip" style="background:#DE5F33"></div><div class="meta">
+      <div class="name">Orange · Grade D</div><div class="hex">#DE5F33 · --c-orange</div>
+      <div class="use">Шкала оценок: ступень между Warn (C) и Coral (F)</div></div></div>
+    <div class="sw"><div class="chip" style="background:#8A94A3"></div><div class="meta">
+      <div class="name">Ink Faint</div><div class="hex">#8A94A3 · --c-ink-faint</div>
+      <div class="use">Только неактивные состояния (disabled ≈ 3:1). Не для содержательного текста</div></div></div>
+    <div class="sw"><div class="chip" style="background:#0d1420"></div><div class="meta">
+      <div class="name">Media Frame</div><div class="hex">#0d1420</div>
+      <div class="use">Подложка видеоплеера и медиа-превью</div></div></div>
+  </div>
+
+  <h3 class="sub">Шкала оценок A–F</h3>
+  <p class="lede" style="margin-bottom:16px">Позитив — синий (как delta-up в таблицах), негатив — коралл. Зелёного в системе нет.
+    <b>A</b> #2F6DE0 · <b>B</b> #14294B · <b>C</b> #C97B10 · <b>D</b> #DE5F33 · <b>F</b> #F1553F.
+    Грейд-чип — контурный (2.5px рамка + буква цветом), не заливка.</p>
+
+  <h3 class="sub">Тинтовые пилюли</h3>
+  <p class="lede" style="margin-bottom:16px">Для статусов и дисциплин в продукте: тёплый тинт фона + цветная точка 8px + navy-текст 11px/800 caps. Контраст текста не зависит от цвета статуса.
+    Run #FDE7E7 · Bike #FCEED8 · High #FDE5E1 · Medium #F7EBD9 · Low #F3F5F8 (точка ink-faint).
+    Сплошные .tag из раздела 05 остаются для графиков и таблиц отчётов.</p>
+
+  <h3 class="sub">Компоненты продукта</h3>
+  <p class="lede">
+    <b>Segmented control:</b> сегменты равной ширины (grid 1fr), активный — заливка Electric Blue, ховер неактивного — panel-blue.
+    <b>Switch:</b> трек 42×24, активный — Electric Blue, фокус — кольцо 3px rgba(47,109,224,.3).
+    <b>Step-трекер:</b> точки 24px с номером, done — заливка blue + SVG-галка, соединители 2px line.
+    <b>Quota-чип:</b> panel-фон, радиус 999, числа — Plex Mono.
+    <b>Баннеры:</b> ok — panel-blue + синяя рамка-лево 4px; warn — тинт #F9F1E3 + рамка --c-warn; текст всегда ink/navy.
+    <b>Speedline-sm:</b> вариант 56×4px для заголовков блоков внутри отчёта.
+    <b>Компактная pace-карточка (тайл метрик):</b> label 10.5px/.14em, значение Plex Mono 26px, статус — точка у лейбла + слово «in range/check» цветом статуса.
+    <b>Иконки:</b> единый inline-SVG набор 16px, stroke 2, currentColor, круглые концы. Эмодзи и текстовые стрелки в UI запрещены.
+    <b>Фокус:</b> все интерактивные элементы — :focus-visible кольцо 2px Electric Blue (offset 2px).
+  </p>
+</section>
+
+<footer>Brandbook v2.1 · Спортивная светлая тема для триатлетов и бегунов · Archivo / Manrope / IBM Plex Mono (Google Fonts) · Раздел 10 — расширения Flapp</footer>
 </div>
 </body>
 </html>
