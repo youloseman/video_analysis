@@ -8,9 +8,9 @@ pose estimation (MediaPipe BlazePose) → biomechanics → technique score.
 > core runs autonomously (angles, issues, metrics, 0–100 score + grade), renders
 > an annotated **overlay video**, is exposed over a **FastAPI service**
 > (upload → poll → JSON + overlay) with a **brandbook-styled web frontend**
-> (drag-drop upload → results + overlay player), and is **deployed to Railway**
-> as a Docker image (pose model baked in, ffmpeg for web-safe H.264). No DB /
-> cloud storage / LLM yet — those are later milestones.
+> (drag-drop upload → results + overlay player + **AI coaching**), and is
+> **deployed to Railway** as a Docker image (pose model baked in, ffmpeg for
+> web-safe H.264, Gemini for recommendations). No DB / cloud storage yet.
 
 ## Layout
 
@@ -98,7 +98,8 @@ overlays are stored under `backend/uploads/` (git-ignored).
 - **M4a** — ✅ deployed to Railway (Docker image, model baked in, ffmpeg → H.264)
 - **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
 - **M6** — ✅ web frontend (drag-drop upload → results + overlay player, brandbook theme)
-- **M5** — LLM coaching recommendations from the metrics
+- **M5** — ✅ Gemini AI coaching (numbers-vs-optimal feedback; graceful skip without a key)
+- **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
 - **later** — rear-view running, swimming (re-add the trimmed analyzers)
 
 ## Provenance
