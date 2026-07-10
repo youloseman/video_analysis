@@ -48,10 +48,14 @@ curl -s $BASE/jobs/<job_id>/overlay -o overlay.mp4
 
 - **Memory:** MediaPipe "heavy" + 1080p60 clips are RAM-hungry. If the container
   OOM-restarts, bump the service memory in Railway (Settings → Resources).
-- **Single instance only.** The job store is in-memory and the uploaded files +
-  overlays live on the container's ephemeral disk. Do **not** scale replicas or
-  workers > 1 until M4b (external job store + object storage) — a poll could
-  otherwise hit a replica that never saw the job. Restarts also drop in-flight
-  jobs and stored overlays.
+- **Single instance only.** The job store AND the per-IP rate limiter are
+  in-memory, and uploaded files + overlays live on the container's ephemeral
+  disk. Do **not** scale replicas or workers > 1 until M4b (external job store +
+  object storage) — a poll could otherwise hit a replica that never saw the job,
+  and the rate limit wouldn't be shared. Restarts drop in-flight jobs, stored
+  overlays, and reset the rate counters.
+- **Access control:** requests are rate-limited to 3 analyses per client IP per
+  24h (`VA_RATE_LIMIT_PER_DAY`), but the endpoint is still unauthenticated and
+  each analysis makes a paid Gemini call. Add real auth before sharing widely.
 - **First build is slow** (downloads the ML stack + model); later builds reuse
   Docker layer cache.
