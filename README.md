@@ -4,12 +4,13 @@ Standalone technique-analysis app for **running** (side view) and **cycling
 position** (side view), extracted from the Motus platform. Computer-vision
 pose estimation (MediaPipe BlazePose) → biomechanics → technique score.
 
-> Status: **Milestones 1–3 + Railway deploy complete** — the analysis core runs
-> autonomously (angles, issues, metrics, 0–100 score + grade), renders an
-> annotated **overlay video** (skeleton + angle labels + score per frame), is
-> exposed over a **FastAPI service** (upload → poll → JSON + overlay), and is
-> **deployed to Railway** as a Docker image (pose model baked in, ffmpeg for
-> web-safe H.264). No DB / cloud storage / LLM yet — those are later milestones.
+> Status: **Milestones 1–3 + web UI + Railway deploy complete** — the analysis
+> core runs autonomously (angles, issues, metrics, 0–100 score + grade), renders
+> an annotated **overlay video**, is exposed over a **FastAPI service**
+> (upload → poll → JSON + overlay) with a **brandbook-styled web frontend**
+> (drag-drop upload → results + overlay player), and is **deployed to Railway**
+> as a Docker image (pose model baked in, ffmpeg for web-safe H.264). No DB /
+> cloud storage / LLM yet — those are later milestones.
 
 ## Layout
 
@@ -96,8 +97,8 @@ overlays are stored under `backend/uploads/` (git-ignored).
 - **M3** — ✅ FastAPI service (upload → poll → JSON + overlay; in-memory jobs)
 - **M4a** — ✅ deployed to Railway (Docker image, model baked in, ffmpeg → H.264)
 - **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
+- **M6** — ✅ web frontend (drag-drop upload → results + overlay player, brandbook theme)
 - **M5** — LLM coaching recommendations from the metrics
-- **M6** — web frontend (upload UI + results + overlay player)
 - **later** — rear-view running, swimming (re-add the trimmed analyzers)
 
 ## Provenance

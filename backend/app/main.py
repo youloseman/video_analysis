@@ -27,7 +27,7 @@ from typing import Any
 import structlog
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -124,9 +124,13 @@ def _process_job(
 # --------------------------------------------------------------------------
 # Routes
 # --------------------------------------------------------------------------
+STATIC_DIR = Path(__file__).parent / "static"
+
+
 @app.get("/", include_in_schema=False)
-def root() -> RedirectResponse:
-    return RedirectResponse(url="/docs")
+def root() -> FileResponse:
+    """Serve the single-page frontend."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")
