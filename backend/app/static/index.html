@@ -104,7 +104,7 @@ body:not([data-state="upload"]) .hero p{ /* keep in the a11y tree: h1 stays the 
 main{padding:40px 0 72px}
 body:not([data-state="upload"]) main{padding-top:32px}
 .card{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);box-shadow:var(--shadow)}
-.cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
 h2.sec{font-family:var(--f-display);font-weight:800;color:var(--c-navy);text-transform:uppercase;
   font-size:26px;line-height:1.1;letter-spacing:-.01em;margin:8px 0 8px}
 h2.sec + .speedline{margin-bottom:24px}
@@ -157,11 +157,24 @@ h2.sec + .speedline{margin-bottom:24px}
 .fmeta .fsize{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft);margin-top:4px}
 .fmeta .change{margin-top:16px}
 
-.controls{display:grid;grid-template-columns:max-content minmax(240px,320px);gap:24px 48px;margin-top:24px}
+/* ---------- Stepped form ---------- */
+.step-block{display:grid;grid-template-columns:36px 1fr;gap:16px;padding:28px 0;border-top:1px solid var(--c-line)}
+.step-block:first-of-type{border-top:none;padding-top:8px}
+.step-head{display:contents}
+.step-no{grid-row:1;grid-column:1;width:32px;height:32px;border-radius:50%;background:var(--c-navy);color:#fff;
+  font-family:var(--f-body);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;
+  margin-top:2px}
+.step-title{grid-row:1;grid-column:2;font-family:var(--f-body);font-weight:800;font-size:17px;color:var(--c-navy);
+  align-self:center;margin:0}
+.step-body{grid-row:2;grid-column:2;margin-top:16px}
+.step-body .runtip{margin-top:16px}
+
+.controls{display:grid;grid-template-columns:minmax(0,240px) minmax(0,300px);gap:20px;align-items:end}
 .field label,.field .fieldlabel{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   font-weight:800;color:var(--c-ink-soft);margin-bottom:8px}
 .seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;
   border:1.5px solid var(--c-line);border-radius:var(--radius-btn);overflow:hidden}
+.seg-wide{display:grid;grid-template-columns:1fr 1fr;max-width:320px}
 .seg button{font-family:var(--f-body);font-weight:800;font-size:14px;padding:12px 24px;min-width:104px;border:none;
   background:#fff;color:var(--c-ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .12s,color .12s}
 .seg button .tag{width:9px;height:9px;border-radius:50%;flex:none}
@@ -181,19 +194,22 @@ select:hover{border-color:var(--c-blue)}
 .runtip{background:var(--c-panel-blue);border-radius:var(--radius);padding:12px 16px;font-size:13px;color:var(--c-ink-soft);line-height:1.5}
 .runtip b{color:var(--c-navy)}
 
-.actions{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-top:32px;flex-wrap:wrap}
-.switch{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;cursor:pointer;user-select:none;padding:8px 0}
+.switch{display:flex;align-items:flex-start;gap:12px;font-size:14px;font-weight:700;cursor:pointer;user-select:none;
+  margin-top:20px;padding:12px 16px;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel)}
 .switch input{position:absolute;opacity:0;width:42px;height:24px;cursor:pointer}
-.switch .box{width:42px;height:24px;background:var(--c-line);border-radius:999px;position:relative;transition:.15s;flex:none}
+.switch .box{width:42px;height:24px;background:var(--c-line);border-radius:999px;position:relative;transition:.15s;flex:none;margin-top:1px}
 .switch .box::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .switch input:checked + .box{background:var(--c-blue)}
 .switch input:checked + .box::after{transform:translateX(18px)}
 .switch input:focus-visible + .box{box-shadow:var(--ring)}
 .switch:hover input:not(:checked) + .box{background:#CBD3DE}
 .switch:hover input:checked + .box{background:var(--c-blue-dk)}
-.subhint{font-size:12px;color:var(--c-ink-soft);margin-top:0;max-width:280px}
-.go-cluster{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
-.hint{font-size:13px;color:var(--c-ink-soft);text-align:right}
+.subhint{display:block;font-size:12px;font-weight:500;color:var(--c-ink-soft);margin-top:4px}
+
+.submit-row{display:flex;flex-direction:column;align-items:center;gap:10px;
+  margin-top:28px;padding-top:28px;border-top:1px solid var(--c-line)}
+.submit-row .btn-go{min-width:240px}
+.hint{font-size:13px;color:var(--c-ink-soft);text-align:center}
 .hint.err{color:var(--c-coral-btn);font-weight:700}
 
 /* ---------- Progress ---------- */
@@ -333,17 +349,17 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
   main{padding-top:24px}
   .uploader{padding:24px;margin-top:-48px}
   .cardhead{flex-direction:column}
+  .step-block{grid-template-columns:28px 1fr;gap:12px;padding:24px 0}
+  .step-no{width:28px;height:28px;font-size:14px}
+  .step-title{font-size:16px}
+  .step-body{margin-top:12px}
   .drop{padding:32px 16px}
   .filepreview{flex-direction:column;align-items:stretch}
   .filepreview video{width:100%}
   .filepreview img#previewImg{width:100%;max-width:260px;margin:0 auto}
-  .controls{grid-template-columns:1fr;gap:24px}
-  .seg{display:grid;grid-template-columns:1fr 1fr;width:100%}
-  .actions{flex-direction:column;align-items:stretch}
-  .go-cluster{align-items:stretch}
-  .go-cluster .btn-go{width:100%}
-  .hint{text-align:center}
-  .subhint{max-width:none}
+  .controls{grid-template-columns:1fr;gap:20px}
+  .seg-wide{max-width:none}
+  .submit-row .btn-go{width:100%}
   .progress-card{padding:32px 24px}
   .step span.slbl{display:none}
   .score-num{font-size:64px}
@@ -365,6 +381,10 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
     <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
   <symbol id="i-check-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
     <path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></symbol>
+  <symbol id="i-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/></symbol>
   <symbol id="i-arr-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 12h15M13 6l6 6-6 6"/></symbol>
   <symbol id="i-arr-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -417,70 +437,93 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
         <div class="quota" id="quota">Free · <b>3</b> analyses per day</div>
       </div>
 
-      <div class="field" id="modeField">
-        <span class="fieldlabel" id="modeLabel">Input</span>
-        <div class="seg" id="modeSeg" role="group" aria-label="Input type — choose one">
-          <button type="button" data-mode="video" aria-pressed="true">Video</button>
-          <button type="button" data-mode="photo" aria-pressed="false">Photo</button>
+      <!-- STEP 1 · What are you analyzing -->
+      <div class="step-block">
+        <div class="step-head">
+          <span class="step-no" aria-hidden="true">1</span>
+          <h3 class="step-title" id="modeLabel">What are you analyzing?</h3>
         </div>
-      </div>
-
-      <input type="file" id="file" class="visually-hidden" accept="video/*"
-             aria-describedby="dropHelp">
-      <label class="drop" id="drop" for="file">
-        <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
-        <b id="dropTitle">Drop a video here</b> or click to browse
-        <small id="dropHelp">Side view, one athlete in frame · mp4 / mov / webm · up to 200 MB · 5–15 s works best</small>
-      </label>
-
-      <div class="filepreview" id="filepreview">
-        <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
-        <img id="previewImg" class="hidden" alt="Preview of your selected photo">
-        <div class="fmeta">
-          <div class="fname" id="fname">clip.mp4</div>
-          <div class="fsize" id="fsize">—</div>
-          <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
-        </div>
-      </div>
-
-      <div class="controls">
-        <div class="field">
-          <span class="fieldlabel" id="sportLabel">Sport</span>
-          <div class="seg" id="sportSeg" role="group" aria-label="Sport — choose one">
-            <button type="button" class="run" data-sport="run" aria-pressed="false"><span class="tag" aria-hidden="true"></span>Run</button>
-            <button type="button" class="bike" data-sport="bike" aria-pressed="true"><span class="tag" aria-hidden="true"></span>Bike</button>
+        <div class="step-body">
+          <div class="seg seg-wide" id="modeSeg" role="group" aria-labelledby="modeLabel">
+            <button type="button" data-mode="video" aria-pressed="true">
+              <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Video
+            </button>
+            <button type="button" data-mode="photo" aria-pressed="false">
+              <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg> Photo
+            </button>
           </div>
         </div>
-        <div class="field" id="positionField">
-          <label for="position">Cycling position</label>
-          <div class="selectwrap">
-            <select id="position">
-              <option value="road_hoods">Road · Hoods</option>
-              <option value="road_drops">Road · Drops</option>
-              <option value="tt_aero">TT · Aero</option>
-              <option value="triathlon" selected>Triathlon · Aero</option>
-              <option value="casual">Casual / Commuter</option>
-            </select>
-            <svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg>
-          </div>
+      </div>
+
+      <!-- STEP 2 · Sport & position -->
+      <div class="step-block">
+        <div class="step-head">
+          <span class="step-no" aria-hidden="true">2</span>
+          <h3 class="step-title" id="sportLabel">Which sport?</h3>
         </div>
-        <div class="field hidden" id="runTipField">
-          <span class="fieldlabel">Capture tip</span>
-          <div class="runtip"><b>Best results:</b> film from the side at hip height, whole body in frame, steady pace.</div>
+        <div class="step-body">
+          <div class="controls">
+            <div class="field">
+              <div class="seg seg-wide" id="sportSeg" role="group" aria-labelledby="sportLabel">
+                <button type="button" class="run" data-sport="run" aria-pressed="false"><span class="tag" aria-hidden="true"></span>Run</button>
+                <button type="button" class="bike" data-sport="bike" aria-pressed="true"><span class="tag" aria-hidden="true"></span>Bike</button>
+              </div>
+            </div>
+            <div class="field" id="positionField">
+              <label for="position">Cycling position</label>
+              <div class="selectwrap">
+                <select id="position">
+                  <option value="road_hoods">Road · Hoods</option>
+                  <option value="road_drops">Road · Drops</option>
+                  <option value="tt_aero">TT · Aero</option>
+                  <option value="triathlon" selected>Triathlon · Aero</option>
+                  <option value="casual">Casual / Commuter</option>
+                </select>
+                <svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="runtip hidden" id="runTipField"><b>Best results:</b> film from the side at hip height, whole body in frame, steady pace.</div>
         </div>
       </div>
 
-      <div class="actions">
-        <div id="overlayField">
-          <label class="switch"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>Render overlay video</label>
-          <p class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</p>
+      <!-- STEP 3 · Add the file -->
+      <div class="step-block">
+        <div class="step-head">
+          <span class="step-no" aria-hidden="true">3</span>
+          <h3 class="step-title" id="fileLabel">Add your <span id="fileNoun">clip</span></h3>
         </div>
-        <div class="go-cluster">
-          <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
-            Analyze <svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg>
-          </button>
-          <p class="hint" id="hint" role="status" aria-live="polite">Pick a clip to start.</p>
+        <div class="step-body">
+          <input type="file" id="file" class="visually-hidden" accept="video/*"
+                 aria-describedby="dropHelp" aria-labelledby="fileLabel">
+          <label class="drop" id="drop" for="file">
+            <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+            <b id="dropTitle">Drop a video here</b> or click to browse
+            <small id="dropHelp">Side view, one athlete in frame · mp4 / mov / webm · up to 200 MB · 5–15 s works best</small>
+          </label>
+
+          <div class="filepreview" id="filepreview">
+            <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
+            <img id="previewImg" class="hidden" alt="Preview of your selected photo">
+            <div class="fmeta">
+              <div class="fname" id="fname">clip.mp4</div>
+              <div class="fsize" id="fsize">—</div>
+              <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
+            </div>
+          </div>
+
+          <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
+            <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
+          </label>
         </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="submit-row">
+        <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
+          Analyze <svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg>
+        </button>
+        <p class="hint" id="hint" role="status" aria-live="polite">Pick a clip to start.</p>
       </div>
     </div>
   </section>
@@ -835,6 +878,7 @@ $('#modeSeg').addEventListener('click',e=>{
   $('#change').textContent = photo?'Change photo':'Change clip';
   $('#uploaderEyebrow').textContent = photo?'Your photo':'Your clip';
   $('#uploaderTitle').textContent = photo?'Analyze a photo':'Analyze a clip';
+  $('#fileNoun').textContent = photo?'photo':'clip';
   $('#overlayField').classList.toggle('hidden', photo);
   readyHint();
 });
