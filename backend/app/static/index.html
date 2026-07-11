@@ -133,22 +133,45 @@ h2.sec + .speedline{margin-bottom:24px}
   cursor:not-allowed;box-shadow:none;transform:none}
 .btn[aria-disabled="true"]:hover svg,.btn:disabled:hover svg{transform:none}
 
-/* ---------- Uploader ---------- */
-.uploader{padding:32px;margin-top:-72px;position:relative;z-index:5}
-.quota{font-size:13px;font-weight:700;color:var(--c-ink-soft);background:var(--c-panel);
-  border-radius:999px;padding:8px 16px;white-space:nowrap}
-.quota b{color:var(--c-navy);font-family:var(--f-mono);font-weight:600}
+/* ---------- Uploader (card-style, per reference) ---------- */
+#uploader{max-width:720px;margin:0 auto;display:flex;flex-direction:column;align-items:center}
+.uploader{padding:32px;margin-top:16px;position:relative;z-index:5;width:100%}
+.uphead{font-family:var(--f-body);font-weight:800;font-size:22px;color:var(--c-navy);margin:0 0 24px}
 
-.drop{display:block;border:2px dashed var(--c-line);border-radius:var(--radius);padding:40px 24px;
-  text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--c-panel)}
+/* mode tabs above the card */
+.modetabs{display:inline-flex;gap:4px;padding:5px;background:#fff;border:1px solid var(--c-line);
+  border-radius:14px;box-shadow:var(--shadow);position:relative;z-index:6}
+.modetabs button{font-family:var(--f-body);font-weight:700;font-size:14px;color:var(--c-ink-soft);
+  background:transparent;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;display:flex;align-items:center;gap:8px;
+  transition:background .15s,color .15s}
+.modetabs button .ic{width:16px;height:16px}
+.modetabs button:hover{color:var(--c-ink)}
+.modetabs button[aria-selected="true"]{background:var(--c-panel-blue);color:var(--c-blue)}
+.modetabs button:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+
+/* control rows (label + full-width tile row) */
+.ctl{margin-bottom:20px}
+.ctl-label{display:block;font-size:14px;font-weight:600;color:var(--c-ink-soft);margin-bottom:8px}
+.tilerow{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:12px}
+.tile-btn{font-family:var(--f-body);font-weight:600;font-size:15px;color:var(--c-ink);cursor:pointer;
+  background:#fff;border:1.5px solid var(--c-line);border-radius:var(--radius-btn);padding:14px 16px;text-align:center;
+  transition:background .15s,border-color .15s,color .15s}
+.tile-btn:hover{border-color:var(--c-blue);background:var(--c-panel-blue)}
+.tile-btn:active{background:#DFE9F9}
+.tile-btn[aria-pressed="true"]{background:var(--c-panel-blue);border-color:var(--c-blue);color:var(--c-blue);font-weight:700}
+.tile-btn:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+
+/* drop zone */
+.drop{display:block;border:1.5px dashed var(--c-blue-soft, #B9CDF2);border-radius:var(--radius);padding:44px 24px;
+  text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--c-panel);margin-bottom:20px}
 .drop:hover,.drop.drag,#file:focus-visible + .drop{border-color:var(--c-blue);background:var(--c-panel-blue)}
 #file:focus-visible + .drop{box-shadow:var(--ring)}
 .drop.err{border-color:var(--c-coral)}
-.drop .ic-lg{margin:0 auto 16px;color:var(--c-blue);display:block}
-.drop b{color:var(--c-ink);font-weight:800}
-.drop small{display:block;color:var(--c-ink-soft);font-size:13px;margin-top:8px}
+.drop .ic-lg{margin:0 auto 14px;color:var(--c-ink-soft);display:block}
+.drop b{color:var(--c-ink);font-weight:700;font-size:15px}
+.drop small{display:block;color:var(--c-ink-soft);font-size:13px;margin-top:6px}
 
-.filepreview{display:none;background:var(--c-panel);border-radius:var(--radius);padding:16px;gap:24px;align-items:center}
+.filepreview{display:none;background:var(--c-panel);border-radius:var(--radius);padding:16px;gap:24px;align-items:center;margin-bottom:20px}
 .filepreview.show{display:flex}
 .filepreview video{width:224px;aspect-ratio:16/9;height:auto;object-fit:contain;border-radius:var(--radius-btn);background:#0d1420;flex:none}
 .filepreview img#previewImg{width:168px;aspect-ratio:3/4;height:auto;object-fit:cover;border-radius:var(--radius-btn);background:#0d1420;flex:none}
@@ -157,45 +180,14 @@ h2.sec + .speedline{margin-bottom:24px}
 .fmeta .fsize{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft);margin-top:4px}
 .fmeta .change{margin-top:16px}
 
-/* ---------- Stepped form ---------- */
-.step-block{display:grid;grid-template-columns:36px 1fr;gap:16px;padding:28px 0;border-top:1px solid var(--c-line)}
-.step-block:first-of-type{border-top:none;padding-top:8px}
-.step-head{display:contents}
-.step-no{grid-row:1;grid-column:1;width:32px;height:32px;border-radius:50%;background:var(--c-navy);color:#fff;
-  font-family:var(--f-body);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;
-  margin-top:2px}
-.step-title{grid-row:1;grid-column:2;font-family:var(--f-body);font-weight:800;font-size:17px;color:var(--c-navy);
-  align-self:center;margin:0}
-.step-body{grid-row:2;grid-column:2;margin-top:16px}
-.step-body .runtip{margin-top:16px}
+/* capture guidelines */
+.guides{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 32px;margin:0 0 24px}
+.guides li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--c-ink-soft)}
+.guides li .ic{width:16px;height:16px;color:var(--c-blue);flex:none}
 
-.controls{display:grid;grid-template-columns:minmax(0,240px) minmax(0,300px);gap:20px;align-items:end}
-.field label,.field .fieldlabel{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-  font-weight:800;color:var(--c-ink-soft);margin-bottom:8px}
-.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;
-  border:1.5px solid var(--c-line);border-radius:var(--radius-btn);overflow:hidden}
-.seg-wide{display:grid;grid-template-columns:1fr 1fr;max-width:320px}
-.seg button{font-family:var(--f-body);font-weight:800;font-size:14px;padding:12px 24px;min-width:104px;border:none;
-  background:#fff;color:var(--c-ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .12s,color .12s}
-.seg button .tag{width:9px;height:9px;border-radius:50%;flex:none}
-.seg button.run .tag{background:var(--c-run)} .seg button.bike .tag{background:var(--c-bike)}
-.seg button:not([aria-pressed="true"]):hover{background:var(--c-panel-blue);color:var(--c-ink)}
-.seg button:not([aria-pressed="true"]):active{background:#DFE9F9}
-.seg button[aria-pressed="true"]{color:#fff;background:var(--c-blue)}
-.seg button[aria-pressed="true"] .tag{box-shadow:0 0 0 2px rgba(255,255,255,.5)}
-
-.selectwrap{position:relative}
-.selectwrap .ic{position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--c-ink-soft)}
-select{appearance:none;-webkit-appearance:none;font-family:var(--f-body);font-size:16px;font-weight:700;color:var(--c-ink);
-  padding:12px 40px 12px 16px;border:1.5px solid var(--c-line);border-radius:var(--radius-btn);background:#fff;width:100%;cursor:pointer;
-  transition:border-color .15s}
-select:hover{border-color:var(--c-blue)}
-
-.runtip{background:var(--c-panel-blue);border-radius:var(--radius);padding:12px 16px;font-size:13px;color:var(--c-ink-soft);line-height:1.5}
-.runtip b{color:var(--c-navy)}
-
+/* overlay toggle */
 .switch{display:flex;align-items:flex-start;gap:12px;font-size:14px;font-weight:700;cursor:pointer;user-select:none;
-  margin-top:20px;padding:12px 16px;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel)}
+  margin-bottom:20px;padding:12px 16px;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel)}
 .switch input{position:absolute;opacity:0;width:42px;height:24px;cursor:pointer}
 .switch .box{width:42px;height:24px;background:var(--c-line);border-radius:999px;position:relative;transition:.15s;flex:none;margin-top:1px}
 .switch .box::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
@@ -206,11 +198,12 @@ select:hover{border-color:var(--c-blue)}
 .switch:hover input:checked + .box{background:var(--c-blue-dk)}
 .subhint{display:block;font-size:12px;font-weight:500;color:var(--c-ink-soft);margin-top:4px}
 
-.submit-row{display:flex;flex-direction:column;align-items:center;gap:10px;
-  margin-top:28px;padding-top:28px;border-top:1px solid var(--c-line)}
-.submit-row .btn-go{min-width:240px}
-.hint{font-size:13px;color:var(--c-ink-soft);text-align:center}
+/* submit */
+.btn-block{width:100%;justify-content:center}
+.hint{font-size:13px;color:var(--c-ink-soft);text-align:center;margin-top:12px}
 .hint.err{color:var(--c-coral-btn);font-weight:700}
+.quota-line{font-size:12px;color:var(--c-ink-soft);text-align:center;margin-top:20px;padding-top:20px;border-top:1px solid var(--c-line)}
+.quota-line b{color:var(--c-navy);font-family:var(--f-mono);font-weight:600}
 
 /* ---------- Progress ---------- */
 .progress-card{padding:40px 32px;max-width:640px;margin:0 auto}
@@ -347,19 +340,16 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
   .wordmark{font-size:21px}
   .hero .wrap{padding:40px 24px 48px}
   main{padding-top:24px}
-  .uploader{padding:24px;margin-top:-48px}
-  .cardhead{flex-direction:column}
-  .step-block{grid-template-columns:28px 1fr;gap:12px;padding:24px 0}
-  .step-no{width:28px;height:28px;font-size:14px}
-  .step-title{font-size:16px}
-  .step-body{margin-top:12px}
+  .uploader{padding:24px;margin-top:12px}
+  .modetabs{width:100%;left:auto;transform:none}
+  .modetabs button{flex:1;justify-content:center;padding:10px 12px;font-size:13px}
+  .uphead{font-size:19px}
   .drop{padding:32px 16px}
   .filepreview{flex-direction:column;align-items:stretch}
   .filepreview video{width:100%}
   .filepreview img#previewImg{width:100%;max-width:260px;margin:0 auto}
-  .controls{grid-template-columns:1fr;gap:20px}
-  .seg-wide{max-width:none}
-  .submit-row .btn-go{width:100%}
+  .tilerow{grid-auto-flow:row;grid-auto-columns:auto}
+  .guides{grid-template-columns:1fr;gap:8px}
   .progress-card{padding:32px 24px}
   .step span.slbl{display:none}
   .score-num{font-size:64px}
@@ -405,6 +395,16 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
     <path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7.5 8v3M12 8v4M16.5 8v3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></symbol>
 </svg>
 
 <header>
@@ -427,104 +427,77 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
 
   <!-- ============ UPLOADER ============ -->
   <section id="uploader" aria-labelledby="uploaderTitle">
+    <!-- Mode tabs -->
+    <div class="modetabs" id="modeSeg" role="tablist" aria-label="Analysis type">
+      <button type="button" role="tab" data-mode="video" aria-selected="true">
+        <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Video Analysis
+      </button>
+      <button type="button" role="tab" data-mode="photo" aria-selected="false">
+        <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg> Photo Express
+      </button>
+    </div>
+
     <div class="card uploader">
-      <div class="cardhead">
-        <div>
-          <div class="eyebrow" id="uploaderEyebrow">Your clip</div>
-          <h2 class="sec" id="uploaderTitle" tabindex="-1">Analyze a clip</h2>
-          <div class="speedline"></div>
-        </div>
-        <div class="quota" id="quota">Free · <b>3</b> analyses per day</div>
-      </div>
+      <h2 class="uphead" id="uploaderTitle" tabindex="-1">Upload <span id="fileNounCap">Video</span></h2>
 
-      <!-- STEP 1 · What are you analyzing -->
-      <div class="step-block">
-        <div class="step-head">
-          <span class="step-no" aria-hidden="true">1</span>
-          <h3 class="step-title" id="modeLabel">What are you analyzing?</h3>
-        </div>
-        <div class="step-body">
-          <div class="seg seg-wide" id="modeSeg" role="group" aria-labelledby="modeLabel">
-            <button type="button" data-mode="video" aria-pressed="true">
-              <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Video
-            </button>
-            <button type="button" data-mode="photo" aria-pressed="false">
-              <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg> Photo
-            </button>
-          </div>
+      <!-- Sport type -->
+      <div class="ctl">
+        <span class="ctl-label" id="sportLabel">Select sport type:</span>
+        <div class="tilerow" id="sportSeg" role="group" aria-labelledby="sportLabel">
+          <button type="button" class="tile-btn run" data-sport="run" aria-pressed="false">Running</button>
+          <button type="button" class="tile-btn bike" data-sport="bike" aria-pressed="true">Cycling</button>
         </div>
       </div>
 
-      <!-- STEP 2 · Sport & position -->
-      <div class="step-block">
-        <div class="step-head">
-          <span class="step-no" aria-hidden="true">2</span>
-          <h3 class="step-title" id="sportLabel">Which sport?</h3>
-        </div>
-        <div class="step-body">
-          <div class="controls">
-            <div class="field">
-              <div class="seg seg-wide" id="sportSeg" role="group" aria-labelledby="sportLabel">
-                <button type="button" class="run" data-sport="run" aria-pressed="false"><span class="tag" aria-hidden="true"></span>Run</button>
-                <button type="button" class="bike" data-sport="bike" aria-pressed="true"><span class="tag" aria-hidden="true"></span>Bike</button>
-              </div>
-            </div>
-            <div class="field" id="positionField">
-              <label for="position">Cycling position</label>
-              <div class="selectwrap">
-                <select id="position">
-                  <option value="road_hoods">Road · Hoods</option>
-                  <option value="road_drops">Road · Drops</option>
-                  <option value="tt_aero">TT · Aero</option>
-                  <option value="triathlon" selected>Triathlon · Aero</option>
-                  <option value="casual">Casual / Commuter</option>
-                </select>
-                <svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg>
-              </div>
-            </div>
-          </div>
-          <div class="runtip hidden" id="runTipField"><b>Best results:</b> film from the side at hip height, whole body in frame, steady pace.</div>
+      <!-- Bike position -->
+      <div class="ctl" id="positionField">
+        <span class="ctl-label" id="positionLabel">Bike position:</span>
+        <div class="tilerow" id="positionSeg" role="group" aria-labelledby="positionLabel">
+          <button type="button" class="tile-btn" data-position="road_hoods" aria-pressed="false">Road Bike</button>
+          <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">TT / Tri</button>
+          <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
         </div>
       </div>
 
-      <!-- STEP 3 · Add the file -->
-      <div class="step-block">
-        <div class="step-head">
-          <span class="step-no" aria-hidden="true">3</span>
-          <h3 class="step-title" id="fileLabel">Add your <span id="fileNoun">clip</span></h3>
-        </div>
-        <div class="step-body">
-          <input type="file" id="file" class="visually-hidden" accept="video/*"
-                 aria-describedby="dropHelp" aria-labelledby="fileLabel">
-          <label class="drop" id="drop" for="file">
-            <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
-            <b id="dropTitle">Drop a video here</b> or click to browse
-            <small id="dropHelp">Side view, one athlete in frame · mp4 / mov / webm · up to 200 MB · 5–15 s works best</small>
-          </label>
+      <!-- Drop zone -->
+      <input type="file" id="file" class="visually-hidden" accept="video/*"
+             aria-describedby="dropHelp" aria-labelledby="uploaderTitle">
+      <label class="drop" id="drop" for="file">
+        <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+        <b id="dropTitle">Drag &amp; drop video or click to browse</b>
+        <small id="dropHelp">MP4, MOV, or WEBM · up to 200 MB · 5–15 seconds</small>
+      </label>
 
-          <div class="filepreview" id="filepreview">
-            <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
-            <img id="previewImg" class="hidden" alt="Preview of your selected photo">
-            <div class="fmeta">
-              <div class="fname" id="fname">clip.mp4</div>
-              <div class="fsize" id="fsize">—</div>
-              <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
-            </div>
-          </div>
-
-          <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
-            <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
-          </label>
+      <div class="filepreview" id="filepreview">
+        <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
+        <img id="previewImg" class="hidden" alt="Preview of your selected photo">
+        <div class="fmeta">
+          <div class="fname" id="fname">clip.mp4</div>
+          <div class="fsize" id="fsize">—</div>
+          <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
         </div>
       </div>
+
+      <!-- Capture guidelines -->
+      <ul class="guides" id="guides">
+        <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Film from the side (90°)</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg> 3–5 m distance, full body visible</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> One person in frame</li>
+        <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> 5–10 seconds of steady movement</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg> Good, even lighting</li>
+      </ul>
+
+      <!-- Overlay toggle (video only) -->
+      <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
+        <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
+      </label>
 
       <!-- Submit -->
-      <div class="submit-row">
-        <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
-          Analyze <svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg>
-        </button>
-        <p class="hint" id="hint" role="status" aria-live="polite">Pick a clip to start.</p>
-      </div>
+      <button class="btn btn-go btn-block" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
+        Analyze Technique
+      </button>
+      <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
+      <p class="quota-line" id="quota">Free · <b>3</b> analyses per day</p>
     </div>
   </section>
 
@@ -749,14 +722,14 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', mode:'video', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null };
+const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
 /* ---- brand colors for JS (mirror of the :root tokens above) ---- */
 const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', coralBtn:'#CE3F2B', warn:'#C97B10', orange:'#DE5F33' };
 const GRADE_COLORS = { A:C.blue, B:C.navy, C:C.warn, D:C.orange, F:C.coral };
-const POSITION_NAMES = { road_hoods:'Road · Hoods', road_drops:'Road · Drops', tt_aero:'TT · Aero', triathlon:'Triathlon · Aero', casual:'Casual / Commuter' };
+const POSITION_NAMES = { road_hoods:'Road Bike', road_drops:'Road · Drops', tt_aero:'TT · Aero', triathlon:'TT / Tri', casual:'Casual' };
 
 /* ============================================================
    State machine: upload | progress | results | error
@@ -856,43 +829,48 @@ function setFile(f){
   readyHint();
 }
 function readyHint(){
-  const noun = state.mode==='photo' ? 'photo' : 'clip';
-  if(!state.file){ hintMsg(`Pick a ${noun} to start.`); return; }
-  const sportTxt = state.sport==='bike' ? `Bike — ${POSITION_NAMES[$('#position').value]}` : 'Run';
-  hintMsg(`Ready to analyze · ${sportTxt}`);
+  const noun = state.mode==='photo' ? 'photo' : 'video';
+  if(!state.file){ hintMsg(`Upload a ${noun} to continue`); return; }
+  const sportTxt = state.sport==='bike' ? `Cycling — ${POSITION_NAMES[state.position]}` : 'Running';
+  hintMsg(`Ready · ${sportTxt}`);
 }
 
-/* ---- input mode toggle (video / photo) ---- */
+/* ---- input mode tabs (video / photo) ---- */
 $('#modeSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   const photo=b.dataset.mode==='photo';
   if(state.mode===b.dataset.mode) return;
-  [...$('#modeSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  [...$('#modeSeg').children].forEach(x=>x.setAttribute('aria-selected', String(x===b)));
   reset();                        // clears the old-mode file first
   state.mode=b.dataset.mode;
   fileInput.setAttribute('accept', photo?'image/*':'video/*');
-  $('#dropTitle').textContent = photo?'Drop a photo here':'Drop a video here';
+  $('#dropTitle').textContent = photo?'Drag & drop photo or click to browse':'Drag & drop video or click to browse';
   $('#dropHelp').textContent = photo
-    ? 'Side view, full body in frame · jpg / png / heic · up to 25 MB'
-    : 'Side view, one athlete in frame · mp4 / mov / webm · up to 200 MB · 5–15 s works best';
+    ? 'JPG, PNG, or HEIC · up to 25 MB'
+    : 'MP4, MOV, or WEBM · up to 200 MB · 5–15 seconds';
   $('#change').textContent = photo?'Change photo':'Change clip';
-  $('#uploaderEyebrow').textContent = photo?'Your photo':'Your clip';
-  $('#uploaderTitle').textContent = photo?'Analyze a photo':'Analyze a clip';
-  $('#fileNoun').textContent = photo?'photo':'clip';
+  $('#fileNounCap').textContent = photo?'Photo':'Video';
   $('#overlayField').classList.toggle('hidden', photo);
+  $('#guides .g-dur').classList.toggle('hidden', photo); // duration guideline is video-only
   readyHint();
 });
 
-/* ---- sport toggle ---- */
+/* ---- sport tiles ---- */
 $('#sportSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   state.sport=b.dataset.sport;
   [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   $('#positionField').classList.toggle('hidden', state.sport!=='bike');
-  $('#runTipField').classList.toggle('hidden', state.sport!=='run');
   readyHint();
 });
-$('#position').addEventListener('change',readyHint);
+
+/* ---- bike position tiles ---- */
+$('#positionSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  state.position=b.dataset.position;
+  [...$('#positionSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  readyHint();
+});
 $('#pAgain').addEventListener('click',()=>reset());
 
 /* ============================================================
@@ -934,10 +912,10 @@ function analyze(){
   const fd=new FormData();
   fd.append('video',state.file);
   fd.append('sport',state.sport);
-  if(state.sport==='bike') fd.append('position',$('#position').value);
+  if(state.sport==='bike') fd.append('position',state.position);
   fd.append('overlay',$('#overlay').checked ? 'true':'false');
 
-  const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[$('#position').value]}` : 'Run';
+  const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
     <span class="pill ${state.sport==='run'?'pill-run':'pill-bike'}"><span class="dot" aria-hidden="true"></span>${esc(sportTxt)}</span>`;
 
@@ -1153,10 +1131,10 @@ async function analyzePhoto(){
   const fd=new FormData();
   fd.append('photo',state.file);
   fd.append('sport',state.sport);
-  if(state.sport==='bike') fd.append('position',$('#position').value);
+  if(state.sport==='bike') fd.append('position',state.position);
   fd.append('coaching','true');
 
-  const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[$('#position').value]}` : 'Run';
+  const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
     <span class="pill ${state.sport==='run'?'pill-run':'pill-bike'}"><span class="dot" aria-hidden="true"></span>${esc(sportTxt)}</span>`;
 
@@ -1358,7 +1336,7 @@ function reset(keepFile=false){
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');
     const pi=$('#previewImg'); pi.classList.add('hidden'); pi.removeAttribute('src');
     $('#analyze').setAttribute('aria-disabled','true');
-    hintMsg(`Pick a ${state.mode==='photo'?'photo':'clip'} to start.`);
+    hintMsg(`Upload a ${state.mode==='photo'?'photo':'video'} to continue`);
   }
   if(keepFile && state.file) readyHint();
   const ov=$('#overlayVideo'); ov.pause(); ov.removeAttribute('src'); ov.load();
