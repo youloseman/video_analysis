@@ -101,6 +101,7 @@ overlays are stored under `backend/uploads/` (git-ignored).
 - **M6** — ✅ web frontend (drag-drop upload → results + overlay player, brandbook theme)
 - **M5** — ✅ Gemini AI coaching (numbers-vs-optimal feedback; graceful skip without a key)
 - **Photo** — ✅ single-image form check (`POST /analyze-photo` → annotated photo + angle table + coaching)
+- **History** — ✅ on-device history (localStorage): each analysis saved with metrics, coaching and a compact annotated keyframe (no video stored)
 - **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
 - **later** — rear-view running, swimming (re-add the trimmed analyzers)
 
