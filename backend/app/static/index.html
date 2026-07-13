@@ -50,6 +50,18 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .hsub{font-size:12px;color:var(--c-ink-soft);margin-top:2px}
 .hdel{position:absolute;right:8px;top:8px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,41,75,.55);color:#fff;cursor:pointer;font-size:12px;line-height:1;padding:0}
 .hdel:hover{background:var(--c-coral)}
+/* progress / trends */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.tcard{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:16px 18px 12px;box-shadow:var(--shadow)}
+.tcard-score{background:var(--c-panel)}
+.tc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.tc-lbl{font-weight:800;font-size:14px}
+.tc-val{font-family:var(--f-mono);font-weight:600;font-size:20px;color:var(--c-navy)}
+.tc-sub{font-size:12px;color:var(--c-ink-soft);margin-top:2px}
+.tdelta{font-weight:800}
+.tdelta.imp{color:#2E9E5B}.tdelta.reg{color:var(--c-coral)}.tdelta.sta{color:var(--c-ink-soft)}
+.tchart{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
+.tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
 .skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:var(--c-navy);color:#fff;
   padding:8px 16px;border-radius:0 0 var(--radius-btn) 0;font-weight:700;font-size:14px;text-decoration:none}
 .skip-link:focus{left:0}
@@ -425,7 +437,9 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
     <div class="wordmark" id="wordmark" role="link" tabindex="0" style="cursor:pointer">Flapp<span class="dot"></span></div>
     <nav aria-label="Site">
       <a href="#" id="navAnalyze">Analyze</a>
+      <a href="#" id="navProgress">Progress</a>
       <a href="#" id="navHistory">History</a>
+      <a href="/academy">Academy</a>
       <a href="/docs" target="_blank" rel="noopener">API <svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg></a>
     </nav>
   </div>
@@ -734,6 +748,23 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
     <div id="histList"></div>
   </section>
 
+  <!-- ============ PROGRESS / TRENDS ============ -->
+  <section id="trends" class="hidden" aria-labelledby="trendsTitle">
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Monitor your technique</div>
+      <h2 class="sec" id="trendsTitle" tabindex="-1" style="margin-bottom:8px">Your progress</h2>
+      <div class="speedline"></div>
+    </div>
+    <div class="field" style="margin:16px 0 22px">
+      <div class="seg" id="progSeg" role="group" aria-label="Sport">
+        <button type="button" data-sport="bike" aria-pressed="true">Bike</button>
+        <button type="button" data-sport="run" aria-pressed="false">Run</button>
+      </div>
+    </div>
+    <p class="hint" style="text-align:left;margin:-8px 0 18px">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
+    <div class="tgrid" id="progGrid"></div>
+  </section>
+
   <!-- ============ HISTORY DETAIL ============ -->
   <section id="historyDetail" class="hidden" aria-labelledby="hdTitle">
     <h2 id="hdTitle" class="visually-hidden" tabindex="-1">Saved analysis</h2>
@@ -812,9 +843,9 @@ const POSITION_NAMES = { road_hoods:'Road Bike', road_drops:'Road · Drops', tt_
    ============================================================ */
 const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Analyzing… — Flapp',
   results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp',
-  history:'History — Flapp', historydetail:'History — Flapp'};
+  history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
-  history:'history', historydetail:'historyDetail'};
+  history:'history', historydetail:'historyDetail', trends:'trends'};
 function setState(name, {focus=null}={}){
   document.body.dataset.state = name;
   document.title = TITLES[name] || TITLES.upload;
@@ -1469,6 +1500,7 @@ function saveToHistory(kind,res){
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
+    const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o;
     const a=loadHist(); a.unshift(e); while(a.length>HCAP) a.pop(); persistHist(a);
   }catch(e){}
 }
@@ -1515,8 +1547,113 @@ $('#history').addEventListener('keydown',e=>{
   if(e.key==='Enter'||e.key===' '){ const card=e.target.closest('.hcard'); if(card && !e.target.closest('[data-del]')){ e.preventDefault(); openHistory(card.dataset.id); } }
 });
 
+/* ============================================================
+   Progress / trends — charts of key metrics over time (this device)
+   ============================================================ */
+const TREND_METRICS={
+  bike:[
+    {key:'score',label:'Technique score',unit:'',hi:true},
+    {key:'knee',label:'Knee angle',unit:'°'},
+    {key:'hip',label:'Hip angle',unit:'°'},
+    {key:'trunk',label:'Trunk angle',unit:'°'},
+    {key:'elbow',label:'Elbow angle',unit:'°'},
+    {key:'shoulder',label:'Shoulder angle',unit:'°'},
+    {key:'pelvic_ratio',label:'Pelvic ratio',unit:'×'},
+  ],
+  run:[
+    {key:'score',label:'Technique score',unit:'',hi:true},
+    {key:'cadence',label:'Cadence',unit:' spm'},
+    {key:'vertical_oscillation',label:'Vertical oscillation',unit:' cm'},
+    {key:'trunk_lean',label:'Trunk lean',unit:'°'},
+    {key:'knee',label:'Knee angle',unit:'°'},
+  ],
+};
+function extractTrends(kind,res,sport){
+  const t={},o={};
+  const put=(k,v,opt)=>{ if(v!=null && !Number.isNaN(+v)){ t[k]=Math.round(+v*10)/10; if(opt) o[k]=opt; } };
+  if(kind==='video'){
+    const s=res.sport_specific_metrics||{};
+    put('score',res.technique_score);
+    if(sport==='bike'){
+      put('knee',s.knee_at_bdc,[138,145]); put('hip',s.hip_angle_max);
+      put('trunk',s.trunk_angle_avg); put('elbow',s.elbow_angle_avg);
+      put('shoulder',s.shoulder_angle_avg); put('pelvic_ratio',s.pelvic_ratio,[2,4]);
+    } else {
+      put('cadence',s.cadence_spm,[170,185]);
+      put('vertical_oscillation', s.vertical_oscillation_cm!=null?s.vertical_oscillation_cm:(s.vertical_oscillation_m!=null?s.vertical_oscillation_m*100:null));
+      put('trunk_lean',s.trunk_lean_avg,[5,10]); put('knee',s.knee_mean);
+    }
+  } else {
+    put('score',(res.score||{}).overall_score);
+    const A=res.angles_with_context||{};
+    const g=ak=>{ const a=A[ak]; return a?{v:a.value,opt:(a.optimal_min!=null?[a.optimal_min,a.optimal_max]:null)}:null; };
+    const map = sport==='bike'
+      ? {knee:'knee',hip:'hip',trunk:'trunk',elbow:'elbow',shoulder:'shoulder',pelvic_ratio:'pelvic_ratio'}
+      : {knee:'knee',trunk_lean:'trunk'};
+    for(const ck in map){ const x=g(map[ck]); if(x) put(ck,x.v,x.opt); }
+  }
+  return {t,o};
+}
+function trendChart(vals,dates,opt,unit){
+  const W=340,H=132,pad={l:10,r:12,t:16,b:14}, n=vals.length;
+  let lo=Math.min(...vals), hi=Math.max(...vals);
+  if(opt){ lo=Math.min(lo,opt[0]); hi=Math.max(hi,opt[1]); }
+  if(lo===hi){ lo-=1; hi+=1; }
+  const rng=hi-lo||1; lo-=rng*0.16; hi+=rng*0.16;
+  const X=i=> n<=1 ? W/2 : pad.l + i*(W-pad.l-pad.r)/(n-1);
+  const Y=v=> pad.t + (H-pad.t-pad.b)*(1-(v-lo)/(hi-lo));
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="tchart" role="img" aria-label="Trend over ${n} analyses">`;
+  if(opt){ const y1=Y(opt[1]), y2=Y(opt[0]);
+    s+=`<rect x="${pad.l}" y="${y1.toFixed(1)}" width="${(W-pad.l-pad.r).toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="rgba(46,158,91,.13)"/>`
+      +`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="rgba(46,158,91,.45)" stroke-width="1" stroke-dasharray="3 3"/>`
+      +`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(46,158,91,.45)" stroke-width="1" stroke-dasharray="3 3"/>`; }
+  const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  s+=`<polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  vals.forEach((v,i)=>{ const last=i===n-1;
+    s+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${last?4:3}" fill="${last?'var(--c-coral)':'#fff'}" stroke="var(--c-blue)" stroke-width="2"><title>${esc(dates[i])}: ${Math.round(v*10)/10}${unit||''}</title></circle>`; });
+  const lv=vals[n-1], ly=Y(lv);
+  s+=`<text x="${(W-pad.r).toFixed(1)}" y="${(ly<26?ly+15:ly-9).toFixed(1)}" text-anchor="end" class="tval">${Math.round(lv*10)/10}${unit||''}</text></svg>`;
+  return s;
+}
+function distOut(v,opt){ return v<opt[0]?opt[0]-v : v>opt[1]?v-opt[1] : 0; }
+function renderProgress(){
+  const sport=state.progressSport||'bike';
+  [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
+  const all=loadHist().filter(e=>e.sport===sport && e.trends).slice().reverse(); // oldest -> newest
+  const grid=$('#progGrid');
+  if(all.length<2){
+    grid.innerHTML=`<p class="hint" style="text-align:left;grid-column:1/-1">Analyze at least <b>2</b> ${sport==='bike'?'rides':'runs'} to see progress trends — they build up from each new analysis.</p>`;
+    return;
+  }
+  const dates=all.map(e=>fmtWhen(e.at));
+  grid.innerHTML=TREND_METRICS[sport].map(m=>{
+    const series=[], dser=[];
+    all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); } });
+    if(series.length<2) return '';
+    let opt=null; for(let i=all.length-1;i>=0;i--){ if(all[i].trendOpt && all[i].trendOpt[m.key]){ opt=all[i].trendOpt[m.key]; break; } }
+    const first=series[0], last=series[series.length-1], delta=Math.round((last-first)*10)/10;
+    let tcls='sta', trend='steady';
+    if(m.hi){ tcls=delta>0?'imp':delta<0?'reg':'sta'; trend=delta>0?'improving':delta<0?'lower':'steady'; }
+    else if(opt){ const df=distOut(first,opt), dl=distOut(last,opt);
+      if(dl<df-0.5){tcls='imp';trend='closer to optimal';} else if(dl>df+0.5){tcls='reg';trend='further from optimal';} else {tcls='sta';trend='steady';} }
+    else { tcls='sta'; trend=''; }
+    const deltaStr=(delta>0?'+':'')+delta+(m.unit||'');
+    return `<div class="tcard${m.key==='score'?' tcard-score':''}">
+      <div class="tc-head"><span class="tc-lbl">${esc(m.label)}</span><span class="tc-val">${Math.round(last*10)/10}${m.unit||''}</span></div>
+      <div class="tc-sub"><span class="tdelta ${tcls}">${deltaStr}${trend?' · '+trend:''}</span> · ${series.length} analyses</div>
+      ${trendChart(series,dser,opt,m.unit)}
+    </div>`;
+  }).join('') || `<p class="hint" style="grid-column:1/-1">Not enough data yet for ${sport} trends.</p>`;
+}
+function openProgress(){
+  if(!state.progressSport){ const h=loadHist(); const nb=h.filter(e=>e.sport==='bike').length, nr=h.filter(e=>e.sport==='run').length; state.progressSport = nr>nb?'run':'bike'; }
+  renderProgress(); setState('trends',{focus:'#trendsTitle'});
+}
+$('#navProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
+$('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.progressSport=b.dataset.sport; renderProgress(); });
+
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends};
 </script>
 </body>
 </html>
