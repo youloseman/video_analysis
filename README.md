@@ -102,6 +102,7 @@ overlays are stored under `backend/uploads/` (git-ignored).
 - **M5** — ✅ Gemini AI coaching (numbers-vs-optimal feedback; graceful skip without a key)
 - **Photo** — ✅ single-image form check (`POST /analyze-photo` → annotated photo + angle table + coaching)
 - **History** — ✅ on-device history (localStorage): each analysis saved with metrics, coaching and a compact annotated keyframe (no video stored)
+- **Progress** — ✅ metric trends over time (per-metric line charts with optimal bands) so athletes can monitor technique/bike-fit, not just the score
 - **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
 - **later** — rear-view running, swimming (re-add the trimmed analyzers)
 
