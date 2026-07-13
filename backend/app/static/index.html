@@ -37,6 +37,19 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 
 /* ---------- Accessibility primitives ---------- */
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* history */
+#histList{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.hcard{position:relative;border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;background:#fff;cursor:pointer;transition:.15s;box-shadow:var(--shadow);text-align:left;padding:0}
+.hcard:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.hcard:focus-visible{outline:3px solid var(--c-blue);outline-offset:2px}
+.hthumb{position:relative;background:#0d1420;aspect-ratio:16/10;overflow:hidden}
+.hthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.hscore{position:absolute;left:10px;top:10px;font-family:var(--f-display);font-weight:900;font-style:italic;font-size:19px;color:#fff;padding:1px 10px;border-radius:8px}
+.hmeta{padding:12px 14px}
+.htitle{font-weight:800;font-size:14px;text-transform:capitalize}
+.hsub{font-size:12px;color:var(--c-ink-soft);margin-top:2px}
+.hdel{position:absolute;right:8px;top:8px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,41,75,.55);color:#fff;cursor:pointer;font-size:12px;line-height:1;padding:0}
+.hdel:hover{background:var(--c-coral)}
 .skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:var(--c-navy);color:#fff;
   padding:8px 16px;border-radius:0 0 var(--radius-btn) 0;font-weight:700;font-size:14px;text-decoration:none}
 .skip-link:focus{left:0}
@@ -409,8 +422,12 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
 
 <header>
   <div class="wrap">
-    <div class="wordmark">Flapp<span class="dot"></span></div>
-    <nav aria-label="Site"><a href="/docs" target="_blank" rel="noopener">API docs <svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg></a></nav>
+    <div class="wordmark" id="wordmark" role="link" tabindex="0" style="cursor:pointer">Flapp<span class="dot"></span></div>
+    <nav aria-label="Site">
+      <a href="#" id="navAnalyze">Analyze</a>
+      <a href="#" id="navHistory">History</a>
+      <a href="/docs" target="_blank" rel="noopener">API <svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg></a>
+    </nav>
   </div>
 </header>
 
@@ -707,6 +724,65 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
     </div>
   </section>
 
+  <!-- ============ HISTORY ============ -->
+  <section id="history" class="hidden" aria-labelledby="histTitle">
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Saved on this device</div>
+      <h2 class="sec" id="histTitle" tabindex="-1" style="margin-bottom:8px">Your history</h2>
+      <div class="speedline"></div>
+    </div>
+    <div id="histList"></div>
+  </section>
+
+  <!-- ============ HISTORY DETAIL ============ -->
+  <section id="historyDetail" class="hidden" aria-labelledby="hdTitle">
+    <h2 id="hdTitle" class="visually-hidden" tabindex="-1">Saved analysis</h2>
+    <div class="again-row" style="margin:0 0 20px">
+      <button class="btn btn-ghost btn-sm" id="hBack" type="button">
+        <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to history
+      </button>
+    </div>
+    <div class="result-top">
+      <div class="card scorecard">
+        <span class="pill" id="hdSportTag"><span class="dot" aria-hidden="true"></span><span id="hdSportTagText">Bike</span></span>
+        <div class="score-label">Technique score</div>
+        <div class="score-num" id="hdScore">—<small>/100</small></div>
+        <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div></div></div>
+        <div class="score-meta" id="hdMeta"></div>
+      </div>
+      <div>
+        <div class="videoframe" id="hdImgWrap">
+          <img id="hdImg" alt="Saved annotated keyframe" style="display:block;width:100%;background:#0d1420">
+          <div class="videocap">
+            <span>Saved keyframe · skeleton + joint angles</span>
+            <a class="btn btn-ghost btn-sm" id="hdDownload" download="flapp-analysis.jpg"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="block hidden" id="hdCoachBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
+        <h3>Coach’s notes</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="coach" id="hdCoach"></div>
+    </div>
+    <div class="block">
+      <div class="blockhead">
+        <div class="eyebrow">Detail</div>
+        <h3>Measurements</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="tablewrap">
+        <table class="data">
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Detail</th><th scope="col">Status</th></tr></thead>
+          <tbody id="hdRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </div>
 </main>
 
@@ -735,8 +811,10 @@ const POSITION_NAMES = { road_hoods:'Road Bike', road_drops:'Road · Drops', tt_
    State machine: upload | progress | results | error
    ============================================================ */
 const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Analyzing… — Flapp',
-  results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp'};
-const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error'};
+  results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp',
+  history:'History — Flapp', historydetail:'History — Flapp'};
+const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
+  history:'history', historydetail:'historyDetail'};
 function setState(name, {focus=null}={}){
   document.body.dataset.state = name;
   document.title = TITLES[name] || TITLES.upload;
@@ -1220,6 +1298,7 @@ function renderPhoto(res){
     $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2); }
 
   renderQuota();
+  saveToHistory('photo', res);
   setState('photoresults',{focus:'#pResultsTitle'});
 }
 
@@ -1322,6 +1401,7 @@ function render(job){
   if(DEBUG){ $('#rawBlock').classList.remove('hidden'); $('#rawJson').textContent=JSON.stringify(r,null,2); }
 
   renderQuota();
+  saveToHistory('video', r);
   setState('results',{focus:'#resultsTitle'});
 }
 
@@ -1356,8 +1436,87 @@ function reset(keepFile=false){
   }
 })();
 
+/* ============================================================
+   History — analyses persisted in localStorage (this device)
+   ============================================================ */
+const HKEY='flapp_history', HCAP=24;
+const loadHist=()=>{ try{ return JSON.parse(localStorage.getItem(HKEY)||'[]'); }catch(e){ return []; } };
+function persistHist(a){
+  try{ localStorage.setItem(HKEY, JSON.stringify(a)); }
+  catch(e){ while(a.length>1){ a.pop(); try{ localStorage.setItem(HKEY, JSON.stringify(a)); return; }catch(_e){} } }
+}
+function historyDelete(id){ persistHist(loadHist().filter(x=>x.id!==id)); renderHistList(); }
+function metricsFromVideo(res){
+  const A=res.angle_statistics||{}, o=[];
+  for(const k of Object.keys(A)){ const a=A[k]; if(a.mean==null) continue;
+    o.push({label:pretty(k), value:a.mean+'°', sub:`${a.min}–${a.max}°`}); }
+  return o;
+}
+function metricsFromPhoto(res){
+  const A=res.angles_with_context||{}, o=[];
+  for(const k of Object.keys(A)){ const a=A[k]; const stt=a.status||'unknown';
+    o.push({label:a.label||pretty(k),
+      value:(typeof a.value==='number'?Math.round(a.value*10)/10:a.value),
+      sub:(a.optimal_min!=null?`opt ${a.optimal_min}–${a.optimal_max}`:''),
+      statusWord:stt.replace(/_/g,' '), statusCls:P_STATUS_CLS[stt]||'low'}); }
+  return o;
+}
+function saveToHistory(kind,res){
+  try{
+    const isV=kind==='video', sc=res.score||{};
+    const e={ id:'h'+Date.now(), at:Date.now(), kind, sport:res.sport_type||res.sport,
+      position:res.cycling_position||null, cameraSide:res.camera_side||null,
+      score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
+      keyframe:res.keyframe_base64||null, report:(res.ai_recommendations||{}).report||null,
+      metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
+    const a=loadHist(); a.unshift(e); while(a.length>HCAP) a.pop(); persistHist(a);
+  }catch(e){}
+}
+function fmtWhen(ms){ try{ const d=new Date(ms);
+  return d.toLocaleDateString([], {month:'short',day:'numeric'})+' · '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function renderHistList(){
+  const a=loadHist(), w=$('#histList');
+  if(!a.length){ w.innerHTML='<p class="hint" style="text-align:left">No saved analyses yet — your results are stored on this device after each analysis.</p>'; return; }
+  w.innerHTML=a.map(e=>`<div class="hcard" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">
+    <div class="hthumb">${e.keyframe?`<img src="${e.keyframe}" alt="">`:''}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
+      <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis">✕</button></div>
+    <div class="hmeta"><div class="htitle">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind)}</div>
+      <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
+  </div>`).join('');
+}
+function openHistory(id){
+  const e=loadHist().find(x=>x.id===id); if(!e) return;
+  $('#hdImg').src=e.keyframe||''; $('#hdDownload').href=e.keyframe||'#';
+  $('#hdImgWrap').style.display = e.keyframe?'':'none';
+  $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
+  const g=$('#hdGrade'); g.textContent=e.grade||'—'; const gc=GRADE_COLORS[e.grade]||C.navy; g.style.borderColor=gc; g.style.color=gc;
+  const stg=$('#hdSportTag'); stg.classList.remove('pill-run','pill-bike'); stg.classList.add(e.sport==='run'?'pill-run':'pill-bike');
+  $('#hdSportTagText').textContent=e.sport==='run'?'Run':'Bike';
+  const parts=[esc(e.kind)];
+  if(e.cameraSide) parts.push(`Camera: <b>${esc(e.cameraSide)} side</b>`);
+  if(e.position) parts.push(`Position: <b>${esc(POSITION_NAMES[e.position]||e.position)}</b>`);
+  parts.push(fmtWhen(e.at));
+  $('#hdMeta').innerHTML=parts.join('<br>');
+  const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
+  $('#hdRows').innerHTML=(e.metrics||[]).map(m=>`<tr><th scope="row">${esc(m.label)}</th><td class="num">${esc(m.value)}</td><td class="num">${esc(m.sub||'')}</td><td>${m.statusCls?`<span class="pill pill-${m.statusCls}"><span class="dot" aria-hidden="true"></span>${esc(m.statusWord)}</span>`:''}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No measurements.</td></tr>';
+  setState('historydetail',{focus:'#hdTitle'});
+}
+function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTitle'}); }
+$('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
+$('#navAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
+$('#hBack').addEventListener('click',openHistoryView);
+$('#wordmark').addEventListener('click',()=>reset());
+$('#wordmark').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); reset(); } });
+$('#history').addEventListener('click',e=>{
+  const del=e.target.closest('[data-del]'); if(del){ e.stopPropagation(); historyDelete(del.dataset.del); return; }
+  const card=e.target.closest('.hcard'); if(card) openHistory(card.dataset.id);
+});
+$('#history').addEventListener('keydown',e=>{
+  if(e.key==='Enter'||e.key===' '){ const card=e.target.closest('.hcard'); if(card && !e.target.closest('[data-del]')){ e.preventDefault(); openHistory(card.dataset.id); } }
+});
+
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist};
 </script>
 </body>
 </html>

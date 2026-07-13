@@ -92,6 +92,32 @@ def _rate_record(ip: str) -> None:
     _rate_hits.setdefault(ip, deque()).append(time.time())
 
 
+def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -> str | None:
+    """Downscale an annotated image (data URI) to a small JPEG data URI for the
+    history thumbnail. Returns None on failure."""
+    if not data_uri or "," not in data_uri:
+        return None
+    try:
+        import base64
+
+        import cv2
+        import numpy as np
+
+        raw = base64.b64decode(data_uri.split(",", 1)[1])
+        img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+        if img is None:
+            return None
+        h, w = img.shape[:2]
+        if w > max_w:
+            img = cv2.resize(img, (max_w, int(round(h * max_w / w))), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+        if not ok:
+            return None
+        return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 app = FastAPI(
     title="Flapp",
     version="0.5.0",
@@ -334,6 +360,9 @@ async def analyze_photo_endpoint(
     except Exception as e:  # noqa: BLE001
         logger.warning("PHOTO_FAILED", err=str(e), ip=ip)
         raise HTTPException(500, "photo analysis failed")
+
+    # Compact annotated frame for the client-side history record.
+    result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
 
     if coaching:
         from app.services.video_analysis.llm_recommendations import (

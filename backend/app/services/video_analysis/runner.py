@@ -533,37 +533,36 @@ def run_analysis(
     summary["quality_warnings"] = quality_warnings
     summary["quality_gate"] = quality_gate_result
 
-    # Step 6 (Milestone 2): optional annotated overlay video. Wrapped so a
-    # rendering failure never kills the analysis result.
+    # Step 6: annotated visuals. Always render a compact keyframe (a single
+    # annotated frame for the history record); render the full overlay video
+    # only when requested. Wrapped so a rendering failure never kills the result.
     overlay_video_path = None
-    if overlay_path:
-        try:
-            from app.services.video_analysis.video_visualizer import VideoVisualizer
-            out_dir = str(Path(overlay_path).resolve().parent)
-            analysis_name = Path(overlay_path).stem  # str stem -> writes <stem>.mp4
-            visualizer = VideoVisualizer(
-                video_path=video_path,
-                frame_data_list=raw_frame_data,
-                analyzer=analyzer,
-                sport_type=sport_type,
-                cycling_position=cycling_position,
-                output_dir=out_dir,
-                analysis_id=analysis_name,
-                technique_score=(
-                    scoring["overall_score"]
-                    if scoring.get("overall_score") is not None else 0
-                ),
-                letter_grade=scoring.get("letter_grade") or "--",
-                angle_stats=angle_stats,
-                summary=summary,
-            )
+    keyframe_base64 = None
+    try:
+        from app.services.video_analysis.video_visualizer import VideoVisualizer
+        _base = Path(overlay_path) if overlay_path else Path(video_path)
+        visualizer = VideoVisualizer(
+            video_path=video_path,
+            frame_data_list=raw_frame_data,
+            analyzer=analyzer,
+            sport_type=sport_type,
+            cycling_position=cycling_position,
+            output_dir=str(_base.resolve().parent),
+            analysis_id=(_base.stem if overlay_path else "keyframe"),
+            technique_score=(
+                scoring["overall_score"]
+                if scoring.get("overall_score") is not None else 0
+            ),
+            letter_grade=scoring.get("letter_grade") or "--",
+            angle_stats=angle_stats,
+            summary=summary,
+        )
+        keyframe_base64 = visualizer.render_keyframe()
+        if overlay_path:
             overlay_video_path = visualizer.generate()
-            if overlay_video_path:
-                logger.info("OVERLAY_OK", path=overlay_video_path)
-            else:
-                logger.warning("OVERLAY_NONE", hint="overlay writer returned None (see logs)")
-        except Exception as e:  # noqa: BLE001
-            logger.warning("OVERLAY_FAILED", err=str(e))
+            logger.info("OVERLAY_DONE", path=overlay_video_path)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("VISUALS_FAILED", err=str(e))
 
     # Step 7 (Milestone 5): LLM coaching recommendations. Skips gracefully when
     # no API key is configured or the call fails -- never blocks the result.
@@ -593,6 +592,7 @@ def run_analysis(
         "score_breakdown": scoring.get("component_scores"),
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
         "overlay_video_path": overlay_video_path,
+        "keyframe_base64": keyframe_base64,
         "ai_recommendations": ai_recommendations,
         "angle_statistics": angle_stats,
         "detected_issues": issues,

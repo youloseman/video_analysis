@@ -224,6 +224,50 @@ class VideoVisualizer:
         )
         return final_mp4
 
+    def render_keyframe(self, max_width: int = 720, quality: int = 82) -> str | None:
+        """Render ONE representative annotated frame as a small JPEG data URI.
+
+        Used for the history thumbnail -- a single frame with skeleton + angle
+        labels + score badge, so we can keep a visual record without storing the
+        whole overlay video. Returns None on any failure (never blocks analysis).
+        """
+        if not self.frame_data_list:
+            return None
+        import base64
+
+        import cv2
+
+        # Pick the most readable frame among a few central candidates.
+        n = len(self.frame_data_list)
+        cand = sorted({int(n * p) for p in (0.5, 0.4, 0.6, 0.35, 0.65)})
+        cand = [i for i in cand if 0 <= i < n] or [n // 2]
+        best_idx, best_vis = cand[0], -1.0
+        for i in cand:
+            lms = self.frame_data_list[i]["normalized_landmarks"]
+            vis = sum(getattr(lm, "visibility", 0.5) for lm in lms) / max(1, len(lms))
+            if vis > best_vis:
+                best_vis, best_idx = vis, i
+
+        try:
+            cap = cv2.VideoCapture(self.video_path)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_data_list[best_idx]["frame_idx"])
+            ok, frame = cap.read()
+            cap.release()
+            if not ok or frame is None:
+                return None
+            h, w = frame.shape[:2]
+            self._draw_frame_overlay(cv2, frame, best_idx, w, h)
+            if w > max_width:
+                nh = int(round(h * max_width / w))
+                frame = cv2.resize(frame, (max_width, nh), interpolation=cv2.INTER_AREA)
+            ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+            if not ok:
+                return None
+            return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("KEYFRAME_FAILED", err=str(e))
+            return None
+
     def _get_nearest_analyzed_frame(self, video_frame_idx: int) -> int | None:
         """Map a video frame index to the nearest analyzed frame index.
 
