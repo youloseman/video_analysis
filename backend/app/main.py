@@ -224,6 +224,18 @@ def root() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/privacy", include_in_schema=False)
+def privacy() -> FileResponse:
+    """Serve the privacy policy."""
+    return FileResponse(STATIC_DIR / "privacy.html")
+
+
+@app.get("/terms", include_in_schema=False)
+def terms() -> FileResponse:
+    """Serve the terms of service."""
+    return FileResponse(STATIC_DIR / "terms.html")
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
