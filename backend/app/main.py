@@ -23,6 +23,7 @@ import os
 import time
 import uuid
 from collections import deque
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +43,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from app.api import academy as academy_routes
+from app.api import auth as auth_routes
 from app.core.config import settings
+from app.core.db import init_db
 from app.services.video_analysis.runner import (
     DEFAULT_BIKE_POSITION,
     VALID_POSITIONS,
@@ -118,10 +122,17 @@ def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -
         return None
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+
 app = FastAPI(
     title="Flapp",
-    version="0.5.0",
+    version="0.6.0",
     description="Flapp — side-view running & cycling form analysis with AI coaching.",
+    lifespan=lifespan,
 )
 
 # Permissive CORS so a browser frontend (M6) can call this directly. Lock the
@@ -133,6 +144,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Server-rendered Academy (SEO): /academy hub + article pages, sitemap, robots.
+app.include_router(academy_routes.router)
+# Accounts: /auth/register, /auth/login, /auth/me.
+app.include_router(auth_routes.router)
 
 
 # --------------------------------------------------------------------------

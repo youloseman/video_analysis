@@ -47,9 +47,29 @@ class Settings:
     # Abuse guard: max analyses per client (IP) per rolling 24h. 0 disables.
     rate_limit_per_day: int = 3
 
+    # Accounts (auth). DATABASE_URL defaults to a local SQLite file; set it to a
+    # Postgres URL (Railway) in prod. jwt_secret MUST be overridden in prod.
+    database_url: str = f"sqlite+aiosqlite:///{BACKEND_DIR / 'flapp.db'}"
+    jwt_secret: str = "dev-insecure-change-me"
+    jwt_expire_days: int = 30
+
     @property
     def model_path(self) -> Path:
         return self.models_dir / self.model_filename
+
+    @property
+    def async_database_url(self) -> str:
+        """Normalize to an async driver URL (asyncpg for Postgres)."""
+        url = self.database_url
+        if url.startswith("postgres://"):
+            return "postgresql+asyncpg://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + url[len("postgresql://"):]
+        return url
+
+    @property
+    def auth_secure(self) -> bool:
+        return self.jwt_secret != "dev-insecure-change-me"
 
     @property
     def llm_enabled(self) -> bool:
@@ -75,6 +95,9 @@ def _load_settings() -> Settings:
         gemini_api_key=os.environ.get("GEMINI_API_KEY") or None,
         gemini_model=os.environ.get("GEMINI_MODEL") or Settings.gemini_model,
         rate_limit_per_day=_int_env("VA_RATE_LIMIT_PER_DAY", Settings.rate_limit_per_day),
+        database_url=os.environ.get("DATABASE_URL") or Settings.database_url,
+        jwt_secret=os.environ.get("JWT_SECRET") or Settings.jwt_secret,
+        jwt_expire_days=_int_env("JWT_EXPIRE_DAYS", Settings.jwt_expire_days),
     )
 
 

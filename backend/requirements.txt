@@ -28,3 +28,11 @@ pydantic==2.13.4
 # --- LLM coaching (Milestone 5): Gemini. Optional at runtime -- the app skips
 # recommendations gracefully when GEMINI_API_KEY is unset. ---
 google-genai==2.6.0
+
+# --- Accounts / auth: async SQLAlchemy + JWT + bcrypt (SQLite local, Postgres prod) ---
+sqlalchemy[asyncio]==2.0.49
+asyncpg==0.31.0
+aiosqlite==0.22.1
+greenlet==3.5.1
+PyJWT==2.13.0
+bcrypt==4.0.1

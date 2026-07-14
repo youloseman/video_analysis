@@ -38,6 +38,10 @@ Thumbs.db
 *.MOV
 *.avi
 
+# Local SQLite DB (dev only; prod uses Postgres)
+*.db
+*.sqlite3
+
 # Local outputs / scratch
 *.log
 uploads/
