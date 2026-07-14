@@ -816,6 +816,9 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
           <div><div class="gradelbl">Grade</div></div>
         </div>
         <div class="score-meta" id="pScoreMeta"></div>
+        <button class="btn btn-primary btn-sm sharebtn hidden" id="pShareBtn" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="pShareBtnTxt">Share result</span>
+        </button>
       </div>
       <div>
         <div class="videoframe">
@@ -933,6 +936,9 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
         <div class="score-num" id="hdScore">—<small>/100</small></div>
         <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div></div></div>
         <div class="score-meta" id="hdMeta"></div>
+        <button class="btn btn-primary btn-sm sharebtn" id="hShareBtn" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="hShareBtnTxt">Share result</span>
+        </button>
       </div>
       <div>
         <div class="videoframe" id="hdImgWrap">
@@ -1156,6 +1162,8 @@ $('#analyze').addEventListener('click',()=>{
 });
 $('#again').addEventListener('click',()=>reset());
 $('#shareBtn').addEventListener('click',shareResult);
+$('#pShareBtn').addEventListener('click',sharePhoto);
+$('#hShareBtn').addEventListener('click',shareHistory);
 $('#errAgain').addEventListener('click',()=>reset(state.keepFileOnRetry));
 $('#errBack').addEventListener('click',()=>reset(true));
 $('#cancel').addEventListener('click',cancelRun);
@@ -1535,6 +1543,7 @@ function renderPhoto(res){
 
   renderQuota();
   saveToHistory('photo', res);
+  state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
   setState('photoresults',{focus:'#pResultsTitle'});
 }
 
@@ -1651,6 +1660,16 @@ function render(job){
    on mobile (works in the Capacitor wrapper too), download on
    desktop. No external assets — CSP-safe.
    ============================================================ */
+/* status class (from any of the app's status vocabularies) -> chip colour */
+function stColor(cls){
+  // severity vocab used across the app: good=green, medium=amber, high=red;
+  // "low"/unknown -> neutral. Also accept raw zone words + photo status strings.
+  if(cls==='good'||cls==='optimal'||cls==='in_range') return GR_ZONE.optimal;
+  if(cls==='medium'||cls==='warn'||cls==='warning'||cls==='slightly_low'||cls==='slightly_high') return GR_ZONE.warning;
+  if(cls==='high'||cls==='bad'||cls==='critical'||cls==='poor'||cls==='out_of_range') return GR_ZONE.critical;
+  return '#9fb3d1';
+}
+/* Headline metrics (value/unit/colour) for the video benchmark tiles. */
 function cardMetrics(sport,s){
   const out=[]; const add=(lbl,v,unit,lo,hi,dec)=>{
     if(v==null||(typeof v==='number'&&isNaN(v))) return;
@@ -1672,16 +1691,42 @@ function cardMetrics(sport,s){
   }
   return out.slice(0,4);
 }
+/* --- adapters: each analysis source -> one normalized card model
+   {sport, score, grade, keyframe, metrics:[{lbl,val,unit,color}]} --- */
+function cardFromVideo(r){
+  const sport=r.sport_type||state.sport||'run';
+  return { sport, score:r.technique_score, grade:r.letter_grade||'—',
+    keyframe:r.keyframe_base64, metrics:cardMetrics(sport, r.sport_specific_metrics||{}) };
+}
+function cardFromPhoto(res){
+  const sport=res.sport||state.sport||'run';
+  const sc=res.score||{}, A=res.angles_with_context||{}, mets=[];
+  for(const k of Object.keys(A)){ if(mets.length>=4) break; const a=A[k];
+    if(a.value==null) continue;
+    mets.push({ lbl:a.label||pretty(k),
+      val:(typeof a.value==='number'?Math.round(a.value):a.value), unit:'°',
+      color:stColor(P_STATUS_CLS[a.status]||a.status) }); }
+  return { sport, score:sc.overall_score, grade:sc.grade||'—',
+    keyframe:res.thumbnail_base64||res.keyframe_base64, metrics:mets };
+}
+function cardFromHistory(e){
+  const mets=(e.metrics||[]).slice(0,4).map(m=>{
+    let val=m.value, unit='';
+    if(typeof val==='string'){ const mm=val.match(/^(-?[\d.]+)\s*(.*)$/); if(mm){ val=mm[1]; unit=(mm[2]||'').trim(); } }
+    return { lbl:m.label, val, unit, color:stColor(m.statusCls) };
+  });
+  return { sport:e.sport, score:e.score, grade:e.grade||'—', keyframe:e.keyframe, metrics:mets };
+}
 function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
 function rrect(x,X,Y,w,h,r){
   if(x.roundRect){ x.beginPath(); x.roundRect(X,Y,w,h,r); return; }
   x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r);
   x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath();
 }
-async function buildShareCard(r){
-  const sport=r.sport_type||state.sport||'run';
-  const score=r.technique_score, grade=r.letter_grade||'—';
-  const s=r.sport_specific_metrics||{}, mets=cardMetrics(sport,s);
+async function buildShareCard(card){
+  const sport=card.sport||'run';
+  const score=card.score, grade=card.grade||'—';
+  const mets=(card.metrics||[]).slice(0,4);
   const W=1080,H=1920,P=90;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const x=cv.getContext('2d'); x.textBaseline='alphabetic';
@@ -1724,9 +1769,9 @@ async function buildShareCard(r){
   cy+=220;
 
   // annotated keyframe
-  if(r.keyframe_base64){
+  if(card.keyframe){
     try{
-      const img=await loadImg(r.keyframe_base64);
+      const img=await loadImg(card.keyframe);
       const fw=W-2*P; let dw=fw, dh=Math.round(fw*img.height/img.width);
       const maxfh=560; if(dh>maxfh){ dh=maxfh; dw=Math.round(dh*img.width/img.height); }
       const ix=P+(fw-dw)/2;
@@ -1772,15 +1817,13 @@ function toast(msg){
   t.textContent=msg; t.classList.add('show');
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),3400);
 }
-async function shareResult(){
-  const r=state.lastResult; if(!r) return;
-  const btn=$('#shareBtn'), txt=$('#shareBtnTxt'), old=txt.textContent;
-  if(btn.getAttribute('aria-disabled')==='true') return;
-  txt.textContent='Preparing…'; btn.setAttribute('aria-disabled','true');
+async function doShare(card, btn, txtEl){
+  if(!card || btn.getAttribute('aria-disabled')==='true') return;
+  const old=txtEl?txtEl.textContent:''; if(txtEl) txtEl.textContent='Preparing…';
+  btn.setAttribute('aria-disabled','true');
   try{
-    const blob=await buildShareCard(r);
-    const sport=r.sport_type||state.sport||'run';
-    const score=r.technique_score;
+    const blob=await buildShareCard(card);
+    const sport=card.sport||'run', score=card.score;
     const file=new File([blob],`flapp-${sport}-${score==null?'result':score}.png`,{type:'image/png'});
     const text=`My ${sport==='bike'?'cycling':'running'} technique scored ${score==null?'—':score}/100 on Flapp — analyze yours free: ${location.origin}`;
     if(navigator.canShare && navigator.canShare({files:[file]})){
@@ -1793,12 +1836,16 @@ async function shareResult(){
     }
   }catch(err){
     if(!err || err.name!=='AbortError') toast('Could not create the card — please try again.');
-  }finally{ txt.textContent=old; btn.removeAttribute('aria-disabled'); }
+  }finally{ if(txtEl) txtEl.textContent=old; btn.removeAttribute('aria-disabled'); }
 }
+function shareResult(){ doShare(cardFromVideo(state.lastResult||{}), $('#shareBtn'), $('#shareBtnTxt')); }
+function sharePhoto(){ if(state.photoRes) doShare(cardFromPhoto(state.photoRes), $('#pShareBtn'), $('#pShareBtnTxt')); }
+function shareHistory(){ if(state.histOpen) doShare(cardFromHistory(state.histOpen), $('#hShareBtn'), $('#hShareBtnTxt')); }
 
 function reset(keepFile=false){
   clearInterval(state.polling); state.jobId=null; state.keepFileOnRetry=false;
-  state.lastResult=null; $('#shareBtn').classList.add('hidden');
+  state.lastResult=null; state.photoRes=null;
+  $('#shareBtn').classList.add('hidden'); $('#pShareBtn').classList.add('hidden');
   if(keepFile && state.file){
     // Network-ish failure: keep the clip loaded so "Try again" is one click.
     drop.classList.remove('err');
@@ -1944,7 +1991,7 @@ function saveToHistory(kind,res){
     const e={ id:'h'+Date.now(), at:Date.now(), kind, sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
-      keyframe:res.keyframe_base64||null, report:(res.ai_recommendations||{}).report||null,
+      keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
     const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o;
     if(auth){
@@ -1969,6 +2016,7 @@ function renderHistList(){
 }
 function openHistory(id){
   const e=loadHist().find(x=>x.id===id); if(!e) return;
+  state.histOpen=e;
   $('#hdImg').src=e.keyframe||''; $('#hdDownload').href=e.keyframe||'#';
   $('#hdImgWrap').style.display = e.keyframe?'':'none';
   $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
