@@ -162,6 +162,20 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .topbar .authbox-m{margin-left:auto}
 .scrim{position:fixed;inset:0;background:rgba(20,41,75,.44);z-index:35;border:0}
 
+/* mobile bottom tab bar (hidden on desktop) — thumb-reachable nav */
+.botnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:36;background:#fff;
+  border-top:1px solid var(--c-line);box-shadow:0 -2px 12px rgba(20,41,75,.06);
+  padding-bottom:env(safe-area-inset-bottom,0)}
+.botnav{grid-template-columns:repeat(4,1fr)}
+.botlink{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:8px 4px 7px;min-height:56px;text-decoration:none;color:var(--c-ink-soft);font-size:11px;font-weight:700;
+  letter-spacing:.01em;transition:color .12s}
+.botlink .ic{width:23px;height:23px;opacity:.9}
+.botlink:active{background:var(--c-panel)}
+.botlink[aria-current="page"]{color:var(--c-blue)}
+.botlink[aria-current="page"] .ic{opacity:1}
+.botlink:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px;border-radius:8px}
+
 /* ---------- Hero (collapses after upload state) ---------- */
 .hero{background:linear-gradient(135deg,#14294B 0%,#1D3E77 60%,#2F6DE0 100%);
   color:#fff;position:relative;overflow:hidden}
@@ -462,6 +476,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   body.nav-open .sidebar{transform:translateX(0)}
   body.nav-open .scrim{display:block}
   .scrim[hidden]{display:none}
+  /* bottom tab bar visible; reserve room so it never covers content/footer */
+  .botnav{display:grid}
+  .appshell{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
 }
 @media(min-width:901px){
   /* desktop: sidebar always visible, scrim never */
@@ -565,6 +582,14 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 <!-- Off-canvas scrim for mobile -->
 <div class="scrim" id="navScrim" hidden></div>
+
+<!-- Mobile bottom tab bar (shown < 900px): thumb-reachable primary nav -->
+<nav class="botnav" id="botnav" aria-label="Primary">
+  <a href="#" id="botAnalyze" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
+  <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
+  <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
+  <a href="/academy" id="botAcademy" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
+</nav>
 
 <!-- Left sidebar (primary navigation) -->
 <aside class="sidebar" id="sidebar" aria-label="Main">
@@ -1047,10 +1072,14 @@ const SECTIONS={upload:'uploader', progress:'progress', results:'results', photo
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 const NAV_FOR_STATE = { history:'#navHistory', trends:'#navProgress' };
+const BOTNAV_FOR_STATE = { history:'#botHistory', trends:'#botProgress' };
 function syncActiveNav(name){
-  const active = NAV_FOR_STATE[name] || '#navAnalyze';  // default: Analyze
+  const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
+  const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
   document.querySelectorAll('.sidenav .navlink').forEach(a=>a.removeAttribute('aria-current'));
+  document.querySelectorAll('.botnav .botlink').forEach(a=>a.removeAttribute('aria-current'));
   const el = $(active); if(el) el.setAttribute('aria-current','page');
+  const bel = $(botActive); if(bel) bel.setAttribute('aria-current','page');
 }
 
 function setState(name, {focus=null}={}){
@@ -2150,6 +2179,11 @@ navScrim.addEventListener('click',closeNav);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && document.body.classList.contains('nav-open')) closeNav(); });
 // Any sidebar link closes the drawer (mobile); desktop ignores (drawer not shown)
 document.querySelectorAll('.sidenav .navlink').forEach(a=>a.addEventListener('click',closeNav));
+
+// Bottom tab bar (mobile) — same destinations as the sidebar; Academy is a real link
+$('#botAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
+$('#botProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
+$('#botHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
 $('#history').addEventListener('click',e=>{
   const del=e.target.closest('[data-del]'); if(del){ e.stopPropagation(); historyDelete(del.dataset.del); return; }
   const card=e.target.closest('.hcard'); if(card) openHistory(card.dataset.id);
