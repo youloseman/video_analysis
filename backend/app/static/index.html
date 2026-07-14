@@ -210,6 +210,17 @@ h2.sec + .speedline{margin-bottom:24px}
 .blockhead h3{font-family:var(--f-display);font-weight:800;text-transform:uppercase;
   font-size:19px;color:var(--c-navy);letter-spacing:.02em;margin:8px 0 8px}
 
+/* Each result section is a distinct card, so AI-coach output reads apart
+   from the dry statistics below it. */
+.block{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:24px;margin-top:20px}
+.block > .blockhead{margin:0 0 16px}
+.block > .blockhead .speedline-sm{margin-bottom:0}
+/* the coach block already carries its own tinted panel — let it be the card
+   itself instead of nesting a panel inside a white card */
+.block.block-coach{background:var(--c-panel-blue);border-color:transparent}
+.block.block-coach .coach{background:transparent;padding:0}
+
 /* ---------- Buttons ---------- */
 .btn{font-family:var(--f-body);font-weight:800;letter-spacing:.02em;border-radius:var(--radius-btn);
   cursor:pointer;border:1.5px solid transparent;transition:all .15s ease;
@@ -792,7 +803,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <div id="gateBanner"></div>
     <p class="hint hidden" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
 
-    <div class="block" id="coachBlock">
+    <div class="block block-coach" id="coachBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
         <h3>Coach’s notes</h3>
@@ -893,7 +904,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
     <div id="pWarnings"></div>
 
-    <div class="block" id="pCoachBlock">
+    <div class="block block-coach" id="pCoachBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
         <h3>Coach’s notes</h3>
@@ -1006,7 +1017,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         </div>
       </div>
     </div>
-    <div class="block hidden" id="hdCoachBlock">
+    <div class="block block-coach hidden" id="hdCoachBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
         <h3>Coach’s notes</h3>
