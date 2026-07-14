@@ -45,15 +45,44 @@ a{color:var(--c-blue)}
 .speedline{height:6px;width:120px;border-radius:3px;transform:skewX(var(--skew));
   background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
 .eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue)}
-/* header */
-header{border-bottom:1px solid var(--c-line);background:#fff;position:sticky;top:0;z-index:20}
-header .wrap{max-width:1000px;display:flex;align-items:center;justify-content:space-between;height:64px}
+/* ---- shared left-sidebar shell (mirrors the app in static/index.html) ---- */
+:root{--sidebar-w:244px}
 .wordmark{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:24px;
-  text-transform:uppercase;letter-spacing:-.01em;color:var(--c-navy);display:flex;align-items:center;gap:8px;text-decoration:none}
+  text-transform:uppercase;letter-spacing:-.01em;color:var(--c-navy);display:flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer}
 .wordmark .dot{width:9px;height:9px;border-radius:50%;background:var(--c-coral);transform:translateY(-9px)}
-header nav a{color:var(--c-ink-soft);text-decoration:none;font-size:13px;font-weight:700;padding:8px 0;margin-left:22px}
-header nav a:hover{color:var(--c-blue)}
-header nav a[aria-current="page"]{color:var(--c-navy)}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);z-index:40;background:#fff;
+  border-right:1px solid var(--c-line);display:flex;flex-direction:column;padding:22px 16px 16px;gap:8px}
+.sidebar > .wordmark{padding:0 8px 6px;font-size:26px}
+.sidenav{display:flex;flex-direction:column;gap:2px;margin-top:14px;flex:1}
+.navlink{position:relative;display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:var(--radius-btn);
+  color:var(--c-ink-soft);text-decoration:none;font-size:14.5px;font-weight:700;transition:background .13s,color .13s}
+.navlink svg{width:19px;height:19px;flex:none;opacity:.85}
+.navlink:hover{background:var(--c-panel);color:var(--c-navy)}
+.navlink:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+.navlink[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-blue)}
+.navlink[aria-current="page"] svg{opacity:1}
+.navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
+  border-radius:0 3px 3px 0;background:var(--c-blue)}
+.navlink-ext{color:var(--c-ink-faint);font-weight:600;font-size:13.5px}
+.navsep{height:1px;background:var(--c-line);margin:8px 12px}
+.appshell{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+.appshell > main,.appshell > .article-wrap{flex:1}
+/* mobile top bar + off-canvas */
+.topbar{display:none;position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--c-line);
+  align-items:center;gap:12px;height:56px;padding:0 16px}
+.topbar-toggle{width:40px;height:40px;border:1px solid var(--c-line);border-radius:var(--radius-btn);background:#fff;
+  color:var(--c-navy);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.topbar-toggle:hover{background:var(--c-panel)}.topbar-toggle svg{width:20px;height:20px}
+.topbar .wordmark{font-size:21px}
+.scrim{position:fixed;inset:0;background:rgba(20,41,75,.44);z-index:35;border:0}
+@media(max-width:900px){
+  .topbar{display:flex}
+  .appshell{margin-left:0}
+  .sidebar{transform:translateX(-100%);transition:transform .22s ease;box-shadow:var(--shadow-lg)}
+  body.nav-open .sidebar{transform:translateX(0)}
+  body.nav-open .scrim{display:block}.scrim[hidden]{display:none}
+}
+@media(min-width:901px){.scrim{display:none!important}}
 /* footer */
 footer{border-top:1px solid var(--c-line);padding:24px 0 48px;font-size:12px;color:var(--c-ink-soft);margin-top:64px}
 footer .wrap{max-width:1000px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
@@ -162,17 +191,38 @@ def _esc(s: str) -> str:
     return html.escape(s or "", quote=True)
 
 
-def _header(active: str) -> str:
-    """Site header with the Academy nav link marked active on Academy pages."""
-    acad_attr = ' aria-current="page"' if active == "academy" else ""
+# Inline nav icons (Academy pages have no shared SVG sprite of their own).
+_ICONS = {
+    "analyze": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 8v3l2 2"/><path d="M20 20l-3.5-3.5"/></svg>',
+    "book": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg>',
+    "ext": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5"/><path d="M19 5l-8 8"/><path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg>',
+    "menu": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+}
+
+
+def _sidebar(active: str) -> str:
+    """Left sidebar shared with the app. On Academy pages, Academy is current;
+    the app-view links point back to the SPA at ``/``."""
+    acad = ' aria-current="page"' if active == "academy" else ""
     return (
-        "<header><div class=\"wrap\">"
+        # mobile top bar + scrim
+        '<div class="topbar">'
+        '<button class="topbar-toggle" id="navToggle" type="button" aria-label="Open menu" '
+        'aria-expanded="false" aria-controls="sidebar">' + _ICONS["menu"] + "</button>"
         '<a class="wordmark" href="/">Flapp<span class="dot"></span></a>'
-        '<nav aria-label="Site">'
-        '<a href="/">Analyze</a>'
-        f'<a href="/academy"{acad_attr}>Academy</a>'
-        '<a href="/docs" target="_blank" rel="noopener">API</a>'
-        "</nav></div></header>"
+        "</div>"
+        '<div class="scrim" id="navScrim" hidden></div>'
+        # sidebar
+        '<aside class="sidebar" id="sidebar" aria-label="Main">'
+        '<a class="wordmark" href="/">Flapp<span class="dot"></span></a>'
+        '<nav class="sidenav" aria-label="Site">'
+        f'<a href="/" class="navlink">{_ICONS["analyze"]}<span>Analyze</span></a>'
+        f'<a href="/academy" class="navlink"{acad}>{_ICONS["book"]}<span>Academy</span></a>'
+        '<span class="navsep"></span>'
+        '<a href="/docs" target="_blank" rel="noopener" class="navlink navlink-ext">'
+        + _ICONS["ext"] + "<span>API docs</span></a>"
+        "</nav>"
+        "</aside>"
     )
 
 
@@ -185,6 +235,17 @@ def _footer() -> str:
         '<a href="/health" target="_blank" rel="noopener">status</a></span>'
         "</div></footer>"
     )
+
+
+# Tiny script: mobile drawer toggle (open/close, scrim, Escape).
+_NAV_JS = (
+    "var t=document.getElementById('navToggle'),s=document.getElementById('navScrim');"
+    "function o(){document.body.classList.add('nav-open');t.setAttribute('aria-expanded','true');s.hidden=false;}"
+    "function c(){document.body.classList.remove('nav-open');t.setAttribute('aria-expanded','false');s.hidden=true;}"
+    "if(t){t.addEventListener('click',function(){document.body.classList.contains('nav-open')?c():o();});"
+    "s.addEventListener('click',c);"
+    "document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('nav-open'))c();});}"
+)
 
 
 def _page(
@@ -207,7 +268,8 @@ def _page(
             + json.dumps(jsonld, ensure_ascii=False)
             + "</script>"
         )
-    script = f"<script>{extra_js}</script>\n" if extra_js else ""
+    # Always include the mobile-nav script; append any widget JS after it.
+    script = f"<script>{_NAV_JS}{extra_js}</script>\n"
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
         '<meta charset="UTF-8">\n'
@@ -225,7 +287,7 @@ def _page(
         f"<style>{_BASE_CSS}{extra_css}</style>\n"
         f"{ld}\n"
         "</head>\n<body>\n"
-        f"{_header(active)}\n{body}\n{_footer()}\n"
+        f'{_sidebar(active)}\n<div class="appshell">\n{body}\n{_footer()}\n</div>\n'
         f"{script}"
         "</body>\n</html>"
     )
