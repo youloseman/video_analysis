@@ -115,6 +115,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .pill-high{background:#FDE5E1}.pill-high .dot{background:var(--c-coral)}
 .pill-medium{background:#F7EBD9}.pill-medium .dot{background:var(--c-warn)}
 .pill-low{background:var(--c-panel)}.pill-low .dot{background:var(--c-ink-faint)}
+.pill-good{background:rgba(46,158,91,.14)}.pill-good .dot{background:#2E9E5B}
 .pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--c-warn)}
 
 /* ---------- Layout shell: fixed left sidebar + content column ---------- */
@@ -793,8 +794,8 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
       </div>
       <div class="tablewrap">
         <table class="data">
-          <caption class="visually-hidden">Joint angle statistics: minimum, mean, maximum, range and share of valid frames per angle</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num">Range</th><th scope="col" class="num">Valid</th></tr></thead>
+          <caption class="visually-hidden">Joint angle statistics: minimum, mean, maximum, optimal range, status and share of valid frames per angle</caption>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Valid</th></tr></thead>
           <tbody id="angleRows"></tbody>
         </table>
       </div>
@@ -1397,6 +1398,29 @@ function rangeStatus(v,lo,hi,slack){
   if(v>=lo-slack && v<=hi+slack) return 'warn';
   return 'bad';
 }
+
+/* Optimal [lo,hi] for a joint-angle table row (keyed by angle_statistics key).
+   Run: unprefixed keys map to single-value norms. Bike: only angles with a
+   meaningful single optimum (trunk/elbow/shoulder). Bike knee/hip sweep the whole
+   stroke, so a single row-level range would mislead -> return null (shown as "--"). */
+const RUN_ANGLE_OPT={ knee:[140,160], hip:[150,180], trunk:[4,12], elbow:[85,100] };
+const BIKE_ANGLE_OPT_DEFAULT={ trunk_angle:[40,55], elbow_angle:[145,165], shoulder_angle:[90,120] };
+const BIKE_POSITION_OPT={
+  road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[90,120]},
+  road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[85,110]},
+  tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100]},
+  triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105]},
+  casual:{trunk_angle:[45,60],elbow_angle:[130,165],shoulder_angle:[100,140]},
+};
+function angleOptimal(key,sport,res){
+  if(sport==='run') return RUN_ANGLE_OPT[key]||null;
+  // bike: strip left_/right_ prefix, look up by base angle, pick position table
+  const base=String(key).replace(/^left_|^right_/,'');
+  const map=(res&&res.cycling_position&&BIKE_POSITION_OPT[res.cycling_position])||BIKE_ANGLE_OPT_DEFAULT;
+  // 'trunk' in stats is the same as 'trunk_angle'
+  if(base==='trunk') return map.trunk_angle||null;
+  return map[base+'_angle']||map[base]||null;
+}
 const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
 const GR_ZONE={optimal:'#22C55E',warning:'#F59E0B',critical:'#EF4444'};
 /* Which zone a value falls in, given optimal [lo,hi] and warning margin = 50% of optimal width. */
@@ -1623,7 +1647,13 @@ function render(job){
   } else {
     $('#videoCol').classList.add('hidden');
     $('#resultTop').classList.add('no-video');
-    $('#ephemNote').classList.remove('hidden');
+    const ep=$('#ephemNote');
+    if(job.overlay_failed){
+      ep.innerHTML='The annotated overlay video couldn’t be rendered for this clip — your score, angles and coaching above are unaffected. See your technique on the annotated keyframe saved in <b>History</b>.';
+    } else {
+      ep.textContent='Results aren’t stored — save what you need before leaving.';
+    }
+    ep.classList.remove('hidden');
   }
 
   // AI coach
@@ -1657,17 +1687,29 @@ function render(job){
 
   // angle table
   const A=r.angle_statistics||{};
+  const PILL_WORD={good:'in range',warn:'check',bad:'out of range'};
+  const PILL_CLS={good:'pill-good',warn:'pill-medium',bad:'pill-high'};
   const rows=Object.keys(A).map(k=>{
     const a=A[k]; const valid=a.valid_frames||0; const tot=valid+(a.nan_frames||0);
     const pct=tot?Math.round(valid/tot*100):0;
     const muted=a.mean==null;
     const cls=muted?'num muted':'num';
+    // Optimal range + status vs the athlete's mean angle (measured value)
+    const opt=angleOptimal(k,sport,r);
+    const optTxt=opt?`${opt[0]}–${opt[1]}°`:'—';
+    let statusCell='<td class="muted">—</td>';
+    if(opt && !muted){
+      const z=grZone(a.mean,opt[0],opt[1]);          // optimal | warning | critical
+      const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
+      statusCell=`<td><span class="pill ${PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${PILL_WORD[zc]}</span></td>`;
+    }
     return `<tr><th scope="row">${esc(pretty(k))}</th>
       <td class="${cls}">${num(a.min,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
-      <td class="${cls}">${num(a.max,0)}</td><td class="${cls}">${num(a.range,0)}</td>
+      <td class="${cls}">${num(a.max,0)}</td>
+      <td class="num ${opt?'':'muted'}">${optTxt}</td>${statusCell}
       <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
   }).join('');
-  $('#angleRows').innerHTML=rows||'<tr><td colspan="6" class="muted">No angle data.</td></tr>';
+  $('#angleRows').innerHTML=rows||'<tr><td colspan="7" class="muted">No angle data.</td></tr>';
 
   // advanced biomechanics (phase portraits / coordination / waveform vs reference)
   renderBiomechanics(s.biomechanics);

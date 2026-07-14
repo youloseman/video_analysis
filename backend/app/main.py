@@ -171,6 +171,7 @@ class JobStatus(BaseModel):
     error: str | None = None
     overlay_available: bool = False
     overlay_url: str | None = None
+    overlay_failed: bool = False
     result: dict[str, Any] | None = None
 
 
@@ -408,6 +409,14 @@ def job_status(job_id: str) -> JobStatus:
     if job is None:
         raise HTTPException(404, "unknown job_id")
     overlay_ready = bool(job.get("overlay_path")) and Path(job["overlay_path"]).exists()
+    # Overlay was requested for this job but the file never materialized after a
+    # completed run -- rendering failed (e.g. ffmpeg). Let the client say so
+    # instead of silently hiding the video with no explanation.
+    overlay_failed = (
+        bool(job.get("overlay_path"))
+        and job.get("status") == "completed"
+        and not overlay_ready
+    )
     return JobStatus(
         job_id=job_id,
         status=job["status"],
@@ -416,6 +425,7 @@ def job_status(job_id: str) -> JobStatus:
         error=job.get("error"),
         overlay_available=overlay_ready,
         overlay_url=f"/jobs/{job_id}/overlay" if overlay_ready else None,
+        overlay_failed=overlay_failed,
         result=job.get("result"),
     )
 

@@ -182,6 +182,13 @@ class VideoVisualizer:
             if not success:
                 break
 
+            # Rotation/orientation metadata can make the decoded frame size
+            # differ from the reported CAP_PROP dims. The writer needs an exact
+            # (width, height) match or it silently drops frames and produces an
+            # empty/corrupt file -- resize the odd frame to keep the video valid.
+            if frame.shape[1] != width or frame.shape[0] != height:
+                frame = cv2.resize(frame, (width, height))
+
             # Find the nearest analyzed frame for this video frame
             analyzed_idx = self._get_nearest_analyzed_frame(video_frame_idx)
             if analyzed_idx is not None:
@@ -734,6 +741,13 @@ class VideoVisualizer:
         cmd = [
             "ffmpeg",
             "-i", input_path,
+            # yuv420p requires even width AND height. Landscape clips from
+            # editors/social apps often have an odd dimension (e.g. 1918x1078),
+            # which makes libx264+yuv420p abort with "not divisible by 2" and
+            # kills the overlay while the rest of the analysis succeeds. Round
+            # both dimensions down to the nearest even number (no-op if already
+            # even) so any input encodes.
+            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
             "-c:v", "libx264",
             "-preset", "fast",
             "-crf", "23",
