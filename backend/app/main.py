@@ -45,6 +45,7 @@ from pydantic import BaseModel
 
 from app.api import academy as academy_routes
 from app.api import auth as auth_routes
+from app.api import me as me_routes
 from app.core.config import settings
 from app.core.db import init_db
 from app.services.video_analysis.runner import (
@@ -149,6 +150,8 @@ app.add_middleware(
 app.include_router(academy_routes.router)
 # Accounts: /auth/register, /auth/login, /auth/me.
 app.include_router(auth_routes.router)
+# Per-user cloud history/progress: /me/analyses.
+app.include_router(me_routes.router)
 
 
 # --------------------------------------------------------------------------

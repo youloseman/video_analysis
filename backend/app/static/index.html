@@ -336,6 +336,40 @@ h2.sec + .speedline{margin-bottom:24px}
 .tile .t-ref .st-warn{color:var(--c-warn-text);font-weight:800}
 .tile .t-ref .st-bad{color:var(--c-coral-btn);font-weight:800}
 
+/* ---------- Gradient range bar (metric optimal range + marker) ---------- */
+.grbar{margin-top:12px}
+.grbar .gr-track{position:relative;height:8px;border-radius:999px;overflow:visible}
+.grbar .gr-mark{position:absolute;top:-2px;width:2px;height:12px;background:#fff;border-radius:1px;
+  box-shadow:0 0 0 1px rgba(20,41,75,.28);transform:translateX(-1px)}
+.grbar .gr-tri{position:absolute;top:13px;width:0;height:0;
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--c-ink);
+  transform:translateX(-5px)}
+.grbar .gr-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);
+  font-size:9.5px;color:var(--c-ink-faint);margin-top:12px;font-weight:500}
+.grbar .gr-scale .gr-opt{color:#2E9E5B;font-weight:600}
+
+/* ---------- Advanced biomechanics charts ---------- */
+.biomech-intro{font-size:13px;color:var(--c-ink-soft);margin:-4px 0 18px;line-height:1.6}
+.bmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.bmcard{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px 16px 12px;box-shadow:var(--shadow)}
+.bmcard .bm-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+.bmcard .bm-title{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-navy)}
+.bmcard .bm-badge{font-family:var(--f-mono);font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.bmcard .bm-badge.good{color:#1F7A45;background:rgba(46,158,91,.14)}
+.bmcard .bm-badge.warn{color:var(--c-warn-text);background:rgba(201,123,16,.14)}
+.bmcard .bm-badge.bad{color:var(--c-coral-btn);background:rgba(241,85,63,.13)}
+.bmcard .bm-sub{font-size:11px;color:var(--c-ink-soft);margin-bottom:8px;min-height:15px}
+.bmcard .bm-metrics{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:11px;color:var(--c-ink-soft);margin-top:8px}
+.bmcard .bm-metrics b{font-family:var(--f-mono);color:var(--c-navy);font-weight:600}
+.bmchart{width:100%;height:auto;display:block;overflow:visible}
+.bmchart text{font-family:var(--f-mono);fill:var(--c-ink-faint)}
+.bmchart .bm-axtitle{fill:var(--c-ink-soft);font-weight:600}
+.bmlegend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:10.5px;color:var(--c-ink-soft);margin-top:8px}
+.bmlegend .lg{display:inline-flex;align-items:center;gap:5px}
+.bmlegend .sw{width:14px;height:3px;border-radius:2px;flex:none}
+.bmlegend .sw.dot{width:8px;height:8px;border-radius:50%}
+.bmlegend .sw.dash{background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 7px);height:2px}
+
 table.data{width:100%;border-collapse:collapse;font-size:14px}
 table.data thead th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-soft);
   font-weight:800;text-align:left;padding:8px 16px;border-bottom:2.5px solid var(--c-navy)}
@@ -667,6 +701,16 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
           <tbody id="angleRows"></tbody>
         </table>
       </div>
+    </div>
+
+    <div class="block hidden" id="biomechBlock">
+      <div class="blockhead">
+        <div class="eyebrow">Lab-grade</div>
+        <h3>Advanced biomechanics</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="biomech-intro">Cycle-by-cycle analysis of your movement: how repeatable your form is, how your joints coordinate, and how your motion compares to reference athletes.</p>
+      <div id="biomech"></div>
     </div>
 
     <details class="raw hidden" id="rawBlock"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
@@ -1231,24 +1275,63 @@ function rangeStatus(v,lo,hi,slack){
   return 'bad';
 }
 const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
-function tile(lbl,val,unit,ref,cls,isText=false){
+const GR_ZONE={optimal:'#22C55E',warning:'#F59E0B',critical:'#EF4444'};
+/* Which zone a value falls in, given optimal [lo,hi] and warning margin = 50% of optimal width. */
+function grZone(v,lo,hi){
+  const m=(hi-lo)*0.5||1;
+  if(v>=lo && v<=hi) return 'optimal';
+  if((v>=lo-m && v<lo) || (v>hi && v<=hi+m)) return 'warning';
+  return 'critical';
+}
+/* Horizontal 5-zone bar (red|amber|green|amber|red) with a marker triangle at `value`.
+   Axis = optimal ± one warning margin ± one critical margin (mirrors GradientRangeBar). */
+function gradientRangeBar(value,lo,hi,unit){
+  const opt=hi-lo, m=opt*0.5||1;
+  const warnLo=lo-m, warnHi=hi+m, barMin=warnLo-m, barMax=warnHi+m, rng=barMax-barMin||1;
+  const P=x=>Math.max(0,Math.min(100,((x-barMin)/rng)*100));
+  const wl=P(warnLo), ol=P(lo), oh=P(hi), wh=P(warnHi), mk=P(value);
+  const grad=`linear-gradient(90deg,`
+    +`${GR_ZONE.critical} 0%,${GR_ZONE.critical} ${wl.toFixed(1)}%,`
+    +`${GR_ZONE.warning} ${wl.toFixed(1)}%,${GR_ZONE.warning} ${ol.toFixed(1)}%,`
+    +`${GR_ZONE.optimal} ${ol.toFixed(1)}%,${GR_ZONE.optimal} ${oh.toFixed(1)}%,`
+    +`${GR_ZONE.warning} ${oh.toFixed(1)}%,${GR_ZONE.warning} ${wh.toFixed(1)}%,`
+    +`${GR_ZONE.critical} ${wh.toFixed(1)}%,${GR_ZONE.critical} 100%)`;
+  const u=unit&&unit!=='°'?' '+unit:(unit==='°'?'°':'');
+  const tri=GR_ZONE[grZone(value,lo,hi)];
+  return `<div class="grbar">`
+    +`<div class="gr-track" style="background:${grad}" role="img" aria-label="Value ${num(value,1)}${u}, optimal ${num(lo,1)} to ${num(hi,1)}${u}">`
+    +`<span class="gr-mark" style="left:${mk.toFixed(1)}%"></span>`
+    +`<span class="gr-tri" style="left:${mk.toFixed(1)}%;border-top-color:${tri}"></span></div>`
+    +`<div class="gr-scale"><span>${num(warnLo,0)}</span>`
+    +`<span class="gr-opt">${num(lo,0)}–${num(hi,0)}${u}</span>`
+    +`<span>${num(warnHi,0)}</span></div></div>`;
+}
+/* tile(): pass `range={value,lo,hi,unit}` to render a gradient range bar and auto-color the tile. */
+function tile(lbl,val,unit,ref,cls,isText=false,range=null){
+  let bar='';
+  if(range && range.value!=null && range.lo!=null && range.hi!=null){
+    if(!cls){ const z=grZone(range.value,range.lo,range.hi); cls=z==='optimal'?'good':z==='warning'?'warn':'bad'; }
+    bar=gradientRangeBar(range.value,range.lo,range.hi,range.unit!=null?range.unit:unit);
+  }
   const stWord = cls ? `${ref?' · ':''}<span class="st-${cls}">${ST_WORD[cls]}</span>` : '';
   const refLine = (ref||cls) ? `<div class="t-ref">${ref?esc(ref):''}${stWord}</div>` : '';
   const dot = cls ? '<span class="sdot" aria-hidden="true"></span>' : '';
   const valHtml = isText
     ? `<div class="t-val txt">${esc(val)}</div>`
     : `<div class="t-val">${val}${unit?(unit==='°'?'°':` <small>${unit}</small>`):''}</div>`;
-  return `<div class="tile ${cls||''}"><div class="t-lbl">${dot}${esc(lbl)}</div>${valHtml}${refLine}</div>`;
+  return `<div class="tile ${cls||''}"><div class="t-lbl">${dot}${esc(lbl)}</div>${valHtml}${refLine}${bar}</div>`;
 }
+/* helper: {value,lo,hi,unit} for the range bar */
+function R(value,lo,hi,unit){ return {value,lo,hi,unit}; }
 
 function bikeTiles(s){
   const t=[];
-  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°','optimal 138–145°',rangeStatus(s.knee_at_bdc,138,145,5)));
-  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°','optimal 60–72°',rangeStatus(s.knee_at_tdc,60,72,6)));
-  if(s.hip_angle_max!=null) t.push(tile('Hip angle',num(s.hip_angle_max),'°'));
-  if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°'));
-  if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°'));
-  if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°'));
+  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°',null,null,false,R(s.knee_at_bdc,138,145,'°')));
+  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°',null,null,false,R(s.knee_at_tdc,60,72,'°')));
+  if(s.hip_angle_max!=null) t.push(tile('Hip angle',num(s.hip_angle_max),'°',null,null,false,R(s.hip_angle_max,40,80,'°')));
+  if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,R(s.elbow_angle_avg,145,165,'°')));
+  if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,R(s.trunk_angle_avg,40,55,'°')));
+  if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,R(s.shoulder_angle_avg,80,110,'°')));
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
   if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
   if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
@@ -1257,12 +1340,12 @@ function bikeTiles(s){
 }
 function runTiles(s){
   const t=[];
-  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm','target 170–185',rangeStatus(s.cadence_spm,170,185,10)));
-  if(s.vertical_oscillation_cm!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_cm,1),'cm'));
-  else if(s.vertical_oscillation_m!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_m*100,1),'cm'));
-  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°'));
+  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,R(s.cadence_spm,170,185,'spm')));
+  if(s.vertical_oscillation_cm!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_cm,1),'cm',null,null,false,R(s.vertical_oscillation_cm,6,10,'cm')));
+  else if(s.vertical_oscillation_m!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_m*100,1),'cm',null,null,false,R(s.vertical_oscillation_m*100,6,10,'cm')));
+  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,4,10,'°')));
   if(s.ground_contact_time_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_time_ms),'ms'));
-  if(s.knee_mean!=null) t.push(tile('Knee (mean)',num(s.knee_mean),'°'));
+  if(s.knee_mean!=null) t.push(tile('Knee (mean)',num(s.knee_mean),'°',null,null,false,R(s.knee_mean,140,160,'°')));
   if(s.knee_min!=null) t.push(tile('Knee (min)',num(s.knee_min),'°'));
   return t;
 }
@@ -1462,6 +1545,9 @@ function render(job){
   }).join('');
   $('#angleRows').innerHTML=rows||'<tr><td colspan="6" class="muted">No angle data.</td></tr>';
 
+  // advanced biomechanics (phase portraits / coordination / waveform vs reference)
+  renderBiomechanics(s.biomechanics);
+
   // raw json (debug only)
   if(DEBUG){ $('#rawBlock').classList.remove('hidden'); $('#rawJson').textContent=JSON.stringify(r,null,2); }
 
@@ -1534,17 +1620,18 @@ async function submitAuth(e){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
-    auth={email:j.email,is_pro:j.is_pro}; renderAuth(); closeAuth();
+    auth={email:j.email,is_pro:j.is_pro}; renderAuth(); closeAuth(); migrateAndLoad();
   }catch(err){ $('#authErr').textContent='Network error — check your connection and try again.'; }
   finally{ btn.disabled=false; }
 }
-function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; renderAuth(); }
+function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; state.cloudHist=null; renderAuth(); reRenderData(); }
 async function checkAuth(){
   const t=getToken();
   if(t){
     try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); } else if(r.status===401){ localStorage.removeItem(TKEY); } }catch(e){}
   }
   renderAuth();
+  if(auth) migrateAndLoad();
 }
 $('#authClose').addEventListener('click',closeAuth);
 $('#authModal').addEventListener('click',e=>{ if(e.target.id==='authModal') closeAuth(); });
@@ -1567,12 +1654,33 @@ $('#authForm').addEventListener('submit',submitAuth);
    History — analyses persisted in localStorage (this device)
    ============================================================ */
 const HKEY='flapp_history', HCAP=24;
-const loadHist=()=>{ try{ return JSON.parse(localStorage.getItem(HKEY)||'[]'); }catch(e){ return []; } };
+const localHist=()=>{ try{ return JSON.parse(localStorage.getItem(HKEY)||'[]'); }catch(e){ return []; } };
+// Signed in -> the account's cloud list (state.cloudHist); signed out -> this device.
+const loadHist=()=> auth ? (state.cloudHist||[]) : localHist();
+function reRenderData(){ const s=document.body.dataset.state; if(s==='history') renderHistList(); else if(s==='trends') renderProgress(); }
+async function refreshCloud(){
+  if(!auth){ state.cloudHist=null; return; }
+  try{ const r=await fetch('/me/analyses',{headers:authHeaders()}); if(r.ok){ state.cloudHist=await r.json(); reRenderData(); } }catch(e){}
+}
+async function migrateAndLoad(){
+  if(!auth) return;
+  const local=localHist();
+  if(local.length){                            // move this device's history into the account, once
+    try{ await fetch('/me/analyses/import',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({items:local})});
+      try{ localStorage.removeItem(HKEY); }catch(_e){} }catch(e){}
+  }
+  await refreshCloud();
+}
 function persistHist(a){
   try{ localStorage.setItem(HKEY, JSON.stringify(a)); }
   catch(e){ while(a.length>1){ a.pop(); try{ localStorage.setItem(HKEY, JSON.stringify(a)); return; }catch(_e){} } }
 }
-function historyDelete(id){ persistHist(loadHist().filter(x=>x.id!==id)); renderHistList(); }
+function historyDelete(id){
+  if(auth){
+    state.cloudHist=(state.cloudHist||[]).filter(x=>x.id!==id); renderHistList();
+    fetch('/me/analyses/'+encodeURIComponent(id),{method:'DELETE',headers:authHeaders()}).catch(()=>{});
+  } else { persistHist(localHist().filter(x=>x.id!==id)); renderHistList(); }
+}
 function metricsFromVideo(res){
   const A=res.angle_statistics||{}, o=[];
   for(const k of Object.keys(A)){ const a=A[k]; if(a.mean==null) continue;
@@ -1597,7 +1705,12 @@ function saveToHistory(kind,res){
       keyframe:res.keyframe_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
     const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o;
-    const a=loadHist(); a.unshift(e); while(a.length>HCAP) a.pop(); persistHist(a);
+    if(auth){
+      state.cloudHist=[e,...(state.cloudHist||[])];
+      fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)}).catch(()=>{});
+    } else {
+      const a=localHist(); a.unshift(e); while(a.length>HCAP) a.pop(); persistHist(a);
+    }
   }catch(e){}
 }
 function fmtWhen(ms){ try{ const d=new Date(ms);
@@ -1690,6 +1803,180 @@ function extractTrends(kind,res,sport){
   }
   return {t,o};
 }
+/* ============================================================
+   Advanced biomechanics — SVG charts (no chart lib; mirrors Motus
+   Recharts visuals with hand-built inline SVG like trendChart).
+   Data source: result.sport_specific_metrics.biomechanics
+   ============================================================ */
+const BM_ATHLETE='#2F6DE0';   /* athlete line (blue) */
+const BM_REF='#8A94A3';       /* reference (grey) */
+const BM_MEAN='#12B3A6';      /* coordination mean cycle (teal-cyan) */
+const BM_DEV='rgba(241,85,63,.15)'; /* deviation zone */
+const BM_GREEN='#2E9E5B';
+/* score -> badge class (emerald/amber/rose at 70/40) */
+function bmBadge(score){ return score>=70?'good':score>=40?'warn':'bad'; }
+/* strip left_/right_ prefix and Title-Case a joint key */
+function bmJoint(k){ return pretty(String(k).replace(/^left_|^right_/,'')); }
+function bmLegend(items){
+  return `<div class="bmlegend">`+items.map(i=>{
+    const cls=i.kind==='dot'?'sw dot':i.kind==='dash'?'sw dash':'sw';
+    const st=i.kind==='dash'?`color:${i.c}`:`background:${i.c}`;
+    return `<span class="lg"><span class="${cls}" style="${st}"></span>${esc(i.label)}</span>`;
+  }).join('')+`</div>`;
+}
+
+/* --- Waveform: athlete vs reference corridor (mean ± std) + deviation zones --- */
+function waveformChart(cmp){
+  const d=cmp.chart_data||[]; if(d.length<2) return '';
+  const W=300,H=150,pad={l:34,r:10,t:12,b:22};
+  const xs=d.map(p=>p.pct);
+  let lo=Infinity,hi=-Infinity;
+  for(const p of d){ lo=Math.min(lo,p.ref_lower,p.athlete); hi=Math.max(hi,p.ref_upper,p.athlete); }
+  if(!isFinite(lo)){ return ''; }
+  const pd=(hi-lo)*0.08||1; lo-=pd; hi+=pd;
+  const X=pct=>pad.l+(pct/100)*(W-pad.l-pad.r);
+  const Y=v=>pad.t+(H-pad.t-pad.b)*(1-(v-lo)/(hi-lo));
+  const path=(key)=>d.map((p,i)=>`${i?'L':'M'}${X(p.pct).toFixed(1)} ${Y(p[key]).toFixed(1)}`).join(' ');
+  // corridor band = area between ref_upper and ref_lower
+  const band=d.map((p,i)=>`${i?'L':'M'}${X(p.pct).toFixed(1)} ${Y(p.ref_upper).toFixed(1)}`).join(' ')
+    +' '+d.slice().reverse().map(p=>`L${X(p.pct).toFixed(1)} ${Y(p.ref_lower).toFixed(1)}`).join(' ')+' Z';
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="bmchart" role="img" aria-label="Athlete ${esc(bmJoint(cmp.joint))} angle vs reference across the movement cycle">`;
+  // deviation zones (behind everything)
+  for(const z of (cmp.deviation_zones||[])){
+    const x1=X(z.start_pct), x2=X(z.end_pct);
+    svg+=`<rect x="${x1.toFixed(1)}" y="${pad.t}" width="${Math.max(1,x2-x1).toFixed(1)}" height="${(H-pad.t-pad.b).toFixed(1)}" fill="${BM_DEV}"/>`;
+  }
+  // gridlines + y labels (lo, mid, hi)
+  [lo,(lo+hi)/2,hi].forEach(v=>{ const y=Y(v);
+    svg+=`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--c-line)" stroke-width="1"/>`
+      +`<text x="${(pad.l-4).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9">${Math.round(v)}</text>`; });
+  svg+=`<path d="${band}" fill="rgba(138,148,163,.16)"/>`;
+  svg+=`<path d="${path('ref_mean')}" fill="none" stroke="${BM_REF}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  svg+=`<path d="${path('athlete')}" fill="none" stroke="${BM_ATHLETE}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  // x axis
+  svg+=`<text x="${X(0).toFixed(1)}" y="${H-6}" font-size="9">0%</text>`
+    +`<text x="${X(100).toFixed(1)}" y="${H-6}" text-anchor="end" font-size="9">100%</text>`
+    +`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8.5" class="bm-axtitle">% of cycle</text>`;
+  svg+='</svg>';
+  return svg;
+}
+
+/* --- Phase portrait: scatter of angle (x) vs angular velocity (y) --- */
+function phasePortraitChart(jr,color){
+  const pts=jr.data_points||[]; if(pts.length<3) return '';
+  const W=300,H=150,pad={l:38,r:10,t:12,b:22};
+  let ax=Infinity,axh=-Infinity,vy=Infinity,vyh=-Infinity;
+  for(const p of pts){ ax=Math.min(ax,p.angle); axh=Math.max(axh,p.angle); vy=Math.min(vy,p.velocity); vyh=Math.max(vyh,p.velocity); }
+  const axr=(axh-ax)*0.08||1, vyr=(vyh-vy)*0.08||1; ax-=axr;axh+=axr;vy-=vyr;vyh+=vyr;
+  const X=a=>pad.l+(W-pad.l-pad.r)*(a-ax)/(axh-ax);
+  const Y=v=>pad.t+(H-pad.t-pad.b)*(1-(v-vy)/(vyh-vy));
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="bmchart" role="img" aria-label="${esc(bmJoint(jr._joint))} phase portrait: angle versus angular velocity">`;
+  // zero-velocity reference line if in range
+  if(vy<0&&vyh>0){ const y0=Y(0); svg+=`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="var(--c-line)" stroke-width="1"/>`; }
+  const step=Math.max(1,Math.floor(pts.length/160));
+  for(let i=0;i<pts.length;i+=step){ const p=pts[i];
+    svg+=`<circle cx="${X(p.angle).toFixed(1)}" cy="${Y(p.velocity).toFixed(1)}" r="1.9" fill="${color}" fill-opacity="0.5"/>`; }
+  svg+=`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8.5" class="bm-axtitle">angle (°)</text>`
+    +`<text transform="translate(10 ${((pad.t+H-pad.b)/2).toFixed(1)}) rotate(-90)" text-anchor="middle" font-size="8.5" class="bm-axtitle">ang. velocity (°/s)</text>`;
+  svg+='</svg>';
+  return svg;
+}
+
+/* --- Coordination: angle-angle diagram, individual cycles + mean cycle --- */
+function coordinationChart(pr){
+  const cycles=(pr.cycle_data||[]).filter(c=>c&&c.length>1);
+  const mean=(pr.mean_cycle||[]).filter(p=>p);
+  if(!cycles.length && mean.length<2) return '';
+  const all=cycles.flat().concat(mean);
+  const W=300,H=150,pad={l:38,r:10,t:12,b:22};
+  let px=Infinity,pxh=-Infinity,dy=Infinity,dyh=-Infinity;
+  for(const p of all){ px=Math.min(px,p.proximal); pxh=Math.max(pxh,p.proximal); dy=Math.min(dy,p.distal); dyh=Math.max(dyh,p.distal); }
+  const pr2=(pxh-px)*0.08||1, dr=(dyh-dy)*0.08||1; px-=pr2;pxh+=pr2;dy-=dr;dyh+=dr;
+  const X=v=>pad.l+(W-pad.l-pad.r)*(v-px)/(pxh-px);
+  const Y=v=>pad.t+(H-pad.t-pad.b)*(1-(v-dy)/(dyh-dy));
+  const line=(c,w,col,op)=>`<path d="${c.map((p,i)=>`${i?'L':'M'}${X(p.proximal).toFixed(1)} ${Y(p.distal).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="${op}" stroke-linejoin="round"/>`;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="bmchart" role="img" aria-label="${esc(pr.pair)} coordination angle-angle diagram">`;
+  cycles.slice(0,5).forEach(c=>{ svg+=line(c,1.2,BM_ATHLETE,0.28); });
+  if(mean.length>1) svg+=line(mean,2.4,BM_MEAN,1);
+  const [pxLbl,dLbl]=String(pr.pair||'Proximal-Distal').split('-');
+  svg+=`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8.5" class="bm-axtitle">${esc(pxLbl||'proximal')} (°)</text>`
+    +`<text transform="translate(10 ${((pad.t+H-pad.b)/2).toFixed(1)}) rotate(-90)" text-anchor="middle" font-size="8.5" class="bm-axtitle">${esc(dLbl||'distal')} (°)</text>`;
+  svg+='</svg>';
+  return svg;
+}
+
+/* --- Orchestrator: build the whole Advanced biomechanics section --- */
+function renderBiomechanics(bio){
+  const host=$('#biomech'); const block=$('#biomechBlock');
+  if(!host||!block) return;
+  if(!bio){ block.classList.add('hidden'); host.innerHTML=''; return; }
+  const cards=[];
+
+  // Waveform comparison (most valuable: athlete vs literature reference)
+  const wf=bio.waveform;
+  if(wf && (wf.comparisons||[]).length){
+    for(const c of wf.comparisons){
+      const chart=waveformChart(c); if(!chart) continue;
+      const b=bmBadge(c.similarity_score);
+      const dz=(c.deviation_zones||[]).length;
+      cards.push(`<div class="bmcard">
+        <div class="bm-head"><span class="bm-title">${esc(bmJoint(c.joint))} · form vs reference</span>
+          <span class="bm-badge ${b}">${num(c.similarity_score,0)}% match</span></div>
+        <div class="bm-sub">Your averaged cycle against the literature norm band (mean ± 1 SD).</div>
+        ${chart}
+        ${bmLegend([{kind:'line',c:BM_ATHLETE,label:'You'},{kind:'dash',c:BM_REF,label:'Reference mean'},{kind:'band',c:'rgba(138,148,163,.4)',label:'Normal range'},{kind:'band',c:'rgba(241,85,63,.35)',label:'Off-pattern'}])}
+        <div class="bm-metrics"><span>Correlation <b>${num(c.correlation_r,2)}</b></span><span>RMSD <b>${num(c.rmsd,1)}°</b></span>${dz?`<span><b>${dz}</b> deviation zone${dz>1?'s':''}</span>`:''}</div>
+      </div>`);
+    }
+  }
+
+  // Phase portraits (movement repeatability / stability)
+  const pp=bio.phase_portraits;
+  if(pp && pp.joints){
+    const entries=Object.keys(pp.joints).map(k=>({k,jr:pp.joints[k]}))
+      .filter(e=>(e.jr.cycles||[]).length>0 && (e.jr.angle_range||0)>0).slice(0,4);
+    let ci=0;
+    for(const e of entries){
+      e.jr._joint=e.k;
+      const color=[BM_ATHLETE,'#7C4DD1','#E08A1E','#1F9E7A'][ci++%4];
+      const chart=phasePortraitChart(e.jr,color); if(!chart) continue;
+      const b=bmBadge(e.jr.stability_score);
+      cards.push(`<div class="bmcard">
+        <div class="bm-head"><span class="bm-title">${esc(bmJoint(e.k))} · movement stability</span>
+          <span class="bm-badge ${b}">${num(e.jr.stability_score,0)}/100</span></div>
+        <div class="bm-sub">Angle vs how fast it's changing. A tight, repeatable loop = consistent form.</div>
+        ${chart}
+        <div class="bm-metrics"><span>Range of motion <b>${num(e.jr.angle_range,0)}°</b></span><span>Cycles <b>${(e.jr.cycles||[]).length}</b></span></div>
+      </div>`);
+    }
+  }
+
+  // Coordination (proximal–distal timing via angle-angle diagrams)
+  const co=bio.coordination;
+  if(co && (co.pairs||[]).length){
+    for(const p of co.pairs){
+      const chart=coordinationChart(p); if(!chart) continue;
+      const vb=p.variability_score;
+      const b=vb!=null?bmBadge(vb):'';
+      const r=p.cross_correlation&&p.cross_correlation.r;
+      cards.push(`<div class="bmcard">
+        <div class="bm-head"><span class="bm-title">${esc(p.pair)} · coordination</span>
+          ${vb!=null?`<span class="bm-badge ${b}">${num(vb,0)}/100 stable</span>`:''}</div>
+        <div class="bm-sub">How the two joints move together through the cycle (${p.num_cycles} cycle${p.num_cycles===1?'':'s'}).</div>
+        ${chart}
+        ${bmLegend([{kind:'line',c:BM_MEAN,label:'Average cycle'},{kind:'line',c:'rgba(47,109,224,.4)',label:'Individual cycles'}])}
+        <div class="bm-metrics">${r!=null?`<span>Coupling <b>${num(r,2)}</b></span>`:''}${p.coupling_angle_mean!=null?`<span>Mean coupling angle <b>${num(p.coupling_angle_mean,0)}°</b></span>`:''}</div>
+      </div>`);
+    }
+  }
+
+  if(!cards.length){ block.classList.add('hidden'); host.innerHTML=''; return; }
+  const fps=bio.effective_fps, bw=bio.butterworth;
+  const foot=(fps||bw)?`<p class="bm-sub" style="margin-top:16px">Lab-grade analysis${fps?` · sampled at ${num(fps,1)} fps`:''}${bw&&bw.cutoff_hz?` · smoothed with a ${num(bw.cutoff_hz,1)} Hz low-pass filter`:''}. Side-view, near-leg only.</p>`:'';
+  host.innerHTML=`<div class="bmgrid">${cards.join('')}</div>${foot}`;
+  block.classList.remove('hidden');
+}
+
 function trendChart(vals,dates,opt,unit){
   const W=340,H=132,pad={l:10,r:12,t:16,b:14}, n=vals.length;
   let lo=Math.min(...vals), hi=Math.max(...vals);
@@ -1749,7 +2036,7 @@ $('#navProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress
 $('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.progressSport=b.dataset.sport; renderProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar};
 </script>
 </body>
 </html>
