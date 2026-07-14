@@ -1,0 +1,114 @@
+{
+  "topic": "short cranks — biomechanics and aerodynamics",
+  "source_document": "docs/Аэродинамика в велоспорте_ анализ исследований.pdf (2024-2026 review)",
+  "key_facts": [
+    {
+      "claim": "The professional peloton, led by riders such as Tadej Pogačar, has shifted to shorter cranks (165 mm and below) to reach a lower CdA without harming physiology.",
+      "value": "165",
+      "unit": "mm",
+      "context": "road/TT racing, 2025-2026 trend",
+      "source_type": "secondary",
+      "source": {"author": "Roadman Cycling / Brujula Bike", "year": 2026, "title": "Why short cranks are trending / Shorter Cranks: 15 Watts FTP", "where": "PDF refs 8,9,10"},
+      "confidence": "high",
+      "note": "Trend widely reported; the mechanism below is backed by primary studies."
+    },
+    {
+      "claim": "Long cranks force the knee too high at top dead centre, closing the hip angle, which reduces muscle force capacity, increases patellar load and tilts the pelvis back, overloading the lumbar spine.",
+      "value": null,
+      "unit": null,
+      "context": "pedalling biomechanics",
+      "source_type": "primary",
+      "source": {"author": "van der Zwaard et al. (crank-length kinematics)", "year": 2025, "title": "The impact of minor crank length adjustments on lower body cycling kinematics", "where": "Sports Biomechanics / tandfonline, PDF ref 11"},
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "claim": "Hip/knee flexion at top dead centre compresses the diaphragm and limits lung ventilation when the hip angle is very closed.",
+      "value": null,
+      "unit": null,
+      "context": "breathing mechanics in aggressive positions",
+      "source_type": "secondary",
+      "source": {"author": "Roadman Cycling", "year": 2026, "title": "Shorter Cranks: 15 Watts FTP, Better Hip Angle, Faster Aero", "where": "PDF ref 9"},
+      "confidence": "medium",
+      "note": "Plausible and consistent with the primary kinematics work, but the ventilation claim itself is from a secondary source."
+    },
+    {
+      "claim": "Shortening cranks to 165-170 mm opens the hip angle and lets the rider rotate the pelvis forward, dropping the front of the cockpit toward a TT-like torso-parallel position.",
+      "value": "165-170",
+      "unit": "mm",
+      "context": "position optimisation",
+      "source_type": "secondary",
+      "source": {"author": "Brujula Bike / Roadman", "year": 2026, "title": "Why short cranks are trending", "where": "PDF refs 8,9"},
+      "confidence": "high",
+      "note": "Mechanism (pelvis rotation -> lower torso) is the core aerodynamic link."
+    },
+    {
+      "claim": "Data attributed to former British Cycling physiotherapist Phil Burt suggest a switch to 165 mm cranks gave track and road riders a net FTP gain averaging about 15 watts, via more efficient passage through the pedal dead zones and improved breathing.",
+      "value": "15",
+      "unit": "watts (FTP)",
+      "context": "track/road riders switching to 165 mm",
+      "source_type": "secondary",
+      "source": {"author": "Phil Burt (reported by Roadman Cycling)", "year": 2026, "title": "Shorter Cranks: 15 Watts FTP", "where": "PDF ref 9"},
+      "confidence": "medium",
+      "note": "Reported figure, not a controlled-trial mean; present as 'reported ~15 W', not proven."
+    },
+    {
+      "claim": "Clinical testing found that minor crank-length reductions produced a statistically significant reduction in peak knee flexion of up to 24% and hip flexion up to 13%, with lower subjective fatigue versus 175 mm cranks in high-level amateurs.",
+      "value": "24% knee / 13% hip",
+      "unit": "% reduction in peak flexion",
+      "context": "high-level amateur road cyclists, vs 175 mm",
+      "source_type": "primary",
+      "source": {"author": "crank-length kinematics + efficiency trials", "year": 2025, "title": "Minor crank length adjustments on lower body kinematics (tandfonline); Effects of crank length on efficiency, sprint & fatigue (PMC12060448)", "where": "PDF refs 11,12"},
+      "confidence": "high",
+      "note": "Two primary sources: tandfonline kinematics + PMC efficiency/fatigue trial."
+    },
+    {
+      "claim": "At road speeds the rider's body generates up to ~80% of total system aerodynamic drag; the bike only ~20%.",
+      "value": "80",
+      "unit": "%",
+      "context": "general road cycling",
+      "source_type": "secondary",
+      "source": {"author": "Dan Bigham aero hierarchy (Roadman)", "year": 2026, "title": "Dan Bigham Aerodynamics Guide", "where": "PDF ref 3"},
+      "confidence": "high",
+      "note": "Consistent with the existing bike-aero-position article (Burt 70-80%)."
+    },
+    {
+      "claim": "Amateurs often present 10-20% more frontal area than physiologically necessary; dropping the bars ~2 cm, narrowing the elbows and fixing head position can save 10-20 watts at no cost, versus only 2-4 watts from an aero frame at amateur speeds.",
+      "value": "10-20 W (position) vs 2-4 W (frame)",
+      "unit": "watts",
+      "context": "amateur speeds",
+      "source_type": "secondary",
+      "source": {"author": "Dan Bigham aero hierarchy (Roadman)", "year": 2026, "title": "Dan Bigham Aerodynamics Guide", "where": "PDF ref 3"},
+      "confidence": "medium",
+      "note": "Framework/rule-of-thumb figures from a secondary source; use as illustration, not proof."
+    }
+  ],
+  "mechanism": "A crank is a lever: at the top of the pedal stroke a long crank drives the knee up toward the chest, closing the hip angle. A very closed hip both weakens force production (muscles work at a poor length) and, in an aggressive aero position, crowds the torso and diaphragm. Shortening the crank raises the foot less at top dead centre, which opens the hip angle. That freed-up range lets the rider rotate the pelvis forward and lower the torso — a more aerodynamic shape — while still breathing and making power. So short cranks are not mainly about the legs; they unlock a lower, more sustainable position.",
+  "tradeoffs": "Shorter cranks slightly reduce leverage, so some riders fear losing torque — but the efficiency and fatigue data suggest little to no power loss for most, and often a net gain once the position and cadence adapt. The change is not free: saddle height and fit must be re-set (a shorter crank effectively lowers the saddle relative to the pedal), cadence tends to rise, and the benefit depends on the rider actually using the opened hip angle to get lower, not just riding the old position with shorter arms.",
+  "practical_rules": [
+    "Treat crank length as a fit lever, not a power lever: the win is a more open hip angle and a lower sustainable torso, not more torque.",
+    "If you ride 172.5-175 mm and struggle to hold a low position or feel cramped at the top of the stroke, 165-170 mm is worth testing.",
+    "Re-set your fit after changing cranks: a shorter crank effectively raises the saddle relationship — raise the saddle by roughly the length difference and re-check reach.",
+    "Expect cadence to rise a little; let it, rather than forcing the old gear.",
+    "Only lower the front end as far as you can still breathe and hold power — the opened hip angle is what makes the lower position sustainable."
+  ],
+  "myths": [
+    {"myth": "Longer cranks give more leverage and therefore more power.", "reality": "Efficiency and sprint trials show little to no power penalty from shorter cranks, while shorter cranks reduce peak knee/hip flexion and fatigue.", "has_citation": true},
+    {"myth": "Crank length is only about the legs.", "reality": "Its biggest effect is upstream: opening the hip angle lets the pelvis rotate forward and the torso drop, which is an aerodynamic change.", "has_citation": true},
+    {"myth": "Tall riders always need long cranks.", "reality": "The pro shift to 165 mm is led partly by the need for a lower CdA; height alone does not dictate crank length.", "has_citation": false}
+  ],
+  "quotable_numbers": [
+    "Minor crank-length reductions cut peak knee flexion by up to 24% and hip flexion by up to 13% (primary studies).",
+    "A switch to 165 mm cranks was reported to add about 15 watts of FTP on average (secondary).",
+    "Position changes can save 10-20 watts for free; an aero frame buys only 2-4 watts at amateur speeds (secondary)."
+  ],
+  "gaps": [
+    "The '15 W FTP' figure is a reported average, not a controlled-trial result — treat as indicative.",
+    "The diaphragm/ventilation claim comes from a secondary source, though it is consistent with the primary kinematics work.",
+    "The PDF gives no single controlled study isolating aerodynamic CdA change from crank length alone; the aero benefit is inferred via the position change."
+  ],
+  "primary_sources_to_verify": [
+    "tandfonline 10.1080/14763141.2025.2511755 — minor crank length adjustments on lower body cycling kinematics",
+    "PMC12060448 — Effects of crank length on cycling efficiency, sprint performance, and perceived fatigue in high-level amateur road cyclists"
+  ]
+}

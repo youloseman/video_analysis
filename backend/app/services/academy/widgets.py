@@ -169,6 +169,100 @@ _AERO_CALC_JS = """
 """
 
 
+# ---------------------------------------------------------------------------
+# Crank-swap fit helper
+# ---------------------------------------------------------------------------
+# Pure geometry, no invented numbers: a shorter crank lowers the pedal's lowest
+# point by the length difference, so the saddle should be RAISED by that same
+# amount to keep the same leg extension. Reach also opens slightly, which the
+# widget flags qualitatively. This directly serves the article's "re-set your
+# fit after changing cranks" rule — the most common mistake when switching.
+_CRANK_FIT = """
+<figure class="crank-fit" data-widget-ready="1">
+  <figcaption class="wcap">
+    <span class="weyebrow">Interactive</span>
+    Crank-swap fit helper — keep your leg extension when you go shorter
+  </figcaption>
+  <div class="wgrid">
+    <div class="wcontrols">
+      <label class="wctl">
+        <span class="wlab">Current crank <b><span id="cf-old">172.5</span> mm</span></span>
+        <input type="range" id="cf-old-r" min="160" max="180" step="2.5" value="172.5">
+      </label>
+      <label class="wctl">
+        <span class="wlab">New crank <b><span id="cf-new">165</span> mm</span></span>
+        <input type="range" id="cf-new-r" min="160" max="180" step="2.5" value="165">
+      </label>
+      <label class="wctl">
+        <span class="wlab">Current saddle height <b><span id="cf-sh">730</span> mm</span></span>
+        <input type="range" id="cf-sh-r" min="600" max="820" step="1" value="730">
+      </label>
+    </div>
+    <div class="wout">
+      <div class="wsmall">New saddle height</div>
+      <div class="wbig"><span id="cf-out">737</span><span class="wunit">mm</span></div>
+      <div class="wsub" id="cf-delta">raise the saddle 7 mm</div>
+    </div>
+  </div>
+  <p class="wnote">
+    Geometry only: a shorter crank lowers the bottom of the pedal stroke, so to
+    keep the same leg extension you <b>raise the saddle by the crank difference</b>
+    (and vice-versa). Your reach to the bars also opens a touch — re-check it. This
+    is a starting point, not a substitute for a proper bike fit.
+  </p>
+</figure>
+"""
+
+_CRANK_FIT_CSS = """
+.crank-fit{margin:34px 0;border:1px solid var(--c-line);border-radius:var(--radius);
+  background:#fff;box-shadow:var(--shadow);overflow:hidden}
+.crank-fit .wcap{padding:18px 22px 0;font-family:var(--f-display);font-weight:800;
+  text-transform:uppercase;font-size:17px;color:var(--c-navy);line-height:1.2}
+.crank-fit .weyebrow{display:block;font-family:var(--f-body);font-size:11px;letter-spacing:.16em;
+  color:var(--c-blue);margin-bottom:6px}
+.crank-fit .wgrid{display:grid;grid-template-columns:1fr 240px;gap:22px;padding:20px 22px}
+.crank-fit .wctl{display:block;margin-bottom:20px}
+.crank-fit .wlab{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:13px;font-weight:600;color:var(--c-ink-soft);margin-bottom:8px}
+.crank-fit .wlab b{font-weight:800;color:var(--c-navy);font-family:var(--f-mono);font-size:14px}
+.crank-fit input[type=range]{width:100%;accent-color:var(--c-blue);cursor:pointer;height:22px}
+.crank-fit .wout{background:linear-gradient(135deg,#14294B,#2F6DE0);color:#fff;border-radius:var(--radius);
+  padding:22px 20px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.crank-fit .wsmall{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.crank-fit .wbig{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:42px;line-height:1;letter-spacing:-.02em;margin-top:8px}
+.crank-fit .wbig .wunit{font-size:16px;font-style:normal;font-weight:800;margin-left:6px;opacity:.85}
+.crank-fit .wsub{font-size:13px;color:rgba(255,255,255,.85);margin-top:12px;font-weight:600}
+.crank-fit .wnote{font-size:12px;line-height:1.5;color:var(--c-ink-soft);background:var(--c-panel);
+  margin:0;padding:14px 22px;border-top:1px solid var(--c-line)}
+@media(max-width:640px){.crank-fit .wgrid{grid-template-columns:1fr}}
+"""
+
+_CRANK_FIT_JS = """
+(function(){
+  var el=document.querySelector('.crank-fit[data-widget-ready]'); if(!el) return;
+  var q=function(id){return el.querySelector(id);};
+  var oldR=q('#cf-old-r'),newR=q('#cf-new-r'),shR=q('#cf-sh-r');
+  function render(){
+    var o=+oldR.value,n=+newR.value,sh=+shR.value;
+    q('#cf-old').textContent=o.toFixed(1).replace('.0','');
+    q('#cf-new').textContent=n.toFixed(1).replace('.0','');
+    q('#cf-sh').textContent=sh;
+    var diff=o-n;                 // shorter new crank (n<o) -> positive -> raise saddle
+    var nsh=Math.round(sh+diff);
+    q('#cf-out').textContent=nsh;
+    var d=Math.round(diff*10)/10;
+    var msg;
+    if(Math.abs(d)<0.05) msg='no saddle change needed';
+    else if(d>0) msg='raise the saddle '+Math.abs(d).toFixed(1).replace('.0','')+' mm';
+    else msg='lower the saddle '+Math.abs(d).toFixed(1).replace('.0','')+' mm';
+    q('#cf-delta').textContent=msg;
+  }
+  [oldR,newR,shR].forEach(function(s){s.addEventListener('input',render);});
+  render();
+})();
+"""
+
+
 # name -> {html, css, js}. The renderer inlines css/js once per page if the
 # widget appears in the article body.
 WIDGETS: dict[str, dict[str, str]] = {
@@ -176,6 +270,11 @@ WIDGETS: dict[str, dict[str, str]] = {
         "html": _AERO_CALC,
         "css": _AERO_CALC_CSS,
         "js": _AERO_CALC_JS,
+    },
+    "crank-fit": {
+        "html": _CRANK_FIT,
+        "css": _CRANK_FIT_CSS,
+        "js": _CRANK_FIT_JS,
     },
 }
 
