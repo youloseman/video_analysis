@@ -217,8 +217,11 @@ class VideoVisualizer:
 
         # Re-encode with ffmpeg to web-safe H.264 MP4 (only when ffmpeg exists;
         # otherwise final_mp4 was written directly by the mp4v writer above).
+        # The re-encode also downscales to ~720p -- overlays are for phone
+        # viewing, so a smaller clip downloads faster and encodes quicker.
         if self._use_ffmpeg:
-            success = self._reencode_to_mp4(temp_avi, final_mp4)
+            out_w, out_h = self._even_target_dims(width, height)
+            success = self._reencode_to_mp4(temp_avi, final_mp4, out_w, out_h)
             self._cleanup_file(temp_avi)
             if not success:
                 return None
@@ -736,18 +739,36 @@ class VideoVisualizer:
             (tw, _), _ = cv2_mod.getTextSize(label, font, scale, thick)
             x += swatch + 3 + tw + gap
 
-    def _reencode_to_mp4(self, input_path: str, output_path: str) -> bool:
-        """Re-encode AVI to web-safe H.264 MP4 using ffmpeg."""
+    @staticmethod
+    def _even_target_dims(
+        width: int, height: int, max_long: int = 1280,
+    ) -> tuple[int, int]:
+        """Downscale (never upscale) so the long edge is <= max_long, both even.
+
+        Overlay clips are for phone viewing, not archival -- capping at ~720p
+        keeps the download small and the ffmpeg re-encode fast. The forced-even
+        dimensions also satisfy libx264 + yuv420p: odd width/height (common in
+        landscape clips from editors/social apps, e.g. 1918x1078) would abort
+        the encode and silently drop the overlay.
+        """
+        if width <= 0 or height <= 0:
+            return max(2, width), max(2, height)
+        scale = min(1.0, max_long / float(max(width, height)))
+        w = int(round(width * scale)) & ~1   # round down to even
+        h = int(round(height * scale)) & ~1
+        return max(2, w), max(2, h)
+
+    def _reencode_to_mp4(
+        self, input_path: str, output_path: str, out_w: int, out_h: int,
+    ) -> bool:
+        """Re-encode AVI to web-safe H.264 MP4 (capped to out_w x out_h)."""
         cmd = [
             "ffmpeg",
             "-i", input_path,
-            # yuv420p requires even width AND height. Landscape clips from
-            # editors/social apps often have an odd dimension (e.g. 1918x1078),
-            # which makes libx264+yuv420p abort with "not divisible by 2" and
-            # kills the overlay while the rest of the analysis succeeds. Round
-            # both dimensions down to the nearest even number (no-op if already
-            # even) so any input encodes.
-            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            # Concrete even target dims (see _even_target_dims): caps the clip to
+            # ~720p for a small, fast download and guarantees the even dimensions
+            # libx264 + yuv420p needs -- odd dims would abort the encode.
+            "-vf", f"scale={out_w}:{out_h}",
             "-c:v", "libx264",
             "-preset", "fast",
             "-crf", "23",

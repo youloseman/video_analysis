@@ -52,6 +52,13 @@ logger = structlog.get_logger()
 VALID_POSITIONS = {"road_hoods", "road_drops", "tt_aero", "triathlon", "casual"}
 DEFAULT_BIKE_POSITION = "road_hoods"
 
+# Cap the long edge of frames fed to MediaPipe. Pose landmarks come back
+# normalized (0-1), so 720p-class input yields the same pose as 4K for a
+# properly-framed athlete while running detection far faster on big phone
+# clips. The overlay/keyframe re-read the ORIGINAL video, so output quality
+# is unaffected.
+DETECT_MAX_LONG_EDGE = 1280
+
 
 # ===========================================================================
 # Helpers copied verbatim from Motus pipeline.py (module-level, no DB/LLM).
@@ -285,6 +292,19 @@ def extract_frames(
 
         total_sampled += 1
         timestamp_ms = (frame_idx / video_fps) * 1000.0
+
+        # Downscale oversized frames before detection (normalized landmarks =>
+        # pose is unchanged at 720p, but 4K detection is much slower). CLAHE
+        # then runs on the smaller frame too. Stored frame_width/height stay
+        # the original resolution; the overlay re-reads the source video.
+        longest = max(frame.shape[0], frame.shape[1])
+        if longest > DETECT_MAX_LONG_EDGE:
+            s = DETECT_MAX_LONG_EDGE / float(longest)
+            frame = cv2.resize(
+                frame,
+                (int(round(frame.shape[1] * s)), int(round(frame.shape[0] * s))),
+                interpolation=cv2.INTER_AREA,
+            )
 
         # Enhance contrast with CLAHE before detection.
         lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)

@@ -171,6 +171,8 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   font-size:clamp(34px,5.5vw,58px);line-height:.98;letter-spacing:-.01em;margin:16px 0 16px}
 .hero h1 .accent{color:var(--c-coral)}
 .hero p{max-width:540px;font-size:16px;color:rgba(255,255,255,.9)}
+.hero p a{color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+.hero p a:hover{color:rgba(255,255,255,.85)}
 body:not([data-state="upload"]) .hero .wrap{padding:16px 24px}
 body:not([data-state="upload"]) .hero h1,
 body:not([data-state="upload"]) .hero p{ /* keep in the a11y tree: h1 stays the page outline root */
@@ -444,6 +446,7 @@ footer{border-top:1px solid var(--c-line);padding:24px 0 48px;font-size:12px;col
 footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 footer a{color:var(--c-blue);text-decoration:none}
 footer a:hover{text-decoration:underline;text-underline-offset:3px}
+footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 /* ---------- Responsive ---------- */
 /* Off-canvas sidebar below 900px */
@@ -612,7 +615,7 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
   <div class="wrap">
     <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
     <h1>Train smart,<br><span class="accent">move fast</span></h1>
-    <p>Upload a side-view clip of your run or ride. Get your joint angles, technique score and an annotated overlay — powered by AI pose estimation. Clips are processed on our servers and aren’t kept.</p>
+    <p>Upload a side-view clip of your run or ride. Get your joint angles, technique score and an annotated overlay — powered by AI pose estimation. Your clip stays on our servers, is never sent to third parties, and isn’t stored long-term. <a href="/privacy">Privacy</a>.</p>
   </div>
 </div>
 
@@ -659,7 +662,7 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
       <label class="drop" id="drop" for="file">
         <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
         <b id="dropTitle">Drag &amp; drop video or click to browse</b>
-        <small id="dropHelp">MP4, MOV, or WEBM · up to 200 MB · 5–15 seconds</small>
+        <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
       </label>
 
       <div class="filepreview" id="filepreview">
@@ -1002,7 +1005,13 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
 <footer>
   <div class="wrap">
     <span>Flapp · side-view running &amp; cycling form analysis</span>
-    <span>Free tier · 3 analyses per day · <a href="/docs" target="_blank" rel="noopener">API</a> · <a href="/health" target="_blank" rel="noopener">status</a></span>
+    <span class="footlinks">
+      <a href="/privacy">Privacy</a> ·
+      <a href="/terms">Terms</a> ·
+      <a href="mailto:top.raider90@gmail.com?subject=Flapp%20bug%20report">Report a bug</a> ·
+      <a href="/docs" target="_blank" rel="noopener">API</a> ·
+      <a href="/health" target="_blank" rel="noopener">status</a>
+    </span>
   </div>
 </footer>
 </div><!-- /.appshell -->
@@ -1150,7 +1159,7 @@ $('#modeSeg').addEventListener('click',e=>{
   $('#dropTitle').textContent = photo?'Drag & drop photo or click to browse':'Drag & drop video or click to browse';
   $('#dropHelp').textContent = photo
     ? 'JPG, PNG, or HEIC · up to 25 MB'
-    : 'MP4, MOV, or WEBM · up to 200 MB · 5–15 seconds';
+    : 'MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)';
   $('#change').textContent = photo?'Change photo':'Change clip';
   $('#fileNounCap').textContent = photo?'Photo':'Video';
   $('#overlayField').classList.toggle('hidden', photo);
