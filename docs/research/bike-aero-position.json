@@ -1,0 +1,213 @@
+{
+  "topic": "cycling aerodynamic position",
+  "key_facts": [
+    {
+      "claim": "Aerodynamic resistance accounts for 90% of the total resistance at professional racing speeds of 54 km/h.",
+      "value": 90,
+      "unit": "%",
+      "context": "15 m/s (54 km/h) on flat terrain",
+      "has_citation": true,
+      "source": {
+        "author": "Blocken",
+        "year": 2018,
+        "title": "Aerodynamic drag in cycling team time trials",
+        "type": "study",
+        "where": "Journal of Wind Engineering and Industrial Aerodynamics 182"
+      },
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "claim": "The rider's body accounts for 70 to 80 percent of total aerodynamic drag, while the bicycle accounts for only 20 to 30 percent.",
+      "value": "70-80",
+      "unit": "%",
+      "context": "general cycling",
+      "has_citation": true,
+      "source": {
+        "author": "Phil Burt",
+        "year": 2014,
+        "title": "Bike Fit 2nd edition",
+        "type": "book",
+        "where": "Chapter 6"
+      },
+      "confidence": "high",
+      "note": "Also supported by Gross et al. 1983 and Oggiano 2008."
+    },
+    {
+      "claim": "A 10g reduction in aerodynamic drag is equivalent to a 1kg reduction in body or bike weight on flat terrain.",
+      "value": "10g = 1kg",
+      "unit": null,
+      "context": "flat velodrome/road",
+      "has_citation": true,
+      "source": {
+        "author": "Kyle",
+        "year": 2003,
+        "title": "Selecting Cycling Equipment",
+        "type": "book",
+        "where": "aeroPosition.pdf"
+      },
+      "confidence": "medium",
+      "note": ""
+    },
+    {
+      "claim": "Tucking the head and dropping into a crouch position reduces drag by an average of 3.5%, making it the most successful individual positional change.",
+      "value": 3.5,
+      "unit": "%",
+      "context": "wind tunnel testing",
+      "has_citation": true,
+      "source": {
+        "author": "Underwood",
+        "year": 2012,
+        "title": "aeroPosition.pdf",
+        "type": "study",
+        "where": "Chapter 9"
+      },
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "claim": "Drafting closely behind a leading cyclist in a tandem formation can reduce the trailing rider's drag by up to 49%.",
+      "value": 49,
+      "unit": "%",
+      "context": "0.1m streamwise separation, upright posture",
+      "has_citation": true,
+      "source": {
+        "author": "Zdravkovich et al.",
+        "year": 1996,
+        "title": "Effect of cyclist's posture and vicinity of another cyclist on aerodynamic drag",
+        "type": "study",
+        "where": "Aerodynamic impact.pdf"
+      },
+      "confidence": "high",
+      "note": ""
+    }
+  ],
+  "position_data": [
+    {
+      "position": "hoods",
+      "cda_m2": 0.420,
+      "drag_relative_pct": null,
+      "power_at_40kmh_watts": null,
+      "context": "10 m/s, straight arms, hands on hoods (HH), cyclist + bike",
+      "has_citation": true,
+      "source": {
+        "author": "Schaffarczyk",
+        "year": 2022,
+        "title": "Aerodynamic Benefits by Optimizing Cycling Posture",
+        "type": "study",
+        "where": "Appl. Sci. 2022, 12, 8475"
+      }
+    },
+    {
+      "position": "drops",
+      "cda_m2": 0.390,
+      "drag_relative_pct": null,
+      "power_at_40kmh_watts": null,
+      "context": "10 m/s, straight arms, hands in drops (HD), cyclist + bike",
+      "has_citation": true,
+      "source": {
+        "author": "Schaffarczyk",
+        "year": 2022,
+        "title": "Aerodynamic Benefits by Optimizing Cycling Posture",
+        "type": "study",
+        "where": "Appl. Sci. 2022, 12, 8475"
+      }
+    },
+    {
+      "position": "drops",
+      "cda_m2": 0.266,
+      "drag_relative_pct": 100,
+      "power_at_40kmh_watts": null,
+      "context": "15 m/s, road race dropped posture, high sagittal torso angle (DP-high)",
+      "has_citation": true,
+      "source": {
+        "author": "van Druenen",
+        "year": 2023,
+        "title": "Aerodynamic impact of cycling postures on drafting in single paceline configurations",
+        "type": "study",
+        "where": "Computers and Fluids 257"
+      }
+    },
+    {
+      "position": "drops",
+      "cda_m2": 0.231,
+      "drag_relative_pct": 87,
+      "power_at_40kmh_watts": null,
+      "context": "15 m/s, road race dropped posture, low sagittal torso angle (DP-low)",
+      "has_citation": true,
+      "source": {
+        "author": "van Druenen",
+        "year": 2023,
+        "title": "Aerodynamic impact of cycling postures on drafting in single paceline configurations",
+        "type": "study",
+        "where": "Computers and Fluids 257"
+      }
+    },
+    {
+      "position": "tt_tuck",
+      "cda_m2": 0.213,
+      "drag_relative_pct": 80,
+      "power_at_40kmh_watts": null,
+      "context": "15 m/s, time trial posture (TTP)",
+      "has_citation": true,
+      "source": {
+        "author": "van Druenen",
+        "year": 2023,
+        "title": "Aerodynamic impact of cycling postures on drafting in single paceline configurations",
+        "type": "study",
+        "where": "Computers and Fluids 257"
+      }
+    },
+    {
+      "position": "tt_tuck",
+      "cda_m2": 0.246,
+      "drag_relative_pct": null,
+      "power_at_40kmh_watts": null,
+      "context": "10 m/s, arms on handlebar (TT), cyclist + bike",
+      "has_citation": true,
+      "source": {
+        "author": "Schaffarczyk",
+        "year": 2022,
+        "title": "Aerodynamic Benefits by Optimizing Cycling Posture",
+        "type": "study",
+        "where": "Appl. Sci. 2022, 12, 8475"
+      }
+    }
+  ],
+  "mechanism": "At typical cycling speeds above 15 km/h, aerodynamic drag is the dominant resistance, reaching up to 90% of total resistance at professional racing speeds. The drag force is proportional to the square of the velocity and the product of the drag coefficient and frontal area (CdA). Because the cyclist's body comprises 70 to 80% of the total frontal area and creates significant pressure drag, manipulating body position to reduce this silhouette and streamline airflow is the most effective way to improve speed.",
+  "tradeoffs": "While an aggressive, highly flexed position minimizes aerodynamic drag, it can severely compromise power output and biomechanical efficiency due to a closed hip angle. Extremely low positions can restrict breathing by compressing the diaphragm and limiting ribcage expansion. In real-world racing like long-distance triathlons, a 'wind-tunnel optimized' extreme aero position may be unsustainable over long durations, forcing the rider to sit upright on the base bars and ultimately losing significant time compared to a slightly less aero but comfortable posture.",
+  "practical_rules": [
+    "Round the shoulders, bring the elbows inside the silhouette of the hips, and drop the head to significantly reduce frontal area.",
+    "Ensure the bottom of an aero helmet is parallel to the upper back, eliminating the drag-inducing void behind the head.",
+    "Keep forearms horizontal and elbows bent at 90 degrees on aero bars to support upper body weight skeletally rather than muscularly.",
+    "Choose a sustainable position over extreme aerodynamics; if a position causes pain or restricts breathing, its aerodynamic benefits will be lost when you are forced to sit up.",
+    "Adopt an 'arrow' style hand grip on the aero bars to promote smooth flow recirculation and reduce turbulent separation."
+  ],
+  "myths": [
+    {
+      "myth": "Bicycle aerodynamics and expensive gear are the most important factors for reducing drag.",
+      "reality": "The bicycle accounts for only 20-30% of total drag; the rider accounts for 70-80%, meaning rider position changes yield much larger and more cost-effective gains.",
+      "has_citation": true
+    },
+    {
+      "myth": "Lowering the handlebars as much as possible always makes a rider more aerodynamic.",
+      "reality": "If a rider lacks thoracic flexibility, lowering the bars too much may force their head to pop up to see the road, paradoxically increasing frontal area and drag.",
+      "has_citation": true
+    },
+    {
+      "myth": "You should rigidly copy the most aerodynamic position found in a wind tunnel.",
+      "reality": "A 'gold standard' wind tunnel position is often at the extreme end of the fit window and may be impossible to sustain on the road without power loss or injury.",
+      "has_citation": true
+    }
+  ],
+  "quotable_numbers": [
+    "Aerodynamic resistance accounts for 90% of the total resistance at speeds over 50kph.",
+    "The rider's body causes 70 to 80% of aerodynamic drag, while the bike causes only 20 to 30%.",
+    "Tucking the head into a crouch position can save nearly 3 seconds over a 4000 meter pursuit.",
+    "Riding in an eight-cyclist paceline is about twice as efficient in terms of aerodynamic resistance compared to riding alone."
+  ],
+  "gaps": [
+    "The exact relationship between lateral hand positioning (arm pad width) and aerodynamic drag varies too widely per individual to establish a universal optimal width rule.",
+    "Specific power outputs precisely at 40 km/h for the various positions were not explicitly listed; studies provided power at 10 m/s (36 km/h) or measured CdA at 15 m/s (54 km/h)."
+  ]
+}

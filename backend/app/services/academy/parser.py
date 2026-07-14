@@ -217,6 +217,15 @@ def markdown_to_html(md: str) -> str:
             i += 1
             continue
 
+        # interactive widget marker: a line like ``[[widget:aero-calculator]]``.
+        # Emit a placeholder the renderer swaps for the real widget markup, so
+        # article content stays in Markdown while widget code stays in code.
+        wm = re.match(r"^\[\[widget:([a-z0-9-]+)\]\]$", stripped)
+        if wm:
+            out.append(f'<div data-widget="{wm.group(1)}"></div>')
+            i += 1
+            continue
+
         # fenced code block ``` ... ```
         if stripped.startswith("```"):
             i += 1

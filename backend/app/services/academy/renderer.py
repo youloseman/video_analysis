@@ -14,6 +14,7 @@ import json
 from typing import Any
 
 from app.services.academy.parser import Article, ArticleMeta, get_categories
+from app.services.academy.widgets import render_widgets
 
 # Public base URL for canonical/OG tags + sitemap. Override via env in main.py.
 SITE_NAME = "Flapp"
@@ -196,6 +197,7 @@ def _page(
     active: str,
     jsonld: dict[str, Any] | list[dict[str, Any]] | None = None,
     og_type: str = "website",
+    extra_js: str = "",
 ) -> str:
     """Assemble a full HTML document with SEO head, header, body, footer."""
     ld = ""
@@ -205,6 +207,7 @@ def _page(
             + json.dumps(jsonld, ensure_ascii=False)
             + "</script>"
         )
+    script = f"<script>{extra_js}</script>\n" if extra_js else ""
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
         '<meta charset="UTF-8">\n'
@@ -223,6 +226,7 @@ def _page(
         f"{ld}\n"
         "</head>\n<body>\n"
         f"{_header(active)}\n{body}\n{_footer()}\n"
+        f"{script}"
         "</body>\n</html>"
     )
 
@@ -301,7 +305,10 @@ def render_hub(articles: list[ArticleMeta], base_url: str) -> str:
 def render_article(article: Article, base_url: str) -> str:
     m = article.meta
     canonical = f"{base_url}/academy/{m.slug}"
-    lede, rest = _lede_and_rest(article.body_html)
+    # Swap any [[widget:...]] placeholders for real markup + collect their
+    # CSS/JS. Runs before the lede split so a widget can never be the lede.
+    body_html, widget_css, widget_js = render_widgets(article.body_html)
+    lede, rest = _lede_and_rest(body_html)
 
     # sources
     sources_html = ""
@@ -373,10 +380,11 @@ def render_article(article: Article, base_url: str) -> str:
         description=m.description,
         canonical=canonical,
         body=body,
-        extra_css=_ARTICLE_CSS,
+        extra_css=_ARTICLE_CSS + widget_css,
         active="academy",
         jsonld=jsonld,
         og_type="article",
+        extra_js=widget_js,
     )
 
 
