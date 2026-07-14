@@ -72,6 +72,10 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .modal{position:fixed;inset:0;background:rgba(20,41,75,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
 .modal.hidden{display:none}
 .modal-card{background:#fff;border-radius:14px;padding:28px 28px 24px;max-width:400px;width:100%;position:relative;box-shadow:0 20px 60px rgba(20,41,75,.3)}
+.cardmodal-card{max-width:420px}
+.cardprev-wrap{display:flex;justify-content:center;background:#0b1830;border-radius:12px;padding:10px}
+#cardPreview{display:block;max-width:100%;max-height:56vh;width:auto;height:auto;border-radius:8px}
+.cardmodal-actions{display:flex;flex-direction:column;gap:10px;margin-top:2px}
 .modal-close{position:absolute;right:14px;top:12px;border:none;background:none;font-size:18px;color:var(--c-ink-soft);cursor:pointer;line-height:1}
 .fld{display:block;margin-bottom:14px}
 .fld span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-bottom:6px}
@@ -582,6 +586,24 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
       <button class="btn btn-primary" id="authSubmit" type="submit" style="width:100%">Log in</button>
     </form>
     <p class="hint" id="authToggleTxt" style="text-align:center;margin-top:14px"></p>
+  </div>
+</div>
+
+<div class="modal hidden" id="cardModal" role="dialog" aria-modal="true" aria-labelledby="cardModalTitle">
+  <div class="modal-card cardmodal-card">
+    <button class="modal-close" id="cardClose" type="button" aria-label="Close">✕</button>
+    <div class="eyebrow" style="color:var(--c-blue)">Share</div>
+    <h2 id="cardModalTitle" style="font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);font-size:23px;margin:6px 0 12px">Your result card</h2>
+    <div class="cardprev-wrap"><img id="cardPreview" alt="Your Flapp result card"></div>
+    <p class="hint" id="cardSaveHint" style="text-align:center;margin:12px 0 14px">Long-press the image to save it to your photos.</p>
+    <div class="cardmodal-actions">
+      <button class="btn btn-primary hidden" id="cardShareBtn" type="button" style="width:100%;justify-content:center">
+        <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Share…
+      </button>
+      <a class="btn btn-ghost" id="cardDownloadBtn" download style="width:100%;justify-content:center">
+        <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download image
+      </a>
+    </div>
   </div>
 </div>
 
@@ -1164,6 +1186,11 @@ $('#again').addEventListener('click',()=>reset());
 $('#shareBtn').addEventListener('click',shareResult);
 $('#pShareBtn').addEventListener('click',sharePhoto);
 $('#hShareBtn').addEventListener('click',shareHistory);
+$('#cardShareBtn').addEventListener('click',cardModalShare);
+$('#cardDownloadBtn').addEventListener('click',()=>toast('Saving image…'));
+$('#cardClose').addEventListener('click',closeCardModal);
+$('#cardModal').addEventListener('click',e=>{ if(e.target===$('#cardModal')) closeCardModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#cardModal').classList.contains('hidden')) closeCardModal(); });
 $('#errAgain').addEventListener('click',()=>reset(state.keepFileOnRetry));
 $('#errBack').addEventListener('click',()=>reset(true));
 $('#cancel').addEventListener('click',cancelRun);
@@ -1826,17 +1853,33 @@ async function doShare(card, btn, txtEl){
     const sport=card.sport||'run', score=card.score;
     const file=new File([blob],`flapp-${sport}-${score==null?'result':score}.png`,{type:'image/png'});
     const text=`My ${sport==='bike'?'cycling':'running'} technique scored ${score==null?'—':score}/100 on Flapp — analyze yours free: ${location.origin}`;
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'My Flapp technique score', text});
-    } else {
-      const url=URL.createObjectURL(blob), a=document.createElement('a');
-      a.href=url; a.download=file.name; document.body.appendChild(a); a.click();
-      a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
-      toast('Card saved — post it to Strava or Instagram');
-    }
+    openCardModal(blob, file, text);
   }catch(err){
-    if(!err || err.name!=='AbortError') toast('Could not create the card — please try again.');
+    toast('Could not create the card — please try again.');
   }finally{ if(txtEl) txtEl.textContent=old; btn.removeAttribute('aria-disabled'); }
+}
+/* Preview modal: show the rendered card so the user can see it, then
+   Share (native sheet) and/or Download it. Works on every platform —
+   on iOS, long-pressing the visible image saves it to Photos. */
+function openCardModal(blob, file, text){
+  if(state.cardUrl){ try{ URL.revokeObjectURL(state.cardUrl); }catch(e){} }
+  const url=URL.createObjectURL(blob);
+  state.cardUrl=url; state.cardFile=file; state.cardText=text;
+  $('#cardPreview').src=url;
+  const dl=$('#cardDownloadBtn'); dl.href=url; dl.download=file.name;
+  const canShare=!!(navigator.canShare && navigator.canShare({files:[file]}));
+  $('#cardShareBtn').classList.toggle('hidden', !canShare);
+  $('#cardSaveHint').classList.toggle('hidden', !('ontouchstart' in window));
+  $('#cardModal').classList.remove('hidden');
+}
+function closeCardModal(){
+  $('#cardModal').classList.add('hidden');
+  if(state.cardUrl){ try{ URL.revokeObjectURL(state.cardUrl); }catch(e){} state.cardUrl=null; }
+}
+async function cardModalShare(){
+  const file=state.cardFile; if(!file) return;
+  try{ await navigator.share({files:[file], title:'My Flapp technique score', text:state.cardText}); }
+  catch(err){ if(err && err.name!=='AbortError') toast('Sharing was cancelled or failed.'); }
 }
 function shareResult(){ doShare(cardFromVideo(state.lastResult||{}), $('#shareBtn'), $('#shareBtnTxt')); }
 function sharePhoto(){ if(state.photoRes) doShare(cardFromPhoto(state.photoRes), $('#pShareBtn'), $('#pShareBtnTxt')); }
