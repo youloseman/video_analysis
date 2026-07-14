@@ -34,6 +34,11 @@ html{scroll-behavior:smooth}
 body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink);background:var(--c-bg)}
 .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
 .hidden{display:none!important}
+/* Tabular figures on every mono surface so numbers don't jitter on update
+   (a '1' takes the same width as an '8' — keeps table columns steady). */
+.tc-val,.tchart .tval,.t-val,.quota b,.quota-line b,.jobchip .fchip,.fmeta .fsize,
+.issue .i-val,.limit-card .bigwait,table.data td.num,table.data td.pct,
+.score-num,.hscore{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
 /* ---------- Accessibility primitives ---------- */
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
