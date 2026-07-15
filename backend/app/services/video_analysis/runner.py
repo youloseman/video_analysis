@@ -606,6 +606,26 @@ def run_analysis(
             cycling_position=cycling_position if is_bike else None,
         )
 
+    # Step 8: structured training plan (running only, deterministic -- no LLM).
+    # Maps detected issues to concrete corrective drills (with cue, weeks, and
+    # an optional Academy link) so the result carries an actionable "what to do
+    # next" plan, not just prose. Wrapped so a builder error never kills the
+    # result. Cycling has its own (not-yet-wired) builder -- out of scope here.
+    training_plan = None
+    if sport_type == "run":
+        try:
+            from app.services.video_analysis.biomechanics.running_action_plan_builder import (
+                build_running_action_plan,
+                running_action_plan_to_json,
+            )
+            plan = build_running_action_plan({
+                "score": scoring.get("overall_score") or 0,
+                "summary": summary,
+            })
+            training_plan = running_action_plan_to_json(plan)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("TRAINING_PLAN_FAILED", err=str(e))
+
     return {
         "status": "completed",
         "sport_type": sport_type,
@@ -619,6 +639,7 @@ def run_analysis(
         "overlay_video_path": overlay_video_path,
         "keyframe_base64": keyframe_base64,
         "ai_recommendations": ai_recommendations,
+        "training_plan": training_plan,
         "angle_statistics": angle_stats,
         "detected_issues": issues,
         "sport_specific_metrics": summary,

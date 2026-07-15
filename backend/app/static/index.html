@@ -516,6 +516,24 @@ h2.sec + .speedline{margin-bottom:24px}
 .issue .i-val-lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:8px;display:inline-block}
 .issue .i-val{font-family:var(--f-mono);font-size:12px;color:var(--c-navy)}
 
+/* training plan — prioritised corrective drill cards */
+#planCards{display:flex;flex-direction:column;gap:12px}
+.plan-card{border:1px solid var(--c-line);border-radius:var(--radius-lg);background:#fff;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--c-blue)}
+.plan-top{display:flex;align-items:center;gap:14px}
+.plan-n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--c-blue);color:#fff;font-family:var(--f-mono);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center}
+.plan-titles{flex:1;min-width:0}
+.plan-drill{font-weight:800;font-size:16px;color:var(--c-navy);line-height:1.2}
+.plan-metric{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink-faint);margin-top:2px}
+.plan-weeks{flex:none;display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--c-ink-soft);white-space:nowrap}
+.plan-weeks .ic{width:14px;height:14px}
+.plan-why{font-size:13.5px;color:var(--c-ink-soft);margin:12px 0 0}
+.plan-how{font-size:14px;color:var(--c-ink);margin:10px 0 0;line-height:1.55}
+.plan-cue{margin-top:12px;font-size:14px;color:var(--c-navy);background:var(--c-panel-blue);border-radius:8px;padding:10px 12px}
+.plan-cue-lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--c-blue);margin-right:6px}
+.plan-link{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:13px;font-weight:700;color:var(--c-blue)}
+.plan-link .ic{width:15px;height:15px}
+.plan-link:hover{text-decoration:underline}
+
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
 .tile{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;min-height:96px}
 .tile .t-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);
@@ -786,7 +804,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   <div class="wrap">
     <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
     <h1>Train smart,<br><span class="accent">move fast</span></h1>
-    <p>Upload a side-view clip of your run or ride. Get your joint angles, technique score and an annotated overlay — powered by AI pose estimation. Your clip stays on our servers, is never sent to third parties, and isn’t stored long-term. <a href="/privacy">Privacy</a>.</p>
+    <p>Upload a side-view clip of your run or ride. Get your joint angles, technique score and an annotated overlay — powered by AI pose estimation. Your clip is analyzed on our servers, never sent to any third-party AI, and isn’t stored long-term. <a href="/privacy">Privacy</a>.</p>
   </div>
 </div>
 
@@ -940,6 +958,16 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <div class="speedline-sm"></div>
       </div>
       <div class="coach" id="coach"></div>
+    </div>
+
+    <div class="block" id="planBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Training plan</div>
+        <h3>Your drills to fix it</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hint" style="text-align:left;margin:0 0 16px">Do these, then re-film and open <b>Before / after</b> to see the change.</p>
+      <div id="planCards"></div>
     </div>
 
     <div class="block" id="issuesBlock">
@@ -1208,7 +1236,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <span class="footlinks">
       <a href="/privacy">Privacy</a> ·
       <a href="/terms">Terms</a> ·
-      <a href="mailto:top.raider90@gmail.com?subject=Flapp%20bug%20report">Report a bug</a> ·
+      <a href="mailto:support@flapp.app?subject=Flapp%20bug%20report">Report a bug</a> ·
       <a href="/docs" target="_blank" rel="noopener">API</a> ·
       <a href="/health" target="_blank" rel="noopener">status</a>
     </span>
@@ -1910,6 +1938,33 @@ function openUpgrade(){
   else { alert('Upgrade coming soon — paid plans unlock the full analysis.'); }
 }
 
+/* Structured training plan: corrective drill cards from the top priorities,
+   each with the problem, the drill + how-to, a coaching cue, an expected
+   timeframe, and (when available) a link to the matching Academy article.
+   Hides the block when there's no plan or no prioritised drills. */
+const SEV_CLS={critical:'bad',significant:'warn',minor:'low'};
+function renderTrainingPlan(plan){
+  const block=$('#planBlock'); if(!block) return;
+  const pri=(plan&&plan.top_3_priorities)||[];
+  const drills=pri.filter(p=>p.drill);
+  if(!drills.length){ block.classList.add('hidden'); $('#planCards').innerHTML=''; return; }
+  $('#planCards').innerHTML=drills.map((p,i)=>{
+    const weeks=p.weeks?`<span class="plan-weeks"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> ~${p.weeks} wk${p.weeks>1?'s':''}</span>`:'';
+    const cue=p.cue?`<div class="plan-cue"><span class="plan-cue-lbl">Cue</span> ${esc(p.cue)}</div>`:'';
+    const link=p.academy_slug?`<a class="plan-link" href="/academy/${esc(p.academy_slug)}">Read the science <svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg></a>`:'';
+    const why=p.why?`<div class="plan-why">${esc(p.why)}</div>`:'';
+    return `<div class="plan-card">
+      <div class="plan-top"><span class="plan-n">${i+1}</span>
+        <div class="plan-titles"><div class="plan-drill">${esc(p.drill)}</div>
+        <div class="plan-metric">${esc(p.label||'')}</div></div>${weeks}</div>
+      ${why}
+      ${p.instruction?`<div class="plan-how">${esc(p.instruction)}</div>`:''}
+      ${cue}${link}
+    </div>`;
+  }).join('');
+  block.classList.remove('hidden');
+}
+
 function render(job){
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
   const sport=r.sport_type||state.sport;
@@ -1970,7 +2025,7 @@ function render(job){
   $('#upsellHost').classList.add('hidden');
   if(r.locked){
     renderUpsell('upsellHost', r.locked,
-      ['coachBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock']);
+      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock']);
     renderQuota();
     saveToHistory('video', r);
     state.lastResult=r; $('#shareBtn').classList.remove('hidden');
@@ -1988,6 +2043,9 @@ function render(job){
       `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.</div>`;
     cb.classList.remove('hidden');
   } else cb.classList.add('hidden');
+
+  // Training plan (structured corrective drills mapped to detected issues)
+  renderTrainingPlan(r.training_plan);
 
   // findings
   const issues=r.detected_issues||[];

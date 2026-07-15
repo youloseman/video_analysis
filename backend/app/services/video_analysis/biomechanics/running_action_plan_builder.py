@@ -21,18 +21,29 @@ from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFER
 # ---------------------------------------------------------------------------
 RUNNING_DIAGNOSIS_ORDER: list[str] = [
     "cadence",        # 1. Cadence -- foundation of running efficiency
-    "vertical_osc",   # 2. Vertical oscillation -- energy waste
-    "trunk_lean",     # 3. Trunk lean -- propulsive force direction
-    "knee_contact",   # 4. Knee angle at contact -- impact loading
-    "elbow_angle",    # 5. Elbow angle -- arm swing efficiency
-    "knee_swing",     # 6. Knee angle in swing -- stride length
+    "overstride",     # 2. Overstride -- braking + impact at foot-strike
+    "vertical_osc",   # 3. Vertical oscillation -- energy waste
+    "trunk_lean",     # 4. Trunk lean -- propulsive force direction
+    "knee_contact",   # 5. Knee angle at contact -- impact loading
+    "elbow_angle",    # 6. Elbow angle -- arm swing efficiency
+    "knee_swing",     # 7. Knee angle in swing -- stride length
 ]
+
+# Academy article slugs by metric (optional). A drill links to the article
+# only when the slug is present AND the article exists -- the builder never
+# hard-depends on an article being written, so new drills degrade to "no link"
+# rather than a dead link. Add slugs here as Academy articles are published.
+RUNNING_ACADEMY_SLUGS: dict[str, str] = {
+    "cadence": "running-cadence",
+    # overstride / foot-strike / vertical_osc articles: add slugs when written.
+}
 
 # ---------------------------------------------------------------------------
 # Optimal ranges  (from RUNNING_REFERENCE in sport_configs.py)
 # ---------------------------------------------------------------------------
 _RANGES: dict[str, tuple[float, float]] = {
     "cadence":      (170, 190),   # steps per minute
+    "overstride":   (0.0, 0.15),  # foot-ahead / leg-length at contact (lower better)
     "vertical_osc": (6, 10),      # centimeters
     "trunk_lean":   (4, 8),       # degrees from vertical
     "knee_contact": (160, 175),   # degrees  (knee_max from summary)
@@ -43,6 +54,7 @@ _RANGES: dict[str, tuple[float, float]] = {
 # Map summary keys -> our metric names
 _SUMMARY_KEY_MAP: dict[str, str] = {
     "cadence":      "cadence_spm",
+    "overstride":   "overstride_ratio",
     "vertical_osc": "vertical_oscillation_m",   # needs *100 -> cm
     "trunk_lean":   "trunk_lean_avg",
     "knee_contact": "knee_max",
@@ -105,6 +117,7 @@ _IMPLAUSIBLE_FLOORS: dict[str, float] = {
 # into the right tolerance without re-plumbing.
 _DISPLAY_PRECISION: dict[str, int] = {
     "cadence": 1,
+    "overstride": 2,   # small ratio -- shown to 2 decimals
     "vertical_osc": 1,
     "trunk_lean": 1,
     "knee_swing": 1,
@@ -152,6 +165,17 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
         ),
         "cue": "Imagine running on hot coals -- quick, light steps",
         "weeks_to_improvement": 3,
+    },
+    "overstride_high": {
+        "problem": "Overstriding -- foot lands {value}x leg length ahead of the hip (optimal under 0.15)",
+        "drill": "Quick-Feet Cadence Drill",
+        "instruction": (
+            "Run 4x20 seconds at a deliberately higher step rate on a "
+            "metronome set to 180 bpm, focusing on landing with the foot "
+            "under your hips rather than reaching out in front."
+        ),
+        "cue": "Land under your body, not out in front -- shorter, quicker steps",
+        "weeks_to_improvement": 4,
     },
     "vertical_osc_high": {
         "problem": "High vertical oscillation ({value} cm, optimal 6-10)",
@@ -212,6 +236,17 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
         ),
         "cue": "Arms like pendulums -- no tension, no flailing",
         "weeks_to_improvement": 1,
+    },
+    "foot_strike_heel": {
+        "problem": "Heel-first foot-strike, which usually pairs with overstriding and a braking force at contact",
+        "drill": "Midfoot Landing Drill",
+        "instruction": (
+            "Run 4x20 seconds barefoot on grass or in minimal shoes, letting "
+            "the midfoot/forefoot make first contact. Keep steps short and "
+            "quick; do not force a hard toe-strike."
+        ),
+        "cue": "Land softly on the middle of your foot, under your hips",
+        "weeks_to_improvement": 6,
     },
     "knee_swing_insufficient": {
         "problem": "Insufficient knee flexion in swing ({value} deg, optimal 80-100 deg)",
@@ -320,6 +355,7 @@ class RunningDiagnosis:
     coaching_cue: str | None
     weeks_to_improvement: int | None
     linked_to: str | None = None
+    academy_slug: str | None = None
 
 
 @dataclass
@@ -381,6 +417,28 @@ def build_running_action_plan(
         else:
             plan.diagnostics.append(diagnosis)
 
+    # Foot-strike is categorical (heel/midfoot/forefoot), not a numeric range,
+    # so it's diagnosed separately. Only a HEEL strike is flagged as
+    # actionable -- midfoot/forefoot are treated as fine (no universal
+    # "correct" strike, but heel-first is the one that pairs with overstride
+    # and braking, and the one a cue can shift). Missing = not diagnosed.
+    foot_strike = summary.get("foot_strike")
+    if foot_strike == "heel":
+        drill = RUNNING_DRILLS["foot_strike_heel"]
+        plan.diagnostics.append(RunningDiagnosis(
+            metric_name="foot_strike",
+            current_value=0.0,          # categorical -- value unused
+            optimal_min=0.0, optimal_max=0.0,
+            severity="minor",
+            drill_key="foot_strike_heel",
+            problem_description=drill["problem"],
+            drill_name=drill["drill"],
+            drill_instruction=drill["instruction"],
+            coaching_cue=drill["cue"],
+            weeks_to_improvement=drill["weeks_to_improvement"],
+            academy_slug=RUNNING_ACADEMY_SLUGS.get("foot_strike"),
+        ))
+
     # Apply kinematic chain links
     _apply_kinematic_links(plan)
 
@@ -413,6 +471,8 @@ def build_running_action_plan(
 # ---------------------------------------------------------------------------
 _METRIC_LABELS: dict[str, str] = {
     "cadence": "Cadence",
+    "overstride": "Overstride",
+    "foot_strike": "Foot Strike",
     "vertical_osc": "Vertical Oscillation",
     "trunk_lean": "Trunk Lean",
     "knee_contact": "Knee Angle at Contact",
@@ -539,6 +599,7 @@ def _diagnose_metric(
         drill_instruction=drill_data.get("instruction"),
         coaching_cue=drill_data.get("cue"),
         weeks_to_improvement=drill_data.get("weeks_to_improvement"),
+        academy_slug=RUNNING_ACADEMY_SLUGS.get(metric) if drill_key else None,
     )
 
 
@@ -550,6 +611,7 @@ def _get_drill_key(
 
     drill_map: dict[str, tuple[str | None, str | None]] = {
         "cadence":      ("cadence_low", None),
+        "overstride":   (None, "overstride_high"),   # only "too high" matters
         "vertical_osc": (None, "vertical_osc_high"),
         "trunk_lean":   ("trunk_lean_insufficient", "trunk_lean_excessive"),
         "knee_contact": ("knee_contact_insufficient_flexion", None),
@@ -606,15 +668,21 @@ def running_action_plan_to_json(plan: RunningActionPlan) -> dict[str, Any]:
                 "cue": d.coaching_cue,
                 "weeks": d.weeks_to_improvement,
                 "linked_to": d.linked_to,
+                "academy_slug": d.academy_slug,
             }
             for d in plan.diagnostics
         ],
         "top_3_priorities": [
             {
                 "priority": i + 1,
+                "metric": d.metric_name,
+                "label": _METRIC_LABELS.get(d.metric_name, d.metric_name),
                 "drill": d.drill_name,
                 "why": d.problem_description,
+                "instruction": d.drill_instruction,
                 "cue": d.coaching_cue,
+                "weeks": d.weeks_to_improvement,
+                "academy_slug": d.academy_slug,
             }
             for i, d in enumerate(plan.top_priorities)
         ],
