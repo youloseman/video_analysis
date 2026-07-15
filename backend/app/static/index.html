@@ -3,8 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
 <meta name="description" content="Flapp — upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay.">
 <title>Flapp — Running &amp; Cycling Form Analysis</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<!-- Social preview. og:url and og:image are absolute-rewritten per-request by the
+     root route so link previews resolve regardless of host. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Flapp">
+<meta property="og:title" content="Flapp — Running &amp; Cycling Form Analysis">
+<meta property="og:description" content="Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — powered by AI pose estimation.">
+<meta property="og:image" content="/og-image.png">
+<meta property="og:url" content="/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Flapp — Running &amp; Cycling Form Analysis">
+<meta name="twitter:description" content="Upload a side-view clip and get joint angles, a technique score and an annotated overlay.">
+<meta name="twitter:image" content="/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -17,14 +32,23 @@
   --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
   --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#8A94A3;
   --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
+  --c-blue-soft:#B9CDF2;               /* soft blue: dashed drop-zone border */
   --c-swim:#35A6D9; --c-bike:#F2A33C; --c-run:#EF5B5B;
   --c-warn:#C97B10;                    /* attention — distinct from --c-bike */
   --c-warn-text:#9A5E0B;               /* warn as small text on white (AA) */
   --c-orange:#DE5F33;                  /* grade D — between warn and coral */
+  /* ---- Single semantic status scale (good | warn | bad) ----
+     Two variants per status: -text is AA-safe (≥4.5:1) for labels/values on
+     white; -fill is the vivid form for shapes/graphics (dots, bars, markers,
+     ≥3:1 as non-text). Every status colour in the app derives from these —
+     pills, range bars, grade badges and the share card use one vocabulary. */
+  --st-good:#1F7A45; --st-good-fill:#2E9E5B;
+  --st-warn:#9A5E0B; --st-warn-fill:#C97B10;
+  --st-bad:#CE3F2B;  --st-bad-fill:#F1553F;
   --f-display:'Archivo','Arial Black',sans-serif;
   --f-body:'Manrope','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',monospace;
-  --radius:10px; --radius-btn:8px; --skew:-8deg;
+  --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
   --shadow:0 2px 10px rgba(20,41,75,.07);
   --shadow-lg:0 12px 34px rgba(20,41,75,.12);
   --ring:0 0 0 3px rgba(47,109,224,.30);
@@ -53,8 +77,15 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .hmeta{padding:12px 14px}
 .htitle{font-weight:800;font-size:14px;text-transform:capitalize}
 .hsub{font-size:12px;color:var(--c-ink-soft);margin-top:2px}
-.hdel{position:absolute;right:8px;top:8px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,41,75,.55);color:#fff;cursor:pointer;font-size:12px;line-height:1;padding:0}
-.hdel:hover{background:var(--c-coral)}
+/* Visual glyph is 28px but the hit target is padded out to ~44px so it clears
+   the touch-target minimum without enlarging the button chrome. */
+.hdel{position:absolute;right:4px;top:4px;width:44px;height:44px;border:none;background:none;
+  color:#fff;cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
+.hdel .hdel-glyph{width:28px;height:28px;border-radius:50%;background:rgba(20,41,75,.55);
+  display:flex;align-items:center;justify-content:center;transition:background .13s}
+.hdel .hdel-glyph svg{width:14px;height:14px}
+.hdel:hover .hdel-glyph{background:var(--st-bad-fill)}
+.hdel:focus-visible{outline:2px solid #fff;outline-offset:-2px;border-radius:8px}
 /* progress / trends */
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
 .tcard{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:16px 18px 12px;box-shadow:var(--shadow)}
@@ -64,24 +95,23 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .tc-val{font-family:var(--f-mono);font-weight:600;font-size:20px;color:var(--c-navy)}
 .tc-sub{font-size:12px;color:var(--c-ink-soft);margin-top:2px}
 .tdelta{font-weight:800}
-.tdelta.imp{color:#2E9E5B}.tdelta.reg{color:var(--c-coral)}.tdelta.sta{color:var(--c-ink-soft)}
+.tdelta.imp{color:var(--st-good)}.tdelta.reg{color:var(--st-bad)}.tdelta.sta{color:var(--c-ink-soft)}
 .tchart{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
 /* auth */
 .authbox{display:flex;align-items:center;gap:10px;margin-left:6px}
 .usermail{font-size:12px;font-weight:700;color:var(--c-ink-soft);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.authbtn{font-family:var(--f-body);font-weight:800;font-size:13px;padding:8px 16px;border-radius:var(--radius-btn,8px);border:1.5px solid var(--c-blue);background:var(--c-blue);color:#fff;cursor:pointer}
-.authbtn:hover{background:#2459C2}
-.authbtn.ghost{background:#fff;color:var(--c-blue)}
-.authbtn.ghost:hover{background:var(--c-panel-blue,#EAF1FC)}
 .modal{position:fixed;inset:0;background:rgba(20,41,75,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
 .modal.hidden{display:none}
-.modal-card{background:#fff;border-radius:14px;padding:28px 28px 24px;max-width:400px;width:100%;position:relative;box-shadow:0 20px 60px rgba(20,41,75,.3)}
+.modal-card{background:#fff;border-radius:var(--radius-lg);padding:28px 28px 24px;max-width:400px;width:100%;position:relative;box-shadow:0 20px 60px rgba(20,41,75,.3)}
 .cardmodal-card{max-width:420px}
-.cardprev-wrap{display:flex;justify-content:center;background:#0b1830;border-radius:12px;padding:10px}
+.cardprev-wrap{display:flex;justify-content:center;background:#0b1830;border-radius:var(--radius-lg);padding:10px}
 #cardPreview{display:block;max-width:100%;max-height:56vh;width:auto;height:auto;border-radius:8px}
 .cardmodal-actions{display:flex;flex-direction:column;gap:10px;margin-top:2px}
-.modal-close{position:absolute;right:14px;top:12px;border:none;background:none;font-size:18px;color:var(--c-ink-soft);cursor:pointer;line-height:1}
+.modal-close{position:absolute;right:8px;top:8px;width:40px;height:40px;border:none;background:none;
+  color:var(--c-ink-soft);cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.modal-close svg{width:18px;height:18px}
+.modal-close:hover{background:var(--c-panel);color:var(--c-ink)}
 .fld{display:block;margin-bottom:14px}
 .fld span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-bottom:6px}
 .fld input{width:100%;padding:11px 14px;border:1.5px solid var(--c-line);border-radius:8px;font-size:15px;font-family:var(--f-body)}
@@ -115,13 +145,20 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .pill{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;color:var(--c-navy);padding:4px 12px;border-radius:999px}
 .pill .dot{width:8px;height:8px;border-radius:50%;flex:none}
-.pill-run{background:#FDE7E7}.pill-run .dot{background:var(--c-run)}
-.pill-bike{background:#FCEED8}.pill-bike .dot{background:var(--c-bike)}
-.pill-high{background:#FDE5E1}.pill-high .dot{background:var(--c-coral)}
-.pill-medium{background:#F7EBD9}.pill-medium .dot{background:var(--c-warn)}
+.pill-high{background:#FDE5E1}.pill-high .dot{background:var(--st-bad-fill)}
+.pill-medium{background:#F7EBD9}.pill-medium .dot{background:var(--st-warn-fill)}
 .pill-low{background:var(--c-panel)}.pill-low .dot{background:var(--c-ink-faint)}
-.pill-good{background:rgba(46,158,91,.14)}.pill-good .dot{background:#2E9E5B}
-.pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--c-warn)}
+.pill-good{background:rgba(46,158,91,.14)}.pill-good .dot{background:var(--st-good-fill)}
+.pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--st-warn-fill)}
+
+/* Sport tag — a distinct SHAPE (squared chip, not a pill) so "which sport"
+   never reads as a severity signal sitting next to the status pills. */
+.sporttag{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--c-navy);
+  padding:5px 11px;border-radius:6px;background:var(--c-panel);border:1px solid var(--c-line)}
+.sporttag .ic{width:14px;height:14px;flex:none;color:var(--c-ink-soft)}
+.sporttag-run .ic{color:var(--c-run)}
+.sporttag-bike .ic{color:var(--c-bike)}
 
 /* ---------- Layout shell: fixed left sidebar + content column ---------- */
 :root{--sidebar-w:244px}
@@ -143,7 +180,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .navlink[aria-current="page"] .ic{opacity:1}
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
   border-radius:0 3px 3px 0;background:var(--c-blue)}
-.navlink-ext{color:var(--c-ink-faint);font-weight:600;font-size:13.5px}
+.navlink-ext{color:var(--c-ink-soft);font-weight:600;font-size:13.5px}
 .navsep{height:1px;background:var(--c-line);margin:8px 12px}
 .sidebar > .authbox{margin-top:auto;padding-top:14px;border-top:1px solid var(--c-line)}
 
@@ -248,7 +285,7 @@ h2.sec + .speedline{margin-bottom:24px}
 
 /* mode tabs above the card */
 .modetabs{display:inline-flex;gap:4px;padding:5px;background:#fff;border:1px solid var(--c-line);
-  border-radius:14px;box-shadow:var(--shadow);position:relative;z-index:6}
+  border-radius:var(--radius-lg);box-shadow:var(--shadow);position:relative;z-index:6}
 .modetabs button{font-family:var(--f-body);font-weight:700;font-size:14px;color:var(--c-ink-soft);
   background:transparent;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;display:flex;align-items:center;gap:8px;
   transition:background .15s,color .15s}
@@ -256,6 +293,17 @@ h2.sec + .speedline{margin-bottom:24px}
 .modetabs button:hover{color:var(--c-ink)}
 .modetabs button[aria-selected="true"]{background:var(--c-panel-blue);color:var(--c-blue)}
 .modetabs button:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+
+/* Segmented control (aria-pressed toggle group) — same visual language as the
+   mode tabs, used for the Progress sport filter. */
+.seg{display:inline-flex;gap:4px;padding:5px;background:#fff;border:1px solid var(--c-line);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.seg button{font-family:var(--f-body);font-weight:700;font-size:14px;color:var(--c-ink-soft);
+  background:transparent;border:none;border-radius:10px;padding:9px 18px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;transition:background .15s,color .15s}
+.seg button .ic{width:16px;height:16px}
+.seg button:hover{color:var(--c-ink)}
+.seg button[aria-pressed="true"]{background:var(--c-panel-blue);color:var(--c-blue)}
 
 /* control rows (label + full-width tile row) */
 .ctl{margin-bottom:20px}
@@ -270,7 +318,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .tile-btn:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 
 /* drop zone */
-.drop{display:block;border:1.5px dashed var(--c-blue-soft, #B9CDF2);border-radius:var(--radius);padding:44px 24px;
+.drop{display:block;border:1.5px dashed var(--c-blue-soft);border-radius:var(--radius);padding:44px 24px;
   text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--c-panel);margin-bottom:20px}
 .drop:hover,.drop.drag,#file:focus-visible + .drop{border-color:var(--c-blue);background:var(--c-panel-blue)}
 #file:focus-visible + .drop{box-shadow:var(--ring)}
@@ -321,9 +369,9 @@ h2.sec + .speedline{margin-bottom:24px}
   border-radius:999px;padding:4px 12px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .steps{display:flex;justify-content:center;gap:8px;margin-bottom:24px}
 .step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--c-ink-faint)}
+  text-transform:uppercase;color:var(--c-ink-soft)}
 .step .sdot{width:24px;height:24px;border-radius:50%;border:2px solid var(--c-line);display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:800;color:var(--c-ink-faint);background:#fff;flex:none}
+  font-size:11px;font-weight:800;color:var(--c-ink-soft);background:#fff;flex:none}
 .step.active{color:var(--c-navy)}
 .step.active .sdot{border-color:var(--c-blue);color:var(--c-blue)}
 .step.done{color:var(--c-ink-soft)}
@@ -344,10 +392,16 @@ h2.sec + .speedline{margin-bottom:24px}
 .scorecard{padding:24px;position:relative;overflow:hidden}
 .sharebtn{margin-top:18px;width:100%;justify-content:center}
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,140%);z-index:120;
-  background:var(--c-navy);color:#fff;font-weight:700;font-size:14px;padding:13px 20px;border-radius:12px;
+  background:var(--c-navy);color:#fff;font-weight:700;font-size:14px;padding:13px 20px;border-radius:var(--radius-lg);
   box-shadow:0 10px 30px rgba(0,0,0,.28);max-width:min(90vw,420px);text-align:center;
   opacity:0;transition:transform .28s cubic-bezier(.2,.9,.3,1),opacity .28s;pointer-events:none}
 .toast.show{transform:translate(-50%,0);opacity:1}
+.toast{display:inline-flex;align-items:center;gap:14px;pointer-events:none}
+.toast.show{pointer-events:auto}
+.toast-action{font:inherit;font-weight:800;color:#8FC0FF;background:none;border:none;
+  padding:4px 6px;margin:-4px -2px;cursor:pointer;border-radius:6px}
+.toast-action:hover{color:#fff;text-decoration:underline;text-underline-offset:2px}
+.toast-action:focus-visible{outline:2px solid #8FC0FF;outline-offset:1px}
 .scorecard::before{content:"";position:absolute;left:8px;top:88px;height:64px;width:5px;
   transform:skewX(var(--skew));background:var(--c-blue)}
 .score-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:16px}
@@ -372,8 +426,13 @@ h2.sec + .speedline{margin-bottom:24px}
 .banner .ic{margin-top:2px}
 .banner.warn{background:#F9F1E3;border-left:4px solid var(--c-warn);color:var(--c-ink)}
 .banner.warn .ic{color:var(--c-warn)}
+/* .ok = informational confirmation (blue). .good = a positive/"all-clear"
+   result (green) — same success hue as the in-range pills, so "green" means
+   the same thing everywhere. */
 .banner.ok{background:var(--c-panel-blue);border-left:4px solid var(--c-blue);color:var(--c-navy)}
 .banner.ok .ic{color:var(--c-blue)}
+.banner.good{background:rgba(46,158,91,.12);border-left:4px solid var(--st-good-fill);color:var(--c-navy)}
+.banner.good .ic{color:var(--st-good)}
 
 .coach{background:var(--c-panel-blue);border-radius:var(--radius);padding:24px}
 .coach h4{font-family:var(--f-body);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.18em;color:var(--c-blue);margin:16px 0 8px}
@@ -385,7 +444,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .coach .disclaimer{font-size:12px;color:var(--c-ink-soft);margin-top:16px;padding-top:16px;border-top:1px solid rgba(20,41,75,.12)}
 
 .issue{border-radius:var(--radius);padding:16px;background:#fff;border:1px solid var(--c-line);margin-bottom:8px;border-left:4px solid var(--c-ink-faint)}
-.issue.high{border-left-color:var(--c-coral)} .issue.medium{border-left-color:var(--c-warn)}
+.issue.high{border-left-color:var(--st-bad-fill)} .issue.medium{border-left-color:var(--st-warn-fill)}
 .issue .i-top{display:flex;justify-content:space-between;gap:16px;align-items:center}
 .issue .i-type{font-weight:800;color:var(--c-ink)}
 .issue .i-rec{font-size:14px;color:var(--c-ink-soft);margin-top:8px}
@@ -397,16 +456,16 @@ h2.sec + .speedline{margin-bottom:24px}
 .tile .t-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);
   display:flex;align-items:center;gap:8px}
 .tile .t-lbl .sdot{width:8px;height:8px;border-radius:50%;flex:none}
-.tile.good .t-lbl .sdot{background:var(--c-blue)}
-.tile.warn .t-lbl .sdot{background:var(--c-warn)}
-.tile.bad .t-lbl .sdot{background:var(--c-coral)}
+.tile.good .t-lbl .sdot{background:var(--st-good-fill)}
+.tile.warn .t-lbl .sdot{background:var(--st-warn-fill)}
+.tile.bad .t-lbl .sdot{background:var(--st-bad-fill)}
 .tile .t-val{font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--c-navy);margin-top:8px;font-variant-numeric:tabular-nums}
 .tile .t-val small{font-size:13px;color:var(--c-ink-soft);font-weight:400}
 .tile .t-val.txt{font-family:var(--f-body);font-size:16px;font-weight:800;line-height:1.3;margin-top:12px}
 .tile .t-ref{font-size:11px;color:var(--c-ink-soft);margin-top:4px}
-.tile .t-ref .st-good{color:var(--c-blue);font-weight:800}
-.tile .t-ref .st-warn{color:var(--c-warn-text);font-weight:800}
-.tile .t-ref .st-bad{color:var(--c-coral-btn);font-weight:800}
+.tile .t-ref .st-good{color:var(--st-good);font-weight:800}
+.tile .t-ref .st-warn{color:var(--st-warn);font-weight:800}
+.tile .t-ref .st-bad{color:var(--st-bad);font-weight:800}
 
 /* ---------- Gradient range bar (metric optimal range + marker) ---------- */
 .grbar{margin-top:12px}
@@ -417,8 +476,8 @@ h2.sec + .speedline{margin-bottom:24px}
   border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--c-ink);
   transform:translateX(-5px)}
 .grbar .gr-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);
-  font-size:9.5px;color:var(--c-ink-faint);margin-top:12px;font-weight:500}
-.grbar .gr-scale .gr-opt{color:#2E9E5B;font-weight:600}
+  font-size:11px;color:var(--c-ink-soft);margin-top:12px;font-weight:500}
+.grbar .gr-scale .gr-opt{color:var(--st-good);font-weight:700}
 
 /* ---------- Advanced biomechanics charts ---------- */
 .biomech-intro{font-size:13px;color:var(--c-ink-soft);margin:-4px 0 18px;line-height:1.6}
@@ -427,14 +486,14 @@ h2.sec + .speedline{margin-bottom:24px}
 .bmcard .bm-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
 .bmcard .bm-title{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-navy)}
 .bmcard .bm-badge{font-family:var(--f-mono);font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
-.bmcard .bm-badge.good{color:#1F7A45;background:rgba(46,158,91,.14)}
-.bmcard .bm-badge.warn{color:var(--c-warn-text);background:rgba(201,123,16,.14)}
-.bmcard .bm-badge.bad{color:var(--c-coral-btn);background:rgba(241,85,63,.13)}
+.bmcard .bm-badge.good{color:var(--st-good);background:rgba(46,158,91,.14)}
+.bmcard .bm-badge.warn{color:var(--st-warn);background:rgba(201,123,16,.14)}
+.bmcard .bm-badge.bad{color:var(--st-bad);background:rgba(241,85,63,.13)}
 .bmcard .bm-sub{font-size:11px;color:var(--c-ink-soft);margin-bottom:8px;min-height:15px}
 .bmcard .bm-metrics{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:11px;color:var(--c-ink-soft);margin-top:8px}
 .bmcard .bm-metrics b{font-family:var(--f-mono);color:var(--c-navy);font-weight:600}
 .bmchart{width:100%;height:auto;display:block;overflow:visible}
-.bmchart text{font-family:var(--f-mono);fill:var(--c-ink-faint)}
+.bmchart text{font-family:var(--f-mono);fill:var(--c-ink-soft)}
 .bmchart .bm-axtitle{fill:var(--c-ink-soft);font-weight:600}
 .bmlegend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:10.5px;color:var(--c-ink-soft);margin-top:8px}
 .bmlegend .lg{display:inline-flex;align-items:center;gap:5px}
@@ -506,7 +565,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .hero .wrap{padding:40px 24px 48px}
   main{padding-top:24px}
   .uploader{padding:24px;margin-top:12px}
-  .modetabs{width:100%;left:auto;transform:none}
+  .modetabs{width:100%}
   .modetabs button{flex:1;justify-content:center;padding:10px 12px;font-size:13px}
   .uphead{font-size:19px}
   .drop{padding:32px 16px}
@@ -580,6 +639,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="15" cy="4.5" r="1.8"/><path d="M13 9l-3 2 1 4 3 2 1 3"/><path d="M11 11l-3-1-2 3"/><path d="M15 13l3 1"/></symbol>
+  <symbol id="i-bike" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="5.5" cy="17" r="3.2"/><circle cx="18.5" cy="17" r="3.2"/><path d="M5.5 17l4-7h5"/><path d="M9.5 10l3.5 7"/><circle cx="14.5" cy="5" r="1.4"/><path d="M12 7h3l1.5 3"/></symbol>
 </svg>
 
 <!-- Mobile top bar (shown < 900px): brand + hamburger -->
@@ -620,7 +683,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 <div class="modal hidden" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <div class="modal-card">
-    <button class="modal-close" id="authClose" type="button" aria-label="Close">✕</button>
+    <button class="modal-close" id="authClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
     <div class="eyebrow" style="color:var(--c-blue)">Your account</div>
     <h2 id="authTitle" style="font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);font-size:23px;margin:6px 0 4px">Log in</h2>
     <p class="hint" style="text-align:left;margin:0 0 16px">Save your history &amp; progress, and pick up on any device.</p>
@@ -636,7 +699,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 <div class="modal hidden" id="cardModal" role="dialog" aria-modal="true" aria-labelledby="cardModalTitle">
   <div class="modal-card cardmodal-card">
-    <button class="modal-close" id="cardClose" type="button" aria-label="Close">✕</button>
+    <button class="modal-close" id="cardClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
     <div class="eyebrow" style="color:var(--c-blue)">Share</div>
     <h2 id="cardModalTitle" style="font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);font-size:23px;margin:6px 0 12px">Your result card</h2>
     <div class="cardprev-wrap"><img id="cardPreview" alt="Your Flapp result card"></div>
@@ -682,8 +745,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div class="ctl">
         <span class="ctl-label" id="sportLabel">Select sport type:</span>
         <div class="tilerow" id="sportSeg" role="group" aria-labelledby="sportLabel">
-          <button type="button" class="tile-btn run" data-sport="run" aria-pressed="false">Running</button>
-          <button type="button" class="tile-btn bike" data-sport="bike" aria-pressed="true">Cycling</button>
+          <button type="button" class="tile-btn" data-sport="run" aria-pressed="false">Running</button>
+          <button type="button" class="tile-btn" data-sport="bike" aria-pressed="true">Cycling</button>
         </div>
       </div>
 
@@ -771,7 +834,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
     <div class="result-top" id="resultTop">
       <div class="card scorecard">
-        <span class="pill" id="sportTag"><span class="dot" aria-hidden="true"></span><span id="sportTagText">Bike</span></span>
+        <span class="sporttag" id="sportTag"><svg class="ic" id="sportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="sportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
         <div class="score-num" id="scoreNum">—<small>/100</small></div>
         <div class="graderow">
@@ -875,7 +938,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
     <div class="result-top">
       <div class="card scorecard">
-        <span class="pill" id="pSportTag"><span class="dot" aria-hidden="true"></span><span id="pSportTagText">Bike</span></span>
+        <span class="sporttag" id="pSportTag"><svg class="ic" id="pSportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="pSportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
         <div class="score-num" id="pScoreNum">—<small>/100</small></div>
         <div class="graderow">
@@ -978,10 +1041,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <h2 class="sec" id="trendsTitle" tabindex="-1" style="margin-bottom:8px">Your progress</h2>
       <div class="speedline"></div>
     </div>
-    <div class="field" style="margin:16px 0 22px">
+    <div style="margin:16px 0 22px">
       <div class="seg" id="progSeg" role="group" aria-label="Sport">
-        <button type="button" data-sport="bike" aria-pressed="true">Bike</button>
-        <button type="button" data-sport="run" aria-pressed="false">Run</button>
+        <button type="button" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg> Bike</button>
+        <button type="button" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg> Run</button>
       </div>
     </div>
     <p class="hint" style="text-align:left;margin:-8px 0 18px">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
@@ -998,7 +1061,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     </div>
     <div class="result-top">
       <div class="card scorecard">
-        <span class="pill" id="hdSportTag"><span class="dot" aria-hidden="true"></span><span id="hdSportTagText">Bike</span></span>
+        <span class="sporttag" id="hdSportTag"><svg class="ic" id="hdSportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="hdSportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
         <div class="score-num" id="hdScore">—<small>/100</small></div>
         <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div></div></div>
@@ -1068,7 +1131,14 @@ const DEBUG = new URLSearchParams(location.search).has('debug');
 
 /* ---- brand colors for JS (mirror of the :root tokens above) ---- */
 const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', coralBtn:'#CE3F2B', warn:'#C97B10', orange:'#DE5F33' };
-const GRADE_COLORS = { A:C.blue, B:C.navy, C:C.warn, D:C.orange, F:C.coral };
+/* Semantic status scale — mirror of the --st-* tokens. `*_FILL` = vivid form
+   for shapes/graphics; the plain values are the AA-safe text form. */
+const ST = { good:'#1F7A45', warn:'#9A5E0B', bad:'#CE3F2B',
+             goodFill:'#2E9E5B', warnFill:'#C97B10', badFill:'#F1553F' };
+/* Grade badge scale — one semantic hue ramp (green→amber→red), so A..F reads
+   as a scale instead of five unrelated brand colours. B was navy before and
+   collided with headings/score; now it's a green-amber midpoint tone. */
+const GRADE_COLORS = { A:ST.goodFill, B:'#3E8F52', C:ST.warnFill, D:C.orange, F:ST.badFill };
 const POSITION_NAMES = { road_hoods:'Road Bike', road_drops:'Road · Drops', tt_aero:'TT · Aero', triathlon:'TT / Tri', casual:'Casual' };
 
 /* ============================================================
@@ -1282,7 +1352,7 @@ function analyze(){
 
   const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
-    <span class="pill ${state.sport==='run'?'pill-run':'pill-bike'}"><span class="dot" aria-hidden="true"></span>${esc(sportTxt)}</span>`;
+    <span class="sporttag sporttag-${state.sport}"><svg class="ic" aria-hidden="true"><use href="#i-${state.sport}"/></svg>${esc(sportTxt)}</span>`;
 
   setState('progress',{focus:'#progTitle'});
   $('#progTitle').textContent='Analyzing your clip';
@@ -1417,6 +1487,14 @@ const pretty = k => PRETTY[k] || String(k).replace(/_/g,' ').replace(/\b\w/g,c=>
 const num = (v,d=0) => (v===null||v===undefined||Number.isNaN(v)) ? '—' : (typeof v==='number'? v.toFixed(d): v);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* Sport tag: squared chip with a sport glyph (not a severity pill). */
+function setSportTag(tagSel,iconSel,textSel,sport){
+  const run=sport==='run', tag=$(tagSel);
+  if(tag){ tag.classList.toggle('sporttag-run',run); tag.classList.toggle('sporttag-bike',!run); }
+  const icon=$(iconSel); if(icon){ const u=icon.querySelector('use'); if(u) u.setAttribute('href', run?'#i-run':'#i-bike'); }
+  const txt=$(textSel); if(txt) txt.textContent = run?'Run':'Bike';
+}
+
 const ANGLE_KEY=/knee|hip|elbow|trunk|shoulder|ankle|angle|lean/i;
 function fmtIssueValue(v){
   const m=String(v).match(/^\s*([a-z0-9_]+)\s*=\s*(.+)$/i);
@@ -1476,7 +1554,9 @@ function angleOptimal(key,sport,res){
   return map[base+'_angle']||map[base]||null;
 }
 const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
-const GR_ZONE={optimal:'#22C55E',warning:'#F59E0B',critical:'#EF4444'};
+/* Range-bar zone fills — the vivid (graphics) form of the semantic scale, so
+   the bars match the pills/badges instead of using a second Tailwind palette. */
+const GR_ZONE={optimal:ST.goodFill,warning:ST.warnFill,critical:ST.badFill};
 /* Which zone a value falls in, given optimal [lo,hi] and warning margin = 50% of optimal width. */
 function grZone(v,lo,hi){
   const m=(hi-lo)*0.5||1;
@@ -1563,7 +1643,7 @@ async function analyzePhoto(){
 
   const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
-    <span class="pill ${state.sport==='run'?'pill-run':'pill-bike'}"><span class="dot" aria-hidden="true"></span>${esc(sportTxt)}</span>`;
+    <span class="sporttag sporttag-${state.sport}"><svg class="ic" aria-hidden="true"><use href="#i-${state.sport}"/></svg>${esc(sportTxt)}</span>`;
 
   setState('progress',{focus:'#progTitle'});
   $('#progTitle').textContent='Analyzing your photo';
@@ -1605,10 +1685,7 @@ function renderPhoto(res){
   const g=$('#pGrade'); g.textContent=letter; g.setAttribute('aria-label','Grade '+letter);
   const gc=GRADE_COLORS[letter]||C.navy; g.style.borderColor=gc; g.style.color=gc;
 
-  const st=$('#pSportTag');
-  st.classList.remove('pill-run','pill-bike');
-  st.classList.add(sport==='run'?'pill-run':'pill-bike');
-  $('#pSportTagText').textContent = sport==='run'?'Run':'Bike';
+  setSportTag('#pSportTag','#pSportTagIcon','#pSportTagText',sport);
 
   const parts=[];
   if(res.camera_side) parts.push(`Camera: <b>${esc(res.camera_side)} side</b>`);
@@ -1622,7 +1699,7 @@ function renderPhoto(res){
   const warns=res.warnings||[];
   $('#pWarnings').innerHTML = warns.length
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
-    : `<div class="banner ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
+    : `<div class="banner good"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
 
   const cb=$('#pCoachBlock'); const rec=res.ai_recommendations;
   if(rec && rec.report){
@@ -1665,10 +1742,7 @@ function render(job){
   g.style.borderColor=gc; g.style.color=gc;
 
   // sport tag
-  const st=$('#sportTag');
-  st.classList.remove('pill-run','pill-bike');
-  st.classList.add(sport==='run'?'pill-run':'pill-bike');
-  $('#sportTagText').textContent = sport==='run'?'Run':'Bike';
+  setSportTag('#sportTag','#sportTagIcon','#sportTagText',sport);
 
   // gate chip + banner
   const gated=!!r.quality_gate_triggered;
@@ -1732,7 +1806,7 @@ function render(job){
         ${it.value?`<div>${fmtIssueValue(it.value)}</div>`:''}</div>`;
     }).join('');
   } else {
-    ib.innerHTML=`<div class="banner ok" style="margin-top:0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+    ib.innerHTML=`<div class="banner good" style="margin-top:0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
       <span>No major technique issues detected in this clip.</span></div>`;
   }
 
@@ -1934,11 +2008,21 @@ async function buildShareCard(card){
 
   return await new Promise(res=>cv.toBlob(b=>res(b),'image/png',0.92));
 }
-function toast(msg){
+/* toast(msg) — plain message; toast(msg,{action,onAction,duration}) adds an
+   inline action button (e.g. Undo). */
+function toast(msg,opts){
+  opts=opts||{};
   let t=$('#toast');
   if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; t.setAttribute('role','status'); document.body.appendChild(t); }
-  t.textContent=msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),3400);
+  t.innerHTML='';
+  const span=document.createElement('span'); span.textContent=msg; t.appendChild(span);
+  if(opts.action){
+    const b=document.createElement('button'); b.type='button'; b.className='toast-action'; b.textContent=opts.action;
+    b.addEventListener('click',()=>{ t.classList.remove('show'); if(opts.onAction) opts.onAction(); });
+    t.appendChild(b);
+  }
+  t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),opts.duration||3400);
 }
 async function doShare(card, btn, txtEl){
   if(!card || btn.getAttribute('aria-disabled')==='true') return;
@@ -2014,8 +2098,8 @@ function renderAuth(){
   // Render into both the sidebar box and the mobile top-bar box.
   const boxes=[$('#authbox'),$('#authboxM')].filter(Boolean);
   const markup = auth
-    ? `<span class="usermail" title="${esc(auth.email)}">${esc(auth.email)}</span><button class="authbtn ghost" data-logout type="button">Log out</button>`
-    : `<button class="authbtn" data-login type="button">Log in</button>`;
+    ? `<span class="usermail" title="${esc(auth.email)}">${esc(auth.email)}</span><button class="btn btn-ghost btn-sm" data-logout type="button">Log out</button>`
+    : `<button class="btn btn-primary btn-sm" data-login type="button">Log in</button>`;
   boxes.forEach(box=>{ box.innerHTML=markup; });
   document.querySelectorAll('[data-logout]').forEach(b=>b.addEventListener('click',logout));
   document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openAuth('login')));
@@ -2104,10 +2188,30 @@ function persistHist(a){
   catch(e){ while(a.length>1){ a.pop(); try{ localStorage.setItem(HKEY, JSON.stringify(a)); return; }catch(_e){} } }
 }
 function historyDelete(id){
-  if(auth){
-    state.cloudHist=(state.cloudHist||[]).filter(x=>x.id!==id); renderHistList();
-    fetch('/me/analyses/'+encodeURIComponent(id),{method:'DELETE',headers:authHeaders()}).catch(()=>{});
-  } else { persistHist(localHist().filter(x=>x.id!==id)); renderHistList(); }
+  // Capture the entry + its position so the delete is undoable. The server
+  // DELETE is deferred until the undo window closes, so Undo never has to
+  // "un-delete" on the backend — it just cancels the pending request.
+  const list=loadHist();
+  const idx=list.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const entry=list[idx];
+  if(auth) state.cloudHist=(state.cloudHist||[]).filter(x=>x.id!==id);
+  else persistHist(localHist().filter(x=>x.id!==id));
+  renderHistList();
+
+  let committed=false;
+  const commit=setTimeout(()=>{
+    committed=true;
+    if(auth) fetch('/me/analyses/'+encodeURIComponent(id),{method:'DELETE',headers:authHeaders()}).catch(()=>{});
+  },4200);
+
+  toast('Analysis deleted.',{action:'Undo',duration:4200,onAction:()=>{
+    if(committed) return;                 // safety: window already elapsed
+    clearTimeout(commit);
+    if(auth){ const a=(state.cloudHist||[]).slice(); a.splice(Math.min(idx,a.length),0,entry); state.cloudHist=a; }
+    else { const a=localHist(); a.splice(Math.min(idx,a.length),0,entry); persistHist(a); }
+    renderHistList();
+  }});
 }
 function metricsFromVideo(res){
   const A=res.angle_statistics||{}, o=[];
@@ -2148,7 +2252,7 @@ function renderHistList(){
   if(!a.length){ w.innerHTML='<p class="hint" style="text-align:left">No saved analyses yet — your results are stored on this device after each analysis.</p>'; return; }
   w.innerHTML=a.map(e=>`<div class="hcard" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">
     <div class="hthumb">${e.keyframe?`<img src="${e.keyframe}" alt="">`:''}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
-      <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis">✕</button></div>
+      <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
     <div class="hmeta"><div class="htitle">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind)}</div>
       <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
   </div>`).join('');
@@ -2160,8 +2264,7 @@ function openHistory(id){
   $('#hdImgWrap').style.display = e.keyframe?'':'none';
   $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
   const g=$('#hdGrade'); g.textContent=e.grade||'—'; const gc=GRADE_COLORS[e.grade]||C.navy; g.style.borderColor=gc; g.style.color=gc;
-  const stg=$('#hdSportTag'); stg.classList.remove('pill-run','pill-bike'); stg.classList.add(e.sport==='run'?'pill-run':'pill-bike');
-  $('#hdSportTagText').textContent=e.sport==='run'?'Run':'Bike';
+  setSportTag('#hdSportTag','#hdSportTagIcon','#hdSportTagText',e.sport);
   const parts=[esc(e.kind)];
   if(e.cameraSide) parts.push(`Camera: <b>${esc(e.cameraSide)} side</b>`);
   if(e.position) parts.push(`Position: <b>${esc(POSITION_NAMES[e.position]||e.position)}</b>`);
@@ -2296,14 +2399,14 @@ function waveformChart(cmp){
   // gridlines + y labels (lo, mid, hi)
   [lo,(lo+hi)/2,hi].forEach(v=>{ const y=Y(v);
     svg+=`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--c-line)" stroke-width="1"/>`
-      +`<text x="${(pad.l-4).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9">${Math.round(v)}</text>`; });
+      +`<text x="${(pad.l-4).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="10">${Math.round(v)}</text>`; });
   svg+=`<path d="${band}" fill="rgba(138,148,163,.16)"/>`;
   svg+=`<path d="${path('ref_mean')}" fill="none" stroke="${BM_REF}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
   svg+=`<path d="${path('athlete')}" fill="none" stroke="${BM_ATHLETE}" stroke-width="2.2" stroke-linejoin="round"/>`;
   // x axis
-  svg+=`<text x="${X(0).toFixed(1)}" y="${H-6}" font-size="9">0%</text>`
-    +`<text x="${X(100).toFixed(1)}" y="${H-6}" text-anchor="end" font-size="9">100%</text>`
-    +`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8.5" class="bm-axtitle">% of cycle</text>`;
+  svg+=`<text x="${X(0).toFixed(1)}" y="${H-6}" font-size="10">0%</text>`
+    +`<text x="${X(100).toFixed(1)}" y="${H-6}" text-anchor="end" font-size="10">100%</text>`
+    +`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" class="bm-axtitle">% of cycle</text>`;
   svg+='</svg>';
   return svg;
 }
@@ -2323,8 +2426,8 @@ function phasePortraitChart(jr,color){
   const step=Math.max(1,Math.floor(pts.length/160));
   for(let i=0;i<pts.length;i+=step){ const p=pts[i];
     svg+=`<circle cx="${X(p.angle).toFixed(1)}" cy="${Y(p.velocity).toFixed(1)}" r="1.9" fill="${color}" fill-opacity="0.5"/>`; }
-  svg+=`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8.5" class="bm-axtitle">angle (°)</text>`
-    +`<text transform="translate(10 ${((pad.t+H-pad.b)/2).toFixed(1)}) rotate(-90)" text-anchor="middle" font-size="8.5" class="bm-axtitle">ang. velocity (°/s)</text>`;
+  svg+=`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" class="bm-axtitle">angle (°)</text>`
+    +`<text transform="translate(10 ${((pad.t+H-pad.b)/2).toFixed(1)}) rotate(-90)" text-anchor="middle" font-size="10" class="bm-axtitle">ang. velocity (°/s)</text>`;
   svg+='</svg>';
   return svg;
 }
@@ -2346,8 +2449,8 @@ function coordinationChart(pr){
   cycles.slice(0,5).forEach(c=>{ svg+=line(c,1.2,BM_ATHLETE,0.28); });
   if(mean.length>1) svg+=line(mean,2.4,BM_MEAN,1);
   const [pxLbl,dLbl]=String(pr.pair||'Proximal-Distal').split('-');
-  svg+=`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8.5" class="bm-axtitle">${esc(pxLbl||'proximal')} (°)</text>`
-    +`<text transform="translate(10 ${((pad.t+H-pad.b)/2).toFixed(1)}) rotate(-90)" text-anchor="middle" font-size="8.5" class="bm-axtitle">${esc(dLbl||'distal')} (°)</text>`;
+  svg+=`<text x="${((pad.l+W-pad.r)/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" class="bm-axtitle">${esc(pxLbl||'proximal')} (°)</text>`
+    +`<text transform="translate(10 ${((pad.t+H-pad.b)/2).toFixed(1)}) rotate(-90)" text-anchor="middle" font-size="10" class="bm-axtitle">${esc(dLbl||'distal')} (°)</text>`;
   svg+='</svg>';
   return svg;
 }

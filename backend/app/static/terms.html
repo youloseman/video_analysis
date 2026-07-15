@@ -5,22 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Terms of Service — Flapp</title>
 <meta name="description" content="The terms for using Flapp's technique analysis.">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,800;0,900;1,800;1,900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --c-navy:#14294B; --c-ink:#1E2A3D; --c-ink-soft:#5C6675; --c-blue:#2F6DE0;
-    --c-coral:#CE3F2B; --c-warn:#C97B10; --c-line:#E3E8EF; --c-panel:#F4F6FA; --c-panel-blue:#EAF0FC;
-    --radius:14px;
+    --c-navy:#14294B; --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-blue:#2F6DE0;
+    --c-coral:#F1553F; --c-warn:#C97B10; --c-line:#DCE2EA; --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC;
+    --radius:10px;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     color:var(--c-ink);background:#fff;line-height:1.65;font-size:16px}
   .wrap{max-width:760px;margin:0 auto;padding:0 24px}
-  header{background:linear-gradient(120deg,#0e1c33,#1d3f7a);color:#fff;padding:28px 0}
+  header{background:linear-gradient(135deg,#14294B 0%,#1D3E77 60%,#2F6DE0 100%);color:#fff;padding:28px 0}
   header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px}
-  .wordmark{font-family:'Archivo',sans-serif;font-weight:800;font-style:italic;font-size:24px;letter-spacing:-.02em}
+  .wordmark{font-family:'Archivo',sans-serif;font-weight:900;font-style:italic;font-size:24px;text-transform:uppercase;letter-spacing:-.02em}
   .wordmark .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c-coral);margin-left:2px;vertical-align:middle}
   header a{color:#fff;text-decoration:none;font-size:14px;font-weight:700;opacity:.9}
   header a:hover{opacity:1}
+  .backlink{display:inline-flex;align-items:center;gap:6px}
+  .backlink svg{width:15px;height:15px;flex:none}
+  a:focus-visible,button:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:4px}
   main{padding:48px 0 72px}
   h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:34px;color:var(--c-navy);margin:0 0 8px;text-transform:uppercase;letter-spacing:-.01em}
   .updated{color:var(--c-ink-soft);font-size:14px;margin:0 0 8px}
@@ -45,8 +52,8 @@
 <body>
 <header>
   <div class="wrap">
-    <a href="/" class="wordmark" style="color:#fff;text-decoration:none">Flapp<span class="dot"></span></a>
-    <a href="/">← Back to app</a>
+    <a href="/" class="wordmark">Flapp<span class="dot"></span></a>
+    <a href="/" class="backlink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12H5M11 6l-6 6 6 6"/></svg>Back to app</a>
   </div>
 </header>
 

@@ -42,6 +42,12 @@ html{scroll-behavior:smooth}
 body{font-family:var(--f-body);font-size:16px;line-height:1.6;color:var(--c-ink);background:var(--c-bg)}
 .wrap{max-width:820px;margin:0 auto;padding:0 24px}
 a{color:var(--c-blue)}
+/* Brand focus ring on every interactive element (mirrors the app). */
+:is(a,button,input,select,summary,[tabindex]):focus-visible{outline:2px solid var(--c-blue);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
 .speedline{height:6px;width:120px;border-radius:3px;transform:skewX(var(--skew));
   background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
 .eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue)}
@@ -63,7 +69,7 @@ a{color:var(--c-blue)}
 .navlink[aria-current="page"] svg{opacity:1}
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
   border-radius:0 3px 3px 0;background:var(--c-blue)}
-.navlink-ext{color:var(--c-ink-faint);font-weight:600;font-size:13.5px}
+.navlink-ext{color:var(--c-ink-soft);font-weight:600;font-size:13.5px}
 .navsep{height:1px;background:var(--c-line);margin:8px 12px}
 .appshell{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
 .appshell > main,.appshell > .article-wrap{flex:1}
@@ -116,7 +122,7 @@ _HUB_CSS = """
 .acard .cat{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-soft)}
 .acard h2{font-family:var(--f-display);font-weight:800;font-size:20px;line-height:1.15;color:var(--c-navy)}
 .acard p{font-size:14px;color:var(--c-ink-soft);line-height:1.5;flex:1}
-.acard .meta{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);margin-top:4px}
+.acard .meta{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);margin-top:4px}
 .acard.feat{grid-column:1/-1;flex-direction:row;align-items:stretch}
 .acard.feat .stripe{height:auto;width:6px;flex:none}
 .acard.feat h2{font-size:26px}
@@ -132,7 +138,7 @@ _ARTICLE_CSS = """
 .crumbs .sep{margin:0 8px;color:var(--c-line)}
 .article-head{margin-bottom:8px}
 .article-head .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.article-head .rt{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
+.article-head .rt{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft)}
 .article-head h1{font-family:var(--f-display);font-weight:900;font-style:italic;text-transform:uppercase;
   font-size:clamp(28px,4.5vw,42px);line-height:1.02;letter-spacing:-.01em;color:var(--c-navy)}
 .article-head .lede{font-size:19px;line-height:1.5;color:var(--c-ink-soft);margin-top:16px}
@@ -166,15 +172,17 @@ _ARTICLE_CSS = """
   color:var(--c-navy);letter-spacing:.04em;margin-bottom:14px}
 .sources ol{padding-left:22px;font-size:14px;color:var(--c-ink-soft);line-height:1.5}
 .sources li{margin-bottom:10px}
-.sources .finding{display:block;color:var(--c-ink-faint);font-style:italic;margin-top:2px}
+.sources .finding{display:block;color:var(--c-ink-soft);font-style:italic;margin-top:2px}
 /* back-to-hub / cta */
 .article-cta{margin-top:40px;padding:26px 28px;border:1px solid var(--c-line);border-radius:var(--radius);
   background:var(--c-panel-blue);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
 .article-cta p{font-weight:700;color:var(--c-navy);font-size:16px}
 .btn{font-family:var(--f-body);font-weight:800;border-radius:var(--radius-btn);text-decoration:none;
-  padding:12px 22px;font-size:15px;display:inline-flex;align-items:center;gap:8px}
+  padding:12px 24px;min-height:44px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn svg{width:18px;height:18px;flex:none}
 .btn-primary{background:var(--c-blue);color:#fff}.btn-primary:hover{background:var(--c-blue-dk)}
-.backlink{display:inline-block;margin-bottom:24px;font-size:13px;font-weight:700;color:var(--c-blue);text-decoration:none}
+.backlink{display:inline-flex;align-items:center;gap:6px;margin-bottom:24px;font-size:13px;font-weight:700;color:var(--c-blue);text-decoration:none}
+.backlink svg{width:15px;height:15px;flex:none}
 .backlink:hover{text-decoration:underline;text-underline-offset:3px}
 """
 
@@ -197,6 +205,8 @@ _ICONS = {
     "book": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg>',
     "ext": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5"/><path d="M19 5l-8 8"/><path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg>',
     "menu": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    "arr-l": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5M11 6l-6 6 6 6"/></svg>',
+    "arr-r": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>',
 }
 
 
@@ -231,6 +241,8 @@ def _footer() -> str:
         "<footer><div class=\"wrap\">"
         f"<span>{SITE_NAME} · side-view running &amp; cycling form analysis</span>"
         '<span><a href="/academy">Academy</a> · '
+        '<a href="/privacy">Privacy</a> · '
+        '<a href="/terms">Terms</a> · '
         '<a href="/docs" target="_blank" rel="noopener">API</a> · '
         '<a href="/health" target="_blank" rel="noopener">status</a></span>'
         "</div></footer>"
@@ -392,7 +404,7 @@ def render_article(article: Article, base_url: str) -> str:
 
     body = (
         '<div class="article-wrap">'
-        '<a class="backlink" href="/academy">← Academy</a>'
+        f'<a class="backlink" href="/academy">{_ICONS["arr-l"]}Academy</a>'
         '<nav class="crumbs" aria-label="Breadcrumb">'
         '<a href="/">Flapp</a><span class="sep">/</span>'
         '<a href="/academy">Academy</a><span class="sep">/</span>'
@@ -410,7 +422,7 @@ def render_article(article: Article, base_url: str) -> str:
         f"{sources_html}"
         '<div class="article-cta">'
         "<p>Want this checked on your own form? Upload a side-view clip.</p>"
-        '<a class="btn btn-primary" href="/">Analyze my video →</a>'
+        f'<a class="btn btn-primary" href="/">Analyze my video{_ICONS["arr-r"]}</a>'
         "</div>"
         "</article>"
         "</div>"

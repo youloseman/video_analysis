@@ -40,7 +40,7 @@ from fastapi import (
 )
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 from app.api import academy as academy_routes
@@ -219,9 +219,36 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 
 @app.get("/", include_in_schema=False)
-def root() -> FileResponse:
-    """Serve the single-page frontend."""
-    return FileResponse(STATIC_DIR / "index.html")
+def root(request: Request) -> HTMLResponse:
+    """Serve the single-page frontend.
+
+    OG/Twitter ``og:url`` and ``og:image`` are stored as root-relative paths in
+    the static file and rewritten to absolute URLs here, using the request's
+    own origin — so link previews resolve on any host (localhost, Railway,
+    custom domain) without hardcoding a base URL.
+    """
+    html_doc = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    origin = str(request.base_url).rstrip("/")
+    html_doc = html_doc.replace('content="/og-image.png"', f'content="{origin}/og-image.png"')
+    html_doc = html_doc.replace('property="og:url" content="/"', f'property="og:url" content="{origin}/"')
+    return HTMLResponse(html_doc)
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon_svg() -> FileResponse:
+    return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico() -> FileResponse:
+    # No .ico asset; hand back the SVG so browsers requesting /favicon.ico still
+    # get the brand mark instead of a 404.
+    return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/og-image.png", include_in_schema=False)
+def og_image() -> FileResponse:
+    return FileResponse(STATIC_DIR / "og-image.png", media_type="image/png")
 
 
 @app.get("/privacy", include_in_schema=False)

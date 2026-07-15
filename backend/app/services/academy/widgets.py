@@ -46,15 +46,15 @@ _AERO_CALC = """
       </label>
 
       <div class="wtabs" role="tablist" aria-label="What to hold fixed">
-        <button id="ac-mode-power" role="tab" aria-selected="true">Fix power → see speed</button>
-        <button id="ac-mode-speed" role="tab" aria-selected="false">Fix speed → see power</button>
+        <button type="button" id="ac-mode-power" role="tab" aria-selected="true" aria-controls="ac-power-row" tabindex="0">Fix power, see speed</button>
+        <button type="button" id="ac-mode-speed" role="tab" aria-selected="false" aria-controls="ac-speed-row" tabindex="-1">Fix speed, see power</button>
       </div>
 
-      <label class="wctl" id="ac-power-row">
+      <label class="wctl" id="ac-power-row" role="tabpanel" aria-labelledby="ac-mode-power">
         <span class="wlab">Your power <b><span id="ac-power-val">250</span> W</span></span>
         <input type="range" id="ac-power" min="120" max="400" step="5" value="250">
       </label>
-      <label class="wctl wcollapsed" id="ac-speed-row">
+      <label class="wctl wcollapsed" id="ac-speed-row" role="tabpanel" aria-labelledby="ac-mode-speed">
         <span class="wlab">Your speed <b><span id="ac-speed-val">36</span> km/h</span></span>
         <input type="range" id="ac-speed" min="24" max="52" step="1" value="36">
       </label>
@@ -88,19 +88,21 @@ _AERO_CALC_CSS = """
   background:#fff;box-shadow:var(--shadow);overflow:hidden}
 .aero-calc .wcap{padding:18px 22px 0;font-family:var(--f-display);font-weight:800;
   text-transform:uppercase;font-size:17px;color:var(--c-navy);line-height:1.2}
-.aero-calc .weyebrow{display:block;font-family:var(--f-body);font-size:11px;letter-spacing:.16em;
-  color:var(--c-blue);margin-bottom:6px}
+.aero-calc .weyebrow{display:block;font-family:var(--f-body);font-size:11px;letter-spacing:.2em;
+  font-weight:800;text-transform:uppercase;color:var(--c-blue);margin-bottom:6px}
 .aero-calc .wgrid{display:grid;grid-template-columns:1fr 260px;gap:22px;padding:20px 22px}
 .aero-calc .wctl{display:block;margin-bottom:20px}
 .aero-calc .wlab{display:flex;justify-content:space-between;align-items:baseline;
   font-size:13px;font-weight:600;color:var(--c-ink-soft);margin-bottom:8px}
 .aero-calc .wlab b{font-weight:800;color:var(--c-navy);font-family:var(--f-mono);font-size:14px}
 .aero-calc input[type=range]{width:100%;accent-color:var(--c-blue);cursor:pointer;height:22px}
-.aero-calc .wscale{display:flex;justify-content:space-between;font-size:10px;
-  color:var(--c-ink-faint);margin-top:2px;font-weight:600}
+.aero-calc .wscale{display:flex;justify-content:space-between;font-size:11px;
+  color:var(--c-ink-soft);margin-top:4px;font-weight:600}
 .aero-calc .wtabs{display:flex;gap:4px;padding:4px;background:var(--c-panel);border-radius:10px;margin-bottom:20px}
-.aero-calc .wtabs button{flex:1;font-family:var(--f-body);font-weight:700;font-size:12.5px;
-  color:var(--c-ink-soft);background:transparent;border:none;border-radius:7px;padding:9px 6px;cursor:pointer;transition:.15s}
+.aero-calc .wtabs button{flex:1;font-family:var(--f-body);font-weight:700;font-size:12.5px;min-height:44px;
+  color:var(--c-ink-soft);background:transparent;border:none;border-radius:7px;padding:9px 8px;cursor:pointer;transition:.15s}
+.aero-calc .wtabs button:hover{color:var(--c-ink)}
+.aero-calc .wtabs button:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 .aero-calc .wtabs button[aria-selected=true]{background:#fff;color:var(--c-blue);box-shadow:var(--shadow)}
 .aero-calc .wcollapsed{display:none}
 .aero-calc .wout{background:linear-gradient(135deg,#14294B,#2F6DE0);color:#fff;border-radius:var(--radius);
@@ -108,8 +110,8 @@ _AERO_CALC_CSS = """
 .aero-calc .wbig{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:44px;line-height:1;letter-spacing:-.02em}
 .aero-calc .wbig .wunit{font-size:17px;font-style:normal;font-weight:800;margin-left:6px;opacity:.85}
 .aero-calc .wsub{font-size:13px;color:rgba(255,255,255,.82);margin-top:10px;font-weight:600}
-.aero-calc .wcda{font-family:var(--f-mono);font-size:11px;color:rgba(255,255,255,.6);margin-top:14px;
-  padding-top:12px;border-top:1px solid rgba(255,255,255,.18)}
+.aero-calc .wcda{font-family:var(--f-mono);font-size:11px;color:rgba(255,255,255,.85);margin-top:14px;
+  padding-top:12px;border-top:1px solid rgba(255,255,255,.22)}
 .aero-calc .wcda b{color:#fff}
 .aero-calc .wnote{font-size:12px;line-height:1.5;color:var(--c-ink-soft);
   background:var(--c-panel);margin:0;padding:14px 22px;border-top:1px solid var(--c-line)}
@@ -156,8 +158,9 @@ _AERO_CALC_JS = """
     q('#ac-out-sub').textContent=sub;
   }
   function setMode(mp){mode=mp;
-    q('#ac-mode-power').setAttribute('aria-selected',mp==='power');
-    q('#ac-mode-speed').setAttribute('aria-selected',mp==='speed');
+    var pw=q('#ac-mode-power'),sp=q('#ac-mode-speed');
+    pw.setAttribute('aria-selected',mp==='power'); pw.setAttribute('tabindex',mp==='power'?'0':'-1');
+    sp.setAttribute('aria-selected',mp==='speed'); sp.setAttribute('tabindex',mp==='speed'?'0':'-1');
     q('#ac-power-row').classList.toggle('wcollapsed',mp!=='power');
     q('#ac-speed-row').classList.toggle('wcollapsed',mp!=='speed');
     render();}
