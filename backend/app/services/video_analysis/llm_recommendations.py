@@ -76,6 +76,29 @@ def _bike_data_block(
     arch = summary.get("position_archetype")
     if isinstance(arch, dict) and arch.get("label"):
         lines.append(f"- Position archetype: {arch['label']} — {arch.get('description', '')}")
+
+    # Relative aero read-out (torso-angle CdA zone). Never an absolute
+    # CdA -- give the coach the zone + the flatten-delta so its advice
+    # stays consistent with what the rider sees, and remind it the
+    # number is relative.
+    aero = summary.get("aero_estimate")
+    if isinstance(aero, dict):
+        nxt = aero.get("next_zone")
+        if isinstance(nxt, dict):
+            lines.append(
+                f"- Aero (relative, torso-angle only): {aero.get('zone_label')} "
+                f"(~{aero.get('drag_vs_upright_pct')}% of upright drag). Flattening "
+                f"torso toward {nxt.get('target_trunk_angle')}° would cut drag "
+                f"~{nxt.get('drag_reduction_pct')}% (~{nxt.get('approx_watts_saved')}W "
+                f"@ {aero.get('reference_speed_kmh')}km/h). NOT an absolute CdA; only "
+                f"suggest it if the rider can hold power and breathe there."
+            )
+        else:
+            lines.append(
+                f"- Aero (relative, torso-angle only): {aero.get('zone_label')} "
+                f"(~{aero.get('drag_vs_upright_pct')}% of upright drag) — already "
+                f"well-placed for this position; no flatter target advised."
+            )
     return "\n".join(lines)
 
 
@@ -86,12 +109,41 @@ def _run_data_block(
     if vosc is None and summary.get("vertical_oscillation_m") is not None:
         vosc = round(summary["vertical_oscillation_m"] * 100, 1)
     knee = angle_stats.get("knee", {}) if isinstance(angle_stats, dict) else {}
+
+    # Foot strike: pattern + signed angle (heel-up positive) when measured.
+    fs = summary.get("foot_strike")
+    fs_angle = summary.get("foot_strike_angle_deg")
+    if fs and fs_angle is not None:
+        foot_strike_line = (
+            f"- Foot strike: {fs} ({fs_angle:+.0f} deg, heel-up positive; "
+            f"estimated from 2D video)"
+        )
+    elif fs:
+        foot_strike_line = f"- Foot strike: {fs} (estimated from 2D video)"
+    else:
+        foot_strike_line = "- Foot strike: n/a"
+
+    # Overstride: hip->ankle-ahead ratio at contact (lower is better).
+    overstride = summary.get("overstride_ratio")
+    if overstride is not None:
+        overstride_line = (
+            f"- Overstride: {overstride:.2f} x leg length ahead of hip at "
+            f"contact (target < 0.15; higher = braking/overstride, estimated)"
+        )
+    else:
+        overstride_line = "- Overstride: n/a"
+
     lines = [
         f"Sport: running | Technique score: {score}/100 ({grade})",
         f"- Cadence: {_fmt(summary.get('cadence_spm'), ' spm')} (target ~170-185)",
         f"- Vertical oscillation: {_fmt(vosc, ' cm')} (lower is generally better)",
         f"- Trunk lean: {_fmt(summary.get('trunk_lean_avg'), '°')} (target ~5-10 forward)",
-        f"- Ground contact time: {_fmt(summary.get('ground_contact_time_ms'), ' ms')}",
+        f"- Ground contact time: {_fmt(summary.get('ground_contact_ms'), ' ms')}"
+        f"{' (estimated from 2D video)' if summary.get('ground_contact_ms_estimated') else ''}",
+        f"- Flight time: {_fmt(summary.get('flight_time_ms'), ' ms')} (aerial phase, target ~80-150"
+        f"{', estimated from 2D video' if summary.get('flight_time_ms_estimated') else ''})",
+        foot_strike_line,
+        overstride_line,
         f"- Knee angle range: {_fmt(knee.get('min'), '°')} to {_fmt(knee.get('max'), '°')}",
     ]
     return "\n".join(lines)
@@ -171,6 +223,99 @@ def generate_recommendations(
         return {"report": text, "model": settings.gemini_model}
     except Exception as e:  # noqa: BLE001
         logger.warning("LLM_FAILED", err=str(e))
+        return None
+
+
+PROGRESS_SYSTEM_PROMPT = (
+    "You are an elite endurance-sports coach. You are given the SAME athlete's "
+    "side-view form metrics from TWO analyses -- an earlier 'before' and a later "
+    "'after' -- for the same sport. Write a short, encouraging but honest "
+    "progress read in Markdown with EXACTLY these sections:\n"
+    "**Progress** — 1-2 sentences on the headline change (did form improve?).\n"
+    "**Improved** — 1-3 bullets naming metrics that moved toward optimal.\n"
+    "**Still work on** — 1-2 bullets on what regressed or is still off-target.\n"
+    "**Next** — one concrete cue for the next session.\n\n"
+    "Rules: address the athlete as \"you\". Cite the actual before->after numbers. "
+    "'Closer to the optimal range' = improvement, even if the raw number went "
+    "down. Be direct, no fluff, no medical claims. 120-180 words total."
+)
+
+
+def _progress_data_block(sport: str, before: dict, after: dict) -> str:
+    """Compact before/after table from the two frontend 'trends' maps.
+
+    ``before``/``after`` each carry ``score``, ``trends`` (numeric metric map),
+    and ``cat`` (categorical, e.g. foot_strike). Keeps only keys present in
+    both so the model compares like with like.
+    """
+    labels = {
+        "cadence": "Cadence (spm)", "vertical_oscillation": "Vertical oscillation (cm)",
+        "trunk_lean": "Trunk lean (deg)", "ground_contact": "Ground contact (ms)",
+        "flight_time": "Flight time (ms)", "overstride": "Overstride (x leg length)",
+        "knee": "Knee angle (deg)", "hip": "Hip angle (deg)", "trunk": "Trunk angle (deg)",
+        "elbow": "Elbow angle (deg)", "shoulder": "Shoulder angle (deg)",
+        "pelvic_ratio": "Pelvic ratio",
+    }
+    bt = before.get("trends") or {}
+    at = after.get("trends") or {}
+    lines = [
+        f"Sport: {'cycling' if sport == 'bike' else 'running'}",
+        f"Technique score: {before.get('score')} -> {after.get('score')} (/100)",
+    ]
+    for key, label in labels.items():
+        if key in bt and key in at:
+            lines.append(f"- {label}: {bt[key]} -> {at[key]}")
+    # Categorical (foot strike): only when present in both.
+    bc = before.get("cat") or {}
+    ac = after.get("cat") or {}
+    for key in ("foot_strike",):
+        if bc.get(key) and ac.get(key):
+            lines.append(f"- Foot strike: {bc[key]} -> {ac[key]}")
+    return "\n".join(lines)
+
+
+def generate_progress_summary(
+    sport: str, before: dict[str, Any], after: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Return ``{"summary": markdown, "model": name}`` or ``None`` (graceful).
+
+    Compares two of the athlete's analyses. Same Gemini path + graceful
+    degradation contract as ``generate_recommendations``.
+    """
+    if not settings.gemini_api_key:
+        logger.info("PROGRESS_LLM_SKIP", reason="no_api_key")
+        return None
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError:
+        logger.warning("PROGRESS_LLM_SKIP", reason="google-genai not installed")
+        return None
+
+    prompt = (
+        f"{_progress_data_block(sport, before, after)}\n\n"
+        "Write the progress read now, following the required section structure."
+    )
+    try:
+        client = genai.Client(api_key=settings.gemini_api_key)
+        resp = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=PROGRESS_SYSTEM_PROMPT,
+                temperature=0.3,
+                max_output_tokens=900,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        text = (getattr(resp, "text", None) or "").strip()
+        if not text:
+            logger.warning("PROGRESS_LLM_EMPTY", model=settings.gemini_model)
+            return None
+        logger.info("PROGRESS_LLM_OK", model=settings.gemini_model, chars=len(text))
+        return {"summary": text, "model": settings.gemini_model}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("PROGRESS_LLM_FAILED", err=str(e))
         return None
 
 

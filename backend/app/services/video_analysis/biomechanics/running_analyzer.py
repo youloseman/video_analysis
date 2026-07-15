@@ -10,6 +10,7 @@ Unilateral focus v4:
 - No far-side data stored or displayed
 """
 
+import math
 from collections import deque
 from enum import Enum
 from typing import Any
@@ -18,6 +19,7 @@ import numpy as np
 import structlog
 
 from app.services.video_analysis.biomechanics.angle_calculator import (
+    SPORT_LANDMARK_VISIBILITY,
     calculate_angle_2d,
     calculate_segment_to_vertical,
 )
@@ -481,6 +483,234 @@ class RunningAnalyzer(SportAnalyzer):
 
         return round(gct_ms, 1)
 
+    def _compute_flight_time(self) -> float:
+        """Estimate flight time (aerial phase) in ms from gait phases.
+
+        Flight time is the duration of a single swing phase where NEITHER
+        foot is on the ground -- the complement of ground contact. In a 2D
+        near-side view we can't see the far foot, so we approximate flight
+        as the contiguous run of non-stance (swing) frames between two
+        stance runs. This over-counts slightly (the far foot may still be
+        loading), so the plausibility gate is deliberately generous.
+
+        Same construction as ``_compute_ground_contact_time``: segment the
+        per-frame gait-phase track into contiguous SWING runs, estimate each
+        as ``n_swing_frames * median_frame_spacing``, take the median.
+
+        Returns ``0.0`` when flight time cannot be measured -- the caller
+        omits a 0.0 rather than surfacing it, per the "0.0 == no data"
+        contract used by cadence / GCT.
+
+        NOTE: 2D side-view estimate, resolution = one frame spacing. Coarse
+        relative to the ~80-150 ms reference window, so compute_summary
+        flags it as estimated (same as GCT).
+        """
+        if len(self.frame_results) < 4:
+            return 0.0
+
+        spacing = self._median_frame_spacing_ms()
+        if spacing <= 0:
+            return 0.0
+
+        # Only count swing runs that sit BETWEEN two stance runs, so a
+        # partial swing at either clip boundary (foot already/still in air
+        # when recording starts/stops) doesn't skew the estimate. We track
+        # whether a stance run has been seen before the current swing run.
+        swing_frame_counts: list[int] = []
+        current_swing = 0
+        seen_stance = False
+        pending_swing = 0
+        for fr in self.frame_results:
+            phase = fr.extra_metrics.get("gait_phase")
+            is_stance = phase in GROUND_CONTACT_PHASES
+            if is_stance:
+                # A swing run that ended by hitting stance is bounded on both
+                # sides (we had already seen a prior stance run) -> keep it.
+                if pending_swing > 0 and seen_stance:
+                    swing_frame_counts.append(pending_swing)
+                pending_swing = 0
+                seen_stance = True
+            else:
+                pending_swing += 1
+        # A trailing swing run at the clip end is unbounded -> dropped.
+
+        # Drop single-frame runs (misclassification, not a real aerial phase).
+        swing_frame_counts = [n for n in swing_frame_counts if n >= 2]
+        if len(swing_frame_counts) < 2:
+            return 0.0
+
+        flight_ms = float(np.median(swing_frame_counts)) * spacing
+
+        # Plausibility gate: running flight time is ~40-250 ms. Outside this
+        # is misclassification or walking (no flight phase at all).
+        if not (40.0 <= flight_ms <= 250.0):
+            return 0.0
+
+        return round(flight_ms, 1)
+
+    def _contact_frame_indices(self, min_run: int = 3) -> list[int]:
+        """Indices of the frames where a real foot-strike begins.
+
+        A foot-strike is the first frame of a *confirmed* stance run --
+        one that lasts at least ``min_run`` frames -- immediately following
+        a confirmed swing run. Debouncing both sides (not just requiring the
+        next frame to be stance) prevents single-frame gait-phase flicker
+        from registering as extra contacts; without it an 8 s clip yields
+        30+ spurious "contacts" instead of ~1 per stride. Mirrors the
+        stride-counter debounce in video_visualizer.
+
+        Uses the same stance-phase set as GCT/flight so all three share one
+        notion of "on the ground". Returns the frame indices in order.
+        """
+        n = len(self.frame_results)
+        if n == 0:
+            return []
+        # Precompute confirmed stance runs (>= min_run contiguous stance frames).
+        stance_flags = [
+            fr.extra_metrics.get("gait_phase") in GROUND_CONTACT_PHASES
+            for fr in self.frame_results
+        ]
+        idxs: list[int] = []
+        i = 0
+        while i < n:
+            if stance_flags[i]:
+                # Measure this stance run.
+                j = i
+                while j < n and stance_flags[j]:
+                    j += 1
+                if (j - i) >= min_run:
+                    idxs.append(i)  # first frame of a confirmed stance run
+                i = j
+            else:
+                i += 1
+        return idxs
+
+    def _compute_overstride_ratio(self) -> tuple[float, int]:
+        """Estimate overstride at foot-strike from near-side world landmarks.
+
+        Overstride = the foot landing ahead of the body's centre of mass.
+        We proxy COM with the near-side hip and measure the horizontal
+        (fore-aft) distance from hip to ankle at each foot-strike, then
+        normalise by leg length (hip->ankle) to get a dimensionless ratio
+        that is independent of body size and camera distance.
+
+            ratio = |ankle_x - hip_x| / leg_length   (at contact)
+
+        Magnitude, not sign: from a single side-view frame we can't robustly
+        infer travel direction, but the *distance* the foot lands ahead of
+        the hip is the overstride signal either way. A well-aligned foot-
+        strike lands the ankle roughly under the hip (ratio ~0.0-0.15);
+        ratio >~0.20 indicates the foot is reaching out ahead (overstride),
+        which pairs with a braking force and a heel strike.
+
+        Uses world_landmarks (metres, sagittal X = fore-aft for side-view).
+        Requires hip + ankle visibility >= the run threshold; foot-strikes
+        with an occluded ankle are skipped. Returns (median_ratio, n_used).
+        Returns (0.0, 0) when it cannot be measured -- caller omits it.
+        """
+        contact_idxs = self._contact_frame_indices()
+        if not contact_idxs:
+            return 0.0, 0
+
+        near = self.camera_side or "left"
+        hip_idx = 23 if near == "left" else 24
+        knee_idx = 25 if near == "left" else 26
+        ankle_idx = 27 if near == "left" else 28
+        vis_thresh = SPORT_LANDMARK_VISIBILITY.get("run", 0.7)
+
+        ratios: list[float] = []
+        for i in contact_idxs:
+            wl = self.frame_results[i].extra_metrics.get("_world_landmarks")
+            if wl is None:
+                continue
+            try:
+                hip, knee, ankle = wl[hip_idx], wl[knee_idx], wl[ankle_idx]
+            except (IndexError, TypeError):
+                continue
+            if min(
+                getattr(hip, "visibility", 0.0),
+                getattr(ankle, "visibility", 0.0),
+            ) < vis_thresh:
+                continue
+            # Leg length via hip->knee->ankle (robust to a bent knee at contact).
+            leg_len = (
+                math.dist((hip.x, hip.y), (knee.x, knee.y))
+                + math.dist((knee.x, knee.y), (ankle.x, ankle.y))
+            )
+            if leg_len < 1e-3:
+                continue
+            horiz = abs(ankle.x - hip.x)
+            ratios.append(horiz / leg_len)
+
+        if len(ratios) < 2:
+            return 0.0, len(ratios)
+        return round(float(np.median(ratios)), 3), len(ratios)
+
+    def _compute_foot_strike(self) -> tuple[str | None, float, int]:
+        """Classify foot-strike pattern (heel / mid / fore) at contact.
+
+        At foot-strike, the vertical offset between heel and toe (foot
+        index) reveals which part of the foot lands first:
+          - heel below toe  -> heel strike  (heel.y > toe.y in image coords)
+          - roughly level    -> midfoot strike
+          - toe below heel   -> forefoot strike
+
+        We measure the foot's angle to horizontal at each foot-strike and
+        take the median (robust to a single mistracked frame). The angle is
+        signed: positive = toe-up (heel strike), negative = toe-down
+        (forefoot). |angle| < ~8 deg = midfoot.
+
+        Uses NORMALIZED landmarks (image plane) -- foot orientation is a 2D
+        image-plane quantity and the normalized foot points are what the
+        overlay/other image-space metrics use. Foot landmarks (heel, toe)
+        are the least reliable side-on, so this requires both visible above
+        the run threshold and returns (None, nan, n) when too few clean
+        contacts exist. Returns (pattern, median_angle_deg, n_used).
+        """
+        contact_idxs = self._contact_frame_indices()
+        if not contact_idxs:
+            return None, float("nan"), 0
+
+        near = self.camera_side or "left"
+        heel_idx = 29 if near == "left" else 30
+        toe_idx = 31 if near == "left" else 32
+        vis_thresh = SPORT_LANDMARK_VISIBILITY.get("run", 0.7)
+
+        angles: list[float] = []
+        for i in contact_idxs:
+            nl = self.frame_results[i].extra_metrics.get("_norm_landmarks")
+            if nl is None:
+                continue
+            try:
+                heel, toe = nl[heel_idx], nl[toe_idx]
+            except (IndexError, TypeError):
+                continue
+            if min(
+                getattr(heel, "visibility", 0.0),
+                getattr(toe, "visibility", 0.0),
+            ) < vis_thresh:
+                continue
+            dx = toe.x - heel.x
+            dy = toe.y - heel.y  # image Y increases downward
+            if abs(dx) < 1e-6:
+                continue
+            # Signed angle to horizontal: +ve = toe ABOVE heel (heel strike),
+            # -ve = toe BELOW heel (forefoot). -dy so up is positive.
+            angle = math.degrees(math.atan2(-dy, abs(dx)))
+            angles.append(angle)
+
+        if len(angles) < 2:
+            return None, float("nan"), len(angles)
+
+        med = float(np.median(angles))
+        if med > 8.0:
+            pattern = "heel"
+        elif med < -8.0:
+            pattern = "forefoot"
+        else:
+            pattern = "midfoot"
+        return pattern, round(med, 1), len(angles)
+
     def analyze_frame(
         self, world_landmarks: Any, normalized_landmarks: Any, timestamp_ms: float,
     ) -> FrameAnalysis:
@@ -547,6 +777,13 @@ class RunningAnalyzer(SportAnalyzer):
                 # Store normalized ankle Y for fallback cadence detection
                 "_norm_left_ankle_y": nl[27].y,
                 "_norm_right_ankle_y": nl[28].y,
+                # References to the frame's landmark arrays (not copies -- these
+                # objects already live in the pipeline's raw_frame_data). Used by
+                # foot-strike (normalized, image-plane) and overstride (world,
+                # metric) at foot-strike frames. Kept per-frame so those metrics
+                # can sample only the contact frames after the fact.
+                "_world_landmarks": wl,
+                "_norm_landmarks": nl,
             },
         )
         return frame
@@ -574,6 +811,13 @@ class RunningAnalyzer(SportAnalyzer):
 
         # Ground contact time (2D side-view estimate, frame-resolution-limited)
         gct_ms = self._compute_ground_contact_time()
+
+        # Flight time / aerial phase (same construction as GCT, swing runs)
+        flight_ms = self._compute_flight_time()
+
+        # Overstride + foot-strike, sampled at foot-strike frames.
+        overstride_ratio, overstride_n = self._compute_overstride_ratio()
+        foot_strike, foot_strike_angle, foot_strike_n = self._compute_foot_strike()
 
         # Prefer Butterworth-filtered data (angle_history mutated in-place by filter)
         filtered_trunk = self.angle_history.get("trunk", self.trunk_lean_values)
@@ -639,6 +883,27 @@ class RunningAnalyzer(SportAnalyzer):
             summary["ground_contact_ms"] = gct_ms
             summary["ground_contact_ms_estimated"] = True
 
+        # Flight time: gated to [40, 250] ms in _compute_flight_time; 0.0 =
+        # no measurement. Same "estimated" caveat as GCT (coarse 2D estimate).
+        if flight_ms > 0:
+            summary["flight_time_ms"] = flight_ms
+            summary["flight_time_ms_estimated"] = True
+
+        # Overstride: dimensionless hip->ankle-ahead ratio at foot-strike.
+        # Requires >= 2 clean contacts (returns 0.0/0 otherwise). 2D estimate.
+        if overstride_ratio > 0 and overstride_n >= 2:
+            summary["overstride_ratio"] = overstride_ratio
+            summary["overstride_estimated"] = True
+            summary["overstride_contacts"] = overstride_n
+
+        # Foot-strike pattern (heel/midfoot/forefoot) at contact. Only emit
+        # when a pattern was classified from >= 2 clean contacts.
+        if foot_strike is not None and foot_strike_n >= 2:
+            summary["foot_strike"] = foot_strike
+            summary["foot_strike_angle_deg"] = foot_strike_angle
+            summary["foot_strike_estimated"] = True
+            summary["foot_strike_contacts"] = foot_strike_n
+
         if trunk_lean_avg is not None:
             summary["trunk_lean_avg"] = round(trunk_lean_avg, 1)
 
@@ -667,6 +932,29 @@ class RunningAnalyzer(SportAnalyzer):
                     "value": f"{avg_trunk:.1f} deg",
                     "recommendation": f"Trunk lean is {avg_trunk:.0f} deg. Optimal range: {RUNNING_REFERENCE['trunk_lean'][0]}-{RUNNING_REFERENCE['trunk_lean'][1]} deg.",
                 })
+
+        # Overstriding: foot landing well ahead of the hip at contact. A
+        # ratio above ~0.20 (foot-ahead distance > 20% of leg length) is the
+        # threshold; a co-occurring heel strike reinforces it in the message.
+        overstride_ratio, overstride_n = self._compute_overstride_ratio()
+        if overstride_ratio > 0.20 and overstride_n >= 2:
+            foot_strike, _angle, _n = self._compute_foot_strike()
+            heel_note = (
+                " with a heel strike" if foot_strike == "heel" else ""
+            )
+            issues.append({
+                "type": "overstriding",
+                "severity": "warning",
+                "value": f"{overstride_ratio:.2f} x leg length ahead of hip",
+                "recommendation": (
+                    f"The foot is landing ~{overstride_ratio:.0%} of a leg "
+                    f"length ahead of the hip at contact{heel_note}. This "
+                    f"brakes each step and raises impact load. Increasing "
+                    f"cadence toward {RUNNING_REFERENCE['cadence_spm'][0]}-"
+                    f"{RUNNING_REFERENCE['cadence_spm'][1]} spm and landing "
+                    f"with the foot closer under the hip reduces overstride."
+                ),
+            })
 
         # Low cadence
         cadence = self._compute_cadence()

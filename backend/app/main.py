@@ -24,12 +24,14 @@ import time
 import uuid
 from collections import deque
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import structlog
 from fastapi import (
     BackgroundTasks,
+    Depends,
     FastAPI,
     File,
     Form,
@@ -42,12 +44,21 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import academy as academy_routes
 from app.api import auth as auth_routes
 from app.api import me as me_routes
 from app.core.config import settings
-from app.core.db import init_db
+from app.core.db import get_session, init_db
+from app.core.security import optional_user
+from app.models.user import User
+from app.services.result_gating import gate_free_result, is_free
+from app.services.usage_limits import (
+    check_quota,
+    next_reset,
+    record_usage,
+)
 from app.services.video_analysis.runner import (
     DEFAULT_BIKE_POSITION,
     VALID_POSITIONS,
@@ -95,6 +106,71 @@ def _rate_state(ip: str) -> tuple[int, int]:
 
 def _rate_record(ip: str) -> None:
     _rate_hits.setdefault(ip, deque()).append(time.time())
+
+
+async def _enforce_quota(
+    request: Request, user: User | None, db: AsyncSession, noun: str,
+) -> None:
+    """Raise 429 if the caller is over quota. Signed-in users are limited by
+    their tier (DB-backed monthly/daily); anonymous visitors keep the legacy
+    per-IP daily limit. Does NOT record usage -- call after the upload validates
+    so a rejected file never burns quota."""
+    if user is not None:
+        allowed, used, limit, window = await check_quota(db, user)
+        if not allowed:
+            reset = next_reset(window)
+            when = "tomorrow" if window == "day" else "next month"
+            logger.info(
+                "QUOTA_EXCEEDED", user_id=user.id, tier=user.tier,
+                used=used, limit=limit, window=window,
+            )
+            unit = "day" if window == "day" else "month"
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"You've used all {limit} {noun}s on your plan this {unit}. "
+                    f"Your limit resets {when}."
+                ),
+                headers={"Retry-After": str(
+                    max(1, int((reset - datetime.now(timezone.utc)).total_seconds()))
+                )},
+            )
+        return
+    # Anonymous: legacy per-IP daily limiter.
+    ip = _client_ip(request)
+    limit = settings.rate_limit_per_day
+    used, retry_after = _rate_state(ip)
+    if limit > 0 and used >= limit:
+        hours = max(1, round(retry_after / 3600))
+        logger.info("RATE_LIMITED", ip=ip, used=used, limit=limit)
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Daily limit reached — you can analyze {limit} {noun}s per day. "
+                f"Sign in for a higher limit, or try again in about {hours}h."
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+async def _record_and_headers(
+    response: Response, request: Request, user: User | None,
+    db: AsyncSession, kind: str,
+) -> None:
+    """Record one usage event and set X-RateLimit-* headers for the caller."""
+    if user is not None:
+        await record_usage(db, user.id, kind)
+        _, used, limit, _window = await check_quota(db, user)
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used))
+        return
+    ip = _client_ip(request)
+    limit = settings.rate_limit_per_day
+    if limit > 0:
+        used, _ = _rate_state(ip)
+        _rate_record(ip)
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used - 1))
 
 
 def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -> str | None:
@@ -181,8 +257,13 @@ class JobStatus(BaseModel):
 def _process_job(
     job_id: str, input_path: str, sport: str,
     cycling_position: str | None, overlay_path: str | None,
+    free: bool = False,
 ) -> None:
-    """Run the analysis for a job (executed in a threadpool by BackgroundTasks)."""
+    """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
+
+    ``free`` (starter/anonymous): render the teaser keyframe (skeleton, no angle
+    numbers, watermark) and trim the paid fields out of the served result.
+    """
     job = JOBS.get(job_id)
     if job is None:
         return
@@ -190,12 +271,19 @@ def _process_job(
     logger.info("JOB_START", job_id=job_id, sport=sport, position=cycling_position)
     try:
         result = run_analysis(
-            input_path, sport, cycling_position, overlay_path=overlay_path,
+            input_path, sport, cycling_position,
+            # No overlay video for free users -- they get the teaser keyframe only.
+            overlay_path=None if free else overlay_path,
+            hide_angle_values=free,
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
         if safe.get("overlay_video_path"):
             safe["overlay_video_path"] = f"/jobs/{job_id}/overlay"
+        # Trim to the teaser payload for free callers (paid fields removed here,
+        # not hidden client-side).
+        if free:
+            safe = gate_free_result(safe)
         job["result"] = safe
         if result.get("status") == "completed":
             job["status"] = "completed"
@@ -288,22 +376,12 @@ async def analyze_endpoint(
     overlay: bool = Form(
         True, description="Also render the annotated overlay video.",
     ),
+    user: User | None = Depends(optional_user),
+    db: AsyncSession = Depends(get_session),
 ) -> JobCreated:
     """Accept a clip + params, kick off analysis, return a job id to poll."""
     ip = _client_ip(request)
-    limit = settings.rate_limit_per_day
-    used, retry_after = _rate_state(ip)
-    if limit > 0 and used >= limit:
-        hours = max(1, round(retry_after / 3600))
-        logger.info("RATE_LIMITED", ip=ip, used=used, limit=limit)
-        raise HTTPException(
-            status_code=429,
-            detail=(
-                f"Daily limit reached — you can analyze {limit} clips per day. "
-                f"Try again in about {hours}h."
-            ),
-            headers={"Retry-After": str(retry_after)},
-        )
+    await _enforce_quota(request, user, db, "clip")
 
     if sport not in ("run", "bike"):
         raise HTTPException(400, "sport must be 'run' or 'bike'")
@@ -352,12 +430,10 @@ async def analyze_endpoint(
     }
 
     background_tasks.add_task(
-        _process_job, job_id, str(input_path), sport, cycling_position, overlay_path,
+        _process_job, job_id, str(input_path), sport, cycling_position,
+        overlay_path, is_free(user),
     )
-    if limit > 0:
-        _rate_record(ip)
-        response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used - 1))
+    await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
     return JobCreated(job_id=job_id, status="queued", poll_url=f"/jobs/{job_id}")
 
@@ -370,24 +446,15 @@ async def analyze_photo_endpoint(
     sport: str = Form(..., description="run | bike"),
     position: str | None = Form(None, description="Cycling position (bike only)."),
     coaching: bool = Form(True, description="Include AI coaching."),
+    user: User | None = Depends(optional_user),
+    db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Analyze a single still photo. Synchronous (~5s) -- returns the full
     result inline, including an annotated image (data URI) + optional coaching.
-    Shares the daily rate limit with video analyses.
+    Shares the analysis quota with video analyses.
     """
     ip = _client_ip(request)
-    limit = settings.rate_limit_per_day
-    used, retry_after = _rate_state(ip)
-    if limit > 0 and used >= limit:
-        hours = max(1, round(retry_after / 3600))
-        raise HTTPException(
-            status_code=429,
-            detail=(
-                f"Daily limit reached — you can analyze {limit} clips/photos per "
-                f"day. Try again in about {hours}h."
-            ),
-            headers={"Retry-After": str(retry_after)},
-        )
+    await _enforce_quota(request, user, db, "photo")
 
     if sport not in ("run", "bike"):
         raise HTTPException(400, "sport must be 'run' or 'bike'")
@@ -410,9 +477,12 @@ async def analyze_photo_endpoint(
     if len(data) > MAX_PHOTO_BYTES:
         raise HTTPException(413, f"file too large (> {MAX_PHOTO_BYTES // (1024 * 1024)} MB)")
 
+    free = is_free(user)
     from app.services.video_analysis.photo_analyzer import analyze_photo
     try:
-        result = await run_in_threadpool(analyze_photo, data, sport, cycling_position)
+        result = await run_in_threadpool(
+            analyze_photo, data, sport, cycling_position, free,
+        )
     except ValueError as e:
         # No pose detected / undecodable image -> user-actionable 422.
         raise HTTPException(422, str(e))
@@ -423,7 +493,8 @@ async def analyze_photo_endpoint(
     # Compact annotated frame for the client-side history record.
     result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
 
-    if coaching:
+    # Free callers don't get AI coaching (it's a paid unlock).
+    if coaching and not free:
         from app.services.video_analysis.llm_recommendations import (
             generate_photo_recommendations,
         )
@@ -431,10 +502,10 @@ async def analyze_photo_endpoint(
             generate_photo_recommendations, sport, result,
         )
 
-    if limit > 0:
-        _rate_record(ip)
-        response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used - 1))
+    if free:
+        result = gate_free_result(result)
+
+    await _record_and_headers(response, request, user, db, "photo")
     logger.info(
         "PHOTO_DONE", sport=sport, ip=ip,
         score=(result.get("score") or {}).get("overall_score"),

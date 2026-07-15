@@ -53,6 +53,15 @@ class Settings:
     jwt_secret: str = "dev-insecure-change-me"
     jwt_expire_days: int = 30
 
+    # Account promoted to the ``admin`` tier on startup (5 analyses/day). Set to
+    # your own email via ADMIN_EMAIL in prod; case-insensitive match.
+    admin_email: str | None = None
+
+    # Free-tier teaser: how many annotated phase photos the starter plan sees
+    # (1 = one photo with the angle NUMBERS hidden; the "soft" default. 2 =
+    # both phase photos). Env-overridable so we can A/B without a redeploy.
+    starter_teaser_photos: int = 1
+
     @property
     def model_path(self) -> Path:
         return self.models_dir / self.model_filename
@@ -98,6 +107,10 @@ def _load_settings() -> Settings:
         database_url=os.environ.get("DATABASE_URL") or Settings.database_url,
         jwt_secret=os.environ.get("JWT_SECRET") or Settings.jwt_secret,
         jwt_expire_days=_int_env("JWT_EXPIRE_DAYS", Settings.jwt_expire_days),
+        admin_email=(os.environ.get("ADMIN_EMAIL") or "").strip().lower() or None,
+        starter_teaser_photos=_int_env(
+            "STARTER_TEASER_PHOTOS", Settings.starter_teaser_photos,
+        ),
     )
 
 

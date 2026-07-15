@@ -23,13 +23,14 @@ ASYMMETRY_NAN_PCT_LIMIT = 40.0
 # Unilateral focus: symmetry/bilateral_crp removed (unreliable from side view).
 # Redistributed to near-side metrics and advanced biomechanics.
 RUNNING_WEIGHTS = {
-    "trunk_lean": 0.15,
-    "knee_angles": 0.22,
-    "cadence": 0.18,
-    "elbow_swing": 0.10,
-    "vertical_osc": 0.10,
-    "phase_stability": 0.15,
-    "waveform_similarity": 0.10,
+    "trunk_lean": 0.13,
+    "knee_angles": 0.20,
+    "cadence": 0.16,
+    "elbow_swing": 0.09,
+    "vertical_osc": 0.09,
+    "overstride": 0.13,        # foot landing ahead of hip -- braking / impact
+    "phase_stability": 0.12,
+    "waveform_similarity": 0.08,
 }
 
 CYCLING_WEIGHTS = {
@@ -149,6 +150,15 @@ def score_running(
         vert_osc_cm = vert_osc * 100
         components["vertical_osc"] = score_in_range(
             vert_osc_cm, *RUNNING_REFERENCE["vertical_oscillation_cm"]
+        )
+
+    # Overstride: ratio in [0, 0.15] scores 100; higher (foot lands further
+    # ahead of the hip) is penalised. Only present when measured from >= 2
+    # clean foot-strikes.
+    overstride = summary.get("overstride_ratio")
+    if overstride is not None and overstride >= 0:
+        components["overstride"] = score_in_range(
+            overstride, *RUNNING_REFERENCE["overstride_ratio"]
         )
 
     # Advanced biomechanics components

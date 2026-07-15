@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,9 @@ from app.core.db import get_session
 from app.core.security import get_current_user
 from app.models.analysis import Analysis
 from app.models.user import User
+from app.services.video_analysis.llm_recommendations import (
+    generate_progress_summary,
+)
 
 router = APIRouter(prefix="/me", tags=["me"])
 
@@ -118,6 +121,49 @@ async def import_analyses(
     await _enforce_cap(db, user)
     await db.commit()
     return {"imported": len(body.items[:MAX_PER_USER])}
+
+
+class CompareSide(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    score: int | None = None
+    grade: str | None = None
+    trends: dict[str, Any] = Field(default_factory=dict)
+    cat: dict[str, Any] = Field(default_factory=dict)
+    at: int = 0
+
+
+class CompareIn(BaseModel):
+    sport: str = "run"
+    before: CompareSide
+    after: CompareSide
+
+
+@router.post("/compare-summary")
+async def compare_summary(
+    body: CompareIn,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """AI progress read comparing two of the caller's analyses (paid feature).
+
+    Sends only the compact numeric trend maps to the LLM (no video, no
+    personal data). Degrades to a 503 when the LLM is unavailable so the
+    client can fall back to the numeric comparison it already shows.
+    """
+    if not user.is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="The AI progress summary is available on paid plans.",
+        )
+    sport = "bike" if body.sport == "bike" else "run"
+    result = generate_progress_summary(
+        sport, body.before.model_dump(), body.after.model_dump(),
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not generate a progress summary right now.",
+        )
+    return result
 
 
 @router.delete("/analyses/{client_id}", status_code=status.HTTP_204_NO_CONTENT)

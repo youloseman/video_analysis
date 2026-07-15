@@ -436,10 +436,12 @@ def _generate_photo_thumbnail(
     sport: str,
     arc_triplets: dict[str, tuple[int, int, int]],
     cycling_position: str | None = None,
+    hide_angle_values: bool = False,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
-    Returns PNG image as bytes.
+    Returns PNG image as bytes. ``hide_angle_values`` (free-tier teaser): keep
+    the skeleton + arcs but mask the numeric angle labels and burn a watermark.
     """
     frame = image.copy()
     h, w = frame.shape[:2]
@@ -547,7 +549,11 @@ def _generate_photo_thumbnail(
             cv2_mod.circle(frame, (jx, jy), 3, color, -1, cv2_mod.LINE_AA)
 
             label_name = labels.get(angle_key, angle_key.replace("_", " ").title())
-            text = f"{label_name} {angle_value:.0f}"
+            if hide_angle_values:
+                text = f"{label_name} [locked]"
+                color = (150, 150, 150)  # de-emphasized gray (BGR)
+            else:
+                text = f"{label_name} {angle_value:.0f}"
             (tw, th_t), _ = cv2_mod.getTextSize(text, font, font_scale, thickness_t)
             pad = 3
             cv2_mod.rectangle(
@@ -590,8 +596,12 @@ def _generate_photo_thumbnail(
                 _draw_dashed_line(cv2_mod, frame, (shx, shy), (ext_x, ext_y), (180, 180, 255), 1)
 
                 if eav >= _VIS_THRESHOLD:
-                    h_color = (0, 220, 0) if head_val >= 75 else ((0, 200, 255) if head_val >= 50 else (0, 0, 255))
-                    h_text = f"Head {head_val:.0f}/100"
+                    if hide_angle_values:
+                        h_color = (150, 150, 150)
+                        h_text = "Head [locked]"
+                    else:
+                        h_color = (0, 220, 0) if head_val >= 75 else ((0, 200, 255) if head_val >= 50 else (0, 0, 255))
+                        h_text = f"Head {head_val:.0f}/100"
                     (htw, hth), _ = cv2_mod.getTextSize(h_text, font_hl, small_scale, 1)
                     hlx = max(5, min(w - htw - 5, eax + 10))
                     hly = max(hth + 5, min(h - 5, eay - 10))
@@ -603,13 +613,17 @@ def _generate_photo_thumbnail(
         if pelvic_val is not None and not math.isnan(pelvic_val) and pelvic_val > 0 and bh_px > 40:
             ref_p = get_cycling_reference(cycling_position)
             p_min, p_max = ref_p["pelvic_ratio"]
-            if p_min <= pelvic_val <= p_max:
-                p_color = (0, 220, 0)
-            elif abs(pelvic_val - p_min) < 0.5 or abs(pelvic_val - p_max) < 0.5:
-                p_color = (0, 200, 255)
+            if hide_angle_values:
+                p_color = (150, 150, 150)
+                p_text = "Pelvic [locked]"
             else:
-                p_color = (0, 0, 255)
-            p_text = f"Pelvic {pelvic_val:.1f}x"
+                if p_min <= pelvic_val <= p_max:
+                    p_color = (0, 220, 0)
+                elif abs(pelvic_val - p_min) < 0.5 or abs(pelvic_val - p_max) < 0.5:
+                    p_color = (0, 200, 255)
+                else:
+                    p_color = (0, 0, 255)
+                p_text = f"Pelvic {pelvic_val:.1f}x"
             (ptw, pth), _ = cv2_mod.getTextSize(p_text, font_hl, small_scale, 1)
             hp_i2 = 23 if camera_side == "left" else 24
             hpx2, hpy2, _ = pixel_coords[hp_i2]
@@ -653,6 +667,18 @@ def _generate_photo_thumbnail(
             (bx + badge_pad, by + bth + badge_pad * 2 + 18),
             badge_font, 0.35, (200, 200, 200), 1, cv2_mod.LINE_AA,
         )
+
+    # --- 5. FREE-TIER TEASER WATERMARK (bottom-right) ---
+    if hide_angle_values:
+        wm = "FLAPP - FREE"
+        wm_scale = max(0.4, min(0.7, w / 1400))
+        wm_thick = 1 if wm_scale < 0.55 else 2
+        (wtw, wth), _ = cv2_mod.getTextSize(wm, badge_font, wm_scale, wm_thick)
+        wpad = int(max(8, h * 0.015))
+        wx, wy = w - wtw - wpad, h - wpad
+        if wx >= 0 and wy - wth >= 0:
+            cv2_mod.putText(frame, wm, (wx + 1, wy + 1), badge_font, wm_scale, (0, 0, 0), wm_thick + 1, cv2_mod.LINE_AA)
+            cv2_mod.putText(frame, wm, (wx, wy), badge_font, wm_scale, (255, 255, 255), wm_thick, cv2_mod.LINE_AA)
 
     # Encode to PNG
     success, buf = cv2_mod.imencode(".png", frame, [cv2_mod.IMWRITE_PNG_COMPRESSION, 6])
@@ -799,6 +825,7 @@ def analyze_photo(
     image_bytes: bytes,
     sport: str,
     cycling_position: str | None = None,
+    hide_angle_values: bool = False,
 ) -> dict[str, Any]:
     """Analyze a single photo for body position feedback.
 
@@ -1049,6 +1076,7 @@ def analyze_photo(
         cv2, image, nl,
         angles, score_data, camera_side, sport, arc_triplets,
         cycling_position=cycling_position,
+        hide_angle_values=hide_angle_values,
     )
     thumbnail_b64 = f"data:image/png;base64,{base64.b64encode(thumbnail_bytes).decode()}"
 

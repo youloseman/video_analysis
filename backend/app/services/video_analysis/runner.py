@@ -394,11 +394,15 @@ def _json_safe(obj: Any) -> Any:
 def run_analysis(
     video_path: str, sport_type: str, cycling_position: str | None,
     overlay_path: str | None = None, recommendations: bool = True,
+    hide_angle_values: bool = False,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
     If ``overlay_path`` is given, also render an annotated overlay video
     (skeleton + angle arcs/labels + score badge) to that path.
+
+    ``hide_angle_values`` (free-tier teaser): render the keyframe/overlay with
+    the skeleton visible but the numeric angle labels masked + a watermark.
     """
     camera_angle = None   # side view only in Milestone 1
     camera_view = None    # None == side view (implicit default in Motus)
@@ -576,6 +580,7 @@ def run_analysis(
             letter_grade=scoring.get("letter_grade") or "--",
             angle_stats=angle_stats,
             summary=summary,
+            hide_angle_values=hide_angle_values,
         )
         keyframe_base64 = visualizer.render_keyframe()
         if overlay_path:

@@ -820,6 +820,24 @@ class CyclingAnalyzer(SportAnalyzer):
                 bdc_tdc_diag["plantarflexion_at_bdc"] = True
             summary.setdefault("diagnostics", {})["bdc_tdc"] = bdc_tdc_diag
         self._set_if_plausible(summary, "trunk_angle_avg", trunk_avg)
+
+        # Relative aero read-out from the (plausible) trunk angle. Only
+        # surfaces for road/TT/tri positions; None otherwise. This is a
+        # qualitative CdA *zone* + drag/watt delta, never an absolute
+        # CdA -- see aero_estimator.py for the methodology and caveats.
+        aero_trunk = summary.get("trunk_angle_avg")
+        if aero_trunk is not None:
+            from app.services.video_analysis.biomechanics.aero_estimator import (
+                estimate_aero,
+            )
+            aero = estimate_aero(
+                aero_trunk,
+                self.cycling_position,
+                optimal_trunk_band=self.reference.get("trunk_angle"),
+            )
+            if aero is not None:
+                summary["aero_estimate"] = aero
+
         self._set_if_plausible(summary, "elbow_angle_avg", elbow_avg)
         self._set_if_plausible(summary, "shoulder_angle_avg", shoulder_avg)
         self._set_if_plausible(summary, "forearm_tilt_avg", forearm_tilt_avg)

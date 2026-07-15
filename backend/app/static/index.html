@@ -64,6 +64,37 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .issue .i-val,.limit-card .bigwait,table.data td.num,table.data td.pct,
 .score-num,.hscore{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
+/* ---------- Free-tier upgrade panel (teaser paywall) ---------- */
+.upsell{
+  position:relative;border:1px solid var(--c-line);border-radius:var(--radius-lg);
+  background:linear-gradient(160deg,var(--c-panel-blue),var(--c-bg));
+  padding:24px;margin-top:20px;overflow:hidden;box-shadow:var(--shadow);
+}
+.upsell::before{ /* faint blurred "data" texture behind the CTA */
+  content:"";position:absolute;inset:0;opacity:.10;pointer-events:none;
+  background:
+    repeating-linear-gradient(0deg,var(--c-navy) 0 2px,transparent 2px 22px),
+    repeating-linear-gradient(90deg,var(--c-blue) 0 60px,transparent 60px 120px);
+  filter:blur(3px);
+}
+.upsell>*{position:relative}
+.upsell .eyebrow{color:var(--c-blue-dk)}
+.upsell h3{font-family:var(--f-display);font-size:20px;color:var(--c-navy);margin:2px 0 6px}
+.upsell p{color:var(--c-ink-soft);max-width:56ch;margin-bottom:14px}
+.upsell ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin:0 0 18px}
+@media(max-width:560px){.upsell ul{grid-template-columns:1fr}}
+.upsell li{display:flex;gap:8px;align-items:flex-start;font-size:14.5px;color:var(--c-ink)}
+.upsell li svg{flex:0 0 auto;width:16px;height:16px;margin-top:2px;color:var(--st-good)}
+.upsell .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.upsell .price-tag{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft)}
+.upsell .price-tag b{color:var(--c-navy);font-size:16px}
+.lock-chip{
+  display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);
+  font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--c-blue-dk);background:var(--c-panel-blue);border:1px solid var(--c-blue-soft);
+  padding:3px 9px;border-radius:999px;
+}
+
 /* ---------- Accessibility primitives ---------- */
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* history */
@@ -98,6 +129,40 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .tdelta.imp{color:var(--st-good)}.tdelta.reg{color:var(--st-bad)}.tdelta.sta{color:var(--c-ink-soft)}
 .tchart{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
+/* before / after compare */
+.cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
+.cmp-pick{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
+.cmp-pick-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-soft)}
+.cmp-select{font-family:var(--f-body);font-size:14px;font-weight:600;color:var(--c-navy);padding:9px 12px;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;cursor:pointer}
+.cmp-arrow{color:var(--c-ink-faint);padding-bottom:8px;transform:rotate(180deg)}
+.cmp-head{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 20px}
+.cmp-card{border:1px solid var(--c-line);border-radius:var(--radius-lg);background:#fff;padding:14px;box-shadow:var(--shadow);text-align:center}
+.cmp-tag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-soft);margin-bottom:8px}
+.cmp-thumb{width:100%;height:auto;border-radius:8px;display:block;background:var(--c-panel)}
+.cmp-thumb-empty{aspect-ratio:16/10}
+.cmp-when{font-size:12px;color:var(--c-ink-soft);margin-top:8px}
+.cmp-score{font-family:var(--f-mono);font-weight:700;font-size:26px;margin-top:2px}
+.cmp-score small{font-size:13px;color:var(--c-ink-faint)}
+.cmp-grid{border:1px solid var(--c-line);border-radius:var(--radius-lg);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+.cmp-row{display:grid;grid-template-columns:1.3fr 1fr 1.4fr 1fr;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--c-line)}
+.cmp-row:last-child{border-bottom:none}
+.cmp-row-head{background:var(--c-panel);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink-faint)}
+.cmp-row-head .cmp-a,.cmp-row-head .cmp-b,.cmp-row-head .cmp-d{font-family:var(--f-body)}
+.cmp-lbl{font-weight:700;font-size:13px;color:var(--c-navy)}
+.cmp-a,.cmp-b{font-family:var(--f-mono);font-weight:600;font-size:15px;color:var(--c-navy);text-align:center;font-variant-numeric:tabular-nums}
+.cmp-a{color:var(--c-ink-soft)}
+.cmp-d{text-align:center;font-size:13px}
+.cmp-trend{font-weight:600;font-size:11px}
+.cmp-ai{border:1px solid var(--c-line);border-left:4px solid var(--c-blue);border-radius:var(--radius);background:var(--c-panel-blue);padding:16px 18px;margin:0 0 20px}
+.cmp-ai-h{font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--c-navy);margin-bottom:8px}
+.cmp-ai-lock,.cmp-ai-load,.cmp-ai-err{color:var(--c-ink-soft);font-size:14px}
+.cmp-ai-load{border-left-color:var(--c-ink-faint)}
+.cmp-ai-err{border-left-color:var(--c-warn)}
+@media(max-width:560px){
+  .cmp-row{grid-template-columns:1.2fr .8fr 1.3fr .8fr;padding:10px;gap:5px}
+  .cmp-lbl,.cmp-a,.cmp-b{font-size:12px}
+  .cmp-trend{display:none}
+}
 /* auth */
 .authbox{display:flex;align-items:center;gap:10px;margin-left:6px}
 .usermail{font-size:12px;font-weight:700;color:var(--c-ink-soft);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -635,6 +700,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <circle cx="11" cy="11" r="7"/><path d="M11 8v3l2 2"/><path d="M20 20l-3.5-3.5"/></symbol>
   <symbol id="i-progress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 4v16h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 4H4v16h4"/><path d="M16 4h4v16h-4"/><path d="M12 3v18"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -884,7 +951,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div id="issues"></div>
     </div>
 
-    <div class="block">
+    <div id="upsellHost" class="hidden"></div>
+
+    <div class="block" id="metricsBlock">
       <div class="blockhead">
         <div class="eyebrow">Instrument readings</div>
         <h3>Key metrics</h3>
@@ -893,7 +962,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div class="tiles" id="tiles"></div>
     </div>
 
-    <div class="block">
+    <div class="block" id="anglesBlock">
       <div class="blockhead">
         <div class="eyebrow">Detail</div>
         <h3>Joint angles</h3>
@@ -967,6 +1036,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
     <div id="pWarnings"></div>
 
+    <div id="pUpsellHost" class="hidden"></div>
+
     <div class="block block-coach" id="pCoachBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
@@ -976,7 +1047,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div class="coach" id="pCoach"></div>
     </div>
 
-    <div class="block">
+    <div class="block" id="pAnglesBlock">
       <div class="blockhead">
         <div class="eyebrow">Detail</div>
         <h3>Joint angles</h3>
@@ -1048,7 +1119,32 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </div>
     </div>
     <p class="hint" style="text-align:left;margin:-8px 0 18px">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
+    <div class="again-row" id="compareCta" style="margin:0 0 18px;display:none">
+      <button class="btn btn-ghost btn-sm" id="btnCompare" type="button">
+        <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Compare two analyses
+      </button>
+    </div>
     <div class="tgrid" id="progGrid"></div>
+  </section>
+
+  <!-- ============ COMPARE (BEFORE / AFTER) ============ -->
+  <section id="compare" class="hidden" aria-labelledby="compareTitle">
+    <div class="again-row" style="margin:0 0 18px">
+      <button class="btn btn-ghost btn-sm" id="cmpBack" type="button">
+        <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to progress
+      </button>
+    </div>
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Track your change</div>
+      <h2 class="sec" id="compareTitle" tabindex="-1" style="margin-bottom:8px">Before / after</h2>
+      <div class="speedline"></div>
+    </div>
+    <!-- Two-analysis pickers -->
+    <div class="cmp-pickers" id="cmpPickers"></div>
+    <!-- AI progress summary -->
+    <div id="cmpSummary"></div>
+    <!-- Delta grid -->
+    <div id="cmpBody"></div>
   </section>
 
   <!-- ============ HISTORY DETAIL ============ -->
@@ -1146,14 +1242,15 @@ const POSITION_NAMES = { road_hoods:'Road Bike', road_drops:'Road · Drops', tt_
    ============================================================ */
 const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Analyzing… — Flapp',
   results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp',
-  history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp'};
+  history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp',
+  compare:'Before / After — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
-  history:'history', historydetail:'historyDetail', trends:'trends'};
+  history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
-const NAV_FOR_STATE = { history:'#navHistory', trends:'#navProgress' };
-const BOTNAV_FOR_STATE = { history:'#botHistory', trends:'#botProgress' };
+const NAV_FOR_STATE = { history:'#navHistory', trends:'#navProgress', compare:'#navProgress' };
+const BOTNAV_FOR_STATE = { history:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -1194,8 +1291,22 @@ function quotaSave(limit,remaining,until=null){
 }
 function renderQuota(){
   const q=quotaLoad();
-  const txt = q ? `<b>${q.remaining}</b> of <b>${q.limit}</b> analyses left today`
-               : `Free · <b>3</b> analyses per day`;
+  // Window wording follows the tier: signed-in paid/starter plans are monthly,
+  // admin + anonymous visitors are daily (matches the backend limiter).
+  const tier=(auth&&auth.tier)||null;
+  const monthly = !!auth && tier!=='admin';
+  const period = monthly ? 'this month' : 'today';
+  let txt;
+  if(q){
+    txt = `<b>${q.remaining}</b> of <b>${q.limit}</b> analyses left ${period}`;
+  } else if(!auth){
+    txt = `Free · <b>3</b> analyses per day`;
+  } else if(tier==='admin'){
+    txt = `Admin · <b>5</b> analyses per day`;
+  } else {
+    const plan={starter:['Free',3],enthusiast:['Enthusiast',30],full:['Full',120]}[tier]||['Free',3];
+    txt = `${plan[0]} · <b>${plan[1]}</b> analyses per month`;
+  }
   ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
 }
 
@@ -1617,6 +1728,13 @@ function bikeTiles(s){
   if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
   if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
+  if(s.aero_estimate&&s.aero_estimate.zone_label){
+    var ae=s.aero_estimate, nz=ae.next_zone;
+    var sub = nz
+      ? ('flatten to '+nz.target_trunk_angle+'° → −'+nz.drag_reduction_pct+'% drag (~'+nz.approx_watts_saved+'W @ '+ae.reference_speed_kmh+'km/h)')
+      : 'well-placed — no flatter target';
+    t.push(tile('Aero (relative)',ae.zone_label,'',sub,nz?'':'good',true));
+  }
   return t;
 }
 function runTiles(s){
@@ -1625,7 +1743,14 @@ function runTiles(s){
   if(s.vertical_oscillation_cm!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_cm,1),'cm',null,null,false,R(s.vertical_oscillation_cm,6,10,'cm')));
   else if(s.vertical_oscillation_m!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_m*100,1),'cm',null,null,false,R(s.vertical_oscillation_m*100,6,10,'cm')));
   if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,4,10,'°')));
-  if(s.ground_contact_time_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_time_ms),'ms'));
+  if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,R(s.ground_contact_ms,180,250,'ms')));
+  if(s.flight_time_ms!=null) t.push(tile('Flight time',num(s.flight_time_ms),'ms',s.flight_time_ms_estimated?'estimated from 2D video':null,null,false,R(s.flight_time_ms,80,150,'ms')));
+  if(s.foot_strike!=null){
+    const fsMap={heel:'Heel',midfoot:'Midfoot',forefoot:'Forefoot'};
+    const fsCls=s.foot_strike==='midfoot'?'good':(s.foot_strike==='heel'?'warn':null);
+    t.push(tile('Foot strike',fsMap[s.foot_strike]||pretty(s.foot_strike),'',s.foot_strike_estimated?'estimated from 2D video':null,fsCls,true));
+  }
+  if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×',s.overstride_estimated?'× leg length ahead of hip (est.)':'× leg length ahead of hip',null,false,R(s.overstride_ratio,0,0.15,'×')));
   if(s.knee_mean!=null) t.push(tile('Knee (mean)',num(s.knee_mean),'°',null,null,false,R(s.knee_mean,140,160,'°')));
   if(s.knee_min!=null) t.push(tile('Knee (min)',num(s.knee_min),'°'));
   return t;
@@ -1701,6 +1826,20 @@ function renderPhoto(res){
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
     : `<div class="banner good"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
 
+  // Free-tier teaser: hide paid sections, show upgrade panel, stop early.
+  $('#pUpsellHost').classList.add('hidden');
+  if(res.locked){
+    renderUpsell('pUpsellHost', res.locked, ['pCoachBlock','pAnglesBlock']);
+    renderQuota();
+    saveToHistory('photo', res);
+    state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
+    setState('photoresults',{focus:'#pResultsTitle'});
+    return;
+  }
+  ['pCoachBlock','pAnglesBlock'].forEach(id=>{
+    const el=$('#'+id); if(el) el.classList.remove('hidden');
+  });
+
   const cb=$('#pCoachBlock'); const rec=res.ai_recommendations;
   if(rec && rec.report){
     $('#pCoach').innerHTML=mdToHtml(rec.report)+
@@ -1727,6 +1866,48 @@ function renderPhoto(res){
   saveToHistory('photo', res);
   state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
   setState('photoresults',{focus:'#pResultsTitle'});
+}
+
+/* ============================================================
+   Free-tier teaser paywall. When the backend gates a result it strips the
+   paid fields and attaches `locked:{reason,unlocks:[...]}`. We hide the paid
+   sections and drop in one upgrade panel. `containerId` is where the panel
+   goes; `blockIds` are the paid sections to hide. Returns true when locked.
+   ============================================================ */
+const UNLOCK_COPY={
+  coaching:'AI coaching & personal action plan',
+  angles:'Exact joint-angle measurements',
+  issues:'Every technique issue we found',
+  ranges:'Cadence, ranges & benchmark metrics',
+  video:'Annotated video + slow-motion replay',
+  second_phase:'Second phase photo (contact & drive)',
+};
+function renderUpsell(containerId, locked, blockIds){
+  (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
+  const host=$('#'+containerId); if(!host) return false;
+  const items=(locked.unlocks||Object.keys(UNLOCK_COPY))
+    .map(k=>UNLOCK_COPY[k]).filter(Boolean);
+  const check='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  host.innerHTML=`<div class="upsell">
+    <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Free preview</span>
+    <h3>Unlock your full analysis</h3>
+    <p>You’re seeing the skeleton and your score. Upgrade to reveal the measurements and coaching that tell you <em>what to actually change</em>.</p>
+    <ul>${items.map(t=>`<li>${check}<span>${esc(t)}</span></li>`).join('')}</ul>
+    <div class="cta-row">
+      <button class="btn btn-primary" type="button" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+      <span class="price-tag">from <b>$9</b>/mo</span>
+    </div>
+  </div>`;
+  host.classList.remove('hidden');
+  return true;
+}
+/* Placeholder until Stage 4 (Stripe) wires real checkout. For now, nudge
+   sign-in / show pricing so the CTA is never a dead end. */
+function openUpgrade(){
+  if(typeof openAuth==='function' && !auth){ openAuth('register'); return; }
+  const el=document.getElementById('pricing')||document.getElementById('plans');
+  if(el){ el.scrollIntoView({behavior:'smooth'}); }
+  else { alert('Upgrade coming soon — paid plans unlock the full analysis.'); }
 }
 
 function render(job){
@@ -1783,6 +1964,22 @@ function render(job){
     }
     ep.classList.remove('hidden');
   }
+
+  // Free-tier teaser: paid sections were stripped server-side. Hide them,
+  // show the upgrade panel, and stop before rendering empty paid blocks.
+  $('#upsellHost').classList.add('hidden');
+  if(r.locked){
+    renderUpsell('upsellHost', r.locked,
+      ['coachBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock']);
+    renderQuota();
+    saveToHistory('video', r);
+    state.lastResult=r; $('#shareBtn').classList.remove('hidden');
+    setState('results',{focus:'#resultsTitle'});
+    return;
+  }
+  ['coachBlock','issuesBlock','metricsBlock','anglesBlock'].forEach(id=>{
+    const el=$('#'+id); if(el) el.classList.remove('hidden');
+  });
 
   // AI coach
   const cb=$('#coachBlock'); const rec=r.ai_recommendations;
@@ -2091,7 +2288,7 @@ function reset(keepFile=false){
    Auth (accounts) — email + password, JWT stored on this device
    ============================================================ */
 const TKEY='flapp_token';
-let auth=null;                       // {email, is_pro} when signed in
+let auth=null;                       // {email, tier, is_pro} when signed in
 const getToken=()=>{ try{ return localStorage.getItem(TKEY); }catch(e){ return null; } };
 function authHeaders(h){ h=h||{}; const t=getToken(); return t?Object.assign({},h,{Authorization:'Bearer '+t}):h; }
 function renderAuth(){
@@ -2131,7 +2328,7 @@ async function submitAuth(e){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
-    auth={email:j.email,is_pro:j.is_pro}; renderAuth(); closeAuth(); migrateAndLoad();
+    auth={email:j.email,tier:j.tier,is_pro:j.is_pro}; renderAuth(); closeAuth(); migrateAndLoad();
   }catch(err){ $('#authErr').textContent='Network error — check your connection and try again.'; }
   finally{ btn.disabled=false; }
 }
@@ -2236,7 +2433,7 @@ function saveToHistory(kind,res){
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
-    const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o;
+    const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o; e.trendCat=tr.c;
     if(auth){
       state.cloudHist=[e,...(state.cloudHist||[])];
       fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)}).catch(()=>{});
@@ -2324,12 +2521,25 @@ const TREND_METRICS={
     {key:'cadence',label:'Cadence',unit:' spm'},
     {key:'vertical_oscillation',label:'Vertical oscillation',unit:' cm'},
     {key:'trunk_lean',label:'Trunk lean',unit:'°'},
+    {key:'ground_contact',label:'Ground contact',unit:' ms'},
+    {key:'flight_time',label:'Flight time',unit:' ms'},
+    {key:'overstride',label:'Overstride',unit:'×'},
     {key:'knee',label:'Knee angle',unit:'°'},
   ],
 };
+/* Categorical (non-numeric) metrics compared as changed/unchanged, not deltas.
+   Keyed by sport; each maps a summary field to a display label + value map. */
+const TREND_CATEGORICAL={
+  run:[{key:'foot_strike',label:'Foot strike',
+        map:{heel:'Heel',midfoot:'Midfoot',forefoot:'Forefoot'},
+        good:'midfoot'}],
+  bike:[],
+};
 function extractTrends(kind,res,sport){
-  const t={},o={};
-  const put=(k,v,opt)=>{ if(v!=null && !Number.isNaN(+v)){ t[k]=Math.round(+v*10)/10; if(opt) o[k]=opt; } };
+  const t={},o={},c={};
+  // dec = decimals to keep (overstride is a small ratio; keep 2)
+  const put=(k,v,opt,dec=1)=>{ if(v!=null && !Number.isNaN(+v)){ const p=Math.pow(10,dec); t[k]=Math.round(+v*p)/p; if(opt) o[k]=opt; } };
+  const putCat=(k,v)=>{ if(v!=null) c[k]=v; };
   if(kind==='video'){
     const s=res.sport_specific_metrics||{};
     put('score',res.technique_score);
@@ -2339,8 +2549,13 @@ function extractTrends(kind,res,sport){
       put('shoulder',s.shoulder_angle_avg); put('pelvic_ratio',s.pelvic_ratio,[2,4]);
     } else {
       put('cadence',s.cadence_spm,[170,185]);
-      put('vertical_oscillation', s.vertical_oscillation_cm!=null?s.vertical_oscillation_cm:(s.vertical_oscillation_m!=null?s.vertical_oscillation_m*100:null));
-      put('trunk_lean',s.trunk_lean_avg,[5,10]); put('knee',s.knee_mean);
+      put('vertical_oscillation', s.vertical_oscillation_cm!=null?s.vertical_oscillation_cm:(s.vertical_oscillation_m!=null?s.vertical_oscillation_m*100:null), [6,10]);
+      put('trunk_lean',s.trunk_lean_avg,[5,10]);
+      put('ground_contact',s.ground_contact_ms,[180,250]);
+      put('flight_time',s.flight_time_ms,[80,150]);
+      put('overstride',s.overstride_ratio,[0,0.15],2);
+      put('knee',s.knee_mean);
+      putCat('foot_strike',s.foot_strike);
     }
   } else {
     put('score',(res.score||{}).overall_score);
@@ -2351,7 +2566,7 @@ function extractTrends(kind,res,sport){
       : {knee:'knee',trunk_lean:'trunk'};
     for(const ck in map){ const x=g(map[ck]); if(x) put(ck,x.v,x.opt); }
   }
-  return {t,o};
+  return {t,o,c};
 }
 /* ============================================================
    Advanced biomechanics — SVG charts (no chart lib; mirrors Motus
@@ -2549,6 +2764,27 @@ function trendChart(vals,dates,opt,unit){
   return s;
 }
 function distOut(v,opt){ return v<opt[0]?opt[0]-v : v>opt[1]?v-opt[1] : 0; }
+/* Decide whether first->last is an improvement, regression, or stable.
+   `hi` = higher-is-better (score); otherwise "closer to optimal" wins.
+   The "meaningful change" tolerance SCALES with the metric so it works for
+   both large-magnitude metrics (degrees, ms) and small ratios (overstride
+   ~0-0.3): a fixed 0.5 would swamp the entire overstride signal. Tolerance =
+   max(1.5% of the optimal-band midpoint, a tiny floor). Returns
+   {cls:'imp'|'reg'|'sta', trend, delta}. Shared by progress + compare. */
+function metricDelta(first,last,opt,hi){
+  const delta=Math.round((last-first)*1000)/1000;
+  let cls='sta', trend='steady';
+  if(hi){ cls=delta>0?'imp':delta<0?'reg':'sta'; trend=delta>0?'improving':delta<0?'lower':'steady'; }
+  else if(opt){
+    const df=distOut(first,opt), dl=distOut(last,opt);
+    const scale=Math.max(Math.abs(opt[0]),Math.abs(opt[1]),1e-6);
+    const tol=Math.max(scale*0.015, 1e-4);   // ~1.5% of band, tiny floor
+    if(dl<df-tol){cls='imp';trend='closer to optimal';}
+    else if(dl>df+tol){cls='reg';trend='further from optimal';}
+    else {cls='sta';trend='steady';} }
+  else { cls='sta'; trend=''; }
+  return {cls,trend,delta};
+}
 function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
@@ -2564,12 +2800,8 @@ function renderProgress(){
     all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); } });
     if(series.length<2) return '';
     let opt=null; for(let i=all.length-1;i>=0;i--){ if(all[i].trendOpt && all[i].trendOpt[m.key]){ opt=all[i].trendOpt[m.key]; break; } }
-    const first=series[0], last=series[series.length-1], delta=Math.round((last-first)*10)/10;
-    let tcls='sta', trend='steady';
-    if(m.hi){ tcls=delta>0?'imp':delta<0?'reg':'sta'; trend=delta>0?'improving':delta<0?'lower':'steady'; }
-    else if(opt){ const df=distOut(first,opt), dl=distOut(last,opt);
-      if(dl<df-0.5){tcls='imp';trend='closer to optimal';} else if(dl>df+0.5){tcls='reg';trend='further from optimal';} else {tcls='sta';trend='steady';} }
-    else { tcls='sta'; trend=''; }
+    const first=series[0], last=series[series.length-1];
+    const dd=metricDelta(first,last,opt,m.hi), tcls=dd.cls, trend=dd.trend, delta=dd.delta;
     const deltaStr=(delta>0?'+':'')+delta+(m.unit||'');
     return `<div class="tcard${m.key==='score'?' tcard-score':''}">
       <div class="tc-head"><span class="tc-lbl">${esc(m.label)}</span><span class="tc-val">${Math.round(last*10)/10}${m.unit||''}</span></div>
@@ -2580,13 +2812,120 @@ function renderProgress(){
 }
 function openProgress(){
   if(!state.progressSport){ const h=loadHist(); const nb=h.filter(e=>e.sport==='bike').length, nr=h.filter(e=>e.sport==='run').length; state.progressSport = nr>nb?'run':'bike'; }
-  renderProgress(); setState('trends',{focus:'#trendsTitle'});
+  renderProgress(); toggleCompareCta(); setState('trends',{focus:'#trendsTitle'});
 }
 $('#navProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
-$('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.progressSport=b.dataset.sport; renderProgress(); });
+$('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.progressSport=b.dataset.sport; renderProgress(); toggleCompareCta(); });
+
+/* ============================================================
+   Before / after — compare two saved analyses side by side
+   ============================================================ */
+/* Show the "Compare two analyses" CTA only when >=2 exist for the sport. */
+function toggleCompareCta(){
+  const sport=state.progressSport||'bike';
+  const n=loadHist().filter(e=>e.sport===sport && e.trends).length;
+  const cta=$('#compareCta'); if(cta) cta.style.display = n>=2 ? '' : 'none';
+}
+/* Pick the two most recent analyses (of the active sport) as the default
+   A=older, B=newer pair, then let the user re-pick either side. */
+function openCompare(){
+  const sport=state.progressSport||'bike';
+  const list=loadHist().filter(e=>e.sport===sport && e.trends);
+  if(list.length<2){ openProgress(); return; }
+  // list is newest-first; default B=newest, A=second-newest.
+  state.cmp={sport, list, aId:list[1].id, bId:list[0].id, summary:null, summaryLoading:false};
+  renderCompare();
+  setState('compare',{focus:'#compareTitle'});
+}
+function cmpEntry(id){ return (state.cmp.list||[]).find(e=>e.id===id)||null; }
+function renderComparePickers(){
+  const {list,aId,bId}=state.cmp;
+  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(fmtWhen(e.at))} · ${e.score==null?'—':e.score}/100</option>`;
+  const sel=(side,cur)=>`<label class="cmp-pick">
+      <span class="cmp-pick-lbl">${side==='a'?'Before':'After'}</span>
+      <select class="cmp-select" data-side="${side}">${list.map(e=>opt(e,cur)).join('')}</select>
+    </label>`;
+  $('#cmpPickers').innerHTML = sel('a',aId)+`<div class="cmp-arrow" aria-hidden="true"><svg class="ic"><use href="#i-arr-l"/></svg></div>`+sel('b',bId);
+}
+/* One delta row: label, A value, B value, and a colored delta verdict. */
+function cmpRow(label,unit,a,b,opt,hi){
+  const fmt=v=> v==null?'—':(Math.round(v*100)/100)+(unit||'');
+  if(a==null||b==null){
+    return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
+      <div class="cmp-a">${fmt(a)}</div><div class="cmp-d"><span class="tdelta sta">—</span></div><div class="cmp-b">${fmt(b)}</div></div>`;
+  }
+  const dd=metricDelta(a,b,opt,hi);
+  const dstr=(dd.delta>0?'+':'')+ (Math.round(dd.delta*100)/100) +(unit||'');
+  return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
+    <div class="cmp-a">${fmt(a)}</div>
+    <div class="cmp-d"><span class="tdelta ${dd.cls}">${dstr}${dd.trend?'<span class="cmp-trend"> · '+dd.trend+'</span>':''}</span></div>
+    <div class="cmp-b">${fmt(b)}</div></div>`;
+}
+/* Categorical row (foot strike): changed / unchanged, colored toward `good`. */
+function cmpCatRow(label,map,good,a,b){
+  const disp=v=> v==null?'—':(map[v]||pretty(v));
+  let cls='sta', note='unchanged';
+  if(a!=null&&b!=null&&a!==b){ cls = b===good?'imp':(a===good?'reg':'sta'); note = b===good?'improved':(a===good?'regressed':'changed'); }
+  return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
+    <div class="cmp-a">${esc(disp(a))}</div>
+    <div class="cmp-d"><span class="tdelta ${cls}">${note}</span></div>
+    <div class="cmp-b">${esc(disp(b))}</div></div>`;
+}
+function renderCompare(){
+  const {sport,aId,bId}=state.cmp;
+  const A=cmpEntry(aId), B=cmpEntry(bId);
+  renderComparePickers();
+  if(!A||!B){ $('#cmpBody').innerHTML=''; return; }
+  const at=A.trends||{}, bt=B.trends||{}, ac=A.trendCat||{}, bc=B.trendCat||{};
+  // Prefer B's optimal band, fall back to A's.
+  const optOf=k=> (B.trendOpt&&B.trendOpt[k]) || (A.trendOpt&&A.trendOpt[k]) || null;
+  // Header: two keyframes + score.
+  const head=`<div class="cmp-head">
+    ${[[A,'Before'],[B,'After']].map(([e,tag])=>`<div class="cmp-card">
+      <div class="cmp-tag">${tag}</div>
+      ${e.keyframe?`<img class="cmp-thumb" src="${e.keyframe}" alt="${tag} analysis keyframe">`:'<div class="cmp-thumb cmp-thumb-empty"></div>'}
+      <div class="cmp-when">${esc(fmtWhen(e.at))}</div>
+      <div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>
+    </div>`).join('')}
+  </div>`;
+  const numRows=TREND_METRICS[sport].map(m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi)).join('');
+  const catRows=(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key])).join('');
+  $('#cmpBody').innerHTML = head +
+    `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
+       <div class="cmp-lbl">Metric</div><div class="cmp-a">Before</div><div class="cmp-d">Change</div><div class="cmp-b">After</div>
+     </div>${numRows}${catRows}</div>`;
+  renderCompareSummary();
+}
+/* AI progress summary — server-side (Gemini). Requires auth; degrades to a
+   nudge for signed-out users. Cached per A/B pair in state.cmp.summary. */
+function renderCompareSummary(){
+  const host=$('#cmpSummary'); if(!host) return;
+  if(!auth){ host.innerHTML=`<div class="cmp-ai cmp-ai-lock"><b>AI progress summary</b> — sign in to get a coach's read on what changed between these two runs.</div>`; return; }
+  const c=state.cmp;
+  if(c.summary){ host.innerHTML=`<div class="cmp-ai"><div class="cmp-ai-h">Coach's read</div>${mdToHtml(c.summary)}</div>`; return; }
+  if(c.summaryLoading){ host.innerHTML=`<div class="cmp-ai cmp-ai-load">Analyzing your progress…</div>`; return; }
+  host.innerHTML=`<div class="again-row" style="margin:0 0 16px"><button class="btn btn-ghost btn-sm" id="cmpAiBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Get AI progress summary</button></div>`;
+  const btn=$('#cmpAiBtn'); if(btn) btn.addEventListener('click',fetchCompareSummary);
+}
+function fetchCompareSummary(){
+  const c=state.cmp, A=cmpEntry(c.aId), B=cmpEntry(c.bId);
+  if(!A||!B) return;
+  c.summaryLoading=true; renderCompareSummary();
+  fetch('/me/compare-summary',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),
+    body:JSON.stringify({sport:c.sport,before:{score:A.score,grade:A.grade,trends:A.trends,cat:A.trendCat,at:A.at},after:{score:B.score,grade:B.grade,trends:B.trends,cat:B.trendCat,at:B.at}})})
+    .then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(j=>{ c.summary=j.summary||'No summary available.'; c.summaryLoading=false; renderCompareSummary(); })
+    .catch(()=>{ c.summaryLoading=false; c.summary=null; const h=$('#cmpSummary');
+      if(h) h.innerHTML=`<div class="cmp-ai cmp-ai-err">Couldn't generate a summary right now. Your metrics comparison above is still complete.</div>`; });
+}
+document.addEventListener('change',e=>{ const s=e.target.closest('.cmp-select'); if(!s||!state.cmp) return;
+  if(s.dataset.side==='a') state.cmp.aId=s.value; else state.cmp.bId=s.value;
+  state.cmp.summary=null; state.cmp.summaryLoading=false; renderCompare(); });
+$('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare(); });
+$('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta};
 </script>
 </body>
 </html>

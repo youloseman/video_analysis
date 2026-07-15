@@ -31,6 +31,37 @@ SWIM_PHASE_LABELS: dict[str, str] = {
     "push": "PUSH", "recovery": "RECOVERY", "unknown": "UNKNOWN",
 }
 
+# Running gait phases (BGR for OpenCV). Warm = stance (foot on ground),
+# cool = swing (foot in air), gray = unknown. The 8 raw GaitPhase values
+# collapse into a stance/swing colour family so the timeline and legend
+# stay readable while still surfacing the finer phase in the corner badge.
+RUN_PHASE_COLORS: dict[str, tuple[int, int, int]] = {
+    # Stance (warm)
+    "initial_contact":  (50, 200, 255),   # amber
+    "loading_response": (50, 170, 255),   # orange
+    "midstance":        (50, 120, 240),   # deep orange
+    "terminal_stance":  (60, 90, 235),    # red-orange
+    "pre_swing":        (60, 60, 230),    # red
+    # Swing (cool)
+    "initial_swing":    (230, 170, 60),   # blue
+    "mid_swing":        (210, 140, 50),   # deep blue
+    "terminal_swing":   (200, 190, 90),   # teal
+    "unknown":          (128, 128, 128),  # gray
+}
+RUN_PHASE_LABELS: dict[str, str] = {
+    "initial_contact": "CONTACT", "loading_response": "LOADING",
+    "midstance": "MIDSTANCE", "terminal_stance": "TOE-OFF PREP",
+    "pre_swing": "TOE-OFF", "initial_swing": "SWING (early)",
+    "mid_swing": "SWING (mid)", "terminal_swing": "SWING (late)",
+    "unknown": "UNKNOWN",
+}
+# Phases where the foot is on the ground -- used to count strides (each
+# new stance run after a swing = one stride of the near leg).
+_RUN_STANCE_PHASES = frozenset({
+    "initial_contact", "loading_response", "midstance",
+    "terminal_stance", "pre_swing",
+})
+
 # Optional brand watermark, burned into the top-right of every overlay frame.
 # Disabled by default for this standalone app. To brand the output, drop a
 # transparent PNG at the path below and set WATERMARK_ENABLED = True. The Motus
@@ -76,6 +107,7 @@ class VideoVisualizer:
         letter_grade: str,
         angle_stats: dict[str, Any] | None = None,
         summary: dict[str, Any] | None = None,
+        hide_angle_values: bool = False,
     ):
         self.video_path = video_path
         self.frame_data_list = frame_data_list
@@ -88,6 +120,13 @@ class VideoVisualizer:
         self.letter_grade = letter_grade
         self.angle_stats = angle_stats or {}
         self.summary = summary or {}
+        # Teaser mode (free tier): draw the skeleton + arcs + callout markers,
+        # but replace the numeric angle value with a lock glyph. The athlete
+        # sees the tech works and where the joints are measured -- the numbers
+        # themselves are the paid unlock. When on, we also burn a text
+        # watermark so free output can't be passed off as a full report.
+        self.hide_angle_values = hide_angle_values
+        self.teaser_watermark = hide_angle_values
 
         # Build frame index mapping: video_frame_idx -> analyzed_frame_index
         self.sample_rate = SPORT_SAMPLE_RATES.get(sport_type, 1)
@@ -105,22 +144,67 @@ class VideoVisualizer:
             cycling_position=cycling_position,
         )
 
-        # Swim-only: pre-compute per-frame phase sequence + stroke counter.
+        # Phase overlay (swim + run): pre-compute per-frame phase sequence and
+        # a cycle counter (swim = strokes, run = strides). Sport-specific config
+        # (which extra_metrics key holds the phase, the colour/label maps, and
+        # what boundary starts a new cycle) is selected here so the per-frame
+        # draw path stays sport-agnostic.
         self._phase_sequence: list[str] = []
-        self._stroke_numbers: list[int] = []
-        self._total_strokes: int = 0
+        self._cycle_numbers: list[int] = []   # stroke# (swim) or stride# (run)
+        self._total_cycles: int = 0
         self._timeline_cache: np.ndarray | None = None
-        if sport_type == "swim" and hasattr(analyzer, "frame_results"):
-            stroke_count = 0
+        self._phase_colors: dict[str, tuple[int, int, int]] = {}
+        self._phase_labels: dict[str, str] = {}
+        self._phase_legend_order: list[str] = []
+        self._cycle_noun: str = "Cycle"
+
+        if sport_type == "swim":
+            self._phase_colors = SWIM_PHASE_COLORS
+            self._phase_labels = SWIM_PHASE_LABELS
+            self._phase_legend_order = ["entry", "catch", "pull", "push", "recovery"]
+            self._cycle_noun = "Stroke"
+        elif sport_type == "run":
+            self._phase_colors = RUN_PHASE_COLORS
+            self._phase_labels = RUN_PHASE_LABELS
+            # Legend uses coarse stance/swing families, not all 8 raw phases.
+            self._phase_legend_order = ["midstance", "pre_swing", "mid_swing"]
+            self._cycle_noun = "Stride"
+
+        if sport_type in ("swim", "run") and hasattr(analyzer, "frame_results"):
+            phase_key = "stroke_phase" if sport_type == "swim" else "gait_phase"
+            cycle_count = 0
             prev_phase = ""
+            prev_in_stance = False
+            # Debounce the stance/swing state for stride counting: a state must
+            # persist for MIN_RUN_STATE_FRAMES before it counts, so single-frame
+            # phase flicker (a lone stance frame in a swing run) doesn't inflate
+            # the stride count. Without this an 8 s clip counts 100+ "strides".
+            MIN_RUN_STATE_FRAMES = 3
+            stance_streak = swing_streak = 0
             for fr in analyzer.frame_results:
-                phase = fr.extra_metrics.get("stroke_phase", "unknown")
+                phase = fr.extra_metrics.get(phase_key, "unknown")
                 self._phase_sequence.append(phase)
-                if prev_phase != "entry" and phase == "entry":
-                    stroke_count += 1
-                self._stroke_numbers.append(stroke_count)
+                if sport_type == "swim":
+                    # New stroke on entry into the "entry" phase.
+                    if prev_phase != "entry" and phase == "entry":
+                        cycle_count += 1
+                else:
+                    # Debounced swing->stance transition = one stride (foot lands).
+                    raw_stance = phase in _RUN_STANCE_PHASES
+                    if raw_stance:
+                        stance_streak += 1
+                        swing_streak = 0
+                    else:
+                        swing_streak += 1
+                        stance_streak = 0
+                    if not prev_in_stance and stance_streak >= MIN_RUN_STATE_FRAMES:
+                        cycle_count += 1
+                        prev_in_stance = True
+                    elif prev_in_stance and swing_streak >= MIN_RUN_STATE_FRAMES:
+                        prev_in_stance = False
+                self._cycle_numbers.append(cycle_count)
                 prev_phase = phase
-            self._total_strokes = stroke_count
+            self._total_cycles = cycle_count
 
         # Arc triplets for this sport
         self.arc_triplets = ARC_TRIPLETS.get(sport_type, {})
@@ -167,8 +251,9 @@ class VideoVisualizer:
             cap.release()
             return None
 
-        # Swim-only: cache timeline bar once (saves ~0.5 ms per frame vs rebuilding).
-        if self.sport_type == "swim" and self._phase_sequence:
+        # Phase overlay (swim + run): cache timeline bar once (saves ~0.5 ms
+        # per frame vs rebuilding).
+        if self._phase_sequence:
             self._timeline_cache = self._build_phase_timeline(width)
             self._overlay_fps = fps
 
@@ -428,7 +513,13 @@ class VideoVisualizer:
                 cv2_mod.line(frame, (jx, jy), (lx, ly), (200, 200, 200), 1, cv2_mod.LINE_AA)
                 cv2_mod.circle(frame, (jx, jy), 3, color, -1, cv2_mod.LINE_AA)
 
-                text = f"{cfg['name']} {angle_val:.0f}"
+                # Teaser: mask the number (skeleton + which joint stays visible,
+                # the measured value is locked behind an upgrade).
+                if self.hide_angle_values:
+                    text = f"{cfg['name']} [locked]"
+                    color = (150, 150, 150)  # gray, de-emphasized (BGR)
+                else:
+                    text = f"{cfg['name']} {angle_val:.0f}"
                 (tw, th_t), _ = cv2_mod.getTextSize(text, font, font_scale, thickness_t)
                 pad = 3
                 cv2_mod.rectangle(
@@ -479,8 +570,12 @@ class VideoVisualizer:
                         _draw_dashed_line(cv2_mod, frame, (shx, shy), (ext_x, ext_y), (180, 180, 255), 1)
 
                         if eav >= MIN_OVERLAY_VISIBILITY:
-                            h_color = (0, 220, 0) if head_score >= 75 else ((0, 200, 255) if head_score >= 50 else (0, 0, 255))
-                            h_text = f"Head {head_score:.0f}"
+                            if self.hide_angle_values:
+                                h_color = (150, 150, 150)
+                                h_text = "Head [locked]"
+                            else:
+                                h_color = (0, 220, 0) if head_score >= 75 else ((0, 200, 255) if head_score >= 50 else (0, 0, 255))
+                                h_text = f"Head {head_score:.0f}"
                             (htw, hth), _ = cv2_mod.getTextSize(h_text, font_hl, small_scale, 1)
                             hlx = max(5, min(width - htw - 5, eax + 10))
                             hly = max(hth + 5, min(height - 5, eay - 10))
@@ -493,13 +588,17 @@ class VideoVisualizer:
                 from app.services.video_analysis.biomechanics.cycling_positions import get_cycling_reference
                 ref = get_cycling_reference(self.cycling_position)
                 p_min, p_max = ref["pelvic_ratio"]
-                if p_min <= pelvic <= p_max:
-                    p_color = (0, 220, 0)
-                elif abs(pelvic - p_min) < 0.5 or abs(pelvic - p_max) < 0.5:
-                    p_color = (0, 200, 255)
+                if self.hide_angle_values:
+                    p_color = (150, 150, 150)
+                    p_text = "Pelvic [locked]"
                 else:
-                    p_color = (0, 0, 255)
-                p_text = f"Pelvic {pelvic:.1f}x"
+                    if p_min <= pelvic <= p_max:
+                        p_color = (0, 220, 0)
+                    elif abs(pelvic - p_min) < 0.5 or abs(pelvic - p_max) < 0.5:
+                        p_color = (0, 200, 255)
+                    else:
+                        p_color = (0, 0, 255)
+                    p_text = f"Pelvic {pelvic:.1f}x"
                 (ptw, pth), _ = cv2_mod.getTextSize(p_text, font_hl, small_scale, 1)
                 hp_i2 = 23 if near == "left" else 24
                 hpx2, hpy2, _ = pixel_coords[hp_i2]
@@ -512,16 +611,25 @@ class VideoVisualizer:
         # -- 3. Info badge (top-left corner) --
         self._draw_info_badge(cv2_mod, frame, width)
 
-        # -- 4. Swim phase overlay (phase label, stroke counter, timeline, legend) --
-        if self.sport_type == "swim" and self._phase_sequence:
-            idx = min(analyzed_idx, len(self._phase_sequence) - 1)
+        # -- 4. Phase overlay (swim + run): phase label, cycle counter,
+        #       timeline, legend. Driven by sport-specific config set in __init__.
+        #       The phase label + counter are meaningful on a single frame; the
+        #       timeline bar + legend need a moving marker, so they only draw on
+        #       the video (guarded by _timeline_cache, built in generate()).
+        if self._phase_sequence and analyzed_idx < len(self._phase_sequence):
+            idx = analyzed_idx
             phase = self._phase_sequence[idx]
-            stroke = self._stroke_numbers[idx]
+            cycle = self._cycle_numbers[idx]
             self._draw_phase_label(cv2_mod, frame, phase, width)
-            self._draw_stroke_counter(cv2_mod, frame, stroke, width)
+            self._draw_cycle_counter(cv2_mod, frame, cycle, width)
             self._draw_phase_timeline(cv2_mod, frame, idx, width, height)
-            if analyzed_idx < int(getattr(self, "_overlay_fps", 30) * 2):
+            if self._timeline_cache is not None and \
+                    analyzed_idx < int(getattr(self, "_overlay_fps", 30) * 2):
                 self._draw_phase_legend(cv2_mod, frame, width, height)
+
+        # -- 5. Free-tier teaser watermark (burned into every rendered frame) --
+        if self.teaser_watermark:
+            self._draw_text_watermark(cv2_mod, frame, width, height)
 
     def _get_frame_angles(self, analyzed_idx: int) -> dict[str, float]:
         """Get angle values for a specific analyzed frame index."""
@@ -605,6 +713,28 @@ class VideoVisualizer:
         _watermark_cache[target_h] = mark
         return mark
 
+    def _draw_text_watermark(
+        self, cv2_mod: Any, frame: Any, width: int, height: int,
+    ) -> None:
+        """Burn a small 'FLAPP · FREE' text mark bottom-right.
+
+        Asset-free (unlike the PNG lockup) so it always renders. Used for the
+        free-tier teaser so its output is visibly a free sample.
+        """
+        text = "FLAPP - FREE"
+        font = cv2_mod.FONT_HERSHEY_SIMPLEX
+        scale = max(0.4, min(0.7, width / 1400))
+        thick = 1 if scale < 0.55 else 2
+        (tw, th), _ = cv2_mod.getTextSize(text, font, scale, thick)
+        pad = int(max(8, height * 0.015))
+        x = width - tw - pad
+        y = height - pad
+        if x < 0 or y - th < 0:
+            return
+        # Subtle drop shadow for legibility on any background, then the mark.
+        cv2_mod.putText(frame, text, (x + 1, y + 1), font, scale, (0, 0, 0), thick + 1, cv2_mod.LINE_AA)
+        cv2_mod.putText(frame, text, (x, y), font, scale, (255, 255, 255), thick, cv2_mod.LINE_AA)
+
     def _draw_watermark(
         self, cv2_mod: Any, frame: Any, width: int, height: int,
     ) -> None:
@@ -632,14 +762,14 @@ class VideoVisualizer:
         blended = mark_bgr * alpha + roi * (1.0 - alpha)
         frame[y:y + mh, x:x + mw] = blended.astype(np.uint8)
 
-    # --- Swim phase overlay helpers (swim only) ---
+    # --- Phase overlay helpers (swim + run) ---
 
     def _draw_phase_label(
         self, cv2_mod: Any, frame: Any, phase: str, width: int,
     ) -> None:
         """Large colored badge in the top-right corner showing the current phase."""
-        color = SWIM_PHASE_COLORS.get(phase, SWIM_PHASE_COLORS["unknown"])
-        label = SWIM_PHASE_LABELS.get(phase, "UNKNOWN")
+        color = self._phase_colors.get(phase, self._phase_colors.get("unknown", (128, 128, 128)))
+        label = self._phase_labels.get(phase, "UNKNOWN")
         font = cv2_mod.FONT_HERSHEY_SIMPLEX
         scale = 0.7
         thick = 2
@@ -655,13 +785,13 @@ class VideoVisualizer:
             font, scale, (255, 255, 255), thick, cv2_mod.LINE_AA,
         )
 
-    def _draw_stroke_counter(
-        self, cv2_mod: Any, frame: Any, stroke_num: int, width: int,
+    def _draw_cycle_counter(
+        self, cv2_mod: Any, frame: Any, cycle_num: int, width: int,
     ) -> None:
-        """Small 'Stroke N of M' text below the phase label."""
-        if self._total_strokes < 1:
+        """Small 'Stroke/Stride N of M' text below the phase label."""
+        if self._total_cycles < 1:
             return
-        text = f"Stroke {stroke_num} of {self._total_strokes}"
+        text = f"{self._cycle_noun} {cycle_num} of {self._total_cycles}"
         font = cv2_mod.FONT_HERSHEY_SIMPLEX
         scale = 0.45
         thick = 1
@@ -685,7 +815,7 @@ class VideoVisualizer:
         for i, phase in enumerate(self._phase_sequence):
             x0 = int(i * bar_w / n)
             x1 = int((i + 1) * bar_w / n)
-            color = SWIM_PHASE_COLORS.get(phase, SWIM_PHASE_COLORS["unknown"])
+            color = self._phase_colors.get(phase, self._phase_colors.get("unknown", (128, 128, 128)))
             bar[:, x0:x1] = color
         return bar
 
@@ -716,11 +846,20 @@ class VideoVisualizer:
             marker_x = x0 + int(analyzed_idx * bar_w / n)
             cv2_mod.line(frame, (marker_x, y0 - 2), (marker_x, y1 + 2), (255, 255, 255), 2)
 
+    # Legend swatch labels. For run the timeline collapses 8 phases into a
+    # stance/swing read, so the legend uses coarse family labels rather than
+    # the finer per-phase badge text.
+    _LEGEND_LABEL_OVERRIDE: dict[str, str] = {
+        "midstance": "STANCE", "pre_swing": "TOE-OFF", "mid_swing": "SWING",
+    }
+
     def _draw_phase_legend(
         self, cv2_mod: Any, frame: Any, width: int, height: int,
     ) -> None:
         """Compact phase legend above the timeline bar. Only shown for first 2 seconds."""
-        phases = ["entry", "catch", "pull", "push", "recovery"]
+        phases = self._phase_legend_order
+        if not phases:
+            return
         font = cv2_mod.FONT_HERSHEY_SIMPLEX
         scale = 0.35
         thick = 1
@@ -729,8 +868,8 @@ class VideoVisualizer:
         x = 14
         y = height - 28 - 12 - 22  # above the timeline bar
         for phase in phases:
-            color = SWIM_PHASE_COLORS[phase]
-            label = SWIM_PHASE_LABELS[phase]
+            color = self._phase_colors[phase]
+            label = self._LEGEND_LABEL_OVERRIDE.get(phase, self._phase_labels[phase])
             cv2_mod.rectangle(frame, (x, y), (x + swatch, y + swatch), color, -1)
             cv2_mod.putText(
                 frame, label, (x + swatch + 3, y + swatch - 1),

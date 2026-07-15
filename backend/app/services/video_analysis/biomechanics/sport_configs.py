@@ -31,6 +31,8 @@ RUNNING_REFERENCE = {
     "elbow_angle": (85, 100),            # deg (~90 deg arm carry; coaching consensus)
     "vertical_oscillation_cm": (6, 10),  # cm (Folland 2017; typical economical range 6-10)
     "ground_contact_ms": (180, 250),     # ms (Hunter 2004; Weyand 2000 -- elite ~200)
+    "flight_time_ms": (80, 150),         # ms aerial phase (Weyand 2000; recreational ~100-140)
+    "overstride_ratio": (0.0, 0.15),     # foot-ahead/leg-length at contact; <0.15 = foot near under hip (Heiderscheit 2011; Souza 2016)
 }
 
 # Cycling reference ranges (bike fit)
