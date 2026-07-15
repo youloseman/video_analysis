@@ -34,6 +34,9 @@ RUN mkdir -p models \
 # Application code (config.py resolves BACKEND_DIR to /app -> /app/models, /app/uploads).
 COPY backend/app ./app
 COPY backend/scripts ./scripts
+# Academy articles (Markdown). The parser resolves CONTENT_DIR to /app/content
+# (parser.py parents[3] -> /app), so these must live at /app/content/academy.
+COPY backend/content ./content
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
