@@ -1,0 +1,111 @@
+{
+  "topic": "cycling cleat fore-aft position — biomechanics, comfort and economy",
+  "sourced_by": "Claude via PubMed / journal search + WebFetch of abstracts (2026-07). Full texts of paywalled papers surfaced via abstracts/search snippets, not read in full — flagged below.",
+  "reference_article": "myVeloFit 'Cleat Positioning 101' — practical DIY guide with NO scientific citations; our angle is evidence-first.",
+  "key_facts": [
+    {
+      "claim": "The conventional fore-aft cleat guideline places the pedal axle under the ball of the foot, at a midpoint between the 1st and 5th metatarsophalangeal joints (roughly under the 3rd MTP joint).",
+      "value": null,
+      "unit": null,
+      "context": "standard bike-fit reference position",
+      "source_type": "reference/consensus",
+      "source": {"author": "bike-fit consensus (restated in cleat-pain literature)", "year": 2024, "title": "cited in Bonfatti et al. 2024 background", "where": "PubMed 38512304"},
+      "confidence": "high",
+      "note": "This is the baseline the studies compare against, not a research finding per se."
+    },
+    {
+      "claim": "Cleats positioned too far forward (under the phalanges/toes) are linked to metatarsal-level pain via peripheral ischemia/pressure; moving them back under the metatarsal heads reduced foot pain by 5 points on the Numeric Pain Rating Scale after five sessions.",
+      "value": "5",
+      "unit": "points (NPRS, 0-10)",
+      "context": "21 cyclists with pedaling-specific foot pain",
+      "source_type": "primary",
+      "source": {"author": "Bonfatti, Bizzoni, Gennari, Salvioli", "year": 2024, "title": "The effect of cleat position on foot pain in cyclists (J Sports Med Phys Fitness 64(8):816-821)", "where": "PubMed 38512304"},
+      "confidence": "high",
+      "note": "Small sample (n=21), variable cleat types, no cadence data — authors call it preliminary. Abstract read; full text not read."
+    },
+    {
+      "claim": "Oxygen uptake at 60% of peak power was lower when the cleat was positioned further back (toward the arch), suggesting a rearward foot position can slightly lower the oxygen cost of cycling — but overall the effect of cleat position on economy is small and inconsistent across studies.",
+      "value": null,
+      "unit": "VO2 / oxygen cost",
+      "context": "sub-maximal cycling ~60% peak power",
+      "source_type": "primary",
+      "source": {"author": "antero-posterior cleat study (road cycling)", "year": 2011, "title": "Antero-posterior position of the cleat for road cycling (Science & Sports)", "where": "ScienceDirect S0765159711002383 (abstract via search; full text paywalled/403)"},
+      "confidence": "medium",
+      "note": "Direction is consistent across sources but magnitude is small; full text not accessible."
+    },
+    {
+      "claim": "A backward (posterior) cleat position lowered plantar-flexor muscle activity — soleus at sub-maximal intensity and gastrocnemius medialis by about 25% — and lowered the energetic cost of the subsequent run (~5.9%) in a triathlon context, without changing cycling performance.",
+      "value": "~25% gastrocnemius; ~5.9% run cost",
+      "unit": "% reduction",
+      "context": "simulated sprint-triathlon cycling then running",
+      "source_type": "primary",
+      "source": {"author": "cleat-position triathlon biomechanics pilot", "year": 2020, "title": "Effect of cycling shoe cleat position on biomechanical and physiological responses during cycling and subsequent running (pilot study)", "where": "ResearchGate 345930328 (via search snippet)"},
+      "confidence": "medium",
+      "note": "Pilot study; numbers from search snippet, abstract-level. Treat as suggestive."
+    },
+    {
+      "claim": "In a randomized controlled trial of 13 trained triathletes, an aft (backward) cleat position produced NO cardiovascular/oxygen-cost difference during cycling and did NOT improve the subsequent 5 km run — the traditional position was actually ~2.1% faster in the first kilometre.",
+      "value": "2.1% faster km1 (traditional); no cycling difference",
+      "unit": "% / RCT",
+      "context": "13 well-trained triathletes, short-distance triathlon",
+      "source_type": "primary",
+      "source": {"author": "Viker, Richardson", "year": 2013, "title": "Shoe cleat position during cycling and its effect on subsequent running performance in triathletes (J Sports Sci 31(9):1007-14)", "where": "PubMed 23360149"},
+      "confidence": "high",
+      "note": "Directly contradicts the popular 'move cleats back for triathlon running' advice. Abstract read in full."
+    },
+    {
+      "claim": "Across four knee-forward-of-foot (KFOF) fore-aft positions (+20, 0, -20, -40 mm; knee over 5th metatarsal at the 3 o'clock crank position), there was NO significant VO2 or heart-rate difference, but the extreme positions (+20 and -40 mm) tended to raise energy expenditure, i.e. the neutral position was most economical for most riders.",
+      "value": "+20 / 0 / -20 / -40 mm KFOF",
+      "unit": "mm (knee-to-5th-metatarsal at 3 o'clock)",
+      "context": "6 male amateur cyclists, graded + short-ride tests",
+      "source_type": "primary",
+      "source": {"author": "Tang, Huang, Liang, Cheng, Hsieh, Shih, Lin", "year": 2022, "title": "Effects of Different Pedaling Positions on Muscle Usage and Energy Expenditure in Amateur Cyclists (IJERPH 19(19):12046)", "where": "PMC9564475"},
+      "confidence": "high",
+      "note": "Very small sample (n=6). KFOF is a SIDE-VIEW measurable relationship -> product bridge. Abstract read in full."
+    },
+    {
+      "claim": "A 2024 systematic review of cycling position optimisation found shoe/cleat position affected hip extension by only ~1.5 degrees and did not significantly alter hip flexion, range of motion, muscle activation, or kinetics in submaximal or sprint cycling.",
+      "value": "1.5",
+      "unit": "degrees (hip extension)",
+      "context": "systematic review of positional changes",
+      "source_type": "review",
+      "source": {"author": "cycling position optimisation systematic review", "year": 2024, "title": "Cycling position optimisation — a systematic review (Journal of Sports Sciences, 10.1080/02640414.2024.2394752)", "where": "tandfonline (full text 403; findings via search)"},
+      "confidence": "medium",
+      "note": "Full text paywalled; cleat-specific numbers pulled from search summaries, not the primary text."
+    }
+  ],
+  "mechanism": "A clipless cleat fixes where your foot sits on the pedal, which sets the lever from the pedal axle to your ankle. Push the cleat forward (toward the toes) and that lever lengthens: your calf (soleus and gastrocnemius) has to work harder to stabilise the ankle, and pressure concentrates under the ball of the foot. Slide it back toward the arch and the lever shortens: the plantar-flexors do less work and metatarsal pressure eases. That is why fore-aft cleat position shows up first as a COMFORT and foot-pain variable, and only secondarily (and weakly) as an economy variable.",
+  "tradeoffs": "The evidence does not support chasing a single 'fastest' cleat position. Economy differences between reasonable positions are small and inconsistent; the clearest, most reproducible effect is on foot comfort/pain and on plantar-flexor load. Extremes in either direction (very forward or very far back) tend to cost efficiency and/or comfort. And the popular triathlon rule 'shift cleats back to save your calves for the run' is NOT supported by the one RCT that tested it — running was no better, and slightly worse early on. So the honest advice is: centre the cleat correctly, fix pain if you have it, and don't expect free watts.",
+  "practical_rules": [
+    "Start with the standard position: pedal axle under the ball of the foot, roughly a midpoint between the 1st and 5th metatarsal heads.",
+    "If you get burning/numbness or pain under the ball of the foot, move the cleat BACKWARD (toward the arch) a few millimetres — the pain evidence points this way.",
+    "Change fore-aft in small steps (2-3 mm) and test over several rides; effects on comfort build up, they aren't instant.",
+    "Moving the cleat back effectively shortens your leg's reach to the pedal, so re-check (and usually slightly raise) saddle height after a big change.",
+    "Don't move cleats back expecting a triathlon running benefit — the RCT evidence doesn't support it.",
+    "For rotation/float and stance width, match your foot's natural angle and hip width; these are comfort/knee-health settings, not power settings."
+  ],
+  "myths": [
+    {"myth": "There is one optimal cleat position that unlocks free power.", "reality": "Economy differences between reasonable fore-aft positions are small and inconsistent across studies; the reliable effect is on comfort and plantar-flexor load.", "has_citation": true},
+    {"myth": "Triathletes should move cleats back to spare the calves for the run.", "reality": "A 13-rider RCT found no cycling benefit and no faster subsequent run — the traditional position was ~2.1% faster in km 1.", "has_citation": true},
+    {"myth": "Further forward = more power because you 'push through the toes'.", "reality": "Forward positions raise plantar-flexor load and metatarsal pressure and are linked to foot pain, without a clear economy gain.", "has_citation": true}
+  ],
+  "quotable_numbers": [
+    "Moving cleats back under the metatarsal heads cut foot pain by 5 points on a 0-10 scale (2024, n=21).",
+    "A backward cleat cut gastrocnemius activity ~25% and subsequent-run energy cost ~5.9% in a triathlon pilot.",
+    "In a 13-rider RCT, an aft cleat gave NO cycling benefit and a ~2.1%-slower first km of running."
+  ],
+  "gaps": [
+    "Most cleat studies are small (n=6-21) and several are pilots — treat magnitudes cautiously.",
+    "Two key sources (Science & Sports 2011; tandfonline 2024 review) were paywalled (HTTP 403); their numbers came from abstracts/search summaries, not full text — verify before quoting precisely.",
+    "Rotation/float and stance-width have far less quantitative research than fore-aft; recommendations there are consensus, not trial-backed.",
+    "The product bridge (KFOF = knee-forward-of-foot) is a side-view geometry, but no study links a side-view cleat/fit measurement to injury outcomes directly."
+  ],
+  "product_bridge": "Fore-aft cleat position changes the knee-forward-of-foot (KFOF) relationship and effective leg length — both of which show up on a SIDE-VIEW clip as knee angle and knee-over-pedal position. So Flapp's side-view analysis can't see the cleat itself, but it CAN see the downstream effect the cleat is meant to dial in.",
+  "primary_sources_to_verify": [
+    "PubMed 38512304 — Bonfatti et al. 2024, cleat position & foot pain",
+    "PubMed 23360149 — Viker & Richardson 2013, cleat position & subsequent running (RCT)",
+    "PMC9564475 — Tang et al. 2022, KFOF pedaling positions & energy expenditure",
+    "ScienceDirect S0765159711002383 — antero-posterior cleat position (2011) [paywalled]",
+    "tandfonline 10.1080/02640414.2024.2394752 — cycling position systematic review 2024 [paywalled]"
+  ]
+}

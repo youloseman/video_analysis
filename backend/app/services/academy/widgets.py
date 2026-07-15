@@ -266,6 +266,98 @@ _CRANK_FIT_JS = """
 """
 
 
+# ---------------------------------------------------------------------------
+# Cleat fore-aft -> saddle-height helper
+# ---------------------------------------------------------------------------
+# Pure geometry / bike-fit consensus, no invented numbers: moving the cleat
+# BACKWARD (toward the arch) effectively shortens the leg's reach to the pedal,
+# so the saddle should be RAISED by ~the same amount (and vice-versa). This is
+# the standard fitter rule, stated even by practical guides ("moving cleats
+# rearward effectively shortens leg length"). Serves the article's "re-check
+# saddle height after a fore-aft cleat change" rule.
+_CLEAT_SADDLE = """
+<figure class="cleat-fit" data-widget-ready="1">
+  <figcaption class="wcap">
+    <span class="weyebrow">Interactive</span>
+    Cleat shift → saddle-height helper — keep your leg extension
+  </figcaption>
+  <div class="wgrid">
+    <div class="wcontrols">
+      <label class="wctl">
+        <span class="wlab">Move cleat <b id="cs-dir">4 mm back</b></span>
+        <input type="range" id="cs-shift-r" min="-8" max="8" step="1" value="4">
+        <span class="wscale"><span>8 mm forward</span><span>0</span><span>8 mm back</span></span>
+      </label>
+      <label class="wctl">
+        <span class="wlab">Current saddle height <b><span id="cs-sh">730</span> mm</span></span>
+        <input type="range" id="cs-sh-r" min="600" max="820" step="1" value="730">
+      </label>
+    </div>
+    <div class="wout">
+      <div class="wsmall">New saddle height</div>
+      <div class="wbig"><span id="cs-out">734</span><span class="wunit">mm</span></div>
+      <div class="wsub" id="cs-delta">raise the saddle 4 mm</div>
+    </div>
+  </div>
+  <p class="wnote">
+    Geometry / fit consensus: moving the cleat <b>back</b> shortens your reach to
+    the pedal, so <b>raise the saddle</b> by about the same amount (moving it
+    forward → lower the saddle). A first-approximation starting point, not a
+    substitute for a proper bike fit — re-check knee comfort over a few rides.
+  </p>
+</figure>
+"""
+
+_CLEAT_SADDLE_CSS = """
+.cleat-fit{margin:34px 0;border:1px solid var(--c-line);border-radius:var(--radius);
+  background:#fff;box-shadow:var(--shadow);overflow:hidden}
+.cleat-fit .wcap{padding:18px 22px 0;font-family:var(--f-display);font-weight:800;
+  text-transform:uppercase;font-size:17px;color:var(--c-navy);line-height:1.2}
+.cleat-fit .weyebrow{display:block;font-family:var(--f-body);font-size:11px;letter-spacing:.16em;
+  color:var(--c-blue);margin-bottom:6px}
+.cleat-fit .wgrid{display:grid;grid-template-columns:1fr 240px;gap:22px;padding:20px 22px}
+.cleat-fit .wctl{display:block;margin-bottom:20px}
+.cleat-fit .wlab{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:13px;font-weight:600;color:var(--c-ink-soft);margin-bottom:8px}
+.cleat-fit .wlab b{font-weight:800;color:var(--c-navy);font-family:var(--f-mono);font-size:14px}
+.cleat-fit input[type=range]{width:100%;accent-color:var(--c-blue);cursor:pointer;height:22px}
+.cleat-fit .wscale{display:flex;justify-content:space-between;font-size:11px;
+  color:var(--c-ink-soft);margin-top:4px;font-weight:600}
+.cleat-fit .wout{background:linear-gradient(135deg,#14294B,#2F6DE0);color:#fff;border-radius:var(--radius);
+  padding:22px 20px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.cleat-fit .wsmall{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.cleat-fit .wbig{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:42px;line-height:1;letter-spacing:-.02em;margin-top:8px}
+.cleat-fit .wbig .wunit{font-size:16px;font-style:normal;font-weight:800;margin-left:6px;opacity:.85}
+.cleat-fit .wsub{font-size:13px;color:rgba(255,255,255,.85);margin-top:12px;font-weight:600}
+.cleat-fit .wnote{font-size:12px;line-height:1.5;color:var(--c-ink-soft);background:var(--c-panel);
+  margin:0;padding:14px 22px;border-top:1px solid var(--c-line)}
+@media(max-width:640px){.cleat-fit .wgrid{grid-template-columns:1fr}}
+"""
+
+_CLEAT_SADDLE_JS = """
+(function(){
+  var el=document.querySelector('.cleat-fit[data-widget-ready]'); if(!el) return;
+  var q=function(id){return el.querySelector(id);};
+  var shift=q('#cs-shift-r'),shR=q('#cs-sh-r');
+  function render(){
+    var s=+shift.value,sh=+shR.value;   // s>0 = cleat moved BACK -> raise saddle
+    q('#cs-sh').textContent=sh;
+    q('#cs-dir').textContent = s===0 ? 'no shift' :
+      (Math.abs(s)+' mm '+(s>0?'back':'forward'));
+    var nsh=Math.round(sh+s);            // raise by the backward shift
+    q('#cs-out').textContent=nsh;
+    var msg;
+    if(s===0) msg='no saddle change needed';
+    else if(s>0) msg='raise the saddle '+s+' mm';
+    else msg='lower the saddle '+Math.abs(s)+' mm';
+    q('#cs-delta').textContent=msg;
+  }
+  [shift,shR].forEach(function(x){x.addEventListener('input',render);});
+  render();
+})();
+"""
+
+
 # name -> {html, css, js}. The renderer inlines css/js once per page if the
 # widget appears in the article body.
 WIDGETS: dict[str, dict[str, str]] = {
@@ -278,6 +370,11 @@ WIDGETS: dict[str, dict[str, str]] = {
         "html": _CRANK_FIT,
         "css": _CRANK_FIT_CSS,
         "js": _CRANK_FIT_JS,
+    },
+    "cleat-saddle": {
+        "html": _CLEAT_SADDLE,
+        "css": _CLEAT_SADDLE_CSS,
+        "js": _CLEAT_SADDLE_JS,
     },
 }
 
