@@ -35,7 +35,11 @@ RUNNING_DIAGNOSIS_ORDER: list[str] = [
 # rather than a dead link. Add slugs here as Academy articles are published.
 RUNNING_ACADEMY_SLUGS: dict[str, str] = {
     "cadence": "running-cadence",
-    # overstride / foot-strike / vertical_osc articles: add slugs when written.
+    "overstride": "overstriding",
+    "foot_strike": "foot-strike",
+    "vertical_osc": "vertical-oscillation",
+    # ground-contact-time.md exists for SEO but has no drill (GCT points back
+    # to cadence), so it isn't mapped here.
 }
 
 # ---------------------------------------------------------------------------
