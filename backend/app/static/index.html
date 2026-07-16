@@ -599,6 +599,23 @@ h2.sec + .speedline{margin-bottom:24px}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
 .tile{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;min-height:96px}
+/* ---------- Aero & watts panel ---------- */
+#aeroBlock .eyebrow .ic{width:16px;height:16px;vertical-align:-3px;margin-right:5px}
+.aero-hero{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0E2140,#14294B);border-radius:var(--radius);padding:18px 22px;color:#fff}
+.aero-watts{display:flex;align-items:baseline;gap:4px;line-height:1}
+.aero-w-num{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:52px;color:#fff;font-feature-settings:"tnum" 1}
+.aero-w-unit{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:24px;color:var(--c-coral)}
+.aero-w-cap{font-size:13px;font-weight:700;color:#cdd9ea}
+.aero-w-cap .hint{color:#8fa6c6;font-weight:600}
+.aero-lead{font-size:14.5px;line-height:1.55;color:var(--c-ink);margin:16px 0 6px}
+.aero-gauge{width:100%;max-width:400px;height:auto;display:block;margin:6px 0 10px}
+.aero-cue{display:flex;gap:8px;align-items:flex-start;background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--c-ink);margin:8px 0}
+.aero-cue .ic{width:18px;height:18px;color:var(--c-blue);flex:none;margin-top:1px}
+.aero-foot{margin:12px 0 4px}
+.aero-disc{font-size:11.5px;color:var(--c-ink-soft);line-height:1.5;margin:10px 0 0}
+.aero-ok{display:flex;gap:8px;align-items:flex-start;font-size:14.5px;color:var(--c-ink)}
+.aero-ok .ic{width:20px;height:20px;color:var(--st-good);flex:none;margin-top:1px}
+@media (max-width:520px){ .aero-w-num{font-size:42px} .aero-hero{padding:16px 18px} }
 .tile .t-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);
   display:flex;align-items:center;gap:8px}
 .tile .t-lbl .sdot{width:8px;height:8px;border-radius:50%;flex:none}
@@ -799,6 +816,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></symbol>
   <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></symbol>
+  <symbol id="i-aero" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h15a3 3 0 1 1-3 3"/><path d="M3 16h8"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1070,6 +1089,15 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <div class="speedline-sm"></div>
       </div>
       <div id="issues"></div>
+    </div>
+
+    <div class="block hidden" id="aeroBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-aero"/></svg> Aerodynamics</div>
+        <h3>Aero &amp; watts</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div id="aeroPanel"></div>
     </div>
 
     <div id="upsellHost" class="hidden"></div>
@@ -1850,13 +1878,7 @@ function bikeTiles(s){
   if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
   if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
-  if(s.aero_estimate&&s.aero_estimate.zone_label){
-    var ae=s.aero_estimate, nz=ae.next_zone;
-    var sub = nz
-      ? ('flatten to '+nz.target_trunk_angle+'° → −'+nz.drag_reduction_pct+'% drag (~'+nz.approx_watts_saved+'W @ '+ae.reference_speed_kmh+'km/h)')
-      : 'well-placed — no flatter target';
-    t.push(tile('Aero (relative)',ae.zone_label,'',sub,nz?'':'good',true));
-  }
+  // Aero now has its own headline panel (renderAeroPanel), not a tile.
   return t;
 }
 function runTiles(s){
@@ -1876,6 +1898,57 @@ function runTiles(s){
   if(s.knee_mean!=null) t.push(tile('Knee (mean)',num(s.knee_mean),'°',null,null,false,R(s.knee_mean,140,160,'°')));
   if(s.knee_min!=null) t.push(tile('Knee (min)',num(s.knee_min),'°'));
   return t;
+}
+
+/* ============================================================
+   Aero & watts — headline panel (bike, road/TT/tri positions).
+   Turns the trunk-angle CdA read-out into "flatten to X° -> save
+   N-M W" with a torso-angle gauge. Physics from aero_estimator.py
+   (relative CdA zones + dP/P = dCdA/CdA). NOT an absolute CdA.
+   ============================================================ */
+function aeroGauge(cur,tgt){
+  const lo=12,hi=55,W=340,H=66,pad=16,y=32;
+  const clamp=a=>Math.max(lo,Math.min(hi,a));
+  const X=a=>pad+(clamp(a)-lo)/(hi-lo)*(W-2*pad);
+  const xc=X(cur),xt=X(tgt);
+  return `<svg viewBox="0 0 ${W} ${H}" class="aero-gauge" role="img" aria-label="Torso angle now ${cur} degrees, target ${tgt} degrees">
+    <defs><linearGradient id="aerograd" x1="0" x2="1"><stop offset="0" stop-color="#22C55E"/><stop offset="1" stop-color="#F59E0B"/></linearGradient></defs>
+    <rect x="${pad}" y="${y-4}" width="${W-2*pad}" height="8" rx="4" fill="url(#aerograd)" opacity=".3"/>
+    <rect x="${Math.min(xc,xt).toFixed(1)}" y="${y-4}" width="${Math.abs(xc-xt).toFixed(1)}" height="8" rx="4" fill="var(--c-blue)" opacity=".25"/>
+    <text x="${pad}" y="${H-5}" font-size="10" fill="var(--c-ink-soft)">flatter · faster</text>
+    <text x="${W-pad}" y="${H-5}" text-anchor="end" font-size="10" fill="var(--c-ink-soft)">upright</text>
+    <line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${y-11}" y2="${y+11}" stroke="#2E9E5B" stroke-width="2.5"/>
+    <text x="${xt.toFixed(1)}" y="${y-15}" text-anchor="middle" font-size="11" font-weight="800" fill="#2E9E5B">target ${tgt}°</text>
+    <circle cx="${xc.toFixed(1)}" cy="${y}" r="7" fill="var(--c-blue)" stroke="#fff" stroke-width="2.5"/>
+    <text x="${xc.toFixed(1)}" y="${y+24}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--c-blue)">now ${cur}°</text>
+  </svg>`;
+}
+function renderAeroPanel(s){
+  const blk=$('#aeroBlock'), host=$('#aeroPanel');
+  const ae=s&&s.aero_estimate;
+  if(!ae||!ae.zone_label){ blk.classList.add('hidden'); host.innerHTML=''; return; }
+  const nz=ae.next_zone;
+  if(nz){
+    const rng=nz.watts_saved_range||[nz.approx_watts_saved,nz.approx_watts_saved];
+    const rngTxt = (rng[0]===rng[1]) ? (''+rng[0]) : (rng[0]+'–'+rng[1]);
+    const drop=Math.max(1,Math.round(ae.trunk_angle-nz.target_trunk_angle));
+    host.innerHTML=`
+      <div class="aero-hero">
+        <div class="aero-watts"><span class="aero-w-num">${rngTxt}</span><span class="aero-w-unit">W</span></div>
+        <div class="aero-w-cap">on the table at race pace<br>
+          <span class="hint">~${nz.approx_watts_saved} W @ ${ae.reference_speed_kmh} km/h · range over ${nz.speed_range_kmh?nz.speed_range_kmh[0]+'–'+nz.speed_range_kmh[1]:'35–45'} km/h</span></div>
+      </div>
+      <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Flattening your torso from <b>${ae.trunk_angle}°</b> toward <b>${nz.target_trunk_angle}°</b> cuts aero drag ~<b>${nz.drag_reduction_pct}%</b>.</p>
+      ${aeroGauge(ae.trunk_angle, nz.target_trunk_angle)}
+      <div class="aero-cue"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> <span>Drop your torso ~<b>${drop}°</b> flatter — only worth it if you can still hold power and breathe there.</span></div>
+      <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
+      <p class="aero-disc">${esc(ae.disclaimer||'')}</p>`;
+  } else {
+    host.innerHTML=`<div class="aero-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+      <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Well-placed: no flatter target within a safe fit.</span></div>
+      <p class="aero-disc">${esc(ae.disclaimer||'')}</p>`;
+  }
+  blk.classList.remove('hidden');
 }
 
 /* ============================================================
@@ -2225,6 +2298,9 @@ function render(job){
     ib.innerHTML=`<div class="banner good" style="margin-top:0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
       <span>No major technique issues detected in this clip.</span></div>`;
   }
+
+  // aero & watts headline panel (bike only; hidden for run + when N/A)
+  if(sport==='bike') renderAeroPanel(s); else $('#aeroBlock').classList.add('hidden');
 
   // tiles
   $('#tiles').innerHTML=(sport==='bike'?bikeTiles(s):runTiles(s)).join('') || '<p class="hint" style="text-align:left">No summary metrics available.</p>';

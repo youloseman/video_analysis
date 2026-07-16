@@ -98,6 +98,22 @@ AERO_ZONES: list[dict[str, Any]] = [
 # labelled "approx" everywhere it surfaces.
 REF_SPEED_KMH = 40.0
 REF_AERO_WATTS = 190.0  # ballpark aero-only power @ ~40 km/h, road drops
+# Speed band for the watt *range*. Aero power scales with speed^3, so the
+# same %-drag saving is worth very different watts at 35 vs 45 km/h. We
+# report the range instead of a single point so the figure is honest about
+# that dependence (and the client can recompute at the rider's own speed).
+REF_SPEED_LOW_KMH = 35.0
+REF_SPEED_HIGH_KMH = 45.0
+
+
+def _aero_watts_at(speed_kmh: float) -> float:
+    """Ballpark aero-only power at ``speed_kmh`` (scales with speed^3)."""
+    return REF_AERO_WATTS * (speed_kmh / REF_SPEED_KMH) ** 3
+
+
+def watts_saved_at(rel_saving: float, speed_kmh: float) -> int:
+    """Watts saved from a relative drag saving at a given speed, to nearest 5."""
+    return int(round(rel_saving * _aero_watts_at(speed_kmh) / 5.0) * 5)
 
 # Below this relative saving a "flatten your torso" suggestion is noise
 # (same zone, rounding), so we suppress next_zone entirely.
@@ -190,13 +206,25 @@ def estimate_aero(
         # precise measurement.
         rel_saving = (current["rel"] - next_zone["rel"]) / current["rel"]
         if target_trunk < trunk_angle and rel_saving >= _MIN_MEANINGFUL_SAVING:
-            watts = round(rel_saving * REF_AERO_WATTS / 5.0) * 5
+            watts = watts_saved_at(rel_saving, REF_SPEED_KMH)
+            watts_low = watts_saved_at(rel_saving, REF_SPEED_LOW_KMH)
+            watts_high = watts_saved_at(rel_saving, REF_SPEED_HIGH_KMH)
             result["next_zone"] = {
                 "zone_key": next_zone["key"],
                 "zone_label": next_zone["label"],
                 "target_trunk_angle": round(target_trunk, 1),
                 "drag_reduction_pct": round(rel_saving * 100, 1),
+                # Point estimate at 40 km/h (kept for back-compat) + an honest
+                # range across a typical race-speed band. The client can also
+                # recompute at the rider's own speed from drag_reduction_pct
+                # and ref_aero_watts (watts = saving * ref * (v/ref_speed)^3).
                 "approx_watts_saved": watts,
+                "watts_saved_range": [watts_low, watts_high],
+                "speed_range_kmh": [REF_SPEED_LOW_KMH, REF_SPEED_HIGH_KMH],
             }
+
+    # Expose the reference baseline so the client can personalise the watt
+    # figure to the rider's own speed without another server round-trip.
+    result["ref_aero_watts"] = REF_AERO_WATTS
 
     return result
