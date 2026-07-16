@@ -128,6 +128,37 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .tdelta{font-weight:800}
 .tdelta.imp{color:var(--st-good)}.tdelta.reg{color:var(--st-bad)}.tdelta.sta{color:var(--c-ink-soft)}
 .tchart{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
+/* ---------- Dashboard ("My technique") ---------- */
+.dash-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 20px}
+.dstat{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:14px 16px;box-shadow:var(--shadow)}
+.dstat-v{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:26px;color:var(--c-navy);line-height:1;font-feature-settings:"tnum" 1}
+.dstat-l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:6px}
+.dash-welcome{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel);padding:22px;box-shadow:var(--shadow)}
+.dash-welcome p{margin:0 0 14px;color:var(--c-ink)}
+.dash-sports{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:22px}
+.dsport{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:16px 18px;box-shadow:var(--shadow)}
+.dsport-empty{background:var(--c-panel)}
+.ds-head{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:14px;color:var(--c-navy)}
+.ds-head .ic{width:18px;height:18px;vertical-align:-3px;margin-right:4px}
+.ds-count{font-size:12px;font-weight:700;color:var(--c-ink-soft)}
+.ds-scorerow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.ds-score{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:40px;line-height:1;font-feature-settings:"tnum" 1}
+.ds-score small{font-size:15px;color:var(--c-ink-soft);font-style:normal;font-weight:800}
+.dspark{width:132px;height:44px;flex:none}
+.ds-delta{margin-top:8px;font-size:13px}
+.ds-actions{display:flex;gap:8px;margin-top:14px}
+.dfocus{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel);padding:16px 18px;box-shadow:var(--shadow);margin-bottom:22px}
+.dfocus .ic{width:16px;height:16px;vertical-align:-2px;margin-right:4px}
+.dfocus-body{font-size:14px;line-height:1.55;color:var(--c-ink);margin:6px 0 12px}
+.dfocus-body p{margin:0 0 8px}
+.dash-recent{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.drec{display:flex;gap:10px;align-items:center;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:8px;cursor:pointer;box-shadow:var(--shadow);transition:.15s}
+.drec:hover,.drec:focus-visible{border-color:var(--c-blue);outline:none}
+.drec-thumb{position:relative;width:64px;height:48px;flex:none;border-radius:8px;overflow:hidden;background:#0d1420}
+.drec-thumb img{width:100%;height:100%;object-fit:cover}
+.drec-score{position:absolute;left:4px;bottom:4px;color:#fff;font-family:var(--f-mono);font-weight:700;font-size:12px;padding:1px 6px;border-radius:6px}
+.drec-title{font-weight:800;font-size:13px;color:var(--c-navy)}
+@media (max-width:520px){ .dash-summary{grid-template-columns:1fr 1fr} .dspark{display:none} }
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
 /* before / after compare */
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
@@ -720,6 +751,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <path d="M4 4v16h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></symbol>
   <symbol id="i-compare" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M8 4H4v16h4"/><path d="M16 4h4v16h-4"/><path d="M12 3v18"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -744,6 +779,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 <!-- Mobile bottom tab bar (shown < 900px): thumb-reachable primary nav -->
 <nav class="botnav" id="botnav" aria-label="Primary">
+  <a href="#" id="botHome" class="botlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
   <a href="#" id="botAnalyze" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
   <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
   <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
@@ -754,6 +790,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 <aside class="sidebar" id="sidebar" aria-label="Main">
   <div class="wordmark" id="wordmark" role="link" tabindex="0">Flapp<span class="dot"></span></div>
   <nav class="sidenav" aria-label="Site">
+    <a href="#" id="navHome" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
     <a href="#" id="navAnalyze" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
     <a href="#" id="navProgress" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
@@ -810,6 +847,20 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 <main id="main">
 <div class="wrap">
+
+  <!-- ============ DASHBOARD (My technique — signed-in home) ============ -->
+  <section id="dashboard" class="hidden" aria-labelledby="dashTitle">
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">My technique</div>
+      <h2 class="sec" id="dashTitle" tabindex="-1" style="margin-bottom:8px">Dashboard</h2>
+      <div class="speedline"></div>
+    </div>
+    <div id="dashSummary" class="dash-summary"></div>
+    <div id="dashSports" class="dash-sports"></div>
+    <div id="dashFocus"></div>
+    <div class="blockhead"><div class="eyebrow">Latest</div><h3>Recent analyses</h3><div class="speedline-sm"></div></div>
+    <div id="dashRecent" class="dash-recent"></div>
+  </section>
 
   <!-- ============ UPLOADER ============ -->
   <section id="uploader" aria-labelledby="uploaderTitle">
@@ -1270,15 +1321,17 @@ const POSITION_NAMES = { road_hoods:'Road Bike', road_drops:'Road · Drops', tt_
    ============================================================ */
 const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Analyzing… — Flapp',
   results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp',
+  dashboard:'Dashboard — Flapp',
   history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp',
   compare:'Before / After — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
+  dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
-const NAV_FOR_STATE = { history:'#navHistory', trends:'#navProgress', compare:'#navProgress' };
-const BOTNAV_FOR_STATE = { history:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', trends:'#navProgress', compare:'#navProgress' };
+const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -2358,6 +2411,10 @@ function renderAuth(){
   boxes.forEach(box=>{ box.innerHTML=markup; });
   document.querySelectorAll('[data-logout]').forEach(b=>b.addEventListener('click',logout));
   document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openAuth('login')));
+  // The dashboard ("My technique") is an account feature -- reveal its nav
+  // entries only when signed in.
+  $('#navHome').classList.toggle('hidden', !auth);
+  $('#botHome').classList.toggle('hidden', !auth);
 }
 function openAuth(mode){ setAuthMode(mode||'login'); $('#authModal').classList.remove('hidden'); setTimeout(()=>$('#authEmail').focus(),30); }
 function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').textContent=''; $('#authForm').reset(); }
@@ -2390,14 +2447,20 @@ async function submitAuth(e){
   }catch(err){ $('#authErr').textContent='Network error — check your connection and try again.'; }
   finally{ btn.disabled=false; }
 }
-function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; state.cloudHist=null; renderAuth(); reRenderData(); }
+function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; state.cloudHist=null; renderAuth();
+  if(document.body.dataset.state==='dashboard') reset(); else reRenderData(); }
 async function checkAuth(){
   const t=getToken();
   if(t){
     try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); } else if(r.status===401){ localStorage.removeItem(TKEY); } }catch(e){}
   }
   renderAuth();
-  if(auth) migrateAndLoad();
+  if(auth){
+    await migrateAndLoad();
+    // Signed-in users land on their dashboard ("My technique"), unless a job is
+    // being restored or they've already navigated off the initial screen.
+    if(document.body.dataset.state==='upload' && !location.hash.startsWith('#job=')) openDashboard();
+  }
 }
 $('#authClose').addEventListener('click',closeAuth);
 $('#authModal').addEventListener('click',e=>{ if(e.target.id==='authModal') closeAuth(); });
@@ -2491,6 +2554,8 @@ function saveToHistory(kind,res){
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
+    // Typed issues (video only) -> powers the dashboard "focus areas" aggregation.
+    e.issues=(res.detected_issues||[]).map(it=>({type:it.type, severity:(it.severity||'').toLowerCase()})).filter(x=>x.type);
     const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o; e.trendCat=tr.c;
     if(auth){
       state.cloudHist=[e,...(state.cloudHist||[])];
@@ -2874,6 +2939,117 @@ function openProgress(){
 }
 $('#navProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 $('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.progressSport=b.dataset.sport; renderProgress(); toggleCompareCta(); });
+
+/* ============================================================
+   Dashboard ("My technique") — signed-in home. Aggregates the
+   existing history/trend data into one screen: summary, per-sport
+   snapshot with a score sparkline, focus areas, recent analyses.
+   No new backend — all derived from /me/analyses (loadHist()).
+   ============================================================ */
+function daysSince(ms){ return Math.floor((Date.now()-ms)/86400000); }
+function agoStr(ms){ const d=daysSince(ms); return d<=0?'today':d===1?'1 day ago':d+' days ago'; }
+function miniSpark(vals){
+  const W=132,H=44,p=5,n=vals.length; if(n<2) return '';
+  let lo=Math.min(...vals),hi=Math.max(...vals); if(lo===hi){lo-=1;hi+=1;}
+  const X=i=>p+i*(W-2*p)/(n-1), Y=v=>p+(H-2*p)*(1-(v-lo)/(hi-lo));
+  const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const lx=X(n-1),ly=Y(vals[n-1]);
+  return `<svg viewBox="0 0 ${W} ${H}" class="dspark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.2" fill="var(--c-coral)"/></svg>`;
+}
+function sportCard(sport, entries){
+  const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
+  if(!entries.length){
+    return `<div class="dsport dsport-empty">
+      <div class="ds-head"><span><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</span></div>
+      <p class="hint" style="text-align:left;margin:8px 0 14px">No ${label.toLowerCase()} analyses yet.</p>
+      <button class="btn btn-primary btn-sm" data-analyze="${sport}">Analyze a ${label.toLowerCase()}</button>
+    </div>`;
+  }
+  const chron=entries.slice().reverse();               // oldest -> newest
+  const scores=chron.map(e=>e.score).filter(v=>v!=null);
+  const last=entries[0];
+  const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
+  const deltaHtml=dd?`<span class="tdelta ${dd.cls}">${dd.delta>0?'+':''}${dd.delta}${dd.trend?' · '+dd.trend:''}</span>`
+    :'<span class="hint">first analysis — trends build from #2</span>';
+  return `<div class="dsport">
+    <div class="ds-head"><span><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</span>
+      <span class="ds-count">${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
+    <div class="ds-scorerow">
+      <div class="ds-scorebox">
+        <div class="ds-score" style="color:${GRADE_COLORS[last.grade]||C.navy}">${last.score==null?'—':last.score}<small>/100</small></div>
+        <div class="hint">${esc(last.grade||'—')} · ${agoStr(last.at)}</div>
+      </div>
+      ${scores.length>=2?miniSpark(scores):''}
+    </div>
+    <div class="ds-delta">${deltaHtml}</div>
+    <div class="ds-actions">
+      <button class="btn btn-primary btn-sm" data-analyze="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> New</button>
+      ${entries.length>=2?`<button class="btn btn-ghost btn-sm" data-progress="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Progress</button>`:''}
+    </div>
+  </div>`;
+}
+/* Focus areas (Phase 1): pull the "Fix first" block from the most recent
+   analysis that has coach notes. Phase 2 will aggregate typed issues. */
+function renderDashFocus(all){
+  const host=$('#dashFocus'); if(!host) return;
+  const withReport=all.find(e=>e.report);
+  if(!withReport){ host.innerHTML=''; return; }
+  const m=withReport.report.match(/\*\*Fix first\*\*\s*[—:-]?\s*([\s\S]*?)(?:\n\*\*|$)/i);
+  const body=m?m[1].trim():'';
+  if(!body){ host.innerHTML=''; return; }
+  host.innerHTML=`<div class="dfocus">
+    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Work on this</div>
+      <h3>Your focus</h3><div class="speedline-sm"></div></div>
+    <div class="dfocus-body">${mdToHtml(body)}</div>
+    <button class="btn btn-ghost btn-sm" data-id="${withReport.id}" data-focus-open="1">Open full analysis →</button>
+  </div>`;
+}
+function dashRecentCard(e){
+  return `<div class="drec" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} analysis">
+    <div class="drec-thumb">${e.keyframe?`<img src="${e.keyframe}" alt="">`:''}<span class="drec-score" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span></div>
+    <div class="drec-meta"><div class="drec-title">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind||'video')}</div><div class="hint">${fmtWhen(e.at)}</div></div>
+  </div>`;
+}
+function renderDashboard(){
+  const all=loadHist();
+  const nameEl=auth&&auth.email?auth.email.split('@')[0]:null;
+  // First-run / empty state: friendly CTA, hide the widgets.
+  if(!all.length){
+    $('#dashSummary').innerHTML=`<div class="dash-welcome">
+      <p><b>Welcome${nameEl?', '+esc(nameEl):''}.</b> Run your first analysis and your technique, progress and focus areas will build up here.</p>
+      <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
+    </div>`;
+    $('#dashSports').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashRecent').innerHTML='';
+    return;
+  }
+  const now=new Date();
+  const monthCount=all.filter(e=>{ const d=new Date(e.at); return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth(); }).length;
+  const last=all[0];
+  $('#dashSummary').innerHTML=`
+    <div class="dstat"><div class="dstat-v">${all.length}</div><div class="dstat-l">analyses</div></div>
+    <div class="dstat"><div class="dstat-v">${monthCount}</div><div class="dstat-l">this month</div></div>
+    <div class="dstat"><div class="dstat-v">${last?agoStr(last.at):'—'}</div><div class="dstat-l">last analysis</div></div>`;
+  $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
+  renderDashFocus(all);
+  $('#dashRecent').innerHTML=all.slice(0,4).map(dashRecentCard).join('');
+}
+function openDashboard(){ renderDashboard(); setState('dashboard',{focus:'#dashTitle'}); }
+$('#navHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); });
+$('#botHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); closeNav(); });
+$('#dashboard').addEventListener('click',e=>{
+  const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
+  const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress(); return; }
+  const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id); return; }
+  const rc=e.target.closest('.drec'); if(rc){ openHistory(rc.dataset.id); }
+});
+$('#dashboard').addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')){ const rc=e.target.closest('.drec'); if(rc){ e.preventDefault(); openHistory(rc.dataset.id); } }
+});
+/* Go to the uploader preselected for a sport (from a dashboard CTA). */
+function startSportAnalysis(sport){
+  reset();
+  try{ const b=document.querySelector(`#sportSeg [data-sport="${sport}"]`); if(b) b.click(); }catch(_e){}
+}
 
 /* ============================================================
    Before / after — compare two saved analyses side by side
