@@ -607,6 +607,11 @@ h2.sec + .speedline{margin-bottom:24px}
 .aero-w-unit{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:24px;color:var(--c-coral)}
 .aero-w-cap{font-size:13px;font-weight:700;color:#cdd9ea}
 .aero-w-cap .hint{color:#8fa6c6;font-weight:600}
+.aero-speed{display:flex;align-items:center;gap:10px;margin:14px 0 2px;flex-wrap:wrap}
+.aero-speed-lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
+.aero-speed-unit{font-size:12px;color:var(--c-ink-soft);font-weight:700}
+.seg-sm button{padding:6px 12px;font-size:13px;font-weight:800}
+.seg-sm button[aria-pressed="true"]{background:var(--c-blue);color:#fff}
 .aero-lead{font-size:14.5px;line-height:1.55;color:var(--c-ink);margin:16px 0 6px}
 .aero-gauge{width:100%;max-width:400px;height:auto;display:block;margin:6px 0 10px}
 .aero-cue{display:flex;gap:8px;align-items:flex-start;background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--c-ink);margin:8px 0}
@@ -1923,33 +1928,58 @@ function aeroGauge(cur,tgt){
     <text x="${xc.toFixed(1)}" y="${y+24}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--c-blue)">now ${cur}°</text>
   </svg>`;
 }
+/* Personalisation: recompute watts / time saved at any speed from the
+   backend's relative drag saving. Aero power scales with speed^3, and on a
+   flat course at constant power ~85% of resistance is aero, so time saving
+   fraction ~= drag_reduction * aero_share / 3 (standard TT rule of thumb).
+   Both are illustrative, clearly labelled -- physics lives server-side. */
+const AERO_SHARE=0.85, AERO_DIST_KM=40, AERO_SPEEDS=[35,40,45];
+function aeroWattsAt(dragPct, refW, v){ return Math.round(dragPct/100 * refW * Math.pow(v/40,3) / 5)*5; }
+function aeroSecondsSaved(dragPct, v){ const t=AERO_DIST_KM/v*3600; return Math.round(t * (dragPct/100) * AERO_SHARE/3); }
+function fmtSaved(sec){ if(sec<60) return sec+'s'; const m=Math.floor(sec/60), s=sec%60; return s?`${m}m ${s}s`:`${m}m`; }
+function setAeroSpeed(v){
+  const a=state.aero; if(!a) return;
+  state.aeroSpeed=v;
+  const wn=$('#aeroWnum'); if(wn) wn.textContent=aeroWattsAt(a.dragPct,a.refW,v);
+  const sl=$('#aeroSpdLbl'); if(sl) sl.textContent=v;
+  const tm=$('#aeroTime'); if(tm) tm.textContent=fmtSaved(aeroSecondsSaved(a.dragPct,v));
+  document.querySelectorAll('#aeroPanel [data-spd]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.spd===v)));
+}
 function renderAeroPanel(s){
   const blk=$('#aeroBlock'), host=$('#aeroPanel');
   const ae=s&&s.aero_estimate;
-  if(!ae||!ae.zone_label){ blk.classList.add('hidden'); host.innerHTML=''; return; }
+  if(!ae||!ae.zone_label){ blk.classList.add('hidden'); host.innerHTML=''; state.aero=null; return; }
   const nz=ae.next_zone;
   if(nz){
+    const refW=ae.ref_aero_watts||190;
+    state.aero={dragPct:nz.drag_reduction_pct, refW};
+    state.aeroSpeed=40;
     const rng=nz.watts_saved_range||[nz.approx_watts_saved,nz.approx_watts_saved];
     const rngTxt = (rng[0]===rng[1]) ? (''+rng[0]) : (rng[0]+'–'+rng[1]);
     const drop=Math.max(1,Math.round(ae.trunk_angle-nz.target_trunk_angle));
+    const w40=aeroWattsAt(nz.drag_reduction_pct,refW,40), t40=fmtSaved(aeroSecondsSaved(nz.drag_reduction_pct,40));
+    const speedBtns=AERO_SPEEDS.map(v=>`<button type="button" data-spd="${v}" aria-pressed="${v===40}">${v}</button>`).join('');
     host.innerHTML=`
       <div class="aero-hero">
-        <div class="aero-watts"><span class="aero-w-num">${rngTxt}</span><span class="aero-w-unit">W</span></div>
-        <div class="aero-w-cap">on the table at race pace<br>
-          <span class="hint">~${nz.approx_watts_saved} W @ ${ae.reference_speed_kmh} km/h · range over ${nz.speed_range_kmh?nz.speed_range_kmh[0]+'–'+nz.speed_range_kmh[1]:'35–45'} km/h</span></div>
+        <div class="aero-watts"><span class="aero-w-num" id="aeroWnum">${w40}</span><span class="aero-w-unit">W</span></div>
+        <div class="aero-w-cap">saved at <b id="aeroSpdLbl">40</b> km/h<br>
+          <span class="hint">≈ <b id="aeroTime">${t40}</b> over ${AERO_DIST_KM} km · range ${rngTxt} W over 35–45 km/h</span></div>
       </div>
+      <div class="aero-speed"><span class="aero-speed-lbl">Your speed</span><div class="seg seg-sm" role="group" aria-label="Your speed">${speedBtns}</div><span class="aero-speed-unit">km/h</span></div>
       <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Flattening your torso from <b>${ae.trunk_angle}°</b> toward <b>${nz.target_trunk_angle}°</b> cuts aero drag ~<b>${nz.drag_reduction_pct}%</b>.</p>
       ${aeroGauge(ae.trunk_angle, nz.target_trunk_angle)}
       <div class="aero-cue"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> <span>Drop your torso ~<b>${drop}°</b> flatter — only worth it if you can still hold power and breathe there.</span></div>
       <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
-      <p class="aero-disc">${esc(ae.disclaimer||'')}</p>`;
+      <p class="aero-disc">Time saved is a rough constant-power estimate on a flat ${AERO_DIST_KM} km course. ${esc(ae.disclaimer||'')}</p>`;
   } else {
+    state.aero=null;
     host.innerHTML=`<div class="aero-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
       <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Well-placed: no flatter target within a safe fit.</span></div>
       <p class="aero-disc">${esc(ae.disclaimer||'')}</p>`;
   }
   blk.classList.remove('hidden');
 }
+$('#aeroPanel').addEventListener('click',e=>{ const b=e.target.closest('[data-spd]'); if(b) setAeroSpeed(+b.dataset.spd); });
 
 /* ============================================================
    Photo analysis: synchronous POST /analyze-photo (~5 s)
