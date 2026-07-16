@@ -657,6 +657,12 @@ table.data tbody tr:hover{background:var(--c-panel-blue)}
 table.data td.num{font-family:var(--f-mono);font-weight:500;color:var(--c-navy)}
 table.data td.pct{font-family:var(--f-body);font-weight:700;color:var(--c-navy);text-align:right;font-variant-numeric:tabular-nums}
 table.data td.muted{color:var(--c-ink-soft)}
+/* two-sided joint table: merge note + per-row side/date provenance */
+.anglemerge{font-size:13px;color:var(--c-ink-soft);line-height:1.5;margin:-6px 0 14px;
+  padding:10px 12px;background:var(--c-panel-blue);border-radius:var(--radius);border-left:3px solid var(--c-blue)}
+.anglemerge b{color:var(--c-navy);font-weight:700}
+table.data th .ang-src{display:block;font-size:10px;font-weight:600;color:var(--c-ink-faint);
+  text-transform:none;letter-spacing:0;margin-top:2px}
 .tablewrap{overflow-x:auto;position:relative}
 /* right-edge fade hints there are more columns to swipe to on narrow screens */
 @media(max-width:640px){
@@ -833,8 +839,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <a href="#" id="navProgress" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
     <a href="/academy" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
-    <span class="navsep"></span>
-    <a href="/docs" target="_blank" rel="noopener" class="navlink navlink-ext"><svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg><span>API docs</span></a>
   </nav>
   <div class="authbox" id="authbox"></div>
 </aside>
@@ -1085,6 +1089,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <h3>Joint angles</h3>
         <div class="speedline-sm"></div>
       </div>
+      <p class="anglemerge hidden" id="angleMergeNote"></p>
       <div class="tablewrap">
         <table class="data">
           <caption class="visually-hidden">Joint angle statistics: minimum, mean, maximum, optimal range, status and share of valid frames per angle</caption>
@@ -1322,7 +1327,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <a href="/privacy">Privacy</a> ·
       <a href="/terms">Terms</a> ·
       <a href="mailto:support@flapp.app?subject=Flapp%20bug%20report">Report a bug</a> ·
-      <a href="/docs" target="_blank" rel="noopener">API</a> ·
       <a href="/health" target="_blank" rel="noopener">status</a>
     </span>
   </div>
@@ -2765,8 +2769,35 @@ function openHistory(id){
   parts.push(fmtWhen(e.at));
   $('#hdMeta').innerHTML=parts.join('<br>');
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
-  $('#hdRows').innerHTML=(e.metrics||[]).map(m=>`<tr><th scope="row">${esc(m.label)}</th><td class="num">${esc(m.value)}</td><td class="num">${esc(m.sub||'')}</td><td>${m.statusCls?`<span class="pill pill-${m.statusCls}"><span class="dot" aria-hidden="true"></span>${esc(m.statusWord)}</span>`:''}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No measurements.</td></tr>';
+  renderHistoryAngles(e);
   setState('historydetail',{focus:'#hdTitle'});
+}
+/* Render the Measurements block for a saved analysis. New video entries carry
+   full angleStats -> show the 7-column table, merged with the opposite side if
+   another saved analysis covers it. Old entries (metrics only) fall back to the
+   legacy 4-column table. */
+function renderHistoryAngles(e){
+  const host=$('#hdAngleHost'), note=$('#hdAngleMergeNote'); if(!host) return;
+  if(e.angleStats && Object.keys(e.angleStats).length){
+    const paired=findPairedEntry(e.sport, e.position||null, e.cameraSide||null, e.id);
+    const merged=mergeAngleStats(e.angleStats, e.cameraSide||null,
+      paired?paired.angleStats:null, paired?paired.cameraSide:null);
+    const srcMap=paired?angleSourceLabels(e.angleStats, e.cameraSide||null, paired):null;
+    host.innerHTML=`<table class="data">
+      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Valid</th></tr></thead>
+      <tbody>${angleTableRows(merged.stats, e.sport, e.position||null, srcMap)}</tbody></table>`;
+    if(note){
+      if(paired){ note.innerHTML=`Both sides shown: <b>${esc(e.cameraSide||'this')} side</b> from this analysis, <b>${esc(paired.cameraSide||'other')} side</b> filled from your ${esc(fmtWhen(paired.at))} analysis.`; note.classList.remove('hidden'); }
+      else { const s=e.cameraSide==='left'?'right':e.cameraSide==='right'?'left':'other'; note.innerHTML=`Near side only. Analyze the <b>${esc(s)} side</b> to complete this table.`; note.classList.remove('hidden'); }
+    }
+  } else {
+    // legacy entry: reduced 4-column table
+    if(note) note.classList.add('hidden');
+    const rows=(e.metrics||[]).map(m=>`<tr><th scope="row">${esc(m.label)}</th><td class="num">${esc(m.value)}</td><td class="num">${esc(m.sub||'')}</td><td>${m.statusCls?`<span class="pill pill-${m.statusCls}"><span class="dot" aria-hidden="true"></span>${esc(m.statusWord)}</span>`:''}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No measurements.</td></tr>';
+    host.innerHTML=`<table class="data">
+      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Detail</th><th scope="col">Status</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }
 }
 function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTitle'}); }
 $('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
@@ -3401,7 +3432,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles};
 </script>
 </body>
 </html>

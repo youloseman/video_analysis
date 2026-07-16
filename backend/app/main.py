@@ -205,11 +205,18 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# Hide the interactive API docs in production (they expose the full endpoint
+# surface to end users). They stay on locally for development. Railway sets
+# RAILWAY_ENVIRONMENT on every deploy; VA_ENABLE_DOCS=1 can force them back on.
+_docs_on = os.environ.get("VA_ENABLE_DOCS") == "1" or not os.environ.get("RAILWAY_ENVIRONMENT")
 app = FastAPI(
     title="Flapp",
     version="0.6.0",
     description="Flapp — side-view running & cycling form analysis with AI coaching.",
     lifespan=lifespan,
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
 )
 
 # Permissive CORS so a browser frontend (M6) can call this directly. Lock the
