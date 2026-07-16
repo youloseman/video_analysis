@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy — Flapp</title>
-<meta name="description" content="How Flapp handles your videos, photos and data.">
+<meta name="description" content="How Flapp handles your videos, photos, account and data.">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,12 +35,16 @@
   .lede{font-size:17px;color:var(--c-ink);background:var(--c-panel-blue);border-left:4px solid var(--c-blue);
     padding:16px 20px;border-radius:var(--radius);margin:0 0 32px}
   h2{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:var(--c-navy);margin:36px 0 12px}
+  h3{font-family:'Manrope',sans-serif;font-weight:700;font-size:16px;color:var(--c-navy);margin:20px 0 6px}
   p{margin:0 0 14px}
   ul{margin:0 0 16px;padding-left:22px}
   li{margin:6px 0}
   b,strong{color:var(--c-navy)}
   a{color:var(--c-blue)}
   .note{font-size:14px;color:var(--c-ink-soft);background:var(--c-panel);border-radius:var(--radius);padding:14px 18px;margin:16px 0}
+  table.data{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:14.5px}
+  table.data th,table.data td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--c-line);vertical-align:top}
+  table.data th{color:var(--c-navy);font-weight:800;background:var(--c-panel)}
   .contact{background:var(--c-panel);border:1px solid var(--c-line);border-radius:var(--radius);padding:20px 24px;margin-top:32px}
   footer{border-top:1px solid var(--c-line);padding:24px 0;font-size:13px;color:var(--c-ink-soft)}
   footer a{color:var(--c-blue);text-decoration:none}
@@ -58,53 +62,115 @@
 <main>
 <div class="wrap">
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 14 July 2026</p>
+  <p class="updated">Last updated: 15 July 2026</p>
   <div class="speedline"></div>
 
-  <p class="lede"><b>Short version:</b> Your video or photo is uploaded to our server, analyzed, and never sent to any third party. The clip itself is stored only temporarily on the processing server and is discarded automatically. We don't create accounts, run trackers, or sell data.</p>
+  <p class="lede"><b>Short version:</b> We keep only what we need to run the service — your account email (if you sign up), your subscription tier, and a count of the analyses you run. Your uploaded video or photo is processed and then automatically deleted; it is never sold or handed to an advertiser. Only anonymous numeric measurements go to the AI that writes your coaching notes. If you buy an <b>Expert Review</b>, a real person reviews your clip. We run no advertising trackers.</p>
 
-  <p>Flapp ("we", "us") is a personal project that analyzes side-view running and cycling technique from a short video or a single photo. This page explains what we do — and don't do — with your data. It is written to describe how the service actually behaves.</p>
+  <p>Flapp ("we", "us", "our") analyzes side-view running and cycling technique from a short video or a single photo. This page explains what personal information we collect, why, who processes it, how long we keep it, and the rights you have over it. It is written to describe how the service actually behaves. Flapp is operated from British Columbia, Canada.</p>
 
-  <h2>What you send us</h2>
+  <h2>1. What we collect</h2>
+
+  <h3>If you use Flapp without an account</h3>
   <ul>
     <li>The <b>video or photo</b> you upload for analysis.</li>
     <li>The <b>sport and position</b> you select (e.g. cycling, TT/Tri).</li>
     <li>Your <b>IP address</b>, which reaches our server automatically with any web request.</li>
   </ul>
-  <p>We do <b>not</b> ask for your name, email, or any account. There is no sign-up.</p>
 
-  <h2>What we do with your media</h2>
+  <h3>If you create an account</h3>
+  <ul>
+    <li>Your <b>email address</b> and a <b>password</b> (we store only a salted one-way hash of the password — never the password itself).</li>
+    <li>Your <b>subscription tier</b> and account creation date.</li>
+    <li>A <b>usage record</b>: one row per analysis (timestamp and whether it was a video or a photo), used to enforce your plan's quota. It does not contain the media or the results.</li>
+  </ul>
+
+  <h3>If you buy a paid plan</h3>
+  <ul>
+    <li>Payments are handled by a third-party payment processor. <b>We do not receive or store your full card number.</b> We receive only what the processor returns to us — such as a subscription status and a customer/transaction reference — so we can activate your plan.</li>
+  </ul>
+
+  <p>We do not ask for your name, address, phone number, or date of birth, and we do not build advertising or behavioural profiles.</p>
+
+  <h2>2. What we do with your media</h2>
   <ul>
     <li>Your clip or photo is processed on our server to detect body pose and measure joint angles.</li>
     <li>For video, we optionally render an annotated "overlay" copy with the skeleton drawn on it, so you can review and download it.</li>
-    <li>The uploaded file and any overlay are written to <b>temporary storage on the processing server</b> and are <b>not stored in a database or long-term storage</b>. They are discarded automatically when the server instance restarts or redeploys (which happens frequently), and results are not persisted after you leave the page. We do not keep a copy for our own use.</li>
+    <li>The uploaded file and any overlay are written to <b>temporary storage on the processing server</b> and are <b>not stored in a database or long-term storage</b>. They are discarded automatically (at the latest when the server instance restarts or redeploys, which happens frequently), and results are not persisted after you leave the page. We do not keep a copy for our own marketing or training.</li>
     <li><b>Your video or photo is never uploaded to any third-party AI service.</b> Only anonymous numerical measurements (joint angles, scores, detected issues) are sent to Google's Gemini API to generate the written coaching notes — no images, and nothing that identifies you.</li>
   </ul>
 
-  <div class="note">Because processing storage is temporary, Flapp cannot retrieve a past analysis for you. If you want to keep your result or overlay video, download it before leaving the page.</div>
+  <div class="note">Because processing storage is temporary, Flapp cannot retrieve a past analysis for you (except during an in-progress Expert Review, see below). If you want to keep your result or overlay video, download it before leaving the page.</div>
 
-  <h2>Your IP address</h2>
-  <p>We use your IP address for one purpose only: to enforce the free-tier limit (a small number of analyses per day). IP addresses are kept in the server's memory on a rolling 24-hour window and are cleared automatically. They are not stored in a database, linked to your media, or shared.</p>
-
-  <h2>Cookies and tracking</h2>
-  <p>Flapp sets no cookies and runs no analytics or advertising trackers. Your remaining daily quota is stored in your own browser's local storage, on your device — not on our server.</p>
-
-  <h2>Third parties</h2>
+  <h2>3. Expert Review — when a person sees your clip</h2>
+  <p>If you purchase an <b>Expert Review</b>, your video is reviewed by a <b>real human reviewer</b> (not only the automated system) who writes a manual assessment. For this feature only:</p>
   <ul>
-    <li><b>Hosting:</b> the app runs on Railway, which processes requests on our behalf.</li>
-    <li><b>Google Gemini API:</b> receives only anonymous numeric metrics to write coaching text, as described above.</li>
+    <li>Your clip is <b>retained until the review is delivered</b>, so the reviewer can watch it — rather than being discarded immediately.</li>
+    <li>It is accessed solely to produce your review, is not shared further, and is <b>deleted once the review is complete</b> (and in any case within a short period after delivery).</li>
   </ul>
-  <p>We do not sell, rent, or share your data with anyone else.</p>
+  <p>If you do not buy an Expert Review, no human reviews your footage — it is only processed automatically as described above.</p>
 
-  <h2>Children</h2>
-  <p>Flapp is not intended for children under 16. Please don't upload footage of a minor without the consent of a parent or guardian.</p>
+  <h2>4. Why we're allowed to use your data (legal basis)</h2>
+  <p>For visitors in regions with data-protection laws such as the EU/UK GDPR, our legal bases are:</p>
+  <ul>
+    <li><b>Performing the service you asked for</b> (a contract): analyzing your upload, running your account, and delivering a paid plan or Expert Review.</li>
+    <li><b>Our legitimate interests</b>: keeping the service secure, preventing abuse, and enforcing free-tier limits — balanced against your privacy.</li>
+    <li><b>Legal obligation</b>: keeping limited billing records where tax or accounting law requires it.</li>
+  </ul>
 
-  <h2>Changes</h2>
-  <p>This is an evolving beta product, and this policy may change as the service grows. We'll update the "last updated" date above when it does.</p>
+  <h2>5. Your IP address</h2>
+  <p>For anonymous visitors, we use the IP address for one purpose: to enforce the free-tier limit (a small number of analyses per day). Anonymous IP addresses are kept in the server's memory on a rolling 24-hour window and are cleared automatically — they are not written to a database, linked to your media, or shared.</p>
+
+  <h2>6. Cookies and tracking</h2>
+  <p>Flapp runs no analytics or advertising trackers. If you sign in, we use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking. Your remaining daily quota (for anonymous use) is stored in your own browser's local storage, on your device — not on our server.</p>
+
+  <h2>7. Who processes your data (third parties)</h2>
+  <table class="data">
+    <tr><th>Provider</th><th>What they handle</th></tr>
+    <tr><td><b>Railway</b> (hosting)</td><td>Runs the app and temporarily stores uploads during processing.</td></tr>
+    <tr><td><b>Google Gemini API</b></td><td>Receives only anonymous numeric metrics to write coaching text — no images, no identifiers.</td></tr>
+    <tr><td><b>Payment processor</b></td><td>Handles card payments for paid plans. Holds your payment details under its own privacy policy; we never see your full card number.</td></tr>
+  </table>
+  <p>We do <b>not</b> sell, rent, or share your personal information with anyone else, and we do not use it for third-party advertising.</p>
+
+  <h2>8. International transfers</h2>
+  <p>Flapp is operated from Canada, and our providers (above) may process data on servers in Canada, the United States, or elsewhere. If you access Flapp from the EU/UK, this means your data may be transferred outside your country. We rely on the providers' own safeguards (such as standard contractual clauses) for these transfers, and we keep the personal data involved to the minimum described here.</p>
+
+  <h2>9. How long we keep it</h2>
+  <table class="data">
+    <tr><th>Data</th><th>Retention</th></tr>
+    <tr><td>Uploaded video / photo (standard)</td><td>Temporary — deleted automatically, not persisted after you leave.</td></tr>
+    <tr><td>Uploaded video (Expert Review)</td><td>Kept until the review is delivered, then deleted.</td></tr>
+    <tr><td>Anonymous IP (free-tier limit)</td><td>Rolling 24 hours, in memory only.</td></tr>
+    <tr><td>Account (email, password hash, tier)</td><td>Until you ask us to delete your account.</td></tr>
+    <tr><td>Usage records (analysis counts)</td><td>Deleted when your account is deleted.</td></tr>
+    <tr><td>Billing records</td><td>Kept as long as tax/accounting law requires.</td></tr>
+  </table>
+
+  <h2>10. Your rights</h2>
+  <p>Depending on where you live (including under Canada's PIPEDA and the EU/UK GDPR), you can:</p>
+  <ul>
+    <li><b>Access</b> the personal information we hold about you.</li>
+    <li><b>Correct</b> it if it's wrong.</li>
+    <li><b>Delete</b> your account and associated data ("right to be forgotten").</li>
+    <li><b>Export</b> your data in a portable form.</li>
+    <li><b>Object to</b> or <b>restrict</b> certain processing, and withdraw consent where we relied on it.</li>
+    <li><b>Complain</b> to your data-protection authority (in Canada, the Office of the Privacy Commissioner).</li>
+  </ul>
+  <p>Because your media is not stored, most of these rights concern your account. To exercise any of them, email us (below) and we'll respond within a reasonable time — and within any period the law requires.</p>
+
+  <h2>11. Security</h2>
+  <p>We use HTTPS in transit, store passwords only as salted hashes, and keep media in temporary storage rather than a permanent database. No system is perfectly secure, so we cannot give an absolute guarantee — but we keep the personal data we hold deliberately minimal to limit the impact if something goes wrong. If a breach ever affects your data, we will notify you and the relevant authority as required by law.</p>
+
+  <h2>12. Children</h2>
+  <p>Flapp is not intended for children under 16. Please don't create an account for, or upload footage of, a minor without the consent of a parent or guardian. If you believe a child has given us personal information, contact us and we will delete it.</p>
+
+  <h2>13. Changes</h2>
+  <p>This is an evolving product, and this policy may change as the service grows. We'll update the "last updated" date above when it does, and for material changes affecting account holders we'll make a reasonable effort to let you know.</p>
 
   <div class="contact">
     <h2 style="margin-top:0">Contact</h2>
-    <p style="margin-bottom:0">Questions about privacy, or want your data handled differently? Email <a href="mailto:top.raider90@gmail.com?subject=Flapp%20privacy%20question">top.raider90@gmail.com</a>.</p>
+    <p style="margin-bottom:0">Questions about privacy, or want your data accessed, exported, or deleted? Email <a href="mailto:privacy@flapp.app?subject=Flapp%20privacy%20request">privacy@flapp.app</a>.</p>
   </div>
 </div>
 </main>
@@ -112,7 +178,7 @@
 <footer>
   <div class="wrap">
     <a href="/">Flapp</a> · <a href="/terms">Terms of Service</a> ·
-    <a href="mailto:top.raider90@gmail.com?subject=Flapp%20bug%20report">Report a bug</a>
+    <a href="mailto:privacy@flapp.app?subject=Flapp%20bug%20report">Report a bug</a>
   </div>
 </footer>
 </body>
