@@ -614,6 +614,18 @@ h2.sec + .speedline{margin-bottom:24px}
 .seg-sm button[aria-pressed="true"]{background:var(--c-blue);color:#fff}
 .aero-lead{font-size:14.5px;line-height:1.55;color:var(--c-ink);margin:16px 0 6px}
 .aero-gauge{width:100%;max-width:400px;height:auto;display:block;margin:6px 0 10px}
+.aero-levers-h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin:10px 0 8px}
+.aero-levers-h .hint{text-transform:none;letter-spacing:0;font-weight:600}
+.aero-levers{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.lev-row{background:#fff;border:1px solid var(--c-line);border-radius:10px;padding:10px 13px}
+.lev-row.is-ok{background:var(--c-panel);opacity:.85}
+.lev-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lev-lbl{font-weight:800;font-size:14px;color:var(--c-navy)}
+.lev-txt{font-size:13px;color:var(--c-ink-soft);line-height:1.45;margin-top:3px}
+.lev-tag{font-weight:800;font-size:12px;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.lev-w{background:#0E2140;color:#fff}
+.lev-cue{background:var(--c-panel-blue);color:var(--c-blue)}
+.lev-ok{background:rgba(46,158,91,.14);color:var(--st-good)}
 .aero-cue{display:flex;gap:8px;align-items:flex-start;background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--c-ink);margin:8px 0}
 .aero-cue .ic{width:18px;height:18px;color:var(--c-blue);flex:none;margin-top:1px}
 .aero-foot{margin:12px 0 4px}
@@ -1945,36 +1957,50 @@ function setAeroSpeed(v){
   const tm=$('#aeroTime'); if(tm) tm.textContent=fmtSaved(aeroSecondsSaved(a.dragPct,v));
   document.querySelectorAll('#aeroPanel [data-spd]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.spd===v)));
 }
+/* One lever row in the breakdown: torso/head carry watts, elbow is a cue. */
+function leverRow(l){
+  const ok=l.status==='ok', w=l.approx_watts_saved;
+  const tag = ok ? '<span class="lev-tag lev-ok">good</span>'
+    : (w ? `<span class="lev-tag lev-w">~${w} W</span>` : '<span class="lev-tag lev-cue">cue</span>');
+  return `<div class="lev-row${ok?' is-ok':''}">
+    <div class="lev-head"><span class="lev-lbl">${esc(l.label)}</span>${tag}</div>
+    <div class="lev-txt">${esc(l.cue)}</div></div>`;
+}
 function renderAeroPanel(s){
   const blk=$('#aeroBlock'), host=$('#aeroPanel');
   const ae=s&&s.aero_estimate;
   if(!ae||!ae.zone_label){ blk.classList.add('hidden'); host.innerHTML=''; state.aero=null; return; }
-  const nz=ae.next_zone;
-  if(nz){
-    const refW=ae.ref_aero_watts||190;
-    state.aero={dragPct:nz.drag_reduction_pct, refW};
-    state.aeroSpeed=40;
-    const rng=nz.watts_saved_range||[nz.approx_watts_saved,nz.approx_watts_saved];
-    const rngTxt = (rng[0]===rng[1]) ? (''+rng[0]) : (rng[0]+'–'+rng[1]);
-    const drop=Math.max(1,Math.round(ae.trunk_angle-nz.target_trunk_angle));
-    const w40=aeroWattsAt(nz.drag_reduction_pct,refW,40), t40=fmtSaved(aeroSecondsSaved(nz.drag_reduction_pct,40));
+  const levers=ae.levers||[], nz=ae.next_zone, refW=ae.ref_aero_watts||190;
+  const anyAvail=levers.some(l=>l.status==='available');
+  const oneQuant=(levers.find(l=>l.drag_reduction_pct)||{}).drag_reduction_pct;
+  const headlineDrag = (ae.total_drag_reduction_pct!=null) ? ae.total_drag_reduction_pct
+    : (nz ? nz.drag_reduction_pct : oneQuant);
+  const multiAvail = levers.filter(l=>l.status==='available').length>1;
+
+  if(anyAvail && headlineDrag){
+    state.aero={dragPct:headlineDrag, refW}; state.aeroSpeed=40;
+    const w40=aeroWattsAt(headlineDrag,refW,40), t40=fmtSaved(aeroSecondsSaved(headlineDrag,40));
+    const rW=[aeroWattsAt(headlineDrag,refW,35), aeroWattsAt(headlineDrag,refW,45)];
     const speedBtns=AERO_SPEEDS.map(v=>`<button type="button" data-spd="${v}" aria-pressed="${v===40}">${v}</button>`).join('');
+    const breakdown = multiAvail
+      ? `<div class="aero-levers-h">Where your watts are <span class="hint">(@ 40 km/h)</span></div><div class="aero-levers">${levers.map(leverRow).join('')}</div>`
+      : (nz ? `<div class="aero-cue"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> <span>Drop your torso ~<b>${Math.max(1,Math.round(ae.trunk_angle-nz.target_trunk_angle))}°</b> flatter — only worth it if you can still hold power and breathe there.</span></div>` : '');
     host.innerHTML=`
       <div class="aero-hero">
         <div class="aero-watts"><span class="aero-w-num" id="aeroWnum">${w40}</span><span class="aero-w-unit">W</span></div>
-        <div class="aero-w-cap">saved at <b id="aeroSpdLbl">40</b> km/h<br>
-          <span class="hint">≈ <b id="aeroTime">${t40}</b> over ${AERO_DIST_KM} km · range ${rngTxt} W over 35–45 km/h</span></div>
+        <div class="aero-w-cap">${multiAvail?'total on the table':'saved'} at <b id="aeroSpdLbl">40</b> km/h<br>
+          <span class="hint">≈ <b id="aeroTime">${t40}</b> over ${AERO_DIST_KM} km · range ${rW[0]}–${rW[1]} W over 35–45 km/h</span></div>
       </div>
       <div class="aero-speed"><span class="aero-speed-lbl">Your speed</span><div class="seg seg-sm" role="group" aria-label="Your speed">${speedBtns}</div><span class="aero-speed-unit">km/h</span></div>
-      <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Flattening your torso from <b>${ae.trunk_angle}°</b> toward <b>${nz.target_trunk_angle}°</b> cuts aero drag ~<b>${nz.drag_reduction_pct}%</b>.</p>
-      ${aeroGauge(ae.trunk_angle, nz.target_trunk_angle)}
-      <div class="aero-cue"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> <span>Drop your torso ~<b>${drop}°</b> flatter — only worth it if you can still hold power and breathe there.</span></div>
+      <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag.${multiAvail?' Here’s where the watts are hiding:':''}</p>
+      ${nz?aeroGauge(ae.trunk_angle, nz.target_trunk_angle):''}
+      ${breakdown}
       <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
       <p class="aero-disc">Time saved is a rough constant-power estimate on a flat ${AERO_DIST_KM} km course. ${esc(ae.disclaimer||'')}</p>`;
   } else {
     state.aero=null;
     host.innerHTML=`<div class="aero-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-      <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Well-placed: no flatter target within a safe fit.</span></div>
+      <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Well-placed: no meaningful aero gains within a safe fit.</span></div>
       <p class="aero-disc">${esc(ae.disclaimer||'')}</p>`;
   }
   blk.classList.remove('hidden');

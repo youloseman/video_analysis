@@ -142,11 +142,88 @@ def _zone_for_trunk(trunk_angle: float) -> dict[str, Any]:
     return AERO_ZONES[-1]
 
 
+# --- Secondary aero levers (head tuck, elbow bend). Only meaningful in an
+# aero-bar position, where the anchors below actually apply. Torso stays the
+# quantified primary; these enrich the picture. ---
+HEAD_TUCK_MAX_DRAG = 0.046   # track testing: a full head tuck saves ~4.6% drag
+HEAD_FLOOR_SCORE = 30.0      # head_alignment at/below this = no tuck at all
+_AERO_BAR_POSITIONS = {"tt_aero", "triathlon"}
+
+
+def _head_lever(
+    head_alignment: float | None,
+    head_optimal_band: tuple[float, float] | None,
+    position: str | None,
+) -> dict[str, Any] | None:
+    """Head-tuck lever from the head-alignment score (0-100, higher = better).
+
+    Quantified against the ~4.6% head-tuck anchor, scaled by how far the
+    score sits below the position's optimal floor. Aero-bar positions only.
+    """
+    if position not in _AERO_BAR_POSITIONS:
+        return None
+    if head_alignment is None or head_optimal_band is None:
+        return None
+    lo = float(head_optimal_band[0])
+    if head_alignment >= lo:
+        return {"key": "head", "label": "Head tuck", "status": "ok",
+                "cue": "Head is well tucked into your shoulder line."}
+    frac = max(0.0, min(1.0, (lo - head_alignment) / max(lo - HEAD_FLOOR_SCORE, 1e-6)))
+    drag = frac * HEAD_TUCK_MAX_DRAG
+    if drag < _MIN_MEANINGFUL_SAVING:
+        return {"key": "head", "label": "Head tuck", "status": "ok",
+                "cue": "Head is close to a good tuck."}
+    return {
+        "key": "head", "label": "Head tuck", "status": "available",
+        "cue": "Drop your gaze and tuck your head so it sits in line with your "
+               "shoulders and back — don't lift it to look up the road.",
+        "drag_reduction_pct": round(drag * 100, 1),
+        "approx_watts_saved": watts_saved_at(drag, REF_SPEED_KMH),
+        "watts_saved_range": [
+            watts_saved_at(drag, REF_SPEED_LOW_KMH),
+            watts_saved_at(drag, REF_SPEED_HIGH_KMH),
+        ],
+    }
+
+
+def _elbow_lever(
+    elbow_angle: float | None,
+    elbow_optimal_band: tuple[float, float] | None,
+    position: str | None,
+) -> dict[str, Any] | None:
+    """Elbow-bend lever -- qualitative only (no clean per-degree drag anchor).
+
+    Straight arms on the pads widen the frontal area; we cue a tuck toward
+    the position's optimal elbow band without inventing a watt figure.
+    """
+    if position not in _AERO_BAR_POSITIONS:
+        return None
+    if elbow_angle is None or elbow_optimal_band is None:
+        return None
+    lo, hi = float(elbow_optimal_band[0]), float(elbow_optimal_band[1])
+    if elbow_angle > hi + 10:
+        return {
+            "key": "elbow", "label": "Elbow bend", "status": "available",
+            "qualitative": True,
+            "cue": (
+                f"Arms are quite straight (~{round(elbow_angle)}°). Bend your "
+                f"elbows toward {int(lo)}-{int(hi)}° on the pads to narrow your "
+                f"frontal area (smaller aero win, hard to quantify from 2D)."
+            ),
+        }
+    return {"key": "elbow", "label": "Elbow bend", "status": "ok",
+            "cue": "Elbows are well bent on the pads."}
+
+
 def estimate_aero(
     trunk_angle: float | None,
     cycling_position: str | None,
     *,
     optimal_trunk_band: tuple[float, float] | None = None,
+    head_alignment: float | None = None,
+    head_optimal_band: tuple[float, float] | None = None,
+    elbow_angle: float | None = None,
+    elbow_optimal_band: tuple[float, float] | None = None,
 ) -> dict[str, Any] | None:
     """Build a relative aero read-out from the measured trunk angle.
 
@@ -226,5 +303,49 @@ def estimate_aero(
     # Expose the reference baseline so the client can personalise the watt
     # figure to the rider's own speed without another server round-trip.
     result["ref_aero_watts"] = REF_AERO_WATTS
+
+    # ---- Multi-lever breakdown -------------------------------------------
+    # Torso is the quantified primary; head/elbow are secondary levers that
+    # only apply in an aero-bar position. Each lever carries its own cue and
+    # (where we have an anchor) its drag/watt contribution.
+    levers: list[dict[str, Any]] = []
+    nz = result["next_zone"]
+    if nz:
+        levers.append({
+            "key": "torso", "label": "Torso angle", "status": "available",
+            "cue": f"Flatten your torso from {result['trunk_angle']}° toward "
+                   f"{nz['target_trunk_angle']}°.",
+            "drag_reduction_pct": nz["drag_reduction_pct"],
+            "approx_watts_saved": nz["approx_watts_saved"],
+            "watts_saved_range": nz["watts_saved_range"],
+        })
+    else:
+        levers.append({"key": "torso", "label": "Torso angle", "status": "ok",
+                       "cue": "Torso is well-placed for this position."})
+    for lever in (
+        _head_lever(head_alignment, head_optimal_band, cycling_position),
+        _elbow_lever(elbow_angle, elbow_optimal_band, cycling_position),
+    ):
+        if lever is not None:
+            levers.append(lever)
+    result["levers"] = levers
+
+    # Combined quantified opportunity. Drag reductions compound
+    # multiplicatively (1 - product of remaining fractions), not additively.
+    quant = [
+        lv["drag_reduction_pct"] / 100.0
+        for lv in levers if lv.get("drag_reduction_pct")
+    ]
+    if len(quant) >= 2:
+        remaining = 1.0
+        for d in quant:
+            remaining *= (1.0 - d)
+        total_drag = 1.0 - remaining
+        result["total_drag_reduction_pct"] = round(total_drag * 100, 1)
+        result["total_watts_saved"] = watts_saved_at(total_drag, REF_SPEED_KMH)
+        result["total_watts_saved_range"] = [
+            watts_saved_at(total_drag, REF_SPEED_LOW_KMH),
+            watts_saved_at(total_drag, REF_SPEED_HIGH_KMH),
+        ]
 
     return result

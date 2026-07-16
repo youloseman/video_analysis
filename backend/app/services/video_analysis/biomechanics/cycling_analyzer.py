@@ -834,6 +834,14 @@ class CyclingAnalyzer(SportAnalyzer):
                 aero_trunk,
                 self.cycling_position,
                 optimal_trunk_band=self.reference.get("trunk_angle"),
+                head_alignment=(
+                    head_alignment_avg
+                    if head_alignment_avg is not None
+                    and not np.isnan(head_alignment_avg) else None
+                ),
+                head_optimal_band=self.reference.get("head_alignment"),
+                elbow_angle=elbow_avg,
+                elbow_optimal_band=self.reference.get("elbow_angle"),
             )
             if aero is not None:
                 summary["aero_estimate"] = aero
