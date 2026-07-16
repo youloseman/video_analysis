@@ -30,6 +30,9 @@ from app.services.video_analysis.detectors import PoseDetector, build_detector
 from app.services.video_analysis.biomechanics.advanced_pipeline import (
     run_advanced_biomechanics,
 )
+from app.services.video_analysis.biomechanics.confidence_scorer import (
+    compute_analysis_confidence,
+)
 from app.services.video_analysis.biomechanics.cycling_analyzer import (
     CyclingAnalyzer,
     determine_locked_camera_side,
@@ -556,6 +559,23 @@ def run_analysis(
     summary["landmark_quality"] = landmark_quality
     summary["quality_warnings"] = quality_warnings
     summary["quality_gate"] = quality_gate_result
+
+    # Soft confidence tier (high/medium/low) -- informational, hides nothing.
+    # Butterworth meta only exists for bike side-view (run uses One Euro -> None,
+    # which the scorer handles). phase_diagnostics is swim-only -> omitted here,
+    # so Factor 5 stays dormant for run/bike. Warnings from the analyzer and the
+    # quality gate are merged for scoring only (each keeps its own UI panel).
+    try:
+        merged_warnings = list(summary.get("analysis_warnings") or []) + list(quality_warnings)
+        summary["analysis_confidence"] = compute_analysis_confidence(
+            angle_statistics=angle_stats,
+            frames_processed=len(raw_frame_data),
+            butterworth_meta=stabilizer_ctx.get("butterworth_meta"),
+            analysis_warnings=merged_warnings,
+            landmark_quality=landmark_quality,
+        )
+    except Exception as e:  # noqa: BLE001 -- confidence must never break the run
+        logger.warning("ANALYSIS_CONFIDENCE_FAILED", err=str(e))
 
     # Step 6: annotated visuals. Always render a compact keyframe (a single
     # annotated frame for the history record); render the full overlay video
