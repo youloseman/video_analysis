@@ -358,12 +358,8 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .hero h1{font-family:var(--f-display);font-weight:900;font-style:italic;text-transform:uppercase;
   font-size:clamp(34px,5.5vw,58px);line-height:.98;letter-spacing:-.01em;margin:16px 0 16px}
 .hero h1 .accent{color:var(--c-coral)}
-.hero p{max-width:540px;font-size:16px;color:rgba(255,255,255,.9)}
-.hero p a{color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:700}
-.hero p a:hover{color:rgba(255,255,255,.85)}
 body:not([data-state="upload"]) .hero .wrap{padding:16px 24px}
-body:not([data-state="upload"]) .hero h1,
-body:not([data-state="upload"]) .hero p{ /* keep in the a11y tree: h1 stays the page outline root */
+body:not([data-state="upload"]) .hero h1{ /* keep in the a11y tree: h1 stays the page outline root */
   position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---------- Main / cards / section headers ---------- */
@@ -883,7 +879,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   <div class="wrap">
     <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
     <h1>Train smart,<br><span class="accent">move fast</span></h1>
-    <p>Upload a side-view clip of your run or ride. Get your joint angles, technique score and an annotated overlay — powered by AI pose estimation. Your clip is analyzed on our servers, never sent to any third-party AI, and isn’t stored long-term. <a href="/privacy">Privacy</a>.</p>
   </div>
 </div>
 
@@ -1312,12 +1307,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <h3>Measurements</h3>
         <div class="speedline-sm"></div>
       </div>
-      <div class="tablewrap">
-        <table class="data">
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Detail</th><th scope="col">Status</th></tr></thead>
-          <tbody id="hdRows"></tbody>
-        </table>
-      </div>
+      <p class="anglemerge hidden" id="hdAngleMergeNote"></p>
+      <div class="tablewrap" id="hdAngleHost"></div>
     </div>
   </section>
 
@@ -2095,6 +2086,39 @@ function renderConfidence(conf){
   host.classList.remove('hidden');
 }
 
+/* ---- Joint-angles table (shared by live result + saved history) ----
+   Builds the 7-column rows (Angle | Min | Mean | Max | Optimal | Status | Valid%)
+   from an angle_statistics dict. `srcByKey` optionally maps an angle key -> a
+   short provenance label (e.g. "left · Mar 3") to show which analysis a merged
+   row came from. */
+const ANGLE_PILL_WORD={good:'in range',warn:'check',bad:'out of range'};
+const ANGLE_PILL_CLS={good:'pill-good',warn:'pill-medium',bad:'pill-high'};
+function angleTableRows(A, sport, position, srcByKey){
+  A = A || {};
+  const ctx = {cycling_position: position};
+  const rows = Object.keys(A).map(k=>{
+    const a=A[k]||{}; const valid=a.valid_frames||0; const tot=valid+(a.nan_frames||0);
+    const pct=tot?Math.round(valid/tot*100):0;
+    const muted=a.mean==null;
+    const cls=muted?'num muted':'num';
+    const opt=angleOptimal(k,sport,ctx);
+    const optTxt=opt?`${opt[0]}–${opt[1]}°`:'—';
+    let statusCell='<td class="muted">—</td>';
+    if(opt && !muted){
+      const z=grZone(a.mean,opt[0],opt[1]);
+      const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
+      statusCell=`<td><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`;
+    }
+    const src=(srcByKey&&srcByKey[k])?`<span class="ang-src">${esc(srcByKey[k])}</span>`:'';
+    return `<tr><th scope="row">${esc(pretty(k))}${src}</th>
+      <td class="${cls}">${num(a.min,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
+      <td class="${cls}">${num(a.max,0)}</td>
+      <td class="num ${opt?'':'muted'}">${optTxt}</td>${statusCell}
+      <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
+  }).join('');
+  return rows||'<tr><td colspan="7" class="muted">No angle data.</td></tr>';
+}
+
 function render(job){
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
   const sport=r.sport_type||state.sport;
@@ -2201,31 +2225,17 @@ function render(job){
   // tiles
   $('#tiles').innerHTML=(sport==='bike'?bikeTiles(s):runTiles(s)).join('') || '<p class="hint" style="text-align:left">No summary metrics available.</p>';
 
-  // angle table
-  const A=r.angle_statistics||{};
-  const PILL_WORD={good:'in range',warn:'check',bad:'out of range'};
-  const PILL_CLS={good:'pill-good',warn:'pill-medium',bad:'pill-high'};
-  const rows=Object.keys(A).map(k=>{
-    const a=A[k]; const valid=a.valid_frames||0; const tot=valid+(a.nan_frames||0);
-    const pct=tot?Math.round(valid/tot*100):0;
-    const muted=a.mean==null;
-    const cls=muted?'num muted':'num';
-    // Optimal range + status vs the athlete's mean angle (measured value)
-    const opt=angleOptimal(k,sport,r);
-    const optTxt=opt?`${opt[0]}–${opt[1]}°`:'—';
-    let statusCell='<td class="muted">—</td>';
-    if(opt && !muted){
-      const z=grZone(a.mean,opt[0],opt[1]);          // optimal | warning | critical
-      const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
-      statusCell=`<td><span class="pill ${PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${PILL_WORD[zc]}</span></td>`;
-    }
-    return `<tr><th scope="row">${esc(pretty(k))}</th>
-      <td class="${cls}">${num(a.min,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
-      <td class="${cls}">${num(a.max,0)}</td>
-      <td class="num ${opt?'':'muted'}">${optTxt}</td>${statusCell}
-      <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
-  }).join('');
-  $('#angleRows').innerHTML=rows||'<tr><td colspan="7" class="muted">No angle data.</td></tr>';
+  // angle table — merge in the opposite side from a previously saved analysis
+  // (side-view only captures the near side; the far side is 0%-valid). If the
+  // user has already analyzed the other side of the same sport/position, fill
+  // those far-side rows with the real measurements from that clip.
+  const liveStats=r.angle_statistics||{};
+  const paired=findPairedEntry(sport, r.cycling_position||null, r.camera_side||null);
+  const merged=mergeAngleStats(liveStats, r.camera_side||null,
+    paired?paired.angleStats:null, paired?paired.cameraSide:null);
+  const srcMap=paired?angleSourceLabels(liveStats, r.camera_side||null, paired):null;
+  $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap);
+  updateAngleMergeNote(paired, r.camera_side||null);
 
   // advanced biomechanics (phase portraits / coordination / waveform vs reference)
   renderBiomechanics(s.biomechanics);
@@ -2626,6 +2636,78 @@ function metricsFromPhoto(res){
       statusWord:stt.replace(/_/g,' '), statusCls:P_STATUS_CLS[stt]||'low'}); }
   return o;
 }
+/* ============================================================
+   Two-sided angle table: persist full stats + merge opposite side
+   ============================================================ */
+/* Keep only the numeric fields the table needs (drops nothing meaningful,
+   but avoids storing anything unbounded). */
+function compactAngleStats(A){
+  if(!A||typeof A!=='object') return null;
+  const o={};
+  for(const k of Object.keys(A)){ const a=A[k]||{};
+    o[k]={min:a.min??null,mean:a.mean??null,max:a.max??null,
+      valid_frames:a.valid_frames||0,nan_frames:a.nan_frames||0}; }
+  return o;
+}
+/* A row is a real (near-side) measurement when it has a mean and valid frames. */
+function angleRowValid(a){ return a && a.mean!=null && (a.valid_frames||0)>0; }
+
+/* Merge two angle_statistics dicts: for each angle key, take whichever side has
+   a real measurement. `live` wins ties (e.g. midline trunk present in both).
+   Returns {stats, filledFromPair:[keys], sidesCovered}. */
+function mergeAngleStats(live, liveSide, pairStats, pairSide){
+  const out={}; const filled=[];
+  live=live||{}; pairStats=pairStats||{};
+  const keys=new Set([...Object.keys(live),...Object.keys(pairStats)]);
+  for(const k of keys){
+    const a=live[k], b=pairStats[k];
+    if(angleRowValid(a)){ out[k]=a; }
+    else if(angleRowValid(b)){ out[k]=b; filled.push(k); }
+    else { out[k]=a||b; }   // both empty -> keep the shape so the row still shows "--"
+  }
+  return {stats:out, filledFromPair:filled};
+}
+/* Per-key provenance labels for a merged table: which side/date each row came from.
+   Only labels rows that actually came from the paired analysis. */
+function angleSourceLabels(live, liveSide, pair){
+  if(!pair||!pair.angleStats) return null;
+  const map={}; const when=pair.at?fmtWhen(pair.at):''; const side=pair.cameraSide||'other';
+  for(const k of Object.keys(pair.angleStats)){
+    if(!angleRowValid(live&&live[k]) && angleRowValid(pair.angleStats[k])){
+      map[k]=`${side} · ${when}`.trim();
+    }
+  }
+  return Object.keys(map).length?map:null;
+}
+/* Find a saved analysis of the SAME sport+position whose stats can fill the
+   current clip's far side. Prefer the opposite camera side, most recent first.
+   `excludeId` avoids matching the entry we're currently saving. */
+function findPairedEntry(sport, position, side, excludeId){
+  const list=loadHist();
+  const same=list.filter(e=>e && e.kind==='video' && e.angleStats
+    && e.sport===sport && (e.position||null)===(position||null) && e.id!==excludeId);
+  // opposite side first
+  const opp=side==='left'?'right':side==='right'?'left':null;
+  const oppMatch=opp?same.filter(e=>e.cameraSide===opp):[];
+  const pick=(oppMatch.length?oppMatch:same);
+  // most recent
+  pick.sort((a,b)=>(b.at||0)-(a.at||0));
+  return pick[0]||null;
+}
+/* Small note under the table explaining the two-sided state. */
+function updateAngleMergeNote(paired, side){
+  const el=$('#angleMergeNote'); if(!el) return;
+  if(paired){
+    const other=paired.cameraSide||'the other side';
+    el.innerHTML=`Both sides shown: near side from this clip, <b>${esc(other)} side</b> filled from your ${esc(fmtWhen(paired.at))} analysis.`;
+    el.classList.remove('hidden');
+  } else {
+    const s=side==='left'?'right':side==='right'?'left':'other';
+    el.innerHTML=`Side-view captures the near side only. Analyze the <b>${esc(s)} side</b> to complete the table — it saves to your profile.`;
+    el.classList.remove('hidden');
+  }
+}
+
 function saveToHistory(kind,res){
   try{
     const isV=kind==='video', sc=res.score||{};
@@ -2634,6 +2716,9 @@ function saveToHistory(kind,res){
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
+    // Full joint-angle stats (video only) so the exact table can be rebuilt
+    // from history AND merged with the opposite side later. Compact numeric dict.
+    if(isV) e.angleStats=compactAngleStats(res.angle_statistics);
     // Typed issues (video only) -> powers the dashboard "focus areas" aggregation.
     e.issues=(res.detected_issues||[]).map(it=>({type:it.type, severity:(it.severity||'').toLowerCase()})).filter(x=>x.type);
     const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o; e.trendCat=tr.c;
