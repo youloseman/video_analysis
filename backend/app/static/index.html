@@ -151,6 +151,13 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .dfocus .ic{width:16px;height:16px;vertical-align:-2px;margin-right:4px}
 .dfocus-body{font-size:14px;line-height:1.55;color:var(--c-ink);margin:6px 0 12px}
 .dfocus-body p{margin:0 0 8px}
+.focus-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.focus-item{background:#fff;border:1px solid var(--c-line);border-radius:10px;padding:12px 14px}
+.focus-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.focus-lbl{font-weight:800;font-size:15px;color:var(--c-navy)}
+.focus-top .tdelta{font-size:12px}
+.focus-sub{font-size:13px;color:var(--c-ink-soft);margin:4px 0 10px}
+.focus-item .btn{padding:6px 12px;font-size:12px}
 .dash-recent{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
 .drec{display:flex;gap:10px;align-items:center;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:8px;cursor:pointer;box-shadow:var(--shadow);transition:.15s}
 .drec:hover,.drec:focus-visible{border-color:var(--c-blue);outline:none}
@@ -2988,13 +2995,67 @@ function sportCard(sport, entries){
     </div>
   </div>`;
 }
-/* Focus areas (Phase 1): pull the "Fix first" block from the most recent
-   analysis that has coach notes. Phase 2 will aggregate typed issues. */
+/* Issue type -> human label + which Academy drill/article addresses it.
+   drill=null when we don't have a matching article yet (link is omitted). */
+const ISSUE_META={
+  overstriding:{label:'Overstriding',drill:'/academy/overstriding'},
+  low_cadence:{label:'Low cadence',drill:'/academy/running-cadence'},
+  prolonged_ground_contact:{label:'Long ground contact',drill:'/academy/ground-contact-time'},
+  excessive_forward_lean:{label:'Excessive forward lean',drill:null},
+  insufficient_knee_drive:{label:'Low knee drive',drill:null},
+  saddle_too_low:{label:'Saddle too low',drill:null},
+  saddle_too_high:{label:'Saddle too high',drill:null},
+  trunk_too_aggressive:{label:'Trunk too aggressive',drill:'/academy/bike-aero-position'},
+  trunk_too_upright:{label:'Trunk too upright',drill:'/academy/bike-aero-position'},
+};
+/* Aggregate typed issues across each sport's last N analyses into ranked
+   focus areas. "Active" (present in the latest analysis) outranks "improving"
+   (seen before but gone from the latest). */
+function focusAreas(all, N=6){
+  const bySport={run:[],bike:[]};
+  for(const e of all){ const b=bySport[e.sport]; if(b && b.length<N) b.push(e); }   // newest-first
+  const areas=[];
+  for(const sport of ['run','bike']){
+    const entries=bySport[sport]; if(entries.length<2) continue;   // need >=2 for a signal
+    const counts={};
+    entries.forEach((e,i)=>{ (e.issues||[]).forEach(it=>{ if(!it.type) return;
+      const c=counts[it.type]||(counts[it.type]={count:0,inLatest:false}); c.count++; if(i===0) c.inLatest=true; }); });
+    for(const type in counts){ const c=counts[type];
+      areas.push({sport,type,count:c.count,total:entries.length,inLatest:c.inLatest}); }
+  }
+  areas.sort((a,b)=> (b.inLatest-a.inLatest) || (b.count/b.total - a.count/a.total) || (b.count-a.count));
+  return areas.slice(0,3);
+}
+function focusCard(a){
+  const meta=ISSUE_META[a.type]||{label:pretty(a.type),drill:null};
+  const noun=a.sport==='run'?(a.total===1?'run':'runs'):(a.total===1?'ride':'rides');
+  const statusCls=a.inLatest?'reg':'imp';
+  const statusTxt=a.inLatest?'needs work':'improving — gone from your latest';
+  const drill=meta.drill?`<a class="btn btn-ghost btn-sm" href="${meta.drill}">Drill & how-to →</a>`:'';
+  return `<div class="focus-item">
+    <div class="focus-top"><span class="focus-lbl">${esc(meta.label)}</span>
+      <span class="tdelta ${statusCls}">${statusTxt}</span></div>
+    <div class="focus-sub">Flagged in <b>${a.count} of ${a.total}</b> of your last ${noun}.</div>
+    ${drill}
+  </div>`;
+}
+/* Phase 2: aggregated focus areas from typed issues; falls back to the
+   latest coach "Fix first" note when there aren't enough issue data yet. */
 function renderDashFocus(all){
   const host=$('#dashFocus'); if(!host) return;
+  const areas=focusAreas(all);
+  if(areas.length){
+    host.innerHTML=`<div class="dfocus">
+      <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Work on this</div>
+        <h3>Your focus areas</h3><div class="speedline-sm"></div></div>
+      <div class="focus-list">${areas.map(focusCard).join('')}</div>
+      <p class="hint" style="margin:12px 0 0">Aggregated from your recent analyses. Fixing these lifts your score fastest.</p>
+    </div>`;
+    return;
+  }
+  // Fallback: latest coach "Fix first" block.
   const withReport=all.find(e=>e.report);
-  if(!withReport){ host.innerHTML=''; return; }
-  const m=withReport.report.match(/\*\*Fix first\*\*\s*[—:-]?\s*([\s\S]*?)(?:\n\*\*|$)/i);
+  const m=withReport&&withReport.report.match(/\*\*Fix first\*\*\s*[—:-]?\s*([\s\S]*?)(?:\n\*\*|$)/i);
   const body=m?m[1].trim():'';
   if(!body){ host.innerHTML=''; return; }
   host.innerHTML=`<div class="dfocus">
