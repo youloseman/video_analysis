@@ -135,6 +135,16 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .dstat-l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:6px}
 .dash-welcome{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel);padding:22px;box-shadow:var(--shadow)}
 .dash-welcome p{margin:0 0 14px;color:var(--c-ink)}
+/* full-height centered empty state for History / Progress views */
+.emptybox{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  gap:14px;min-height:42vh;padding:48px 32px;border:1px solid var(--c-line);border-radius:var(--radius);
+  background:var(--c-panel);box-shadow:var(--shadow);max-width:560px;margin:0 auto;width:100%}
+.emptybox .ic-lg{color:var(--c-blue);opacity:.55}
+.emptybox h4{font-family:var(--f-body);font-weight:800;font-size:17px;color:var(--c-navy);margin:0}
+.emptybox p{margin:0;max-width:42ch;color:var(--c-ink-soft);font-size:14px;line-height:1.6}
+.emptybox .btn{margin-top:4px}
+.emptybox .emptysub{font-size:13px;color:var(--c-ink-soft)}
+.emptybox .emptysub a{color:var(--c-blue);font-weight:700}
 .dash-sports{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:22px}
 .dsport{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:16px 18px;box-shadow:var(--shadow)}
 .dsport-empty{background:var(--c-panel)}
@@ -225,6 +235,9 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   padding:8px 16px;border-radius:0 0 var(--radius-btn) 0;font-weight:700;font-size:14px;text-decoration:none}
 .skip-link:focus{left:0}
 :is(a,button,select,input,summary,[tabindex]):focus-visible{outline:2px solid var(--c-blue);outline-offset:2px;border-radius:4px}
+/* Section headings get programmatic focus for screen-reader flow (tabindex=-1);
+   they're not keyboard-reachable, so suppress the full-width outline box. */
+[tabindex="-1"]:focus,[tabindex="-1"]:focus-visible{outline:none}
 .btn:focus-visible,.seg button:focus-visible,select:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 .seg button:focus-visible{outline-offset:-2px;z-index:1}
 @media (prefers-reduced-motion:reduce){
@@ -253,6 +266,22 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .pill-low{background:var(--c-panel)}.pill-low .dot{background:var(--c-ink-faint)}
 .pill-good{background:rgba(46,158,91,.14)}.pill-good .dot{background:var(--st-good-fill)}
 .pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--st-warn-fill)}
+
+/* Confidence badge (analysis_confidence): clickable pill + expandable explanation */
+.confwrap{margin-top:16px}
+.confbtn{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-body);font-size:11px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--c-navy);padding:4px 12px 4px 12px;border-radius:999px;
+  border:none;cursor:pointer;line-height:1.4}
+.confbtn .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.confbtn .caret{font-size:9px;opacity:.6;transition:transform .15s}
+.confbtn[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.confbtn.c-high{background:rgba(46,158,91,.14)}.confbtn.c-high .dot{background:var(--st-good-fill)}
+.confbtn.c-medium{background:#F7EBD9}.confbtn.c-medium .dot{background:var(--st-warn-fill)}
+.confbtn.c-low{background:#FDE5E1}.confbtn.c-low .dot{background:var(--st-bad-fill)}
+.confexp{margin-top:10px;font-size:13px;line-height:1.55;color:var(--c-ink-soft);
+  background:var(--c-panel);border-radius:var(--radius);padding:12px 14px;max-width:340px}
+.confexp.hidden{display:none}
+.conffactors{margin-top:8px;font-size:11px;color:var(--c-ink-faint);font-family:var(--f-mono)}
 
 /* Sport tag — a distinct SHAPE (squared chip, not a pill) so "which sport"
    never reads as a severity signal sitting next to the status pills. */
@@ -540,9 +569,9 @@ h2.sec + .speedline{margin-bottom:24px}
 .coach{background:var(--c-panel-blue);border-radius:var(--radius);padding:24px}
 .coach h4{font-family:var(--f-body);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.18em;color:var(--c-blue);margin:16px 0 8px}
 .coach h4:first-child{margin-top:0}
-.coach p{font-size:14px;color:var(--c-ink);margin:8px 0;line-height:1.6}
+.coach p{font-size:14px;color:var(--c-ink);margin:8px 0;line-height:1.6;max-width:68ch}
 .coach ul{margin:8px 0;padding-left:20px}
-.coach li{font-size:14px;color:var(--c-ink);line-height:1.6;margin:4px 0}
+.coach li{font-size:14px;color:var(--c-ink);line-height:1.6;margin:4px 0;max-width:66ch}
 .coach strong{color:var(--c-navy);font-weight:800}
 .coach .disclaimer{font-size:12px;color:var(--c-ink-soft);margin-top:16px;padding-top:16px;border-top:1px solid rgba(20,41,75,.12)}
 
@@ -550,7 +579,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .issue.high{border-left-color:var(--st-bad-fill)} .issue.medium{border-left-color:var(--st-warn-fill)}
 .issue .i-top{display:flex;justify-content:space-between;gap:16px;align-items:center}
 .issue .i-type{font-weight:800;color:var(--c-ink)}
-.issue .i-rec{font-size:14px;color:var(--c-ink-soft);margin-top:8px}
+.issue .i-rec{font-size:14px;color:var(--c-ink-soft);margin-top:8px;max-width:70ch}
 .issue .i-val-lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:8px;display:inline-block}
 .issue .i-val{font-family:var(--f-mono);font-size:12px;color:var(--c-navy)}
 
@@ -565,7 +594,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .plan-weeks{flex:none;display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--c-ink-soft);white-space:nowrap}
 .plan-weeks .ic{width:14px;height:14px}
 .plan-why{font-size:13.5px;color:var(--c-ink-soft);margin:12px 0 0}
-.plan-how{font-size:14px;color:var(--c-ink);margin:10px 0 0;line-height:1.55}
+.plan-how{font-size:14px;color:var(--c-ink);margin:10px 0 0;line-height:1.55;max-width:68ch}
 .plan-cue{margin-top:12px;font-size:14px;color:var(--c-navy);background:var(--c-panel-blue);border-radius:8px;padding:10px 12px}
 .plan-cue-lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--c-blue);margin-right:6px}
 .plan-link{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:13px;font-weight:700;color:var(--c-blue)}
@@ -632,7 +661,12 @@ table.data tbody tr:hover{background:var(--c-panel-blue)}
 table.data td.num{font-family:var(--f-mono);font-weight:500;color:var(--c-navy)}
 table.data td.pct{font-family:var(--f-body);font-weight:700;color:var(--c-navy);text-align:right;font-variant-numeric:tabular-nums}
 table.data td.muted{color:var(--c-ink-soft)}
-.tablewrap{overflow-x:auto}
+.tablewrap{overflow-x:auto;position:relative}
+/* right-edge fade hints there are more columns to swipe to on narrow screens */
+@media(max-width:640px){
+  .tablewrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:28px;pointer-events:none;
+    background:linear-gradient(90deg,transparent,#fff)}
+}
 
 details.raw{margin-top:32px}
 details.raw summary{cursor:pointer;font-weight:800;font-size:13px;color:var(--c-blue)}
@@ -695,6 +729,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .filepreview img#previewImg{width:100%;max-width:260px;margin:0 auto}
   .tilerow{grid-auto-flow:row;grid-auto-columns:auto}
   .guides{grid-template-columns:1fr;gap:8px}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .progress-card{padding:32px 24px}
   .step span.slbl{display:none}
   .score-num{font-size:64px}
@@ -988,6 +1023,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           </div>
         </div>
         <div class="score-meta" id="scoreMeta"></div>
+        <div class="confwrap hidden" id="confBadge"></div>
         <button class="btn btn-primary btn-sm sharebtn hidden" id="shareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share result</span>
         </button>
@@ -1564,6 +1600,9 @@ function analyze(){
   const xhr=new XMLHttpRequest();
   state.xhr=xhr;
   xhr.open('POST','/analyze');
+  // Send the bearer token so a signed-in user is analysed on their own tier
+  // (admin/paid). Without this the request is anonymous and always free-gated.
+  const _tok=getToken(); if(_tok) xhr.setRequestHeader('Authorization','Bearer '+_tok);
   xhr.upload.onprogress=e=>{
     if(!e.lengthComputable) return;
     const pct=Math.round(e.loaded/e.total*100);
@@ -1867,7 +1906,7 @@ async function analyzePhoto(){
   stage('Detecting pose &amp; measuring joint angles… usually takes <b>~5 s</b>');
 
   try{
-    const r=await fetch('/analyze-photo',{method:'POST',body:fd});
+    const r=await fetch('/analyze-photo',{method:'POST',headers:authHeaders(),body:fd});
     const limit=r.headers.get('X-RateLimit-Limit'), rem=r.headers.get('X-RateLimit-Remaining');
     if(limit!=null && rem!=null){ state.remaining=rem; quotaSave(+limit,+rem); }
     if(r.status===429){
@@ -2025,6 +2064,37 @@ function renderTrainingPlan(plan){
   block.classList.remove('hidden');
 }
 
+/* Analysis-confidence badge: a clickable pill (high/medium/low) that expands
+   to show the backend explanation. Informational only — never hides anything. */
+const CONF_META={
+  high:  {cls:'c-high',   label:'High confidence'},
+  medium:{cls:'c-medium', label:'Medium confidence'},
+  low:   {cls:'c-low',    label:'Low confidence'},
+};
+function renderConfidence(conf){
+  const host=$('#confBadge'); if(!host) return;
+  // older results (or a scorer failure) won't carry this — hide gracefully
+  const level=conf&&conf.level; const meta=CONF_META[level];
+  if(!meta){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  const expl=(conf.explanation||'').trim();
+  const f=conf.factors||{};
+  // a compact, honest factors line (only what's meaningful for run/bike)
+  const bits=[];
+  if(f.landmark_quality_pct!=null) bits.push(`tracking ${num(f.landmark_quality_pct,0)}%`);
+  if(Array.isArray(f.angles_with_high_nan)&&f.angles_with_high_nan.length) bits.push(`${f.angles_with_high_nan.length} gappy angle${f.angles_with_high_nan.length>1?'s':''}`);
+  if(f.warning_count) bits.push(`${f.warning_count} warning${f.warning_count>1?'s':''}`);
+  const factLine=bits.length?`<div class="conffactors">${esc(bits.join(' · '))}</div>`:'';
+  host.innerHTML=`<button class="confbtn ${meta.cls}" type="button" aria-expanded="false" aria-controls="confExp">`
+    +`<span class="dot" aria-hidden="true"></span>${meta.label}<span class="caret" aria-hidden="true">▾</span></button>`
+    +`<div class="confexp hidden" id="confExp">${esc(expl)}${factLine}</div>`;
+  const btn=host.querySelector('.confbtn'), exp=host.querySelector('#confExp');
+  btn.addEventListener('click',()=>{
+    const open=exp.classList.toggle('hidden')===false;
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  host.classList.remove('hidden');
+}
+
 function render(job){
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
   const sport=r.sport_type||state.sport;
@@ -2059,6 +2129,9 @@ function render(job){
   if(r.frames_analyzed!=null) parts.push(`<span class="mono">${r.frames_analyzed}</span> frames analyzed`);
   if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position))}</b>`);
   $('#scoreMeta').innerHTML=parts.join('<br>');
+
+  // analysis confidence badge (soft high/medium/low tier; hides nothing)
+  renderConfidence(s.analysis_confidence);
 
   // overlay video (persistence note lives in the video caption; without the
   // video the report is just as ephemeral — surface the note separately)
@@ -2576,7 +2649,16 @@ function fmtWhen(ms){ try{ const d=new Date(ms);
   return d.toLocaleDateString([], {month:'short',day:'numeric'})+' · '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
 function renderHistList(){
   const a=loadHist(), w=$('#histList');
-  if(!a.length){ w.innerHTML='<p class="hint" style="text-align:left">No saved analyses yet — your results are stored on this device after each analysis.</p>'; return; }
+  if(!a.length){
+    w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
+      <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
+      <h4>No analyses yet</h4>
+      <p>Run your first clip and it’ll be saved here, so you can revisit scores and track your form over time.</p>
+      <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
+      ${auth?'':'<p class="emptysub">Saved on this device. <a href="#" data-openauth="register">Log in</a> to sync across devices.</p>'}
+    </div>`;
+    return;
+  }
   w.innerHTML=a.map(e=>`<div class="hcard" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">
     <div class="hthumb">${e.keyframe?`<img src="${e.keyframe}" alt="">`:''}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
       <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
@@ -2626,8 +2708,14 @@ $('#botAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
 $('#botProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 $('#botHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
 $('#history').addEventListener('click',e=>{
+  const oa=e.target.closest('[data-openauth]'); if(oa){ e.preventDefault(); openAuth(oa.dataset.openauth); return; }
+  const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
   const del=e.target.closest('[data-del]'); if(del){ e.stopPropagation(); historyDelete(del.dataset.del); return; }
   const card=e.target.closest('.hcard'); if(card) openHistory(card.dataset.id);
+});
+$('#trends').addEventListener('click',e=>{
+  const oa=e.target.closest('[data-openauth]'); if(oa){ e.preventDefault(); openAuth(oa.dataset.openauth); return; }
+  const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
 });
 $('#history').addEventListener('keydown',e=>{
   if(e.key==='Enter'||e.key===' '){ const card=e.target.closest('.hcard'); if(card && !e.target.closest('[data-del]')){ e.preventDefault(); openHistory(card.dataset.id); } }
@@ -2921,7 +3009,15 @@ function renderProgress(){
   const all=loadHist().filter(e=>e.sport===sport && e.trends).slice().reverse(); // oldest -> newest
   const grid=$('#progGrid');
   if(all.length<2){
-    grid.innerHTML=`<p class="hint" style="text-align:left;grid-column:1/-1">Analyze at least <b>2</b> ${sport==='bike'?'rides':'runs'} to see progress trends — they build up from each new analysis.</p>`;
+    const noun=sport==='bike'?'rides':'runs';
+    const have=all.length;
+    grid.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
+      <svg class="ic-lg" aria-hidden="true"><use href="#i-progress"/></svg>
+      <h4>${have===0?'No trends yet':'One more to go'}</h4>
+      <p>Analyze at least <b>2</b> ${noun} to unlock progress charts — you have <b>${have}</b> so far. Each new analysis adds a point.</p>
+      <button class="btn btn-primary" data-analyze="${sport==='bike'?'bike':'run'}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a ${sport==='bike'?'ride':'run'}</button>
+      ${auth?'':'<p class="emptysub">Saved on this device. <a href="#" data-openauth="register">Log in</a> to sync across devices.</p>'}
+    </div>`;
     return;
   }
   const dates=all.map(e=>fmtWhen(e.at));
@@ -3220,7 +3316,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence};
 </script>
 </body>
 </html>
