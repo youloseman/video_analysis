@@ -537,8 +537,13 @@ h2.sec + .speedline{margin-bottom:24px}
   color:var(--c-navy);letter-spacing:-.02em;margin-top:8px}
 .score-num small{font-size:26px;color:var(--c-ink-soft);font-style:normal;font-weight:800}
 .graderow{display:flex;align-items:center;gap:16px;margin-top:16px}
+/* Grade badge. A single letter (A–F) stays a 56px square; a word grade
+   ("Good", "Fair"…) grows to fit via min-width + horizontal padding and drops
+   to a smaller upright type so it never overflows the box. */
 .grade{display:inline-flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:900;
-  font-style:italic;font-size:30px;width:56px;height:56px;border-radius:var(--radius);border:2.5px solid var(--c-navy);color:var(--c-navy);flex:none}
+  font-style:italic;font-size:30px;min-width:56px;height:56px;padding:0 6px;border-radius:var(--radius);
+  border:2.5px solid var(--c-navy);color:var(--c-navy);flex:none}
+.grade.grade-word{font-style:normal;font-size:17px;letter-spacing:.02em;text-transform:uppercase;padding:0 16px}
 .gradelbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
 .score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:24px;line-height:1.7;border-top:1px solid var(--c-line);padding-top:16px}
 .score-meta b{color:var(--c-ink);font-weight:700}
@@ -1765,6 +1770,19 @@ const pretty = k => PRETTY[k] || String(k).replace(/_/g,' ').replace(/\b\w/g,c=>
 const num = (v,d=0) => (v===null||v===undefined||Number.isNaN(v)) ? '—' : (typeof v==='number'? v.toFixed(d): v);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* Grade badge: set text + colour, and switch to the wide "word" layout when
+   the value isn't a single letter (e.g. "Good"), so it never overflows the
+   square box. */
+function setGrade(sel,value){
+  const g=$(sel); if(!g) return;
+  const v=(value==null||value==='')?'—':String(value);
+  g.textContent=v;
+  g.setAttribute('aria-label','Grade '+v);
+  g.classList.toggle('grade-word', v.length>1 && v!=='—');
+  const gc=GRADE_COLORS[v]||C.navy;
+  g.style.borderColor=gc; g.style.color=gc;
+}
+
 /* Sport tag: squared chip with a sport glyph (not a severity pill). */
 function setSportTag(tagSel,iconSel,textSel,sport){
   const run=sport==='run', tag=$(tagSel);
@@ -2057,9 +2075,7 @@ function renderPhoto(res){
   const sc=res.score||{}; const score=sc.overall_score;
   $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
 
-  const letter=sc.grade||'—';
-  const g=$('#pGrade'); g.textContent=letter; g.setAttribute('aria-label','Grade '+letter);
-  const gc=GRADE_COLORS[letter]||C.navy; g.style.borderColor=gc; g.style.color=gc;
+  setGrade('#pGrade', sc.grade);
 
   setSportTag('#pSportTag','#pSportTagIcon','#pSportTagText',sport);
 
@@ -2258,11 +2274,7 @@ function render(job){
 
   // score + grade
   $('#scoreNum').innerHTML = (r.technique_score==null?'—':r.technique_score)+'<small>/100</small>';
-  const g=$('#grade'); const letter=r.letter_grade||'—';
-  g.textContent=letter;
-  g.setAttribute('aria-label','Grade '+letter);
-  const gc=GRADE_COLORS[letter]||C.navy;
-  g.style.borderColor=gc; g.style.color=gc;
+  setGrade('#grade', r.letter_grade);
 
   // sport tag
   setSportTag('#sportTag','#sportTagIcon','#sportTagText',sport);
@@ -2893,7 +2905,7 @@ function openHistory(id){
   $('#hdImg').src=e.keyframe||''; $('#hdDownload').href=e.keyframe||'#';
   $('#hdImgWrap').style.display = e.keyframe?'':'none';
   $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
-  const g=$('#hdGrade'); g.textContent=e.grade||'—'; const gc=GRADE_COLORS[e.grade]||C.navy; g.style.borderColor=gc; g.style.color=gc;
+  setGrade('#hdGrade', e.grade);
   setSportTag('#hdSportTag','#hdSportTagIcon','#hdSportTagText',e.sport);
   const parts=[esc(e.kind)];
   if(e.cameraSide) parts.push(`Camera: <b>${esc(e.cameraSide)} side</b>`);
