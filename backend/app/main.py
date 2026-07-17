@@ -467,8 +467,13 @@ async def analyze_photo_endpoint(
         raise HTTPException(400, "sport must be 'run' or 'bike'")
     cycling_position: str | None = None
     if sport == "bike":
-        cycling_position = position or DEFAULT_BIKE_POSITION
-        if cycling_position not in VALID_POSITIONS:
+        # Respect an explicit choice; otherwise leave it None so the photo
+        # analyzer auto-detects the position from the measured trunk angle
+        # (a flat aero back -> tt_aero, upright -> casual, etc.). Substituting
+        # DEFAULT_BIKE_POSITION here would silently disable that auto-detect and
+        # score every un-picked photo against road_hoods.
+        cycling_position = position or None
+        if cycling_position is not None and cycling_position not in VALID_POSITIONS:
             raise HTTPException(400, f"invalid position; valid: {sorted(VALID_POSITIONS)}")
     if not settings.model_path.exists():
         raise HTTPException(503, "pose model not installed on the server")

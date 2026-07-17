@@ -24,7 +24,11 @@ ASYMMETRY_NAN_PCT_LIMIT = 40.0
 # Redistributed to near-side metrics and advanced biomechanics.
 RUNNING_WEIGHTS = {
     "trunk_lean": 0.13,
-    "knee_angles": 0.20,
+    # Knee is scored at two gait phases (like bike BDC/TDC), NOT as a
+    # full-cycle mean -- the cycle mean (~110-130 deg for a healthy runner)
+    # sits well below the midstance band and used to fail every runner.
+    "knee_contact": 0.12,      # knee_max vs knee_at_initial_contact (extension at footstrike)
+    "knee_swing": 0.08,        # knee_min vs knee_at_swing (peak flexion in swing)
     "cadence": 0.16,
     "elbow_swing": 0.09,
     "vertical_osc": 0.09,
@@ -131,11 +135,22 @@ def score_running(
         components["cadence"] = score_in_range(cadence, *RUNNING_REFERENCE["cadence_spm"])
 
     # Knee angles (unprefixed key -- near-side only from running_analyzer).
-    # mean may be None when the joint was fully gated.
+    # Score the two gait-phase extremes, not the full-cycle mean: knee_max is
+    # peak extension near footstrike/contact, knee_min is peak flexion in swing.
+    # (The old code compared the whole-cycle mean to the midstance band, which
+    # a normal runner -- mean ~110-130 deg -- always fails.) This mirrors the
+    # bike BDC/TDC scoring and the running action plan (knee_max/knee_min).
     if "knee" in angle_stats:
-        mean_val = angle_stats["knee"].get("mean")
-        if mean_val is not None:
-            components["knee_angles"] = score_in_range(mean_val, *RUNNING_REFERENCE["knee_at_midstance"])
+        knee_max = angle_stats["knee"].get("max")   # ~ contact / extension
+        knee_min = angle_stats["knee"].get("min")   # ~ swing flexion
+        if knee_max is not None:
+            components["knee_contact"] = score_in_range(
+                knee_max, *RUNNING_REFERENCE["knee_at_initial_contact"]
+            )
+        if knee_min is not None:
+            components["knee_swing"] = score_in_range(
+                knee_min, *RUNNING_REFERENCE["knee_at_swing"]
+            )
 
     if "elbow" in angle_stats:
         elbow_mean = angle_stats["elbow"].get("mean")

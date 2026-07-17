@@ -150,10 +150,14 @@ def _get_cycling_optimal_ranges(
 ) -> dict[str, tuple[float, float]]:
     """Position-dependent cycling ranges with pedal-phase-aware knee range."""
     ref = get_cycling_reference(cycling_position)
+    # A single photo cannot verify the crank is truly at TDC/BDC -- the pedal
+    # phase is a coarse guess from the knee angle alone. So widen the band on
+    # both sides (not just -10 on the min) to avoid faulting a rider for a knee
+    # angle caught slightly off the assumed dead-centre.
     if pedal_phase == "near_bdc":
-        knee_range = (ref["knee_at_bdc"][0] - 10, ref["knee_at_bdc"][1])
+        knee_range = (ref["knee_at_bdc"][0] - 12, ref["knee_at_bdc"][1] + 8)
     elif pedal_phase == "near_tdc":
-        knee_range = (ref["knee_at_tdc"][0] - 10, ref["knee_at_tdc"][1])
+        knee_range = (ref["knee_at_tdc"][0] - 12, ref["knee_at_tdc"][1] + 8)
     else:
         # Mid-stroke: very wide range -- cannot reliably score
         knee_range = (60, 155)
@@ -195,6 +199,14 @@ PHOTO_CYCLING_WEIGHTS = {
     "elbow": 0.10, "hip": 0.08, "pelvic_ratio": 0.07, "forearm_tilt": 0.05,
     "ankle": 0.08,
 }
+# Near TDC/BDC from a single photo: the pedal phase is only a guess, so trust
+# the knee less than a true motion-capture dead-centre. Reduce knee weight from
+# 0.22 and move it to the pedal-phase-independent trunk/hip metrics.
+PHOTO_CYCLING_WEIGHTS_PHASED = {
+    "knee": 0.12, "trunk": 0.22, "shoulder": 0.12, "head_alignment": 0.10,
+    "elbow": 0.10, "hip": 0.14, "pelvic_ratio": 0.07, "forearm_tilt": 0.05,
+    "ankle": 0.08,
+}
 # Mid-stroke: knee unreliable, redistribute weight to trunk + hip
 PHOTO_CYCLING_WEIGHTS_MIDSTROKE = {
     "knee": 0.05, "trunk": 0.24, "shoulder": 0.12, "head_alignment": 0.10,
@@ -216,24 +228,35 @@ _PHOTO_WEIGHTS = {
 
 def _score_single_angle(
     value: float, optimal_min: float, optimal_max: float,
+    low_tolerance: float = 1.0, high_tolerance: float = 1.0,
 ) -> int | None:
-    """Score one angle 0-100 based on distance from optimal range."""
+    """Score one angle 0-100 by distance from the optimal range.
+
+    Linear falloff (not a step function) so a value 0.1 deg out of range
+    doesn't cliff-drop 20 points -- the score degrades smoothly at
+    ``FALLOFF_PER_DEG`` points per degree outside the band, floored at 20.
+
+    ``low_tolerance`` / ``high_tolerance`` scale the penalty on each side
+    (values > 1.0 = more lenient). Used to make a metric asymmetric, e.g.
+    a deep aero trunk being *below* the optimal min is far less of a fault
+    than being above it, so we forgive the low side more gently.
+    """
     if math.isnan(value):
         return None
 
     if optimal_min <= value <= optimal_max:
         return 100
 
-    distance = min(abs(value - optimal_min), abs(value - optimal_max))
+    FALLOFF_PER_DEG = 2.0  # points lost per degree outside the range
+    FLOOR = 20
 
-    if distance <= 5:
-        return 80
-    elif distance <= 10:
-        return 60
-    elif distance <= 15:
-        return 40
+    if value < optimal_min:
+        distance = (optimal_min - value) / max(low_tolerance, 0.1)
     else:
-        return 20
+        distance = (value - optimal_max) / max(high_tolerance, 0.1)
+
+    score = 100.0 - distance * FALLOFF_PER_DEG
+    return int(round(max(FLOOR, min(100.0, score))))
 
 
 def _assign_photo_grade(score: int) -> str:
@@ -248,14 +271,28 @@ def _assign_photo_grade(score: int) -> str:
         return "Needs Work"
 
 
+# Asymmetric scoring tolerances for aggressive aero positions. A trunk or hip
+# angle *below* the optimal min means a flatter back / more closed hip -- which
+# is the aerodynamic GOAL, not a fault -- so penalize the low side ~3x more
+# gently. Being above the max (too upright / too open = draggy) keeps the full
+# penalty. Format: angle_key -> (low_tolerance, high_tolerance).
+_AERO_TOLERANCES = {
+    "trunk": (3.0, 1.0),   # flat aero back below min: forgiven; too upright: full penalty
+    "hip":   (2.5, 1.0),   # closed aero hip below min: mostly forgiven
+}
+_AERO_POSITIONS = {"tt_aero", "triathlon"}
+
+
 def _score_photo_angles(
     angles: dict[str, float],
     optimal_ranges: dict[str, tuple[float, float]],
     sport: str,
     weights_override: dict[str, float] | None = None,
+    cycling_position: str | None = None,
 ) -> dict[str, Any]:
     """Score all angles and compute weighted overall score."""
     weights = weights_override or _PHOTO_WEIGHTS.get(sport, PHOTO_RUNNING_WEIGHTS)
+    is_aero = sport == "bike" and cycling_position in _AERO_POSITIONS
     per_angle: dict[str, dict[str, Any]] = {}
     total_weight = 0.0
     weighted_sum = 0.0
@@ -266,7 +303,8 @@ def _score_photo_angles(
             continue
 
         opt_min, opt_max = optimal_ranges[angle_key]
-        score = _score_single_angle(value, opt_min, opt_max)
+        low_tol, high_tol = _AERO_TOLERANCES.get(angle_key, (1.0, 1.0)) if is_aero else (1.0, 1.0)
+        score = _score_single_angle(value, opt_min, opt_max, low_tol, high_tol)
         if score is None:
             continue
 
@@ -1064,11 +1102,19 @@ def analyze_photo(
             ),
         }
 
-    # 6. Score (use mid-stroke weights for cycling if knee at mid-stroke)
+    # 6. Score. Single-photo knee reliability depends on the (guessed) pedal
+    # phase: mid-stroke = knee nearly ignored; near TDC/BDC = knee down-weighted
+    # (the crank position can't be verified from one still).
     weights_override = None
-    if sport == "bike" and pedal_phase == "mid_stroke":
-        weights_override = PHOTO_CYCLING_WEIGHTS_MIDSTROKE
-    score_data = _score_photo_angles(angles, optimal_ranges, sport, weights_override)
+    if sport == "bike":
+        if pedal_phase == "mid_stroke":
+            weights_override = PHOTO_CYCLING_WEIGHTS_MIDSTROKE
+        elif pedal_phase in ("near_tdc", "near_bdc"):
+            weights_override = PHOTO_CYCLING_WEIGHTS_PHASED
+    score_data = _score_photo_angles(
+        angles, optimal_ranges, sport, weights_override,
+        cycling_position=cycling_position,
+    )
 
     # 7. Thumbnail
     arc_triplets = _build_arc_triplets(sport, camera_side)

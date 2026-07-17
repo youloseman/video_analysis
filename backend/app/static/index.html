@@ -437,6 +437,15 @@ h2.sec + .speedline{margin-bottom:24px}
 .ctl{margin-bottom:20px}
 .ctl-label{display:block;font-size:14px;font-weight:600;color:var(--c-ink-soft);margin-bottom:8px}
 .tilerow{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:12px}
+/* grouped bike-position picker: Road (Hoods|Drops) · Aero (TT|Tri) · Casual */
+#positionSeg{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end}
+.posgroup{display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0}
+.posgroup:last-child{flex:0 0 auto}
+.posgroup-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-faint)}
+.posgroup .tilerow{gap:8px}
+.poshint{font-size:12.5px;color:var(--c-ink-soft);line-height:1.5;margin-top:10px;min-height:18px}
+.poshint b{color:var(--c-navy);font-weight:700}
+@media (max-width:560px){#positionSeg{gap:10px 12px}.posgroup{flex:1 1 100%}}
 .tile-btn{font-family:var(--f-body);font-weight:600;font-size:15px;color:var(--c-ink);cursor:pointer;
   background:#fff;border:1.5px solid var(--c-line);border-radius:var(--radius-btn);padding:14px 16px;text-align:center;
   transition:background .15s,border-color .15s,color .15s}
@@ -971,11 +980,29 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <!-- Bike position -->
       <div class="ctl" id="positionField">
         <span class="ctl-label" id="positionLabel">Bike position:</span>
-        <div class="tilerow" id="positionSeg" role="group" aria-labelledby="positionLabel">
-          <button type="button" class="tile-btn" data-position="road_hoods" aria-pressed="false">Road Bike</button>
-          <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">TT / Tri</button>
-          <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
+        <div id="positionSeg" role="group" aria-labelledby="positionLabel">
+          <div class="posgroup">
+            <span class="posgroup-lbl">Road</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="road_hoods" aria-pressed="false">Hoods</button>
+              <button type="button" class="tile-btn" data-position="road_drops" aria-pressed="false">Drops</button>
+            </div>
+          </div>
+          <div class="posgroup">
+            <span class="posgroup-lbl">Aero</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="tt_aero" aria-pressed="false">Time Trial</button>
+              <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">Triathlon</button>
+            </div>
+          </div>
+          <div class="posgroup">
+            <span class="posgroup-lbl">&nbsp;</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
+            </div>
+          </div>
         </div>
+        <p class="poshint" id="posHint"></p>
       </div>
 
       <!-- Drop zone -->
@@ -1402,7 +1429,15 @@ const ST = { good:'#1F7A45', warn:'#9A5E0B', bad:'#CE3F2B',
    as a scale instead of five unrelated brand colours. B was navy before and
    collided with headings/score; now it's a green-amber midpoint tone. */
 const GRADE_COLORS = { A:ST.goodFill, B:'#3E8F52', C:ST.warnFill, D:C.orange, F:ST.badFill };
-const POSITION_NAMES = { road_hoods:'Road Bike', road_drops:'Road · Drops', tt_aero:'TT · Aero', triathlon:'TT / Tri', casual:'Casual' };
+const POSITION_NAMES = { road_hoods:'Road · Hoods', road_drops:'Road · Drops', tt_aero:'Time Trial', triathlon:'Triathlon', casual:'Casual' };
+/* one-line description per position so users know which to pick (TT vs Tri, Hoods vs Drops) */
+const POSITION_HINTS = {
+  road_hoods:'<b>Road · Hoods</b> — hands on the brake hoods, upright endurance posture.',
+  road_drops:'<b>Road · Drops</b> — hands in the drops, lower and more aggressive than hoods.',
+  tt_aero:'<b>Time Trial</b> — full aero tuck on a TT bike: flat back, closed hip, max aerodynamics.',
+  triathlon:'<b>Triathlon</b> — aero but slightly opened up to preserve the legs for the run.',
+  casual:'<b>Casual</b> — upright comfort/commuter riding.',
+};
 
 /* ============================================================
    State machine: upload | progress | results | error
@@ -1571,13 +1606,19 @@ $('#sportSeg').addEventListener('click',e=>{
   readyHint();
 });
 
-/* ---- bike position tiles ---- */
+/* ---- bike position tiles (grouped: Road / Aero / Casual) ---- */
 $('#positionSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   state.position=b.dataset.position;
-  [...$('#positionSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  $('#positionSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  updatePosHint();
   readyHint();
 });
+function updatePosHint(){
+  const el=$('#posHint'); if(!el) return;
+  el.innerHTML=POSITION_HINTS[state.position]||'';
+}
+updatePosHint();   // show the default position's description on load
 $('#pAgain').addEventListener('click',()=>reset());
 
 /* ============================================================
@@ -1831,15 +1872,23 @@ function rangeStatus(v,lo,hi,slack){
    Run: unprefixed keys map to single-value norms. Bike: only angles with a
    meaningful single optimum (trunk/elbow/shoulder). Bike knee/hip sweep the whole
    stroke, so a single row-level range would mislead -> return null (shown as "--"). */
-const RUN_ANGLE_OPT={ knee:[140,160], hip:[150,180], trunk:[4,12], elbow:[85,100] };
-const BIKE_ANGLE_OPT_DEFAULT={ trunk_angle:[40,55], elbow_angle:[145,165], shoulder_angle:[90,120] };
+// knee & hip sweep the whole gait cycle, so their cycle-MEAN (what this table's
+// status is judged on) has no single valid band -> omit (shown as "--"), same as
+// bike knee/hip. trunk & elbow are stable enough to band. trunk = backend (4,8).
+const RUN_ANGLE_OPT={ trunk:[4,8], elbow:[85,100] };
+// Full per-position optimal ranges, mirroring backend cycling_positions.py
+// CYCLING_POSITIONS. Keep in sync with that file. hip_angle is the mean hip and
+// is asymmetric (above max = comfort/OK) -- handled in the tile logic.
 const BIKE_POSITION_OPT={
-  road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[90,120]},
-  road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[85,110]},
-  tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100]},
-  triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105]},
-  casual:{trunk_angle:[45,60],elbow_angle:[130,165],shoulder_angle:[100,140]},
+  road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[90,120],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_angle:[55,65],forearm_tilt:[5,20],pelvic_ratio:[1.5,3.5]},
+  road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[85,110],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_angle:[50,65],forearm_tilt:[0,15],pelvic_ratio:[1.8,3.5]},
+  tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_angle:[35,55],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
+  triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_angle:[40,55],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
+  casual:{trunk_angle:[45,60],elbow_angle:[130,165],shoulder_angle:[100,140],knee_at_bdc:[135,150],knee_at_tdc:[60,80],hip_angle:[65,85],forearm_tilt:[-5,15],pelvic_ratio:[1.5,3.5]},
 };
+const BIKE_ANGLE_OPT_DEFAULT=BIKE_POSITION_OPT.road_hoods;
+/* per-position range for a bike metric key; falls back to road_hoods */
+function bikePosRange(pos,key){ return (BIKE_POSITION_OPT[pos]||BIKE_ANGLE_OPT_DEFAULT)[key]||null; }
 function angleOptimal(key,sport,res){
   if(sport==='run') return RUN_ANGLE_OPT[key]||null;
   // bike: strip left_/right_ prefix, look up by base angle, pick position table
@@ -1853,9 +1902,11 @@ const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
 /* Range-bar zone fills — the vivid (graphics) form of the semantic scale, so
    the bars match the pills/badges instead of using a second Tailwind palette. */
 const GR_ZONE={optimal:ST.goodFill,warning:ST.warnFill,critical:ST.badFill};
-/* Which zone a value falls in, given optimal [lo,hi] and warning margin = 50% of optimal width. */
+/* Which zone a value falls in. Warning margin = max(10% of range width, 3 deg),
+   matching the backend _classify_angle_status so the status pill agrees with the
+   coach notes / score (previously 50% width -> pill often disagreed with backend). */
 function grZone(v,lo,hi){
-  const m=(hi-lo)*0.5||1;
+  const m=Math.max((hi-lo)*0.10, 3);
   if(v>=lo && v<=hi) return 'optimal';
   if((v>=lo-m && v<lo) || (v>hi && v<=hi+m)) return 'warning';
   return 'critical';
@@ -1863,7 +1914,10 @@ function grZone(v,lo,hi){
 /* Horizontal 5-zone bar (red|amber|green|amber|red) with a marker triangle at `value`.
    Axis = optimal ± one warning margin ± one critical margin (mirrors GradientRangeBar). */
 function gradientRangeBar(value,lo,hi,unit){
-  const opt=hi-lo, m=opt*0.5||1;
+  // warning margin matches grZone (max 10% width, 3 deg) so the green optimal
+  // band on the bar agrees with the status pill; critical margin doubles it to
+  // give the axis room for out-of-range values.
+  const opt=hi-lo, m=Math.max(opt*0.10, 3);
   const warnLo=lo-m, warnHi=hi+m, barMin=warnLo-m, barMax=warnHi+m, rng=barMax-barMin||1;
   const P=x=>Math.max(0,Math.min(100,((x-barMin)/rng)*100));
   const wl=P(warnLo), ol=P(lo), oh=P(hi), wh=P(warnHi), mk=P(value);
@@ -1901,14 +1955,24 @@ function tile(lbl,val,unit,ref,cls,isText=false,range=null){
 /* helper: {value,lo,hi,unit} for the range bar */
 function R(value,lo,hi,unit){ return {value,lo,hi,unit}; }
 
-function bikeTiles(s){
+function bikeTiles(s, position){
   const t=[];
-  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°',null,null,false,R(s.knee_at_bdc,138,145,'°')));
-  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°',null,null,false,R(s.knee_at_tdc,60,72,'°')));
-  if(s.hip_angle_max!=null) t.push(tile('Hip angle',num(s.hip_angle_max),'°',null,null,false,R(s.hip_angle_max,40,80,'°')));
-  if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,R(s.elbow_angle_avg,145,165,'°')));
-  if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,R(s.trunk_angle_avg,40,55,'°')));
-  if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,R(s.shoulder_angle_avg,80,110,'°')));
+  // Ranges are per-position (mirrors backend). rng(key) -> {value,lo,hi} or null.
+  const rng=(key,val)=>{ const r=bikePosRange(position,key); return r?R(val,r[0],r[1],'°'):null; };
+  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°',null,null,false,rng('knee_at_bdc',s.knee_at_bdc)));
+  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°',null,null,false,rng('knee_at_tdc',s.knee_at_tdc)));
+  // Hip is asymmetric: above optimal max = more open = comfort/OK, never a fault.
+  // The video summary emits hip_angle_avg (NOT hip_angle_max) -- use that.
+  const hipV = s.hip_angle_avg!=null ? s.hip_angle_avg : s.hip_angle_max;
+  if(hipV!=null){
+    const hr=bikePosRange(position,'hip_angle');
+    // treat an open hip (above max) as in-range by extending the upper bound
+    const hipRange = hr ? R(hipV, hr[0], Math.max(hr[1], hipV), '°') : null;
+    t.push(tile('Hip angle',num(hipV),'°',null,null,false,hipRange));
+  }
+  if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,rng('elbow_angle',s.elbow_angle_avg)));
+  if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg)));
+  if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,rng('shoulder_angle',s.shoulder_angle_avg)));
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
   if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
   if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
@@ -1918,10 +1982,10 @@ function bikeTiles(s){
 }
 function runTiles(s){
   const t=[];
-  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,R(s.cadence_spm,170,185,'spm')));
+  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,R(s.cadence_spm,170,190,'spm')));
   if(s.vertical_oscillation_cm!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_cm,1),'cm',null,null,false,R(s.vertical_oscillation_cm,6,10,'cm')));
   else if(s.vertical_oscillation_m!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_m*100,1),'cm',null,null,false,R(s.vertical_oscillation_m*100,6,10,'cm')));
-  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,4,10,'°')));
+  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,4,8,'°')));
   if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,R(s.ground_contact_ms,180,250,'ms')));
   if(s.flight_time_ms!=null) t.push(tile('Flight time',num(s.flight_time_ms),'ms',s.flight_time_ms_estimated?'estimated from 2D video':null,null,false,R(s.flight_time_ms,80,150,'ms')));
   if(s.foot_strike!=null){
@@ -1930,8 +1994,10 @@ function runTiles(s){
     t.push(tile('Foot strike',fsMap[s.foot_strike]||pretty(s.foot_strike),'',s.foot_strike_estimated?'estimated from 2D video':null,fsCls,true));
   }
   if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×',s.overstride_estimated?'× leg length ahead of hip (est.)':'× leg length ahead of hip',null,false,R(s.overstride_ratio,0,0.15,'×')));
-  if(s.knee_mean!=null) t.push(tile('Knee (mean)',num(s.knee_mean),'°',null,null,false,R(s.knee_mean,140,160,'°')));
-  if(s.knee_min!=null) t.push(tile('Knee (min)',num(s.knee_min),'°'));
+  // Knee is scored at two gait phases, not as a full-cycle mean: knee_max is
+  // extension near footstrike (contact), knee_min is peak flexion in swing.
+  if(s.knee_max!=null) t.push(tile('Knee · contact',num(s.knee_max),'°',null,null,false,R(s.knee_max,160,175,'°')));
+  if(s.knee_min!=null) t.push(tile('Knee · swing',num(s.knee_min),'°',null,null,false,R(s.knee_min,80,100,'°')));
   return t;
 }
 
@@ -2371,7 +2437,7 @@ function render(job){
   if(sport==='bike') renderAeroPanel(s); else $('#aeroBlock').classList.add('hidden');
 
   // tiles
-  $('#tiles').innerHTML=(sport==='bike'?bikeTiles(s):runTiles(s)).join('') || '<p class="hint" style="text-align:left">No summary metrics available.</p>';
+  $('#tiles').innerHTML=(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s)).join('') || '<p class="hint" style="text-align:left">No summary metrics available.</p>';
 
   // angle table — merge in the opposite side from a previously saved analysis
   // (side-view only captures the near side; the far side is 0%-valid). If the
@@ -2426,10 +2492,10 @@ function cardMetrics(sport,s){
     add('Hip',s.hip_angle_max,'°',40,80);
     add('Elbow',s.elbow_angle_avg,'°',145,165);
   } else {
-    add('Cadence',s.cadence_spm,'spm',170,185);
+    add('Cadence',s.cadence_spm,'spm',170,190);
     let vo=s.vertical_oscillation_cm; if(vo==null&&s.vertical_oscillation_m!=null) vo=s.vertical_oscillation_m*100;
     add('Vert osc',vo,'cm',6,10,true);
-    add('Trunk lean',s.trunk_lean_avg,'°',4,10);
+    add('Trunk lean',s.trunk_lean_avg,'°',4,8);
     add('Knee',s.knee_mean,'°',140,160);
   }
   return out.slice(0,4);
@@ -3026,9 +3092,9 @@ function extractTrends(kind,res,sport){
       put('trunk',s.trunk_angle_avg); put('elbow',s.elbow_angle_avg);
       put('shoulder',s.shoulder_angle_avg); put('pelvic_ratio',s.pelvic_ratio,[2,4]);
     } else {
-      put('cadence',s.cadence_spm,[170,185]);
+      put('cadence',s.cadence_spm,[170,190]);
       put('vertical_oscillation', s.vertical_oscillation_cm!=null?s.vertical_oscillation_cm:(s.vertical_oscillation_m!=null?s.vertical_oscillation_m*100:null), [6,10]);
-      put('trunk_lean',s.trunk_lean_avg,[5,10]);
+      put('trunk_lean',s.trunk_lean_avg,[4,8]);
       put('ground_contact',s.ground_contact_ms,[180,250]);
       put('flight_time',s.flight_time_ms,[80,150]);
       put('overstride',s.overstride_ratio,[0,0.15],2);
