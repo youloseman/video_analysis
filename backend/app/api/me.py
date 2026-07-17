@@ -3,6 +3,12 @@
 The client keeps the same entry shape it uses in localStorage; here we persist
 it per account so history + progress survive device switches. All endpoints
 require a valid bearer token.
+
+The list endpoint returns entries *without* their annotated keyframe: a frame is
+a ~100-160 KB base64 JPEG, so a full history would otherwise be an 8-16 MB JSON
+on every dashboard load -- worst for the most active (most valuable) accounts.
+Each entry carries ``has_keyframe`` instead and the client pulls frames one at a
+time from ``/analyses/{client_id}/keyframe`` as cards scroll into view.
 """
 
 from __future__ import annotations
@@ -52,11 +58,19 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
             )
         )
     ).scalar_one_or_none()
+    # ``has_keyframe`` is a transport flag from the thin list, never stored.
+    entry.pop("has_keyframe", None)
     at = int(entry.get("at") or 0)
     sport = entry.get("sport")
     kind = entry.get("kind")
     score = entry.get("score")
     if row is not None:
+        # The client edits entries it fetched from the thin list (no frame), so
+        # a re-save that omits the keyframe must not wipe the stored one.
+        if not entry.get("keyframe"):
+            stored = (row.data or {}).get("keyframe")
+            if stored:
+                entry["keyframe"] = stored
         row.data = entry
         row.created_at_ms = at
         row.sport = sport
@@ -82,6 +96,13 @@ async def _enforce_cap(db: AsyncSession, user: User) -> None:
         await db.execute(delete(Analysis).where(Analysis.id.in_(stale)))
 
 
+def _without_keyframe(data: dict[str, Any]) -> dict[str, Any]:
+    """Entry minus its base64 frame, flagged so the client knows to fetch it."""
+    thin = {k: v for k, v in data.items() if k != "keyframe"}
+    thin["has_keyframe"] = bool(data.get("keyframe"))
+    return thin
+
+
 @router.get("/analyses")
 async def list_analyses(
     user: User = Depends(get_current_user),
@@ -95,7 +116,28 @@ async def list_analyses(
             .limit(MAX_PER_USER)
         )
     ).scalars().all()
-    return [r.data for r in rows]
+    return [_without_keyframe(r.data) for r in rows]
+
+
+@router.get("/analyses/{client_id}/keyframe")
+async def get_keyframe(
+    client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The annotated keyframe for one of the caller's analyses (data URI)."""
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    return {"keyframe": (row.data or {}).get("keyframe")}
 
 
 @router.post("/analyses", status_code=status.HTTP_201_CREATED)
