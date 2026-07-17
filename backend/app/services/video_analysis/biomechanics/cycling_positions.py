@@ -31,6 +31,8 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "knee_at_bdc": (135, 145),      # Retul: 35-45 deg extension = 135-145 internal
         "knee_at_tdc": (65, 75),        # Retul fit window
         "hip_angle_max": (55, 65),      # avg hip angle (above optimal = comfort/OK)
+        "hip_at_tdc": (55, 70),         # hip angle at top of stroke (closed)
+        "hip_at_bdc": (100, 120),       # hip angle at bottom of stroke (open)
         "shoulder_angle": (90, 120),
         "forearm_tilt": (5, 20),
         "head_alignment": (50, 100),    # less critical on road
@@ -44,6 +46,8 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "knee_at_bdc": (135, 145),      # Retul; Bini et al. 2011
         "knee_at_tdc": (65, 75),        # Retul fit window
         "hip_angle_max": (50, 65),      # avg hip angle in drops (above = OK)
+        "hip_at_tdc": (52, 68),
+        "hip_at_bdc": (95, 118),
         "shoulder_angle": (85, 110),
         "forearm_tilt": (0, 15),
         "head_alignment": (60, 100),
@@ -57,6 +61,8 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "knee_at_bdc": (138, 145),      # Retul TT/Tri: 37-42 deg extension
         "knee_at_tdc": (60, 72),        # more closed hip angle in aero
         "hip_angle_max": (35, 55),      # TT avg hip angle; above 55 = comfort/OK
+        "hip_at_tdc": (42, 60),         # aggressive closed hip at TDC
+        "hip_at_bdc": (85, 110),        # open hip at BDC
         "shoulder_angle": (80, 100),    # surplus power optimal 88.9-105.3 deg
         "forearm_tilt": (5, 25),        # modern trend 10-20 deg upward tilt
         "head_alignment": (75, 100),    # head tuck saves ~4.6% drag
@@ -70,6 +76,8 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "knee_at_bdc": (138, 145),      # Retul TT/Tri fit window
         "knee_at_tdc": (60, 72),
         "hip_angle_max": (40, 55),      # tri avg hip; more conservative min for run
+        "hip_at_tdc": (45, 62),
+        "hip_at_bdc": (88, 112),
         "shoulder_angle": (80, 105),
         "forearm_tilt": (5, 25),
         "head_alignment": (70, 100),
@@ -83,6 +91,8 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "knee_at_bdc": (135, 150),      # wider window for casual
         "knee_at_tdc": (60, 80),
         "hip_angle_max": (65, 85),      # casual: wide open, comfort focus
+        "hip_at_tdc": (68, 88),
+        "hip_at_bdc": (110, 138),
         "shoulder_angle": (100, 140),
         "forearm_tilt": (-5, 15),
         "head_alignment": (40, 100),
@@ -241,6 +251,8 @@ def get_cycling_reference(position: str | None = None) -> dict[str, tuple[float,
         "trunk_angle": pos["trunk_angle"],
         "elbow_angle": pos["elbow_angle"],
         "hip_angle_max": pos["hip_angle_max"],
+        "hip_at_bdc": pos["hip_at_bdc"],
+        "hip_at_tdc": pos["hip_at_tdc"],
         "shoulder_angle": pos["shoulder_angle"],
         "forearm_tilt": pos["forearm_tilt"],
         "head_alignment": pos["head_alignment"],

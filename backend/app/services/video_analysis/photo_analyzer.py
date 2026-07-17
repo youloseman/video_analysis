@@ -625,17 +625,15 @@ def _generate_photo_thumbnail(
                 else:
                     value_txt = f"{angle_value:.0f}°"
                 # colour by the same zone rule the score/UI use; ratios need a
-                # smaller margin floor than the degree default. Phase-dependent
-                # joints (bike hip/ankle) aren't judged from a still -> neutral.
-                if sport == "bike" and angle_key in _PHASE_DEPENDENT_BIKE:
-                    status = "muted"
-                else:
-                    opt = optimal_ranges.get(angle_key)
-                    floor = 0.3 if angle_key == "pelvic_ratio" else 3.0
-                    status = (
-                        overlay_style.status_for(angle_value, *opt, min_margin=floor)
-                        if opt else "muted"
-                    )
+                # smaller margin floor than the degree default. Joints with no
+                # band here (bike ankle always; hip when the crank position is
+                # uncertain) render neutral -- not judged from a still.
+                opt = optimal_ranges.get(angle_key)
+                floor = 0.3 if angle_key == "pelvic_ratio" else 3.0
+                status = (
+                    overlay_style.status_for(angle_value, *opt, min_margin=floor)
+                    if opt else "muted"
+                )
 
             status_rgb = overlay_style.STATUS_COLORS.get(status, overlay_style.INK_SOFT)
             overlay_style.draw_leader(cv2_mod, frame, (jx, jy), (lx, ly), status_rgb)
@@ -1050,6 +1048,20 @@ def analyze_photo(
 
         optimal_ranges = _get_cycling_optimal_ranges(cycling_position, pedal_phase)
 
+        # Phase 2 -- interactive hip verdict. Hip swings open->closed across the
+        # stroke, so score it against the band for the *guessed* crank position
+        # and ship both bands so the client can re-score if the rider corrects
+        # the phase. Overlay colours hip by the guessed band (muted if unsure);
+        # ankle stays informational (2D ankle is too noisy to judge from a still).
+        _cref = get_cycling_reference(cycling_position)
+        hip_bands = {"bdc": list(_cref["hip_at_bdc"]), "tdc": list(_cref["hip_at_tdc"])}
+        hip_phase = {"near_bdc": "bdc", "near_tdc": "tdc"}.get(pedal_phase, "uncertain")
+        if hip_phase in ("bdc", "tdc"):
+            optimal_ranges["hip"] = tuple(hip_bands[hip_phase])
+        else:
+            optimal_ranges.pop("hip", None)
+        optimal_ranges.pop("ankle", None)
+
     elif sport == "swim":
         for name, (a, b, c) in SWIMMING_PHOTO_ANGLES.items():
             val, _ = calculate_angle_3d(wl, a, b, c)
@@ -1082,22 +1094,36 @@ def analyze_photo(
     angles_with_context: dict[str, dict[str, Any]] = {}
 
     for angle_name, angle_value in angles.items():
-        if angle_name not in optimal_ranges:
-            continue
         lbl = labels.get(angle_name, angle_name.replace("_", " ").title())
-        # Pedal-phase-dependent joints (bike): measured + shown, but no verdict
-        # from a single still -- the value is only meaningful once the crank
-        # position is known.
-        if sport == "bike" and angle_name in _PHASE_DEPENDENT_BIKE:
-            angles_with_context[angle_name] = {
-                "value": angle_value,
-                "optimal_min": None,
-                "optimal_max": None,
-                "status": "phase_dependent",
-                "note": ("Depends on the pedal position — not scored from a "
-                         "single photo."),
-                "label": lbl,
+        # Bike hip: interactive phase verdict. Ship both BDC/TDC bands + the
+        # guessed phase so the client can re-score if the rider corrects it;
+        # score now against the guessed band (or leave unscored if uncertain).
+        if sport == "bike" and angle_name == "hip":
+            entry: dict[str, Any] = {
+                "value": angle_value, "label": lbl,
+                "bands": hip_bands, "phase": hip_phase,
+                "note": ("Hip opens at the bottom of the stroke and closes at the "
+                         "top — pick the pedal position to score it."),
             }
+            if hip_phase in ("bdc", "tdc"):
+                lo, hi = hip_bands[hip_phase]
+                entry["optimal_min"], entry["optimal_max"] = lo, hi
+                entry["status"] = _classify_angle_status(angle_value, lo, hi)
+            else:
+                entry["optimal_min"] = entry["optimal_max"] = None
+                entry["status"] = "phase_dependent"
+            angles_with_context["hip"] = entry
+            continue
+        # Bike ankle: measured, but never judged from a still (2D ankle too noisy).
+        if sport == "bike" and angle_name == "ankle":
+            angles_with_context["ankle"] = {
+                "value": angle_value, "label": lbl,
+                "optimal_min": None, "optimal_max": None,
+                "status": "phase_dependent",
+                "note": "Depends on the pedal position — not scored from a single photo.",
+            }
+            continue
+        if angle_name not in optimal_ranges:
             continue
         opt_min, opt_max = optimal_ranges[angle_name]
         angles_with_context[angle_name] = {

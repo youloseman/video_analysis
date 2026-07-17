@@ -334,11 +334,14 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         )
     lines.append("Joint angles (value vs optimal, status):")
     for k, v in (res.get("angles_with_context") or {}).items():
-        if v.get("status") == "phase_dependent":
-            # No verdict from a still -- the value swings with crank position.
+        # Pedal-phase-dependent joints (bike hip has both bands; ankle/uncertain
+        # hip are phase_dependent): the rider sets the crank position
+        # interactively, so the coach must not give its own hip/ankle verdict.
+        if v.get("status") == "phase_dependent" or v.get("bands"):
             lines.append(
                 f"- {v.get('label', k)}: {v.get('value')} — pedal-phase-dependent, "
-                f"NOT scored. Do NOT critique this angle or call it too open/closed."
+                f"scored interactively by the rider. Do NOT critique this angle or "
+                f"call it too open/closed."
             )
             continue
         lines.append(

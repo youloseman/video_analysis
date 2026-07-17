@@ -94,6 +94,16 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   color:var(--c-blue-dk);background:var(--c-panel-blue);border:1px solid var(--c-blue-soft);
   padding:3px 9px;border-radius:999px;
 }
+.lock-chip .ic{width:12px;height:12px}
+/* Free-tier teasers (cabinet): locked previews never show real data — a blurred
+   placeholder chart / bar over hardcoded shapes, plus one upsell CTA per screen. */
+.tcard-lock{position:relative;opacity:.92}
+.tcard-lock .tc-lbl{color:var(--c-ink-soft)}
+.tcard-lock .tc-sub{color:var(--c-ink-faint)}
+.tlock{margin-top:12px;filter:blur(3px);opacity:.5;pointer-events:none}
+.lockbar{display:inline-block;width:44px;height:11px;border-radius:5px;
+  background:linear-gradient(90deg,var(--c-line),var(--c-panel-blue));filter:blur(1px);vertical-align:middle}
+.dform-lockrow th{color:var(--c-ink-soft)}
 
 /* ---------- Accessibility primitives ---------- */
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -710,6 +720,9 @@ h2.sec + .speedline{margin-bottom:24px}
 .aero-speed-lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
 .aero-speed-unit{font-size:12px;color:var(--c-ink-soft);font-weight:700}
 .seg-sm button{padding:6px 12px;font-size:13px;font-weight:800}
+.phasepick{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--c-panel);border:1px solid var(--c-line);border-radius:var(--radius);padding:12px 14px;margin:0 0 14px}
+.phasepick-lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);line-height:1.5}
+.phasepick-lbl .hint{text-transform:none;letter-spacing:0;font-weight:600;font-size:12px}
 .seg-sm button[aria-pressed="true"]{background:var(--c-blue);color:#fff}
 .aero-lead{font-size:14.5px;line-height:1.55;color:var(--c-ink);margin:16px 0 6px}
 .aero-gauge{width:100%;max-width:400px;height:auto;display:block;margin:6px 0 10px}
@@ -1360,6 +1373,14 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <h3>Joint angles</h3>
         <div class="speedline-sm"></div>
       </div>
+      <div class="phasepick hidden" id="pPhasePick">
+        <span class="phasepick-lbl">Pedal position<br><span class="hint" id="pPhaseHint"></span></span>
+        <div class="seg seg-sm" role="group" aria-label="Pedal position">
+          <button type="button" data-phase="bdc">Bottom</button>
+          <button type="button" data-phase="tdc">Top</button>
+          <button type="button" data-phase="uncertain">Not sure</button>
+        </div>
+      </div>
       <div class="tablewrap">
         <table class="data">
           <caption class="visually-hidden">Joint angles with measured value, optimal range and status</caption>
@@ -1433,6 +1454,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </button>
     </div>
     <div class="tgrid" id="progGrid"></div>
+    <div id="progTeaser"></div>
   </section>
 
   <!-- ============ COMPARE (BEFORE / AFTER) ============ -->
@@ -1753,6 +1775,7 @@ $('#analyze').addEventListener('click',()=>{
 $('#again').addEventListener('click',()=>reset());
 $('#shareBtn').addEventListener('click',shareResult);
 $('#pShareBtn').addEventListener('click',sharePhoto);
+$('#pPhasePick').addEventListener('click',e=>{ const b=e.target.closest('[data-phase]'); if(b) setPhotoPedalPhase(b.dataset.phase); });
 $('#hShareBtn').addEventListener('click',shareHistory);
 $('#cardShareBtn').addEventListener('click',cardModalShare);
 $('#cardDownloadBtn').addEventListener('click',()=>toast('Saving image…'));
@@ -2271,7 +2294,56 @@ async function analyzePhoto(){
 
 const P_STATUS_CLS={optimal:'good','in_range':'good',good:'good',
   too_low:'medium',too_high:'medium',low:'medium',high:'medium',slightly_low:'medium',slightly_high:'medium',
-  out_of_range:'high',poor:'high'};
+  out_of_range:'high',poor:'high',phase_dependent:'info'};
+/* Mirror backend _classify_angle_status so hip re-scoring on a phase change is
+   instant + client-side (the measured angle never changes -- only the band). */
+function classifyAngle(v,lo,hi){
+  if(v==null||isNaN(v)) return 'insufficient_visibility';
+  if(v>=lo&&v<=hi) return 'optimal';
+  const m=Math.max((hi-lo)*0.10,3.0);
+  return (v>=lo-m&&v<=hi+m) ? 'acceptable' : 'needs_work';
+}
+/* Resolve the hip row for the chosen pedal phase (bdc/tdc/uncertain). */
+function hipForPhase(hip,phase){
+  const o={value:hip.value,label:hip.label,bands:hip.bands,note:hip.note};
+  const band=(phase==='bdc'||phase==='tdc')&&hip.bands&&hip.bands[phase];
+  if(band){ o.optimal_min=band[0]; o.optimal_max=band[1]; o.status=classifyAngle(hip.value,band[0],band[1]); }
+  else { o.optimal_min=o.optimal_max=null; o.status='phase_dependent'; }
+  return o;
+}
+function angleRow(k,a){
+  const stt=a.status||'unknown';
+  const val=a.value==null?'—':(typeof a.value==='number'?Math.round(a.value*10)/10:a.value);
+  if(stt==='phase_dependent'){
+    return `<tr class="row-info"><th scope="row">${esc(a.label||pretty(k))}</th>
+      <td class="num">${val}</td><td class="num muted">—</td>
+      <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · pedal position</span></td></tr>`;
+  }
+  const cls=P_STATUS_CLS[stt]||'low';
+  const opt=(a.optimal_min!=null&&a.optimal_max!=null)?`${a.optimal_min}–${a.optimal_max}`:'—';
+  return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
+    <td class="num">${val}</td><td class="num">${opt}</td>
+    <td><span class="pill pill-${cls}"><span class="dot" aria-hidden="true"></span>${esc(stt.replace(/_/g,' '))}</span></td></tr>`;
+}
+function renderPhotoAngles(){
+  const res=state.photoRes; if(!res) return;
+  const A=res.angles_with_context||{}, phase=state.pedalPhase||'uncertain';
+  const rows=Object.keys(A).map(k=>{
+    let a=A[k];
+    if(k==='hip'&&a.bands) a=hipForPhase(a,phase);   // interactive hip verdict
+    return angleRow(k,a);
+  }).join('');
+  $('#pAngleRows').innerHTML=rows||'<tr><td colspan="4" class="muted">No angle data.</td></tr>';
+  const hip=A.hip, pick=$('#pPhasePick');
+  if(hip&&hip.bands){
+    pick.classList.remove('hidden');
+    document.querySelectorAll('#pPhasePick [data-phase]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.phase===phase)));
+    $('#pPhaseHint').textContent = phase==='uncertain'
+      ? "we couldn't tell — pick to score the hip"
+      : (phase===hip.phase ? 'auto-detected · fix if wrong' : 'you set this');
+  } else pick.classList.add('hidden');
+}
+function setPhotoPedalPhase(p){ state.pedalPhase=p; renderPhotoAngles(); }
 function renderPhoto(res){
   const sport=res.sport||state.sport;
   const sc=res.score||{}; const score=sc.overall_score;
@@ -2316,23 +2388,10 @@ function renderPhoto(res){
     cb.classList.remove('hidden');
   } else cb.classList.add('hidden');
 
-  const A=res.angles_with_context||{};
-  const rows=Object.keys(A).map(k=>{
-    const a=A[k]; const stt=a.status||'unknown';
-    const val=a.value==null?'—':(typeof a.value==='number'?Math.round(a.value*10)/10:a.value);
-    // Pedal-phase-dependent joints: measured, but no pass/fail from a still.
-    if(stt==='phase_dependent'){
-      return `<tr class="row-info"><th scope="row">${esc(a.label||pretty(k))}</th>
-        <td class="num">${val}</td><td class="num muted">—</td>
-        <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · pedal position</span></td></tr>`;
-    }
-    const cls=P_STATUS_CLS[stt]||'low';
-    const opt=(a.optimal_min!=null&&a.optimal_max!=null)?`${a.optimal_min}–${a.optimal_max}`:'—';
-    return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
-      <td class="num">${val}</td><td class="num">${opt}</td>
-      <td><span class="pill pill-${cls}"><span class="dot" aria-hidden="true"></span>${esc(stt.replace(/_/g,' '))}</span></td></tr>`;
-  }).join('');
-  $('#pAngleRows').innerHTML=rows||'<tr><td colspan="4" class="muted">No angle data.</td></tr>';
+  // Interactive hip verdict: default to the detected pedal phase.
+  const _hip=(res.angles_with_context||{}).hip;
+  state.pedalPhase=(_hip&&_hip.phase)||'uncertain';
+  renderPhotoAngles();
 
   if(DEBUG){ $('#pRawBlock').classList.remove('hidden');
     $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2); }
@@ -2357,22 +2416,30 @@ const UNLOCK_COPY={
   video:'Annotated video + slow-motion replay',
   second_phase:'Second phase photo (contact & drive)',
 };
-function renderUpsell(containerId, locked, blockIds){
-  (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
-  const host=$('#'+containerId); if(!host) return false;
-  const items=(locked.unlocks||Object.keys(UNLOCK_COPY))
-    .map(k=>UNLOCK_COPY[k]).filter(Boolean);
+/* Free = anonymous or the starter tier; both get a gated result (score +
+   keyframe only), so their cabinet has the metrics/plan/focus withheld. */
+function isFreeUser(){ return !auth || auth.tier==='starter'; }
+/* The shared upsell panel. `data-src` tags where the CTA fired for later
+   analytics (no tracking wired yet). One of these per screen — never more. */
+function teaserPanelHtml(items, opts){
+  opts=opts||{};
   const check='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  host.innerHTML=`<div class="upsell">
-    <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Free preview</span>
-    <h3>Unlock your full analysis</h3>
-    <p>You’re seeing the skeleton and your score. Upgrade to reveal the measurements and coaching that tell you <em>what to actually change</em>.</p>
-    <ul>${items.map(t=>`<li>${check}<span>${esc(t)}</span></li>`).join('')}</ul>
+  return `<div class="upsell">
+    <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> ${esc(opts.chip||'Free preview')}</span>
+    <h3>${esc(opts.title||'Unlock your full analysis')}</h3>
+    <p>${opts.body||'You’re seeing the skeleton and your score. Upgrade to reveal the measurements and coaching that tell you <em>what to actually change</em>.'}</p>
+    <ul>${(items||[]).map(t=>`<li>${check}<span>${esc(t)}</span></li>`).join('')}</ul>
     <div class="cta-row">
-      <button class="btn btn-primary" type="button" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+      <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
       <span class="price-tag">from <b>$9</b>/mo</span>
     </div>
   </div>`;
+}
+function renderUpsell(containerId, locked, blockIds){
+  (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
+  const host=$('#'+containerId); if(!host) return false;
+  const items=(locked.unlocks||Object.keys(UNLOCK_COPY)).map(k=>UNLOCK_COPY[k]).filter(Boolean);
+  host.innerHTML=teaserPanelHtml(items, {src:'result'});
   host.classList.remove('hidden');
   return true;
 }
