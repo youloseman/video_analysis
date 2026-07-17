@@ -3180,7 +3180,13 @@ function thumbMarkup(e, cls){
   if(e.has_keyframe) return `<img class="${cls} kf-img" alt="">`;
   return '';
 }
-function thumbAttrs(e){ return (!keyframeOf(e) && e.has_keyframe) ? ` data-kf="${e.id}" class="kf-load"` : ''; }
+// A pending cloud frame needs BOTH the shimmer class and the data-kf hook. They
+// must be applied separately: the container already has a class attribute, and a
+// second one would be dropped by the parser (silently killing the shimmer). So
+// `thumbPendCls` folds into the existing class="", `thumbPendData` adds the hook.
+function thumbPending(e){ return !keyframeOf(e) && !!e.has_keyframe; }
+function thumbPendCls(e){ return thumbPending(e) ? ' kf-load' : ''; }
+function thumbPendData(e){ return thumbPending(e) ? ` data-kf="${e.id}"` : ''; }
 let kfObserver=null;
 /* `node` is either the thumb container or the <img> itself. */
 function fillKeyframe(node){
@@ -3217,7 +3223,7 @@ function renderHistList(){
     return;
   }
   w.innerHTML=a.map(e=>`<div class="hcard" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">
-    <div class="hthumb"${thumbAttrs(e)}>${thumbMarkup(e,'')}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
+    <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
       <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
     <div class="hmeta"><div class="htitle">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind)}</div>
       <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
@@ -3913,7 +3919,7 @@ function renderCurrentForm(all){
 }
 function dashRecentCard(e){
   return `<div class="drec" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} analysis">
-    <div class="drec-thumb"${thumbAttrs(e)}>${thumbMarkup(e,'')}<span class="drec-score" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span></div>
+    <div class="drec-thumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="drec-score" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span></div>
     <div class="drec-meta"><div class="drec-title">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind||'video')}</div><div class="hint">${fmtWhen(e.at)}</div></div>
   </div>`;
 }
