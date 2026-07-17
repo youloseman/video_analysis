@@ -15,6 +15,7 @@ from typing import Any
 import numpy as np
 import structlog
 
+from app.services.video_analysis import overlay_style
 from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 
 # Phase colors (BGR for OpenCV). Warm = propulsive, cool = setup, gray = unknown.
@@ -279,9 +280,13 @@ class VideoVisualizer:
             if analyzed_idx is not None:
                 last_analyzed_idx = analyzed_idx
 
-            # Draw overlay if we have landmark data
+            # Draw overlay if we have landmark data. The chip layer is painted
+            # with PIL and returns a NEW array -- rebind rather than assume
+            # in-place mutation.
             if last_analyzed_idx is not None:
-                self._draw_frame_overlay(cv2, frame, last_analyzed_idx, width, height)
+                frame = self._draw_frame_overlay(
+                    cv2, frame, last_analyzed_idx, width, height,
+                )
 
             # Brand watermark on every frame (even un-analyzed ones)
             if WATERMARK_ENABLED:
@@ -351,7 +356,8 @@ class VideoVisualizer:
             if not ok or frame is None:
                 return None
             h, w = frame.shape[:2]
-            self._draw_frame_overlay(cv2, frame, best_idx, w, h)
+            # one-off still -> afford the full look (skeleton glow)
+            frame = self._draw_frame_overlay(cv2, frame, best_idx, w, h, keyframe_mode=True)
             if w > max_width:
                 nh = int(round(h * max_width / w))
                 frame = cv2.resize(frame, (max_width, nh), interpolation=cv2.INTER_AREA)
@@ -386,8 +392,17 @@ class VideoVisualizer:
 
     def _draw_frame_overlay(
         self, cv2_mod: Any, frame: Any, analyzed_idx: int, width: int, height: int,
-    ) -> None:
-        """Draw skeleton + angle labels on a single frame."""
+        keyframe_mode: bool = False,
+    ) -> Any:
+        """Draw skeleton + angle labels on a single frame.
+
+        Returns the annotated frame. The chip/text layer is painted with PIL, so
+        a NEW array comes back -- callers must use the return value rather than
+        relying on in-place mutation.
+
+        ``keyframe_mode`` enables the expensive extras (skeleton glow) for the
+        one-off keyframe still; the per-frame video path leaves them off.
+        """
         fd = self.frame_data_list[analyzed_idx]
         normalized_lms = fd["normalized_landmarks"]
 
@@ -411,9 +426,6 @@ class VideoVisualizer:
             pixel_coords.append((int(lx * width), int(ly * height), float(vis)))
 
         # -- 1. Skeleton bones (near-side only for bike/run) --
-        near_color = (180, 255, 180)   # light green (BGR)
-        near_dot = (0, 255, 200)       # cyan-green
-
         # For bike, the near-side filter is unconditional even if
         # camera_side is somehow falsy (defaults to "left"). This is
         # belt-and-suspenders against cross-body "spider-web" bones
@@ -424,6 +436,7 @@ class VideoVisualizer:
             effective_side = "left"
         side_filter_active = bool(effective_side)
 
+        _segments: list[tuple[tuple[int, int], tuple[int, int]]] = []
         for start_idx, end_idx in POSE_CONNECTIONS:
             if start_idx >= len(pixel_coords) or end_idx >= len(pixel_coords):
                 continue
@@ -438,15 +451,46 @@ class VideoVisualizer:
             # Skip far-side bones entirely for side-view sports
             if side_filter_active and not both_near:
                 continue
-            cv2_mod.line(frame, (sx, sy), (ex, ey), near_color, 1, cv2_mod.LINE_AA)
+            _segments.append(((sx, sy), (ex, ey)))
 
+        _dots: list[tuple[int, int]] = []
         for i, (px, py, vis) in enumerate(pixel_coords):
             if vis < MIN_OVERLAY_VISIBILITY:
                 continue
             # Skip far-side dots for side-view sports
             if side_filter_active and not _is_near_side_landmark(i, effective_side):
                 continue
-            cv2_mod.circle(frame, (px, py), 2, near_dot, -1, cv2_mod.LINE_AA)
+            _dots.append((px, py))
+
+        # Neon skeleton (shared style). The glow is a per-frame blur, so keep it
+        # only for the single keyframe render -- on a full clip it would cost a
+        # Gaussian on every frame for a detail nobody pauses to look at.
+        _sk = max(1.0, min(2.2, width / 900))
+        overlay_style.draw_glow_skeleton(
+            cv2_mod, frame, _segments, _dots,
+            glow=bool(keyframe_mode),
+            line_w=max(2, int(2 * _sk)), dot_r=max(3, int(3.5 * _sk)),
+        )
+        chips = overlay_style.ChipLayer(frame)
+
+        # Header first so it reserves the top strip (chips get nudged clear of it).
+        _sport_labels = {"run": "RUN", "bike": "BIKE", "swim": "SWIM"}
+        _score = self.technique_score
+        _hdr_status = (
+            "good" if _score >= 75 else "warn" if _score >= 60 else "bad"
+        )
+        _title = (
+            "AERODYNAMIC PROFILE"
+            if (self.sport_type == "bike"
+                and self.cycling_position in ("tt_aero", "triathlon"))
+            else ("CYCLING PROFILE" if self.sport_type == "bike" else "RUNNING PROFILE")
+        )
+        _pad = int(max(10, height * 0.018))
+        chips.header(
+            (_pad, _pad), _sport_labels.get(self.sport_type, self.sport_type.upper()),
+            f"{_score}/100", self.letter_grade, _hdr_status,
+            right_text=_title, frame_w=width, scale=_sk,
+        )
 
         # -- 2. Angle arcs + labels --
         if len(pixel_coords) > 25:
@@ -457,8 +501,6 @@ class VideoVisualizer:
             s11x, s11y, _ = pixel_coords[11]
             h23x, h23y, _ = pixel_coords[23]
             body_height_px = abs(s11y - h23y)
-            font_scale = max(0.35, min(0.55, body_height_px / 400))
-            thickness_t = 1 if font_scale < 0.45 else 2
             offset_px = max(70, int(body_height_px * 0.5))
 
             offset_vectors = {
@@ -471,8 +513,6 @@ class VideoVisualizer:
                 "down-left":  (-offset_px, int(offset_px * 0.7)),
                 "down-right": (offset_px, int(offset_px * 0.7)),
             }
-
-            font = cv2_mod.FONT_HERSHEY_SIMPLEX
 
             for cfg in self.label_configs:
                 # Use per-frame angle value (not mean)
@@ -489,12 +529,12 @@ class VideoVisualizer:
                     continue
 
                 opt_min, opt_max = cfg["optimal"]
-                if opt_min <= angle_val <= opt_max:
-                    color = (0, 220, 0)       # GREEN
-                elif abs(angle_val - opt_min) < 15 or abs(angle_val - opt_max) < 15:
-                    color = (0, 200, 255)     # ORANGE (BGR)
-                else:
-                    color = (0, 0, 255)       # RED (BGR)
+                status = overlay_style.status_for(angle_val, opt_min, opt_max)
+                status_rgb = overlay_style.STATUS_COLORS.get(
+                    status, overlay_style.INK_SOFT,
+                )
+                # arc still wants BGR
+                color = (status_rgb[2], status_rgb[1], status_rgb[0])
 
                 # Draw angle arc
                 triplet = self.arc_triplets.get(cfg["key"])
@@ -504,34 +544,24 @@ class VideoVisualizer:
                         color, body_height_px,
                     )
 
-                # Callout line + label
+                # Leader line + neon chip
                 jx, jy, _ = pixel_coords[lm_idx]
                 dx, dy = offset_vectors.get(cfg["offset_dir"], (offset_px, 0))
-                lx = max(5, min(width - 130, jx + dx))
-                ly = max(20, min(height - 10, jy + dy))
-
-                cv2_mod.line(frame, (jx, jy), (lx, ly), (200, 200, 200), 1, cv2_mod.LINE_AA)
-                cv2_mod.circle(frame, (jx, jy), 3, color, -1, cv2_mod.LINE_AA)
+                align = "right" if dx < 0 else "left"
+                lx = max(5, min(width - 5, jx + dx))
+                ly = max(20, min(height - 20, jy + dy))
 
                 # Teaser: mask the number (skeleton + which joint stays visible,
                 # the measured value is locked behind an upgrade).
                 if self.hide_angle_values:
-                    text = f"{cfg['name']} [locked]"
-                    color = (150, 150, 150)  # gray, de-emphasized (BGR)
+                    value_txt, status = "LOCKED", "muted"
+                    status_rgb = overlay_style.INK_SOFT
                 else:
-                    text = f"{cfg['name']} {angle_val:.0f}"
-                (tw, th_t), _ = cv2_mod.getTextSize(text, font, font_scale, thickness_t)
-                pad = 3
-                cv2_mod.rectangle(
-                    frame,
-                    (lx - pad, ly - th_t - pad),
-                    (lx + tw + pad, ly + pad),
-                    (0, 0, 0), -1,
-                )
-                cv2_mod.putText(
-                    frame, text, (lx, ly),
-                    font, font_scale, color, thickness_t, cv2_mod.LINE_AA,
-                )
+                    value_txt = f"{angle_val:.0f}°"
+
+                overlay_style.draw_leader(cv2_mod, frame, (jx, jy), (lx, ly), status_rgb)
+                chips.metric_chip((lx, ly), str(cfg["name"]).upper(), value_txt,
+                                  status, scale=_sk, align=align)
 
         # -- 2b. Head alignment + pelvic ratio overlays (bike only) --
         if self.sport_type == "bike" and len(pixel_coords) > 25:
@@ -539,8 +569,6 @@ class VideoVisualizer:
             s11x, s11y, _ = pixel_coords[11]
             h23x, h23y, _ = pixel_coords[23]
             bh_px = abs(s11y - h23y)
-            small_scale = max(0.28, min(0.45, bh_px / 500))
-            font_hl = cv2_mod.FONT_HERSHEY_SIMPLEX
 
             # Per-frame head alignment from extra_metrics
             fr = (
@@ -571,16 +599,21 @@ class VideoVisualizer:
 
                         if eav >= MIN_OVERLAY_VISIBILITY:
                             if self.hide_angle_values:
-                                h_color = (150, 150, 150)
-                                h_text = "Head [locked]"
+                                h_status, h_text = "muted", "LOCKED"
                             else:
-                                h_color = (0, 220, 0) if head_score >= 75 else ((0, 200, 255) if head_score >= 50 else (0, 0, 255))
-                                h_text = f"Head {head_score:.0f}"
-                            (htw, hth), _ = cv2_mod.getTextSize(h_text, font_hl, small_scale, 1)
-                            hlx = max(5, min(width - htw - 5, eax + 10))
-                            hly = max(hth + 5, min(height - 5, eay - 10))
-                            cv2_mod.rectangle(frame, (hlx - 2, hly - hth - 2), (hlx + htw + 2, hly + 2), (0, 0, 0), -1)
-                            cv2_mod.putText(frame, h_text, (hlx, hly), font_hl, small_scale, h_color, 1, cv2_mod.LINE_AA)
+                                h_status = (
+                                    "good" if head_score >= 75
+                                    else ("warn" if head_score >= 50 else "bad")
+                                )
+                                h_text = f"{head_score:.0f}/100"
+                            hlx = max(5, min(width - 5, eax + int(28 * _sk)))
+                            hly = max(20, min(height - 20, eay - int(26 * _sk)))
+                            overlay_style.draw_leader(
+                                cv2_mod, frame, (eax, eay), (hlx, hly),
+                                overlay_style.STATUS_COLORS.get(h_status, overlay_style.INK_SOFT),
+                            )
+                            chips.metric_chip((hlx, hly), "HEAD POSITION", h_text,
+                                              h_status, scale=_sk)
 
             # Pelvic ratio (use summary average)
             pelvic = self.summary.get("pelvic_ratio", 0)
@@ -589,27 +622,26 @@ class VideoVisualizer:
                 ref = get_cycling_reference(self.cycling_position)
                 p_min, p_max = ref["pelvic_ratio"]
                 if self.hide_angle_values:
-                    p_color = (150, 150, 150)
-                    p_text = "Pelvic [locked]"
+                    p_status, p_text = "muted", "LOCKED"
                 else:
-                    if p_min <= pelvic <= p_max:
-                        p_color = (0, 220, 0)
-                    elif abs(pelvic - p_min) < 0.5 or abs(pelvic - p_max) < 0.5:
-                        p_color = (0, 200, 255)
-                    else:
-                        p_color = (0, 0, 255)
-                    p_text = f"Pelvic {pelvic:.1f}x"
-                (ptw, pth), _ = cv2_mod.getTextSize(p_text, font_hl, small_scale, 1)
+                    # ratio, not degrees -> small margin floor
+                    p_status = overlay_style.status_for(
+                        pelvic, p_min, p_max, min_margin=0.3,
+                    )
+                    p_text = f"{pelvic:.1f}x"
                 hp_i2 = 23 if near == "left" else 24
                 hpx2, hpy2, _ = pixel_coords[hp_i2]
                 off_px = max(50, int(bh_px * 0.35))
-                plx = max(5, min(width - ptw - 5, hpx2 + int(off_px * 0.3)))
-                ply = max(pth + 5, min(height - 5, hpy2 + int(off_px * 0.6)))
-                cv2_mod.rectangle(frame, (plx - 2, ply - pth - 2), (plx + ptw + 2, ply + 2), (0, 0, 0), -1)
-                cv2_mod.putText(frame, p_text, (plx, ply), font_hl, small_scale, p_color, 1, cv2_mod.LINE_AA)
+                plx = max(5, min(width - 5, hpx2 - int(off_px * 0.5)))
+                ply = max(20, min(height - 20, hpy2 + int(off_px * 0.6)))
+                overlay_style.draw_leader(
+                    cv2_mod, frame, (hpx2, hpy2), (plx, ply),
+                    overlay_style.STATUS_COLORS.get(p_status, overlay_style.INK_SOFT),
+                )
+                chips.metric_chip((plx, ply), "PELVIC TILT", p_text, p_status,
+                                  scale=_sk, align="right")
 
-        # -- 3. Info badge (top-left corner) --
-        self._draw_info_badge(cv2_mod, frame, width)
+        # -- 3. (header is staged on `chips` up top and painted in the flush below) --
 
         # -- 4. Phase overlay (swim + run): phase label, cycle counter,
         #       timeline, legend. Driven by sport-specific config set in __init__.
@@ -627,9 +659,14 @@ class VideoVisualizer:
                     analyzed_idx < int(getattr(self, "_overlay_fps", 30) * 2):
                 self._draw_phase_legend(cv2_mod, frame, width, height)
 
-        # -- 5. Free-tier teaser watermark (burned into every rendered frame) --
-        if self.teaser_watermark:
-            self._draw_text_watermark(cv2_mod, frame, width, height)
+        # -- 5. Branding / free-tier teaser --
+        chips.brand(
+            (width - _pad, height - _pad), "FLAPP",
+            "FREE" if self.teaser_watermark else "", scale=_sk,
+        )
+
+        # -- 6. Paint the header + all chips in a single PIL pass --
+        return chips.flush()
 
     def _get_frame_angles(self, analyzed_idx: int) -> dict[str, float]:
         """Get angle values for a specific analyzed frame index."""
@@ -645,41 +682,6 @@ class VideoVisualizer:
             if "trunk_lean" in fr.angles:
                 result["trunk_lean"] = fr.angles["trunk_lean"]
         return result
-
-    def _draw_info_badge(self, cv2_mod: Any, frame: Any, width: int) -> None:
-        """Draw a small info badge in the top-left corner."""
-        sport_labels = {"run": "RUN", "bike": "BIKE", "swim": "SWIM"}
-        sport_text = sport_labels.get(self.sport_type, self.sport_type.upper())
-        badge_text = f"{sport_text}  {self.technique_score}/100  {self.letter_grade}"
-
-        font = cv2_mod.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.5
-        thickness = 1
-        (tw, th), _ = cv2_mod.getTextSize(badge_text, font, font_scale, thickness)
-
-        pad = 8
-        x, y = 10, 10
-        cv2_mod.rectangle(
-            frame,
-            (x, y),
-            (x + tw + pad * 2, y + th + pad * 2),
-            (0, 0, 0), -1,
-        )
-        # Semi-transparent overlay
-        overlay = frame.copy()
-        cv2_mod.rectangle(
-            overlay,
-            (x, y),
-            (x + tw + pad * 2, y + th + pad * 2),
-            (0, 0, 0), -1,
-        )
-        cv2_mod.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
-
-        cv2_mod.putText(
-            frame, badge_text,
-            (x + pad, y + th + pad),
-            font, font_scale, (0, 255, 255), thickness, cv2_mod.LINE_AA,
-        )
 
     @staticmethod
     def _get_watermark(cv2_mod: Any, target_h: int) -> "np.ndarray | None":

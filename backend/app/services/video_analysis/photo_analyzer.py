@@ -18,6 +18,8 @@ import numpy as np
 import structlog
 from PIL import Image, ImageOps
 
+from app.services.video_analysis import overlay_style
+
 from app.services.video_analysis.biomechanics.angle_calculator import (
     MIN_LANDMARK_VISIBILITY,
     calculate_angle_2d,
@@ -475,6 +477,7 @@ def _generate_photo_thumbnail(
     arc_triplets: dict[str, tuple[int, int, int]],
     cycling_position: str | None = None,
     hide_angle_values: bool = False,
+    optimal_ranges: dict[str, tuple[float, float]] | None = None,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
@@ -483,6 +486,7 @@ def _generate_photo_thumbnail(
     """
     frame = image.copy()
     h, w = frame.shape[:2]
+    optimal_ranges = optimal_ranges or {}
 
     # Convert normalized landmarks to pixel coordinates
     pixel_coords: list[tuple[int, int, float]] = []
@@ -492,11 +496,10 @@ def _generate_photo_thumbnail(
         vis = getattr(lm, "visibility", 1.0)
         pixel_coords.append((px, py, float(vis)))
 
-    # --- 1. DRAW SKELETON ---
+    # --- 1. DRAW SKELETON (neon + soft glow, shared style) ---
     side_filter = camera_side if sport in ("run", "bike") else None
-    near_color = (180, 255, 180)
-    near_dot = (0, 255, 200)
 
+    _segments: list[tuple[tuple[int, int], tuple[int, int]]] = []
     for start_idx, end_idx in _POSE_CONNECTIONS:
         if start_idx >= len(pixel_coords) or end_idx >= len(pixel_coords):
             continue
@@ -509,14 +512,38 @@ def _generate_photo_thumbnail(
             and _is_near_side(end_idx, side_filter)
         ):
             continue
-        cv2_mod.line(frame, (sx, sy), (ex, ey), near_color, 1, cv2_mod.LINE_AA)
+        _segments.append(((sx, sy), (ex, ey)))
 
+    _dots: list[tuple[int, int]] = []
     for i, (px, py, vis) in enumerate(pixel_coords):
         if vis < _VIS_THRESHOLD:
             continue
         if side_filter and not _is_near_side(i, side_filter):
             continue
-        cv2_mod.circle(frame, (px, py), 2, near_dot, -1, cv2_mod.LINE_AA)
+        _dots.append((px, py))
+
+    # scale the skeleton weight to the image so it reads on both small and large photos
+    _sk = max(1.0, min(2.4, w / 900))
+    overlay_style.draw_glow_skeleton(
+        cv2_mod, frame, _segments, _dots,
+        glow=True, line_w=max(2, int(2 * _sk)), dot_r=max(3, int(4 * _sk)),
+    )
+    chips = overlay_style.ChipLayer(frame)
+
+    # Header first: it reserves the top strip so no metric chip lands under it.
+    _sport_labels = {"run": "RUN", "bike": "BIKE", "swim": "SWIM"}
+    _overall = score_data.get("overall_score", 0)
+    _grade = score_data.get("grade", "")
+    _hdr_status = "good" if _overall >= 75 else "warn" if _overall >= 60 else "bad"
+    _title = (
+        "AERODYNAMIC PROFILE"
+        if (sport == "bike" and cycling_position in ("tt_aero", "triathlon"))
+        else ("CYCLING PROFILE" if sport == "bike" else "RUNNING PROFILE")
+    )
+    _pad = int(max(10, h * 0.018))
+    chips.header((_pad, _pad), _sport_labels.get(sport, sport.upper()),
+                 f"{_overall}/100", _grade, _hdr_status,
+                 right_text=_title, frame_w=w, scale=_sk)
 
     # --- 2. ANGLE ARCS + LABELS ---
     if len(pixel_coords) > 25:
@@ -524,8 +551,6 @@ def _generate_photo_thumbnail(
         s11x, s11y, _ = pixel_coords[11]
         h23x, h23y, _ = pixel_coords[23]
         body_height_px = max(50.0, abs(s11y - h23y))
-        font_scale = max(0.35, min(0.55, body_height_px / 400))
-        thickness_t = 1 if font_scale < 0.45 else 2
         offset_px = max(70, int(body_height_px * 0.5))
 
         offset_vectors = {
@@ -539,7 +564,6 @@ def _generate_photo_thumbnail(
             "down-right": (offset_px, int(offset_px * 0.7)),
         }
 
-        font = cv2_mod.FONT_HERSHEY_SIMPLEX
         per_angle = score_data.get("per_angle", {})
         labels = _ANGLE_LABELS.get(sport, {})
 
@@ -576,42 +600,43 @@ def _generate_photo_thumbnail(
                     *triplet, color, body_height_px,
                 )
 
-            # Callout line + label
+            # Leader line + neon chip (label + big coloured value)
             jx, jy, _ = pixel_coords[lm_idx]
             dx, dy = offset_vectors.get(cfg["offset_dir"], (offset_px, 0))
-            lx = max(5, min(w - 130, jx + dx))
-            ly = max(20, min(h - 10, jy + dy))
+            # chips on the left of the joint are right-aligned so they hug the leader
+            align = "right" if dx < 0 else "left"
+            lx = max(5, min(w - 5, jx + dx))
+            ly = max(20, min(h - 20, jy + dy))
 
-            cv2_mod.line(frame, (jx, jy), (lx, ly),
-                         (200, 200, 200), 1, cv2_mod.LINE_AA)
-            cv2_mod.circle(frame, (jx, jy), 3, color, -1, cv2_mod.LINE_AA)
-
-            label_name = labels.get(angle_key, angle_key.replace("_", " ").title())
+            label_name = labels.get(angle_key, angle_key.replace("_", " ").title()).upper()
             if hide_angle_values:
-                text = f"{label_name} [locked]"
-                color = (150, 150, 150)  # de-emphasized gray (BGR)
+                value_txt, status = "LOCKED", "muted"
             else:
-                text = f"{label_name} {angle_value:.0f}"
-            (tw, th_t), _ = cv2_mod.getTextSize(text, font, font_scale, thickness_t)
-            pad = 3
-            cv2_mod.rectangle(
-                frame,
-                (lx - pad, ly - th_t - pad),
-                (lx + tw + pad, ly + pad),
-                (0, 0, 0), -1,
-            )
-            cv2_mod.putText(
-                frame, text, (lx, ly),
-                font, font_scale, color, thickness_t, cv2_mod.LINE_AA,
-            )
+                if angle_key == "pelvic_ratio":
+                    value_txt = f"{angle_value:.1f}x"
+                elif angle_key == "head_alignment":
+                    value_txt = f"{angle_value:.0f}/100"
+                else:
+                    value_txt = f"{angle_value:.0f}°"
+                # colour by the same zone rule the score/UI use; ratios need a
+                # smaller margin floor than the degree default
+                opt = optimal_ranges.get(angle_key)
+                floor = 0.3 if angle_key == "pelvic_ratio" else 3.0
+                status = (
+                    overlay_style.status_for(angle_value, *opt, min_margin=floor)
+                    if opt else "muted"
+                )
+
+            status_rgb = overlay_style.STATUS_COLORS.get(status, overlay_style.INK_SOFT)
+            overlay_style.draw_leader(cv2_mod, frame, (jx, jy), (lx, ly), status_rgb)
+            chips.metric_chip((lx, ly), label_name, value_txt, status,
+                              scale=_sk, align=align)
 
     # --- 2b. HEAD ALIGNMENT + PELVIC RATIO overlays (bike only) ---
     if sport == "bike" and len(pixel_coords) > 25:
         s11x, s11y, _ = pixel_coords[11]
         h23x, h23y, _ = pixel_coords[23]
         bh_px = max(50.0, abs(s11y - h23y))
-        small_scale = max(0.28, min(0.45, bh_px / 500))
-        font_hl = cv2_mod.FONT_HERSHEY_SIMPLEX
 
         # Head alignment: dashed back-line + score near ear
         head_val = angles.get("head_alignment")
@@ -635,16 +660,17 @@ def _generate_photo_thumbnail(
 
                 if eav >= _VIS_THRESHOLD:
                     if hide_angle_values:
-                        h_color = (150, 150, 150)
-                        h_text = "Head [locked]"
+                        h_status, h_text = "muted", "LOCKED"
                     else:
-                        h_color = (0, 220, 0) if head_val >= 75 else ((0, 200, 255) if head_val >= 50 else (0, 0, 255))
-                        h_text = f"Head {head_val:.0f}/100"
-                    (htw, hth), _ = cv2_mod.getTextSize(h_text, font_hl, small_scale, 1)
-                    hlx = max(5, min(w - htw - 5, eax + 10))
-                    hly = max(hth + 5, min(h - 5, eay - 10))
-                    cv2_mod.rectangle(frame, (hlx - 2, hly - hth - 2), (hlx + htw + 2, hly + 2), (0, 0, 0), -1)
-                    cv2_mod.putText(frame, h_text, (hlx, hly), font_hl, small_scale, h_color, 1, cv2_mod.LINE_AA)
+                        h_status = "good" if head_val >= 75 else ("warn" if head_val >= 50 else "bad")
+                        h_text = f"{head_val:.0f}/100"
+                    hlx = max(5, min(w - 5, eax + int(28 * _sk)))
+                    hly = max(20, min(h - 20, eay - int(26 * _sk)))
+                    overlay_style.draw_leader(
+                        cv2_mod, frame, (eax, eay), (hlx, hly),
+                        overlay_style.STATUS_COLORS.get(h_status, overlay_style.INK_SOFT),
+                    )
+                    chips.metric_chip((hlx, hly), "HEAD POSITION", h_text, h_status, scale=_sk)
 
         # Pelvic ratio: small label near hip
         pelvic_val = angles.get("pelvic_ratio")
@@ -652,71 +678,28 @@ def _generate_photo_thumbnail(
             ref_p = get_cycling_reference(cycling_position)
             p_min, p_max = ref_p["pelvic_ratio"]
             if hide_angle_values:
-                p_color = (150, 150, 150)
-                p_text = "Pelvic [locked]"
+                p_status, p_text = "muted", "LOCKED"
             else:
-                if p_min <= pelvic_val <= p_max:
-                    p_color = (0, 220, 0)
-                elif abs(pelvic_val - p_min) < 0.5 or abs(pelvic_val - p_max) < 0.5:
-                    p_color = (0, 200, 255)
-                else:
-                    p_color = (0, 0, 255)
-                p_text = f"Pelvic {pelvic_val:.1f}x"
-            (ptw, pth), _ = cv2_mod.getTextSize(p_text, font_hl, small_scale, 1)
+                # ratio, not degrees -> small margin floor
+                p_status = overlay_style.status_for(pelvic_val, p_min, p_max, min_margin=0.3)
+                p_text = f"{pelvic_val:.1f}x"
             hp_i2 = 23 if camera_side == "left" else 24
             hpx2, hpy2, _ = pixel_coords[hp_i2]
             off_px = max(50, int(bh_px * 0.35))
-            plx = max(5, min(w - ptw - 5, hpx2 + int(off_px * 0.3)))
-            ply = max(pth + 5, min(h - 5, hpy2 + int(off_px * 0.6)))
-            cv2_mod.rectangle(frame, (plx - 2, ply - pth - 2), (plx + ptw + 2, ply + 2), (0, 0, 0), -1)
-            cv2_mod.putText(frame, p_text, (plx, ply), font_hl, small_scale, p_color, 1, cv2_mod.LINE_AA)
+            plx = max(5, min(w - 5, hpx2 - int(off_px * 0.5)))
+            ply = max(20, min(h - 20, hpy2 + int(off_px * 0.6)))
+            overlay_style.draw_leader(
+                cv2_mod, frame, (hpx2, hpy2), (plx, ply),
+                overlay_style.STATUS_COLORS.get(p_status, overlay_style.INK_SOFT),
+            )
+            chips.metric_chip((plx, ply), "PELVIC TILT", p_text, p_status,
+                              scale=_sk, align="right")
 
-    # --- 3. SCORE BADGE (top-left) ---
-    sport_labels = {"run": "RUN", "bike": "BIKE", "swim": "SWIM"}
-    overall = score_data.get("overall_score", 0)
-    grade = score_data.get("grade", "")
-    badge_text = f"{sport_labels.get(sport, sport.upper())}  {overall}/100  {grade}"
+    # --- 3. BRANDING, then paint the header + every chip in one PIL pass ---
+    chips.brand((w - _pad, h - _pad), "FLAPP",
+                "FREE" if hide_angle_values else "", scale=_sk)
 
-    badge_font = cv2_mod.FONT_HERSHEY_SIMPLEX
-    badge_scale = 0.5
-    (btw, bth), _ = cv2_mod.getTextSize(badge_text, badge_font, badge_scale, 1)
-    badge_pad = 8
-    bx, by = 10, 10
-
-    overlay = frame.copy()
-    cv2_mod.rectangle(
-        overlay,
-        (bx, by),
-        (bx + btw + badge_pad * 2, by + bth + badge_pad * 2),
-        (0, 0, 0), -1,
-    )
-    cv2_mod.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
-    cv2_mod.putText(
-        frame, badge_text,
-        (bx + badge_pad, by + bth + badge_pad),
-        badge_font, badge_scale, (0, 255, 255), 1, cv2_mod.LINE_AA,
-    )
-
-    # --- 4. CAMERA SIDE LABEL ---
-    if sport in ("run", "bike"):
-        side_text = f"{camera_side.title()} side analyzed"
-        cv2_mod.putText(
-            frame, side_text,
-            (bx + badge_pad, by + bth + badge_pad * 2 + 18),
-            badge_font, 0.35, (200, 200, 200), 1, cv2_mod.LINE_AA,
-        )
-
-    # --- 5. FREE-TIER TEASER WATERMARK (bottom-right) ---
-    if hide_angle_values:
-        wm = "FLAPP - FREE"
-        wm_scale = max(0.4, min(0.7, w / 1400))
-        wm_thick = 1 if wm_scale < 0.55 else 2
-        (wtw, wth), _ = cv2_mod.getTextSize(wm, badge_font, wm_scale, wm_thick)
-        wpad = int(max(8, h * 0.015))
-        wx, wy = w - wtw - wpad, h - wpad
-        if wx >= 0 and wy - wth >= 0:
-            cv2_mod.putText(frame, wm, (wx + 1, wy + 1), badge_font, wm_scale, (0, 0, 0), wm_thick + 1, cv2_mod.LINE_AA)
-            cv2_mod.putText(frame, wm, (wx, wy), badge_font, wm_scale, (255, 255, 255), wm_thick, cv2_mod.LINE_AA)
+    frame = chips.flush()
 
     # Encode to PNG
     success, buf = cv2_mod.imencode(".png", frame, [cv2_mod.IMWRITE_PNG_COMPRESSION, 6])
@@ -1123,6 +1106,7 @@ def analyze_photo(
         angles, score_data, camera_side, sport, arc_triplets,
         cycling_position=cycling_position,
         hide_angle_values=hide_angle_values,
+        optimal_ranges=optimal_ranges,
     )
     thumbnail_b64 = f"data:image/png;base64,{base64.b64encode(thumbnail_bytes).decode()}"
 
