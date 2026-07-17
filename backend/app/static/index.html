@@ -188,7 +188,23 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .drec-thumb img{width:100%;height:100%;object-fit:cover}
 .drec-score{position:absolute;left:4px;bottom:4px;color:#fff;font-family:var(--f-mono);font-weight:700;font-size:12px;padding:1px 6px;border-radius:6px}
 .drec-title{font-weight:800;font-size:13px;color:var(--c-navy)}
-@media (max-width:520px){ .dash-summary{grid-template-columns:1fr 1fr} .dspark{display:none} }
+/* Personal record line inside a sport card */
+.ds-pbrow{margin-top:8px}
+.ds-pb{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--c-ink-soft)}
+.ds-pb b{color:var(--c-navy)}
+.ds-pb .ic{width:14px;height:14px}
+.ds-pb-new{color:var(--st-good,#2E9E5B)}
+/* Current-form table: latest value vs its optimal band + since-last trend */
+.dform{margin-bottom:22px}
+.dform-sport{margin-top:16px}
+.dform-sport:first-of-type{margin-top:8px}
+.dform-sub{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;color:var(--c-navy);margin:0 0 8px}
+.dform-sub .ic{width:16px;height:16px}
+.dform-when{font-weight:600;color:var(--c-ink-soft);font-size:12px}
+table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:nowrap;text-align:right}
+.dform-tr .tdelta{font-size:12.5px}
+.dform-first{color:var(--c-ink-faint);font-weight:600}
+@media (max-width:520px){ .dash-summary{grid-template-columns:1fr 1fr} .dspark{width:96px;height:auto} }
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
 /* before / after compare */
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
@@ -277,6 +293,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .pill-high{background:#FDE5E1}.pill-high .dot{background:var(--st-bad-fill)}
 .pill-medium{background:#F7EBD9}.pill-medium .dot{background:var(--st-warn-fill)}
 .pill-low{background:var(--c-panel)}.pill-low .dot{background:var(--c-ink-faint)}
+.pill-info{background:var(--c-panel-blue,#e9f0fd);color:var(--c-blue)}.pill-info .dot{background:var(--c-blue)}
 .pill-good{background:rgba(46,158,91,.14)}.pill-good .dot{background:var(--st-good-fill)}
 .pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--st-warn-fill)}
 .pill-okchip{background:rgba(46,158,91,.14)}.pill-okchip .dot{background:var(--st-good-fill)}
@@ -1034,6 +1051,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     </div>
     <div id="dashSummary" class="dash-summary"></div>
     <div id="dashSports" class="dash-sports"></div>
+    <div id="dashForm"></div>
     <div id="dashFocus"></div>
     <div id="dashPlan"></div>
     <div class="blockhead"><div class="eyebrow">Latest</div><h3>Recent analyses</h3><div class="speedline-sm"></div></div>
@@ -2301,8 +2319,14 @@ function renderPhoto(res){
   const A=res.angles_with_context||{};
   const rows=Object.keys(A).map(k=>{
     const a=A[k]; const stt=a.status||'unknown';
-    const cls=P_STATUS_CLS[stt]||'low';
     const val=a.value==null?'—':(typeof a.value==='number'?Math.round(a.value*10)/10:a.value);
+    // Pedal-phase-dependent joints: measured, but no pass/fail from a still.
+    if(stt==='phase_dependent'){
+      return `<tr class="row-info"><th scope="row">${esc(a.label||pretty(k))}</th>
+        <td class="num">${val}</td><td class="num muted">—</td>
+        <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · pedal position</span></td></tr>`;
+    }
+    const cls=P_STATUS_CLS[stt]||'low';
     const opt=(a.optimal_min!=null&&a.optimal_max!=null)?`${a.optimal_min}–${a.optimal_max}`:'—';
     return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
       <td class="num">${val}</td><td class="num">${opt}</td>
@@ -2649,7 +2673,7 @@ function cardFromPhoto(res){
   const sport=res.sport||state.sport||'run';
   const sc=res.score||{}, A=res.angles_with_context||{}, mets=[];
   for(const k of Object.keys(A)){ if(mets.length>=4) break; const a=A[k];
-    if(a.value==null) continue;
+    if(a.value==null || a.status==='phase_dependent') continue;   // skip unscored joints
     mets.push({ lbl:a.label||pretty(k),
       val:(typeof a.value==='number'?Math.round(a.value):a.value), unit:'°',
       color:stColor(P_STATUS_CLS[a.status]||a.status) }); }
@@ -3715,6 +3739,7 @@ $('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); 
    ============================================================ */
 function daysSince(ms){ return Math.floor((Date.now()-ms)/86400000); }
 function agoStr(ms){ const d=daysSince(ms); return d<=0?'today':d===1?'1 day ago':d+' days ago'; }
+function shortDate(ms){ try{ return new Date(ms).toLocaleDateString([], {month:'short',day:'numeric'}); }catch(e){ return ''; } }
 function miniSpark(vals){
   const W=132,H=44,p=5,n=vals.length; if(n<2) return '';
   let lo=Math.min(...vals),hi=Math.max(...vals); if(lo===hi){lo-=1;hi+=1;}
@@ -3738,6 +3763,16 @@ function sportCard(sport, entries){
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
   const deltaHtml=dd?`<span class="tdelta ${dd.cls}">${dd.delta>0?'+':''}${dd.delta}${dd.trend?' · '+dd.trend:''}</span>`
     :'<span class="hint">first analysis — trends build from #2</span>';
+  // Personal record: the latest score is a *new* PB only when it strictly beats
+  // every prior one (a tie just shows "Best N · date", no fanfare).
+  const best=scores.length?Math.max(...scores):null;
+  const priorScores=entries.slice(1).map(e=>e.score).filter(v=>v!=null);
+  const priorMax=priorScores.length?Math.max(...priorScores):-Infinity;
+  const newPB=last.score!=null && best!=null && last.score===best && last.score>priorMax && entries.length>=2;
+  const bestEntry=best!=null?entries.find(e=>e.score===best):null;
+  const pb=newPB
+    ? `<span class="ds-pb ds-pb-new"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> New personal best</span>`
+    : (best!=null && entries.length>=2 ? `<span class="ds-pb">Best <b>${best}</b>${bestEntry?' · '+esc(shortDate(bestEntry.at)):''}</span>` : '');
   return `<div class="dsport">
     <div class="ds-head"><span><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</span>
       <span class="ds-count">${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
@@ -3749,6 +3784,7 @@ function sportCard(sport, entries){
       ${scores.length>=2?miniSpark(scores):''}
     </div>
     <div class="ds-delta">${deltaHtml}</div>
+    ${pb?`<div class="ds-pbrow">${pb}</div>`:''}
     <div class="ds-actions">
       <button class="btn btn-primary btn-sm" data-analyze="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> New</button>
       ${entries.length>=2?`<button class="btn btn-ghost btn-sm" data-progress="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Progress</button>`:''}
@@ -3825,6 +3861,56 @@ function renderDashFocus(all){
     <button class="btn btn-ghost btn-sm" data-id="${withReport.id}" data-focus-open="1">Open full analysis →</button>
   </div>`;
 }
+/* ---------- Current form: latest reading per metric, where it sits vs the
+   optimal band, and how it moved since the previous analysis. Reuses the
+   trend maps saved on each entry + the same status vocabulary as the angle
+   table (grZone -> in range / check / out of range). No new backend. ---------- */
+function currentFormTable(sport, entries){
+  const cur=entries[0], prev=entries[1], single=entries.length<2;
+  const rows=TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
+    const v=cur.trends[m.key]; if(v==null) return '';
+    const opt=(cur.trendOpt&&cur.trendOpt[m.key])||null;
+    const optTxt=opt?`${opt[0]}–${opt[1]}${m.unit||''}`:'<span class="noref">no ref</span>';
+    let statusCell='<td class="col-status muted"></td>';
+    if(opt){ const z=grZone(v,opt[0],opt[1]); const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
+      statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`; }
+    let trendCell='<td class="dform-tr"><span class="dform-first">first</span></td>';
+    if(!single){
+      const pv=prev?prev.trends[m.key]:null;
+      if(pv==null){ trendCell='<td class="dform-tr muted">—</td>'; }
+      else { const d=metricDelta(pv,v,opt,m.hi);
+        const tri=d.delta>0?'▲':d.delta<0?'▼':'—';
+        const dstr=(d.delta>0?'+':'')+(Math.round(d.delta*100)/100)+(m.unit||'');
+        trendCell=`<td class="dform-tr"><span class="tdelta ${d.cls}">${tri} ${dstr}</span></td>`; }
+    }
+    return `<tr><th scope="row">${esc(m.label)}</th>
+      <td class="num">${Math.round(v*10)/10}${m.unit||''}</td>
+      <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>
+      ${statusCell}${trendCell}</tr>`;
+  }).filter(Boolean).join('');
+  if(!rows) return '';
+  const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
+  return `<div class="dform-sport">
+    <div class="dform-sub"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
+      <span class="dform-when">· latest ${esc(shortDate(cur.at))}</span></div>
+    <div class="tablewrap"><table class="data">
+      <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Since last</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+  </div>`;
+}
+function renderCurrentForm(all){
+  const host=$('#dashForm'); if(!host) return;
+  let html='';
+  for(const sport of ['run','bike']){
+    const entries=all.filter(e=>e.sport===sport && e.trends);
+    if(entries.length) html+=currentFormTable(sport, entries);
+  }
+  if(!html){ host.innerHTML=''; return; }
+  host.innerHTML=`<div class="dform">
+    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
+      <h3>Current form</h3><div class="speedline-sm"></div></div>
+    ${html}</div>`;
+}
 function dashRecentCard(e){
   return `<div class="drec" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} analysis">
     <div class="drec-thumb"${thumbAttrs(e)}>${thumbMarkup(e,'')}<span class="drec-score" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span></div>
@@ -3840,7 +3926,7 @@ function renderDashboard(){
       <p><b>Welcome${nameEl?', '+esc(nameEl):''}.</b> Run your first analysis and your technique, progress and focus areas will build up here.</p>
       <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
     </div>`;
-    $('#dashSports').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML=''; $('#dashRecent').innerHTML='';
+    $('#dashSports').innerHTML=''; $('#dashForm').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML=''; $('#dashRecent').innerHTML='';
     return;
   }
   const now=new Date();
@@ -3851,6 +3937,7 @@ function renderDashboard(){
     <div class="dstat"><div class="dstat-v">${monthCount}</div><div class="dstat-l">this month</div></div>
     <div class="dstat"><div class="dstat-v">${last?agoStr(last.at):'—'}</div><div class="dstat-l">last analysis</div></div>`;
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
+  renderCurrentForm(all);
   renderDashFocus(all);
   renderDashPlan(all);
   $('#dashRecent').innerHTML=all.slice(0,4).map(dashRecentCard).join('');
@@ -3992,7 +4079,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable};
 </script>
 </body>
 </html>

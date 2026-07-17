@@ -334,6 +334,13 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         )
     lines.append("Joint angles (value vs optimal, status):")
     for k, v in (res.get("angles_with_context") or {}).items():
+        if v.get("status") == "phase_dependent":
+            # No verdict from a still -- the value swings with crank position.
+            lines.append(
+                f"- {v.get('label', k)}: {v.get('value')} — pedal-phase-dependent, "
+                f"NOT scored. Do NOT critique this angle or call it too open/closed."
+            )
+            continue
         lines.append(
             f"- {v.get('label', k)}: {v.get('value')} "
             f"(optimal {v.get('optimal_min')}-{v.get('optimal_max')}, {v.get('status')})"

@@ -196,24 +196,30 @@ def _get_swimming_optimal_ranges() -> dict[str, tuple[float, float]]:
 PHOTO_RUNNING_WEIGHTS = {
     "knee": 0.30, "trunk": 0.25, "elbow": 0.20, "hip": 0.15, "ankle": 0.10,
 }
+# Hip and ankle sweep through a huge range across the pedal stroke (open at the
+# bottom, closed at the top), exactly like the knee -- but unlike the knee we
+# have no per-phase reference band for them, so a single-photo value can't be
+# scored against the stroke-*average* band without faulting good positions (a
+# near-BDC hip reads ~95deg, well above the average band). They are therefore
+# measured + shown but NOT scored or judged from a still. (See the interactive
+# pedal-phase picker for the follow-up that scores them against the right band.)
+_PHASE_DEPENDENT_BIKE = frozenset({"hip", "ankle"})
+
 PHOTO_CYCLING_WEIGHTS = {
-    "knee": 0.22, "trunk": 0.18, "shoulder": 0.12, "head_alignment": 0.10,
-    "elbow": 0.10, "hip": 0.08, "pelvic_ratio": 0.07, "forearm_tilt": 0.05,
-    "ankle": 0.08,
+    "knee": 0.24, "trunk": 0.20, "shoulder": 0.13, "head_alignment": 0.11,
+    "elbow": 0.11, "pelvic_ratio": 0.08, "forearm_tilt": 0.05,
 }
 # Near TDC/BDC from a single photo: the pedal phase is only a guess, so trust
-# the knee less than a true motion-capture dead-centre. Reduce knee weight from
-# 0.22 and move it to the pedal-phase-independent trunk/hip metrics.
+# the knee less than a true motion-capture dead-centre -- shift its weight to
+# the pedal-phase-independent trunk/shoulder/head metrics.
 PHOTO_CYCLING_WEIGHTS_PHASED = {
-    "knee": 0.12, "trunk": 0.22, "shoulder": 0.12, "head_alignment": 0.10,
-    "elbow": 0.10, "hip": 0.14, "pelvic_ratio": 0.07, "forearm_tilt": 0.05,
-    "ankle": 0.08,
+    "knee": 0.14, "trunk": 0.24, "shoulder": 0.14, "head_alignment": 0.12,
+    "elbow": 0.11, "pelvic_ratio": 0.08, "forearm_tilt": 0.05,
 }
-# Mid-stroke: knee unreliable, redistribute weight to trunk + hip
+# Mid-stroke: knee unreliable, redistribute weight to the phase-independent set.
 PHOTO_CYCLING_WEIGHTS_MIDSTROKE = {
-    "knee": 0.05, "trunk": 0.24, "shoulder": 0.12, "head_alignment": 0.10,
-    "elbow": 0.10, "hip": 0.19, "pelvic_ratio": 0.07, "forearm_tilt": 0.05,
-    "ankle": 0.08,
+    "knee": 0.06, "trunk": 0.27, "shoulder": 0.15, "head_alignment": 0.13,
+    "elbow": 0.12, "pelvic_ratio": 0.08, "forearm_tilt": 0.05,
 }
 PHOTO_SWIMMING_WEIGHTS = {
     "left_elbow": 0.20, "right_elbow": 0.10,
@@ -619,13 +625,17 @@ def _generate_photo_thumbnail(
                 else:
                     value_txt = f"{angle_value:.0f}°"
                 # colour by the same zone rule the score/UI use; ratios need a
-                # smaller margin floor than the degree default
-                opt = optimal_ranges.get(angle_key)
-                floor = 0.3 if angle_key == "pelvic_ratio" else 3.0
-                status = (
-                    overlay_style.status_for(angle_value, *opt, min_margin=floor)
-                    if opt else "muted"
-                )
+                # smaller margin floor than the degree default. Phase-dependent
+                # joints (bike hip/ankle) aren't judged from a still -> neutral.
+                if sport == "bike" and angle_key in _PHASE_DEPENDENT_BIKE:
+                    status = "muted"
+                else:
+                    opt = optimal_ranges.get(angle_key)
+                    floor = 0.3 if angle_key == "pelvic_ratio" else 3.0
+                    status = (
+                        overlay_style.status_for(angle_value, *opt, min_margin=floor)
+                        if opt else "muted"
+                    )
 
             status_rgb = overlay_style.STATUS_COLORS.get(status, overlay_style.INK_SOFT)
             overlay_style.draw_leader(cv2_mod, frame, (jx, jy), (lx, ly), status_rgb)
@@ -1074,15 +1084,28 @@ def analyze_photo(
     for angle_name, angle_value in angles.items():
         if angle_name not in optimal_ranges:
             continue
+        lbl = labels.get(angle_name, angle_name.replace("_", " ").title())
+        # Pedal-phase-dependent joints (bike): measured + shown, but no verdict
+        # from a single still -- the value is only meaningful once the crank
+        # position is known.
+        if sport == "bike" and angle_name in _PHASE_DEPENDENT_BIKE:
+            angles_with_context[angle_name] = {
+                "value": angle_value,
+                "optimal_min": None,
+                "optimal_max": None,
+                "status": "phase_dependent",
+                "note": ("Depends on the pedal position — not scored from a "
+                         "single photo."),
+                "label": lbl,
+            }
+            continue
         opt_min, opt_max = optimal_ranges[angle_name]
         angles_with_context[angle_name] = {
             "value": angle_value,
             "optimal_min": opt_min,
             "optimal_max": opt_max,
             "status": _classify_angle_status(angle_value, opt_min, opt_max),
-            "label": labels.get(
-                angle_name, angle_name.replace("_", " ").title()
-            ),
+            "label": lbl,
         }
 
     # 6. Score. Single-photo knee reliability depends on the (guessed) pedal
