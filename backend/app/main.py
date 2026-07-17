@@ -321,9 +321,17 @@ def root(request: Request) -> HTMLResponse:
     the static file and rewritten to absolute URLs here, using the request's
     own origin — so link previews resolve on any host (localhost, Railway,
     custom domain) without hardcoding a base URL.
+
+    Behind Railway's proxy TLS terminates at the edge, so ``request.base_url``
+    reports http:// even on an https:// request -- trust X-Forwarded-Proto (as
+    the Academy pages already do) or the tags advertise insecure URLs.
     """
     html_doc = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    origin = str(request.base_url).rstrip("/")
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host") or request.headers.get(
+        "host", request.url.netloc
+    )
+    origin = f"{proto}://{host}".rstrip("/")
     html_doc = html_doc.replace('content="/og-image.png"', f'content="{origin}/og-image.png"')
     html_doc = html_doc.replace('property="og:url" content="/"', f'property="og:url" content="{origin}/"')
     return HTMLResponse(html_doc)
