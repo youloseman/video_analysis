@@ -266,6 +266,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .pill-low{background:var(--c-panel)}.pill-low .dot{background:var(--c-ink-faint)}
 .pill-good{background:rgba(46,158,91,.14)}.pill-good .dot{background:var(--st-good-fill)}
 .pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--st-warn-fill)}
+.pill-okchip{background:rgba(46,158,91,.14)}.pill-okchip .dot{background:var(--st-good-fill)}
 
 /* Confidence badge (analysis_confidence): clickable pill + expandable explanation */
 .confwrap{margin-top:16px}
@@ -587,6 +588,9 @@ h2.sec + .speedline{margin-bottom:24px}
 
 .issue{border-radius:var(--radius);padding:16px;background:#fff;border:1px solid var(--c-line);margin-bottom:8px;border-left:4px solid var(--c-ink-faint)}
 .issue.high{border-left-color:var(--st-bad-fill)} .issue.medium{border-left-color:var(--st-warn-fill)}
+.issue.issue-lead{border-left-width:6px;box-shadow:var(--shadow)}
+.issue .i-first{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;
+  color:var(--c-coral-btn,#CE3F2B);margin-bottom:6px}
 .issue .i-top{display:flex;justify-content:space-between;gap:16px;align-items:center}
 .issue .i-type{font-weight:800;color:var(--c-ink)}
 .issue .i-rec{font-size:14px;color:var(--c-ink-soft);margin-top:8px;max-width:70ch}
@@ -653,6 +657,9 @@ h2.sec + .speedline{margin-bottom:24px}
 .tile.good .t-lbl .sdot{background:var(--st-good-fill)}
 .tile.warn .t-lbl .sdot{background:var(--st-warn-fill)}
 .tile.bad .t-lbl .sdot{background:var(--st-bad-fill)}
+/* out-of-range tiles self-prioritize with a faint tinted ground + border */
+.tile.warn{background:rgba(201,123,16,.05);border-color:rgba(201,123,16,.28)}
+.tile.bad{background:rgba(241,85,63,.05);border-color:rgba(241,85,63,.30)}
 .tile .t-val{font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--c-navy);margin-top:8px;font-variant-numeric:tabular-nums}
 .tile .t-val small{font-size:13px;color:var(--c-ink-soft);font-weight:400}
 .tile .t-val.txt{font-family:var(--f-body);font-size:16px;font-weight:800;line-height:1.3;margin-top:12px}
@@ -663,15 +670,24 @@ h2.sec + .speedline{margin-bottom:24px}
 
 /* ---------- Gradient range bar (metric optimal range + marker) ---------- */
 .grbar{margin-top:12px}
-.grbar .gr-track{position:relative;height:8px;border-radius:999px;overflow:visible}
-.grbar .gr-mark{position:absolute;top:-2px;width:2px;height:12px;background:#fff;border-radius:1px;
-  box-shadow:0 0 0 1px rgba(20,41,75,.28);transform:translateX(-1px)}
-.grbar .gr-tri{position:absolute;top:13px;width:0;height:0;
-  border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--c-ink);
-  transform:translateX(-5px)}
+.grbar .gr-chiprow{position:relative;height:18px}
+.grbar .gr-chip{position:absolute;transform:translateX(-50%);white-space:nowrap;
+  font-family:var(--f-mono);font-size:11px;font-weight:700;line-height:1;
+  padding:2px 6px;border-radius:6px;background:var(--c-panel);color:var(--c-navy)}
+.grbar .gr-chip.gr-good{color:var(--st-good)}
+.grbar .gr-chip.gr-warn{color:var(--c-warn-text,#9A5E0B)}
+.grbar .gr-chip.gr-bad{color:var(--c-coral-btn,#CE3F2B)}
+.grbar .gr-track{position:relative;height:8px;border-radius:999px;overflow:visible;margin-top:2px}
+.grbar .gr-tri{position:absolute;top:-7px;width:0;height:0;
+  border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:6px solid var(--c-ink);
+  transform:translateX(-5px);filter:drop-shadow(0 0 1px rgba(255,255,255,.9))}
 .grbar .gr-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);
   font-size:11px;color:var(--c-ink-soft);margin-top:12px;font-weight:500}
-.grbar .gr-scale .gr-opt{color:var(--st-good);font-weight:700}
+.grbar .gr-scale .gr-opt{color:var(--st-good);font-weight:700;white-space:nowrap}
+@media(max-width:640px){
+  .grbar .gr-scale{font-size:10px}
+  .grbar .gr-scale > span:not(.gr-opt){opacity:.7}
+}
 
 /* ---------- Advanced biomechanics charts ---------- */
 .biomech-intro{font-size:13px;color:var(--c-ink-soft);margin:-4px 0 18px;line-height:1.6}
@@ -711,6 +727,10 @@ table.data td.muted{color:var(--c-ink-soft)}
 .anglemerge b{color:var(--c-navy);font-weight:700}
 table.data th .ang-src{display:block;font-size:10px;font-weight:600;color:var(--c-ink-faint);
   text-transform:none;letter-spacing:0;margin-top:2px}
+/* When no angle in the set has a reference band, drop the Optimal/Status
+   columns entirely rather than printing two columns of em-dashes. */
+table.data.no-opt .col-opt,table.data.no-opt .col-status{display:none}
+table.data .noref{color:var(--c-ink-faint);font-family:var(--f-body);font-size:12px;font-weight:600}
 .tablewrap{overflow-x:auto;position:relative}
 /* right-edge fade hints there are more columns to swipe to on narrow screens */
 @media(max-width:640px){
@@ -1087,6 +1107,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           <div>
             <div class="gradelbl">Grade</div>
             <span class="pill pill-warnchip hidden" id="gateChip" style="margin-top:8px"><span class="dot" aria-hidden="true"></span>Reference only</span>
+            <span class="pill pill-okchip hidden" id="confChip" style="margin-top:8px"><span class="dot" aria-hidden="true"></span>Full confidence</span>
           </div>
         </div>
         <div class="score-meta" id="scoreMeta"></div>
@@ -1168,9 +1189,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </div>
       <p class="anglemerge hidden" id="angleMergeNote"></p>
       <div class="tablewrap">
-        <table class="data">
+        <table class="data" id="angleTable">
           <caption class="visually-hidden">Joint angle statistics: minimum, mean, maximum, optimal range, status and share of valid frames per angle</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Valid</th></tr></thead>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num col-opt">Optimal</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Valid</th></tr></thead>
           <tbody id="angleRows"></tbody>
         </table>
       </div>
@@ -1915,12 +1936,21 @@ function grZone(v,lo,hi){
    Axis = optimal ± one warning margin ± one critical margin (mirrors GradientRangeBar). */
 function gradientRangeBar(value,lo,hi,unit){
   // warning margin matches grZone (max 10% width, 3 deg) so the green optimal
-  // band on the bar agrees with the status pill; critical margin doubles it to
-  // give the axis room for out-of-range values.
+  // band on the bar agrees with the status pill.
   const opt=hi-lo, m=Math.max(opt*0.10, 3);
-  const warnLo=lo-m, warnHi=hi+m, barMin=warnLo-m, barMax=warnHi+m, rng=barMax-barMin||1;
-  const P=x=>Math.max(0,Math.min(100,((x-barMin)/rng)*100));
-  const wl=P(warnLo), ol=P(lo), oh=P(hi), wh=P(warnHi), mk=P(value);
+  const warnLo=lo-m, warnHi=hi+m;
+  // Axis: normally warnLo-m .. warnHi+m, but if the value falls outside that,
+  // EXTEND the axis to include it (plus a small pad) so the marker always lands
+  // inside the track with visible distance — an out-of-range value must read as
+  // "how far off", never clamp silently to the edge.
+  let axMin=warnLo-m, axMax=warnHi+m;
+  const pad=Math.max(opt*0.15, m);
+  if(value<axMin) axMin=value-pad;
+  if(value>axMax) axMax=value+pad;
+  const rng=axMax-axMin||1;
+  const P=x=>Math.max(0,Math.min(100,((x-axMin)/rng)*100));
+  const wl=P(warnLo), ol=P(lo), oh=P(hi), wh=P(warnHi);
+  const mk=Math.max(3,Math.min(97,P(value)));   // keep the marker on the track
   const grad=`linear-gradient(90deg,`
     +`${GR_ZONE.critical} 0%,${GR_ZONE.critical} ${wl.toFixed(1)}%,`
     +`${GR_ZONE.warning} ${wl.toFixed(1)}%,${GR_ZONE.warning} ${ol.toFixed(1)}%,`
@@ -1928,14 +1958,19 @@ function gradientRangeBar(value,lo,hi,unit){
     +`${GR_ZONE.warning} ${oh.toFixed(1)}%,${GR_ZONE.warning} ${wh.toFixed(1)}%,`
     +`${GR_ZONE.critical} ${wh.toFixed(1)}%,${GR_ZONE.critical} 100%)`;
   const u=unit&&unit!=='°'?' '+unit:(unit==='°'?'°':'');
-  const tri=GR_ZONE[grZone(value,lo,hi)];
+  const z=grZone(value,lo,hi), tri=GR_ZONE[z];
+  const zWord=z==='optimal'?'in range':z==='warning'?'near the edge':'out of range';
+  // value chip anchored at the marker so "where" and "what" read as one object
+  const chipCls=z==='optimal'?'good':z==='warning'?'warn':'bad';
+  const vtxt=Number.isInteger(value)?String(value):num(value,1);   // 164, not 164.0
+  const chipL=Math.max(9,Math.min(91,mk));                          // keep chip off the edges
   return `<div class="grbar">`
-    +`<div class="gr-track" style="background:${grad}" role="img" aria-label="Value ${num(value,1)}${u}, optimal ${num(lo,1)} to ${num(hi,1)}${u}">`
-    +`<span class="gr-mark" style="left:${mk.toFixed(1)}%"></span>`
+    +`<div class="gr-chiprow"><span class="gr-chip gr-${chipCls}" style="left:${chipL.toFixed(1)}%">${vtxt}${u}</span></div>`
+    +`<div class="gr-track" style="background:${grad}" role="img" aria-label="Value ${num(value,1)}${u}, optimal ${num(lo,1)} to ${num(hi,1)}${u}, ${zWord}">`
     +`<span class="gr-tri" style="left:${mk.toFixed(1)}%;border-top-color:${tri}"></span></div>`
-    +`<div class="gr-scale"><span>${num(warnLo,0)}</span>`
+    +`<div class="gr-scale"><span>${num(axMin,0)}</span>`
     +`<span class="gr-opt">${num(lo,0)}–${num(hi,0)}${u}</span>`
-    +`<span>${num(warnHi,0)}</span></div></div>`;
+    +`<span>${num(axMax,0)}</span></div></div>`;
 }
 /* tile(): pass `range={value,lo,hi,unit}` to render a gradient range bar and auto-color the tile. */
 function tile(lbl,val,unit,ref,cls,isText=false,range=null){
@@ -2308,6 +2343,12 @@ function renderConfidence(conf){
    row came from. */
 const ANGLE_PILL_WORD={good:'in range',warn:'check',bad:'out of range'};
 const ANGLE_PILL_CLS={good:'pill-good',warn:'pill-medium',bad:'pill-high'};
+/* True if ANY angle in this set has a reference band. When none do, the caller
+   hides the Optimal/Status columns instead of printing a column of em-dashes. */
+function anglesHaveOpt(A, sport, position){
+  const ctx={cycling_position:position};
+  return Object.keys(A||{}).some(k=>!!angleOptimal(k,sport,ctx));
+}
 function angleTableRows(A, sport, position, srcByKey){
   A = A || {};
   const ctx = {cycling_position: position};
@@ -2317,18 +2358,19 @@ function angleTableRows(A, sport, position, srcByKey){
     const muted=a.mean==null;
     const cls=muted?'num muted':'num';
     const opt=angleOptimal(k,sport,ctx);
-    const optTxt=opt?`${opt[0]}–${opt[1]}°`:'—';
-    let statusCell='<td class="muted">—</td>';
+    // "no ref" reads as a deliberate state; a bare em-dash reads as failed data.
+    const optTxt=opt?`${opt[0]}–${opt[1]}°`:'<span class="noref">no ref</span>';
+    let statusCell='<td class="col-status muted"></td>';
     if(opt && !muted){
       const z=grZone(a.mean,opt[0],opt[1]);
       const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
-      statusCell=`<td><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`;
+      statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`;
     }
     const src=(srcByKey&&srcByKey[k])?`<span class="ang-src">${esc(srcByKey[k])}</span>`:'';
     return `<tr><th scope="row">${esc(pretty(k))}${src}</th>
       <td class="${cls}">${num(a.min,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
       <td class="${cls}">${num(a.max,0)}</td>
-      <td class="num ${opt?'':'muted'}">${optTxt}</td>${statusCell}
+      <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>${statusCell}
       <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
   }).join('');
   return rows||'<tr><td colspan="7" class="muted">No angle data.</td></tr>';
@@ -2345,17 +2387,19 @@ function render(job){
   // sport tag
   setSportTag('#sportTag','#sportTagIcon','#sportTagText',sport);
 
-  // gate chip + banner
+  // Confidence: gated runs get the amber "Reference only" chip + a full-width
+  // warning banner (it matters). Clean runs get only a quiet green chip in the
+  // scorecard — no banner, so the amber one keeps its signal value.
   const gated=!!r.quality_gate_triggered;
   $('#gateChip').classList.toggle('hidden',!gated);
+  $('#confChip').classList.toggle('hidden',gated);
   const gb=$('#gateBanner');
   if(gated){
     const reasons=(s.quality_gate&&s.quality_gate.reasons)||[];
     gb.innerHTML=`<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
       <span><b>Partial analysis</b> — capture quality was limited. ${esc(reasons[0]||'Some metrics may be less reliable.')} Treat the score as a reference, not a measurement.</span></div>`;
   } else {
-    gb.innerHTML=`<div class="banner ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-      <span><b>Full-confidence analysis</b> — pose tracking was clean across the clip.</span></div>`;
+    gb.innerHTML='';
   }
 
   // meta
@@ -2415,14 +2459,19 @@ function render(job){
   // Training plan (structured corrective drills mapped to detected issues)
   renderTrainingPlan(r.training_plan);
 
-  // findings
-  const issues=r.detected_issues||[];
+  // findings — sort by severity so the biggest issue always leads, regardless
+  // of the order the backend returned them; the top one gets a "Fix first" cue.
+  const SEV_RANK={high:0,medium:1,low:2};
+  const issues=(r.detected_issues||[]).slice().sort((a,b)=>
+    (SEV_RANK[(a.severity||'').toLowerCase()]??3)-(SEV_RANK[(b.severity||'').toLowerCase()]??3));
   const ib=$('#issues');
   if(issues.length){
-    ib.innerHTML=issues.map(it=>{
+    ib.innerHTML=issues.map((it,i)=>{
       const sev=(it.severity||'').toLowerCase();
       const sevCls=['high','medium','low'].includes(sev)?sev:'low';
-      return `<div class="issue ${sevCls}">
+      const lead=i===0 && issues.length>1;
+      return `<div class="issue ${sevCls}${lead?' issue-lead':''}">
+        ${lead?'<div class="i-first">Fix first</div>':''}
         <div class="i-top"><span class="i-type">${esc(pretty(it.type||''))}</span>
           <span class="pill pill-${sevCls}"><span class="dot" aria-hidden="true"></span>${esc(it.severity||'')}</span></div>
         <div class="i-rec">${esc(it.recommendation||'')}</div>
@@ -2449,6 +2498,9 @@ function render(job){
     paired?paired.angleStats:null, paired?paired.cameraSide:null);
   const srcMap=paired?angleSourceLabels(liveStats, r.camera_side||null, paired):null;
   $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap);
+  // no reference bands for this sport's angles -> hide the Optimal/Status columns
+  $('#angleTable').classList.toggle('no-opt',
+    !anglesHaveOpt(merged.stats, sport, r.cycling_position||null));
   updateAngleMergeNote(paired, r.camera_side||null);
 
   // advanced biomechanics (phase portraits / coordination / waveform vs reference)
