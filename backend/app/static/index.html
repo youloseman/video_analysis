@@ -3764,11 +3764,32 @@ function metricDelta(first,last,opt,hi){
   else { cls='sta'; trend=''; }
   return {cls,trend,delta};
 }
+/* A blurred placeholder chart for a locked metric — deterministic per key so it
+   looks stable but never carries real data (the free-tier philosophy). */
+function fakeSpark(key){
+  const W=340,H=132,pad={l:10,r:12,t:16,b:14},n=6,vals=[];
+  let seed=0; for(let i=0;i<key.length;i++) seed=(seed*31+key.charCodeAt(i))>>>0;
+  for(let i=0;i<n;i++){ seed=(seed*1103515245+12345)>>>0; vals.push((seed%1000)/1000); }
+  const lo=Math.min(...vals), hi=Math.max(...vals);
+  const X=i=>pad.l+i*(W-pad.l-pad.r)/(n-1), Y=v=>pad.t+(H-pad.t-pad.b)*(1-(v-lo)/((hi-lo)||1));
+  const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" class="tchart" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-ink-faint)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+function lockedTrendCard(m){
+  return `<div class="tcard tcard-lock" aria-hidden="true">
+    <div class="tc-head"><span class="tc-lbl">${esc(m.label)}</span>
+      <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Locked</span></div>
+    <div class="tc-sub">Upgrade to track this over time</div>
+    <div class="tlock">${fakeSpark(m.key)}</div>
+  </div>`;
+}
+const PROGRESS_TEASER_ITEMS=['Every joint & gait metric tracked','Optimal-range bands to aim for','An AI read on what changed between runs'];
 function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
   const all=loadHist().filter(e=>e.sport===sport && e.trends).slice().reverse(); // oldest -> newest
-  const grid=$('#progGrid');
+  const grid=$('#progGrid'), teaser=$('#progTeaser');
+  if(teaser) teaser.innerHTML='';
   if(all.length<2){
     const noun=sport==='bike'?'rides':'runs';
     const have=all.length;
@@ -3782,10 +3803,12 @@ function renderProgress(){
     return;
   }
   const dates=all.map(e=>fmtWhen(e.at));
-  grid.innerHTML=TREND_METRICS[sport].map(m=>{
+  const shown=new Set();
+  const realCards=TREND_METRICS[sport].map(m=>{
     const series=[], dser=[];
     all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); } });
     if(series.length<2) return '';
+    shown.add(m.key);
     let opt=null; for(let i=all.length-1;i>=0;i--){ if(all[i].trendOpt && all[i].trendOpt[m.key]){ opt=all[i].trendOpt[m.key]; break; } }
     const first=series[0], last=series[series.length-1];
     const dd=metricDelta(first,last,opt,m.hi), tcls=dd.cls, trend=dd.trend, delta=dd.delta;
@@ -3795,7 +3818,17 @@ function renderProgress(){
       <div class="tc-sub"><span class="tdelta ${tcls}">${deltaStr}${trend?' · '+trend:''}</span> · ${series.length} analyses</div>
       ${trendChart(series,dser,opt,m.unit)}
     </div>`;
-  }).join('') || `<p class="hint" style="grid-column:1/-1">Not enough data yet for ${sport} trends.</p>`;
+  }).join('');
+  // Free tier: the score trend is real; the rest are gated -> show them as
+  // locked previews with one upsell CTA (never more than one per screen).
+  let lockCards='';
+  if(isFreeUser()) lockCards=TREND_METRICS[sport].filter(m=>m.key!=='score' && !shown.has(m.key)).map(lockedTrendCard).join('');
+  grid.innerHTML=(realCards+lockCards) || `<p class="hint" style="grid-column:1/-1">Not enough data yet for ${sport} trends.</p>`;
+  if(teaser && isFreeUser() && lockCards){
+    teaser.innerHTML=teaserPanelHtml(PROGRESS_TEASER_ITEMS, {src:'progress-teaser',
+      title:'Track every metric, not just your score',
+      body:'You’re seeing your <em>score</em> trend. Upgrade to chart cadence, joint angles and gait metrics over time — and see exactly where your form is heading.'});
+  }
 }
 function openProgress(){
   if(!state.progressSport){ const h=loadHist(); const nb=h.filter(e=>e.sport==='bike').length, nr=h.filter(e=>e.sport==='run').length; state.progressSport = nr>nb?'run':'bike'; }
@@ -3926,14 +3959,22 @@ function renderDashFocus(all){
   const withReport=all.find(e=>e.report);
   const m=withReport&&withReport.report.match(/\*\*Fix first\*\*\s*[—:-]?\s*([\s\S]*?)(?:\n\*\*|$)/i);
   const body=m?m[1].trim():'';
-  if(!body){ host.innerHTML=''; return; }
-  host.innerHTML=`<div class="dfocus">
-    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Work on this</div>
-      <h3>Your focus</h3><div class="speedline-sm"></div></div>
-    <div class="dfocus-body">${mdToHtml(body)}</div>
-    <button class="btn btn-ghost btn-sm" data-id="${withReport.id}" data-focus-open="1">Open full analysis →</button>
-  </div>`;
+  if(body){
+    host.innerHTML=`<div class="dfocus">
+      <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Work on this</div>
+        <h3>Your focus</h3><div class="speedline-sm"></div></div>
+      <div class="dfocus-body">${mdToHtml(body)}</div>
+      <button class="btn btn-ghost btn-sm" data-id="${withReport.id}" data-focus-open="1">Open full analysis →</button>
+    </div>`;
+    return;
+  }
+  // Free tier: no issues/coaching in the gated result -> this is the dashboard's
+  // single upsell CTA (the form + plan blocks stay quiet lock previews).
+  host.innerHTML=(isFreeUser() && all.length) ? teaserPanelHtml(DASH_TEASER_ITEMS, {src:'dashboard-teaser',
+    title:'Unlock your full technique',
+    body:'You’re seeing your score and history. Upgrade to see the measurements, ranked focus areas and a personal drill plan that tell you <em>what to change</em>.'}) : '';
 }
+const DASH_TEASER_ITEMS=['Every joint & gait metric, tracked over time','Your ranked focus areas','A personal action plan with drills','AI coaching on what to change'];
 /* ---------- Current form: latest reading per metric, where it sits vs the
    optimal band, and how it moved since the previous analysis. Reuses the
    trend maps saved on each entry + the same status vocabulary as the angle
@@ -3971,6 +4012,30 @@ function currentFormTable(sport, entries){
       <tbody>${rows}</tbody></table></div>
   </div>`;
 }
+/* Free-tier preview: the score is real, every other metric is a blurred bar
+   with a lock chip. The single upsell CTA lives in the focus slot, not here. */
+function lockedFormPreview(all){
+  const e=all[0], sport=e.sport;
+  const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
+  const scoreRow=`<tr><th scope="row">Technique score</th>
+    <td class="num">${e.score==null?'—':e.score}</td><td class="num muted">—</td>
+    <td class="col-status muted"></td><td class="dform-tr muted">—</td></tr>`;
+  const lockRows=TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>`
+    <tr class="dform-lockrow"><th scope="row">${esc(m.label)}</th>
+      <td class="num"><span class="lockbar"></span></td>
+      <td class="num"><span class="lockbar"></span></td>
+      <td><span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Locked</span></td>
+      <td class="dform-tr"><span class="lockbar"></span></td></tr>`).join('');
+  return `<div class="dform">
+    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
+      <h3>Current form</h3><div class="speedline-sm"></div></div>
+    <div class="dform-sport"><div class="dform-sub"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
+      <span class="dform-when">· latest ${esc(shortDate(e.at))}</span></div>
+    <div class="tablewrap"><table class="data">
+      <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Since last</th></tr></thead>
+      <tbody>${scoreRow}${lockRows}</tbody></table></div></div>
+  </div>`;
+}
 function renderCurrentForm(all){
   const host=$('#dashForm'); if(!host) return;
   let html='';
@@ -3978,11 +4043,15 @@ function renderCurrentForm(all){
     const entries=all.filter(e=>e.sport===sport && e.trends);
     if(entries.length) html+=currentFormTable(sport, entries);
   }
-  if(!html){ host.innerHTML=''; return; }
-  host.innerHTML=`<div class="dform">
-    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
-      <h3>Current form</h3><div class="speedline-sm"></div></div>
-    ${html}</div>`;
+  if(html){
+    host.innerHTML=`<div class="dform">
+      <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
+        <h3>Current form</h3><div class="speedline-sm"></div></div>
+      ${html}</div>`;
+    return;
+  }
+  // Free tier has score-only entries -> no real rows. Show the locked preview.
+  host.innerHTML=(isFreeUser() && all.length) ? lockedFormPreview(all) : '';
 }
 function dashRecentCard(e){
   return `<div class="drec" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} analysis">
@@ -4152,7 +4221,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard};
 </script>
 </body>
 </html>
