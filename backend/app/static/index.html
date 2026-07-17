@@ -104,6 +104,19 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .hcard:focus-visible{outline:3px solid var(--c-blue);outline-offset:2px}
 .hthumb{position:relative;background:#0d1420;aspect-ratio:16/10;overflow:hidden}
 .hthumb img{width:100%;height:100%;object-fit:cover;display:block}
+/* Cloud frames arrive after the card (see fetchKeyframe): a slow shimmer marks
+   the slot until one lands, then the image fades in. `kf-load` goes on the
+   thumb container; `kf-wait` on a bare <img> that holds its own slot. */
+.kf-load::after,#hdImg.kf-wait{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.07) 50%,transparent 70%);background-size:220% 100%;animation:kfshine 1.4s ease-in-out infinite}
+.kf-load::after{content:"";position:absolute;inset:0}
+#hdImg.kf-wait{aspect-ratio:16/10}
+@keyframes kfshine{from{background-position:120% 0}to{background-position:-120% 0}}
+@media (prefers-reduced-motion:reduce){ .kf-load::after,#hdImg.kf-wait{animation:none} }
+.kf-img{opacity:0;transition:opacity .18s ease}
+.kf-img.kf-in{opacity:1}
+/* Holds a slot for an image whose real (portrait or landscape) ratio we don't
+   know yet; dropped the moment the frame lands so it isn't squeezed. */
+.kf-slot{aspect-ratio:16/10}
 .hscore{position:absolute;left:10px;top:10px;font-family:var(--f-display);font-weight:900;font-style:italic;font-size:19px;color:#fff;padding:1px 10px;border-radius:8px}
 .hmeta{padding:12px 14px}
 .htitle{font-weight:800;font-size:14px;text-transform:capitalize}
@@ -526,9 +539,17 @@ h2.sec + .speedline{margin-bottom:24px}
 
 /* ---------- Results ---------- */
 .result-top{display:grid;grid-template-columns:328px 1fr;gap:24px;align-items:start;margin-top:16px}
-.result-top.no-video{grid-template-columns:minmax(0,440px)}
-.scorecard{padding:24px;position:relative;overflow:hidden}
-.sharebtn{margin-top:18px;width:100%;justify-content:center}
+/* No overlay video (user turned it off, or the render failed): centre the lone
+   scorecard instead of leaving it hugging the left edge of an empty row. */
+.result-top.no-video{grid-template-columns:minmax(0,440px);justify-content:center}
+/* flex column + Share anchored to the base so cards with 2 vs 3 meta lines
+   still read as the same object */
+.scorecard{padding:24px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+/* inline chips keep their intrinsic width — flex would stretch them full-width */
+.scorecard > .sporttag,.scorecard > .pill{align-self:flex-start}
+/* auto anchors Share to the base whatever the meta line count; the preceding
+   element's margin-bottom guarantees a gap when there's no free space left */
+.sharebtn{margin-top:auto;width:100%;justify-content:center}
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,140%);z-index:120;
   background:var(--c-navy);color:#fff;font-weight:700;font-size:14px;padding:13px 20px;border-radius:var(--radius-lg);
   box-shadow:0 10px 30px rgba(0,0,0,.28);max-width:min(90vw,420px);text-align:center;
@@ -546,6 +567,16 @@ h2.sec + .speedline{margin-bottom:24px}
 .score-num{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:80px;line-height:1;
   color:var(--c-navy);letter-spacing:-.02em;margin-top:8px}
 .score-num small{font-size:26px;color:var(--c-ink-soft);font-style:normal;font-weight:800}
+/* score change vs the athlete's previous analysis of the same sport — reuses
+   the Progress view's improved/regressed/steady vocabulary */
+.score-delta{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;font-weight:700;color:var(--c-ink-soft)}
+.score-delta .sd-val{font-family:var(--f-mono);font-weight:700;font-feature-settings:"tnum" 1}
+.score-delta.imp .sd-val{color:var(--st-good)}
+.score-delta.reg .sd-val{color:var(--st-bad)}
+.score-delta.sta .sd-val{color:var(--c-ink-soft)}
+.score-delta .ic{width:14px;height:14px}
+.score-delta.imp .ic{color:var(--st-good)}
+.score-delta.reg .ic{color:var(--st-bad);transform:rotate(180deg)}
 .graderow{display:flex;align-items:center;gap:16px;margin-top:16px}
 /* Grade badge. A single letter (A–F) stays a 56px square; a word grade
    ("Good", "Fair"…) grows to fit via min-width + horizontal padding and drops
@@ -555,7 +586,7 @@ h2.sec + .speedline{margin-bottom:24px}
   border:2.5px solid var(--c-navy);color:var(--c-navy);flex:none}
 .grade.grade-word{font-style:normal;font-size:17px;letter-spacing:.02em;text-transform:uppercase;padding:0 16px}
 .gradelbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
-.score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:24px;line-height:1.7;border-top:1px solid var(--c-line);padding-top:16px}
+.score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:24px;margin-bottom:18px;line-height:1.7;border-top:1px solid var(--c-line);padding-top:16px}
 .score-meta b{color:var(--c-ink);font-weight:700}
 .score-meta .mono{font-family:var(--f-mono);font-weight:600;color:var(--c-navy)}
 
@@ -616,7 +647,14 @@ h2.sec + .speedline{margin-bottom:24px}
 .plan-link:hover{text-decoration:underline}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
-.tile{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;min-height:96px}
+/* Flex column + bar pushed to the base so range bars across a row share one
+   baseline, and range-less tiles don't leave a void under their value. */
+.tile{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;min-height:96px;
+  display:flex;flex-direction:column}
+.tile .grbar{margin-top:auto;padding-top:12px}
+/* range-less tiles: sink the status line to the same baseline as the bars next
+   to it, so labels align along the top and status along the bottom */
+.tile:not(:has(.grbar)) .t-ref{margin-top:auto}
 /* ---------- Aero & watts panel ---------- */
 #aeroBlock .eyebrow .ic{width:16px;height:16px;vertical-align:-3px;margin-right:5px}
 .aero-hero{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0E2140,#14294B);border-radius:var(--radius);padding:18px 22px;color:#fff}
@@ -821,6 +859,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
   <symbol id="i-check-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
     <path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-arr-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 19V5M6 11l6-6 6 6"/></symbol>
   <symbol id="i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></symbol>
   <symbol id="i-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1102,6 +1142,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <span class="sporttag" id="sportTag"><svg class="ic" id="sportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="sportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
         <div class="score-num" id="scoreNum">—<small>/100</small></div>
+        <div class="score-delta hidden" id="scoreDelta"></div>
         <div class="graderow">
           <span class="grade" id="grade" role="img" aria-label="Grade">—</span>
           <div>
@@ -1230,6 +1271,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <span class="sporttag" id="pSportTag"><svg class="ic" id="pSportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="pSportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
         <div class="score-num" id="pScoreNum">—<small>/100</small></div>
+        <div class="score-delta hidden" id="pScoreDelta"></div>
         <div class="graderow">
           <span class="grade" id="pGrade" role="img" aria-label="Grade">—</span>
           <div><div class="gradelbl">Grade</div></div>
@@ -1318,7 +1360,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   <!-- ============ HISTORY ============ -->
   <section id="history" class="hidden" aria-labelledby="histTitle">
     <div class="blockhead" style="margin-top:0">
-      <div class="eyebrow">Saved on this device</div>
+      <!-- eyebrow tells the truth about where this history lives (see renderHistList) -->
+      <div class="eyebrow" id="histEyebrow">Saved on this device</div>
       <h2 class="sec" id="histTitle" tabindex="-1" style="margin-bottom:8px">Your history</h2>
       <div class="speedline"></div>
     </div>
@@ -1388,7 +1431,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </div>
       <div>
         <div class="videoframe" id="hdImgWrap">
-          <img id="hdImg" alt="Saved annotated keyframe" style="display:block;width:100%;background:#0d1420">
+          <!-- background-color (not the `background` shorthand) so .kf-wait can
+               paint its loading shimmer over it -->
+          <img id="hdImg" alt="Saved annotated keyframe" style="display:block;width:100%;background-color:#0d1420">
           <div class="videocap">
             <span>Saved keyframe · skeleton + joint angles</span>
             <a class="btn btn-ghost btn-sm" id="hdDownload" download="flapp-analysis.jpg"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download</a>
@@ -1424,7 +1469,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <span class="footlinks">
       <a href="/privacy">Privacy</a> ·
       <a href="/terms">Terms</a> ·
-      <a href="mailto:support@flapp.app?subject=Flapp%20bug%20report">Report a bug</a> ·
+      <a href="mailto:support@getflapp.com?subject=Flapp%20bug%20report">Report a bug</a> ·
       <a href="/health" target="_blank" rel="noopener">status</a>
     </span>
   </div>
@@ -1436,7 +1481,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null };
+const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null,
+  kfCache:{}, kfPending:{} };   // cloud keyframes, fetched per entry (see fetchKeyframe)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
@@ -1474,8 +1520,9 @@ const SECTIONS={upload:'uploader', progress:'progress', results:'results', photo
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', trends:'#navProgress', compare:'#navProgress' };
-const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
+// ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress' };
+const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -2175,7 +2222,7 @@ function renderPhoto(res){
   const sport=res.sport||state.sport;
   const sc=res.score||{}; const score=sc.overall_score;
   $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
-
+  renderScoreDelta('#pScoreDelta', 'photo', sport, score);   // before saveToHistory()
   setGrade('#pGrade', sc.grade);
 
   setSportTag('#pSportTag','#pSportTagIcon','#pSportTagText',sport);
@@ -2382,6 +2429,9 @@ function render(job){
 
   // score + grade
   $('#scoreNum').innerHTML = (r.technique_score==null?'—':r.technique_score)+'<small>/100</small>';
+  // must run before saveToHistory() at the end of render(), or it compares
+  // this analysis against itself
+  renderScoreDelta('#scoreDelta', 'video', sport, r.technique_score);
   setGrade('#grade', r.letter_grade);
 
   // sport tag
@@ -2576,7 +2626,7 @@ function cardFromHistory(e){
     if(typeof val==='string'){ const mm=val.match(/^(-?[\d.]+)\s*(.*)$/); if(mm){ val=mm[1]; unit=(mm[2]||'').trim(); } }
     return { lbl:m.label, val, unit, color:stColor(m.statusCls) };
   });
-  return { sport:e.sport, score:e.score, grade:e.grade||'—', keyframe:e.keyframe, metrics:mets };
+  return { sport:e.sport, score:e.score, grade:e.grade||'—', keyframe:keyframeOf(e), metrics:mets };
 }
 function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
 function rrect(x,X,Y,w,h,r){
@@ -2727,7 +2777,13 @@ async function cardModalShare(){
 }
 function shareResult(){ doShare(cardFromVideo(state.lastResult||{}), $('#shareBtn'), $('#shareBtnTxt')); }
 function sharePhoto(){ if(state.photoRes) doShare(cardFromPhoto(state.photoRes), $('#pShareBtn'), $('#pShareBtnTxt')); }
-function shareHistory(){ if(state.histOpen) doShare(cardFromHistory(state.histOpen), $('#hShareBtn'), $('#hShareBtnTxt')); }
+/* The share card is built around the keyframe, so wait for a cloud frame that's
+   still in flight rather than rendering a frameless card. */
+async function shareHistory(){
+  const e=state.histOpen; if(!e) return;
+  await fetchKeyframe(e);
+  if(state.histOpen && state.histOpen.id===e.id) doShare(cardFromHistory(e), $('#hShareBtn'), $('#hShareBtnTxt'));
+}
 
 function reset(keepFile=false){
   clearInterval(state.polling); state.jobId=null; state.keepFileOnRetry=false;
@@ -2803,7 +2859,9 @@ async function submitAuth(e){
   }catch(err){ $('#authErr').textContent='Network error — check your connection and try again.'; }
   finally{ btn.disabled=false; }
 }
-function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; state.cloudHist=null; renderAuth();
+function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; state.cloudHist=null;
+  state.kfCache={}; state.kfPending={};        // never carry one account's frames into the next
+  renderAuth();
   if(document.body.dataset.state==='dashboard') reset(); else reRenderData(); }
 async function checkAuth(){
   const t=getToken();
@@ -2843,6 +2901,25 @@ const HKEY='flapp_history', HCAP=24;
 const localHist=()=>{ try{ return JSON.parse(localStorage.getItem(HKEY)||'[]'); }catch(e){ return []; } };
 // Signed in -> the account's cloud list (state.cloudHist); signed out -> this device.
 const loadHist=()=> auth ? (state.cloudHist||[]) : localHist();
+
+/* Score change vs the athlete's previous analysis of the SAME sport and kind
+   (a photo score isn't comparable to a video score). History is newest-first
+   and this runs before the current result is saved, so [0] is the prior one. */
+function renderScoreDelta(sel, kind, sport, score){
+  const host=$(sel);
+  if(!host) return;
+  host.className='score-delta hidden';
+  if(score==null) return;
+  const prev=loadHist().find(e=>e.sport===sport && e.kind===kind && e.score!=null);
+  if(!prev) return;
+  const d=score-prev.score;
+  const cls=d>0?'imp':d<0?'reg':'sta';
+  const noun=sport==='bike'?'ride':'run';
+  const txt=d===0?'Same as' : `${d>0?'+':''}${d} vs`;
+  host.className='score-delta '+cls;
+  host.innerHTML=(d===0?'' : `<svg class="ic" aria-hidden="true"><use href="#i-arr-up"/></svg>`)
+    +`<span class="sd-val">${esc(txt)}</span> your last ${noun}`;
+}
 function reRenderData(){ const s=document.body.dataset.state; if(s==='history') renderHistList(); else if(s==='trends') renderProgress(); }
 async function refreshCloud(){
   if(!auth){ state.cloudHist=null; return; }
@@ -2998,8 +3075,64 @@ function saveToHistory(kind,res){
 }
 function fmtWhen(ms){ try{ const d=new Date(ms);
   return d.toLocaleDateString([], {month:'short',day:'numeric'})+' · '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+
+/* ---------- Keyframes: on this device they ride along with the entry; from
+   the cloud the list arrives thin (`has_keyframe`) and each frame is pulled
+   on demand, once, then cached for the session. ---------- */
+function keyframeOf(e){
+  if(!e) return null;
+  if(e.keyframe) return e.keyframe;                    // fresh analysis / local entry
+  return state.kfCache[e.id] || null;
+}
+/* Resolves to the frame's data URI, or null when there isn't one. Concurrent
+   calls for the same entry share one request. */
+function fetchKeyframe(e){
+  if(!e) return Promise.resolve(null);
+  if(e.keyframe) return Promise.resolve(e.keyframe);
+  if(Object.prototype.hasOwnProperty.call(state.kfCache, e.id)) return Promise.resolve(state.kfCache[e.id]);
+  if(state.kfPending[e.id]) return state.kfPending[e.id];
+  if(!auth || !e.has_keyframe) return Promise.resolve(null);
+  const p=fetch('/me/analyses/'+encodeURIComponent(e.id)+'/keyframe',{headers:authHeaders()})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{ const k=(j&&j.keyframe)||null; state.kfCache[e.id]=k; delete state.kfPending[e.id]; return k; })
+    .catch(()=>{ delete state.kfPending[e.id]; return null; });
+  state.kfPending[e.id]=p;
+  return p;
+}
+/* Thumb markup: the frame when we already hold it, otherwise an empty slot
+   tagged for lazy fill (see observeKeyframes). */
+function thumbMarkup(e, cls){
+  const k=keyframeOf(e);
+  if(k) return `<img class="${cls}" src="${k}" alt="">`;
+  if(e.has_keyframe) return `<img class="${cls} kf-img" alt="">`;
+  return '';
+}
+function thumbAttrs(e){ return (!keyframeOf(e) && e.has_keyframe) ? ` data-kf="${e.id}" class="kf-load"` : ''; }
+let kfObserver=null;
+/* `node` is either the thumb container or the <img> itself. */
+function fillKeyframe(node){
+  const id=node.dataset.kf; if(!id) return;
+  const e=loadHist().find(x=>x.id===id); if(!e) return;
+  fetchKeyframe(e).then(k=>{
+    node.classList.remove('kf-load');
+    const img=node.tagName==='IMG'?node:node.querySelector('img'); if(!img) return;
+    if(k){ img.classList.remove('kf-slot'); img.src=k; requestAnimationFrame(()=>img.classList.add('kf-in')); }
+  });
+}
+/* Fill every [data-kf] slot under `root` as it scrolls into view. */
+function observeKeyframes(root){
+  const nodes=root?root.querySelectorAll('[data-kf]'):[];
+  if(!nodes.length) return;
+  if(!('IntersectionObserver' in window)){ nodes.forEach(fillKeyframe); return; }
+  if(!kfObserver) kfObserver=new IntersectionObserver(entries=>{
+    entries.forEach(en=>{ if(en.isIntersecting){ kfObserver.unobserve(en.target); fillKeyframe(en.target); } });
+  },{rootMargin:'250px'});
+  nodes.forEach(n=>kfObserver.observe(n));
+}
 function renderHistList(){
   const a=loadHist(), w=$('#histList');
+  const eb=$('#histEyebrow');
+  if(eb) eb.textContent = auth ? 'Synced to your account' : 'Saved on this device';
   if(!a.length){
     w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
       <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
@@ -3011,17 +3144,33 @@ function renderHistList(){
     return;
   }
   w.innerHTML=a.map(e=>`<div class="hcard" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">
-    <div class="hthumb">${e.keyframe?`<img src="${e.keyframe}" alt="">`:''}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
+    <div class="hthumb"${thumbAttrs(e)}>${thumbMarkup(e,'')}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
       <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
     <div class="hmeta"><div class="htitle">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind)}</div>
       <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
   </div>`).join('');
+  observeKeyframes(w);
+}
+/* The frame of a cloud entry is fetched on open. Hold the slot while it's in
+   flight so the page doesn't shift, and drop a late response if the reader has
+   already moved to another analysis. */
+function renderHistoryKeyframe(e){
+  const wrap=$('#hdImgWrap'), img=$('#hdImg'), dl=$('#hdDownload');
+  const k=keyframeOf(e), waiting=!k && !!e.has_keyframe;
+  wrap.style.display=(k||waiting)?'':'none';
+  img.classList.toggle('kf-wait', waiting);
+  if(k){ img.src=k; dl.href=k; } else { img.removeAttribute('src'); dl.href='#'; }
+  if(!waiting) return;
+  fetchKeyframe(e).then(kf=>{
+    if(!state.histOpen || state.histOpen.id!==e.id) return;
+    img.classList.remove('kf-wait');
+    if(kf){ img.src=kf; dl.href=kf; } else { wrap.style.display='none'; }
+  });
 }
 function openHistory(id){
   const e=loadHist().find(x=>x.id===id); if(!e) return;
   state.histOpen=e;
-  $('#hdImg').src=e.keyframe||''; $('#hdDownload').href=e.keyframe||'#';
-  $('#hdImgWrap').style.display = e.keyframe?'':'none';
+  renderHistoryKeyframe(e);
   $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
   setGrade('#hdGrade', e.grade);
   setSportTag('#hdSportTag','#hdSportTagIcon','#hdSportTagText',e.sport);
@@ -3541,7 +3690,7 @@ function renderDashFocus(all){
 }
 function dashRecentCard(e){
   return `<div class="drec" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} analysis">
-    <div class="drec-thumb">${e.keyframe?`<img src="${e.keyframe}" alt="">`:''}<span class="drec-score" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span></div>
+    <div class="drec-thumb"${thumbAttrs(e)}>${thumbMarkup(e,'')}<span class="drec-score" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span></div>
     <div class="drec-meta"><div class="drec-title">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind||'video')}</div><div class="hint">${fmtWhen(e.at)}</div></div>
   </div>`;
 }
@@ -3567,6 +3716,7 @@ function renderDashboard(){
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
   renderDashFocus(all);
   $('#dashRecent').innerHTML=all.slice(0,4).map(dashRecentCard).join('');
+  observeKeyframes($('#dashRecent'));
 }
 function openDashboard(){ renderDashboard(); setState('dashboard',{focus:'#dashTitle'}); }
 $('#navHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); });
@@ -3640,6 +3790,14 @@ function cmpCatRow(label,map,good,a,b){
     <div class="cmp-d"><span class="tdelta ${cls}">${note}</span></div>
     <div class="cmp-b">${esc(disp(b))}</div></div>`;
 }
+/* Compare keyframe: held (or absent) frames render straight; a cloud frame
+   still on the server gets a slot that fills in place. */
+function cmpThumb(e,tag){
+  const k=keyframeOf(e);
+  if(k) return `<img class="cmp-thumb" src="${k}" alt="${tag} analysis keyframe">`;
+  if(e.has_keyframe) return `<img class="cmp-thumb kf-slot kf-img" data-kf="${e.id}" alt="${tag} analysis keyframe">`;
+  return '<div class="cmp-thumb cmp-thumb-empty"></div>';
+}
 function renderCompare(){
   const {sport,aId,bId}=state.cmp;
   const A=cmpEntry(aId), B=cmpEntry(bId);
@@ -3652,7 +3810,7 @@ function renderCompare(){
   const head=`<div class="cmp-head">
     ${[[A,'Before'],[B,'After']].map(([e,tag])=>`<div class="cmp-card">
       <div class="cmp-tag">${tag}</div>
-      ${e.keyframe?`<img class="cmp-thumb" src="${e.keyframe}" alt="${tag} analysis keyframe">`:'<div class="cmp-thumb cmp-thumb-empty"></div>'}
+      ${cmpThumb(e,tag)}
       <div class="cmp-when">${esc(fmtWhen(e.at))}</div>
       <div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>
     </div>`).join('')}
@@ -3663,6 +3821,7 @@ function renderCompare(){
     `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
        <div class="cmp-lbl">Metric</div><div class="cmp-a">Before</div><div class="cmp-d">Change</div><div class="cmp-b">After</div>
      </div>${numRows}${catRows}</div>`;
+  observeKeyframes($('#cmpBody'));
   renderCompareSummary();
 }
 /* AI progress summary — server-side (Gemini). Requires auth; degrades to a
@@ -3694,7 +3853,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe};
 </script>
 </body>
 </html>
