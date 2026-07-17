@@ -645,6 +645,32 @@ h2.sec + .speedline{margin-bottom:24px}
 .plan-link{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:13px;font-weight:700;color:var(--c-blue)}
 .plan-link .ic{width:15px;height:15px}
 .plan-link:hover{text-decoration:underline}
+/* Plan checkbox (cabinet only): a "Done" toggle per drill. A ticked drill goes
+   green-railed, quieter, and strikes its title so progress reads at a glance. */
+.plan-done{flex:none;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--c-ink-soft);user-select:none}
+.plan-done input{width:18px;height:18px;accent-color:var(--st-good,#2E9E5B);cursor:pointer;margin:0}
+.plan-card.done{border-left-color:var(--st-good,#2E9E5B);background:rgba(46,158,91,.07)}
+.plan-card.done .plan-drill{text-decoration:line-through;color:var(--c-ink-soft)}
+.plan-card.done .plan-done{color:var(--st-good,#2E9E5B)}
+.hdplan-prog{font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--c-ink-soft);margin:0 0 16px}
+.hdplan-prog b{color:var(--c-navy)}
+/* Dashboard plan summary -- mirrors the focus panel, compact checklist form */
+.dplan{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel);padding:16px 18px;box-shadow:var(--shadow);margin-bottom:22px}
+.dplan .ic{width:16px;height:16px;vertical-align:-2px;margin-right:4px}
+.dplan-list{display:flex;flex-direction:column;gap:8px;margin:4px 0 14px}
+.dplan-item{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--c-ink);background:#fff;border:1px solid var(--c-line);border-radius:9px;padding:9px 12px}
+.dplan-item small{color:var(--c-ink-faint);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-left:auto;white-space:nowrap}
+.dplan-check{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--c-line);display:flex;align-items:center;justify-content:center}
+.dplan-check svg{width:11px;height:11px;color:#fff;display:none}
+.dplan-item.done{color:var(--c-ink-soft)}
+.dplan-item.done .dplan-drill{text-decoration:line-through}
+.dplan-item.done .dplan-check{background:var(--st-good,#2E9E5B);border-color:var(--st-good,#2E9E5B)}
+.dplan-item.done .dplan-check svg{display:block}
+.dplan-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.dplan-prog{font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--c-ink-soft)}
+.dplan-prog b{color:var(--c-navy)}
+.dplan-done-note{font-size:13px;font-weight:700;color:var(--st-good,#2E9E5B)}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
 /* Flex column + bar pushed to the base so range bars across a row share one
@@ -1009,6 +1035,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <div id="dashSummary" class="dash-summary"></div>
     <div id="dashSports" class="dash-sports"></div>
     <div id="dashFocus"></div>
+    <div id="dashPlan"></div>
     <div class="blockhead"><div class="eyebrow">Latest</div><h3>Recent analyses</h3><div class="speedline-sm"></div></div>
     <div id="dashRecent" class="dash-recent"></div>
   </section>
@@ -1448,6 +1475,15 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <div class="speedline-sm"></div>
       </div>
       <div class="coach" id="hdCoach"></div>
+    </div>
+    <div class="block hidden" id="hdPlanBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Training plan</div>
+        <h3>Your drills to fix it</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hdplan-prog" id="hdPlanProgress"></p>
+      <div id="hdPlanCards"></div>
     </div>
     <div class="block">
       <div class="blockhead">
@@ -3193,6 +3229,7 @@ function openHistory(id){
   parts.push(fmtWhen(e.at));
   $('#hdMeta').innerHTML=parts.join('<br>');
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
+  renderHistoryPlan(e);
   renderHistoryAngles(e);
   setState('historydetail',{focus:'#hdTitle'});
 }
@@ -3222,6 +3259,93 @@ function renderHistoryAngles(e){
       <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Detail</th><th scope="col">Status</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
+}
+/* ============================================================
+   Training plan in the cabinet — the drills a saved analysis prescribed,
+   kept as a checklist so there's something to *do* between analyses.
+   `planDone` is a {planKey: true} map on the entry; toggling a checkbox
+   patches the entry (cloud re-POST or local rewrite) fire-and-forget.
+   ============================================================ */
+const planKey=p=>p.metric||p.label||p.drill||'';
+/* Persist an in-place edit to one saved entry (e.g. a plan checkbox). Cloud:
+   re-POST a frameless copy (the server upsert keeps the stored keyframe); local:
+   rewrite the entry in place, keeping its inline frame. Fire-and-forget. */
+function persistEntryPatch(e){
+  if(!e) return;
+  if(auth){
+    const {keyframe, has_keyframe, ...thin}=e;   // frame stays server-side
+    fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(thin)}).catch(()=>{});
+  } else {
+    const a=localHist(); const i=a.findIndex(x=>x.id===e.id);
+    if(i>=0){ a[i]=e; persistHist(a); }
+  }
+}
+function planProgressHtml(plan,done){
+  const n=plan.filter(p=>done[planKey(p)]).length;
+  return `<b>${n}</b> of <b>${plan.length}</b> drills done`
+    + (n===plan.length ? ' — nice work. Re-film and open <b>Before / after</b> to see the change.' : '');
+}
+/* One editable drill card (mirrors renderTrainingPlan's card + a Done toggle). */
+function historyPlanCard(p,i,done){
+  const key=planKey(p), on=!!done[key];
+  const weeks=p.weeks?`<span class="plan-weeks"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> ~${p.weeks} wk${p.weeks>1?'s':''}</span>`:'';
+  const cue=p.cue?`<div class="plan-cue"><span class="plan-cue-lbl">Cue</span> ${esc(p.cue)}</div>`:'';
+  const link=p.academy_slug?`<a class="plan-link" href="/academy/${esc(p.academy_slug)}">Read the science <svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg></a>`:'';
+  const why=p.why?`<div class="plan-why">${esc(p.why)}</div>`:'';
+  return `<div class="plan-card${on?' done':''}">
+    <div class="plan-top"><span class="plan-n">${i+1}</span>
+      <div class="plan-titles"><div class="plan-drill">${esc(p.drill)}</div>
+      <div class="plan-metric">${esc(p.label||'')}</div></div>${weeks}
+      <label class="plan-done"><input type="checkbox" data-plan-done="${esc(key)}"${on?' checked':''}><span>Done</span></label></div>
+    ${why}
+    ${p.instruction?`<div class="plan-how">${esc(p.instruction)}</div>`:''}
+    ${cue}${link}
+  </div>`;
+}
+function renderHistoryPlan(e){
+  const block=$('#hdPlanBlock'), host=$('#hdPlanCards'); if(!block||!host) return;
+  const plan=(e.plan||[]).filter(p=>p&&p.drill);
+  if(!plan.length){ block.classList.add('hidden'); host.innerHTML=''; return; }
+  const done=e.planDone||{};
+  $('#hdPlanProgress').innerHTML=planProgressHtml(plan,done);
+  host.innerHTML=plan.map((p,i)=>historyPlanCard(p,i,done)).join('');
+  block.classList.remove('hidden');
+}
+// One checkbox handler for the whole plan block (cards are re-rendered under it).
+$('#hdPlanCards').addEventListener('change',ev=>{
+  const cb=ev.target.closest('[data-plan-done]'); if(!cb) return;
+  const e=state.histOpen; if(!e) return;
+  e.planDone=e.planDone||{};
+  if(cb.checked) e.planDone[cb.dataset.planDone]=true; else delete e.planDone[cb.dataset.planDone];
+  persistEntryPatch(e);
+  const card=cb.closest('.plan-card'); if(card) card.classList.toggle('done', cb.checked);
+  const plan=(e.plan||[]).filter(p=>p&&p.drill);
+  $('#hdPlanProgress').innerHTML=planProgressHtml(plan, e.planDone);
+});
+/* Dashboard "Training plan" summary: the most recent analysis that carries a
+   plan, as a compact checklist. All drills ticked -> a re-test CTA (this is the
+   loop back into a new analysis); otherwise a link into the full plan. */
+const DPLAN_CHECK='<span class="dplan-check"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+function renderDashPlan(all){
+  const host=$('#dashPlan'); if(!host) return;
+  const e=all.find(x=>(x.plan||[]).some(p=>p&&p.drill));
+  if(!e){ host.innerHTML=''; return; }
+  const plan=e.plan.filter(p=>p&&p.drill), done=e.planDone||{};
+  const nDone=plan.filter(p=>done[planKey(p)]).length, allDone=nDone===plan.length;
+  const noun=e.sport==='run'?'run':'ride';
+  const items=plan.map(p=>{
+    const on=!!done[planKey(p)];
+    return `<div class="dplan-item${on?' done':''}">${DPLAN_CHECK}<span class="dplan-drill">${esc(p.drill)}</span><small>${esc(p.label||'')}</small></div>`;
+  }).join('');
+  const foot=allDone
+    ? `<span class="dplan-done-note">✓ All drills done</span><button class="btn btn-primary btn-sm" data-analyze="${e.sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Re-test — new ${noun}</button>`
+    : `<span class="dplan-prog"><b>${nDone}</b> of <b>${plan.length}</b> done</span><button class="btn btn-ghost btn-sm" data-plan-open="${e.id}">Open plan →</button>`;
+  host.innerHTML=`<div class="dplan">
+    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Training plan</div>
+      <h3>Your drills</h3><div class="speedline-sm"></div></div>
+    <div class="dplan-list">${items}</div>
+    <div class="dplan-foot">${foot}</div>
+  </div>`;
 }
 function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTitle'}); }
 $('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
@@ -3716,7 +3840,7 @@ function renderDashboard(){
       <p><b>Welcome${nameEl?', '+esc(nameEl):''}.</b> Run your first analysis and your technique, progress and focus areas will build up here.</p>
       <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
     </div>`;
-    $('#dashSports').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashRecent').innerHTML='';
+    $('#dashSports').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML=''; $('#dashRecent').innerHTML='';
     return;
   }
   const now=new Date();
@@ -3728,6 +3852,7 @@ function renderDashboard(){
     <div class="dstat"><div class="dstat-v">${last?agoStr(last.at):'—'}</div><div class="dstat-l">last analysis</div></div>`;
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
   renderDashFocus(all);
+  renderDashPlan(all);
   $('#dashRecent').innerHTML=all.slice(0,4).map(dashRecentCard).join('');
   observeKeyframes($('#dashRecent'));
 }
@@ -3738,6 +3863,7 @@ $('#dashboard').addEventListener('click',e=>{
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
   const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress(); return; }
   const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id); return; }
+  const po=e.target.closest('[data-plan-open]'); if(po){ openHistory(po.dataset.planOpen); return; }
   const rc=e.target.closest('.drec'); if(rc){ openHistory(rc.dataset.id); }
 });
 $('#dashboard').addEventListener('keydown',e=>{
@@ -3866,7 +3992,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey};
 </script>
 </body>
 </html>
