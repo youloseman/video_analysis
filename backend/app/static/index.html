@@ -2891,6 +2891,12 @@ $('#authForm').addEventListener('submit',submitAuth);
     $('#jobchip').innerHTML='<span class="fchip">restored session</span>';
     setState('progress');
     startPolling();
+  } else {
+    // Deep links from other pages (e.g. Academy's sidebar) open a view directly.
+    const clean=()=>history.replaceState(null,'',location.pathname+location.search);
+    if(location.hash==='#progress'){ clean(); openProgress(); }
+    else if(location.hash==='#history'){ clean(); openHistoryView(); }
+    else if(location.hash==='#login'){ clean(); openAuth('login'); }
   }
 })();
 
@@ -3064,6 +3070,13 @@ function saveToHistory(kind,res){
     if(isV) e.angleStats=compactAngleStats(res.angle_statistics);
     // Typed issues (video only) -> powers the dashboard "focus areas" aggregation.
     e.issues=(res.detected_issues||[]).map(it=>({type:it.type, severity:(it.severity||'').toLowerCase()})).filter(x=>x.type);
+    // Compact corrective plan (running only, for now) so the drills live on in
+    // the cabinet as a checklist -- the one thing to *do* between analyses.
+    // `planDone` keys are the drill's stable metric (see planKey).
+    const tp=((res.training_plan||{}).top_3_priorities||[]).filter(p=>p&&p.drill)
+      .map(p=>({metric:p.metric,label:p.label,drill:p.drill,why:p.why,
+        instruction:p.instruction,cue:p.cue,weeks:p.weeks,academy_slug:p.academy_slug}));
+    if(tp.length){ e.plan=tp; e.planDone={}; }
     const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o; e.trendCat=tr.c;
     if(auth){
       state.cloudHist=[e,...(state.cloudHist||[])];

@@ -69,8 +69,19 @@ a{color:var(--c-blue)}
 .navlink[aria-current="page"] svg{opacity:1}
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
   border-radius:0 3px 3px 0;background:var(--c-blue)}
-.navlink-ext{color:var(--c-ink-soft);font-weight:600;font-size:13.5px}
-.navsep{height:1px;background:var(--c-line);margin:8px 12px}
+/* account box (bottom of sidebar + mobile top bar), mirrors the app */
+.btn{font-family:var(--f-body);font-weight:800;letter-spacing:.02em;border-radius:var(--radius-btn);cursor:pointer;
+  border:1.5px solid transparent;transition:all .15s ease;display:inline-flex;align-items:center;justify-content:center;
+  gap:8px;text-decoration:none;min-height:44px;padding:12px 24px;font-size:15px}
+.btn svg{width:18px;height:18px;flex:none}
+.btn-primary{background:var(--c-blue);color:#fff}.btn-primary:hover{background:var(--c-blue-dk)}
+.btn-ghost{background:var(--c-panel);color:var(--c-ink)}.btn-ghost:hover{background:#E7EBF1}
+.btn-sm{padding:8px 16px;font-size:13px;min-height:0}
+.btn:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+.authbox{display:flex;align-items:center;gap:10px}
+.usermail{font-size:12px;font-weight:700;color:var(--c-ink-soft);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar > .authbox{margin-top:auto;padding-top:14px;border-top:1px solid var(--c-line)}
+.topbar .authbox-m{margin-left:auto}
 .appshell{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
 .appshell > main,.appshell > .article-wrap{flex:1}
 /* mobile top bar + off-canvas */
@@ -177,10 +188,6 @@ _ARTICLE_CSS = """
 .article-cta{margin-top:40px;padding:26px 28px;border:1px solid var(--c-line);border-radius:var(--radius);
   background:var(--c-panel-blue);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
 .article-cta p{font-weight:700;color:var(--c-navy);font-size:16px}
-.btn{font-family:var(--f-body);font-weight:800;border-radius:var(--radius-btn);text-decoration:none;
-  padding:12px 24px;min-height:44px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
-.btn svg{width:18px;height:18px;flex:none}
-.btn-primary{background:var(--c-blue);color:#fff}.btn-primary:hover{background:var(--c-blue-dk)}
 .backlink{display:inline-flex;align-items:center;gap:6px;margin-bottom:24px;font-size:13px;font-weight:700;color:var(--c-blue);text-decoration:none}
 .backlink svg{width:15px;height:15px;flex:none}
 .backlink:hover{text-decoration:underline;text-underline-offset:3px}
@@ -207,12 +214,16 @@ _ICONS = {
     "menu": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
     "arr-l": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5M11 6l-6 6 6 6"/></svg>',
     "arr-r": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>',
+    "progress": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></svg>',
+    "clock": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>',
 }
 
 
 def _sidebar(active: str) -> str:
-    """Left sidebar shared with the app. On Academy pages, Academy is current;
-    the app-view links point back to the SPA at ``/``."""
+    """Left sidebar, kept in lock-step with the app's sidebar in
+    ``static/index.html`` so Academy reads as the same product. The app-view
+    links point back to the SPA: Progress/History deep-link via hash so the SPA
+    opens that view on load. ``#authbox`` is filled in by ``_AUTH_JS``."""
     acad = ' aria-current="page"' if active == "academy" else ""
     return (
         # mobile top bar + scrim
@@ -220,6 +231,7 @@ def _sidebar(active: str) -> str:
         '<button class="topbar-toggle" id="navToggle" type="button" aria-label="Open menu" '
         'aria-expanded="false" aria-controls="sidebar">' + _ICONS["menu"] + "</button>"
         '<a class="wordmark" href="/">Flapp<span class="dot"></span></a>'
+        '<div class="authbox authbox-m" id="authboxM"></div>'
         "</div>"
         '<div class="scrim" id="navScrim" hidden></div>'
         # sidebar
@@ -227,11 +239,11 @@ def _sidebar(active: str) -> str:
         '<a class="wordmark" href="/">Flapp<span class="dot"></span></a>'
         '<nav class="sidenav" aria-label="Site">'
         f'<a href="/" class="navlink">{_ICONS["analyze"]}<span>Analyze</span></a>'
+        f'<a href="/#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
+        f'<a href="/#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
         f'<a href="/academy" class="navlink"{acad}>{_ICONS["book"]}<span>Academy</span></a>'
-        '<span class="navsep"></span>'
-        '<a href="/docs" target="_blank" rel="noopener" class="navlink navlink-ext">'
-        + _ICONS["ext"] + "<span>API docs</span></a>"
         "</nav>"
+        '<div class="authbox" id="authbox"></div>'
         "</aside>"
     )
 
@@ -259,6 +271,30 @@ _NAV_JS = (
     "document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('nav-open'))c();});}"
 )
 
+# Account box: mirror the app's renderAuth on these static pages. Anonymous
+# visitors (no token -> no fetch) get a "Log in" button that deep-links to the
+# SPA's login modal (/#login); signed-in visitors see their email + "Log out".
+_AUTH_JS = (
+    "(function(){"
+    "var boxes=[document.getElementById('authbox'),document.getElementById('authboxM')]"
+    ".filter(Boolean);if(!boxes.length)return;"
+    "function esc(x){return String(x).replace(/[&<>\"]/g,function(c){"
+    "return{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}"
+    "function render(a){var m=a?"
+    "'<span class=\"usermail\" title=\"'+esc(a.email)+'\">'+esc(a.email)+"
+    "'</span><button class=\"btn btn-ghost btn-sm\" data-logout type=\"button\">Log out</button>':"
+    "'<a class=\"btn btn-primary btn-sm\" href=\"/#login\">Log in</a>';"
+    "boxes.forEach(function(b){b.innerHTML=m;});"
+    "document.querySelectorAll('[data-logout]').forEach(function(b){"
+    "b.addEventListener('click',function(){try{localStorage.removeItem('flapp_token');}catch(e){}render(null);});});}"
+    "var tk=null;try{tk=localStorage.getItem('flapp_token');}catch(e){}"
+    "render(null);"
+    "if(tk){fetch('/auth/me',{headers:{Authorization:'Bearer '+tk}})"
+    ".then(function(r){return r.ok?r.json():null;})"
+    ".then(function(u){if(u)render(u);}).catch(function(){});}"
+    "})();"
+)
+
 
 def _page(
     *,
@@ -280,8 +316,8 @@ def _page(
             + json.dumps(jsonld, ensure_ascii=False)
             + "</script>"
         )
-    # Always include the mobile-nav script; append any widget JS after it.
-    script = f"<script>{_NAV_JS}{extra_js}</script>\n"
+    # Always include the mobile-nav + account-box scripts; append widget JS after.
+    script = f"<script>{_NAV_JS}{_AUTH_JS}{extra_js}</script>\n"
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
         '<meta charset="UTF-8">\n'
