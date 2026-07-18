@@ -214,6 +214,9 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:nowrap;text-align:right}
 .dform-tr .tdelta{font-size:12.5px}
 .dform-first{color:var(--c-ink-faint);font-weight:600}
+.dform-seg{margin:2px 0 14px}
+.dform-empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:18px 4px}
+.dform-empty .hint{margin:0}
 @media (max-width:520px){ .dash-summary{grid-template-columns:1fr 1fr} .dspark{width:96px;height:auto} }
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
 /* before / after compare */
@@ -4012,10 +4015,10 @@ function currentFormTable(sport, entries){
       <tbody>${rows}</tbody></table></div>
   </div>`;
 }
-/* Free-tier preview: the score is real, every other metric is a blurred bar
-   with a lock chip. The single upsell CTA lives in the focus slot, not here. */
-function lockedFormPreview(all){
-  const e=all[0], sport=e.sport;
+/* Free-tier preview body (one sport): the score is real, every other metric is
+   a blurred bar with a lock chip. The single upsell CTA lives in the focus slot,
+   not here. Returns the `.dform-sport` inner (header/toggle added by caller). */
+function lockedFormBody(sport, e){
   const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
   const scoreRow=`<tr><th scope="row">Technique score</th>
     <td class="num">${e.score==null?'—':e.score}</td><td class="num muted">—</td>
@@ -4026,32 +4029,50 @@ function lockedFormPreview(all){
       <td class="num"><span class="lockbar"></span></td>
       <td><span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Locked</span></td>
       <td class="dform-tr"><span class="lockbar"></span></td></tr>`).join('');
-  return `<div class="dform">
-    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
-      <h3>Current form</h3><div class="speedline-sm"></div></div>
-    <div class="dform-sport"><div class="dform-sub"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
-      <span class="dform-when">· latest ${esc(shortDate(e.at))}</span></div>
+  return `<div class="dform-sport"><div class="dform-sub"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
+    <span class="dform-when">· latest ${esc(shortDate(e.at))}</span></div>
     <div class="tablewrap"><table class="data">
       <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Since last</th></tr></thead>
-      <tbody>${scoreRow}${lockRows}</tbody></table></div></div>
-  </div>`;
+      <tbody>${scoreRow}${lockRows}</tbody></table></div></div>`;
 }
+/* One Run/Bike toggle (mirrors the Progress screen) + the selected sport's
+   table. Real rows when we have metric data, a locked preview for free-tier
+   (score-only) entries, or an empty prompt when that sport has no analyses. */
 function renderCurrentForm(all){
   const host=$('#dashForm'); if(!host) return;
-  let html='';
-  for(const sport of ['run','bike']){
-    const entries=all.filter(e=>e.sport===sport && e.trends);
-    if(entries.length) html+=currentFormTable(sport, entries);
+  if(!all.length){ host.innerHTML=''; return; }
+  const free=isFreeUser();
+  const hasEntries=s=>all.some(e=>e.sport===s);
+  // Nothing to preview at all (e.g. a paid user whose only entries carry no
+  // trends): keep the block empty rather than an orphan toggle.
+  if(!hasEntries('run') && !hasEntries('bike')){ host.innerHTML=''; return; }
+  // Default to the newest entry's sport; an explicit toggle (even to an empty
+  // sport) is respected on subsequent renders.
+  if(state.formSport!=='run' && state.formSport!=='bike') state.formSport=all[0].sport;
+  const sport=state.formSport;
+
+  const seg=`<div class="seg dform-seg" id="formSeg" role="group" aria-label="Sport">
+    ${['bike','run'].map(s=>`<button type="button" data-formsport="${s}" aria-pressed="${s===sport}">
+      <svg class="ic" aria-hidden="true"><use href="#i-${s}"/></svg> ${s==='run'?'Run':'Bike'}</button>`).join('')}
+  </div>`;
+
+  const entries=all.filter(e=>e.sport===sport && e.trends);
+  let body;
+  if(!entries.length){
+    const noun=sport==='run'?'run':'ride';
+    body=`<div class="dform-empty"><p class="hint">No ${sport==='run'?'run':'bike'} analyses yet.</p>
+      <button class="btn btn-primary btn-sm" data-analyze="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a ${noun}</button></div>`;
+  } else {
+    body=currentFormTable(sport, entries) || (free ? lockedFormBody(sport, entries[0]) : '')
+      || `<p class="hint" style="margin:6px 0">No metric data for ${sport} yet.</p>`;
   }
-  if(html){
-    host.innerHTML=`<div class="dform">
-      <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
-        <h3>Current form</h3><div class="speedline-sm"></div></div>
-      ${html}</div>`;
-    return;
-  }
-  // Free tier has score-only entries -> no real rows. Show the locked preview.
-  host.innerHTML=(isFreeUser() && all.length) ? lockedFormPreview(all) : '';
+
+  host.innerHTML=`<div class="dform">
+    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
+      <h3>Current form</h3><div class="speedline-sm"></div></div>
+    ${seg}
+    <div class="dform-body">${body}</div>
+  </div>`;
 }
 function dashRecentCard(e){
   return `<div class="drec" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} analysis">
@@ -4089,6 +4110,7 @@ function openDashboard(){ renderDashboard(); setState('dashboard',{focus:'#dashT
 $('#navHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); });
 $('#botHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); closeNav(); });
 $('#dashboard').addEventListener('click',e=>{
+  const ft=e.target.closest('[data-formsport]'); if(ft){ state.formSport=ft.dataset.formsport; renderCurrentForm(loadHist()); return; }
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
   const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress(); return; }
   const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id); return; }
