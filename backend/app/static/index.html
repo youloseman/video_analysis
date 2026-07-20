@@ -262,6 +262,12 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 /* auth */
 .authbox{display:flex;align-items:center;gap:10px;margin-left:6px}
 .usermail{font-size:12px;font-weight:700;color:var(--c-ink-soft);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Log out button stays one line — the mobile top bar is narrow and it wrapped */
+.authbox .btn{white-space:nowrap}
+.authbox-m{gap:8px}
+.authbox-m .btn{padding:7px 11px;font-size:12px}
+/* narrow the (already-truncated) email so the compact Log out never clips */
+.authbox-m .usermail{max-width:min(26vw,110px)}
 .modal{position:fixed;inset:0;background:rgba(20,41,75,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
 .modal.hidden{display:none}
 .modal-card{background:#fff;border-radius:var(--radius-lg);padding:28px 28px 24px;max-width:400px;width:100%;position:relative;box-shadow:0 20px 60px rgba(20,41,75,.3)}
@@ -385,7 +391,9 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .botnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:36;background:#fff;
   border-top:1px solid var(--c-line);box-shadow:0 -2px 12px rgba(20,41,75,.06);
   padding-bottom:env(safe-area-inset-bottom,0)}
-.botnav{grid-template-columns:repeat(4,1fr)}
+/* auto columns so the row stays balanced whether Home is shown (4 items) or
+   not (3) — Academy lives in the drawer, not the tab bar, to keep one row */
+.botnav{grid-auto-flow:column;grid-auto-columns:1fr}
 .botlink{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   padding:8px 4px 7px;min-height:56px;text-decoration:none;color:var(--c-ink-soft);font-size:11px;font-weight:700;
   letter-spacing:.01em;transition:color .12s}
@@ -394,6 +402,9 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .botlink[aria-current="page"]{color:var(--c-blue)}
 .botlink[aria-current="page"] .ic{opacity:1}
 .botlink:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px;border-radius:8px}
+/* Back-to-Home shortcut on secondary views — mobile + signed-in only (desktop
+   has the sidebar Home always visible) */
+.backhome-row{display:none;margin:0 0 16px}
 
 /* ---------- Hero (collapses after upload state) ---------- */
 .hero{background:linear-gradient(135deg,#14294B 0%,#1D3E77 60%,#2F6DE0 100%);
@@ -629,6 +640,23 @@ h2.sec + .speedline{margin-bottom:24px}
 .score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:24px;margin-bottom:18px;line-height:1.7;border-top:1px solid var(--c-line);padding-top:16px}
 .score-meta b{color:var(--c-ink);font-weight:700}
 .score-meta .mono{font-family:var(--f-mono);font-weight:600;color:var(--c-navy)}
+/* default: score/grade stack (wrapper is a plain block) — desktop unchanged */
+.sc-scorerow{display:block}
+/* Phone: tighten the saved-analysis scorecard — it read as mostly whitespace.
+   Share goes compact top-right next to the sport tag, grade sits right of the
+   score, and the video/camera/date meta is dropped (it's on the image caption). */
+@media(max-width:640px){
+  #historyDetail .scorecard{padding:16px 16px 18px}
+  #historyDetail .scorecard::before{display:none}
+  #historyDetail .scorecard .sharebtn{position:absolute;top:14px;right:14px;width:auto;margin-top:0;
+    padding:7px 13px;font-size:13px;gap:7px}
+  #historyDetail .score-label{margin-top:14px}
+  #historyDetail .sc-scorerow{display:flex;align-items:center;gap:18px}
+  #historyDetail .sc-scorerow .score-num{margin-top:2px}
+  #historyDetail .sc-scorerow .graderow{margin-top:0}
+  #historyDetail .sc-scorerow .gradelbl{display:none}
+  #historyDetail .score-meta{display:none}
+}
 
 .videoframe{border-radius:var(--radius);overflow:hidden;border:1px solid var(--c-line);background:#0d1420}
 .videoframe video{display:block;width:100%;max-height:520px;background:#0d1420}
@@ -881,6 +909,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   /* bottom tab bar visible; reserve room so it never covers content/footer */
   .botnav{display:grid}
   .appshell{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
+  body.authed .backhome-row{display:block}
 }
 @media(min-width:901px){
   /* desktop: sidebar always visible, scrim never */
@@ -1006,7 +1035,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   <a href="#" id="botAnalyze" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
   <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
   <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
-  <a href="/academy" id="botAcademy" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
+  <!-- Academy intentionally omitted from the tab bar (reachable via the drawer)
+       so the mobile nav stays a single row. -->
 </nav>
 
 <!-- Left sidebar (primary navigation) -->
@@ -1455,6 +1485,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
   <!-- ============ HISTORY ============ -->
   <section id="history" class="hidden" aria-labelledby="histTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
     <div class="blockhead" style="margin-top:0">
       <!-- eyebrow tells the truth about where this history lives (see renderHistList) -->
       <div class="eyebrow" id="histEyebrow">Saved on this device</div>
@@ -1475,6 +1506,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
   <!-- ============ PROGRESS / TRENDS ============ -->
   <section id="trends" class="hidden" aria-labelledby="trendsTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
     <div class="blockhead" style="margin-top:0">
       <div class="eyebrow">Monitor your technique</div>
       <h2 class="sec" id="trendsTitle" tabindex="-1" style="margin-bottom:8px">Your progress</h2>
@@ -1528,8 +1560,12 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div class="card scorecard">
         <span class="sporttag" id="hdSportTag"><svg class="ic" id="hdSportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="hdSportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
-        <div class="score-num" id="hdScore">—<small>/100</small></div>
-        <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div></div></div>
+        <!-- wrapper lets mobile put the grade to the RIGHT of the score; on
+             desktop it's a plain block so they stack as before -->
+        <div class="sc-scorerow">
+          <div class="score-num" id="hdScore">—<small>/100</small></div>
+          <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div></div></div>
+        </div>
         <div class="score-meta" id="hdMeta"></div>
         <button class="btn btn-primary btn-sm sharebtn" id="hShareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="hShareBtnTxt">Share result</span>
@@ -3001,9 +3037,10 @@ function renderAuth(){
   document.querySelectorAll('[data-logout]').forEach(b=>b.addEventListener('click',logout));
   document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openAuth('login')));
   // The dashboard ("My technique") is an account feature -- reveal its nav
-  // entries only when signed in.
+  // entries only when signed in. `authed` gates the mobile back-to-home buttons.
   $('#navHome').classList.toggle('hidden', !auth);
   $('#botHome').classList.toggle('hidden', !auth);
+  document.body.classList.toggle('authed', !!auth);
 }
 function openAuth(mode){ setAuthMode(mode||'login'); $('#authModal').classList.remove('hidden'); setTimeout(()=>$('#authEmail').focus(),30); }
 function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').textContent=''; $('#authForm').reset(); }
@@ -4220,6 +4257,8 @@ function renderDashboard(){
 function openDashboard(){ renderDashboard(); setState('dashboard',{focus:'#dashTitle'}); }
 $('#navHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); });
 $('#botHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); closeNav(); });
+// Mobile back-to-home buttons on the Progress/History views.
+document.querySelectorAll('.backhome').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); openDashboard(); }));
 $('#dashboard').addEventListener('click',e=>{
   const ft=e.target.closest('[data-formsport]'); if(ft){ state.formSport=ft.dataset.formsport; renderCurrentForm(loadHist()); return; }
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
