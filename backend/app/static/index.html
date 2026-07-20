@@ -2025,8 +2025,8 @@ function rangeStatus(v,lo,hi,slack){
    stroke, so a single row-level range would mislead -> return null (shown as "--"). */
 // knee & hip sweep the whole gait cycle, so their cycle-MEAN (what this table's
 // status is judged on) has no single valid band -> omit (shown as "--"), same as
-// bike knee/hip. trunk & elbow are stable enough to band. trunk = backend (4,8).
-const RUN_ANGLE_OPT={ trunk:[4,8], elbow:[85,100] };
+// bike knee/hip. trunk & elbow are stable enough to band. trunk = backend (2,10).
+const RUN_ANGLE_OPT={ trunk:[2,10], elbow:[85,100] };
 // Full per-position optimal ranges, mirroring backend cycling_positions.py
 // CYCLING_POSITIONS. Keep in sync with that file. hip_angle is the mean hip and
 // is asymmetric (above max = comfort/OK) -- handled in the tile logic.
@@ -2150,13 +2150,16 @@ function runTiles(s){
   if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,R(s.cadence_spm,170,190,'spm')));
   if(s.vertical_oscillation_cm!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_cm,1),'cm',null,null,false,R(s.vertical_oscillation_cm,6,10,'cm')));
   else if(s.vertical_oscillation_m!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_m*100,1),'cm',null,null,false,R(s.vertical_oscillation_m*100,6,10,'cm')));
-  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,4,8,'°')));
-  if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,R(s.ground_contact_ms,180,250,'ms')));
+  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,2,10,'°')));
+  if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,R(s.ground_contact_ms,180,270,'ms')));
   if(s.flight_time_ms!=null) t.push(tile('Flight time',num(s.flight_time_ms),'ms',s.flight_time_ms_estimated?'estimated from 2D video':null,null,false,R(s.flight_time_ms,80,150,'ms')));
   if(s.foot_strike!=null){
     const fsMap={heel:'Heel',midfoot:'Midfoot',forefoot:'Forefoot'};
-    const fsCls=s.foot_strike==='midfoot'?'good':(s.foot_strike==='heel'?'warn':null);
-    t.push(tile('Foot strike',fsMap[s.foot_strike]||pretty(s.foot_strike),'',s.foot_strike_estimated?'estimated from 2D video':null,fsCls,true));
+    // Foot strike is informational, not graded: rearfoot is normal for ~80-95%
+    // of runners and the injury/economy claims about strike pattern are refuted
+    // (Napier, "Science of Running"). The real fault is overstriding, not the
+    // strike itself -- so no good/warn verdict here.
+    t.push(tile('Foot strike',fsMap[s.foot_strike]||pretty(s.foot_strike),'',s.foot_strike_estimated?'estimated from 2D video':null,null,true));
   }
   if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×',s.overstride_estimated?'× leg length ahead of hip (est.)':'× leg length ahead of hip',null,false,R(s.overstride_ratio,0,0.15,'×')));
   // Knee is scored at two gait phases, not as a full-cycle mean: knee_max is
@@ -2738,7 +2741,7 @@ function cardMetrics(sport,s){
     add('Cadence',s.cadence_spm,'spm',170,190);
     let vo=s.vertical_oscillation_cm; if(vo==null&&s.vertical_oscillation_m!=null) vo=s.vertical_oscillation_m*100;
     add('Vert osc',vo,'cm',6,10,true);
-    add('Trunk lean',s.trunk_lean_avg,'°',4,8);
+    add('Trunk lean',s.trunk_lean_avg,'°',2,10);
     add('Knee',s.knee_mean,'°',140,160);
   }
   return out.slice(0,4);
@@ -3543,8 +3546,8 @@ function extractTrends(kind,res,sport){
     } else {
       put('cadence',s.cadence_spm,[170,190]);
       put('vertical_oscillation', s.vertical_oscillation_cm!=null?s.vertical_oscillation_cm:(s.vertical_oscillation_m!=null?s.vertical_oscillation_m*100:null), [6,10]);
-      put('trunk_lean',s.trunk_lean_avg,[4,8]);
-      put('ground_contact',s.ground_contact_ms,[180,250]);
+      put('trunk_lean',s.trunk_lean_avg,[2,10]);
+      put('ground_contact',s.ground_contact_ms,[180,270]);
       put('flight_time',s.flight_time_ms,[80,150]);
       put('overstride',s.overstride_ratio,[0,0.15],2);
       put('knee',s.knee_mean);

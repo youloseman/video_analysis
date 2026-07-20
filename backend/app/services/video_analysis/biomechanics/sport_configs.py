@@ -22,17 +22,42 @@ Running references:
 # Running reference ranges (optimal technique). Targets are the same
 # for all athlete levels (these are efficiency targets); only severity
 # grading scales by level -- see running_action_plan_builder.py.
+# Reference ranges reconciled against a 2024 literature review (values below are
+# our INTERNAL joint angles, 180 deg = straight; papers report FLEXION from
+# straight, so internal = 180 - flexion).
 RUNNING_REFERENCE = {
-    "trunk_lean": (4, 8),                # deg from vertical (Folland 2017; coaching consensus)
-    "cadence_spm": (170, 190),           # steps/min (Heiderscheit 2011; ~180 optimum)
-    "knee_at_initial_contact": (160, 175),  # deg (Novacheck 1998)
-    "knee_at_midstance": (140, 160),     # deg (Novacheck 1998)
-    "knee_at_swing": (80, 100),          # deg max flexion in swing (Novacheck 1998)
-    "elbow_angle": (85, 100),            # deg (~90 deg arm carry; coaching consensus)
-    "vertical_oscillation_cm": (6, 10),  # cm (Folland 2017; typical economical range 6-10)
-    "ground_contact_ms": (180, 250),     # ms (Hunter 2004; Weyand 2000 -- elite ~200)
-    "flight_time_ms": (80, 150),         # ms aerial phase (Weyand 2000; recreational ~100-140)
-    "overstride_ratio": (0.0, 0.15),     # foot-ahead/leg-length at contact; <0.15 = foot near under hip (Heiderscheit 2011; Souza 2016)
+    # deg forward lean from vertical. Folland 2017: a MORE UPRIGHT trunk
+    # correlates with better performance/economy -- only extreme forward lean is
+    # a clear negative -- so the band stays tolerant of upright postures. (Folland
+    # measured trunk angle vs quiet standing; ours is vs vertical.)
+    "trunk_lean": (2, 10),
+    # steps/min. Heiderscheit 2011: preferred ~172.6; a +5-10% increase reduces
+    # knee/hip load. "180" is a rule of thumb, not a strict optimum (contested).
+    "cadence_spm": (170, 190),
+    # internal knee angle at footstrike. Heiderscheit 2011: ~17.8 deg flexion at
+    # contact = ~162 deg internal; near-locked (>~176) => overstriding.
+    "knee_at_initial_contact": (160, 175),
+    # internal at peak stance flexion. Heiderscheit 2011: ~46 deg flexion =
+    # ~134 deg internal (more flexion at higher cadence).
+    "knee_at_midstance": (130, 150),
+    # internal at peak swing flexion. Folland 2017: ~94 deg flexion = ~86 deg
+    # internal (shortens the swing lever).
+    "knee_at_swing": (80, 100),
+    # deg (~90 deg arm carry). Napier, "Science of Running": elbows ~90 deg;
+    # restricting arm swing raises metabolic cost.
+    "elbow_angle": (85, 100),
+    # cm COM vertical excursion. Heiderscheit 2011: ~8.7 cm at higher cadence
+    # (10.7 -> 8.7 across preferred-10% -> +10%); lower is generally economical.
+    "vertical_oscillation_cm": (6, 10),
+    # ms stance duration. Folland 2017: mean 246, range 190-303 across endurance
+    # runners; SPEED-DEPENDENT (slower pace = longer contact), so easy runs read
+    # high legitimately. Shorter correlates with performance; elite ~200.
+    "ground_contact_ms": (180, 270),
+    # ms aerial phase (Weyand 2000; recreational ~100-140).
+    "flight_time_ms": (80, 150),
+    # foot-ahead/leg-length at contact; <0.15 = foot near under hip
+    # (Heiderscheit 2011; Souza 2016).
+    "overstride_ratio": (0.0, 0.15),
 }
 
 # Cycling reference ranges (bike fit)

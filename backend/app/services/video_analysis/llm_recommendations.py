@@ -113,13 +113,21 @@ def _run_data_block(
     # Foot strike: pattern + signed angle (heel-up positive) when measured.
     fs = summary.get("foot_strike")
     fs_angle = summary.get("foot_strike_angle_deg")
+    # Rearfoot striking is normal for ~80-95% of runners and the "heel strike is
+    # bad / forefoot is more economical" claims are refuted (Napier). Tell the
+    # coach NOT to fault the strike pattern itself -- the brake is overstriding.
+    _fs_caveat = (
+        " (rearfoot striking is normal for most runners and NOT a fault by "
+        "itself -- do not tell the runner to change their strike pattern; the "
+        "braking issue is overstriding, i.e. the foot landing ahead of the hip)"
+    )
     if fs and fs_angle is not None:
         foot_strike_line = (
             f"- Foot strike: {fs} ({fs_angle:+.0f} deg, heel-up positive; "
-            f"estimated from 2D video)"
+            f"estimated from 2D video){_fs_caveat}"
         )
     elif fs:
-        foot_strike_line = f"- Foot strike: {fs} (estimated from 2D video)"
+        foot_strike_line = f"- Foot strike: {fs} (estimated from 2D video){_fs_caveat}"
     else:
         foot_strike_line = "- Foot strike: n/a"
 
