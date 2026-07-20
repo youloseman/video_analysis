@@ -144,7 +144,18 @@ def _run_data_block(
         f"{', estimated from 2D video' if summary.get('flight_time_ms_estimated') else ''})",
         foot_strike_line,
         overstride_line,
-        f"- Knee angle range: {_fmt(knee.get('min'), '°')} to {_fmt(knee.get('max'), '°')}",
+        # Knee is gait-phase-dependent: map the cycle extremes to phases
+        # (Novacheck 1998) and give the coach the PHASE-SPECIFIC optima, so it
+        # grounds its verdict instead of inferring "locked knee at contact" from
+        # a raw range. The 2D max can read a few degrees high when the leg
+        # aligns with the camera, so it's flagged as an estimate.
+        f"- Knee near initial contact (~cycle max): {_fmt(knee.get('max'), '°')} "
+        f"(optimal 160-175°; above ~176° = over-extended/near-locked at contact, "
+        f"which couples with overstriding; 2D estimate, can read slightly high)",
+        f"- Knee peak swing flexion (~cycle min): {_fmt(knee.get('min'), '°')} "
+        f"(optimal 80-100°; higher = insufficient knee drive)",
+        "Note: do not verdict the mean/range of knee, hip or ankle directly -- "
+        "they sweep through the stride; use only the phase-specific values above.",
     ]
     return "\n".join(lines)
 
