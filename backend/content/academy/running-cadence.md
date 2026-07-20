@@ -20,6 +20,10 @@ sources:
     year: 2013
     title: "Daniels' Running Formula, 3rd ed."
     finding: "Elite distance runners tend to self-select ~180 steps/min across a wide range of paces."
+  - author: "Moore, I. S."
+    year: 2016
+    title: "Is there an economical running technique? A review of modifiable biomechanical factors (Sports Medicine)"
+    finding: "A trained runner's most economical stride frequency is typically within ~3% of their self-selected cadence — optimise around your own, don't chase a fixed number."
 ---
 
 Cadence is the most over-simplified number in running. You have probably heard "aim for 180 steps per minute" — a rule that got copied from a stopwatch observation at the 1984 Olympics and hardened into gospel. The truth is more useful and less rigid: cadence is a *dial*, not a *target*, and turning it up a little is one of the safest form changes you can make.
@@ -63,7 +67,7 @@ Raising cadence shortens each stride slightly, which pulls the foot-strike back 
 The famous "180" comes from coach Jack Daniels counting the steps of elite distance runners. He found they clustered around 180 spm — but those were athletes running fast, in a race, over years of adaptation. Two things get lost when the number is repeated as a universal target:
 
 - **It scales with pace.** The same runner will turn over faster at 4:00/km than at 6:00/km. A single fixed number can't be right at every speed.
-- **It's individual.** Height, leg length, and mechanics all shift the optimum. A tall runner at 172 may be perfectly efficient.
+- **It's individual.** Height, leg length, and mechanics all shift the optimum. A tall runner at 172 may be perfectly efficient. In fact, a trained runner's *most economical* cadence usually sits within about **3% of the rhythm they'd pick on their own** (Moore 2016) — the best target is a small nudge from your natural cadence, not someone else's number.
 
 So treat 180 as a *ballpark for fast running*, not a pass/fail line for your easy jog.
 

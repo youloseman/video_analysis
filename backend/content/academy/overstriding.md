@@ -20,6 +20,10 @@ sources:
     year: 2010
     title: "Foot strike patterns and collision forces in habitually barefoot versus shod runners (Nature)"
     finding: "Landing with the foot far in front of the body produces a distinct impact-force peak that a landing under the body largely avoids."
+  - author: "Folland, Allen, Black, et al."
+    year: 2017
+    title: "Running technique is an important component of running economy and performance (Medicine & Science in Sports & Exercise)"
+    finding: "Braking at footstrike is energetically costly: the speed lost to the brake must be regained with expensive propulsion, so overstriding hurts running economy and performance, not just impact load."
 ---
 
 Overstriding is the single most common form fault a side-view camera catches — and one of the few that quietly makes you slower *and* more likely to get hurt at the same time. The good news: it is also one of the easiest to shift, because it is mostly a byproduct of two things you can already control.
@@ -41,7 +45,7 @@ That horizontal distance — how far the foot lands ahead of the hip — is what
 
 When your foot plants ahead of your center of mass, three things happen, and none of them help:
 
-1. **Braking.** The ground pushes back along the leg, opposing your forward motion. You spend energy overcoming a brake you created yourself.
+1. **Braking.** The ground pushes back along the leg, opposing your forward motion. You spend energy overcoming a brake you created yourself — and that lost speed isn't free to recover: you buy it back with propulsion that costs extra every stride, which is why overstriding measurably worsens running economy and performance (Folland 2017).
 2. **A sharper impact.** A relatively straight leg has little room left to bend and absorb the landing, so the impact spikes up through the shin, knee, and hip instead of being cushioned.
 3. **More time on the ground.** Reaching out lengthens the stance phase — the foot sits on the ground longer before it can start pushing off, which drags at your rhythm.
 

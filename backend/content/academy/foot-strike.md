@@ -20,6 +20,10 @@ sources:
     year: 2007
     title: "Foot strike patterns of runners at the 15-km point during an elite-level half marathon"
     finding: "Around three-quarters of elite runners were rearfoot strikers at 15 km, showing heel-striking is common even at the top."
+  - author: "Moore, I. S."
+    year: 2016
+    title: "Is there an economical running technique? A review of modifiable biomechanical factors (Sports Medicine)"
+    finding: "Running economy does not differ between rearfoot and forefoot striking — strike pattern is not an economy lever."
 ---
 
 Foot strike is the most argued-about topic in running form, and most of the arguing misses the point. There is no single "correct" way for your foot to hit the ground — plenty of fast, healthy runners heel-strike. What your foot strike *does* tell you is something useful about the rest of your stride. Read it as a symptom, not a verdict.
@@ -46,6 +50,8 @@ The internet's favorite fix — "stop heel-striking, land on your forefoot" — 
 | Forefoot → heel | Calf/Achilles strain | Impact at the knee and shin |
 
 Change your strike overnight and you don't remove injury risk — you *relocate* it, usually to a calf or Achilles that isn't ready for the new load. This is why abruptly forcing a forefoot landing is one of the more reliable ways to earn a calf strain.
+
+And it won't make you *faster*, either: reviews find **no running-economy difference** between rearfoot and forefoot striking (Moore 2016). There's no efficiency prize for switching — only relocated load.
 
 > A foot strike isn't good or bad on its own. It is good or bad *in the context of where the foot lands relative to your body.*
 
