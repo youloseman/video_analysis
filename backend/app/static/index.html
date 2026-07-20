@@ -442,6 +442,10 @@ h2.sec + .speedline{margin-bottom:24px}
   display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 .btn svg{transition:transform .15s ease}
 .btn-primary{background:var(--c-blue);color:#fff;font-size:15px;padding:12px 24px}
+.btn-danger{background:var(--st-bad,#CE3F2B);color:#fff;font-size:15px;padding:12px 24px}
+.btn-danger:hover{background:#B33422}
+.confirm-actions{display:flex;gap:12px;justify-content:flex-end}
+.confirm-actions .btn{padding:11px 20px}
 .btn-primary:hover{background:var(--c-blue-dk);transform:translateY(-1px);box-shadow:var(--shadow)}
 .btn-go{background:var(--c-coral-btn);color:#fff;font-size:16px;padding:16px 32px}
 .btn-go:hover{background:var(--c-coral-dk);transform:translateY(-1px);box-shadow:var(--shadow)}
@@ -1033,6 +1037,20 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <button class="btn btn-primary" id="authSubmit" type="submit" style="width:100%">Log in</button>
     </form>
     <p class="hint" id="authToggleTxt" style="text-align:center;margin-top:14px"></p>
+  </div>
+</div>
+
+<!-- Generic confirm dialog (destructive actions): driven by confirmDialog() -->
+<div class="modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal-card">
+    <button class="modal-close" id="confirmClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+    <div class="eyebrow" id="confirmEyebrow" style="color:var(--st-bad)">Confirm</div>
+    <h2 id="confirmTitle" style="font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);font-size:23px;margin:6px 0 4px">Are you sure?</h2>
+    <p class="hint" id="confirmBody" style="text-align:left;margin:0 0 20px"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirmCancel" type="button">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk" type="button">Confirm</button>
+    </div>
   </div>
 </div>
 
@@ -3130,12 +3148,45 @@ function historyDelete(id){
     renderHistList();
   }});
 }
-/* Wipe the whole history (someone else's runs polluting your stats). Same
-   optimistic-with-undo shape as historyDelete: snapshot the list, clear it now,
-   defer the server-side bulk delete until the undo window closes. */
+/* Generic confirm dialog for destructive actions. Per-call listeners are wired
+   on open and torn down on close so nothing stacks across invocations. */
+function confirmDialog(opts){
+  opts=opts||{};
+  const modal=$('#confirmModal'), ok=$('#confirmOk'), cancel=$('#confirmCancel'), x=$('#confirmClose');
+  $('#confirmTitle').textContent=opts.title||'Are you sure?';
+  $('#confirmBody').innerHTML=opts.body||'';
+  ok.textContent=opts.okLabel||'Confirm';
+  modal.classList.remove('hidden');
+  setTimeout(()=>{ try{ cancel.focus(); }catch(e){} },30);
+  function cleanup(){
+    ok.removeEventListener('click',onOk); cancel.removeEventListener('click',close);
+    x.removeEventListener('click',close); modal.removeEventListener('click',onBackdrop);
+    document.removeEventListener('keydown',onKey);
+  }
+  function close(){ modal.classList.add('hidden'); cleanup(); }
+  function onOk(){ close(); if(opts.onOk) opts.onOk(); }
+  function onBackdrop(e){ if(e.target.id==='confirmModal') close(); }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  ok.addEventListener('click',onOk); cancel.addEventListener('click',close);
+  x.addEventListener('click',close); modal.addEventListener('click',onBackdrop);
+  document.addEventListener('keydown',onKey);
+}
+/* Wipe the whole history (someone else's runs polluting your stats). An explicit
+   confirm guards the full reset; after confirming, doClearAll still clears
+   optimistically with an Undo window (same shape as historyDelete) as a safety
+   net, deferring the server-side bulk delete until that window closes. */
 function clearAllHistory(){
   const snapshot=loadHist().slice();
   if(!snapshot.length) return;
+  const n=snapshot.length;
+  confirmDialog({
+    title:'Clear all history?',
+    body:`This removes all <b>${n}</b> ${n===1?'analysis':'analyses'} from ${auth?'your account':'this device'} and resets your dashboard stats and progress charts. You'll get a few seconds to undo.`,
+    okLabel:'Clear all',
+    onOk:()=>doClearAll(snapshot),
+  });
+}
+function doClearAll(snapshot){
   if(auth) state.cloudHist=[];
   else persistHist([]);
   renderHistList();
@@ -4303,7 +4354,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,historyDelete};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog};
 </script>
 </body>
 </html>
