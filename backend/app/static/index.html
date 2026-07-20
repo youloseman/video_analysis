@@ -1151,6 +1151,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg> 3–5 m distance, full body visible</li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> One person in frame</li>
         <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> 5–10 seconds of steady movement</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> Normal speed — not slow-motion (it distorts cadence &amp; contact time)</li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg> Good, even lighting</li>
       </ul>
 
@@ -1297,6 +1298,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           <tbody id="angleRows"></tbody>
         </table>
       </div>
+      <p class="hint norefnote hidden" id="angleNorefNote" style="text-align:left;margin-top:12px">
+        <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
     </div>
 
     <div class="block hidden" id="biomechBlock">
@@ -2581,6 +2584,12 @@ function render(job){
   } else {
     gb.innerHTML='';
   }
+  // Slow-motion / time-base notice: cadence was unmeasurable, so the time-based
+  // metrics (ground contact, flight) were withheld rather than shown wrong.
+  if(s.time_base_uncertain){
+    gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <span><b>Looks like slow-motion.</b> We couldn’t measure cadence, so ground-contact &amp; flight time are hidden — time-based metrics need a normal-speed clip to be accurate. Your joint angles are unaffected.</span></div>`;
+  }
 
   // meta
   const parts=[];
@@ -2678,6 +2687,8 @@ function render(job){
     paired?paired.angleStats:null, paired?paired.cameraSide:null);
   const srcMap=paired?angleSourceLabels(liveStats, r.camera_side||null, paired):null;
   $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap);
+  // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).
+  $('#angleNorefNote').classList.toggle('hidden', sport!=='run');
   // no reference bands for this sport's angles -> hide the Optimal/Status columns
   $('#angleTable').classList.toggle('no-opt',
     !anglesHaveOpt(merged.stats, sport, r.cycling_position||null));

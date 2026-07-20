@@ -874,6 +874,27 @@ class RunningAnalyzer(SportAnalyzer):
         if 0.01 <= vert_osc <= 0.25:
             summary["vertical_oscillation_m"] = vert_osc
 
+        # Time-base / slow-motion guard. Cadence, GCT and flight all read time
+        # off the container FPS. A clean running clip yields a cadence in
+        # ~150-190 spm; when cadence is UNMEASURABLE but GCT/flight computed,
+        # the real-time base is unverified -- almost always slow-motion (the
+        # motion is stretched into a normal-fps file, so every absolute time
+        # metric is inflated). Withhold the (confident-but-unverifiable) time
+        # metrics rather than surface a wrong "prolonged ground contact", and
+        # flag it so detect_issues skips the GCT verdict. Angles are unaffected.
+        cadence_ok = 80.0 <= cadence <= 220.0
+        self._time_base_uncertain = (not cadence_ok) and (gct_ms > 0 or flight_ms > 0)
+        if self._time_base_uncertain:
+            summary["time_base_uncertain"] = True
+            self._record_warning(
+                "Cadence couldn't be measured, so ground-contact and flight time "
+                "are withheld. This usually means the clip is slow-motion (or the "
+                "pace is very slow) -- time-based metrics need a normal-speed video "
+                "to be accurate. Your joint angles are unaffected."
+            )
+            gct_ms = 0.0
+            flight_ms = 0.0
+
         # GCT: _compute_ground_contact_time already plausibility-gated
         # to [100, 400] ms and returns 0.0 for "no measurement".
         # Flagged low-confidence: it's a coarse 2D estimate, not a
@@ -968,10 +989,13 @@ class RunningAnalyzer(SportAnalyzer):
 
         # Prolonged ground contact -- usually a downstream symptom of
         # low cadence / overstriding, so the recommendation points back
-        # to cadence rather than prescribing a separate drill.
+        # to cadence rather than prescribing a separate drill. Skip entirely
+        # when the time-base is uncertain (slow-mo): GCT is unverifiable there,
+        # so a "prolonged contact" verdict would be a confident wrong claim.
         gct_ms = self._compute_ground_contact_time()
         gct_min, gct_max = RUNNING_REFERENCE["ground_contact_ms"]
-        if gct_ms > 0 and gct_ms > gct_max + 40:  # +~1 frame tolerance
+        if (not getattr(self, "_time_base_uncertain", False)
+                and gct_ms > 0 and gct_ms > gct_max + 40):  # +~1 frame tolerance
             issues.append({
                 "type": "prolonged_ground_contact",
                 "severity": "info",
