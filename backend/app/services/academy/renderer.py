@@ -216,6 +216,7 @@ _ICONS = {
     "arr-r": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>',
     "progress": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></svg>',
     "clock": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>',
+    "home": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>',
 }
 
 
@@ -238,6 +239,10 @@ def _sidebar(active: str) -> str:
         '<aside class="sidebar" id="sidebar" aria-label="Main">'
         '<a class="wordmark" href="/">Flapp<span class="dot"></span></a>'
         '<nav class="sidenav" aria-label="Site">'
+        # Home = the signed-in dashboard; hidden until _AUTH_JS confirms a session
+        # (mirrors the SPA, where #navHome is auth-gated). Fixes Home vanishing
+        # from the menu on Academy pages.
+        f'<a href="/#home" class="navlink" id="acadHome" hidden>{_ICONS["home"]}<span>Home</span></a>'
         f'<a href="/" class="navlink">{_ICONS["analyze"]}<span>Analyze</span></a>'
         f'<a href="/#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
         f'<a href="/#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
@@ -280,7 +285,9 @@ _AUTH_JS = (
     ".filter(Boolean);if(!boxes.length)return;"
     "function esc(x){return String(x).replace(/[&<>\"]/g,function(c){"
     "return{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}"
-    "function render(a){var m=a?"
+    "function render(a){"
+    "var h=document.getElementById('acadHome');if(h)h.hidden=!a;"
+    "var m=a?"
     "'<span class=\"usermail\" title=\"'+esc(a.email)+'\">'+esc(a.email)+"
     "'</span><button class=\"btn btn-ghost btn-sm\" data-logout type=\"button\">Log out</button>':"
     "'<a class=\"btn btn-primary btn-sm\" href=\"/#login\">Log in</a>';"

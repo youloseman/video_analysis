@@ -208,6 +208,17 @@ async def compare_summary(
     return result
 
 
+@router.delete("/analyses", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_all_analyses(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    """Wipe the caller's whole history (e.g. after analyses run for other people
+    polluted their stats). Distinct route from the per-item delete below."""
+    await db.execute(delete(Analysis).where(Analysis.user_id == user.id))
+    await db.commit()
+
+
 @router.delete("/analyses/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_analysis(
     client_id: str,
