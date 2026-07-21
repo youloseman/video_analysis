@@ -2871,7 +2871,7 @@ async function buildShareCard(card){
   x.fillStyle=bg; x.fillRect(0,0,W,H);
 
   // ---- hero photo: contain-fit so nothing is cropped, as large as it goes ----
-  const HERO_MIN=560, HERO_MAX=1080, HERO_TARGET=980, MAX_SIDE_CROP=0.28;
+  const HERO_MIN=560, HERO_MAX=1220, HERO_TARGET=1120, MAX_SIDE_CROP=0.36;
   let heroH=HERO_MIN;
   if(card.keyframe){
     try{
@@ -2913,7 +2913,7 @@ async function buildShareCard(card){
   x.fillText('VIDEO BIOMECHANICS · '+(sport==='bike'?'BIKE':'RUN'),P,P+88);
 
   // ---- score ring riding the bottom edge of the photo ----
-  const cx=W/2, cy=heroH, R=132, lw=32;
+  const cx=W/2, cy=heroH, R=140, lw=34;
   x.save(); x.shadowColor='rgba(0,0,0,.5)'; x.shadowBlur=30; x.shadowOffsetY=12;
   x.fillStyle='rgba(10,18,30,.92)'; x.beginPath(); x.arc(cx,cy,R-lw/2,0,7); x.fill();
   x.restore();
