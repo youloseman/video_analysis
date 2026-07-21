@@ -2784,64 +2784,57 @@ function render(job){
    on mobile (works in the Capacitor wrapper too), download on
    desktop. No external assets — CSP-safe.
    ============================================================ */
-/* status class (from any of the app's status vocabularies) -> chip colour */
-function stColor(cls){
-  // severity vocab used across the app: good=green, medium=amber, high=red;
-  // "low"/unknown -> neutral. Also accept raw zone words + photo status strings.
-  if(cls==='good'||cls==='optimal'||cls==='in_range') return GR_ZONE.optimal;
-  if(cls==='medium'||cls==='warn'||cls==='warning'||cls==='slightly_low'||cls==='slightly_high') return GR_ZONE.warning;
-  if(cls==='high'||cls==='bad'||cls==='critical'||cls==='poor'||cls==='out_of_range') return GR_ZONE.critical;
-  return '#9fb3d1';
-}
-/* Headline metrics (value/unit/colour) for the video benchmark tiles. */
-function cardMetrics(sport,s){
-  const out=[]; const add=(lbl,v,unit,lo,hi,dec)=>{
-    if(v==null||(typeof v==='number'&&isNaN(v))) return;
-    const val=(typeof v==='number')?(dec?Math.round(v*10)/10:Math.round(v)):v;
-    const color=(lo!=null&&hi!=null&&typeof v==='number')?GR_ZONE[grZone(v,lo,hi)]:'#9fb3d1';
-    out.push({lbl,val,unit,color});
-  };
-  if(sport==='bike'){
-    add('Knee · btm',s.knee_at_bdc,'°',138,145);
-    add('Trunk',s.trunk_angle_avg,'°',40,55);
-    add('Hip',s.hip_angle_max,'°',40,80);
-    add('Elbow',s.elbow_angle_avg,'°',145,165);
-  } else {
-    add('Cadence',s.cadence_spm,'spm',170,190);
-    let vo=s.vertical_oscillation_cm; if(vo==null&&s.vertical_oscillation_m!=null) vo=s.vertical_oscillation_m*100;
-    add('Vert osc',vo,'cm',6,10,true);
-    add('Trunk lean',s.trunk_lean_avg,'°',2,10);
-    add('Knee',s.knee_mean,'°',140,160);
-  }
-  return out.slice(0,4);
+/* Headline takeaway for the card: the coach report's "**Overall**" section,
+   stripped of markdown and trimmed to a single sentence. */
+function overallNote(report){
+  if(!report) return '';
+  const m=String(report).match(/\*\*Overall\*\*\s*[—:-]?\s*([\s\S]*?)(?:\n\s*(?:\*\*|##)|$)/i);
+  let t=(m?m[1]:'').replace(/[*_`#>]/g,'').replace(/\s+/g,' ').trim();
+  if(!t) return '';
+  const stop=t.search(/[.!?](\s|$)/);          // first sentence only
+  if(stop>0) t=t.slice(0,stop+1);
+  return t.length>170 ? t.slice(0,167).trimEnd()+'…' : t;
 }
 /* --- adapters: each analysis source -> one normalized card model
-   {sport, score, grade, keyframe, metrics:[{lbl,val,unit,color}]} --- */
+   {sport, score, grade, keyframe, note} --- */
 function cardFromVideo(r){
-  const sport=r.sport_type||state.sport||'run';
-  return { sport, score:r.technique_score, grade:r.letter_grade||'—',
-    keyframe:r.keyframe_base64, metrics:cardMetrics(sport, r.sport_specific_metrics||{}) };
+  return { sport:r.sport_type||state.sport||'run', score:r.technique_score,
+    grade:r.letter_grade||'—', keyframe:r.keyframe_base64,
+    note:overallNote((r.ai_recommendations||{}).report) };
 }
 function cardFromPhoto(res){
-  const sport=res.sport||state.sport||'run';
-  const sc=res.score||{}, A=res.angles_with_context||{}, mets=[];
-  for(const k of Object.keys(A)){ if(mets.length>=4) break; const a=A[k];
-    if(a.value==null || a.status==='phase_dependent') continue;   // skip unscored joints
-    mets.push({ lbl:a.label||pretty(k),
-      val:(typeof a.value==='number'?Math.round(a.value):a.value), unit:'°',
-      color:stColor(P_STATUS_CLS[a.status]||a.status) }); }
-  return { sport, score:sc.overall_score, grade:sc.grade||'—',
-    keyframe:res.thumbnail_base64||res.keyframe_base64, metrics:mets };
+  const sc=res.score||{};
+  return { sport:res.sport||state.sport||'run', score:sc.overall_score,
+    grade:sc.grade||'—', keyframe:res.thumbnail_base64||res.keyframe_base64,
+    note:overallNote((res.ai_recommendations||{}).report) };
 }
 function cardFromHistory(e){
-  const mets=(e.metrics||[]).slice(0,4).map(m=>{
-    let val=m.value, unit='';
-    if(typeof val==='string'){ const mm=val.match(/^(-?[\d.]+)\s*(.*)$/); if(mm){ val=mm[1]; unit=(mm[2]||'').trim(); } }
-    return { lbl:m.label, val, unit, color:stColor(m.statusCls) };
-  });
-  return { sport:e.sport, score:e.score, grade:e.grade||'—', keyframe:keyframeOf(e), metrics:mets };
+  return { sport:e.sport, score:e.score, grade:e.grade||'—',
+    keyframe:keyframeOf(e), note:overallNote(e.report) };
 }
 function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+/* Wrap `text` onto at most `maxLines` lines fitting `maxWidth` at `font`,
+   ellipsising if it doesn't all fit. Returns [] for empty text. */
+function wrapText(ctx,text,font,maxWidth,maxLines){
+  const t=String(text||'').trim(); if(!t) return [];
+  const prev=ctx.font; ctx.font=font;
+  const words=t.split(/\s+/), lines=[]; let cur='';
+  for(const w of words){
+    const tryLine=cur?cur+' '+w:w;
+    if(ctx.measureText(tryLine).width<=maxWidth){ cur=tryLine; continue; }
+    if(cur) lines.push(cur);
+    cur=w;
+    if(lines.length>=maxLines) break;
+  }
+  if(lines.length<maxLines && cur) lines.push(cur);
+  if(lines.join(' ')!==t){                    // ran out of room -> ellipsis
+    let last=lines[lines.length-1]||'';
+    while(last.length>1 && ctx.measureText(last+'…').width>maxWidth) last=last.slice(0,-1);
+    lines[lines.length-1]=last.replace(/[\s,;:.]+$/,'')+'…';
+  }
+  ctx.font=prev;
+  return lines;
+}
 function rrect(x,X,Y,w,h,r){
   if(x.roundRect){ x.beginPath(); x.roundRect(X,Y,w,h,r); return; }
   x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r);
@@ -2868,7 +2861,6 @@ function shareVerdict(score){
 async function buildShareCard(card){
   const sport=card.sport||'run';
   const score=card.score;
-  const mets=(card.metrics||[]).slice(0,4);
   const W=1080,H=1920,P=60,CORAL='#ff5233';
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const x=cv.getContext('2d'); x.textBaseline='alphabetic';
@@ -2879,7 +2871,7 @@ async function buildShareCard(card){
   x.fillStyle=bg; x.fillRect(0,0,W,H);
 
   // ---- hero photo: contain-fit so nothing is cropped, as large as it goes ----
-  const HERO_MIN=560, HERO_MAX=980, HERO_TARGET=810, MAX_SIDE_CROP=0.20;
+  const HERO_MIN=560, HERO_MAX=1080, HERO_TARGET=980, MAX_SIDE_CROP=0.28;
   let heroH=HERO_MIN;
   if(card.keyframe){
     try{
@@ -2938,47 +2930,33 @@ async function buildShareCard(card){
   x.fillStyle='#fff'; x.font='900 italic 124px system-ui,sans-serif';
   x.fillText(score==null?'—':String(score),cx,cy+52);
 
-  // ---- everything below the ring, with the slack shared between blocks ----
-  const rows=Math.ceil(mets.length/2), tileH=150, tileGap=26;
-  const tilesH=rows?rows*tileH+(rows-1)*tileGap:0;
+  // ---- panel below the ring ----
+  // The measured angles are already burned into the photo, so there are no
+  // metric tiles here -- that duplication is what kept the frame small. The
+  // verdict + one-line takeaway read as one block, centred between the ring and
+  // the CTA (which is pinned to the base), so nothing trails off into a void.
+  const NOTE_FONT='600 29px system-ui,sans-serif', NOTE_LH=40, NOTE_GAP=22;
+  const noteLines=wrapText(x,card.note||'',NOTE_FONT,W-2*P-40,2);
   const ctaH=88, hostH=46, verdictH=48;
-  const top0=cy+R, bottom0=H-P;
-  // three gaps below the ring (before verdict / before tiles / before CTA):
-  // share the slack between them so the card fills instead of ending in a void
-  const slack=(bottom0-top0)-(verdictH+tilesH+ctaH+hostH);
-  const g=Math.max(28,Math.min(130,slack/3));
+  const ctaY=H-P-hostH-ctaH;
+  const blockH=verdictH+(noteLines.length?NOTE_GAP+noteLines.length*NOTE_LH:0);
+  let py=(cy+R)+Math.max(40,((ctaY-(cy+R))-blockH)/2)+verdictH;
 
-  let py=top0+g+verdictH;
   x.fillStyle='#fff'; x.font='900 italic 46px system-ui,sans-serif';
   x.fillText(`${shareVerdict(score)} ${sport==='bike'?'CYCLING':'RUNNING'} TECHNIQUE`,cx,py);
-  x.textAlign='left';
-  py+=g;
-
-  if(rows){
-    const cw=(W-2*P-tileGap)/2;
-    mets.forEach((m,i)=>{
-      const mx=P+(i%2)*(cw+tileGap), my=py+Math.floor(i/2)*(tileH+tileGap);
-      x.fillStyle='rgba(255,255,255,.05)'; rrect(x,mx,my,cw,tileH,18); x.fill();
-      x.lineWidth=1.5; x.strokeStyle='rgba(255,255,255,.08)'; x.stroke();
-      x.fillStyle=m.color; x.beginPath(); x.arc(mx+34,my+42,10,0,7); x.fill();
-      x.fillStyle='#9fb3d1'; x.font='700 26px system-ui,sans-serif';
-      x.fillText(String(m.lbl).toUpperCase(),mx+56,my+51);
-      const vt=(m.unit==='°')?(m.val+'°'):String(m.val);
-      x.fillStyle='#fff'; x.font='900 66px system-ui,sans-serif';
-      x.fillText(vt,mx+30,my+124);
-      if(m.unit&&m.unit!=='°'){ const vw=x.measureText(vt).width;
-        x.fillStyle='#9fb3d1'; x.font='700 30px system-ui,sans-serif';
-        x.fillText(' '+m.unit,mx+30+vw+4,my+120); }
-    });
-    py+=tilesH+g;
+  if(noteLines.length){
+    py+=NOTE_GAP;
+    x.fillStyle='#B5C3D6'; x.font=NOTE_FONT;
+    noteLines.forEach((ln,i)=>x.fillText(ln,cx,py+(i+1)*NOTE_LH-8));
   }
+  x.textAlign='left';
 
   // ---- CTA + host ----
-  x.fillStyle=CORAL; rrect(x,P,py,W-2*P,ctaH,ctaH/2); x.fill();
+  x.fillStyle=CORAL; rrect(x,P,ctaY,W-2*P,ctaH,ctaH/2); x.fill();
   x.fillStyle='#fff'; x.font='900 33px system-ui,sans-serif'; x.textAlign='center';
-  x.fillText('ANALYZE YOUR TECHNIQUE — FREE',cx,py+56);
+  x.fillText('ANALYZE YOUR TECHNIQUE — FREE',cx,ctaY+56);
   x.fillStyle='#8FA6C6'; x.font='700 27px system-ui,sans-serif';
-  x.fillText(location.host,cx,py+ctaH+42); x.textAlign='left';
+  x.fillText(location.host,cx,ctaY+ctaH+42); x.textAlign='left';
 
   return await new Promise(res=>cv.toBlob(b=>res(b),'image/png',0.92));
 }
@@ -4440,7 +4418,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overallNote,wrapText};
 </script>
 </body>
 </html>
