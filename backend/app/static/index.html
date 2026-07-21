@@ -2848,92 +2848,117 @@ function rrect(x,X,Y,w,h,r){
   x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath();
 }
 /* Grade -> one-word verdict for the share card heading. */
-const SHARE_GRADE_WORD={A:'EXCELLENT',B:'SOLID',C:'FAIR',D:'DEVELOPING',F:'EARLY-STAGE'};
-/* Hero-photo share card (design direction "1b"): the annotated frame runs across
-   the top under a compact FLAPP header, the score sits in an orange ring on the
-   photo/panel seam, then the verdict + metric tiles + CTA on the dark panel. */
+/* Verdict word for the share card, derived from the SCORE rather than the grade:
+   video analyses grade A-F while photo analyses grade in words ("Excellent"),
+   so only the score is a common denominator. */
+function shareVerdict(score){
+  if(score==null) return 'YOUR';
+  if(score>=90) return 'EXCELLENT';
+  if(score>=75) return 'SOLID';
+  if(score>=60) return 'FAIR';
+  if(score>=40) return 'DEVELOPING';
+  return 'EARLY-STAGE';
+}
+/* Share card. The annotated frame is the whole point of sharing, so it runs
+   full-bleed from the very top at the largest size that still shows ALL of it
+   (contain, never cropped — cropping would cut the angle labels). The FLAPP
+   header sits on top of it over a gradient, the score ring rides the bottom
+   edge of the photo, and the leftover height is spread between the blocks
+   below so the card never ends in a dead void. */
 async function buildShareCard(card){
   const sport=card.sport||'run';
-  const score=card.score, grade=card.grade||'—';
+  const score=card.score;
   const mets=(card.metrics||[]).slice(0,4);
   const W=1080,H=1920,P=60,CORAL='#ff5233';
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const x=cv.getContext('2d'); x.textBaseline='alphabetic';
-  const gcol=GRADE_COLORS[grade]||'#46d17f';
 
   // background
   const bg=x.createLinearGradient(0,0,0,H);
   bg.addColorStop(0,'#0E1F38'); bg.addColorStop(1,'#0A1119');
   x.fillStyle=bg; x.fillRect(0,0,W,H);
 
-  // header band (FLAPP + sub left, RUNNING PROFILE right) — the "closed" top area
-  x.fillStyle='#fff'; x.font='900 italic 62px system-ui,"Segoe UI",Roboto,sans-serif';
-  x.fillText('FLAPP',P,P+58);
-  const wm=x.measureText('FLAPP').width;
-  x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+22,P+28,11,0,7); x.fill();
-  x.fillStyle='#8FA6C6'; x.font='700 24px system-ui,sans-serif';
-  x.fillText('VIDEO BIOMECHANICS · '+(sport==='bike'?'BIKE':'RUN'),P,P+96);
-  x.fillStyle='#8EA3BD'; x.font='800 22px system-ui,sans-serif'; x.textAlign='right';
-  x.fillText(sport==='bike'?'CYCLING':'RUNNING',W-P,P+40);
-  x.fillText('PROFILE',W-P,P+70); x.textAlign='left';
-
-  // hero photo — full width, kept short so a 16:9 frame reads almost uncropped,
-  // with a bottom fade into the panel so the score ring sits on dark
-  const heroTop=P+130, heroH=600, heroBot=heroTop+heroH;
+  // ---- hero photo: contain-fit so nothing is cropped, as large as it goes ----
+  const HERO_MIN=560, HERO_MAX=980, HERO_TARGET=810, MAX_SIDE_CROP=0.20;
+  let heroH=HERO_MIN;
   if(card.keyframe){
     try{
       const img=await loadImg(card.keyframe);
-      const s=Math.max(W/img.width, heroH/img.height);        // cover
+      // Height the frame would take across the full width with nothing cut off.
+      const naturalH=W*img.height/img.width;
+      // A 16:9 clip leaves a short hero and a lot of dead panel below, so let the
+      // band grow by cropping the sides -- but never more than MAX_SIDE_CROP, and
+      // only the edges (the angle labels cluster around the athlete, mid-frame).
+      heroH=Math.round(Math.max(HERO_MIN,Math.min(HERO_MAX, naturalH>=HERO_TARGET
+        ? Math.min(naturalH, HERO_MAX)
+        : Math.min(HERO_TARGET, naturalH/(1-MAX_SIDE_CROP)))));
+      const s=Math.max(W/img.width, heroH/img.height);   // cover the band
       const dw=img.width*s, dh=img.height*s;
-      const dx=(W-dw)/2, dy=heroTop+(heroH-dh)/2;
-      x.save(); x.beginPath(); x.rect(0,heroTop,W,heroH); x.clip();
-      x.drawImage(img,dx,dy,dw,dh);
-      const fade=x.createLinearGradient(0,heroBot-260,0,heroBot);
-      fade.addColorStop(0,'rgba(10,17,25,0)'); fade.addColorStop(1,'#0A1119');
-      x.fillStyle=fade; x.fillRect(0,heroBot-260,W,260);
+      x.save(); x.beginPath(); x.rect(0,0,W,heroH); x.clip();
+      x.drawImage(img,(W-dw)/2,(heroH-dh)/2,dw,dh);
+      // top scrim so the header reads over any photo
+      const top=x.createLinearGradient(0,0,0,230);
+      top.addColorStop(0,'rgba(8,15,28,.86)'); top.addColorStop(1,'rgba(8,15,28,0)');
+      x.fillStyle=top; x.fillRect(0,0,W,230);
+      // Bottom fade into the panel so the ring sits on dark. It has to resolve to
+      // the background's own tone AT THIS HEIGHT, or the photo's base reads as a
+      // visible seam against the page gradient.
+      const t=heroH/H;
+      const rr=Math.round(0x0E+(0x0A-0x0E)*t), gg=Math.round(0x1F+(0x11-0x1F)*t), bb=Math.round(0x38+(0x19-0x38)*t);
+      const fade=x.createLinearGradient(0,heroH-240,0,heroH);
+      fade.addColorStop(0,`rgba(${rr},${gg},${bb},0)`); fade.addColorStop(1,`rgb(${rr},${gg},${bb})`);
+      x.fillStyle=fade; x.fillRect(0,heroH-240,W,240);
       x.restore();
     }catch(e){}
   }
 
-  // score ring straddling the seam
-  const cx=W/2, cy=heroBot-6, R=124, lw=30;
+  // ---- header, overlaid on the photo ----
+  x.fillStyle='#fff'; x.font='900 italic 60px system-ui,"Segoe UI",Roboto,sans-serif';
+  x.fillText('FLAPP',P,P+52);
+  const wm=x.measureText('FLAPP').width;
+  x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+21,P+24,11,0,7); x.fill();
+  x.fillStyle='#C2CFE0'; x.font='700 23px system-ui,sans-serif';
+  x.fillText('VIDEO BIOMECHANICS · '+(sport==='bike'?'BIKE':'RUN'),P,P+88);
+
+  // ---- score ring riding the bottom edge of the photo ----
+  const cx=W/2, cy=heroH, R=132, lw=32;
+  x.save(); x.shadowColor='rgba(0,0,0,.5)'; x.shadowBlur=30; x.shadowOffsetY=12;
+  x.fillStyle='rgba(10,18,30,.92)'; x.beginPath(); x.arc(cx,cy,R-lw/2,0,7); x.fill();
+  x.restore();
   x.lineWidth=lw; x.lineCap='round';
-  x.beginPath(); x.arc(cx,cy,R,0,7); x.strokeStyle='rgba(255,255,255,.13)'; x.stroke();
-  x.fillStyle='rgba(10,18,30,.9)'; x.beginPath(); x.arc(cx,cy,R-lw/2,0,7); x.fill();
+  x.beginPath(); x.arc(cx,cy,R,0,7); x.strokeStyle='rgba(255,255,255,.14)'; x.stroke();
   if(score!=null){
     const a0=-Math.PI/2, a1=a0+2*Math.PI*Math.max(0,Math.min(1,score/100));
     x.beginPath(); x.arc(cx,cy,R,a0,a1); x.strokeStyle=CORAL; x.stroke();
   }
   x.lineCap='butt';
   x.textAlign='center';
-  x.fillStyle='#8EA3BD'; x.font='800 22px system-ui,sans-serif';
-  x.fillText('TECHNIQUE',cx,cy-52);
-  x.fillStyle='#fff'; x.font='900 italic 112px system-ui,sans-serif';
-  x.fillText(score==null?'—':String(score),cx,cy+34);
-  // "/100 · <grade>" — grade rendered in its own colour, group centred
-  const t1='/100  ·  ';
-  x.font='800 25px system-ui,sans-serif'; const w1=x.measureText(t1).width;
-  x.font='900 italic 30px system-ui,sans-serif'; const w2=x.measureText(grade).width;
-  const gx0=cx-(w1+w2)/2, gyy=cy+76;
-  x.textAlign='left';
-  x.font='800 25px system-ui,sans-serif'; x.fillStyle='#9DB0C8'; x.fillText(t1,gx0,gyy);
-  x.font='900 italic 30px system-ui,sans-serif'; x.fillStyle=gcol; x.fillText(grade,gx0+w1,gyy);
+  x.fillStyle='#8EA3BD'; x.font='800 23px system-ui,sans-serif';
+  x.fillText('TECHNIQUE',cx,cy-46);
+  x.fillStyle='#fff'; x.font='900 italic 124px system-ui,sans-serif';
+  x.fillText(score==null?'—':String(score),cx,cy+52);
 
-  // verdict heading
-  let py=cy+R+80;
-  const word=SHARE_GRADE_WORD[grade]||'YOUR';
-  x.textAlign='center';
+  // ---- everything below the ring, with the slack shared between blocks ----
+  const rows=Math.ceil(mets.length/2), tileH=150, tileGap=26;
+  const tilesH=rows?rows*tileH+(rows-1)*tileGap:0;
+  const ctaH=88, hostH=46, verdictH=48;
+  const top0=cy+R, bottom0=H-P;
+  // three gaps below the ring (before verdict / before tiles / before CTA):
+  // share the slack between them so the card fills instead of ending in a void
+  const slack=(bottom0-top0)-(verdictH+tilesH+ctaH+hostH);
+  const g=Math.max(28,Math.min(130,slack/3));
+
+  let py=top0+g+verdictH;
   x.fillStyle='#fff'; x.font='900 italic 46px system-ui,sans-serif';
-  x.fillText(`${word} ${sport==='bike'?'CYCLING':'RUNNING'} FORM`,cx,py);
+  x.fillText(`${shareVerdict(score)} ${sport==='bike'?'CYCLING':'RUNNING'} TECHNIQUE`,cx,py);
   x.textAlign='left';
-  py+=54;
+  py+=g;
 
-  // metric tiles (up to 4, 2 per row)
-  if(mets.length){
-    const gap=26, cw=(W-2*P-gap)/2, ch=150;
+  if(rows){
+    const cw=(W-2*P-tileGap)/2;
     mets.forEach((m,i)=>{
-      const mx=P+(i%2)*(cw+gap), my=py+Math.floor(i/2)*(ch+gap);
-      x.fillStyle='rgba(255,255,255,.05)'; rrect(x,mx,my,cw,ch,18); x.fill();
+      const mx=P+(i%2)*(cw+tileGap), my=py+Math.floor(i/2)*(tileH+tileGap);
+      x.fillStyle='rgba(255,255,255,.05)'; rrect(x,mx,my,cw,tileH,18); x.fill();
       x.lineWidth=1.5; x.strokeStyle='rgba(255,255,255,.08)'; x.stroke();
       x.fillStyle=m.color; x.beginPath(); x.arc(mx+34,my+42,10,0,7); x.fill();
       x.fillStyle='#9fb3d1'; x.font='700 26px system-ui,sans-serif';
@@ -2945,16 +2970,15 @@ async function buildShareCard(card){
         x.fillStyle='#9fb3d1'; x.font='700 30px system-ui,sans-serif';
         x.fillText(' '+m.unit,mx+30+vw+4,my+120); }
     });
-    py+=Math.ceil(mets.length/2)*(ch+gap);
+    py+=tilesH+g;
   }
 
-  // footer CTA
-  const fy=H-230;
-  x.fillStyle=CORAL; rrect(x,P,fy,W-2*P,88,44); x.fill();
+  // ---- CTA + host ----
+  x.fillStyle=CORAL; rrect(x,P,py,W-2*P,ctaH,ctaH/2); x.fill();
   x.fillStyle='#fff'; x.font='900 33px system-ui,sans-serif'; x.textAlign='center';
-  x.fillText('ANALYZE YOUR TECHNIQUE — FREE',W/2,fy+55);
+  x.fillText('ANALYZE YOUR TECHNIQUE — FREE',cx,py+56);
   x.fillStyle='#8FA6C6'; x.font='700 27px system-ui,sans-serif';
-  x.fillText(location.host,W/2,fy+140); x.textAlign='left';
+  x.fillText(location.host,cx,py+ctaH+42); x.textAlign='left';
 
   return await new Promise(res=>cv.toBlob(b=>res(b),'image/png',0.92));
 }
@@ -4416,7 +4440,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog};
+window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict};
 </script>
 </body>
 </html>
