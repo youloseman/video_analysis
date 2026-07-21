@@ -19,6 +19,7 @@ persistence + multi-worker scaling (M4).
 
 from __future__ import annotations
 
+import hashlib
 import os
 import time
 import uuid
@@ -314,7 +315,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 
 @app.get("/", include_in_schema=False)
-def root(request: Request) -> HTMLResponse:
+def root(request: Request) -> Response:
     """Serve the single-page frontend.
 
     OG/Twitter ``og:url`` and ``og:image`` are stored as root-relative paths in
@@ -334,7 +335,16 @@ def root(request: Request) -> HTMLResponse:
     origin = f"{proto}://{host}".rstrip("/")
     html_doc = html_doc.replace('content="/og-image.png"', f'content="{origin}/og-image.png"')
     html_doc = html_doc.replace('property="og:url" content="/"', f'property="og:url" content="{origin}/"')
-    return HTMLResponse(html_doc)
+    # The whole app (JS + CSS) is inlined in this one document, so a cached copy
+    # keeps running the previous build after a deploy -- which is how a
+    # redesigned share card can keep rendering the old layout. This response
+    # carried no cache headers at all, leaving it to browser heuristics; pin it
+    # to always revalidate, with an ETag so an unchanged shell still costs a 304.
+    etag = '"' + hashlib.sha256(html_doc.encode("utf-8")).hexdigest()[:32] + '"'
+    headers = {"Cache-Control": "no-cache, must-revalidate", "ETag": etag}
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return HTMLResponse(html_doc, headers=headers)
 
 
 @app.get("/favicon.svg", include_in_schema=False)
