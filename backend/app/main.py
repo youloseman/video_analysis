@@ -50,9 +50,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import academy as academy_routes
 from app.api import auth as auth_routes
 from app.api import billing as billing_routes
+from app.api import changelog as changelog_routes
+from app.api import feedback as feedback_routes
 from app.api import me as me_routes
 from app.core.config import settings
 from app.core.db import get_session, init_db
+from app.core.net import client_ip
 from app.core.security import optional_user
 from app.models.user import User
 from app.services.result_gating import gate_free_result, is_free
@@ -87,11 +90,8 @@ _rate_hits: dict[str, deque] = {}
 
 
 def _client_ip(request: Request) -> str:
-    """Best-effort client IP. Railway sits behind a proxy, so prefer XFF."""
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """Best-effort client IP (shared with the feedback endpoint)."""
+    return client_ip(request)
 
 
 def _rate_state(ip: str) -> tuple[int, int]:
@@ -239,6 +239,10 @@ app.include_router(auth_routes.router)
 app.include_router(me_routes.router)
 # Billing: /billing/checkout, /billing/webhook, /billing/portal (Stripe).
 app.include_router(billing_routes.router)
+# Result feedback: POST /feedback (anyone) + /admin/feedback* (admin tier only).
+app.include_router(feedback_routes.router)
+# Release notes: /changelog.json (in-app "What's new") + /changelog (public page).
+app.include_router(changelog_routes.router)
 
 
 # --------------------------------------------------------------------------
@@ -331,6 +335,12 @@ def root(request: Request) -> Response:
     the Academy pages already do) or the tags advertise insecure URLs.
     """
     html_doc = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    # Stamp a build id so every piece of result feedback records which build
+    # produced it. Digested from the file as-is, before the per-host rewrites
+    # below, so the same shell reports the same build on every domain.
+    html_doc = html_doc.replace(
+        "__BUILD__", hashlib.sha256(html_doc.encode("utf-8")).hexdigest()[:12],
+    )
     proto = request.headers.get("x-forwarded-proto", request.url.scheme)
     host = request.headers.get("x-forwarded-host") or request.headers.get(
         "host", request.url.netloc

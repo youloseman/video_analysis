@@ -62,7 +62,7 @@
 <main>
 <div class="wrap">
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 15 July 2026</p>
+  <p class="updated">Last updated: 30 July 2026</p>
   <div class="speedline"></div>
 
   <p class="lede"><b>Short version:</b> We keep only what we need to run the service — your account email (if you sign up), your subscription tier, and a count of the analyses you run. Your uploaded video or photo is processed and then automatically deleted; it is never sold or handed to an advertiser. Only anonymous numeric measurements go to the AI that writes your coaching notes. If you buy an <b>Expert Review</b>, a real person reviews your clip. We run no advertising trackers.</p>
@@ -110,21 +110,33 @@
   </ul>
   <p>If you do not buy an Expert Review, no human reviews your footage — it is only processed automatically as described above.</p>
 
-  <h2>4. Why we're allowed to use your data (legal basis)</h2>
+  <h2>4. Feedback on your results</h2>
+  <p>Under every report there's a "Does this match what you see?" prompt. Rating a result is entirely optional; nothing changes about your analysis if you skip it. When you do send feedback, we store:</p>
+  <ul>
+    <li>Your rating, any reasons you picked, and anything you type in the comment box.</li>
+    <li>The <b>technical context of that analysis</b> — sport, riding position, score, how confident the analyzer was, how well it tracked you, browser and build version. This is what lets us find out <i>which kinds</i> of analysis go wrong.</li>
+    <li>Your account email, if you're signed in, so we can follow up if a report needs a question answered. Feedback sent without an account carries no email.</li>
+    <li><b>Only if you tick the box:</b> the annotated still image from that analysis — the frame with the skeleton drawn on it. This is a photo of you, so it is never attached unless you explicitly choose to. It exists so we can see what the analyzer saw when it got something wrong.</li>
+  </ul>
+  <p>Feedback is <b>private</b>: it is never shown to other users, published, or used for marketing. It is read only by us, and only to fix and improve the analyzer. You can ask us to delete any feedback you've sent at any time (see <b>Your rights</b> below).</p>
+
+  <h2>5. Why we're allowed to use your data (legal basis)</h2>
   <p>For visitors in regions with data-protection laws such as the EU/UK GDPR, our legal bases are:</p>
   <ul>
     <li><b>Performing the service you asked for</b> (a contract): analyzing your upload, running your account, and delivering a paid plan or Expert Review.</li>
-    <li><b>Our legitimate interests</b>: keeping the service secure, preventing abuse, and enforcing free-tier limits — balanced against your privacy.</li>
+    <li><b>Our legitimate interests</b>: keeping the service secure, preventing abuse, enforcing free-tier limits, and using your feedback to correct the analyzer — balanced against your privacy.</li>
+    <li><b>Your consent</b>: attaching the annotated still image to a piece of feedback. You give it by ticking the box, and you can withdraw it by asking us to delete that feedback.</li>
     <li><b>Legal obligation</b>: keeping limited billing records where tax or accounting law requires it.</li>
   </ul>
 
-  <h2>5. Your IP address</h2>
-  <p>For anonymous visitors, we use the IP address for one purpose: to enforce the free-tier limit (a small number of analyses per day). Anonymous IP addresses are kept in the server's memory on a rolling 24-hour window and are cleared automatically — they are not written to a database, linked to your media, or shared.</p>
+  <h2>6. Your IP address</h2>
+  <p>For anonymous visitors, we use the IP address for two purposes: to enforce the free-tier limit (a small number of analyses per day), and to limit how much feedback a single client can send.</p>
+  <p>For the analysis limit, IP addresses are kept in the server's memory on a rolling 24-hour window and cleared automatically — they are not written to a database, linked to your media, or shared. For feedback, we store a <b>one-way salted hash</b> of the IP alongside the feedback record — never the address itself — so that re-rating the same analysis updates your own entry instead of creating a duplicate. The hash cannot be used to contact you or to look you up elsewhere.</p>
 
-  <h2>6. Cookies and tracking</h2>
+  <h2>7. Cookies and tracking</h2>
   <p>Flapp runs no analytics or advertising trackers. If you sign in, we use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking. Your remaining daily quota (for anonymous use) is stored in your own browser's local storage, on your device — not on our server.</p>
 
-  <h2>7. Who processes your data (third parties)</h2>
+  <h2>8. Who processes your data (third parties)</h2>
   <table class="data">
     <tr><th>Provider</th><th>What they handle</th></tr>
     <tr><td><b>Railway</b> (hosting)</td><td>Runs the app and temporarily stores uploads during processing.</td></tr>
@@ -133,21 +145,23 @@
   </table>
   <p>We do <b>not</b> sell, rent, or share your personal information with anyone else, and we do not use it for third-party advertising.</p>
 
-  <h2>8. International transfers</h2>
+  <h2>9. International transfers</h2>
   <p>Flapp is operated from Canada, and our providers (above) may process data on servers in Canada, the United States, or elsewhere. If you access Flapp from the EU/UK, this means your data may be transferred outside your country. We rely on the providers' own safeguards (such as standard contractual clauses) for these transfers, and we keep the personal data involved to the minimum described here.</p>
 
-  <h2>9. How long we keep it</h2>
+  <h2>10. How long we keep it</h2>
   <table class="data">
     <tr><th>Data</th><th>Retention</th></tr>
     <tr><td>Uploaded video / photo (standard)</td><td>Temporary — deleted automatically, not persisted after you leave.</td></tr>
     <tr><td>Uploaded video (Expert Review)</td><td>Kept until the review is delivered, then deleted.</td></tr>
     <tr><td>Anonymous IP (free-tier limit)</td><td>Rolling 24 hours, in memory only.</td></tr>
+    <tr><td>Result feedback (rating, comment, technical context)</td><td>Kept while it's still useful for improving the analyzer, unless you ask us to delete it.</td></tr>
+    <tr><td>Annotated still attached to feedback (opt-in only)</td><td>Deleted once we've acted on that report, or on request.</td></tr>
     <tr><td>Account (email, password hash, tier)</td><td>Until you ask us to delete your account.</td></tr>
     <tr><td>Usage records (analysis counts)</td><td>Deleted when your account is deleted.</td></tr>
     <tr><td>Billing records</td><td>Kept as long as tax/accounting law requires.</td></tr>
   </table>
 
-  <h2>10. Your rights</h2>
+  <h2>11. Your rights</h2>
   <p>Depending on where you live (including under Canada's PIPEDA and the EU/UK GDPR), you can:</p>
   <ul>
     <li><b>Access</b> the personal information we hold about you.</li>
@@ -159,13 +173,13 @@
   </ul>
   <p>Because your media is not stored, most of these rights concern your account. To exercise any of them, email us (below) and we'll respond within a reasonable time — and within any period the law requires.</p>
 
-  <h2>11. Security</h2>
+  <h2>12. Security</h2>
   <p>We use HTTPS in transit, store passwords only as salted hashes, and keep media in temporary storage rather than a permanent database. No system is perfectly secure, so we cannot give an absolute guarantee — but we keep the personal data we hold deliberately minimal to limit the impact if something goes wrong. If a breach ever affects your data, we will notify you and the relevant authority as required by law.</p>
 
-  <h2>12. Children</h2>
+  <h2>13. Children</h2>
   <p>Flapp is not intended for children under 16. Please don't create an account for, or upload footage of, a minor without the consent of a parent or guardian. If you believe a child has given us personal information, contact us and we will delete it.</p>
 
-  <h2>13. Changes</h2>
+  <h2>14. Changes</h2>
   <p>This is an evolving product, and this policy may change as the service grows. We'll update the "last updated" date above when it does, and for material changes affecting account holders we'll make a reasonable effort to let you know.</p>
 
   <div class="contact">
