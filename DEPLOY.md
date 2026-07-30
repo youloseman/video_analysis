@@ -1,36 +1,59 @@
 # Deploy to Railway (M4a)
 
 > **Current deployment:** https://video-analysis-production-1f54.up.railway.app
-> (Railway project `video-analysis`, workspace *youloseman's Projects*). Every
-> `railway up` / GitHub push redeploys it.
+> (Railway project `video-analysis`, workspace *youloseman's Projects*).
+>
+> ⚠️ **Merging to `main` does not deploy anything.** The service is not wired to
+> the GitHub repo — every deployment this project has ever had was a manual
+> `railway up`. On 2026-07-30 three pull requests merged to `main` and none of
+> them shipped; production was still serving a snapshot taken before the first
+> of them was even committed. Until the source connection is fixed (below),
+> **`railway up --ci` is the only way anything reaches production.**
 
 The API ships as a Docker image (`Dockerfile` at the repo root). The pose model
 is downloaded **at build time** and baked in, and `ffmpeg` is installed so
 overlays come out as web-safe H.264. Config is in `railway.json` (Dockerfile
 builder + `/health` check + single replica).
 
-## Option A — GitHub integration (recommended, auto-deploys on push)
+## Option A — GitHub integration (NOT currently connected)
 
-1. Go to <https://railway.app> → **New Project** → **Deploy from GitHub repo**.
-2. Pick **`youloseman/video_analysis`**. Railway detects the `Dockerfile` and
-   `railway.json` and starts a build (~3-5 min the first time — it installs
-   MediaPipe/OpenCV/SciPy and fetches the 30 MB model).
-3. When it's live, open **Settings → Networking → Generate Domain** to get a
-   public URL, then hit `https://<your-domain>/health` and `/docs`.
+This is how it should work, and how it does not work today. Reconnecting it
+needs the Railway **web dashboard**; there is no CLI equivalent.
 
-Every `git push` to `main` redeploys automatically.
+1. Railway → project `video-analysis` → service `video-analysis` →
+   **Settings → Source** → connect **`youloseman/video_analysis`**, branch
+   `main`. Railway reads the `Dockerfile` and `railway.json`.
+2. Push something to `main` and confirm a build actually starts. Do not assume:
+   the symptom of a dead connection is silence, not an error.
 
-## Option B — Railway CLI (you're already logged in as top.raider90@gmail.com)
-
-From the repo root:
+How to tell whether a given deployment came from GitHub or from someone's
+laptop — GitHub builds carry the commit, CLI uploads do not:
 
 ```bash
-railway init          # create a project (interactive: name + workspace)
-railway up            # upload + build the Dockerfile on Railway
-railway domain        # generate a public URL
+railway deployment list --json   # CLI uploads have an empty commitMessage
 ```
 
-`railway link` instead of `init` if the project already exists.
+Once connected, every `git push` to `main` redeploys automatically.
+
+## Option B — Railway CLI (the only working path right now)
+
+From the repo root, logged in as top.raider90@gmail.com:
+
+```bash
+railway up --ci -m "what changed"   # upload + build the Dockerfile on Railway
+```
+
+Two things to know:
+
+* **It uploads the working directory, not a git commit.** Check `git status`
+  first — whatever is on disk is what ships, including uncommitted edits and
+  whatever branch you happen to be on.
+* The build context is filtered by `.dockerignore`. Patterns without `**/` match
+  only the repo root, which is why `.venv/` alone did not exclude
+  `backend/.venv` — the venv the README tells you to create. Context should be
+  a few MB; if an upload suddenly takes minutes, that is the thing to check.
+
+`railway link` first if the project is not already linked.
 
 ## Smoke-test the live service
 
