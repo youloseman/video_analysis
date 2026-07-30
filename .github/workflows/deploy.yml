@@ -70,7 +70,15 @@ jobs:
         working-directory: .
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --ci --service video-analysis -m "${{ github.event.head_commit.message }}"
+          # Through the environment, never interpolated into the run script.
+          # A commit message is attacker-controllable text and `${{ }}` inside a
+          # `run:` block is pasted straight into the shell, so a message
+          # containing a quote and a semicolon would execute as a command.
+          # It is also absent on workflow_dispatch, hence the fallback.
+          COMMIT_MESSAGE: >-
+            ${{ github.event.head_commit.message
+                || format('manual deploy of {0}', github.sha) }}
+        run: railway up --ci --service video-analysis -m "$COMMIT_MESSAGE"
 
       # The deploy command returning 0 means the image built and started, not
       # that the app is serving. /health is what railway.json already gates the
