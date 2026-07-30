@@ -26,12 +26,28 @@ SYSTEM_PROMPT = (
     "evidence-based feedback in Markdown with EXACTLY these sections:\n"
     "**Overall** — 1-2 sentences on the headline takeaway.\n"
     "**What's working** — 1-3 short bullets.\n"
-    "**Fix first** — the 1-3 highest-impact issues. For each: what it is, why "
-    "it matters, and ONE concrete drill or position/fit change.\n"
+    "**Fix first** — ONLY genuinely material problems: 1-3 of them, "
+    "highest-impact first. For each: what it is, why it matters, and ONE "
+    "concrete drill or position/fit change.\n"
     "**Next session** — a single cue to focus on.\n\n"
+    "MATERIALITY FLOOR (this governs the Fix first section):\n"
+    "- These numbers come from 2D pose estimation. A degree or two either way "
+    "is inside the method's own error, so a metric sitting just outside its "
+    "band is NOT a finding. Anything the data marks 'acceptable', "
+    "'borderline' or otherwise within tolerance is off-limits as a fix -- "
+    "never build advice or a drill around one. Mention it, at most, in What's "
+    "working as \"on the edge of the band, worth an eye\".\n"
+    "- Only a metric clearly outside its range (marked out of range / "
+    "needs_work), or a rule-based detected issue, may become a Fix first item.\n"
+    "- If nothing clears that floor, DO NOT invent a problem and do not pad "
+    "the section to reach three. Rename the heading to **Nothing to fix** and "
+    "use it to say what the athlete should hold on to, plus any sustainability "
+    "caveat the data actually contains. Telling an athlete their position is "
+    "solid, when it is, is the correct answer -- not a failure to find "
+    "something.\n\n"
     "Rules: address the athlete as \"you\". Reference their actual numbers vs "
     "the optimal ranges given. Be direct and practical, no fluff, no medical "
-    "diagnoses. 180-260 words total."
+    "diagnoses. Up to 260 words; a clean analysis should be shorter."
 )
 
 
@@ -187,7 +203,16 @@ def _run_data_block(
 
 def _issues_block(issues: list[dict]) -> str:
     if not issues:
-        return "Detected issues: none flagged by the rule-based checks."
+        # The video prompt ships raw numbers with no per-metric status, so the
+        # rule-based checks are the materiality signal here. "Nothing flagged"
+        # has to be stated as a result, or the model reads the bare numbers and
+        # manufactures a finding out of a metric sitting a degree off its band.
+        return (
+            "Detected issues: NONE flagged by the rule-based checks. Treat this "
+            "as no material problem found. Only flag a metric here if it is "
+            "CLEARLY outside the optimal range stated above -- not a degree or "
+            "two off. If nothing is, use the **Nothing to fix** variant."
+        )
     out = ["Detected issues (rule-based):"]
     for it in issues[:6]:
         t = str(it.get("type", "")).replace("_", " ")
@@ -383,16 +408,27 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         # Units are explicit: two bike metrics are NOT degrees, and without the
         # unit the model narrates them as "96 degrees" / "3.94 degrees".
         unit, unit_note = _PHOTO_METRIC_UNITS.get(k, (" deg", ""))
-        # Pedal-phase-dependent joints (bike hip has both bands; ankle/uncertain
-        # hip are phase_dependent): the rider sets the crank position
-        # interactively, so the coach must not give its own hip/ankle verdict.
-        if v.get("status") == "phase_dependent" or v.get("bands"):
+        # Unresolved pedal-phase joints (ankle always; hip when the crank
+        # position could not be determined): no band applies, so the coach has
+        # nothing to judge against and must not invent a verdict.
+        #
+        # A hip WITH a resolved band is different -- it carries a real status
+        # and is scored. Suppressing it here while the materiality block listed
+        # it as a problem left the model with two contradictory instructions,
+        # and it resolved them by dropping the hip and reaching for a metric it
+        # had been told was fine.
+        if v.get("status") == "phase_dependent":
             lines.append(
                 f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note} — pedal-phase-dependent, "
                 f"scored interactively by the rider. Do NOT critique this angle or "
                 f"call it too open/closed."
             )
             continue
+        phase_note = (
+            f" [scored against the {v['phase'].upper()} band from the "
+            f"auto-detected crank position; the rider can correct that]"
+            if v.get("bands") and v.get("phase") in ("bdc", "tdc") else ""
+        )
         # Aero trunk below the comfort band: a deliberate trade-off, not a
         # defect. Without this the coach "fixes" a world-class tuck by telling
         # the rider to raise the bars.
@@ -416,8 +452,36 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         lines.append(
             f"- {v.get('label', k)}: {v.get('value')}{unit} "
             f"(optimal {v.get('optimal_min')}-{v.get('optimal_max')}{unit}, "
-            f"{v.get('status')}){unit_note}"
+            f"{v.get('status')}){unit_note}{phase_note}"
         )
+    # Materiality is decided HERE, not by the model. The photo result already
+    # carries a per-angle status, so the set of things that may be "fixed" is a
+    # fact, not a judgement call -- state it plainly rather than hoping the
+    # model applies the floor to a list of numbers.
+    material, borderline = [], []
+    for k, v in (res.get("angles_with_context") or {}).items():
+        status, label = v.get("status") or "", v.get("label", k)
+        if status == "needs_work":
+            material.append(f"{label} ({v.get('value')})")
+        elif status == "acceptable":
+            borderline.append(f"{label} ({v.get('value')})")
+    if material:
+        lines.append(
+            "Material problems (ONLY these may appear in Fix first): "
+            + ", ".join(material)
+        )
+    else:
+        lines.append(
+            "Material problems: NONE. Every measured angle is in range, within "
+            "tolerance, or a deliberate aero trade-off. Do not invent a fix -- "
+            "use the **Nothing to fix** variant of that section."
+        )
+    if borderline:
+        lines.append(
+            "Just outside the band but WITHIN TOLERANCE (not problems, no "
+            "drills, no fit changes for these): " + ", ".join(borderline)
+        )
+
     warns = res.get("warnings") or []
     if warns:
         lines.append("Capture notes: " + "; ".join(warns))

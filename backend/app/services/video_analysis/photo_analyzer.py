@@ -32,7 +32,9 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
 from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_POSITIONS,
     AERO_TRUNK_EXTREME_DEG,
+    HIP_MEDICAL_MIN_DEG,
     get_cycling_reference,
+    get_medical_warnings,
     get_position_label,
 )
 from app.services.video_analysis.pipeline import _draw_dashed_line
@@ -214,9 +216,16 @@ PHOTO_CYCLING_WEIGHTS = {
 # Near TDC/BDC from a single photo: the pedal phase is only a guess, so trust
 # the knee less than a true motion-capture dead-centre -- shift its weight to
 # the pedal-phase-independent trunk/shoulder/head metrics.
+#
+# Hip IS scored here, unlike the other profiles. The exclusion in
+# _PHASE_DEPENDENT_BIKE exists because a stroke-average band faults good
+# positions -- but at a detected dead centre we have the actual per-phase band
+# (hip_at_tdc / hip_at_bdc) to score against. Leaving it out meant the report
+# could show "Hip angle: needs work" in the table and 100/100 as the score, and
+# a closed hip is the one cycling metric with a medical consequence.
 PHOTO_CYCLING_WEIGHTS_PHASED = {
     "knee": 0.14, "trunk": 0.24, "shoulder": 0.14, "head_alignment": 0.12,
-    "elbow": 0.11, "pelvic_ratio": 0.08, "forearm_tilt": 0.05,
+    "elbow": 0.11, "pelvic_ratio": 0.08, "forearm_tilt": 0.05, "hip": 0.12,
 }
 # Mid-stroke: knee unreliable, redistribute weight to the phase-independent set.
 PHOTO_CYCLING_WEIGHTS_MIDSTROKE = {
@@ -236,9 +245,43 @@ _PHOTO_WEIGHTS = {
 }
 
 
+# Not every scored metric is an angle in degrees. The defaults below -- a 3.0
+# "acceptable" margin and 2.0 score points lost per unit outside the band -- are
+# degree-scaled. Applied to pelvic rotation, whose ENTIRE optimal band is 2.0
+# wide, they make the metric unfalsifiable: a ratio of 0.0 still classifies as
+# "acceptable", and 30% below the band costs one point. Format:
+#   key -> (acceptable_margin, score points lost per unit outside the band)
+_NON_DEGREE_SCALES: dict[str, tuple[float, float]] = {
+    "pelvic_ratio": (0.2, 60.0),
+}
+
+_DEFAULT_MARGIN_FLOOR = 3.0
+_DEFAULT_FALLOFF = 2.0
+
+# How far the overall score is pulled from the weighted mean toward the weakest
+# scored metric. 0.0 = pure mean (a single serious fault disappears into the
+# average), 1.0 = the score IS the worst metric (one noisy reading tanks an
+# otherwise good position). 0.35 keeps a clean position at 100 while letting one
+# real problem cost double digits.
+_WORST_PULL = 0.35
+
+# Ceiling applied when a measurement crosses a medical threshold: the top of the
+# "Good" band, so the number and the grade label cannot contradict the warning
+# banner shown next to them.
+_MEDICAL_SCORE_CAP = 89
+
+
+def _metric_margin(metric: str | None, optimal_min: float, optimal_max: float) -> float:
+    """Width of the 'acceptable' band on either side of the optimal range."""
+    scale = _NON_DEGREE_SCALES.get(metric or "")
+    floor = scale[0] if scale else _DEFAULT_MARGIN_FLOOR
+    return max((optimal_max - optimal_min) * 0.10, floor)
+
+
 def _score_single_angle(
     value: float, optimal_min: float, optimal_max: float,
     low_tolerance: float = 1.0, high_tolerance: float = 1.0,
+    falloff: float | None = None,
 ) -> int | None:
     """Score one angle 0-100 by distance from the optimal range.
 
@@ -257,7 +300,9 @@ def _score_single_angle(
     if optimal_min <= value <= optimal_max:
         return 100
 
-    FALLOFF_PER_DEG = 2.0  # points lost per degree outside the range
+    # Points lost per unit outside the range. Degrees by default; ratios and
+    # other non-degree metrics pass their own scale (see _NON_DEGREE_SCALES).
+    per_unit = falloff if falloff is not None else _DEFAULT_FALLOFF
     FLOOR = 20
 
     if value < optimal_min:
@@ -265,7 +310,7 @@ def _score_single_angle(
     else:
         distance = (value - optimal_max) / max(high_tolerance, 0.1)
 
-    score = 100.0 - distance * FALLOFF_PER_DEG
+    score = 100.0 - distance * per_unit
     return int(round(max(FLOOR, min(100.0, score))))
 
 
@@ -324,7 +369,17 @@ def _score_photo_angles(
 
         opt_min, opt_max = optimal_ranges[angle_key]
         low_tol, high_tol = _AERO_TOLERANCES.get(angle_key, (1.0, 1.0)) if is_aero else (1.0, 1.0)
-        score = _score_single_angle(value, opt_min, opt_max, low_tol, high_tol)
+        # The aero forgiveness on a closed hip assumes closed = deliberate. Past
+        # the iliac-artery threshold that stops being true, so the discount ends
+        # there -- otherwise the one hip reading with a medical consequence is
+        # the one the scorer treats most leniently.
+        if angle_key == "hip" and value < HIP_MEDICAL_MIN_DEG:
+            low_tol = 1.0
+        scale = _NON_DEGREE_SCALES.get(angle_key)
+        score = _score_single_angle(
+            value, opt_min, opt_max, low_tol, high_tol,
+            falloff=scale[1] if scale else None,
+        )
         if score is None:
             continue
 
@@ -337,17 +392,41 @@ def _score_photo_angles(
         total_weight += weight
 
     if total_weight > 0:
-        overall = int(round(weighted_sum / total_weight))
+        mean = weighted_sum / total_weight
+        # Pull the result toward the weakest metric. A plain weighted mean over
+        # eight metrics cannot represent one serious fault: six good readings
+        # outvote two bad ones, which is how a position with a hip past the
+        # iliac-artery threshold scored 95/100.
+        #
+        # This also makes the number RESPOND. Under the mean, fixing the single
+        # worst thing in your position moved the score a point or two, so the
+        # score carried no information about whether the fix worked.
+        worst = min(a["score"] for a in per_angle.values())
+        overall = int(round(mean - _WORST_PULL * (mean - worst)))
     else:
         overall = 50
 
     overall = max(0, min(100, overall))
 
-    return {
+    # A position that crosses a documented medical threshold must not be able to
+    # come back rated "Excellent", however clean the rest of it is.
+    capped_by = None
+    hip_val = angles.get("hip")
+    if (sport == "bike" and cycling_position in _AERO_POSITIONS
+            and hip_val is not None and not math.isnan(hip_val)
+            and hip_val < HIP_MEDICAL_MIN_DEG
+            and overall > _MEDICAL_SCORE_CAP):
+        overall = _MEDICAL_SCORE_CAP
+        capped_by = "hip_medical_threshold"
+
+    result: dict[str, Any] = {
         "overall_score": overall,
         "grade": _assign_photo_grade(overall),
         "per_angle": per_angle,
     }
+    if capped_by:
+        result["capped_by"] = capped_by
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -746,16 +825,21 @@ def _detect_camera_side(world_landmarks) -> str:
 
 def _classify_angle_status(
     value: float, optimal_min: float, optimal_max: float,
+    metric: str | None = None,
 ) -> str:
-    """Classify angle measurement: optimal / acceptable / needs_work."""
+    """Classify a measurement: optimal / acceptable / needs_work.
+
+    ``metric`` selects the tolerance scale -- degrees by default, or the
+    metric's own units for ratios (see _NON_DEGREE_SCALES). Without it a
+    ratio inherits a 3.0 margin and can never leave "acceptable".
+    """
     if math.isnan(value):
         return "insufficient_visibility"
 
     if optimal_min <= value <= optimal_max:
         return "optimal"
 
-    range_width = optimal_max - optimal_min
-    margin = max(range_width * 0.10, 3.0)  # At least 3 deg margin
+    margin = _metric_margin(metric, optimal_min, optimal_max)
 
     if (optimal_min - margin) <= value <= (optimal_max + margin):
         return "acceptable"
@@ -1163,7 +1247,9 @@ def analyze_photo(
             "value": angle_value,
             "optimal_min": opt_min,
             "optimal_max": opt_max,
-            "status": _classify_angle_status(angle_value, opt_min, opt_max),
+            "status": _classify_angle_status(
+                angle_value, opt_min, opt_max, metric=angle_name,
+            ),
             "label": lbl,
         }
 
@@ -1215,6 +1301,20 @@ def analyze_photo(
                 "Knee captured at mid-pedal-stroke -- knee angle scoring is reduced. "
                 "For saddle height assessment, use a photo at the bottom of the pedal stroke."
             )
+
+        # Medical thresholds. The video path has run these since the start; the
+        # photo path never did, so a hip closed past the iliac-artery threshold
+        # was measured, shown in the table and then passed over in silence.
+        # Only at a detected TDC: that is where the hip minimum legitimately
+        # occurs, so it is the reading the threshold is defined against.
+        if hip_phase == "tdc":
+            hip_val = angles.get("hip")
+            if hip_val is not None and not math.isnan(hip_val):
+                for warn in get_medical_warnings(cycling_position, {
+                    "hip_angle_min": hip_val,
+                    "trunk_angle_avg": angles.get("trunk", 0.0),
+                }):
+                    warnings.append(warn["message"])
 
         # Position archetype classification
         from app.services.video_analysis.biomechanics.cycling_positions import detect_position_archetype

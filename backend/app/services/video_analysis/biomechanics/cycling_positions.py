@@ -31,6 +31,11 @@ AERO_POSITIONS = frozenset({"tt_aero", "triathlon"})
 # Still not a fit error -- the honest read is a caveat, not "raise your bars".
 AERO_TRUNK_EXTREME_DEG = 12.0
 
+# Hip closure below this carries a documented medical risk (iliac artery
+# endofibrosis), so it is the point where "closed hip = aero gain" stops being
+# true. Scoring must not forgive the low side past it.
+HIP_MEDICAL_MIN_DEG = 45.0
+
 
 CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
     "road_hoods": {
@@ -357,7 +362,7 @@ def get_medical_warnings(
     if hip_min is None:
         hip_min = metrics.get("hip_angle_max")
 
-    if hip_min is not None and hip_min < 45 and category == "tt":
+    if hip_min is not None and hip_min < HIP_MEDICAL_MIN_DEG and category == "tt":
         meta = get_position_meta(pos, "hip_angle_max")
         warnings.append({
             "type": "iliac_artery_risk",
