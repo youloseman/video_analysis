@@ -95,6 +95,59 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   padding:3px 9px;border-radius:999px;
 }
 .lock-chip .ic{width:12px;height:12px}
+
+/* ---------- Pricing section ---------- */
+.pricing-head{text-align:center;margin-bottom:8px}
+.pricing-head .eyebrow{justify-content:center;display:flex}
+.pricing-head h2{font-family:var(--f-display);font-weight:900;font-size:clamp(26px,4vw,36px);
+  color:var(--c-navy);letter-spacing:-.02em;margin:6px 0 8px}
+.pricing-head p{color:var(--c-ink-soft);max-width:52ch;margin:0 auto}
+.billtoggle{display:inline-flex;gap:2px;margin:22px auto 4px;padding:4px;border:1px solid var(--c-line);
+  border-radius:999px;background:var(--c-panel)}
+.billtoggle button{font-family:var(--f-body);font-weight:700;font-size:13.5px;border:0;cursor:pointer;
+  padding:8px 18px;border-radius:999px;background:transparent;color:var(--c-ink-soft);transition:all .15s}
+.billtoggle button[aria-pressed="true"]{background:var(--c-bg);color:var(--c-navy);box-shadow:var(--shadow)}
+.billtoggle .save{font-family:var(--f-mono);font-size:10.5px;font-weight:600;color:var(--st-good);
+  background:var(--st-good-bg,#e6f4ec);padding:1px 6px;border-radius:999px;margin-left:6px}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
+@media(max-width:820px){.tiers{grid-template-columns:1fr;max-width:420px;margin-left:auto;margin-right:auto}}
+.tier{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--c-line);
+  border-radius:var(--radius-lg);padding:24px 22px;box-shadow:var(--shadow)}
+.tier.pop{border-color:var(--c-blue);box-shadow:0 0 0 1px var(--c-blue),var(--shadow-lg)}
+.tier .poptag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);white-space:nowrap;
+  font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#fff;background:var(--c-blue);padding:4px 12px;border-radius:999px}
+.tier-name{font-family:var(--f-display);font-weight:900;font-size:21px;color:var(--c-navy);margin:0}
+.tier-tagline{color:var(--c-ink-soft);font-size:13.5px;margin:4px 0 16px;min-height:36px}
+.tier-price{display:flex;align-items:baseline;gap:5px;margin-bottom:2px;font-variant-numeric:tabular-nums}
+.tier-price .amt{font-family:var(--f-display);font-weight:900;font-size:38px;color:var(--c-ink);letter-spacing:-.02em}
+.tier-price .per{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft)}
+.tier-sub{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);min-height:18px;margin-bottom:18px}
+.tier ul{list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:10px}
+.tier li{display:flex;gap:9px;align-items:flex-start;font-size:14px;color:var(--c-ink)}
+.tier li svg{flex:0 0 auto;width:16px;height:16px;margin-top:2px;color:var(--st-good-fill)}
+.tier li.off{color:var(--c-ink-faint)} .tier li.off svg{color:var(--c-ink-faint)}
+.tier li b{font-weight:700}
+.tier .tier-cta{margin-top:auto}
+.tier .btn{width:100%;justify-content:center}
+.tier .btn-outline{background:transparent;color:var(--c-blue);border:1.5px solid var(--c-blue);font-size:15px;padding:11px 24px}
+.tier .btn-outline:hover{background:var(--c-panel-blue)}
+.tier .current-badge{display:flex;justify-content:center;align-items:center;gap:7px;font-family:var(--f-mono);
+  font-size:12px;font-weight:600;color:var(--st-good);background:var(--st-good-bg,#e6f4ec);
+  padding:11px;border-radius:var(--radius-btn)}
+.addon-strip{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:20px;padding:20px 22px;
+  background:linear-gradient(135deg,#fff,var(--c-panel));border:1px solid var(--c-line);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.addon-strip .ao-chip{font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:#fff;background:var(--c-coral);padding:4px 11px;border-radius:999px}
+.addon-strip .ao-name{font-family:var(--f-display);font-weight:800;font-size:17px;color:var(--c-navy)}
+.addon-strip .ao-desc{color:var(--c-ink-soft);font-size:13.5px;max-width:40ch}
+.addon-strip .ao-price{font-family:var(--f-display);font-weight:900;font-size:26px;color:var(--c-ink);margin-left:auto}
+.addon-strip .ao-price small{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);font-weight:400}
+.addon-strip .btn{white-space:nowrap}
+.pricing-foot{text-align:center;color:var(--c-ink-faint);font-size:13px;margin-top:22px}
+.pricing-foot svg{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
+
 /* Free-tier teasers (cabinet): locked previews never show real data — a blurred
    placeholder chart / bar over hardcoded shapes, plus one upsell CTA per screen. */
 .tcard-lock{position:relative;opacity:.92}
@@ -1047,6 +1100,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <a href="#" id="navAnalyze" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
     <a href="#" id="navProgress" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
+    <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>Pricing</span></a>
     <a href="/academy" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
   </nav>
   <div class="authbox" id="authbox"></div>
@@ -1611,6 +1665,85 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     </div>
   </section>
 
+  <!-- ============ PRICING ============ -->
+  <section id="pricing" class="hidden" aria-labelledby="pricingTitle">
+    <div class="pricing-head">
+      <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Plans</div>
+      <h2 id="pricingTitle" tabindex="-1">Train on real numbers, not guesswork</h2>
+      <p>Start free. Upgrade when you want the measurements, coaching and video that tell you exactly what to change.</p>
+      <div class="billtoggle" role="group" aria-label="Billing period">
+        <button type="button" id="billMonthly" aria-pressed="true">Monthly</button>
+        <button type="button" id="billYearly" aria-pressed="false">Yearly<span class="save">save ~45%</span></button>
+      </div>
+    </div>
+
+    <div class="tiers">
+      <!-- STARTER -->
+      <div class="tier" id="tierStarter">
+        <p class="tier-name">Starter</p>
+        <p class="tier-tagline">See the tech work and try the process.</p>
+        <div class="tier-price"><span class="amt">$0</span><span class="per">forever</span></div>
+        <p class="tier-sub">No card required</p>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>3</b> analyses / month</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Skeleton + score (angles hidden)</span></li>
+          <li class="off"><svg viewBox="0 0 16 16" fill="none"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>AI coaching &amp; measurements</span></li>
+          <li class="off"><svg viewBox="0 0 16 16" fill="none"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Overlay video &amp; history</span></li>
+        </ul>
+        <div class="tier-cta" id="ctaStarter"></div>
+      </div>
+
+      <!-- ENTHUSIAST -->
+      <div class="tier pop" id="tierEnthusiast">
+        <span class="poptag">Most popular</span>
+        <p class="tier-name">Enthusiast</p>
+        <p class="tier-tagline">The full analysis for one discipline.</p>
+        <div class="tier-price"><span class="amt" id="entAmt">$9</span><span class="per" id="entPer">/ month</span></div>
+        <p class="tier-sub" id="entSub">billed monthly</p>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>30</b> analyses / month</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Full AI coaching + action plan</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Exact joint angles, no watermark</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Overlay video + slow-motion</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Cloud history + progress</span></li>
+        </ul>
+        <div class="tier-cta" id="ctaEnthusiast"></div>
+      </div>
+
+      <!-- FULL -->
+      <div class="tier" id="tierFull">
+        <p class="tier-name">Full</p>
+        <p class="tier-tagline">Multi-sport, progress analytics &amp; a human review.</p>
+        <div class="tier-price"><span class="amt">$80</span><span class="per">/ year</span></div>
+        <p class="tier-sub">billed annually</p>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Everything in Enthusiast, <b>120</b>/mo</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Multi-sport &amp; multi-bike profiles</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Before / after + trend charts</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Branded PDF report + export</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>1 Expert Review included</b> ($29 value)</span></li>
+        </ul>
+        <div class="tier-cta" id="ctaFull"></div>
+      </div>
+    </div>
+
+    <!-- EXPERT REVIEW add-on -->
+    <div class="addon-strip">
+      <span class="ao-chip">Add-on · any plan</span>
+      <div>
+        <div class="ao-name">Expert Review</div>
+        <div class="ao-desc">A personal video breakdown from a real triathlete, on top of the AI.</div>
+      </div>
+      <div class="ao-price">$29 <small>once</small></div>
+      <button class="btn btn-outline" type="button" id="ctaExpert">Add Expert Review</button>
+    </div>
+
+    <p class="pricing-foot">
+      <svg aria-hidden="true"><use href="#i-check"/></svg>
+      Prices in USD · cancel anytime · secure checkout by Stripe
+    </p>
+  </section>
+
 </div>
 </main>
 
@@ -1664,15 +1797,15 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp',
   dashboard:'Dashboard — Flapp',
   history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp',
-  compare:'Before / After — Flapp'};
+  compare:'Before / After — Flapp', pricing:'Pricing — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
-  history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare'};
+  history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress', pricing:'#navPricing' };
 const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
@@ -2523,11 +2656,101 @@ function renderUpsell(containerId, locked, blockIds){
 }
 /* Placeholder until Stage 4 (Stripe) wires real checkout. For now, nudge
    sign-in / show pricing so the CTA is never a dead end. */
-function openUpgrade(){
-  if(typeof openAuth==='function' && !auth){ openAuth('register'); return; }
-  const el=document.getElementById('pricing')||document.getElementById('plans');
-  if(el){ el.scrollIntoView({behavior:'smooth'}); }
-  else { alert('Upgrade coming soon — paid plans unlock the full analysis.'); }
+/* ============================================================
+   Pricing page — plan cards, billing toggle, checkout entry.
+   Checkout hits /billing/checkout (Stripe, Stage 4). Until that endpoint
+   exists the button degrades to a friendly "coming soon" toast, so the page
+   is never a dead end.
+   ============================================================ */
+let billPeriod='monthly';   // 'monthly' | 'yearly'
+function setBillPeriod(p){
+  billPeriod=p;
+  const m=$('#billMonthly'), y=$('#billYearly');
+  if(m) m.setAttribute('aria-pressed', String(p==='monthly'));
+  if(y) y.setAttribute('aria-pressed', String(p==='yearly'));
+  // Only Enthusiast has both cycles; Full is annual-only.
+  if(p==='yearly'){
+    $('#entAmt').textContent='$59'; $('#entPer').textContent='/ year'; $('#entSub').textContent='billed annually · save ~45%';
+  } else {
+    $('#entAmt').textContent='$9'; $('#entPer').textContent='/ month'; $('#entSub').textContent='billed monthly';
+  }
+}
+const CURRENT_BADGE='<div class="current-badge"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Your current plan</div>';
+const MANAGE_BTN='<button class="btn btn-ghost btn-sm" type="button" style="width:100%;margin-top:8px" onclick="openPortal()">Manage subscription</button>';
+function renderPricing(){
+  const cur=auth?auth.tier:null;
+  const cs=$('#ctaStarter'), ce=$('#ctaEnthusiast'), cf=$('#ctaFull');
+  if(!cs) return;
+  // Starter
+  if(!auth) cs.innerHTML=`<button class="btn btn-outline" type="button" onclick="openAuth&&openAuth('register')">Get started free</button>`;
+  else if(cur==='starter') cs.innerHTML=CURRENT_BADGE;
+  else cs.innerHTML=`<button class="btn btn-outline" type="button" disabled style="opacity:.45;cursor:default">Free plan</button>`;
+  // Enthusiast (paid tiers also get a Manage-subscription button)
+  ce.innerHTML = cur==='enthusiast' ? CURRENT_BADGE+MANAGE_BTN
+    : `<button class="btn btn-primary" type="button" onclick="startCheckout('enthusiast')">Choose Enthusiast</button>`;
+  // Full
+  cf.innerHTML = cur==='full' ? CURRENT_BADGE+MANAGE_BTN
+    : `<button class="btn btn-outline" type="button" onclick="startCheckout('full')">Choose Full</button>`;
+}
+const TIER_NAMES={enthusiast:'Enthusiast',full:'Full',admin:'Admin',starter:'Starter'};
+async function refreshAuth(){
+  const t=getToken(); if(!t) return;
+  try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); } }catch(e){}
+}
+async function openPortal(){
+  if(!auth) return;
+  try{
+    const r=await fetch('/billing/portal',{method:'POST',headers:authHeaders()});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok && j.url){ window.location.href=j.url; return; }
+    if([404,405,501,503].includes(r.status)){ toast('Billing management is being set up — check back soon.'); return; }
+    toast(j.detail || 'Could not open billing management.');
+  }catch(e){ toast('Could not open billing management.'); }
+}
+// Handle the return from Stripe Checkout (success_url / cancel_url).
+async function handleCheckoutReturn(){
+  const u=new URL(location.href); const c=u.searchParams.get('checkout');
+  if(!c) return;
+  u.searchParams.delete('checkout'); history.replaceState({},'',u.toString());  // don't re-trigger on refresh
+  if(c==='cancel'){ toast('Checkout canceled — no charge was made.'); return; }
+  if(c!=='success') return;
+  toast('Payment received — activating your plan…',{duration:6000});
+  // The webhook sets the tier server-side; it can lag a second or two. Poll
+  // /auth/me until the tier upgrades, then confirm.
+  for(let i=0;i<6;i++){
+    await refreshAuth();
+    if(auth && auth.tier && auth.tier!=='starter'){
+      toast(`You’re on ${TIER_NAMES[auth.tier]||auth.tier} — enjoy the full analysis!`);
+      renderPricing(); return;
+    }
+    await new Promise(r=>setTimeout(r,1500));
+  }
+  renderPricing();  // fallback: refresh UI even if still syncing
+}
+function openPricing(){ renderPricing(); setState('pricing',{focus:'#pricingTitle'}); }
+// The teaser CTA and any "upgrade" entry point land on the pricing page.
+function openUpgrade(){ openPricing(); }
+
+async function startCheckout(plan){
+  // Checkout attaches the subscription to an account — require sign-in first.
+  if(!auth){ toast('Create a free account first, then pick a plan.',{action:'Sign up',onAction:()=>openAuth('register')}); return; }
+  const key = plan==='enthusiast' ? (billPeriod==='yearly'?'enthusiast_yearly':'enthusiast_monthly')
+            : plan==='full' ? 'full_yearly'
+            : plan==='expert' ? 'expert' : null;
+  if(!key) return;
+  try{
+    const r=await fetch('/billing/checkout',{method:'POST',
+      headers:authHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({plan:key})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok && j.url){ window.location.href=j.url; return; }   // → Stripe hosted checkout
+    // Endpoint not live yet (Stage 4): 404/405 → friendly "coming soon".
+    if(r.status===404 || r.status===405 || r.status===501){
+      toast('Secure checkout is being set up — it goes live shortly. Thanks!'); return;
+    }
+    // Endpoint exists but returned an error — surface its message.
+    toast(j.detail || 'Could not start checkout — please try again.');
+  }catch(e){ toast('Secure checkout is being set up — it goes live shortly. Thanks!'); }
 }
 
 /* Structured training plan: corrective drill cards from the top priorities,
@@ -3101,6 +3324,8 @@ function renderAuth(){
   $('#navHome').classList.toggle('hidden', !auth);
   $('#botHome').classList.toggle('hidden', !auth);
   document.body.classList.toggle('authed', !!auth);
+  // Keep pricing CTAs (current-plan badge vs buy button) in sync with auth.
+  if(typeof renderPricing==='function') renderPricing();
 }
 function openAuth(mode){ setAuthMode(mode||'login'); $('#authModal').classList.remove('hidden'); setTimeout(()=>$('#authEmail').focus(),30); }
 function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').textContent=''; $('#authForm').reset(); }
@@ -3157,7 +3382,7 @@ $('#authForm').addEventListener('submit',submitAuth);
 
 (function init(){
   renderQuota();
-  checkAuth();
+  checkAuth().then(handleCheckoutReturn);   // after auth loads, resolve any Stripe return
   syncActiveNav(document.body.dataset.state || 'upload');   // highlight the current section
   const m=location.hash.match(/^#job=([a-z0-9]+)$/i);
   if(m){
@@ -3657,7 +3882,12 @@ function renderDashPlan(all){
 function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTitle'}); }
 $('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
 $('#navAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
+$('#navPricing').addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
 $('#hBack').addEventListener('click',openHistoryView);
+// Pricing: billing toggle + Expert Review add-on
+$('#billMonthly').addEventListener('click',()=>setBillPeriod('monthly'));
+$('#billYearly').addEventListener('click',()=>setBillPeriod('yearly'));
+$('#ctaExpert').addEventListener('click',()=>startCheckout('expert'));
 $('#wordmark').addEventListener('click',()=>reset());
 $('#wordmark').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); reset(); } });
 // Mobile brand mirrors the desktop wordmark (both reset to Analyze)

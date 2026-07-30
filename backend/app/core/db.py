@@ -74,6 +74,14 @@ def _migrate_users(conn) -> None:
             ))
         logger.info("MIGRATED", change="users.tier added + backfilled")
 
+    # Billing columns (Stage 4). Nullable -> no backfill needed.
+    if "stripe_customer_id" not in cols:
+        conn.execute(text("ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(64)"))
+        logger.info("MIGRATED", change="users.stripe_customer_id added")
+    if "subscription_status" not in cols:
+        conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(32)"))
+        logger.info("MIGRATED", change="users.subscription_status added")
+
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()
     if admin:

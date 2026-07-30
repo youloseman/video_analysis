@@ -62,6 +62,48 @@ class Settings:
     # both phase photos). Env-overridable so we can A/B without a redeploy.
     starter_teaser_photos: int = 1
 
+    # --- Billing (Stripe, Stage 4). All from env. Secret keys MUST stay in the
+    # environment (never in git). Price IDs are NOT secret; they differ between
+    # test and live mode, so they live in env too (swap when going live). When
+    # stripe_secret_key is unset, the /billing endpoints return 503 and the
+    # frontend degrades to a "coming soon" message. ---
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_enthusiast_m: str | None = None   # $9 / month
+    stripe_price_enthusiast_y: str | None = None   # $59 / year
+    stripe_price_full_y: str | None = None         # $80 / year
+    stripe_price_expert: str | None = None         # $29 one-time
+    # Absolute base URL for Checkout success/cancel redirects. Falls back to the
+    # request origin when unset (works on any host).
+    public_base_url: str | None = None
+
+    @property
+    def stripe_enabled(self) -> bool:
+        return bool(self.stripe_secret_key)
+
+    @property
+    def plan_price_map(self) -> dict[str, str | None]:
+        """Frontend plan key -> Stripe price ID. Keys match startCheckout()."""
+        return {
+            "enthusiast_monthly": self.stripe_price_enthusiast_m,
+            "enthusiast_yearly": self.stripe_price_enthusiast_y,
+            "full_yearly": self.stripe_price_full_y,
+            "expert": self.stripe_price_expert,
+        }
+
+    @property
+    def price_tier_map(self) -> dict[str, str]:
+        """Stripe price ID -> subscription tier (for webhook lifecycle). Only
+        recurring plans map to a tier; the one-time Expert Review does not."""
+        out: dict[str, str] = {}
+        if self.stripe_price_enthusiast_m:
+            out[self.stripe_price_enthusiast_m] = "enthusiast"
+        if self.stripe_price_enthusiast_y:
+            out[self.stripe_price_enthusiast_y] = "enthusiast"
+        if self.stripe_price_full_y:
+            out[self.stripe_price_full_y] = "full"
+        return out
+
     @property
     def model_path(self) -> Path:
         return self.models_dir / self.model_filename
@@ -111,6 +153,13 @@ def _load_settings() -> Settings:
         starter_teaser_photos=_int_env(
             "STARTER_TEASER_PHOTOS", Settings.starter_teaser_photos,
         ),
+        stripe_secret_key=os.environ.get("STRIPE_SECRET_KEY") or None,
+        stripe_webhook_secret=os.environ.get("STRIPE_WEBHOOK_SECRET") or None,
+        stripe_price_enthusiast_m=os.environ.get("STRIPE_PRICE_ENTHUSIAST_M") or None,
+        stripe_price_enthusiast_y=os.environ.get("STRIPE_PRICE_ENTHUSIAST_Y") or None,
+        stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
+        stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
+        public_base_url=(os.environ.get("PUBLIC_BASE_URL") or "").rstrip("/") or None,
     )
 
 
