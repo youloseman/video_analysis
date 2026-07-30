@@ -49,6 +49,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import academy as academy_routes
 from app.api import auth as auth_routes
+from app.api import billing as billing_routes
 from app.api import me as me_routes
 from app.core.config import settings
 from app.core.db import get_session, init_db
@@ -236,6 +237,8 @@ app.include_router(academy_routes.router)
 app.include_router(auth_routes.router)
 # Per-user cloud history/progress: /me/analyses.
 app.include_router(me_routes.router)
+# Billing: /billing/checkout, /billing/webhook, /billing/portal (Stripe).
+app.include_router(billing_routes.router)
 
 
 # --------------------------------------------------------------------------

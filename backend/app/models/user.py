@@ -52,6 +52,13 @@ class User(Base):
         String(20), default=TIER_STARTER, server_default=TIER_STARTER, nullable=False,
     )
     is_pro: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # --- Billing (Stripe, Stage 4). Null until the user starts a checkout. ---
+    stripe_customer_id: Mapped[str | None] = mapped_column(
+        String(64), index=True, nullable=True,
+    )
+    # Latest subscription status from Stripe: active | trialing | past_due |
+    # canceled | unpaid | incomplete ... (None = no subscription).
+    subscription_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False,
     )
