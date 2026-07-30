@@ -16,6 +16,9 @@ from typing import Any
 import structlog
 
 from app.core.config import settings
+from app.services.video_analysis.biomechanics.fit_tradeoffs import (
+    build_tradeoff_block,
+)
 
 logger = structlog.get_logger()
 
@@ -45,6 +48,20 @@ SYSTEM_PROMPT = (
     "caveat the data actually contains. Telling an athlete their position is "
     "solid, when it is, is the correct answer -- not a failure to find "
     "something.\n\n"
+    "TRADE-OFFS (this governs every fix you prescribe):\n"
+    "- Body angles on a bike are coupled: the contact points are the saddle, "
+    "the bars and the pedals, so almost nothing moves alone. When the data "
+    "includes a ranked list of adjustment options, RECOMMEND FROM THE TOP OF "
+    "IT. The ranking already accounts for what each option disturbs; it is not "
+    "a menu to pick from by preference.\n"
+    "- State the cost of whatever you prescribe, in the same breath as the "
+    "prescription. \"Raise the stack 10mm; this opens the hip but sits you up "
+    "and costs you aerodynamically\" is a coaching instruction. \"Raise the "
+    "stack 10mm\" is half of one.\n"
+    "- NEVER praise a metric and then prescribe something that degrades it "
+    "without saying so. If the only fix available damages something that is "
+    "working, say that plainly and let the athlete decide -- that judgement is "
+    "theirs, and a fit is a set of trade-offs, not a set of correct answers.\n\n"
     "Rules: address the athlete as \"you\". Reference their actual numbers vs "
     "the optimal ranges given. Be direct and practical, no fluff, no medical "
     "diagnoses. Up to 260 words; a clean analysis should be shorter."
@@ -481,6 +498,17 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             "Just outside the band but WITHIN TOLERANCE (not problems, no "
             "drills, no fit changes for these): " + ", ".join(borderline)
         )
+
+    # Which lever actually fixes what, and what it costs elsewhere. Computed,
+    # not left to the model: joint angles on a bike are coupled through a
+    # handful of contact points, and without this the coach praises a trunk
+    # angle and then prescribes the one adjustment that undoes it.
+    if sport == "bike":
+        tradeoffs = build_tradeoff_block(
+            res.get("angles_with_context") or {}, res.get("cycling_position"),
+        )
+        if tradeoffs:
+            lines.append(tradeoffs)
 
     warns = res.get("warnings") or []
     if warns:
