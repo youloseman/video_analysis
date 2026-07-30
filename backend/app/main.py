@@ -59,6 +59,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import academy as academy_routes
 from app.api import auth as auth_routes
 from app.api import billing as billing_routes
+from app.api.billing import log_billing_configuration
 from app.api import changelog as changelog_routes
 from app.api import feedback as feedback_routes
 from app.api import me as me_routes
@@ -224,6 +225,9 @@ def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Say in the deploy log whether checkout can actually charge anyone; every
+    # way it can be broken is otherwise silent until a customer hits it.
+    log_billing_configuration()
     # Clear anything the previous process left behind before serving.
     await run_in_threadpool(sweep_orphan_upload_dirs)
     sweeper = asyncio.create_task(sweeper_loop())

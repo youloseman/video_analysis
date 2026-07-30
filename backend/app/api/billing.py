@@ -54,6 +54,31 @@ class CheckoutIn(BaseModel):
     plan: str
 
 
+def log_billing_configuration() -> None:
+    """Report, once at startup, whether we can actually take money.
+
+    Every misconfiguration here is silent by construction: the pricing page
+    renders all three tiers whatever the environment says, so a missing price ID
+    shows up only as one dead button on the highest-intent screen in the
+    product, and a test-mode key shows up only as real cards being declined at
+    the very end of checkout. Neither raises anything. So say it out loud while
+    someone is still reading the deploy log.
+    """
+    if not settings.stripe_enabled:
+        logger.info("BILLING_DISABLED", reason="STRIPE_SECRET_KEY unset")
+        return
+    missing = sorted(p for p, price in settings.plan_price_map.items() if not price)
+    if missing:
+        logger.error("BILLING_PRICES_MISSING", plans=missing)
+    else:
+        logger.info("BILLING_READY", plans=sorted(settings.plan_price_map))
+    if str(settings.stripe_secret_key or "").startswith("sk_test_"):
+        logger.warning(
+            "BILLING_TEST_MODE",
+            detail="Stripe key is a TEST key -- live cards will be declined",
+        )
+
+
 def _require_stripe() -> None:
     if not settings.stripe_enabled:
         raise HTTPException(
@@ -111,10 +136,22 @@ async def create_checkout(
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
     _require_stripe()
-    price_id = settings.plan_price_map.get(body.plan)
+    # Two different failures were sharing one 400 and one internal-sounding
+    # string, which the client puts straight in front of the customer.
+    if body.plan not in settings.plan_price_map:
+        # A plan key we do not sell. The caller is wrong; 400 is right.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown plan.")
+    price_id = settings.plan_price_map[body.plan]
     if not price_id:
+        # A plan we DO sell, whose Stripe price was never configured. That is
+        # our mistake, not the caller's -- and it is invisible until somebody
+        # clicks Buy and gets a dead button. Shout in the logs, and give the
+        # customer a sentence written for them rather than for us.
+        logger.error("PLAN_PRICE_UNCONFIGURED", plan=body.plan, user_id=user.id)
         raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "Unknown or unconfigured plan.",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "This plan can't be purchased right now. Please try again shortly "
+            "— or email support@getflapp.com and we'll sort it out.",
         )
 
     is_subscription = body.plan != "expert"
