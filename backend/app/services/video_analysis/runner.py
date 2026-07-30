@@ -245,16 +245,34 @@ def _build_quality_warnings(
     return warnings
 
 
+def _ordinal(n: int) -> str:
+    """1 -> '1st', 2 -> '2nd', 4 -> '4th'. Used in the sampling notice."""
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
 def extract_frames(
     video_path: str, sport_type: str, fps: float, detector: PoseDetector,
+    meta: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Iterate the video, CLAHE-enhance each sampled frame, run detection.
 
     Copied from Motus ``pipeline._iterate_video_frames`` (side-view path).
     ``sample_rate`` for run/bike is 1; adaptive sampling raises it on long
     clips to stay under ``settings.max_analysis_frames``.
+
+    ``meta`` (optional, filled in place) reports the sampling actually used.
+    That matters downstream: raising the stride throws away frames, and the
+    time-based metrics (cadence, ground contact, flight time) are measured in
+    frames -- at stride 4 their resolution drops fourfold. The caller turns this
+    into a user-facing caveat rather than reporting a decimated cadence as if it
+    were measured at full rate.
     """
-    sample_rate = SPORT_SAMPLE_RATES.get(sport_type, 3)
+    base_sample_rate = SPORT_SAMPLE_RATES.get(sport_type, 3)
+    sample_rate = base_sample_rate
 
     cap = cv2.VideoCapture(video_path)
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 1920
@@ -343,6 +361,20 @@ def extract_frames(
         detected=total_detected,
         accepted=len(frame_results),
     )
+    if meta is not None:
+        meta.update({
+            "sample_rate": sample_rate,
+            "base_sample_rate": base_sample_rate,
+            "effective_fps": round(video_fps / sample_rate, 1) if sample_rate else None,
+            "video_fps": round(video_fps, 1),
+            "duration_s": (
+                round(total_video_frames / video_fps, 1)
+                if video_fps and total_video_frames else None
+            ),
+            # True once the clip was long enough to force a coarser stride than
+            # this sport's baseline -- i.e. timing resolution was traded away.
+            "downsampled": sample_rate > base_sample_rate,
+        })
     if len(frame_results) < 30:
         logger.warning(
             "LOW_FRAME_COUNT",
@@ -420,8 +452,11 @@ def run_analysis(
 
     # Step 2: detector + frame extraction (blocking).
     detector = build_detector(sport_type, camera_angle)
+    sampling_meta: dict[str, Any] = {}
     try:
-        raw_frame_data = extract_frames(video_path, sport_type, fps, detector)
+        raw_frame_data = extract_frames(
+            video_path, sport_type, fps, detector, meta=sampling_meta,
+        )
     finally:
         detector.close()
 
@@ -559,6 +594,18 @@ def run_analysis(
     summary["landmark_quality"] = landmark_quality
     summary["quality_warnings"] = quality_warnings
     summary["quality_gate"] = quality_gate_result
+    summary["sampling"] = sampling_meta
+    # A long clip is analyzed end to end, but at a coarser stride -- so the
+    # frame-counted metrics (cadence, ground contact, flight time) lose
+    # resolution. Report that instead of presenting them as full-rate measures.
+    if sampling_meta.get("downsampled"):
+        summary["sampling_degraded"] = (
+            f"This clip is {sampling_meta.get('duration_s')}s, so we analyzed "
+            f"every {_ordinal(sampling_meta['sample_rate'])} frame "
+            f"(~{sampling_meta.get('effective_fps')} fps effective). Cadence, "
+            f"ground contact and flight time are measured in frames, so they "
+            f"are coarser than usual."
+        )
 
     # Soft confidence tier (high/medium/low) -- informational, hides nothing.
     # Butterworth meta only exists for bike side-view (run uses One Euro -> None,

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
@@ -18,6 +19,7 @@ from app.core.security import (
 )
 from app.models.user import User
 
+logger = structlog.get_logger()
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -115,3 +117,77 @@ async def login(body: LoginBody, db: AsyncSession = Depends(get_session)) -> Tok
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)) -> UserOut:
     return UserOut(email=user.email, tier=user.tier, is_pro=user.is_paid)
+
+
+class DeleteAccountBody(BaseModel):
+    """Re-authentication for a destructive, irreversible action.
+
+    The bearer token lives in localStorage for 30 days, so "is signed in" is a
+    weak proof of intent for account deletion -- an unlocked laptop is enough.
+    The password is asked for again."""
+
+    password: str
+
+
+class DeletedOut(BaseModel):
+    deleted: bool
+    email: str
+
+
+@router.delete("/account", response_model=DeletedOut)
+async def delete_account(
+    body: DeleteAccountBody,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> DeletedOut:
+    """Erase the account and everything attached to it.
+
+    The privacy policy promises this ("Until you ask us to delete your account";
+    "Usage records deleted when your account is deleted") and until now only an
+    email to a human could deliver it.
+
+    Children are deleted explicitly rather than left to ``ON DELETE CASCADE``:
+    SQLite does not enforce foreign keys unless the pragma is on, so relying on
+    the cascade would silently leave orphans in local/dev databases -- exactly
+    the rows we are promising to remove.
+
+    What goes: saved analyses (including their stored keyframes), usage records,
+    submitted feedback (which can carry an annotated photo of them), and order
+    history. Uploaded footage is not covered here because it is never persisted
+    against an account -- it expires with its job (see ``app.core.jobs``).
+    """
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Wrong password — the account was not deleted.",
+        )
+
+    from app.models.analysis import Analysis
+    from app.models.feedback import Feedback
+    from app.models.order import ORDER_DELIVERED, ORDER_REFUNDED, Order
+    from app.models.usage import UsageEvent
+
+    # An Expert Review that was paid for but never delivered is money owed. It
+    # is their account to delete, so this does not block -- but it must not
+    # vanish silently either, or the obligation disappears with the row.
+    owed = (
+        await db.execute(
+            select(Order.id).where(
+                Order.user_id == user.id,
+                Order.status.not_in((ORDER_DELIVERED, ORDER_REFUNDED)),
+            )
+        )
+    ).scalars().all()
+    if owed:
+        logger.warning(
+            "ACCOUNT_DELETED_WITH_OPEN_ORDERS",
+            email=user.email, order_ids=list(owed),
+            action="refund or contact the customer",
+        )
+
+    uid, email = user.id, user.email
+    for model in (Analysis, UsageEvent, Feedback, Order):
+        await db.execute(delete(model).where(model.user_id == uid))
+    await db.delete(user)
+    await db.commit()
+    logger.info("ACCOUNT_DELETED", user_id=uid)
+    return DeletedOut(deleted=True, email=email)

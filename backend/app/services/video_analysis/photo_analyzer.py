@@ -30,6 +30,8 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
     calculate_segment_to_vertical,
 )
 from app.services.video_analysis.biomechanics.cycling_positions import (
+    AERO_POSITIONS,
+    AERO_TRUNK_EXTREME_DEG,
     get_cycling_reference,
     get_position_label,
 )
@@ -288,7 +290,17 @@ _AERO_TOLERANCES = {
     "trunk": (3.0, 1.0),   # flat aero back below min: forgiven; too upright: full penalty
     "hip":   (2.5, 1.0),   # closed aero hip below min: mostly forgiven
 }
-_AERO_POSITIONS = {"tt_aero", "triathlon"}
+_AERO_POSITIONS = AERO_POSITIONS
+
+_AERO_TRUNK_NOTE = (
+    "Flatter than the comfort band -- in an aero position that is the goal, "
+    "not a fault. Keep it if you can hold it and breathe at race power."
+)
+_AERO_TRUNK_EXTREME_NOTE = (
+    "Extremely low. Aerodynamically this is as good as it gets; the open "
+    "question is sustainability -- breathing, power and holding the tuck for "
+    "the full event. Judge it on how it feels late in a race, not on the number."
+)
 
 
 def _score_photo_angles(
@@ -1126,6 +1138,27 @@ def analyze_photo(
         if angle_name not in optimal_ranges:
             continue
         opt_min, opt_max = optimal_ranges[angle_name]
+        # Bike trunk in an aero position, BELOW the comfort band: the scorer
+        # already forgives this side (_AERO_TOLERANCES), so classifying it as
+        # "needs_work" was the one place a world-class tuck got filed under
+        # "fix this first". Give it its own status instead.
+        if (
+            sport == "bike"
+            and angle_name == "trunk"
+            and cycling_position in _AERO_POSITIONS
+            and not math.isnan(angle_value)
+            and angle_value < opt_min
+        ):
+            extreme = angle_value < AERO_TRUNK_EXTREME_DEG
+            angles_with_context[angle_name] = {
+                "value": angle_value,
+                "optimal_min": opt_min,
+                "optimal_max": opt_max,
+                "status": "aero_extreme" if extreme else "aero_optimized",
+                "label": lbl,
+                "note": _AERO_TRUNK_EXTREME_NOTE if extreme else _AERO_TRUNK_NOTE,
+            }
+            continue
         angles_with_context[angle_name] = {
             "value": angle_value,
             "optimal_min": opt_min,

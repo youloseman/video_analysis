@@ -1,0 +1,13 @@
+# Test-only dependencies. NOT installed in the Docker image.
+#
+# The suite deliberately avoids the ML stack (mediapipe/opencv/scipy), so it
+# runs on a plain Python install: `pip install -r requirements-dev.txt` alone is
+# enough for `python -m pytest` if the app's own runtime deps are present.
+
+-r requirements.txt
+
+pytest==8.3.3
+pytest-asyncio==0.24.0
+# Used by FastAPI's TestClient if/when route-level tests are added.
+httpx==0.28.1
+ruff==0.14.10

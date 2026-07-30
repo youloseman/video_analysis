@@ -1,0 +1,39 @@
+# Line endings.
+#
+# Why this file exists: a tool that rewrites a source file whole -- an editor, a
+# formatter, an AI edit -- can silently flip its line endings, and git then
+# records every line as changed. app/main.py went that way once: a 209-line
+# change arrived as a 1,396-line diff, which is the kind of noise a real bug
+# hides in. `text=auto eol=lf` makes git store LF no matter what landed on disk,
+# so the diff stays the size of the actual edit.
+*                                              text=auto eol=lf
+
+# ---------------------------------------------------------------------------
+# Legacy CRLF files, frozen as-is (`-text` = git never converts them).
+#
+# These came over from Motus with CRLF and are still committed that way. They
+# WOULD renormalise to LF under the rule above -- which is the right end state,
+# but it rewrites all twelve in one go, and doing that on a branch carrying
+# in-flight work buries that work under whole-file diffs. So they are pinned to
+# what they already are: no churn now, and no accidental conversion either.
+#
+# TODO: drop this whole block and run `git add --renormalize .` as its own
+# commit, on a clean tree, after this branch merges. Nothing else needs to
+# change -- the files are byte-identical apart from the CRs.
+backend/app/static/index.html                  -text
+backend/app/services/video_analysis/photo_analyzer.py       -text
+backend/app/services/video_analysis/video_visualizer.py     -text
+backend/app/services/video_analysis/biomechanics/*.py       -text
+backend/app/services/video_analysis/biomechanics/reference_data/bike_reference.json -text
+
+# ---------------------------------------------------------------------------
+# Binary assets: never touched, never diffed as text.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.mp4    binary
+*.mov    binary
+*.pdf    binary
+*.ttf    binary
+*.task   binary
+*.tflite binary

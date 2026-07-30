@@ -43,9 +43,32 @@ class Settings:
     # recommendations are skipped gracefully and analysis still works.
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
+    # Hard ceiling on a single Gemini request. Every LLM call is made from a
+    # threadpool thread (the photo endpoint blocks the user on it outright), so
+    # without this a hung request holds a worker slot until the socket gives up
+    # on its own -- which can be minutes. Coaching is optional by design: a
+    # timeout degrades to "no coaching", never to a failed analysis.
+    gemini_timeout_s: float = 20.0
 
     # Abuse guard: max analyses per client (IP) per rolling 24h. 0 disables.
     rate_limit_per_day: int = 3
+
+    # --- Job lifecycle. The job store is in-memory and uploads land on the
+    # container's ephemeral disk, so both need an explicit reaper: nothing else
+    # deletes them, and a long-lived instance would otherwise grow until the
+    # disk (or the heap) fills. ---
+    # How long a finished job stays fetchable (result JSON + overlay download)
+    # before it and its upload directory are deleted. 0 disables the sweeper.
+    job_ttl_hours: float = 6.0
+    # How often the sweeper runs.
+    job_sweep_interval_s: int = 600
+
+    # --- Analysis concurrency. MediaPipe "heavy" is CPU- and RAM-bound; the
+    # work runs in Starlette's threadpool, which would happily start ~40 of them
+    # at once and OOM the container. Bound it, and reject new uploads once the
+    # backlog is longer than a caller would sensibly wait through. ---
+    max_concurrent_analyses: int = 2
+    max_queued_analyses: int = 8
 
     # Accounts (auth). DATABASE_URL defaults to a local SQLite file; set it to a
     # Postgres URL (Railway) in prod. jwt_secret MUST be overridden in prod.
@@ -137,6 +160,16 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+def _float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
 def _load_settings() -> Settings:
     models_dir = os.environ.get("VA_MODELS_DIR")
     uploads_dir = os.environ.get("VA_UPLOADS_DIR")
@@ -145,7 +178,18 @@ def _load_settings() -> Settings:
         uploads_dir=Path(uploads_dir).resolve() if uploads_dir else Settings.uploads_dir,
         gemini_api_key=os.environ.get("GEMINI_API_KEY") or None,
         gemini_model=os.environ.get("GEMINI_MODEL") or Settings.gemini_model,
+        gemini_timeout_s=_float_env("GEMINI_TIMEOUT_S", Settings.gemini_timeout_s),
         rate_limit_per_day=_int_env("VA_RATE_LIMIT_PER_DAY", Settings.rate_limit_per_day),
+        job_ttl_hours=_float_env("VA_JOB_TTL_HOURS", Settings.job_ttl_hours),
+        job_sweep_interval_s=_int_env(
+            "VA_JOB_SWEEP_INTERVAL_S", Settings.job_sweep_interval_s,
+        ),
+        max_concurrent_analyses=max(1, _int_env(
+            "VA_MAX_CONCURRENT_ANALYSES", Settings.max_concurrent_analyses,
+        )),
+        max_queued_analyses=max(1, _int_env(
+            "VA_MAX_QUEUED_ANALYSES", Settings.max_queued_analyses,
+        )),
         database_url=os.environ.get("DATABASE_URL") or Settings.database_url,
         jwt_secret=os.environ.get("JWT_SECRET") or Settings.jwt_secret,
         jwt_expire_days=_int_env("JWT_EXPIRE_DAYS", Settings.jwt_expire_days),

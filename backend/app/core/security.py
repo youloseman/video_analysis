@@ -61,6 +61,19 @@ async def get_current_user(
     return user
 
 
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    """Admin tier only. 404 rather than 403 so the surface is not discoverable.
+
+    Lives here rather than next to any one admin router because several of them
+    (feedback inbox, order queue) need the same gate.
+    """
+    from app.models.user import TIER_ADMIN
+
+    if user.tier != TIER_ADMIN:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    return user
+
+
 async def optional_user(
     cred: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: AsyncSession = Depends(get_session),

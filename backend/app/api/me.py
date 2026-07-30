@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -197,7 +198,12 @@ async def compare_summary(
             detail="The AI progress summary is available on paid plans.",
         )
     sport = "bike" if body.sport == "bike" else "run"
-    result = generate_progress_summary(
+    # ``generate_progress_summary`` is a blocking HTTP call to Gemini. Awaiting it
+    # inline would stall the event loop for its whole duration -- and this service
+    # runs a single worker, so every other caller's job-status poll would stall
+    # with it. Hand it to the threadpool like the analyze endpoints do.
+    result = await run_in_threadpool(
+        generate_progress_summary,
         sport, body.before.model_dump(), body.after.model_dump(),
     )
     if result is None:
