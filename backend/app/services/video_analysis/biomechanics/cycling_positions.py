@@ -22,6 +22,16 @@ from typing import Any
 # Position-specific optimal angle ranges
 # ---------------------------------------------------------------------------
 
+# Positions where a trunk flatter than the comfort band is the GOAL, not a
+# fault. Scoring, status classification and the action plan all key off this.
+AERO_POSITIONS = frozenset({"tt_aero", "triathlon"})
+
+# Below this a trunk angle stops being "more aero" and becomes a question about
+# whether the rider can hold it, breathe and make power for the full event.
+# Still not a fit error -- the honest read is a caveat, not "raise your bars".
+AERO_TRUNK_EXTREME_DEG = 12.0
+
+
 CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
     "road_hoods": {
         "label": "Road - Hoods",
@@ -359,15 +369,19 @@ def get_medical_warnings(
             "source": "Burt 'Bike Fit'; Fintelman et al. 2015",
         })
 
-    # Extreme trunk angle (sustainability concern)
+    # Extreme trunk angle. NOT a fit error in an aero position -- the number
+    # itself is aerodynamically ideal. What is genuinely open is whether the
+    # rider can sustain it, so the warning is worded as a caveat, not a fix.
     trunk = metrics.get("trunk_angle_avg", 0)
-    if trunk > 0 and trunk < 15 and category == "tt":
+    if trunk > 0 and trunk < AERO_TRUNK_EXTREME_DEG and category == "tt":
         warnings.append({
             "type": "extreme_trunk",
             "message": (
                 f"Trunk angle {trunk:.0f} deg is extremely aggressive. "
-                "Sustained extreme positions cause fatigue limiting sustainability. "
-                "Ensure you can hold this for the full event duration."
+                "Aerodynamically this is as good as it gets -- the open "
+                "question is sustainability: breathing, power and holding the "
+                "tuck for the full event. Judge it late in a long ride, not "
+                "on the number."
             ),
             "source": "Track cycling research; positional drift studies",
         })

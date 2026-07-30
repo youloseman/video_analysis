@@ -18,6 +18,7 @@ frontend degrades to a "coming soon" message instead of erroring.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any
 
 import stripe
@@ -29,11 +30,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.db import get_session
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_admin
+from app.models.order import (
+    ORDER_PAID,
+    ORDER_STATUS_LABEL,
+    ORDER_STATUSES,
+    Order,
+)
 from app.models.user import TIER_ADMIN, TIER_STARTER, User
+
+
+def _now_ms() -> int:
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/billing", tags=["billing"])
+# Admin routes live off /admin (not /billing), so they need their own router.
+admin_router = APIRouter(tags=["billing"])
 
 
 class CheckoutIn(BaseModel):
@@ -51,6 +64,27 @@ def _require_stripe() -> None:
 
 def _base_url(request: Request) -> str:
     return settings.public_base_url or str(request.base_url).rstrip("/")
+
+
+# A subscription in one of these states is still billing the customer, so a
+# second Checkout would stack a second subscription on the same card rather than
+# switch plans. ``incomplete``/``canceled``/``unpaid`` are deliberately absent:
+# those never charge again, so a fresh Checkout is the right move.
+LIVE_SUB_STATUSES = ("active", "trialing", "past_due")
+
+
+def has_live_subscription(user: User) -> bool:
+    """True when the user already pays for a plan (so send them to the portal)."""
+    return bool(
+        user.stripe_customer_id
+        and user.subscription_status in LIVE_SUB_STATUSES
+    )
+
+
+def _portal_url(customer_id: str, return_to: str) -> str:
+    return stripe.billing_portal.Session.create(
+        customer=customer_id, return_url=return_to,
+    ).url
 
 
 def tier_for_plan(plan: str) -> str | None:
@@ -83,6 +117,24 @@ async def create_checkout(
             status.HTTP_400_BAD_REQUEST, "Unknown or unconfigured plan.",
         )
 
+    is_subscription = body.plan != "expert"
+    base = _base_url(request)
+
+    # Already subscribed? A second Checkout does not upgrade anyone -- it creates
+    # a SECOND subscription and charges for both. Stripe's portal is the only
+    # place a plan can actually be switched, so send them there and let the
+    # client explain why.
+    if is_subscription and has_live_subscription(user):
+        try:
+            url = _portal_url(str(user.stripe_customer_id), f"{base}/")
+        except stripe.StripeError as e:  # noqa: BLE001
+            logger.warning("PORTAL_FAILED", err=str(e), user_id=user.id)
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, "Could not open billing portal.",
+            )
+        logger.info("CHECKOUT_REDIRECTED_TO_PORTAL", user_id=user.id, plan=body.plan)
+        return {"url": url, "mode": "portal"}
+
     # Reuse the user's Stripe customer across purchases; create on first use.
     customer_id = user.stripe_customer_id
     if not customer_id:
@@ -93,15 +145,15 @@ async def create_checkout(
         user.stripe_customer_id = customer_id
         await db.commit()
 
-    is_subscription = body.plan != "expert"
-    base = _base_url(request)
     try:
         session_obj = stripe.checkout.Session.create(
             mode="subscription" if is_subscription else "payment",
             customer=customer_id,
             client_reference_id=str(user.id),
             line_items=[{"price": price_id, "quantity": 1}],
-            success_url=f"{base}/?checkout=success",
+            # Carry the plan back so the client can acknowledge a one-time Expert
+            # Review (which grants no tier, so tier-polling would never confirm it).
+            success_url=f"{base}/?checkout=success&plan={body.plan}",
             cancel_url=f"{base}/?checkout=cancel",
             allow_promotion_codes=True,
             metadata={
@@ -114,6 +166,90 @@ async def create_checkout(
         logger.warning("CHECKOUT_FAILED", err=str(e), user_id=user.id)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Could not start checkout.")
     return {"url": session_obj.url}
+
+
+# --------------------------------------------------------------------------
+# Orders (one-time purchases). The customer needs somewhere to see that their
+# Expert Review was received and where it stands; the admin needs a queue.
+# --------------------------------------------------------------------------
+def _order_out(o: Order) -> dict[str, Any]:
+    return {
+        "id": o.id,
+        "plan": o.plan,
+        "status": o.status,
+        "status_label": ORDER_STATUS_LABEL.get(o.status, o.status),
+        "amount_total": o.amount_total,
+        "currency": o.currency,
+        "created_at_ms": o.created_at_ms,
+        "updated_at_ms": o.updated_at_ms,
+    }
+
+
+@router.get("/orders")
+async def my_orders(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    """The caller's one-time purchases, newest first. No Stripe call needed."""
+    rows = (
+        await db.execute(
+            select(Order)
+            .where(Order.user_id == user.id)
+            .order_by(Order.created_at_ms.desc())
+            .limit(50)
+        )
+    ).scalars().all()
+    return [_order_out(o) for o in rows]
+
+
+@admin_router.get("/admin/orders")
+async def admin_orders(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    """Fulfilment queue: every one-time purchase with the buyer's email."""
+    rows = (
+        await db.execute(
+            select(Order, User.email)
+            .join(User, User.id == Order.user_id)
+            .order_by(Order.created_at_ms.desc())
+            .limit(200)
+        )
+    ).all()
+    return [
+        {**_order_out(o), "email": email, "admin_note": o.admin_note}
+        for o, email in rows
+    ]
+
+
+class OrderPatch(BaseModel):
+    status: str | None = None
+    admin_note: str | None = None
+
+
+@admin_router.patch("/admin/orders/{order_id}")
+async def admin_update_order(
+    order_id: int,
+    body: OrderPatch,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Move an order through the fulfilment states / leave an internal note."""
+    order = await db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    if body.status is not None:
+        if body.status not in ORDER_STATUSES:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"status must be one of {list(ORDER_STATUSES)}",
+            )
+        order.status = body.status
+    if body.admin_note is not None:
+        order.admin_note = body.admin_note.strip()[:2000] or None
+    order.updated_at_ms = _now_ms()
+    await db.commit()
+    return {**_order_out(order), "admin_note": order.admin_note}
 
 
 @router.post("/portal")
@@ -203,12 +339,49 @@ async def _apply_event(db: AsyncSession, event: Any) -> None:
     await db.commit()
 
 
+async def _record_order(db: AsyncSession, user: User, obj: Any) -> None:
+    """Insert (once) the one-time purchase this Checkout Session paid for.
+
+    Idempotent on the session id: Stripe retries a webhook until it gets a 2xx,
+    so the same ``checkout.session.completed`` can arrive several times.
+    """
+    session_id = str(obj.get("id") or "")
+    if not session_id:
+        logger.warning("ORDER_NO_SESSION_ID", user_id=user.id)
+        return
+    existing = (
+        await db.execute(
+            select(Order).where(Order.stripe_session_id == session_id)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return
+    now = _now_ms()
+    db.add(Order(
+        user_id=user.id,
+        stripe_session_id=session_id,
+        plan=str((obj.get("metadata") or {}).get("plan") or "expert")[:32],
+        amount_total=obj.get("amount_total"),
+        currency=(obj.get("currency") or None),
+        status=ORDER_PAID,
+        created_at_ms=now,
+        updated_at_ms=now,
+    ))
+    logger.info(
+        "ORDER_RECORDED", user_id=user.id, session=session_id,
+        amount=obj.get("amount_total"), currency=obj.get("currency"),
+    )
+
+
 async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
     user = await _user_by_id(db, obj.get("client_reference_id"))
     if user is None:
         user = await _user_by_customer(db, obj.get("customer"))
     if user is None:
-        logger.warning("WEBHOOK_NO_USER", event="checkout.completed")
+        # NB: not ``event=`` -- structlog reserves that kwarg for the message
+        # itself, so passing it raises TypeError and turns an unmatched webhook
+        # into a 500 that Stripe then retries forever.
+        logger.warning("WEBHOOK_NO_USER", stripe_event="checkout.session.completed")
         return
     # Keep the customer id linked (in case it was created Stripe-side).
     if obj.get("customer") and not user.stripe_customer_id:
@@ -222,8 +395,10 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
             user.subscription_status = "active"
             logger.info("SUB_ACTIVATED", user_id=user.id, tier=tier)
     else:
-        # One-time Expert Review: no tier change; fulfilled manually.
-        logger.info("EXPERT_REVIEW_PURCHASED", user_id=user.id)
+        # One-time Expert Review: grants no tier, so nothing about the account
+        # would otherwise change. Record the order -- it is the only trace the
+        # customer (and the fulfilment queue) has that they paid.
+        await _record_order(db, user, obj)
 
 
 def _price_from_subscription(obj: Any) -> str | None:

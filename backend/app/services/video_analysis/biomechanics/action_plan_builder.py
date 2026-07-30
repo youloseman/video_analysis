@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.video_analysis.biomechanics.cycling_positions import (
+    AERO_POSITIONS,
+    AERO_TRUNK_EXTREME_DEG,
     CYCLING_POSITIONS,
     get_cycling_reference,
     get_medical_warnings,
@@ -645,8 +647,32 @@ def build_action_plan(
                 priority=3,
             ))
             active_priorities.append("bar position")
+        elif trunk_class == "out_low" and position in AERO_POSITIONS:
+            # ASYMMETRIC (aero): flatter than the comfort band is the point of
+            # the position, not a fit error -- telling an aero rider to raise
+            # the bars because the back is low is backwards. Report it as a
+            # strength; below _AERO_TRUNK_EXTREME_DEG add the one caveat that
+            # is actually open (can they hold it for the full event?).
+            _add_good_metric(
+                good_metrics, "trunk_angle", trunk_avg,
+                (trunk_min, trunk_max), "Trunk angle (aero)",
+                note=(
+                    f"Trunk angle is {trunk_avg:.0f} deg, flatter than the "
+                    f"{trunk_min:.0f}-{trunk_max:.0f} deg comfort band. In an "
+                    f"aero position that is the goal, not a fault."
+                ),
+            )
+            if trunk_avg < AERO_TRUNK_EXTREME_DEG and not any(
+                w.get("type") == "extreme_trunk" for w in medical_warnings
+            ):
+                # get_medical_warnings() raises this too, but only runs above
+                # when a hip angle was measured -- the trunk caveat must not
+                # depend on that.
+                medical_warnings.extend(get_medical_warnings(position, {
+                    "trunk_angle_avg": trunk_avg,
+                }))
         elif trunk_class == "out_low":
-            # Too aggressive
+            # Non-aero position: a low trunk really is over-aggressive here.
             diagnostics.append(Diagnostic(
                 component="bar_position",
                 status="needs_adjustment",

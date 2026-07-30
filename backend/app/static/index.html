@@ -30,7 +30,9 @@
 :root{
   --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
   --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
-  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#8A94A3;
+  /* ink-faint is the quietest TEXT tier (tier sublines, chart meta, timestamps),
+     so it has to clear AA on white: #8A94A3 was 3.07:1, #6E7787 is 4.51:1. */
+  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#6E7787;
   --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
   --c-blue-soft:#B9CDF2;               /* soft blue: dashed drop-zone border */
   --c-swim:#35A6D9; --c-bike:#F2A33C; --c-run:#EF5B5B;
@@ -130,8 +132,10 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .tier li b{font-weight:700}
 .tier .tier-cta{margin-top:auto}
 .tier .btn{width:100%;justify-content:center}
-.tier .btn-outline{background:transparent;color:var(--c-blue);border:1.5px solid var(--c-blue);font-size:15px;padding:11px 24px}
-.tier .btn-outline:hover{background:var(--c-panel-blue)}
+/* Secondary CTA. NOT scoped to .tier — the Expert Review add-on strip uses it
+   too, and scoped it rendered there as unpadded, borderless text. */
+.btn-outline{background:transparent;color:var(--c-blue);border:1.5px solid var(--c-blue);font-size:15px;padding:11px 24px}
+.btn-outline:hover{background:var(--c-panel-blue)}
 .tier .current-badge{display:flex;justify-content:center;align-items:center;gap:7px;font-family:var(--f-mono);
   font-size:12px;font-weight:600;color:var(--st-good);background:var(--st-good-bg,#e6f4ec);
   padding:11px;border-radius:var(--radius-btn)}
@@ -200,7 +204,9 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .hdel:hover .hdel-glyph{background:var(--st-bad-fill)}
 .hdel:focus-visible{outline:2px solid #fff;outline-offset:-2px;border-radius:8px}
 /* progress / trends */
-.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+/* min(…,100%) so the track can shrink below its preferred width on a 320px
+   phone instead of forcing the page to scroll sideways. */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:16px}
 .tcard{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:16px 18px 12px;box-shadow:var(--shadow)}
 .tcard-score{background:var(--c-panel)}
 .tc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -613,6 +619,13 @@ h2.sec + .speedline{margin-bottom:24px}
 .btn-block{width:100%;justify-content:center}
 .hint{font-size:13px;color:var(--c-ink-soft);text-align:center;margin-top:12px}
 .hint.err{color:var(--c-coral-btn);font-weight:700}
+/* Advisory, not a rejection — the file is still usable (e.g. a long clip).
+   Uses the AA-safe warn TEXT tone, not the vivid fill: this is small copy. */
+.hint.warn{color:var(--c-warn-text);font-weight:600}
+/* Irreversible actions, visually separated and last on the page. */
+.danger-zone{margin-top:28px;border-color:color-mix(in srgb,var(--c-coral-btn) 35%,transparent)}
+.btn.danger{color:var(--c-coral-btn);border-color:currentColor}
+.btn.danger:hover{background:color-mix(in srgb,var(--c-coral-btn) 10%,transparent)}
 .quota-line{font-size:12px;color:var(--c-ink-soft);text-align:center;margin-top:20px;padding-top:20px;border-top:1px solid var(--c-line)}
 .quota-line b{color:var(--c-navy);font-family:var(--f-mono);font-weight:600}
 
@@ -879,7 +892,7 @@ h2.sec + .speedline{margin-bottom:24px}
 
 /* ---------- Advanced biomechanics charts ---------- */
 .biomech-intro{font-size:13px;color:var(--c-ink-soft);margin:-4px 0 18px;line-height:1.6}
-.bmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.bmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:18px}
 .bmcard{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px 16px 12px;box-shadow:var(--shadow)}
 .bmcard .bm-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
 .bmcard .bm-title{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-navy)}
@@ -1270,6 +1283,18 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <div id="dashPlan"></div>
     <div class="blockhead"><div class="eyebrow">Latest</div><h3>Recent analyses</h3><div class="speedline-sm"></div></div>
     <div id="dashRecent" class="dash-recent"></div>
+
+    <!-- The privacy policy promises deletion on request; this is that request,
+         self-serve. Kept at the very bottom, behind a typed confirmation. -->
+    <div class="card danger-zone">
+      <h3 style="margin:0 0 4px">Delete account</h3>
+      <p class="hint" style="text-align:left;margin:0 0 12px">
+        Removes your account, saved analyses, usage history, feedback and order
+        history. This cannot be undone. If you have an active subscription,
+        cancel it in <b>Manage subscription</b> first.
+      </p>
+      <button class="btn btn-outline btn-sm danger" type="button" id="delAccountBtn">Delete my account</button>
+    </div>
   </section>
 
   <!-- ============ UPLOADER ============ -->
@@ -1767,8 +1792,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <h2 id="pricingTitle" tabindex="-1">Train on real numbers, not guesswork</h2>
       <p>Start free. Upgrade when you want the measurements, coaching and video that tell you exactly what to change.</p>
       <div class="billtoggle" role="group" aria-label="Billing period">
-        <button type="button" id="billMonthly" aria-pressed="true">Monthly</button>
-        <button type="button" id="billYearly" aria-pressed="false">Yearly<span class="save">save ~45%</span></button>
+        <button type="button" id="billMonthly" aria-pressed="false">Monthly</button>
+        <button type="button" id="billYearly" aria-pressed="true">Yearly<span class="save">save ~45%</span></button>
       </div>
     </div>
 
@@ -1793,8 +1818,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <span class="poptag">Most popular</span>
         <p class="tier-name">Enthusiast</p>
         <p class="tier-tagline">The full analysis for one discipline.</p>
-        <div class="tier-price"><span class="amt" id="entAmt">$9</span><span class="per" id="entPer">/ month</span></div>
-        <p class="tier-sub" id="entSub">billed monthly</p>
+        <!-- Yearly is the default tab (see setBillPeriod) — the static copy has
+             to match it, or the pressed toggle disagrees with the price. -->
+        <div class="tier-price"><span class="amt" id="entAmt">$59</span><span class="per" id="entPer">/ year</span></div>
+        <p class="tier-sub" id="entSub">billed annually · save ~45%</p>
         <ul>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>30</b> analyses / month</span></li>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Full AI coaching + action plan</span></li>
@@ -1809,8 +1836,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div class="tier" id="tierFull">
         <p class="tier-name">Full</p>
         <p class="tier-tagline">Multi-sport, progress analytics &amp; a human review.</p>
-        <div class="tier-price"><span class="amt">$80</span><span class="per">/ year</span></div>
-        <p class="tier-sub">billed annually</p>
+        <div class="tier-price"><span class="amt" id="fullAmt">$80</span><span class="per" id="fullPer">/ year</span></div>
+        <p class="tier-sub" id="fullSub">billed annually</p>
         <ul>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Everything in Enthusiast, <b>120</b>/mo</span></li>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Multi-sport &amp; multi-bike profiles</span></li>
@@ -1832,6 +1859,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div class="ao-price">$29 <small>once</small></div>
       <button class="btn btn-outline" type="button" id="ctaExpert">Add Expert Review</button>
     </div>
+
+    <!-- One-time purchases. An Expert Review grants no plan, so without this the
+         only proof of a $29 payment would be the customer's card statement. -->
+    <div class="addon-strip hidden" id="ordersBox" aria-live="polite"></div>
 
     <p class="pricing-foot">
       <svg aria-hidden="true"><use href="#i-check"/></svg>
@@ -2011,7 +2042,13 @@ $('#change').addEventListener('click',()=>fileInput.click());
 
 const MAX_MB=200;
 function fmtSize(b){ return b>=1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
-function hintMsg(msg,isErr=false){ const h=$('#hint'); h.textContent=msg; h.classList.toggle('err',isErr); }
+// `kind`: true/'err' = rejection (red), 'warn' = advisory (amber), else neutral.
+// Stays on textContent -- messages interpolate user-supplied file names.
+function hintMsg(msg,kind=false){
+  const h=$('#hint'); h.textContent=msg;
+  h.classList.toggle('err',kind===true||kind==='err');
+  h.classList.toggle('warn',kind==='warn');
+}
 
 function rejectFile(msg){
   // If a valid clip is already loaded, keep it and say so instead of flagging
@@ -2053,12 +2090,34 @@ function setFile(f){
   drop.classList.add('hidden'); fprev.classList.add('show');
   fileInput.setAttribute('tabindex','-1'); // drop label is hidden; Change clip re-opens the picker
   $('#analyze').setAttribute('aria-disabled','false');
+  state.longClip=false;
+  if(!photo) checkDuration(vid);
   readyHint();
+}
+/* A long clip is not rejected — it is analyzed end to end, but at a coarser
+   frame stride, which costs cadence / ground contact / flight time their
+   resolution. Warn while the file can still be swapped, rather than after
+   they've spent an analysis on it. The server says the same thing again on
+   the result, measured rather than estimated. */
+const LONG_CLIP_S=25;
+function checkDuration(vid){
+  const onMeta=()=>{
+    vid.removeEventListener('loadedmetadata',onMeta);
+    const d=vid.duration;
+    if(!isFinite(d)||d<=0) return;          // some containers report nothing
+    state.longClip = d>LONG_CLIP_S;
+    if(state.longClip) hintMsg(`This clip is ${Math.round(d)} s — we’ll analyze all of it, but timing metrics (cadence, ground contact) get coarser on long clips. 5–10 s is the sweet spot.`,'warn');
+    else readyHint();
+  };
+  vid.addEventListener('loadedmetadata',onMeta);
 }
 function readyHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
   if(!state.file){ hintMsg(`Upload a ${noun} to continue`); return; }
   const sportTxt = state.sport==='bike' ? `Cycling — ${POSITION_NAMES[state.position]}` : 'Running';
+  // Keep the long-clip advisory visible — changing sport should not silently
+  // clear a caveat that still applies to the loaded file.
+  if(state.longClip){ hintMsg(`Ready · ${sportTxt} · long clip — timing metrics will be coarser`,'warn'); return; }
   hintMsg(`Ready · ${sportTxt}`);
 }
 
@@ -2193,12 +2252,32 @@ function analyze(){
     if(limit!=null && rem!=null) quotaSave(+limit,+rem);
     let j={}; try{ j=JSON.parse(xhr.responseText); }catch(e){}
     if(xhr.status===429){ showLimit(j.detail, xhr.getResponseHeader('Retry-After')); return; }
+    // 503 = the server is at capacity, not a problem with the clip. Keep the
+    // file so "Try again" is one tap, and don't blame their footage.
+    if(xhr.status===503){ fail(j.detail || 'We’re at capacity right now — please try again in a few minutes.',{keepFile:true}); return; }
     if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').')); return; }
     state.jobId=j.job_id;
+    jobTokenSave(j.job_id, j.job_token);
     history.replaceState(null,'','#job='+state.jobId);
     startPolling();
   };
   xhr.send(fd);
+}
+
+/* Job capability token. The job id lives in the URL fragment, so it is not a
+   secret — the token is what proves this browser uploaded the clip. sessionStorage
+   (not the URL) so a refresh still resumes polling but a pasted link does not
+   hand someone else your footage. Signed-in callers are also recognised by their
+   account, so a lost token is not a lost result for them. */
+const jobTokenKey=id=>'flapp_jobtok_'+id;
+function jobTokenSave(id,tok){ try{ if(id&&tok) sessionStorage.setItem(jobTokenKey(id),tok); }catch(e){} }
+function jobToken(id){ try{ return sessionStorage.getItem(jobTokenKey(id))||''; }catch(e){ return ''; } }
+function jobTokenClear(id){ try{ sessionStorage.removeItem(jobTokenKey(id)); }catch(e){} }
+// Append ?t=… to a job URL when we hold a token for it.
+function withJobToken(url,id){
+  const t=jobToken(id);
+  if(!t) return url;
+  return url+(url.includes('?')?'&':'?')+'t='+encodeURIComponent(t);
 }
 
 const ANALYZE_STAGE='Detecting pose &amp; computing biomechanics… usually takes <b>30–60 s</b>';
@@ -2219,8 +2298,10 @@ async function pollOnce(){
     return fail('The analysis is taking longer than expected. Please try again — shorter clips process faster.',{keepFile:true});
   }
   try{
-    const r=await fetch('/jobs/'+state.jobId);
+    const r=await fetch(withJobToken('/jobs/'+state.jobId, state.jobId),{headers:authHeaders()});
     if(r.status===404 || r.status===410){
+      // Also what an unauthorized read looks like — the server answers 404 on
+      // purpose rather than confirming that someone else's job id exists.
       return fail('We lost track of this analysis (the server may have restarted). Please try again.',{keepFile:true});
     }
     if(!r.ok) throw new Error('http '+r.status);
@@ -2228,7 +2309,16 @@ async function pollOnce(){
     const j=await r.json();
     if(j.status==='completed'){ clearInterval(state.polling); setSteps(3); render(j); }
     else if(j.status==='failed'){ clearInterval(state.polling); fail(j.error||'The analysis failed on this clip.',{tips:true,counted:true}); }
-    else if(j.status==='queued'){ stage('Queued — waiting for a free analysis slot…'); }
+    else if(j.status==='queued'){
+      // Time spent in the queue is not time spent analyzing — keep pushing the
+      // timeout forward so a busy server shows a growing queue instead of
+      // failing a clip that has not started yet.
+      state.pollStart=Date.now();
+      const ahead=j.queue_ahead|0;
+      stage(ahead>0
+        ? `Queued — ${ahead} clip${ahead>1?'s':''} ahead of yours…`
+        : 'Queued — yours is next…');
+    }
     else if(j.status==='processing'){ stage(ANALYZE_STAGE); }
   }catch(err){
     if(++state.pollMisses>=8) fail('Lost connection to the server while analyzing. Check your network and try again.',{keepFile:true});
@@ -2516,13 +2606,13 @@ function aeroGauge(cur,tgt){
   const X=a=>pad+(clamp(a)-lo)/(hi-lo)*(W-2*pad);
   const xc=X(cur),xt=X(tgt);
   return `<svg viewBox="0 0 ${W} ${H}" class="aero-gauge" role="img" aria-label="Torso angle now ${cur} degrees, target ${tgt} degrees">
-    <defs><linearGradient id="aerograd" x1="0" x2="1"><stop offset="0" stop-color="#22C55E"/><stop offset="1" stop-color="#F59E0B"/></linearGradient></defs>
+    <defs><linearGradient id="aerograd" x1="0" x2="1"><stop offset="0" stop-color="var(--st-good-fill)"/><stop offset="1" stop-color="var(--st-warn-fill)"/></linearGradient></defs>
     <rect x="${pad}" y="${y-4}" width="${W-2*pad}" height="8" rx="4" fill="url(#aerograd)" opacity=".3"/>
     <rect x="${Math.min(xc,xt).toFixed(1)}" y="${y-4}" width="${Math.abs(xc-xt).toFixed(1)}" height="8" rx="4" fill="var(--c-blue)" opacity=".25"/>
     <text x="${pad}" y="${H-5}" font-size="10" fill="var(--c-ink-soft)">flatter · faster</text>
     <text x="${W-pad}" y="${H-5}" text-anchor="end" font-size="10" fill="var(--c-ink-soft)">upright</text>
-    <line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${y-11}" y2="${y+11}" stroke="#2E9E5B" stroke-width="2.5"/>
-    <text x="${xt.toFixed(1)}" y="${y-15}" text-anchor="middle" font-size="11" font-weight="800" fill="#2E9E5B">target ${tgt}°</text>
+    <line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${y-11}" y2="${y+11}" stroke="var(--st-good-fill)" stroke-width="2.5"/>
+    <text x="${xt.toFixed(1)}" y="${y-15}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--st-good)">target ${tgt}°</text>
     <circle cx="${xc.toFixed(1)}" cy="${y}" r="7" fill="var(--c-blue)" stroke="#fff" stroke-width="2.5"/>
     <text x="${xc.toFixed(1)}" y="${y+24}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--c-blue)">now ${cur}°</text>
   </svg>`;
@@ -2638,7 +2728,10 @@ async function analyzePhoto(){
 
 const P_STATUS_CLS={optimal:'good','in_range':'good',good:'good',
   too_low:'medium',too_high:'medium',low:'medium',high:'medium',slightly_low:'medium',slightly_high:'medium',
-  out_of_range:'high',poor:'high',phase_dependent:'info'};
+  out_of_range:'high',poor:'high',phase_dependent:'info',
+  aero_optimized:'good',aero_extreme:'info'};
+/* Statuses whose raw key doesn't read as plain English in a pill. */
+const P_STATUS_WORD={aero_optimized:'aero gain',aero_extreme:'very aggressive'};
 /* Mirror backend _classify_angle_status so hip re-scoring on a phase change is
    instant + client-side (the measured angle never changes -- only the band). */
 function classifyAngle(v,lo,hi){
@@ -2664,10 +2757,11 @@ function angleRow(k,a){
       <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · pedal position</span></td></tr>`;
   }
   const cls=P_STATUS_CLS[stt]||'low';
+  const word=P_STATUS_WORD[stt]||stt.replace(/_/g,' ');
   const opt=(a.optimal_min!=null&&a.optimal_max!=null)?`${a.optimal_min}–${a.optimal_max}`:'—';
   return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
     <td class="num">${val}</td><td class="num">${opt}</td>
-    <td><span class="pill pill-${cls}"><span class="dot" aria-hidden="true"></span>${esc(stt.replace(/_/g,' '))}</span></td></tr>`;
+    <td><span class="pill pill-${cls}" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>${esc(word)}</span></td></tr>`;
 }
 function renderPhotoAngles(){
   const res=state.photoRes; if(!res) return;
@@ -2733,8 +2827,11 @@ function renderPhoto(res){
   } else cb.classList.add('hidden');
 
   // Interactive hip verdict: default to the detected pedal phase.
+  // state.photoRes must be set BEFORE renderPhotoAngles() -- it reads the result
+  // from state, and bailed out on an empty table when it was assigned later.
   const _hip=(res.angles_with_context||{}).hip;
   state.pedalPhase=(_hip&&_hip.phase)||'uncertain';
+  state.photoRes=res;
   renderPhotoAngles();
 
   if(DEBUG){ $('#pRawBlock').classList.remove('hidden');
@@ -2742,7 +2839,7 @@ function renderPhoto(res){
 
   renderQuota();
   mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));
-  state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
+  $('#pShareBtn').classList.remove('hidden');
   setState('photoresults',{focus:'#pResultsTitle'});
 }
 
@@ -2795,17 +2892,27 @@ function renderUpsell(containerId, locked, blockIds){
    exists the button degrades to a friendly "coming soon" toast, so the page
    is never a dead end.
    ============================================================ */
-let billPeriod='monthly';   // 'monthly' | 'yearly'
+/* Yearly is the default view, and that is a pricing-legibility decision, not a
+   nudge: Full is annual-only at $80/yr, so on the monthly tab the three tiers
+   read $0 / $9-per-MONTH / $80-per-YEAR — three different units, and anyone who
+   does the arithmetic finds the "premium" tier ($80/yr) undercutting the one
+   badged Most popular ($108/yr). On the yearly tab all three share one unit and
+   ascend: $0 / $59 / $80. The monthly tab still exists for whoever wants
+   month-to-month; it just isn't what a first-time visitor is dropped into. */
+let billPeriod='yearly';   // 'monthly' | 'yearly'
 function setBillPeriod(p){
   billPeriod=p;
   const m=$('#billMonthly'), y=$('#billYearly');
   if(m) m.setAttribute('aria-pressed', String(p==='monthly'));
   if(y) y.setAttribute('aria-pressed', String(p==='yearly'));
-  // Only Enthusiast has both cycles; Full is annual-only.
+  // Only Enthusiast has both cycles; Full is annual-only, so on the monthly tab
+  // it says so out loud rather than silently switching units on the reader.
   if(p==='yearly'){
     $('#entAmt').textContent='$59'; $('#entPer').textContent='/ year'; $('#entSub').textContent='billed annually · save ~45%';
+    $('#fullAmt').textContent='$80'; $('#fullPer').textContent='/ year'; $('#fullSub').textContent='billed annually';
   } else {
     $('#entAmt').textContent='$9'; $('#entPer').textContent='/ month'; $('#entSub').textContent='billed monthly';
+    $('#fullAmt').textContent='$80'; $('#fullPer').textContent='/ year'; $('#fullSub').textContent='annual only · no monthly option';
   }
 }
 const CURRENT_BADGE='<div class="current-badge"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Your current plan</div>';
@@ -2814,6 +2921,7 @@ function renderPricing(){
   const cur=auth?auth.tier:null;
   const cs=$('#ctaStarter'), ce=$('#ctaEnthusiast'), cf=$('#ctaFull');
   if(!cs) return;
+  setBillPeriod(billPeriod);   // keep prices + pressed toggle in sync on every open
   // Starter
   if(!auth) cs.innerHTML=`<button class="btn btn-outline" type="button" onclick="openAuth&&openAuth('register')">Get started free</button>`;
   else if(cur==='starter') cs.innerHTML=CURRENT_BADGE;
@@ -2826,6 +2934,34 @@ function renderPricing(){
     : `<button class="btn btn-outline" type="button" onclick="startCheckout('full')">Choose Full</button>`;
 }
 const TIER_NAMES={enthusiast:'Enthusiast',full:'Full',admin:'Admin',starter:'Starter'};
+/* One-time purchases (Expert Review). A subscription announces itself through
+   the plan badge; a one-time order changes nothing about the account, so it
+   needs its own acknowledgement — otherwise a paying customer sees no trace of
+   the $29 anywhere in the product. */
+function money(cents,cur){
+  if(cents==null) return '';
+  try{ return new Intl.NumberFormat([], {style:'currency',currency:(cur||'usd').toUpperCase()}).format(cents/100); }
+  catch(e){ return '$'+(cents/100).toFixed(2); }
+}
+async function renderOrders(){
+  const box=$('#ordersBox'); if(!box) return;
+  if(!auth){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  let orders=[];
+  try{
+    const r=await fetch('/billing/orders',{headers:authHeaders()});
+    if(!r.ok) throw new Error('http '+r.status);
+    orders=await r.json();
+  }catch(e){ box.classList.add('hidden'); return; }   // never block the page on this
+  if(!orders.length){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  box.innerHTML=orders.map(o=>`
+    <span class="ao-chip">Your order</span>
+    <div>
+      <div class="ao-name">Expert Review</div>
+      <div class="ao-desc">${esc(o.status_label||'')} <span class="hint">· ${esc(shortDate(o.created_at_ms))}</span></div>
+    </div>
+    <div class="ao-price">${esc(money(o.amount_total,o.currency))}</div>`).join('');
+  box.classList.remove('hidden');
+}
 async function refreshAuth(){
   const t=getToken(); if(!t) return;
   try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); } }catch(e){}
@@ -2843,10 +2979,21 @@ async function openPortal(){
 // Handle the return from Stripe Checkout (success_url / cancel_url).
 async function handleCheckoutReturn(){
   const u=new URL(location.href); const c=u.searchParams.get('checkout');
+  const plan=u.searchParams.get('plan');
   if(!c) return;
-  u.searchParams.delete('checkout'); history.replaceState({},'',u.toString());  // don't re-trigger on refresh
+  u.searchParams.delete('checkout'); u.searchParams.delete('plan');
+  history.replaceState({},'',u.toString());  // don't re-trigger on refresh
   if(c==='cancel'){ toast('Checkout canceled — no charge was made.'); return; }
   if(c!=='success') return;
+  // The Expert Review is a one-time purchase: it grants no tier, so polling
+  // /auth/me for an upgrade would spin for 9 s and then quietly give up.
+  // Confirm the order itself instead.
+  if(plan==='expert'){
+    toast('Payment received — your Expert Review is booked. We’ll email you when it’s ready.',{duration:7000});
+    await renderOrders();
+    openPricing();
+    return;
+  }
   toast('Payment received — activating your plan…',{duration:6000});
   // The webhook sets the tier server-side; it can lag a second or two. Poll
   // /auth/me until the tier upgrades, then confirm.
@@ -2860,7 +3007,7 @@ async function handleCheckoutReturn(){
   }
   renderPricing();  // fallback: refresh UI even if still syncing
 }
-function openPricing(){ renderPricing(); setState('pricing',{focus:'#pricingTitle'}); }
+function openPricing(){ renderPricing(); renderOrders(); setState('pricing',{focus:'#pricingTitle'}); }
 // The teaser CTA and any "upgrade" entry point land on the pricing page.
 function openUpgrade(){ openPricing(); }
 
@@ -2876,7 +3023,16 @@ async function startCheckout(plan){
       headers:authHeaders({'Content-Type':'application/json'}),
       body:JSON.stringify({plan:key})});
     const j=await r.json().catch(()=>({}));
-    if(r.ok && j.url){ window.location.href=j.url; return; }   // → Stripe hosted checkout
+    if(r.ok && j.url){
+      // Already on a paid plan: the server hands back the billing portal instead
+      // of a checkout, because a second checkout would mean a second charge.
+      if(j.mode==='portal'){
+        toast('You already have a subscription — opening billing so you can switch plans.',{duration:5000});
+        setTimeout(()=>{ window.location.href=j.url; },1200);
+        return;
+      }
+      window.location.href=j.url; return;   // → Stripe hosted checkout
+    }
     // Endpoint not live yet (Stage 4): 404/405 → friendly "coming soon".
     if(r.status===404 || r.status===405 || r.status===501){
       toast('Secure checkout is being set up — it goes live shortly. Thanks!'); return;
@@ -3001,22 +3157,43 @@ function render(job){
   // Confidence: gated runs get the amber "Reference only" chip + a full-width
   // warning banner (it matters). Clean runs get only a quiet green chip in the
   // scorecard — no banner, so the amber one keeps its signal value.
-  const gated=!!r.quality_gate_triggered;
+  // A free result carries a compact `quality` block instead of the full
+  // sport_specific_metrics blob: the caveat on a score is never paywalled,
+  // because a free report has no angles or coaching to argue with, so an
+  // unreliable measurement would otherwise read as a confident verdict.
+  const q=r.quality||{
+    triggered:!!r.quality_gate_triggered,
+    reasons:(s.quality_gate&&s.quality_gate.reasons)||[],
+    warnings:s.quality_warnings||[],
+    time_base_uncertain:s.time_base_uncertain,
+  };
+  const gated=!!q.triggered;
   $('#gateChip').classList.toggle('hidden',!gated);
   $('#confChip').classList.toggle('hidden',gated);
   const gb=$('#gateBanner');
-  if(gated){
-    const reasons=(s.quality_gate&&s.quality_gate.reasons)||[];
-    gb.innerHTML=`<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
-      <span><b>Partial analysis</b> — capture quality was limited. ${esc(reasons[0]||'Some metrics may be less reliable.')} Treat the score as a reference, not a measurement.</span></div>`;
-  } else {
-    gb.innerHTML='';
-  }
+  gb.innerHTML = gated
+    ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <span><b>Partial analysis</b> — capture quality was limited. ${esc((q.reasons||[])[0]||'Some metrics may be less reliable.')} Treat the score as a reference, not a measurement.</span></div>`
+    : '';
+  // Capture warnings ("too far away", "more than one person in frame"): these
+  // are the ones a reshoot fixes, so they are worth their own banner even when
+  // the gate itself did not trip.
+  (q.warnings||[]).slice(0,2).forEach(w=>{
+    gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <span>${esc(w)}</span></div>`;
+  });
   // Slow-motion / time-base notice: cadence was unmeasurable, so the time-based
   // metrics (ground contact, flight) were withheld rather than shown wrong.
-  if(s.time_base_uncertain){
+  if(q.time_base_uncertain){
     gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
       <span><b>Looks like slow-motion.</b> We couldn’t measure cadence, so ground-contact &amp; flight time are hidden — time-based metrics need a normal-speed clip to be accurate. Your joint angles are unaffected.</span></div>`;
+  }
+  // Sampling notice: a long clip is decimated to stay inside the frame budget,
+  // which costs the time-based metrics their resolution. Say so rather than
+  // quietly reporting a cadence computed from every 4th frame.
+  if(q.sampling_degraded){
+    gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <span><b>Long clip — sampled.</b> ${esc(q.sampling_degraded)} Joint angles are unaffected; a <b>5–10 s</b> clip measures the timing more precisely.</span></div>`;
   }
 
   // meta
@@ -3026,14 +3203,19 @@ function render(job){
   if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position))}</b>`);
   $('#scoreMeta').innerHTML=parts.join('<br>');
 
-  // analysis confidence badge (soft high/medium/low tier; hides nothing)
-  renderConfidence(s.analysis_confidence);
+  // analysis confidence badge (soft high/medium/low tier; hides nothing).
+  // Free results carry the level only — the per-factor breakdown behind it
+  // stays paid, but the tier itself is a trust signal, not a feature.
+  renderConfidence(s.analysis_confidence || (q.confidence?{level:q.confidence}:null));
 
   // overlay video (persistence note lives in the video caption; without the
   // video the report is just as ephemeral — surface the note separately)
   if(job.overlay_url){
-    $('#overlayVideo').src=job.overlay_url;
-    $('#downloadOverlay').href=job.overlay_url;
+    // <video> and the download link can't send an Authorization header, so the
+    // job token travels in the query string for these two.
+    const ov=withJobToken(job.overlay_url, job.job_id);
+    $('#overlayVideo').src=ov;
+    $('#downloadOverlay').href=ov;
     $('#videoCol').classList.remove('hidden');
     $('#resultTop').classList.remove('no-video');
     $('#ephemNote').classList.add('hidden');
@@ -3420,7 +3602,25 @@ function shareVerdict(score){
    header sits on top of it over a gradient, the score ring rides the bottom
    edge of the photo, and the leftover height is spread between the blocks
    below so the card never ends in a dead void. */
+/* Canvas has no webfont gate: ask it for a family that hasn't finished loading
+   and it silently substitutes a system face, so the card came out in Segoe on
+   Windows, SF on iOS and Roboto on Android — the one artefact that leaves the
+   site was the one that never looked like Flapp. Warm every face the card draws
+   with, then wait for the font set to settle. If Google Fonts is blocked or the
+   API is missing we just fall through and the CSS fallbacks apply. */
+const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // headline / numerals
+const CARD_BODY='Manrope,system-ui,sans-serif';          // labels / body copy
+const CARD_FACES=['900 italic 124px Archivo','900 33px Archivo',
+  '800 23px Manrope','700 23px Manrope','600 29px Manrope'];
+async function cardFontsReady(){
+  try{
+    if(!document.fonts) return;
+    await Promise.all(CARD_FACES.map(f=>document.fonts.load(f)));
+    await document.fonts.ready;
+  }catch(e){}
+}
 async function buildShareCard(card){
+  await cardFontsReady();
   const sport=card.sport||'run';
   const score=card.score;
   const W=1080,H=1920,P=60,CORAL='#ff5233';
@@ -3477,11 +3677,11 @@ async function buildShareCard(card){
   }
 
   // ---- header, overlaid on the photo ----
-  x.fillStyle='#fff'; x.font='900 italic 60px system-ui,"Segoe UI",Roboto,sans-serif';
+  x.fillStyle='#fff'; x.font=`900 italic 60px ${CARD_DISPLAY}`;
   x.fillText('FLAPP',P,P+52);
   const wm=x.measureText('FLAPP').width;
   x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+21,P+24,11,0,7); x.fill();
-  x.fillStyle='#C2CFE0'; x.font='700 23px system-ui,sans-serif';
+  x.fillStyle='#C2CFE0'; x.font=`700 23px ${CARD_BODY}`;
   x.fillText('VIDEO BIOMECHANICS · '+(sport==='bike'?'BIKE':'RUN'),P,P+88);
 
   // ---- score ring riding the bottom edge of the photo ----
@@ -3497,9 +3697,9 @@ async function buildShareCard(card){
   }
   x.lineCap='butt';
   x.textAlign='center';
-  x.fillStyle='#8EA3BD'; x.font='800 23px system-ui,sans-serif';
+  x.fillStyle='#8EA3BD'; x.font=`800 23px ${CARD_BODY}`;
   x.fillText('TECHNIQUE',cx,cy-46);
-  x.fillStyle='#fff'; x.font='900 italic 124px system-ui,sans-serif';
+  x.fillStyle='#fff'; x.font=`900 italic 124px ${CARD_DISPLAY}`;
   x.fillText(score==null?'—':String(score),cx,cy+52);
 
   // ---- panel below the ring ----
@@ -3507,14 +3707,14 @@ async function buildShareCard(card){
   // metric tiles here -- that duplication is what kept the frame small. The
   // verdict + one-line takeaway read as one block, centred between the ring and
   // the CTA (which is pinned to the base), so nothing trails off into a void.
-  const NOTE_FONT='600 29px system-ui,sans-serif', NOTE_LH=40, NOTE_GAP=22;
+  const NOTE_FONT=`600 29px ${CARD_BODY}`, NOTE_LH=40, NOTE_GAP=22;
   const noteLines=wrapText(x,card.note||'',NOTE_FONT,W-2*P-40,2);
   const ctaH=88, hostH=46, verdictH=48;
   const ctaY=H-P-hostH-ctaH;
   const blockH=verdictH+(noteLines.length?NOTE_GAP+noteLines.length*NOTE_LH:0);
   let py=(cy+R)+Math.max(40,((ctaY-(cy+R))-blockH)/2)+verdictH;
 
-  x.fillStyle='#fff'; x.font='900 italic 46px system-ui,sans-serif';
+  x.fillStyle='#fff'; x.font=`900 italic 46px ${CARD_DISPLAY}`;
   x.fillText(`${shareVerdict(score)} ${sport==='bike'?'CYCLING':'RUNNING'} TECHNIQUE`,cx,py);
   if(noteLines.length){
     py+=NOTE_GAP;
@@ -3525,12 +3725,18 @@ async function buildShareCard(card){
 
   // ---- CTA + host ----
   x.fillStyle=CORAL; rrect(x,P,ctaY,W-2*P,ctaH,ctaH/2); x.fill();
-  x.fillStyle='#fff'; x.font='900 33px system-ui,sans-serif'; x.textAlign='center';
+  // Manrope stops at 800, so the CTA borrows the display face upright.
+  x.fillStyle='#fff'; x.font=`900 33px ${CARD_DISPLAY}`; x.textAlign='center';
   x.fillText('ANALYZE YOUR TECHNIQUE — FREE',cx,ctaY+56);
-  x.fillStyle='#8FA6C6'; x.font='700 27px system-ui,sans-serif';
+  x.fillStyle='#8FA6C6'; x.font=`700 27px ${CARD_BODY}`;
   x.fillText(location.host,cx,ctaY+ctaH+42); x.textAlign='left';
 
-  return await new Promise(res=>cv.toBlob(b=>res(b),'image/png',0.92));
+  // JPEG, not PNG: the card is a photograph under type, so PNG's lossless
+  // encoding bought nothing and cost 2-4 MB per share (and the quality argument
+  // passed to toBlob was silently ignored for PNG anyway). At q=0.9 this lands
+  // around 300 KB with no visible difference. The gradient fills the canvas
+  // first, so there's no alpha to lose.
+  return await new Promise(res=>cv.toBlob(b=>res(b),'image/jpeg',0.9));
 }
 /* toast(msg) — plain message; toast(msg,{action,onAction,duration}) adds an
    inline action button (e.g. Undo). */
@@ -3555,7 +3761,7 @@ async function doShare(card, btn, txtEl){
   try{
     const blob=await buildShareCard(card);
     const sport=card.sport||'run', score=card.score;
-    const file=new File([blob],`flapp-${sport}-${score==null?'result':score}.png`,{type:'image/png'});
+    const file=new File([blob],`flapp-${sport}-${score==null?'result':score}.jpg`,{type:'image/jpeg'});
     const text=`My ${sport==='bike'?'cycling':'running'} technique scored ${score==null?'—':score}/100 on Flapp — analyze yours free: ${location.origin}`;
     openCardModal(blob, file, text);
   }catch(err){
@@ -3596,7 +3802,9 @@ async function shareHistory(){
 }
 
 function reset(keepFile=false){
-  clearInterval(state.polling); state.jobId=null; state.keepFileOnRetry=false;
+  clearInterval(state.polling);
+  jobTokenClear(state.jobId);          // done with this job; don't hoard its token
+  state.jobId=null; state.keepFileOnRetry=false;
   state.lastResult=null; state.photoRes=null;
   $('#shareBtn').classList.add('hidden'); $('#pShareBtn').classList.add('hidden');
   if(keepFile && state.file){
@@ -3813,6 +4021,44 @@ function confirmDialog(opts){
   x.addEventListener('click',close); modal.addEventListener('click',onBackdrop);
   document.addEventListener('keydown',onKey);
 }
+/* Account deletion. The privacy policy promises it; this is the self-serve
+   route. Guarded by the password rather than a bare "are you sure": the session
+   token is 30 days old by the time most people click this. */
+function deleteAccount(){
+  if(!auth) return;
+  confirmDialog({
+    title:'Delete your account?',
+    body:`<p style="margin:0 0 10px">This permanently removes <b>${esc(auth.email)}</b>, every saved analysis,
+      your usage history, any feedback you sent and your order history. It cannot be undone.</p>
+      <p class="hint" style="text-align:left;margin:0 0 10px">An active subscription is not cancelled by this —
+      cancel it in <b>Manage subscription</b> first, or you'll keep being billed.</p>
+      <label class="fld"><span>Confirm your password</span>
+        <input type="password" id="delPass" autocomplete="current-password"></label>`,
+    okLabel:'Delete permanently',
+    onOk:()=>{
+      const el=$('#delPass'); const pw=el?el.value:'';
+      if(!pw){ toast('Enter your password to confirm.'); return; }
+      doDeleteAccount(pw);
+    },
+  });
+}
+async function doDeleteAccount(password){
+  try{
+    const r=await fetch('/auth/account',{method:'DELETE',
+      headers:authHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({password})});
+    if(r.status===401){ toast('Wrong password — your account was not deleted.'); return; }
+    if(!r.ok){ toast('Could not delete the account — please try again.'); return; }
+    // Everything server-side is gone; drop the local copies too so nothing
+    // lingers on this device.
+    try{ localStorage.removeItem(TKEY); localStorage.removeItem(HKEY); }catch(e){}
+    auth=null; state.cloudHist=null;
+    renderAuth(); reRenderData();
+    toast('Your account and all its data have been deleted.',{duration:6000});
+    setState('upload',{focus:'#uploaderTitle'});
+  }catch(e){ toast('Could not reach the server — your account was not deleted.'); }
+}
+
 /* Wipe the whole history (someone else's runs polluting your stats). An explicit
    confirm guards the full reset; after confirming, doClearAll still clears
    optimistically with an Undo window (same shape as historyDelete) as a safety
@@ -3859,7 +4105,7 @@ function metricsFromPhoto(res){
     o.push({label:a.label||pretty(k),
       value:(typeof a.value==='number'?Math.round(a.value*10)/10:a.value),
       sub:(a.optimal_min!=null?`opt ${a.optimal_min}–${a.optimal_max}`:''),
-      statusWord:stt.replace(/_/g,' '), statusCls:P_STATUS_CLS[stt]||'low'}); }
+      statusWord:P_STATUS_WORD[stt]||stt.replace(/_/g,' '), statusCls:P_STATUS_CLS[stt]||'low'}); }
   return o;
 }
 /* ============================================================
@@ -4212,6 +4458,7 @@ $('#hBack').addEventListener('click',openHistoryView);
 $('#billMonthly').addEventListener('click',()=>setBillPeriod('monthly'));
 $('#billYearly').addEventListener('click',()=>setBillPeriod('yearly'));
 $('#ctaExpert').addEventListener('click',()=>startCheckout('expert'));
+$('#delAccountBtn').addEventListener('click',deleteAccount);
 $('#wordmark').addEventListener('click',()=>reset());
 $('#wordmark').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); reset(); } });
 // Mobile brand mirrors the desktop wordmark (both reset to Analyze)
@@ -4318,10 +4565,15 @@ function extractTrends(kind,res,sport){
    Data source: result.sport_specific_metrics.biomechanics
    ============================================================ */
 const BM_ATHLETE='#2F6DE0';   /* athlete line (blue) */
-const BM_REF='#8A94A3';       /* reference (grey) */
+const BM_REF='#6E7787';       /* reference (grey — matches --c-ink-faint) */
 const BM_MEAN='#12B3A6';      /* coordination mean cycle (teal-cyan) */
 const BM_DEV='rgba(241,85,63,.15)'; /* deviation zone */
-const BM_GREEN='#2E9E5B';
+/* Per-card series hues for the phase portraits. Deliberately drawn from OUTSIDE
+   the status vocabulary: green, amber and red mean good/warn/bad everywhere in
+   this app, so a chart that used amber for "the third joint" made a neutral
+   series read as a warning. Each card carries exactly one hue and its own
+   bm-badge, which is where the good/warn/bad signal actually lives. */
+const BM_SERIES=[BM_ATHLETE,'#7C4DD1','#B0417A','#5A6B8C'];
 /* score -> badge class (emerald/amber/rose at 70/40) */
 function bmBadge(score){ return score>=70?'good':score>=40?'warn':'bad'; }
 /* strip left_/right_ prefix and Title-Case a joint key */
@@ -4447,7 +4699,7 @@ function renderBiomechanics(bio){
     let ci=0;
     for(const e of entries){
       e.jr._joint=e.k;
-      const color=[BM_ATHLETE,'#7C4DD1','#E08A1E','#1F9E7A'][ci++%4];
+      const color=BM_SERIES[ci++%BM_SERIES.length];
       const chart=phasePortraitChart(e.jr,color); if(!chart) continue;
       const b=bmBadge(e.jr.stability_score);
       cards.push(`<div class="bmcard">
@@ -4501,8 +4753,13 @@ function trendChart(vals,dates,opt,unit){
       +`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(46,158,91,.45)" stroke-width="1" stroke-dasharray="3 3"/>`; }
   const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
   s+=`<polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  // The latest point is emphasised by SHAPE (solid, larger, haloed), never by
+  // colour: coral is --st-bad-fill everywhere else, so a coral dot sitting
+  // inside the green optimal band read as a problem when it was the good news.
   vals.forEach((v,i)=>{ const last=i===n-1;
-    s+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${last?4:3}" fill="${last?'var(--c-coral)':'#fff'}" stroke="var(--c-blue)" stroke-width="2"><title>${esc(dates[i])}: ${Math.round(v*10)/10}${unit||''}</title></circle>`; });
+    const cx=X(i).toFixed(1), cy=Y(v).toFixed(1);
+    if(last) s+=`<circle cx="${cx}" cy="${cy}" r="7.5" fill="none" stroke="var(--c-blue)" stroke-opacity=".25" stroke-width="1.5"/>`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="${last?4.5:3}" fill="${last?'var(--c-blue)':'#fff'}" stroke="${last?'#fff':'var(--c-blue)'}" stroke-width="2"><title>${esc(dates[i])}: ${Math.round(v*10)/10}${unit||''}</title></circle>`; });
   const lv=vals[n-1], ly=Y(lv);
   s+=`<text x="${(W-pad.r).toFixed(1)}" y="${(ly<26?ly+15:ly-9).toFixed(1)}" text-anchor="end" class="tval">${Math.round(lv*10)/10}${unit||''}</text></svg>`;
   return s;
@@ -4617,7 +4874,7 @@ function miniSpark(vals){
   const X=i=>p+i*(W-2*p)/(n-1), Y=v=>p+(H-2*p)*(1-(v-lo)/(hi-lo));
   const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
   const lx=X(n-1),ly=Y(vals[n-1]);
-  return `<svg viewBox="0 0 ${W} ${H}" class="dspark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.2" fill="var(--c-coral)"/></svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="dspark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.4" fill="var(--c-blue)" stroke="#fff" stroke-width="1.6"/></svg>`;
 }
 function sportCard(sport, entries){
   const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';

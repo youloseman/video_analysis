@@ -35,14 +35,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.net import client_ip, ip_hash
-from app.core.security import get_current_user, optional_user
+from app.core.security import optional_user, require_admin
 from app.models.feedback import (
     KIND_ANALYSIS,
     STATUS_NEW,
     VALID_STATUSES,
     Feedback,
 )
-from app.models.user import TIER_ADMIN, User
+from app.models.user import User
 
 logger = structlog.get_logger()
 
@@ -101,13 +101,6 @@ def _clean_context(raw: dict[str, Any] | None) -> dict[str, Any]:
     except (TypeError, ValueError):
         return {}
     return ctx
-
-
-async def require_admin(user: User = Depends(get_current_user)) -> User:
-    """Admin tier only. 404 rather than 403 so the surface is not discoverable."""
-    if user.tier != TIER_ADMIN:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    return user
 
 
 # --------------------------------------------------------------------------

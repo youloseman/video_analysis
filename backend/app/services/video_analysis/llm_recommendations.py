@@ -35,6 +35,23 @@ SYSTEM_PROMPT = (
 )
 
 
+def _client(genai: Any, types: Any) -> Any:
+    """Gemini client with an explicit request timeout.
+
+    Without ``timeout`` the SDK inherits the underlying HTTP client's default,
+    which does not bound a server that accepts the connection and then stops
+    responding. Every caller here runs on a threadpool thread, so a hung request
+    does not just delay one report -- it holds a worker. ``HttpOptions.timeout``
+    is in MILLISECONDS.
+    """
+    return genai.Client(
+        api_key=settings.gemini_api_key,
+        http_options=types.HttpOptions(
+            timeout=int(settings.gemini_timeout_s * 1000),
+        ),
+    )
+
+
 def _fmt(v: Any, unit: str = "") -> str:
     if v is None:
         return "n/a"
@@ -219,7 +236,7 @@ def generate_recommendations(
     )
 
     try:
-        client = genai.Client(api_key=settings.gemini_api_key)
+        client = _client(genai, types)
         resp = client.models.generate_content(
             model=settings.gemini_model,
             contents=prompt,
@@ -316,7 +333,7 @@ def generate_progress_summary(
         "Write the progress read now, following the required section structure."
     )
     try:
-        client = genai.Client(api_key=settings.gemini_api_key)
+        client = _client(genai, types)
         resp = client.models.generate_content(
             model=settings.gemini_model,
             contents=prompt,
@@ -338,6 +355,16 @@ def generate_progress_summary(
         return None
 
 
+# Not every "angle" in the photo result is an angle: head tuck is a 0-100 score
+# and pelvic rotation is a ratio. Each entry is (suffix printed after every
+# number, one-off clarification). Spelled out in the prompt so the coach text
+# does not report them in degrees.
+_PHOTO_METRIC_UNITS: dict[str, tuple[str, str]] = {
+    "head_alignment": ("/100", " [a 0-100 tuck score, NOT degrees]"),
+    "pelvic_ratio": ("x", " [a ratio, NOT degrees]"),
+}
+
+
 def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
     sc = res.get("score", {}) or {}
     sport_label = "cycling" if sport == "bike" else sport
@@ -353,19 +380,43 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         )
     lines.append("Joint angles (value vs optimal, status):")
     for k, v in (res.get("angles_with_context") or {}).items():
+        # Units are explicit: two bike metrics are NOT degrees, and without the
+        # unit the model narrates them as "96 degrees" / "3.94 degrees".
+        unit, unit_note = _PHOTO_METRIC_UNITS.get(k, (" deg", ""))
         # Pedal-phase-dependent joints (bike hip has both bands; ankle/uncertain
         # hip are phase_dependent): the rider sets the crank position
         # interactively, so the coach must not give its own hip/ankle verdict.
         if v.get("status") == "phase_dependent" or v.get("bands"):
             lines.append(
-                f"- {v.get('label', k)}: {v.get('value')} — pedal-phase-dependent, "
+                f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note} — pedal-phase-dependent, "
                 f"scored interactively by the rider. Do NOT critique this angle or "
                 f"call it too open/closed."
             )
             continue
+        # Aero trunk below the comfort band: a deliberate trade-off, not a
+        # defect. Without this the coach "fixes" a world-class tuck by telling
+        # the rider to raise the bars.
+        status = v.get("status") or ""
+        if status.startswith("aero_"):
+            lines.append(
+                f"- {v.get('label', k)}: {v.get('value')}{unit} "
+                f"(comfort band {v.get('optimal_min')}-{v.get('optimal_max')}{unit}, "
+                f"{status}) — BELOW the band on purpose: flatter is the "
+                f"aerodynamic goal here. Do NOT list this as a fault, do NOT "
+                f"advise raising the bars or opening the trunk. "
+                + (
+                    "It is aggressive enough to be worth one line about "
+                    "sustainability -- breathing and holding it for the full "
+                    "event -- and nothing more."
+                    if status == "aero_extreme"
+                    else "Treat it as a strength."
+                )
+            )
+            continue
         lines.append(
-            f"- {v.get('label', k)}: {v.get('value')} "
-            f"(optimal {v.get('optimal_min')}-{v.get('optimal_max')}, {v.get('status')})"
+            f"- {v.get('label', k)}: {v.get('value')}{unit} "
+            f"(optimal {v.get('optimal_min')}-{v.get('optimal_max')}{unit}, "
+            f"{v.get('status')}){unit_note}"
         )
     warns = res.get("warnings") or []
     if warns:
@@ -392,7 +443,7 @@ def generate_photo_recommendations(
 
     prompt = _build_photo_prompt(sport, photo_result)
     try:
-        client = genai.Client(api_key=settings.gemini_api_key)
+        client = _client(genai, types)
         resp = client.models.generate_content(
             model=settings.gemini_model,
             contents=prompt,

@@ -55,7 +55,7 @@ def _migrate_users(conn) -> None:
     so newly added columns must be back-filled here on startup. Safe to run on
     every boot: each step checks the current schema first.
     """
-    from app.models.user import PAID_TIERS, TIER_STARTER
+    from app.models.user import TIER_STARTER
 
     cols = _existing_columns(conn, "users")
     if not cols:  # fresh DB -- create_all already built the current schema.
@@ -93,7 +93,7 @@ def _migrate_users(conn) -> None:
 
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
-    from app.models import analysis, feedback, usage, user  # noqa: F401
+    from app.models import analysis, feedback, order, usage, user  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

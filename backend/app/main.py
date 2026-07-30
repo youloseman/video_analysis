@@ -15,12 +15,21 @@ stays free for polling).
 Job state is IN-MEMORY: fine for a single worker / MVP, but it does not survive
 a restart and is not shared across workers. Move it to Redis or a DB when we add
 persistence + multi-worker scaling (M4).
+
+Because nothing else would ever delete them, a background sweeper drops jobs and
+their upload directories once they are older than ``settings.job_ttl_hours``,
+and concurrent analyses are capped by a semaphore (``max_concurrent_analyses``)
+with a bounded queue in front of it (``max_queued_analyses``) -- MediaPipe
+"heavy" is CPU/RAM-bound and the threadpool would otherwise start one per
+thread and OOM the container.
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
+import secrets
 import time
 import uuid
 from collections import deque
@@ -53,8 +62,19 @@ from app.api import billing as billing_routes
 from app.api import changelog as changelog_routes
 from app.api import feedback as feedback_routes
 from app.api import me as me_routes
+from app.core.compression import SelectiveGZipMiddleware
 from app.core.config import settings
 from app.core.db import get_session, init_db
+from app.core.jobs import (
+    ANALYSIS_SLOTS,
+    JOBS,
+    SLOT_WAIT_TIMEOUT_S,
+    authorized_job,
+    pending_jobs,
+    queue_ahead,
+    sweep_orphan_upload_dirs,
+    sweeper_loop,
+)
 from app.core.net import client_ip
 from app.core.security import optional_user
 from app.models.user import User
@@ -79,8 +99,8 @@ ALLOWED_SUFFIXES = {".mp4", ".mov", ".avi", ".m4v", ".mkv", ".webm"}
 ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 MAX_PHOTO_BYTES = 30 * 1024 * 1024  # 30 MB
 
-# In-memory job store. job_id -> job dict.
-JOBS: dict[str, dict[str, Any]] = {}
+# Job store, concurrency cap and expiry all live in app.core.jobs (see there for
+# why). Imported under the original names so the routes below read unchanged.
 
 # Per-IP rate limiter (rolling 24h). In-memory: single-instance only, resets on
 # restart -- consistent with the in-memory job store. Move to Redis when we
@@ -204,7 +224,13 @@ def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    yield
+    # Clear anything the previous process left behind before serving.
+    await run_in_threadpool(sweep_orphan_upload_dirs)
+    sweeper = asyncio.create_task(sweeper_loop())
+    try:
+        yield
+    finally:
+        sweeper.cancel()
 
 
 # Hide the interactive API docs in production (they expose the full endpoint
@@ -221,15 +247,40 @@ app = FastAPI(
     openapi_url="/openapi.json" if _docs_on else None,
 )
 
-# Permissive CORS so a browser frontend (M6) can call this directly. Lock the
-# origin list down for production via the VA_CORS_ORIGINS env var (comma-sep).
-_origins = os.environ.get("VA_CORS_ORIGINS", "*")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"] if _origins == "*" else [o.strip() for o in _origins.split(",")],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Compression. The whole SPA -- CSS, markup and JS -- is inlined in one ~330 KB
+# document and was going over the wire uncompressed; gzip takes it to roughly
+# 60 KB. Repeat visits were already cheap (the root route ETags and 304s), so
+# this is specifically about first paint for a first-time visitor. It also
+# covers the server-rendered Academy pages and the JSON API. Text only -- see
+# app/core/compression.py for why the stock middleware would break the overlay
+# video.
+app.add_middleware(SelectiveGZipMiddleware, minimum_size=1000)
+
+# CORS. The SPA is served by THIS app, so production needs no cross-origin
+# access at all -- every request the product makes is same-origin, and CORS
+# headers would only let other sites drive the API with someone else's browser.
+# So: explicit VA_CORS_ORIGINS wins (comma-separated, or "*" to opt back into
+# the old behaviour); otherwise wildcard locally (a frontend on :3000 during
+# development) and NO cross-origin access in production, where the middleware
+# is simply not installed.
+_cors_env = os.environ.get("VA_CORS_ORIGINS", "").strip()
+if _cors_env == "*":
+    _cors_origins = ["*"]
+elif _cors_env:
+    _cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
+else:
+    _cors_origins = [] if os.environ.get("RAILWAY_ENVIRONMENT") else ["*"]
+
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    logger.info("CORS_ENABLED", origins=_cors_origins)
+else:
+    logger.info("CORS_DISABLED", reason="same-origin only")
 
 # Server-rendered Academy (SEO): /academy hub + article pages, sitemap, robots.
 app.include_router(academy_routes.router)
@@ -237,8 +288,10 @@ app.include_router(academy_routes.router)
 app.include_router(auth_routes.router)
 # Per-user cloud history/progress: /me/analyses.
 app.include_router(me_routes.router)
-# Billing: /billing/checkout, /billing/webhook, /billing/portal (Stripe).
+# Billing: /billing/checkout, /billing/webhook, /billing/portal, /billing/orders.
 app.include_router(billing_routes.router)
+# Expert Review fulfilment queue: /admin/orders (admin tier only).
+app.include_router(billing_routes.admin_router)
 # Result feedback: POST /feedback (anyone) + /admin/feedback* (admin tier only).
 app.include_router(feedback_routes.router)
 # Release notes: /changelog.json (in-app "What's new") + /changelog (public page).
@@ -252,6 +305,11 @@ class JobCreated(BaseModel):
     job_id: str
     status: str
     poll_url: str
+    # Capability token for this job. The id alone is not a secret worth relying
+    # on: it travels in a URL fragment, gets pasted into chats, and a job holds
+    # someone's footage. Keep it out of the address bar (the client stores it in
+    # sessionStorage) and pass it as ``?t=`` when polling or fetching the overlay.
+    job_token: str
 
 
 class JobStatus(BaseModel):
@@ -259,6 +317,9 @@ class JobStatus(BaseModel):
     status: str  # queued | processing | completed | failed
     sport: str | None = None
     cycling_position: str | None = None
+    # How many clips are ahead of this one while it waits for an analysis slot
+    # (0 = next up). Only meaningful while status == "queued".
+    queue_ahead: int = 0
     error: str | None = None
     overlay_available: bool = False
     overlay_url: str | None = None
@@ -277,10 +338,23 @@ def _process_job(
     """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
 
     ``free`` (starter/anonymous): render the teaser keyframe (skeleton, no angle
-    numbers, watermark) and trim the paid fields out of the served result.
+    numbers, watermark), skip the paid LLM call, and trim the paid fields out of
+    the served result.
     """
     job = JOBS.get(job_id)
     if job is None:
+        return
+    # Wait for a slot BEFORE flipping to "processing", so a job sitting in line
+    # keeps reporting "queued" (with its position) rather than pretending to
+    # work. This blocks a threadpool thread, which is cheap -- what it prevents
+    # is N concurrent MediaPipe runs, which is not.
+    if not ANALYSIS_SLOTS.acquire(timeout=SLOT_WAIT_TIMEOUT_S):
+        logger.warning("JOB_SLOT_TIMEOUT", job_id=job_id)
+        job["status"] = "failed"
+        job["error"] = (
+            "The server was busy for too long and gave up on this clip. "
+            "Please try again in a few minutes."
+        )
         return
     job["status"] = "processing"
     logger.info("JOB_START", job_id=job_id, sport=sport, position=cycling_position)
@@ -290,6 +364,11 @@ def _process_job(
             # No overlay video for free users -- they get the teaser keyframe only.
             overlay_path=None if free else overlay_path,
             hide_angle_values=free,
+            # AI coaching is a paid unlock, and ``gate_free_result`` strips it
+            # from the response anyway -- generating it for a free caller just
+            # burns a billed Gemini call on output nobody ever sees. The photo
+            # endpoint already gates the call this way; do the same here.
+            recommendations=not free,
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
@@ -313,6 +392,8 @@ def _process_job(
         logger.warning("JOB_FAILED", job_id=job_id, err=str(e))
         job["status"] = "failed"
         job["error"] = str(e)
+    finally:
+        ANALYSIS_SLOTS.release()
 
 
 # --------------------------------------------------------------------------
@@ -391,12 +472,15 @@ def terms() -> FileResponse:
 
 @app.get("/health")
 def health() -> dict[str, Any]:
+    pending = pending_jobs()
     return {
         "status": "ok",
         "model_present": settings.model_path.exists(),
-        "active_jobs": sum(
-            1 for j in JOBS.values() if j["status"] in ("queued", "processing")
-        ),
+        "active_jobs": len(pending),
+        "running": sum(1 for j in pending if j["status"] == "processing"),
+        "queued": sum(1 for j in pending if j["status"] == "queued"),
+        "capacity": settings.max_concurrent_analyses,
+        "stored_jobs": len(JOBS),
     }
 
 
@@ -419,6 +503,21 @@ async def analyze_endpoint(
 ) -> JobCreated:
     """Accept a clip + params, kick off analysis, return a job id to poll."""
     ip = _client_ip(request)
+    # Backpressure before anything expensive: past this depth the wait is longer
+    # than anyone will sit through, so say so now instead of accepting the upload
+    # and letting it rot in a queue. Checked before the quota so a rejected clip
+    # never costs the caller an analysis.
+    backlog = len(pending_jobs())
+    if backlog >= settings.max_queued_analyses:
+        logger.info("BACKPRESSURE", backlog=backlog, ip=ip)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "We're at capacity right now — too many clips are being analyzed. "
+                "Please try again in a few minutes."
+            ),
+            headers={"Retry-After": "120"},
+        )
     await _enforce_quota(request, user, db, "clip")
 
     if sport not in ("run", "bike"):
@@ -457,7 +556,13 @@ async def analyze_endpoint(
     input_path = job_dir / f"input{suffix}"
     input_path.write_bytes(data)
 
-    overlay_path = str(job_dir / "overlay.mp4") if overlay else None
+    # The overlay video is a paid unlock. Leave ``overlay_path`` unset for a free
+    # caller even when the form asked for one: the worker would skip rendering
+    # anyway, and a recorded-but-missing path is what made /jobs report
+    # ``overlay_failed`` -- i.e. an error message where the paywall belongs.
+    free = is_free(user)
+    overlay_path = str(job_dir / "overlay.mp4") if (overlay and not free) else None
+    job_token = secrets.token_urlsafe(24)
     JOBS[job_id] = {
         "status": "queued",
         "sport": sport,
@@ -465,15 +570,23 @@ async def analyze_endpoint(
         "result": None,
         "error": None,
         "overlay_path": overlay_path,
+        "created_at": time.time(),
+        "job_dir": str(job_dir),
+        # Who may read this job back (see _authorized_job).
+        "token": job_token,
+        "owner_user_id": user.id if user is not None else None,
     }
 
     background_tasks.add_task(
         _process_job, job_id, str(input_path), sport, cycling_position,
-        overlay_path, is_free(user),
+        overlay_path, free,
     )
     await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
-    return JobCreated(job_id=job_id, status="queued", poll_url=f"/jobs/{job_id}")
+    return JobCreated(
+        job_id=job_id, status="queued",
+        poll_url=f"/jobs/{job_id}", job_token=job_token,
+    )
 
 
 @app.post("/analyze-photo", status_code=200)
@@ -557,10 +670,12 @@ async def analyze_photo_endpoint(
 
 
 @app.get("/jobs/{job_id}", response_model=JobStatus)
-def job_status(job_id: str) -> JobStatus:
-    job = JOBS.get(job_id)
-    if job is None:
-        raise HTTPException(404, "unknown job_id")
+def job_status(
+    job_id: str,
+    t: str | None = None,
+    user: User | None = Depends(optional_user),
+) -> JobStatus:
+    job = authorized_job(job_id, t, user.id if user else None)
     overlay_ready = bool(job.get("overlay_path")) and Path(job["overlay_path"]).exists()
     # Overlay was requested for this job but the file never materialized after a
     # completed run -- rendering failed (e.g. ffmpeg). Let the client say so
@@ -575,6 +690,7 @@ def job_status(job_id: str) -> JobStatus:
         status=job["status"],
         sport=job.get("sport"),
         cycling_position=job.get("cycling_position"),
+        queue_ahead=queue_ahead(job) if job["status"] == "queued" else 0,
         error=job.get("error"),
         overlay_available=overlay_ready,
         overlay_url=f"/jobs/{job_id}/overlay" if overlay_ready else None,
@@ -584,10 +700,15 @@ def job_status(job_id: str) -> JobStatus:
 
 
 @app.get("/jobs/{job_id}/overlay")
-def job_overlay(job_id: str) -> FileResponse:
-    job = JOBS.get(job_id)
-    if job is None:
-        raise HTTPException(404, "unknown job_id")
+def job_overlay(
+    job_id: str,
+    t: str | None = None,
+    user: User | None = Depends(optional_user),
+) -> FileResponse:
+    # Same gate as the poll. The token rides in the query string here because
+    # this URL is consumed by <video src> and a download link, neither of which
+    # can set a header.
+    job = authorized_job(job_id, t, user.id if user else None)
     overlay_path = job.get("overlay_path")
     if not overlay_path or not Path(overlay_path).exists():
         raise HTTPException(404, "overlay not available for this job")
