@@ -103,6 +103,8 @@ overlays are stored under `backend/uploads/` (git-ignored).
 - **Photo** — ✅ single-image form check (`POST /analyze-photo` → annotated photo + angle table + coaching)
 - **History** — ✅ on-device history (localStorage): each analysis saved with metrics, coaching and a compact annotated keyframe (no video stored)
 - **Progress** — ✅ metric trends over time (per-metric line charts with optimal bands) so athletes can monitor technique/bike-fit, not just the score
+- **Changelog** — ✅ file-based release notes (`backend/content/changelog/YYYY-MM-DD-slug.md`, no DB, no frontmatter): in-app "What's new" view with an unread dot on the nav, `GET /changelog.json` for the SPA, and a server-rendered `/changelog` page (in the sitemap). Closes the loop on the feedback below — reporters see what shipped
+- **Feedback** — ✅ per-result micro-feedback ("does this match what you see?"): 👍/👎 + reason chips + optional note + opt-in annotated still, stored with the machine context that produced the result (gate flags, confidence tier, sport, score). Private (admin-only inbox at `/admin/feedback` with negative-rate splits) — a public idea/bug board is deliberately deferred until there's capacity to answer it
 - **M4b** — persistence: external job store + object storage (before scaling > 1 instance)
 - **later** — rear-view running, swimming (re-add the trimmed analyzers)
 

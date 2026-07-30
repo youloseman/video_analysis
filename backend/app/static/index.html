@@ -999,6 +999,89 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   table.data{font-size:13px}
   table.data td,table.data thead th{padding:8px}
 }
+
+/* ---- Result feedback ("does this match what you see?") ------------------
+   A quiet strip, not a card: it sits under the report and must not compete
+   with the score or the coach block for attention. */
+.fb{border-top:1px solid var(--c-line);margin-top:40px;padding-top:20px}
+.fbrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fbq{font-size:14px;font-weight:700;color:var(--c-ink);margin:0}
+.fb-thumbs{display:flex;gap:8px}
+.fb-thumb{font-family:var(--f-body);font-weight:700;font-size:13px;color:var(--c-ink-soft);
+  background:#fff;border:1.5px solid var(--c-line);border-radius:8px;padding:8px 14px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px}
+.fb-thumb:hover{border-color:var(--c-blue-soft);color:var(--c-ink)}
+.fb-thumb .ic{width:15px;height:15px}
+.fb-thumb[aria-pressed="true"]{background:var(--c-panel-blue);border-color:var(--c-blue);color:var(--c-blue)}
+.fb-thumb.fb-down[aria-pressed="true"]{background:#FDF0EC;border-color:var(--c-coral-btn);color:var(--c-coral-dk)}
+.fb-more{margin-top:16px;padding:16px;background:var(--c-panel);border-radius:var(--radius)}
+.fb-lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;
+  color:var(--c-ink-soft);margin:0 0 8px}
+.fb-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.fb-tag{font-family:var(--f-body);font-weight:600;font-size:13px;color:var(--c-ink-soft);
+  background:#fff;border:1.5px solid var(--c-line);border-radius:20px;padding:6px 13px;cursor:pointer}
+.fb-tag:hover{border-color:var(--c-blue-soft)}
+.fb-tag[aria-pressed="true"]{background:var(--c-navy);border-color:var(--c-navy);color:#fff}
+.fb-more textarea{width:100%;padding:11px 14px;border:1.5px solid var(--c-line);border-radius:8px;
+  font-size:14px;font-family:var(--f-body);resize:vertical;min-height:76px;color:var(--c-ink)}
+.fb-more textarea:focus{outline:none;border-color:var(--c-blue)}
+.fb-consent{display:flex;gap:9px;align-items:flex-start;margin:12px 0 16px;font-size:13px;
+  color:var(--c-ink-soft);line-height:1.5;cursor:pointer}
+.fb-consent input{margin:2px 0 0;flex:0 0 auto;width:16px;height:16px;accent-color:var(--c-blue)}
+.fb-consent b{color:var(--c-ink)}
+.fb-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fb-thanks{display:flex;gap:9px;align-items:center;font-size:14px;color:var(--c-ink);
+  font-weight:700;margin:0}
+.fb-thanks .ic{width:17px;height:17px;color:var(--st-good,#1F7A45)}
+.fb-note{font-size:12px;color:var(--c-ink-faint);margin:8px 0 0}
+
+/* ---- What's new (release notes) ------------------------------------------
+   The unread dot is the whole point: a changelog nobody notices closes no loop.
+   It sits on the nav link, and on the mobile menu toggle where the link itself
+   is hidden behind the drawer. */
+.newdot{width:7px;height:7px;border-radius:50%;background:var(--c-coral);flex:0 0 auto}
+.sidenav .navlink .newdot{margin-left:auto}
+.topbar-toggle{position:relative}
+.topbar-toggle .newdot{position:absolute;top:7px;right:7px;box-shadow:0 0 0 2px #fff}
+.wn-entry{border-left:2px solid var(--c-line);padding:0 0 36px 24px;position:relative}
+.wn-entry:last-child{border-left-color:transparent;padding-bottom:8px}
+.wn-entry::before{content:"";position:absolute;left:-7px;top:5px;width:12px;height:12px;
+  border-radius:50%;background:var(--c-blue);border:3px solid #fff}
+.wn-entry.is-new::before{background:var(--c-coral)}
+.wn-when{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--c-ink-faint);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.wn-badge{font-family:var(--f-mono);font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:#fff;background:var(--c-coral);padding:2px 6px;border-radius:999px}
+.wn-entry h3{font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);
+  font-size:20px;line-height:1.15;margin:0 0 10px}
+.wn-entry p{font-size:14.5px;line-height:1.65;color:var(--c-ink);margin:10px 0;max-width:66ch}
+.wn-entry ul,.wn-entry ol{margin:10px 0;padding-left:20px}
+.wn-entry li{font-size:14.5px;line-height:1.65;color:var(--c-ink);margin:5px 0;max-width:64ch}
+.wn-entry strong{color:var(--c-navy);font-weight:800}
+.wn-foot{margin-top:8px;padding-top:20px;border-top:1px solid var(--c-line)}
+
+/* ---- Feedback admin (admin tier only) ---- */
+.fb-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.fb-stat{background:var(--c-panel);border-radius:var(--radius);padding:16px}
+.fb-stat .v{font-family:var(--f-display);font-size:28px;color:var(--c-navy);line-height:1}
+.fb-stat .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;
+  color:var(--c-ink-soft);margin-top:6px}
+.fb-item{border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.fb-item.down{border-left:4px solid var(--c-coral)}
+.fb-item.up{border-left:4px solid var(--st-good,#1F7A45)}
+.fb-item-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.fb-item-top .who{font-size:13px;font-weight:700;color:var(--c-navy)}
+.fb-item-top .when{font-size:12px;color:var(--c-ink-faint)}
+.fb-item .msg{font-size:14px;color:var(--c-ink);line-height:1.6;margin:8px 0}
+.fb-item .ctx{font-size:12px;color:var(--c-ink-soft);font-family:var(--f-mono,monospace);
+  word-break:break-word;margin:8px 0 0}
+.fb-detail{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;align-items:start}
+.fb-detail img{width:100%;border-radius:8px;background:#0d1420;display:block}
+@media(max-width:640px){
+  .fbrow{flex-direction:column;align-items:stretch}
+  .fbrow .fbq{margin-bottom:4px}
+  .fb-detail{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body data-state="upload">
@@ -1074,6 +1157,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 <div class="topbar">
   <button class="topbar-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
     <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
+    <!-- Unread-release dot. On phones the "What's new" link lives inside the
+         drawer, so without this the dot would only be visible to someone who
+         already opened the menu. -->
+    <span class="newdot hidden" id="navToggleDot" aria-hidden="true"></span>
   </button>
   <div class="wordmark" id="wordmarkM" role="link" tabindex="0">Flapp<span class="dot"></span></div>
   <div class="authbox authbox-m" id="authboxM"></div>
@@ -1102,6 +1189,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
     <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>Pricing</span></a>
     <a href="/academy" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
+    <a href="#" id="navNew" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>What’s new</span><span class="newdot hidden" id="navNewDot" aria-hidden="true"></span></a>
+    <!-- Admin-only inbox for result feedback; revealed by renderAuth(). -->
+    <a href="#" id="navFeedback" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Feedback</span></a>
   </nav>
   <div class="authbox" id="authbox"></div>
 </aside>
@@ -1422,6 +1512,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
     <details class="raw hidden" id="rawBlock"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
 
+    <!-- Result feedback: the only way to learn where the analyzer misfires. -->
+    <div class="fb hidden" id="fbHost"></div>
+
     <div class="again-row">
       <button class="btn btn-primary" id="again" type="button">
         <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Analyze another clip
@@ -1505,6 +1598,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     </div>
 
     <details class="raw hidden" id="pRawBlock"><summary>Raw result JSON</summary><pre id="pRawJson"></pre></details>
+
+    <div class="fb hidden" id="pFbHost"></div>
 
     <div class="again-row">
       <button class="btn btn-primary" id="pAgain" type="button">
@@ -1744,6 +1839,38 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     </p>
   </section>
 
+  <!-- ============ WHAT'S NEW (release notes) ============ -->
+  <section id="whatsnew" class="hidden" aria-labelledby="wnTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Changelog</div>
+      <h2 class="sec" id="wnTitle" tabindex="-1" style="margin-bottom:8px">What’s new</h2>
+      <div class="speedline"></div>
+    </div>
+    <p class="hint" style="text-align:left;margin:0 0 32px">Everything we’ve shipped, newest first. Most of it starts with someone telling us a result didn’t match what they saw — the prompt at the bottom of every report.</p>
+    <div id="wnList"></div>
+  </section>
+
+  <!-- ============ FEEDBACK INBOX (admin tier only) ============ -->
+  <section id="feedbackAdmin" class="hidden" aria-labelledby="fbaTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Private · admin only</div>
+      <h2 class="sec" id="fbaTitle" tabindex="-1" style="margin-bottom:8px">Result feedback</h2>
+      <div class="speedline"></div>
+    </div>
+    <p class="hint" style="text-align:left;margin:0 0 24px">What athletes said about their own results. The negative rate split by <b>quality gate</b> and <b>confidence</b> is the signal: 👎 on runs the gate already flagged means the warning copy is too quiet; 👎 on clean, high-confidence runs means the scoring is wrong.</p>
+    <div class="fb-stats" id="fbaStats"></div>
+    <div id="fbaSplits"></div>
+    <div class="seg seg-sm" role="group" aria-label="Filter feedback" id="fbaFilter" style="margin:24px 0 16px">
+      <button type="button" data-fbf="all" aria-pressed="true">All</button>
+      <button type="button" data-fbf="down" aria-pressed="false">Negative</button>
+      <button type="button" data-fbf="up" aria-pressed="false">Positive</button>
+      <button type="button" data-fbf="new" aria-pressed="false">Untriaged</button>
+    </div>
+    <div id="fbaList"></div>
+  </section>
+
 </div>
 </main>
 
@@ -1769,6 +1896,10 @@ const state = { file:null, sport:'bike', position:'triathlon', mode:'video', job
   kfCache:{}, kfPending:{} };   // cloud keyframes, fetched per entry (see fetchKeyframe)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
+/* Build id, stamped by the server from a digest of this document (see main.py
+   ::root). Rides along on every piece of feedback so a report can be pinned to
+   the exact shell it came from -- "dev" when served straight off disk. */
+const BUILD = '__BUILD__'.indexOf('_')===0 ? 'dev' : '__BUILD__';
 
 /* ---- brand colors for JS (mirror of the :root tokens above) ---- */
 const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', coralBtn:'#CE3F2B', warn:'#C97B10', orange:'#DE5F33' };
@@ -1797,15 +1928,17 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp',
   dashboard:'Dashboard — Flapp',
   history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp',
-  compare:'Before / After — Flapp', pricing:'Pricing — Flapp'};
+  compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
+  whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
-  history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing'};
+  history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
+  whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress', pricing:'#navPricing' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback' };
 const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
@@ -2583,7 +2716,7 @@ function renderPhoto(res){
   if(res.locked){
     renderUpsell('pUpsellHost', res.locked, ['pCoachBlock','pAnglesBlock']);
     renderQuota();
-    saveToHistory('photo', res);
+    mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));
     state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
     setState('photoresults',{focus:'#pResultsTitle'});
     return;
@@ -2608,7 +2741,7 @@ function renderPhoto(res){
     $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2); }
 
   renderQuota();
-  saveToHistory('photo', res);
+  mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));
   state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
   setState('photoresults',{focus:'#pResultsTitle'});
 }
@@ -2923,7 +3056,8 @@ function render(job){
     renderUpsell('upsellHost', r.locked,
       ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock']);
     renderQuota();
-    saveToHistory('video', r);
+    mountFeedback('fbHost','video',r,saveToHistory('video', r),
+      {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
     state.lastResult=r; $('#shareBtn').classList.remove('hidden');
     setState('results',{focus:'#resultsTitle'});
     return;
@@ -2996,9 +3130,189 @@ function render(job){
   if(DEBUG){ $('#rawBlock').classList.remove('hidden'); $('#rawJson').textContent=JSON.stringify(r,null,2); }
 
   renderQuota();
-  saveToHistory('video', r);
+  mountFeedback('fbHost','video',r,saveToHistory('video', r),
+    {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
   setState('results',{focus:'#resultsTitle'});
+}
+
+/* ============================================================
+   Result feedback — "does this match what you see?"
+
+   The athlete cannot verify a pose estimate or a 0-100 score, so their verdict
+   on their *own* result is the only ground truth we can collect. Each rating
+   ships with the machine context that produced it (gate flags, confidence tier,
+   sport, position, score), which is what makes the inbox analysable rather than
+   anecdotal — see /admin/feedback/stats.
+
+   👍 is one click and posts immediately: friction there costs us the baseline we
+   measure the 👎 rate against. 👎 opens the reasons, because a bare thumbs-down
+   tells us nothing actionable.
+   ============================================================ */
+const FB_DOWN_TAGS=[
+  ['didnt_detect_me',"Didn’t track me properly"],
+  ['angles_wrong','Joint angles look wrong'],
+  ['score_too_low','Score is too low'],
+  ['score_too_high','Score is too high'],
+  ['advice_generic','Coaching is too generic'],
+  ['overlay_broken','Overlay / photo looks broken'],
+  ['other','Something else'],
+];
+
+/* Snapshot of what the pipeline thought while producing this result. Kept flat
+   and small (the server caps it) — every field here is one you can group the
+   negative rate by later, so add fields only when they'd inform a fix. */
+function feedbackContext(kind,res,extra){
+  const isV=kind==='video';
+  const s=(isV?res.sport_specific_metrics:null)||{};
+  const sc=res.score||{};
+  const ctx={
+    kind:kind,
+    sport:res.sport_type||res.sport||state.sport||null,
+    position:res.cycling_position||null,
+    camera_side:res.camera_side||null,
+    score:isV?(res.technique_score!=null?res.technique_score:null):(sc.overall_score!=null?sc.overall_score:null),
+    grade:(isV?res.letter_grade:sc.grade)||null,
+    locked:!!res.locked,
+    tier:(auth&&auth.tier)||'anon',
+    build:BUILD,
+    ua:String(navigator.userAgent||'').slice(0,180),
+    vw:window.innerWidth,
+  };
+  if(isV){
+    ctx.gated=!!res.quality_gate_triggered;
+    const reasons=(s.quality_gate&&s.quality_gate.reasons)||[];
+    if(reasons.length) ctx.gate_reason=String(reasons[0]).slice(0,160);
+    const conf=s.analysis_confidence||{};
+    ctx.confidence=conf.level||null;
+    const lq=(conf.factors||{}).landmark_quality_pct;
+    if(lq!=null) ctx.tracking_pct=Math.round(lq);
+    ctx.time_base_uncertain=!!s.time_base_uncertain;
+    ctx.frames=res.frames_analyzed!=null?res.frames_analyzed:null;
+    ctx.issues=(res.detected_issues||[]).length;
+  } else {
+    // Photo has no quality gate; its warnings play the same role, so map them
+    // onto `gated` to keep the admin split comparable across both paths.
+    const warns=res.warnings||[];
+    ctx.gated=warns.length>0;
+    if(warns.length) ctx.gate_reason=String(warns[0]).slice(0,160);
+    ctx.pedal_phase=res.pedal_phase||null;
+  }
+  return Object.assign(ctx, extra||{});
+}
+
+/* Mounts the strip under a report. `entryId` is the history entry this rating
+   belongs to (null when history saving failed — the rating still counts, it
+   just can't be joined back to the stored analysis). */
+function mountFeedback(hostId, kind, res, entryId, extra){
+  const host=$('#'+hostId); if(!host) return;
+  // Prefer the compact keyframe over the full-size annotated image: the server
+  // caps the payload, and 720px is plenty to see whether the skeleton landed.
+  const frame=res.keyframe_base64||res.thumbnail_base64||null;
+  state.fb={ kind:kind, entryId:entryId||null, ctx:feedbackContext(kind,res,extra),
+    frame:(frame&&frame.length<400000)?frame:null, rating:null, tags:[], sending:false };
+  host.classList.remove('hidden');
+  renderFeedback(host);
+}
+
+/* Everything inside a strip is addressed by data-attribute and looked up
+   *within its host*, never by id: the video and photo reports each own a strip,
+   and duplicate ids would make one silently render into the other. */
+function renderFeedback(host){
+  const fb=state.fb;
+  host.innerHTML=`<div class="fbrow">
+      <p class="fbq">Does this match what you see?</p>
+      <div class="fb-thumbs">
+        <button class="fb-thumb fb-up" type="button" data-fb-rate="1" aria-pressed="false">
+          <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Looks right</button>
+        <button class="fb-thumb fb-down" type="button" data-fb-rate="-1" aria-pressed="false">
+          <svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Something’s off</button>
+      </div>
+    </div>
+    <div data-fb-more></div>`;
+  host.querySelectorAll('[data-fb-rate]').forEach(b=>b.addEventListener('click',()=>{
+    setFeedbackRating(host, Number(b.getAttribute('data-fb-rate')));
+  }));
+  if(fb) fb.rating=null;
+}
+
+function setFeedbackRating(host, rating){
+  const fb=state.fb; if(!fb || fb.sending) return;
+  fb.rating=rating; fb.tags=[];
+  host.querySelectorAll('[data-fb-rate]').forEach(b=>
+    b.setAttribute('aria-pressed', String(Number(b.getAttribute('data-fb-rate'))===rating)));
+  if(rating===1){
+    // Post the thumbs-up straight away, then offer (not demand) a note.
+    sendFeedback(host, {silent:true});
+    const more=host.querySelector('[data-fb-more]');
+    more.innerHTML=`<p class="fb-note">Thanks — logged. <a href="#" data-fb-note-open>Add a note</a> if there’s still something off.</p>`;
+    more.querySelector('[data-fb-note-open]').addEventListener('click',e=>{
+      e.preventDefault(); renderFeedbackForm(host);
+    });
+    return;
+  }
+  renderFeedbackForm(host);
+}
+
+function renderFeedbackForm(host){
+  const fb=state.fb; if(!fb) return;
+  const down=fb.rating!==1;
+  const chips=down ? FB_DOWN_TAGS.map(([k,label])=>
+    `<button class="fb-tag" type="button" data-fb-tag="${k}" aria-pressed="${fb.tags.indexOf(k)>=0}">${esc(label)}</button>`
+  ).join('') : '';
+  const more=host.querySelector('[data-fb-more]');
+  more.innerHTML=`<div class="fb-more">
+      ${down?`<p class="fb-lbl">What’s wrong? Pick any that apply</p><div class="fb-tags">${chips}</div>`:''}
+      <p class="fb-lbl">Tell us in your words <span style="font-weight:600;text-transform:none;letter-spacing:0">(optional)</span></p>
+      <textarea data-fb-msg maxlength="2000" placeholder="${down?'e.g. my knee angle reads 40° but it’s clearly much straighter than that':'e.g. the score felt right but the drills don’t suit my injury'}"></textarea>
+      ${fb.frame?`<label class="fb-consent">
+        <input type="checkbox" data-fb-consent checked>
+        <span>Attach the <b>annotated still</b> from this analysis so we can see what the analyzer saw. It’s the only way to diagnose a tracking problem. Stored privately, used only to fix the analyzer — see our <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</span>
+      </label>`:''}
+      <div class="fb-actions">
+        <button class="btn btn-primary btn-sm" data-fb-send type="button">Send feedback</button>
+        <button class="btn btn-ghost btn-sm" data-fb-cancel type="button">Cancel</button>
+      </div>
+    </div>`;
+  more.querySelectorAll('[data-fb-tag]').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.getAttribute('data-fb-tag');
+    const i=fb.tags.indexOf(k);
+    if(i>=0) fb.tags.splice(i,1); else fb.tags.push(k);
+    b.setAttribute('aria-pressed', String(i<0));
+  }));
+  more.querySelector('[data-fb-send]').addEventListener('click',()=>sendFeedback(host));
+  more.querySelector('[data-fb-cancel]').addEventListener('click',()=>renderFeedback(host));
+  const ta=more.querySelector('[data-fb-msg]'); if(ta) setTimeout(()=>ta.focus(),30);
+}
+
+/* `silent` = the one-click thumbs-up path: post in the background and leave the
+   UI alone (the caller has already written its own confirmation). */
+function sendFeedback(host, opts){
+  opts=opts||{};
+  const fb=state.fb; if(!fb || fb.sending) return;
+  const msgEl=host.querySelector('[data-fb-msg]'), consentEl=host.querySelector('[data-fb-consent]');
+  const body={ rating:fb.rating, tags:fb.tags.slice(),
+    message:msgEl?msgEl.value.trim():'', analysis_client_id:fb.entryId, context:fb.ctx };
+  if(fb.frame && consentEl && consentEl.checked) body.keyframe=fb.frame;
+  fb.sending=true;
+  const btn=host.querySelector('[data-fb-send]');
+  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+  fetch('/feedback',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),
+    body:JSON.stringify(body)})
+    .then(r=>{
+      fb.sending=false;
+      if(!r.ok) throw new Error('http '+r.status);
+      if(opts.silent) return;
+      host.innerHTML=`<p class="fb-thanks"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+        Thanks — this goes straight to the person who builds the analyzer.</p>
+        <p class="fb-note">We read every one of these. We don’t reply to each, but they decide what gets fixed next.</p>`;
+    })
+    .catch(()=>{
+      fb.sending=false;
+      if(opts.silent) return;   // a lost thumbs-up isn't worth an error banner
+      if(btn){ btn.disabled=false; btn.textContent='Send feedback'; }
+      toast('Couldn’t send that — check your connection and try again.');
+    });
 }
 
 /* ============================================================
@@ -3323,6 +3637,9 @@ function renderAuth(){
   // entries only when signed in. `authed` gates the mobile back-to-home buttons.
   $('#navHome').classList.toggle('hidden', !auth);
   $('#botHome').classList.toggle('hidden', !auth);
+  // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
+  // this just keeps the link out of normal users' navigation.
+  $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
   document.body.classList.toggle('authed', !!auth);
   // Keep pricing CTAs (current-plan badge vs buy button) in sync with auth.
   if(typeof renderPricing==='function') renderPricing();
@@ -3383,6 +3700,7 @@ $('#authForm').addEventListener('submit',submitAuth);
 (function init(){
   renderQuota();
   checkAuth().then(handleCheckoutReturn);   // after auth loads, resolve any Stripe return
+  const clReady=initChangelog();            // release notes + unread dot on the nav
   syncActiveNav(document.body.dataset.state || 'upload');   // highlight the current section
   const m=location.hash.match(/^#job=([a-z0-9]+)$/i);
   if(m){
@@ -3397,6 +3715,8 @@ $('#authForm').addEventListener('submit',submitAuth);
     else if(location.hash==='#history'){ clean(); openHistoryView(); }
     else if(location.hash==='#home'){ clean(); }   // dashboard auto-opens in checkAuth when signed in
     else if(location.hash==='#login'){ clean(); openAuth('login'); }
+    // The notes load async, so wait on the fetch already in flight.
+    else if(location.hash==='#whatsnew'){ clean(); clReady.then(openWhatsNew); }
   }
 })();
 
@@ -3614,6 +3934,9 @@ function updateAngleMergeNote(paired, side){
   }
 }
 
+/* Returns the entry id it stored (``h<timestamp>``), or null when saving
+   failed — the feedback widget uses it to tie a rating to this exact analysis
+   (same id as Analysis.client_id server-side). */
 function saveToHistory(kind,res){
   try{
     const isV=kind==='video', sc=res.score||{};
@@ -3641,7 +3964,8 @@ function saveToHistory(kind,res){
     } else {
       const a=localHist(); a.unshift(e); while(a.length>HCAP) a.pop(); persistHist(a);
     }
-  }catch(e){}
+    return e.id;
+  }catch(e){ return null; }
 }
 function fmtWhen(ms){ try{ const d=new Date(ms);
   return d.toLocaleDateString([], {month:'short',day:'numeric'})+' · '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
@@ -4565,6 +4889,223 @@ function startSportAnalysis(sport){
   reset();
   try{ const b=document.querySelector(`#sportSeg [data-sport="${sport}"]`); if(b) b.click(); }catch(_e){}
 }
+
+/* ============================================================
+   What's new — release notes, fed by /changelog.json
+
+   The counterpart to the feedback strip: people who told us something was wrong
+   need to see that it went somewhere, or they stop telling us. The unread dot is
+   the load-bearing part — a changelog nobody opens closes no loop.
+   ============================================================ */
+const CL_SEEN_KEY='flapp_changelog_seen';
+function clSeen(){ try{ return localStorage.getItem(CL_SEEN_KEY); }catch(e){ return null; } }
+function clMarkSeen(id){ try{ if(id) localStorage.setItem(CL_SEEN_KEY,id); }catch(e){} }
+
+/* Entry ids are date-prefixed (`YYYY-MM-DD-slug`), so a plain string compare
+   answers "shipped after the last one they read". */
+function clIsNew(id, seen){ return !!seen && !!id && id>seen; }
+
+function setNewDot(on){
+  ['#navNewDot','#navToggleDot'].forEach(sel=>{
+    const el=$(sel); if(el) el.classList.toggle('hidden', !on);
+  });
+}
+
+/* Fetched once on load. A first-ever visitor gets the latest id recorded
+   silently and no dot: the dot means "new since you last looked", not "here is a
+   backlog you never asked for". */
+function initChangelog(){
+  return fetch('/changelog.json')
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{
+      if(!j) return;
+      state.changelog=j.entries||[];
+      const seen=clSeen();
+      if(seen===null){ clMarkSeen(j.latest); return; }
+      setNewDot(clIsNew(j.latest, seen));
+    })
+    .catch(()=>{});
+}
+
+function renderWhatsNew(seenAtOpen){
+  const es=state.changelog||[];
+  if(!es.length){
+    $('#wnList').innerHTML=`<p class="hint" style="text-align:left">Couldn’t load the release notes right now — they’re also on the <a href="/changelog">changelog page</a>.</p>`;
+    return;
+  }
+  // `html` is our own Markdown, rendered server-side from files in the repo --
+  // not user input, so innerHTML is the right tool here.
+  $('#wnList').innerHTML=es.map(e=>{
+    const fresh=clIsNew(e.id, seenAtOpen);
+    return `<article class="wn-entry${fresh?' is-new':''}">
+      <div class="wn-when">${esc(e.date_label||e.date||'')}${fresh?'<span class="wn-badge">New</span>':''}</div>
+      <h3>${esc(e.title||'')}</h3>
+      ${e.html||''}
+    </article>`;
+  }).join('')
+    +`<div class="wn-foot"><p class="hint" style="text-align:left;margin:0">Something here still not matching what you see in your own results? Rate your next analysis — that’s where this list comes from. <a href="/changelog" target="_blank" rel="noopener">Permanent link to these notes</a>.</p></div>`;
+}
+
+function openWhatsNew(){
+  // Read "seen" before marking, or the New badges vanish on the very render
+  // that is supposed to show them.
+  const seenAtOpen=clSeen();
+  renderWhatsNew(seenAtOpen);
+  setState('whatsnew',{focus:'#wnTitle'});
+  const es=state.changelog||[];
+  if(es.length) clMarkSeen(es[0].id);
+  setNewDot(false);
+}
+$('#navNew').addEventListener('click',e=>{ e.preventDefault(); openWhatsNew(); });
+
+/* ============================================================
+   Feedback inbox (admin tier only)
+
+   Reading surface for /admin/feedback. The stat splits come first on purpose:
+   individual reports are anecdotes, the negative rate per quality-gate state /
+   confidence tier is the thing that tells you what to actually change.
+   ============================================================ */
+const FB_STATUSES=['new','triaged','fixed','wontfix'];
+/* Context keys worth reading at a glance, in this order. The rest stay in the
+   row's JSON — surfaced only when you open the still. */
+const FB_CTX_KEYS=['sport','kind','position','score','grade','confidence',
+  'tracking_pct','frames','gated','locked','tier','camera_side','build'];
+
+function openFeedbackAdmin(){
+  setState('feedbackadmin',{focus:'#fbaTitle'});
+  loadFeedbackAdmin();
+}
+
+async function loadFeedbackAdmin(){
+  const list=$('#fbaList');
+  list.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+  const f=state.fbaFilter||'all';
+  const qs=f==='down'?'?rating=-1':f==='up'?'?rating=1':f==='new'?'?status_filter=new':'';
+  try{
+    const [sr,lr]=await Promise.all([
+      fetch('/admin/feedback/stats',{headers:authHeaders()}),
+      fetch('/admin/feedback'+qs,{headers:authHeaders()}),
+    ]);
+    if(!sr.ok||!lr.ok) throw new Error('http');
+    renderFbStats(await sr.json());
+    renderFbList((await lr.json()).items||[]);
+  }catch(e){
+    $('#fbaStats').innerHTML='';
+    list.innerHTML='<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>Couldn’t load feedback. Admin accounts only.</span></div>';
+  }
+}
+
+function fbPct(v){ return v==null?'—':Math.round(v*100)+'%'; }
+
+/* One split table: "gated 41% negative (n=17)" per bucket, worst first. */
+function fbSplit(title, bucket){
+  const rows=Object.keys(bucket||{})
+    .filter(k=>bucket[k].n>0)
+    .sort((a,b)=>(bucket[b].down_rate||0)-(bucket[a].down_rate||0));
+  if(!rows.length) return '';
+  return `<div class="block" style="margin-top:24px">
+    <div class="blockhead"><div class="eyebrow">Negative rate</div><h3>${esc(title)}</h3><div class="speedline-sm"></div></div>
+    <div class="tablewrap"><table class="data">
+      <thead><tr><th scope="col">Bucket</th><th scope="col" class="num">Rated</th><th scope="col" class="num">👍</th><th scope="col" class="num">👎</th><th scope="col" class="num">Negative</th></tr></thead>
+      <tbody>${rows.map(k=>{ const b=bucket[k];
+        return `<tr><td>${esc(k)}</td><td class="num">${b.n}</td><td class="num">${b.up}</td><td class="num">${b.down}</td><td class="num"><b>${fbPct(b.down_rate)}</b></td></tr>`;
+      }).join('')}</tbody>
+    </table></div></div>`;
+}
+
+function renderFbStats(s){
+  const tiles=[
+    ['Ratings', s.rated],
+    ['Negative', fbPct(s.down_rate)],
+    ['With a note', s.with_message],
+    ['Untriaged', s.untriaged],
+    ['Last 7 days', s.last_7d],
+  ];
+  $('#fbaStats').innerHTML=tiles.map(([k,v])=>
+    `<div class="fb-stat"><div class="v">${esc(String(v==null?'—':v))}</div><div class="k">${esc(k)}</div></div>`).join('');
+  const tags=Object.keys(s.top_tags||{});
+  const tagLine=tags.length
+    ? `<div class="fb-tags" style="margin-top:20px">${tags.map(t=>
+        `<span class="fb-tag" style="cursor:default">${esc(t.replace(/_/g,' '))} · <b>${s.top_tags[t]}</b></span>`).join('')}</div>`
+    : '';
+  $('#fbaSplits').innerHTML=tagLine
+      +fbSplit('By quality gate', s.by_quality_gate)
+      +fbSplit('By confidence tier', s.by_confidence)
+      +fbSplit('By sport', s.by_sport)
+      +fbSplit('By input', s.by_kind)
+      +fbSplit('By bike position', s.by_bike_position);
+}
+
+function renderFbList(items){
+  if(!items.length){ $('#fbaList').innerHTML='<p class="hint" style="text-align:left">Nothing here yet.</p>'; return; }
+  $('#fbaList').innerHTML=items.map(it=>{
+    const cls=it.rating===1?'up':it.rating===-1?'down':'';
+    const face=it.rating===1?'👍':it.rating===-1?'👎':'💬';
+    const ctx=it.context||{};
+    const ctxLine=FB_CTX_KEYS.filter(k=>ctx[k]!=null&&ctx[k]!=='')
+      .map(k=>`${k}=${String(ctx[k])}`).join(' · ');
+    return `<div class="fb-item ${cls}" data-fb-id="${it.id}">
+      <div class="fb-item-top">
+        <span style="font-size:17px">${face}</span>
+        <span class="who">${esc(it.email||'anonymous')}</span>
+        <span class="when">${esc(fmtWhen(it.at))}</span>
+        <select data-fb-status style="font-family:var(--f-body);font-size:12px;padding:4px 8px;border:1.5px solid var(--c-line);border-radius:6px">
+          ${FB_STATUSES.map(s=>`<option value="${s}"${s===it.status?' selected':''}>${s}</option>`).join('')}
+        </select>
+        ${it.has_keyframe?'<button class="btn btn-ghost btn-sm" data-fb-frame type="button">Show still</button>':''}
+      </div>
+      ${(it.tags||[]).length?`<div class="fb-tags" style="margin-bottom:0">${it.tags.map(t=>
+        `<span class="fb-tag" style="cursor:default">${esc(t.replace(/_/g,' '))}</span>`).join('')}</div>`:''}
+      ${it.message?`<p class="msg">${esc(it.message)}</p>`:''}
+      ${ctxLine?`<p class="ctx">${esc(ctxLine)}</p>`:''}
+      ${ctx.gate_reason?`<p class="ctx">gate: ${esc(ctx.gate_reason)}</p>`:''}
+      <div class="fb-detail hidden" data-fb-detail></div>
+      <input type="text" data-fb-note value="${esc(it.admin_note||'')}" placeholder="Private triage note…"
+        style="width:100%;margin-top:12px;padding:8px 11px;border:1.5px solid var(--c-line);border-radius:8px;font-size:13px;font-family:var(--f-body)">
+    </div>`;
+  }).join('');
+}
+
+/* Triage + still-loading are delegated: the list re-renders on every filter
+   change, so per-node listeners would have to be re-bound each time. */
+$('#feedbackAdmin').addEventListener('click',async e=>{
+  const fbtn=e.target.closest('[data-fb-frame]');
+  if(fbtn){
+    const item=fbtn.closest('[data-fb-id]'), host=item.querySelector('[data-fb-detail]');
+    if(!host.classList.contains('hidden')){ host.classList.add('hidden'); return; }
+    host.classList.remove('hidden');
+    host.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+    try{
+      const r=await fetch('/admin/feedback/'+item.dataset.fbId,{headers:authHeaders()});
+      const j=await r.json();
+      host.innerHTML=(j.keyframe?`<img src="${j.keyframe}" alt="Annotated still from the rated analysis">`:'<p class="hint" style="text-align:left">No still attached.</p>')
+        +`<pre class="ctx" style="white-space:pre-wrap;margin:0">${esc(JSON.stringify(j.context||{},null,1))}</pre>`;
+    }catch(_e){ host.innerHTML='<p class="hint" style="text-align:left">Couldn’t load it.</p>'; }
+    return;
+  }
+  const seg=e.target.closest('[data-fbf]');
+  if(seg){
+    state.fbaFilter=seg.dataset.fbf;
+    document.querySelectorAll('#fbaFilter [data-fbf]').forEach(b=>
+      b.setAttribute('aria-pressed', String(b===seg)));
+    loadFeedbackAdmin();
+  }
+});
+$('#feedbackAdmin').addEventListener('change',e=>{
+  const sel=e.target.closest('[data-fb-status]'); if(!sel) return;
+  patchFeedback(sel.closest('[data-fb-id]').dataset.fbId, {status:sel.value});
+});
+$('#feedbackAdmin').addEventListener('blur',e=>{
+  const inp=e.target.closest('[data-fb-note]'); if(!inp) return;
+  patchFeedback(inp.closest('[data-fb-id]').dataset.fbId, {admin_note:inp.value});
+}, true);
+function patchFeedback(id, body){
+  fetch('/admin/feedback/'+id,{method:'PATCH',
+    headers:authHeaders({'Content-Type':'application/json'}), body:JSON.stringify(body)})
+    .then(r=>{ if(!r.ok) throw new Error('http'); toast('Saved.'); })
+    .catch(()=>toast('Couldn’t save that.'));
+}
+$('#navFeedback').addEventListener('click',e=>{ e.preventDefault(); openFeedbackAdmin(); });
 
 /* ============================================================
    Before / after — compare two saved analyses side by side

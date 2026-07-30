@@ -217,6 +217,7 @@ _ICONS = {
     "progress": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></svg>',
     "clock": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>',
     "home": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>',
+    "spark": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18 16.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>',
 }
 
 
@@ -226,6 +227,7 @@ def _sidebar(active: str) -> str:
     links point back to the SPA: Progress/History deep-link via hash so the SPA
     opens that view on load. ``#authbox`` is filled in by ``_AUTH_JS``."""
     acad = ' aria-current="page"' if active == "academy" else ""
+    chlog = ' aria-current="page"' if active == "changelog" else ""
     return (
         # mobile top bar + scrim
         '<div class="topbar">'
@@ -247,6 +249,7 @@ def _sidebar(active: str) -> str:
         f'<a href="/#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
         f'<a href="/#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
         f'<a href="/academy" class="navlink"{acad}>{_ICONS["book"]}<span>Academy</span></a>'
+        f'<a href="/changelog" class="navlink"{chlog}>{_ICONS["spark"]}<span>What\'s new</span></a>'
         "</nav>"
         '<div class="authbox" id="authbox"></div>'
         "</aside>"
@@ -509,6 +512,7 @@ def render_sitemap(articles: list[ArticleMeta], base_url: str) -> str:
     urls = [
         (base_url + "/", None),
         (base_url + "/academy", None),
+        (base_url + "/changelog", None),
     ]
     for m in articles:
         urls.append((f"{base_url}/academy/{m.slug}", m.published))
