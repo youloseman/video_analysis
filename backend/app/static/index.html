@@ -7,7 +7,24 @@
 <meta name="description" content="Flapp — upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay.">
 <title>Flapp — Running &amp; Cycling Form Analysis</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<!-- PWA: installable to the home screen; also the asset set Capacitor reuses. -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#14294B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Flapp">
+<script>
+  // Register the service worker after load so it never competes with app boot.
+  // Failure is non-fatal — the app works fine without it (SW only adds
+  // installability + an offline fallback).
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+  }
+</script>
 <!-- Social preview. og:url and og:image are absolute-rewritten per-request by the
      root route so link previews resolve regardless of host. -->
 <meta property="og:type" content="website">

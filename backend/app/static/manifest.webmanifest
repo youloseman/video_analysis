@@ -1,0 +1,22 @@
+{
+  "name": "Flapp — Running & Cycling Form Analysis",
+  "short_name": "Flapp",
+  "description": "Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — powered by AI pose estimation.",
+  "id": "/app",
+  "start_url": "/app?src=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#14294B",
+  "theme_color": "#14294B",
+  "categories": ["sports", "health", "fitness"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

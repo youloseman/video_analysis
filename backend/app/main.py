@@ -467,6 +467,50 @@ def og_image() -> FileResponse:
     return FileResponse(STATIC_DIR / "og-image.png", media_type="image/png")
 
 
+# ---- PWA (installable app + Capacitor-ready asset set) -----------------------
+# Icons are plain files; StaticFiles gives us content-type + conditional GETs.
+app.mount("/icons", StaticFiles(directory=STATIC_DIR / "icons"), name="icons")
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+def manifest() -> FileResponse:
+    """Web app manifest — makes /app installable to the home screen."""
+    return FileResponse(
+        STATIC_DIR / "manifest.webmanifest",
+        media_type="application/manifest+json",
+    )
+
+
+@app.get("/sw.js", include_in_schema=False)
+def service_worker() -> FileResponse:
+    """Service worker, served from the root so its scope covers the whole site
+    (/, /app, …). `no-cache` so browsers always revalidate and pick up a new SW
+    on the next visit rather than pinning an old one."""
+    return FileResponse(
+        STATIC_DIR / "sw.js",
+        media_type="text/javascript",
+        headers={
+            "Cache-Control": "no-cache, must-revalidate",
+            # Explicitly allow root scope even though the file lives at /sw.js.
+            "Service-Worker-Allowed": "/",
+        },
+    )
+
+
+@app.get("/offline.html", include_in_schema=False)
+def offline() -> FileResponse:
+    """Offline fallback shown by the service worker when the network is down."""
+    return FileResponse(STATIC_DIR / "offline.html", media_type="text/html")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+@app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+def apple_touch_icon() -> FileResponse:
+    """iOS home-screen icon. iOS probes these root paths directly, so answer
+    them (not just the <link> in the shell)."""
+    return FileResponse(STATIC_DIR / "icons" / "apple-touch-icon.png", media_type="image/png")
+
+
 @app.get("/privacy", include_in_schema=False)
 def privacy() -> FileResponse:
     """Serve the privacy policy."""

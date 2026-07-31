@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#14294B">
+<title>Flapp — offline</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{ --navy:#14294B; --coral:#F1553F; --ink-soft:#B7C0D0; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--navy); color:#fff; min-height:100dvh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:24px;
+    font-family:'Manrope','Segoe UI',system-ui,sans-serif;
+  }
+  .mark{width:88px;height:88px;margin-bottom:26px}
+  h1{font-family:'Archivo','Arial Black',sans-serif;font-style:italic;font-weight:900;
+     font-size:26px;margin:0 0 10px;letter-spacing:-.01em}
+  p{color:var(--ink-soft);max-width:30ch;line-height:1.5;margin:0 0 28px;font-size:15px}
+  button{
+    background:var(--coral);color:#fff;border:0;border-radius:8px;
+    padding:13px 26px;font:inherit;font-weight:800;font-size:15px;cursor:pointer;
+    transform:skewX(-8deg);
+  }
+  button span{display:inline-block;transform:skewX(8deg)}
+  button:active{filter:brightness(.92)}
+</style>
+</head>
+<body>
+  <svg class="mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <text x="6.5" y="23" font-family="Archivo, Arial Black, sans-serif" font-size="20"
+          font-weight="900" font-style="italic" fill="#ffffff">F</text>
+    <circle cx="24.5" cy="9.5" r="3.2" fill="#F1553F"/>
+  </svg>
+  <h1>You're offline</h1>
+  <p>Flapp needs a connection to analyze your run or ride. Reconnect and try again.</p>
+  <button type="button" onclick="location.reload()"><span>Retry</span></button>
+</body>
+</html>

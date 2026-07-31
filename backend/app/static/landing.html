@@ -28,7 +28,20 @@
 <title>Flapp — AI Running &amp; Cycling Form Analysis</title>
 <meta name="description" content="Upload a side-view clip of your run or ride. Flapp tracks 33 body landmarks, measures your joint angles against recommended ranges and returns a technique score, an annotated overlay video and a coaching plan.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<!-- PWA: let visitors install straight from the landing (start_url is /app). -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#14294B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Flapp">
+<script>
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+  }
+</script>
 <link rel="canonical" href="/">
 <!-- Social preview. og:url and og:image are absolute-rewritten per-request by the
      root route so link previews resolve regardless of host. -->
@@ -344,7 +357,7 @@ h2.sec .accent{color:var(--c-coral)}
 .browser .bar i:nth-child(3){background:#2E9E5B}
 .browser .bar .url{
   margin-left:12px;font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint);
-  background:#fff;border:1px solid var(--c-line);border-radius:999px;padding:4px 14px;
+  background:hwb(0 23% 70%);border:1px solid var(--c-line);border-radius:999px;padding:4px 14px;
 }
 .browser img{display:block;width:100%}
 .shot-fl{position:absolute;border-radius:16px;overflow:hidden;background:#fff;
