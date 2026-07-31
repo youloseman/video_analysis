@@ -53,6 +53,7 @@ from fastapi import (
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,7 +78,7 @@ from app.core.jobs import (
     sweeper_loop,
 )
 from app.core.net import client_ip
-from app.core.security import optional_user
+from app.core.security import get_current_user, optional_user
 from app.models.user import User
 from app.services.result_gating import gate_free_result, is_free
 from app.services.usage_limits import (
@@ -115,6 +116,9 @@ def _client_ip(request: Request) -> str:
     return client_ip(request)
 
 
+# Kept but unused by the analysis endpoints: analysis now requires an account,
+# so quotas are per-user. A per-IP cap can't be layered on top without punishing
+# whole households, gyms and offices behind one NAT address.
 def _rate_state(ip: str) -> tuple[int, int]:
     """Return (used, retry_after_seconds) for this IP after pruning old hits."""
     if settings.rate_limit_per_day <= 0:
@@ -132,68 +136,45 @@ def _rate_record(ip: str) -> None:
 
 
 async def _enforce_quota(
-    request: Request, user: User | None, db: AsyncSession, noun: str,
+    request: Request, user: User, db: AsyncSession, noun: str,
 ) -> None:
-    """Raise 429 if the caller is over quota. Signed-in users are limited by
-    their tier (DB-backed monthly/daily); anonymous visitors keep the legacy
-    per-IP daily limit. Does NOT record usage -- call after the upload validates
-    so a rejected file never burns quota."""
-    if user is not None:
-        allowed, used, limit, window = await check_quota(db, user)
-        if not allowed:
-            reset = next_reset(window)
-            when = "tomorrow" if window == "day" else "next month"
-            logger.info(
-                "QUOTA_EXCEEDED", user_id=user.id, tier=user.tier,
-                used=used, limit=limit, window=window,
-            )
-            unit = "day" if window == "day" else "month"
-            raise HTTPException(
-                status_code=429,
-                detail=(
-                    f"You've used all {limit} {noun}s on your plan this {unit}. "
-                    f"Your limit resets {when}."
-                ),
-                headers={"Retry-After": str(
-                    max(1, int((reset - datetime.now(timezone.utc)).total_seconds()))
-                )},
-            )
-        return
-    # Anonymous: legacy per-IP daily limiter.
-    ip = _client_ip(request)
-    limit = settings.rate_limit_per_day
-    used, retry_after = _rate_state(ip)
-    if limit > 0 and used >= limit:
-        hours = max(1, round(retry_after / 3600))
-        logger.info("RATE_LIMITED", ip=ip, used=used, limit=limit)
+    """Raise 429 if the caller is over their tier's quota (DB-backed
+    monthly/daily). Does NOT record usage -- call after the upload validates so
+    a rejected file never burns quota.
+
+    Analysis requires an account, so there is no anonymous branch: the free
+    plan *is* the signed-in Starter tier.
+    """
+    allowed, used, limit, window = await check_quota(db, user)
+    if not allowed:
+        reset = next_reset(window)
+        when = "tomorrow" if window == "day" else "next month"
+        logger.info(
+            "QUOTA_EXCEEDED", user_id=user.id, tier=user.tier,
+            used=used, limit=limit, window=window,
+        )
+        unit = "day" if window == "day" else "month"
         raise HTTPException(
             status_code=429,
             detail=(
-                f"Daily limit reached — you can analyze {limit} {noun}s per day. "
-                f"Sign in for a higher limit, or try again in about {hours}h."
+                f"You've used all {limit} {noun}s on your plan this {unit}. "
+                f"Your limit resets {when}."
             ),
-            headers={"Retry-After": str(retry_after)},
+            headers={"Retry-After": str(
+                max(1, int((reset - datetime.now(timezone.utc)).total_seconds()))
+            )},
         )
 
 
 async def _record_and_headers(
-    response: Response, request: Request, user: User | None,
+    response: Response, request: Request, user: User,
     db: AsyncSession, kind: str,
 ) -> None:
     """Record one usage event and set X-RateLimit-* headers for the caller."""
-    if user is not None:
-        await record_usage(db, user.id, kind)
-        _, used, limit, _window = await check_quota(db, user)
-        response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used))
-        return
-    ip = _client_ip(request)
-    limit = settings.rate_limit_per_day
-    if limit > 0:
-        used, _ = _rate_state(ip)
-        _rate_record(ip)
-        response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used - 1))
+    await record_usage(db, user.id, kind)
+    _, used, limit, _window = await check_quota(db, user)
+    response.headers["X-RateLimit-Limit"] = str(limit)
+    response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used))
 
 
 def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -> str | None:
@@ -405,10 +386,13 @@ def _process_job(
 # --------------------------------------------------------------------------
 STATIC_DIR = Path(__file__).parent / "static"
 
+# Landing-page media (hero video, product screenshots). StaticFiles handles
+# Range requests and conditional GETs, which the hero <video> relies on.
+app.mount("/media", StaticFiles(directory=STATIC_DIR / "media"), name="media")
 
-@app.get("/", include_in_schema=False)
-def root(request: Request) -> Response:
-    """Serve the single-page frontend.
+
+def _serve_shell(request: Request, filename: str, canonical_path: str) -> Response:
+    """Serve an inlined static HTML shell (landing page or SPA).
 
     OG/Twitter ``og:url`` and ``og:image`` are stored as root-relative paths in
     the static file and rewritten to absolute URLs here, using the request's
@@ -419,22 +403,30 @@ def root(request: Request) -> Response:
     reports http:// even on an https:// request -- trust X-Forwarded-Proto (as
     the Academy pages already do) or the tags advertise insecure URLs.
     """
-    html_doc = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    html_doc = (STATIC_DIR / filename).read_text(encoding="utf-8")
     # Stamp a build id so every piece of result feedback records which build
     # produced it. Digested from the file as-is, before the per-host rewrites
     # below, so the same shell reports the same build on every domain.
-    html_doc = html_doc.replace(
-        "__BUILD__", hashlib.sha256(html_doc.encode("utf-8")).hexdigest()[:12],
-    )
+    if "__BUILD__" in html_doc:
+        html_doc = html_doc.replace(
+            "__BUILD__", hashlib.sha256(html_doc.encode("utf-8")).hexdigest()[:12],
+        )
     proto = request.headers.get("x-forwarded-proto", request.url.scheme)
     host = request.headers.get("x-forwarded-host") or request.headers.get(
         "host", request.url.netloc
     )
     origin = f"{proto}://{host}".rstrip("/")
     html_doc = html_doc.replace('content="/og-image.png"', f'content="{origin}/og-image.png"')
-    html_doc = html_doc.replace('property="og:url" content="/"', f'property="og:url" content="{origin}/"')
-    # The whole app (JS + CSS) is inlined in this one document, so a cached copy
-    # keeps running the previous build after a deploy -- which is how a
+    html_doc = html_doc.replace(
+        f'property="og:url" content="{canonical_path}"',
+        f'property="og:url" content="{origin}{canonical_path}"',
+    )
+    html_doc = html_doc.replace(
+        f'rel="canonical" href="{canonical_path}"',
+        f'rel="canonical" href="{origin}{canonical_path}"',
+    )
+    # The whole page (JS + CSS) is inlined in this one document, so a cached
+    # copy keeps running the previous build after a deploy -- which is how a
     # redesigned share card can keep rendering the old layout. This response
     # carried no cache headers at all, leaving it to browser heuristics; pin it
     # to always revalidate, with an ETag so an unchanged shell still costs a 304.
@@ -443,6 +435,19 @@ def root(request: Request) -> Response:
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=headers)
     return HTMLResponse(html_doc, headers=headers)
+
+
+@app.get("/", include_in_schema=False)
+def root(request: Request) -> Response:
+    """Marketing landing page. The app itself lives at /app; a script on the
+    landing page forwards legacy hash deep-links (/#job=… etc.) to /app."""
+    return _serve_shell(request, "landing.html", "/")
+
+
+@app.get("/app", include_in_schema=False)
+def app_shell(request: Request) -> Response:
+    """The single-page application (analyze, results, history, pricing)."""
+    return _serve_shell(request, "index.html", "/app")
 
 
 @app.get("/favicon.svg", include_in_schema=False)
@@ -502,7 +507,7 @@ async def analyze_endpoint(
     overlay: bool = Form(
         True, description="Also render the annotated overlay video.",
     ),
-    user: User | None = Depends(optional_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> JobCreated:
     """Accept a clip + params, kick off analysis, return a job id to poll."""
@@ -578,7 +583,7 @@ async def analyze_endpoint(
         "job_dir": str(job_dir),
         # Who may read this job back (see _authorized_job).
         "token": job_token,
-        "owner_user_id": user.id if user is not None else None,
+        "owner_user_id": user.id,
     }
 
     background_tasks.add_task(
@@ -601,7 +606,7 @@ async def analyze_photo_endpoint(
     sport: str = Form(..., description="run | bike"),
     position: str | None = Form(None, description="Cycling position (bike only)."),
     coaching: bool = Form(True, description="Include AI coaching."),
-    user: User | None = Depends(optional_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Analyze a single still photo. Synchronous (~5s) -- returns the full

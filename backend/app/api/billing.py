@@ -190,8 +190,8 @@ async def create_checkout(
             line_items=[{"price": price_id, "quantity": 1}],
             # Carry the plan back so the client can acknowledge a one-time Expert
             # Review (which grants no tier, so tier-polling would never confirm it).
-            success_url=f"{base}/?checkout=success&plan={body.plan}",
-            cancel_url=f"{base}/?checkout=cancel",
+            success_url=f"{base}/app?checkout=success&plan={body.plan}",
+            cancel_url=f"{base}/app?checkout=cancel",
             allow_promotion_codes=True,
             metadata={
                 "user_id": str(user.id),
@@ -302,7 +302,7 @@ async def customer_portal(
         )
     try:
         portal = stripe.billing_portal.Session.create(
-            customer=user.stripe_customer_id, return_url=f"{_base_url(request)}/",
+            customer=user.stripe_customer_id, return_url=f"{_base_url(request)}/app",
         )
     except stripe.StripeError as e:  # noqa: BLE001
         logger.warning("PORTAL_FAILED", err=str(e), user_id=user.id)
