@@ -15,7 +15,7 @@
 <meta property="og:title" content="Flapp — Running &amp; Cycling Form Analysis">
 <meta property="og:description" content="Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — powered by AI pose estimation.">
 <meta property="og:image" content="/og-image.png">
-<meta property="og:url" content="/">
+<meta property="og:url" content="/app">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Flapp — Running &amp; Cycling Form Analysis">
 <meta name="twitter:description" content="Upload a side-view clip and get joint angles, a technique score and an annotated overlay.">
@@ -2011,16 +2011,16 @@ function quotaSave(limit,remaining,until=null){
 }
 function renderQuota(){
   const q=quotaLoad();
-  // Window wording follows the tier: signed-in paid/starter plans are monthly,
-  // admin + anonymous visitors are daily (matches the backend limiter).
+  // Window wording follows the tier: every signed-in plan is monthly except
+  // admin, which is daily (matches the backend limiter).
   const tier=(auth&&auth.tier)||null;
-  const monthly = !!auth && tier!=='admin';
-  const period = monthly ? 'this month' : 'today';
+  const period = tier!=='admin' ? 'this month' : 'today';
   let txt;
-  if(q){
+  // Signed out there is no allowance to report -- analysis needs an account.
+  if(!auth){
+    txt = `Free account required · <b>3</b> analyses per month, no card`;
+  } else if(q){
     txt = `<b>${q.remaining}</b> of <b>${q.limit}</b> analyses left ${period}`;
-  } else if(!auth){
-    txt = `Free · <b>3</b> analyses per day`;
   } else if(tier==='admin'){
     txt = `Admin · <b>5</b> analyses per day`;
   } else {
@@ -2170,6 +2170,10 @@ $('#pAgain').addEventListener('click',()=>reset());
    ============================================================ */
 $('#analyze').addEventListener('click',()=>{
   if($('#analyze').getAttribute('aria-disabled')==='true' || !state.file) return;
+  // Analysis is account-only. Ask at the point of highest intent -- the file is
+  // already picked, and the modal is an overlay, so signing up doesn't cost the
+  // upload: submitAuth resumes this run for us.
+  if(!auth){ state.pendingAnalyze=true; openAuth('register'); return; }
   analyze();
 });
 $('#again').addEventListener('click',()=>reset());
@@ -3854,6 +3858,10 @@ function renderAuth(){
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
   document.body.classList.toggle('authed', !!auth);
+  // Say what the button will actually do: signed out it opens sign-up first,
+  // then runs the analysis on the file already chosen.
+  const go=$('#analyze');
+  if(go) go.textContent = auth ? 'Analyze Technique' : 'Create free account & analyze';
   // Keep pricing CTAs (current-plan badge vs buy button) in sync with auth.
   if(typeof renderPricing==='function') renderPricing();
 }
@@ -3885,13 +3893,18 @@ async function submitAuth(e){
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
     auth={email:j.email,tier:j.tier,is_pro:j.is_pro}; renderAuth(); closeAuth(); migrateAndLoad();
+    // Someone who hit "Analyze" before signing up gets their run started now,
+    // with the file they already chose (see the #analyze handler).
+    if(state.pendingAnalyze){ state.pendingAnalyze=false; if(state.file) analyze(); }
   }catch(err){ $('#authErr').textContent='Network error — check your connection and try again.'; }
   finally{ btn.disabled=false; }
 }
 function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; state.cloudHist=null;
   state.kfCache={}; state.kfPending={};        // never carry one account's frames into the next
   renderAuth();
-  if(document.body.dataset.state==='dashboard') reset(); else reRenderData(); }
+  // Signed out lands on the marketing page — the mirror of the entry rule,
+  // where a stored session on "/" sends you straight here.
+  location.assign('/'); }
 async function checkAuth(){
   const t=getToken();
   if(t){
@@ -3928,6 +3941,9 @@ $('#authForm').addEventListener('submit',submitAuth);
     else if(location.hash==='#history'){ clean(); openHistoryView(); }
     else if(location.hash==='#home'){ clean(); }   // dashboard auto-opens in checkAuth when signed in
     else if(location.hash==='#login'){ clean(); openAuth('login'); }
+    // The landing page sends new users straight to the sign-up form.
+    else if(location.hash==='#signup'){ clean(); openAuth('register'); }
+    else if(location.hash==='#pricing'){ clean(); openPricing(); }
     // The notes load async, so wait on the fetch already in flight.
     else if(location.hash==='#whatsnew'){ clean(); clReady.then(openWhatsNew); }
   }

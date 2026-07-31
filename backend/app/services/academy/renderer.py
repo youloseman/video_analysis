@@ -244,10 +244,10 @@ def _sidebar(active: str) -> str:
         # Home = the signed-in dashboard; hidden until _AUTH_JS confirms a session
         # (mirrors the SPA, where #navHome is auth-gated). Fixes Home vanishing
         # from the menu on Academy pages.
-        f'<a href="/#home" class="navlink" id="acadHome" hidden>{_ICONS["home"]}<span>Home</span></a>'
-        f'<a href="/" class="navlink">{_ICONS["analyze"]}<span>Analyze</span></a>'
-        f'<a href="/#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
-        f'<a href="/#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
+        f'<a href="/app#home" class="navlink" id="acadHome" hidden>{_ICONS["home"]}<span>Home</span></a>'
+        f'<a href="/app" class="navlink">{_ICONS["analyze"]}<span>Analyze</span></a>'
+        f'<a href="/app#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
+        f'<a href="/app#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
         f'<a href="/academy" class="navlink"{acad}>{_ICONS["book"]}<span>Academy</span></a>'
         f'<a href="/changelog" class="navlink"{chlog}>{_ICONS["spark"]}<span>What\'s new</span></a>'
         "</nav>"
@@ -281,7 +281,7 @@ _NAV_JS = (
 
 # Account box: mirror the app's renderAuth on these static pages. Anonymous
 # visitors (no token -> no fetch) get a "Log in" button that deep-links to the
-# SPA's login modal (/#login); signed-in visitors see their email + "Log out".
+# SPA's login modal (/app#login); signed-in visitors see their email + "Log out".
 _AUTH_JS = (
     "(function(){"
     "var boxes=[document.getElementById('authbox'),document.getElementById('authboxM')]"
@@ -293,7 +293,7 @@ _AUTH_JS = (
     "var m=a?"
     "'<span class=\"usermail\" title=\"'+esc(a.email)+'\">'+esc(a.email)+"
     "'</span><button class=\"btn btn-ghost btn-sm\" data-logout type=\"button\">Log out</button>':"
-    "'<a class=\"btn btn-primary btn-sm\" href=\"/#login\">Log in</a>';"
+    "'<a class=\"btn btn-primary btn-sm\" href=\"/app#login\">Log in</a>';"
     "boxes.forEach(function(b){b.innerHTML=m;});"
     "document.querySelectorAll('[data-logout]').forEach(function(b){"
     "b.addEventListener('click',function(){try{localStorage.removeItem('flapp_token');}catch(e){}render(null);});});}"

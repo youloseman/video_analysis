@@ -37,6 +37,9 @@ Thumbs.db
 *.mov
 *.MOV
 *.avi
+# ...except the landing page's hero clip, which is a product asset the app
+# serves, not a local recording lying around.
+!backend/app/static/media/hero.mp4
 
 # Local SQLite DB (dev only; prod uses Postgres)
 *.db
@@ -46,3 +49,8 @@ Thumbs.db
 *.log
 uploads/
 overlay_videos/
+
+# Landing-page source material: full-size originals and saved result pages the
+# assets in backend/app/static/media were derived from. Tens of MB, and the
+# derived versions are what the app actually serves.
+compare/

@@ -22,6 +22,18 @@ backend/uploads/
 backend/models/*.task
 *.log
 
+# The landing page's video and screenshots are part of the app and must ship
+# with it. The *.mp4 / *.MOV rules above are aimed at stray clips lying around
+# the repo root; spell the exception out rather than trusting that they don't
+# reach nested paths.
+!backend/app/static/media
+!backend/app/static/media/**
+
+# Source material the landing assets were derived from (multi-MB saved pages and
+# full-size originals). The shipped, compressed versions are under
+# backend/app/static/media -- see backend/scripts/make_before_bw.py.
+compare/
+
 # Not needed in the image
 node_modules/
 brandbook-v2.html
