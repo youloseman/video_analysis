@@ -270,6 +270,11 @@ def calculate_forearm_tilt_2d(
     Positive = wrist higher than elbow (modern aero bar tilt).
     Reference: Steinmetz - athletes adding 10-20 deg of bar tilt.
 
+    Measured off the horizontal without regard to which way the rider faces:
+    the question is whether the wrist sits above the elbow, and that cannot
+    depend on which side of the bike the camera stood on. Same convention as
+    the trunk angle and ``calculate_tilt_3d`` below.
+
     Returns:
         (angle_degrees, avg_visibility) or (NaN, avg_vis) if below threshold.
     """
@@ -286,8 +291,12 @@ def calculate_forearm_tilt_2d(
     dx = wx - ex
     dy = wy - ey  # image y increases downward
 
-    # atan2(-dy, dx): negate dy so positive = wrist above elbow
-    angle_deg = math.degrees(math.atan2(-dy, dx))
+    # abs(dx) so a rider facing left reads the same as one facing right; -dy so
+    # positive means the wrist is above the elbow. A signed dx made the same
+    # posture come back as `180 - tilt` when filmed from the other side, which
+    # then fell outside the plausibility envelope -- so the metric was dropped
+    # and its scoring component vanished without saying so.
+    angle_deg = math.degrees(math.atan2(-dy, abs(dx)))
     return round(angle_deg, 1), avg_vis
 
 
