@@ -623,9 +623,24 @@ h2.sec + .speedline{margin-bottom:24px}
    Uses the AA-safe warn TEXT tone, not the vivid fill: this is small copy. */
 .hint.warn{color:var(--c-warn-text);font-weight:600}
 /* Irreversible actions, visually separated and last on the page. */
-.danger-zone{margin-top:28px;border-color:color-mix(in srgb,var(--c-coral-btn) 35%,transparent)}
 .btn.danger{color:var(--c-coral-btn);border-color:currentColor}
 .btn.danger:hover{background:color-mix(in srgb,var(--c-coral-btn) 10%,transparent)}
+/* Account deletion: one quiet line until you ask for it. Only the summary is
+   ever on screen by default, so the plan page doesn't open with a red box. */
+.danger-disc{margin-top:36px;border-top:1px solid var(--c-line);padding-top:18px}
+.danger-disc summary{
+  cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:700;color:var(--c-ink-faint);padding:4px 2px;
+}
+.danger-disc summary::-webkit-details-marker{display:none}
+.danger-disc summary::before{
+  content:"";width:6px;height:6px;border-right:1.6px solid currentColor;
+  border-bottom:1.6px solid currentColor;transform:rotate(-45deg);transition:transform .15s ease;
+}
+.danger-disc[open] summary::before{transform:rotate(45deg)}
+.danger-disc summary:hover{color:var(--c-coral-btn)}
+.danger-disc .dd-body{padding:10px 0 4px 14px;max-width:62ch}
+.danger-disc .dd-body p{font-size:13px;color:var(--c-ink-soft);margin:0 0 12px}
 .quota-line{font-size:12px;color:var(--c-ink-soft);text-align:center;margin-top:20px;padding-top:20px;border-top:1px solid var(--c-line)}
 .quota-line b{color:var(--c-navy);font-family:var(--f-mono);font-weight:600}
 
@@ -1283,18 +1298,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <div id="dashPlan"></div>
     <div class="blockhead"><div class="eyebrow">Latest</div><h3>Recent analyses</h3><div class="speedline-sm"></div></div>
     <div id="dashRecent" class="dash-recent"></div>
-
-    <!-- The privacy policy promises deletion on request; this is that request,
-         self-serve. Kept at the very bottom, behind a typed confirmation. -->
-    <div class="card danger-zone">
-      <h3 style="margin:0 0 4px">Delete account</h3>
-      <p class="hint" style="text-align:left;margin:0 0 12px">
-        Removes your account, saved analyses, usage history, feedback and order
-        history. This cannot be undone. If you have an active subscription,
-        cancel it in <b>Manage subscription</b> first.
-      </p>
-      <button class="btn btn-outline btn-sm danger" type="button" id="delAccountBtn">Delete my account</button>
-    </div>
   </section>
 
   <!-- ============ UPLOADER ============ -->
@@ -1868,6 +1871,21 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <svg aria-hidden="true"><use href="#i-check"/></svg>
       Prices in USD · cancel anytime · secure checkout by Stripe
     </p>
+
+    <!-- The privacy policy promises deletion on request; this is that request,
+         self-serve. It lives here, next to Manage subscription (which its own
+         copy tells you to use first) rather than shouting from the dashboard --
+         collapsed, because nobody arrives at their plan page wanting to leave.
+         Signed-out visitors browsing prices never see it. -->
+    <details class="danger-disc hidden" id="delAccount">
+      <summary>Delete account and all its data</summary>
+      <div class="dd-body">
+        <p>Removes your account, saved analyses, usage history, feedback and order
+          history. This cannot be undone. If you have an active subscription,
+          cancel it in <b>Manage subscription</b> first.</p>
+        <button class="btn btn-outline btn-sm danger" type="button" id="delAccountBtn">Delete my account</button>
+      </div>
+    </details>
   </section>
 
   <!-- ============ WHAT'S NEW (release notes) ============ -->
@@ -3858,6 +3876,10 @@ function renderAuth(){
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
   document.body.classList.toggle('authed', !!auth);
+  // Deleting an account is only offered to someone who has one; it also closes
+  // itself on sign-out so the next visitor doesn't inherit an open panel.
+  const del=$('#delAccount');
+  if(del){ del.classList.toggle('hidden', !auth); if(!auth) del.open=false; }
   // Say what the button will actually do: signed out it opens sign-up first,
   // then runs the analysis on the file already chosen.
   const go=$('#analyze');
