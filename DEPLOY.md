@@ -3,22 +3,44 @@
 > **Current deployment:** https://video-analysis-production-1f54.up.railway.app
 > (Railway project `video-analysis`, workspace *youloseman's Projects*).
 >
-> ⚠️ **Merging to `main` does not deploy anything.** The service is not wired to
-> the GitHub repo — every deployment this project has ever had was a manual
-> `railway up`. On 2026-07-30 three pull requests merged to `main` and none of
-> them shipped; production was still serving a snapshot taken before the first
-> of them was even committed. Until the source connection is fixed (below),
-> **`railway up --ci` is the only way anything reaches production.**
+> **Merging to `main` deploys automatically** — via GitHub Actions
+> (`.github/workflows/deploy.yml`), not via Railway. The service is still not
+> wired to the GitHub repo; the workflow runs the same `railway up --ci` a human
+> used to run by hand, after the test suite passes, and then checks `/health`.
+>
+> This needs the `RAILWAY_TOKEN` repository secret to exist. Without it the
+> deploy job fails loudly, which is the point: before the workflow existed the
+> symptom of a dead deploy path was silence. On 2026-07-30 three pull requests
+> merged to `main` and none of them shipped; production was serving a snapshot
+> taken before the first of them was even committed.
 
 The API ships as a Docker image (`Dockerfile` at the repo root). The pose model
 is downloaded **at build time** and baked in, and `ffmpeg` is installed so
 overlays come out as web-safe H.264. Config is in `railway.json` (Dockerfile
 builder + `/health` check + single replica).
 
-## Option A — GitHub integration (NOT currently connected)
+## Option A — GitHub Actions (what runs today)
 
-This is how it should work, and how it does not work today. Reconnecting it
-needs the Railway **web dashboard**; there is no CLI equivalent.
+`.github/workflows/deploy.yml`, on every push to `main` and on manual dispatch:
+tests → `railway up --ci --service video-analysis` → poll `/health` until 200.
+
+**One-time setup.** Railway → project `video-analysis` → **Settings → Tokens** →
+create a **project** token for the production environment (not an account token,
+which would reach every project in the workspace). Then GitHub → **Settings →
+Secrets and variables → Actions** → new repository secret named `RAILWAY_TOKEN`.
+
+The test gate currently skips `tests/test_gzip_middleware.py` — those 7 tests
+fail on `main`, and gating on them would block every deploy. Fix them and delete
+the `--ignore` line in the workflow.
+
+To deploy without pushing (e.g. re-run a failed deploy): Actions → **Deploy** →
+**Run workflow**.
+
+## Option B — Railway's own GitHub integration (NOT connected)
+
+Native builds triggered by Railway itself, no Actions minutes, no token in
+GitHub. Would replace Option A. Needs the Railway **web dashboard**; there is no
+CLI equivalent.
 
 1. Railway → project `video-analysis` → service `video-analysis` →
    **Settings → Source** → connect **`youloseman/video_analysis`**, branch
@@ -33,11 +55,13 @@ laptop — GitHub builds carry the commit, CLI uploads do not:
 railway deployment list --json   # CLI uploads have an empty commitMessage
 ```
 
-Once connected, every `git push` to `main` redeploys automatically.
+If you connect it, delete `.github/workflows/deploy.yml` — two things deploying
+the same service on the same push is how you get racing builds.
 
-## Option B — Railway CLI (the only working path right now)
+## Option C — Railway CLI (manual, still works)
 
-From the repo root, logged in as top.raider90@gmail.com:
+The escape hatch when Actions is down or you need to ship something that is not
+on `main`. From the repo root, logged in as top.raider90@gmail.com:
 
 ```bash
 railway up --ci -m "what changed"   # upload + build the Dockerfile on Railway
