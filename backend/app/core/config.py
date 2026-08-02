@@ -100,6 +100,22 @@ class Settings:
     # request origin when unset (works on any host).
     public_base_url: str | None = None
 
+    # --- Outbound email (see services/notify.py). Optional: with none of this
+    # set, a delivered Expert Review is only discoverable inside the app. ---
+    # "resend" | "smtp" | "" (disabled)
+    email_provider: str = ""
+    email_api_key: str | None = None          # resend
+    # The From: address. Must be on a domain verified with the provider, or
+    # everything lands in spam.
+    email_from: str | None = None
+    # Where "reply" goes when the athlete answers the notification. Falls back
+    # to email_from.
+    email_reply_to: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int = 587                      # STARTTLS; 25 is blocked on most hosts
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+
     @property
     def stripe_enabled(self) -> bool:
         return bool(self.stripe_secret_key)
@@ -204,6 +220,14 @@ def _load_settings() -> Settings:
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
         public_base_url=(os.environ.get("PUBLIC_BASE_URL") or "").rstrip("/") or None,
+        email_provider=(os.environ.get("EMAIL_PROVIDER") or "").strip().lower(),
+        email_api_key=os.environ.get("EMAIL_API_KEY") or None,
+        email_from=os.environ.get("EMAIL_FROM") or None,
+        email_reply_to=os.environ.get("EMAIL_REPLY_TO") or None,
+        smtp_host=os.environ.get("SMTP_HOST") or None,
+        smtp_port=_int_env("SMTP_PORT", Settings.smtp_port),
+        smtp_user=os.environ.get("SMTP_USER") or None,
+        smtp_password=os.environ.get("SMTP_PASSWORD") or None,
     )
 
 
