@@ -24,6 +24,7 @@ from typing import Any
 import stripe
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,13 +32,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.db import get_session
 from app.core.security import get_current_user, require_admin
+from app.models.analysis import Analysis
 from app.models.order import (
+    ORDER_DELIVERED,
     ORDER_PAID,
     ORDER_STATUS_LABEL,
     ORDER_STATUSES,
     Order,
 )
 from app.models.user import TIER_ADMIN, TIER_STARTER, User
+from app.services import expert_review, notify
 
 
 def _now_ms() -> int:
@@ -52,6 +56,11 @@ admin_router = APIRouter(tags=["billing"])
 class CheckoutIn(BaseModel):
     # Matches the frontend startCheckout() keys.
     plan: str
+    # Which analysis an Expert Review is being bought for. The athlete picks it
+    # before paying; without it the reviewer has to email and ask which clip was
+    # meant. Ignored for subscription plans. It is the client-side id, the same
+    # one history and /me/analyses use.
+    analysis_client_id: str | None = None
 
 
 def log_billing_configuration() -> None:
@@ -197,6 +206,9 @@ async def create_checkout(
                 "user_id": str(user.id),
                 "plan": body.plan,
                 "tier": tier_for_plan(body.plan) or "",
+                # Round-trips through Stripe so the webhook can attach the order
+                # to the analysis the athlete actually chose.
+                "analysis_client_id": (body.analysis_client_id or "")[:64],
             },
         )
     except stripe.StripeError as e:  # noqa: BLE001
@@ -219,6 +231,18 @@ def _order_out(o: Order) -> dict[str, Any]:
         "currency": o.currency,
         "created_at_ms": o.created_at_ms,
         "updated_at_ms": o.updated_at_ms,
+        "analysis_client_id": o.analysis_client_id,
+        # Only a DELIVERED report exists as far as the customer is concerned; a
+        # draft is working material. This flag is what puts the "Read your
+        # review" link in their account, so it must not go true early.
+        "has_report": bool(o.report) and o.status == ORDER_DELIVERED,
+        "delivered_at_ms": o.delivered_at_ms,
+        # Delivered but never opened. The dashboard turns this into a card,
+        # because an email can be missed and Pricing is a strange place to go
+        # looking for something you already bought.
+        "unread": (
+            bool(o.report) and o.status == ORDER_DELIVERED and not o.read_at_ms
+        ),
     }
 
 
@@ -239,6 +263,79 @@ async def my_orders(
     return [_order_out(o) for o in rows]
 
 
+@router.get("/orders/{order_id}/report")
+async def my_report(
+    order_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The delivered Expert Review for one of the caller's own orders.
+
+    404 (not 403) for somebody else's order, and 404 for a report that has not
+    shipped yet -- a draft is the reviewer's working material, not something the
+    customer is entitled to watch being written.
+    """
+    order = (
+        await db.execute(
+            select(Order).where(Order.id == order_id, Order.user_id == user.id)
+        )
+    ).scalar_one_or_none()
+    if order is None or not order.report or order.status != ORDER_DELIVERED:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No review to show yet.")
+    # Which analysis this is about, so the athlete's copy carries the same
+    # header as the sample they were shown before buying. Missing (deleted
+    # history) degrades to a report with no context line, not to an error.
+    entry = await _analysis_entry(db, user.id, order.analysis_client_id) or {}
+    sport = entry.get("sport") or _sport_of(order.report)
+    return {
+        "order": _order_out(order),
+        "report": order.report,
+        "sections": expert_review.sections_for(sport),
+        "context": {
+            "sport": sport, "kind": entry.get("kind"),
+            "score": entry.get("score"), "grade": entry.get("grade"),
+            "delivered_at_ms": order.delivered_at_ms,
+        },
+    }
+
+
+def _sport_of(report: Any) -> str | None:
+    """Which sport's section list renders this report.
+
+    Inferred from the report itself rather than stored twice: a report carrying
+    fit rows is a cycling one. Keeps an older stored report renderable after the
+    template grows.
+    """
+    return "bike" if (report or {}).get("fit") else "run"
+
+
+# --------------------------------------------------------------------------
+# Expert Review: the fulfilment queue and the report editor (admin tier).
+# --------------------------------------------------------------------------
+async def _analysis_entry(
+    db: AsyncSession, user_id: int, client_id: str | None,
+) -> dict[str, Any] | None:
+    """The stored analysis an order is attached to (the frontend's own entry)."""
+    if not client_id:
+        return None
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user_id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    return (row.data or None) if row is not None else None
+
+
+def _analysis_brief(a: Analysis) -> dict[str, Any]:
+    """One line per analysis for the reviewer's picker -- never the keyframe."""
+    return {
+        "id": a.client_id, "at": a.created_at_ms,
+        "sport": a.sport, "kind": a.kind, "score": a.score,
+    }
+
+
 @admin_router.get("/admin/orders")
 async def admin_orders(
     _admin: User = Depends(require_admin),
@@ -254,14 +351,75 @@ async def admin_orders(
         )
     ).all()
     return [
-        {**_order_out(o), "email": email, "admin_note": o.admin_note}
+        {
+            **_order_out(o), "email": email, "admin_note": o.admin_note,
+            # The queue needs to distinguish "nothing written" from "drafted but
+            # not sent"; `has_report` deliberately only speaks about delivery.
+            "has_draft": not expert_review.is_empty(o.report),
+        }
         for o, email in rows
     ]
+
+
+@admin_router.get("/admin/orders/{order_id}")
+async def admin_order_detail(
+    order_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Everything needed to write the review on one screen.
+
+    The order, the athlete's analysis (including its annotated keyframe -- the
+    original clip is long gone, uploads expire in hours), the rest of their
+    history so the reviewer can see a trend or re-point the order, the draft,
+    and the section list that defines the template.
+    """
+    row = (
+        await db.execute(
+            select(Order, User.email)
+            .join(User, User.id == Order.user_id)
+            .where(Order.id == order_id)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    order, email = row
+
+    entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
+    history = (
+        await db.execute(
+            select(Analysis)
+            .where(Analysis.user_id == order.user_id)
+            .order_by(Analysis.created_at_ms.desc())
+            .limit(50)
+        )
+    ).scalars().all()
+    sport = (entry or {}).get("sport") or "run"
+    # An untouched order opens on a seeded draft rather than a blank page.
+    report = order.report if not expert_review.is_empty(order.report) else \
+        expert_review.prefill(entry)
+    return {
+        **_order_out(order),
+        "email": email,
+        "admin_note": order.admin_note,
+        "analysis": entry,
+        "history": [_analysis_brief(a) for a in history],
+        "report": report,
+        "sport": sport,
+        "sections": expert_review.sections_for(sport),
+        "missing_required": expert_review.missing_required(report, sport),
+    }
 
 
 class OrderPatch(BaseModel):
     status: str | None = None
     admin_note: str | None = None
+    # The report draft, in the shape services/expert_review.py defines. Saved
+    # as often as the editor likes; publishing is a separate, deliberate act.
+    report: dict[str, Any] | None = None
+    # Re-point the order at a different analysis (wrong clip picked at checkout,
+    # or none picked at all).
+    analysis_client_id: str | None = None
 
 
 @admin_router.patch("/admin/orders/{order_id}")
@@ -271,7 +429,7 @@ async def admin_update_order(
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    """Move an order through the fulfilment states / leave an internal note."""
+    """Move an order through the fulfilment states / save a draft / leave a note."""
     order = await db.get(Order, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
@@ -284,9 +442,146 @@ async def admin_update_order(
         order.status = body.status
     if body.admin_note is not None:
         order.admin_note = body.admin_note.strip()[:2000] or None
+    if body.analysis_client_id is not None:
+        order.analysis_client_id = body.analysis_client_id.strip()[:64] or None
+    if body.report is not None:
+        entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
+        sport = (entry or {}).get("sport") or "run"
+        # Normalised server-side: the editor is not the last word on what may be
+        # stored on an order row.
+        order.report = expert_review.normalize_report(body.report, sport)
     order.updated_at_ms = _now_ms()
     await db.commit()
-    return {**_order_out(order), "admin_note": order.admin_note}
+    return {
+        **_order_out(order), "admin_note": order.admin_note,
+        "report": order.report,
+        "missing_required": expert_review.missing_required(
+            order.report, _sport_of(order.report),
+        ),
+    }
+
+
+@admin_router.post("/admin/orders/{order_id}/publish")
+async def admin_publish_report(
+    order_id: int,
+    request: Request,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Deliver the review: the customer can read it from this moment on.
+
+    Refuses on an incomplete report. The customer is shown "Your review has been
+    delivered" the instant this succeeds, so the completeness gate belongs here
+    rather than in the editor's markup, where it would be advisory.
+    """
+    order = await db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
+    sport = (entry or {}).get("sport") or "run"
+    missing = expert_review.missing_required(order.report, sport)
+    if missing:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Not ready to send — still empty: " + ", ".join(missing),
+        )
+    now = _now_ms()
+    first_delivery = order.delivered_at_ms is None
+    order.status = ORDER_DELIVERED
+    order.delivered_at_ms = order.delivered_at_ms or now
+    order.updated_at_ms = now
+    # Re-publishing an edited report makes it unread again: the athlete has not
+    # seen THIS version, and silently changing what they already read is worse
+    # than telling them twice.
+    order.read_at_ms = None
+    await db.commit()
+    logger.info("REVIEW_DELIVERED", order_id=order.id, user_id=order.user_id)
+
+    # Tell them. Only on first delivery -- a typo fix should not re-email
+    # someone. Blocking network call, so it goes to the threadpool; a mail
+    # failure is logged and never fails a delivery that is otherwise complete.
+    emailed = False
+    if first_delivery:
+        buyer = await db.get(User, order.user_id)
+        if buyer is not None:
+            subject, text, html = expert_review.ready_email(
+                order.report, f"{_base_url(request)}/app",
+            )
+            emailed = await run_in_threadpool(
+                notify.send_email, buyer.email, subject, text, html,
+            )
+    return {**_order_out(order), "report": order.report, "emailed": emailed}
+
+
+@router.post("/orders/{order_id}/read", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_report_read(
+    order_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    """The athlete opened their review. Clears the unread card; idempotent."""
+    order = (
+        await db.execute(
+            select(Order).where(Order.id == order_id, Order.user_id == user.id)
+        )
+    ).scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    if order.status == ORDER_DELIVERED and not order.read_at_ms:
+        order.read_at_ms = _now_ms()
+        await db.commit()
+
+
+@admin_router.post("/admin/email-test")
+async def admin_email_test(
+    _admin: User = Depends(require_admin),
+) -> dict[str, Any]:
+    """Send a test message to the admin's own address.
+
+    Mail config fails in ways nothing else catches: a token that lacks sending
+    permission, a From: on a domain that was never verified, DNS that has not
+    propagated. Every one of them shows up as a review that quietly announces
+    itself to nobody. This makes the whole chain provable in one request instead
+    of by delivering a real review and hoping.
+    """
+    if not notify.email_enabled():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Email is not configured — set EMAIL_PROVIDER, EMAIL_API_KEY and "
+            "EMAIL_FROM, then restart.",
+        )
+    sent = await run_in_threadpool(
+        notify.send_email, _admin.email,
+        "Flapp email test",
+        "If you are reading this, delivered Expert Reviews will reach your "
+        "athletes.\n",
+        "<p>If you are reading this, delivered Expert Reviews will reach your "
+        "athletes.</p>",
+    )
+    if not sent:
+        # The reason is in the log with the provider's own wording; repeating a
+        # guess here would just be a second, worse explanation.
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "The provider rejected it. See the server log for their reason "
+            "(EMAIL_FAILED).",
+        )
+    return {"sent": True, "to": _admin.email, "provider": settings.email_provider}
+
+
+@router.get("/expert-review/sample")
+def expert_review_sample() -> dict[str, Any]:
+    """A complete, real-shaped example report.
+
+    Rendered by the same code as a delivered one and shown on the pricing page,
+    because the Expert Review button otherwise sells something invisible: nobody
+    knows what $29 buys until after they have spent it.
+    """
+    return {
+        "context": expert_review.SAMPLE_CONTEXT,
+        "report": expert_review.SAMPLE_REPORT,
+        "sections": expert_review.sections_for(expert_review.SAMPLE_SPORT),
+    }
 
 
 @router.post("/portal")
@@ -394,19 +689,28 @@ async def _record_order(db: AsyncSession, user: User, obj: Any) -> None:
     if existing is not None:
         return
     now = _now_ms()
+    meta = obj.get("metadata") or {}
+    analysis_id = str(meta.get("analysis_client_id") or "").strip()[:64] or None
     db.add(Order(
         user_id=user.id,
         stripe_session_id=session_id,
-        plan=str((obj.get("metadata") or {}).get("plan") or "expert")[:32],
+        plan=str(meta.get("plan") or "expert")[:32],
         amount_total=obj.get("amount_total"),
         currency=(obj.get("currency") or None),
         status=ORDER_PAID,
         created_at_ms=now,
         updated_at_ms=now,
+        analysis_client_id=analysis_id,
     ))
+    if not analysis_id:
+        # Not fatal -- the reviewer can pick one in the queue -- but it means
+        # somebody paid without telling us what to look at, which is worth
+        # knowing about if it starts happening often.
+        logger.warning("ORDER_WITHOUT_ANALYSIS", user_id=user.id, session=session_id)
     logger.info(
         "ORDER_RECORDED", user_id=user.id, session=session_id,
         amount=obj.get("amount_total"), currency=obj.get("currency"),
+        analysis=analysis_id,
     )
 
 

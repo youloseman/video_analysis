@@ -166,6 +166,95 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .addon-strip .ao-price{font-family:var(--f-display);font-weight:900;font-size:26px;color:var(--c-ink);margin-left:auto}
 .addon-strip .ao-price small{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);font-weight:400}
 .addon-strip .btn{white-space:nowrap}
+
+/* ---- Expert Review: the report, the queue, the editor ---- */
+/* One renderer serves three places (athlete, admin preview, pricing sample), so
+   the report styling has to stand on its own rather than inherit a container. */
+.rr-wrap{max-width:760px;margin:0 auto}
+.rr-meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--c-ink-soft);
+  margin:0 0 28px;padding-bottom:18px;border-bottom:1px solid var(--c-line)}
+.rr-meta b{color:var(--c-ink)}
+.rr-sec{margin:0 0 30px}
+.rr-h{font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--c-blue);margin:0 0 10px}
+.rr-body{font-size:15.5px;line-height:1.62;color:var(--c-ink)}
+.rr-body p{margin:0 0 12px}
+.rr-body p:last-child{margin-bottom:0}
+/* A priority is only useful if it answers all four questions, so the card shows
+   the four labels even when the reviewer was terse. */
+.rr-prio{border:1px solid var(--c-line);border-radius:var(--radius);padding:16px 18px;margin:0 0 12px;
+  background:var(--c-panel)}
+.rr-prio-n{font-family:var(--f-mono);font-size:11px;font-weight:700;color:var(--c-coral);letter-spacing:.08em}
+.rr-prio-t{font-family:var(--f-display);font-weight:800;font-size:17px;color:var(--c-navy);margin:2px 0 12px}
+.rr-row{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;margin:0 0 9px;font-size:14.5px;line-height:1.55}
+.rr-row:last-child{margin-bottom:0}
+.rr-row dt{font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--c-ink-soft);padding-top:3px}
+.rr-row dd{margin:0;color:var(--c-ink)}
+.rr-fit{width:100%;border-collapse:collapse;font-size:14px}
+.rr-fit th{font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--c-ink-soft);text-align:left;padding:0 12px 8px 0;white-space:nowrap}
+.rr-fit td{padding:10px 12px 10px 0;border-top:1px solid var(--c-line);vertical-align:top;color:var(--c-ink)}
+.rr-fitwrap{overflow-x:auto}
+@media (max-width:640px){
+  .rr-row{grid-template-columns:1fr;gap:2px}
+  .rr-row dt{padding-top:0}
+}
+/* Queue */
+.ex-card{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--c-line);
+  border-radius:var(--radius);padding:14px 16px;margin:0 0 10px;background:var(--c-panel)}
+.ex-card .ex-em{font-weight:700;color:var(--c-navy)}
+.ex-card .ex-sub{font-size:13px;color:var(--c-ink-soft)}
+.ex-card .btn{margin-left:auto}
+.ex-pill{font-family:var(--f-mono);font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  padding:3px 8px;border-radius:999px;border:1px solid var(--c-line);color:var(--c-ink-soft);white-space:nowrap}
+.ex-pill.is-todo{border-color:var(--st-warn);color:var(--st-warn)}
+.ex-pill.is-draft{border-color:var(--c-blue);color:var(--c-blue)}
+.ex-pill.is-done{border-color:var(--st-good);color:var(--st-good)}
+/* Editor */
+.ex-grid{display:grid;grid-template-columns:1fr 300px;gap:26px;align-items:start}
+@media (max-width:900px){ .ex-grid{grid-template-columns:1fr} }
+.ex-fld{margin:0 0 20px}
+.ex-fld label{display:block;font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--c-navy);margin:0 0 4px}
+.ex-fld .ex-hint{font-size:12.5px;color:var(--c-ink-soft);margin:0 0 8px;line-height:1.45}
+.ex-fld textarea,.ex-fld input[type=text]{width:100%;font:inherit;font-size:14.5px;line-height:1.55;
+  padding:10px 12px;border:1px solid var(--c-line);border-radius:10px;background:#fff;color:var(--c-ink);resize:vertical}
+.ex-fld textarea:focus,.ex-fld input:focus{outline:2px solid var(--c-blue);outline-offset:1px}
+.ex-req{color:var(--c-coral)}
+.ex-side{position:sticky;top:16px;border:1px solid var(--c-line);border-radius:var(--radius);
+  padding:16px;background:var(--c-panel);font-size:13.5px}
+.ex-side img{width:100%;border-radius:10px;display:block;margin:0 0 12px;background:#0d1420}
+.ex-side dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0 0 14px}
+.ex-side dt{color:var(--c-ink-soft)}
+.ex-side dd{margin:0;font-weight:600;color:var(--c-ink)}
+.ex-sub-card{border:1px solid var(--c-line);border-radius:12px;padding:12px 14px;margin:0 0 10px;background:#fff}
+.ex-bar{position:sticky;bottom:0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  padding:14px 0;margin-top:8px;background:linear-gradient(to top,var(--c-bg) 70%,transparent)}
+.ex-bar .ex-status{font-size:13px;color:var(--c-ink-soft);margin-right:auto}
+
+/* "Your review is ready" on the dashboard. Loud on purpose while unread: an
+   email can be missed, and until now the only route to a delivered $29
+   deliverable was the Pricing page — which is where you go to BUY things. */
+.rev-card{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 22px;
+  padding:18px 20px;border-radius:var(--radius);border:1px solid var(--c-line);background:var(--c-panel)}
+.rev-card.is-unread{border-color:var(--c-blue);background:var(--c-panel-blue)}
+.rev-card .rev-t{font-family:var(--f-display);font-weight:800;font-size:17px;color:var(--c-navy)}
+.rev-card .rev-s{font-size:13.5px;color:var(--c-ink-soft);max-width:52ch}
+.rev-card .btn{margin-left:auto}
+.rev-dot{width:8px;height:8px;border-radius:999px;background:var(--c-coral);flex:none}
+
+/* Printing is how a review becomes a file the athlete can keep — "Save as PDF"
+   is the delivery format, so the page has to print as the document rather than
+   as a screenshot of the app around it. */
+@media print{
+  .topbar,.sidebar,.botnav,.scrim,footer,.backhome-row,.skip,.modal{display:none !important}
+  main,.wrap,body{margin:0 !important;padding:0 !important;background:#fff !important}
+  .rr-wrap{max-width:none}
+  .rr-sec,.rr-prio{break-inside:avoid;page-break-inside:avoid}
+  .rr-h{color:#14294B !important}
+  button{display:none !important}
+}
 .pricing-foot{text-align:center;color:var(--c-ink-faint);font-size:13px;margin-top:22px}
 .pricing-foot svg{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
 
@@ -1237,6 +1326,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <a href="#" id="navNew" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>What’s new</span><span class="newdot hidden" id="navNewDot" aria-hidden="true"></span></a>
     <!-- Admin-only inbox for result feedback; revealed by renderAuth(). -->
     <a href="#" id="navFeedback" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Feedback</span></a>
+    <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>Reviews</span></a>
   </nav>
   <div class="authbox" id="authbox"></div>
 </aside>
@@ -1256,6 +1346,24 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <button class="btn btn-primary" id="authSubmit" type="submit" style="width:100%">Log in</button>
     </form>
     <p class="hint" id="authToggleTxt" style="text-align:center;margin-top:14px"></p>
+  </div>
+</div>
+
+<!-- Which analysis is the Expert Review for? Asked BEFORE payment: the clip
+     itself expires within hours, so by the time the order is picked up the
+     stored analysis is all there is — and guessing which one the athlete meant
+     is what this whole flow exists to stop. -->
+<div class="modal hidden" id="pickModal" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+  <div class="modal-card">
+    <button class="modal-close" id="pickClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+    <div class="eyebrow">Expert Review · $29</div>
+    <h2 id="pickTitle" style="font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);font-size:23px;margin:6px 0 4px">Which analysis?</h2>
+    <p class="hint" style="text-align:left;margin:0 0 16px">Pick the one you want a human to read. You'll get a written report against exactly this analysis.</p>
+    <div id="pickList" style="max-height:46vh;overflow:auto;margin:0 0 18px"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="pickCancel" type="button">Cancel</button>
+      <button class="btn btn-primary" id="pickOk" type="button">Continue to payment</button>
+    </div>
   </div>
 </div>
 
@@ -1306,6 +1414,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <div class="blockhead" style="margin-top:0">
       <div class="eyebrow">My technique</div>
       <h2 class="sec" id="dashTitle" tabindex="-1" style="margin-bottom:8px">Dashboard</h2>
+      <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
+      <div id="dashReview"></div>
       <div class="speedline"></div>
     </div>
     <div id="dashSummary" class="dash-summary"></div>
@@ -1877,6 +1987,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <div class="ao-desc">A personal video breakdown from a real triathlete, on top of the AI.</div>
       </div>
       <div class="ao-price">$29 <small>once</small></div>
+      <button class="btn btn-ghost" type="button" id="ctaExpertSample">See a sample</button>
       <button class="btn btn-outline" type="button" id="ctaExpert">Add Expert Review</button>
     </div>
 
@@ -1937,6 +2048,34 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <div id="fbaList"></div>
   </section>
 
+  <!-- EXPERT REVIEW — fulfilment queue + report editor (admin only).
+       The $29 order used to exist only as an API row: nothing in the product
+       could see it, and /docs is off in production, so delivering a paid review
+       meant curl. -->
+  <section id="expertAdmin" class="hidden" aria-labelledby="exaTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Private · admin only</div>
+      <h2 class="sec" id="exaTitle" tabindex="-1" style="margin-bottom:8px">Expert Review queue</h2>
+      <div class="speedline"></div>
+    </div>
+    <p class="hint" style="text-align:left;margin:0 0 24px">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis and its annotated frame — the original clip is long gone, uploads expire in hours.</p>
+    <div class="seg seg-sm" role="group" aria-label="Filter orders" id="exaFilter" style="margin:0 0 16px">
+      <button type="button" data-exf="open" aria-pressed="true">To do</button>
+      <button type="button" data-exf="all" aria-pressed="false">All</button>
+      <button type="button" data-exf="delivered" aria-pressed="false">Delivered</button>
+    </div>
+    <div id="exaList"></div>
+    <div id="exaEditor" class="hidden"></div>
+  </section>
+
+  <!-- The delivered review, as the athlete reads it. Same renderer serves the
+       sample on the pricing page, so what is advertised is what ships. -->
+  <section id="reviewReport" class="hidden" aria-labelledby="rrTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
+    <div id="rrHost"></div>
+  </section>
+
 </div>
 </main>
 
@@ -1995,16 +2134,18 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   dashboard:'Dashboard — Flapp',
   history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp',
   compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
-  whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp'};
+  whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp',
+  expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
-  whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin'};
+  whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin',
+  expertadmin:'expertAdmin', reviewreport:'reviewReport'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert' };
 const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
@@ -2015,7 +2156,7 @@ function syncActiveNav(name){
   const bel = $(botActive); if(bel) bel.setAttribute('aria-current','page');
 }
 
-function setState(name, {focus=null}={}){
+function setState(name, {focus=null, route=null}={}){
   document.body.dataset.state = name;
   document.title = TITLES[name] || TITLES.upload;
   const showId = SECTIONS[name];
@@ -2025,7 +2166,84 @@ function setState(name, {focus=null}={}){
   syncActiveNav(name);
   window.scrollTo({top:0, behavior: REDUCED ? 'auto' : 'smooth'});
   if(focus){ const el=$(focus); if(el) el.focus({preventScroll:true}); }
+  if(!_restoringRoute) recordRoute(name, route);
 }
+
+/* ============================================================
+   Browser history — Back moves between views instead of leaving
+
+   Navigation here is button-driven and used to write no history entries at
+   all, so the browser's Back button (and Android's, once the app is installed
+   to the home screen) left the app from whatever screen you were on. Every
+   view transition already funnels through setState(), so that is where the
+   entry gets recorded.
+
+   Two deliberate exclusions, both of which REPLACE instead of pushing:
+
+   * `progress` / `error` are transient — Back out of a finished analysis
+     should land on the view you started from, not on a stale "Analyzing…".
+   * `results` / `photoresults` are excluded because re-rendering a report
+     re-runs saveToHistory(), which mints a NEW entry id — so restoring one on
+     Back would silently duplicate the analysis in History every time. Skipping
+     them means Back from a report returns to wherever it was opened from,
+     which is the useful destination anyway.
+
+   The URL is deliberately left alone (pushState keeps the current path). The
+   hash is load-time-only routing that init() deliberately cleans up, and
+   pushing hashes here would fight it.
+   ============================================================ */
+const ROUTED_STATES = {
+  dashboard:     () => openDashboard(),
+  upload:        () => reset(),
+  trends:        () => openProgress(),
+  history:       () => openHistoryView(),
+  pricing:       () => openPricing(),
+  whatsnew:      () => openWhatsNew(),
+  feedbackadmin: () => openFeedbackAdmin(),
+  compare:       () => openCompare(),
+  expertadmin:   () => openExpertAdmin(),
+  // The sample needs no order; a delivered report is refetched by id.
+  reviewreport:  (e) => e.sample ? openSampleReport() : openReviewReport(e.orderId),
+  // The saved analysis may have been deleted (or cleared) since the entry was
+  // pushed; fall back to the list rather than leaving the view where it was.
+  historydetail: (e) => {
+    if(e.id && loadHist().some(x=>x.id===e.id)) openHistory(e.id);
+    else openHistoryView();
+  },
+};
+let _routeReady=false, _restoringRoute=false;
+
+/* Change the address bar without dropping the current entry's routing state --
+   `history.replaceState(null, …)` would strand that entry as un-restorable. */
+function setUrl(url){
+  try{ history.replaceState(history.state, '', url); }catch(e){}
+}
+
+function recordRoute(name, data){
+  const url=location.pathname+location.search;
+  // Transient view: leave the entry pointing at the last real destination, so
+  // Back (and Forward) across it still land somewhere restorable.
+  if(!ROUTED_STATES[name]){ setUrl(url); return; }
+  const entry=Object.assign({v:name}, data||{});
+  const samePlace=history.state && history.state.v===name;
+  // The first routed state takes over the entry the app was loaded into, so
+  // going back from it leaves for wherever the athlete came from (the landing
+  // page) rather than dropping into a null entry nothing can restore.
+  if(!_routeReady || samePlace){
+    try{ history.replaceState(entry,'',url); }catch(e){}
+    _routeReady=true; return;
+  }
+  try{ history.pushState(entry,'',url); }catch(e){}
+}
+
+window.addEventListener('popstate', e=>{
+  const entry=e.state;
+  if(!entry || !entry.v) return;          // the pre-app entry: let the browser go
+  const restore=ROUTED_STATES[entry.v];
+  if(!restore) return;
+  _restoringRoute=true;
+  try{ restore(entry); } finally{ _restoringRoute=false; }
+});
 
 /* ============================================================
    Quota (3/day) — surfaced up front, refreshed from headers
@@ -2297,7 +2515,7 @@ function analyze(){
     if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').')); return; }
     state.jobId=j.job_id;
     jobTokenSave(j.job_id, j.job_token);
-    history.replaceState(null,'','#job='+state.jobId);
+    setUrl('#job='+state.jobId);
     startPolling();
   };
   xhr.send(fd);
@@ -2367,7 +2585,7 @@ async function pollOnce(){
 function cancelRun(){
   if(state.xhr){ try{state.xhr.abort();}catch(e){} state.xhr=null; }
   clearInterval(state.polling);
-  history.replaceState(null,'',location.pathname+location.search);
+  setUrl(location.pathname+location.search);
   setState('upload',{focus:'#uploaderTitle'});
   readyHint();
 }
@@ -2384,7 +2602,7 @@ function fail(msg,{tips=false,keepFile=false,counted=false}={}){
   $('#errAgain').classList.remove('hidden');
   $('#errBack').classList.add('hidden');
   renderQuota();
-  history.replaceState(null,'',location.pathname+location.search);
+  setUrl(location.pathname+location.search);
   setState('error',{focus:'#errTitle'});
 }
 
@@ -2458,7 +2676,17 @@ function fmtIssueValue(v){
   return `<span class="i-val-lbl">${esc(pretty(key))}</span> <span class="i-val">${esc(m[2])}${unit}</span>`;
 }
 
-function mdInline(s){ return s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>'); }
+/* Bold first, so the leftover single asterisks are genuinely italics. The
+   italic pattern refuses to span whitespace at either edge, which keeps
+   arithmetic an expert actually types ("3*15 raises, then 3*20") from turning
+   half a sentence italic. Expert Review sections are Markdown fields, so `*x*`
+   has to mean something rather than reach the athlete as literal asterisks. */
+function mdInline(s){
+  return s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+          .replace(
+            /(^|[\s([{"'—–])\*(?!\s)([^*\n]+?)(?<!\s)\*(?=[\s.,;:!?)\]}"'—–]|$)/g,
+            '$1<em>$2</em>');
+}
 function mdToHtml(md){
   const e=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const lines=String(md).split('\n'); let html='',inList=false;
@@ -2844,7 +3072,13 @@ function renderPhoto(res){
   const img=res.thumbnail_base64||'';
   $('#pImage').src=img; $('#pDownload').href=img||'#';
 
-  const warns=res.warnings||[];
+  // A paid result carries `warnings` at the top level; a gated one has them
+  // inside the `quality` caveat block, because the allowlist strips everything
+  // else. Read both: the all-clear below is an ELSE branch, so looking in one
+  // place only meant a free caller was told "Clean side-view capture." over a
+  // warning the analyzer had actually raised -- including, on a bike photo, the
+  // medical ones.
+  const warns=res.warnings||(res.quality&&res.quality.warnings)||[];
   $('#pWarnings').innerHTML = warns.length
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
     : `<div class="banner good"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
@@ -3003,9 +3237,383 @@ async function renderOrders(){
       <div class="ao-name">Expert Review</div>
       <div class="ao-desc">${esc(o.status_label||'')} <span class="hint">· ${esc(shortDate(o.created_at_ms))}</span></div>
     </div>
-    <div class="ao-price">${esc(money(o.amount_total,o.currency))}</div>`).join('');
+    <div class="ao-price">${esc(money(o.amount_total,o.currency))}</div>
+    ${o.has_report?`<button class="btn btn-primary btn-sm" type="button" data-openreview="${o.id}">Read your review</button>`:''}`).join('');
+  box.querySelectorAll('[data-openreview]').forEach(b=>
+    b.addEventListener('click',()=>openReviewReport(b.dataset.openreview)));
   box.classList.remove('hidden');
 }
+/* ============================================================
+   Expert Review — one renderer, three audiences
+
+   The same function draws the athlete's delivered report, the reviewer's live
+   preview while writing it, and the sample on the pricing page. That is on
+   purpose: the sample is the only thing a buyer sees before spending $29, so it
+   has to be produced by the code that produces the real thing, not a mock-up
+   that quietly drifts.
+
+   Section metadata (titles, order, which apply to which sport) comes from the
+   server — see services/expert_review.py — so the template has one definition.
+   ============================================================ */
+const PRIO_LABELS={title:'What', why:'Why it matters', change:'What to change', check:"How you'll know it worked"};
+const FIT_COLS=[['part','Part'],['now','Now'],['suggest','Suggested'],['why','Why'],['risk','Trade-off']];
+
+function reportProse(md){ return `<div class="rr-body">${mdToHtml(md||'')}</div>`; }
+
+function reportPriorities(rows){
+  return (rows||[]).map((p,i)=>`
+    <div class="rr-prio">
+      <div class="rr-prio-n">Priority ${i+1}</div>
+      <div class="rr-prio-t">${esc(p.title||'')}</div>
+      <dl>${['why','change','check'].filter(k=>p[k]).map(k=>`
+        <div class="rr-row"><dt>${esc(PRIO_LABELS[k])}</dt><dd>${esc(p[k])}</dd></div>`).join('')}
+      </dl>
+    </div>`).join('');
+}
+
+function reportFit(rows){
+  if(!(rows||[]).length) return '';
+  return `<div class="rr-fitwrap"><table class="rr-fit">
+    <thead><tr>${FIT_COLS.map(([,l])=>`<th>${esc(l)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${FIT_COLS.map(([k])=>`<td>${esc(r[k]||'—')}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+/* `sections` is the server's list; empty optional sections are skipped so a
+   short report reads as short rather than as full of blanks. */
+function renderReportHtml(report, sections, meta){
+  const r=report||{};
+  const bits=(sections||[]).map(s=>{
+    const v=r[s.key];
+    if(!v || (Array.isArray(v) && !v.length)) return '';
+    const body = s.kind==='priorities' ? reportPriorities(v)
+               : s.kind==='fit'        ? reportFit(v)
+               : reportProse(v);
+    return `<div class="rr-sec"><div class="rr-h">${esc(s.title)}</div>${body}</div>`;
+  }).join('');
+  const metaBits=(meta||[]).filter(Boolean).map(m=>`<span>${m}</span>`).join('');
+  return `<div class="rr-wrap">${metaBits?`<div class="rr-meta">${metaBits}</div>`:''}${bits}</div>`;
+}
+
+function reportMeta(ctx, report){
+  const c=ctx||{}, r=report||{};
+  return [
+    c.sport ? `${esc(pretty(c.sport))} · <b>${esc(c.kind||'video')}</b>` : '',
+    (c.score!=null) ? `Automated score <b>${esc(String(c.score))}/100</b>${c.grade?' ('+esc(c.grade)+')':''}` : '',
+    r.reviewer ? `Reviewed by <b>${esc(r.reviewer)}</b>` : '',
+    c.delivered_at_ms ? `Delivered <b>${esc(shortDate(c.delivered_at_ms))}</b>` : '',
+  ];
+}
+
+/* Delivered reviews, surfaced where a signed-in athlete actually lands. It used
+   to be reachable only from the Pricing page — the place you go to buy things,
+   not to collect something you already paid for. Unread ones shout. */
+async function renderReviewCard(){
+  const host=$('#dashReview'); if(!host) return;
+  host.innerHTML='';
+  if(!auth) return;
+  let orders=[];
+  try{
+    const r=await fetch('/billing/orders',{headers:authHeaders()});
+    if(!r.ok) return;                     // never let this block the dashboard
+    orders=await r.json();
+  }catch(e){ return; }
+  const ready=orders.filter(o=>o.has_report);
+  if(!ready.length) return;
+  host.innerHTML=ready.slice(0,3).map(o=>`
+    <div class="rev-card${o.unread?' is-unread':''}">
+      ${o.unread?'<span class="rev-dot" aria-hidden="true"></span>':''}
+      <div>
+        <div class="rev-t">${o.unread?'Your Expert Review is ready':'Your Expert Review'}</div>
+        <div class="rev-s">${o.unread
+          ? 'A human read your analysis and wrote back — priorities, a four-week plan, and when to film again.'
+          : 'Delivered '+esc(shortDate(o.delivered_at_ms))}</div>
+      </div>
+      <button class="btn ${o.unread?'btn-primary':'btn-outline'} btn-sm" type="button" data-openreview="${o.id}">${o.unread?'Read it':'Read again'}</button>
+    </div>`).join('');
+  host.querySelectorAll('[data-openreview]').forEach(b=>
+    b.addEventListener('click',()=>openReviewReport(b.dataset.openreview)));
+}
+
+/* ---- the athlete's copy ---- */
+async function openReviewReport(orderId){
+  const host=$('#rrHost');
+  host.innerHTML='<p class="hint">Loading your review…</p>';
+  setState('reviewreport',{focus:'#rrTitle',route:{orderId}});
+  let j=null;
+  try{
+    const res=await fetch('/billing/orders/'+encodeURIComponent(orderId)+'/report',{headers:authHeaders()});
+    if(!res.ok) throw new Error('http '+res.status);
+    j=await res.json();
+    // Mark it read server-side, so the dashboard card stops shouting on every
+    // device rather than just this browser. Best-effort: a failure here must
+    // not stop them reading what they paid for.
+    fetch('/billing/orders/'+encodeURIComponent(orderId)+'/read',{method:'POST',headers:authHeaders()})
+      .then(()=>renderReviewCard()).catch(()=>{});
+  }catch(e){
+    host.innerHTML='<p class="hint">That review isn’t available yet. If you think it should be, email support@getflapp.com.</p>';
+    return;
+  }
+  const o=j.order||{};
+  host.innerHTML=`
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Expert Review</div>
+      <h2 class="sec" id="rrTitle" tabindex="-1" style="margin-bottom:8px">Your Expert Review</h2>
+      <div class="speedline"></div>
+    </div>`
+    + renderReportHtml(j.report, j.sections,
+        reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report))
+    + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`;
+  const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
+}
+
+/* ---- the sample, shown before anyone pays ---- */
+async function openSampleReport(){
+  const host=$('#rrHost');
+  host.innerHTML='<p class="hint">Loading the sample…</p>';
+  setState('reviewreport',{focus:'#rrTitle',route:{sample:true}});
+  let j=null;
+  try{ j=await (await fetch('/billing/expert-review/sample')).json(); }
+  catch(e){ host.innerHTML='<p class="hint">Couldn’t load the sample right now.</p>'; return; }
+  host.innerHTML=`
+    <div class="blockhead" style="margin-top:0">
+      <div class="eyebrow">Sample · this is what $29 buys</div>
+      <h2 class="sec" id="rrTitle" tabindex="-1" style="margin-bottom:8px">Expert Review — example</h2>
+      <div class="speedline"></div>
+    </div>
+    <p class="hint" style="text-align:left;max-width:760px;margin:0 auto 22px">A real report for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by a human who has read it.</p>`
+    + renderReportHtml(j.report, j.sections, reportMeta(j.context, j.report))
+    + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See pricing</button></div>`;
+  const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
+}
+
+/* ============================================================
+   Expert Review — the reviewer's side (admin tier only)
+
+   Everything needed to write a review lives on one screen, because the clip
+   does not: uploads expire in hours, so by the time an order is picked up the
+   only surviving evidence is the stored analysis and its annotated keyframe.
+   ============================================================ */
+const EX_PRIO_SLOTS=3, EX_FIT_SLOTS=4;
+function exPill(o){
+  if(o.status==='delivered') return '<span class="ex-pill is-done">delivered</span>';
+  if(o.status==='refunded')  return '<span class="ex-pill">refunded</span>';
+  if(o.has_draft)            return '<span class="ex-pill is-draft">draft</span>';
+  return '<span class="ex-pill is-todo">to write</span>';
+}
+
+function openExpertAdmin(){
+  $('#exaEditor').classList.add('hidden');
+  $('#exaList').classList.remove('hidden');
+  setState('expertadmin',{focus:'#exaTitle'});
+  loadExpertQueue();
+}
+
+async function loadExpertQueue(){
+  const list=$('#exaList');
+  list.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+  let orders=[];
+  try{
+    const r=await fetch('/admin/orders',{headers:authHeaders()});
+    if(!r.ok) throw new Error('http '+r.status);
+    orders=await r.json();
+  }catch(e){ list.innerHTML='<p class="hint" style="text-align:left">Couldn’t load the queue.</p>'; return; }
+  state.exFilter=state.exFilter||'open';
+  const f=state.exFilter;
+  const shown=orders.filter(o=>
+    f==='all' ? true :
+    f==='delivered' ? o.status==='delivered' :
+    (o.status!=='delivered' && o.status!=='refunded'));
+  if(!shown.length){
+    list.innerHTML=`<p class="hint" style="text-align:left">${f==='open'?'Nothing waiting. Every paid review has been delivered.':'No orders here.'}</p>`;
+    return;
+  }
+  list.innerHTML=shown.map(o=>`
+    <div class="ex-card">
+      <div>
+        <div class="ex-em">${esc(o.email||'—')}</div>
+        <div class="ex-sub">#${o.id} · ${esc(money(o.amount_total,o.currency))} · ${esc(shortDate(o.created_at_ms))}${o.analysis_client_id?'':' · <b>no clip chosen</b>'}</div>
+      </div>
+      ${exPill(o)}
+      <button class="btn btn-outline btn-sm" type="button" data-exopen="${o.id}">${o.status==='delivered'?'View':(o.has_draft?'Continue':'Write review')}</button>
+    </div>`).join('');
+}
+
+async function openOrderEditor(orderId){
+  const host=$('#exaEditor');
+  $('#exaList').classList.add('hidden');
+  host.classList.remove('hidden');
+  host.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+  let d=null;
+  try{
+    const r=await fetch('/admin/orders/'+encodeURIComponent(orderId),{headers:authHeaders()});
+    if(!r.ok) throw new Error('http '+r.status);
+    d=await r.json();
+  }catch(e){ host.innerHTML='<p class="hint" style="text-align:left">Couldn’t open that order.</p>'; return; }
+  state.exOrder=d;
+  host.innerHTML=exEditorHtml(d);
+  const kf=$('#exKeyframe');
+  if(kf && d.analysis && d.analysis.keyframe) kf.src=d.analysis.keyframe;
+}
+
+function exFieldHtml(s, report){
+  const req=s.required?' <span class="ex-req" title="required before sending">*</span>':'';
+  const head=`<label for="ex_${s.key}">${esc(s.title)}${req}</label><p class="ex-hint">${esc(s.hint||'')}</p>`;
+  if(s.kind==='priorities'){
+    const rows=report[s.key]||[];
+    return `<div class="ex-fld">${head}${Array.from({length:EX_PRIO_SLOTS},(_,i)=>{
+      const p=rows[i]||{};
+      return `<div class="ex-sub-card"><div class="rr-prio-n">Priority ${i+1}</div>
+        ${['title','why','change','check'].map(k=>`
+          <div style="margin-top:8px">
+            <label style="font-size:10px" for="ex_p${i}_${k}">${esc(PRIO_LABELS[k])}</label>
+            ${k==='title'
+              ? `<input type="text" id="ex_p${i}_${k}" data-exprio="${i}" data-exk="${k}" value="${esc(p[k]||'')}">`
+              : `<textarea id="ex_p${i}_${k}" data-exprio="${i}" data-exk="${k}" rows="2">${esc(p[k]||'')}</textarea>`}
+          </div>`).join('')}
+      </div>`;
+    }).join('')}</div>`;
+  }
+  if(s.kind==='fit'){
+    const rows=report[s.key]||[];
+    return `<div class="ex-fld">${head}${Array.from({length:EX_FIT_SLOTS},(_,i)=>{
+      const r=rows[i]||{};
+      return `<div class="ex-sub-card"><div class="rr-prio-n">Change ${i+1}</div>
+        ${FIT_COLS.map(([k,l])=>`
+          <div style="margin-top:8px">
+            <label style="font-size:10px" for="ex_f${i}_${k}">${esc(l)}</label>
+            <input type="text" id="ex_f${i}_${k}" data-exfit="${i}" data-exk="${k}" value="${esc(r[k]||'')}">
+          </div>`).join('')}
+      </div>`;
+    }).join('')}</div>`;
+  }
+  return `<div class="ex-fld">${head}
+    <textarea id="ex_${s.key}" data-exsec="${s.key}" rows="${s.key==='verdict'?4:6}">${esc(report[s.key]||'')}</textarea></div>`;
+}
+
+function exEditorHtml(d){
+  const a=d.analysis||{}, r=d.report||{}, done=d.status==='delivered';
+  const opts=(d.history||[]).map(h=>
+    `<option value="${esc(h.id)}"${h.id===d.analysis_client_id?' selected':''}>${h.score==null?'—':h.score}/100 · ${esc(pretty(h.sport||''))} · ${esc(h.kind||'')} · ${esc(shortDate(h.at))}</option>`).join('');
+  return `
+  <div class="backhome-row"><button class="btn btn-ghost btn-sm" type="button" id="exBack"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Queue</button></div>
+  <div class="blockhead" style="margin-top:0">
+    <div class="eyebrow">Order #${d.id} · ${esc(d.email||'')} · ${esc(money(d.amount_total,d.currency))}</div>
+    <h3 class="sec" style="margin-bottom:8px">${done?'Delivered review':'Write the review'}</h3>
+    <div class="speedline"></div>
+  </div>
+  ${done?'<p class="hint" style="text-align:left">This review has been delivered. Edits you save are visible to the athlete immediately.</p>':''}
+  <div class="ex-grid">
+    <div>
+      <div class="ex-fld">
+        <label for="ex_reviewer">Signed by</label>
+        <input type="text" id="ex_reviewer" data-exmeta="reviewer" value="${esc(r.reviewer||'')}" placeholder="Artur Podgornyi">
+      </div>
+      ${(d.sections||[]).map(s=>exFieldHtml(s,r)).join('')}
+      <div class="ex-fld">
+        <label for="ex_note">Internal note</label>
+        <p class="ex-hint">Never shown to the athlete.</p>
+        <textarea id="ex_note" rows="2">${esc(d.admin_note||'')}</textarea>
+      </div>
+      <div class="ex-bar">
+        <span class="ex-status" id="exStatus"></span>
+        <button class="btn btn-ghost btn-sm" type="button" id="exPreview">Preview</button>
+        <button class="btn btn-outline btn-sm" type="button" id="exSave">Save draft</button>
+        <button class="btn btn-primary btn-sm" type="button" id="exPublish">${done?'Re-publish':'Send to athlete'}</button>
+      </div>
+      <div id="exPreviewHost" class="hidden" style="margin-top:24px;border-top:1px solid var(--c-line);padding-top:24px"></div>
+    </div>
+    <aside class="ex-side">
+      <div class="rr-h">The analysis</div>
+      ${a.keyframe||a.has_keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip">':'<p class="hint" style="text-align:left;margin:0 0 12px">No stored frame.</p>'}
+      <dl>
+        <dt>Score</dt><dd>${a.score==null?'—':esc(String(a.score))}/100${a.grade?' ('+esc(a.grade)+')':''}</dd>
+        <dt>Sport</dt><dd>${esc(pretty(a.sport||d.sport||'—'))}</dd>
+        <dt>Input</dt><dd>${esc(a.kind||'—')}</dd>
+        <dt>Filmed</dt><dd>${a.at?esc(shortDate(a.at)):'—'}</dd>
+        ${a.position?`<dt>Position</dt><dd>${esc(pretty(a.position))}</dd>`:''}
+        ${a.cameraSide?`<dt>Camera</dt><dd>${esc(a.cameraSide)} side</dd>`:''}
+      </dl>
+      <div class="rr-h">Reviewing</div>
+      <select id="exAnalysisPick" style="width:100%;font:inherit;font-size:13px;padding:8px;border:1px solid var(--c-line);border-radius:8px">
+        <option value="">— pick the clip —</option>${opts}
+      </select>
+      <p class="hint" style="text-align:left;font-size:12px;margin:8px 0 0">The athlete chose this at checkout. Change it if they picked the wrong one.</p>
+      ${a.report?`<div class="rr-h" style="margin-top:16px">What the AI told them</div><div class="ex-sub-card" style="font-size:12.5px;max-height:220px;overflow:auto">${mdToHtml(a.report)}</div>`:''}
+    </aside>
+  </div>`;
+}
+
+/* Read the form back into the report shape the server stores. Blank priority
+   and fit rows are left in — normalize_report drops them, so the reviewer can
+   leave slots empty without thinking about it. */
+function exCollect(){
+  const d=state.exOrder||{}; const out={reviewer:($('#ex_reviewer')||{}).value||''};
+  (d.sections||[]).forEach(s=>{
+    if(s.kind==='priorities'){
+      out[s.key]=Array.from({length:EX_PRIO_SLOTS},(_,i)=>{
+        const row={}; ['title','why','change','check'].forEach(k=>{
+          const el=document.querySelector(`[data-exprio="${i}"][data-exk="${k}"]`); row[k]=el?el.value:'';
+        }); return row;
+      });
+    } else if(s.kind==='fit'){
+      out[s.key]=Array.from({length:EX_FIT_SLOTS},(_,i)=>{
+        const row={}; FIT_COLS.forEach(([k])=>{
+          const el=document.querySelector(`[data-exfit="${i}"][data-exk="${k}"]`); row[k]=el?el.value:'';
+        }); return row;
+      });
+    } else {
+      const el=document.querySelector(`[data-exsec="${s.key}"]`); out[s.key]=el?el.value:'';
+    }
+  });
+  return out;
+}
+
+async function exSaveDraft(opts){
+  const d=state.exOrder; if(!d) return null;
+  const st=$('#exStatus'); if(st) st.textContent='Saving…';
+  const body={report:exCollect(), admin_note:($('#ex_note')||{}).value||''};
+  if(opts&&opts.analysis!==undefined) body.analysis_client_id=opts.analysis;
+  // Picking up an untouched order is itself a state change the customer sees.
+  if(d.status==='paid') body.status='in_review';
+  try{
+    const r=await fetch('/admin/orders/'+d.id,{method:'PATCH',
+      headers:authHeaders({'Content-Type':'application/json'}), body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.detail||'save failed');
+    d.report=j.report; d.status=j.status; d.missing_required=j.missing_required;
+    if(st) st.textContent = (j.missing_required||[]).length
+      ? 'Saved · still empty: '+j.missing_required.join(', ')
+      : 'Saved · ready to send';
+    return j;
+  }catch(e){ if(st) st.textContent='Could not save.'; toast('Could not save the draft.'); return null; }
+}
+
+async function exPublish(){
+  const d=state.exOrder; if(!d) return;
+  if(!await exSaveDraft()) return;
+  try{
+    const r=await fetch('/admin/orders/'+d.id+'/publish',{method:'POST',headers:authHeaders()});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(j.detail||'Could not send the review.',{duration:6000}); return; }
+    toast('Review delivered — the athlete can read it now.');
+    openExpertAdmin();
+  }catch(e){ toast('Could not send the review.'); }
+}
+
+function exShowPreview(){
+  const d=state.exOrder; if(!d) return;
+  const host=$('#exPreviewHost');
+  const report=exCollect();
+  host.innerHTML=`<div class="rr-h">Preview — exactly what the athlete sees</div>`
+    + renderReportHtml(report, d.sections, reportMeta({
+        sport:d.sport, kind:(d.analysis||{}).kind, score:(d.analysis||{}).score,
+        grade:(d.analysis||{}).grade,
+      }, report));
+  host.classList.remove('hidden');
+  host.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'});
+}
+
 async function refreshAuth(){
   const t=getToken(); if(!t) return;
   try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); } }catch(e){}
@@ -3026,7 +3634,7 @@ async function handleCheckoutReturn(){
   const plan=u.searchParams.get('plan');
   if(!c) return;
   u.searchParams.delete('checkout'); u.searchParams.delete('plan');
-  history.replaceState({},'',u.toString());  // don't re-trigger on refresh
+  setUrl(u.toString());                      // don't re-trigger on refresh
   if(c==='cancel'){ toast('Checkout canceled — no charge was made.'); return; }
   if(c!=='success') return;
   // The Expert Review is a one-time purchase: it grants no tier, so polling
@@ -3055,6 +3663,37 @@ function openPricing(){ renderPricing(); renderOrders(); setState('pricing',{foc
 // The teaser CTA and any "upgrade" entry point land on the pricing page.
 function openUpgrade(){ openPricing(); }
 
+/* Ask which analysis an Expert Review is for. Resolves to a client id, or null
+   if the athlete backed out. Nothing is charged until this is answered. */
+function pickAnalysis(){
+  const list=loadHist();
+  if(!list.length){
+    toast('Run an analysis first — an Expert Review is written against one of yours.',
+      {action:'Analyze',onAction:()=>reset(),duration:6000});
+    return Promise.resolve(null);
+  }
+  const modal=$('#pickModal');
+  $('#pickList').innerHTML=list.slice(0,20).map((e,i)=>`
+    <label class="ex-card" style="cursor:pointer;margin-bottom:8px">
+      <input type="radio" name="pickan" value="${esc(e.id)}"${i===0?' checked':''}>
+      <div>
+        <div class="ex-em">${e.score==null?'—':esc(String(e.score))}/100 · ${esc(pretty(e.sport||''))}</div>
+        <div class="ex-sub">${esc(e.kind||'video')} · ${esc(fmtWhen(e.at))}</div>
+      </div>
+    </label>`).join('');
+  modal.classList.remove('hidden');
+  return new Promise(resolve=>{
+    const close=v=>{ modal.classList.add('hidden');
+      $('#pickOk').removeEventListener('click',ok); $('#pickCancel').removeEventListener('click',cancel);
+      $('#pickClose').removeEventListener('click',cancel); resolve(v); };
+    const ok=()=>{ const sel=modal.querySelector('input[name=pickan]:checked'); close(sel?sel.value:null); };
+    const cancel=()=>close(null);
+    $('#pickOk').addEventListener('click',ok);
+    $('#pickCancel').addEventListener('click',cancel);
+    $('#pickClose').addEventListener('click',cancel);
+  });
+}
+
 async function startCheckout(plan){
   // Checkout attaches the subscription to an account — require sign-in first.
   if(!auth){ toast('Create a free account first, then pick a plan.',{action:'Sign up',onAction:()=>openAuth('register')}); return; }
@@ -3062,10 +3701,15 @@ async function startCheckout(plan){
             : plan==='full' ? 'full_yearly'
             : plan==='expert' ? 'expert' : null;
   if(!key) return;
+  let analysisId=null;
+  if(key==='expert'){
+    analysisId=await pickAnalysis();
+    if(!analysisId) return;              // backed out, or nothing to review yet
+  }
   try{
     const r=await fetch('/billing/checkout',{method:'POST',
       headers:authHeaders({'Content-Type':'application/json'}),
-      body:JSON.stringify({plan:key})});
+      body:JSON.stringify(analysisId?{plan:key,analysis_client_id:analysisId}:{plan:key})});
     const j=await r.json().catch(()=>({}));
     if(r.ok && j.url){
       // Already on a paid plan: the server hands back the billing portal instead
@@ -3212,8 +3856,13 @@ function render(job){
     time_base_uncertain:s.time_base_uncertain,
   };
   const gated=!!q.triggered;
+  const confLevel=(s.analysis_confidence&&s.analysis_confidence.level)||q.confidence||null;
   $('#gateChip').classList.toggle('hidden',!gated);
-  $('#confChip').classList.toggle('hidden',gated);
+  // The green chip reads "Full confidence", so it may only show when that is
+  // what the scorer said. Toggling it on `!gated` alone put an assertive
+  // "Full confidence" in the scorecard directly above the graded badge reading
+  // "Medium confidence" — two verdicts on the same result, in the same card.
+  $('#confChip').classList.toggle('hidden', gated || confLevel!=='high');
   const gb=$('#gateBanner');
   gb.innerHTML = gated
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
@@ -3864,7 +4513,7 @@ function reset(keepFile=false){
   }
   if(keepFile && state.file) readyHint();
   const ov=$('#overlayVideo'); ov.pause(); ov.removeAttribute('src'); ov.load();
-  history.replaceState(null,'',location.pathname+location.search);
+  setUrl(location.pathname+location.search);
   setState('upload',{focus:'#uploaderTitle'});
 }
 
@@ -3892,6 +4541,7 @@ function renderAuth(){
   // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
+  $('#navExpert').classList.toggle('hidden', !(auth && auth.tier==='admin'));
   document.body.classList.toggle('authed', !!auth);
   // Deleting an account is only offered to someone who has one; it also closes
   // itself on sign-out so the next visitor doesn't inherit an open panel.
@@ -3975,7 +4625,7 @@ $('#authForm').addEventListener('submit',submitAuth);
     startPolling();
   } else {
     // Deep links from other pages (e.g. Academy's sidebar) open a view directly.
-    const clean=()=>history.replaceState(null,'',location.pathname+location.search);
+    const clean=()=>setUrl(location.pathname+location.search);
     if(location.hash==='#progress'){ clean(); openProgress(); }
     else if(location.hash==='#history'){ clean(); openHistoryView(); }
     else if(location.hash==='#home'){ clean(); }   // dashboard auto-opens in checkAuth when signed in
@@ -4263,6 +4913,15 @@ function saveToHistory(kind,res){
       .map(p=>({metric:p.metric,label:p.label,drill:p.drill,why:p.why,
         instruction:p.instruction,cue:p.cue,weeks:p.weeks,academy_slug:p.academy_slug}));
     if(tp.length){ e.plan=tp; e.planDone={}; }
+    // Keep the caveat with the stored score. A history entry holding a number
+    // and no quality flag is the same "confident-looking verdict" problem the
+    // report screen solves, one layer down — and weeks later this entry is ALL
+    // an Expert Review has to work from, because the clip expired hours after
+    // it was analyzed.
+    const ssm=res.sport_specific_metrics||{}, qb=res.quality||{};
+    e.gated=!!res.quality_gate_triggered;
+    e.confidence=(ssm.analysis_confidence||{}).level || qb.confidence || null;
+    e.warnings=(res.warnings || qb.warnings || ssm.quality_warnings || []).slice(0,4);
     const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o; e.trendCat=tr.c;
     if(auth){
       state.cloudHist=[e,...(state.cloudHist||[])];
@@ -4393,7 +5052,7 @@ function openHistory(id){
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderHistoryPlan(e);
   renderHistoryAngles(e);
-  setState('historydetail',{focus:'#hdTitle'});
+  setState('historydetail',{focus:'#hdTitle',route:{id:e.id}});
 }
 /* Render the Measurements block for a saved analysis. New video entries carry
    full angleStats -> show the 7-column table, merged with the opposite side if
@@ -4518,6 +5177,7 @@ $('#hBack').addEventListener('click',openHistoryView);
 $('#billMonthly').addEventListener('click',()=>setBillPeriod('monthly'));
 $('#billYearly').addEventListener('click',()=>setBillPeriod('yearly'));
 $('#ctaExpert').addEventListener('click',()=>startCheckout('expert'));
+$('#ctaExpertSample').addEventListener('click',()=>openSampleReport());
 $('#delAccountBtn').addEventListener('click',deleteAccount);
 $('#wordmark').addEventListener('click',()=>reset());
 $('#wordmark').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); reset(); } });
@@ -5164,6 +5824,7 @@ function dashRecentCard(e){
   </div>`;
 }
 function renderDashboard(){
+  renderReviewCard();
   const all=loadHist();
   const nameEl=auth&&auth.email?auth.email.split('@')[0]:null;
   // First-run / empty state: friendly CTA, hide the widgets.
@@ -5427,6 +6088,26 @@ function patchFeedback(id, body){
     .catch(()=>toast('Couldn’t save that.'));
 }
 $('#navFeedback').addEventListener('click',e=>{ e.preventDefault(); openFeedbackAdmin(); });
+$('#navExpert').addEventListener('click',e=>{ e.preventDefault(); openExpertAdmin(); });
+/* Delegated: the queue, the editor and its buttons are all rendered markup. */
+$('#expertAdmin').addEventListener('click',e=>{
+  const open=e.target.closest('[data-exopen]');   if(open){ openOrderEditor(open.dataset.exopen); return; }
+  if(e.target.closest('#exBack')){ openExpertAdmin(); return; }
+  if(e.target.closest('#exSave')){ exSaveDraft(); return; }
+  if(e.target.closest('#exPublish')){ exPublish(); return; }
+  if(e.target.closest('#exPreview')){ exShowPreview(); return; }
+  const f=e.target.closest('[data-exf]');
+  if(f){ state.exFilter=f.dataset.exf;
+    $('#exaFilter').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b===f)));
+    loadExpertQueue(); }
+});
+/* Re-pointing an order reloads the editor: the sections themselves depend on
+   the sport, so a run report cannot keep a half-filled fit table. */
+$('#expertAdmin').addEventListener('change',e=>{
+  if(e.target.id!=='exAnalysisPick') return;
+  const d=state.exOrder; if(!d) return;
+  exSaveDraft({analysis:e.target.value}).then(()=>openOrderEditor(d.id));
+});
 
 /* ============================================================
    Before / after — compare two saved analyses side by side
