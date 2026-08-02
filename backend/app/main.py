@@ -30,6 +30,7 @@ import asyncio
 import hashlib
 import os
 import secrets
+import shutil
 import time
 import uuid
 from collections import deque
@@ -80,6 +81,7 @@ from app.core.jobs import (
 from app.core.net import client_ip
 from app.core.security import get_current_user, optional_user
 from app.models.user import User
+from app.services.notify import log_email_configuration
 from app.services.result_gating import gate_free_result, is_free
 from app.services.usage_limits import (
     check_quota,
@@ -100,6 +102,18 @@ MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
 ALLOWED_SUFFIXES = {".mp4", ".mov", ".avi", ".m4v", ".mkv", ".webm"}
 ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 MAX_PHOTO_BYTES = 30 * 1024 * 1024  # 30 MB
+
+# Can we produce an overlay a BROWSER can play? ``video_visualizer`` re-encodes
+# to H.264 with ffmpeg and, when ffmpeg is missing, falls back to OpenCV's mp4v
+# muxer -- a file that plays in VLC but that no browser decodes. That fallback
+# fails in the one way nothing catches: the file exists, so the job looks
+# successful, and the athlete gets a silent black player with no explanation.
+#
+# So: the encoder's absence is treated as "no overlay for this job", which routes
+# into the ``overlay_failed`` path the client already has a sentence for. The
+# file is still written, so it stays available on disk for local debugging.
+# ffmpeg is installed in the image (see Dockerfile); this guards the day it is not.
+OVERLAY_ENCODER_PRESENT = shutil.which("ffmpeg") is not None
 
 # Job store, concurrency cap and expiry all live in app.core.jobs (see there for
 # why). Imported under the original names so the routes below read unchanged.
@@ -209,6 +223,15 @@ async def lifespan(app: FastAPI):
     # Say in the deploy log whether checkout can actually charge anyone; every
     # way it can be broken is otherwise silent until a customer hits it.
     log_billing_configuration()
+    # Same reason: a delivered review that silently announces itself to
+    # nobody looks exactly like one that did.
+    log_email_configuration()
+    if not OVERLAY_ENCODER_PRESENT:
+        logger.error(
+            "OVERLAY_ENCODER_MISSING",
+            detail="ffmpeg not on PATH -- overlay videos are disabled "
+                   "(they would be encoded as mp4v, which no browser plays)",
+        )
     # Clear anything the previous process left behind before serving.
     await run_in_threadpool(sweep_orphan_upload_dirs)
     sweeper = asyncio.create_task(sweeper_loop())
@@ -529,6 +552,10 @@ def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "model_present": settings.model_path.exists(),
+        # Deliberately alongside model_present: both are "a dependency the image
+        # is supposed to bake in", and both degrade a feature rather than the
+        # process when they go missing -- so neither shows up without asking.
+        "overlay_encoder_present": OVERLAY_ENCODER_PRESENT,
         "active_jobs": len(pending),
         "running": sum(1 for j in pending if j["status"] == "processing"),
         "queued": sum(1 for j in pending if j["status"] == "queued"),
@@ -729,7 +756,11 @@ def job_status(
     user: User | None = Depends(optional_user),
 ) -> JobStatus:
     job = authorized_job(job_id, t, user.id if user else None)
-    overlay_ready = bool(job.get("overlay_path")) and Path(job["overlay_path"]).exists()
+    overlay_ready = (
+        OVERLAY_ENCODER_PRESENT
+        and bool(job.get("overlay_path"))
+        and Path(job["overlay_path"]).exists()
+    )
     # Overlay was requested for this job but the file never materialized after a
     # completed run -- rendering failed (e.g. ffmpeg). Let the client say so
     # instead of silently hiding the video with no explanation.
