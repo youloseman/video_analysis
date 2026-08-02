@@ -216,6 +216,9 @@ _ICONS = {
     "arr-r": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>',
     "progress": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></svg>',
     "clock": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>',
+    # Same path as the SPA's #i-bulb, so the Feedback entry looks identical on
+    # both documents rather than merely similar.
+    "bulb": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>',
     "home": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>',
     "spark": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18 16.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>',
 }
@@ -248,8 +251,15 @@ def _sidebar(active: str) -> str:
         f'<a href="/app" class="navlink">{_ICONS["analyze"]}<span>Analyze</span></a>'
         f'<a href="/app#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
         f'<a href="/app#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
+        f'<a href="/app#pricing" class="navlink">{_ICONS["spark"]}<span>Pricing</span></a>'
         f'<a href="/academy" class="navlink"{acad}>{_ICONS["book"]}<span>Academy</span></a>'
         f'<a href="/changelog" class="navlink"{chlog}>{_ICONS["spark"]}<span>What\'s new</span></a>'
+        # Admin-only, hidden until _AUTH_JS confirms the tier -- same treatment as
+        # Home above. Without these the menu visibly LOSES entries the moment you
+        # open an Academy page, which reads as the app breaking rather than as
+        # two different documents sharing a look.
+        f'<a href="/app#feedback" class="navlink" id="acadFeedback" hidden>{_ICONS["bulb"]}<span>Feedback</span></a>'
+        f'<a href="/app#reviews" class="navlink" id="acadReviews" hidden>{_ICONS["spark"]}<span>Reviews</span></a>'
         "</nav>"
         '<div class="authbox" id="authbox"></div>'
         "</aside>"
@@ -290,6 +300,9 @@ _AUTH_JS = (
     "return{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}"
     "function render(a){"
     "var h=document.getElementById('acadHome');if(h)h.hidden=!a;"
+    "var adm=!!(a&&a.tier==='admin');"
+    "['acadFeedback','acadReviews'].forEach(function(id){"
+    "var e=document.getElementById(id);if(e)e.hidden=!adm;});"
     "var m=a?"
     "'<span class=\"usermail\" title=\"'+esc(a.email)+'\">'+esc(a.email)+"
     "'</span><button class=\"btn btn-ghost btn-sm\" data-logout type=\"button\">Log out</button>':"

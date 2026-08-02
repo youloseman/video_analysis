@@ -4642,7 +4642,7 @@ $('#authModal').addEventListener('click',e=>{ if(e.target.id==='authModal') clos
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#authModal').classList.contains('hidden')) closeAuth(); });
 $('#authForm').addEventListener('submit',submitAuth);
 
-(function init(){
+function init(){
   renderQuota();
   checkAuth().then(handleCheckoutReturn);   // after auth loads, resolve any Stripe return
   const clReady=initChangelog();            // release notes + unread dot on the nav
@@ -4663,10 +4663,25 @@ $('#authForm').addEventListener('submit',submitAuth);
     // The landing page sends new users straight to the sign-up form.
     else if(location.hash==='#signup'){ clean(); openAuth('register'); }
     else if(location.hash==='#pricing'){ clean(); openPricing(); }
+    // Admin-only destinations, reachable from the Academy sidebar. The views
+    // themselves are behind an admin API, so a non-admin following a stale link
+    // lands on an empty screen rather than on anything they shouldn't see.
+    else if(location.hash==='#feedback'){ clean(); openFeedbackAdmin(); }
+    else if(location.hash==='#reviews'){ clean(); openExpertAdmin(); }
     // The notes load async, so wait on the fetch already in flight.
     else if(location.hash==='#whatsnew'){ clean(); clReady.then(openWhatsNew); }
   }
-})();
+}
+/* Deferred by one microtask, NOT called inline.
+   init() deep-links straight into a view, and those views reach for helpers
+   (`loadHist`, `localHist`, …) that are `const`s declared further down this
+   file. Running init while the script is still evaluating puts them in the
+   temporal dead zone, so /app#progress and /app#history -- the only two links
+   the Academy sidebar offers back into the app -- threw
+   "Cannot access 'loadHist' before initialization" and dropped the athlete on
+   the upload screen instead. A microtask runs after the whole script has
+   finished evaluating, so everything it touches exists. */
+queueMicrotask(init);
 
 /* ============================================================
    History — analyses persisted in localStorage (this device)
