@@ -13,10 +13,17 @@ be idempotent.
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import BigInteger, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import JSON
 
 from app.core.db import Base
+
+# Postgres in production, SQLite locally -- same as models/analysis.py.
+JSON_TYPE = JSON().with_variant(JSONB(), "postgresql")
 
 # Fulfilment states for a one-time purchase.
 ORDER_PAID = "paid"           # money in, not yet picked up
@@ -58,3 +65,22 @@ class Order(Base):
     updated_at_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
     # Internal triage note; never shown to the customer.
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Which analysis was bought for review. Chosen by the athlete at checkout and
+    # carried through Stripe metadata; without it the reviewer is guessing which
+    # clip the customer meant, which is exactly how this used to work.
+    # It is the CLIENT id (``analyses.client_id``), the same id history uses.
+    analysis_client_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # The deliverable itself (see services/expert_review.py for the shape).
+    # Written as a draft while status is ``in_review`` and only shown to the
+    # customer once the order is ``delivered`` -- a half-finished report reaching
+    # a paying customer is worse than a late one.
+    report: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE, nullable=True)
+    # When the report was published. Distinct from ``updated_at_ms``, which moves
+    # on every internal edit, including ones made after delivery.
+    delivered_at_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # When the athlete first opened it. Drives the "you have an unread review"
+    # card on the dashboard, and is the only signal we have that the thing they
+    # paid for was actually read -- worth knowing before selling more of them.
+    read_at_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

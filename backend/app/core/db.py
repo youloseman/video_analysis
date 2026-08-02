@@ -91,6 +91,31 @@ def _migrate_users(conn) -> None:
         )
 
 
+def _migrate_orders(conn) -> None:
+    """Same idempotent, Alembic-less evolution as ``_migrate_users``.
+
+    The Expert Review deliverable (which analysis was bought, the report itself,
+    when it shipped) landed after the first orders were already in the table.
+    """
+    cols = _existing_columns(conn, "orders")
+    if not cols:  # fresh DB -- create_all already built the current schema.
+        return
+    # Match what the model declares per dialect (JSONB on Postgres), or the
+    # column ends up a plain JSON that the ORM then treats as JSONB.
+    json_type = "JSONB" if conn.dialect.name == "postgresql" else "JSON"
+    # All nullable, so no backfill: an order placed before this existed simply
+    # has no linked analysis, which is the truth about it.
+    for name, ddl in (
+        ("analysis_client_id", "ALTER TABLE orders ADD COLUMN analysis_client_id VARCHAR(64)"),
+        ("report", f"ALTER TABLE orders ADD COLUMN report {json_type}"),
+        ("delivered_at_ms", "ALTER TABLE orders ADD COLUMN delivered_at_ms BIGINT"),
+        ("read_at_ms", "ALTER TABLE orders ADD COLUMN read_at_ms BIGINT"),
+    ):
+        if name not in cols:
+            conn.execute(text(ddl))
+            logger.info("MIGRATED", change=f"orders.{name} added")
+
+
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import analysis, feedback, order, usage, user  # noqa: F401
@@ -98,4 +123,5 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_migrate_users)
+        await conn.run_sync(_migrate_orders)
     logger.info("DB_READY", backend=settings.async_database_url.split("://", 1)[0])
