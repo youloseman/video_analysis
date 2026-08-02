@@ -49,6 +49,13 @@ _SAFE_KEYS = frozenset({
 # ride along.
 _QUALITY_KEYS = ("quality_warnings", "time_base_uncertain", "sampling_degraded")
 
+# Where each result shape keeps its capture warnings. The video path files them
+# under ``sport_specific_metrics["quality_warnings"]``; the photo path returns a
+# top-level ``warnings`` list. Reading only the video location dropped every
+# photo warning here -- and the client's "Clean side-view capture." all-clear is
+# an ELSE branch, so a free caller was actively told the opposite of the truth.
+_PHOTO_WARNINGS_KEY = "warnings"
+
 # What an upgrade unlocks (shown by the frontend on the blurred sections).
 _UNLOCKS = ["coaching", "angles", "issues", "ranges", "video", "second_phase"]
 
@@ -77,6 +84,13 @@ def quality_block(result: dict[str, Any]) -> dict[str, Any]:
     named quality fields out of it -- never the blob itself. ``confidence`` is
     reduced to its level (``high``/``medium``/``low``); the per-factor
     breakdown behind it stays paid.
+
+    ``warnings`` merges both result shapes (see ``_PHOTO_WARNINGS_KEY``) so the
+    client has one place to look regardless of whether it rendered a clip or a
+    still. A cycling photo also files its MEDICAL warnings there (closed hip ->
+    iliac-artery risk); one of those strings quotes the measured trunk angle,
+    which is otherwise a paid number. That is a deliberate trade: a paywall is
+    not a reason to withhold "this position carries a documented injury risk".
     """
     metrics = result.get("sport_specific_metrics") or {}
     gate = metrics.get("quality_gate") or {}
@@ -85,12 +99,12 @@ def quality_block(result: dict[str, Any]) -> dict[str, Any]:
     block: dict[str, Any] = {
         "triggered": bool(result.get("quality_gate_triggered")),
         "reasons": list(gate.get("reasons") or []),
-        "warnings": [],
+        "warnings": [str(w) for w in (result.get(_PHOTO_WARNINGS_KEY) or [])],
     }
     for key in _QUALITY_KEYS:
         value = metrics.get(key)
         if key == "quality_warnings":
-            block["warnings"] = list(value or [])
+            block["warnings"].extend(str(w) for w in (value or []))
         elif value:
             block[key] = value
     level = confidence.get("level")

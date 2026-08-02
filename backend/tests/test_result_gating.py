@@ -192,6 +192,57 @@ def test_the_caveat_survives_a_result_with_no_metrics_at_all():
     assert q["warnings"] == []
 
 
+# --------------------------------------------------------------------------
+# The photo shape files its capture warnings in a top-level ``warnings`` list,
+# not in ``sport_specific_metrics["quality_warnings"]``. Reading only the video
+# location dropped every one of them, and the client's all-clear banner is an
+# ELSE branch -- so a free caller was shown "Clean side-view capture." on a
+# photo the paid path warned about. These tests are the regression fence.
+# --------------------------------------------------------------------------
+def photo_with_warnings() -> dict:
+    return {
+        "sport": "bike",
+        "score": {"overall_score": 62, "grade": "D"},
+        "thumbnail_base64": "data:image/jpeg;base64,CCCC",
+        "angles": {"hip": 41.0},                              # paid
+        "warnings": [
+            "Low resolution image detected. "
+            "Higher resolution photos provide more precise measurements.",
+            "Hip angle <45 deg carries risk of iliac artery endofibrosis. "
+            "Monitor for sudden power loss or leg numbness.",
+        ],
+    }
+
+
+def test_a_free_photo_still_carries_its_capture_warnings():
+    q = gate_free_result(photo_with_warnings())["quality"]
+    assert len(q["warnings"]) == 2
+    assert any("Low resolution" in w for w in q["warnings"])
+
+
+def test_a_free_photo_is_not_denied_its_medical_warning():
+    """A paywall is not a reason to withhold a documented injury risk."""
+    q = gate_free_result(photo_with_warnings())["quality"]
+    assert any("iliac artery" in w for w in q["warnings"])
+
+
+def test_the_photo_warnings_do_not_drag_the_paid_angles_along():
+    gated = gate_free_result(photo_with_warnings())
+    assert "angles" not in gated
+    assert "hip" not in json.dumps(gated)
+
+
+def test_both_result_shapes_can_contribute_warnings_at_once():
+    """Neither source may overwrite the other -- the merge is additive."""
+    mixed = full_result() | {
+        "warnings": ["photo-shaped warning"],
+        "sport_specific_metrics": {"quality_warnings": ["video-shaped warning"]},
+    }
+    assert gate_free_result(mixed)["quality"]["warnings"] == [
+        "photo-shaped warning", "video-shaped warning",
+    ]
+
+
 def test_paid_results_are_untouched_by_the_caveat_logic():
     result = gated_result()
     user = User(email="a@b.c", password_hash="x", tier=TIER_FULL)

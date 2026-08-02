@@ -45,13 +45,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      # TODO: drop the --ignore once tests/test_gzip_middleware.py is green.
-      # Those 7 tests fail on main today. Gating on the full suite would block
-      # every deploy from day one, and excluding the file loudly beats a gate
-      # everyone learns to bypass.
+      # Lint before the (slow) suite so an unused import fails in seconds rather
+      # than after the ML stack has finished importing. `ruff` is pinned in
+      # requirements-dev.txt, so this is the same version everyone runs locally.
+      - name: Lint
+        working-directory: backend
+        run: python -m ruff check app tests
+
       - name: Run tests
         working-directory: backend
-        run: python -m pytest --ignore=tests/test_gzip_middleware.py -q
+        run: python -m pytest -q
 
   deploy:
     name: Deploy to Railway
