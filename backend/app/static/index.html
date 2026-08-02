@@ -2060,10 +2060,17 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <div class="speedline"></div>
     </div>
     <p class="hint" style="text-align:left;margin:0 0 24px">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis and its annotated frame — the original clip is long gone, uploads expire in hours.</p>
-    <div class="seg seg-sm" role="group" aria-label="Filter orders" id="exaFilter" style="margin:0 0 16px">
-      <button type="button" data-exf="open" aria-pressed="true">To do</button>
-      <button type="button" data-exf="all" aria-pressed="false">All</button>
-      <button type="button" data-exf="delivered" aria-pressed="false">Delivered</button>
+    <div class="ex-bar" style="position:static;background:none;padding:0;margin:0 0 16px">
+      <div class="seg seg-sm" role="group" aria-label="Filter orders" id="exaFilter" style="margin:0">
+        <button type="button" data-exf="open" aria-pressed="true">To do</button>
+        <button type="button" data-exf="all" aria-pressed="false">All</button>
+        <button type="button" data-exf="delivered" aria-pressed="false">Delivered</button>
+      </div>
+      <!-- Mail config fails silently: a rotated key, an expired domain, a DNS
+           change. All three surface as reviews that announce themselves to
+           nobody. One click beats finding out from a customer. -->
+      <button class="btn btn-ghost btn-sm" type="button" id="exMailTest" style="margin-left:auto">Test email setup</button>
+      <span class="ex-status" id="exMailStatus" style="margin-right:0"></span>
     </div>
     <div id="exaList"></div>
     <div id="exaEditor" class="hidden"></div>
@@ -3437,6 +3444,29 @@ async function loadExpertQueue(){
       ${exPill(o)}
       <button class="btn btn-outline btn-sm" type="button" data-exopen="${o.id}">${o.status==='delivered'?'View':(o.has_draft?'Continue':'Write review')}</button>
     </div>`).join('');
+}
+
+/* Prove the whole mail chain — token, verified domain, DNS — without delivering
+   a real review and hoping. Sends to the signed-in admin's own address. */
+async function exMailTest(){
+  const st=$('#exMailStatus'), btn=$('#exMailTest');
+  if(st) st.textContent='Sending…';
+  if(btn) btn.disabled=true;
+  try{
+    const r=await fetch('/admin/email-test',{method:'POST',headers:authHeaders()});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok){
+      if(st) st.textContent=`Sent to ${j.to} via ${j.provider} — check your inbox.`;
+      toast('Test email sent — if it arrives, delivered reviews will too.');
+    } else {
+      // 503 = nothing configured; 502 = the provider refused it. Both carry a
+      // sentence written for whoever is standing here.
+      if(st) st.textContent=j.detail||'Could not send.';
+      toast(j.detail||'Could not send the test email.',{duration:7000});
+    }
+  }catch(e){
+    if(st) st.textContent='Could not reach the server.';
+  }finally{ if(btn) btn.disabled=false; }
 }
 
 async function openOrderEditor(orderId){
@@ -6096,6 +6126,7 @@ $('#expertAdmin').addEventListener('click',e=>{
   if(e.target.closest('#exSave')){ exSaveDraft(); return; }
   if(e.target.closest('#exPublish')){ exPublish(); return; }
   if(e.target.closest('#exPreview')){ exShowPreview(); return; }
+  if(e.target.closest('#exMailTest')){ exMailTest(); return; }
   const f=e.target.closest('[data-exf]');
   if(f){ state.exFilter=f.dataset.exf;
     $('#exaFilter').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b===f)));
