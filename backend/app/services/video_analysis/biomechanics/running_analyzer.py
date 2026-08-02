@@ -517,7 +517,6 @@ class RunningAnalyzer(SportAnalyzer):
         # when recording starts/stops) doesn't skew the estimate. We track
         # whether a stance run has been seen before the current swing run.
         swing_frame_counts: list[int] = []
-        current_swing = 0
         seen_stance = False
         pending_swing = 0
         for fr in self.frame_results:

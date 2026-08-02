@@ -39,7 +39,7 @@ def test_pelvic_rotation_outranks_raising_the_bars():
     labels = [r["label"] for r in ranked]
 
     assert "rotate the pelvis forward" in labels[0]
-    raise_bars = next(i for i, l in enumerate(labels) if "raise the aerobar" in l)
+    raise_bars = next(i for i, text in enumerate(labels) if "raise the aerobar" in text)
     assert raise_bars > 0, "raising the stack must never be the first suggestion here"
 
 
@@ -95,12 +95,12 @@ def test_direction_matters():
     too_open = {"hip": angle("Hip Angle", 70, 45, 62, "needs_work")}
     labels = [r["label"] for r in rank_adjustments(too_open, "triathlon")]
 
-    assert any("raise the saddle" in l for l in labels)
-    assert not any("lower the saddle" in l for l in labels)
+    assert any("raise the saddle" in text for text in labels)
+    assert not any("lower the saddle" in text for text in labels)
 
 
 def test_block_names_the_cost_of_every_option():
     block = build_tradeoff_block(CLOSED_HIP, "triathlon")
-    options = [l for l in block.splitlines() if l and l[0].isdigit()]
+    options = [line for line in block.splitlines() if line and line[0].isdigit()]
     assert len(options) >= 3
     assert block.count("cost:") == len(options)

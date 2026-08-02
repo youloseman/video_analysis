@@ -21,7 +21,6 @@ from PIL import Image, ImageOps
 from app.services.video_analysis import overlay_style
 
 from app.services.video_analysis.biomechanics.angle_calculator import (
-    MIN_LANDMARK_VISIBILITY,
     calculate_angle_2d,
     calculate_angle_3d,
     calculate_body_rotation,

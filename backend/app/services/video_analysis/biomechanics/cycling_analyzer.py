@@ -12,8 +12,6 @@ from typing import Any
 import numpy as np
 import structlog
 
-logger = structlog.get_logger()
-
 from app.services.video_analysis.biomechanics.angle_calculator import (
     SPORT_LANDMARK_VISIBILITY,
     calculate_angle_2d,
@@ -28,6 +26,8 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
     get_position_label,
 )
 from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
+
+logger = structlog.get_logger()
 
 NAN = float("nan")
 

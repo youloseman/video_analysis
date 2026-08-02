@@ -17,6 +17,15 @@ import structlog
 
 from app.services.video_analysis import overlay_style
 from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
+from app.services.video_analysis.pipeline import (
+    ARC_TRIPLETS,
+    MIN_OVERLAY_VISIBILITY,
+    POSE_CONNECTIONS,
+    SPORT_SAMPLE_RATES,
+    VideoAnalysisPipeline,
+    _draw_dashed_line,
+    _is_near_side_landmark,
+)
 
 # Phase colors (BGR for OpenCV). Warm = propulsive, cool = setup, gray = unknown.
 SWIM_PHASE_COLORS: dict[str, tuple[int, int, int]] = {
@@ -76,18 +85,6 @@ WATERMARK_MAX_H = 110
 # Cache of the BGRA watermark resized per target height (videos in a batch
 # share a size, so this is effectively a single resize).
 _watermark_cache: dict[int, "np.ndarray | None"] = {}
-from app.services.video_analysis.pipeline import (
-    ARC_TRIPLETS,
-    LEFT_SIDE_LANDMARKS,
-    MIDLINE_LANDMARKS,
-    MIN_OVERLAY_VISIBILITY,
-    POSE_CONNECTIONS,
-    RIGHT_SIDE_LANDMARKS,
-    SPORT_SAMPLE_RATES,
-    VideoAnalysisPipeline,
-    _draw_dashed_line,
-    _is_near_side_landmark,
-)
 
 logger = structlog.get_logger()
 
@@ -226,7 +223,6 @@ class VideoVisualizer:
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # Output paths
         os.makedirs(self.output_dir, exist_ok=True)

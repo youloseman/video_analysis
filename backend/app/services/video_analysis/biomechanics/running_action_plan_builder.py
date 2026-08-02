@@ -14,7 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
 
 # ---------------------------------------------------------------------------
 # Diagnosis order (strict, like cycling fitting_sequence)

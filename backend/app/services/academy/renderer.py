@@ -13,7 +13,7 @@ import html
 import json
 from typing import Any
 
-from app.services.academy.parser import Article, ArticleMeta, get_categories
+from app.services.academy.parser import Article, ArticleMeta
 from app.services.academy.widgets import render_widgets
 
 # Public base URL for canonical/OG tags + sitemap. Override via env in main.py.
