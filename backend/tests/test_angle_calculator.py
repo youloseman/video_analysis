@@ -23,6 +23,7 @@ import pytest
 from app.services.video_analysis.biomechanics.angle_calculator import (
     calculate_forearm_tilt_2d,
     calculate_segment_to_vertical_from_points,
+    calculate_shank_foot_angle_2d,
 )
 
 
@@ -102,3 +103,69 @@ def test_low_visibility_still_refuses_to_answer():
     """The fix must not turn an unmeasurable frame into a confident zero."""
     tilt, _vis = calculate_forearm_tilt_2d([LM(0.4, 0.5, 0.1), LM(0.6, 0.45)], 0, 1)
     assert math.isnan(tilt)
+
+
+# --------------------------------------------------------------------------
+# Run ankle: shank axis vs foot axis
+#
+# The old form measured a vertex angle knee-ankle-HEEL: the "foot" ray
+# pointed into the shoe sole, the value ran ~25-40 deg high against the
+# reference band, and it inherited every pixel of BlazePose's habit of
+# parking the ankle landmark high on the shin above bulky shoes. The axis
+# form (ankle->knee vs heel->toe) is the standard 2D gait convention:
+# neutral reads 90, and the ankle point only contributes a direction.
+# --------------------------------------------------------------------------
+def ankle_axis(knee: LM, ankle_pt: LM, heel: LM, toe: LM) -> float:
+    return calculate_shank_foot_angle_2d([knee, ankle_pt, heel, toe], 0, 1, 2, 3)[0]
+
+
+def test_neutral_stance_reads_a_right_angle():
+    """Foot flat, shank vertical -- the textbook 90 deg."""
+    a = ankle_axis(LM(0.5, 0.30), LM(0.5, 0.70), LM(0.47, 0.78), LM(0.62, 0.78))
+    assert a == pytest.approx(90.0, abs=1e-6)
+
+
+def test_plantarflexion_reads_above_ninety_dorsiflexion_below():
+    """Toe-off opens the angle, midstance dorsiflexion closes it --
+    the direction of change the old heel-based form had inverted."""
+    toe_off = ankle_axis(
+        LM(0.58, 0.35), LM(0.50, 0.70), LM(0.45, 0.72), LM(0.58, 0.80),
+    )
+    dorsiflexed = ankle_axis(
+        LM(0.62, 0.36), LM(0.50, 0.70), LM(0.47, 0.78), LM(0.62, 0.78),
+    )
+    assert toe_off > 95.0, toe_off
+    assert dorsiflexed < 85.0, dorsiflexed
+
+
+def test_ankle_reads_the_same_facing_either_way():
+    pts = (LM(0.58, 0.35), LM(0.50, 0.70), LM(0.45, 0.72), LM(0.58, 0.80))
+    assert ankle_axis(*pts) == pytest.approx(
+        ankle_axis(*(mirrored(p) for p in pts)), abs=0.05,
+    )
+
+
+def test_ankle_landmark_drifting_up_the_shin_barely_moves_the_reading():
+    """The reason this is an axis, not a vertex: BlazePose parks the ankle
+    point high on the shin above running shoes. Drift ALONG the shank
+    changes nothing at all; a straight-up drift on a tilted shank moves
+    the reading by a few degrees, not the ~15-20 a vertex angle absorbs."""
+    # Vertical shank: an upward drift IS along the axis -- exactly invariant.
+    on_axis = ankle_axis(LM(0.5, 0.30), LM(0.5, 0.62), LM(0.47, 0.78), LM(0.62, 0.78))
+    assert on_axis == pytest.approx(90.0, abs=1e-6)
+
+    # Tilted shank, ankle lifted ~25% of shank length straight up.
+    true_pos = ankle_axis(
+        LM(0.62, 0.36), LM(0.50, 0.70), LM(0.47, 0.78), LM(0.62, 0.78),
+    )
+    drifted = ankle_axis(
+        LM(0.62, 0.36), LM(0.50, 0.62), LM(0.47, 0.78), LM(0.62, 0.78),
+    )
+    assert abs(drifted - true_pos) < 6.0, (true_pos, drifted)
+
+
+def test_ankle_low_visibility_refuses_to_answer():
+    a = ankle_axis(
+        LM(0.5, 0.30), LM(0.5, 0.70), LM(0.47, 0.78), LM(0.62, 0.78, 0.2),
+    )
+    assert math.isnan(a)

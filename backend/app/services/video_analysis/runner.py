@@ -523,6 +523,16 @@ def run_analysis(
             analyzer._near_side = locked_side
     else:
         analyzer = RunningAnalyzer(fps=fps)
+        # Seed the camera side from the early lock (Step 2b). analyze_frame
+        # falls back to "left" while camera_side is None, and for run the
+        # side was only finalized AFTER the frame loop -- so on a clip filmed
+        # from the athlete's right every per-frame angle was computed from
+        # the far-side (left) landmarks: mostly NaN through the visibility
+        # gate, and far-side geometry when it did pass. A runner can't flip
+        # sides mid-clip any more than a rider can; per-frame voting below
+        # still runs and finalize_camera_side still settles the reported side.
+        if early_camera_side in ("left", "right") and not early_lock_meta.get("fallback"):
+            analyzer.camera_side = early_camera_side
 
     # Step 3a: per-frame analysis (run/swim vote per frame; bike is locked).
     for fd in raw_frame_data:

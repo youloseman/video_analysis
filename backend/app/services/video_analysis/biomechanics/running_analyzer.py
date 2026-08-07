@@ -22,6 +22,7 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
     SPORT_LANDMARK_VISIBILITY,
     calculate_angle_2d,
     calculate_segment_to_vertical,
+    calculate_shank_foot_angle_2d,
 )
 from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
@@ -34,15 +35,24 @@ RUNNING_ANGLES: dict[str, dict[str, tuple[int, int, int]]] = {
     "left": {
         "knee":  (23, 25, 27),   # LEFT_HIP, LEFT_KNEE, LEFT_ANKLE
         "hip":   (11, 23, 25),   # LEFT_SHOULDER, LEFT_HIP, LEFT_KNEE
-        "ankle": (25, 27, 29),   # LEFT_KNEE, LEFT_ANKLE, LEFT_HEEL
         "elbow": (11, 13, 15),   # LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST
     },
     "right": {
         "knee":  (24, 26, 28),   # RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE
         "hip":   (12, 24, 26),   # RIGHT_SHOULDER, RIGHT_HIP, RIGHT_KNEE
-        "ankle": (26, 28, 30),   # RIGHT_KNEE, RIGHT_ANKLE, RIGHT_HEEL
         "elbow": (12, 14, 16),   # RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST
     },
+}
+
+# Ankle is NOT a vertex triplet: it is the angle between the shank axis
+# (ankle -> knee) and the foot axis (heel -> toe). Neutral = 90 deg,
+# midstance dorsiflexion ~70, toe-off plantarflexion ~115. The axis form
+# is robust to BlazePose drifting the ankle landmark up the shin on bulky
+# running shoes (the old knee-ankle-HEEL vertex read ~25-40 deg high and
+# moved the wrong way with dorsiflexion). Tuple: (knee, ankle, heel, toe).
+RUNNING_ANKLE_LANDMARKS: dict[str, tuple[int, int, int, int]] = {
+    "left":  (25, 27, 29, 31),
+    "right": (26, 28, 30, 32),
 }
 
 TRUNK_LANDMARKS: dict[str, tuple[int, int]] = {
@@ -737,6 +747,12 @@ class RunningAnalyzer(SportAnalyzer):
             angle_val, vis = calculate_angle_2d(wl, idx_a, idx_b, idx_c)
             angles[joint_name] = angle_val
             visibility[joint_name] = vis
+
+        # Ankle: shank axis vs foot axis (see RUNNING_ANKLE_LANDMARKS).
+        k_i, a_i, h_i, t_i = RUNNING_ANKLE_LANDMARKS[near]
+        ankle_val, ankle_vis = calculate_shank_foot_angle_2d(wl, k_i, a_i, h_i, t_i)
+        angles["ankle"] = ankle_val
+        visibility["ankle"] = ankle_vis
 
         # Trunk lean: near-side shoulder + hip (world landmarks)
         sh_idx, hp_idx = TRUNK_LANDMARKS[near]

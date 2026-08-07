@@ -27,6 +27,7 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
     calculate_forearm_tilt_2d,
     calculate_head_alignment_2d,
     calculate_segment_to_vertical,
+    calculate_shank_foot_angle_2d,
 )
 from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_POSITIONS,
@@ -54,15 +55,24 @@ RUNNING_PHOTO_ANGLES: dict[str, dict[str, tuple[int, int, int]]] = {
     "left": {
         "knee": (23, 25, 27),   # LEFT_HIP, LEFT_KNEE, LEFT_ANKLE
         "hip": (11, 23, 25),    # LEFT_SHOULDER, LEFT_HIP, LEFT_KNEE
-        "ankle": (25, 27, 29),  # LEFT_KNEE, LEFT_ANKLE, LEFT_HEEL
         "elbow": (11, 13, 15),  # LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST
     },
     "right": {
         "knee": (24, 26, 28),
         "hip": (12, 24, 26),
-        "ankle": (26, 28, 30),
         "elbow": (12, 14, 16),
     },
+}
+
+# Run ankle is NOT a vertex triplet: it is the angle between the shank axis
+# (ankle -> knee) and the foot axis (heel -> toe). Neutral = 90 deg,
+# midstance dorsiflexion ~70, toe-off plantarflexion ~115. Axis form is
+# robust to BlazePose drifting the ankle landmark up the shin on bulky
+# running shoes (matches RUNNING_ANKLE_LANDMARKS in running_analyzer.py).
+# Tuple: (knee, ankle, heel, toe).
+RUNNING_PHOTO_ANKLE: dict[str, tuple[int, int, int, int]] = {
+    "left":  (25, 27, 29, 31),
+    "right": (26, 28, 30, 32),
 }
 
 RUNNING_TRUNK_LANDMARKS: dict[str, tuple[int, int]] = {
@@ -145,7 +155,11 @@ def _get_running_optimal_ranges() -> dict[str, tuple[float, float]]:
         "hip": (150, 180),
         "trunk": RUNNING_REFERENCE["trunk_lean"],       # (4, 8)
         "elbow": RUNNING_REFERENCE["elbow_angle"],      # (85, 100)
-        "ankle": (90, 120),
+        # Shank-axis vs foot-axis convention (neutral = 90): the healthy
+        # sweep across a gait cycle is ~70 (midstance dorsiflexion) to
+        # ~115 (toe-off plantarflexion). Wide band, same reasoning as the
+        # knee -- a photo captures one unknown gait instant.
+        "ankle": (65, 115),
     }
 
 
@@ -564,6 +578,56 @@ def _draw_arc(
     )
 
 
+def _draw_run_ankle_arc(
+    cv2_mod, frame, pixel_coords: list[tuple[int, int, float]],
+    camera_side: str, color: tuple[int, int, int], body_height_px: float,
+) -> None:
+    """Arc for the axis-based run ankle angle (see RUNNING_PHOTO_ANKLE).
+
+    The measured angle is shank axis (ankle -> knee) vs foot axis
+    (heel -> toe), so the arc must span those two directions -- a vertex
+    arc through the heel would show a different angle than the number on
+    the chip. Anchored at the ankle dot, with a dashed guide along the
+    foot axis so the athlete can see what the number is measured against.
+    """
+    knee_i, ankle_i, heel_i, toe_i = RUNNING_PHOTO_ANKLE[camera_side]
+    if max(knee_i, ankle_i, heel_i, toe_i) >= len(pixel_coords):
+        return
+    kx, ky, kv = pixel_coords[knee_i]
+    ax, ay, av = pixel_coords[ankle_i]
+    hx, hy, hv = pixel_coords[heel_i]
+    tx, ty, tv = pixel_coords[toe_i]
+    if min(kv, av, hv, tv) < _VIS_THRESHOLD:
+        return
+
+    v1x, v1y = kx - ax, ky - ay          # shank axis
+    v2x, v2y = tx - hx, ty - hy          # foot axis, translated to the ankle
+    if (abs(v1x) + abs(v1y) < 1) or (abs(v2x) + abs(v2y) < 1):
+        return
+
+    ang1 = math.degrees(math.atan2(v1y, v1x))
+    ang2 = math.degrees(math.atan2(v2y, v2x))
+    start = min(ang1, ang2)
+    end = max(ang1, ang2)
+    if end - start > 180:
+        start, end = end, start + 360
+
+    radius = max(12, int(body_height_px * 0.08))
+    cv2_mod.ellipse(
+        frame, (ax, ay), (radius, radius), 0,
+        start, end, color, 1, cv2_mod.LINE_AA,
+    )
+
+    # Dashed guide slightly past heel and toe so it reads as an axis, not a bone.
+    ext = 0.25
+    _draw_dashed_line(
+        cv2_mod, frame,
+        (int(hx - v2x * ext), int(hy - v2y * ext)),
+        (int(tx + v2x * ext), int(ty + v2y * ext)),
+        color, 1,
+    )
+
+
 def _generate_photo_thumbnail(
     cv2_mod, image, normalized_landmarks,
     angles: dict[str, float],
@@ -688,13 +752,20 @@ def _generate_photo_thumbnail(
             score_val = angle_score_data["score"] if angle_score_data else None
             color = _score_to_color(score_val)
 
-            # Draw arc at joint
-            triplet = arc_triplets.get(angle_key)
-            if triplet:
-                _draw_arc(
+            # Draw arc at joint. Run ankle is axis-based (no vertex triplet)
+            # and gets its own arc between the shank and foot axes.
+            if sport == "run" and angle_key == "ankle":
+                _draw_run_ankle_arc(
                     cv2_mod, frame, pixel_coords,
-                    *triplet, color, body_height_px,
+                    camera_side, color, body_height_px,
                 )
+            else:
+                triplet = arc_triplets.get(angle_key)
+                if triplet:
+                    _draw_arc(
+                        cv2_mod, frame, pixel_coords,
+                        *triplet, color, body_height_px,
+                    )
 
             # Leader line + neon chip (label + big coloured value)
             jx, jy, _ = pixel_coords[lm_idx]
@@ -1091,6 +1162,11 @@ def analyze_photo(
         for name, (a, b, c) in RUNNING_PHOTO_ANGLES[camera_side].items():
             val, _ = calculate_angle_2d(wl, a, b, c)
             angles[name] = _safe_round(val)
+
+        # Ankle: shank axis vs foot axis (see RUNNING_PHOTO_ANKLE).
+        k_i, a_i, h_i, t_i = RUNNING_PHOTO_ANKLE[camera_side]
+        ankle_val, _ = calculate_shank_foot_angle_2d(wl, k_i, a_i, h_i, t_i)
+        angles["ankle"] = _safe_round(ankle_val)
 
         sh_idx, hp_idx = RUNNING_TRUNK_LANDMARKS[camera_side]
         trunk = calculate_segment_to_vertical(wl, sh_idx, hp_idx)

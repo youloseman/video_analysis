@@ -109,6 +109,58 @@ def calculate_angle_2d(
     return angle, avg_visibility
 
 
+def calculate_shank_foot_angle_2d(
+    landmarks, idx_knee: int, idx_ankle: int, idx_heel: int, idx_toe: int,
+    min_visibility: float = MIN_LANDMARK_VISIBILITY,
+) -> tuple[float, float]:
+    """Ankle angle as shank axis (ankle -> knee) vs foot axis (heel -> toe).
+
+    Measured between the two segment DIRECTIONS rather than at the ankle
+    vertex: BlazePose often drifts the ankle landmark up the shin on bulky
+    running shoes, and a vertex-based angle absorbs that drift wholesale,
+    while a direction-based one barely notices it -- the drift runs mostly
+    along the shank, which leaves the shank's direction (and the heel/toe
+    points) untouched. Standard 2D gait convention.
+
+    Convention: neutral (foot flat, shank vertical) = 90 deg. Midstance
+    dorsiflexion reads lower (~70), toe-off plantarflexion higher (~115).
+    Symmetric under horizontal mirroring, so it reads the same whichever
+    side the camera stood on.
+
+    Returns:
+        (angle_degrees, avg_visibility) -- angle in [0, 180], NaN when any
+        of the four landmarks is below ``min_visibility`` or degenerate.
+    """
+    vis = [
+        getattr(landmarks[i], "visibility", 1.0)
+        for i in (idx_knee, idx_ankle, idx_heel, idx_toe)
+    ]
+    avg_visibility = sum(vis) / 4.0
+    if min(vis) < min_visibility:
+        return float("nan"), avg_visibility
+
+    shank = np.array([
+        landmarks[idx_knee].x - landmarks[idx_ankle].x,
+        landmarks[idx_knee].y - landmarks[idx_ankle].y,
+    ])
+    foot = np.array([
+        landmarks[idx_toe].x - landmarks[idx_heel].x,
+        landmarks[idx_toe].y - landmarks[idx_heel].y,
+    ])
+
+    norm_s = np.linalg.norm(shank)
+    norm_f = np.linalg.norm(foot)
+    if (
+        np.isnan(norm_s) or np.isnan(norm_f)
+        or norm_s < 1e-6 or norm_f < 1e-6
+    ):
+        return float("nan"), avg_visibility
+
+    cosine = np.dot(shank, foot) / (norm_s * norm_f)
+    cosine = np.clip(cosine, -1.0, 1.0)
+    return float(np.degrees(np.arccos(cosine))), avg_visibility
+
+
 def calculate_segment_to_vertical(
     landmarks, idx_top: int, idx_bottom: int,
     min_visibility: float = MIN_LANDMARK_VISIBILITY,
