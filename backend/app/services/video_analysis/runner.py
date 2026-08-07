@@ -470,9 +470,16 @@ def run_analysis(
         }
 
     # Step 2a: stabilize (visibility gate + flip fix + smooth).
+    # The smoothing filters must see the rate the SAMPLED series actually
+    # has: on long clips adaptive sampling raises the stride (e.g. every
+    # 4th frame of a 60 fps clip -> a 15 Hz series). Feeding the raw video
+    # fps in would make One Euro over-smooth (skeleton lags the athlete)
+    # and would place the Butterworth cutoff relative to a Nyquist the
+    # series doesn't have.
     stabilizer_ctx: dict[str, Any] = {}
+    _stride = max(1, int(sampling_meta.get("sample_rate") or 1))
     stabilize_landmarks(
-        raw_frame_data, sport_type, camera_angle, fps=fps,
+        raw_frame_data, sport_type, camera_angle, fps=fps / _stride,
         context=stabilizer_ctx, camera_view=camera_view,
     )
 
@@ -608,8 +615,9 @@ def run_analysis(
         )
 
     # Soft confidence tier (high/medium/low) -- informational, hides nothing.
-    # Butterworth meta only exists for bike side-view (run uses One Euro -> None,
-    # which the scorer handles). phase_diagnostics is swim-only -> omitted here,
+    # Butterworth meta exists for bike + run side-view (swim above-water keeps
+    # One Euro -> None, which the scorer handles). phase_diagnostics is
+    # swim-only -> omitted here,
     # so Factor 5 stays dormant for run/bike. Warnings from the analyzer and the
     # quality gate are merged for scoring only (each keeps its own UI panel).
     try:

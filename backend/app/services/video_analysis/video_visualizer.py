@@ -5,11 +5,13 @@ using the pre-computed analysis data, then re-encodes to web-safe H.264 MP4
 via ffmpeg.
 """
 
+import bisect
 import math
 import os
 import shutil
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -131,6 +133,9 @@ class VideoVisualizer:
         self._frame_index_map: dict[int, int] = {}
         for i, fd in enumerate(frame_data_list):
             self._frame_index_map[fd["frame_idx"]] = i
+        # Sorted video-frame indices of analyzed frames, for bisecting the
+        # neighbours of an un-analyzed frame (adaptive sampling stride > 1).
+        self._analyzed_video_indices: list[int] = sorted(self._frame_index_map)
 
         # Camera side for near/far skeleton coloring
         self.camera_side = self.summary.get("camera_side") if sport_type in ("run", "bike") else None
@@ -254,8 +259,10 @@ class VideoVisualizer:
             self._timeline_cache = self._build_phase_timeline(width)
             self._overlay_fps = fps
 
-        # Track nearest analyzed frame for nearest-frame-hold
+        # Track the last resolvable pose (frames past the final analyzed one
+        # keep drawing it, so the overlay doesn't vanish on the tail).
         last_analyzed_idx: int | None = None
+        last_landmarks: list[Any] | None = None
         video_frame_idx = 0
         frames_written = 0
 
@@ -271,10 +278,12 @@ class VideoVisualizer:
             if frame.shape[1] != width or frame.shape[0] != height:
                 frame = cv2.resize(frame, (width, height))
 
-            # Find the nearest analyzed frame for this video frame
-            analyzed_idx = self._get_nearest_analyzed_frame(video_frame_idx)
+            # Resolve the pose for this video frame (exact hit, or an
+            # interpolated skeleton between two analyzed frames).
+            analyzed_idx, landmarks = self._pose_for_video_frame(video_frame_idx)
             if analyzed_idx is not None:
                 last_analyzed_idx = analyzed_idx
+                last_landmarks = landmarks
 
             # Draw overlay if we have landmark data. The chip layer is painted
             # with PIL and returns a NEW array -- rebind rather than assume
@@ -282,6 +291,7 @@ class VideoVisualizer:
             if last_analyzed_idx is not None:
                 frame = self._draw_frame_overlay(
                     cv2, frame, last_analyzed_idx, width, height,
+                    landmarks_override=last_landmarks,
                 )
 
             # Brand watermark on every frame (even un-analyzed ones)
@@ -365,30 +375,73 @@ class VideoVisualizer:
             logger.warning("KEYFRAME_FAILED", err=str(e))
             return None
 
-    def _get_nearest_analyzed_frame(self, video_frame_idx: int) -> int | None:
-        """Map a video frame index to the nearest analyzed frame index.
+    def _pose_for_video_frame(
+        self, video_frame_idx: int,
+    ) -> tuple[int | None, list[Any] | None]:
+        """Resolve the pose to draw on a given video frame.
 
-        For sample_rate=1 (run/bike): direct 1:1 mapping.
-        For sample_rate=3 (swim): nearest-frame-hold -- use the closest
-        analyzed frame at or before this video frame.
+        Returns ``(analyzed_idx, landmarks)``: ``analyzed_idx`` is the
+        temporally nearest analyzed frame (its angles/phase drive the labels)
+        and ``landmarks`` are the positions the skeleton is drawn at.
+
+        At stride 1 every video frame is an exact hit. When adaptive sampling
+        raised the stride, frames between two analyzed ones get a linearly
+        interpolated skeleton -- holding the previous pose instead leaves the
+        skeleton visibly trailing the athlete (worst on real-speed 60 fps
+        clips, where one stride step is a lot of motion).
         """
-        # Direct hit
-        if video_frame_idx in self._frame_index_map:
-            return self._frame_index_map[video_frame_idx]
+        idxs = self._analyzed_video_indices
+        if not idxs:
+            return None, None
+        pos = bisect.bisect_right(idxs, video_frame_idx) - 1
+        if pos < 0:
+            return None, None  # before the first analyzed frame
 
-        # Find nearest analyzed frame at or before this index
-        best_idx = None
-        best_video_idx = -1
-        for fd_video_idx, analyzed_idx in self._frame_index_map.items():
-            if fd_video_idx <= video_frame_idx and fd_video_idx > best_video_idx:
-                best_video_idx = fd_video_idx
-                best_idx = analyzed_idx
+        v0 = idxs[pos]
+        a0 = self._frame_index_map[v0]
+        if v0 == video_frame_idx or pos + 1 >= len(idxs):
+            # Exact hit, or past the last analyzed frame (hold it).
+            return a0, self.frame_data_list[a0]["normalized_landmarks"]
 
-        return best_idx
+        v1 = idxs[pos + 1]
+        a1 = self._frame_index_map[v1]
+        t = (video_frame_idx - v0) / float(v1 - v0)
+        nearest_idx = a0 if t < 0.5 else a1
+
+        def _finite(v: Any) -> bool:
+            return isinstance(v, (int, float)) and not (
+                isinstance(v, float) and math.isnan(v)
+            )
+
+        lms0 = self.frame_data_list[a0]["normalized_landmarks"]
+        lms1 = self.frame_data_list[a1]["normalized_landmarks"]
+        blended: list[Any] = []
+        for lm0, lm1 in zip(lms0, lms1):
+            if not (_finite(lm0.x) and _finite(lm0.y)
+                    and _finite(lm1.x) and _finite(lm1.y)):
+                # A gated (NaN) end: snap to the temporally closer pose --
+                # blending with NaN would erase the landmark for the whole gap.
+                blended.append(lm0 if t < 0.5 else lm1)
+                continue
+            vis0 = getattr(lm0, "visibility", 1.0)
+            vis1 = getattr(lm1, "visibility", 1.0)
+            blended.append(SimpleNamespace(
+                x=lm0.x + (lm1.x - lm0.x) * t,
+                y=lm0.y + (lm1.y - lm0.y) * t,
+                z=lm0.z if t < 0.5 else lm1.z,
+                # min(): a landmark unreliable at either end stays hidden for
+                # the whole gap rather than popping in halfway through.
+                visibility=min(
+                    vis0 if vis0 is not None else 1.0,
+                    vis1 if vis1 is not None else 1.0,
+                ),
+            ))
+        return nearest_idx, blended
 
     def _draw_frame_overlay(
         self, cv2_mod: Any, frame: Any, analyzed_idx: int, width: int, height: int,
         keyframe_mode: bool = False,
+        landmarks_override: list[Any] | None = None,
     ) -> Any:
         """Draw skeleton + angle labels on a single frame.
 
@@ -398,9 +451,16 @@ class VideoVisualizer:
 
         ``keyframe_mode`` enables the expensive extras (skeleton glow) for the
         one-off keyframe still; the per-frame video path leaves them off.
+
+        ``landmarks_override`` lets the video path draw the skeleton at
+        interpolated positions (between two analyzed frames) while the labels,
+        angles and phase still come from ``analyzed_idx``.
         """
-        fd = self.frame_data_list[analyzed_idx]
-        normalized_lms = fd["normalized_landmarks"]
+        normalized_lms = (
+            landmarks_override
+            if landmarks_override is not None
+            else self.frame_data_list[analyzed_idx]["normalized_landmarks"]
+        )
 
         # Convert to pixel coordinates with visibility.
         # Gated landmarks carry NaN x/y (see landmark_stabilizer); we mark them

@@ -7,8 +7,10 @@ Three passes over raw frame results:
    (sport_type, camera_angle) so swim above/under water get different floors.
 2. Anti-flip correction -- detects when MediaPipe swaps left/right sides
    and swaps them back using Z-depth consistency of hips.
-3. One Euro Filter smoothing on (x, y, z) per landmark to reduce jitter
-   with velocity-adaptive cutoff (replaces the old fixed-alpha EMA).
+3. Landmark smoothing on (x, y, z) per landmark to reduce jitter. Routed
+   per sport (see ``_use_butterworth_landmarks``): offline side-view sports
+   (bike, run) and swim under-water use a zero-phase Butterworth (no lag);
+   the rest use the causal One Euro filter with velocity-adaptive cutoff.
 
 Applied BETWEEN MediaPipe detection and sport-specific analysis.
 """
@@ -127,10 +129,17 @@ def _use_butterworth_landmarks(
         Excludes bike rear-view, which has its own 1.2 Hz Butterworth
         inside ``PelvicStabilityAnalyzer`` and would over-smooth if
         filtered twice.
+      - run side-view: One Euro's causal phase lag left the skeleton
+        visibly trailing the athlete on real-speed 60 fps clips (the lag
+        is ~constant in ms, so at real-time limb speeds it spans several
+        frames; slo-mo hid it). Zero-phase removes the lag by
+        construction.
     """
     if sport_type == "swim" and camera_angle == "under_water":
         return True
     if sport_type == "bike" and camera_view != "rear":
+        return True
+    if sport_type == "run" and camera_view != "rear":
         return True
     return False
 
@@ -366,6 +375,13 @@ BUTTER_LANDMARK_CUTOFF_HZ: dict[tuple[str, str | None], float] = {
     # cap (0.2 * effective_fps) usually binds first at 30 fps -> 6 Hz,
     # at 60 fps the target wins (cap 12, target 6).
     ("bike", None): 6.0,
+    # Run side-view: step frequency is ~1.4-1.5 Hz per leg (~170-180 spm
+    # combined); swing-leg and foot-strike kinematics carry meaningful
+    # content up to ~8 Hz (standard gait-lab low-pass range is 6-10 Hz).
+    # At 30 fps the 0.2*fps adaptive cap tightens this to 6 Hz -- the
+    # classic Winter cutoff -- so both common phone framerates land on
+    # defensible values.
+    ("run", None): 8.0,
 }
 BUTTER_LANDMARK_ORDER = 4
 # filtfilt needs enough samples beyond the padlen (default 3*order*2 for
