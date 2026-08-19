@@ -63,12 +63,18 @@ class TokenOut(BaseModel):
     email: str
     tier: str
     is_pro: bool  # kept for back-compat; derived from tier
+    # Unspent Expert Reviews (the Full tier includes one). Travels with the
+    # session because the pricing screen has to offer "use the one you have"
+    # instead of "buy one" -- and because a benefit nobody is told about is
+    # indistinguishable from one that was never granted.
+    expert_credits: int = 0
 
 
 class UserOut(BaseModel):
     email: str
     tier: str
     is_pro: bool  # kept for back-compat; derived from tier
+    expert_credits: int = 0
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -98,6 +104,7 @@ async def register(body: Credentials, db: AsyncSession = Depends(get_session)) -
     return TokenOut(
         token=create_token(user.id), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
+        expert_credits=user.expert_credits or 0,
     )
 
 
@@ -111,12 +118,16 @@ async def login(body: LoginBody, db: AsyncSession = Depends(get_session)) -> Tok
     return TokenOut(
         token=create_token(user.id), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
+        expert_credits=user.expert_credits or 0,
     )
 
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)) -> UserOut:
-    return UserOut(email=user.email, tier=user.tier, is_pro=user.is_paid)
+    return UserOut(
+        email=user.email, tier=user.tier, is_pro=user.is_paid,
+        expert_credits=user.expert_credits or 0,
+    )
 
 
 class DeleteAccountBody(BaseModel):

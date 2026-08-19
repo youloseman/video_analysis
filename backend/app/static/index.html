@@ -156,6 +156,24 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .tier .current-badge{display:flex;justify-content:center;align-items:center;gap:7px;font-family:var(--f-mono);
   font-size:12px;font-weight:600;color:var(--st-good);background:var(--st-good-bg,#e6f4ec);
   padding:11px;border-radius:var(--radius-btn)}
+/* Expert Review, as a card rather than a footnote. Horizontal instead of a
+   fourth grid column: at this width four tiers would leave ~220px each. */
+.tier-solo{margin-top:20px;padding:24px 22px}
+.tier-solo .poptag-addon{background:var(--c-coral)}
+.solo-head{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.solo-head>div:first-child{flex:1 1 320px}
+.tier-solo .tier-tagline{min-height:0;margin:4px 0 0;max-width:52ch}
+.solo-buy{flex:0 0 auto;text-align:right;min-width:200px}
+.solo-buy .tier-price{justify-content:flex-end}
+.solo-buy .tier-sub{min-height:0;margin-bottom:12px}
+.solo-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.tier-solo .btn{width:auto}
+.solo-list{margin:20px 0 0!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px}
+@media(max-width:700px){
+  .solo-buy{text-align:left;min-width:0}
+  .solo-buy .tier-price,.solo-btns{justify-content:flex-start}
+  .solo-list{grid-template-columns:1fr}
+}
 .addon-strip{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:20px;padding:20px 22px;
   background:linear-gradient(135deg,#fff,var(--c-panel));border:1px solid var(--c-line);
   border-radius:var(--radius-lg);box-shadow:var(--shadow)}
@@ -234,7 +252,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .ex-bar .ex-status{font-size:13px;color:var(--c-ink-soft);margin-right:auto}
 
 /* "Your review is ready" on the dashboard. Loud on purpose while unread: an
-   email can be missed, and until now the only route to a delivered $29
+   email can be missed, and until now the only route to a delivered paid
    deliverable was the Pricing page — which is where you go to BUY things. */
 .rev-card{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 22px;
   padding:18px 20px;border-radius:var(--radius);border:1px solid var(--c-line);background:var(--c-panel)}
@@ -1361,7 +1379,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 <div class="modal hidden" id="pickModal" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
   <div class="modal-card">
     <button class="modal-close" id="pickClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="eyebrow">Expert Review · $29</div>
+    <div class="eyebrow" id="pickEyebrow">Expert Review</div>
     <h2 id="pickTitle" style="font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);font-size:23px;margin:6px 0 4px">Which analysis?</h2>
     <p class="hint" style="text-align:left;margin:0 0 16px">Pick the one you want a human to read. You'll get a written report against exactly this analysis.</p>
     <div id="pickList" style="max-height:46vh;overflow:auto;margin:0 0 18px"></div>
@@ -1952,82 +1970,24 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <p>Start free. Upgrade when you want the measurements, coaching and video that tell you exactly what to change.</p>
       <div class="billtoggle" role="group" aria-label="Billing period">
         <button type="button" id="billMonthly" aria-pressed="false">Monthly</button>
-        <button type="button" id="billYearly" aria-pressed="true">Yearly<span class="save">save ~45%</span></button>
+        <button type="button" id="billYearly" aria-pressed="true">Yearly<span class="save" id="billSave"></span></button>
       </div>
     </div>
 
-    <div class="tiers">
-      <!-- STARTER -->
-      <div class="tier" id="tierStarter">
-        <p class="tier-name">Starter</p>
-        <p class="tier-tagline">See the tech work and try the process.</p>
-        <div class="tier-price"><span class="amt">$0</span><span class="per">forever</span></div>
-        <p class="tier-sub">No card required</p>
-        <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>3</b> analyses / month</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Skeleton + score (angles hidden)</span></li>
-          <li class="off"><svg viewBox="0 0 16 16" fill="none"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>AI coaching &amp; measurements</span></li>
-          <li class="off"><svg viewBox="0 0 16 16" fill="none"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Overlay video &amp; history</span></li>
-        </ul>
-        <div class="tier-cta" id="ctaStarter"></div>
-      </div>
+    <div class="tiers" id="tiersHost"></div>
 
-      <!-- ENTHUSIAST -->
-      <div class="tier pop" id="tierEnthusiast">
-        <span class="poptag">Most popular</span>
-        <p class="tier-name">Enthusiast</p>
-        <p class="tier-tagline">The full analysis for one discipline.</p>
-        <!-- Yearly is the default tab (see setBillPeriod) — the static copy has
-             to match it, or the pressed toggle disagrees with the price. -->
-        <div class="tier-price"><span class="amt" id="entAmt">$59</span><span class="per" id="entPer">/ year</span></div>
-        <p class="tier-sub" id="entSub">billed annually · save ~45%</p>
-        <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>30</b> analyses / month</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Full AI coaching + action plan</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Exact joint angles, no watermark</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Overlay video + slow-motion</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Cloud history + progress</span></li>
-        </ul>
-        <div class="tier-cta" id="ctaEnthusiast"></div>
-      </div>
-
-      <!-- FULL -->
-      <div class="tier" id="tierFull">
-        <p class="tier-name">Full</p>
-        <p class="tier-tagline">Multi-sport, progress analytics &amp; a human review.</p>
-        <div class="tier-price"><span class="amt" id="fullAmt">$80</span><span class="per" id="fullPer">/ year</span></div>
-        <p class="tier-sub" id="fullSub">billed annually</p>
-        <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Everything in Enthusiast, <b>120</b>/mo</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Multi-sport &amp; multi-bike profiles</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Before / after + trend charts</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Branded PDF report + export</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>1 Expert Review included</b> ($29 value)</span></li>
-        </ul>
-        <div class="tier-cta" id="ctaFull"></div>
-      </div>
-    </div>
-
-    <!-- EXPERT REVIEW add-on -->
-    <div class="addon-strip">
-      <span class="ao-chip">Add-on · any plan</span>
-      <div>
-        <div class="ao-name">Expert Review</div>
-        <div class="ao-desc">A personal video breakdown from a real triathlete, on top of the AI.</div>
-      </div>
-      <div class="ao-price">$29 <small>once</small></div>
-      <button class="btn btn-ghost" type="button" id="ctaExpertSample">See a sample</button>
-      <button class="btn btn-outline" type="button" id="ctaExpert">Add Expert Review</button>
-    </div>
+    <!-- Expert Review: a full-width card under the grid rather than a fourth
+         column. Four tier cards in this container leave ~220px each, and this
+         is the one thing on the page a model cannot reproduce — it used to be
+         a thin strip, which is a strange place for the highest-margin item we
+         sell and the only one with a human behind it. -->
+    <div id="addonHost"></div>
 
     <!-- One-time purchases. An Expert Review grants no plan, so without this the
-         only proof of a $29 payment would be the customer's card statement. -->
+         only proof of the payment would be the customer's card statement. -->
     <div class="addon-strip hidden" id="ordersBox" aria-live="polite"></div>
 
-    <p class="pricing-foot">
-      <svg aria-hidden="true"><use href="#i-check"/></svg>
-      Prices in USD · cancel anytime · secure checkout by Stripe · billed by Clariva
-    </p>
+    <p class="pricing-foot" id="pricingFoot"></p>
 
     <!-- The privacy policy promises deletion on request; this is that request,
          self-serve. It lives here, next to Manage subscription (which its own
@@ -2078,7 +2038,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   </section>
 
   <!-- EXPERT REVIEW — fulfilment queue + report editor (admin only).
-       The $29 order used to exist only as an API row: nothing in the product
+       The order used to exist only as an API row: nothing in the product
        could see it, and /docs is off in production, so delivering a paid review
        meant curl. -->
   <section id="expertAdmin" class="hidden" aria-labelledby="exaTitle">
@@ -3190,7 +3150,7 @@ function teaserPanelHtml(items, opts){
     <ul>${(items||[]).map(t=>`<li>${check}<span>${esc(t)}</span></li>`).join('')}</ul>
     <div class="cta-row">
       <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
-      <span class="price-tag">from <b>$9</b>/mo</span>
+      <span class="price-tag">${fromPriceLabel()}</span>
     </div>
   </div>`;
 }
@@ -3210,52 +3170,166 @@ function renderUpsell(containerId, locked, blockIds){
    exists the button degrades to a friendly "coming soon" toast, so the page
    is never a dead end.
    ============================================================ */
-/* Yearly is the default view, and that is a pricing-legibility decision, not a
-   nudge: Full is annual-only at $80/yr, so on the monthly tab the three tiers
-   read $0 / $9-per-MONTH / $80-per-YEAR — three different units, and anyone who
-   does the arithmetic finds the "premium" tier ($80/yr) undercutting the one
-   badged Most popular ($108/yr). On the yearly tab all three share one unit and
-   ascend: $0 / $59 / $80. The monthly tab still exists for whoever wants
-   month-to-month; it just isn't what a first-time visitor is dropped into. */
-let billPeriod='yearly';   // 'monthly' | 'yearly'
-function setBillPeriod(p){
-  billPeriod=p;
-  const m=$('#billMonthly'), y=$('#billYearly');
-  if(m) m.setAttribute('aria-pressed', String(p==='monthly'));
-  if(y) y.setAttribute('aria-pressed', String(p==='yearly'));
-  // Only Enthusiast has both cycles; Full is annual-only, so on the monthly tab
-  // it says so out loud rather than silently switching units on the reader.
-  if(p==='yearly'){
-    $('#entAmt').textContent='$59'; $('#entPer').textContent='/ year'; $('#entSub').textContent='billed annually · save ~45%';
-    $('#fullAmt').textContent='$80'; $('#fullPer').textContent='/ year'; $('#fullSub').textContent='billed annually';
-  } else {
-    $('#entAmt').textContent='$9'; $('#entPer').textContent='/ month'; $('#entSub').textContent='billed monthly';
-    $('#fullAmt').textContent='$80'; $('#fullPer').textContent='/ year'; $('#fullSub').textContent='annual only · no monthly option';
-  }
+/* The catalogue, fetched once and shared by every price on this screen.
+
+   These numbers used to live in this file twice over — in the markup, and
+   again in the billing-period toggle that rewrote the same three amounts —
+   plus once on the landing page and once in the Terms of Service. That is how
+   the pricing footer came to advertise USD while the Terms promised CAD: a
+   ~37% gap between two documents the same customer reads before paying. One
+   catalogue now (services/pricing.py), served over /billing/plans. */
+let PLANS=null;
+async function loadPlans(){
+  if(PLANS) return PLANS;
+  try{ const r=await fetch('/billing/plans'); if(r.ok) PLANS=await r.json(); }catch(e){}
+  return PLANS;
 }
+/* Yearly is the default tab, and that is a legibility decision rather than a
+   nudge. Full is annual-only, so the monthly tab shows the tiers in two
+   different units — a per-month price beside a per-year one — and whenever the
+   annual top tier costs less over a year than twelve months of the tier badged
+   Most popular, the reader who does that arithmetic is right and the ladder
+   looks broken. On the yearly tab every tier shares one unit and ascends. The
+   monthly tab still exists for whoever wants month-to-month; it just is not
+   where a first-time visitor lands. The actual fix is a monthly price for the
+   top tier — until that exists, this. (No amounts here on purpose: a comment
+   that names prices goes stale the same way the markup did.) */
+let billPeriod='yearly';   // 'monthly' | 'yearly'
+function setBillPeriod(p){ billPeriod=p; drawPricing(); }
+
 const CURRENT_BADGE='<div class="current-badge"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Your current plan</div>';
 const MANAGE_BTN='<button class="btn btn-ghost btn-sm" type="button" style="width:100%;margin-top:8px" onclick="openPortal()">Manage subscription</button>';
-function renderPricing(){
-  const cur=auth?auth.tier:null;
-  const cs=$('#ctaStarter'), ce=$('#ctaEnthusiast'), cf=$('#ctaFull');
-  if(!cs) return;
-  setBillPeriod(billPeriod);   // keep prices + pressed toggle in sync on every open
-  // Starter
-  if(!auth) cs.innerHTML=`<button class="btn btn-outline" type="button" onclick="openAuth&&openAuth('register')">Get started free</button>`;
-  else if(cur==='starter') cs.innerHTML=CURRENT_BADGE;
-  else cs.innerHTML=`<button class="btn btn-outline" type="button" disabled style="opacity:.45;cursor:default">Free plan</button>`;
-  // Enthusiast (paid tiers also get a Manage-subscription button)
-  ce.innerHTML = cur==='enthusiast' ? CURRENT_BADGE+MANAGE_BTN
-    : `<button class="btn btn-primary" type="button" onclick="startCheckout('enthusiast')">Choose Enthusiast</button>`;
-  // Full
-  cf.innerHTML = cur==='full' ? CURRENT_BADGE+MANAGE_BTN
-    : `<button class="btn btn-outline" type="button" onclick="startCheckout('full')">Choose Full</button>`;
+const TICK='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CROSS='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const DEAD_BTN='<button class="btn btn-outline" type="button" disabled style="opacity:.45;cursor:default">';
+
+/* The price to show for the selected period, falling back to the card's only
+   one. That fallback is what lets Full render on the monthly tab with its own
+   unit spelled out (below) instead of silently switching units on the reader. */
+function priceFor(card){
+  const want = billPeriod==='yearly' ? 'year' : 'month';
+  return (card.prices||[]).find(p=>p.interval===want) || (card.prices||[])[0] || null;
 }
+function priceNote(price){
+  if(!price) return '';
+  const want = billPeriod==='yearly' ? 'year' : 'month';
+  if(price.interval==='year' && want==='month') return 'annual only · no monthly option';
+  return price.note||'';
+}
+/* Feature text is authored in services/pricing.py and carries its own <b> and
+   entities. It is our copy, never anything a user typed, so it goes in as
+   markup on purpose — escaping it would print the tags. */
+function featuresHtml(features){
+  return (features||[]).map(f=>
+    `<li${f.on?'':' class="off"'}>${f.on?TICK:CROSS}<span>${f.text}</span></li>`).join('');
+}
+
+function tierCtaHtml(card, price){
+  const cur = auth ? auth.tier : null;
+  if(card.id==='starter'){
+    if(!auth) return `<button class="btn btn-outline" type="button" onclick="openAuth&&openAuth('register')">Get started free</button>`;
+    return cur==='starter' ? CURRENT_BADGE : DEAD_BTN+'Free plan</button>';
+  }
+  if(cur && cur===card.tier) return CURRENT_BADGE+MANAGE_BTN;
+  // Advertised, but this deploy has no Stripe price for it. Say so, rather
+  // than rendering a button whose only possible outcome is a 503.
+  if(!price || !price.available || !price.plan) return DEAD_BTN+'Coming soon</button>';
+  const style = card.badge ? 'btn-primary' : 'btn-outline';
+  return `<button class="btn ${style}" type="button" onclick="startCheckout('${esc(price.plan)}')">Choose ${esc(card.name)}</button>`;
+}
+
+function tierCardHtml(card){
+  const price=priceFor(card);
+  return `<div class="tier${card.badge?' pop':''}" id="tier-${esc(card.id)}">
+    ${card.badge?`<span class="poptag">${esc(card.badge)}</span>`:''}
+    <p class="tier-name">${esc(card.name)}</p>
+    <p class="tier-tagline">${esc(card.tagline)}</p>
+    <div class="tier-price"><span class="amt">${esc(price?price.display:'')}</span><span class="per">${esc(price?price.per:'')}</span></div>
+    <p class="tier-sub">${esc(priceNote(price))}</p>
+    <ul>${featuresHtml(card.features)}</ul>
+    <div class="tier-cta">${tierCtaHtml(card,price)}</div>
+  </div>`;
+}
+
+/* The add-on card. Someone on Full already owns one of these, so it offers to
+   spend it rather than to sell them a second — an included benefit nobody is
+   told about is indistinguishable from one that was never granted. */
+function addonCardHtml(card){
+  const price=(card.prices||[])[0]||null;
+  const credits=(auth&&auth.expert_credits)||0;
+  const buy = credits>0
+    ? `<button class="btn btn-primary" type="button" onclick="startCheckout('expert')">Use your included review</button>`
+    : (price&&price.available&&price.plan
+        ? `<button class="btn btn-outline" type="button" onclick="startCheckout('expert')">${esc(card.cta_label||'Add Expert Review')}</button>`
+        : DEAD_BTN+'Coming soon</button>');
+  return `<div class="tier tier-solo">
+    ${card.badge?`<span class="poptag poptag-addon">${esc(card.badge)}</span>`:''}
+    <div class="solo-head">
+      <div>
+        <p class="tier-name">${esc(card.name)}</p>
+        <p class="tier-tagline">${esc(card.tagline)}</p>
+      </div>
+      <div class="solo-buy">
+        <div class="tier-price"><span class="amt">${credits>0?'Included':esc(price?price.display:'')}</span><span class="per">${credits>0?'':esc(price?price.per:'')}</span></div>
+        <p class="tier-sub">${credits>0?`<b>${credits}</b> left on your plan`:esc(price?price.note:'')}</p>
+        <div class="solo-btns">
+          <button class="btn btn-ghost btn-sm" type="button" id="ctaExpertSample">See a sample</button>
+          ${buy}
+        </div>
+      </div>
+    </div>
+    <ul class="solo-list">${featuresHtml(card.features)}</ul>
+  </div>`;
+}
+
+function drawPricing(){
+  const host=$('#tiersHost');
+  if(!host || !PLANS) return;      // renderPricing() re-enters when it lands
+  const m=$('#billMonthly'), y=$('#billYearly');
+  if(m) m.setAttribute('aria-pressed', String(billPeriod==='monthly'));
+  if(y) y.setAttribute('aria-pressed', String(billPeriod==='yearly'));
+  const save=$('#billSave');
+  if(save) save.textContent = PLANS.annual_saving_pct ? `save ~${PLANS.annual_saving_pct}%` : '';
+  const cards=PLANS.cards||[];
+  host.innerHTML=cards.filter(c=>c.kind==='tier').map(tierCardHtml).join('');
+  const ah=$('#addonHost');
+  if(ah) ah.innerHTML=cards.filter(c=>c.kind==='addon').map(addonCardHtml).join('');
+  const foot=$('#pricingFoot');
+  if(foot) foot.innerHTML=`<svg aria-hidden="true"><use href="#i-check"/></svg> ${esc(PLANS.footnote||'')}`;
+  // Re-created on every draw, so it is wired here rather than at startup.
+  const sample=$('#ctaExpertSample');
+  if(sample) sample.addEventListener('click',()=>openSampleReport());
+}
+function renderPricing(){
+  drawPricing();                          // instant on a repeat open
+  loadPlans().then(()=>drawPricing());    // and again once the catalogue lands
+}
+/* The Expert Review price, for the two places that mention it in prose rather
+   than on its card. Empty until the catalogue lands: a missing suffix reads
+   fine, a stale number does not. */
+function expertPrice(){
+  const c=((PLANS&&PLANS.cards)||[]).find(x=>x.id==='expert');
+  return (c&&c.prices&&c.prices[0]) ? c.prices[0].display : '';
+}
+function expertPriceLabel(){ const p=expertPrice(); return p?' · '+p:''; }
+/* "from $X/mo" for the upsell panels: the cheapest recurring monthly price we
+   sell. Empty until the catalogue lands, which is why loadPlans() is warmed at
+   startup — a locked report can be the first pricing the visitor ever sees. */
+function fromPriceLabel(){
+  const monthly=((PLANS&&PLANS.cards)||[])
+    .filter(c=>c.kind==='tier')
+    .flatMap(c=>c.prices||[])
+    .filter(p=>p.interval==='month' && p.amount>0);
+  if(!monthly.length) return '';
+  const cheapest=monthly.reduce((a,b)=>a.amount<b.amount?a:b);
+  return 'from <b>'+esc(cheapest.display)+'</b>/mo';
+}
+loadPlans();   // warm it: upsell panels quote a price long before Pricing opens
 const TIER_NAMES={enthusiast:'Enthusiast',full:'Full',admin:'Admin',starter:'Starter'};
 /* One-time purchases (Expert Review). A subscription announces itself through
    the plan badge; a one-time order changes nothing about the account, so it
    needs its own acknowledgement — otherwise a paying customer sees no trace of
-   the $29 anywhere in the product. */
+   the purchase anywhere in the product. */
 function money(cents,cur){
   if(cents==null) return '';
   try{ return new Intl.NumberFormat([], {style:'currency',currency:(cur||'usd').toUpperCase()}).format(cents/100); }
@@ -3288,7 +3362,7 @@ async function renderOrders(){
 
    The same function draws the athlete's delivered report, the reviewer's live
    preview while writing it, and the sample on the pricing page. That is on
-   purpose: the sample is the only thing a buyer sees before spending $29, so it
+   purpose: the sample is the only thing a buyer sees before they pay, so it
    has to be produced by the code that produces the real thing, not a mock-up
    that quietly drifts.
 
@@ -3409,6 +3483,7 @@ async function openReviewReport(orderId){
 
 /* ---- the sample, shown before anyone pays ---- */
 async function openSampleReport(){
+  loadPlans();                       // so the eyebrow can name the price
   const host=$('#rrHost');
   host.innerHTML='<p class="hint">Loading the sample…</p>';
   setState('reviewreport',{focus:'#rrTitle',route:{sample:true}});
@@ -3417,7 +3492,7 @@ async function openSampleReport(){
   catch(e){ host.innerHTML='<p class="hint">Couldn’t load the sample right now.</p>'; return; }
   host.innerHTML=`
     <div class="blockhead" style="margin-top:0">
-      <div class="eyebrow">Sample · this is what $29 buys</div>
+      <div class="eyebrow">Sample · this is what an Expert Review buys${expertPriceLabel()}</div>
       <h2 class="sec" id="rrTitle" tabindex="-1" style="margin-bottom:8px">Expert Review — example</h2>
       <div class="speedline"></div>
     </div>
@@ -3736,6 +3811,14 @@ function pickAnalysis(){
     return Promise.resolve(null);
   }
   const modal=$('#pickModal');
+  // Someone spending an included review is not "continuing to payment", and
+  // telling them they are is how a benefit reads like a second charge.
+  const credits=(auth&&auth.expert_credits)||0;
+  const eb=$('#pickEyebrow');
+  if(eb) eb.textContent = credits>0 ? 'Expert Review · included with your plan'
+                                    : 'Expert Review'+expertPriceLabel();
+  const ok=$('#pickOk');
+  if(ok) ok.textContent = credits>0 ? 'Use my included review' : 'Continue to payment';
   $('#pickList').innerHTML=list.slice(0,20).map((e,i)=>`
     <label class="ex-card" style="cursor:pointer;margin-bottom:8px">
       <input type="radio" name="pickan" value="${esc(e.id)}"${i===0?' checked':''}>
@@ -3757,34 +3840,47 @@ function pickAnalysis(){
   });
 }
 
+/* `plan` is the checkout key straight from the catalogue (enthusiast_yearly,
+   full_yearly, expert…). It used to be a short tier name mapped to a key by a
+   table right here — a fourth place that had to know which cycles each tier
+   sells, and one that silently sent the wrong key the moment a tier gained or
+   lost a billing period. The card that was clicked already knows its key. */
 async function startCheckout(plan){
-  // Checkout attaches the subscription to an account — require sign-in first.
+  // Checkout attaches the purchase to an account — require sign-in first.
   if(!auth){ toast('Create a free account first, then pick a plan.',{action:'Sign up',onAction:()=>openAuth('register')}); return; }
-  const key = plan==='enthusiast' ? (billPeriod==='yearly'?'enthusiast_yearly':'enthusiast_monthly')
-            : plan==='full' ? 'full_yearly'
-            : plan==='expert' ? 'expert' : null;
-  if(!key) return;
+  if(!plan) return;
   let analysisId=null;
-  if(key==='expert'){
+  if(plan==='expert'){
     analysisId=await pickAnalysis();
     if(!analysisId) return;              // backed out, or nothing to review yet
   }
   try{
     const r=await fetch('/billing/checkout',{method:'POST',
       headers:authHeaders({'Content-Type':'application/json'}),
-      body:JSON.stringify(analysisId?{plan:key,analysis_client_id:analysisId}:{plan:key})});
+      body:JSON.stringify(analysisId?{plan,analysis_client_id:analysisId}:{plan})});
     const j=await r.json().catch(()=>({}));
-    if(r.ok && j.url){
-      // Already on a paid plan: the server hands back the billing portal instead
-      // of a checkout, because a second checkout would mean a second charge.
-      if(j.mode==='portal'){
-        toast('You already have a subscription — opening billing so you can switch plans.',{duration:5000});
-        setTimeout(()=>{ window.location.href=j.url; },1200);
-        return;
+    if(r.ok){
+      // Paid out of the Expert Reviews the plan already includes. Nothing to
+      // redirect to — the order exists. Spend the credit locally too, or the
+      // card keeps offering one that is gone until the next reload.
+      if(j.mode==='credit'){
+        if(auth) auth.expert_credits=j.credits_left||0;
+        toast('Booked with the Expert Review included in your plan — we’ll email you when it’s ready.',{duration:6000});
+        renderPricing(); renderOrders(); return;
       }
-      window.location.href=j.url; return;   // → Stripe hosted checkout
+      if(j.url){
+        // Already on a paid plan: the server hands back the billing portal
+        // instead of a checkout, because a second checkout would mean a
+        // second subscription on the same card.
+        if(j.mode==='portal'){
+          toast('You already have a subscription — opening billing so you can switch plans.',{duration:5000});
+          setTimeout(()=>{ window.location.href=j.url; },1200);
+          return;
+        }
+        window.location.href=j.url; return;   // → Stripe hosted checkout
+      }
     }
-    // Endpoint not live yet (Stage 4): 404/405 → friendly "coming soon".
+    // Endpoint not live yet: 404/405 → friendly "coming soon".
     if(r.status===404 || r.status===405 || r.status===501){
       toast('Secure checkout is being set up — it goes live shortly. Thanks!'); return;
     }
@@ -4735,7 +4831,7 @@ async function submitAuth(e){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
-    auth={email:j.email,tier:j.tier,is_pro:j.is_pro}; renderAuth(); closeAuth(); migrateAndLoad();
+    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0}; renderAuth(); closeAuth(); migrateAndLoad();
     // Someone who hit "Analyze" before signing up gets their run started now,
     // with the file they already chose (see the #analyze handler).
     if(state.pendingAnalyze){ state.pendingAnalyze=false; if(state.file) analyze(); }
@@ -5345,8 +5441,6 @@ $('#hBack').addEventListener('click',openHistoryView);
 // Pricing: billing toggle + Expert Review add-on
 $('#billMonthly').addEventListener('click',()=>setBillPeriod('monthly'));
 $('#billYearly').addEventListener('click',()=>setBillPeriod('yearly'));
-$('#ctaExpert').addEventListener('click',()=>startCheckout('expert'));
-$('#ctaExpertSample').addEventListener('click',()=>openSampleReport());
 $('#delAccountBtn').addEventListener('click',deleteAccount);
 $('#wordmark').addEventListener('click',()=>reset());
 $('#wordmark').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); reset(); } });

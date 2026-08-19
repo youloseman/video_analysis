@@ -47,7 +47,7 @@ async def add_events(db, user_id: int, when: list[datetime]) -> None:
         (TIER_STARTER, (3, "month")),
         (TIER_ENTHUSIAST, (30, "month")),
         (TIER_FULL, (120, "month")),
-        (TIER_ADMIN, (5, "day")),
+        (TIER_ADMIN, (10, "day")),
     ],
 )
 def test_tier_limits(tier, expected):
@@ -132,15 +132,19 @@ async def test_quota_allows_up_to_the_limit_then_blocks(db, make_user):
 async def test_admin_quota_is_a_rolling_day(db, make_user):
     """Admin is capped daily, so an event from 25h ago must not count."""
     user = await make_user(tier=TIER_ADMIN)
+    # Read the cap rather than restating it: this test is about the *window*,
+    # and it should not fail again the next time the number moves.
+    cap, _ = tier_limit(TIER_ADMIN)
     now = datetime.now(timezone.utc)
-    await add_events(db, user.id, [now - timedelta(hours=25)] + [now] * 4)
+    # One event outside the window, then one short of a full day's worth in it.
+    await add_events(db, user.id, [now - timedelta(hours=25)] + [now] * (cap - 1))
     allowed, used, limit, window = await check_quota(db, user)
-    assert (used, limit, window) == (4, 5, "day")
+    assert (used, limit, window) == (cap - 1, cap, "day")
     assert allowed is True
 
     await add_events(db, user.id, [now])
     allowed, used, _, _ = await check_quota(db, user)
-    assert (allowed, used) == (False, 5)
+    assert (allowed, used) == (False, cap)
 
 
 async def test_record_usage_moves_the_counter(db, make_user):

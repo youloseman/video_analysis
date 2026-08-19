@@ -63,7 +63,15 @@ async def db() -> AsyncSession:
     async with session_factory() as session:
         yield session
     await engine.dispose()
-    path.unlink(missing_ok=True)
+    try:
+        path.unlink(missing_ok=True)
+    except PermissionError:
+        # Windows will not unlink a file another handle still holds, and
+        # aiosqlite's connection thread can outlive engine.dispose() by a beat
+        # -- reliably so after a test that rolled back a failed INSERT. The
+        # directory is a mkdtemp() the OS reclaims anyway, so failing teardown
+        # over it would turn a passing test red for no product reason.
+        pass
 
 
 @pytest.fixture

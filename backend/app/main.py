@@ -87,6 +87,7 @@ from app.core.jobs import (
 from app.core.net import client_ip
 from app.core.security import get_current_user, optional_user
 from app.models.user import User
+from app.services import pricing
 from app.services.export import ai_export
 from app.services.notify import log_email_configuration
 from app.services.result_gating import gate_free_result, is_free
@@ -434,6 +435,23 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
     the Academy pages already do) or the tags advertise insecure URLs.
     """
     html_doc = (STATIC_DIR / filename).read_text(encoding="utf-8")
+    # The landing page prints its prices as plain HTML -- it is a marketing
+    # page, so the numbers have to be in the document for crawlers and in the
+    # first paint, not fetched afterwards. Rendering them here from the same
+    # catalogue the API serves is what stops the landing page from becoming a
+    # fourth independent copy of the price list, which is how it last came to
+    # disagree with the Terms of Service about the currency.
+    #
+    # Before the build stamp on purpose: a price change is a change to what the
+    # page says, so it should change the build id and bust the ETag with it.
+    if pricing.LANDING_TOKEN in html_doc:
+        html_doc = html_doc.replace(
+            pricing.LANDING_TOKEN, pricing.render_landing_pricing(),
+        )
+    if pricing.EXPERT_PRICE_TOKEN in html_doc:
+        html_doc = html_doc.replace(
+            pricing.EXPERT_PRICE_TOKEN, pricing.headline_price("expert"),
+        )
     # Stamp a build id so every piece of result feedback records which build
     # produced it. Digested from the file as-is, before the per-host rewrites
     # below, so the same shell reports the same build on every domain.
@@ -548,9 +566,18 @@ def privacy() -> FileResponse:
 
 
 @app.get("/terms", include_in_schema=False)
-def terms() -> FileResponse:
-    """Serve the terms of service."""
-    return FileResponse(STATIC_DIR / "terms.html")
+def terms() -> Response:
+    """Serve the terms of service, with the plan table rendered from the
+    catalogue rather than transcribed into it.
+
+    This document is where a stale price stops being a typo: it is the one the
+    customer is agreeing to. It is also where the last drift happened -- it
+    promised Canadian dollars for months while the pricing page charged in USD.
+    """
+    doc = (STATIC_DIR / "terms.html").read_text(encoding="utf-8")
+    if pricing.TERMS_TOKEN in doc:
+        doc = doc.replace(pricing.TERMS_TOKEN, pricing.render_terms_table())
+    return HTMLResponse(doc)
 
 
 @app.get("/health")

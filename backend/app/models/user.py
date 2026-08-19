@@ -20,14 +20,22 @@ VALID_TIERS = (TIER_STARTER, TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
 PAID_TIERS = (TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
 
 # Analysis quota per tier: (max analyses, window). "month" = current calendar
-# month (UTC); "day" = rolling 24h. Admin is deliberately a small DAILY cap
-# (per Artur's request) rather than unlimited.
+# month (UTC); "day" = rolling 24h. Admin is deliberately a DAILY cap (per
+# Artur's request) rather than unlimited -- it bounds how much CPU our own
+# testing can burn. Raised 5 -> 10 because a live demo of the product runs
+# through five clips before the conversation is over.
 TIER_LIMITS: dict[str, tuple[int, str]] = {
     TIER_STARTER: (3, "month"),
     TIER_ENTHUSIAST: (30, "month"),
     TIER_FULL: (120, "month"),
-    TIER_ADMIN: (5, "day"),
+    TIER_ADMIN: (10, "day"),
 }
+
+
+# Expert Reviews the Full tier includes per paid term. The pricing card says
+# "1 Expert Review included ($39 value)", and this is the number that makes
+# that sentence true rather than aspirational.
+FULL_EXPERT_CREDITS = 1
 
 
 def tier_limit(tier: str) -> tuple[int, str]:
@@ -59,6 +67,21 @@ class User(Base):
     # Latest subscription status from Stripe: active | trialing | past_due |
     # canceled | unpaid | incomplete ... (None = no subscription).
     subscription_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Unspent Expert Reviews the account is entitled to (the Full tier includes
+    # one). A credit is a *paid deliverable we owe*, so it is a balance on the
+    # account rather than a flag derived from the tier: it must survive a
+    # downgrade (they paid for the year), and spending it must be a single
+    # decrement that cannot happen twice.
+    expert_credits: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False,
+    )
+    # The Stripe object (Checkout Session today, invoice once renewals grant
+    # too) that last topped the balance up. Stripe retries a webhook until it
+    # gets a 2xx, so "granted on subscription purchase" without this is
+    # "granted once per delivery attempt".
+    expert_credit_grant_ref: Mapped[str | None] = mapped_column(
+        String(255), nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False,
     )

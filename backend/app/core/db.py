@@ -81,6 +81,24 @@ def _migrate_users(conn) -> None:
     if "subscription_status" not in cols:
         conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(32)"))
         logger.info("MIGRATED", change="users.subscription_status added")
+    if "expert_credits" not in cols:
+        # NOT NULL with a default, unlike the nullable billing columns above:
+        # every read of this is arithmetic ("do they have one left?"), and a
+        # NULL balance would make that a three-way answer.
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN expert_credits INTEGER NOT NULL DEFAULT 0"
+        ))
+        # Anyone already on Full paid for a term that included a review they
+        # had no way to claim, because the mechanism did not exist. Grant it.
+        conn.execute(text(
+            "UPDATE users SET expert_credits = 1 WHERE tier = 'full'"
+        ))
+        logger.info("MIGRATED", change="users.expert_credits added + granted to full")
+    if "expert_credit_grant_ref" not in cols:
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN expert_credit_grant_ref VARCHAR(255)"
+        ))
+        logger.info("MIGRATED", change="users.expert_credit_grant_ref added")
 
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()

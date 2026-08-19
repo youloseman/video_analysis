@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -40,8 +41,14 @@ from app.models.order import (
     ORDER_STATUSES,
     Order,
 )
-from app.models.user import TIER_ADMIN, TIER_STARTER, User
-from app.services import expert_review, notify
+from app.models.user import (
+    FULL_EXPERT_CREDITS,
+    TIER_ADMIN,
+    TIER_FULL,
+    TIER_STARTER,
+    User,
+)
+from app.services import expert_review, notify, pricing
 
 
 def _now_ms() -> int:
@@ -137,13 +144,139 @@ def tier_for_price(price_id: str | None) -> str | None:
     return settings.price_tier_map.get(price_id)
 
 
+@router.get("/plans")
+def plans() -> dict[str, Any]:
+    """The price list, for anyone -- signed in or not.
+
+    Public and unauthenticated on purpose: it is the same information the
+    landing page prints in plain HTML, and the pricing screen has to render
+    for a visitor deciding whether to create an account at all.
+
+    Every price carries an ``available`` flag derived from whether its Stripe
+    id is configured, so a half-configured deploy renders an explanation
+    instead of a button that 503s when pressed.
+    """
+    return pricing.catalog(settings.plan_price_map)
+
+
+# --------------------------------------------------------------------------
+# Expert Review credits (the "1 Expert Review included" on the Full tier).
+#
+# A credit is a deliverable we owe, not a capability the tier confers, so it
+# lives as a balance on the account rather than as a check against the tier:
+#   * it must outlive a downgrade -- they paid for the term that included it;
+#   * spending it must be one decrement that cannot happen twice;
+#   * granting it must be idempotent, because Stripe redelivers webhooks until
+#     it gets a 2xx and "grant on purchase" would otherwise mean "grant per
+#     delivery attempt".
+# --------------------------------------------------------------------------
+def grant_expert_credits(user: User, ref: str, count: int = FULL_EXPERT_CREDITS) -> bool:
+    """Top the balance up once per Stripe object. True if anything changed.
+
+    ``ref`` is the identity of the *payment* (a Checkout Session id today; an
+    invoice id when renewals start granting too), not of the user or the
+    subscription -- that is what makes a redelivered event a no-op while a
+    genuine second purchase still counts.
+    """
+    if not ref or user.expert_credit_grant_ref == ref:
+        return False
+    user.expert_credits = (user.expert_credits or 0) + count
+    user.expert_credit_grant_ref = ref
+    return True
+
+
+def _credit_session_key(user_id: int, analysis_client_id: str) -> str:
+    """Idempotency key standing in for a Stripe session on a credit order.
+
+    ``orders.stripe_session_id`` is NOT NULL and unique, which is exactly the
+    guard a redemption needs: double-clicking "Use my included review" races
+    two identical requests, and the second one loses to the constraint instead
+    of spending a second credit.
+    """
+    return f"credit:{user_id}:{analysis_client_id}"
+
+
+async def _redeem_expert_credit(
+    db: AsyncSession, user: User, analysis_client_id: str,
+) -> dict[str, Any]:
+    """Spend one credit: create the order, decrement, never touch Stripe.
+
+    Deliberately does not go through Checkout even for $0 -- a zero-amount
+    Checkout Session still asks for a payment method, which is a strange thing
+    to show someone who already paid for this a year ago.
+    """
+    key = _credit_session_key(user.id, analysis_client_id)
+    now = _now_ms()
+    order = Order(
+        user_id=user.id,
+        stripe_session_id=key,
+        plan="expert_credit",
+        amount_total=0,
+        currency=pricing.CURRENCY,
+        status=ORDER_PAID,
+        created_at_ms=now,
+        updated_at_ms=now,
+        analysis_client_id=analysis_client_id,
+    )
+    db.add(order)
+    user.expert_credits = max(0, (user.expert_credits or 0) - 1)
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Same user, same clip, already redeemed -- the unique constraint did
+        # its job. Hand back the order that exists rather than an error: from
+        # where the customer is standing, the thing they asked for is done.
+        await db.rollback()
+        existing = (
+            await db.execute(
+                select(Order).where(Order.stripe_session_id == key)
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            raise
+        # The rollback took the decrement with it -- which is the point, the
+        # duplicate spends nothing -- and expired every object in the session
+        # along the way. Re-read the balance rather than reporting the value
+        # this request briefly imagined it had.
+        await db.refresh(user)
+        logger.info("CREDIT_REDEEM_DUPLICATE", user_id=user.id, order_id=existing.id)
+        return {
+            "mode": "credit", "order_id": existing.id,
+            "credits_left": user.expert_credits,
+        }
+    logger.info(
+        "CREDIT_REDEEMED", user_id=user.id, order_id=order.id,
+        analysis=analysis_client_id, credits_left=user.expert_credits,
+    )
+    return {
+        "mode": "credit", "order_id": order.id,
+        "credits_left": user.expert_credits,
+    }
+
+
 @router.post("/checkout")
 async def create_checkout(
     body: CheckoutIn,
     request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> dict[str, str]:
+) -> dict[str, Any]:
+    # An Expert Review the account already owns is spent here, before Stripe is
+    # consulted at all: the Full tier includes one, and sending that customer
+    # to a payment page to buy a thing they have already bought is how an
+    # included benefit turns into a support email.
+    if body.plan == "expert" and (user.expert_credits or 0) > 0:
+        analysis_id = (body.analysis_client_id or "").strip()[:64]
+        if not analysis_id:
+            # The paid path can survive this (the reviewer picks a clip in the
+            # queue), but a credit is spent irreversibly the moment it is
+            # redeemed -- so refuse rather than burn it on an unknown clip.
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Choose which analysis you'd like reviewed first.",
+            )
+        return await _redeem_expert_credit(db, user, analysis_id)
+
     _require_stripe()
     # Two different failures were sharing one 400 and one internal-sounding
     # string, which the client puts straight in front of the customer.
@@ -735,6 +868,20 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
             _set_tier(user, tier)
             user.subscription_status = "active"
             logger.info("SUB_ACTIVATED", user_id=user.id, tier=tier)
+        # The Full tier includes an Expert Review. Granted from the *purchase*
+        # rather than from the resulting tier, so that an admin account (whose
+        # tier billing deliberately never touches) still gets what it paid for.
+        #
+        # NB: this fires on purchase and on a re-subscribe, but not on an
+        # automatic renewal -- Stripe reports those as `invoice.payment_
+        # succeeded`, which this webhook does not listen for yet. First renewal
+        # is a year out; granting on it is tracked with the rest of the Full
+        # build-out.
+        if tier == TIER_FULL and grant_expert_credits(user, str(obj.get("id") or "")):
+            logger.info(
+                "CREDIT_GRANTED", user_id=user.id,
+                credits=user.expert_credits, reason="full_subscription",
+            )
     else:
         # One-time Expert Review: grants no tier, so nothing about the account
         # would otherwise change. Record the order -- it is the only trace the

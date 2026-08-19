@@ -2,11 +2,13 @@
 
 Both things covered here fail *quietly*, which is why they are worth tests.
 
-The pricing page renders all three tiers regardless of what the environment
-says, so a Stripe price that was never configured produces exactly one symptom:
-a dead button on the highest-intent screen in the product. Nothing raises,
-nothing is logged, and the customer is shown whatever string the endpoint
-happened to put in ``detail``. A test-mode key is worse still -- everything
+A Stripe price that was never configured used to produce exactly one symptom:
+a dead button on the highest-intent screen in the product. Nothing raised,
+nothing was logged, and the customer was shown whatever string the endpoint
+happened to put in ``detail``. The pricing page now reads availability off the
+catalogue and renders "Coming soon" instead of a button that can only 503 --
+but the endpoint is still the last line of that defence, and it is what a
+stale client or a direct POST meets. A test-mode key is worse still: everything
 works right up to the point where a real card is declined.
 """
 

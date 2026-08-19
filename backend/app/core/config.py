@@ -90,12 +90,20 @@ class Settings:
     # test and live mode, so they live in env too (swap when going live). When
     # stripe_secret_key is unset, the /billing endpoints return 503 and the
     # frontend degrades to a "coming soon" message. ---
+    # Amounts live in services/pricing.py (the display catalogue); these are the
+    # Stripe ids that actually charge. The two move together -- the comments
+    # below are the only place the pairing is written down.
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
     stripe_price_enthusiast_m: str | None = None   # $9 / month
-    stripe_price_enthusiast_y: str | None = None   # $59 / year
-    stripe_price_full_y: str | None = None         # $80 / year
-    stripe_price_expert: str | None = None         # $29 one-time
+    stripe_price_enthusiast_y: str | None = None   # $69 / year
+    stripe_price_full_y: str | None = None         # $99 / year
+    stripe_price_expert: str | None = None         # $39 one-time
+    # $4 single-report unlock. Configured ahead of the feature so the price can
+    # be created in Stripe now; deliberately NOT in ``plan_price_map`` yet --
+    # /checkout validates against that map, so listing it would sell a plan
+    # whose webhook branch does not exist and which therefore unlocks nothing.
+    stripe_price_unlock: str | None = None         # $4 one-time
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
     public_base_url: str | None = None
@@ -219,6 +227,7 @@ def _load_settings() -> Settings:
         stripe_price_enthusiast_y=os.environ.get("STRIPE_PRICE_ENTHUSIAST_Y") or None,
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
+        stripe_price_unlock=os.environ.get("STRIPE_PRICE_UNLOCK") or None,
         public_base_url=(os.environ.get("PUBLIC_BASE_URL") or "").rstrip("/") or None,
         email_provider=(os.environ.get("EMAIL_PROVIDER") or "").strip().lower(),
         email_api_key=os.environ.get("EMAIL_API_KEY") or None,

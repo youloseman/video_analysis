@@ -677,17 +677,27 @@ h2.sec .accent{color:var(--c-coral)}
 .tier li.off{color:var(--c-ink-faint)}
 .tier li.off svg{color:var(--c-ink-faint)}
 .tier .btn{margin-top:auto;width:100%}
-.addon-strip{
-  display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:22px;
-  background:var(--c-panel);border:1px solid var(--c-line);border-radius:var(--radius-lg);padding:20px 24px;
+/* Expert Review used to be a thin strip under the tiers, which is a strange
+   place for the highest-margin item on the page and the only part of the
+   product a competitor's model cannot reproduce. It is a full-width card now:
+   the same .tier surface, laid out horizontally rather than as a fourth
+   column, because four columns in a 1140px wrap squeezes all of them. */
+.tier-solo{margin-top:22px;padding:26px 28px}
+.tier-solo:hover{transform:none;box-shadow:var(--shadow)}
+.tier-solo .poptag-addon{background:var(--c-coral);letter-spacing:.08em}
+.solo-head{display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap}
+.solo-head>div:first-child{flex:1 1 360px}
+.tier-solo .tier-tagline{min-height:0;margin:4px 0 0;max-width:54ch}
+.solo-buy{flex:0 0 auto;text-align:right;min-width:200px}
+.solo-buy .tier-price{justify-content:flex-end}
+.solo-buy .tier-sub{margin-bottom:14px}
+.tier-solo .btn{margin-top:0;width:auto}
+.solo-list{margin:22px 0 0;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 26px}
+@media(max-width:760px){
+  .solo-buy{text-align:left;min-width:0}
+  .solo-buy .tier-price{justify-content:flex-start}
+  .solo-list{grid-template-columns:1fr}
 }
-.addon-strip .ao-chip{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--c-coral-dk);background:#FDEAE6;border:1px solid #F5C2B8;padding:4px 10px;border-radius:999px;font-weight:600}
-.addon-strip .ao-name{font-family:var(--f-display);font-weight:800;font-size:16.5px;text-transform:uppercase;color:var(--c-navy)}
-.addon-strip .ao-desc{font-size:13.5px;color:var(--c-ink-soft)}
-.addon-strip .ao-price{margin-left:auto;font-family:var(--f-display);font-weight:900;font-style:italic;font-size:26px;color:var(--c-navy)}
-.addon-strip .ao-price small{font-size:12px;font-family:var(--f-body);font-style:normal;font-weight:700;color:var(--c-ink-soft)}
-@media(max-width:660px){.addon-strip .ao-price{margin-left:0}}
 .pricing-foot{margin-top:24px;text-align:center;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint)}
 
 /* ============================================================
@@ -971,7 +981,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
       <p class="split-note rv" data-d="4">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="6" r="3.2"/></svg>
         <span>Want a human in the loop too? <b>Expert Review</b> adds a personal breakdown from a
-          competing triathlete on top of the AI — <a href="#pricing">$29, any plan</a>.</span>
+          competing triathlete on top of the AI — <a href="#pricing"><!--EXPERT-PRICE-->, any plan</a>.</span>
       </p>
     </div>
   </div>
@@ -1107,59 +1117,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
       <p class="lede rv" data-d="2">Three analyses a month cost nothing, forever. Pay only when you
         want the exact numbers, the video and the coaching.</p>
     </div>
-    <div class="tiers">
-      <div class="tier rv" data-d="1">
-        <p class="tier-name">Starter</p>
-        <p class="tier-tagline">See the tech work and try the process.</p>
-        <div class="tier-price"><span class="amt">$0</span><span class="per">forever</span></div>
-        <p class="tier-sub">No card required</p>
-        <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>3</b> analyses / month</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Skeleton overlay + technique score</span></li>
-          <li class="off"><svg viewBox="0 0 16 16" fill="none"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>AI coaching &amp; exact measurements</span></li>
-          <li class="off"><svg viewBox="0 0 16 16" fill="none"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Overlay video &amp; history</span></li>
-        </ul>
-        <a class="btn btn-outline" href="/app#signup">Create free account</a>
-      </div>
-      <div class="tier pop rv" data-d="2">
-        <span class="poptag">Most popular</span>
-        <p class="tier-name">Enthusiast</p>
-        <p class="tier-tagline">The full analysis for one discipline.</p>
-        <div class="tier-price"><span class="amt">$59</span><span class="per">/ year</span></div>
-        <p class="tier-sub">or $9 / month · yearly saves ~45%</p>
-        <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>30</b> analyses / month</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Full AI coaching + action plan</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Exact joint angles, no watermark</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Overlay video + slow motion</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Cloud history + progress</span></li>
-        </ul>
-        <a class="btn btn-primary" href="/app#pricing">Go Enthusiast</a>
-      </div>
-      <div class="tier rv" data-d="3">
-        <p class="tier-name">Full</p>
-        <p class="tier-tagline">Multi-sport, progress analytics &amp; a human review.</p>
-        <div class="tier-price"><span class="amt">$80</span><span class="per">/ year</span></div>
-        <p class="tier-sub">billed annually</p>
-        <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Everything in Enthusiast, <b>120</b>/mo</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Multi-sport &amp; multi-bike profiles</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Before / after + trend charts</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>1 Expert Review included</b> ($29 value)</span></li>
-        </ul>
-        <a class="btn btn-outline" href="/app#pricing">Go Full</a>
-      </div>
-    </div>
-    <div class="addon-strip rv">
-      <span class="ao-chip">Add-on · any plan</span>
-      <div>
-        <div class="ao-name">Expert Review</div>
-        <div class="ao-desc">A personal video breakdown from a real triathlete, on top of the AI.</div>
-      </div>
-      <div class="ao-price">$29 <small>once</small></div>
-      <a class="btn btn-outline btn-sm" href="/app#pricing">Add Expert Review</a>
-    </div>
-    <p class="pricing-foot">Prices in USD · cancel anytime · secure checkout by Stripe · billed by Clariva</p>
+    <!--PRICING-->
   </div>
 </section>
 
