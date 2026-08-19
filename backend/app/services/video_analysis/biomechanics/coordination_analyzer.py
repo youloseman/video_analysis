@@ -143,6 +143,21 @@ def compute_coordination(
         if min_len < MIN_CYCLE_SAMPLES:
             continue
 
+        # Bridge NaN gaps (visibility-gated frames; the stabilizer's leg-swap
+        # corrections legitimately NaN a few frames whose landmark confidence
+        # was low). CubicSpline downstream requires finite values, and a
+        # couple of interpolated samples don't disturb cycle-level coupling.
+        # Skip the pair only if it's mostly gaps.
+        for series in (proximal, distal):
+            nan_mask = np.isnan(series)
+            if nan_mask.any() and not nan_mask.all() and nan_mask.mean() <= 0.5:
+                idx = np.arange(len(series))
+                series[nan_mask] = np.interp(
+                    idx[nan_mask], idx[~nan_mask], series[~nan_mask]
+                )
+        if np.isnan(proximal).any() or np.isnan(distal).any():
+            continue
+
         proximal = proximal[:min_len]
         distal = distal[:min_len]
 

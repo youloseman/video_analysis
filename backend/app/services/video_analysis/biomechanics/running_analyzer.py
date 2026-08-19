@@ -104,28 +104,44 @@ class RunningAnalyzer(SportAnalyzer):
         # Scale factor: normalized coords -> meters (estimated from body proportions)
         self._pixel_to_meter: float = 2.0  # default fallback
         self._body_scale_estimated = False
+        self._torso_norm_samples: list[float] = []
         self._analyzer_warnings: list[str] = []
 
     def _estimate_body_scale(self, nl: Any) -> None:
-        """Estimate pixels-to-meters scale from body proportions in normalized coords.
+        """Collect a torso-length sample; the scale locks to the median.
 
-        Uses shoulder-to-hip vertical distance. Average adult torso ~0.45m.
+        Uses shoulder-to-hip vertical distance (average adult torso ~0.45m).
+        The old first-frame-only estimate let one bad opening detection --
+        common on backlit clips, where the first frames are the least
+        trustworthy -- poison every meter-denominated metric for the whole
+        clip: a half-size torso read doubles vertical oscillation. Sampling
+        every valid frame and taking the median (locked lazily by the first
+        consumer) is insensitive to any bad stretch.
         """
         sh_y = (nl[11].y + nl[12].y) / 2  # shoulder center Y
         hp_y = (nl[23].y + nl[24].y) / 2  # hip center Y
         norm_torso = abs(hp_y - sh_y)
 
-        if norm_torso > 0.03:
-            self._pixel_to_meter = 0.45 / norm_torso
+        if not math.isnan(norm_torso) and norm_torso > 0.03:
+            self._torso_norm_samples.append(norm_torso)
+
+    def _lock_body_scale(self) -> None:
+        """Fix ``_pixel_to_meter`` to the median of collected torso samples.
+
+        Idempotent; also called lazily by the first consumer in case the
+        clip produced fewer than ``BODY_SCALE_MAX_SAMPLES`` valid frames.
+        """
+        if self._body_scale_estimated:
+            return
+        if self._torso_norm_samples:
+            med = float(np.median(self._torso_norm_samples))
+            self._pixel_to_meter = 0.45 / med
         else:
             self._pixel_to_meter = 2.0  # fallback
-
         self._body_scale_estimated = True
         logger.info(
             "BODY_SCALE_DEBUG",
-            shoulder_y=f"{sh_y:.4f}",
-            hip_y=f"{hp_y:.4f}",
-            norm_torso=f"{norm_torso:.4f}",
+            samples=len(self._torso_norm_samples),
             pixel_to_meter=f"{self._pixel_to_meter:.2f}",
         )
 
@@ -267,14 +283,123 @@ class RunningAnalyzer(SportAnalyzer):
 
         return 0.0
 
-    def _compute_cadence(self) -> float:
-        """Compute cadence with 2 methods: knee angle valleys (primary), ankle position (fallback).
+    def _cadence_spectral(self) -> float:
+        """Spectral cadence: dominant frequency of the mean-of-both-ankles Y.
 
-        Returns ``0.0`` when neither method produced a reliable
-        cadence -- the caller (compute_summary) is responsible for
-        omitting the value from the summary in that case so a
-        phantom 0.0 doesn't reach downstream consumers as a
-        measurement.
+        The averaged left+right ankle signal bounces once per STEP (the
+        anti-phase per-leg components cancel), so the dominant frequency in
+        the 1.4-4.0 Hz band is steps-per-second. Averaging both ankles makes
+        the signal immune to left/right identity swaps -- exactly the
+        corruption that fragments the knee-valley method on silhouette
+        clips. The signal is resampled onto a regular grid (NaN-dropped
+        frames leave gaps), Hann-windowed, zero-padded 4x, and the peak bin
+        is refined parabolically: ~1-2 spm resolution on an 8 s clip.
+
+        Returns spm, or 0.0 when the clip is too short, the signal too
+        flat, or no band peak clearly dominates.
+        """
+        ys: list[float] = []
+        ts: list[float] = []
+        for fr in self.frame_results:
+            ly = fr.extra_metrics.get("_norm_left_ankle_y", 0)
+            ry = fr.extra_metrics.get("_norm_right_ankle_y", 0)
+            if ly > 0 and ry > 0:
+                ys.append((ly + ry) / 2.0)
+                ts.append(fr.timestamp_ms)
+        if len(ys) < 16:
+            return 0.0
+        t = (np.asarray(ts, dtype=float) - ts[0]) / 1000.0
+        duration_s = float(t[-1])
+        if duration_s < 2.0:
+            return 0.0
+
+        # Regular resampling grid at the median frame spacing.
+        dt = float(np.median(np.diff(t)))
+        if dt <= 0:
+            return 0.0
+        grid = np.arange(0.0, duration_s, dt)
+        if len(grid) < 16:
+            return 0.0
+        sig = np.interp(grid, t, np.asarray(ys, dtype=float))
+
+        # Detrend (slow camera pan / drift) + de-mean.
+        x = np.arange(len(sig), dtype=float)
+        sig = sig - np.polyval(np.polyfit(x, sig, 1), x)
+        if float(np.std(sig)) < 1e-5:
+            return 0.0
+
+        n = len(sig)
+        padded = 4 * n
+        spec = np.abs(np.fft.rfft(sig * np.hanning(n), n=padded))
+        freqs = np.fft.rfftfreq(padded, d=dt)
+        # Band: 84-240 spm, capped at 85% of Nyquist so a heavily
+        # downsampled long clip can't alias a sprint cadence into the band.
+        nyquist = 0.5 / dt
+        band_top = min(4.0, 0.85 * nyquist)
+        if band_top <= 1.5:
+            return 0.0
+        band = np.where((freqs >= 1.4) & (freqs <= band_top))[0]
+        if len(band) < 3:
+            return 0.0
+        peak = band[int(np.argmax(spec[band]))]
+        # A real step rhythm towers over the band floor; a flat/noisy
+        # spectrum means there is no rhythm to read -- refuse to answer.
+        if spec[peak] < 3.0 * float(np.median(spec[band])):
+            return 0.0
+        # Asymmetric gaits leak energy at the per-leg stride frequency (half
+        # the step rate). If the double-frequency line carries comparable
+        # energy, the picked peak IS that subharmonic -- promote to 2x so a
+        # limp can't read as half cadence. Symmetric runs measure ~10% here.
+        twice = 2 * peak
+        if (
+            twice < len(spec)
+            and freqs[twice] <= band_top
+            and spec[twice] >= 0.5 * spec[peak]
+        ):
+            peak = twice
+
+        # Parabolic peak refinement between bins.
+        delta = 0.0
+        if 0 < peak < len(spec) - 1:
+            a, b, c = float(spec[peak - 1]), float(spec[peak]), float(spec[peak + 1])
+            denom = a - 2.0 * b + c
+            if abs(denom) > 1e-12:
+                delta = max(-0.5, min(0.5, 0.5 * (a - c) / denom))
+        bin_hz = float(freqs[1] - freqs[0])
+        spm = (float(freqs[peak]) + delta * bin_hz) * 60.0
+
+        logger.info(
+            "CADENCE_SPECTRAL_DEBUG",
+            n_samples=len(ys),
+            duration_s=f"{duration_s:.2f}",
+            dominant_hz=f"{spm / 60.0:.3f}",
+            cadence_spm=f"{spm:.1f}",
+        )
+        if 84.0 <= spm <= 240.0:
+            return round(spm, 1)
+        return 0.0
+
+    # Knee-valley vs spectral estimates farther apart than this fraction
+    # mean the valley train is fragmented (tracking noise) -- the
+    # swap-immune spectral reading wins.
+    CADENCE_CROSSCHECK_TOLERANCE = 0.18
+
+    def _compute_cadence(self) -> float:
+        """Compute cadence: knee-angle valleys cross-checked against a
+        spectral estimate, with ankle-crossing counting as last resort.
+
+        The knee-valley method reads only the near-side knee, so left/right
+        identity swaps fragment its stride train into spurious half- and
+        1.5-period intervals that still pass the per-interval gate --
+        biasing cadence low while looking plausible (a corrupted clip once
+        read 124 spm on a ~165 spm run). The spectral method reads the
+        averaged both-ankles bounce, which survives those swaps; when the
+        two disagree by more than ``CADENCE_CROSSCHECK_TOLERANCE`` the
+        spectral value is used.
+
+        Returns ``0.0`` when no method produced a reliable cadence -- the
+        caller (compute_summary) omits the value in that case so a phantom
+        0.0 doesn't reach downstream consumers as a measurement.
         """
         if self.frame_results:
             duration_ms = self.frame_results[-1].timestamp_ms - self.frame_results[0].timestamp_ms
@@ -284,20 +409,50 @@ class RunningAnalyzer(SportAnalyzer):
                 video_duration_ms=round(duration_ms),
             )
 
-        # Method 1: Knee angle oscillation (valleys = stride boundaries)
+        # Method 1: knee angle oscillation (valleys = stride boundaries)
         steps = self._detect_steps_from_knee_angles()
         n_strides = len(steps)
-        cadence = self._compute_cadence_from_strides(steps)
-        if cadence > 0:
-            logger.info("CADENCE_RESULT", method="knee_angles", cadence_spm=f"{cadence:.1f}")
+        knee_cadence = self._compute_cadence_from_strides(steps)
+
+        # Method 2: spectral (swap-immune cross-check / replacement)
+        spectral = self._cadence_spectral()
+
+        if knee_cadence > 0 and spectral > 0:
+            rel_diff = abs(knee_cadence - spectral) / spectral
+            if rel_diff > self.CADENCE_CROSSCHECK_TOLERANCE:
+                logger.info(
+                    "CADENCE_RESULT", method="spectral_override",
+                    knee_spm=f"{knee_cadence:.1f}",
+                    cadence_spm=f"{spectral:.1f}",
+                    rel_diff=f"{rel_diff:.2f}",
+                )
+                return spectral
+            logger.info(
+                "CADENCE_RESULT", method="knee_angles",
+                cadence_spm=f"{knee_cadence:.1f}",
+                spectral_agrees=f"{spectral:.1f}",
+            )
             if n_strides < 4:
                 self._record_warning(
                     f"Only {n_strides} strides detected -- cadence estimate may be "
                     f"imprecise. Longer clips (15+ seconds) give more reliable results."
                 )
-            return cadence
+            return knee_cadence
 
-        # Method 2: Ankle Y-position oscillation (fallback)
+        if knee_cadence > 0:
+            logger.info("CADENCE_RESULT", method="knee_angles", cadence_spm=f"{knee_cadence:.1f}")
+            if n_strides < 4:
+                self._record_warning(
+                    f"Only {n_strides} strides detected -- cadence estimate may be "
+                    f"imprecise. Longer clips (15+ seconds) give more reliable results."
+                )
+            return knee_cadence
+
+        if spectral > 0:
+            logger.info("CADENCE_RESULT", method="spectral", cadence_spm=f"{spectral:.1f}")
+            return spectral
+
+        # Method 3: ankle Y mean-crossing counting (legacy fallback)
         cadence = self._cadence_from_ankle_position()
         if cadence > 0:
             logger.info("CADENCE_RESULT", method="ankle_position", cadence_spm=f"{cadence:.1f}")
@@ -356,6 +511,10 @@ class RunningAnalyzer(SportAnalyzer):
         if len(self.norm_hip_y_history) < 5:
             logger.info("VOSC_DEBUG", status="not_enough_values", count=len(self.norm_hip_y_history))
             return 0.0
+
+        # Short clip may not have hit BODY_SCALE_MAX_SAMPLES -- lock on
+        # whatever was collected (idempotent).
+        self._lock_body_scale()
 
         y_values = self.norm_hip_y_history
 

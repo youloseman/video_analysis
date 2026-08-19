@@ -49,6 +49,23 @@ _SWAP_PAIRS = [
 ]
 
 
+# Leg landmark pairs handled by the leg-level anti-swap pass (legs only --
+# whole-body flips are _fix_flips' job).
+_LEG_SWAP_PAIRS = [(25, 26), (27, 28), (29, 30), (31, 32)]
+
+# _fix_leg_swaps tuning (normalized image units).
+LEG_SWAP_MARGIN = 0.25          # swapped match must beat identity by 25%
+LEG_COLLAPSE_DIST = 0.02        # ankles closer than this = legs collapsed onto one
+LEG_MIN_DECIDABLE_DIST = 0.012  # skip the decision when predicted legs coincide
+LEG_MAX_VELOCITY = 0.12         # per-frame velocity clamp (kills post-gap spikes)
+# Re-seed (accept MediaPipe's labels, don't decide) after a tracking gap
+# longer than this. Past ~1/3 of a leg cycle (~240 ms at 165 spm) the legs
+# may have physically exchanged places, so a continuity decision against
+# stale predictions is a coin flip -- and a wrong one self-perpetuates.
+LEG_GAP_RESEED_FRAMES = 3       # consecutive unmeasurable frames
+LEG_GAP_RESEED_MS = 200.0       # wall-clock gap between measured frames
+
+
 # Visibility gate -- below this, landmark coordinates become NaN.
 # Swim above-water is strict: glare/splash makes low-conf = hallucination.
 # Swim under-water is lenient: distortion depresses confidence but points
@@ -177,6 +194,24 @@ def stabilize_landmarks(
     _ensure_mutable(frame_results)
     dropped = _gate_by_visibility(frame_results, sport_type, camera_angle)
     flips = _fix_flips(frame_results, sport_type)
+
+    # Leg-level anti-swap (run only) MUST run before the smoothing pass:
+    # a zero-phase filter applied across identity swaps blends the two
+    # legs' series into each other, and no later correction can undo that.
+    leg_swaps, leg_swap_pct, leg_collapse_pct = (0, None, None)
+    if sport_type == "run":
+        leg_swaps, leg_swap_pct, leg_collapse_pct = _fix_leg_swaps(frame_results)
+
+    if context is not None:
+        # Surfaced so the pipeline can judge tracking stability: a clip where
+        # a large share of frames needed a left/right swap-back is one where
+        # MediaPipe kept flipping the skeleton (classic backlit-silhouette
+        # failure) -- the confidence scorer downgrades on these signals.
+        context["flips_corrected"] = flips
+        context["flip_pct"] = round(flips / max(len(frame_results), 1) * 100, 1)
+        context["leg_swaps_corrected"] = leg_swaps
+        context["leg_swap_pct"] = leg_swap_pct
+        context["leg_collapse_pct"] = leg_collapse_pct
     if _use_butterworth_landmarks(sport_type, camera_angle, camera_view):
         smoothed, butter_meta = _apply_butterworth_landmarks(
             frame_results, sport_type, camera_angle, fps,
@@ -196,6 +231,9 @@ def stabilize_landmarks(
         frames=len(frame_results),
         gated_out=dropped,
         flips_corrected=flips,
+        leg_swaps_corrected=leg_swaps,
+        leg_swap_pct=leg_swap_pct,
+        leg_collapse_pct=leg_collapse_pct,
         smoothed_landmarks=smoothed,
     )
 
@@ -301,6 +339,148 @@ def _fix_flips(frame_results: list[dict[str, Any]], sport_type: str) -> int:
         flip_count += 1
 
     return flip_count
+
+
+def _fix_leg_swaps(frame_results: list[dict[str, Any]]) -> tuple[int, float, float]:
+    """Correct per-frame left/right LEG identity swaps via track continuity.
+
+    MediaPipe assigns limb identity per frame from appearance cues; on
+    backlit / silhouette clips it re-assigns the leg indices freely, so the
+    near-side knee/ankle series alternates between the two physical legs.
+    The torso-level anti-flip (``_fix_flips``) cannot see this -- hips and
+    shoulders stay put -- and neither can any visibility-based quality
+    check, because the swapped landmarks are confidently detected.
+
+    Each leg is tracked by continuity in IMAGE space (normalized coords --
+    depth is exactly the signal that is unreliable here): predict this
+    frame's knee+ankle per leg from the previous frame plus velocity, then
+    keep whichever assignment (identity vs swapped) matches the predictions
+    better. The swap must win by ``LEG_SWAP_MARGIN``, and the decision is
+    skipped while the predicted legs nearly coincide, so legitimate scissor
+    crossings don't oscillate -- velocity carries each track through the
+    crossing. Swaps are mirrored onto world landmarks so angles and drawing
+    stay consistent.
+
+    Run side-view only. Bike is skipped deliberately: on a trainer the
+    2D ankles ride close together through whole pedal circles (the decision
+    would be permanently ambiguous) and the far leg is chronically occluded
+    -- the same rationale that disabled ``_fix_flips`` for bike.
+
+    Returns ``(swaps_corrected, leg_swap_pct, leg_collapse_pct)`` where the
+    percentages are over decidable frame pairs / measured frames.
+    """
+    n = len(frame_results)
+    if n < 3:
+        return 0, 0.0, 0.0
+
+    keys = ("lk", "rk", "la", "ra")
+    indices = {"lk": 25, "rk": 26, "la": 27, "ra": 28}
+
+    def _pt(frame: dict[str, Any], idx: int) -> tuple[float, float] | None:
+        lm = frame["normalized_landmarks"][idx]
+        x, y = lm.x, lm.y
+        if x is None or y is None:
+            return None
+        if (isinstance(x, float) and math.isnan(x)) or (
+            isinstance(y, float) and math.isnan(y)
+        ):
+            return None
+        return (float(x), float(y))
+
+    def _clamp_vel(v: tuple[float, float]) -> tuple[float, float]:
+        return (
+            max(-LEG_MAX_VELOCITY, min(LEG_MAX_VELOCITY, v[0])),
+            max(-LEG_MAX_VELOCITY, min(LEG_MAX_VELOCITY, v[1])),
+        )
+
+    prev: dict[str, tuple[float, float]] | None = None
+    vel: dict[str, tuple[float, float]] = {k: (0.0, 0.0) for k in keys}
+    swaps = 0
+    decided = 0
+    collapse_frames = 0
+    measured_frames = 0
+    gap_frames = 0
+    last_ts: float | None = None
+
+    for frame in frame_results:
+        cur = {k: _pt(frame, indices[k]) for k in keys}
+
+        la, ra = cur["la"], cur["ra"]
+        if la is not None and ra is not None:
+            measured_frames += 1
+            if math.dist(la, ra) < LEG_COLLAPSE_DIST:
+                collapse_frames += 1
+
+        if any(v is None for v in cur.values()):
+            # Unmeasurable frame: keep the tracks, decay velocity so a long
+            # gap doesn't extrapolate the prediction off the body.
+            gap_frames += 1
+            vel = {k: (vx * 0.5, vy * 0.5) for k, (vx, vy) in vel.items()}
+            continue
+
+        cur_ts = frame.get("timestamp_ms")
+        gap_ms = (
+            cur_ts - last_ts
+            if isinstance(cur_ts, (int, float)) and isinstance(last_ts, (int, float))
+            else None
+        )
+        last_ts = cur_ts if isinstance(cur_ts, (int, float)) else last_ts
+
+        if prev is None:
+            prev = cur  # type: ignore[assignment]
+            gap_frames = 0
+            continue
+
+        # After a real gap the legs may have physically exchanged places, so
+        # matching against the stale prediction is a coin flip whose wrong
+        # outcome self-perpetuates for the rest of the clip. Re-seed instead:
+        # accept MediaPipe's labels for the first post-gap frame. The
+        # timestamp check also covers hard gaps -- undetected frames never
+        # enter frame_results at all, so adjacent entries can sit far apart
+        # with zero unmeasurable frames in between.
+        if gap_frames > LEG_GAP_RESEED_FRAMES or (
+            gap_ms is not None and gap_ms > LEG_GAP_RESEED_MS
+        ):
+            prev = cur  # type: ignore[assignment]
+            vel = {k: (0.0, 0.0) for k in keys}
+            gap_frames = 0
+            continue
+        gap_frames = 0
+
+        pred = {
+            k: (prev[k][0] + vel[k][0], prev[k][1] + vel[k][1]) for k in keys
+        }
+        cost_keep = (
+            math.dist(cur["la"], pred["la"]) + math.dist(cur["ra"], pred["ra"])
+            + math.dist(cur["lk"], pred["lk"]) + math.dist(cur["rk"], pred["rk"])
+        )
+        cost_swap = (
+            math.dist(cur["la"], pred["ra"]) + math.dist(cur["ra"], pred["la"])
+            + math.dist(cur["lk"], pred["rk"]) + math.dist(cur["rk"], pred["lk"])
+        )
+        decided += 1
+
+        pred_sep = math.dist(pred["la"], pred["ra"])
+        if (
+            pred_sep >= LEG_MIN_DECIDABLE_DIST
+            and cost_swap < cost_keep * (1.0 - LEG_SWAP_MARGIN)
+        ):
+            for key in ("world_landmarks", "normalized_landmarks"):
+                lms = frame[key]
+                for li, ri in _LEG_SWAP_PAIRS:
+                    lms[li], lms[ri] = lms[ri], lms[li]
+            swaps += 1
+            cur = {"lk": cur["rk"], "rk": cur["lk"], "la": cur["ra"], "ra": cur["la"]}
+
+        vel = {
+            k: _clamp_vel((cur[k][0] - prev[k][0], cur[k][1] - prev[k][1]))
+            for k in keys
+        }
+        prev = cur  # type: ignore[assignment]
+
+    leg_swap_pct = round(swaps / max(decided, 1) * 100, 1)
+    leg_collapse_pct = round(collapse_frames / max(measured_frames, 1) * 100, 1)
+    return swaps, leg_swap_pct, leg_collapse_pct
 
 
 def _apply_one_euro(

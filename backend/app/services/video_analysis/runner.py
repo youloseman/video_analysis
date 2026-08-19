@@ -31,6 +31,7 @@ from app.services.video_analysis.biomechanics.advanced_pipeline import (
     run_advanced_biomechanics,
 )
 from app.services.video_analysis.biomechanics.confidence_scorer import (
+    assess_tracking_stability,
     compute_analysis_confidence,
 )
 from app.services.video_analysis.biomechanics.cycling_analyzer import (
@@ -548,6 +549,39 @@ def run_analysis(
     analyzer.finalize_camera_side()
     logger.info("CAMERA_SIDE", side=analyzer.camera_side)
 
+    # Tracking stability: how firmly did the model hold left/right identity?
+    # Backlit / silhouette clips make MediaPipe re-assign limbs frame to
+    # frame; every signal below sits near 0 on a clean clip. Bike measures
+    # none of them (side pre-locked, anti-flip and the leg pass are off),
+    # so its dict carries None/0 values the scorer skips.
+    side_disagreement_pct = None
+    if not is_bike and analyzer.camera_side_votes:
+        _votes = [v for v in analyzer.camera_side_votes if v in ("left", "right")]
+        if _votes:
+            _n_dis = sum(1 for v in _votes if v != analyzer.camera_side)
+            side_disagreement_pct = round(_n_dis / len(_votes) * 100, 1)
+    tracking_stability = {
+        "side_vote_disagreement_pct": side_disagreement_pct,
+        "flip_pct": stabilizer_ctx.get("flip_pct"),
+        "flips_corrected": stabilizer_ctx.get("flips_corrected"),
+        "leg_swap_pct": stabilizer_ctx.get("leg_swap_pct"),
+        "leg_swaps_corrected": stabilizer_ctx.get("leg_swaps_corrected"),
+        "leg_collapse_pct": stabilizer_ctx.get("leg_collapse_pct"),
+    }
+    logger.info("TRACKING_STABILITY", **tracking_stability)
+    if assess_tracking_stability(tracking_stability) == "severe":
+        # This warning renders as an amber banner in the UI and travels to
+        # the free tier too (quality_warnings are never gated) -- the
+        # confidence factor alone would only reach paid results.
+        quality_warnings.append(
+            "Skeleton tracking was unstable on this clip: the pose model "
+            "kept mixing up the left and right legs. This usually happens "
+            "when the athlete appears as a dark silhouette -- for example "
+            "filming into the sun or against a bright sky. Cadence, stride "
+            "and angle metrics may be unreliable. Re-film with the light "
+            "behind the camera and the athlete evenly lit."
+        )
+
     # Step 3b: advanced biomechanics (must not crash the run).
     biomechanics_data = None
     try:
@@ -610,6 +644,7 @@ def run_analysis(
     summary["camera_side"] = analyzer.camera_side
     summary["landmark_quality"] = landmark_quality
     summary["quality_warnings"] = quality_warnings
+    summary["tracking_stability"] = tracking_stability
     summary["quality_gate"] = quality_gate_result
     summary["sampling"] = sampling_meta
     # A long clip is analyzed end to end, but at a coarser stride -- so the
@@ -638,6 +673,7 @@ def run_analysis(
             butterworth_meta=stabilizer_ctx.get("butterworth_meta"),
             analysis_warnings=merged_warnings,
             landmark_quality=landmark_quality,
+            tracking_stability=tracking_stability,
         )
     except Exception as e:  # noqa: BLE001 -- confidence must never break the run
         logger.warning("ANALYSIS_CONFIDENCE_FAILED", err=str(e))

@@ -115,7 +115,13 @@ def _bike_data_block(
         f"Sport: cycling | Position: {pos_label} | Technique score: {score}/100 ({grade})",
         f"- Knee angle at bottom of stroke (BDC): {_fmt(summary.get('knee_at_bdc'), '°')}{rng('knee_at_bdc')}",
         f"- Knee angle at top of stroke (TDC): {_fmt(summary.get('knee_at_tdc'), '°')}{rng('knee_at_tdc')}",
-        f"- Hip angle: {_fmt(summary.get('hip_angle_max'), '°')}",
+        # ``hip_angle_max`` is the name of the reference BAND; the analyzer
+        # writes the measurement as ``hip_angle_avg``. Reading only the former
+        # meant every cycling clip reported "Hip angle: n/a" to the coach --
+        # silently hiding the one metric with a documented medical floor (hip
+        # closure below 45 deg, iliac artery). Same fallback the scorer uses.
+        f"- Hip angle: {_fmt(summary.get('hip_angle_max') or summary.get('hip_angle_avg'), '°')}"
+        f"{rng('hip_angle_max')}",
         f"- Trunk angle: {_fmt(summary.get('trunk_angle_avg'), '°')}{rng('trunk_angle')}",
         f"- Elbow angle: {_fmt(summary.get('elbow_angle_avg'), '°')}{rng('elbow_angle')}",
         f"- Shoulder angle: {_fmt(summary.get('shoulder_angle_avg'), '°')}{rng('shoulder_angle')}",
@@ -237,16 +243,57 @@ def _issues_block(issues: list[dict]) -> str:
     return "\n".join(out)
 
 
+def build_metrics_block(
+    sport_type: str, score: Any, grade: Any, position: str | None,
+    issues: list[dict], angle_stats: dict, summary: dict,
+) -> str:
+    """The numbers-first metric listing, with units, bands and caveats.
+
+    Public because the AI export (``services/export/ai_export.py``) hands the
+    athlete the same block to paste into an outside model. Both consumers are
+    talking to an LLM, and the caveats attached to these numbers -- the knee
+    values are phase-specific, the strike pattern is not a fault, the aero
+    read-out is relative -- are what stops one from misreading them. Two copies
+    would mean fixing every such lesson twice.
+    """
+    if sport_type == "bike":
+        return _bike_data_block(score, grade, position, issues, summary)
+    return _run_data_block(score, grade, issues, summary, angle_stats)
+
+
 def _build_prompt(
     sport_type: str, score: Any, grade: Any, position: str | None,
     issues: list[dict], angle_stats: dict, summary: dict,
 ) -> str:
-    if sport_type == "bike":
-        data = _bike_data_block(score, grade, position, issues, summary)
-    else:
-        data = _run_data_block(score, grade, issues, summary, angle_stats)
+    data = build_metrics_block(
+        sport_type, score, grade, position, issues, angle_stats, summary,
+    )
+    # Without this note the coach confidently builds "Fix first" items on
+    # numbers the same result page flags as unreliable (amber tracking
+    # warning + LOW confidence badge) -- the report must not contradict
+    # the quality verdict shown right above it.
+    from app.services.video_analysis.biomechanics.confidence_scorer import (
+        assess_tracking_stability,
+    )
+    severity = assess_tracking_stability(summary.get("tracking_stability"))
+    caveat = ""
+    if severity == "severe":
+        caveat = (
+            "\n\nNOTE: pose tracking was unstable on this clip (the left/right "
+            "leg identity was repeatedly confused -- typical for backlit or "
+            "silhouette footage). Cadence, stride and leg-angle numbers above "
+            "are unreliable; do NOT build 'Fix first' items on them. Lead with "
+            "advice to re-film with the light behind the camera, and keep any "
+            "technique notes tentative."
+        )
+    elif severity == "mild":
+        caveat = (
+            "\n\nNOTE: pose tracking occasionally confused the left and right "
+            "legs on this clip -- treat leg-based numbers (cadence, stride, "
+            "knee angles) as approximate."
+        )
     return (
-        f"{data}\n\n{_issues_block(issues)}\n\n"
+        f"{data}{caveat}\n\n{_issues_block(issues)}\n\n"
         "Write the coaching feedback now, following the required section structure."
     )
 

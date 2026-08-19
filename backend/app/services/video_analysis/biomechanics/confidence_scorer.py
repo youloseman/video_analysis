@@ -8,6 +8,7 @@ dropped. All thresholds are module-level constants.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 THRESHOLDS = {
@@ -20,7 +21,53 @@ THRESHOLDS = {
     "cutoff_reduction_pct_medium": 40.0,
     "unknown_phase_pct_medium": 40.0,   # > this -> at least medium
     "unknown_phase_pct_low": 60.0,      # > this -> low
+    # Tracking stability (run side-view). Signals measured by the
+    # landmark stabilizer + camera-side voting; all ~0 on a clean clip.
+    # A healthy 60 fps run clip probes at ~5% on each (scissor crossings),
+    # so the medium bar sits above that and the low bar means the model
+    # demonstrably could not hold left/right identity.
+    "leg_swap_pct_medium": 6.0,
+    "leg_swap_pct_low": 15.0,
+    "leg_collapse_pct_medium": 12.0,
+    "leg_collapse_pct_low": 25.0,
+    "side_disagreement_pct_medium": 15.0,
+    "side_disagreement_pct_low": 30.0,
+    "flip_pct_medium": 8.0,
+    "flip_pct_low": 20.0,
 }
+
+# tracking_stability dict key -> THRESHOLDS prefix
+_TRACKING_CHECKS = [
+    ("leg_swap_pct", "leg_swap_pct"),
+    ("leg_collapse_pct", "leg_collapse_pct"),
+    ("side_vote_disagreement_pct", "side_disagreement_pct"),
+    ("flip_pct", "flip_pct"),
+]
+
+
+def assess_tracking_stability(
+    tracking_stability: dict[str, Any] | None,
+) -> str:
+    """Grade left/right tracking stability: ``"ok" | "mild" | "severe"``.
+
+    Shared by the confidence factor below and the runner's user-facing
+    quality warning, so both fire from one set of thresholds. ``None``
+    values (signal not measured -- e.g. bike, where the side is pre-locked
+    and the leg pass is off) are skipped, never treated as evidence of
+    stability.
+    """
+    if not tracking_stability:
+        return "ok"
+    severity = "ok"
+    for key, thr in _TRACKING_CHECKS:
+        v = tracking_stability.get(key)
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or math.isnan(v):
+            continue
+        if v >= THRESHOLDS[f"{thr}_low"]:
+            return "severe"
+        if v >= THRESHOLDS[f"{thr}_medium"]:
+            severity = "mild"
+    return severity
 
 # Humanized fallback-reason strings for the user-facing explanation
 # text. Keys match phase_calibrator fallback_reason values; the
@@ -51,6 +98,7 @@ def compute_analysis_confidence(
     analysis_warnings: list[str],
     landmark_quality: dict[str, Any] | None = None,
     phase_diagnostics: dict[str, Any] | None = None,
+    tracking_stability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compute a single confidence tier from multiple quality signals.
 
@@ -70,6 +118,10 @@ def compute_analysis_confidence(
                 "fallback_triggered": bool,
                 "cutoff_reduced": bool,
                 "warning_count": int,
+                "tracking_severity": "ok" | "mild" | "severe",
+                # flat copies when tracking_stability is supplied:
+                "leg_swap_pct" / "leg_collapse_pct" /
+                "side_vote_disagreement_pct" / "flip_pct": float | None,
                 # present only when phase_diagnostics is supplied:
                 "high_unknown_phases": bool,
                 "unknown_phase_pct": float,
@@ -144,6 +196,26 @@ def compute_analysis_confidence(
             reasons.append(
                 "Video length forced the filter to reduce precision."
             )
+
+    # --- factor: left/right tracking stability (run side-view) ---
+    # Leg-identity swaps keep MediaPipe visibility high and produce no NaN
+    # angles, so no other factor can see them -- this one reads the
+    # stabilizer's correction counts and the camera-side vote spread.
+    tracking_severity = assess_tracking_stability(tracking_stability)
+    if tracking_severity == "severe":
+        level = _downgrade(level, "low")
+        reasons.append(
+            "Pose tracking kept mixing up the left and right legs -- "
+            "typical for backlit or silhouette footage where the body "
+            "reads as one dark shape. Leg angles, cadence and stride "
+            "metrics are unreliable on this clip."
+        )
+    elif tracking_severity == "mild":
+        level = _downgrade(level, "medium")
+        reasons.append(
+            "Pose tracking occasionally confused the left and right "
+            "legs; leg-based metrics may be less precise."
+        )
 
     # --- factor: analysis warnings ---
     warning_count = len(analysis_warnings)
@@ -228,7 +300,15 @@ def compute_analysis_confidence(
         "fallback_triggered": fallback_triggered,
         "cutoff_reduced": cutoff_reduced,
         "warning_count": warning_count,
+        "tracking_severity": tracking_severity,
     }
+    if tracking_stability:
+        # Flat keys so the UI factors line can read them directly.
+        for _k in (
+            "leg_swap_pct", "leg_collapse_pct",
+            "side_vote_disagreement_pct", "flip_pct",
+        ):
+            factors[_k] = tracking_stability.get(_k)
     factors.update(phase_factors)
 
     return {

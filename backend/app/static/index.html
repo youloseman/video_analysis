@@ -1067,6 +1067,9 @@ details.raw pre{background:var(--c-navy);color:#DCE6F2;font-family:var(--f-mono)
 
 .again-row{margin-top:48px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
 .again-row .quota{margin:0}
+/* AI export actions. Wraps on a phone rather than shrinking the buttons —
+   "Copy for AI" is the one people actually use, so it keeps its full label. */
+.exportrow{display:flex;gap:10px;flex-wrap:wrap}
 
 /* ---------- Error / limit ---------- */
 .error-card{padding:32px;border-left:5px solid var(--c-coral);max-width:640px}
@@ -1267,6 +1270,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2"/></symbol>
   <symbol id="i-analyze" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="11" cy="11" r="7"/><path d="M11 8v3l2 2"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5A1.5 1.5 0 0 0 5.5 15"/></symbol>
   <symbol id="i-progress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 4v16h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></symbol>
   <symbol id="i-compare" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1663,6 +1668,30 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </div>
       <p class="biomech-intro">Cycle-by-cycle analysis of your movement: how repeatable your form is, how your joints coordinate, and how your motion compares to reference athletes.</p>
       <div id="biomech"></div>
+    </div>
+
+    <!-- Your numbers, written so another model reads them correctly (angle
+         convention, reference bands, what was NOT measured). Built server-side
+         so there is one source of truth for all of that — see
+         services/export/ai_export.py. -->
+    <div class="block hidden" id="exportBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Your data</div>
+        <h3>Take this to any AI</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hint" style="text-align:left;margin:0 0 18px">One file with every measurement, its reference range, how far to trust it — and the conventions a chatbot otherwise gets backwards (our joint angles are <b>internal</b>: 180° is a straight limb, not 180° of flexion). Paste it into ChatGPT, Claude or Gemini and keep digging.</p>
+      <div class="exportrow">
+        <button class="btn btn-primary btn-sm" id="exportCopy" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="exportCopyTxt">Copy for AI</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="exportMd" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .md
+        </button>
+        <button class="btn btn-ghost btn-sm" id="exportJson" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> .json
+        </button>
+      </div>
     </div>
 
     <details class="raw hidden" id="rawBlock"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
@@ -2437,6 +2466,9 @@ $('#analyze').addEventListener('click',()=>{
   analyze();
 });
 $('#again').addEventListener('click',()=>reset());
+$('#exportCopy').addEventListener('click',exportCopy);
+$('#exportMd').addEventListener('click',()=>exportDownload('md'));
+$('#exportJson').addEventListener('click',()=>exportDownload('json'));
 $('#shareBtn').addEventListener('click',shareResult);
 $('#pShareBtn').addEventListener('click',sharePhoto);
 $('#pPhasePick').addEventListener('click',e=>{ const b=e.target.closest('[data-phase]'); if(b) setPhotoPedalPhase(b.dataset.phase); });
@@ -3141,6 +3173,7 @@ const UNLOCK_COPY={
   ranges:'Cadence, ranges & benchmark metrics',
   video:'Annotated video + slow-motion replay',
   second_phase:'Second phase photo (contact & drive)',
+  export:'Export your numbers for ChatGPT, Claude or Gemini',
 };
 /* Free = anonymous or the starter tier; both get a gated result (score +
    keyframe only), so their cabinet has the metrics/plan/focus withheld. */
@@ -3805,6 +3838,7 @@ function renderConfidence(conf){
   const bits=[];
   if(f.landmark_quality_pct!=null) bits.push(`tracking ${num(f.landmark_quality_pct,0)}%`);
   if(Array.isArray(f.angles_with_high_nan)&&f.angles_with_high_nan.length) bits.push(`${f.angles_with_high_nan.length} gappy angle${f.angles_with_high_nan.length>1?'s':''}`);
+  if(f.leg_swap_pct!=null&&f.leg_swap_pct>0) bits.push(`legs swapped ${num(f.leg_swap_pct,0)}%`);
   if(f.warning_count) bits.push(`${f.warning_count} warning${f.warning_count>1?'s':''}`);
   const factLine=bits.length?`<div class="conffactors">${esc(bits.join(' · '))}</div>`:'';
   host.innerHTML=`<button class="confbtn ${meta.cls}" type="button" aria-expanded="false" aria-controls="confExp">`
@@ -3959,7 +3993,7 @@ function render(job){
   $('#upsellHost').classList.add('hidden');
   if(r.locked){
     renderUpsell('upsellHost', r.locked,
-      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock']);
+      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock','exportBlock']);
     renderQuota();
     mountFeedback('fbHost','video',r,saveToHistory('video', r),
       {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
@@ -3967,7 +4001,7 @@ function render(job){
     setState('results',{focus:'#resultsTitle'});
     return;
   }
-  ['coachBlock','issuesBlock','metricsBlock','anglesBlock'].forEach(id=>{
+  ['coachBlock','issuesBlock','metricsBlock','anglesBlock','exportBlock'].forEach(id=>{
     const el=$('#'+id); if(el) el.classList.remove('hidden');
   });
 
@@ -4477,6 +4511,96 @@ function toast(msg,opts){
   t.classList.add('show');
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),opts.duration||3400);
 }
+/* ============================================================
+   AI export — the analysis as a document another model can read
+   ============================================================
+   The whole document (metric labels, reference bands, the angle convention, the
+   caveats) is built server-side: those live in the analysis code, and a second
+   copy in JS is how the file starts telling a chatbot something the app no
+   longer believes. This side only fetches, copies and saves. */
+function exportUrl(fmt){
+  const id=state.jobId;
+  return id ? withJobToken('/jobs/'+id+'/export?format='+fmt, id) : null;
+}
+/* Filename the server chose (it encodes sport + date + job), so a folder of
+   these sorts and never collides. Falls back if the header is missing. */
+function filenameFromResponse(r, fmt){
+  const cd=r.headers.get('Content-Disposition')||'';
+  const m=cd.match(/filename="([^"]+)"/);
+  return (m && m[1]) || ('flapp-analysis.'+fmt);
+}
+async function fetchExport(fmt){
+  const url=exportUrl(fmt);
+  if(!url){ toast('This analysis is no longer loaded — run it again to export.'); return null; }
+  let r;
+  try{ r=await fetch(url,{headers:authHeaders()}); }
+  catch(e){ toast('Network problem — couldn’t build the export.'); return null; }
+  if(r.status===402){
+    // Paid feature. The gated result is a score and nothing else, so a free
+    // export would be an empty document — send them to the upgrade path
+    // instead of handing over a file that says nothing.
+    toast('The AI export is on the paid plans.');
+    if(window.openUpgrade) openUpgrade();
+    return null;
+  }
+  if(r.status===404 || r.status===409){
+    toast('This analysis has expired on the server — re-run the clip to export it.');
+    return null;
+  }
+  if(!r.ok){ toast('Couldn’t build the export — please try again.'); return null; }
+  return {text:await r.text(), name:filenameFromResponse(r,fmt)};
+}
+/* Clipboard with a fallback: navigator.clipboard needs a secure context, which
+   a LAN/http test build does not have. */
+async function copyText(text){
+  try{
+    if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return true; }
+  }catch(e){}
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text; ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok=document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){ return false; }
+}
+function downloadText(text, name, mime){
+  const blob=new Blob([text],{type:mime||'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} },1000);
+}
+/* Guard against double-clicks: the export is a server round trip, and two
+   concurrent ones would race to the same clipboard/download. */
+async function withExportBusy(btn, txtEl, busyLabel, fn){
+  if(btn && btn.getAttribute('aria-disabled')==='true') return;
+  const old=txtEl?txtEl.textContent:'';
+  if(txtEl) txtEl.textContent=busyLabel;
+  if(btn) btn.setAttribute('aria-disabled','true');
+  try{ await fn(); }
+  finally{ if(txtEl) txtEl.textContent=old; if(btn) btn.removeAttribute('aria-disabled'); }
+}
+function exportCopy(){
+  const btn=$('#exportCopy'), txt=$('#exportCopyTxt');
+  return withExportBusy(btn,txt,'Preparing…',async()=>{
+    const res=await fetchExport('md'); if(!res) return;
+    if(await copyText(res.text)) toast('Copied — paste it into ChatGPT, Claude or Gemini.');
+    else { downloadText(res.text,res.name,'text/markdown;charset=utf-8'); toast('Clipboard blocked — saved the file instead.'); }
+  });
+}
+function exportDownload(fmt){
+  const btn=fmt==='json'?$('#exportJson'):$('#exportMd');
+  return withExportBusy(btn,null,'',async()=>{
+    const res=await fetchExport(fmt); if(!res) return;
+    downloadText(res.text,res.name, fmt==='json'?'application/json;charset=utf-8':'text/markdown;charset=utf-8');
+    toast('Saved '+res.name);
+  });
+}
+
 async function doShare(card, btn, txtEl){
   if(!card || btn.getAttribute('aria-disabled')==='true') return;
   const old=txtEl?txtEl.textContent:''; if(txtEl) txtEl.textContent='Preparing…';
