@@ -6,6 +6,7 @@ Endpoints
     POST /analyze                -> upload a side-view clip, returns a job id
     GET  /jobs/{job_id}          -> job status + full result JSON when done
     GET  /jobs/{job_id}/overlay  -> the annotated overlay .mp4 (if generated)
+    GET  /jobs/{job_id}/export   -> the analysis as an AI-readable .md / .json
 
 Async job model: MediaPipe analysis is CPU-bound (~30-60 s per clip), so the
 POST returns immediately with a ``job_id`` to poll. Work runs in a background
@@ -53,7 +54,12 @@ from fastapi import (
 )
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -81,6 +87,7 @@ from app.core.jobs import (
 from app.core.net import client_ip
 from app.core.security import get_current_user, optional_user
 from app.models.user import User
+from app.services.export import ai_export
 from app.services.notify import log_email_configuration
 from app.services.result_gating import gate_free_result, is_free
 from app.services.usage_limits import (
@@ -780,6 +787,54 @@ def job_status(
         overlay_url=f"/jobs/{job_id}/overlay" if overlay_ready else None,
         overlay_failed=overlay_failed,
         result=job.get("result"),
+    )
+
+
+@app.get("/jobs/{job_id}/export")
+def job_export(
+    job_id: str,
+    format: str = "md",
+    t: str | None = None,
+    user: User | None = Depends(optional_user),
+) -> Response:
+    """The analysis as a document another AI can read (Markdown or JSON).
+
+    The athlete's own numbers, written so ChatGPT/Claude/Gemini interpret them
+    correctly rather than from priors -- see ``services/export/ai_export.py``
+    for what that costs and why the raw result JSON is not it.
+
+    Paid feature, and the check is not cosmetic: a free result is trimmed to a
+    score by ``gate_free_result`` before it is ever stored, so a free export
+    would be a document containing one number and a page of caveats. Better to
+    say "this is on the paid plans" than to ship that.
+    """
+    job = authorized_job(job_id, t, user.id if user else None)
+    if is_free(user):
+        raise HTTPException(
+            status_code=402,
+            detail="The AI export is available on paid plans.",
+        )
+    result = job.get("result")
+    if job.get("status") != "completed" or not result:
+        raise HTTPException(409, "this analysis has no result to export (yet)")
+
+    if format == "json":
+        payload = ai_export.build_json(result, job_id=job_id)
+        filename = ai_export.export_filename(result, job_id=job_id, ext="json")
+        return JSONResponse(
+            payload,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    if format != "md":
+        raise HTTPException(400, "format must be 'md' or 'json'")
+
+    text = ai_export.build_markdown(result, job_id=job_id)
+    filename = ai_export.export_filename(result, job_id=job_id, ext="md")
+    logger.info("EXPORT", job_id=job_id, fmt=format, chars=len(text))
+    return PlainTextResponse(
+        text,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

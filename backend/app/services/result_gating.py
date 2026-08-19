@@ -57,7 +57,7 @@ _QUALITY_KEYS = ("quality_warnings", "time_base_uncertain", "sampling_degraded")
 _PHOTO_WARNINGS_KEY = "warnings"
 
 # What an upgrade unlocks (shown by the frontend on the blurred sections).
-_UNLOCKS = ["coaching", "angles", "issues", "ranges", "video", "second_phase"]
+_UNLOCKS = ["coaching", "angles", "issues", "ranges", "video", "second_phase", "export"]
 
 
 def is_free(user: User | None) -> bool:
