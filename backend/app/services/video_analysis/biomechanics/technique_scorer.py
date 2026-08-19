@@ -141,8 +141,12 @@ def score_running(
     # a normal runner -- mean ~110-130 deg -- always fails.) This mirrors the
     # bike BDC/TDC scoring and the running action plan (knee_max/knee_min).
     if "knee" in angle_stats:
-        knee_max = angle_stats["knee"].get("max")   # ~ contact / extension
-        knee_min = angle_stats["knee"].get("min")   # ~ swing flexion
+        # p95/p05 rather than max/min: a graded component must not hang on the
+        # single most extreme frame of the clip. Older stored analyses have no
+        # percentiles, so fall back to the raw extremes for those.
+        _knee = angle_stats["knee"]
+        knee_max = _knee.get("p95", _knee.get("max"))   # ~ contact / extension
+        knee_min = _knee.get("p05", _knee.get("min"))   # ~ swing flexion
         if knee_max is not None:
             components["knee_contact"] = score_in_range(
                 knee_max, *RUNNING_REFERENCE["knee_at_initial_contact"]

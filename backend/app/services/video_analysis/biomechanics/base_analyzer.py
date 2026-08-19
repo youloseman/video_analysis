@@ -129,6 +129,15 @@ class SportAnalyzer(ABC):
             stats[name] = {
                 "min": round(float(np.min(valid)), 1),
                 "max": round(float(np.max(valid)), 1),
+                # Robust stand-ins for the extremes. min/max are single-sample
+                # statistics over hundreds of frames, so one mistracked frame
+                # sets them -- always in the alarming direction. The table
+                # still shows the true extremes; anything that GRADES a value
+                # (scoring, the coach's phase-specific lines) reads these,
+                # which land in the same place on a clean signal because a
+                # joint dwells near each extreme for several frames a cycle.
+                "p05": round(float(np.percentile(valid, 5)), 1),
+                "p95": round(float(np.percentile(valid, 95)), 1),
                 "mean": round(float(np.mean(valid)), 1),
                 "std": round(float(np.std(valid)), 1),
                 "range": round(float(np.max(valid) - np.min(valid)), 1),

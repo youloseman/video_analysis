@@ -1027,8 +1027,21 @@ class RunningAnalyzer(SportAnalyzer):
 
         summary: dict[str, Any] = {
             "knee_mean": round(float(np.mean(valid_knee)), 1) if len(valid_knee) > 0 else None,
-            "knee_min": round(float(np.min(valid_knee)), 1) if len(valid_knee) > 0 else None,
-            "knee_max": round(float(np.max(valid_knee)), 1) if len(valid_knee) > 0 else None,
+            # Robust stand-ins for the cycle extremes. The raw min/max are
+            # single-sample statistics over hundreds of frames: one mistracked
+            # frame sets them, always in the alarming direction, and both feed
+            # graded advice ("knee locked at 179 deg at contact"). The 5th/95th
+            # percentiles sit at the same place on a clean signal -- the knee
+            # dwells near each extreme for several frames per stride -- while
+            # ignoring a lone outlier.
+            "knee_min": (
+                round(float(np.percentile(valid_knee, 5)), 1)
+                if len(valid_knee) > 0 else None
+            ),
+            "knee_max": (
+                round(float(np.percentile(valid_knee, 95)), 1)
+                if len(valid_knee) > 0 else None
+            ),
             "elbow_mean": round(float(np.mean(valid_elbow)), 1) if len(valid_elbow) > 0 else None,
             "frames_analyzed": len(self.frame_results),
             "camera_side": self.camera_side,

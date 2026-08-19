@@ -213,11 +213,14 @@ def _run_data_block(
         # grounds its verdict instead of inferring "locked knee at contact" from
         # a raw range. The 2D max can read a few degrees high when the leg
         # aligns with the camera, so it's flagged as an estimate.
-        f"- Knee near initial contact (~cycle max): {_fmt(knee.get('max'), '°')} "
+        f"- Knee near initial contact (typical peak): "
+        f"{_fmt(knee.get('p95', knee.get('max')), '°')} "
         f"(optimal 160-175°; above ~176° = over-extended/near-locked at contact, "
         f"which couples with overstriding; 2D estimate, can read slightly high)",
-        f"- Knee peak swing flexion (~cycle min): {_fmt(knee.get('min'), '°')} "
-        f"(optimal 80-100°; higher = insufficient knee drive)",
+        f"- Knee peak swing flexion (typical): "
+        f"{_fmt(knee.get('p05', knee.get('min')), '°')} "
+        f"(optimal 80-100°; higher = insufficient knee drive, lower = more "
+        f"knee fold than the band asks for, which is not a fault)",
         "Note: do not verdict the mean/range of knee, hip or ankle directly -- "
         "they sweep through the stride; use only the phase-specific values above.",
     ]

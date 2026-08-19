@@ -118,6 +118,35 @@ _IMPLAUSIBLE_FLOORS: dict[str, float] = {
 # All run metrics today display 1 decimal place; the dict is
 # kept per-metric so future integer-displayed metrics can opt
 # into the right tolerance without re-plumbing.
+# Smallest deviation from a band worth calling a finding, per metric. Below
+# this the value sits inside what 2D phone-video pose estimation can actually
+# resolve -- the report says so in its own words ("a degree or two outside a
+# band is inside the method's own error and is not a finding"), and then the
+# plan contradicted it: a trunk lean of 3.9 deg against a 4-8 band produced a
+# two-week Wall Lean Drill for one tenth of a degree.
+_MEANINGFUL_DEVIATION: dict[str, float] = {
+    "cadence": 5.0,        # spm; stride-to-stride variation alone exceeds this
+    "overstride": 0.03,    # ratio of leg length, from a coarse 2D contact test
+    "vertical_osc": 1.0,   # cm
+    "trunk_lean": 1.0,     # degrees
+    "knee_contact": 4.0,   # degrees
+    "knee_swing": 5.0,     # degrees
+    "elbow_angle": 5.0,    # degrees
+}
+
+# Metrics where only one direction is a fault. The other side is not a
+# near-miss to be graded, it is simply fine: a runner who bounces less than
+# the band, holds a shorter stride than the band, or folds the knee further
+# than the band has nothing to fix. Without this they were scored as
+# deviations that then produced no drill -- a severity with no advice.
+_FAULT_DIRECTION: dict[str, str] = {
+    "cadence": "low",
+    "overstride": "high",
+    "vertical_osc": "high",
+    "knee_contact": "high",
+    "knee_swing": "high",
+}
+
 _DISPLAY_PRECISION: dict[str, int] = {
     "cadence": 1,
     "overstride": 2,   # small ratio -- shown to 2 decimals
@@ -408,13 +437,22 @@ def build_running_action_plan(
         if diagnosis is None:
             continue
         if diagnosis.severity == "optimal":
+            # A value past the band on its harmless side is not "in range" --
+            # a runner bouncing 4 cm against a 6-10 band is better than the
+            # target, and saying "in optimal range" would be plainly false.
+            fault_side = _FAULT_DIRECTION.get(metric)
+            better = (
+                (fault_side == "high" and diagnosis.current_value < diagnosis.optimal_min)
+                or (fault_side == "low" and diagnosis.current_value > diagnosis.optimal_max)
+            )
             plan.good_metrics.append({
                 "metric": metric,
                 "value": diagnosis.current_value,
                 "range": (diagnosis.optimal_min, diagnosis.optimal_max),
                 "description": (
                     f"{_METRIC_LABELS.get(metric, metric)}: "
-                    f"{diagnosis.current_value:.1f} -- in optimal range"
+                    f"{diagnosis.current_value:.1f} -- "
+                    + ("better than the target range" if better else "in optimal range")
                 ),
             })
         else:
@@ -559,8 +597,15 @@ def _diagnose_metric(
     # Severity escalation below uses the RAW bounds because the
     # deviation is physically meaningful once we're outside the
     # tolerance window.
-    tol = _boundary_tolerance(metric)
-    if (opt_min - tol) <= value <= (opt_max + tol):
+    # Widen the in-range window to whichever is larger: the display-rounding
+    # tolerance, or the smallest deviation this metric can actually resolve.
+    tol = max(_boundary_tolerance(metric), _MEANINGFUL_DEVIATION.get(metric, 0.0))
+    fault_side = _FAULT_DIRECTION.get(metric)
+    benign = (
+        (fault_side == "high" and value < opt_min)
+        or (fault_side == "low" and value > opt_max)
+    )
+    if benign or (opt_min - tol) <= value <= (opt_max + tol):
         severity = "optimal"
         drill_key = None
     else:
@@ -609,7 +654,18 @@ def _diagnose_metric(
 def _get_drill_key(
     metric: str, value: float, opt_min: float, opt_max: float
 ) -> str | None:
-    """Map metric deviation direction to a drill key."""
+    """Map metric deviation direction to a drill key.
+
+    Both knee entries used to sit on the wrong side. Our angles are INTERNAL
+    (180 = straight limb), so a knee angle BELOW its band carries MORE flexion,
+    not less -- yet both "insufficient flexion" drills fired on the below case.
+    A runner whose swing knee folded to 56 deg (heel almost at the glute, more
+    drive than the 80-100 band asks for) was handed High Knee March as
+    priority #1, while a knee locked at 179 deg at contact -- the fault the
+    drill text actually describes, and the one that pairs with overstriding --
+    produced no drill at all. The drill copy was right both times; only the
+    wiring was flipped.
+    """
     below = value < opt_min
 
     drill_map: dict[str, tuple[str | None, str | None]] = {
@@ -617,9 +673,11 @@ def _get_drill_key(
         "overstride":   (None, "overstride_high"),   # only "too high" matters
         "vertical_osc": (None, "vertical_osc_high"),
         "trunk_lean":   ("trunk_lean_insufficient", "trunk_lean_excessive"),
-        "knee_contact": ("knee_contact_insufficient_flexion", None),
+        # Above the band = knee too straight at contact = too little flexion.
+        "knee_contact": (None, "knee_contact_insufficient_flexion"),
         "elbow_angle":  ("elbow_angle_too_narrow", "elbow_angle_too_wide"),
-        "knee_swing":   ("knee_swing_insufficient", None),
+        # Above the band = knee not folding in swing = weak knee drive.
+        "knee_swing":   (None, "knee_swing_insufficient"),
     }
 
     if metric not in drill_map:
