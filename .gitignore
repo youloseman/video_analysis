@@ -54,3 +54,6 @@ overlay_videos/
 # assets in backend/app/static/media were derived from. Tens of MB, and the
 # derived versions are what the app actually serves.
 compare/
+
+# Scratch folder for clips and reports handed over for debugging
+upload/
