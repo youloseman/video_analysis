@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
-
 from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
 from app.services.video_analysis.biomechanics.running_analyzer import RunningAnalyzer
 
