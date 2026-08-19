@@ -97,12 +97,23 @@ def compute_framing(
         return {"subject_height_frac": None, "subject_height_px": None, "verdict": None}
 
     ny = _stack(frame_results, "normalized_landmarks", "y")
-    # Nose to the lower ankle: robust to one foot being mid-swing.
+    # Nose to the lower ankle: robust to one foot being mid-swing. Rows where
+    # both ankles were gated out are all-NaN -- nanmax warns and yields NaN,
+    # which the median then ignores, so silence the warning rather than let it
+    # reach the logs on every heavily-gated clip.
     top = ny[:, 0]
     if np.isfinite(top).sum() < max(3, 0.2 * len(frame_results)):
         top = np.nanmean(ny[:, [11, 12]], axis=1)   # fall back to shoulders
-    bottom = np.nanmax(ny[:, [27, 28]], axis=1)
+    with np.errstate(invalid="ignore"):
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            bottom = np.nanmax(ny[:, [27, 28]], axis=1)
     frac = _nanmedian(bottom - top)
+    # A head below the feet is not a small athlete, it is broken tracking.
+    # Reporting "-10 px tall" would be worse than admitting we cannot tell.
+    if frac is not None and frac <= 0.01:
+        frac = None
 
     px = None
     if frac is not None and detect_height_px:

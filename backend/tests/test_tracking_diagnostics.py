@@ -167,3 +167,20 @@ def test_missing_landmarks_do_not_crash_the_cues():
 
 def test_too_few_frames_produce_no_opinion():
     assert compute_near_side_cues(make_frames(n=3))["suggested_near_side"] is None
+
+
+def test_broken_tracking_reports_nothing_rather_than_a_negative_height():
+    """Seen for real: with most leg landmarks gated out the nose/ankle span
+    collapsed and framing reported an athlete "-10 px tall". A measurement
+    that cannot be trusted has to come back as None."""
+    frames = make_frames()
+    for frame in frames:
+        lms = frame["normalized_landmarks"]
+        for idx in (0, 11, 12):
+            lms[idx] = SimpleNamespace(x=0.5, y=0.95, z=0.0, visibility=0.9)
+        for idx in (27, 28):
+            lms[idx] = SimpleNamespace(x=0.5, y=0.40, z=0.0, visibility=0.9)
+    out = compute_framing(frames, detect_height_px=720)
+    assert out["subject_height_frac"] is None
+    assert out["subject_height_px"] is None
+    assert out["verdict"] is None
