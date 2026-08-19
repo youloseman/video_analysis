@@ -47,6 +47,10 @@ from app.services.video_analysis.biomechanics.quality_gate import (
 from app.services.video_analysis.biomechanics.running_analyzer import (
     RunningAnalyzer,
 )
+from app.services.video_analysis.biomechanics.tracking_diagnostics import (
+    compute_framing,
+    compute_near_side_cues,
+)
 from app.services.video_analysis.biomechanics.technique_scorer import (
     score_analysis,
 )
@@ -524,29 +528,26 @@ def run_analysis(
             analyzer._near_side = locked_side
     else:
         analyzer = RunningAnalyzer(fps=fps)
-        # Seed the camera side from the early lock (Step 2b). analyze_frame
-        # falls back to "left" while camera_side is None, and for run the
-        # side was only finalized AFTER the frame loop -- so on a clip filmed
-        # from the athlete's right every per-frame angle was computed from
-        # the far-side (left) landmarks: mostly NaN through the visibility
-        # gate, and far-side geometry when it did pass. A runner can't flip
-        # sides mid-clip any more than a rider can; per-frame voting below
-        # still runs and finalize_camera_side still settles the reported side.
-        if early_camera_side in ("left", "right") and not early_lock_meta.get("fallback"):
-            analyzer.camera_side = early_camera_side
+        # Vote the camera side over the WHOLE clip BEFORE measuring anything.
+        # The vote itself is unchanged (same per-frame test, same majority and
+        # tie rule as finalize_camera_side) -- it just happens up front now.
+        # Previously the loop ran with a side seeded from the first 30 frames
+        # and finalize_camera_side then overwrote it with this majority, so a
+        # clip where the two disagreed reported angles measured off one leg
+        # under a skeleton drawn on the other.
+        analyzer.camera_side_votes = [
+            analyzer.detect_camera_side(fd["world_landmarks"])
+            for fd in raw_frame_data
+        ]
+        analyzer.finalize_camera_side()
 
-    # Step 3a: per-frame analysis (run/swim vote per frame; bike is locked).
+    # Step 3a: per-frame analysis (bike and run both run with a locked side).
     for fd in raw_frame_data:
         frame_result = analyzer.analyze_frame(
             fd["world_landmarks"], fd["normalized_landmarks"], fd["timestamp_ms"],
         )
         analyzer.add_frame_result(frame_result)
-        if not is_bike:
-            analyzer.camera_side_votes.append(
-                analyzer.detect_camera_side(fd["world_landmarks"])
-            )
 
-    analyzer.finalize_camera_side()
     logger.info("CAMERA_SIDE", side=analyzer.camera_side)
 
     # Tracking stability: how firmly did the model hold left/right identity?
@@ -560,6 +561,31 @@ def run_analysis(
         if _votes:
             _n_dis = sum(1 for v in _votes if v != analyzer.camera_side)
             side_disagreement_pct = round(_n_dis / len(_votes) * 100, 1)
+    # Framing + near/far cues. DIAGNOSTIC ONLY for now: recorded and logged so
+    # the cues can be checked against clips whose near side is known before
+    # they are allowed to decide anything. Never let a failure here stop an
+    # analysis that otherwise succeeded.
+    framing: dict[str, Any] = {}
+    near_cues: dict[str, Any] = {}
+    try:
+        _fw = raw_frame_data[0].get("frame_width") or 0
+        _fh = raw_frame_data[0].get("frame_height") or 0
+        _scale = (
+            min(1.0, DETECT_MAX_LONG_EDGE / float(max(_fw, _fh)))
+            if max(_fw, _fh) else 1.0
+        )
+        framing = compute_framing(raw_frame_data, detect_height_px=_fh * _scale)
+        if not is_bike:
+            near_cues = compute_near_side_cues(raw_frame_data)
+        logger.info("CAPTURE_FRAMING", **framing)
+        if near_cues:
+            logger.info(
+                "NEAR_SIDE_CUES", chosen=analyzer.camera_side,
+                **{k: v for k, v in near_cues.items() if k != "cue_votes"},
+            )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("TRACKING_DIAGNOSTICS_FAILED", err=str(e))
+
     tracking_stability = {
         "side_vote_disagreement_pct": side_disagreement_pct,
         "flip_pct": stabilizer_ctx.get("flip_pct"),
@@ -567,19 +593,40 @@ def run_analysis(
         "leg_swap_pct": stabilizer_ctx.get("leg_swap_pct"),
         "leg_swaps_corrected": stabilizer_ctx.get("leg_swaps_corrected"),
         "leg_collapse_pct": stabilizer_ctx.get("leg_collapse_pct"),
+        "framing": framing or None,
+        "near_side_cues": near_cues or None,
     }
-    logger.info("TRACKING_STABILITY", **tracking_stability)
+    logger.info(
+        "TRACKING_STABILITY",
+        **{k: v for k, v in tracking_stability.items()
+           if k not in ("framing", "near_side_cues")},
+    )
     if assess_tracking_stability(tracking_stability) == "severe":
         # This warning renders as an amber banner in the UI and travels to
         # the free tier too (quality_warnings are never gated) -- the
         # confidence factor alone would only reach paid results.
+        #
+        # State the SYMPTOM and offer causes. The first version asserted
+        # backlight, which read as wrong to an athlete who had filmed a
+        # cleanly-lit track -- there the cause was distance, not light.
         quality_warnings.append(
             "Skeleton tracking was unstable on this clip: the pose model "
-            "kept mixing up the left and right legs. This usually happens "
-            "when the athlete appears as a dark silhouette -- for example "
-            "filming into the sun or against a bright sky. Cadence, stride "
-            "and angle metrics may be unreliable. Re-film with the light "
-            "behind the camera and the athlete evenly lit."
+            "could not reliably tell the left and right legs apart, so "
+            "cadence, stride and angle metrics may be unreliable. The usual "
+            "causes are the athlete being small in the frame (film closer or "
+            "zoom in), the body reading as a dark silhouette (keep the light "
+            "behind the camera), or a view almost exactly side-on (a few "
+            "degrees of angle helps separate the legs)."
+        )
+    if framing.get("verdict") == "tiny":
+        px = framing.get("subject_height_px")
+        quality_warnings.append(
+            f"The athlete is small in the frame (about {px} pixels tall in "
+            "the image we analyze). At that size the two legs are only a few "
+            "pixels apart for much of the stride, which is what makes the "
+            "skeleton jump between them. Filling more of the frame -- filming "
+            "closer, or zooming in so the runner spans most of the height -- "
+            "does more for accuracy than any other change."
         )
 
     # Step 3b: advanced biomechanics (must not crash the run).
