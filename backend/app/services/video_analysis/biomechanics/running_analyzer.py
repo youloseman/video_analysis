@@ -105,6 +105,9 @@ class RunningAnalyzer(SportAnalyzer):
         self._pixel_to_meter: float = 2.0  # default fallback
         self._body_scale_estimated = False
         self._torso_norm_samples: list[float] = []
+        # Set once _compute_cadence recognises a slow-motion clip; every
+        # time-derived metric divides by it (see _median_frame_spacing_ms).
+        self._slowmo_factor: int | None = None
         self._analyzer_warnings: list[str] = []
 
     def _estimate_body_scale(self, nl: Any) -> None:
@@ -283,8 +286,8 @@ class RunningAnalyzer(SportAnalyzer):
 
         return 0.0
 
-    def _cadence_spectral(self) -> float:
-        """Spectral cadence: dominant frequency of the mean-of-both-ankles Y.
+    def _ankle_spectrum(self) -> "tuple[Any, Any, float] | None":
+        """Spectrum of the mean-of-both-ankles Y trace: ``(spec, freqs, dt)``.
 
         The averaged left+right ankle signal bounces once per STEP (the
         anti-phase per-leg components cancel), so the dominant frequency in
@@ -307,53 +310,54 @@ class RunningAnalyzer(SportAnalyzer):
                 ys.append((ly + ry) / 2.0)
                 ts.append(fr.timestamp_ms)
         if len(ys) < 16:
-            return 0.0
+            return None
         t = (np.asarray(ts, dtype=float) - ts[0]) / 1000.0
         duration_s = float(t[-1])
         if duration_s < 2.0:
-            return 0.0
+            return None
 
         # Regular resampling grid at the median frame spacing.
         dt = float(np.median(np.diff(t)))
         if dt <= 0:
-            return 0.0
+            return None
         grid = np.arange(0.0, duration_s, dt)
         if len(grid) < 16:
-            return 0.0
+            return None
         sig = np.interp(grid, t, np.asarray(ys, dtype=float))
 
         # Detrend (slow camera pan / drift) + de-mean.
         x = np.arange(len(sig), dtype=float)
         sig = sig - np.polyval(np.polyfit(x, sig, 1), x)
         if float(np.std(sig)) < 1e-5:
-            return 0.0
+            return None
 
         n = len(sig)
         padded = 4 * n
         spec = np.abs(np.fft.rfft(sig * np.hanning(n), n=padded))
         freqs = np.fft.rfftfreq(padded, d=dt)
-        # Band: 84-240 spm, capped at 85% of Nyquist so a heavily
-        # downsampled long clip can't alias a sprint cadence into the band.
-        nyquist = 0.5 / dt
-        band_top = min(4.0, 0.85 * nyquist)
-        if band_top <= 1.5:
-            return 0.0
-        band = np.where((freqs >= 1.4) & (freqs <= band_top))[0]
+        return spec, freqs, dt
+
+    @staticmethod
+    def _peak_spm_in_band(
+        spec: Any, freqs: Any, lo_hz: float, hi_hz: float,
+    ) -> float:
+        """Dominant frequency in a band, as steps per minute (0.0 if none)."""
+        band = np.where((freqs >= lo_hz) & (freqs <= hi_hz))[0]
         if len(band) < 3:
             return 0.0
         peak = band[int(np.argmax(spec[band]))]
-        # A real step rhythm towers over the band floor; a flat/noisy
+        # A real step rhythm towers over the band floor; a flat or noisy
         # spectrum means there is no rhythm to read -- refuse to answer.
         if spec[peak] < 3.0 * float(np.median(spec[band])):
             return 0.0
         # Asymmetric gaits leak energy at the per-leg stride frequency (half
         # the step rate). If the double-frequency line carries comparable
         # energy, the picked peak IS that subharmonic -- promote to 2x so a
-        # limp can't read as half cadence. Symmetric runs measure ~10% here.
+        # limp cannot read as half cadence. Symmetric runs measure ~10% here.
         twice = 2 * peak
         if (
             twice < len(spec)
-            and freqs[twice] <= band_top
+            and freqs[twice] <= hi_hz
             and spec[twice] >= 0.5 * spec[peak]
         ):
             peak = twice
@@ -366,18 +370,70 @@ class RunningAnalyzer(SportAnalyzer):
             if abs(denom) > 1e-12:
                 delta = max(-0.5, min(0.5, 0.5 * (a - c) / denom))
         bin_hz = float(freqs[1] - freqs[0])
-        spm = (float(freqs[peak]) + delta * bin_hz) * 60.0
+        return (float(freqs[peak]) + delta * bin_hz) * 60.0
 
-        logger.info(
-            "CADENCE_SPECTRAL_DEBUG",
-            n_samples=len(ys),
-            duration_s=f"{duration_s:.2f}",
-            dominant_hz=f"{spm / 60.0:.3f}",
-            cadence_spm=f"{spm:.1f}",
-        )
-        if 84.0 <= spm <= 240.0:
+    def _cadence_spectral(self) -> float:
+        """Spectral cadence at normal playback speed (0.0 if unreadable)."""
+        spectrum = self._ankle_spectrum()
+        if spectrum is None:
+            return 0.0
+        spec, freqs, dt = spectrum
+        # Cap the band at 85% of Nyquist so a heavily downsampled long clip
+        # cannot alias a sprint cadence into it.
+        band_top = min(4.0, 0.85 * (0.5 / dt))
+        if band_top <= 1.5:
+            return 0.0
+        spm = self._peak_spm_in_band(spec, freqs, 1.4, band_top)
+        if spm <= 0:
+            return 0.0
+        logger.info("CADENCE_SPECTRAL_DEBUG", cadence_spm=f"{spm:.1f}")
+        # Only accept a rhythm fast enough to actually be running. Below
+        # REAL_RUN_SPM_MIN a reading is equally consistent with a shuffle and
+        # with 2x slow motion of a normal stride, and nothing in the ankle
+        # trace separates the two -- so it is refused rather than doubled.
+        if self.REAL_RUN_SPM_MIN <= spm <= 240.0:
             return round(spm, 1)
         return 0.0
+
+    # Phone slow motion is 120 or 240 fps played back at 30: 4x and 8x. 2x is
+    # deliberately absent -- it maps a normal stride onto ~85 spm, which is
+    # also a plausible (if slow) real rhythm.
+    SLOW_MOTION_FACTORS = (4, 8)
+    # A clip slower than this is not someone running at normal speed.
+    REAL_RUN_SPM_MIN = 140.0
+    # Where an inferred cadence has to land to be believable.
+    INFERRED_SPM_RANGE = (150.0, 205.0)
+
+    def _cadence_from_slow_motion(self) -> tuple[float, int | None]:
+        """Recover cadence from a clip shot in slow motion.
+
+        Running cadence is tightly bounded, so a rhythm far below it can be
+        read backwards: if the ankles bounce at 22 spm, only one standard
+        slow-motion factor puts that back inside a human range -- 8x gives
+        176 spm, while 4x would mean 88, which nobody runs at. When exactly
+        one factor fits, the answer is determined rather than guessed; when
+        none or several fit, this returns nothing.
+
+        Returns ``(cadence_spm, factor)`` or ``(0.0, None)``.
+        """
+        spectrum = self._ankle_spectrum()
+        if spectrum is None:
+            return 0.0, None
+        spec, freqs, _dt = spectrum
+        slow_spm = self._peak_spm_in_band(spec, freqs, 0.15, 1.4)
+        if slow_spm <= 0:
+            return 0.0, None
+        lo, hi = self.INFERRED_SPM_RANGE
+        fits = [k for k in self.SLOW_MOTION_FACTORS if lo <= slow_spm * k <= hi]
+        if len(fits) != 1:
+            return 0.0, None
+        factor = fits[0]
+        logger.info(
+            "CADENCE_SLOW_MOTION",
+            measured_spm=f"{slow_spm:.1f}", factor=factor,
+            cadence_spm=f"{slow_spm * factor:.1f}",
+        )
+        return round(slow_spm * factor, 1), factor
 
     # Knee-valley vs spectral estimates farther apart than this fraction
     # mean the valley train is fragmented (tracking noise) -- the
@@ -457,6 +513,25 @@ class RunningAnalyzer(SportAnalyzer):
         if cadence > 0:
             logger.info("CADENCE_RESULT", method="ankle_position", cadence_spm=f"{cadence:.1f}")
             return cadence
+
+        # Method 4: the clip is slow motion. Recover the real cadence from the
+        # slowed rhythm, and record the factor -- every other time-derived
+        # metric (ground contact, flight) is stretched by the same amount and
+        # reads it back through _median_frame_spacing_ms.
+        slowmo_cadence, factor = self._cadence_from_slow_motion()
+        if slowmo_cadence > 0 and factor:
+            self._slowmo_factor = factor
+            logger.info(
+                "CADENCE_RESULT", method="slow_motion",
+                factor=factor, cadence_spm=f"{slowmo_cadence:.1f}",
+            )
+            self._record_warning(
+                f"This clip looks like {factor}x slow motion. Cadence, ground "
+                f"contact and flight time were rescaled to real time on that "
+                f"basis -- if the clip was filmed at normal speed, treat them "
+                f"as wrong and re-upload a normal-speed video."
+            )
+            return slowmo_cadence
 
         logger.info("CADENCE_RESULT", method="none", cadence_spm="0.0")
         self._record_warning(
@@ -572,7 +647,15 @@ class RunningAnalyzer(SportAnalyzer):
         ]
         if not deltas:
             return 0.0
-        return float(np.median(deltas))
+        spacing = float(np.median(deltas))
+        # A slow-motion clip's timestamps run k times too slow, so every
+        # duration derived from them (ground contact, flight) is k times too
+        # long. Correcting the spacing fixes all of them at one point --
+        # and the plausibility gates downstream then act as a second check
+        # on whether the inferred factor was right.
+        if self._slowmo_factor:
+            spacing /= float(self._slowmo_factor)
+        return spacing
 
     def _compute_ground_contact_time(self) -> float:
         """Estimate ground contact time (GCT) in ms from gait phases.
@@ -1056,6 +1139,11 @@ class RunningAnalyzer(SportAnalyzer):
         # graders read as a measurement.
         if 80.0 <= cadence <= 220.0:
             summary["cadence_spm"] = cadence
+        if self._slowmo_factor:
+            # Say so wherever these numbers travel: they are real-time values
+            # reconstructed from a slowed clip, not measured off the timeline.
+            summary["slow_motion_factor"] = self._slowmo_factor
+            summary["time_base_inferred"] = True
 
         # vert_osc is stored in meters; range 0.01-0.25 m = 1-25 cm.
         if 0.01 <= vert_osc <= 0.25:

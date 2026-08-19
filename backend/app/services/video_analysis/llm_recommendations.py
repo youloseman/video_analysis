@@ -199,7 +199,13 @@ def _run_data_block(
 
     lines = [
         f"Sport: running | Technique score: {score}/100 ({grade})",
-        f"- Cadence: {_fmt(summary.get('cadence_spm'), ' spm')} (target ~170-185)",
+        f"- Cadence: {_fmt(summary.get('cadence_spm'), ' spm')} (target ~170-185)"
+        + (
+            f" [clip is {summary['slow_motion_factor']}x slow motion; cadence, "
+            "ground contact and flight time were rescaled to real time, so "
+            "treat them as approximate]"
+            if summary.get("slow_motion_factor") else ""
+        ),
         f"- Vertical oscillation: {_fmt(vosc, ' cm')} (lower is generally better)",
         f"- Trunk lean: {_fmt(summary.get('trunk_lean_avg'), '°')} (target ~5-10 forward)",
         f"- Ground contact time: {_fmt(summary.get('ground_contact_ms'), ' ms')}"
