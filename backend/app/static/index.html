@@ -1913,6 +1913,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <p class="hint hist-hint" id="histHint" hidden style="text-align:left;margin:-4px 0 18px">
       Analyses run for someone else? Tap <b>✕</b> on a card to remove just that one, or <b>Clear all</b> to reset your stats.
     </p>
+    <div class="profilefilter" id="histFilter"></div>
     <div id="histList"></div>
   </section>
 
@@ -2157,7 +2158,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null,
+const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, histProfile:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null,
   kfCache:{}, kfPending:{} };   // cloud keyframes, fetched per entry (see fetchKeyframe)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -5518,15 +5519,70 @@ function observeKeyframes(root){
   },{rootMargin:'250px'});
   nodes.forEach(n=>kfObserver.observe(n));
 }
+/* ============================================================
+   Filtering by setup.
+
+   A trend line that averages a road position and a TT position describes
+   nobody, so the filter matters more on Progress than on History -- but both
+   read the same selection, because switching screens and losing it would make
+   the answer to "how is the TT bike going" a two-step question.
+
+   ``null`` is everything; ``0`` is the analyses that were never filed, which
+   is a real answer rather than an empty one -- most history predates profiles.
+   ============================================================ */
+function applyProfileFilter(list){
+  const f=state.histProfile;
+  if(f==null) return list;
+  if(String(f)==='0') return list.filter(e=>e && e.profileId==null);
+  return list.filter(e=>e && String(e.profileId)===String(f));
+}
+function renderProfileFilter(hostId, list){
+  const host=$('#'+hostId); if(!host) return;
+  const counts={unfiled:0};
+  (list||[]).forEach(e=>{
+    if(!e) return;
+    if(e.profileId==null) counts.unfiled++;
+    else counts[e.profileId]=(counts[e.profileId]||0)+1;
+  });
+  const named=liveProfiles(null).filter(pf=>counts[pf.id]);
+  // One bucket is not a filter, it is a label.
+  if(named.length + (counts.unfiled?1:0) < 2){
+    host.classList.add('hidden'); host.innerHTML=''; return;
+  }
+  const chip=(val,label,n)=>`<button type="button" data-pf="${val==null?'':val}"
+    aria-pressed="${String(state.histProfile??'')===String(val??'')}">${esc(label)} · ${n}</button>`;
+  host.innerHTML=chip(null,'All',(list||[]).length)
+    + named.map(pf=>chip(pf.id,pf.name,counts[pf.id])).join('')
+    + (counts.unfiled?chip(0,'Not filed',counts.unfiled):'');
+  host.classList.remove('hidden');
+  host.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    const v=b.dataset.pf;
+    state.histProfile = v==='' ? null : v;
+    renderHistList(); renderProgress();
+  }));
+}
+
 function renderHistList(){
-  const a=loadHist(), w=$('#histList');
+  const all=loadHist();
+  renderProfileFilter('histFilter', all);
+  const a=applyProfileFilter(all), w=$('#histList');
   const eb=$('#histEyebrow');
   if(eb) eb.textContent = auth ? 'Synced to your account' : 'Saved on this device';
   // Management toolbar (count + Clear all) + the tidy-up hint only when non-empty.
   const tools=$('#histTools'), hint=$('#histHint');
-  if(tools) tools.hidden=!a.length;
-  if(hint) hint.hidden=!a.length;
+  // Follows the cabinet rather than the filtered view: "Clear all" is about
+  // everything, and hiding it because one setup is empty would be a lie.
+  if(tools) tools.hidden=!all.length;
+  if(hint) hint.hidden=!all.length;
   if(a.length){ const c=$('#histCount'); if(c) c.textContent=`${a.length} ${a.length===1?'analysis':'analyses'}`; }
+  if(!a.length && all.length){
+    w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
+      <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
+      <h4>Nothing filmed on this setup yet</h4>
+      <p>Your other analyses are still here — pick <b>All</b> above, or film a clip on this one.</p>
+    </div>`;
+    return;
+  }
   if(!a.length){
     w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
       <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
@@ -6063,7 +6119,9 @@ const PROGRESS_TEASER_ITEMS=['Every joint & gait metric tracked','Optimal-range 
 function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
-  const all=loadHist().filter(e=>e.sport===sport && e.trends).slice().reverse(); // oldest -> newest
+  const all=applyProfileFilter(
+    loadHist().filter(e=>e.sport===sport && e.trends)
+  ).slice().reverse();   // oldest -> newest
   const grid=$('#progGrid'), teaser=$('#progTeaser');
   if(teaser) teaser.innerHTML='';
   if(all.length<2){
