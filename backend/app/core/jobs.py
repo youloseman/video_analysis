@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import os
 import shutil
 import threading
 import time
@@ -99,6 +100,95 @@ def authorized_job(
         return job
     logger.info("JOB_FORBIDDEN", job_id=job_id, user_id=user_id)
     raise HTTPException(404, "unknown job_id")
+
+
+def _is_inside(path: Path, parent: Path) -> bool:
+    """Whether ``path`` lies under ``parent``, by path segments.
+
+    Not a string prefix: ``/data2/uploads`` starts with ``/data`` and is on a
+    different filesystem entirely, so a startswith() check would call an
+    ephemeral directory persistent -- the exact mistake this function exists to
+    catch, made by the code catching it.
+    """
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
+def log_storage_configuration() -> None:
+    """Report, once at startup, whether uploads actually survive a deploy.
+
+    This is the quietest failure in the service. Without a mounted volume the
+    container filesystem is ephemeral, and nothing about that is observable
+    from inside: uploads succeed, analyses run, results are correct, and the
+    only symptom arrives weeks later as an Expert Review with nothing to watch
+    and a privacy policy that turns out to have been describing a retention
+    period we were not keeping. No exception is ever raised.
+
+    Railway injects ``RAILWAY_VOLUME_MOUNT_PATH`` into a service that has a
+    volume attached, so this is a fact we can check rather than a guess from
+    the shape of the path.
+    """
+    uploads = str(settings.uploads_dir)
+    mount = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH") or ""
+    if mount and _is_inside(settings.uploads_dir, Path(mount)):
+        logger.info("STORAGE_PERSISTENT", uploads_dir=uploads, volume=mount)
+        return
+    if not os.environ.get("RAILWAY_ENVIRONMENT"):
+        # A developer's laptop. The disk is as persistent as anything else here.
+        logger.info("STORAGE_LOCAL", uploads_dir=uploads)
+        return
+    logger.error(
+        "STORAGE_EPHEMERAL",
+        uploads_dir=uploads,
+        volume=mount or None,
+        detail=(
+            "uploads are NOT on a mounted volume -- every stored clip is "
+            "deleted on the next deploy, silently. Attach a volume to this "
+            "service and point VA_UPLOADS_DIR at a path inside it."
+        ),
+    )
+
+
+# A volume is a hard ceiling, and hitting it fails at the worst moment: the
+# write that breaks is an athlete's upload, so the symptom is a broken analysis
+# rather than "the disk is full". Warn while there is still room to act.
+DISK_WARN_RATIO = 0.85
+
+
+def storage_usage(path: Path | None = None) -> tuple[int, int] | None:
+    """``(used_bytes, total_bytes)`` for the filesystem holding the uploads."""
+    target = path or settings.uploads_dir
+    try:
+        usage = shutil.disk_usage(target)
+    except OSError:
+        return None
+    return usage.used, usage.total
+
+
+def log_storage_usage(path: Path | None = None) -> float | None:
+    """Log how full the volume is; warn past ``DISK_WARN_RATIO``."""
+    usage = storage_usage(path)
+    if usage is None:
+        return None
+    used, total = usage
+    if total <= 0:
+        return None
+    ratio = used / total
+    mb = 1024 * 1024
+    if ratio >= DISK_WARN_RATIO:
+        logger.warning(
+            "STORAGE_NEARLY_FULL",
+            used_mb=round(used / mb), total_mb=round(total / mb),
+            pct=round(ratio * 100, 1),
+            detail=(
+                "uploads will start failing when this fills. Raise the volume "
+                "size, or shorten retention in services/retention.py."
+            ),
+        )
+    return ratio
 
 
 def job_dir_for(job_id: str) -> Path:
@@ -269,6 +359,7 @@ async def sweeper_loop() -> None:
             dirs = 0 if keep is None else await run_in_threadpool(
                 sweep_upload_dirs, keep,
             )
+            log_storage_usage()
             if jobs or dirs:
                 logger.info(
                     "SWEEP", jobs_forgotten=jobs, dirs_deleted=dirs,

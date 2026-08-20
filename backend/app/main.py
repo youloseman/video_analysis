@@ -81,6 +81,7 @@ from app.core.jobs import (
     authorized_job,
     pending_jobs,
     queue_ahead,
+    log_storage_configuration,
     retained_job_ids,
     sweep_upload_dirs,
     sweeper_loop,
@@ -229,6 +230,9 @@ def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Same class of problem as the two below: a missing volume breaks nothing
+    # visible until somebody's footage is needed weeks later and is not there.
+    log_storage_configuration()
     # Say in the deploy log whether checkout can actually charge anyone; every
     # way it can be broken is otherwise silent until a customer hits it.
     log_billing_configuration()

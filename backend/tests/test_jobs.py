@@ -8,11 +8,13 @@ that it does not delete a job that is still being analyzed.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import time
 from pathlib import Path
 
 import pytest
+import structlog
 from fastapi import HTTPException
 
 from app.core import jobs as jobstore
@@ -295,3 +297,86 @@ def test_a_job_stored_without_a_token_is_not_open_to_everyone():
         jobstore.authorized_job("legacy", None, None)
     with pytest.raises(HTTPException):
         jobstore.authorized_job("legacy", "", None)
+
+
+# --------------------------------------------------------------------------
+# Storage configuration. A missing volume is the quietest failure in the
+# service: uploads succeed, analyses are correct, and the only symptom is
+# footage that is not there weeks later. Nothing raises, so it has to be said.
+# --------------------------------------------------------------------------
+def test_a_mounted_volume_is_reported_as_persistent(monkeypatch, tmp_path):
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+    monkeypatch.setenv("RAILWAY_VOLUME_MOUNT_PATH", "/data")
+    monkeypatch.setattr(
+        jobstore, "settings",
+        dataclasses.replace(settings, uploads_dir=Path("/data/uploads")),
+    )
+    with structlog.testing.capture_logs() as logs:
+        jobstore.log_storage_configuration()
+    assert [e["event"] for e in logs] == ["STORAGE_PERSISTENT"]
+
+
+def test_no_volume_in_production_is_logged_at_error(monkeypatch):
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+    monkeypatch.delenv("RAILWAY_VOLUME_MOUNT_PATH", raising=False)
+    with structlog.testing.capture_logs() as logs:
+        jobstore.log_storage_configuration()
+    entry = next(e for e in logs if e["event"] == "STORAGE_EPHEMERAL")
+    assert entry["log_level"] == "error"
+
+
+def test_uploads_outside_the_volume_are_still_ephemeral(monkeypatch, tmp_path):
+    """A volume that is mounted but not where the uploads go saves nothing --
+    and looks, from the dashboard, exactly like a correct setup."""
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+    monkeypatch.setenv("RAILWAY_VOLUME_MOUNT_PATH", "/data")
+    monkeypatch.setattr(
+        jobstore, "settings",
+        dataclasses.replace(settings, uploads_dir=Path("/app/uploads")),
+    )
+    with structlog.testing.capture_logs() as logs:
+        jobstore.log_storage_configuration()
+    assert any(e["event"] == "STORAGE_EPHEMERAL" for e in logs)
+
+
+def test_a_local_run_is_not_an_error(monkeypatch):
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
+    monkeypatch.delenv("RAILWAY_VOLUME_MOUNT_PATH", raising=False)
+    with structlog.testing.capture_logs() as logs:
+        jobstore.log_storage_configuration()
+    assert [e["event"] for e in logs] == ["STORAGE_LOCAL"]
+
+
+def test_a_full_volume_warns_before_uploads_start_failing(clean_store, monkeypatch):
+    monkeypatch.setattr(
+        jobstore, "storage_usage", lambda path=None: (95, 100),
+    )
+    with structlog.testing.capture_logs() as logs:
+        ratio = jobstore.log_storage_usage(clean_store)
+    assert ratio == 0.95
+    assert any(e["event"] == "STORAGE_NEARLY_FULL" for e in logs)
+
+
+def test_a_volume_with_room_says_nothing(clean_store, monkeypatch):
+    monkeypatch.setattr(jobstore, "storage_usage", lambda path=None: (10, 100))
+    with structlog.testing.capture_logs() as logs:
+        jobstore.log_storage_usage(clean_store)
+    assert logs == []
+
+
+def test_an_unreadable_path_is_not_an_error(clean_store):
+    assert jobstore.log_storage_usage(clean_store / "nope") is None
+
+
+def test_a_lookalike_mount_path_is_not_the_volume(monkeypatch):
+    """/data2 starts with /data and is a different filesystem. A string-prefix
+    check calls this persistent; it is not."""
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+    monkeypatch.setenv("RAILWAY_VOLUME_MOUNT_PATH", "/data")
+    monkeypatch.setattr(
+        jobstore, "settings",
+        dataclasses.replace(settings, uploads_dir=Path("/data2/uploads")),
+    )
+    with structlog.testing.capture_logs() as logs:
+        jobstore.log_storage_configuration()
+    assert any(e["event"] == "STORAGE_EPHEMERAL" for e in logs)
