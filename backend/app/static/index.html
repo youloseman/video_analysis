@@ -277,6 +277,11 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 /* Printing is how a review becomes a file the athlete can keep — "Save as PDF"
    is the delivery format, so the page has to print as the document rather than
    as a screenshot of the app around it. */
+/* The print header. Absent on screen; the browser paints it at the top of the
+   first page, which is what turns a web page into something an athlete can
+   hand to a coach or keep in a folder. */
+.printhead{display:none}
+@page{margin:14mm 12mm}
 @media print{
   .topbar,.sidebar,.botnav,.scrim,footer,.backhome-row,.skip,.modal{display:none !important}
   main,.wrap,body{margin:0 !important;padding:0 !important;background:#fff !important}
@@ -284,6 +289,32 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   .rr-sec,.rr-prio{break-inside:avoid;page-break-inside:avoid}
   .rr-h{color:#14294B !important}
   button{display:none !important}
+
+  /* Everything that exists to be clicked, or to sell something. A report with
+     an upgrade panel in the middle of it is not a document. */
+  .upsell,.fb-host,.again-row,.quota-line,.switch,.drop,.filepreview,
+  .guides,.share-row,.disclaimer-cta,.profilefield,.profilehint,
+  .billtoggle,.addon-strip,.tlock,.tcard-lock{display:none !important}
+  /* A locked section prints as nothing rather than as a blurred smudge. */
+  [class*="lock"]{display:none !important}
+
+  .printhead{display:block;border-bottom:2px solid #14294B;padding-bottom:8px;margin-bottom:16px}
+  .printhead .ph-brand{font-family:var(--f-display);font-weight:900;font-style:italic;
+    font-size:20px;text-transform:uppercase;color:#14294B;letter-spacing:-.02em}
+  .printhead .ph-meta{display:flex;justify-content:space-between;gap:12px;
+    font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;
+    text-transform:uppercase;color:#5C6675;margin-top:4px}
+
+  /* Sections survive the page break intact -- a joint-angle table split across
+     two pages with its header left behind is worse than a page-and-a-half. */
+  .block{break-inside:avoid;page-break-inside:avoid;box-shadow:none !important;
+    border:1px solid #DCE2EA !important}
+  table{break-inside:auto}
+  tr,td,th{break-inside:avoid;page-break-inside:avoid}
+  thead{display:table-header-group}
+  details{display:block !important}
+  details>*{display:revert !important}
+  a[href]::after{content:""}          /* no URL noise beside every link */
 }
 .pricing-foot{text-align:center;color:var(--c-ink-faint);font-size:13px;margin-top:22px}
 .pricing-foot svg{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
@@ -1620,6 +1651,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <button class="btn btn-primary btn-sm sharebtn hidden" id="shareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share result</span>
         </button>
+        <span id="printBtnHost"></span>
       </div>
       <div id="videoCol">
         <div class="videoframe" id="videoframe">
@@ -1634,6 +1666,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         </div>
       </div>
     </div>
+
+    <!-- Printed only. Filled by renderPrintHead() from the report on screen. -->
+    <div class="printhead" id="printHead" aria-hidden="true"></div>
 
     <div id="gateBanner"></div>
     <p class="hint hidden" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
@@ -3175,6 +3210,52 @@ const UNLOCK_COPY={
 function isFreeUser(){ return !auth || auth.tier==='starter'; }
 
 /* ============================================================
+   Print / PDF
+
+   No server-side renderer: the browser already has the report laid out, and
+   "Save as PDF" in its print dialog produces the file. That costs a stylesheet
+   instead of a headless browser in the image, and it works on a phone.
+
+   Honest about what it is: the data is already in the DOM for anyone entitled
+   to read it, so hiding the button from other plans is presentation, not
+   protection. For a printable copy of numbers they already have, that is the
+   right amount of effort to spend.
+   ============================================================ */
+function renderPrintHead(meta){
+  const el=$('#printHead'); if(!el) return;
+  const bits=[];
+  if(meta.sport) bits.push(pretty(meta.sport));
+  if(meta.profile) bits.push(meta.profile);
+  if(meta.when) bits.push(meta.when);
+  el.innerHTML=`<div class="ph-brand">Flapp</div>
+    <div class="ph-meta">
+      <span>${esc(bits.join(' \u00b7 '))}</span>
+      <span>${meta.score==null?'':'Technique '+esc(String(meta.score))+'/100'}${meta.grade?' ('+esc(meta.grade)+')':''}</span>
+      <span>getflapp.com</span>
+    </div>`;
+}
+/* Shown to the tier that pays for it. Everyone else keeps Ctrl-P, which is
+   the browser's, not ours to take away. */
+/* Called once a report is on screen, for both the fresh and the saved view. */
+function renderPrintable(r, entry){
+  const host=$('#printBtnHost');
+  if(host) host.innerHTML=printButtonHtml();
+  renderPrintHead({
+    sport: r.sport_type || r.sport || (entry&&entry.sport) || '',
+    profile: profileName((entry&&entry.profileId) || state.profileId) || '',
+    when: fmtWhen((entry&&entry.at) || Date.now()),
+    score: r.technique_score!=null ? r.technique_score : (entry&&entry.score),
+    grade: r.letter_grade || (entry&&entry.grade) || '',
+  });
+}
+function printButtonHtml(){
+  return (auth && auth.tier==='full')
+    ? `<button class="btn btn-ghost btn-sm" type="button" onclick="window.print()">
+         <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Save as PDF</button>`
+    : '';
+}
+
+/* ============================================================
    Equipment profiles — which bike (or which shoes) a clip was filmed on.
 
    A rider on a road bike and the same rider on a TT bike are two correct sets
@@ -4259,6 +4340,7 @@ function render(job){
     mountFeedback('fbHost','video',r,entryId,
       {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
     state.lastResult=r; $('#shareBtn').classList.remove('hidden');
+    renderPrintable(r);
     setState('results',{focus:'#resultsTitle'});
     return;
   }
