@@ -53,13 +53,37 @@ def make_job(job_id: str, *, status="completed", age_h=0.0, uploads: Path | None
 # --------------------------------------------------------------------------
 # Expiry
 # --------------------------------------------------------------------------
-def test_a_finished_job_past_the_ttl_is_deleted_with_its_files(clean_store):
+def test_a_finished_job_past_the_ttl_is_forgotten_but_keeps_its_files(clean_store):
+    """The store is a cache of recent analyses; the files are storage with a
+    much longer, database-driven lifetime. Conflating the two is what made
+    every clip expire in six hours, including ones somebody had paid to have
+    reviewed."""
     job_dir = make_job("old", age_h=settings.job_ttl_hours + 1, uploads=clean_store)
-    assert job_dir.exists()
 
     assert jobstore.sweep_expired_jobs() == 1
     assert "old" not in jobstore.JOBS
+    assert job_dir.exists()
+
+
+def test_the_directory_sweep_is_what_deletes_the_files(clean_store):
+    job_dir = make_job("old", age_h=settings.job_ttl_hours + 1, uploads=clean_store)
+    old = time.time() - (settings.job_ttl_hours + 1) * HOUR
+    os.utime(job_dir, (old, old))
+    jobstore.sweep_expired_jobs()
+
+    assert jobstore.sweep_upload_dirs(keep=set(), uploads_dir=clean_store) == 1
     assert not job_dir.exists()
+
+
+def test_a_retained_job_survives_the_directory_sweep(clean_store):
+    """The whole point: retention says keep it, however old the directory is."""
+    job_dir = make_job("kept", age_h=settings.job_ttl_hours + 99, uploads=clean_store)
+    old = time.time() - (settings.job_ttl_hours + 99) * HOUR
+    os.utime(job_dir, (old, old))
+    jobstore.sweep_expired_jobs()
+
+    assert jobstore.sweep_upload_dirs(keep={"kept"}, uploads_dir=clean_store) == 0
+    assert job_dir.exists()
 
 
 def test_a_job_inside_the_ttl_is_left_alone(clean_store):
@@ -103,6 +127,19 @@ def test_sweeping_a_job_whose_files_are_already_gone_does_not_raise(clean_store)
     assert "vanished" not in jobstore.JOBS
 
 
+def test_discarding_a_job_removes_its_files_immediately(clean_store):
+    """Used where a person asked for the data to go, which is a different
+    event from a clip reaching the end of its retention period."""
+    job_dir = make_job("bye", uploads=clean_store)
+    jobstore.discard_job("bye")
+    assert "bye" not in jobstore.JOBS
+    assert not job_dir.exists()
+
+
+def test_deleting_files_for_an_unknown_job_is_a_no_op(clean_store):
+    assert jobstore.delete_job_files("never-existed") is False
+
+
 def test_discard_job_tolerates_a_job_with_no_directory():
     jobstore.JOBS["nodir"] = {"status": "failed", "created_at": 0.0, "job_dir": None}
     jobstore.discard_job("nodir")
@@ -110,8 +147,10 @@ def test_discard_job_tolerates_a_job_with_no_directory():
 
 
 # --------------------------------------------------------------------------
-# Orphan directories (files from a previous process; the store does not survive
-# a restart but a mounted volume does)
+# Stored uploads. The job store does not survive a restart but the volume does,
+# so what may be deleted is a question for retention (see services/retention.py)
+# rather than for the clock. These exercise the filesystem half, with the answer
+# passed in.
 # --------------------------------------------------------------------------
 def test_an_orphan_directory_older_than_the_ttl_is_deleted(clean_store):
     orphan = clean_store / "leftover"
@@ -120,14 +159,14 @@ def test_an_orphan_directory_older_than_the_ttl_is_deleted(clean_store):
     old = time.time() - (settings.job_ttl_hours + 1) * HOUR
     os.utime(orphan, (old, old))
 
-    assert jobstore.sweep_orphan_upload_dirs(uploads_dir=clean_store) == 1
+    assert jobstore.sweep_upload_dirs(uploads_dir=clean_store) == 1
     assert not orphan.exists()
 
 
 def test_a_recent_orphan_is_kept(clean_store):
     orphan = clean_store / "recent"
     orphan.mkdir()
-    assert jobstore.sweep_orphan_upload_dirs(uploads_dir=clean_store) == 0
+    assert jobstore.sweep_upload_dirs(uploads_dir=clean_store) == 0
     assert orphan.exists()
 
 
@@ -137,12 +176,12 @@ def test_a_directory_with_a_live_job_is_never_treated_as_an_orphan(clean_store):
     old = time.time() - (settings.job_ttl_hours + 5) * HOUR
     os.utime(job_dir, (old, old))
 
-    assert jobstore.sweep_orphan_upload_dirs(uploads_dir=clean_store) == 0
+    assert jobstore.sweep_upload_dirs(uploads_dir=clean_store) == 0
     assert job_dir.exists()
 
 
 def test_orphan_sweep_survives_a_missing_uploads_dir(clean_store):
-    assert jobstore.sweep_orphan_upload_dirs(uploads_dir=clean_store / "nope") == 0
+    assert jobstore.sweep_upload_dirs(uploads_dir=clean_store / "nope") == 0
 
 
 # --------------------------------------------------------------------------

@@ -110,15 +110,24 @@ curl -s $BASE/jobs/<job_id>/overlay -o overlay.mp4
   cannot start more of them than it can hold; if it still OOM-restarts, lower
   that before bumping the service memory in Railway (Settings → Resources).
 - **Single instance only.** The job store AND the per-IP rate limiter are
-  in-memory, and uploaded files + overlays live on the container's ephemeral
-  disk. Do **not** scale replicas or workers > 1 until M4b (external job store +
-  object storage) — a poll could otherwise hit a replica that never saw the job,
-  and the rate limit wouldn't be shared. Restarts drop in-flight jobs, stored
-  overlays, and reset the rate counters.
-- **Storage is reaped, not permanent.** Jobs and their upload directories are
-  deleted `VA_JOB_TTL_HOURS` after they were accepted, and directories left
-  behind by a previous process are cleared at startup. This is what backs the
-  retention promise in the privacy policy — do not set the TTL to `0` in prod.
+  in-memory, and the uploads directory is a volume attached to this one service.
+  Do **not** scale replicas or workers > 1 — a poll could hit a replica that
+  never saw the job, the rate limit would not be shared, and only one instance
+  can mount the volume. Restarts drop in-flight jobs and reset the rate
+  counters; stored footage now survives them.
+- **A volume is required.** Railway → service → Settings → Volumes → mount at
+  `/data`, then set `VA_UPLOADS_DIR=/data/uploads`. Without it the container
+  filesystem is ephemeral and every clip disappears on the next deploy — which
+  silently breaks two promises at once: the privacy policy says footage is kept
+  for a fixed period, and an Expert Review is sold on a human watching the clip.
+  Size it for roughly 25 MB per analysis (a phone clip plus its overlay) times
+  30 days of volume.
+- **Two different lifetimes, deliberately.** `VA_JOB_TTL_HOURS` now governs only
+  the in-memory job store and the grace window for an upload nobody has saved to
+  history yet. How long a *stored* clip lives is decided per analysis by
+  `app/services/retention.py` — 7 days free, 30 paid, and indefinitely while an
+  Expert Review is bought and undelivered. Do not set the TTL to `0` in prod: it
+  disables both sweeps, and the uploads directory then grows without limit.
 - **Access control:** `/analyze` is open (rate-limited to
   `VA_RATE_LIMIT_PER_DAY` per client IP), but **reading a job back is not** —
   `/jobs/{id}` and `/jobs/{id}/overlay` require either the capability token

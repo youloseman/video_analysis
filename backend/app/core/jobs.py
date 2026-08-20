@@ -11,11 +11,18 @@ BackgroundTasks in a threadpool that will happily start one analysis per thread
 (~40) and OOM the container before finishing any of them. ``ANALYSIS_SLOTS``
 bounds how many run at once; ``max_queued_analyses`` bounds how many may wait.
 
-*Expiry.* The store is a plain dict and uploads land on the container's
-ephemeral disk, so nothing would ever delete either one -- a long-lived instance
-grows until the heap or the disk fills. ``sweep_expired_jobs`` and
-``sweep_orphan_upload_dirs`` are the reaper, and they are also what makes the
-retention promise in the privacy policy true by something other than a redeploy.
+*Expiry.* The store is a plain dict, so nothing would ever drop an entry from
+it -- a long-lived instance grows until the heap fills. ``sweep_expired_jobs``
+is that reaper.
+
+*Storage.* Files used to expire with their job, on the same six-hour clock,
+because a clip existed only long enough to be analysed. It does not: an
+athlete's history refers back to it, and an Expert Review bought a week later
+has to be watched by a human. Uploads now live on a mounted volume with a
+lifetime set by ``services.retention`` -- so ``sweep_upload_dirs`` takes the set
+of ids that must survive and deletes the rest, and the two sweeps are separate
+on purpose. What makes the privacy policy's retention promise true is the pair
+of them running, not a redeploy wiping the disk.
 """
 
 from __future__ import annotations
@@ -25,6 +32,7 @@ import hmac
 import shutil
 import threading
 import time
+from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 
@@ -93,32 +101,76 @@ def authorized_job(
     raise HTTPException(404, "unknown job_id")
 
 
-def discard_job(job_id: str, job: dict[str, Any] | None = None) -> None:
-    """Drop a job from the store and delete its upload directory."""
-    job = job if job is not None else JOBS.get(job_id)
-    job_dir = (job or {}).get("job_dir")
-    JOBS.pop(job_id, None)
-    if not job_dir:
-        return
+def job_dir_for(job_id: str) -> Path:
+    """Where one upload's files live. Derived from the id, not stored."""
+    return settings.uploads_dir / job_id
+
+
+def job_file(job_id: str, stem: str) -> Path | None:
+    """A file inside an upload directory, whatever extension it was saved with.
+
+    The input keeps the extension it arrived with (``input.mov``, ``input.mp4``
+    ...), so a caller that wants "the clip" cannot name the file it is after.
+    """
+    directory = job_dir_for(job_id)
     try:
-        shutil.rmtree(job_dir, ignore_errors=True)
+        for candidate in sorted(directory.glob(f"{stem}.*")):
+            if candidate.is_file():
+                return candidate
+    except OSError:
+        return None
+    return None
+
+
+def forget_job(job_id: str) -> None:
+    """Drop a job from the in-memory store, leaving its files alone.
+
+    The store is a cache of analyses recent enough to still be polled; the
+    files have their own, much longer, lifetime now (see services/retention.py).
+    Conflating the two is what made every clip expire in six hours.
+    """
+    JOBS.pop(job_id, None)
+
+
+def delete_job_files(job_id: str, job_dir: str | Path | None = None) -> bool:
+    """Delete one upload directory. True if there was one to remove."""
+    directory = Path(job_dir) if job_dir else job_dir_for(job_id)
+    if not directory.exists():
+        return False
+    try:
+        shutil.rmtree(directory, ignore_errors=True)
+        return True
     except OSError as e:  # noqa: BLE001 -- cleanup must never break the server
         logger.warning("SWEEP_RMTREE_FAILED", job_id=job_id, err=str(e))
+        return False
+
+
+def discard_job(job_id: str, job: dict[str, Any] | None = None) -> None:
+    """Forget a job AND delete its files -- for an explicit, immediate removal.
+
+    Used where a person asked for the data to go (deleting a history entry or a
+    whole account), which is not the same event as a clip reaching the end of
+    its retention period.
+    """
+    job = job if job is not None else JOBS.get(job_id)
+    job_dir = (job or {}).get("job_dir")
+    forget_job(job_id)
+    delete_job_files(job_id, job_dir)
 
 
 def sweep_expired_jobs(
     now: float | None = None, ttl_hours: float | None = None,
 ) -> int:
-    """Delete jobs (and their files) past the TTL. Returns how many went.
+    """Forget jobs past the TTL. Returns how many went.
 
-    A job is kept for ``job_ttl_hours`` after it was accepted so the client can
-    still poll its result and download the overlay. Unfinished jobs are never
-    swept -- an analysis slower than the TTL would otherwise lose its own output
-    directory mid-render.
+    **Files are not touched here.** A job is dropped from the store once nobody
+    could reasonably still be polling it, but the clip it produced may have
+    weeks left -- an athlete's history entry, or an Expert Review somebody has
+    paid for and not yet received. ``sweep_upload_dirs`` owns deletion, and it
+    asks the database rather than the clock.
 
-    ``now`` and ``ttl_hours`` default to the wall clock and the configured TTL;
-    both are parameters so the behaviour can be exercised without waiting hours
-    or mutating the (frozen) settings object.
+    Unfinished jobs are never swept: an analysis slower than the TTL would
+    otherwise lose the store entry it is about to write its result into.
     """
     ttl_s = (settings.job_ttl_hours if ttl_hours is None else ttl_hours) * 3600
     if ttl_s <= 0:
@@ -130,29 +182,38 @@ def sweep_expired_jobs(
         and now - (j.get("created_at") or 0.0) > ttl_s
     ]
     for jid in stale:
-        discard_job(jid)
+        forget_job(jid)
     return len(stale)
 
 
-def sweep_orphan_upload_dirs(
+def sweep_upload_dirs(
+    keep: Collection[str] | None = None,
     now: float | None = None,
     uploads_dir: Path | None = None,
     ttl_hours: float | None = None,
 ) -> int:
-    """Delete upload directories with no live job behind them.
+    """Delete stored uploads that nothing is entitled to keep.
 
-    The job store does not survive a restart but the files may (a mounted
-    volume, or a container that restarts without being rebuilt), which would
-    strand every upload from the previous process on disk forever.
+    ``keep`` is the set of job ids retention says must survive (see
+    ``services.retention.job_ids_to_keep``). A directory survives if it is in
+    that set, if a live job is still using it, or if it is too young to judge --
+    the grace window covers the gap between an analysis finishing and its owner
+    saving it to history, during which nothing in the database refers to it yet.
+
+    Passing no ``keep`` set deletes everything outside the grace window, which
+    is the old behaviour and the right one for a caller that has no database:
+    it must therefore never be the default in production. The startup sweep and
+    the reaper both pass one.
     """
     ttl_s = (settings.job_ttl_hours if ttl_hours is None else ttl_hours) * 3600
     root = settings.uploads_dir if uploads_dir is None else uploads_dir
+    keep = keep or ()
     if ttl_s <= 0 or not root.exists():
         return 0
     now = now if now is not None else time.time()
     removed = 0
     for entry in _iter_upload_dirs(root):
-        if entry.name in JOBS:
+        if entry.name in JOBS or entry.name in keep:
             continue
         try:
             if now - entry.stat().st_mtime <= ttl_s:
@@ -171,6 +232,28 @@ def _iter_upload_dirs(root: Path) -> list[Path]:
         return []
 
 
+async def retained_job_ids() -> set[str] | None:
+    """Ask the database which stored uploads are still spoken for.
+
+    ``None`` means the lookup failed and nothing should be deleted this round.
+    That is the deliberate direction to fail in: sweeping on an unanswered
+    question would delete footage somebody has paid to have reviewed, while not
+    sweeping costs disk until the next pass ten minutes later.
+
+    Imported lazily so this module keeps importing in tests that run with no
+    database and no ML stack.
+    """
+    try:
+        from app.core.db import SessionLocal
+        from app.services.retention import job_ids_to_keep
+
+        async with SessionLocal() as session:
+            return await job_ids_to_keep(session)
+    except Exception as e:  # noqa: BLE001 -- the reaper must never die
+        logger.warning("RETENTION_QUERY_FAILED", err=str(e))
+        return None
+
+
 async def sweeper_loop() -> None:
     """Background reaper; runs for the lifetime of the app."""
     from fastapi.concurrency import run_in_threadpool
@@ -180,9 +263,18 @@ async def sweeper_loop() -> None:
         try:
             await asyncio.sleep(interval)
             jobs = await run_in_threadpool(sweep_expired_jobs)
-            orphans = await run_in_threadpool(sweep_orphan_upload_dirs)
-            if jobs or orphans:
-                logger.info("SWEEP", jobs=jobs, orphan_dirs=orphans, live=len(JOBS))
+            # Files outlive their job now, so what may be deleted is a question
+            # for the database. No answer -> no deletion this round.
+            keep = await retained_job_ids()
+            dirs = 0 if keep is None else await run_in_threadpool(
+                sweep_upload_dirs, keep,
+            )
+            if jobs or dirs:
+                logger.info(
+                    "SWEEP", jobs_forgotten=jobs, dirs_deleted=dirs,
+                    retained=(len(keep) if keep is not None else None),
+                    live=len(JOBS),
+                )
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001 -- the reaper must never die

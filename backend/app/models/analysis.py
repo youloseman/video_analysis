@@ -31,6 +31,15 @@ class Analysis(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False,
     )
     client_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    # The upload that produced this analysis. The footage lives under this id in
+    # the uploads directory, and this column is the only thing joining the two:
+    # history entries are keyed by a client-minted ``client_id`` while
+    # directories are named by ``job_id``, so without it a stored analysis and
+    # the clip it came from were unrelated objects. That is why an Expert Review
+    # bought a week later had nothing but the annotated keyframe to work from --
+    # not because the file had necessarily expired, but because nothing could
+    # find it. Indexed: the storage sweeper looks jobs up by it.
+    job_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     created_at_ms: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
     sport: Mapped[str | None] = mapped_column(String(16), nullable=True)
     kind: Mapped[str | None] = mapped_column(String(16), nullable=True)

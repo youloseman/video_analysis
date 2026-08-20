@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +30,7 @@ from app.services.video_analysis.llm_recommendations import (
     generate_progress_summary,
 )
 
+logger = structlog.get_logger()
 router = APIRouter(prefix="/me", tags=["me"])
 
 MAX_PER_USER = 100
@@ -62,6 +64,11 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
     # ``has_keyframe`` is a transport flag from the thin list, never stored.
     entry.pop("has_keyframe", None)
     at = int(entry.get("at") or 0)
+    # The upload behind this entry. Kept as a column, not just inside data,
+    # because the storage sweeper joins on it -- and because it is what lets an
+    # Expert Review reach the actual footage weeks later. Photo analyses have
+    # none: nothing was ever written to disk for them.
+    job_id = str(entry.get("jobId") or "")[:64] or None
     sport = entry.get("sport")
     kind = entry.get("kind")
     score = entry.get("score")
@@ -74,12 +81,16 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
                 entry["keyframe"] = stored
         row.data = entry
         row.created_at_ms = at
+        # A re-save from the thin list carries no jobId, and losing the link
+        # would orphan footage that is still inside its retention window.
+        if job_id:
+            row.job_id = job_id
         row.sport = sport
         row.kind = kind
         row.score = score
     else:
         db.add(Analysis(
-            user_id=user.id, client_id=cid, created_at_ms=at,
+            user_id=user.id, client_id=cid, created_at_ms=at, job_id=job_id,
             sport=sport, kind=kind, score=score, data=entry,
         ))
 
@@ -95,6 +106,33 @@ async def _enforce_cap(db: AsyncSession, user: User) -> None:
     ).scalars().all()
     if stale:
         await db.execute(delete(Analysis).where(Analysis.id.in_(stale)))
+
+
+async def _delete_stored_clips(
+    db: AsyncSession, user_id: int, client_ids: list[str] | None = None,
+) -> int:
+    """Remove the footage behind these analyses, before the rows go.
+
+    Clips outlive their analysis now, which quietly created a way to break the
+    privacy policy: deleting a history entry used to remove the only reference
+    to a file that was already gone, and would now leave it sitting on the
+    volume for the rest of its retention period. Deleting the row is the moment
+    the person asked for the data to go, so the file goes with it.
+
+    Failures here are logged, not raised: a clip that cannot be unlinked must
+    not stop the deletion the customer actually asked for -- the sweeper will
+    reach it once no row vouches for it.
+    """
+    from app.core.jobs import delete_job_files
+    from app.services.retention import job_ids_for_user
+
+    job_ids = await job_ids_for_user(db, user_id, client_ids)
+    removed = sum(1 for jid in job_ids if delete_job_files(jid))
+    if job_ids:
+        logger.info(
+            "CLIPS_DELETED", user_id=user_id, requested=len(job_ids), removed=removed,
+        )
+    return removed
 
 
 def _without_keyframe(data: dict[str, Any]) -> dict[str, Any]:
@@ -221,6 +259,7 @@ async def delete_all_analyses(
 ) -> None:
     """Wipe the caller's whole history (e.g. after analyses run for other people
     polluted their stats). Distinct route from the per-item delete below."""
+    await _delete_stored_clips(db, user.id)
     await db.execute(delete(Analysis).where(Analysis.user_id == user.id))
     await db.commit()
 
@@ -231,6 +270,7 @@ async def delete_analysis(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> None:
+    await _delete_stored_clips(db, user.id, [client_id])
     await db.execute(
         delete(Analysis).where(
             Analysis.user_id == user.id, Analysis.client_id == client_id,

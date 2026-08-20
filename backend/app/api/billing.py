@@ -19,17 +19,20 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import stripe
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import jobs
 from app.core.config import settings
 from app.core.db import get_session
 from app.core.security import get_current_user, require_admin
@@ -541,7 +544,55 @@ async def admin_order_detail(
         "sport": sport,
         "sections": expert_review.sections_for(sport),
         "missing_required": expert_review.missing_required(report, sport),
+        # Whether the clip is still on disk. The player is only drawn when it
+        # is -- a dead <video> element reads as a broken page, not as "this one
+        # predates stored footage".
+        "clip_available": await _clip_path(db, order) is not None,
     }
+
+
+@admin_router.get("/admin/orders/{order_id}/clip")
+async def admin_order_clip(
+    order_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+) -> FileResponse:
+    """The footage this review was bought for.
+
+    The whole product being sold here is a human watching the clip, and until
+    uploads outlived their six-hour job the reviewer had only an annotated
+    still to go on -- the template said so out loud. This is that repair.
+
+    Admin-only and not signed with the athlete's job token: the reviewer is not
+    the owner of the job, so ``authorized_job`` would (correctly) answer 404.
+    """
+    order = await db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    path = await _clip_path(db, order)
+    if path is None:
+        # Expired, deleted by its owner, or from before analyses recorded which
+        # upload produced them. All three are "there is no clip", and the queue
+        # already says which by showing no player at all.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No clip stored for this order.")
+    return FileResponse(path, filename=path.name)
+
+
+async def _clip_path(db: AsyncSession, order: Order) -> Path | None:
+    """The stored upload behind an order's analysis, if it is still there."""
+    if not order.analysis_client_id:
+        return None
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == order.user_id,
+                Analysis.client_id == order.analysis_client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None or not row.job_id:
+        return None
+    return jobs.job_file(row.job_id, "input")
 
 
 class OrderPatch(BaseModel):

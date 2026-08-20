@@ -164,8 +164,9 @@ async def delete_account(
 
     What goes: saved analyses (including their stored keyframes), usage records,
     submitted feedback (which can carry an annotated photo of them), and order
-    history. Uploaded footage is not covered here because it is never persisted
-    against an account -- it expires with its job (see ``app.core.jobs``).
+    history. Uploaded footage is covered too: clips now outlive the analysis
+    that produced them (see ``services.retention``), so they have to be removed
+    here rather than left to run out their own retention period.
     """
     if not verify_password(body.password, user.password_hash):
         raise HTTPException(
@@ -194,6 +195,14 @@ async def delete_account(
             email=user.email, order_ids=list(owed),
             action="refund or contact the customer",
         )
+
+    # Footage first, while the rows that point at it still exist. Uploads used
+    # to expire hours after the analysis, so there was nothing here to delete;
+    # they now outlive it by weeks, and an erased account that left its clips on
+    # the volume would be the most literal way to break this promise.
+    from app.api.me import _delete_stored_clips
+
+    await _delete_stored_clips(db, user.id)
 
     uid, email = user.id, user.email
     for model in (Analysis, UsageEvent, Feedback, Order):

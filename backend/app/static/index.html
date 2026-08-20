@@ -2048,7 +2048,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <h2 class="sec" id="exaTitle" tabindex="-1" style="margin-bottom:8px">Expert Review queue</h2>
       <div class="speedline"></div>
     </div>
-    <p class="hint" style="text-align:left;margin:0 0 24px">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis and its annotated frame — the original clip is long gone, uploads expire in hours.</p>
+    <p class="hint" style="text-align:left;margin:0 0 24px">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis, its annotated frame and — while it is still inside its retention window — the clip itself.</p>
     <div class="ex-bar" style="position:static;background:none;padding:0;margin:0 0 16px">
       <div class="seg seg-sm" role="group" aria-label="Filter orders" id="exaFilter" style="margin:0">
         <button type="button" data-exf="open" aria-pressed="true">To do</button>
@@ -3663,6 +3663,7 @@ function exEditorHtml(d){
     </div>
     <aside class="ex-side">
       <div class="rr-h">The analysis</div>
+      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);margin-bottom:12px;background:#000" src="/admin/orders/${d.id}/clip" aria-label="The athlete&#39;s original clip"></video>`:''}
       ${a.keyframe||a.has_keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip">':'<p class="hint" style="text-align:left;margin:0 0 12px">No stored frame.</p>'}
       <dl>
         <dt>Score</dt><dd>${a.score==null?'—':esc(String(a.score))}/100${a.grade?' ('+esc(a.grade)+')':''}</dd>
@@ -5161,7 +5162,12 @@ function updateAngleMergeNote(paired, side){
 function saveToHistory(kind,res){
   try{
     const isV=kind==='video', sc=res.score||{};
-    const e={ id:'h'+Date.now(), at:Date.now(), kind, sport:res.sport_type||res.sport,
+    // The upload this came from. Without it the entry and its footage are two
+    // unrelated things — which is why an Expert Review bought a week later had
+    // only the annotated still to work from. Photos have no job: nothing was
+    // written to disk for them.
+    const e={ id:'h'+Date.now(), at:Date.now(), kind, jobId:isV?(state.jobId||null):null,
+      sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,

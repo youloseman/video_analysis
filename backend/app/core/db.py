@@ -134,6 +134,24 @@ def _migrate_orders(conn) -> None:
             logger.info("MIGRATED", change=f"orders.{name} added")
 
 
+def _migrate_analyses(conn) -> None:
+    """Same idempotent, Alembic-less evolution as the two above.
+
+    ``job_id`` links a stored analysis to the footage it came from. Rows written
+    before it existed keep NULL, which is the truth about them: those clips were
+    swept hours after the analysis and nothing recorded where they had been.
+    """
+    cols = _existing_columns(conn, "analyses")
+    if not cols:  # fresh DB -- create_all already built the current schema.
+        return
+    if "job_id" not in cols:
+        conn.execute(text("ALTER TABLE analyses ADD COLUMN job_id VARCHAR(64)"))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_analyses_job_id ON analyses (job_id)"
+        ))
+        logger.info("MIGRATED", change="analyses.job_id added")
+
+
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import analysis, feedback, order, usage, user  # noqa: F401
@@ -142,4 +160,5 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_migrate_users)
         await conn.run_sync(_migrate_orders)
+        await conn.run_sync(_migrate_analyses)
     logger.info("DB_READY", backend=settings.async_database_url.split("://", 1)[0])

@@ -62,7 +62,7 @@
 <main>
 <div class="wrap">
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 30 July 2026</p>
+  <p class="updated">Last updated: 20 August 2026</p>
   <div class="speedline"></div>
 
   <p class="lede"><b>Short version:</b> We keep only what we need to run the service — your account email (if you sign up), your subscription tier, and a count of the analyses you run. Your uploaded video or photo is processed and then automatically deleted; it is never sold or handed to an advertiser. Only anonymous numeric measurements go to the AI that writes your coaching notes. If you buy an <b>Expert Review</b>, a real person reviews your clip. We run no advertising trackers.</p>
@@ -96,17 +96,18 @@
   <ul>
     <li>Your clip or photo is processed on our server to detect body pose and measure joint angles.</li>
     <li>For video, we optionally render an annotated "overlay" copy with the skeleton drawn on it, so you can review and download it.</li>
-    <li>The uploaded file and any overlay are written to <b>temporary storage on the processing server</b> and are <b>not stored in a database or long-term storage</b>. They are discarded automatically (at the latest when the server instance restarts or redeploys, which happens frequently), and results are not persisted after you leave the page. We do not keep a copy for our own marketing or training.</li>
+    <li>The uploaded file and any overlay are stored on our processing infrastructure and <b>deleted automatically at the end of a fixed retention period</b>: <b>7 days</b> on the free plan and <b>30 days</b> on a paid plan, counted from the analysis. Keeping them that long is what lets your saved history refer back to real footage, and what lets a human reviewer actually watch the clip you bought a review for. We do not keep a copy for our own marketing or for training models.</li>
+    <li>You can <b>delete a clip earlier at any time</b> by deleting the saved analysis it belongs to, or your whole account — in both cases the footage is removed along with the record.</li>
     <li><b>Your video or photo is never uploaded to any third-party AI service.</b> Only anonymous numerical measurements (joint angles, scores, detected issues) are sent to Google's Gemini API to generate the written coaching notes — no images, and nothing that identifies you.</li>
   </ul>
 
-  <div class="note">Because processing storage is temporary, Flapp cannot retrieve a past analysis for you (except during an in-progress Expert Review, see below). If you want to keep your result or overlay video, download it before leaving the page.</div>
+  <div class="note">Footage is kept for the retention period above and then deleted for good — Flapp cannot retrieve a clip after that, and neither can you. If you want to keep a result or an overlay video permanently, download it.</div>
 
   <h2>3. Expert Review — when a person sees your clip</h2>
   <p>If you purchase an <b>Expert Review</b>, your video is reviewed by a <b>real human reviewer</b> (not only the automated system) who writes a manual assessment. For this feature only:</p>
   <ul>
-    <li>Your clip is <b>retained until the review is delivered</b>, so the reviewer can watch it — rather than being discarded immediately.</li>
-    <li>It is accessed solely to produce your review, is not shared further, and is <b>deleted once the review is complete</b> (and in any case within a short period after delivery).</li>
+    <li>Your clip is <b>retained until the review is delivered</b> even if its normal retention period would have ended first, so the reviewer can watch it.</li>
+    <li>It is accessed solely to produce your review, is not shared further, and is <b>deleted within 7 days of the review being delivered</b> — the short window exists so the reviewer can correct something they wrote about footage that would otherwise already be gone.</li>
   </ul>
   <p>If you do not buy an Expert Review, no human reviews your footage — it is only processed automatically as described above.</p>
 
@@ -151,8 +152,9 @@
   <h2>10. How long we keep it</h2>
   <table class="data">
     <tr><th>Data</th><th>Retention</th></tr>
-    <tr><td>Uploaded video / photo (standard)</td><td>Temporary — deleted automatically on a timer (within hours of the analysis), not persisted after you leave.</td></tr>
-    <tr><td>Uploaded video (Expert Review)</td><td>Kept until the review is delivered, then deleted.</td></tr>
+    <tr><td>Uploaded video (standard)</td><td><b>7 days</b> on the free plan, <b>30 days</b> on a paid plan, from the analysis — then deleted automatically. Sooner if you delete the analysis or your account.</td></tr>
+    <tr><td>Uploaded photo</td><td>Not stored. A photo analysis is done in memory and the file is never written to disk.</td></tr>
+    <tr><td>Uploaded video (Expert Review)</td><td>Kept until the review is delivered — however long that takes — then deleted within 7 days.</td></tr>
     <tr><td>Anonymous IP (free-tier limit)</td><td>Rolling 24 hours, in memory only.</td></tr>
     <tr><td>Result feedback (rating, comment, technical context)</td><td>Kept while it's still useful for improving the analyzer, unless you ask us to delete it.</td></tr>
     <tr><td>Annotated still attached to feedback (opt-in only)</td><td>Deleted once we've acted on that report, or on request.</td></tr>
@@ -172,10 +174,10 @@
     <li><b>Object to</b> or <b>restrict</b> certain processing, and withdraw consent where we relied on it.</li>
     <li><b>Complain</b> to your data-protection authority (in Canada, the Office of the Privacy Commissioner).</li>
   </ul>
-  <p>Because your media is not stored, most of these rights concern your account. <b>Deletion is self-serve</b>: open <b>Dashboard → Delete account</b>, confirm with your password, and your account, saved analyses (and their annotated stills), usage records, feedback and order history are erased immediately. It cannot be undone, and it does not cancel an active subscription — cancel that first under <b>Manage subscription</b>. For anything else on this list, email us (below) and we'll respond within a reasonable time — and within any period the law requires.</p>
+  <p><b>Deletion is self-serve</b>: open <b>Dashboard → Delete account</b>, confirm with your password, and your account, saved analyses (and their annotated stills and stored footage), usage records, feedback and order history are erased immediately. It cannot be undone, and it does not cancel an active subscription — cancel that first under <b>Manage subscription</b>. For anything else on this list, email us (below) and we'll respond within a reasonable time — and within any period the law requires.</p>
 
   <h2>12. Security</h2>
-  <p>We use HTTPS in transit, store passwords only as salted hashes, and keep media in temporary storage rather than a permanent database. No system is perfectly secure, so we cannot give an absolute guarantee — but we keep the personal data we hold deliberately minimal to limit the impact if something goes wrong. If a breach ever affects your data, we will notify you and the relevant authority as required by law.</p>
+  <p>We use HTTPS in transit, store passwords only as salted hashes, keep media on storage that deletes itself on a schedule rather than in a permanent database. No system is perfectly secure, so we cannot give an absolute guarantee — but we keep the personal data we hold deliberately minimal to limit the impact if something goes wrong. If a breach ever affects your data, we will notify you and the relevant authority as required by law.</p>
 
   <h2>13. Children</h2>
   <p>Flapp is not intended for children under 16. Please don't create an account for, or upload footage of, a minor without the consent of a parent or guardian. If you believe a child has given us personal information, contact us and we will delete it.</p>

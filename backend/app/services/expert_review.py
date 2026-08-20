@@ -10,10 +10,14 @@ the whole design here, and it decides the shape of the template:
   the analysis, and ``prefill`` seeds the one section that can be derived.
 * It has to be fillable in ~20 minutes. At $29 a review that takes two hours is
   a hobby, not a product, so every section is short and several are lists.
-* The clip itself is gone. Uploads expire with their job (``job_ttl_hours``,
-  6h), so a review bought on Tuesday for Monday's ride can only ever see the
-  STORED analysis entry and its annotated keyframe. The template says so out
-  loud rather than pretending otherwise.
+* The reviewer can watch the clip. That was not true for most of this file's
+  life -- uploads expired six hours after the analysis, so a review bought on
+  Tuesday for Monday's ride had only the stored entry and its annotated
+  keyframe, and the template said so out loud. Footage now outlives the
+  analysis (``services.retention``), so the sections can assume a human has
+  seen the movement rather than a single frame of it. A clip past its retention
+  window, or deleted by its owner, is still possible -- the reviewer's screen
+  simply shows no player, and the ``caveats`` section is where that goes.
 
 The section list is defined once, here, and drives all three renderings -- the
 admin editor, the athlete's copy, and the sample shown on the pricing page --

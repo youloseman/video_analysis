@@ -81,7 +81,8 @@ from app.core.jobs import (
     authorized_job,
     pending_jobs,
     queue_ahead,
-    sweep_orphan_upload_dirs,
+    retained_job_ids,
+    sweep_upload_dirs,
     sweeper_loop,
 )
 from app.core.net import client_ip
@@ -240,8 +241,16 @@ async def lifespan(app: FastAPI):
             detail="ffmpeg not on PATH -- overlay videos are disabled "
                    "(they would be encoded as mp4v, which no browser plays)",
         )
-    # Clear anything the previous process left behind before serving.
-    await run_in_threadpool(sweep_orphan_upload_dirs)
+    # Clear anything the previous process left behind before serving. On a
+    # volume that is now most of the disk: the job store did not survive the
+    # restart but the files did, so without this pass every upload from the
+    # previous process would be unreachable AND undeletable -- no live job
+    # claims it, and the ids are gone from memory. What the database still
+    # vouches for is kept.
+    keep = await retained_job_ids()
+    if keep is not None:
+        swept = await run_in_threadpool(sweep_upload_dirs, keep)
+        logger.info("SWEEP_STARTUP", dirs_deleted=swept, retained=len(keep))
     sweeper = asyncio.create_task(sweeper_loop())
     try:
         yield
