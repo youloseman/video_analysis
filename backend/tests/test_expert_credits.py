@@ -285,3 +285,90 @@ async def test_renewing_the_cheaper_plan_grants_nothing(db, make_user):
     )
     await db.refresh(user)
     assert user.expert_credits == 0
+
+
+# --------------------------------------------------------------------------
+# The weekly ceiling
+#
+# Every other product here scales with CPU. This one is ~40 minutes of one
+# person's attention, and selling more of it than that person can write turns
+# a premium deliverable into a queue of people waiting on an apology.
+# --------------------------------------------------------------------------
+async def make_review_order(db, user, *, session, when_ms, plan="expert",
+                            status_="paid"):
+    from app.models.order import Order as O
+
+    db.add(O(
+        user_id=user.id, stripe_session_id=session, plan=plan, status=status_,
+        amount_total=3900, created_at_ms=when_ms, updated_at_ms=when_ms,
+    ))
+    await db.commit()
+
+
+def _cap(monkeypatch, n):
+    monkeypatch.setattr(
+        billing, "settings",
+        dataclasses.replace(settings, stripe_secret_key=None,
+                            expert_review_slots_per_week=n),
+    )
+
+
+async def test_slots_are_counted_over_a_rolling_week(db, make_user, monkeypatch):
+    _cap(monkeypatch, 5)
+    user = await make_user(tier=TIER_STARTER)
+    now = billing._now_ms()
+    await make_review_order(db, user, session="a", when_ms=now)
+    # Eight days ago -- that week's hours are long spent.
+    await make_review_order(db, user, session="b", when_ms=now - 8 * billing.WEEK_MS // 7)
+    assert await billing.review_slots_left(db) == 4
+
+
+async def test_a_full_week_refuses_a_new_review(db, make_user, monkeypatch):
+    _cap(monkeypatch, 2)
+    user = await make_user(tier=TIER_STARTER)
+    now = billing._now_ms()
+    for i in range(2):
+        await make_review_order(db, user, session=f"s{i}", when_ms=now)
+
+    with pytest.raises(HTTPException) as exc:
+        await create_checkout(
+            CheckoutIn(plan="expert", analysis_client_id="h1"), None, user, db,
+        )
+    # 503, not 402: they are not being asked for money, and the thing they
+    # wanted exists -- there is just none of this week left.
+    assert exc.value.status_code == 503
+
+
+async def test_an_included_review_also_waits_for_a_slot(db, make_user, monkeypatch):
+    """A credit is a claim on the same forty minutes. Letting it through would
+    make the ceiling advisory for exactly the customers who paid most."""
+    _cap(monkeypatch, 1)
+    user = await make_user(tier=TIER_FULL)
+    user.expert_credits = 1
+    await db.commit()
+    await make_review_order(db, user, session="taken", when_ms=billing._now_ms())
+
+    with pytest.raises(HTTPException) as exc:
+        await create_checkout(
+            CheckoutIn(plan="expert", analysis_client_id="h1"), None, user, db,
+        )
+    assert exc.value.status_code == 503
+    await db.refresh(user)
+    assert user.expert_credits == 1      # not spent on a refusal
+
+
+async def test_a_refunded_review_gives_its_slot_back(db, make_user, monkeypatch):
+    _cap(monkeypatch, 1)
+    user = await make_user(tier=TIER_STARTER)
+    await make_review_order(
+        db, user, session="r", when_ms=billing._now_ms(), status_="refunded",
+    )
+    assert await billing.review_slots_left(db) == 1
+
+
+async def test_zero_disables_the_ceiling(db, make_user, monkeypatch):
+    _cap(monkeypatch, 0)
+    user = await make_user(tier=TIER_STARTER)
+    for i in range(50):
+        await make_review_order(db, user, session=f"x{i}", when_ms=billing._now_ms())
+    assert await billing.review_slots_left(db) is None

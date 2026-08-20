@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,6 +40,7 @@ from app.models.analysis import Analysis
 from app.models.order import (
     ORDER_DELIVERED,
     ORDER_PAID,
+    ORDER_REFUNDED,
     ORDER_STATUS_LABEL,
     ORDER_STATUSES,
     Order,
@@ -147,6 +148,16 @@ def tier_for_price(price_id: str | None) -> str | None:
     return settings.price_tier_map.get(price_id)
 
 
+@router.get("/expert-review/slots")
+async def expert_review_slots(
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Whether a review can be taken on right now. Public: the card asks before
+    it offers a button, and "fully booked" is better said before payment."""
+    left = await review_slots_left(db)
+    return {"left": left, "open": left is None or left > 0}
+
+
 @router.get("/plans")
 def plans() -> dict[str, Any]:
     """The price list, for anyone -- signed in or not.
@@ -186,6 +197,52 @@ def grant_expert_credits(user: User, ref: str, count: int = FULL_EXPERT_CREDITS)
     user.expert_credits = (user.expert_credits or 0) + count
     user.expert_credit_grant_ref = ref
     return True
+
+
+WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
+
+async def review_slots_left(db: AsyncSession) -> int | None:
+    """How many Expert Reviews may still be taken on this week.
+
+    ``None`` means no ceiling is configured. Counts orders *placed* in the last
+    seven days rather than ones still open: the work is owed from the moment
+    somebody pays, and letting the queue drain does not give back the hours
+    already committed to it.
+
+    This is the only product here whose supply is finite -- everything else
+    scales with CPU. Selling more of it than one person can write turns a
+    premium deliverable into a queue of people waiting on an apology.
+    """
+    cap = settings.expert_review_slots_per_week
+    if cap <= 0:
+        return None
+    since = _now_ms() - WEEK_MS
+    taken = int(
+        await db.scalar(
+            select(func.count(Order.id)).where(
+                Order.plan.in_(("expert", "expert_credit")),
+                Order.status != ORDER_REFUNDED,
+                Order.created_at_ms >= since,
+            )
+        )
+        or 0
+    )
+    return max(0, cap - taken)
+
+
+async def _require_review_slot(db: AsyncSession) -> None:
+    left = await review_slots_left(db)
+    if left is None or left > 0:
+        return
+    # 503, not 402: they are not being asked for money, and the thing they
+    # wanted exists -- there is simply none of this week left.
+    logger.info("REVIEW_SLOTS_FULL", cap=settings.expert_review_slots_per_week)
+    raise HTTPException(
+        status.HTTP_503_SERVICE_UNAVAILABLE,
+        "This week's Expert Reviews are fully booked. They open again on "
+        "Monday — email support@getflapp.com if yours is time-sensitive.",
+    )
 
 
 def _credit_session_key(user_id: int, analysis_client_id: str) -> str:
@@ -278,6 +335,7 @@ async def create_checkout(
                 status.HTTP_400_BAD_REQUEST,
                 "Choose which analysis you'd like reviewed first.",
             )
+        await _require_review_slot(db)
         return await _redeem_expert_credit(db, user, analysis_id)
 
     # An unlock buys one specific report, so an unnamed one is meaningless --
@@ -288,6 +346,9 @@ async def create_checkout(
             status.HTTP_400_BAD_REQUEST,
             "Choose which analysis you'd like to unlock.",
         )
+
+    if body.plan == "expert":
+        await _require_review_slot(db)
 
     _require_stripe()
     # Two different failures were sharing one 400 and one internal-sounding

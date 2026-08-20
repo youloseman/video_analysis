@@ -100,6 +100,14 @@ class Settings:
     stripe_price_full_y: str | None = None         # $99 / year
     stripe_price_expert: str | None = None         # $39 one-time
     stripe_price_unlock: str | None = None         # $4 one-time
+
+    # Expert Reviews accepted per rolling week. The deliverable is ~40 minutes
+    # of one person's attention, so this is the only product here whose supply
+    # is finite -- and the failure mode of ignoring that is a queue of people
+    # who paid and are waiting, which is worse than a sold-out sign. Set while
+    # the queue is empty on purpose: a limit added after the rush is an apology.
+    # 0 disables the check.
+    expert_review_slots_per_week: int = 5
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
     public_base_url: str | None = None
@@ -225,6 +233,9 @@ def _load_settings() -> Settings:
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
         stripe_price_unlock=os.environ.get("STRIPE_PRICE_UNLOCK") or None,
+        expert_review_slots_per_week=_int_env(
+            "EXPERT_REVIEW_SLOTS_PER_WEEK", Settings.expert_review_slots_per_week,
+        ),
         public_base_url=(os.environ.get("PUBLIC_BASE_URL") or "").rstrip("/") or None,
         email_provider=(os.environ.get("EMAIL_PROVIDER") or "").strip().lower(),
         email_api_key=os.environ.get("EMAIL_API_KEY") or None,

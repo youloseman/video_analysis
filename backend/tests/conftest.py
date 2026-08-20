@@ -44,7 +44,13 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 
 from app.core.db import Base  # noqa: E402
-from app.models import analysis, feedback, order, usage, user  # noqa: E402,F401
+# Every model, so ``Base.metadata`` is complete before create_all. Missing one
+# does not fail here -- it fails in whichever module runs first without another
+# test having imported it, which is how the suite passed for a while by luck of
+# import order.
+from app.models import (  # noqa: E402,F401
+    analysis, feedback, order, profile, usage, user,
+)
 from app.models.user import TIER_STARTER, User  # noqa: E402
 
 

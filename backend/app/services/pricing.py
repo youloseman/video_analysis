@@ -136,6 +136,7 @@ CARDS: tuple[Card, ...] = (
             Feature("Exact joint angles, no watermark"),
             Feature("Overlay video + slow-motion"),
             Feature("Cloud history, trends &amp; before / after"),
+            Feature("<b>1</b> equipment profile"),
         ),
         cta_label="Go Enthusiast",
     ),
@@ -143,19 +144,27 @@ CARDS: tuple[Card, ...] = (
         id="full",
         name="Full",
         tier="full",
-        tagline="The full app, plus a human in the loop.",
+        tagline="Every setup you ride, and a human in the loop.",
         prices=(
             Price(plan="full_yearly", amount=9900, per="/ year",
                   note="billed annually", interval="year"),
         ),
-        # Short on purpose. Multi-bike profiles, the branded PDF and
-        # cross-profile comparison are being built; they are not claimed until
-        # they ship. The Expert Review credit below is real as of this change
-        # (see ``users.expert_credits``) -- it is the only reason this tier
-        # currently exists, and it is worth more than the extra quota.
+        # These came off the card when it turned out none of them existed,
+        # and go back one at a time as each becomes true. Every line here now
+        # has code and a test behind it:
+        #   profiles      -> models/profile.py, PROFILE_LIMITS
+        #   comparison    -> the "Two setups" mode, which needs two profiles
+        #                    and is therefore gated by the limit above rather
+        #                    than by a check we could forget
+        #   PDF           -> the print stylesheet
+        #   Expert Review -> users.expert_credits, granted on purchase and on
+        #                    renewal, spent without touching Stripe
         features=(
             Feature("Everything in Enthusiast, <b>120</b>/mo"),
-            Feature("<b>1 Expert Review included</b> ($39 value)"),
+            Feature("<b>10</b> equipment profiles — every bike and pair of shoes"),
+            Feature("Compare one setup against another, not just week to week"),
+            Feature("Branded PDF report to keep or hand to a coach"),
+            Feature("<b>1 Expert Review included</b> ($39 value), every year"),
         ),
         cta_label="Go Full",
     ),

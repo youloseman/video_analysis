@@ -185,14 +185,49 @@ def test_the_plans_endpoint_is_public():
 # --------------------------------------------------------------------------
 # A bullet is a promise the code keeps
 # --------------------------------------------------------------------------
-def test_full_does_not_advertise_what_has_not_been_built():
-    """This tier claimed multi-bike profiles, a branded PDF report and an
-    included Expert Review while none of the three existed. The credit is real
-    now; the other two are not, and must not reappear before they are."""
+def test_every_claim_on_the_full_card_has_something_behind_it():
+    """This card once advertised multi-bike profiles, a branded PDF and an
+    included Expert Review while none of the three existed in the codebase.
+
+    The guard used to be a blacklist of those words, which stopped being useful
+    the day they became true. So it checks the other direction now: for each
+    claim, the thing that makes it true. A blacklist would have to be deleted to
+    ship the feature; this has to be extended, which is the right amount of
+    friction for putting a new promise on a price card.
+    """
+    from pathlib import Path as _P
+
+    from app.models.user import (
+        FULL_EXPERT_CREDITS,
+        TIER_ENTHUSIAST,
+        TIER_FULL,
+        profile_limit,
+    )
+
     text = " ".join(f.text.lower() for f in pricing.CARD_BY_ID["full"].features)
-    for unbuilt in ("profile", "pdf", "multi-sport", "multi-bike"):
-        assert unbuilt not in text, f"Full advertises '{unbuilt}', which is not built"
-    assert "expert review" in text
+    spa = (STATIC / "index.html").read_text(encoding="utf-8")
+
+    if "profile" in text:
+        # Several setups, and strictly more than the tier below -- otherwise it
+        # is not a reason to pay more.
+        assert profile_limit(TIER_FULL) > profile_limit(TIER_ENTHUSIAST) > 0
+
+    if "compare" in text:
+        # The comparison needs two profiles, so the limit above IS its gate.
+        assert "Two setups" in spa and "profileAggregate" in spa
+
+    if "pdf" in text:
+        assert "@media print" in spa and "printhead" in spa
+
+    if "expert review" in text:
+        assert FULL_EXPERT_CREDITS >= 1
+        billing = _P(__file__).resolve().parents[1] / "app" / "api" / "billing.py"
+        source = billing.read_text(encoding="utf-8")
+        # Granted on purchase AND on renewal: a card promising one "every year"
+        # against code that only grants on the first purchase is the same bug
+        # this test exists for, one year deferred.
+        assert "grant_expert_credits" in source
+        assert "invoice.payment_succeeded" in source
 
 
 def test_starter_admits_to_the_cloud_history_it_actually_gives():
