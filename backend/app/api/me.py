@@ -26,7 +26,11 @@ from app.core.db import get_session
 from app.core.security import get_current_user
 from app.models.analysis import Analysis
 from app.models.user import User
-from app.services.result_gating import access_for_stored, gate_for_access
+from app.services.result_gating import (
+    ACCESS_FULL,
+    access_for_stored,
+    gate_for_access,
+)
 from app.services.video_analysis.llm_recommendations import (
     generate_progress_summary,
 )
@@ -255,10 +259,57 @@ async def get_analysis_result(
             detail="This analysis was run before full reports were stored.",
         )
     access = access_for_stored(user, row)
+    if access == ACCESS_FULL:
+        await _ensure_coaching(db, row)
     return {
         "access": access,
         "result": gate_for_access(row.result, access),
     }
+
+
+async def _ensure_coaching(db: AsyncSession, row: Analysis) -> None:
+    """Write the coaching notes if this report was run without them.
+
+    A teaser makes no Gemini call: generating coaching for every free analysis
+    would bill us on output nobody sees, and the overwhelming majority of them
+    are never bought. So the call is deferred to the moment somebody is
+    entitled to read it -- on unlock, or when a subscription opens the history
+    retroactively -- and the answer is stored, because they may open it again.
+
+    Failure is not an error here. The rest of the report -- every measurement,
+    every finding, the drills -- is what was actually paid for and is already
+    on the row; refusing to serve it because a language model was unreachable
+    would be a strange way to treat somebody who has just paid.
+    """
+    result = row.result or {}
+    if result.get("ai_recommendations") or result.get("kind") == "photo":
+        return
+    try:
+        from app.services.video_analysis.llm_recommendations import (
+            generate_recommendations,
+        )
+
+        notes = await run_in_threadpool(
+            generate_recommendations,
+            result.get("sport_type") or result.get("sport") or "run",
+            result.get("technique_score"),
+            result.get("letter_grade"),
+            result.get("detected_issues") or [],
+            result.get("angle_statistics") or {},
+            result.get("sport_specific_metrics") or {},
+            result.get("cycling_position"),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("LAZY_COACHING_FAILED", analysis=row.client_id, err=str(e))
+        return
+    if not notes:
+        return
+    # Reassigned rather than mutated: SQLAlchemy does not track edits made
+    # inside a JSON column's dict, so an in-place update would be dropped on
+    # commit and the call would be repeated on every read.
+    row.result = {**result, "ai_recommendations": notes}
+    await db.commit()
+    logger.info("LAZY_COACHING_WRITTEN", analysis=row.client_id)
 
 
 @router.post("/analyses", status_code=status.HTTP_201_CREATED)

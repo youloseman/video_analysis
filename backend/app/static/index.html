@@ -3151,18 +3151,24 @@ function teaserPanelHtml(items, opts){
     <ul>${(items||[]).map(t=>`<li>${check}<span>${esc(t)}</span></li>`).join('')}</ul>
     <div class="cta-row">
       <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+      ${opts.unlockId?`<button class="btn btn-outline" type="button" onclick="startCheckout('unlock',${JSON.stringify(opts.unlockId)})">Unlock just this report — ${esc(unlockPrice())}</button>`:''}
       <span class="price-tag">${fromPriceLabel()}</span>
     </div>
+    ${opts.unlockNudge||''}
   </div>`;
 }
-function renderUpsell(containerId, locked, blockIds){
+function renderUpsell(containerId, locked, blockIds, unlockId){
   (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
   const host=$('#'+containerId); if(!host) return false;
   const items=(locked.unlocks||Object.keys(UNLOCK_COPY)).map(k=>UNLOCK_COPY[k]).filter(Boolean);
+  // The preview is not for sale a second time: it already showed the coaching,
+  // and what is left of it is the measurement table, which is what a plan is
+  // for. Only a teaser has a whole report sitting behind it, unread.
+  const sellable = unlockId && locked.reason!=='preview' && unlockPrice();
   host.innerHTML=teaserPanelHtml(items, locked.reason==='preview'
     ? {src:'preview', chip:'Your free report', title:'That was one report. The plan is what changes the next one.',
        body:previewBody(locked)}
-    : {src:'result'});
+    : {src:'result', unlockId:sellable?unlockId:null, unlockNudge:unlockNudgeHtml()});
   host.classList.remove('hidden');
   return true;
 }
@@ -3330,6 +3336,26 @@ function expertPriceLabel(){ const p=expertPrice(); return p?' · '+p:''; }
 /* "from $X/mo" for the upsell panels: the cheapest recurring monthly price we
    sell. Empty until the catalogue lands, which is why loadPlans() is warmed at
    startup — a locked report can be the first pricing the visitor ever sees. */
+function unlockPrice(){
+  const c=((PLANS&&PLANS.cards)||[]).find(x=>x.id==='unlock');
+  return (c&&c.prices&&c.prices[0]) ? c.prices[0].display : '';
+}
+/* How many single reports this account has bought. Read off the history list,
+   which now reports its own access level per entry. */
+function unlockCount(){
+  return (state.cloudHist||[]).filter(e=>e && e.access==='full' && !e.preview).length;
+}
+/* Say the arithmetic out loud once it starts favouring the plan. Two unlocks
+   is most of a month, and a month also brings the comparison a single report
+   structurally cannot have -- better we point that out than let somebody work
+   it out on their third purchase and feel taken. */
+function unlockNudgeHtml(){
+  const spent=unlockCount();
+  if(spent<2) return '';
+  return `<p class="hint" style="text-align:left;margin:12px 0 0">You’ve unlocked <b>${spent}</b> reports.
+    A plan costs about the same per month and adds the overlay video, trends and before / after —
+    which one report on its own can never show you.</p>`;
+}
 function fromPriceLabel(){
   const monthly=((PLANS&&PLANS.cards)||[])
     .filter(c=>c.kind==='tier')
@@ -3800,6 +3826,17 @@ async function handleCheckoutReturn(){
     openPricing();
     return;
   }
+  // An unlock grants no tier either, and it opens exactly one report -- so
+  // there is nothing to poll for. Reload history (the webhook has written the
+  // entitlement onto the row) and open the thing they just paid for.
+  if(plan==='unlock'){
+    let id=null;
+    try{ id=sessionStorage.getItem('flapp_unlocking'); sessionStorage.removeItem('flapp_unlocking'); }catch(e){}
+    toast('Unlocked — opening your report.',{duration:5000});
+    await refreshCloud();
+    if(id) openHistory(id); else openHistoryView();
+    return;
+  }
   toast('Payment received — activating your plan…',{duration:6000});
   // The webhook sets the tier server-side; it can lag a second or two. Poll
   // /auth/me until the tier upgrades, then confirm.
@@ -3861,14 +3898,19 @@ function pickAnalysis(){
    table right here — a fourth place that had to know which cycles each tier
    sells, and one that silently sent the wrong key the moment a tier gained or
    lost a billing period. The card that was clicked already knows its key. */
-async function startCheckout(plan){
+async function startCheckout(plan, analysisIdArg){
   // Checkout attaches the purchase to an account — require sign-in first.
   if(!auth){ toast('Create a free account first, then pick a plan.',{action:'Sign up',onAction:()=>openAuth('register')}); return; }
   if(!plan) return;
-  let analysisId=null;
+  let analysisId=analysisIdArg||null;
+  // An unlock buys the report in front of you; there is nothing to choose.
+  if(plan==='unlock' && !analysisId){ toast('Open a report first, then unlock it.'); return; }
   if(plan==='expert'){
     analysisId=await pickAnalysis();
     if(!analysisId) return;              // backed out, or nothing to review yet
+  }
+  if(plan==='unlock'){
+    try{ sessionStorage.setItem('flapp_unlocking', analysisId); }catch(e){}
   }
   try{
     const r=await fetch('/billing/checkout',{method:'POST',
@@ -4107,10 +4149,14 @@ function render(job){
   // render. The preview falls through and renders the report, then hides the
   // two sections it does not include (see the end of this function).
   if(r.locked && r.locked.reason!=='preview'){
+    // saveToHistory returns the entry id -- the report has to be stored
+    // before it can be sold, because that id is what the unlock buys.
+    const entryId=saveToHistory('video', r);
     renderUpsell('upsellHost', r.locked,
-      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock','exportBlock']);
+      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock','exportBlock'],
+      entryId);
     renderQuota();
-    mountFeedback('fbHost','video',r,saveToHistory('video', r),
+    mountFeedback('fbHost','video',r,entryId,
       {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
     state.lastResult=r; $('#shareBtn').classList.remove('hidden');
     setState('results',{focus:'#resultsTitle'});

@@ -99,10 +99,6 @@ class Settings:
     stripe_price_enthusiast_y: str | None = None   # $69 / year
     stripe_price_full_y: str | None = None         # $99 / year
     stripe_price_expert: str | None = None         # $39 one-time
-    # $4 single-report unlock. Configured ahead of the feature so the price can
-    # be created in Stripe now; deliberately NOT in ``plan_price_map`` yet --
-    # /checkout validates against that map, so listing it would sell a plan
-    # whose webhook branch does not exist and which therefore unlocks nothing.
     stripe_price_unlock: str | None = None         # $4 one-time
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
@@ -136,6 +132,7 @@ class Settings:
             "enthusiast_yearly": self.stripe_price_enthusiast_y,
             "full_yearly": self.stripe_price_full_y,
             "expert": self.stripe_price_expert,
+            "unlock": self.stripe_price_unlock,
         }
 
     @property

@@ -280,6 +280,15 @@ async def create_checkout(
             )
         return await _redeem_expert_credit(db, user, analysis_id)
 
+    # An unlock buys one specific report, so an unnamed one is meaningless --
+    # and unlike the Expert Review there is no human downstream to work out
+    # which was meant.
+    if body.plan == "unlock" and not (body.analysis_client_id or "").strip():
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Choose which analysis you'd like to unlock.",
+        )
+
     _require_stripe()
     # Two different failures were sharing one 400 and one internal-sounding
     # string, which the client puts straight in front of the customer.
@@ -299,7 +308,7 @@ async def create_checkout(
             "— or email support@getflapp.com and we'll sort it out.",
         )
 
-    is_subscription = body.plan != "expert"
+    is_subscription = body.plan not in ("expert", "unlock")
     base = _base_url(request)
 
     # Already subscribed? A second Checkout does not upgrade anyone -- it creates
@@ -934,10 +943,48 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
                 credits=user.expert_credits, reason="full_subscription",
             )
     else:
-        # One-time Expert Review: grants no tier, so nothing about the account
-        # would otherwise change. Record the order -- it is the only trace the
-        # customer (and the fulfilment queue) has that they paid.
+        # A one-time purchase grants no tier, so nothing about the account would
+        # otherwise change. Record the order -- it is the only trace the customer
+        # (and the fulfilment queue) has that they paid.
         await _record_order(db, user, obj)
+        meta = obj.get("metadata") or {}
+        if str(meta.get("plan") or "") == "unlock":
+            await _apply_unlock(db, user, meta.get("analysis_client_id"))
+
+
+async def _apply_unlock(
+    db: AsyncSession, user: User, analysis_client_id: Any,
+) -> None:
+    """Open one stored report for good.
+
+    Written onto the analysis rather than derived from the order on every read:
+    a report is opened once and read many times, and joining orders per row on
+    every history load would make the cheapest screen in the app the most
+    expensive query.
+
+    Idempotent by nature -- Stripe redelivers, and setting an already-set
+    timestamp again would only move it. It is left alone.
+    """
+    client_id = str(analysis_client_id or "").strip()[:64]
+    if not client_id:
+        logger.warning("UNLOCK_WITHOUT_ANALYSIS", user_id=user.id)
+        return
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        # Deleted between paying and the webhook landing. The order stands as
+        # the record that they paid; nothing here can be opened.
+        logger.warning("UNLOCK_ANALYSIS_MISSING", user_id=user.id, analysis=client_id)
+        return
+    if row.unlocked_at_ms:
+        return
+    row.unlocked_at_ms = _now_ms()
+    logger.info("UNLOCKED", user_id=user.id, analysis=client_id)
 
 
 def _price_from_subscription(obj: Any) -> str | None:

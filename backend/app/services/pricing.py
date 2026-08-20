@@ -73,8 +73,9 @@ class Card:
     tagline: str
     prices: tuple[Price, ...]
     features: tuple[Feature, ...]
-    # "tier"  -> a subscription plan, matched against ``user.tier``
-    # "addon" -> a one-time purchase that grants no tier
+    # "tier"   -> a subscription plan, matched against ``user.tier``
+    # "addon"  -> a one-time purchase that grants no tier, sold on the pricing page
+    # "single" -> a one-time purchase sold in context, never on the pricing page
     kind: str = "tier"
     tier: str | None = None
     badge: str | None = None
@@ -100,15 +101,16 @@ CARDS: tuple[Card, ...] = (
                   interval="forever"),
         ),
         features=(
-            Feature("<b>3</b> analyses / month"),
-            Feature("Skeleton + score (angles hidden)"),
+            Feature("<b>10</b> analyses / month"),
+            Feature("<b>Your first report in full</b> — findings + coaching"),
+            Feature("After that: score + skeleton, or <b>$4</b> to unlock one"),
             # Signed-in free accounts have always had cloud history -- /me
             # never checked the tier -- while this card said they did not.
             # Promising less than you deliver is not the safe direction of a
             # mistake: it costs an upgrade argument and makes the rest of the
             # card look approximate.
             Feature("Cloud history, synced across devices"),
-            Feature("AI coaching &amp; measurements", on=False),
+            Feature("Trends &amp; before / after", on=False),
             Feature("Overlay video", on=False),
         ),
         cta_label="Create free account",
@@ -154,6 +156,32 @@ CARDS: tuple[Card, ...] = (
             Feature("<b>1 Expert Review included</b> ($39 value)"),
         ),
         cta_label="Go Full",
+    ),
+    # Not a card: the unlock is offered on the blurred report itself, at the
+    # moment somebody is looking at their own score and wants the rest. A
+    # pricing page is where you go to compare plans, which is a different
+    # errand and a worse moment to interrupt with $4.
+    Card(
+        id="unlock",
+        name="Unlock this report",
+        kind="single",
+        tagline=(
+            "The measurements and the drills for one analysis. No plan, "
+            "no card kept."
+        ),
+        prices=(
+            Price(plan="unlock", amount=400, per="once",
+                  note="per report", interval="once"),
+        ),
+        features=(
+            Feature("Every joint angle we measured, against its range"),
+            Feature("The corrective drills for what we found"),
+            # Said out loud, because the fence IS the product boundary: one
+            # report cannot be compared with anything, and comparison is what a
+            # subscription is actually for.
+            Feature("Trends, before / after and the overlay video", on=False),
+        ),
+        cta_label="Unlock this report",
     ),
     Card(
         id="expert",

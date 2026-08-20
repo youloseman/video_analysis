@@ -65,12 +65,9 @@ def test_availability_follows_the_configured_stripe_prices():
     assert all(p["available"] for p in free)
 
 
-def test_the_unlock_price_is_not_sellable_yet():
-    """It is configured ahead of the feature so the Stripe price can exist, but
-    listing it in the plan map would sell a checkout whose webhook branch does
-    not exist -- i.e. take money and unlock nothing."""
-    assert "unlock" not in settings.plan_price_map
-    assert hasattr(settings, "stripe_price_unlock")
+def test_the_single_report_unlock_is_sellable():
+    assert "unlock" in settings.plan_price_map
+    assert pricing.CARD_BY_ID["unlock"].kind == "single"
 
 
 def test_annual_saving_is_computed_from_the_amounts_not_written_down():
@@ -136,6 +133,11 @@ def test_the_landing_page_prints_the_catalogue_into_its_html():
     crawlers and for the first paint, not fetched afterwards."""
     doc = _served("landing.html")
     for card in pricing.CARDS:
+        if card.kind == "single":
+            # Sold on the blurred report, at the moment somebody wants the rest
+            # of their own score -- not on a page for comparing plans.
+            assert card.name not in doc
+            continue
         assert card.name in doc
         for price in card.prices:
             assert pricing.money(price.amount) in doc
