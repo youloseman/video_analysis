@@ -174,11 +174,23 @@ def _migrate_analyses(conn) -> None:
     if "unlocked_at_ms" not in cols:
         conn.execute(text("ALTER TABLE analyses ADD COLUMN unlocked_at_ms BIGINT"))
         logger.info("MIGRATED", change="analyses.unlocked_at_ms added")
+    if "profile_id" not in cols:
+        # No FK in the ALTER: SQLite cannot add one to an existing table, and
+        # the column is nullable anyway -- a deleted profile is meant to leave
+        # its analyses behind rather than take them with it.
+        conn.execute(text("ALTER TABLE analyses ADD COLUMN profile_id INTEGER"))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_analyses_profile_id "
+            "ON analyses (profile_id)"
+        ))
+        logger.info("MIGRATED", change="analyses.profile_id added")
 
 
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
-    from app.models import analysis, feedback, order, usage, user  # noqa: F401
+    from app.models import (  # noqa: F401
+        analysis, feedback, order, profile, usage, user,
+    )
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -859,6 +859,8 @@ async def _apply_event(db: AsyncSession, event: Any) -> None:
         await _on_subscription_change(db, obj)
     elif etype == "customer.subscription.deleted":
         await _on_subscription_deleted(db, obj)
+    elif etype == "invoice.payment_succeeded":
+        await _on_invoice_paid(db, obj)
     else:
         return
     await db.commit()
@@ -985,6 +987,41 @@ async def _apply_unlock(
         return
     row.unlocked_at_ms = _now_ms()
     logger.info("UNLOCKED", user_id=user.id, analysis=client_id)
+
+
+def _price_from_invoice(obj: Any) -> str | None:
+    try:
+        return obj["lines"]["data"][0]["price"]["id"]
+    except (KeyError, IndexError, TypeError):
+        return None
+
+
+async def _on_invoice_paid(db: AsyncSession, obj: Any) -> None:
+    """A subscription renewed. The Full tier includes a review per paid term,
+    so a renewal owes another one.
+
+    Only ``subscription_cycle``. Stripe also sends this for the invoice that
+    opens a subscription, which ``checkout.session.completed`` has already
+    granted against -- acting on both would hand out two credits for one
+    purchase. The invoice id is the grant reference, so a redelivery of this
+    event is a no-op for the same reason a redelivered checkout is.
+
+    Until this existed, a Full subscriber's second year arrived with the
+    included review silently missing: the card still promised it, and nothing
+    would have agreed with them.
+    """
+    if obj.get("billing_reason") != "subscription_cycle":
+        return
+    user = await _user_by_customer(db, obj.get("customer"))
+    if user is None:
+        return
+    if tier_for_price(_price_from_invoice(obj)) != TIER_FULL:
+        return
+    if grant_expert_credits(user, str(obj.get("id") or "")):
+        logger.info(
+            "CREDIT_GRANTED", user_id=user.id,
+            credits=user.expert_credits, reason="renewal",
+        )
 
 
 def _price_from_subscription(obj: Any) -> str | None:

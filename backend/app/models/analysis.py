@@ -42,6 +42,14 @@ class Analysis(Base):
     # find it. Indexed: the storage sweeper looks jobs up by it.
     job_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     created_at_ms: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+    # Which setup this was filmed on (models/profile.py). A real column rather
+    # than a field inside ``data`` because history and trends filter on it, and
+    # because the client must not be the one deciding what it belongs to.
+    # NULL is legitimate: everything filmed before profiles existed, and
+    # anything the athlete has not filed.
+    profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="SET NULL"), index=True, nullable=True,
+    )
     # The analyzer's own output, complete, written by the server -- NOT by the
     # client, which only ever receives what its plan allows and would otherwise
     # be the authority on its own entitlements. ``data`` above is the client's

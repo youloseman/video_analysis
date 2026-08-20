@@ -223,3 +223,65 @@ async def test_without_a_credit_the_purchase_goes_to_stripe_as_before(
             CheckoutIn(plan="expert", analysis_client_id="h1"), None, user, db,
         )
     assert exc.value.status_code == 503
+
+
+# --------------------------------------------------------------------------
+# Renewals
+#
+# A Full subscriber's second year used to arrive with the included review
+# silently missing: the webhook listened for checkout and subscription events,
+# and Stripe reports a renewal as neither.
+# --------------------------------------------------------------------------
+def renewal_invoice(*, customer="cus_1", invoice_id="in_1", price=PRICE_FULL_Y,
+                    reason="subscription_cycle"):
+    return {
+        "type": "invoice.payment_succeeded",
+        "data": {"object": {
+            "id": invoice_id,
+            "customer": customer,
+            "billing_reason": reason,
+            "lines": {"data": [{"price": {"id": price}}]},
+        }},
+    }
+
+
+async def test_a_renewal_grants_next_years_review(db, make_user):
+    user = await make_user(tier=TIER_FULL, stripe_customer_id="cus_1")
+    await _apply_event(db, renewal_invoice())
+    await db.refresh(user)
+    assert user.expert_credits == FULL_EXPERT_CREDITS
+
+
+async def test_the_opening_invoice_does_not_grant_a_second_time(db, make_user):
+    """Stripe sends this for the invoice that starts a subscription too, and
+    checkout.session.completed has already granted against that purchase."""
+    user = await make_user(tier=TIER_STARTER)
+    await _apply_event(db, full_checkout(user.id))
+    await _apply_event(db, renewal_invoice(reason="subscription_create"))
+    await db.refresh(user)
+    assert user.expert_credits == FULL_EXPERT_CREDITS
+
+
+async def test_a_redelivered_invoice_grants_once(db, make_user):
+    user = await make_user(tier=TIER_FULL, stripe_customer_id="cus_1")
+    for _ in range(3):
+        await _apply_event(db, renewal_invoice())
+    await db.refresh(user)
+    assert user.expert_credits == FULL_EXPERT_CREDITS
+
+
+async def test_two_years_are_two_reviews(db, make_user):
+    user = await make_user(tier=TIER_FULL, stripe_customer_id="cus_1")
+    await _apply_event(db, renewal_invoice(invoice_id="in_1"))
+    await _apply_event(db, renewal_invoice(invoice_id="in_2"))
+    await db.refresh(user)
+    assert user.expert_credits == 2 * FULL_EXPERT_CREDITS
+
+
+async def test_renewing_the_cheaper_plan_grants_nothing(db, make_user):
+    user = await make_user(tier=TIER_ENTHUSIAST, stripe_customer_id="cus_1")
+    await _apply_event(
+        db, renewal_invoice(price=settings.stripe_price_enthusiast_y),
+    )
+    await db.refresh(user)
+    assert user.expert_credits == 0

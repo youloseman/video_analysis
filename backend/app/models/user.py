@@ -37,6 +37,25 @@ TIER_LIMITS: dict[str, tuple[int, str]] = {
 }
 
 
+# Equipment profiles per tier (see models/profile.py). One is enough to say
+# "this is my bike"; keeping several -- road, TT, trainer, two pairs of shoes --
+# is what makes a comparison BETWEEN setups possible, and that is the thing a
+# single bought report structurally cannot give you. So it is where Full earns
+# its price, rather than in a quota nobody reaches.
+PROFILE_LIMITS: dict[str, int] = {
+    TIER_STARTER: 1,
+    TIER_ENTHUSIAST: 1,
+    TIER_FULL: 10,
+    TIER_ADMIN: 10,
+}
+DEFAULT_PROFILE_LIMIT = PROFILE_LIMITS[TIER_STARTER]
+
+
+def profile_limit(tier: str | None) -> int:
+    """How many live profiles this tier may keep; unknown tiers get the free one."""
+    return PROFILE_LIMITS.get(tier or "", DEFAULT_PROFILE_LIMIT)
+
+
 # Expert Reviews the Full tier includes per paid term. The pricing card says
 # "1 Expert Review included ($39 value)", and this is the number that makes
 # that sentence true rather than aspirational.

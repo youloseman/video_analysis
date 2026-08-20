@@ -13,19 +13,26 @@ time from ``/analyses/{client_id}/keyframe`` as cards scroll into view.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import delete, select
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.security import get_current_user
 from app.models.analysis import Analysis
-from app.models.user import User
+from app.models.profile import (
+    DEFAULT_KIND,
+    MAX_NAME_CHARS,
+    PROFILE_KINDS,
+    Profile,
+)
+from app.models.user import User, profile_limit
 from app.services.result_gating import (
     ACCESS_FULL,
     access_for_stored,
@@ -37,6 +44,10 @@ from app.services.video_analysis.llm_recommendations import (
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/me", tags=["me"])
+
+
+def _now_ms() -> int:
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 MAX_PER_USER = 100
 
@@ -74,6 +85,7 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
     # Expert Review reach the actual footage weeks later. Photo analyses have
     # none: nothing was ever written to disk for them.
     job_id = str(entry.get("jobId") or "")[:64] or None
+    profile_id = await _owned_profile_id(db, user, entry.get("profileId"))
     sport = entry.get("sport")
     kind = entry.get("kind")
     score = entry.get("score")
@@ -94,14 +106,39 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
         row.sport = sport
         row.kind = kind
         row.score = score
+        # Only overwritten when the client actually names one: a re-save from
+        # the thin list carries no profileId, and dropping the filing every
+        # time an entry is edited would empty the profiles over a week.
+        if profile_id is not None:
+            row.profile_id = profile_id
     else:
         row = Analysis(
             user_id=user.id, client_id=cid, created_at_ms=at, job_id=job_id,
+            profile_id=profile_id,
             sport=sport, kind=kind, score=score, data=entry,
         )
         if job_id:
             _attach_result(row, job_id)
         db.add(row)
+
+
+async def _owned_profile_id(
+    db: AsyncSession, user: User, raw: Any,
+) -> int | None:
+    """Validate a client-supplied profile id against the caller's own profiles.
+
+    Taken on trust it would be a way to file an analysis under somebody else's
+    bike -- which sounds harmless until you notice that profile filtering is
+    what the comparison screens read from.
+    """
+    try:
+        pid = int(raw)
+    except (TypeError, ValueError):
+        return None
+    owned = await db.scalar(
+        select(Profile.id).where(Profile.id == pid, Profile.user_id == user.id)
+    )
+    return int(owned) if owned else None
 
 
 async def _enforce_cap(db: AsyncSession, user: User) -> None:
@@ -183,6 +220,8 @@ def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
     thin = {k: v for k, v in data.items() if k != "keyframe"}
     thin["has_keyframe"] = bool(data.get("keyframe"))
     if row is not None:
+        # The server's filing wins over whatever the client last remembered.
+        thin["profileId"] = row.profile_id
         thin["access"] = access_for_stored(user, row)
         # Nothing to reveal: written before results were stored server-side, so
         # an unlock would sell an empty report.
@@ -194,15 +233,20 @@ def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
 async def list_analyses(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    profile_id: int | None = None,
 ) -> list[dict[str, Any]]:
-    rows = (
-        await db.execute(
-            select(Analysis)
-            .where(Analysis.user_id == user.id)
-            .order_by(Analysis.created_at_ms.desc())
-            .limit(MAX_PER_USER)
-        )
-    ).scalars().all()
+    query = (
+        select(Analysis)
+        .where(Analysis.user_id == user.id)
+        .order_by(Analysis.created_at_ms.desc())
+        .limit(MAX_PER_USER)
+    )
+    if profile_id is not None:
+        # Filtering to one setup is what makes a trend line mean something:
+        # road-bike angles and TT angles are both correct and describe nobody
+        # when averaged together.
+        query = query.where(Analysis.profile_id == profile_id)
+    rows = (await db.execute(query)).scalars().all()
     return [_without_keyframe(r.data, r, user) for r in rows]
 
 
@@ -410,3 +454,201 @@ async def delete_analysis(
         )
     )
     await db.commit()
+
+
+# --------------------------------------------------------------------------
+# Equipment profiles: which bike (or which shoes) an analysis was filmed on.
+#
+# See models/profile.py for why this exists at all. The short version: a rider
+# on a road bike and the same rider on a TT bike are two correct sets of angles,
+# and averaging them produces a trend line describing nobody.
+# --------------------------------------------------------------------------
+class ProfileIn(BaseModel):
+    name: str = Field(min_length=1, max_length=MAX_NAME_CHARS)
+    sport: str = "bike"
+    kind: str = DEFAULT_KIND
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Give the profile a name.")
+        return v
+
+    @field_validator("sport")
+    @classmethod
+    def _sport(cls, v: str) -> str:
+        return "run" if v == "run" else "bike"
+
+    @field_validator("kind")
+    @classmethod
+    def _kind(cls, v: str) -> str:
+        return v if v in PROFILE_KINDS else DEFAULT_KIND
+
+
+class ProfilePatch(BaseModel):
+    name: str | None = Field(default=None, max_length=MAX_NAME_CHARS)
+    kind: str | None = None
+    archived: bool | None = None
+
+
+def _profile_out(p: Profile, used: int = 0) -> dict[str, Any]:
+    return {
+        "id": p.id, "name": p.name, "sport": p.sport, "kind": p.kind,
+        "archived": p.archived, "created_at_ms": p.created_at_ms,
+        "analyses": used,
+    }
+
+
+async def _owned_profile(db: AsyncSession, user: User, profile_id: int) -> Profile:
+    row = (
+        await db.execute(
+            select(Profile).where(
+                Profile.id == profile_id, Profile.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        # 404 rather than 403: ids are sequential, and confirming that one
+        # exists would be a way to count somebody else's bikes.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found.",
+        )
+    return row
+
+
+@router.get("/profiles")
+async def list_profiles(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The caller's setups, with how many analyses each holds.
+
+    ``limit`` and ``used`` ride along so the client can render "1 of 1 — a plan
+    keeps several" without a second call, and without knowing the tier table.
+    """
+    rows = (
+        await db.execute(
+            select(Profile)
+            .where(Profile.user_id == user.id)
+            .order_by(Profile.archived, Profile.created_at_ms)
+        )
+    ).scalars().all()
+    counts = dict(
+        (
+            await db.execute(
+                select(Analysis.profile_id, func.count(Analysis.id))
+                .where(
+                    Analysis.user_id == user.id,
+                    Analysis.profile_id.is_not(None),
+                )
+                .group_by(Analysis.profile_id)
+            )
+        ).all()
+    )
+    live = sum(1 for p in rows if not p.archived)
+    return {
+        "profiles": [_profile_out(p, int(counts.get(p.id, 0))) for p in rows],
+        "limit": profile_limit(user.tier),
+        "used": live,
+    }
+
+
+@router.post("/profiles", status_code=status.HTTP_201_CREATED)
+async def create_profile(
+    body: ProfileIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    limit = profile_limit(user.tier)
+    live = int(
+        await db.scalar(
+            select(func.count(Profile.id)).where(
+                Profile.user_id == user.id, Profile.archived.is_(False),
+            )
+        )
+        or 0
+    )
+    if live >= limit:
+        # 402, not 403: this is a plan boundary, and the client shows a
+        # different thing for "you cannot" than for "you have not paid".
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=(
+                f"Your plan keeps {limit} equipment profile"
+                f"{'s' if limit > 1 else ''}. Comparing one setup against "
+                f"another is what the Full plan adds."
+            ),
+        )
+    row = Profile(
+        user_id=user.id, name=body.name, sport=body.sport, kind=body.kind,
+        created_at_ms=_now_ms(),
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    logger.info("PROFILE_CREATED", user_id=user.id, profile_id=row.id)
+    return _profile_out(row)
+
+
+@router.patch("/profiles/{profile_id}")
+async def update_profile(
+    profile_id: int,
+    body: ProfilePatch,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    row = await _owned_profile(db, user, profile_id)
+    if body.name is not None:
+        name = body.name.strip()[:MAX_NAME_CHARS]
+        if name:
+            row.name = name
+    if body.kind is not None and body.kind in PROFILE_KINDS:
+        row.kind = body.kind
+    if body.archived is not None:
+        # Un-archiving can push the account back over its limit (they retired a
+        # bike, then downgraded). Refuse rather than silently allow it.
+        if not body.archived and row.archived:
+            limit = profile_limit(user.tier)
+            live = int(
+                await db.scalar(
+                    select(func.count(Profile.id)).where(
+                        Profile.user_id == user.id, Profile.archived.is_(False),
+                    )
+                )
+                or 0
+            )
+            if live >= limit:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail=f"Your plan keeps {limit} active profile"
+                           f"{'s' if limit > 1 else ''}.",
+                )
+        row.archived = body.archived
+    await db.commit()
+    return _profile_out(row)
+
+
+@router.delete("/profiles/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_profile(
+    profile_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    """Remove a setup. Its analyses stay, unfiled.
+
+    Deliberately not a cascade: the history is the athlete's, and the profile
+    is a label on it. Losing three months of running because a pair of shoes
+    was deleted would be a strange trade. ``archived`` is the softer option and
+    the one the UI offers first.
+    """
+    row = await _owned_profile(db, user, profile_id)
+    await db.execute(
+        update(Analysis)
+        .where(Analysis.user_id == user.id, Analysis.profile_id == row.id)
+        .values(profile_id=None)
+    )
+    await db.delete(row)
+    await db.commit()
+    logger.info("PROFILE_DELETED", user_id=user.id, profile_id=profile_id)
