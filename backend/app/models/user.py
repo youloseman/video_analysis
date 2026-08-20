@@ -25,7 +25,12 @@ PAID_TIERS = (TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
 # testing can burn. Raised 5 -> 10 because a live demo of the product runs
 # through five clips before the conversation is over.
 TIER_LIMITS: dict[str, tuple[int, str]] = {
-    TIER_STARTER: (3, "month"),
+    # Raised 3 -> 10 when reading became the paid thing rather than uploading.
+    # A teaser costs a CPU slot and nothing else -- no Gemini call, no overlay
+    # render -- so a low cap bought us nothing and cost the visitor the second
+    # clip, which is the one they film after changing something. This is an
+    # anti-abuse ceiling now, not a product tier.
+    TIER_STARTER: (10, "month"),
     TIER_ENTHUSIAST: (30, "month"),
     TIER_FULL: (120, "month"),
     TIER_ADMIN: (10, "day"),

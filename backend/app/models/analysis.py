@@ -10,6 +10,7 @@ from __future__ import annotations
 from sqlalchemy import (
     JSON,
     BigInteger,
+    Boolean,
     ForeignKey,
     Integer,
     String,
@@ -41,6 +42,26 @@ class Analysis(Base):
     # find it. Indexed: the storage sweeper looks jobs up by it.
     job_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     created_at_ms: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+    # The analyzer's own output, complete, written by the server -- NOT by the
+    # client, which only ever receives what its plan allows and would otherwise
+    # be the authority on its own entitlements. ``data`` above is the client's
+    # rendering of an analysis; this is the analysis.
+    #
+    # It exists so that a report can be sold later. Trimming on the way in threw
+    # the paid half away before anything stored it, which quietly decided that a
+    # free analysis could never become a paid one: unlocking had nothing to
+    # reveal, and subscribing could not open the history somebody had built
+    # while free.
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # This analysis was the account's one free preview. Server-set, so that
+    # re-opening it months later still shows what it showed on the day.
+    preview: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False,
+    )
+    # Paid for individually (the one-off unlock). The Order is the record of the
+    # payment; this is the entitlement, denormalised onto the row so that
+    # reading a report is not a join per analysis.
+    unlocked_at_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     sport: Mapped[str | None] = mapped_column(String(16), nullable=True)
     kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)

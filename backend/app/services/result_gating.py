@@ -202,6 +202,24 @@ def gate_preview_result(result: dict[str, Any]) -> dict[str, Any]:
     return kept
 
 
+def access_for_stored(user: User | None, row: Any) -> str:
+    """Access level for a saved analysis, which can be bought a la carte.
+
+    Order matters: the tier is checked first, so subscribing opens everything
+    the account ever ran -- including reports it looked at months ago through a
+    teaser. That retroactive opening is most of why the full result is stored
+    at all, and it is a better argument for a plan than any wording on the
+    pricing page.
+    """
+    if user is not None and not is_free(user):
+        return ACCESS_FULL
+    if getattr(row, "unlocked_at_ms", None):
+        return ACCESS_FULL
+    if getattr(row, "preview", False):
+        return ACCESS_PREVIEW
+    return ACCESS_TEASER
+
+
 def gate_for_access(result: dict[str, Any], access: str) -> dict[str, Any]:
     """Dispatch on the access level from ``access_for``."""
     if access == ACCESS_FULL:

@@ -26,6 +26,7 @@ from app.core.db import get_session
 from app.core.security import get_current_user
 from app.models.analysis import Analysis
 from app.models.user import User
+from app.services.result_gating import access_for_stored, gate_for_access
 from app.services.video_analysis.llm_recommendations import (
     generate_progress_summary,
 )
@@ -85,14 +86,18 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
         # would orphan footage that is still inside its retention window.
         if job_id:
             row.job_id = job_id
+            _attach_result(row, job_id)
         row.sport = sport
         row.kind = kind
         row.score = score
     else:
-        db.add(Analysis(
+        row = Analysis(
             user_id=user.id, client_id=cid, created_at_ms=at, job_id=job_id,
             sport=sport, kind=kind, score=score, data=entry,
-        ))
+        )
+        if job_id:
+            _attach_result(row, job_id)
+        db.add(row)
 
 
 async def _enforce_cap(db: AsyncSession, user: User) -> None:
@@ -106,6 +111,32 @@ async def _enforce_cap(db: AsyncSession, user: User) -> None:
     ).scalars().all()
     if stale:
         await db.execute(delete(Analysis).where(Analysis.id.in_(stale)))
+
+
+def _attach_result(row: Analysis, job_id: str) -> None:
+    """Copy the analyzer's full output onto the row, from the live job store.
+
+    The client cannot supply this: it only ever received what its plan allowed,
+    and letting it post the "full" result would make the browser the authority
+    on its own entitlements. So the server takes it from the job it ran, which
+    is the only place the complete object exists.
+
+    Silent when the job has aged out of the store -- the entry is still saved,
+    it just cannot be sold or opened by a later upgrade. The client saves within
+    seconds of the result appearing, so that window is theoretical.
+    """
+    from app.core.jobs import JOBS
+
+    job = JOBS.get(job_id) or {}
+    result = job.get("result")
+    if not result:
+        return
+    row.result = result
+    # Whether this was the account's free preview is decided by the server at
+    # upload time and recorded here, so re-opening the report a year later still
+    # shows what it showed on the day.
+    if job.get("preview"):
+        row.preview = True
 
 
 async def _delete_stored_clips(
@@ -135,10 +166,23 @@ async def _delete_stored_clips(
     return removed
 
 
-def _without_keyframe(data: dict[str, Any]) -> dict[str, Any]:
-    """Entry minus its base64 frame, flagged so the client knows to fetch it."""
+def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
+                     user: User | None = None) -> dict[str, Any]:
+    """Entry minus its base64 frame, flagged so the client knows to fetch it.
+
+    ``access`` rides along because the client stored whatever it was shown at
+    the time, which may now be less than it is entitled to -- after subscribing,
+    or after paying to unlock this one report. It is the signal to go and fetch
+    the real thing from ``/analyses/{id}/result`` instead of re-rendering a
+    stale teaser.
+    """
     thin = {k: v for k, v in data.items() if k != "keyframe"}
     thin["has_keyframe"] = bool(data.get("keyframe"))
+    if row is not None:
+        thin["access"] = access_for_stored(user, row)
+        # Nothing to reveal: written before results were stored server-side, so
+        # an unlock would sell an empty report.
+        thin["sellable"] = bool(row.result)
     return thin
 
 
@@ -155,7 +199,7 @@ async def list_analyses(
             .limit(MAX_PER_USER)
         )
     ).scalars().all()
-    return [_without_keyframe(r.data) for r in rows]
+    return [_without_keyframe(r.data, r, user) for r in rows]
 
 
 @router.get("/analyses/{client_id}/keyframe")
@@ -177,6 +221,44 @@ async def get_keyframe(
             status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
         )
     return {"keyframe": (row.data or {}).get("keyframe")}
+
+
+@router.get("/analyses/{client_id}/result")
+async def get_analysis_result(
+    client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The stored analysis itself, trimmed to what the caller may now see.
+
+    Distinct from the history entry (``data``), which is the client's own
+    rendering of a report and was frozen at whatever it was allowed to see that
+    day. This serves the analyzer's output, gated at read time -- so subscribing
+    opens every past report, and a one-off unlock opens exactly one.
+    """
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    if not row.result:
+        # Ran before results were stored server-side. Saying so is better than
+        # returning a shell that looks like a report we lost.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This analysis was run before full reports were stored.",
+        )
+    access = access_for_stored(user, row)
+    return {
+        "access": access,
+        "result": gate_for_access(row.result, access),
+    }
 
 
 @router.post("/analyses", status_code=status.HTTP_201_CREATED)

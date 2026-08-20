@@ -158,6 +158,22 @@ def _migrate_analyses(conn) -> None:
             "CREATE INDEX IF NOT EXISTS ix_analyses_job_id ON analyses (job_id)"
         ))
         logger.info("MIGRATED", change="analyses.job_id added")
+    json_type = "JSONB" if conn.dialect.name == "postgresql" else "JSON"
+    if "result" not in cols:
+        # NULL for every row written before this: those analyses were trimmed
+        # before anything could store them, so there is genuinely nothing to
+        # back-fill. They stay unsellable, and the reader says so rather than
+        # offering an unlock that would reveal an empty report.
+        conn.execute(text(f"ALTER TABLE analyses ADD COLUMN result {json_type}"))
+        logger.info("MIGRATED", change="analyses.result added")
+    if "preview" not in cols:
+        conn.execute(text(
+            "ALTER TABLE analyses ADD COLUMN preview BOOLEAN NOT NULL DEFAULT false"
+        ))
+        logger.info("MIGRATED", change="analyses.preview added")
+    if "unlocked_at_ms" not in cols:
+        conn.execute(text("ALTER TABLE analyses ADD COLUMN unlocked_at_ms BIGINT"))
+        logger.info("MIGRATED", change="analyses.unlocked_at_ms added")
 
 
 async def init_db() -> None:

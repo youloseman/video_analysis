@@ -44,7 +44,7 @@ async def add_events(db, user_id: int, when: list[datetime]) -> None:
 @pytest.mark.parametrize(
     ("tier", "expected"),
     [
-        (TIER_STARTER, (3, "month")),
+        (TIER_STARTER, (10, "month")),
         (TIER_ENTHUSIAST, (30, "month")),
         (TIER_FULL, (120, "month")),
         (TIER_ADMIN, (10, "day")),
@@ -112,21 +112,23 @@ async def test_usage_is_counted_per_user(db, make_user):
 
 
 async def test_quota_allows_up_to_the_limit_then_blocks(db, make_user):
-    """The boundary: the 3rd analysis on a 3/month plan is allowed, the 4th
-    is not."""
+    """The boundary: the Nth analysis on an N/month plan is allowed, the N+1th
+    is not. Reads the cap rather than restating it -- this test is about the
+    boundary, and should not fail again the next time the number moves."""
     user = await make_user(tier=TIER_STARTER)
+    cap, _ = tier_limit(TIER_STARTER)
     now = datetime.now(timezone.utc)
 
     allowed, used, limit, window = await check_quota(db, user)
-    assert (allowed, used, limit, window) == (True, 0, 3, "month")
+    assert (allowed, used, limit, window) == (True, 0, cap, "month")
 
-    await add_events(db, user.id, [now, now])
+    await add_events(db, user.id, [now] * (cap - 1))
     allowed, used, _, _ = await check_quota(db, user)
-    assert (allowed, used) == (True, 2)      # 3rd still allowed
+    assert (allowed, used) == (True, cap - 1)      # the last one is still allowed
 
     await add_events(db, user.id, [now])
     allowed, used, _, _ = await check_quota(db, user)
-    assert (allowed, used) == (False, 3)     # 4th blocked
+    assert (allowed, used) == (False, cap)   # one past the cap is blocked
 
 
 async def test_admin_quota_is_a_rolling_day(db, make_user):
@@ -158,7 +160,9 @@ async def test_photo_and_video_share_one_quota(db, make_user):
     """Both endpoints record into the same table on purpose -- a plan is N
     analyses, not N videos plus N photos."""
     user = await make_user(tier=TIER_STARTER)
-    for kind in ("video", "photo", "video"):
+    cap, _ = tier_limit(TIER_STARTER)
+    kinds = ["video", "photo"] * cap
+    for kind in kinds[:cap]:
         await record_usage(db, user.id, kind)
     allowed, used, _, _ = await check_quota(db, user)
-    assert (allowed, used) == (False, 3)
+    assert (allowed, used) == (False, cap)

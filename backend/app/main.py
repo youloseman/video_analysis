@@ -95,6 +95,7 @@ from app.services.notify import log_email_configuration
 from app.services.result_gating import (
     ACCESS_PREVIEW,
     ACCESS_TEASER,
+    access_for,
     gate_for_access,
     is_free,
 )
@@ -440,13 +441,14 @@ def _process_job(
         # Don't leak the server filesystem path; expose the API URL instead.
         if safe.get("overlay_video_path"):
             safe["overlay_video_path"] = f"/jobs/{job_id}/overlay"
-        # Trim to what this caller may see (paid fields removed here, never
-        # hidden client-side).
-        if free:
-            safe = gate_for_access(
-                safe, ACCESS_PREVIEW if preview else ACCESS_TEASER,
-            )
+        # The WHOLE result is kept. It used to be trimmed here, which quietly
+        # decided that a free analysis would never be worth anything later:
+        # the paid half was thrown away before anything could store it, so
+        # unlocking a report afterwards had nothing to reveal and upgrading
+        # could not open the history somebody had already built. Trimming now
+        # happens on the way out, per reader -- see ``job_status``.
         job["result"] = safe
+        job["preview"] = preview
         if result.get("status") == "completed":
             job["status"] = "completed"
         else:
@@ -863,6 +865,13 @@ def job_status(
     user: User | None = Depends(optional_user),
 ) -> JobStatus:
     job = authorized_job(job_id, t, user.id if user else None)
+    # Gate on read. The stored result is complete; what this caller may see
+    # depends on their plan now -- so upgrading mid-analysis, or coming back to
+    # a job after subscribing, shows the full thing without re-running it.
+    access = access_for(user, bool(job.get("preview")))
+    result = job.get("result")
+    if result is not None:
+        result = gate_for_access(result, access)
     overlay_ready = (
         OVERLAY_ENCODER_PRESENT
         and bool(job.get("overlay_path"))
@@ -886,7 +895,7 @@ def job_status(
         overlay_available=overlay_ready,
         overlay_url=f"/jobs/{job_id}/overlay" if overlay_ready else None,
         overlay_failed=overlay_failed,
-        result=job.get("result"),
+        result=result,
     )
 
 
