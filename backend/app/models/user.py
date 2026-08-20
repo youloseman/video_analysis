@@ -75,6 +75,15 @@ class User(Base):
     expert_credits: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0", nullable=False,
     )
+    # The analysis that spent this account's one free preview -- the single
+    # report a free user gets in a form worth judging us by (see
+    # services/result_gating.py). Stored as the JOB id rather than a timestamp
+    # so a failed analysis can hand the preview back: burning somebody's one
+    # good look at the product on a clip that errored is the worst possible
+    # first impression, and it is exactly the run most likely to fail.
+    free_preview_job_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True,
+    )
     # The Stripe object (Checkout Session today, invoice once renewals grant
     # too) that last topped the balance up. Stripe retries a webhook until it
     # gets a 2xx, so "granted on subscription purchase" without this is

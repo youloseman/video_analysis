@@ -3128,6 +3128,7 @@ function renderPhoto(res){
    ============================================================ */
 const UNLOCK_COPY={
   coaching:'AI coaching & personal action plan',
+  plan:'Corrective drills — what to actually do about it',
   angles:'Exact joint-angle measurements',
   issues:'Every technique issue we found',
   ranges:'Cadence, ranges & benchmark metrics',
@@ -3158,9 +3159,23 @@ function renderUpsell(containerId, locked, blockIds){
   (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
   const host=$('#'+containerId); if(!host) return false;
   const items=(locked.unlocks||Object.keys(UNLOCK_COPY)).map(k=>UNLOCK_COPY[k]).filter(Boolean);
-  host.innerHTML=teaserPanelHtml(items, {src:'result'});
+  host.innerHTML=teaserPanelHtml(items, locked.reason==='preview'
+    ? {src:'preview', chip:'Your free report', title:'That was one report. The plan is what changes the next one.',
+       body:previewBody(locked)}
+    : {src:'result'});
   host.classList.remove('hidden');
   return true;
+}
+/* Concrete, because vague is a strange thing to follow a full report with:
+   the server counts what it withheld so this can name it. Falls back to prose
+   when the counts are missing (an older stored result). */
+function previewBody(locked){
+  const c=locked.counts||{};
+  const bits=[];
+  if(c.plan) bits.push(`<b>${c.plan}</b> corrective drill${c.plan>1?'s':''} picked for what we just found`);
+  if(c.angles) bits.push(`all <b>${c.angles}</b> joint angles we measured, against their reference ranges`);
+  if(!bits.length) return 'You\u2019ve read the findings and the coaching. The measurements behind them, and the drills that fix them, are on a paid plan.';
+  return `You\u2019ve read the findings and the coaching. Still behind the blur: ${bits.join(', and ')}.`;
 }
 /* Placeholder until Stage 4 (Stripe) wires real checkout. For now, nudge
    sign-in / show pricing so the CTA is never a dead end. */
@@ -4088,7 +4103,10 @@ function render(job){
   // Free-tier teaser: paid sections were stripped server-side. Hide them,
   // show the upgrade panel, and stop before rendering empty paid blocks.
   $('#upsellHost').classList.add('hidden');
-  if(r.locked){
+  // The teaser stops here: nothing paid was generated, so there is nothing to
+  // render. The preview falls through and renders the report, then hides the
+  // two sections it does not include (see the end of this function).
+  if(r.locked && r.locked.reason!=='preview'){
     renderUpsell('upsellHost', r.locked,
       ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock','exportBlock']);
     renderQuota();
@@ -4166,6 +4184,11 @@ function render(job){
   if(DEBUG){ $('#rawBlock').classList.remove('hidden'); $('#rawJson').textContent=JSON.stringify(r,null,2); }
 
   renderQuota();
+  // A preview keeps the findings and the coaching -- the two sections that
+  // explain the score in words -- and blurs the measurement table and the
+  // drills, which are the ongoing product rather than the sample.
+  if(r.locked) renderUpsell('upsellHost', r.locked,
+    ['planBlock','metricsBlock','anglesBlock','biomechBlock','exportBlock']);
   mountFeedback('fbHost','video',r,saveToHistory('video', r),
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');

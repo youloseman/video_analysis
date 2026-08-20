@@ -19,7 +19,17 @@ from app.models.user import (
     TIER_STARTER,
     User,
 )
-from app.services.result_gating import gate_free_result, gate_result_for_tier, is_free
+from app.services.result_gating import (
+    ACCESS_FULL,
+    ACCESS_PREVIEW,
+    ACCESS_TEASER,
+    access_for,
+    gate_for_access,
+    gate_free_result,
+    gate_preview_result,
+    gate_result_for_tier,
+    is_free,
+)
 
 
 def full_result() -> dict:
@@ -247,3 +257,86 @@ def test_paid_results_are_untouched_by_the_caveat_logic():
     result = gated_result()
     user = User(email="a@b.c", password_hash="x", tier=TIER_FULL)
     assert gate_result_for_tier(result, user) is result
+
+
+# --------------------------------------------------------------------------
+# The preview: one report per account that is worth reading.
+#
+# The teaser shows a score and nothing else, which demonstrates that the
+# product exists rather than that the hidden half is worth paying for. These
+# pin down which half is which -- and that the allowlist still governs, so a
+# paid field added later cannot join the preview by accident.
+# --------------------------------------------------------------------------
+def test_the_preview_keeps_what_explains_the_score():
+    src = full_result()
+    out = gate_preview_result(src)
+    assert out["technique_score"] == src["technique_score"]
+    assert out["detected_issues"] == src["detected_issues"]
+    assert out["ai_recommendations"] == src["ai_recommendations"]
+
+
+@pytest.mark.parametrize(
+    "key", ["angle_statistics", "training_plan", "sport_specific_metrics"],
+)
+def test_the_preview_withholds_the_measurements_and_the_drills(key):
+    """Both halves of the paid product: the complete table, and what to do
+    about it. ``sport_specific_metrics`` goes too -- the compact ``quality``
+    block is the only thing lifted out of it."""
+    assert key not in gate_preview_result(full_result())
+
+
+def test_the_preview_never_ships_the_overlay_video():
+    """The annotated video is a subscription feature, not part of the sample."""
+    out = gate_preview_result({**full_result(), "overlay_video_path": "/x.mp4"})
+    assert out["overlay_video_path"] is None
+
+
+def test_the_preview_counts_what_it_withheld():
+    """So the upgrade prompt can name it. "More" is a strange thing to promise
+    somebody who has just read the whole report."""
+    src = full_result()
+    counts = gate_preview_result(src)["locked"]["counts"]
+    assert counts["angles"] == len(src["angle_statistics"])
+    assert counts["plan"] == 1
+
+
+def test_the_preview_does_not_offer_back_what_it_just_showed():
+    unlocks = gate_preview_result(full_result())["locked"]["unlocks"]
+    assert "coaching" not in unlocks and "issues" not in unlocks
+    assert "plan" in unlocks and "angles" in unlocks
+
+
+def test_a_new_paid_field_is_withheld_from_the_preview_by_default():
+    """Allowlist, not denylist -- the same reason the teaser uses one."""
+    out = gate_preview_result({**full_result(), "power_estimate": {"w": 240}})
+    assert "power_estimate" not in out
+
+
+def test_the_preview_still_carries_the_capture_caveat():
+    assert "quality" in gate_preview_result(full_result())
+
+
+@pytest.mark.parametrize(
+    "tier,preview,expected",
+    [
+        (TIER_STARTER, False, ACCESS_TEASER),
+        (TIER_STARTER, True, ACCESS_PREVIEW),
+        (TIER_ENTHUSIAST, False, ACCESS_FULL),
+        # A paid account has nothing to preview; it already sees everything.
+        (TIER_ENTHUSIAST, True, ACCESS_FULL),
+    ],
+)
+def test_access_level(tier, preview, expected):
+    user = User(email="a@b.c", password_hash="x", tier=tier)
+    assert access_for(user, preview) == expected
+
+
+def test_an_anonymous_caller_gets_the_teaser():
+    assert access_for(None, preview=True) == ACCESS_TEASER
+
+
+def test_gate_for_access_dispatches():
+    src = full_result()
+    assert gate_for_access(src, ACCESS_FULL) is src
+    assert gate_for_access(src, ACCESS_PREVIEW)["locked"]["reason"] == "preview"
+    assert gate_for_access(src, ACCESS_TEASER)["locked"]["reason"] == "starter"

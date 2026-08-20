@@ -92,7 +92,12 @@ from app.models.user import User
 from app.services import pricing
 from app.services.export import ai_export
 from app.services.notify import log_email_configuration
-from app.services.result_gating import gate_free_result, is_free
+from app.services.result_gating import (
+    ACCESS_PREVIEW,
+    ACCESS_TEASER,
+    gate_for_access,
+    is_free,
+)
 from app.services.usage_limits import (
     check_quota,
     next_reset,
@@ -188,6 +193,28 @@ async def _enforce_quota(
                 max(1, int((reset - datetime.now(timezone.utc)).total_seconds()))
             )},
         )
+
+
+def preview_available(user: User) -> bool:
+    """Whether this account still has its one free preview to spend.
+
+    The claim records the *job*, not a timestamp, so a run that failed can hand
+    the preview back: it is the first analysis a new account ever runs -- the
+    one most likely to be filmed badly, and the worst possible one to burn.
+
+    A claimed job that has aged out of the store is treated as spent. The store
+    keeps a job for ``job_ttl_hours``, which is far longer than anyone waits
+    before retrying a failure, so the alternative reading -- "gone, therefore
+    forgotten, therefore have another" -- would hand out a fresh preview every
+    few hours forever.
+    """
+    if not is_free(user):
+        return False
+    claimed = user.free_preview_job_id
+    if not claimed:
+        return True
+    job = JOBS.get(claimed)
+    return bool(job and job.get("status") == "failed")
 
 
 async def _record_and_headers(
@@ -362,13 +389,19 @@ class JobStatus(BaseModel):
 def _process_job(
     job_id: str, input_path: str, sport: str,
     cycling_position: str | None, overlay_path: str | None,
-    free: bool = False,
+    free: bool = False, preview: bool = False,
 ) -> None:
     """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
 
-    ``free`` (starter/anonymous): render the teaser keyframe (skeleton, no angle
-    numbers, watermark), skip the paid LLM call, and trim the paid fields out of
-    the served result.
+    ``free`` (starter): render the teaser keyframe (skeleton, no angle numbers,
+    watermark), skip the paid LLM call, and trim the paid fields out of the
+    served result.
+
+    ``preview`` is the one exception per account: the coaching call runs and the
+    keyframe keeps its numbers, because a score with nothing to read is a
+    demonstration that the product exists rather than that it is worth paying
+    for. The measurement table and the training plan are still withheld -- see
+    services/result_gating.py for which half goes where and why.
     """
     job = JOBS.get(job_id)
     if job is None:
@@ -390,23 +423,29 @@ def _process_job(
     try:
         result = run_analysis(
             input_path, sport, cycling_position,
-            # No overlay video for free users -- they get the teaser keyframe only.
+            # No overlay video on a free plan, preview included: the annotated
+            # video is a subscription feature, not part of the sample.
             overlay_path=None if free else overlay_path,
-            hide_angle_values=free,
-            # AI coaching is a paid unlock, and ``gate_free_result`` strips it
-            # from the response anyway -- generating it for a free caller just
-            # burns a billed Gemini call on output nobody ever sees. The photo
-            # endpoint already gates the call this way; do the same here.
-            recommendations=not free,
+            # The preview shows its numbers. Burning them out of the frame while
+            # the coaching talks about them would be a strange thing to show
+            # somebody we are trying to convince.
+            hide_angle_values=free and not preview,
+            # AI coaching is a paid unlock, and the gate strips it from the
+            # response anyway -- generating it for a teaser caller just burns a
+            # billed Gemini call on output nobody ever sees. The preview is the
+            # one free result where it IS shown, so there it runs.
+            recommendations=(not free) or preview,
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
         if safe.get("overlay_video_path"):
             safe["overlay_video_path"] = f"/jobs/{job_id}/overlay"
-        # Trim to the teaser payload for free callers (paid fields removed here,
-        # not hidden client-side).
+        # Trim to what this caller may see (paid fields removed here, never
+        # hidden client-side).
         if free:
-            safe = gate_free_result(safe)
+            safe = gate_for_access(
+                safe, ACCESS_PREVIEW if preview else ACCESS_TEASER,
+            )
         job["result"] = safe
         if result.get("status") == "completed":
             job["status"] = "completed"
@@ -688,6 +727,10 @@ async def analyze_endpoint(
     # anyway, and a recorded-but-missing path is what made /jobs report
     # ``overlay_failed`` -- i.e. an error message where the paywall belongs.
     free = is_free(user)
+    # The one report a free account gets in a form worth judging us by. Claimed
+    # here rather than on completion so two uploads in a row cannot both spend
+    # it; handed back by ``preview_available`` if this run fails.
+    preview = preview_available(user)
     overlay_path = str(job_dir / "overlay.mp4") if (overlay and not free) else None
     job_token = secrets.token_urlsafe(24)
     JOBS[job_id] = {
@@ -704,9 +747,14 @@ async def analyze_endpoint(
         "owner_user_id": user.id,
     }
 
+    if preview:
+        user.free_preview_job_id = job_id
+        await db.commit()
+        logger.info("PREVIEW_CLAIMED", user_id=user.id, job_id=job_id)
+
     background_tasks.add_task(
         _process_job, job_id, str(input_path), sport, cycling_position,
-        overlay_path, free,
+        overlay_path, free, preview,
     )
     await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
@@ -761,10 +809,11 @@ async def analyze_photo_endpoint(
         raise HTTPException(413, f"file too large (> {MAX_PHOTO_BYTES // (1024 * 1024)} MB)")
 
     free = is_free(user)
+    preview = preview_available(user)
     from app.services.video_analysis.photo_analyzer import analyze_photo
     try:
         result = await run_in_threadpool(
-            analyze_photo, data, sport, cycling_position, free,
+            analyze_photo, data, sport, cycling_position, free and not preview,
         )
     except ValueError as e:
         # No pose detected / undecodable image -> user-actionable 422.
@@ -776,8 +825,10 @@ async def analyze_photo_endpoint(
     # Compact annotated frame for the client-side history record.
     result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
 
-    # Free callers don't get AI coaching (it's a paid unlock).
-    if coaching and not free:
+    # Free callers don't get AI coaching (it's a paid unlock) -- except on the
+    # one preview, which exists precisely to show what the paid report reads
+    # like.
+    if coaching and (not free or preview):
         from app.services.video_analysis.llm_recommendations import (
             generate_photo_recommendations,
         )
@@ -786,7 +837,16 @@ async def analyze_photo_endpoint(
         )
 
     if free:
-        result = gate_free_result(result)
+        result = gate_for_access(
+            result, ACCESS_PREVIEW if preview else ACCESS_TEASER,
+        )
+        if preview:
+            # A photo has no job to name, so the claim records the analysis it
+            # was spent on. Nothing hands this one back: the photo path either
+            # raised already or produced a result.
+            user.free_preview_job_id = f"photo:{int(time.time() * 1000)}"
+            await db.commit()
+            logger.info("PREVIEW_CLAIMED", user_id=user.id, kind="photo")
 
     await _record_and_headers(response, request, user, db, "photo")
     logger.info(

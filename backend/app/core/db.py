@@ -94,6 +94,14 @@ def _migrate_users(conn) -> None:
             "UPDATE users SET expert_credits = 1 WHERE tier = 'full'"
         ))
         logger.info("MIGRATED", change="users.expert_credits added + granted to full")
+    if "free_preview_job_id" not in cols:
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN free_preview_job_id VARCHAR(64)"
+        ))
+        # Left NULL for everyone, including existing accounts: they signed up
+        # when the free tier showed a score and nothing else, so giving them
+        # the preview is a reason to come back rather than a giveaway.
+        logger.info("MIGRATED", change="users.free_preview_job_id added")
     if "expert_credit_grant_ref" not in cols:
         conn.execute(text(
             "ALTER TABLE users ADD COLUMN expert_credit_grant_ref VARCHAR(255)"

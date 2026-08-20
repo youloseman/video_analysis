@@ -59,10 +59,57 @@ _PHOTO_WARNINGS_KEY = "warnings"
 # What an upgrade unlocks (shown by the frontend on the blurred sections).
 _UNLOCKS = ["coaching", "angles", "issues", "ranges", "video", "second_phase", "export"]
 
+# --------------------------------------------------------------------------
+# The preview: one report, once per account, that is worth reading.
+#
+# The teaser above shows a score and nothing else. That demonstrates the
+# product *exists*; it does not demonstrate that the hidden part is worth $9,
+# because the reader has no idea what is behind the blur. Somebody who has once
+# seen the whole thing is deciding whether to get it back -- a much stronger
+# position than deciding whether to gamble on it.
+#
+# So the first analysis on a free account keeps the two sections that explain
+# the score in words -- what we found, and what a coach makes of it -- and holds
+# back the two that are the ongoing product: the measurement table, and the
+# drills that say what to actually do about it.
+#
+# ``detected_issues`` quote the measurement they fired on ("18.4 deg"), so
+# showing findings does leak a handful of numbers. That is deliberate: a finding
+# with the number stripped out reads as an accusation with no evidence, and the
+# paid product is the *complete* table plus the plan, not the three numbers that
+# happen to be broken.
+_PREVIEW_EXTRA = ("detected_issues", "ai_recommendations")
+
+# What is still behind the paywall after a preview. Note ``coaching`` and
+# ``issues`` are absent -- they were just shown, and listing them would promise
+# the reader something they already have.
+_PREVIEW_UNLOCKS = ["plan", "angles", "ranges", "video", "second_phase", "export"]
+
+ACCESS_FULL = "full"
+ACCESS_PREVIEW = "preview"
+ACCESS_TEASER = "teaser"
+
 
 def is_free(user: User | None) -> bool:
     """Free = anonymous, or signed in on the starter tier."""
     return user is None or user.tier == TIER_STARTER
+
+
+def access_for(user: User | None, preview: bool = False) -> str:
+    """How much of a result this caller may see.
+
+    An anonymous caller never gets the preview, whatever the flag says. The
+    preview is spent from an account -- there is nothing to charge it against
+    here, so granting it would be an unlimited preview for anyone who simply
+    does not sign in. Analysis requires an account today, so this is a guard on
+    a door rather than a live path; it is also the exact door that would open
+    quietly if anonymous analysis ever came back.
+    """
+    if user is None:
+        return ACCESS_TEASER
+    if not is_free(user):
+        return ACCESS_FULL
+    return ACCESS_PREVIEW if preview else ACCESS_TEASER
 
 
 def gate_result_for_tier(result: dict[str, Any], user: User | None) -> dict[str, Any]:
@@ -113,6 +160,17 @@ def quality_block(result: dict[str, Any]) -> dict[str, Any]:
     return block
 
 
+def _trim(
+    result: dict[str, Any], keys: Any, reason: str, unlocks: list[str],
+) -> dict[str, Any]:
+    """Allowlist a result down to ``keys`` and attach the paywall markers."""
+    kept: dict[str, Any] = {k: v for k, v in result.items() if k in keys}
+    kept["overlay_video_path"] = None  # never a video on a free plan
+    kept["quality"] = quality_block(result)
+    kept["locked"] = {"reason": reason, "unlocks": list(unlocks)}
+    return kept
+
+
 def gate_free_result(result: dict[str, Any]) -> dict[str, Any]:
     """Trim a result to the free teaser payload (caller already known free).
 
@@ -120,8 +178,34 @@ def gate_free_result(result: dict[str, Any]) -> dict[str, Any]:
     forces the overlay video off, attaches the ``quality`` caveat block, and
     adds the ``locked`` paywall marker.
     """
-    kept: dict[str, Any] = {k: v for k, v in result.items() if k in _SAFE_KEYS}
-    kept["overlay_video_path"] = None  # never a video for free
-    kept["quality"] = quality_block(result)
-    kept["locked"] = {"reason": "starter", "unlocks": list(_UNLOCKS)}
+    return _trim(result, _SAFE_KEYS, "starter", _UNLOCKS)
+
+
+def gate_preview_result(result: dict[str, Any]) -> dict[str, Any]:
+    """The one report a free account gets in full-enough form to judge us by.
+
+    Same allowlist discipline as the teaser -- a paid field added later is
+    withheld by default rather than joining the preview by accident -- with the
+    two explanatory sections added on top.
+    """
+    kept = _trim(
+        result, _SAFE_KEYS.union(_PREVIEW_EXTRA), "preview", _PREVIEW_UNLOCKS,
+    )
+    # Count what is behind the blur, so the upgrade prompt can say "3 drills and
+    # 7 measured angles" instead of "more". The reader has just been shown what
+    # our writing is worth; a vague promise is a strange thing to follow it with.
+    plan = (result.get("training_plan") or {}).get("top_3_priorities") or []
+    kept["locked"]["counts"] = {
+        "plan": sum(1 for p in plan if isinstance(p, dict) and p.get("drill")),
+        "angles": len(result.get("angle_statistics") or {}),
+    }
     return kept
+
+
+def gate_for_access(result: dict[str, Any], access: str) -> dict[str, Any]:
+    """Dispatch on the access level from ``access_for``."""
+    if access == ACCESS_FULL:
+        return result
+    if access == ACCESS_PREVIEW:
+        return gate_preview_result(result)
+    return gate_free_result(result)
