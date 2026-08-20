@@ -29,6 +29,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from app.models.user import tier_limit
+
 # Everything is priced in one currency, and it is stated in exactly one place.
 CURRENCY = "usd"
 CURRENCY_LABEL = "USD"
@@ -283,6 +285,15 @@ def catalog(plan_price_map: dict[str, Any] | None = None) -> dict[str, Any]:
                 "id": c.id,
                 "kind": c.kind,
                 "tier": c.tier,
+                # The analysis allowance, from the tier table rather than from
+                # the bullet text beside it. The client renders "4 of 10 left"
+                # from this, and used to hold its own copy of the numbers --
+                # which was wrong for two tiers at once by the time anyone
+                # noticed.
+                "quota": (
+                    {"limit": tier_limit(c.tier)[0], "window": tier_limit(c.tier)[1]}
+                    if c.tier else None
+                ),
                 "name": c.name,
                 "tagline": c.tagline,
                 "badge": c.badge,

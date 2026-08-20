@@ -115,6 +115,18 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 }
 .lock-chip .ic{width:12px;height:12px}
 
+.profilefield{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+.profilefield label{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--c-ink-soft)}
+.profilefield select,.profilefield input{font-family:var(--f-body);font-size:14px;
+  padding:8px 10px;border:1px solid var(--c-line);border-radius:8px;background:#fff;
+  color:var(--c-ink);min-width:200px;flex:1 1 200px}
+.profilehint{text-align:left;margin:6px 0 0;font-size:12.5px}
+.profilefilter{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+.profilefilter button{font-family:var(--f-body);font-size:13px;font-weight:700;cursor:pointer;
+  padding:6px 13px;border-radius:999px;border:1px solid var(--c-line);background:#fff;color:var(--c-ink-soft)}
+.profilefilter button[aria-pressed="true"]{background:var(--c-navy);border-color:var(--c-navy);color:#fff}
+
 /* ---------- Pricing section ---------- */
 .pricing-head{text-align:center;margin-bottom:8px}
 .pricing-head .eyebrow{justify-content:center;display:flex}
@@ -1531,6 +1543,20 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg> Good, even lighting</li>
       </ul>
 
+      <!-- Which setup this was filmed on. Sits next to the clip rather than
+           on a settings screen because it is a property of THIS recording:
+           asking afterwards gets you an honest shrug. -->
+      <div class="profilefield" id="profileField">
+        <label for="profileSel">Filmed on</label>
+        <select id="profileSel" aria-describedby="profileHint"></select>
+        <input id="profileNew" class="hidden" type="text" maxlength="60"
+               placeholder="Name it — e.g. Road bike, TT bike, Vaporflys"
+               aria-label="Name for the new setup">
+        <button class="btn btn-ghost btn-sm hidden" id="profileSave" type="button">Save</button>
+        <button class="btn btn-ghost btn-sm hidden" id="profileCancel" type="button">Cancel</button>
+      </div>
+      <p class="hint profilehint" id="profileHint"></p>
+
       <!-- Overlay toggle (video only) -->
       <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
         <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
@@ -2093,7 +2119,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null,
+const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null,
   kfCache:{}, kfPending:{} };   // cloud keyframes, fetched per entry (see fetchKeyframe)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -2270,11 +2296,14 @@ function renderQuota(){
     txt = `Free account required · <b>3</b> analyses per month, no card`;
   } else if(q){
     txt = `<b>${q.remaining}</b> of <b>${q.limit}</b> analyses left ${period}`;
-  } else if(tier==='admin'){
-    txt = `Admin · <b>5</b> analyses per day`;
   } else {
-    const plan={starter:['Free',3],enthusiast:['Enthusiast',30],full:['Full',120]}[tier]||['Free',3];
-    txt = `${plan[0]} · <b>${plan[1]}</b> analyses per month`;
+    // From the catalogue, not from a copy of the tier table kept here -- that
+    // copy was wrong for two tiers at once by the time anyone looked.
+    const card=((PLANS&&PLANS.cards)||[]).find(c=>c.tier===tier);
+    const q=card&&card.quota;
+    txt = q
+      ? `${esc(card.name)} · <b>${q.limit}</b> analyses per ${esc(q.window)}`
+      : `<b>${tier==='admin'?'Admin':'Free'}</b> plan`;
   }
   ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
 }
@@ -2394,6 +2423,8 @@ $('#modeSeg').addEventListener('click',e=>{
 $('#sportSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   state.sport=b.dataset.sport;
+  state.profileId=null;
+  if(typeof renderProfileField==='function') renderProfileField();
   [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   $('#positionField').classList.toggle('hidden', state.sport!=='bike');
   readyHint();
@@ -3139,6 +3170,72 @@ const UNLOCK_COPY={
 /* Free = anonymous or the starter tier; both get a gated result (score +
    keyframe only), so their cabinet has the metrics/plan/focus withheld. */
 function isFreeUser(){ return !auth || auth.tier==='starter'; }
+
+/* ============================================================
+   Equipment profiles — which bike (or which shoes) a clip was filmed on.
+
+   A rider on a road bike and the same rider on a TT bike are two correct sets
+   of angles; averaged into one history they describe nobody. Keeping several
+   setups is what makes a comparison BETWEEN them possible, which is the thing
+   a single bought report structurally cannot be — so the limit is where the
+   Full plan earns its price.
+   ============================================================ */
+let PROFILES={profiles:[],limit:1,used:0};
+async function loadProfiles(){
+  if(!auth){ PROFILES={profiles:[],limit:1,used:0}; renderProfileField(); return; }
+  try{
+    const r=await fetch('/me/profiles',{headers:authHeaders()});
+    if(r.ok) PROFILES=await r.json();
+  }catch(e){}
+  renderProfileField();
+}
+function liveProfiles(sport){
+  return (PROFILES.profiles||[]).filter(p=>!p.archived && (!sport || p.sport===sport));
+}
+function profileName(id){
+  const p=(PROFILES.profiles||[]).find(x=>x.id===id);
+  return p?p.name:null;
+}
+function renderProfileField(){
+  const field=$('#profileField'), sel=$('#profileSel'), hint=$('#profileHint');
+  if(!field||!sel) return;
+  // Nothing to file against until there is an account to file it under.
+  field.classList.toggle('hidden', !auth);
+  if(hint) hint.classList.toggle('hidden', !auth);
+  if(!auth) return;
+  const mine=liveProfiles(state.sport);
+  const room=(PROFILES.used||0) < (PROFILES.limit||1);
+  sel.innerHTML=`<option value="">Not filed</option>`
+    + mine.map(p=>`<option value="${p.id}"${String(p.id)===String(state.profileId)?' selected':''}>${esc(p.name)}</option>`).join('')
+    + (room?`<option value="__new">+ New setup…</option>`:'');
+  if(hint){
+    hint.innerHTML = room
+      ? 'Filing a clip lets its trend line follow one setup instead of averaging two.'
+      : `Your plan keeps <b>${PROFILES.limit}</b> setup${PROFILES.limit>1?'s':''}. Comparing one against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`;
+    const link=hint.querySelector('[data-openpricing]');
+    if(link) link.addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
+  }
+}
+function showProfileInput(on){
+  ['#profileNew','#profileSave','#profileCancel'].forEach(id=>{
+    const el=$(id); if(el) el.classList.toggle('hidden', !on);
+  });
+  const sel=$('#profileSel'); if(sel) sel.classList.toggle('hidden', on);
+  if(on){ const i=$('#profileNew'); if(i){ i.value=''; i.focus(); } }
+}
+async function createProfile(name){
+  try{
+    const r=await fetch('/me/profiles',{method:'POST',
+      headers:authHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({name, sport:state.sport, kind:state.sport==='run'?'shoes':'other'})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(j.detail||'Could not add that setup.',{duration:6000}); return null; }
+    state.profileId=j.id;
+    await loadProfiles();
+    toast(`Filed under ${j.name}.`);
+    return j.id;
+  }catch(e){ toast('Could not add that setup.'); return null; }
+}
 /* The shared upsell panel. `data-src` tags where the CTA fired for later
    analytics (no tracking wired yet). One of these per screen — never more. */
 function teaserPanelHtml(items, opts){
@@ -4873,6 +4970,7 @@ function renderAuth(){
   if(go) go.textContent = auth ? 'Analyze Technique' : 'Create free account & analyze';
   // Keep pricing CTAs (current-plan badge vs buy button) in sync with auth.
   if(typeof renderPricing==='function') renderPricing();
+  if(typeof loadProfiles==='function') loadProfiles();
 }
 function openAuth(mode){ setAuthMode(mode||'login'); $('#authModal').classList.remove('hidden'); setTimeout(()=>$('#authEmail').focus(),30); }
 function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').textContent=''; $('#authForm').reset(); }
@@ -5236,6 +5334,7 @@ function saveToHistory(kind,res){
     // only the annotated still to work from. Photos have no job: nothing was
     // written to disk for them.
     const e={ id:'h'+Date.now(), at:Date.now(), kind, jobId:isV?(state.jobId||null):null,
+      profileId:state.profileId||null,
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
@@ -5512,6 +5611,18 @@ function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTi
 $('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
 $('#navAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
 $('#navPricing').addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
+$('#profileSel').addEventListener('change',e=>{
+  if(e.target.value==='__new'){ showProfileInput(true); return; }
+  state.profileId=e.target.value||null;
+});
+$('#profileSave').addEventListener('click',async()=>{
+  const name=$('#profileNew').value.trim();
+  if(!name){ toast('Give the setup a name.'); return; }
+  showProfileInput(false);
+  await createProfile(name);
+});
+$('#profileCancel').addEventListener('click',()=>{ showProfileInput(false); renderProfileField(); });
+$('#profileNew').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#profileSave').click(); } });
 $('#hBack').addEventListener('click',openHistoryView);
 // Pricing: billing toggle + Expert Review add-on
 $('#billMonthly').addEventListener('click',()=>setBillPeriod('monthly'));
