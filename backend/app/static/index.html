@@ -1917,7 +1917,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <h2 class="sec" id="compareTitle" tabindex="-1" style="margin-bottom:8px">Before / after</h2>
       <div class="speedline"></div>
     </div>
-    <!-- Two-analysis pickers -->
+    <!-- Sessions vs setups. Only rendered when two setups actually have
+         history, which is a structural gate rather than a tier check. -->
+    <div id="cmpMode" class="hidden" style="text-align:center"></div>
+    <!-- Two-analysis (or two-setup) pickers -->
     <div class="cmp-pickers" id="cmpPickers"></div>
     <!-- AI progress summary -->
     <div id="cmpSummary"></div>
@@ -6580,6 +6583,87 @@ function openCompare(){
   setState('compare',{focus:'#compareTitle'});
 }
 function cmpEntry(id){ return (state.cmp.list||[]).find(e=>e.id===id)||null; }
+
+/* ============================================================
+   Comparing two SETUPS rather than two sessions.
+
+   Before / after asks "did I change?". With two bikes that is the wrong
+   question: a road position and a TT position are both correct and differ on
+   purpose, so the useful comparison is between the setups themselves, each
+   averaged over everything filmed on it.
+
+   No extra paywall guards this. It needs two profiles with history, and how
+   many profiles an account may keep is already enforced server-side -- so the
+   gate is structural rather than a check we could forget to write.
+   ============================================================ */
+function cmpProfiles(sport){
+  const counts={};
+  ((state.cmp.list)||[]).forEach(e=>{
+    if(e && e.profileId!=null && e.trends) counts[e.profileId]=(counts[e.profileId]||0)+1;
+  });
+  return liveProfiles(sport).filter(p=>counts[p.id]).map(p=>({...p, n:counts[p.id]}));
+}
+/* One setup averaged into a single comparable column. Mean rather than latest:
+   a single clip carries the day's fatigue and the camera angle, and we are
+   asking about the setup, not about Tuesday. */
+function profileAggregate(pid, sport){
+  const rows=((state.cmp.list)||[]).filter(
+    e=>e && String(e.profileId)===String(pid) && e.trends);
+  if(!rows.length) return null;
+  const mean=vals=>{ const v=vals.filter(x=>typeof x==='number');
+    return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
+  const trends={};
+  (TREND_METRICS[sport]||[]).forEach(m=>{
+    trends[m.key]=mean(rows.map(e=>(e.trends||{})[m.key]));
+  });
+  const scored=rows.filter(e=>typeof e.score==='number');
+  return {
+    _profile:{ name:profileName(pid)||'Setup', n:rows.length },
+    score: scored.length ? Math.round(mean(scored.map(e=>e.score))) : null,
+    grade: (rows.find(e=>e.grade)||{}).grade || null,
+    at: Math.max(...rows.map(e=>e.at||0)),
+    trends,
+    // Optimal bands describe the metric, not the session, so any row's will do.
+    trendOpt: (rows.find(e=>e.trendOpt)||{}).trendOpt || {},
+    trendCat: {},
+  };
+}
+function renderCmpMode(){
+  const host=$('#cmpMode'); if(!host) return;
+  const setups=cmpProfiles(state.cmp.sport);
+  // One setup cannot be compared with anything, which is exactly why this is
+  // the thing a single bought report can never be.
+  if(setups.length<2){ host.classList.add('hidden'); host.innerHTML=''; state.cmp.mode='sessions'; return; }
+  const m=state.cmp.mode||'sessions';
+  host.innerHTML=`<div class="billtoggle" role="group" aria-label="What to compare">
+    <button type="button" data-mode="sessions" aria-pressed="${m==='sessions'}">Two sessions</button>
+    <button type="button" data-mode="setups" aria-pressed="${m==='setups'}">Two setups</button>
+  </div>`;
+  host.classList.remove('hidden');
+  host.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    state.cmp.mode=b.dataset.mode;
+    state.cmp.pa=null; state.cmp.pb=null;
+    renderCompare();
+  }));
+}
+function renderSetupPickers(){
+  const setups=cmpProfiles(state.cmp.sport);
+  if(state.cmp.pa==null) state.cmp.pa=setups[0] && setups[0].id;
+  if(state.cmp.pb==null) state.cmp.pb=setups[1] && setups[1].id;
+  const opt=(pf,sel)=>`<option value="${pf.id}"${String(pf.id)===String(sel)?' selected':''}>${esc(pf.name)} · ${pf.n} clip${pf.n>1?'s':''}</option>`;
+  const sel=(side,cur)=>`<label class="cmp-pick">
+      <span class="cmp-pick-lbl">${side==='a'?'Setup A':'Setup B'}</span>
+      <select class="cmp-select" data-pside="${side}">${setups.map(pf=>opt(pf,cur)).join('')}</select>
+    </label>`;
+  $('#cmpPickers').innerHTML = sel('a',state.cmp.pa)
+    + `<div class="cmp-arrow" aria-hidden="true"><svg class="ic"><use href="#i-arr-l"/></svg></div>`
+    + sel('b',state.cmp.pb);
+  $('#cmpPickers').querySelectorAll('[data-pside]').forEach(el=>
+    el.addEventListener('change',()=>{
+      state.cmp[el.dataset.pside==='a'?'pa':'pb']=el.value;
+      renderCompare();
+    }));
+}
 function renderComparePickers(){
   const {list,aId,bId}=state.cmp;
   const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(fmtWhen(e.at))} · ${e.score==null?'—':e.score}/100</option>`;
@@ -6623,18 +6707,29 @@ function cmpThumb(e,tag){
 }
 function renderCompare(){
   const {sport,aId,bId}=state.cmp;
-  const A=cmpEntry(aId), B=cmpEntry(bId);
-  renderComparePickers();
+  renderCmpMode();
+  const setups = state.cmp.mode==='setups';
+  let A, B;
+  if(setups){
+    renderSetupPickers();
+    A=profileAggregate(state.cmp.pa, sport);
+    B=profileAggregate(state.cmp.pb, sport);
+  } else {
+    A=cmpEntry(aId); B=cmpEntry(bId);
+    renderComparePickers();
+  }
   if(!A||!B){ $('#cmpBody').innerHTML=''; return; }
   const at=A.trends||{}, bt=B.trends||{}, ac=A.trendCat||{}, bc=B.trendCat||{};
   // Prefer B's optimal band, fall back to A's.
   const optOf=k=> (B.trendOpt&&B.trendOpt[k]) || (A.trendOpt&&A.trendOpt[k]) || null;
   // Header: two keyframes + score.
   const head=`<div class="cmp-head">
-    ${[[A,'Before'],[B,'After']].map(([e,tag])=>`<div class="cmp-card">
+    ${[[A,setups?'Setup A':'Before'],[B,setups?'Setup B':'After']].map(([e,tag])=>`<div class="cmp-card">
       <div class="cmp-tag">${tag}</div>
-      ${cmpThumb(e,tag)}
-      <div class="cmp-when">${esc(fmtWhen(e.at))}</div>
+      ${setups?'':cmpThumb(e,tag)}
+      <div class="cmp-when">${setups
+        ? esc(e._profile.name)+' · '+e._profile.n+' clip'+(e._profile.n>1?'s':'')+' averaged'
+        : esc(fmtWhen(e.at))}</div>
       <div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>
     </div>`).join('')}
   </div>`;
@@ -6642,10 +6737,20 @@ function renderCompare(){
   const catRows=(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key])).join('');
   $('#cmpBody').innerHTML = head +
     `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
-       <div class="cmp-lbl">Metric</div><div class="cmp-a">Before</div><div class="cmp-d">Change</div><div class="cmp-b">After</div>
-     </div>${numRows}${catRows}</div>`;
-  observeKeyframes($('#cmpBody'));
-  renderCompareSummary();
+       <div class="cmp-lbl">Metric</div>
+       <div class="cmp-a">${setups?'A':'Before'}</div>
+       <div class="cmp-d">${setups?'Difference':'Change'}</div>
+       <div class="cmp-b">${setups?'B':'After'}</div>
+     </div>${numRows}${catRows}</div>`
+    + (setups?`<p class="hint" style="text-align:left;margin:16px 0 0">Averaged across everything filmed on each setup. A difference here is
+       the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'');
+  if(!setups) observeKeyframes($('#cmpBody'));
+  // The AI read is written to explain progress between two runs of the same
+  // thing. Pointed at two bikes it would confidently narrate improvement that
+  // is really just a different position, so it is not offered here.
+  const sum=$('#cmpSummary');
+  if(setups){ if(sum){ sum.innerHTML=''; sum.classList.add('hidden'); } }
+  else { if(sum) sum.classList.remove('hidden'); renderCompareSummary(); }
 }
 /* AI progress summary — server-side (Gemini). Requires auth; degrades to a
    nudge for signed-out users. Cached per A/B pair in state.cmp.summary. */
