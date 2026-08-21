@@ -395,6 +395,7 @@ def _process_job(
     job_id: str, input_path: str, sport: str,
     cycling_position: str | None, overlay_path: str | None,
     free: bool = False, preview: bool = False,
+    athlete_height_cm: int | None = None,
 ) -> None:
     """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
 
@@ -444,6 +445,11 @@ def _process_job(
             # every free response INCLUDING the preview: rendering it would buy
             # a second video decode and nothing else.
             kinogram=not free,
+            # The one real-world length a side view gets. Every tier, free
+            # included -- it makes their centimetres correct rather than
+            # unlocking anything, and a paywall in front of accuracy is a
+            # different product from a paywall in front of detail.
+            athlete_height_cm=athlete_height_cm,
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
@@ -778,7 +784,7 @@ async def analyze_endpoint(
 
     background_tasks.add_task(
         _process_job, job_id, str(input_path), sport, cycling_position,
-        overlay_path, free, preview,
+        overlay_path, free, preview, user.height_cm,
     )
     await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)

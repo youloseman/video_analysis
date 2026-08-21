@@ -61,6 +61,23 @@ TRUNK_LANDMARKS: dict[str, tuple[int, int]] = {
     "right": (12, 24),   # RIGHT_SHOULDER, RIGHT_HIP
 }
 
+# Shoulder-to-hip length as a fraction of standing height. Winter,
+# *Biomechanics and Motor Control of Human Movement* (4th ed., 2009), Table
+# 4.1: shoulder height 0.818 H, hip (greater trochanter) height 0.530 H. The
+# MediaPipe shoulder and hip landmarks sit close enough to those two levels for
+# the difference to be the segment we measure between them.
+TORSO_FRACTION_OF_HEIGHT = 0.288
+
+# The stand-in when the athlete has not told us their height. Note what it
+# implies: 0.45 / 0.288 means a person about 156 cm tall. It is kept at the
+# historical value rather than raised to a fitter average so that adding a
+# height CHANGES a reading and omitting one does not.
+DEFAULT_TORSO_M = 0.45
+
+# Heights outside this are a typo or a unit mix-up (feet, inches, metres), not
+# an athlete. Treated as "not told" rather than trusted.
+PLAUSIBLE_HEIGHT_CM = (120.0, 230.0)
+
 
 class GaitPhase(str, Enum):
     """Phases of the running gait cycle."""
@@ -93,7 +110,7 @@ GROUND_CONTACT_PHASES: frozenset[str] = frozenset({
 class RunningAnalyzer(SportAnalyzer):
     """Analyzer for running technique -- near-side only."""
 
-    def __init__(self, fps: float = 30.0):
+    def __init__(self, fps: float = 30.0, height_cm: float | None = None):
         super().__init__(sport_type="run", fps=fps)
         self.near_ankle_y_history: deque[float] = deque(maxlen=int(fps * 2))
         self.hip_center_y_history: deque[float] = deque(maxlen=int(fps * 2))
@@ -106,6 +123,15 @@ class RunningAnalyzer(SportAnalyzer):
         self._pixel_to_meter: float = 2.0  # default fallback
         self._body_scale_estimated = False
         self._torso_norm_samples: list[float] = []
+        # The athlete's standing height, when they have told us. This is the
+        # ONLY real-world length a side view ever gets; everything else it
+        # measures is a fraction of the picture. See _lock_body_scale.
+        self.height_cm = (
+            float(height_cm)
+            if height_cm and PLAUSIBLE_HEIGHT_CM[0] <= height_cm <= PLAUSIBLE_HEIGHT_CM[1]
+            else None
+        )
+        self._body_scale_source = "unknown"
         # Set once _compute_cadence recognises a slow-motion clip; every
         # time-derived metric divides by it (see _median_frame_spacing_ms).
         self._slowmo_factor: int | None = None
@@ -134,19 +160,41 @@ class RunningAnalyzer(SportAnalyzer):
 
         Idempotent; also called lazily by the first consumer in case the
         clip produced fewer than ``BODY_SCALE_MAX_SAMPLES`` valid frames.
+
+        This is the single place a side view becomes centimetres. Everything
+        the camera reports is a fraction of the picture; one known real length
+        turns all of it into metres, and this picks which length to believe.
+
+        With a stated height, the torso is modelled from it: Winter's
+        anthropometric table puts the shoulder at 0.818 of standing height and
+        the hip at 0.530, so the segment between them is ``0.288 H``. Without
+        one, the old population constant stands in -- and it is worth knowing
+        what that constant assumes: 0.45 m of torso is a person about 156 cm
+        tall. For a 180 cm runner the real segment is nearer 0.52 m, so the
+        assumption under-reports every centimetre reading by roughly 13%, which
+        is most of the width of the vertical-oscillation band it is graded in.
         """
         if self._body_scale_estimated:
             return
         if self._torso_norm_samples:
             med = float(np.median(self._torso_norm_samples))
-            self._pixel_to_meter = 0.45 / med
+            if self.height_cm:
+                torso_m = TORSO_FRACTION_OF_HEIGHT * (self.height_cm / 100.0)
+                self._body_scale_source = "athlete_height"
+            else:
+                torso_m = DEFAULT_TORSO_M
+                self._body_scale_source = "population_average"
+            self._pixel_to_meter = torso_m / med
         else:
             self._pixel_to_meter = 2.0  # fallback
+            self._body_scale_source = "no_samples"
         self._body_scale_estimated = True
         logger.info(
             "BODY_SCALE_DEBUG",
             samples=len(self._torso_norm_samples),
             pixel_to_meter=f"{self._pixel_to_meter:.2f}",
+            source=self._body_scale_source,
+            height_cm=self.height_cm,
         )
 
     def detect_gait_phase(
@@ -1167,6 +1215,13 @@ class RunningAnalyzer(SportAnalyzer):
         # vert_osc is stored in meters; range 0.01-0.25 m = 1-25 cm.
         if 0.01 <= vert_osc <= 0.25:
             summary["vertical_oscillation_m"] = vert_osc
+            # Which real length the centimetres came from. A reading scaled off
+            # a population-average torso is graded against a band it can sit
+            # outside by a body's worth of proportion, so the difference has to
+            # travel with the number rather than stay in the logs.
+            summary["body_scale_source"] = self._body_scale_source
+            if self.height_cm:
+                summary["athlete_height_cm"] = round(self.height_cm)
 
         # Time-base / slow-motion guard. Cadence, GCT and flight all read time
         # off the container FPS. A clean running clip yields a cadence in

@@ -115,6 +115,17 @@ class User(Base):
     expert_credit_grant_ref: Mapped[str | None] = mapped_column(
         String(255), nullable=True,
     )
+    # Standing height in centimetres. The only body measurement the analysis
+    # asks for, and it buys one specific thing: a real scale. A side view
+    # measures everything in fractions of the picture, so turning any of it
+    # into centimetres needs one known length. Without this the pipeline
+    # assumes a population-average torso, which corresponds to a 156 cm
+    # person -- see running_analyzer._lock_body_scale.
+    #
+    # Nullable, and must stay so. It is optional to give, the analysis works
+    # without it, and a required body measurement on a sign-up form is a
+    # reason not to sign up.
+    height_cm: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False,
     )

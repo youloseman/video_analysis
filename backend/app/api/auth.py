@@ -6,7 +6,7 @@ import re
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,6 +81,7 @@ class UserOut(BaseModel):
     is_pro: bool  # kept for back-compat; derived from tier
     expert_credits: int = 0
     analytics_id: str = ""
+    height_cm: int | None = None
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -136,6 +137,41 @@ async def me(user: User = Depends(get_current_user)) -> UserOut:
         email=user.email, tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         analytics_id=analytics.person_id(user),
+        height_cm=user.height_cm,
+    )
+
+
+class HeightBody(BaseModel):
+    """The athlete's standing height, or ``null`` to withdraw it.
+
+    Bounds match ``running_analyzer.PLAUSIBLE_HEIGHT_CM``: outside them a
+    number is a unit mix-up (feet, inches, metres) rather than a person, and
+    accepting one would silently scale every centimetre reading by it.
+    """
+
+    height_cm: int | None = Field(None, ge=120, le=230)
+
+
+@router.put("/me/height", response_model=UserOut)
+async def set_height(
+    body: HeightBody,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> UserOut:
+    """Store (or clear) the one body measurement the analysis uses.
+
+    Deliberately its own endpoint and its own decision: it is optional, it is
+    the only personal measurement asked for, and clearing it has to be as easy
+    as giving it.
+    """
+    user.height_cm = body.height_cm
+    await db.commit()
+    logger.info("HEIGHT_SET", user_id=user.id, height_cm=body.height_cm)
+    return UserOut(
+        email=user.email, tier=user.tier, is_pro=user.is_paid,
+        expert_credits=user.expert_credits or 0,
+        analytics_id=analytics.person_id(user),
+        height_cm=user.height_cm,
     )
 
 

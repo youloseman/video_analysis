@@ -122,6 +122,10 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   padding:8px 10px;border:1px solid var(--c-line);border-radius:8px;background:#fff;
   color:var(--c-ink);min-width:200px;flex:1 1 200px}
 .profilehint{text-align:left;margin:6px 0 0;font-size:12.5px}
+/* Height is a three-digit number, not a name — it should not claim the same
+   width as the setup picker. */
+#heightField input{min-width:90px;flex:0 0 90px}
+#heightField .hunit{font-size:13px;color:var(--c-ink-soft)}
 .profilefilter{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
 .profilefilter button{font-family:var(--f-body);font-size:13px;font-weight:700;cursor:pointer;
   padding:6px 13px;border-radius:999px;border:1px solid var(--c-line);background:#fff;color:var(--c-ink-soft)}
@@ -1656,6 +1660,19 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </div>
       <p class="hint profilehint" id="profileHint"></p>
 
+      <!-- Height. Running only, because it is the only place it changes an
+           answer: a side view measures everything as a fraction of the
+           picture, and this is the one real length that turns those fractions
+           into centimetres. Optional, remembered on the account, and it says
+           what happens without it rather than nagging. -->
+      <div class="profilefield hidden" id="heightField">
+        <label for="heightInput">Your height</label>
+        <input id="heightInput" type="number" inputmode="numeric" min="120" max="230"
+               placeholder="cm" aria-describedby="heightHint">
+        <span class="hunit">cm</span>
+      </div>
+      <p class="hint profilehint hidden" id="heightHint"></p>
+
       <!-- Overlay toggle (video only) -->
       <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
         <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
@@ -2629,10 +2646,17 @@ $('#sportSeg').addEventListener('click',e=>{
   state.sport=b.dataset.sport;
   state.profileId=null;
   if(typeof renderProfileField==='function') renderProfileField();
+  if(typeof renderHeightField==='function') renderHeightField();
   [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   $('#positionField').classList.toggle('hidden', state.sport!=='bike');
   readyHint();
 });
+
+/* Height saves on blur rather than per keystroke: a half-typed "18" is a
+   plausible-looking number the API would happily reject, and rejecting it
+   mid-word reads as the field fighting you. */
+$('#heightInput').addEventListener('blur', ()=>{ saveHeight(); });
+$('#heightInput').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.blur(); });
 
 /* ---- bike position tiles (grouped: Road / Aero / Casual) ---- */
 $('#positionSeg').addEventListener('click',e=>{
@@ -3122,8 +3146,16 @@ function bikeTiles(s, position){
 function runTiles(s){
   const t=[];
   if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,R(s.cadence_spm,170,190,'spm')));
-  if(s.vertical_oscillation_cm!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_cm,1),'cm',null,null,false,R(s.vertical_oscillation_cm,6,10,'cm')));
-  else if(s.vertical_oscillation_m!=null) t.push(tile('Vert. oscillation',num(s.vertical_oscillation_m*100,1),'cm',null,null,false,R(s.vertical_oscillation_m*100,6,10,'cm')));
+  /* Centimetres only exist because something in the picture had a known real
+     length. Say which: with a stated height the torso is modelled from it,
+     without one an average build is assumed — worth ~10% on this number, which
+     is a third of the band it is graded in. */
+  const voscNote = s.body_scale_source==='athlete_height'
+    ? `scaled from your height (${s.athlete_height_cm} cm)`
+    : 'scaled from an average build — add your height for real centimetres';
+  const voscCm = s.vertical_oscillation_cm!=null ? s.vertical_oscillation_cm
+    : (s.vertical_oscillation_m!=null ? s.vertical_oscillation_m*100 : null);
+  if(voscCm!=null) t.push(tile('Vert. oscillation',num(voscCm,1),'cm',voscNote,null,false,R(voscCm,6,10,'cm')));
   if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,2,10,'°')));
   if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,R(s.ground_contact_ms,180,270,'ms')));
   if(s.flight_time_ms!=null) t.push(tile('Flight time',num(s.flight_time_ms),'ms',s.flight_time_ms_estimated?'estimated from 2D video':null,null,false,R(s.flight_time_ms,80,150,'ms')));
@@ -4237,7 +4269,51 @@ function exShowPreview(){
 
 async function refreshAuth(){
   const t=getToken(); if(!t) return;
-  try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); } }catch(e){}
+  try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); renderHeightField(); } }catch(e){}
+}
+
+/* ============================================================
+   Height — the one body measurement the analysis uses.
+
+   A side view measures everything as a fraction of the picture. Turning any
+   of it into centimetres needs one known real length, and this is it. Told,
+   the torso is modelled from stature (Winter 2009); not told, the pipeline
+   assumes a population-average torso — which works out to a person about
+   156 cm tall, so a 180 cm runner's vertical oscillation reads ~13% low.
+
+   Running only, signed in only: those are the conditions under which it
+   changes an answer, and asking outside them is asking for a body
+   measurement for nothing.
+   ============================================================ */
+function renderHeightField(){
+  const box=$('#heightField'), hint=$('#heightHint'), input=$('#heightInput');
+  if(!box||!input) return;
+  const show = !!auth && state.sport==='run' && state.mode!=='photo';
+  box.classList.toggle('hidden', !show);
+  hint.classList.toggle('hidden', !show);
+  if(!show) return;
+  if(document.activeElement!==input) input.value = auth.height_cm || '';
+  hint.innerHTML = auth.height_cm
+    ? 'Used to turn vertical oscillation into real centimetres.'
+    : 'Optional — without it we assume an average build, which can put centimetre readings out by ~10%.';
+}
+async function saveHeight(){
+  const input=$('#heightInput'); if(!input||!auth) return;
+  const raw=input.value.trim();
+  const value = raw==='' ? null : Math.round(+raw);
+  if(value!==null && (!Number.isFinite(value) || value<120 || value>230)){
+    // Say what is wrong rather than silently keeping the old value.
+    $('#heightHint').textContent='That looks like a different unit — enter your height in centimetres (120–230).';
+    return;
+  }
+  if((auth.height_cm||null)===value) return;         // nothing changed
+  try{
+    const r=await fetch('/auth/me/height',{
+      method:'PUT', headers:authHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({height_cm:value}),
+    });
+    if(r.ok){ auth=await r.json(); renderHeightField(); }
+  }catch(e){ /* keep the typed value; the next analysis just uses the average */ }
 }
 async function openPortal(){
   if(!auth) return;

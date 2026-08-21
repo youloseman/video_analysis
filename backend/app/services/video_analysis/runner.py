@@ -435,6 +435,7 @@ def run_analysis(
     video_path: str, sport_type: str, cycling_position: str | None,
     overlay_path: str | None = None, recommendations: bool = True,
     hide_angle_values: bool = False, kinogram: bool = True,
+    athlete_height_cm: float | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -448,6 +449,12 @@ def run_analysis(
     one image. Costs a partial second decode of the video, and the gate strips
     it from a free response anyway, so callers serving a teaser pass False
     rather than render something nobody will see.
+
+    ``athlete_height_cm`` (running only): the athlete's standing height, when
+    they have told us. It is the one real-world length a side view ever gets,
+    and it is what turns image fractions into honest centimetres -- see
+    ``RunningAnalyzer._lock_body_scale``. Omitted, the analysis falls back to a
+    population-average torso and says so in the result.
     """
     camera_angle = None   # side view only in Milestone 1
     camera_view = None    # None == side view (implicit default in Motus)
@@ -532,7 +539,7 @@ def run_analysis(
         if hasattr(analyzer, "_near_side"):
             analyzer._near_side = locked_side
     else:
-        analyzer = RunningAnalyzer(fps=fps)
+        analyzer = RunningAnalyzer(fps=fps, height_cm=athlete_height_cm)
         # Vote the camera side over the WHOLE clip BEFORE measuring anything.
         # The vote itself is unchanged (same per-frame test, same majority and
         # tie rule as finalize_camera_side) -- it just happens up front now.

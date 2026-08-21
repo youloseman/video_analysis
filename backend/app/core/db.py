@@ -107,6 +107,13 @@ def _migrate_users(conn) -> None:
             "ALTER TABLE users ADD COLUMN expert_credit_grant_ref VARCHAR(255)"
         ))
         logger.info("MIGRATED", change="users.expert_credit_grant_ref added")
+    if "height_cm" not in cols:
+        # Nullable with no backfill on purpose: NULL means "not told", which
+        # the analysis handles by falling back to a population average and
+        # saying so. Inventing a height for existing accounts would silently
+        # change their centimetre readings on the next clip.
+        conn.execute(text("ALTER TABLE users ADD COLUMN height_cm INTEGER"))
+        logger.info("MIGRATED", change="users.height_cm added")
 
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()
