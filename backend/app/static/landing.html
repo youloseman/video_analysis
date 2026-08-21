@@ -540,11 +540,11 @@ h2.sec .accent{color:var(--c-coral)}
 .vs-card.now h4{color:#fff}
 .vs-card p{font-size:14.5px;color:var(--c-ink-soft);max-width:46ch}
 .vs-card.now p{color:rgba(255,255,255,.8)}
-/* max-width:none — it is a <p>, so it would otherwise inherit the 46ch prose
-   measure above and wrap a three-item mono strip that fits on one line. */
-.vs-meta{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:18px;max-width:none;
+/* Qualified with p — the strip is a <p>, so the prose rule above (46ch measure,
+   14.5px) would otherwise out-specify it and wrap a one-line mono strip. */
+.vs-card p.vs-meta{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:18px;max-width:none;
   font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-faint)}
-.vs-card.now .vs-meta{color:rgba(255,255,255,.62)}
+.vs-card.now p.vs-meta{color:rgba(255,255,255,.62)}
 .vs-meta i{width:4px;height:4px;border-radius:50%;background:var(--c-line);display:inline-block}
 .vs-card.now .vs-meta i{background:var(--c-coral)}
 .track-cta{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:44px}
