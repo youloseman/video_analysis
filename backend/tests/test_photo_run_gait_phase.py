@@ -21,6 +21,10 @@ import numpy as np
 import pytest
 
 from app.services.video_analysis import overlay_style
+from app.services.video_analysis.biomechanics.angle_calculator import (
+    calculate_signed_segment_to_vertical,
+)
+from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
 from app.services.video_analysis.photo_analyzer import (
     _estimate_run_gait_phase,
     _get_running_optimal_ranges,
@@ -98,6 +102,67 @@ def test_thigh_deviation_is_mirror_symmetric():
 
 def test_thigh_deviation_needs_a_direction():
     assert np.isnan(_thigh_deviation_deg(_skeleton(), 23, 25, 0.0))
+
+
+# --------------------------------------------------------------------------
+# Signed trunk lean -- the fault an unsigned reading could not see
+# --------------------------------------------------------------------------
+
+def _trunk(shoulder_x: float, forward: float = 1.0) -> float:
+    """Trunk lean for a shoulder at ``shoulder_x`` over a hip at 0.50."""
+    lms = [LM(0.5, 0.5) for _ in range(33)]
+    lms[11] = LM(shoulder_x, 0.30)   # shoulder
+    lms[23] = LM(0.50, 0.55)         # hip
+    return calculate_signed_segment_to_vertical(lms, 11, 23, forward)
+
+
+def test_leaning_back_is_no_longer_indistinguishable_from_leaning_forward():
+    """abs() made a 6-deg backward lean read as 6 deg of forward lean.
+
+    The running band is one-sided -- forward is fine up to ~10 deg, back is
+    not -- so the unsigned reading let the one unambiguous trunk fault land
+    mid-band and score optimal.
+    """
+    forward, back = _trunk(0.5 + 0.0263), _trunk(0.5 - 0.0263)
+    assert forward > 0 and back < 0
+    assert forward == pytest.approx(-back, abs=0.1)
+
+
+def test_upright_reads_zero_and_sits_inside_the_band():
+    lo, hi = RUNNING_REFERENCE["trunk_lean"]
+    assert _trunk(0.50) == pytest.approx(0.0, abs=0.01)
+    assert lo <= 0.0 <= hi, "an upright torso must not be a fault"
+
+
+def test_trunk_band_admits_upright_but_not_leaning_back():
+    lo, hi = RUNNING_REFERENCE["trunk_lean"]
+    assert lo <= 0 < hi          # upright: fine
+    assert not (lo <= -6 <= hi)  # 6 deg behind vertical: a fault
+    assert lo <= 8 <= hi         # normal forward lean: fine
+
+
+def test_trunk_sign_is_mirror_symmetric():
+    """Filmed from the other side, the same posture reads the same."""
+    assert _trunk(0.5 + 0.0263, forward=1.0) == pytest.approx(
+        _trunk(0.5 - 0.0263, forward=-1.0), abs=0.1,
+    )
+
+
+def test_trunk_is_nan_when_the_direction_of_travel_is_unknown():
+    """No direction means no sign -- and a sign guessed is a fault invented."""
+    assert np.isnan(_trunk(0.5 + 0.0263, forward=0.0))
+
+
+def test_the_scorer_keeps_a_backward_lean_instead_of_dropping_it():
+    """The `> 0` presence guard would have deleted every negative reading."""
+    from app.services.video_analysis.biomechanics.technique_scorer import score_running
+
+    back = score_running({"trunk_lean_avg": -7.0}, {})["component_scores"]
+    upright = score_running({"trunk_lean_avg": 0.0}, {})["component_scores"]
+    assert "trunk_lean" in back, "a negative reading must still be scored"
+    assert back["trunk_lean"] < upright["trunk_lean"], (
+        "leaning back must cost more than standing tall"
+    )
 
 
 # --------------------------------------------------------------------------

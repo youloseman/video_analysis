@@ -14,6 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
+
 
 # ---------------------------------------------------------------------------
 # Diagnosis order (strict, like cycling fitting_sequence)
@@ -48,7 +50,11 @@ _RANGES: dict[str, tuple[float, float]] = {
     "cadence":      (170, 190),   # steps per minute
     "overstride":   (0.0, 0.15),  # foot-ahead / leg-length at contact (lower better)
     "vertical_osc": (6, 10),      # centimeters
-    "trunk_lean":   (4, 8),       # degrees from vertical
+    # Taken from the shared reference rather than copied. This was a hardcoded
+    # (4, 8) while the scorer used (2, 10) and the video overlay (0, 12) -- so
+    # an upright runner could be "optimal" on the score card and still be told
+    # by the action plan to lean forward more.
+    "trunk_lean":   RUNNING_REFERENCE["trunk_lean"],
     "knee_contact": (160, 175),   # degrees  (knee_max from summary)
     "elbow_angle":  (85, 100),    # degrees  (elbow_mean from summary)
     "knee_swing":   (80, 100),    # degrees  (knee_min from summary)
@@ -88,14 +94,22 @@ _IMPLAUSIBLE_BOUNDS: dict[str, dict[str, float]] = {
         "max": 25.0,
     },
     "trunk_lean": {
-        # Defensive floor against the analyzer's pre-hotfix 0.0
-        # fallback when no valid trunk samples were captured. A
-        # genuine reading is at least a fraction of a degree;
-        # exactly 0.0 in legacy stored data is the failure mode.
-        "min": 0.1,
+        # Two-sided since the reading became signed: negative is a real
+        # posture (leaning back), not noise. The old floor of 0.1 was
+        # written when the value could only be positive, and left as-is
+        # it would have discarded EVERY backward lean as "implausible" --
+        # silently deleting the fault this metric now exists to catch.
+        "min": -60.0,
         "max": 60.0,
     },
 }
+
+# Metrics where a legacy stored analysis used exactly 0.0 to mean "no
+# measurement". The analyzer returns None now (see running_analyzer:
+# "None when no valid samples -- absent metric > phantom 0"), so this
+# only guards old rows. It costs a genuinely dead-vertical torso its
+# diagnostic, which is the cheaper mistake of the two.
+_LEGACY_ZERO_SENTINELS: frozenset[str] = frozenset({"trunk_lean"})
 # Backward-compat alias -- only the ``min`` side. New code should
 # use _IMPLAUSIBLE_BOUNDS and consult both ends.
 _IMPLAUSIBLE_FLOORS: dict[str, float] = {
@@ -219,8 +233,12 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
         "cue": "Glide forward like a cross-country skier, do not bounce",
         "weeks_to_improvement": 4,
     },
+    # Fires BELOW the band. Now that the reading is signed, "below" means the
+    # torso is behind vertical -- leaning back, not merely upright (an upright
+    # 0 deg is inside the band and gets no drill at all). Say that, rather than
+    # the old "insufficient lean", which described a posture that is fine.
     "trunk_lean_insufficient": {
-        "problem": "Insufficient trunk lean ({value} deg, optimal 4-8 deg)",
+        "problem": "Leaning back ({value} deg -- torso behind vertical)",
         "drill": "Wall Lean Drill",
         "instruction": (
             "Lean hands against a wall at 45 deg, body straight. "
@@ -230,7 +248,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
         "weeks_to_improvement": 2,
     },
     "trunk_lean_excessive": {
-        "problem": "Excessive trunk lean ({value} deg, optimal 4-8 deg)",
+        "problem": "Excessive forward lean ({value} deg, optimal 0-10 deg)",
         "drill": "Tall Running Drill",
         "instruction": (
             "Run with a book on your head 3x50 m. "
@@ -561,6 +579,8 @@ def _get_value(metric: str, summary: dict[str, Any]) -> float | None:
     try:
         val_f = float(val)
     except (TypeError, ValueError):
+        return None
+    if metric in _LEGACY_ZERO_SENTINELS and val_f == 0.0:
         return None
     bounds = _IMPLAUSIBLE_BOUNDS.get(metric)
     if bounds is not None:

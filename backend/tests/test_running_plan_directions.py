@@ -11,11 +11,17 @@ the below case, which inverted their meaning on live reports:
   actually describes and the one that pairs with overstriding, produced no
   drill at all.
 
-The second half of this file is the other way a plan misleads: grading noise.
-A trunk lean of 3.9 deg against a 4-8 band is one tenth of a degree out, well
+The second half of this file is the other two ways a plan misleads.
+
+Grading noise: a trunk lean one tenth of a degree outside its band is well
 inside what 2D video resolves, and it produced a two-week drill -- while the
 report's own preamble told the reader that a degree or two outside a band is
 not a finding.
+
+And sign. Trunk lean was measured with abs(), so a torso 7 deg BEHIND vertical
+read "7.0" -- indistinguishable from 7 deg of forward lean, and comfortably
+inside a band written for forward lean. The one trunk posture that is
+unambiguously a fault was the one that scored optimal.
 """
 
 from __future__ import annotations
@@ -90,17 +96,55 @@ def test_a_softer_knee_at_contact_is_not_faulted():
 # Deviations too small to mean anything
 # ---------------------------------------------------------------------------
 def test_a_tenth_of_a_degree_outside_the_band_is_not_a_finding():
-    plan = plan_for(trunk_lean_avg=3.9)
+    """0.1 deg past the top of the band is inside what 2D video resolves."""
+    plan = plan_for(trunk_lean_avg=10.1)
     assert is_fine(plan, "trunk_lean")
     assert "trunk_lean" not in drills(plan)
 
 
 def test_a_real_trunk_deviation_still_gets_its_drill():
-    plan = plan_for(trunk_lean_avg=1.5)
-    assert drills(plan).get("trunk_lean") == "trunk_lean_insufficient"
-
     plan = plan_for(trunk_lean_avg=14.0)
     assert drills(plan).get("trunk_lean") == "trunk_lean_excessive"
+
+    plan = plan_for(trunk_lean_avg=-6.0)
+    assert drills(plan).get("trunk_lean") == "trunk_lean_insufficient"
+
+
+# ---------------------------------------------------------------------------
+# Trunk lean is signed: + leans forward, - leans back
+# ---------------------------------------------------------------------------
+def test_an_upright_torso_is_not_told_to_lean_forward():
+    """Folland 2017: upright tracks BETTER economy, so 0 deg is not a fault.
+
+    The band used to start at 4 deg here (and 2 in the scorer), so a runner
+    holding a vertical torso was handed the Wall Lean drill for it.
+    """
+    plan = plan_for(trunk_lean_avg=0.0001)   # 0.0 exactly = legacy "no data"
+    assert is_fine(plan, "trunk_lean")
+    assert "trunk_lean" not in drills(plan)
+
+
+def test_leaning_back_is_diagnosed_rather_than_read_as_leaning_forward():
+    """The fault the unsigned reading could not see.
+
+    A torso 7 deg BEHIND vertical used to measure "7.0" -- mid-band, optimal,
+    no drill -- because the angle was taken with abs(). Signed, it lands below
+    the band and describes itself correctly.
+    """
+    plan = plan_for(trunk_lean_avg=-7.0)
+    assert drills(plan).get("trunk_lean") == "trunk_lean_insufficient"
+    assert "Leaning back" in diagnosis(plan, "trunk_lean").problem_description
+
+
+def test_a_legacy_zero_is_still_treated_as_missing_data():
+    """Stored analyses used exactly 0.0 to mean "no trunk samples".
+
+    The implausibility floor that caught those had to open up to admit
+    negatives, so the sentinel is now checked on its own.
+    """
+    plan = plan_for(trunk_lean_avg=0.0)
+    assert diagnosis(plan, "trunk_lean") is None
+    assert "trunk_lean" not in drills(plan)
 
 
 def test_bouncing_less_than_the_band_is_not_graded_as_a_deviation():

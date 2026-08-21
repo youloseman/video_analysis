@@ -3215,7 +3215,11 @@ function angleRow(k,a){
   }
   const cls=P_STATUS_CLS[stt]||'low';
   const word=P_STATUS_WORD[stt]||stt.replace(/_/g,' ');
-  const opt=(a.optimal_min!=null&&a.optimal_max!=null)?`${a.optimal_min}–${a.optimal_max}`:'—';
+  /* An en dash between a negative low bound and a high one reads as a minus
+     sign doing double duty ("-2–10"). Spell the range out in that case. */
+  const opt=(a.optimal_min!=null&&a.optimal_max!=null)
+    ? (a.optimal_min<0 ? `${a.optimal_min} to ${a.optimal_max}` : `${a.optimal_min}–${a.optimal_max}`)
+    : '—';
   return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
     <td class="num">${val}</td><td class="num">${opt}</td>
     <td><span class="pill pill-${cls}" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>${esc(word)}</span></td></tr>`;

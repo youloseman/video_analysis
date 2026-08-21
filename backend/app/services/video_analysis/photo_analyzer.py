@@ -25,9 +25,11 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
     calculate_angle_3d,
     calculate_body_rotation,
     calculate_forearm_tilt_2d,
+    calculate_forward_sign,
     calculate_head_alignment_2d,
     calculate_segment_to_vertical,
     calculate_shank_foot_angle_2d,
+    calculate_signed_segment_to_vertical,
 )
 from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_POSITIONS,
@@ -79,10 +81,6 @@ RUNNING_TRUNK_LANDMARKS: dict[str, tuple[int, int]] = {
     "left": (11, 23),
     "right": (12, 24),
 }
-
-# (heel, toe) per foot. Used only to read the direction of travel -- see
-# _running_forward_sign.
-RUNNING_FOOT_AXES: tuple[tuple[int, int], ...] = ((29, 31), (30, 32))
 
 # Cycling: near-side only, unprefixed keys (matches cycling_analyzer.py)
 CYCLING_PHOTO_ANGLES: dict[str, dict[str, tuple[int, int, int]]] = {
@@ -1072,31 +1070,8 @@ _RUN_KNEE_FOLDED_DEG = 115.0
 
 
 def _running_forward_sign(landmarks) -> float:
-    """Direction of travel along the image x axis: +1, -1, or 0 if unknown.
-
-    Read from the feet. The toe sits ahead of the heel on both feet at every
-    instant of the cycle, which makes the foot axis the one landmark pair whose
-    orientation does not flip as the athlete runs -- unlike the limbs, which
-    reverse twice per stride, or the head, which barely moves relative to the
-    hips. Both feet are summed so a single occluded or badly-tracked foot
-    cannot flip the result.
-    """
-    dx = 0.0
-    for heel_i, toe_i in RUNNING_FOOT_AXES:
-        if max(heel_i, toe_i) >= len(landmarks):
-            continue
-        vis = min(
-            getattr(landmarks[heel_i], "visibility", 1.0),
-            getattr(landmarks[toe_i], "visibility", 1.0),
-        )
-        if vis < _VIS_THRESHOLD:
-            continue
-        step = landmarks[toe_i].x - landmarks[heel_i].x
-        if not math.isnan(step):
-            dx += step
-    if abs(dx) < 1e-6:
-        return 0.0
-    return 1.0 if dx > 0 else -1.0
+    """Direction of travel, at the photo path's own visibility threshold."""
+    return calculate_forward_sign(landmarks, min_visibility=_VIS_THRESHOLD)
 
 
 def _thigh_deviation_deg(landmarks, hip_idx: int, knee_idx: int, forward: float) -> float:
@@ -1107,27 +1082,15 @@ def _thigh_deviation_deg(landmarks, hip_idx: int, knee_idx: int, forward: float)
     a thigh 10 deg behind vertical and one 10 deg ahead of it produce nearly
     the same reading with opposite meanings. The signed thigh deviation does
     not fold.
-
-    ``abs`` on the vertical component keeps the sign convention independent of
-    which way the y axis points; in running the knee is always below the hip,
-    so nothing real is lost. Returns NaN when the direction of travel is
-    unknown or the landmarks are unusable.
     """
-    if forward == 0.0:
-        return math.nan
-    if max(hip_idx, knee_idx) >= len(landmarks):
-        return math.nan
-    vis = min(
-        getattr(landmarks[hip_idx], "visibility", 1.0),
-        getattr(landmarks[knee_idx], "visibility", 1.0),
+    # The helper's sign is "first index ahead of second along the direction of
+    # travel", and it takes abs() of the vertical component -- so which of the
+    # two points is physically higher does not matter. (knee, hip) therefore
+    # gives "+ = knee ahead of the hip" even though the knee is the lower one.
+    val = calculate_signed_segment_to_vertical(
+        landmarks, knee_idx, hip_idx, forward, min_visibility=_VIS_THRESHOLD,
     )
-    if vis < _VIS_THRESHOLD:
-        return math.nan
-    dx = (landmarks[knee_idx].x - landmarks[hip_idx].x) * forward
-    dy = abs(landmarks[knee_idx].y - landmarks[hip_idx].y)
-    if math.isnan(dx) or math.isnan(dy) or (abs(dx) + dy) < 1e-6:
-        return math.nan
-    return round(math.degrees(math.atan2(dx, dy)), 1)
+    return val if math.isnan(val) else round(val, 1)
 
 
 def _estimate_run_gait_phase(thigh_dev: float, knee_angle: float) -> str:
@@ -1380,8 +1343,20 @@ def analyze_photo(
         ankle_val, _ = calculate_shank_foot_angle_2d(wl, k_i, a_i, h_i, t_i)
         angles["ankle"] = _safe_round(ankle_val)
 
+        # Direction of travel first: both the trunk sign and the stride phase
+        # are meaningless without it.
+        forward_sign = _running_forward_sign(wl)
+
+        # Signed, so leaning BACK is distinguishable from leaning forward. The
+        # unsigned reading reported both as the same positive number, which let
+        # a backward lean land mid-band and score as optimal. NaN when the
+        # direction is unknown (feet occluded): the trunk then drops out of the
+        # score rather than being judged against a band it cannot be placed on,
+        # and the partial-body warning below already tells the athlete why.
         sh_idx, hp_idx = RUNNING_TRUNK_LANDMARKS[camera_side]
-        trunk = calculate_segment_to_vertical(wl, sh_idx, hp_idx)
+        trunk = calculate_signed_segment_to_vertical(
+            wl, sh_idx, hp_idx, forward_sign, min_visibility=_VIS_THRESHOLD,
+        )
         angles["trunk"] = _safe_round(trunk)
 
         # Which instant of the stride this frame caught. Has to be resolved
@@ -1389,7 +1364,6 @@ def analyze_photo(
         # (see _RUN_HIP_BANDS), so choosing one without the phase is what made
         # a hand-picked knee-drive frame come back as "hip too closed".
         _, run_hip_idx, run_knee_idx = RUNNING_PHOTO_ANGLES[camera_side]["hip"]
-        forward_sign = _running_forward_sign(wl)
         thigh_dev = _thigh_deviation_deg(wl, run_hip_idx, run_knee_idx, forward_sign)
         gait_phase = _estimate_run_gait_phase(
             thigh_dev, angles.get("knee", math.nan),

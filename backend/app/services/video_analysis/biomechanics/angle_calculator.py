@@ -187,6 +187,77 @@ def calculate_segment_to_vertical(
     return angle
 
 
+# (heel, toe) per foot. The toe sits ahead of the heel on both feet at every
+# instant of a stride, which makes the foot axis the one landmark pair whose
+# orientation does not flip as the athlete runs -- unlike the limbs, which
+# reverse twice per stride.
+FOOT_AXES: tuple[tuple[int, int], ...] = ((29, 31), (30, 32))
+
+
+def calculate_forward_sign(
+    landmarks, min_visibility: float = MIN_LANDMARK_VISIBILITY,
+) -> float:
+    """Direction of travel along the image x axis: +1, -1, or 0 if unknown.
+
+    Both feet are summed so a single occluded or badly-tracked foot cannot
+    flip the result. 0 means "could not tell" -- callers must treat that as
+    missing data rather than picking a direction.
+    """
+    dx = 0.0
+    for heel_i, toe_i in FOOT_AXES:
+        if max(heel_i, toe_i) >= len(landmarks):
+            continue
+        vis = min(
+            getattr(landmarks[heel_i], "visibility", 1.0),
+            getattr(landmarks[toe_i], "visibility", 1.0),
+        )
+        if vis < min_visibility:
+            continue
+        step = landmarks[toe_i].x - landmarks[heel_i].x
+        if not math.isnan(step):
+            dx += step
+    if abs(dx) < 1e-6:
+        return 0.0
+    return 1.0 if dx > 0 else -1.0
+
+
+def calculate_signed_segment_to_vertical(
+    landmarks, idx_top: int, idx_bottom: int, forward: float,
+    min_visibility: float = MIN_LANDMARK_VISIBILITY,
+) -> float:
+    """Segment angle from vertical, SIGNED by the direction of travel.
+
+    Positive = the top of the segment is ahead of the bottom (a trunk leaning
+    forward); negative = behind it (leaning back).
+
+    :func:`calculate_segment_to_vertical` takes ``abs(dx)``, so it reports a
+    torso 6 deg behind vertical and one 6 deg ahead of it as the same 6.0 --
+    with opposite meanings. Running bands are one-sided (forward lean up to
+    ~10 deg is fine, leaning back is not), so an unsigned reading lets a
+    backward lean land mid-band and score as optimal.
+
+    Returns NaN when the direction of travel is unknown or a landmark is not
+    visible enough -- absent beats a sign picked by coin flip.
+    """
+    if forward == 0.0:
+        return float("nan")
+    if max(idx_top, idx_bottom) >= len(landmarks):
+        return float("nan")
+    vis_top = getattr(landmarks[idx_top], "visibility", 1.0)
+    vis_bottom = getattr(landmarks[idx_bottom], "visibility", 1.0)
+    if min(vis_top, vis_bottom) < min_visibility:
+        return float("nan")
+
+    dx = (landmarks[idx_top].x - landmarks[idx_bottom].x) * forward
+    # abs() keeps the convention independent of which way the y axis points;
+    # the top of a trunk or thigh is always above its bottom, so nothing real
+    # is lost.
+    dy = abs(landmarks[idx_top].y - landmarks[idx_bottom].y)
+    if math.isnan(dx) or math.isnan(dy) or (abs(dx) + dy) < 1e-6:
+        return float("nan")
+    return math.degrees(math.atan2(dx, dy))
+
+
 def calculate_segment_to_vertical_from_points(
     top,
     bottom,

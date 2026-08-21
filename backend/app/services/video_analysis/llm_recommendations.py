@@ -207,7 +207,9 @@ def _run_data_block(
             if summary.get("slow_motion_factor") else ""
         ),
         f"- Vertical oscillation: {_fmt(vosc, ' cm')} (lower is generally better)",
-        f"- Trunk lean: {_fmt(summary.get('trunk_lean_avg'), '°')} (target ~5-10 forward)",
+        f"- Trunk lean: {_fmt(summary.get('trunk_lean_avg'), '°')} "
+        f"(signed: positive = leaning forward, NEGATIVE = leaning BACK. "
+        f"Target 0-10 forward; upright is fine, leaning back is not)",
         f"- Ground contact time: {_fmt(summary.get('ground_contact_ms'), ' ms')}"
         f"{' (estimated from 2D video)' if summary.get('ground_contact_ms_estimated') else ''}",
         f"- Flight time: {_fmt(summary.get('flight_time_ms'), ' ms')} (aerial phase, target ~80-150"

@@ -26,11 +26,23 @@ Running references:
 # our INTERNAL joint angles, 180 deg = straight; papers report FLEXION from
 # straight, so internal = 180 - flexion).
 RUNNING_REFERENCE = {
-    # deg forward lean from vertical. Folland 2017: a MORE UPRIGHT trunk
-    # correlates with better performance/economy -- only extreme forward lean is
-    # a clear negative -- so the band stays tolerant of upright postures. (Folland
-    # measured trunk angle vs quiet standing; ours is vs vertical.)
-    "trunk_lean": (2, 10),
+    # deg lean from vertical, SIGNED by the direction of travel: positive =
+    # leaning forward, negative = leaning back (see
+    # angle_calculator.calculate_signed_segment_to_vertical).
+    #
+    # Folland 2017: a MORE UPRIGHT trunk correlates with better
+    # performance/economy -- only extreme forward lean is a clear negative --
+    # so the band stays tolerant of upright postures. (Folland measured trunk
+    # angle vs quiet standing; ours is vs vertical.) The old (2, 10) contradicted
+    # that comment by docking points for a vertical torso, so the low end is 0.
+    #
+    # The -2 is a NOISE allowance, not a claim that 2 deg of backward lean is
+    # good: 2D pose on a single frame, plus any camera tilt, wobbles a genuine
+    # 0 either side of vertical. Past that, leaning back is a real fault
+    # (braking, lost hip extension) -- and while the reading was unsigned it
+    # was invisible, because a torso 6 deg BEHIND vertical also read "6.0" and
+    # landed comfortably inside the old band.
+    "trunk_lean": (-2, 10),
     # steps/min. Heiderscheit 2011: preferred ~172.6; a +5-10% increase reduces
     # knee/hip load. "180" is a rule of thumb, not a strict optimum (contested).
     "cadence_spm": (170, 190),

@@ -21,8 +21,9 @@ import structlog
 from app.services.video_analysis.biomechanics.angle_calculator import (
     SPORT_LANDMARK_VISIBILITY,
     calculate_angle_2d,
-    calculate_segment_to_vertical,
+    calculate_forward_sign,
     calculate_shank_foot_angle_2d,
+    calculate_signed_segment_to_vertical,
 )
 from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
@@ -996,9 +997,20 @@ class RunningAnalyzer(SportAnalyzer):
         angles["ankle"] = ankle_val
         visibility["ankle"] = ankle_vis
 
-        # Trunk lean: near-side shoulder + hip (world landmarks)
+        # Trunk lean: near-side shoulder + hip (world landmarks), SIGNED by the
+        # direction of travel -- positive leaning forward, negative leaning
+        # back. Unsigned, a torso 6 deg BEHIND vertical read "6.0" and sat
+        # comfortably inside a band written for forward lean, so the one trunk
+        # posture that is unambiguously a fault scored as optimal.
+        #
+        # NaN when the feet are not visible enough to fix the direction; the
+        # average below already drops NaN samples, so a few such frames cost
+        # nothing and a whole clip of them yields None rather than a number
+        # whose sign nobody can vouch for.
         sh_idx, hp_idx = TRUNK_LANDMARKS[near]
-        trunk_val = calculate_segment_to_vertical(wl, sh_idx, hp_idx)
+        trunk_val = calculate_signed_segment_to_vertical(
+            wl, sh_idx, hp_idx, calculate_forward_sign(wl),
+        )
         angles["trunk"] = trunk_val
         self.trunk_lean_values.append(trunk_val)
 

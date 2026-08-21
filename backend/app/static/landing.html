@@ -399,6 +399,159 @@ h2.sec .accent{color:var(--c-coral)}
   padding:3px 9px;border-radius:999px}
 
 /* ============================================================
+   Trackside — the loop that fits inside one session
+   ------------------------------------------------------------
+   The phone here is an illustration, not a screenshot: there is no real
+   running capture in /media yet. It is drawn from the analyser's own palette
+   (overlay_style.py: NEON / AMBER / ROSE) and its own metric names so the
+   promise on this page and the picture the app actually returns agree.
+   ============================================================ */
+:root{--ov-neon:#3DFF6E; --ov-amber:#FFA82E; --ov-rose:#FF5B4D}
+.track{position:relative;background:var(--c-bg);padding:110px 0;overflow:hidden}
+.track::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(760px 460px at 88% 10%, rgba(47,109,224,.09), transparent 62%),
+             radial-gradient(520px 380px at 2% 90%, rgba(241,85,63,.07), transparent 60%);
+}
+.track .wrap{position:relative;z-index:1}
+.track-head{max-width:760px;margin-bottom:58px}
+.track h2.sec{font-size:clamp(30px,4.2vw,46px)}
+.track-grid{display:grid;grid-template-columns:1.04fr .96fr;gap:58px;align-items:center}
+@media(max-width:960px){.track-grid{grid-template-columns:1fr;gap:54px}}
+
+/* ---------- the stopwatch timeline ---------- */
+.loop{list-style:none;position:relative}
+.loop::before{content:"";position:absolute;left:85px;top:22px;bottom:34px;width:2px;
+  background:linear-gradient(var(--c-blue-soft) 0%,var(--c-blue-soft) 62%,rgba(241,85,63,.5) 100%)}
+.loop li{position:relative;display:grid;grid-template-columns:68px 1fr;gap:34px;padding:6px 0 24px}
+.loop li:last-child{padding-bottom:0}
+.loop li::after{
+  content:"";position:absolute;left:85px;top:15px;transform:translateX(-50%);
+  width:11px;height:11px;border-radius:50%;background:#fff;border:2.5px solid var(--c-blue);
+}
+.loop li:last-child::after{border-color:var(--c-coral);background:var(--c-coral)}
+.loop .clk{
+  font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--c-ink-faint);text-align:right;white-space:nowrap;padding-top:3px;
+}
+.loop li:last-child .clk{color:var(--c-coral-dk)}
+.loop h4{font-family:var(--f-body);font-weight:800;font-size:17px;color:var(--c-navy);margin-bottom:6px}
+.loop p{font-size:14.5px;color:var(--c-ink-soft);max-width:44ch}
+.loop p b{color:var(--c-ink)}
+
+/* ---------- the phone: a three-beat loop of the real thing ----------
+   One 12s cycle drives every layer, so the beats stay in step without JS:
+   0–22% filming · 22–40% reading · 40–100% verdict. ---------- */
+.track .stage-phone{display:flex;justify-content:center}
+.track .phone{animation:none;width:min(286px,72vw)}
+.tp-screen{position:relative;width:100%;height:100%;border-radius:31px;overflow:hidden;
+  background:linear-gradient(170deg,#0A1728 0%,#0C1E33 60%,#0A1728 100%)}
+.tp-svg{position:absolute;inset:0;width:100%;height:100%}
+.tp-body{stroke:rgba(255,255,255,.17);stroke-width:13;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.tp-body>circle{fill:rgba(255,255,255,.17);stroke:none}
+.tp-ground{stroke:rgba(255,255,255,.15);stroke-width:2;fill:none}
+.tp-skel{stroke:var(--ov-neon);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.tp-skel>circle{fill:none;stroke:var(--ov-neon);stroke-width:2.6}
+.tp-dots circle{fill:var(--ov-neon)}
+.tp-plumb{stroke:rgba(255,255,255,.5);stroke-width:1.6;stroke-dasharray:4 5;fill:none}
+.tp-badseg{stroke:var(--ov-rose);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.tp-brk{stroke:var(--ov-rose);stroke-width:2.2;stroke-linecap:round;fill:none}
+.tp-halo{fill:none;stroke:var(--ov-rose);stroke-width:2}
+.tp-pt{fill:var(--ov-rose)}
+/* camera framing guides, filming beat only */
+.tp-frame{stroke:rgba(255,255,255,.4);stroke-width:2.4;stroke-linecap:round;fill:none}
+.tp-scan{position:absolute;left:0;right:0;top:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--ov-neon),transparent);
+  box-shadow:0 0 20px rgba(61,255,110,.7)}
+/* status badge — three of them stacked, one visible per beat */
+.tp-badge{
+  position:absolute;top:14px;left:14px;z-index:4;display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--f-mono);font-size:9.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+  color:rgba(255,255,255,.92);background:rgba(5,16,31,.72);border:1px solid rgba(255,255,255,.18);
+  border-radius:999px;padding:5px 11px;backdrop-filter:blur(4px);white-space:nowrap;
+}
+.tp-badge i{width:7px;height:7px;border-radius:50%;background:var(--c-coral)}
+.tp-b-read i{background:var(--ov-neon)}
+.tp-b-done{background:rgba(5,16,31,.85);border-color:rgba(61,255,110,.45);color:var(--ov-neon)}
+.tp-chip{
+  position:absolute;z-index:4;display:inline-flex;flex-direction:column;gap:2px;
+  font-family:var(--f-mono);font-size:10px;font-weight:600;letter-spacing:.07em;
+  background:rgba(9,18,30,.9);border:1px solid rgba(255,255,255,.16);border-radius:9px;
+  padding:6px 10px;backdrop-filter:blur(4px);white-space:nowrap;
+  box-shadow:0 10px 26px rgba(3,10,24,.5);
+}
+.tp-chip em{font-style:normal;font-size:8.5px;letter-spacing:.06em;color:rgba(255,255,255,.5)}
+.tp-good{color:var(--ov-neon);border-color:rgba(61,255,110,.4);left:4%;top:20%}
+.tp-bad{color:var(--ov-rose);border-color:rgba(255,91,77,.45);left:4%;bottom:23%}
+.tp-coach{
+  position:absolute;left:4%;right:4%;bottom:4%;z-index:4;
+  background:rgba(9,18,30,.93);border:1px solid rgba(255,255,255,.14);border-radius:12px;
+  padding:11px 13px;backdrop-filter:blur(6px);box-shadow:0 16px 40px rgba(3,10,24,.6);
+}
+.tp-coach-lbl{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:8.5px;
+  font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--c-coral);margin-bottom:5px}
+.tp-coach-lbl::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c-coral)}
+.tp-coach p{font-size:11.5px;line-height:1.45;color:rgba(255,255,255,.86)}
+.tp-coach p b{color:#fff}
+
+@keyframes tpFrame{0%{opacity:0}4%,17%{opacity:1}23%,100%{opacity:0}}
+/* `top`, not `transform` — the line is 2px tall, so a percentage translate
+   would move it 2px. The screen's height is fluid, so a pixel value is out. */
+@keyframes tpScan{0%,22%{opacity:0;top:0}
+                  26%{opacity:1}36%{opacity:1;top:100%}
+                  40%,100%{opacity:0;top:100%}}
+@keyframes tpDots{0%,22%{opacity:0}29%,95%{opacity:1}100%{opacity:0}}
+@keyframes tpSkel{0%,32%{opacity:0}42%,95%{opacity:1}100%{opacity:0}}
+@keyframes tpFlag{0%,42%{opacity:0}51%,95%{opacity:1}100%{opacity:0}}
+@keyframes tpChip{0%,44%{opacity:0;transform:translateY(7px)}53%,95%{opacity:1;transform:none}100%{opacity:0;transform:none}}
+@keyframes tpCoach{0%,55%{opacity:0;transform:translateY(16px)}64%,95%{opacity:1;transform:none}100%{opacity:0;transform:none}}
+@keyframes tpRec{0%{opacity:0}4%,17%{opacity:1}22%,100%{opacity:0}}
+@keyframes tpRead{0%,20%{opacity:0}26%,36%{opacity:1}41%,100%{opacity:0}}
+@keyframes tpDone{0%,40%{opacity:0}49%,95%{opacity:1}100%{opacity:0}}
+@keyframes tpPulse{0%{r:9;opacity:.85}70%{r:20;opacity:0}100%{r:20;opacity:0}}
+.tp-frame{animation:tpFrame 12s linear infinite}
+.tp-scan{animation:tpScan 12s linear infinite}
+.tp-dots{animation:tpDots 12s linear infinite}
+.tp-skel{animation:tpSkel 12s linear infinite}
+.tp-flag{animation:tpFlag 12s linear infinite}
+.tp-halo{animation:tpPulse 1.9s ease-out infinite}
+.tp-chip{animation:tpChip 12s linear infinite}
+.tp-bad{animation-delay:.35s}
+.tp-coach{animation:tpCoach 12s linear infinite}
+.tp-b-rec{animation:tpRec 12s linear infinite}
+.tp-b-read{animation:tpRead 12s linear infinite}
+.tp-b-done{animation:tpDone 12s linear infinite}
+/* Reduced motion: hold the beat that carries the message — the verdict. */
+@media(prefers-reduced-motion:reduce){
+  .tp-frame,.tp-scan,.tp-b-rec,.tp-b-read{animation:none;opacity:0}
+  .tp-dots,.tp-skel,.tp-flag,.tp-chip,.tp-coach,.tp-b-done{animation:none;opacity:1;transform:none}
+}
+
+/* ---------- lab vs pocket ---------- */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:66px}
+@media(max-width:860px){.vs{grid-template-columns:1fr}}
+.vs-card{border-radius:var(--radius-lg);padding:28px 28px 24px;border:1px solid var(--c-line);background:var(--c-panel)}
+.vs-card.now{background:var(--c-navy);border-color:var(--c-navy);color:#fff}
+.vs-lbl{display:block;font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--c-ink-faint);margin-bottom:9px}
+.vs-card.now .vs-lbl{color:#9FBCF5}
+.vs-card h4{font-family:var(--f-display);font-weight:800;font-style:italic;font-size:21px;
+  text-transform:uppercase;letter-spacing:-.005em;color:var(--c-navy);margin-bottom:11px}
+.vs-card.now h4{color:#fff}
+.vs-card p{font-size:14.5px;color:var(--c-ink-soft);max-width:46ch}
+.vs-card.now p{color:rgba(255,255,255,.8)}
+/* max-width:none — it is a <p>, so it would otherwise inherit the 46ch prose
+   measure above and wrap a three-item mono strip that fits on one line. */
+.vs-meta{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:18px;max-width:none;
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-faint)}
+.vs-card.now .vs-meta{color:rgba(255,255,255,.62)}
+.vs-meta i{width:4px;height:4px;border-radius:50%;background:var(--c-line);display:inline-block}
+.vs-card.now .vs-meta i{background:var(--c-coral)}
+.track-cta{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:44px}
+.track-cta .mono-note{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--c-ink-faint)}
+
+/* ============================================================
    Split deep-dives (Vekta-style feature panels)
    ============================================================ */
 .split{padding:120px 0}
@@ -902,6 +1055,149 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
   </div>
 </section>
 
+<!-- ================= TRACKSIDE — the loop inside one session ================= -->
+<section id="trackside" class="track">
+  <div class="wrap">
+    <div class="track-head">
+      <p class="eyebrow rv">Trackside · no lab, no booking</p>
+      <h2 class="sec rv" data-d="1">The lab was a booking.<br>Now it's <span class="accent">in your pocket.</span></h2>
+      <p class="lede rv" data-d="2">Form analysis meant a marker suit, a treadmill and a technician with
+        a clipboard — booked weeks out, delivered days later. The measuring has moved. The phone in your
+        armband does it at the track, between two reps, and tells you what to change
+        <b>while the session is still warm.</b></p>
+    </div>
+
+    <div class="track-grid">
+      <!-- the stopwatch -->
+      <ol class="loop">
+        <li class="rv" data-d="1">
+          <span class="clk">0:00</span>
+          <div>
+            <h4>Prop the phone. Run past it.</h4>
+            <p>Side-on, roughly hip height, <b>ten seconds</b> of your normal stride. Between reps and
+              short on time? A <b>single photo</b> is enough for a full angle read-out.</p>
+          </div>
+        </li>
+        <li class="rv" data-d="2">
+          <span class="clk">0:12</span>
+          <div>
+            <h4>Upload where you're standing.</h4>
+            <p>Flapp runs <b>in the browser</b> on the phone already in your hand. No app to install, no
+              cable, no laptop waiting at home.</p>
+          </div>
+        </li>
+        <li class="rv" data-d="3">
+          <span class="clk">0:17</span>
+          <div>
+            <h4>Watch the red appear.</h4>
+            <p>A photo is measured in about <b>five seconds</b>, a ten-second clip in <b>30–60</b>. Green is
+              in range, amber is drifting, <b>red is out</b> — drawn straight onto your own frame.</p>
+          </div>
+        </li>
+        <li class="rv" data-d="4">
+          <span class="clk">Next rep</span>
+          <div>
+            <h4>Run the correction, not the memory of it.</h4>
+            <p>One thing to change and the drill that changes it — applied on the very next repetition,
+              not read off a report next Tuesday.</p>
+          </div>
+        </li>
+      </ol>
+
+      <!-- three-beat loop: filming → reading → verdict -->
+      <div class="stage-phone rv-scale">
+        <div class="phone">
+          <div class="tp-screen" role="img"
+               aria-label="A phone at the trackside: a ten-second clip is filmed, the pose is read, and the runner's foot is flagged in red for landing ahead of the hips, with a drill to fix it">
+            <svg class="tp-svg" viewBox="0 0 240 480" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+              <!-- Side view, facing right, at the instant the lead foot is about
+                   to land: the split stance is the readable one, and it is also
+                   the frame where overstride is defined — lead ankle (174) well
+                   ahead of the hip plumb (116). -->
+              <defs>
+                <g id="tpFig">
+                  <path d="M126 100 L128 118"/>
+                  <path d="M128 118 L116 202"/>
+                  <path d="M128 118 L150 158 L172 136"/>
+                  <path d="M128 118 L92 150 L66 172"/>
+                  <path d="M116 202 L154 238 L174 284 L194 290"/>
+                  <path d="M116 202 L72 226 L56 272 L40 280"/>
+                </g>
+              </defs>
+              <path class="tp-ground" d="M14 298 H226"/>
+              <!-- the athlete, always on screen -->
+              <g class="tp-body"><circle cx="126" cy="82" r="16"/><use href="#tpFig"/></g>
+              <!-- beat 1: camera framing guides -->
+              <!-- pushed below the status badge, which owns the top-left corner -->
+              <g class="tp-frame">
+                <path d="M30 74 V58 H46"/><path d="M194 58 H210 V74"/>
+                <path d="M210 340 V356 H194"/><path d="M46 356 H30 V340"/>
+              </g>
+              <!-- beat 2 onward: landmarks -->
+              <g class="tp-dots">
+                <circle cx="126" cy="82" r="3.4"/><circle cx="128" cy="118" r="3.4"/>
+                <circle cx="150" cy="158" r="3.4"/><circle cx="172" cy="136" r="3.4"/>
+                <circle cx="92" cy="150" r="3.4"/><circle cx="66" cy="172" r="3.4"/>
+                <circle cx="116" cy="202" r="3.4"/><circle cx="154" cy="238" r="3.4"/>
+                <circle cx="174" cy="284" r="3.4"/><circle cx="194" cy="290" r="3.4"/>
+                <circle cx="72" cy="226" r="3.4"/><circle cx="56" cy="272" r="3.4"/>
+                <circle cx="40" cy="280" r="3.4"/>
+              </g>
+              <!-- beat 3: the measured skeleton and the flagged contact -->
+              <g class="tp-skel"><circle cx="126" cy="82" r="16"/><use href="#tpFig"/></g>
+              <g class="tp-flag">
+                <!-- the analyser recolours the offending segment, it doesn't just
+                     add a marker — so the lead shin and foot go rose over the green -->
+                <path class="tp-badseg" d="M154 238 L174 284 L194 290"/>
+                <path class="tp-plumb" d="M116 202 V298"/>
+                <path class="tp-brk" d="M116 291 V305 M116 298 H174 M174 291 V305"/>
+                <circle class="tp-halo" cx="174" cy="284" r="14"/>
+                <circle class="tp-pt" cx="174" cy="284" r="4.6"/>
+              </g>
+            </svg>
+            <div class="tp-scan"></div>
+            <span class="tp-badge tp-b-rec"><i></i>Rec 0:07</span>
+            <span class="tp-badge tp-b-read"><i></i>Reading 33 landmarks</span>
+            <span class="tp-badge tp-b-done">Score 82 / 100</span>
+            <span class="tp-chip tp-good">Trunk 7°<em>in range 5–10°</em></span>
+            <span class="tp-chip tp-bad">Overstride 0.24×<em>target &lt; 0.15</em></span>
+            <div class="tp-coach">
+              <span class="tp-coach-lbl">Fix first</span>
+              <p>Your foot is landing <b>ahead of your hips</b> — you brake with every step.
+                3 × 20 s of A-skips, then film the next rep.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vs">
+      <div class="vs-card rv" data-d="1">
+        <span class="vs-lbl">The gold standard</span>
+        <h4>A gait lab</h4>
+        <p>Force plates, a marker suit, a technician. More precise than a phone will ever be — and Flapp
+          doesn't pretend otherwise. It's also an appointment, a drive across town and a few hundred
+          dollars. Most runners get one. Once. If ever.</p>
+        <p class="vs-meta"><span>Booked weeks out</span><i></i><span>Once a year at best</span></p>
+      </div>
+      <div class="vs-card now rv" data-d="2">
+        <span class="vs-lbl">What changed</span>
+        <h4>Carry the lab instead</h4>
+        <p>The pose tracking that used to need a room full of cameras now runs on the phone in your
+          armband. Not force plates — but a measurement you can actually take today, after a shoe change,
+          mid-block, at the end of a hard session. Frequency beats precision when you're chasing a habit.</p>
+        <p class="vs-meta"><span>At the track</span><i></i><span>Every session</span><i></i><span>$0 to start</span></p>
+      </div>
+    </div>
+
+    <div class="track-cta rv">
+      <a class="btn btn-accent btn-lg" href="/app#signup">Try it on your next session
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <span class="mono-note">Photo in ~5 s · clip in 30–60 s · nothing to install</span>
+    </div>
+  </div>
+</section>
+
 <!-- ================= SPLIT 1 — MEASUREMENT (dark) ================= -->
 <section class="split dark on-dark">
   <div class="wrap cols">
@@ -1281,7 +1577,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
         track('landing_section_viewed', {section:en.target.id});
       });
     },{threshold:.4});
-    ['report','how','proof','pricing','faq'].forEach(function(id){
+    ['report','how','trackside','proof','pricing','faq'].forEach(function(id){
       var el=document.getElementById(id); if(el) io.observe(el);
     });
   }

@@ -20,6 +20,11 @@ from typing import Any
 # POSE_CONNECTIONS is the BlazePose-33 topology owned by the detector layer;
 # re-exported here because Motus modules import it from ``pipeline``.
 from app.services.video_analysis.detectors.base import POSE_CONNECTIONS  # noqa: F401
+from app.services.video_analysis.biomechanics.sport_configs import (
+    RUNNING_REFERENCE as _RUNNING_REFERENCE,
+)
+
+RUN_TRUNK_BAND = _RUNNING_REFERENCE["trunk_lean"]
 
 # --- frame sampling (read by landmark_stabilizer) --------------------------
 FRAME_SAMPLE_RATE = 3
@@ -214,7 +219,10 @@ class VideoAnalysisPipeline:
             return [
                 {"key": "knee",   "idx": knee_idx,  "optimal": (80, 175),  "name": knee_label,  "offset_dir": "left"},
                 {"key": "hip",    "idx": hip_idx,   "optimal": (150, 180), "name": hip_label,   "offset_dir": "up-left"},
-                {"key": "trunk",  "idx": trunk_idx, "optimal": (0, 12),    "name": "Trunk",     "offset_dir": "up"},
+                # Shared band, not a fourth hardcoded copy: this said (0, 12)
+                # while the scorer said (2, 10), so the overlay could colour a
+                # trunk green that the score card marked down.
+                {"key": "trunk",  "idx": trunk_idx, "optimal": RUN_TRUNK_BAND, "name": "Trunk",     "offset_dir": "up"},
                 {"key": "elbow",  "idx": elbow_idx, "optimal": (85, 100),  "name": "Elbow",     "offset_dir": "up-left"},
             ]
         elif sport_type == "bike":

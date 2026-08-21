@@ -124,9 +124,13 @@ def score_running(
 
     components: dict[str, float] = {}
 
-    # Trunk lean
-    trunk = summary.get("trunk_lean_avg", 0)
-    if trunk > 0:
+    # Trunk lean. Presence is tested with `is not None`, NOT `> 0`: the value
+    # is signed now (negative = leaning back), and the analyzer already omits
+    # the key entirely when it has no valid samples. Under the old `> 0` guard
+    # every backward lean -- the one trunk posture that is unambiguously a
+    # fault -- would have been silently dropped from the score instead.
+    trunk = summary.get("trunk_lean_avg")
+    if trunk is not None:
         components["trunk_lean"] = score_in_range(trunk, *RUNNING_REFERENCE["trunk_lean"])
 
     # Cadence
