@@ -80,6 +80,10 @@ RUNNING_TRUNK_LANDMARKS: dict[str, tuple[int, int]] = {
     "right": (12, 24),
 }
 
+# (heel, toe) per foot. Used only to read the direction of travel -- see
+# _running_forward_sign.
+RUNNING_FOOT_AXES: tuple[tuple[int, int], ...] = ((29, 31), (30, 32))
+
 # Cycling: near-side only, unprefixed keys (matches cycling_analyzer.py)
 CYCLING_PHOTO_ANGLES: dict[str, dict[str, tuple[int, int, int]]] = {
     "left": {
@@ -148,19 +152,100 @@ _ANGLE_LABELS: dict[str, dict[str, str]] = {
 # ---------------------------------------------------------------------------
 
 
-def _get_running_optimal_ranges() -> dict[str, tuple[float, float]]:
-    """Optimal ranges for running photo (generic, not gait-phase-specific)."""
-    return {
+# Hip band per detected gait phase, in the measured convention (internal
+# shoulder-hip-knee angle, 180 = trunk and thigh in line). ``None`` = a still
+# cannot support a verdict at this instant, so the joint is measured and shown
+# but never scored -- the same contract the bike side uses for a hip whose
+# crank position could not be resolved.
+#
+# The band inverts across the cycle, which is the whole reason this exists: a
+# single (150, 180) band applied to every frame is a TOE-OFF band, and judging
+# a knee-drive frame against it reported ~123 deg -- textbook peak hip flexion
+# -- as "hip too closed, restricts propulsion, do high-knee drills".
+_RUN_HIP_BANDS: dict[str, tuple[float, float] | None] = {
+    # Thigh behind the body. This is the instant hip extension is defined at,
+    # and the one the old always-on band was actually written for. Novacheck
+    # 1998: peak extension ~10-20 deg past vertical; the measured angle folds
+    # back below 180 because the vertex angle is unsigned.
+    "toe_off": (150.0, 180.0),
+    # Foot reaching ahead on a near-straight knee. Heiderscheit 2011: ~30 deg
+    # hip flexion at contact -> ~150 internal. A markedly more closed hip here
+    # means the foot lands well ahead of the centre of mass (overstride),
+    # which is a real and well-evidenced fault -- so this phase IS scored.
+    "initial_contact": (138.0, 165.0),
+    # Thigh under the body: the hip reads ~180 by construction, whatever the
+    # athlete does. Nothing to score.
+    "midstance": None,
+    # Thigh ahead with the heel tucked. The hip angle here is a pure function
+    # of how far through the swing the shutter caught the leg -- peak knee
+    # drive and mid-swing are ~40 deg apart and a still cannot tell them
+    # apart. Measured, shown, not scored.
+    "swing": None,
+    "uncertain": None,
+}
+
+# Why a phase carries no hip verdict -- surfaced in the result table and in the
+# capture warnings so "not scored" reads as a deliberate limit, not an error.
+_RUN_HIP_UNSCORED_NOTES: dict[str, str] = {
+    "swing": (
+        "Thigh is mid-swing — at this instant the hip angle is set by when the "
+        "shutter fired, not by technique. Use a frame at footstrike or at "
+        "toe-off for a hip verdict."
+    ),
+    "midstance": (
+        "Thigh is under the body, where the hip reads ~180° whatever you do. "
+        "Use a frame at footstrike or at toe-off for a hip verdict."
+    ),
+    "uncertain": (
+        "Could not tell which part of the stride this frame caught, so the hip "
+        "angle is measured but not scored."
+    ),
+}
+
+_RUN_HIP_SCORED_NOTES: dict[str, str] = {
+    "toe_off": "Thigh is behind you — scored against the hip-extension band.",
+    "initial_contact": (
+        "Foot is reaching ahead — scored against the footstrike band, where a "
+        "closed hip means the foot lands ahead of your centre of mass."
+    ),
+}
+
+
+def _get_running_optimal_ranges(
+    gait_phase: str = "uncertain",
+) -> dict[str, tuple[float, float]]:
+    """Optimal ranges for a running photo at the detected gait phase.
+
+    A joint with no meaningful band at this instant is simply absent from the
+    dict. ``_score_photo_angles`` skips any key it has no band for and
+    renormalises the remaining weights, and ``analyze_photo`` reports it as
+    ``phase_dependent`` rather than dropping it from the table.
+    """
+    ranges: dict[str, tuple[float, float]] = {
         "knee": (80, 175),   # Wide -- photo captures one unknown gait instant
-        "hip": (150, 180),
-        "trunk": RUNNING_REFERENCE["trunk_lean"],       # (4, 8)
-        "elbow": RUNNING_REFERENCE["elbow_angle"],      # (85, 100)
+        "trunk": RUNNING_REFERENCE["trunk_lean"],       # (2, 10)
+        # Full-cycle carry range, NOT RUNNING_REFERENCE["elbow_angle"] (85,
+        # 100). That figure is the ~90 deg mid-cycle carry, but the elbow
+        # closes through the front of the swing (~75-90) and opens through the
+        # backswing (~115-130), so the mid-cycle band faults a perfectly
+        # normal arm caught at either end of its travel. ~90 deg stays the
+        # coaching target (Napier); what a single still can honestly detect is
+        # the actual fault -- arms carried straight, or clamped shut.
+        #
+        # Unlike the hip this is widened rather than phase-split: the arm
+        # swing is small, its band does not invert across the cycle, and the
+        # one fault worth naming is visible without knowing the phase.
+        "elbow": (70, 135),
         # Shank-axis vs foot-axis convention (neutral = 90): the healthy
         # sweep across a gait cycle is ~70 (midstance dorsiflexion) to
         # ~115 (toe-off plantarflexion). Wide band, same reasoning as the
         # knee -- a photo captures one unknown gait instant.
         "ankle": (65, 115),
     }
+    band = _RUN_HIP_BANDS.get(gait_phase)
+    if band is not None:
+        ranges["hip"] = band
+    return ranges
 
 
 def _get_cycling_optimal_ranges(
@@ -644,7 +729,13 @@ def _generate_photo_thumbnail(
     Returns PNG image as bytes. ``hide_angle_values`` (free-tier teaser): keep
     the skeleton + arcs but mask the numeric angle labels and burn a watermark.
     """
-    frame = image.copy()
+    # Draw on a canvas at least as big as the overlay geometry expects. Chip
+    # type has a hard minimum size, so on a small photo -- a frame cropped out
+    # of a video, a screenshot -- the annotation does not scale down with the
+    # picture and swamps it. Landmarks are normalized, so every pixel position
+    # below derives from this frame's w/h and follows the upscale for free.
+    frame = overlay_style.fit_render_canvas(cv2_mod, image)
+    frame = image.copy() if frame is image else frame
     h, w = frame.shape[:2]
     optimal_ranges = optimal_ranges or {}
 
@@ -711,7 +802,10 @@ def _generate_photo_thumbnail(
         s11x, s11y, _ = pixel_coords[11]
         h23x, h23y, _ = pixel_coords[23]
         body_height_px = max(50.0, abs(s11y - h23y))
-        offset_px = max(70, int(body_height_px * 0.5))
+        # The floor keeps chips off the body when the athlete is small in
+        # frame; it has to track chip size, or on a large photo the chips grow
+        # (via _sk) while the leader that is supposed to clear them does not.
+        offset_px = max(int(70 * _sk), int(body_height_px * 0.5))
 
         offset_vectors = {
             "left":       (-offset_px, 0),
@@ -948,6 +1042,109 @@ def _estimate_pedal_phase(knee_angle: float) -> str:
         return "mid_stroke"
 
 
+# Gait-phase thresholds, in degrees of thigh deviation from vertical
+# (+ = knee ahead of the hip) and internal knee angle.
+#
+# The forward/back thresholds are deliberately asymmetric: the thigh swings far
+# further forward (~60-70 deg at peak drive) than back (~20 deg at peak
+# extension), so a symmetric pair would file most of terminal stance under
+# "midstance". The dead zone between them is where the thigh is close enough to
+# vertical that neither hip band means anything anyway.
+_RUN_THIGH_FORWARD_DEG = 18.0
+_RUN_THIGH_BACK_DEG = -8.0
+# Knee angle separating a leg reaching out to land from one folded up in swing.
+# The gap between them is left unclassified rather than split down the middle.
+_RUN_KNEE_EXTENDED_DEG = 140.0
+_RUN_KNEE_FOLDED_DEG = 115.0
+
+
+def _running_forward_sign(landmarks) -> float:
+    """Direction of travel along the image x axis: +1, -1, or 0 if unknown.
+
+    Read from the feet. The toe sits ahead of the heel on both feet at every
+    instant of the cycle, which makes the foot axis the one landmark pair whose
+    orientation does not flip as the athlete runs -- unlike the limbs, which
+    reverse twice per stride, or the head, which barely moves relative to the
+    hips. Both feet are summed so a single occluded or badly-tracked foot
+    cannot flip the result.
+    """
+    dx = 0.0
+    for heel_i, toe_i in RUNNING_FOOT_AXES:
+        if max(heel_i, toe_i) >= len(landmarks):
+            continue
+        vis = min(
+            getattr(landmarks[heel_i], "visibility", 1.0),
+            getattr(landmarks[toe_i], "visibility", 1.0),
+        )
+        if vis < _VIS_THRESHOLD:
+            continue
+        step = landmarks[toe_i].x - landmarks[heel_i].x
+        if not math.isnan(step):
+            dx += step
+    if abs(dx) < 1e-6:
+        return 0.0
+    return 1.0 if dx > 0 else -1.0
+
+
+def _thigh_deviation_deg(landmarks, hip_idx: int, knee_idx: int, forward: float) -> float:
+    """Signed thigh angle from vertical: + = knee ahead of the hip (flexion).
+
+    This -- not the hip angle -- is what identifies the gait phase. The
+    measured hip angle is an unsigned vertex angle, so it folds at 180 deg:
+    a thigh 10 deg behind vertical and one 10 deg ahead of it produce nearly
+    the same reading with opposite meanings. The signed thigh deviation does
+    not fold.
+
+    ``abs`` on the vertical component keeps the sign convention independent of
+    which way the y axis points; in running the knee is always below the hip,
+    so nothing real is lost. Returns NaN when the direction of travel is
+    unknown or the landmarks are unusable.
+    """
+    if forward == 0.0:
+        return math.nan
+    if max(hip_idx, knee_idx) >= len(landmarks):
+        return math.nan
+    vis = min(
+        getattr(landmarks[hip_idx], "visibility", 1.0),
+        getattr(landmarks[knee_idx], "visibility", 1.0),
+    )
+    if vis < _VIS_THRESHOLD:
+        return math.nan
+    dx = (landmarks[knee_idx].x - landmarks[hip_idx].x) * forward
+    dy = abs(landmarks[knee_idx].y - landmarks[hip_idx].y)
+    if math.isnan(dx) or math.isnan(dy) or (abs(dx) + dy) < 1e-6:
+        return math.nan
+    return round(math.degrees(math.atan2(dx, dy)), 1)
+
+
+def _estimate_run_gait_phase(thigh_dev: float, knee_angle: float) -> str:
+    """Which instant of the stride a single running frame caught.
+
+    Returns 'toe_off', 'initial_contact', 'swing', 'midstance' or 'uncertain'.
+    The running analogue of :func:`_estimate_pedal_phase`.
+
+    Thigh position alone separates extension from flexion. It cannot separate
+    a leg reaching forward to land from one folded forward in swing -- both
+    have the thigh ahead of the hip -- so the knee angle resolves that: nearly
+    straight means the foot is reaching for the ground, folded means the heel
+    is still tucked. Anything between the two is left 'uncertain' rather than
+    guessed, because guessing wrong picks the wrong hip band.
+    """
+    if math.isnan(thigh_dev):
+        return "uncertain"
+    if thigh_dev <= _RUN_THIGH_BACK_DEG:
+        return "toe_off"
+    if thigh_dev >= _RUN_THIGH_FORWARD_DEG:
+        if math.isnan(knee_angle):
+            return "uncertain"
+        if knee_angle >= _RUN_KNEE_EXTENDED_DEG:
+            return "initial_contact"
+        if knee_angle <= _RUN_KNEE_FOLDED_DEG:
+            return "swing"
+        return "uncertain"
+    return "midstance"
+
+
 def _safe_round(value: float, decimals: int = 1) -> float:
     """Round a value, returning NaN as-is."""
     if math.isnan(value):
@@ -1157,6 +1354,8 @@ def analyze_photo(
     # 4. Compute angles (sport-specific)
     angles: dict[str, float] = {}
     pedal_phase: str | None = None  # Only set for cycling
+    gait_phase: str = "uncertain"   # Only meaningful for running
+    thigh_dev: float = math.nan     # Only measured for running
 
     if sport == "run":
         for name, (a, b, c) in RUNNING_PHOTO_ANGLES[camera_side].items():
@@ -1172,7 +1371,24 @@ def analyze_photo(
         trunk = calculate_segment_to_vertical(wl, sh_idx, hp_idx)
         angles["trunk"] = _safe_round(trunk)
 
-        optimal_ranges = _get_running_optimal_ranges()
+        # Which instant of the stride this frame caught. Has to be resolved
+        # before any band is picked: the hip band inverts across the cycle
+        # (see _RUN_HIP_BANDS), so choosing one without the phase is what made
+        # a hand-picked knee-drive frame come back as "hip too closed".
+        _, run_hip_idx, run_knee_idx = RUNNING_PHOTO_ANGLES[camera_side]["hip"]
+        forward_sign = _running_forward_sign(wl)
+        thigh_dev = _thigh_deviation_deg(wl, run_hip_idx, run_knee_idx, forward_sign)
+        gait_phase = _estimate_run_gait_phase(
+            thigh_dev, angles.get("knee", math.nan),
+        )
+        logger.info(
+            "PHOTO_RUN_GAIT_PHASE",
+            gait_phase=gait_phase,
+            thigh_deviation=thigh_dev,
+            knee_angle=angles.get("knee"),
+        )
+
+        optimal_ranges = _get_running_optimal_ranges(gait_phase)
 
     elif sport == "bike":
         for name, (a, b, c) in CYCLING_PHOTO_ANGLES[camera_side].items():
@@ -1283,6 +1499,7 @@ def analyze_photo(
             else:
                 entry["optimal_min"] = entry["optimal_max"] = None
                 entry["status"] = "phase_dependent"
+                entry["unscored_reason"] = "pedal position"
             angles_with_context["hip"] = entry
             continue
         # Bike ankle: measured, but never judged from a still (2D ankle too noisy).
@@ -1291,8 +1508,31 @@ def analyze_photo(
                 "value": angle_value, "label": lbl,
                 "optimal_min": None, "optimal_max": None,
                 "status": "phase_dependent",
+                "unscored_reason": "pedal position",
                 "note": "Depends on the pedal position — not scored from a single photo.",
             }
+            continue
+        # Run hip: scored only at the two instants where the band means
+        # something (footstrike, toe-off). Everywhere else it is measured and
+        # shown, but carries no verdict -- see _RUN_HIP_BANDS.
+        if sport == "run" and angle_name == "hip":
+            entry = {
+                "value": angle_value, "label": lbl, "phase": gait_phase,
+                "thigh_deviation": thigh_dev if not math.isnan(thigh_dev) else None,
+            }
+            band = optimal_ranges.get("hip")
+            if band is not None:
+                entry["optimal_min"], entry["optimal_max"] = band
+                entry["status"] = _classify_angle_status(angle_value, *band)
+                entry["note"] = _RUN_HIP_SCORED_NOTES.get(gait_phase, "")
+            else:
+                entry["optimal_min"] = entry["optimal_max"] = None
+                entry["status"] = "phase_dependent"
+                entry["unscored_reason"] = "stride position"
+                entry["note"] = _RUN_HIP_UNSCORED_NOTES.get(
+                    gait_phase, _RUN_HIP_UNSCORED_NOTES["uncertain"],
+                )
+            angles_with_context["hip"] = entry
             continue
         if angle_name not in optimal_ranges:
             continue
@@ -1366,6 +1606,18 @@ def analyze_photo(
         "processing_time_seconds": processing_time,
         "warnings": warnings,
     }
+
+    if sport == "run":
+        response["gait_phase"] = gait_phase
+        # Tell the athlete how to get the verdict the frame could not give,
+        # rather than leaving a silent gap in the table.
+        if "hip" not in optimal_ranges:
+            warnings.append(
+                "Hip angle is measured but not scored: "
+                + _RUN_HIP_UNSCORED_NOTES.get(
+                    gait_phase, _RUN_HIP_UNSCORED_NOTES["uncertain"],
+                )
+            )
 
     if sport == "bike":
         response["cycling_position"] = cycling_position

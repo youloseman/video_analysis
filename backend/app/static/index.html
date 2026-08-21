@@ -3202,7 +3202,7 @@ function hipForPhase(hip,phase){
   const o={value:hip.value,label:hip.label,bands:hip.bands,note:hip.note};
   const band=(phase==='bdc'||phase==='tdc')&&hip.bands&&hip.bands[phase];
   if(band){ o.optimal_min=band[0]; o.optimal_max=band[1]; o.status=classifyAngle(hip.value,band[0],band[1]); }
-  else { o.optimal_min=o.optimal_max=null; o.status='phase_dependent'; }
+  else { o.optimal_min=o.optimal_max=null; o.status='phase_dependent'; o.unscored_reason='pedal position'; }
   return o;
 }
 function angleRow(k,a){
@@ -3211,7 +3211,7 @@ function angleRow(k,a){
   if(stt==='phase_dependent'){
     return `<tr class="row-info"><th scope="row">${esc(a.label||pretty(k))}</th>
       <td class="num">${val}</td><td class="num muted">—</td>
-      <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · pedal position</span></td></tr>`;
+      <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · ${esc(a.unscored_reason||'phase')}</span></td></tr>`;
   }
   const cls=P_STATUS_CLS[stt]||'low';
   const word=P_STATUS_WORD[stt]||stt.replace(/_/g,' ');
@@ -3252,6 +3252,9 @@ function renderPhoto(res){
   if(res.camera_side) parts.push(`Camera: <b>${esc(res.camera_side)} side</b>`);
   if(sport==='bike'&&res.cycling_position) parts.push(`Position: <b>${esc(res.cycling_position_label||POSITION_NAMES[res.cycling_position]||pretty(res.cycling_position))}</b>`);
   if(sport==='bike'&&res.pedal_phase) parts.push(`Pedal: <b>${esc(String(res.pedal_phase).replace(/_/g,' '))}</b>`);
+  // Which instant of the stride the frame caught — it decides which bands the
+  // hip is judged against, so it belongs next to the score, not buried.
+  if(sport==='run'&&res.gait_phase) parts.push(`Stride: <b>${esc(String(res.gait_phase).replace(/_/g,' '))}</b>`);
   $('#pScoreMeta').innerHTML=parts.join('<br>');
 
   const img=res.thumbnail_base64||'';

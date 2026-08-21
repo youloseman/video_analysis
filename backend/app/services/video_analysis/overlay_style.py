@@ -101,6 +101,62 @@ def text_size(text: str, bold: bool, size: int) -> tuple[int, int]:
     return (box[2] - box[0], box[3] - box[1])
 
 
+# --- render canvas --------------------------------------------------------
+
+# Everything below is authored for a frame around 900 px wide. Chip text has
+# hard minimum sizes (a 13 px label, a 22 px value) because below that it stops
+# being readable at all -- so on a SMALL image the type does not shrink with
+# the picture. A frame cropped out of a video or a phone screenshot can be
+# ~300 px across, where one metric chip spans half the width, the leader
+# offsets push chips off the edge, and the header collides with its own
+# right-hand title.
+#
+# Shrinking the type to fit just trades unreadable-because-clipped for
+# unreadable-because-tiny. Upscale the canvas instead and draw at the size the
+# design was built for: the photo is soft either way (it was already low
+# resolution -- that is what the low-resolution warning is for), but the
+# annotation, which is the part the athlete actually reads, comes out clean.
+RENDER_MIN_WIDTH = 900
+RENDER_MIN_SHORT_SIDE = 720
+RENDER_MAX_UPSCALE = 4.0
+# Ceiling on the long side of the ANNOTATED render. Nothing to do with
+# measurement -- landmarks come from the original pixels either way -- and
+# everything to do with the payload: the annotated image is returned inline as
+# a base64 data URI on a synchronous request, and a full-size phone photo
+# (3024x4032) encodes to a ~15 MB data URI. At this ceiling the same photo is
+# ~4 MB, and a frame straight off a phone (1080x1920) is untouched.
+RENDER_MAX_LONG_SIDE = 2200
+
+
+def fit_render_canvas(cv2_mod: Any, image: Any) -> Any:
+    """Resize a frame into the size band the overlay geometry is drawn for.
+
+    Scales small frames UP to the design size, and oversized ones DOWN to
+    ``RENDER_MAX_LONG_SIDE``. Anything already in the band is returned as the
+    ORIGINAL array, so callers must not assume they got a copy.
+    """
+    h, w = image.shape[:2]
+    if h <= 0 or w <= 0:
+        return image
+    # How much this frame needs to grow to reach the design size; <= 1 for any
+    # frame that is already big enough, which max(..., 1.0) flattens to "leave
+    # it alone" before the two ceilings get a say.
+    upscale = max(RENDER_MIN_WIDTH / w, RENDER_MIN_SHORT_SIDE / min(w, h))
+    factor = min(
+        max(upscale, 1.0),
+        RENDER_MAX_UPSCALE,                     # do not blow up a thumbnail
+        RENDER_MAX_LONG_SIDE / max(w, h),       # payload ceiling
+    )
+    if 0.99 <= factor <= 1.01:
+        return image
+    return cv2_mod.resize(
+        image, (max(1, round(w * factor)), max(1, round(h * factor))),
+        interpolation=(
+            cv2_mod.INTER_LANCZOS4 if factor > 1 else cv2_mod.INTER_AREA
+        ),
+    )
+
+
 # --- skeleton -------------------------------------------------------------
 
 def draw_glow_skeleton(
@@ -166,6 +222,7 @@ class ChipLayer:
 
     def __init__(self, frame: Any):
         self._frame = frame
+        self._h, self._w = frame.shape[:2]
         self._ops: list[tuple[str, tuple, dict]] = []
         self._taken: list[tuple[int, int, int, int]] = []   # placed chip rects
 
@@ -189,7 +246,9 @@ class ChipLayer:
             for sign in ((0,) if k == 0 else (-1, 1)):
                 cand = (rect[0], rect[1] + sign * step * k,
                         rect[2], rect[3] + sign * step * k)
-                if cand[1] < 2:
+                # A nudge that clears a neighbour by leaving the frame has not
+                # solved anything -- the chip is just unreadable somewhere else.
+                if cand[1] < 2 or cand[3] > self._h - 2:
                     continue
                 if not any(self._overlaps(cand, t) for t in self._taken):
                     self._taken.append(cand)
@@ -218,6 +277,12 @@ class ChipLayer:
 
         x = anchor[0] - w if align == "right" else anchor[0]
         y = anchor[1] - h // 2
+        # Callers clamp the ANCHOR into the frame, which is not the same thing
+        # as clamping the chip: a left-aligned chip anchored near the right
+        # edge still runs off it, and that is how "KNEE ANGLE" ended up as
+        # "KNEE" with the number outside the picture. Clamp the whole rect.
+        x = max(2, min(x, self._w - w - 2)) if self._w > w + 4 else 2
+        y = max(2, min(y, self._h - h - 2)) if self._h > h + 4 else 2
         rect = self._place((x, y, x + w, y + h))
         self._ops.append(("chip", (rect, label, value, status, lab_s, val_s, pad_x, gap), {}))
         return rect
@@ -307,8 +372,14 @@ class ChipLayer:
 
         if right_text and frame_w:
             rf = _font(True, max(11, int(17 * scale)))
-            d.text((frame_w - int(18 * scale), cy), right_text, font=rf,
-                   fill=INK_SOFT + (215,), anchor="rm")
+            rw = rf.getbbox(right_text)[2] - rf.getbbox(right_text)[0]
+            margin = int(18 * scale)
+            # On a narrow frame the title and the score chip want the same
+            # pixels, and the title is the expendable one -- drop it rather
+            # than paint "RUNNING PROFILE" through "RUN: 69/100 · Fair".
+            if frame_w - margin - rw >= x + w + int(12 * scale):
+                d.text((frame_w - margin, cy), right_text, font=rf,
+                       fill=INK_SOFT + (215,), anchor="rm")
 
     @staticmethod
     def _render_brand(d, at, main, sub, scale) -> None:

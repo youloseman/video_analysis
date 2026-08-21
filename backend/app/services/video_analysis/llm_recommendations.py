@@ -476,6 +476,16 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             f"Position: {res.get('cycling_position_label') or res.get('cycling_position')} "
             f"| pedal phase in this photo: {res.get('pedal_phase')}"
         )
+    elif sport == "run" and res.get("gait_phase"):
+        # Which instant of the stride the shutter caught. Without it the model
+        # narrates every still as though it were mid-stance, and "prescribes"
+        # the position the athlete is already in.
+        lines.append(
+            f"Stride position in this photo: "
+            f"{str(res['gait_phase']).replace('_', ' ')}. Joint angles in "
+            f"running are instantaneous -- describe what this instant shows, "
+            f"do not treat it as the athlete's average form."
+        )
     lines.append("Joint angles (value vs optimal, status):")
     for k, v in (res.get("angles_with_context") or {}).items():
         # Units are explicit: two bike metrics are NOT degrees, and without the
@@ -491,10 +501,19 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         # and it resolved them by dropping the hip and reaching for a metric it
         # had been told was fine.
         if v.get("status") == "phase_dependent":
+            # Bike: the rider resolves it with the pedal-position picker.
+            # Run: nothing resolves it -- the stride instant this frame caught
+            # has no band at all, so there is no verdict to be had here.
+            resolution = (
+                "scored interactively by the rider"
+                if sport == "bike"
+                else "not scorable from a single still at this point in the stride"
+            )
             lines.append(
-                f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note} — pedal-phase-dependent, "
-                f"scored interactively by the rider. Do NOT critique this angle or "
-                f"call it too open/closed."
+                f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note} — "
+                f"{v.get('unscored_reason', 'phase')}-dependent, {resolution}. "
+                f"Do NOT critique this angle, do NOT call it too open/closed, "
+                f"and do NOT prescribe a drill for it."
             )
             continue
         phase_note = (
