@@ -647,6 +647,22 @@ def run_analysis(
     angle_stats = analyzer.compute_angle_statistics()
     if biomechanics_data:
         summary["biomechanics"] = biomechanics_data
+        # How fast the near knee opens and closes. Already computed inside the
+        # phase portrait and used only for a hull area until now; lifted here
+        # so it reaches the report as a metric. Ungraded on purpose -- see
+        # phase_portrait.summary_peak_velocities for why a band would be a
+        # verdict on the athlete's pace rather than their technique.
+        try:
+            from app.services.video_analysis.biomechanics.phase_portrait import (
+                summary_peak_velocities,
+            )
+
+            summary.update(summary_peak_velocities(
+                biomechanics_data.get("phase_portraits"),
+                sport_type, analyzer.camera_side,
+            ))
+        except Exception as e:  # noqa: BLE001 -- a metric must not break the run
+            logger.warning("PEAK_VELOCITY_LIFT_FAILED", err=str(e))
 
     # Step 4: partial-analysis quality gate.
     max_valid_frames = max(

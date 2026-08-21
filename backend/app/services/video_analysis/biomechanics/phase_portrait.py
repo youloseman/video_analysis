@@ -76,6 +76,33 @@ def _compute_angular_velocity(angles: np.ndarray, timestamps: np.ndarray) -> np.
     return velocity
 
 
+def peak_velocities(velocity: np.ndarray) -> tuple[float | None, float | None]:
+    """Robust peak angular speeds: ``(extension_dps, flexion_dps)``, both >= 0.
+
+    Extension is the joint opening (angle increasing, positive velocity);
+    flexion is it closing. Both come back as positive magnitudes because
+    "how fast" is the question and the sign is already in the name.
+
+    Percentiles, not min/max. A peak over hundreds of frames is a
+    single-sample statistic, so one mistracked frame sets it -- always in the
+    alarming direction. This is the same lesson ``compute_angle_statistics``
+    already writes down for p05/p95 on the angles themselves, applied to the
+    derivative, where a lone bad frame does far more damage: differentiating
+    turns a one-frame position error into a large spurious velocity.
+
+    Returns ``(None, None)`` when there is not enough valid velocity to speak.
+    """
+    valid = velocity[~np.isnan(velocity)]
+    if valid.size < MIN_POINTS:
+        return None, None
+    extension = float(np.percentile(valid, 95))
+    flexion = float(np.percentile(valid, 5))
+    return (
+        round(max(0.0, extension), 1),
+        round(max(0.0, -flexion), 1),
+    )
+
+
 def _detect_cycles(angles: np.ndarray, timestamps: np.ndarray) -> list[dict[str, Any]]:
     """Detect movement cycles using peak detection on the angle signal.
 
@@ -267,6 +294,8 @@ def compute_phase_portraits(
             side = "both"
             reliable = True
 
+        peak_ext, peak_flex = peak_velocities(velocity)
+
         joint_results[joint] = {
             "data_points": data_points,
             "hull_area": round(hull_area, 1),
@@ -274,6 +303,11 @@ def compute_phase_portraits(
             "cycles": cycles,
             "angle_range": round(angle_range, 1),
             "velocity_range": round(vel_range, 1),
+            # How fast the joint opens and closes (deg/s). Already implied by
+            # the portrait's vertical extent, but that was only ever surfaced
+            # as a range -- these are the numbers a coach reads.
+            "peak_extension_velocity": peak_ext,
+            "peak_flexion_velocity": peak_flex,
             "side": side,
             "reliable": reliable,
         }
@@ -292,3 +326,49 @@ def compute_phase_portraits(
         "joints": joint_results,
         "overall_stability_score": overall_stability,
     }
+
+
+def summary_peak_velocities(
+    phase_data: dict[str, Any] | None,
+    sport_type: str,
+    camera_side: str | None,
+) -> dict[str, Any]:
+    """Lift the near-side knee's peak speeds out for the summary.
+
+    The knee, because it is the fastest joint a side view measures well and
+    the one both sports are read from: in running the late-swing extension
+    speed is the hamstring's loading rate, and on a bike how evenly the knee
+    opens and closes is what "smooth pedalling" means.
+
+    Deliberately NOT graded against a band. Two reasons, both real:
+
+    * Angular velocity is **speed-dependent**. The published figures come from
+      lab runs at a stated pace, and this pipeline does not know how fast the
+      athlete was going. A band would be a verdict on their pace.
+    * It is also **filter-dependent**. Every low-pass attenuates a derivative,
+      and this pipeline's angle cutoff is a fixed constant whose value has
+      never been validated end to end (see ``butterworth_filter``). The number
+      is comparable to the athlete's own previous clip on the same settings,
+      and not to a textbook.
+
+    Returns ``{}`` when the joint was not analysed, so a caller can treat the
+    metric as absent rather than zero.
+    """
+    joints = (phase_data or {}).get("joints") or {}
+    key = "knee" if sport_type == "run" else f"{camera_side or 'left'}_knee"
+    data = joints.get(key)
+    if not isinstance(data, dict):
+        return {}
+    extension = data.get("peak_extension_velocity")
+    flexion = data.get("peak_flexion_velocity")
+    if extension is None and flexion is None:
+        return {}
+    out: dict[str, Any] = {}
+    if extension is not None:
+        out["knee_extension_velocity_dps"] = extension
+    if flexion is not None:
+        out["knee_flexion_velocity_dps"] = flexion
+    # Says out loud that this is a self-comparison, not a benchmark. The UI and
+    # the coach prompt both key off it rather than restating the argument.
+    out["knee_velocity_relative"] = True
+    return out

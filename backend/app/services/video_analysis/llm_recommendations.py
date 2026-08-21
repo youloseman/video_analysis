@@ -231,8 +231,33 @@ def _run_data_block(
         f"knee fold than the band asks for, which is not a fault)",
         "Note: do not verdict the mean/range of knee, hip or ankle directly -- "
         "they sweep through the stride; use only the phase-specific values above.",
+        _knee_velocity_line(summary),
     ]
     return "\n".join(lines)
+
+
+def _knee_velocity_line(summary: dict) -> str:
+    """How fast the knee opens and closes, with the reason not to grade it.
+
+    Handed to a model without this caveat, peak angular velocity is exactly the
+    kind of number that gets compared to a remembered lab figure -- and the
+    comparison would be meaningless twice over: the published values are for a
+    stated running speed this pipeline cannot measure, and every low-pass
+    filter attenuates a derivative, so the figure is a property of the settings
+    as much as of the athlete.
+    """
+    ext = summary.get("knee_extension_velocity_dps")
+    flex = summary.get("knee_flexion_velocity_dps")
+    if ext is None and flex is None:
+        return "- Knee angular speed: n/a"
+    return (
+        f"- Knee angular speed: opening {_fmt(ext, ' deg/s')}, closing "
+        f"{_fmt(flex, ' deg/s')} (typical peaks, near side). RELATIVE MEASURE "
+        "-- do NOT compare these to published values or call them high or low. "
+        "They scale with running speed, which is not measured here, and with "
+        "the smoothing settings. Use them only to compare this athlete against "
+        "their own earlier clips filmed the same way."
+    )
 
 
 def _issues_block(issues: list[dict]) -> str:
