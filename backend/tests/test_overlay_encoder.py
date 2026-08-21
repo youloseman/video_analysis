@@ -76,7 +76,13 @@ def test_the_rest_of_the_result_is_untouched_by_a_missing_encoder(
     monkeypatch.setattr(main, "OVERLAY_ENCODER_PRESENT", False)
     s = main.job_status(completed_job, t="tok", user=None)
     assert s.status == "completed"
-    assert s.result == {"technique_score": 71}
+    # Not an exact dict any more. The job stores the complete result and it is
+    # trimmed per reader on the way out, so a caller holding only the job token
+    # -- no session, therefore no plan -- gets the teaser wrapper around it.
+    # What this test is about is that the analysis survived the missing
+    # encoder; which parts of it a given reader sees is tested next door, in
+    # test_result_gating.py.
+    assert s.result["technique_score"] == 71
     assert s.error is None
 
 

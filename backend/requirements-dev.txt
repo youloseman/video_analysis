@@ -1,8 +1,20 @@
 # Test-only dependencies. NOT installed in the Docker image.
 #
-# The suite deliberately avoids the ML stack (mediapipe/opencv/scipy), so it
-# runs on a plain Python install: `pip install -r requirements-dev.txt` alone is
-# enough for `python -m pytest` if the app's own runtime deps are present.
+# MOST of the suite avoids the ML stack, so it runs on a plain Python install.
+# Three files do not: test_overlay_encoder, test_ai_export_endpoint and
+# test_analysis_requires_account all `importorskip("app.main")`, and app.main
+# imports cv2 through the analysis runner.
+#
+# That skip is a trap, and it has already cost one red deploy: locally they
+# report as "3 skipped" and everything looks green, while CI installs
+# requirements.txt in full, runs them, and finds the regression. If you are
+# working on anything the API touches, install
+#
+#     pip install opencv-python-headless==4.13.0.92
+#
+# and they stop skipping. That one package is enough -- mediapipe is only
+# needed to actually ANALYSE a clip, not to import the app. Check for
+# "3 skipped" in the pytest output before trusting a green run.
 
 -r requirements.txt
 
