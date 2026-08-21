@@ -52,11 +52,23 @@ from app.models.user import (
     TIER_STARTER,
     User,
 )
-from app.services import expert_review, notify, pricing
+from app.services import analytics, expert_review, notify, pricing
 
 
 def _now_ms() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
+def _amount_major(cents: Any) -> float | None:
+    """Stripe's minor units as a plain amount, for the revenue properties.
+
+    Analytics wants dollars; Stripe speaks cents. Anything unparseable comes
+    back as ``None`` rather than as a zero-dollar sale.
+    """
+    try:
+        return round(int(cents) / 100, 2)
+    except (TypeError, ValueError):
+        return None
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -92,6 +104,28 @@ def log_billing_configuration() -> None:
         logger.error("BILLING_PRICES_MISSING", plans=missing)
     else:
         logger.info("BILLING_READY", plans=sorted(settings.plan_price_map))
+
+    # Two plans pointing at one Stripe price. Always a copy-paste slip -- the
+    # ids are long, similar, and gathered by hand from five different screens --
+    # and it is invisible from inside: checkout succeeds, Stripe charges, and
+    # the customer is simply billed for the plan they did not choose. Monthly
+    # and yearly are the pair this happens to, because they live in the same
+    # product two rows apart.
+    seen: dict[str, str] = {}
+    for plan in sorted(settings.plan_price_map):
+        price = settings.plan_price_map[plan]
+        if not price:
+            continue
+        if price in seen:
+            logger.error(
+                "BILLING_PRICE_REUSED", price=price, plans=[seen[price], plan],
+                detail=(
+                    "two plans share one Stripe price -- whoever picks either "
+                    "one is charged the same amount. Check the price ids."
+                ),
+            )
+        else:
+            seen[price] = plan
     if str(settings.stripe_secret_key or "").startswith("sk_test_"):
         logger.warning(
             "BILLING_TEST_MODE",
@@ -984,6 +1018,23 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
     if obj.get("customer") and not user.stripe_customer_id:
         user.stripe_customer_id = str(obj["customer"])
 
+    # Money, recorded from the one place that actually knows a payment
+    # happened. The browser's own `checkout_returned` only fires if it survived
+    # the redirect -- an abandoned tab, a blocked script or a dead phone all
+    # lose the sale from the funnel while the charge goes through anyway.
+    meta_all = obj.get("metadata") or {}
+    analytics.capture_bg(
+        analytics.person_id(user), "purchase_completed",
+        {
+            "plan": str(meta_all.get("plan") or "") or None,
+            "tier": meta_all.get("tier") or None,
+            "kind": obj.get("mode"),          # subscription | payment
+            "revenue": _amount_major(obj.get("amount_total")),
+            "$revenue": _amount_major(obj.get("amount_total")),
+            "currency": (obj.get("currency") or "").upper() or None,
+        },
+    )
+
     if obj.get("mode") == "subscription":
         meta = obj.get("metadata") or {}
         tier = meta.get("tier") or None
@@ -1076,7 +1127,19 @@ async def _on_invoice_paid(db: AsyncSession, obj: Any) -> None:
     user = await _user_by_customer(db, obj.get("customer"))
     if user is None:
         return
-    if tier_for_price(_price_from_invoice(obj)) != TIER_FULL:
+    price_tier = tier_for_price(_price_from_invoice(obj))
+    # Recorded for every renewal, not only the Full one below: a renewal is
+    # revenue, and retention is the number a subscription product lives on.
+    analytics.capture_bg(
+        analytics.person_id(user), "subscription_renewed",
+        {
+            "tier": price_tier,
+            "revenue": _amount_major(obj.get("amount_paid")),
+            "$revenue": _amount_major(obj.get("amount_paid")),
+            "currency": (obj.get("currency") or "").upper() or None,
+        },
+    )
+    if price_tier != TIER_FULL:
         return
     if grant_expert_credits(user, str(obj.get("id") or "")):
         logger.info(
@@ -1111,3 +1174,4 @@ async def _on_subscription_deleted(db: AsyncSession, obj: Any) -> None:
     user.subscription_status = "canceled"
     _set_tier(user, TIER_STARTER)
     logger.info("SUB_CANCELED", user_id=user.id)
+    analytics.capture_bg(analytics.person_id(user), "subscription_canceled", {})

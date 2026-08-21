@@ -570,7 +570,9 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .sporttag{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;color:var(--c-navy);
   padding:5px 11px;border-radius:6px;background:var(--c-panel);border:1px solid var(--c-line)}
-.sporttag .ic{width:14px;height:14px;flex:none;color:var(--c-ink-soft)}
+/* 16px, not 14: the sport icons are fine-line art, and 14px was the one place
+   they went grey and unreadable. */
+.sporttag .ic{width:16px;height:16px;flex:none;color:var(--c-ink-soft)}
 .sporttag-run .ic{color:var(--c-run)}
 .sporttag-bike .ic{color:var(--c-bike)}
 
@@ -1347,10 +1349,22 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 6h16M4 12h16M4 18h16"/></symbol>
-  <symbol id="i-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="15" cy="4.5" r="1.8"/><path d="M13 9l-3 2 1 4 3 2 1 3"/><path d="M11 11l-3-1-2 3"/><path d="M15 13l3 1"/></symbol>
-  <symbol id="i-bike" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="5.5" cy="17" r="3.2"/><circle cx="18.5" cy="17" r="3.2"/><path d="M5.5 17l4-7h5"/><path d="M9.5 10l3.5 7"/><circle cx="14.5" cy="5" r="1.4"/><path d="M12 7h3l1.5 3"/></symbol>
+  <!-- Sport icons, from the line-art originals in docs/icons/. The runner is
+       drawn as filled outlines (so no stroke to inherit), the cyclist as real
+       strokes — but both carry the same speed-line motif, which is what makes
+       the pair read as one set despite the different construction.
+       Two deliberate departures from the source files: the runner's road/ramp
+       is dropped and both viewBoxes are cropped to the artwork. These render at
+       14–18px everywhere they're used, and at that size the ramp collapsed into
+       noise while the untrimmed padding shrank the figures. -->
+  <symbol id="i-run" viewBox="63 47 433 433" fill="currentColor">
+    <path d="M69 63.5L63.5 69L64.5 76L69 79.5L186 79.5L191.5 74L190.5 67L186 63.5ZM69 255.5L63.5 261L64.5 268L69 271.5L202 271.5L207.5 266L206.5 259L202 255.5Z"/>
+    <path d="M230 81.5L146 117.5L139.5 124L136.5 130L135.5 142L140.5 153L147 158.5L154 161.5L165 161.5L227 134.5L230 134.5L263.5 167L194.5 260L188.5 271L185.5 282L185.5 295L187.5 304L190.5 311L198.5 322L209 330.5L258.5 362L219.5 402L213.5 412L211.5 419L210.5 425L211.5 436L216.5 448L229 462.5L235 463.5L239.5 460L240.5 453L228.5 437L226.5 429L228.5 418L230.5 414L279.5 364L279.5 358L273 351.5L214 314.5L207.5 308L203.5 301L201.5 294L201.5 283L208.5 268L280.5 172L282.5 166L281.5 163L247 128.5L233 116.5L228 116.5L162 145.5L155 144.5L151.5 140L151.5 136L156 130.5L232 97.5L236 97.5L240 99.5L294 138.5L313.5 158L395.5 252L399 254.5L406 254.5L471 218.5L477 219.5L480.5 224L480.5 230L477 233.5L402 274.5L395 273.5L363 247.5L361 246.5L355 247.5L351.5 251L350.5 254L351.5 258L383 284.5L394 290.5L408 289.5L488 245.5L495.5 235L496.5 221L491.5 211L485 205.5L477 202.5L469 202.5L455 208.5L404 236.5L322.5 144L307 128.5L245 83.5L239 81.5ZM393 95.5L382 98.5L374 102.5L360.5 115L352.5 132L351.5 150L354.5 161L358.5 169L371 182.5L388 190.5L406 191.5L417 188.5L425 184.5L438.5 172L446.5 155L447.5 137L444.5 126L440.5 118L428 104.5L411 96.5ZM394.5 112L409 112.5L420 118.5L426.5 126L431.5 139L430.5 153L424.5 164L417 170.5L404 175.5L390 174.5L379 168.5L372.5 161L367.5 148L368.5 134L374.5 123L385 114.5ZM336 225.5L328.5 232L267.5 298L267.5 304L271 308.5L321 344.5L326.5 350L328.5 354L327.5 366L323 371.5L250 422.5L247.5 425L246.5 430L251 436.5L256 437.5L260 435.5L331 385.5L339.5 377L343.5 369L344.5 352L337.5 338L287.5 300L345.5 238L346.5 236L345.5 229L341 225.5Z"/></symbol>
+  <!-- stroke-width is 1.55, not the source's 1: at 14–18px a 1-unit stroke in a
+       32 viewBox lands under half a pixel and greys out. 1.55 holds the line
+       without closing up the wheel hubs. -->
+  <symbol id="i-bike" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="21" cy="5.5" r="2.5"/><path d="M16.71,25.516L18,19.479c0-0.468-0.219-0.908-0.59-1.192l-3.194-2.437l3.331-3.641l2.655,2.959c0.189,0.211,0.46,0.332,0.744,0.332H25c0.553,0,1-0.447,1-1s-0.447-1-1-1h-3.586l-2.42-3.571c-1.533-2.263-4.834-2.356-6.492-0.183l-2.913,3.818c-0.86,1.157-0.568,2.801,0.64,3.588L15,20.264l-0.362,5.241c-0.074,1.079,0.78,1.995,1.862,1.995"/><line x1="7" x2="7.101" y1="25" y2="25"/><line x1="25" x2="25.101" y1="25" y2="25"/><circle cx="25" cy="25.063" r="5.5"/><circle cx="7" cy="25.063" r="5.5"/><line x1="14.5" x2="6.5" y1="4.5" y2="4.5"/><line x1="2.5" x2="9.5" y1="7.5" y2="7.5"/></symbol>
 </svg>
 
 <!-- Mobile top bar (shown < 900px): brand + hamburger -->
@@ -2167,6 +2181,43 @@ const DEBUG = new URLSearchParams(location.search).has('debug');
    the exact shell it came from -- "dev" when served straight off disk. */
 const BUILD = '__BUILD__'.indexOf('_')===0 ? 'dev' : '__BUILD__';
 
+/* ============================================================
+   Product analytics (PostHog) — see backend/app/services/analytics.py
+
+   `window.flappAnalytics` is injected by the server and exists ONLY when
+   POSTHOG_KEY is set, so every call here has to survive its absence: locally,
+   and in any deploy that never turned analytics on, this whole layer is a
+   no-op. It also swallows its own errors — an analytics bug must never be the
+   reason an athlete cannot see their report.
+
+   What is deliberately NOT sent: nothing from the clip itself, no filenames,
+   no free-text the athlete typed. Sports, scores, plans and screen names only.
+   ============================================================ */
+function track(name, props){
+  try{
+    if(!window.flappAnalytics) return;
+    window.flappAnalytics.capture(name, props||{});
+  }catch(e){}
+}
+/* Tie this browser to the account, using the id the SERVER also files
+   purchases under (auth payload `analytics_id`) — otherwise the funnel and the
+   payment it ends in are two different people. Falls back to nothing rather
+   than to the email: an id we cannot match is worse than none. */
+function trackIdentify(){
+  try{
+    if(!window.flappAnalytics || !auth || !auth.analytics_id) return;
+    window.flappAnalytics.identify(auth.analytics_id, {
+      email: auth.email, tier: auth.tier, is_pro: !!auth.is_pro,
+    });
+  }catch(e){}
+}
+function trackReset(){
+  try{ if(window.flappAnalytics) window.flappAnalytics.reset(); }catch(e){}
+}
+/* Which build produced the event: the same stamp feedback carries, so a spike
+   in failures can be pinned to the deploy that started it. */
+try{ if(window.flappAnalytics) window.flappAnalytics.register({build: BUILD}); }catch(e){}
+
 /* ---- brand colors for JS (mirror of the :root tokens above) ---- */
 const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', coralBtn:'#CE3F2B', warn:'#C97B10', orange:'#DE5F33' };
 /* Semantic status scale — mirror of the --st-* tokens. `*_FILL` = vivid form
@@ -2228,6 +2279,10 @@ function setState(name, {focus=null, route=null}={}){
   window.scrollTo({top:0, behavior: REDUCED ? 'auto' : 'smooth'});
   if(focus){ const el=$(focus); if(el) el.focus({preventScroll:true}); }
   if(!_restoringRoute) recordRoute(name, route);
+  // In-app navigation, reported as its own event rather than as a $pageview:
+  // the app moves between views without changing the URL, so every screen
+  // would otherwise be counted as another view of /app.
+  track('view_opened', {view:name, restored:_restoringRoute});
 }
 
 /* ============================================================
@@ -2407,7 +2462,7 @@ function setFile(f){
   drop.classList.add('hidden'); fprev.classList.add('show');
   fileInput.setAttribute('tabindex','-1'); // drop label is hidden; Change clip re-opens the picker
   $('#analyze').setAttribute('aria-disabled','false');
-  state.longClip=false;
+  state.longClip=false; state.duration=null;
   if(!photo) checkDuration(vid);
   readyHint();
 }
@@ -2422,6 +2477,7 @@ function checkDuration(vid){
     vid.removeEventListener('loadedmetadata',onMeta);
     const d=vid.duration;
     if(!isFinite(d)||d<=0) return;          // some containers report nothing
+    state.duration = d;                     // also reported with analysis_started
     state.longClip = d>LONG_CLIP_S;
     if(state.longClip) hintMsg(`This clip is ${Math.round(d)} s — we’ll analyze all of it, but timing metrics (cadence, ground contact) get coarser on long clips. 5–10 s is the sweet spot.`,'warn');
     else readyHint();
@@ -2536,6 +2592,18 @@ function announce(text){ // SR live region: only meaningful transitions, never p
 
 function analyze(){
   if(state.mode==='photo') return analyzePhoto();
+  // The top of the funnel that matters: uploads started, against uploads that
+  // finish. Size and duration ride along because "it failed on long clips" is
+  // a hypothesis we can otherwise only test by asking people.
+  track('analysis_started', {
+    mode:'video', sport:state.sport,
+    position: state.sport==='bike' ? state.position : null,
+    overlay: $('#overlay').checked,
+    file_mb: state.file ? Math.round(state.file.size/104857.6)/10 : null,
+    duration_s: state.duration ? Math.round(state.duration) : null,
+    signed_in: !!auth, tier: auth ? auth.tier : 'anonymous',
+  });
+  state.analyzeStart=Date.now();
   const fd=new FormData();
   fd.append('video',state.file);
   fd.append('sport',state.sport);
@@ -2633,7 +2701,23 @@ async function pollOnce(){
     if(!r.ok) throw new Error('http '+r.status);
     state.pollMisses=0;
     const j=await r.json();
-    if(j.status==='completed'){ clearInterval(state.polling); setSteps(3); render(j); }
+    if(j.status==='completed'){
+      clearInterval(state.polling); setSteps(3);
+      const res=j.result||{};
+      track('analysis_completed', {
+        mode:'video', sport:res.sport_type||state.sport,
+        position: res.cycling_position||null,
+        score: res.technique_score==null?null:res.technique_score,
+        grade: res.letter_grade||null,
+        gated: !!(res.quality_gate_triggered || (res.quality&&res.quality.triggered)),
+        // What they were actually shown: a gated result carries `locked.reason`
+        // (teaser / preview), a paid one carries nothing.
+        locked: res.locked ? (res.locked.reason||'locked') : null,
+        seconds: state.analyzeStart ? Math.round((Date.now()-state.analyzeStart)/1000) : null,
+        tier: auth ? auth.tier : 'anonymous',
+      });
+      render(j);
+    }
     else if(j.status==='failed'){ clearInterval(state.polling); fail(j.error||'The analysis failed on this clip.',{tips:true,counted:true}); }
     else if(j.status==='queued'){
       // Time spent in the queue is not time spent analyzing — keep pushing the
@@ -2661,6 +2745,15 @@ function cancelRun(){
 
 function fail(msg,{tips=false,keepFile=false,counted=false}={}){
   clearInterval(state.polling);
+  // `msg` is our own copy (or the server's), never anything the athlete typed,
+  // so it is safe to send — and it is the only thing that distinguishes "we
+  // could not see a person in the frame" from "the upload died".
+  track('analysis_failed', {
+    mode:state.mode, sport:state.sport,
+    counted: counted,               // did it burn one of their analyses
+    reason: String(msg||'').slice(0,120),
+    seconds: state.analyzeStart ? Math.round((Date.now()-state.analyzeStart)/1000) : null,
+  });
   state.keepFileOnRetry=keepFile;
   $('#errorCard').classList.remove('limit-card');
   $('#errTitle').textContent='Analysis failed';
@@ -2677,6 +2770,12 @@ function fail(msg,{tips=false,keepFile=false,counted=false}={}){
 
 function showLimit(detail,retryAfter){
   clearInterval(state.polling);
+  // Someone who wanted another analysis and was told no. On the free tier this
+  // is the single clearest upgrade signal the product produces.
+  track('limit_reached', {
+    tier: auth ? auth.tier : 'anonymous',
+    signed_in: !!auth, mode: state.mode, sport: state.sport,
+  });
   const secs=retryAfter?+retryAfter:null;
   quotaSave((quotaLoad()||{}).limit || 3, 0, secs?Date.now()+secs*1000:null);
   $('#errorCard').classList.add('limit-card');
@@ -3029,6 +3128,13 @@ $('#aeroPanel').addEventListener('click',e=>{ const b=e.target.closest('[data-sp
    Photo analysis: synchronous POST /analyze-photo (~5 s)
    ============================================================ */
 async function analyzePhoto(){
+  track('analysis_started', {
+    mode:'photo', sport:state.sport,
+    position: state.sport==='bike' ? state.position : null,
+    file_mb: state.file ? Math.round(state.file.size/104857.6)/10 : null,
+    signed_in: !!auth, tier: auth ? auth.tier : 'anonymous',
+  });
+  state.analyzeStart=Date.now();
   const fd=new FormData();
   fd.append('photo',state.file);
   fd.append('sport',state.sport);
@@ -3061,7 +3167,17 @@ async function analyzePhoto(){
       fail(j.detail || ('Photo analysis failed (HTTP '+r.status+').'), {tips:r.status===422, counted:r.ok});
       return;
     }
-    renderPhoto(await r.json());
+    const res=await r.json();
+    track('analysis_completed', {
+      mode:'photo', sport:res.sport||state.sport,
+      position: state.sport==='bike' ? state.position : null,
+      score: (res.score&&res.score.overall_score)!=null ? res.score.overall_score : null,
+      grade: (res.score&&res.score.grade)||null,
+      locked: res.locked ? (res.locked.reason||'locked') : null,
+      seconds: state.analyzeStart ? Math.round((Date.now()-state.analyzeStart)/1000) : null,
+      tier: auth ? auth.tier : 'anonymous',
+    });
+    renderPhoto(res);
   }catch(err){
     fail('Network error while analyzing — check your connection and try again.',{keepFile:true});
   }
@@ -3352,6 +3468,15 @@ function renderUpsell(containerId, locked, blockIds, unlockId){
        body:previewBody(locked)}
     : {src:'result', unlockId:sellable?unlockId:null, unlockNudge:unlockNudgeHtml()});
   host.classList.remove('hidden');
+  // The paywall was actually put in front of someone. Paired with
+  // `view_opened{view:'pricing'}` and `checkout_started`, this is the whole
+  // conversion question: shown -> considered -> paid.
+  track('paywall_shown', {
+    reason: locked.reason||'locked',
+    where: containerId,
+    sellable: !!sellable,
+    tier: auth ? auth.tier : 'anonymous',
+  });
   return true;
 }
 /* Concrete, because vague is a strange thing to follow a full report with:
@@ -3997,6 +4122,10 @@ async function handleCheckoutReturn(){
   if(!c) return;
   u.searchParams.delete('checkout'); u.searchParams.delete('plan');
   setUrl(u.toString());                      // don't re-trigger on refresh
+  // The redirect back from Stripe. NOT the record of the payment -- that comes
+  // from the webhook, server-side, because this line only runs if the browser
+  // survived the round trip. This one measures the drop-off at the card form.
+  track('checkout_returned', {result:c, plan:plan||null});
   if(c==='cancel'){ toast('Checkout canceled — no charge was made.'); return; }
   if(c!=='success') return;
   // The Expert Review is a one-time purchase: it grants no tier, so polling
@@ -4082,8 +4211,14 @@ function pickAnalysis(){
    lost a billing period. The card that was clicked already knows its key. */
 async function startCheckout(plan, analysisIdArg){
   // Checkout attaches the purchase to an account — require sign-in first.
-  if(!auth){ toast('Create a free account first, then pick a plan.',{action:'Sign up',onAction:()=>openAuth('register')}); return; }
+  if(!auth){
+    // Intent to pay, stopped by the sign-up wall. Worth its own event: if this
+    // is where people go quiet, the wall is the problem, not the price.
+    track('checkout_needs_account', {plan:plan||null});
+    toast('Create a free account first, then pick a plan.',{action:'Sign up',onAction:()=>openAuth('register')}); return;
+  }
   if(!plan) return;
+  track('checkout_started', {plan:plan, tier:auth.tier, period:billPeriod});
   let analysisId=analysisIdArg||null;
   // An unlock buys the report in front of you; there is nothing to choose.
   if(plan==='unlock' && !analysisId){ toast('Open a report first, then unlock it.'); return; }
@@ -4590,6 +4725,10 @@ function sendFeedback(host, opts){
     .then(r=>{
       fb.sending=false;
       if(!r.ok) throw new Error('http '+r.status);
+      // Rating and tags only -- never the message, and never the keyframe. The
+      // point is how often people disagree with a result, not what they wrote;
+      // the text itself belongs in the feedback inbox, not in analytics.
+      track('result_feedback', {rating:fb.rating, tags:(fb.tags||[]).length, context:fb.ctx});
       if(opts.silent) return;
       host.innerHTML=`<p class="fb-thanks"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
         Thanks — this goes straight to the person who builds the analyzer.</p>
@@ -4935,6 +5074,7 @@ async function withExportBusy(btn, txtEl, busyLabel, fn){
 }
 function exportCopy(){
   const btn=$('#exportCopy'), txt=$('#exportCopyTxt');
+  track('ai_export', {how:'copy', format:'md', tier:auth?auth.tier:'anonymous'});
   return withExportBusy(btn,txt,'Preparing…',async()=>{
     const res=await fetchExport('md'); if(!res) return;
     if(await copyText(res.text)) toast('Copied — paste it into ChatGPT, Claude or Gemini.');
@@ -4943,6 +5083,7 @@ function exportCopy(){
 }
 function exportDownload(fmt){
   const btn=fmt==='json'?$('#exportJson'):$('#exportMd');
+  track('ai_export', {how:'download', format:fmt, tier:auth?auth.tier:'anonymous'});
   return withExportBusy(btn,null,'',async()=>{
     const res=await fetchExport(fmt); if(!res) return;
     downloadText(res.text,res.name, fmt==='json'?'application/json;charset=utf-8':'text/markdown;charset=utf-8');
@@ -4959,6 +5100,9 @@ async function doShare(card, btn, txtEl){
     const sport=card.sport||'run', score=card.score;
     const file=new File([blob],`flapp-${sport}-${score==null?'result':score}.jpg`,{type:'image/jpeg'});
     const text=`My ${sport==='bike'?'cycling':'running'} technique scored ${score==null?'—':score}/100 on Flapp — analyze yours free: ${location.origin}`;
+    // The only organic acquisition channel the product has: a card that goes
+    // to Strava or Instagram with our name on it.
+    track('share_card_built', {sport:sport, score:score==null?null:score});
     openCardModal(blob, file, text);
   }catch(err){
     toast('Could not create the card — please try again.');
@@ -5032,7 +5176,10 @@ function renderAuth(){
   // Render into both the sidebar box and the mobile top-bar box.
   const boxes=[$('#authbox'),$('#authboxM')].filter(Boolean);
   const markup = auth
-    ? `<span class="usermail" title="${esc(auth.email)}">${esc(auth.email)}</span><button class="btn btn-ghost btn-sm" data-logout type="button">Log out</button>`
+    // `ph-no-capture`: autocapture records the text of whatever is clicked, and
+    // this element is the signed-in address. It travels as a person property
+    // (once, on identify) or not at all.
+    ? `<span class="usermail ph-no-capture" title="${esc(auth.email)}">${esc(auth.email)}</span><button class="btn btn-ghost btn-sm" data-logout type="button">Log out</button>`
     : `<button class="btn btn-primary btn-sm" data-login type="button">Log in</button>`;
   boxes.forEach(box=>{ box.innerHTML=markup; });
   document.querySelectorAll('[data-logout]').forEach(b=>b.addEventListener('click',logout));
@@ -5085,14 +5232,26 @@ async function submitAuth(e){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
-    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0}; renderAuth(); closeAuth(); migrateAndLoad();
+    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,
+      analytics_id:j.analytics_id||null};
+    // Name the person first, then record the act — so the sign-up itself is
+    // attributed to the account rather than to the anonymous visitor who
+    // stopped existing a millisecond ago.
+    trackIdentify();
+    track(state.authMode==='register'?'signed_up':'logged_in',
+      {pending_analysis: !!state.pendingAnalyze});
+    renderAuth(); closeAuth(); migrateAndLoad();
     // Someone who hit "Analyze" before signing up gets their run started now,
     // with the file they already chose (see the #analyze handler).
     if(state.pendingAnalyze){ state.pendingAnalyze=false; if(state.file) analyze(); }
   }catch(err){ $('#authErr').textContent='Network error — check your connection and try again.'; }
   finally{ btn.disabled=false; }
 }
-function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){} auth=null; state.cloudHist=null;
+function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){}
+  // Before `auth` is cleared, so the event still belongs to whoever left; the
+  // reset then stops the next person on this browser inheriting their identity.
+  track('logged_out',{}); trackReset();
+  auth=null; state.cloudHist=null;
   state.kfCache={}; state.kfPending={};        // never carry one account's frames into the next
   renderAuth();
   // Signed out lands on the marketing page — the mirror of the entry rule,
@@ -5103,6 +5262,9 @@ async function checkAuth(){
   if(t){
     try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); } else if(r.status===401){ localStorage.removeItem(TKEY); } }catch(e){}
   }
+  // A returning session: identify on every boot, not only at sign-in, or a
+  // 30-day token means 30 days of events filed under an anonymous visitor.
+  trackIdentify();
   renderAuth();
   if(auth){
     await migrateAndLoad();
@@ -5117,6 +5279,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#authModal')
 $('#authForm').addEventListener('submit',submitAuth);
 
 function init(){
+  // The screen the app opens ON. Every later screen arrives through setState(),
+  // but the first one is already rendered by the markup -- without this, the
+  // funnel starts at whatever the athlete clicked second.
+  track('view_opened', {view: document.body.dataset.state || 'upload', initial:true});
   renderQuota();
   checkAuth().then(handleCheckoutReturn);   // after auth loads, resolve any Stripe return
   const clReady=initChangelog();            // release notes + unread dot on the nav

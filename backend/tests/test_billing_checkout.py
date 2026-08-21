@@ -121,3 +121,32 @@ def test_billing_switched_off_is_reported_but_not_an_error(monkeypatch):
         log_billing_configuration()
     assert [e["event"] for e in logs] == ["BILLING_DISABLED"]
     assert logs[0]["log_level"] == "info"
+
+
+# --------------------------------------------------------------------------
+# Two plans, one price
+#
+# The ids are long, similar, and copied by hand from five different screens, so
+# pasting one twice is the expected slip rather than a careless one. From
+# inside the service it is invisible: checkout succeeds and Stripe charges --
+# just the wrong amount, for the plan the customer did not choose.
+# --------------------------------------------------------------------------
+def test_two_plans_sharing_one_price_is_logged_at_error(monkeypatch):
+    _use(
+        monkeypatch,
+        stripe_secret_key="sk_live_x",
+        stripe_price_enthusiast_m="price_same",
+        stripe_price_enthusiast_y="price_same",
+    )
+    with structlog.testing.capture_logs() as logs:
+        log_billing_configuration()
+    entry = next(e for e in logs if e["event"] == "BILLING_PRICE_REUSED")
+    assert entry["log_level"] == "error"
+    assert sorted(entry["plans"]) == ["enthusiast_monthly", "enthusiast_yearly"]
+
+
+def test_distinct_prices_say_nothing(monkeypatch):
+    _use(monkeypatch, stripe_secret_key="sk_live_x")
+    with structlog.testing.capture_logs() as logs:
+        log_billing_configuration()
+    assert not [e for e in logs if e["event"] == "BILLING_PRICE_REUSED"]

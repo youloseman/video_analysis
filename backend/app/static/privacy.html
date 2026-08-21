@@ -46,6 +46,12 @@
   table.data th,table.data td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--c-line);vertical-align:top}
   table.data th{color:var(--c-navy);font-weight:800;background:var(--c-panel)}
   .contact{background:var(--c-panel);border:1px solid var(--c-line);border-radius:var(--radius);padding:20px 24px;margin-top:32px}
+  /* Analytics opt-out control (section 7). Plain and legible on purpose: a
+     privacy switch should not look like a marketing button. */
+  .optout{font:inherit;font-weight:700;font-size:14px;color:var(--c-navy);background:#fff;
+    border:1.5px solid var(--c-line);border-radius:8px;padding:9px 16px;cursor:pointer}
+  .optout:hover{border-color:var(--c-blue);color:var(--c-blue)}
+  .optout-msg{font-size:14px;color:var(--c-ink-soft);margin-left:10px}
   footer{border-top:1px solid var(--c-line);padding:24px 0;font-size:13px;color:var(--c-ink-soft)}
   footer a{color:var(--c-blue);text-decoration:none}
   footer a:hover{text-decoration:underline}
@@ -126,6 +132,7 @@
   <ul>
     <li><b>Performing the service you asked for</b> (a contract): analyzing your upload, running your account, and delivering a paid plan or Expert Review.</li>
     <li><b>Our legitimate interests</b>: keeping the service secure, preventing abuse, enforcing free-tier limits, and using your feedback to correct the analyzer — balanced against your privacy.</li>
+    <!--ANALYTICS:ON--><li><b>Our legitimate interests</b>, again, for the product analytics in section 7: understanding which parts of the app are used and where they fail. It is limited to what that question needs, it excludes your media entirely, and you can switch it off for your browser at any time.</li><!--/ANALYTICS:ON-->
     <li><b>Your consent</b>: attaching the annotated still image to a piece of feedback. You give it by ticking the box, and you can withdraw it by asking us to delete that feedback.</li>
     <li><b>Legal obligation</b>: keeping limited billing records where tax or accounting law requires it.</li>
   </ul>
@@ -134,8 +141,47 @@
   <p>For anonymous visitors, we use the IP address for two purposes: to enforce the free-tier limit (a small number of analyses per day), and to limit how much feedback a single client can send.</p>
   <p>For the analysis limit, IP addresses are kept in the server's memory on a rolling 24-hour window and cleared automatically — they are not written to a database, linked to your media, or shared. For feedback, we store a <b>one-way salted hash</b> of the IP alongside the feedback record — never the address itself — so that re-rating the same analysis updates your own entry instead of creating a duplicate. The hash cannot be used to contact you or to look you up elsewhere.</p>
 
-  <h2>7. Cookies and tracking</h2>
+  <h2>7. Cookies and product analytics</h2>
+  <!--ANALYTICS:OFF-->
   <p>Flapp runs no analytics or advertising trackers. If you sign in, we use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking. Your remaining daily quota (for anonymous use) is stored in your own browser's local storage, on your device — not on our server.</p>
+  <!--/ANALYTICS:OFF-->
+  <!--ANALYTICS:ON-->
+  <p>Flapp runs <b>no advertising trackers</b>, and nothing here is shared with an ad network or sold. We do use one <b>product analytics</b> tool — <b>PostHog</b> — to see how the app is actually used: which pages get opened, whether an analysis was started and whether it finished, when someone reaches a paywall, and when a purchase completes. It is what tells us which parts of the product are working, and we have no other way to know.</p>
+  <p>What it records:</p>
+  <ul>
+    <li><b>Page and screen views</b>, clicks on buttons and links, and the browser/device type and approximate location (country/region, derived from your IP by PostHog — we do not store your address for this).</li>
+    <li><b>Product events</b>: an analysis started, completed or failed, the sport, the score and grade, whether a result was locked behind a plan, checkout started, purchase completed. <b>None of these contain your media</b>, your filename, or anything you typed.</li>
+    <li>If you're signed in, your <b>account id and email</b>, so the same person is not counted as several — and so we can delete your analytics history along with your account if you ask.</li>
+  </ul>
+  <p>What it does <b>not</b> record: your video or photo, the annotated frames, the coaching text, your password, your card details, or the message you write in a feedback box. <b>Session replay is turned off.</b></p>
+  <p>PostHog stores a cookie and a browser-local id to recognise a returning visit. We honour your browser's <b>"Do Not Track"</b> setting: with it on, nothing is collected. You can also turn analytics off for this browser here:</p>
+  <p><button type="button" id="phOptOut" class="optout">Turn off analytics on this device</button> <span id="phOptOutMsg" class="optout-msg" role="status"></span></p>
+  <p>If you sign in, we also use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking. Your remaining daily quota (for anonymous use) is stored in your own browser's local storage, on your device — not on our server.</p>
+  <script>
+  /* The button only exists as a working control when analytics is actually
+     configured (see backend/app/services/analytics.py) -- otherwise there is
+     nothing to opt out of, and offering the switch would be theatre. */
+  (function(){
+    var btn=document.getElementById('phOptOut'), msg=document.getElementById('phOptOutMsg');
+    if(!btn) return;
+    if(!window.flappAnalytics){
+      btn.parentNode.style.display='none';
+      return;
+    }
+    function paint(){
+      var off=window.flappAnalytics.optedOut();
+      btn.textContent=off?'Turn analytics back on':'Turn off analytics on this device';
+      msg.textContent=off?'Analytics is off in this browser.':'';
+    }
+    btn.addEventListener('click',function(){
+      if(window.flappAnalytics.optedOut()) window.flappAnalytics.optIn();
+      else window.flappAnalytics.optOut();
+      setTimeout(paint,50);
+    });
+    setTimeout(paint,300);   /* after the library has had a chance to load */
+  })();
+  </script>
+  <!--/ANALYTICS:ON-->
 
   <h2>8. Who processes your data (third parties)</h2>
   <table class="data">
@@ -143,6 +189,7 @@
     <tr><td><b>Railway</b> (hosting)</td><td>Runs the app and temporarily stores uploads during processing.</td></tr>
     <tr><td><b>Google Gemini API</b></td><td>Receives only anonymous numeric metrics to write coaching text — no images, no identifiers.</td></tr>
     <tr><td><b>Payment processor</b></td><td>Handles card payments for paid plans. Holds your payment details under its own privacy policy; we never see your full card number.</td></tr>
+    <!--ANALYTICS:ON--><tr><td><b>PostHog</b> (product analytics)</td><td>Receives page views and product events (see section 7), plus your account id and email if you're signed in. Never your media, and never your feedback text. Session replay is off.</td></tr><!--/ANALYTICS:ON-->
   </table>
   <p>We do <b>not</b> sell, rent, or share your personal information with anyone else, and we do not use it for third-party advertising.</p>
 
@@ -162,6 +209,7 @@
     <tr><td>Usage records (analysis counts)</td><td>Deleted when your account is deleted.</td></tr>
     <tr><td>Saved analyses + their annotated stills</td><td>Deleted when your account is deleted, or per item whenever you like.</td></tr>
     <tr><td>Billing records</td><td>Kept as long as tax/accounting law requires.</td></tr>
+    <!--ANALYTICS:ON--><tr><td>Product analytics events (section 7)</td><td>Kept for up to <b>12 months</b>, then deleted. Events tied to your account are deleted on request, or when you delete your account.</td></tr><!--/ANALYTICS:ON-->
   </table>
 
   <h2>11. Your rights</h2>

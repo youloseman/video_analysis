@@ -18,6 +18,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
+from app.services import analytics
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -68,6 +69,10 @@ class TokenOut(BaseModel):
     # instead of "buy one" -- and because a benefit nobody is told about is
     # indistinguishable from one that was never granted.
     expert_credits: int = 0
+    # Who this browser is, for analytics only (see services/analytics.py). The
+    # server sends purchases under the same id, which is what joins "signed up,
+    # analysed twice, opened pricing" to "paid" as one person rather than two.
+    analytics_id: str = ""
 
 
 class UserOut(BaseModel):
@@ -75,6 +80,7 @@ class UserOut(BaseModel):
     tier: str
     is_pro: bool  # kept for back-compat; derived from tier
     expert_credits: int = 0
+    analytics_id: str = ""
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -105,6 +111,7 @@ async def register(body: Credentials, db: AsyncSession = Depends(get_session)) -
         token=create_token(user.id), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        analytics_id=analytics.person_id(user),
     )
 
 
@@ -119,6 +126,7 @@ async def login(body: LoginBody, db: AsyncSession = Depends(get_session)) -> Tok
         token=create_token(user.id), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        analytics_id=analytics.person_id(user),
     )
 
 
@@ -127,6 +135,7 @@ async def me(user: User = Depends(get_current_user)) -> UserOut:
     return UserOut(
         email=user.email, tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        analytics_id=analytics.person_id(user),
     )
 
 

@@ -1242,6 +1242,51 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
   });
 })();
 
+/* ---- Analytics (PostHog). `window.flappAnalytics` is injected by the server
+   only when a key is configured, so all of this is a no-op otherwise.
+   The landing page's whole job is to move someone into the app: what is worth
+   measuring is which CTA did it, and how far down the page people get before
+   they decide. ---- */
+(function(){
+  function track(name, props){
+    try{ if(window.flappAnalytics) window.flappAnalytics.capture(name, props||{}); }catch(e){}
+  }
+  document.addEventListener('click', function(e){
+    var a=e.target.closest && e.target.closest('a[href^="/app"]');
+    if(!a) return;
+    /* Where on the page they said yes. The hero and the nav live outside any
+       <section>, and lumping the hero CTA in with the nav one would hide the
+       difference between "convinced by the pitch" and "clicked before reading". */
+    var box=a.closest('section, header.hero, nav, .cta-band, footer');
+    var where = !box ? 'page'
+      : box.id ? box.id
+      : box.classList.contains('hero') ? 'hero'
+      : box.classList.contains('cta-band') ? 'closing-cta'
+      : box.tagName === 'FOOTER' ? 'footer' : 'nav';
+    track('landing_cta_clicked', {
+      cta: a.id || null,
+      section: where,
+      label: (a.textContent||'').trim().slice(0,40),
+      to_signup: a.getAttribute('href').indexOf('#signup')>-1,
+    });
+  });
+  /* How far they read. Fired once per section, so "nobody ever reaches
+     pricing" and "everybody reaches pricing and leaves" stop looking alike. */
+  if('IntersectionObserver' in window){
+    var seen={};
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(!en.isIntersecting || seen[en.target.id]) return;
+        seen[en.target.id]=1;
+        track('landing_section_viewed', {section:en.target.id});
+      });
+    },{threshold:.4});
+    ['report','how','proof','pricing','faq'].forEach(function(id){
+      var el=document.getElementById(id); if(el) io.observe(el);
+    });
+  }
+})();
+
 /* Nav: heavier shadow once the page scrolls. */
 (function(){
   var nav=document.getElementById('nav');

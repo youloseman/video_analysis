@@ -89,7 +89,8 @@ from app.core.jobs import (
 from app.core.net import client_ip
 from app.core.security import get_current_user, optional_user
 from app.models.user import User
-from app.services import pricing
+from app.services import analytics, pricing
+from app.services.analytics import log_analytics_configuration
 from app.services.export import ai_export
 from app.services.notify import log_email_configuration
 from app.services.result_gating import (
@@ -267,6 +268,9 @@ async def lifespan(app: FastAPI):
     # Same reason: a delivered review that silently announces itself to
     # nobody looks exactly like one that did.
     log_email_configuration()
+    # And again: an empty dashboard reads as "nobody used it", whether that is
+    # true or the key was never set.
+    log_analytics_configuration()
     if not OVERLAY_ENCODER_PRESENT:
         logger.error(
             "OVERLAY_ENCODER_MISSING",
@@ -489,6 +493,10 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
     the Academy pages already do) or the tags advertise insecure URLs.
     """
     html_doc = (STATIC_DIR / filename).read_text(encoding="utf-8")
+    # Analytics goes in before the build stamp on purpose: switching it on
+    # changes what the document contains, so it should change the build id and
+    # bust the ETag with it -- exactly like a price change below.
+    html_doc = analytics.inject(html_doc)
     # The landing page prints its prices as plain HTML -- it is a marketing
     # page, so the numbers have to be in the document for crawlers and in the
     # first paint, not fetched afterwards. Rendering them here from the same
@@ -614,9 +622,19 @@ def apple_touch_icon() -> FileResponse:
 
 
 @app.get("/privacy", include_in_schema=False)
-def privacy() -> FileResponse:
-    """Serve the privacy policy."""
-    return FileResponse(STATIC_DIR / "privacy.html")
+def privacy() -> Response:
+    """Serve the privacy policy.
+
+    Read and rewritten rather than handed over as a file because the analytics
+    snippet has to be on this page in particular: the opt-out button in the
+    cookies section is wired to it, and an opt-out that only works on pages you
+    have already left is not one.
+    """
+    doc = (STATIC_DIR / "privacy.html").read_text(encoding="utf-8")
+    # Section 7 ships in two versions -- "we run analytics" and "we don't" --
+    # and this is what keeps the true one. See services/analytics.py.
+    doc = analytics.apply_disclosure(doc)
+    return HTMLResponse(analytics.inject(doc))
 
 
 @app.get("/terms", include_in_schema=False)
@@ -631,7 +649,7 @@ def terms() -> Response:
     doc = (STATIC_DIR / "terms.html").read_text(encoding="utf-8")
     if pricing.TERMS_TOKEN in doc:
         doc = doc.replace(pricing.TERMS_TOKEN, pricing.render_terms_table())
-    return HTMLResponse(doc)
+    return HTMLResponse(analytics.inject(doc))
 
 
 @app.get("/health")

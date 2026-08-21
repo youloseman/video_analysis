@@ -102,6 +102,9 @@ curl -s $BASE/jobs/<job_id>/overlay -o overlay.mp4
 | `VA_RATE_LIMIT_PER_DAY` | `3` | Anonymous per-IP daily analyses. `0` disables. |
 | `GEMINI_TIMEOUT_S` | `20` | Hard ceiling on one Gemini request. Coaching is optional by design — a timeout degrades to "no coaching", never to a failed analysis. |
 | `VA_CORS_ORIGINS` | *(unset)* | Comma-separated allowed origins. **Unset in production = no cross-origin access at all** (the SPA is same-origin, so it needs none); unset locally = `*`. Set to `*` to force the old permissive behaviour. |
+| `POSTHOG_KEY` | *(unset)* | Product analytics. Unset = no snippet in any page, no server-side events, and the privacy policy says so (section 7 ships in both versions and the server keeps the true one). Setup: [docs/POSTHOG_RU.md](docs/POSTHOG_RU.md). |
+| `POSTHOG_HOST` | `https://us.i.posthog.com` | Ingestion host — must match the region the PostHog project was created in, or events go nowhere without an error. Point it at a reverse proxy on our own domain to survive ad-blockers. |
+| `POSTHOG_SESSION_RECORDING` | `0` | Session replay. Off deliberately: it records the DOM, and a results page has the athlete's own footage in it. Turning it on means editing the privacy policy first. |
 
 ## Caveats (current MVP)
 

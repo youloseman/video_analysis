@@ -128,6 +128,19 @@ class Settings:
     smtp_user: str | None = None
     smtp_password: str | None = None
 
+    # --- Product analytics (PostHog, see services/analytics.py). Optional: with
+    # no key the snippet is never injected and the server never phones home, so
+    # local development and a self-hosted copy stay silent by default. ---
+    # Project API key (`phc_…`). Public by design -- it ends up in the page.
+    posthog_key: str | None = None
+    # Ingestion host. `us` or `eu` cloud, or a reverse proxy on our own domain
+    # (which is what gets past ad-blockers; see docs/POSTHOG_RU.md).
+    posthog_host: str = "https://us.i.posthog.com"
+    # Session replay is OFF unless this is set. It records the DOM -- which on a
+    # results page includes the athlete's own overlay video -- so it is a
+    # deliberate decision, not a default.
+    posthog_session_recording: bool = False
+
     @property
     def stripe_enabled(self) -> bool:
         return bool(self.stripe_secret_key)
@@ -178,6 +191,10 @@ class Settings:
     def llm_enabled(self) -> bool:
         return bool(self.gemini_api_key)
 
+    @property
+    def analytics_enabled(self) -> bool:
+        return bool(self.posthog_key)
+
 
 def _int_env(name: str, default: int) -> int:
     raw = os.environ.get(name)
@@ -197,6 +214,13 @@ def _float_env(name: str, default: float) -> float:
         return float(raw)
     except ValueError:
         return default
+
+
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _load_settings() -> Settings:
@@ -245,6 +269,14 @@ def _load_settings() -> Settings:
         smtp_port=_int_env("SMTP_PORT", Settings.smtp_port),
         smtp_user=os.environ.get("SMTP_USER") or None,
         smtp_password=os.environ.get("SMTP_PASSWORD") or None,
+        posthog_key=(os.environ.get("POSTHOG_KEY") or "").strip() or None,
+        posthog_host=(
+            (os.environ.get("POSTHOG_HOST") or "").strip().rstrip("/")
+            or Settings.posthog_host
+        ),
+        posthog_session_recording=_bool_env(
+            "POSTHOG_SESSION_RECORDING", Settings.posthog_session_recording,
+        ),
     )
 
 

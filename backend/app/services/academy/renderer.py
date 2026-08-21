@@ -13,6 +13,7 @@ import html
 import json
 from typing import Any
 
+from app.services import analytics
 from app.services.academy.parser import Article, ArticleMeta
 from app.services.academy.widgets import render_widgets
 
@@ -304,7 +305,9 @@ _AUTH_JS = (
     "['acadFeedback','acadReviews'].forEach(function(id){"
     "var e=document.getElementById(id);if(e)e.hidden=!adm;});"
     "var m=a?"
-    "'<span class=\"usermail\" title=\"'+esc(a.email)+'\">'+esc(a.email)+"
+    # `ph-no-capture` keeps the address out of analytics: autocapture records
+    # the text of what you click, and this element is a signed-in user's email.
+    "'<span class=\"usermail ph-no-capture\" title=\"'+esc(a.email)+'\">'+esc(a.email)+"
     "'</span><button class=\"btn btn-ghost btn-sm\" data-logout type=\"button\">Log out</button>':"
     "'<a class=\"btn btn-primary btn-sm\" href=\"/app#login\">Log in</a>';"
     "boxes.forEach(function(b){b.innerHTML=m;});"
@@ -357,6 +360,10 @@ def _page(
         f"{_FONTS_LINK}\n"
         f"<style>{_BASE_CSS}{extra_css}</style>\n"
         f"{ld}\n"
+        # Academy is the top of the funnel -- these pages are what search
+        # brings people in on, so leaving them unmeasured would hide the one
+        # traffic source that is not us telling people about ourselves.
+        f"{analytics.snippet_html()}\n"
         "</head>\n<body>\n"
         f'{_sidebar(active)}\n<div class="appshell">\n{body}\n{_footer()}\n</div>\n'
         f"{script}"
