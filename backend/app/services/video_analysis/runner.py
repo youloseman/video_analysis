@@ -434,7 +434,7 @@ def _json_safe(obj: Any) -> Any:
 def run_analysis(
     video_path: str, sport_type: str, cycling_position: str | None,
     overlay_path: str | None = None, recommendations: bool = True,
-    hide_angle_values: bool = False,
+    hide_angle_values: bool = False, kinogram: bool = True,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -443,6 +443,11 @@ def run_analysis(
 
     ``hide_angle_values`` (free-tier teaser): render the keyframe/overlay with
     the skeleton visible but the numeric angle labels masked + a watermark.
+
+    ``kinogram`` (running only): compose the five ALTIS stride positions into
+    one image. Costs a partial second decode of the video, and the gate strips
+    it from a free response anyway, so callers serving a teaser pass False
+    rather than render something nobody will see.
     """
     camera_angle = None   # side view only in Milestone 1
     camera_view = None    # None == side view (implicit default in Motus)
@@ -757,6 +762,34 @@ def run_analysis(
     except Exception as e:  # noqa: BLE001
         logger.warning("VISUALS_FAILED", err=str(e))
 
+    # Step 6b: the kinogram -- the five ALTIS stride positions in one image.
+    # Running only (the positions are defined off the gait cycle) and wrapped
+    # like every other visual: an artifact worth having, never worth failing an
+    # analysis for.
+    kinogram_base64 = None
+    kinogram_meta = None
+    if kinogram and sport_type == "run":
+        try:
+            from app.services.video_analysis.kinogram import build_run_kinogram
+
+            kinogram_base64, kinogram_meta = build_run_kinogram(
+                video_path, analyzer, raw_frame_data,
+                # The kinogram inherits the report's own verdict on this clip:
+                # when the stride could not be timed or the legs could not be
+                # told apart, there is nothing to draw five honest positions
+                # from. See kinogram.stride_trust_block.
+                summary=summary,
+                tracking_stability=tracking_stability,
+                technique_score=(
+                    scoring["overall_score"]
+                    if scoring.get("overall_score") is not None else 0
+                ),
+                letter_grade=scoring.get("letter_grade") or "--",
+                hide_values=hide_angle_values,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("KINOGRAM_FAILED", err=str(e))
+
     # Step 7 (Milestone 5): LLM coaching recommendations. Skips gracefully when
     # no API key is configured or the call fails -- never blocks the result.
     ai_recommendations = None
@@ -806,6 +839,8 @@ def run_analysis(
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
         "overlay_video_path": overlay_video_path,
         "keyframe_base64": keyframe_base64,
+        "kinogram_base64": kinogram_base64,
+        "kinogram": kinogram_meta,
         "ai_recommendations": ai_recommendations,
         "training_plan": training_plan,
         "angle_statistics": angle_stats,

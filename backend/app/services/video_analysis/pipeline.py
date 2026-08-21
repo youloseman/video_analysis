@@ -107,6 +107,98 @@ def _is_near_side_landmark(idx: int, camera_side: str | None) -> bool:
     return True  # No camera side info -> treat all as near
 
 
+def landmarks_to_pixels(
+    normalized_lms: list[Any], width: int, height: int,
+    *, offset: tuple[float, float] = (0.0, 0.0), scale: float = 1.0,
+) -> list[tuple[int, int, float]]:
+    """Normalized landmarks -> ``(x_px, y_px, visibility)`` in frame pixels.
+
+    Gated landmarks carry NaN x/y (see ``landmark_stabilizer``); they come back
+    as ``(-1, -1, 0.0)`` so the ``MIN_OVERLAY_VISIBILITY`` filters downstream
+    skip them without anyone ever calling ``int(NaN)``.
+
+    ``offset`` is subtracted before ``scale`` is applied, which is how a
+    renderer drawing into a resized CROP of the frame (the kinogram tiles) gets
+    coordinates in its own space while the landmarks stay full-frame
+    normalized. Both default to a no-op.
+    """
+    ox, oy = offset
+    out: list[tuple[int, int, float]] = []
+    for lm in normalized_lms:
+        vis = getattr(lm, "visibility", 1.0)
+        if vis is None:
+            vis = 1.0
+        lx, ly = lm.x, lm.y
+        if (
+            lx is None or ly is None
+            or (isinstance(lx, float) and math.isnan(lx))
+            or (isinstance(ly, float) and math.isnan(ly))
+        ):
+            out.append((-1, -1, 0.0))
+            continue
+        out.append((
+            int((lx * width - ox) * scale),
+            int((ly * height - oy) * scale),
+            float(vis),
+        ))
+    return out
+
+
+def effective_camera_side(sport_type: str, camera_side: str | None) -> str | None:
+    """The side the skeleton filter should use.
+
+    For bike the near-side filter is unconditional even when ``camera_side`` is
+    somehow falsy (defaults to "left") -- belt-and-suspenders against cross-body
+    "spider-web" bones (the 11-12 shoulder pair, the 23-24 hip pair) drawing
+    when the side has not been determined.
+    """
+    if sport_type == "bike" and not camera_side:
+        return "left"
+    return camera_side
+
+
+def build_skeleton_geometry(
+    pixel_coords: list[tuple[int, int, float]],
+    sport_type: str,
+    camera_side: str | None,
+) -> tuple[list[tuple[tuple[int, int], tuple[int, int]]], list[tuple[int, int]]]:
+    """``(segments, dots)`` ready for ``overlay_style.draw_glow_skeleton``.
+
+    Drops any bone or joint below ``MIN_OVERLAY_VISIBILITY``, and for the
+    side-view sports drops the far-side half of the body entirely. Shared by the
+    overlay video, the keyframe still and the kinogram tiles so the three cannot
+    drift into drawing different skeletons from the same landmarks.
+    """
+    side = effective_camera_side(sport_type, camera_side)
+    side_filter_active = bool(side)
+
+    segments: list[tuple[tuple[int, int], tuple[int, int]]] = []
+    for start_idx, end_idx in POSE_CONNECTIONS:
+        if start_idx >= len(pixel_coords) or end_idx >= len(pixel_coords):
+            continue
+        sx, sy, sv = pixel_coords[start_idx]
+        ex, ey, ev = pixel_coords[end_idx]
+        if sv < MIN_OVERLAY_VISIBILITY or ev < MIN_OVERLAY_VISIBILITY:
+            continue
+        both_near = (
+            _is_near_side_landmark(start_idx, side)
+            and _is_near_side_landmark(end_idx, side)
+        )
+        if side_filter_active and not both_near:
+            continue
+        segments.append(((sx, sy), (ex, ey)))
+
+    dots: list[tuple[int, int]] = []
+    for i, (px, py, vis) in enumerate(pixel_coords):
+        if vis < MIN_OVERLAY_VISIBILITY:
+            continue
+        if side_filter_active and not _is_near_side_landmark(i, side):
+            continue
+        dots.append((px, py))
+
+    return segments, dots
+
+
 class VideoAnalysisPipeline:
     """Minimal carrier for the two overlay-drawing routines Motus kept on the
     pipeline class. Instantiable with no args; holds no state.

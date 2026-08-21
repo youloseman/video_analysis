@@ -800,42 +800,49 @@ class RunningAnalyzer(SportAnalyzer):
 
         return round(flight_ms, 1)
 
-    def _contact_frame_indices(self, min_run: int = 3) -> list[int]:
-        """Indices of the frames where a real foot-strike begins.
+    def stance_runs(self, min_run: int = 3) -> list[tuple[int, int]]:
+        """``(first_frame, last_frame)`` of every *confirmed* ground contact.
 
-        A foot-strike is the first frame of a *confirmed* stance run --
-        one that lasts at least ``min_run`` frames -- immediately following
-        a confirmed swing run. Debouncing both sides (not just requiring the
-        next frame to be stance) prevents single-frame gait-phase flicker
-        from registering as extra contacts; without it an 8 s clip yields
-        30+ spurious "contacts" instead of ~1 per stride. Mirrors the
-        stride-counter debounce in video_visualizer.
+        A run is confirmed when it lasts at least ``min_run`` contiguous
+        stance frames. Debouncing (not just requiring the next frame to be
+        stance) prevents single-frame gait-phase flicker from registering as
+        extra contacts; without it an 8 s clip yields 30+ spurious "contacts"
+        instead of ~1 per stride. Mirrors the stride-counter debounce in
+        video_visualizer.
 
-        Uses the same stance-phase set as GCT/flight so all three share one
-        notion of "on the ground". Returns the frame indices in order.
+        Both ends are inclusive: ``first`` is the foot-strike frame and
+        ``last`` is the final frame before the foot leaves the ground
+        (toe-off). Uses the same stance-phase set as GCT/flight so every
+        consumer shares one notion of "on the ground".
         """
         n = len(self.frame_results)
         if n == 0:
             return []
-        # Precompute confirmed stance runs (>= min_run contiguous stance frames).
         stance_flags = [
             fr.extra_metrics.get("gait_phase") in GROUND_CONTACT_PHASES
             for fr in self.frame_results
         ]
-        idxs: list[int] = []
+        runs: list[tuple[int, int]] = []
         i = 0
         while i < n:
             if stance_flags[i]:
-                # Measure this stance run.
                 j = i
                 while j < n and stance_flags[j]:
                     j += 1
                 if (j - i) >= min_run:
-                    idxs.append(i)  # first frame of a confirmed stance run
+                    runs.append((i, j - 1))
                 i = j
             else:
                 i += 1
-        return idxs
+        return runs
+
+    def _contact_frame_indices(self, min_run: int = 3) -> list[int]:
+        """Indices of the frames where a real foot-strike begins.
+
+        The first frame of every confirmed stance run -- see
+        :meth:`stance_runs` for what makes a run confirmed.
+        """
+        return [start for start, _ in self.stance_runs(min_run)]
 
     def _compute_overstride_ratio(self) -> tuple[float, int]:
         """Estimate overstride at foot-strike from near-side world landmarks.

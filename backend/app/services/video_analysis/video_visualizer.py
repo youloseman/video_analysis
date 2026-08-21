@@ -22,11 +22,11 @@ from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 from app.services.video_analysis.pipeline import (
     ARC_TRIPLETS,
     MIN_OVERLAY_VISIBILITY,
-    POSE_CONNECTIONS,
     SPORT_SAMPLE_RATES,
     VideoAnalysisPipeline,
     _draw_dashed_line,
-    _is_near_side_landmark,
+    build_skeleton_geometry,
+    landmarks_to_pixels,
 )
 
 # Phase colors (BGR for OpenCV). Warm = propulsive, cool = setup, gray = unknown.
@@ -462,61 +462,13 @@ class VideoVisualizer:
             else self.frame_data_list[analyzed_idx]["normalized_landmarks"]
         )
 
-        # Convert to pixel coordinates with visibility.
-        # Gated landmarks carry NaN x/y (see landmark_stabilizer); we mark them
-        # with visibility 0.0 so the existing MIN_OVERLAY_VISIBILITY filters in
-        # the drawing loops below skip them without ever calling int(NaN).
-        pixel_coords: list[tuple[int, int, float]] = []
-        for lm in normalized_lms:
-            vis = getattr(lm, "visibility", 1.0)
-            if vis is None:
-                vis = 1.0
-            lx, ly = lm.x, lm.y
-            if (
-                lx is None or ly is None
-                or (isinstance(lx, float) and math.isnan(lx))
-                or (isinstance(ly, float) and math.isnan(ly))
-            ):
-                pixel_coords.append((-1, -1, 0.0))
-                continue
-            pixel_coords.append((int(lx * width), int(ly * height), float(vis)))
+        # Convert to pixel coordinates with visibility (NaN-safe -- see helper).
+        pixel_coords = landmarks_to_pixels(normalized_lms, width, height)
 
         # -- 1. Skeleton bones (near-side only for bike/run) --
-        # For bike, the near-side filter is unconditional even if
-        # camera_side is somehow falsy (defaults to "left"). This is
-        # belt-and-suspenders against cross-body "spider-web" bones
-        # (11-12 shoulder pair, 23-24 hip pair) drawing when the side
-        # has not been determined.
-        effective_side = self.camera_side
-        if self.sport_type == "bike" and not effective_side:
-            effective_side = "left"
-        side_filter_active = bool(effective_side)
-
-        _segments: list[tuple[tuple[int, int], tuple[int, int]]] = []
-        for start_idx, end_idx in POSE_CONNECTIONS:
-            if start_idx >= len(pixel_coords) or end_idx >= len(pixel_coords):
-                continue
-            sx, sy, sv = pixel_coords[start_idx]
-            ex, ey, ev = pixel_coords[end_idx]
-            if sv < MIN_OVERLAY_VISIBILITY or ev < MIN_OVERLAY_VISIBILITY:
-                continue
-            both_near = (
-                _is_near_side_landmark(start_idx, effective_side)
-                and _is_near_side_landmark(end_idx, effective_side)
-            )
-            # Skip far-side bones entirely for side-view sports
-            if side_filter_active and not both_near:
-                continue
-            _segments.append(((sx, sy), (ex, ey)))
-
-        _dots: list[tuple[int, int]] = []
-        for i, (px, py, vis) in enumerate(pixel_coords):
-            if vis < MIN_OVERLAY_VISIBILITY:
-                continue
-            # Skip far-side dots for side-view sports
-            if side_filter_active and not _is_near_side_landmark(i, effective_side):
-                continue
-            _dots.append((px, py))
+        _segments, _dots = build_skeleton_geometry(
+            pixel_coords, self.sport_type, self.camera_side,
+        )
 
         # Neon skeleton (shared style). The glow is a per-frame blur, so keep it
         # only for the single keyframe render -- on a full clip it would cost a

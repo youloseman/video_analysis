@@ -914,6 +914,21 @@ h2.sec + .speedline{margin-bottom:24px}
   display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .videocap .note{color:var(--c-ink-soft)}
 
+/* ---- Kinogram ----------------------------------------------------------
+   Five portrait tiles side by side is a wide picture. Scaling it to fit a
+   phone would shrink the athlete to a thumbnail and the joint angles to
+   nothing, which defeats the point of the artifact -- so the tiles keep a
+   legible height and the strip scrolls sideways inside its own frame
+   instead. The page itself never scrolls horizontally. */
+.kinowrap{overflow-x:auto;overflow-y:hidden;background:#0d1420;
+  -webkit-overflow-scrolling:touch}
+.kinowrap img{display:block;height:clamp(320px,42vw,520px);width:auto;max-width:none}
+@media(min-width:1100px){
+  /* Wide enough to show the whole stride: let it fit rather than scroll. */
+  .kinowrap img{height:auto;width:100%;max-width:100%}
+}
+.kinohint{font-size:12px;color:var(--c-ink-soft)}
+
 .banner{border-radius:var(--radius);padding:16px;font-size:14px;margin-top:24px;display:flex;gap:8px;align-items:flex-start}
 .banner .ic{margin-top:2px}
 .banner.warn{background:#F9F1E3;border-left:4px solid var(--c-warn);color:var(--c-ink)}
@@ -1686,6 +1701,25 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
     <div id="gateBanner"></div>
     <p class="hint hidden" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
+
+    <div class="block hidden" id="kinogramBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Kinogram</div>
+        <h3>One stride, five positions</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hint" style="text-align:left;margin:0 0 16px">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
+      <div class="videoframe">
+        <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: five key positions of one running stride, each with its joint angles"></div>
+        <div class="videocap">
+          <span>Positions after the ALTIS Kinogram Method<br>
+            <span class="note" id="kinoNote"></span></span>
+          <a class="btn btn-ghost btn-sm" id="downloadKinogram" download="flapp-kinogram.jpg">
+            <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .jpg
+          </a>
+        </div>
+      </div>
+    </div>
 
     <div class="block block-coach" id="coachBlock">
       <div class="blockhead">
@@ -3325,6 +3359,7 @@ const UNLOCK_COPY={
   angles:'Exact joint-angle measurements',
   issues:'Every technique issue we found',
   ranges:'Cadence, ranges & benchmark metrics',
+  kinogram:'Kinogram — the five key positions of your stride, side by side',
   video:'Annotated video + slow-motion replay',
   second_phase:'Second phase photo (contact & drive)',
   export:'Export your numbers for ChatGPT, Claude or Gemini',
@@ -4271,6 +4306,32 @@ async function startCheckout(plan, analysisIdArg){
   }catch(e){ toast('Secure checkout is being set up — it goes live shortly. Thanks!'); }
 }
 
+/* Kinogram: the five ALTIS stride positions the backend composed into one
+   image. Running only, and only when a usable stride was found — a clip whose
+   gait phases never resolved returns no kinogram, and an empty frame with a
+   caption is worse than no section at all. */
+function renderKinogram(r){
+  const block=$('#kinogramBlock'); if(!block) return;
+  const img=$('#kinogramImg'), src=r&&r.kinogram_base64;
+  if(!src){ block.classList.add('hidden'); img.removeAttribute('src'); return; }
+  img.src=src;
+  const dl=$('#downloadKinogram');
+  dl.href=src;
+  dl.setAttribute('download', `flapp-kinogram-${(r.sport_type||'run')}.jpg`);
+
+  /* Say out loud when the picture is not the full five, or when the strike
+     position came from the near-side substitute rather than the ALTIS
+     definition. A kinogram that quietly shows three tiles reads as a bug. */
+  const meta=r.kinogram||{}, notes=[];
+  const n=(meta.positions||[]).length;
+  if(n && n<5) notes.push(`${n} of 5 positions — the rest could not be located in this clip.`);
+  if(meta.strike_source==='near_max_hip_flexion')
+    notes.push('Strike located from the near-side thigh (the far leg was not tracked well enough).');
+  (meta.warnings||[]).forEach(w=>notes.push(w));
+  $('#kinoNote').textContent=notes.join(' ');
+  block.classList.remove('hidden');
+}
+
 /* Structured training plan: corrective drill cards from the top priorities,
    each with the problem, the drill + how-to, a coaching cue, an expected
    timeframe, and (when available) a link to the matching Academy article.
@@ -4469,6 +4530,10 @@ function render(job){
   // Free-tier teaser: paid sections were stripped server-side. Hide them,
   // show the upgrade panel, and stop before rendering empty paid blocks.
   $('#upsellHost').classList.add('hidden');
+  // Kinogram (running only). Rendered before the teaser early-return so a
+  // gated result clears the previous run's picture instead of leaving a stale
+  // data URI sitting in the DOM.
+  renderKinogram(r);
   // The teaser stops here: nothing paid was generated, so there is nothing to
   // render. The preview falls through and renders the report, then hides the
   // two sections it does not include (see the end of this function).
@@ -4477,7 +4542,8 @@ function render(job){
     // before it can be sold, because that id is what the unlock buys.
     const entryId=saveToHistory('video', r);
     renderUpsell('upsellHost', r.locked,
-      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock','biomechBlock','exportBlock'],
+      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock',
+       'biomechBlock','kinogramBlock','exportBlock'],
       entryId);
     renderQuota();
     mountFeedback('fbHost','video',r,entryId,
@@ -4559,7 +4625,7 @@ function render(job){
   // explain the score in words -- and blurs the measurement table and the
   // drills, which are the ongoing product rather than the sample.
   if(r.locked) renderUpsell('upsellHost', r.locked,
-    ['planBlock','metricsBlock','anglesBlock','biomechBlock','exportBlock']);
+    ['planBlock','metricsBlock','anglesBlock','biomechBlock','kinogramBlock','exportBlock']);
   mountFeedback('fbHost','video',r,saveToHistory('video', r),
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');

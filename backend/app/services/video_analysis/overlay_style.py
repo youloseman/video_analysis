@@ -305,6 +305,37 @@ class ChipLayer:
         """Stage the bottom-right wordmark."""
         self._ops.append(("brand", (at, main, sub, scale), {}))
 
+    def caption(
+        self, at: tuple[int, int], text: str,
+        *, scale: float = 1.0, align: str = "left", status: str = "ink",
+        plate: bool = True,
+    ) -> tuple[int, int, int, int]:
+        """Stage a title plate -- bold text on an optional dark rounded slab.
+
+        Unlike :meth:`metric_chip` this is one string with no value half, for
+        naming a thing rather than measuring it (the kinogram's per-tile
+        position titles). ``at`` is the plate's left-top corner, or right-top
+        when ``align='right'``. Captions do NOT participate in the collision
+        nudge: they title a fixed region and moving one would detach it from
+        what it names.
+
+        ``status`` accepts the usual good/warn/bad/muted keys; anything else
+        (the ``"ink"`` default) paints the plain bright label colour.
+        """
+        size = max(10, int(15 * scale))
+        pad_x, pad_y = int(9 * scale), int(5 * scale)
+        tw, th = text_size(text, True, size)
+        w = pad_x * 2 + tw
+        h = pad_y * 2 + max(th, size)
+        x = at[0] - w if align == "right" else at[0]
+        y = at[1]
+        x = max(1, min(x, self._w - w - 1)) if self._w > w + 2 else 1
+        y = max(1, min(y, self._h - h - 1)) if self._h > h + 2 else 1
+        rect = (x, y, x + w, y + h)
+        self._taken.append(rect)   # metric chips route around the title
+        self._ops.append(("caption", (rect, text, status, size, pad_x, plate), {}))
+        return rect
+
     # -- render ----------------------------------------------------------
     def flush(self) -> Any:
         """Render every staged op and return the new BGR frame."""
@@ -325,6 +356,8 @@ class ChipLayer:
                 self._render_header(d, *args)
             elif kind == "brand":
                 self._render_brand(d, *args)
+            elif kind == "caption":
+                self._render_caption(d, *args)
 
         out = Image.alpha_composite(base, layer).convert("RGB")
         return np.array(out)[:, :, ::-1]  # RGB -> BGR
@@ -380,6 +413,15 @@ class ChipLayer:
             if frame_w - margin - rw >= x + w + int(12 * scale):
                 d.text((frame_w - margin, cy), right_text, font=rf,
                        fill=INK_SOFT + (215,), anchor="rm")
+
+    @staticmethod
+    def _render_caption(d, rect, text, status, size, pad_x, plate) -> None:
+        x1, y1, x2, y2 = rect
+        if plate:
+            d.rounded_rectangle(rect, radius=max(5, (y2 - y1) // 3),
+                                fill=CHIP_BG + (215,), outline=CHIP_EDGE + (120,), width=1)
+        d.text((x1 + pad_x, (y1 + y2) // 2), text, font=_font(True, size),
+               fill=STATUS_COLORS.get(status, INK) + (255,), anchor="lm")
 
     @staticmethod
     def _render_brand(d, at, main, sub, scale) -> None:

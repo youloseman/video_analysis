@@ -57,7 +57,10 @@ _QUALITY_KEYS = ("quality_warnings", "time_base_uncertain", "sampling_degraded")
 _PHOTO_WARNINGS_KEY = "warnings"
 
 # What an upgrade unlocks (shown by the frontend on the blurred sections).
-_UNLOCKS = ["coaching", "angles", "issues", "ranges", "video", "second_phase", "export"]
+_UNLOCKS = [
+    "coaching", "angles", "issues", "ranges", "kinogram", "video",
+    "second_phase", "export",
+]
 
 # --------------------------------------------------------------------------
 # The preview: one report, once per account, that is worth reading.
@@ -83,7 +86,9 @@ _PREVIEW_EXTRA = ("detected_issues", "ai_recommendations")
 # What is still behind the paywall after a preview. Note ``coaching`` and
 # ``issues`` are absent -- they were just shown, and listing them would promise
 # the reader something they already have.
-_PREVIEW_UNLOCKS = ["plan", "angles", "ranges", "video", "second_phase", "export"]
+_PREVIEW_UNLOCKS = [
+    "plan", "angles", "ranges", "kinogram", "video", "second_phase", "export",
+]
 
 ACCESS_FULL = "full"
 ACCESS_PREVIEW = "preview"

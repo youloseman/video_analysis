@@ -440,6 +440,10 @@ def _process_job(
             # billed Gemini call on output nobody ever sees. The preview is the
             # one free result where it IS shown, so there it runs.
             recommendations=(not free) or preview,
+            # Same reasoning for the kinogram, which the gate withholds from
+            # every free response INCLUDING the preview: rendering it would buy
+            # a second video decode and nothing else.
+            kinogram=not free,
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
