@@ -510,10 +510,11 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
                 else "not scorable from a single still at this point in the stride"
             )
             lines.append(
-                f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note} — "
-                f"{v.get('unscored_reason', 'phase')}-dependent, {resolution}. "
-                f"Do NOT critique this angle, do NOT call it too open/closed, "
-                f"and do NOT prescribe a drill for it."
+                f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note} — this "
+                f"number depends entirely on the "
+                f"{v.get('unscored_reason', 'phase')} the frame caught, so it is "
+                f"{resolution}. Do NOT critique this angle, do NOT call it too "
+                f"open/closed, and do NOT prescribe a drill for it."
             )
             continue
         phase_note = (
@@ -563,10 +564,17 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             + ", ".join(material)
         )
     else:
+        # "a deliberate aero trade-off" is a bike concept; on a run prompt it
+        # was inviting the model to reason about aerodynamics it had no reading
+        # for -- and to reach for a fix to justify the phrase.
+        excuse = (
+            "in range, within tolerance, or a deliberate aero trade-off"
+            if sport == "bike"
+            else "in range, within tolerance, or not scorable from this frame"
+        )
         lines.append(
-            "Material problems: NONE. Every measured angle is in range, within "
-            "tolerance, or a deliberate aero trade-off. Do not invent a fix -- "
-            "use the **Nothing to fix** variant of that section."
+            f"Material problems: NONE. Every measured angle is {excuse}. Do not "
+            "invent a fix -- use the **Nothing to fix** variant of that section."
         )
     if borderline:
         lines.append(
