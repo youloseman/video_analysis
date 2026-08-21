@@ -549,6 +549,16 @@ _POSE_CONNECTIONS = [
     (29, 31), (30, 32),
 ]
 
+# The annotated image is returned INLINE as a base64 data URI on a synchronous
+# request, so its encoding is a payload decision as much as a quality one. PNG
+# on a photograph is pathological: a full-size phone upload (3024x4032) encoded
+# to a ~15 MB data URI, which is a broken experience on a phone however good the
+# annotation looks. JPEG at this quality is ~1 MB for the same picture with no
+# visible loss on the chips or the skeleton, and matches what the video path
+# already ships for its keyframe (video_visualizer.render_keyframe).
+_THUMB_JPEG_QUALITY = 92
+_THUMB_MIME = "image/jpeg"
+
 _LEFT_SIDE = {1, 2, 3, 7, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31}
 _RIGHT_SIDE = {4, 5, 6, 8, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32}
 _MIDLINE = {0, 9, 10}
@@ -726,8 +736,9 @@ def _generate_photo_thumbnail(
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
-    Returns PNG image as bytes. ``hide_angle_values`` (free-tier teaser): keep
-    the skeleton + arcs but mask the numeric angle labels and burn a watermark.
+    Returns encoded image bytes (see ``_THUMB_MIME``). ``hide_angle_values``
+    (free-tier teaser): keep the skeleton + arcs but mask the numeric angle
+    labels and burn a watermark.
     """
     # Draw on a canvas at least as big as the overlay geometry expects. Chip
     # type has a hard minimum size, so on a small photo -- a frame cropped out
@@ -964,8 +975,10 @@ def _generate_photo_thumbnail(
 
     frame = chips.flush()
 
-    # Encode to PNG
-    success, buf = cv2_mod.imencode(".png", frame, [cv2_mod.IMWRITE_PNG_COMPRESSION, 6])
+    # Encode (see _THUMB_JPEG_QUALITY -- the format is a payload decision)
+    success, buf = cv2_mod.imencode(
+        ".jpg", frame, [cv2_mod.IMWRITE_JPEG_QUALITY, _THUMB_JPEG_QUALITY],
+    )
     if not success:
         raise ValueError("Failed to encode thumbnail image")
     return buf.tobytes()
@@ -1591,7 +1604,9 @@ def analyze_photo(
         hide_angle_values=hide_angle_values,
         optimal_ranges=optimal_ranges,
     )
-    thumbnail_b64 = f"data:image/png;base64,{base64.b64encode(thumbnail_bytes).decode()}"
+    thumbnail_b64 = (
+        f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"
+    )
 
     processing_time = round(time.time() - start_time, 3)
 

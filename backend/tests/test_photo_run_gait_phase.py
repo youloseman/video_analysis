@@ -274,6 +274,49 @@ def test_oversized_frames_are_capped():
     assert w / h == pytest.approx(3024 / 4032, rel=0.01)
 
 
+def test_annotated_render_is_a_jpeg_the_size_of_a_web_image():
+    """The annotated image ships inline as base64 on a synchronous request.
+
+    PNG on a photograph is pathological -- a full-size phone upload encoded to
+    a ~15 MB data URI, which is broken on a phone however good the annotation
+    looks. Needs the real opencv, so it skips on a slim install (conftest
+    note 2).
+    """
+    cv2 = pytest.importorskip("cv2")
+    from app.services.video_analysis import photo_analyzer as pa
+
+    rng = np.random.default_rng(1)
+    photo = cv2.GaussianBlur(
+        rng.integers(0, 255, (4032, 3024, 3)).astype(np.uint8), (0, 0), 3,
+    )
+    lms = [LM(0.5, 0.5, 0.2) for _ in range(33)]
+    for i, (x, y) in {
+        0: (.52, .09), 11: (.44, .24), 12: (.53, .24), 13: (.40, .36),
+        14: (.62, .34), 15: (.46, .44), 16: (.58, .45), 23: (.47, .50),
+        24: (.54, .50), 25: (.44, .66), 26: (.63, .57), 27: (.49, .80),
+        28: (.55, .70), 29: (.46, .83), 30: (.51, .72), 31: (.55, .84),
+        32: (.60, .74),
+    }.items():
+        lms[i] = LM(x, y, 0.95)
+
+    ranges = pa._get_running_optimal_ranges("swing")
+    blob = pa._generate_photo_thumbnail(
+        cv2, photo, lms, _KNEE_DRIVE_FRAME,
+        pa._score_photo_angles(_KNEE_DRIVE_FRAME, ranges, "run"),
+        "right", "run", pa._build_arc_triplets("run", "right"),
+        optimal_ranges=ranges,
+    )
+
+    assert blob[:2] == b"\xff\xd8", "JPEG SOI marker -- not a PNG"
+    assert pa._THUMB_MIME == "image/jpeg", "data URI must match what is encoded"
+
+    base64_bytes = len(blob) * 4 / 3
+    assert base64_bytes < 2_000_000, f"data URI too heavy: {base64_bytes/1e6:.1f} MB"
+
+    decoded = cv2.imdecode(np.frombuffer(blob, np.uint8), cv2.IMREAD_COLOR)
+    assert max(decoded.shape[:2]) <= overlay_style.RENDER_MAX_LONG_SIDE
+
+
 def test_chips_are_clamped_inside_the_frame():
     """Callers clamp the anchor, which is not the same as clamping the chip.
 
