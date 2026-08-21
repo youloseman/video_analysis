@@ -51,8 +51,27 @@ _DEADBAND = {
 # Athlete height in the frame MediaPipe actually sees. Below "tiny" the legs
 # are too few pixels apart to tell reliably; between the two it is workable but
 # degraded.
-FRAMING_TINY_PX = 150
-FRAMING_SMALL_PX = 250
+#
+# Raised 2026-08-21 from 150/250 on measured evidence. One clip, cropped three
+# ways, with everything else held constant:
+#
+#     116 px -> legs swapped on 42.7% of frames
+#     255 px -> legs swapped on 45.6% of frames   <- the old bar called this OK
+#     452 px -> legs swapped on  1.8% of frames
+#
+# The old "ok" bar handed a clean bill of health to a clip whose left and right
+# legs were interchangeable half the time -- a false all-clear on the one
+# measurement everything else rests on.
+#
+# Three crops of one clip is calibration, not proof, so the bars are placed
+# where that evidence AND a geometric argument agree. What the pose model has
+# to resolve is not the athlete's height but the width of a limb: a thigh is
+# roughly a tenth of body height, so a 400 px athlete gives it ~40 px of thigh
+# to separate from the other one, and a 255 px athlete gives it ~25. The "tiny"
+# bar sits above the largest height we have measured failing, and the "small"
+# bar at the limb width where it demonstrably works.
+FRAMING_TINY_PX = 300
+FRAMING_SMALL_PX = 400
 
 
 def _stack(frame_results: list[dict[str, Any]], key: str, attr: str) -> np.ndarray:

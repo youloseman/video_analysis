@@ -47,7 +47,15 @@ _SAFE_KEYS = frozenset({
 # Everything here is explicitly named: nothing is copied wholesale out of
 # ``sport_specific_metrics``, so a paid field added to that dict later cannot
 # ride along.
-_QUALITY_KEYS = ("quality_warnings", "time_base_uncertain", "sampling_degraded")
+#
+# ``capture_report`` belongs here for the same reason and then some: it is the
+# only part of a free result that tells the reader how to get a BETTER one. A
+# paywall in front of "your clip was filmed too far away, here is the fix" would
+# be charging admission to the instructions.
+_QUALITY_KEYS = (
+    "quality_warnings", "time_base_uncertain", "sampling_degraded",
+    "capture_report",
+)
 
 # Where each result shape keeps its capture warnings. The video path files them
 # under ``sport_specific_metrics["quality_warnings"]``; the photo path returns a

@@ -348,6 +348,24 @@ def _quality(result: dict[str, Any]) -> str:
             + ("" if not reasons else " Reasons: " + "; ".join(str(r) for r in reasons))
         )
 
+    # How the RECORDING limited the measurement, in the measured numbers. An
+    # outside model reading joint angles has no way to know the athlete was 255
+    # pixels tall and the pose model was swapping the legs -- and without that
+    # it will happily diagnose technique from a signal that was never there.
+    capture = metrics.get("capture_report") or gated.get("capture_report") or {}
+    problems = [
+        c for c in (capture.get("checks") or [])
+        if c.get("status") in ("bad", "warn")
+    ]
+    if problems:
+        lines.append(
+            f"- **Capture: {capture.get('verdict', 'limited')}.** "
+            + " ".join(
+                f"{c.get('label')}: {c.get('measured')} (target {c.get('target')})."
+                for c in problems
+            )
+        )
+
     warnings = list(metrics.get("quality_warnings") or gated.get("warnings") or [])
     warnings += [
         w for w in (metrics.get("analysis_warnings") or []) if w not in warnings

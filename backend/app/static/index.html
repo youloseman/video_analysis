@@ -768,8 +768,38 @@ h2.sec + .speedline{margin-bottom:24px}
 
 /* capture guidelines */
 .guides{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 32px;margin:0 0 24px}
-.guides li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--c-ink-soft)}
-.guides li .ic{width:16px;height:16px;color:var(--c-blue);flex:none}
+.guides li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--c-ink-soft);line-height:1.45}
+.guides li .ic{width:16px;height:16px;color:var(--c-blue);flex:none;margin-top:2px}
+.guides li b{color:var(--c-ink)}
+@media(max-width:720px){ .guides{grid-template-columns:1fr} }
+
+/* Pre-flight notes on the chosen clip — said while the file can still be
+   swapped, which is the only moment the advice is free. */
+.preflight{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:8px}
+.preflight li{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.45;
+  padding:10px 12px;border-radius:var(--radius);border-left:4px solid var(--c-warn);
+  background:#F9F1E3;color:var(--c-ink)}
+.preflight li .ic{width:16px;height:16px;flex:none;margin-top:2px;color:var(--c-warn)}
+.preflight li.pf-bad{border-left-color:var(--st-bad,#CE3F2B)}
+.preflight li.pf-bad .ic{color:var(--st-bad,#CE3F2B)}
+
+/* Capture report — the same conversation after the fact, but measured. */
+.caprep{border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;margin-top:8px}
+.caprep-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--c-panel);
+  border-bottom:1px solid var(--c-line);font-size:13px;font-weight:700;color:var(--c-ink)}
+.caprep-head .ic{width:16px;height:16px;flex:none}
+.caprep-v{margin-left:auto;font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+.caprep-v.good{color:var(--st-good)} .caprep-v.fair{color:var(--c-warn)} .caprep-v.poor{color:var(--st-bad,#CE3F2B)}
+.caprep-row{display:grid;grid-template-columns:14px 1fr;gap:10px;padding:12px 16px;
+  border-top:1px solid var(--c-line);font-size:13px}
+.caprep-row:first-of-type{border-top:none}
+.caprep-dot{width:10px;height:10px;border-radius:50%;margin-top:5px}
+.caprep-dot.good{background:var(--st-good-fill,#2E9E5B)} .caprep-dot.warn{background:var(--c-warn)}
+.caprep-dot.bad{background:var(--st-bad,#CE3F2B)} .caprep-dot.unknown{background:var(--c-line)}
+.caprep-lbl{font-weight:700;color:var(--c-ink)}
+.caprep-meas{color:var(--c-ink-soft)}
+.caprep-meas b{color:var(--c-ink)}
+.caprep-act{margin-top:6px;color:var(--c-ink-soft);line-height:1.5}
 
 /* overlay toggle */
 .switch{display:flex;align-items:flex-start;gap:12px;font-size:14px;font-weight:700;cursor:pointer;user-select:none;
@@ -1593,14 +1623,23 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         </div>
       </div>
 
-      <!-- Capture guidelines -->
+      <!-- Pre-flight notes on the selected clip (duration, orientation).
+           Filled by checkClip() from the browser's own metadata. -->
+      <ul class="preflight hidden" id="preflight"></ul>
+
+      <!-- Capture guidelines. Ordered by measured effect, not by how obvious
+           they sound. The first two are worth more than the rest combined: on
+           one test clip, cropping the same footage tighter around the athlete
+           took the pose model's left/right leg confusion from 46% of frames to
+           2%, and cadence from a nonsense 200 spm to a real 155. -->
       <ul class="guides" id="guides">
-        <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Film from the side (90°)</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg> 3–5 m distance, full body visible</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> One person in frame</li>
-        <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> 5–10 seconds of steady movement</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> <b>Fill the frame</b> — you should span about two thirds of it, head to feet. This matters more than everything else here put together.</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> <b>Hold the phone upright</b> (portrait) — it puts nearly twice as many pixels on your legs</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg> Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close — a close-up wide lens bends the angles at the edges</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Film from the side, camera at hip height, steady — a few degrees off exactly 90° helps separate the legs</li>
+        <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> 5–10 seconds of steady movement, one person in frame</li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> Normal speed — not slow-motion (it distorts cadence &amp; contact time)</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg> Good, even lighting</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg> Light behind the camera, not behind you — a silhouette loses limbs</li>
       </ul>
 
       <!-- Which setup this was filmed on. Sits next to the clip rather than
@@ -2496,27 +2535,63 @@ function setFile(f){
   drop.classList.add('hidden'); fprev.classList.add('show');
   fileInput.setAttribute('tabindex','-1'); // drop label is hidden; Change clip re-opens the picker
   $('#analyze').setAttribute('aria-disabled','false');
-  state.longClip=false; state.duration=null;
-  if(!photo) checkDuration(vid);
+  state.longClip=false; state.duration=null; state.preflight=[];
+  renderPreflight();
+  if(!photo) checkClip(vid);
   readyHint();
 }
-/* A long clip is not rejected — it is analyzed end to end, but at a coarser
-   frame stride, which costs cadence / ground contact / flight time their
-   resolution. Warn while the file can still be swapped, rather than after
-   they've spent an analysis on it. The server says the same thing again on
-   the result, measured rather than estimated. */
+/* Pre-flight: everything we can tell about a clip BEFORE spending an upload
+   and an analysis on it.
+
+   The browser hands us the two things that decide most of the outcome — the
+   duration and the frame shape — the moment the file is picked. Saying "this
+   is landscape and 1.2 seconds" here costs nothing and saves the round trip
+   plus the wasted analysis credit. The server says it again afterwards, but
+   measured rather than predicted, and by then the run is spent.
+
+   What we deliberately do NOT do is guess how much of the frame the athlete
+   fills: that needs pose estimation, and a wrong guess ("you look too far
+   away") on a correctly-framed clip would be worse than saying nothing. That
+   check stays on the server, where it is measured. */
 const LONG_CLIP_S=25;
-function checkDuration(vid){
+const SHORT_CLIP_S=5;
+const MIN_CLIP_S=3;
+function checkClip(vid){
   const onMeta=()=>{
     vid.removeEventListener('loadedmetadata',onMeta);
-    const d=vid.duration;
-    if(!isFinite(d)||d<=0) return;          // some containers report nothing
-    state.duration = d;                     // also reported with analysis_started
-    state.longClip = d>LONG_CLIP_S;
-    if(state.longClip) hintMsg(`This clip is ${Math.round(d)} s — we’ll analyze all of it, but timing metrics (cadence, ground contact) get coarser on long clips. 5–10 s is the sweet spot.`,'warn');
-    else readyHint();
+    const d=vid.duration, w=vid.videoWidth, h=vid.videoHeight;
+    const notes=[];
+
+    if(isFinite(d) && d>0){
+      state.duration=d;
+      state.longClip = d>LONG_CLIP_S;
+      if(d<MIN_CLIP_S) notes.push({s:'bad',t:`Only ${d.toFixed(1)} s — too short to hold several strides. Aim for 5–10 s.`});
+      else if(d<SHORT_CLIP_S) notes.push({s:'warn',t:`${d.toFixed(1)} s is enough to measure but not to average. 5–10 s makes the timing steadier.`});
+      else if(state.longClip) notes.push({s:'warn',t:`${Math.round(d)} s — we’ll analyze all of it, but timing metrics get coarser on long clips. 5–10 s is the sweet spot.`});
+    }
+
+    /* Orientation is the one free win in the whole capture process: we shrink
+       every clip to a fixed long edge before measuring, so a tall frame leaves
+       ~1280 px of height for the athlete to fill instead of ~720. */
+    if(w && h && w>h)
+      notes.push({s:'warn',t:'Filmed landscape. Turning the phone upright puts nearly twice as many pixels on your legs — it’s the cheapest accuracy you can buy.'});
+
+    state.preflight=notes;
+    renderPreflight();
+    // Always re-run: the hint line reads state.longClip, which only became
+    // known here, and it is the ready/CTA line rather than part of the notes.
+    readyHint();
   };
   vid.addEventListener('loadedmetadata',onMeta);
+}
+function renderPreflight(){
+  const host=$('#preflight'); if(!host) return;
+  const notes=state.preflight||[];
+  if(!notes.length){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  host.innerHTML=notes.map(n=>
+    `<li class="pf-${n.s}"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>${esc(n.t)}</li>`
+  ).join('');
+  host.classList.remove('hidden');
 }
 function readyHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
@@ -4306,6 +4381,38 @@ async function startCheckout(plan, analysisIdArg){
   }catch(e){ toast('Secure checkout is being set up — it goes live shortly. Thanks!'); }
 }
 
+/* Capture report — how the RECORDING limited the measurement.
+
+   Ordered worst-first by the backend, so the top row is the thing worth
+   re-filming for. Checks that passed stay on the list rather than being hidden:
+   the point is to show that the clip WAS assessed, so a clean row reads as
+   evidence rather than as silence. Only failing rows carry their fix. */
+const CAPREP_VERDICT={good:'Good capture',fair:'Usable capture',poor:'Capture limited the measurement',unknown:'Capture not assessed'};
+/* Backend prose is written in ASCII (see the strings in capture_report.py), so
+   its "--" arrives literally. Promote it to a real dash at the render layer
+   rather than making the backend the first place in the codebase to carry
+   non-ASCII copy. Runs after esc(), on already-escaped text. */
+const dash=s=>String(s).replace(/ -- /g,' — ');
+function renderCaptureReport(cr){
+  const rows=(cr.checks||[]).map(c=>{
+    const st=['good','warn','bad','unknown'].includes(c.status)?c.status:'unknown';
+    const act=(st==='warn'||st==='bad') && c.action
+      ? `<div class="caprep-act">${dash(esc(c.action))}</div>` : '';
+    const target=(st==='warn'||st==='bad') && c.target
+      ? ` · target <b>${dash(esc(c.target))}</b>` : '';
+    return `<div class="caprep-row">
+      <span class="caprep-dot ${st}" aria-hidden="true"></span>
+      <div><span class="caprep-lbl">${esc(c.label||c.id||'')}</span>
+        <div class="caprep-meas">${dash(esc(c.measured||''))}${target}</div>${act}</div>
+    </div>`;
+  }).join('');
+  const v=['good','fair','poor'].includes(cr.verdict)?cr.verdict:'unknown';
+  return `<div class="caprep" style="margin-top:8px">
+    <div class="caprep-head"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
+      How this clip was filmed<span class="caprep-v ${v}">${esc(CAPREP_VERDICT[v]||'')}</span></div>
+    ${rows}</div>`;
+}
+
 /* Kinogram: the five ALTIS stride positions the backend composed into one
    image. Running only, and only when a usable stride was found — a clip whose
    gait phases never resolved returns no kinogram, and an empty frame with a
@@ -4471,13 +4578,21 @@ function render(job){
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
       <span><b>Partial analysis</b> — capture quality was limited. ${esc((q.reasons||[])[0]||'Some metrics may be less reliable.')} Treat the score as a reference, not a measurement.</span></div>`
     : '';
-  // Capture warnings ("too far away", "more than one person in frame"): these
-  // are the ones a reshoot fixes, so they are worth their own banner even when
-  // the gate itself did not trip.
-  (q.warnings||[]).slice(0,2).forEach(w=>{
-    gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
-      <span>${esc(w)}</span></div>`;
-  });
+  // The capture report supersedes the loose warning strings when it is present:
+  // same facts, but measured, ordered by effect, and each with the change that
+  // fixes it. Falling back to the prose keeps older saved results readable.
+  const cr=q.capture_report||s.capture_report;
+  if(cr && cr.checks && cr.checks.length){
+    gb.innerHTML+=renderCaptureReport(cr);
+  } else {
+    // Capture warnings ("too far away", "more than one person in frame"): these
+    // are the ones a reshoot fixes, so they are worth their own banner even when
+    // the gate itself did not trip.
+    (q.warnings||[]).slice(0,2).forEach(w=>{
+      gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+        <span>${esc(w)}</span></div>`;
+    });
+  }
   // Slow-motion / time-base notice: cadence was unmeasurable, so the time-based
   // metrics (ground contact, flight) were withheld rather than shown wrong.
   if(q.time_base_uncertain){

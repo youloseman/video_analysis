@@ -711,6 +711,32 @@ def run_analysis(
             f"are coarser than usual."
         )
 
+    # An ordered account of what the RECORDING cost the measurement, with the
+    # numbers and the fix. Everything it reads is already computed above; what
+    # it adds is priority and an action, which two sentences of prose fired at
+    # the extreme of each scale could not carry. Built last so it can see the
+    # summary's own verdicts (slow motion, decimation).
+    try:
+        from app.services.video_analysis.capture_report import build_capture_report
+
+        summary["capture_report"] = build_capture_report(
+            sport_type=sport_type,
+            duration_s=video_info.get("duration"),
+            frame_width=raw_frame_data[0].get("frame_width"),
+            frame_height=raw_frame_data[0].get("frame_height"),
+            framing=framing or None,
+            tracking_stability=tracking_stability,
+            time_base_uncertain=summary.get("time_base_uncertain"),
+            sampling_degraded=summary.get("sampling_degraded"),
+        )
+        logger.info(
+            "CAPTURE_REPORT",
+            verdict=summary["capture_report"]["verdict"],
+            problems=summary["capture_report"]["problem_count"],
+        )
+    except Exception as e:  # noqa: BLE001 -- a caveat must never break the run
+        logger.warning("CAPTURE_REPORT_FAILED", err=str(e))
+
     # Soft confidence tier (high/medium/low) -- informational, hides nothing.
     # Butterworth meta exists for bike + run side-view (swim above-water keeps
     # One Euro -> None, which the scorer handles). phase_diagnostics is
