@@ -2,48 +2,86 @@
 
 _Пошаговая процедура. Составлено 20.08.2026, после Фазы 3._
 
-Исходное состояние: продукты созданы в **Live**, ключи в приложении сейчас
-**тестовые**. Ничего удалять не нужно — к существующим продуктам добавляются
-недостающие цены, и ключи переключаются на live.
+Исходное состояние: продукты созданы в **тестовом** режиме, в Live пусто, в
+Railway лежат тестовые ключи и тестовые id цен.
+
+Раз в Live пусто, а суммы всё равно поменялись — проще создать там всё заново с
+правильными числами, чем копировать старое и потом архивировать. Тестовые
+продукты трогать не нужно: они в другом режиме и мешать не будут.
 
 ---
 
-## 1. Цены (Live-режим, ~10 минут)
+## 1. Создать продукты в Live (~15 минут)
 
-Dashboard → переключатель в правом верхнем углу в **Live** → **Product catalogue**.
+Dashboard → переключатель режима **в правом верхнем углу → Live** → в меню слева
+**Product catalogue** → **+ Create product**.
 
-Сумму у созданной цены отредактировать нельзя — Stripe их не меняет. Поэтому
-везде, где сумма поменялась: добавить новую цену, старую в архив.
+Четыре продукта, пять цен. **Валюта у всех — USD.**
 
-### Flapp Enthusiast
+### 1.1 Flapp Enthusiast — две цены в одном продукте
 
-- **$9 / месяц** — проверить, что есть. Не менялась, ничего не делаем, забираем id → `STRIPE_PRICE_ENTHUSIAST_M`
-- `+ Add another price` → **69.00 USD**, Recurring, **Yearly** → Save → id → `STRIPE_PRICE_ENTHUSIAST_Y`
-- у старой цены **$59/год**: `⋯` → **Archive**
+`+ Create product`
 
-### Flapp Full
+- **Name:** `Flapp Enthusiast`
+- **Description:** `Full technique analysis for one discipline` (необязательно)
+- **Pricing:** Recurring · **Monthly** · **9.00** · USD
+- Save
 
-- `+ Add another price` → **99.00 USD**, Recurring, **Yearly** → Save → id → `STRIPE_PRICE_FULL_Y`
-- у старой **$80/год**: `⋯` → **Archive**
+Открыть созданный продукт → в блоке Pricing **`+ Add another price`**:
 
-### Expert Review
+- Recurring · **Yearly** · **69.00** · USD → Save
 
-- `+ Add another price` → **39.00 USD**, **One-time** → Save → id → `STRIPE_PRICE_EXPERT`
-- у старой **$29**: `⋯` → **Archive**
+Теперь у продукта две цены. Скопировать оба id:
 
-### Unlock one report — новый продукт
+| Цена | Переменная |
+|---|---|
+| $9.00 / month | `STRIPE_PRICE_ENTHUSIAST_M` |
+| $69.00 / year | `STRIPE_PRICE_ENTHUSIAST_Y` |
 
-**+ Add product** → название `Unlock one report` → цена **4.00 USD**, **One-time**
-→ Save → id → `STRIPE_PRICE_UNLOCK`
+### 1.2 Flapp Full
 
-### Про архивацию и id
+`+ Create product`
 
-- Архивировать, **не удалять**: удаление рвёт ссылки в истории платежей.
-- Архивная цена не предлагается в новых Checkout, но **действующие подписки по
-  ней продолжают списываться** по старой сумме, пока их не перенести отдельно.
-  Если в Live кто-то реально подписан по $59 — он останется на $59.
-- Копировать **id цены** (`price_1Abc…`), а не продукта (`prod_Abc…`). Они лежат
-  рядом и выглядят похоже.
+- **Name:** `Flapp Full`
+- **Pricing:** Recurring · **Yearly** · **99.00** · USD
+- Save → id → `STRIPE_PRICE_FULL_Y`
+
+### 1.3 Expert Review
+
+`+ Create product`
+
+- **Name:** `Expert Review`
+- **Pricing:** **One-off** (не Recurring) · **39.00** · USD
+- Save → id → `STRIPE_PRICE_EXPERT`
+
+### 1.4 Unlock one report
+
+`+ Create product`
+
+- **Name:** `Unlock one report`
+- **Pricing:** **One-off** · **4.00** · USD
+- Save → id → `STRIPE_PRICE_UNLOCK`
+
+### Как забрать id цены
+
+Открыть продукт → в таблице Pricing у нужной строки `⋯` → **Copy price ID**.
+Либо кликнуть по цене — id будет в адресной строке и на самой карточке.
+
+Нужен **id цены** (`price_1Abc…`), а не продукта (`prod_Abc…`). Они лежат рядом
+и выглядят похоже — это ошибка номер один на этом шаге.
+
+### Выписать в блокнот перед следующим шагом
+
+```
+STRIPE_PRICE_ENTHUSIAST_M = price_...
+STRIPE_PRICE_ENTHUSIAST_Y = price_...
+STRIPE_PRICE_FULL_Y       = price_...
+STRIPE_PRICE_EXPERT       = price_...
+STRIPE_PRICE_UNLOCK       = price_...
+```
+
+Пять штук. Если какой-то забыть — его кнопка на странице тарифов отрисуется как
+«Coming soon», а в логе деплоя будет `BILLING_PRICES_MISSING` с именем плана.
 
 ---
 
