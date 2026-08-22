@@ -1146,6 +1146,47 @@ h2.sec + .speedline{margin-bottom:24px}
 .fit-amount{font-family:var(--f-mono);font-weight:600;color:var(--c-blue)}
 .fit-why{margin-top:4px;font-size:13px;color:var(--c-ink-soft);line-height:1.5;max-width:70ch}
 .fit-med .fit-part{color:var(--st-bad)}
+/* ---- Off-bike mobility ----
+   Two floor photos that say what range the rider has. Kept visually apart
+   from the fit rows above it: those are measurements of a bike, this is a
+   measurement of a body, and the report is clearer when the reader can see
+   which is which. */
+.mob-card{margin:18px 0 0;padding:14px 16px;border:1px solid var(--c-line);
+  border-radius:var(--radius);background:var(--c-panel-blue)}
+.mob-card.mob-over{background:rgba(201,123,16,.06);border-color:var(--c-warn)}
+.mob-title{font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--c-blue);margin:0 0 8px}
+.mob-card.mob-over .mob-title{color:var(--c-warn)}
+.mob-msg{font-size:13.5px;color:var(--c-ink);line-height:1.55;margin:0;max-width:70ch}
+.mob-rows{display:flex;flex-wrap:wrap;gap:8px 20px;margin:10px 0 0}
+.mob-item{font-size:13px;color:var(--c-ink-soft)}
+.mob-item b{font-family:var(--f-mono);color:var(--c-navy);font-weight:600}
+.mob-tier{font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:1px 6px;border-radius:3px;margin-left:6px}
+.mob-tier.t-good{background:var(--st-good-fill);color:var(--st-good)}
+.mob-tier.t-moderate{background:rgba(201,123,16,.14);color:var(--c-warn)}
+.mob-tier.t-limited{background:rgba(241,85,63,.12);color:var(--st-bad)}
+/* The rule-of-thumb line. Subordinate on purpose: the numbers above it are
+   measured, this sentence is a fitter's heuristic, and a reader who cannot
+   tell them apart is being misled by the honest half. */
+.mob-caveat{font-size:12px;color:var(--c-ink-faint);line-height:1.5;margin:10px 0 0;max-width:70ch}
+.mob-when{font-family:var(--f-mono);font-size:10.5px;color:var(--c-ink-faint);margin-left:8px}
+/* The capture panel in the uploader. */
+.mob-screen{border-top:1px solid var(--c-line);padding:14px 0 0;margin:14px 0 0}
+.mob-screen:first-of-type{border-top:0;padding-top:8px;margin-top:8px}
+.mob-screen h4{font-size:14px;font-weight:800;color:var(--c-navy);margin:0 0 4px}
+.mob-why{font-size:12.5px;color:var(--c-ink-soft);line-height:1.5;margin:0 0 8px;max-width:66ch}
+.mob-steps{margin:0 0 10px;padding-left:18px;font-size:12.5px;color:var(--c-ink-soft);line-height:1.6}
+.mob-steps li{margin:2px 0}
+.mob-file{display:block;font-size:12.5px;color:var(--c-ink-soft)}
+.mob-state{font-size:13px;line-height:1.5;margin:8px 0 0}
+.mob-state.ok{color:var(--st-good)}
+.mob-state.err{color:var(--st-bad)}
+.mob-clear{margin:14px 0 0}
+.mob-goal{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 0;
+  font-size:12.5px;color:var(--c-ink-soft)}
+.mob-goal select{font-family:var(--f-body);font-size:13px;padding:6px 10px;
+  border:1.5px solid var(--c-line);border-radius:var(--radius-btn);background:#fff;color:var(--c-ink)}
 .fit-good{margin-top:14px;font-size:13px;color:var(--c-ink-soft);display:flex;gap:8px;align-items:flex-start}
 .fit-good .ic{width:14px;height:14px;flex:none;margin-top:3px;color:var(--st-good)}
 @media(max-width:640px){ .fit-row{padding:12px} .fit-nums{font-size:14px} }
@@ -1826,6 +1867,31 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
       </label>
 
+      <!-- Off-bike mobility (bike only). Folded, and folded is the point: it
+           is measured once and then informs every analysis afterwards, so it
+           must not sit open between the clip and the Analyze button for the
+           overwhelming majority of uploads where nothing about it changes.
+           The summary line carries the state, so a rider who has done it can
+           see that without opening anything. -->
+      <details class="askbox hidden" id="mobBox">
+        <summary>Off-bike mobility <span class="askopt" id="mobSummary">not measured</span></summary>
+        <p class="askhint" style="margin-top:10px">Two photos taken lying on the floor.
+          They decide whether &ldquo;you could go lower&rdquo; is advice we are entitled to give
+          you &mdash; the position you can hold is bounded by your body before it is bounded
+          by your stem. Measured once; every bike analysis after it uses the result.</p>
+        <div id="mobScreens"></div>
+        <div class="mob-goal" id="mobGoalRow">
+          <label for="mobGoal">What are you optimising for?</label>
+          <select id="mobGoal">
+            <option value="">Not saying</option>
+            <option value="comfort">Comfort</option>
+            <option value="speed">Speed</option>
+          </select>
+          <span class="askopt">preference, not a measurement</span>
+        </div>
+        <p class="mob-clear"><button class="btn btn-ghost btn-sm" id="mobClear" type="button">Forget my measurements</button></p>
+      </details>
+
       <!-- One question, optional. Folded away because most uploads do not have
            one and an empty box between the clip and the button is friction for
            everybody who does not. -->
@@ -2045,6 +2111,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       <p class="hint" id="fitLede" style="text-align:left;margin:0 0 16px"></p>
       <div id="fitRows"></div>
       <div id="fitGood"></div>
+      <div id="fitMobility"></div>
     </div>
 
     <div class="block" id="issuesBlock">
@@ -2910,6 +2977,8 @@ $('#modeSeg').addEventListener('click',e=>{
   $('#fileNounCap').textContent = photo?'Photo':'Video';
   $('#overlayField').classList.toggle('hidden', photo);
   $('#guides .g-dur').classList.toggle('hidden', photo); // duration guideline is video-only
+  if(typeof renderHeightField==='function') renderHeightField();
+  if(typeof loadMobility==='function') loadMobility();
   readyHint();
 });
 
@@ -2920,6 +2989,7 @@ $('#sportSeg').addEventListener('click',e=>{
   state.profileId=null;
   if(typeof renderProfileField==='function') renderProfileField();
   if(typeof renderHeightField==='function') renderHeightField();
+  if(typeof loadMobility==='function') loadMobility();
   [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   $('#positionField').classList.toggle('hidden', state.sport!=='bike');
   syncCaptureGuide();
@@ -2936,6 +3006,8 @@ function syncCaptureGuide(){
    mid-word reads as the field fighting you. */
 $('#heightInput').addEventListener('blur', ()=>{ saveHeight(); });
 $('#heightInput').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.blur(); });
+$('#mobGoal').addEventListener('change', ()=>{ saveMobGoal(); });
+$('#mobClear').addEventListener('click', ()=>{ clearMobility(); });
 
 /* ---- bike position tiles (grouped: Road / Aero / Casual) ---- */
 $('#positionSeg').addEventListener('click',e=>{
@@ -4639,7 +4711,7 @@ function exShowPreview(){
 
 async function refreshAuth(){
   const t=getToken(); if(!t) return;
-  try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); renderHeightField(); } }catch(e){}
+  try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); renderHeightField(); loadMobility(); } }catch(e){}
 }
 
 /* ============================================================
@@ -4685,6 +4757,155 @@ async function saveHeight(){
     if(r.ok){ auth=await r.json(); renderHeightField(); }
   }catch(e){ /* keep the typed value; the next analysis just uses the average */ }
 }
+/* ============================================================
+   Off-bike mobility — the only measurement in the app that is of the rider
+   rather than of the bike.
+
+   Everything here is bike-only and signed-in only, for the same reason the
+   height field is running-only: outside those conditions it changes no answer,
+   and asking for a body measurement that changes nothing is just asking.
+
+   The screen catalogue (what to shoot, in what order, and the reference the
+   bands come from) is served by /mobility rather than written here. A client
+   copy of "keep the knee straight" would drift from the server check that
+   rejects a bent one, and the athlete would be told off for following our own
+   instructions.
+   ============================================================ */
+const MOB_TIER_CLS={good:'t-good',moderate:'t-moderate',limited:'t-limited'};
+let mobCatalogue=null;
+/* Capture warnings from the photo just uploaded (too small, shot from the
+   front, too dark). They belong to that upload rather than to the stored
+   reading, so they live here and not in the profile: a number measured off a
+   dim photo is still the number, but the rider should know how it was taken. */
+const mobShotNotes={};
+
+function mobShouldShow(){
+  return !!auth && state.sport==='bike' && state.mode!=='photo';
+}
+
+async function loadMobility(){
+  const box=$('#mobBox'); if(!box) return;
+  if(!mobShouldShow()){ box.classList.add('hidden'); return; }
+  if(state.mobility!==undefined && mobCatalogue){
+    renderMobilityBox(); box.classList.remove('hidden'); return;
+  }
+  try{
+    const r=await fetch('/mobility',{headers:authHeaders()});
+    if(!r.ok) return;                 // stays hidden: an empty panel offers nothing
+    const j=await r.json();
+    mobCatalogue=j.screens||[];
+    state.mobility=j.profile||null;
+  }catch(e){ return; }
+  if(!mobCatalogue.length) return;
+  renderMobilityBox();
+  box.classList.remove('hidden');
+}
+
+function mobTierChip(m){
+  if(!m||!m.tier) return '';
+  return `<span class="mob-tier ${MOB_TIER_CLS[m.tier]||''}">${esc(m.tier_label||m.tier)}</span>`;
+}
+
+function renderMobilityBox(){
+  const host=$('#mobScreens'); if(!host||!mobCatalogue) return;
+  const prof=state.mobility, done=(prof&&prof.screens)||{};
+  const n=Object.keys(done).length;
+  // The summary line carries the state, so somebody who has already done this
+  // never has to open the panel to find out.
+  const ceiling=prof&&prof.ceiling;
+  $('#mobSummary').textContent = !n ? 'not measured'
+    : (ceiling&&ceiling.unrestricted) ? `${n}/2 · no position ruled out`
+    : (ceiling ? `${n}/2 · supports ${ceiling.label}` : `${n}/2 measured`);
+
+  host.innerHTML = mobCatalogue.map(s=>{
+    const m=done[s.screen];
+    const notes=(mobShotNotes[s.screen]||[]).map(w=>esc(w)).join('<br>');
+    const state_ = m
+      ? `<p class="mob-state ok"><b>${esc(String(m.value))}°</b> ${esc(s.unit.replace(/^deg of /,''))}
+           ${mobTierChip(m)}<br>${esc(m.read||'')}</p>`
+        + (notes?`<p class="askhint">${notes}</p>`:'')
+      : '';
+    return `<div class="mob-screen">
+      <h4>${esc(s.label)} <span class="askopt">${esc(s.measures)}</span></h4>
+      <p class="mob-why">${esc(s.why)}</p>
+      <ol class="mob-steps">${s.setup.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>
+      <label class="mob-file">
+        <input type="file" accept="image/*" data-screen="${esc(s.screen)}" class="mob-input">
+      </label>
+      <div class="mob-state err hidden" data-err="${esc(s.screen)}"></div>
+      ${state_}
+    </div>`;
+  }).join('');
+
+  host.querySelectorAll('.mob-input').forEach(inp=>{
+    inp.addEventListener('change', ()=>uploadMobScreen(inp));
+  });
+  const goal=$('#mobGoal'); if(goal) goal.value=(prof&&prof.goal)||'';
+  $('#mobClear').classList.toggle('hidden', !n);
+}
+
+async function uploadMobScreen(input){
+  const screen=input.dataset.screen, file=input.files&&input.files[0];
+  const errBox=$(`[data-err="${screen}"]`);
+  if(!file) return;
+  errBox.classList.add('hidden'); errBox.textContent='';
+  input.disabled=true;
+  const fd=new FormData(); fd.append('screen',screen); fd.append('photo',file);
+  try{
+    const r=await fetch('/mobility/screen',{method:'POST',headers:authHeaders(),body:fd});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      // The server's refusals are instructions -- "the raised knee is bent",
+      // "you look like you are sitting up". Showing them verbatim is the whole
+      // point; a generic "upload failed" would leave the rider guessing at a
+      // problem we already diagnosed.
+      errBox.textContent=j.detail||'Could not measure that photo.';
+      errBox.classList.remove('hidden');
+      input.value='';
+      return;
+    }
+    state.mobility=j.profile;
+    mobShotNotes[screen]=(j.measurement&&j.measurement.capture_warnings)||[];
+    renderMobilityBox();
+    toast('Measured — every bike analysis from here on uses it.');
+  }catch(e){
+    errBox.textContent='Could not reach the server.';
+    errBox.classList.remove('hidden');
+  }finally{ input.disabled=false; }
+}
+
+async function saveMobGoal(){
+  const goal=$('#mobGoal').value||null;
+  try{
+    const r=await fetch('/mobility',{
+      method:'PATCH', headers:authHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({goal}),
+    });
+    if(r.ok){ const j=await r.json(); state.mobility=j.profile; }
+  }catch(e){ /* a preference failing to save changes no measurement */ }
+}
+
+async function clearMobility(){
+  if(!confirm('Forget your mobility measurements? Future analyses will stop taking your range into account.')) return;
+  try{
+    const r=await fetch('/mobility',{method:'DELETE',headers:authHeaders()});
+    if(r.ok){ state.mobility=null; renderMobilityBox(); toast('Measurements forgotten.'); }
+  }catch(e){ toast('Could not clear them.'); }
+}
+
+/* The card in the fit report. Separate from the fit rows above it: those are
+   measurements of a bike, this is a measurement of a body. */
+function renderMobilityFit(fit){
+  const host=$('#fitMobility'); if(!host) return;
+  if(!fit){ host.innerHTML=''; return; }
+  const over=fit.within===false;
+  host.innerHTML=`<div class="mob-card ${over?'mob-over':''}">
+    <p class="mob-title">Your off-bike range</p>
+    <p class="mob-msg">${esc(fit.message||'')}</p>
+    <p class="mob-caveat">${esc(fit.caveat||'')}</p>
+  </div>`;
+}
+
 async function openPortal(){
   if(!auth) return;
   try{
@@ -4992,7 +5213,10 @@ function coverageLine(cov){
 function focusText(){ const el=$('#focusInput'); return el ? el.value.trim().slice(0,200) : ''; }
 
 const FIT_STATUS_CLS={optimal:'good',acceptable:'good',needs_adjustment:'warn',
-                      warning:'warn',critical:'bad',medical_risk:'bad',unknown:''};
+                      warning:'warn',critical:'bad',medical_risk:'bad',unknown:'',
+                      // A row the rider's own range overruled: the measurement
+                      // still stands, the instruction attached to it does not.
+                      mobility_limited:'warn'};
 /* The builder speaks in tokens so its logic stays testable; the reader gets a
    sentence. Anything unmapped falls back to the token with underscores opened
    out, so a new action added to the builder degrades to readable, not blank. */
@@ -5004,6 +5228,7 @@ const FIT_ACTION={
   lower_bars:'Lower the bars',
   consider_shorter_cranks:'Consider shorter cranks',
   reassess_after_saddle_height:'Re-measure after the saddle height is set',
+  improve_mobility:'Work the range before the bike',
 };
 const FIT_PART={
   saddle_height:'Saddle height',
@@ -5016,13 +5241,20 @@ function renderFitPlan(plan){
   const block=$('#fitBlock'); if(!block) return;
   const diags=(plan&&plan.diagnostics)||[];
   const warns=(plan&&plan.medical_warnings)||[];
-  if(!diags.length && !warns.length){
+  const mob=(plan&&plan.mobility_fit)||null;
+  // A rider whose bike needs nothing changed can still be riding below the
+  // range they measured, and that is exactly the reader the card is for --
+  // so an empty adjustment list is not on its own a reason to hide the block.
+  if(!diags.length && !warns.length && !mob){
     block.classList.add('hidden');
     $('#fitRows').innerHTML=''; $('#fitGood').innerHTML=''; $('#fitLede').textContent='';
+    $('#fitMobility').innerHTML='';
     return;
   }
-  $('#fitLede').textContent = plan.fitting_sequence_note
-    || 'Work down the list in order — each change moves the ones below it.';
+  $('#fitLede').textContent = diags.length
+    ? (plan.fitting_sequence_note
+       || 'Work down the list in order — each change moves the ones below it.')
+    : '';
   $('#fitRows').innerHTML = diags.map((d,i)=>{
     const cls=FIT_STATUS_CLS[(d.status||'').toLowerCase()]||'';
     const now=(d.current_value!=null)?`${esc(String(d.current_value))}`:'—';
@@ -5049,6 +5281,7 @@ function renderFitPlan(plan){
   $('#fitGood').innerHTML = good.length
     ? `<p class="fit-good"><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
          Already in range: ${good.join(' · ')}</p>` : '';
+  renderMobilityFit(plan.mobility_fit);
   block.classList.remove('hidden');
 }
 
