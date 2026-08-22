@@ -131,8 +131,16 @@ def _migrate_users(conn) -> None:
          "ALTER TABLE users ADD COLUMN mobility_hamstring_deg FLOAT"),
         ("mobility_hip_flexion_deg",
          "ALTER TABLE users ADD COLUMN mobility_hip_flexion_deg FLOAT"),
+        # WITH TIME ZONE, spelled out: the model declares DateTime(timezone=True)
+        # and the value written is tz-aware. A bare TIMESTAMP is *without* time
+        # zone in Postgres, so create_all on a fresh database and this ALTER on
+        # an existing one would produce two different columns -- and the
+        # existing one would reject every write. SQLite parses the long form
+        # fine. Same class of bug as the notify_on_ready DEFAULT 1 that took
+        # production down: SQLite accepts what Postgres refuses, and the test
+        # suite only ever sees SQLite.
         ("mobility_measured_at",
-         "ALTER TABLE users ADD COLUMN mobility_measured_at TIMESTAMP"),
+         "ALTER TABLE users ADD COLUMN mobility_measured_at TIMESTAMP WITH TIME ZONE"),
         ("mobility_goal",
          "ALTER TABLE users ADD COLUMN mobility_goal VARCHAR(16)"),
     ):
