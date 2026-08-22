@@ -101,6 +101,18 @@ def test_a_bouncing_camera_is_measured_close_to_its_real_amplitude(tmp_path):
     assert out["vertical_bounce_px"] == pytest.approx(12.0, rel=0.35)
 
 
+def test_following_the_runner_with_a_pan_is_not_judged_as_an_unsteady_camera(tmp_path):
+    """The reason this distinction has to hold: a static camera and an athlete
+    filling two thirds of a portrait frame gives 0.43 s of footage at running
+    pace. Panning is the only way to film outdoors at all, and it does not
+    touch vertical oscillation -- which is measured as hip height in the
+    frame, and a horizontal pan does not move that."""
+    path, fd = write_clip(tmp_path / "follow.mp4", drifting(per_frame=3.0))
+    out = cm.estimate_camera_motion(path, fd, hip_amplitude_norm=24.0 / H)
+    assert out["pan_px"] > 50.0            # it clearly panned
+    assert out["verdict"] == "good"        # and that is fine
+
+
 def test_a_steady_drift_is_not_counted_as_bounce(tmp_path):
     """A slow tilt is a different fault from a shake, and only the shake
     lands on top of the athlete's own rise and fall."""
@@ -155,6 +167,15 @@ def test_the_subject_is_masked_out_of_the_feature_search():
     assert mask is not None
     assert mask[int(H * 0.52), int(W * 0.52)] == 0     # on the subject
     assert mask[5, 5] == 255                           # background corner
+
+
+def test_the_ground_under_the_athlete_is_masked_too():
+    """On a treadmill the surface under the runner MOVES. Belt texture sliding
+    past would be matched as the camera sliding the other way, and a machine
+    that reports a shaking tripod is worse than one that reports nothing."""
+    mask = cm._subject_mask(cv2, (H, W), _landmarks(cx=0.5, cy=0.4))
+    assert mask[H - 2, int(W * 0.5)] == 0              # directly below the feet
+    assert mask[H - 2, 5] == 255                       # but not the whole floor
 
 
 def test_a_subject_filling_the_frame_leaves_nothing_to_measure_against():

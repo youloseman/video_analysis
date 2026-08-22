@@ -56,7 +56,8 @@ MIN_INLIERS = 12
 
 # How much of the frame around the athlete to exclude. The pose bbox clips the
 # silhouette; hair, hands and a trailing foot sit outside it, and a feature on
-# a moving limb is the one thing that must not enter the estimate.
+# a moving limb is the one thing that must not enter the estimate. The mask
+# also runs down to the bottom edge -- see ``_subject_mask``.
 SUBJECT_MARGIN = 0.12
 
 # Frames actually compared. Camera motion is low-frequency compared with the
@@ -95,8 +96,13 @@ def _subject_mask(
     x0 = int(max(0.0, min(xs) - mx) * width)
     x1 = int(min(1.0, max(xs) + mx) * width)
     y0 = int(max(0.0, min(ys) - my) * height)
-    y1 = int(min(1.0, max(ys) + my) * height)
-    mask[y0:y1, x0:x1] = 0
+    # Down to the bottom edge rather than to the feet. What is under a runner
+    # is the surface they are running on, and on a treadmill that surface
+    # moves -- belt texture sliding past would be matched as the camera
+    # sliding the other way, and a machine that reports a shaking tripod is
+    # worse than one that reports nothing. Outdoors this costs a strip of
+    # ground there is no shortage of.
+    mask[y0:height, x0:x1] = 0
     # A mask that leaves almost no background is not a mask, it is a refusal.
     if float(np.count_nonzero(mask)) / mask.size < 0.25:
         return None
