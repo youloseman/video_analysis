@@ -525,6 +525,43 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .modal.hidden{display:none}
 .modal-card{background:#fff;border-radius:var(--radius-lg);padding:28px 28px 24px;max-width:400px;width:100%;position:relative;box-shadow:0 20px 60px rgba(20,41,75,.3)}
 .cardmodal-card{max-width:420px}
+/* ---- Built-in camera ----
+   The point is not convenience — it is framing. The guides sit on the live
+   preview, so the athlete frames themselves BEFORE recording, which is the
+   one moment the advice can still change the clip. Framing is the proven
+   lever on tracking quality; a guide you read is weaker than a frame you
+   stand into. */
+.cammodal-card{max-width:440px}
+.cam-stage{position:relative;background:var(--c-media-bg);border-radius:var(--radius-lg);
+  overflow:hidden;margin:0 0 14px}
+.cam-stage video{display:block;width:100%;max-height:56vh;object-fit:contain}
+/* The framing guides: head line and feet line at 1/6 and 5/6 of the frame —
+   an athlete filling the space between them is the ~2/3 the tracker wants. */
+.cam-guides{position:absolute;inset:0;pointer-events:none}
+.cam-guides::before,.cam-guides::after{content:"";position:absolute;left:6%;right:6%;
+  border-top:2px dashed rgba(255,255,255,.55)}
+.cam-guides::before{top:16.6%}
+.cam-guides::after{top:83.3%}
+.cam-guide-lbl{position:absolute;left:0;right:0;top:16.6%;transform:translateY(-125%);
+  text-align:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.cam-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-display);font-style:italic;font-weight:900;font-size:96px;color:#fff;
+  text-shadow:0 2px 16px rgba(0,0,0,.55);background:rgba(3,10,24,.25)}
+.cam-rec{position:absolute;top:10px;left:12px;display:flex;align-items:center;gap:8px;
+  font-family:var(--f-mono);font-size:13px;font-weight:600;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.cam-rec .dot{width:10px;height:10px;border-radius:50%;background:var(--c-coral)}
+@media (prefers-reduced-motion: no-preference){
+  .cam-rec .dot{animation:campulse 1.2s ease-in-out infinite}
+  @keyframes campulse{50%{opacity:.35}}
+}
+.cam-actions{display:flex;gap:10px}
+.cam-actions .btn{flex:1}
+.cam-err{font-size:13px;color:var(--st-bad);line-height:1.5;margin:0 0 12px}
+.cam-hint{font-size:12px;color:var(--c-ink-faint);line-height:1.5;margin:10px 0 0}
+.camrow{text-align:center;margin:10px 0 0}
+.camrow .btn{min-height:38px}
 .cardprev-wrap{display:flex;justify-content:center;background:#0b1830;border-radius:var(--radius-lg);padding:10px}
 #cardPreview{display:block;max-width:100%;max-height:56vh;width:auto;height:auto;border-radius:8px}
 .cardmodal-actions{display:flex;flex-direction:column;gap:10px;margin-top:2px}
@@ -1728,6 +1765,32 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   </div>
 </div>
 
+<!-- Built-in camera. The countdown and auto-stop exist because the athlete is
+     alone: the phone leans on a bottle, they press Start, and by the time the
+     count reaches zero they are on the bike or already running — nobody is
+     free to press Stop. The framing guides sit on the LIVE preview, which is
+     the one moment framing advice can still change the clip. -->
+<div class="modal hidden" id="camModal" role="dialog" aria-modal="true" aria-labelledby="camTitle">
+  <div class="modal-card cammodal-card">
+    <button class="modal-close" id="camClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+    <div class="eyebrow" style="color:var(--c-blue)">Record</div>
+    <h2 id="camTitle" class="modal-title" style="margin-bottom:12px">Film it right here</h2>
+    <p class="cam-err hidden" id="camErr" role="alert"></p>
+    <div class="cam-stage" id="camStage">
+      <video id="camView" autoplay muted playsinline></video>
+      <div class="cam-guides" aria-hidden="true"><span class="cam-guide-lbl">Head to feet between the lines</span></div>
+      <div class="cam-count hidden" id="camCount" aria-hidden="true"></div>
+      <div class="cam-rec hidden" id="camRec"><span class="dot" aria-hidden="true"></span><span id="camRecT">0:00 / 0:15</span></div>
+    </div>
+    <div class="cam-actions">
+      <button class="btn btn-primary" id="camStart" type="button">Start — records after a 5&#8202;s countdown</button>
+      <button class="btn btn-go hidden" id="camStop" type="button">Stop recording</button>
+    </div>
+    <p class="cam-hint">Prop the phone at hip height, side-on, and fit yourself between the lines.
+      Recording stops by itself at 15&#8202;s.</p>
+  </div>
+</div>
+
 <div class="hero">
   <div class="wrap">
     <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
@@ -1820,6 +1883,17 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <b id="dropTitle">Drag &amp; drop video or click to browse</b>
         <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
       </label>
+
+      <!-- Outside the <label> on purpose: a button inside it would also open
+           the file picker. Hidden when the browser can't record (no camera
+           API, no MediaRecorder) — a dead button teaches distrust, and the
+           file path above is the fallback either way. -->
+      <p class="camrow hidden" id="camRow">
+        <button class="btn btn-ghost btn-sm" id="camOpen" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
+          Or record right here — with a framing guide &amp; self-timer
+        </button>
+      </p>
 
       <div class="filepreview" id="filepreview">
         <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
@@ -2836,6 +2910,147 @@ drop.addEventListener('drop',ev=>{ if(ev.dataTransfer.files[0]) setFile(ev.dataT
 fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) setFile(fileInput.files[0]); });
 $('#change').addEventListener('click',()=>fileInput.click());
 
+/* ============================================================
+   Built-in camera — record straight into the analyze path.
+
+   Why this exists when every phone has a camera app: the athlete is ALONE.
+   The phone leans on a bottle, and between pressing record and being in
+   position there is nobody at the phone — so the countdown starts the take
+   and the auto-stop ends it. And the framing guides live on the preview,
+   which is the only moment framing advice can still change the clip;
+   framing, not the detector, is what decides tracking quality.
+
+   The recording becomes an ordinary File and goes through setFile(), so
+   preflight checks, size limits and the whole upload path are identical to
+   a picked file. If anything here is unsupported the button never shows and
+   the file path IS the feature.
+   ============================================================ */
+const CAM_MAX_S=15, CAM_COUNTDOWN_S=5;
+const camEls={};
+let camState=null;   // {stream, rec, chunks, mime, timers:[]} while the modal is open
+
+function camSupported(){
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+            && window.MediaRecorder && window.isSecureContext);
+}
+/* Safari records mp4, Chrome/Firefox webm — ask in that order and take the
+   first the browser admits to. Both suffixes are on the server allowlist. */
+function camMime(){
+  const prefs=['video/mp4;codecs=avc1','video/mp4',
+               'video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  for(const t of prefs){ try{ if(MediaRecorder.isTypeSupported(t)) return t; }catch(e){} }
+  return '';
+}
+function renderCamRow(){
+  const row=$('#camRow'); if(!row) return;
+  row.classList.toggle('hidden', state.mode==='photo' || !camSupported() || !camMime());
+}
+function camClearTimers(){
+  if(!camState) return;
+  camState.timers.forEach(t=>{ clearTimeout(t); clearInterval(t); });
+  camState.timers=[];
+}
+async function openCam(){
+  const modal=$('#camModal');
+  $('#camErr').classList.add('hidden'); $('#camErr').textContent='';
+  $('#camCount').classList.add('hidden'); $('#camRec').classList.add('hidden');
+  $('#camStart').classList.remove('hidden'); $('#camStop').classList.add('hidden');
+  modal.classList.remove('hidden');
+  modalOpened(modal, closeCam);
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      // The clip of yourself is filmed with the phone facing you — but on a
+      // laptop 'user' is the only camera anyway, so prefer the back camera
+      // and let the browser fall back. audio:false on purpose: the analysis
+      // never uses sound, and not asking is one permission prompt fewer.
+      video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1920}},
+      audio:false,
+    });
+    if(!$('#camModal').classList.contains('hidden')){
+      camState={stream, rec:null, chunks:[], mime:camMime(), timers:[]};
+      $('#camView').srcObject=stream;
+    } else stream.getTracks().forEach(t=>t.stop());   // closed while we waited
+  }catch(err){
+    const msg = err && err.name==='NotAllowedError'
+      ? 'Camera access was blocked. Allow it in the browser and try again — or just film with your camera app and upload the clip.'
+      : err && err.name==='NotFoundError'
+        ? 'No camera found on this device. Film with your phone and upload the clip instead.'
+        : 'Could not start the camera. Film with your camera app and upload the clip instead.';
+    $('#camErr').textContent=msg; $('#camErr').classList.remove('hidden');
+    $('#camStart').classList.add('hidden');
+  }
+}
+function closeCam(){
+  camClearTimers();
+  if(camState){
+    if(camState.rec && camState.rec.state!=='inactive'){
+      camState.rec.onstop=null;                        // cancelled, not kept
+      try{ camState.rec.stop(); }catch(e){}
+    }
+    camState.stream.getTracks().forEach(t=>t.stop());
+    camState=null;
+  }
+  $('#camView').srcObject=null;
+  $('#camModal').classList.add('hidden');
+  modalClosed($('#camModal'));
+}
+function camStartFlow(){
+  if(!camState) return;
+  $('#camStart').classList.add('hidden');
+  let n=CAM_COUNTDOWN_S;
+  const count=$('#camCount');
+  count.textContent=n; count.classList.remove('hidden');
+  const tick=setInterval(()=>{
+    n-=1;
+    if(n>0){ count.textContent=n; return; }
+    clearInterval(tick);
+    count.classList.add('hidden');
+    camRecord();
+  },1000);
+  camState.timers.push(tick);
+}
+function camRecord(){
+  if(!camState) return;
+  let rec;
+  try{ rec=new MediaRecorder(camState.stream, camState.mime?{mimeType:camState.mime}:undefined); }
+  catch(e){
+    $('#camErr').textContent='This browser could not start recording. Film with your camera app and upload the clip instead.';
+    $('#camErr').classList.remove('hidden');
+    return;
+  }
+  camState.rec=rec; camState.chunks=[];
+  rec.ondataavailable=e=>{ if(e.data && e.data.size) camState.chunks.push(e.data); };
+  rec.onstop=()=>camKeep();
+  rec.start();
+  $('#camStop').classList.remove('hidden');
+  $('#camRec').classList.remove('hidden');
+  const t0=Date.now();
+  const mmss=s=>`0:${String(s).padStart(2,'0')}`;
+  const clock=setInterval(()=>{
+    $('#camRecT').textContent=`${mmss(Math.min(CAM_MAX_S,Math.round((Date.now()-t0)/1000)))} / ${mmss(CAM_MAX_S)}`;
+  },250);
+  // The auto-stop is the feature: at second 15 the athlete is mid-stride or
+  // mid-pedal-stroke, not standing at the phone.
+  const stop=setTimeout(()=>{ if(rec.state!=='inactive') rec.stop(); },CAM_MAX_S*1000);
+  camState.timers.push(clock,stop);
+}
+function camKeep(){
+  if(!camState || !camState.chunks.length){ closeCam(); return; }
+  const base=(camState.mime||'video/webm').split(';')[0];
+  const ext=base==='video/mp4'?'mp4':'webm';
+  const blob=new Blob(camState.chunks,{type:base});
+  const file=new File([blob],`flapp-recording-${Date.now()}.${ext}`,{type:base});
+  closeCam();
+  setFile(file);       // the same path a picked file takes — preflight included
+}
+$('#camOpen').addEventListener('click',openCam);
+$('#camClose').addEventListener('click',closeCam);
+$('#camStart').addEventListener('click',camStartFlow);
+$('#camStop').addEventListener('click',()=>{
+  if(camState && camState.rec && camState.rec.state!=='inactive') camState.rec.stop();
+});
+renderCamRow();
+
 const MAX_MB=200;
 function fmtSize(b){ return b>=1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
 // `kind`: true/'err' = rejection (red), 'warn' = advisory (amber), else neutral.
@@ -2985,6 +3200,7 @@ $('#modeSeg').addEventListener('click',e=>{
   $('#guides .g-dur').classList.toggle('hidden', photo); // duration guideline is video-only
   if(typeof renderHeightField==='function') renderHeightField();
   if(typeof loadMobility==='function') loadMobility();
+  renderCamRow();      // recording is a video affordance; photos come from the picker
   readyHint();
 });
 

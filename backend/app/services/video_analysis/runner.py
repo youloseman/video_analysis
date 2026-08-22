@@ -306,7 +306,10 @@ def extract_frames(
     cap = cv2.VideoCapture(video_path)
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 1920
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 1080
-    total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+    # max(0, ...) for the same reason as get_video_info: a stream-written
+    # container can report -1 frames, and -1 here would poison the sampling
+    # maths and the duration in sampling_meta.
+    total_video_frames = max(0, int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0))
     video_fps = cap.get(cv2.CAP_PROP_FPS) or fps
 
     max_analysis_frames = settings.max_analysis_frames
@@ -423,7 +426,12 @@ def get_video_info(video_path: str) -> dict[str, float]:
     if not cap.isOpened():
         raise RuntimeError(f"Could not open video: {video_path}")
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+    # max(0, ...): a stream-written container (MediaRecorder's webm) has no
+    # frame count in its header and some decoders report -1 for it. `or 0`
+    # does not catch -1, and a negative count would ride into the capture
+    # report as a negative duration. Zero is the honest value: every consumer
+    # already treats it as "unknown" rather than as a measurement.
+    frame_count = max(0, int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0))
     cap.release()
     duration = frame_count / fps if fps > 0 else 0.0
     return {"fps": float(fps), "frame_count": float(frame_count), "duration": duration}
