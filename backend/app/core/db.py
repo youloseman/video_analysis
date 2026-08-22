@@ -123,6 +123,22 @@ def _migrate_users(conn) -> None:
             "NOT NULL DEFAULT true"
         ))
         logger.info("MIGRATED", change="users.notify_on_ready added")
+    # Off-bike mobility. All nullable with no backfill: NULL means "has not
+    # done the screens", and that is a state the analysis has to handle
+    # anyway -- no data is not a verdict.
+    for _col, _ddl in (
+        ("mobility_hamstring_deg",
+         "ALTER TABLE users ADD COLUMN mobility_hamstring_deg FLOAT"),
+        ("mobility_hip_flexion_deg",
+         "ALTER TABLE users ADD COLUMN mobility_hip_flexion_deg FLOAT"),
+        ("mobility_measured_at",
+         "ALTER TABLE users ADD COLUMN mobility_measured_at TIMESTAMP"),
+        ("mobility_goal",
+         "ALTER TABLE users ADD COLUMN mobility_goal VARCHAR(16)"),
+    ):
+        if _col not in cols:
+            conn.execute(text(_ddl))
+            logger.info("MIGRATED", change=f"users.{_col} added")
 
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()

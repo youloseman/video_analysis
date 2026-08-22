@@ -1189,37 +1189,31 @@ def _preprocess_image_bytes(image_bytes: bytes) -> bytes:
     return image_bytes
 
 
-def analyze_photo(
-    image_bytes: bytes,
-    sport: str,
-    cycling_position: str | None = None,
-    hide_angle_values: bool = False,
-) -> dict[str, Any]:
-    """Analyze a single photo for body position feedback.
+def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
+    """Find one body pose in one photograph.
 
-    This is a BLOCKING function (MediaPipe CPU work).
-    The API endpoint wraps it in asyncio.to_thread().
+    Everything that is true of any single still, regardless of what the photo
+    is *of*: HEIC and EXIF handling, decoding, the Tasks-API-then-legacy
+    MediaPipe fallback, which side of the body faces the camera, and the three
+    capture warnings that apply to every still (too small, shot from the front,
+    too dark to see the joints).
 
-    Args:
-        image_bytes: Raw image file bytes (JPEG/PNG/WebP)
-        sport: "run", "bike", or "swim"
-        cycling_position: Optional cycling position for bike
+    Split out of ``analyze_photo`` so the mobility screens can use it. A
+    mobility photo is not a sport photo -- it is not scored, not graded and not
+    compared to a fit window -- but getting a skeleton out of a JPEG is the
+    same problem, and having two copies of the MediaPipe fallback ladder would
+    mean fixing every future model change twice.
 
-    Returns:
-        Dict matching PhotoAnalysisResponse schema.
+    Returns ``world`` (metric landmarks), ``normalized`` (image-space, carries
+    ``visibility``), ``image`` (BGR), ``camera_side`` and ``warnings``.
 
-    Raises:
-        ValueError: If image invalid or no pose detected.
+    Raises ValueError when the image cannot be decoded or holds no pose.
     """
     import cv2
     import mediapipe as mp
 
-    start_time = time.time()
-
-    # 0. Preprocess: HEIC conversion + EXIF auto-orientation
     image_bytes = _preprocess_image_bytes(image_bytes)
 
-    # 1. Decode image
     img_array = np.frombuffer(image_bytes, dtype=np.uint8)
     image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
     if image is None:
@@ -1229,7 +1223,6 @@ def analyze_photo(
 
     warnings: list[str] = []
 
-    # Warning: low resolution
     h_img, w_img = image.shape[:2]
     if min(h_img, w_img) < 480:
         warnings.append(
@@ -1239,7 +1232,6 @@ def analyze_photo(
 
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # 2. Run MediaPipe Pose — Tasks API (works with mediapipe >=0.10.14)
     wl = None
     nl = None
 
@@ -1305,7 +1297,6 @@ def analyze_photo(
             "Ensure the full body is visible and well-lit."
         )
 
-    # 3. Detect camera side
     camera_side = _detect_camera_side(wl)
 
     # Warning: front/back view (not ideal side view)
@@ -1326,6 +1317,51 @@ def analyze_photo(
             "Image quality appears low. "
             "Try a clearer, well-lit photo for more accurate results."
         )
+
+    return {
+        "world": wl,
+        "normalized": nl,
+        "image": image,
+        "camera_side": camera_side,
+        "avg_visibility": avg_vis,
+        "warnings": warnings,
+    }
+
+
+def analyze_photo(
+    image_bytes: bytes,
+    sport: str,
+    cycling_position: str | None = None,
+    hide_angle_values: bool = False,
+) -> dict[str, Any]:
+    """Analyze a single photo for body position feedback.
+
+    This is a BLOCKING function (MediaPipe CPU work).
+    The API endpoint wraps it in asyncio.to_thread().
+
+    Args:
+        image_bytes: Raw image file bytes (JPEG/PNG/WebP)
+        sport: "run", "bike", or "swim"
+        cycling_position: Optional cycling position for bike
+
+    Returns:
+        Dict matching PhotoAnalysisResponse schema.
+
+    Raises:
+        ValueError: If image invalid or no pose detected.
+    """
+    import cv2  # still needed below, for the annotated thumbnail
+
+    start_time = time.time()
+
+    # 1-3. Decode, find the pose, work out which side faces the camera, and
+    # collect the warnings that apply to any still (see detect_pose_in_image).
+    pose_result = detect_pose_in_image(image_bytes)
+    wl = pose_result["world"]
+    nl = pose_result["normalized"]
+    image = pose_result["image"]
+    camera_side = pose_result["camera_side"]
+    warnings: list[str] = list(pose_result["warnings"])
 
     # 4. Compute angles (sport-specific)
     angles: dict[str, float] = {}

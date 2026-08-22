@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -126,6 +126,28 @@ class User(Base):
     # without it, and a required body measurement on a sign-up form is a
     # reason not to sign up.
     height_cm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # --- Off-bike mobility (see services/video_analysis/biomechanics/mobility)
+    #
+    # Stored on the athlete rather than the analysis because that is what it
+    # is: your hamstrings are not a property of the clip you uploaded. One
+    # measurement then informs every bike analysis you run afterwards, which is
+    # the whole point -- nobody is going to lie on the floor before each ride.
+    #
+    # Kept as the measured angles, not the tiers. Tiers are our reading of the
+    # number and the cut-points may well move; the degrees are what the camera
+    # saw and will still be true if they do.
+    mobility_hamstring_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    mobility_hip_flexion_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Range is trainable and it decays. A reading with no date is a reading
+    # with no shelf life, and the report needs to be able to say "measured in
+    # March" rather than implying it is current.
+    mobility_measured_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    # "comfort" | "speed" -- a stated preference, never a measurement. It says
+    # which end of a fit window the rider is aiming at; it does not move the
+    # window.
+    mobility_goal: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # Email me when an analysis finishes without me. Defaults ON because the
     # mail only ever goes to somebody who left before their own result
     # appeared -- see notify.analysis_ready_email and the delivery check in

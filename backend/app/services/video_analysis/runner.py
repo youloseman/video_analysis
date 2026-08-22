@@ -461,6 +461,7 @@ def run_analysis(
     hide_angle_values: bool = False, kinogram: bool = True,
     athlete_height_cm: float | None = None,
     focus: str | None = None,
+    mobility_profile: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -480,6 +481,12 @@ def run_analysis(
     and it is what turns image fractions into honest centimetres -- see
     ``RunningAnalyzer._lock_body_scale``. Omitted, the analysis falls back to a
     population-average torso and says so in the result.
+
+    ``mobility_profile`` (cycling only): the rider's off-bike range, from
+    ``biomechanics.mobility``. Every fit window in the app is a statement about
+    a bike; this is the only one that is a statement about the rider, and what
+    it buys is the difference between "you could go lower" and "you could go
+    lower if your hips went there".
     """
     camera_angle = None   # side view only in Milestone 1
     camera_view = None    # None == side view (implicit default in Motus)
@@ -916,11 +923,18 @@ def run_analysis(
     # adjustments so the two halves of the report cannot disagree about which
     # way the saddle should go.
     fit_plan = None
+    mobility_fit = None
     if is_bike:
         try:
             from app.services.video_analysis.biomechanics.action_plan_builder import (
                 action_plan_to_json,
                 build_action_plan,
+            )
+            from app.services.video_analysis.biomechanics.mobility import (
+                assess_position,
+            )
+            mobility_fit = assess_position(
+                mobility_profile, cycling_position or "road_hoods",
             )
             fit_plan = action_plan_to_json(build_action_plan(
                 position=cycling_position or "road_hoods",
@@ -929,6 +943,7 @@ def run_analysis(
                 technique_score=scoring.get("overall_score") or 0,
                 letter_grade=scoring.get("letter_grade") or "--",
                 detected_issues=issues,
+                mobility_fit=mobility_fit,
             ))
         except Exception as e:  # noqa: BLE001
             logger.warning("FIT_PLAN_FAILED", err=str(e))
@@ -998,6 +1013,9 @@ def run_analysis(
         "focus": focus,
         "training_plan": training_plan,
         "fit_plan": fit_plan,
+        # Whether the position they rode is one their off-bike range supports.
+        # None when they have not done the screens -- no data is not a verdict.
+        "mobility_fit": mobility_fit,
         "angle_statistics": angle_stats,
         "detected_issues": issues,
         "sport_specific_metrics": summary,

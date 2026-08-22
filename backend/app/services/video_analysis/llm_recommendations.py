@@ -356,12 +356,15 @@ def _fit_plan_block(fit_plan: dict | None) -> str:
     the athlete's.
     """
     diags = (fit_plan or {}).get("diagnostics") or []
-    if not diags:
+    mob = (fit_plan or {}).get("mobility_fit") or {}
+    if not diags and not mob:
         return ""
-    lines = [
-        "The fit adjustments already shown to this rider, in fitting order "
-        "(do NOT contradict them; you may explain or reinforce them):",
-    ]
+    lines = []
+    if diags:
+        lines.append(
+            "The fit adjustments already shown to this rider, in fitting order "
+            "(do NOT contradict them; you may explain or reinforce them):"
+        )
     for d in diags:
         target = d.get("target_range") or []
         span = f"{target[0]}-{target[1]}" if len(target) == 2 else "?"
@@ -369,6 +372,26 @@ def _fit_plan_block(fit_plan: dict | None) -> str:
             f"- {d.get('component', '?')}: {d.get('metric_name', '?')} is "
             f"{d.get('current_value', '?')} (target {span}) -> "
             f"{d.get('action', '?')} {d.get('amount', '')}".rstrip()
+        )
+    # The rider's own range. A coach who tells somebody to get lower next to a
+    # card saying their hips do not go there has made the bike the answer to a
+    # body question -- and the bike is the easy thing to change, so that is the
+    # advice they will take.
+    if mob.get("within") is False:
+        lines.append(
+            "\nOFF-BIKE MOBILITY: this rider measured their range on the floor "
+            f"and it does not support the position they rode in. {mob.get('message', '')} "
+            "Do NOT tell them to get lower, lower the bars, drop the front end "
+            "or run more saddle-to-bar drop. The honest line is that the "
+            "limiter is range, not the bike. Add that this is a rule of thumb "
+            "from a floor measurement, and that if they already hold this "
+            "position comfortably for a full event their own experience wins."
+        )
+    elif mob.get("within") is True:
+        lines.append(
+            "\nOFF-BIKE MOBILITY: this rider's measured range supports the "
+            "position they rode in, so range is not the limiter here. Do not "
+            "invent a flexibility problem."
         )
     return "\n".join(lines)
 

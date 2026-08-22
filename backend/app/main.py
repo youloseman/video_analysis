@@ -73,6 +73,8 @@ from app.api.billing import log_billing_configuration
 from app.api import changelog as changelog_routes
 from app.api import feedback as feedback_routes
 from app.api import me as me_routes
+from app.api import mobility as mobility_routes
+from app.api.mobility import stored_profile as _stored_mobility
 from app.core.compression import SelectiveGZipMiddleware
 from app.core.config import settings
 from app.core.db import SessionLocal, get_session, init_db
@@ -359,6 +361,8 @@ app.include_router(billing_routes.admin_router)
 app.include_router(feedback_routes.router)
 # Release notes: /changelog.json (in-app "What's new") + /changelog (public page).
 app.include_router(changelog_routes.router)
+# Off-bike mobility screens: /mobility (profile), /mobility/screen (measure).
+app.include_router(mobility_routes.router)
 
 
 # --------------------------------------------------------------------------
@@ -414,6 +418,7 @@ def _process_job(
     free: bool = False, preview: bool = False,
     athlete_height_cm: int | None = None,
     focus: str | None = None,
+    mobility_profile: dict[str, Any] | None = None,
 ) -> None:
     """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
 
@@ -471,6 +476,10 @@ def _process_job(
             # What this athlete asked us to look at. Reaches the coach, never
             # the measurement: a question cannot change what the pose model saw.
             focus=focus,
+            # Their off-bike range, if they have ever measured it. Also reaches
+            # only the advice, never the measurement -- what it decides is
+            # whether "get lower" is a sentence we are entitled to write.
+            mobility_profile=mobility_profile,
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
@@ -932,6 +941,7 @@ async def analyze_endpoint(
     background_tasks.add_task(
         _process_job, job_id, str(input_path), sport, cycling_position,
         overlay_path, free, preview, user.height_cm, _clean_focus(focus),
+        _stored_mobility(user) if sport == "bike" else None,
     )
     await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)

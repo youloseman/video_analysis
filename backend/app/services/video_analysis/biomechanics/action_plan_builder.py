@@ -337,6 +337,10 @@ class ActionPlan:
     good_metrics: list[dict[str, Any]] = field(default_factory=list)
     medical_warnings: list[dict[str, str]] = field(default_factory=list)
     fitting_sequence_note: str = ""
+    # Verdict from the off-bike mobility screens, when the rider has done them.
+    # Travels with the plan so the report and the coach see the same reason a
+    # "lower the bars" turned into "work the range first".
+    mobility_fit: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -449,6 +453,7 @@ def build_action_plan(
     technique_score: int,
     letter_grade: str,
     detected_issues: list[dict[str, Any]],
+    mobility_fit: dict[str, Any] | None = None,
 ) -> ActionPlan:
     """Build a deterministic action plan from cycling analysis results.
 
@@ -458,6 +463,11 @@ def build_action_plan(
       3. Bar position (trunk angle)
       4. Crank length (knee @ TDC)
       5+ Aero metrics (informational)
+
+    ``mobility_fit`` is the verdict from ``mobility.assess_position`` when the
+    rider has done the off-bike screens. It cannot change a measurement, and it
+    does not touch the bands -- what it changes is whether "get lower" survives
+    as advice. See ``_apply_mobility_limit``.
     """
     ref = get_cycling_reference(position)
     terminology = _get_terminology(position)
@@ -789,6 +799,9 @@ def build_action_plan(
             "Maintain current setup and re-analyze after 4-6 weeks of training."
         )
 
+    # The rider's own range has the last word on "go lower".
+    diagnostics = _apply_mobility_limit(diagnostics, mobility_fit, terminology)
+
     # Sort diagnostics by priority
     diagnostics.sort(key=lambda d: d.priority)
 
@@ -802,7 +815,67 @@ def build_action_plan(
         good_metrics=good_metrics,
         medical_warnings=medical_warnings,
         fitting_sequence_note=fitting_note,
+        mobility_fit=mobility_fit,
     )
+
+
+# Advice that asks the rider to get lower or longer at the front. These are the
+# recommendations an off-bike range measurement is entitled to overrule --
+# everything else in the plan (saddle height, crank length) is about the
+# pedalling leg and is not bounded by how far the hip closes.
+_LOWERING_ACTIONS = frozenset({"lower_bars"})
+
+
+def _apply_mobility_limit(
+    diagnostics: list[Diagnostic],
+    mobility_fit: dict[str, Any] | None,
+    terminology: dict[str, Any],
+) -> list[Diagnostic]:
+    """Stop the plan telling a rider to reach for a position they cannot hold.
+
+    Without this, the two halves of the report contradict each other: the
+    mobility card says the range is not there, and the fit plan says lower the
+    bars. The bike is the easy thing to change, so that is the instruction the
+    rider follows -- and the range they do not have gets made up by the lower
+    back, which is exactly the injury the screen exists to prevent.
+
+    The diagnostic is not deleted. Deleting it would hide the finding that the
+    position is more upright than the band; it is rewritten to name the real
+    limiter, and keeps its slot in the fitting sequence.
+    """
+    if not mobility_fit or mobility_fit.get("within") is not False:
+        return diagnostics
+
+    ceiling = mobility_fit.get("ceiling_label") or "a more upright position"
+    reasons = ", and ".join(mobility_fit.get("reasons") or []) or "your measured range"
+    bar_height = terminology["bar_height_term"]
+
+    out: list[Diagnostic] = []
+    for d in diagnostics:
+        if d.action not in _LOWERING_ACTIONS:
+            out.append(d)
+            continue
+        out.append(Diagnostic(
+            component=d.component,
+            status="mobility_limited",
+            metric_name=d.metric_name,
+            current_value=d.current_value,
+            target_range=d.target_range,
+            action="improve_mobility",
+            amount="",
+            reason=(
+                f"{d.reason} Your off-bike screens say otherwise: {reasons}, "
+                f"and what that range supports is {ceiling}. Dropping "
+                f"{bar_height} from here would buy the angle from your lower "
+                "back rather than your hips. Work the range first, then "
+                "re-measure -- this is a rule of thumb from a floor "
+                "measurement, so if you already hold a lower position "
+                "comfortably for a full event, trust that instead."
+            ),
+            priority=d.priority,
+            linked_to=d.linked_to,
+        ))
+    return out
 
 
 def _check_informational_metric(
@@ -875,4 +948,5 @@ def action_plan_to_json(plan: ActionPlan) -> dict[str, Any]:
             {"type": w.get("type", ""), "message": w.get("message", "")}
             for w in plan.medical_warnings
         ],
+        "mobility_fit": plan.mobility_fit,
     }
