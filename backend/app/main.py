@@ -596,6 +596,18 @@ def og_image() -> FileResponse:
 app.mount("/icons", StaticFiles(directory=STATIC_DIR / "icons"), name="icons")
 
 
+@app.get("/tokens.css", include_in_schema=False)
+def tokens_css() -> FileResponse:
+    """The shared design tokens, linked by the SPA, the landing page and the
+    Academy. Revalidated rather than cached hard: a colour that changes has to
+    reach every surface on the next visit, and the file is ~2 KB."""
+    return FileResponse(
+        STATIC_DIR / "tokens.css",
+        media_type="text/css",
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
 @app.get("/manifest.webmanifest", include_in_schema=False)
 def manifest() -> FileResponse:
     """Web app manifest — makes /app installable to the home screen."""

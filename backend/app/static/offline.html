@@ -7,6 +7,10 @@
 <title>Flapp — offline</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
+  /* Deliberately NOT linked to /tokens.css: this page is what the service
+     worker shows when the network is gone, and a stylesheet it cannot fetch
+     would render it unstyled at exactly the wrong moment. Three values,
+     copied on purpose. */
   :root{ --navy:#14294B; --coral:#F1553F; --ink-soft:#B7C0D0; }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}

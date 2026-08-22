@@ -25,22 +25,9 @@ SITE_TAGLINE = "Running & Cycling Form Analysis"
 # Academy pages match the app. Kept intentionally compact (a subset of the
 # app's full stylesheet — just what article/hub pages use).
 _BASE_CSS = """
-:root{
-  --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
-  --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
-  /* ink-faint mirrors the SPA's AA fix: #8A94A3 was 3.07:1 on white and this
-     tier carries real text (dates, read-times). Keep in lock-step with
-     static/index.html until the tokens live in one shared file. */
-  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#6E7787;
-  --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
-  --c-bike:#F2A33C; --c-run:#EF5B5B;
-  --f-display:'Archivo','Arial Black',sans-serif;
-  --f-body:'Manrope','Segoe UI',sans-serif;
-  --f-mono:'IBM Plex Mono',monospace;
-  --radius:10px; --radius-btn:8px; --skew:-8deg;
-  --shadow:0 2px 10px rgba(20,41,75,.07);
-  --shadow-lg:0 12px 34px rgba(20,41,75,.12);
-}
+/* Tokens come from /tokens.css (linked in the head) — this file used to hold
+   its own copy of the palette, which is how the Academy ended up shipping
+   text at 3.07:1 after the app had already fixed it. */
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{font-family:var(--f-body);font-size:16px;line-height:1.6;color:var(--c-ink);background:var(--c-bg)}
@@ -55,8 +42,8 @@ a{color:var(--c-blue)}
 .speedline{height:6px;width:120px;border-radius:3px;transform:skewX(var(--skew));
   background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
 .eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue)}
-/* ---- shared left-sidebar shell (mirrors the app in static/index.html) ---- */
-:root{--sidebar-w:244px}
+/* ---- shared left-sidebar shell (mirrors the app in static/index.html);
+       --sidebar-w comes from tokens.css, which both surfaces link ---- */
 .wordmark{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:24px;
   text-transform:uppercase;letter-spacing:-.01em;color:var(--c-navy);display:flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer}
 .wordmark .dot{width:9px;height:9px;border-radius:50%;background:var(--c-coral);transform:translateY(-9px)}
@@ -203,6 +190,11 @@ _FONTS_LINK = (
     '<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;0,900;'
     '1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" '
     'rel="stylesheet">'
+    # Shared design tokens, ahead of _BASE_CSS so the Academy can still
+    # override one locally if it ever needs to. This link is why the Academy
+    # cannot drift from the app again: its copy of the palette used to ship
+    # the quietest text tier at 3.07:1 long after the app had fixed it.
+    '<link rel="stylesheet" href="/tokens.css">'
 )
 
 

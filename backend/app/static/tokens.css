@@ -1,0 +1,48 @@
+/* ============================================================
+   Flapp design tokens — the single source.
+
+   Served at /tokens.css and linked by every surface that renders Flapp:
+   the SPA (static/index.html), the landing page (static/landing.html) and
+   the server-rendered Academy (services/academy/renderer.py).
+
+   Why this file exists: these values used to be pasted into each of those
+   documents, and copies drift. They did: the quietest text tier was raised
+   to #6E7787 for AA in the app while the Academy kept shipping #8A94A3 at
+   3.07:1 to real readers, and the status scale existed in two of the three.
+   A token defined once cannot disagree with itself.
+
+   Each surface may still declare its OWN tokens after this file — the
+   landing page's dark section colours, for instance — and may override a
+   value here when it genuinely differs (its radii are larger). Anything
+   shared belongs in this file, not in three of them.
+   ============================================================ */
+:root{
+  --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
+  --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
+  /* ink-faint is the quietest TEXT tier (tier sublines, chart meta, timestamps),
+     so it has to clear AA on white: #8A94A3 was 3.07:1, #6E7787 is 4.51:1. */
+  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#6E7787;
+  --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
+  --c-blue-soft:#B9CDF2;               /* soft blue: dashed drop-zone border */
+  --c-swim:#35A6D9; --c-bike:#F2A33C; --c-run:#EF5B5B;
+  --c-warn:#C97B10;                    /* attention — distinct from --c-bike */
+  --c-warn-text:#9A5E0B;               /* warn as small text on white (AA) */
+  --c-orange:#DE5F33;                  /* grade D — between warn and coral */
+  --c-media-bg:#0d1420;                /* dark ground behind every video/keyframe */
+  /* ---- Single semantic status scale (good | warn | bad) ----
+     Two variants per status: -text is AA-safe (≥4.5:1) for labels/values on
+     white; -fill is the vivid form for shapes/graphics (dots, bars, markers,
+     ≥3:1 as non-text). Every status colour in the app derives from these —
+     pills, range bars, grade badges and the share card use one vocabulary. */
+  --st-good:#1F7A45; --st-good-fill:#2E9E5B; --st-good-bg:#E6F4EC;
+  --st-warn:#9A5E0B; --st-warn-fill:#C97B10;
+  --st-bad:#CE3F2B;  --st-bad-fill:#F1553F;
+  --f-display:'Archivo','Arial Black',sans-serif;
+  --f-body:'Manrope','Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',monospace;
+  --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
+  --shadow:0 2px 10px rgba(20,41,75,.07);
+  --shadow-lg:0 12px 34px rgba(20,41,75,.12);
+  --ring:0 0 0 3px rgba(47,109,224,.30);
+  --sidebar-w:244px;                   /* the shared app/Academy shell */
+}
