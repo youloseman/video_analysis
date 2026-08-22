@@ -66,6 +66,12 @@ DURATION_MIN_S = 3.0
 DURATION_GOOD_S = 5.0
 DURATION_LONG_S = 20.0
 
+# Share of sampled frames the pose model actually found somebody in. Below
+# this, the clip's LENGTH stops describing how much movement it holds -- the
+# athlete is out of shot, or unfindable in it, for the rest. A little slack is
+# normal at the ends of any clip, so this is not set near 1.
+TRACKED_RATIO_WARN = 0.75
+
 _IMPACT_ORDER = {"high": 0, "medium": 1, "low": 2}
 _STATUS_ORDER = {"bad": 0, "warn": 1, "good": 2, "unknown": 3}
 
@@ -216,14 +222,40 @@ def _leg_identity_check(
 
 def _duration_check(
     duration_s: float | None, sampling_degraded: Any,
+    tracked_ratio: float | None = None,
 ) -> dict[str, Any]:
+    """How much USABLE movement the clip holds, which is not its length.
+
+    The file can run ten seconds while the athlete is only in shot, and only
+    findable, for four of them -- they enter late, leave early, or read as a
+    silhouette the pose model loses. Every stride metric is built from the
+    frames that tracked, so those are the seconds that count, and a check that
+    reads the container's duration and calls it good is measuring the wrong
+    thing.
+    """
     if not duration_s:
         return _check(
             "duration", "How long the clip runs", "unknown", "medium",
             "could not be read", f"{DURATION_GOOD_S:.0f}-10 s of steady movement",
         )
-    measured = f"{duration_s:.1f} s"
     target = f"{DURATION_GOOD_S:.0f}-10 s of steady movement"
+
+    if tracked_ratio is not None and tracked_ratio < TRACKED_RATIO_WARN:
+        tracked_s = duration_s * tracked_ratio
+        status = "bad" if tracked_s < DURATION_GOOD_S else "warn"
+        return _check(
+            "duration", "How much of the clip is usable", status, "medium",
+            f"{duration_s:.1f} s long, but you were only trackable in "
+            f"{tracked_s:.1f} s of it ({tracked_ratio * 100:.0f}% of frames)",
+            target,
+            "The rest is footage with nobody findable in it: either you are "
+            "outside the frame, or the pose model lost you. Start recording "
+            "once you are already in shot and running steadily, and keep the "
+            "light behind the camera -- a body lit from behind reads as a "
+            "silhouette, and a silhouette has no joints in it.",
+        )
+
+    measured = f"{duration_s:.1f} s"
     if duration_s < DURATION_MIN_S:
         return _check(
             "duration", "How long the clip runs", "bad", "medium",
@@ -336,6 +368,7 @@ def build_capture_report(
     time_base_uncertain: Any = None,
     sampling_degraded: Any = None,
     camera_motion: dict[str, Any] | None = None,
+    tracked_ratio: float | None = None,
 ) -> dict[str, Any]:
     """An ordered, quantified account of how the recording limited the analysis.
 
@@ -357,7 +390,7 @@ def build_capture_report(
         _orientation_check(frame_width, frame_height, framing_ok),
         legs,
         _camera_motion_check(camera_motion),
-        _duration_check(duration_s, sampling_degraded),
+        _duration_check(duration_s, sampling_degraded, tracked_ratio),
         _time_base_check(time_base_uncertain, legs_unreliable),
     ]
     checks = [c for c in checks if c is not None]

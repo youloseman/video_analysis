@@ -175,6 +175,35 @@ def test_duration_bands(secs, expected):
     assert check(report(duration_s=secs), "duration")["status"] == expected
 
 
+def test_a_long_clip_the_athlete_is_barely_in_is_not_called_long_enough():
+    """Real clip, 2026-08-21: 9.5 s of file, a pose found in 39% of frames --
+    so 3.7 s of usable movement. The container's duration was describing the
+    wrong thing."""
+    c = check(report(duration_s=9.5, tracked_ratio=110 / 285), "duration")
+    assert c["status"] == "bad"
+    assert c["label"] == "How much of the clip is usable"
+    assert "3.7 s of it" in c["measured"]
+    assert "silhouette" in c["action"]
+
+
+def test_a_mostly_tracked_clip_is_judged_on_its_length_as_before():
+    c = check(report(duration_s=8.0, tracked_ratio=0.94), "duration")
+    assert c["status"] == "good"
+    assert c["label"] == "How long the clip runs"
+
+
+def test_a_long_clip_with_a_gap_in_the_middle_warns_rather_than_fails():
+    """Still more than enough usable movement -- worth saying, not worth
+    treating as a failed capture."""
+    c = check(report(duration_s=20.0, tracked_ratio=0.5), "duration")
+    assert c["status"] == "warn"
+
+
+def test_without_a_tracked_ratio_the_check_behaves_as_it_always_did():
+    assert check(report(duration_s=8.0), "duration")["status"] == "good"
+    assert check(report(duration_s=1.0), "duration")["status"] == "bad"
+
+
 def test_a_decimated_clip_is_flagged_even_inside_the_good_band():
     c = check(report(duration_s=18.0, sampling_degraded="every 4th frame"), "duration")
     assert c["status"] == "warn"

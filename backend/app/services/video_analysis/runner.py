@@ -81,6 +81,29 @@ LOWER_BODY_NEAR_SIDE_LEFT = [25, 27]            # left knee + left ankle
 LOWER_BODY_NEAR_SIDE_RIGHT = [26, 28]           # right knee + right ankle
 
 
+def _tracked_ratio(
+    detected: int, video_info: dict[str, Any], sampling_meta: dict[str, Any],
+) -> float | None:
+    """Share of the frames handed to the detector that had a pose in them.
+
+    ``sampling_meta`` records the sampling STRIDE, not the number of frames it
+    produced, so the denominator is reconstructed from the clip length and that
+    stride. Returns None rather than a guess when either is missing -- a wrong
+    ratio here would tell an athlete their clip was half empty when it was not.
+    """
+    try:
+        total = float(video_info.get("frame_count") or 0)
+        stride = float(sampling_meta.get("sample_rate") or 0)
+    except (TypeError, ValueError):
+        return None
+    if total <= 0 or stride <= 0:
+        return None
+    sampled = total / stride
+    if sampled < 1:
+        return None
+    return min(1.0, detected / sampled)
+
+
 def _compute_unknown_gait_phase_pct_run(analyzer: Any) -> float | None:
     """Fraction (0-100) of frames whose gait phase is ``unknown``.
 
@@ -782,6 +805,14 @@ def run_analysis(
             time_base_uncertain=summary.get("time_base_uncertain"),
             sampling_degraded=summary.get("sampling_degraded"),
             camera_motion=camera_motion,
+            # Frames with a pose in them over frames looked at. A clip can run
+            # ten seconds with the athlete findable in four of them, and every
+            # stride metric is built from the four. The denominator is derived
+            # rather than read: sampling_meta records the STRIDE, not how many
+            # frames it ended up handing to the detector.
+            tracked_ratio=_tracked_ratio(
+                len(raw_frame_data), video_info, sampling_meta,
+            ),
         )
         logger.info(
             "CAPTURE_REPORT",
