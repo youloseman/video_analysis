@@ -739,6 +739,36 @@ def run_analysis(
     # it adds is priority and an action, which two sentences of prose fired at
     # the extreme of each scale could not carry. Built last so it can see the
     # summary's own verdicts (slow motion, decimation).
+    # Did the person holding the phone move? Running only: the harm being
+    # measured is contamination of vertical oscillation, which is a running
+    # metric, and a rider on a trainer does not have one. Measured and
+    # reported, never compensated for -- no clip yet seen actually has a
+    # moving camera, so a compensator would be fixing an undemonstrated
+    # problem. See camera_motion.py.
+    camera_motion = None
+    if sport_type == "run":
+        try:
+            from app.services.video_analysis.camera_motion import (
+                estimate_camera_motion,
+            )
+
+            hip_y = getattr(analyzer, "norm_hip_y_history", None) or []
+            hip_amp = None
+            if len(hip_y) >= 10:
+                _arr = np.array(hip_y, dtype=float)
+                _arr = _arr[np.isfinite(_arr)]
+                if _arr.size >= 10:
+                    hip_amp = float(
+                        np.percentile(_arr, 95) - np.percentile(_arr, 5)
+                    )
+            camera_motion = estimate_camera_motion(
+                video_path, raw_frame_data, hip_amplitude_norm=hip_amp,
+            )
+            if camera_motion:
+                summary["camera_motion"] = camera_motion
+        except Exception as e:  # noqa: BLE001 -- a diagnostic, never fatal
+            logger.warning("CAMERA_MOTION_FAILED", err=str(e))
+
     try:
         from app.services.video_analysis.capture_report import build_capture_report
 
@@ -751,6 +781,7 @@ def run_analysis(
             tracking_stability=tracking_stability,
             time_base_uncertain=summary.get("time_base_uncertain"),
             sampling_degraded=summary.get("sampling_degraded"),
+            camera_motion=camera_motion,
         )
         logger.info(
             "CAPTURE_REPORT",

@@ -1,0 +1,262 @@
+"""Did the camera move, and enough to matter?
+
+Vertical oscillation is measured as the rise and fall of the hips in the
+picture. If the person holding the phone is also rising and falling, that
+lands in the same number -- and it is not a slow drift a detrend removes,
+because a camera held by someone standing still bobs at roughly the frequency
+the runner's steps do. The two signals are on top of each other.
+
+Whether that actually happens to Flapp's clips is not known. Neither clip in
+the repo has a moving camera, so building a compensator would be fixing a
+problem nobody has demonstrated. This module measures instead, and reports;
+the same shape as the residual-analysis diagnostic in ``butterworth_filter``,
+and for the same reason. When enough clips carry a reading, the question of
+whether to compensate answers itself.
+
+How
+---
+The method is Kinovea's, down to the constants (``CameraTracker.cs``): ORB
+features, brute-force matched with a symmetry cross-check, and a homography
+between consecutive frames estimated with USAC_MAGSAC. Two departures, both
+forced by what this pipeline is for:
+
+* **The athlete is masked out.** Kinovea masks static overlays out of a scene
+  that is otherwise all background; here the largest moving thing in frame is
+  the subject, and matching features on a running person would measure the
+  runner rather than the camera. Pose landmarks give the mask for free.
+* **Only the translation is kept.** A full homography can express pan, tilt,
+  roll, zoom and perspective; what contaminates vertical oscillation is the
+  up-and-down, so that is what comes out. The rest is thrown away rather than
+  reported as precision nobody asked for.
+
+The headline number is deliberately not "the camera moved N pixels" -- that
+means nothing without knowing how big the athlete was. It is the camera's
+vertical movement **as a fraction of the hip movement being measured**, which
+is exactly the proportion by which the reading could be wrong.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+# Kinovea's matcher settings (Kinovea.ScreenManager/Measurement/CameraMotion).
+ORB_FEATURES = 500
+RANSAC_REPROJ_PX = 1.25
+RANSAC_CONFIDENCE = 0.995
+RANSAC_MAX_ITERS = 2000
+
+# Below this many inlier matches the homography is a guess, and a guess about
+# camera motion is worse than admitting the frame pair could not be read.
+MIN_INLIERS = 12
+
+# How much of the frame around the athlete to exclude. The pose bbox clips the
+# silhouette; hair, hands and a trailing foot sit outside it, and a feature on
+# a moving limb is the one thing that must not enter the estimate.
+SUBJECT_MARGIN = 0.12
+
+# Frames actually compared. Camera motion is low-frequency compared with the
+# frame rate, and ORB on every frame of a 500-frame clip is seconds of CPU for
+# a diagnostic. Consecutive SAMPLED frames are still consecutive in time, just
+# further apart.
+MAX_PAIRS = 60
+
+# Vertical camera movement as a share of the hip movement being measured.
+# Under the first, the reading is unaffected in any way that matters; over the
+# second, the number is substantially the camera's rather than the athlete's.
+SHARE_WARN = 0.15
+SHARE_BAD = 0.35
+
+
+def _subject_mask(
+    cv2_mod: Any, shape: tuple[int, int], landmarks: Any,
+) -> "np.ndarray | None":
+    """255 where features may be taken, 0 over the athlete."""
+    height, width = shape[:2]
+    xs, ys = [], []
+    for lm in landmarks or []:
+        x, y = getattr(lm, "x", None), getattr(lm, "y", None)
+        vis = getattr(lm, "visibility", 0.0) or 0.0
+        if x is None or y is None or vis < 0.3:
+            continue
+        if not (np.isfinite(x) and np.isfinite(y)):
+            continue
+        xs.append(x)
+        ys.append(y)
+    if len(xs) < 4:
+        return None
+    mask = np.full((height, width), 255, dtype=np.uint8)
+    mx = (max(xs) - min(xs)) * SUBJECT_MARGIN + SUBJECT_MARGIN * 0.5
+    my = (max(ys) - min(ys)) * SUBJECT_MARGIN + SUBJECT_MARGIN * 0.5
+    x0 = int(max(0.0, min(xs) - mx) * width)
+    x1 = int(min(1.0, max(xs) + mx) * width)
+    y0 = int(max(0.0, min(ys) - my) * height)
+    y1 = int(min(1.0, max(ys) + my) * height)
+    mask[y0:y1, x0:x1] = 0
+    # A mask that leaves almost no background is not a mask, it is a refusal.
+    if float(np.count_nonzero(mask)) / mask.size < 0.25:
+        return None
+    return mask
+
+
+def _translation_between(
+    cv2_mod: Any, prev_gray: Any, gray: Any,
+    prev_mask: Any, mask: Any, orb: Any, matcher: Any,
+) -> tuple[float, float] | None:
+    """Frame-to-frame camera translation in pixels, or None if unreadable."""
+    kp1, des1 = orb.detectAndCompute(prev_gray, prev_mask)
+    kp2, des2 = orb.detectAndCompute(gray, mask)
+    if des1 is None or des2 is None or len(kp1) < MIN_INLIERS or len(kp2) < MIN_INLIERS:
+        return None
+    matches = matcher.match(des1, des2)
+    if len(matches) < MIN_INLIERS:
+        return None
+    src = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+    dst = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+    homography, inliers = cv2_mod.findHomography(
+        src, dst, cv2_mod.USAC_MAGSAC, RANSAC_REPROJ_PX,
+        maxIters=RANSAC_MAX_ITERS, confidence=RANSAC_CONFIDENCE,
+    )
+    if homography is None or inliers is None or int(inliers.sum()) < MIN_INLIERS:
+        return None
+    # Where the centre of the frame went. Reading the translation off the
+    # matrix elements directly would ignore the perspective terms; mapping a
+    # point through it does not.
+    height, width = gray.shape[:2]
+    centre = np.float32([[[width / 2.0, height / 2.0]]])
+    moved = cv2_mod.perspectiveTransform(centre, homography)[0][0]
+    return (
+        float(moved[0] - width / 2.0),
+        float(moved[1] - height / 2.0),
+    )
+
+
+def estimate_camera_motion(
+    video_path: str,
+    frame_data_list: list[dict[str, Any]],
+    *,
+    hip_amplitude_norm: float | None = None,
+) -> dict[str, Any] | None:
+    """Measure how much the CAMERA moved during the clip.
+
+    ``hip_amplitude_norm`` is the athlete's hip rise-and-fall in normalized
+    units, which is what turns a pixel count into the only figure worth
+    reporting: what share of the measured oscillation could be the camera.
+
+    Returns None when the clip cannot be read at all. Never raises.
+    """
+    try:
+        import cv2
+    except Exception as e:  # noqa: BLE001
+        logger.warning("CAMERA_MOTION_NO_CV2", err=str(e))
+        return None
+
+    if len(frame_data_list) < 4:
+        return None
+
+    step = max(1, len(frame_data_list) // MAX_PAIRS)
+    wanted = [frame_data_list[i] for i in range(0, len(frame_data_list), step)]
+    targets = {fd["frame_idx"]: fd for fd in wanted}
+
+    orb = cv2.ORB_create(nfeatures=ORB_FEATURES)
+    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+    dxs: list[float] = []
+    dys: list[float] = []
+    unreadable = 0
+    prev_gray = prev_mask = None
+
+    cap = cv2.VideoCapture(video_path)
+    try:
+        if not cap.isOpened():
+            return None
+        idx = 0
+        last = max(targets)
+        while idx <= last:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            fd = targets.get(idx)
+            idx += 1
+            if fd is None:
+                continue
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            mask = _subject_mask(
+                cv2, gray.shape, fd.get("normalized_landmarks"),
+            )
+            if prev_gray is not None:
+                shift = _translation_between(
+                    cv2, prev_gray, gray, prev_mask, mask, orb, matcher,
+                )
+                if shift is None:
+                    unreadable += 1
+                else:
+                    dxs.append(shift[0])
+                    dys.append(shift[1])
+            prev_gray, prev_mask = gray, mask
+    finally:
+        cap.release()
+
+    if len(dys) < 3:
+        logger.info("CAMERA_MOTION_UNREADABLE", pairs=len(dys), skipped=unreadable)
+        return None
+
+    height = 1
+    cap = cv2.VideoCapture(video_path)
+    try:
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 1
+    finally:
+        cap.release()
+
+    dy = np.array(dys, dtype=np.float64)
+    dx = np.array(dxs, dtype=np.float64)
+    # Cumulative path = a deliberate pan; the per-step spread = the shake.
+    pan_px = float(np.abs(np.cumsum(dx))[-1])
+    tilt_px = float(np.abs(np.cumsum(dy))[-1])
+    # Peak-to-peak of the accumulated vertical position, with the steady drift
+    # removed: what is left is the bounce that lands on top of the athlete's.
+    vertical_track = np.cumsum(dy)
+    detrended = vertical_track - np.linspace(
+        vertical_track[0], vertical_track[-1], vertical_track.size,
+    )
+    bounce_px = float(np.percentile(detrended, 95) - np.percentile(detrended, 5))
+
+    share = None
+    if hip_amplitude_norm and hip_amplitude_norm > 1e-6:
+        hip_px = hip_amplitude_norm * height
+        if hip_px > 1e-6:
+            share = round(bounce_px / hip_px, 3)
+
+    result = {
+        "pairs": len(dys),
+        "unreadable_pairs": unreadable,
+        "pan_px": round(pan_px, 1),
+        "tilt_px": round(tilt_px, 1),
+        "vertical_bounce_px": round(bounce_px, 1),
+        "frame_height_px": height,
+        "vertical_share_of_hip_motion": share,
+        "verdict": _verdict(share),
+    }
+    logger.info("CAMERA_MOTION", **result)
+    return result
+
+
+def _verdict(share: float | None) -> str:
+    if share is None:
+        return "unknown"
+    if share >= SHARE_BAD:
+        return "bad"
+    if share >= SHARE_WARN:
+        return "warn"
+    return "good"
+
+
+__all__ = [
+    "SHARE_BAD",
+    "SHARE_WARN",
+    "estimate_camera_motion",
+]

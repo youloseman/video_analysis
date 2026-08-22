@@ -148,6 +148,33 @@ def test_a_decimated_clip_is_flagged_even_inside_the_good_band():
 
 # --- slow motion ------------------------------------------------------------
 
+# --- camera steadiness ------------------------------------------------------
+
+def test_camera_motion_only_appears_when_it_was_measured():
+    assert check(report(), "camera_motion") is None
+    assert check(report(camera_motion={"verdict": "unknown",
+                                       "vertical_share_of_hip_motion": None}),
+                 "camera_motion") is None
+
+
+def test_a_steady_camera_passes():
+    c = check(report(camera_motion={
+        "verdict": "good", "vertical_share_of_hip_motion": 0.03,
+        "vertical_bounce_px": 4.0}), "camera_motion")
+    assert c["status"] == "good" and not c["action"]
+
+
+def test_a_shaking_camera_is_flagged_with_the_share_it_contributed():
+    """The number is the share of the hip motion, not a pixel count -- a pixel
+    count means nothing without knowing how big the athlete was."""
+    c = check(report(camera_motion={
+        "verdict": "bad", "vertical_share_of_hip_motion": 0.5,
+        "vertical_bounce_px": 12.0}), "camera_motion")
+    assert c["status"] == "bad"
+    assert "50%" in c["measured"]
+    assert "step frequency" in c["action"]
+
+
 def test_slow_motion_only_appears_when_it_happened():
     assert check(report(), "time_base") is None
     c = check(report(time_base_uncertain=True), "time_base")

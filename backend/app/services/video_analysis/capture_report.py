@@ -209,6 +209,44 @@ def _duration_check(
     )
 
 
+def _camera_motion_check(motion: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Whether the operator's own movement is inside the athlete's reading.
+
+    Reported only when it was measured. The harm is specific: vertical
+    oscillation is the rise and fall of the hips in the picture, and a camera
+    held by someone standing still bobs at about the frequency a runner's steps
+    do -- so it lands in the same number and no detrend removes it.
+
+    The figure is the camera's bounce as a share of the hip movement, because
+    a pixel count means nothing without knowing how big the athlete was.
+    """
+    if not motion:
+        return None
+    share = motion.get("vertical_share_of_hip_motion")
+    if share is None:
+        return None
+    status = motion.get("verdict", "unknown")
+    measured = (
+        f"camera moved {share * 100:.0f}% as much as your hips did "
+        f"({motion.get('vertical_bounce_px')} px)"
+    )
+    target = "under 15% -- a camera on a tripod or a fence post reads near zero"
+    if status == "good":
+        return _check(
+            "camera_motion", "How steady the camera was", "good", "medium",
+            measured, target,
+        )
+    return _check(
+        "camera_motion", "How steady the camera was", status, "medium",
+        measured, target,
+        "Rest the phone on something, or lean against a wall. Vertical "
+        "oscillation is measured as your hips rising and falling in the frame, "
+        "so a camera that rises and falls with the operator's breathing or "
+        "footsteps adds itself to the reading -- and it does it at roughly your "
+        "step frequency, which is why it cannot simply be filtered out.",
+    )
+
+
 def _time_base_check(time_base_uncertain: Any) -> dict[str, Any] | None:
     if not time_base_uncertain:
         return None
@@ -232,6 +270,7 @@ def build_capture_report(
     tracking_stability: dict[str, Any] | None = None,
     time_base_uncertain: Any = None,
     sampling_degraded: Any = None,
+    camera_motion: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """An ordered, quantified account of how the recording limited the analysis.
 
@@ -250,6 +289,7 @@ def build_capture_report(
         framing_check,
         _orientation_check(frame_width, frame_height, framing_ok),
         _leg_identity_check(tracking.get("leg_swap_pct"), sport_type),
+        _camera_motion_check(camera_motion),
         _duration_check(duration_s, sampling_degraded),
         _time_base_check(time_base_uncertain),
     ]
