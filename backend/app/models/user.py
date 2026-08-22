@@ -126,6 +126,14 @@ class User(Base):
     # without it, and a required body measurement on a sign-up form is a
     # reason not to sign up.
     height_cm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Email me when an analysis finishes without me. Defaults ON because the
+    # mail only ever goes to somebody who left before their own result
+    # appeared -- see notify.analysis_ready_email and the delivery check in
+    # main._maybe_notify_ready. Off is one click, from the mail itself, and
+    # needs no login: an unsubscribe behind a password is not an unsubscribe.
+    notify_on_ready: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False, server_default="1",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False,
     )

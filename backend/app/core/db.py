@@ -114,6 +114,15 @@ def _migrate_users(conn) -> None:
         # change their centimetre readings on the next clip.
         conn.execute(text("ALTER TABLE users ADD COLUMN height_cm INTEGER"))
         logger.info("MIGRATED", change="users.height_cm added")
+    if "notify_on_ready" not in cols:
+        # Existing accounts opt in, same as new ones: the mail only fires when
+        # somebody has already left the page their result landed on, and every
+        # copy of it carries a one-click unsubscribe.
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN notify_on_ready BOOLEAN "
+            "NOT NULL DEFAULT 1"
+        ))
+        logger.info("MIGRATED", change="users.notify_on_ready added")
 
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()

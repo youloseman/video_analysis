@@ -29,9 +29,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import os
 import secrets
 import shutil
+import threading
 import time
 import uuid
 from collections import deque
@@ -73,7 +75,7 @@ from app.api import feedback as feedback_routes
 from app.api import me as me_routes
 from app.core.compression import SelectiveGZipMiddleware
 from app.core.config import settings
-from app.core.db import get_session, init_db
+from app.core.db import SessionLocal, get_session, init_db
 from app.core.jobs import (
     ANALYSIS_SLOTS,
     JOBS,
@@ -491,12 +493,86 @@ def _process_job(
             "JOB_DONE", job_id=job_id, status=job["status"],
             score=safe.get("technique_score"), grade=safe.get("letter_grade"),
         )
+        if job["status"] == "completed":
+            _schedule_ready_mail(job_id)
     except Exception as e:  # noqa: BLE001
         logger.warning("JOB_FAILED", job_id=job_id, err=str(e))
         job["status"] = "failed"
         job["error"] = str(e)
     finally:
         ANALYSIS_SLOTS.release()
+
+
+def unsubscribe_token(user_id: int) -> str:
+    """Signed, login-free proof that this address asked to stop.
+
+    HMAC over the id with the app secret: it cannot be guessed for another
+    account, it carries no password, and it survives a restart (unlike
+    anything held in memory). An unsubscribe link that demands a login is a
+    link most people answer with the spam button instead.
+    """
+    return hmac.new(
+        settings.jwt_secret.encode(), f"unsub:{user_id}".encode(), hashlib.sha256,
+    ).hexdigest()[:32]
+
+
+# How long after a result lands we wait to see whether anybody came for it.
+# The client polls every 2.5 s, so a tab that is still open marks the job seen
+# almost immediately; this only has to outlast a slow network and a phone that
+# woke up late.
+READY_MAIL_GRACE_S = 45
+
+
+def _schedule_ready_mail(job_id: str) -> None:
+    """Email the athlete IF they are not there when their result lands.
+
+    A timer, not a queue, because the job store is already in-memory and
+    single-instance (see core/jobs.py): a durable notification would need
+    durable jobs first, and promising delivery this cannot keep would be worse
+    than the current honest gap -- a restart mid-grace loses the mail, and the
+    result is still waiting in their history.
+    """
+    def check() -> None:
+        job = JOBS.get(job_id)
+        if not job or job.get("seen") or job.get("mailed"):
+            return
+        job["mailed"] = True
+        try:
+            asyncio.run(_send_ready_mail(job_id, job))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("READY_MAIL_FAILED", job_id=job_id, err=str(e))
+
+    timer = threading.Timer(READY_MAIL_GRACE_S, check)
+    timer.daemon = True          # never hold a shutdown open for a courtesy mail
+    timer.start()
+
+
+async def _send_ready_mail(job_id: str, job: dict[str, Any]) -> None:
+    """Look the owner up, respect their preference, send once."""
+    user_id = job.get("owner_user_id")
+    if not user_id:
+        return
+    from app.services.notify import analysis_ready_email, email_enabled, send_email
+    if not email_enabled():
+        return
+    async with SessionLocal() as db:
+        user = await db.get(User, user_id)
+        if not user or not user.email or not user.notify_on_ready:
+            return
+        email = user.email
+        token = unsubscribe_token(user.id)
+        uid = user.id
+    result = job.get("result") or {}
+    base = (settings.public_base_url or "").rstrip("/")
+    subject, text, html = analysis_ready_email(
+        sport=result.get("sport_type") or "run",
+        score=result.get("technique_score"),
+        grade=result.get("letter_grade"),
+        report_url=f"{base}/app#job={job_id}",
+        unsubscribe_url=f"{base}/unsubscribe?u={uid}&t={token}",
+    )
+    await run_in_threadpool(send_email, email, subject, text, html)
+    logger.info("READY_MAIL_SENT", job_id=job_id)
 
 
 # --------------------------------------------------------------------------
@@ -613,6 +689,39 @@ def og_image() -> FileResponse:
 # ---- PWA (installable app + Capacitor-ready asset set) -----------------------
 # Icons are plain files; StaticFiles gives us content-type + conditional GETs.
 app.mount("/icons", StaticFiles(directory=STATIC_DIR / "icons"), name="icons")
+
+
+@app.get("/unsubscribe", include_in_schema=False)
+async def unsubscribe(u: int, t: str, db: AsyncSession = Depends(get_session)) -> Response:
+    """One click, no login, from the mail itself.
+
+    Always answers the same way, whether or not the signature checked out: a
+    page that says "no such account" turns an unsubscribe link into a way to
+    test whether an address is registered here.
+    """
+    page = (
+        '<!doctype html><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>Unsubscribed · Flapp</title>'
+        '<link rel="stylesheet" href="/tokens.css">'
+        '<style>body{font-family:Manrope,Segoe UI,sans-serif;color:var(--c-ink);'
+        'background:var(--c-bg);display:flex;min-height:100vh;align-items:center;'
+        'justify-content:center;margin:0;padding:24px;text-align:center}'
+        'div{max-width:34rem}h1{font-family:Archivo,sans-serif;color:var(--c-navy);'
+        'font-size:24px;margin:0 0 12px}p{color:var(--c-ink-soft);line-height:1.6}'
+        'a{color:var(--c-blue)}</style>'
+        '<div><h1>Done — no more of those</h1>'
+        '<p>We won\'t email you when an analysis finishes. Your reports are all '
+        'still in your history.</p>'
+        '<p><a href="/app">Back to Flapp</a></p></div>'
+    )
+    if hmac.compare_digest(t or "", unsubscribe_token(u)):
+        user = await db.get(User, u)
+        if user:
+            user.notify_on_ready = False
+            await db.commit()
+            logger.info("UNSUBSCRIBED", user_id=u, kind="analysis_ready")
+    return HTMLResponse(page)
 
 
 @app.get("/tokens.css", include_in_schema=False)
@@ -937,6 +1046,11 @@ def job_status(
     user: User | None = Depends(optional_user),
 ) -> JobStatus:
     job = authorized_job(job_id, t, user.id if user else None)
+    # Somebody is here for it. Recorded before anything else so the ready-mail
+    # check can tell "left the page" from "watching the spinner" -- see
+    # _maybe_notify_ready.
+    if job.get("status") == "completed":
+        job["seen"] = True
     # Gate on read. The stored result is complete; what this caller may see
     # depends on their plan now -- so upgrading mid-analysis, or coming back to
     # a job after subscribing, shows the full thing without re-running it.

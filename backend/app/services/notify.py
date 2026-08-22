@@ -158,3 +158,61 @@ def send_email(to: str, subject: str, text: str, html: str) -> bool:
         return False
     logger.info("EMAIL_SENT", to=to, subject=subject, provider=settings.email_provider)
     return True
+
+
+# --------------------------------------------------------------------------
+# "Your analysis is ready"
+#
+# Only ever sent to somebody who is NOT looking at the result -- the caller
+# checks that first (main._maybe_notify_ready). An analysis takes 30-60
+# seconds, which is long enough to put the phone down and short enough that a
+# mail to somebody still watching would be pure noise.
+#
+# Every copy carries a working one-click unsubscribe. Not a preference buried
+# in an account screen: the person receiving this may have signed up ten
+# minutes ago, and the polite version of "we will email you" is "and here is
+# how to stop".
+# --------------------------------------------------------------------------
+def _esc_html(s: str) -> str:
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def analysis_ready_email(
+    sport: str, score: int | None, grade: str | None,
+    report_url: str, unsubscribe_url: str,
+) -> tuple[str, str, str]:
+    """(subject, text, html) for a finished analysis nobody was watching."""
+    noun = "ride" if sport == "bike" else "run"
+    verdict = (
+        f"{score}/100" + (f" ({grade})" if grade else "")
+        if score is not None else "ready to read"
+    )
+    subject = f"Your {noun} analysis is ready — {verdict}"
+    text = (
+        f"Your {noun} analysis finished while you were away.\n\n"
+        f"Technique score: {verdict}\n\n"
+        f"Open the report — joint angles, what to fix first and the plan:\n"
+        f"{report_url}\n\n"
+        f"Don't want these? Turn them off in one click:\n{unsubscribe_url}\n"
+    )
+    html = (
+        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
+        'font-size:16px;line-height:1.6;color:#14294B;max-width:520px">'
+        '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;'
+        'color:#2F6DE0;margin:0 0 6px">Flapp</p>'
+        f'<h1 style="font-size:22px;margin:0 0 8px">Your {_esc_html(noun)} '
+        'analysis is ready</h1>'
+        f'<p style="margin:0 0 22px;font-size:15px;color:#5A6478">Technique score '
+        f'<b style="color:#14294B">{_esc_html(verdict)}</b></p>'
+        f'<p style="margin:0 0 24px"><a href="{_esc_html(report_url)}" '
+        'style="background:#2F6DE0;color:#fff;text-decoration:none;'
+        'padding:12px 20px;border-radius:8px;display:inline-block;'
+        'font-weight:600">Open the report</a></p>'
+        '<p style="font-size:13px;color:#5A6478;margin:0 0 18px">Joint angles '
+        'against reference ranges, what to fix first, and the plan.</p>'
+        f'<p style="font-size:12px;color:#8A94A3;margin:0">'
+        f'<a href="{_esc_html(unsubscribe_url)}" style="color:#8A94A3">'
+        'Stop sending me these</a></p></div>'
+    )
+    return subject, text, html
