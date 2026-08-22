@@ -290,6 +290,35 @@ def test_a_cleanly_tracked_clip_is_allowed_a_kinogram():
     assert kinogram.stride_trust_block(CLEAN_SUMMARY, CLEAN_TRACKING) is None
 
 
+def test_a_stance_phase_covering_most_of_the_cycle_means_no_kinogram():
+    """Every position is cut out of the stance/swing split, so a clip where
+    that split is nonsense yields five frames that LOOK like a kinogram and are
+    not one. Real case: a cleanly tracked clip whose detector called 87% of the
+    cycle stance, so all five positions came from a 10-frame window of a
+    170-frame stride."""
+    blocked = kinogram.stride_trust_block(
+        {**CLEAN_SUMMARY, "stance_fraction": 0.87}, CLEAN_TRACKING)
+    assert blocked.startswith("implausible_stance_fraction")
+
+
+def test_a_stance_phase_nobody_could_stand_on_means_no_kinogram_either():
+    assert kinogram.stride_trust_block(
+        {**CLEAN_SUMMARY, "stance_fraction": 0.02},
+        CLEAN_TRACKING).startswith("implausible_stance_fraction")
+
+
+@pytest.mark.parametrize("fraction", [0.22, 0.30, 0.35, 0.40, 0.50])
+def test_a_believable_stance_share_is_allowed_through(fraction):
+    """Sprinting sits near 0.22 and distance running at 0.30-0.40. The band is
+    not measuring technique, only asking whether this could be running."""
+    assert kinogram.stride_trust_block(
+        {**CLEAN_SUMMARY, "stance_fraction": fraction}, CLEAN_TRACKING) is None
+
+
+def test_an_analyzer_that_never_reported_a_stance_share_is_not_punished():
+    assert kinogram.stride_trust_block(CLEAN_SUMMARY, CLEAN_TRACKING) is None
+
+
 def test_no_cadence_means_no_kinogram():
     """Cadence is the analyzer's own verdict on whether it could time the
     stride -- and the five positions ARE stride timing."""
@@ -297,11 +326,27 @@ def test_no_cadence_means_no_kinogram():
         {"cadence_spm": None}, CLEAN_TRACKING) == "cadence_unmeasured"
 
 
-def test_an_athlete_too_small_in_frame_means_no_kinogram():
+def test_a_small_but_cleanly_tracked_athlete_still_gets_a_kinogram():
+    """Framing was a criterion here until it was caught measuring the wrong
+    thing: the bar had been calibrated on clips where the athlete was small AND
+    backlit, so pixel height took the blame for what the light was doing. A
+    well-lit 171 px clip tracked better than anything else tested (legs
+    confused on 0.8% of frames) and was refused for being 'too small'."""
     tracking = {**CLEAN_TRACKING,
+                "leg_swap_pct": 0.8,
+                "framing": {"verdict": "tiny", "subject_height_px": 171}}
+    assert kinogram.stride_trust_block(CLEAN_SUMMARY, tracking) is None
+
+
+def test_a_small_athlete_the_model_ALSO_lost_is_still_refused():
+    """Dropping the framing criterion must not drop the protection: what the
+    gate exists for is a stride nobody could follow, and that is still caught
+    -- by the outcome rather than by a guess at its cause."""
+    tracking = {**CLEAN_TRACKING,
+                "leg_swap_pct": 45.6,
                 "framing": {"verdict": "tiny", "subject_height_px": 116}}
     assert kinogram.stride_trust_block(
-        CLEAN_SUMMARY, tracking) == "athlete_too_small_in_frame"
+        CLEAN_SUMMARY, tracking) == "unstable_tracking:leg_swap_pct"
 
 
 def test_legs_the_model_could_not_tell_apart_means_no_kinogram():

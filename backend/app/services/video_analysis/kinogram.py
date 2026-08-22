@@ -107,6 +107,13 @@ _MIN_FLIGHT_FRAMES = 3
 # identity -- past it, "the near foot landed here" is a coin flip.
 _TRUST_KEYS = ("leg_swap_pct", "flip_pct", "side_vote_disagreement_pct")
 
+# Believable share of a running cycle spent with the foot down. Distance
+# running sits at 0.30-0.40 and sprinting nearer 0.22; walking is above 0.5 by
+# definition, since both feet overlap. The band is set wide on purpose -- it is
+# not measuring technique, it is asking whether the phase detector produced
+# something that could be running at all.
+STANCE_FRACTION_RANGE = (0.15, 0.55)
+
 
 @dataclass
 class KinogramMetric:
@@ -513,9 +520,35 @@ def stride_trust_block(
     if s.get("cadence_spm") is None:
         return "cadence_unmeasured"
 
-    framing = t.get("framing") or {}
-    if framing.get("verdict") == "tiny":
-        return "athlete_too_small_in_frame"
+    # Does the stance/swing split describe running at all? Every position here
+    # is cut out of that split, so a clip where it is nonsense produces five
+    # frames that LOOK like a kinogram and are not one -- which is the worst
+    # thing this feature can do, because a photograph with a label on it is the
+    # most persuasive thing in the report.
+    #
+    # Caught this way on 2026-08-22: a cleanly tracked clip (legs confused on
+    # 0.8% of frames, cadence measurable) whose phase detector called 87% of
+    # the cycle "stance", so the five positions came from a 10-frame window of
+    # a 170-frame stride and were near-identical. Nothing else in the gate saw
+    # it, because nothing else was looking at the phases themselves.
+    stance = s.get("stance_fraction")
+    if stance is not None and not (
+        STANCE_FRACTION_RANGE[0] <= stance <= STANCE_FRACTION_RANGE[1]
+    ):
+        return f"implausible_stance_fraction:{stance:.2f}"
+
+    # Framing is deliberately NOT a criterion here, though it was until
+    # 2026-08-22. It was refusing clips on a proxy that turned out to be
+    # measuring something else: the bar had been calibrated on footage where
+    # the athlete was small AND backlit, so pixel height took the blame for
+    # what the lighting was doing. A well-lit clip at 171 px came in with the
+    # legs confused on 0.8% of frames -- the cleanest tracking of any clip
+    # tested -- and was refused a kinogram for being "too small".
+    #
+    # What the gate is actually protecting against is a stride the analyzer
+    # could not follow, and the checks below measure that outcome directly
+    # rather than guessing at it from a cause. Framing keeps its place in the
+    # capture report, where it is advice rather than a veto.
 
     for key in _TRUST_KEYS:
         value = t.get(key)

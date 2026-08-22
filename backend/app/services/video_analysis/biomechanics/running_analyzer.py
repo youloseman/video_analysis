@@ -1212,6 +1212,20 @@ class RunningAnalyzer(SportAnalyzer):
             summary["slow_motion_factor"] = self._slowmo_factor
             summary["time_base_inferred"] = True
 
+        # What share of the clip the near foot was called "on the ground".
+        # Running spends 30-40% of a cycle in stance (less when sprinting);
+        # walking is over half. So this is a cheap, physiological check on
+        # whether the phase machinery produced anything believable at all --
+        # and unlike ground-contact time it does not depend on the timebase,
+        # so it survives a slow-motion clip that every frame-counted metric
+        # gets wrong. Emitted always, including when it is damning.
+        if self.frame_results:
+            stance = sum(
+                1 for fr in self.frame_results
+                if fr.extra_metrics.get("gait_phase") in GROUND_CONTACT_PHASES
+            )
+            summary["stance_fraction"] = round(stance / len(self.frame_results), 3)
+
         # vert_osc is stored in meters; range 0.01-0.25 m = 1-25 cm.
         if 0.01 <= vert_osc <= 0.25:
             summary["vertical_oscillation_m"] = vert_osc
