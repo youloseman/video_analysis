@@ -223,15 +223,18 @@ def _leg_identity_check(
 def _duration_check(
     duration_s: float | None, sampling_degraded: Any,
     tracked_ratio: float | None = None,
+    slow_motion_factor: Any = None,
 ) -> dict[str, Any]:
     """How much USABLE movement the clip holds, which is not its length.
 
-    The file can run ten seconds while the athlete is only in shot, and only
-    findable, for four of them -- they enter late, leave early, or read as a
-    silhouette the pose model loses. Every stride metric is built from the
-    frames that tracked, so those are the seconds that count, and a check that
-    reads the container's duration and calls it good is measuring the wrong
-    thing.
+    Two things separate the two. The file can run ten seconds while the athlete
+    is only in shot, and only findable, for four of them -- they enter late,
+    leave early, or read as a silhouette the pose model loses. And a clip shot
+    in slow motion holds a fraction of the running its duration advertises: at
+    8x, twelve seconds of playback is a second and a half of stride. Every
+    stride metric is built from real movement, so a check reading the
+    container's duration and calling it generous is measuring the wrong thing
+    twice over.
     """
     if not duration_s:
         return _check(
@@ -240,8 +243,27 @@ def _duration_check(
         )
     target = f"{DURATION_GOOD_S:.0f}-10 s of steady movement"
 
+    try:
+        slow = float(slow_motion_factor or 1) or 1.0
+    except (TypeError, ValueError):
+        slow = 1.0
+    real_s = duration_s / slow if slow > 1 else duration_s
+
+    if slow > 1 and real_s < DURATION_GOOD_S:
+        status = "bad" if real_s < DURATION_MIN_S else "warn"
+        return _check(
+            "duration", "How much running the clip holds", status, "medium",
+            f"{duration_s:.1f} s of playback, but filmed at {slow:.0f}x slow "
+            f"motion -- {real_s:.1f} s of actual running",
+            target,
+            "Slow motion stretches the picture, not the stride: there are only "
+            f"{real_s:.1f} s of movement in here however long it takes to "
+            "watch. Film at normal speed and the same recording length becomes "
+            f"{slow:.0f} times the strides to measure.",
+        )
+
     if tracked_ratio is not None and tracked_ratio < TRACKED_RATIO_WARN:
-        tracked_s = duration_s * tracked_ratio
+        tracked_s = real_s * tracked_ratio
         status = "bad" if tracked_s < DURATION_GOOD_S else "warn"
         return _check(
             "duration", "How much of the clip is usable", status, "medium",
@@ -255,7 +277,10 @@ def _duration_check(
             "silhouette, and a silhouette has no joints in it.",
         )
 
-    measured = f"{duration_s:.1f} s"
+    duration_s = real_s
+    measured = (
+        f"{real_s:.1f} s of running" if slow > 1 else f"{duration_s:.1f} s"
+    )
     if duration_s < DURATION_MIN_S:
         return _check(
             "duration", "How long the clip runs", "bad", "medium",
@@ -369,6 +394,7 @@ def build_capture_report(
     sampling_degraded: Any = None,
     camera_motion: dict[str, Any] | None = None,
     tracked_ratio: float | None = None,
+    slow_motion_factor: Any = None,
 ) -> dict[str, Any]:
     """An ordered, quantified account of how the recording limited the analysis.
 
@@ -390,7 +416,9 @@ def build_capture_report(
         _orientation_check(frame_width, frame_height, framing_ok),
         legs,
         _camera_motion_check(camera_motion),
-        _duration_check(duration_s, sampling_degraded, tracked_ratio),
+        _duration_check(
+            duration_s, sampling_degraded, tracked_ratio, slow_motion_factor,
+        ),
         _time_base_check(time_base_uncertain, legs_unreliable),
     ]
     checks = [c for c in checks if c is not None]

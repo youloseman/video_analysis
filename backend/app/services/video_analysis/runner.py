@@ -813,6 +813,9 @@ def run_analysis(
             tracked_ratio=_tracked_ratio(
                 len(raw_frame_data), video_info, sampling_meta,
             ),
+            # Slow motion stretches the picture, not the stride: at 8x, twelve
+            # seconds of playback holds a second and a half of running.
+            slow_motion_factor=summary.get("slow_motion_factor"),
         )
         logger.info(
             "CAPTURE_REPORT",

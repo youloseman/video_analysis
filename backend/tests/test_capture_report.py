@@ -186,6 +186,28 @@ def test_a_long_clip_the_athlete_is_barely_in_is_not_called_long_enough():
     assert "silhouette" in c["action"]
 
 
+def test_slow_motion_is_measured_in_running_not_in_playback():
+    """Real clip, 2026-08-22: 12.1 s of playback at 8x slow motion is 1.5 s of
+    stride. The old check read the container and called it generous."""
+    c = check(report(duration_s=12.1, slow_motion_factor=8), "duration")
+    assert c["status"] == "bad"
+    assert c["label"] == "How much running the clip holds"
+    assert "1.5 s of actual running" in c["measured"]
+    assert "8 times the strides" in c["action"]
+
+
+def test_a_long_enough_slow_motion_clip_is_not_penalised():
+    """80 s at 8x is still 10 s of running -- unusual, but not a fault."""
+    c = check(report(duration_s=80.0, slow_motion_factor=8), "duration")
+    assert c["status"] == "good"
+    assert "10.0 s of running" in c["measured"]
+
+
+def test_normal_speed_reporting_is_unchanged():
+    c = check(report(duration_s=8.0, slow_motion_factor=None), "duration")
+    assert c["status"] == "good" and c["measured"] == "8.0 s"
+
+
 def test_a_mostly_tracked_clip_is_judged_on_its_length_as_before():
     c = check(report(duration_s=8.0, tracked_ratio=0.94), "duration")
     assert c["status"] == "good"
