@@ -3410,6 +3410,20 @@ function bikeTiles(s, position){
   if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg')));
   if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg')));
   if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,rng('shoulder_angle',s.shoulder_angle_avg,'shoulder_angle_avg')));
+  // How the foot is carried through the stroke, and where it spent it. Only
+  // toe-down is flagged: it lengthens the effective leg, which is what makes a
+  // too-high saddle read as correctly set. Heel-down and ankling are styles,
+  // not faults, and colouring them would say otherwise.
+  if(s.pedaling_style){
+    const ps=s.pedaling_style, z=ps.time_in_zone||{};
+    const parts=[`median ${num(ps.median_deg)}°`];
+    const zones=[['neutral',z.neutral],['toe_down',z.toe_down],['heel_down',z.heel_down]]
+      .filter(([,v])=>v>=10)
+      .map(([k,v])=>`${v}% ${k.replace('_','-')}`);
+    if(zones.length) parts.push(zones.join(' · '));
+    t.push(tile('Foot through the stroke', ps.label, '', parts.join(' · '),
+                ps.style==='toe_down'?'warn':null, true));
+  }
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
   if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
   if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));

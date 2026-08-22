@@ -145,6 +145,19 @@ def _bike_data_block(
     if isinstance(arch, dict) and arch.get("label"):
         lines.append(f"- Position archetype: {arch['label']} — {arch.get('description', '')}")
 
+    # Foot posture through the stroke. Given as a style plus where the stroke
+    # was spent, so the coach can connect a toe-down foot to a saddle-height
+    # reading rather than treating the two as unrelated observations.
+    style = summary.get("pedaling_style")
+    if isinstance(style, dict) and style.get("label"):
+        zones = style.get("time_in_zone") or {}
+        spent = ", ".join(f"{v}% {k.replace('_', '-')}" for k, v in zones.items() if v)
+        lines.append(
+            f"- Foot through the stroke: {style['label']} "
+            f"(median ankle {style.get('median_deg')}°, spread "
+            f"{style.get('spread_deg')}°; {spent})"
+        )
+
     # Relative aero read-out (torso-angle CdA zone). Never an absolute
     # CdA -- give the coach the zone + the flatten-delta so its advice
     # stays consistent with what the rider sees, and remind it the

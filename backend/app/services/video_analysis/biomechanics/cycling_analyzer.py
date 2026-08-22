@@ -43,6 +43,47 @@ ANKLE_BDC_PLANTARFLEXION_DEG = 125.0
 # outside this are tracking noise, not a real foot angle.
 _ANKLE_BDC_BOUNDS = (60.0, 170.0)
 
+# --- Pedalling style -------------------------------------------------------
+#
+# Read from the ankle angle's DISTRIBUTION across the clip, never from where in
+# the stroke a given frame sits: reading crank position off this landmark was
+# measured and abandoned (it is far too noisy frame-to-frame). A median over
+# hundreds of frames is a different statistic from a single frame's angle, and
+# it is the one that survives the noise.
+#
+# The zone edges come off the same anchor as the plantarflexion flag above --
+# the recreational reference curve, ~109 deg at BDC with SD ~9 -- so toe-down
+# starts where that flag already fires (mean + 1.8 SD) and heel-down is its
+# mirror (mean - 1.8 SD). One anchor, two thresholds, no second opinion about
+# what neutral means.
+ANKLE_HEEL_DOWN_MAX_DEG = 93.0
+ANKLE_TOE_DOWN_MIN_DEG = ANKLE_BDC_PLANTARFLEXION_DEG      # 125.0
+# A style needs most of the stroke to agree before it is a style rather than a
+# tendency. Below this the foot is called neutral.
+_STYLE_DOMINANT_SHARE = 0.5
+# Spread (p90-p10) past which the foot is working through the stroke rather
+# than holding an angle -- "ankling" in fitting language.
+_ANKLING_SPREAD_DEG = 25.0
+# How much of the clip has to yield a plausible ankle angle before any of this
+# is reported. Below it the honest answer is that the foot was not readable.
+_STYLE_MIN_READABLE_SHARE = 0.6
+_STYLE_MIN_FRAMES = 40
+
+
+def _shares_to_percent(shares: dict[str, float]) -> dict[str, int]:
+    """Fractions -> whole percents that add to 100.
+
+    Rounding three shares independently gives 99 or 101 often enough to be
+    noticed under a bar; the remainder goes to the largest zone, which is the
+    one whose single percent moves least in relative terms.
+    """
+    pct = {k: int(round(v * 100)) for k, v in shares.items()}
+    drift = 100 - sum(pct.values())
+    if drift and pct:
+        biggest = max(pct, key=lambda k: pct[k])
+        pct[biggest] += drift
+    return pct
+
 # Indices used to assess camera-side reliability per frame (shoulders+hips).
 _CAMERA_SIDE_INDICES = (11, 12, 23, 24)
 # How many frames to consider for the quality-vote window.
@@ -597,6 +638,52 @@ class CyclingAnalyzer(SportAnalyzer):
             return None
         return val
 
+    def _pedaling_style(self, side: str) -> dict[str, Any] | None:
+        """How the foot is carried through the stroke, plus where it spends it.
+
+        Returns ``None`` rather than a guess when too little of the clip gave a
+        plausible ankle angle -- this is the noisiest landmark on a side view,
+        and a style label is the kind of specific-sounding claim that is worst
+        when it is wrong.
+        """
+        series = self.angle_history.get(f"{side}_ankle") or []
+        if len(series) < _STYLE_MIN_FRAMES:
+            return None
+        lo, hi = _ANKLE_BDC_BOUNDS
+        vals = [v for v in series if not math.isnan(v) and lo <= v <= hi]
+        readable = len(vals) / len(series)
+        if len(vals) < _STYLE_MIN_FRAMES or readable < _STYLE_MIN_READABLE_SHARE:
+            return None
+
+        arr = np.array(vals, dtype=float)
+        n = len(vals)
+        heel = float(np.sum(arr < ANKLE_HEEL_DOWN_MAX_DEG)) / n
+        toe = float(np.sum(arr > ANKLE_TOE_DOWN_MIN_DEG)) / n
+        neutral = 1.0 - heel - toe
+        spread = float(np.percentile(arr, 90) - np.percentile(arr, 10))
+
+        if toe >= _STYLE_DOMINANT_SHARE:
+            style, label = "toe_down", "Toe-down"
+        elif heel >= _STYLE_DOMINANT_SHARE:
+            style, label = "heel_down", "Heel-down"
+        elif spread >= _ANKLING_SPREAD_DEG:
+            style, label = "ankling", "Ankling"
+        else:
+            style, label = "neutral", "Neutral"
+        return {
+            "style": style,
+            "label": label,
+            "median_deg": round(float(np.median(arr)), 1),
+            "spread_deg": round(spread, 1),
+            # Where the foot spent the stroke. Rounded to whole percent and
+            # forced to sum to 100 by giving the remainder to the largest zone,
+            # so three numbers under a bar chart never read 99.
+            "time_in_zone": _shares_to_percent(
+                {"heel_down": heel, "neutral": neutral, "toe_down": toe},
+            ),
+            "readable_pct": round(readable * 100),
+        }
+
     def _record_plantarflexion_warning(self) -> None:
         """Append a deduplicated user-facing plantarflexion caveat."""
         msg = (
@@ -819,6 +906,13 @@ class CyclingAnalyzer(SportAnalyzer):
             if near_diag.get("plantarflexion_at_bdc"):
                 bdc_tdc_diag["plantarflexion_at_bdc"] = True
             summary.setdefault("diagnostics", {})["bdc_tdc"] = bdc_tdc_diag
+
+        # How the foot is carried through the stroke. Absent, not guessed, when
+        # the ankle was not readable for enough of the clip.
+        near = self.camera_side or "left"
+        style = self._pedaling_style(near)
+        if style:
+            summary["pedaling_style"] = style
         self._set_if_plausible(summary, "trunk_angle_avg", trunk_avg)
 
         # Relative aero read-out from the (plausible) trunk angle. Only
