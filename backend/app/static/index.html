@@ -909,9 +909,18 @@ h2.sec + .speedline{margin-bottom:24px}
 
 /* Capture report — the same conversation after the fact, but measured. */
 .caprep{border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;margin-top:8px}
+/* The header is the disclosure control; the rows only appear on request. */
 .caprep-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--c-panel);
-  border-bottom:1px solid var(--c-line);font-size:13px;font-weight:700;color:var(--c-ink)}
+  font-size:13px;font-weight:700;color:var(--c-ink);cursor:pointer;list-style:none}
+.caprep-head::-webkit-details-marker{display:none}
+.caprep[open] .caprep-head{border-bottom:1px solid var(--c-line)}
 .caprep-head .ic{width:16px;height:16px;flex:none}
+.caprep-t{flex:none}
+.caprep-chev{margin-left:2px;color:var(--c-ink-faint);transition:transform .15s ease}
+.caprep[open] .caprep-chev{transform:rotate(180deg)}
+@media (prefers-reduced-motion:reduce){ .caprep-chev{transition:none} }
+.caprep-n{font-family:var(--f-mono);font-size:10.5px;font-weight:600;color:var(--c-ink-soft);
+  background:var(--c-bg);border:1px solid var(--c-line);border-radius:999px;padding:2px 8px;flex:none}
 .caprep-v{margin-left:auto;font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
 .caprep-v.good{color:var(--st-good)} .caprep-v.fair{color:var(--c-warn)} .caprep-v.poor{color:var(--st-bad)}
 .caprep-row{display:grid;grid-template-columns:14px 1fr;gap:10px;padding:12px 16px;
@@ -4763,11 +4772,27 @@ function renderCaptureReport(cr){
     </div>`;
   }).join('');
   const v=['good','fair','poor'].includes(cr.verdict)?cr.verdict:'unknown';
-  return `<div class="caprep" style="margin-top:8px">
-    <div class="caprep-head"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
-      How this clip was filmed<span class="caprep-v ${v}">${esc(CAPREP_VERDICT[v]||'')}</span></div>
-    ${rows}</div>`;
+  // Collapsed by default: this is context for the report, not the report, and
+  // five rows of camera advice above the score buried the thing people came
+  // for. Nothing is hidden that matters at a glance -- the verdict rides in
+  // the summary, and so does the count of what needs fixing, so a closed block
+  // still says "two things limited this" rather than going quiet.
+  const bad=(cr.checks||[]).filter(c=>c.status==='warn'||c.status==='bad').length;
+  const count = bad ? `<span class="caprep-n">${bad} to fix</span>` : '';
+  return `<details class="caprep" style="margin-top:8px">
+    <summary class="caprep-head"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
+      <span class="caprep-t">How this clip was filmed</span>
+      <span class="caprep-v ${v}">${esc(CAPREP_VERDICT[v]||'')}</span>${count}
+      <svg class="ic caprep-chev" aria-hidden="true"><use href="#i-chev-d"/></svg></summary>
+    ${rows}</details>`;
 }
+/* A PDF is read without a mouse, and "capture limited the measurement" is
+   exactly the caveat a coach must see next to the numbers. Open the block for
+   the print, then put it back the way the reader had it. */
+addEventListener('beforeprint',()=>document.querySelectorAll('.caprep:not([open])')
+  .forEach(d=>{ d.dataset.reopen='1'; d.open=true; }));
+addEventListener('afterprint',()=>document.querySelectorAll('.caprep[data-reopen]')
+  .forEach(d=>{ d.open=false; delete d.dataset.reopen; }));
 
 /* Kinogram: the five ALTIS stride positions the backend composed into one
    image. Running only, and only when a usable stride was found — a clip whose
