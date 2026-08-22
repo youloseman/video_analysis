@@ -90,6 +90,39 @@ _watermark_cache: dict[int, "np.ndarray | None"] = {}
 
 logger = structlog.get_logger()
 
+# --- display crop ----------------------------------------------------------
+#
+# An athlete filling a tenth of the frame gets an overlay whose chips are wider
+# than they are tall, over a picture that is mostly sky and empty ground. The
+# numbers are right and the artifact is unreadable, which for the one thing an
+# athlete actually shows people is most of its value gone.
+#
+# So the overlay is FRAMED for display. Three rules, each with a reason:
+#
+# * It happens BEFORE the annotation is drawn, not after. Chip sizes scale with
+#   the frame they are drawn on, so cropping afterwards would keep them huge and
+#   then cut them off; cropping first makes them proportional to the athlete.
+# * It follows HORIZONTALLY ONLY. Vertical oscillation is the rise and fall of
+#   the hips in the frame -- a window that chased them vertically would remove
+#   the very thing the number underneath the video is reporting, and the video
+#   would visibly disagree with the report.
+# * It changes nothing measured. Every landmark, angle and metric is computed
+#   before this runs, on the whole frame. This is framing, not analysis -- which
+#   is what makes it safe, and is exactly why the same idea was rejected for the
+#   analysis path, where it moved vertical oscillation by 36%.
+CROP_ENABLED = True
+# Only bother when the athlete is genuinely lost in the frame. Above this share
+# of the height the overlay is already legible and cropping would just throw
+# away context the athlete filmed on purpose.
+CROP_TRIGGER_FRAC = 0.45
+# Height of the window as a multiple of the athlete's full-clip vertical
+# extent -- which already includes their bounce, since it is measured across
+# every frame. The margin is what keeps a swinging arm or trailing foot inside.
+CROP_HEIGHT_MULT = 1.9
+# Seconds the window takes to follow. Long enough that it drifts rather than
+# jerks, short enough not to lag a runner crossing the frame.
+CROP_FOLLOW_S = 0.7
+
 
 class VideoVisualizer:
     """Generates an overlay video with skeleton + biomechanical annotations."""
@@ -221,6 +254,80 @@ class VideoVisualizer:
         # Arc triplets for this sport
         self.arc_triplets = ARC_TRIPLETS.get(sport_type, {})
 
+    def _plan_display_crop(
+        self, width: int, height: int, fps: float,
+    ) -> dict[str, Any] | None:
+        """A window that follows the athlete sideways, fixed vertically.
+
+        Returns None when the clip does not need it -- an athlete already
+        filling the frame, or too few landmarks to place a window honestly.
+        See the module notes above for why this is display-only.
+        """
+        if not CROP_ENABLED or width <= 0 or height <= 0:
+            return None
+
+        xs_mid: list[float] = []
+        tops: list[float] = []
+        bottoms: list[float] = []
+        for fd in self.frame_data_list:
+            lms = fd.get("normalized_landmarks")
+            if not lms:
+                continue
+            xs = [lm.x for lm in lms
+                  if (getattr(lm, "visibility", 0) or 0) >= 0.3
+                  and lm.x is not None and not math.isnan(lm.x)]
+            ys = [lm.y for lm in lms
+                  if (getattr(lm, "visibility", 0) or 0) >= 0.3
+                  and lm.y is not None and not math.isnan(lm.y)]
+            if len(xs) < 4 or len(ys) < 4:
+                continue
+            xs_mid.append((min(xs) + max(xs)) / 2.0)
+            tops.append(min(ys))
+            bottoms.append(max(ys))
+        if len(xs_mid) < 5:
+            return None
+
+        # The athlete's full-clip vertical extent -- their bounce is already
+        # inside it, because it is measured over every frame.
+        top, bottom = min(tops), max(bottoms)
+        extent = bottom - top
+        if extent <= 0.01 or extent >= CROP_TRIGGER_FRAC:
+            return None
+
+        crop_h = min(1.0, extent * CROP_HEIGHT_MULT)
+        crop_h_px = max(64, int(round(crop_h * height)))
+        crop_w_px = min(width, max(64, int(round(crop_h_px * width / height))))
+        if crop_h_px >= height and crop_w_px >= width:
+            return None
+
+        # Fixed vertically, centred on the athlete's whole-clip band.
+        centre_y = (top + bottom) / 2.0
+        y0 = int(round(centre_y * height - crop_h_px / 2))
+        y0 = max(0, min(y0, height - crop_h_px))
+
+        # Horizontally: one x per ANALYZED frame, smoothed, then read per video
+        # frame through the same nearest-analyzed mapping the skeleton uses.
+        span = max(3, int(round(CROP_FOLLOW_S * fps / max(1, self.sample_rate))))
+        arr = np.array(xs_mid, dtype=np.float64)
+        kernel = np.ones(span) / span
+        smooth = np.convolve(
+            np.pad(arr, (span, span), mode="edge"), kernel, mode="same",
+        )[span:-span]
+
+        xs_px: list[int] = []
+        for cx in smooth:
+            x0 = int(round(cx * width - crop_w_px / 2))
+            xs_px.append(max(0, min(x0, width - crop_w_px)))
+
+        logger.info(
+            "OVERLAY_CROP",
+            athlete_frac=round(extent, 3),
+            crop=f"{crop_w_px}x{crop_h_px}",
+            source=f"{width}x{height}",
+            athlete_now=round(extent * height / crop_h_px, 2),
+        )
+        return {"xs": xs_px, "y0": y0, "w": crop_w_px, "h": crop_h_px}
+
     def generate(self) -> str | None:
         """Generate overlay video. Returns path to MP4 or None on failure."""
         if not self.frame_data_list:
@@ -238,6 +345,18 @@ class VideoVisualizer:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+        # Frame the athlete for display before anything is drawn (see the
+        # module notes). Everything below writes at the CROP's size when one
+        # applies, so the annotation is scaled to the athlete rather than to
+        # the sky above them.
+        crop = None
+        try:
+            crop = self._plan_display_crop(width, height, fps)
+        except Exception as e:  # noqa: BLE001 -- framing must never lose a render
+            logger.warning("OVERLAY_CROP_FAILED", err=str(e))
+        draw_w = crop["w"] if crop else width
+        draw_h = crop["h"] if crop else height
+
         # Output paths
         os.makedirs(self.output_dir, exist_ok=True)
         final_mp4 = os.path.join(self.output_dir, f"{self.analysis_id}.mp4")
@@ -249,12 +368,12 @@ class VideoVisualizer:
         self._use_ffmpeg = shutil.which("ffmpeg") is not None
         if self._use_ffmpeg:
             temp_avi = os.path.join(self.output_dir, f"{self.analysis_id}_temp.avi")
-            writer = cv2.VideoWriter(temp_avi, cv2.VideoWriter_fourcc(*"XVID"), fps, (width, height))
+            writer = cv2.VideoWriter(temp_avi, cv2.VideoWriter_fourcc(*"XVID"), fps, (draw_w, draw_h))
             writer_target = temp_avi
         else:
             logger.warning("ffmpeg not found -- writing MP4 directly via OpenCV (mp4v)")
             temp_avi = None
-            writer = cv2.VideoWriter(final_mp4, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+            writer = cv2.VideoWriter(final_mp4, cv2.VideoWriter_fourcc(*"mp4v"), fps, (draw_w, draw_h))
             writer_target = final_mp4
 
         if not writer.isOpened():
@@ -265,7 +384,7 @@ class VideoVisualizer:
         # Phase overlay (swim + run): cache timeline bar once (saves ~0.5 ms
         # per frame vs rebuilding).
         if self._phase_sequence:
-            self._timeline_cache = self._build_phase_timeline(width)
+            self._timeline_cache = self._build_phase_timeline(draw_w)
             self._overlay_fps = fps
 
         # Track the last resolvable pose (frames past the final analyzed one
@@ -294,18 +413,30 @@ class VideoVisualizer:
                 last_analyzed_idx = analyzed_idx
                 last_landmarks = landmarks
 
+            # Frame for display BEFORE drawing, so the annotation is scaled to
+            # the athlete rather than to the whole picture. The window follows
+            # sideways and is fixed vertically -- see the module notes.
+            crop_offset = (0, 0)
+            if crop:
+                _ai = last_analyzed_idx if last_analyzed_idx is not None else 0
+                _x0 = crop["xs"][min(_ai, len(crop["xs"]) - 1)]
+                _y0 = crop["y0"]
+                frame = frame[_y0:_y0 + crop["h"], _x0:_x0 + crop["w"]].copy()
+                crop_offset = (_x0, _y0)
+
             # Draw overlay if we have landmark data. The chip layer is painted
             # with PIL and returns a NEW array -- rebind rather than assume
             # in-place mutation.
             if last_analyzed_idx is not None:
                 frame = self._draw_frame_overlay(
-                    cv2, frame, last_analyzed_idx, width, height,
+                    cv2, frame, last_analyzed_idx, draw_w, draw_h,
                     landmarks_override=last_landmarks,
+                    source_dims=(width, height), crop_offset=crop_offset,
                 )
 
             # Brand watermark on every frame (even un-analyzed ones)
             if WATERMARK_ENABLED:
-                self._draw_watermark(cv2, frame, width, height)
+                self._draw_watermark(cv2, frame, draw_w, draw_h)
 
             writer.write(frame)
             frames_written += 1
@@ -325,7 +456,10 @@ class VideoVisualizer:
         # The re-encode also downscales to ~720p -- overlays are for phone
         # viewing, so a smaller clip downloads faster and encodes quicker.
         if self._use_ffmpeg:
-            out_w, out_h = self._even_target_dims(width, height)
+            # The AVI on disk is whatever was DRAWN -- the crop when one
+            # applied -- so the encode target has to follow it, or ffmpeg is
+            # handed the source aspect and stretches the result.
+            out_w, out_h = self._even_target_dims(draw_w, draw_h)
             success = self._reencode_to_mp4(temp_avi, final_mp4, out_w, out_h)
             self._cleanup_file(temp_avi)
             if not success:
@@ -451,12 +585,20 @@ class VideoVisualizer:
         self, cv2_mod: Any, frame: Any, analyzed_idx: int, width: int, height: int,
         keyframe_mode: bool = False,
         landmarks_override: list[Any] | None = None,
+        source_dims: tuple[int, int] | None = None,
+        crop_offset: tuple[int, int] = (0, 0),
     ) -> Any:
         """Draw skeleton + angle labels on a single frame.
 
         Returns the annotated frame. The chip/text layer is painted with PIL, so
         a NEW array comes back -- callers must use the return value rather than
         relying on in-place mutation.
+
+        ``width``/``height`` are the SURFACE being drawn on, which is what every
+        chip position and type size is scaled against. When that surface is a
+        crop of the source (see the display-crop notes), ``source_dims`` and
+        ``crop_offset`` say where it came from, so the landmarks -- which are
+        normalized against the WHOLE frame -- land in the right place on it.
 
         ``keyframe_mode`` enables the expensive extras (skeleton glow) for the
         one-off keyframe still; the per-frame video path leaves them off.
@@ -472,7 +614,12 @@ class VideoVisualizer:
         )
 
         # Convert to pixel coordinates with visibility (NaN-safe -- see helper).
-        pixel_coords = landmarks_to_pixels(normalized_lms, width, height)
+        # Normalized against the SOURCE frame, then shifted into the surface
+        # being drawn on, which is the same thing when nothing was cropped.
+        src_w, src_h = source_dims or (width, height)
+        pixel_coords = landmarks_to_pixels(
+            normalized_lms, src_w, src_h, offset=crop_offset,
+        )
 
         # -- 1. Skeleton bones (near-side only for bike/run) --
         _segments, _dots = build_skeleton_geometry(
@@ -875,16 +1022,26 @@ class VideoVisualizer:
     def _draw_phase_label(
         self, cv2_mod: Any, frame: Any, phase: str, width: int,
     ) -> None:
-        """Large colored badge in the top-right corner showing the current phase."""
+        """Large colored badge in the top-right corner showing the current phase.
+
+        Shares the top strip with the score header, which is drawn from the
+        left. On a narrow frame -- which the display crop makes routine -- the
+        two want the same pixels, and this one used a fixed type size, so
+        "MIDSTANCE" ended up printed through the header as "IDSTANCE". It now
+        scales with the frame and drops below the header rather than into it.
+        """
         color = self._phase_colors.get(phase, self._phase_colors.get("unknown", (128, 128, 128)))
         label = self._phase_labels.get(phase, "UNKNOWN")
         font = cv2_mod.FONT_HERSHEY_SIMPLEX
-        scale = 0.7
-        thick = 2
+        scale = max(0.42, min(0.7, width / 900 * 0.7))
+        thick = 2 if scale > 0.55 else 1
         (tw, th), _ = cv2_mod.getTextSize(label, font, scale, thick)
         pad = 8
-        x = width - tw - pad * 2 - 10
-        y = 10
+        x = max(2, width - tw - pad * 2 - 10)
+        # The header owns the left of the strip. When the badge would reach
+        # into it, take the row underneath instead of overlapping.
+        y = 10 if x > width * 0.45 else 10 + self._header_band_px(frame.shape[0])
+        self._phase_badge_bottom = y + th + pad * 2
         overlay = frame.copy()
         cv2_mod.rectangle(overlay, (x, y), (x + tw + pad * 2, y + th + pad * 2), color, -1)
         cv2_mod.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
@@ -892,6 +1049,16 @@ class VideoVisualizer:
             frame, label, (x + pad, y + th + pad),
             font, scale, (255, 255, 255), thick, cv2_mod.LINE_AA,
         )
+
+    @staticmethod
+    def _header_band_px(height: int) -> int:
+        """Vertical room the score header occupies, mirroring ChipLayer.header.
+
+        Duplicated arithmetic rather than a shared constant because the header
+        is staged through the chip layer and painted later -- there is nothing
+        to ask at the time the badge needs to know.
+        """
+        return int(max(10, height * 0.018)) + 43
 
     def _draw_cycle_counter(
         self, cv2_mod: Any, frame: Any, cycle_num: int, width: int,
@@ -901,11 +1068,12 @@ class VideoVisualizer:
             return
         text = f"{self._cycle_noun} {cycle_num} of {self._total_cycles}"
         font = cv2_mod.FONT_HERSHEY_SIMPLEX
-        scale = 0.45
+        scale = max(0.32, min(0.45, width / 900 * 0.45))
         thick = 1
         (tw, _th), _ = cv2_mod.getTextSize(text, font, scale, thick)
-        x = width - tw - 18 - 10
-        y = 55
+        x = max(2, width - tw - 18 - 10)
+        # Sits under whatever row the phase badge ended up on.
+        y = getattr(self, "_phase_badge_bottom", 45) + 12
         cv2_mod.putText(
             frame, text, (x, y),
             font, scale, (200, 200, 200), thick, cv2_mod.LINE_AA,
