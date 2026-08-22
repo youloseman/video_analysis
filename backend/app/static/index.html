@@ -1760,6 +1760,58 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
            Filled by checkClip() from the browser's own metadata. -->
       <ul class="preflight hidden" id="preflight"></ul>
 
+      <!-- Which setup this was filmed on. Sits next to the clip rather than
+           on a settings screen because it is a property of THIS recording:
+           asking afterwards gets you an honest shrug. -->
+      <div class="profilefield" id="profileField">
+        <label for="profileSel">Filmed on</label>
+        <select id="profileSel" aria-describedby="profileHint"></select>
+        <input id="profileNew" class="hidden" type="text" maxlength="60"
+               placeholder="Name it — e.g. Road bike, TT bike, Vaporflys"
+               aria-label="Name for the new setup">
+        <button class="btn btn-ghost btn-sm hidden" id="profileSave" type="button">Save</button>
+        <button class="btn btn-ghost btn-sm hidden" id="profileCancel" type="button">Cancel</button>
+      </div>
+      <p class="hint profilehint" id="profileHint"></p>
+
+      <!-- Height. Running only, because it is the only place it changes an
+           answer: a side view measures everything as a fraction of the
+           picture, and this is the one real length that turns those fractions
+           into centimetres. Optional, remembered on the account, and it says
+           what happens without it rather than nagging. -->
+      <div class="profilefield hidden" id="heightField">
+        <label for="heightInput">Your height</label>
+        <input id="heightInput" type="number" inputmode="numeric" min="120" max="230"
+               placeholder="cm" aria-describedby="heightHint">
+        <span class="hunit">cm</span>
+      </div>
+      <p class="hint profilehint hidden" id="heightHint"></p>
+
+      <!-- Overlay toggle (video only) -->
+      <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
+        <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
+      </label>
+
+      <!-- Submit -->
+      <button class="btn btn-go btn-block" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
+        Analyze Technique
+      </button>
+      <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
+      <p class="quota-line" id="quota">Free account · monthly analyses included</p>
+
+      <!-- What happens to the footage, said where the footage is handed over.
+           Every claim here is one the privacy policy already makes and the
+           code already keeps: only numbers reach Gemini, photo analysis never
+           touches the disk, clips expire on the tier's retention schedule. -->
+      <ul class="trustrow">
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          Your clip never reaches an AI service &mdash; only anonymous joint angles do</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          No ad trackers, nothing sold &mdash; <a href="/privacy">privacy policy</a></li>
+      </ul>
+
       <!-- Capture guide. Ordered by measured effect, not by how obvious the
            rules sound: on one test clip, cropping the same footage tighter
            around the athlete took the pose model's left/right leg confusion
@@ -1848,58 +1900,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           </ul>
         </details>
       </section>
-
-      <!-- Which setup this was filmed on. Sits next to the clip rather than
-           on a settings screen because it is a property of THIS recording:
-           asking afterwards gets you an honest shrug. -->
-      <div class="profilefield" id="profileField">
-        <label for="profileSel">Filmed on</label>
-        <select id="profileSel" aria-describedby="profileHint"></select>
-        <input id="profileNew" class="hidden" type="text" maxlength="60"
-               placeholder="Name it — e.g. Road bike, TT bike, Vaporflys"
-               aria-label="Name for the new setup">
-        <button class="btn btn-ghost btn-sm hidden" id="profileSave" type="button">Save</button>
-        <button class="btn btn-ghost btn-sm hidden" id="profileCancel" type="button">Cancel</button>
-      </div>
-      <p class="hint profilehint" id="profileHint"></p>
-
-      <!-- Height. Running only, because it is the only place it changes an
-           answer: a side view measures everything as a fraction of the
-           picture, and this is the one real length that turns those fractions
-           into centimetres. Optional, remembered on the account, and it says
-           what happens without it rather than nagging. -->
-      <div class="profilefield hidden" id="heightField">
-        <label for="heightInput">Your height</label>
-        <input id="heightInput" type="number" inputmode="numeric" min="120" max="230"
-               placeholder="cm" aria-describedby="heightHint">
-        <span class="hunit">cm</span>
-      </div>
-      <p class="hint profilehint hidden" id="heightHint"></p>
-
-      <!-- Overlay toggle (video only) -->
-      <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
-        <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
-      </label>
-
-      <!-- Submit -->
-      <button class="btn btn-go btn-block" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
-        Analyze Technique
-      </button>
-      <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
-      <p class="quota-line" id="quota">Free account · monthly analyses included</p>
-
-      <!-- What happens to the footage, said where the footage is handed over.
-           Every claim here is one the privacy policy already makes and the
-           code already keeps: only numbers reach Gemini, photo analysis never
-           touches the disk, clips expire on the tier's retention schedule. -->
-      <ul class="trustrow">
-        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          Your clip never reaches an AI service &mdash; only anonymous joint angles do</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          No ad trackers, nothing sold &mdash; <a href="/privacy">privacy policy</a></li>
-      </ul>
     </div>
   </section>
 
