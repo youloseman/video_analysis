@@ -41,6 +41,13 @@ from app.services.video_analysis.biomechanics.tracking_diagnostics import (
     FRAMING_TINY_PX,
 )
 
+# The long-edge cap every clip is shrunk to before detection. Imported rather
+# than restated: it is what decides whether a file had enough pixels to spend.
+try:  # pragma: no cover - the runner owns this constant
+    from app.services.video_analysis.runner import DETECT_MAX_LONG_EDGE
+except Exception:  # noqa: BLE001 - runner pulls in the ML stack
+    DETECT_MAX_LONG_EDGE = 1280
+
 # Athlete height, in pixels of the frame the DETECTOR sees (after the long-edge
 # cap -- a 4K clip and a 720p clip of the same framing score the same, which is
 # the point: megapixels buy nothing here, filling the frame buys everything).
@@ -73,7 +80,18 @@ def _check(
     }
 
 
-def _framing_check(framing: dict[str, Any] | None) -> dict[str, Any]:
+def _framing_check(
+    framing: dict[str, Any] | None, frame_height: int | None = None,
+) -> dict[str, Any]:
+    """How many pixels of athlete the pose model got, and which fault cost them.
+
+    Two very different faults land on the same number, and they have opposite
+    fixes. Standing too far away wastes the frame you have; sending a
+    downscaled export wastes the frame you had. Telling somebody to zoom in
+    when their framing was fine and their FILE is 554 px tall is advice they
+    cannot act on, so the two are separated by asking what the same framing
+    would have measured at full detector resolution.
+    """
     px = (framing or {}).get("subject_height_px")
     frac = (framing or {}).get("subject_height_frac")
     if not px:
@@ -90,9 +108,30 @@ def _framing_check(framing: dict[str, Any] | None) -> dict[str, Any]:
             "framing", "How much of the frame you fill", "good", "high",
             f"{px} px tall{pct}", target,
         )
-    # How much bigger they need to get, phrased as the thing they actually do.
-    zoom = FRAMING_TARGET_PX / float(px)
+
     status = "bad" if px < FRAMING_WARN_PX else "warn"
+
+    # Would this framing have been enough on a full-resolution file? If so the
+    # athlete did nothing wrong and the pixels were lost before we saw them.
+    low_res = bool(
+        frac and frame_height
+        and frame_height < DETECT_MAX_LONG_EDGE
+        and frac * DETECT_MAX_LONG_EDGE >= FRAMING_GOOD_PX
+    )
+    if low_res:
+        return _check(
+            "framing", "Resolution of the file", status, "high",
+            f"only {px} px of athlete{pct}, from a {frame_height} px tall file",
+            f"{FRAMING_TARGET_PX} px or more of athlete",
+            "Your framing is fine -- the file itself is small. This is a "
+            "downscaled export rather than the original recording, and no "
+            "amount of zooming can put the detail back. Send the clip straight "
+            "from the camera roll, and avoid anything that re-compresses it on "
+            "the way (messaging apps and 'optimised' exports are the usual "
+            "culprits).",
+        )
+
+    zoom = FRAMING_TARGET_PX / float(px)
     return _check(
         "framing", "How much of the frame you fill", status, "high",
         f"{px} px tall{pct}", target,
@@ -163,11 +202,15 @@ def _leg_identity_check(
     return _check(
         "leg_identity", "Telling your left leg from your right",
         "bad" if leg_swap_pct >= bad else "warn", "high", measured, target,
-        "This is almost always a symptom of the framing above rather than a "
-        "fault of its own. If the framing was fine, the other two causes are a "
-        "body reading as a dark silhouette (keep the light behind the camera) "
-        "and a view almost exactly side-on -- a few degrees of angle helps "
-        "separate the legs.",
+        # Deliberately points at "how few pixels of you there were" rather than
+        # at "framing": the row above blames the framing or the file depending
+        # on which lost the pixels, and this line has to read correctly under
+        # either.
+        "This is almost always a symptom of how few pixels of you there were "
+        "(the row above) rather than a fault of its own. If that was fine, the "
+        "other two causes are a body reading as a dark silhouette -- keep the "
+        "light behind the camera, not behind the athlete -- and a view almost "
+        "exactly side-on, where a few degrees of angle helps separate the legs.",
     )
 
 
@@ -247,9 +290,31 @@ def _camera_motion_check(motion: dict[str, Any] | None) -> dict[str, Any] | None
     )
 
 
-def _time_base_check(time_base_uncertain: Any) -> dict[str, Any] | None:
+def _time_base_check(
+    time_base_uncertain: Any, legs_unreliable: bool = False,
+) -> dict[str, Any] | None:
+    """Slow motion -- but only when nothing else already explains the symptom.
+
+    The flag is raised by "cadence was unmeasurable while the frame-counted
+    metrics computed", and slow motion is the usual cause. It is not the only
+    one: legs the model could not tell apart destroy the cadence signal just as
+    thoroughly. Reporting slow motion in that case sends somebody to check a
+    setting that was never on, while the real fault sits two rows above with
+    its own fix.
+    """
     if not time_base_uncertain:
         return None
+    if legs_unreliable:
+        return _check(
+            "time_base", "Timing metrics", "warn", "medium",
+            "cadence could not be measured, so ground contact and flight time "
+            "are withheld",
+            "measurable cadence",
+            "Most likely a consequence of the leg tracking above rather than a "
+            "separate fault -- a stride the model cannot follow has no cadence "
+            "to read. Worth checking slow motion is off, but fix the framing "
+            "first.",
+        )
     return _check(
         "time_base", "Playback speed", "bad", "medium",
         "reads as slow motion (or a very slow pace)",
@@ -282,16 +347,18 @@ def build_capture_report(
     tracking = tracking_stability or {}
     framing = framing if framing is not None else (tracking.get("framing") or {})
 
-    framing_check = _framing_check(framing)
+    framing_check = _framing_check(framing, frame_height)
     framing_ok = framing_check["status"] == "good"
+    legs = _leg_identity_check(tracking.get("leg_swap_pct"), sport_type)
+    legs_unreliable = bool(legs and legs["status"] in ("warn", "bad"))
 
     checks = [
         framing_check,
         _orientation_check(frame_width, frame_height, framing_ok),
-        _leg_identity_check(tracking.get("leg_swap_pct"), sport_type),
+        legs,
         _camera_motion_check(camera_motion),
         _duration_check(duration_s, sampling_degraded),
-        _time_base_check(time_base_uncertain),
+        _time_base_check(time_base_uncertain, legs_unreliable),
     ]
     checks = [c for c in checks if c is not None]
     checks.sort(key=lambda c: (

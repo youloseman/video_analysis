@@ -70,6 +70,39 @@ def test_framing_says_how_much_to_zoom_rather_than_just_saying_too_small():
     assert "275 px" in c["measured"]
 
 
+def test_a_downscaled_export_is_not_blamed_on_standing_too_far_away():
+    """Real clip, 2026-08-21: framed at 37% of the frame, but the FILE was
+    554 px tall. Telling somebody to zoom in 2.7x is advice they cannot act
+    on -- the pixels were gone before we saw them."""
+    c = check(report(frame_width=312, frame_height=554,
+                     framing={"subject_height_px": 207,
+                              "subject_height_frac": 0.373}), "framing")
+    assert c["status"] == "bad"
+    assert c["label"] == "Resolution of the file"
+    assert "Your framing is fine" in c["action"]
+    assert "Zoom in" not in c["action"]      # the one instruction that cannot help
+
+
+def test_genuinely_standing_too_far_away_still_gets_told_to_zoom():
+    """The same small pixel count, but from a full-resolution file: now the
+    framing really is the fault."""
+    c = check(report(frame_width=1080, frame_height=1920,
+                     framing={"subject_height_px": 207,
+                              "subject_height_frac": 0.16}), "framing")
+    assert c["label"] == "How much of the frame you fill"
+    assert "Zoom in" in c["action"]
+
+
+def test_a_small_file_that_was_ALSO_badly_framed_is_told_to_zoom():
+    """A low-resolution file only excuses the framing when the framing would
+    otherwise have been enough."""
+    c = check(report(frame_width=312, frame_height=554,
+                     framing={"subject_height_px": 55,
+                              "subject_height_frac": 0.10}), "framing")
+    assert c["label"] == "How much of the frame you fill"
+    assert "Zoom in" in c["action"]
+
+
 def test_framing_that_could_not_be_measured_says_so_instead_of_guessing():
     c = check(report(framing={}), "framing")
     assert c["status"] == "unknown"
@@ -100,11 +133,13 @@ def test_landscape_is_not_nagged_about_when_the_frame_was_filled_anyway():
 
 # --- leg identity: the symptom that decides the metrics --------------------
 
-def test_swapped_legs_are_reported_as_a_symptom_of_framing():
+def test_swapped_legs_are_reported_as_a_symptom_not_a_separate_fault():
+    """And phrased so it reads correctly whether the row above blamed the
+    framing or the file's resolution."""
     c = check(report(tracking_stability={"leg_swap_pct": 45.6}), "leg_identity")
     assert c["status"] == "bad"
     assert "45.6%" in c["measured"]
-    assert "symptom of the framing" in c["action"]
+    assert "symptom of how few pixels of you there were" in c["action"]
 
 
 def test_clean_leg_tracking_passes():
@@ -180,6 +215,18 @@ def test_slow_motion_only_appears_when_it_happened():
     c = check(report(time_base_uncertain=True), "time_base")
     assert c["status"] == "bad"
     assert "slow-motion off" in c["action"]
+
+
+def test_slow_motion_is_not_blamed_when_the_legs_already_explain_it():
+    """Legs the model could not follow destroy the cadence signal just as
+    thoroughly as slow motion does. Reporting slow motion then sends somebody
+    to check a setting that was never on, while the real fault sits two rows
+    above with its own fix."""
+    c = check(report(time_base_uncertain=True,
+                     tracking_stability={"leg_swap_pct": 58.3}), "time_base")
+    assert c["status"] == "warn"
+    assert "consequence of the leg tracking above" in c["action"]
+    assert "fix the framing first" in c["action"]
 
 
 # --- ordering: the point of the whole thing --------------------------------
