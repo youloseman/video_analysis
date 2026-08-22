@@ -120,7 +120,7 @@ def _migrate_users(conn) -> None:
         # copy of it carries a one-click unsubscribe.
         conn.execute(text(
             "ALTER TABLE users ADD COLUMN notify_on_ready BOOLEAN "
-            "NOT NULL DEFAULT 1"
+            "NOT NULL DEFAULT true"
         ))
         logger.info("MIGRATED", change="users.notify_on_ready added")
 
