@@ -904,6 +904,33 @@ def run_analysis(
         except Exception as e:  # noqa: BLE001
             logger.warning("KINOGRAM_FAILED", err=str(e))
 
+    # Step 6c: the rider's action plan. A runner's is drills to practise; a
+    # rider's is adjustments to make to the bike -- component, current value,
+    # target, how far to move it, what it costs. Same intent ("what do I do
+    # now"), different shape, so it gets its own key and no renderer has to
+    # guess which one it received.
+    #
+    # Built BEFORE the coaching call on purpose: the prose is handed these
+    # adjustments so the two halves of the report cannot disagree about which
+    # way the saddle should go.
+    fit_plan = None
+    if is_bike:
+        try:
+            from app.services.video_analysis.biomechanics.action_plan_builder import (
+                action_plan_to_json,
+                build_action_plan,
+            )
+            fit_plan = action_plan_to_json(build_action_plan(
+                position=cycling_position or "road_hoods",
+                angle_statistics=angle_stats,
+                sport_specific_metrics=summary,
+                technique_score=scoring.get("overall_score") or 0,
+                letter_grade=scoring.get("letter_grade") or "--",
+                detected_issues=issues,
+            ))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("FIT_PLAN_FAILED", err=str(e))
+
     # Step 7 (Milestone 5): LLM coaching recommendations. Skips gracefully when
     # no API key is configured or the call fails -- never blocks the result.
     ai_recommendations = None
@@ -919,13 +946,14 @@ def run_analysis(
             angle_statistics=angle_stats,
             sport_specific_metrics=summary,
             cycling_position=cycling_position if is_bike else None,
+            fit_plan=fit_plan,
         )
 
     # Step 8: structured training plan (running only, deterministic -- no LLM).
     # Maps detected issues to concrete corrective drills (with cue, weeks, and
     # an optional Academy link) so the result carries an actionable "what to do
     # next" plan, not just prose. Wrapped so a builder error never kills the
-    # result. Cycling has its own (not-yet-wired) builder -- out of scope here.
+    # result.
     training_plan = None
     if sport_type == "run":
         try:
@@ -940,6 +968,7 @@ def run_analysis(
             training_plan = running_action_plan_to_json(plan)
         except Exception as e:  # noqa: BLE001
             logger.warning("TRAINING_PLAN_FAILED", err=str(e))
+
 
     return {
         "status": "completed",
@@ -957,6 +986,7 @@ def run_analysis(
         "kinogram": kinogram_meta,
         "ai_recommendations": ai_recommendations,
         "training_plan": training_plan,
+        "fit_plan": fit_plan,
         "angle_statistics": angle_stats,
         "detected_issues": issues,
         "sport_specific_metrics": summary,

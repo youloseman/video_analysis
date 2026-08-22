@@ -297,9 +297,37 @@ def build_metrics_block(
     return _run_data_block(score, grade, issues, summary, angle_stats)
 
 
+def _fit_plan_block(fit_plan: dict | None) -> str:
+    """The bike adjustments the deterministic builder already decided on.
+
+    Handed to the coach so the two halves of the report agree. Without it the
+    prose is written blind to the fit rows printed beside it, and the reader
+    gets "raise your saddle" next to a table telling them to lower it -- the
+    numbers came from the same measurement, so the disagreement is ours, not
+    the athlete's.
+    """
+    diags = (fit_plan or {}).get("diagnostics") or []
+    if not diags:
+        return ""
+    lines = [
+        "The fit adjustments already shown to this rider, in fitting order "
+        "(do NOT contradict them; you may explain or reinforce them):",
+    ]
+    for d in diags:
+        target = d.get("target_range") or []
+        span = f"{target[0]}-{target[1]}" if len(target) == 2 else "?"
+        lines.append(
+            f"- {d.get('component', '?')}: {d.get('metric_name', '?')} is "
+            f"{d.get('current_value', '?')} (target {span}) -> "
+            f"{d.get('action', '?')} {d.get('amount', '')}".rstrip()
+        )
+    return "\n".join(lines)
+
+
 def _build_prompt(
     sport_type: str, score: Any, grade: Any, position: str | None,
     issues: list[dict], angle_stats: dict, summary: dict,
+    fit_plan: dict | None = None,
 ) -> str:
     data = build_metrics_block(
         sport_type, score, grade, position, issues, angle_stats, summary,
@@ -328,9 +356,11 @@ def _build_prompt(
             "legs on this clip -- treat leg-based numbers (cadence, stride, "
             "knee angles) as approximate."
         )
+    fit = _fit_plan_block(fit_plan)
     return (
-        f"{data}{caveat}\n\n{_issues_block(issues)}\n\n"
-        "Write the coaching feedback now, following the required section structure."
+        f"{data}{caveat}\n\n{_issues_block(issues)}"
+        + (f"\n\n{fit}" if fit else "")
+        + "\n\nWrite the coaching feedback now, following the required section structure."
     )
 
 
@@ -342,6 +372,7 @@ def generate_recommendations(
     angle_statistics: dict[str, Any],
     sport_specific_metrics: dict[str, Any],
     cycling_position: str | None = None,
+    fit_plan: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Return ``{"report": markdown, "model": name}`` or ``None`` (graceful)."""
     if not settings.gemini_api_key:
@@ -358,6 +389,7 @@ def generate_recommendations(
     prompt = _build_prompt(
         sport_type, technique_score, letter_grade, cycling_position,
         detected_issues or [], angle_statistics or {}, sport_specific_metrics or {},
+        fit_plan,
     )
 
     try:

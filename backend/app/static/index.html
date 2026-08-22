@@ -1085,6 +1085,33 @@ h2.sec + .speedline{margin-bottom:24px}
 
 /* training plan — prioritised corrective drill cards */
 #planCards{display:flex;flex-direction:column;gap:12px}
+/* ---- Fit adjustments (cycling) ----
+   Rows, not cards: these are read in order and compared to each other, and a
+   stack of cards makes each one look like an independent suggestion. */
+#fitRows{display:flex;flex-direction:column;gap:10px}
+.fit-row{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;align-items:start;
+  padding:14px 16px;border:1px solid var(--c-line);border-radius:var(--radius);
+  border-left:4px solid var(--c-line);background:#fff}
+.fit-row.good{border-left-color:var(--st-good-fill)}
+.fit-row.warn{border-left-color:var(--c-warn);background:rgba(201,123,16,.04)}
+.fit-row.bad{border-left-color:var(--st-bad);background:rgba(241,85,63,.04)}
+.fit-n{width:26px;height:26px;border-radius:50%;background:var(--c-panel-blue);color:var(--c-blue);
+  font-family:var(--f-mono);font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:center}
+.fit-row.bad .fit-n{background:var(--st-bad);color:#fff}
+.fit-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fit-part{font-weight:800;color:var(--c-navy);font-size:15px}
+.fit-metric{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-faint);font-weight:700}
+.fit-nums{font-family:var(--f-mono);font-size:15px;color:var(--c-ink);margin-top:4px}
+.fit-nums b{color:var(--c-navy)}
+.fit-arrow{color:var(--c-ink-faint);padding:0 2px}
+.fit-action{margin-top:6px;font-size:14px;font-weight:700;color:var(--c-ink)}
+.fit-amount{font-family:var(--f-mono);font-weight:600;color:var(--c-blue)}
+.fit-why{margin-top:4px;font-size:13px;color:var(--c-ink-soft);line-height:1.5;max-width:70ch}
+.fit-med .fit-part{color:var(--st-bad)}
+.fit-good{margin-top:14px;font-size:13px;color:var(--c-ink-soft);display:flex;gap:8px;align-items:flex-start}
+.fit-good .ic{width:14px;height:14px;flex:none;margin-top:3px;color:var(--st-good)}
+@media(max-width:640px){ .fit-row{padding:12px} .fit-nums{font-size:14px} }
 .plan-card{border:1px solid var(--c-line);border-radius:var(--radius-lg);background:#fff;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--c-blue)}
 .plan-top{display:flex;align-items:center;gap:14px}
 .plan-n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--c-blue);color:#fff;font-family:var(--f-mono);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center}
@@ -1947,6 +1974,20 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </div>
       <p class="hint" style="text-align:left;margin:0 0 16px">Do these, then re-film and open <b>Before / after</b> to see the change.</p>
       <div id="planCards"></div>
+    </div>
+
+    <!-- The cycling counterpart. A rider's "what now" is not a drill to
+         practise, it is a part to move and a distance to move it, so it gets
+         its own block rather than being squeezed into the drill cards. -->
+    <div class="block hidden" id="fitBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg> Fit adjustments</div>
+        <h3>What to change on the bike</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hint" id="fitLede" style="text-align:left;margin:0 0 16px"></p>
+      <div id="fitRows"></div>
+      <div id="fitGood"></div>
     </div>
 
     <div class="block" id="issuesBlock">
@@ -3657,6 +3698,7 @@ function renderPhoto(res){
 const UNLOCK_COPY={
   coaching:'AI coaching & personal action plan',
   plan:'Corrective drills — what to actually do about it',
+  fit:'Fit adjustments — what to move on the bike, and by how much',
   angles:'Exact joint-angle measurements',
   issues:'Every technique issue we found',
   ranges:'Cadence, ranges & benchmark metrics',
@@ -4775,6 +4817,74 @@ function renderTrainingPlan(plan){
   block.classList.remove('hidden');
 }
 
+/* The cycling plan. Ordered by the builder in fitting sequence (saddle height
+   before fore/aft before bars), which is the order a fitter actually works in
+   — change the bars first and the saddle numbers you measured stop being true.
+   Each row says the part, where it is now, where it should be, and what moving
+   it costs, because an adjustment with no trade-off named is advice you cannot
+   argue with. Medical warnings render even when nothing else does: they are a
+   quality signal, and those are never gated or hidden. */
+const FIT_STATUS_CLS={optimal:'good',acceptable:'good',needs_adjustment:'warn',
+                      warning:'warn',critical:'bad',medical_risk:'bad',unknown:''};
+/* The builder speaks in tokens so its logic stays testable; the reader gets a
+   sentence. Anything unmapped falls back to the token with underscores opened
+   out, so a new action added to the builder degrades to readable, not blank. */
+const FIT_ACTION={
+  raise_saddle:'Raise the saddle',
+  lower_saddle:'Lower the saddle',
+  move_saddle_back:'Slide the saddle back',
+  raise_bars:'Raise the bars',
+  lower_bars:'Lower the bars',
+  consider_shorter_cranks:'Consider shorter cranks',
+  reassess_after_saddle_height:'Re-measure after the saddle height is set',
+};
+const FIT_PART={
+  saddle_height:'Saddle height',
+  saddle_fore_aft:'Saddle fore / aft',
+  bar_position:'Bar position',
+  crank_length:'Crank length',
+};
+const fitWords=s=>String(s||'').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
+function renderFitPlan(plan){
+  const block=$('#fitBlock'); if(!block) return;
+  const diags=(plan&&plan.diagnostics)||[];
+  const warns=(plan&&plan.medical_warnings)||[];
+  if(!diags.length && !warns.length){
+    block.classList.add('hidden');
+    $('#fitRows').innerHTML=''; $('#fitGood').innerHTML=''; $('#fitLede').textContent='';
+    return;
+  }
+  $('#fitLede').textContent = plan.fitting_sequence_note
+    || 'Work down the list in order — each change moves the ones below it.';
+  $('#fitRows').innerHTML = diags.map((d,i)=>{
+    const cls=FIT_STATUS_CLS[(d.status||'').toLowerCase()]||'';
+    const now=(d.current_value!=null)?`${esc(String(d.current_value))}`:'—';
+    const target=Array.isArray(d.target_range)&&d.target_range.length===2
+      ? `${esc(String(d.target_range[0]))}–${esc(String(d.target_range[1]))}` : '';
+    const amount=d.amount?`<span class="fit-amount">${esc(d.amount)}</span>`:'';
+    return `<div class="fit-row ${cls}">
+      <span class="fit-n">${i+1}</span>
+      <div class="fit-body">
+        <div class="fit-head"><span class="fit-part">${esc(FIT_PART[d.component]||fitWords(d.component))}</span>
+          ${d.metric_name?`<span class="fit-metric">${esc(fitWords(d.metric_name))}</span>`:''}</div>
+        <div class="fit-nums"><b>${now}</b>${target?` <span class="fit-arrow">→</span> <b>${target}</b>`:''}</div>
+        ${d.action?`<div class="fit-action">${esc(FIT_ACTION[d.action]||fitWords(d.action))} ${amount}</div>`:''}
+        ${d.reason?`<div class="fit-why">${esc(d.reason)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('') + warns.map(w=>
+    `<div class="fit-row bad fit-med"><span class="fit-n" aria-hidden="true">!</span>
+      <div class="fit-body"><div class="fit-head"><span class="fit-part">Worth knowing</span></div>
+      <div class="fit-why">${esc(w.message||'')}</div></div></div>`).join('');
+  // What already sits in range, said once and quietly: a fit report that only
+  // lists faults reads as if nothing about the position works.
+  const good=(plan.good_metrics||[]).map(g=>esc(g.label||g.metric||'')).filter(Boolean);
+  $('#fitGood').innerHTML = good.length
+    ? `<p class="fit-good"><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+         Already in range: ${good.join(' · ')}</p>` : '';
+  block.classList.remove('hidden');
+}
+
 /* Analysis-confidence badge: a clickable pill (high/medium/low) that expands
    to show the backend explanation. Informational only — never hides anything. */
 const CONF_META={
@@ -4989,8 +5099,10 @@ function render(job){
     cb.classList.remove('hidden');
   } else cb.classList.add('hidden');
 
-  // Training plan (structured corrective drills mapped to detected issues)
+  // What to do next: drills for a runner, bike adjustments for a rider. Both
+  // are called unconditionally — each hides its own block when it has nothing.
   renderTrainingPlan(r.training_plan);
+  renderFitPlan(r.fit_plan);
 
   // findings — sort by severity so the biggest issue always leads, regardless
   // of the order the backend returned them; the top one gets a "Fix first" cue.

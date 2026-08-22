@@ -67,7 +67,7 @@ _PHOTO_WARNINGS_KEY = "warnings"
 # What an upgrade unlocks (shown by the frontend on the blurred sections).
 _UNLOCKS = [
     "coaching", "angles", "issues", "ranges", "kinogram", "video",
-    "second_phase", "export",
+    "second_phase", "export", "fit",
 ]
 
 # --------------------------------------------------------------------------
@@ -95,7 +95,8 @@ _PREVIEW_EXTRA = ("detected_issues", "ai_recommendations")
 # ``issues`` are absent -- they were just shown, and listing them would promise
 # the reader something they already have.
 _PREVIEW_UNLOCKS = [
-    "plan", "angles", "ranges", "kinogram", "video", "second_phase", "export",
+    "plan", "fit", "angles", "ranges", "kinogram", "video", "second_phase",
+    "export",
 ]
 
 ACCESS_FULL = "full"
