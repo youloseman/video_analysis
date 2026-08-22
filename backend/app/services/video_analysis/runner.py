@@ -982,6 +982,10 @@ def run_analysis(
         "technique_score": scoring.get("overall_score"),
         "letter_grade": scoring.get("letter_grade"),
         "score_breakdown": scoring.get("component_scores"),
+        # What the score was computed from. The weighted average renormalises
+        # over whatever was measurable, so without this a number from five
+        # measures is indistinguishable from one built on nine.
+        "score_coverage": scoring.get("coverage"),
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
         "overlay_video_path": overlay_video_path,
         "keyframe_base64": keyframe_base64,

@@ -124,6 +124,19 @@ def _front_matter(
             lines.append(f"cycling_position: {_yaml_str(label)}")
     if score is not None:
         lines.append(f"technique_score: {_yaml_str(str(score) + '/100 (' + str(grade or '--') + ')')}")
+        # The weighted average renormalises over the measures that survived, so
+        # the score alone cannot tell a reader how much of the rubric it covers.
+        cov = result.get("score_coverage") or {}
+        if cov.get("measures_total") and cov["measures_scored"] < cov["measures_total"]:
+            note = f"{cov['measures_scored']} of {cov['measures_total']} measures scored"
+            excluded = cov.get("excluded") or {}
+            if excluded:
+                note += "; not graded: " + "; ".join(
+                    f"{k} -- {v}" for k, v in excluded.items()
+                )
+            elif cov.get("missing"):
+                note += "; not measurable on this clip: " + ", ".join(cov["missing"])
+            lines.append(f"score_coverage: {_yaml_str(note)}")
     if confidence:
         lines.append(f"analysis_confidence: {confidence}")
     if result.get("quality_gate_triggered"):
@@ -580,6 +593,10 @@ def build_json(
             "technique_score": result.get("technique_score"),
             "letter_grade": result.get("letter_grade"),
             "score_breakdown": result.get("score_breakdown"),
+            # The score renormalises over whatever was measurable, so the
+            # receiving model needs to know how much of the rubric it covers
+            # before it reasons about the number.
+            "score_coverage": result.get("score_coverage"),
             "quality_gate_triggered": result.get("quality_gate_triggered"),
             "angle_statistics": result.get("angle_statistics"),
             "detected_issues": result.get("detected_issues"),

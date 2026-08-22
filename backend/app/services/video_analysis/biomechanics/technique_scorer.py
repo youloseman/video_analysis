@@ -102,6 +102,37 @@ def compute_weighted_score(
     return int(np.clip(weighted_sum / total_weight, 0, 100))
 
 
+def score_coverage(
+    component_scores: dict[str, float], weights: dict[str, float],
+    unscorable: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """What the score was actually computed from.
+
+    ``compute_weighted_score`` renormalises over whatever components are
+    present, which is the right arithmetic and a misleading presentation: a
+    clip missing four of nine measures produces a number that looks exactly
+    like one measured from all nine. The denominator changes and nothing says
+    so. This reports it, so the report can.
+
+    ``unscorable`` maps a component name to why it was deliberately excluded
+    (as opposed to simply absent) -- the two read very differently to somebody
+    deciding whether to trust the grade.
+    """
+    unscorable = unscorable or {}
+    scored = [c for c in weights if c in component_scores]
+    missing = [c for c in weights if c not in component_scores]
+    covered = sum(w for c, w in weights.items() if c in component_scores)
+    total = sum(weights.values()) or 1.0
+    return {
+        "scored": scored,
+        "missing": missing,
+        "excluded": unscorable,
+        "measures_scored": len(scored),
+        "measures_total": len(weights),
+        "weight_covered": round(covered / total, 3),
+    }
+
+
 def assign_grade(score: int) -> str:
     """Convert 0-100 score to letter grade."""
     if score >= 90:
@@ -123,6 +154,15 @@ def score_running(
     from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
 
     components: dict[str, float] = {}
+    # Components we refuse to score, and why. A guessed time base is the case
+    # this exists for: when the analyzer has to multiply an observed frequency
+    # by 4 or 8 to land on a plausible cadence, it says so in a warning -- and
+    # the score used to grade that guess as though it were a measurement. It
+    # cannot tell 8x slow motion of a runner from normal speed of somebody
+    # walking away in the distance, so the honest move is to grade what does
+    # not depend on the answer, and say the rest was left out.
+    excluded: dict[str, str] = {}
+    time_base_guessed = bool(summary.get("slow_motion_factor"))
 
     # Trunk lean. Presence is tested with `is not None`, NOT `> 0`: the value
     # is signed now (negative = leaning back), and the analyzer already omits
@@ -133,10 +173,17 @@ def score_running(
     if trunk is not None:
         components["trunk_lean"] = score_in_range(trunk, *RUNNING_REFERENCE["trunk_lean"])
 
-    # Cadence
+    # Cadence -- the one component that is a rate, and so the one the time base
+    # decides. Still reported to the athlete (with its warning); just not graded.
     cadence = summary.get("cadence_spm", 0)
     if cadence > 0:
-        components["cadence"] = score_in_range(cadence, *RUNNING_REFERENCE["cadence_spm"])
+        if time_base_guessed:
+            excluded["cadence"] = (
+                f"the clip reads as {summary['slow_motion_factor']}x slow motion, "
+                "so its timing is assumed rather than measured"
+            )
+        else:
+            components["cadence"] = score_in_range(cadence, *RUNNING_REFERENCE["cadence_spm"])
 
     # Knee angles (unprefixed key -- near-side only from running_analyzer).
     # Score the two gait-phase extremes, not the full-cycle mean: knee_max is
@@ -202,6 +249,7 @@ def score_running(
         "overall_score": overall,
         "letter_grade": assign_grade(overall),
         "component_scores": components,
+        "coverage": score_coverage(components, RUNNING_WEIGHTS, excluded),
     }
 
 
@@ -277,6 +325,7 @@ def score_cycling(
         "overall_score": overall,
         "letter_grade": assign_grade(overall),
         "component_scores": components,
+        "coverage": score_coverage(components, CYCLING_WEIGHTS),
     }
 
 

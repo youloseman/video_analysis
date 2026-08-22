@@ -1033,6 +1033,8 @@ h2.sec + .speedline{margin-bottom:24px}
 .score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:24px;margin-bottom:18px;line-height:1.7;border-top:1px solid var(--c-line);padding-top:16px}
 .score-meta b{color:var(--c-ink);font-weight:700}
 .score-meta .mono{font-family:var(--f-mono);font-weight:600;color:var(--c-navy)}
+/* why a measure was left out — subordinate to the count it explains */
+.score-meta .cov-why{display:inline-block;margin-top:2px;font-size:12px;opacity:.85}
 /* default: score/grade stack (wrapper is a plain block) — desktop unchanged */
 .sc-scorerow{display:block}
 /* Phone: tighten the saved-analysis scorecard — it read as mostly whitespace.
@@ -4945,6 +4947,38 @@ function renderTrainingPlan(plan){
   block.classList.remove('hidden');
 }
 
+/* What the score was computed from, said only when it was not everything.
+   The weighted average renormalises over the measures that survived, so a
+   number built on five of nine looks identical to one built on all nine —
+   which makes the missing four invisible exactly when they matter most.
+   Silent on a complete analysis: "scored on 9 of 9" is noise. */
+const COVERAGE_NAMES={
+  cadence:'cadence', trunk_lean:'trunk lean', overstride:'overstride',
+  phase_stability:'stride consistency', knee_contact:'knee at contact',
+  elbow_swing:'arm swing', vertical_osc:'vertical oscillation',
+  knee_swing:'knee in swing', waveform_similarity:'stride shape',
+  knee_bdc:'knee at the bottom', knee_tdc:'knee at the top',
+  trunk_angle:'trunk angle', elbow_angle:'elbow angle',
+  shoulder_angle:'shoulder angle', head_alignment:'head position',
+  pelvic_ratio:'pelvic tilt', forearm_tilt:'forearm tilt',
+  saddle_fit:'saddle fit',
+};
+const covName=k=>COVERAGE_NAMES[k]||String(k).replace(/_/g,' ');
+function coverageLine(cov){
+  if(!cov || !cov.measures_total) return '';
+  const missing=(cov.missing||[]).map(covName);
+  const excluded=cov.excluded||{};
+  if(!missing.length && !Object.keys(excluded).length) return '';
+  let line=`Scored on <span class="mono">${cov.measures_scored}</span> of `
+         + `<span class="mono">${cov.measures_total}</span> measures`;
+  // Why a measure was left out reads very differently from it simply being
+  // absent, so a deliberate exclusion is quoted rather than counted.
+  const why=Object.entries(excluded).map(([k,v])=>`${covName(k)} — ${esc(v)}`);
+  if(why.length) line+=`<br><span class="cov-why">Not graded: ${why.join('; ')}</span>`;
+  else if(missing.length) line+=`<br><span class="cov-why">Not measured on this clip: ${missing.join(', ')}</span>`;
+  return line;
+}
+
 /* The cycling plan. Ordered by the builder in fitting sequence (saddle height
    before fore/aft before bars), which is the order a fitter actually works in
    — change the bars first and the saddle numbers you measured stop being true.
@@ -5167,6 +5201,8 @@ function render(job){
   if(r.camera_side) parts.push(`Camera: <b>${esc(r.camera_side)} side</b>`);
   if(r.frames_analyzed!=null) parts.push(`<span class="mono">${r.frames_analyzed}</span> frames analyzed`);
   if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position))}</b>`);
+  const cov=coverageLine(r.score_coverage);
+  if(cov) parts.push(cov);
   $('#scoreMeta').innerHTML=parts.join('<br>');
 
   // analysis confidence badge (soft high/medium/low tier; hides nothing).

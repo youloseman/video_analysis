@@ -57,3 +57,7 @@ compare/
 
 # Scratch folder for clips and reports handed over for debugging
 upload/
+
+# Claude Code session-local permission grants (absolute machine paths)
+.claude/settings.json
+.claude/settings.local.json

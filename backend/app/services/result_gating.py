@@ -28,6 +28,11 @@ _SAFE_KEYS = frozenset({
     "processing_time_seconds",
     # headline score + grade (the hook that makes them want the detail)
     "technique_score", "letter_grade", "score",
+    # how much of the rubric that score was actually computed from. Same
+    # reasoning as _QUALITY_KEYS below: the free result IS the number, so a
+    # score built on five of nine measures must not read as a complete one.
+    # It names measures, never their values -- no paid number rides along.
+    "score_coverage",
     # the annotated keyframe -- rendered number-free + watermarked upstream
     "keyframe_base64", "thumbnail_base64",
     # whether the analyzer distrusted its own measurement (see _quality_block)

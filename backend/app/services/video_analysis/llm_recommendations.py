@@ -227,8 +227,10 @@ def _run_data_block(
         f"- Cadence: {_fmt(summary.get('cadence_spm'), ' spm')} (target ~170-185)"
         + (
             f" [clip is {summary['slow_motion_factor']}x slow motion; cadence, "
-            "ground contact and flight time were rescaled to real time, so "
-            "treat them as approximate]"
+            "ground contact and flight time were rescaled to real time on a "
+            "GUESSED multiplier. Cadence was therefore left OUT of the "
+            "technique score -- do not praise or fault it, say it needs a "
+            "normal-speed clip]"
             if summary.get("slow_motion_factor") else ""
         ),
         f"- Vertical oscillation: {_fmt(vosc, ' cm')} (lower is generally better)",
