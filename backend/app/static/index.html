@@ -1977,7 +1977,13 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
             <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg><span>Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close — a close-up wide lens bends the angles at the edges</span></li>
             <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span><b>5–10 seconds with you actually in shot</b>, one person in frame — start recording once you&rsquo;re already running, not before</span></li>
             <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>A <b>treadmill</b> is the easiest way to get all of this at once: you stay put, so the camera can sit close, still, and pointed at one spot</span></li>
-            <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Normal speed — not slow-motion (it distorts cadence &amp; contact time)</span></li>
+            <!-- Fork A (2026-08-22, Artur): accept both speeds, be honest about
+                 the trade instead of banning one. Slow-mo gives the pose model
+                 more frames per stride, so joint angles get sharper — but the
+                 real-time base has to be guessed from the stride rate, so the
+                 time metrics are estimates and cadence stays out of the score
+                 (see technique_scorer: a guessed multiplier is not graded). -->
+            <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Normal speed or slow-mo — <b>both work</b>. Slow-mo sharpens joint detail; its cadence &amp; timing are estimates and aren&rsquo;t graded</span></li>
             <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Light behind the camera, not behind you — a silhouette loses limbs</span></li>
           </ul>
         </details>
