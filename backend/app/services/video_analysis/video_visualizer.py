@@ -108,6 +108,7 @@ class VideoVisualizer:
         angle_stats: dict[str, Any] | None = None,
         summary: dict[str, Any] | None = None,
         hide_angle_values: bool = False,
+        annotation_level: str = "material",
     ):
         self.video_path = video_path
         self.frame_data_list = frame_data_list
@@ -146,6 +147,14 @@ class VideoVisualizer:
             sport_type, summary, None,
             cycling_position=cycling_position,
         )
+        # Which joints get a numbered callout. "material" annotates only the
+        # ones this clip actually has something to say about; "all" is the old
+        # behaviour, every joint on every frame. Default is material because a
+        # frame carrying six chips is read as decoration -- the table below the
+        # video is where every number lives, and it is not competing for the
+        # athlete's attention with their own footage.
+        self.annotation_level = annotation_level
+        self._material_keys = self._pick_material_keys()
 
         # Phase overlay (swim + run): pre-compute per-frame phase sequence and
         # a cycle counter (swim = strokes, run = strides). Sport-specific config
@@ -523,6 +532,10 @@ class VideoVisualizer:
             }
 
             for cfg in self.label_configs:
+                # Quiet joints keep their skeleton but lose the arc and the
+                # callout -- see _pick_material_keys.
+                if not self._annotates(str(cfg["key"])):
+                    continue
                 # Use per-frame angle value (not mean)
                 angle_val = frame_angles.get(cfg["key"])
                 if angle_val is None or np.isnan(angle_val):
@@ -605,7 +618,7 @@ class VideoVisualizer:
                         ext_y = shy + int(dy_ext * 0.5)
                         _draw_dashed_line(cv2_mod, frame, (shx, shy), (ext_x, ext_y), (180, 180, 255), 1)
 
-                        if eav >= MIN_OVERLAY_VISIBILITY:
+                        if eav >= MIN_OVERLAY_VISIBILITY and self._annotates("head_alignment"):
                             if self.hide_angle_values:
                                 h_status, h_text = "muted", "LOCKED"
                             else:
@@ -625,7 +638,7 @@ class VideoVisualizer:
 
             # Pelvic ratio (use summary average)
             pelvic = self.summary.get("pelvic_ratio", 0)
-            if pelvic > 0 and bh_px > 40:
+            if pelvic > 0 and bh_px > 40 and self._annotates("pelvic_ratio"):
                 from app.services.video_analysis.biomechanics.cycling_positions import get_cycling_reference
                 ref = get_cycling_reference(self.cycling_position)
                 p_min, p_max = ref["pelvic_ratio"]
@@ -675,6 +688,91 @@ class VideoVisualizer:
 
         # -- 6. Paint the header + all chips in a single PIL pass --
         return chips.flush()
+
+    # Share of a clip's readable frames that must sit outside the reference
+    # band before a joint earns a callout of its own. Well under half: a fault
+    # that shows up in a quarter of the stride is still a fault, but a joint
+    # that only grazes the band on a handful of frames is noise.
+    _MATERIAL_FRAME_SHARE = 0.25
+    # Always annotated. These carry the score in both sports -- knee extension
+    # is the headline number of a bike fit and trunk lean of a running stride --
+    # so their absence would read as "not measured" rather than as "fine".
+    _HEADLINE_KEYS = ("knee", "trunk")
+    # Ceiling on joint callouts per frame. Four labelled joints over a moving
+    # body is about what a person can read; past that the frame is decoration.
+    _MAX_CALLOUTS = 4
+
+    def _pick_material_keys(self) -> set[str]:
+        """Joints whose readings this clip actually has something to say about.
+
+        Decided once, over the whole clip, rather than per frame: a chip that
+        blinks in and out as a value crosses its band mid-stride is harder to
+        read than one that never appears at all.
+        """
+        keys = {str(cfg["key"]) for cfg in self.label_configs}
+        if self.annotation_level == "all":
+            return keys
+
+        def is_headline(key: str) -> bool:
+            # Match on whole words, so "trunk" catches both the bike's
+            # trunk_angle and the run's trunk_lean, and "knee" catches
+            # left_knee / right_knee without also catching a hypothetical
+            # kneecap_something.
+            parts = key.split("_")
+            return any(h in parts for h in self._HEADLINE_KEYS)
+
+        material = {k for k in keys if is_headline(k)}
+        scored: list[tuple[float, float, str]] = []
+        for cfg in self.label_configs:
+            key = str(cfg["key"])
+            if key in material:
+                continue
+            values = self.analyzer.angle_history.get(key) or []
+            opt_min, opt_max = cfg["optimal"]
+            readable = flagged = bad = 0
+            for val in values:
+                if val is None or np.isnan(val):
+                    continue
+                readable += 1
+                status = overlay_style.status_for(val, opt_min, opt_max)
+                if status != "good":
+                    flagged += 1
+                if status == "bad":
+                    bad += 1
+            if readable and flagged / readable >= self._MATERIAL_FRAME_SHARE:
+                scored.append((bad / readable, flagged / readable, key))
+
+        # Worst first, so the cap drops the mildest rather than whichever the
+        # config happened to list last.
+        for _, _, key in sorted(scored, reverse=True):
+            if len(material) >= self._MAX_CALLOUTS:
+                break
+            material.add(key)
+
+        # A sport whose config names neither a knee nor a trunk would otherwise
+        # render bare.
+        if not material:
+            material = keys
+
+        # The two bike callouts that aren't joint angles carry their own
+        # clip-level verdicts, so they are judged on those rather than on a
+        # frame count.
+        if self.sport_type == "bike":
+            head_avg = self.summary.get("head_alignment_avg")
+            if isinstance(head_avg, (int, float)) and not np.isnan(head_avg) and head_avg < 75:
+                material.add("head_alignment")
+            pelvic = self.summary.get("pelvic_ratio")
+            if isinstance(pelvic, (int, float)) and pelvic > 0:
+                from app.services.video_analysis.biomechanics.cycling_positions import (
+                    get_cycling_reference,
+                )
+                p_min, p_max = get_cycling_reference(self.cycling_position)["pelvic_ratio"]
+                if overlay_style.status_for(pelvic, p_min, p_max, min_margin=0.3) != "good":
+                    material.add("pelvic_ratio")
+        return material
+
+    def _annotates(self, key: str) -> bool:
+        return self.annotation_level == "all" or key in self._material_keys
 
     def _get_frame_angles(self, analyzed_idx: int) -> dict[str, float]:
         """Get angle values for a specific analyzed frame index."""

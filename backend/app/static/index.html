@@ -62,7 +62,7 @@
      white; -fill is the vivid form for shapes/graphics (dots, bars, markers,
      ≥3:1 as non-text). Every status colour in the app derives from these —
      pills, range bars, grade badges and the share card use one vocabulary. */
-  --st-good:#1F7A45; --st-good-fill:#2E9E5B;
+  --st-good:#1F7A45; --st-good-fill:#2E9E5B; --st-good-bg:#E6F4EC;
   --st-warn:#9A5E0B; --st-warn-fill:#C97B10;
   --st-bad:#CE3F2B;  --st-bad-fill:#F1553F;
   --f-display:'Archivo','Arial Black',sans-serif;
@@ -144,7 +144,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   padding:8px 18px;border-radius:999px;background:transparent;color:var(--c-ink-soft);transition:all .15s}
 .billtoggle button[aria-pressed="true"]{background:var(--c-bg);color:var(--c-navy);box-shadow:var(--shadow)}
 .billtoggle .save{font-family:var(--f-mono);font-size:10.5px;font-weight:600;color:var(--st-good);
-  background:var(--st-good-bg,#e6f4ec);padding:1px 6px;border-radius:999px;margin-left:6px}
+  background:var(--st-good-bg);padding:1px 6px;border-radius:999px;margin-left:6px}
 .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
 @media(max-width:820px){.tiers{grid-template-columns:1fr;max-width:420px;margin-left:auto;margin-right:auto}}
 /* catalogue failed to load: one honest box across the whole card row */
@@ -175,7 +175,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .btn-outline{background:transparent;color:var(--c-blue);border:1.5px solid var(--c-blue);font-size:15px;padding:11px 24px}
 .btn-outline:hover{background:var(--c-panel-blue)}
 .tier .current-badge{display:flex;justify-content:center;align-items:center;gap:7px;font-family:var(--f-mono);
-  font-size:12px;font-weight:600;color:var(--st-good);background:var(--st-good-bg,#e6f4ec);
+  font-size:12px;font-weight:600;color:var(--st-good);background:var(--st-good-bg);
   padding:11px;border-radius:var(--radius-btn)}
 /* Expert Review, as a card rather than a footnote. Horizontal instead of a
    fourth grid column: at this width four tiers would leave ~220px each. */
@@ -343,8 +343,8 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 /* history */
 .hist-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 6px}
 .hist-count{font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--c-ink-soft)}
-.hist-clear{color:var(--st-bad,#CE3F2B)}
-.hist-clear:hover{background:rgba(241,85,63,.10);border-color:var(--st-bad,#CE3F2B)}
+.hist-clear{color:var(--st-bad)}
+.hist-clear:hover{background:rgba(241,85,63,.10);border-color:var(--st-bad)}
 .hist-clear .ic{width:14px;height:14px}
 .hist-hint{color:var(--c-ink-soft);font-size:13px}
 #histList{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
@@ -444,7 +444,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .ds-pb{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--c-ink-soft)}
 .ds-pb b{color:var(--c-navy)}
 .ds-pb .ic{width:14px;height:14px}
-.ds-pb-new{color:var(--st-good,#2E9E5B)}
+.ds-pb-new{color:var(--st-good)}
 /* Current-form table: latest value vs its optimal band + since-last trend */
 .dform{margin-bottom:22px}
 .dform-sport{margin-top:16px}
@@ -471,6 +471,32 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .cmp-tag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-soft);margin-bottom:8px}
 .cmp-thumb{width:100%;height:auto;border-radius:8px;display:block;background:var(--c-panel)}
 .cmp-thumb-empty{aspect-ratio:16/10}
+/* ---- Before/after wipe ---------------------------------------------------
+   One invisible range input drives a CSS var that clips the "before" layer,
+   so pointer, touch and keyboard all steer the same control and the handle
+   is focusable for free. Frames are contained, not cropped: two clips are
+   two camera setups and cropping to fill would quietly misalign them. */
+.baslider{--pos:50%;position:relative;aspect-ratio:4/5;max-width:420px;margin:0 auto 12px;
+  border-radius:var(--radius-lg);overflow:hidden;background:var(--c-media-bg);
+  border:1px solid var(--c-line);touch-action:pan-y}
+.ba-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  display:block;pointer-events:none;user-select:none}
+.ba-before{clip-path:inset(0 calc(100% - var(--pos)) 0 0)}
+.ba-divider{position:absolute;top:0;bottom:0;left:var(--pos);width:3px;margin-left:-1.5px;
+  background:#fff;box-shadow:0 0 14px rgba(3,10,24,.55);pointer-events:none;z-index:3}
+.ba-grip{position:absolute;top:50%;left:var(--pos);transform:translate(-50%,-50%);z-index:4;
+  width:44px;height:44px;border-radius:50%;background:#fff;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(3,10,24,.4)}
+.ba-grip svg{width:26px;height:14px;color:var(--c-navy)}
+.baslider input[type=range]{position:absolute;inset:0;width:100%;height:100%;margin:0;
+  opacity:0;cursor:ew-resize;z-index:5;-webkit-appearance:none;appearance:none;background:transparent}
+.baslider input[type=range]:focus-visible ~ .ba-grip{box-shadow:0 8px 24px rgba(3,10,24,.4),var(--ring)}
+.ba-tag{position:absolute;top:12px;z-index:4;pointer-events:none;font-family:var(--f-mono);
+  font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#fff;
+  padding:5px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
+.ba-tag.b{left:12px;background:rgba(174,44,26,.85)}
+.ba-tag.a{right:12px;background:rgba(31,122,69,.85)}
+.ba-note{font-size:12px;color:var(--c-ink-faint);text-align:center;margin:0 0 20px}
 .cmp-when{font-size:12px;color:var(--c-ink-soft);margin-top:8px}
 .cmp-score{font-family:var(--f-mono);font-weight:700;font-size:26px;margin-top:2px}
 .cmp-score small{font-size:13px;color:var(--c-ink-faint)}
@@ -699,7 +725,7 @@ h2.sec + .speedline{margin-bottom:24px}
   display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 .btn svg{transition:transform .15s ease}
 .btn-primary{background:var(--c-blue);color:#fff;font-size:15px;padding:12px 24px}
-.btn-danger{background:var(--st-bad,#CE3F2B);color:#fff;font-size:15px;padding:12px 24px}
+.btn-danger{background:var(--st-bad);color:#fff;font-size:15px;padding:12px 24px}
 .btn-danger:hover{background:#B33422}
 .confirm-actions{display:flex;gap:12px;justify-content:flex-end}
 .confirm-actions .btn{padding:11px 20px}
@@ -878,8 +904,8 @@ h2.sec + .speedline{margin-bottom:24px}
   padding:10px 12px;border-radius:var(--radius);border-left:4px solid var(--c-warn);
   background:#F9F1E3;color:var(--c-ink)}
 .preflight li .ic{width:16px;height:16px;flex:none;margin-top:2px;color:var(--c-warn)}
-.preflight li.pf-bad{border-left-color:var(--st-bad,#CE3F2B)}
-.preflight li.pf-bad .ic{color:var(--st-bad,#CE3F2B)}
+.preflight li.pf-bad{border-left-color:var(--st-bad)}
+.preflight li.pf-bad .ic{color:var(--st-bad)}
 
 /* Capture report — the same conversation after the fact, but measured. */
 .caprep{border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;margin-top:8px}
@@ -887,13 +913,13 @@ h2.sec + .speedline{margin-bottom:24px}
   border-bottom:1px solid var(--c-line);font-size:13px;font-weight:700;color:var(--c-ink)}
 .caprep-head .ic{width:16px;height:16px;flex:none}
 .caprep-v{margin-left:auto;font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
-.caprep-v.good{color:var(--st-good)} .caprep-v.fair{color:var(--c-warn)} .caprep-v.poor{color:var(--st-bad,#CE3F2B)}
+.caprep-v.good{color:var(--st-good)} .caprep-v.fair{color:var(--c-warn)} .caprep-v.poor{color:var(--st-bad)}
 .caprep-row{display:grid;grid-template-columns:14px 1fr;gap:10px;padding:12px 16px;
   border-top:1px solid var(--c-line);font-size:13px}
 .caprep-row:first-of-type{border-top:none}
 .caprep-dot{width:10px;height:10px;border-radius:50%;margin-top:5px}
-.caprep-dot.good{background:var(--st-good-fill,#2E9E5B)} .caprep-dot.warn{background:var(--c-warn)}
-.caprep-dot.bad{background:var(--st-bad,#CE3F2B)} .caprep-dot.unknown{background:var(--c-line)}
+.caprep-dot.good{background:var(--st-good-fill)} .caprep-dot.warn{background:var(--c-warn)}
+.caprep-dot.bad{background:var(--st-bad)} .caprep-dot.unknown{background:var(--c-line)}
 .caprep-lbl{font-weight:700;color:var(--c-ink)}
 .caprep-meas{color:var(--c-ink-soft)}
 .caprep-meas b{color:var(--c-ink)}
@@ -1110,10 +1136,10 @@ h2.sec + .speedline{margin-bottom:24px}
    green-railed, quieter, and strikes its title so progress reads at a glance. */
 .plan-done{flex:none;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
   font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--c-ink-soft);user-select:none}
-.plan-done input{width:18px;height:18px;accent-color:var(--st-good,#2E9E5B);cursor:pointer;margin:0}
-.plan-card.done{border-left-color:var(--st-good,#2E9E5B);background:rgba(46,158,91,.07)}
+.plan-done input{width:18px;height:18px;accent-color:var(--st-good);cursor:pointer;margin:0}
+.plan-card.done{border-left-color:var(--st-good);background:rgba(46,158,91,.07)}
 .plan-card.done .plan-drill{text-decoration:line-through;color:var(--c-ink-soft)}
-.plan-card.done .plan-done{color:var(--st-good,#2E9E5B)}
+.plan-card.done .plan-done{color:var(--st-good)}
 .hdplan-prog{font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--c-ink-soft);margin:0 0 16px}
 .hdplan-prog b{color:var(--c-navy)}
 /* Dashboard plan summary -- mirrors the focus panel, compact checklist form */
@@ -1126,12 +1152,12 @@ h2.sec + .speedline{margin-bottom:24px}
 .dplan-check svg{width:11px;height:11px;color:#fff;display:none}
 .dplan-item.done{color:var(--c-ink-soft)}
 .dplan-item.done .dplan-drill{text-decoration:line-through}
-.dplan-item.done .dplan-check{background:var(--st-good,#2E9E5B);border-color:var(--st-good,#2E9E5B)}
+.dplan-item.done .dplan-check{background:var(--st-good);border-color:var(--st-good)}
 .dplan-item.done .dplan-check svg{display:block}
 .dplan-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .dplan-prog{font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--c-ink-soft)}
 .dplan-prog b{color:var(--c-navy)}
-.dplan-done-note{font-size:13px;font-weight:700;color:var(--st-good,#2E9E5B)}
+.dplan-done-note{font-size:13px;font-weight:700;color:var(--st-good)}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
 /* Flex column + bar pushed to the base so range bars across a row share one
@@ -1380,7 +1406,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .fb-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .fb-thanks{display:flex;gap:9px;align-items:center;font-size:14px;color:var(--c-ink);
   font-weight:700;margin:0}
-.fb-thanks .ic{width:17px;height:17px;color:var(--st-good,#1F7A45)}
+.fb-thanks .ic{width:17px;height:17px;color:var(--st-good)}
 .fb-note{font-size:12px;color:var(--c-ink-faint);margin:8px 0 0}
 
 /* ---- What's new (release notes) ------------------------------------------
@@ -1416,7 +1442,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   color:var(--c-ink-soft);margin-top:6px}
 .fb-item{border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
 .fb-item.down{border-left:4px solid var(--c-coral)}
-.fb-item.up{border-left:4px solid var(--st-good,#1F7A45)}
+.fb-item.up{border-left:4px solid var(--st-good)}
 .fb-item-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .fb-item-top .who{font-size:13px;font-weight:700;color:var(--c-navy)}
 .fb-item-top .when{font-size:12px;color:var(--c-ink-faint)}
@@ -1932,8 +1958,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <div class="videoframe" id="videoframe">
           <video id="overlayVideo" controls playsinline aria-label="Annotated analysis overlay video"></video>
           <div class="videocap">
-            <span>Annotated overlay · skeleton + joint angles<br>
-              <span class="note">Results aren’t stored — download to keep it.</span></span>
+            <span>Annotated overlay · skeleton + the joints worth watching<br>
+              <span class="note">Callouts mark what sits outside its range — every angle is in the table below. Results aren’t stored, so download to keep it.</span></span>
             <a class="btn btn-ghost btn-sm" id="downloadOverlay" download>
               <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .mp4
             </a>
@@ -7572,6 +7598,47 @@ function cmpThumb(e,tag){
   if(e.has_keyframe) return `<img class="cmp-thumb kf-slot kf-img" data-kf="${e.id}" alt="${tag} analysis keyframe">`;
   return '<div class="cmp-thumb cmp-thumb-empty"></div>';
 }
+/* Before/after slider. Two frames side by side make the reader do the
+   comparing; stacked under a wipe, the change is the only thing that moves.
+   Only offered when both analyses have a frame to show -- a half-empty wipe
+   is worse than the two cards. */
+function baLayer(e, cls, alt){
+  const k=keyframeOf(e);
+  if(k) return `<img class="ba-img ${cls}" src="${k}" alt="${alt}">`;
+  return `<img class="ba-img ${cls} kf-img" data-kf="${e.id}" alt="${alt}">`;
+}
+function baSliderHtml(A,B){
+  if(!(keyframeOf(A)||A.has_keyframe) || !(keyframeOf(B)||B.has_keyframe)) return '';
+  return `<div class="baslider" id="baSlider">
+    ${baLayer(B,'ba-after','After: later analysis keyframe')}
+    ${baLayer(A,'ba-before','Before: earlier analysis keyframe')}
+    <span class="ba-tag b" aria-hidden="true">Before</span>
+    <span class="ba-tag a" aria-hidden="true">After</span>
+    <span class="ba-divider" aria-hidden="true"></span>
+    <span class="ba-grip" aria-hidden="true"><svg viewBox="0 0 30 16" fill="none"><path d="M11 3L6 8l5 5M19 3l5 5-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <input type="range" min="0" max="100" value="50" id="baRange"
+           aria-label="Wipe between the before and after frames">
+  </div>
+  <p class="ba-note">Drag to wipe. Two clips mean two camera setups &mdash; this compares your positions, not pixels.</p>`;
+}
+function wireBaSlider(){
+  const host=$('#baSlider'); if(!host) return;
+  const range=$('#baRange'); if(!range) return;
+  const set=v=>host.style.setProperty('--pos', v+'%');
+  range.addEventListener('input',()=>set(range.value));
+  set(range.value);
+  /* Take the box's shape from the footage rather than assuming one: a phone
+     clip is portrait and a fixed landscape frame would letterbox it into a
+     stripe. Both layers stay contained, so a mismatched pair still fits. */
+  const after=host.querySelector('.ba-after');
+  const fit=()=>{
+    if(!after || !after.naturalWidth || !after.naturalHeight) return;
+    const r=after.naturalWidth/after.naturalHeight;
+    host.style.aspectRatio=`${after.naturalWidth} / ${after.naturalHeight}`;
+    host.style.maxWidth = r<1 ? '340px' : '560px';
+  };
+  if(after){ after.complete ? fit() : after.addEventListener('load',fit,{once:true}); }
+}
 function renderCompare(){
   const {sport,aId,bId}=state.cmp;
   renderCmpMode();
@@ -7589,11 +7656,12 @@ function renderCompare(){
   const at=A.trends||{}, bt=B.trends||{}, ac=A.trendCat||{}, bc=B.trendCat||{};
   // Prefer B's optimal band, fall back to A's.
   const optOf=k=> (B.trendOpt&&B.trendOpt[k]) || (A.trendOpt&&A.trendOpt[k]) || null;
-  // Header: two keyframes + score.
-  const head=`<div class="cmp-head">
+  // Header: the wipe (when both frames exist) over two cards with date + score.
+  const wipe = setups ? '' : baSliderHtml(A,B);
+  const head=wipe+`<div class="cmp-head">
     ${[[A,setups?'Setup A':'Before'],[B,setups?'Setup B':'After']].map(([e,tag])=>`<div class="cmp-card">
       <div class="cmp-tag">${tag}</div>
-      ${setups?'':cmpThumb(e,tag)}
+      ${(setups||wipe)?'':cmpThumb(e,tag)}
       <div class="cmp-when">${setups
         ? esc(e._profile.name)+' · '+e._profile.n+' clip'+(e._profile.n>1?'s':'')+' averaged'
         : esc(fmtWhen(e.at))}</div>
@@ -7611,7 +7679,7 @@ function renderCompare(){
      </div>${numRows}${catRows}</div>`
     + (setups?`<p class="hint" style="text-align:left;margin:16px 0 0">Averaged across everything filmed on each setup. A difference here is
        the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'');
-  if(!setups) observeKeyframes($('#cmpBody'));
+  if(!setups){ observeKeyframes($('#cmpBody')); wireBaSlider(); }
   // The AI read is written to explain progress between two runs of the same
   // thing. Pointed at two bikes it would confidently narrate improvement that
   // is really just a different position, so it is not offered here.
