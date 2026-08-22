@@ -1,6 +1,6 @@
 """Outbound email. Optional at runtime, like every other integration here.
 
-A delivered Expert Review that nobody is told about is a $29 product the
+A delivered Expert Review that nobody is told about is a paid product the
 customer finds by accident. In-app placement helps, but it only reaches someone
 who happens to open the app -- so this exists.
 

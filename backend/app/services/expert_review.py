@@ -1,6 +1,6 @@
 """The Expert Review deliverable: one report template, three consumers.
 
-The $29 Expert Review is a human reading the machine's output. That framing is
+The Expert Review is a human reading the machine's output. That framing is
 the whole design here, and it decides the shape of the template:
 
 * The expert does NOT write from scratch. The automated analysis already
@@ -8,8 +8,9 @@ the whole design here, and it decides the shape of the template:
   *judgment on top of it*: which of those numbers to trust, which single thing
   actually matters, and what to leave alone. Sections are worded as reactions to
   the analysis, and ``prefill`` seeds the one section that can be derived.
-* It has to be fillable in ~20 minutes. At $29 a review that takes two hours is
-  a hobby, not a product, so every section is short and several are lists.
+* It has to be fillable in ~20 minutes. At this price a review that takes two
+  hours is a hobby, not a product, so every section is short and several are
+  lists. (The amount itself lives in services/pricing.py, never here.)
 * The reviewer can watch the clip. That was not true for most of this file's
   life -- uploads expired six hours after the analysis, so a review bought on
   Tuesday for Monday's ride had only the stored entry and its annotated
@@ -327,7 +328,7 @@ def ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
 # The sample shown on the pricing page
 #
 # The Expert Review button currently sells something invisible: nobody knows
-# what $29 buys until after they have spent it. This is a real, complete report
+# what the review buys until after they have spent it. This is a real, complete report
 # rendered by the same code as a real one -- if the template changes, the
 # sample changes with it or the tests fail.
 # --------------------------------------------------------------------------

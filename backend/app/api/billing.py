@@ -863,7 +863,7 @@ def expert_review_sample() -> dict[str, Any]:
 
     Rendered by the same code as a delivered one and shown on the pricing page,
     because the Expert Review button otherwise sells something invisible: nobody
-    knows what $29 buys until after they have spent it.
+    knows what an Expert Review buys until after they have spent it.
     """
     return {
         "context": expert_review.SAMPLE_CONTEXT,

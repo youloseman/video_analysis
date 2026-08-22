@@ -1,4 +1,4 @@
-"""One-time purchase record (currently: the $29 Expert Review).
+"""One-time purchase record (currently: the $39 Expert Review).
 
 Subscriptions live on ``users.tier`` / ``users.subscription_status`` -- they are
 self-describing, because the tier IS the thing the customer bought. A one-time
@@ -55,7 +55,7 @@ class Order(Base):
     )
     # Frontend plan key ("expert"), carried through Checkout metadata.
     plan: Mapped[str] = mapped_column(String(32), nullable=False)
-    # Minor units exactly as Stripe reports them (2900 = $29.00).
+    # Minor units exactly as Stripe reports them (3900 = $39.00).
     amount_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
     currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
     status: Mapped[str] = mapped_column(

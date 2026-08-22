@@ -163,7 +163,7 @@ async def test_the_order_records_which_analysis_to_review(db, make_user):
 
 
 async def test_an_order_with_no_analysis_is_still_recorded(db, make_user):
-    """Losing the link is bad; losing the $29 order is worse."""
+    """Losing the link is bad; losing the paid order is worse."""
     user = await make_user()
     await _apply_event(db, expert_purchase(user.id, analysis=""))
     order = (await db.execute(select(Order))).scalar_one()
@@ -224,7 +224,7 @@ async def test_a_draft_is_not_visible_as_a_delivered_report(db, make_user):
 # --------------------------------------------------------------------------
 # Telling the athlete
 #
-# Delivering a review nobody is told about is a $29 product found by accident.
+# Delivering a review nobody is told about is a paid product found by accident.
 # Two channels: an email, and a card on the dashboard that keeps shouting until
 # it is opened (an email can be missed, and Pricing is where you go to BUY).
 # --------------------------------------------------------------------------

@@ -104,7 +104,7 @@ def test_one_currency_everywhere():
 # --------------------------------------------------------------------------
 # The documents that used to hold their own copies
 # --------------------------------------------------------------------------
-# "$59 / year", "$29, one-time", "from <b>$9</b>/mo" -- an amount next to a
+# "$59 / year", "$39, one-time", "from <b>$9</b>/mo" -- an amount next to a
 # billing word is what a transcribed price looks like. A bare "$4" in prose is
 # not what broke. The optional tag is not paranoia: the upsell panel on every
 # locked report carried its price inside a <b>, which is how it survived the
