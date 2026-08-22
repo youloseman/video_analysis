@@ -391,11 +391,27 @@ class JobStatus(BaseModel):
 # --------------------------------------------------------------------------
 # Background worker
 # --------------------------------------------------------------------------
+# The athlete's own question, on its way to a language model. Capped and
+# stripped of newlines: the cap keeps one upload from spending the coach's
+# whole token budget on a wall of text, and collapsing newlines stops the
+# field being used to fake extra sections in the prompt. It is never used as
+# an instruction -- the system prompt decides what the coach does with it.
+FOCUS_MAX_CHARS = 200
+
+
+def _clean_focus(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    text = " ".join(str(raw).split())
+    return text[:FOCUS_MAX_CHARS] or None
+
+
 def _process_job(
     job_id: str, input_path: str, sport: str,
     cycling_position: str | None, overlay_path: str | None,
     free: bool = False, preview: bool = False,
     athlete_height_cm: int | None = None,
+    focus: str | None = None,
 ) -> None:
     """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
 
@@ -450,6 +466,9 @@ def _process_job(
             # unlocking anything, and a paywall in front of accuracy is a
             # different product from a paywall in front of detail.
             athlete_height_cm=athlete_height_cm,
+            # What this athlete asked us to look at. Reaches the coach, never
+            # the measurement: a question cannot change what the pose model saw.
+            focus=focus,
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
@@ -710,6 +729,9 @@ async def analyze_endpoint(
     overlay: bool = Form(
         True, description="Also render the annotated overlay video.",
     ),
+    focus: str | None = Form(
+        None, description="Optional: what the athlete wants looked at closely.",
+    ),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> JobCreated:
@@ -800,7 +822,7 @@ async def analyze_endpoint(
 
     background_tasks.add_task(
         _process_job, job_id, str(input_path), sport, cycling_position,
-        overlay_path, free, preview, user.height_cm,
+        overlay_path, free, preview, user.height_cm, _clean_focus(focus),
     )
     await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
@@ -818,6 +840,9 @@ async def analyze_photo_endpoint(
     sport: str = Form(..., description="run | bike"),
     position: str | None = Form(None, description="Cycling position (bike only)."),
     coaching: bool = Form(True, description="Include AI coaching."),
+    focus: str | None = Form(
+        None, description="Optional: what the athlete wants looked at closely.",
+    ),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
@@ -878,6 +903,9 @@ async def analyze_photo_endpoint(
         from app.services.video_analysis.llm_recommendations import (
             generate_photo_recommendations,
         )
+        # The question rides in the result, which is also how it reaches the
+        # report: the athlete sees what they asked, above the answer.
+        result["focus"] = _clean_focus(focus)
         result["ai_recommendations"] = await run_in_threadpool(
             generate_photo_recommendations, sport, result,
         )

@@ -1084,6 +1084,20 @@ h2.sec + .speedline{margin-bottom:24px}
 .issue .i-val{font-family:var(--f-mono);font-size:12px;color:var(--c-navy)}
 
 /* training plan — prioritised corrective drill cards */
+/* ---- "Ask about something specific" (uploader) ---- */
+.askbox{border:1px solid var(--c-line);border-radius:var(--radius);padding:12px 14px;margin:16px 0 0}
+.askbox summary{font-size:13.5px;font-weight:700;color:var(--c-navy);cursor:pointer;min-height:24px}
+.askopt{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--c-ink-faint);margin-left:6px}
+.askbox input{width:100%;margin-top:10px;padding:10px 12px;font-family:var(--f-body);font-size:14px;
+  color:var(--c-ink);border:1.5px solid var(--c-line);border-radius:var(--radius-btn);background:#fff}
+.askbox input:focus{border-color:var(--c-blue)}
+.askhint{font-size:12px;color:var(--c-ink-faint);line-height:1.5;margin:8px 0 0}
+/* The question, echoed above its answer in the report. */
+.asked{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:0 0 14px;
+  padding:10px 14px;background:var(--c-panel-blue);border-radius:var(--radius-btn)}
+.asked-lbl{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--c-blue);margin-right:8px}
 #planCards{display:flex;flex-direction:column;gap:12px}
 /* ---- Fit adjustments (cycling) ----
    Rows, not cards: these are read in order and compared to each other, and a
@@ -1787,6 +1801,19 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
       </label>
 
+      <!-- One question, optional. Folded away because most uploads do not have
+           one and an empty box between the clip and the button is friction for
+           everybody who does not. -->
+      <details class="askbox">
+        <summary>Want us to look at something specific? <span class="askopt">optional</span></summary>
+        <label class="visually-hidden" for="focusInput">What should we look at closely?</label>
+        <input id="focusInput" type="text" maxlength="200" autocomplete="off"
+               placeholder="e.g. my left ankle at foot strike — it aches after long runs">
+        <p class="askhint">Your coaching notes answer it first. If this clip can&rsquo;t
+          &mdash; a view the camera didn&rsquo;t see, a force we can&rsquo;t measure &mdash; you&rsquo;ll be told that
+          instead of given a guess.</p>
+      </details>
+
       <!-- Submit -->
       <button class="btn btn-go btn-block" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
         Analyze Technique
@@ -1963,6 +1990,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <h3>Coach’s notes</h3>
         <div class="speedline-sm"></div>
       </div>
+      <p class="asked hidden" id="askedLine"></p>
       <div class="coach" id="coach"></div>
     </div>
 
@@ -2960,6 +2988,7 @@ function analyze(){
   fd.append('sport',state.sport);
   if(state.sport==='bike') fd.append('position',state.position);
   fd.append('overlay',$('#overlay').checked ? 'true':'false');
+  if(focusText()) fd.append('focus', focusText());
 
   const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
@@ -3516,6 +3545,7 @@ async function analyzePhoto(){
   fd.append('sport',state.sport);
   if(state.sport==='bike') fd.append('position',state.position);
   fd.append('coaching','true');
+  if(focusText()) fd.append('focus', focusText());
 
   const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
@@ -4824,6 +4854,11 @@ function renderTrainingPlan(plan){
    it costs, because an adjustment with no trade-off named is advice you cannot
    argue with. Medical warnings render even when nothing else does: they are a
    quality signal, and those are never gated or hidden. */
+/* The athlete's question, if they asked one. Trimmed here as well as on the
+   server — the server's copy is the one that counts, this just avoids sending
+   a field full of spaces. */
+function focusText(){ const el=$('#focusInput'); return el ? el.value.trim().slice(0,200) : ''; }
+
 const FIT_STATUS_CLS={optimal:'good',acceptable:'good',needs_adjustment:'warn',
                       warning:'warn',critical:'bad',medical_risk:'bad',unknown:''};
 /* The builder speaks in tokens so its logic stays testable; the reader gets a
@@ -5093,6 +5128,14 @@ function render(job){
 
   // AI coach
   const cb=$('#coachBlock'); const rec=r.ai_recommendations;
+  // Show the question above its answer: a reply to something you cannot see
+  // yourself having asked is hard to judge.
+  const askedEl=$('#askedLine');
+  if(askedEl){
+    const q=(r.focus||'').trim();
+    askedEl.innerHTML = q ? `<span class="asked-lbl">You asked</span> ${esc(q)}` : '';
+    askedEl.classList.toggle('hidden', !q);
+  }
   if(rec && rec.report){
     $('#coach').innerHTML=mdToHtml(rec.report)+
       `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.</div>`;

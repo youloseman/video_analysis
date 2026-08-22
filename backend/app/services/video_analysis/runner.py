@@ -459,6 +459,7 @@ def run_analysis(
     overlay_path: str | None = None, recommendations: bool = True,
     hide_angle_values: bool = False, kinogram: bool = True,
     athlete_height_cm: float | None = None,
+    focus: str | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -947,6 +948,7 @@ def run_analysis(
             sport_specific_metrics=summary,
             cycling_position=cycling_position if is_bike else None,
             fit_plan=fit_plan,
+            focus=focus,
         )
 
     # Step 8: structured training plan (running only, deterministic -- no LLM).
@@ -985,6 +987,10 @@ def run_analysis(
         "kinogram_base64": kinogram_base64,
         "kinogram": kinogram_meta,
         "ai_recommendations": ai_recommendations,
+        # Echoed back so the report can show the question above its answer --
+        # a reply to something you cannot see yourself having asked is hard to
+        # judge.
+        "focus": focus,
         "training_plan": training_plan,
         "fit_plan": fit_plan,
         "angle_statistics": angle_stats,
