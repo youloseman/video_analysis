@@ -654,12 +654,13 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
     linear-gradient(115deg,transparent 40%,rgba(241,85,63,.85) 40%,rgba(241,85,63,.85) 45%,transparent 45%),
     linear-gradient(115deg,transparent 53%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.14) 57%,transparent 57%),
     linear-gradient(115deg,transparent 64%,rgba(53,166,217,.5) 64%,rgba(53,166,217,.5) 68%,transparent 68%)}
-.hero .wrap{position:relative;z-index:1;padding:20px 24px 22px}
+.hero .wrap{position:relative;z-index:1;padding:14px 24px 16px}
 .hero .eyebrow{color:rgba(255,255,255,.75)}
 .hero h1{font-family:var(--f-display);font-weight:900;font-style:italic;text-transform:uppercase;
-  font-size:clamp(21px,2.6vw,27px);line-height:1.05;letter-spacing:-.01em;margin:6px 0 0}
+  font-size:clamp(19px,2.2vw,24px);line-height:1.05;letter-spacing:-.01em;margin:5px 0 0}
 .hero h1 .accent{color:var(--c-coral)}
-.hero-line{margin:7px 0 0;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.85);max-width:64ch}
+/* One line on a laptop: every pixel here is a pixel the drop zone loses. */
+.hero-line{margin:5px 0 0;font-size:13px;line-height:1.45;color:rgba(255,255,255,.85);max-width:72ch}
 body:not([data-state="upload"]) .hero .wrap,
 body.authed .hero .wrap{padding:16px 24px}
 body:not([data-state="upload"]) .hero h1,
@@ -755,7 +756,25 @@ h2.sec + .speedline{margin-bottom:24px}
 .posgroup .tilerow{gap:8px}
 .poshint{font-size:12.5px;color:var(--c-ink-soft);line-height:1.5;margin-top:10px;min-height:18px}
 .poshint b{color:var(--c-navy);font-weight:700}
-@media (max-width:560px){#positionSeg{gap:10px 12px}.posgroup{flex:1 1 100%}}
+/* Groups wrap as units instead of each claiming a full row: three stacked
+   full-width groups pushed the drop zone ~300px down a phone screen, which is
+   the whole reason someone opens this page. */
+@media (max-width:560px){
+  #positionSeg{gap:10px 14px}
+  .posgroup{flex:0 1 auto}
+  .posgroup .tilerow{grid-auto-columns:minmax(0,auto)}
+  .tile-btn{padding:12px 12px;font-size:13.5px}
+  /* No hero on a phone. The landing page does the selling; by the time
+     someone is in /app on a 390px screen, 120px of strapline is 120px the
+     upload button does not get. The h1 stays in the accessibility tree as
+     the page-outline root, exactly as it does outside the upload state. */
+  .hero{background:none}
+  .hero::after{display:none}
+  .hero .wrap{padding:0}
+  .hero .eyebrow,.hero-line{display:none}
+  .hero h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}
 .tile-btn{font-family:var(--f-body);font-weight:600;font-size:15px;color:var(--c-ink);cursor:pointer;
   background:#fff;border:1.5px solid var(--c-line);border-radius:var(--radius-btn);padding:12px 16px;text-align:center;
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
@@ -787,11 +806,70 @@ h2.sec + .speedline{margin-bottom:24px}
 .fmeta .change{margin-top:16px}
 
 /* capture guidelines */
-.guides{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 32px;margin:0 0 24px}
+.guides{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 32px;margin:0}
 .guides li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--c-ink-soft);line-height:1.45}
 .guides li .ic{width:16px;height:16px;color:var(--c-blue);flex:none;margin-top:2px}
 .guides li b{color:var(--c-ink)}
 @media(max-width:720px){ .guides{grid-template-columns:1fr} }
+
+/* ---- Capture guide -------------------------------------------------------
+   The three rules that decide whether the measurement is worth reading are
+   drawn, not listed: framing alone moved leg-tracking failure from 46% of
+   frames to 2% on the same footage. Everything else stays folded away. */
+.capguide{border:1px solid var(--c-line);border-radius:var(--radius);padding:18px 20px;margin:0 0 24px;
+  background:linear-gradient(180deg,var(--c-panel-blue),var(--c-bg) 70%)}
+.cg-lede{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:6px 0 0;max-width:62ch}
+/* Three panels, each rule sitting under the picture that shows it. */
+.cg-body{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 24px;margin:14px 0 0;
+  padding:0;list-style:none;counter-reset:cg}
+.cg-step{margin:0}
+.cg-fig{width:100%;max-width:190px;height:auto;display:block;margin:0 auto 10px}
+.cg-step p{position:relative;padding-left:28px;margin:0;font-size:13px;line-height:1.5;color:var(--c-ink-soft)}
+.cg-step p b{color:var(--c-navy)}
+.cg-step p::before{counter-increment:cg;content:counter(cg);position:absolute;left:0;top:1px;
+  width:20px;height:20px;border-radius:50%;background:var(--c-blue);color:#fff;
+  font-family:var(--f-mono);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.cg-more{margin-top:16px;border-top:1px solid var(--c-line);padding-top:12px}
+.cg-more summary{font-size:13px;font-weight:700;color:var(--c-blue);cursor:pointer;min-height:24px}
+.cg-more[open] summary{margin-bottom:12px}
+/* figure internals */
+.cg-phone{fill:#fff;stroke:var(--c-navy);stroke-width:2.5}
+.cg-phone.cg-muted{fill:none;stroke:var(--c-ink-faint);stroke-dasharray:5 4;stroke-width:2}
+.cg-notch{stroke:var(--c-navy);stroke-width:2.5;stroke-linecap:round;opacity:.3}
+.cg-brk{fill:none;stroke:var(--c-ink-faint);stroke-width:1.8}
+.cg-brk-t{font-family:var(--f-mono);font-size:15px;fill:var(--c-ink-faint);text-anchor:middle}
+.cg-stick circle,.cg-stick path{fill:none;stroke:var(--c-blue);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.capguide[data-sport="run"] .fig-bike,.capguide[data-sport="bike"] .fig-run{display:none}
+.cg-ok{fill:var(--st-good-fill)} .cg-tick{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cg-no{fill:none;stroke:var(--c-ink-faint);stroke-width:2} .cg-cross{stroke:var(--c-ink-faint);stroke-width:2.2;stroke-linecap:round}
+.cg-lane{stroke:var(--c-ink-faint);stroke-width:2;stroke-dasharray:7 6}
+.cg-arrow{fill:none;stroke:var(--c-ink-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cg-dot{fill:var(--c-blue)}
+.cg-right{fill:none;stroke:var(--c-blue);stroke-width:1.8;opacity:.55}
+.cg-sight{stroke:var(--c-blue);stroke-width:2;stroke-dasharray:5 5}
+.cg-cam{fill:#fff;stroke:var(--c-navy);stroke-width:2.2;stroke-linejoin:round}
+.cg-camlens{fill:none;stroke:var(--c-navy);stroke-width:2.2}
+/* Arriving from a warning that named this rule: a brief ring, so the reader
+   lands on the figure knowing which of the three they were sent to read. */
+.cg-flash{animation:cgflash 1.6s ease-out}
+@keyframes cgflash{0%{box-shadow:0 0 0 0 rgba(47,109,224,.45)}100%{box-shadow:0 0 0 14px rgba(47,109,224,0)}}
+@media (prefers-reduced-motion:reduce){ .cg-flash{animation:none;box-shadow:0 0 0 3px rgba(47,109,224,.35)} }
+.pf-guide{color:var(--c-blue);font-weight:700;white-space:nowrap}
+/* What happens to the footage, next to the button that hands it over. */
+.trustrow{list-style:none;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--c-line);
+  display:grid;gap:7px;font-size:12px;color:var(--c-ink-faint);line-height:1.45}
+.trustrow li{display:flex;align-items:flex-start;gap:8px}
+.trustrow .ic{width:14px;height:14px;flex:none;margin-top:2px;color:var(--st-good)}
+.trustrow a{color:var(--c-ink-soft);text-decoration:underline}
+.trustrow a:hover{color:var(--c-blue)}
+@media(max-width:720px){
+  .capguide{padding:16px}
+  /* One rule at a time on a phone: picture beside its text, so the block
+     stays short enough that the upload button is still reachable. */
+  .cg-body{grid-template-columns:1fr;gap:14px}
+  .cg-step{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;align-items:center}
+  .cg-fig{margin:0}
+}
 
 /* Pre-flight notes on the chosen clip — said while the file can still be
    swapped, which is the only moment the advice is free. */
@@ -1241,10 +1319,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 @media(max-width:640px){
   header .wrap{height:56px}
   .wordmark{font-size:21px}
-  .hero .wrap{padding:16px 20px 18px}
+  .hero .wrap{padding:14px 20px 16px}
   .hero h1{font-size:20px}
   .hero-line{font-size:12.5px}
-  main{padding-top:20px}
+  main{padding-top:18px}
   .uploader{padding:24px;margin-top:12px}
   .modetabs{width:100%}
   .modetabs button{flex:1;justify-content:center;padding:10px 12px;font-size:13px}
@@ -1553,7 +1631,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   <div class="wrap">
     <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
     <h1>Your technique, <span class="accent">measured</span></h1>
-    <p class="hero-line">Every joint angle against reference ranges, a 0&ndash;100 score and a fix-first plan &mdash; from a 10-second side-view clip or one photo.</p>
+    <p class="hero-line">Every joint angle against reference ranges, a 0&ndash;100 score and a fix-first plan.</p>
   </div>
 </div>
 
@@ -1620,8 +1698,11 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
               <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">Triathlon</button>
             </div>
           </div>
+          <!-- A real label, not a spacer: once the groups wrap on a phone this
+               button sits beside the aero pair, and an empty heading made
+               Casual read as a third aero position. -->
           <div class="posgroup">
-            <span class="posgroup-lbl">&nbsp;</span>
+            <span class="posgroup-lbl">Upright</span>
             <div class="tilerow">
               <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
             </div>
@@ -1653,20 +1734,94 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
            Filled by checkClip() from the browser's own metadata. -->
       <ul class="preflight hidden" id="preflight"></ul>
 
-      <!-- Capture guidelines. Ordered by measured effect, not by how obvious
-           they sound. The first two are worth more than the rest combined: on
-           one test clip, cropping the same footage tighter around the athlete
-           took the pose model's left/right leg confusion from 46% of frames to
-           2%, and cadence from a nonsense 200 spm to a real 155. -->
-      <ul class="guides" id="guides">
-        <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> <b>Fill the frame</b> — you should span about two thirds of it, head to feet. This matters more than everything else here put together.</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> <b>Hold the phone upright</b> (portrait) — it puts nearly twice as many pixels on your legs</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg> Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close — a close-up wide lens bends the angles at the edges</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Film from the side, camera at hip height, steady — a few degrees off exactly 90° helps separate the legs</li>
-        <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> 5–10 seconds of steady movement, one person in frame</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg> Normal speed — not slow-motion (it distorts cadence &amp; contact time)</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg> Light behind the camera, not behind you — a silhouette loses limbs</li>
-      </ul>
+      <!-- Capture guide. Ordered by measured effect, not by how obvious the
+           rules sound: on one test clip, cropping the same footage tighter
+           around the athlete took the pose model's left/right leg confusion
+           from 46% of frames to 2%, and cadence from a nonsense 200 spm to a
+           real 155. That is why the top three are drawn rather than listed —
+           nothing else in the product recovers that much accuracy, and a rule
+           you can see in one glance is a rule people actually follow. -->
+      <section class="capguide" id="capguide" data-sport="bike">
+        <div class="eyebrow">How to film it</div>
+        <p class="cg-lede">Three things decide whether the numbers are worth reading. Don&rsquo;t overthink the rest &mdash; a phone propped against a water bottle works.</p>
+
+        <ol class="cg-body">
+          <li class="cg-step">
+            <svg class="cg-fig" viewBox="0 0 180 152" aria-hidden="true" focusable="false">
+              <rect class="cg-phone" x="52" y="4" width="76" height="140" rx="9"/>
+              <line class="cg-notch" x1="80" y1="14" x2="100" y2="14"/>
+              <path class="cg-brk" d="M44 24 h-8 v100 h8"/>
+              <text class="cg-brk-t" x="20" y="79">2/3</text>
+              <g class="cg-stick fig-run" transform="translate(70,22)">
+                <circle cx="21" cy="7" r="6.5"/>
+                <path d="M21 14 L19 50"/>
+                <path d="M20 20 L9 28 L13 18"/>
+                <path d="M20 20 L31 29 L27 39"/>
+                <path d="M19 50 L32 68 L33 88 L39 90"/>
+                <path d="M19 50 L8 64 L16 76 L11 79"/>
+              </g>
+              <g class="cg-stick fig-bike" transform="translate(57,19) scale(1.1)">
+                <circle cx="13" cy="85" r="13"/><circle cx="49" cy="85" r="13"/>
+                <path d="M13 85 L30 85 L23 61 Z"/>
+                <path d="M23 61 L43 64 L30 85"/>
+                <path d="M43 64 L49 85"/>
+                <path d="M18 59 L28 59"/><path d="M43 62 L51 62"/>
+                <path d="M25 56 L39 44"/><circle cx="45" cy="39" r="5.5"/>
+                <path d="M39 44 L46 60"/>
+                <path d="M25 56 L29 73 L30 85"/>
+              </g>
+            </svg>
+            <p><b>Fill the frame.</b> Head to feet should span about two thirds of it. Sky above and ground below are what wreck the measurement &mdash; this rule is worth more than every other one here combined.</p>
+          </li>
+
+          <li class="cg-step">
+            <svg class="cg-fig" viewBox="0 0 180 152" aria-hidden="true" focusable="false">
+              <rect class="cg-phone" x="26" y="16" width="48" height="88" rx="7"/>
+              <circle class="cg-ok" cx="50" cy="124" r="12"/>
+              <path class="cg-tick" d="M44.5 124 l4 4 L56 120"/>
+              <rect class="cg-phone cg-muted" x="94" y="36" width="80" height="48" rx="7"/>
+              <circle class="cg-no" cx="134" cy="124" r="12"/>
+              <path class="cg-cross" d="M129.5 119.5 l9 9 M138.5 119.5 l-9 9"/>
+            </svg>
+            <p><b>Hold the phone upright.</b> Portrait puts nearly twice as many pixels on your legs as landscape.</p>
+          </li>
+
+          <li class="cg-step">
+            <svg class="cg-fig" viewBox="0 0 180 152" aria-hidden="true" focusable="false">
+              <line class="cg-lane" x1="14" y1="34" x2="158" y2="34"/>
+              <path class="cg-arrow" d="M152 28 l8 6 l-8 6"/>
+              <circle class="cg-dot" cx="86" cy="34" r="7"/>
+              <path class="cg-right" d="M73 47 v-13 h13"/>
+              <line class="cg-sight" x1="86" y1="98" x2="86" y2="46"/>
+              <rect class="cg-cam" x="70" y="100" width="32" height="20" rx="4"/>
+              <path class="cg-cam" d="M78 100 v-5 h10 v5"/>
+              <circle class="cg-camlens" cx="86" cy="110" r="5"/>
+            </svg>
+            <!-- "Steady" used to be the word here, and it made the rest of
+                 this page impossible to follow: a locked-off camera sees a
+                 runner filling two thirds of a portrait frame for 0.43 s at
+                 running pace. Panning does not touch vertical oscillation --
+                 that is hip HEIGHT in the frame, and turning sideways does not
+                 move it. Up-and-down shake does, at step frequency, which is
+                 why it cannot be filtered out afterwards. -->
+            <p><b>Film from the side</b>, camera at hip height. A few degrees off exactly 90&deg; actually helps separate the legs. <b>Turning to follow you is fine</b> — it&rsquo;s up-and-down shake that hurts, not panning.</p>
+          </li>
+        </ol>
+
+        <details class="cg-more">
+          <summary>A few more things that help</summary>
+          <!-- The text is one <span> per item on purpose: the row is a flex
+               container, so a bare <b> mid-sentence became its own flex item
+               and broke the line into columns. -->
+          <ul class="guides" id="guides">
+            <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg><span>Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close — a close-up wide lens bends the angles at the edges</span></li>
+            <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span><b>5–10 seconds with you actually in shot</b>, one person in frame — start recording once you&rsquo;re already running, not before</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>A <b>treadmill</b> is the easiest way to get all of this at once: you stay put, so the camera can sit close, still, and pointed at one spot</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Normal speed — not slow-motion (it distorts cadence &amp; contact time)</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Light behind the camera, not behind you — a silhouette loses limbs</span></li>
+          </ul>
+        </details>
+      </section>
 
       <!-- Which setup this was filmed on. Sits next to the clip rather than
            on a settings screen because it is a property of THIS recording:
@@ -1706,6 +1861,19 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </button>
       <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
       <p class="quota-line" id="quota">Free account · monthly analyses included</p>
+
+      <!-- What happens to the footage, said where the footage is handed over.
+           Every claim here is one the privacy policy already makes and the
+           code already keeps: only numbers reach Gemini, photo analysis never
+           touches the disk, clips expire on the tier's retention schedule. -->
+      <ul class="trustrow">
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          Your clip never reaches an AI service &mdash; only anonymous joint angles do</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          No ad trackers, nothing sold &mdash; <a href="/privacy">privacy policy</a></li>
+      </ul>
     </div>
   </section>
 
@@ -2619,7 +2787,7 @@ function checkClip(vid){
        every clip to a fixed long edge before measuring, so a tall frame leaves
        ~1280 px of height for the athlete to fill instead of ~720. */
     if(w && h && w>h)
-      notes.push({s:'warn',t:'Filmed landscape. Turning the phone upright puts nearly twice as many pixels on your legs — it’s the cheapest accuracy you can buy.'});
+      notes.push({s:'warn',guide:true,t:'Filmed landscape. Turning the phone upright puts nearly twice as many pixels on your legs — it’s the cheapest accuracy you can buy.'});
 
     state.preflight=notes;
     renderPreflight();
@@ -2634,9 +2802,21 @@ function renderPreflight(){
   const notes=state.preflight||[];
   if(!notes.length){ host.classList.add('hidden'); host.innerHTML=''; return; }
   host.innerHTML=notes.map(n=>
-    `<li class="pf-${n.s}"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>${esc(n.t)}</li>`
+    `<li class="pf-${n.s}"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>${esc(n.t)}`
+    + (n.guide?` <a href="#capguide" class="pf-guide" data-guide="1">See how to frame it</a>`:'')
+    + `</li>`
   ).join('');
   host.classList.remove('hidden');
+  /* A warning that names a fix should be able to show it: jump to the figure
+     rather than making the reader find the rule it is talking about. */
+  host.querySelectorAll('[data-guide]').forEach(a=>a.addEventListener('click',e=>{
+    e.preventDefault(); showCaptureGuide();
+  }));
+}
+function showCaptureGuide(){
+  const g=$('#capguide'); if(!g) return;
+  g.scrollIntoView({behavior: REDUCED?'auto':'smooth', block:'center'});
+  g.classList.remove('cg-flash'); void g.offsetWidth; g.classList.add('cg-flash');
 }
 function readyHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
@@ -2677,8 +2857,14 @@ $('#sportSeg').addEventListener('click',e=>{
   if(typeof renderHeightField==='function') renderHeightField();
   [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   $('#positionField').classList.toggle('hidden', state.sport!=='bike');
+  syncCaptureGuide();
   readyHint();
 });
+/* The capture figure shows the sport being filmed — a runner's framing and a
+   rider's are different pictures, and the wrong one teaches the wrong shape. */
+function syncCaptureGuide(){
+  const g=$('#capguide'); if(g) g.dataset.sport=state.sport;
+}
 
 /* Height saves on blur rather than per keystroke: a half-typed "18" is a
    plausible-looking number the API would happily reject, and rejecting it
@@ -5645,6 +5831,7 @@ function init(){
   // funnel starts at whatever the athlete clicked second.
   track('view_opened', {view: document.body.dataset.state || 'upload', initial:true});
   renderQuota();
+  syncCaptureGuide();          // figure matches the sport the uploader starts on
   checkAuth().then(handleCheckoutReturn);   // after auth loads, resolve any Stripe return
   const clReady=initChangelog();            // release notes + unread dot on the nav
   syncActiveNav(document.body.dataset.state || 'upload');   // highlight the current section
