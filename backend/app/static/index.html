@@ -1247,6 +1247,8 @@ h2.sec + .speedline{margin-bottom:24px}
 .grbar .gr-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);
   font-size:11px;color:var(--c-ink-soft);margin-top:12px;font-weight:500}
 .grbar .gr-scale .gr-opt{color:var(--st-good);font-weight:700;white-space:nowrap}
+/* Provenance of the band, quiet enough not to compete with the number. */
+.grbar .gr-src{font-size:10.5px;color:var(--c-ink-faint);margin-top:6px;line-height:1.4}
 @media(max-width:640px){
   .grbar .gr-scale{font-size:10px}
   .grbar .gr-scale > span:not(.gr-opt){opacity:.7}
@@ -3309,7 +3311,7 @@ function grZone(v,lo,hi,metric){
 }
 /* Horizontal 5-zone bar (red|amber|green|amber|red) with a marker triangle at `value`.
    Axis = optimal ± one warning margin ± one critical margin (mirrors GradientRangeBar). */
-function gradientRangeBar(value,lo,hi,unit,metric){
+function gradientRangeBar(value,lo,hi,unit,metric,src){
   // warning margin matches grZone so the green optimal band on the bar agrees
   // with the status pill (see grMargin for the non-degree metrics).
   const opt=hi-lo, m=grMargin(lo,hi,metric);
@@ -3345,14 +3347,20 @@ function gradientRangeBar(value,lo,hi,unit,metric){
     +`<span class="gr-tri" style="left:${mk.toFixed(1)}%;border-top-color:${tri}"></span></div>`
     +`<div class="gr-scale"><span>${num(axMin,0)}</span>`
     +`<span class="gr-opt">${num(lo,0)}–${num(hi,0)}${u}</span>`
-    +`<span>${num(axMax,0)}</span></div></div>`;
+    +`<span>${num(axMax,0)}</span></div>`
+    // Who decided this band. Printed, not hidden behind a hover: a target
+    // whose provenance needs a mouse is a target most readers never check.
+    // Absent when we have no citation — an unsourced band says so by silence
+    // rather than borrowing someone else's name.
+    +(src?`<div class="gr-src">Band: ${esc(src)}</div>`:'')
+    +`</div>`;
 }
 /* tile(): pass `range={value,lo,hi,unit}` to render a gradient range bar and auto-color the tile. */
 function tile(lbl,val,unit,ref,cls,isText=false,range=null){
   let bar='';
   if(range && range.value!=null && range.lo!=null && range.hi!=null){
     if(!cls){ const z=grZone(range.value,range.lo,range.hi,range.metric); cls=z==='optimal'?'good':z==='warning'?'warn':'bad'; }
-    bar=gradientRangeBar(range.value,range.lo,range.hi,range.unit!=null?range.unit:unit,range.metric);
+    bar=gradientRangeBar(range.value,range.lo,range.hi,range.unit!=null?range.unit:unit,range.metric,range.src);
   }
   const stWord = cls ? `${ref?' · ':''}<span class="st-${cls}">${ST_WORD[cls]}</span>` : '';
   const refLine = (ref||cls) ? `<div class="t-ref">${ref?esc(ref):''}${stWord}</div>` : '';
@@ -3363,26 +3371,45 @@ function tile(lbl,val,unit,ref,cls,isText=false,range=null){
   return `<div class="tile ${cls||''}"><div class="t-lbl">${dot}${esc(lbl)}</div>${valHtml}${refLine}${bar}</div>`;
 }
 /* helper: {value,lo,hi,unit} for the range bar */
-function R(value,lo,hi,unit){ return {value,lo,hi,unit}; }
+function R(value,lo,hi,unit,src){ return {value,lo,hi,unit,src}; }
+/* The band the server graded against, preferred over the copy below.
+   `state.bands` is filled from the result's `reference_bands`; the literals at
+   each call site stay as a fallback for a result rendered before this shipped
+   (history is full of them) — but when the server has an opinion it wins, and
+   it brings the citation with it. */
+function RB(field, value, lo, hi, unit){
+  const b=(state.bands||{})[field];
+  if(!b) return R(value,lo,hi,unit);
+  return R(value, b.lo, b.hi, unit, b.source||null);
+}
 
 function bikeTiles(s, position){
   const t=[];
   // Ranges are per-position (mirrors backend). rng(key) -> {value,lo,hi} or null.
-  const rng=(key,val)=>{ const r=bikePosRange(position,key); return r?R(val,r[0],r[1],'°'):null; };
-  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°',null,null,false,rng('knee_at_bdc',s.knee_at_bdc)));
-  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°',null,null,false,rng('knee_at_tdc',s.knee_at_tdc)));
+  // Served band first (it knows the position and carries the citation), the
+  // local position table second.
+  const rng=(key,val,field)=>{
+    const b=(state.bands||{})[field];
+    if(b) return R(val,b.lo,b.hi,'°',b.source||null);
+    const r=bikePosRange(position,key); return r?R(val,r[0],r[1],'°'):null;
+  };
+  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°',null,null,false,rng('knee_at_bdc',s.knee_at_bdc,'knee_at_bdc')));
+  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°',null,null,false,rng('knee_at_tdc',s.knee_at_tdc,'knee_at_tdc')));
   // Hip is asymmetric: above optimal max = more open = comfort/OK, never a fault.
   // The video summary emits hip_angle_avg (NOT hip_angle_max) -- use that.
   const hipV = s.hip_angle_avg!=null ? s.hip_angle_avg : s.hip_angle_max;
   if(hipV!=null){
     const hr=bikePosRange(position,'hip_angle');
     // treat an open hip (above max) as in-range by extending the upper bound
-    const hipRange = hr ? R(hipV, hr[0], Math.max(hr[1], hipV), '°') : null;
+    const hb=(state.bands||{})['hip_angle_avg'];
+    const hipRange = hb
+      ? R(hipV, hb.lo, Math.max(hb.hi, hipV), '°', hb.source||null)
+      : (hr ? R(hipV, hr[0], Math.max(hr[1], hipV), '°') : null);
     t.push(tile('Hip angle',num(hipV),'°',null,null,false,hipRange));
   }
-  if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,rng('elbow_angle',s.elbow_angle_avg)));
-  if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg)));
-  if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,rng('shoulder_angle',s.shoulder_angle_avg)));
+  if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg')));
+  if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg')));
+  if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,rng('shoulder_angle',s.shoulder_angle_avg,'shoulder_angle_avg')));
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
   if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
   if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
@@ -3392,7 +3419,7 @@ function bikeTiles(s, position){
 }
 function runTiles(s){
   const t=[];
-  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,R(s.cadence_spm,170,190,'spm')));
+  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,RB('cadence_spm',s.cadence_spm,170,190,'spm')));
   /* Centimetres only exist because something in the picture had a known real
      length. Say which: with a stated height the torso is modelled from it,
      without one an average build is assumed — worth ~10% on this number, which
@@ -3403,9 +3430,9 @@ function runTiles(s){
   const voscCm = s.vertical_oscillation_cm!=null ? s.vertical_oscillation_cm
     : (s.vertical_oscillation_m!=null ? s.vertical_oscillation_m*100 : null);
   if(voscCm!=null) t.push(tile('Vert. oscillation',num(voscCm,1),'cm',voscNote,null,false,R(voscCm,6,10,'cm')));
-  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,R(s.trunk_lean_avg,2,10,'°')));
-  if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,R(s.ground_contact_ms,180,270,'ms')));
-  if(s.flight_time_ms!=null) t.push(tile('Flight time',num(s.flight_time_ms),'ms',s.flight_time_ms_estimated?'estimated from 2D video':null,null,false,R(s.flight_time_ms,80,150,'ms')));
+  if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,RB('trunk_lean_avg',s.trunk_lean_avg,2,10,'°')));
+  if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,RB('ground_contact_ms',s.ground_contact_ms,180,270,'ms')));
+  if(s.flight_time_ms!=null) t.push(tile('Flight time',num(s.flight_time_ms),'ms',s.flight_time_ms_estimated?'estimated from 2D video':null,null,false,RB('flight_time_ms',s.flight_time_ms,80,150,'ms')));
   if(s.foot_strike!=null){
     const fsMap={heel:'Heel',midfoot:'Midfoot',forefoot:'Forefoot'};
     // Foot strike is informational, not graded: rearfoot is normal for ~80-95%
@@ -3414,11 +3441,11 @@ function runTiles(s){
     // strike itself -- so no good/warn verdict here.
     t.push(tile('Foot strike',fsMap[s.foot_strike]||pretty(s.foot_strike),'',s.foot_strike_estimated?'estimated from 2D video':null,null,true));
   }
-  if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×',s.overstride_estimated?'× leg length ahead of hip (est.)':'× leg length ahead of hip',null,false,R(s.overstride_ratio,0,0.15,'×')));
+  if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×',s.overstride_estimated?'× leg length ahead of hip (est.)':'× leg length ahead of hip',null,false,RB('overstride_ratio',s.overstride_ratio,0,0.15,'×')));
   // Knee is scored at two gait phases, not as a full-cycle mean: knee_max is
   // extension near footstrike (contact), knee_min is peak flexion in swing.
-  if(s.knee_max!=null) t.push(tile('Knee · contact',num(s.knee_max),'°',null,null,false,R(s.knee_max,160,175,'°')));
-  if(s.knee_min!=null) t.push(tile('Knee · swing',num(s.knee_min),'°',null,null,false,R(s.knee_min,80,100,'°')));
+  if(s.knee_max!=null) t.push(tile('Knee · contact',num(s.knee_max),'°',null,null,false,RB('knee_max',s.knee_max,160,175,'°')));
+  if(s.knee_min!=null) t.push(tile('Knee · swing',num(s.knee_min),'°',null,null,false,RB('knee_min',s.knee_min,80,100,'°')));
   t.push(...kneeVelocityTiles(s));
   return t;
 }
@@ -4995,6 +5022,9 @@ function angleTableRows(A, sport, position, srcByKey){
 function render(job){
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
   const sport=r.sport_type||state.sport;
+  // Bands this result was graded against, straight from the server. Cleared
+  // per render so a bike result never grades a run with a rider's ranges.
+  state.bands = r.reference_bands || null;
 
   // score + grade
   $('#scoreNum').innerHTML = (r.technique_score==null?'—':r.technique_score)+'<small>/100</small>';

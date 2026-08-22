@@ -19,6 +19,8 @@ Running references:
     elite ~200 ms, recreational up to ~300 ms.
 """
 
+from typing import Any
+
 # Running reference ranges (optimal technique). Targets are the same
 # for all athlete levels (these are efficiency targets); only severity
 # grading scales by level -- see running_action_plan_builder.py.
@@ -336,3 +338,94 @@ def get_reference_values(sport_type: str) -> dict[str, tuple[float, float]]:
         "swim": SWIMMING_REFERENCE,
     }
     return refs.get(sport_type, RUNNING_REFERENCE)
+
+
+# --------------------------------------------------------------------------
+# Where each running band comes from.
+#
+# These citations were already here -- in the comments above every range, which
+# is the right place for the reasoning and the wrong place for something the
+# athlete should be able to read. A number presented as a target, with no
+# indication of who decided it, asks to be taken on faith; the whole product
+# argues against doing that anywhere else.
+#
+# Transcribed from the comments above, not looked up afresh: if a band moves,
+# its citation moves in the same edit or the two disagree.
+# --------------------------------------------------------------------------
+RUNNING_REFERENCE_SOURCES: dict[str, str] = {
+    "trunk_lean": "Folland 2017",
+    "cadence_spm": "Heiderscheit 2011",
+    "knee_at_initial_contact": "Heiderscheit 2011",
+    "knee_at_midstance": "Heiderscheit 2011",
+    "knee_at_swing": "Folland 2017",
+    "elbow_angle": "Napier, Science of Running",
+    "vertical_oscillation_cm": "Heiderscheit 2011",
+    "ground_contact_ms": "Folland 2017",
+    "flight_time_ms": "Weyand 2000",
+    "overstride_ratio": "Heiderscheit 2011; Souza 2016",
+}
+
+# The summary field each band grades, so the client can look a band up by the
+# name it already uses for the number. Kept explicit rather than derived: the
+# two vocabularies genuinely differ (``knee_max`` is the contact angle), and a
+# clever mapping would be the kind of thing that silently attaches the wrong
+# citation to a metric.
+_RUN_FIELD_TO_BAND: dict[str, str] = {
+    "cadence_spm": "cadence_spm",
+    "trunk_lean_avg": "trunk_lean",
+    "ground_contact_ms": "ground_contact_ms",
+    "flight_time_ms": "flight_time_ms",
+    "overstride_ratio": "overstride_ratio",
+    "vertical_oscillation_cm": "vertical_oscillation_cm",
+    "knee_max": "knee_at_initial_contact",
+    "knee_min": "knee_at_swing",
+}
+
+
+def reference_bands(
+    sport_type: str, cycling_position: str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Bands + citations, keyed by the summary field the client renders.
+
+    One place decides what a good number is. The client kept its own copy of
+    every range -- literals for running, a second position table for cycling --
+    which is the arrangement that let the landing page and the price catalogue
+    drift apart twice. Serving them means a band edited here reaches the report
+    without anybody remembering to edit JavaScript too.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    if sport_type == "run":
+        for field, band_key in _RUN_FIELD_TO_BAND.items():
+            band = RUNNING_REFERENCE.get(band_key)
+            if not band:
+                continue
+            out[field] = {"lo": band[0], "hi": band[1]}
+            src = RUNNING_REFERENCE_SOURCES.get(band_key)
+            if src:
+                out[field]["source"] = src
+        return out
+
+    if sport_type == "bike":
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            CYCLING_POSITIONS_META,
+            get_cycling_reference,
+        )
+        ref = get_cycling_reference(cycling_position)
+        # META is keyed by position first, then by metric.
+        meta = (CYCLING_POSITIONS_META or {}).get(cycling_position or "road_hoods", {})
+        # Cycling already carries its citations as data (per range), so they are
+        # read rather than transcribed.
+        for field, band_key in (
+            ("knee_at_bdc", "knee_at_bdc"), ("knee_at_tdc", "knee_at_tdc"),
+            ("hip_angle_avg", "hip_angle_max"), ("elbow_angle_avg", "elbow_angle"),
+            ("trunk_angle_avg", "trunk_angle"), ("shoulder_angle_avg", "shoulder_angle"),
+            ("forearm_tilt_avg", "forearm_tilt"), ("pelvic_ratio", "pelvic_ratio"),
+        ):
+            band = ref.get(band_key)
+            if not band or len(band) != 2:
+                continue
+            out[field] = {"lo": band[0], "hi": band[1]}
+            src = (meta.get(band_key) or {}).get("source")
+            if src:
+                out[field]["source"] = src
+    return out

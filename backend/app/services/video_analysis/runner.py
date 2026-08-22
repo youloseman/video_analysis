@@ -44,6 +44,7 @@ from app.services.video_analysis.biomechanics.landmark_stabilizer import (
 from app.services.video_analysis.biomechanics.quality_gate import (
     evaluate_quality_gate,
 )
+from app.services.video_analysis.biomechanics.sport_configs import reference_bands
 from app.services.video_analysis.biomechanics.running_analyzer import (
     RunningAnalyzer,
 )
@@ -996,4 +997,12 @@ def run_analysis(
         "angle_statistics": angle_stats,
         "detected_issues": issues,
         "sport_specific_metrics": summary,
+        # The bands the report grades against, and who decided them. Served
+        # rather than duplicated in the client: a target the athlete cannot
+        # trace is a target they have to take on faith, and the client's own
+        # copy of these ranges is exactly the arrangement that lets two halves
+        # of the product disagree about what "good" is.
+        "reference_bands": reference_bands(
+            sport_type, cycling_position if is_bike else None,
+        ),
     }
