@@ -524,6 +524,10 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
         html_doc = html_doc.replace(
             pricing.EXPERT_PRICE_TOKEN, pricing.headline_price("expert"),
         )
+    if pricing.FREE_LIMIT_TOKEN in html_doc:
+        html_doc = html_doc.replace(
+            pricing.FREE_LIMIT_TOKEN, str(pricing.starter_monthly_limit()),
+        )
     # Stamp a build id so every piece of result feedback records which build
     # produced it. Digested from the file as-is, before the per-host rewrites
     # below, so the same shell reports the same build on every domain.

@@ -338,6 +338,15 @@ _CROSS = (
 
 # Where the rendered block is spliced into landing.html.
 LANDING_TOKEN = "<!--PRICING-->"
+# The free allowance mentioned in landing-page prose (hero trust line, FAQ).
+# Rendered from the tier table -- the number the server actually enforces --
+# because the last hardcoded copy said "3" for a month after the limit became 10.
+FREE_LIMIT_TOKEN = "<!--FREE-LIMIT-->"
+
+
+def starter_monthly_limit() -> int:
+    """Starter's analysis allowance, for prose mentions outside the cards."""
+    return tier_limit("starter")[0]
 # A price mentioned in running prose rather than on a card (the landing page
 # points at the Expert Review mid-page, before the pricing section). Same
 # catalogue, so an amount cannot be updated in one of the two and not the other.

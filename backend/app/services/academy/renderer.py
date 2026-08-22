@@ -28,7 +28,10 @@ _BASE_CSS = """
 :root{
   --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
   --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
-  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#8A94A3;
+  /* ink-faint mirrors the SPA's AA fix: #8A94A3 was 3.07:1 on white and this
+     tier carries real text (dates, read-times). Keep in lock-step with
+     static/index.html until the tokens live in one shared file. */
+  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#6E7787;
   --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
   --c-bike:#F2A33C; --c-run:#EF5B5B;
   --f-display:'Archivo','Arial Black',sans-serif;
