@@ -260,7 +260,7 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 /* The print header. Absent on screen; the browser paints it at the top of the
    first page, which is what turns a web page into something an athlete can
    hand to a coach or keep in a folder. */
-.printhead{display:none}
+.printhead,.printfoot{display:none}
 @page{margin:14mm 12mm}
 @media print{
   .topbar,.sidebar,.botnav,.scrim,footer,.backhome-row,.skip,.modal{display:none !important}
@@ -274,16 +274,37 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
      an upgrade panel in the middle of it is not a document. */
   .upsell,.fb-host,.again-row,.quota-line,.switch,.drop,.filepreview,
   .guides,.share-row,.disclaimer-cta,.profilefield,.profilehint,
-  .billtoggle,.addon-strip,.tlock,.tcard-lock{display:none !important}
-  /* A locked section prints as nothing rather than as a blurred smudge. */
-  [class*="lock"]{display:none !important}
+  .billtoggle,.addon-strip,.tlock,.tcard-lock,
+  /* Screen furniture with no job on paper: the section masthead (the print
+     head replaces it), the "results aren't stored" nudge, and the feedback
+     strip — nobody rates an analysis on a printout. */
+  .screenhead,.ephem-note,.fb{display:none !important}
+  /* A locked section prints as nothing rather than as a blurred smudge.
+     Listed by name, never as [class*="lock"]: that substring also matches
+     "block", so the wildcard hid all fifteen sections of the report and the
+     paid Save-as-PDF printed a score with an empty page under it. */
+  .lockbar,.dform-lockrow,.lock-chip{display:none !important}
+  /* The video cannot print. Its annotated still can, and the report is about
+     the position anyway -- so the frame is swapped for the keyframe. */
+  #videoCol video,.videocap{display:none !important}
+  #printKeyframe{display:block !important;max-width:320px;margin:0 auto}
+  /* The kinogram scrolls sideways on screen; on paper it has to fit. */
+  .kinowrap{overflow:visible !important}
+  .kinowrap img,.kinowrap>*{max-width:100% !important;height:auto !important}
 
   .printhead{display:block;border-bottom:2px solid #14294B;padding-bottom:8px;margin-bottom:16px}
   .printhead .ph-brand{font-family:var(--f-display);font-weight:900;font-style:italic;
     font-size:20px;text-transform:uppercase;color:#14294B;letter-spacing:-.02em}
+  .printhead .ph-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .printhead .ph-who{font-family:var(--f-mono);font-size:11px;color:#5C6675}
   .printhead .ph-meta{display:flex;justify-content:space-between;gap:12px;
     font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;
     text-transform:uppercase;color:#5C6675;margin-top:4px}
+  /* Closing page: what the reader needs to weigh the numbers by. */
+  .printfoot{display:block !important;margin-top:22px;padding-top:12px;
+    border-top:1px solid #DCE2EA;break-inside:avoid;page-break-inside:avoid}
+  .printfoot p{font-size:10.5px;line-height:1.55;color:#5C6675;margin:0 0 6px}
+  .printfoot b{color:#14294B}
 
   /* Sections survive the page break intact -- a joint-angle table split across
      two pages with its header left behind is worse than a page-and-a-half. */
@@ -1920,7 +1941,11 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
   <!-- ============ RESULTS ============ -->
   <section id="results" class="hidden" aria-labelledby="resultsTitle">
-    <div class="blockhead" style="margin-top:0">
+    <!-- Printed only, and first: on paper this masthead replaces the on-screen
+         heading, and it has to be at the top of page one to do that. -->
+    <div class="printhead" id="printHead" aria-hidden="true"></div>
+
+    <div class="blockhead screenhead" style="margin-top:0">
       <div class="eyebrow">Report</div>
       <h2 class="sec" id="resultsTitle" tabindex="-1" style="margin-bottom:8px">Your results</h2>
       <div class="speedline"></div>
@@ -1948,6 +1973,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <span id="printBtnHost"></span>
       </div>
       <div id="videoCol">
+        <!-- Paper cannot play a video. The annotated still says the same thing
+             about the position, so it stands in when this is printed. -->
+        <img id="printKeyframe" class="hidden" alt="Annotated frame from your clip">
         <div class="videoframe" id="videoframe">
           <video id="overlayVideo" controls playsinline aria-label="Annotated analysis overlay video"></video>
           <div class="videocap">
@@ -1961,11 +1989,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </div>
     </div>
 
-    <!-- Printed only. Filled by renderPrintHead() from the report on screen. -->
-    <div class="printhead" id="printHead" aria-hidden="true"></div>
-
     <div id="gateBanner"></div>
-    <p class="hint hidden" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
+    <p class="hint hidden ephem-note" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
 
     <div class="block hidden" id="kinogramBlock">
       <div class="blockhead">
@@ -2112,6 +2137,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
       </button>
       <span class="quota" id="quotaResults"></span>
     </div>
+
+    <!-- Printed only, and last: the caveats that live in badges and hover
+         states on screen and have nowhere to go on paper. -->
+    <div class="printfoot" id="printFoot" aria-hidden="true"></div>
   </section>
 
   <!-- ============ PHOTO RESULTS ============ -->
@@ -3798,12 +3827,18 @@ function renderPrintHead(meta){
   const el=$('#printHead'); if(!el) return;
   const bits=[];
   if(meta.sport) bits.push(pretty(meta.sport));
+  if(meta.position) bits.push(meta.position);
   if(meta.profile) bits.push(meta.profile);
   if(meta.when) bits.push(meta.when);
-  el.innerHTML=`<div class="ph-brand">Flapp</div>
+  // Who it is about, on a document that gets handed to a coach. The account
+  // email, because that is the only name we have ever asked for.
+  const who = meta.athlete ? `<span class="ph-who">${esc(meta.athlete)}</span>` : '';
+  const conf = meta.confidence
+    ? ` \u00b7 ${esc(pretty(meta.confidence))} confidence` : '';
+  el.innerHTML=`<div class="ph-top"><div class="ph-brand">Flapp</div>${who}</div>
     <div class="ph-meta">
       <span>${esc(bits.join(' \u00b7 '))}</span>
-      <span>${meta.score==null?'':'Technique '+esc(String(meta.score))+'/100'}${meta.grade?' ('+esc(meta.grade)+')':''}</span>
+      <span>${meta.score==null?'':'Technique '+esc(String(meta.score))+'/100'}${meta.grade?' ('+esc(meta.grade)+')':''}${conf}</span>
       <span>getflapp.com</span>
     </div>`;
 }
@@ -3819,7 +3854,29 @@ function renderPrintable(r, entry){
     when: fmtWhen((entry&&entry.at) || Date.now()),
     score: r.technique_score!=null ? r.technique_score : (entry&&entry.score),
     grade: r.letter_grade || (entry&&entry.grade) || '',
+    athlete: (auth&&auth.email) || '',
+    confidence: (r.analysis_confidence&&r.analysis_confidence.level) || '',
+    position: r.cycling_position_label || (r.cycling_position?pretty(r.cycling_position):''),
   });
+  // Paper cannot play the overlay, so the annotated still stands in for it.
+  const pk=$('#printKeyframe'), kf=r.keyframe_base64;
+  if(pk){
+    if(kf){ pk.src=kf; pk.classList.remove('hidden'); }
+    else { pk.removeAttribute('src'); pk.classList.add('hidden'); }
+  }
+  // What the reader has to know to judge the numbers, in the document itself:
+  // on screen these live in badges and hover states that paper does not have.
+  const foot=$('#printFoot');
+  if(foot){
+    const conf=(r.analysis_confidence&&r.analysis_confidence.explanation)||'';
+    foot.innerHTML =
+      `<p><b>How to read this.</b> Every angle is measured from one side-view clip
+        by 2D pose estimation. It is a comparison against reference ranges and
+        against your own earlier clips — not a laboratory measurement, and not a
+        substitute for a bike fit or a clinician.</p>`
+      + (conf?`<p><b>Confidence on this clip:</b> ${esc(conf)}</p>`:'')
+      + `<p>Flapp by Clariva · getflapp.com</p>`;
+  }
 }
 function printButtonHtml(){
   return (auth && auth.tier==='full')
@@ -5155,7 +5212,7 @@ function render(job){
     // before it can be sold, because that id is what the unlock buys.
     const entryId=saveToHistory('video', r);
     renderUpsell('upsellHost', r.locked,
-      ['coachBlock','planBlock','issuesBlock','metricsBlock','anglesBlock',
+      ['coachBlock','planBlock','fitBlock','issuesBlock','metricsBlock','anglesBlock',
        'biomechBlock','kinogramBlock','exportBlock'],
       entryId);
     renderQuota();
@@ -5248,10 +5305,14 @@ function render(job){
   // explain the score in words -- and blurs the measurement table and the
   // drills, which are the ongoing product rather than the sample.
   if(r.locked) renderUpsell('upsellHost', r.locked,
-    ['planBlock','metricsBlock','anglesBlock','biomechBlock','kinogramBlock','exportBlock']);
+    ['planBlock','fitBlock','metricsBlock','anglesBlock','biomechBlock','kinogramBlock','exportBlock']);
   mountFeedback('fbHost','video',r,saveToHistory('video', r),
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
+  // The header the printed copy carries. It was only being built on the gated
+  // path, so the tier that has the Save-as-PDF button printed a page with no
+  // name, date or score on it.
+  renderPrintable(r);
   setState('results',{focus:'#resultsTitle'});
 }
 
