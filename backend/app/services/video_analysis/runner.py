@@ -771,7 +771,13 @@ def run_analysis(
     # DECIDE the side here. It only gets to say "then do not publish the two
     # numbers that hang on it", which is the same plausibility gating every
     # other metric in this file already has.
-    if not is_bike and (near_cues or {}).get("conflict"):
+    # Withheld when the cues actively point at the OTHER leg, not merely when
+    # they cannot agree. Balanced cues are no evidence of a problem, and
+    # treating them as one silenced a clip whose side was right: IMG_3979,
+    # confirmed near side RIGHT, where three of four cues said right and a
+    # ballot-counting tie called it conflicted anyway.
+    _suggested = (near_cues or {}).get("suggested_near_side")
+    if not is_bike and _suggested and _suggested != analyzer.camera_side:
         withheld = [k for k in (
             "overstride_ratio", "overstride_ratio_estimated",
             "overstride_ratio_contacts", "foot_strike",
@@ -780,14 +786,19 @@ def run_analysis(
         ) if summary.pop(k, None) is not None]
         if withheld:
             quality_warnings.append(
-                "Which leg faces the camera could not be settled on this clip "
-                "-- the depth, size and visibility cues disagree. Overstride "
-                "and foot-strike pattern are measured from the near-side foot "
-                "as it lands, so they are withheld rather than measured from "
-                "the wrong leg. Filming a few degrees off square, rather than "
-                "exactly side-on, separates the two legs and fixes it."
+                "The depth, size and visibility cues point at the opposite leg "
+                "from the one this analysis measured. Overstride and "
+                "foot-strike pattern are read from the near-side foot as it "
+                "lands, so they are withheld rather than reported from a leg "
+                "that may be the far one. Filming a few degrees off square, "
+                "rather than exactly side-on, separates the two legs."
             )
-            logger.info("NEAR_SIDE_CONFLICT", withheld=withheld)
+            logger.info(
+                "NEAR_SIDE_DISAGREEMENT", chosen=analyzer.camera_side,
+                cues_suggest=_suggested,
+                score=(near_cues or {}).get("near_side_score"),
+                withheld=withheld,
+            )
 
     summary["landmark_quality"] = landmark_quality
     summary["quality_warnings"] = quality_warnings

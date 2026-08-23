@@ -23,6 +23,7 @@ import pytest
 from app.services.video_analysis.biomechanics.tracking_diagnostics import (
     compute_framing,
     compute_near_side_cues,
+    score_near_side_cues,
 )
 
 
@@ -123,7 +124,9 @@ def test_every_cue_points_at_the_near_leg_and_agrees():
         out = compute_near_side_cues(make_frames(near=near))
         assert out["suggested_near_side"] == near, (near, out)
         assert out["conflict"] is False
-        assert out["agreement"] >= 3, out
+        # Agreement is now the share of the evidence pointing one way, 0 to 1,
+        # rather than a count of ballots. Everything agreeing is 1.0.
+        assert out["agreement"] == pytest.approx(1.0), out
 
 
 def test_the_sign_convention_is_positive_for_left():
@@ -146,12 +149,57 @@ def test_cues_abstain_when_the_two_legs_look_identical():
 
 def test_a_single_disagreeing_cue_does_not_flip_the_verdict():
     """MediaPipe's depth is one voter, not the judge: with the image cues
-    pointing left, a z that says right loses and the conflict is recorded."""
+    pointing left, a z that says right loses.
+
+    It is no longer called a conflict, either. Three cues agreeing against one
+    is not balanced evidence -- and reading it as one is what withheld metrics
+    from a clip whose near side was correct."""
     frames = make_frames(near="left", z_gap=-0.05)   # z now favours right
     out = compute_near_side_cues(frames)
     assert out["suggested_near_side"] == "left"
-    assert out["conflict"] is True
+    assert out["conflict"] is False
     assert out["cue_votes"]["z_bias_pct"] == "right"
+    assert 0.0 < out["agreement"] < 1.0
+
+
+def test_a_cue_is_weighed_by_how_far_it_clears_its_own_noise_floor():
+    """The defect this replaces, in the numbers that exposed it. On IMG_3979
+    (near side confirmed RIGHT by the athlete) contact depth cleared its floor
+    by 1.2x and said left, segment length cleared its by 7.4x and said right --
+    and one ballot each tied, so the clip was declared conflicted and the
+    metrics that hang on the near side were withheld."""
+    out = score_near_side_cues({
+        "visibility_pp": -2.52,        # floor 3.0  -> -0.84, right
+        "contact_depth_pct": 1.85,     # floor 1.5  -> +1.23, left
+        "segment_length_pct": -11.13,  # floor 1.5  -> capped -3.0, right
+        "z_bias_pct": -3.93,           # floor 5.0  -> -0.79, right
+    })
+    assert out["suggested_near_side"] == "right"
+    assert out["conflict"] is False
+    assert out["near_side_score"] == pytest.approx(-3.4, abs=0.05)
+    # Both ballots are still recorded; they just no longer decide.
+    assert out["cue_votes"] == {
+        "contact_depth_pct": "left", "segment_length_pct": "right",
+    }
+
+
+def test_one_wild_cue_cannot_decide_it_alone():
+    """A cue reading twenty times its noise floor is not twenty times as sure;
+    it is one mistracked stretch away from being wrong."""
+    out = score_near_side_cues({
+        "visibility_pp": 2.9, "contact_depth_pct": 1.4,
+        "segment_length_pct": -60.0, "z_bias_pct": 4.9,
+    })
+    assert out["cue_strengths"]["segment_length_pct"] == -3.0
+
+
+def test_genuinely_balanced_evidence_is_still_a_conflict():
+    out = score_near_side_cues({
+        "visibility_pp": 3.0, "contact_depth_pct": -1.5,
+        "segment_length_pct": 1.5, "z_bias_pct": -5.0,
+    })
+    assert out["suggested_near_side"] is None
+    assert out["conflict"] is True
 
 
 def test_missing_landmarks_do_not_crash_the_cues():

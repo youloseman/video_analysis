@@ -38,15 +38,25 @@ _RIGHT_LEG = (24, 26, 28, 32)
 _LEFT_LEG_VIS = (25, 27, 29, 31)   # knee, ankle, heel, toe
 _RIGHT_LEG_VIS = (26, 28, 30, 32)
 
-# A cue must clear its deadband to vote; below it the cue abstains. First-pass
-# values -- the point of the diagnostic phase is to check them against clips
-# whose near side is known.
+# Each cue's noise floor: how large a reading has to be before it means
+# anything at all. These are not vote thresholds -- they are the denominator
+# that turns four measurements in four different units into one comparable
+# number. A cue reading twice its floor carries twice the evidence.
 _DEADBAND = {
     "visibility_pp": 3.0,        # percentage points of visibility
     "contact_depth_pct": 1.5,    # % of leg length
     "segment_length_pct": 1.5,   # % of leg length
     "z_bias_pct": 5.0,           # % of leg length
 }
+
+# Past this multiple of its own noise floor, a cue is as certain as it is going
+# to get, and letting it grow further only lets one mistracked stretch decide
+# the answer on its own.
+_CUE_CAP = 3.0
+
+# Net evidence needed before a side is named. One cue's worth, clear of the
+# noise floor and of whatever points the other way.
+_MIN_NEAR_SIDE_SCORE = 1.0
 
 # Athlete height in the frame MediaPipe actually sees. Below "tiny" the legs
 # are too few pixels apart to tell reliably; between the two it is workable but
@@ -221,25 +231,69 @@ def compute_near_side_cues(frame_results: list[dict[str, Any]]) -> dict[str, Any
         if world_len and world_len > 1e-6:
             cues["z_bias_pct"] = round((zr - zl) / world_len * 100, 2)
 
+    # Weigh each cue by how far it clears its OWN noise floor, and add them up.
+    #
+    # This used to be a vote: clear your deadband, cast one ballot, ties are a
+    # conflict. That threw away the one thing separating a cue that barely
+    # cleared its floor from one that cleared it sevenfold. Measured on
+    # IMG_3979, whose near side is confirmed RIGHT: contact depth cleared by
+    # 1.2x and said left, segment length cleared by 7.4x and said right, and
+    # the two ballots tied. The clip was declared conflicted and the metrics
+    # that hang on the near side were withheld -- on a clip where three of the
+    # four cues, and the answer, were right.
+    #
+    # A deadband is a noise floor, so value/floor is a signal-to-noise ratio,
+    # which is the natural weight and makes four readings in four different
+    # units comparable without inventing anything.
+    return {**cues, **score_near_side_cues(cues)}
+
+
+def score_near_side_cues(cues: dict[str, float | None]) -> dict[str, Any]:
+    """Combine the four cues into one verdict, weighed by evidence.
+
+    This used to be a vote: clear your deadband, cast one ballot, ties are a
+    conflict. That threw away the one thing separating a cue that barely
+    cleared its floor from one that cleared it sevenfold. Measured on
+    IMG_3979, whose near side the athlete confirmed is RIGHT: contact depth
+    cleared by 1.2x and said left, segment length cleared by 7.4x and said
+    right, and the two ballots tied. The clip was declared conflicted and the
+    metrics that hang on the near side were withheld -- on a clip where three
+    of the four cues, and the answer, were right.
+
+    A deadband is a noise floor, so value/floor is a signal-to-noise ratio,
+    which is the natural weight and makes four readings in four different units
+    comparable without inventing anything.
+    """
     votes: dict[str, str] = {}
+    strengths: dict[str, float] = {}
+    score = 0.0
+    total = 0.0
     for name, value in cues.items():
-        if value is None or abs(value) < _DEADBAND[name]:
+        floor = _DEADBAND.get(name)
+        if value is None or not floor:
             continue
-        votes[name] = "left" if value > 0 else "right"
+        ratio = max(-_CUE_CAP, min(_CUE_CAP, value / floor))
+        strengths[name] = round(ratio, 2)
+        score += ratio
+        total += abs(ratio)
+        if abs(value) >= floor:
+            votes[name] = "left" if value > 0 else "right"
 
-    left_votes = sum(1 for v in votes.values() if v == "left")
-    right_votes = sum(1 for v in votes.values() if v == "right")
-    suggested = None
-    if left_votes != right_votes:
-        suggested = "left" if left_votes > right_votes else "right"
-
+    decided = abs(score) >= _MIN_NEAR_SIDE_SCORE
     return {
-        **cues,
         "cue_votes": votes,
         "cues_voting": len(votes),
-        "agreement": max(left_votes, right_votes),
-        "conflict": bool(left_votes and right_votes),
-        "suggested_near_side": suggested,
+        # How one-sided the evidence is, 0 to 1: everything pointing one way is
+        # 1.0, an even split is 0.0. Replaces a count of ballots, which said
+        # nothing about how strongly any of them were cast.
+        "agreement": round(abs(score) / total, 2) if total > 1e-9 else 0.0,
+        "cue_strengths": strengths,
+        "near_side_score": round(score, 2),
+        # Genuinely balanced evidence, not merely two ballots disagreeing.
+        "conflict": not decided,
+        "suggested_near_side": (
+            ("left" if score > 0 else "right") if decided else None
+        ),
     }
 
 
