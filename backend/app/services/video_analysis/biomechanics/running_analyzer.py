@@ -78,6 +78,62 @@ DEFAULT_TORSO_M = 0.45
 # an athlete. Treated as "not told" rather than trusted.
 PLAUSIBLE_HEIGHT_CM = (120.0, 230.0)
 
+# --- whole-clip gait phase (see RunningAnalyzer.recompute_gait_phases) ------
+# Fewer frames than this and there is no cycle to recognise stance against.
+GAIT_MIN_FRAMES = 30
+# Smoothing before differencing, in seconds rather than frames so it means the
+# same thing at 30 fps, 60 fps and on a slow-motion clip.
+GAIT_SMOOTH_S = 0.05
+# How far up from its lowest point a foot may be and still count as planted,
+# as a fraction of the ankle's own vertical range.
+#
+# Calibrated on `upload/IMG_3979.MOV`, a 10 s treadmill clip whose cadence is
+# independently known (164.6 spm from the swap-immune spectral estimator, so
+# a 362 ms step). Cadence comes out at 166 spm for every value in 0.55-0.80 --
+# the timing does not depend on this at all -- and the band only sets how long
+# contact lasts:
+#
+#     0.55 -> contact 155 ms, flight 207     0.70 -> contact 207 ms, flight 155
+#     0.60 -> contact 190 ms, flight 173     0.75 -> contact 224 ms, flight 138
+#     0.65 -> contact 207 ms, flight 155     0.80 -> cadence breaks to 174
+#
+# 0.65 sits mid-plateau and lands contact at 207 ms against a published
+# 180-270 for endurance running (Folland 2017), with flight at 155.
+GAIT_LOW_BAND = 0.65
+
+# How near its deepest the near ankle must be for a footfall to count as that
+# leg's. Generous on purpose: the cost of rejecting a real near-leg contact is
+# one fewer sample, and the cost of accepting the far leg's is a fabricated
+# overstride reading.
+NEAR_CONTACT_BAND = 0.45
+
+
+def _moving_average(values: np.ndarray, window: int) -> np.ndarray:
+    """Centred moving average with edge padding, so no samples are lost."""
+    if window <= 1 or values.size < 3:
+        return values
+    kernel = np.ones(window) / window
+    padded = np.pad(values, (window, window), mode="edge")
+    return np.convolve(padded, kernel, mode="same")[window:-window]
+
+
+def _contiguous_runs(flags: np.ndarray, min_run: int) -> list[tuple[int, int]]:
+    """Inclusive ``(first, last)`` of every run of True at least ``min_run`` long."""
+    runs: list[tuple[int, int]] = []
+    n = len(flags)
+    i = 0
+    while i < n:
+        if flags[i]:
+            j = i
+            while j < n and flags[j]:
+                j += 1
+            if j - i >= min_run:
+                runs.append((i, j - 1))
+            i = j
+        else:
+            i += 1
+    return runs
+
 
 class GaitPhase(str, Enum):
     """Phases of the running gait cycle."""
@@ -197,12 +253,198 @@ class RunningAnalyzer(SportAnalyzer):
             height_cm=self.height_cm,
         )
 
+    def recompute_gait_phases(self) -> dict[str, Any] | None:
+        """Redecide stance and swing for every frame, from the whole clip.
+
+        Replaces what :meth:`detect_gait_phase` decided frame by frame while
+        the clip was still streaming past. That version was wrong in three
+        ways, and the third one is why this is a separate pass rather than a
+        patch:
+
+        1. ``ankle_y_velocity < 0.001`` accepts every NEGATIVE velocity, so an
+           ankle travelling upward -- the whole heel-recovery phase -- counted
+           as ground contact. Measured on a clean clip: 95% of the cycle
+           called stance, against 30-40% for real running.
+        2. The threshold is an absolute per-frame distance, so it means
+           different things at 30 and 60 fps, and nothing at all on a
+           slow-motion clip where every per-frame velocity is divided by eight.
+        3. Stance is only recognisable against the cycle it sits in, and a
+           streaming detector cannot see one. The rolling history it had was
+           two seconds -- shorter than a single stride on an 8x slow clip.
+
+        What replaces it is two conditions on the LOWER of the two ankles,
+        which is a deliberate choice: it never asks which leg it is looking at.
+        Left/right identity is the least reliable thing MediaPipe produces on a
+        side view -- 43% of frames needed correcting on the treadmill fixture --
+        and every phase decision made from a labelled leg inherits that.
+
+        * **Travelling backward relative to the hips.** A planted foot does not
+          move; the hips pass over it, so hip-relative it slides straight back
+          at the speed of travel. On a treadmill, at belt speed -- the same
+          thing. Swing returns it forward over a longer slice of the cycle.
+        * **Low in its own vertical range.** The backward test alone cannot see
+          flight, where a foot may still be drifting backward with nothing
+          under it. The planted foot is the one at the bottom of its travel.
+
+        Both signals are hip-relative, so a drifting camera and a bobbing body
+        cancel out, and both are read off the whole clip, so frame rate and
+        slow motion stop mattering.
+
+        Returns a small diagnostic dict, or None when the clip cannot support
+        the decision -- in which case the streamed phases are left alone.
+        """
+        n = len(self.frame_results)
+        if n < GAIT_MIN_FRAMES:
+            return None
+
+        fps = self.get_effective_fps()
+        if not fps or fps <= 0:
+            return None
+
+        lower_x = np.full(n, np.nan)
+        lower_y = np.full(n, np.nan)
+        hip_x = np.full(n, np.nan)
+        hip_y = np.full(n, np.nan)
+        forward_votes: list[float] = []
+        for i, fr in enumerate(self.frame_results):
+            nl = fr.extra_metrics.get("_norm_landmarks")
+            if nl is None:
+                continue
+            try:
+                la, ra = nl[27], nl[28]
+                hips_x = (nl[23].x + nl[24].x) / 2.0
+                hips_y = (nl[23].y + nl[24].y) / 2.0
+            except (IndexError, TypeError, AttributeError):
+                continue
+            if any(v is None or math.isnan(v) for v in (la.y, ra.y, hips_x, hips_y)):
+                continue
+            # Image y grows downward, so the LOWER foot is the larger y.
+            near_ground = la if la.y >= ra.y else ra
+            if near_ground.x is None or math.isnan(near_ground.x):
+                continue
+            lower_x[i], lower_y[i] = near_ground.x, near_ground.y
+            hip_x[i], hip_y[i] = hips_x, hips_y
+            sign = calculate_forward_sign(nl)
+            if sign:
+                forward_votes.append(sign)
+
+        valid = np.isfinite(lower_x) & np.isfinite(hip_x)
+        if valid.sum() < GAIT_MIN_FRAMES or not forward_votes:
+            return None
+        forward = 1.0 if sum(forward_votes) > 0 else -1.0
+
+        idx = np.arange(n)
+        fore_aft = np.interp(idx, idx[valid], (lower_x - hip_x)[valid]) * forward
+        height = np.interp(idx, idx[valid], (lower_y - hip_y)[valid])
+
+        window = max(3, int(round(GAIT_SMOOTH_S * fps)) | 1)
+        fore_aft = _moving_average(fore_aft, window)
+        height = _moving_average(height, window)
+
+        going_back = np.gradient(fore_aft) < 0
+        low, high = np.percentile(height, 5), np.percentile(height, 95)
+        span = high - low
+        if span <= 1e-6:
+            return None
+        planted = height >= high - span * GAIT_LOW_BAND
+
+        any_foot_down = going_back & planted
+
+        # That is "SOME foot is on the ground", and it alternates feet. Every
+        # consumer of gait_phase -- ground contact, the frames overstride and
+        # foot-strike sample, the kinogram's positions -- means the NEAR foot,
+        # so the far foot's contacts have to come out. Sampling the near-side
+        # ankle at the moment the FAR foot lands measures a leg in mid-swing:
+        # overstride read 0.63 leg-lengths that way, against 0.23 before.
+        #
+        # Contacts alternate by construction, so which parity is the near foot
+        # is ONE decision for the whole clip rather than a per-frame label
+        # lookup. That matters: per-frame left/right identity is the least
+        # reliable thing here (43% of frames needed correcting on the fixture),
+        # while a single vote pooled over every frame of every contact is not
+        # meaningfully wrong.
+        # These phases describe "A foot is on the ground", not "the near foot
+        # is". Ground contact and flight time want exactly that -- they are
+        # properties of a footfall, whichever leg made it, and reading them
+        # from one labelled leg is what made them hostage to left/right
+        # identity. The metrics that genuinely need the near leg (overstride,
+        # foot strike, the kinogram's positions) filter these contacts
+        # themselves -- see :meth:`_contact_frame_indices`.
+        runs = _contiguous_runs(any_foot_down, max(2, int(round(0.04 * fps))))
+        for i, fr in enumerate(self.frame_results):
+            knee = fr.angles.get("knee", 0.0) or 0.0
+            fr.extra_metrics["gait_phase"] = (
+                self._stance_phase(knee) if any_foot_down[i]
+                else self._swing_phase(knee)
+            ).value
+            fr.extra_metrics["_near_foot_depth"] = float(
+                self._near_ankle_depth(fr)
+            )
+
+        return {
+            "method": "lower_ankle_fore_aft",
+            "stance_fraction": round(float(any_foot_down.mean()), 3),
+            "contacts_detected": len(runs),
+            "forward_sign": forward,
+            "smooth_window_frames": window,
+        }
+
+    def _near_ankle_depth(self, frame: Any) -> float:
+        """How far below the hips the near-side ankle hangs, or NaN.
+
+        A planted foot sits at the bottom of its travel; a foot in mid-swing
+        does not. That difference is what tells one leg's footfall from the
+        other's without trusting a left/right label -- the labels being the
+        least reliable thing on a side view.
+        """
+        nl = frame.extra_metrics.get("_norm_landmarks")
+        if nl is None:
+            return float("nan")
+        idx = 27 if (self.camera_side or "left") == "left" else 28
+        try:
+            depth = nl[idx].y - (nl[23].y + nl[24].y) / 2.0
+        except (IndexError, TypeError, AttributeError):
+            return float("nan")
+        return float(depth) if depth is not None else float("nan")
+
+    @staticmethod
+    def _stance_phase(knee_angle: float) -> GaitPhase:
+        if knee_angle > 160:
+            return GaitPhase.INITIAL_CONTACT
+        if knee_angle > 140:
+            return GaitPhase.MIDSTANCE
+        if knee_angle > 120:
+            return GaitPhase.TERMINAL_STANCE
+        return GaitPhase.PRE_SWING
+
+    @staticmethod
+    def _swing_phase(knee_angle: float) -> GaitPhase:
+        if knee_angle < 100:
+            return GaitPhase.MID_SWING
+        if knee_angle < 130:
+            return GaitPhase.INITIAL_SWING
+        return GaitPhase.TERMINAL_SWING
+
     def detect_gait_phase(
         self, knee_angle: float, ankle_y: float, hip_y: float,
         foot_y: float, ankle_y_velocity: float,
     ) -> GaitPhase:
-        """Determine running gait phase from kinematic data."""
-        is_ground_contact = ankle_y_velocity < 0.001 and foot_y > hip_y
+        """Provisional per-frame phase, overwritten by recompute_gait_phases.
+
+        Kept because the streaming loop needs *something* in the field before
+        the clip has been seen whole, and because a clip too short for the
+        whole-clip pass falls back to it.
+
+        The comparison is on the ABSOLUTE velocity. It used to be signed, which
+        accepted every ankle travelling upward and so counted the whole
+        heel-recovery phase as ground contact -- the defect that put 95% of a
+        cycle in stance. Reading a single frame it still cannot do better than
+        "roughly stationary and below the hips", and the threshold is still an
+        absolute per-frame distance that means different things at different
+        frame rates; that is why the whole-clip pass exists and why this only
+        survives as its fallback.
+        """
+        is_ground_contact = abs(ankle_y_velocity) < 0.001 and foot_y > hip_y
 
         if is_ground_contact:
             if knee_angle > 160:
@@ -885,12 +1127,47 @@ class RunningAnalyzer(SportAnalyzer):
         return runs
 
     def _contact_frame_indices(self, min_run: int = 3) -> list[int]:
-        """Indices of the frames where a real foot-strike begins.
+        """Frames where the NEAR foot begins a ground contact.
 
-        The first frame of every confirmed stance run -- see
-        :meth:`stance_runs` for what makes a run confirmed.
+        :meth:`stance_runs` reports every footfall, alternating legs, because
+        that is what ground-contact and flight time are about. Overstride, foot
+        strike and the kinogram are not: they read the near-side landmarks, and
+        sampling those while the FAR foot lands measures a leg in mid-swing.
+        Measured on the treadmill fixture, that mistake put overstride at 0.62
+        leg-lengths against 0.23 -- a fabricated fault, confidently reported.
+
+        So contacts are kept only where the near ankle is actually down. The
+        test is its depth below the hips, compared against the deepest it gets
+        anywhere in the clip: a planted foot is near the bottom of its travel,
+        a swinging one is not. Depth rather than a left/right label, because
+        the labels are the unreliable part.
         """
-        return [start for start, _ in self.stance_runs(min_run)]
+        runs = self.stance_runs(min_run)
+        if not runs:
+            return []
+        depths = np.array([
+            fr.extra_metrics.get("_near_foot_depth", float("nan"))
+            for fr in self.frame_results
+        ], dtype=float)
+        if not np.isfinite(depths).any():
+            return [start for start, _ in runs]
+
+        deepest = float(np.nanpercentile(depths, 95))
+        shallowest = float(np.nanpercentile(depths, 5))
+        span = deepest - shallowest
+        if span <= 1e-6:
+            return [start for start, _ in runs]
+        floor = deepest - span * NEAR_CONTACT_BAND
+
+        kept: list[int] = []
+        for start, end in runs:
+            window = depths[start:end + 1]
+            window = window[np.isfinite(window)]
+            if window.size and float(np.median(window)) >= floor:
+                kept.append(start)
+        # Every contact rejected means the near side could not be told apart at
+        # all; fall back to all of them rather than silently measuring nothing.
+        return kept or [start for start, _ in runs]
 
     def _compute_overstride_ratio(self) -> tuple[float, int]:
         """Estimate overstride at foot-strike from near-side world landmarks.
@@ -1126,6 +1403,21 @@ class RunningAnalyzer(SportAnalyzer):
         """
         if not self.frame_results:
             return {}
+
+        # Redecide stance/swing now that the whole clip is in hand. Everything
+        # below that counts frames -- ground contact, flight, the contact
+        # frames overstride and foot-strike sample -- reads the phases this
+        # writes, so it has to run before any of them.
+        self._gait_meta = None
+        try:
+            self._gait_meta = self.recompute_gait_phases()
+        except Exception as e:  # noqa: BLE001 -- fall back to the streamed phases
+            logger.warning("GAIT_RECOMPUTE_FAILED", err=str(e))
+        logger.info(
+            "GAIT_PHASES",
+            method=(self._gait_meta or {}).get("method", "streamed_fallback"),
+            stance_fraction=(self._gait_meta or {}).get("stance_fraction"),
+        )
 
         # Cadence: primary (knee oscillation) + fallback (ankle position)
         cadence = self._compute_cadence()

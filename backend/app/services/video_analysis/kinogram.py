@@ -107,12 +107,17 @@ _MIN_FLIGHT_FRAMES = 3
 # identity -- past it, "the near foot landed here" is a coin flip.
 _TRUST_KEYS = ("leg_swap_pct", "flip_pct", "side_vote_disagreement_pct")
 
-# Believable share of a running cycle spent with the foot down. Distance
-# running sits at 0.30-0.40 and sprinting nearer 0.22; walking is above 0.5 by
-# definition, since both feet overlap. The band is set wide on purpose -- it is
-# not measuring technique, it is asking whether the phase detector produced
-# something that could be running at all.
-STANCE_FRACTION_RANGE = (0.15, 0.55)
+# Believable share of a clip spent with A foot on the ground.
+#
+# Note what that is measuring, because the meaning changed under this constant
+# on 2026-08-23: the phases now describe any footfall rather than one leg's, so
+# this is roughly TWICE the duty factor. Distance running sits at 0.30-0.40 per
+# leg, which is 0.60-0.80 here; sprinting nearer 0.45. Under ~0.3 nothing is
+# ever on the ground, which is not running either.
+#
+# Still wide on purpose -- it is not measuring technique, it is asking whether
+# the phase detector produced something that could be running at all.
+STANCE_FRACTION_RANGE = (0.30, 0.85)
 
 
 @dataclass

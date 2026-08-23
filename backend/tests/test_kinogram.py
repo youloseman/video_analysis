@@ -307,10 +307,13 @@ def test_a_stance_phase_nobody_could_stand_on_means_no_kinogram_either():
         CLEAN_TRACKING).startswith("implausible_stance_fraction")
 
 
-@pytest.mark.parametrize("fraction", [0.22, 0.30, 0.35, 0.40, 0.50])
+@pytest.mark.parametrize("fraction", [0.44, 0.60, 0.70, 0.80])
 def test_a_believable_stance_share_is_allowed_through(fraction):
-    """Sprinting sits near 0.22 and distance running at 0.30-0.40. The band is
-    not measuring technique, only asking whether this could be running."""
+    """These are shares of the clip with SOME foot down, which is what the
+    phases have meant since 2026-08-23 -- roughly twice the per-leg duty
+    factor. Sprinting near 0.22 per leg is 0.44 here; easy distance running at
+    0.40 per leg is 0.80. The band is not measuring technique, only asking
+    whether this could be running at all."""
     assert kinogram.stride_trust_block(
         {**CLEAN_SUMMARY, "stance_fraction": fraction}, CLEAN_TRACKING) is None
 

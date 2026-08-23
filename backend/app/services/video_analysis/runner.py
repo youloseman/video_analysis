@@ -757,6 +757,38 @@ def run_analysis(
 
     # Enrich the summary the same way the pipeline persists it.
     summary["camera_side"] = analyzer.camera_side
+    # Which leg faces the camera decides where two metrics are measured from.
+    # Overstride and foot strike are sampled off the NEAR-side ankle at the
+    # moment it lands; get the side wrong and both are read from a leg in
+    # mid-swing, which does not produce a missing number, it produces a
+    # confident wrong one. Measured on a treadmill clip whose near side the
+    # cues could not agree on: overstride read 0.39-0.62 leg-lengths, well into
+    # "overstriding" territory, from a runner whose foot lands under them.
+    #
+    # The cues already vote on this and already record when they conflict. That
+    # verdict has been diagnostic-only, deliberately, until it had been checked
+    # against clips whose near side is known -- and it still does not get to
+    # DECIDE the side here. It only gets to say "then do not publish the two
+    # numbers that hang on it", which is the same plausibility gating every
+    # other metric in this file already has.
+    if not is_bike and (near_cues or {}).get("conflict"):
+        withheld = [k for k in (
+            "overstride_ratio", "overstride_ratio_estimated",
+            "overstride_ratio_contacts", "foot_strike",
+            "foot_strike_angle_deg", "foot_strike_estimated",
+            "foot_strike_contacts",
+        ) if summary.pop(k, None) is not None]
+        if withheld:
+            quality_warnings.append(
+                "Which leg faces the camera could not be settled on this clip "
+                "-- the depth, size and visibility cues disagree. Overstride "
+                "and foot-strike pattern are measured from the near-side foot "
+                "as it lands, so they are withheld rather than measured from "
+                "the wrong leg. Filming a few degrees off square, rather than "
+                "exactly side-on, separates the two legs and fixes it."
+            )
+            logger.info("NEAR_SIDE_CONFLICT", withheld=withheld)
+
     summary["landmark_quality"] = landmark_quality
     summary["quality_warnings"] = quality_warnings
     summary["tracking_stability"] = tracking_stability
