@@ -115,10 +115,14 @@ def test_saddle_advice_is_untouched_by_mobility():
     """Saddle height is about the pedalling leg. How far the hip closes at the
     top of the stroke has nothing to say about it, and a mobility screen that
     started editing saddle heights would be overreaching."""
+    def saddle(plan):
+        return [
+            d for d in plan["diagnostics"] if d["component"] == "saddle_height"
+        ]
+
     fit = M.assess_position(_limited_profile(), "road_hoods")
     plain = _plan(_upright_rider())
     gated = _plan(_upright_rider(), mobility_fit=fit)
-    saddle = lambda p: [d for d in p["diagnostics"] if d["component"] == "saddle_height"]
     assert saddle(plain) == saddle(gated)
     assert saddle(gated), "fixture no longer produces a saddle diagnostic"
 
