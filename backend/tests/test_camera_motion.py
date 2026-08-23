@@ -162,6 +162,51 @@ def test_verdict_bands(share, expected):
 
 # --- it must not measure the athlete ---------------------------------------
 
+def _scene_with_shaking_bottom(path, frames=FRAMES, amp=6.0):
+    """A still building over a machine that vibrates -- a treadmill, in short.
+
+    The top half never moves. The bottom half bounces. No camera motion at all.
+    """
+    rng = np.random.default_rng(11)
+    top = _scene(rng)[:H, :W].copy()
+    bottom_src = _scene(np.random.default_rng(12))
+    writer = cv2.VideoWriter(
+        str(path), cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (W, H),
+    )
+    assert writer.isOpened()
+    split = int(H * cm.SPLIT_LINE)
+    frame_data = []
+    for i in range(frames):
+        frame = top.copy()
+        oy = int(round(H // 2 + amp * np.sin(2 * np.pi * i / 6)))
+        frame[split:, :] = bottom_src[oy:oy + (H - split), W // 2:W // 2 + W]
+        writer.write(frame)
+        frame_data.append({"frame_idx": i, "normalized_landmarks": _landmarks()})
+    writer.release()
+    return str(path), frame_data
+
+
+def test_a_vibrating_treadmill_is_not_reported_as_a_shaking_camera(tmp_path):
+    """Measured on a real treadmill clip: the mixed fit said 157 px of bounce
+    and the ceiling alone said 3. Telling somebody their tripod was shaking
+    when a machine was vibrating under them is worse than saying nothing."""
+    path, fd = _scene_with_shaking_bottom(tmp_path / "treadmill.mp4")
+    out = cm.estimate_camera_motion(path, fd, hip_amplitude_norm=24.0 / H)
+    assert out is not None
+    assert out["scene_rigid"] is False
+    assert out["verdict"] == "unknown"
+    assert out["vertical_share_of_hip_motion"] is None
+
+
+def test_a_genuinely_shaking_camera_still_reads_as_one(tmp_path):
+    """The guard must not swallow the thing it is guarding: a camera that
+    really bobs moves BOTH halves together, so the scene stays rigid."""
+    path, fd = write_clip(tmp_path / "shake.mp4", bouncing(amp=6.0))
+    out = cm.estimate_camera_motion(path, fd, hip_amplitude_norm=24.0 / H)
+    assert out["scene_rigid"] is True
+    assert out["verdict"] == "bad"
+
+
 def test_the_subject_is_masked_out_of_the_feature_search():
     mask = cm._subject_mask(cv2, (H, W), _landmarks(cx=0.5, cy=0.5))
     assert mask is not None
