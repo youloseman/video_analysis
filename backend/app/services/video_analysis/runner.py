@@ -68,6 +68,14 @@ DEFAULT_BIKE_POSITION = "road_hoods"
 # is unaffected.
 DETECT_MAX_LONG_EDGE = 1280
 
+# How many times the NEAR leg's identity track may be re-seeded before the
+# athlete is told. A re-seed means the leg was unidentifiable for long enough
+# that the track had to accept whatever the model said next, so the series past
+# that point may be describing the other leg -- unlike a blanked frame, which
+# only costs a measurement. Bike only; see
+# landmark_stabilizer._gate_leg_identity_breaks.
+LEG_IDENTITY_RESEED_WARN = 3
+
 
 # ===========================================================================
 # Helpers copied verbatim from Motus pipeline.py (module-level, no DB/LLM).
@@ -645,6 +653,15 @@ def run_analysis(
         "leg_swap_pct": stabilizer_ctx.get("leg_swap_pct"),
         "leg_swaps_corrected": stabilizer_ctx.get("leg_swaps_corrected"),
         "leg_collapse_pct": stabilizer_ctx.get("leg_collapse_pct"),
+        # Run only: how the whole-clip identity resolution went -- crossings
+        # found, the share of links decided by hysteresis rather than
+        # evidence, and whether each segment's naming had cues behind it.
+        # This is the RESULT-quality signal; leg_swap_pct above stays the
+        # INPUT-noise signal, and gates should read the one they mean.
+        "leg_identity": stabilizer_ctx.get("leg_identity"),
+        # Bike only: frames where a leg left its own track and was declined
+        # rather than corrected. See landmark_stabilizer._gate_leg_identity_breaks.
+        "leg_identity_gate": stabilizer_ctx.get("leg_identity_gate"),
         "framing": framing or None,
         "near_side_cues": near_cues or None,
     }
@@ -653,6 +670,25 @@ def run_analysis(
         **{k: v for k, v in tracking_stability.items()
            if k not in ("framing", "near_side_cues")},
     )
+    # Read the NEAR leg only. The far leg is expected to be a mess on a side
+    # view -- its median deviation is 3.5x the near leg's -- and it is neither
+    # drawn nor measured, so warning on its numbers would be crying wolf about
+    # a landmark nothing depends on.
+    _gate = tracking_stability.get("leg_identity_gate") or {}
+    _near_reseeds = (_gate.get("reseeds") or {}).get(early_camera_side or "", 0)
+    if _near_reseeds >= LEG_IDENTITY_RESEED_WARN:
+        # Blanked frames are the mechanism working: a few blinks cost a few
+        # measurements. A RE-SEED is different -- it means identity was lost
+        # for long enough that the track had to accept whatever the model said,
+        # so from there the series may be describing the other leg.
+        quality_warnings.append(
+            "The pose model lost track of which leg is which several times on "
+            "this clip, for long enough that we could not recover it. Frames we "
+            "could not identify were left unmeasured rather than guessed, so "
+            "some knee readings are based on less of the clip than usual. "
+            "Filming from a little in front of or behind square-on, with the "
+            "whole drivetrain visible, separates the two legs best."
+        )
     if assess_tracking_stability(tracking_stability) == "severe":
         # This warning renders as an amber banner in the UI and travels to
         # the free tier too (quality_warnings are never gated) -- the

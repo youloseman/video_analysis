@@ -435,11 +435,25 @@ def test_the_kinogram_never_reaches_a_free_caller():
         assert "kinogram" in gated["locked"]["unlocks"]
 
 
-@pytest.mark.parametrize("n", [2, 3, 5])
+@pytest.mark.parametrize("n", [3, 4, 5])
 def test_selection_is_stable_across_clip_lengths(n):
     sel = kinogram.select_run_kinogram(build_analyzer(cycles=n))
     assert sel is not None and sel.complete
     assert phase_of(sel)["mvp"] == MVP_P
+
+
+def test_a_stance_already_underway_at_frame_zero_is_not_a_touchdown():
+    """The landing happened before anyone was filming. A clip whose only
+    candidate cycle starts on its first frame has no OBSERVED touchdown, and
+    inventing one from the clip edge put five near-identical tiles from the
+    recording's opening moments on screen (seen on the treadmill fixture:
+    positions at frames 0, 4, 11, 14, 16 of a 42-frame stride)."""
+    sel = kinogram.select_run_kinogram(build_analyzer(cycles=2))
+    assert sel is None
+
+    sel3 = kinogram.select_run_kinogram(build_analyzer(cycles=3))
+    assert sel3 is not None
+    assert sel3.positions[0].analyzed_idx > 0
 
 
 # --- composition -----------------------------------------------------------

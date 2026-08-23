@@ -58,12 +58,33 @@ def assess_tracking_stability(
     """
     if not tracking_stability:
         return "ok"
+
+    # Whole-clip identity resolution changes what leg_swap_pct MEANS here.
+    # It counts how noisy the labels ARRIVED; when the resolver reports the
+    # repair itself is solid (nearly no links decided by hysteresis, every
+    # segment's naming backed by cues), that arrival noise is history, and
+    # grading it "severe" fires the "could not tell the legs apart" warning
+    # on a clip whose output is demonstrably on the right legs. So a resolved
+    # clip's swap figure may still say "mild" -- the athlete should know the
+    # input was rough -- but not "severe". Unresolved clips grade exactly as
+    # before.
+    identity = tracking_stability.get("leg_identity") or {}
+    identity_resolved = (
+        identity.get("method") == "dp"
+        and (identity.get("ambiguous_pair_pct") or 100.0) <= 5.0
+        and (identity.get("naming_unconfident_pct")
+             if identity.get("naming_unconfident_pct") is not None else 100.0) <= 10.0
+    )
+
     severity = "ok"
     for key, thr in _TRACKING_CHECKS:
         v = tracking_stability.get(key)
         if not isinstance(v, (int, float)) or isinstance(v, bool) or math.isnan(v):
             continue
         if v >= THRESHOLDS[f"{thr}_low"]:
+            if key == "leg_swap_pct" and identity_resolved:
+                severity = "mild"
+                continue
             return "severe"
         if v >= THRESHOLDS[f"{thr}_medium"]:
             severity = "mild"

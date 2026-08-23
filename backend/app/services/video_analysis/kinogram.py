@@ -107,6 +107,25 @@ _MIN_FLIGHT_FRAMES = 3
 # identity -- past it, "the near foot landed here" is a coin flip.
 _TRUST_KEYS = ("leg_swap_pct", "flip_pct", "side_vote_disagreement_pct")
 
+# tracking_stability key -> confidence_scorer THRESHOLDS prefix. The scorer
+# spells one of these differently, and building the lookup by f-string alone
+# made that check silently dead: THRESHOLDS has "side_disagreement_pct_low",
+# not "side_vote_disagreement_pct_low", so the limit was always None and the
+# third trust key never gated anything. Found by adversarial review; material
+# because the identity bypass can now skip the first key, leaving flip_pct as
+# the only live one.
+_THRESHOLD_PREFIX = {"side_vote_disagreement_pct": "side_disagreement_pct"}
+
+# When whole-clip identity resolution reports the repair itself is solid --
+# almost no links decided by hysteresis, every segment's naming backed by
+# cues -- a noisy INPUT stops being a reason to refuse. leg_swap_pct measures
+# how bad the labels arrived; these two measure whether the repair resolved
+# them, and a gate should fear the second, not the first. Both bars are
+# generous because the cost of refusing wrongly is losing the artifact on
+# exactly the well-repaired clips that most deserve it.
+_IDENTITY_AMBIGUOUS_MAX_PCT = 5.0
+_IDENTITY_UNCONFIDENT_MAX_PCT = 10.0
+
 # Believable share of a clip spent with A foot on the ground.
 #
 # Note what that is measuring, because the meaning changed under this constant
@@ -555,9 +574,23 @@ def stride_trust_block(
     # rather than guessing at it from a cause. Framing keeps its place in the
     # capture report, where it is advice rather than a veto.
 
+    # Did the identity resolver actually resolve this clip? If so, the raw
+    # crossing rate below is history, not risk: the treadmill fixture arrives
+    # with labels wrong on ~37% of frames, resolves with 1.2% ambiguity and a
+    # cue-confirmed naming (matching the athlete's own confirmation of which
+    # side faced the camera), and deserves its kinogram.
+    identity = t.get("leg_identity") or {}
+    identity_resolved = (
+        identity.get("method") == "dp"
+        and (identity.get("ambiguous_pair_pct") if identity.get("ambiguous_pair_pct") is not None else 100.0) <= _IDENTITY_AMBIGUOUS_MAX_PCT
+        and (identity.get("naming_unconfident_pct") if identity.get("naming_unconfident_pct") is not None else 100.0) <= _IDENTITY_UNCONFIDENT_MAX_PCT
+    )
+
     for key in _TRUST_KEYS:
+        if key == "leg_swap_pct" and identity_resolved:
+            continue
         value = t.get(key)
-        limit = THRESHOLDS.get(f"{key}_low")
+        limit = THRESHOLDS.get(f"{_THRESHOLD_PREFIX.get(key, key)}_low")
         if value is None or limit is None:
             continue
         try:
@@ -687,6 +720,7 @@ def _score_cycle(sel: KinogramSelection, total_frames: int) -> float:
 
 def select_run_kinogram(
     analyzer: Any, *, summary: dict[str, Any] | None = None, min_run: int = 3,
+    avoid_spans: list[Any] | None = None,
 ) -> KinogramSelection | None:
     """Pick the best stride in the clip and its kinogram positions.
 
@@ -710,6 +744,14 @@ def select_run_kinogram(
         logger.info("KINOGRAM_SKIP", reason="fewer_than_two_contacts", runs=len(runs))
         return None
 
+    # Since the gait rework, stance runs report EVERY footfall, alternating
+    # legs. The three ground tiles read near-side angles, so a cycle must
+    # start on a NEAR-leg contact -- built from the far leg's landing, the
+    # tiles would confidently annotate a leg in mid-swing. The window to the
+    # next footfall (whichever leg's) is exactly the ALTIS span: the first
+    # flight holds MVP, and Strike sits just before the opposite foot lands.
+    near_starts = set(getattr(analyzer, "_contact_frame_indices", lambda m: [])(min_run))
+
     side = getattr(analyzer, "camera_side", None) or "left"
     if side not in _SIDE_LANDMARKS:
         side = "left"
@@ -722,6 +764,24 @@ def select_run_kinogram(
     for k in range(len(runs) - 1):
         touch_down, toe_off = runs[k]
         next_touch_down = runs[k + 1][0]
+        if near_starts and touch_down not in near_starts:
+            continue
+        if any(
+            a is not None and b is not None
+            and touch_down < b and next_touch_down > a
+            for a, b in (tuple(sp) for sp in (avoid_spans or []))
+        ):
+            # This stretch's leg naming rests on a raw-label majority, not on
+            # cues. The clip-level gate tolerates a small unconfident share,
+            # but the ONE stride actually drawn must never come from inside
+            # it -- five labelled photographs off a coin-flipped leg is the
+            # worst artifact this feature can produce.
+            continue
+        if touch_down == 0:
+            # A run that begins on the clip's first frame is the edge of the
+            # recording, not an observed touchdown -- the landing itself
+            # happened before anyone was filming.
+            continue
         sel = _build_cycle(
             analyzer, side, forward, touch_down, toe_off, next_touch_down, k,
             summary,
@@ -1054,7 +1114,11 @@ def build_run_kinogram(
         logger.info("KINOGRAM_REFUSED", reason=blocked)
         return None, {"refused": blocked}
 
-    selection = select_run_kinogram(analyzer, summary=summary)
+    identity = (tracking_stability or {}).get("leg_identity") or {}
+    selection = select_run_kinogram(
+        analyzer, summary=summary,
+        avoid_spans=identity.get("unconfident_spans"),
+    )
     if selection is None:
         return None, None
     meta = selection.to_meta()

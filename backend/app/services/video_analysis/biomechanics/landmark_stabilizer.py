@@ -65,6 +65,67 @@ LEG_MAX_VELOCITY = 0.12         # per-frame velocity clamp (kills post-gap spike
 LEG_GAP_RESEED_FRAMES = 3       # consecutive unmeasurable frames
 LEG_GAP_RESEED_MS = 200.0       # wall-clock gap between measured frames
 
+# --- _gate_leg_identity_breaks tuning (bike) ------------------------------
+#
+# Thresholds are fractions of the distance between the two ankles, because on a
+# trainer that distance IS a physical length: two pedals half a revolution
+# apart, i.e. the crank diameter (0.098 in normalized units on IMG_9981).
+#
+# The bar is set from the measured distribution of how far an ankle lands from
+# its own predicted position, not from a guess. On IMG_9981, in fractions of
+# that separation:
+#
+#     near (right) ankle : p50 0.06   p90 0.31   p95 0.66   p98 0.94
+#     far  (left)  ankle : p50 0.22   p90 0.86   p95 1.21   p98 2.07
+#
+# The near leg's own tail IS the breaks, so a bar just under its p98 blanks
+# about the rate of real identity events and leaves ordinary pedalling alone. A
+# hop to the other foot displaces the ankle by roughly one separation, so this
+# also sits just below the thing it is meant to catch. The far leg loses far
+# more frames at the same bar, which is the honest reading of a landmark whose
+# median deviation is 3.5x the near leg's -- and it costs nothing, because the
+# far side is neither drawn nor measured on a side view.
+LEG_BREAK_FRAC = 0.85
+LEG_BREAK_MIN_SEPARATION = 0.02  # below this the two feet are one blob: give up
+# The bar does NOT widen while a leg is held, and that is deliberate. The first
+# attempt widened it, reasoning that an aging prediction deserves more slack --
+# but a foot sitting on the WRONG pedal is wrong by about one separation every
+# frame, so any slack past ~1.2x lets it straight back in, which is the one
+# thing this must not do. The cascade that motivated the widening had a
+# different cause: the velocity was being DECAYED while held, which aimed the
+# prediction at a foot standing still. Carrying the velocity instead (a
+# pedalling foot keeps going round at much the same rate) fixes the cascade
+# without opening the door.
+#
+# A leg cannot stay suspect forever. After this many consecutive blanked frames
+# MediaPipe's current labels are accepted and the track restarts. Re-seeds are
+# COUNTED and reported: a clip with several is one where identity was lost for
+# long stretches, which is a different (worse) situation from a few blinks.
+#
+# The number is set by how long the PREDICTOR stays honest, not by how long an
+# excursion lasts. Carrying a velocity forward is a straight line through what
+# is really a circle: at ~40 frames a revolution, five frames is 45 degrees of
+# crank and a chord-vs-arc error still well inside the bar, while forty frames
+# is most of a revolution and the prediction is meaningless. Swept on IMG_9981
+# (bar held at 0.85), which shows exactly that -- patience buys nothing and
+# then destroys the measurement it was meant to protect:
+#
+#     patience  blanked   BDC variability   saddle verdict
+#            3     3.8%              2.8    acceptable
+#            5     5.0%              2.7    acceptable
+#            8     6.8%              3.4    acceptable
+#           12     9.1%              5.5    optimal      <- verdict flips
+#           20    13.9%             14.4    optimal
+#           40    25.6%             21.2    optimal      <- 9 strokes, not 10
+#
+# The re-seed count stayed at 3 throughout, which is the tell: those excursions
+# are not resolving on their own even at 40 frames, so the extra patience is
+# spent blanking good frames rather than covering a longer break. Raising this
+# is not the way to handle a long excursion -- re-acquiring the foot by the
+# geometry (the two ankles straddle the bottom bracket) is, and that needs a
+# validation set first.
+LEG_BREAK_RESEED_FRAMES = 5
+
 
 # Visibility gate -- below this, landmark coordinates become NaN.
 # Swim above-water is strict: glare/splash makes low-conf = hallucination.
@@ -199,8 +260,43 @@ def stabilize_landmarks(
     # a zero-phase filter applied across identity swaps blends the two
     # legs' series into each other, and no later correction can undo that.
     leg_swaps, leg_swap_pct, leg_collapse_pct = (0, None, None)
+    leg_identity_diag: dict[str, Any] | None = None
     if sport_type == "run":
-        leg_swaps, leg_swap_pct, leg_collapse_pct = _fix_leg_swaps(frame_results)
+        # Whole-clip identity resolution (see leg_identity.py for why the
+        # greedy pass it replaces could not be tuned into correctness). The
+        # greedy corrector remains as the fallback: losing identity repair to
+        # an exception in the new path would be strictly worse than the old
+        # behaviour.
+        try:
+            from app.services.video_analysis.biomechanics.leg_identity import (
+                resolve_run_leg_identity,
+            )
+
+            leg_swaps, leg_swap_pct, leg_collapse_pct, leg_identity_diag = (
+                resolve_run_leg_identity(frame_results)
+            )
+            if (leg_identity_diag or {}).get("method") == "skipped_coarse_sampling":
+                # Frames too far apart for the whole-clip evidence to mean
+                # anything (see leg_identity._MAX_MEDIAN_SPACING_MS). The
+                # greedy pass is no better placed, but it is the known
+                # behaviour -- and the diag says out loud that identity on
+                # this clip is unrepaired rather than resolved.
+                leg_swaps, leg_swap_pct, leg_collapse_pct = _fix_leg_swaps(
+                    frame_results,
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("LEG_IDENTITY_DP_FAILED", err=str(e))
+            leg_swaps, leg_swap_pct, leg_collapse_pct = _fix_leg_swaps(frame_results)
+            leg_identity_diag = None
+
+    # Bike gets the other half of the same problem handled the other way round:
+    # it cannot correct an identity break (see _fix_leg_swaps), so it declines
+    # to measure one. Must also run BEFORE the smoothing pass, for the same
+    # reason -- a zero-phase filter run across a break blends the two legs
+    # together and nothing afterwards can separate them again.
+    leg_gate: dict[str, Any] = {}
+    if sport_type == "bike":
+        leg_gate = _gate_leg_identity_breaks(frame_results)
 
     if context is not None:
         # Surfaced so the pipeline can judge tracking stability: a clip where
@@ -212,6 +308,8 @@ def stabilize_landmarks(
         context["leg_swaps_corrected"] = leg_swaps
         context["leg_swap_pct"] = leg_swap_pct
         context["leg_collapse_pct"] = leg_collapse_pct
+        context["leg_identity"] = leg_identity_diag
+        context["leg_identity_gate"] = leg_gate or None
     if _use_butterworth_landmarks(sport_type, camera_angle, camera_view):
         smoothed, butter_meta = _apply_butterworth_landmarks(
             frame_results, sport_type, camera_angle, fps,
@@ -234,6 +332,7 @@ def stabilize_landmarks(
         leg_swaps_corrected=leg_swaps,
         leg_swap_pct=leg_swap_pct,
         leg_collapse_pct=leg_collapse_pct,
+        leg_identity_gate=leg_gate or None,
         smoothed_landmarks=smoothed,
     )
 
@@ -361,10 +460,37 @@ def _fix_leg_swaps(frame_results: list[dict[str, Any]]) -> tuple[int, float, flo
     crossing. Swaps are mirrored onto world landmarks so angles and drawing
     stay consistent.
 
-    Run side-view only. Bike is skipped deliberately: on a trainer the
-    2D ankles ride close together through whole pedal circles (the decision
-    would be permanently ambiguous) and the far leg is chronically occluded
-    -- the same rationale that disabled ``_fix_flips`` for bike.
+    Run side-view only. Bike is still skipped -- but NOT for the reason this
+    used to give, and the difference matters to whoever picks this up next.
+
+    The old rationale was that "on a trainer the 2D ankles ride close together
+    through whole pedal circles, so the decision would be permanently
+    ambiguous". Measured on the repo's bike clip (IMG_9981, 503 frames), that is
+    simply false: the two feet are two pedals half a revolution apart, so their
+    separation has a floor rather than a crossing. Median separation 0.098
+    normalized, and only 6 frames of 503 fall below
+    ``LEG_MIN_DECIDABLE_DIST``. Cycling is the EASY case for separability; it
+    is running, where the legs actually scissor past each other, that is hard.
+
+    What does block it is the other half of that sentence. The far leg is
+    occluded by the near leg and the crank for a large part of every
+    revolution: both ankles are measurable on 98.8% of frames but both KNEES
+    only on 78.1%, so the all-four-points entry condition above reseeds
+    constantly. Worse, the cost is symmetric -- it sums how well BOTH legs match
+    their predictions -- so the far leg's invented coordinates land in
+    ``cost_keep`` and can outvote the near leg, which is the only one the bike
+    report reads or draws. Enabling this pass as-is on IMG_9981 swapped 16
+    already-correct frames and pushed the largest near-knee discontinuity from
+    56 to 81 degrees: a net loss.
+
+    So the gap is real and unprotected -- the near-side foot demonstrably hops
+    to the far shoe on real bike clips (IMG_9981 frames 21-22, and 7 such events
+    in an 11 s user clip) and nothing here catches it. Fixing it needs a
+    near-anchored rule that never lets far-leg noise decide, validated on more
+    than one clip: a first attempt at that cut near-ankle breaks 9 -> 6 but
+    introduced new ones by drifting its own track onto the far foot, which is
+    exactly the self-perpetuating failure the reseed logic below exists to
+    avoid. Do not turn this on for bike without that validation set.
 
     Returns ``(swaps_corrected, leg_swap_pct, leg_collapse_pct)`` where the
     percentages are over decidable frame pairs / measured frames.
@@ -481,6 +607,146 @@ def _fix_leg_swaps(frame_results: list[dict[str, Any]]) -> tuple[int, float, flo
     leg_swap_pct = round(swaps / max(decided, 1) * 100, 1)
     leg_collapse_pct = round(collapse_frames / max(measured_frames, 1) * 100, 1)
     return swaps, leg_swap_pct, leg_collapse_pct
+
+
+_LEG_LANDMARKS = {
+    "left": (25, 27, 29, 31),    # knee, ankle, heel, foot index
+    "right": (26, 28, 30, 32),
+}
+_LEG_ANKLE = {"left": 27, "right": 28}
+
+
+def _gate_leg_identity_breaks(
+    frame_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Blank a leg on the frames where it left its own track. Bike only.
+
+    The bike path has no working defence against MediaPipe handing a leg's
+    index to the other leg's foot (see :func:`_fix_leg_swaps` for what was
+    tried and measured). Every correction attempt failed the same way: they all
+    need the FAR leg as evidence, and the far leg's landmarks are partly
+    invented -- median knee visibility 0.47 on a clean trainer clip.
+
+    So this does not correct anything. It only refuses to measure. When an
+    ankle lands further from its own predicted position than a leg could
+    plausibly move, that leg's landmarks are set to NaN for that frame, the
+    same representation :func:`_gate_by_visibility` already uses: the angle
+    calculators return NaN for it, the Butterworth pass restores the gap rather
+    than smoothing across it, and the overlay draws nothing there. The athlete
+    sees the leg blink out for a few frames instead of watching it jump to the
+    other shoe, and no number is computed from a frame we could not identify.
+
+    The asymmetry is the point. The worst case here is discarding good frames;
+    it cannot put the reported series on the wrong leg, which is exactly what
+    every swap-based attempt risked and what happens today.
+
+    Both legs are tested independently, so this needs no camera-side decision
+    (which is not available this early anyway). Visibility is left untouched --
+    it records what MediaPipe reported, and the detection-quality metrics read
+    it -- so blanking here shows up as missing measurements, not as a quietly
+    downgraded confidence score.
+
+    Returns a diagnostics dict with PER-LEG counts. Per-leg matters: the far
+    leg is expected to be a mess and blanking it costs nothing, so a caller
+    judging whether this clip is trustworthy has to read the near leg's numbers
+    specifically -- which side that is, is not known this early.
+    """
+    out: dict[str, Any] = {
+        "frames": len(frame_results),
+        "blanked": {"left": 0, "right": 0},
+        "reseeds": {"left": 0, "right": 0},
+        "ankle_separation": None,
+    }
+    n = len(frame_results)
+    if n < 5:
+        return out
+
+    def _pt(frame: dict[str, Any], idx: int) -> tuple[float, float] | None:
+        lm = frame["normalized_landmarks"][idx]
+        x, y = lm.x, lm.y
+        if x is None or y is None:
+            return None
+        if (isinstance(x, float) and math.isnan(x)) or (
+            isinstance(y, float) and math.isnan(y)
+        ):
+            return None
+        return (float(x), float(y))
+
+    # The clip's own scale: how far apart the two feet sit. Median over the
+    # frames where both were measured, so occlusion and the odd collapsed
+    # frame do not set it.
+    seps = [
+        math.dist(a, b)
+        for a, b in (
+            (_pt(f, 27), _pt(f, 28)) for f in frame_results
+        )
+        if a is not None and b is not None
+    ]
+    if len(seps) < 5:
+        return out
+    separation = float(np.median(seps))
+    out["ankle_separation"] = round(separation, 4)
+    if separation < LEG_BREAK_MIN_SEPARATION:
+        # The two feet never resolve as two feet. Nothing here can be judged,
+        # and blanking on a bad scale would erase the whole clip.
+        logger.info("LEG_IDENTITY_GATE_SKIPPED", reason="feet_unresolved",
+                    separation=round(separation, 4))
+        return out
+
+    threshold = LEG_BREAK_FRAC * separation
+
+    for side, ankle_idx in _LEG_ANKLE.items():
+        prev: tuple[float, float] | None = None
+        vel = (0.0, 0.0)
+        held = 0
+        blanked = 0
+        reseeds = 0
+
+        for frame in frame_results:
+            cur = _pt(frame, ankle_idx)
+            if cur is None:
+                held += 1
+                continue
+            if prev is None:
+                prev, held = cur, 0
+                continue
+
+            # Velocity is CARRIED across held frames, not decayed: a pedalling
+            # foot keeps going round at much the same rate, so extrapolating it
+            # forward is a fair guess, while decaying it would aim the
+            # prediction at a foot standing still and blank the next frame too.
+            pred = (prev[0] + vel[0] * (held + 1), prev[1] + vel[1] * (held + 1))
+            if math.dist(cur, pred) > threshold:
+                if held >= LEG_BREAK_RESEED_FRAMES:
+                    prev, vel, held = cur, (0.0, 0.0), 0
+                    reseeds += 1
+                    continue
+                for i in _LEG_LANDMARKS[side]:
+                    for key in ("world_landmarks", "normalized_landmarks"):
+                        lm = frame[key][i]
+                        lm.x = math.nan
+                        lm.y = math.nan
+                        lm.z = math.nan
+                blanked += 1
+                held += 1
+                continue
+
+            vel = _clamp_leg_velocity((
+                (cur[0] - prev[0]) / (held + 1), (cur[1] - prev[1]) / (held + 1),
+            ))
+            prev, held = cur, 0
+
+        out["blanked"][side] = blanked
+        out["reseeds"][side] = reseeds
+
+    return out
+
+
+def _clamp_leg_velocity(v: tuple[float, float]) -> tuple[float, float]:
+    return (
+        max(-LEG_MAX_VELOCITY, min(LEG_MAX_VELOCITY, v[0])),
+        max(-LEG_MAX_VELOCITY, min(LEG_MAX_VELOCITY, v[1])),
+    )
 
 
 def _apply_one_euro(
