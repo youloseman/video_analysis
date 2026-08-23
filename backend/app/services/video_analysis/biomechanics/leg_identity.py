@@ -80,6 +80,13 @@ _COLLAPSE_DIST = 0.02
 # enough that a near-tie (legs coincident) holds the current parity; small
 # enough that any real crossing -- whose evidence is on the order of the leg
 # separation, tens of times a normal step -- pays it without hesitation.
+# Known cost of the toll (measured, IMG_4004): a one-frame glitch whose ENTRY
+# is loud but whose RETURN is merely decisive gets its return suppressed and
+# the parity sticks wrong -- the stance anchors below exist to repair exactly
+# that, from gait structure rather than from a cheaper toll. (A tie-band rule
+# -- waive the toll on decisive links -- was tried first and repaired this
+# clip while breaking the validated blurry fixture, whose noise clears the
+# bar in isolated links more often than the toll lets through.)
 _SWITCH_COST_STEPS = 3.0
 
 # A pair whose stay/cross costs differ by less than this fraction of the step
@@ -130,6 +137,55 @@ _MAX_MEDIAN_SPACING_MS = 100.0
 # mirrored labels kept 47% of frames on the wrong legs while swap_pct read
 # 0.0 (adversarial review, reproduced exactly).
 _COLLAPSE_CUT_FRAMES = 2
+
+# --- stance anchors -------------------------------------------------------
+# Running guarantees a structure the link costs cannot see: during one stance
+# the same physical foot stays down, and consecutive stances use opposite
+# feet. That pins the parity DIFFERENCE between any two neighbouring stance
+# midpoints: down-labels that alternate demand no net parity change between
+# them; a repeated down-label demands exactly one. The DP satisfies these for
+# free when its links are honest, but a detection glitch -- one frame whose
+# labels teleport, loud on entry, mushy on the way back -- leaves it holding
+# a wrong parity that no later link ever contradicts (IMG_4004: one such
+# frame inverted the skeleton for 83 frames; a second inverted the tail).
+# The anchors read the truth straight off the gait and repair the cheapest
+# link in the violating stretch.
+
+# A down-run must hold this many consecutive measured frames to count as a
+# stance fragment (shorter runs are scissor noise).
+_ANCHOR_MIN_RUN = 5
+
+# One ankle is "down" when it sits lower than the other by this fraction of
+# the clip's median ankle separation (floored for tiny subjects).
+_ANCHOR_DOWN_MARGIN_FRAC = 0.04
+_ANCHOR_DOWN_MARGIN_MIN = 0.008
+
+# Fragments whose starts are closer than MERGE x the median stance spacing
+# are the same physical stance, split by a glitch. Between MERGE and CHAIN
+# they are consecutive stances and constrain each other; farther apart a
+# stance went missing (collapse, occlusion) and no constraint is drawn.
+_ANCHOR_MERGE_FRAC = 0.6
+_ANCHOR_CHAIN_FRAC = 1.6
+
+# When repairing a violated stretch, flipping at an existing crossing (undo)
+# is preferred over inventing a crossing at a stay link: a held near-tie at a
+# scissor scores almost the same margin as a barely-won crossing, and the
+# smaller claim should win. Stay links pay this many steps extra.
+_ANCHOR_STAY_PENALTY_STEPS = 0.5
+
+# If more than this share of constraints is violated the anchors themselves
+# are suspect (walking? mis-detected stances?) -- report, repair nothing.
+_ANCHOR_MAX_VIOLATION_FRAC = 0.3
+
+# Direct down-label flips (adjacent measured frames, both labels defined,
+# different) per stance fragment. A physical handover passes through the
+# undecided margin zone, so clean labels produce well under one direct flip
+# per stance (0.31 on the clean 58 fps fixture); raw label chaos flips the
+# down label mid-stance (1.28 on the blurry fixture whose shipped output is
+# validated). Above this bar the anchors read gait off junk labels -- and the
+# junk-label regime is exactly the one the DP-plus-naming path already
+# handles -- so they stand down.
+_ANCHOR_MAX_CHURN_PER_STANCE = 0.8
 
 
 def _point(lms: Any, idx: int) -> tuple[float, float] | None:
@@ -289,6 +345,7 @@ def resolve_run_leg_identity(
     INF = float("inf")
     best = [0.0, 0.0]
     back: list[tuple[int, int]] = []
+    margins: list[tuple[float, bool]] = []  # per arc: (decision margin, crossed)
     ambiguous = 0
     for _, stay, cross, gap_ms, blind in arcs:
         if blind:
@@ -321,12 +378,20 @@ def resolve_run_leg_identity(
                     ptr[cur_state] = prev_state
         best = nxt
         back.append((ptr[0], ptr[1]))
+        # With symmetric transition costs the path decomposes per link, so
+        # this margin IS the confidence of the link's own decision.
+        margins.append((abs(stay - (cross + hyst)), cross + hyst < stay))
 
     state = 0 if best[0] <= best[1] else 1
     parity_at = {measured_idx[-1]: state}
     for k in range(len(arcs) - 1, -1, -1):
         state = back[k][state]
         parity_at[measured_idx[k]] = state
+
+    anchor_diag = _apply_stance_anchors(
+        joints, measured_idx, parity_at, margins, _ts,
+        median_spacing, step_scale,
+    )
 
     # Unmeasured frames inherit the parity of the nearest previous measured
     # frame -- their landmarks are NaN anyway; this only keeps any stray
@@ -427,12 +492,197 @@ def resolve_run_leg_identity(
         ],
         "relabelled_frames": swaps,
         "torso_near": torso_near,
+        "anchors": anchor_diag,
     }
     logger.info(
         "LEG_IDENTITY_DP",
         **{k: v for k, v in diag.items() if k != "naming"},
     )
     return swaps, swap_pct, collapse_pct, diag
+
+
+def _apply_stance_anchors(
+    joints: list,
+    measured_idx: list[int],
+    parity_at: dict[int, int],
+    margins: list[tuple[float, bool]],
+    ts,
+    median_spacing: float,
+    step_scale: float,
+) -> dict[str, Any]:
+    """Repair the parity path against gait structure, in place.
+
+    Down-runs of the RAW labels give stance fragments; fragments merge when
+    their starts sit closer than a fraction of the clip's own stance spacing
+    (one stance split by a glitch frame). Between neighbouring stances the
+    required net parity change is fixed by whether the down-labels alternate.
+    A violated stretch is repaired at its least-confident link -- undoing a
+    barely-won crossing in preference to inventing one at a held near-tie.
+
+    Mutates ``parity_at`` and returns a small diagnostic dict.
+    """
+    out: dict[str, Any] = {"stances": 0, "constraints": 0, "violated": 0,
+                           "repaired": 0}
+    m = len(measured_idx)
+    if m < 3 or step_scale <= 0:
+        return out
+
+    # Median ankle separation sets the down margin's scale.
+    seps = []
+    for i in measured_idx:
+        la, ra = joints[i][1]
+        if la is not None and ra is not None:
+            seps.append(math.dist(la, ra))
+    if len(seps) < _ANCHOR_MIN_RUN:
+        return out
+    down_margin = max(
+        _ANCHOR_DOWN_MARGIN_MIN,
+        _ANCHOR_DOWN_MARGIN_FRAC * float(np.median(seps)),
+    )
+
+    # Down label per measured position: the ankle clearly lower in the image.
+    def down(i: int) -> int | None:
+        la, ra = joints[i][1]
+        if la is None or ra is None:
+            return None
+        dy = la[1] - ra[1]
+        if dy > down_margin:
+            return 27
+        if dy < -down_margin:
+            return 28
+        return None
+
+    # Stance fragments: runs of one down label over consecutive measured
+    # positions. (start_pos, end_pos) index into measured_idx.
+    frags: list[tuple[int, int, int]] = []
+    run_label: int | None = None
+    run_start = 0
+    for pos in range(m + 1):
+        lab = down(measured_idx[pos]) if pos < m else None
+        if lab != run_label:
+            if run_label is not None and pos - run_start >= _ANCHOR_MIN_RUN:
+                frags.append((run_start, pos - 1, run_label))
+            run_label = lab
+            run_start = pos
+    if len(frags) < 3:
+        return out
+
+    # Down-label churn: the raw labels flipping while a foot is planted. Gait
+    # can only be read off labels stable at the stance scale; past the bar
+    # the anchors would repair the path against noise, so they stand down.
+    churn = 0
+    prev_lab: int | None = None
+    for pos in range(m):
+        lab = down(measured_idx[pos])
+        if lab is not None:
+            if prev_lab is not None and lab != prev_lab:
+                churn += 1
+            prev_lab = lab
+        else:
+            prev_lab = None
+    out["churn_per_stance"] = round(churn / len(frags), 2)
+    if churn > _ANCHOR_MAX_CHURN_PER_STANCE * len(frags):
+        out["distrusted"] = "label_churn"
+        return out
+
+    def frag_ms(pos: int) -> float:
+        t = ts(measured_idx[pos])
+        return t if t is not None else measured_idx[pos] * median_spacing
+
+    spacings = [
+        frag_ms(b[0]) - frag_ms(a[0]) for a, b in zip(frags, frags[1:])
+    ]
+    step_ms = float(np.median(spacings))
+    if not (100.0 <= step_ms <= 2000.0):
+        return out
+
+    # Merge same-label fragments split by a glitch; keep differing labels
+    # apart (a label handed over mid-stance is itself a parity event).
+    stances: list[tuple[int, int, int]] = []
+    for frag in frags:
+        if (
+            stances
+            and frag[2] == stances[-1][2]
+            and frag_ms(frag[0]) - frag_ms(stances[-1][0])
+            < _ANCHOR_MERGE_FRAC * step_ms
+        ):
+            stances[-1] = (stances[-1][0], frag[1], frag[2])
+        else:
+            stances.append(frag)
+    out["stances"] = len(stances)
+    if len(stances) < 2:
+        return out
+
+    # Anchor = the stance's midpoint (a measured position); constraint = the
+    # net parity change required between neighbouring anchors.
+    def down_ankle(pos: int) -> tuple[float, float] | None:
+        la, ra = joints[measured_idx[pos]][1]
+        lab = down(measured_idx[pos])
+        return la if lab == 27 else ra if lab == 28 else None
+
+    median_sep = float(np.median(seps))
+    constraints: list[tuple[int, int, int]] = []  # (pos_a, pos_b, delta)
+    for (s_a, e_a, lab_a), (s_b, e_b, lab_b) in zip(stances, stances[1:]):
+        mid_a, mid_b = (s_a + e_a) // 2, (s_b + e_b) // 2
+        gap = frag_ms(s_b) - frag_ms(s_a)
+        if gap >= _ANCHOR_CHAIN_FRAC * step_ms:
+            continue  # a stance went missing in between; no constraint
+        if gap < _ANCHOR_MERGE_FRAC * step_ms:
+            # Two down-runs closer than a stance can repeat, with DIFFERENT
+            # labels (same-label splits were merged above). Same physical
+            # foot -- its position continues across the split -- means the
+            # label was handed over mid-stance: one parity event. A clear
+            # position jump means the next stance simply landed early or the
+            # first was clipped: ordinary alternation.
+            pa, pb = down_ankle(e_a), down_ankle(s_b)
+            if pa is not None and pb is not None and (
+                math.dist(pa, pb) < 0.5 * median_sep
+            ):
+                delta = 1  # label handover on a planted foot
+            else:
+                delta = 0  # two stances, alternating feet
+        else:
+            delta = 1 if lab_a == lab_b else 0  # consecutive stances
+        constraints.append((mid_a, mid_b, delta))
+    out["constraints"] = len(constraints)
+    if not constraints:
+        return out
+
+    def parity(pos: int) -> int:
+        return parity_at[measured_idx[pos]]
+
+    violated = [
+        (a, b, d) for a, b, d in constraints if (parity(a) ^ parity(b)) != d
+    ]
+    out["violated"] = len(violated)
+    if not violated:
+        return out
+    if len(violated) / len(constraints) > _ANCHOR_MAX_VIOLATION_FRAC:
+        # The anchors themselves are suspect; do not repair from them.
+        out["distrusted"] = True
+        return out
+
+    stay_penalty = _ANCHOR_STAY_PENALTY_STEPS * step_scale
+    repaired = 0
+    for a, b, delta in constraints:
+        if (parity(a) ^ parity(b)) == delta:
+            continue
+        # Least-confident link in (a, b]; margins[k] belongs to the arc from
+        # measured position k to k+1. Stay links pay the invention penalty.
+        best_k = None
+        best_cost = float("inf")
+        for k in range(a, b):
+            cost = margins[k][0] + (0.0 if margins[k][1] else stay_penalty)
+            if cost < best_cost:
+                best_cost = cost
+                best_k = k
+        if best_k is None:
+            continue
+        for pos in range(best_k + 1, m):
+            parity_at[measured_idx[pos]] ^= 1
+        repaired += 1
+    out["repaired"] = repaired
+    return out
 
 
 def _torso_near_side(frame_results: list[dict[str, Any]]) -> str | None:

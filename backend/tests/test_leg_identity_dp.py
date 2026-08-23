@@ -178,6 +178,51 @@ def test_a_persistent_block_swap_is_recovered_without_a_reseed_coin_flip():
     assert swaps >= 80
 
 
+def _mush(frames, i, toward=0.5):
+    """Corrupt frame ``i``: pull every leg point ``toward`` the other leg's,
+    so any link into or out of it reads as a near-tie."""
+    nl = frames[i]["normalized_landmarks"]
+    wl = frames[i]["world_landmarks"]
+    for li, ri in ((25, 26), (27, 28), (29, 30), (31, 32)):
+        for lms in (nl, wl):
+            lx, ly = lms[li].x, lms[li].y
+            rx, ry = lms[ri].x, lms[ri].y
+            lms[li].x, lms[li].y = lx + toward * (rx - lx), ly + toward * (ry - ly)
+            lms[ri].x, lms[ri].y = rx + toward * (lx - rx), ry + toward * (ly - ry)
+
+
+def test_a_teleport_glitch_with_a_mushy_return_is_repaired_by_the_anchors():
+    """The IMG_4004 signature, measured on real footage: ONE frame whose
+    labels teleport onto the opposite legs (loud crossing in), followed by a
+    frame of mush (no loud crossing out). The path pays the entry, never
+    sees an exit, and holds the wrong parity to the end of the clip -- 83
+    frames on the real clip, the flip the athlete reported. The stance
+    anchors know the same foot was down before and after the glitch and
+    repair the cheapest link."""
+    frames = build(swapped_frames=frozenset({56}))
+    _mush(frames, 57, toward=0.45)
+    swaps, pct, _, diag = LI.resolve_run_leg_identity(frames)
+    bad, total = truth_errors(frames)
+    # The two corrupted frames themselves are unfixable; nothing else may
+    # stay inverted -- without the anchors ~180 frames come back wrong.
+    assert bad <= 4, f"{bad}/{total} frames on the wrong leg"
+    assert diag["anchors"]["repaired"] >= 1
+
+
+def test_chaotic_labels_stand_the_anchors_down():
+    """When the raw labels flip mid-stance the gait cannot be read off them;
+    the anchors must report label churn and repair nothing -- that regime
+    belongs to the path plus naming, which recovers it fully."""
+    rng = np.random.default_rng(3)
+    swapped = frozenset(int(i) for i in np.flatnonzero(rng.random(240) < 0.45))
+    frames = build(swapped_frames=swapped)
+    _, _, _, diag = LI.resolve_run_leg_identity(frames)
+    bad, _ = truth_errors(frames)
+    assert bad == 0
+    assert diag["anchors"].get("distrusted") == "label_churn"
+    assert diag["anchors"]["repaired"] == 0
+
+
 def test_a_gap_does_not_reseed_identity_by_coin_flip():
     """After a gap longer than the free-link window, the frames on the far
     side are anchored by their own continuity -- even when everything after
