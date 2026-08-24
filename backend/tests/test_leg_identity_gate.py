@@ -60,8 +60,15 @@ def _pedalling(n: int = 120) -> list[dict]:
 
 
 def _blanked(frame: dict, idx: int) -> bool:
-    lm = frame["normalized_landmarks"][idx]
+    """Excluded from measurement: world NaN and the frame carries the flag."""
+    lm = frame["world_landmarks"][idx]
     return math.isnan(lm.x) and math.isnan(lm.y)
+
+
+def _drawn(frame: dict, idx: int) -> bool:
+    """Still present for the overlay: normalized coordinates are finite."""
+    lm = frame["normalized_landmarks"][idx]
+    return not (math.isnan(lm.x) or math.isnan(lm.y))
 
 
 def test_a_clean_pedal_stroke_loses_nothing():
@@ -87,6 +94,13 @@ def test_a_foot_that_hops_to_the_other_shoe_is_blanked_not_swapped():
     assert _blanked(frames[60], 26), "the whole leg goes, not just the ankle"
     assert out["blanked"]["right"] >= 1
     assert out["blanked"]["left"] == 0, "the leg that behaved is untouched"
+    # The display leg does NOT blink out: the last good shape rides the
+    # predicted ankle, close to where the real foot is.
+    assert "right" in frames[60].get("leg_gate_filled", set())
+    assert _drawn(frames[60], 28)
+    lm = frames[60]["normalized_landmarks"][28]
+    true_pos = _on_circle(60 * STEP + math.pi)
+    assert math.dist((lm.x, lm.y), true_pos) < 0.5 * 2 * RADIUS
 
 
 def test_one_bad_frame_does_not_take_its_neighbours_with_it():
@@ -228,3 +242,28 @@ def test_a_one_sided_hop_is_still_blanked_after_the_resolver():
 
     assert _blanked(frames[60], 28)
     assert (ctx["leg_identity_gate"] or {}).get("blanked", {}).get("right", 0) >= 1
+    # ... and still drawn, so the athlete sees a leg, not a blink.
+    assert _drawn(frames[60], 28)
+
+
+def test_the_analyzer_refuses_to_measure_a_gate_filled_frame():
+    """The filled display points are a prediction; leg angles from them
+    would launder invented data into the fit report. The flag travels to
+    the analyzer, which NaNs that side's leg angles for the frame."""
+    from app.services.video_analysis.biomechanics.cycling_analyzer import (
+        CyclingAnalyzer,
+    )
+
+    frames = _pedalling(30)
+    analyzer = CyclingAnalyzer(fps=60.0, frame_aspect=9 / 16)
+    analyzer._near_side = "right"
+    clean = analyzer.analyze_frame(
+        frames[10]["world_landmarks"], frames[10]["normalized_landmarks"], 0.0,
+    )
+    gated = analyzer.analyze_frame(
+        frames[11]["world_landmarks"], frames[11]["normalized_landmarks"], 17.0,
+        gated_sides={"right"},
+    )
+    assert not math.isnan(clean.angles["right_knee"])
+    assert math.isnan(gated.angles["right_knee"])
+    assert math.isnan(gated.angles["right_hip"])

@@ -210,6 +210,24 @@ def _strip_z(lm: Any) -> SimpleNamespace:
     )
 
 
+def _image_plane(lm: Any, aspect: float) -> SimpleNamespace:
+    """A normalized landmark in true image proportions (x scaled by W/H).
+
+    Normalized coordinates are fractions of DIFFERENT axes -- x of the
+    width, y of the height -- so an angle computed on them directly is
+    stretched by the frame's aspect ratio (a portrait clip nearly doubles
+    every vertical distance). Rescaling x by W/H restores the geometry the
+    camera actually recorded, the same one the overlay draws.
+    """
+    x, y = lm.x, lm.y
+    return SimpleNamespace(
+        x=x if x is None else x * aspect,
+        y=y,
+        z=0.0,
+        visibility=getattr(lm, "visibility", 1.0),
+    )
+
+
 # Ear visibility floor below which the C7 blend falls back to pure
 # shoulder. Helmet brims, sunglasses, and head turns can drop ear
 # confidence well under the bike-wide 0.45 floor, in which case the
@@ -253,10 +271,27 @@ def _blend_landmarks(
 class CyclingAnalyzer(SportAnalyzer):
     """Analyzer for cycling bike fit technique."""
 
-    def __init__(self, fps: float = 30.0, cycling_position: str | None = None):
+    def __init__(
+        self,
+        fps: float = 30.0,
+        cycling_position: str | None = None,
+        frame_aspect: float | None = None,
+    ):
         super().__init__(sport_type="bike", fps=fps)
         self.cycling_position = cycling_position
         self.reference = get_cycling_reference(cycling_position)
+        # Width/height of the video frame. When known, every angle is
+        # computed from the IMAGE landmarks in true image proportions --
+        # the same skeleton the overlay draws -- instead of MediaPipe's
+        # model-space "world" skeleton. The world skeleton is a fitted 3D
+        # guess whose knee at BDC read 8 deg TOO STRAIGHT filmed from the
+        # rider's left and 8 deg TOO BENT filmed from the right on the
+        # same fit (160 vs 139 reported for a rider whose image angles
+        # were 152/147) -- a view-direction artifact the athlete sees as
+        # a different verdict per side. Without the aspect the old world
+        # path is kept: angles on unscaled normalized coordinates would
+        # be stretched by the aspect ratio, which is worse than the bias.
+        self.frame_aspect = frame_aspect
         self.trunk_angles: list[float] = []
         self.left_knee_angles: list[float] = []
         self.right_knee_angles: list[float] = []
@@ -287,19 +322,27 @@ class CyclingAnalyzer(SportAnalyzer):
         self._near_side: str | None = None
 
     def analyze_frame(
-        self, world_landmarks: Any, normalized_landmarks: Any, timestamp_ms: float,
+        self,
+        world_landmarks: Any,
+        normalized_landmarks: Any,
+        timestamp_ms: float,
+        gated_sides: set[str] | frozenset[str] | None = None,
     ) -> FrameAnalysis:
         """Analyze a single cycling frame.
 
-        Strict 2D sagittal-plane analysis: world_landmarks are projected
-        to (x, y) with z=0 before any angle call (see ``_strip_z``).
-        Only the camera-facing side is computed; the far side's keys are
-        emitted as NaN so the FrameAnalysis shape stays stable for any
-        downstream consumer that iterates angle keys.
+        Strict 2D sagittal-plane analysis, on the IMAGE landmarks in true
+        image proportions when the frame aspect is known (see
+        ``_image_plane`` and the constructor note -- the world skeleton
+        carries an opposite-signed per-view bias the athlete reads as a
+        different bike fit per camera side). Only the camera-facing side
+        is computed; the far side's keys are emitted as NaN so the
+        FrameAnalysis shape stays stable for any downstream consumer
+        that iterates angle keys.
         """
         mv = self._min_vis
 
-        # Lock the near-side decision on the first frame.
+        # Lock the near-side decision on the first frame. (Depth vote --
+        # this is the one place the world landmarks' z is the evidence.)
         if self._near_side is None:
             try:
                 self._near_side = self.detect_camera_side(world_landmarks)
@@ -307,9 +350,11 @@ class CyclingAnalyzer(SportAnalyzer):
                 self._near_side = "left"
         near = self._near_side
 
-        # Project to 2D so any downstream angle math sees z=0 even if a
-        # function were ever changed to read z.
-        wl = [_strip_z(lm) for lm in world_landmarks]
+        if self.frame_aspect and normalized_landmarks is not None:
+            wl = [_image_plane(lm, self.frame_aspect) for lm in normalized_landmarks]
+        else:
+            # Legacy path (aspect unknown): world projected to z=0.
+            wl = [_strip_z(lm) for lm in world_landmarks]
 
         # Compute only the near-side joint angles. Far-side keys stay
         # NaN -- the data is unreliable in side-view (occluded by torso)
@@ -360,6 +405,16 @@ class CyclingAnalyzer(SportAnalyzer):
             left_forearm_vis, right_forearm_vis = NAN, forearm_vis
 
         self.trunk_angles.append(trunk_angle)
+        if gated_sides and near in gated_sides:
+            # The identity gate excluded this frame's near leg: its DISPLAY
+            # points are a prediction carried for the overlay, and no leg
+            # angle may be measured off a prediction. Arm and trunk angles
+            # stand -- the gate never touches those landmarks.
+            if near == "left":
+                left_knee = left_hip = left_ankle = NAN
+            else:
+                right_knee = right_hip = right_ankle = NAN
+
         self.left_knee_angles.append(left_knee)
         self.right_knee_angles.append(right_knee)
         self.left_head_scores.append(left_head)

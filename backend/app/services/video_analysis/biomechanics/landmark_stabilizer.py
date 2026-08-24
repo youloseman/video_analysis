@@ -647,16 +647,21 @@ def _gate_leg_identity_breaks(
 
     So this does not correct anything. It only refuses to measure. When an
     ankle lands further from its own predicted position than a leg could
-    plausibly move, that leg's landmarks are set to NaN for that frame, the
-    same representation :func:`_gate_by_visibility` already uses: the angle
-    calculators return NaN for it, the Butterworth pass restores the gap rather
-    than smoothing across it, and the overlay draws nothing there. The athlete
-    sees the leg blink out for a few frames instead of watching it jump to the
-    other shoe, and no number is computed from a frame we could not identify.
+    plausibly move, that frame is EXCLUDED from measurement: the leg's world
+    landmarks go NaN and the frame is marked in ``frame["leg_gate_filled"]``,
+    which the cycling analyzer reads to NaN that side's leg angles. The
+    DISPLAY landmarks are treated differently -- a blinking skeleton read as
+    an app error to athletes replaying their video -- so the normalized
+    points keep the leg's last good shape carried to the predicted ankle
+    position: the overlay stays on the near leg through the break (bounded
+    by the re-seed patience, ~5 frames), while no number is computed from a
+    frame we could not identify. Before any good shape exists the old NaN
+    blank remains, honesty over cosmetics.
 
-    The asymmetry is the point. The worst case here is discarding good frames;
-    it cannot put the reported series on the wrong leg, which is exactly what
-    every swap-based attempt risked and what happens today.
+    The asymmetry is the point. The worst case here is discarding good frames
+    (and drawing a briefly coasting leg); it cannot put the reported series
+    on the wrong leg, which is exactly what every swap-based attempt risked
+    and what happens today.
 
     Both legs are tested independently, so this needs no camera-side decision
     (which is not available this early anyway). Visibility is left untouched --
@@ -719,6 +724,10 @@ def _gate_leg_identity_breaks(
         held = 0
         blanked = 0
         reseeds = 0
+        # Last good positions of this leg's points RELATIVE to its ankle,
+        # so an excluded frame can still show the leg (shape carried to the
+        # predicted ankle) instead of blinking out.
+        shape: dict[int, tuple[float, float]] | None = None
 
         for frame in frame_results:
             cur = _pt(frame, ankle_idx)
@@ -740,11 +749,20 @@ def _gate_leg_identity_breaks(
                     reseeds += 1
                     continue
                 for i in _LEG_LANDMARKS[side]:
-                    for key in ("world_landmarks", "normalized_landmarks"):
-                        lm = frame[key][i]
-                        lm.x = math.nan
-                        lm.y = math.nan
-                        lm.z = math.nan
+                    wlm = frame["world_landmarks"][i]
+                    wlm.x = math.nan
+                    wlm.y = math.nan
+                    wlm.z = math.nan
+                    nlm = frame["normalized_landmarks"][i]
+                    if shape is not None and i in shape:
+                        nlm.x = pred[0] + shape[i][0]
+                        nlm.y = pred[1] + shape[i][1]
+                        nlm.z = 0.0
+                    else:
+                        nlm.x = math.nan
+                        nlm.y = math.nan
+                        nlm.z = math.nan
+                frame.setdefault("leg_gate_filled", set()).add(side)
                 blanked += 1
                 held += 1
                 continue
@@ -753,6 +771,13 @@ def _gate_leg_identity_breaks(
                 (cur[0] - prev[0]) / (held + 1), (cur[1] - prev[1]) / (held + 1),
             ))
             prev, held = cur, 0
+            new_shape: dict[int, tuple[float, float]] = {}
+            for i in _LEG_LANDMARKS[side]:
+                p = _pt(frame, i)
+                if p is not None:
+                    new_shape[i] = (p[0] - cur[0], p[1] - cur[1])
+            if new_shape:
+                shape = new_shape
 
         out["blanked"][side] = blanked
         out["reseeds"][side] = reseeds

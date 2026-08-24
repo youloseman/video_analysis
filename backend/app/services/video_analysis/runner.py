@@ -573,7 +573,17 @@ def run_analysis(
     # Step 3: analyzer.
     is_bike = sport_type == "bike"
     if is_bike:
-        analyzer: Any = CyclingAnalyzer(fps=fps, cycling_position=cycling_position)
+        # Frame aspect switches the analyzer's angles onto the image
+        # landmarks -- the skeleton the overlay draws -- instead of the
+        # world skeleton, whose per-view bias read the same fit ~8 deg
+        # too straight from the left and ~8 deg too bent from the right.
+        _fw = raw_frame_data[0].get("frame_width") if raw_frame_data else None
+        _fh = raw_frame_data[0].get("frame_height") if raw_frame_data else None
+        analyzer: Any = CyclingAnalyzer(
+            fps=fps,
+            cycling_position=cycling_position,
+            frame_aspect=(_fw / _fh) if _fw and _fh else None,
+        )
         # Bike side-view never physically flips: lock the side up front so
         # analyze_frame sees a stable camera_side from the first call.
         locked_side = (
@@ -603,8 +613,14 @@ def run_analysis(
 
     # Step 3a: per-frame analysis (bike and run both run with a locked side).
     for fd in raw_frame_data:
+        _kwargs: dict[str, Any] = {}
+        if is_bike and fd.get("leg_gate_filled"):
+            # These frames' near-leg display points are gate predictions;
+            # the analyzer must not measure leg angles off them.
+            _kwargs["gated_sides"] = fd["leg_gate_filled"]
         frame_result = analyzer.analyze_frame(
             fd["world_landmarks"], fd["normalized_landmarks"], fd["timestamp_ms"],
+            **_kwargs,
         )
         analyzer.add_frame_result(frame_result)
 
