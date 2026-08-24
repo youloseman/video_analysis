@@ -302,6 +302,38 @@ def test_a_missing_leg_frame_is_display_filled_within_patience():
     assert _blanked(frames[60], 28), "still excluded from measurement"
 
 
+def test_a_shortened_shin_is_restored_to_bone_length():
+    """MediaPipe slides the ankle up the shin near TDC (measured: shin
+    'shrank' to 76% of median at every TDC of a real left-side clip). The
+    shin is a bone; frames shorter than the floor get the ankle re-projected
+    to the clip's median length along the measured direction, heel carried
+    with it, toe left alone -- it was the landmark that stayed honest."""
+    from app.services.video_analysis.biomechanics.landmark_stabilizer import (
+        _enforce_shin_length,
+    )
+
+    frames = _pedalling()
+    for f in frames:
+        f["frame_width"], f["frame_height"] = 720, 1280
+    true_ankle = _on_circle(60 * STEP + math.pi)
+    knee = frames[60]["normalized_landmarks"][26]
+    toe_before = frames[60]["normalized_landmarks"][32]
+    toe_pos = (toe_before.x, toe_before.y)
+    # Pull the right ankle 40% of the way up the shin on one frame.
+    for idx in (28, 30):
+        lm = frames[60]["normalized_landmarks"][idx]
+        lm.x = lm.x + 0.4 * (knee.x - lm.x)
+        lm.y = lm.y + 0.4 * (knee.y - lm.y)
+
+    restored = _enforce_shin_length(frames)
+
+    assert restored["right"] >= 1
+    lm = frames[60]["normalized_landmarks"][28]
+    assert math.dist((lm.x, lm.y), true_ankle) < 0.01, "ankle back on the shoe"
+    toe_after = frames[60]["normalized_landmarks"][32]
+    assert (toe_after.x, toe_after.y) == toe_pos, "the honest toe is untouched"
+
+
 def test_the_analyzer_refuses_to_measure_a_gate_filled_frame():
     """The filled display points are a prediction; leg angles from them
     would launder invented data into the fit report. The flag travels to

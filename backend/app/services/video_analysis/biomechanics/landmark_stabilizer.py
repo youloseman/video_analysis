@@ -322,6 +322,10 @@ def stabilize_landmarks(
             logger.warning("LEG_IDENTITY_DP_FAILED", err=str(e), sport="bike")
             leg_identity_diag = None
         leg_gate = _gate_leg_identity_breaks(frame_results)
+        # After the gate so it never runs on frames the gate re-filled from a
+        # prediction, and before the smoothing pass so the restored ankle is
+        # what gets filtered.
+        leg_gate["shin_restored"] = _enforce_shin_length(frame_results)
 
     if context is not None:
         # Surfaced so the pipeline can judge tracking stability: a clip where
@@ -639,6 +643,78 @@ _LEG_LANDMARKS = {
     "right": (26, 28, 30, 32),
 }
 _LEG_ANKLE = {"left": 27, "right": 28}
+
+# --- shin-length prior (bike) ----------------------------------------------
+# The knee-to-ankle segment is a bone; on a side view its projected length is
+# near-constant through the pedal stroke (+/-5% from perspective and slight
+# out-of-plane travel). MediaPipe disagrees once per revolution: near TDC it
+# slides the ankle UP the shin -- measured on a real left-side clip the shin
+# "shrank" to 76% of its median at every TDC (the heel floats even higher,
+# while the TOE stays planted on the shoe). The knee ANGLE barely notices --
+# the ankle slides along the shin, and angles read directions -- but the
+# drawn foot hangs in the air above the shoe and the ankle-vertex angle is
+# junk on those frames. Frames whose shin is shorter than this fraction of
+# the clip's median get the ankle re-projected to the median length along
+# the measured direction, the heel translated with it, and the toe left
+# where it was detected (it was the one landmark that stayed honest).
+SHIN_MIN_FRAC = 0.90
+
+
+def _enforce_shin_length(frame_results: list[dict[str, Any]]) -> dict[str, int]:
+    """Restore bone length where MediaPipe shortened the shin. Bike only."""
+    out = {"left": 0, "right": 0}
+    if not frame_results:
+        return out
+    fw = frame_results[0].get("frame_width") or 1
+    fh = frame_results[0].get("frame_height") or 1
+    aspect = fw / fh
+
+    def pt(frame: dict[str, Any], idx: int) -> tuple[float, float] | None:
+        lm = frame["normalized_landmarks"][idx]
+        x, y = lm.x, lm.y
+        if x is None or y is None:
+            return None
+        if (isinstance(x, float) and math.isnan(x)) or (
+            isinstance(y, float) and math.isnan(y)
+        ):
+            return None
+        return (float(x), float(y))
+
+    def length(a: tuple[float, float], b: tuple[float, float]) -> float:
+        # Isotropic length: normalized x spans the width, y the height.
+        return math.hypot((a[0] - b[0]) * aspect, a[1] - b[1])
+
+    for side, (knee_i, ankle_i, heel_i, _toe_i) in _LEG_LANDMARKS.items():
+        lengths = []
+        for f in frame_results:
+            k, a = pt(f, knee_i), pt(f, ankle_i)
+            if k and a:
+                lengths.append(length(k, a))
+        if len(lengths) < 10:
+            continue
+        median = float(np.median(lengths))
+        if median <= 1e-6:
+            continue
+        floor = SHIN_MIN_FRAC * median
+        for f in frame_results:
+            k, a = pt(f, knee_i), pt(f, ankle_i)
+            if not (k and a):
+                continue
+            cur = length(k, a)
+            if cur >= floor or cur <= 1e-9:
+                continue
+            scale = median / cur
+            new_a = (k[0] + (a[0] - k[0]) * scale, k[1] + (a[1] - k[1]) * scale)
+            dx, dy = new_a[0] - a[0], new_a[1] - a[1]
+            for idx in (ankle_i, heel_i):
+                lm = f["normalized_landmarks"][idx]
+                p = pt(f, idx)
+                if p is None:
+                    continue
+                lm.x = p[0] + dx
+                lm.y = p[1] + dy
+            out[side] += 1
+    return out
 
 
 def _gate_leg_identity_breaks(
