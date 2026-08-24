@@ -251,6 +251,7 @@ def _pair_costs(
 
 def resolve_run_leg_identity(
     frame_results: list[dict[str, Any]],
+    swap_one_sided: bool = True,
 ) -> tuple[int, float, float, dict[str, Any]]:
     """Relabel legs in place; returns (swaps, swap_pct, collapse_pct, diag).
 
@@ -263,6 +264,18 @@ def resolve_run_leg_identity(
     ``ambiguous_pair_pct`` (links decided by hysteresis, not evidence) and
     ``naming_unconfident_pct`` (frames whose segment naming had no cues
     behind it).
+
+    ``swap_one_sided`` governs frames where only ONE leg carries data (the
+    other blanked upstream, e.g. by the visibility gate). Relabelling such a
+    frame trades the surviving points for NaNs. On run that trade is honest
+    -- parity is well supported and the surviving data really belongs to the
+    other label, so a hole beats a wrong leg. On the bike it destroyed 91
+    frames of a real clip: the far leg is visibility-blanked for half the
+    frames THERE, parity merely coasts across those stretches (no measured
+    links), and the swap kept trading the near leg's good points for far-leg
+    NaNs -- the athlete watched the skeleton vanish once per revolution.
+    Bike passes False: unverifiable frames keep their labels, and the
+    track-continuity gate remains the protector it always was.
     """
     n = len(frame_results)
     empty_diag: dict[str, Any] = {"method": "dp", "frames": n}
@@ -459,8 +472,15 @@ def resolve_run_leg_identity(
             flip[a:b] = 1
 
     swaps = 0
+    swap_skipped = 0
     for i, fr in enumerate(frame_results):
         if int(parities[i]) ^ int(flip[i]):
+            if not swap_one_sided and not (
+                joints[i] is not None
+                and all(lp is not None and rp is not None for lp, rp in joints[i])
+            ):
+                swap_skipped += 1
+                continue
             for key in ("world_landmarks", "normalized_landmarks"):
                 lms = fr.get(key)
                 if lms is None:
@@ -502,6 +522,7 @@ def resolve_run_leg_identity(
         "unconfident_spans": [
             list(info["span"]) for info in seg_flips if not info["confident"]
         ],
+        "swap_skipped_one_sided": swap_skipped,
         "relabelled_frames": swaps,
         "torso_near": torso_near,
         "anchors": anchor_diag,

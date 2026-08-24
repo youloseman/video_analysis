@@ -246,6 +246,62 @@ def test_a_one_sided_hop_is_still_blanked_after_the_resolver():
     assert _drawn(frames[60], 28)
 
 
+def test_a_one_sided_frame_is_never_relabelled_into_a_hole_on_the_bike():
+    """The regression a real clip caught: the far leg is visibility-blanked
+    for stretches of a bike side view, parity coasts across them, and a
+    swap applied there trades the near leg's real points for far-leg NaNs
+    -- the athlete watched the skeleton vanish once per revolution. With
+    ``swap_one_sided=False`` the unverifiable frame keeps its labels."""
+    from app.services.video_analysis.biomechanics.leg_identity import (
+        resolve_run_leg_identity,
+    )
+
+    frames = _pedalling()
+    # A sustained mutual exchange opens a parity block (both sides present,
+    # so the path can see it)...
+    for k in range(55, 76):
+        for left_i, right_i in ((25, 26), (27, 28), (29, 30), (31, 32)):
+            for key in ("normalized_landmarks", "world_landmarks"):
+                lms = frames[k][key]
+                lms[left_i], lms[right_i] = lms[right_i], lms[left_i]
+    # ...and one frame INSIDE it loses a whole side, the way the visibility
+    # gate blanks the far leg. Parity coasts across it.
+    for idx in (25, 27, 29, 31):
+        for key in ("normalized_landmarks", "world_landmarks"):
+            lm = frames[65][key][idx]
+            lm.x = math.nan
+            lm.y = math.nan
+
+    _, _, _, diag = resolve_run_leg_identity(frames, swap_one_sided=False)
+
+    lm = frames[65]["normalized_landmarks"][28]
+    assert not math.isnan(lm.x), "the surviving data must stay drawable"
+    assert diag["swap_skipped_one_sided"] >= 1
+    # The two-sided frames of the block were still relabelled as usual.
+    assert not math.isnan(frames[60]["normalized_landmarks"][28].x)
+
+
+def test_a_missing_leg_frame_is_display_filled_within_patience():
+    """A frame whose near ankle is NaN (blanked upstream) must not blink the
+    overlay: within the re-seed patience the display carries the last good
+    shape on the predicted ankle, flagged so nothing measures off it."""
+    frames = _pedalling()
+    for idx in (26, 28, 30, 32):
+        for key in ("normalized_landmarks", "world_landmarks"):
+            lm = frames[60][key][idx]
+            lm.x = math.nan
+            lm.y = math.nan
+
+    _gate_leg_identity_breaks(frames)
+
+    assert _drawn(frames[60], 28)
+    assert "right" in frames[60].get("leg_gate_filled", set())
+    lm = frames[60]["normalized_landmarks"][28]
+    true_pos = _on_circle(60 * STEP + math.pi)
+    assert math.dist((lm.x, lm.y), true_pos) < 0.5 * 2 * RADIUS
+    assert _blanked(frames[60], 28), "still excluded from measurement"
+
+
 def test_the_analyzer_refuses_to_measure_a_gate_filled_frame():
     """The filled display points are a prediction; leg angles from them
     would launder invented data into the fit report. The flag travels to

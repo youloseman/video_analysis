@@ -310,7 +310,14 @@ def stabilize_landmarks(
             # the gate alone is then the known behaviour, and the diag says
             # identity went unrepaired. No greedy fallback here -- bike never
             # had one, and that is the point of the gate.
-            _, _, _, leg_identity_diag = resolve_run_leg_identity(frame_results)
+            # swap_one_sided=False: the far leg is visibility-blanked on
+            # large parts of a bike side view, and relabelling a frame where
+            # only one leg has data trades the near leg's real points for
+            # far-leg NaNs (91 destroyed frames on a real clip, seen as the
+            # skeleton vanishing once per revolution).
+            _, _, _, leg_identity_diag = resolve_run_leg_identity(
+                frame_results, swap_one_sided=False,
+            )
         except Exception as e:  # noqa: BLE001
             logger.warning("LEG_IDENTITY_DP_FAILED", err=str(e), sport="bike")
             leg_identity_diag = None
@@ -732,6 +739,25 @@ def _gate_leg_identity_breaks(
         for frame in frame_results:
             cur = _pt(frame, ankle_idx)
             if cur is None:
+                # The leg is missing entirely (blanked upstream). Within the
+                # same patience the display is filled the same way a break
+                # is: predicted ankle, last good shape. The world landmarks
+                # are already NaN, so nothing is measured off the fill.
+                if (
+                    prev is not None and shape is not None
+                    and held < LEG_BREAK_RESEED_FRAMES
+                ):
+                    pred = (
+                        prev[0] + vel[0] * (held + 1),
+                        prev[1] + vel[1] * (held + 1),
+                    )
+                    for i in _LEG_LANDMARKS[side]:
+                        if i in shape:
+                            nlm = frame["normalized_landmarks"][i]
+                            nlm.x = pred[0] + shape[i][0]
+                            nlm.y = pred[1] + shape[i][1]
+                            nlm.z = 0.0
+                    frame.setdefault("leg_gate_filled", set()).add(side)
                 held += 1
                 continue
             if prev is None:
