@@ -167,6 +167,18 @@ _ANCHOR_DOWN_MARGIN_MIN = 0.008
 _ANCHOR_MERGE_FRAC = 0.6
 _ANCHOR_CHAIN_FRAC = 1.6
 
+# Same-label fragments ALSO merge when the silence between them is short and
+# the down ankle carries straight on -- a down phase split mid-way by a
+# dropout, however far apart the two starts sit. The bike fixture needs this:
+# once per revolution the far ankle's track drops for ~100 ms mid down-phase,
+# and keying the merge on start spacing alone read every revolution as two
+# same-label stances -- 13 phantom violations that made the anchors distrust
+# themselves. Continuity is what keeps this safe in running: after a real
+# mid-flight swap the same label's next stance lands a stride ahead (~1.1x
+# the ankle separation on the 58 fps fixture), nowhere near this bar.
+_ANCHOR_SPLIT_GAP_MS = 150.0
+_ANCHOR_SPLIT_CONT_FRAC = 0.7
+
 # When repairing a violated stretch, flipping at an existing crossing (undo)
 # is preferred over inventing a crossing at a stay link: a held near-tie at a
 # scissor scores almost the same margin as a barely-won crossing, and the
@@ -596,31 +608,41 @@ def _apply_stance_anchors(
     if not (100.0 <= step_ms <= 2000.0):
         return out
 
-    # Merge same-label fragments split by a glitch; keep differing labels
-    # apart (a label handed over mid-stance is itself a parity event).
-    stances: list[tuple[int, int, int]] = []
-    for frag in frags:
-        if (
-            stances
-            and frag[2] == stances[-1][2]
-            and frag_ms(frag[0]) - frag_ms(stances[-1][0])
-            < _ANCHOR_MERGE_FRAC * step_ms
-        ):
-            stances[-1] = (stances[-1][0], frag[1], frag[2])
-        else:
-            stances.append(frag)
-    out["stances"] = len(stances)
-    if len(stances) < 2:
-        return out
-
-    # Anchor = the stance's midpoint (a measured position); constraint = the
-    # net parity change required between neighbouring anchors.
     def down_ankle(pos: int) -> tuple[float, float] | None:
         la, ra = joints[measured_idx[pos]][1]
         lab = down(measured_idx[pos])
         return la if lab == 27 else ra if lab == 28 else None
 
     median_sep = float(np.median(seps))
+
+    # Merge same-label fragments split by a glitch: starts close together
+    # (one stance can't repeat that fast), OR a short dropout that the down
+    # ankle's position carries straight across. Differing labels stay apart
+    # (a label handed over mid-stance is itself a parity event).
+    stances: list[tuple[int, int, int]] = []
+    for frag in frags:
+        if stances and frag[2] == stances[-1][2]:
+            prev = stances[-1]
+            split_ms = frag_ms(frag[0]) - frag_ms(prev[1])
+            pa, pb = down_ankle(prev[1]), down_ankle(frag[0])
+            continuous = (
+                pa is not None and pb is not None
+                and math.dist(pa, pb) < _ANCHOR_SPLIT_CONT_FRAC * median_sep
+            )
+            if (
+                frag_ms(frag[0]) - frag_ms(prev[0])
+                < _ANCHOR_MERGE_FRAC * step_ms
+                or (split_ms < _ANCHOR_SPLIT_GAP_MS and continuous)
+            ):
+                stances[-1] = (prev[0], frag[1], frag[2])
+                continue
+        stances.append(frag)
+    out["stances"] = len(stances)
+    if len(stances) < 2:
+        return out
+
+    # Anchor = the stance's midpoint (a measured position); constraint = the
+    # net parity change required between neighbouring anchors.
     constraints: list[tuple[int, int, int]] = []  # (pos_a, pos_b, delta)
     for (s_a, e_a, lab_a), (s_b, e_b, lab_b) in zip(stances, stances[1:]):
         mid_a, mid_b = (s_a + e_a) // 2, (s_b + e_b) // 2

@@ -289,13 +289,31 @@ def stabilize_landmarks(
             leg_swaps, leg_swap_pct, leg_collapse_pct = _fix_leg_swaps(frame_results)
             leg_identity_diag = None
 
-    # Bike gets the other half of the same problem handled the other way round:
-    # it cannot correct an identity break (see _fix_leg_swaps), so it declines
-    # to measure one. Must also run BEFORE the smoothing pass, for the same
-    # reason -- a zero-phase filter run across a break blends the two legs
-    # together and nothing afterwards can separate them again.
+    # Bike gets the same whole-clip resolver first -- for the one failure it
+    # CAN fix there: a mutual label exchange, where both legs' points swap
+    # indices and swap back (the IMG_9981 frame-21 hop). Relabelling recovers
+    # those frames instead of losing them to the gate. Everything one-sided
+    # -- the near index landing on the far shoe while the far index stays
+    # put -- carries no far-leg truth to relabel from, so the gate still
+    # blanks it afterwards: blink, never jump. ``leg_swap_pct`` deliberately
+    # stays None for bike: the far leg is neither drawn nor measured on a
+    # side view, and an input-noise share dominated by its invented
+    # landmarks would cry wolf (see the runner's near-leg-only warning).
     leg_gate: dict[str, Any] = {}
     if sport_type == "bike":
+        try:
+            from app.services.video_analysis.biomechanics.leg_identity import (
+                resolve_run_leg_identity,
+            )
+
+            # On coarse sampling the resolver declines and relabels nothing;
+            # the gate alone is then the known behaviour, and the diag says
+            # identity went unrepaired. No greedy fallback here -- bike never
+            # had one, and that is the point of the gate.
+            _, _, _, leg_identity_diag = resolve_run_leg_identity(frame_results)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("LEG_IDENTITY_DP_FAILED", err=str(e), sport="bike")
+            leg_identity_diag = None
         leg_gate = _gate_leg_identity_breaks(frame_results)
 
     if context is not None:

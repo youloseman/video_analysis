@@ -209,6 +209,20 @@ def test_a_teleport_glitch_with_a_mushy_return_is_repaired_by_the_anchors():
     assert diag["anchors"]["repaired"] >= 1
 
 
+def test_a_stance_split_by_a_dropout_is_one_stance_not_two():
+    """The bike fixture's shape: a down phase interrupted mid-way by a short
+    tracking dropout. Two same-label fragments whose down ankle carries
+    straight across are ONE stance -- reading them as two puts a phantom
+    parity constraint on every such split (13 per clip on IMG_9981, enough
+    to make the anchors distrust themselves)."""
+    frames = build(gap=frozenset(range(60, 67)))   # mid-stance of 53-77
+    _, _, _, diag = LI.resolve_run_leg_identity(frames)
+    bad, _ = truth_errors(frames)
+    assert bad == 0
+    assert diag["anchors"]["violated"] == 0
+    assert diag["anchors"]["repaired"] == 0
+
+
 def test_chaotic_labels_stand_the_anchors_down():
     """When the raw labels flip mid-stance the gait cannot be read off them;
     the anchors must report label churn and repair nothing -- that regime

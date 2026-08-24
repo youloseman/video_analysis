@@ -189,3 +189,42 @@ def test_running_clips_do_not_get_this_pass():
     ctx: dict = {}
     stabilize_landmarks(frames, "run", None, fps=60.0, context=ctx)
     assert ctx["leg_identity_gate"] is None
+
+
+def test_a_mutual_label_exchange_is_relabelled_not_blanked():
+    """The one failure the resolver CAN fix on a bike: both legs' indices
+    swap for a frame and swap back. Blanking it loses a good frame; the
+    whole-clip resolver hands the points back to their legs and the gate
+    then has nothing to catch."""
+    frames = _pedalling()
+    ra = _on_circle(60 * STEP + math.pi)
+    for left_i, right_i in ((25, 26), (27, 28), (29, 30), (31, 32)):
+        for key in ("normalized_landmarks", "world_landmarks"):
+            lms = frames[60][key]
+            lms[left_i], lms[right_i] = lms[right_i], lms[left_i]
+
+    ctx: dict = {}
+    stabilize_landmarks(frames, "bike", None, fps=60.0, context=ctx)
+
+    lm = frames[60]["normalized_landmarks"][28]
+    assert not math.isnan(lm.x), "the exchanged frame must come back, not blank"
+    assert math.dist((lm.x, lm.y), ra) < 0.02, "and on its own leg"
+    assert (ctx["leg_identity"] or {}).get("method") == "dp"
+    assert ctx["leg_swap_pct"] is None, "bike still reports no swap share"
+
+
+def test_a_one_sided_hop_is_still_blanked_after_the_resolver():
+    """A hop with no mutual exchange carries no far-leg truth to relabel
+    from; the gate must keep blanking it. The resolver in front must not
+    weaken the blink-never-jump property."""
+    frames = _pedalling()
+    hop = _on_circle(60 * STEP)
+    for idx in (26, 28, 30, 32):
+        frames[60]["normalized_landmarks"][idx] = _lm(*hop)
+        frames[60]["world_landmarks"][idx] = _lm(*hop)
+
+    ctx: dict = {}
+    stabilize_landmarks(frames, "bike", None, fps=60.0, context=ctx)
+
+    assert _blanked(frames[60], 28)
+    assert (ctx["leg_identity_gate"] or {}).get("blanked", {}).get("right", 0) >= 1
