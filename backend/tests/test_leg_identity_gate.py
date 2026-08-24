@@ -302,6 +302,38 @@ def test_a_missing_leg_frame_is_display_filled_within_patience():
     assert _blanked(frames[60], 28), "still excluded from measurement"
 
 
+def test_a_fill_prediction_cannot_outrun_the_leg():
+    """A carried velocity over a whole patience window can travel further
+    than a leg is long (0.12/frame x 5 frames on a 0.26 reach) -- measured
+    on a real clip as four display fills OFF THE FRAME EDGE while the raw
+    ankle sat within normal reach. The prediction is leashed to the hip:
+    no fill may sit further from it than a straightened leg."""
+    frames = _pedalling()
+    # Give the right ankle a fast pre-break drift, then a dropout.
+    for j, k in enumerate(range(55, 60)):
+        for idx in (26, 28, 30, 32):
+            for key in ("normalized_landmarks", "world_landmarks"):
+                frames[k][key][idx].x += 0.05 * (j + 1)
+    for k in range(60, 66):
+        for idx in (26, 28, 30, 32):
+            for key in ("normalized_landmarks", "world_landmarks"):
+                lm = frames[k][key][idx]
+                lm.x = math.nan
+                lm.y = math.nan
+
+    _gate_leg_identity_breaks(frames)
+
+    hip = frames[0]["normalized_landmarks"][24]
+    for k in range(60, 66):
+        lm = frames[k]["normalized_landmarks"][28]
+        if math.isnan(lm.x):
+            continue  # not filled is acceptable; flying away is not
+        assert math.dist((lm.x, lm.y), (hip.x, hip.y)) < 0.5, (
+            f"frame {k}: fill escaped the leg's reach"
+        )
+        assert -0.02 <= lm.x <= 1.02 and -0.02 <= lm.y <= 1.02
+
+
 def test_slow_motion_scales_the_gate_patience_to_crank_degrees():
     """The patience is really 45 degrees of crank. A slow-motion clip spans
     ~4x the frames per revolution; holding 5 fixed frames there cuts the

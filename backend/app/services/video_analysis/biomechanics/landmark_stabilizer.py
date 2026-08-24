@@ -890,6 +890,28 @@ def _gate_leg_identity_breaks(
 
     threshold = LEG_BREAK_FRAC * separation
 
+    # Anatomical leash: an ankle cannot sit further from its own hip than a
+    # straightened leg. The velocity clamp alone is far too loose over a
+    # whole patience window (0.12/frame x 5 frames = more than a leg), and a
+    # prediction that has run away both draws off the body AND blanks good
+    # frames for the crime of disagreeing with nonsense -- measured on a
+    # real clip: four display fills off the frame edge while the raw ankle
+    # sat within normal reach the whole time.
+    _LEG_HIP = {"left": 23, "right": 24}
+    reach_limit: dict[str, float | None] = {}
+    for side, ankle_idx in _LEG_ANKLE.items():
+        reaches = [
+            math.dist(h, a)
+            for h, a in (
+                (_pt(f, _LEG_HIP[side]), _pt(f, ankle_idx))
+                for f in frame_results
+            )
+            if h is not None and a is not None
+        ]
+        reach_limit[side] = (
+            1.35 * float(np.median(reaches)) if len(reaches) >= 10 else None
+        )
+
     for side, ankle_idx in _LEG_ANKLE.items():
         prev: tuple[float, float] | None = None
         vel = (0.0, 0.0)
@@ -900,6 +922,19 @@ def _gate_leg_identity_breaks(
         # so an excluded frame can still show the leg (shape carried to the
         # predicted ankle) instead of blinking out.
         shape: dict[int, tuple[float, float]] | None = None
+        limit = reach_limit[side]
+        hip_idx = _LEG_HIP[side]
+
+        def _leash(pred, frame):
+            hip = _pt(frame, hip_idx)
+            if hip is None or limit is None:
+                return pred
+            d = math.dist(pred, hip)
+            if d <= limit or d <= 1e-9:
+                return pred
+            s = limit / d
+            return (hip[0] + (pred[0] - hip[0]) * s,
+                    hip[1] + (pred[1] - hip[1]) * s)
 
         for frame in frame_results:
             cur = _pt(frame, ankle_idx)
@@ -912,10 +947,10 @@ def _gate_leg_identity_breaks(
                     prev is not None and shape is not None
                     and held < patience
                 ):
-                    pred = (
+                    pred = _leash((
                         prev[0] + vel[0] * (held + 1),
                         prev[1] + vel[1] * (held + 1),
-                    )
+                    ), frame)
                     for i in _LEG_LANDMARKS[side]:
                         if i in shape:
                             nlm = frame["normalized_landmarks"][i]
@@ -933,7 +968,10 @@ def _gate_leg_identity_breaks(
             # foot keeps going round at much the same rate, so extrapolating it
             # forward is a fair guess, while decaying it would aim the
             # prediction at a foot standing still and blank the next frame too.
-            pred = (prev[0] + vel[0] * (held + 1), prev[1] + vel[1] * (held + 1))
+            pred = _leash(
+                (prev[0] + vel[0] * (held + 1), prev[1] + vel[1] * (held + 1)),
+                frame,
+            )
             if math.dist(cur, pred) > threshold:
                 if held >= patience:
                     prev, vel, held = cur, (0.0, 0.0), 0
