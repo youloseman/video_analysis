@@ -486,16 +486,7 @@ class VideoVisualizer:
 
         import cv2
 
-        # Pick the most readable frame among a few central candidates.
-        n = len(self.frame_data_list)
-        cand = sorted({int(n * p) for p in (0.5, 0.4, 0.6, 0.35, 0.65)})
-        cand = [i for i in cand if 0 <= i < n] or [n // 2]
-        best_idx, best_vis = cand[0], -1.0
-        for i in cand:
-            lms = self.frame_data_list[i]["normalized_landmarks"]
-            vis = sum(getattr(lm, "visibility", 0.5) for lm in lms) / max(1, len(lms))
-            if vis > best_vis:
-                best_vis, best_idx = vis, i
+        best_idx = self._pick_keyframe_idx()
 
         try:
             cap = cv2.VideoCapture(self.video_path)
@@ -517,6 +508,47 @@ class VideoVisualizer:
         except Exception as e:  # noqa: BLE001
             logger.warning("KEYFRAME_FAILED", err=str(e))
             return None
+
+    def _pick_keyframe_idx(self) -> int:
+        """The frame the keyframe still is drawn from.
+
+        Readable means DRAWABLE first: this still leads the results page, and
+        a frame whose near leg was identity-gated (blanked or display-filled
+        from a prediction) renders with the leg missing or misplaced --
+        visibility alone cannot see that, because the gate deliberately
+        leaves visibility untouched. So a candidate must carry a finite,
+        ungated near-side leg before visibility gets a vote.
+        """
+        n = len(self.frame_data_list)
+        cand = sorted({int(n * p) for p in
+                       (0.30 + 0.02 * k for k in range(21))})
+        cand = [i for i in cand if 0 <= i < n] or [n // 2]
+
+        side_leg = {
+            "left": (23, 25, 27, 29, 31), "right": (24, 26, 28, 30, 32),
+        }.get(self.camera_side or "", (23, 24, 25, 26, 27, 28))
+
+        def leg_drawable(fd: dict) -> bool:
+            if fd.get("leg_gate_filled"):
+                return False
+            for idx in side_leg:
+                lm = fd["normalized_landmarks"][idx]
+                x = getattr(lm, "x", None)
+                if x is None or (isinstance(x, float) and math.isnan(x)):
+                    return False
+            return True
+
+        drawable = [i for i in cand if leg_drawable(self.frame_data_list[i])]
+        pool = drawable or cand
+        best_idx, best_vis = pool[0], -1.0
+        for i in pool:
+            lms = self.frame_data_list[i]["normalized_landmarks"]
+            vis = sum(
+                getattr(lm, "visibility", 0.5) for lm in lms
+            ) / max(1, len(lms))
+            if vis > best_vis:
+                best_vis, best_idx = vis, i
+        return best_idx
 
     def _pose_for_video_frame(
         self, video_frame_idx: int,

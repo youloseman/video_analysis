@@ -534,3 +534,71 @@ def test_a_crop_running_off_the_frame_slides_back_in_rather_than_shrinking():
     assert x0 >= 0 and y0 >= 0
     assert x0 + cw <= 640 and y0 + ch <= 480
     assert ch == round(420.0)
+
+
+# --- bike: one revolution, six positions -----------------------------------
+
+def _bike_fd(n=200, cycle=40, filled=frozenset()):
+    """Pedalling frame dicts: near (right) ankle on a circle, leg attached."""
+    import math as m
+    from types import SimpleNamespace
+
+    def lm(x, y, vis=0.9):
+        return SimpleNamespace(x=x, y=y, z=0.0, visibility=vis)
+
+    out = []
+    for i in range(n):
+        a = 2 * m.pi * i / cycle
+        ax, ay = 0.5 + 0.05 * m.cos(a), 0.7 + 0.05 * m.sin(a)
+        lms = [lm(0.5, 0.4) for _ in range(33)]
+        lms[24] = lm(0.52, 0.45)              # right hip
+        lms[26] = lm((0.52 + ax) / 2, (0.45 + ay) / 2)   # knee midway
+        lms[28] = lm(ax, ay)                  # ankle on the crank circle
+        lms[30] = lm(ax - 0.01, ay + 0.01)
+        lms[32] = lm(ax + 0.02, ay + 0.01)
+        fd = {"normalized_landmarks": lms, "frame_width": 720,
+              "frame_height": 1280, "frame_idx": i}
+        if i in filled:
+            fd["leg_gate_filled"] = {"right"}
+        out.append(fd)
+    return out
+
+
+def test_bike_selector_picks_six_positions_off_the_crank_period():
+    from app.services.video_analysis.kinogram import select_bike_kinogram
+
+    sel = select_bike_kinogram(_bike_fd(), "right", 40.0)
+    assert sel is not None
+    assert [p.key for p in sel.positions] == [
+        "tdc_minus", "tdc", "tdc_plus", "bdc_minus", "bdc", "bdc_plus",
+    ]
+    idx = {p.key: p.analyzed_idx for p in sel.positions}
+    # TDC = ankle y minimum (sin = -1 -> angle 270deg -> i = 30 mod 40);
+    # BDC = maximum (i = 10 mod 40). +/-45deg = 5 frames on a 40-frame cycle.
+    assert idx["tdc"] % 40 == 30
+    assert idx["bdc"] % 40 == 10
+    assert idx["tdc_plus"] - idx["tdc"] == 5
+    assert idx["bdc"] - idx["bdc_minus"] == 5
+    for p in sel.positions:
+        assert p.metrics, "clean frames carry their knee reading"
+
+
+def test_bike_selector_draws_filled_frames_but_never_measures_them():
+    """A gate-filled frame is the display-continuity mechanism at work -- it
+    may be shown (the skeleton sits on the predicted leg) but its angle chip
+    must not print: no number comes from a prediction."""
+    from app.services.video_analysis.kinogram import select_bike_kinogram
+
+    filled = frozenset(range(0, 200, 40))    # every TDC-ish region start
+    sel = select_bike_kinogram(_bike_fd(filled=filled), "right", 40.0)
+    assert sel is not None
+    for p in sel.positions:
+        if p.source == "crank_cycle_filled":
+            assert not p.metrics
+
+
+def test_bike_selector_refuses_without_a_measured_period():
+    from app.services.video_analysis.kinogram import select_bike_kinogram
+
+    assert select_bike_kinogram(_bike_fd(), "right", None) is None
+    assert select_bike_kinogram(_bike_fd(n=50), "right", 40.0) is None

@@ -1015,6 +1015,29 @@ def run_analysis(
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("KINOGRAM_FAILED", err=str(e))
+    elif kinogram and is_bike:
+        # The bike's kinogram: one pedal revolution, six positions at +/-45
+        # degrees around TDC and BDC -- timed off the crank period the
+        # stabilizer already measured, never off a per-frame crank angle
+        # (measured too noisy to use). Same contract as run: a bonus
+        # artifact, never worth failing an analysis for.
+        try:
+            from app.services.video_analysis.kinogram import build_bike_kinogram
+
+            _gate_ctx = stabilizer_ctx.get("leg_identity_gate") or {}
+            kinogram_base64, kinogram_meta = build_bike_kinogram(
+                video_path, raw_frame_data,
+                camera_side=analyzer.camera_side or "",
+                cycle_frames=_gate_ctx.get("cycle_frames"),
+                technique_score=(
+                    scoring["overall_score"]
+                    if scoring.get("overall_score") is not None else 0
+                ),
+                letter_grade=scoring.get("letter_grade") or "--",
+                hide_values=hide_angle_values,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("KINOGRAM_FAILED", err=str(e), sport="bike")
 
     # Step 6c: the rider's action plan. A runner's is drills to practise; a
     # rider's is adjustments to make to the bike -- component, current value,

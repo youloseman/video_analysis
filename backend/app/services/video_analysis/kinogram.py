@@ -173,6 +173,7 @@ class KinogramSelection:
     mean_visibility: float
     complete: bool
     warnings: list[str] = field(default_factory=list)
+    method: str = "ALTIS Kinogram Method (McMillan) -- near-side adaptation"
 
     def to_meta(self) -> dict[str, Any]:
         """JSON-safe description of what was picked, for the result payload."""
@@ -196,7 +197,7 @@ class KinogramSelection:
             "mean_visibility": round(self.mean_visibility, 3),
             "complete": self.complete,
             "warnings": list(self.warnings),
-            "method": "ALTIS Kinogram Method (McMillan) -- near-side adaptation",
+            "method": self.method,
         }
 
 
@@ -949,6 +950,11 @@ def render_kinogram(
     letter_grade: str = "--",
     hide_values: bool = False,
     quality: int = 88,
+    sport: str = "run",
+    header_left: str = "RUN",
+    header_right: str = "KINOGRAM · ONE STRIDE",
+    footer: str = "POSITIONS AFTER THE ALTIS KINOGRAM METHOD",
+    landmarks_getter: Any = None,
 ) -> str | None:
     """Compose the selected positions into one annotated JPEG data URI.
 
@@ -967,6 +973,9 @@ def render_kinogram(
     positions = selection.positions
     if not positions:
         return None
+    if landmarks_getter is None:
+        def landmarks_getter(idx):  # noqa: E306
+            return _norm_landmarks(analyzer, idx)
 
     # analyzed index -> index into the ORIGINAL video
     video_idx: dict[int, int] = {}
@@ -989,7 +998,7 @@ def render_kinogram(
     for p in positions:
         frame = frames[video_idx[p.analyzed_idx]]
         h, w = frame.shape[:2]
-        box = _athlete_box(_norm_landmarks(analyzer, p.analyzed_idx), w, h)
+        box = _athlete_box(landmarks_getter(p.analyzed_idx), w, h)
         if box is None:
             logger.warning("KINOGRAM_NO_BOX", idx=p.analyzed_idx)
             return None
@@ -1029,12 +1038,12 @@ def render_kinogram(
 
         # Skeleton, in tile coordinates. Same builder the overlay video and the
         # keyframe use, so all three draw the same body.
-        lms = _norm_landmarks(analyzer, p.analyzed_idx)
+        lms = landmarks_getter(p.analyzed_idx)
         if lms is not None:
             pix = landmarks_to_pixels(
                 lms, fw, fh, offset=(x0, y0), scale=scale,
             )
-            segments, dots = build_skeleton_geometry(pix, "run", selection.camera_side)
+            segments, dots = build_skeleton_geometry(pix, sport, selection.camera_side)
             overlay_style.draw_glow_skeleton(
                 cv2, tile, segments, dots, glow=True, line_w=3, dot_r=4,
             )
@@ -1051,8 +1060,8 @@ def render_kinogram(
     chips = overlay_style.ChipLayer(canvas)
     status = "good" if technique_score >= 75 else "warn" if technique_score >= 60 else "bad"
     chips.header(
-        (OUTER_PAD, OUTER_PAD), "RUN", f"{technique_score}/100", letter_grade, status,
-        right_text="KINOGRAM · ONE STRIDE", frame_w=canvas_w, scale=1.15,
+        (OUTER_PAD, OUTER_PAD), header_left, f"{technique_score}/100", letter_grade,
+        status, right_text=header_right, frame_w=canvas_w, scale=1.15,
     )
 
     for k, p in enumerate(positions):
@@ -1071,8 +1080,7 @@ def render_kinogram(
 
     chips.caption(
         (OUTER_PAD, canvas_h - OUTER_PAD - FOOTER_H + 6),
-        "POSITIONS AFTER THE ALTIS KINOGRAM METHOD",
-        scale=0.85, status="muted", plate=False,
+        footer, scale=0.85, status="muted", plate=False,
     )
     chips.brand(
         (canvas_w - OUTER_PAD, canvas_h - OUTER_PAD), "FLAPP",
@@ -1130,5 +1138,194 @@ def build_run_kinogram(
         )
     except Exception as e:  # noqa: BLE001 -- a bonus artifact, never fatal
         logger.warning("KINOGRAM_RENDER_FAILED", err=str(e))
+        return None, meta
+    return uri, meta
+
+
+# ---------------------------------------------------------------------------
+# Bike: one pedal revolution, six positions. The crank is a better clock than
+# any gait detector -- TDC and BDC are the near ankle's own vertical extremes,
+# and +/-45 degrees is an eighth of the measured revolution period in frames.
+# No per-frame crank angle is estimated anywhere (that was measured too noisy
+# to use; see the crank-phase notes) -- only extreme-finding and frame
+# arithmetic on the clip's own period.
+# ---------------------------------------------------------------------------
+
+_BIKE_POSITIONS = (
+    ("tdc_minus", "TDC −45°", -1),
+    ("tdc",       "TDC",       0),
+    ("tdc_plus",  "TDC +45°", +1),
+    ("bdc_minus", "BDC −45°", -1),
+    ("bdc",       "BDC",       0),
+    ("bdc_plus",  "BDC +45°", +1),
+)
+
+
+def _bike_knee_deg(
+    fd: dict[str, Any], side: str,
+) -> float | None:
+    """Knee angle on one frame, in true image proportions (see the analyzer's
+    world-vs-image note: the image is what the tiles show)."""
+    idxs = _SIDE_LANDMARKS[side]
+    lms = fd.get("normalized_landmarks")
+    hip = _point(lms, idxs["hip"])
+    knee = _point(lms, idxs["knee"])
+    ankle = _point(lms, idxs["ankle"])
+    if hip is None or knee is None or ankle is None:
+        return None
+    aspect = (fd.get("frame_width") or 1) / (fd.get("frame_height") or 1)
+    v1 = ((hip[0] - knee[0]) * aspect, hip[1] - knee[1])
+    v2 = ((ankle[0] - knee[0]) * aspect, ankle[1] - knee[1])
+    n1, n2 = math.hypot(*v1), math.hypot(*v2)
+    if n1 < 1e-9 or n2 < 1e-9:
+        return None
+    cosv = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
+    return math.degrees(math.acos(cosv))
+
+
+def select_bike_kinogram(
+    frame_data_list: list[dict[str, Any]],
+    camera_side: str,
+    cycle_frames: float | None,
+) -> KinogramSelection | None:
+    """Pick the best-tracked revolution and its six positions.
+
+    Requires the stabilizer's measured revolution period; a clip whose ankles
+    never resolved a period has nothing to anchor +/-45 degrees to, and six
+    tiles picked by guesswork would be worse than no section.
+    """
+    if not cycle_frames or cycle_frames < 8 or camera_side not in ("left", "right"):
+        return None
+    n = len(frame_data_list)
+    if n < cycle_frames * 1.5:
+        return None
+    idxs = _SIDE_LANDMARKS[camera_side]
+    eighth = int(round(cycle_frames / 8))
+
+    ys = np.full(n, np.nan)
+    for i, fd in enumerate(frame_data_list):
+        pt = _point(fd.get("normalized_landmarks"), idxs["ankle"])
+        if pt is not None:
+            ys[i] = pt[1]
+    win = max(3, int(cycle_frames / 3))
+
+    def extremes(sign: float) -> list[int]:
+        out: list[int] = []
+        for k in range(win, n - win):
+            w = ys[k - win:k + win + 1]
+            if np.isnan(ys[k]):
+                continue
+            best = np.nanmax(w) if sign > 0 else np.nanmin(w)
+            if ys[k] == best and (not out or k - out[-1] >= win):
+                out.append(k)
+        return out
+
+    bdcs, tdcs = extremes(+1), extremes(-1)
+    if not bdcs or not tdcs:
+        return None
+
+    def drawable(i: int) -> bool:
+        # A gate-FILLED frame qualifies: the fill is precisely the
+        # display-continuity mechanism, and a kinogram is display -- the
+        # skeleton on it sits on the predicted leg. (On a real clip the near
+        # leg wobbles exactly AT TDC, so demanding six unfilled frames
+        # refused every revolution.) What a filled frame does NOT get is a
+        # printed measurement -- see the metric below.
+        if i < 0 or i >= n:
+            return False
+        fd = frame_data_list[i]
+        for key in ("hip", "knee", "ankle", "toe"):
+            if _point(fd.get("normalized_landmarks"), idxs[key]) is None:
+                return False
+        return True
+
+    def filled(i: int) -> bool:
+        return bool(frame_data_list[i].get("leg_gate_filled"))
+
+    best: tuple[float, list[int], int] | None = None
+    for cyc, t in enumerate(tdcs):
+        b = next(
+            (x for x in bdcs if t < x < t + cycle_frames * 0.8), None,
+        )
+        if b is None:
+            continue
+        picks = [t - eighth, t, t + eighth, b - eighth, b, b + eighth]
+        if not all(drawable(i) for i in picks):
+            continue
+        vis = float(np.mean([
+            _frame_visibility(
+                frame_data_list[i].get("normalized_landmarks"), camera_side,
+            )
+            for i in picks
+        ]))
+        score = vis - 0.08 * sum(1 for i in picks if filled(i))
+        if best is None or score > best[0]:
+            best = (score, picks, cyc)
+    if best is None:
+        return None
+    _, picks, cyc = best
+    vis = float(np.mean([
+        _frame_visibility(
+            frame_data_list[i].get("normalized_landmarks"), camera_side,
+        )
+        for i in picks
+    ]))
+
+    positions = []
+    for (key, label, _), i in zip(_BIKE_POSITIONS, picks):
+        knee = None if filled(i) else _bike_knee_deg(frame_data_list[i], camera_side)
+        metrics = (
+            [KinogramMetric("KNEE", _fmt_deg(knee))] if knee is not None else []
+        )
+        positions.append(KinogramPosition(
+            key=key, label=label, analyzed_idx=i,
+            metrics=metrics,
+            source="crank_cycle_filled" if filled(i) else "crank_cycle",
+        ))
+    return KinogramSelection(
+        positions=positions,
+        cycle_index=cyc,
+        first_idx=picks[0],
+        last_idx=picks[-1],
+        camera_side=camera_side,
+        forward_sign=0.0,
+        strike_source="crank_cycle",
+        mean_visibility=vis,
+        complete=True,
+        method=(
+            "One revolution timed off the clip's own crank period; "
+            "TDC/BDC from the near ankle's vertical extremes"
+        ),
+    )
+
+
+def build_bike_kinogram(
+    video_path: str,
+    frame_data_list: list[dict[str, Any]],
+    *,
+    camera_side: str,
+    cycle_frames: float | None,
+    technique_score: int = 0,
+    letter_grade: str = "--",
+    hide_values: bool = False,
+) -> tuple[str | None, dict[str, Any] | None]:
+    """Select and render one pedal revolution: ``(data_uri, meta)``."""
+    selection = select_bike_kinogram(frame_data_list, camera_side, cycle_frames)
+    if selection is None:
+        return None, None
+    meta = selection.to_meta()
+    try:
+        uri = render_kinogram(
+            video_path, selection, frame_data_list, None,
+            technique_score=technique_score, letter_grade=letter_grade,
+            hide_values=hide_values,
+            sport="bike",
+            header_left="BIKE",
+            header_right="KINOGRAM · ONE REVOLUTION",
+            footer="POSITIONS AT ±45° AROUND TDC AND BDC · TIMED OFF THE CRANK PERIOD",
+            landmarks_getter=lambda i: frame_data_list[i].get("normalized_landmarks"),
+        )
+    except Exception as e:  # noqa: BLE001 -- a bonus artifact, never fatal
+        logger.warning("KINOGRAM_RENDER_FAILED", err=str(e), sport="bike")
         return None, meta
     return uri, meta

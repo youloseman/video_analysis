@@ -1349,7 +1349,8 @@ h2.sec + .speedline{margin-bottom:24px}
   font-size:11px;color:var(--c-ink-soft);margin-top:12px;font-weight:500}
 .grbar .gr-scale .gr-opt{color:var(--st-good);font-weight:700;white-space:nowrap}
 /* Provenance of the band, quiet enough not to compete with the number. */
-.grbar .gr-src{font-size:10.5px;color:var(--c-ink-faint);margin-top:6px;line-height:1.4}
+.grbar .gr-src{font-size:10.5px;color:var(--c-ink-faint);margin-top:6px;line-height:1.4;
+  min-height:29px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 @media(max-width:640px){
   .grbar .gr-scale{font-size:10px}
   .grbar .gr-scale > span:not(.gr-opt){opacity:.7}
@@ -2143,14 +2144,14 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     <div class="block hidden" id="kinogramBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Kinogram</div>
-        <h3>One stride, five positions</h3>
+        <h3 id="kinoTitle">One stride, five positions</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 16px">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
+      <p class="hint" id="kinoHint" style="text-align:left;margin:0 0 16px">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
       <div class="videoframe">
-        <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: five key positions of one running stride, each with its joint angles"></div>
+        <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles"></div>
         <div class="videocap">
-          <span>Positions after the ALTIS Kinogram Method<br>
+          <span><span id="kinoMethod">Positions after the ALTIS Kinogram Method</span><br>
             <span class="note" id="kinoNote"></span></span>
           <a class="btn btn-ghost btn-sm" id="downloadKinogram" download="flapp-kinogram.jpg">
             <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .jpg
@@ -3675,9 +3676,11 @@ function gradientRangeBar(value,lo,hi,unit,metric,src){
     +`<span>${num(axMax,0)}</span></div>`
     // Who decided this band. Printed, not hidden behind a hover: a target
     // whose provenance needs a mouse is a target most readers never check.
-    // Absent when we have no citation — an unsourced band says so by silence
-    // rather than borrowing someone else's name.
-    +(src?`<div class="gr-src">Band: ${esc(src)}</div>`:'')
+    // An unsourced band stays silent — but the element ALWAYS renders (empty
+    // when uncited) at a fixed two-line height, so the track above it sits on
+    // one shared line across every card in the row. Cards used to place the
+    // bar wherever their note's line count happened to push it.
+    +`<div class="gr-src">${src?`Band: ${esc(src)}`:''}</div>`
     +`</div>`;
 }
 /* tile(): pass `range={value,lo,hi,unit}` to render a gradient range bar and auto-color the tile. */
@@ -5346,6 +5349,15 @@ function renderKinogram(r){
   const img=$('#kinogramImg'), src=r&&r.kinogram_base64;
   if(!src){ block.classList.add('hidden'); img.removeAttribute('src'); return; }
   img.src=src;
+  const bike=(r.sport_type||r.sport)==='bike';
+  const t=$('#kinoTitle'), h=$('#kinoHint'), m=$('#kinoMethod');
+  if(t) t.textContent = bike ? 'One revolution, six positions' : 'One stride, five positions';
+  if(h) h.textContent = bike
+    ? 'Your pedal stroke at ±45° around top and bottom dead center — picked automatically from your best-tracked revolution.'
+    : 'The five postures coaches read a stride from — picked automatically from your best-tracked stride.';
+  if(m) m.textContent = bike
+    ? 'Positions timed off your own crank period'
+    : 'Positions after the ALTIS Kinogram Method';
   const dl=$('#downloadKinogram');
   dl.href=src;
   dl.setAttribute('download', `flapp-kinogram-${(r.sport_type||'run')}.jpg`);
