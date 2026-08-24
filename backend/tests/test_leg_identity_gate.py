@@ -302,6 +302,47 @@ def test_a_missing_leg_frame_is_display_filled_within_patience():
     assert _blanked(frames[60], 28), "still excluded from measurement"
 
 
+def test_slow_motion_scales_the_gate_patience_to_crank_degrees():
+    """The patience is really 45 degrees of crank. A slow-motion clip spans
+    ~4x the frames per revolution; holding 5 fixed frames there cuts the
+    horizon to ~10 degrees and the blinking returns. The stabilizer measures
+    the clip's own period and scales -- and a 12-frame dropout that would
+    outlive the fixed patience is display-filled end to end."""
+    slow_step = 2 * math.pi / 160          # 160 frames a revolution
+    frames = [
+        _frame(_on_circle(i * slow_step), _on_circle(i * slow_step + math.pi))
+        for i in range(400)
+    ]
+    for k in range(200, 212):              # 12-frame dropout, right leg
+        for idx in (26, 28, 30, 32):
+            for key in ("normalized_landmarks", "world_landmarks"):
+                lm = frames[k][key][idx]
+                lm.x = math.nan
+                lm.y = math.nan
+
+    ctx: dict = {}
+    stabilize_landmarks(frames, "bike", None, fps=30.0, context=ctx)
+
+    gate = ctx["leg_identity_gate"]
+    assert gate["cycle_frames"] and 140 <= gate["cycle_frames"] <= 180
+    assert gate["patience"] >= 17          # ~cycle/8, not the fixed 5
+    for k in range(200, 212):
+        assert _drawn(frames[k], 28), f"frame {k} must be filled, not blank"
+    # The smoothing cutoff followed the clip's own fundamental down.
+    assert ctx["butterworth_meta"]["actual_cutoff_hz"] <= 2.0
+
+
+def test_normal_speed_keeps_the_shipped_patience_and_cutoff():
+    """At a normal ~40-frame revolution the crank clock must reduce to the
+    shipped constants exactly -- no behaviour change on validated clips."""
+    frames = _pedalling(160)
+    ctx: dict = {}
+    stabilize_landmarks(frames, "bike", None, fps=60.0, context=ctx)
+    gate = ctx["leg_identity_gate"]
+    assert gate["patience"] == 5
+    assert ctx["butterworth_meta"]["actual_cutoff_hz"] == 6.0
+
+
 def test_a_shortened_shin_is_restored_to_bone_length():
     """MediaPipe slides the ankle up the shin near TDC (measured: shin
     'shrank' to 76% of median at every TDC of a real left-side clip). The

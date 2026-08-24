@@ -124,6 +124,13 @@ LEG_BREAK_MIN_SEPARATION = 0.02  # below this the two feet are one blob: give up
 # is not the way to handle a long excursion -- re-acquiring the foot by the
 # geometry (the two ankles straddle the bottom bracket) is, and that needs a
 # validation set first.
+#
+# This is the NORMAL-SPEED value of what is really a crank-angle horizon:
+# 45 degrees, cycle/8. The stabilizer measures the clip's own revolution
+# period and passes the scaled value in -- a slow-motion clip spans ~4x the
+# frames per revolution, and holding patience at 5 fixed frames there cuts
+# the horizon to ~10 degrees, which is how the blinking came back on the
+# first slo-mo upload. The sweep above stays authoritative in DEGREES.
 LEG_BREAK_RESEED_FRAMES = 5
 
 
@@ -300,7 +307,20 @@ def stabilize_landmarks(
     # side view, and an input-noise share dominated by its invented
     # landmarks would cry wolf (see the runner's near-leg-only warning).
     leg_gate: dict[str, Any] = {}
+    bike_cycle_frames: float | None = None
     if sport_type == "bike":
+        # The crank clock: every frame-count constant below encodes crank
+        # rotation, so a slow-motion clip (same fit, ~4x the frames per
+        # revolution) needs them re-expressed in the clip's own period.
+        bike_cycle_frames = _estimate_cycle_frames(frame_results)
+        patience = LEG_BREAK_RESEED_FRAMES
+        if bike_cycle_frames:
+            # 45 degrees of crank, the horizon the straight-line predictor
+            # stays honest over (see the LEG_BREAK_RESEED_FRAMES sweep) --
+            # which is 5-6 frames at normal speed, unchanged.
+            patience = int(min(45, max(
+                LEG_BREAK_RESEED_FRAMES, round(bike_cycle_frames / 8),
+            )))
         try:
             from app.services.video_analysis.biomechanics.leg_identity import (
                 resolve_run_leg_identity,
@@ -321,11 +341,13 @@ def stabilize_landmarks(
         except Exception as e:  # noqa: BLE001
             logger.warning("LEG_IDENTITY_DP_FAILED", err=str(e), sport="bike")
             leg_identity_diag = None
-        leg_gate = _gate_leg_identity_breaks(frame_results)
+        leg_gate = _gate_leg_identity_breaks(frame_results, patience=patience)
         # After the gate so it never runs on frames the gate re-filled from a
         # prediction, and before the smoothing pass so the restored ankle is
         # what gets filtered.
         leg_gate["shin_restored"] = _enforce_shin_length(frame_results)
+        leg_gate["cycle_frames"] = bike_cycle_frames
+        leg_gate["patience"] = patience
 
     if context is not None:
         # Surfaced so the pipeline can judge tracking stability: a clip where
@@ -340,8 +362,20 @@ def stabilize_landmarks(
         context["leg_identity"] = leg_identity_diag
         context["leg_identity_gate"] = leg_gate or None
     if _use_butterworth_landmarks(sport_type, camera_angle, camera_view):
+        cutoff_override: float | None = None
+        if sport_type == "bike" and bike_cycle_frames:
+            cycle_hz = fps / bike_cycle_frames
+            if cycle_hz < 1.0:
+                # Slow motion (or sub-60 rpm): the shipped 6 Hz cutoff was
+                # picked as ~4x a normal pedalling fundamental; at 0.16 Hz
+                # container-time motion it sits 40x above the signal and
+                # removes nothing the eye can see. Scale it with the clip's
+                # own fundamental; at any normal cadence this branch never
+                # runs and the shipped cutoff stands.
+                cutoff_override = max(1.0, 6.0 * cycle_hz)
         smoothed, butter_meta = _apply_butterworth_landmarks(
             frame_results, sport_type, camera_angle, fps,
+            target_cutoff_override=cutoff_override,
         )
         if context is not None:
             context["butterworth_meta"] = butter_meta
@@ -644,6 +678,60 @@ _LEG_LANDMARKS = {
 }
 _LEG_ANKLE = {"left": 27, "right": 28}
 
+# --- the crank clock (bike) -------------------------------------------------
+# Every frame-count constant in the bike path encodes an amount of CRANK
+# ROTATION, calibrated at normal speed (~40-50 frames a revolution): the
+# gate's patience is really "45 degrees of crank", the smoothing cutoff is
+# really "a few times the pedalling fundamental". A slow-motion clip breaks
+# all of them at once -- the same fit filmed in slo-mo spans ~180 frames a
+# revolution, so a fixed 5-frame patience covers 10 degrees instead of 45
+# (fills stop reaching across breaks: the blinking came back), and a 6 Hz
+# cutoff sits 40x above the 0.16 Hz motion (jitter sails through untouched).
+# The bike carries its own clock: the ankles' vertical oscillation. Measure
+# the revolution period once per clip and express the constants in crank
+# degrees; at normal speed everything reduces to the shipped values.
+_CYCLE_MIN_LAG = 10          # frames; no human pedals faster than this
+_CYCLE_MIN_AUTOCORR = 0.4    # the oscillation must actually repeat
+_CYCLE_MIN_REPEATS = 2.0     # need at least this many revolutions in clip
+
+
+def _estimate_cycle_frames(frame_results: list[dict[str, Any]]) -> float | None:
+    """Frames per crank revolution, from the ankles' own oscillation."""
+    estimates = []
+    for ankle_idx in (27, 28):
+        ys = []
+        for f in frame_results:
+            lm = f["normalized_landmarks"][ankle_idx]
+            y = lm.y
+            ys.append(
+                float("nan")
+                if y is None or (isinstance(y, float) and math.isnan(y))
+                else float(y)
+            )
+        arr = np.array(ys)
+        good = ~np.isnan(arr)
+        if good.sum() < _CYCLE_MIN_LAG * 3:
+            continue
+        v = arr - np.nanmedian(arr)
+        v[~good] = 0.0
+        ac = np.correlate(v, v, "full")[len(v) - 1:]
+        if ac[0] <= 0:
+            continue
+        ac = ac / ac[0]
+        limit = int(len(ac) / _CYCLE_MIN_REPEATS)
+        for lag in range(_CYCLE_MIN_LAG, max(_CYCLE_MIN_LAG, limit - 1)):
+            if (
+                ac[lag] > _CYCLE_MIN_AUTOCORR
+                and ac[lag] >= ac[lag - 1]
+                and ac[lag] >= ac[lag + 1]
+            ):
+                estimates.append(float(lag))
+                break
+    if not estimates:
+        return None
+    return float(np.median(estimates))
+
+
 # --- shin-length prior (bike) ----------------------------------------------
 # The knee-to-ankle segment is a bone; on a side view its projected length is
 # near-constant through the pedal stroke (+/-5% from perspective and slight
@@ -719,6 +807,7 @@ def _enforce_shin_length(frame_results: list[dict[str, Any]]) -> dict[str, int]:
 
 def _gate_leg_identity_breaks(
     frame_results: list[dict[str, Any]],
+    patience: int = LEG_BREAK_RESEED_FRAMES,
 ) -> dict[str, Any]:
     """Blank a leg on the frames where it left its own track. Bike only.
 
@@ -821,7 +910,7 @@ def _gate_leg_identity_breaks(
                 # are already NaN, so nothing is measured off the fill.
                 if (
                     prev is not None and shape is not None
-                    and held < LEG_BREAK_RESEED_FRAMES
+                    and held < patience
                 ):
                     pred = (
                         prev[0] + vel[0] * (held + 1),
@@ -846,7 +935,7 @@ def _gate_leg_identity_breaks(
             # prediction at a foot standing still and blank the next frame too.
             pred = (prev[0] + vel[0] * (held + 1), prev[1] + vel[1] * (held + 1))
             if math.dist(cur, pred) > threshold:
-                if held >= LEG_BREAK_RESEED_FRAMES:
+                if held >= patience:
                     prev, vel, held = cur, (0.0, 0.0), 0
                     reseeds += 1
                     continue
@@ -1063,6 +1152,7 @@ def _apply_butterworth_landmarks(
     sport_type: str,
     camera_angle: str | None,
     fps: float,
+    target_cutoff_override: float | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Zero-phase 4th-order Butterworth on every (landmark, axis) series.
 
@@ -1118,7 +1208,11 @@ def _apply_butterworth_landmarks(
     except Exception:
         sample_rate = 1
     effective_fps = max(fps / max(sample_rate, 1), 1.0)
-    target_cutoff = BUTTER_LANDMARK_CUTOFF_HZ.get((sport_type, camera_angle), 4.0)
+    target_cutoff = (
+        target_cutoff_override
+        if target_cutoff_override is not None
+        else BUTTER_LANDMARK_CUTOFF_HZ.get((sport_type, camera_angle), 4.0)
+    )
     cutoff_info = _compute_safe_butterworth_cutoff(target_cutoff, effective_fps)
     cutoff_hz = cutoff_info["actual_cutoff_hz"]
     nyquist = cutoff_info["nyquist_hz"]
