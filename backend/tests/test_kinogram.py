@@ -622,3 +622,44 @@ def test_bike_selector_refuses_without_a_measured_period():
 
     assert select_bike_kinogram(_bike_fd(), "right", None) is None
     assert select_bike_kinogram(_bike_fd(n=50), "right", 40.0) is None
+
+
+def test_bike_tile_never_prints_an_angle_the_gate_would_refuse():
+    """The analyzer's visibility gate refuses to measure below 0.45; a tile
+    printing a confident number off the same landmarks is the report arguing
+    with itself."""
+    from app.services.video_analysis.kinogram import _bike_knee_deg
+
+    fd = _bike_fd(n=1)[0]
+    assert _bike_knee_deg(fd, "right") is not None
+    fd["normalized_landmarks"][26].visibility = 0.3
+    assert _bike_knee_deg(fd, "right") is None
+
+
+def test_bike_tiles_read_the_same_series_as_the_reported_bdc():
+    """Given the filtered knee series, the tile prints ITS value -- not a
+    recomputation from raw pixels that can disagree with knee_at_bdc."""
+    from app.services.video_analysis.kinogram import select_bike_kinogram
+
+    frames = _bike_fd()
+    series = [100.0 + (i % 40) for i in range(len(frames))]
+    sel = select_bike_kinogram(frames, "right", 40.0, knee_series=series)
+    assert sel is not None
+    for p in sel.positions:
+        expected = f"{round(series[p.analyzed_idx])}°"
+        knee = next(m for m in p.metrics if m.label == "KNEE")
+        assert knee.value == expected
+
+
+def test_bike_selector_never_emits_colliding_tiles():
+    """A BDC accepted right next to the TDC (no lower bound on the pair)
+    collided the six picks into fewer frames. Collisions are rejected."""
+    from app.services.video_analysis.kinogram import select_bike_kinogram
+
+    sel = select_bike_kinogram(_bike_fd(), "right", 40.0)
+    assert sel is not None
+    idxs = [p.analyzed_idx for p in sel.positions]
+    assert len(set(idxs)) == len(idxs)
+    tdc = next(p.analyzed_idx for p in sel.positions if p.key == "tdc")
+    bdc = next(p.analyzed_idx for p in sel.positions if p.key == "bdc")
+    assert (bdc - tdc) > 40 * 0.2

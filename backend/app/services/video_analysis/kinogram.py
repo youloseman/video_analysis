@@ -1168,6 +1168,11 @@ _BIKE_POSITIONS = (
 )
 
 
+# The bike-wide visibility floor: a chip must not print an angle the
+# analyzer's own gate would have refused to measure.
+_BIKE_TILE_MIN_VISIBILITY = 0.45
+
+
 def _bike_knee_deg(
     fd: dict[str, Any], side: str,
 ) -> float | None:
@@ -1179,6 +1184,8 @@ def _bike_knee_deg(
     knee = _point(lms, idxs["knee"])
     ankle = _point(lms, idxs["ankle"])
     if hip is None or knee is None or ankle is None:
+        return None
+    if min(hip[2], knee[2], ankle[2]) < _BIKE_TILE_MIN_VISIBILITY:
         return None
     aspect = (fd.get("frame_width") or 1) / (fd.get("frame_height") or 1)
     v1 = ((hip[0] - knee[0]) * aspect, hip[1] - knee[1])
@@ -1194,6 +1201,7 @@ def select_bike_kinogram(
     frame_data_list: list[dict[str, Any]],
     camera_side: str,
     cycle_frames: float | None,
+    knee_series: list[float] | None = None,
 ) -> KinogramSelection | None:
     """Pick the best-tracked revolution and its six positions.
 
@@ -1251,12 +1259,19 @@ def select_bike_kinogram(
 
     best: tuple[float, list[int], int] | None = None
     for cyc, t in enumerate(tdcs):
+        # A BDC belongs to this revolution only when it sits roughly half a
+        # cycle on: no lower bound accepted a detection glitch a few frames
+        # after the TDC as "the bottom", and the six picks then collided.
         b = next(
-            (x for x in bdcs if t < x < t + cycle_frames * 0.8), None,
+            (x for x in bdcs
+             if t + cycle_frames * 0.2 < x < t + cycle_frames * 0.8),
+            None,
         )
         if b is None:
             continue
         picks = [t - eighth, t, t + eighth, b - eighth, b, b + eighth]
+        if len(set(picks)) != len(picks):
+            continue  # collided tiles are worse than a skipped revolution
         if not all(drawable(i) for i in picks):
             continue
         vis = float(np.mean([
@@ -1280,7 +1295,16 @@ def select_bike_kinogram(
 
     positions = []
     for (key, label, _), i in zip(_BIKE_POSITIONS, picks):
-        knee = None if filled(i) else _bike_knee_deg(frame_data_list[i], camera_side)
+        knee: float | None = None
+        if not filled(i):
+            if knee_series is not None and i < len(knee_series):
+                # The same filtered series the report's own BDC/TDC read --
+                # a tile must not disagree with knee_at_bdc by recomputing
+                # the angle from a different signal.
+                v = knee_series[i]
+                knee = float(v) if v is not None and math.isfinite(v) else None
+            else:
+                knee = _bike_knee_deg(frame_data_list[i], camera_side)
         metrics = (
             [KinogramMetric("KNEE", _fmt_deg(knee))] if knee is not None else []
         )
@@ -1315,9 +1339,12 @@ def build_bike_kinogram(
     technique_score: int = 0,
     letter_grade: str = "--",
     hide_values: bool = False,
+    knee_series: list[float] | None = None,
 ) -> tuple[str | None, dict[str, Any] | None]:
     """Select and render one pedal revolution: ``(data_uri, meta)``."""
-    selection = select_bike_kinogram(frame_data_list, camera_side, cycle_frames)
+    selection = select_bike_kinogram(
+        frame_data_list, camera_side, cycle_frames, knee_series=knee_series,
+    )
     if selection is None:
         return None, None
     meta = selection.to_meta()

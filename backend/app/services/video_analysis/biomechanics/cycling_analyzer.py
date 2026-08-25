@@ -293,6 +293,9 @@ class CyclingAnalyzer(SportAnalyzer):
         # be stretched by the aspect ratio, which is worse than the bias.
         self.frame_aspect = frame_aspect
         self.trunk_angles: list[float] = []
+        # Raw per-frame knee series, kept as the FALLBACK for BDC/TDC. The
+        # reported extremes come from ``angle_history`` instead -- see
+        # :meth:`_knee_series`.
         self.left_knee_angles: list[float] = []
         self.right_knee_angles: list[float] = []
         # Per-side BDC/TDC estimation diagnostics (method + stroke count),
@@ -521,7 +524,9 @@ class CyclingAnalyzer(SportAnalyzer):
             return float("nan")
         return 90.0 - angle_from_vertical
 
-    def _bdc_tdc_from_peaks(self, arr: np.ndarray) -> dict[str, float] | None:
+    def _bdc_tdc_from_peaks(
+        self, arr: np.ndarray, raw_valid: np.ndarray | None = None,
+    ) -> dict[str, float] | None:
         """Per-revolution BDC/TDC from peak/valley detection.
 
         Each pedal revolution produces one knee-extension peak (BDC)
@@ -548,6 +553,15 @@ class CyclingAnalyzer(SportAnalyzer):
             return None
         idx = np.arange(n)
         mask = ~np.isnan(arr)
+        # The series arriving here has already been low-passed IN PLACE by
+        # the angle Butterworth, which interpolates short NaN gaps -- so its
+        # own NaN mask can no longer see them, and the identity gate's
+        # exclusions cluster exactly at TDC, where the valleys are found.
+        # ``raw_valid`` is the mask of the index-aligned RAW accumulator: a
+        # peak or valley standing on a frame that was never measured is
+        # discarded, whatever the filtered series says.
+        if raw_valid is not None and len(raw_valid) == n:
+            mask = mask & raw_valid
         if int(mask.sum()) < 5:
             return None
 
@@ -563,8 +577,13 @@ class CyclingAnalyzer(SportAnalyzer):
         prominence = max(8.0, 0.25 * rng)
         # Minimum spacing ~0.4 s between same-type extremes caps the
         # implied cadence at ~150 rpm and prevents double-counting a
-        # single revolution. Floor of 3 frames guards very low fps.
-        distance = max(3, int(round(self.fps * 0.4)))
+        # single revolution. Floor of 3 frames guards very low fps. The
+        # seconds are the SERIES' seconds: adaptive sampling decimates long
+        # clips (stride 2 past 15 s, 4 past 30 s), and spacing computed from
+        # the nominal video fps then demands 1.6 s between revolutions --
+        # at 90 rpm that suppresses most of them and keeps only the tallest
+        # peaks, biasing BDC up (toward "saddle too high") and TDC down.
+        distance = max(3, int(round(self.get_effective_fps() * 0.4)))
 
         bdc_idx, _ = find_peaks(filled, distance=distance, prominence=prominence)
         tdc_idx, _ = find_peaks(-filled, distance=distance, prominence=prominence)
@@ -587,11 +606,41 @@ class CyclingAnalyzer(SportAnalyzer):
             "bdc_indices": bdc_idx,
         }
 
+    def _knee_series(self, side: str) -> list[float]:
+        """The knee series BDC/TDC are read off, for one side.
+
+        ``angle_history`` is the canonical series: ``run_advanced_biomechanics``
+        low-passes it in place before ``compute_summary`` runs, and every other
+        graded metric here (elbow, shoulder, hip, forearm) is a mean over it --
+        as is the per-frame number the overlay video prints on the rider's knee.
+
+        Reading BDC/TDC off the raw ``left/right_knee_angles`` accumulator
+        instead used to make the knee the one metric in the report computed on a
+        different signal from the one shown, and peak-picking is exactly where
+        that bites: an unfiltered valley is the true movement plus whatever
+        noise happened to point down on that frame, so the reported TDC sat
+        BELOW every value the overlay ever displayed. Measured on the repo's
+        bike clip: TDC 64.5 deg raw vs 65.7 deg filtered, BDC 148.2 vs 145.5 --
+        and BDC is what the saddle-height verdict is read from.
+
+        Falls back to the raw accumulator when ``angle_history`` has nothing for
+        this side, which is what happens on a clip too short for the advanced
+        pipeline to run at all.
+        """
+        filtered = self.angle_history.get(f"{side}_knee") or []
+        return list(filtered) if len(filtered) >= 5 else getattr(
+            self, f"{side}_knee_angles", [],
+        )
+
     def _get_bdc_tdc_angles(self) -> dict[str, float]:
         """Estimate BDC (max extension) and TDC (max flexion) knee angles.
 
         BDC = bottom dead center = maximum knee extension (highest angle)
         TDC = top dead center = maximum knee flexion (lowest angle)
+
+        Reads the filtered knee series (see :meth:`_knee_series`) so the
+        reported extremes agree with the overlay and with every other angle in
+        the summary.
 
         Primary method: per-revolution peak/valley detection (see
         :meth:`_bdc_tdc_from_peaks`). Falls back to the 95th/5th
@@ -604,7 +653,8 @@ class CyclingAnalyzer(SportAnalyzer):
         """
         result: dict[str, float] = {}
         self._bdc_tdc_diag = {}
-        for side, angles in [("left", self.left_knee_angles), ("right", self.right_knee_angles)]:
+        for side in ("left", "right"):
+            angles = self._knee_series(side)
             if len(angles) < 5:
                 continue
             arr = np.array(angles, dtype=np.float64)
@@ -614,7 +664,15 @@ class CyclingAnalyzer(SportAnalyzer):
             if len(valid) < 5:
                 continue
 
-            peaks = self._bdc_tdc_from_peaks(arr)
+            # Validity of the RAW per-frame accumulator, index-aligned with
+            # angle_history: where the identity gate refused to measure, the
+            # raw value is NaN even after the filter has smoothed over it.
+            raw = np.array(
+                getattr(self, f"{side}_knee_angles", []), dtype=np.float64,
+            )
+            raw_valid = ~np.isnan(raw) if len(raw) == len(arr) else None
+
+            peaks = self._bdc_tdc_from_peaks(arr, raw_valid=raw_valid)
             if peaks is not None:
                 bdc_val = peaks["bdc"]
                 tdc_val = peaks["tdc"]

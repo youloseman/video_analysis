@@ -1025,10 +1025,12 @@ def run_analysis(
             from app.services.video_analysis.kinogram import build_bike_kinogram
 
             _gate_ctx = stabilizer_ctx.get("leg_identity_gate") or {}
+            _near = analyzer.camera_side or ""
             kinogram_base64, kinogram_meta = build_bike_kinogram(
                 video_path, raw_frame_data,
-                camera_side=analyzer.camera_side or "",
+                camera_side=_near,
                 cycle_frames=_gate_ctx.get("cycle_frames"),
+                knee_series=analyzer.angle_history.get(f"{_near}_knee"),
                 technique_score=(
                     scoring["overall_score"]
                     if scoring.get("overall_score") is not None else 0

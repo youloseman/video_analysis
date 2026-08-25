@@ -312,7 +312,7 @@ def stabilize_landmarks(
         # The crank clock: every frame-count constant below encodes crank
         # rotation, so a slow-motion clip (same fit, ~4x the frames per
         # revolution) needs them re-expressed in the clip's own period.
-        bike_cycle_frames = _estimate_cycle_frames(frame_results)
+        bike_cycle_frames = _estimate_cycle_frames(frame_results, fps)
         patience = LEG_BREAK_RESEED_FRAMES
         if bike_cycle_frames:
             # 45 degrees of crank, the horizon the straight-line predictor
@@ -690,13 +690,25 @@ _LEG_ANKLE = {"left": 27, "right": 28}
 # The bike carries its own clock: the ankles' vertical oscillation. Measure
 # the revolution period once per clip and express the constants in crank
 # degrees; at normal speed everything reduces to the shipped values.
-_CYCLE_MIN_LAG = 10          # frames; no human pedals faster than this
+# No human pedals faster than ~150 rpm, so a real revolution is at least
+# this long -- in SECONDS, converted to frames from the fps the series
+# actually has. The first version fixed this at 10 analysed frames, which
+# on an adaptively decimated long clip (stride 4 -> 7.5 analysed fps at
+# 90 rpm, true period ~5 frames) put the floor ABOVE the true period, and
+# the first admissible autocorrelation peak was the two-revolution lag:
+# the kinogram's +/-45 deg tiles landed at +/-90 deg and the gate's
+# patience miscalibrated by the same factor.
+_CYCLE_MIN_LAG_S = 0.35
+_CYCLE_MIN_LAG_FLOOR = 3     # frames; guards degenerate fps values
 _CYCLE_MIN_AUTOCORR = 0.4    # the oscillation must actually repeat
 _CYCLE_MIN_REPEATS = 2.0     # need at least this many revolutions in clip
 
 
-def _estimate_cycle_frames(frame_results: list[dict[str, Any]]) -> float | None:
+def _estimate_cycle_frames(
+    frame_results: list[dict[str, Any]], fps: float = 30.0,
+) -> float | None:
     """Frames per crank revolution, from the ankles' own oscillation."""
+    min_lag = max(_CYCLE_MIN_LAG_FLOOR, int(round(_CYCLE_MIN_LAG_S * fps)))
     estimates = []
     for ankle_idx in (27, 28):
         ys = []
@@ -710,7 +722,7 @@ def _estimate_cycle_frames(frame_results: list[dict[str, Any]]) -> float | None:
             )
         arr = np.array(ys)
         good = ~np.isnan(arr)
-        if good.sum() < _CYCLE_MIN_LAG * 3:
+        if good.sum() < min_lag * 3:
             continue
         v = arr - np.nanmedian(arr)
         v[~good] = 0.0
@@ -719,7 +731,7 @@ def _estimate_cycle_frames(frame_results: list[dict[str, Any]]) -> float | None:
             continue
         ac = ac / ac[0]
         limit = int(len(ac) / _CYCLE_MIN_REPEATS)
-        for lag in range(_CYCLE_MIN_LAG, max(_CYCLE_MIN_LAG, limit - 1)):
+        for lag in range(min_lag, max(min_lag, limit - 1)):
             if (
                 ac[lag] > _CYCLE_MIN_AUTOCORR
                 and ac[lag] >= ac[lag - 1]
