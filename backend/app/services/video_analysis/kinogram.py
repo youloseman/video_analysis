@@ -481,7 +481,14 @@ def _metrics_for(
     """
     s = summary or {}
     knee = _angle_at(analyzer, "knee", idx)
-    trunk = _angle_at(analyzer, "trunk", idx) if s.get("trunk_lean") is not None else None
+    # The withheld-trunk gate keys off the name compute_summary actually
+    # writes: "trunk_lean_avg". The old check read "trunk_lean" -- a key
+    # nothing writes -- so the gate was "hide always" and the FULL SUPPORT /
+    # TOE-OFF / MAX VERTICAL tiles never showed a trunk chip.
+    trunk = (
+        _angle_at(analyzer, "trunk", idx)
+        if s.get("trunk_lean_avg") is not None else None
+    )
     idxs = _SIDE_LANDMARKS[side]
     lms = _norm_landmarks(analyzer, idx)
 

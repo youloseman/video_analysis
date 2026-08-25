@@ -575,18 +575,24 @@ def build_action_plan(
                     linked_to="saddle_height",
                 ))
             else:
+                # Forward, not back: a steeper effective seat angle rotates
+                # the rider over the bottom bracket and opens the torso-thigh
+                # angle (the steep-seat-tube doctrine fit_tradeoffs encodes
+                # as rotate_pelvis_forward). Moving the saddle BACK stretches
+                # the reach, drops the torso toward the thigh and CLOSES the
+                # hip -- this branch shipped pointing the wrong way.
                 diagnostics.append(Diagnostic(
                     component="saddle_fore_aft",
                     status="needs_adjustment",
                     metric_name="hip_angle_avg",
                     current_value=round(hip_avg, 1),
                     target_range=(hip_min, hip_max),
-                    action="move_saddle_back",
+                    action="move_saddle_forward",
                     amount="5mm",
                     reason=(
                         f"Hip angle is {hip_avg:.0f} deg "
                         f"(optimal {hip_min:.0f}-{hip_max:.0f} deg). "
-                        f"Hip is too closed -- move saddle back 5mm "
+                        f"Hip is too closed -- move saddle forward 5mm "
                         f"to open hip angle."
                     ),
                     priority=2,

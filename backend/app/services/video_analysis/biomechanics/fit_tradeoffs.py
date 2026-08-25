@@ -51,14 +51,19 @@ ADJUSTMENTS: dict[str, dict[str, Any]] = {
         "note": "opens the top of the pedal stroke without moving the front "
                 "end at all. A workshop change, not a roadside one.",
     },
+    # Saddle height moves hip and knee TOGETHER: raising extends the leg,
+    # which opens the knee AND the hip (same direction as shorter cranks,
+    # which open the top of the stroke the same way). The signs shipped
+    # inverted for months -- a closed hip ranked "lower the saddle", the
+    # exact opposite lever -- and the direction test pinned the bug.
     "lower_saddle": {
         "label": "lower the saddle ~5mm",
-        "moves": {"hip": +1, "knee": -1},
+        "moves": {"hip": -1, "knee": -1},
         "aero_cost": None,
     },
     "raise_saddle": {
         "label": "raise the saddle ~5mm",
-        "moves": {"hip": -1, "knee": +1},
+        "moves": {"hip": +1, "knee": +1},
         "aero_cost": None,
     },
     "raise_bars": {

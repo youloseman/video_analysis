@@ -249,18 +249,38 @@ def test_a_summary_that_withheld_trunk_lean_keeps_it_off_the_tiles():
     A tile printing a confident red angle beside a table that says the trunk
     could not be measured is the report arguing with itself."""
     analyzer = build_analyzer(cycles=3)
-    sel = kinogram.select_run_kinogram(analyzer, summary={"trunk_lean": None})
+    sel = kinogram.select_run_kinogram(analyzer, summary={"trunk_lean_avg": None})
     fs = next(p for p in sel.positions if p.key == "full_support")
     trunk = next(m for m in fs.metrics if m.label == "TRUNK")
     assert trunk.value == "--" and trunk.status == "muted"
 
 
 def test_a_published_trunk_lean_does_reach_the_tiles():
+    """Under the key compute_summary ACTUALLY writes. These two tests used to
+    feed "trunk_lean" -- a key nothing writes -- so the withheld-gate read as
+    "hide always", every real clip's tiles showed "--", and the synthetic
+    summaries kept the suite green around it."""
     analyzer = build_analyzer(cycles=3)
-    sel = kinogram.select_run_kinogram(analyzer, summary={"trunk_lean": 6.0})
+    sel = kinogram.select_run_kinogram(analyzer, summary={"trunk_lean_avg": 6.0})
     fs = next(p for p in sel.positions if p.key == "full_support")
     trunk = next(m for m in fs.metrics if m.label == "TRUNK")
     assert trunk.value == "6°" and trunk.status == "good"
+
+
+def test_the_trunk_gate_reads_a_key_the_summary_really_writes():
+    """Cross-module pin: the exact key string must appear as a summary write
+    in running_analyzer -- the drift this guards against is silent."""
+    import pathlib
+
+    src = pathlib.Path(kinogram.__file__).with_name("kinogram.py").read_text(
+        encoding="utf-8",
+    )
+    ra = (
+        pathlib.Path(kinogram.__file__).parent
+        / "biomechanics" / "running_analyzer.py"
+    ).read_text(encoding="utf-8")
+    assert 'get("trunk_lean_avg")' in src
+    assert 'summary["trunk_lean_avg"]' in ra
 
 
 def test_complete_is_counted_after_duplicates_are_dropped(monkeypatch):

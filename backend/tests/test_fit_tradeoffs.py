@@ -91,12 +91,59 @@ def test_flatter_trunk_is_a_gain_in_aero_and_a_cost_on_the_hoods():
 
 
 def test_direction_matters():
-    """A hip that is too OPEN needs the opposite levers to one that is closed."""
+    """A hip that is too OPEN needs the opposite levers to one that is closed.
+
+    Physics: saddle height moves the hip and knee TOGETHER -- raising extends
+    the leg, opening both (the same direction shorter cranks work in). This
+    test shipped for months asserting the inverse and thereby PINNED the
+    inverted hip sign that had the coach telling a closed-hip rider to lower
+    the saddle. If it fails again, check the sign convention before the test.
+    """
     too_open = {"hip": angle("Hip Angle", 70, 45, 62, "needs_work")}
     labels = [r["label"] for r in rank_adjustments(too_open, "triathlon")]
 
-    assert any("raise the saddle" in text for text in labels)
+    assert any("lower the saddle" in text for text in labels)
+    assert not any("raise the saddle" in text for text in labels)
+
+
+def test_a_closed_hip_never_ranks_lowering_the_saddle():
+    """The exact wrong advice the inverted sign produced on real reports."""
+    labels = [r["label"] for r in rank_adjustments(CLOSED_HIP, "triathlon")]
     assert not any("lower the saddle" in text for text in labels)
+    assert any("raise the saddle" in text for text in labels)
+
+
+def test_fore_aft_direction_agrees_with_the_action_plan():
+    """Two modules advise on the same lever; they must pull the same way.
+
+    fit_tradeoffs encodes the steep-seat-tube doctrine: rotating the pelvis
+    forward (saddle nose down / saddle FORWARD) opens the hip. The action
+    plan's fore-aft diagnostic for a closed hip shipped pointing BACK -- the
+    direction that stretches the reach, drops the torso and closes the hip
+    further. One rider, one report, two opposite instructions.
+    """
+    from app.services.video_analysis.biomechanics.action_plan_builder import (
+        build_action_plan,
+    )
+    from app.services.video_analysis.biomechanics.fit_tradeoffs import ADJUSTMENTS
+
+    assert ADJUSTMENTS["rotate_pelvis_forward"]["moves"]["hip"] == +1
+    assert "forward" in ADJUSTMENTS["rotate_pelvis_forward"]["label"]
+
+    plan = build_action_plan(
+        position="triathlon",
+        angle_statistics={},
+        sport_specific_metrics={"knee_at_bdc": 141.0, "hip_angle_avg": 25.0},
+        technique_score=70,
+        letter_grade="B",
+        detected_issues=[],
+    )
+    fore_aft = next(
+        d for d in plan.diagnostics if d.component == "saddle_fore_aft"
+    )
+    assert fore_aft.action == "move_saddle_forward"
+    assert "forward" in fore_aft.reason
+    assert "back" not in fore_aft.reason.split("Reassess")[0].lower()
 
 
 def test_block_names_the_cost_of_every_option():

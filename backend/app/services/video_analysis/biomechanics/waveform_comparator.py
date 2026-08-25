@@ -250,9 +250,17 @@ def _get_compare_joints(sport_type: str, camera_side: str | None) -> dict[str, s
     if sport_type == "swim" or not camera_side:
         return base_map
 
-    # For run/bike: only compare near-side joints
+    # Side-filter only the keys that CARRY a side. Bike keys are prefixed
+    # ("left_knee"); run keys are unprefixed and already near-side by
+    # construction (see SPORT_COMPARE_JOINTS) -- filtering those by prefix
+    # emptied the map on every run clip, so the comparison never ran, 8% of
+    # the running rubric was silently unearnable, and score_coverage capped
+    # at 0.92 on perfect footage.
     near = camera_side
-    return {k: v for k, v in base_map.items() if k.startswith(near)}
+    return {
+        k: v for k, v in base_map.items()
+        if not k.startswith(("left_", "right_")) or k.startswith(near + "_")
+    }
 
 
 def compute_waveform_comparison(
