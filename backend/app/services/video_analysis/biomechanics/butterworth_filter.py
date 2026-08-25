@@ -300,31 +300,17 @@ def apply_butterworth_filter(
             )
             filtered = sosfiltfilt(sos, interpolated)
 
-            # Restore NaN for large gaps (>5 consecutive NaN in original).
-            # Interpolation over large gaps is unreliable -- mark center as NaN.
-            MAX_INTERP_GAP = 5
-            MARGIN = 2  # keep interpolated values at gap edges
-            gap_start = None
-            for i in range(len(nan_mask)):
-                if nan_mask[i]:
-                    if gap_start is None:
-                        gap_start = i
-                else:
-                    if gap_start is not None:
-                        gap_len = i - gap_start
-                        if gap_len > MAX_INTERP_GAP:
-                            restore_from = min(gap_start + MARGIN, i)
-                            restore_to = max(i - MARGIN, gap_start)
-                            if restore_from < restore_to:
-                                filtered[restore_from:restore_to] = np.nan
-                        gap_start = None
-            # Handle gap at end of signal
-            if gap_start is not None:
-                gap_len = len(nan_mask) - gap_start
-                if gap_len > MAX_INTERP_GAP:
-                    restore_from = min(gap_start + MARGIN, len(nan_mask))
-                    if restore_from < len(nan_mask):
-                        filtered[restore_from:] = np.nan
+            # Interpolation exists ONLY as scaffolding for the filter: every
+            # sample that was NaN going in comes back NaN. The old policy
+            # kept gaps of up to 5 frames -- ~170 ms at 30 fps -- as smooth
+            # interpolated values in the series, plus 2 frames at the edges
+            # of longer gaps, and everything downstream of this in-place
+            # mutation (angle statistics, the quality gate, confidence, the
+            # overlay's per-frame chips) then counted the invented samples
+            # as measured. The identity gates upstream go to great lengths
+            # to refuse a frame they cannot vouch for; a filter quietly
+            # un-refusing them defeated that chain.
+            filtered[nan_mask] = np.nan
 
             # Mutate in-place
             for i in range(len(values)):

@@ -244,3 +244,24 @@ def test_every_sport_has_a_band_and_a_fallback_inside_it(sport):
     lo, hi = bw.SPORT_CUTOFF_BOUNDS[sport]
     assert lo < hi
     assert lo <= bw.SPORT_CUTOFFS[sport] <= hi
+
+
+def test_a_gated_frame_stays_nan_through_the_angle_filter():
+    """Interpolation is scaffolding for filtfilt, never data: every sample
+    that entered as NaN leaves as NaN. The old policy kept gaps of up to 5
+    frames as smooth invented values (plus 2 edge frames of longer gaps),
+    and angle statistics, the quality gate, confidence and the overlay's
+    chips -- all computed after this in-place mutation -- counted them as
+    measured."""
+    import math
+
+    series = [100.0 + (i % 7) for i in range(120)]
+    for k in (30, 31, 32, 60, 61, 62, 63, 64):   # a 3-gap and a 5-gap
+        series[k] = float("nan")
+    h = {"knee": series}
+
+    bw.apply_butterworth_filter(h, 30.0, "run")
+
+    for k in (30, 31, 32, 60, 61, 62, 63, 64):
+        assert math.isnan(h["knee"][k]), f"frame {k} was never measured"
+    assert not math.isnan(h["knee"][29]) and not math.isnan(h["knee"][65])
