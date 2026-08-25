@@ -509,8 +509,14 @@ def build_running_action_plan(
     )
     plan.top_priorities = sorted_issues[:3]
 
-    # Medical warnings
-    if summary.get("cadence_spm") and summary["cadence_spm"] < 160:
+    # Medical warnings. The cadence one takes the same time-base bar as the
+    # diagnosis above: an injury-risk claim is the last place for a guessed
+    # number.
+    if (
+        summary.get("cadence_spm") and summary["cadence_spm"] < 160
+        and not summary.get("time_base_inferred")
+        and not summary.get("time_base_uncertain")
+    ):
         plan.warnings.append(
             "Very low cadence (<160 spm) increases ground reaction forces "
             "and may raise injury risk."
@@ -605,6 +611,15 @@ def _diagnose_metric(
     """
     value = _get_value(metric, summary)
     if value is None:
+        return None
+
+    # A cadence whose time base was inferred (slow-motion multiplier) or is
+    # uncertain is not diagnosable: the scorer refuses to grade it and
+    # detect_issues refuses to warn on it -- a drill prescribed from the same
+    # guessed number was the last judge still convicting on that evidence.
+    if metric == "cadence" and (
+        summary.get("time_base_inferred") or summary.get("time_base_uncertain")
+    ):
         return None
 
     opt_min, opt_max = _RANGES[metric]

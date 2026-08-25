@@ -12,6 +12,7 @@ import base64
 import io
 import math
 import time
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -1414,19 +1415,39 @@ def analyze_photo(
         optimal_ranges = _get_running_optimal_ranges(gait_phase)
 
     elif sport == "bike":
+        # Image-plane landmarks, the same source the VIDEO bike path moved to
+        # (commit 219c20c): MediaPipe's world skeleton read the same fit ~8
+        # deg too straight from the left and ~8 deg too bent from the right,
+        # and the photo path kept that bias -- a photo and a video of one
+        # bike could disagree about the rider's own knee. The preview already
+        # draws the normalized landmarks; now the printed angles come from
+        # the same body. Normalized x spans the width and y the height, so x
+        # is rescaled by the aspect before any angle is read.
+        _h_img, _w_img = image.shape[:2]
+        _aspect = (_w_img / _h_img) if _h_img else 1.0
+        pl = [
+            SimpleNamespace(
+                x=(lm.x * _aspect if lm.x is not None else None),
+                y=lm.y,
+                z=0.0,
+                visibility=getattr(lm, "visibility", 1.0),
+            )
+            for lm in nl
+        ]
+
         for name, (a, b, c) in CYCLING_PHOTO_ANGLES[camera_side].items():
-            val, _ = calculate_angle_2d(wl, a, b, c)
+            val, _ = calculate_angle_2d(pl, a, b, c)
             angles[name] = _safe_round(val)
 
-        trunk_from_vert = calculate_segment_to_vertical(wl, 11, 23)
+        trunk_from_vert = calculate_segment_to_vertical(pl, 11, 23)
         trunk = 90.0 - trunk_from_vert  # Convert to from-horizontal (bike fitting convention)
         angles["trunk"] = _safe_round(trunk)
 
         # Forearm tilt (atan2-based, not standard 3-point angle)
         if camera_side == "left":
-            forearm_tilt, _ = calculate_forearm_tilt_2d(wl, 13, 15)
+            forearm_tilt, _ = calculate_forearm_tilt_2d(pl, 13, 15)
         else:
-            forearm_tilt, _ = calculate_forearm_tilt_2d(wl, 14, 16)
+            forearm_tilt, _ = calculate_forearm_tilt_2d(pl, 14, 16)
         angles["forearm_tilt"] = _safe_round(forearm_tilt)
 
         # Head alignment (score 0-100)

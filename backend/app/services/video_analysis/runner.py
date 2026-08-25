@@ -90,6 +90,25 @@ LOWER_BODY_NEAR_SIDE_LEFT = [25, 27]            # left knee + left ankle
 LOWER_BODY_NEAR_SIDE_RIGHT = [26, 28]           # right knee + right ankle
 
 
+def _withhold_aero_next_zone(
+    summary: dict[str, Any], mobility_fit: dict[str, Any] | None,
+) -> None:
+    """One choke point for "get lower": when the rider's own screens say the
+    range is not there, the aero card's next_zone -- the "flatten toward X°,
+    save ~NW" half -- is withheld everywhere at once (the coach prompt and
+    the frontend both read this dict), instead of the report showing an aero
+    card that argues with the mobility card and delegating the contradiction
+    to the LLM. Mutates ``summary`` in place."""
+    aero = summary.get("aero_estimate")
+    if (
+        isinstance(aero, dict)
+        and aero.get("next_zone") is not None
+        and (mobility_fit or {}).get("within") is False
+    ):
+        aero["next_zone"] = None
+        aero["next_zone_withheld"] = "mobility_limited"
+
+
 def _tracked_ratio(
     detected: int, video_info: dict[str, Any], sampling_meta: dict[str, Any],
 ) -> float | None:
@@ -606,8 +625,10 @@ def run_analysis(
         # clip where the two disagreed reported angles measured off one leg
         # under a skeleton drawn on the other.
         analyzer.camera_side_votes = [
-            analyzer.detect_camera_side(fd["world_landmarks"])
+            vote
             for fd in raw_frame_data
+            if (vote := analyzer.detect_camera_side(fd["world_landmarks"]))
+            is not None
         ]
         analyzer.finalize_camera_side()
 
@@ -735,15 +756,28 @@ def run_analysis(
 
     # Step 3b: advanced biomechanics (must not crash the run).
     biomechanics_data = None
+    advanced_failed = False
     try:
         biomechanics_data = run_advanced_biomechanics(analyzer, sport_type)
     except Exception as e:  # noqa: BLE001
+        advanced_failed = True
         logger.warning("ADVANCED_BIOMECHANICS_FAILED", err=str(e))
 
     # Step 3c: summaries.
     summary = analyzer.compute_summary()
     issues = analyzer.detect_issues()
     angle_stats = analyzer.compute_angle_statistics()
+    if advanced_failed:
+        # Degrading loudly, like overlay_failed does: without this flag the
+        # angles stay unfiltered, the biomechanics block is simply absent,
+        # and neither confidence nor coverage reflected it -- only a log
+        # line knew. The warning also rides analysis_warnings into the
+        # confidence scorer.
+        summary["advanced_biomechanics_failed"] = True
+        summary.setdefault("analysis_warnings", []).append(
+            "Advanced biomechanics failed on this clip; angle series are "
+            "unfiltered and phase/waveform components are absent."
+        )
     if biomechanics_data:
         summary["biomechanics"] = biomechanics_data
         # How fast the near knee opens and closes. Already computed inside the
@@ -982,6 +1016,10 @@ def run_analysis(
             hide_angle_values=hide_angle_values,
         )
         keyframe_base64 = visualizer.render_keyframe()
+        if keyframe_base64 is None:
+            # Loud like overlay_failed: a null image with no flag reads as
+            # "there was never supposed to be one".
+            summary["keyframe_failed"] = True
         if overlay_path:
             overlay_video_path = visualizer.generate()
             logger.info("OVERLAY_DONE", path=overlay_video_path)
@@ -1064,6 +1102,7 @@ def run_analysis(
             mobility_fit = assess_position(
                 mobility_profile, cycling_position or "road_hoods",
             )
+            _withhold_aero_next_zone(summary, mobility_fit)
             fit_plan = action_plan_to_json(build_action_plan(
                 position=cycling_position or "road_hoods",
                 angle_statistics=angle_stats,

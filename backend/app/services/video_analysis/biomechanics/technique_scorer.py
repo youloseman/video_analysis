@@ -236,7 +236,7 @@ def score_running(
     if bio:
         # Phase stability (from phase portraits module)
         pp = bio.get("phase_portraits")
-        if pp and "overall_stability_score" in pp:
+        if (pp and pp.get("overall_stability_score") is not None):
             components["phase_stability"] = float(pp["overall_stability_score"])
 
         # Waveform similarity (from waveform comparator module)

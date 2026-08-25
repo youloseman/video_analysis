@@ -452,6 +452,7 @@ def _fix_flips(frame_results: list[dict[str, Any]], sport_type: str) -> int:
 
     calibration_frames = min(10, len(frame_results))
     left_closer_votes = 0
+    readable_frames = 0
 
     for i in range(calibration_frames):
         wl = frame_results[i]["world_landmarks"]
@@ -459,12 +460,25 @@ def _fix_flips(frame_results: list[dict[str, Any]], sport_type: str) -> int:
             z_left, z_right = wl[23].z, wl[24].z
             if math.isnan(z_left) or math.isnan(z_right):
                 continue
+            readable_frames += 1
             if z_left < z_right:
                 left_closer_votes += 1
         except (IndexError, AttributeError):
             continue
 
-    expect_left_closer = left_closer_votes > calibration_frames / 2
+    # The quorum is the frames that could actually SEE the hips. Dividing by
+    # the calibration window let NaN frames vote for the status quo: five
+    # readable frames unanimously saying "left closer" lost 5 > 5, and zero
+    # readable frames produced an expectation from no evidence at all --
+    # after which every frame disagreeing with that null expectation got a
+    # full-body swap. No quorum, no flipping.
+    if readable_frames < 3:
+        logger.info(
+            "ANTI_FLIP_SKIPPED", reason="calibration_unreadable",
+            readable=readable_frames, window=calibration_frames,
+        )
+        return 0
+    expect_left_closer = left_closer_votes > readable_frames / 2
     flip_count = 0
 
     for i in range(len(frame_results)):

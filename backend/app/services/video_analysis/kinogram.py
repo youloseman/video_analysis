@@ -759,6 +759,14 @@ def select_run_kinogram(
     # next footfall (whichever leg's) is exactly the ALTIS span: the first
     # flight holds MVP, and Strike sits just before the opposite foot lands.
     near_starts = set(getattr(analyzer, "_contact_frame_indices", lambda m: [])(min_run))
+    if getattr(analyzer, "_contacts_unfiltered", False):
+        # The near-side filter fell back to EVERY footfall -- an empty-looking
+        # near_starts here would silently DISABLE the near-leg check below,
+        # and the five tiles could open on the far leg's landing. The summary
+        # is withholding overstride and foot-strike for the same reason; the
+        # kinogram takes the same verdict.
+        logger.info("KINOGRAM_SKIP", reason="near_contacts_unfiltered")
+        return None
 
     side = getattr(analyzer, "camera_side", None) or "left"
     if side not in _SIDE_LANDMARKS:

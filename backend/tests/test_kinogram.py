@@ -99,6 +99,11 @@ def build_analyzer(cycles: int = 3, *, far_vis: float = 0.85) -> RunningAnalyzer
         fr.angles["trunk"] = 6.0
         fr.extra_metrics["gait_phase"] = "midstance" if in_stance else "mid_swing"
         fr.extra_metrics["_norm_landmarks"] = _landmarks(p, far_vis=far_vis)
+        # Near-foot depth, as production writes it: planted = deep, swinging
+        # = shallow. Without it the near-contact filter falls back to every
+        # footfall -- which now FLAGS the clip and refuses the kinogram, so
+        # the builder must model the signal real clips carry.
+        fr.extra_metrics["_near_foot_depth"] = 0.30 if in_stance else 0.05
         analyzer.frame_results.append(fr)
         knee_series.append(knee)
         trunk_series.append(6.0)
@@ -191,7 +196,11 @@ def test_a_stride_with_no_flight_degrades_to_the_three_stance_positions():
     analyzer = build_analyzer(cycles=3)
     for fr in analyzer.frame_results:
         p = analyzer.frame_results.index(fr) % PERIOD
-        fr.extra_metrics["gait_phase"] = "mid_swing" if p in (18, 19) else "midstance"
+        swing = p in (18, 19)
+        fr.extra_metrics["gait_phase"] = "mid_swing" if swing else "midstance"
+        # Depth follows the rewritten phases: a foot down nearly the whole
+        # period is deep nearly the whole period.
+        fr.extra_metrics["_near_foot_depth"] = 0.05 if swing else 0.30
     sel = kinogram.select_run_kinogram(analyzer)
     assert sel is not None
     assert not sel.complete

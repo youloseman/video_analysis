@@ -312,7 +312,13 @@ def compute_phase_portraits(
             "reliable": reliable,
         }
 
-    overall_stability = round(float(np.mean(stability_scores)), 1) if stability_scores else 50.0
+    # Zero detected cycles means nothing was measured: report None and let
+    # the scorer skip the component. The old neutral 50.0 let 12% of the
+    # rubric be "measured" by an invented value -- against the contract the
+    # rest of this family keeps (absence over phantom).
+    overall_stability = (
+        round(float(np.mean(stability_scores)), 1) if stability_scores else None
+    )
 
     logger.info(
         "PHASE_PORTRAIT_DEBUG",

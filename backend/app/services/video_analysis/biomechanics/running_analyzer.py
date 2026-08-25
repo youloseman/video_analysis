@@ -1150,12 +1150,14 @@ class RunningAnalyzer(SportAnalyzer):
             for fr in self.frame_results
         ], dtype=float)
         if not np.isfinite(depths).any():
+            self._contacts_unfiltered = True
             return [start for start, _ in runs]
 
         deepest = float(np.nanpercentile(depths, 95))
         shallowest = float(np.nanpercentile(depths, 5))
         span = deepest - shallowest
         if span <= 1e-6:
+            self._contacts_unfiltered = True
             return [start for start, _ in runs]
         floor = deepest - span * NEAR_CONTACT_BAND
 
@@ -1165,8 +1167,14 @@ class RunningAnalyzer(SportAnalyzer):
             window = window[np.isfinite(window)]
             if window.size and float(np.median(window)) >= floor:
                 kept.append(start)
-        # Every contact rejected means the near side could not be told apart at
-        # all; fall back to all of them rather than silently measuring nothing.
+        # Every contact rejected means the near side could not be told apart
+        # at all; fall back to all of them rather than silently measuring
+        # nothing -- but SAY SO. The docstring above records what an
+        # unfiltered mix does to overstride (0.62 vs 0.23, a fabricated
+        # fault); the flag is what lets the summary withhold the metrics
+        # sampled at these contacts instead of publishing that.
+        if not kept:
+            self._contacts_unfiltered = True
         return kept or [start for start, _ in runs]
 
     def _compute_overstride_ratio(self) -> tuple[float, int]:
@@ -1567,14 +1575,20 @@ class RunningAnalyzer(SportAnalyzer):
 
         # Overstride: dimensionless hip->ankle-ahead ratio at foot-strike.
         # Requires >= 2 clean contacts (returns 0.0/0 otherwise). 2D estimate.
-        if overstride_ratio > 0 and overstride_n >= 2:
+        contacts_unfiltered = getattr(self, "_contacts_unfiltered", False)
+        if contacts_unfiltered:
+            # Both metrics below are sampled AT the contact frames; with the
+            # near-side filter fallen back to every footfall, half of those
+            # frames are the far leg in mid-swing. Absence over fabrication.
+            summary["contacts_unfiltered"] = True
+        if overstride_ratio > 0 and overstride_n >= 2 and not contacts_unfiltered:
             summary["overstride_ratio"] = overstride_ratio
             summary["overstride_estimated"] = True
             summary["overstride_contacts"] = overstride_n
 
         # Foot-strike pattern (heel/midfoot/forefoot) at contact. Only emit
         # when a pattern was classified from >= 2 clean contacts.
-        if foot_strike is not None and foot_strike_n >= 2:
+        if foot_strike is not None and foot_strike_n >= 2 and not contacts_unfiltered:
             summary["foot_strike"] = foot_strike
             summary["foot_strike_angle_deg"] = foot_strike_angle
             summary["foot_strike_estimated"] = True
@@ -1632,9 +1646,16 @@ class RunningAnalyzer(SportAnalyzer):
                 ),
             })
 
-        # Low cadence
+        # Low cadence. One number, one verdict: the scorer already refuses to
+        # grade a cadence whose time base was INFERRED (slow-mo multiplier)
+        # or is uncertain -- a confident "low cadence" warning from the same
+        # guessed number would be the report disagreeing with itself.
         cadence = self._compute_cadence()
-        if cadence > 0 and cadence < 165:
+        if (
+            cadence > 0 and cadence < 165
+            and not self._slowmo_factor
+            and not getattr(self, "_time_base_uncertain", False)
+        ):
             issues.append({
                 "type": "low_cadence",
                 "severity": "warning",

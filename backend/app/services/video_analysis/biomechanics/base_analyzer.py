@@ -1,5 +1,6 @@
 """Base sport analyzer abstract class."""
 
+import math
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -64,15 +65,24 @@ class SportAnalyzer(ABC):
 
     # --- Camera Side Detection (Unilateral Focus) ---
 
-    def detect_camera_side(self, world_landmarks: Any) -> str:
+    def detect_camera_side(self, world_landmarks: Any) -> str | None:
         """Detect which side of the body faces the camera using Z-depth.
 
         MediaPipe world landmarks: Z increases AWAY from camera.
         The side with SMALLER Z values is closer to the camera.
         Uses shoulders + hips for robust detection (large landmarks, reliable Z).
+
+        Returns None when the depths are unreadable. NaN used to fall
+        through ``NaN < NaN -> False`` into a deterministic "right" vote, so
+        every visibility-gated frame pushed the whole-clip majority -- and
+        side_disagreement_pct with it -- toward one side. A frame that
+        cannot see the body does not get a vote (the bike's
+        determine_locked_camera_side already held this line).
         """
         left_z = (world_landmarks[11].z + world_landmarks[23].z) / 2
         right_z = (world_landmarks[12].z + world_landmarks[24].z) / 2
+        if math.isnan(left_z) or math.isnan(right_z):
+            return None
         return "left" if left_z < right_z else "right"
 
     def finalize_camera_side(self) -> None:
