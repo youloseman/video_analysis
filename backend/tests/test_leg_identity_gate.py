@@ -428,3 +428,64 @@ def test_the_analyzer_refuses_to_measure_a_gate_filled_frame():
     assert not math.isnan(clean.angles["right_knee"])
     assert math.isnan(gated.angles["right_knee"])
     assert math.isnan(gated.angles["right_hip"])
+
+
+# --- ankle path gate --------------------------------------------------------
+
+def test_a_chord_through_the_pedal_circle_is_reconstructed_on_the_path():
+    """The measured failure: the foot cluster lets go of the shoe and cuts
+    through the middle of the circle onto the crank/chainring. The display
+    foot comes back on the learned path at the time-interpolated phase, and
+    the frame is measurement-excluded via leg_gate_filled."""
+    from app.services.video_analysis.biomechanics.landmark_stabilizer import (
+        _gate_ankle_off_path,
+    )
+
+    frames = _pedalling(200)
+    for k in range(60, 65):
+        a = (60 + (k - 60)) * STEP + math.pi   # true phase of the right foot
+        for idx in (28, 30, 32):
+            for key in ("normalized_landmarks", "world_landmarks"):
+                lm = frames[k][key][idx]
+                lm.x = BB[0] + 0.3 * RADIUS * math.cos(a)
+                lm.y = BB[1] + 0.3 * RADIUS * math.sin(a)
+
+    out = _gate_ankle_off_path(frames)
+
+    assert out["right"] >= 5
+    for k in range(60, 65):
+        assert "right" in frames[k].get("leg_gate_filled", set())
+        lm = frames[k]["normalized_landmarks"][28]
+        true = _on_circle(k * STEP + math.pi)
+        assert math.dist((lm.x, lm.y), true) < 0.35 * RADIUS, (
+            f"frame {k}: reconstruction must land near the true path"
+        )
+
+
+def test_an_honest_ankling_egg_is_left_alone():
+    """The malleolus does not ride a perfect circle -- ankling flattens and
+    stretches the orbit by phase. A smooth per-phase deviation of ~12% is
+    the honest signature and must not be flagged."""
+    from app.services.video_analysis.biomechanics.landmark_stabilizer import (
+        _gate_ankle_off_path,
+    )
+
+    frames = []
+    for i in range(200):
+        a = i * STEP + math.pi
+        r = RADIUS * (1.0 + 0.12 * math.sin(a))     # smooth egg
+        la = _on_circle(i * STEP)
+        ra = (BB[0] + r * math.cos(a), BB[1] + r * math.sin(a))
+        frames.append(_frame(la, ra))
+
+    out = _gate_ankle_off_path(frames)
+    assert out["right"] == 0
+
+
+def test_a_clip_too_short_to_learn_a_path_is_left_alone():
+    from app.services.video_analysis.biomechanics.landmark_stabilizer import (
+        _gate_ankle_off_path,
+    )
+
+    out = _gate_ankle_off_path(_pedalling(30))
+    assert out == {"left": 0, "right": 0}

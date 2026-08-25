@@ -892,6 +892,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .cg-more[open] summary{margin-bottom:12px}
 /* One figure per sport in step 1; the other two rules are sport-neutral. */
 .capguide[data-sport="run"] .fig-bike,.capguide[data-sport="bike"] .fig-run{display:none}
+.capguide[data-sport="run"] li[data-sport="bike"]{display:none}
 /* Arriving from a warning that named this rule: a brief ring, so the reader
    lands on the figure knowing which of the three they were sent to read. */
 .cg-flash{animation:cgflash 1.6s ease-out}
@@ -2050,6 +2051,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
                and broke the line into columns. -->
           <ul class="guides" id="guides">
             <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg><span>Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close — a close-up wide lens bends the angles at the edges</span></li>
+            <li data-sport="bike"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>On the bike, film from the <b>non-drive side</b> (chainring away from the camera) — the chainring sits right behind your ankle at the bottom of the stroke and can pull the tracking off your foot</span></li>
             <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span><b>5–10 seconds with you actually in shot</b>, one person in frame — start recording once you&rsquo;re already running, not before</span></li>
             <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>A <b>treadmill</b> is the easiest way to get all of this at once: you stay put, so the camera can sit close, still, and pointed at one spot</span></li>
             <!-- Fork A (2026-08-22, Artur): accept both speeds, be honest about

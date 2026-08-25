@@ -312,6 +312,12 @@ def stabilize_landmarks(
         # The crank clock: every frame-count constant below encodes crank
         # rotation, so a slow-motion clip (same fit, ~4x the frames per
         # revolution) needs them re-expressed in the clip's own period.
+        # Foot-cluster hallucinations (chords through the pedal circle) are
+        # reconstructed first: they poison the identity resolver's ankle
+        # costs and every knee angle alike. After this pass the display foot
+        # rides the calibrated path and the flagged frames are measurement-
+        # excluded via leg_gate_filled.
+        ankle_path = _gate_ankle_off_path(frame_results)
         bike_cycle_frames = _estimate_cycle_frames(frame_results, fps)
         patience = LEG_BREAK_RESEED_FRAMES
         if bike_cycle_frames:
@@ -348,6 +354,7 @@ def stabilize_landmarks(
         leg_gate["shin_restored"] = _enforce_shin_length(frame_results)
         leg_gate["cycle_frames"] = bike_cycle_frames
         leg_gate["patience"] = patience
+        leg_gate["ankle_off_path"] = ankle_path
 
     if context is not None:
         # Surfaced so the pipeline can judge tracking stability: a clip where
@@ -758,6 +765,210 @@ def _estimate_cycle_frames(
     return float(np.median(estimates))
 
 
+# --- ankle path gate (bike) -------------------------------------------------
+# The foot is bolted to the pedal and the pedal rides a circle around the
+# bottom bracket, so each ankle's honest track is a thin closed band around
+# that circle -- an egg, not a circle: ankling raises it at the top and
+# widens it at the bottom, so the band is LEARNED per clip and per phase,
+# never assumed. What MediaPipe actually produces, twice per revolution on
+# every fixture clip, is a CHORD: the whole foot cluster (ankle, heel, toe)
+# lets go of the shoe and cuts through the middle of the circle -- onto the
+# crank, the chainring (the drive side is the worst: the chainring disc sits
+# exactly on the ankle's bottom arc), or the trainer mat. Measured by manual
+# joint marking on gridded frames: the drive-side fixture's reported BDC
+# stood ~7-8 deg above its true knee angle because of exactly this. Neither
+# the identity gate (a drift, not a teleport), the visibility floor (0.85+
+# on hallucinated points), nor the shin prior (the chord keeps shin length
+# near median) can see it; only the pedal's own geometry can.
+#
+# What happens to a flagged frame follows the codebase's split: the DISPLAY
+# foot is RECONSTRUCTED on the learned path (phase interpolated in time from
+# honest neighbours -- steady cadence makes that solid), so the athlete sees
+# a foot on the pedal instead of a blink; the MEASUREMENT is excluded, via
+# the same ``leg_gate_filled`` flag the identity gate uses -- the analyzer
+# refuses leg angles on flagged frames, so no number stands on a
+# reconstruction. A first version that NaN'd the cluster instead was
+# measured re-opening draw holes and wrecking the slow-motion fixture's
+# variability; reconstruction has no frame-count constants to mis-scale.
+_ANKLE_PATH_MIN_POINTS = 60      # need most of a revolution to learn a path
+_ANKLE_PATH_BINS = 16
+_ANKLE_PATH_BIN_MIN = 4          # honest samples a bin needs to testify
+_ANKLE_PATH_HONEST_R = (0.75, 1.35)   # of fitted R: the learning band
+_ANKLE_PATH_INTERIOR_R = 0.70    # inside this, it is a chord, no debate
+_ANKLE_PATH_TOL = 0.18           # of R, around the learned per-phase radius
+_ANKLE_PATH_MIN_HONEST_SHARE = 0.5    # else the fit itself is not trusted
+
+
+def _gate_ankle_off_path(frame_results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Reconstruct off-path foot clusters on the pedal path. Bike only.
+
+    Returns per-side counts of reconstructed frames. Flagged frames carry
+    ``leg_gate_filled`` so the analyzer excludes their leg angles.
+    """
+    out: dict[str, Any] = {"left": 0, "right": 0}
+    if not frame_results:
+        return out
+    fw = frame_results[0].get("frame_width") or 1
+    fh = frame_results[0].get("frame_height") or 1
+    aspect = fw / fh
+
+    def _fit(x: np.ndarray, y: np.ndarray) -> tuple[float, float, float]:
+        a = np.c_[2 * x, 2 * y, np.ones(len(x))]
+        b = x * x + y * y
+        sol, *_ = np.linalg.lstsq(a, b, rcond=None)
+        cx, cy = float(sol[0]), float(sol[1])
+        return cx, cy, math.sqrt(max(float(sol[2]) + cx * cx + cy * cy, 1e-12))
+
+    for side, (ankle_i, heel_i, toe_i) in (
+        ("left", (27, 29, 31)), ("right", (28, 30, 32)),
+    ):
+        pts: list[tuple[float, float] | None] = []
+        for f in frame_results:
+            lm = f["normalized_landmarks"][ankle_i]
+            x, y = lm.x, lm.y
+            bad = (
+                x is None or y is None
+                or (isinstance(x, float) and math.isnan(x))
+                or (isinstance(y, float) and math.isnan(y))
+            )
+            pts.append(None if bad else (float(x) * aspect, float(y)))
+        finite_idx = [i for i, p in enumerate(pts) if p is not None]
+        if len(finite_idx) < _ANKLE_PATH_MIN_POINTS:
+            continue
+
+        xs = np.array([pts[i][0] for i in finite_idx])
+        ys = np.array([pts[i][1] for i in finite_idx])
+        fx, fy = xs, ys
+        for _ in range(3):
+            cx, cy, radius = _fit(fx, fy)
+            d = np.abs(np.hypot(fx - cx, fy - cy) - radius)
+            keep = d < np.percentile(d, 75)
+            if keep.sum() < _ANKLE_PATH_MIN_POINTS // 2:
+                break
+            fx, fy = fx[keep], fy[keep]
+        cx, cy, radius = _fit(fx, fy)
+        if not (0.005 < radius < 0.5):
+            continue  # no crank-sized orbit here; leave the clip alone
+
+        # Learn the per-phase radius from the honest band only, so a sector
+        # where the chords OUTNUMBER the honest samples cannot teach the
+        # profile that the chord is normal (a blind per-bin median was
+        # measured reading 0.45R in corrupted sectors).
+        lo = _ANKLE_PATH_HONEST_R[0] * radius
+        hi = _ANKLE_PATH_HONEST_R[1] * radius
+        honest = 0
+        samples: list[list[float]] = [[] for _ in range(_ANKLE_PATH_BINS)]
+        for i in finite_idx:
+            p = pts[i]
+            r = math.hypot(p[0] - cx, p[1] - cy)
+            if lo <= r <= hi:
+                honest += 1
+                th = math.atan2(p[1] - cy, p[0] - cx)
+                b = int((th + math.pi) / (2 * math.pi) * _ANKLE_PATH_BINS) \
+                    % _ANKLE_PATH_BINS
+                samples[b].append(r)
+        if honest < _ANKLE_PATH_MIN_HONEST_SHARE * len(finite_idx):
+            logger.info(
+                "ANKLE_PATH_DISTRUSTED", side=side,
+                honest=honest, total=len(finite_idx),
+            )
+            continue
+        prof: list[float | None] = [
+            float(np.median(s)) if len(s) >= _ANKLE_PATH_BIN_MIN else None
+            for s in samples
+        ]
+
+        def _radius_at(th: float) -> float:
+            b = int((th + math.pi) / (2 * math.pi) * _ANKLE_PATH_BINS) \
+                % _ANKLE_PATH_BINS
+            r = prof[b]
+            return r if r is not None else radius
+
+        tol = _ANKLE_PATH_TOL * radius
+        flagged: list[int] = []
+        theta: dict[int, float] = {}
+        for i in finite_idx:
+            p = pts[i]
+            r = math.hypot(p[0] - cx, p[1] - cy)
+            th = math.atan2(p[1] - cy, p[0] - cx)
+            bad = r < _ANKLE_PATH_INTERIOR_R * radius
+            if not bad:
+                b = int((th + math.pi) / (2 * math.pi) * _ANKLE_PATH_BINS) \
+                    % _ANKLE_PATH_BINS
+                if prof[b] is not None and abs(r - prof[b]) > tol:
+                    bad = True
+            if bad:
+                flagged.append(i)
+            else:
+                theta[i] = th
+        if not flagged:
+            continue
+
+        # Phase for a flagged frame: unwrap the honest neighbours' angles and
+        # interpolate in FRAME TIME across the episode. A corrupted point's
+        # own angle is exactly what cannot be trusted.
+        hon_idx = sorted(theta)
+        unwrapped = np.unwrap([theta[i] for i in hon_idx])
+        th_of = dict(zip(hon_idx, unwrapped))
+
+        # Foot shape memory: heel/toe offsets relative to the ankle from the
+        # last honest frame, carried into the reconstruction.
+        def _shape(i: int) -> dict[int, tuple[float, float]] | None:
+            f = frame_results[i]
+            a = f["normalized_landmarks"][ankle_i]
+            outv: dict[int, tuple[float, float]] = {}
+            for idx in (heel_i, toe_i):
+                lm = f["normalized_landmarks"][idx]
+                x, y = lm.x, lm.y
+                if x is None or (isinstance(x, float) and math.isnan(x)):
+                    continue
+                outv[idx] = (float(x) - float(a.x), float(y) - float(a.y))
+            return outv or None
+
+        for i in flagged:
+            pos = np.searchsorted(hon_idx, i)
+            prev_i = hon_idx[pos - 1] if pos > 0 else None
+            next_i = hon_idx[pos] if pos < len(hon_idx) else None
+            if prev_i is not None and next_i is not None:
+                w = (i - prev_i) / max(next_i - prev_i, 1)
+                th = th_of[prev_i] * (1 - w) + th_of[next_i] * w
+            elif prev_i is not None:
+                th = th_of[prev_i]
+            elif next_i is not None:
+                th = th_of[next_i]
+            else:
+                continue
+            r = _radius_at(math.atan2(math.sin(th), math.cos(th)))
+            ax = cx + r * math.cos(th)
+            ay = cy + r * math.sin(th)
+            new_ankle = (ax / aspect, ay)   # back to normalized units
+
+            shape = None
+            if prev_i is not None:
+                shape = _shape(prev_i)
+            if shape is None and next_i is not None:
+                shape = _shape(next_i)
+
+            f = frame_results[i]
+            alm = f["normalized_landmarks"][ankle_i]
+            alm.x, alm.y = new_ankle
+            for idx in (heel_i, toe_i):
+                lm = f["normalized_landmarks"][idx]
+                if shape and idx in shape:
+                    lm.x = new_ankle[0] + shape[idx][0]
+                    lm.y = new_ankle[1] + shape[idx][1]
+                else:
+                    lm.x = math.nan
+                    lm.y = math.nan
+            # Measurement refuses the reconstruction: same channel as the
+            # identity gate's fills. World stays whatever it was -- nothing
+            # measures the bike off world landmarks any more, and the legacy
+            # path's own NaN handling covers the rest.
+            f.setdefault("leg_gate_filled", set()).add(side)
+            out[side] += 1
+    return out
+
+
 # --- shin-length prior (bike) ----------------------------------------------
 # The knee-to-ankle segment is a bone; on a side view its projected length is
 # near-constant through the pedal stroke (+/-5% from perspective and slight
@@ -811,6 +1022,8 @@ def _enforce_shin_length(frame_results: list[dict[str, Any]]) -> dict[str, int]:
             continue
         floor = SHIN_MIN_FRAC * median
         for f in frame_results:
+            if side in f.get("leg_gate_filled", set()):
+                continue  # display-only reconstruction; leave it be
             k, a = pt(f, knee_i), pt(f, ankle_i)
             if not (k and a):
                 continue

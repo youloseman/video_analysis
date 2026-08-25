@@ -726,6 +726,22 @@ def run_analysis(
             "Filming from a little in front of or behind square-on, with the "
             "whole drivetrain visible, separates the two legs best."
         )
+    if is_bike and early_camera_side == "right":
+        # Filmed from the DRIVE side: the chainring disc sits exactly on the
+        # near ankle's bottom arc, and manual joint marking on gridded
+        # fixture frames measured it pulling the ankle landmark toward
+        # itself -- knee-at-BDC read ~7 deg above its true value there,
+        # while the non-drive view of the same fit matched the manual truth.
+        # A per-clip corrector cannot remove a bias the landmarks themselves
+        # carry at that phase, so the honest move is to SAY it.
+        quality_warnings.append(
+            "This clip was filmed from the drive side (chainring toward the "
+            "camera). The chainring sits right behind the ankle at the "
+            "bottom of the stroke and can pull the ankle landmark toward "
+            "it, so the knee angle at BDC may read a few degrees high. For "
+            "the most accurate saddle-height check, film from the other "
+            "(non-drive) side."
+        )
     if assess_tracking_stability(tracking_stability) == "severe":
         # This warning renders as an amber banner in the UI and travels to
         # the free tier too (quality_warnings are never gated) -- the

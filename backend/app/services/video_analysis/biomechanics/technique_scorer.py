@@ -61,10 +61,26 @@ SWIMMING_WEIGHTS = {
 }
 
 
-def score_in_range(value: float, optimal_min: float, optimal_max: float) -> float:
+# Angles this pipeline measures carry an honest +/-2 deg of instrument
+# spread (stroke-to-stroke variability on clean fixtures is 1-2 deg before
+# any landmark bias). Scoring must not turn that spread into a verdict: the
+# same fit filmed twice landed 99 vs 86 because one clip sat 3 deg outside
+# a 7-deg band and the penalty slope is ~7 points per degree from the very
+# first degree. Within the tolerance the score stays full; the slope beyond
+# is unchanged -- real faults still cost what they cost.
+SCORE_ANGLE_TOLERANCE = 2.0
+
+
+def score_in_range(
+    value: float,
+    optimal_min: float,
+    optimal_max: float,
+    tolerance: float = SCORE_ANGLE_TOLERANCE,
+) -> float:
     """Score a single value 0-100 based on distance from optimal range.
 
-    Returns 100 if in range, decreasing score as distance increases.
+    Returns 100 while within the range or within ``tolerance`` of it (the
+    instrument's own spread), decreasing as the distance grows beyond that.
     """
     if optimal_min <= value <= optimal_max:
         return 100.0
@@ -77,6 +93,7 @@ def score_in_range(value: float, optimal_min: float, optimal_max: float) -> floa
         distance = optimal_min - value
     else:
         distance = value - optimal_max
+    distance = max(0.0, distance - tolerance)
 
     # Penalty: lose ~10 points per unit of range-width deviation
     penalty_factor = 100.0 / (range_size * 2)

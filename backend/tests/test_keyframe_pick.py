@@ -31,6 +31,7 @@ def _viz(frames):
     v = VideoVisualizer.__new__(VideoVisualizer)
     v.frame_data_list = frames
     v.camera_side = "right"
+    v.sport_type = "bike"
     return v
 
 

@@ -540,6 +540,27 @@ class VideoVisualizer:
 
         drawable = [i for i in cand if leg_drawable(self.frame_data_list[i])]
         pool = drawable or cand
+
+        if self.sport_type == "bike":
+            # Prefer a BDC-phase frame: leg extended, foot planted on the
+            # pedal -- the classic fit-photo pose, and the phase where the
+            # foot cluster tracks best (the kinogram's tiles, which the
+            # athlete called perfectly placed, are picked at these events;
+            # mid-stroke and TDC frames are where the foot drifts).
+            ankle_idx = {"left": 27, "right": 28}.get(self.camera_side or "")
+            if ankle_idx is not None:
+                ys = []
+                for i in pool:
+                    lm = self.frame_data_list[i]["normalized_landmarks"][ankle_idx]
+                    y = getattr(lm, "y", None)
+                    if y is not None and not (
+                        isinstance(y, float) and math.isnan(y)
+                    ):
+                        ys.append((y, i))
+                if len(ys) >= 5:
+                    ys.sort(reverse=True)          # image y grows downward
+                    pool = [i for _, i in ys[:max(3, len(ys) // 5)]]
+
         best_idx, best_vis = pool[0], -1.0
         for i in pool:
             lms = self.frame_data_list[i]["normalized_landmarks"]

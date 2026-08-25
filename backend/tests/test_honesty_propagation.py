@@ -197,3 +197,23 @@ def test_photo_plane_matches_the_video_analyzers_knee():
 
     assert abs(video_knee - photo_knee) < 1e-6
     assert not np.isnan(video_knee)
+
+
+# --- scoring does not convict on instrument spread -------------------------
+
+def test_score_in_range_forgives_the_instruments_own_spread():
+    """The same fit filmed twice landed 99 vs 86 because one clip sat 3 deg
+    outside a 7-deg band and the slope charged from the very first degree.
+    Within +/-2 deg of the band -- the honest stroke-to-stroke spread on
+    clean fixtures -- the score stays full; beyond it the slope is
+    unchanged, so real faults still cost what they cost."""
+    from app.services.video_analysis.biomechanics.technique_scorer import (
+        score_in_range,
+    )
+
+    assert score_in_range(146.9, 138, 145) == 100.0     # within tolerance
+    assert score_in_range(143.0, 138, 145) == 100.0     # in band
+    beyond = score_in_range(150.0, 138, 145)            # 3 deg past tolerance
+    assert 75.0 < beyond < 85.0
+    far = score_in_range(160.0, 138, 145)
+    assert far < beyond, "the slope beyond the tolerance is intact"
