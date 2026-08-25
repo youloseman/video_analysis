@@ -76,7 +76,7 @@ class Settings:
     jwt_secret: str = "dev-insecure-change-me"
     jwt_expire_days: int = 30
 
-    # Account promoted to the ``admin`` tier on startup (5 analyses/day). Set to
+    # Account promoted to the ``admin`` tier on startup (15 analyses/day). Set to
     # your own email via ADMIN_EMAIL in prod; case-insensitive match.
     admin_email: str | None = None
 

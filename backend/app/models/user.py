@@ -23,7 +23,8 @@ PAID_TIERS = (TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
 # month (UTC); "day" = rolling 24h. Admin is deliberately a DAILY cap (per
 # Artur's request) rather than unlimited -- it bounds how much CPU our own
 # testing can burn. Raised 5 -> 10 because a live demo of the product runs
-# through five clips before the conversation is over.
+# through five clips before the conversation is over, then 10 -> 15 because a
+# day of testing one change across run and bike clips reaches the old cap.
 TIER_LIMITS: dict[str, tuple[int, str]] = {
     # Raised 3 -> 10 when reading became the paid thing rather than uploading.
     # A teaser costs a CPU slot and nothing else -- no Gemini call, no overlay
@@ -33,7 +34,7 @@ TIER_LIMITS: dict[str, tuple[int, str]] = {
     TIER_STARTER: (10, "month"),
     TIER_ENTHUSIAST: (30, "month"),
     TIER_FULL: (120, "month"),
-    TIER_ADMIN: (10, "day"),
+    TIER_ADMIN: (15, "day"),
 }
 
 
