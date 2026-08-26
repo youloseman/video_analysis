@@ -1875,6 +1875,15 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           </div>
         </div>
         <p class="poshint" id="posHint"></p>
+        <div class="ctl" id="sideField" style="margin-top:10px">
+          <span class="ctl-label" id="sideLabel">Camera side:</span>
+          <div class="tilerow" id="sideSeg" role="group" aria-labelledby="sideLabel">
+            <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
+            <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
+            <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
+          </div>
+          <p class="poshint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
+        </div>
       </div>
 
       <!-- Drop zone -->
@@ -3242,6 +3251,13 @@ $('#positionSeg').addEventListener('click',e=>{
   updatePosHint();
   readyHint();
 });
+/* Camera-side override (bike): the rider knows which side they filmed. */
+state.cameraSide = state.cameraSide || 'auto';
+$('#sideSeg') && $('#sideSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  state.cameraSide=b.dataset.side;
+  $('#sideSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+});
 function updatePosHint(){
   const el=$('#posHint'); if(!el) return;
   el.innerHTML=POSITION_HINTS[state.position]||'';
@@ -3317,6 +3333,8 @@ function analyze(){
   fd.append('video',state.file);
   fd.append('sport',state.sport);
   if(state.sport==='bike') fd.append('position',state.position);
+  if(state.sport==='bike' && state.cameraSide && state.cameraSide!=='auto')
+    fd.append('camera_side', state.cameraSide);
   fd.append('overlay',$('#overlay').checked ? 'true':'false');
   if(focusText()) fd.append('focus', focusText());
 
@@ -8240,23 +8258,50 @@ function profileAggregate(pid, sport){
     trendCat: {},
   };
 }
+function cmpSides(){
+  const list=(state.cmp.list||[]);
+  return {
+    left: list.filter(e=>e.cameraSide==='left'),
+    right: list.filter(e=>e.cameraSide==='right'),
+  };
+}
 function renderCmpMode(){
   const host=$('#cmpMode'); if(!host) return;
   const setups=cmpProfiles(state.cmp.sport);
-  // One setup cannot be compared with anything, which is exactly why this is
-  // the thing a single bought report can never be.
-  if(setups.length<2){ host.classList.add('hidden'); host.innerHTML=''; state.cmp.mode='sessions'; return; }
+  const sides=cmpSides();
+  const hasSides = state.cmp.sport==='bike' && sides.left.length && sides.right.length;
+  if(setups.length<2 && !hasSides){ host.classList.add('hidden'); host.innerHTML=''; state.cmp.mode='sessions'; return; }
   const m=state.cmp.mode||'sessions';
   host.innerHTML=`<div class="billtoggle" role="group" aria-label="What to compare">
     <button type="button" data-mode="sessions" aria-pressed="${m==='sessions'}">Two sessions</button>
-    <button type="button" data-mode="setups" aria-pressed="${m==='setups'}">Two setups</button>
+    ${setups.length>=2?`<button type="button" data-mode="setups" aria-pressed="${m==='setups'}">Two setups</button>`:''}
+    ${hasSides?`<button type="button" data-mode="sides" aria-pressed="${m==='sides'}">Left vs right</button>`:''}
   </div>`;
   host.classList.remove('hidden');
   host.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     state.cmp.mode=b.dataset.mode;
     state.cmp.pa=null; state.cmp.pb=null;
+    if(b.dataset.mode==='sides'){
+      const sd=cmpSides();
+      state.cmp.aId=(sd.left[0]||{}).id; state.cmp.bId=(sd.right[0]||{}).id;
+    }
     renderCompare();
   }));
+}
+/* Asymmetry row: neutral delta -- a left/right difference is a finding, not
+   progress or regression. Big gaps get flagged as notable. */
+function cmpSideRow(label,unit,a,b){
+  const fmt=v=> v==null?'—':(Math.round(v*100)/100)+(unit||'');
+  if(a==null||b==null){
+    return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
+      <div class="cmp-a">${fmt(a)}</div><div class="cmp-d"><span class="tdelta sta">—</span></div><div class="cmp-b">${fmt(b)}</div></div>`;
+  }
+  const d=b-a, notable=Math.abs(d)>=5;
+  const dstr=(d>0?'+':'')+(Math.round(d*100)/100)+(unit||'');
+  return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
+    <div class="cmp-a">${fmt(a)}</div>
+    <div class="cmp-d"><span class="tdelta ${notable?'reg':'sta'}">${dstr}${notable?'<span class="cmp-trend"> · notable</span>':''}</span></div>
+    <div class="cmp-b">${fmt(b)}</div></div>`;
 }
 function renderSetupPickers(){
   const setups=cmpProfiles(state.cmp.sport);
@@ -8362,11 +8407,15 @@ function renderCompare(){
   const {sport,aId,bId}=state.cmp;
   renderCmpMode();
   const setups = state.cmp.mode==='setups';
+  const sidesMode = state.cmp.mode==='sides';
   let A, B;
   if(setups){
     renderSetupPickers();
     A=profileAggregate(state.cmp.pa, sport);
     B=profileAggregate(state.cmp.pb, sport);
+  } else if(sidesMode){
+    A=cmpEntry(aId); B=cmpEntry(bId);
+    renderSidePickers();
   } else {
     A=cmpEntry(aId); B=cmpEntry(bId);
     renderComparePickers();
@@ -8376,9 +8425,11 @@ function renderCompare(){
   // Prefer B's optimal band, fall back to A's.
   const optOf=k=> (B.trendOpt&&B.trendOpt[k]) || (A.trendOpt&&A.trendOpt[k]) || null;
   // Header: the wipe (when both frames exist) over two cards with date + score.
-  const wipe = setups ? '' : baSliderHtml(A,B);
+  const wipe = (setups||sidesMode) ? '' : baSliderHtml(A,B);
+  const tagA = setups?'Setup A':(sidesMode?'Left side':'Before');
+  const tagB = setups?'Setup B':(sidesMode?'Right side':'After');
   const head=wipe+`<div class="cmp-head">
-    ${[[A,setups?'Setup A':'Before'],[B,setups?'Setup B':'After']].map(([e,tag])=>`<div class="cmp-card">
+    ${[[A,tagA],[B,tagB]].map(([e,tag])=>`<div class="cmp-card">
       <div class="cmp-tag">${tag}</div>
       ${(setups||wipe)?'':cmpThumb(e,tag)}
       <div class="cmp-when">${setups
@@ -8387,24 +8438,48 @@ function renderCompare(){
       <div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>
     </div>`).join('')}
   </div>`;
-  const numRows=TREND_METRICS[sport].map(m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi)).join('');
-  const catRows=(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key])).join('');
+  const rowFn = sidesMode
+    ? (m=>cmpSideRow(m.label,m.unit,at[m.key],bt[m.key]))
+    : (m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi));
+  const numRows=TREND_METRICS[sport].map(rowFn).join('');
+  const catRows=sidesMode?'':(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key])).join('');
   $('#cmpBody').innerHTML = head +
     `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
        <div class="cmp-lbl">Metric</div>
-       <div class="cmp-a">${setups?'A':'Before'}</div>
-       <div class="cmp-d">${setups?'Difference':'Change'}</div>
-       <div class="cmp-b">${setups?'B':'After'}</div>
+       <div class="cmp-a">${setups?'A':(sidesMode?'Left':'Before')}</div>
+       <div class="cmp-d">${setups?'Difference':(sidesMode?'Asymmetry':'Change')}</div>
+       <div class="cmp-b">${setups?'B':(sidesMode?'Right':'After')}</div>
      </div>${numRows}${catRows}</div>`
     + (setups?`<p class="hint" style="text-align:left;margin:16px 0 0">Averaged across everything filmed on each setup. A difference here is
-       the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'');
-  if(!setups){ observeKeyframes($('#cmpBody')); wireBaSlider(); }
+       the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'')
+    + (sidesMode?`<p class="hint" style="text-align:left;margin:16px 0 0">Each side-view clip measures the leg nearest the camera, so these two
+       clips together are your two legs. A few degrees of left–right difference is normal; a
+       <b>notable</b> knee gap at the bottom of the stroke usually means one leg reaches more
+       than the other — worth checking saddle height, cleat setup, or a leg-length difference
+       with a fitter. One caveat: a clip filmed from the drive side (chainring toward the
+       camera) can read the knee a few degrees high there.</p>`:'');
+  if(!setups&&!sidesMode){ observeKeyframes($('#cmpBody')); wireBaSlider(); }
   // The AI read is written to explain progress between two runs of the same
-  // thing. Pointed at two bikes it would confidently narrate improvement that
-  // is really just a different position, so it is not offered here.
+  // thing. Pointed at two bikes -- or at two LEGS -- it would confidently
+  // narrate improvement that is really just a different thing, so only the
+  // sessions mode offers it.
   const sum=$('#cmpSummary');
-  if(setups){ if(sum){ sum.innerHTML=''; sum.classList.add('hidden'); } }
+  if(setups||sidesMode){ if(sum){ sum.innerHTML=''; sum.classList.add('hidden'); } }
   else { if(sum) sum.classList.remove('hidden'); renderCompareSummary(); }
+}
+/* Side pickers: the A column lists only left-side clips, B only right-side. */
+function renderSidePickers(){
+  const {aId,bId}=state.cmp;
+  const sides=cmpSides();
+  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(fmtWhen(e.at))} · ${e.score==null?'—':e.score}/100</option>`;
+  const sel=(side,list,cur,lbl)=>`<label class="cmp-pick">
+      <span class="cmp-pick-lbl">${lbl}</span>
+      <select class="cmp-select" data-side="${side}">${list.map(e=>opt(e,cur)).join('')}</select>
+    </label>`;
+  $('#cmpPickers').innerHTML =
+    sel('a',sides.left,aId,'Left side')
+    +`<div class="cmp-arrow" aria-hidden="true"><svg class="ic"><use href="#i-arr-l"/></svg></div>`
+    +sel('b',sides.right,bId,'Right side');
 }
 /* AI progress summary — server-side (Gemini). Requires auth; degrades to a
    nudge for signed-out users. Cached per A/B pair in state.cmp.summary. */

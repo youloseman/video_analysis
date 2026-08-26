@@ -490,6 +490,32 @@ def _json_safe(obj: Any) -> Any:
     return str(obj)
 
 
+def _apply_camera_side_override(
+    detected: str | None,
+    lock_meta: dict[str, Any] | None,
+    override: str | None,
+    sport_type: str,
+) -> tuple[str | None, dict[str, Any]]:
+    """Let the rider's stated camera side replace the depth vote (bike only).
+
+    The rider knows which side they filmed from; when they say so, the depth
+    vote only gets to DISAGREE in the log. ``user_set`` in the lock meta lets
+    the result say the side was chosen, not detected, and ``fallback: False``
+    keeps downstream quality gates from discounting a side the user asserted.
+    Anything other than a clean "left"/"right" on a bike clip leaves the
+    detection untouched -- run clips see both legs, so a side override there
+    would claim a certainty the sport doesn't have.
+    """
+    if override not in ("left", "right") or sport_type != "bike":
+        return detected, (lock_meta or {})
+    if detected != override:
+        logger.info("CAMERA_SIDE_OVERRIDDEN", detected=detected, user=override)
+    return override, {
+        **(lock_meta or {}),
+        "user_set": True, "votes": [override], "fallback": False,
+    }
+
+
 def run_analysis(
     video_path: str, sport_type: str, cycling_position: str | None,
     overlay_path: str | None = None, recommendations: bool = True,
@@ -497,6 +523,7 @@ def run_analysis(
     athlete_height_cm: float | None = None,
     focus: str | None = None,
     mobility_profile: dict[str, Any] | None = None,
+    camera_side_override: str | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -569,6 +596,9 @@ def run_analysis(
 
     # Step 2b: early camera-side lock (bike + run side-view are unilateral).
     early_camera_side, early_lock_meta = determine_locked_camera_side(raw_frame_data)
+    early_camera_side, early_lock_meta = _apply_camera_side_override(
+        early_camera_side, early_lock_meta, camera_side_override, sport_type,
+    )
     camera_side_for_quality = (
         None if early_lock_meta.get("fallback") else early_camera_side
     )

@@ -419,6 +419,7 @@ def _process_job(
     athlete_height_cm: int | None = None,
     focus: str | None = None,
     mobility_profile: dict[str, Any] | None = None,
+    camera_side_override: str | None = None,
 ) -> None:
     """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
 
@@ -476,6 +477,7 @@ def _process_job(
             # What this athlete asked us to look at. Reaches the coach, never
             # the measurement: a question cannot change what the pose model saw.
             focus=focus,
+            camera_side_override=camera_side_override,
             # Their off-bike range, if they have ever measured it. Also reaches
             # only the advice, never the measurement -- what it decides is
             # whether "get lower" is a sentence we are entitled to write.
@@ -865,6 +867,10 @@ async def analyze_endpoint(
         None, description="Cycling position (bike only): "
         "road_hoods | road_drops | tt_aero | triathlon | casual.",
     ),
+    camera_side: str | None = Form(
+        None, description="Bike only: which side of the rider faces the "
+        "camera ('left' | 'right'). Omit for automatic detection.",
+    ),
     overlay: bool = Form(
         True, description="Also render the annotated overlay video.",
     ),
@@ -897,12 +903,19 @@ async def analyze_endpoint(
         raise HTTPException(400, "sport must be 'run' or 'bike'")
 
     cycling_position: str | None = None
+    side_override: str | None = None
     if sport == "bike":
         cycling_position = position or DEFAULT_BIKE_POSITION
         if cycling_position not in VALID_POSITIONS:
             raise HTTPException(
                 400, f"invalid position; valid: {sorted(VALID_POSITIONS)}",
             )
+        if camera_side:
+            if camera_side not in ("left", "right"):
+                raise HTTPException(
+                    400, "camera_side must be 'left' or 'right'",
+                )
+            side_override = camera_side
 
     if not settings.model_path.exists():
         raise HTTPException(
@@ -963,6 +976,7 @@ async def analyze_endpoint(
         _process_job, job_id, str(input_path), sport, cycling_position,
         overlay_path, free, preview, user.height_cm, _clean_focus(focus),
         _stored_mobility(user) if sport == "bike" else None,
+        side_override,
     )
     await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
