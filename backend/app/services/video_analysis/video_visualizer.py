@@ -366,6 +366,16 @@ class VideoVisualizer:
         # OpenCV's mp4v muxer -- plays in VLC/most players. Install ffmpeg and
         # re-run for browser-safe H.264 + faststart.
         self._use_ffmpeg = shutil.which("ffmpeg") is not None
+
+        # What the encode will do to every drawn pixel (1.0 without ffmpeg,
+        # where the mp4v writer's output IS the delivered clip). The skeleton
+        # stroke is chosen against this rather than against draw_w: a display
+        # crop makes the drawing surface SMALLER while the encoder shrinks it
+        # further, and scaling the stroke to the surface let both effects land
+        # on the athlete as a hairline.
+        out_scale = 1.0
+        if self._use_ffmpeg and draw_w:
+            out_scale = min(1.0, self._even_target_dims(draw_w, draw_h)[0] / draw_w)
         if self._use_ffmpeg:
             temp_avi = os.path.join(self.output_dir, f"{self.analysis_id}_temp.avi")
             writer = cv2.VideoWriter(temp_avi, cv2.VideoWriter_fourcc(*"XVID"), fps, (draw_w, draw_h))
@@ -432,6 +442,7 @@ class VideoVisualizer:
                     cv2, frame, last_analyzed_idx, draw_w, draw_h,
                     landmarks_override=last_landmarks,
                     source_dims=(width, height), crop_offset=crop_offset,
+                    out_scale=out_scale,
                 )
 
             # Brand watermark on every frame (even un-analyzed ones)
@@ -496,8 +507,12 @@ class VideoVisualizer:
             if not ok or frame is None:
                 return None
             h, w = frame.shape[:2]
-            # one-off still -> afford the full look (skeleton glow)
-            frame = self._draw_frame_overlay(cv2, frame, best_idx, w, h, keyframe_mode=True)
+            # Drawn full-size, delivered at max_width -- tell the renderer, or
+            # the stroke it picks is for a frame nobody will see at this size.
+            frame = self._draw_frame_overlay(
+                cv2, frame, best_idx, w, h,
+                out_scale=min(1.0, max_width / w) if w else 1.0,
+            )
             if w > max_width:
                 nh = int(round(h * max_width / w))
                 frame = cv2.resize(frame, (max_width, nh), interpolation=cv2.INTER_AREA)
@@ -636,10 +651,10 @@ class VideoVisualizer:
 
     def _draw_frame_overlay(
         self, cv2_mod: Any, frame: Any, analyzed_idx: int, width: int, height: int,
-        keyframe_mode: bool = False,
         landmarks_override: list[Any] | None = None,
         source_dims: tuple[int, int] | None = None,
         crop_offset: tuple[int, int] = (0, 0),
+        out_scale: float = 1.0,
     ) -> Any:
         """Draw skeleton + angle labels on a single frame.
 
@@ -653,8 +668,10 @@ class VideoVisualizer:
         ``crop_offset`` say where it came from, so the landmarks -- which are
         normalized against the WHOLE frame -- land in the right place on it.
 
-        ``keyframe_mode`` enables the expensive extras (skeleton glow) for the
-        one-off keyframe still; the per-frame video path leaves them off.
+        ``out_scale`` is the resize this render will be put through downstream
+        (the ffmpeg encode, the keyframe's shrink to ``max_width``). The
+        skeleton stroke is pre-divided by it so the delivered weight is the same
+        whichever path drew it -- see ``overlay_style.skeleton_weights``.
 
         ``landmarks_override`` lets the video path draw the skeleton at
         interpolated positions (between two analyzed frames) while the labels,
@@ -679,14 +696,18 @@ class VideoVisualizer:
             pixel_coords, self.sport_type, self.camera_side,
         )
 
-        # Neon skeleton (shared style). The glow is a per-frame blur, so keep it
-        # only for the single keyframe render -- on a full clip it would cost a
-        # Gaussian on every frame for a detail nobody pauses to look at.
+        # Neon skeleton (shared style). The glow runs on the clip as well as on
+        # the still: it is what makes the skeleton read as neon rather than as
+        # hairlines, and building it small (see overlay_style) brought the cost
+        # to a few ms a frame. The still and the video are the same picture of
+        # the same rider -- them looking like two different products was a bug.
         _sk = max(1.0, min(2.2, width / 900))
+        _line_w, _dot_r = overlay_style.skeleton_weights(
+            width, height, out_scale=out_scale,
+        )
         overlay_style.draw_glow_skeleton(
             cv2_mod, frame, _segments, _dots,
-            glow=bool(keyframe_mode),
-            line_w=max(2, int(2 * _sk)), dot_r=max(3, int(3.5 * _sk)),
+            glow=True, line_w=_line_w, dot_r=_dot_r,
         )
         chips = overlay_style.ChipLayer(frame)
 

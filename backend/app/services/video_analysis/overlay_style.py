@@ -159,6 +159,51 @@ def fit_render_canvas(cv2_mod: Any, image: Any) -> Any:
 
 # --- skeleton -------------------------------------------------------------
 
+# Stroke weights of the DELIVERED skeleton, in pixels of the frame the athlete
+# actually looks at.
+#
+# "Delivered" is the load-bearing word. Both renderers draw at one size and hand
+# the result on at another: the overlay video is drawn on the display crop and
+# then encoded down to a ~720p long edge, the keyframe still is drawn on the
+# full frame and then shrunk to 720 wide. Scaling the stroke against the surface
+# being drawn on therefore says nothing about what the rider sees -- and it was
+# how a crop narrower than the 900 px design canvas ended up pinned to the
+# minimum weight and then shaved another 12% by the encoder, i.e. the hairline
+# skeleton that made the video look like a different product from the still.
+SKELETON_LINE_PX = 3.0
+SKELETON_DOT_PX = 4.5
+
+
+def skeleton_weights(
+    width: int, height: int, *, out_scale: float = 1.0,
+) -> tuple[int, int]:
+    """``(line_w, dot_r)`` to draw with, given a later resize of ``out_scale``.
+
+    ``out_scale`` is the factor whatever happens after this render will apply
+    (the ffmpeg downscale, the keyframe's resize); pass 1.0 when the drawn
+    pixels are the delivered ones. The weights are pre-divided by it, so the
+    stroke lands on the target regardless of how far the frame is scaled after.
+    """
+    out_scale = max(0.05, min(1.0, out_scale or 1.0))
+    delivered_long = max(width, height, 1) * out_scale
+    # A phone-sized overlay (~1280 long edge) is the design target; below it the
+    # weights ease off, above it they grow, both within reach of the target.
+    sk = max(0.75, min(1.6, delivered_long / 1280))
+    return (
+        max(2, round(SKELETON_LINE_PX * sk / out_scale)),
+        max(3, round(SKELETON_DOT_PX * sk / out_scale)),
+    )
+
+
+# The glow is built on a reduced-resolution copy of the bones and scaled back
+# up. It is a soft blur -- there is nothing in it above this resolution to
+# preserve -- and doing it at full size costs ~13 ms a frame on a 1080p clip,
+# which is the whole reason the video path used to go without it and ended up
+# looking like a different product from the still.
+GLOW_LAYER_LONG_EDGE = 480
+GLOW_BLUR_SIGMA = 6.0          # in units of the design canvas, scaled with it
+
+
 def draw_glow_skeleton(
     cv2_mod: Any,
     frame: Any,
@@ -172,19 +217,36 @@ def draw_glow_skeleton(
     """Draw a neon skeleton with an optional soft glow, in place.
 
     The glow is a blurred copy of the bones screened back over the frame -- one
-    blur for the whole skeleton, not per bone, so it stays affordable. Pass
-    ``glow=False`` on the per-frame video path if the cost is not worth it.
+    blur for the whole skeleton, not per bone, and built small (see
+    :data:`GLOW_LAYER_LONG_EDGE`), so it is affordable on every frame of a clip
+    rather than only on a one-off still.
     """
     if not segments and not dots:
         return
 
     if glow:
-        layer = np.zeros_like(frame)
+        h, w = frame.shape[:2]
+        # Draw the glow small, blur it there, scale it back. `f` <= 1 always:
+        # a frame already smaller than the glow canvas is left at its own size.
+        f = min(1.0, GLOW_LAYER_LONG_EDGE / max(w, h, 1))
+        gw, gh = max(1, int(round(w * f))), max(1, int(round(h * f)))
+        layer = np.zeros((gh, gw, frame.shape[2]), dtype=frame.dtype)
+        gw_line = max(1, int(round((line_w + 5) * f)))
+        gr_dot = max(1, int(round((dot_r + 3) * f)))
         for (a, b) in segments:
-            cv2_mod.line(layer, a, b, _bgr(NEON_DIM), line_w + 5, cv2_mod.LINE_AA)
+            cv2_mod.line(
+                layer, (int(a[0] * f), int(a[1] * f)), (int(b[0] * f), int(b[1] * f)),
+                _bgr(NEON_DIM), gw_line, cv2_mod.LINE_AA,
+            )
         for p in dots:
-            cv2_mod.circle(layer, p, dot_r + 3, _bgr(NEON_DIM), -1, cv2_mod.LINE_AA)
-        layer = cv2_mod.GaussianBlur(layer, (0, 0), sigmaX=6, sigmaY=6)
+            cv2_mod.circle(
+                layer, (int(p[0] * f), int(p[1] * f)), gr_dot,
+                _bgr(NEON_DIM), -1, cv2_mod.LINE_AA,
+            )
+        sigma = max(1.0, GLOW_BLUR_SIGMA * f * max(1.0, w / 900))
+        layer = cv2_mod.GaussianBlur(layer, (0, 0), sigmaX=sigma, sigmaY=sigma)
+        if (gw, gh) != (w, h):
+            layer = cv2_mod.resize(layer, (w, h), interpolation=cv2_mod.INTER_LINEAR)
         # screen-ish blend: keep the brighter of frame/glow so it never darkens
         cv2_mod.max(frame, layer, dst=frame)
 
@@ -436,5 +498,5 @@ class ChipLayer:
 __all__ = [
     "NEON", "AMBER", "ROSE", "STATUS_COLORS",
     "status_for", "text_size", "draw_glow_skeleton", "draw_leader", "ChipLayer",
-    "FONT_REGULAR", "FONT_BOLD",
+    "skeleton_weights", "FONT_REGULAR", "FONT_BOLD",
 ]
