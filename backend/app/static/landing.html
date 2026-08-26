@@ -935,7 +935,10 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
       <div class="phone">
         <span class="rec"><i></i>Live overlay</span>
         <div class="screen">
-          <video src="media/hero.mp4" autoplay muted loop playsinline preload="auto"
+          <!-- ?v=2 breaks the copies browsers cached while /media went out with
+               no cache headers at all; the mount revalidates now, so a later
+               swap of this file needs no new number here. -->
+          <video src="media/hero.mp4?v=2" autoplay muted loop playsinline preload="auto"
                  aria-label="Runner filmed from the side with an AI skeleton overlay and joint angles drawn on every frame"></video>
         </div>
       </div>

@@ -589,9 +589,30 @@ async def _send_ready_mail(job_id: str, job: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------
 STATIC_DIR = Path(__file__).parent / "static"
 
+class _RevalidatingStatic(StaticFiles):
+    """Static media a deploy can actually replace.
+
+    The shells below are served ``no-cache``, so a deploy changes the HTML for
+    everyone at once -- but the media that HTML points at was mounted bare,
+    with no cache headers at all. Browsers then fall back to HEURISTIC
+    freshness (roughly a tenth of the file's age), which is how a hero video
+    swapped in August went on playing the July clip for anyone who had already
+    visited: fresh markup, stale film. The filenames here are stable by design,
+    so correctness has to come from revalidation rather than from the URL.
+
+    ETag and Last-Modified still do the real work -- the common answer is a
+    304, so this costs a round-trip, not the four megabytes.
+    """
+
+    async def get_response(self, path: str, scope: Any) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers.setdefault("Cache-Control", "no-cache, must-revalidate")
+        return response
+
+
 # Landing-page media (hero video, product screenshots). StaticFiles handles
 # Range requests and conditional GETs, which the hero <video> relies on.
-app.mount("/media", StaticFiles(directory=STATIC_DIR / "media"), name="media")
+app.mount("/media", _RevalidatingStatic(directory=STATIC_DIR / "media"), name="media")
 
 
 def _serve_shell(request: Request, filename: str, canonical_path: str) -> Response:
