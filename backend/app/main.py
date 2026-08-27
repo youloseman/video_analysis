@@ -587,13 +587,27 @@ def _process_pair_job(
             recommendations=True,
         )
         safe = _json_safe(merged)
-        # The session's overlay is the clip the merge was built on -- the one
-        # with more pedal revolutions behind it.
+        # BOTH overlays are kept and both are offered. The rider filmed two
+        # clips; showing one and silently dropping the other was the first
+        # version's mistake -- it made a two-sided session look like it had
+        # only half happened.
+        job["overlay_paths"] = {
+            side: path for side, path in
+            (("left", overlay_left), ("right", overlay_right))
+            if path and Path(path).exists()
+        }
         base_side = (safe.get("bilateral") or {}).get("base_side")
-        chosen = overlay_left if base_side == "left" else overlay_right
-        if chosen and Path(chosen).exists():
+        chosen = job["overlay_paths"].get(base_side or "") or next(
+            iter(job["overlay_paths"].values()), None,
+        )
+        if chosen:
             job["overlay_path"] = chosen
             safe["overlay_video_path"] = f"/jobs/{job_id}/overlay"
+        if safe.get("bilateral") is not None:
+            safe["bilateral"]["overlays"] = {
+                side: f"/jobs/{job_id}/overlay?side={side}"
+                for side in job["overlay_paths"]
+            }
         job["result"] = safe
         job["preview"] = False
         job["status"] = "completed"
@@ -1427,17 +1441,25 @@ def job_export(
 def job_overlay(
     job_id: str,
     t: str | None = None,
+    side: str | None = None,
     user: User | None = Depends(optional_user),
 ) -> FileResponse:
     # Same gate as the poll. The token rides in the query string here because
     # this URL is consumed by <video src> and a download link, neither of which
     # can set a header.
     job = authorized_job(job_id, t, user.id if user else None)
+    # A two-sided session rendered one overlay per clip, and both are the
+    # athlete's own footage -- serving only the one the merge happened to be
+    # built on hides half of what they filmed.
     overlay_path = job.get("overlay_path")
+    if side in ("left", "right"):
+        overlay_path = (job.get("overlay_paths") or {}).get(side)
     if not overlay_path or not Path(overlay_path).exists():
         raise HTTPException(404, "overlay not available for this job")
+    suffix = f"_{side}" if side in ("left", "right") else ""
     return FileResponse(
-        overlay_path, media_type="video/mp4", filename=f"{job_id}_overlay.mp4",
+        overlay_path, media_type="video/mp4",
+        filename=f"{job_id}{suffix}_overlay.mp4",
     )
 
 

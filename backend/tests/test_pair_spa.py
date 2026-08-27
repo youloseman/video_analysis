@@ -137,9 +137,30 @@ class TestThePanel:
         assert "knee_at_bdc" not in refusal
         assert "asymmetry" not in refusal
 
-    def test_a_refusal_says_the_score_belongs_to_one_side(self, html):
+    def test_a_refusal_says_which_clip_every_number_came_from(self, html):
+        """Not just "the score": when the merge is refused, the whole metric
+        table, the ranges and the saddle verdict are one clip's. A rider who
+        filmed two sides otherwise reads them as both."""
         fn = _fn(html, "renderBilateral")
-        assert "one side" in fn
+        assert "-side clip alone" in fn
+        assert "b.metrics_side" in fn
+
+    def test_a_loaded_side_card_shows_its_own_frame(self, html):
+        """One photo for a two-sided session looks half-done -- reported."""
+        fn = _fn(html, "renderBilateral")
+        assert "bil-shot" in fn
+        assert "keyframe_base64" in fn
+
+    def test_both_overlays_are_offered(self, html):
+        fn = _fn(html, "renderBilateral")
+        assert "b.overlays" in fn
+        assert "withJobToken" in fn
+        assert "download" in fn
+
+    def test_a_merged_card_labels_the_raw_reading_as_a_separate_claim(self, html):
+        fn = _fn(html, "renderBilateral")
+        assert "measured alone" in fn
+        assert "c.merged" in fn
 
     def test_every_refusal_reason_the_server_can_emit_has_words(self, html):
         """A reason code with no copy renders as a blank explanation, which

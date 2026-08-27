@@ -39,17 +39,44 @@ def _side_of(result: dict[str, Any]) -> str | None:
     return side if side in ("left", "right") else None
 
 
-def _side_card(result: dict[str, Any]) -> dict[str, Any]:
-    """What the session shows ABOUT one clip: no score, on purpose."""
+def _warnings_of(result: dict[str, Any]) -> list[str]:
+    """Where the analysis actually keeps its quality warnings.
+
+    Inside ``sport_specific_metrics`` -- see runner.py, which writes
+    ``summary["quality_warnings"]``, and the SPA, which reads
+    ``s.quality_warnings`` to fill the amber banner. A top-level key here
+    looks right and is never rendered; the first version of this module wrote
+    one and the warnings silently went nowhere.
+    """
+    summary = result.get("sport_specific_metrics") or {}
+    return list(summary.get("quality_warnings") or result.get("quality_warnings") or [])
+
+
+def _side_card(
+    result: dict[str, Any], merged_knee: float | None = None,
+) -> dict[str, Any]:
+    """What the session shows ABOUT one clip: no score, on purpose.
+
+    ``knee_at_bdc`` is the value AFTER the merge when there is one -- the leg
+    re-measured against the shared body. Showing each clip's raw reading here
+    instead was the first version's mistake and it undid the whole feature:
+    the rider saw 153 and 143 side by side under a merged verdict and read the
+    old contradiction back into it. The raw number is kept as
+    ``knee_at_bdc_alone``, which is a different claim and is labelled as one.
+    """
     summary = result.get("sport_specific_metrics") or {}
     geom = result.get("bilateral_geometry") or {}
+    raw = summary.get("knee_at_bdc")
     return {
         "camera_side": _side_of(result),
-        "knee_at_bdc": summary.get("knee_at_bdc"),
+        "knee_at_bdc": merged_knee if merged_knee is not None else raw,
+        "knee_at_bdc_alone": raw,
+        "merged": merged_knee is not None,
         "trunk_angle_avg": summary.get("trunk_angle_avg"),
         "frames_analyzed": result.get("frames_analyzed"),
         "revolutions": geom.get("revolutions"),
-        "quality_warnings": (result.get("quality_warnings") or [])[:3],
+        "quality_warnings": _warnings_of(result)[:3],
+        "keyframe_base64": result.get("keyframe_base64"),
         "has_keyframe": bool(result.get("keyframe_base64")),
     }
 
@@ -120,20 +147,21 @@ def build_pair_result(
     )
 
     # Both clips' warnings, deduplicated: a problem with either one is a
-    # problem with the session.
+    # problem with the session. Written where the renderer looks for them --
+    # inside the merged summary, not at the top level.
     seen, warnings = set(), []
     for r in (left, right):
-        for w in r.get("quality_warnings") or []:
+        for w in _warnings_of(r):
             if w not in seen:
                 seen.add(w)
                 warnings.append(w)
-    if warnings:
-        result["quality_warnings"] = warnings
+    merged_summary["quality_warnings"] = warnings
 
     result["bilateral"] = {
         **fit.as_dict(),
         "agreement": agreement,
-        "sides": [_side_card(left), _side_card(right)],
+        "sides": [_side_card(left, fit.per_side.get("left")),
+                  _side_card(right, fit.per_side.get("right"))],
         "base_side": _side_of(base),
     }
     result["keyframe_base64"] = base.get("keyframe_base64")
@@ -175,7 +203,23 @@ def _refusal(
         "scale_disagreement_pct": (
             None if fit is None else fit.as_dict().get("scale_disagreement_pct")
         ),
+        # Which clip the numbers above this panel actually came from. Without
+        # it the metric table reads as the session's, and a rider who filmed
+        # two sides believes he is looking at both.
+        "metrics_side": _side_of(base),
     }
+    # A refusal has to reach the loud channel, not only the panel underneath.
+    # It changes what every number on the page MEANS -- from "your fit" to
+    # "one side of your fit" -- and that is not a footnote.
+    side = _side_of(base) or "one"
+    summary = dict(result.get("sport_specific_metrics") or {})
+    summary["quality_warnings"] = [
+        f"The two clips could not be merged into one verdict, so every number "
+        f"on this page was measured from the {side}-side clip alone. Both "
+        f"clips were analysed and both are shown below.",
+        *_warnings_of(base),
+    ]
+    result["sport_specific_metrics"] = summary
     logger.info("BILATERAL_SESSION", combined=False, reason=reason)
     return result
 

@@ -41,7 +41,7 @@ def _result(side, knee, score, *, geom, trunk=68.0, frames=560, warn=None):
         "bilateral_geometry": geom,
         "angle_statistics": {"knee_angle": {"mean": knee}},
         "detected_issues": [],
-        "quality_warnings": list(warn or []),
+
         "ai_recommendations": {"report": f"about the {side} leg only"},
         "sport_specific_metrics": {
             "camera_side": side, "near_side": side,
@@ -51,6 +51,8 @@ def _result(side, knee, score, *, geom, trunk=68.0, frames=560, warn=None):
             "shoulder_angle_avg": 88.0, "pelvic_ratio": 0.37,
             "saddle_height_assessment": "optimal", "frames_analyzed": frames,
             "bilateral_geometry": geom,
+            # Where runner.py actually writes them.
+            "quality_warnings": list(warn or []),
         },
     }
 
@@ -121,7 +123,10 @@ class TestAGoodPair:
         left = _result("left", 154.7, 89, geom=GEOM_LEFT, warn=["left is dim"])
         right = _result("right", 145.8, 100, geom=GEOM_RIGHT, warn=["drive side"])
         out = build_pair_result(left, right, "road_hoods")
-        assert set(out["quality_warnings"]) == {"left is dim", "drive side"}
+        # Read from where runner.py writes them and the SPA reads them --
+        # a top-level key here looks right and renders nowhere.
+        warns = out["sport_specific_metrics"]["quality_warnings"]
+        assert set(warns) == {"left is dim", "drive side"}
 
     def test_argument_order_does_not_matter(self):
         a = build_pair_result(LEFT, RIGHT, "road_hoods")
@@ -129,6 +134,89 @@ class TestAGoodPair:
         assert a["technique_score"] == b["technique_score"]
         assert a["sport_specific_metrics"]["knee_at_bdc"] == pytest.approx(
             b["sport_specific_metrics"]["knee_at_bdc"])
+
+
+class TestWhatEachSideCardShows:
+    """Reported from production, 2026-08-27.
+
+    The rider ran a session and saw "LEFT SIDE 153.2, RIGHT SIDE 143" in the
+    panel and read it as the old contradiction come back. It was: the cards
+    were printing each clip's RAW reading -- the numbers the merge exists to
+    reconcile -- while the verdict above them was the merged one. Whatever
+    else the panel does, these two numbers are what the eye lands on.
+    """
+
+    def test_a_merged_card_shows_the_reconciled_leg(self):
+        out = build_pair_result(LEFT, RIGHT, "road_hoods")
+        by_side = {c["camera_side"]: c for c in out["bilateral"]["sides"]}
+        per_side = out["bilateral"]["per_side"]
+        assert by_side["left"]["knee_at_bdc"] == pytest.approx(per_side["left"], abs=0.1)
+        assert by_side["right"]["knee_at_bdc"] == pytest.approx(per_side["right"], abs=0.1)
+
+    def test_the_two_cards_no_longer_contradict_each_other(self):
+        out = build_pair_result(LEFT, RIGHT, "road_hoods")
+        vals = [c["knee_at_bdc"] for c in out["bilateral"]["sides"]]
+        assert abs(vals[0] - vals[1]) < 2.0, (
+            f"cards still {abs(vals[0]-vals[1]):.1f} deg apart -- this is the "
+            "bug the rider reported"
+        )
+
+    def test_the_raw_reading_survives_as_a_separate_claim(self):
+        """Kept, but as "measured alone", never as the leg's answer."""
+        out = build_pair_result(LEFT, RIGHT, "road_hoods")
+        by_side = {c["camera_side"]: c for c in out["bilateral"]["sides"]}
+        assert by_side["left"]["knee_at_bdc_alone"] == pytest.approx(154.7)
+        assert by_side["right"]["knee_at_bdc_alone"] == pytest.approx(145.8)
+        assert all(c["merged"] for c in out["bilateral"]["sides"])
+
+    def test_an_unmerged_card_is_not_dressed_up_as_merged(self):
+        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT)
+        out = build_pair_result(LEFT, bad, "road_hoods")
+        for card in out["bilateral"]["sides"]:
+            assert card["merged"] is False
+            assert card["knee_at_bdc"] == card["knee_at_bdc_alone"]
+
+    def test_both_clips_hand_over_their_keyframe(self):
+        """A two-sided session that shows one photo looks half-done."""
+        out = build_pair_result(LEFT, RIGHT, "road_hoods")
+        frames = [c["keyframe_base64"] for c in out["bilateral"]["sides"]]
+        assert all(frames)
+        assert frames[0] != frames[1]
+
+
+class TestARefusalIsLoud:
+    """A refusal changes what every number on the page means -- from "your
+    fit" to "one side of your fit". That cannot live only in a panel below
+    the metrics."""
+
+    def _refused(self):
+        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT)
+        return build_pair_result(LEFT, bad, "road_hoods")
+
+    def test_it_reaches_the_quality_warnings(self):
+        out = self._refused()
+        warns = out["sport_specific_metrics"]["quality_warnings"]
+        assert any("could not be merged" in w for w in warns)
+
+    def test_it_names_which_clip_the_numbers_came_from(self):
+        out = self._refused()
+        assert out["bilateral"]["metrics_side"] in ("left", "right")
+        side = out["bilateral"]["metrics_side"]
+        warns = out["sport_specific_metrics"]["quality_warnings"]
+        assert any(f"{side}-side clip alone" in w for w in warns)
+
+    def test_the_clips_own_warnings_are_not_displaced_by_it(self):
+        left = _result("left", 154.7, 89, geom=GEOM_LEFT, warn=["left is dim"])
+        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT, warn=["drive side"])
+        out = build_pair_result(left, bad, "road_hoods")
+        warns = out["sport_specific_metrics"]["quality_warnings"]
+        assert any("left is dim" in w for w in warns)
+
+    def test_a_merged_session_carries_no_such_warning(self):
+        out = build_pair_result(LEFT, RIGHT, "road_hoods")
+        warns = out["sport_specific_metrics"].get("quality_warnings") or []
+        assert not any("could not be merged" in w for w in warns)
+        assert "metrics_side" not in out["bilateral"]
 
 
 class TestAPairItCannotMerge:

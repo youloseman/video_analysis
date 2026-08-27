@@ -488,6 +488,14 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .bil-side{flex:1 1 160px;border:1px solid var(--c-line);border-radius:var(--radius);padding:10px 12px;background:#fff}
 .bil-side span{display:block;color:var(--c-ink-soft);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .bil-side b{font-size:18px}
+.bil-side-alone{display:block;color:var(--c-ink-soft);font-size:12px;margin-top:2px}
+.bil-shot{width:100%;aspect-ratio:16/9;height:auto;object-fit:contain;border-radius:var(--radius-btn);
+  background:var(--c-media-bg);margin-bottom:8px}
+.bil-vids{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.bil-vid video{width:100%;border-radius:var(--radius-btn);background:var(--c-media-bg)}
+.bil-vid-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 0}
+.bil-vid-h span{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--c-ink-soft)}
+@media(max-width:720px){.bil-vids{grid-template-columns:1fr}}
 .bil-note{color:var(--c-ink-soft);font-size:13px;line-height:1.55;margin:8px 0 0}
 .bil-flag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
 .bil-ok{background:#e7f4ea;color:#256b3a}.bil-warn{background:#fdf0e0;color:#8a5a1a}
@@ -8621,11 +8629,32 @@ function renderBilateral(b){
   const host=$('#bilateralBlock'); if(!host) return;
   if(!b){ host.innerHTML=''; return; }
   const sides=(b.sides||[]).slice().sort(a=>a.camera_side==='left'?-1:1);
-  const cards=sides.map(c=>`<div class="bil-side">
-      <span>${esc((c.camera_side||'').replace(/^./,m=>m.toUpperCase()))} side</span>
+  // Each clip's own annotated frame sits on its card: a two-sided session
+  // that shows one photo looks like only half of it happened.
+  const cards=sides.map(c=>{
+    const name=esc((c.camera_side||'').replace(/^./,m=>m.toUpperCase()));
+    const alone = (c.merged && c.knee_at_bdc_alone!=null)
+      ? `<small class="bil-side-alone">measured alone: ${Math.round(c.knee_at_bdc_alone*10)/10}\u00b0</small>` : '';
+    return `<div class="bil-side">
+      ${c.keyframe_base64?`<img class="bil-shot" src="${c.keyframe_base64}" alt="${name} side annotated frame">`:''}
+      <span>${name} side</span>
       <b>${c.knee_at_bdc==null?'—':Math.round(c.knee_at_bdc*10)/10+'\u00b0'}</b>
+      ${alone}
       <small class="bil-note" style="margin:2px 0 0">${c.revolutions==null?'':c.revolutions+' pedal revolutions'}</small>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+  // Both overlays, both downloadable. The rider filmed two clips.
+  const ovs=b.overlays||{};
+  const vids=Object.keys(ovs).length ? `<div class="bil-vids">${
+    ['left','right'].filter(sd=>ovs[sd]).map(sd=>{
+      const url=withJobToken(ovs[sd], state.jobId);
+      return `<div class="bil-vid">
+        <video src="${url}" controls playsinline aria-label="${sd} side annotated overlay"></video>
+        <div class="bil-vid-h"><span>${sd} side</span>
+          <a class="btn btn-ghost btn-sm" href="${url}" download>
+            <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> .mp4</a></div>
+      </div>`;
+    }).join('')}</div>` : '';
 
   if(!b.combined){
     host.innerHTML=`<div class="bil">
@@ -8634,7 +8663,8 @@ function renderBilateral(b){
       <p class="bil-note" style="margin-top:0">${esc(BIL_REASONS[b.reason]||'These two clips could not be merged.')}
       ${b.scale_disagreement_pct!=null?` (They disagree by <b>${b.scale_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
       <div class="bil-sides">${cards}</div>
-      <p class="bil-note">Both clips were analysed and both are real; the score above belongs to <b>one side</b>, not to the pair. We are withholding the merged verdict, not the measurements — a combined number we can\u2019t stand behind is worse than none.</p>
+      <p class="bil-note">Both clips were analysed and both are real, but <b>every number above this panel — the score, the ranges, the saddle verdict — was measured from the ${esc(b.metrics_side||'one')}-side clip alone</b>, not from the pair. We are withholding the merged verdict, not the measurements: a combined number we can\u2019t stand behind is worse than none.</p>
+      ${vids}
     </div>`;
     return;
   }
@@ -8655,6 +8685,7 @@ function renderBilateral(b){
         ? 'That is larger than this session\u2019s own measurement error, so it is worth a look — cleat setup, saddle position, or a leg-length difference, with a fitter.'
         : 'Below what this session can resolve, so treat your legs as even. Differences this size are the pose model, not you.'}</p>
     <p class="bil-note">The \u00b1 is not decoration: the hip joint sits inside the pelvis where no camera can see it, and near full extension a 1% error in leg length moves this angle about 4\u00b0. Merging both sides removes the disagreement between them; it cannot remove what they get wrong together.</p>
+    ${vids}
   </div>`;
 }
 /* Compare keyframe: held (or absent) frames render straight; a cloud frame
