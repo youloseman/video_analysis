@@ -7285,14 +7285,24 @@ $('#history').addEventListener('keydown',e=>{
 /* ============================================================
    Progress / trends — charts of key metrics over time (this device)
    ============================================================ */
+/* `sideFloor`: how big a LEFT-vs-RIGHT difference has to be before it means
+   anything. Two side-view clips are filmed from opposite sides, and the pose
+   model rebuilds the body separately for each -- measurably so: re-running
+   detection on the same clip with the pixels mirrored (which cannot change a
+   real angle) moves knee-at-bottom by 1.4-3.5 deg and the hip landmark by
+   3-7 cm, and two clips of one unchanged fit put the hip 4 cm apart while
+   agreeing on hip-to-ankle distance to 0.1%. Near full extension the knee
+   angle amplifies ~4 deg per 1% of leg-length error, so those centimetres
+   land as ~7 deg. Anything under the floor is the method, not the athlete.
+   Metrics with no floor are not compared across sides at all. */
 const TREND_METRICS={
   bike:[
     {key:'score',label:'Technique score',unit:'',hi:true},
-    {key:'knee',label:'Knee angle',unit:'°'},
-    {key:'hip',label:'Hip angle',unit:'°'},
-    {key:'trunk',label:'Trunk angle',unit:'°'},
-    {key:'elbow',label:'Elbow angle',unit:'°'},
-    {key:'shoulder',label:'Shoulder angle',unit:'°'},
+    {key:'knee',label:'Knee angle',unit:'°',sideFloor:12},
+    {key:'hip',label:'Hip angle',unit:'°',sideFloor:12},
+    {key:'trunk',label:'Trunk angle',unit:'°',sideFloor:8},
+    {key:'elbow',label:'Elbow angle',unit:'°',sideFloor:12},
+    {key:'shoulder',label:'Shoulder angle',unit:'°',sideFloor:12},
     {key:'pelvic_ratio',label:'Pelvic ratio',unit:'×'},
     {key:'knee_open_speed',label:'Knee opening speed',unit:'°/s'},
     {key:'knee_close_speed',label:'Knee closing speed',unit:'°/s'},
@@ -8289,19 +8299,28 @@ function renderCmpMode(){
   }));
 }
 /* Asymmetry row: neutral delta -- a left/right difference is a finding, not
-   progress or regression. Big gaps get flagged as notable. */
-function cmpSideRow(label,unit,a,b){
+   progress or regression.
+
+   The delta is only CALLED anything once it clears `floor`, the measured
+   cross-view error of the metric (see TREND_METRICS.sideFloor). Below the
+   floor the row says so in words rather than showing a number that reads
+   like a result: the first version of this table flagged anything past 5 deg
+   as "notable", which would have reported this rider's 7 deg knee difference
+   -- reproduced on two separate days, and shown to be the pose model, not
+   his legs -- as a real asymmetry worth taking to a fitter.
+
+   A metric with no floor declared is not comparable across sides at all, so
+   it prints its two values and no verdict. */
+function cmpSideRow(label,unit,a,b,floor){
   const fmt=v=> v==null?'—':(Math.round(v*100)/100)+(unit||'');
-  if(a==null||b==null){
-    return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
-      <div class="cmp-a">${fmt(a)}</div><div class="cmp-d"><span class="tdelta sta">—</span></div><div class="cmp-b">${fmt(b)}</div></div>`;
-  }
-  const d=b-a, notable=Math.abs(d)>=5;
-  const dstr=(d>0?'+':'')+(Math.round(d*100)/100)+(unit||'');
-  return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
-    <div class="cmp-a">${fmt(a)}</div>
-    <div class="cmp-d"><span class="tdelta ${notable?'reg':'sta'}">${dstr}${notable?'<span class="cmp-trend"> · notable</span>':''}</span></div>
-    <div class="cmp-b">${fmt(b)}</div></div>`;
+  const shell=(mid)=>`<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
+    <div class="cmp-a">${fmt(a)}</div><div class="cmp-d">${mid}</div><div class="cmp-b">${fmt(b)}</div></div>`;
+  if(a==null||b==null) return shell('<span class="tdelta sta">—</span>');
+  const d=b-a, dstr=(d>0?'+':'')+(Math.round(d*100)/100)+(unit||'');
+  if(!floor) return shell(`<span class="tdelta sta">${dstr}</span>`);
+  const notable=Math.abs(d)>=floor;
+  return shell(`<span class="tdelta ${notable?'reg':'sta'}">${dstr}<span class="cmp-trend"> · ${
+    notable?'bigger than we can explain by measurement':'within measurement error'}</span></span>`);
 }
 function renderSetupPickers(){
   const setups=cmpProfiles(state.cmp.sport);
@@ -8439,7 +8458,7 @@ function renderCompare(){
     </div>`).join('')}
   </div>`;
   const rowFn = sidesMode
-    ? (m=>cmpSideRow(m.label,m.unit,at[m.key],bt[m.key]))
+    ? (m=>cmpSideRow(m.label,m.unit,at[m.key],bt[m.key],m.sideFloor))
     : (m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi));
   const numRows=TREND_METRICS[sport].map(rowFn).join('');
   const catRows=sidesMode?'':(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key])).join('');
@@ -8452,12 +8471,17 @@ function renderCompare(){
      </div>${numRows}${catRows}</div>`
     + (setups?`<p class="hint" style="text-align:left;margin:16px 0 0">Averaged across everything filmed on each setup. A difference here is
        the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'')
-    + (sidesMode?`<p class="hint" style="text-align:left;margin:16px 0 0">Each side-view clip measures the leg nearest the camera, so these two
-       clips together are your two legs. A few degrees of left–right difference is normal; a
-       <b>notable</b> knee gap at the bottom of the stroke usually means one leg reaches more
-       than the other — worth checking saddle height, cleat setup, or a leg-length difference
-       with a fitter. One caveat: a clip filmed from the drive side (chainring toward the
-       camera) can read the knee a few degrees high there.</p>`:'');
+    + (sidesMode?`<p class="hint" style="text-align:left;margin:16px 0 0">Each side-view clip measures the leg nearest the camera, so these two clips
+       together are your two legs — but they are also two separate readings of your body, taken
+       from opposite sides, and the pose model rebuilds you from scratch in each one. We measured
+       how much that alone moves the numbers: re-running the same clip with the pixels mirrored,
+       which cannot change a real angle, still shifts the knee at the bottom of the stroke by up
+       to 3°, and two clips of one unchanged bike place the hip landmark 4 cm apart.
+       Because a nearly straight leg turns a 1% length error into about 4°, ordinary
+       differences of this size say nothing about your legs. So a gap is only called out here
+       once it is <b>bigger than we can explain by measurement</b>. Below that line, treat the
+       two sides as equal — and if you want a real asymmetry answer, that is a fitter with
+       hands on you, not a phone.</p>`:'');
   if(!setups&&!sidesMode){ observeKeyframes($('#cmpBody')); wireBaSlider(); }
   // The AI read is written to explain progress between two runs of the same
   // thing. Pointed at two bikes -- or at two LEGS -- it would confidently
