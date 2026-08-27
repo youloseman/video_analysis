@@ -41,14 +41,50 @@ class TestTheUploadForm:
     def test_both_sides_is_offered(self, html):
         assert 'data-side="both"' in html
 
-    def test_a_second_drop_zone_exists(self, html):
+    def test_there_are_two_matching_clip_cards(self, html):
+        """Two clips only read as one session if BOTH are visible as clips.
+
+        The first version showed the second clip as a bare filename row above
+        the first clip's big preview, and it looked like one clip had been
+        added twice -- which is exactly what the rider reported.
+        """
         assert 'id="pairSlot"' in html
         assert 'id="fileB"' in html
-        assert 'id="dropB"' in html
+        assert 'id="pairCardA"' in html
+        assert 'id="pairCardB"' in html
+
+    def test_each_card_says_which_side_it_is(self, html):
+        i = html.index("const PAIR_SLOTS=[")
+        block = html[i:html.index("];", i)]
+        assert "'Left side'" in block
+        assert "'Right side'" in block
+
+    def test_a_loaded_card_shows_a_frame_not_just_a_filename(self, html):
+        fn = _fn(html, "renderPairCards")
+        assert "paircard-thumb" in fn
+        assert "<video" in fn
+
+    def test_the_pair_cards_replace_the_single_clip_uploader(self, html):
+        """Otherwise a third, unlabelled slot sits on screen beside them."""
+        fn = _fn(html, "syncPairSlot")
+        for el in ("#drop", "#filepreview", "#camRow"):
+            assert el in fn
+        assert "pairmode-hide" in fn
+
+    def test_hiding_uses_a_class_only_this_code_owns(self, html):
+        """`hidden` is managed by the drop zone, the preview and the recorder
+        for their own reasons; borrowing it would leave one of them wrongly
+        hidden after switching back out of pair mode."""
+        assert ".pairmode-hide{display:none!important}" in html
 
     def test_the_second_slot_is_hidden_until_asked_for(self, html):
         i = html.index('id="pairSlot"')
         assert "hidden" in html[i - 120:i]
+
+    def test_thumbnail_urls_are_revoked(self, html):
+        """One object URL per clip, not one per repaint."""
+        assert "revokeObjectURL" in _fn(html, "pairRevoke")
+        assert "pairRevoke(slot)" in _fn(html, "pairThumb")
 
     def test_the_pair_mode_is_bike_video_only(self, html):
         """A running side view already sees both legs, and a photo has no

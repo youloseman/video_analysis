@@ -456,20 +456,39 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
 .cmp-pick{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
 .cmp-pick-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-soft)}
-.drop-sm{padding:18px 16px;gap:6px;min-height:0}
-.pairslot{margin-top:12px}
-.pairfile{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff}
-.pairfile small{color:var(--c-muted);margin-right:auto}
-.bil{margin:18px 0 0;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;background:var(--c-cream,#fff)}
+.pairslot{margin-bottom:20px}
+.pairmode-hide{display:none!important}
+.pairgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.paircard{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel);
+  padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.paircard.empty{border-style:dashed;background:transparent;cursor:pointer}
+.paircard.drag{border-color:var(--c-blue-dk);background:var(--c-panel-blue)}
+.paircard-tag{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--c-ink-soft)}
+.paircard-tag i{width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
+.paircard.filled .paircard-tag{color:var(--c-blue-dk)}
+.paircard-thumb{width:100%;aspect-ratio:16/9;height:auto;object-fit:contain;
+  border-radius:var(--radius-btn);background:var(--c-media-bg)}
+.paircard-meta{min-width:0}
+.paircard-meta .fname{font-weight:800;font-size:14px;overflow-wrap:anywhere}
+.paircard-meta .fsize{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft);margin-top:3px}
+.paircard-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;text-align:center;padding:30px 10px;color:var(--c-ink-soft)}
+.paircard-empty b{font-size:14px}
+.paircard-empty small{font-size:12px}
+.paircard .change{margin-top:auto;align-self:flex-start}
+.pairhint{text-align:left;margin:12px 0 0}
+@media(max-width:720px){.pairgrid{grid-template-columns:1fr}}
+.bil{margin:18px 0 0;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;background:var(--c-panel)}
 .bil-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .bil-h b{font-family:var(--f-head,inherit);font-size:16px}
 .bil-val{font-size:26px;font-weight:700;color:var(--c-navy)}
-.bil-val small{font-size:14px;font-weight:600;color:var(--c-muted)}
+.bil-val small{font-size:14px;font-weight:600;color:var(--c-ink-soft)}
 .bil-sides{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
 .bil-side{flex:1 1 160px;border:1px solid var(--c-line);border-radius:var(--radius);padding:10px 12px;background:#fff}
-.bil-side span{display:block;color:var(--c-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.bil-side span{display:block;color:var(--c-ink-soft);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .bil-side b{font-size:18px}
-.bil-note{color:var(--c-muted);font-size:13px;line-height:1.55;margin:8px 0 0}
+.bil-note{color:var(--c-ink-soft);font-size:13px;line-height:1.55;margin:8px 0 0}
 .bil-flag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
 .bil-ok{background:#e7f4ea;color:#256b3a}.bil-warn{background:#fdf0e0;color:#8a5a1a}
 .cmp-select{font-family:var(--f-body);font-size:14px;font-weight:600;color:var(--c-navy);padding:9px 12px;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;cursor:pointer}
@@ -1912,26 +1931,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
       </label>
 
-      <!-- Second clip, revealed only in "Both sides". A bike side view can
-           only measure the leg nearest the camera, so a complete fit needs
-           one clip per side; filmed separately they disagree by several
-           degrees at the bottom of the stroke, and only a merge against one
-           shared body settles it. -->
-      <div class="pairslot hidden" id="pairSlot">
-        <input type="file" id="fileB" class="visually-hidden" accept="video/*"
-               aria-labelledby="dropBTitle">
-        <label class="drop drop-sm" id="dropB" for="fileB">
-          <svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>
-          <b id="dropBTitle">Right-side clip — drop or click to browse</b>
-          <small>Same ride, same fit, filmed from the other side</small>
-        </label>
-        <div class="pairfile hidden" id="pairFile">
-          <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
-          <span id="fnameB"></span><small id="fsizeB"></small>
-          <button type="button" class="btn btn-ghost btn-sm" id="changeB">Change</button>
-        </div>
-      </div>
-
       <!-- Outside the <label> on purpose: a button inside it would also open
            the file picker. Hidden when the browser can't record (no camera
            API, no MediaRecorder) — a dead button teaches distrust, and the
@@ -1951,6 +1950,24 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           <div class="fsize" id="fsize">—</div>
           <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
         </div>
+      </div>
+
+      <!-- Both-sides session. Two clips only read as ONE thing if the rider
+           can see at a glance that both are loaded and which is which -- the
+           first version showed one big preview and a bare filename above it,
+           which looked like a single clip had been added twice. So: two
+           identical cards, each with its own frame, each labelled with the
+           side it was filmed from. In this mode these cards ARE the uploader;
+           the single-clip drop zone, preview and recorder are hidden so there
+           is never a third, unlabelled slot on screen. -->
+      <div class="pairslot hidden" id="pairSlot">
+        <input type="file" id="fileB" class="visually-hidden" accept="video/*"
+               aria-label="Right-side clip">
+        <div class="pairgrid">
+          <div class="paircard" id="pairCardA" data-slot="a"></div>
+          <div class="paircard" id="pairCardB" data-slot="b"></div>
+        </div>
+        <p class="hint pairhint" id="pairHint"></p>
       </div>
 
       <!-- Pre-flight notes on the selected clip (duration, orientation).
@@ -3152,6 +3169,7 @@ function setFile(f){
   fileInput.setAttribute('tabindex','-1'); // drop label is hidden; Change clip re-opens the picker
   $('#analyze').setAttribute('aria-disabled','false');
   state.longClip=false; state.duration=null; state.preflight=[];
+  if(isPair()) renderPairCards();
   renderPreflight();
   if(!photo) checkClip(vid);
   readyHint();
@@ -3308,23 +3326,65 @@ function syncPairSlot(){
   const slot=$('#pairSlot'); if(!slot) return;
   const on=isPair();
   slot.classList.toggle('hidden', !on);
-  const t=$('#dropTitle');
-  if(t) t.textContent = on ? 'Left-side clip — drag & drop or click to browse'
-                           : 'Drag & drop video or click to browse';
+  // The cards replace the single-clip uploader rather than sitting beside it.
+  // `pairmode-hide` is a class only this function touches, so whatever the
+  // drop zone / preview / recorder had decided about their own visibility is
+  // still there when the rider switches back.
+  [$('#drop'), $('#filepreview'), $('#camRow')].forEach(el=>
+    el && el.classList.toggle('pairmode-hide', on));
   const hint=$('#sideHint');
   if(hint) hint.innerHTML = on
     ? 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict — the only way to measure both legs, and it spends two clips of your plan.'
     : 'Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.';
-  if(!on){ state.fileB=null; renderFileB(); }
+  if(!on){ state.fileB=null; pairRevoke('b'); }
+  if(on) renderPairCards();
   readyHint();
 }
-function renderFileB(){
-  const box=$('#pairFile'), dz=$('#dropB'); if(!box||!dz) return;
-  if(state.fileB){
-    $('#fnameB').textContent=state.fileB.name;
-    $('#fsizeB').textContent=fmtSize(state.fileB.size);
-    box.classList.remove('hidden'); dz.classList.add('hidden');
-  } else { box.classList.add('hidden'); dz.classList.remove('hidden'); }
+/* Object URLs for the card thumbnails, kept per slot so replacing a clip
+   frees the old one instead of leaking it for the life of the page. */
+const pairUrls={a:null,b:null};
+function pairRevoke(slot){
+  if(pairUrls[slot]){ try{ URL.revokeObjectURL(pairUrls[slot].raw); }catch(e){} pairUrls[slot]=null; }
+}
+function pairThumb(slot,f){
+  const cur=pairUrls[slot];
+  if(cur && cur.f===f) return cur.raw+'#t=0.1';
+  pairRevoke(slot);
+  const raw=URL.createObjectURL(f);
+  pairUrls[slot]={f,raw};
+  // #t=0.1 asks the browser for a frame rather than a black poster.
+  return raw+'#t=0.1';
+}
+const PAIR_SLOTS=[
+  {slot:'a', id:'#pairCardA', label:'Left side', sub:'Your LEFT side faces the camera'},
+  {slot:'b', id:'#pairCardB', label:'Right side', sub:'Your RIGHT side faces the camera'},
+];
+function pairFileOf(slot){ return slot==='a' ? state.file : state.fileB; }
+function renderPairCards(){
+  PAIR_SLOTS.forEach(({slot,id,label,sub})=>{
+    const card=$(id); if(!card) return;
+    const f=pairFileOf(slot);
+    card.classList.toggle('filled', !!f);
+    card.classList.toggle('empty', !f);
+    const tag=`<span class="paircard-tag"><i></i>${label}</span>`;
+    card.innerHTML = f
+      ? `${tag}
+         <video class="paircard-thumb" muted playsinline preload="metadata"
+                src="${pairThumb(slot,f)}" aria-label="${label} clip preview"></video>
+         <div class="paircard-meta"><div class="fname">${esc(f.name)}</div>
+           <div class="fsize">${fmtSize(f.size)}</div></div>
+         <button type="button" class="btn btn-ghost btn-sm change" data-pick="${slot}">Change clip</button>`
+      : `${tag}
+         <div class="paircard-empty">
+           <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+           <b>Drop or click to browse</b><small>${sub}</small>
+         </div>`;
+  });
+  const n=(state.file?1:0)+(state.fileB?1:0);
+  const h=$('#pairHint');
+  if(h) h.innerHTML = n===2
+    ? '<b>Both clips loaded.</b> They\u2019ll be analysed together into one score, one saddle verdict and one left-vs-right answer.'
+    : `<b>${n} of 2 clips.</b> Add the ${state.file?'right':'left'}-side clip — a session needs one of each side.`;
 }
 function setFileB(f){
   if(!f) return;
@@ -3334,15 +3394,35 @@ function setFileB(f){
   if(f.size > MAX_MB*1048576){
     hintMsg(`The second clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB.`,'warn'); return;
   }
-  state.fileB=f; renderFileB(); readyHint();
+  state.fileB=f; renderPairCards(); readyHint();
 }
-(function wirePairDrop(){
-  const dz=$('#dropB'), inp=$('#fileB'); if(!dz||!inp) return;
-  ['dragover','dragenter'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag')}));
-  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag')}));
-  dz.addEventListener('drop',ev=>{ if(ev.dataTransfer.files[0]) setFileB(ev.dataTransfer.files[0]); });
-  inp.addEventListener('change',()=>{ if(inp.files[0]) setFileB(inp.files[0]); });
-  const ch=$('#changeB'); if(ch) ch.addEventListener('click',()=>inp.click());
+(function wirePairCards(){
+  const host=$('#pairSlot'); if(!host) return;
+  const inpB=$('#fileB');
+  host.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-pick]');
+    const card=e.target.closest('.paircard');
+    // A filled card only opens the picker via its own button -- clicking the
+    // frame to replace a clip is too easy to do by accident.
+    const slot = btn ? btn.dataset.pick
+                     : (card && card.classList.contains('empty') ? card.dataset.slot : null);
+    if(!slot) return;
+    (slot==='a' ? $('#file') : inpB).click();
+  });
+  ['dragover','dragenter'].forEach(ev=>host.addEventListener(ev,e=>{
+    const c=e.target.closest('.paircard'); if(!c) return;
+    e.preventDefault(); c.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(ev=>host.addEventListener(ev,e=>{
+    const c=e.target.closest('.paircard'); if(!c) return;
+    e.preventDefault(); c.classList.remove('drag');
+  }));
+  host.addEventListener('drop',e=>{
+    const c=e.target.closest('.paircard'); if(!c) return;
+    const f=e.dataTransfer.files[0]; if(!f) return;
+    if(c.dataset.slot==='a') setFile(f); else setFileB(f);
+  });
+  if(inpB) inpB.addEventListener('change',()=>{ if(inpB.files[0]) setFileB(inpB.files[0]); });
 })();
 function updatePosHint(){
   const el=$('#posHint'); if(!el) return;
@@ -6604,7 +6684,7 @@ function reset(keepFile=false){
     // Network-ish failure: keep the clip loaded so "Try again" is one click.
     drop.classList.remove('err');
   } else {
-    state.file=null; state.fileB=null;
+    state.file=null; state.fileB=null; pairRevoke('a'); pairRevoke('b');
     fileInput.value=''; fileInput.removeAttribute('tabindex');
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');
     const pi=$('#previewImg'); pi.classList.add('hidden'); pi.removeAttribute('src');
