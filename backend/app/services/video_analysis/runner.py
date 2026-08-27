@@ -30,6 +30,7 @@ from app.services.video_analysis.detectors import PoseDetector, build_detector
 from app.services.video_analysis.biomechanics.advanced_pipeline import (
     run_advanced_biomechanics,
 )
+from app.services.video_analysis.biomechanics.bilateral import summarize_side
 from app.services.video_analysis.biomechanics.confidence_scorer import (
     assess_tracking_stability,
     compute_analysis_confidence,
@@ -618,6 +619,24 @@ def run_analysis(
     quality_warnings = _build_quality_warnings(
         landmark_quality, sport_type, skeleton_jumps,
     )
+
+    # Reduce this clip to the geometry a two-sided merge needs, while the
+    # stabilized frames are still here. A side view measures one leg, so a
+    # complete fit takes two clips -- and merging them needs bone lengths and
+    # the crank circle, which no downstream stage keeps.
+    bilateral_geometry = None
+    if sport_type == "bike" and raw_frame_data:
+        _side = early_camera_side if early_camera_side in ("left", "right") else None
+        _w = raw_frame_data[0].get("frame_width")
+        _h = raw_frame_data[0].get("frame_height")
+        if _side and _w and _h:
+            _geom = summarize_side(raw_frame_data, _side, _w / _h)
+            bilateral_geometry = _geom.as_dict() if _geom else None
+            logger.info(
+                "BILATERAL_GEOMETRY", side=_side,
+                reduced=bilateral_geometry is not None,
+                revolutions=None if not _geom else _geom.revolutions,
+            )
 
     # Step 3: analyzer.
     is_bike = sport_type == "bike"
@@ -1238,6 +1257,11 @@ def run_analysis(
         "angle_statistics": angle_stats,
         "detected_issues": issues,
         "sport_specific_metrics": summary,
+        # Geometry for merging this clip with one of the other side. Cheap to
+        # carry, and it has to be produced HERE: it needs the stabilized frames
+        # and the crank circle, neither of which survives into the result.
+        # None on run clips and on bike clips too broken to reduce.
+        "bilateral_geometry": bilateral_geometry,
         # The bands the report grades against, and who decided them. Served
         # rather than duplicated in the client: a target the athlete cannot
         # trace is a target they have to take on faith, and the client's own
