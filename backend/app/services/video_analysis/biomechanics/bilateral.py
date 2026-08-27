@@ -209,6 +209,25 @@ class SideGeometry:
     def leg(self) -> float:
         return self.thigh + self.shin
 
+    @classmethod
+    def from_dict(cls, d: dict[str, Any] | None) -> SideGeometry | None:
+        """Rebuild from what a stored result carries. None when it can't be."""
+        if not isinstance(d, dict):
+            return None
+        try:
+            return cls(
+                camera_side=str(d["camera_side"]),
+                thigh=float(d["thigh"]), shin=float(d["shin"]),
+                torso=float(d.get("torso") or float("nan")),
+                chord_bdc=float(d["chord_bdc"]),
+                chord_sd=float(d.get("chord_sd") or 0.0),
+                revolutions=int(d.get("revolutions") or 0),
+                measured_frames=int(d.get("measured_frames") or 0),
+                crank_radius_px=float(d.get("crank_radius_px") or 0.0),
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "camera_side": self.camera_side,
@@ -356,6 +375,131 @@ class BilateralFit:
             "scale_disagreement_pct": _r(self.scale_disagreement_pct, 2),
             "leg_disagreement_pct": _r(self.leg_disagreement_pct, 2),
         }
+
+
+# Metrics that describe the rider as a whole rather than one leg, so two
+# clips are two readings of ONE quantity and averaging them is the point. The
+# trunk especially: it is a midline structure both cameras see, which is why
+# it doubles as this session's error gauge.
+_AVERAGED_METRICS = (
+    "knee_at_tdc",
+    "trunk_angle_avg",
+    "hip_angle_avg",
+    "elbow_angle_avg",
+    "shoulder_angle_avg",
+    "head_alignment_avg",
+    "forearm_tilt_avg",
+    "pelvic_ratio",
+)
+# How far apart two readings of a midline metric may sit before the pair
+# stops being two views of one ride. Chosen from the same measurements as the
+# compare table's floors: the 26 Aug pair agreed on the trunk to ~1 deg.
+_MIDLINE_AGREEMENT_LIMIT_DEG = 8.0
+
+
+def merge_summaries(
+    summary_left: dict[str, Any],
+    summary_right: dict[str, Any],
+    fit: BilateralFit,
+    cycling_position: str | None = None,
+) -> dict[str, Any]:
+    """One set of metrics for the rider, from two one-legged clips.
+
+    Built on the side with more revolutions behind it so every key the scorer
+    and the plan builder expect is present and self-consistent, then the
+    quantities two clips genuinely measure twice are replaced by their merged
+    values. Knee-at-bottom comes from ``combine_sides`` rather than an average
+    -- that is the metric the shared body exists to fix.
+
+    The per-side ``{side}_knee_at_bdc`` keys are overwritten too, deliberately:
+    ``score_cycling`` reads those FIRST and would otherwise score the merged
+    ride on one clip's unmerged leg, which is the contradiction this whole
+    feature exists to end.
+    """
+    if not fit.combined:
+        raise ValueError("merge_summaries needs a combined fit")
+    base_side = summary_left if _rev_count(summary_left) >= _rev_count(summary_right) \
+        else summary_right
+    other = summary_right if base_side is summary_left else summary_left
+    merged = dict(base_side)
+
+    for key in _AVERAGED_METRICS:
+        a, b = base_side.get(key), other.get(key)
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            merged[key] = (float(a) + float(b)) / 2.0
+        elif isinstance(b, (int, float)) and not isinstance(a, (int, float)):
+            merged[key] = float(b)
+
+    knee = fit.knee_at_bdc
+    merged["knee_at_bdc"] = knee
+    for side in ("left", "right"):
+        if f"{side}_knee_at_bdc" in merged or side in fit.per_side:
+            merged[f"{side}_knee_at_bdc"] = fit.per_side.get(side, knee)
+
+    # The saddle verdict is derived from the knee, so it has to be re-derived
+    # from the merged one -- carrying the base clip's verdict forward would
+    # reintroduce exactly the disagreement we just resolved.
+    merged["saddle_height_assessment"] = _assess_saddle(knee, cycling_position)
+
+    merged["bilateral"] = fit.as_dict()
+    merged["camera_side"] = "both"
+    merged["camera_side_label"] = "Both sides"
+    merged["frames_analyzed"] = (
+        int(base_side.get("frames_analyzed") or 0)
+        + int(other.get("frames_analyzed") or 0)
+    )
+    return merged
+
+
+def _rev_count(summary: dict[str, Any]) -> int:
+    geom = summary.get("bilateral_geometry") or {}
+    return int(geom.get("revolutions") or 0)
+
+
+def _assess_saddle(knee: float | None, cycling_position: str | None) -> str:
+    """Saddle verdict for a merged knee angle, on the position's own band."""
+    if knee is None:
+        return "insufficient_data"
+    from app.services.video_analysis.biomechanics.cycling_positions import (
+        get_cycling_reference,
+    )
+    opt_min, opt_max = get_cycling_reference(cycling_position)["knee_at_bdc"]
+    if knee < opt_min - 5:
+        return "too_low"
+    if knee > opt_max + 5:
+        return "too_high"
+    if opt_min <= knee <= opt_max:
+        return "optimal"
+    return "acceptable"
+
+
+def midline_agreement(
+    summary_left: dict[str, Any], summary_right: dict[str, Any],
+) -> dict[str, Any]:
+    """How far apart the two clips are on things that cannot differ by side.
+
+    The trunk, the hip, the shoulder: one body seen from two sides. Whatever
+    gap shows up here was produced by the method, not the rider, so it is the
+    honest confidence figure for everything else in the session -- measured on
+    this rider, on this day, instead of assumed from a constant.
+    """
+    gaps: dict[str, float] = {}
+    for key in ("trunk_angle_avg", "hip_angle_avg", "shoulder_angle_avg",
+                "elbow_angle_avg"):
+        a, b = summary_left.get(key), summary_right.get(key)
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            gaps[key] = abs(float(a) - float(b))
+    if not gaps:
+        return {"agree": None, "gaps": {}, "worst": None, "worst_metric": None}
+    worst_metric = max(gaps, key=lambda k: gaps[k])
+    worst = gaps[worst_metric]
+    return {
+        "agree": worst <= _MIDLINE_AGREEMENT_LIMIT_DEG,
+        "gaps": {k: round(v, 1) for k, v in gaps.items()},
+        "worst": round(worst, 1),
+        "worst_metric": worst_metric,
+        "limit_deg": _MIDLINE_AGREEMENT_LIMIT_DEG,
+    }
 
 
 def _pct_gap(a: float, b: float) -> float:

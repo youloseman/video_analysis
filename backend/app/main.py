@@ -109,6 +109,7 @@ from app.services.usage_limits import (
     next_reset,
     record_usage,
 )
+from app.services.video_analysis.bilateral_session import build_pair_result
 from app.services.video_analysis.runner import (
     DEFAULT_BIKE_POSITION,
     VALID_POSITIONS,
@@ -392,6 +393,11 @@ class JobStatus(BaseModel):
     overlay_url: str | None = None
     overlay_failed: bool = False
     result: dict[str, Any] | None = None
+    # A two-sided session analyses two clips in one job, so "processing" lasts
+    # about twice as long. Without a word for which clip is running, the wait
+    # looks identical to a hang -- and a silent spinner is exactly what makes
+    # people reload and lose the run.
+    stage: str | None = None
 
 
 # --------------------------------------------------------------------------
@@ -511,6 +517,99 @@ def _process_job(
         job["status"] = "failed"
         job["error"] = str(e)
     finally:
+        ANALYSIS_SLOTS.release()
+
+
+def _process_pair_job(
+    job_id: str, left_path: str, right_path: str, cycling_position: str | None,
+    overlay_left: str | None, overlay_right: str | None,
+    athlete_height_cm: int | None = None,
+    focus: str | None = None,
+    mobility_profile: dict[str, Any] | None = None,
+) -> None:
+    """Analyse both side clips of one ride and merge them into one verdict.
+
+    Runs inside a SINGLE analysis slot. Two clips take about twice as long, but
+    claiming two slots for one job would let a pair monopolise a small server
+    and could deadlock it outright when capacity is two.
+
+    Which clip is which is not detected here -- the rider put each file in a
+    labelled slot, so each analysis is told its side outright. That is the same
+    override the single-clip form offers, and on a pair it is free: nobody
+    uploads two clips without knowing which is which.
+
+    Per-clip coaching prose is deliberately NOT generated (``recommendations``
+    off). One report per leg is the contradiction this feature exists to end;
+    the merged result gets one report written about the merged numbers, which
+    is also one Gemini call instead of two.
+    """
+    job = JOBS.get(job_id)
+    if job is None:
+        return
+    if not ANALYSIS_SLOTS.acquire(timeout=SLOT_WAIT_TIMEOUT_S):
+        logger.warning("JOB_SLOT_TIMEOUT", job_id=job_id)
+        job["status"] = "failed"
+        job["error"] = (
+            "The server was busy for too long and gave up on this session. "
+            "Please try again in a few minutes."
+        )
+        return
+    job["status"] = "processing"
+    logger.info("PAIR_JOB_START", job_id=job_id, position=cycling_position)
+    try:
+        results = {}
+        for n, (side, path, overlay) in enumerate(
+            (("left", left_path, overlay_left), ("right", right_path, overlay_right)),
+            start=1,
+        ):
+            job["stage"] = f"Analyzing the {side}-side clip ({n} of 2)…"
+            results[side] = run_analysis(
+                path, "bike", cycling_position,
+                overlay_path=overlay,
+                recommendations=False,
+                kinogram=True,
+                athlete_height_cm=athlete_height_cm,
+                focus=focus,
+                mobility_profile=mobility_profile,
+                camera_side_override=side,
+            )
+            if results[side].get("status") != "completed":
+                job["status"] = "failed"
+                job["error"] = (
+                    f"The {side}-side clip could not be analysed: "
+                    f"{results[side].get('error_message') or 'unknown error'}"
+                )
+                return
+
+        job["stage"] = "Merging both sides…"
+        merged = build_pair_result(
+            results["left"], results["right"], cycling_position,
+            recommendations=True,
+        )
+        safe = _json_safe(merged)
+        # The session's overlay is the clip the merge was built on -- the one
+        # with more pedal revolutions behind it.
+        base_side = (safe.get("bilateral") or {}).get("base_side")
+        chosen = overlay_left if base_side == "left" else overlay_right
+        if chosen and Path(chosen).exists():
+            job["overlay_path"] = chosen
+            safe["overlay_video_path"] = f"/jobs/{job_id}/overlay"
+        job["result"] = safe
+        job["preview"] = False
+        job["status"] = "completed"
+        job["stage"] = None
+        logger.info(
+            "PAIR_JOB_DONE", job_id=job_id,
+            combined=(safe.get("bilateral") or {}).get("combined"),
+            score=safe.get("technique_score"),
+        )
+        _schedule_ready_mail(job_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("PAIR_JOB_FAILED", job_id=job_id, err=str(e))
+        job["status"] = "failed"
+        job["error"] = str(e)
+    finally:
+        job["stage"] = None
         ANALYSIS_SLOTS.release()
 
 
@@ -986,6 +1085,151 @@ async def analyze_endpoint(
     )
 
 
+@app.post("/analyze-pair", status_code=200)
+async def analyze_pair_endpoint(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    response: Response,
+    video_left: UploadFile = File(..., description="Clip filmed from the rider's LEFT side."),
+    video_right: UploadFile = File(..., description="Clip filmed from the rider's RIGHT side."),
+    position: str | None = Form(
+        None, description="Cycling position: road_hoods | road_drops | tt_aero "
+        "| triathlon | casual.",
+    ),
+    overlay: bool = Form(True, description="Also render the annotated overlay video."),
+    focus: str | None = Form(
+        None, description="Optional: what the athlete wants looked at closely.",
+    ),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> JobCreated:
+    """Two side clips of one ride, analysed together into a single verdict.
+
+    A side view can only measure the leg nearest the camera, so a complete
+    bike fit takes two clips -- and measured separately they contradict each
+    other by several degrees at the bottom of the stroke, where the metric is
+    most sensitive and the pose model least sure of the hip. Merging them
+    against one shared body ends that (see ``biomechanics.bilateral``).
+
+    Bike only: a running side view already sees both legs, so there is nothing
+    here for it to fix.
+
+    Spends two clips of quota, because it really is two analyses, and is
+    checked up front -- discovering the second one is unaffordable after the
+    first has run would burn compute and still owe the rider an answer.
+    """
+    ip = _client_ip(request)
+    backlog = len(pending_jobs())
+    if backlog >= settings.max_queued_analyses:
+        logger.info("BACKPRESSURE", backlog=backlog, ip=ip)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "We're at capacity right now — too many clips are being analyzed. "
+                "Please try again in a few minutes."
+            ),
+            headers={"Retry-After": "120"},
+        )
+
+    if is_free(user):
+        # The single-clip analysis is the free tier's product; this is the one
+        # that costs twice as much to run and answers a question one clip
+        # cannot. Refused here rather than downgraded silently.
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "Two-sided analysis is part of a paid plan. On the free plan "
+                "you can still analyze each side separately."
+            ),
+        )
+
+    await _enforce_quota(request, user, db, "clip")
+    _allowed, used, limit, window = await check_quota(db, user)
+    if limit - used < 2:
+        unit = "day" if window == "day" else "month"
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"A two-sided session uses two clips, and you have "
+                f"{max(0, limit - used)} left this {unit}. Analyze one side "
+                f"now, or wait for your limit to reset."
+            ),
+        )
+
+    cycling_position = position or DEFAULT_BIKE_POSITION
+    if cycling_position not in VALID_POSITIONS:
+        raise HTTPException(
+            400, f"invalid position; valid: {sorted(VALID_POSITIONS)}",
+        )
+    if not settings.model_path.exists():
+        raise HTTPException(
+            503, "pose model not installed on the server "
+            "(backend/models/pose_landmarker_heavy.task)",
+        )
+
+    job_id = uuid.uuid4().hex[:12]
+    job_dir = settings.uploads_dir / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    paths: dict[str, str] = {}
+    total_bytes = 0
+    for side, upload in (("left", video_left), ("right", video_right)):
+        suffix = Path(upload.filename or "").suffix.lower() or ".mp4"
+        if suffix not in ALLOWED_SUFFIXES:
+            raise HTTPException(
+                400, f"unsupported file type '{suffix}' for the {side} clip; "
+                f"allowed: {sorted(ALLOWED_SUFFIXES)}",
+            )
+        data = await upload.read()
+        if len(data) == 0:
+            raise HTTPException(400, f"the {side} clip is empty")
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                413,
+                f"the {side} clip is too large "
+                f"(> {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+            )
+        path = job_dir / f"{side}{suffix}"
+        path.write_bytes(data)
+        paths[side] = str(path)
+        total_bytes += len(data)
+
+    overlay_left = str(job_dir / "overlay_left.mp4") if overlay else None
+    overlay_right = str(job_dir / "overlay_right.mp4") if overlay else None
+    job_token = secrets.token_urlsafe(24)
+    JOBS[job_id] = {
+        "status": "queued",
+        "sport": "bike",
+        "cycling_position": cycling_position,
+        "result": None,
+        "error": None,
+        # Set to the clip the merge is built on once both have run.
+        "overlay_path": None,
+        "created_at": time.time(),
+        "job_dir": str(job_dir),
+        "token": job_token,
+        "owner_user_id": user.id,
+        "stage": "Queued — two clips to analyze…",
+        "pair": True,
+    }
+
+    background_tasks.add_task(
+        _process_pair_job, job_id, paths["left"], paths["right"],
+        cycling_position, overlay_left, overlay_right,
+        user.height_cm, _clean_focus(focus), _stored_mobility(user),
+    )
+    # Two analyses, two clips of quota.
+    await _record_and_headers(response, request, user, db, "video")
+    await _record_and_headers(response, request, user, db, "video")
+    logger.info(
+        "PAIR_JOB_QUEUED", job_id=job_id, bytes=total_bytes, ip=ip,
+        position=cycling_position,
+    )
+    return JobCreated(
+        job_id=job_id, status="queued",
+        poll_url=f"/jobs/{job_id}", job_token=job_token,
+    )
+
+
 @app.post("/analyze-photo", status_code=200)
 async def analyze_photo_endpoint(
     request: Request,
@@ -1127,6 +1371,7 @@ def job_status(
         overlay_url=f"/jobs/{job_id}/overlay" if overlay_ready else None,
         overlay_failed=overlay_failed,
         result=result,
+        stage=job.get("stage"),
     )
 
 

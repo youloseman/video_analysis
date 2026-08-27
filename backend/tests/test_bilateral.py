@@ -25,6 +25,8 @@ from app.services.video_analysis.biomechanics.bilateral import (
     combine_sides,
     knee_from_chord,
     leg_length_sensitivity_deg,
+    merge_summaries,
+    midline_agreement,
     summarize_side,
 )
 
@@ -218,6 +220,101 @@ class TestAsymmetryReporting:
         left = _side("left", 2.35, 2.30, 4.60, chord_sd=0.010)
         right = _side("right", 2.35, 2.30, 4.52, chord_sd=0.010)
         assert combine_sides(left, right).asymmetry_deg > 0
+
+
+class TestMergeSummaries:
+    """One set of metrics for the rider, from two one-legged clips."""
+
+    @staticmethod
+    def _summary(side, knee_bdc, *, trunk=68.0, revs=8, tdc=64.0):
+        return {
+            "camera_side": side, "near_side": side,
+            "camera_side_label": side.capitalize(),
+            "knee_at_bdc": knee_bdc, f"{side}_knee_at_bdc": knee_bdc,
+            "knee_at_tdc": tdc, "trunk_angle_avg": trunk,
+            "hip_angle_avg": 25.0, "elbow_angle_avg": 150.0,
+            "shoulder_angle_avg": 88.0, "pelvic_ratio": 0.37,
+            "saddle_height_assessment": "optimal", "frames_analyzed": 400,
+            "bilateral_geometry": {"revolutions": revs},
+        }
+
+    def _merged(self):
+        fit = combine_sides(LEFT_4149, RIGHT_4148)
+        return fit, merge_summaries(
+            self._summary("left", 154.7, revs=11),
+            self._summary("right", 145.8, revs=5),
+            fit, "road_hoods",
+        )
+
+    def test_the_scored_knee_is_the_merged_one(self):
+        fit, merged = self._merged()
+        assert merged["knee_at_bdc"] == pytest.approx(fit.knee_at_bdc)
+
+    def test_per_side_keys_are_overwritten_too(self):
+        """score_cycling reads `{near}_knee_at_bdc` BEFORE the plain key, so
+        leaving them alone would score the merged ride on one unmerged leg --
+        the exact contradiction this feature exists to end."""
+        fit, merged = self._merged()
+        assert merged["left_knee_at_bdc"] == pytest.approx(fit.per_side["left"])
+        assert merged["right_knee_at_bdc"] == pytest.approx(fit.per_side["right"])
+        assert merged["left_knee_at_bdc"] != 154.7
+
+    def test_the_saddle_verdict_is_re_derived_not_inherited(self):
+        # Both inputs claimed "optimal"; the merged 150 is above the road band
+        # (138-145) by more than the 5 deg slack, so it must not stay optimal.
+        _, merged = self._merged()
+        assert merged["saddle_height_assessment"] != "optimal"
+
+    def test_midline_metrics_are_averaged(self):
+        fit = combine_sides(LEFT_4149, RIGHT_4148)
+        merged = merge_summaries(
+            self._summary("left", 154.7, trunk=70.0, revs=11),
+            self._summary("right", 145.8, trunk=66.0, revs=5),
+            fit, "road_hoods",
+        )
+        assert merged["trunk_angle_avg"] == pytest.approx(68.0)
+
+    def test_it_builds_on_the_better_supported_clip(self):
+        fit = combine_sides(LEFT_4149, RIGHT_4148)
+        merged = merge_summaries(
+            self._summary("left", 154.7, revs=11),
+            self._summary("right", 145.8, revs=2),
+            fit, "road_hoods",
+        )
+        assert merged["frames_analyzed"] == 800
+        assert merged["camera_side"] == "both"
+
+    def test_a_refusal_cannot_be_merged(self):
+        refusal = combine_sides(LEFT_4088, RIGHT_4090)
+        with pytest.raises(ValueError):
+            merge_summaries(self._summary("left", 149.0),
+                            self._summary("right", 152.0), refusal, "road_hoods")
+
+    def test_the_merge_carries_its_own_provenance(self):
+        _, merged = self._merged()
+        assert merged["bilateral"]["combined"] is True
+        assert merged["bilateral"]["uncertainty_deg"] is not None
+
+
+class TestMidlineAgreement:
+    """Metrics that cannot differ by side become the session's error gauge."""
+
+    def test_close_clips_agree(self):
+        a = TestMergeSummaries._summary("left", 150.0, trunk=68.3)
+        b = TestMergeSummaries._summary("right", 143.0, trunk=67.3)
+        out = midline_agreement(a, b)
+        assert out["agree"] is True
+        assert out["worst"] < 2.0
+
+    def test_a_badly_framed_clip_shows_up_here(self):
+        a = TestMergeSummaries._summary("left", 150.0, trunk=68.0)
+        b = TestMergeSummaries._summary("right", 143.0, trunk=50.0)
+        out = midline_agreement(a, b)
+        assert out["agree"] is False
+        assert out["worst_metric"] == "trunk_angle_avg"
+
+    def test_no_shared_metrics_is_not_an_answer(self):
+        assert midline_agreement({}, {})["agree"] is None
 
 
 class TestSummarizeSide:
