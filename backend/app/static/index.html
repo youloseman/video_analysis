@@ -456,6 +456,22 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
 .cmp-pick{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
 .cmp-pick-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-soft)}
+.drop-sm{padding:18px 16px;gap:6px;min-height:0}
+.pairslot{margin-top:12px}
+.pairfile{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff}
+.pairfile small{color:var(--c-muted);margin-right:auto}
+.bil{margin:18px 0 0;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;background:var(--c-cream,#fff)}
+.bil-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.bil-h b{font-family:var(--f-head,inherit);font-size:16px}
+.bil-val{font-size:26px;font-weight:700;color:var(--c-navy)}
+.bil-val small{font-size:14px;font-weight:600;color:var(--c-muted)}
+.bil-sides{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+.bil-side{flex:1 1 160px;border:1px solid var(--c-line);border-radius:var(--radius);padding:10px 12px;background:#fff}
+.bil-side span{display:block;color:var(--c-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.bil-side b{font-size:18px}
+.bil-note{color:var(--c-muted);font-size:13px;line-height:1.55;margin:8px 0 0}
+.bil-flag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.bil-ok{background:#e7f4ea;color:#256b3a}.bil-warn{background:#fdf0e0;color:#8a5a1a}
 .cmp-select{font-family:var(--f-body);font-size:14px;font-weight:600;color:var(--c-navy);padding:9px 12px;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;cursor:pointer}
 .cmp-arrow{color:var(--c-ink-faint);padding-bottom:8px;transform:rotate(180deg)}
 .cmp-head{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 20px}
@@ -1881,8 +1897,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
             <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
             <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
             <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
+            <button type="button" class="tile-btn" data-side="both" aria-pressed="false">Both sides</button>
           </div>
-          <p class="poshint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
+          <p class="poshint" id="sideHint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
         </div>
       </div>
 
@@ -1894,6 +1911,26 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
         <b id="dropTitle">Drag &amp; drop video or click to browse</b>
         <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
       </label>
+
+      <!-- Second clip, revealed only in "Both sides". A bike side view can
+           only measure the leg nearest the camera, so a complete fit needs
+           one clip per side; filmed separately they disagree by several
+           degrees at the bottom of the stroke, and only a merge against one
+           shared body settles it. -->
+      <div class="pairslot hidden" id="pairSlot">
+        <input type="file" id="fileB" class="visually-hidden" accept="video/*"
+               aria-labelledby="dropBTitle">
+        <label class="drop drop-sm" id="dropB" for="fileB">
+          <svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>
+          <b id="dropBTitle">Right-side clip — drop or click to browse</b>
+          <small>Same ride, same fit, filmed from the other side</small>
+        </label>
+        <div class="pairfile hidden" id="pairFile">
+          <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
+          <span id="fnameB"></span><small id="fsizeB"></small>
+          <button type="button" class="btn btn-ghost btn-sm" id="changeB">Change</button>
+        </div>
+      </div>
 
       <!-- Outside the <label> on purpose: a button inside it would also open
            the file picker. Hidden when the browser can't record (no camera
@@ -2150,6 +2187,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
     </div>
 
     <div id="gateBanner"></div>
+    <div id="bilateralBlock"></div>
     <p class="hint hidden ephem-note" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
 
     <div class="block hidden" id="kinogramBlock">
@@ -3186,6 +3224,7 @@ function showCaptureGuide(){
 function readyHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
   if(!state.file){ hintMsg(`Upload a ${noun} to continue`); return; }
+  if(isPair() && !state.fileB){ hintMsg('Add the right-side clip to run the two-sided session'); return; }
   const sportTxt = state.sport==='bike' ? `Cycling — ${POSITION_NAMES[state.position]}` : 'Running';
   // Keep the long-clip advisory visible — changing sport should not silently
   // clear a caveat that still applies to the loaded file.
@@ -3253,11 +3292,58 @@ $('#positionSeg').addEventListener('click',e=>{
 });
 /* Camera-side override (bike): the rider knows which side they filmed. */
 state.cameraSide = state.cameraSide || 'auto';
+state.fileB = state.fileB || null;
 $('#sideSeg') && $('#sideSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   state.cameraSide=b.dataset.side;
   $('#sideSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  syncPairSlot();
 });
+/* "Both sides" turns the uploader into a two-clip session: the first slot
+   becomes the LEFT clip, a second appears for the RIGHT. A side view only
+   measures the leg nearest the camera, so this is the only way to get a
+   verdict about the whole rider rather than half of one. */
+function isPair(){ return state.sport==='bike' && state.mode==='video' && state.cameraSide==='both'; }
+function syncPairSlot(){
+  const slot=$('#pairSlot'); if(!slot) return;
+  const on=isPair();
+  slot.classList.toggle('hidden', !on);
+  const t=$('#dropTitle');
+  if(t) t.textContent = on ? 'Left-side clip — drag & drop or click to browse'
+                           : 'Drag & drop video or click to browse';
+  const hint=$('#sideHint');
+  if(hint) hint.innerHTML = on
+    ? 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict — the only way to measure both legs, and it spends two clips of your plan.'
+    : 'Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.';
+  if(!on){ state.fileB=null; renderFileB(); }
+  readyHint();
+}
+function renderFileB(){
+  const box=$('#pairFile'), dz=$('#dropB'); if(!box||!dz) return;
+  if(state.fileB){
+    $('#fnameB').textContent=state.fileB.name;
+    $('#fsizeB').textContent=fmtSize(state.fileB.size);
+    box.classList.remove('hidden'); dz.classList.add('hidden');
+  } else { box.classList.add('hidden'); dz.classList.remove('hidden'); }
+}
+function setFileB(f){
+  if(!f) return;
+  if(!f.type.startsWith('video/')){
+    hintMsg('The second clip doesn\u2019t look like a video — choose an mp4, mov or webm.','warn'); return;
+  }
+  if(f.size > MAX_MB*1048576){
+    hintMsg(`The second clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB.`,'warn'); return;
+  }
+  state.fileB=f; renderFileB(); readyHint();
+}
+(function wirePairDrop(){
+  const dz=$('#dropB'), inp=$('#fileB'); if(!dz||!inp) return;
+  ['dragover','dragenter'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag')}));
+  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag')}));
+  dz.addEventListener('drop',ev=>{ if(ev.dataTransfer.files[0]) setFileB(ev.dataTransfer.files[0]); });
+  inp.addEventListener('change',()=>{ if(inp.files[0]) setFileB(inp.files[0]); });
+  const ch=$('#changeB'); if(ch) ch.addEventListener('click',()=>inp.click());
+})();
 function updatePosHint(){
   const el=$('#posHint'); if(!el) return;
   el.innerHTML=POSITION_HINTS[state.position]||'';
@@ -3329,6 +3415,7 @@ function analyze(){
     signed_in: !!auth, tier: auth ? auth.tier : 'anonymous',
   });
   state.analyzeStart=Date.now();
+  if(isPair()) return analyzePair();
   const fd=new FormData();
   fd.append('video',state.file);
   fd.append('sport',state.sport);
@@ -3377,6 +3464,60 @@ function analyze(){
     // 503 = the server is at capacity, not a problem with the clip. Keep the
     // file so "Try again" is one tap, and don't blame their footage.
     if(xhr.status===503){ fail(j.detail || 'We’re at capacity right now — please try again in a few minutes.',{keepFile:true}); return; }
+    if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').')); return; }
+    state.jobId=j.job_id;
+    jobTokenSave(j.job_id, j.job_token);
+    setUrl('#job='+state.jobId);
+    startPolling();
+  };
+  xhr.send(fd);
+}
+
+/* Two clips, one job, one verdict. Shares the whole upload/poll path with
+   the single-clip flow -- the only differences are the endpoint, the two
+   files, and a progress line that names which clip is running (the wait is
+   roughly twice as long, and a silent spinner reads as a hang). */
+function analyzePair(){
+  if(!state.fileB){ hintMsg('Add the right-side clip first','warn'); return; }
+  const fd=new FormData();
+  fd.append('video_left', state.file);
+  fd.append('video_right', state.fileB);
+  fd.append('position', state.position);
+  fd.append('overlay', $('#overlay').checked ? 'true':'false');
+  if(focusText()) fd.append('focus', focusText());
+
+  $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
+    <span class="fchip">${esc(state.fileB.name)}</span>
+    <span class="sporttag sporttag-bike"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>Bike · both sides</span>`;
+  setState('progress',{focus:'#progTitle'});
+  $('#progTitle').textContent='Analyzing both sides';
+  setSteps(1);
+  const pbar=$('#pbar');
+  pbar.classList.remove('indet'); pbar.setAttribute('aria-valuenow','0');
+  $('#pfill').style.width='0%';
+  stage('Uploading two clips…');
+
+  const xhr=new XMLHttpRequest();
+  state.xhr=xhr;
+  xhr.open('POST','/analyze-pair');
+  const _tok=getToken(); if(_tok) xhr.setRequestHeader('Authorization','Bearer '+_tok);
+  xhr.upload.onprogress=e=>{
+    if(!e.lengthComputable) return;
+    const pct=Math.round(e.loaded/e.total*100);
+    $('#pfill').style.width=pct+'%';
+    pbar.setAttribute('aria-valuenow',String(pct));
+    if(e.loaded>=e.total) stage('Uploads received — starting the session…');
+    else stage(`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`);
+  };
+  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true});
+  xhr.onload=()=>{
+    state.xhr=null;
+    const limit=xhr.getResponseHeader('X-RateLimit-Limit'), rem=xhr.getResponseHeader('X-RateLimit-Remaining');
+    if(limit!=null && rem!=null) quotaSave(+limit,+rem);
+    let j={}; try{ j=JSON.parse(xhr.responseText); }catch(e){}
+    if(xhr.status===402){ fail(j.detail || 'Two-sided analysis is part of a paid plan.',{keepFile:true}); return; }
+    if(xhr.status===429){ showLimit(j.detail, xhr.getResponseHeader('Retry-After')); return; }
+    if(xhr.status===503){ fail(j.detail || 'We\u2019re at capacity right now — please try again in a few minutes.',{keepFile:true}); return; }
     if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').')); return; }
     state.jobId=j.job_id;
     jobTokenSave(j.job_id, j.job_token);
@@ -3457,7 +3598,7 @@ async function pollOnce(){
         ? `Queued — ${ahead} clip${ahead>1?'s':''} ahead of yours…`
         : 'Queued — yours is next…');
     }
-    else if(j.status==='processing'){ stage(ANALYZE_STAGE); }
+    else if(j.status==='processing'){ stage(j.stage ? esc(j.stage) : ANALYZE_STAGE); }
   }catch(err){
     if(++state.pollMisses>=8) fail('Lost connection to the server while analyzing. Check your network and try again.',{keepFile:true});
   }
@@ -5693,6 +5834,8 @@ function render(job){
   if(cov) parts.push(cov);
   $('#scoreMeta').innerHTML=parts.join('<br>');
 
+  renderBilateral(r.bilateral);
+
   // analysis confidence badge (soft high/medium/low tier; hides nothing).
   // Free results carry the level only — the per-factor breakdown behind it
   // stays paid, but the tier itself is a trust signal, not a feature.
@@ -6461,7 +6604,7 @@ function reset(keepFile=false){
     // Network-ish failure: keep the clip loaded so "Try again" is one click.
     drop.classList.remove('err');
   } else {
-    state.file=null;
+    state.file=null; state.fileB=null;
     fileInput.value=''; fileInput.removeAttribute('tabindex');
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');
     const pi=$('#previewImg'); pi.classList.add('hidden'); pi.removeAttribute('src');
@@ -6898,6 +7041,7 @@ function saveToHistory(kind,res){
       profileId:state.profileId||null,
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
+      bilateral:res.bilateral?{combined:!!res.bilateral.combined,knee_at_bdc:res.bilateral.knee_at_bdc,uncertainty_deg:res.bilateral.uncertainty_deg,asymmetry_deg:res.bilateral.asymmetry_deg,asymmetry_significant:res.bilateral.asymmetry_significant}:null,
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
@@ -8373,6 +8517,66 @@ function cmpCatRow(label,map,good,a,b){
     <div class="cmp-d"><span class="tdelta ${cls}">${note}</span></div>
     <div class="cmp-b">${esc(disp(b))}</div></div>`;
 }
+/* The two-sided session panel.
+
+   What it must never do is present the two clips as two verdicts. A side view
+   measures the leg nearest the camera, so two clips of one ride are two
+   readings of one rider -- and read separately they disagreed by 9 deg at the
+   bottom of the stroke, which is how this rider came to be told his fit was
+   perfect from one side and too high from the other. The merge settles that
+   against one shared body; this panel shows the settled number, what each
+   clip contributed, and -- when the two clips cannot share a ruler -- says so
+   instead of averaging them anyway. */
+const BIL_REASONS={
+  scale_mismatch:'The two clips don\u2019t agree on scale — most often they were filmed from different distances, or the chainring pulled the ankle tracking off the pedal path in one of them. Re-film both sides from the same spot, same distance, and they will merge.',
+  leg_mismatch:'These two clips don\u2019t look like the same rider on the same fit.',
+  geometry_unavailable:'One clip couldn\u2019t be reduced to a usable pedal circle — the tracker never held the ankle on the path long enough.',
+  sides_not_identified:'We couldn\u2019t tell which side each clip was filmed from.',
+  same_side:'Both clips were filmed from the same side. A session needs one of each.',
+  missing_side:'Only one side came through.',
+  degenerate_geometry:'The two clips produced a leg geometry that cannot be solved — usually a tracking failure rather than anything about your fit.',
+  not_combinable:'These two clips could not be merged into one verdict.',
+};
+function renderBilateral(b){
+  const host=$('#bilateralBlock'); if(!host) return;
+  if(!b){ host.innerHTML=''; return; }
+  const sides=(b.sides||[]).slice().sort(a=>a.camera_side==='left'?-1:1);
+  const cards=sides.map(c=>`<div class="bil-side">
+      <span>${esc((c.camera_side||'').replace(/^./,m=>m.toUpperCase()))} side</span>
+      <b>${c.knee_at_bdc==null?'—':Math.round(c.knee_at_bdc*10)/10+'\u00b0'}</b>
+      <small class="bil-note" style="margin:2px 0 0">${c.revolutions==null?'':c.revolutions+' pedal revolutions'}</small>
+    </div>`).join('');
+
+  if(!b.combined){
+    host.innerHTML=`<div class="bil">
+      <div class="bil-h"><b>Two-sided session</b>
+        <span class="bil-flag bil-warn">not merged</span></div>
+      <p class="bil-note" style="margin-top:0">${esc(BIL_REASONS[b.reason]||'These two clips could not be merged.')}
+      ${b.scale_disagreement_pct!=null?` (They disagree by <b>${b.scale_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
+      <div class="bil-sides">${cards}</div>
+      <p class="bil-note">Both clips were analysed and both are real; the score above belongs to <b>one side</b>, not to the pair. We are withholding the merged verdict, not the measurements — a combined number we can\u2019t stand behind is worse than none.</p>
+    </div>`;
+    return;
+  }
+
+  const unc=b.uncertainty_deg;
+  const asym=b.asymmetry_deg;
+  const agree=b.agreement||{};
+  const agreeFlag = agree.agree===true
+    ? `<span class="bil-flag bil-ok">clips agree to ${agree.worst}\u00b0</span>`
+    : (agree.agree===false ? `<span class="bil-flag bil-warn">clips differ by ${agree.worst}\u00b0</span>` : '');
+  host.innerHTML=`<div class="bil">
+    <div class="bil-h"><b>Two-sided session</b>${agreeFlag}</div>
+    <div class="bil-val">${Math.round(b.knee_at_bdc*10)/10}\u00b0${unc!=null?` <small>\u00b1${Math.round(unc)}\u00b0</small>`:''}</div>
+    <p class="bil-note" style="margin-top:2px">Knee at the bottom of the stroke, measured from <b>both</b> clips against one body. Each clip on its own only ever sees one leg.</p>
+    <div class="bil-sides">${cards}</div>
+    <p class="bil-note"><b>Left vs right: ${asym==null?'—':Math.abs(Math.round(asym*10)/10)+'\u00b0'}.</b>
+      ${b.asymmetry_significant
+        ? 'That is larger than this session\u2019s own measurement error, so it is worth a look — cleat setup, saddle position, or a leg-length difference, with a fitter.'
+        : 'Below what this session can resolve, so treat your legs as even. Differences this size are the pose model, not you.'}</p>
+    <p class="bil-note">The \u00b1 is not decoration: the hip joint sits inside the pelvis where no camera can see it, and near full extension a 1% error in leg length moves this angle about 4\u00b0. Merging both sides removes the disagreement between them; it cannot remove what they get wrong together.</p>
+  </div>`;
+}
 /* Compare keyframe: held (or absent) frames render straight; a cloud frame
    still on the server gets a slot that fills in place. */
 function cmpThumb(e,tag){
@@ -8534,7 +8738,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overallNote,wrapText,overlayBounds};
+window.__flapp={setState,render,renderBilateral,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overallNote,wrapText,overlayBounds};
 </script>
 </body>
 </html>
