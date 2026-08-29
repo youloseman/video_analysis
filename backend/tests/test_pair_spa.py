@@ -246,3 +246,14 @@ class TestPollingHasACeiling:
 
     def test_the_clock_is_started_when_polling_starts(self, html):
         assert "state.pollFirst=Date.now()" in html
+
+
+class TestHistoryKeepsOnlyWhatExists:
+    def test_the_stored_session_carries_no_asymmetry_fields(self, html):
+        """The server stopped publishing these; storing them would keep a
+        withdrawn claim alive in every saved entry, waiting to be rendered."""
+        i = html.index("bilateral:res.bilateral?")
+        entry = html[i:html.index(":null,", i)]
+        assert "asymmetry" not in entry
+        assert "per_side" not in entry
+        assert "knee_at_bdc" in entry and "uncertainty_deg" in entry

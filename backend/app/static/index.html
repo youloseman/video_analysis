@@ -7141,7 +7141,7 @@ function saveToHistory(kind,res){
       profileId:state.profileId||null,
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
-      bilateral:res.bilateral?{combined:!!res.bilateral.combined,knee_at_bdc:res.bilateral.knee_at_bdc,uncertainty_deg:res.bilateral.uncertainty_deg,asymmetry_deg:res.bilateral.asymmetry_deg,asymmetry_significant:res.bilateral.asymmetry_significant}:null,
+      bilateral:res.bilateral?{combined:!!res.bilateral.combined,knee_at_bdc:res.bilateral.knee_at_bdc,uncertainty_deg:res.bilateral.uncertainty_deg,scale_anchor:res.bilateral.scale_anchor}:null,
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
