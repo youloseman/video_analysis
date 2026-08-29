@@ -31,19 +31,28 @@ from app.services.video_analysis.biomechanics.bilateral import (
 )
 
 
-def _side(camera_side, thigh, shin, chord, *, chord_sd=0.028, revs=8, torso=2.6):
+def _side(camera_side, thigh, shin, chord, *, chord_sd=0.028, revs=8,
+          torso=2.6, radius=0.055):
+    # `radius` matters: every length above is expressed in crank radii, so a
+    # second ruler (the torso) can only be formed once the clip's own radius
+    # is known. Fixtures that shared one radius silently made the two rulers
+    # identical and hid the whole fallback.
     return SideGeometry(
         camera_side=camera_side, thigh=thigh, shin=shin, torso=torso,
         chord_bdc=chord, chord_sd=chord_sd, revolutions=revs,
-        measured_frames=300, crank_radius_px=150.0,
+        measured_frames=300, crank_radius_px=radius,
     )
 
 
-# The real pairs, as measured.
-RIGHT_4148 = _side("right", 2.442, 2.276, 4.510, chord_sd=0.030, revs=5)
-LEFT_4149 = _side("left", 2.322, 2.308, 4.520, chord_sd=0.026, revs=11)
-RIGHT_4090 = _side("right", 2.593, 2.480, 4.925, chord_sd=0.032, revs=13)
-LEFT_4088 = _side("left", 2.302, 2.186, 4.312, chord_sd=0.026, revs=13)
+# The real pairs, exactly as summarize_side reduces them.
+RIGHT_4148 = _side("right", 2.4423, 2.2756, 4.5102, chord_sd=0.0301, revs=5,
+                   torso=2.6495, radius=0.054067)
+LEFT_4149 = _side("left", 2.3226, 2.3100, 4.5202, chord_sd=0.0263, revs=11,
+                  torso=2.5432, radius=0.051721)
+RIGHT_4090 = _side("right", 2.5926, 2.4800, 4.9253, chord_sd=0.0325, revs=13,
+                   torso=2.8189, radius=0.065334)
+LEFT_4088 = _side("left", 2.3023, 2.1893, 4.3118, chord_sd=0.0260, revs=13,
+                  torso=2.5083, radius=0.079713)
 
 
 class TestKneeFromChord:
@@ -88,11 +97,10 @@ class TestCombineTheRealPair:
         left = knee_from_chord(LEFT_4149.thigh, LEFT_4149.shin, LEFT_4149.chord_bdc)
         assert abs(left - right) > 8.0
 
-    def test_one_body_collapses_the_gap(self):
+    def test_it_combines(self):
         fit = combine_sides(LEFT_4149, RIGHT_4148)
         assert fit.combined
-        gap = abs(fit.per_side["left"] - fit.per_side["right"])
-        assert gap < 2.0, f"sides still disagree by {gap:.1f} deg"
+        assert fit.scale_anchor in ("crank", "torso")
 
     def test_the_combined_answer_is_one_number_with_an_error_bar(self):
         fit = combine_sides(LEFT_4149, RIGHT_4148)
@@ -114,18 +122,21 @@ class TestCombineTheRealPair:
         assert fit.knee_at_bdc > 145.0
         assert fit.knee_at_bdc - fit.uncertainty_deg < 145.0
 
-    def test_asymmetry_comes_back_as_none_worth_reporting(self):
-        # The whole scare was a 9 deg "asymmetry". With one body imposed the
-        # legs are within a degree of each other.
-        fit = combine_sides(LEFT_4149, RIGHT_4148)
-        assert abs(fit.asymmetry_deg) < 2.0
-        assert fit.asymmetry_significant is False
+    def test_no_asymmetry_is_published_at_all(self):
+        """See TestWhyThereIsNoAsymmetryNumber. The per-side split turned out
+        to be the scale choice restated, so it is not offered in any form."""
+        d = combine_sides(LEFT_4149, RIGHT_4148).as_dict()
+        assert "asymmetry_deg" not in d
+        assert "per_side" not in d
 
-    def test_argument_order_does_not_change_the_answer(self):
+    def test_argument_order_barely_moves_the_answer(self):
+        # Not bit-identical any more: the scale ratio is formed from the first
+        # argument's units, so swapping them re-expresses the pool. The ANSWER
+        # must not care.
         a = combine_sides(LEFT_4149, RIGHT_4148)
         b = combine_sides(RIGHT_4148, LEFT_4149)
-        assert a.knee_at_bdc == pytest.approx(b.knee_at_bdc, abs=1e-9)
-        assert a.per_side == b.per_side
+        assert a.knee_at_bdc == pytest.approx(b.knee_at_bdc, abs=0.5)
+        assert a.raw_per_side == b.raw_per_side
 
 
 class TestTheErrorBarIsHonest:
@@ -139,8 +150,10 @@ class TestTheErrorBarIsHonest:
     """
 
     # The same two clips, re-detected mirrored (measured 2026-08-26).
-    MIRRORED_LEFT = _side("left", 2.3624, 2.2352, 4.4633, chord_sd=0.0508, revs=4)
-    MIRRORED_RIGHT = _side("right", 2.3654, 2.2108, 4.5063, chord_sd=0.011, revs=4)
+    MIRRORED_LEFT = _side("left", 2.3624, 2.2352, 4.4633, chord_sd=0.0508,
+                          revs=4, torso=2.5891, radius=0.055083)
+    MIRRORED_RIGHT = _side("right", 2.3654, 2.2108, 4.5063, chord_sd=0.0110,
+                           revs=4, torso=2.6138, radius=0.052035)
 
     def test_reflection_still_moves_the_combined_answer(self):
         upright = combine_sides(LEFT_4149, RIGHT_4148)
@@ -159,16 +172,89 @@ class TestTheErrorBarIsHonest:
         )
 
 
-class TestItRefuses:
-    def test_a_broken_ruler_is_refused_not_averaged(self):
+class TestWhyThereIsNoAsymmetryNumber:
+    """Measured 2026-08-29, and it cost the feature its headline claim.
+
+    Pooling needs the ratio of the two clips' image scales. Whatever ratio is
+    used, the resulting difference between the two sides came out as the
+    clips' disagreement about the hip-ankle chord times the sensitivity
+    constant -- across four pairs and two anchors the ratio was 4.1, 4.6, 3.6,
+    4.3, 5.4, i.e. the ~4 deg per 1% lever, every time.
+
+    So the per-side split carries no information the chord disagreement did
+    not already carry, and the chord disagreement is exactly what choosing a
+    scale controls. Picking the scale that makes the bike look unchanged --
+    which is the physically right thing to do -- therefore FORCES the legs to
+    look equal. Asymmetry and scale error are degenerate; the honest move is
+    to publish neither a per-side leg nor an asymmetry.
+    """
+
+    def test_the_split_is_proportional_to_the_chord_disagreement(self):
+        """One body, chords a little apart: the "asymmetry" that would fall
+        out grows in step with the chord gap and with nothing else.
+
+        Proportionality is the claim, not a particular constant -- the lever
+        steepens as the leg straightens, which is why the measured ratios
+        across the real pairs ranged 3.6 to 5.4 rather than sitting on one
+        number. What matters is that the split has no other source.
+        """
+        t, sh, base = 2.40, 2.35, 4.55
+        ratios = []
+        for pct in (0.5, 1.0, 2.0):
+            gap = abs(knee_from_chord(t, sh, base)
+                      - knee_from_chord(t, sh, base * (1 + pct / 100)))
+            ratios.append(gap / pct)
+        assert max(ratios) / min(ratios) < 1.35, (
+            f"gap-per-percent should be near constant, got {ratios}"
+        )
+        assert min(ratios) > 1.0
+
+    def test_the_payload_offers_no_per_leg_number(self):
+        d = combine_sides(LEFT_4149, RIGHT_4148).as_dict()
+        for banned in ("per_side", "asymmetry_deg", "asymmetry_significant",
+                       "asymmetry_floor_deg"):
+            assert banned not in d, f"{banned} is back in the payload"
+
+    def test_what_each_clip_measured_alone_is_still_reported(self):
+        """That is a fact about a clip, and it is how the reader sees where
+        the combined number came from."""
+        d = combine_sides(LEFT_4149, RIGHT_4148).as_dict()
+        assert set(d["raw_per_side"]) == {"left", "right"}
+
+
+class TestItPicksARuler:
+    """Two clips of one session must agree about the hip-ankle chord, because
+    the bike did not change between them. Whichever scale makes that true is
+    the one to pool with."""
+
+    def test_a_chainring_corrupted_orbit_falls_back_to_the_body(self):
         """The 24 Aug pair: 4090's ankle orbit was chainring-corrupted, so its
-        crank radius is ~11% wrong. Forcing a shared body there gave a 51 deg
-        gap. Refusing is the only honest move."""
+        crank radius is ~11% out. The old build refused the pair outright --
+        two of the three pairs ever filmed. The torso ruler rescues it."""
         fit = combine_sides(LEFT_4088, RIGHT_4090)
-        assert not fit.combined
-        assert fit.reason == "scale_mismatch"
-        assert fit.knee_at_bdc is None
-        assert fit.scale_disagreement_pct > 2.0
+        assert fit.combined
+        assert fit.scale_anchor == "torso"
+        assert fit.scale_chord_disagreement_pct < 5.0
+
+    def test_a_clean_orbit_keeps_the_crank(self):
+        fit = combine_sides(LEFT_4149, RIGHT_4148)
+        assert fit.scale_anchor == "crank"
+        assert fit.scale_chord_disagreement_pct < 1.0
+
+    def test_the_ruler_barely_changes_the_answer(self):
+        """Which is why refusing over it was overcautious: scaling a whole
+        triangle does not change its shape."""
+        for fit in (combine_sides(LEFT_4149, RIGHT_4148),
+                    combine_sides(LEFT_4088, RIGHT_4090)):
+            assert fit.combined
+            assert fit.scale_anchor_spread_deg < 1.5
+
+    def test_the_other_rulers_disagreement_is_inside_the_error_bar(self):
+        fit = combine_sides(LEFT_4149, RIGHT_4148)
+        assert fit.uncertainty_deg >= fit.scale_anchor_spread_deg
+
+
+class TestItRefuses:
 
     def test_two_clips_of_the_same_side_are_not_a_pair(self):
         fit = combine_sides(LEFT_4149, _side("left", 2.32, 2.31, 4.52))
@@ -180,46 +266,20 @@ class TestItRefuses:
         assert combine_sides(None, None).reason == "missing_side"
 
     def test_wildly_different_legs_refuse(self):
-        # Same chord (passes the scale gate) but one leg 15% longer: not two
-        # views of one rider.
-        other = _side("right", 2.322 * 1.15, 2.308 * 1.15, 4.520)
+        # Same chord, so no ruler can reconcile a leg 20% longer: this is not
+        # two views of one rider.
+        other = _side("right", 2.322 * 1.20, 2.308 * 1.20, 4.520)
         fit = combine_sides(LEFT_4149, other)
         assert not fit.combined
         assert fit.reason == "leg_mismatch"
 
     def test_a_refusal_carries_no_number_anywhere(self):
-        fit = combine_sides(LEFT_4088, RIGHT_4090)
-        d = fit.as_dict()
+        other = _side("right", 2.322 * 1.20, 2.308 * 1.20, 4.520)
+        d = combine_sides(LEFT_4149, other).as_dict()
+        assert d["combined"] is False
         assert d["knee_at_bdc"] is None
         assert d["uncertainty_deg"] is None
-        assert d["per_side"] == {}
-        assert d["asymmetry_deg"] is None
-
-
-class TestAsymmetryReporting:
-    def test_a_genuinely_asymmetric_pair_is_reported(self):
-        # One leg reaching 3% further at the bottom is a real difference, not
-        # the model: same body, different chords.
-        left = _side("left", 2.35, 2.30, 4.60, chord_sd=0.010)
-        right = _side("right", 2.35, 2.30, 4.52, chord_sd=0.010)
-        fit = combine_sides(left, right)
-        assert fit.combined
-        assert fit.asymmetry_significant is True
-        assert abs(fit.asymmetry_deg) > fit.asymmetry_floor_deg
-
-    def test_a_noisy_pair_raises_its_own_bar(self):
-        # Same difference, but the chord wanders three times as much between
-        # revolutions -- the floor rises with it and the claim is withdrawn.
-        left = _side("left", 2.35, 2.30, 4.60, chord_sd=0.075)
-        right = _side("right", 2.35, 2.30, 4.52, chord_sd=0.075)
-        fit = combine_sides(left, right)
-        assert fit.combined
-        assert fit.asymmetry_significant is False
-
-    def test_asymmetry_sign_is_left_minus_right(self):
-        left = _side("left", 2.35, 2.30, 4.60, chord_sd=0.010)
-        right = _side("right", 2.35, 2.30, 4.52, chord_sd=0.010)
-        assert combine_sides(left, right).asymmetry_deg > 0
+        assert d["raw_per_side"] == {}
 
 
 class TestMergeSummaries:
@@ -250,13 +310,15 @@ class TestMergeSummaries:
         fit, merged = self._merged()
         assert merged["knee_at_bdc"] == pytest.approx(fit.knee_at_bdc)
 
-    def test_per_side_keys_are_overwritten_too(self):
+    def test_both_per_side_keys_get_the_merged_value(self):
         """score_cycling reads `{near}_knee_at_bdc` BEFORE the plain key, so
-        leaving them alone would score the merged ride on one unmerged leg --
-        the exact contradiction this feature exists to end."""
+        leaving them alone would score the merged ride on one unmerged leg.
+        They get the SAME number because the method cannot tell the legs
+        apart from its own scale error -- see
+        TestWhyThereIsNoAsymmetryNumber."""
         fit, merged = self._merged()
-        assert merged["left_knee_at_bdc"] == pytest.approx(fit.per_side["left"])
-        assert merged["right_knee_at_bdc"] == pytest.approx(fit.per_side["right"])
+        assert merged["left_knee_at_bdc"] == pytest.approx(fit.knee_at_bdc)
+        assert merged["right_knee_at_bdc"] == pytest.approx(fit.knee_at_bdc)
         assert merged["left_knee_at_bdc"] != 154.7
 
     def test_the_saddle_verdict_is_re_derived_not_inherited(self):
@@ -285,7 +347,9 @@ class TestMergeSummaries:
         assert merged["camera_side"] == "both"
 
     def test_a_refusal_cannot_be_merged(self):
-        refusal = combine_sides(LEFT_4088, RIGHT_4090)
+        # A leg 20% longer on one side: no ruler reconciles that.
+        refusal = combine_sides(
+            LEFT_4149, _side("right", 2.79, 2.77, 4.5202, radius=0.051721))
         with pytest.raises(ValueError):
             merge_summaries(self._summary("left", 149.0),
                             self._summary("right", 152.0), refusal, "road_hoods")

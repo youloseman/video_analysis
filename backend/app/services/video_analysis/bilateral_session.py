@@ -52,26 +52,22 @@ def _warnings_of(result: dict[str, Any]) -> list[str]:
     return list(summary.get("quality_warnings") or result.get("quality_warnings") or [])
 
 
-def _side_card(
-    result: dict[str, Any], merged_knee: float | None = None,
-) -> dict[str, Any]:
+def _side_card(result: dict[str, Any]) -> dict[str, Any]:
     """What the session shows ABOUT one clip: no score, on purpose.
 
-    ``knee_at_bdc`` is the value AFTER the merge when there is one -- the leg
-    re-measured against the shared body. Showing each clip's raw reading here
-    instead was the first version's mistake and it undid the whole feature:
-    the rider saw 153 and 143 side by side under a merged verdict and read the
-    old contradiction back into it. The raw number is kept as
-    ``knee_at_bdc_alone``, which is a different claim and is labelled as one.
+    ``knee_at_bdc`` is what this clip measured ON ITS OWN -- a fact about a
+    clip, not a claim about a leg. A previous version printed a per-side value
+    "reconciled" against the shared body, which looked much better (the two
+    sides landed a degree apart) and was an artifact: that split is the scale
+    choice restated, so it agreed by construction. See the note on
+    ``bilateral.combine_sides``. The difference between these two numbers is
+    the instrument, and the panel says so.
     """
     summary = result.get("sport_specific_metrics") or {}
     geom = result.get("bilateral_geometry") or {}
-    raw = summary.get("knee_at_bdc")
     return {
         "camera_side": _side_of(result),
-        "knee_at_bdc": merged_knee if merged_knee is not None else raw,
-        "knee_at_bdc_alone": raw,
-        "merged": merged_knee is not None,
+        "knee_at_bdc": summary.get("knee_at_bdc"),
         "trunk_angle_avg": summary.get("trunk_angle_avg"),
         "frames_analyzed": result.get("frames_analyzed"),
         "revolutions": geom.get("revolutions"),
@@ -160,8 +156,7 @@ def build_pair_result(
     result["bilateral"] = {
         **fit.as_dict(),
         "agreement": agreement,
-        "sides": [_side_card(left, fit.per_side.get("left")),
-                  _side_card(right, fit.per_side.get("right"))],
+        "sides": [_side_card(left), _side_card(right)],
         "base_side": _side_of(base),
     }
     result["keyframe_base64"] = base.get("keyframe_base64")
@@ -200,8 +195,9 @@ def _refusal(
         "reason": reason,
         "agreement": agreement or {},
         "sides": [_side_card(r) for r in (result_a, result_b) if _side_of(r)],
-        "scale_disagreement_pct": (
-            None if fit is None else fit.as_dict().get("scale_disagreement_pct")
+        "scale_chord_disagreement_pct": (
+            None if fit is None
+            else fit.as_dict().get("scale_chord_disagreement_pct")
         ),
         # Which clip the numbers above this panel actually came from. Without
         # it the metric table reads as the session's, and a rider who filmed

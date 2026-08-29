@@ -12,20 +12,28 @@ from app.services.video_analysis.bilateral_session import build_pair_result
 
 # Geometry as measured from the real clips (crank-radius units).
 GEOM_LEFT = {
-    "camera_side": "left", "thigh": 2.322, "shin": 2.308, "torso": 2.54,
-    "chord_bdc": 4.520, "chord_sd": 0.026, "revolutions": 11,
-    "measured_frames": 387, "crank_radius_px": 145.6,
+    "camera_side": "left", "thigh": 2.3226, "shin": 2.3100, "torso": 2.5432,
+    "chord_bdc": 4.5202, "chord_sd": 0.0263, "revolutions": 11,
+    "measured_frames": 387, "crank_radius_px": 0.051721,
 }
 GEOM_RIGHT = {
-    "camera_side": "right", "thigh": 2.442, "shin": 2.276, "torso": 2.65,
-    "chord_bdc": 4.510, "chord_sd": 0.030, "revolutions": 5,
-    "measured_frames": 209, "crank_radius_px": 152.3,
+    "camera_side": "right", "thigh": 2.4423, "shin": 2.2756, "torso": 2.6495,
+    "chord_bdc": 4.5102, "chord_sd": 0.0301, "revolutions": 5,
+    "measured_frames": 209, "crank_radius_px": 0.054067,
 }
-# The 24 Aug pair, whose crank-radius ruler is ~11% out.
+# The 24 Aug right clip, whose ankle orbit the chainring corrupted: its crank
+# ruler is ~11% out, and the merge now falls back to the torso rather than
+# refusing the pair.
 GEOM_BAD_RIGHT = {
-    "camera_side": "right", "thigh": 2.593, "shin": 2.480, "torso": 2.82,
-    "chord_bdc": 4.925, "chord_sd": 0.032, "revolutions": 13,
-    "measured_frames": 239, "crank_radius_px": 184.0,
+    "camera_side": "right", "thigh": 2.5926, "shin": 2.4800, "torso": 2.8189,
+    "chord_bdc": 4.9253, "chord_sd": 0.0325, "revolutions": 13,
+    "measured_frames": 239, "crank_radius_px": 0.065334,
+}
+# A leg no ruler can reconcile with the left clip's: not one rider.
+GEOM_NOT_A_PAIR = {
+    "camera_side": "right", "thigh": 2.79, "shin": 2.77, "torso": 2.5432,
+    "chord_bdc": 4.5202, "chord_sd": 0.026, "revolutions": 9,
+    "measured_frames": 300, "crank_radius_px": 0.051721,
 }
 
 
@@ -96,10 +104,13 @@ class TestAGoodPair:
         assert out["frames_analyzed"] == 1120
         assert {c["camera_side"] for c in out["bilateral"]["sides"]} == {"left", "right"}
 
-    def test_the_asymmetry_question_is_answered_not_dodged(self):
-        out = build_pair_result(LEFT, RIGHT, "road_hoods")
-        assert out["bilateral"]["asymmetry_significant"] is False
-        assert abs(out["bilateral"]["asymmetry_deg"]) < 2.0
+    def test_no_asymmetry_number_is_published(self):
+        """Left-right difference and scale error are degenerate here, so the
+        session offers each clip's reading and no verdict about the legs."""
+        b = build_pair_result(LEFT, RIGHT, "road_hoods")["bilateral"]
+        for banned in ("asymmetry_deg", "asymmetry_significant",
+                       "asymmetry_floor_deg", "per_side"):
+            assert banned not in b
 
     def test_the_two_clips_agreement_is_reported(self):
         out = build_pair_result(LEFT, RIGHT, "road_hoods")
@@ -137,44 +148,38 @@ class TestAGoodPair:
 
 
 class TestWhatEachSideCardShows:
-    """Reported from production, 2026-08-27.
+    """Reported from production 2026-08-27, then re-decided 2026-08-29.
 
-    The rider ran a session and saw "LEFT SIDE 153.2, RIGHT SIDE 143" in the
-    panel and read it as the old contradiction come back. It was: the cards
-    were printing each clip's RAW reading -- the numbers the merge exists to
-    reconcile -- while the verdict above them was the merged one. Whatever
-    else the panel does, these two numbers are what the eye lands on.
+    The rider saw "LEFT SIDE 153.2, RIGHT SIDE 143" and read the old
+    contradiction back into a merged result. The first fix replaced those with
+    per-side values reconciled against the shared body, which landed a degree
+    apart and looked far better. It was an artifact -- that split is the scale
+    choice restated (see TestWhyThereIsNoAsymmetryNumber), so it agreed by
+    construction and would have agreed for any pair whatsoever.
+
+    So the cards are back to each clip's own reading, which is at least a true
+    statement about a clip, and the panel's job is to say that the difference
+    between them is the instrument rather than the athlete.
     """
 
-    def test_a_merged_card_shows_the_reconciled_leg(self):
+    def test_a_card_reports_what_that_clip_measured_alone(self):
         out = build_pair_result(LEFT, RIGHT, "road_hoods")
         by_side = {c["camera_side"]: c for c in out["bilateral"]["sides"]}
-        per_side = out["bilateral"]["per_side"]
-        assert by_side["left"]["knee_at_bdc"] == pytest.approx(per_side["left"], abs=0.1)
-        assert by_side["right"]["knee_at_bdc"] == pytest.approx(per_side["right"], abs=0.1)
+        assert by_side["left"]["knee_at_bdc"] == pytest.approx(154.7)
+        assert by_side["right"]["knee_at_bdc"] == pytest.approx(145.8)
 
-    def test_the_two_cards_no_longer_contradict_each_other(self):
+    def test_no_reconciled_per_leg_value_is_offered(self):
         out = build_pair_result(LEFT, RIGHT, "road_hoods")
-        vals = [c["knee_at_bdc"] for c in out["bilateral"]["sides"]]
-        assert abs(vals[0] - vals[1]) < 2.0, (
-            f"cards still {abs(vals[0]-vals[1]):.1f} deg apart -- this is the "
-            "bug the rider reported"
-        )
-
-    def test_the_raw_reading_survives_as_a_separate_claim(self):
-        """Kept, but as "measured alone", never as the leg's answer."""
-        out = build_pair_result(LEFT, RIGHT, "road_hoods")
-        by_side = {c["camera_side"]: c for c in out["bilateral"]["sides"]}
-        assert by_side["left"]["knee_at_bdc_alone"] == pytest.approx(154.7)
-        assert by_side["right"]["knee_at_bdc_alone"] == pytest.approx(145.8)
-        assert all(c["merged"] for c in out["bilateral"]["sides"])
-
-    def test_an_unmerged_card_is_not_dressed_up_as_merged(self):
-        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT)
-        out = build_pair_result(LEFT, bad, "road_hoods")
+        assert "per_side" not in out["bilateral"]
         for card in out["bilateral"]["sides"]:
-            assert card["merged"] is False
-            assert card["knee_at_bdc"] == card["knee_at_bdc_alone"]
+            assert "knee_at_bdc_alone" not in card
+
+    def test_the_session_answer_is_not_either_card(self):
+        """The combined number is the verdict; the cards only show where it
+        came from."""
+        out = build_pair_result(LEFT, RIGHT, "road_hoods")
+        vals = sorted(c["knee_at_bdc"] for c in out["bilateral"]["sides"])
+        assert vals[0] < out["bilateral"]["knee_at_bdc"] < vals[1]
 
     def test_both_clips_hand_over_their_keyframe(self):
         """A two-sided session that shows one photo looks half-done."""
@@ -190,7 +195,7 @@ class TestARefusalIsLoud:
     the metrics."""
 
     def _refused(self):
-        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT)
+        bad = _result("right", 152.3, 95, geom=GEOM_NOT_A_PAIR)
         return build_pair_result(LEFT, bad, "road_hoods")
 
     def test_it_reaches_the_quality_warnings(self):
@@ -207,7 +212,7 @@ class TestARefusalIsLoud:
 
     def test_the_clips_own_warnings_are_not_displaced_by_it(self):
         left = _result("left", 154.7, 89, geom=GEOM_LEFT, warn=["left is dim"])
-        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT, warn=["drive side"])
+        bad = _result("right", 152.3, 95, geom=GEOM_NOT_A_PAIR, warn=["drive side"])
         out = build_pair_result(left, bad, "road_hoods")
         warns = out["sport_specific_metrics"]["quality_warnings"]
         assert any("left is dim" in w for w in warns)
@@ -220,14 +225,22 @@ class TestARefusalIsLoud:
 
 
 class TestAPairItCannotMerge:
-    def test_a_broken_ruler_refuses_and_says_so(self):
+    def test_a_corrupted_crank_ruler_no_longer_sinks_the_session(self):
+        """This pair used to be refused outright -- and it was two of the
+        three pairs ever filmed in the wild. The torso ruler carries it."""
         bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT)
         out = build_pair_result(LEFT, bad, "road_hoods")
+        assert out["bilateral"]["combined"] is True
+        assert out["bilateral"]["scale_anchor"] == "torso"
+
+    def test_a_pair_that_is_not_one_rider_still_refuses(self):
+        bad = _result("right", 152.3, 95, geom=GEOM_NOT_A_PAIR)
+        out = build_pair_result(LEFT, bad, "road_hoods")
         assert out["bilateral"]["combined"] is False
-        assert out["bilateral"]["reason"] == "scale_mismatch"
+        assert out["bilateral"]["reason"] == "leg_mismatch"
 
     def test_a_refusal_still_returns_a_readable_result(self):
-        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT)
+        bad = _result("right", 152.3, 95, geom=GEOM_NOT_A_PAIR)
         out = build_pair_result(LEFT, bad, "road_hoods")
         # The rider filmed two clips and is owed an answer about them.
         assert out["status"] == "completed"
@@ -235,10 +248,10 @@ class TestAPairItCannotMerge:
         assert len(out["bilateral"]["sides"]) == 2
 
     def test_a_refusal_publishes_no_merged_number(self):
-        bad = _result("right", 152.3, 95, geom=GEOM_BAD_RIGHT)
+        bad = _result("right", 152.3, 95, geom=GEOM_NOT_A_PAIR)
         out = build_pair_result(LEFT, bad, "road_hoods")
         assert out["bilateral"].get("knee_at_bdc") is None
-        assert out["bilateral"].get("asymmetry_deg") is None
+        assert out["bilateral"].get("uncertainty_deg") is None
 
     def test_missing_geometry_refuses(self):
         naked = _result("right", 145.8, 100, geom=None)

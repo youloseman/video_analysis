@@ -2739,7 +2739,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, histProfile:null, polling:null, xhr:null, pollStart:0, pollMisses:0, remaining:null,
+const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, histProfile:null, polling:null, xhr:null, pollStart:0, pollFirst:0, pollMisses:0, remaining:null,
   kfCache:{}, kfPending:{} };   // cloud keyframes, fetched per entry (see fetchKeyframe)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -3639,14 +3639,26 @@ function startPolling(){
   pbar.removeAttribute('aria-valuenow');
   pbar.setAttribute('aria-valuetext','Analyzing, please wait');
   stage(ANALYZE_STAGE);
-  state.pollStart=Date.now(); state.pollMisses=0;
+  state.pollStart=Date.now(); state.pollFirst=Date.now(); state.pollMisses=0;
   clearInterval(state.polling);
   state.polling=setInterval(pollOnce,2500);
 }
 
+/* Two ceilings, because they fail differently.
+
+   `pollStart` is reset every time the server says "queued", so a clip waiting
+   its turn is not blamed for the queue -- but that meant a job STUCK in the
+   queue reset the clock forever and the spinner ran until the tab was closed.
+   Artur watched one for two hours. `pollFirst` never moves, so there is an
+   outer limit on the whole wait no matter what the server keeps saying. */
+const POLL_ANALYZE_MS = 6*60*1000;
+const POLL_TOTAL_MS = 25*60*1000;
 async function pollOnce(){
-  if(Date.now()-state.pollStart > 6*60*1000){
+  if(Date.now()-state.pollStart > POLL_ANALYZE_MS){
     return fail('The analysis is taking longer than expected. Please try again — shorter clips process faster.',{keepFile:true});
+  }
+  if(state.pollFirst && Date.now()-state.pollFirst > POLL_TOTAL_MS){
+    return fail('Your clip sat in the queue for too long — the server is busy. Your upload was not charged twice; please try again in a few minutes.',{keepFile:true});
   }
   try{
     const r=await fetch(withJobToken('/jobs/'+state.jobId, state.jobId),{headers:authHeaders()});
@@ -8617,7 +8629,8 @@ function cmpCatRow(label,map,good,a,b){
    instead of averaging them anyway. */
 const BIL_REASONS={
   scale_mismatch:'The two clips don\u2019t agree on scale — most often they were filmed from different distances, or the chainring pulled the ankle tracking off the pedal path in one of them. Re-film both sides from the same spot, same distance, and they will merge.',
-  leg_mismatch:'These two clips don\u2019t look like the same rider on the same fit.',
+  no_shared_scale:'Neither the crank circle nor your torso could be measured in both clips, so there is no common ruler to put them on.',
+  leg_mismatch:'These two clips don\u2019t look like the same rider on the same fit — the leg they measure is too different for any scaling to reconcile.',
   geometry_unavailable:'One clip couldn\u2019t be reduced to a usable pedal circle — the tracker never held the ankle on the path long enough.',
   sides_not_identified:'We couldn\u2019t tell which side each clip was filmed from.',
   same_side:'Both clips were filmed from the same side. A session needs one of each.',
@@ -8633,13 +8646,10 @@ function renderBilateral(b){
   // that shows one photo looks like only half of it happened.
   const cards=sides.map(c=>{
     const name=esc((c.camera_side||'').replace(/^./,m=>m.toUpperCase()));
-    const alone = (c.merged && c.knee_at_bdc_alone!=null)
-      ? `<small class="bil-side-alone">measured alone: ${Math.round(c.knee_at_bdc_alone*10)/10}\u00b0</small>` : '';
     return `<div class="bil-side">
       ${c.keyframe_base64?`<img class="bil-shot" src="${c.keyframe_base64}" alt="${name} side annotated frame">`:''}
-      <span>${name} side</span>
+      <span>${name} side alone</span>
       <b>${c.knee_at_bdc==null?'—':Math.round(c.knee_at_bdc*10)/10+'\u00b0'}</b>
-      ${alone}
       <small class="bil-note" style="margin:2px 0 0">${c.revolutions==null?'':c.revolutions+' pedal revolutions'}</small>
     </div>`;
   }).join('');
@@ -8661,7 +8671,7 @@ function renderBilateral(b){
       <div class="bil-h"><b>Two-sided session</b>
         <span class="bil-flag bil-warn">not merged</span></div>
       <p class="bil-note" style="margin-top:0">${esc(BIL_REASONS[b.reason]||'These two clips could not be merged.')}
-      ${b.scale_disagreement_pct!=null?` (They disagree by <b>${b.scale_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
+      ${b.scale_chord_disagreement_pct!=null?` (They disagree by <b>${b.scale_chord_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
       <div class="bil-sides">${cards}</div>
       <p class="bil-note">Both clips were analysed and both are real, but <b>every number above this panel — the score, the ranges, the saddle verdict — was measured from the ${esc(b.metrics_side||'one')}-side clip alone</b>, not from the pair. We are withholding the merged verdict, not the measurements: a combined number we can\u2019t stand behind is worse than none.</p>
       ${vids}
@@ -8670,7 +8680,6 @@ function renderBilateral(b){
   }
 
   const unc=b.uncertainty_deg;
-  const asym=b.asymmetry_deg;
   const agree=b.agreement||{};
   const agreeFlag = agree.agree===true
     ? `<span class="bil-flag bil-ok">clips agree to ${agree.worst}\u00b0</span>`
@@ -8680,11 +8689,13 @@ function renderBilateral(b){
     <div class="bil-val">${Math.round(b.knee_at_bdc*10)/10}\u00b0${unc!=null?` <small>\u00b1${Math.round(unc)}\u00b0</small>`:''}</div>
     <p class="bil-note" style="margin-top:2px">Knee at the bottom of the stroke, measured from <b>both</b> clips against one body. Each clip on its own only ever sees one leg.</p>
     <div class="bil-sides">${cards}</div>
-    <p class="bil-note"><b>Left vs right: ${asym==null?'—':Math.abs(Math.round(asym*10)/10)+'\u00b0'}.</b>
-      ${b.asymmetry_significant
-        ? 'That is larger than this session\u2019s own measurement error, so it is worth a look — cleat setup, saddle position, or a leg-length difference, with a fitter.'
-        : 'Below what this session can resolve, so treat your legs as even. Differences this size are the pose model, not you.'}</p>
-    <p class="bil-note">The \u00b1 is not decoration: the hip joint sits inside the pelvis where no camera can see it, and near full extension a 1% error in leg length moves this angle about 4\u00b0. Merging both sides removes the disagreement between them; it cannot remove what they get wrong together.</p>
+    <p class="bil-note"><b>The two clips read differently, and that gap is the instrument, not your legs.</b>
+      A side view can only see the leg nearest the camera, so the two clips have to be put on a common
+      scale before they can be pooled — and we measured that whatever difference is left between the
+      sides afterwards is just that scaling, restated. Left-right difference and scale error cannot be
+      told apart this way, so this session deliberately reports <b>no asymmetry number</b>. If you want
+      one, that is a fitter with hands on you.</p>
+    <p class="bil-note">The \u00b1 is not decoration: the hip joint sits inside the pelvis where no camera can see it, and near full extension a 1% error in leg length moves this angle about 4\u00b0. Merging both sides removes the disagreement between the two clips; it cannot remove what they get wrong together.</p>
     ${vids}
   </div>`;
 }

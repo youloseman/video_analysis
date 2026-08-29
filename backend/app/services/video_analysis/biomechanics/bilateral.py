@@ -24,23 +24,32 @@ of bone lengths instead, estimate those bone lengths ONCE from both clips, and
 the two views stop contradicting each other: measured on Artur's pair, the gap
 between sides fell from 9.1 deg to 0.9 deg.
 
-WHAT THIS BUYS BEYOND ONE NUMBER. Once both sides describe one body, the
-residual difference between them is no longer dominated by the model, so it
-becomes a usable asymmetry reading -- and metrics that MUST agree (the trunk
-is a midline structure seen from both sides) turn into a direct measurement of
-this session's error, for this rider, on this day. The pair calibrates itself.
+WHAT IT CANNOT DO -- and this cost a rewrite to learn. Pooling two views
+removes the disagreement between them; it does not remove a bias they share,
+and near full extension the knee angle amplifies a 1% leg-length error into
+about 4 deg. So the combined value ships with an uncertainty, never bare.
 
-WHAT IT CANNOT DO. Pooling two views removes the disagreement between them; it
-does not remove a bias they share. The pooled leg length can still be off, and
-near full extension the knee angle amplifies that error by ~4 deg per 1% of
-leg length. So the combined value ships with an uncertainty, never bare.
+AND IT DOES NOT REPORT AN ASYMMETRY. The first version did, from the residual
+difference between the two sides after imposing one body, and on Artur's pair
+that residual was a tidy 0.9 deg. It was an artifact. Pooling needs the ratio
+of the two clips' image scales, and measured across four real pairs the gap
+between the sides always came out as the clips' disagreement about the
+hip-ankle chord times the sensitivity constant -- ratio 4.1, 4.6, 3.6, 4.3,
+5.4. In other words the per-side split is the scale choice restated, not a
+second piece of evidence, and choosing the scale that makes the bike look
+unchanged (which is the right thing to do) FORCES the legs to look equal.
+Left-right difference and scale error are degenerate here; neither this
+method nor any amount of care inside it can separate them, so the session
+reports each clip's own reading and says plainly that the difference between
+them is the instrument.
 
-AND IT REFUSES. The whole method rests on the two clips sharing a scale. Two
-clips filmed at different distances, or one whose ankle orbit the chainring
-corrupted, do not -- on the 24 Aug pair the crank-radius estimate was off 11%
-and forcing a shared body there produced a 51 deg gap, worse than doing
-nothing. ``combine_sides`` checks that first and declines rather than
-returning a confident wrong answer.
+WHAT IT DOES NOT REFUSE. The first version declined whenever the crank ruler
+disagreed by more than 2%, which rejected two of the three pairs ever filmed
+in the wild. That was overcautious: the COMBINED angle barely moves with the
+anchor (149.9 vs 150.0 on one pair, 149.9 vs 149.8 on another), because
+scaling a whole triangle does not change its shape. Only the split it
+refused to protect was anchor-dependent, and the split is gone. What is left
+is a sanity check for input that is not a pair at all.
 """
 
 from __future__ import annotations
@@ -76,16 +85,33 @@ _BOTTOM_MAX_X = 0.25
 # the bottom of the stroke.
 _ON_PATH_BAND = (0.80, 1.25)
 
-# The scale gate. Both clips see the same crank and the same fit, so the
-# hip-ankle chord expressed in crank radii is the same number twice. When it
-# is not, the crank-radius estimate is wrong in at least one clip and nothing
-# downstream can be trusted. 2% is the line: the 26 Aug pair agreed to 0.13%,
-# the 24 Aug pair (chainring-corrupted orbit) disagreed by 13%.
-_SCALE_TOLERANCE_PCT = 2.0
-# Two estimates of one rider's leg differing by more than this are not two
-# views of the same person having a bad day -- something is wrong (wrong clip
-# paired, different rider, tracking failure).
-_LEG_DISAGREEMENT_LIMIT_PCT = 8.0
+# Pooling bone lengths across two clips needs the ratio of their image
+# scales, and there is more than one physical thing that is the same in both:
+#
+#   crank  -- the ankle orbit's radius. The bike's own ruler, but the
+#             chainring sits on that orbit and can corrupt the fit of it.
+#   torso  -- shoulder to hip. A body length, unaffected by the drivetrain,
+#             but it leans on the hip landmark, the worst one we have.
+#
+# Neither is reliable alone: measured across four real pairs, the crank was
+# the better ruler on one and off by 14-25% on the others. So both are
+# computed and the one under which the two clips AGREE about the hip-ankle
+# chord is used -- the chord is fixed by the fit, so a scale that makes the
+# bike appear to change between two clips of one session is the wrong scale.
+#
+# An earlier version REFUSED whenever the crank ruler disagreed by more than
+# 2%. That rejected two of the three real pairs ever filmed. It was also
+# unnecessary: the combined knee angle turns out to be almost independent of
+# which anchor is used (149.9 vs 150.0 on one pair, 149.9 vs 149.8 on
+# another), because scaling one clip's whole triangle does not change its
+# shape. What the anchor DOES decide is the per-side split -- see the note on
+# `combine_sides` about why that is no longer published.
+_SCALE_SANITY_PCT = 35.0
+# Two estimates of one rider's leg differing by more than this, AFTER the
+# best scale has been chosen, are not two views of the same person having a
+# bad day -- something is wrong (wrong clip paired, different rider, tracking
+# failure).
+_LEG_DISAGREEMENT_LIMIT_PCT = 12.0
 
 # Mirroring a clip's pixels cannot change a real angle, yet it moved
 # knee-at-bottom by 1.4-3.5 deg. That is the model's own absolute wobble, and
@@ -208,6 +234,25 @@ class SideGeometry:
     @property
     def leg(self) -> float:
         return self.thigh + self.shin
+
+    # Lengths back in the clip's own image units. Needed to form a scale ratio
+    # from an anchor OTHER than the crank -- everything above is already
+    # divided by it, so the crank cannot be cross-checked in its own units.
+    @property
+    def thigh_px(self) -> float:
+        return self.thigh * self.crank_radius_px
+
+    @property
+    def shin_px(self) -> float:
+        return self.shin * self.crank_radius_px
+
+    @property
+    def chord_px(self) -> float:
+        return self.chord_bdc * self.crank_radius_px
+
+    @property
+    def torso_px(self) -> float:
+        return self.torso * self.crank_radius_px
 
     @classmethod
     def from_dict(cls, d: dict[str, Any] | None) -> SideGeometry | None:
@@ -349,12 +394,14 @@ class BilateralFit:
     reason: str | None = None
     knee_at_bdc: float | None = None
     uncertainty_deg: float | None = None
-    per_side: dict[str, float] = field(default_factory=dict)
+    # What each clip measured ON ITS OWN. A fact about a clip, not about a
+    # leg -- there is no per-side reconciled value any more, because it was
+    # the scale choice wearing a measurement's clothes.
     raw_per_side: dict[str, float] = field(default_factory=dict)
-    asymmetry_deg: float | None = None
-    asymmetry_significant: bool | None = None
-    asymmetry_floor_deg: float | None = None
-    scale_disagreement_pct: float | None = None
+    # Which invariant set the scale, and how far the alternative was from it.
+    scale_anchor: str | None = None
+    scale_chord_disagreement_pct: float | None = None
+    scale_anchor_spread_deg: float | None = None
     leg_disagreement_pct: float | None = None
     shared_thigh: float | None = None
     shared_shin: float | None = None
@@ -367,12 +414,10 @@ class BilateralFit:
             "reason": self.reason,
             "knee_at_bdc": _r(self.knee_at_bdc),
             "uncertainty_deg": _r(self.uncertainty_deg),
-            "per_side": {k: round(v, 1) for k, v in self.per_side.items()},
             "raw_per_side": {k: round(v, 1) for k, v in self.raw_per_side.items()},
-            "asymmetry_deg": _r(self.asymmetry_deg),
-            "asymmetry_significant": self.asymmetry_significant,
-            "asymmetry_floor_deg": _r(self.asymmetry_floor_deg),
-            "scale_disagreement_pct": _r(self.scale_disagreement_pct, 2),
+            "scale_anchor": self.scale_anchor,
+            "scale_chord_disagreement_pct": _r(self.scale_chord_disagreement_pct, 2),
+            "scale_anchor_spread_deg": _r(self.scale_anchor_spread_deg, 1),
             "leg_disagreement_pct": _r(self.leg_disagreement_pct, 2),
         }
 
@@ -432,9 +477,12 @@ def merge_summaries(
 
     knee = fit.knee_at_bdc
     merged["knee_at_bdc"] = knee
+    # Both per-side keys get the SAME merged value. Not laziness: the method
+    # cannot separate the two legs from its own scale error, so publishing a
+    # different number per side -- which ``score_cycling`` reads first -- would
+    # be inventing the distinction back.
     for side in ("left", "right"):
-        if f"{side}_knee_at_bdc" in merged or side in fit.per_side:
-            merged[f"{side}_knee_at_bdc"] = fit.per_side.get(side, knee)
+        merged[f"{side}_knee_at_bdc"] = knee
 
     # The saddle verdict is derived from the knee, so it has to be re-derived
     # from the merged one -- carrying the base clip's verdict forward would
@@ -509,100 +557,118 @@ def _pct_gap(a: float, b: float) -> float:
     return abs(a - b) / mean * 100.0
 
 
+def _scale_candidates(a: SideGeometry, b: SideGeometry) -> list[tuple[str, float]]:
+    """Ratios of b's image scale to a's, one per invariant both clips share."""
+    out: list[tuple[str, float]] = []
+    if a.crank_radius_px > 0 and b.crank_radius_px > 0:
+        out.append(("crank", a.crank_radius_px / b.crank_radius_px))
+    if math.isfinite(a.torso_px) and math.isfinite(b.torso_px) and b.torso_px > 0:
+        out.append(("torso", a.torso_px / b.torso_px))
+    return out
+
+
 def combine_sides(left: SideGeometry, right: SideGeometry) -> BilateralFit:
     """Merge a left-view and a right-view clip into one bike-fit verdict.
 
-    Refuses unless the two clips share a scale, because everything after that
-    point pools numbers from both and pooling across a broken scale is worse
-    than not pooling at all.
+    Pooling bone lengths needs the ratio of the two clips' image scales. Each
+    shared invariant offers one -- see the module note -- and the chosen one is
+    whichever makes the two clips agree about the hip-ankle chord, since that
+    length is fixed by the bike and a scale that makes the bike appear to have
+    changed mid-session is the wrong scale.
+
+    The disagreement between the anchors is not discarded: the combined angle
+    is computed under BOTH, and how far apart those answers land goes into the
+    uncertainty. That is the honest cost of not knowing the scale exactly, and
+    it replaces the old behaviour of refusing outright.
     """
     if left is None or right is None:
         return BilateralFit(False, reason="missing_side")
     if left.camera_side == right.camera_side:
         return BilateralFit(False, reason="same_side")
 
-    # --- gate: do the two clips agree on the one length the bike fixes? -----
-    scale_gap = _pct_gap(left.chord_bdc, right.chord_bdc)
-    if scale_gap > _SCALE_TOLERANCE_PCT:
-        # Same rider, same unchanged bike: hip-to-ankle at the bottom of the
-        # stroke is one number, so a disagreement here means the crank-radius
-        # estimate (the shared ruler) is wrong in at least one clip -- filmed
-        # from a different distance, or an ankle orbit the chainring corrupted.
-        logger.info("BILATERAL_REFUSED", reason="scale", gap_pct=round(scale_gap, 2))
-        return BilateralFit(False, reason="scale_mismatch",
-                            scale_disagreement_pct=scale_gap)
+    candidates = _scale_candidates(left, right)
+    if not candidates:
+        return BilateralFit(False, reason="no_shared_scale")
 
-    leg_gap = _pct_gap(left.leg, right.leg)
-    if leg_gap > _LEG_DISAGREEMENT_LIMIT_PCT:
-        logger.info("BILATERAL_REFUSED", reason="leg", gap_pct=round(leg_gap, 2))
-        return BilateralFit(False, reason="leg_mismatch",
-                            scale_disagreement_pct=scale_gap,
-                            leg_disagreement_pct=leg_gap)
+    # Score each candidate on the one thing the bike guarantees: with the right
+    # clip scaled into the left's units, both must report the same hip-ankle
+    # chord.
+    scored = []
+    for name, k in candidates:
+        if not (math.isfinite(k) and k > 0):
+            continue
+        gap = abs(left.chord_px - right.chord_px * k) / max(left.chord_px, 1e-9) * 100.0
+        scored.append((gap, name, k))
+    if not scored:
+        return BilateralFit(False, reason="no_shared_scale")
+    scored.sort()
+    chord_gap, anchor, k = scored[0]
 
-    # --- one body -----------------------------------------------------------
-    thigh = (left.thigh + right.thigh) / 2.0
-    shin = (left.shin + right.shin) / 2.0
-    chord = (left.chord_bdc + right.chord_bdc) / 2.0
+    def _merged(scale: float):
+        """(knee, thigh, shin, chord) with the right clip scaled into the left's."""
+        t = (left.thigh_px + right.thigh_px * scale) / 2.0
+        sh = (left.shin_px + right.shin_px * scale) / 2.0
+        ch = (left.chord_px + right.chord_px * scale) / 2.0
+        return knee_from_chord(t, sh, ch), t, sh, ch
 
-    knee = knee_from_chord(thigh, shin, chord)
+    knee, thigh, shin, chord = _merged(k)
     if knee is None:
         return BilateralFit(False, reason="degenerate_geometry")
 
-    per_side: dict[str, float] = {}
-    for side in (left, right):
-        v = knee_from_chord(thigh, shin, side.chord_bdc)
-        if v is not None:
-            per_side[side.camera_side] = v
+    # A pair that cannot be made to agree on the rider's own leg is not two
+    # views of one session -- wrong clip paired, or tracking that failed.
+    leg_gap = _pct_gap(left.thigh_px + left.shin_px,
+                       (right.thigh_px + right.shin_px) * k)
+    if leg_gap > _LEG_DISAGREEMENT_LIMIT_PCT or chord_gap > _SCALE_SANITY_PCT:
+        logger.info("BILATERAL_REFUSED", reason="not_one_session",
+                    leg_gap_pct=round(leg_gap, 2), chord_gap_pct=round(chord_gap, 2))
+        return BilateralFit(False, reason="leg_mismatch",
+                            scale_anchor=anchor,
+                            scale_chord_disagreement_pct=chord_gap,
+                            leg_disagreement_pct=leg_gap)
+
+    # How far the answer would have moved on the other ruler. Small in practice
+    # -- scaling a whole triangle barely changes its shape -- but it is a real
+    # unknown, and it belongs in the error bar rather than in a footnote.
+    others = [v for nm, kk in candidates if nm != anchor
+              and (v := _merged(kk)[0]) is not None]
+    anchor_spread = max((abs(v - knee) for v in others), default=0.0)
+
     raw_per_side = {
         side.camera_side: v
         for side in (left, right)
         if (v := knee_from_chord(side.thigh, side.shin, side.chord_bdc)) is not None
     }
 
-    # --- what we are allowed to claim ---------------------------------------
     sens = leg_length_sensitivity_deg(thigh, shin, chord)   # deg per 1%
     if not math.isfinite(sens):
         return BilateralFit(False, reason="degenerate_geometry")
     # Pooling two leg estimates leaves each about half their disagreement away
     # from the pooled value; the chord's own scatter across revolutions adds to
-    # it; and the model's absolute wobble (measured by mirroring a clip) is a
-    # floor neither averaging nor anything else here can remove.
+    # it; the choice of ruler adds its own; and the model's absolute wobble
+    # (measured by mirroring a clip) is a floor none of this can remove.
     from_leg = (leg_gap / 2.0) * sens
-    chord_noise_pct = (
-        (left.chord_sd + right.chord_sd) / 2.0 / chord * 100.0 if chord > 0 else 0.0
-    )
+    sd_px = (left.chord_sd * left.crank_radius_px
+             + right.chord_sd * right.crank_radius_px * k) / 2.0
+    chord_noise_pct = (sd_px / chord * 100.0) if chord > 0 else 0.0
     from_chord = chord_noise_pct * sens
-    uncertainty = math.sqrt(from_leg**2 + from_chord**2 + _ABSOLUTE_FLOOR_DEG**2)
-
-    # --- asymmetry, now that the model's share is out of it -----------------
-    # With one body imposed, a difference between the sides can only come from
-    # the chords, i.e. from how far each leg actually reaches. The floor is the
-    # chord scatter -- what the same leg varies by between revolutions.
-    asymmetry = None
-    significant = None
-    floor = None
-    if len(per_side) == 2:
-        asymmetry = per_side["left"] - per_side["right"]
-        floor = max(2.0 * from_chord, 2.0)
-        significant = abs(asymmetry) > floor
+    uncertainty = math.sqrt(
+        from_leg**2 + from_chord**2 + anchor_spread**2 + _ABSOLUTE_FLOOR_DEG**2)
 
     logger.info(
         "BILATERAL_COMBINED",
         knee=round(knee, 1), uncertainty=round(uncertainty, 1),
-        scale_gap_pct=round(scale_gap, 2), leg_gap_pct=round(leg_gap, 2),
-        asymmetry=None if asymmetry is None else round(asymmetry, 1),
-        significant=significant,
+        anchor=anchor, chord_gap_pct=round(chord_gap, 2),
+        anchor_spread=round(anchor_spread, 1), leg_gap_pct=round(leg_gap, 2),
     )
     return BilateralFit(
         combined=True,
         knee_at_bdc=knee,
         uncertainty_deg=uncertainty,
-        per_side=per_side,
         raw_per_side=raw_per_side,
-        asymmetry_deg=asymmetry,
-        asymmetry_significant=significant,
-        asymmetry_floor_deg=floor,
-        scale_disagreement_pct=scale_gap,
+        scale_anchor=anchor,
+        scale_chord_disagreement_pct=chord_gap,
+        scale_anchor_spread_deg=anchor_spread,
         leg_disagreement_pct=leg_gap,
         shared_thigh=thigh,
         shared_shin=shin,

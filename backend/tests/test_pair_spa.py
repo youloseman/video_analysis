@@ -157,10 +157,10 @@ class TestThePanel:
         assert "withJobToken" in fn
         assert "download" in fn
 
-    def test_a_merged_card_labels_the_raw_reading_as_a_separate_claim(self, html):
+    def test_a_card_is_labelled_as_that_clip_alone(self, html):
+        """The card is a fact about a clip, not a verdict about a leg."""
         fn = _fn(html, "renderBilateral")
-        assert "measured alone" in fn
-        assert "c.merged" in fn
+        assert "side alone" in fn
 
     def test_every_refusal_reason_the_server_can_emit_has_words(self, html):
         """A reason code with no copy renders as a blank explanation, which
@@ -177,12 +177,13 @@ class TestThePanel:
         for mod in ("app/services/video_analysis/biomechanics/bilateral.py",
                     "app/services/video_analysis/bilateral_session.py"):
             src = (backend / mod).read_text(encoding="utf-8")
-            emitted |= set(re.findall(r'reason=["\']([a-z_]+)["\']', src))
-            emitted |= set(re.findall(r'_refusal\([^)]*?["\']([a-z_]+)["\']', src,
-                                      re.S))
-        # `combine_sides` logs a short tag and returns a longer one; only the
-        # returned values reach the panel.
-        emitted -= {"scale", "leg"}
+            # Only what is RETURNED reaches the panel. `logger.info` also
+            # carries a `reason=`, and scraping those made this test demand
+            # copy for a diagnostic tag no reader ever sees.
+            emitted |= set(re.findall(
+                r'BilateralFit\(\s*False,\s*reason=["\']([a-z_]+)["\']', src))
+            emitted |= set(re.findall(
+                r'_refusal\([^)]*?["\']([a-z_]+)["\']', src, re.S))
         assert emitted, "found no refusal reasons to check"
         i = html.index("const BIL_REASONS={")
         block = html[i:html.index("};", i)]
@@ -199,11 +200,49 @@ class TestThePanel:
         cards = fn[fn.index("const cards="):fn.index("if(!b.combined)")]
         assert "score" not in cards
 
-    def test_an_insignificant_asymmetry_is_named_as_the_method(self, html):
+    def test_the_panel_publishes_no_asymmetry_number(self, html):
+        """Left-right difference and scale error are degenerate in this
+        method (see test_bilateral.TestWhyThereIsNoAsymmetryNumber), so the
+        panel must not print one -- and must say why, or the two per-clip
+        readings sitting side by side read as one."""
         fn = _fn(html, "renderBilateral")
-        assert "asymmetry_significant" in fn
-        assert "pose model, not you" in fn
+        assert "asymmetry" not in fn.lower().replace("no asymmetry number", "")
+        assert "no asymmetry number" in fn
+        assert "the instrument, not your legs" in fn
 
     def test_the_panel_is_skipped_for_ordinary_single_clip_results(self, html):
         fn = _fn(html, "renderBilateral")
         assert "if(!b){ host.innerHTML=''; return; }" in fn
+
+
+class TestPollingHasACeiling:
+    """A job stuck in the QUEUE used to spin forever.
+
+    `pollStart` is deliberately reset on every "queued" reply, so a clip
+    waiting its turn is not failed for the queue's sake. The side effect was
+    that a job which never left the queue reset the clock on every tick and
+    the spinner ran until the tab was closed -- Artur watched one for two
+    hours and reopened his editor thinking the tool had hung.
+    """
+
+    def test_there_is_an_outer_limit_that_nothing_resets(self, html):
+        assert "const POLL_TOTAL_MS" in html
+        fn = _fn(html, "pollOnce")
+        assert "state.pollFirst" in fn
+        assert "POLL_TOTAL_MS" in fn
+
+    def test_the_outer_limit_is_longer_than_the_analysis_one(self, html):
+        """Otherwise it fires on ordinary slow analyses instead of on the
+        failure it exists for."""
+        import math
+        import re
+        limits = {}
+        for name in ("POLL_ANALYZE_MS", "POLL_TOTAL_MS"):
+            m = re.search(rf"const {name} = ([0-9]+)\*([0-9]+)\*([0-9]+);", html)
+            assert m, f"{name} not found or not written as a minutes product"
+            limits[name] = math.prod(int(g) for g in m.groups())
+        assert limits["POLL_TOTAL_MS"] > limits["POLL_ANALYZE_MS"]
+        assert limits["POLL_TOTAL_MS"] >= 10 * 60 * 1000
+
+    def test_the_clock_is_started_when_polling_starts(self, html):
+        assert "state.pollFirst=Date.now()" in html
