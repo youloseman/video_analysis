@@ -191,22 +191,31 @@ def _mush(frames, i, toward=0.5):
             lms[ri].x, lms[ri].y = rx + toward * (lx - rx), ry + toward * (ly - ry)
 
 
-def test_a_teleport_glitch_with_a_mushy_return_is_repaired_by_the_anchors():
+def test_a_teleport_glitch_with_a_mushy_return_does_not_invert_the_clip():
     """The IMG_4004 signature, measured on real footage: ONE frame whose
     labels teleport onto the opposite legs (loud crossing in), followed by a
-    frame of mush (no loud crossing out). The path pays the entry, never
-    sees an exit, and holds the wrong parity to the end of the clip -- 83
-    frames on the real clip, the flip the athlete reported. The stance
-    anchors know the same foot was down before and after the glitch and
-    repair the cheapest link."""
+    frame of mush (no loud crossing out). Left alone the path pays the entry,
+    never sees an exit, and holds the wrong parity to the end of the clip --
+    83 frames on the real clip, the flip the athlete reported.
+
+    This asserts the OUTCOME, not which stage produced it. It used to also
+    require `anchors.repaired >= 1`, because at a switch toll of 3.0 the path
+    could not undo the glitch and the stance anchors had to. Lowering the toll
+    to 0.35 (measured 2026-08-29: summed excess order-crossings over the run
+    fixtures fell 64.3 -> 24.3) lets the path handle it directly, so the
+    anchors now find nothing to repair. Same one bad frame either way. Pinning
+    the mechanism would have blocked a change that improved the result."""
     frames = build(swapped_frames=frozenset({56}))
     _mush(frames, 57, toward=0.45)
     swaps, pct, _, diag = LI.resolve_run_leg_identity(frames)
     bad, total = truth_errors(frames)
-    # The two corrupted frames themselves are unfixable; nothing else may
-    # stay inverted -- without the anchors ~180 frames come back wrong.
+    # The corrupted frames themselves are unfixable; nothing else may stay
+    # inverted -- unrepaired, ~180 frames come back wrong.
     assert bad <= 4, f"{bad}/{total} frames on the wrong leg"
-    assert diag["anchors"]["repaired"] >= 1
+    # The anchors must still be ALIVE, even when they have no work: a silent
+    # death here would go unnoticed until a clip needed them.
+    assert diag["anchors"]["stances"] > 0
+    assert diag["anchors"]["constraints"] > 0
 
 
 def test_a_stance_split_by_a_dropout_is_one_stance_not_two():
@@ -219,8 +228,15 @@ def test_a_stance_split_by_a_dropout_is_one_stance_not_two():
     _, _, _, diag = LI.resolve_run_leg_identity(frames)
     bad, _ = truth_errors(frames)
     assert bad == 0
-    assert diag["anchors"]["violated"] == 0
-    assert diag["anchors"]["repaired"] == 0
+    # The subject is the MERGE: one interrupted stance must be counted once.
+    # Twelve stances is the un-split count; reading the dropout as a boundary
+    # would inflate it and hang a phantom constraint on the gap.
+    assert diag["anchors"]["stances"] == 12
+    # Any constraint the path did violate must have been repaired, not left
+    # standing. (At the old toll of 3.0 the path happened to violate none
+    # here; at 0.35 it violates one and the anchors fix it. Same outcome --
+    # which is why the count of violations is not what this test is about.)
+    assert diag["anchors"]["violated"] == diag["anchors"]["repaired"]
 
 
 def test_chaotic_labels_stand_the_anchors_down():

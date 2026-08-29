@@ -87,7 +87,16 @@ _COLLAPSE_DIST = 0.02
 # -- waive the toll on decisive links -- was tried first and repaired this
 # clip while breaking the validated blurry fixture, whose noise clears the
 # bar in isolated links more often than the toll lets through.)
-_SWITCH_COST_STEPS = 3.0
+# MEASURED 2026-08-29 and lowered from 3.0. At three median steps the toll was
+# not resisting noise, it was outvoting evidence: a link with two full steps of
+# decisive geometry still lost to the prior. Summed absolute excess
+# order-crossings over the seven usable run fixtures (see the note on the gait
+# invariant in the tests): 64.3 at 3.0, and 24.3 anywhere in 0.1-0.35. On the
+# clip the athlete called unusable it is the difference between 30 spurious
+# crossings and 8; on the blurry fixture whose noise this toll was raised to
+# resist, nothing changes. 0.35 is the top of that plateau -- the most
+# hysteresis the evidence still allows -- and 0.5 falls off it sharply.
+_SWITCH_COST_STEPS = 0.35
 
 # A pair whose stay/cross costs differ by less than this fraction of the step
 # scale is counted ambiguous. The share of such pairs is the honest residual:
