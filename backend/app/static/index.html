@@ -1140,6 +1140,34 @@ h2.sec + .speedline{margin-bottom:24px}
   display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .videocap .note{color:var(--c-ink-soft)}
 
+/* ---------- Joint editor (photo, bike) ----------
+   The athlete drags the joint points the model got wrong. Drawn on the
+   ORIGINAL photo, not the annotated one: that one has the skeleton burned
+   in, and two skeletons on one picture is a puzzle, not an editor. */
+.lmed{margin-top:12px;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;overflow:hidden}
+.lmed-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px 16px;border-bottom:1px solid var(--c-line);font-size:13px;color:var(--c-ink)}
+.lmed-head b{color:var(--c-navy)}
+.lmed-wrap{position:relative;background:var(--c-media-bg);touch-action:none;user-select:none;-webkit-user-select:none}
+.lmed-wrap canvas.lmed-c{display:block;width:100%;height:auto;max-height:70vh;cursor:crosshair}
+.lmed-loupe{position:absolute;width:132px;height:132px;border-radius:50%;border:2px solid #fff;
+  box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none;background:#000}
+.lmed-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 16px;background:#fff;border-top:1px solid var(--c-line)}
+.lmed-actions .grp{display:flex;gap:8px;flex-wrap:wrap}
+.lmed-status{font-size:12px;color:var(--c-ink-soft)}
+.lmed-status.warn{color:var(--c-warn)}
+/* video flavour: the canvas sits exactly over the <video>, which sets the box */
+.ved-wrap video{display:block;width:100%;max-height:70vh;background:#000}
+.ved-wrap canvas.ved-c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.ved-ctl{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-top:1px solid var(--c-line)}
+.ved-ctl input[type=range]{flex:1;min-width:80px}
+.ved-ctl .btn{min-height:36px;padding:6px 12px}
+.ved-frame{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);min-width:96px;text-align:right}
+.corr-badge{display:inline-flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;font-weight:700;
+  color:var(--c-navy);background:rgba(20,41,75,.08);border-radius:999px;padding:5px 12px}
+.corr-badge .ring{width:12px;height:12px;border-radius:50%;border:2px solid var(--st-good-fill);box-shadow:0 0 0 1.5px #fff inset}
+
 /* ---- Kinogram ----------------------------------------------------------
    Five portrait tiles side by side is a wide picture. Scaling it to fit a
    phone would shrink the athlete to a thumbnail and the joint angles to
@@ -1170,9 +1198,14 @@ h2.sec + .speedline{margin-bottom:24px}
 .coach{background:var(--c-panel-blue);border-radius:var(--radius);padding:24px}
 .coach h4{font-family:var(--f-body);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.18em;color:var(--c-blue);margin:16px 0 8px}
 .coach h4:first-child{margin-top:0}
-.coach p{font-size:14px;color:var(--c-ink);margin:8px 0;line-height:1.6;max-width:68ch}
+/* No reading-measure cap here. The 68ch/66ch it used to carry is good
+   typography in the abstract and wrong in this card: .wrap already bounds the
+   page at 1000px, so the cap only bit on desktop, where it left the coach's
+   prose ending halfway across a tinted panel with the right half empty. The
+   page width IS the measure. */
+.coach p{font-size:14px;color:var(--c-ink);margin:8px 0;line-height:1.6}
 .coach ul{margin:8px 0;padding-left:20px}
-.coach li{font-size:14px;color:var(--c-ink);line-height:1.6;margin:4px 0;max-width:66ch}
+.coach li{font-size:14px;color:var(--c-ink);line-height:1.6;margin:4px 0}
 .coach strong{color:var(--c-navy);font-weight:800}
 .coach .disclaimer{font-size:12px;color:var(--c-ink-soft);margin-top:16px;padding-top:16px;border-top:1px solid rgba(20,41,75,.12)}
 
@@ -2203,9 +2236,47 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           <div class="videocap">
             <span>Annotated overlay · skeleton + the joints worth watching<br>
               <span class="note">Callouts mark what sits outside its range — every angle is in the table below. Results aren’t stored, so download to keep it.</span></span>
-            <a class="btn btn-ghost btn-sm" id="downloadOverlay" download>
-              <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .mp4
-            </a>
+            <span class="grp" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm hidden" id="vAdjust" type="button"
+                      title="Move a joint point the model placed wrong; the whole clip is measured again">
+                <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Adjust joints
+              </button>
+              <a class="btn btn-ghost btn-sm" id="downloadOverlay" download>
+                <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .mp4
+              </a>
+            </span>
+          </div>
+        </div>
+        <div class="corr-badge hidden" id="vCorrBadge"><span class="ring" aria-hidden="true"></span><span id="vCorrBadgeTxt"></span></div>
+        <!-- The video joint editor: the ORIGINAL clip from this browser with
+             the measured points drawn over it. One drag moves that joint on
+             every frame (a constant offset -- see the plan doc); scrub to see
+             it follow. -->
+        <div class="lmed hidden" id="vEditor" aria-label="Joint editor">
+          <div class="lmed-head">
+            <span><b>Pause, then drag a joint</b> to where it really is. The move applies to the whole clip — scrub to check it.
+              <span class="hint" id="vEdHint"></span></span>
+          </div>
+          <div class="lmed-wrap ved-wrap" id="vEdWrap">
+            <video id="vEdVideo" muted playsinline preload="auto"></video>
+            <canvas class="ved-c" id="vEdCanvas" aria-label="Your clip with movable joint points"></canvas>
+            <canvas class="lmed-loupe hidden" id="vEdLoupe" width="132" height="132" aria-hidden="true"></canvas>
+          </div>
+          <div class="ved-ctl">
+            <button class="btn btn-ghost btn-sm" id="vEdPlay" type="button" aria-label="Play or pause">▶</button>
+            <button class="btn btn-ghost btn-sm" id="vEdPrev" type="button" aria-label="Previous frame">◀</button>
+            <input type="range" id="vEdScrub" min="0" max="0" value="0" step="1" aria-label="Frame">
+            <button class="btn btn-ghost btn-sm" id="vEdNext" type="button" aria-label="Next frame">▶</button>
+            <span class="ved-frame" id="vEdFrame">—</span>
+          </div>
+          <div class="lmed-actions">
+            <span class="lmed-status" id="vEdStatus">Nothing moved yet.</span>
+            <span class="grp">
+              <button class="btn btn-ghost btn-sm hidden" id="vEdResetSrv" type="button" title="Drop every adjustment and restore the automatic measurement">Back to automatic</button>
+              <button class="btn btn-ghost btn-sm" id="vEdReset" type="button">Undo moves</button>
+              <button class="btn btn-ghost btn-sm" id="vEdCancel" type="button">Close</button>
+              <button class="btn btn-primary btn-sm" id="vEdApply" type="button" aria-disabled="true">Re-measure clip</button>
+            </span>
           </div>
         </div>
       </div>
@@ -2397,9 +2468,36 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
           <div class="videocap">
             <span>Annotated photo · skeleton + joint angles<br>
               <span class="note">Results aren’t stored — download to keep it.</span></span>
-            <a class="btn btn-ghost btn-sm" id="pDownload" download="flapp-analysis.jpg">
-              <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .jpg
-            </a>
+            <span class="grp" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm hidden" id="pAdjust" type="button"
+                      title="Move a joint point the model placed wrong; every angle is measured again">
+                <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Adjust joints
+              </button>
+              <a class="btn btn-ghost btn-sm" id="pDownload" download="flapp-analysis.jpg">
+                <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .jpg
+              </a>
+            </span>
+          </div>
+        </div>
+        <div class="corr-badge hidden" id="pCorrBadge"><span class="ring" aria-hidden="true"></span><span id="pCorrBadgeTxt"></span></div>
+        <!-- The editor. Hidden until the athlete asks for it; lives under the
+             picture it edits so the two never scroll apart. -->
+        <div class="lmed hidden" id="pEditor" aria-label="Joint editor">
+          <div class="lmed-head">
+            <span><b>Drag a joint</b> to where it really is — the ringed points can be moved.
+              <span class="hint" id="pEdHint">Only the camera-side joints count.</span></span>
+          </div>
+          <div class="lmed-wrap" id="pEdWrap">
+            <canvas class="lmed-c" id="pEdCanvas" aria-label="Your photo with movable joint points"></canvas>
+            <canvas class="lmed-loupe hidden" id="pEdLoupe" width="132" height="132" aria-hidden="true"></canvas>
+          </div>
+          <div class="lmed-actions">
+            <span class="lmed-status" id="pEdStatus">Nothing moved yet.</span>
+            <span class="grp">
+              <button class="btn btn-ghost btn-sm" id="pEdReset" type="button">Reset</button>
+              <button class="btn btn-ghost btn-sm" id="pEdCancel" type="button">Close</button>
+              <button class="btn btn-primary btn-sm" id="pEdApply" type="button" aria-disabled="true">Re-measure</button>
+            </span>
           </div>
         </div>
       </div>
@@ -3448,6 +3546,7 @@ function updatePosHint(){
 }
 updatePosHint();   // show the default position's description on load
 $('#pAgain').addEventListener('click',()=>reset());
+lmedBind(); vedBind();
 
 /* ============================================================
    Analyze: real upload progress (XHR) + staged status
@@ -4290,7 +4389,411 @@ function renderPhotoAngles(){
   } else pick.classList.add('hidden');
 }
 function setPhotoPedalPhase(p){ state.pedalPhase=p; renderPhotoAngles(); }
-function renderPhoto(res){
+
+/* ============================================================
+   Joint editor — photo, bike (docs/LANDMARK_CORRECTION_PLAN_RU.md)
+
+   The model puts a joint in the wrong place for reasons the athlete can
+   see and it cannot (black shorts, the shape of a shoe). Here they drag
+   the point to where it is; the server measures the photo again from
+   the corrected pose and says in the report what was moved. The drawing
+   below is on the ORIGINAL photo — the annotated copy already has a
+   skeleton burned in, and two skeletons on one picture is a puzzle.
+   ============================================================ */
+const LMED_BONES={
+  left:[[7,11],[11,13],[13,15],[11,23],[23,25],[25,27],[27,29],[27,31],[29,31]],
+  right:[[8,12],[12,14],[14,16],[12,24],[24,26],[26,28],[28,30],[28,32],[30,32]]};
+const LMED_NAMES={7:'ear',8:'ear',11:'shoulder',12:'shoulder',13:'elbow',14:'elbow',15:'wrist',16:'wrist',
+  23:'hip',24:'hip',25:'knee',26:'knee',27:'ankle',28:'ankle',29:'heel',30:'heel',31:'toe',32:'toe'};
+/* Which three points make the angle at a vertex (mirrors the backend's
+   CYCLING_PHOTO_ANGLES) — for the live read-out while dragging. The number
+   the report prints still comes from the server; this is a preview. */
+const LMED_VERTEX={
+  left:{25:[23,25,27],23:[11,23,25],13:[11,13,15],11:[13,11,23]},
+  right:{26:[24,26,28],24:[12,24,26],14:[12,14,16],12:[14,12,24]}};
+const LMED_HIT_PX=22;        // finger-sized grab radius, in CSS pixels
+const LMED_LOUPE_ZOOM=2.5;
+const lmed={img:null,url:null,pts:null,orig:null,side:'right',drag:-1,aspect:1,moved:{},open:false};
+
+function lmedAngle(a,b,c,aspect){
+  if(aspect==null) aspect=lmed.aspect;
+  const ax=(a.x-b.x)*aspect, ay=a.y-b.y, cx=(c.x-b.x)*aspect, cy=c.y-b.y;
+  const na=Math.hypot(ax,ay), nc=Math.hypot(cx,cy); if(!na||!nc) return null;
+  return Math.acos(Math.max(-1,Math.min(1,(ax*cx+ay*cy)/(na*nc))))*180/Math.PI;
+}
+function lmedDraggable(){ return (state.photoPose&&state.photoPose.draggable)||[]; }
+/* The starting positions: the detected pose plus whatever the athlete has
+   already applied, so a second round of edits builds on the first. */
+function lmedStartPoints(){
+  const pose=state.photoPose; if(!pose) return null;
+  const pts=pose.landmarks.map(r=>({x:r[0],y:r[1],vis:r[3]==null?1:r[3]}));
+  (state.photoCorrections||[]).forEach(c=>{ const p=pts[c.landmark]; if(p&&p.x!=null){ p.x+=c.dx; p.y+=c.dy; } });
+  return pts;
+}
+function lmedOpen(){
+  const res=state.photoRes; if(!res||!state.photoPose||!state.file) return;
+  lmed.side=state.photoPose.camera_side||res.camera_side||'right';
+  lmed.orig=lmedStartPoints(); lmed.pts=lmed.orig.map(p=>({...p})); lmed.moved={}; lmed.drag=-1;
+  const ed=$('#pEditor'); ed.classList.remove('hidden'); lmed.open=true;
+  $('#pEdHint').textContent=`Only the ${lmed.side}-side joints count on a side view.`;
+  lmedStatus();
+  const img=new Image();
+  if(lmed.url){ URL.revokeObjectURL(lmed.url); lmed.url=null; }
+  lmed.url=URL.createObjectURL(state.file);
+  img.onload=()=>{ lmed.img=img; lmedFit(); lmedDraw(); };
+  img.onerror=()=>{
+    // A format the browser cannot show (HEIC in Chrome): fall back to the
+    // annotated copy so the editor still works, and say why it looks busy.
+    const fb=new Image(); fb.onload=()=>{ lmed.img=fb; lmedFit(); lmedDraw(); };
+    fb.src=res.thumbnail_base64||''; $('#pEdHint').textContent='Showing the annotated copy — this format can’t be previewed directly.';
+  };
+  img.src=lmed.url;
+  track('joint_adjust_opened',{sport:'bike',position:res.cycling_position||null});
+  ed.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function lmedFit(){
+  const c=$('#pEdCanvas'), img=lmed.img; if(!img) return;
+  // Draw at the photo's own resolution, capped: the canvas is scaled by CSS
+  // to the column width, and the cap keeps redraw-per-pointermove cheap.
+  const cap=1600, k=Math.min(1, cap/Math.max(img.naturalWidth,img.naturalHeight));
+  c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k);
+  lmed.aspect=c.width/c.height;
+}
+function lmedDraw(){
+  const c=$('#pEdCanvas'), ctx=c.getContext('2d'), img=lmed.img, pts=lmed.pts; if(!img||!pts) return;
+  const W=c.width, H=c.height, k=W/900, dots=lmedDraggable();
+  ctx.clearRect(0,0,W,H); ctx.drawImage(img,0,0,W,H);
+  const P=i=>{ const p=pts[i]; return (p&&p.x!=null&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  // bones: glow, then line
+  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
+    ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
+    LMED_BONES[lmed.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
+    ctx.stroke();
+  });
+  // draggable joints: ring + dot; a moved one carries a second ring
+  dots.forEach(i=>{ const p=P(i); if(!p) return;
+    const r=Math.max(5,7*k), moved=!!lmed.moved[i], live=lmed.drag===i;
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
+  });
+  // live angle at the vertex being dragged
+  const tri=LMED_VERTEX[lmed.side][lmed.drag];
+  if(tri){ const [a,b,cc]=tri.map(i=>pts[i]); const ang=lmedAngle(a,b,cc); const p=P(lmed.drag);
+    if(ang!=null&&p){ const txt=`${LMED_NAMES[lmed.drag]} ${Math.round(ang)}°`, fs=Math.max(12,15*k);
+      ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;
+      const x=Math.min(W-tw-4, Math.max(4, p[0]+18*k)), y=Math.max(fs+8, p[1]-18*k);
+      ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } }
+}
+function lmedCanvasPoint(ev){
+  const c=$('#pEdCanvas'), r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width, y:(ev.clientY-r.top)/r.height, cssScale:c.width/r.width};
+}
+function lmedNearest(q){
+  const c=$('#pEdCanvas'); let best=-1, bd=Infinity;
+  lmedDraggable().forEach(i=>{ const p=lmed.pts[i]; if(!p||p.x==null) return;
+    const d=Math.hypot((p.x-q.x)*c.width,(p.y-q.y)*c.height)/q.cssScale;   // CSS px
+    if(d<bd){ bd=d; best=i; } });
+  return bd<=LMED_HIT_PX?best:-1;
+}
+function lmedLoupe(ev,show){
+  const lp=$('#pEdLoupe'); if(!show){ lp.classList.add('hidden'); return; }
+  const c=$('#pEdCanvas'), wrap=$('#pEdWrap'), r=c.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
+  const q=lmedCanvasPoint(ev), sz=132, src=sz/LMED_LOUPE_ZOOM*q.cssScale;
+  const g=lp.getContext('2d'); g.clearRect(0,0,sz,sz);
+  g.drawImage(c, q.x*c.width-src/2, q.y*c.height-src/2, src, src, 0,0,sz,sz);
+  g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=1; g.beginPath(); g.moveTo(sz/2-10,sz/2); g.lineTo(sz/2+10,sz/2); g.moveTo(sz/2,sz/2-10); g.lineTo(sz/2,sz/2+10); g.stroke();
+  // above the finger, clamped inside the picture
+  let lx=ev.clientX-wr.left-sz/2, ly=ev.clientY-wr.top-sz-28;
+  if(ly<0) ly=ev.clientY-wr.top+28;
+  lx=Math.max(0,Math.min(wr.width-sz,lx)); ly=Math.max(0,Math.min(wr.height-sz,ly));
+  lp.style.left=lx+'px'; lp.style.top=ly+'px'; lp.classList.remove('hidden'); void r;
+}
+function lmedCorrections(){
+  return Object.keys(lmed.moved).map(i=>{ const p=lmed.pts[i], o=lmed.orig[i];
+    return {landmark:+i, dx:Math.round((p.x-o.x)*1e6)/1e6, dy:Math.round((p.y-o.y)*1e6)/1e6}; })
+    .filter(c=>c.dx||c.dy);
+}
+function lmedStatus(msg,warn){
+  const st=$('#pEdStatus'), n=lmedCorrections().length;
+  st.classList.toggle('warn',!!warn);
+  st.textContent=msg||(n?`${n} joint${n>1?'s':''} moved: ${Object.keys(lmed.moved).map(i=>LMED_NAMES[i]).join(', ')}.`:'Nothing moved yet.');
+  $('#pEdApply').setAttribute('aria-disabled',String(!n));
+}
+function lmedClose(){
+  $('#pEditor').classList.add('hidden'); lmed.open=false; lmed.drag=-1; lmedLoupe(null,false);
+  if(lmed.url){ URL.revokeObjectURL(lmed.url); lmed.url=null; } lmed.img=null;
+}
+function lmedReset(){ if(!lmed.orig) return; lmed.pts=lmed.orig.map(p=>({...p})); lmed.moved={}; lmed.drag=-1; lmedDraw(); lmedStatus(); }
+function lmedBind(){
+  const c=$('#pEdCanvas');
+  c.addEventListener('pointerdown',ev=>{ if(!lmed.open||!lmed.pts) return;
+    const i=lmedNearest(lmedCanvasPoint(ev)); if(i<0) return;
+    lmed.drag=i; c.setPointerCapture(ev.pointerId); ev.preventDefault(); lmedDraw(); lmedLoupe(ev,true); });
+  c.addEventListener('pointermove',ev=>{ if(lmed.drag<0) return;
+    const q=lmedCanvasPoint(ev), p=lmed.pts[lmed.drag];
+    p.x=Math.max(0,Math.min(1,q.x)); p.y=Math.max(0,Math.min(1,q.y)); lmed.moved[lmed.drag]=true;
+    lmedDraw(); lmedLoupe(ev,true); ev.preventDefault(); });
+  const up=ev=>{ if(lmed.drag<0) return; const i=lmed.drag; lmed.drag=-1;
+    const o=lmed.orig[i], p=lmed.pts[i]; if(Math.abs(p.x-o.x)<1e-6&&Math.abs(p.y-o.y)<1e-6) delete lmed.moved[i];
+    lmedDraw(); lmedLoupe(ev,false); lmedStatus(); };
+  c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+  $('#pAdjust').addEventListener('click',()=>{ lmed.open?lmedClose():lmedOpen(); });
+  $('#pEdCancel').addEventListener('click',lmedClose);
+  $('#pEdReset').addEventListener('click',lmedReset);
+  $('#pEdApply').addEventListener('click',()=>{ if($('#pEdApply').getAttribute('aria-disabled')!=='true') recomputePhoto(); });
+  window.addEventListener('resize',()=>{ if(lmed.open) lmedDraw(); });
+}
+async function recomputePhoto(){
+  const res=state.photoRes, fresh=lmedCorrections(); if(!res||!state.photoPose||!state.file||!fresh.length) return;
+  const all=(state.photoCorrections||[]).concat(fresh);
+  const btn=$('#pEdApply'); btn.setAttribute('aria-disabled','true'); lmedStatus('Measuring again…');
+  const t0=Date.now();
+  const fd=new FormData();
+  fd.append('photo',state.file); fd.append('sport','bike');
+  fd.append('position',res.cycling_position||state.position);
+  fd.append('pose',JSON.stringify(state.photoPose)); fd.append('corrections',JSON.stringify(all));
+  fd.append('coaching','true'); if(focusText()) fd.append('focus',focusText());
+  try{
+    const r=await fetch('/analyze-photo/recompute',{method:'POST',headers:authHeaders(),body:fd});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      const why=j.detail||('Re-measurement failed (HTTP '+r.status+').');
+      lmedStatus(why,true); btn.setAttribute('aria-disabled','false');
+      track('joint_adjust_failed',{status:r.status});
+      return;
+    }
+    state.photoCorrections=j.corrections||[];
+    track('joint_adjust_applied',{n:state.photoCorrections.length,
+      seconds:Math.round((Date.now()-t0)/1000),
+      score_before:(j.baseline&&j.baseline.score&&j.baseline.score.overall_score)!=null?j.baseline.score.overall_score:null,
+      score_after:(j.score&&j.score.overall_score)!=null?j.score.overall_score:null});
+    lmedClose();
+    renderPhoto(j,{reuseHistId:state.photoHistId});
+    const pw=j.plausibility_warnings||[];
+    toast(pw.length?'Re-measured — one adjustment looks unusual, see the note under the photo.':'Re-measured with your adjustments.');
+  }catch(e){
+    lmedStatus('Network error — check your connection and try again.',true); btn.setAttribute('aria-disabled','false');
+  }
+}
+/* The badge under the picture: what was moved, and what the geometry said
+   about it. Present whenever the numbers on screen are not purely automatic. */
+function renderCorrectionBadge(res,hostId){
+  hostId=hostId||'pCorrBadge';
+  const badge=$('#'+hostId), corr=res.corrections||[];
+  if(!corr.length){ badge.classList.add('hidden'); return; }
+  const names=corr.map(c=>LMED_NAMES[c.landmark]||('point '+c.landmark));
+  const pw=res.plausibility_warnings||[];
+  let txt=`${corr.length} joint${corr.length>1?'s':''} adjusted by you: ${names.join(', ')}`;
+  // photo keeps its score under `score`, video at the top level
+  const bs=res.baseline&&(res.baseline.score?res.baseline.score.overall_score:res.baseline.technique_score);
+  const cs=res.score?res.score.overall_score:res.technique_score;
+  if(bs!=null&&cs!=null&&bs!==cs) txt+=` · score ${bs} → ${cs}`;
+  if(pw.length) txt+=` · ${pw[0].message}`;
+  $('#'+hostId+'Txt').textContent=txt; badge.classList.remove('hidden');
+}
+
+/* ============================================================
+   Joint editor — video, bike. Same idea as the photo editor with one more
+   axis: a drag is a constant offset for that joint on EVERY frame, so the
+   athlete scrubs the clip to see the moved point follow the joint. The
+   server measures the whole clip again from the stored frames (no second
+   pose pass) and the report says what was moved.
+   ============================================================ */
+const ved={open:false,data:null,idx:[],fps:30,side:'right',draggable:[],aspect:1,
+  existing:{},pending:{},cur:0,curRec:-1,drag:-1,dragFrom:null,url:null,rvfc:0,busy:false};
+
+function vedDeltaOf(L){ const e=ved.existing[L]||{dx:0,dy:0}, p=ved.pending[L]||{dx:0,dy:0}; return {dx:e.dx+p.dx, dy:e.dy+p.dy}; }
+/* Point L on the current analyzed frame, with every offset applied. */
+function vedPoint(L,rec){
+  rec=rec==null?ved.curRec:rec; if(rec<0||!ved.data) return null;
+  const k=ved.draggable.indexOf(L); if(k<0) return null;
+  const p=ved.data.frames[rec].p[k]; if(!p||p[0]==null) return null;
+  const d=vedDeltaOf(L); return {x:p[0]+d.dx, y:p[1]+d.dy, vis:p[2]==null?1:p[2]};
+}
+function vedNearestRec(frameIdx){ // binary search over sorted analyzed indices
+  const a=ved.idx; let lo=0, hi=a.length-1;
+  while(lo<hi){ const m=(lo+hi)>>1; if(a[m]<frameIdx) lo=m+1; else hi=m; }
+  if(lo>0 && Math.abs(a[lo-1]-frameIdx)<=Math.abs(a[lo]-frameIdx)) lo=lo-1;
+  return lo;
+}
+async function vedOpen(){
+  const r=state.lastResult; if(!r||!state.file||!state.jobId||ved.busy) return;
+  const ed=$('#vEditor'); ed.classList.remove('hidden'); ved.open=true;
+  $('#vEdStatus').textContent='Loading the measured points…'; $('#vEdStatus').classList.remove('warn');
+  track('joint_adjust_opened',{sport:'bike',mode:'video',position:r.cycling_position||null});
+  try{
+    const rr=await fetch(withJobToken('/jobs/'+state.jobId+'/landmarks', state.jobId),{headers:authHeaders()});
+    const j=await rr.json().catch(()=>({}));
+    if(!rr.ok){ $('#vEdStatus').textContent=j.detail||('Could not load the points (HTTP '+rr.status+').'); $('#vEdStatus').classList.add('warn'); return; }
+    ved.data=j; ved.idx=j.frames.map(f=>f.i); ved.fps=j.fps||30; ved.side=j.camera_side||'right';
+    ved.draggable=j.draggable||[]; ved.aspect=(j.frame_width&&j.frame_height)?j.frame_width/j.frame_height:1;
+    ved.existing={}; (j.corrections||[]).forEach(c=>{ ved.existing[c.landmark]={dx:c.dx,dy:c.dy}; });
+    ved.pending={}; ved.drag=-1; ved.curRec=0; ved.cur=ved.idx[0]||0;
+    $('#vEdHint').textContent=`Only the ${ved.side}-side joints count. ${j.rounds_left} round${j.rounds_left===1?'':'s'} of adjustment left on this clip.`;
+    $('#vEdResetSrv').classList.toggle('hidden',!(j.corrections&&j.corrections.length));
+    const sc=$('#vEdScrub'); sc.max=String(Math.max(0,ved.idx.length-1)); sc.value='0';
+    const v=$('#vEdVideo');
+    if(ved.url){ URL.revokeObjectURL(ved.url); ved.url=null; }
+    ved.url=URL.createObjectURL(state.file); v.src=ved.url;
+    v.addEventListener('loadedmetadata',()=>{ vedFit(); v.currentTime=ved.cur/ved.fps; },{once:true});
+    vedStatus(); ed.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){ $('#vEdStatus').textContent='Network error while loading the points.'; $('#vEdStatus').classList.add('warn'); }
+}
+function vedFit(){
+  const v=$('#vEdVideo'), c=$('#vEdCanvas'); if(!v.videoWidth) return;
+  const cap=1600, k=Math.min(1, cap/Math.max(v.videoWidth,v.videoHeight));
+  c.width=Math.round(v.videoWidth*k); c.height=Math.round(v.videoHeight*k);
+  // The stored frames are normalized against the DECODED frame; the browser
+  // and the analyzer both apply the phone's rotation flag, so the two should
+  // agree. If they ever do not, the skeleton lands sideways -- visibly.
+  vedDraw();
+}
+function vedSync(){ // which analyzed frame the video is showing
+  const v=$('#vEdVideo'); if(!ved.data||!ved.idx.length) return;
+  const f=Math.round(v.currentTime*ved.fps);
+  ved.curRec=vedNearestRec(f); ved.cur=ved.idx[ved.curRec];
+  $('#vEdScrub').value=String(ved.curRec);
+  $('#vEdFrame').textContent=`frame ${ved.cur} · ${(ved.cur/ved.fps).toFixed(2)} s`;
+  vedDraw();
+}
+function vedDraw(){
+  const c=$('#vEdCanvas'), ctx=c.getContext('2d'); if(!ved.data||ved.curRec<0) return;
+  const W=c.width, H=c.height, k=W/900;
+  ctx.clearRect(0,0,W,H);
+  const P=L=>{ const p=vedPoint(L); return (p&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
+    ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
+    LMED_BONES[ved.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
+    ctx.stroke();
+  });
+  ved.draggable.forEach(L=>{ const p=P(L); if(!p) return;
+    const r=Math.max(5,7*k), moved=!!(ved.pending[L]||ved.existing[L]), live=ved.drag===L;
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
+  });
+  const tri=LMED_VERTEX[ved.side][ved.drag];
+  if(tri){ const pts=tri.map(vedPoint); if(pts.every(Boolean)){ const ang=lmedAngle(pts[0],pts[1],pts[2],ved.aspect), p=P(ved.drag);
+    if(ang!=null&&p){ const txt=`${LMED_NAMES[ved.drag]} ${Math.round(ang)}°`, fs=Math.max(12,15*k);
+      ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;
+      const x=Math.min(W-tw-4, Math.max(4, p[0]+18*k)), y=Math.max(fs+8, p[1]-18*k);
+      ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } } }
+}
+function vedCanvasPoint(ev){ const c=$('#vEdCanvas'), r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width, y:(ev.clientY-r.top)/r.height, cssScale:c.width/r.width}; }
+function vedNearest(q){ const c=$('#vEdCanvas'); let best=-1, bd=Infinity;
+  ved.draggable.forEach(L=>{ const p=vedPoint(L); if(!p) return;
+    const d=Math.hypot((p.x-q.x)*c.width,(p.y-q.y)*c.height)/q.cssScale; if(d<bd){ bd=d; best=L; } });
+  return bd<=LMED_HIT_PX?best:-1; }
+function vedLoupe(ev,show){
+  const lp=$('#vEdLoupe'); if(!show){ lp.classList.add('hidden'); return; }
+  const c=$('#vEdCanvas'), v=$('#vEdVideo'), wrap=$('#vEdWrap'), wr=wrap.getBoundingClientRect();
+  const q=vedCanvasPoint(ev), sz=132, srcW=sz/LMED_LOUPE_ZOOM*(v.videoWidth/c.getBoundingClientRect().width), srcC=sz/LMED_LOUPE_ZOOM*q.cssScale;
+  const g=lp.getContext('2d'); g.clearRect(0,0,sz,sz);
+  try{ g.drawImage(v, q.x*v.videoWidth-srcW/2, q.y*v.videoHeight-srcW/2, srcW, srcW, 0,0,sz,sz); }catch(e){}
+  g.drawImage(c, q.x*c.width-srcC/2, q.y*c.height-srcC/2, srcC, srcC, 0,0,sz,sz);
+  g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=1; g.beginPath(); g.moveTo(sz/2-10,sz/2); g.lineTo(sz/2+10,sz/2); g.moveTo(sz/2,sz/2-10); g.lineTo(sz/2,sz/2+10); g.stroke();
+  let lx=ev.clientX-wr.left-sz/2, ly=ev.clientY-wr.top-sz-28; if(ly<0) ly=ev.clientY-wr.top+28;
+  lx=Math.max(0,Math.min(wr.width-sz,lx)); ly=Math.max(0,Math.min(wr.height-sz,ly));
+  lp.style.left=lx+'px'; lp.style.top=ly+'px'; lp.classList.remove('hidden');
+}
+function vedCorrections(){ return Object.keys(ved.pending).map(L=>({landmark:+L, dx:Math.round(ved.pending[L].dx*1e6)/1e6, dy:Math.round(ved.pending[L].dy*1e6)/1e6, frame_idx:ved.cur})).filter(c=>c.dx||c.dy); }
+function vedStatus(msg,warn){
+  const st=$('#vEdStatus'), n=vedCorrections().length; st.classList.toggle('warn',!!warn);
+  st.textContent=msg||(n?`${n} joint${n>1?'s':''} moved: ${Object.keys(ved.pending).map(L=>LMED_NAMES[L]).join(', ')} — applies to every frame.`:'Nothing moved yet.');
+  $('#vEdApply').setAttribute('aria-disabled',String(!n||ved.busy));
+}
+function vedClose(){
+  const v=$('#vEdVideo'); try{ v.pause(); }catch(e){}
+  if(ved.rvfc&&v.cancelVideoFrameCallback){ v.cancelVideoFrameCallback(ved.rvfc); ved.rvfc=0; }
+  $('#vEditor').classList.add('hidden'); ved.open=false; ved.drag=-1; vedLoupe(null,false);
+  v.removeAttribute('src'); v.load(); if(ved.url){ URL.revokeObjectURL(ved.url); ved.url=null; }
+}
+function vedTogglePlay(){ const v=$('#vEdVideo'); if(v.paused){ v.play().catch(()=>{}); } else v.pause(); }
+function vedStep(d){ const v=$('#vEdVideo'); v.pause(); const rec=Math.max(0,Math.min(ved.idx.length-1,ved.curRec+d)); v.currentTime=ved.idx[rec]/ved.fps; }
+function vedBind(){
+  const v=$('#vEdVideo'), c=$('#vEdCanvas');
+  v.addEventListener('seeked',vedSync); v.addEventListener('timeupdate',vedSync);
+  v.addEventListener('play',()=>{ $('#vEdPlay').textContent='❚❚';
+    const tick=()=>{ vedSync(); if(!v.paused&&v.requestVideoFrameCallback) ved.rvfc=v.requestVideoFrameCallback(tick); };
+    if(v.requestVideoFrameCallback) ved.rvfc=v.requestVideoFrameCallback(tick); });
+  v.addEventListener('pause',()=>{ $('#vEdPlay').textContent='▶'; vedSync(); });
+  $('#vEdPlay').addEventListener('click',vedTogglePlay);
+  $('#vEdPrev').addEventListener('click',()=>vedStep(-1)); $('#vEdNext').addEventListener('click',()=>vedStep(1));
+  $('#vEdScrub').addEventListener('input',e=>{ v.pause(); const rec=+e.target.value; if(ved.idx[rec]!=null) v.currentTime=ved.idx[rec]/ved.fps; });
+  c.addEventListener('pointerdown',ev=>{ if(!ved.open||!ved.data||ved.busy) return; if(!v.paused) v.pause();
+    const q=vedCanvasPoint(ev), L=vedNearest(q); if(L<0) return;
+    ved.drag=L; ved.dragFrom={q, pend:{...(ved.pending[L]||{dx:0,dy:0})}}; c.setPointerCapture(ev.pointerId); ev.preventDefault(); vedDraw(); vedLoupe(ev,true); });
+  c.addEventListener('pointermove',ev=>{ if(ved.drag<0) return; const q=vedCanvasPoint(ev), f=ved.dragFrom;
+    ved.pending[ved.drag]={dx:f.pend.dx+(q.x-f.q.x), dy:f.pend.dy+(q.y-f.q.y)}; vedDraw(); vedLoupe(ev,true); ev.preventDefault(); });
+  const up=ev=>{ if(ved.drag<0) return; const L=ved.drag; ved.drag=-1; const p=ved.pending[L];
+    if(p&&Math.abs(p.dx)<1e-6&&Math.abs(p.dy)<1e-6) delete ved.pending[L]; vedDraw(); vedLoupe(ev,false); vedStatus(); };
+  c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+  $('#vAdjust').addEventListener('click',()=>{ ved.open?vedClose():vedOpen(); });
+  $('#vEdCancel').addEventListener('click',vedClose);
+  $('#vEdReset').addEventListener('click',()=>{ ved.pending={}; vedDraw(); vedStatus(); });
+  $('#vEdApply').addEventListener('click',()=>{ if($('#vEdApply').getAttribute('aria-disabled')!=='true') applyVideoCorrections(); });
+  $('#vEdResetSrv').addEventListener('click',resetVideoCorrections);
+  window.addEventListener('resize',()=>{ if(ved.open) vedDraw(); });
+}
+async function applyVideoCorrections(){
+  const fresh=vedCorrections(); if(!fresh.length||!state.jobId||ved.busy) return;
+  ved.busy=true; vedStatus('Measuring the clip again — about half a minute…');
+  const t0=Date.now();
+  try{
+    const r=await fetch(withJobToken('/jobs/'+state.jobId+'/corrections', state.jobId),
+      {method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({corrections:fresh})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ ved.busy=false; vedStatus(j.detail||('Re-measurement failed (HTTP '+r.status+').'),true); track('joint_adjust_failed',{mode:'video',status:r.status}); return; }
+    ved.existing={}; (j.corrections||[]).forEach(c=>{ ved.existing[c.landmark]={dx:c.dx,dy:c.dy}; }); ved.pending={};
+    const pw=j.plausibility_warnings||[];
+    if(pw.length) vedStatus('Re-measuring… note: '+pw[0].message,true);
+    pollRecompute(t0,'apply');
+  }catch(e){ ved.busy=false; vedStatus('Network error — check your connection and try again.',true); }
+}
+async function resetVideoCorrections(){
+  if(!state.jobId||ved.busy) return;
+  ved.busy=true; vedStatus('Restoring the automatic measurement…');
+  try{
+    const r=await fetch(withJobToken('/jobs/'+state.jobId+'/corrections', state.jobId),{method:'DELETE',headers:authHeaders()});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ ved.busy=false; vedStatus(j.detail||('Reset failed (HTTP '+r.status+').'),true); return; }
+    ved.existing={}; ved.pending={};
+    if(j.status!=='processing'){ ved.busy=false; vedStatus(); return; }
+    pollRecompute(Date.now(),'reset');
+  }catch(e){ ved.busy=false; vedStatus('Network error — check your connection and try again.',true); }
+}
+/* Same poll as the original analysis, without its timeouts and tracking:
+   the job already succeeded once, and the previous result stays on screen
+   until the new one lands. */
+function pollRecompute(t0,kind){
+  const id=state.jobId; clearInterval(state.recomputePoll);
+  state.recomputePoll=setInterval(async()=>{
+    try{
+      const r=await fetch(withJobToken('/jobs/'+id, id),{headers:authHeaders()});
+      if(!r.ok){ if(r.status===404||r.status===410){ clearInterval(state.recomputePoll); ved.busy=false; vedStatus('We lost track of this analysis (the server may have restarted).',true); } return; }
+      const j=await r.json();
+      if(j.status==='processing'||j.status==='queued'){ if(j.stage) vedStatus(j.stage); return; }
+      clearInterval(state.recomputePoll); ved.busy=false;
+      if(j.recompute_error){ vedStatus(j.recompute_error,true); track('joint_adjust_failed',{mode:'video',status:'recompute_error'}); return; }
+      const n=(j.corrections||[]).length;
+      track(kind==='reset'?'joint_adjust_reset':'joint_adjust_applied',{mode:'video',n,seconds:Math.round((Date.now()-t0)/1000),
+        score_after:j.result?j.result.technique_score:null,
+        score_before:(j.result&&j.result.baseline)?j.result.baseline.technique_score:null});
+      vedClose();
+      render(j,{reuseHistId:state.videoHistId,recomputed:true});
+      toast(kind==='reset'?'Back to the automatic measurement.':(n?'Clip re-measured with your adjustments.':'Re-measured.'));
+    }catch(e){ /* transient; keep polling */ }
+  },2500);
+}
+
+function renderPhoto(res,opts){
+  opts=opts||{};
   const sport=res.sport||state.sport;
   const sc=res.score||{}; const score=sc.overall_score;
   $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
@@ -4310,6 +4813,16 @@ function renderPhoto(res){
 
   const img=res.thumbnail_base64||'';
   $('#pImage').src=img; $('#pDownload').href=img||'#';
+
+  // The joint editor: offered when the server handed back a signed pose
+  // (paid, bike) and the photo is still in this browser to draw on. A page
+  // reload loses the file, and with it the editor -- honestly, not silently.
+  state.photoPose=res.pose||null;
+  if(!opts.reuseHistId) state.photoCorrections=res.corrections||[];
+  const canAdjust=!!(res.pose&&state.file&&sport==='bike'&&!res.locked);
+  $('#pAdjust').classList.toggle('hidden',!canAdjust);
+  if(!canAdjust) lmedClose();
+  renderCorrectionBadge(res);
 
   // A paid result carries `warnings` at the top level; a gated one has them
   // inside the `quality` caveat block, because the allowlist strips everything
@@ -4355,7 +4868,10 @@ function renderPhoto(res){
     $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2); }
 
   renderQuota();
-  mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));
+  // A re-measurement REPLACES this session's history entry rather than adding
+  // a second one: it is the same photo, measured again.
+  state.photoHistId=saveToHistory('photo', res, opts.reuseHistId||null);
+  mountFeedback('pFbHost','photo',res,state.photoHistId);
   $('#pShareBtn').classList.remove('hidden');
   setState('photoresults',{focus:'#pResultsTitle'});
 }
@@ -5864,7 +6380,8 @@ function angleTableRows(A, sport, position, srcByKey){
   return rows||'<tr><td colspan="7" class="muted">No angle data.</td></tr>';
 }
 
-function render(job){
+function render(job,opts){
+  opts=opts||{};
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
   const sport=r.sport_type||state.sport;
   // Bands this result was graded against, straight from the server. Cleared
@@ -5958,7 +6475,10 @@ function render(job){
   if(job.overlay_url){
     // <video> and the download link can't send an Authorization header, so the
     // job token travels in the query string for these two.
-    const ov=withJobToken(job.overlay_url, job.job_id);
+    let ov=withJobToken(job.overlay_url, job.job_id);
+    // A re-measurement rewrote the file under the same URL; make the player
+    // fetch it rather than replay the cached one.
+    if(opts.recomputed) ov+=(ov.includes('?')?'&':'?')+'v='+Date.now();
     $('#overlayVideo').src=ov;
     $('#downloadOverlay').href=ov;
     $('#videoCol').classList.remove('hidden');
@@ -6085,9 +6605,19 @@ function render(job){
   // drills, which are the ongoing product rather than the sample.
   if(r.locked) renderUpsell('upsellHost', r.locked,
     ['planBlock','fitBlock','metricsBlock','anglesBlock','biomechBlock','kinogramBlock','exportBlock']);
-  mountFeedback('fbHost','video',r,saveToHistory('video', r),
+  // A re-measurement REPLACES this session's history entry: same clip,
+  // measured again. The server copies the corrected result onto it.
+  state.videoHistId=saveToHistory('video', r, opts.reuseHistId||null);
+  mountFeedback('fbHost','video',r,state.videoHistId,
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
+  // The joint editor: bike, paid (the server refuses everything else), the
+  // clip still in this browser to draw on, and not a merged two-clip session.
+  const canAdjust=!!(sport==='bike'&&!r.locked&&state.file&&state.jobId&&auth&&auth.tier!=='starter'
+    &&!(r.bilateral&&r.bilateral.combined)&&!r.run_session&&job.rounds_left!=null);
+  $('#vAdjust').classList.toggle('hidden',!canAdjust);
+  if(!canAdjust) vedClose();
+  renderCorrectionBadge(r,'vCorrBadge');
   // The header the printed copy carries. It was only being built on the gated
   // path, so the tier that has the Save-as-PDF button printed a page with no
   // name, date or score on it.
@@ -6711,6 +7241,10 @@ function reset(keepFile=false){
   jobTokenClear(state.jobId);          // done with this job; don't hoard its token
   state.jobId=null; state.keepFileOnRetry=false;
   state.lastResult=null; state.photoRes=null;
+  state.photoPose=null; state.photoCorrections=[]; state.photoHistId=null; lmedClose();
+  $('#pAdjust').classList.add('hidden'); $('#pCorrBadge').classList.add('hidden');
+  clearInterval(state.recomputePoll); state.videoHistId=null; ved.busy=false; vedClose();
+  $('#vAdjust').classList.add('hidden'); $('#vCorrBadge').classList.add('hidden');
   $('#shareBtn').classList.add('hidden'); $('#pShareBtn').classList.add('hidden');
   if(keepFile && state.file){
     // Network-ish failure: keep the clip loaded so "Try again" is one click.
@@ -7142,14 +7676,17 @@ function updateAngleMergeNote(paired, side){
 /* Returns the entry id it stored (``h<timestamp>``), or null when saving
    failed — the feedback widget uses it to tie a rating to this exact analysis
    (same id as Analysis.client_id server-side). */
-function saveToHistory(kind,res){
+function saveToHistory(kind,res,reuseId){
   try{
     const isV=kind==='video', sc=res.score||{};
     // The upload this came from. Without it the entry and its footage are two
     // unrelated things — which is why an Expert Review bought a week later had
     // only the annotated still to work from. Photos have no job: nothing was
     // written to disk for them.
-    const e={ id:'h'+Date.now(), at:Date.now(), kind, jobId:isV?(state.jobId||null):null,
+    // `reuseId`: overwrite that entry instead of adding one -- a photo
+    // re-measured with the athlete's joint corrections is the same analysis,
+    // not a new one. The cloud upsert is keyed on the id already.
+    const e={ id:reuseId||('h'+Date.now()), at:Date.now(), kind, jobId:isV?(state.jobId||null):null,
       profileId:state.profileId||null,
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
@@ -7179,11 +7716,14 @@ function saveToHistory(kind,res){
     e.confidence=(ssm.analysis_confidence||{}).level || qb.confidence || null;
     e.warnings=(res.warnings || qb.warnings || ssm.quality_warnings || []).slice(0,4);
     const tr=extractTrends(kind,res,e.sport); e.trends=tr.t; e.trendOpt=tr.o; e.trendCat=tr.c;
+    // Numbers read off points the athlete placed by hand are marked as such
+    // in the cabinet too -- weeks later this entry is all anyone has.
+    if(res.corrections&&res.corrections.length) e.corrected=res.corrections.length;
     if(auth){
-      state.cloudHist=[e,...(state.cloudHist||[])];
+      state.cloudHist=[e,...(state.cloudHist||[]).filter(x=>x.id!==e.id)];
       fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)}).catch(()=>{});
     } else {
-      const a=localHist(); a.unshift(e); while(a.length>HCAP) a.pop(); persistHist(a);
+      const a=localHist().filter(x=>x.id!==e.id); a.unshift(e); while(a.length>HCAP) a.pop(); persistHist(a);
     }
     return e.id;
   }catch(e){ return null; }

@@ -30,6 +30,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import json
+import math
 import os
 import secrets
 import shutil
@@ -98,6 +100,7 @@ from app.services.analytics import log_analytics_configuration
 from app.services.export import ai_export
 from app.services.notify import log_email_configuration
 from app.services.result_gating import (
+    ACCESS_FULL,
     ACCESS_PREVIEW,
     ACCESS_TEASER,
     access_for,
@@ -399,6 +402,12 @@ class JobStatus(BaseModel):
     # looks identical to a hang -- and a silent spinner is exactly what makes
     # people reload and lose the run.
     stage: str | None = None
+    # Joint corrections (bike, paid): the adjustments currently applied to
+    # this job's result, how many rounds are left, and -- when a re-measurement
+    # failed -- why, with the previous result left standing.
+    corrections: list[dict[str, Any]] | None = None
+    rounds_left: int | None = None
+    recompute_error: str | None = None
 
 
 # --------------------------------------------------------------------------
@@ -489,6 +498,10 @@ def _process_job(
             # only the advice, never the measurement -- what it decides is
             # whether "get lower" is a sentence we are entitled to write.
             mobility_profile=mobility_profile,
+            # The stabilized frames, kept beside the clip so the analysis can
+            # be run again with the athlete's joint corrections applied. Same
+            # directory, same retention: they expire with the footage.
+            frames_store=str(Path(input_path).parent / "landmarks.npz"),
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
@@ -518,6 +531,169 @@ def _process_job(
         job["status"] = "failed"
         job["error"] = str(e)
     finally:
+        ANALYSIS_SLOTS.release()
+
+
+# --------------------------------------------------------------------------
+# Re-measuring a clip with the athlete's joint corrections (bike, paid).
+# See docs/LANDMARK_CORRECTION_PLAN_RU.md. The frames the analysis measured
+# from are on disk beside the clip (landmark_store); a correction is a
+# constant offset per joint applied to all of them, and the measuring half of
+# the pipeline runs again without the detector.
+# --------------------------------------------------------------------------
+
+_RECOMPUTE_STAGE = "Measuring again with your adjustments…"
+_RESET_STAGE = "Restoring the automatic measurement…"
+_BASELINE_KEYS = (
+    "knee_at_bdc", "knee_at_tdc", "trunk_angle_avg", "hip_angle_avg",
+    "elbow_angle_avg", "shoulder_angle_avg", "forearm_tilt_avg",
+    "head_alignment_avg", "pelvic_ratio", "saddle_height_assessment",
+)
+
+
+def _baseline_of(result: dict[str, Any]) -> dict[str, Any]:
+    """The automatic reading, kept beside every corrected one so the
+    adjustment stays visible as a delta rather than replacing history."""
+    metrics = result.get("sport_specific_metrics") or {}
+    return {
+        "technique_score": result.get("technique_score"),
+        "letter_grade": result.get("letter_grade"),
+        "score_breakdown": result.get("score_breakdown"),
+        "metrics": {k: metrics.get(k) for k in _BASELINE_KEYS},
+    }
+
+
+def _rounds_left(job: dict[str, Any]) -> int:
+    from app.services.correction_limits import PER_ANALYSIS
+
+    return max(0, PER_ANALYSIS - int(job.get("recompute_rounds") or 0))
+
+
+def _correction_access(job: dict[str, Any], user: User) -> None:
+    """The refusals every corrections call shares. 402 first: the plan is the
+    reason most callers will be turned away, and it is the one with a fix."""
+    if is_free(user):
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "Adjusting the joint points is part of a paid plan. The "
+                "automatic measurement is unchanged."
+            ),
+        )
+    if job.get("sport") != "bike":
+        raise HTTPException(400, "Joint adjustment is available for cycling clips only for now.")
+    if job.get("pair"):
+        raise HTTPException(
+            400, "A two-sided session cannot be adjusted yet -- adjust each clip "
+            "on its own analysis.",
+        )
+
+
+def _frames_store_or_410(job: dict[str, Any]) -> Path:
+    path = job.get("frames_store")
+    if not path or not Path(path).is_file():
+        raise HTTPException(
+            410,
+            "The measured frames of this clip are no longer stored, so its "
+            "joints cannot be adjusted. Analyze the clip again to adjust it.",
+        )
+    return Path(path)
+
+
+def _process_recompute(
+    job_id: str, corrections: list[dict[str, Any]],
+    mobility_profile: dict[str, Any] | None,
+) -> None:
+    """Run the measuring half again on the stored frames (threadpool).
+
+    An empty ``corrections`` list is the reset: the automatic measurement,
+    re-rendered. Whatever happens, the job ends ``completed`` -- on a failure
+    the previous result is left standing and ``recompute_error`` says why,
+    because a clip that WAS measured must not turn into one that was not.
+    """
+    job = JOBS.get(job_id)
+    if job is None:
+        return
+    previous = job.get("result")
+    if not ANALYSIS_SLOTS.acquire(timeout=SLOT_WAIT_TIMEOUT_S):
+        job["status"], job["stage"] = "completed", None
+        job["recompute_error"] = (
+            "The server was busy for too long; your previous measurement is "
+            "unchanged. Please try again in a few minutes."
+        )
+        return
+    job["status"], job["stage"] = "processing", (
+        _RECOMPUTE_STAGE if corrections else _RESET_STAGE
+    )
+    try:
+        from app.services.video_analysis.biomechanics.corrections import (
+            apply_corrections,
+        )
+        from app.services.video_analysis.landmark_store import load_frames
+        from app.services.video_analysis.runner import analyze_from_frames
+
+        frames, meta = load_frames(job["frames_store"])
+        if corrections:
+            apply_corrections(frames, corrections, job["sport"])
+        params = job.get("params") or {}
+        result = analyze_from_frames(
+            frames, job["input_path"], job["sport"], job.get("cycling_position"),
+            video_info=meta["video_info"],
+            sampling_meta=meta.get("sampling_meta"),
+            stabilizer_ctx=meta.get("stabilizer_ctx"),
+            overlay_path=job.get("overlay_path"),
+            recommendations=True, hide_angle_values=False, kinogram=True,
+            athlete_height_cm=params.get("athlete_height_cm"),
+            focus=params.get("focus"),
+            mobility_profile=mobility_profile,
+            camera_side_override=(
+                params.get("camera_side_override") or meta.get("camera_side_override")
+            ),
+            corrections=corrections or None,
+        )
+        if result.get("status") != "completed":
+            raise RuntimeError(result.get("error_message") or "re-measurement failed")
+        safe = _json_safe(result)
+        if safe.get("overlay_video_path"):
+            safe["overlay_video_path"] = f"/jobs/{job_id}/overlay"
+        safe["baseline"] = job.get("baseline") if corrections else None
+        safe["plausibility_warnings"] = job.get("plausibility_warnings") or []
+        job["result"] = safe
+        job["corrections"] = list(corrections)
+        job["recompute_error"] = None
+        if not corrections:
+            job["recompute_rounds"] = 0
+            job["baseline"] = None
+        # For the record beside the frames: an Expert Review opened later
+        # should see what the athlete moved, and by how much.
+        try:
+            (Path(job["job_dir"]) / "corrections.json").write_text(
+                json.dumps({
+                    "corrections": job["corrections"],
+                    "baseline": job.get("baseline"),
+                    "plausibility_warnings": safe["plausibility_warnings"],
+                }, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except OSError as e:
+            logger.warning("CORRECTIONS_RECORD_FAILED", job_id=job_id, err=str(e))
+        logger.info(
+            "RECOMPUTE_DONE", job_id=job_id, corrections=len(corrections),
+            score=safe.get("technique_score"),
+            baseline=((job.get("baseline") or {}).get("technique_score")),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("RECOMPUTE_FAILED", job_id=job_id, err=str(e))
+        job["result"] = previous
+        if corrections:
+            # The round was not delivered, so it is not spent.
+            job["recompute_rounds"] = max(0, int(job.get("recompute_rounds") or 0) - 1)
+        job["recompute_error"] = (
+            "We couldn't re-measure this clip with those adjustments. Your "
+            "previous measurement is unchanged."
+        )
+    finally:
+        job["status"], job["stage"] = "completed", None
         ANALYSIS_SLOTS.release()
 
 
@@ -1100,6 +1276,18 @@ async def analyze_endpoint(
         # Who may read this job back (see _authorized_job).
         "token": job_token,
         "owner_user_id": user.id,
+        # What a re-measurement with joint corrections needs to reproduce the
+        # run: the inputs that are not on disk, and the corrections so far.
+        "params": {
+            "athlete_height_cm": user.height_cm,
+            "focus": _clean_focus(focus),
+            "camera_side_override": side_override,
+        },
+        "frames_store": str(job_dir / "landmarks.npz"),
+        "input_path": str(input_path),
+        "corrections": [],
+        "recompute_rounds": 0,
+        "baseline": None,
     }
 
     if preview:
@@ -1371,6 +1559,110 @@ async def analyze_photo_endpoint(
     return _json_safe(result)
 
 
+@app.post("/analyze-photo/recompute", status_code=200)
+async def analyze_photo_recompute_endpoint(
+    request: Request,
+    response: Response,
+    photo: UploadFile = File(..., description="The SAME photo the analysis was run on."),
+    sport: str = Form(..., description="bike (the only sport with corrections so far)"),
+    position: str | None = Form(None, description="Cycling position the result was filed under."),
+    pose: str = Form(..., description="The `pose` object the analysis returned, verbatim (JSON)."),
+    corrections: str = Form(
+        "[]", description="JSON list of {landmark, dx, dy, frame_idx?} in normalized image units.",
+    ),
+    coaching: bool = Form(True, description="Regenerate the AI coaching for the corrected pose."),
+    focus: str | None = Form(None, description="Optional: what the athlete wants looked at closely."),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Measure a photo again with the athlete's joint corrections applied.
+
+    Synchronous like ``/analyze-photo`` and cheaper: no pose model runs, the
+    signed ``pose`` from the first result is the baseline. Paid plans only, and
+    it spends no analysis quota -- a correction repairs an analysis that was
+    already paid for. It does count against a daily cap (see
+    ``services/correction_limits``).
+    """
+    ip = _client_ip(request)
+    if is_free(user):
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "Adjusting the joint points is part of a paid plan. The "
+                "automatic measurement above is unchanged."
+            ),
+        )
+    if sport != "bike":
+        raise HTTPException(400, "joint adjustment is available for cycling photos only for now")
+    cycling_position: str | None = position or None
+    if cycling_position is not None and cycling_position not in VALID_POSITIONS:
+        raise HTTPException(400, f"invalid position; valid: {sorted(VALID_POSITIONS)}")
+
+    try:
+        pose_obj = json.loads(pose)
+        corr_obj = json.loads(corrections)
+    except ValueError:
+        raise HTTPException(400, "pose and corrections must be JSON")
+    if not isinstance(corr_obj, list):
+        raise HTTPException(400, "corrections must be a JSON list")
+
+    suffix = Path(photo.filename or "").suffix.lower() or ".jpg"
+    if suffix not in ALLOWED_IMAGE_SUFFIXES:
+        raise HTTPException(
+            400, f"unsupported image type '{suffix}'; allowed: {sorted(ALLOWED_IMAGE_SUFFIXES)}",
+        )
+    data = await photo.read()
+    if len(data) == 0:
+        raise HTTPException(400, "empty upload")
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(413, f"file too large (> {MAX_PHOTO_BYTES // (1024 * 1024)} MB)")
+
+    from app.services.correction_limits import take_recompute
+
+    allowed, used, limit = take_recompute(user.id, user.tier)
+    response.headers["X-Recompute-Limit"] = str(limit)
+    response.headers["X-Recompute-Remaining"] = str(max(0, limit - used))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"You have used today's {limit} joint adjustments. The cap "
+                "resets over the next 24 hours; the automatic measurement is "
+                "unchanged."
+            ),
+            headers={"Retry-After": "3600"},
+        )
+
+    from app.services.photo_corrections import recompute_photo
+
+    try:
+        result = await run_in_threadpool(
+            recompute_photo, data, sport, cycling_position, pose_obj, corr_obj,
+        )
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("PHOTO_RECOMPUTE_FAILED", err=str(e), ip=ip)
+        raise HTTPException(500, "photo re-measurement failed")
+
+    result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
+    if coaching:
+        from app.services.video_analysis.llm_recommendations import (
+            generate_photo_recommendations,
+        )
+        result["focus"] = _clean_focus(focus)
+        result["ai_recommendations"] = await run_in_threadpool(
+            generate_photo_recommendations, sport, result,
+        )
+
+    logger.info(
+        "PHOTO_RECOMPUTE", sport=sport, ip=ip, user_id=user.id,
+        corrections=len(result.get("corrections") or []),
+        score=(result.get("score") or {}).get("overall_score"),
+        baseline=((result.get("baseline") or {}).get("score") or {}).get("overall_score"),
+    )
+    return _json_safe(result)
+
+
 @app.get("/jobs/{job_id}", response_model=JobStatus)
 def job_status(
     job_id: str,
@@ -1415,7 +1707,207 @@ def job_status(
         overlay_failed=overlay_failed,
         result=result,
         stage=job.get("stage"),
+        corrections=(job.get("corrections") or None) if access == ACCESS_FULL else None,
+        rounds_left=(
+            _rounds_left(job)
+            if (access == ACCESS_FULL and job.get("sport") == "bike" and job.get("frames_store"))
+            else None
+        ),
+        recompute_error=job.get("recompute_error") if access == ACCESS_FULL else None,
     )
+
+
+class CorrectionsIn(BaseModel):
+    corrections: list[dict[str, Any]]
+
+
+@app.get("/jobs/{job_id}/landmarks")
+def job_landmarks(
+    job_id: str,
+    t: str | None = None,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """The measured joint points of every analyzed frame, for the editor.
+
+    Only the near-side points the report reads (see
+    ``corrections.DRAGGABLE_LANDMARKS``), as detected -- the corrections in
+    force are returned beside them, and the client applies the offsets to
+    draw, exactly as the server applies them to measure.
+    """
+    job = authorized_job(job_id, t, user.id)
+    _correction_access(job, user)
+    if job.get("status") != "completed" or not job.get("result"):
+        raise HTTPException(409, "This analysis has not finished yet.")
+    path = _frames_store_or_410(job)
+
+    from app.services.video_analysis.biomechanics.corrections import (
+        DRAGGABLE_LANDMARKS,
+    )
+    from app.services.video_analysis.landmark_store import load_frames
+
+    frames, meta = load_frames(path)
+    side = (job.get("result") or {}).get("camera_side") or "left"
+    draggable = list(DRAGGABLE_LANDMARKS.get(side, ()))
+
+    def _pt(lm: Any) -> list[Any]:
+        x, y, v = float(lm.x), float(lm.y), float(getattr(lm, "visibility", 1.0))
+        return [
+            None if math.isnan(x) else round(x, 4),
+            None if math.isnan(y) else round(y, 4),
+            round(0.0 if math.isnan(v) else v, 2),
+        ]
+
+    return {
+        "job_id": job_id,
+        "camera_side": side,
+        "draggable": draggable,
+        "fps": (meta.get("video_info") or {}).get("fps"),
+        "frame_width": frames[0]["frame_width"] if frames else None,
+        "frame_height": frames[0]["frame_height"] if frames else None,
+        "frames": [
+            {"i": f["frame_idx"], "p": [_pt(f["normalized_landmarks"][k]) for k in draggable]}
+            for f in frames
+        ],
+        "corrections": job.get("corrections") or [],
+        "rounds_left": _rounds_left(job),
+    }
+
+
+@app.post("/jobs/{job_id}/corrections", status_code=202)
+async def job_corrections(
+    job_id: str,
+    body: CorrectionsIn,
+    background_tasks: BackgroundTasks,
+    response: Response,
+    t: str | None = None,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Apply joint corrections to a finished analysis and measure it again.
+
+    Cumulative: what is sent is added to what is already in force. Refused
+    before anything is spent when the plan, the sport, the round count or the
+    daily cap say no; the geometry check runs on the stored frames before
+    the cap is spent, so an impossible move costs nothing. Then a background
+    re-measurement, polled through ``/jobs/{id}`` like the original.
+    """
+    job = authorized_job(job_id, t, user.id)
+    _correction_access(job, user)
+    if job.get("status") in ("queued", "processing"):
+        raise HTTPException(409, "This clip is still being measured -- wait for it to finish.")
+    if not job.get("result"):
+        raise HTTPException(409, "This analysis has no result to adjust.")
+    path = _frames_store_or_410(job)
+    if _rounds_left(job) <= 0:
+        from app.services.correction_limits import PER_ANALYSIS
+
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"This analysis has had its {PER_ANALYSIS} rounds of adjustment. "
+                "Reset to the automatic measurement to start over, or analyze "
+                "the clip again."
+            ),
+        )
+
+    from app.services.video_analysis.biomechanics.corrections import (
+        check_plausibility,
+        normalize_corrections,
+    )
+    from app.services.video_analysis.landmark_store import load_frames
+
+    side = (job.get("result") or {}).get("camera_side") or "left"
+    try:
+        merged = normalize_corrections(
+            list(job.get("corrections") or []) + list(body.corrections), side,
+        )
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    if not merged:
+        raise HTTPException(422, "No adjustment to apply -- move a joint point first.")
+
+    frames, _meta = await run_in_threadpool(load_frames, path)
+    aspect = 1.0
+    if frames and frames[0].get("frame_height"):
+        aspect = frames[0]["frame_width"] / frames[0]["frame_height"]
+    try:
+        warnings = check_plausibility(frames, merged, side, aspect=aspect)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+    from app.services.correction_limits import take_recompute
+
+    allowed, used, limit = take_recompute(user.id, user.tier)
+    response.headers["X-Recompute-Limit"] = str(limit)
+    response.headers["X-Recompute-Remaining"] = str(max(0, limit - used))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"You have used today's {limit} joint adjustments. The cap "
+                "resets over the next 24 hours; the current measurement is "
+                "unchanged."
+            ),
+            headers={"Retry-After": "3600"},
+        )
+
+    if job.get("baseline") is None:
+        job["baseline"] = _baseline_of(job["result"])
+    job["plausibility_warnings"] = warnings
+    job["recompute_rounds"] = int(job.get("recompute_rounds") or 0) + 1
+    job["status"], job["stage"], job["recompute_error"] = "processing", _RECOMPUTE_STAGE, None
+    background_tasks.add_task(_process_recompute, job_id, merged, _stored_mobility(user))
+    logger.info(
+        "RECOMPUTE_QUEUED", job_id=job_id, user_id=user.id,
+        corrections=len(merged), round=job["recompute_rounds"],
+    )
+    return {
+        "job_id": job_id, "status": "processing",
+        "corrections": merged, "plausibility_warnings": warnings,
+        "rounds_left": _rounds_left(job),
+    }
+
+
+@app.delete("/jobs/{job_id}/corrections", status_code=202)
+async def job_corrections_reset(
+    job_id: str,
+    background_tasks: BackgroundTasks,
+    response: Response,
+    t: str | None = None,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Drop every correction and restore the automatic measurement.
+
+    Costs a render (the overlay is re-drawn without the offsets), so it
+    counts against the daily cap -- but not against the per-analysis rounds,
+    which start over.
+    """
+    job = authorized_job(job_id, t, user.id)
+    _correction_access(job, user)
+    if job.get("status") in ("queued", "processing"):
+        raise HTTPException(409, "This clip is still being measured -- wait for it to finish.")
+    if not job.get("corrections"):
+        return {
+            "job_id": job_id, "status": job.get("status"), "corrections": [],
+            "rounds_left": _rounds_left(job),
+        }
+    _frames_store_or_410(job)
+
+    from app.services.correction_limits import take_recompute
+
+    allowed, used, limit = take_recompute(user.id, user.tier)
+    response.headers["X-Recompute-Limit"] = str(limit)
+    response.headers["X-Recompute-Remaining"] = str(max(0, limit - used))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"You have used today's {limit} joint adjustments; the reset can wait until tomorrow.",
+            headers={"Retry-After": "3600"},
+        )
+    job["plausibility_warnings"] = []
+    job["status"], job["stage"], job["recompute_error"] = "processing", _RESET_STAGE, None
+    background_tasks.add_task(_process_recompute, job_id, [], _stored_mobility(user))
+    logger.info("RECOMPUTE_RESET_QUEUED", job_id=job_id, user_id=user.id)
+    return {"job_id": job_id, "status": "processing", "corrections": [], "rounds_left": _rounds_left(job)}
 
 
 @app.get("/jobs/{job_id}/export")

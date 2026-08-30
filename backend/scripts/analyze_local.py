@@ -64,6 +64,14 @@ def main() -> int:
         "--no-llm", action="store_true",
         help="Skip the Gemini coaching recommendations (also skipped if no GEMINI_API_KEY).",
     )
+    parser.add_argument(
+        "--frames-store", nargs="?", const="__DEFAULT__", default=None, metavar="PATH",
+        help=(
+            "Also write the stabilized landmark frames (.npz) so the analysis "
+            "can be re-run without MediaPipe -- see landmark_store. Default "
+            "path: <video>_landmarks.npz next to the input."
+        ),
+    )
     args = parser.parse_args()
 
     video_path = args.video_path
@@ -102,10 +110,18 @@ def main() -> int:
         else:
             overlay_path = args.overlay
 
+    frames_store: str | None = None
+    if args.frames_store is not None:
+        if args.frames_store == "__DEFAULT__":
+            vp = Path(video_path)
+            frames_store = str(vp.with_name(f"{vp.stem}_landmarks.npz"))
+        else:
+            frames_store = args.frames_store
+
     try:
         result = run_analysis(
             video_path, sport_type, cycling_position, overlay_path=overlay_path,
-            recommendations=not args.no_llm,
+            recommendations=not args.no_llm, frames_store=frames_store,
         )
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)

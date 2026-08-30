@@ -732,12 +732,15 @@ def _generate_photo_thumbnail(
     cycling_position: str | None = None,
     hide_angle_values: bool = False,
     optimal_ranges: dict[str, tuple[float, float]] | None = None,
+    corrected: list[int] | None = None,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
     Returns encoded image bytes (see ``_THUMB_MIME``). ``hide_angle_values``
     (free-tier teaser): keep the skeleton + arcs but mask the numeric angle
-    labels and burn a watermark.
+    labels and burn a watermark. ``corrected``: landmark indices the athlete
+    placed by hand, ringed so they read as a person's statement rather than
+    a detection.
     """
     # Draw on a canvas at least as big as the overlay geometry expects. Chip
     # type has a hard minimum size, so on a small photo -- a frame cropped out
@@ -789,6 +792,13 @@ def _generate_photo_thumbnail(
         cv2_mod, frame, _segments, _dots,
         glow=True, line_w=max(2, int(2 * _sk)), dot_r=max(3, int(4 * _sk)),
     )
+    if corrected:
+        overlay_style.draw_corrected_marks(
+            cv2_mod, frame,
+            [pixel_coords[i][:2] for i in corrected
+             if 0 <= i < len(pixel_coords) and pixel_coords[i][2] >= _VIS_THRESHOLD],
+            r=max(7, int(9 * _sk)),
+        )
     chips = overlay_style.ChipLayer(frame)
 
     # Header first: it reserves the top strip so no metric chip lands under it.
@@ -1190,6 +1200,21 @@ def _preprocess_image_bytes(image_bytes: bytes) -> bytes:
     return image_bytes
 
 
+def decode_photo(image_bytes: bytes) -> Any:
+    """The uploaded bytes as a BGR image -- HEIC converted, EXIF orientation
+    applied. Split from detection so a re-analysis can decode the same photo
+    without running the model. Raises ``ValueError`` on an undecodable file."""
+    import cv2
+
+    prepared = _preprocess_image_bytes(image_bytes)
+    image = cv2.imdecode(np.frombuffer(prepared, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        raise ValueError(
+            "Could not decode image. Ensure it is a valid JPEG, PNG, WebP, or HEIC file."
+        )
+    return image
+
+
 def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
     """Find one body pose in one photograph.
 
@@ -1213,14 +1238,7 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
     import cv2
     import mediapipe as mp
 
-    image_bytes = _preprocess_image_bytes(image_bytes)
-
-    img_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-    if image is None:
-        raise ValueError(
-            "Could not decode image. Ensure it is a valid JPEG, PNG, WebP, or HEIC file."
-        )
+    image = decode_photo(image_bytes)
 
     warnings: list[str] = []
 
@@ -1351,18 +1369,60 @@ def analyze_photo(
     Raises:
         ValueError: If image invalid or no pose detected.
     """
-    import cv2  # still needed below, for the annotated thumbnail
-
     start_time = time.time()
 
     # 1-3. Decode, find the pose, work out which side faces the camera, and
     # collect the warnings that apply to any still (see detect_pose_in_image).
     pose_result = detect_pose_in_image(image_bytes)
-    wl = pose_result["world"]
-    nl = pose_result["normalized"]
-    image = pose_result["image"]
-    camera_side = pose_result["camera_side"]
-    warnings: list[str] = list(pose_result["warnings"])
+
+    # 4-8. Everything measured, from the pose alone -- see analyze_from_pose.
+    response = analyze_from_pose(
+        pose_result["image"], pose_result["world"], pose_result["normalized"],
+        pose_result["camera_side"], list(pose_result["warnings"]),
+        sport, cycling_position, hide_angle_values=hide_angle_values,
+    )
+    response["processing_time_seconds"] = round(time.time() - start_time, 3)
+
+    if sport == "bike":
+        # The detected pose, signed, so the athlete can hand it back with
+        # their corrections and have the photo re-measured without a second
+        # model pass -- see services/photo_corrections.
+        from app.services.photo_corrections import build_pose_blob
+
+        response["pose"] = build_pose_blob(image_bytes, pose_result)
+    return response
+
+
+def analyze_from_pose(
+    image: Any,
+    wl: Any,
+    nl: Any,
+    camera_side: str,
+    warnings: list[str],
+    sport: str,
+    cycling_position: str | None = None,
+    *,
+    hide_angle_values: bool = False,
+    corrections: list[dict[str, Any]] | None = None,
+    render_thumbnail: bool = True,
+) -> dict[str, Any]:
+    """The measuring half of :func:`analyze_photo`: angles, score, picture.
+
+    Takes what :func:`detect_pose_in_image` found -- the decoded image, the
+    world and image-plane landmarks, the camera side and the capture warnings
+    -- and needs no model. That is what lets a photo be re-measured after the
+    athlete moves a joint point (``services/photo_corrections``), and what
+    lets this half be tested on a hand-built pose.
+
+    ``corrections``: the athlete's adjustments already applied to ``nl`` by
+    the caller. Echoed into the result and ringed on the thumbnail, never
+    applied here. ``render_thumbnail=False`` skips the picture (a baseline
+    measurement nobody will look at).
+    """
+    import cv2  # for the annotated thumbnail
+
+    start_time = time.time()
+    warnings = list(warnings)
 
     # 4. Compute angles (sport-specific)
     angles: dict[str, float] = {}
@@ -1450,11 +1510,15 @@ def analyze_photo(
             forearm_tilt, _ = calculate_forearm_tilt_2d(pl, 14, 16)
         angles["forearm_tilt"] = _safe_round(forearm_tilt)
 
-        # Head alignment (score 0-100)
+        # Head alignment (score 0-100). Read off the image plane like every
+        # other bike angle here, and like the video path has since it moved to
+        # image landmarks -- this was the one reading still on the world
+        # skeleton, which also meant an athlete moving the ear point would
+        # have changed the picture and not the score.
         if camera_side == "left":
-            head_score, _ = calculate_head_alignment_2d(wl, 11, 23, 7)
+            head_score, _ = calculate_head_alignment_2d(pl, 11, 23, 7)
         else:
-            head_score, _ = calculate_head_alignment_2d(wl, 12, 24, 8)
+            head_score, _ = calculate_head_alignment_2d(pl, 12, 24, 8)
         angles["head_alignment"] = _safe_round(head_score)
 
         # Pelvic ratio (derived: hip / trunk)
@@ -1627,17 +1691,20 @@ def analyze_photo(
     )
 
     # 7. Thumbnail
-    arc_triplets = _build_arc_triplets(sport, camera_side)
-    thumbnail_bytes = _generate_photo_thumbnail(
-        cv2, image, nl,
-        angles, score_data, camera_side, sport, arc_triplets,
-        cycling_position=cycling_position,
-        hide_angle_values=hide_angle_values,
-        optimal_ranges=optimal_ranges,
-    )
-    thumbnail_b64 = (
-        f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"
-    )
+    thumbnail_b64: str | None = None
+    if render_thumbnail:
+        arc_triplets = _build_arc_triplets(sport, camera_side)
+        thumbnail_bytes = _generate_photo_thumbnail(
+            cv2, image, nl,
+            angles, score_data, camera_side, sport, arc_triplets,
+            cycling_position=cycling_position,
+            hide_angle_values=hide_angle_values,
+            optimal_ranges=optimal_ranges,
+            corrected=[int(c["landmark"]) for c in (corrections or [])],
+        )
+        thumbnail_b64 = (
+            f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"
+        )
 
     processing_time = round(time.time() - start_time, 3)
 
@@ -1651,6 +1718,10 @@ def analyze_photo(
         "thumbnail_base64": thumbnail_b64,
         "processing_time_seconds": processing_time,
         "warnings": warnings,
+        # The athlete's own adjustments to the points these numbers were read
+        # from, when there are any -- so no reader takes an adjusted
+        # measurement for an automatic one.
+        "corrections": list(corrections) if corrections else None,
     }
 
     if sport == "run":

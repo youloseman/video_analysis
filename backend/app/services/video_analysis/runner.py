@@ -5,10 +5,19 @@ and the FastAPI service (app/main.py) share one proven code path. Mirrors the
 Motus ``VideoAnalysisPipeline.process_video`` side-view path:
 
     build_detector -> extract frames (CLAHE + detect) -> stabilize_landmarks
+    -> [persist frames]                                   (run_analysis)
     -> determine_locked_camera_side -> landmark quality
     -> analyze_frame loop -> finalize_camera_side -> run_advanced_biomechanics
     -> compute_summary / detect_issues / compute_angle_statistics
     -> quality gate -> score_analysis -> (optional) overlay video
+                                                          (analyze_from_frames)
+
+The seam between the two halves is the only place the pipeline touches pixels
+for MEASUREMENT: everything after ``stabilize_landmarks`` is a function of the
+landmark frames (the video is re-read only to draw on). That is what lets a
+stored set of frames be re-analysed -- with an athlete's corrections applied --
+without a second MediaPipe pass, and what lets the whole measuring half be
+tested on synthetic frames with no model installed.
 
 Helper functions are copied verbatim from Motus ``pipeline.py`` -- copied,
 not rewritten, to keep the numeric behaviour identical.
@@ -538,8 +547,18 @@ def run_analysis(
     focus: str | None = None,
     mobility_profile: dict[str, Any] | None = None,
     camera_side_override: str | None = None,
+    frames_store: str | Path | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
+
+    Detection + stabilization happen here; everything measured after that is
+    :func:`analyze_from_frames`, which this hands the stabilized frames to.
+
+    ``frames_store``: where to write the stabilized frames (see
+    ``landmark_store``). They are what a later re-analysis -- an athlete
+    correcting a mis-placed joint -- starts from, and they are only ever
+    available if they were written now: the frames live in this call and
+    nowhere else. A write failure is logged and never fails the analysis.
 
     If ``overlay_path`` is given, also render an annotated overlay video
     (skeleton + angle arcs/labels + score badge) to that path.
@@ -607,6 +626,87 @@ def run_analysis(
         raw_frame_data, sport_type, camera_angle, fps=fps / _stride,
         context=stabilizer_ctx, camera_view=camera_view,
     )
+
+    # The frames as measured -- post-stabilization, so a re-analysis starts
+    # from resolved leg identities and gated gaps, and does not run the
+    # smoothing pass a second time over an already-smoothed series.
+    if frames_store:
+        try:
+            from app.services.video_analysis.landmark_store import save_frames
+
+            save_frames(
+                frames_store, raw_frame_data,
+                meta=_json_safe({
+                    "sport_type": sport_type,
+                    "cycling_position": cycling_position,
+                    "camera_side_override": camera_side_override,
+                    "video_info": video_info,
+                    "sampling_meta": sampling_meta,
+                    "stabilizer_ctx": stabilizer_ctx,
+                }),
+            )
+        except Exception as e:  # noqa: BLE001 -- a store must never lose a run
+            logger.warning("FRAMES_STORE_FAILED", path=str(frames_store), err=str(e))
+
+    return analyze_from_frames(
+        raw_frame_data, video_path, sport_type, cycling_position,
+        video_info=video_info, sampling_meta=sampling_meta,
+        stabilizer_ctx=stabilizer_ctx,
+        overlay_path=overlay_path, recommendations=recommendations,
+        hide_angle_values=hide_angle_values, kinogram=kinogram,
+        athlete_height_cm=athlete_height_cm, focus=focus,
+        mobility_profile=mobility_profile,
+        camera_side_override=camera_side_override,
+    )
+
+
+def analyze_from_frames(
+    raw_frame_data: list[dict[str, Any]],
+    video_path: str,
+    sport_type: str,
+    cycling_position: str | None,
+    *,
+    video_info: dict[str, Any],
+    sampling_meta: dict[str, Any] | None = None,
+    stabilizer_ctx: dict[str, Any] | None = None,
+    overlay_path: str | None = None,
+    recommendations: bool = True,
+    hide_angle_values: bool = False,
+    kinogram: bool = True,
+    athlete_height_cm: float | None = None,
+    focus: str | None = None,
+    mobility_profile: dict[str, Any] | None = None,
+    camera_side_override: str | None = None,
+    corrections: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Everything the report says, from STABILIZED landmark frames.
+
+    The measuring half of :func:`run_analysis`, split off so it can run
+    without the detector: on frames a previous analysis stored, on frames an
+    athlete has corrected, and on synthetic frames in a test. The pixels are
+    read only to draw (keyframe, overlay, kinogram, camera-motion), and each of
+    those is wrapped so a missing or expired video costs the picture, never
+    the numbers.
+
+    ``raw_frame_data`` must be what ``stabilize_landmarks`` produced -- this
+    does not stabilize, and running it on raw detector output would skip the
+    leg-identity resolution and the gating every metric here assumes.
+
+    ``video_info`` is the ``get_video_info`` dict of the clip the frames came
+    from; ``sampling_meta`` and ``stabilizer_ctx`` are the extraction and
+    stabilization diagnostics, which the quality reporting reads. All three
+    are persisted alongside the frames for exactly this call.
+
+    ``corrections``: the athlete's joint adjustments that were applied to these
+    frames before the call (see ``biomechanics.corrections``). Not applied
+    here -- only echoed into the result, so a report built on adjusted points
+    says so.
+    """
+    camera_angle = None   # side view only in Milestone 1
+    camera_view = None    # None == side view (implicit default in Motus)
+    fps = float(video_info["fps"])
+    sampling_meta = sampling_meta or {}
+    stabilizer_ctx = stabilizer_ctx or {}
 
     # Step 2b: early camera-side lock (bike + run side-view are unilateral).
     early_camera_side, early_lock_meta = determine_locked_camera_side(raw_frame_data)
@@ -1306,4 +1406,8 @@ def run_analysis(
         "reference_bands": reference_bands(
             sport_type, cycling_position if is_bike else None,
         ),
+        # The athlete's own adjustments to the joint points these numbers were
+        # read from, when there are any. Carried on the result so no reader
+        # can take an adjusted measurement for an automatic one.
+        "corrections": list(corrections) if corrections else None,
     }

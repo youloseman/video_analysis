@@ -257,6 +257,21 @@ def draw_glow_skeleton(
         cv2_mod.circle(frame, p, dot_r, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
 
 
+def draw_corrected_marks(
+    cv2_mod: Any, frame: Any, points: list[tuple[int, int]], *, r: int = 9,
+) -> None:
+    """Ring a joint the athlete placed by hand.
+
+    Drawn OVER the skeleton dot, hollow and doubled, so it reads as a different
+    kind of mark from a detected point at a glance: this one is a statement by
+    a person, and anyone reading the picture -- the athlete, a coach, an expert
+    reviewer -- is entitled to know which points those are.
+    """
+    for p in points:
+        cv2_mod.circle(frame, p, r, _bgr(NEON), 2, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, r + 3, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
+
+
 def draw_leader(
     cv2_mod: Any, frame: Any,
     joint: tuple[int, int], anchor: tuple[int, int],
@@ -498,5 +513,5 @@ class ChipLayer:
 __all__ = [
     "NEON", "AMBER", "ROSE", "STATUS_COLORS",
     "status_for", "text_size", "draw_glow_skeleton", "draw_leader", "ChipLayer",
-    "skeleton_weights", "FONT_REGULAR", "FONT_BOLD",
+    "draw_corrected_marks", "skeleton_weights", "FONT_REGULAR", "FONT_BOLD",
 ]
