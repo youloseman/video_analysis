@@ -31,6 +31,7 @@ from app.services.video_analysis.biomechanics.advanced_pipeline import (
     run_advanced_biomechanics,
 )
 from app.services.video_analysis.biomechanics.bilateral import summarize_side
+from app.services.video_analysis.biomechanics.leg_appearance import describe_legs
 from app.services.video_analysis.biomechanics.confidence_scorer import (
     assess_tracking_stability,
     compute_analysis_confidence,
@@ -398,14 +399,26 @@ def extract_frames(
 
         if detector_frame is not None:
             total_detected += 1
-            frame_results.append({
+            record = {
                 "world_landmarks": detector_frame.world_landmarks,
                 "normalized_landmarks": detector_frame.normalized_landmarks,
                 "timestamp_ms": timestamp_ms,
                 "frame_idx": frame_idx,
                 "frame_width": frame_width,
                 "frame_height": frame_height,
-            })
+            }
+            if sport_type == "run":
+                # Take each leg's appearance while the picture is still here.
+                # Identity on a run side view is decided at the crossings,
+                # where geometry cannot separate the legs and pixels can --
+                # see biomechanics/leg_appearance.py. A kilobyte a frame, and
+                # no second decode. Run only: the bike resolver runs in a
+                # blank-don't-correct mode where the far leg is half invented,
+                # and it is not asking this question.
+                record["leg_patches"] = describe_legs(
+                    frame, detector_frame.normalized_landmarks,
+                )
+            frame_results.append(record)
 
         frame_idx += 1
 
