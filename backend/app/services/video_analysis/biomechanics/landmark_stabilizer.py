@@ -282,6 +282,18 @@ def stabilize_landmarks(
             leg_swaps, leg_swap_pct, leg_collapse_pct, leg_identity_diag = (
                 resolve_run_leg_identity(frame_results)
             )
+            if leg_identity_diag is not None:
+                # Did identity actually hold? Gait fixes the answer: the two
+                # ankles swap vertical order twice per stride and no oftener,
+                # so the excess counts the times the labels traded legs. The
+                # resolver cannot check its own work -- this can, and the
+                # report is entitled to know when it should not be trusted.
+                from app.services.video_analysis.biomechanics.stride_consistency import (
+                    measure_leg_identity_stability,
+                )
+                leg_identity_diag["stability"] = measure_leg_identity_stability(
+                    frame_results, fps or 30.0,
+                )
             if (leg_identity_diag or {}).get("method") == "skipped_coarse_sampling":
                 # Frames too far apart for the whole-clip evidence to mean
                 # anything (see leg_identity._MAX_MEDIAN_SPACING_MS). The

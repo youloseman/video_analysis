@@ -788,6 +788,29 @@ def run_analysis(
             "Filming from a little in front of or behind square-on, with the "
             "whole drivetrain visible, separates the two legs best."
         )
+    # Running: did the legs keep their identity through the clip? The gait
+    # answers it -- the ankles swap vertical order twice per stride and no
+    # oftener, so the excess counts the times the labels traded legs. Two
+    # rounds of work cut this a long way and did not end it, and no further
+    # fix could be validated (a structural repair would only ever be scored by
+    # a structural metric). So when the clip is one of the bad ones, the
+    # report says so instead of presenting a skeleton that visibly jumps and
+    # per-leg numbers spliced from both legs.
+    _stability = (
+        (stabilizer_ctx.get("leg_identity") or {}).get("stability") or {}
+    )
+    if sport_type == "run" and _stability.get("unstable"):
+        quality_warnings.append(
+            "On this clip the pose model kept swapping which leg is which — "
+            "measured against the stride itself, the legs traded places about "
+            f"{int(_stability.get('excess_crossings') or 0)} times more than "
+            "running allows. The skeleton will visibly jump between legs, and "
+            "any single-leg number here is mixed from both, so read the "
+            "left/right detail with caution. Filming square-on to the athlete, "
+            "with the whole body in frame and the legs well lit, is what "
+            "separates them best."
+        )
+
     if is_bike and early_camera_side == "right":
         # Filmed from the DRIVE side: the chainring disc sits exactly on the
         # near ankle's bottom arc and disturbs the tracking there (the
