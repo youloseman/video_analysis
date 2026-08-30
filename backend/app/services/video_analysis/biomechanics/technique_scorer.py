@@ -101,10 +101,49 @@ def score_in_range(
     return score
 
 
+# How far the overall is pulled from the weighted mean toward its WORST
+# component.
+#
+# A plain mean has no floor: with nine components and a heaviest weight of 0.22,
+# one badly wrong measurement can only cost its own weight. Measured on two real
+# outdoor TT clips -- a rider whose knee at BDC read 156.7 deg against a 138-145
+# band, i.e. a saddle roughly 12 deg too high, scored 81/100 and a grade of B,
+# because everything else about the position was excellent. A bike fit is not an
+# average of its contact points; it is as good as its worst one.
+#
+# 0.35 was chosen against four cases rather than by feel:
+#
+#     FB-01 (shoulder 70 vs 80-105)          96 -> 92  A   strong, one real fault
+#     FB-02 (knee BDC 157, saddle too high)  81 -> 63  C
+#     perfect but knee_bdc scored 0          75 -> 48  D
+#     clean clip, saddle merely "acceptable" 99 -> 99  A   untouched
+#
+# Only cycling uses it so far. Running and swimming have the same dilution, but
+# turning it on for them without a fixture to measure against would be shipping
+# a score change nobody has looked at -- pass ``worst_pull`` there once there is.
+WORST_COMPONENT_PULL = 0.35
+
+# Components that may not DEFINE the worst case. ``saddle_fit`` is derived
+# entirely from knee-at-BDC (see ``_assess_saddle_height``), so letting it set
+# the floor counts one measurement twice; and it is categorical -- "acceptable"
+# maps to 75, which would drag an otherwise perfect clip from 99 to 90 on the
+# strength of a verdict that is not a fault.
+CYCLING_DERIVED_COMPONENTS = frozenset({"saddle_fit"})
+
+
 def compute_weighted_score(
     component_scores: dict[str, float], weights: dict[str, float],
+    *,
+    worst_pull: float = 0.0,
+    exclude_from_worst: frozenset[str] = frozenset(),
 ) -> int:
-    """Compute weighted average score from component scores."""
+    """Weighted average of the component scores, optionally pulled toward the
+    worst one.
+
+    ``worst_pull`` of 0 (the default) is the plain mean. See
+    :data:`WORST_COMPONENT_PULL` for why cycling does not use the plain mean and
+    how the value was chosen.
+    """
     total_weight = 0.0
     weighted_sum = 0.0
 
@@ -116,7 +155,19 @@ def compute_weighted_score(
     if total_weight <= 0:
         return 50  # Default if no data
 
-    return int(np.clip(weighted_sum / total_weight, 0, 100))
+    overall = weighted_sum / total_weight
+
+    if worst_pull > 0:
+        # Only WEIGHTED components can define the worst case -- an extra score
+        # that carries no weight in the average must not set the floor of it.
+        candidates = [
+            v for k, v in component_scores.items()
+            if k in weights and k not in exclude_from_worst
+        ]
+        if candidates:
+            overall -= worst_pull * (overall - min(candidates))
+
+    return int(np.clip(overall, 0, 100))
 
 
 def score_coverage(
@@ -337,7 +388,11 @@ def score_cycling(
     if pelvic > 0:
         components["pelvic_ratio"] = score_in_range(pelvic, *ref["pelvic_ratio"])
 
-    overall = compute_weighted_score(components, CYCLING_WEIGHTS)
+    overall = compute_weighted_score(
+        components, CYCLING_WEIGHTS,
+        worst_pull=WORST_COMPONENT_PULL,
+        exclude_from_worst=CYCLING_DERIVED_COMPONENTS,
+    )
     return {
         "overall_score": overall,
         "letter_grade": assign_grade(overall),

@@ -11,6 +11,7 @@ missing, or the call fails -- analysis never depends on the LLM.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import structlog
@@ -119,24 +120,40 @@ def _bike_data_block(
     except Exception:
         ref, pos_label = {}, position or "unknown"
 
-    def rng(key: str) -> str:
+    # Per-metric verdict, from the same classifier the chips and the table use.
+    # A band alone leaves the reader to decide whether 4 deg outside a 12 deg
+    # window is a finding; this says so.
+    statuses = _metric_statuses("bike", position, summary)
+    _WORD = {"good": "in range", "warn": "just outside, within tolerance",
+             "bad": "OUT OF RANGE"}
+
+    def rng(key: str, field: str | None = None) -> str:
         r = ref.get(key)
-        return f" (optimal {r[0]}-{r[1]})" if r else ""
+        if not r:
+            return ""
+        st = statuses.get(field or "")
+        verdict = f", {_WORD[st[0]]}" if st and st[0] in _WORD else ""
+        return f" (optimal {r[0]}-{r[1]}{verdict})"
 
     lines = [
         f"Sport: cycling | Position: {pos_label} | Technique score: {score}/100 ({grade})",
-        f"- Knee angle at bottom of stroke (BDC): {_fmt(summary.get('knee_at_bdc'), '°')}{rng('knee_at_bdc')}",
-        f"- Knee angle at top of stroke (TDC): {_fmt(summary.get('knee_at_tdc'), '°')}{rng('knee_at_tdc')}",
+        f"- Knee angle at bottom of stroke (BDC): {_fmt(summary.get('knee_at_bdc'), '°')}"
+        f"{rng('knee_at_bdc', 'knee_at_bdc')}",
+        f"- Knee angle at top of stroke (TDC): {_fmt(summary.get('knee_at_tdc'), '°')}"
+        f"{rng('knee_at_tdc', 'knee_at_tdc')}",
         # ``hip_angle_max`` is the name of the reference BAND; the analyzer
         # writes the measurement as ``hip_angle_avg``. Reading only the former
         # meant every cycling clip reported "Hip angle: n/a" to the coach --
         # silently hiding the one metric with a documented medical floor (hip
         # closure below 45 deg, iliac artery). Same fallback the scorer uses.
         f"- Hip angle: {_fmt(summary.get('hip_angle_max') or summary.get('hip_angle_avg'), '°')}"
-        f"{rng('hip_angle_max')}",
-        f"- Trunk angle: {_fmt(summary.get('trunk_angle_avg'), '°')}{rng('trunk_angle')}",
-        f"- Elbow angle: {_fmt(summary.get('elbow_angle_avg'), '°')}{rng('elbow_angle')}",
-        f"- Shoulder angle: {_fmt(summary.get('shoulder_angle_avg'), '°')}{rng('shoulder_angle')}",
+        f"{rng('hip_angle_max', 'hip_angle_avg')}",
+        f"- Trunk angle: {_fmt(summary.get('trunk_angle_avg'), '°')}"
+        f"{rng('trunk_angle', 'trunk_angle_avg')}",
+        f"- Elbow angle: {_fmt(summary.get('elbow_angle_avg'), '°')}"
+        f"{rng('elbow_angle', 'elbow_angle_avg')}",
+        f"- Shoulder angle: {_fmt(summary.get('shoulder_angle_avg'), '°')}"
+        f"{rng('shoulder_angle', 'shoulder_angle_avg')}",
         f"- Pelvic ratio: {_fmt(summary.get('pelvic_ratio'), 'x')}",
         f"- Head alignment score: {_fmt(summary.get('head_alignment_avg'))}",
         f"- Saddle height assessment: {summary.get('saddle_height_assessment', 'n/a')}",
@@ -324,6 +341,123 @@ def build_metrics_block(
     return _run_data_block(score, grade, issues, summary, angle_stats)
 
 
+# Field -> the name the rest of the report calls it, so the coach's prose and
+# the metric table say the same word for the same measurement.
+_METRIC_LABELS = {
+    "knee_at_bdc": "Knee angle at bottom of stroke (BDC)",
+    "knee_at_tdc": "Knee angle at top of stroke (TDC)",
+    "hip_angle_avg": "Hip angle",
+    "trunk_angle_avg": "Trunk angle",
+    "elbow_angle_avg": "Elbow angle",
+    "shoulder_angle_avg": "Shoulder angle",
+    "forearm_tilt_avg": "Forearm tilt",
+    "pelvic_ratio": "Pelvic ratio",
+    "cadence_spm": "Cadence",
+    "trunk_lean_avg": "Trunk lean",
+    "vertical_oscillation_cm": "Vertical oscillation",
+    "overstride_ratio": "Overstride",
+}
+
+
+def _metric_statuses(
+    sport_type: str, position: str | None, summary: dict,
+) -> dict[str, tuple[str, float, float, float]]:
+    """``field -> (status, value, lo, hi)`` for every metric with a band.
+
+    Uses ``overlay_style.status_for`` -- the same classifier the overlay chips
+    and the web table read -- so "out of range" means one thing across the whole
+    report rather than three.
+    """
+    from app.services.video_analysis import overlay_style
+    from app.services.video_analysis.biomechanics.sport_configs import (
+        reference_bands,
+    )
+
+    out: dict[str, tuple[str, float, float, float]] = {}
+    for field, band in (reference_bands(sport_type, position) or {}).items():
+        raw = summary.get(field)
+        if raw is None:
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(value):
+            continue
+        lo, hi = float(band["lo"]), float(band["hi"])
+        # Hip angle is ASYMMETRIC and the whole report already treats it that
+        # way: closing the hip past the band is the risk (compression, and the
+        # iliac-artery floor the data block warns about), while opening it past
+        # the band is a comfort trade-off and never a fault. The results table
+        # encodes this by stretching the upper bound to the measurement; do the
+        # same here, or the coach is handed "hip out of range" for a number the
+        # athlete is looking at marked in range.
+        if field == "hip_angle_avg":
+            hi = max(hi, value)
+        # A ratio lives on a 2-4 scale; the 3.0 degree floor would swallow it
+        # whole and call every reading "check".
+        margin = 0.3 if field == "pelvic_ratio" else 3.0
+        status = overlay_style.status_for(value, lo, hi, min_margin=margin)
+        out[field] = (status, value, lo, hi)
+    return out
+
+
+def _materiality_block(
+    sport_type: str, position: str | None, summary: dict,
+) -> str:
+    """Which measurements are allowed to become a "Fix first" item.
+
+    The photo prompt has always stated this outright; the video prompt did not,
+    and left the model to apply the materiality floor itself to a list of raw
+    numbers. It does not reliably do that: a clip whose table showed knee-at-TDC
+    and shoulder angle both out of range came back with "Nothing to fix --
+    your position is solid", because nothing in the prompt said which of those
+    numbers cleared the floor and the rule-based issue list was empty (it only
+    covers saddle height and trunk angle).
+
+    Materiality is a fact we already compute for the chips and the table, so it
+    is stated, not hoped for.
+    """
+    statuses = _metric_statuses(sport_type, position, summary)
+    material, borderline = [], []
+    for field, (status, value, lo, hi) in statuses.items():
+        label = _METRIC_LABELS.get(field, field.replace("_", " "))
+        shown = f"{label} ({value:.1f}, band {lo}-{hi})"
+        if status == "bad":
+            material.append(shown)
+        elif status == "warn":
+            borderline.append(shown)
+
+    # Head alignment is a 0-100 score rather than a banded angle, so it has no
+    # entry in reference_bands; the overlay's own bar is the one to match.
+    head = summary.get("head_alignment_avg")
+    if isinstance(head, (int, float)) and not math.isnan(float(head)) and head < 75:
+        material.append(f"Head alignment ({float(head):.0f}/100)")
+
+    lines: list[str] = []
+    if material:
+        lines.append(
+            "MATERIAL PROBLEMS (only these, plus any rule-based issue listed "
+            "below, may appear in Fix first): " + "; ".join(material)
+        )
+    else:
+        excuse = (
+            "in range, within tolerance, or a deliberate aero trade-off"
+            if sport_type == "bike"
+            else "in range, within tolerance, or not scorable from this clip"
+        )
+        lines.append(
+            f"MATERIAL PROBLEMS: NONE. Every banded measurement is {excuse}. Do "
+            "not invent a fix -- use the **Nothing to fix** variant."
+        )
+    if borderline:
+        lines.append(
+            "Just outside the band but WITHIN TOLERANCE (not problems, no "
+            "drills, no fit changes for these): " + "; ".join(borderline)
+        )
+    return "\n".join(lines)
+
+
 def _focus_block(focus: str | None) -> str:
     """What the athlete asked us to look at, quoted to the coach.
 
@@ -430,8 +564,9 @@ def _build_prompt(
         )
     fit = _fit_plan_block(fit_plan)
     asked = _focus_block(focus)
+    material = _materiality_block(sport_type, position, summary)
     return (
-        f"{data}{caveat}\n\n{_issues_block(issues)}"
+        f"{data}{caveat}\n\n{material}\n\n{_issues_block(issues)}"
         + (f"\n\n{fit}" if fit else "")
         + (f"\n\n{asked}" if asked else "")
         + "\n\nWrite the coaching feedback now, following the required section structure."
