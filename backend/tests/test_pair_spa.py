@@ -86,11 +86,15 @@ class TestTheUploadForm:
         assert "revokeObjectURL" in _fn(html, "pairRevoke")
         assert "pairRevoke(slot)" in _fn(html, "pairThumb")
 
-    def test_the_pair_mode_is_bike_video_only(self, html):
-        """A running side view already sees both legs, and a photo has no
-        pedal circle to merge against."""
+    def test_the_pair_mode_is_video_only(self, html):
+        """A photo has no stride and no pedal circle to merge against.
+
+        It was bike-only too, on the reasoning that a run side view already
+        sees both legs. It does -- but it can only MEASURE the near one, and
+        once there was a way to tell a trustworthy run clip from one whose
+        legs swapped, running earned a pair of its own. See TestTheRunSession.
+        """
         fn = _fn(html, "isPair")
-        assert "state.sport==='bike'" in fn
         assert "state.mode==='video'" in fn
 
 
@@ -257,3 +261,59 @@ class TestHistoryKeepsOnlyWhatExists:
         assert "asymmetry" not in entry
         assert "per_side" not in entry
         assert "knee_at_bdc" in entry and "uncertainty_deg" in entry
+
+
+class TestTheRunSession:
+    """A run pair is not a bike pair with different words.
+
+    Two bike clips share a rigid object and get pooled against a common ruler.
+    Two run clips share only the athlete -- but both of them measure cadence,
+    contact time and trunk lean independently, so the gap between them is the
+    session's own error, measured on the day. Every left/right difference is
+    judged against that gap rather than against a number someone picked.
+    """
+
+    def test_pair_mode_is_offered_for_running(self, html):
+        fn = _fn(html, "isPair")
+        assert "state.sport==='bike'" not in fn
+        assert "state.mode==='video'" in fn
+
+    def test_running_is_not_offered_a_camera_side_override(self, html):
+        """A run side view sees both legs, so a user-set unilateral lock would
+        claim a certainty the sport does not have. Only Auto and Both sides."""
+        fn = _fn(html, "syncPairSlot")
+        assert "state.sport==='run'" in fn
+
+    def test_the_upload_declares_its_sport(self, html):
+        fn = _fn(html, "analyzePair")
+        assert "fd.append('sport', state.sport)" in fn
+        assert "state.sport==='bike') fd.append('position'" in fn
+
+    def test_a_refusal_names_the_clip_and_the_reason(self, html):
+        fn = _fn(html, "renderRunSession")
+        assert "unstable_sides" in fn
+        assert "RUN_SESSION_REASONS" in fn
+
+    def test_differences_are_judged_against_the_measured_error(self, html):
+        """The whole point: not a fixed threshold, but what these two clips
+        showed on quantities that cannot differ."""
+        fn = _fn(html, "renderRunSession")
+        assert "r.readable" in fn
+        assert "within this session" in fn
+
+    def test_it_leaves_a_bike_session_alone(self, html):
+        """Both panels render into the same slot."""
+        fn = _fn(html, "renderRunSession")
+        assert "if(!s) return;" in fn
+
+    def test_every_run_refusal_reason_has_words(self, html):
+        import re
+        from pathlib import Path
+        backend = Path(__file__).resolve().parents[1]
+        src = (backend / "app/services/video_analysis/run_session.py").read_text(
+            encoding="utf-8")
+        emitted = set(re.findall(r'_refusal\([^)]*?"([a-z_]+)"', src, re.S))
+        i = html.index("const RUN_SESSION_REASONS={")
+        block = html[i:html.index("};", i)]
+        missing = [r for r in sorted(emitted) if f"{r}:" not in block]
+        assert not missing, f"run refusal reasons with no copy: {missing}"

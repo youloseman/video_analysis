@@ -3329,11 +3329,19 @@ $('#sideSeg') && $('#sideSeg').addEventListener('click',e=>{
    becomes the LEFT clip, a second appears for the RIGHT. A side view only
    measures the leg nearest the camera, so this is the only way to get a
    verdict about the whole rider rather than half of one. */
-function isPair(){ return state.sport==='bike' && state.mode==='video' && state.cameraSide==='both'; }
+function isPair(){ return state.mode==='video' && state.cameraSide==='both'; }
 function syncPairSlot(){
   const slot=$('#pairSlot'); if(!slot) return;
   const on=isPair();
   slot.classList.toggle('hidden', !on);
+  // Running has no camera-side override -- a run side view sees both legs, so
+  // claiming a unilateral lock there would be a false certainty. What it DOES
+  // have is the two-sided session, so only that option is offered.
+  const seg=$('#sideSeg');
+  if(seg) seg.querySelectorAll('button[data-side]').forEach(b=>{
+    const runnable = b.dataset.side==='auto' || b.dataset.side==='both';
+    b.classList.toggle('hidden', state.sport==='run' && !runnable);
+  });
   // The cards replace the single-clip uploader rather than sitting beside it.
   // `pairmode-hide` is a class only this function touches, so whatever the
   // drop zone / preview / recorder had decided about their own visibility is
@@ -3342,7 +3350,9 @@ function syncPairSlot(){
     el && el.classList.toggle('pairmode-hide', on));
   const hint=$('#sideHint');
   if(hint) hint.innerHTML = on
-    ? 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict — the only way to measure both legs, and it spends two clips of your plan.'
+    ? (state.sport==='run'
+        ? 'Two clips of the <b>same run</b>, one filmed from each side. Each clip can only measure the leg nearest the camera, so this is the only way to see both — and because both clips also measure your cadence, contact time and trunk lean independently, the gap between them tells us how much to trust the rest. Spends two clips of your plan.'
+        : 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict — the only way to measure both legs, and it spends two clips of your plan.')
     : 'Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.';
   if(!on){ state.fileB=null; pairRevoke('b'); }
   if(on) renderPairCards();
@@ -3570,13 +3580,14 @@ function analyzePair(){
   const fd=new FormData();
   fd.append('video_left', state.file);
   fd.append('video_right', state.fileB);
-  fd.append('position', state.position);
+  fd.append('sport', state.sport);
+  if(state.sport==='bike') fd.append('position', state.position);
   fd.append('overlay', $('#overlay').checked ? 'true':'false');
   if(focusText()) fd.append('focus', focusText());
 
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
     <span class="fchip">${esc(state.fileB.name)}</span>
-    <span class="sporttag sporttag-bike"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>Bike · both sides</span>`;
+    <span class="sporttag sporttag-${state.sport}"><svg class="ic" aria-hidden="true"><use href="#i-${state.sport}"/></svg>${state.sport==='run'?'Run':'Bike'} · both sides</span>`;
   setState('progress',{focus:'#progTitle'});
   $('#progTitle').textContent='Analyzing both sides';
   setSteps(1);
@@ -5935,6 +5946,7 @@ function render(job){
   $('#scoreMeta').innerHTML=parts.join('<br>');
 
   renderBilateral(r.bilateral);
+  renderRunSession(r.run_session);
 
   // analysis confidence badge (soft high/medium/low tier; hides nothing).
   // Free results carry the level only — the per-factor breakdown behind it
@@ -8699,6 +8711,99 @@ function renderBilateral(b){
     ${vids}
   </div>`;
 }
+/* The two-sided RUN session.
+
+   Not the bike panel with different words. A bike pair shares a rigid object,
+   so its two clips can be pooled against a common ruler; two run clips share
+   only the athlete. What that buys instead is better: cadence, contact time,
+   trunk lean and oscillation are measured independently by BOTH clips, so the
+   gap between them is this session's own error, measured on the day. Every
+   left-versus-right difference is then judged against that gap rather than
+   against a number someone picked.
+
+   Measured on the first real pair, those whole-body metrics disagreed by up
+   to 68% while the two legs' knee angles differed by 4% -- which is exactly
+   why a left/right verdict has to be earned rather than printed. */
+const RUN_SESSION_REASONS={
+  identity_unstable:'we could not keep track of which leg is which',
+  clips_disagree:'the two clips don\u2019t describe the same run closely enough',
+  sides_not_identified:'we couldn\u2019t tell which side each clip was filmed from',
+};
+const RUN_METRIC_NAMES={
+  cadence_spm:'Cadence', trunk_lean_avg:'Trunk lean',
+  vertical_oscillation_m:'Vertical oscillation', ground_contact_ms:'Ground contact',
+  flight_time_ms:'Flight time', stance_fraction:'Stance fraction',
+  knee_min:'Knee, most bent', knee_max:'Knee, most extended',
+  knee_mean:'Knee, average', knee_flexion_velocity_dps:'Knee flexion speed',
+  knee_extension_velocity_dps:'Knee extension speed',
+  foot_strike_angle_deg:'Foot strike angle', overstride_ratio:'Overstride',
+};
+function runMetricName(k){ return RUN_METRIC_NAMES[k] || pretty(k); }
+function renderRunSession(s){
+  const host=$('#bilateralBlock'); if(!host) return;
+  if(!s) return;                       // bike sessions own this slot
+  const legs=s.legs||{};
+  const cards=['left','right'].filter(k=>legs[k]).map(k=>{
+    const c=legs[k];
+    const flag = c.identity_unstable
+      ? '<span class="bil-flag bil-warn">legs swapped here</span>' : '';
+    return `<div class="bil-side">
+      ${c.keyframe_base64?`<img class="bil-shot" src="${c.keyframe_base64}" alt="${k} side annotated frame">`:''}
+      <span>${k} side alone</span> ${flag}
+      <small class="bil-note" style="margin:4px 0 0">${
+        c.metrics && c.metrics.knee_mean!=null
+          ? 'knee, average <b>'+Math.round(c.metrics.knee_mean)+'\u00b0</b>' : ''}</small>
+    </div>`;
+  }).join('');
+
+  if(!s.combined){
+    const why=RUN_SESSION_REASONS[s.reason]||'these two clips could not be merged';
+    const worst=(s.agreement||{}).worst;
+    host.innerHTML=`<div class="bil">
+      <div class="bil-h"><b>Two-sided run session</b>
+        <span class="bil-flag bil-warn">not merged</span></div>
+      <p class="bil-note" style="margin-top:0">We didn\u2019t combine these two clips because ${esc(why)}${
+        (s.unstable_sides||[]).length? ' on the <b>'+esc(s.unstable_sides.join(' and '))+'</b> clip':''}.
+        Merging them would have folded that straight into the answer.</p>
+      ${worst!=null?`<p class="bil-note">Both clips measure your <b>${esc(runMetricName((s.agreement||{}).worst_metric||''))}</b>
+        independently, and they disagree by <b>${worst}%</b> — on a number that cannot differ between two clips of one run.</p>`:''}
+      <div class="bil-sides">${cards}</div>
+      <p class="bil-note">Both clips were analysed and both are shown above. What is withheld is the combined verdict, not the measurements.</p>
+    </div>`;
+    return;
+  }
+
+  const agree=s.agreement||{};
+  const rows=(s.leg_comparison||[]).map(r=>{
+    const cls = r.readable ? 'reg' : 'sta';
+    const word = r.readable===null ? '' : (r.readable
+      ? ' \u00b7 bigger than this session\u2019s error'
+      : ' \u00b7 within this session\u2019s error');
+    return `<div class="cmp-row"><div class="cmp-lbl">${esc(runMetricName(r.metric))}</div>
+      <div class="cmp-a">${r.left}</div>
+      <div class="cmp-d"><span class="tdelta ${cls}">${r.difference_pct}%${word}</span></div>
+      <div class="cmp-b">${r.right}</div></div>`;
+  }).join('');
+  const whole=Object.entries(s.merged_whole_body||{}).map(([k,v])=>
+    `<div class="cmp-row"><div class="cmp-lbl">${esc(runMetricName(k))}</div>
+      <div class="cmp-a"></div><div class="cmp-d"><b>${v}</b></div><div class="cmp-b"></div></div>`).join('');
+
+  host.innerHTML=`<div class="bil">
+    <div class="bil-h"><b>Two-sided run session</b>
+      ${agree.worst!=null?`<span class="bil-flag bil-ok">clips agree to ${agree.worst}%</span>`:''}</div>
+    <p class="bil-note" style="margin-top:0">Both clips measure your cadence, contact time and trunk lean independently.
+      How far apart they land — <b>${agree.worst}%</b> at worst — is this session\u2019s own error, measured today rather than assumed.
+      Every left-versus-right difference below is judged against it.</p>
+    <div class="bil-sides">${cards}</div>
+    ${whole?`<div class="cmp-grid"><div class="cmp-row cmp-row-head">
+        <div class="cmp-lbl">Whole body, both clips averaged</div><div class="cmp-a"></div>
+        <div class="cmp-d"></div><div class="cmp-b"></div></div>${whole}</div>`:''}
+    ${rows?`<div class="cmp-grid" style="margin-top:12px"><div class="cmp-row cmp-row-head">
+        <div class="cmp-lbl">Leg by leg</div><div class="cmp-a">Left</div>
+        <div class="cmp-d">Difference</div><div class="cmp-b">Right</div></div>${rows}</div>`:''}
+    <p class="bil-note">A difference smaller than the session\u2019s own error is not something these two clips can resolve — treat those legs as even.</p>
+  </div>`;
+}
 /* Compare keyframe: held (or absent) frames render straight; a cloud frame
    still on the server gets a slot that fills in place. */
 function cmpThumb(e,tag){
@@ -8860,7 +8965,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderBilateral,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overallNote,wrapText,overlayBounds};
+window.__flapp={setState,render,renderBilateral,renderRunSession,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overallNote,wrapText,overlayBounds};
 </script>
 </body>
 </html>

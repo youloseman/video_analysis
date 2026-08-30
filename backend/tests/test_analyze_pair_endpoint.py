@@ -54,9 +54,12 @@ def test_both_clips_are_required():
     assert r.status_code >= 400, r.text
 
 
-def test_the_endpoint_exists_and_is_bike_only():
-    """No `sport` field: a running side view already sees both legs, so there
-    is nothing here for it to fix and no way to ask for it."""
+def test_the_endpoint_takes_a_pair_of_either_sport():
+    """It began bike-only, on the reasoning that a run side view already sees
+    both legs. Running earned a pair of its own once there was a way to tell a
+    trustworthy run clip from one whose legs swapped -- and it merges on
+    entirely different rules, because two run clips share no rigid object to
+    pool geometry against. See run_session.py."""
     schema = main.app.openapi()
     assert "/analyze-pair" in schema["paths"]
     body = schema["paths"]["/analyze-pair"]["post"]["requestBody"]
@@ -66,5 +69,4 @@ def test_the_endpoint_exists_and_is_bike_only():
         name = ref.rsplit("/", 1)[-1]
         props = schema["components"]["schemas"][name]
     fields = set((props.get("properties") or {}).keys())
-    assert {"video_left", "video_right"} <= fields
-    assert "sport" not in fields
+    assert {"video_left", "video_right", "sport"} <= fields

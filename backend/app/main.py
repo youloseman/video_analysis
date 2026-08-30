@@ -110,6 +110,7 @@ from app.services.usage_limits import (
     record_usage,
 )
 from app.services.video_analysis.bilateral_session import build_pair_result
+from app.services.video_analysis.run_session import build_run_session
 from app.services.video_analysis.runner import (
     DEFAULT_BIKE_POSITION,
     VALID_POSITIONS,
@@ -526,6 +527,7 @@ def _process_pair_job(
     athlete_height_cm: int | None = None,
     focus: str | None = None,
     mobility_profile: dict[str, Any] | None = None,
+    sport: str = "bike",
 ) -> None:
     """Analyse both side clips of one ride and merge them into one verdict.
 
@@ -564,14 +566,17 @@ def _process_pair_job(
         ):
             job["stage"] = f"Analyzing the {side}-side clip ({n} of 2)…"
             results[side] = run_analysis(
-                path, "bike", cycling_position,
+                path, sport, cycling_position if sport == "bike" else None,
                 overlay_path=overlay,
                 recommendations=False,
                 kinogram=True,
                 athlete_height_cm=athlete_height_cm,
                 focus=focus,
-                mobility_profile=mobility_profile,
-                camera_side_override=side,
+                mobility_profile=mobility_profile if sport == "bike" else None,
+                # Bike only: a run side view sees both legs, so a user-set
+                # unilateral lock there would claim a certainty the sport
+                # does not have. The slots still say which clip is which.
+                camera_side_override=side if sport == "bike" else None,
             )
             if results[side].get("status") != "completed":
                 job["status"] = "failed"
@@ -582,10 +587,27 @@ def _process_pair_job(
                 return
 
         job["stage"] = "Merging both sides…"
-        merged = build_pair_result(
-            results["left"], results["right"], cycling_position,
-            recommendations=True,
-        )
+        if sport == "run":
+            # A run pair shares no rigid object to pool geometry against --
+            # what it shares is the athlete. See run_session.py: the metrics
+            # both clips measure independently become the session's own error
+            # bar, and the merge is refused outright when either clip failed
+            # the leg-identity check.
+            session = build_run_session(results["left"], results["right"])
+            base = results["left"]
+            merged = {k: v for k, v in base.items()
+                      if k not in ("keyframe_base64", "overlay_video_path",
+                                   "kinogram_base64", "ai_recommendations")}
+            merged["run_session"] = session["session"]
+            merged["keyframe_base64"] = base.get("keyframe_base64")
+            if session["merged_summary"] is not None:
+                merged["sport_specific_metrics"] = session["merged_summary"]
+                merged["camera_side"] = "both"
+        else:
+            merged = build_pair_result(
+                results["left"], results["right"], cycling_position,
+                recommendations=True,
+            )
         safe = _json_safe(merged)
         # BOTH overlays are kept and both are offered. The rider filmed two
         # clips; showing one and silently dropping the other was the first
@@ -596,7 +618,7 @@ def _process_pair_job(
             (("left", overlay_left), ("right", overlay_right))
             if path and Path(path).exists()
         }
-        base_side = (safe.get("bilateral") or {}).get("base_side")
+        base_side = (safe.get("bilateral") or {}).get("base_side") or "left"
         chosen = job["overlay_paths"].get(base_side or "") or next(
             iter(job["overlay_paths"].values()), None,
         )
@@ -1106,9 +1128,10 @@ async def analyze_pair_endpoint(
     response: Response,
     video_left: UploadFile = File(..., description="Clip filmed from the rider's LEFT side."),
     video_right: UploadFile = File(..., description="Clip filmed from the rider's RIGHT side."),
+    sport: str = Form("bike", description="run | bike"),
     position: str | None = Form(
-        None, description="Cycling position: road_hoods | road_drops | tt_aero "
-        "| triathlon | casual.",
+        None, description="Cycling position (bike only): road_hoods | "
+        "road_drops | tt_aero | triathlon | casual.",
     ),
     overlay: bool = Form(True, description="Also render the annotated overlay video."),
     focus: str | None = Form(
@@ -1170,11 +1193,15 @@ async def analyze_pair_endpoint(
             ),
         )
 
-    cycling_position = position or DEFAULT_BIKE_POSITION
-    if cycling_position not in VALID_POSITIONS:
-        raise HTTPException(
-            400, f"invalid position; valid: {sorted(VALID_POSITIONS)}",
-        )
+    if sport not in ("run", "bike"):
+        raise HTTPException(400, "sport must be 'run' or 'bike'")
+    cycling_position = None
+    if sport == "bike":
+        cycling_position = position or DEFAULT_BIKE_POSITION
+        if cycling_position not in VALID_POSITIONS:
+            raise HTTPException(
+                400, f"invalid position; valid: {sorted(VALID_POSITIONS)}",
+            )
     if not settings.model_path.exists():
         raise HTTPException(
             503, "pose model not installed on the server "
@@ -1212,7 +1239,7 @@ async def analyze_pair_endpoint(
     job_token = secrets.token_urlsafe(24)
     JOBS[job_id] = {
         "status": "queued",
-        "sport": "bike",
+        "sport": sport,
         "cycling_position": cycling_position,
         "result": None,
         "error": None,
@@ -1229,7 +1256,9 @@ async def analyze_pair_endpoint(
     background_tasks.add_task(
         _process_pair_job, job_id, paths["left"], paths["right"],
         cycling_position, overlay_left, overlay_right,
-        user.height_cm, _clean_focus(focus), _stored_mobility(user),
+        user.height_cm, _clean_focus(focus),
+        _stored_mobility(user) if sport == "bike" else None,
+        sport,
     )
     # Two analyses, two clips of quota.
     await _record_and_headers(response, request, user, db, "video")
