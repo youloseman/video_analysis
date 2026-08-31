@@ -1283,6 +1283,48 @@ def health() -> dict[str, Any]:
         "queued": sum(1 for j in pending if j["status"] == "queued"),
         "capacity": settings.max_concurrent_analyses,
         "stored_jobs": len(JOBS),
+        # Can this deployment actually take money, and is every plan wired up?
+        #
+        # It could not be checked from outside. The answer existed only as a
+        # line in the deploy log -- BILLING_READY / BILLING_TEST_MODE /
+        # BILLING_PRICES_MISSING -- which scrolls away, so the single most
+        # consequential setting in the app was the one you could not look at.
+        # After a go-live that is exactly the question being asked, and "did
+        # the live key actually take?" deserves an answer that survives.
+        #
+        # Says the MODE and the COUNT, never a key or a price id: that a
+        # deployment is in test mode is not a secret, and a real card being
+        # declined at the end of checkout announces it far more loudly.
+        "billing": _billing_health(),
+    }
+
+
+def _billing_health() -> dict[str, Any]:
+    key = str(settings.stripe_secret_key or "")
+    prices = settings.plan_price_map
+    configured = sorted(p for p, v in prices.items() if v)
+    # A price id reused across two plans charges the customer for a plan they
+    # did not pick, and nothing else in the running app can see it -- see
+    # billing.log_billing_configuration and docs/STRIPE_GO_LIVE_RU.md §7.
+    seen: set[str] = set()
+    reused = False
+    for plan in configured:
+        price = prices[plan]
+        if price in seen:
+            reused = True
+            break
+        seen.add(price)
+    mode = (
+        "disabled" if not key
+        else "test" if key.startswith("sk_test_")
+        else "live"
+    )
+    return {
+        "mode": mode,
+        "plans_configured": len(configured),
+        "plans_total": len(prices),
+        "plans_missing": sorted(set(prices) - set(configured)),
+        "price_reused": reused,
     }
 
 
