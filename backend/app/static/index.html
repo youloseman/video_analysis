@@ -9342,6 +9342,11 @@ function renderRunSession(s){
         <div class="cmp-lbl">Leg by leg</div><div class="cmp-a">Left</div>
         <div class="cmp-d">Difference</div><div class="cmp-b">Right</div></div>${rows}</div>`:''}
     <p class="bil-note">A difference smaller than the session\u2019s own error is not something these two clips can resolve — treat those legs as even.</p>
+    ${s.base_side?`<p class="bil-note">Only the numbers above come from both clips.
+      Two running clips share no ruler to pool the rest against, so the <b>score, the
+      joint-angle table and the findings</b> on this page are measured on your
+      <b>${esc(s.base_side)}-side clip</b> \u2014 the one with more frames behind it
+      \u2014 not on both.</p>`:''}
   </div>`;
 }
 /* Compare keyframe: held (or absent) frames render straight; a cloud frame

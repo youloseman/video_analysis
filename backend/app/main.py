@@ -774,7 +774,14 @@ def _process_pair_job(
             # bar, and the merge is refused outright when either clip failed
             # the leg-identity check.
             session = build_run_session(results["left"], results["right"])
-            base = results["left"]
+            # The score, the angle table and the findings cannot be merged --
+            # a run pair shares no ruler to pool them against -- so they are
+            # carried from ONE clip, and it has to be the same clip the
+            # unmergeable summary values came from. It was hardcoded to the
+            # left while run_session picked its own base by whichever summary
+            # dict had more keys, so a session could show the left clip's score
+            # above the right clip's knee angles, both labelled "both sides".
+            base = results[session["base_side"]]
             merged = {k: v for k, v in base.items()
                       if k not in ("keyframe_base64", "overlay_video_path",
                                    "kinogram_base64", "ai_recommendations")}

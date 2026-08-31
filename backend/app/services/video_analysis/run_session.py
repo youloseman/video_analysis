@@ -205,13 +205,35 @@ def build_run_session(
     if agree.get("agree") is False:
         return _refusal(left, right, "clips_disagree", agree=agree)
 
-    merged = dict(sum_l if len(sum_l) >= len(sum_r) else sum_r)
+    # Which clip everything UNMERGEABLE comes from -- the per-leg metrics here,
+    # and the score, angle table and findings the caller carries over.
+    #
+    # This used to be `sum_l if len(sum_l) >= len(sum_r) else sum_r`: the clip
+    # with more KEYS won, so one optional field (a foot-strike angle that
+    # happened to be measurable on one side) decided whose knee the session
+    # reported. It was arbitrary in the literal sense -- nothing about it
+    # tracked which clip was better.
+    #
+    # Frames analysed is a real proxy: more frames is more strides behind every
+    # per-leg number. Ties go left, only so the choice is deterministic.
+    base_side = "right" if (
+        int(right.get("frames_analyzed") or 0) > int(left.get("frames_analyzed") or 0)
+    ) else "left"
+    base_summary = sum_r if base_side == "right" else sum_l
+
+    merged = dict(base_summary)
     for key in WHOLE_BODY_METRICS:
         a, b = _num(sum_l, key), _num(sum_r, key)
         if a is not None and b is not None:
             merged[key] = (a + b) / 2.0
     merged["camera_side"] = "both"
     merged["camera_side_label"] = "Both sides"
+    # Everything in this summary that is NOT in WHOLE_BODY_METRICS was measured
+    # on one leg, and "both" would otherwise be the only label on it. The bike
+    # session does not need this key because it genuinely reconstructs a
+    # two-legged number; a run pair cannot, so it says whose leg this is
+    # instead of implying it is nobody's in particular.
+    merged["per_leg_source"] = base_side
 
     session = {
         "combined": True,
@@ -220,9 +242,14 @@ def build_run_session(
         "merged_whole_body": {k: round(merged[k], 2) for k in WHOLE_BODY_METRICS
                               if isinstance(merged.get(k), (int, float))},
         "leg_comparison": compare_legs(sum_l, sum_r, agree),
+        # The caller must carry the score, angles and findings from THIS clip,
+        # or the report shows one leg's score above another leg's numbers.
+        "base_side": base_side,
     }
-    logger.info("RUN_SESSION", combined=True, worst_gap=agree.get("worst"))
-    return {"session": session, "merged_summary": merged}
+    logger.info(
+        "RUN_SESSION", combined=True, worst_gap=agree.get("worst"), base_side=base_side,
+    )
+    return {"session": session, "merged_summary": merged, "base_side": base_side}
 
 
 def _refusal(
@@ -234,6 +261,16 @@ def _refusal(
 ) -> dict[str, Any]:
     """A pair that cannot be merged, said plainly and with its evidence."""
     logger.info("RUN_SESSION", combined=False, reason=reason)
+    # Even a refusal has to name the clip the report is built from: the caller
+    # still shows a score and an angle table, and they still come from ONE of
+    # these two clips. Same rule as the merge -- the one with more frames.
+    base_side = "left"
+    if int((result_b or {}).get("frames_analyzed") or 0) > int(
+        (result_a or {}).get("frames_analyzed") or 0
+    ):
+        base_side = _side_of(result_b) or "left"
+    else:
+        base_side = _side_of(result_a) or "left"
     return {
         "session": {
             "combined": False,
@@ -245,6 +282,8 @@ def _refusal(
                 for r in (result_a, result_b)
                 if (s := _side_of(r))
             },
+            "base_side": base_side,
         },
         "merged_summary": None,
+        "base_side": base_side,
     }

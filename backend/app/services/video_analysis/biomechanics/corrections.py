@@ -131,6 +131,19 @@ def normalize_corrections(
         cur = merged.setdefault(idx, {"landmark": idx, "dx": 0.0, "dy": 0.0})
         cur["dx"] = round(cur["dx"] + dx, 6)
         cur["dy"] = round(cur["dy"] + dy, 6)
+        # The cap has to hold on the TOTAL, not on each nudge. Checked per
+        # entry only, ten legal 0.24 steps at the same joint summed to 2.4 --
+        # nearly ten times the limit this function documents. Nothing shipped
+        # broken because check_plausibility refuses a point pushed off-screen,
+        # but that is a different check with a different purpose: the stated
+        # invariant was being enforced by accident, and would have stopped
+        # applying the moment a caller skipped it.
+        if abs(cur["dx"]) > MAX_OFFSET or abs(cur["dy"]) > MAX_OFFSET:
+            raise ValueError(
+                f"{LANDMARK_NAMES[idx]} has now been moved more than a quarter "
+                "of the frame in total; that is further than a joint can be "
+                "from where the model put it. Reset it and start again."
+            )
         if isinstance(frame_idx, int) and not isinstance(frame_idx, bool):
             # Where the athlete made the LAST edit -- an audit detail today,
             # the anchor for per-frame interpolation if that is ever built.
