@@ -71,11 +71,14 @@ class TestTheUploadForm:
             assert el in fn
         assert "pairmode-hide" in fn
 
-    def test_hiding_uses_a_class_only_this_code_owns(self, html):
+    def test_hiding_uses_a_class_only_this_code_owns(self, app_css):
         """`hidden` is managed by the drop zone, the preview and the recorder
         for their own reasons; borrowing it would leave one of them wrongly
-        hidden after switching back out of pair mode."""
-        assert ".pairmode-hide{display:none!important}" in html
+        hidden after switching back out of pair mode.
+
+        The rule lives in app.css since the stylesheet came out of the
+        document."""
+        assert ".pairmode-hide{display:none!important}" in app_css
 
     def test_the_second_slot_is_hidden_until_asked_for(self, html):
         i = html.index('id="pairSlot"')

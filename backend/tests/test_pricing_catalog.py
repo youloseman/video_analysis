@@ -205,7 +205,11 @@ def test_every_claim_on_the_full_card_has_something_behind_it():
     )
 
     text = " ".join(f.text.lower() for f in pricing.CARD_BY_ID["full"].features)
-    spa = (STATIC / "index.html").read_text(encoding="utf-8")
+    # Markup, script AND stylesheet: this check asks whether the page ships a
+    # feature at all, and does not care which of the two files carries it.
+    from tests.conftest import read_front_end
+
+    spa = read_front_end()
 
     if "profile" in text:
         # Several setups, and strictly more than the tier below -- otherwise it

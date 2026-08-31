@@ -41,6 +41,7 @@ import uuid
 from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -939,6 +940,22 @@ class _RevalidatingStatic(StaticFiles):
 app.mount("/media", _RevalidatingStatic(directory=STATIC_DIR / "media"), name="media")
 
 
+@lru_cache(maxsize=8)
+def _static_version(filename: str) -> str:
+    """A short hash of a static file's bytes, for cache-busting its URL.
+
+    Cached for the process: these files do not change under a running server,
+    and hashing 109 KB on every page load to learn that would be a strange way
+    to save bandwidth. A deploy restarts the process, which is exactly when the
+    answer can differ.
+    """
+    try:
+        data = (STATIC_DIR / filename).read_bytes()
+    except OSError:
+        return "0"
+    return hashlib.sha256(data).hexdigest()[:12]
+
+
 def _serve_shell(request: Request, filename: str, canonical_path: str) -> Response:
     """Serve an inlined static HTML shell (landing page or SPA).
 
@@ -977,6 +994,13 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
         html_doc = html_doc.replace(
             pricing.FREE_LIMIT_TOKEN, str(pricing.starter_monthly_limit()),
         )
+    # Point the stylesheet link at a content-hashed URL. Done BEFORE the build
+    # stamp, so a CSS change also changes the document's own hash and neither
+    # can go stale while the other updates.
+    html_doc = html_doc.replace(
+        '<link rel="stylesheet" href="/app.css">',
+        f'<link rel="stylesheet" href="/app.css?v={_static_version("app.css")}">',
+    )
     # Stamp a build id so every piece of result feedback records which build
     # produced it. Digested from the file as-is, before the per-host rewrites
     # below, so the same shell reports the same build on every domain.
@@ -1107,6 +1131,35 @@ def tokens_css() -> FileResponse:
         STATIC_DIR / "tokens.css",
         media_type="text/css",
         headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
+@app.get("/app.css", include_in_schema=False)
+def app_css(request: Request) -> Response:
+    """The SPA's stylesheet, lifted out of the document it used to be inlined in.
+
+    Cached HARD, unlike tokens.css above, and the difference is the ``?v=``
+    the shell appends: that hash is of this file's own bytes, so a changed
+    stylesheet is a changed URL and there is nothing to revalidate. A CSS
+    change reaches everyone on their next load; an unchanged one is never
+    fetched again, which is the whole reason for taking it out of a document
+    that is stamped per build.
+
+    Served without the hash (someone typing the path) it still works -- it
+    just falls back to revalidating, because then we cannot know the copy they
+    hold is current.
+    """
+    path = STATIC_DIR / "app.css"
+    versioned = request.query_params.get("v") == _static_version("app.css")
+    return FileResponse(
+        path,
+        media_type="text/css",
+        headers={
+            "Cache-Control": (
+                "public, max-age=31536000, immutable" if versioned
+                else "no-cache, must-revalidate"
+            ),
+        },
     )
 
 

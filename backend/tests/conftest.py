@@ -129,3 +129,37 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "golden" in item.keywords:
             item.add_marker(skip)
+
+
+# ---------------------------------------------------------------------------
+# The shipped front end, for the tests that read it as a string.
+#
+# The stylesheet used to be inlined in index.html and is now app.css, served
+# from its own content-hashed URL. Several tests reach into the CSS -- the
+# print rules, a class name the pair mode owns -- and every one of them broke
+# on that move. They go through here now, so the next time a chunk of the
+# front end changes address it is one edit rather than five.
+# ---------------------------------------------------------------------------
+
+_STATIC = Path(__file__).resolve().parents[1] / "app" / "static"
+
+
+def read_spa() -> str:
+    """index.html: markup, JS, and no longer the CSS."""
+    return (_STATIC / "index.html").read_text(encoding="utf-8")
+
+
+def read_app_css() -> str:
+    """The SPA's stylesheet, wherever it currently lives."""
+    return (_STATIC / "app.css").read_text(encoding="utf-8")
+
+
+def read_front_end() -> str:
+    """Both, concatenated -- for a check that does not care which file a
+    string is in, only that the page ships it."""
+    return read_spa() + "\n" + read_app_css()
+
+
+@pytest.fixture(scope="session")
+def app_css() -> str:
+    return read_app_css()

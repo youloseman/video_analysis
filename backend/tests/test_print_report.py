@@ -27,8 +27,13 @@ def _strip_comments(css: str) -> str:
 
 
 @pytest.fixture(scope="module")
-def print_css(html: str) -> str:
-    """Everything inside the @media print block."""
+def print_css(app_css: str) -> str:
+    """Everything inside the @media print block.
+
+    Reads app.css, not index.html: the stylesheet moved out of the document
+    when 109 KB of inline CSS became its own cacheable file.
+    """
+    html = app_css
     start = html.index("@media print{")
     depth, i = 0, start + len("@media print")
     while i < len(html):
