@@ -148,6 +148,45 @@ def _framing_check(
     )
 
 
+def _camera_view_check(view: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Whether the clip was actually filmed from the side.
+
+    Every angle in this pipeline assumes the camera is perpendicular to the
+    movement; until now nothing checked, and nothing said. This row states the
+    assumption and, when the evidence is there, confirms it.
+
+    It NEVER warns, and the reason is honesty about calibration rather than
+    caution for its own sake. The "side" verdict is validated on real footage
+    -- both reference clips sit at a depth ratio of 0.89 against a 0.35
+    threshold, on every one of their frames. The "not side" verdict is not
+    validated on anything, because no clip filmed from behind exists to
+    calibrate it; the only evidence is a synthetically rotated body, and
+    tuning a threshold against a fake to then accuse an athlete of misfilming
+    is the exact move this codebase refuses everywhere else.
+
+    So: confirm when sure, stay quiet otherwise. The day a real off-axis clip
+    exists, the negative half of ``detect_camera_view`` can be calibrated and
+    this row can start warning.
+    """
+    if not view or view.get("view") is None:
+        return None
+    verdict, ratio = view.get("view"), view.get("ratio")
+    target = "filmed square-on to your side, so the joints move across the lens"
+    if verdict == "side":
+        return _check(
+            "camera_view", "The angle you filmed from", "good", "high",
+            f"side on (depth ratio {ratio})", target,
+        )
+    measured = (
+        f"could not be judged ({view.get('reason')})" if ratio is None
+        else f"unclear -- depth ratio {ratio}, and a clean side view reads about 0.9"
+    )
+    return _check(
+        "camera_view", "The angle you filmed from", "unknown", "high",
+        measured, target,
+    )
+
+
 def _orientation_check(
     width: int | None, height: int | None, framing_ok: bool,
 ) -> dict[str, Any]:
@@ -395,6 +434,7 @@ def build_capture_report(
     camera_motion: dict[str, Any] | None = None,
     tracked_ratio: float | None = None,
     slow_motion_factor: Any = None,
+    camera_view: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """An ordered, quantified account of how the recording limited the analysis.
 
@@ -413,6 +453,7 @@ def build_capture_report(
 
     checks = [
         framing_check,
+        _camera_view_check(camera_view),
         _orientation_check(frame_width, frame_height, framing_ok),
         legs,
         _camera_motion_check(camera_motion),

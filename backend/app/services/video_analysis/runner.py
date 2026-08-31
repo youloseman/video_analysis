@@ -1175,8 +1175,23 @@ def analyze_from_frames(
     try:
         from app.services.video_analysis.capture_report import build_capture_report
 
+        # Was the camera actually square-on to the movement? Every angle here
+        # assumes so, and nothing has ever checked -- ``camera_view`` is
+        # hardcoded to None ("side") a few hundred lines up. The photo path has
+        # had this check since it was written; the video path never got it.
+        from app.services.video_analysis.biomechanics.camera_view import (
+            detect_camera_view,
+        )
+
+        try:
+            summary["camera_view"] = detect_camera_view(raw_frame_data)
+        except Exception as e:  # noqa: BLE001 -- a diagnostic, never fatal
+            logger.warning("CAMERA_VIEW_FAILED", err=str(e))
+            summary["camera_view"] = None
+
         summary["capture_report"] = build_capture_report(
             sport_type=sport_type,
+            camera_view=summary.get("camera_view"),
             duration_s=video_info.get("duration"),
             frame_width=raw_frame_data[0].get("frame_width"),
             frame_height=raw_frame_data[0].get("frame_height"),
