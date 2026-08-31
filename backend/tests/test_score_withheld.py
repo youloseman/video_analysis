@@ -20,7 +20,6 @@ the free tier where the score used to be the entire product.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
