@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 import structlog
 
+from app.core.config import settings
 from app.services.video_analysis.detectors.base import (
     BLAZEPOSE_LANDMARK_COUNT,
     DetectorConfig,
@@ -107,6 +108,19 @@ class MediaPipePoseDetector(PoseDetector):
     """
 
     _MODEL_SEARCH_PATHS = (
+        # What settings says the model is. First on purpose: every guard in the
+        # app -- /health's `model_present`, and the 503 on each analyze
+        # endpoint -- answers "is the model installed?" by testing
+        # ``settings.model_path``, while this list used to answer "which model
+        # do I load?" with a hardcoded filename. Two places deciding one fact
+        # separately, and they agreed only by coincidence: point VA_MODELS_DIR
+        # at a directory holding a differently-named model and health would
+        # report the model present while the detector found nothing.
+        #
+        # It also made ``model_filename`` dead config for the video path, which
+        # is how a model-comparison experiment came to measure the same model
+        # three times and report "no difference" (2026-08-31).
+        settings.model_path,
         # backend/models/ -- primary location for this standalone project
         # (parents[4] == backend/ from detectors/mediapipe_detector.py).
         Path(__file__).resolve().parents[4] / "models" / "pose_landmarker_heavy.task",
