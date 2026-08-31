@@ -232,7 +232,18 @@ def preview_available(user: User) -> bool:
     if not claimed:
         return True
     job = JOBS.get(claimed)
-    return bool(job and job.get("status") == "failed")
+    if not job:
+        return False
+    if job.get("status") == "failed":
+        return True
+    # A run that COMPLETED and then declined to publish a score did not deliver
+    # what the preview exists to show either. The preview is one report worth
+    # judging us by; a page reading "not scored" is an honest answer and not
+    # that report. Same reasoning as the failed case above, and it became
+    # reachable the day the quality gate started withholding the number
+    # (2026-08-31) -- before that a gated clip still carried a score, so this
+    # branch had nothing to catch.
+    return bool((job.get("result") or {}).get("score_withheld"))
 
 
 async def _record_and_headers(

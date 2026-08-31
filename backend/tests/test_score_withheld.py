@@ -195,3 +195,80 @@ def test_the_style_lives_in_the_stylesheet():
     css = read_app_css()
     assert ".score-none{" in css
     assert ".score-none-why{" in css
+
+
+# --------------------------------------------------------------------------
+# The free preview: one report worth judging us by
+# --------------------------------------------------------------------------
+
+def _user(tier="starter", claimed=None):
+    from app.models.user import User
+
+    u = User(email="a@b.c", password_hash="x", tier=tier)
+    u.free_preview_job_id = claimed
+    return u
+
+
+def test_a_withheld_score_hands_the_preview_back():
+    """Found by the funnel audit, hours after shipping the withholding.
+
+    The preview is a free account's ONE report in a form worth judging the
+    product by. It was already handed back when a run failed -- "burning
+    somebody's one good look on a clip that errored is the worst possible
+    first impression". A run that completes and then publishes no score is
+    the same category: an honest answer, and not the report the preview
+    exists to show. Before the gate started withholding scores this branch
+    had nothing to catch; now it does.
+    """
+    from app.core.jobs import JOBS
+    from app.main import preview_available
+
+    JOBS["job-withheld"] = {
+        "status": "completed",
+        "result": {"score_withheld": {"reason": "quality_gate", "detail": "…"}},
+    }
+    try:
+        assert preview_available(_user(claimed="job-withheld")) is True
+    finally:
+        JOBS.pop("job-withheld", None)
+
+
+def test_a_delivered_report_still_spends_the_preview():
+    """The whole point of the mechanism. One good look, not one per upload."""
+    from app.core.jobs import JOBS
+    from app.main import preview_available
+
+    JOBS["job-good"] = {
+        "status": "completed",
+        "result": {"technique_score": 91, "letter_grade": "A"},
+    }
+    try:
+        assert preview_available(_user(claimed="job-good")) is False
+    finally:
+        JOBS.pop("job-good", None)
+
+
+def test_a_failed_run_still_hands_it_back():
+    from app.core.jobs import JOBS
+    from app.main import preview_available
+
+    JOBS["job-failed"] = {"status": "failed", "error": "boom"}
+    try:
+        assert preview_available(_user(claimed="job-failed")) is True
+    finally:
+        JOBS.pop("job-failed", None)
+
+
+def test_an_expired_job_is_treated_as_spent():
+    """Otherwise "gone, therefore forgotten, therefore have another" hands out
+    a fresh preview every few hours forever."""
+    from app.main import preview_available
+
+    assert preview_available(_user(claimed="job-long-gone")) is False
+
+
+def test_a_paid_account_has_no_preview_to_spend():
+    from app.models.user import TIER_ENTHUSIAST
+    from app.main import preview_available
+
+    assert preview_available(_user(tier=TIER_ENTHUSIAST)) is False
