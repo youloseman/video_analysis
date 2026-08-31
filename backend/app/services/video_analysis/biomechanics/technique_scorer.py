@@ -217,6 +217,7 @@ def assign_grade(score: int) -> str:
 
 def score_running(
     summary: dict[str, Any], angle_stats: dict[str, dict[str, float]],
+    leg_identity_unstable: bool | None = None,
 ) -> dict[str, Any]:
     """Score running technique using near-side angles only."""
     from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
@@ -231,6 +232,48 @@ def score_running(
     # not depend on the answer, and say the rest was left out.
     excluded: dict[str, str] = {}
     time_base_guessed = bool(summary.get("slow_motion_factor"))
+
+    # The same refusal, for the other thing the analyzer knows it got wrong.
+    #
+    # ``stride_consistency`` counts how often the two ankles swapped vertical
+    # order against how often running allows (exactly twice per cycle), and
+    # sets ``unstable`` when the excess says the labels traded legs. When it
+    # fires, the quality warning already tells the athlete in plain words that
+    # "any single-leg number here is mixed from both" -- and the score then
+    # graded those very numbers at full weight and handed out an A.
+    #
+    # Measured on IMG_4262 (2026-08-31): 46.8% of frames with the legs
+    # confused, instability 0.205 against a 0.15 bar, `unstable` True -- and
+    # 94/100, grade A, the HIGHEST of the four run clips, on coverage that
+    # reported 9 of 9 measures scored. The clip the pipeline distrusted most
+    # scored best, and nothing in the number said why.
+    #
+    # So the per-leg half of the rubric is excluded rather than graded. Not the
+    # whole rubric: trunk lean, vertical oscillation and elbow swing are read
+    # off the torso and arms and do not care which leg is which.
+    # The caller passes this; the summary fallback is for stored analyses and
+    # direct callers, NOT the live path -- see score_analysis on why reading it
+    # from the summary alone was silently inert.
+    _identity = (
+        (summary.get("tracking_stability") or {}).get("leg_identity") or {}
+    ).get("stability") or {}
+    legs_unstable = bool(
+        _identity.get("unstable") if leg_identity_unstable is None
+        else leg_identity_unstable
+    )
+    _instability = _identity.get("instability")
+    _legs_reason = (
+        "the pose model swapped which leg is which too often for a per-leg "
+        f"number to mean anything (instability {_instability}; the stride "
+        "itself says the legs traded places more than running allows)"
+    )
+
+    def _score_or_exclude(name: str, value: float, identity_bound: bool = True) -> None:
+        """Record a component, unless the legs it was measured on kept moving."""
+        if identity_bound and legs_unstable:
+            excluded[name] = _legs_reason
+        else:
+            components[name] = value
 
     # Trunk lean. Presence is tested with `is not None`, NOT `> 0`: the value
     # is signed now (negative = leaning back), and the analyzer already omits
@@ -266,14 +309,17 @@ def score_running(
         _knee = angle_stats["knee"]
         knee_max = _knee.get("p95", _knee.get("max"))   # ~ contact / extension
         knee_min = _knee.get("p05", _knee.get("min"))   # ~ swing flexion
+        # Both are read off the NEAR leg's knee series. When the labels traded
+        # legs the series is spliced from both, which is what the athlete's own
+        # warning already tells them -- so it cannot also be graded.
         if knee_max is not None:
-            components["knee_contact"] = score_in_range(
+            _score_or_exclude("knee_contact", score_in_range(
                 knee_max, *RUNNING_REFERENCE["knee_at_initial_contact"]
-            )
+            ))
         if knee_min is not None:
-            components["knee_swing"] = score_in_range(
+            _score_or_exclude("knee_swing", score_in_range(
                 knee_min, *RUNNING_REFERENCE["knee_at_swing"]
-            )
+            ))
 
     if "elbow" in angle_stats:
         elbow_mean = angle_stats["elbow"].get("mean")
@@ -295,22 +341,33 @@ def score_running(
     # clean foot-strikes.
     overstride = summary.get("overstride_ratio")
     if overstride is not None and overstride >= 0:
-        components["overstride"] = score_in_range(
+        # Measured as how far the LEADING foot lands ahead of the hip, so it
+        # depends on knowing which foot is leading.
+        _score_or_exclude("overstride", score_in_range(
             overstride, *RUNNING_REFERENCE["overstride_ratio"]
-        )
+        ))
 
     # Advanced biomechanics components
     bio = summary.get("biomechanics")
     if bio:
-        # Phase stability (from phase portraits module)
+        # Phase stability (from phase portraits module). Built from the
+        # per-joint angle trajectories of the near leg -- a label that keeps
+        # jumping produces a phase portrait of two legs averaged together, and
+        # a "stability" score computed from it describes the tracking rather
+        # than the runner.
         pp = bio.get("phase_portraits")
         if (pp and pp.get("overall_stability_score") is not None):
-            components["phase_stability"] = float(pp["overall_stability_score"])
+            _score_or_exclude(
+                "phase_stability", float(pp["overall_stability_score"]),
+            )
 
-        # Waveform similarity (from waveform comparator module)
+        # Waveform similarity: the same series compared against a reference,
+        # so it inherits the same problem.
         wf = bio.get("waveform")
         if wf and "overall_similarity_score" in wf and wf["overall_similarity_score"] is not None:
-            components["waveform_similarity"] = float(wf["overall_similarity_score"])
+            _score_or_exclude(
+                "waveform_similarity", float(wf["overall_similarity_score"]),
+            )
 
     overall = compute_weighted_score(components, RUNNING_WEIGHTS)
     return {
@@ -505,8 +562,17 @@ def score_analysis(
     angle_stats: dict[str, dict[str, float]],
     cycling_position: str | None = None,
     landmark_quality: dict[str, Any] | None = None,
+    leg_identity_unstable: bool | None = None,
 ) -> dict[str, Any]:
-    """Score technique for any sport type."""
+    """Score technique for any sport type.
+
+    ``leg_identity_unstable`` (run) is passed EXPLICITLY rather than read back
+    out of ``summary``. The first version of this looked it up under
+    ``summary["tracking_stability"]`` -- which the runner does set, 53 lines
+    AFTER it calls this function. The lookup found nothing, the exclusion
+    never fired, and the fix was inert while looking correct. A parameter
+    cannot be defeated by moving an assignment.
+    """
     if sport_type == "bike":
         return score_cycling(summary, angle_stats, cycling_position=cycling_position)
 
@@ -514,7 +580,9 @@ def score_analysis(
         return score_swimming(summary, angle_stats, landmark_quality=landmark_quality)
 
     if sport_type == "run":
-        return score_running(summary, angle_stats)
+        return score_running(
+            summary, angle_stats, leg_identity_unstable=leg_identity_unstable,
+        )
 
     return {"overall_score": 50, "letter_grade": "C", "component_scores": {}}
 

@@ -1063,6 +1063,11 @@ def analyze_from_frames(
         cycling_position=cycling_position if is_bike else None,
         bdc_present=bdc_present,
         tdc_present=tdc_present,
+        # Legs found, but attached to the wrong one. No nan_pct can see this,
+        # which is why the gate had no way to fire on it -- see criterion 7.
+        leg_identity_unstable=(
+            bool(_stability.get("unstable")) if sport_type == "run" else None
+        ),
     )
 
     # Step 5: score. Unlike the full pipeline (which nulls the score in
@@ -1071,6 +1076,12 @@ def analyze_from_frames(
     # low-quality clip is still flagged.
     scoring = score_analysis(
         sport_type, summary, angle_stats,
+        # Passed rather than left for the scorer to find: `summary` does not
+        # carry tracking_stability yet at this point (it is filled in below,
+        # with the rest of the enrichment), so a lookup there finds nothing.
+        leg_identity_unstable=(
+            bool(_stability.get("unstable")) if sport_type == "run" else None
+        ),
         cycling_position=cycling_position,
         landmark_quality=landmark_quality,
     )

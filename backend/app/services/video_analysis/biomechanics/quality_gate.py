@@ -374,6 +374,7 @@ def evaluate_quality_gate(
     cycling_position: str | None = None,
     bdc_present: bool | None = None,
     tdc_present: bool | None = None,
+    leg_identity_unstable: bool | None = None,
 ) -> dict[str, Any]:
     """Decide whether the Partial Analysis gate fires.
 
@@ -506,6 +507,31 @@ def evaluate_quality_gate(
             "range is too short for stable measurement."
         )
 
+    # --- criterion 7: leg identity broke down (run) --------------
+    # ``stride_consistency`` counts how often the ankles swapped vertical
+    # order against how often running allows -- exactly twice per cycle -- and
+    # sets ``unstable`` when the excess says the labels traded legs.
+    #
+    # It had nowhere to go. The gate's inputs are all about whether landmarks
+    # were FOUND; this is the one failure where they were found and attached to
+    # the wrong leg, which no nan_pct can see. Measured on IMG_4262
+    # (2026-08-31): 46.8% of frames with the legs confused, instability 0.205
+    # against a 0.15 bar -- and the athlete got 94/100, grade A, the highest of
+    # four clips, with no partial-analysis banner because nothing here knew.
+    #
+    # The scorer now refuses to grade the per-leg half of the rubric in this
+    # case, which is necessary and not sufficient: dropping the components that
+    # were dragging the score DOWN makes the remainder score higher, so without
+    # this the fix would hand a distrusted clip an even better number.
+    legs_triggered = bool(leg_identity_unstable)
+    if legs_triggered:
+        reasons.append(
+            "The pose model kept swapping which leg is which. Measured "
+            "against the stride itself, the legs traded places more often "
+            "than running allows, so the skeleton jumps between them and any "
+            "single-leg number is mixed from both."
+        )
+
     triggered = (
         phase_triggered
         or landmark_triggered
@@ -513,6 +539,7 @@ def evaluate_quality_gate(
         or upper_body_triggered
         or lower_body_triggered
         or bdc_tdc_triggered
+        or legs_triggered
     )
 
     return {
@@ -538,6 +565,7 @@ def evaluate_quality_gate(
             "cycling_position": cycling_position,
             "bdc_present": bdc_present,
             "tdc_present": tdc_present,
+            "leg_identity_unstable": leg_identity_unstable,
             "sport": sport,
             "threshold_profile": profile_key,
         },
