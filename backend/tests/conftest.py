@@ -100,3 +100,32 @@ async def make_user(db: AsyncSession):
         return u
 
     return _make
+
+
+# ---------------------------------------------------------------------------
+# The golden-clip guard (tests/test_golden_clips.py)
+#
+# Deselected by default: each of those tests runs the whole pipeline over a
+# real clip, which is 40-55 s of MediaPipe, and the clips are gitignored so on
+# most machines they would only skip anyway. Opt in with `-m golden` or
+# `--golden`.
+# ---------------------------------------------------------------------------
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--golden", action="store_true", default=False,
+        help="also run the slow golden-clip regression guard",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    # `-m golden` is an explicit request for exactly these; don't second-guess it.
+    if config.getoption("--golden") or "golden" in (config.getoption("-m") or ""):
+        return
+    skip = pytest.mark.skip(
+        reason="golden-clip guard: run with --golden (slow: real clips through "
+               "the full pipeline)"
+    )
+    for item in items:
+        if "golden" in item.keywords:
+            item.add_marker(skip)

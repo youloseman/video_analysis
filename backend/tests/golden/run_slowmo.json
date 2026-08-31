@@ -1,0 +1,129 @@
+{
+ "approx": {
+  "angles": {
+   "ankle": {
+    "max": 155.6,
+    "mean": 91.0,
+    "min": 52.2,
+    "nan_pct": 3.6,
+    "range": 103.4,
+    "std": 21.8,
+    "valid_frames": 349
+   },
+   "elbow": {
+    "max": 145.7,
+    "mean": 111.8,
+    "min": 76.1,
+    "nan_pct": 7.2,
+    "range": 69.6,
+    "std": 19.0,
+    "valid_frames": 336
+   },
+   "hip": {
+    "max": 178.8,
+    "mean": 154.8,
+    "min": 118.1,
+    "nan_pct": 3.3,
+    "range": 60.7,
+    "std": 17.1,
+    "valid_frames": 350
+   },
+   "knee": {
+    "max": 170.6,
+    "mean": 129.3,
+    "min": 62.0,
+    "nan_pct": 3.3,
+    "range": 108.6,
+    "std": 34.2,
+    "valid_frames": 350
+   },
+   "trunk": {
+    "max": 15.1,
+    "mean": 5.9,
+    "min": -6.8,
+    "nan_pct": 3.6,
+    "range": 21.9,
+    "std": 4.7,
+    "valid_frames": 349
+   }
+  },
+  "score_breakdown": {
+   "elbow_swing": 67.3333,
+   "knee_contact": 100.0,
+   "knee_swing": 70.0,
+   "overstride": 100.0,
+   "phase_stability": 98.7,
+   "trunk_lean": 100.0,
+   "vertical_osc": 100.0,
+   "waveform_similarity": 73.3
+  },
+  "stability.flip_pct": 0.0,
+  "stability.leg_collapse_pct": 0.3,
+  "stability.leg_swap_pct": 2.5,
+  "summary.cadence_spm": 168.7,
+  "summary.knee_extension_velocity_dps": 96.1,
+  "summary.knee_flexion_velocity_dps": 116.0,
+  "summary.overstride_ratio": 0.205,
+  "summary.stance_fraction": 0.727,
+  "summary.trunk_lean_avg": 5.9,
+  "summary.vertical_oscillation_m": 0.0939,
+  "technique_score": 90.0
+ },
+ "exact": {
+  "camera_side": "right",
+  "capture_verdict": "poor",
+  "confidence_level": "medium",
+  "coverage": {
+   "excluded": [
+    "cadence"
+   ],
+   "measures_scored": 8,
+   "measures_total": 9,
+   "missing": [
+    "cadence"
+   ],
+   "scored": [
+    "elbow_swing",
+    "knee_contact",
+    "knee_swing",
+    "overstride",
+    "phase_stability",
+    "trunk_lean",
+    "vertical_osc",
+    "waveform_similarity"
+   ],
+   "weight_covered": 0.84
+  },
+  "cycling_position": null,
+  "fit_plan": [],
+  "frames_analyzed": 362,
+  "framing_verdict": null,
+  "has_aero": false,
+  "has_keyframe": true,
+  "has_kinogram": true,
+  "has_pedaling_style": false,
+  "issues": [
+   "overstriding"
+  ],
+  "letter_grade": "A",
+  "quality_gate_profile": null,
+  "quality_gate_triggered": false,
+  "sample_rate": 1,
+  "score_components": [
+   "elbow_swing",
+   "knee_contact",
+   "knee_swing",
+   "overstride",
+   "phase_stability",
+   "trunk_lean",
+   "vertical_osc",
+   "waveform_similarity"
+  ],
+  "sport_type": "run",
+  "status": "completed",
+  "summary.foot_strike": "midfoot",
+  "summary.near_side": "right",
+  "summary.slow_motion_factor": 8,
+  "warning_count": 1
+ }
+}
