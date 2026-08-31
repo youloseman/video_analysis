@@ -620,6 +620,7 @@
             <span class="pill pill-okchip hidden" id="confChip" style="margin-top:8px"><span class="dot" aria-hidden="true"></span>Full confidence</span>
           </div>
         </div>
+        <p class="score-none-why hidden" id="scoreWithheld"></p>
         <div class="score-meta" id="scoreMeta"></div>
         <div class="confwrap hidden" id="confBadge"></div>
         <button class="btn btn-primary btn-sm sharebtn hidden" id="shareBtn" type="button">
@@ -4788,8 +4789,24 @@ function render(job,opts){
   // per render so a bike result never grades a run with a rider's ranges.
   state.bands = r.reference_bands || null;
 
-  // score + grade
-  $('#scoreNum').innerHTML = (r.technique_score==null?'—':r.technique_score)+'<small>/100</small>';
+  // score + grade. A withheld score is not a missing one: the analysis ran,
+  // measured everything it could, and declined to summarise it in a figure
+  // this clip had not earned. Saying "not scored" and why beats an em-dash
+  // that reads like something failed to load.
+  const withheld = r.score_withheld || null;
+  $('#scoreNum').innerHTML = withheld
+    ? '<span class="score-none">Not scored</span>'
+    : (r.technique_score==null?'—':r.technique_score)+'<small>/100</small>';
+  const wh=$('#scoreWithheld');
+  if(wh){
+    wh.innerHTML = withheld
+      ? `<b>We didn\u2019t score this clip.</b> ${esc(withheld.detail||'')}
+         Everything we could measure is still below \u2014 the angles, the findings and
+         how to refilm it. What we\u2019re holding back is the one number that would
+         have summarised them.`
+      : '';
+    wh.classList.toggle('hidden', !withheld);
+  }
   // must run before saveToHistory() at the end of render(), or it compares
   // this analysis against itself
   renderScoreDelta('#scoreDelta', 'video', sport, r.technique_score);

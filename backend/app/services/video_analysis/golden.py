@@ -151,6 +151,10 @@ def build_record(result: dict[str, Any]) -> dict[str, Any]:
             "letter_grade": result.get("letter_grade"),
             "frames_analyzed": result.get("frames_analyzed"),
             "quality_gate_triggered": result.get("quality_gate_triggered"),
+            # Whether a score was published at all, and on what grounds. The
+            # reason is pinned, not the wording: the sentence is copy and will
+            # be edited; which CRITERION withheld the number is the analysis.
+            "score_withheld": (result.get("score_withheld") or {}).get("reason"),
             "quality_gate_profile": quality.get("profile"),
             "capture_verdict": capture.get("verdict"),
             "confidence_level": confidence.get("level"),

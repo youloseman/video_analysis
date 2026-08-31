@@ -2,51 +2,60 @@
  "approx": {
   "angles": {
    "left_ankle": {
-    "max": null,
-    "mean": null,
-    "min": null,
-    "nan_pct": 100.0,
-    "range": null,
-    "std": null,
-    "valid_frames": 0
+    "max": 124.9,
+    "mean": 105.8,
+    "min": 84.6,
+    "nan_pct": 26.0,
+    "range": 40.3,
+    "std": 12.7,
+    "valid_frames": 422
    },
    "left_elbow": {
-    "max": null,
-    "mean": null,
-    "min": null,
-    "nan_pct": 100.0,
-    "range": null,
-    "std": null,
-    "valid_frames": 0
+    "max": 101.2,
+    "mean": 96.4,
+    "min": 92.9,
+    "nan_pct": 0.0,
+    "range": 8.3,
+    "std": 1.6,
+    "valid_frames": 570
    },
    "left_forearm_tilt": {
-    "max": null,
-    "mean": null,
-    "min": null,
-    "nan_pct": 100.0,
-    "range": null,
-    "std": null,
-    "valid_frames": 0
+    "max": 18.4,
+    "mean": 16.0,
+    "min": 13.7,
+    "nan_pct": 0.0,
+    "range": 4.8,
+    "std": 1.2,
+    "valid_frames": 570
    },
    "left_hip": {
-    "max": null,
-    "mean": null,
-    "min": null,
-    "nan_pct": 100.0,
-    "range": null,
-    "std": null,
-    "valid_frames": 0
+    "max": 99.2,
+    "mean": 73.0,
+    "min": 46.4,
+    "nan_pct": 26.0,
+    "range": 52.8,
+    "std": 19.1,
+    "valid_frames": 422
    },
    "left_knee": {
-    "max": null,
-    "mean": null,
-    "min": null,
-    "nan_pct": 100.0,
-    "range": null,
-    "std": null,
-    "valid_frames": 0
+    "max": 153.1,
+    "mean": 107.3,
+    "min": 60.7,
+    "nan_pct": 26.0,
+    "range": 92.4,
+    "std": 35.4,
+    "valid_frames": 422
    },
    "left_shoulder": {
+    "max": 93.5,
+    "mean": 90.3,
+    "min": 86.5,
+    "nan_pct": 0.0,
+    "range": 7.0,
+    "std": 1.4,
+    "valid_frames": 570
+   },
+   "right_ankle": {
     "max": null,
     "mean": null,
     "min": null,
@@ -55,75 +64,66 @@
     "std": null,
     "valid_frames": 0
    },
-   "right_ankle": {
-    "max": 134.4,
-    "mean": 115.6,
-    "min": 102.0,
-    "nan_pct": 20.1,
-    "range": 32.4,
-    "std": 6.2,
-    "valid_frames": 402
-   },
    "right_elbow": {
-    "max": 97.9,
-    "mean": 93.5,
-    "min": 88.1,
-    "nan_pct": 0.0,
-    "range": 9.8,
-    "std": 2.3,
-    "valid_frames": 503
+    "max": null,
+    "mean": null,
+    "min": null,
+    "nan_pct": 100.0,
+    "range": null,
+    "std": null,
+    "valid_frames": 0
    },
    "right_forearm_tilt": {
-    "max": 16.9,
-    "mean": 12.9,
-    "min": 9.0,
-    "nan_pct": 0.0,
-    "range": 7.9,
-    "std": 1.9,
-    "valid_frames": 503
+    "max": null,
+    "mean": null,
+    "min": null,
+    "nan_pct": 100.0,
+    "range": null,
+    "std": null,
+    "valid_frames": 0
    },
    "right_hip": {
-    "max": 101.1,
-    "mean": 74.4,
-    "min": 41.2,
-    "nan_pct": 20.1,
-    "range": 60.0,
-    "std": 21.0,
-    "valid_frames": 402
+    "max": null,
+    "mean": null,
+    "min": null,
+    "nan_pct": 100.0,
+    "range": null,
+    "std": null,
+    "valid_frames": 0
    },
    "right_knee": {
-    "max": 158.2,
-    "mean": 111.8,
-    "min": 69.1,
-    "nan_pct": 20.1,
-    "range": 89.1,
-    "std": 32.3,
-    "valid_frames": 402
+    "max": null,
+    "mean": null,
+    "min": null,
+    "nan_pct": 100.0,
+    "range": null,
+    "std": null,
+    "valid_frames": 0
    },
    "right_shoulder": {
-    "max": 89.1,
-    "mean": 87.2,
-    "min": 84.7,
-    "nan_pct": 0.0,
-    "range": 4.4,
-    "std": 1.0,
-    "valid_frames": 503
+    "max": null,
+    "mean": null,
+    "min": null,
+    "nan_pct": 100.0,
+    "range": null,
+    "std": null,
+    "valid_frames": 0
    },
    "trunk_angle": {
-    "max": 20.6,
-    "mean": 19.2,
-    "min": 17.2,
+    "max": 25.3,
+    "mean": 23.0,
+    "min": 21.0,
     "nan_pct": 0.0,
-    "range": 3.4,
+    "range": 4.3,
     "std": 0.8,
-    "valid_frames": 503
+    "valid_frames": 570
    }
   },
   "score_breakdown": {
    "elbow_angle": 100.0,
    "forearm_tilt": 100.0,
-   "head_alignment": 98.18,
-   "knee_bdc": 39.7857,
+   "head_alignment": 88.41,
+   "knee_bdc": 74.0,
    "knee_tdc": 100.0,
    "pelvic_ratio": 100.0,
    "saddle_fit": 40.0,
@@ -133,23 +133,23 @@
   "stability.flip_pct": 0.0,
   "stability.leg_collapse_pct": null,
   "stability.leg_swap_pct": null,
-  "summary.ankle_at_bdc": 123.8,
-  "summary.elbow_angle_avg": 93.53,
-  "summary.forearm_tilt_avg": 12.91,
-  "summary.head_alignment_avg": 98.18,
-  "summary.hip_angle_avg": 74.4,
-  "summary.knee_at_bdc": 155.43,
-  "summary.knee_at_tdc": 70.66,
-  "summary.knee_extension_velocity_dps": 249.0,
-  "summary.knee_flexion_velocity_dps": 303.2,
-  "summary.pelvic_ratio": 3.88,
-  "summary.shoulder_angle_avg": 87.23,
-  "summary.trunk_angle_avg": 19.16,
-  "technique_score": 68.0
+  "summary.ankle_at_bdc": 120.3,
+  "summary.elbow_angle_avg": 96.36,
+  "summary.forearm_tilt_avg": 15.99,
+  "summary.head_alignment_avg": 88.41,
+  "summary.hip_angle_avg": 72.97,
+  "summary.knee_at_bdc": 150.64,
+  "summary.knee_at_tdc": 62.07,
+  "summary.knee_extension_velocity_dps": 306.5,
+  "summary.knee_flexion_velocity_dps": 317.7,
+  "summary.pelvic_ratio": 3.17,
+  "summary.shoulder_angle_avg": 90.29,
+  "summary.trunk_angle_avg": 23.04,
+  "technique_score": 84.0
  },
  "exact": {
-  "camera_side": "right",
-  "capture_verdict": "fair",
+  "camera_side": "left",
+  "capture_verdict": "good",
   "confidence_level": "medium",
   "coverage": {
    "excluded": [],
@@ -174,12 +174,12 @@
    {
     "action": "lower_saddle",
     "component": "saddle_height",
-    "current": 155.4,
+    "current": 150.6,
     "metric": "knee_at_bdc",
     "status": "needs_adjustment"
    }
   ],
-  "frames_analyzed": 503,
+  "frames_analyzed": 570,
   "framing_verdict": null,
   "has_aero": true,
   "has_keyframe": true,
@@ -188,7 +188,7 @@
   "issues": [
    "saddle_too_high"
   ],
-  "letter_grade": "C",
+  "letter_grade": "B",
   "quality_gate_profile": null,
   "quality_gate_triggered": false,
   "sample_rate": 1,
@@ -206,9 +206,9 @@
   "score_withheld": null,
   "sport_type": "bike",
   "status": "completed",
-  "summary.near_side": "right",
-  "summary.position_archetype": null,
+  "summary.near_side": "left",
+  "summary.position_archetype": "saddle_chaser",
   "summary.saddle_height_assessment": "too_high",
-  "warning_count": 1
+  "warning_count": 0
  }
 }

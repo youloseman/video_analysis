@@ -1070,10 +1070,32 @@ def analyze_from_frames(
         ),
     )
 
-    # Step 5: score. Unlike the full pipeline (which nulls the score in
-    # partial mode) we always compute + surface it -- Milestone 1 is about
-    # proving the core yields a number. The gate result is reported so a
-    # low-quality clip is still flagged.
+    # Whether this clip gets a number at all.
+    #
+    # The gate already decides "the capture limited this measurement"; this is
+    # the consequence of saying so. A partial analysis used to carry a full
+    # score with a banner over it, which put a caveat and a number in the same
+    # card and let the reader pick. They pick the number.
+    #
+    # Everything else survives: the angles, the findings, the plan, the
+    # capture report that says how to refilm. What is withheld is the single
+    # figure that summarises them, because that is the one this clip has not
+    # earned.
+    score_withheld: dict[str, Any] | None = None
+    if quality_gate_result.get("triggered"):
+        score_withheld = {
+            "reason": "quality_gate",
+            "detail": (
+                (quality_gate_result.get("reasons") or [None])[0]
+                or "The capture quality limited this measurement."
+            ),
+        }
+
+    # Step 5: score.
+    #
+    # It is always COMPUTED -- the fit plan and the drill builder rank their
+    # advice against it, and they still have work to do on a bad clip. Whether
+    # it is SHOWN is a different question, answered by ``score_withheld``.
     scoring = score_analysis(
         sport_type, summary, angle_stats,
         # Passed rather than left for the scorer to find: `summary` does not
@@ -1305,10 +1327,14 @@ def analyze_from_frames(
                 summary=summary,
                 tracking_stability=tracking_stability,
                 technique_score=(
-                    scoring["overall_score"]
-                    if scoring.get("overall_score") is not None else 0
+                    None if score_withheld else (
+                        scoring["overall_score"]
+                        if scoring.get("overall_score") is not None else 0
+                    )
                 ),
-                letter_grade=scoring.get("letter_grade") or "--",
+                letter_grade=(
+                    "" if score_withheld else (scoring.get("letter_grade") or "--")
+                ),
                 hide_values=hide_angle_values,
             )
         except Exception as e:  # noqa: BLE001
@@ -1330,10 +1356,14 @@ def analyze_from_frames(
                 cycle_frames=_gate_ctx.get("cycle_frames"),
                 knee_series=analyzer.angle_history.get(f"{_near}_knee"),
                 technique_score=(
-                    scoring["overall_score"]
-                    if scoring.get("overall_score") is not None else 0
+                    None if score_withheld else (
+                        scoring["overall_score"]
+                        if scoring.get("overall_score") is not None else 0
+                    )
                 ),
-                letter_grade=scoring.get("letter_grade") or "--",
+                letter_grade=(
+                    "" if score_withheld else (scoring.get("letter_grade") or "--")
+                ),
                 hide_values=hide_angle_values,
             )
         except Exception as e:  # noqa: BLE001
@@ -1421,8 +1451,17 @@ def analyze_from_frames(
         "cycling_position": cycling_position if is_bike else None,
         "camera_side": analyzer.camera_side,
         "frames_analyzed": len(raw_frame_data),
-        "technique_score": scoring.get("overall_score"),
-        "letter_grade": scoring.get("letter_grade"),
+        # Withheld, not zeroed and not hidden by the client: when the gate
+        # fired we are saying the clip could not be measured properly, and a
+        # number is the one thing a reader takes from a page regardless of
+        # what is written around it. IMG_4262 is why -- 46.8% of frames with
+        # the legs confused, and after the honest exclusions the four
+        # measures left all happened to be good, so it read 100/100. Every
+        # caveat in the report was true and none of them was going to win an
+        # argument with a 100.
+        "technique_score": None if score_withheld else scoring.get("overall_score"),
+        "letter_grade": None if score_withheld else scoring.get("letter_grade"),
+        "score_withheld": score_withheld,
         "score_breakdown": scoring.get("component_scores"),
         # What the score was computed from. The weighted average renormalises
         # over whatever was measurable, so without this a number from five

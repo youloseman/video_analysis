@@ -44,6 +44,35 @@ CLIPS: dict[str, dict[str, object]] = {
         "sport": "run",
         "position": None,
     },
+    # Added 2026-08-31, once it turned out nine clips filmed to spec had been
+    # sitting in upload/ for days. The two above are pinned as KNOWN inputs
+    # rather than good ones -- vid1 is 13% of the frame and reads as 8x slow
+    # motion, so half its metrics never exist and the guard cannot see a
+    # regression in them. These two can.
+    "run_clean": {
+        # Every stride metric present and measured: cadence, ground contact,
+        # flight, oscillation, overstride, and a five-position kinogram. The
+        # first clip in the repo where the running path is fully exercised.
+        "path": "upload/IMG_4004.MOV",
+        "sport": "run",
+        "position": None,
+    },
+    "run_legs_unstable": {
+        # The opposite end, and the reason the withheld-score path exists:
+        # the legs traded places on 46.8% of frames, the gate fires, the
+        # per-leg components are excluded and no score is published. Pinned so
+        # that path cannot quietly start scoring again.
+        "path": "upload/IMG_4262.MOV",
+        "sport": "run",
+        "position": None,
+    },
+    "bike_aero": {
+        # A real aero fit on a trainer, against IMG_9981's indoor TT clip --
+        # a second bike geometry so a change that only suits one shows up.
+        "path": "upload/IMG_4088.MOV",
+        "sport": "bike",
+        "position": "tt_aero",
+    },
 }
 
 

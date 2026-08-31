@@ -112,7 +112,12 @@ def test_the_baseline_records_conclusions_and_not_only_numbers(name):
     data = json.loads(path.read_text(encoding="utf-8"))
     exact = data.get("exact") or {}
 
-    assert exact.get("letter_grade"), "no grade recorded"
+    # A grade, OR an explicit record that one was withheld. Both are
+    # conclusions; a baseline that demanded a grade would fail on exactly the
+    # clips where refusing to publish one is the behaviour worth pinning.
+    assert exact.get("letter_grade") or exact.get("score_withheld"), (
+        "the baseline records neither a grade nor a reason for its absence"
+    )
     assert exact.get("camera_side"), "no camera side recorded"
     assert "coverage" in exact, "score coverage is not pinned"
     assert "scored" in exact["coverage"], "the scored-component list is not pinned"

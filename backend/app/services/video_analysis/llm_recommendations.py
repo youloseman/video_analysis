@@ -136,7 +136,12 @@ def _bike_data_block(
         return f" (optimal {r[0]}-{r[1]}{verdict})"
 
     lines = [
-        f"Sport: cycling | Position: {pos_label} | Technique score: {score}/100 ({grade})",
+        (f"Sport: cycling | Position: {pos_label} | Technique score: {score}/100 ({grade})"
+         if score is not None else
+         f"Sport: cycling | Position: {pos_label} | Technique score: WITHHELD -- the "
+         "capture quality did not support one. Do not invent a score or a grade, "
+         "and do not describe the ride as good or bad overall; comment only on the "
+         "individual measurements below that were actually taken."),
         f"- Knee angle at bottom of stroke (BDC): {_fmt(summary.get('knee_at_bdc'), '°')}"
         f"{rng('knee_at_bdc', 'knee_at_bdc')}",
         f"- Knee angle at top of stroke (TDC): {_fmt(summary.get('knee_at_tdc'), '°')}"
@@ -240,7 +245,12 @@ def _run_data_block(
         overstride_line = "- Overstride: n/a"
 
     lines = [
-        f"Sport: running | Technique score: {score}/100 ({grade})",
+        (f"Sport: running | Technique score: {score}/100 ({grade})"
+         if score is not None else
+         "Sport: running | Technique score: WITHHELD -- the capture quality did not "
+         "support one. Do not invent a score or a grade, and do not describe the run "
+         "as good or bad overall; comment only on the individual measurements below "
+         "that were actually taken."),
         f"- Cadence: {_fmt(summary.get('cadence_spm'), ' spm')} (target ~170-185)"
         + (
             f" [clip is {summary['slow_motion_factor']}x slow motion; cadence, "

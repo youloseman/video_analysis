@@ -1073,11 +1073,25 @@ def render_kinogram(
 
     # -- text layer: one PIL pass for the header, titles, chips and brand --
     chips = overlay_style.ChipLayer(canvas)
-    status = "good" if technique_score >= 75 else "warn" if technique_score >= 60 else "bad"
-    chips.header(
-        (OUTER_PAD, OUTER_PAD), header_left, f"{technique_score}/100", letter_grade,
-        status, right_text=header_right, frame_w=canvas_w, scale=1.15,
-    )
+    # A withheld score arrives as None, and the badge has to go with it. This
+    # image is the one part of a report that travels on its own -- saved,
+    # shared, pasted into a message with none of the caveats attached -- so a
+    # grade stamped on a clip the analysis declined to score would outlive
+    # every warning that explained why.
+    if technique_score is None:
+        chips.header(
+            (OUTER_PAD, OUTER_PAD), header_left, "not scored", "",
+            "warn", right_text=header_right, frame_w=canvas_w, scale=1.15,
+        )
+    else:
+        status = (
+            "good" if technique_score >= 75
+            else "warn" if technique_score >= 60 else "bad"
+        )
+        chips.header(
+            (OUTER_PAD, OUTER_PAD), header_left, f"{technique_score}/100", letter_grade,
+            status, right_text=header_right, frame_w=canvas_w, scale=1.15,
+        )
 
     for k, p in enumerate(positions):
         left = tile_lefts[k]

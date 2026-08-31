@@ -1082,6 +1082,14 @@ h2.sec + .speedline{margin-bottom:24px}
 .score-meta b{color:var(--c-ink);font-weight:700}
 .score-meta .mono{font-family:var(--f-mono);font-weight:600;color:var(--c-navy)}
 /* why a measure was left out — subordinate to the count it explains */
+/* A score we declined to give. Amber rather than red: nothing failed --
+   the clip was measured and we would not summarise it in one figure. */
+.score-none{font-family:var(--f-display);font-style:italic;font-weight:900;
+  text-transform:uppercase;font-size:.5em;letter-spacing:.01em;color:var(--c-warn)}
+.score-none-why{font-size:13.5px;line-height:1.55;color:var(--c-ink-soft);
+  max-width:64ch;margin:10px 0 0;padding:12px 14px;background:var(--c-panel);
+  border-left:3px solid var(--c-warn);border-radius:0 8px 8px 0}
+.score-none-why b{color:var(--c-ink)}
 .score-meta .cov-why{display:inline-block;margin-top:2px;font-size:12px;opacity:.85}
 /* default: score/grade stack (wrapper is a plain block) — desktop unchanged */
 .sc-scorerow{display:block}

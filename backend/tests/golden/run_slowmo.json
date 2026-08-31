@@ -119,6 +119,7 @@
    "vertical_osc",
    "waveform_similarity"
   ],
+  "score_withheld": null,
   "sport_type": "run",
   "status": "completed",
   "summary.foot_strike": "midfoot",

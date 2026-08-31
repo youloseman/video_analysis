@@ -28,6 +28,12 @@ _SAFE_KEYS = frozenset({
     "processing_time_seconds",
     # headline score + grade (the hook that makes them want the detail)
     "technique_score", "letter_grade", "score",
+    # Why there is no score, when there is no score. A free result IS the
+    # number, so withholding it without the reason leaves an empty card that
+    # reads as a broken page rather than as a deliberate refusal -- and the
+    # one thing that reader most needs is the sentence explaining how to get
+    # a clip we can measure. Same reasoning as _QUALITY_KEYS below.
+    "score_withheld",
     # how much of the rubric that score was actually computed from. Same
     # reasoning as _QUALITY_KEYS below: the free result IS the number, so a
     # score built on five of nine measures must not read as a complete one.
