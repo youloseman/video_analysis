@@ -226,6 +226,7 @@ def _sidebar(active: str) -> str:
     links point back to the SPA: Progress/History deep-link via hash so the SPA
     opens that view on load. ``#authbox`` is filled in by ``_AUTH_JS``."""
     acad = ' aria-current="page"' if active == "academy" else ""
+    exmp = ' aria-current="page"' if active == "examples" else ""
     chlog = ' aria-current="page"' if active == "changelog" else ""
     return (
         # mobile top bar + scrim
@@ -248,6 +249,7 @@ def _sidebar(active: str) -> str:
         f'<a href="/app#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
         f'<a href="/app#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
         f'<a href="/app#pricing" class="navlink">{_ICONS["spark"]}<span>Pricing</span></a>'
+        f'<a href="/examples" class="navlink"{exmp}>{_ICONS["spark"]}<span>Examples</span></a>'
         f'<a href="/academy" class="navlink"{acad}>{_ICONS["book"]}<span>Academy</span></a>'
         f'<a href="/changelog" class="navlink"{chlog}>{_ICONS["spark"]}<span>What\'s new</span></a>'
         # Admin-only, hidden until _AUTH_JS confirms the tier -- same treatment as
@@ -529,6 +531,15 @@ def render_sitemap(articles: list[ArticleMeta], base_url: str) -> str:
         (base_url + "/academy", None),
         (base_url + "/changelog", None),
     ]
+    # Sample reports. Imported here rather than duplicated: a page that is not
+    # in the sitemap is a page search does not know about, which for the one
+    # surface built to be found before signup would be the whole point missed.
+    try:
+        from app.services.examples import render_sitemap_entries
+
+        urls += [(u, None) for u in render_sitemap_entries(base_url)]
+    except Exception:  # noqa: BLE001 - a missing sample must not break robots
+        pass
     for m in articles:
         urls.append((f"{base_url}/academy/{m.slug}", m.published))
     parts = ['<?xml version="1.0" encoding="UTF-8"?>',

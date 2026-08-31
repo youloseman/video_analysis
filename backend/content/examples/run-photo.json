@@ -1,0 +1,90 @@
+{
+ "camera_side": "left",
+ "sport_specific_metrics": {},
+ "angles": {
+  "knee": 79.0,
+  "hip": 166.9,
+  "elbow": 125.2,
+  "ankle": 122.3,
+  "trunk": 2.1
+ },
+ "angles_with_context": {
+  "knee": {
+   "value": 79.0,
+   "optimal_min": 80,
+   "optimal_max": 175,
+   "status": "acceptable",
+   "label": "Knee Angle"
+  },
+  "hip": {
+   "value": 166.9,
+   "label": "Hip Angle",
+   "phase": "midstance",
+   "thigh_deviation": 11.0,
+   "optimal_min": null,
+   "optimal_max": null,
+   "status": "phase_dependent",
+   "unscored_reason": "stride position",
+   "note": "Thigh is under the body, where the hip reads ~180° whatever you do. Use a frame at footstrike or at toe-off for a hip verdict."
+  },
+  "elbow": {
+   "value": 125.2,
+   "optimal_min": 70,
+   "optimal_max": 135,
+   "status": "optimal",
+   "label": "Elbow Angle"
+  },
+  "ankle": {
+   "value": 122.3,
+   "optimal_min": 65,
+   "optimal_max": 115,
+   "status": "needs_work",
+   "label": "Ankle Angle"
+  },
+  "trunk": {
+   "value": 2.1,
+   "optimal_min": -2,
+   "optimal_max": 10,
+   "status": "optimal",
+   "label": "Trunk Lean"
+  }
+ },
+ "score": {
+  "overall_score": 93,
+  "grade": "Excellent",
+  "per_angle": {
+   "knee": {
+    "score": 98,
+    "weight": 0.3,
+    "weighted": 29.4
+   },
+   "trunk": {
+    "score": 100,
+    "weight": 0.25,
+    "weighted": 25.0
+   },
+   "elbow": {
+    "score": 100,
+    "weight": 0.2,
+    "weighted": 20.0
+   },
+   "ankle": {
+    "score": 85,
+    "weight": 0.1,
+    "weighted": 8.5
+   }
+  }
+ },
+ "gait_phase": "midstance",
+ "warnings": [
+  "Hip angle is measured but not scored: Thigh is under the body, where the hip reads ~180° whatever you do. Use a frame at footstrike or at toe-off for a hip verdict."
+ ],
+ "sport": "run",
+ "slug": "run-photo",
+ "title": "Running, from a single photo",
+ "blurb": "One still frame. Fewer metrics than a clip -- no cadence, no contact time -- and the report says which ones are missing rather than estimating them.",
+ "mode": "photo",
+ "source_clip": "IMG_4258.MOV",
+ "keyframe_url": "/media/examples/run-photo.webp",
+ "kinogram_url": null
+}

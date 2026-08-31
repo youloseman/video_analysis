@@ -1,0 +1,152 @@
+{
+ "cycling_position": "tt_aero",
+ "cycling_position_label": "TT - Aero",
+ "camera_side": "right",
+ "sport_specific_metrics": {},
+ "angles": {
+  "knee": 142.6,
+  "hip": 93.5,
+  "ankle": 123.3,
+  "elbow": 90.1,
+  "shoulder": 85.7,
+  "trunk": 25.4,
+  "forearm_tilt": 19.7,
+  "head_alignment": 100.0,
+  "pelvic_ratio": 3.68
+ },
+ "angles_with_context": {
+  "knee": {
+   "value": 142.6,
+   "optimal_min": 126,
+   "optimal_max": 153,
+   "status": "optimal",
+   "label": "Knee Angle"
+  },
+  "hip": {
+   "value": 93.5,
+   "label": "Hip Angle",
+   "bands": {
+    "bdc": [
+     85,
+     110
+    ],
+    "tdc": [
+     42,
+     60
+    ]
+   },
+   "phase": "bdc",
+   "note": "Hip opens at the bottom of the stroke and closes at the top — pick the pedal position to score it.",
+   "optimal_min": 85,
+   "optimal_max": 110,
+   "status": "optimal"
+  },
+  "ankle": {
+   "value": 123.3,
+   "label": "Ankle Angle",
+   "optimal_min": null,
+   "optimal_max": null,
+   "status": "phase_dependent",
+   "unscored_reason": "pedal position",
+   "note": "Depends on the pedal position — not scored from a single photo."
+  },
+  "elbow": {
+   "value": 90.1,
+   "optimal_min": 75,
+   "optimal_max": 110,
+   "status": "optimal",
+   "label": "Elbow Angle"
+  },
+  "shoulder": {
+   "value": 85.7,
+   "optimal_min": 80,
+   "optimal_max": 100,
+   "status": "optimal",
+   "label": "Shoulder Angle"
+  },
+  "trunk": {
+   "value": 25.4,
+   "optimal_min": 15,
+   "optimal_max": 30,
+   "status": "optimal",
+   "label": "Trunk Angle"
+  },
+  "forearm_tilt": {
+   "value": 19.7,
+   "optimal_min": 5,
+   "optimal_max": 25,
+   "status": "optimal",
+   "label": "Forearm Tilt"
+  },
+  "head_alignment": {
+   "value": 100.0,
+   "optimal_min": 75,
+   "optimal_max": 100,
+   "status": "optimal",
+   "label": "Head Tuck"
+  },
+  "pelvic_ratio": {
+   "value": 3.68,
+   "optimal_min": 2.0,
+   "optimal_max": 4.0,
+   "status": "optimal",
+   "label": "Pelvic Rotation"
+  }
+ },
+ "score": {
+  "overall_score": 100,
+  "grade": "Excellent",
+  "per_angle": {
+   "knee": {
+    "score": 100,
+    "weight": 0.14,
+    "weighted": 14.0
+   },
+   "trunk": {
+    "score": 100,
+    "weight": 0.24,
+    "weighted": 24.0
+   },
+   "shoulder": {
+    "score": 100,
+    "weight": 0.14,
+    "weighted": 14.0
+   },
+   "head_alignment": {
+    "score": 100,
+    "weight": 0.12,
+    "weighted": 12.0
+   },
+   "elbow": {
+    "score": 100,
+    "weight": 0.11,
+    "weighted": 11.0
+   },
+   "pelvic_ratio": {
+    "score": 100,
+    "weight": 0.08,
+    "weighted": 8.0
+   },
+   "forearm_tilt": {
+    "score": 100,
+    "weight": 0.05,
+    "weighted": 5.0
+   },
+   "hip": {
+    "score": 100,
+    "weight": 0.12,
+    "weighted": 12.0
+   }
+  }
+ },
+ "pedal_phase": "near_bdc",
+ "warnings": [],
+ "sport": "bike",
+ "slug": "bike-aero",
+ "title": "Aero position, from a single photo",
+ "blurb": "A TT position judged against the aero fit window rather than the road one -- a flat back is the goal here, not a fault.",
+ "mode": "photo",
+ "source_clip": "IMG_4148.MOV",
+ "keyframe_url": "/media/examples/bike-aero.webp",
+ "kinogram_url": null
+}

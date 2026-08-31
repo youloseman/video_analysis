@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import mimetypes
 import hmac
 import json
 import math
@@ -74,6 +75,7 @@ from app.api import auth as auth_routes
 from app.api import billing as billing_routes
 from app.api.billing import log_billing_configuration
 from app.api import changelog as changelog_routes
+from app.api import examples as examples_routes
 from app.api import feedback as feedback_routes
 from app.api import me as me_routes
 from app.api import mobility as mobility_routes
@@ -371,6 +373,10 @@ app.include_router(billing_routes.admin_router)
 app.include_router(feedback_routes.router)
 # Release notes: /changelog.json (in-app "What's new") + /changelog (public page).
 app.include_router(changelog_routes.router)
+# Public sample reports: /examples -- what a real analysis looks like to
+# somebody who has not signed up, which is the one thing a score-only free
+# tier cannot show them.
+app.include_router(examples_routes.router)
 # Off-bike mobility screens: /mobility (profile), /mobility/screen (measure).
 app.include_router(mobility_routes.router)
 
@@ -913,6 +919,24 @@ async def _send_ready_mail(job_id: str, job: dict[str, Any]) -> None:
 # Routes
 # --------------------------------------------------------------------------
 STATIC_DIR = Path(__file__).parent / "static"
+
+# Content types for the formats this app ships, declared rather than looked up.
+#
+# ``mimetypes`` seeds itself from the HOST -- the Windows registry here,
+# /etc/mime.types in the container -- so the type of a file we serve depended on
+# what the machine happened to know. It did not know webp: every image on the
+# landing page, the capture guide and the sample reports went out as
+# ``application/octet-stream``, which loses CDN image handling and can make a
+# browser offer a download instead of a picture.
+#
+# Registered at import so it applies to StaticFiles and FileResponse alike.
+for _mime, _ext in (
+    ("image/webp", ".webp"),
+    ("font/woff2", ".woff2"),
+    ("image/avif", ".avif"),
+):
+    mimetypes.add_type(_mime, _ext)
+
 
 class _RevalidatingStatic(StaticFiles):
     """Static media a deploy can actually replace.

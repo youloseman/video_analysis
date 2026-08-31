@@ -1,0 +1,361 @@
+{
+ "sport_type": "run",
+ "cycling_position": null,
+ "camera_side": "left",
+ "frames_analyzed": 348,
+ "technique_score": 91,
+ "letter_grade": "A",
+ "score_withheld": null,
+ "score_breakdown": {
+  "trunk_lean": 100.0,
+  "cadence": 100.0,
+  "knee_contact": 100.0,
+  "knee_swing": 86.49999999999999,
+  "elbow_swing": 100.0,
+  "vertical_osc": 100.0,
+  "overstride": 100.0,
+  "phase_stability": 83.0,
+  "waveform_similarity": 35.8
+ },
+ "score_coverage": {
+  "scored": [
+   "trunk_lean",
+   "knee_contact",
+   "knee_swing",
+   "cadence",
+   "elbow_swing",
+   "vertical_osc",
+   "overstride",
+   "phase_stability",
+   "waveform_similarity"
+  ],
+  "missing": [],
+  "excluded": {},
+  "measures_scored": 9,
+  "measures_total": 9,
+  "weight_covered": 1.0
+ },
+ "quality_gate_triggered": false,
+ "detected_issues": [
+  {
+   "type": "overstriding",
+   "severity": "warning",
+   "value": "0.36 x leg length ahead of hip",
+   "recommendation": "The foot is landing ~36% of a leg length ahead of the hip at contact with a heel strike. This brakes each step and raises impact load. Increasing cadence toward 170-190 spm and landing with the foot closer under the hip reduces overstride."
+  }
+ ],
+ "angle_statistics": {
+  "knee": {
+   "min": 62.3,
+   "max": 167.3,
+   "p05": 72.6,
+   "p95": 163.1,
+   "mean": 132.4,
+   "std": 32.5,
+   "range": 105.0,
+   "valid_frames": 345,
+   "nan_frames": 3,
+   "nan_pct": 0.9
+  },
+  "hip": {
+   "min": 141.9,
+   "max": 175.5,
+   "p05": 147.2,
+   "p95": 171.8,
+   "mean": 160.1,
+   "std": 7.8,
+   "range": 33.6,
+   "valid_frames": 345,
+   "nan_frames": 3,
+   "nan_pct": 0.9
+  },
+  "elbow": {
+   "min": 62.9,
+   "max": 126.0,
+   "p05": 67.2,
+   "p95": 118.3,
+   "mean": 91.3,
+   "std": 15.4,
+   "range": 63.1,
+   "valid_frames": 348,
+   "nan_frames": 0,
+   "nan_pct": 0.0
+  },
+  "ankle": {
+   "min": 49.3,
+   "max": 145.4,
+   "p05": 77.7,
+   "p95": 126.6,
+   "mean": 92.7,
+   "std": 14.6,
+   "range": 96.1,
+   "valid_frames": 345,
+   "nan_frames": 3,
+   "nan_pct": 0.9
+  },
+  "trunk": {
+   "min": -6.3,
+   "max": 10.6,
+   "p05": -4.1,
+   "p95": 8.3,
+   "mean": 1.9,
+   "std": 4.2,
+   "range": 16.9,
+   "valid_frames": 348,
+   "nan_frames": 0,
+   "nan_pct": 0.0
+  }
+ },
+ "sport_specific_metrics": {
+  "cadence_spm": 169.0,
+  "ground_contact_ms": 206.2,
+  "flight_time_ms": 137.4,
+  "overstride_ratio": 0.356,
+  "vertical_oscillation_m": 0.0698,
+  "trunk_lean_avg": 1.9,
+  "foot_strike": "heel",
+  "stance_fraction": 0.583,
+  "analysis_confidence": {
+   "level": "high",
+   "factors": {
+    "landmark_quality_pct": 75.5,
+    "angles_with_high_nan": [],
+    "majority_angles_gated": false,
+    "fallback_triggered": false,
+    "cutoff_reduced": false,
+    "warning_count": 0,
+    "tracking_severity": "ok",
+    "leg_swap_pct": 2.3,
+    "leg_collapse_pct": 0.6,
+    "side_vote_disagreement_pct": 0.0,
+    "flip_pct": 0.0
+   },
+   "explanation": "Analysis ran on clean data with good landmark detection."
+  },
+  "capture_report": {
+   "verdict": "fair",
+   "headline": "Long clips are decimated to stay inside the frame budget, which costs the time-based metrics their resolution. Trim to the best 5-10 s.",
+   "checks": [
+    {
+     "id": "duration",
+     "label": "How long the clip runs",
+     "status": "warn",
+     "impact": "medium",
+     "measured": "12.3 s",
+     "target": "5-10 s of steady movement",
+     "action": "Long clips are decimated to stay inside the frame budget, which costs the time-based metrics their resolution. Trim to the best 5-10 s."
+    },
+    {
+     "id": "framing",
+     "label": "How much of the frame you fill",
+     "status": "good",
+     "impact": "high",
+     "measured": "688 px tall (54% of the frame height)",
+     "target": "550 px or more -- roughly two thirds of the frame height",
+     "action": ""
+    },
+    {
+     "id": "camera_view",
+     "label": "The angle you filmed from",
+     "status": "good",
+     "impact": "high",
+     "measured": "side on (depth ratio 0.7)",
+     "target": "filmed square-on to your side, so the joints move across the lens",
+     "action": ""
+    },
+    {
+     "id": "leg_identity",
+     "label": "Telling your left leg from your right",
+     "status": "good",
+     "impact": "high",
+     "measured": "legs confused on 2.3% of frames",
+     "target": "under 5% -- on a well-framed clip this sits near zero",
+     "action": ""
+    },
+    {
+     "id": "orientation",
+     "label": "Which way you held the phone",
+     "status": "good",
+     "impact": "medium",
+     "measured": "portrait (1584x2816)",
+     "target": "portrait -- a tall frame puts nearly twice the pixels on your legs",
+     "action": ""
+    }
+   ],
+   "problem_count": 1
+  },
+  "quality_warnings": [],
+  "camera_view": {
+   "view": "side",
+   "ratio": 0.7,
+   "frames": 348,
+   "reason": null
+  }
+ },
+ "training_plan": {
+  "sport": "running",
+  "athlete_level": "elite",
+  "overall_score": 91,
+  "strong_points": [
+   {
+    "metric": "cadence",
+    "value": 169.0,
+    "range": [
+     170,
+     190
+    ],
+    "description": "Cadence: 169.0 -- in optimal range"
+   },
+   {
+    "metric": "vertical_osc",
+    "value": 7.0,
+    "range": [
+     6,
+     10
+    ],
+    "description": "Vertical Oscillation: 7.0 -- in optimal range"
+   },
+   {
+    "metric": "trunk_lean",
+    "value": 1.9,
+    "range": [
+     -2,
+     10
+    ],
+    "description": "Trunk Lean: 1.9 -- in optimal range"
+   },
+   {
+    "metric": "knee_contact",
+    "value": 163.1,
+    "range": [
+     160,
+     175
+    ],
+    "description": "Knee Angle at Contact: 163.1 -- in optimal range"
+   },
+   {
+    "metric": "elbow_angle",
+    "value": 91.3,
+    "range": [
+     85,
+     100
+    ],
+    "description": "Elbow Angle: 91.3 -- in optimal range"
+   },
+   {
+    "metric": "knee_swing",
+    "value": 72.6,
+    "range": [
+     80,
+     100
+    ],
+    "description": "Knee Flexion in Swing: 72.6 -- better than the target range"
+   }
+  ],
+  "issues": [
+   {
+    "metric": "overstride",
+    "label": "Overstride",
+    "value": 0.4,
+    "optimal_range": "0.0-0.15",
+    "severity": "critical",
+    "problem": "Overstriding -- foot lands 0.4x leg length ahead of the hip (optimal under 0.15)",
+    "drill": "Quick-Feet Cadence Drill",
+    "instruction": "Run 4x20 seconds at a deliberately higher step rate on a metronome set to 180 bpm, focusing on landing with the foot under your hips rather than reaching out in front.",
+    "cue": "Land under your body, not out in front -- shorter, quicker steps",
+    "weeks": 4,
+    "linked_to": null,
+    "academy_slug": "overstriding"
+   },
+   {
+    "metric": "foot_strike",
+    "label": "Foot Strike",
+    "value": 0.0,
+    "optimal_range": "0.0-0.0",
+    "severity": "minor",
+    "problem": "Heel-first foot-strike, which usually pairs with overstriding and a braking force at contact",
+    "drill": "Midfoot Landing Drill",
+    "instruction": "Run 4x20 seconds barefoot on grass or in minimal shoes, letting the midfoot/forefoot make first contact. Keep steps short and quick; do not force a hard toe-strike.",
+    "cue": "Land softly on the middle of your foot, under your hips",
+    "weeks": 6,
+    "linked_to": null,
+    "academy_slug": "foot-strike"
+   }
+  ],
+  "top_3_priorities": [
+   {
+    "priority": 1,
+    "metric": "overstride",
+    "label": "Overstride",
+    "drill": "Quick-Feet Cadence Drill",
+    "why": "Overstriding -- foot lands 0.4x leg length ahead of the hip (optimal under 0.15)",
+    "instruction": "Run 4x20 seconds at a deliberately higher step rate on a metronome set to 180 bpm, focusing on landing with the foot under your hips rather than reaching out in front.",
+    "cue": "Land under your body, not out in front -- shorter, quicker steps",
+    "weeks": 4,
+    "academy_slug": "overstriding"
+   },
+   {
+    "priority": 2,
+    "metric": "foot_strike",
+    "label": "Foot Strike",
+    "drill": "Midfoot Landing Drill",
+    "why": "Heel-first foot-strike, which usually pairs with overstriding and a braking force at contact",
+    "instruction": "Run 4x20 seconds barefoot on grass or in minimal shoes, letting the midfoot/forefoot make first contact. Keep steps short and quick; do not force a hard toe-strike.",
+    "cue": "Land softly on the middle of your foot, under your hips",
+    "weeks": 6,
+    "academy_slug": "foot-strike"
+   }
+  ],
+  "warnings": []
+ },
+ "fit_plan": null,
+ "reference_bands": {
+  "cadence_spm": {
+   "lo": 170,
+   "hi": 190,
+   "source": "Heiderscheit 2011"
+  },
+  "trunk_lean_avg": {
+   "lo": -2,
+   "hi": 10,
+   "source": "Folland 2017"
+  },
+  "ground_contact_ms": {
+   "lo": 180,
+   "hi": 270,
+   "source": "Folland 2017"
+  },
+  "flight_time_ms": {
+   "lo": 80,
+   "hi": 150,
+   "source": "Weyand 2000"
+  },
+  "overstride_ratio": {
+   "lo": 0.0,
+   "hi": 0.15,
+   "source": "Heiderscheit 2011; Souza 2016"
+  },
+  "vertical_oscillation_cm": {
+   "lo": 6,
+   "hi": 10,
+   "source": "Heiderscheit 2011"
+  },
+  "knee_max": {
+   "lo": 160,
+   "hi": 175,
+   "source": "Heiderscheit 2011"
+  },
+  "knee_min": {
+   "lo": 80,
+   "hi": 100,
+   "source": "Folland 2017"
+  }
+ },
+ "slug": "run-treadmill",
+ "title": "Running, treadmill, side view",
+ "blurb": "A 12-second treadmill clip. Every stride metric measured: cadence, ground contact, flight time, vertical oscillation and overstride, plus the five kinogram positions.",
+ "mode": "video",
+ "source_clip": "IMG_4004.MOV",
+ "keyframe_url": "/media/examples/run-treadmill.webp",
+ "kinogram_url": "/media/examples/run-treadmill-kinogram.webp"
+}

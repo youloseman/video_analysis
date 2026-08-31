@@ -1,0 +1,457 @@
+{
+ "sport_type": "bike",
+ "cycling_position": "road_drops",
+ "camera_side": "left",
+ "frames_analyzed": 328,
+ "technique_score": 70,
+ "letter_grade": "C",
+ "score_withheld": null,
+ "score_breakdown": {
+  "knee_bdc": 85.45000000000002,
+  "knee_tdc": 95.45000000000002,
+  "trunk_angle": 83.66666666666667,
+  "saddle_fit": 75.0,
+  "elbow_angle": 42.61666666666665,
+  "shoulder_angle": 100.0,
+  "forearm_tilt": 99.13333333333333,
+  "head_alignment": 93.45,
+  "pelvic_ratio": 100.0
+ },
+ "score_coverage": {
+  "scored": [
+   "knee_bdc",
+   "trunk_angle",
+   "knee_tdc",
+   "elbow_angle",
+   "shoulder_angle",
+   "head_alignment",
+   "pelvic_ratio",
+   "forearm_tilt",
+   "saddle_fit"
+  ],
+  "missing": [],
+  "excluded": {},
+  "measures_scored": 9,
+  "measures_total": 9,
+  "weight_covered": 1.0
+ },
+ "quality_gate_triggered": false,
+ "detected_issues": [
+  {
+   "type": "trunk_too_aggressive",
+   "severity": "info",
+   "value": "23 deg",
+   "recommendation": "Very aggressive trunk position (23 deg). May cause discomfort. Optimal for Road - Drops: 30-45 deg."
+  }
+ ],
+ "angle_statistics": {
+  "left_knee": {
+   "min": 61.5,
+   "max": 151.3,
+   "p05": 62.4,
+   "p95": 149.5,
+   "mean": 106.2,
+   "std": 35.6,
+   "range": 89.7,
+   "valid_frames": 227,
+   "nan_frames": 101,
+   "nan_pct": 30.8
+  },
+  "right_knee": {
+   "min": null,
+   "max": null,
+   "mean": null,
+   "std": null,
+   "range": null,
+   "valid_frames": 0,
+   "nan_frames": 328,
+   "nan_pct": 100.0
+  },
+  "left_hip": {
+   "min": 46.7,
+   "max": 97.7,
+   "p05": 48.2,
+   "p95": 97.4,
+   "mean": 72.0,
+   "std": 18.5,
+   "range": 51.0,
+   "valid_frames": 241,
+   "nan_frames": 87,
+   "nan_pct": 26.5
+  },
+  "right_hip": {
+   "min": null,
+   "max": null,
+   "mean": null,
+   "std": null,
+   "range": null,
+   "valid_frames": 0,
+   "nan_frames": 328,
+   "nan_pct": 100.0
+  },
+  "left_ankle": {
+   "min": 80.4,
+   "max": 124.9,
+   "p05": 85.4,
+   "p95": 124.2,
+   "mean": 107.8,
+   "std": 12.1,
+   "range": 44.5,
+   "valid_frames": 227,
+   "nan_frames": 101,
+   "nan_pct": 30.8
+  },
+  "right_ankle": {
+   "min": null,
+   "max": null,
+   "mean": null,
+   "std": null,
+   "range": null,
+   "valid_frames": 0,
+   "nan_frames": 328,
+   "nan_pct": 100.0
+  },
+  "left_shoulder": {
+   "min": 84.7,
+   "max": 91.4,
+   "p05": 85.7,
+   "p95": 90.4,
+   "mean": 88.3,
+   "std": 1.4,
+   "range": 6.7,
+   "valid_frames": 328,
+   "nan_frames": 0,
+   "nan_pct": 0.0
+  },
+  "right_shoulder": {
+   "min": null,
+   "max": null,
+   "mean": null,
+   "std": null,
+   "range": null,
+   "valid_frames": 0,
+   "nan_frames": 328,
+   "nan_pct": 100.0
+  },
+  "left_elbow": {
+   "min": 89.2,
+   "max": 96.6,
+   "p05": 90.4,
+   "p95": 95.4,
+   "mean": 93.6,
+   "std": 1.5,
+   "range": 7.4,
+   "valid_frames": 328,
+   "nan_frames": 0,
+   "nan_pct": 0.0
+  },
+  "right_elbow": {
+   "min": null,
+   "max": null,
+   "mean": null,
+   "std": null,
+   "range": null,
+   "valid_frames": 0,
+   "nan_frames": 328,
+   "nan_pct": 100.0
+  },
+  "left_forearm_tilt": {
+   "min": 14.6,
+   "max": 19.7,
+   "p05": 15.4,
+   "p95": 19.4,
+   "mean": 17.3,
+   "std": 1.2,
+   "range": 5.1,
+   "valid_frames": 328,
+   "nan_frames": 0,
+   "nan_pct": 0.0
+  },
+  "right_forearm_tilt": {
+   "min": null,
+   "max": null,
+   "mean": null,
+   "std": null,
+   "range": null,
+   "valid_frames": 0,
+   "nan_frames": 328,
+   "nan_pct": 100.0
+  },
+  "trunk_angle": {
+   "min": 21.1,
+   "max": 25.3,
+   "p05": 21.8,
+   "p95": 25.0,
+   "mean": 23.1,
+   "std": 1.0,
+   "range": 4.2,
+   "valid_frames": 328,
+   "nan_frames": 0,
+   "nan_pct": 0.0
+  }
+ },
+ "sport_specific_metrics": {
+  "knee_at_bdc": 149.91,
+  "knee_at_tdc": 62.09,
+  "trunk_angle_avg": 23.1,
+  "hip_angle_avg": 71.97,
+  "elbow_angle_avg": 93.57,
+  "shoulder_angle_avg": 88.27,
+  "head_alignment_avg": 93.45,
+  "pelvic_ratio": 3.11,
+  "forearm_tilt_avg": 17.26,
+  "saddle_height_assessment": "acceptable",
+  "pedaling_style": {
+   "style": "ankling",
+   "label": "Ankling",
+   "median_deg": 111.4,
+   "spread_deg": 33.3,
+   "time_in_zone": {
+    "heel_down": 15,
+    "neutral": 85,
+    "toe_down": 0
+   },
+   "readable_pct": 69
+  },
+  "aero_estimate": {
+   "trunk_angle": 23.1,
+   "zone_key": "tt_tuck",
+   "zone_label": "Time-trial tuck",
+   "cda_reference": 0.213,
+   "drag_vs_upright_pct": 80,
+   "reference_speed_kmh": 40.0,
+   "disclaimer": "Relative estimate from torso angle only -- not an absolute CdA. Real drag also depends on clothing, helmet, speed and wind. Flatter is only faster if you can still make power and breathe there.",
+   "source": "van Druenen & Blocken 2023 (Computers & Fluids 257)",
+   "next_zone": null,
+   "ref_aero_watts": 190.0,
+   "levers": [
+    {
+     "key": "torso",
+     "label": "Torso angle",
+     "status": "ok",
+     "cue": "Torso is well-placed for this position."
+    }
+   ]
+  },
+  "analysis_confidence": {
+   "level": "medium",
+   "factors": {
+    "landmark_quality_pct": 75.0,
+    "angles_with_high_nan": [
+     "right_knee",
+     "right_hip",
+     "right_ankle",
+     "right_shoulder",
+     "right_elbow",
+     "right_forearm_tilt"
+    ],
+    "majority_angles_gated": false,
+    "fallback_triggered": false,
+    "cutoff_reduced": false,
+    "warning_count": 1,
+    "tracking_severity": "ok",
+    "leg_swap_pct": null,
+    "leg_collapse_pct": null,
+    "side_vote_disagreement_pct": null,
+    "flip_pct": 0.0
+   },
+   "explanation": "Some body landmarks had intermittent detection. 6 angle(s) had very high gap rates (right_knee, right_hip, right_ankle, right_shoulder, right_elbow, right_forearm_tilt). A quality warning was raised during processing. Try a clearer video with the whole body in frame, or film from a different angle."
+  },
+  "capture_report": {
+   "verdict": "poor",
+   "headline": "Zoom in about 2.3x, or step closer, so you span most of the frame from head to feet. This does more for accuracy than any other change -- at your size the two legs are only a few pixels apart for much of the stride, which is what makes the skeleton jump between them.",
+   "checks": [
+    {
+     "id": "framing",
+     "label": "How much of the frame you fill",
+     "status": "bad",
+     "impact": "high",
+     "measured": "237 px tall (19% of the frame height)",
+     "target": "550 px or more -- roughly two thirds of the frame height",
+     "action": "Zoom in about 2.3x, or step closer, so you span most of the frame from head to feet. This does more for accuracy than any other change -- at your size the two legs are only a few pixels apart for much of the stride, which is what makes the skeleton jump between them."
+    },
+    {
+     "id": "duration",
+     "label": "How long the clip runs",
+     "status": "warn",
+     "impact": "medium",
+     "measured": "25.3 s",
+     "target": "5-10 s of steady movement",
+     "action": "Long clips are decimated to stay inside the frame budget, which costs the time-based metrics their resolution. Trim to the best 5-10 s."
+    },
+    {
+     "id": "camera_view",
+     "label": "The angle you filmed from",
+     "status": "good",
+     "impact": "high",
+     "measured": "side on (depth ratio 0.678)",
+     "target": "filmed square-on to your side, so the joints move across the lens",
+     "action": ""
+    },
+    {
+     "id": "orientation",
+     "label": "Which way you held the phone",
+     "status": "good",
+     "impact": "medium",
+     "measured": "portrait (1080x1920)",
+     "target": "portrait -- a tall frame puts nearly twice the pixels on your legs",
+     "action": ""
+    }
+   ],
+   "problem_count": 2
+  },
+  "quality_warnings": [
+   "The athlete is small in the frame (about 237 pixels tall in the image we analyze). At that size the two legs are only a few pixels apart for much of the stride, which is what makes the skeleton jump between them. Filling more of the frame -- filming closer, or zooming in so the runner spans most of the height -- does more for accuracy than any other change."
+  ],
+  "camera_view": {
+   "view": "side",
+   "ratio": 0.678,
+   "frames": 328,
+   "reason": null
+  }
+ },
+ "training_plan": null,
+ "fit_plan": {
+  "position": "road_drops",
+  "position_label": "Road - Drops",
+  "terminology": {
+   "bike_type": "road bike",
+   "hand_position": "drops",
+   "bar_height_term": "stem spacers and stem angle",
+   "bar_reach_term": "stem length",
+   "bar_angle_term": "bar angle",
+   "banned_words": []
+  },
+  "technique_score": 70,
+  "letter_grade": "C",
+  "fitting_sequence_note": "Adjust in order: saddle height -> bar position. Each adjustment: 5mm only, ride 30 minutes before reassessing.",
+  "diagnostics": [
+   {
+    "component": "saddle_height",
+    "status": "needs_adjustment",
+    "metric_name": "knee_at_bdc",
+    "current_value": 149.9,
+    "target_range": [
+     135,
+     145
+    ],
+    "action": "lower_saddle",
+    "amount": "5mm",
+    "reason": "Knee angle at BDC is 150 deg (optimal 135-145 deg). Overextension -- lower saddle by 5mm, ride 30 min before reassessing.",
+    "priority": 1,
+    "linked_to": null
+   },
+   {
+    "component": "bar_position",
+    "status": "needs_adjustment",
+    "metric_name": "trunk_angle",
+    "current_value": 23.1,
+    "target_range": [
+     30,
+     45
+    ],
+    "action": "raise_bars",
+    "amount": "",
+    "reason": "Trunk angle is 23 deg (optimal 30-45 deg). Position is too aggressive -- raise stem spacers and stem angle for a more sustainable position.",
+    "priority": 3,
+    "linked_to": null
+   }
+  ],
+  "good_metrics": [
+   {
+    "metric": "hip_angle",
+    "value": 72.0,
+    "range": [
+     50,
+     65
+    ],
+    "label": "Hip angle (open, comfortable)"
+   },
+   {
+    "metric": "knee_at_tdc",
+    "value": 62.1,
+    "range": [
+     65,
+     75
+    ],
+    "label": "Knee flexion at TDC",
+    "borderline": true,
+    "note": "Marginally below the 65-75 optimal band but within measurement tolerance -- treat as on-target, no change needed."
+   },
+   {
+    "metric": "shoulder_angle",
+    "value": 88.3,
+    "range": [
+     85,
+     110
+    ],
+    "label": "Shoulder angle"
+   },
+   {
+    "metric": "head_alignment",
+    "value": 93.5,
+    "range": [
+     60,
+     100
+    ],
+    "label": "Head alignment"
+   },
+   {
+    "metric": "pelvic_ratio",
+    "value": 3.1,
+    "range": [
+     1.8,
+     3.5
+    ],
+    "label": "Pelvic rotation ratio"
+   }
+  ],
+  "medical_warnings": [],
+  "mobility_fit": null
+ },
+ "reference_bands": {
+  "knee_at_bdc": {
+   "lo": 135,
+   "hi": 145,
+   "source": "Retul; Bini et al. 2011"
+  },
+  "knee_at_tdc": {
+   "lo": 65,
+   "hi": 75
+  },
+  "hip_angle_avg": {
+   "lo": 50,
+   "hi": 65,
+   "source": "Retul; derived from competitive rider trunk 30-45 deg"
+  },
+  "elbow_angle_avg": {
+   "lo": 130,
+   "hi": 160,
+   "source": "Retul road fit window"
+  },
+  "trunk_angle_avg": {
+   "lo": 30,
+   "hi": 45,
+   "source": "Competitive road rider norms"
+  },
+  "shoulder_angle_avg": {
+   "lo": 85,
+   "hi": 110
+  },
+  "forearm_tilt_avg": {
+   "lo": 0,
+   "hi": 15
+  },
+  "pelvic_ratio": {
+   "lo": 1.8,
+   "hi": 3.5
+  }
+ },
+ "slug": "bike-road",
+ "title": "Road bike on a trainer",
+ "blurb": "A road position with real fit findings -- what to change, in fitting order, with the measurement each one fired on.",
+ "mode": "video",
+ "source_clip": "IMG_4091.MOV",
+ "keyframe_url": "/media/examples/bike-road.webp",
+ "kinogram_url": "/media/examples/bike-road-kinogram.webp"
+}
