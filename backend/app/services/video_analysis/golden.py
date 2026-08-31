@@ -158,7 +158,13 @@ def build_record(result: dict[str, Any]) -> dict[str, Any]:
             "quality_gate_profile": quality.get("profile"),
             "capture_verdict": capture.get("verdict"),
             "confidence_level": confidence.get("level"),
-            "framing_verdict": sm.get("framing"),
+            # Inside tracking_stability, NOT at the top of the summary. The
+            # top-level lookup this replaces returned None on every clip, so
+            # the baseline silently pinned nothing at all -- the same trap
+            # run_session._stability carries a comment about.
+            "framing_verdict": (
+                (sm.get("tracking_stability") or {}).get("framing") or {}
+            ).get("verdict"),
             "sample_rate": sampling.get("sample_rate"),
             "coverage": _coverage(result.get("score_coverage")),
             "fit_plan": _fit_plan(result.get("fit_plan")),
@@ -180,6 +186,13 @@ def build_record(result: dict[str, Any]) -> dict[str, Any]:
         # --- approximate: measurements ---
         "approx": {
             "technique_score": _num(result.get("technique_score")),
+            # How many pixels of athlete the detector actually got. The single
+            # strongest predictor of tracking quality in this codebase, and it
+            # was not in the record.
+            "subject_height_px": _num(
+                ((sm.get("tracking_stability") or {}).get("framing") or {})
+                .get("subject_height_px")
+            ),
             "score_breakdown": {
                 k: _num(v) for k, v in sorted((result.get("score_breakdown") or {}).items())
             },

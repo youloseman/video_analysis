@@ -133,6 +133,7 @@
   "stability.flip_pct": 0.0,
   "stability.leg_collapse_pct": null,
   "stability.leg_swap_pct": null,
+  "subject_height_px": 350.0,
   "summary.ankle_at_bdc": 123.8,
   "summary.elbow_angle_avg": 93.53,
   "summary.forearm_tilt_avg": 12.91,
@@ -180,7 +181,7 @@
    }
   ],
   "frames_analyzed": 503,
-  "framing_verdict": null,
+  "framing_verdict": "small",
   "has_aero": true,
   "has_keyframe": true,
   "has_kinogram": true,
