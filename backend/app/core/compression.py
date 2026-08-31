@@ -32,9 +32,16 @@ silently in production.
 
 from __future__ import annotations
 
+import threading
+
 from starlette.datastructures import Headers
 from starlette.middleware.gzip import GZipMiddleware, GZipResponder
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+try:
+    import brotli as _brotli
+except ImportError:  # pragma: no cover - exercised by the no-brotli test
+    _brotli = None
 
 # Everything this app serves that is worth compressing. An allow-list, not a
 # deny-list: a new binary endpoint should default to "left alone", not to
@@ -100,3 +107,75 @@ class SelectiveGZipMiddleware(GZipMiddleware):
         # No gzip on offer: let the base class handle it, so clients that ask for
         # identity still get the Vary: Accept-Encoding it adds for caches.
         await super().__call__(scope, receive, send)
+
+
+# ---------------------------------------------------------------------------
+# Brotli for the one document where it pays: the app shell
+# ---------------------------------------------------------------------------
+#
+# Measured on the 550 KB SPA: gzip -6 lands at 163 KB, brotli at 143 KB. Twenty
+# kilobytes is worth having on a phone and worth nothing on wifi, which is
+# exactly why it must not cost anything to produce.
+#
+# So this is NOT middleware. Compressing per request would put brotli's CPU on
+# every load -- and at the quality where it actually beats gzip that is 39 ms of
+# a synchronous event loop, on a box whose CPU is already the analysis
+# bottleneck. The shell is instead compressed ONCE per distinct document and
+# kept, which is only possible because ``_serve_shell`` already hashes the
+# finished HTML into an ETag: identical ETag, identical bytes, reusable
+# compression.
+#
+# Quality 9, not 11. On this document 11 is a further 8% (132 KB) for 1.1
+# SECONDS of compression -- once, but a whole second of blocked event loop for
+# whichever visitor happens to be first after a deploy. 9 costs 39 ms.
+BROTLI_QUALITY = 9
+
+# Distinct shells in flight = 2 documents x however many origins answer (the
+# custom domain, the Railway host, localhost). A handful. The cap is a
+# backstop against an attacker varying the Host header to grow the dict, not a
+# working limit.
+_BROTLI_CACHE_MAX = 8
+_brotli_cache: dict[str, bytes] = {}
+_brotli_lock = threading.Lock()
+
+
+def brotli_available() -> bool:
+    return _brotli is not None
+
+
+def accepts_brotli(accept_encoding: str) -> bool:
+    """Whether the client offered ``br``.
+
+    Deliberately a substring test on a comma-separated list rather than a
+    full q-value parse: no browser sends ``br;q=0`` to refuse it, and a wrong
+    answer here is a page served in an encoding the client cannot read.
+    """
+    return "br" in [
+        part.split(";")[0].strip().lower()
+        for part in (accept_encoding or "").split(",")
+    ]
+
+
+def brotli_encode(body: bytes, cache_key: str) -> bytes | None:
+    """Brotli-compress ``body``, reusing the result for the same key.
+
+    ``cache_key`` must identify the exact bytes -- the shell's ETag is a hash
+    of them, which is what makes this safe. Returns None when brotli is not
+    installed, so the caller falls through to gzip rather than failing.
+    """
+    if _brotli is None:
+        return None
+    with _brotli_lock:
+        hit = _brotli_cache.get(cache_key)
+    if hit is not None:
+        return hit
+    packed = _brotli.compress(body, quality=BROTLI_QUALITY)
+    # A compressor that made the body bigger has nothing to offer; gzip is the
+    # better answer and the caller gets it by seeing None.
+    if len(packed) >= len(body):
+        return None
+    with _brotli_lock:
+        if len(_brotli_cache) >= _BROTLI_CACHE_MAX:
+            _brotli_cache.clear()
+        _brotli_cache[cache_key] = packed
+    return packed

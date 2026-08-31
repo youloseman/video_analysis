@@ -66,6 +66,20 @@ SUBJECT_MARGIN = 0.12
 # further apart.
 MAX_PAIRS = 60
 
+# Long edge the frames are shrunk to before ORB runs on them. Measured on a
+# 1072x1920 clip: detectAndCompute costs 62.3 ms per frame at full size and
+# 10.7 ms at half -- and this module was 9 of the 38 seconds a running
+# analysis took, for a diagnostic.
+#
+# Shrinking is safe here in a way it would not be for pose estimation, because
+# what comes out is a rigid translation of the whole frame: halving the picture
+# halves the measured shift exactly, and it is scaled back below. What it does
+# cost is features -- ORB has fewer pixels to find corners in -- so 960 is
+# chosen to stay well clear of MIN_INLIERS on ordinary backgrounds rather than
+# to be as small as possible. Frames already at or under this are left alone;
+# nothing is ever upscaled.
+MOTION_MAX_LONG_EDGE = 960
+
 # Vertical camera movement as a share of the hip movement being measured.
 # Under the first, the reading is unaffected in any way that matters; over the
 # second, the number is substantially the camera's rather than the athlete's.
@@ -224,6 +238,12 @@ def estimate_camera_motion(
     dy_lower: list[float] = []
     unreadable = 0
     prev_gray = prev_mask = None
+    # The frame height in ORIGINAL pixels, taken from the first frame actually
+    # decoded. It used to be read by opening the video a second time purely for
+    # CAP_PROP_FRAME_HEIGHT, after the decode loop had already had every frame
+    # in hand.
+    height = 1
+    scale = 1.0
 
     cap = cv2.VideoCapture(video_path)
     try:
@@ -239,7 +259,19 @@ def estimate_camera_motion(
             idx += 1
             if fd is None:
                 continue
+            if height == 1:
+                height = frame.shape[0] or 1
+                long_edge = max(frame.shape[0], frame.shape[1])
+                if long_edge > MOTION_MAX_LONG_EDGE:
+                    scale = MOTION_MAX_LONG_EDGE / long_edge
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            if scale < 1.0:
+                # INTER_AREA: the correct filter for shrinking, and the one that
+                # matters here -- a nearest-neighbour shrink aliases exactly the
+                # high-frequency detail ORB looks for corners in.
+                gray = cv2.resize(
+                    gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA,
+                )
             mask = _subject_mask(
                 cv2, gray.shape, fd.get("normalized_landmarks"),
             )
@@ -250,11 +282,17 @@ def estimate_camera_motion(
                 if shift is None:
                     unreadable += 1
                 else:
-                    dxs.append(shift[0])
-                    dys.append(shift[1])
+                    # Back to original pixels immediately, so everything below
+                    # keeps the units it was calibrated in -- RIGIDITY_TOLERANCE_PX
+                    # was measured at full size on a real treadmill clip, and a
+                    # tolerance whose meaning depends on the input resolution
+                    # would be a different check on every phone.
+                    back = 1.0 / scale
+                    dxs.append(shift[0] * back)
+                    dys.append(shift[1] * back)
                     if shift[2] is not None and shift[3] is not None:
-                        dy_upper.append(shift[2])
-                        dy_lower.append(shift[3])
+                        dy_upper.append(shift[2] * back)
+                        dy_lower.append(shift[3] * back)
             prev_gray, prev_mask = gray, mask
     finally:
         cap.release()
@@ -262,13 +300,6 @@ def estimate_camera_motion(
     if len(dys) < 3:
         logger.info("CAMERA_MOTION_UNREADABLE", pairs=len(dys), skipped=unreadable)
         return None
-
-    height = 1
-    cap = cv2.VideoCapture(video_path)
-    try:
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 1
-    finally:
-        cap.release()
 
     dy = np.array(dys, dtype=np.float64)
     dx = np.array(dxs, dtype=np.float64)

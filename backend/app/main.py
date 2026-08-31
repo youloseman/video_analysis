@@ -77,7 +77,11 @@ from app.api import feedback as feedback_routes
 from app.api import me as me_routes
 from app.api import mobility as mobility_routes
 from app.api.mobility import stored_profile as _stored_mobility
-from app.core.compression import SelectiveGZipMiddleware
+from app.core.compression import (
+    SelectiveGZipMiddleware,
+    accepts_brotli,
+    brotli_encode,
+)
 from app.core.config import settings
 from app.core.db import SessionLocal, get_session, init_db
 from app.core.jobs import (
@@ -992,10 +996,30 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
     # redesigned share card can keep rendering the old layout. This response
     # carried no cache headers at all, leaving it to browser heuristics; pin it
     # to always revalidate, with an ETag so an unchanged shell still costs a 304.
-    etag = '"' + hashlib.sha256(html_doc.encode("utf-8")).hexdigest()[:32] + '"'
-    headers = {"Cache-Control": "no-cache, must-revalidate", "ETag": etag}
+    body = html_doc.encode("utf-8")
+    etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
+    # Vary on our own account: this response can now come back in two encodings,
+    # and a shared cache that missed that would hand brotli bytes to a client
+    # that only reads gzip. The gzip middleware adds this header for the
+    # responses IT compresses; a pre-encoded one never reaches that code.
+    headers = {
+        "Cache-Control": "no-cache, must-revalidate",
+        "ETag": etag,
+        "Vary": "Accept-Encoding",
+    }
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=headers)
+    # Brotli, when the client asked for it and the document has been compressed
+    # before (see core/compression: keyed on this same ETag, so the cache is
+    # exact by construction). Falls through to the gzip middleware whenever
+    # brotli is missing, refused, or would not have helped.
+    if accepts_brotli(request.headers.get("accept-encoding", "")):
+        packed = brotli_encode(body, etag)
+        if packed is not None:
+            return Response(
+                content=packed, media_type="text/html; charset=utf-8",
+                headers={**headers, "Content-Encoding": "br"},
+            )
     return HTMLResponse(html_doc, headers=headers)
 
 

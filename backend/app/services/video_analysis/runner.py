@@ -355,7 +355,34 @@ def extract_frames(
         total_video_frames / sample_rate if sample_rate > 0 else total_video_frames
     )
     if expected_frames > max_analysis_frames and total_video_frames > 0:
-        sample_rate = max(sample_rate, int(total_video_frames / max_analysis_frames))
+        # NEAREST integer stride, not the truncation this used to do and not a
+        # round-up either. Both of the obvious readings are wrong here, in
+        # opposite directions:
+        #
+        #   int()  truncates, so any clip under twice the budget gets stride 1
+        #          and is analysed WHOLE -- 899 frames against a 450 budget is
+        #          200% of it, roughly 90 s of detection, and the cap it was
+        #          supposed to enforce simply did not apply.
+        #   ceil() never exceeds the budget, but buys that by halving the
+        #          temporal resolution the moment the clip passes 450 frames.
+        #          A 30 fps run clip of 17 s would drop to 15 fps effective --
+        #          ground contact resolution from 33 ms to 67 ms -- to save CPU
+        #          we were 12% over. Timing accuracy is the product; CPU is a
+        #          bill. Trading the first for the second by default is
+        #          backwards.
+        #
+        # Nearest keeps full resolution up to 1.5x the budget (675 frames = 22 s
+        # at 30 fps, well past the 5-15 s the guide asks for) and bounds the
+        # worst overshoot at 50% instead of 200%. Clips past that point are
+        # already outside our own capture guidance and already carry the
+        # "timing metrics get coarser on long clips" notice, so decimating them
+        # is what the product has been telling people happens.
+        #
+        # floor(x + 0.5) rather than round(): round() is banker's rounding and
+        # sends exactly 2.5 to 2, which is the one case where the tie should go
+        # to the coarser stride.
+        nearest = math.floor(total_video_frames / max_analysis_frames + 0.5)
+        sample_rate = max(sample_rate, nearest)
         logger.info(
             "ADAPTIVE_SAMPLING",
             sport=sport_type,

@@ -24,6 +24,9 @@ fastapi==0.136.1
 uvicorn[standard]==0.47.0
 python-multipart==0.0.29
 pydantic==2.13.4
+# Brotli for the app shell only (core/compression). Optional at runtime: the
+# import is guarded and the shell falls back to gzip when it is absent.
+brotli==1.2.0
 
 # --- LLM coaching (Milestone 5): Gemini. Optional at runtime -- the app skips
 # recommendations gracefully when GEMINI_API_KEY is unset. ---
