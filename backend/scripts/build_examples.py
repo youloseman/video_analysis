@@ -38,20 +38,32 @@ MEDIA = BACKEND / "app" / "static" / "media" / "examples"
 # needs work sells the fit report better than a perfect one does.
 SAMPLES: dict[str, dict] = {
     "run-treadmill": {
-        # Was IMG_4004. Its keyframe put the near leg on the treadmill deck --
-        # correct leg IDENTITY (the stride check reads 0.000 there) but the
-        # landmarks themselves sitting beside the athlete, next to people
-        # walking behind him. Nothing in the pipeline catches that: the bone
-        # lengths are normal, the point sits on its own trajectory, and the
-        # identity metric only asks WHICH leg a label is on, never whether the
-        # leg is on the runner. So the sample moved to a clip whose overlay is
-        # actually on the athlete, which is the one thing this page is for.
-        "clip": "upload/IMG_3979.MOV",
+        # Third clip in this slot, and the first whose skeleton is on the
+        # runner. IMG_4004 and then IMG_3979 both drew the near leg onto the
+        # NEIGHBOURING treadmill: its deck rails are horizontal, high-contrast
+        # and limb-shaped, and the pose model prefers them to a leg that is
+        # half occluded. Every clip filmed in that gym fails the same way; the
+        # two clips in the repo with a clean background (a field, a beach)
+        # track perfectly and are unusable for other reasons -- the athlete is
+        # a sixth of the frame in one and the source is 312x554 in the other.
+        #
+        # So the frame is cropped to the athlete before analysis, which is
+        # exactly what the capture guide asks a user to do with the camera.
+        # It is not cosmetic: cropping moved measured cadence 186.8 -> 170.3
+        # spm and leg-identity instability 0.116 -> 0.079. The uncropped
+        # number was partly the machine next door.
+        "clip": "upload/IMG_4258.MOV",
+        # left, right, top, bottom in source pixels (frame is 1584x2816).
+        # Kept at 9:16 like every other keyframe on the page: the hub card
+        # centre-crops a 4:3 window out of it, and a taller frame moves that
+        # window down onto the athlete's hips.
+        "crop": (300, 1440, 60, 2087),
         "sport": "run", "position": None, "mode": "video",
         "title": "Running, treadmill, side view",
-        "blurb": "A 10-second treadmill clip. Every stride metric measured: "
-                 "cadence, ground contact, flight time, vertical oscillation "
-                 "and overstride, plus the five kinogram positions.",
+        "blurb": "A 9-second treadmill clip, framed so the athlete fills it. "
+                 "Every stride metric measured: cadence, ground contact, "
+                 "flight time, vertical oscillation and overstride, plus the "
+                 "five kinogram positions.",
     },
     "bike-road": {
         "clip": "upload/IMG_4091.MOV",
@@ -131,6 +143,39 @@ def _write_image(b64: str, path: Path) -> str | None:
     return f"/media/examples/{out.name}"
 
 
+def _crop_to_temp(clip: Path, box: tuple[int, int, int, int]) -> Path:
+    """Re-encode ``clip`` cropped to ``box``, into a temp file next to it.
+
+    The crop is committed as four numbers in SAMPLES rather than as a second
+    video file, so the sample stays reproducible from the original footage.
+    """
+    import tempfile
+
+    import cv2
+
+    cap = cv2.VideoCapture(str(clip))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    x0, x1, y0, y1 = box
+    x0, x1 = max(0, x0), min(w, x1)
+    y0, y1 = max(0, y0), min(h, y1)
+    x1 -= (x1 - x0) % 2   # even dimensions for the encoder
+    y1 -= (y1 - y0) % 2
+    dst = Path(tempfile.gettempdir()) / f"{clip.stem}_crop.mp4"
+    vw = cv2.VideoWriter(str(dst), cv2.VideoWriter_fourcc(*"mp4v"), fps,
+                         (x1 - x0, y1 - y0))
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        vw.write(frame[y0:y1, x0:x1])
+    vw.release()
+    cap.release()
+    print(f"  cropped {clip.name} {w}x{h} -> {x1 - x0}x{y1 - y0}")
+    return dst
+
+
 def build(slug: str, spec: dict) -> dict | None:
     from app.services.video_analysis.photo_analyzer import analyze_photo
     from app.services.video_analysis.runner import run_analysis
@@ -139,6 +184,10 @@ def build(slug: str, spec: dict) -> dict | None:
     if not clip.exists():
         print(f"  SKIP {slug}: {spec['clip']} is not on this machine")
         return None
+    source_name = clip.name
+    if spec.get("crop"):
+        clip = _crop_to_temp(clip, spec["crop"])
+        source_name += " (cropped to the athlete)"
 
     if spec["mode"] == "photo":
         import cv2
@@ -182,7 +231,7 @@ def build(slug: str, spec: dict) -> dict | None:
     out["title"] = spec["title"]
     out["blurb"] = spec["blurb"]
     out["mode"] = spec["mode"]
-    out["source_clip"] = Path(spec["clip"]).name
+    out["source_clip"] = source_name
 
     MEDIA.mkdir(parents=True, exist_ok=True)
     out["keyframe_url"] = _write_image(
