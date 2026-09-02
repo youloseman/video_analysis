@@ -1,0 +1,54 @@
+# Codemagic CI — iOS build for the Flapp mobile shell (mobile/).
+#
+# Why cloud CI: development happens on Windows; Apple requires macOS/Xcode to
+# build and sign iOS apps. This workflow builds the Capacitor iOS app and
+# uploads it to TestFlight.
+#
+# One-time setup (Artur, after the Apple Developer account is active):
+#   1. App Store Connect -> Users and Access -> Integrations -> App Store
+#      Connect API: create an API key (role: App Manager). Download the .p8.
+#   2. Codemagic -> Teams -> Integrations -> App Store Connect: add the key,
+#      name it exactly:  appstore
+#   3. App Store Connect -> Apps: create the app (bundle ID com.clariva.flapp
+#      -- register the identifier at developer.apple.com/account first).
+#   4. Push to main (or start the workflow manually) -> build lands in
+#      TestFlight -> install on the iPhone via the TestFlight app.
+workflows:
+  ios-testflight:
+    name: Flapp iOS -> TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: appstore
+    environment:
+      node: 24.13.0
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.clariva.flapp
+    triggering:
+      events: []            # manual builds for now; enable push triggers later
+    scripts:
+      - name: Build web bundle
+        script: |
+          cd mobile
+          npm ci
+          node scripts/sync-www.mjs
+      - name: Capacitor sync (installs Pods)
+        script: |
+          cd mobile
+          npx cap sync ios
+      - name: Build signed IPA
+        script: |
+          xcode-project use-profiles
+          xcode-project build-ipa \
+            --workspace mobile/ios/App/App.xcworkspace \
+            --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
