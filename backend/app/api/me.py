@@ -17,8 +17,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -305,6 +306,69 @@ async def get_kinogram(
             detail="This report has not been unlocked.",
         )
     return {"kinogram": (row.result or {}).get("kinogram_base64")}
+
+
+@router.get("/analyses/{client_id}/export")
+async def export_analysis(
+    client_id: str,
+    format: str = "md",
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> Response:
+    """The AI export of a SAVED analysis, rather than of a live job.
+
+    ``/jobs/<id>/export`` answers off the job, which expires within hours, and
+    gates on the tier -- so it could not serve an unlocked report at all, and
+    it stopped serving a subscriber's own report the moment the clip was swept.
+    Yet ``export`` was on the list of things a $4 unlock buys. It was the same
+    mistake as the annotated video, one step further along: not "we never
+    rendered it" but "we render it from something we throw away".
+
+    Nothing new is generated here -- the stored result is the same input the
+    job route hands to the same builder.
+    """
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    if access_for_stored(user, row) != ACCESS_FULL:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="The AI export is available once this report is unlocked.",
+        )
+    if not row.result:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This analysis was run before full reports were stored.",
+        )
+    if format not in ("md", "json"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="format must be 'md' or 'json'",
+        )
+
+    from app.services.export import ai_export
+
+    ext = "json" if format == "json" else "md"
+    filename = ai_export.export_filename(row.result, job_id=client_id, ext=ext)
+    disposition = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    logger.info("EXPORT_STORED", analysis=client_id, fmt=format)
+    if format == "json":
+        return JSONResponse(
+            ai_export.build_json(row.result, job_id=client_id), headers=disposition,
+        )
+    return PlainTextResponse(
+        ai_export.build_markdown(row.result, job_id=client_id),
+        media_type="text/markdown; charset=utf-8",
+        headers=disposition,
+    )
 
 
 @router.get("/analyses/{client_id}/result")

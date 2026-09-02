@@ -252,6 +252,64 @@ def test_an_unpaid_entry_is_not_asked_for_one(spa):
     assert "e.access!=='full'" in spa
 
 
+# --------------------------------------------------------------------------
+# ...and so is the export, which was promised off an expiring job
+# --------------------------------------------------------------------------
+
+async def test_the_export_works_from_the_saved_report(db, make_user):
+    """`/jobs/<id>/export` answers off the job, which is swept within hours,
+    and gates on the tier -- so it could never serve an unlocked report, and it
+    stopped serving a subscriber's own report the moment the clip went."""
+    user = await make_user(tier=TIER_STARTER)
+    await store(db, user, unlocked=123)
+    r = await me.export_analysis("h1", "md", user, db)
+    assert r.status_code == 200
+    assert b"knee" in r.body.lower()
+    assert "attachment" in r.headers["content-disposition"]
+
+
+async def test_the_export_refuses_a_report_that_was_not_bought(db, make_user):
+    user = await make_user(tier=TIER_STARTER)
+    await store(db, user)
+    with pytest.raises(HTTPException) as exc:
+        await me.export_analysis("h1", "md", user, db)
+    assert exc.value.status_code == 402
+
+
+async def test_the_export_offers_json_too(db, make_user):
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await store(db, user)
+    assert (await me.export_analysis("h1", "json", user, db)).status_code == 200
+
+
+async def test_an_unknown_format_is_a_400_not_a_markdown_file(db, make_user):
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await store(db, user)
+    with pytest.raises(HTTPException) as exc:
+        await me.export_analysis("h1", "pdf", user, db)
+    assert exc.value.status_code == 400
+
+
+async def test_the_export_does_not_reach_another_account(db, make_user):
+    mine, theirs = await make_user(), await make_user()
+    await store(db, theirs, unlocked=123)
+    with pytest.raises(HTTPException) as exc:
+        await me.export_analysis("h1", "md", mine, db)
+    assert exc.value.status_code == 404
+
+
+def test_the_cabinet_asks_the_stored_route_not_the_job(spa, me_py):
+    assert "'/me/analyses/'+encodeURIComponent(e.id)+'/export?format='+fmt" in spa
+    assert '@router.get("/analyses/{client_id}/export")' in me_py
+    assert 'id="hdExportBlock"' in spa
+
+
+def test_the_export_offer_is_hidden_from_a_reader_who_would_get_a_402(spa):
+    fn = spa[spa.index("function renderHistoryExport("):]
+    fn = fn[:fn.index("\n}")]
+    assert "e.access==='full'" in fn
+
+
 def test_the_preview_scope_never_offers_what_the_preview_already_showed():
     """`coaching` and `issues` are absent from the preview's unlock list; the
     scope is a filter over that list, so it must not reintroduce them."""

@@ -1123,6 +1123,26 @@
         </div>
       </div>
     </div>
+
+    <div class="block hidden" id="hdExportBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Your data</div>
+        <h3>Take this to any AI</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hint" style="text-align:left;margin:0 0 18px">Every measurement from this report, its reference range, and the conventions a chatbot otherwise gets backwards — built from the saved analysis, so it still works long after the clip is gone.</p>
+      <div class="exportrow">
+        <button class="btn btn-primary btn-sm" id="hdExportCopy" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="hdExportCopyTxt">Copy for AI</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="hdExportMd" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .md
+        </button>
+        <button class="btn btn-ghost btn-sm" id="hdExportJson" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> .json
+        </button>
+      </div>
+    </div>
   </section>
 
   <!-- ============ PRICING ============ -->
@@ -1981,7 +2001,9 @@ $('#analyze').addEventListener('click',()=>{
   analyze();
 });
 $('#again').addEventListener('click',()=>reset());
-$('#exportCopy').addEventListener('click',exportCopy);
+// Wrapped, not passed by reference: exportCopy now takes an options object,
+// and a listener would hand it the click Event instead.
+$('#exportCopy').addEventListener('click',()=>exportCopy());
 $('#exportMd').addEventListener('click',()=>exportDownload('md'));
 $('#exportJson').addEventListener('click',()=>exportDownload('json'));
 $('#shareBtn').addEventListener('click',shareResult);
@@ -5546,8 +5568,11 @@ function filenameFromResponse(r, fmt){
   const m=cd.match(/filename="([^"]+)"/);
   return (m && m[1]) || ('flapp-analysis.'+fmt);
 }
-async function fetchExport(fmt){
-  const url=exportUrl(fmt);
+/* `url`: where to ask. Defaults to the live job, which is what the result
+   screen has. A saved report has no job to ask -- it expired hours after it
+   was analyzed -- so the cabinet passes the stored-analysis route instead. */
+async function fetchExport(fmt, url){
+  url=(typeof url==='function')?url(fmt):(url||exportUrl(fmt));
   if(!url){ toast('This analysis is no longer loaded — run it again to export.'); return null; }
   let r;
   try{ r=await fetch(url,{headers:authHeaders()}); }
@@ -5601,23 +5626,34 @@ async function withExportBusy(btn, txtEl, busyLabel, fn){
   try{ await fn(); }
   finally{ if(txtEl) txtEl.textContent=old; if(btn) btn.removeAttribute('aria-disabled'); }
 }
-function exportCopy(){
-  const btn=$('#exportCopy'), txt=$('#exportCopyTxt');
-  track('ai_export', {how:'copy', format:'md', tier:auth?auth.tier:'anonymous'});
+/* `o`: {url, ids, where} — the cabinet reuses these with its own buttons and
+   the stored-analysis route. Defaults are the result screen's. */
+function exportCopy(o){
+  o=o||{};
+  const btn=$((o.ids||'#export')+'Copy'), txt=$((o.ids||'#export')+'CopyTxt');
+  track('ai_export', {how:'copy', format:'md', tier:auth?auth.tier:'anonymous',
+    where:o.where||'result'});
   return withExportBusy(btn,txt,'Preparing…',async()=>{
-    const res=await fetchExport('md'); if(!res) return;
+    const res=await fetchExport('md', o.url); if(!res) return;
     if(await copyText(res.text)) toast('Copied — paste it into ChatGPT, Claude or Gemini.');
     else { downloadText(res.text,res.name,'text/markdown;charset=utf-8'); toast('Clipboard blocked — saved the file instead.'); }
   });
 }
-function exportDownload(fmt){
-  const btn=fmt==='json'?$('#exportJson'):$('#exportMd');
-  track('ai_export', {how:'download', format:fmt, tier:auth?auth.tier:'anonymous'});
+function exportDownload(fmt,o){
+  o=o||{};
+  const btn=$((o.ids||'#export')+(fmt==='json'?'Json':'Md'));
+  track('ai_export', {how:'download', format:fmt, tier:auth?auth.tier:'anonymous',
+    where:o.where||'result'});
   return withExportBusy(btn,null,'',async()=>{
-    const res=await fetchExport(fmt); if(!res) return;
+    const res=await fetchExport(fmt, o.url); if(!res) return;
     downloadText(res.text,res.name, fmt==='json'?'application/json;charset=utf-8':'text/markdown;charset=utf-8');
     toast('Saved '+res.name);
   });
+}
+/* The cabinet's copy of the export controls, pointed at the saved analysis. */
+function historyExportOpts(e){
+  return {url:fmt=>'/me/analyses/'+encodeURIComponent(e.id)+'/export?format='+fmt,
+          ids:'#hdExport', where:'history'};
 }
 
 async function doShare(card, btn, txtEl){
@@ -6455,6 +6491,22 @@ function renderHistoryDetail(e){
   renderHistoryPlan(e);
   renderHistoryAngles(e);
   renderHistoryKinogram(e);
+  renderHistoryExport(e);
+}
+/* The AI export of a saved report. Offered only to a reader entitled to it —
+   the endpoint answers 402 otherwise, and a button that always says "no" is
+   worse than no button. Handlers are rebound per entry because the URL is the
+   entry's own. */
+function renderHistoryExport(e){
+  const block=$('#hdExportBlock'); if(!block) return;
+  const ok = e && auth && e.access==='full' && e.sellable!==false;
+  block.classList.toggle('hidden', !ok);
+  if(!ok) return;
+  const o=historyExportOpts(e);
+  const bind=(sel,fn)=>{ const el=$(sel); if(el) el.onclick=fn; };
+  bind('#hdExportCopy', ()=>exportCopy(o));
+  bind('#hdExportMd',   ()=>exportDownload('md', o));
+  bind('#hdExportJson', ()=>exportDownload('json', o));
 }
 /* The kinogram of a saved report. It is a second full-size image and the
    cabinet holds dozens of entries, so the entry carries only a boolean and the
