@@ -1101,9 +1101,38 @@ async def _apply_unlock(
     logger.info("UNLOCKED", user_id=user.id, analysis=client_id)
 
 
+def _price_id_from_item(item: Any) -> str | None:
+    """Pull the price id out of an invoice line or a subscription item.
+
+    Stripe has moved this field. Newer API versions carry it as
+    ``pricing.price_details.price`` -- a bare id string -- and treat the
+    embedded ``price`` object as deprecated. The live webhook destination is
+    pinned to ``2026-06-24.dahlia``, newer than the version these handlers
+    were written against, so read whichever shape arrives instead of betting
+    on one and finding out a year from now.
+
+    Betting wrong is silent, which is why it is worth four lines: an unread
+    price yields ``tier_for_price(None) is None``, and a Full renewal then
+    returns early without granting the review that renewal just paid for.
+    """
+    if not isinstance(item, dict):
+        return None
+    pricing = item.get("pricing")
+    if isinstance(pricing, dict):
+        details = pricing.get("price_details")
+        if isinstance(details, dict) and details.get("price"):
+            return str(details["price"])
+    legacy = item.get("price")
+    if isinstance(legacy, dict) and legacy.get("id"):
+        return str(legacy["id"])
+    if isinstance(legacy, str) and legacy:
+        return legacy
+    return None
+
+
 def _price_from_invoice(obj: Any) -> str | None:
     try:
-        return obj["lines"]["data"][0]["price"]["id"]
+        return _price_id_from_item(obj["lines"]["data"][0])
     except (KeyError, IndexError, TypeError):
         return None
 
@@ -1150,7 +1179,7 @@ async def _on_invoice_paid(db: AsyncSession, obj: Any) -> None:
 
 def _price_from_subscription(obj: Any) -> str | None:
     try:
-        return obj["items"]["data"][0]["price"]["id"]
+        return _price_id_from_item(obj["items"]["data"][0])
     except (KeyError, IndexError, TypeError):
         return None
 
