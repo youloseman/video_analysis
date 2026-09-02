@@ -1240,7 +1240,8 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, histProfile:null, polling:null, xhr:null, pollStart:0, pollFirst:0, pollMisses:0, remaining:null,
-  kfCache:{}, kfPending:{} };   // cloud keyframes, fetched per entry (see fetchKeyframe)
+  kfCache:{}, kfPending:{},     // cloud keyframes, fetched per entry (see fetchKeyframe)
+  rehydrated:{} };              // entries already re-fetched after a purchase (see rehydrateEntry)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 /* Build id, stamped by the server from a digest of this document (see main.py
@@ -4360,7 +4361,16 @@ async function handleCheckoutReturn(){
     let id=null;
     try{ id=sessionStorage.getItem('flapp_unlocking'); sessionStorage.removeItem('flapp_unlocking'); }catch(e){}
     toast('Unlocked — opening your report.',{duration:5000});
-    await refreshCloud();
+    // The entitlement is written by the webhook, server-side, which can land a
+    // second or two after this redirect. Opening the report before it does
+    // shows the teaser they just paid to get rid of, so wait for the listing
+    // to admit the purchase.
+    for(let i=0;i<6;i++){
+      await refreshCloud();
+      const row=id?(state.cloudHist||[]).find(x=>x.id===id):null;
+      if(!id || (row && row.access==='full')) break;
+      await new Promise(r=>setTimeout(r,1500));
+    }
     if(id) openHistory(id); else openHistoryView();
     return;
   }
@@ -5770,6 +5780,7 @@ function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){}
   track('logged_out',{}); trackReset();
   auth=null; state.cloudHist=null;
   state.kfCache={}; state.kfPending={};        // never carry one account's frames into the next
+  state.rehydrated={};
   renderAuth();
   // Signed out lands on the marketing page — the mirror of the entry rule,
   // where a stored session on "/" sends you straight here.
@@ -6094,24 +6105,28 @@ function updateAngleMergeNote(paired, side){
 /* Returns the entry id it stored (``h<timestamp>``), or null when saving
    failed — the feedback widget uses it to tie a rating to this exact analysis
    (same id as Analysis.client_id server-side). */
-function saveToHistory(kind,res,reuseId){
-  try{
-    const isV=kind==='video', sc=res.score||{};
-    // The upload this came from. Without it the entry and its footage are two
-    // unrelated things — which is why an Expert Review bought a week later had
-    // only the annotated still to work from. Photos have no job: nothing was
-    // written to disk for them.
-    // `reuseId`: overwrite that entry instead of adding one -- a photo
-    // re-measured with the athlete's joint corrections is the same analysis,
-    // not a new one. The cloud upsert is keyed on the id already.
-    const e={ id:reuseId||('h'+Date.now()), at:Date.now(), kind, jobId:isV?(state.jobId||null):null,
-      profileId:state.profileId||null,
+/* Build the history-entry shape from an analyzer result.
+
+   `base` carries what IDENTIFIES the entry rather than what it measured: its
+   id, when it was run, the upload behind it, the profile it belongs to, and
+   which drills have been ticked off. Keeping that separate is what lets a
+   report be rebuilt in place once it is paid for — same entry, same date,
+   fuller contents — instead of arriving as a second copy dated today. */
+function entryFromResult(kind,res,base){
+    const b=base||{}, isV=kind==='video', sc=res.score||{};
+    const e={ id:b.id, at:b.at||Date.now(), kind, jobId:isV?(b.jobId||null):null,
+      profileId:b.profileId||null,
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
       bilateral:res.bilateral?{combined:!!res.bilateral.combined,knee_at_bdc:res.bilateral.knee_at_bdc,uncertainty_deg:res.bilateral.uncertainty_deg,scale_anchor:res.bilateral.scale_anchor}:null,
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
-      keyframe:res.keyframe_base64||res.thumbnail_base64||null, report:(res.ai_recommendations||{}).report||null,
+      keyframe:res.keyframe_base64||res.thumbnail_base64||b.keyframe||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
+    // Built from a gated payload: the measurements below are not missing, they
+    // were withheld. Recorded so that paying later can rebuild this entry from
+    // the stored analysis instead of leaving the athlete with the teaser they
+    // were shown before they paid.
+    if(res.locked) e.locked=true;
     // Full joint-angle stats (video only) so the exact table can be rebuilt
     // from history AND merged with the opposite side later. Compact numeric dict.
     if(isV) e.angleStats=compactAngleStats(res.angle_statistics);
@@ -6123,7 +6138,7 @@ function saveToHistory(kind,res,reuseId){
     const tp=((res.training_plan||{}).top_3_priorities||[]).filter(p=>p&&p.drill)
       .map(p=>({metric:p.metric,label:p.label,drill:p.drill,why:p.why,
         instruction:p.instruction,cue:p.cue,weeks:p.weeks,academy_slug:p.academy_slug}));
-    if(tp.length){ e.plan=tp; e.planDone={}; }
+    if(tp.length){ e.plan=tp; e.planDone=b.planDone||{}; }
     // Keep the caveat with the stored score. A history entry holding a number
     // and no quality flag is the same "confident-looking verdict" problem the
     // report screen solves, one layer down — and weeks later this entry is ALL
@@ -6137,6 +6152,19 @@ function saveToHistory(kind,res,reuseId){
     // Numbers read off points the athlete placed by hand are marked as such
     // in the cabinet too -- weeks later this entry is all anyone has.
     if(res.corrections&&res.corrections.length) e.corrected=res.corrections.length;
+    return e;
+}
+function saveToHistory(kind,res,reuseId){
+  try{
+    // The upload this came from. Without it the entry and its footage are two
+    // unrelated things — which is why an Expert Review bought a week later had
+    // only the annotated still to work from. Photos have no job: nothing was
+    // written to disk for them.
+    // `reuseId`: overwrite that entry instead of adding one -- a photo
+    // re-measured with the athlete's joint corrections is the same analysis,
+    // not a new one. The cloud upsert is keyed on the id already.
+    const e=entryFromResult(kind,res,{ id:reuseId||('h'+Date.now()), at:Date.now(),
+      jobId:state.jobId||null, profileId:state.profileId||null });
     if(auth){
       state.cloudHist=[e,...(state.cloudHist||[]).filter(x=>x.id!==e.id)];
       fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)}).catch(()=>{});
@@ -6145,6 +6173,57 @@ function saveToHistory(kind,res,reuseId){
     }
     return e.id;
   }catch(e){ return null; }
+}
+
+/* ---------- Paying changes what a saved report is allowed to show ----------
+
+   A history entry is the client's own rendering of a report, frozen at
+   whatever it was allowed to see the day it ran. A teaser keeps the score and
+   the keyframe and strips every measurement — so after buying the report, the
+   frozen copy is still the teaser, and the athlete has paid for a page that
+   did not change. Which is exactly what happened on the first live $4 unlock.
+
+   The server was always ready for this: `/me/analyses/<id>/result` serves the
+   STORED analysis gated at read time, and the list marks each entry with the
+   access the caller now has. Nothing called it. This is that caller.
+
+   It also covers the larger case: subscribing is supposed to open every report
+   the account ever ran, and until now it opened none of them retroactively. */
+function entryLooksGated(e){
+  if(!e) return false;
+  if(e.locked) return true;                    // saved from a gated payload
+  // Entries saved before that marker existed — including every report bought
+  // so far. A teaser has a score and no measurements, so that is the tell.
+  return e.kind==='video' ? !(e.angleStats && Object.keys(e.angleStats).length)
+                          : !(e.metrics && e.metrics.length);
+}
+/* Rebuild one entry from the stored analysis when the reader is now entitled
+   to more than the copy they hold. Resolves to the fresh entry, or null when
+   there was nothing to gain (or the fetch failed — in which case the athlete
+   keeps the stale entry rather than an error page). */
+async function rehydrateEntry(e){
+  if(!auth || !e || !e.id) return null;
+  if(e.access!=='full' || e.sellable===false) return null;
+  if(!entryLooksGated(e)) return null;
+  if(state.rehydrated[e.id]) return null;      // at most one attempt per session
+  state.rehydrated[e.id]=true;
+  try{
+    const r=await fetch('/me/analyses/'+encodeURIComponent(e.id)+'/result',{headers:authHeaders()});
+    if(!r.ok) return null;                     // 409: ran before results were stored
+    const j=await r.json();
+    if(!j || j.access!=='full' || !j.result) return null;
+    const fresh=entryFromResult(e.kind, j.result, e);
+    // Transport fields belong to the listing, not to the reading — carry them
+    // across so the rebuilt entry is not suddenly ungated-looking to the code
+    // that just decided it was gated.
+    fresh.access=e.access; fresh.sellable=e.sellable;
+    state.cloudHist=(state.cloudHist||[]).map(x=>x.id===fresh.id?fresh:x);
+    // Persist it, so the cards, the dashboard and the trend lines stop showing
+    // the teaser too. A re-save that omits the keyframe cannot wipe the stored
+    // one — the server keeps it (see _upsert).
+    fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(fresh)}).catch(()=>{});
+    return fresh;
+  }catch(err){ return null; }
 }
 function fmtWhen(ms){ try{ const d=new Date(ms);
   return d.toLocaleDateString([], {month:'short',day:'numeric'})+' · '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
@@ -6311,6 +6390,19 @@ function renderHistoryKeyframe(e){
 }
 function openHistory(id){
   const e=loadHist().find(x=>x.id===id); if(!e) return;
+  renderHistoryDetail(e);
+  setState('historydetail',{focus:'#hdTitle',route:{id:e.id}});
+  // A report bought after it was first rendered. Draw what we hold immediately
+  // and swap in the real thing when it arrives: the fetch usually has nothing
+  // to gain, and making every history open wait on it would be a tax paid by
+  // everyone to fix a page for one person.
+  rehydrateEntry(e).then(fresh=>{
+    if(!fresh || !state.histOpen || state.histOpen.id!==fresh.id) return;
+    renderHistoryDetail(fresh);
+    renderHistList();   // the card behind it was showing the teaser too
+  });
+}
+function renderHistoryDetail(e){
   state.histOpen=e;
   renderHistoryKeyframe(e);
   $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
@@ -6324,7 +6416,6 @@ function openHistory(id){
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderHistoryPlan(e);
   renderHistoryAngles(e);
-  setState('historydetail',{focus:'#hdTitle',route:{id:e.id}});
 }
 /* Render the Measurements block for a saved analysis. New video entries carry
    full angleStats -> show the 7-column table, merged with the opposite side if
