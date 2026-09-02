@@ -5,7 +5,7 @@
 //
 //   node scripts/sync-www.mjs                        -> apiBase https://getflapp.com
 //   node scripts/sync-www.mjs --api-base http://127.0.0.1:8099   (local testing)
-import { cpSync, mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,7 +17,18 @@ const wwwDir = join(mobileDir, 'www');
 const argIdx = process.argv.indexOf('--api-base');
 const apiBase = argIdx > -1 ? process.argv[argIdx + 1] : 'https://getflapp.com';
 
-rmSync(wwwDir, { recursive: true, force: true });
+// On Windows a local preview server (or an editor) can hold a handle on www/,
+// and a plain rm then dies with EPERM mid-build. Retry, then fall back to
+// emptying the directory in place -- the rebuild overwrites everything anyway.
+try {
+  rmSync(wwwDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 });
+} catch (err) {
+  if (err.code !== 'EPERM' && err.code !== 'EBUSY') throw err;
+  for (const entry of readdirSync(wwwDir)) {
+    try { rmSync(join(wwwDir, entry), { recursive: true, force: true, maxRetries: 3, retryDelay: 120 }); }
+    catch { /* a locked leftover is fine: it is about to be overwritten */ }
+  }
+}
 mkdirSync(wwwDir, { recursive: true });
 
 // 1. index.html with the injected config + bridge (before </head>).
