@@ -353,7 +353,9 @@ _CSS = """
   box-shadow:var(--shadow);transition:box-shadow .15s,transform .15s}
 .ex-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
 .ex-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--c-media-bg)}
-.ex-card .body{padding:16px 18px 18px}
+/* Block, not inline: this was a <span>, and padding on an inline box does not
+   indent the lines that wrap -- the blurb ran into the card edge. */
+.ex-card .body{display:block;padding:16px 18px 18px}
 .ex-card .tag{font-family:var(--f-mono);font-size:10.5px;font-weight:600;
   letter-spacing:.1em;text-transform:uppercase;color:var(--c-blue)}
 .ex-card h2{font-size:17px;color:var(--c-navy);margin:6px 0 6px;line-height:1.25}
@@ -365,16 +367,23 @@ _CSS = """
 .ex-shot{flex:1 1 300px;min-width:260px}
 .ex-shot img{width:100%;border-radius:var(--radius);background:var(--c-media-bg)}
 .ex-side{flex:1 1 260px}
-.ex-score{display:flex;align-items:baseline;gap:14px}
+/* The grade is a letter on a video result ("B") and a word on a photo one
+   ("Excellent"), so the badge cannot be a fixed-width circle beside the
+   number: the word overflowed it and sat on top of "93/100". Stacked, and
+   sized by its content -- min-width equal to the height keeps a single
+   letter round, a word stretches the pill. */
+.ex-score{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
 .ex-score .n{font-family:var(--f-mono);font-size:46px;font-weight:600;color:var(--c-navy);
   line-height:1;font-variant-numeric:tabular-nums}
 .ex-score .n small{font-size:18px;color:var(--c-ink-soft)}
 .ex-score .g{font-family:var(--f-display);font-style:italic;font-weight:900;
   font-size:26px;color:var(--c-blue);border:2.5px solid var(--c-blue);
-  border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center}
+  border-radius:999px;box-sizing:border-box;min-width:52px;height:52px;padding:0 18px;
+  white-space:nowrap;display:inline-flex;align-items:center;justify-content:center}
 .ex-score-none .n{font-family:var(--f-display);font-style:italic;font-size:30px;
   color:var(--c-warn);text-transform:uppercase}
-.ex-score-none .why{font-size:13px;color:var(--c-ink-soft);margin:8px 0 0;line-height:1.5}
+.ex-score-none .why{font-size:13px;color:var(--c-ink-soft);margin:0;line-height:1.5;
+  align-self:stretch}
 .ex-cov{font-size:13.5px;color:var(--c-ink-soft);margin:14px 0 0;line-height:1.6;
   border-top:1px solid var(--c-line);padding-top:12px}
 .ex-cov b{color:var(--c-navy);font-family:var(--f-mono)}
@@ -410,8 +419,10 @@ _CSS = """
   padding:13px 26px;border-radius:var(--radius-btn);text-decoration:none;min-height:44px}
 .ex-btn:hover{background:var(--c-coral-dk)}
 .ex-back{display:inline-block;font-size:13.5px;color:var(--c-blue);margin-bottom:16px;text-decoration:none}
+/* Full column width: the rule above it spans the page, and a 76ch measure
+   under a full-width rule read as a broken paragraph rather than a note. */
 .ex-note{font-size:12.5px;color:var(--c-ink-faint);line-height:1.6;margin-top:30px;
-  border-top:1px solid var(--c-line);padding-top:14px;max-width:76ch}
+  border-top:1px solid var(--c-line);padding-top:14px}
 @media(max-width:640px){.ex-wrap{padding:26px 18px 56px}.ex-score .n{font-size:38px}}
 """
 
@@ -422,10 +433,10 @@ def render_hub(base_url: str) -> str:
         f'<a class="ex-card" href="/examples/{_esc(s.slug)}">'
         + (f'<img src="{_esc(s.keyframe)}" alt="{_esc(s.title)}" loading="lazy">'
            if s.keyframe else "")
-        + '<span class="body">'
+        + '<div class="body">'
         f'<span class="tag">{_esc(s.sport)} · {_esc(s.mode)}</span>'
         f"<h2>{_esc(s.title)}</h2><p>{_esc(s.blurb)}</p>"
-        "</span></a>"
+        "</div></a>"
         for s in samples
     )
     grid = (
