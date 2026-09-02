@@ -2180,8 +2180,12 @@ function jobTokenClear(id){ try{ sessionStorage.removeItem(jobTokenKey(id)); }ca
 // Append ?t=… to a job URL when we hold a token for it.
 function withJobToken(url,id){
   const t=jobToken(id);
-  if(!t) return url;
-  return url+(url.includes('?')?'&':'?')+'t='+encodeURIComponent(t);
+  // In the mobile bundle the SPA runs on a capacitor:// origin, so server-relative
+  // /jobs/... URLs (fetches AND <video>/<a> media) need the API origin prefixed.
+  // On the web FLAPP_API_BASE is unset -> '' -> this is a no-op.
+  const u=(window.FLAPP_API_BASE||'')+url;
+  if(!t) return u;
+  return u+(u.includes('?')?'&':'?')+'t='+encodeURIComponent(t);
 }
 
 const ANALYZE_STAGE='Detecting pose &amp; computing biomechanics… usually takes <b>30–60 s</b>';
@@ -5884,7 +5888,11 @@ function init(){
   track('view_opened', {view: document.body.dataset.state || 'upload', initial:true});
   renderQuota();
   syncCaptureGuide();          // figure matches the sport the uploader starts on
-  checkAuth().then(handleCheckoutReturn);   // after auth loads, resolve any Stripe return
+  // In the mobile app the platform bridge restores the auth token from native
+  // storage asynchronously; wait for it so checkAuth sees the token. On the web
+  // FLAPP_BRIDGE is undefined and this resolves immediately.
+  const bridgeReady=(window.FLAPP_BRIDGE&&window.FLAPP_BRIDGE.ready)||Promise.resolve();
+  bridgeReady.then(()=>checkAuth()).then(handleCheckoutReturn);   // then resolve any Stripe return
   const clReady=initChangelog();            // release notes + unread dot on the nav
   syncActiveNav(document.body.dataset.state || 'upload');   // highlight the current section
   const m=location.hash.match(/^#job=([a-z0-9]+)$/i);

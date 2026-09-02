@@ -1,0 +1,11 @@
+node_modules/
+www/
+# Native projects ARE committed (Capacitor convention) — build outputs are not:
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+ios/App/Pods/
+ios/App/build/
+ios/App/output/
+ios/DerivedData/
