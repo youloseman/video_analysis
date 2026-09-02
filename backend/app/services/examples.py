@@ -137,6 +137,20 @@ def _label_unit(field: str, band: dict[str, Any]) -> tuple[str, str]:
     )
 
 
+# The analyzer writes its user-facing prose with an ASCII "--" for a dash,
+# which is right in a terminal and a log line and wrong on a public page. Only
+# the dash is translated; nothing else about the sentence is touched.
+def _prose(text: str) -> str:
+    return _esc(text).replace(" -- ", " &mdash; ")
+
+
+# The capture table shows status as a coloured dot. Colour alone is not a
+# label, so the word rides along for screen readers.
+_STATUS_WORD = {
+    "good": "Good: ", "warn": "Needs attention: ", "bad": "Problem: ",
+}
+
+
 def _num(v: Any, digits: int = 1) -> str:
     try:
         f = float(v)
@@ -308,9 +322,11 @@ def _capture(s: Sample) -> str:
         return ""
     rows = "".join(
         f'<tr class="c-{_esc(str(c.get("status")))}">'
-        f'<td class="m">{_esc(str(c.get("label") or ""))}</td>'
-        f'<td class="v">{_esc(str(c.get("measured") or ""))}</td>'
-        f'<td class="b">{_esc(str(c.get("target") or ""))}</td></tr>'
+        f'<td class="m"><span class="st" aria-hidden="true"></span>'
+        f'<span class="sr">{_STATUS_WORD.get(str(c.get("status")), "")}</span>'
+        f'{_prose(str(c.get("label") or ""))}</td>'
+        f'<td class="v">{_prose(str(c.get("measured") or ""))}</td>'
+        f'<td class="b">{_prose(str(c.get("target") or ""))}</td></tr>'
         for c in checks
     )
     return (
@@ -318,7 +334,7 @@ def _capture(s: Sample) -> str:
         '<p class="ex-lede">Verdict: <b>'
         f'{_esc(str(report.get("verdict") or "—"))}</b>. Every analysis says how '
         "the clip limited it, and what to change next time.</p>"
-        '<div class="ex-tw"><table class="ex-bands">'
+        '<div class="ex-tw"><table class="ex-bands ex-cap">'
         "<thead><tr><th>Check</th><th>Measured</th><th>Target</th></tr></thead>"
         f"<tbody>{rows}</tbody></table></div></section>"
     )
@@ -346,7 +362,13 @@ _CSS = """
 .ex-hero h1{font-family:var(--f-display);font-weight:900;font-style:italic;
   text-transform:uppercase;font-size:clamp(30px,5vw,50px);line-height:1;margin:0 0 14px}
 .ex-hero p{color:rgba(255,255,255,.88);max-width:62ch;font-size:17px;line-height:1.55;margin:0}
-.ex-wrap{max-width:1000px;margin:0 auto;padding:36px 24px 72px}
+/* width:100% is load-bearing. `.appshell` is a column flex container, and a
+   flex item with auto cross-axis margins does not stretch -- it is sized to
+   fit its content. So the widest thing on the page (the reference table, which
+   is deliberately nowrap) was setting the width of the PAGE, and a phone
+   scrolled the whole document sideways instead of scrolling the table inside
+   its own box. */
+.ex-wrap{width:100%;max-width:1000px;margin:0 auto;padding:36px 24px 72px}
 .ex-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .ex-card{display:block;background:#fff;border:1px solid var(--c-line);
   border-radius:var(--radius-lg);overflow:hidden;text-decoration:none;color:inherit;
@@ -406,6 +428,28 @@ _CSS = """
 .ex-bands tr.c-good td.m{color:var(--st-good)}
 .ex-bands tr.c-warn td.m{color:var(--c-warn-text)}
 .ex-bands tr.c-bad td.m{color:var(--st-bad)}
+
+/* The capture table borrows the band table's chrome but not its shape. Its
+   cells are sentences, not numbers, so the band rules that suit "164.6 spm"
+   -- monospace, nowrap, a 520px floor -- pushed it off the right edge and
+   starved the first column down to one word per line. Fixed columns that
+   wrap, the body face for prose, and status as a dot rather than as coloured
+   label text, which read as a link. */
+.ex-cap{table-layout:fixed;min-width:0}
+.ex-cap th:first-child,.ex-cap td.m{width:27%}
+.ex-cap th:nth-child(2),.ex-cap td.v{width:33%}
+.ex-cap td.v,.ex-cap td.b{font-family:inherit;white-space:normal;
+  font-variant-numeric:tabular-nums}
+.ex-cap td.b{font-size:13px;color:var(--c-ink-faint)}
+.ex-cap tr.c-good td.m,.ex-cap tr.c-warn td.m,.ex-cap tr.c-bad td.m{
+  color:var(--c-navy);font-weight:600;position:relative;padding-left:32px}
+.ex-cap td.m .st{position:absolute;left:14px;top:16px;width:9px;height:9px;
+  border-radius:50%;background:var(--c-ink-faint)}
+.ex-cap tr.c-good td.m .st{background:var(--st-good)}
+.ex-cap tr.c-warn td.m .st{background:var(--c-warn-text)}
+.ex-cap tr.c-bad td.m .st{background:var(--st-bad)}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .ex-list{margin:0;padding-left:20px;font-size:14.5px;color:var(--c-ink-soft);line-height:1.65}
 .ex-list li{margin:0 0 8px}
 .ex-list b{color:var(--c-navy)}
@@ -423,7 +467,26 @@ _CSS = """
    under a full-width rule read as a broken paragraph rather than a note. */
 .ex-note{font-size:12.5px;color:var(--c-ink-faint);line-height:1.6;margin-top:30px;
   border-top:1px solid var(--c-line);padding-top:14px}
-@media(max-width:640px){.ex-wrap{padding:26px 18px 56px}.ex-score .n{font-size:38px}}
+@media(max-width:640px){.ex-wrap{padding:26px 18px 56px}.ex-score .n{font-size:38px}
+  /* Three prose columns do not fit a phone at any column width, so the
+     capture table stops being a table and becomes one card per check. */
+  .ex-cap thead{position:absolute;width:1px;height:1px;overflow:hidden;
+    clip:rect(0 0 0 0)}
+  /* td.m/td.v carry the desktop column widths and out-specify a bare
+     `.ex-cap td`, so they have to be named again here or the cards wrap
+     inside a 27% strip. */
+  .ex-cap,.ex-cap tbody,.ex-cap tr,.ex-cap td,
+  .ex-cap td.m,.ex-cap td.v{display:block;width:auto}
+  .ex-cap tr{padding:14px;border-bottom:1px solid var(--c-line)}
+  .ex-cap tr:last-child{border-bottom:0}
+  .ex-cap td{padding:0;border-bottom:0}
+  .ex-cap tr.c-good td.m,.ex-cap tr.c-warn td.m,.ex-cap tr.c-bad td.m{
+    padding-left:18px;margin-bottom:5px}
+  .ex-cap td.m .st{left:0;top:7px}
+  .ex-cap td.b{margin-top:4px}
+  .ex-cap td.b::before{content:"Target ";font-family:var(--f-mono);
+    font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+}
 """
 
 
