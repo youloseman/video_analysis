@@ -20,6 +20,11 @@ if (existsSync(gradle)) {
   if (!existsSync(pkgDir)) fails.push(`android MainActivity missing at ${appId.replace(/\./g, '/')}/`);
 }
 
+const manifest = join(mobileDir, 'android/app/src/main/AndroidManifest.xml');
+if (existsSync(manifest) && !readFileSync(manifest, 'utf8').includes('android.permission.CAMERA')) {
+  fails.push('AndroidManifest missing CAMERA permission (guided camera cannot start)');
+}
+
 const pbx = join(mobileDir, 'ios/App/App.xcodeproj/project.pbxproj');
 if (existsSync(pbx) && !readFileSync(pbx, 'utf8').includes(`PRODUCT_BUNDLE_IDENTIFIER = ${appId}`)) {
   fails.push(`ios PRODUCT_BUNDLE_IDENTIFIER != ${appId}`);

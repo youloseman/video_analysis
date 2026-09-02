@@ -38,4 +38,13 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- The in-app guided camera records through getUserMedia in the WebView;
+         without CAMERA the request is refused and the recorder never starts.
+         Audio is deliberately not requested (the analysis ignores sound), so
+         RECORD_AUDIO stays off and the athlete sees one prompt fewer.
+         The camera is not required to install: uploading an existing clip is
+         a complete path, so devices without one still get the full app. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>
