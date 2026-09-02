@@ -38,10 +38,18 @@ MEDIA = BACKEND / "app" / "static" / "media" / "examples"
 # needs work sells the fit report better than a perfect one does.
 SAMPLES: dict[str, dict] = {
     "run-treadmill": {
-        "clip": "upload/IMG_4004.MOV",
+        # Was IMG_4004. Its keyframe put the near leg on the treadmill deck --
+        # correct leg IDENTITY (the stride check reads 0.000 there) but the
+        # landmarks themselves sitting beside the athlete, next to people
+        # walking behind him. Nothing in the pipeline catches that: the bone
+        # lengths are normal, the point sits on its own trajectory, and the
+        # identity metric only asks WHICH leg a label is on, never whether the
+        # leg is on the runner. So the sample moved to a clip whose overlay is
+        # actually on the athlete, which is the one thing this page is for.
+        "clip": "upload/IMG_3979.MOV",
         "sport": "run", "position": None, "mode": "video",
         "title": "Running, treadmill, side view",
-        "blurb": "A 12-second treadmill clip. Every stride metric measured: "
+        "blurb": "A 10-second treadmill clip. Every stride metric measured: "
                  "cadence, ground contact, flight time, vertical oscillation "
                  "and overstride, plus the five kinogram positions.",
     },

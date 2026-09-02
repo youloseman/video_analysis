@@ -1,21 +1,21 @@
 {
  "sport_type": "run",
  "cycling_position": null,
- "camera_side": "left",
- "frames_analyzed": 348,
- "technique_score": 91,
- "letter_grade": "A",
+ "camera_side": "right",
+ "frames_analyzed": 590,
+ "technique_score": 88,
+ "letter_grade": "B",
  "score_withheld": null,
  "score_breakdown": {
   "trunk_lean": 100.0,
-  "cadence": 100.0,
+  "cadence": 91.49999999999999,
   "knee_contact": 100.0,
-  "knee_swing": 86.49999999999999,
-  "elbow_swing": 100.0,
+  "knee_swing": 71.75,
+  "elbow_swing": 60.0,
   "vertical_osc": 100.0,
   "overstride": 100.0,
-  "phase_stability": 83.0,
-  "waveform_similarity": 35.8
+  "phase_stability": 91.3,
+  "waveform_similarity": 60.8
  },
  "score_coverage": {
   "scored": [
@@ -40,117 +40,123 @@
   {
    "type": "overstriding",
    "severity": "warning",
-   "value": "0.36 x leg length ahead of hip",
-   "recommendation": "The foot is landing ~36% of a leg length ahead of the hip at contact with a heel strike. This brakes each step and raises impact load. Increasing cadence toward 170-190 spm and landing with the foot closer under the hip reduces overstride."
+   "value": "0.39 x leg length ahead of hip",
+   "recommendation": "The foot is landing ~39% of a leg length ahead of the hip at contact with a heel strike. This brakes each step and raises impact load. Increasing cadence toward 170-190 spm and landing with the foot closer under the hip reduces overstride."
+  },
+  {
+   "type": "low_cadence",
+   "severity": "warning",
+   "value": "165 spm",
+   "recommendation": "Cadence is 165 spm. Target: 170-190 spm."
   }
  ],
  "angle_statistics": {
   "knee": {
-   "min": 62.3,
-   "max": 167.3,
-   "p05": 72.6,
-   "p95": 163.1,
-   "mean": 132.4,
-   "std": 32.5,
-   "range": 105.0,
-   "valid_frames": 345,
-   "nan_frames": 3,
-   "nan_pct": 0.9
+   "min": 61.9,
+   "max": 172.6,
+   "p05": 66.7,
+   "p95": 160.5,
+   "mean": 125.3,
+   "std": 32.6,
+   "range": 110.7,
+   "valid_frames": 438,
+   "nan_frames": 152,
+   "nan_pct": 25.8
   },
   "hip": {
-   "min": 141.9,
-   "max": 175.5,
-   "p05": 147.2,
-   "p95": 171.8,
-   "mean": 160.1,
-   "std": 7.8,
-   "range": 33.6,
-   "valid_frames": 345,
-   "nan_frames": 3,
-   "nan_pct": 0.9
+   "min": 133.6,
+   "max": 174.6,
+   "p05": 138.6,
+   "p95": 170.0,
+   "mean": 159.1,
+   "std": 9.4,
+   "range": 41.1,
+   "valid_frames": 438,
+   "nan_frames": 152,
+   "nan_pct": 25.8
   },
   "elbow": {
-   "min": 62.9,
-   "max": 126.0,
-   "p05": 67.2,
-   "p95": 118.3,
-   "mean": 91.3,
-   "std": 15.4,
-   "range": 63.1,
-   "valid_frames": 348,
-   "nan_frames": 0,
-   "nan_pct": 0.0
+   "min": 101.9,
+   "max": 125.5,
+   "p05": 105.2,
+   "p95": 122.5,
+   "mean": 114.0,
+   "std": 5.0,
+   "range": 23.5,
+   "valid_frames": 485,
+   "nan_frames": 105,
+   "nan_pct": 17.8
   },
   "ankle": {
-   "min": 49.3,
-   "max": 145.4,
-   "p05": 77.7,
-   "p95": 126.6,
-   "mean": 92.7,
-   "std": 14.6,
-   "range": 96.1,
-   "valid_frames": 345,
-   "nan_frames": 3,
-   "nan_pct": 0.9
+   "min": 69.8,
+   "max": 167.4,
+   "p05": 76.4,
+   "p95": 148.3,
+   "mean": 105.5,
+   "std": 23.4,
+   "range": 97.6,
+   "valid_frames": 438,
+   "nan_frames": 152,
+   "nan_pct": 25.8
   },
   "trunk": {
-   "min": -6.3,
-   "max": 10.6,
-   "p05": -4.1,
-   "p95": 8.3,
-   "mean": 1.9,
-   "std": 4.2,
-   "range": 16.9,
-   "valid_frames": 348,
+   "min": -8.6,
+   "max": 9.1,
+   "p05": -6.5,
+   "p95": 7.3,
+   "mean": 0.6,
+   "std": 4.1,
+   "range": 17.7,
+   "valid_frames": 590,
    "nan_frames": 0,
    "nan_pct": 0.0
   }
  },
  "sport_specific_metrics": {
-  "cadence_spm": 169.0,
-  "ground_contact_ms": 206.2,
-  "flight_time_ms": 137.4,
-  "overstride_ratio": 0.356,
-  "vertical_oscillation_m": 0.0698,
-  "trunk_lean_avg": 1.9,
+  "cadence_spm": 164.6,
+  "ground_contact_ms": 207.0,
+  "flight_time_ms": 146.6,
+  "overstride_ratio": 0.394,
+  "vertical_oscillation_m": 0.1093,
+  "trunk_lean_avg": 0.6,
   "foot_strike": "heel",
-  "stance_fraction": 0.583,
+  "stance_fraction": 0.547,
   "analysis_confidence": {
-   "level": "high",
+   "level": "medium",
    "factors": {
-    "landmark_quality_pct": 75.5,
+    "landmark_quality_pct": 75.0,
     "angles_with_high_nan": [],
     "majority_angles_gated": false,
     "fallback_triggered": false,
     "cutoff_reduced": false,
     "warning_count": 0,
-    "tracking_severity": "ok",
-    "leg_swap_pct": 2.3,
-    "leg_collapse_pct": 0.6,
+    "tracking_severity": "mild",
+    "leg_swap_pct": 32.4,
+    "leg_collapse_pct": 0.0,
     "side_vote_disagreement_pct": 0.0,
     "flip_pct": 0.0
    },
-   "explanation": "Analysis ran on clean data with good landmark detection."
+   "explanation": "Pose tracking occasionally confused the left and right legs; leg-based metrics may be less precise. Try a clearer video with the whole body in frame, or film from a different angle."
   },
   "capture_report": {
-   "verdict": "fair",
-   "headline": "Long clips are decimated to stay inside the frame budget, which costs the time-based metrics their resolution. Trim to the best 5-10 s.",
+   "verdict": "poor",
+   "headline": "This is almost always a symptom of how few pixels of you there were (the row above) rather than a fault of its own. If that was fine, the other two causes are a body reading as a dark silhouette -- keep the light behind the camera, not behind the athlete -- and a view almost exactly side-on, where a few degrees of angle helps separate the legs.",
    "checks": [
     {
-     "id": "duration",
-     "label": "How long the clip runs",
-     "status": "warn",
-     "impact": "medium",
-     "measured": "12.3 s",
-     "target": "5-10 s of steady movement",
-     "action": "Long clips are decimated to stay inside the frame budget, which costs the time-based metrics their resolution. Trim to the best 5-10 s."
+     "id": "leg_identity",
+     "label": "Telling your left leg from your right",
+     "status": "bad",
+     "impact": "high",
+     "measured": "legs confused on 32.4% of frames",
+     "target": "under 5% -- on a well-framed clip this sits near zero",
+     "action": "This is almost always a symptom of how few pixels of you there were (the row above) rather than a fault of its own. If that was fine, the other two causes are a body reading as a dark silhouette -- keep the light behind the camera, not behind the athlete -- and a view almost exactly side-on, where a few degrees of angle helps separate the legs."
     },
     {
      "id": "framing",
      "label": "How much of the frame you fill",
      "status": "good",
      "impact": "high",
-     "measured": "688 px tall (54% of the frame height)",
+     "measured": "565 px tall (44% of the frame height)",
      "target": "550 px or more -- roughly two thirds of the frame height",
      "action": ""
     },
@@ -159,17 +165,8 @@
      "label": "The angle you filmed from",
      "status": "good",
      "impact": "high",
-     "measured": "side on (depth ratio 0.7)",
+     "measured": "side on (depth ratio 0.813)",
      "target": "filmed square-on to your side, so the joints move across the lens",
-     "action": ""
-    },
-    {
-     "id": "leg_identity",
-     "label": "Telling your left leg from your right",
-     "status": "good",
-     "impact": "high",
-     "measured": "legs confused on 2.3% of frames",
-     "target": "under 5% -- on a well-framed clip this sits near zero",
      "action": ""
     },
     {
@@ -180,6 +177,15 @@
      "measured": "portrait (1584x2816)",
      "target": "portrait -- a tall frame puts nearly twice the pixels on your legs",
      "action": ""
+    },
+    {
+     "id": "duration",
+     "label": "How long the clip runs",
+     "status": "good",
+     "impact": "medium",
+     "measured": "10.6 s",
+     "target": "5-10 s of steady movement",
+     "action": ""
     }
    ],
    "problem_count": 1
@@ -187,72 +193,68 @@
   "quality_warnings": [],
   "camera_view": {
    "view": "side",
-   "ratio": 0.7,
-   "frames": 348,
+   "ratio": 0.813,
+   "frames": 590,
    "reason": null
   }
  },
  "training_plan": {
   "sport": "running",
   "athlete_level": "elite",
-  "overall_score": 91,
+  "overall_score": 88,
   "strong_points": [
    {
-    "metric": "cadence",
-    "value": 169.0,
-    "range": [
-     170,
-     190
-    ],
-    "description": "Cadence: 169.0 -- in optimal range"
-   },
-   {
     "metric": "vertical_osc",
-    "value": 7.0,
+    "value": 10.9,
     "range": [
      6,
      10
     ],
-    "description": "Vertical Oscillation: 7.0 -- in optimal range"
+    "description": "Vertical Oscillation: 10.9 -- in optimal range"
    },
    {
     "metric": "trunk_lean",
-    "value": 1.9,
+    "value": 0.6,
     "range": [
      -2,
      10
     ],
-    "description": "Trunk Lean: 1.9 -- in optimal range"
+    "description": "Trunk Lean: 0.6 -- in optimal range"
    },
    {
     "metric": "knee_contact",
-    "value": 163.1,
+    "value": 160.5,
     "range": [
      160,
      175
     ],
-    "description": "Knee Angle at Contact: 163.1 -- in optimal range"
-   },
-   {
-    "metric": "elbow_angle",
-    "value": 91.3,
-    "range": [
-     85,
-     100
-    ],
-    "description": "Elbow Angle: 91.3 -- in optimal range"
+    "description": "Knee Angle at Contact: 160.5 -- in optimal range"
    },
    {
     "metric": "knee_swing",
-    "value": 72.6,
+    "value": 66.7,
     "range": [
      80,
      100
     ],
-    "description": "Knee Flexion in Swing: 72.6 -- better than the target range"
+    "description": "Knee Flexion in Swing: 66.7 -- better than the target range"
    }
   ],
   "issues": [
+   {
+    "metric": "cadence",
+    "label": "Cadence",
+    "value": 164.6,
+    "optimal_range": "170-190",
+    "severity": "minor",
+    "problem": "Low cadence (164.6 spm, optimal 170-190)",
+    "drill": "High Knees Drill",
+    "instruction": "Run in place with high knee lift 3x30 seconds. Use a metronome app set to 180 bpm.",
+    "cue": "Imagine running on hot coals -- quick, light steps",
+    "weeks": 3,
+    "linked_to": null,
+    "academy_slug": "running-cadence"
+   },
    {
     "metric": "overstride",
     "label": "Overstride",
@@ -266,6 +268,20 @@
     "weeks": 4,
     "linked_to": null,
     "academy_slug": "overstriding"
+   },
+   {
+    "metric": "elbow_angle",
+    "label": "Elbow Angle",
+    "value": 114.0,
+    "optimal_range": "85-100",
+    "severity": "significant",
+    "problem": "Elbow angle too wide (114.0 deg, optimal 85-100 deg)",
+    "drill": "Arm Swing Drill",
+    "instruction": "Standing, practice pendulum arm swing with elbows at 90 deg. 3x30 seconds, then transfer to running.",
+    "cue": "Hold a crisp in your fist without breaking it -- soft hands, sharp angle",
+    "weeks": 2,
+    "linked_to": null,
+    "academy_slug": null
    },
    {
     "metric": "foot_strike",
@@ -296,14 +312,25 @@
    },
    {
     "priority": 2,
-    "metric": "foot_strike",
-    "label": "Foot Strike",
-    "drill": "Midfoot Landing Drill",
-    "why": "Heel-first foot-strike, which usually pairs with overstriding and a braking force at contact",
-    "instruction": "Run 4x20 seconds barefoot on grass or in minimal shoes, letting the midfoot/forefoot make first contact. Keep steps short and quick; do not force a hard toe-strike.",
-    "cue": "Land softly on the middle of your foot, under your hips",
-    "weeks": 6,
-    "academy_slug": "foot-strike"
+    "metric": "elbow_angle",
+    "label": "Elbow Angle",
+    "drill": "Arm Swing Drill",
+    "why": "Elbow angle too wide (114.0 deg, optimal 85-100 deg)",
+    "instruction": "Standing, practice pendulum arm swing with elbows at 90 deg. 3x30 seconds, then transfer to running.",
+    "cue": "Hold a crisp in your fist without breaking it -- soft hands, sharp angle",
+    "weeks": 2,
+    "academy_slug": null
+   },
+   {
+    "priority": 3,
+    "metric": "cadence",
+    "label": "Cadence",
+    "drill": "High Knees Drill",
+    "why": "Low cadence (164.6 spm, optimal 170-190)",
+    "instruction": "Run in place with high knee lift 3x30 seconds. Use a metronome app set to 180 bpm.",
+    "cue": "Imagine running on hot coals -- quick, light steps",
+    "weeks": 3,
+    "academy_slug": "running-cadence"
    }
   ],
   "warnings": []
@@ -353,9 +380,9 @@
  },
  "slug": "run-treadmill",
  "title": "Running, treadmill, side view",
- "blurb": "A 12-second treadmill clip. Every stride metric measured: cadence, ground contact, flight time, vertical oscillation and overstride, plus the five kinogram positions.",
+ "blurb": "A 10-second treadmill clip. Every stride metric measured: cadence, ground contact, flight time, vertical oscillation and overstride, plus the five kinogram positions.",
  "mode": "video",
- "source_clip": "IMG_4004.MOV",
+ "source_clip": "IMG_3979.MOV",
  "keyframe_url": "/media/examples/run-treadmill.webp",
  "kinogram_url": "/media/examples/run-treadmill-kinogram.webp"
 }
