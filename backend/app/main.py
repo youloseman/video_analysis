@@ -503,10 +503,15 @@ def _process_job(
             # billed Gemini call on output nobody ever sees. The preview is the
             # one free result where it IS shown, so there it runs.
             recommendations=(not free) or preview,
-            # Same reasoning for the kinogram, which the gate withholds from
-            # every free response INCLUDING the preview: rendering it would buy
-            # a second video decode and nothing else.
-            kinogram=not free,
+            # The kinogram IS rendered for free runs, unlike the coaching above
+            # -- and the difference is that it cannot be made later. Coaching is
+            # a Gemini call that works just as well on the day somebody pays
+            # (see me._ensure_coaching); the kinogram needs the clip, and the
+            # clip is gone in `job_ttl_hours`. Skipping it here used to mean a
+            # $4 unlock handed back a report with a hole in it and no way to
+            # fill it. The gate still withholds it from every free response,
+            # including the preview -- it is rendered to be sold, not shown.
+            kinogram=True,
             # The one real-world length a side view gets. Every tier, free
             # included -- it makes their centimetres correct rather than
             # unlocking anything, and a paywall in front of accuracy is a

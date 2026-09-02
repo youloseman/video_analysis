@@ -1277,6 +1277,7 @@ def analyze_from_frames(
     # only when requested. Wrapped so a rendering failure never kills the result.
     overlay_video_path = None
     keyframe_base64 = None
+    keyframe_free_base64 = None
     try:
         from app.services.video_analysis.video_visualizer import VideoVisualizer
         _base = Path(overlay_path) if overlay_path else Path(video_path)
@@ -1295,13 +1296,27 @@ def analyze_from_frames(
             letter_grade=scoring.get("letter_grade") or "--",
             angle_stats=angle_stats,
             summary=summary,
-            hide_angle_values=hide_angle_values,
+            # Always drawn WITH its numbers. Rendering the teaser's copy as the
+            # only copy is what made a paid unlock hand back the same picture:
+            # the angles had been burned out of the one frame we stored, and
+            # the clip they could have been redrawn from is gone in 6 hours.
+            hide_angle_values=False,
         )
         keyframe_base64 = visualizer.render_keyframe()
         if keyframe_base64 is None:
             # Loud like overlay_failed: a null image with no flag reads as
             # "there was never supposed to be one".
             summary["keyframe_failed"] = True
+        if hide_angle_values:
+            # The copy a free reader is served: same frame, numbers withheld,
+            # watermarked. A second draw on a frame already decoded and already
+            # in memory -- far cheaper than being unable to sell the report
+            # afterwards. The gate swaps this one in; see result_gating.
+            visualizer.hide_angle_values = True
+            visualizer.teaser_watermark = True
+            keyframe_free_base64 = visualizer.render_keyframe()
+            visualizer.hide_angle_values = False
+            visualizer.teaser_watermark = False
         if overlay_path:
             overlay_video_path = visualizer.generate()
             logger.info("OVERLAY_DONE", path=overlay_video_path)
@@ -1335,7 +1350,12 @@ def analyze_from_frames(
                 letter_grade=(
                     "" if score_withheld else (scoring.get("letter_grade") or "--")
                 ),
-                hide_values=hide_angle_values,
+                # Always drawn with its numbers: the gate withholds the
+                # kinogram from free readers entirely (it is not in
+                # _SAFE_KEYS), so a number-free copy would be a picture
+                # nobody is ever shown -- and the only copy a buyer could
+                # later be given.
+                hide_values=False,
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("KINOGRAM_FAILED", err=str(e))
@@ -1364,7 +1384,12 @@ def analyze_from_frames(
                 letter_grade=(
                     "" if score_withheld else (scoring.get("letter_grade") or "--")
                 ),
-                hide_values=hide_angle_values,
+                # Always drawn with its numbers: the gate withholds the
+                # kinogram from free readers entirely (it is not in
+                # _SAFE_KEYS), so a number-free copy would be a picture
+                # nobody is ever shown -- and the only copy a buyer could
+                # later be given.
+                hide_values=False,
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("KINOGRAM_FAILED", err=str(e), sport="bike")
@@ -1470,6 +1495,10 @@ def analyze_from_frames(
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
         "overlay_video_path": overlay_video_path,
         "keyframe_base64": keyframe_base64,
+        # The number-free copy for readers who have not paid. Present only when
+        # one was asked for; the gate serves it *as* ``keyframe_base64`` and
+        # never lets this key itself out. See result_gating._trim.
+        "keyframe_free_base64": keyframe_free_base64,
         "kinogram_base64": kinogram_base64,
         "kinogram": kinogram_meta,
         "ai_recommendations": ai_recommendations,

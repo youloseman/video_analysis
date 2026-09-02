@@ -271,6 +271,42 @@ async def get_keyframe(
     return {"keyframe": (row.data or {}).get("keyframe")}
 
 
+@router.get("/analyses/{client_id}/kinogram")
+async def get_kinogram(
+    client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The kinogram for one of the caller's analyses, if they may see it.
+
+    Its own endpoint rather than a field on the history entry, for the same
+    reason the keyframe has one: it is a second full-size image, the cabinet
+    lists dozens of entries, and almost none of them are opened. The entry
+    carries a boolean; the picture is fetched when somebody actually looks.
+
+    Paid readers only -- the kinogram is rendered for every run now, precisely
+    so that it exists on the day it is bought, and handing it out beforehand
+    would give away the thing that was rendered to be sold.
+    """
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    if access_for_stored(user, row) != ACCESS_FULL:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="This report has not been unlocked.",
+        )
+    return {"kinogram": (row.result or {}).get("kinogram_base64")}
+
+
 @router.get("/analyses/{client_id}/result")
 async def get_analysis_result(
     client_id: str,

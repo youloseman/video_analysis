@@ -43,6 +43,11 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 @media(max-width:560px){.upsell ul{grid-template-columns:1fr}}
 .upsell li{display:flex;gap:8px;align-items:flex-start;font-size:14.5px;color:var(--c-ink)}
 .upsell li svg{flex:0 0 auto;width:16px;height:16px;margin-top:2px;color:var(--st-good)}
+/* Marks a bullet the one-off unlock does not include. Quiet on purpose: it is
+   a boundary on an offer, not a second sales pitch. */
+.upsell li .only-plan{font-style:normal;font-size:11px;font-weight:600;letter-spacing:.02em;
+  text-transform:uppercase;white-space:nowrap;padding:1px 6px;margin-left:6px;border-radius:999px;
+  background:var(--c-wash,rgba(0,0,0,.05));color:var(--c-muted);vertical-align:1px}
 .upsell .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .upsell .price-tag{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft)}
 .upsell .price-tag b{color:var(--c-navy);font-size:16px}

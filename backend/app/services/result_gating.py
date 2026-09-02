@@ -76,10 +76,26 @@ _QUALITY_KEYS = (
 _PHOTO_WARNINGS_KEY = "warnings"
 
 # What an upgrade unlocks (shown by the frontend on the blurred sections).
+#
+# ``second_phase`` used to be on this list. Nothing has ever produced a second
+# phase photo -- the entire feature was a label on the paywall card and two
+# entries in these lists. It was being sold, at $4 a time, for real money.
+#
+# ``video`` stays, but the frontend must not offer it on the one-off unlock:
+# the overlay is a subscription feature, it is only ever rendered for a paying
+# run, and it lives on the job, which expires in ``job_ttl_hours``. Buying a
+# stored report can never produce one. See UNLOCK_SCOPE below.
 _UNLOCKS = [
     "coaching", "angles", "issues", "ranges", "kinogram", "video",
-    "second_phase", "export", "fit",
+    "export", "fit",
 ]
+
+# Of those, what buying THIS ONE report actually delivers. The subscription
+# card and the $4 button sat on one bullet list promising the same nine things,
+# and three of them could not arrive: a video that is never rendered for a free
+# run, a second phase photo that does not exist, and -- until the kinogram
+# started being built for every run -- a kinogram nobody had made either.
+UNLOCK_SCOPE = ["coaching", "angles", "issues", "ranges", "kinogram", "export", "fit"]
 
 # --------------------------------------------------------------------------
 # The preview: one report, once per account, that is worth reading.
@@ -106,8 +122,7 @@ _PREVIEW_EXTRA = ("detected_issues", "ai_recommendations")
 # ``issues`` are absent -- they were just shown, and listing them would promise
 # the reader something they already have.
 _PREVIEW_UNLOCKS = [
-    "plan", "fit", "angles", "ranges", "kinogram", "video", "second_phase",
-    "export",
+    "plan", "fit", "angles", "ranges", "kinogram", "video", "export",
 ]
 
 ACCESS_FULL = "full"
@@ -191,8 +206,23 @@ def _trim(
     """Allowlist a result down to ``keys`` and attach the paywall markers."""
     kept: dict[str, Any] = {k: v for k, v in result.items() if k in keys}
     kept["overlay_video_path"] = None  # never a video on a free plan
+    # The stored frame is drawn WITH its angle values, because it has to still
+    # be worth something on the day somebody pays for it. Free readers get the
+    # number-free copy rendered alongside it -- served under the same key, so
+    # no client has to know there are two, and never exposed under its own name.
+    free_frame = result.get("keyframe_free_base64")
+    if free_frame:
+        kept["keyframe_base64"] = free_frame
+    kept.pop("keyframe_free_base64", None)
     kept["quality"] = quality_block(result)
-    kept["locked"] = {"reason": reason, "unlocks": list(unlocks)}
+    kept["locked"] = {
+        "reason": reason,
+        "unlocks": list(unlocks),
+        # Which of those the one-off unlock actually delivers. The card shows
+        # both buttons against one list, so without this it promises the $4
+        # reader a video that buying a stored report cannot produce.
+        "unlock_scope": [u for u in unlocks if u in UNLOCK_SCOPE],
+    }
     return kept
 
 
@@ -248,7 +278,12 @@ def access_for_stored(user: User | None, row: Any) -> str:
 def gate_for_access(result: dict[str, Any], access: str) -> dict[str, Any]:
     """Dispatch on the access level from ``access_for``."""
     if access == ACCESS_FULL:
-        return result
+        # A paid reader has no use for the teaser's copy of the frame, and
+        # shipping a second full-size image they will never look at is a real
+        # cost on a report that already carries two.
+        if result.get("keyframe_free_base64") is None:
+            return result
+        return {k: v for k, v in result.items() if k != "keyframe_free_base64"}
     if access == ACCESS_PREVIEW:
         return gate_preview_result(result)
     return gate_free_result(result)

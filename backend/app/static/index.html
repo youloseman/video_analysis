@@ -1106,6 +1106,23 @@
       <p class="anglemerge hidden" id="hdAngleMergeNote"></p>
       <div class="tablewrap" id="hdAngleHost"></div>
     </div>
+
+    <div class="block hidden" id="hdKinogramBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Kinogram</div>
+        <h3>One cycle, key positions</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="videoframe">
+        <div class="kinowrap"><img id="hdKinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles"></div>
+        <div class="videocap">
+          <span class="note">Rendered when this clip was analyzed. The footage itself expires after a few hours; this does not.</span>
+          <a class="btn btn-ghost btn-sm" id="hdDownloadKinogram" download="flapp-kinogram.jpg">
+            <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .jpg
+          </a>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ============ PRICING ============ -->
@@ -1241,6 +1258,7 @@
 const $ = s => document.querySelector(s);
 const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, histProfile:null, polling:null, xhr:null, pollStart:0, pollFirst:0, pollMisses:0, remaining:null,
   kfCache:{}, kfPending:{},     // cloud keyframes, fetched per entry (see fetchKeyframe)
+  kinoCache:{},                 // cloud kinograms, same bargain (renderHistoryKinogram)
   rehydrated:{} };              // entries already re-fetched after a purchase (see rehydrateEntry)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -3294,9 +3312,11 @@ const UNLOCK_COPY={
   ranges:'Cadence, ranges & benchmark metrics',
   kinogram:'Kinogram — the five key positions of your stride, side by side',
   video:'Annotated video + slow-motion replay',
-  second_phase:'Second phase photo (contact & drive)',
   export:'Export your numbers for ChatGPT, Claude or Gemini',
 };
+/* `second_phase` — "Second phase photo (contact & drive)" — used to be on that
+   list. Nothing has ever produced one: the whole feature was this label and two
+   entries in the server's unlock lists, and it was sold at $4 a time. */
 /* Free = anonymous or the starter tier; both get a gated result (score +
    keyframe only), so their cabinet has the metrics/plan/focus withheld. */
 function isFreeUser(){ return !auth || auth.tier==='starter'; }
@@ -3456,7 +3476,14 @@ function teaserPanelHtml(items, opts){
     <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> ${esc(opts.chip||'Free preview')}</span>
     <h3>${esc(opts.title||'Unlock your full analysis')}</h3>
     <p>${opts.body||'You’re seeing the skeleton and your score. Upgrade to reveal the measurements and coaching that tell you <em>what to actually change</em>.'}</p>
-    <ul>${(items||[]).map(t=>`<li>${check}<span>${esc(t)}</span></li>`).join('')}</ul>
+    <ul>${(items||[]).map(t=>{
+      const it=(typeof t==='string')?{text:t}:t;
+      // Marked only when the one-off button is actually on the card. With no
+      // $4 button there is no second offer to distinguish this from, and the
+      // tag would just make the plan look like it withholds something.
+      const tag=(it.planOnly&&opts.unlockId)?' <em class="only-plan">with a plan</em>':'';
+      return `<li>${check}<span>${esc(it.text)}${tag}</span></li>`;
+    }).join('')}</ul>
     <div class="cta-row">
       <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
       ${opts.unlockId?`<button class="btn btn-outline" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})">Unlock just this report — ${esc(unlockPrice())}</button>`:''}
@@ -3468,7 +3495,15 @@ function teaserPanelHtml(items, opts){
 function renderUpsell(containerId, locked, blockIds, unlockId){
   (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
   const host=$('#'+containerId); if(!host) return false;
-  const items=(locked.unlocks||Object.keys(UNLOCK_COPY)).map(k=>UNLOCK_COPY[k]).filter(Boolean);
+  // What the $4 button delivers, as opposed to what the plan does. Without
+  // this split the card offered both against one list, and the one-off buyer
+  // was promised an annotated video that buying a stored report cannot make:
+  // the overlay is rendered only for a paying run, and it lives on the job,
+  // which expires within hours.
+  const scope=locked.unlock_scope||null;
+  const items=(locked.unlocks||Object.keys(UNLOCK_COPY))
+    .map(k=>({text:UNLOCK_COPY[k], planOnly:!!(scope&&scope.indexOf(k)<0)}))
+    .filter(x=>x.text);
   // The preview is not for sale a second time: it already showed the coaching,
   // and what is left of it is the measurement table, which is what a plan is
   // for. Only a teaser has a whole report sitting behind it, unread.
@@ -5780,7 +5815,7 @@ function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){}
   track('logged_out',{}); trackReset();
   auth=null; state.cloudHist=null;
   state.kfCache={}; state.kfPending={};        // never carry one account's frames into the next
-  state.rehydrated={};
+  state.kinoCache={}; state.rehydrated={};
   renderAuth();
   // Signed out lands on the marketing page — the mirror of the entry rule,
   // where a stored session on "/" sends you straight here.
@@ -6127,6 +6162,9 @@ function entryFromResult(kind,res,base){
     // the stored analysis instead of leaving the athlete with the teaser they
     // were shown before they paid.
     if(res.locked) e.locked=true;
+    // Whether a kinogram exists for this analysis. A boolean, not the image:
+    // see renderHistoryKinogram for why the picture is fetched separately.
+    if(res.kinogram_base64) e.hasKinogram=true;
     // Full joint-angle stats (video only) so the exact table can be rebuilt
     // from history AND merged with the opposite side later. Compact numeric dict.
     if(isV) e.angleStats=compactAngleStats(res.angle_statistics);
@@ -6416,6 +6454,28 @@ function renderHistoryDetail(e){
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderHistoryPlan(e);
   renderHistoryAngles(e);
+  renderHistoryKinogram(e);
+}
+/* The kinogram of a saved report. It is a second full-size image and the
+   cabinet holds dozens of entries, so the entry carries only a boolean and the
+   picture is fetched when somebody actually opens one — the same bargain the
+   keyframe makes. Hidden outright for a report that has not been paid for:
+   asking would be a 402, and an empty frame reads as a broken page. */
+function renderHistoryKinogram(e){
+  const block=$('#hdKinogramBlock'), img=$('#hdKinogramImg'); if(!block||!img) return;
+  const show=src=>{ img.src=src; const dl=$('#hdDownloadKinogram');
+    if(dl){ dl.href=src; dl.setAttribute('download',`flapp-kinogram-${(e.sport||'run')}.jpg`); }
+    block.classList.remove('hidden'); };
+  block.classList.add('hidden');
+  if(!e || !e.hasKinogram || e.access!=='full' || !auth) return;
+  const cached=state.kinoCache[e.id];
+  if(cached){ show(cached); return; }
+  if(cached===null) return;                       // asked once, nothing there
+  fetch('/me/analyses/'+encodeURIComponent(e.id)+'/kinogram',{headers:authHeaders()})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{ const k=(j&&j.kinogram)||null; state.kinoCache[e.id]=k;
+      if(k && state.histOpen && state.histOpen.id===e.id) show(k); })
+    .catch(()=>{});
 }
 /* Render the Measurements block for a saved analysis. New video entries carry
    full angleStats -> show the 7-column table, merged with the opposite side if
