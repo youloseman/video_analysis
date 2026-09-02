@@ -3458,7 +3458,7 @@ function teaserPanelHtml(items, opts){
     <ul>${(items||[]).map(t=>`<li>${check}<span>${esc(t)}</span></li>`).join('')}</ul>
     <div class="cta-row">
       <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
-      ${opts.unlockId?`<button class="btn btn-outline" type="button" onclick="startCheckout('unlock',${JSON.stringify(opts.unlockId)})">Unlock just this report — ${esc(unlockPrice())}</button>`:''}
+      ${opts.unlockId?`<button class="btn btn-outline" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})">Unlock just this report — ${esc(unlockPrice())}</button>`:''}
       <span class="price-tag">${fromPriceLabel()}</span>
     </div>
     ${opts.unlockNudge||''}
