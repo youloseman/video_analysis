@@ -9,7 +9,7 @@
 #      Connect API: create an API key (role: App Manager). Download the .p8.
 #   2. Codemagic -> Teams -> Integrations -> App Store Connect: add the key,
 #      name it exactly:  appstore
-#   3. App Store Connect -> Apps: create the app (bundle ID com.clariva.flapp
+#   3. App Store Connect -> Apps: create the app (bundle ID ca.clarivagroups.flapp
 #      -- register the identifier at developer.apple.com/account first).
 #   4. Push to main (or start the workflow manually) -> build lands in
 #      TestFlight -> install on the iPhone via the TestFlight app.
@@ -26,7 +26,7 @@ workflows:
       cocoapods: default
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.clariva.flapp
+        bundle_identifier: ca.clarivagroups.flapp
     triggering:
       events: []            # manual builds for now; enable push triggers later
     scripts:
@@ -34,6 +34,7 @@ workflows:
         script: |
           cd mobile
           npm ci
+          npm run check:native      # bundle id + iOS usage strings intact
           node scripts/sync-www.mjs
       - name: Capacitor sync (installs Pods)
         script: |

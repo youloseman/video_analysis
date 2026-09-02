@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Flapp iOS/Android shell (Capacitor). Analysis stays server-side; the SPA is bundled from backend/app/static by scripts/sync-www.mjs.",
   "scripts": {
+    "check:native": "node scripts/check-native.mjs",
     "sync:www": "node scripts/sync-www.mjs",
     "sync:www:local": "node scripts/sync-www.mjs --api-base http://127.0.0.1:8099",
     "sync": "npm run sync:www && npx cap sync android",
