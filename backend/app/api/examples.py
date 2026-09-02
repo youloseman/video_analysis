@@ -11,14 +11,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
+from app.api.academy import PAGE_CACHE as _CACHE
 from app.api.academy import _base_url
 from app.services import examples
 
 router = APIRouter(tags=["examples"])
-
-# Same policy as the Academy: public, cacheable, revalidated daily at the edge.
-# The content only changes when the samples are regenerated and redeployed.
-_CACHE = "public, max-age=3600, s-maxage=86400"
 
 
 @router.get("/examples", include_in_schema=False)

@@ -32,9 +32,19 @@ from app.services.academy.renderer import (
 
 router = APIRouter(tags=["Academy"])
 
-# Cache-Control for these static-ish HTML pages. 1h browser, 1d CDN — long
-# enough to be cheap, short enough that a redeploy's edits show up promptly.
-_CACHE = "public, max-age=3600, s-maxage=86400"
+# Cache-Control for these static-ish HTML pages, shared by Academy, changelog
+# and the sample reports.
+#
+# The browser TTL was an hour, and that is too long for a page that carries its
+# CSS inline: a layout fix deployed to /examples was invisible for an hour to
+# anyone who had already opened the page, which reads as "nothing was fixed".
+# There is no build hash to bust, because the markup and the stylesheet are the
+# same document. Five minutes in the browser, a day at the edge (where a deploy
+# does not have to wait for a TTL because the origin is asked again), and
+# stale-while-revalidate so the shortened TTL costs a background request rather
+# than a slow page.
+PAGE_CACHE = "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800"
+_CACHE = PAGE_CACHE
 
 
 def _base_url(request: Request) -> str:

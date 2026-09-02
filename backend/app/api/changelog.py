@@ -17,14 +17,13 @@ from typing import Any
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
 
+# Same caching posture as the Academy pages: cheap for repeat views, short
+# enough that a redeploy's notes show up promptly.
+from app.api.academy import PAGE_CACHE as _CACHE
 from app.services.changelog import get_entries, latest_id
 from app.services.changelog.renderer import render_changelog
 
 router = APIRouter(tags=["changelog"])
-
-# Same caching posture as the Academy pages: cheap for repeat views, short
-# enough that a redeploy's notes show up promptly.
-_CACHE = "public, max-age=3600, s-maxage=86400"
 
 
 def _base_url(request: Request) -> str:
