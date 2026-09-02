@@ -113,8 +113,43 @@ def test_an_unknown_slug_lands_somewhere_useful(client):
 def test_a_page_shows_measurements_against_their_bands(client, slug):
     """The table the product is actually for."""
     html = client.get(f"/examples/{slug}").text
-    rows = re.findall(r'<tr class="(ok|out)">', html)
+    rows = re.findall(r'<tr class="(ok|near|out)">', html)
     assert len(rows) >= 4, f"{slug} renders only {len(rows)} band rows"
+
+
+@pytest.mark.parametrize("slug", examples.ORDER)
+def test_a_page_never_reports_a_clean_result_over_a_red_row(client, slug):
+    """The page arguing with itself, which it did.
+
+    A photo result has no ``detected_issues`` -- it puts a status on each
+    angle instead -- and the findings section read only the video key. So
+    run-photo printed "Nothing outside its range on this clip" directly under
+    a table showing an ankle 7 degrees outside its band.
+    """
+    html = client.get(f"/examples/{slug}").text
+    if '<tr class="out">' in html:
+        assert "Nothing outside its range" not in html, (
+            f"{slug} calls itself clean while rendering an out-of-range row"
+        )
+
+
+def test_a_photo_finding_names_the_angle_that_fired_it(client):
+    html = client.get("/examples/run-photo").text
+    findings = html.split("<h2>Findings</h2>", 1)[1].split("</section>", 1)[0]
+    assert "Ankle Angle" in findings
+    # And the 1-degree miss is reported as what it is, not as a fault: the
+    # lede over the table promises exactly that tolerance.
+    assert "Knee Angle" in findings
+    assert "inside the method" in findings
+
+
+def test_a_measured_but_unscored_angle_is_still_disclosed(client):
+    """Both photo samples measure an angle the frame cannot grade. Dropping it
+    silently would make the table look more complete than the analysis was."""
+    for slug, angle in (("run-photo", "Hip Angle"), ("bike-aero", "Ankle Angle")):
+        findings = (client.get(f"/examples/{slug}").text
+                    .split("<h2>Findings</h2>", 1)[1].split("</section>", 1)[0])
+        assert "not scored" in findings and angle in findings, slug
 
 
 def test_a_page_names_the_source_of_at_least_one_band(client):

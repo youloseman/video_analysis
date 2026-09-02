@@ -150,6 +150,10 @@ _STATUS_WORD = {
     "good": "Good: ", "warn": "Needs attention: ", "bad": "Problem: ",
 }
 
+# How a photo's per-angle status paints its row. Video bands carry no status
+# and fall back to a plain in-band test.
+_BAND_CLASS = {"optimal": "ok", "acceptable": "near", "needs_work": "out"}
+
 
 def _num(v: Any, digits: int = 1) -> str:
     try:
@@ -216,6 +220,7 @@ def _bands_table(s: Sample) -> str:
                 "low": ctx.get("optimal_min"), "high": ctx.get("optimal_max"),
                 "label": ctx.get("label"), "unit": "°",
                 "source": "", "value": ctx.get("value"),
+                "status": ctx.get("status"),
             }
             for key, ctx in (s.data.get("angles_with_context") or {}).items()
             if isinstance(ctx, dict)
@@ -240,10 +245,16 @@ def _bands_table(s: Sample) -> str:
             v = float(value)
         except (TypeError, ValueError):
             continue
-        inside = float(lo) <= v <= float(hi)
+        # The analyzer's own verdict wins where it has one. It knows the
+        # tolerance this table's own lede promises -- a knee 1° under an 80°
+        # floor is "acceptable" to it, and painting that the same red as a
+        # measurement 7° out would contradict the sentence above the table.
+        cls = _BAND_CLASS.get(str(band.get("status")))
+        if cls is None:
+            cls = "ok" if float(lo) <= v <= float(hi) else "out"
         label, unit = _label_unit(field, band)
         rows.append(
-            f'<tr class="{"ok" if inside else "out"}">'
+            f'<tr class="{cls}">'
             f'<td class="m">{_esc(label)}</td>'
             f'<td class="v">{_num(v)}{_esc(unit)}</td>'
             f'<td class="b">{_num(lo)}–{_num(hi)}{_esc(unit)}</td>'
@@ -264,23 +275,70 @@ def _bands_table(s: Sample) -> str:
     )
 
 
+def _angle_findings(s: Sample) -> tuple[list[str], list[str], list[str]]:
+    """A photo's findings, read off the per-angle statuses.
+
+    A photo result has no ``detected_issues`` -- it carries a status on each
+    angle instead. Reading only the video key is how this page came to print
+    "Nothing outside its range" underneath a table with a row 7° outside its
+    band. Returns (out of range, just outside, measured but not scored).
+    """
+    out: list[str] = []
+    near: list[str] = []
+    unscored: list[str] = []
+    for key, ctx in (s.data.get("angles_with_context") or {}).items():
+        if not isinstance(ctx, dict):
+            continue
+        label = _esc(str(ctx.get("label") or key.replace("_", " ").capitalize()))
+        value = _num(ctx.get("value"))
+        lo, hi = ctx.get("optimal_min"), ctx.get("optimal_max")
+        band = f"{_num(lo)}–{_num(hi)}°" if lo is not None and hi is not None else ""
+        status = str(ctx.get("status"))
+        if status == "needs_work":
+            out.append(f"<b>{label}</b> — {value}°, against a reference of {band}")
+        elif status == "acceptable":
+            near.append(f"<b>{label}</b> — {value}° against {band}")
+        elif status in ("phase_dependent", "insufficient_visibility"):
+            why = ctx.get("note") or ctx.get("unscored_reason") or ""
+            unscored.append(
+                f"<b>{label}</b> — {value}°"
+                + (f". {_prose(str(why))}" if why else "")
+            )
+    return out, near, unscored
+
+
 def _findings(s: Sample) -> str:
     issues = s.data.get("detected_issues") or []
-    if not issues:
-        return (
-            '<section class="ex-sec"><h2>Findings</h2>'
-            '<p class="ex-lede">Nothing outside its range on this clip.</p>'
-            "</section>"
-        )
-    items = "".join(
-        f'<li><b>{_esc(str(i.get("issue") or i.get("type") or "")).replace("_", " ")}'
-        f'</b>{" — " + _esc(str(i.get("description") or i.get("message") or "")) if (i.get("description") or i.get("message")) else ""}</li>'
+    # `value` carries the measurement that fired the rule ("0.34 x leg length
+    # ahead of hip"); without it a finding is a bare word. The `recommendation`
+    # on the same dict is deliberately left off: advice belongs to the plan
+    # section, and this page shows what was measured.
+    items = [
+        f'<b>{_esc(str(i.get("issue") or i.get("type") or "")).replace("_", " ")}</b>'
+        + (" — " + _prose(str(detail))
+           if (detail := i.get("description") or i.get("message")
+               or i.get("value")) else "")
         for i in issues
-    )
-    return (
-        f'<section class="ex-sec"><h2>Findings</h2><ul class="ex-list">{items}</ul>'
-        "</section>"
-    )
+    ]
+    photo_out, near, unscored = _angle_findings(s)
+    items += photo_out
+
+    if items:
+        body = '<ul class="ex-list">' + "".join(f"<li>{i}</li>" for i in items) + "</ul>"
+    else:
+        body = '<p class="ex-lede">Nothing outside its range on this clip.</p>'
+    if near:
+        body += (
+            '<p class="ex-note ex-note-tight">Just outside, and inside the '
+            "method&rsquo;s own error rather than a finding: "
+            + "; ".join(near) + ".</p>"
+        )
+    if unscored:
+        body += (
+            '<p class="ex-note ex-note-tight">Measured but not scored, because '
+            "the frame cannot answer it: " + "; ".join(unscored) + "</p>"
+        )
+    return f'<section class="ex-sec"><h2>Findings</h2>{body}</section>'
 
 
 def _plan(s: Sample) -> str:
@@ -424,7 +482,12 @@ _CSS = """
 .ex-bands td.m{font-weight:600;color:var(--c-navy)}
 .ex-bands td.s{font-size:12px;color:var(--c-ink-faint)}
 .ex-bands tr.ok td.v{color:var(--st-good)}
-.ex-bands tr.out td.v{color:var(--c-warn-text);font-weight:600}
+/* Three states, not two: "near" is the analyzer's own "acceptable" -- outside
+   the band but inside the method's error, which the lede above the table
+   promises is not a finding. Painting it the same as a real miss made the
+   page argue with itself. */
+.ex-bands tr.near td.v{color:var(--c-warn-text)}
+.ex-bands tr.out td.v{color:var(--st-bad);font-weight:600}
 .ex-bands tr.c-good td.m{color:var(--st-good)}
 .ex-bands tr.c-warn td.m{color:var(--c-warn-text)}
 .ex-bands tr.c-bad td.m{color:var(--st-bad)}
@@ -467,6 +530,10 @@ _CSS = """
    under a full-width rule read as a broken paragraph rather than a note. */
 .ex-note{font-size:12.5px;color:var(--c-ink-faint);line-height:1.6;margin-top:30px;
   border-top:1px solid var(--c-line);padding-top:14px}
+/* The same voice as the page footnote, but sitting under a section rather than
+   closing the page, so it does not need the rule or the gap. */
+.ex-note-tight{margin-top:14px;border-top:0;padding-top:0}
+.ex-note-tight b{color:var(--c-ink-soft)}
 @media(max-width:640px){.ex-wrap{padding:26px 18px 56px}.ex-score .n{font-size:38px}
   /* Three prose columns do not fit a phone at any column width, so the
      capture table stops being a table and becomes one card per check. */
