@@ -653,16 +653,31 @@ h2.sec .accent{color:var(--c-coral)}
   -webkit-appearance:none;appearance:none;background:transparent;
 }
 .cmp input[type=range]:focus-visible ~ .grip{box-shadow:0 10px 30px rgba(3,10,24,.45),var(--ring)}
+/* Score pills. Laid over the top of the frame here; a row above it on a phone
+   -- see the media query below. */
+.cmp-tags{
+  position:absolute;top:16px;left:16px;right:16px;z-index:4;pointer-events:none;
+  display:flex;justify-content:space-between;gap:10px;
+}
 .cmp-tag{
-  position:absolute;top:16px;z-index:4;pointer-events:none;
   font-family:var(--f-mono);font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
   color:#fff;padding:8px 15px;border-radius:999px;backdrop-filter:blur(5px);
   border:1px solid rgba(255,255,255,.25);
 }
-.cmp-tag.b{left:16px;background:rgba(174,44,26,.88);border-color:rgba(255,180,166,.5)}
+.cmp-tag.b{background:rgba(174,44,26,.88);border-color:rgba(255,180,166,.5)}
 .cmp-tag.b em{font-style:normal;color:#FFD8D1}
-.cmp-tag.a{right:16px;background:rgba(31,122,69,.85)}
+.cmp-tag.a{background:rgba(31,122,69,.85)}
 .cmp-tag.a em{font-style:normal;color:#C9F5DB}
+@media(max-width:640px){
+  /* The frame is ~350px wide here and the pills are ~150px each, so overlaid
+     they sit squarely on the angle labels. Above the image they read as a
+     caption for the comparison, which is what they always were. */
+  .cmp-tags{
+    position:static;margin-bottom:12px;justify-content:flex-start;flex-wrap:wrap;
+    gap:8px;backdrop-filter:none;
+  }
+  .cmp-tag{font-size:10.5px;padding:7px 12px;letter-spacing:.1em}
+}
 .cmp-hint{
   text-align:center;margin-top:14px;font-family:var(--f-mono);font-size:11px;
   letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-faint);
@@ -897,6 +912,9 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
     <a class="wordmark" href="/">Flapp<span class="dot"></span></a>
     <div class="nav-links">
       <a href="#report">The report</a>
+      <!-- Named in the nav because it is what most visitors arrive for, and
+           the page had no word for it above the fold. -->
+      <a href="#proof">Bike fit</a>
       <a href="#how">How it works</a>
       <a href="#pricing">Pricing</a>
       <a href="/academy">Academy</a>
@@ -1004,36 +1022,76 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
   </div>
 </section>
 
-<!-- ================= HOW IT WORKS ================= -->
-<section id="how" class="how">
+<!-- ================= PROOF — before / after ================= -->
+<section id="proof" class="proof">
   <div class="wrap">
-    <p class="eyebrow rv">How it works</p>
-    <h2 class="sec rv" data-d="1">Shoot. Upload. <span class="accent">Fix.</span></h2>
-    <p class="lede rv" data-d="2">No sensors, no lab, no motion-capture suit. The camera you already
-      own is the instrument — Flapp does the measuring.</p>
-    <div class="steps">
-      <div class="step rv" data-d="1">
-        <div class="n">01</div>
-        <h3>Film a clip — or snap a photo</h3>
-        <p>Prop your phone at hip height, side-on, and capture <b>10–20 seconds</b> of running or
-          riding. Short on time? <b>One side-view photo</b> is enough for a full angle read-out.</p>
-        <div class="tagrow"><span class="mtag">Video or photo</span><span class="mtag">Side view</span><span class="mtag">10–20 s</span></div>
+    <div class="proof-head">
+      <p class="eyebrow rv">Bike fit · before / after · same rider, same road</p>
+      <h2 class="sec rv" data-d="1">Follow the plan.<br>Watch the score <span class="accent">move.</span></h2>
+      <p class="lede rv" data-d="2">Flapp flagged a closed hip — <b>35°</b> against a 45–62° reference —
+        and a collapsed pelvic rotation. Two position corrections later, the same rider re-filmed
+        the same stretch of road. Drag the handle.</p>
+    </div>
+    <div class="cmp-wrap rv-scale">
+      <!-- Outside .cmp on purpose. Overlaid on the frame at desktop widths,
+           these become a row above it on a phone: at 390px the two pills
+           covered the very angle labels the section exists to show off. -->
+      <div class="cmp-tags">
+        <span class="cmp-tag b">Before · <em>85/100</em></span>
+        <span class="cmp-tag a">After · <em>99/100</em></span>
       </div>
-      <div class="step rv" data-d="2">
-        <div class="n">02</div>
-        <h3>AI reads your body</h3>
-        <p>Pose estimation locks onto <b>33 landmarks</b> — ankles, knees, hips, spine, shoulders.
-          A photo is measured on the spot; a clip is measured on <b>every frame</b>, through the
-          full movement cycle.</p>
-        <div class="tagrow"><span class="mtag">Pose estimation</span><span class="mtag">60 fps sampling</span></div>
+      <div class="cmp" id="cmp">
+        <img class="after" src="media/after.webp" alt="After: time-trial position scored 99 out of 100, trunk angle 19 degrees, hip angle 46 degrees, all angles in range" loading="lazy">
+        <img class="before" src="media/before.webp" alt="Before: time-trial position scored 85 out of 100, hip angle 35 degrees and pelvic tilt flagged out of range" loading="lazy">
+        <input type="range" min="0" max="100" value="50" step="0.5"
+               aria-label="Comparison slider: reveal the before or after position">
+        <div class="divider"></div>
+        <div class="grip" aria-hidden="true">
+          <svg viewBox="0 0 30 16" fill="none"><path d="M9 2L3 8l6 6M21 2l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
       </div>
-      <div class="step rv" data-d="3">
-        <div class="n">03</div>
-        <h3>Get the verdict</h3>
-        <p>A <b>0–100 score</b> with a grade, every angle against reference ranges, an annotated
-          overlay and an AI action plan telling you <b>what to change first</b>.</p>
-        <div class="tagrow"><span class="mtag">Score + grade</span><span class="mtag">Overlay video</span><span class="mtag">Action plan</span></div>
+      <div class="plancard rv" data-d="2">
+        <div class="pc-lbl"><i></i>The plan Flapp gave</div>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Open the hip</b> — 35° was well under the 45–62° reference</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Rotate the pelvis forward</b> — 1.4× against a 2–4× target</span></li>
+        </ul>
       </div>
+    </div>
+    <p class="cmp-hint rv">◂ Drag to compare ▸</p>
+
+    <div class="deltas">
+      <div class="delta hero-delta rv" data-d="1">
+        <div class="d-lbl">Technique score</div>
+        <div class="d-row"><span class="d-was">85</span><span class="d-arrow">→</span><span class="d-now">99</span></div>
+        <span class="d-chip">+14 pts</span>
+      </div>
+      <div class="delta rv" data-d="1">
+        <div class="d-lbl">Hip angle</div>
+        <div class="d-row"><span class="d-was bad">35°</span><span class="d-arrow">→</span><span class="d-now">46°</span></div>
+        <span class="d-chip">Back in range</span>
+      </div>
+      <div class="delta rv" data-d="2">
+        <div class="d-lbl">Pelvic rotation</div>
+        <div class="d-row"><span class="d-was bad">1.4×</span><span class="d-arrow">→</span><span class="d-now">2.5×</span></div>
+        <span class="d-chip">Back in range</span>
+      </div>
+      <div class="delta rv" data-d="3">
+        <div class="d-lbl">Trunk angle</div>
+        <div class="d-row"><span class="d-was">24°</span><span class="d-arrow">→</span><span class="d-now">19°</span></div>
+        <span class="d-chip">Aero gain</span>
+      </div>
+      <div class="delta rv" data-d="4">
+        <div class="d-lbl">Head tuck</div>
+        <div class="d-row"><span class="d-was">78</span><span class="d-arrow">→</span><span class="d-now">90</span></div>
+        <span class="d-chip">+12 pts</span>
+      </div>
+    </div>
+
+    <div class="proof-cta rv">
+      <a class="btn btn-accent btn-lg" href="/app#signup">Get your before
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <span class="mono-note">The before / after view is built into the app</span>
     </div>
   </div>
 </section>
@@ -1141,6 +1199,40 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
   </div>
 </section>
 
+<!-- ================= HOW IT WORKS ================= -->
+<section id="how" class="how">
+  <div class="wrap">
+    <p class="eyebrow rv">How it works</p>
+    <h2 class="sec rv" data-d="1">Shoot. Upload. <span class="accent">Fix.</span></h2>
+    <p class="lede rv" data-d="2">No sensors, no lab, no motion-capture suit. The camera you already
+      own is the instrument — Flapp does the measuring.</p>
+    <div class="steps">
+      <div class="step rv" data-d="1">
+        <div class="n">01</div>
+        <h3>Film a clip — or snap a photo</h3>
+        <p>Prop your phone at hip height, side-on, and capture <b>10–20 seconds</b> of running or
+          riding. Short on time? <b>One side-view photo</b> is enough for a full angle read-out.</p>
+        <div class="tagrow"><span class="mtag">Video or photo</span><span class="mtag">Side view</span><span class="mtag">10–20 s</span></div>
+      </div>
+      <div class="step rv" data-d="2">
+        <div class="n">02</div>
+        <h3>AI reads your body</h3>
+        <p>Pose estimation locks onto <b>33 landmarks</b> — ankles, knees, hips, spine, shoulders.
+          A photo is measured on the spot; a clip is measured on <b>every frame</b>, through the
+          full movement cycle.</p>
+        <div class="tagrow"><span class="mtag">Pose estimation</span><span class="mtag">60 fps sampling</span></div>
+      </div>
+      <div class="step rv" data-d="3">
+        <div class="n">03</div>
+        <h3>Get the verdict</h3>
+        <p>A <b>0–100 score</b> with a grade, every angle against reference ranges, an annotated
+          overlay and an AI action plan telling you <b>what to change first</b>.</p>
+        <div class="tagrow"><span class="mtag">Score + grade</span><span class="mtag">Overlay video</span><span class="mtag">Action plan</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ================= SPLIT 1 — MEASUREMENT (dark) ================= -->
 <section class="split dark on-dark">
   <div class="wrap cols">
@@ -1222,75 +1314,6 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
         <span>Want a human in the loop too? <b>Expert Review</b> adds a personal breakdown from a
           competing triathlete on top of the AI — <a href="#pricing"><!--EXPERT-PRICE-->, any plan</a>.</span>
       </p>
-    </div>
-  </div>
-</section>
-
-<!-- ================= PROOF — before / after ================= -->
-<section id="proof" class="proof">
-  <div class="wrap">
-    <div class="proof-head">
-      <p class="eyebrow rv">Before / after · same rider, same road</p>
-      <h2 class="sec rv" data-d="1">Follow the plan.<br>Watch the score <span class="accent">move.</span></h2>
-      <p class="lede rv" data-d="2">Flapp flagged a closed hip — <b>35°</b> against a 45–62° reference —
-        and a collapsed pelvic rotation. Two position corrections later, the same rider re-filmed
-        the same stretch of road. Drag the handle.</p>
-    </div>
-    <div class="cmp-wrap rv-scale">
-      <div class="cmp" id="cmp">
-        <img class="after" src="media/after.webp" alt="After: time-trial position scored 99 out of 100, trunk angle 19 degrees, hip angle 46 degrees, all angles in range" loading="lazy">
-        <img class="before" src="media/before.webp" alt="Before: time-trial position scored 85 out of 100, hip angle 35 degrees and pelvic tilt flagged out of range" loading="lazy">
-        <span class="cmp-tag b">Before · <em>85/100</em></span>
-        <span class="cmp-tag a">After · <em>99/100</em></span>
-        <input type="range" min="0" max="100" value="50" step="0.5"
-               aria-label="Comparison slider: reveal the before or after position">
-        <div class="divider"></div>
-        <div class="grip" aria-hidden="true">
-          <svg viewBox="0 0 30 16" fill="none"><path d="M9 2L3 8l6 6M21 2l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-      </div>
-      <div class="plancard rv" data-d="2">
-        <div class="pc-lbl"><i></i>The plan Flapp gave</div>
-        <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Open the hip</b> — 35° was well under the 45–62° reference</span></li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Rotate the pelvis forward</b> — 1.4× against a 2–4× target</span></li>
-        </ul>
-      </div>
-    </div>
-    <p class="cmp-hint rv">◂ Drag to compare ▸</p>
-
-    <div class="deltas">
-      <div class="delta hero-delta rv" data-d="1">
-        <div class="d-lbl">Technique score</div>
-        <div class="d-row"><span class="d-was">85</span><span class="d-arrow">→</span><span class="d-now">99</span></div>
-        <span class="d-chip">+14 pts</span>
-      </div>
-      <div class="delta rv" data-d="1">
-        <div class="d-lbl">Hip angle</div>
-        <div class="d-row"><span class="d-was bad">35°</span><span class="d-arrow">→</span><span class="d-now">46°</span></div>
-        <span class="d-chip">Back in range</span>
-      </div>
-      <div class="delta rv" data-d="2">
-        <div class="d-lbl">Pelvic rotation</div>
-        <div class="d-row"><span class="d-was bad">1.4×</span><span class="d-arrow">→</span><span class="d-now">2.5×</span></div>
-        <span class="d-chip">Back in range</span>
-      </div>
-      <div class="delta rv" data-d="3">
-        <div class="d-lbl">Trunk angle</div>
-        <div class="d-row"><span class="d-was">24°</span><span class="d-arrow">→</span><span class="d-now">19°</span></div>
-        <span class="d-chip">Aero gain</span>
-      </div>
-      <div class="delta rv" data-d="4">
-        <div class="d-lbl">Head tuck</div>
-        <div class="d-row"><span class="d-was">78</span><span class="d-arrow">→</span><span class="d-now">90</span></div>
-        <span class="d-chip">+12 pts</span>
-      </div>
-    </div>
-
-    <div class="proof-cta rv">
-      <a class="btn btn-accent btn-lg" href="/app#signup">Get your before
-        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-      <span class="mono-note">The before / after view is built into the app</span>
     </div>
   </div>
 </section>
