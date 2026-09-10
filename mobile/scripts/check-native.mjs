@@ -37,6 +37,9 @@ if (existsSync(plist)) {
                    'NSPhotoLibraryUsageDescription', 'NSPhotoLibraryAddUsageDescription']) {
     if (!p.includes(k)) fails.push(`Info.plist missing ${k} (camera picker will crash)`);
   }
+  if (!p.includes('ITSAppUsesNonExemptEncryption')) {
+    fails.push('Info.plist missing ITSAppUsesNonExemptEncryption (TestFlight builds stall on export compliance)');
+  }
 }
 
 if (fails.length) {

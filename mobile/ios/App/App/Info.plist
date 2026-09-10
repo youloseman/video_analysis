@@ -22,6 +22,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- The app only uses HTTPS, which is exempt encryption. Declaring it here
+	     answers the export-compliance question at build time; without it every
+	     TestFlight upload sits waiting for the answer before testers can
+	     install it. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Flapp records a short side-view clip of your running or riding so it can analyze your form.</string>
 	<key>NSMicrophoneUsageDescription</key>
