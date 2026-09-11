@@ -826,6 +826,11 @@
         <div class="speedline-sm"></div>
       </div>
       <div class="tiles" id="tiles"></div>
+      <!-- The readings with no band, in their own grid: in one grid a banded
+           tile that spills into the last row stretched the one-word cards
+           beside it to its own height. Two grids, and each row is only as
+           tall as what is in it. -->
+      <div class="tiles tiles-short" id="tilesShort"></div>
     </div>
 
     <div class="block" id="anglesBlock">
@@ -2648,7 +2653,21 @@ function tile(lbl,val,unit,ref,cls,isText=false,range=null){
   const valHtml = isText
     ? `<div class="t-val txt">${esc(val)}</div>`
     : `<div class="t-val">${val}${unit?(unit==='°'?'°':` <small>${unit}</small>`):''}</div>`;
-  return `<div class="tile ${cls||''}"><div class="t-lbl">${dot}${esc(lbl)}</div>${valHtml}${refLine}${bar}</div>`;
+  // `tile-short` marks a reading with no band: it is sorted after the banded
+  // ones (see the #tiles render) and drawn denser, so a one-word card never
+  // has to stretch to the height of a range bar beside it.
+  return `<div class="tile ${cls||''}${bar?'':' tile-short'}"><div class="t-lbl">${dot}${esc(lbl)}</div>${valHtml}${refLine}${bar}</div>`;
+}
+/* Banded readings first, descriptive ones after -- a stable partition, so the
+   order inside each group is the order the builder chose. Rows in the grid then
+   stay homogeneous: every range bar in a row shares a baseline (the reason the
+   tiles stretch at all), and the range-less row is short because nothing in it
+   is tall. Before this a "Position: Balanced" card sat beside a six-line banded
+   one and was stretched to match it: one word and a void. */
+function renderTiles(list){
+  const banded=list.filter(t=>!t.includes('tile-short')), short=list.filter(t=>t.includes('tile-short'));
+  $('#tiles').innerHTML = banded.join('') || (short.length ? '' : '<p class="hint" style="text-align:left">No summary metrics available.</p>');
+  const sh=$('#tilesShort'); if(sh){ sh.innerHTML=short.join(''); sh.classList.toggle('hidden', !short.length); }
 }
 /* helper: {value,lo,hi,unit} for the range bar */
 function R(value,lo,hi,unit,src){ return {value,lo,hi,unit,src}; }
@@ -4450,11 +4469,15 @@ function renderMobilityBox(){
         + (notes?`<p class="askhint">${notes}</p>`:'')
       : '';
     return `<div class="mob-screen">
-      <h4>${esc(s.label)} <span class="askopt">${esc(s.measures)}</span></h4>
+      <h3 class="mob-h">${esc(s.label)} <span class="askopt">${esc(s.measures)}</span></h3>
       <p class="mob-why">${esc(s.why)}</p>
       <ol class="mob-steps">${s.setup.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>
+      <!-- The <label> wrapped the input and nothing else, so the control had no
+           name: a screen reader heard "file upload, button" twice with no way
+           to tell the hamstring screen from the hip one. Named for the screen. -->
       <label class="mob-file">
-        <input type="file" accept="image/*" data-screen="${esc(s.screen)}" class="mob-input">
+        <input type="file" accept="image/*" data-screen="${esc(s.screen)}" class="mob-input"
+               aria-label="Photo for the ${esc(s.label)} screen">
       </label>
       <div class="mob-state err hidden" data-err="${esc(s.screen)}"></div>
       ${state_}
@@ -5239,7 +5262,7 @@ function render(job,opts){
   if(sport==='bike') renderAeroPanel(s); else $('#aeroBlock').classList.add('hidden');
 
   // tiles
-  $('#tiles').innerHTML=(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s)).join('') || '<p class="hint" style="text-align:left">No summary metrics available.</p>';
+  renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s));
 
   // angle table — merge in the opposite side from a previously saved analysis
   // (side-view only captures the near side; the far side is 0%-valid). If the

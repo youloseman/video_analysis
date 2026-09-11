@@ -792,7 +792,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .rrail-score{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:22px;
   color:var(--c-navy);flex:none;line-height:1;display:flex;align-items:baseline;gap:5px}
 .rrail-score small{font-family:var(--f-mono);font-size:11px;font-style:normal;font-weight:600;
-  color:var(--c-ink-faint)}
+  color:var(--c-ink-soft)}   /* the rail ground is 93% white: faint reads 4.48 on it */
 .rrail-score .rrail-grade{font-size:13px;font-style:normal;font-family:var(--f-body);font-weight:800;
   border:1.5px solid currentColor;border-radius:6px;padding:1px 6px;line-height:1.25}
 /* The links scroll rather than wrap: wrapped onto three lines it stops being a
@@ -904,20 +904,24 @@ h2.sec + .speedline{margin-bottom:24px}
 .ctl-label{display:block;font-size:14px;font-weight:600;color:var(--c-ink-soft);margin-bottom:8px}
 .tilerow{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:12px}
 /* grouped bike-position picker: Road (Hoods|Drops) · Aero (TT|Tri) · Casual */
-#positionSeg{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end}
-.posgroup{display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0}
-.posgroup:last-child{flex:0 0 auto}
-.posgroup-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-faint)}
-.posgroup .tilerow{gap:8px}
+/* One row of chips, the group name INLINE before its chips rather than on a
+   line of its own: "ROAD Hoods Drops · AERO Time Trial Triathlon · UPRIGHT
+   Casual". The grouping still disambiguates (Casual is not a third aero
+   position), and the picker gives back the label line it used to spend. */
+#positionSeg{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.posgroup{display:flex;flex-direction:row;align-items:center;gap:10px;flex:0 1 auto;min-width:0}
+.posgroup-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);flex:none}
+.posgroup .tilerow{gap:8px;grid-auto-columns:auto}
+.posgroup .tile-btn{padding:11px 14px;font-size:14px;min-height:44px}
 .poshint{font-size:12.5px;color:var(--c-ink-soft);line-height:1.5;margin-top:10px;min-height:18px}
 .poshint b{color:var(--c-navy);font-weight:700}
 /* Groups wrap as units instead of each claiming a full row: three stacked
    full-width groups pushed the drop zone ~300px down a phone screen, which is
    the whole reason someone opens this page. */
 @media (max-width:560px){
-  #positionSeg{gap:10px 14px}
-  .posgroup{flex:0 1 auto}
+  #positionSeg{gap:8px 14px}
   .posgroup .tilerow{grid-auto-columns:minmax(0,auto)}
+  .posgroup .tile-btn{padding:11px 12px;font-size:13.5px}
   .tile-btn{padding:12px 12px;font-size:13.5px}
   /* No hero on a phone. The landing page does the selling; by the time
      someone is in /app on a 390px screen, 120px of strapline is 120px the
@@ -1380,7 +1384,9 @@ h2.sec + .speedline{margin-bottom:24px}
 /* The capture panel in the uploader. */
 .mob-screen{border-top:1px solid var(--c-line);padding:14px 0 0;margin:14px 0 0}
 .mob-screen:first-of-type{border-top:0;padding-top:8px;margin-top:8px}
-.mob-screen h4{font-size:14px;font-weight:800;color:var(--c-navy);margin:0 0 4px}
+/* An h3: this sits under the uploader's h2, and an h4 skipped a level in the
+   outline a screen reader navigates by. Same size as before. */
+.mob-screen .mob-h{font-family:var(--f-body);font-size:14px;font-weight:800;color:var(--c-navy);margin:0 0 4px;text-transform:none;letter-spacing:0}
 .mob-why{font-size:12.5px;color:var(--c-ink-soft);line-height:1.5;margin:0 0 8px;max-width:66ch}
 .mob-steps{margin:0 0 10px;padding-left:18px;font-size:12.5px;color:var(--c-ink-soft);line-height:1.6}
 .mob-steps li{margin:2px 0}
@@ -1447,6 +1453,13 @@ h2.sec + .speedline{margin-bottom:24px}
 /* range-less tiles: sink the status line to the same baseline as the bars next
    to it, so labels align along the top and status along the bottom */
 .tile:not(:has(.grbar)) .t-ref{margin-top:auto}
+/* The range-less readings, sorted into their own row(s) and drawn denser.
+   No min-height: nothing in their row is tall, so there is nothing to match. */
+.tiles-short{margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.tile.tile-short{padding:12px 14px 12px;min-height:0}
+.tile.tile-short .t-val{font-size:22px;margin-top:6px}
+.tile.tile-short .t-val.txt{font-size:15px;margin-top:8px}
+.tile.tile-short .t-ref{font-size:11.5px}   /* still sinks to the base: statuses in the row line up */
 /* ---------- Aero & watts panel ---------- */
 #aeroBlock .eyebrow .ic{width:16px;height:16px;vertical-align:-3px;margin-right:5px}
 .aero-hero{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0E2140,#14294B);border-radius:var(--radius);padding:18px 22px;color:#fff}

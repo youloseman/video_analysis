@@ -42,4 +42,5 @@ allowed. See the plan artifact + `flapp-mobile-plan` memory.
 
 `codemagic.yaml` at the repo root builds and ships to TestFlight. Setup steps
 are in that file's header comment (App Store Connect API key → Codemagic
-integration named `appstore`, create the app with bundle `ca.clarivagroups.flapp`).
+integration named `appstore`, a `CERTIFICATE_PRIVATE_KEY` secure variable in
+the `ios_signing_creds` group, create the app with bundle `ca.clarivagroups.flapp`).

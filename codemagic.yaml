@@ -12,10 +12,21 @@
 #      NOTE: the key must have ADMIN access. On a fresh account the first
 #      App Store distribution certificate has to be created, and only an
 #      Admin key may do that; App Manager can only reuse an existing one.
-#   3. App Store Connect -> Apps: create the app (bundle ID ca.clarivagroups.flapp
+#   3. Codemagic -> Teams -> Environment variables: add CERTIFICATE_PRIVATE_KEY
+#      (secure) to a group named  ios_signing_creds . It is the RSA key the
+#      distribution certificate is created from -- generate it once, locally:
+#        openssl genrsa -out flapp_ios_distribution.key 2048
+#      and paste the whole file (BEGIN ... END lines included). Keep the file:
+#      the certificate is useless without it.
+#   4. App Store Connect -> Apps: create the app (bundle ID ca.clarivagroups.flapp
 #      -- register the identifier at developer.apple.com/account first).
-#   4. Push to main (or start the workflow manually) -> build lands in
+#   5. Push to main (or start the workflow manually) -> build lands in
 #      TestFlight -> install on the iPhone via the TestFlight app.
+#
+# Signing is done by the script steps below, NOT by an `environment.ios_signing`
+# block: that block only looks up files uploaded to Codemagic's own "Code
+# signing identities" store (nothing is there) and fails before any script
+# runs -- "No matching profiles found for bundle identifier ...".
 workflows:
   # Sideloadable debug APK -- no Google Play account, no Android Studio, no
   # signing. Start it manually in Codemagic, then open the artifact link ON THE
@@ -60,9 +71,10 @@ workflows:
       node: 24.13.0
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: ca.clarivagroups.flapp
+      groups:
+        - ios_signing_creds   # CERTIFICATE_PRIVATE_KEY
+      vars:
+        BUNDLE_ID: ca.clarivagroups.flapp
     triggering:
       events: []            # manual builds for now; enable push triggers later
     scripts:
@@ -72,8 +84,14 @@ workflows:
       - name: Verify App Store Connect access
         script: |
           set +e
+          echo "== 0/3 Certificate private key is present =="
+          if [ -z "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "FAIL: CERTIFICATE_PRIVATE_KEY is not set. Add it to the"
+            echo "      'ios_signing_creds' environment group (see header of this file)."
+            exit 1
+          fi
           echo "== 1/3 API key authenticates and can see the App ID =="
-          app-store-connect list-bundle-ids --bundle-id-identifier ca.clarivagroups.flapp
+          app-store-connect list-bundle-ids --bundle-id-identifier "$BUNDLE_ID"
           rc=$?
           if [ $rc -ne 0 ]; then
             echo "FAIL: the key could not authenticate or list App IDs."
@@ -109,9 +127,22 @@ workflows:
         script: |
           cd mobile
           npx cap sync ios
+      # Automatic signing through the App Store Connect API: creates the App
+      # ID, the distribution certificate (from CERTIFICATE_PRIVATE_KEY) and the
+      # App Store profile if they don't exist yet, then reuses them.
+      - name: Fetch signing files
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
       - name: Build signed IPA
         script: |
           xcode-project use-profiles
+          # TestFlight rejects a build number it has already seen; the Codemagic
+          # build index is unique and monotonic, so it becomes CFBundleVersion.
+          (cd mobile/ios/App && agvtool new-version -all "$BUILD_NUMBER")
           xcode-project build-ipa \
             --workspace mobile/ios/App/App.xcworkspace \
             --scheme App
