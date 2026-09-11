@@ -152,4 +152,11 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        # Internal TestFlight groups get the build as soon as Apple has
+        # processed it -- no beta review, no test-information form. External
+        # review (submit_to_testflight: true) needs the form at
+        # App Store Connect -> TestFlight -> Test Information; turn it on when
+        # there are testers outside the team.
+        submit_to_testflight: false
+        beta_groups:
+          - Internal
