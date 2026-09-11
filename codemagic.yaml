@@ -91,7 +91,7 @@ workflows:
             exit 1
           fi
           echo "== 1/3 API key authenticates and can see the App ID =="
-          app-store-connect list-bundle-ids --bundle-id-identifier "$BUNDLE_ID"
+          app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID"
           rc=$?
           if [ $rc -ne 0 ]; then
             echo "FAIL: the key could not authenticate or list App IDs."
@@ -100,7 +100,7 @@ workflows:
             exit 1
           fi
           echo "== 2/3 Distribution certificates on the account =="
-          certs=$(app-store-connect list-certificates --type IOS_DISTRIBUTION 2>&1)
+          certs=$(app-store-connect certificates list --type IOS_DISTRIBUTION 2>&1)
           rc=$?
           echo "$certs"
           if [ $rc -ne 0 ]; then
@@ -108,14 +108,14 @@ workflows:
             exit 1
           fi
           if ! echo "$certs" | grep -qi "Certificate ID\|\"id\""; then
-            echo "FAIL: no App Store distribution certificate exists yet, and creating"
-            echo "      the FIRST one needs an ADMIN key -- App Manager can only reuse an"
-            echo "      existing certificate. Revoke the key and create one with 'Admin'"
-            echo "      access, then re-add it to Codemagic as 'appstore'."
-            exit 1
+            echo "NOTE: no App Store distribution certificate exists yet. The 'Fetch"
+            echo "      signing files' step creates it (--create). That needs an ADMIN"
+            echo "      key -- if it fails with a permissions error, App Manager is the"
+            echo "      reason: revoke the key, create one with 'Admin' access, re-add it"
+            echo "      to Codemagic as 'appstore'."
           fi
           echo "== 3/3 Existing App Store profiles for this App ID =="
-          app-store-connect list-profiles --profile-type IOS_APP_STORE || true
+          app-store-connect profiles list --profile-type IOS_APP_STORE || true
           echo "OK: key works. If signing still fails, the profile/cert creation step is the culprit."
       - name: Build web bundle
         script: |
