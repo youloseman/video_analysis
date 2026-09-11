@@ -122,7 +122,9 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 /* Expert Review, as a card rather than a footnote. Horizontal instead of a
    fourth grid column: at this width four tiers would leave ~220px each. */
 .tier-solo{margin-top:20px;padding:24px 22px}
-.tier-solo .poptag-addon{background:var(--c-coral)}
+/* White text on brand coral is 3.43:1; the button tier of the same red
+   clears AA, and the go-button already wears it. */
+.tier-solo .poptag-addon{background:var(--c-coral-btn)}
 .solo-head{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap}
 .solo-head>div:first-child{flex:1 1 320px}
 .tier-solo .tier-tagline{min-height:0;margin:4px 0 0;max-width:52ch}
