@@ -633,6 +633,18 @@
       <div class="speedline"></div>
     </div>
 
+    <!-- The report runs to several thousand pixels and every section below the
+         first screen was reachable only by scrolling past the ones before it.
+         This is the table of contents, and it carries the score so the number
+         the whole thing is about does not scroll away from its own evidence.
+         Built per result: a ride has no kinogram-of-a-stride, a free report has
+         most of this locked, and a rail listing sections that are not there is
+         worse than none. -->
+    <div class="rrail hidden" id="reportRail">
+      <span class="rrail-score" id="railScore"></span>
+      <nav class="rrail-nav" id="railNav" aria-label="Report sections"></nav>
+    </div>
+
     <div class="result-top" id="resultTop">
       <div class="card scorecard">
         <span class="sporttag" id="sportTag"><svg class="ic" id="sportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="sportTagText">Bike</span></span>
@@ -714,23 +726,22 @@
     <div id="bilateralBlock"></div>
     <p class="hint hidden ephem-note" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
 
-    <div class="block hidden" id="kinogramBlock">
+    <div class="block" id="issuesBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-film"/></svg> Kinogram</div>
-        <h3 id="kinoTitle">One stride, five positions</h3>
+        <div class="eyebrow">Technique</div>
+        <h3>Findings</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" id="kinoHint" style="text-align:left;margin:0 0 16px">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
-      <div class="videoframe">
-        <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles"></div>
-        <div class="videocap">
-          <span><span id="kinoMethod">Positions after the ALTIS Kinogram Method</span><br>
-            <span class="note" id="kinoNote"></span></span>
-          <a class="btn btn-ghost btn-sm" id="downloadKinogram" download="flapp-kinogram.jpg">
-            <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .jpg
-          </a>
-        </div>
+      <div id="issues"></div>
+    </div>
+
+    <div class="block hidden" id="aeroBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-aero"/></svg> Aerodynamics</div>
+        <h3>Aero &amp; watts</h3>
+        <div class="speedline-sm"></div>
       </div>
+      <div id="aeroPanel"></div>
     </div>
 
     <div class="block block-coach" id="coachBlock">
@@ -768,22 +779,23 @@
       <div id="fitMobility"></div>
     </div>
 
-    <div class="block" id="issuesBlock">
+    <div class="block hidden" id="kinogramBlock">
       <div class="blockhead">
-        <div class="eyebrow">Technique</div>
-        <h3>Findings</h3>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-film"/></svg> Kinogram</div>
+        <h3 id="kinoTitle">One stride, five positions</h3>
         <div class="speedline-sm"></div>
       </div>
-      <div id="issues"></div>
-    </div>
-
-    <div class="block hidden" id="aeroBlock">
-      <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-aero"/></svg> Aerodynamics</div>
-        <h3>Aero &amp; watts</h3>
-        <div class="speedline-sm"></div>
+      <p class="hint" id="kinoHint" style="text-align:left;margin:0 0 16px">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
+      <div class="videoframe">
+        <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles"></div>
+        <div class="videocap">
+          <span><span id="kinoMethod">Positions after the ALTIS Kinogram Method</span><br>
+            <span class="note" id="kinoNote"></span></span>
+          <a class="btn btn-ghost btn-sm" id="downloadKinogram" download="flapp-kinogram.jpg">
+            <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .jpg
+          </a>
+        </div>
       </div>
-      <div id="aeroPanel"></div>
     </div>
 
     <div id="upsellHost" class="hidden"></div>
@@ -815,15 +827,27 @@
         <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
     </div>
 
-    <div class="block hidden" id="biomechBlock">
-      <div class="blockhead">
-        <div class="eyebrow">Lab-grade</div>
-        <h3>Advanced biomechanics</h3>
-        <div class="speedline-sm"></div>
+    <!-- Folded by default, and the fold is the point. Eight charts of
+         cycle-by-cycle analysis is the deepest thing in the report and the
+         least actionable, and opened flat it put "23% match" in red directly
+         under an A grade. The summary carries the two OVERALL figures so the
+         closed state still says something, and the verdict line inside does
+         the reconciliation the reader cannot do from the cards. -->
+    <details class="block foldblock hidden" id="biomechBlock">
+      <summary class="fold-head">
+        <span class="fold-h">
+          <span class="eyebrow">Lab-grade</span>
+          <span class="fold-title">Advanced biomechanics</span>
+        </span>
+        <span class="fold-peek" id="biomechPeek"></span>
+        <svg class="ic fold-chev" aria-hidden="true"><use href="#i-chev-d"/></svg>
+      </summary>
+      <div class="fold-body">
+        <p class="biomech-intro">Cycle-by-cycle analysis of your movement: how repeatable your form is, how your joints coordinate, and how your motion compares to reference athletes.</p>
+        <div id="biomechVerdict"></div>
+        <div id="biomech"></div>
       </div>
-      <p class="biomech-intro">Cycle-by-cycle analysis of your movement: how repeatable your form is, how your joints coordinate, and how your motion compares to reference athletes.</p>
-      <div id="biomech"></div>
-    </div>
+    </details>
 
     <!-- Your numbers, written so another model reads them correctly (angle
          convention, reference bands, what was NOT measured). Built server-side
@@ -4905,14 +4929,36 @@ function angleTableRows(A, sport, position, srcByKey){
       statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`;
     }
     const src=(srcByKey&&srcByKey[k])?`<span class="ang-src">${esc(srcByKey[k])}</span>`:'';
-    return `<tr><th scope="row">${esc(pretty(k))}${src}</th>
+    // A side-view clip measures the near leg. The far one has no numbers at
+    // all, and on a bike that is six rows of em-dashes in the middle of the
+    // table -- the reader scans them looking for the value that is not there.
+    // Folded away, with a count, because "not captured" is information and
+    // deleting the rows would hide which joints those are.
+    return `<tr${muted?' class="t-far hidden"':''}><th scope="row">${esc(pretty(k))}${src}</th>
       <td class="${cls}">${num(a.min,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
       <td class="${cls}">${num(a.max,0)}</td>
       <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>${statusCell}
       <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
-  }).join('');
-  return rows||'<tr><td colspan="7" class="muted">No angle data.</td></tr>';
+  });
+  if(!rows.length) return '<tr><td colspan="7" class="muted">No angle data.</td></tr>';
+  const far=Object.keys(A).filter(k=>(A[k]||{}).mean==null).length;
+  if(far) rows.push(`<tr class="t-farrow"><td colspan="7">
+    <button class="btn btn-ghost btn-sm" type="button" data-showfar>
+      Show ${far} joint${far>1?'s':''} the camera could not see</button></td></tr>`);
+  return rows.join('');
 }
+/* One handler for every angle table on the page -- the report's and the saved
+   one in the cabinet are built by the same function above. */
+document.addEventListener('click', e=>{
+  const b=e.target.closest('[data-showfar]'); if(!b) return;
+  const tbl=b.closest('table'); if(!tbl) return;
+  const rows=[...tbl.querySelectorAll('tr.t-far')];
+  const showing=rows.some(r=>!r.classList.contains('hidden'));
+  rows.forEach(r=>r.classList.toggle('hidden', showing));
+  b.textContent = showing
+    ? `Show ${rows.length} joint${rows.length>1?'s':''} the camera could not see`
+    : 'Hide the joints with no measurement';
+});
 
 function render(job,opts){
   opts=opts||{};
@@ -5029,7 +5075,15 @@ function render(job,opts){
     // A re-measurement rewrote the file under the same URL; make the player
     // fetch it rather than replay the cached one.
     if(opts.recomputed) ov+=(ov.includes('?')?'&':'?')+'v='+Date.now();
-    $('#overlayVideo').src=ov;
+    // Poster = the annotated keyframe the report already carries, not frame 1.
+    // Frame 1 of a self-filmed clip is usually the athlete still walking into
+    // position (the in-app camera counts down five seconds), so the player sat
+    // on an empty gym until somebody pressed play. The keyframe is the moment
+    // the analysis actually read.
+    const vEl=$('#overlayVideo');
+    if(r.keyframe_base64) vEl.setAttribute('poster', r.keyframe_base64);
+    else vEl.removeAttribute('poster');
+    vEl.src=ov;
     $('#downloadOverlay').href=ov;
     $('#videoCol').classList.remove('hidden');
     $('#resultTop').classList.remove('no-video');
@@ -5143,7 +5197,7 @@ function render(job,opts){
   updateAngleMergeNote(paired, r.camera_side||null);
 
   // advanced biomechanics (phase portraits / coordination / waveform vs reference)
-  renderBiomechanics(s.biomechanics);
+  renderBiomechanics(s.biomechanics, sport);
 
   // raw json (debug only)
   if(DEBUG){ $('#rawBlock').classList.remove('hidden'); $('#rawJson').textContent=JSON.stringify(r,null,2); }
@@ -5171,8 +5225,53 @@ function render(job,opts){
   // path, so the tier that has the Save-as-PDF button printed a page with no
   // name, date or score on it.
   renderPrintable(r);
+  // Last, deliberately: the rail lists the sections that are actually on this
+  // report, and which those are is only settled once every block above has
+  // decided whether to show itself.
+  renderReportRail(r, sport);
   setState('results',{focus:'#resultsTitle'});
 }
+
+/* The report's table of contents, and the score it is about.
+
+   In reading order, which is now also fix-order: what is wrong, what it means,
+   what to do, then the evidence and the numbers. Only sections present on THIS
+   report are listed -- a ride has no stride kinogram, a free report has most of
+   it locked, and a rail pointing at sections that are not there is worse than
+   no rail. */
+const RAIL_SECTIONS=[
+  ['issuesBlock','Findings'], ['aeroBlock','Aero'], ['coachBlock','Coach'],
+  ['planBlock','Plan'], ['fitBlock','Fit'], ['kinogramBlock','Kinogram'],
+  ['metricsBlock','Metrics'], ['anglesBlock','Angles'],
+  ['biomechBlock','Lab'], ['exportBlock','Export'],
+];
+function renderReportRail(r, sport){
+  const rail=$('#reportRail'), nav=$('#railNav'), sc=$('#railScore');
+  if(!rail||!nav||!sc) return;
+  const items=RAIL_SECTIONS.filter(([id])=>{
+    const el=$('#'+id); return el && !el.classList.contains('hidden');
+  });
+  // One destination is not a table of contents.
+  if(items.length<2){ rail.classList.add('hidden'); return; }
+  nav.innerHTML=items.map(([id,label])=>
+    `<button type="button" data-rail="${id}">${esc(label)}</button>`).join('');
+  // A withheld score is not a missing one, and the rail is too small to explain
+  // the difference -- so it says nothing and leaves that to the scorecard.
+  sc.innerHTML = (!r.score_withheld && r.technique_score!=null)
+    ? `${r.technique_score}<small>/100</small>`
+      + (r.letter_grade?` <span class="rrail-grade">${esc(r.letter_grade)}</span>`:'')
+    : '';
+  rail.classList.remove('hidden');
+}
+$('#railNav').addEventListener('click',e=>{
+  const b=e.target.closest('[data-rail]'); if(!b) return;
+  const el=$('#'+b.dataset.rail); if(!el) return;
+  // A folded section that someone navigated TO should be open when they get
+  // there; being sent to a closed door is not an answer.
+  if(el.tagName==='DETAILS') el.open=true;
+  const glide=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({behavior:glide?'smooth':'auto',block:'start'});
+});
 
 /* ============================================================
    Result feedback — "does this match what you see?"
@@ -5821,7 +5920,9 @@ function reset(keepFile=false){
     hintMsg(`Upload a ${state.mode==='photo'?'photo':'video'} to continue`);
   }
   if(keepFile && state.file) readyHint();
-  const ov=$('#overlayVideo'); ov.pause(); ov.removeAttribute('src'); ov.load();
+  // Poster too, or the next clip opens showing the previous athlete's keyframe.
+  const ov=$('#overlayVideo');
+  ov.pause(); ov.removeAttribute('src'); ov.removeAttribute('poster'); ov.load();
   setUrl(location.pathname+location.search);
   setState('upload',{focus:'#uploaderTitle'});
 }
@@ -6012,15 +6113,24 @@ queueMicrotask(init);
    from a dozen different renderers, and the call site that gets forgotten is
    the one that ships unreachable.
    ============================================================ */
+const SCROLL_REGIONS={
+  '.tablewrap':'Table — scrolls sideways',
+  // The kinogram is five frames of one stride at a legible height; on a phone
+  // that is wider than the screen by design, and it holds a single <img>, so
+  // there is nothing inside it to tab to.
+  '.kinowrap':'Kinogram — scrolls sideways',
+};
 function syncScrollRegions(){
-  document.querySelectorAll('.tablewrap').forEach(w=>{
-    if(w.scrollWidth > w.clientWidth + 1){
-      w.setAttribute('tabindex','0');
-      w.setAttribute('role','group');
-      w.setAttribute('aria-label','Table — scrolls sideways');
-    } else {
-      w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label');
-    }
+  Object.keys(SCROLL_REGIONS).forEach(sel=>{
+    document.querySelectorAll(sel).forEach(w=>{
+      if(w.scrollWidth > w.clientWidth + 1){
+        w.setAttribute('tabindex','0');
+        w.setAttribute('role','group');
+        w.setAttribute('aria-label',SCROLL_REGIONS[sel]);
+      } else {
+        w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label');
+      }
+    });
   });
 }
 let _scrollRegionsQueued=false;
@@ -7009,7 +7119,34 @@ function coordinationChart(pr){
 }
 
 /* --- Orchestrator: build the whole Advanced biomechanics section --- */
-function renderBiomechanics(bio){
+/* The two OVERALL figures, in the fold header and again in words inside it.
+
+   The cards are per-joint; the SCORE uses the overall numbers, and only for a
+   run -- CYCLING_WEIGHTS contains neither, so for a ride these are measured and
+   not scored. Nothing said so, and the section opened on a red "23% match"
+   directly beneath an A grade with no way to reconcile the two. The
+   relationship is stated rather than the weight: a percentage printed here
+   would be a second copy of a number that lives in technique_scorer.py, and
+   copies drift. */
+function renderBiomechSummary(bio, sport){
+  const stab=(bio.phase_portraits||{}).overall_stability_score;
+  const sim=(bio.waveform||{}).overall_similarity_score;
+  const peek=$('#biomechPeek'), out=$('#biomechVerdict');
+  const bits=[];
+  if(stab!=null) bits.push(`repeatability <b>${num(stab,0)}/100</b>`);
+  if(sim!=null) bits.push(`reference match <b>${num(sim,0)}%</b>`);
+  if(peek) peek.innerHTML = bits.length ? bits.join(' · ') : '';
+  if(!out) return;
+  if(!bits.length){ out.innerHTML=''; return; }
+  const isRun = sport==='run';
+  out.innerHTML=`<p class="bm-verdict"><b>Overall:</b> ${bits.join(' · ')}. ` + (isRun
+    ? `Both feed your technique score — these overall figures, not the individual cards below, `
+      + `which are here to show you <i>where</i> the difference is.`
+    : `A ride is scored on its fit angles, so these do not feed your score. They are here to `
+      + `compare against your own later clips.`) + `</p>`;
+}
+
+function renderBiomechanics(bio, sport){
   const host=$('#biomech'); const block=$('#biomechBlock');
   if(!host||!block) return;
   if(!bio){ block.classList.add('hidden'); host.innerHTML=''; return; }
@@ -7074,6 +7211,7 @@ function renderBiomechanics(bio){
   }
 
   if(!cards.length){ block.classList.add('hidden'); host.innerHTML=''; return; }
+  renderBiomechSummary(bio, sport);
   const fps=bio.effective_fps, bw=bio.butterworth;
   const foot=(fps||bw)?`<p class="bm-sub" style="margin-top:16px">Lab-grade analysis${fps?` · sampled at ${num(fps,1)} fps`:''}${bw&&bw.cutoff_hz?` · smoothed with a ${num(bw.cutoff_hz,1)} Hz low-pass filter`:''}. Side-view, near-leg only.</p>`:'';
   host.innerHTML=`<div class="bmgrid">${cards.join('')}</div>${foot}`;

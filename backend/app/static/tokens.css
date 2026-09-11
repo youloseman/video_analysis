@@ -37,6 +37,10 @@
   --st-good:#1F7A45; --st-good-fill:#2E9E5B; --st-good-bg:#E6F4EC;
   --st-warn:#9A5E0B; --st-warn-fill:#C97B10;
   --st-bad:#CE3F2B;  --st-bad-fill:#F1553F;
+  /* -text is AA on WHITE by definition, and --st-bad lands at 4.41 once it
+     sits on --c-panel (the capture-report header). This is the same red,
+     dark enough to clear AA on the tinted surfaces too. */
+  --st-bad-text:#B8371F;
   --f-display:'Archivo','Arial Black',sans-serif;
   --f-body:'Manrope','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',monospace;
