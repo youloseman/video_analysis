@@ -36,7 +36,6 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   filter:blur(3px);
 }
 .upsell>*{position:relative}
-.upsell .eyebrow{color:var(--c-blue-dk)}
 .upsell h3{font-family:var(--f-display);font-size:20px;color:var(--c-navy);margin:2px 0 6px}
 .upsell p{color:var(--c-ink-soft);max-width:56ch;margin-bottom:14px}
 .upsell ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin:0 0 18px}
@@ -233,6 +232,14 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
    first page, which is what turns a web page into something an athlete can
    hand to a coach or keep in a folder. */
 .printhead,.printfoot{display:none}
+/* The print-only stand-in for the overlay video: paper cannot play one, so the
+   annotated still takes its place (see the @media print block below). It is
+   populated and un-hidden by renderResults whenever a keyframe exists, and
+   nothing ever hid it again -- so every video report opened with a 720x1280
+   still sitting ABOVE its own player, and the page scrolled sideways because
+   the image is wider than the column it lands in. It has no job on screen at
+   any width. */
+#printKeyframe{display:none}
 @page{margin:14mm 12mm}
 @media print{
   .topbar,.sidebar,.botnav,.scrim,footer,.backhome-row,.skip,.modal{display:none !important}
@@ -616,7 +623,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
   background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
 .speedline-sm{height:4px;width:56px;border-radius:2px;transform:skewX(var(--skew));
   background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
-.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue)}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue-dk)}
 
 /* Tinted pill: colored dot + navy text (AA-safe on any tint) */
 .pill{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:800;
@@ -625,7 +632,9 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .pill-high{background:#FDE5E1}.pill-high .dot{background:var(--st-bad-fill)}
 .pill-medium{background:#F7EBD9}.pill-medium .dot{background:var(--st-warn-fill)}
 .pill-low{background:var(--c-panel)}.pill-low .dot{background:var(--c-ink-faint)}
-.pill-info{background:var(--c-panel-blue,#e9f0fd);color:var(--c-blue)}.pill-info .dot{background:var(--c-blue)}
+/* 11px bold on the blue tint: the text tier, not the graphics one (4.21 -> 5.55).
+   The dot keeps the vivid blue -- it is a shape, and 3:1 is its bar. */
+.pill-info{background:var(--c-panel-blue);color:var(--c-blue-dk)}.pill-info .dot{background:var(--c-blue)}
 .pill-good{background:rgba(46,158,91,.14)}.pill-good .dot{background:var(--st-good-fill)}
 .pill-warnchip{background:#F7EBD9}.pill-warnchip .dot{background:var(--st-warn-fill)}
 .pill-okchip{background:rgba(46,158,91,.14)}.pill-okchip .dot{background:var(--st-good-fill)}
@@ -673,7 +682,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .navlink .ic{width:19px;height:19px;flex:none;opacity:.85}
 .navlink:hover{background:var(--c-panel);color:var(--c-navy)}
 .navlink:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
-.navlink[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-blue)}
+.navlink[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-blue-dk)}
 .navlink[aria-current="page"] .ic{opacity:1}
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
   border-radius:0 3px 3px 0;background:var(--c-blue)}
@@ -812,7 +821,7 @@ h2.sec + .speedline{margin-bottom:24px}
   display:inline-flex;align-items:center;gap:8px;transition:background .15s,color .15s}
 .seg button .ic{width:16px;height:16px}
 .seg button:hover{color:var(--c-ink)}
-.seg button[aria-pressed="true"]{background:var(--c-panel-blue);color:var(--c-blue)}
+.seg button[aria-pressed="true"]{background:var(--c-panel-blue);color:var(--c-blue-dk)}
 
 /* control rows (label + full-width tile row) */
 .ctl{margin-bottom:20px}
@@ -955,7 +964,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .caprep-n{font-family:var(--f-mono);font-size:10.5px;font-weight:600;color:var(--c-ink-soft);
   background:var(--c-bg);border:1px solid var(--c-line);border-radius:999px;padding:2px 8px;flex:none}
 .caprep-v{margin-left:auto;font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
-.caprep-v.good{color:var(--st-good)} .caprep-v.fair{color:var(--c-warn)} .caprep-v.poor{color:var(--st-bad)}
+.caprep-v.good{color:var(--st-good)} .caprep-v.fair{color:var(--c-warn-text)} .caprep-v.poor{color:var(--st-bad)}
 .caprep-row{display:grid;grid-template-columns:14px 1fr;gap:10px;padding:12px 16px;
   border-top:1px solid var(--c-line);font-size:13px}
 .caprep-row:first-of-type{border-top:none}
@@ -976,6 +985,13 @@ h2.sec + .speedline{margin-bottom:24px}
 .switch input:checked + .box{background:var(--c-blue)}
 .switch input:checked + .box::after{transform:translateX(18px)}
 .switch input:focus-visible + .box{box-shadow:var(--ring)}
+/* The free-plan stand-in for the overlay switch. Same box as the control it
+   replaces, so the form does not jump when the tier finally resolves. */
+.overlay-locked{display:flex;align-items:flex-start;gap:12px;text-align:left;font-size:13.5px;
+  margin:0 0 20px;padding:12px 16px;border:1px solid var(--c-line);border-radius:var(--radius);
+  background:var(--c-panel);color:var(--c-ink-soft)}
+.overlay-locked .ic{width:20px;height:20px;flex:none;color:var(--c-ink-faint);margin-top:1px}
+.overlay-locked b{color:var(--c-ink)}
 .switch:hover input:not(:checked) + .box{background:#CBD3DE}
 .switch:hover input:checked + .box{background:var(--c-blue-dk)}
 .subhint{display:block;font-size:12px;font-weight:500;color:var(--c-ink-soft);margin-top:4px}
@@ -1176,7 +1192,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .banner.good .ic{color:var(--st-good)}
 
 .coach{background:var(--c-panel-blue);border-radius:var(--radius);padding:24px}
-.coach h4{font-family:var(--f-body);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.18em;color:var(--c-blue);margin:16px 0 8px}
+.coach h4{font-family:var(--f-body);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.18em;color:var(--c-blue-dk);margin:16px 0 8px}
 .coach h4:first-child{margin-top:0}
 /* No reading-measure cap here. The 68ch/66ch it used to carry is good
    typography in the abstract and wrong in this card: .wrap already bounds the
@@ -1455,7 +1471,28 @@ table.data th .ang-src{display:block;font-size:10px;font-weight:600;color:var(--
    columns entirely rather than printing two columns of em-dashes. */
 table.data.no-opt .col-opt,table.data.no-opt .col-status{display:none}
 table.data .noref{color:var(--c-ink-faint);font-family:var(--f-body);font-size:12px;font-weight:600}
-.tablewrap{overflow-x:auto;position:relative}
+/* A table too wide for the screen scrolls sideways. A table that scrolls with
+   nothing to say so is indistinguishable from one with a column missing, which
+   is what a phone-sized joint-angle table looked like: seven columns, a status
+   reading "OPTIMA", and no reason to suspect there was more.
+
+   Four layers, no JS: two solid covers pinned to the content (they scroll WITH
+   it, `local`) and two shadows pinned to the box (`scroll`). At either end the
+   cover sits over the shadow and hides it, so the hint appears only on the side
+   that still has something to show. */
+.tablewrap{
+  overflow-x:auto;position:relative;
+  background:
+    linear-gradient(to right, var(--c-bg) 40%, rgba(255,255,255,0)) left center,
+    linear-gradient(to left,  var(--c-bg) 40%, rgba(255,255,255,0)) right center,
+    radial-gradient(farthest-side at 0 50%,   rgba(20,41,75,.16), rgba(20,41,75,0)) left center,
+    radial-gradient(farthest-side at 100% 50%,rgba(20,41,75,.16), rgba(20,41,75,0)) right center;
+  background-repeat:no-repeat;
+  background-size:28px 100%, 28px 100%, 10px 100%, 10px 100%;
+  background-attachment:local, local, scroll, scroll;
+}
+/* On paper nothing scrolls, and the covers would print as grey smears. */
+@media print{ .tablewrap{background:none;overflow:visible} }
 /* right-edge fade hints there are more columns to swipe to on narrow screens */
 @media(max-width:640px){
   .tablewrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:28px;pointer-events:none;

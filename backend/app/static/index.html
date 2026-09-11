@@ -113,6 +113,23 @@
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <!-- An icon that means two things means neither. These five exist because
+       four navigation entries wore the same spark and two report sections wore
+       the compare arrows, which are what the "Compare two analyses" button is
+       actually for. A sidebar you navigate by shape stops working when the
+       shapes repeat. -->
+  <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.5 3.5h8l9 9-8 8-9-9z"/><circle cx="7.5" cy="7.5" r="1.4"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/>
+    <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 8.5a6 6 0 1 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15 18 8.5"/><path d="M13.8 20.5a2 2 0 0 1-3.6 0"/></symbol>
+  <!-- Three frames side by side: the kinogram IS a strip of stride positions. -->
+  <symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 6h11M10 12h11M10 18h11"/><path d="M3 6.4l1.4 1.4L7 5.2"/><path d="M3 12.4l1.4 1.4L7 11.2"/><path d="M3 18.4l1.4 1.4L7 17.2"/></symbol>
   <!-- Sport icons, from the line-art originals in docs/icons/. The runner is
        drawn as filled outlines (so no stroke to inherit), the cyclist as real
        strokes — but both carry the same speed-line motif, which is what makes
@@ -165,13 +182,13 @@
     <a href="#" id="navAnalyze" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
     <a href="#" id="navProgress" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
-    <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>Pricing</span></a>
-    <a href="/examples" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>Examples</span></a>
+    <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>Pricing</span></a>
+    <a href="/examples" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg><span>Examples</span></a>
     <a href="/academy" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
-    <a href="#" id="navNew" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>What’s new</span><span class="newdot hidden" id="navNewDot" aria-hidden="true"></span></a>
+    <a href="#" id="navNew" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span>What’s new</span><span class="newdot hidden" id="navNewDot" aria-hidden="true"></span></a>
     <!-- Admin-only inbox for result feedback; revealed by renderAuth(). -->
     <a href="#" id="navFeedback" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Feedback</span></a>
-    <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>Reviews</span></a>
+    <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>Reviews</span></a>
   </nav>
   <div class="authbox" id="authbox"></div>
 </aside>
@@ -447,6 +464,15 @@
       <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
         <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s.</span></span>
       </label>
+      <!-- Shown INSTEAD of the switch on a free plan. The server never renders
+           an overlay for one, so offering the toggle promised a video, charged
+           the athlete the ~20 s it advertises, and returned a report with no
+           player in it. Says what it is before it says what it costs. -->
+      <p class="hint overlay-locked hidden" id="overlayLocked">
+        <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
+        <span><b>Overlay video</b> — your own clip with the skeleton and angles drawn on it — is part of the paid plans.
+        <a href="#pricing" onclick="event.preventDefault();openPricing()">See plans</a></span>
+      </p>
 
       <!-- Off-bike mobility (bike only). Folded, and folded is the point: it
            is measured once and then informs every analysis afterwards, so it
@@ -690,7 +716,7 @@
 
     <div class="block hidden" id="kinogramBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Kinogram</div>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-film"/></svg> Kinogram</div>
         <h3 id="kinoTitle">One stride, five positions</h3>
         <div class="speedline-sm"></div>
       </div>
@@ -719,7 +745,7 @@
 
     <div class="block" id="planBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Training plan</div>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Training plan</div>
         <h3>Your drills to fix it</h3>
         <div class="speedline-sm"></div>
       </div>
@@ -1090,7 +1116,7 @@
     </div>
     <div class="block hidden" id="hdPlanBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Training plan</div>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Training plan</div>
         <h3>Your drills to fix it</h3>
         <div class="speedline-sm"></div>
       </div>
@@ -1109,7 +1135,7 @@
 
     <div class="block hidden" id="hdKinogramBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Kinogram</div>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-film"/></svg> Kinogram</div>
         <h3>One cycle, key positions</h3>
         <div class="speedline-sm"></div>
       </div>
@@ -1812,7 +1838,7 @@ $('#modeSeg').addEventListener('click',e=>{
     : 'MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)';
   $('#change').textContent = photo?'Change photo':'Change clip';
   $('#fileNounCap').textContent = photo?'Photo':'Video';
-  $('#overlayField').classList.toggle('hidden', photo);
+  syncOverlayField();             // photo has nothing to annotate; free gets no render
   $('#guides .g-dur').classList.toggle('hidden', photo); // duration guideline is video-only
   if(typeof renderHeightField==='function') renderHeightField();
   if(typeof loadMobility==='function') loadMobility();
@@ -2442,6 +2468,22 @@ function angleOptimal(key,sport,res){
   // 'trunk' in stats is the same as 'trunk_angle'
   if(base==='trunk') return map.trunk_angle||null;
   return map[base+'_angle']||map[base]||null;
+}
+/* The band a measurement is actually judged against.
+   Hip is ASYMMETRIC and the rest of the report already says so: closing the hip
+   past the band is the risk (compression, and the iliac-artery floor the coach
+   prompt warns about), while opening it past the band is a comfort trade-off
+   and never a fault. The key-metrics tile encodes that by stretching the upper
+   bound to the measurement. The joint-angle table did not, so one bike report
+   printed the same hip twice, four rows apart: "71° · in range (40–71)" on the
+   card and "71 · out of range (40–55)" in the table. Two verdicts on one number
+   is worse than either verdict alone. */
+function angleBandFor(key,sport,res,value){
+  const opt=angleOptimal(key,sport,res);
+  if(!opt) return null;
+  const base=String(key).replace(/^left_|^right_/,'');
+  if(sport!=='run' && base==='hip' && value!=null && value>opt[1]) return [opt[0],value];
+  return opt;
 }
 const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
 /* Range-bar zone fills — the vivid (graphics) form of the semantic scale, so
@@ -3353,6 +3395,18 @@ const UNLOCK_COPY={
 /* Free = anonymous or the starter tier; both get a gated result (score +
    keyframe only), so their cabinet has the metrics/plan/focus withheld. */
 function isFreeUser(){ return !auth || auth.tier==='starter'; }
+/* Who gets the overlay switch. TWO conditions, and they used to live in two
+   places that did not know about each other: a photo has no video to annotate,
+   and a free plan never gets one rendered at all (main.py leaves
+   ``overlay_path`` unset for it). Only the first was enforced, so a free
+   athlete was shown a switch, left it on, waited the ~20 s it advertises, and
+   opened a report with no player in it. */
+function syncOverlayField(){
+  const photo = state.mode==='photo', free = isFreeUser();
+  const sw=$('#overlayField'), note=$('#overlayLocked');
+  if(sw) sw.classList.toggle('hidden', photo || free);
+  if(note) note.classList.toggle('hidden', photo || !free);
+}
 
 /* ============================================================
    Print / PDF
@@ -4841,9 +4895,9 @@ function angleTableRows(A, sport, position, srcByKey){
     const pct=tot?Math.round(valid/tot*100):0;
     const muted=a.mean==null;
     const cls=muted?'num muted':'num';
-    const opt=angleOptimal(k,sport,ctx);
+    const opt=angleBandFor(k,sport,ctx,a.mean);
     // "no ref" reads as a deliberate state; a bare em-dash reads as failed data.
-    const optTxt=opt?`${opt[0]}–${opt[1]}°`:'<span class="noref">no ref</span>';
+    const optTxt=opt?`${num(opt[0],0)}–${num(opt[1],0)}°`:'<span class="noref">no ref</span>';
     let statusCell='<td class="col-status muted"></td>';
     if(opt && !muted){
       const z=grZone(a.mean,opt[0],opt[1],k);
@@ -5809,6 +5863,13 @@ function renderAuth(){
   // then runs the analysis on the file already chosen.
   const go=$('#analyze');
   if(go) go.textContent = auth ? 'Analyze Technique' : 'Create free account & analyze';
+  // Both of these answer "who is asking", and both were rendered ONCE at boot
+  // -- before checkAuth() had an answer. So a signed-in athlete read "Free
+  // account required · 10 analyses" off their own uploader, having just signed
+  // in, and a free one was offered a render they never receive. Auth arriving
+  // IS the event that changes them.
+  renderQuota();
+  syncOverlayField();
   // Keep pricing CTAs (current-plan badge vs buy button) in sync with auth.
   if(typeof renderPricing==='function') renderPricing();
   if(typeof loadProfiles==='function') loadProfiles();
@@ -5936,6 +5997,43 @@ function init(){
    the upload screen instead. A microtask runs after the whole script has
    finished evaluating, so everything it touches exists. */
 queueMicrotask(init);
+
+/* ============================================================
+   Scrollable tables have to be reachable by keyboard.
+
+   A joint-angle table is seven columns wide and a phone is not, so `.tablewrap`
+   scrolls it sideways. Somebody who cannot use a pointer then has no way to
+   reach the columns past the edge -- the status column, which is the one that
+   says whether the number is a problem (axe: scrollable-region-focusable).
+
+   Marked only WHEN it actually overflows: a table that fits is not a scroll
+   region, and making it a tab stop would just add a stop to the page. Driven
+   by an observer rather than by call sites because these tables are injected
+   from a dozen different renderers, and the call site that gets forgotten is
+   the one that ships unreachable.
+   ============================================================ */
+function syncScrollRegions(){
+  document.querySelectorAll('.tablewrap').forEach(w=>{
+    if(w.scrollWidth > w.clientWidth + 1){
+      w.setAttribute('tabindex','0');
+      w.setAttribute('role','group');
+      w.setAttribute('aria-label','Table — scrolls sideways');
+    } else {
+      w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label');
+    }
+  });
+}
+let _scrollRegionsQueued=false;
+function scheduleScrollRegions(){
+  if(_scrollRegionsQueued) return;
+  _scrollRegionsQueued=true;
+  requestAnimationFrame(()=>{ _scrollRegionsQueued=false; syncScrollRegions(); });
+}
+/* childList only: the pass itself sets attributes, and observing those would
+   make it retrigger itself forever. */
+new MutationObserver(scheduleScrollRegions).observe(document.body,{childList:true,subtree:true});
+addEventListener('resize', scheduleScrollRegions);
+scheduleScrollRegions();
 
 /* ============================================================
    History — analyses persisted in localStorage (this device)
@@ -6554,9 +6652,12 @@ function renderHistoryAngles(e){
     const merged=mergeAngleStats(e.angleStats, e.cameraSide||null,
       paired?paired.angleStats:null, paired?paired.cameraSide:null);
     const srcMap=paired?angleSourceLabels(e.angleStats, e.cameraSide||null, paired):null;
-    host.innerHTML=`<table class="data">
+    // .tablewrap, like every other data table in the app: seven columns do not
+    // fit a phone, and without it the last one is simply cut off the side of
+    // the card -- statuses reading "OPTIMA" and "PHASE DEPEN".
+    host.innerHTML=`<div class="tablewrap"><table class="data">
       <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Valid</th></tr></thead>
-      <tbody>${angleTableRows(merged.stats, e.sport, e.position||null, srcMap)}</tbody></table>`;
+      <tbody>${angleTableRows(merged.stats, e.sport, e.position||null, srcMap)}</tbody></table></div>`;
     if(note){
       if(paired){ note.innerHTML=`Both sides shown: <b>${esc(e.cameraSide||'this')} side</b> from this analysis, <b>${esc(paired.cameraSide||'other')} side</b> filled from your ${esc(fmtWhen(paired.at))} analysis.`; note.classList.remove('hidden'); }
       else { const s=e.cameraSide==='left'?'right':e.cameraSide==='right'?'left':'other'; note.innerHTML=`Near side only. Analyze the <b>${esc(s)} side</b> to complete this table.`; note.classList.remove('hidden'); }
@@ -6565,9 +6666,9 @@ function renderHistoryAngles(e){
     // legacy entry: reduced 4-column table
     if(note) note.classList.add('hidden');
     const rows=(e.metrics||[]).map(m=>`<tr><th scope="row">${esc(m.label)}</th><td class="num">${esc(m.value)}</td><td class="num">${esc(m.sub||'')}</td><td>${m.statusCls?`<span class="pill pill-${m.statusCls}"><span class="dot" aria-hidden="true"></span>${esc(m.statusWord)}</span>`:''}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No measurements.</td></tr>';
-    host.innerHTML=`<table class="data">
+    host.innerHTML=`<div class="tablewrap"><table class="data">
       <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Detail</th><th scope="col">Status</th></tr></thead>
-      <tbody>${rows}</tbody></table>`;
+      <tbody>${rows}</tbody></table></div>`;
   }
 }
 /* ============================================================
@@ -6651,7 +6752,7 @@ function renderDashPlan(all){
     ? `<span class="dplan-done-note">✓ All drills done</span><button class="btn btn-primary btn-sm" data-analyze="${e.sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Re-test — new ${noun}</button>`
     : `<span class="dplan-prog"><b>${nDone}</b> of <b>${plan.length}</b> done</span><button class="btn btn-ghost btn-sm" data-plan-open="${e.id}">Open plan →</button>`;
   host.innerHTML=`<div class="dplan">
-    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Training plan</div>
+    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Training plan</div>
       <h3>Your drills</h3><div class="speedline-sm"></div></div>
     <div class="dplan-list">${items}</div>
     <div class="dplan-foot">${foot}</div>
