@@ -268,7 +268,7 @@ def _bands_table(s: Sample) -> str:
         '<p class="ex-lede">Every target names where it comes from. A value a '
         "degree or two outside a band is inside the method&rsquo;s own error, "
         "not a finding.</p>"
-        '<div class="ex-tw"><table class="ex-bands">'
+        '<div class="ex-tw" tabindex="0" role="group" aria-label="Table, scrolls sideways"><table class="ex-bands">'
         "<thead><tr><th>Measurement</th><th>Yours</th><th>Reference</th>"
         "<th>Source</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table></div></section>"
@@ -392,7 +392,7 @@ def _capture(s: Sample) -> str:
         '<p class="ex-lede">Verdict: <b>'
         f'{_esc(str(report.get("verdict") or "—"))}</b>. Every analysis says how '
         "the clip limited it, and what to change next time.</p>"
-        '<div class="ex-tw"><table class="ex-bands ex-cap">'
+        '<div class="ex-tw" tabindex="0" role="group" aria-label="Table, scrolls sideways"><table class="ex-bands ex-cap">'
         "<thead><tr><th>Check</th><th>Measured</th><th>Target</th></tr></thead>"
         f"<tbody>{rows}</tbody></table></div></section>"
     )
@@ -442,7 +442,7 @@ _CSS = """
 .ex-card p{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:0}
 .ex-badge{display:inline-block;font-family:var(--f-mono);font-size:10.5px;
   font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;
-  border-radius:4px;background:var(--c-panel-blue);color:var(--c-blue);margin-bottom:14px}
+  border-radius:4px;background:var(--c-panel-blue);color:var(--c-blue-dk);margin-bottom:14px}
 .ex-top{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;margin-bottom:8px}
 .ex-shot{flex:1 1 300px;min-width:260px}
 .ex-shot img{width:100%;border-radius:var(--radius);background:var(--c-media-bg)}
@@ -476,7 +476,7 @@ _CSS = """
 .ex-bands{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
 .ex-bands th,.ex-bands td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--c-line)}
 .ex-bands thead th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--c-ink-faint);background:var(--c-panel)}
+  text-transform:uppercase;color:var(--c-ink-soft);background:var(--c-panel)}
 .ex-bands tbody tr:last-child td{border-bottom:none}
 .ex-bands td.v,.ex-bands td.b{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .ex-bands td.m{font-weight:600;color:var(--c-navy)}

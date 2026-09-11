@@ -52,11 +52,11 @@ _AERO_CALC = """
 
       <label class="wctl" id="ac-power-row" role="tabpanel" aria-labelledby="ac-mode-power">
         <span class="wlab">Your power <b><span id="ac-power-val">250</span> W</span></span>
-        <input type="range" id="ac-power" min="120" max="400" step="5" value="250">
+        <input type="range" id="ac-power" min="120" max="400" step="5" value="250" aria-label="Your power, watts">
       </label>
       <label class="wctl wcollapsed" id="ac-speed-row" role="tabpanel" aria-labelledby="ac-mode-speed">
         <span class="wlab">Your speed <b><span id="ac-speed-val">36</span> km/h</span></span>
-        <input type="range" id="ac-speed" min="24" max="52" step="1" value="36">
+        <input type="range" id="ac-speed" min="24" max="52" step="1" value="36" aria-label="Your speed, km/h">
       </label>
 
       <label class="wctl">

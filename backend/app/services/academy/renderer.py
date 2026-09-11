@@ -56,7 +56,7 @@ a{color:var(--c-blue)}
 .navlink svg{width:19px;height:19px;flex:none;opacity:.85}
 .navlink:hover{background:var(--c-panel);color:var(--c-navy)}
 .navlink:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
-.navlink[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-blue)}
+.navlink[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-blue-dk)}
 .navlink[aria-current="page"] svg{opacity:1}
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
   border-radius:0 3px 3px 0;background:var(--c-blue)}
