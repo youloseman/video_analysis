@@ -326,6 +326,9 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .hcard{position:relative;border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;background:#fff;cursor:pointer;transition:.15s;box-shadow:var(--shadow);text-align:left;padding:0}
 .hcard:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
 .hcard:focus-visible{outline:3px solid var(--c-blue);outline-offset:2px}
+/* The no-frame stand-in: the sport, quietly, on the media ground. */
+.hthumb-none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.28)}
+.hthumb-none .ic{width:34px;height:34px}
 .hthumb{position:relative;background:var(--c-media-bg);aspect-ratio:16/10;overflow:hidden}
 .hthumb img{width:100%;height:100%;object-fit:cover;display:block}
 /* Cloud frames arrive after the card (see fetchKeyframe): a slow shimmer marks
@@ -343,7 +346,10 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .kf-slot{aspect-ratio:16/10}
 .hscore{position:absolute;left:10px;top:10px;font-family:var(--f-display);font-weight:900;font-style:italic;font-size:19px;color:#fff;padding:1px 10px;border-radius:8px}
 .hmeta{padding:12px 14px}
-.htitle{font-weight:800;font-size:14px;text-transform:capitalize}
+/* A <button> dressed as the title: the keyboard-reachable way to open a card. */
+.htitle{font-weight:800;font-size:14px;text-transform:capitalize;background:none;border:0;padding:0;
+  font-family:inherit;color:inherit;cursor:pointer;text-align:left;line-height:inherit}
+.htitle:focus-visible{outline:2px solid var(--c-blue);outline-offset:3px;border-radius:4px}
 .hsub{font-size:12px;color:var(--c-ink-soft);margin-top:2px}
 /* Visual glyph is 28px but the hit target is padded out to ~44px so it clears
    the touch-target minimum without enlarging the button chrome. */
@@ -437,7 +443,10 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
 /* before / after compare */
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
-.cmp-pick{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
+/* 220 rather than 150: two of these side by side on a phone left each
+   ~165px, and the option text (date · time · score) was cut at the score.
+   At 220 they stack on a phone and still sit beside each other on a laptop. */
+.cmp-pick{display:flex;flex-direction:column;gap:5px;flex:1;min-width:220px}
 .cmp-pick-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-soft)}
 .pairslot{margin-bottom:20px}
 .pairmode-hide{display:none!important}
@@ -521,7 +530,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .cmp-grid{border:1px solid var(--c-line);border-radius:var(--radius-lg);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
 .cmp-row{display:grid;grid-template-columns:1.3fr 1fr 1.4fr 1fr;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--c-line)}
 .cmp-row:last-child{border-bottom:none}
-.cmp-row-head{background:var(--c-panel);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink-faint)}
+.cmp-row-head{background:var(--c-panel);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink-soft)}
 .cmp-row-head .cmp-a,.cmp-row-head .cmp-b,.cmp-row-head .cmp-d{font-family:var(--f-body)}
 .cmp-lbl{font-weight:700;font-size:13px;color:var(--c-navy)}
 .cmp-a,.cmp-b{font-family:var(--f-mono);font-weight:600;font-size:15px;color:var(--c-navy);text-align:center;font-variant-numeric:tabular-nums}
@@ -874,7 +883,7 @@ h2.sec + .speedline{margin-bottom:24px}
   transition:background .15s,color .15s}
 .modetabs button .ic{width:16px;height:16px}
 .modetabs button:hover{color:var(--c-ink)}
-.modetabs button[aria-selected="true"]{background:var(--c-panel-blue);color:var(--c-blue)}
+.modetabs button[aria-selected="true"]{background:var(--c-panel-blue);color:var(--c-blue-dk)}
 .modetabs button:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 
 /* Segmented control (aria-pressed toggle group) — same visual language as the
@@ -927,7 +936,7 @@ h2.sec + .speedline{margin-bottom:24px}
 .tile-btn[aria-pressed="true"] .ic{opacity:1}
 .tile-btn:hover{border-color:var(--c-blue);background:var(--c-panel-blue)}
 .tile-btn:active{background:#DFE9F9}
-.tile-btn[aria-pressed="true"]{background:var(--c-panel-blue);border-color:var(--c-blue);color:var(--c-blue);font-weight:700}
+.tile-btn[aria-pressed="true"]{background:var(--c-panel-blue);border-color:var(--c-blue);color:var(--c-blue-dk);font-weight:700}
 .tile-btn:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 
 /* drop zone */
@@ -1291,6 +1300,26 @@ h2.sec + .speedline{margin-bottom:24px}
   color:var(--c-ink);border:1.5px solid var(--c-line);border-radius:var(--radius-btn);background:#fff}
 .askbox input:focus{border-color:var(--c-blue)}
 .askhint{font-size:12px;color:var(--c-ink-faint);line-height:1.5;margin:8px 0 0}
+/* Two controls that fold: the camera side (Auto-detect is right for nearly
+   every clip) and the optional setup/body fields. Between them they cost ~200px
+   of screen before the athlete has even chosen a clip. */
+.sidebox .tilerow{margin-top:10px}
+.sidebox .poshint{margin-top:10px}
+.optbox .profilefield{margin-top:10px}
+.optbox .profilehint{margin-top:6px}
+@media(max-width:560px){
+  /* .tilerow is grid-auto-flow:column, so four options share one phone-width
+     row and "My right side" wrapped onto three lines. Two by two instead. */
+  .sidebox .tilerow{grid-auto-flow:row;grid-template-columns:1fr 1fr}
+}
+/* The stand-in for a clip this browser cannot decode (an iPhone .MOV is
+   usually HEVC). Same box as the preview it replaces, so nothing moves. */
+.fplace{width:224px;aspect-ratio:16/9;flex:none;border-radius:var(--radius-btn);
+  background:var(--c-media-bg);color:#fff;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;text-align:center;padding:10px;
+  font-size:12px;font-weight:600;line-height:1.35}
+.fplace .ic{width:22px;height:22px;opacity:.75}
+.fplace small{font-weight:500;opacity:.72}
 /* The question, echoed above its answer in the report. */
 .asked{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:0 0 14px;
   padding:10px 14px;background:var(--c-panel-blue);border-radius:var(--radius-btn)}

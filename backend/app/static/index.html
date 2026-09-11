@@ -369,17 +369,24 @@
           </div>
         </div>
         <p class="poshint" id="posHint"></p>
-        <div class="ctl" id="sideField" style="margin-top:10px">
-          <span class="ctl-label" id="sideLabel">Camera side:</span>
-          <div class="tilerow" id="sideSeg" role="group" aria-labelledby="sideLabel">
-            <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
-            <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
-            <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
-            <button type="button" class="tile-btn" data-side="both" aria-pressed="false">Both sides</button>
-          </div>
-          <p class="poshint" id="sideHint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
-        </div>
       </div>
+
+      <!-- Camera side. OUTSIDE the bike-position block, which is where it lived
+           until now -- and since that block is hidden for running, the two-sided
+           RUN session was unreachable: the backend supports it, syncPairSlot has
+           run-specific copy for it, and no runner could ever click it.
+           Folded, because Auto-detect is right for nearly every clip. The
+           summary states what is set, so the choice is quiet, not hidden. -->
+      <details class="askbox sidebox" id="sideField">
+        <summary>Camera side: <b id="sideNow">Auto-detect</b> <span class="askopt">change</span></summary>
+        <div class="tilerow" id="sideSeg" role="group" aria-label="Camera side">
+          <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
+          <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
+          <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
+          <button type="button" class="tile-btn" data-side="both" aria-pressed="false">Both sides</button>
+        </div>
+        <p class="poshint" id="sideHint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
+      </details>
 
       <!-- Drop zone -->
       <input type="file" id="file" class="visually-hidden" accept="video/*"
@@ -404,6 +411,15 @@
       <div class="filepreview" id="filepreview">
         <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
         <img id="previewImg" class="hidden" alt="Preview of your selected photo">
+        <!-- Shown when the browser cannot decode the clip it was just handed --
+             an iPhone .MOV is usually HEVC, which Chrome on Windows will not
+             play. The analysis is server-side and unaffected; only the preview
+             is. It used to render as a black rectangle, which reads as a
+             broken upload rather than an unsupported codec. -->
+        <div class="fplace hidden" id="previewPlace" aria-hidden="true">
+          <svg class="ic" aria-hidden="true"><use href="#i-film"/></svg>
+          <span>No preview in this browser<br><small>The clip is fine — it just can’t play here</small></span>
+        </div>
         <div class="fmeta">
           <div class="fname" id="fname">clip.mp4</div>
           <div class="fsize" id="fsize">—</div>
@@ -436,8 +452,10 @@
       <!-- Which setup this was filmed on. Sits next to the clip rather than
            on a settings screen because it is a property of THIS recording:
            asking afterwards gets you an honest shrug. -->
+      <details class="askbox optbox" id="optBox">
+        <summary>Setup &amp; body details <span class="askopt">optional</span></summary>
       <div class="profilefield" id="profileField">
-        <label for="profileSel">Filmed on</label>
+        <label for="profileSel">Which bike or shoes</label>
         <select id="profileSel" aria-describedby="profileHint"></select>
         <input id="profileNew" class="hidden" type="text" maxlength="60"
                placeholder="Name it — e.g. Road bike, TT bike, Vaporflys"
@@ -459,6 +477,7 @@
         <span class="hunit">cm</span>
       </div>
       <p class="hint profilehint hidden" id="heightHint"></p>
+      </details>
 
       <!-- Overlay toggle (video only) -->
       <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
@@ -1759,7 +1778,16 @@ function setFile(f){
   const url=URL.createObjectURL(f);
   const vid=$('#preview'), img=$('#previewImg');
   if(photo){ img.src=url; img.classList.remove('hidden'); vid.classList.add('hidden'); vid.removeAttribute('src'); }
-  else { vid.src=url; vid.classList.remove('hidden'); img.classList.add('hidden'); img.removeAttribute('src'); }
+  else {
+    vid.src=url; vid.classList.remove('hidden'); img.classList.add('hidden'); img.removeAttribute('src');
+    // Decided by what the element actually managed to load, not by sniffing the
+    // filename: plenty of .MOV files play fine, and plenty of .mp4 files do not.
+    const place=$('#previewPlace');
+    const fallback=()=>{ if(place){ place.classList.remove('hidden'); vid.classList.add('hidden'); } };
+    if(place) place.classList.add('hidden');
+    vid.onerror=fallback;
+    vid.onloadeddata=()=>{ if(!vid.videoWidth) fallback(); };
+  }
   $('#fname').textContent=f.name;
   $('#fsize').textContent=fmtSize(f.size);
   drop.classList.add('hidden'); fprev.classList.add('show');
@@ -1770,6 +1798,29 @@ function setFile(f){
   renderPreflight();
   if(!photo) checkClip(vid);
   readyHint();
+  bringAnalyzeIntoView();
+}
+
+/* Once a clip is chosen, the only thing left to do is press the button -- and
+   on a bike the button sits ~460px below the fold, under the position picker,
+   the drop zone, the recorder row and the optional details. Nothing was wrong
+   with the form; the athlete simply could not see what to do next. Scroll to
+   it instead of shortening the form until it fits, which would cost the
+   controls that make the measurement good. */
+function bringAnalyzeIntoView(){
+  const btn=$('#analyze'); if(!btn) return;
+  const b=btn.getBoundingClientRect();
+  if(b.bottom <= innerHeight - 8) return;          // already in sight; leave it alone
+  const glide=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+  btn.scrollIntoView({behavior:glide?'smooth':'auto', block:'end'});
+}
+
+/* A phone has nothing to drag. The copy said "Drag & drop" to every athlete
+   filming themselves on one, which is most of them. */
+function dropCopyFor(photo){
+  const touch = matchMedia('(pointer: coarse)').matches;
+  if(touch) return photo ? 'Tap to choose a photo' : 'Tap to choose a clip — or record one below';
+  return photo ? 'Drag & drop photo or click to browse' : 'Drag & drop video or click to browse';
 }
 /* Pre-flight: everything we can tell about a clip BEFORE spending an upload
    and an analysis on it.
@@ -1856,7 +1907,7 @@ $('#modeSeg').addEventListener('click',e=>{
   reset();                        // clears the old-mode file first
   state.mode=b.dataset.mode;
   fileInput.setAttribute('accept', photo?'image/*':'video/*');
-  $('#dropTitle').textContent = photo?'Drag & drop photo or click to browse':'Drag & drop video or click to browse';
+  $('#dropTitle').textContent = dropCopyFor(photo);
   $('#dropHelp').textContent = photo
     ? 'JPG, PNG, or HEIC · up to 25 MB'
     : 'MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)';
@@ -1914,6 +1965,14 @@ $('#sideSeg') && $('#sideSeg').addEventListener('click',e=>{
   $('#sideSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   syncPairSlot();
 });
+/* The folded control still has to say what it is set to, or folding it would
+   be hiding it. Reads the chosen button's own label so the two can never
+   disagree about what "both" is called. */
+function syncSideSummary(){
+  const now=$('#sideNow'); if(!now) return;
+  const b=$(`#sideSeg [data-side="${state.cameraSide||'auto'}"]`);
+  now.textContent = b ? b.textContent.trim() : 'Auto-detect';
+}
 /* "Both sides" turns the uploader into a two-clip session: the first slot
    becomes the LEFT clip, a second appears for the RIGHT. A side view only
    measures the leg nearest the camera, so this is the only way to get a
@@ -1945,6 +2004,7 @@ function syncPairSlot(){
     : 'Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.';
   if(!on){ state.fileB=null; pairRevoke('b'); }
   if(on) renderPairCards();
+  syncSideSummary();
   readyHint();
 }
 /* Object URLs for the card thumbnails, kept per slot so replacing a clip
@@ -3541,7 +3601,9 @@ function renderProfileField(){
   if(!auth) return;
   const mine=liveProfiles(state.sport);
   const room=(PROFILES.used||0) < (PROFILES.limit||1);
-  sel.innerHTML=`<option value="">Not filed</option>`
+  // "Not filed" was the app talking to itself. The question above the box
+  // is "which bike or shoes", so the empty answer is "none chosen".
+  sel.innerHTML=`<option value="">None chosen</option>`
     + mine.map(p=>`<option value="${p.id}"${String(p.id)===String(state.profileId)?' selected':''}>${esc(p.name)}</option>`).join('')
     + (room?`<option value="__new">+ New setup…</option>`:'');
   if(hint){
@@ -3552,7 +3614,7 @@ function renderProfileField(){
       return;
     }
     hint.innerHTML = room
-      ? 'Filing a clip lets its trend line follow one setup instead of averaging two.'
+      ? 'Naming the setup lets its trend line follow one bike or pair of shoes instead of averaging two.'
       : `Your plan keeps <b>${PROFILES.limit}</b> setup${PROFILES.limit>1?'s':''}. Comparing one against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`;
     const link=hint.querySelector('[data-openpricing]');
     if(link) link.addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
@@ -6056,6 +6118,9 @@ function init(){
   track('view_opened', {view: document.body.dataset.state || 'upload', initial:true});
   renderQuota();
   syncCaptureGuide();          // figure matches the sport the uploader starts on
+  // The markup carries the pointer copy; a touch device is told to tap.
+  $('#dropTitle').textContent = dropCopyFor(state.mode==='photo');
+  syncSideSummary();           // the folded camera-side control states its setting
   // In the mobile app the platform bridge restores the auth token from native
   // storage asynchronously; wait for it so checkAuth sees the token. On the web
   // FLAPP_BRIDGE is undefined and this resolves immediately.
@@ -6521,8 +6586,12 @@ async function rehydrateEntry(e){
     return fresh;
   }catch(err){ return null; }
 }
+/* One locale for every date on the page. `[]` meant "the browser's", so a
+   Russian-locale browser printed "10 сент." beside English on every side of
+   it. A single-language interface formats its dates in that language. */
+const UI_LOCALE='en-CA';
 function fmtWhen(ms){ try{ const d=new Date(ms);
-  return d.toLocaleDateString([], {month:'short',day:'numeric'})+' · '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+  return d.toLocaleDateString(UI_LOCALE, {month:'short',day:'numeric'})+' · '+d.toLocaleTimeString(UI_LOCALE, {hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
 
 /* ---------- Keyframes: on this device they ride along with the entry; from
    the cloud the list arrives thin (`has_keyframe`) and each frame is pulled
@@ -6556,7 +6625,10 @@ function thumbMarkup(e, cls){
   const k=keyframeOf(e);
   if(k) return `<img class="${cls}" src="${k}" alt="">`;
   if(e.has_keyframe) return `<img class="${cls} kf-img" alt="">`;
-  return '';
+  // No frame at all -- a free-tier run keeps its numbers, not its footage. An
+  // empty .hthumb is a black rectangle, which reads as a broken image rather
+  // than as "there is no picture of this one".
+  return `<span class="hthumb-none" aria-hidden="true"><svg class="ic"><use href="#i-${e.sport==='run'?'run':'bike'}"/></svg></span>`;
 }
 // A pending cloud frame needs BOTH the shimmer class and the data-kf hook. They
 // must be applied separately: the container already has a class attribute, and a
@@ -6660,10 +6732,16 @@ function renderHistList(){
     </div>`;
     return;
   }
-  w.innerHTML=a.map(e=>`<div class="hcard" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">
+  // The card is NOT the button. It used to be (role=button, tabindex=0) with
+  // the delete button nested inside it, which is two controls one inside the
+  // other -- a screen reader announces the card and cannot reach the delete,
+  // and Enter on the card had to be told not to fire when it came from the X.
+  // Now the title is the real button and the whole card is a mouse-sized
+  // target for it; the delete is a sibling, reachable on its own.
+  w.innerHTML=a.map(e=>`<div class="hcard" data-id="${e.id}">
     <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
       <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
-    <div class="hmeta"><div class="htitle">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind)}</div>
+    <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind)}</button>
       <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
   </div>`).join('');
   observeKeyframes(w);
@@ -6920,9 +6998,9 @@ $('#trends').addEventListener('click',e=>{
   const oa=e.target.closest('[data-openauth]'); if(oa){ e.preventDefault(); openAuth(oa.dataset.openauth); return; }
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
 });
-$('#history').addEventListener('keydown',e=>{
-  if(e.key==='Enter'||e.key===' '){ const card=e.target.closest('.hcard'); if(card && !e.target.closest('[data-del]')){ e.preventDefault(); openHistory(card.dataset.id); } }
-});
+/* No keydown handler: the title is a real <button> now, and Enter/Space are
+   what buttons do. The click handler above still opens the card from
+   anywhere on it, which is what a mouse expects. */
 
 /* ============================================================
    Progress / trends — charts of key metrics over time (this device)
@@ -7349,7 +7427,7 @@ $('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); 
    ============================================================ */
 function daysSince(ms){ return Math.floor((Date.now()-ms)/86400000); }
 function agoStr(ms){ const d=daysSince(ms); return d<=0?'today':d===1?'1 day ago':d+' days ago'; }
-function shortDate(ms){ try{ return new Date(ms).toLocaleDateString([], {month:'short',day:'numeric'}); }catch(e){ return ''; } }
+function shortDate(ms){ try{ return new Date(ms).toLocaleDateString(UI_LOCALE, {month:'short',day:'numeric'}); }catch(e){ return ''; } }
 function miniSpark(vals){
   const W=132,H=44,p=5,n=vals.length; if(n<2) return '';
   let lo=Math.min(...vals),hi=Math.max(...vals); if(lo===hi){lo-=1;hi+=1;}
@@ -7371,8 +7449,10 @@ function sportCard(sport, entries){
   const scores=chron.map(e=>e.score).filter(v=>v!=null);
   const last=entries[0];
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
-  const deltaHtml=dd?`<span class="tdelta ${dd.cls}">${dd.delta>0?'+':''}${dd.delta}${dd.trend?' · '+dd.trend:''}</span>`
-    :'<span class="hint">first analysis — trends build from #2</span>';
+  // Says WHAT it is compared against. "0 · steady" read as a measurement.
+  const deltaHtml=!dd ? '<span class="hint">first analysis — trends build from #2</span>'
+    : dd.delta===0 ? `<span class="tdelta sta">no change since your first</span>`
+    : `<span class="tdelta ${dd.cls}">${dd.delta>0?'+':''}${dd.delta} since your first${dd.trend?' · '+dd.trend:''}</span>`;
   // Personal record: the latest score is a *new* PB only when it strictly beats
   // every prior one (a tie just shows "Best N · date", no fanfare).
   const best=scores.length?Math.max(...scores):null;
