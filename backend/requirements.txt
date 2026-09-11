@@ -28,9 +28,13 @@ pydantic==2.13.4
 # import is guarded and the shell falls back to gzip when it is absent.
 brotli==1.2.0
 
-# --- LLM coaching (Milestone 5): Gemini. Optional at runtime -- the app skips
-# recommendations gracefully when GEMINI_API_KEY is unset. ---
+# --- LLM coaching (Milestone 5): Gemini, with a second-provider fallback.
+# Both are optional at runtime -- the app skips recommendations gracefully when
+# neither GEMINI_API_KEY nor OPENAI_API_KEY is set, and runs on whichever one
+# IS set. The fallback is a different vendor on purpose: an outage or a
+# suspended key takes a whole provider with it. ---
 google-genai==2.6.0
+openai==3.13.0
 
 # --- Accounts / auth: async SQLAlchemy + JWT + bcrypt (SQLite local, Postgres prod) ---
 sqlalchemy[asyncio]==2.0.49

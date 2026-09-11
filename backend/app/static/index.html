@@ -2381,6 +2381,14 @@ function mdInline(s){
             /(^|[\s([{"'—–])\*(?!\s)([^*\n]+?)(?<!\s)\*(?=[\s.,;:!?)\]}"'—–]|$)/g,
             '$1<em>$2</em>');
 }
+/* The line under every coach block. It names the model that actually wrote the
+   text, which is not decoration: coaching falls back to a second provider when
+   the first one fails, and without this the only way to tell which one answered
+   is to read the server log. */
+function coachDisclaimer(rec){
+  const model=(rec&&rec.model)?` · written by <span class="mono">${esc(rec.model)}</span>`:'';
+  return `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.${model}</div>`;
+}
 function mdToHtml(md){
   const e=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const lines=String(md).split('\n'); let html='',inList=false;
@@ -3298,8 +3306,7 @@ function renderPhoto(res,opts){
 
   const cb=$('#pCoachBlock'); const rec=res.ai_recommendations;
   if(rec && rec.report){
-    $('#pCoach').innerHTML=mdToHtml(rec.report)+
-      `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.</div>`;
+    $('#pCoach').innerHTML=mdToHtml(rec.report)+coachDisclaimer(rec);
     cb.classList.remove('hidden');
   } else cb.classList.add('hidden');
 
@@ -5026,8 +5033,7 @@ function render(job,opts){
     askedEl.classList.toggle('hidden', !q);
   }
   if(rec && rec.report){
-    $('#coach').innerHTML=mdToHtml(rec.report)+
-      `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.</div>`;
+    $('#coach').innerHTML=mdToHtml(rec.report)+coachDisclaimer(rec);
     cb.classList.remove('hidden');
   } else cb.classList.add('hidden');
 

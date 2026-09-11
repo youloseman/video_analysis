@@ -12,6 +12,8 @@ missing, or the call fails -- analysis never depends on the LLM.
 from __future__ import annotations
 
 import math
+import time
+from collections import deque
 from typing import Any
 
 import structlog
@@ -96,6 +98,179 @@ def _client(genai: Any, types: Any) -> Any:
             timeout=int(settings.gemini_timeout_s * 1000),
         ),
     )
+
+
+# ============================================================
+# The provider chain
+#
+# Coaching has always degraded to silence when the model was unreachable, and
+# silence here is indistinguishable from a clean analysis with nothing to say.
+# Two things fix that: a fallback on a DIFFERENT vendor -- the failures that
+# actually happen (an outage, a suspended key, a model retired out from under
+# us) take a whole provider with them, so a second model at the same vendor is
+# not a fallback -- and a counter the /health endpoint can show.
+#
+# Tuning knobs are per-model and they DRIFT. Measured against the live API on
+# 2026-09-11: gemini-2.5-flash accepts ``thinking_budget=0``;
+# gemini-3.5-flash-lite rejects that same argument with a 400 and wants
+# ``thinking_level="minimal"``; gemini-3.8-flash takes the budget or
+# ``thinking_level="low"`` but 400s on "minimal". Nothing in the error says
+# which knob was the problem, and the analysis is already finished by the time
+# we find out. So each model gets at most two shots: once with the tuning it is
+# believed to want, then -- only if that failed -- bare, with nothing but the
+# prompt. A knob that stops being accepted costs one retry, not the coaching.
+# ============================================================
+
+# Unix timestamps of calls that fell through the ENTIRE chain. Bounded: this is
+# a health signal, not a log.
+_FAILURES: deque[float] = deque(maxlen=500)
+
+# A reasoning model spends tokens thinking before it writes anything, and those
+# come out of the same ceiling as the answer. Giving it the answer's budget
+# alone is how you get an empty reply billed in full.
+_REASONING_HEADROOM = 1500
+
+
+def llm_failures_24h() -> int:
+    """Coaching calls that exhausted every provider in the last 24 hours.
+
+    Reported by ``/health``. A coach that quietly stopped answering looks
+    exactly like a coach with nothing to say, so the number has to be
+    observable from outside the container.
+    """
+    cutoff = time.time() - 86_400
+    while _FAILURES and _FAILURES[0] < cutoff:
+        _FAILURES.popleft()
+    return len(_FAILURES)
+
+
+def _gemini_tuning(model: str) -> dict[str, Any]:
+    """The thinking knob this Gemini generation accepts. See the note above."""
+    m = model.lower()
+    if m.startswith("gemini-3"):
+        # "minimal" exists on the lite/smaller 3.x models and is rejected by
+        # the full Flash ones; "low" is accepted by both, but costs tokens the
+        # lite model does not need to spend on a 260-word writing task.
+        return {"thinking_level": "minimal" if "lite" in m else "low"}
+    # 2.5 and older: a token budget, where 0 means "do not think at all".
+    return {"thinking_budget": 0}
+
+
+def _call_gemini(
+    model: str, system: str, prompt: str, max_tokens: int, tuning: dict[str, Any],
+) -> str:
+    from google import genai
+    from google.genai import types
+
+    cfg: dict[str, Any] = {
+        "system_instruction": system,
+        "temperature": 0.3,
+        "max_output_tokens": max_tokens,
+    }
+    if tuning:
+        cfg["thinking_config"] = types.ThinkingConfig(**tuning)
+    # Bound to a local ON PURPOSE. Written as
+    # ``_client(...).models.generate_content(...)`` the Client is a temporary,
+    # and the SDK closes its underlying HTTP client when the Client is
+    # collected -- which can happen before the request goes out. Every call
+    # then fails with "Cannot send a request, as the client has been closed",
+    # and coaching disappears everywhere at once.
+    client = _client(genai, types)
+    resp = client.models.generate_content(
+        model=model, contents=prompt, config=types.GenerateContentConfig(**cfg),
+    )
+    return (getattr(resp, "text", None) or "").strip()
+
+
+def _call_openai(
+    model: str, system: str, prompt: str, max_tokens: int, tuning: dict[str, Any],
+) -> str:
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key=settings.openai_api_key,
+        timeout=settings.gemini_timeout_s,
+        max_retries=0,   # the chain is the retry; a second one just holds the worker
+    )
+    resp = client.responses.create(
+        model=model,
+        instructions=system,
+        input=prompt,
+        max_output_tokens=max_tokens + _REASONING_HEADROOM,
+        **tuning,
+    )
+    return (getattr(resp, "output_text", None) or "").strip()
+
+
+def _chain() -> list[tuple[str, str, dict[str, Any]]]:
+    """``(provider, model, tuning)`` in the order they are tried."""
+    out: list[tuple[str, str, dict[str, Any]]] = []
+    if settings.gemini_api_key:
+        out.append((
+            "gemini", settings.gemini_model, _gemini_tuning(settings.gemini_model),
+        ))
+    if settings.openai_api_key:
+        out.append((
+            "openai", settings.openai_model,
+            {"reasoning": {"effort": settings.openai_reasoning_effort}},
+        ))
+    return out
+
+
+def _complete(system: str, prompt: str, max_tokens: int, tag: str) -> dict[str, Any] | None:
+    """Walk the chain. Returns ``{"text", "model"}``, or ``None`` if all failed.
+
+    ``tag`` names the caller (video / photo / progress) so the logs say which
+    report lost its coaching, not just that one did.
+    """
+    chain = _chain()
+    if not chain:
+        logger.info("LLM_SKIP", reason="no_api_key", tag=tag)
+        return None
+
+    callers = {"gemini": _call_gemini, "openai": _call_openai}
+    for idx, (provider, model, tuning) in enumerate(chain):
+        call = callers[provider]
+        # Bare retry only when there was tuning to drop -- otherwise the second
+        # attempt is byte-identical to the first and buys nothing.
+        for attempt in ([tuning, {}] if tuning else [{}]):
+            bare = not attempt
+            try:
+                text = call(model, system, prompt, max_tokens, attempt)
+            except ImportError:
+                # SDK absent (google-genai / openai not installed). Not
+                # retryable and not this model's fault -- move on.
+                logger.warning("LLM_SKIP", tag=tag, provider=provider, reason="sdk_missing")
+                break
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "LLM_ATTEMPT_FAILED", tag=tag, provider=provider, model=model,
+                    bare=bare, err=str(e)[:300],
+                )
+                continue
+            # Stripped HERE and not only in each provider: a whitespace-only
+            # reply is a failed call, and the check belongs where the decision
+            # is, not in every branch that could forget it. Without this the
+            # athlete gets an empty coach block with a disclaimer under it.
+            text = (text or "").strip()
+            if not text:
+                logger.warning(
+                    "LLM_EMPTY", tag=tag, provider=provider, model=model, bare=bare,
+                )
+                continue
+            if idx or bare:
+                # Worth its own line: the report shipped, but the primary
+                # model or its tuning is broken and nobody would otherwise know.
+                logger.warning(
+                    "LLM_FALLBACK_USED", tag=tag, provider=provider, model=model,
+                    bare=bare, position=idx,
+                )
+            logger.info("LLM_OK", tag=tag, provider=provider, model=model, chars=len(text))
+            return {"text": text, "model": model}
+
+    _FAILURES.append(time.time())
+    logger.warning("LLM_EXHAUSTED", tag=tag, tried=[m for _, m, _ in chain])
+    return None
 
 
 def _fmt(v: Any, unit: str = "") -> str:
@@ -595,48 +770,15 @@ def generate_recommendations(
     focus: str | None = None,
 ) -> dict[str, Any] | None:
     """Return ``{"report": markdown, "model": name}`` or ``None`` (graceful)."""
-    if not settings.gemini_api_key:
-        logger.info("LLM_SKIP", reason="no_api_key")
-        return None
-
-    try:
-        from google import genai
-        from google.genai import types
-    except ImportError:
-        logger.warning("LLM_SKIP", reason="google-genai not installed")
-        return None
-
     prompt = _build_prompt(
         sport_type, technique_score, letter_grade, cycling_position,
         detected_issues or [], angle_statistics or {}, sport_specific_metrics or {},
         fit_plan, focus,
     )
-
-    try:
-        client = _client(genai, types)
-        resp = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.3,
-                max_output_tokens=1200,
-                # gemini-2.5-flash spends "thinking" tokens by default, which
-                # would eat the output budget and truncate the reply. This is a
-                # short copywriting task from structured data -- no thinking
-                # needed; disabling it gives the full budget to the answer.
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            ),
-        )
-        text = (getattr(resp, "text", None) or "").strip()
-        if not text:
-            logger.warning("LLM_EMPTY", model=settings.gemini_model)
-            return None
-        logger.info("LLM_OK", model=settings.gemini_model, chars=len(text))
-        return {"report": text, "model": settings.gemini_model}
-    except Exception as e:  # noqa: BLE001
-        logger.warning("LLM_FAILED", err=str(e))
+    got = _complete(SYSTEM_PROMPT, prompt, 1200, tag="video")
+    if not got:
         return None
+    return {"report": got["text"], "model": got["model"]}
 
 
 PROGRESS_SYSTEM_PROMPT = (
@@ -692,44 +834,17 @@ def generate_progress_summary(
 ) -> dict[str, Any] | None:
     """Return ``{"summary": markdown, "model": name}`` or ``None`` (graceful).
 
-    Compares two of the athlete's analyses. Same Gemini path + graceful
+    Compares two of the athlete's analyses. Same provider chain + graceful
     degradation contract as ``generate_recommendations``.
     """
-    if not settings.gemini_api_key:
-        logger.info("PROGRESS_LLM_SKIP", reason="no_api_key")
-        return None
-    try:
-        from google import genai
-        from google.genai import types
-    except ImportError:
-        logger.warning("PROGRESS_LLM_SKIP", reason="google-genai not installed")
-        return None
-
     prompt = (
         f"{_progress_data_block(sport, before, after)}\n\n"
         "Write the progress read now, following the required section structure."
     )
-    try:
-        client = _client(genai, types)
-        resp = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=PROGRESS_SYSTEM_PROMPT,
-                temperature=0.3,
-                max_output_tokens=900,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            ),
-        )
-        text = (getattr(resp, "text", None) or "").strip()
-        if not text:
-            logger.warning("PROGRESS_LLM_EMPTY", model=settings.gemini_model)
-            return None
-        logger.info("PROGRESS_LLM_OK", model=settings.gemini_model, chars=len(text))
-        return {"summary": text, "model": settings.gemini_model}
-    except Exception as e:  # noqa: BLE001
-        logger.warning("PROGRESS_LLM_FAILED", err=str(e))
+    got = _complete(PROGRESS_SYSTEM_PROMPT, prompt, 900, tag="progress")
+    if not got:
         return None
+    return {"summary": got["text"], "model": got["model"]}
 
 
 # Not every "angle" in the photo result is an angle: head tuck is a 0-100 score
@@ -886,34 +1001,8 @@ def generate_photo_recommendations(
     sport: str, photo_result: dict[str, Any],
 ) -> dict[str, Any] | None:
     """Coaching from a single-photo analysis. Returns {report, model} or None."""
-    if not settings.gemini_api_key:
-        logger.info("LLM_SKIP", reason="no_api_key")
-        return None
-    try:
-        from google import genai
-        from google.genai import types
-    except ImportError:
-        logger.warning("LLM_SKIP", reason="google-genai not installed")
-        return None
-
     prompt = _build_photo_prompt(sport, photo_result)
-    try:
-        client = _client(genai, types)
-        resp = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.3,
-                max_output_tokens=1200,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            ),
-        )
-        text = (getattr(resp, "text", None) or "").strip()
-        if not text:
-            return None
-        logger.info("LLM_PHOTO_OK", model=settings.gemini_model, chars=len(text))
-        return {"report": text, "model": settings.gemini_model}
-    except Exception as e:  # noqa: BLE001
-        logger.warning("LLM_PHOTO_FAILED", err=str(e))
+    got = _complete(SYSTEM_PROMPT, prompt, 1200, tag="photo")
+    if not got:
         return None
+    return {"report": got["text"], "model": got["model"]}

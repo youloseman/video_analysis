@@ -42,13 +42,26 @@ class Settings:
     # LLM coaching (M5). Read from env; never hard-code the key. When absent,
     # recommendations are skipped gracefully and analysis still works.
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     # Hard ceiling on a single Gemini request. Every LLM call is made from a
     # threadpool thread (the photo endpoint blocks the user on it outright), so
     # without this a hung request holds a worker slot until the socket gives up
     # on its own -- which can be minutes. Coaching is optional by design: a
     # timeout degrades to "no coaching", never to a failed analysis.
     gemini_timeout_s: float = 20.0
+
+    # --- Second provider, used ONLY when the first one fails (see
+    # services/video_analysis/llm_recommendations.py). A fallback on the same
+    # vendor does not help against the failures that actually happen -- an
+    # outage, a suspended key, a model retired out from under us -- so this one
+    # is deliberately somebody else's API. Unset = the chain is Gemini-only,
+    # exactly as before. ---
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-5-mini"
+    # Reasoning effort for the fallback. Env-overridable because the accepted
+    # values differ between model generations, and being able to correct that
+    # without a redeploy is the whole point of the setting.
+    openai_reasoning_effort: str = "low"
 
     # Abuse guard: max analyses per client (IP) per rolling 24h. 0 disables.
     rate_limit_per_day: int = 3
@@ -189,7 +202,8 @@ class Settings:
 
     @property
     def llm_enabled(self) -> bool:
-        return bool(self.gemini_api_key)
+        """True when ANY provider in the coaching chain is configured."""
+        return bool(self.gemini_api_key or self.openai_api_key)
 
     @property
     def analytics_enabled(self) -> bool:
@@ -232,6 +246,12 @@ def _load_settings() -> Settings:
         gemini_api_key=os.environ.get("GEMINI_API_KEY") or None,
         gemini_model=os.environ.get("GEMINI_MODEL") or Settings.gemini_model,
         gemini_timeout_s=_float_env("GEMINI_TIMEOUT_S", Settings.gemini_timeout_s),
+        openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
+        openai_model=os.environ.get("OPENAI_MODEL") or Settings.openai_model,
+        openai_reasoning_effort=(
+            (os.environ.get("OPENAI_REASONING_EFFORT") or "").strip()
+            or Settings.openai_reasoning_effort
+        ),
         rate_limit_per_day=_int_env("VA_RATE_LIMIT_PER_DAY", Settings.rate_limit_per_day),
         job_ttl_hours=_float_env("VA_JOB_TTL_HOURS", Settings.job_ttl_hours),
         job_sweep_interval_s=_int_env(

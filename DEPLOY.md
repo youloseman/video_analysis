@@ -100,7 +100,17 @@ curl -s $BASE/jobs/<job_id>/overlay -o overlay.mp4
 | `VA_JOB_TTL_HOURS` | `6` | How long a finished job stays pollable before it and its upload directory are deleted. `0` disables the sweeper (debugging only — the disk then grows unbounded). |
 | `VA_JOB_SWEEP_INTERVAL_S` | `600` | How often the reaper runs. |
 | `VA_RATE_LIMIT_PER_DAY` | `3` | Anonymous per-IP daily analyses. `0` disables. |
-| `GEMINI_TIMEOUT_S` | `20` | Hard ceiling on one Gemini request. Coaching is optional by design — a timeout degrades to "no coaching", never to a failed analysis. |
+| `GEMINI_TIMEOUT_S` | `20` | Hard ceiling on one request to either provider. Coaching is optional by design — a timeout degrades to "no coaching", never to a failed analysis. |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Primary coaching model. **The thinking knob differs by generation and the code picks it from the model name** (`thinking_level` on 3.x, `thinking_budget` on 2.5) — measured, because `gemini-3.5-flash-lite` answers a `thinking_budget` with a bare `400 INVALID_ARGUMENT`. An unknown name still works: the first attempt is retried once with no tuning at all. |
+| `OPENAI_API_KEY` | *(unset)* | Enables the **fallback** provider, used only when the primary fails. Deliberately a different vendor: an outage, a suspended key or a retired model takes a whole vendor with it, so a second Gemini model would not be a fallback. Unset = Gemini-only, exactly as before. |
+| `OPENAI_MODEL` | `gpt-5-mini` | The fallback model. |
+| `OPENAI_REASONING_EFFORT` | `low` | Accepted values differ between OpenAI model generations; overridable so a rejected value can be corrected without a redeploy (and if it is rejected, the call is retried once with the provider's own default). |
+
+`GET /health` reports the chain under `coaching`: which models are configured,
+whether a fallback exists at all, and `exhausted_24h` — reports in the last 24
+hours that got no coaching from any provider. That number is the point of the
+fallback: coaching degrades to silence, and silence looks exactly like a clean
+analysis with nothing to say, so it has to be countable from outside.
 | `VA_CORS_ORIGINS` | *(unset)* | Comma-separated allowed origins. **Unset in production = no cross-origin access at all** (the SPA is same-origin, so it needs none); unset locally = `*`. Set to `*` to force the old permissive behaviour. |
 | `POSTHOG_KEY` | *(unset)* | Product analytics. Unset = no snippet in any page, no server-side events, and the privacy policy says so (section 7 ships in both versions and the server keeps the true one). Setup: [docs/POSTHOG_RU.md](docs/POSTHOG_RU.md). |
 | `POSTHOG_HOST` | `https://us.i.posthog.com` | Ingestion host — must match the region the PostHog project was created in, or events go nowhere without an error. Point it at a reverse proxy on our own domain to survive ad-blockers. |

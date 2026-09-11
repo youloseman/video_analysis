@@ -1301,6 +1301,29 @@ def health() -> dict[str, Any]:
         # deployment is in test mode is not a secret, and a real card being
         # declined at the end of checkout announces it far more loudly.
         "billing": _billing_health(),
+        # Coaching degrades to silence by design, and silence is exactly what a
+        # clean analysis looks like -- so a coach that stopped answering is
+        # invisible from the outside. This is the number that makes it visible:
+        # models configured in the chain, and how many reports in the last 24h
+        # got none of them.
+        "coaching": _coaching_health(),
+    }
+
+
+def _coaching_health() -> dict[str, Any]:
+    from app.services.video_analysis.llm_recommendations import llm_failures_24h
+
+    chain = []
+    if settings.gemini_api_key:
+        chain.append(settings.gemini_model)
+    if settings.openai_api_key:
+        chain.append(settings.openai_model)
+    return {
+        # Model names, never keys: which model wrote a report is already
+        # printed under the report itself.
+        "chain": chain,
+        "has_fallback": len(chain) > 1,
+        "exhausted_24h": llm_failures_24h(),
     }
 
 
