@@ -48,6 +48,10 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
   text-transform:uppercase;white-space:nowrap;padding:1px 6px;margin-left:6px;border-radius:999px;
   background:var(--c-wash,rgba(0,0,0,.05));color:var(--c-muted);vertical-align:1px}
 .upsell .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+/* The one-off unlock, sized to sit beside the plan button rather than tower
+   over it: same height, the brand's go-colour, its own icon. */
+.upsell .btn-unlock{font-size:15px;padding:12px 22px}
+.upsell .btn-unlock .ic{width:16px;height:16px}
 .upsell .price-tag{font-family:var(--f-mono);font-size:13px;color:var(--c-ink-soft)}
 .upsell .price-tag b{color:var(--c-navy);font-size:16px}
 .lock-chip{

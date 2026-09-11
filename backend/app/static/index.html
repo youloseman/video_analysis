@@ -1154,6 +1154,11 @@
         </div>
       </div>
     </div>
+    <!-- The same offer the fresh report made, for a report opened later. The
+         teaser was saved, the athlete went to read the plans, came back to the
+         cabinet -- and the $4 button had only ever existed on the screen they
+         left. Everything it needed (the entry id) was here all along. -->
+    <div id="hdUpsellHost" class="hidden"></div>
     <div class="block block-coach hidden" id="hdCoachBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
@@ -3678,7 +3683,7 @@ function teaserPanelHtml(items, opts){
     }).join('')}</ul>
     <div class="cta-row">
       <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
-      ${opts.unlockId?`<button class="btn btn-outline" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})">Unlock just this report — ${esc(unlockPrice())}</button>`:''}
+      ${opts.unlockId?`<button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Unlock just this report — ${esc(unlockPrice())}</button>`:''}
       <span class="price-tag">${fromPriceLabel()}</span>
     </div>
     ${opts.unlockNudge||''}
@@ -6815,6 +6820,29 @@ function renderHistoryDetail(e){
   renderHistoryAngles(e);
   renderHistoryKinogram(e);
   renderHistoryExport(e);
+  renderHistoryUpsell(e);
+}
+/* The unlock offer on a saved report that is still gated.
+
+   `access` is the server's word on what this account may see of the entry
+   (full / preview / teaser), refreshed on every listing, so it is the thing
+   to decide by -- not the `locked` marker the client wrote at save time,
+   which does not know about a plan bought since. A preview is not offered the
+   $4 button, for the same reason the fresh report does not: its coaching has
+   already been read, and what is left is what a plan is for. */
+function renderHistoryUpsell(e){
+  const host=$('#hdUpsellHost'); if(!host) return;
+  const gated = e && e.access!=='full' && entryLooksGated(e);
+  if(!gated){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  const preview = e.access==='preview';
+  const unlockId = (auth && !preview && e.sellable!==false) ? e.id : null;
+  // What the $4 buys here is what it buys on the fresh report, minus nothing:
+  // the server's UNLOCK_SCOPE (result_gating.py), which never included the
+  // video -- it is rendered only for a paying run and lives on a job that
+  // expires within hours. Without the scope every bullet reads as included,
+  // and the one-off buyer is promised a replay a stored report cannot make.
+  const unlock_scope=['coaching','angles','issues','ranges','kinogram','export','fit'];
+  renderUpsell('hdUpsellHost', {reason: preview?'preview':'teaser', unlock_scope}, [], unlockId);
 }
 /* The AI export of a saved report. Offered only to a reader entitled to it —
    the endpoint answers 402 otherwise, and a button that always says "no" is
