@@ -6,9 +6,12 @@
 #
 # One-time setup (Artur, after the Apple Developer account is active):
 #   1. App Store Connect -> Users and Access -> Integrations -> App Store
-#      Connect API: create an API key (role: App Manager). Download the .p8.
+#      Connect API: create an API key (role: Admin). Download the .p8.
 #   2. Codemagic -> Teams -> Integrations -> App Store Connect: add the key,
 #      name it exactly:  appstore
+#      NOTE: the key must have ADMIN access. On a fresh account the first
+#      App Store distribution certificate has to be created, and only an
+#      Admin key may do that; App Manager can only reuse an existing one.
 #   3. App Store Connect -> Apps: create the app (bundle ID ca.clarivagroups.flapp
 #      -- register the identifier at developer.apple.com/account first).
 #   4. Push to main (or start the workflow manually) -> build lands in
@@ -63,6 +66,39 @@ workflows:
     triggering:
       events: []            # manual builds for now; enable push triggers later
     scripts:
+      # Runs first so a signing failure explains itself. The automatic signing
+      # step is silent when the API key can't do its job; this prints exactly
+      # which of the three usual causes it is (auth, role, missing App ID).
+      - name: Verify App Store Connect access
+        script: |
+          set +e
+          echo "== 1/3 API key authenticates and can see the App ID =="
+          app-store-connect list-bundle-ids --bundle-id-identifier ca.clarivagroups.flapp
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "FAIL: the key could not authenticate or list App IDs."
+            echo "  -> Check the Codemagic integration is named exactly 'appstore'"
+            echo "     and its Key ID / Issuer ID / .p8 match the key in App Store Connect."
+            exit 1
+          fi
+          echo "== 2/3 Distribution certificates on the account =="
+          certs=$(app-store-connect list-certificates --type IOS_DISTRIBUTION 2>&1)
+          rc=$?
+          echo "$certs"
+          if [ $rc -ne 0 ]; then
+            echo "FAIL: the key cannot read certificates -> its role is too low."
+            exit 1
+          fi
+          if ! echo "$certs" | grep -qi "Certificate ID\|\"id\""; then
+            echo "FAIL: no App Store distribution certificate exists yet, and creating"
+            echo "      the FIRST one needs an ADMIN key -- App Manager can only reuse an"
+            echo "      existing certificate. Revoke the key and create one with 'Admin'"
+            echo "      access, then re-add it to Codemagic as 'appstore'."
+            exit 1
+          fi
+          echo "== 3/3 Existing App Store profiles for this App ID =="
+          app-store-connect list-profiles --profile-type IOS_APP_STORE || true
+          echo "OK: key works. If signing still fails, the profile/cert creation step is the culprit."
       - name: Build web bundle
         script: |
           cd mobile
