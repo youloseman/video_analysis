@@ -610,6 +610,7 @@ h2.sec .accent{color:var(--c-coral)}
   box-shadow:0 10px 26px rgba(241,85,63,.4);
 }
 .label-pill.blue{background:var(--c-blue);box-shadow:0 10px 26px rgba(47,109,224,.4)}
+.split-note a{color:var(--c-blue-dk)}
 .split-note{
   display:flex;gap:11px;align-items:flex-start;margin-top:26px;padding:16px 18px;
   background:var(--c-panel);border:1px solid var(--c-line);border-radius:var(--radius);
@@ -664,10 +665,12 @@ h2.sec .accent{color:var(--c-coral)}
   color:#fff;padding:8px 15px;border-radius:999px;backdrop-filter:blur(5px);
   border:1px solid rgba(255,255,255,.25);
 }
-.cmp-tag.b{background:rgba(174,44,26,.88);border-color:rgba(255,180,166,.5)}
-.cmp-tag.b em{font-style:normal;color:#FFD8D1}
-.cmp-tag.a{background:rgba(31,122,69,.85)}
-.cmp-tag.a em{font-style:normal;color:#C9F5DB}
+/* Solid grounds and white values: the translucent washes put a 10.5px tinted
+   number on a tinted pill at 3.4-4.1:1, over footage that changes under it. */
+.cmp-tag.b{background:#A83A22;border-color:rgba(255,180,166,.5)}
+.cmp-tag.b em{font-style:normal;color:#fff;font-weight:700}
+.cmp-tag.a{background:#1F7A45}
+.cmp-tag.a em{font-style:normal;color:#fff;font-weight:700}
 @media(max-width:640px){
   /* The frame is ~350px wide here and the pills are ~150px each, so overlaid
      they sit squarely on the angle labels. Above the image they read as a
@@ -828,7 +831,7 @@ h2.sec .accent{color:var(--c-coral)}
    column, because four columns in a 1140px wrap squeezes all of them. */
 .tier-solo{margin-top:22px;padding:26px 28px}
 .tier-solo:hover{transform:none;box-shadow:var(--shadow)}
-.tier-solo .poptag-addon{background:var(--c-coral);letter-spacing:.08em}
+.tier-solo .poptag-addon{background:var(--c-coral-btn);letter-spacing:.08em}
 .solo-head{display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap}
 .solo-head>div:first-child{flex:1 1 360px}
 .tier-solo .tier-tagline{min-height:0;margin:4px 0 0;max-width:54ch}
@@ -897,10 +900,10 @@ footer{background:#060F1F;color:rgba(255,255,255,.75);padding:64px 0 44px;font-s
 @media(max-width:520px){.foot-grid{grid-template-columns:1fr}}
 footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
 .foot-tag{max-width:34ch;color:rgba(255,255,255,.5);font-size:13.5px}
-.foot-col h4{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:14px;font-weight:600}
+.foot-col h4{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.62);margin-bottom:14px;font-weight:600}
 .foot-col a{display:block;color:rgba(255,255,255,.78);text-decoration:none;padding:4px 0;font-weight:600}
 .foot-col a:hover{color:#fff}
-.foot-base{border-top:1px solid rgba(255,255,255,.1);padding-top:24px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between;font-size:12.5px;color:rgba(255,255,255,.4)}
+.foot-base{border-top:1px solid rgba(255,255,255,.1);padding-top:24px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between;font-size:12.5px;color:rgba(255,255,255,.62)}
 .foot-base .mono{letter-spacing:.06em}
 </style>
 </head>
