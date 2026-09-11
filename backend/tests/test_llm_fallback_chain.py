@@ -20,6 +20,7 @@ Two real failures sit behind this file.
 from __future__ import annotations
 
 import dataclasses
+import time
 
 import pytest
 
@@ -49,12 +50,12 @@ def _configure(monkeypatch, **overrides):
 
 
 def _fakes(monkeypatch, gemini, openai):
-    """Install fake providers; each is called ``(model, system, prompt, max, tuning)``."""
-    calls: list[tuple[str, str, dict]] = []
+    """Install fake providers. Records ``(provider, model, tuning, timeout)``."""
+    calls: list[tuple[str, str, dict, float]] = []
 
     def wrap(provider, behaviour):
-        def _call(model, system, prompt, max_tokens, tuning):
-            calls.append((provider, model, tuning))
+        def _call(model, system, prompt, max_tokens, tuning, timeout_s):
+            calls.append((provider, model, tuning, timeout_s))
             if isinstance(behaviour, Exception):
                 raise behaviour
             if callable(behaviour):
@@ -145,7 +146,55 @@ def test_a_missing_sdk_skips_that_provider_without_retrying(monkeypatch):
     assert [c[0] for c in calls] == ["gemini", "openai"]
 
 
-# --- 3. when it really is gone --------------------------------------------
+# --- 3. the clock ---------------------------------------------------------
+#
+# Measured 2026-09-11 on the real coaching prompt: gpt-5-mini answers in 8.2 s
+# at reasoning effort "minimal" and 21.9 s at "low" -- past the 20 s per-call
+# ceiling, so "low" timed out and the fallback never landed. Per-call ceilings
+# also stack: two providers x two attempts is four times the wait, and the
+# photo endpoint blocks the athlete on the sum.
+
+def test_the_whole_chain_shares_one_wall_clock_budget(monkeypatch):
+    _configure(monkeypatch, gemini_timeout_s=20.0, llm_deadline_s=45.0)
+    calls = _fakes(monkeypatch, "coached", "unused")
+
+    llm._complete("sys", "prompt", 100, tag="video")
+
+    # No single call may outlive the budget it is spending from.
+    assert calls[0][3] <= 20.0
+
+
+def test_an_exhausted_budget_stops_the_chain(monkeypatch):
+    """A deadline already spent means nothing new is started."""
+    _configure(monkeypatch, llm_deadline_s=0.0)
+    calls = _fakes(monkeypatch, "coached", "coached")
+
+    assert llm._complete("sys", "prompt", 100, tag="video") is None
+    assert calls == []
+    assert llm.llm_failures_24h() == 1
+
+
+def test_a_slow_failure_moves_on_instead_of_retrying_bare(monkeypatch):
+    """A timeout is not a rejected argument, so the same model gets one shot.
+
+    Retrying it would spend the budget the other provider needs -- which is
+    exactly what an outage looks like from here.
+    """
+    _configure(monkeypatch, gemini_timeout_s=0.05, llm_deadline_s=45.0)
+
+    def slow(tuning):
+        time.sleep(0.06)
+        raise RuntimeError("Request timed out.")
+
+    calls = _fakes(monkeypatch, slow, "fallback coaching")
+    got = llm._complete("sys", "prompt", 100, tag="video")
+
+    assert got["model"] == "gpt-5-mini"
+    # One gemini attempt, not two: no bare retry after a slow failure.
+    assert [c[0] for c in calls] == ["gemini", "openai"]
+
+
+# --- 4. when it really is gone --------------------------------------------
 
 def test_exhausting_the_chain_is_counted(monkeypatch):
     _configure(monkeypatch)
@@ -167,7 +216,7 @@ def test_no_key_configured_is_not_a_failure(monkeypatch):
 
 def test_failures_older_than_a_day_drop_out_of_the_count():
     llm._FAILURES.append(1.0)                      # 1970
-    llm._FAILURES.append(__import__("time").time())
+    llm._FAILURES.append(time.time())
     assert llm.llm_failures_24h() == 1
 
 

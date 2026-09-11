@@ -58,10 +58,21 @@ class Settings:
     # exactly as before. ---
     openai_api_key: str | None = None
     openai_model: str = "gpt-5-mini"
-    # Reasoning effort for the fallback. Env-overridable because the accepted
-    # values differ between model generations, and being able to correct that
-    # without a redeploy is the whole point of the setting.
-    openai_reasoning_effort: str = "low"
+    # Reasoning effort for the fallback. "minimal" is not a cost decision, it is
+    # a latency one: measured on the real coaching prompt, gpt-5-mini answers in
+    # 8.2 s at "minimal" and 21.9 s at "low" -- past the per-call ceiling below,
+    # so "low" times out and the fallback never lands. It also spends 512
+    # reasoning tokens to produce a SHORTER answer. Env-overridable because the
+    # accepted values differ between model generations, and being able to
+    # correct that without a redeploy is the whole point of the setting.
+    openai_reasoning_effort: str = "minimal"
+
+    # Wall-clock ceiling on the WHOLE coaching chain, across providers and
+    # retries. Without it the ceiling above is per-call and they stack: two
+    # providers x two attempts = four times the wait, and the photo endpoint
+    # blocks the athlete on exactly that. When the budget runs out the chain
+    # stops trying, which is the same graceful "no coaching" it already had.
+    llm_deadline_s: float = 45.0
 
     # Abuse guard: max analyses per client (IP) per rolling 24h. 0 disables.
     rate_limit_per_day: int = 3
@@ -252,6 +263,7 @@ def _load_settings() -> Settings:
             (os.environ.get("OPENAI_REASONING_EFFORT") or "").strip()
             or Settings.openai_reasoning_effort
         ),
+        llm_deadline_s=_float_env("LLM_DEADLINE_S", Settings.llm_deadline_s),
         rate_limit_per_day=_int_env("VA_RATE_LIMIT_PER_DAY", Settings.rate_limit_per_day),
         job_ttl_hours=_float_env("VA_JOB_TTL_HOURS", Settings.job_ttl_hours),
         job_sweep_interval_s=_int_env(

@@ -83,7 +83,7 @@ SYSTEM_PROMPT = (
 )
 
 
-def _client(genai: Any, types: Any) -> Any:
+def _client(genai: Any, types: Any, timeout_s: float | None = None) -> Any:
     """Gemini client with an explicit request timeout.
 
     Without ``timeout`` the SDK inherits the underlying HTTP client's default,
@@ -92,11 +92,11 @@ def _client(genai: Any, types: Any) -> Any:
     does not just delay one report -- it holds a worker. ``HttpOptions.timeout``
     is in MILLISECONDS.
     """
+    if timeout_s is None:
+        timeout_s = settings.gemini_timeout_s
     return genai.Client(
         api_key=settings.gemini_api_key,
-        http_options=types.HttpOptions(
-            timeout=int(settings.gemini_timeout_s * 1000),
-        ),
+        http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
     )
 
 
@@ -157,7 +157,8 @@ def _gemini_tuning(model: str) -> dict[str, Any]:
 
 
 def _call_gemini(
-    model: str, system: str, prompt: str, max_tokens: int, tuning: dict[str, Any],
+    model: str, system: str, prompt: str, max_tokens: int,
+    tuning: dict[str, Any], timeout_s: float,
 ) -> str:
     from google import genai
     from google.genai import types
@@ -175,7 +176,7 @@ def _call_gemini(
     # collected -- which can happen before the request goes out. Every call
     # then fails with "Cannot send a request, as the client has been closed",
     # and coaching disappears everywhere at once.
-    client = _client(genai, types)
+    client = _client(genai, types, timeout_s)
     resp = client.models.generate_content(
         model=model, contents=prompt, config=types.GenerateContentConfig(**cfg),
     )
@@ -183,13 +184,14 @@ def _call_gemini(
 
 
 def _call_openai(
-    model: str, system: str, prompt: str, max_tokens: int, tuning: dict[str, Any],
+    model: str, system: str, prompt: str, max_tokens: int,
+    tuning: dict[str, Any], timeout_s: float,
 ) -> str:
     from openai import OpenAI
 
     client = OpenAI(
         api_key=settings.openai_api_key,
-        timeout=settings.gemini_timeout_s,
+        timeout=timeout_s,
         max_retries=0,   # the chain is the retry; a second one just holds the worker
     )
     resp = client.responses.create(
@@ -229,24 +231,42 @@ def _complete(system: str, prompt: str, max_tokens: int, tag: str) -> dict[str, 
         return None
 
     callers = {"gemini": _call_gemini, "openai": _call_openai}
+    per_call = settings.gemini_timeout_s
+    deadline = time.monotonic() + settings.llm_deadline_s
     for idx, (provider, model, tuning) in enumerate(chain):
         call = callers[provider]
         # Bare retry only when there was tuning to drop -- otherwise the second
         # attempt is byte-identical to the first and buys nothing.
         for attempt in ([tuning, {}] if tuning else [{}]):
             bare = not attempt
+            # Per-call ceilings stack across providers and retries, and the
+            # photo endpoint blocks the athlete on the sum. Nothing new starts
+            # once the budget is gone, and no single call may outlive it.
+            left = deadline - time.monotonic()
+            if left < 2.0:
+                logger.warning("LLM_DEADLINE", tag=tag, provider=provider, model=model)
+                break
+            started = time.monotonic()
             try:
-                text = call(model, system, prompt, max_tokens, attempt)
+                text = call(model, system, prompt, max_tokens, attempt, min(per_call, left))
             except ImportError:
                 # SDK absent (google-genai / openai not installed). Not
                 # retryable and not this model's fault -- move on.
                 logger.warning("LLM_SKIP", tag=tag, provider=provider, reason="sdk_missing")
                 break
             except Exception as e:  # noqa: BLE001
+                slow = time.monotonic() - started >= min(per_call, left) * 0.8
                 logger.warning(
                     "LLM_ATTEMPT_FAILED", tag=tag, provider=provider, model=model,
-                    bare=bare, err=str(e)[:300],
+                    bare=bare, slow=slow, err=str(e)[:300],
                 )
+                # The bare retry exists to defeat a REJECTED ARGUMENT, and a
+                # rejection comes back in milliseconds. A call that burned its
+                # whole timeout failed for some other reason -- the tuning was
+                # never the problem -- so retrying the same model would only
+                # spend the budget the OTHER provider needs. Go there instead.
+                if slow:
+                    break
                 continue
             # Stripped HERE and not only in each provider: a whitespace-only
             # reply is a failed call, and the check belongs where the decision
