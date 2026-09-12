@@ -624,6 +624,20 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .modal-title{font-family:var(--f-display);text-transform:uppercase;color:var(--c-navy);font-size:23px;margin:6px 0 4px}
 .autherr{color:var(--c-coral);font-size:13px;font-weight:700;min-height:18px;margin-bottom:10px}
 .autherr:empty{margin-bottom:0}
+/* password field: show/hide instead of a confirm box; hint under it */
+.pwwrap{position:relative}
+.pwwrap input{padding-right:64px}
+.pwtoggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;
+  color:var(--c-blue-dk);font-family:var(--f-body);font-size:13px;font-weight:700;padding:6px 8px;cursor:pointer;
+  border-radius:var(--radius-xs)}
+.pwtoggle:hover{background:var(--c-panel)}
+.fldhint{display:block;font-size:12.5px;line-height:1.4;color:var(--c-ink-soft);margin-top:6px}
+.authnote{text-align:left;margin:12px 0 0;font-size:13px}
+.authnote:empty{display:none}
+.authnote a{color:var(--c-blue-dk);font-weight:700;text-decoration:none}
+.authnote a:hover{text-decoration:underline;text-underline-offset:3px}
+.authsent{background:var(--c-panel-blue);color:var(--c-blue-dk);border-radius:var(--radius);padding:12px 14px;
+  font-size:14px;line-height:1.5;margin-bottom:12px}
 .skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:var(--c-navy);color:#fff;
   padding:8px 16px;border-radius:0 0 var(--radius-btn) 0;font-weight:700;font-size:14px;text-decoration:none}
 .skip-link:focus{left:0}

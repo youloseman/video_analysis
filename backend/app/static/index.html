@@ -200,12 +200,23 @@
     <button class="modal-close" id="authClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
     <div class="eyebrow" style="color:var(--c-blue)">Your account</div>
     <h2 id="authTitle" class="modal-title">Log in</h2>
-    <p class="hint" style="text-align:left;margin:0 0 16px">Save your history &amp; progress, and pick up on any device.</p>
+    <p class="hint" id="authIntro" style="text-align:left;margin:0 0 16px">Save your history &amp; progress, and pick up on any device.</p>
+    <!-- One form, four modes (login / register / forgot / reset) -- see
+         setAuthMode(). The email field is the login: there is no username. -->
     <form id="authForm" novalidate>
-      <label class="fld"><span>Email</span><input type="email" id="authEmail" autocomplete="email" required></label>
-      <label class="fld"><span>Password</span><input type="password" id="authPass" autocomplete="current-password" minlength="8" required></label>
+      <label class="fld" id="authEmailFld"><span>Email</span><input type="email" id="authEmail" autocomplete="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+      <div class="fld" id="authPassFld">
+        <label for="authPass"><span id="authPassLabel">Password</span></label>
+        <div class="pwwrap">
+          <input type="password" id="authPass" autocomplete="current-password" minlength="8" required>
+          <button type="button" class="pwtoggle" id="authPwToggle" aria-pressed="false" aria-controls="authPass">Show</button>
+        </div>
+        <small class="fldhint hidden" id="authPassHint">At least 8 characters. A short phrase you'll remember beats a clever word.</small>
+      </div>
       <div class="autherr" id="authErr" role="alert"></div>
+      <div class="authsent hidden" id="authSent" role="status"></div>
       <button class="btn btn-primary" id="authSubmit" type="submit" style="width:100%">Log in</button>
+      <p class="hint authnote" id="authNote"></p>
     </form>
     <p class="hint" id="authToggleTxt" style="text-align:center;margin-top:14px"></p>
   </div>
@@ -6065,17 +6076,54 @@ function renderAuth(){
   if(typeof renderPricing==='function') renderPricing();
   if(typeof loadProfiles==='function') loadProfiles();
 }
-function openAuth(mode){ setAuthMode(mode||'login'); $('#authModal').classList.remove('hidden'); modalOpened($('#authModal'), closeAuth); setTimeout(()=>$('#authEmail').focus(),30); }
-function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').textContent=''; $('#authForm').reset(); modalClosed($('#authModal')); }
-function setAuthMode(mode){
-  state.authMode=mode; const login=mode==='login';
-  $('#authTitle').textContent=login?'Log in':'Create account';
-  $('#authSubmit').textContent=login?'Log in':'Sign up';
-  $('#authPass').setAttribute('autocomplete',login?'current-password':'new-password');
-  $('#authToggleTxt').innerHTML=login?'New here? <a href="#" id="authToggle">Create an account</a>':'Have an account? <a href="#" id="authToggle">Log in</a>';
-  $('#authToggle').addEventListener('click',e=>{ e.preventDefault(); setAuthMode(login?'register':'login'); });
-  $('#authErr').textContent='';
+function openAuth(mode,opts){
+  setAuthMode(mode||'login',opts);
+  $('#authModal').classList.remove('hidden'); modalOpened($('#authModal'), closeAuth);
+  // Reset mode has no email field; land on the one field it does have.
+  setTimeout(()=>$(state.authMode==='reset'?'#authPass':'#authEmail').focus(),30);
 }
+function closeAuth(){
+  $('#authModal').classList.add('hidden'); $('#authErr').textContent=''; $('#authForm').reset();
+  showPassword(false); state.resetToken=null; modalClosed($('#authModal'));
+}
+/* The one form wears four faces. Copy per mode lives here so the markup stays
+   one set of fields; what changes is which are shown and what they promise. */
+const AUTH_MODES={
+  login:   {title:'Log in', intro:'Save your history & progress, and pick up on any device.',
+            submit:'Log in', email:true, pass:true, passLabel:'Password', passAc:'current-password', passHint:false,
+            note:'<a href="#" data-authmode="forgot">Forgot password?</a>',
+            toggle:'New here? <a href="#" data-authmode="register">Create an account</a>'},
+  register:{title:'Create account', intro:'Free to start. Your email is your login — no username to remember.',
+            submit:'Create account', email:true, pass:true, passLabel:'Password', passAc:'new-password', passHint:true,
+            note:'By creating an account you agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.',
+            toggle:'Have an account? <a href="#" data-authmode="login">Log in</a>'},
+  forgot:  {title:'Reset password', intro:'Enter the email you signed up with — that\'s your login. We\'ll send a link to set a new password.',
+            submit:'Send reset link', email:true, pass:false, note:'',
+            toggle:'<a href="#" data-authmode="login">Back to log in</a>'},
+  reset:   {title:'Set a new password', intro:'Choose a new password for your account. You\'ll be logged in right after.',
+            submit:'Save & log in', email:false, pass:true, passLabel:'New password', passAc:'new-password', passHint:true,
+            note:'', toggle:'Link not working? <a href="#" data-authmode="forgot">Request a new one</a>'}
+};
+function setAuthMode(mode,opts){
+  const m=AUTH_MODES[mode]||AUTH_MODES.login; state.authMode=mode;
+  if(opts&&opts.token) state.resetToken=opts.token;
+  $('#authTitle').textContent=m.title; $('#authIntro').textContent=m.intro; $('#authSubmit').textContent=m.submit;
+  $('#authEmailFld').classList.toggle('hidden',!m.email); $('#authEmail').required=m.email;
+  $('#authPassFld').classList.toggle('hidden',!m.pass); $('#authPass').required=m.pass;
+  if(m.pass){ $('#authPassLabel').textContent=m.passLabel; $('#authPass').setAttribute('autocomplete',m.passAc); }
+  $('#authPassHint').classList.toggle('hidden',!m.passHint);
+  $('#authNote').innerHTML=m.note; $('#authToggleTxt').innerHTML=m.toggle;
+  document.querySelectorAll('#authModal [data-authmode]').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); setAuthMode(a.dataset.authmode); $(state.authMode==='reset'?'#authPass':'#authEmail').focus(); }));
+  $('#authErr').textContent=''; $('#authSent').classList.add('hidden'); $('#authSubmit').classList.remove('hidden');
+  showPassword(false);
+}
+/* Show/hide beats a "confirm password" field: one box, no typo-twice, and the
+   person can see what they typed on a phone keyboard. */
+function showPassword(on){
+  const inp=$('#authPass'), btn=$('#authPwToggle');
+  inp.type=on?'text':'password'; btn.textContent=on?'Hide':'Show'; btn.setAttribute('aria-pressed',String(on));
+}
+$('#authPwToggle').addEventListener('click',()=>{ showPassword($('#authPass').type==='password'); $('#authPass').focus(); });
 function authErr(j){
   const d=j&&j.detail;
   if(typeof d==='string') return d;
@@ -6084,11 +6132,29 @@ function authErr(j){
 }
 async function submitAuth(e){
   e.preventDefault();
-  const email=$('#authEmail').value.trim(), password=$('#authPass').value;
-  const btn=$('#authSubmit'); btn.disabled=true; $('#authErr').textContent='';
+  const mode=state.authMode, email=$('#authEmail').value.trim(), password=$('#authPass').value;
+  const btn=$('#authSubmit'); $('#authErr').textContent='';
+  // Say what's missing before a round trip: the browser's own bubbles are
+  // suppressed (novalidate) so the message can sit where the other errors do.
+  if(AUTH_MODES[mode].email && !email){ $('#authErr').textContent='Enter your email address.'; $('#authEmail').focus(); return; }
+  if(AUTH_MODES[mode].pass && password.length<8){ $('#authErr').textContent='Password must be at least 8 characters.'; $('#authPass').focus(); return; }
+  btn.disabled=true;
+  const post=(path,body)=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   try{
-    const r=await fetch('/auth/'+(state.authMode==='register'?'register':'login'),
-      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    if(mode==='forgot'){
+      const r=await post('/auth/forgot',{email});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
+      track('password_reset_requested',{});
+      // Same answer whether or not the address has an account -- the form
+      // must not double as a directory of who has signed up.
+      $('#authSent').innerHTML=`If there's an account for <b class="ph-no-capture">${esc(email)}</b>, a reset link is on its way. It works for 1 hour. No email in a few minutes? Check spam, or the address you typed.`;
+      $('#authSent').classList.remove('hidden'); $('#authSubmit').classList.add('hidden');
+      return;
+    }
+    const r = mode==='reset'
+      ? await post('/auth/reset',{token:state.resetToken||'',password})
+      : await post('/auth/'+(mode==='register'?'register':'login'),{email,password});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
@@ -6098,9 +6164,10 @@ async function submitAuth(e){
     // attributed to the account rather than to the anonymous visitor who
     // stopped existing a millisecond ago.
     trackIdentify();
-    track(state.authMode==='register'?'signed_up':'logged_in',
+    track(mode==='register'?'signed_up':mode==='reset'?'password_reset':'logged_in',
       {pending_analysis: !!state.pendingAnalyze});
     renderAuth(); closeAuth(); migrateAndLoad();
+    if(mode==='reset') toast('Password updated — you\'re logged in.');
     // Someone who hit "Analyze" before signing up gets their run started now,
     // with the file they already chose (see the #analyze handler).
     if(state.pendingAnalyze){ state.pendingAnalyze=false; if(state.file) analyze(); }
@@ -6169,6 +6236,10 @@ function init(){
     else if(location.hash==='#history'){ clean(); openHistoryView(); }
     else if(location.hash==='#home'){ clean(); }   // dashboard auto-opens in checkAuth when signed in
     else if(location.hash==='#login'){ clean(); openAuth('login'); }
+    // The password-reset email lands here. The token rides in the fragment
+    // so it never reaches the server as a URL; it is stripped from the bar
+    // at once so a screenshot or a shared tab does not carry it.
+    else if(location.hash.startsWith('#reset=')){ const t=location.hash.slice(7); clean(); openAuth('reset',{token:t}); }
     // The landing page sends new users straight to the sign-up form.
     else if(location.hash==='#signup'){ clean(); openAuth('register'); }
     else if(location.hash==='#pricing'){ clean(); openPricing(); }
