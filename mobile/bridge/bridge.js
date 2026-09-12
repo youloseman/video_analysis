@@ -105,6 +105,32 @@
   ].join(',') + '{display:none!important}';
   document.head.appendChild(st);
 
+  /* -- 5. Fit the phone: notch, home bar, native feel ---------------------- */
+  // The bundle's viewport is viewport-fit=cover (sync-www.mjs), so the page
+  // starts at the very top of the screen and env(safe-area-inset-*) carries
+  // the notch / home-bar sizes; on the website both are zero and app.css
+  // already handles the bottom bar. Everything sticky or fixed at the top
+  // moves down by the inset; the header paints that strip white so scrolled
+  // content never shows through the status bar.
+  var fit = document.createElement('style');
+  fit.textContent = [
+    'html.flapp-native{background:#fff}',                     // rubber-band shows white, not grey
+    '.flapp-native body{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}',
+    // 16px is the size below which iOS zooms into a focused field.
+    '.flapp-native input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=file]),' +
+      '.flapp-native select,.flapp-native textarea{font-size:16px}',
+    '@media(max-width:900px){',
+    '  .flapp-native .topbar{height:calc(56px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px)}',
+    '  .flapp-native .sidebar{padding-top:calc(22px + env(safe-area-inset-top,0px))}',
+    '  .flapp-native .rrail{top:calc(56px + env(safe-area-inset-top,0px))}',
+    '  .flapp-native .modal{padding-top:calc(20px + env(safe-area-inset-top,0px));' +
+        'padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}',
+    // above the bottom tab bar (56px) instead of underneath it
+    '  .flapp-native .toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}',
+    '}'
+  ].join('\n');
+  document.head.appendChild(fit);
+
   window.FLAPP_BRIDGE = {
     ready: ready,
     native: !!(cap && cap.isNativePlatform && cap.isNativePlatform()) || !!cfg.forceNative,

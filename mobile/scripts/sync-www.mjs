@@ -39,6 +39,14 @@ const inject = [
 ].join('\n');
 if (!html.includes('</head>')) throw new Error('index.html has no </head> to inject into');
 html = html.replace('</head>', inject + '\n</head>');
+// The app draws under the status bar (viewport-fit=cover) so the header can
+// own that strip -- bridge.js pads it by env(safe-area-inset-top). Pinch zoom
+// is off: iOS zooms into any focused field under 16px and never zooms back,
+// which left the first TestFlight build pannable sideways after login.
+const viewportRe = /<meta name="viewport" content="[^"]*">/;
+if (!viewportRe.test(html)) throw new Error('index.html has no viewport meta to replace');
+html = html.replace(viewportRe,
+  '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">');
 writeFileSync(join(wwwDir, 'index.html'), html);
 
 // 2. Bridge + static assets the SPA references by absolute path.
