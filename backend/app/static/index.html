@@ -5558,38 +5558,25 @@ function sendFeedback(host, opts){
 }
 
 /* ============================================================
-   Share card — branded PNG (score + annotated keyframe + top
-   metrics) for Strava / Instagram. Client-side canvas; Web Share
-   on mobile (works in the Capacitor wrapper too), download on
+   Share card — the annotated frame, whole, with the score under
+   it — for Strava / Instagram. Client-side canvas; Web Share on
+   mobile (works in the Capacitor wrapper too), download on
    desktop. No external assets — CSP-safe.
    ============================================================ */
-/* Headline takeaway for the card: the coach report's "**Overall**" section,
-   stripped of markdown and trimmed to a single sentence. */
-function overallNote(report){
-  if(!report) return '';
-  const m=String(report).match(/\*\*Overall\*\*\s*[—:-]?\s*([\s\S]*?)(?:\n\s*(?:\*\*|##)|$)/i);
-  let t=(m?m[1]:'').replace(/[*_`#>]/g,'').replace(/\s+/g,' ').trim();
-  if(!t) return '';
-  const stop=t.search(/[.!?](\s|$)/);          // first sentence only
-  if(stop>0) t=t.slice(0,stop+1);
-  return t.length>170 ? t.slice(0,167).trimEnd()+'…' : t;
-}
 /* --- adapters: each analysis source -> one normalized card model
-   {sport, score, grade, keyframe, note} --- */
+   {sport, score, grade, keyframe} --- */
 function cardFromVideo(r){
   return { sport:r.sport_type||state.sport||'run', score:r.technique_score,
-    grade:r.letter_grade||'—', keyframe:r.keyframe_base64,
-    note:overallNote((r.ai_recommendations||{}).report) };
+    grade:r.letter_grade||'—', keyframe:r.keyframe_base64 };
 }
 function cardFromPhoto(res){
   const sc=res.score||{};
   return { sport:res.sport||state.sport||'run', score:sc.overall_score,
-    grade:sc.grade||'—', keyframe:res.thumbnail_base64||res.keyframe_base64,
-    note:overallNote((res.ai_recommendations||{}).report) };
+    grade:sc.grade||'—', keyframe:res.thumbnail_base64||res.keyframe_base64 };
 }
 function cardFromHistory(e){
   return { sport:e.sport, score:e.score, grade:e.grade||'—',
-    keyframe:keyframeOf(e), note:overallNote(e.report) };
+    keyframe:keyframeOf(e) };
 }
 function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
 /* Where the analyser's overlay sits in the frame, as normalised 0..1 bounds.
@@ -5598,7 +5585,7 @@ function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.on
    brightness threshold isolates them. Sampled small (a few hundred px wide) —
    this only has to be accurate to a few percent. Returns null when nothing
    looks like an overlay, in which case the caller falls back to a fixed crop. */
-function overlayBounds(img){
+function overlayBounds(img,yFrom){
   try{
     const SW=220, SH=Math.max(1,Math.round(SW*img.height/img.width));
     const c=document.createElement('canvas'); c.width=SW; c.height=SH;
@@ -5606,7 +5593,10 @@ function overlayBounds(img){
     g.drawImage(img,0,0,SW,SH);
     const d=g.getImageData(0,0,SW,SH).data;
     let x0=SW,x1=-1,y0=SH,y1=-1,n=0;
-    for(let y=0;y<SH;y++) for(let xp=0;xp<SW;xp++){
+    // `yFrom` (0..1): ignore the strip above it -- the analyser draws its own
+    // score badge there, in the same vivid green as the skeleton.
+    const yStart=Math.max(0,Math.floor((yFrom||0)*SH));
+    for(let y=yStart;y<SH;y++) for(let xp=0;xp<SW;xp++){
       const i=(y*SW+xp)*4, r=d[i], gg=d[i+1], b=d[i+2];
       const mx=Math.max(r,gg,b), mn=Math.min(r,gg,b);
       if(mx<140 || mx-mn<90) continue;           // not vivid enough to be overlay
@@ -5617,37 +5607,14 @@ function overlayBounds(img){
     return {x0:x0/SW, x1:(x1+1)/SW, y0:y0/SH, y1:(y1+1)/SH};
   }catch(e){ return null; }
 }
-/* Wrap `text` onto at most `maxLines` lines fitting `maxWidth` at `font`,
-   ellipsising if it doesn't all fit. Returns [] for empty text. */
-function wrapText(ctx,text,font,maxWidth,maxLines){
-  const t=String(text||'').trim(); if(!t) return [];
-  const prev=ctx.font; ctx.font=font;
-  const words=t.split(/\s+/), lines=[]; let cur='';
-  for(const w of words){
-    const tryLine=cur?cur+' '+w:w;
-    if(ctx.measureText(tryLine).width<=maxWidth){ cur=tryLine; continue; }
-    if(cur) lines.push(cur);
-    cur=w;
-    if(lines.length>=maxLines) break;
-  }
-  if(lines.length<maxLines && cur) lines.push(cur);
-  if(lines.join(' ')!==t){                    // ran out of room -> ellipsis
-    let last=lines[lines.length-1]||'';
-    while(last.length>1 && ctx.measureText(last+'…').width>maxWidth) last=last.slice(0,-1);
-    lines[lines.length-1]=last.replace(/[\s,;:.]+$/,'')+'…';
-  }
-  ctx.font=prev;
-  return lines;
-}
 function rrect(x,X,Y,w,h,r){
   if(x.roundRect){ x.beginPath(); x.roundRect(X,Y,w,h,r); return; }
   x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r);
   x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath();
 }
-/* Grade -> one-word verdict for the share card heading. */
-/* Verdict word for the share card, derived from the SCORE rather than the grade:
-   video analyses grade A-F while photo analyses grade in words ("Excellent"),
-   so only the score is a common denominator. */
+/* Verdict word for the score. Video analyses grade A-F while photo analyses
+   grade in words ("Excellent"), so only the score is a common denominator.
+   The card no longer spells it out; the share text and the test hook still do. */
 function shareVerdict(score){
   if(score==null) return 'YOUR';
   if(score>=90) return 'EXCELLENT';
@@ -5656,22 +5623,31 @@ function shareVerdict(score){
   if(score>=40) return 'DEVELOPING';
   return 'EARLY-STAGE';
 }
-/* Share card. The annotated frame is the whole point of sharing, so it runs
-   full-bleed from the very top at the largest size that still shows ALL of it
-   (contain, never cropped — cropping would cut the angle labels). The FLAPP
-   header sits on top of it over a gradient, the score ring rides the bottom
-   edge of the photo, and the leftover height is spread between the blocks
-   below so the card never ends in a dead void. */
+/* Share card.
+   The frame the analyser rendered IS the card: a vertical still with the
+   skeleton, every angle label and the score badge already on it. The first
+   version squeezed it into a band, covered it, and faded its lower third
+   under a score ring -- the legs and the ankle label were the price, and the
+   verdict, a coach sentence, a CTA pill and the hostname filled the rest. Now
+   the frame is shown WHOLE (contain, never cropped) between a thin header and
+   a footer, over a blurred, darkened copy of itself so the letterbox reads as
+   depth rather than as empty bars. The footer carries the one number worth a
+   glance in a feed -- the score -- and where to get one; nothing else.
+   The card is as tall as the frame needs, between a 4:5 post and a 9:16
+   story, so neither a vertical clip nor a photo ends in a void. */
 /* Canvas has no webfont gate: ask it for a family that hasn't finished loading
    and it silently substitutes a system face, so the card came out in Segoe on
-   Windows, SF on iOS and Roboto on Android — the one artefact that leaves the
+   Windows, SF on iOS and Roboto on Android -- the one artefact that leaves the
    site was the one that never looked like Flapp. Warm every face the card draws
    with, then wait for the font set to settle. If Google Fonts is blocked or the
    API is missing we just fall through and the CSS fallbacks apply. */
-const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // headline / numerals
-const CARD_BODY='Manrope,system-ui,sans-serif';          // labels / body copy
-const CARD_FACES=['900 italic 124px Archivo','900 33px Archivo',
-  '800 23px Manrope','700 23px Manrope','600 29px Manrope'];
+const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // wordmark / numerals
+const CARD_BODY='Manrope,system-ui,sans-serif';          // labels
+const CARD_FACES=['900 italic 58px Archivo','900 italic 74px Archivo',
+  '800 24px Manrope','700 26px Manrope','700 30px Manrope','700 34px Manrope'];
+/* The address on the card is the product's, not the page's: a card built on a
+   phone in the LAN test build or on a dev box must not advertise localhost. */
+const CARD_HOST='getflapp.com';
 async function cardFontsReady(){
   try{
     if(!document.fonts) return;
@@ -5679,122 +5655,128 @@ async function cardFontsReady(){
     await document.fonts.ready;
   }catch(e){}
 }
+/* A blur that every canvas can do: draw the frame tiny, then scale it back up
+   with bilinear smoothing. ctx.filter='blur()' is missing from Safari builds
+   that already have Web Share, which is exactly where this card is built. */
+function drawBlurredCover(x,img,W,H){
+  const t=document.createElement('canvas'); t.width=36; t.height=Math.max(1,Math.round(36*H/W));
+  const g=t.getContext('2d');
+  const s=Math.max(t.width/img.width, t.height/img.height);
+  g.drawImage(img,(t.width-img.width*s)/2,(t.height-img.height*s)/2,img.width*s,img.height*s);
+  x.save(); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+  x.drawImage(t,0,0,W,H); x.restore();
+}
 async function buildShareCard(card){
   await cardFontsReady();
   const sport=card.sport||'run';
   const score=card.score;
-  const W=1080,H=1920,P=60,CORAL='#F1553F'; /* --c-coral: the one artifact that leaves the site stays on brand */
+  const grade=(card.grade && card.grade!=='—')?String(card.grade):null;
+  const W=1080, P=56, CORAL='#F1553F', INK='#0A1119'; /* --c-coral: the one artifact that leaves the site stays on brand */
+
+  let img=null;
+  if(card.keyframe){ try{ img=await loadImg(card.keyframe); }catch(e){ img=null; } }
+
+  // Source rect. The analyser stamps its own small score badge across the top
+  // strip of the frame; when the skeleton stays clear of that strip, trim it
+  // so the card states the score once, at a size a feed can read. When the
+  // athlete's head is up there, the strip stays -- nothing of them is cut.
+  let sx=0, sy=0, sw=img?img.width:9, sh=img?img.height:16;
+  if(img){
+    const ov=overlayBounds(img,0.07);
+    if(!ov || ov.y0>0.085){ sy=Math.round(img.height*0.065); sh=img.height-sy; }
+  }
+  // Card height follows the frame: as tall as the frame needs at full width,
+  // never shorter than a 4:5 post nor taller than a 9:16 story. A vertical
+  // clip fills a story; a photo or a landscape clip gets a shorter card
+  // instead of a story with bars at both ends.
+  const HEAD=132, FOOT=236, GAP=24, regionW=W-2*P;
+  const H=img?Math.round(Math.max(1350,Math.min(1920,HEAD+FOOT+2*GAP+regionW*sh/sw))):1350;
+  const regionY=HEAD+GAP, regionH=H-HEAD-FOOT-2*GAP;
+  const fit=Math.min(regionW/sw, regionH/sh);
+  const dw=Math.round(sw*fit), dh=Math.round(sh*fit);
+  const dx=Math.round((W-dw)/2), dy=Math.round(regionY+(regionH-dh)/2);
+
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-  const x=cv.getContext('2d'); x.textBaseline='alphabetic';
+  const x=cv.getContext('2d');
 
-  // background
-  const bg=x.createLinearGradient(0,0,0,H);
-  bg.addColorStop(0,'#0E1F38'); bg.addColorStop(1,'#0A1119');
-  x.fillStyle=bg; x.fillRect(0,0,W,H);
-
-  // ---- hero photo: contain-fit so nothing is cropped, as large as it goes ----
-  const HERO_MIN=560, HERO_MAX=1260, HERO_TARGET=1180, MAX_SIDE_CROP=0.28, OVERLAY_MARGIN=0.05;
-  let heroH=HERO_MIN;
-  if(card.keyframe){
-    try{
-      const img=await loadImg(card.keyframe);
-      // Height the frame would take across the full width with nothing cut off.
-      const naturalH=W*img.height/img.width;
-      // How far we may crop depends on the frame, not on a global guess: find the
-      // annotated region and keep it whole, trimming only background around it.
-      // A clip with the athlete small and centred can lose most of its width; one
-      // with labels running to the edge is left alone.
-      const ov=overlayBounds(img);
-      const keep=ov?Math.min(1,Math.max(0.34,(ov.x1-ov.x0)+2*OVERLAY_MARGIN)):(1-MAX_SIDE_CROP);
-      heroH=Math.round(Math.max(HERO_MIN,Math.min(HERO_MAX, naturalH>=HERO_TARGET
-        ? Math.min(naturalH, HERO_MAX)
-        : Math.min(HERO_TARGET, naturalH/keep))));
-      const s=Math.max(W/img.width, heroH/img.height);   // cover the band
-      const dw=img.width*s, dh=img.height*s;
-      // Centre the crop on the annotations rather than the frame, so an athlete
-      // off to one side doesn't get trimmed away.
-      let dx=(W-dw)/2, dy=(heroH-dh)/2;
-      if(ov){
-        dx=Math.min(0,Math.max(W-dw, W/2-((ov.x0+ov.x1)/2)*dw));
-        dy=Math.min(0,Math.max(heroH-dh, heroH/2-((ov.y0+ov.y1)/2)*dh));
-      }
-      x.save(); x.beginPath(); x.rect(0,0,W,heroH); x.clip();
-      x.drawImage(img,dx,dy,dw,dh);
-      // top scrim so the header reads over any photo
-      const top=x.createLinearGradient(0,0,0,230);
-      top.addColorStop(0,'rgba(8,15,28,.86)'); top.addColorStop(1,'rgba(8,15,28,0)');
-      x.fillStyle=top; x.fillRect(0,0,W,230);
-      // Bottom fade into the panel so the ring sits on dark. It has to resolve to
-      // the background's own tone AT THIS HEIGHT, or the photo's base reads as a
-      // visible seam against the page gradient.
-      const t=heroH/H;
-      const rr=Math.round(0x0E+(0x0A-0x0E)*t), gg=Math.round(0x1F+(0x11-0x1F)*t), bb=Math.round(0x38+(0x19-0x38)*t);
-      const fade=x.createLinearGradient(0,heroH-240,0,heroH);
-      fade.addColorStop(0,`rgba(${rr},${gg},${bb},0)`); fade.addColorStop(1,`rgb(${rr},${gg},${bb})`);
-      x.fillStyle=fade; x.fillRect(0,heroH-240,W,240);
-      x.restore();
-    }catch(e){}
+  // ---- ground: the frame itself, blurred and darkened ----
+  x.fillStyle=INK; x.fillRect(0,0,W,H);
+  if(img){
+    drawBlurredCover(x,img,W,H);
+    x.fillStyle='rgba(8,15,28,.74)'; x.fillRect(0,0,W,H);
+  }else{
+    const bg=x.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#0E1F38'); bg.addColorStop(1,INK);
+    x.fillStyle=bg; x.fillRect(0,0,W,H);
   }
 
-  // ---- header, overlaid on the photo ----
-  x.fillStyle='#fff'; x.font=`900 italic 60px ${CARD_DISPLAY}`;
-  x.fillText('FLAPP',P,P+52);
+  // ---- header ----
+  x.textBaseline='middle'; x.textAlign='left';
+  x.fillStyle='#fff'; x.font=`900 italic 58px ${CARD_DISPLAY}`;
+  x.fillText('FLAPP',P,HEAD/2);
   const wm=x.measureText('FLAPP').width;
-  x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+21,P+24,11,0,7); x.fill();
-  x.fillStyle='#C2CFE0'; x.font=`700 23px ${CARD_BODY}`;
-  x.fillText('VIDEO BIOMECHANICS · '+(sport==='bike'?'BIKE':'RUN'),P,P+88);
+  x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+20,HEAD/2-16,10,0,7); x.fill();
+  x.textAlign='right'; x.fillStyle='#C2CFE0'; x.font=`700 26px ${CARD_BODY}`;
+  try{ x.letterSpacing='3px'; }catch(e){}
+  x.fillText(sport==='bike'?'CYCLING TECHNIQUE':'RUNNING TECHNIQUE',W-P,HEAD/2);
+  try{ x.letterSpacing='0px'; }catch(e){}
 
-  // ---- score ring riding the bottom edge of the photo ----
-  const cx=W/2, cy=heroH, R=140, lw=34;
-  x.save(); x.shadowColor='rgba(0,0,0,.5)'; x.shadowBlur=30; x.shadowOffsetY=12;
-  x.fillStyle='rgba(10,18,30,.92)'; x.beginPath(); x.arc(cx,cy,R-lw/2,0,7); x.fill();
-  x.restore();
-  x.lineWidth=lw; x.lineCap='round';
-  x.beginPath(); x.arc(cx,cy,R,0,7); x.strokeStyle='rgba(255,255,255,.14)'; x.stroke();
-  if(score!=null){
-    const a0=-Math.PI/2, a1=a0+2*Math.PI*Math.max(0,Math.min(1,score/100));
-    x.beginPath(); x.arc(cx,cy,R,a0,a1); x.strokeStyle=CORAL; x.stroke();
+  // ---- the frame, whole ----
+  if(img){
+    x.save(); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=40; x.shadowOffsetY=16;
+    x.fillStyle=INK; rrect(x,dx,dy,dw,dh,28); x.fill(); x.restore();
+    x.save(); rrect(x,dx,dy,dw,dh,28); x.clip();
+    x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
+    x.restore();
+    rrect(x,dx,dy,dw,dh,28); x.lineWidth=2; x.strokeStyle='rgba(255,255,255,.16)'; x.stroke();
+  }else{
+    // No still to show (a result the server kept the frame back from): the
+    // score itself becomes the picture rather than an empty frame.
+    const gcx=W/2, gcy=regionY+regionH/2, GR=250;
+    x.lineWidth=36; x.lineCap='round';
+    x.beginPath(); x.arc(gcx,gcy,GR,0,7); x.strokeStyle='rgba(255,255,255,.12)'; x.stroke();
+    if(score!=null){
+      const a0=-Math.PI/2, a1=a0+2*Math.PI*Math.max(0.02,Math.min(1,score/100));
+      x.beginPath(); x.arc(gcx,gcy,GR,a0,a1); x.strokeStyle=CORAL; x.stroke();
+    }
+    x.lineCap='butt'; x.textAlign='center'; x.fillStyle='#fff'; x.font=`900 italic 220px ${CARD_DISPLAY}`;
+    x.fillText(score==null?'—':String(score),gcx-8,gcy+12);
+    x.textAlign='left';
   }
-  x.lineCap='butt';
-  x.textAlign='center';
-  x.fillStyle='#8EA3BD'; x.font=`800 23px ${CARD_BODY}`;
-  x.fillText('TECHNIQUE',cx,cy-46);
-  x.fillStyle='#fff'; x.font=`900 italic 124px ${CARD_DISPLAY}`;
-  x.fillText(score==null?'—':String(score),cx,cy+52);
 
-  // ---- panel below the ring ----
-  // The measured angles are already burned into the photo, so there are no
-  // metric tiles here -- that duplication is what kept the frame small. The
-  // verdict + one-line takeaway read as one block, centred between the ring and
-  // the CTA (which is pinned to the base), so nothing trails off into a void.
-  const NOTE_FONT=`600 29px ${CARD_BODY}`, NOTE_LH=40, NOTE_GAP=22;
-  const noteLines=wrapText(x,card.note||'',NOTE_FONT,W-2*P-40,2);
-  const ctaH=88, hostH=46, verdictH=48;
-  const ctaY=H-P-hostH-ctaH;
-  const blockH=verdictH+(noteLines.length?NOTE_GAP+noteLines.length*NOTE_LH:0);
-  let py=(cy+R)+Math.max(40,((ctaY-(cy+R))-blockH)/2)+verdictH;
-
-  x.fillStyle='#fff'; x.font=`900 italic 46px ${CARD_DISPLAY}`;
-  x.fillText(`${shareVerdict(score)} ${sport==='bike'?'CYCLING':'RUNNING'} TECHNIQUE`,cx,py);
-  if(noteLines.length){
-    py+=NOTE_GAP;
-    x.fillStyle='#B5C3D6'; x.font=NOTE_FONT;
-    noteLines.forEach((ln,i)=>x.fillText(ln,cx,py+(i+1)*NOTE_LH-8));
+  // ---- footer: the score, and where to get one ----
+  const fy=H-FOOT, cy=fy+FOOT/2;
+  x.fillStyle='rgba(255,255,255,.12)'; x.fillRect(P,fy,W-2*P,2);
+  const R=82, lw=16, rcx=P+R+4;
+  let lx=P;
+  if(img){                                   // without a frame the big ring above already says it
+    x.lineWidth=lw; x.lineCap='round';
+    x.beginPath(); x.arc(rcx,cy,R,0,7); x.strokeStyle='rgba(255,255,255,.14)'; x.stroke();
+    if(score!=null){
+      const a0=-Math.PI/2, a1=a0+2*Math.PI*Math.max(0.02,Math.min(1,score/100));
+      x.beginPath(); x.arc(rcx,cy,R,a0,a1); x.strokeStyle=CORAL; x.stroke();
+    }
+    x.lineCap='butt';
+    x.textAlign='center'; x.fillStyle='#fff'; x.font=`900 italic 74px ${CARD_DISPLAY}`;
+    x.fillText(score==null?'—':String(score),rcx-3,cy+4);
+    x.textAlign='left';
+    lx=rcx+R+36;
   }
-  x.textAlign='left';
-
-  // ---- CTA + host ----
-  x.fillStyle=CORAL; rrect(x,P,ctaY,W-2*P,ctaH,ctaH/2); x.fill();
-  // Manrope stops at 800, so the CTA borrows the display face upright.
-  x.fillStyle='#fff'; x.font=`900 33px ${CARD_DISPLAY}`; x.textAlign='center';
-  x.fillText('ANALYZE YOUR TECHNIQUE — FREE',cx,ctaY+56);
-  x.fillStyle='#8FA6C6'; x.font=`700 27px ${CARD_BODY}`;
-  x.fillText(location.host,cx,ctaY+ctaH+42); x.textAlign='left';
+  x.fillStyle='#8EA3BD'; x.font=`800 24px ${CARD_BODY}`;
+  try{ x.letterSpacing='2px'; }catch(e){}
+  x.fillText('TECHNIQUE SCORE',lx,cy-24);
+  try{ x.letterSpacing='0px'; }catch(e){}
+  x.fillStyle='#fff'; x.font=`700 34px ${CARD_BODY}`;
+  const gradeLine=score==null?'Not graded':!grade?'out of 100':/^[A-F][+-]?$/.test(grade)?'Grade '+grade:grade;
+  x.fillText(gradeLine,lx,cy+24);
+  x.textAlign='right'; x.fillStyle='#C2CFE0'; x.font=`700 30px ${CARD_BODY}`;
+  x.fillText(CARD_HOST,W-P,cy);
+  x.textAlign='left'; x.textBaseline='alphabetic';
 
   // JPEG, not PNG: the card is a photograph under type, so PNG's lossless
   // encoding bought nothing and cost 2-4 MB per share (and the quality argument
   // passed to toBlob was silently ignored for PNG anyway). At q=0.9 this lands
-  // around 300 KB with no visible difference. The gradient fills the canvas
+  // around 300 KB with no visible difference. The ground fills the canvas
   // first, so there's no alpha to lose.
   return await new Promise(res=>cv.toBlob(b=>res(b),'image/jpeg',0.9));
 }
@@ -8589,7 +8571,7 @@ $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare()
 $('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderBilateral,renderRunSession,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overallNote,wrapText,overlayBounds};
+window.__flapp={setState,render,renderBilateral,renderRunSession,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overlayBounds};
 </script>
 </body>
 </html>
