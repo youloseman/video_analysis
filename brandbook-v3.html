@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flapp Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Flapp design system v3 — 2026-09-11.
+   Токены ниже — копия backend/app/static/tokens.css. Тот файл главный;
+   этот документ объясняет, как токенами пользоваться.
+   ============================================================ */
+:root{
+  --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
+  --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
+  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#6E7787;
+  --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
+  --c-blue-soft:#B9CDF2;
+  --c-bike:#F2A33C; --c-run:#EF5B5B;
+  --c-warn:#C97B10; --c-warn-text:#9A5E0B; --c-orange:#DE5F33;
+  --c-media-bg:#0d1420;
+  --st-good:#1F7A45; --st-good-fill:#2E9E5B; --st-good-bg:#E6F4EC;
+  --st-warn:#9A5E0B; --st-warn-fill:#C97B10;
+  --st-bad:#CE3F2B;  --st-bad-fill:#F1553F; --st-bad-text:#B8371F;
+  --f-display:'Archivo','Arial Black',sans-serif;
+  --f-body:'Manrope','Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',monospace;
+  --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
+  --shadow:0 2px 10px rgba(20,41,75,.07);
+  --shadow-lg:0 12px 34px rgba(20,41,75,.12);
+  --ring:0 0 0 3px rgba(47,109,224,.30);
+  --sidebar-w:244px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink);background:var(--c-bg)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 32px}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--c-panel);padding:1px 5px;border-radius:4px}
+b{font-weight:800}
+
+.speedline{height:6px;width:120px;border-radius:3px;transform:skewX(var(--skew));background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
+.speedline-sm{height:4px;width:56px;border-radius:2px;transform:skewX(var(--skew));background:linear-gradient(90deg,var(--c-blue),var(--c-coral))}
+
+.cover{position:relative;overflow:hidden;color:#fff;background:linear-gradient(135deg,#14294B 0%,#1D3E77 55%,#2F6DE0 100%);padding:88px 0 80px;margin-bottom:72px}
+.cover::after{content:"";position:absolute;right:-60px;top:0;bottom:0;width:420px;background:
+  linear-gradient(115deg,transparent 40%,rgba(241,85,63,.85) 40%,rgba(241,85,63,.85) 46%,transparent 46%),
+  linear-gradient(115deg,transparent 52%,rgba(255,255,255,.16) 52%,rgba(255,255,255,.16) 57%,transparent 57%),
+  linear-gradient(115deg,transparent 63%,rgba(53,166,217,.55) 63%,rgba(53,166,217,.55) 67%,transparent 67%)}
+.cover .wrap{position:relative;z-index:1}
+.cover .eyebrow{color:rgba(255,255,255,.78)}
+.cover h1{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:clamp(44px,7vw,78px);line-height:.98;letter-spacing:-.01em;text-transform:uppercase;margin:16px 0 22px;text-wrap:balance}
+.cover h1 .accent{color:#F1553F}
+.cover p{max-width:600px;font-size:17px;color:rgba(255,255,255,.9)}
+
+section{margin-bottom:84px}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue-dk);margin-bottom:10px}
+h2.sec{font-family:var(--f-display);font-weight:800;color:var(--c-navy);font-size:36px;line-height:1.08;margin-bottom:14px;text-transform:uppercase;letter-spacing:-.01em;text-wrap:balance}
+h2.sec + .speedline{margin-bottom:22px}
+.lede{max-width:700px;color:var(--c-ink-soft);margin-bottom:32px}
+h3.sub{font-family:var(--f-display);font-weight:800;font-size:19px;color:var(--c-ink);margin:40px 0 14px;text-transform:uppercase;letter-spacing:.02em}
+p{max-width:720px}
+p + p{margin-top:10px}
+.note{font-size:13px;color:var(--c-ink-soft);border-left:3px solid var(--c-coral);padding:6px 0 6px 14px;margin:18px 0;max-width:660px;border-radius:2px}
+.note b{color:var(--c-ink)}
+ul.plain{padding-left:20px;color:var(--c-ink-soft);line-height:1.7;max-width:700px}
+ul.plain b{color:var(--c-ink)}
+
+/* Палитра */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.sw{border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;background:#fff}
+.sw .chip{height:76px}
+.sw .meta{padding:11px 13px}
+.sw .name{font-weight:800;font-size:14px}
+.sw .hex{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);margin:2px 0 6px}
+.sw .use{font-size:12px;color:var(--c-ink-soft);line-height:1.4}
+.stgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:720px){.stgrid{grid-template-columns:1fr}}
+.stcard{border:1px solid var(--c-line);border-radius:var(--radius);padding:16px 18px;background:#fff}
+.stcard h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin-bottom:10px}
+.stcard .row{display:flex;align-items:center;gap:10px;font-size:13px;margin:6px 0}
+.stcard .row i{width:14px;height:14px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.06)}
+.stcard .row code{font-size:11.5px}
+.ratio-bar{display:flex;height:44px;border-radius:8px;overflow:hidden;margin-top:24px;border:1px solid var(--c-line)}
+.ratio-bar div{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.05em}
+
+/* Типографика */
+.type-row{display:grid;grid-template-columns:230px 1fr;gap:24px;padding:20px 0;border-bottom:1px solid var(--c-line);align-items:baseline}
+.type-row .spec{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);line-height:1.7}
+@media(max-width:720px){.type-row{grid-template-columns:1fr}}
+.t-score{font-family:var(--f-display);font-size:80px;font-weight:900;font-style:italic;color:var(--c-navy);line-height:1;letter-spacing:-.015em}
+.t-score small{font-family:var(--f-display);font-size:26px;color:var(--c-ink-soft);font-style:normal;font-weight:800;margin-left:4px}
+.t-sec{font-family:var(--f-display);font-size:26px;font-weight:800;color:var(--c-navy);line-height:1.1;text-transform:uppercase;letter-spacing:-.01em}
+.t-block{font-family:var(--f-display);font-size:19px;font-weight:800;color:var(--c-navy);line-height:1.15;text-transform:uppercase}
+.t-val{font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--c-navy);font-variant-numeric:tabular-nums}
+.t-val small{font-family:var(--f-body);font-size:13px;color:var(--c-ink-soft);font-weight:400}
+.t-body{font-size:14px;max-width:62ch}
+.t-cap{font-size:12px;color:var(--c-ink-soft)}
+.t-eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue-dk)}
+.t-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
+
+/* Счёт и показания — живые образцы */
+.sample{background:var(--c-panel);border-radius:var(--radius);padding:24px;display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.scorecard{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:22px 24px;position:relative;width:300px;max-width:100%}
+.scorecard::before{content:"";position:absolute;left:8px;top:84px;height:64px;width:5px;background:var(--c-blue);transform:skewX(var(--skew))}
+.sporttag{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:6px;background:var(--c-panel);color:var(--c-navy)}
+.sporttag i{width:8px;height:8px;border-radius:50%;background:var(--c-run)}
+.score-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:16px}
+.score-num{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:76px;line-height:1;color:var(--c-navy);letter-spacing:-.015em;margin-top:4px}
+.score-num small{font-size:24px;color:var(--c-ink-soft);font-style:normal;font-weight:800;margin-left:2px}
+.graderow{display:flex;align-items:center;gap:14px;margin-top:14px}
+.grade{display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border:2.5px solid;border-radius:var(--radius);font-family:var(--f-display);font-weight:900;font-style:italic;font-size:28px}
+.gradelbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft)}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;color:var(--c-navy);background:var(--c-panel)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--c-ink-faint)}
+.pill-good{background:var(--st-good-bg)}.pill-good .dot{background:var(--st-good-fill)}
+.pill-warn{background:#F7EBD9}.pill-warn .dot{background:var(--st-warn-fill)}
+.pill-bad{background:#FDE7E3}.pill-bad .dot{background:var(--st-bad-fill)}
+.pill-info{background:var(--c-panel-blue);color:var(--c-blue-dk)}.pill-info .dot{background:var(--c-blue)}
+.tile{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;width:200px;display:flex;flex-direction:column}
+.tile.warn{border-color:#F0D7B0;background:#FCF8F3}
+.tile .t-lbl{display:flex;align-items:center;gap:6px}
+.tile .sdot{width:8px;height:8px;border-radius:50%;background:var(--st-warn-fill)}
+.tile .tval{font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--c-navy);margin-top:8px;font-variant-numeric:tabular-nums}
+.tile .tval small{font-family:var(--f-body);font-size:13px;color:var(--c-ink-soft);font-weight:400}
+.tile .t-ref{font-size:12px;color:var(--c-ink-soft);margin-top:4px}
+.tile .t-ref .st-warn{color:var(--st-warn);font-weight:700}
+.grbar{margin-top:auto;padding-top:14px}
+.gr-chiprow{position:relative;height:18px;font-family:var(--f-mono);font-size:11px}
+.gr-chip{position:absolute;transform:translateX(-50%);white-space:nowrap;background:#F7EBD9;color:var(--c-warn-text);padding:1px 6px;border-radius:4px;font-weight:600}
+.gr-track{position:relative;height:7px;border-radius:4px;overflow:hidden;display:flex;margin-top:4px}
+.gr-track i{flex:1;display:block}
+.gr-track i:nth-child(1),.gr-track i:nth-child(5){background:var(--st-bad-fill);flex:.6}
+.gr-track i:nth-child(2),.gr-track i:nth-child(4){background:var(--st-warn-fill);flex:.5}
+.gr-track i:nth-child(3){background:var(--st-good-fill);flex:2}
+.gr-mark{position:absolute;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:6px solid var(--c-navy)}
+.gr-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--c-ink-soft);margin-top:6px;font-weight:500}
+.gr-scale .gr-opt{color:var(--st-good);font-weight:700}
+.gr-src{font-size:10.5px;color:var(--c-ink-soft);margin-top:6px;line-height:1.4}
+
+/* Кнопки — те же классы и значения, что в app.css */
+.btn{font-family:var(--f-body);font-weight:800;letter-spacing:.02em;border-radius:var(--radius-btn);cursor:pointer;border:1.5px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;transition:background-color .15s ease-out,color .15s ease-out,border-color .15s ease-out}
+.btn-primary{background:var(--c-blue);color:#fff;font-size:15px;padding:12px 24px}
+.btn-primary:hover{background:var(--c-blue-dk)}
+.btn-go{background:var(--c-coral-btn);color:#fff;font-size:16px;padding:14px 30px}
+.btn-go:hover{background:var(--c-coral-dk)}
+.btn-outline{background:transparent;color:var(--c-blue-dk);border-color:var(--c-blue);font-size:15px;padding:11px 24px}
+.btn-outline:hover{background:var(--c-panel-blue)}
+.btn-ghost{background:var(--c-panel);color:var(--c-ink);font-size:14px;padding:12px 24px}
+.btn-ghost:hover{background:#E7EBF1}
+.btn-danger{background:var(--st-bad);color:#fff;font-size:15px;padding:12px 24px}
+.btn:active{transform:translateY(1px)}
+.btn:disabled,.btn.is-disabled{background:var(--c-panel);color:#AEB6C2;border-color:transparent;cursor:not-allowed;transform:none}
+.btn-sm{padding:8px 16px;font-size:13px;min-height:36px}
+.btn .ic{width:16px;height:16px}
+.btn-grid{display:grid;grid-template-columns:260px 1fr;gap:14px 28px;align-items:center;max-width:820px}
+@media(max-width:720px){.btn-grid{grid-template-columns:1fr}}
+.btn-desc{font-size:13px;color:var(--c-ink-soft);line-height:1.45}
+.btn-desc b{color:var(--c-ink)}
+.ctarow{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:820px}
+@media(max-width:720px){.pair{grid-template-columns:1fr}}
+.pair .box{border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;background:#fff}
+.pair .box h5{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;margin-bottom:12px}
+.pair .no h5{color:var(--st-bad)} .pair .yes h5{color:var(--st-good)}
+
+/* Таблицы */
+.tablewrap{overflow-x:auto;position:relative;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;
+  background:linear-gradient(to right,#fff 40%,rgba(255,255,255,0)) left center,linear-gradient(to left,#fff 40%,rgba(255,255,255,0)) right center,
+  radial-gradient(farthest-side at 0 50%,rgba(20,41,75,.16),rgba(20,41,75,0)) left center,radial-gradient(farthest-side at 100% 50%,rgba(20,41,75,.16),rgba(20,41,75,0)) right center;
+  background-repeat:no-repeat;background-size:28px 100%,28px 100%,10px 100%,10px 100%;background-attachment:local,local,scroll,scroll}
+table.data{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+table.data thead th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-soft);font-weight:800;text-align:left;padding:10px 14px;border-bottom:2.5px solid var(--c-navy)}
+table.data th.num,table.data td.num{text-align:right;font-variant-numeric:tabular-nums}
+table.data td,table.data tbody th{padding:12px 14px;border-bottom:1px solid var(--c-line)}
+table.data tbody th{text-align:left;font-weight:600}
+table.data tbody tr:last-child td,table.data tbody tr:last-child th{border-bottom:none}
+table.data td.num{font-family:var(--f-mono);font-weight:500;color:var(--c-navy)}
+table.data .noref{color:var(--c-ink-faint);font-size:12px;font-weight:600}
+table.data tr.t-farrow td{padding:8px 14px 10px}
+
+/* Тренд */
+.tchart{width:100%;max-width:360px;display:block}
+
+/* Панели и баннеры */
+.block{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);padding:22px 24px}
+.card{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.panel{background:var(--c-panel);border-radius:var(--radius);padding:20px 22px}
+.panel-blue{background:var(--c-panel-blue)}
+.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.panels h5{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--c-blue-dk);margin-bottom:8px}
+.panels p{font-size:13.5px;color:var(--c-ink-soft)}
+.banner{border-radius:var(--radius);padding:14px 16px;font-size:14px;display:flex;gap:10px;align-items:flex-start;max-width:720px}
+.banner + .banner{margin-top:10px}
+.banner.ok{background:var(--c-panel-blue);border-left:4px solid var(--c-blue);color:var(--c-navy)}
+.banner.good{background:var(--st-good-bg);border-left:4px solid var(--st-good-fill);color:var(--c-navy)}
+.banner.warn{background:#F9F1E3;border-left:4px solid var(--c-warn);color:var(--c-ink)}
+.banner.bad{background:#FDE7E3;border-left:4px solid var(--st-bad-fill);color:var(--c-ink)}
+.banner b{font-weight:800}
+details.fold{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;max-width:720px}
+details.fold summary{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;list-style:none;font-weight:700;color:var(--c-navy)}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary .peek{margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);font-weight:500}
+details.fold[open] summary{border-bottom:1px solid var(--c-line)}
+details.fold .body{padding:16px 20px;font-size:14px;color:var(--c-ink-soft)}
+.askopt{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);margin-left:6px}
+
+/* Do / Don't */
+.dd{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.dd{grid-template-columns:1fr}}
+.dd .card{box-shadow:none;border:0;padding:20px 22px;font-size:14px}
+.dd .yes{background:var(--c-panel-blue);border-top:4px solid var(--c-blue)}
+.dd .no{background:#FDEEEB;border-top:4px solid var(--c-coral)}
+.dd h4{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;font-weight:800}
+.dd .yes h4{color:var(--c-navy)} .dd .no h4{color:var(--st-bad)}
+.dd ul{padding-left:18px;color:var(--c-ink-soft);line-height:1.7}
+.dd ul b{color:var(--c-ink)}
+
+/* Код и таблица приёмки */
+pre.code{background:var(--c-navy);color:#DCE6F2;font-family:var(--f-mono);font-size:12.5px;line-height:1.65;padding:22px 24px;border-radius:var(--radius);overflow-x:auto}
+pre.code .cm{color:#7FA3E0}
+table.acc{width:100%;border-collapse:collapse;font-size:14px;max-width:820px}
+table.acc th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-soft);text-align:left;padding:10px 12px;border-bottom:2.5px solid var(--c-navy)}
+table.acc td{padding:10px 12px;border-bottom:1px solid var(--c-line)}
+table.acc td.num,table.acc th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.changes{max-width:760px;display:grid;gap:8px}
+.changes .ch{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:10px 0;border-bottom:1px solid var(--c-line);font-size:14px;align-items:baseline}
+.changes .ch .k{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.changes .ch.rm .k{color:var(--st-bad)} .changes .ch.fix .k{color:var(--c-warn-text)} .changes .ch.add .k{color:var(--st-good)}
+footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;color:var(--c-ink-soft)}
+:is(a,button,summary,[tabindex]):focus-visible{outline:2px solid var(--c-blue);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="wrap">
+    <div class="eyebrow">Flapp · Design system v3 · 2026-09-11</div>
+    <h1>Your technique,<br><span class="accent">measured.</span></h1>
+    <p>Flapp измеряет технику бега и посадку на велосипеде по видео сбоку: 33 точки тела, углы против референсных диапазонов, оценка 0–100, кинограмма, план упражнений. Интерфейс — прибор, который честно говорит, что он измерил, а что нет. Этот документ описывает, как такой прибор выглядит и ведёт себя.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 00 ============ -->
+<section>
+  <div class="eyebrow">Раздел 00</div>
+  <h2 class="sec">Что изменилось против v2</h2>
+  <div class="speedline"></div>
+  <p class="lede">v2 был брендбуком Motus — тренировочного приложения с плаванием, зонами пульса и TSS — с приложением про Flapp в конце. Продукт разошёлся с ним в десятке мест. v3 написан для Flapp с нуля: тот же визуальный язык, но каждый образец — из реального отчёта, и каждое значение — из <code>tokens.css</code>.</p>
+  <div class="changes">
+    <div class="ch rm"><span class="k">Убрано</span><span>Плавание (<code>--c-swim</code>) и зоны Z1–Z5 — ни одного использования в продукте. Мотивационные цитаты капсом. Кольцо прогресса с градиентом: градиент на данных запрещён тем же разделом, что его показывал. Панель «цель сезона», TSS, CTL, недельный план.</span></div>
+    <div class="ch fix"><span class="k">Исправлено</span><span>Шкала оценок: «зелёного в системе нет, A — синий» противоречило продукту, где A зелёный, F красный. Ink Faint: не #8A94A3 «только для disabled», а #6E7787 — самый тихий тир <b>текста</b>, AA на белом. Активный сегмент: не заливка синим, а голубая панель с тёмно-синим текстом. Названия кнопок сведены с классами кода.</span></div>
+    <div class="ch add"><span class="k">Добавлено</span><span>Статусная шкала good / warn / bad с тремя тирами и правило цветных подложек. Компоненты отчёта: карточка счёта, тайл показания, полоса диапазона, кинограмма, рельс, свёртки. Состояния, доступность, голос, лендинг, приёмка с числами.</span></div>
+  </div>
+</section>
+
+<!-- ============ 01 ============ -->
+<section>
+  <div class="eyebrow">Раздел 01</div>
+  <h2 class="sec">Палитра</h2>
+  <div class="speedline"></div>
+  <p class="lede">Белый фон, глубокий синий как вес, электрик-синий как действие, коралл как импульс — одна-две точки на экран. Статус измерения живёт в отдельной семантической шкале и никогда не использует акцентные цвета: «out of range» красный, но это не коралл кнопки.</p>
+
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#2F6DE0"></div><div class="meta"><div class="name">Electric Blue</div><div class="hex">#2F6DE0 · --c-blue</div><div class="use">Кнопка Primary, ссылки на белом, линия тренда, точка «info». Как <b>текст на цветной подложке — никогда</b>: 4.21 на panel-blue</div></div></div>
+    <div class="sw"><div class="chip" style="background:#2459C2"></div><div class="meta"><div class="name">Blue · Dark</div><div class="hex">#2459C2 · --c-blue-dk</div><div class="use">Наведение Primary; <b>весь синий текст на panel / panel-blue</b>: активный пункт меню, eyebrow, метки, чипы</div></div></div>
+    <div class="sw"><div class="chip" style="background:#14294B"></div><div class="meta"><div class="name">Deep Navy</div><div class="hex">#14294B · --c-navy</div><div class="use">Заголовки, счёт, значения в mono, шапка таблицы. Инверсный фон только у hero</div></div></div>
+    <div class="sw"><div class="chip" style="background:#F1553F"></div><div class="meta"><div class="name">Coral</div><div class="hex">#F1553F · --c-coral</div><div class="use">Декоративный акцент: точка логотипа, второй цвет speedline, слово в заголовке. Не для текста и не для кнопок</div></div></div>
+    <div class="sw"><div class="chip" style="background:#CE3F2B"></div><div class="meta"><div class="name">Coral · Button</div><div class="hex">#CE3F2B · --c-coral-btn</div><div class="use">Единственный фон под белым текстом: кнопка Go, ярлык «add-on». Наведение — #C13A26 <code>--c-coral-dk</code></div></div></div>
+    <div class="sw"><div class="chip" style="background:#1E2530"></div><div class="meta"><div class="name">Ink</div><div class="hex">#1E2530 · --c-ink</div><div class="use">Основной текст. Чистого чёрного нет</div></div></div>
+    <div class="sw"><div class="chip" style="background:#5C6675"></div><div class="meta"><div class="name">Ink Soft</div><div class="hex">#5C6675 · --c-ink-soft</div><div class="use">Подписи, вторичный текст, шапки таблиц, <b>мелкий текст на любой цветной подложке</b></div></div></div>
+    <div class="sw"><div class="chip" style="background:#6E7787"></div><div class="meta"><div class="name">Ink Faint</div><div class="hex">#6E7787 · --c-ink-faint</div><div class="use">Самый тихий текст: 4.51 на белом — ровно AA. Только на белом, и никогда с opacity</div></div></div>
+    <div class="sw"><div class="chip" style="background:#F3F5F8"></div><div class="meta"><div class="name">Panel</div><div class="hex">#F3F5F8 · --c-panel</div><div class="use">Серая подложка: свёртки, ghost-кнопки, шапка таблицы сравнения</div></div></div>
+    <div class="sw"><div class="chip" style="background:#EAF1FC"></div><div class="meta"><div class="name">Panel Blue</div><div class="hex">#EAF1FC · --c-panel-blue</div><div class="use">Блок коуча, активный сегмент, выбранный тайл, баннер «ok»</div></div></div>
+    <div class="sw"><div class="chip" style="background:#DCE2EA"></div><div class="meta"><div class="name">Line</div><div class="hex">#DCE2EA · --c-line</div><div class="use">Рамки, разделители, сетка графиков, трек переключателя</div></div></div>
+    <div class="sw"><div class="chip" style="background:#0d1420"></div><div class="meta"><div class="name">Media</div><div class="hex">#0d1420 · --c-media-bg</div><div class="use">Подложка плеера, кадра, кинограммы и превью. Всегда тёмная — это единственный тёмный элемент</div></div></div>
+  </div>
+
+  <h3 class="sub">Статусная шкала</h3>
+  <p>Три состояния измерения, у каждого три тира. <b>-text</b> для слова, <b>-fill</b> для точки и полосы, <b>-bg</b> для подложки пилюли. Слово и цвет всегда вместе: «in range», «check», «out of range» — цвет один смысл не несёт.</p>
+  <div class="stgrid" style="margin-top:16px">
+    <div class="stcard"><h4 style="color:var(--st-good)">Good · in range</h4>
+      <div class="row"><i style="background:#1F7A45"></i><code>--st-good</code> #1F7A45 текст</div>
+      <div class="row"><i style="background:#2E9E5B"></i><code>--st-good-fill</code> #2E9E5B точка, полоса, грейд A</div>
+      <div class="row"><i style="background:#E6F4EC"></i><code>--st-good-bg</code> #E6F4EC подложка</div></div>
+    <div class="stcard"><h4 style="color:var(--st-warn)">Warn · check</h4>
+      <div class="row"><i style="background:#9A5E0B"></i><code>--st-warn</code> #9A5E0B текст (= --c-warn-text)</div>
+      <div class="row"><i style="background:#C97B10"></i><code>--st-warn-fill</code> #C97B10 точка, полоса, грейд C</div>
+      <div class="row"><i style="background:#F7EBD9"></i>#F7EBD9 подложка пилюли</div></div>
+    <div class="stcard"><h4 style="color:var(--st-bad)">Bad · out of range</h4>
+      <div class="row"><i style="background:#CE3F2B"></i><code>--st-bad</code> #CE3F2B текст на белом</div>
+      <div class="row"><i style="background:#B8371F"></i><code>--st-bad-text</code> #B8371F текст на цветной подложке</div>
+      <div class="row"><i style="background:#F1553F"></i><code>--st-bad-fill</code> #F1553F точка, полоса, грейд F</div></div>
+  </div>
+  <p class="note"><b>Правило цветной подложки.</b> Каждый текстовый токен рассчитан на белый. На panel, panel-blue и тонированных карточках он проваливается ниже 4.5:1 — так родились все 40 нарушений контраста, найденных в сентябре. На подложке: синий → <code>--c-blue-dk</code>, faint → <code>--c-ink-soft</code>, bad → <code>--st-bad-text</code>. И никакой <code>opacity</code> на тексте: faint с прозрачностью .7 даёт 3.06.</p>
+
+  <h3 class="sub">Цвета дисциплин</h3>
+  <p>Две дисциплины — <code>--c-bike</code> #F2A33C и <code>--c-run</code> #EF5B5B. Только для маркировки вида спорта: точка в теге, иконка, легенда. Bike-янтарь не путать с warn-янтарём #C97B10, run-красный — со статусом bad.</p>
+
+  <h3 class="sub">Пропорции</h3>
+  <div class="ratio-bar">
+    <div style="flex:62;background:#FFF;color:#5C6675;border-right:1px solid #EEE">Белый 62%</div>
+    <div style="flex:20;background:#F3F5F8;color:#5C6675">Панели 20%</div>
+    <div style="flex:8;background:#2F6DE0;color:#fff">Blue 8%</div>
+    <div style="flex:6;background:#14294B;color:#fff">Navy</div>
+    <div style="flex:4;background:#CE3F2B;color:#fff">4%</div>
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section>
+  <div class="eyebrow">Раздел 02</div>
+  <h2 class="sec">Типографика</h2>
+  <div class="speedline"></div>
+  <p class="lede">Три семейства, три роли. <b>Archivo</b> — вес: заголовки капсом и счёт курсивом. <b>Manrope</b> — всё, что читают. <b>IBM Plex Mono</b> — всё, что измерено: каждое число с единицей, каждая дата, каждый id модели. В приложении базовый размер 14px, на лендинге и в Academy — 16px.</p>
+
+  <div class="type-row"><div class="spec">Счёт<br>Archivo · 900 italic<br>80px · lh 1 · −1.5%</div><div class="t-score">88<small>/100</small></div></div>
+  <div class="type-row"><div class="spec">Заголовок экрана<br>Archivo · 800 · CAPS<br>26px · lh 1.1</div><div class="t-sec">Your results</div></div>
+  <div class="type-row"><div class="spec">Заголовок блока<br>Archivo · 800 · CAPS<br>19px</div><div class="t-block">Key metrics</div></div>
+  <div class="type-row"><div class="spec">Показание<br>Plex Mono · 600<br>26px · tabular</div><div class="t-val">163° <small>knee · contact</small></div></div>
+  <div class="type-row"><div class="spec">Текст<br>Manrope · 400 · 14px<br>lh 1.55 · ≤ 65 знаков</div><div class="t-body">The foot is landing about 36% of a leg length ahead of the hip at contact. This brakes each step and raises impact load.</div></div>
+  <div class="type-row"><div class="spec">Подпись<br>Manrope · 400 · 12px</div><div class="t-cap">Band: Heiderscheit 2011 · estimated from 2D video</div></div>
+  <div class="type-row"><div class="spec">Eyebrow<br>Manrope · 800 · 11px<br>caps · +0.2em · blue-dk</div><div class="t-eyebrow">Instrument readings</div></div>
+  <div class="type-row" style="border-bottom:none"><div class="spec">Метка тайла<br>Manrope · 800 · 10.5px<br>caps · +0.14em</div><div class="t-lbl">Vert. oscillation</div></div>
+
+  <p class="note">Ничего мельче 10.5px. Курсив — только у счёта и hero. Капс — заголовки, eyebrow, метки, пилюли; в тексте и таблицах — никогда. Числа без mono не существуют.</p>
+</section>
+
+<!-- ============ 03 ============ -->
+<section>
+  <div class="eyebrow">Раздел 03</div>
+  <h2 class="sec">Счёт и показания</h2>
+  <div class="speedline"></div>
+  <p class="lede">Отчёт открывается счётом и заканчивается таблицей углов. Между ними — показания, каждое с полосой диапазона и источником полосы. Это компоненты, которые видит каждый платящий пользователь; они и есть продукт.</p>
+
+  <div class="sample">
+    <div class="scorecard">
+      <span class="sporttag"><i></i>Run</span>
+      <div class="score-label">Technique score</div>
+      <div class="score-num">88<small>/100</small></div>
+      <div class="graderow"><span class="grade" style="color:#3E8F52;border-color:#3E8F52">B</span><div><div class="gradelbl">Grade</div><span class="pill pill-good" style="margin-top:8px"><span class="dot"></span>Full confidence</span></div></div>
+    </div>
+    <div class="tile warn">
+      <div class="t-lbl"><span class="sdot"></span>Cadence</div>
+      <div class="tval">169 <small>spm</small></div>
+      <div class="t-ref"><span class="st-warn">check</span></div>
+      <div class="grbar">
+        <div class="gr-chiprow"><span class="gr-chip" style="left:38%">169 spm</span></div>
+        <div class="gr-track"><i></i><i></i><i></i><i></i><i></i><span class="gr-mark" style="left:38%"></span></div>
+        <div class="gr-scale"><span>164</span><span class="gr-opt">170–190</span><span>196</span></div>
+        <div class="gr-src">Band: Heiderscheit 2011</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+      <span class="pill pill-good"><span class="dot"></span>in range</span>
+      <span class="pill pill-warn"><span class="dot"></span>check</span>
+      <span class="pill pill-bad"><span class="dot"></span>out of range</span>
+      <span class="pill pill-info"><span class="dot"></span>Not scored · pedal position</span>
+      <span class="pill"><span class="dot"></span>Reference only</span>
+    </div>
+  </div>
+
+  <h3 class="sub">Карточка счёта</h3>
+  <p>Тег спорта, метка, число 80px курсивом с «/100» малым, скошенная синяя полоса слева — единственное место, где наклон «скорости» появляется в приложении. Грейд — контурный чип 2.5px, буква и рамка цветом грейда. Ниже — камера, кадры, позиция, затем пилюля уверенности и одна кнопка. Счёт, который не поставлен, пишется словами: «Not scored», и абзац объясняет, почему.</p>
+
+  <h3 class="sub">Шкала оценок</h3>
+  <p><b>A</b> #2E9E5B · <b>B</b> #3E8F52 · <b>C</b> #C97B10 · <b>D</b> #DE5F33 · <b>F</b> #F1553F. Это <code>--st-good-fill</code>, тёмно-зелёный, <code>--st-warn-fill</code>, <code>--c-orange</code>, <code>--st-bad-fill</code>. Шкала оценок и статусная шкала — одна семья; v2 с «A — синий» была неправа.</p>
+
+  <h3 class="sub">Тайл показания</h3>
+  <p>Метка с точкой статуса, значение mono 26px с единицей, слово статуса, полоса диапазона, источник полосы. Тайлы с полосой стоят в одной сетке и растягиваются до общей высоты — чтобы полосы в ряду делили базовую линию. Тайлы без полосы (foot strike, position, head align) стоят во второй сетке, плотнее и ниже: слово на всю высоту соседа — это пустота, а не выравнивание.</p>
+
+  <h3 class="sub">Полоса диапазона</h3>
+  <p>Пять зон: red · amber · <b>green</b> · amber · red. Зелёная — референсная полоса; янтарные — допуск (10% ширины полосы, не меньше 3°); красные — за допуском. Маркер-треугольник navy, над ним чип со значением в цвете статуса, под ней три числа шкалы, зелёное — сама полоса. Последняя строка — источник: «Band: Folland 2017». Полоса без источника не публикуется.</p>
+  <p class="note">Бедро на велосипеде асимметрично: закрыть больше полосы — риск, открыть — компромисс по комфорту. Верхняя граница растягивается до измерения и в тайле, и в таблице. Одно число, один вердикт.</p>
+</section>
+
+<!-- ============ 04 ============ -->
+<section>
+  <div class="eyebrow">Раздел 04</div>
+  <h2 class="sec">Кнопки</h2>
+  <div class="speedline"></div>
+  <p class="lede">Manrope 800, радиус 8px, не ниже 44px. <b>Одна залитая кнопка на экран.</b> Наведение — цвет на шаг темнее за 150 мс; нажатие — 1px вниз. Ничего не поднимается и не отбрасывает тень.</p>
+
+  <div class="btn-grid">
+    <button class="btn btn-primary" type="button">Analyze Technique</button>
+    <div class="btn-desc"><b>Primary · <code>.btn-primary</code>.</b> Главное действие экрана. Blue → blue-dk при наведении.</div>
+    <button class="btn btn-go" type="button">Unlock just this report — $4</button>
+    <div class="btn-desc"><b>Go · <code>.btn-go</code>.</b> Коралл-кнопочный. Только действие, которое запускает анализ или стоит денег. Если на экране есть Go, Primary становится Outline.</div>
+    <button class="btn btn-outline" type="button">Upgrade to unlock</button>
+    <div class="btn-desc"><b>Outline · <code>.btn-outline</code>.</b> Второе действие рядом с залитой. Текст blue-dk, рамка blue, наведение — panel-blue.</div>
+    <button class="btn btn-ghost" type="button">Change clip</button>
+    <div class="btn-desc"><b>Ghost · <code>.btn-ghost</code>.</b> Нейтральное: сменить, назад, скачать. Panel-фон без рамки.</div>
+    <button class="btn btn-danger" type="button">Delete analysis</button>
+    <div class="btn-desc"><b>Danger · <code>.btn-danger</code>.</b> Необратимое. Только после подтверждения в диалоге.</div>
+    <button class="btn btn-primary" type="button" disabled>Analyze Technique</button>
+    <div class="btn-desc"><b>Disabled.</b> Panel-фон, серый текст; подпись под кнопкой говорит, чего не хватает: «Upload a video to continue».</div>
+  </div>
+
+  <h3 class="sub">Одна залитая</h3>
+  <div class="pair">
+    <div class="box no"><h5>Так нельзя</h5><div class="ctarow"><button class="btn btn-primary" type="button">Upgrade to unlock</button><button class="btn btn-go" type="button">Unlock — $4</button></div></div>
+    <div class="box yes"><h5>Так</h5><div class="ctarow"><button class="btn btn-go" type="button">Unlock — $4</button><button class="btn btn-outline" type="button">Upgrade to unlock</button></div></div>
+  </div>
+  <p class="note">Две залитые рядом отменяют друг друга: глаз не знает, куда идти. Транзакция ($4) — Go; план — Outline. Порядок: главное слева.</p>
+</section>
+
+<!-- ============ 05 ============ -->
+<section>
+  <div class="eyebrow">Раздел 05</div>
+  <h2 class="sec">Таблицы</h2>
+  <div class="speedline"></div>
+  <p class="lede">Капс в шапке, линия navy 2.5px, тонкие разделители, числа справа в mono. Статус — пилюля со словом. Таблица, которая не влезает, прокручивается внутри своей рамки, показывает тенью, что вбок есть ещё, и достижима с клавиатуры. Страница вбок не прокручивается никогда.</p>
+
+  <div class="tablewrap" tabindex="0" role="group" aria-label="Joint angles, scrolls sideways">
+  <table class="data">
+    <thead><tr><th>Angle</th><th class="num">Min</th><th class="num">Mean</th><th class="num">Max</th><th class="num">Optimal</th><th>Status</th><th class="num">Valid</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Knee</th><td class="num">62</td><td class="num">132</td><td class="num">167</td><td class="num"><span class="noref">no ref</span></td><td></td><td class="num">99%</td></tr>
+      <tr><th scope="row">Elbow</th><td class="num">63</td><td class="num">91</td><td class="num">126</td><td class="num">85–100°</td><td><span class="pill pill-good"><span class="dot"></span>in range</span></td><td class="num">100%</td></tr>
+      <tr><th scope="row">Trunk</th><td class="num">-6</td><td class="num">2</td><td class="num">11</td><td class="num">2–10°</td><td><span class="pill pill-warn"><span class="dot"></span>check</span></td><td class="num">100%</td></tr>
+      <tr class="t-farrow"><td colspan="7"><button class="btn btn-ghost btn-sm" type="button">Show 6 joints the camera could not see</button></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">«no ref» — состояние, не пропуск: у сустава нет единого оптимума, потому что он проходит весь цикл. Суставы дальней стороны (нули и прочерки) свёрнуты за счётчик, который говорит, почему они пустые.</p>
+</section>
+
+<!-- ============ 06 ============ -->
+<section>
+  <div class="eyebrow">Раздел 06</div>
+  <h2 class="sec">Графики</h2>
+  <div class="speedline"></div>
+  <p class="lede">Графиков в продукте четыре типа, и все они про одно: где измерение относительно полосы. Никаких градиентов на данных, никаких колец прогресса, никаких 3D. Сетка почти невидима, подписи 11–12px mono, источник обязателен.</p>
+
+  <div class="panels">
+    <div class="block"><h5 class="t-lbl" style="margin-bottom:10px">Тренд</h5>
+      <svg class="tchart" viewBox="0 0 340 132" role="img" aria-label="Cadence over 3 analyses">
+        <rect x="10" y="30" width="318" height="52" fill="rgba(46,158,91,.13)"/>
+        <line x1="10" x2="328" y1="30" y2="30" stroke="rgba(46,158,91,.45)" stroke-dasharray="3 3"/>
+        <line x1="10" x2="328" y1="82" y2="82" stroke="rgba(46,158,91,.45)" stroke-dasharray="3 3"/>
+        <polyline points="10,96 169,60 328,88" fill="none" stroke="#2F6DE0" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="10" cy="96" r="3" fill="#fff" stroke="#2F6DE0" stroke-width="2"/>
+        <circle cx="169" cy="60" r="3" fill="#fff" stroke="#2F6DE0" stroke-width="2"/>
+        <circle cx="328" cy="88" r="7.5" fill="none" stroke="#2F6DE0" stroke-opacity=".25" stroke-width="1.5"/>
+        <circle cx="328" cy="88" r="4.5" fill="#2F6DE0" stroke="#fff" stroke-width="2"/>
+        <text x="328" y="79" text-anchor="end" font-family="IBM Plex Mono" font-size="11" fill="#14294B">165 spm</text>
+      </svg>
+      <p style="margin-top:10px">Зелёная полоса — оптимум. Последняя точка выделена формой, не цветом: коралловая точка внутри зелёной полосы читалась как проблема.</p></div>
+    <div class="block"><h5 class="t-lbl" style="margin-bottom:10px">Полоса диапазона</h5>
+      <div class="grbar" style="padding-top:6px;max-width:260px">
+        <div class="gr-chiprow"><span class="gr-chip" style="left:58%;background:var(--st-good-bg);color:var(--st-good)">163.1°</span></div>
+        <div class="gr-track"><i></i><i></i><i></i><i></i><i></i><span class="gr-mark" style="left:58%"></span></div>
+        <div class="gr-scale"><span>154</span><span class="gr-opt">160–175°</span><span>181</span></div>
+        <div class="gr-src">Band: Heiderscheit 2011</div>
+      </div>
+      <p style="margin-top:14px">Один график для каждого показания. Ось расширяется, если значение за пределами: маркер всегда на полосе.</p></div>
+    <div class="block"><h5 class="t-lbl" style="margin-bottom:10px">Лаборатория</h5>
+      <p>Кривая цикла против референсной полосы, фазовый портрет, диаграмма угол-угол. Синяя линия «you», пунктир «reference», серая полоса «normal range». Свёрнуты по умолчанию; в заголовке две итоговые цифры, внутри — строка, объясняющая, входят ли они в счёт (бег — да, вело — нет).</p></div>
+  </div>
+</section>
+
+<!-- ============ 07 ============ -->
+<section>
+  <div class="eyebrow">Раздел 07</div>
+  <h2 class="sec">Панели, баннеры, свёртки</h2>
+  <div class="speedline"></div>
+  <p class="lede">Четыре контейнера, и у каждого своя причина существовать. Тень — только у того, что можно открыть, купить или выполнить. Секция отчёта — рамка без тени. Панель — фон без рамки. Свёртка — контейнер, который говорит, что внутри, пока закрыт.</p>
+
+  <div class="panels">
+    <div class="block"><h5 class="t-lbl">Секция · .block</h5><p style="margin-top:8px;font-size:13.5px;color:var(--c-ink-soft)">Белая, рамка line, радиус 10, <b>без тени</b>. Findings, Key metrics, Joint angles. Заголовок: eyebrow + Archivo caps + speedline-sm.</p></div>
+    <div class="card"><h5 class="t-lbl">Сущность · .card</h5><p style="margin-top:8px;font-size:13.5px;color:var(--c-ink-soft)">То же плюс <code>--shadow</code>. Карточка анализа в истории, тариф, дрилл. Тень означает «это можно взять».</p></div>
+    <div class="panel"><h5 class="t-lbl">Панель · .panel</h5><p style="margin-top:8px;font-size:13.5px;color:var(--c-ink-soft)">Серый фон, без рамки. Группировка внутри секции: превью файла, строка квоты.</p></div>
+    <div class="panel panel-blue"><h5 class="t-lbl" style="color:var(--c-blue-dk)">Голубая панель</h5><p style="margin-top:8px;font-size:13.5px;color:var(--c-ink-soft)">Блок коуча, подсказка «cue» в дрилле, вердикт лаборатории. Голубой = «это сказал коуч».</p></div>
+  </div>
+
+  <h3 class="sub">Баннеры</h3>
+  <div class="banner ok"><b>Side-view captures the near side only.</b>&nbsp;Analyze the left side to complete the table.</div>
+  <div class="banner good"><b>No major technique issues</b>&nbsp;detected in this clip.</div>
+  <div class="banner warn"><b>Reference only.</b>&nbsp;Pose tracking confused the legs on 31% of frames — leg-based numbers are approximate.</div>
+  <div class="banner bad"><b>We didn’t score this clip.</b>&nbsp;The athlete fills 14% of the frame; refilm closer, with the phone upright.</div>
+  <p class="note">Полоса слева 4px, тонированный фон, текст ink или navy — цвет статуса никогда не становится цветом текста. Баннер «ok» синий: это информация, не оценка.</p>
+
+  <h3 class="sub">Свёртки</h3>
+  <details class="fold"><summary>Advanced biomechanics <span class="peek">repeatability 91/100 · reference match 61%</span></summary><div class="body">Восемь графиков цикла. Заголовок несёт итоговые цифры, поэтому закрытая свёртка ничего не прячет.</div></details>
+  <details class="fold" style="margin-top:10px"><summary>Camera side: <b style="margin-left:4px">Auto-detect</b> <span class="askopt">change</span></summary><div class="body">Четыре варианта появляются по запросу. Свёрнутый контрол говорит, на что он установлен.</div></details>
+  <p class="note">Один паттерн для лаборатории, стороны съёмки, деталей съёмки, профиля и вопроса коучу: <code>details</code>, summary с текущим состоянием, без анимации раскрытия, на печати всегда раскрыто.</p>
+</section>
+
+<!-- ============ 08 ============ -->
+<section>
+  <div class="eyebrow">Раздел 08</div>
+  <h2 class="sec">Поведение</h2>
+  <div class="speedline"></div>
+  <p class="lede">Сгенерированный интерфейс узнаётся не по цветам, а по отсутствию решений: подъём при наведении у всего, карточка вокруг всего, искра на всём «умном». Ниже — решения.</p>
+  <ul class="plain">
+    <li><b>Наведение</b> — цвет на шаг токена. Без transform, без тени. Нажатие — 1px вниз на время удержания.</li>
+    <li><b>Переходы</b> — 150 мс ease-out, только background, color, border, opacity. Никакого <code>transition: all</code>. Свёртки и панели появляются без анимации. Единственное долгое движение — прогресс анализа.</li>
+    <li><b>Тени</b> — две: <code>--shadow</code> у сущностей, <code>--shadow-lg</code> у плавающих слоёв (модалка, меню, тултип).</li>
+    <li><b>Радиусы</b> — три: 10 панели, 8 контролы, 999 пилюли. 50% только у точек.</li>
+    <li><b>Модалка</b> — 400px форма или 560px контент, заголовок Archivo, фокус в первом поле, закрытие крестиком, Esc и подложкой, фокус-ловушка и возврат. Внутри одна залитая кнопка.</li>
+    <li><b>Поля</b> — 44px, рамка 1.5px line, в фокусе синяя рамка плюс кольцо. Подпись сверху капсом 11px.</li>
+    <li><b>Иконки</b> — inline-SVG 16px, stroke 2, currentColor. Искра только у ИИ-коуча и ИИ-сводки. У каждого пункта навигации своя форма.</li>
+    <li><b>Рельс отчёта</b> — прилипающая строка со счётом и якорем на каждую секцию, которая есть в <i>этом</i> отчёте. Переход раскрывает свёрнутую цель.</li>
+    <li><b>Выбор файла</b> — кнопка «Analyze» сама входит в кадр; на тач-устройстве копирайт «Tap», не «Drag».</li>
+  </ul>
+</section>
+
+<!-- ============ 09 ============ -->
+<section>
+  <div class="eyebrow">Раздел 09</div>
+  <h2 class="sec">Состояния и доступность</h2>
+  <div class="speedline"></div>
+  <p class="lede">Пол — чистый axe на каждом экране в обоих размерах; в сентябре это измерено на 46 сочетаниях. Потолок — проход скринридером на телефоне.</p>
+  <ul class="plain">
+    <li><b>Контраст</b> — правило цветной подложки из раздела 01. Мелкий текст на тонированной поверхности берёт тир «-text» или «-dk».</li>
+    <li><b>Фокус</b> — одно кольцо, <code>:focus-visible</code>, 2px blue, offset 2px. Новые контролы наследуют, а не рисуют своё.</li>
+    <li><b>Тач-цели</b> — 44px: кнопки, чипы, строки списков, кнопка удаления на карточке.</li>
+    <li><b>Прокрутка вбок</b> — только внутри контейнера с тенью-подсказкой, и контейнер получает <code>tabindex=0</code>, когда реально переполнен.</li>
+    <li><b>Контрол внутри контрола — нет.</b> Карточка истории не кнопка; кнопка — её заголовок, удаление — сосед.</li>
+    <li><b>Имена</b> — у каждого выбора файла, иконочной кнопки и переключателя. Заголовки без пропусков уровней.</li>
+    <li><b>Движение</b> — <code>prefers-reduced-motion</code> обнуляет всё глобально.</li>
+    <li><b>Загрузка</b> — шиммер на месте кадра, который придёт; заглушка с иконкой спорта там, где кадра нет; «No preview in this browser» там, где клип не декодируется. Чёрный прямоугольник — всегда ошибка.</li>
+    <li><b>Ошибка</b> — текст, что случилось, и кнопка «Retry». Пустой блок — никогда.</li>
+    <li><b>Даты</b> — <code>en-CA</code>, единый язык с интерфейсом, без локали браузера.</li>
+  </ul>
+</section>
+
+<!-- ============ 10 ============ -->
+<section>
+  <div class="eyebrow">Раздел 10</div>
+  <h2 class="sec">Голос</h2>
+  <div class="speedline"></div>
+  <p class="lede">Flapp говорит как прибор, который уважает читателя: измерил — сказал; не измерил — сказал, что не измерил и почему. Это главное отличие от конкурентов, и оно живёт в словах не меньше, чем в цветах.</p>
+  <div class="dd">
+    <div class="card yes"><h4>Так</h4><ul>
+      <li>«in range · check · out of range» — три слова, всегда те же</li>
+      <li>«Not scored» и абзац о причине — вместо прочерка</li>
+      <li>«estimated from 2D video» рядом с числом, которое оценено, а не измерено</li>
+      <li>«Band: Heiderscheit 2011» под каждой полосой</li>
+      <li>«written by gemini-3.5-flash-lite» под текстом коуча</li>
+      <li>«Show 6 joints the camera could not see» — счётчик и причина</li>
+      <li>Второе лицо, настоящее время, глагол в кнопке: «Analyze», «Unlock», «Change clip»</li>
+    </ul></div>
+    <div class="card no"><h4>Не так</h4><ul>
+      <li>Восклицательные знаки — в приложении их ноль, так и остаётся</li>
+      <li>Мотивационные цитаты и «you’ve got this»</li>
+      <li>«AI-powered», «smart», «magic» — искра и так стоит</li>
+      <li>«Not filed», «rehydrate», «teaser» — слова кода в интерфейсе</li>
+      <li>Число без единицы, единица без mono</li>
+      <li>Обещание того, что покупка не даёт: видео у разблокировки за $4</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============ 11 ============ -->
+<section>
+  <div class="eyebrow">Раздел 11</div>
+  <h2 class="sec">Лендинг</h2>
+  <div class="speedline"></div>
+  <p class="lede">Тёмный hero с navy → blue, speedline, реальный отчёт вместо мокапа, слайдер before/after — это остаётся: оно различимо и работает. Уходит то, что пришло из шаблона.</p>
+  <div class="dd">
+    <div class="card yes"><h4>Остаётся</h4><ul>
+      <li>Hero: navy-градиент, курсивный заголовок с коралловым словом, <b>один настоящий кадр отчёта</b></li>
+      <li>Секция «The report» с настоящими числами и настоящей кинограммой</li>
+      <li>Слайдер before/after</li>
+      <li>Демо сканирования в «How it works» — оно показывает процесс</li>
+      <li>Тарифы как карточки: их можно купить</li>
+      <li>FAQ-аккордеон без «+» в кружке — просто строка и шеврон</li>
+    </ul></div>
+    <div class="card no"><h4>Уходит</h4><ul>
+      <li>Счётчики с анимацией набора «33 · 0–100 · 60 fps · $0»</li>
+      <li>Подъём карточек шагов, путей и тарифов при наведении</li>
+      <li>Плавающие чипы «TRUNK 7°» вокруг телефона и декоративные орбиты</li>
+      <li>Анимации появления блоков: fadeIn, liftIn, gridIn, orbIn, floaty, marquee</li>
+      <li>Сетка одинаковых карточек «иконка · заголовок · два предложения»</li>
+      <li>Белый текст на декоративном коралле — только на <code>--c-coral-btn</code></li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section>
+  <div class="eyebrow">Раздел 12</div>
+  <h2 class="sec">Токены</h2>
+  <div class="speedline"></div>
+  <p class="lede">Единственный источник — <code>backend/app/static/tokens.css</code>, отдаётся как <code>/tokens.css</code> приложению, лендингу, Academy и юридическим страницам. Ниже его копия на 2026-09-11; расходится — правьте файл, не документ.</p>
+<pre class="code">
+:root{
+  --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
+  --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
+  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#6E7787;   <span class="cm">/* faint: 4.51 на белом */</span>
+  --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
+  --c-blue-soft:#B9CDF2;               <span class="cm">/* пунктир дропзоны */</span>
+  --c-swim:#35A6D9; --c-bike:#F2A33C; --c-run:#EF5B5B;   <span class="cm">/* swim — наследие, не используется */</span>
+  --c-warn:#C97B10; --c-warn-text:#9A5E0B; --c-orange:#DE5F33;
+  --c-media-bg:#0d1420;
+  --st-good:#1F7A45; --st-good-fill:#2E9E5B; --st-good-bg:#E6F4EC;
+  --st-warn:#9A5E0B; --st-warn-fill:#C97B10;
+  --st-bad:#CE3F2B;  --st-bad-fill:#F1553F;
+  --st-bad-text:#B8371F;               <span class="cm">/* bad как текст на подложке */</span>
+  --f-display:'Archivo','Arial Black',sans-serif;
+  --f-body:'Manrope','Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',monospace;
+  --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
+  --shadow:0 2px 10px rgba(20,41,75,.07);
+  --shadow-lg:0 12px 34px rgba(20,41,75,.12);
+  --ring:0 0 0 3px rgba(47,109,224,.30);
+  --sidebar-w:244px;
+}
+</pre>
+  <h3 class="sub">Раскладка</h3>
+  <p>Десктоп: фиксированный сайдбар 244px, контент до 1000px. Телефон: прилипающая шапка 56px и фиксированная нижняя навигация из четырёх пунктов; Academy и прайсинг — в выезжающем меню. Брейкпоинты — <b>900 / 640 / 560</b>; сейчас в стилях семь разных ширин, сводятся к этим трём.</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section>
+  <div class="eyebrow">Раздел 13</div>
+  <h2 class="sec">Приёмка</h2>
+  <div class="speedline"></div>
+  <p class="lede">Документ, который нельзя проверить, не выполняется. Каждое число ниже проверяется тестом в CI — как уже проверяются копирайт квоты, порядок секций отчёта и наличие свёрток.</p>
+  <table class="acc">
+    <thead><tr><th>Проверка</th><th class="num">Сейчас</th><th class="num">Цель</th></tr></thead>
+    <tbody>
+      <tr><td>Правил <code>:hover</code> с <code>transform</code>, приложение и лендинг</td><td class="num">10</td><td class="num">0</td></tr>
+      <tr><td>Значений <code>box-shadow</code> вне двух токенов</td><td class="num">8</td><td class="num">0</td></tr>
+      <tr><td>Литералов <code>border-radius</code> вне токенов</td><td class="num">33</td><td class="num">0</td></tr>
+      <tr><td>Разных ширин в <code>@media</code></td><td class="num">7</td><td class="num">3</td></tr>
+      <tr><td>Длительностей переходов, кроме 150 мс и прогресса</td><td class="num">9</td><td class="num">0</td></tr>
+      <tr><td><code>@keyframes</code> на лендинге</td><td class="num">15</td><td class="num">≤ 4</td></tr>
+      <tr><td>Экранов с двумя залитыми кнопками рядом</td><td class="num">1</td><td class="num">0</td></tr>
+      <tr><td>Нарушений axe, 46 сочетаний экран × размер</td><td class="num">0</td><td class="num">0</td></tr>
+    </tbody>
+  </table>
+  <p class="note">После применения — безголовые скриншоты на 1366×768 и 390×844, axe, и десять минут пальцем на настоящем телефоне: наведение и нажатие можно спроектировать, но не почувствовать.</p>
+</section>
+
+</div>
+<footer><div class="wrap">Flapp design system v3 · 2026-09-11 · заменяет brandbook-v2 · токены: backend/app/static/tokens.css</div></footer>
+</body>
+</html>
