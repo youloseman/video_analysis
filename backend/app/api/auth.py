@@ -1,72 +1,29 @@
-"""Email + password accounts: register / login / me / password reset (JWT bearer)."""
+"""Email + password accounts: register / login / me (JWT bearer)."""
 
 from __future__ import annotations
 
-import html
 import re
-import time
-from collections import deque
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.concurrency import run_in_threadpool
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.db import get_session
-from app.core.net import client_ip
 from app.core.security import (
-    RESET_TOKEN_TTL,
-    create_reset_token,
     create_token,
     get_current_user,
     hash_password,
     verify_password,
-    verify_reset_token,
 )
 from app.models.user import User
-from app.services import analytics, notify
+from app.services import analytics
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-# ---------------------------------------------------------------------------
-# Attempt throttling. In-memory and per-process, like the analysis limiter in
-# main.py -- this service runs one worker. The keys mix the caller's IP with
-# the target email so one household behind a NAT is not locked out by a
-# neighbour, while one address cannot be hammered from one place either.
-# ---------------------------------------------------------------------------
-LOGIN_ATTEMPTS = 10          # per (ip, email) ...
-LOGIN_WINDOW_S = 15 * 60     # ... per 15 minutes
-RESET_REQUESTS = 3           # per email ...
-RESET_WINDOW_S = 60 * 60     # ... per hour
-_attempts: dict[str, deque[float]] = {}
-
-
-def _throttle(key: str, limit: int, window_s: int) -> None:
-    """Record one attempt under ``key`` and raise 429 once ``limit`` is hit
-    inside the rolling window."""
-    now = time.time()
-    dq = _attempts.setdefault(key, deque())
-    while dq and now - dq[0] > window_s:
-        dq.popleft()
-    if len(dq) >= limit:
-        wait = int(window_s - (now - dq[0])) + 1
-        minutes = max(1, -(-wait // 60))
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            f"Too many attempts — try again in {minutes} min.",
-        )
-    dq.append(now)
-
-
-def _caller(request: Request | None) -> str:
-    return client_ip(request) if request is not None else "direct"
 
 
 class Credentials(BaseModel):
