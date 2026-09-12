@@ -2,15 +2,17 @@
  "approx": {
   "angles": {
    "ankle": {
+    "artefact_frames": 1,
     "max": 145.4,
-    "mean": 92.7,
-    "min": 49.3,
+    "mean": 92.8,
+    "min": 70.1,
     "nan_pct": 0.9,
-    "range": 96.1,
-    "std": 14.6,
-    "valid_frames": 345
+    "range": 75.4,
+    "std": 14.4,
+    "valid_frames": 344
    },
    "elbow": {
+    "artefact_frames": 0,
     "max": 126.0,
     "mean": 91.3,
     "min": 62.9,
@@ -20,6 +22,7 @@
     "valid_frames": 348
    },
    "hip": {
+    "artefact_frames": 0,
     "max": 175.5,
     "mean": 160.1,
     "min": 141.9,
@@ -29,6 +32,7 @@
     "valid_frames": 345
    },
    "knee": {
+    "artefact_frames": 0,
     "max": 167.3,
     "mean": 132.4,
     "min": 62.3,
@@ -38,6 +42,7 @@
     "valid_frames": 345
    },
    "trunk": {
+    "artefact_frames": 0,
     "max": 10.6,
     "mean": 1.9,
     "min": -6.3,

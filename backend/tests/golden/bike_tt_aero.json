@@ -2,6 +2,7 @@
  "approx": {
   "angles": {
    "left_ankle": {
+    "artefact_frames": 0,
     "max": null,
     "mean": null,
     "min": null,
@@ -11,6 +12,7 @@
     "valid_frames": 0
    },
    "left_elbow": {
+    "artefact_frames": 0,
     "max": null,
     "mean": null,
     "min": null,
@@ -20,6 +22,7 @@
     "valid_frames": 0
    },
    "left_forearm_tilt": {
+    "artefact_frames": 0,
     "max": null,
     "mean": null,
     "min": null,
@@ -29,6 +32,7 @@
     "valid_frames": 0
    },
    "left_hip": {
+    "artefact_frames": 0,
     "max": null,
     "mean": null,
     "min": null,
@@ -38,6 +42,7 @@
     "valid_frames": 0
    },
    "left_knee": {
+    "artefact_frames": 0,
     "max": null,
     "mean": null,
     "min": null,
@@ -47,6 +52,7 @@
     "valid_frames": 0
    },
    "left_shoulder": {
+    "artefact_frames": 0,
     "max": null,
     "mean": null,
     "min": null,
@@ -56,6 +62,7 @@
     "valid_frames": 0
    },
    "right_ankle": {
+    "artefact_frames": 0,
     "max": 134.4,
     "mean": 115.6,
     "min": 102.0,
@@ -65,6 +72,7 @@
     "valid_frames": 402
    },
    "right_elbow": {
+    "artefact_frames": 0,
     "max": 97.9,
     "mean": 93.5,
     "min": 88.1,
@@ -74,6 +82,7 @@
     "valid_frames": 503
    },
    "right_forearm_tilt": {
+    "artefact_frames": 0,
     "max": 16.9,
     "mean": 12.9,
     "min": 9.0,
@@ -83,6 +92,7 @@
     "valid_frames": 503
    },
    "right_hip": {
+    "artefact_frames": 0,
     "max": 101.1,
     "mean": 74.4,
     "min": 41.2,
@@ -92,6 +102,7 @@
     "valid_frames": 402
    },
    "right_knee": {
+    "artefact_frames": 0,
     "max": 158.2,
     "mean": 111.8,
     "min": 69.1,
@@ -101,6 +112,7 @@
     "valid_frames": 402
    },
    "right_shoulder": {
+    "artefact_frames": 0,
     "max": 89.1,
     "mean": 87.2,
     "min": 84.7,
@@ -110,6 +122,7 @@
     "valid_frames": 503
    },
    "trunk_angle": {
+    "artefact_frames": 0,
     "max": 20.6,
     "mean": 19.2,
     "min": 17.2,

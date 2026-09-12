@@ -1589,6 +1589,9 @@ table.data{width:100%;border-collapse:collapse;font-size:14px}
 table.data thead th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-soft);
   font-weight:800;text-align:left;padding:8px 16px;border-bottom:2.5px solid var(--c-navy)}
 table.data th.num,table.data td.num{text-align:right;font-variant-numeric:tabular-nums}
+/* "Low p5" / "High p95": the percentile rides along in mono, lower-case, so
+   the header still reads as a word and the definition is one glance away */
+table.data thead th .thq{font-family:var(--f-mono);font-size:10px;letter-spacing:0;text-transform:none;font-weight:500;color:var(--c-ink-faint);margin-left:2px}
 table.data td,table.data tbody th{padding:12px 16px;border-bottom:1px solid var(--c-line)}
 table.data tbody th{text-align:left;font-weight:600;color:var(--c-ink)}
 table.data tbody tr:hover{background:var(--c-panel-blue)}

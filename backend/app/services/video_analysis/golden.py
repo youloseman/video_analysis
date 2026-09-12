@@ -91,6 +91,10 @@ def _angle_stats(stats: dict[str, Any] | None) -> dict[str, Any]:
         }
         out[joint]["nan_pct"] = _num(s.get("nan_pct"))
         out[joint]["valid_frames"] = s.get("valid_frames")
+        # Frames the physiological envelope rejected. Pinned so that a
+        # tightened or loosened envelope shows up as the count moving, not as
+        # a min that quietly became a different frame.
+        out[joint]["artefact_frames"] = s.get("artefact_frames", 0)
     return out
 
 

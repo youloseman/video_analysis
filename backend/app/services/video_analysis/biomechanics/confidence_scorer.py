@@ -11,6 +11,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from app.services.video_analysis.biomechanics.base_analyzer import ARTEFACT_FLAG_PCT
+
 THRESHOLDS = {
     "nan_pct_angle_strict": 40.0,
     "nan_pct_angle_high": 60.0,
@@ -200,6 +202,24 @@ def compute_analysis_confidence(
             f"({', '.join(angles_with_high_nan)})."
         )
 
+    # --- factor: physically impossible readings (tracking artefacts) ---
+    # These frames keep full visibility and produce no NaN, so the gap
+    # factors above cannot see them. They were excluded from every number
+    # (base_analyzer.ANGLE_ENVELOPES); a joint that lost more than a few
+    # percent of its frames that way is a joint the tracker struggled with.
+    artefact_angles = [
+        name for name, stats in angle_statistics.items()
+        if isinstance(stats.get("artefact_pct"), (int, float))
+        and stats["artefact_pct"] > ARTEFACT_FLAG_PCT
+    ]
+    if artefact_angles:
+        level = _downgrade(level, "medium")
+        reasons.append(
+            f"{len(artefact_angles)} angle(s) had physically impossible "
+            f"readings on more than {ARTEFACT_FLAG_PCT:.0f}% of frames "
+            f"({', '.join(artefact_angles)}); those frames were excluded."
+        )
+
     # --- factor: Butterworth fallback / cutoff reduction ---
     fallback_triggered = False
     cutoff_reduced = False
@@ -317,6 +337,7 @@ def compute_analysis_confidence(
     factors: dict[str, Any] = {
         "landmark_quality_pct": lq_pct,
         "angles_with_high_nan": angles_with_high_nan,
+        "artefact_angles": artefact_angles,
         "majority_angles_gated": majority_gated,
         "fallback_triggered": fallback_triggered,
         "cutoff_reduced": cutoff_reduced,

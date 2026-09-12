@@ -860,10 +860,14 @@ class CyclingAnalyzer(SportAnalyzer):
     ) -> None:
         """Write a metric to the summary only if it is plausible.
 
-        ``None`` and out-of-envelope readings are dropped silently --
-        downstream consumers (action plan builder, technique scorer)
-        treat absence as "no measurement", which is what we want when
-        the upstream computation failed or produced noise.
+        ``None`` and out-of-envelope readings are not written under their
+        own key -- downstream consumers (action plan builder, technique
+        scorer) treat absence as "no measurement", which is what we want
+        when the upstream computation failed or produced noise. An
+        out-of-envelope reading is not dropped silently, though: it is
+        recorded under ``outside_envelope`` with the value that failed, so
+        the report can say "not measured -- read 212 deg" instead of
+        showing nothing where a card used to be.
         """
         if value is None:
             return
@@ -873,6 +877,7 @@ class CyclingAnalyzer(SportAnalyzer):
         if bounds is not None:
             lo, hi = bounds
             if value < lo or value > hi:
+                summary.setdefault("outside_envelope", {})[key] = round(float(value), 2)
                 return
         summary[key] = round(float(value), 2)
 

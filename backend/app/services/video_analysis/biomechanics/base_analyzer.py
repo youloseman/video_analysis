@@ -11,6 +11,54 @@ from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
 # Midline angle names that are always valid regardless of camera side
 MIDLINE_ANGLES = {"trunk_lean", "trunk_angle"}
 
+# Physiological envelope per joint, degrees, keyed by the canonical angle name
+# (side prefix stripped). A frame outside it is not a movement -- no knee
+# closes to 8 degrees, no elbow opens past straight -- it is the tracker
+# putting a landmark on the other leg, a treadmill rail or a shadow for one
+# frame. Such frames are counted, not averaged: they leave every statistic
+# and are reported as ``artefact_frames`` so the table can say "3 frames
+# excluded" instead of printing the 8 as the knee's minimum.
+#
+# Deliberately loose. These are "is this a human joint at all" bounds, not
+# the tighter per-metric plausibility the cycling summary applies to a MEAN
+# (``CyclingAnalyzer._SUMMARY_BOUNDS``): a knee sweeps 40-175 over one pedal
+# stroke and a sprinter's swing knee folds to 30, and none of that is an
+# artefact. Absent from the table = no envelope (shoulder: the 3-point angle
+# is legitimately anywhere in 0-180).
+#
+#   knee / hip / elbow   3-point angles, 0-180 by construction
+#   ankle                run: shank-vs-foot, neutral 90, so 50 is 40 deg of
+#                        dorsiflexion (the joint stops near 30) and 170 is 80
+#                        of plantarflexion (it stops near 50); bike:
+#                        knee-ankle-toe, which lives in 90-150
+#   trunk                run: SIGNED lean from vertical (back-lean negative)
+#   trunk_angle          bike: from horizontal; 0 = flat aero, 90 = upright
+#   forearm_tilt         bike: UCI-legal pads go to ~30 deg; -45 is a bar drop
+ANGLE_ENVELOPES: dict[str, tuple[float, float]] = {
+    "knee": (20.0, 180.0),
+    "hip": (35.0, 180.0),
+    "elbow": (20.0, 180.0),
+    "ankle": (50.0, 170.0),
+    "trunk": (-30.0, 65.0),
+    "trunk_angle": (0.0, 90.0),
+    "forearm_tilt": (-45.0, 60.0),
+}
+# Share of frames outside the envelope above which the joint's row is flagged
+# and its status withheld: one artefact in a hundred frames is noise, one in
+# twenty is a tracking problem the reader should know about.
+ARTEFACT_FLAG_PCT = 5.0
+
+
+def canonical_angle_name(name: str) -> str:
+    for prefix in ("left_", "right_"):
+        if name.startswith(prefix):
+            return name[len(prefix):]
+    return name
+
+
+def angle_envelope(name: str) -> tuple[float, float] | None:
+    return ANGLE_ENVELOPES.get(canonical_angle_name(name))
+
 
 class SportAnalyzer(ABC):
     """Abstract base class for sport-specific analyzers.
@@ -127,12 +175,24 @@ class SportAnalyzer(ABC):
             valid = arr[~np.isnan(arr)]
             nan_count = int(np.isnan(arr).sum())
 
+            # Frames the tracker got wrong leave here, before any number is
+            # taken from them (see ANGLE_ENVELOPES).
+            artefact_count = 0
+            envelope = angle_envelope(name)
+            if envelope is not None and len(valid):
+                lo, hi = envelope
+                inside = (valid >= lo) & (valid <= hi)
+                artefact_count = int((~inside).sum())
+                valid = valid[inside]
+
             if len(valid) == 0:
                 stats[name] = {
                     "min": None, "max": None, "mean": None,
                     "std": None, "range": None,
                     "valid_frames": 0, "nan_frames": nan_count,
-                    "nan_pct": 100.0,
+                    "nan_pct": round(nan_count / len(arr) * 100, 1),
+                    "artefact_frames": artefact_count,
+                    "artefact_pct": round(artefact_count / len(arr) * 100, 1),
                 }
                 continue
 
@@ -154,5 +214,7 @@ class SportAnalyzer(ABC):
                 "valid_frames": int(len(valid)),
                 "nan_frames": nan_count,
                 "nan_pct": round(nan_count / len(arr) * 100, 1),
+                "artefact_frames": artefact_count,
+                "artefact_pct": round(artefact_count / len(arr) * 100, 1),
             }
         return stats

@@ -853,13 +853,15 @@
       <p class="anglemerge hidden" id="angleMergeNote"></p>
       <div class="tablewrap">
         <table class="data" id="angleTable">
-          <caption class="visually-hidden">Joint angle statistics: minimum, mean, maximum, optimal range, status and share of valid frames per angle</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num col-opt">Optimal</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Valid</th></tr></thead>
+          <caption class="visually-hidden">Joint angle statistics: 5th percentile, mean, 95th percentile, optimal range, status and share of valid frames per angle</caption>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num col-opt">Optimal</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Valid</th></tr></thead>
           <tbody id="angleRows"></tbody>
         </table>
       </div>
       <p class="hint norefnote hidden" id="angleNorefNote" style="text-align:left;margin-top:12px">
         <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
+      <p class="hint" id="angleStatNote" style="text-align:left;margin-top:8px">
+        <b>Low / High</b> are the 5th and 95th percentile, not the single most extreme frame. A frame that reads outside the physiological range for a joint is a tracking artefact: it is excluded from every number and counted in an <b>artefact</b> pill instead.</p>
     </div>
 
     <!-- Folded by default, and the fold is the point. Eight charts of
@@ -5006,6 +5008,9 @@ function renderConfidence(conf){
    row came from. */
 const ANGLE_PILL_WORD={good:'in range',warn:'check',bad:'out of range'};
 const ANGLE_PILL_CLS={good:'pill-good',warn:'pill-medium',bad:'pill-high'};
+/* Share of frames outside the joint's physiological envelope above which the
+   row is flagged and its status withheld (mirrors base_analyzer.ARTEFACT_FLAG_PCT). */
+const ARTEFACT_FLAG_PCT=5;
 /* True if ANY angle in this set has a reference band. When none do, the caller
    hides the Optimal/Status columns instead of printing a column of em-dashes. */
 function anglesHaveOpt(A, sport, position){
@@ -5015,34 +5020,53 @@ function anglesHaveOpt(A, sport, position){
 function angleTableRows(A, sport, position, srcByKey){
   A = A || {};
   const ctx = {cycling_position: position};
+  // A joint with no mean is either one the camera never saw (folded away
+  // below) or one whose every frame failed the physiological envelope --
+  // which is a tracking verdict, not an absence, and stays in view.
+  const unseen=k=>{ const a=A[k]||{}; return a.mean==null && !(a.artefact_frames>0 && !(a.valid_frames>0)); };
   const rows = Object.keys(A).map(k=>{
-    const a=A[k]||{}; const valid=a.valid_frames||0; const tot=valid+(a.nan_frames||0);
+    const a=A[k]||{}; const valid=a.valid_frames||0, art=a.artefact_frames||0;
+    const tot=valid+(a.nan_frames||0)+art;
+    // Valid = seen AND plausible: a frame the tracker put on the wrong leg
+    // is not a measurement of this joint either.
     const pct=tot?Math.round(valid/tot*100):0;
     const muted=a.mean==null;
     const cls=muted?'num muted':'num';
     const opt=angleBandFor(k,sport,ctx,a.mean);
     // "no ref" reads as a deliberate state; a bare em-dash reads as failed data.
     const optTxt=opt?`${num(opt[0],0)}–${num(opt[1],0)}°`:'<span class="noref">no ref</span>';
+    const artPct=a.artefact_pct!=null?a.artefact_pct:(tot?art/tot*100:0);
+    const flagged=art>0 && artPct>ARTEFACT_FLAG_PCT;
     let statusCell='<td class="col-status muted"></td>';
-    if(opt && !muted){
+    if(muted && art>0 && !valid){
+      statusCell=`<td class="col-status"><span class="pill pill-medium" title="Every frame read outside the physiological range for this joint — a tracking artefact, not a measurement"><span class="dot" aria-hidden="true"></span>outside envelope</span></td>`;
+    } else if(flagged){
+      // The number is still shown (it was taken from the surviving frames),
+      // but a joint the tracker got wrong this often is not graded.
+      statusCell=`<td class="col-status"><span class="pill pill-medium" title="${art} frame${art>1?'s':''} read outside the physiological range for this joint and were excluded from every number here"><span class="dot" aria-hidden="true"></span>artefact · ${art} frame${art>1?'s':''}</span></td>`;
+    } else if(opt && !muted){
       const z=grZone(a.mean,opt[0],opt[1],k);
       const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
       statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`;
     }
     const src=(srcByKey&&srcByKey[k])?`<span class="ang-src">${esc(srcByKey[k])}</span>`:'';
+    // Low/High are the 5th/95th percentile, the same figures the score reads:
+    // over hundreds of frames a true extreme is a single sample, always in the
+    // alarming direction. Older saved results carry only min/max.
+    const lo=a.p05!=null?a.p05:a.min, hi=a.p95!=null?a.p95:a.max;
     // A side-view clip measures the near leg. The far one has no numbers at
     // all, and on a bike that is six rows of em-dashes in the middle of the
     // table -- the reader scans them looking for the value that is not there.
     // Folded away, with a count, because "not captured" is information and
     // deleting the rows would hide which joints those are.
-    return `<tr${muted?' class="t-far hidden"':''}><th scope="row">${esc(pretty(k))}${src}</th>
-      <td class="${cls}">${num(a.min,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
-      <td class="${cls}">${num(a.max,0)}</td>
+    return `<tr${unseen(k)?' class="t-far hidden"':''}><th scope="row">${esc(pretty(k))}${src}</th>
+      <td class="${cls}">${num(lo,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
+      <td class="${cls}">${num(hi,0)}</td>
       <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>${statusCell}
       <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
   });
   if(!rows.length) return '<tr><td colspan="7" class="muted">No angle data.</td></tr>';
-  const far=Object.keys(A).filter(k=>(A[k]||{}).mean==null).length;
+  const far=Object.keys(A).filter(unseen).length;
   if(far) rows.push(`<tr class="t-farrow"><td colspan="7">
     <button class="btn btn-ghost btn-sm" type="button" data-showfar>
       Show ${far} joint${far>1?'s':''} the camera could not see</button></td></tr>`);
@@ -6951,7 +6975,7 @@ function renderHistoryAngles(e){
     // fit a phone, and without it the last one is simply cut off the side of
     // the card -- statuses reading "OPTIMA" and "PHASE DEPEN".
     host.innerHTML=`<div class="tablewrap"><table class="data">
-      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Min</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Max</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Valid</th></tr></thead>
+      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Valid</th></tr></thead>
       <tbody>${angleTableRows(merged.stats, e.sport, e.position||null, srcMap)}</tbody></table></div>`;
     if(note){
       if(paired){ note.innerHTML=`Both sides shown: <b>${esc(e.cameraSide||'this')} side</b> from this analysis, <b>${esc(paired.cameraSide||'other')} side</b> filled from your ${esc(fmtWhen(paired.at))} analysis.`; note.classList.remove('hidden'); }

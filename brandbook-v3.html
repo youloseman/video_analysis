@@ -417,16 +417,21 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
 
   <div class="tablewrap" tabindex="0" role="group" aria-label="Joint angles, scrolls sideways">
   <table class="data">
-    <thead><tr><th>Angle</th><th class="num">Min</th><th class="num">Mean</th><th class="num">Max</th><th class="num">Optimal</th><th>Status</th><th class="num">Valid</th></tr></thead>
+    <thead><tr><th>Angle</th><th class="num">Low <small class="thq">p5</small></th><th class="num">Mean</th><th class="num">High <small class="thq">p95</small></th><th class="num">Optimal</th><th>Status</th><th class="num">Valid</th></tr></thead>
     <tbody>
       <tr><th scope="row">Knee</th><td class="num">62</td><td class="num">132</td><td class="num">167</td><td class="num"><span class="noref">no ref</span></td><td></td><td class="num">99%</td></tr>
       <tr><th scope="row">Elbow</th><td class="num">63</td><td class="num">91</td><td class="num">126</td><td class="num">85–100°</td><td><span class="pill pill-good"><span class="dot"></span>in range</span></td><td class="num">100%</td></tr>
       <tr><th scope="row">Trunk</th><td class="num">-6</td><td class="num">2</td><td class="num">11</td><td class="num">2–10°</td><td><span class="pill pill-warn"><span class="dot"></span>check</span></td><td class="num">100%</td></tr>
+      <tr><th scope="row">Ankle</th><td class="num">71</td><td class="num">96</td><td class="num">131</td><td class="num"><span class="noref">no ref</span></td><td><span class="pill pill-warn"><span class="dot"></span>artefact · 23 frames</span></td><td class="num">91%</td></tr>
       <tr class="t-farrow"><td colspan="7"><button class="btn btn-ghost btn-sm" type="button">Show 6 joints the camera could not see</button></td></tr>
     </tbody>
   </table>
   </div>
   <p class="note">«no ref» — состояние, не пропуск: у сустава нет единого оптимума, потому что он проходит весь цикл. Суставы дальней стороны (нули и прочерки) свёрнуты за счётчик, который говорит, почему они пустые.</p>
+  <h3 class="sub">Выброс — состояние, не число</h3>
+  <p>У каждого сустава есть физиологический конверт (<code>base_analyzer.ANGLE_ENVELOPES</code>: колено 20–180°, локоть 20–180°, голеностоп 50–170°, наклон туловища −30…65° и т. д.). Кадр вне конверта — не движение, а артефакт трекинга: точка, попавшая на другую ногу, на поручень дорожки, на тень. Такой кадр <b>не участвует</b> ни в одной цифре — ни в Low/Mean/High, ни в оценке, ни у коуча — и считается отдельно. <b>Valid</b> в таблице = кадр виден <em>и</em> правдоподобен.</p>
+  <p><b>Low / High — это p5 / p95</b>, и шапка так и говорит. Истинные крайние значения не показываются: над сотнями кадров крайнее значение — всегда одиночная выборка, и всегда в тревожную сторону; оценка читает те же перцентили, так что число в таблице и оценка над ней считаются по одним данным. Если артефактных кадров больше 5 % — у строки пилюля <b>artefact · n frames</b> вместо статуса: число остаётся (оно взято из уцелевших кадров), но сустав, который трекер путал так часто, не оценивается. Сустав, потерявший все кадры по конверту, не сворачивается вместе с «камера не видела» — у него своя пилюля <b>outside envelope</b>: это вердикт, а не пустота.</p>
+  <p>Уровни не заменяют друг друга: баннер Warn говорит о клипе целиком (ноги перепутаны, камера тряслась, кадрирование), пилюля — об одном суставе, а «Analysis confidence» спускается на medium, если такой сустав хотя бы один, и называет его. Ничто не выбрасывается молча.</p>
 </section>
 
 <!-- ============ 06 ============ -->
@@ -614,6 +619,8 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
 </pre>
   <h3 class="sub">Раскладка</h3>
   <p>Десктоп: фиксированный сайдбар 244px, контент до 1000px. Телефон: прилипающая шапка 56px и фиксированная нижняя навигация из четырёх пунктов; Academy и прайсинг — в выезжающем меню. Брейкпоинты — <b>900 / 640 / 560</b>, плюс 1100, выше которого кинограмма помещается целиком. Было семь ширин.</p>
+  <p><b>Брейкпоинт меняет оболочку, не компонент.</b> Четыре ширины — это четыре места, где меняется структура: сайдбар ↔ нижняя навигация, две колонки ↔ одна, кинограмма целиком ↔ с прокруткой. Между ними вёрстка плавная: сетки на <code>minmax</code>/<code>auto-fit</code>, проценты, flex — а не ещё одна ширина. Компонент, живущий в колонке переменной ширины (тайлы показаний, кинограмма, таблица суставов, полоса диапазона), подстраивается под <em>свой контейнер</em> (<code>@container</code>), а не под экран: тот же тайл в узкой колонке отчёта и на всю ширину телефона — один компонент, не два медиазапроса. Крупная типографика (счёт, заголовки экранов) — через <code>clamp()</code>, без ступенек.</p>
+  <p>Планшет — не большой телефон и не маленький десктоп. Между 640 и 900 (iPad mini 744, iPad 820 портрет) экран получает телефонную оболочку на вдвое большей ширине; это допустимо, пока компоненты внутри используют ширину (container queries выше), и недопустимо, если колонка отчёта остаётся телефонной. В риге скриншотов, кроме 1366×768 и 390×844, снимаются <b>744, 820 и 1024</b>.</p>
 </section>
 
 <!-- ============ 13 ============ -->
