@@ -6236,6 +6236,9 @@ function scheduleScrollRegions(){
    make it retrigger itself forever. */
 new MutationObserver(scheduleScrollRegions).observe(document.body,{childList:true,subtree:true});
 addEventListener('resize', scheduleScrollRegions);
+/* An image that arrives later (the cabinet fetches its kinogram on open) makes
+   its box overflow without any DOM mutation -- so listen for loads too. */
+document.addEventListener('load', scheduleScrollRegions, true);
 scheduleScrollRegions();
 
 /* ============================================================

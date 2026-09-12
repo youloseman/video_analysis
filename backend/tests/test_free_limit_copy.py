@@ -65,7 +65,9 @@ def test_no_page_spells_out_the_free_allowance(page):
 def test_the_landing_page_actually_uses_the_token():
     """A page with no token cannot be wrong, and cannot be right either."""
     text = (STATIC / "landing.html").read_text(encoding="utf-8")
-    assert text.count(pricing.FREE_LIMIT_TOKEN) >= 4
+    # Hero trust line, FAQ answer, CTA band. (A fourth, in the count-up stat
+    # tile, left with the tile: design system v3 retired the stats row.)
+    assert text.count(pricing.FREE_LIMIT_TOKEN) >= 3
 
 
 def test_rendering_replaces_every_token_with_the_enforced_number():

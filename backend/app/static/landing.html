@@ -96,9 +96,9 @@ b,strong{font-weight:800}
 .btn svg{width:17px;height:17px;transition:transform .15s ease}
 .btn:hover svg{transform:translateX(4px)}
 .btn-primary{background:var(--c-blue);color:#fff}
-.btn-primary:hover{background:var(--c-blue-dk);box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.btn-primary:hover{background:var(--c-blue-dk)}
 .btn-accent{background:var(--c-coral-btn);color:#fff}
-.btn-accent:hover{background:var(--c-coral-dk);transform:translateY(-1px);box-shadow:0 14px 40px rgba(241,85,63,.35)}
+.btn-accent:hover{background:var(--c-coral-dk)}
 .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
 .btn-ghost:hover{background:rgba(255,255,255,.1);border-color:#fff}
 .btn-outline{background:#fff;color:var(--c-blue);border-color:var(--c-blue)}
@@ -132,40 +132,20 @@ h2.sec .accent{color:var(--c-coral)}
    Pure CSS so it plays even before the scripts run. The orbs animate the
    standalone `scale` property, not `transform`, so the parallax script can own
    `transform` on the same elements without the two fighting. */
-@keyframes orbIn{from{scale:0}to{scale:1}}
-@keyframes liftIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes gridIn{from{opacity:0}to{opacity:.5}}
-.hero .orb{animation:orbIn .8s cubic-bezier(.22,.9,.28,1.06) both}
 .orb-1{animation-delay:.05s}
 .orb-2{animation-delay:.17s}
 .orb-3{animation-delay:.29s}
-.hero .grid-tex{animation:gridIn 1.3s ease .3s both}
-.ld{animation:liftIn .7s cubic-bezier(.16,1,.3,1) both}
-.ld1{animation-delay:.14s}.ld2{animation-delay:.22s}.ld3{animation-delay:.3s}
-.ld4{animation-delay:.38s}.ld5{animation-delay:.46s}
-.stage{animation:fadeIn .9s ease .3s both}
-.phone{animation:liftIn .9s cubic-bezier(.16,1,.3,1) .3s both}
 /* Same burst for circles further down, fired when they scroll into view. */
-.pop{scale:0;transition:scale .9s cubic-bezier(.22,.9,.28,1.06)}
-.pop.in{scale:1}
 .why .rings i:nth-child(2){transition-delay:.09s}
 .why .rings i:nth-child(3){transition-delay:.18s}
 .why .rings i:nth-child(4){transition-delay:.27s}
 .cta-band .orb.b{transition-delay:.12s}
 @media(prefers-reduced-motion:reduce){
   .hero .orb,.hero .grid-tex,.ld,.stage,.phone{animation:none}
-  .pop{scale:1;transition:none}
 }
 
 /* reveal-on-scroll; [data-d] adds stagger */
-.rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
-.rv.in{opacity:1;transform:none}
-.rv[data-d="1"]{transition-delay:.08s}.rv[data-d="2"]{transition-delay:.16s}
-.rv[data-d="3"]{transition-delay:.24s}.rv[data-d="4"]{transition-delay:.32s}
-.rv-scale{opacity:0;transform:translateY(34px) scale(.96);transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1)}
-.rv-scale.in{opacity:1;transform:none}
-@media(prefers-reduced-motion:reduce){.rv,.rv-scale{opacity:1;transform:none;transition:none}}
+/* No reveal-on-scroll and no burst: the page is shown at rest. .rv, .rv-scale and .pop are inert. */
 
 /* ============================================================
    Floating pill nav
@@ -287,11 +267,6 @@ h2.sec .accent{color:var(--c-coral)}
 .chip i{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
 .chip i.good{background:var(--st-good-fill)}
 .chip i.warn{background:var(--st-warn-fill)}
-.float-anim{animation:floaty 5.5s ease-in-out infinite}
-.float-anim.f2{animation-duration:6.5s;animation-delay:.8s}
-.float-anim.f3{animation-duration:7.2s;animation-delay:1.6s}
-@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-@media(prefers-reduced-motion:reduce){.float-anim{animation:none}}
 .scorecard{
   background:#fff;color:var(--c-ink);border-radius:16px;padding:16px 20px 14px;
   box-shadow:0 24px 60px rgba(3,10,24,.5);min-width:150px;
@@ -322,7 +297,6 @@ h2.sec .accent{color:var(--c-coral)}
 .ticker{background:var(--c-dark);border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);overflow:hidden;padding:20px 0}
 .ticker .track{display:flex;gap:0;width:max-content;animation:marquee 36s linear infinite}
 .ticker:hover .track{animation-play-state:paused}
-@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){.ticker .track{animation:none}}
 .ticker .seq{display:flex;align-items:center}
 .ticker span{
@@ -379,7 +353,6 @@ h2.sec .accent{color:var(--c-coral)}
   border:1px solid var(--c-line);box-shadow:var(--shadow);overflow:hidden;
   transition:transform .2s ease,box-shadow .2s ease;
 }
-.step:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
 .step::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c-blue);transform:skewX(var(--skew));margin-left:8px}
 .step .n{
   font-family:var(--f-display);font-weight:900;font-style:italic;font-size:52px;line-height:1;
@@ -588,7 +561,6 @@ h2.sec .accent{color:var(--c-coral)}
 .lb{
   position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
   padding:28px;background:rgba(6,15,31,.88);backdrop-filter:blur(6px);
-  animation:fadeIn .2s ease both;
 }
 .lb[hidden]{display:none}
 .lb img{
@@ -738,7 +710,6 @@ h2.sec .accent{color:var(--c-coral)}
 .why .rings i{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   border:1.5px solid rgba(47,109,224,.35);border-radius:50%;display:block;
-  animation:ringspin 26s linear infinite;
 }
 .why .rings i:nth-child(1){width:340px;height:340px;border-color:rgba(241,85,63,.4)}
 .why .rings i:nth-child(2){width:520px;height:520px;animation-duration:34s}
@@ -748,7 +719,6 @@ h2.sec .accent{color:var(--c-coral)}
 .why .rings i:nth-child(2)::after{background:var(--c-blue)}
 .why .rings i:nth-child(3)::after{background:#fff}
 .why .rings i:nth-child(4)::after{background:var(--c-blue)}
-@keyframes ringspin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.why .rings i{animation:none}}
 .why .wrap{position:relative;z-index:2}
 .why h2{
@@ -779,7 +749,6 @@ h2.sec .accent{color:var(--c-coral)}
   display:flex;flex-direction:column;box-shadow:var(--shadow-lg);
   transition:transform .25s ease;
 }
-.path:hover{transform:translateY(-5px)}
 .path.run{background:linear-gradient(155deg,#7E2418 0%,#C13A26 48%,#F1553F 100%)}
 .path.ride{background:linear-gradient(155deg,#0B182F 0%,#1D3E77 55%,#2F6DE0 100%)}
 .path::after{content:"";position:absolute;right:-60px;top:-60px;width:230px;height:230px;border-radius:50%;background:rgba(255,255,255,.09)}
@@ -807,7 +776,6 @@ h2.sec .accent{color:var(--c-coral)}
 @media(max-width:880px){.tiers{grid-template-columns:1fr;max-width:440px;margin-left:auto;margin-right:auto}}
 .tier{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--c-line);
   border-radius:var(--radius-lg);padding:30px 26px;box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease}
-.tier:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
 .tier.pop{border-color:var(--c-blue);box-shadow:0 0 0 1px var(--c-blue),var(--shadow-lg)}
 .tier .poptag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;
   font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
@@ -830,7 +798,6 @@ h2.sec .accent{color:var(--c-coral)}
    the same .tier surface, laid out horizontally rather than as a fourth
    column, because four columns in a 1140px wrap squeezes all of them. */
 .tier-solo{margin-top:22px;padding:26px 28px}
-.tier-solo:hover{transform:none;box-shadow:var(--shadow)}
 .tier-solo .poptag-addon{background:var(--c-coral-btn);letter-spacing:.08em}
 .solo-head{display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap}
 .solo-head>div:first-child{flex:1 1 360px}
@@ -931,9 +898,6 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
 
 <!-- ================= HERO ================= -->
 <header class="hero">
-  <div class="orb orb-1" data-px="-0.06"></div>
-  <div class="orb orb-2" data-px="0.05"></div>
-  <div class="orb orb-3" data-px="0.09"></div>
   <div class="grid-tex"></div>
   <div class="wrap">
     <div>
@@ -963,15 +927,12 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
                  aria-label="Runner filmed from the side with an AI skeleton overlay and joint angles drawn on every frame"></video>
         </div>
       </div>
-      <span class="fl chip float-anim" style="left:-8%;top:20%"><i class="good"></i>TRUNK 7°</span>
-      <span class="fl chip float-anim f2" style="right:-11%;top:47%"><i class="good"></i>ELBOW 94°</span>
-      <span class="fl chip float-anim f3" style="left:-14%;bottom:26%"><i class="good"></i>KNEE 161°</span>
-      <div class="fl scorecard float-anim f2" style="right:-13%;top:6%">
+      <div class="fl scorecard" style="right:-13%;top:6%">
         <div class="sc-lbl">Technique score</div>
         <div class="sc-row"><span class="sc-num">91</span><span class="sc-of">/100</span><span class="sc-grade">A</span></div>
         <div class="sc-sub"><i></i>Full confidence</div>
       </div>
-      <div class="fl coachcard float-anim f3" style="right:-9%;bottom:-4%">
+      <div class="fl coachcard" style="right:-9%;bottom:-4%">
         <div class="cc-lbl"><i></i>Flapp AI coach</div>
         <p>Trunk lean is <b>7°</b> — right where it should be. Next lever: land with the foot under your hips, not out in front.</p>
       </div>
@@ -980,24 +941,6 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
 </header>
 
 <!-- ================= METRIC TICKER ================= -->
-<div class="ticker" aria-hidden="true">
-  <div class="track">
-    <div class="seq">
-      <span>Trunk angle</span><em>●</em><span>Knee at BDC</span><em>●</em><span>Knee at TDC</span><em>●</em>
-      <span>Hip angle</span><em>●</em><span>Elbow</span><em>●</em><span>Shoulder</span><em>●</em>
-      <span>Pelvic ratio</span><em>●</em><span>Saddle height</span><em>●</em><span>Aero position</span><em>●</em>
-      <span>Foot strike</span><em>●</em><span>Knee flexion</span><em>●</em><span>Hip extension</span><em>●</em>
-      <span>Gait phases</span><em>●</em><span>Movement stability</span><em>●</em><span>Joint coordination</span><em>●</em>
-    </div>
-    <div class="seq">
-      <span>Trunk angle</span><em>●</em><span>Knee at BDC</span><em>●</em><span>Knee at TDC</span><em>●</em>
-      <span>Hip angle</span><em>●</em><span>Elbow</span><em>●</em><span>Shoulder</span><em>●</em>
-      <span>Pelvic ratio</span><em>●</em><span>Saddle height</span><em>●</em><span>Aero position</span><em>●</em>
-      <span>Foot strike</span><em>●</em><span>Knee flexion</span><em>●</em><span>Hip extension</span><em>●</em>
-      <span>Gait phases</span><em>●</em><span>Movement stability</span><em>●</em><span>Joint coordination</span><em>●</em>
-    </div>
-  </div>
-</div>
 
 <!-- ================= REPORT SHOWCASE ================= -->
 <section id="report" class="showcase">
@@ -1323,17 +1266,10 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
 
 <!-- ================= WHY FLAPP — cinematic divider ================= -->
 <section class="why">
-  <div class="rings" aria-hidden="true"><i class="pop"></i><i class="pop"></i><i class="pop"></i><i class="pop"></i></div>
   <div class="wrap">
     <h2 class="rv">Stop guessing.<br><span class="accent">Start measuring.</span></h2>
     <p class="lede rv" data-d="1">Built by an Ironman 70.3 triathlete who got tired of filming his
       own rides and squinting at the replay.</p>
-    <div class="why-stats">
-      <div class="wstat rv" data-d="1"><div class="num" data-count="33">0</div><div class="lbl">Body landmarks tracked</div></div>
-      <div class="wstat rv" data-d="2"><div class="num" data-count="100" data-prefix="0–">0–0</div><div class="lbl">Technique score + grade</div></div>
-      <div class="wstat rv" data-d="3"><div class="num" data-count="60" data-suffix=" fps">0</div><div class="lbl">Analysis sampling rate</div></div>
-      <div class="wstat rv" data-d="4"><div class="num" data-count="0" data-prefix="$">$0</div><div class="lbl">To start · <!--FREE-LIMIT--> / month free</div></div>
-    </div>
   </div>
 </section>
 
@@ -1437,8 +1373,6 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
 
 <!-- ================= FINAL CTA ================= -->
 <div class="cta-band">
-  <div class="orb a pop"></div>
-  <div class="orb b pop"></div>
   <div class="wrap">
     <h2 class="rv">Ready to see your<br><span class="accent">real form?</span></h2>
     <p class="rv" data-d="1">Your next easy run or trainer session is all the data you need.
@@ -1588,28 +1522,6 @@ var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
   els.forEach(function(el){io.observe(el);});
 })();
 
-/* Count-up stats in the Why section. */
-(function(){
-  var nums=document.querySelectorAll('[data-count]');
-  if(!nums.length) return;
-  function run(el){
-    var to=+el.dataset.count, pre=el.dataset.prefix||'', suf=el.dataset.suffix||'';
-    if(REDUCED || !to){ el.textContent=pre+to+suf; return; }
-    var t0=null, DUR=1400;
-    function frame(t){
-      if(!t0) t0=t;
-      var k=Math.min(1,(t-t0)/DUR); k=1-Math.pow(1-k,3);
-      el.textContent=pre+Math.round(to*k)+suf;
-      if(k<1) requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  }
-  if(!('IntersectionObserver' in window)){ nums.forEach(run); return; }
-  var io=new IntersectionObserver(function(es){
-    es.forEach(function(en){ if(en.isIntersecting){ run(en.target); io.unobserve(en.target); } });
-  },{threshold:.5});
-  nums.forEach(function(el){io.observe(el);});
-})();
 
 /* Feature-list tabs in both splits: clicking an item swaps the screenshot
    beside it. Items are real buttons for keyboard/AT users. */

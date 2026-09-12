@@ -27,7 +27,7 @@
   --f-display:'Archivo','Arial Black',sans-serif;
   --f-body:'Manrope','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',monospace;
-  --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
+  --radius-xs:4px; --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
   --shadow:0 2px 10px rgba(20,41,75,.07);
   --shadow-lg:0 12px 34px rgba(20,41,75,.12);
   --ring:0 0 0 3px rgba(47,109,224,.30);
@@ -405,6 +405,7 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
     <div class="box yes"><h5>Так</h5><div class="ctarow"><button class="btn btn-go" type="button">Unlock — $4</button><button class="btn btn-outline" type="button">Upgrade to unlock</button></div></div>
   </div>
   <p class="note">Две залитые рядом отменяют друг друга: глаз не знает, куда идти. Транзакция ($4) — Go; план — Outline. Порядок: главное слева.</p>
+  <p class="note"><b>Единственное исключение — панель разблокировки</b> (решение 2026-09-12): там залитая синяя «Upgrade to unlock» и залитая коралловая «$4» стоят рядом, потому что это два разных товара по разной цене, и оба должны читаться как покупка. Больше нигде.</p>
 </section>
 
 <!-- ============ 05 ============ -->
@@ -499,7 +500,7 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
     <li><b>Наведение</b> — цвет на шаг токена. Без transform, без тени. Нажатие — 1px вниз на время удержания.</li>
     <li><b>Переходы</b> — 150 мс ease-out, только background, color, border, opacity. Никакого <code>transition: all</code>. Свёртки и панели появляются без анимации. Единственное долгое движение — прогресс анализа.</li>
     <li><b>Тени</b> — две: <code>--shadow</code> у сущностей, <code>--shadow-lg</code> у плавающих слоёв (модалка, меню, тултип).</li>
-    <li><b>Радиусы</b> — три: 10 панели, 8 контролы, 999 пилюли. 50% только у точек.</li>
+    <li><b>Радиусы</b> — четыре токена: <code>--radius-xs</code> 4 чипы и код, <code>--radius-btn</code> 8 контролы, <code>--radius</code> 10 панели, <code>--radius-lg</code> 14 модалка; 999 пилюли, 50% точки. Литералов в стилях приложения нет.</li>
     <li><b>Модалка</b> — 400px форма или 560px контент, заголовок Archivo, фокус в первом поле, закрытие крестиком, Esc и подложкой, фокус-ловушка и возврат. Внутри одна залитая кнопка.</li>
     <li><b>Поля</b> — 44px, рамка 1.5px line, в фокусе синяя рамка плюс кольцо. Подпись сверху капсом 11px.</li>
     <li><b>Иконки</b> — inline-SVG 16px, stroke 2, currentColor. Искра только у ИИ-коуча и ИИ-сводки. У каждого пункта навигации своя форма.</li>
@@ -566,7 +567,7 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
       <li>Hero: navy-градиент, курсивный заголовок с коралловым словом, <b>один настоящий кадр отчёта</b></li>
       <li>Секция «The report» с настоящими числами и настоящей кинограммой</li>
       <li>Слайдер before/after</li>
-      <li>Демо сканирования в «How it works» — оно показывает процесс</li>
+      <li>Демо сканирования в «How it works» — оно показывает процесс (шесть его кадров-анимаций, точка записи и пульс «live» — всё, что осталось из пятнадцати)</li>
       <li>Тарифы как карточки: их можно купить</li>
       <li>FAQ-аккордеон без «+» в кружке — просто строка и шеврон</li>
     </ul></div>
@@ -604,7 +605,7 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
   --f-display:'Archivo','Arial Black',sans-serif;
   --f-body:'Manrope','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',monospace;
-  --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
+  --radius-xs:4px; --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
   --shadow:0 2px 10px rgba(20,41,75,.07);
   --shadow-lg:0 12px 34px rgba(20,41,75,.12);
   --ring:0 0 0 3px rgba(47,109,224,.30);
@@ -612,7 +613,7 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
 }
 </pre>
   <h3 class="sub">Раскладка</h3>
-  <p>Десктоп: фиксированный сайдбар 244px, контент до 1000px. Телефон: прилипающая шапка 56px и фиксированная нижняя навигация из четырёх пунктов; Academy и прайсинг — в выезжающем меню. Брейкпоинты — <b>900 / 640 / 560</b>; сейчас в стилях семь разных ширин, сводятся к этим трём.</p>
+  <p>Десктоп: фиксированный сайдбар 244px, контент до 1000px. Телефон: прилипающая шапка 56px и фиксированная нижняя навигация из четырёх пунктов; Academy и прайсинг — в выезжающем меню. Брейкпоинты — <b>900 / 640 / 560</b>, плюс 1100, выше которого кинограмма помещается целиком. Было семь ширин.</p>
 </section>
 
 <!-- ============ 13 ============ -->
@@ -620,17 +621,17 @@ footer{border-top:1px solid var(--c-line);padding:28px 0 48px;font-size:12px;col
   <div class="eyebrow">Раздел 13</div>
   <h2 class="sec">Приёмка</h2>
   <div class="speedline"></div>
-  <p class="lede">Документ, который нельзя проверить, не выполняется. Каждое число ниже проверяется тестом в CI — как уже проверяются копирайт квоты, порядок секций отчёта и наличие свёрток.</p>
+  <p class="lede">Документ, который нельзя проверить, не выполняется. Каждое число ниже проверяется тестом в CI (<code>tests/test_design_rules.py</code>) — как уже проверяются копирайт квоты, порядок секций отчёта и наличие свёрток. Применено 2026-09-12.</p>
   <table class="acc">
     <thead><tr><th>Проверка</th><th class="num">Сейчас</th><th class="num">Цель</th></tr></thead>
     <tbody>
       <tr><td>Правил <code>:hover</code> с <code>transform</code>, приложение и лендинг</td><td class="num">10</td><td class="num">0</td></tr>
       <tr><td>Значений <code>box-shadow</code> вне двух токенов</td><td class="num">8</td><td class="num">0</td></tr>
       <tr><td>Литералов <code>border-radius</code> вне токенов</td><td class="num">33</td><td class="num">0</td></tr>
-      <tr><td>Разных ширин в <code>@media</code></td><td class="num">7</td><td class="num">3</td></tr>
+      <tr><td>Разных ширин в <code>@media</code></td><td class="num">7</td><td class="num">4</td></tr>
       <tr><td>Длительностей переходов, кроме 150 мс и прогресса</td><td class="num">9</td><td class="num">0</td></tr>
-      <tr><td><code>@keyframes</code> на лендинге</td><td class="num">15</td><td class="num">≤ 4</td></tr>
-      <tr><td>Экранов с двумя залитыми кнопками рядом</td><td class="num">1</td><td class="num">0</td></tr>
+      <tr><td><code>@keyframes</code> на лендинге</td><td class="num">15</td><td class="num">8</td></tr>
+      <tr><td>Экранов с двумя залитыми кнопками рядом</td><td class="num">1</td><td class="num">1 (исключение, раздел 04)</td></tr>
       <tr><td>Нарушений axe, 46 сочетаний экран × размер</td><td class="num">0</td><td class="num">0</td></tr>
     </tbody>
   </table>

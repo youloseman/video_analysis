@@ -44,7 +44,8 @@
   --f-display:'Archivo','Arial Black',sans-serif;
   --f-body:'Manrope','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',monospace;
-  --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
+  /* xs: value chips, code, tiny badges. Anything rounder than a chip is a pill (999px). */
+  --radius-xs:4px; --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
   --shadow:0 2px 10px rgba(20,41,75,.07);
   --shadow-lg:0 12px 34px rgba(20,41,75,.12);
   --ring:0 0 0 3px rgba(47,109,224,.30);
