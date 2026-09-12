@@ -40,6 +40,7 @@ import threading
 import time
 import uuid
 from collections import deque
+from collections.abc import Mapping
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -344,21 +345,37 @@ app = FastAPI(
 # video.
 app.add_middleware(SelectiveGZipMiddleware, minimum_size=1000)
 
-# CORS. The SPA is served by THIS app, so production needs no cross-origin
-# access at all -- every request the product makes is same-origin, and CORS
-# headers would only let other sites drive the API with someone else's browser.
-# So: explicit VA_CORS_ORIGINS wins (comma-separated, or "*" to opt back into
-# the old behaviour); otherwise wildcard locally (a frontend on :3000 during
-# development) and NO cross-origin access in production, where the middleware
-# is simply not installed.
-_cors_env = os.environ.get("VA_CORS_ORIGINS", "").strip()
-if _cors_env == "*":
-    _cors_origins = ["*"]
-elif _cors_env:
-    _cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
-else:
-    _cors_origins = [] if os.environ.get("RAILWAY_ENVIRONMENT") else ["*"]
+# CORS. The SPA is served by THIS app, so the website needs no cross-origin
+# access at all -- every request it makes is same-origin, and CORS headers
+# would only let other sites drive the API with someone else's browser.
+#
+# The one legitimate cross-origin caller is the mobile shell (mobile/): the
+# same SPA bundled into a Capacitor WebView, which runs on capacitor://localhost
+# (iOS) or http://localhost (Android) and calls this API by absolute URL. Those
+# two origins are always allowed -- a web page cannot forge a capacitor://
+# origin, and http://localhost is only ever a developer's own machine. Without
+# them every request from the installed app dies on the preflight and the app
+# reports "Network error" for a login that works in Safari.
+#
+# So: VA_CORS_ORIGINS="*" opts back into the old permissive behaviour; an
+# explicit comma-separated list is added ON TOP of the native origins;
+# otherwise wildcard locally (a frontend on :3000 during development) and, in
+# production, the native app origins only.
+NATIVE_APP_ORIGINS = ["capacitor://localhost", "http://localhost"]
 
+
+def cors_origins(env: Mapping[str, str] = os.environ) -> list[str]:
+    """The allow-list the CORS middleware is built from; empty = not installed."""
+    configured = env.get("VA_CORS_ORIGINS", "").strip()
+    if configured == "*":
+        return ["*"]
+    if configured:
+        extra = [o.strip() for o in configured.split(",") if o.strip()]
+        return NATIVE_APP_ORIGINS + [o for o in extra if o not in NATIVE_APP_ORIGINS]
+    return list(NATIVE_APP_ORIGINS) if env.get("RAILWAY_ENVIRONMENT") else ["*"]
+
+
+_cors_origins = cors_origins()
 if _cors_origins:
     app.add_middleware(
         CORSMiddleware,

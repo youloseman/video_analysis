@@ -112,7 +112,7 @@ whether a fallback exists at all, and `exhausted_24h` — reports in the last 24
 hours that got no coaching from any provider. That number is the point of the
 fallback: coaching degrades to silence, and silence looks exactly like a clean
 analysis with nothing to say, so it has to be countable from outside.
-| `VA_CORS_ORIGINS` | *(unset)* | Comma-separated allowed origins. **Unset in production = no cross-origin access at all** (the SPA is same-origin, so it needs none); unset locally = `*`. Set to `*` to force the old permissive behaviour. |
+| `VA_CORS_ORIGINS` | *(unset)* | Extra comma-separated allowed origins. **Unset in production = only the mobile shell's origins** (`capacitor://localhost`, `http://localhost` — the installed app calls the API cross-origin; the website is same-origin and needs none); unset locally = `*`. A list is added on top of the native origins. Set to `*` to force the old permissive behaviour. |
 | `POSTHOG_KEY` | *(unset)* | Product analytics. Unset = no snippet in any page, no server-side events, and the privacy policy says so (section 7 ships in both versions and the server keeps the true one). Setup: [docs/POSTHOG_RU.md](docs/POSTHOG_RU.md). |
 | `POSTHOG_HOST` | `https://us.i.posthog.com` | Ingestion host — must match the region the PostHog project was created in, or events go nowhere without an error. Point it at a reverse proxy on our own domain to survive ad-blockers. |
 | `POSTHOG_SESSION_RECORDING` | `0` | Session replay. Off deliberately: it records the DOM, and a results page has the athlete's own footage in it. Turning it on means editing the privacy policy first. |
