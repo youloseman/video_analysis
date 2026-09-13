@@ -2388,7 +2388,20 @@ async function pollOnce(){
         ? `Queued — ${ahead} clip${ahead>1?'s':''} ahead of yours…`
         : 'Queued — yours is next…');
     }
-    else if(j.status==='processing'){ stage(j.stage ? esc(j.stage) : ANALYZE_STAGE); }
+    else if(j.status==='processing'){
+      stage(j.stage ? esc(j.stage) : ANALYZE_STAGE);
+      // The server reports where the analysis actually is (frames detected,
+      // then the fixed-cost phases). With a number the bar fills for real;
+      // without one -- an older server, a clip whose length is unknown -- it
+      // keeps sweeping, which at least says "still working".
+      const pbar=$('#pbar');
+      if(typeof j.progress==='number'){
+        pbar.classList.remove('indet'); pbar.removeAttribute('aria-valuetext');
+        pbar.setAttribute('aria-valuenow',String(j.progress));
+        $('#pfill').style.width=j.progress+'%';
+        if(j.progress>=50 && j.progress<75) announce('Analysis halfway');
+      }
+    }
   }catch(err){
     if(++state.pollMisses>=8) fail('Lost connection to the server while analyzing. Check your network and try again.',{keepFile:true});
   }

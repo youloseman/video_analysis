@@ -128,6 +128,7 @@ from app.services.video_analysis.runner import (
     _json_safe,
     run_analysis,
 )
+from app.services.video_analysis.progress import job_progress_hook
 
 logger = structlog.get_logger()
 
@@ -441,6 +442,10 @@ class JobStatus(BaseModel):
     # looks identical to a hang -- and a silent spinner is exactly what makes
     # people reload and lose the run.
     stage: str | None = None
+    # 0-100 while processing, from the analysis itself (frames detected so
+    # far, then the fixed-cost phases). None when the run cannot count -- a
+    # bar that guesses is worse than a sentence that does not.
+    progress: int | None = None
     # Joint corrections (bike, paid): the adjustments currently applied to
     # this job's result, how many rounds are left, and -- when a re-measurement
     # failed -- why, with the previous result left standing.
@@ -546,6 +551,7 @@ def _process_job(
             # be run again with the athlete's joint corrections applied. Same
             # directory, same retention: they expire with the footage.
             frames_store=str(Path(input_path).parent / "landmarks.npz"),
+            progress=job_progress_hook(job, sport),
         )
         safe = _json_safe(result)
         # Don't leak the server filesystem path; expose the API URL instead.
@@ -785,6 +791,10 @@ def _process_pair_job(
             start=1,
         ):
             job["stage"] = f"Analyzing the {side}-side clip ({n} of 2)…"
+            hook = job_progress_hook(
+                job, sport, prefix=f"{side.capitalize()} side, {n} of 2 · ",
+                span=((n - 1) / 2, n / 2),
+            )
             results[side] = run_analysis(
                 path, sport, cycling_position if sport == "bike" else None,
                 overlay_path=overlay,
@@ -797,6 +807,7 @@ def _process_pair_job(
                 # unilateral lock there would claim a certainty the sport
                 # does not have. The slots still say which clip is which.
                 camera_side_override=side if sport == "bike" else None,
+                progress=hook,
             )
             if results[side].get("status") != "completed":
                 job["status"] = "failed"
@@ -806,7 +817,7 @@ def _process_pair_job(
                 )
                 return
 
-        job["stage"] = "Merging both sides…"
+        job["stage"], job["progress"] = "Merging both sides…", 99
         if sport == "run":
             # A run pair shares no rigid object to pool geometry against --
             # what it shares is the athlete. See run_session.py: the metrics
@@ -1913,6 +1924,7 @@ def job_status(
         overlay_failed=overlay_failed,
         result=result,
         stage=job.get("stage"),
+        progress=job.get("progress") if job["status"] == "processing" else None,
         corrections=(job.get("corrections") or None) if access == ACCESS_FULL else None,
         rounds_left=(
             _rounds_left(job)

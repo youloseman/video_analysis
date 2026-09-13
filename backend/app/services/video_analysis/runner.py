@@ -26,6 +26,7 @@ not rewritten, to keep the numeric behaviour identical.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -321,9 +322,31 @@ def _ordinal(n: int) -> str:
     return f"{n}{suffix}"
 
 
+# Progress reporting. ``progress(phase, fraction)`` is called as the analysis
+# moves: ``phase`` is one of PHASES, ``fraction`` is 0..1 inside that phase or
+# None when the phase has no countable unit. Detection is the only phase with
+# a unit (frames), and it is also 70-80% of the wall clock -- which is why a
+# static "detecting pose..." sentence for a minute read as a hang. The caller
+# (main.py) turns this into a sentence and a percentage on the job; here it is
+# only ever called through _report(), which swallows anything the callback
+# raises: a progress bar must never fail a measurement.
+ProgressFn = Callable[[str, "float | None"], None]
+PHASES = ("detect", "stabilize", "measure", "visuals", "coach")
+
+
+def _report(progress: ProgressFn | None, phase: str, fraction: float | None) -> None:
+    if progress is None:
+        return
+    try:
+        progress(phase, fraction)
+    except Exception as e:  # noqa: BLE001 -- a UI hook has no say in the run
+        logger.warning("PROGRESS_HOOK_FAILED", phase=phase, err=str(e))
+
+
 def extract_frames(
     video_path: str, sport_type: str, fps: float, detector: PoseDetector,
     meta: dict[str, Any] | None = None,
+    progress: ProgressFn | None = None,
 ) -> list[dict[str, Any]]:
     """Iterate the video, CLAHE-enhance each sampled frame, run detection.
 
@@ -398,6 +421,13 @@ def extract_frames(
     frame_results: list[dict[str, Any]] = []
     total_sampled = 0
     total_detected = 0
+    # What the loop will sample, for the fraction. Unknown (stream-written
+    # container reporting 0 frames) -> fraction stays None and the UI keeps
+    # the sentence without a number rather than showing a bar that lies.
+    expected_sampled = (
+        math.ceil(total_video_frames / sample_rate) if total_video_frames > 0 else 0
+    )
+    _report(progress, "detect", 0.0 if expected_sampled else None)
 
     while cap.isOpened():
         success, frame = cap.read()
@@ -457,6 +487,11 @@ def extract_frames(
             frame_results.append(record)
 
         frame_idx += 1
+        if total_sampled % 8 == 0:
+            _report(
+                progress, "detect",
+                min(1.0, total_sampled / expected_sampled) if expected_sampled else None,
+            )
 
     cap.release()
 
@@ -575,6 +610,7 @@ def run_analysis(
     mobility_profile: dict[str, Any] | None = None,
     camera_side_override: str | None = None,
     frames_store: str | Path | None = None,
+    progress: ProgressFn | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -627,6 +663,7 @@ def run_analysis(
     try:
         raw_frame_data = extract_frames(
             video_path, sport_type, fps, detector, meta=sampling_meta,
+            progress=progress,
         )
     finally:
         detector.close()
@@ -649,6 +686,7 @@ def run_analysis(
     # series doesn't have.
     stabilizer_ctx: dict[str, Any] = {}
     _stride = max(1, int(sampling_meta.get("sample_rate") or 1))
+    _report(progress, "stabilize", None)
     stabilize_landmarks(
         raw_frame_data, sport_type, camera_angle, fps=fps / _stride,
         context=stabilizer_ctx, camera_view=camera_view,
@@ -684,6 +722,7 @@ def run_analysis(
         athlete_height_cm=athlete_height_cm, focus=focus,
         mobility_profile=mobility_profile,
         camera_side_override=camera_side_override,
+        progress=progress,
     )
 
 
@@ -705,6 +744,7 @@ def analyze_from_frames(
     mobility_profile: dict[str, Any] | None = None,
     camera_side_override: str | None = None,
     corrections: list[dict[str, Any]] | None = None,
+    progress: ProgressFn | None = None,
 ) -> dict[str, Any]:
     """Everything the report says, from STABILIZED landmark frames.
 
@@ -778,6 +818,7 @@ def analyze_from_frames(
                 revolutions=None if not _geom else _geom.revolutions,
             )
 
+    _report(progress, "measure", None)
     # Step 3: analyzer.
     is_bike = sport_type == "bike"
     if is_bike:
@@ -1272,6 +1313,7 @@ def analyze_from_frames(
     except Exception as e:  # noqa: BLE001 -- confidence must never break the run
         logger.warning("ANALYSIS_CONFIDENCE_FAILED", err=str(e))
 
+    _report(progress, "visuals", None)
     # Step 6: annotated visuals. Always render a compact keyframe (a single
     # annotated frame for the history record); render the full overlay video
     # only when requested. Wrapped so a rendering failure never kills the result.
@@ -1434,6 +1476,7 @@ def analyze_from_frames(
     # no API key is configured or the call fails -- never blocks the result.
     ai_recommendations = None
     if recommendations:
+        _report(progress, "coach", None)
         from app.services.video_analysis.llm_recommendations import (
             generate_recommendations,
         )
