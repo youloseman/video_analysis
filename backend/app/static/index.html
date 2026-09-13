@@ -2671,6 +2671,33 @@ function gradientRangeBar(value,lo,hi,unit,metric,src){
     +`<div class="gr-src">${src?`Band: ${esc(src)}`:''}</div>`
     +`</div>`;
 }
+/* What a reading IS, one sentence each, keyed by the tile label. Degrees at a
+   named joint need no gloss; these are the readings that are a ratio, a score,
+   a time or a derived label -- the ones "5.2×" says nothing about. Revealed by
+   a [?] on the tile, inline, not on hover: the brandbook's rule for bands
+   applies here too -- what needs a mouse never gets read, and there is no
+   mouse on a phone. Every sentence states the direction where one exists. */
+const METRIC_DEFS={
+  'Pelvic ratio':'Mean hip angle ÷ mean trunk angle. How the low position is produced: a higher ratio means the hip stays open while the back drops (pelvis rotated forward); a lower one means the hip closes for the same torso angle.',
+  'Head align':'0–100: how close the ear sits to the line of the back, extended forward. 100 = head tucked on the back line; lower = head lifted above it. Higher is better.',
+  'Saddle height':'Read from the knee angle at the bottom of the pedal stroke: a low saddle leaves the knee bent there, a high one stretches it.',
+  'Position':'The riding posture the trunk and elbow angles most resemble — a label, not a grade.',
+  'Foot through the stroke':'The ankle angle pattern across one pedal revolution: toe-down, flat or heel-down pedalling.',
+  'Knee · bottom':'Knee angle with the pedal at the bottom of the stroke (most extended).',
+  'Knee · top':'Knee angle with the pedal at the top of the stroke (most bent).',
+  'Knee opening speed':'Peak rate at which the knee straightens through the down-stroke, in degrees per second.',
+  'Knee closing speed':'Peak rate at which the knee bends through the up-stroke, in degrees per second.',
+  'Cadence':'Steps per minute, both feet counted.',
+  'Vert. oscillation':'How far the hips rise and fall each stride, in centimetres. Less bounce means less energy spent going up rather than forward.',
+  'Ground contact':'Time the foot spends on the ground per step, in milliseconds. From 2D video this is read off the ankle path, so it is an estimate.',
+  'Flight time':'Time with both feet off the ground between steps, in milliseconds.',
+  'Foot strike':'Which part of the foot touches down first, read from the foot angle at contact.',
+  'Overstride':'How far ahead of the hip the foot lands, in leg lengths. 0 = under the hip; a larger number means reaching out in front, which brakes each step.',
+  'Knee · contact':'Knee angle at the moment the foot touches the ground.',
+  'Knee · swing':'Smallest knee angle while the leg swings through (how high the heel comes up).',
+  'Trunk lean':'Forward lean of the torso from vertical, in degrees; negative means leaning back.',
+};
+let _defSeq=0;
 /* tile(): pass `range={value,lo,hi,unit}` to render a gradient range bar and auto-color the tile. */
 function tile(lbl,val,unit,ref,cls,isText=false,range=null){
   let bar='';
@@ -2687,8 +2714,21 @@ function tile(lbl,val,unit,ref,cls,isText=false,range=null){
   // `tile-short` marks a reading with no band: it is sorted after the banded
   // ones (see the #tiles render) and drawn denser, so a one-word card never
   // has to stretch to the height of a range bar beside it.
-  return `<div class="tile ${cls||''}${bar?'':' tile-short'}"><div class="t-lbl">${dot}${esc(lbl)}</div>${valHtml}${refLine}${bar}</div>`;
+  let what='', def='';
+  if(METRIC_DEFS[lbl]){
+    const id='tdef'+(++_defSeq);
+    what=`<button type="button" class="t-what" aria-label="What is ${esc(lbl)}?" aria-expanded="false" aria-controls="${id}">?</button>`;
+    def=`<p class="t-def hidden" id="${id}">${esc(METRIC_DEFS[lbl])}</p>`;
+  }
+  return `<div class="tile ${cls||''}${bar?'':' tile-short'}"><div class="t-lbl">${dot}${esc(lbl)}${what}</div>${valHtml}${refLine}${def}${bar}</div>`;
 }
+/* One handler for every [?] on the page: tiles are rebuilt by a dozen renderers. */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.t-what'); if(!b) return;
+  const def=document.getElementById(b.getAttribute('aria-controls')); if(!def) return;
+  const open=def.classList.toggle('hidden')===false;
+  b.setAttribute('aria-expanded',String(open));
+});
 /* Banded readings first, descriptive ones after -- a stable partition, so the
    order inside each group is the order the builder chose. Rows in the grid then
    stay homogeneous: every range bar in a row shares a baseline (the reason the
@@ -2755,7 +2795,7 @@ function bikeTiles(s, position){
                 ps.style==='toe_down'?'warn':null, true));
   }
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
-  if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'','lower is better'));
+  if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'/100','higher is better'));
   if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
   // Aero now has its own headline panel (renderAeroPanel), not a tile.

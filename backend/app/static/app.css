@@ -1532,6 +1532,15 @@ h2.sec + .speedline{margin-bottom:24px}
 .tile .t-val small{font-size:13px;color:var(--c-ink-soft);font-weight:400}
 .tile .t-val.txt{font-family:var(--f-body);font-size:16px;font-weight:800;line-height:1.3;margin-top:12px}
 .tile .t-ref{font-size:11px;color:var(--c-ink-soft);margin-top:4px}
+/* [?] on a tile: the definition opens inline under the value, so it works on
+   a phone and stays readable in print. Hit area 24px inside a 10px label. */
+.tile .t-what{margin-left:auto;flex:none;width:20px;height:20px;border:1px solid var(--c-line);border-radius:50%;
+  background:#fff;color:var(--c-ink-soft);font:700 11px/1 var(--f-body);letter-spacing:0;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;transition:color .15s ease-out,border-color .15s ease-out}
+.tile .t-what:hover,.tile .t-what[aria-expanded="true"]{color:var(--c-blue-dk);border-color:var(--c-blue-dk)}
+.tile .t-def{font-size:12.5px;line-height:1.45;color:var(--c-ink-soft);margin:8px 0 0;padding-top:8px;border-top:1px dashed var(--c-line);
+  text-transform:none;letter-spacing:0;font-weight:500}
+@media print{ .tile .t-what{display:none} .tile .t-def{display:block !important} }
 .tile .t-ref .st-good{color:var(--st-good);font-weight:800}
 .tile .t-ref .st-warn{color:var(--st-warn);font-weight:800}
 .tile .t-ref .st-bad{color:var(--st-bad);font-weight:800}
