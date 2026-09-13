@@ -380,10 +380,8 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 .tdelta.imp{color:var(--st-good)}.tdelta.reg{color:var(--st-bad)}.tdelta.sta{color:var(--c-ink-soft)}
 .tchart{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
 /* ---------- Dashboard ("My technique") ---------- */
-.dash-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 20px}
-.dstat{border:1px solid var(--c-line);border-radius:var(--radius);background:#fff;padding:14px 16px;box-shadow:var(--shadow)}
-.dstat-v{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:26px;color:var(--c-navy);line-height:1;font-feature-settings:"tnum" 1}
-.dstat-l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--c-ink-soft);margin-top:6px}
+/* #dashSummary holds only the first-run welcome now; empty otherwise */
+.dash-summary:not(:empty){margin:4px 0 20px}
 .dash-welcome{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel);padding:22px;box-shadow:var(--shadow)}
 .dash-welcome p{margin:0 0 14px;color:var(--c-ink)}
 /* full-height centered empty state for History / Progress views */
@@ -442,10 +440,15 @@ body{font-family:var(--f-body);font-size:16px;line-height:1.55;color:var(--c-ink
 table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:nowrap;text-align:right}
 .dform-tr .tdelta{font-size:12.5px}
 .dform-first{color:var(--c-ink-faint);font-weight:600}
-.dform-seg{margin:2px 0 14px}
+.dform-segrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
+.dform-seg{margin:0}
+.dform-seghint{font-size:12px}
+/* counters, last on the dashboard: one quiet line of bookkeeping */
+.dash-counts{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 6px;font-size:12.5px;color:var(--c-ink-soft)}
+.dash-counts b{color:var(--c-ink);font-feature-settings:"tnum" 1}
 .dform-empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:18px 4px}
 .dform-empty .hint{margin:0}
-@media (max-width:560px){ .dash-summary{grid-template-columns:1fr 1fr} .dspark{width:96px;height:auto} }
+@media (max-width:560px){ .dspark{width:96px;height:auto} }
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--c-navy)}
 /* before / after compare */
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
@@ -725,6 +728,14 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:700;white-space:now
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
   border-radius:0 var(--radius-xs) var(--radius-xs) 0;background:var(--c-blue)}
 .navlink-ext{color:var(--c-ink-soft);font-weight:600;font-size:13.5px}
+/* The Analyze entry is the nav's one filled control. It keeps the navlink
+   geometry so the column stays a list, and reads darker -- not lit -- when
+   it is the current page. */
+.navlink-cta{background:var(--c-blue);color:#fff;margin-bottom:6px}
+.navlink-cta .ic{opacity:1}
+.navlink-cta:hover{background:var(--c-blue-dk);color:#fff}
+.navlink-cta[aria-current="page"]{background:var(--c-blue-dk);color:#fff}
+.navlink-cta[aria-current="page"]::before{display:none}
 .navsep{height:1px;background:var(--c-line);margin:8px 12px}
 .sidebar > .authbox{margin-top:auto;padding-top:14px;border-top:1px solid var(--c-line)}
 

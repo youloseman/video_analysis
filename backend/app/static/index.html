@@ -178,8 +178,11 @@
 <aside class="sidebar" id="sidebar" aria-label="Main">
   <div class="wordmark" id="wordmark" role="link" tabindex="0">Flapp<span class="dot"></span></div>
   <nav class="sidenav" aria-label="Site">
+    <!-- The one action the product exists for sits first and filled; every
+         other entry is a place to go. On the phone the bottom bar already
+         leads with it. -->
+    <a href="#" id="navAnalyze" class="navlink navlink-cta"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
     <a href="#" id="navHome" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
-    <a href="#" id="navAnalyze" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
     <a href="#" id="navProgress" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
     <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>Pricing</span></a>
@@ -318,6 +321,11 @@
       <div id="dashReview"></div>
       <div class="speedline"></div>
     </div>
+    <!-- Order is the hierarchy: where you stand (per-sport score), what it is
+         made of (current form), what to do (focus, plan), what you did
+         (recent). The counters come last -- "62 analyses, 1 this month" is
+         bookkeeping, and it used to hold the top-left corner. The first-run
+         welcome renders into #dashSummary and is moved up by CSS order. -->
     <div id="dashSummary" class="dash-summary"></div>
     <div id="dashSports" class="dash-sports"></div>
     <div id="dashForm"></div>
@@ -325,6 +333,7 @@
     <div id="dashPlan"></div>
     <div class="blockhead"><div class="eyebrow">Latest</div><h3>Recent analyses</h3><div class="speedline-sm"></div></div>
     <div id="dashRecent" class="dash-recent"></div>
+    <div id="dashCounts" class="dash-counts"></div>
   </section>
 
   <!-- ============ UPLOADER ============ -->
@@ -7820,10 +7829,13 @@ function renderCurrentForm(all){
   if(state.formSport!=='run' && state.formSport!=='bike') state.formSport=all[0].sport;
   const sport=state.formSport;
 
-  const seg=`<div class="seg dform-seg" id="formSeg" role="group" aria-label="Sport">
+  // The switch is local and says so: the rest of the dashboard covers both
+  // sports, and a segmented control at the top of a block reads as a mode
+  // for the whole page unless told otherwise.
+  const seg=`<div class="dform-segrow"><div class="seg dform-seg" id="formSeg" role="group" aria-label="Sport shown in this table">
     ${['bike','run'].map(s=>`<button type="button" data-formsport="${s}" aria-pressed="${s===sport}">
       <svg class="ic" aria-hidden="true"><use href="#i-${s}"/></svg> ${s==='run'?'Run':'Bike'}</button>`).join('')}
-  </div>`;
+  </div><span class="hint dform-seghint">this table only — the rest of the page covers both sports</span></div>`;
 
   const entries=all.filter(e=>e.sport===sport && e.trends);
   let body;
@@ -7859,16 +7871,17 @@ function renderDashboard(){
       <p><b>Welcome${nameEl?', '+esc(nameEl):''}.</b> Run your first analysis and your technique, progress and focus areas will build up here.</p>
       <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
     </div>`;
-    $('#dashSports').innerHTML=''; $('#dashForm').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML=''; $('#dashRecent').innerHTML='';
+    $('#dashSports').innerHTML=''; $('#dashForm').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML=''; $('#dashRecent').innerHTML=''; $('#dashCounts').innerHTML='';
     return;
   }
   const now=new Date();
   const monthCount=all.filter(e=>{ const d=new Date(e.at); return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth(); }).length;
   const last=all[0];
-  $('#dashSummary').innerHTML=`
-    <div class="dstat"><div class="dstat-v">${all.length}</div><div class="dstat-l">analyses</div></div>
-    <div class="dstat"><div class="dstat-v">${monthCount}</div><div class="dstat-l">this month</div></div>
-    <div class="dstat"><div class="dstat-v">${last?agoStr(last.at):'—'}</div><div class="dstat-l">last analysis</div></div>`;
+  $('#dashSummary').innerHTML='';
+  $('#dashCounts').innerHTML=`
+    <span class="dcount"><b>${all.length}</b> analyses</span>
+    <span class="dcount"><b>${monthCount}</b> this month</span>
+    <span class="dcount">last <b>${last?agoStr(last.at):'—'}</b></span>`;
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
   renderCurrentForm(all);
   renderDashFocus(all);
