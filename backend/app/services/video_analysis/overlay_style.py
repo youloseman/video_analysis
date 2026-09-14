@@ -36,14 +36,15 @@ FONT_REGULAR = _FONT_DIR / "DejaVuSans.ttf"
 FONT_BOLD = _FONT_DIR / "DejaVuSans-Bold.ttf"
 
 # --- palette (RGB) --------------------------------------------------------
-# The Instrument system's "over footage" rules (design handoff, Sep 2026):
-# the skeleton is the accent on a 55% ink halo -- the accent alone is 2.6:1
-# on daylight asphalt, with the halo 8.4:1 -- and a chip is a solid card
-# with a border in ink or its status line, never a transparent label.
-ACCENT = (36, 87, 197)         # skeleton line, the one accent
-HALO = (14, 17, 22)            # under every bone and dot, at 55%
-NEON = ACCENT                  # legacy name: "the skeleton colour"
-NEON_DIM = HALO                # legacy name: "what sits under it"
+# The skeleton is the neon green with its soft glow -- Artur's call after
+# seeing the accent-blue version (13 Sep 2026): the green is the product's
+# signature on footage and it is what the landing's hero video shows. The
+# chips follow the Instrument "over footage" rule instead: a solid card with
+# a border in ink or its status line, never a transparent label.
+NEON = (61, 255, 110)          # skeleton line / joint fill
+NEON_DIM = (30, 190, 80)       # the glow underlay
+ACCENT = (36, 87, 197)         # the UI accent, kept for callers that want it
+HALO = (14, 17, 22)            # under leaders and behind the corrected-joint ring
 # status/good/warn/bad as text · line · tint -- each text AA on its own tint
 GOOD_TEXT, GOOD_LINE, GOOD_TINT = (20, 83, 42), (46, 125, 58), (213, 235, 217)
 WARN_TEXT, WARN_LINE, WARN_TINT = (107, 78, 6), (183, 121, 31), (247, 234, 200)
@@ -231,33 +232,47 @@ def draw_glow_skeleton(
     line_w: int = 2,
     dot_r: int = 4,
 ) -> None:
-    """Draw the accent skeleton on its halo, in place.
+    """Draw the neon skeleton with its soft glow, in place.
 
-    ``glow`` keeps its name from the neon days; it now switches the halo: a
-    55% ink stroke four pixels wider than every bone, and a filled disc under
-    every joint. It is part of the skeleton, not an option -- the accent on
-    its own fails on asphalt and on grass -- so callers leave it on. One
-    ``addWeighted`` over the frame does the 55%, which is cheaper than the
-    blurred layer it replaces and still affordable on every frame of a clip.
+    The glow is a blurred copy of the bones screened back over the frame --
+    one blur for the whole skeleton, not per bone, and built small (see
+    :data:`GLOW_LAYER_LONG_EDGE`), so it is affordable on every frame of a
+    clip rather than only on a one-off still.
     """
     if not segments and not dots:
         return
 
     if glow:
-        halo = frame.copy()
-        hw = line_w + 4
+        h, w = frame.shape[:2]
+        # Draw the glow small, blur it there, scale it back. `f` <= 1 always:
+        # a frame already smaller than the glow canvas is left at its own size.
+        f = min(1.0, GLOW_LAYER_LONG_EDGE / max(w, h, 1))
+        gw, gh = max(1, int(round(w * f))), max(1, int(round(h * f)))
+        layer = np.zeros((gh, gw, frame.shape[2]), dtype=frame.dtype)
+        gw_line = max(1, int(round((line_w + 5) * f)))
+        gr_dot = max(1, int(round((dot_r + 3) * f)))
         for (a, b) in segments:
-            cv2_mod.line(halo, a, b, _bgr(HALO), hw, cv2_mod.LINE_AA)
+            cv2_mod.line(
+                layer, (int(a[0] * f), int(a[1] * f)), (int(b[0] * f), int(b[1] * f)),
+                _bgr(NEON_DIM), gw_line, cv2_mod.LINE_AA,
+            )
         for p in dots:
-            cv2_mod.circle(halo, p, dot_r + 2, _bgr(HALO), -1, cv2_mod.LINE_AA)
-        cv2_mod.addWeighted(halo, 0.55, frame, 0.45, 0.0, dst=frame)
+            cv2_mod.circle(
+                layer, (int(p[0] * f), int(p[1] * f)), gr_dot,
+                _bgr(NEON_DIM), -1, cv2_mod.LINE_AA,
+            )
+        sigma = max(1.0, GLOW_BLUR_SIGMA * f * max(1.0, w / 900))
+        layer = cv2_mod.GaussianBlur(layer, (0, 0), sigmaX=sigma, sigmaY=sigma)
+        if (gw, gh) != (w, h):
+            layer = cv2_mod.resize(layer, (w, h), interpolation=cv2_mod.INTER_LINEAR)
+        # screen-ish blend: keep the brighter of frame/glow so it never darkens
+        cv2_mod.max(frame, layer, dst=frame)
 
     for (a, b) in segments:
-        cv2_mod.line(frame, a, b, _bgr(ACCENT), line_w, cv2_mod.LINE_AA)
-    ring = max(1, int(round(dot_r / 3)))   # the 1.5 px ink ring, scaled with the dot
+        cv2_mod.line(frame, a, b, _bgr(NEON), line_w, cv2_mod.LINE_AA)
     for p in dots:
-        cv2_mod.circle(frame, p, dot_r, _bgr(ACCENT), -1, cv2_mod.LINE_AA)
-        cv2_mod.circle(frame, p, dot_r, _bgr(HALO), ring, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, dot_r, _bgr(NEON), -1, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, dot_r, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
 
 
 def draw_corrected_marks(
@@ -271,9 +286,8 @@ def draw_corrected_marks(
     reviewer -- is entitled to know which points those are.
     """
     for p in points:
-        cv2_mod.circle(frame, p, r + 1, _bgr(HALO), 4, cv2_mod.LINE_AA)
-        cv2_mod.circle(frame, p, r, _bgr(WARN_LINE), 2, cv2_mod.LINE_AA)
-        cv2_mod.circle(frame, p, r + 4, _bgr(INK_INVERSE), 1, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, r, _bgr(NEON), 2, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, r + 3, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
 
 
 def draw_leader(

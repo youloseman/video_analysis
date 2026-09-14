@@ -3323,7 +3323,7 @@ function lmedDraw(){
   const P=i=>{ const p=pts[i]; return (p&&p.x!=null&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
   ctx.lineCap='round'; ctx.lineJoin='round';
   // bones: glow, then line
-  [[7*k,'rgba(14,17,22,.55)'],[3*k,'#2457C5']].forEach(([w,col])=>{
+  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
     ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
     LMED_BONES[lmed.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
     ctx.stroke();
@@ -3332,8 +3332,8 @@ function lmedDraw(){
   dots.forEach(i=>{ const p=P(i); if(!p) return;
     const r=Math.max(5,7*k), moved=!!lmed.moved[i], live=lmed.drag===i;
     ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#B7791F':'#2457C5'; ctx.fill();
-    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#B7791F'; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
   });
   // live angle at the vertex being dragged
   const tri=LMED_VERTEX[lmed.side][lmed.drag];
@@ -3522,7 +3522,7 @@ function vedDraw(){
   ctx.clearRect(0,0,W,H);
   const P=L=>{ const p=vedPoint(L); return (p&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
   ctx.lineCap='round'; ctx.lineJoin='round';
-  [[7*k,'rgba(14,17,22,.55)'],[3*k,'#2457C5']].forEach(([w,col])=>{
+  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
     ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
     LMED_BONES[ved.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
     ctx.stroke();
@@ -3530,8 +3530,8 @@ function vedDraw(){
   ved.draggable.forEach(L=>{ const p=P(L); if(!p) return;
     const r=Math.max(5,7*k), moved=!!(ved.pending[L]||ved.existing[L]), live=ved.drag===L;
     ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#B7791F':'#2457C5'; ctx.fill();
-    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#B7791F'; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
   });
   const tri=LMED_VERTEX[ved.side][ved.drag];
   if(tri){ const pts=tri.map(vedPoint); if(pts.every(Boolean)){ const ang=lmedAngle(pts[0],pts[1],pts[2],ved.aspect), p=P(ved.drag);
