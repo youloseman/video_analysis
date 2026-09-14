@@ -22,14 +22,14 @@
    ============================================================ */
 :root{
   /* ---- surfaces ---- */
-  --c-ground:#F4F5F7;                  /* the page behind every card */
+  --c-ground:#F6F5F2;                  /* the page behind every card -- warm, not lab-grey */
   --c-bg:#FFFFFF;                      /* surface/card: cards, tables, nav */
-  --c-panel:#EEF0F3;                   /* surface/sunken: folds, coverage strip, re-test bar */
+  --c-panel:#EFEDE8;                   /* surface/sunken: folds, coverage strip, re-test bar */
   --c-panel-blue:#EDF2FD;              /* panel/accent: the one-change paragraph, upsell, active row */
-  --c-panel-quiet:#F0EFEA;             /* panel/quiet: trust strip, caveats, "nothing to fix" */
-  --c-line:#D9DDE3;                    /* line/hairline */
-  --c-line-strong:#B4BAC3;             /* line/strong: inputs, dropzone, whiskers */
-  --c-blue-soft:#B4BAC3;               /* legacy name: the dashed drop-zone border */
+  --c-panel-quiet:#ECE9E1;             /* panel/quiet: trust strip, caveats, "nothing to fix" */
+  --c-line:#DEDBD4;                    /* line/hairline, warm */
+  --c-line-strong:#B9B5AC;             /* line/strong: inputs, dropzone, whiskers */
+  --c-blue-soft:#B9B5AC;               /* legacy name: the dashed drop-zone border */
   --c-media-bg:#0E1116;                /* dark ground behind every video/keyframe */
 
   /* ---- ink ---- */
@@ -81,8 +81,9 @@
   --f-body:'IBM Plex Sans','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
 
-  /* ---- radii: cards and buttons r/0, inputs and bars r/2, dots full ---- */
-  --radius-xs:2px; --radius-btn:0; --radius:0; --radius-lg:0; --skew:0deg;
+  /* ---- radii: a 4 px corner on cards and buttons -- the hairline structure
+     stays, the severity goes; inputs and bars r/2, dots full ---- */
+  --radius-xs:2px; --radius-btn:4px; --radius:4px; --radius-lg:6px; --skew:0deg;
 
   /* ---- elevation: two, plus the one over footage. Nothing lifts on hover. ---- */
   --shadow:0 2px 6px rgba(20,24,31,.10);                  /* shadow/pop: menus, toast */

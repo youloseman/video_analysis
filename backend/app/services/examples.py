@@ -417,8 +417,8 @@ _CSS = """
 .ex-hero .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
 .ex-hero .eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;
   text-transform:uppercase;color:rgba(255,255,255,.72);margin-bottom:10px}
-.ex-hero h1{font-family:var(--f-display);font-weight:600;font-style:normal;
-  text-transform:none;font-size:clamp(24px,3.4vw,32px);line-height:1.2;margin:0 0 10px}
+.ex-hero h1{font-family:var(--f-brand);font-weight:900;font-style:italic;text-transform:none;
+  font-size:clamp(26px,3.6vw,36px);line-height:1.1;letter-spacing:-.01em;margin:0 0 10px}
 .ex-hero p{color:rgba(255,255,255,.85);max-width:62ch;font-size:14.5px;line-height:1.55;margin:0}
 /* width:100% is load-bearing. `.appshell` is a column flex container, and a
    flex item with auto cross-axis margins does not stretch -- it is sized to
@@ -429,7 +429,7 @@ _CSS = """
 .ex-wrap{width:100%;max-width:1000px;margin:0 auto;padding:36px 24px 72px}
 .ex-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .ex-card{display:block;background:var(--c-bg);border:1px solid var(--c-line);
-  border-radius:0;overflow:hidden;text-decoration:none;color:inherit;transition:border-color .15s ease-out}
+  border-radius:var(--radius);overflow:hidden;text-decoration:none;color:inherit;transition:border-color .15s ease-out}
 .ex-card:hover{border-color:var(--c-ink)}
 .ex-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--c-media-bg)}
 /* Block, not inline: this was a <span>, and padding on an inline box does not
@@ -444,7 +444,7 @@ _CSS = """
   border-radius:2px;border:1px solid var(--c-blue-dk);color:var(--c-blue-dk);margin-bottom:14px}
 .ex-top{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;margin-bottom:8px}
 .ex-shot{flex:1 1 300px;min-width:260px}
-.ex-shot img{width:100%;border-radius:0;border:1px solid var(--c-line);background:var(--c-media-bg)}
+.ex-shot img{width:100%;border-radius:var(--radius);border:1px solid var(--c-line);background:var(--c-media-bg)}
 .ex-side{flex:1 1 260px}
 /* The grade is a letter on a video result ("B") and a word on a photo one
    ("Excellent"), so the badge cannot be a fixed-width circle beside the
@@ -457,7 +457,7 @@ _CSS = """
   line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .ex-score .n small{font-size:14px;color:var(--c-ink-faint);font-weight:400;letter-spacing:0}
 .ex-score .g{font-family:var(--f-mono);font-style:normal;font-weight:500;
-  font-size:24px;color:var(--c-ink-faint);border:0;border-radius:0;box-sizing:border-box;min-width:0;height:auto;padding:0;
+  font-size:24px;color:var(--c-ink-faint);border:0;border-radius:var(--radius);box-sizing:border-box;min-width:0;height:auto;padding:0;
   white-space:nowrap;display:inline-flex;align-items:center}
 .ex-score-none .n{font-family:var(--f-mono);font-style:normal;font-size:22px;
   color:var(--c-ink-faint);text-transform:none}
@@ -471,7 +471,7 @@ _CSS = """
 .ex-sec h2{font-family:var(--f-display);font-weight:600;font-size:20px;
   color:var(--c-ink);margin:0 0 8px}
 .ex-lede{font-size:14.5px;color:var(--c-ink-soft);max-width:70ch;margin:0 0 14px;line-height:1.6}
-.ex-tw{overflow-x:auto;border:1px solid var(--c-line);border-radius:0;background:var(--c-bg)}
+.ex-tw{overflow-x:auto;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg)}
 .ex-bands{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
 .ex-bands th,.ex-bands td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--c-line)}
 .ex-bands thead th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;font-weight:500;
@@ -516,13 +516,13 @@ _CSS = """
 .ex-list li{margin:0 0 8px}
 .ex-list b{color:var(--c-ink);font-weight:600}
 .ex-kino{margin-top:38px}
-.ex-kino img{width:100%;border-radius:0;border:1px solid var(--c-line);background:var(--c-media-bg)}
-.ex-cta{margin-top:48px;background:var(--c-panel-blue);border:1px solid var(--c-line);border-radius:0;
+.ex-kino img{width:100%;border-radius:var(--radius);border:1px solid var(--c-line);background:var(--c-media-bg)}
+.ex-cta{margin-top:48px;background:var(--c-panel-blue);border:1px solid var(--c-line);border-radius:var(--radius);
   padding:28px;text-align:center}
 .ex-cta h2{font-family:var(--f-display);font-weight:600;font-size:20px;color:var(--c-ink);margin:0 0 8px}
 .ex-cta p{font-size:14.5px;color:var(--c-ink-soft);margin:0 0 18px}
 .ex-btn{display:inline-block;background:var(--c-action);color:var(--c-action-ink);font-weight:500;
-  padding:11px 24px;border-radius:0;text-decoration:none;min-height:44px}
+  padding:11px 24px;border-radius:var(--radius);text-decoration:none;min-height:44px}
 .ex-btn:hover{background:var(--c-action-dk)}
 .ex-back{display:block;font-size:13.5px;color:var(--c-blue-dk);margin-bottom:14px;text-decoration:none}
 .ex-back:hover{text-decoration:underline;text-underline-offset:3px}
