@@ -432,7 +432,13 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .dash-counts b{font-family:var(--f-mono);font-weight:500;font-size:26px;line-height:1;color:var(--c-ink);font-feature-settings:"tnum" 1}
 .dform-empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:18px 4px}
 .dform-empty .hint{margin:0}
-@media (max-width:560px){ .dspark{width:110px;height:auto} .ds-score{font-size:44px} .dash-counts .dcount{padding:12px 14px} }
+/* Phone: the three counters stay one row -- "3 days ago" is the widest value,
+   so the last tile's value is set a size smaller rather than let it wrap. */
+@media (max-width:560px){ .dspark{width:110px;height:auto} .ds-score{font-size:44px}
+  .dash-counts{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.35fr)}
+  .dash-counts .dcount{padding:12px 10px;min-width:0}
+  .dash-counts b{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dash-counts .dcount:last-child b{font-size:15px;line-height:20px} }
 .tchart .tval{font-family:var(--f-mono);font-size:11px;font-weight:500;fill:var(--c-ink)}
 /* before / after compare */
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}

@@ -1973,7 +1973,7 @@ function setFile(f){
   $('#fsize').textContent=fmtSize(f.size);
   drop.classList.add('hidden'); fprev.classList.add('show');
   fileInput.setAttribute('tabindex','-1'); // drop label is hidden; Change clip re-opens the picker
-  $('#analyze').setAttribute('aria-disabled','false');
+  syncAnalyzeBtn();
   state.longClip=false; state.duration=null; state.preflight=[];
   if(isPair()) renderPairCards();
   renderPreflight();
@@ -2068,9 +2068,14 @@ function showCaptureGuide(){
   g.scrollIntoView({behavior: REDUCED?'auto':'smooth', block:'center'});
   g.classList.remove('cg-flash'); void g.offsetWidth; g.classList.add('cg-flash');
 }
-function readyHint(){
+/* With no file the hint must agree with the button: signed in it waits for a
+   clip; signed out the button signs you up, with or without one. */
+function noFileHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
-  if(!state.file){ hintMsg(`Upload a ${noun} to continue`); return; }
+  hintMsg(auth ? `Upload a ${noun} to continue` : `Sign up now, or add a ${noun} first — it runs right after`);
+}
+function readyHint(){
+  if(!state.file){ noFileHint(); return; }
   if(isPair() && !state.fileB){ hintMsg('Add the right-side clip to run the two-sided session'); return; }
   const sportTxt = state.sport==='bike' ? `Cycling — ${POSITION_NAMES[state.position]}` : 'Running';
   // Keep the long-clip advisory visible — changing sport should not silently
@@ -2307,12 +2312,20 @@ lmedBind(); vedBind();
 /* ============================================================
    Analyze: real upload progress (XHR) + staged status
    ============================================================ */
+/* Signed in, the button waits for a clip. Signed out it is always live: it
+   reads "Create free account & analyze", and someone who came to sign up
+   must be able to do that without first finding a video. */
+function syncAnalyzeBtn(){
+  const go=$('#analyze'); if(!go) return;
+  go.setAttribute('aria-disabled', auth && !state.file ? 'true' : 'false');
+}
 $('#analyze').addEventListener('click',()=>{
-  if($('#analyze').getAttribute('aria-disabled')==='true' || !state.file) return;
-  // Analysis is account-only. Ask at the point of highest intent -- the file is
-  // already picked, and the modal is an overlay, so signing up doesn't cost the
-  // upload: submitAuth resumes this run for us.
-  if(!auth){ state.pendingAnalyze=true; openAuth('register'); return; }
+  if($('#analyze').getAttribute('aria-disabled')==='true') return;
+  // Analysis is account-only. Ask at the point of highest intent -- when a file
+  // is already picked the modal is an overlay, so signing up doesn't cost the
+  // upload: submitAuth resumes this run for us. With no file it is just sign-up.
+  if(!auth){ state.pendingAnalyze=!!state.file; openAuth('register'); return; }
+  if(!state.file) return;
   analyze();
 });
 $('#again').addEventListener('click',()=>reset());
@@ -6416,8 +6429,8 @@ function reset(keepFile=false){
     fileInput.value=''; fileInput.removeAttribute('tabindex');
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');
     const pi=$('#previewImg'); pi.classList.add('hidden'); pi.removeAttribute('src');
-    $('#analyze').setAttribute('aria-disabled','true');
-    hintMsg(`Upload a ${state.mode==='photo'?'photo':'video'} to continue`);
+    syncAnalyzeBtn();
+    noFileHint();
   }
   if(keepFile && state.file) readyHint();
   // Poster too, or the next clip opens showing the previous athlete's keyframe.
@@ -6472,6 +6485,8 @@ function renderAuth(){
   // then runs the analysis on the file already chosen.
   const go=$('#analyze');
   if(go) go.textContent = auth ? 'Analyze' : 'Create free account & analyze';
+  syncAnalyzeBtn();
+  if(!state.file && typeof noFileHint==='function') noFileHint();
   if(typeof renderAccount==='function') renderAccount();
   // Both of these answer "who is asking", and both were rendered ONCE at boot
   // -- before checkAuth() had an answer. So a signed-in athlete read "Free
