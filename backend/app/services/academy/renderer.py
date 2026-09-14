@@ -44,9 +44,9 @@ a{color:var(--c-blue)}
 .eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--c-blue)}
 /* ---- shared left-sidebar shell (mirrors the app in static/index.html);
        --sidebar-w comes from tokens.css, which both surfaces link ---- */
-.wordmark{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:24px;
-  text-transform:uppercase;letter-spacing:-.01em;color:var(--c-navy);display:flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer}
-.wordmark .dot{width:9px;height:9px;border-radius:50%;background:var(--c-coral);transform:translateY(-9px)}
+.wordmark{font-family:var(--f-brand,var(--f-display));font-weight:900;font-style:italic;font-size:22px;
+  text-transform:none;letter-spacing:-.02em;color:var(--c-ink);display:flex;align-items:flex-end;gap:3px;text-decoration:none;cursor:pointer}
+.wordmark .dot{width:6px;height:6px;border-radius:50%;background:var(--c-coral);transform:translateY(-10px)}
 .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);z-index:40;background:#fff;
   border-right:1px solid var(--c-line);display:flex;flex-direction:column;padding:22px 16px 16px;gap:8px}
 .sidebar > .wordmark{padding:0 8px 6px;font-size:26px}
@@ -187,8 +187,10 @@ _ARTICLE_CSS = """
 _FONTS_LINK = (
     '<link rel="preconnect" href="https://fonts.googleapis.com">'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-    '<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;0,900;'
-    '1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" '
+    # The app's faces (tokens.css): Archivo for the wordmark only, Plex Sans
+    # for the UI and prose, Plex Mono for every numeral.
+    '<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@1,900;0,800;0,900'
+    '&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" '
     'rel="stylesheet">'
     # Shared design tokens, ahead of _BASE_CSS so the Academy can still
     # override one locally if it ever needs to. This link is why the Academy

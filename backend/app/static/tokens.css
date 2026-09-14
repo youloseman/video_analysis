@@ -5,49 +5,99 @@
    the SPA (static/index.html), the landing page (static/landing.html) and
    the server-rendered Academy (services/academy/renderer.py).
 
-   Why this file exists: these values used to be pasted into each of those
-   documents, and copies drift. They did: the quietest text tier was raised
-   to #6E7787 for AA in the app while the Academy kept shipping #8A94A3 at
-   3.07:1 to real readers, and the status scale existed in two of the three.
-   A token defined once cannot disagree with itself.
+   Direction A · "Instrument" (design handoff, 13 Sep 2026). One accent,
+   hairline structure, mono numerals, status always paired with a word.
+   The values here are the handoff's token table; the names are the ones
+   the stylesheets and the SPA's inline styles have always used, so a
+   surface that reads `--c-blue` gets the accent and one that reads
+   `--st-bad-text` gets a red that clears AA on its own tint. Old names are
+   kept on purpose: renaming them would touch a thousand call sites for no
+   change a reader could see.
 
    Each surface may still declare its OWN tokens after this file — the
-   landing page's dark section colours, for instance — and may override a
-   value here when it genuinely differs (its radii are larger). Anything
-   shared belongs in this file, not in three of them.
+   landing page keeps the pre-Instrument palette it was approved with, the
+   Academy keeps its own type sizes — and may override a value here when
+   it genuinely differs. Anything shared belongs in this file, not in three
+   of them.
    ============================================================ */
 :root{
-  --c-blue:#2F6DE0; --c-blue-dk:#2459C2; --c-navy:#14294B;
-  --c-coral:#F1553F; --c-coral-btn:#CE3F2B; --c-coral-dk:#C13A26;
-  /* ink-faint is the quietest TEXT tier (tier sublines, chart meta, timestamps),
-     so it has to clear AA on white: #8A94A3 was 3.07:1, #6E7787 is 4.51:1. */
-  --c-ink:#1E2530; --c-ink-soft:#5C6675; --c-ink-faint:#6E7787;
-  --c-panel:#F3F5F8; --c-panel-blue:#EAF1FC; --c-line:#DCE2EA; --c-bg:#FFFFFF;
-  --c-blue-soft:#B9CDF2;               /* soft blue: dashed drop-zone border */
-  --c-swim:#35A6D9; --c-bike:#F2A33C; --c-run:#EF5B5B;
-  --c-warn:#C97B10;                    /* attention — distinct from --c-bike */
-  --c-warn-text:#9A5E0B;               /* warn as small text on white (AA) */
-  --c-orange:#DE5F33;                  /* grade D — between warn and coral */
-  --c-media-bg:#0d1420;                /* dark ground behind every video/keyframe */
-  /* ---- Single semantic status scale (good | warn | bad) ----
-     Two variants per status: -text is AA-safe (≥4.5:1) for labels/values on
-     white; -fill is the vivid form for shapes/graphics (dots, bars, markers,
-     ≥3:1 as non-text). Every status colour in the app derives from these —
-     pills, range bars, grade badges and the share card use one vocabulary. */
-  --st-good:#1F7A45; --st-good-fill:#2E9E5B; --st-good-bg:#E6F4EC;
-  --st-warn:#9A5E0B; --st-warn-fill:#C97B10;
-  --st-bad:#CE3F2B;  --st-bad-fill:#F1553F;
-  /* -text is AA on WHITE by definition, and --st-bad lands at 4.41 once it
-     sits on --c-panel (the capture-report header). This is the same red,
-     dark enough to clear AA on the tinted surfaces too. */
-  --st-bad-text:#B8371F;
-  --f-display:'Archivo','Arial Black',sans-serif;
-  --f-body:'Manrope','Segoe UI',sans-serif;
-  --f-mono:'IBM Plex Mono',monospace;
-  /* xs: value chips, code, tiny badges. Anything rounder than a chip is a pill (999px). */
-  --radius-xs:4px; --radius:10px; --radius-btn:8px; --radius-lg:14px; --skew:-8deg;
-  --shadow:0 2px 10px rgba(20,41,75,.07);
-  --shadow-lg:0 12px 34px rgba(20,41,75,.12);
-  --ring:0 0 0 3px rgba(47,109,224,.30);
-  --sidebar-w:244px;                   /* the shared app/Academy shell */
+  /* ---- surfaces ---- */
+  --c-ground:#F4F5F7;                  /* the page behind every card */
+  --c-bg:#FFFFFF;                      /* surface/card: cards, tables, nav */
+  --c-panel:#EEF0F3;                   /* surface/sunken: folds, coverage strip, re-test bar */
+  --c-panel-blue:#EDF2FD;              /* panel/accent: the one-change paragraph, upsell, active row */
+  --c-panel-quiet:#F0EFEA;             /* panel/quiet: trust strip, caveats, "nothing to fix" */
+  --c-line:#D9DDE3;                    /* line/hairline */
+  --c-line-strong:#B4BAC3;             /* line/strong: inputs, dropzone, whiskers */
+  --c-blue-soft:#B4BAC3;               /* legacy name: the dashed drop-zone border */
+  --c-media-bg:#0E1116;                /* dark ground behind every video/keyframe */
+
+  /* ---- ink ---- */
+  --c-ink:#14181F;                     /* ink/1: headings, values */
+  --c-navy:#14181F;                    /* legacy name for ink/1 — the app's "navy" is ink now */
+  --c-ink-soft:#3C424C;                /* ink/2: body */
+  --c-ink-faint:#5B6470;               /* ink/3: labels and units, 7.0:1 on white */
+  --c-ink-disabled:#8A929E;            /* ink/4: disabled only (3.1:1) — never for content */
+
+  /* ---- accent: the only one ---- */
+  --c-blue:#2457C5; --c-blue-dk:#1C46A3; --c-blue-active:#163A87;
+  --c-blue-ink:#FFFFFF;                /* label on the filled primary (5.4:1) */
+
+  /* ---- brand ---- */
+  --c-coral:#F1553F;                   /* the wordmark dot and nothing else */
+  /* Legacy "go" colours, now the destructive pair: status/bad/line and a
+     darker step. Nothing sells in coral any more. */
+  --c-coral-btn:#C5221F; --c-coral-dk:#A91C1A;
+
+  /* Sport colours are retired: an icon takes the colour of its row. */
+  --c-swim:#5B6470; --c-bike:#5B6470; --c-run:#5B6470;
+  --c-warn:#B7791F;                    /* status/warn/line */
+  --c-warn-text:#6B4E06;               /* status/warn/text — 7.4:1 on its tint */
+  --c-orange:#B7791F;                  /* grade D — the same warn line */
+
+  /* ---- status scale — fixed semantics, every pair AA on its own tint ----
+     -text/-bg/-fill map to the handoff's text/tint/line. Status is never
+     colour alone: every instance carries a glyph (● △ ✕) or a word. */
+  --st-good:#14532A; --st-good-fill:#2E7D3A; --st-good-bg:#D5EBD9;
+  --st-warn:#6B4E06; --st-warn-fill:#B7791F; --st-warn-bg:#F7EAC8;
+  --st-bad:#7E1611;  --st-bad-fill:#C5221F;  --st-bad-bg:#F6D9D6;
+  --st-bad-text:#7E1611;
+
+  /* ---- over footage only ---- */
+  --ov-halo:rgba(14,17,22,.55);        /* under every skeleton line; width = stroke + 4 */
+  --shadow-footage:0 2px 6px rgba(20,24,31,.28);
+
+  /* ---- type ---- */
+  --f-brand:'Archivo','Arial Black',sans-serif;          /* the wordmark, nothing else */
+  --f-display:'IBM Plex Sans','Segoe UI',sans-serif;
+  --f-body:'IBM Plex Sans','Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+
+  /* ---- radii: cards and buttons r/0, inputs and bars r/2, dots full ---- */
+  --radius-xs:2px; --radius-btn:0; --radius:0; --radius-lg:0; --skew:0deg;
+
+  /* ---- elevation: two, plus the one over footage. Nothing lifts on hover. ---- */
+  --shadow:0 2px 6px rgba(20,24,31,.10);                  /* shadow/pop: menus, toast */
+  --shadow-lg:0 12px 32px rgba(20,24,31,.18);             /* shadow/modal */
+  --ring:0 0 0 2px var(--c-bg),0 0 0 4px var(--c-blue);   /* focus */
+  --sidebar-w:216px;                   /* the shared app/Academy shell */
 }
+
+/* The dark set, corrected on the one screen that was drawn in it. Opt-in by
+   attribute, never by media query: the handoff is explicit that shipping dark
+   means auditing every screen, not flipping a variable. */
+:root[data-theme="dark"]{
+  --c-ground:#0E1116; --c-bg:#161A21; --c-panel:#1F242C; --c-panel-blue:#12203C;
+  --c-panel-quiet:#1F242C;             /* panel/quiet is dropped on dark: sunken + a top hairline */
+  --c-line:#272D36; --c-line-strong:#3A424E; --c-blue-soft:#3A424E;
+  --c-ink:#F2F4F7; --c-navy:#F2F4F7; --c-ink-soft:#C6CCD6; --c-ink-faint:#98A2B3; --c-ink-disabled:#7C8698;
+  --c-blue:#5B8DF0; --c-blue-dk:#7BA3F5; --c-blue-active:#A7C2F9;
+  --c-blue-ink:#0E1116;                /* the filled primary never takes a white label on dark (2.6:1) */
+  --st-good:#7EE0A0; --st-good-fill:#3FA05C; --st-good-bg:#12301D; --st-good-band:#1B4A2C;
+  --st-warn:#F3C969; --st-warn-fill:#C9911F; --st-warn-bg:#35290A;
+  --st-bad:#F79189;  --st-bad-fill:#E0524C;  --st-bad-bg:#3A1512; --st-bad-text:#F79189;
+  --c-warn:#C9911F; --c-warn-text:#F3C969; --c-orange:#C9911F;
+  --c-coral-btn:#E0524C; --c-coral-dk:#F79189;
+  --shadow:0 2px 6px rgba(0,0,0,.40); --shadow-lg:0 12px 32px rgba(0,0,0,.40);
+}
+:root{--st-good-band:var(--st-good-bg)}   /* range bands: the pill tint on light, its own step on dark */

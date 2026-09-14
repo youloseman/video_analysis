@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <!-- PWA: installable to the home screen; also the asset set Capacitor reuses. -->
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#14294B">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -39,7 +39,8 @@
 <meta name="twitter:image" content="/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Archivo carries the wordmark only; Plex Sans is the UI, Plex Mono every numeral. -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@1,900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Design tokens live in one file for every surface (see static/tokens.css).
      Linked before the page's own stylesheet so anything below can override. -->
 <link rel="stylesheet" href="/tokens.css">
@@ -158,6 +159,8 @@
     <span class="newdot hidden" id="navToggleDot" aria-hidden="true"></span>
   </button>
   <div class="wordmark" id="wordmarkM" role="link" tabindex="0">Flapp<span class="dot"></span></div>
+  <!-- What is left this month, in the corner the artboards keep it in. -->
+  <span class="quota-top" id="quotaTop"></span>
   <div class="authbox authbox-m" id="authboxM"></div>
 </div>
 
@@ -170,29 +173,38 @@
   <a href="#" id="botAnalyze" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
   <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
   <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
-  <!-- Academy intentionally omitted from the tab bar (reachable via the drawer)
-       so the mobile nav stays a single row. -->
+  <!-- Everything else lives in the drawer: Plans, Examples, Academy, Account.
+       One row, five thumbs. -->
+  <a href="#" id="botMore" class="botlink" aria-controls="sidebar"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span>More</span></a>
 </nav>
 
 <!-- Left sidebar (primary navigation) -->
 <aside class="sidebar" id="sidebar" aria-label="Main">
   <div class="wordmark" id="wordmark" role="link" tabindex="0">Flapp<span class="dot"></span></div>
   <nav class="sidenav" aria-label="Site">
-    <!-- The one action the product exists for sits first and filled; every
-         other entry is a place to go. On the phone the bottom bar already
-         leads with it. -->
-    <a href="#" id="navAnalyze" class="navlink navlink-cta"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
-    <a href="#" id="navHome" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
+    <!-- Where you go, in the order the artboards list it. Nothing in the nav
+         is filled: the one filled button on a screen is the screen's action.
+         "My technique", "Compare" and "Profiles" are account features and are
+         revealed by renderAuth(). -->
+    <a href="#" id="navAnalyze" class="navlink navlink-cta"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg><span>Analyze</span></a>
+    <a href="#" id="navHome" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg><span>My technique</span></a>
     <a href="#" id="navProgress" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
-    <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>Pricing</span></a>
-    <a href="/examples" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg><span>Examples</span></a>
-    <a href="/academy" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
-    <a href="#" id="navNew" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span>What’s new</span><span class="newdot hidden" id="navNewDot" aria-hidden="true"></span></a>
-    <!-- Admin-only inbox for result feedback; revealed by renderAuth(). -->
+    <a href="#" id="navCompare" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg><span>Compare</span></a>
+    <a href="#" id="navProfiles" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>Profiles</span></a>
+    <!-- Admin-only: result feedback inbox and the Expert Review queue. -->
     <a href="#" id="navFeedback" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Feedback</span></a>
-    <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>Reviews</span></a>
+    <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Reviews</span></a>
+    <div class="navgroup-bottom">
+      <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>Plans</span></a>
+      <a href="/examples" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg><span>Examples</span></a>
+      <a href="/academy" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
+      <a href="#" id="navNew" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span>What’s new</span><span class="newdot hidden" id="navNewDot" aria-hidden="true"></span></a>
+      <a href="#" id="navAccount" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>Account</span></a>
+    </div>
   </nav>
+  <!-- The plan line: which plan, what is left this month, a 3 px bar. Signed
+       out it holds the one Log in button. Filled by renderAuth(). -->
   <div class="authbox" id="authbox"></div>
 </aside>
 
@@ -301,12 +313,10 @@
   </div>
 </div>
 
+<!-- No slogan: the first app screen is the tool. The h1 stays as the page
+     outline's root for a screen reader; nothing here paints. -->
 <div class="hero">
-  <div class="wrap">
-    <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
-    <h1>Your technique, <span class="accent">measured</span></h1>
-    <p class="hero-line">Every joint angle against reference ranges, a 0&ndash;100 score and a fix-first plan.</p>
-  </div>
+  <h1>Flapp — running &amp; cycling technique analysis</h1>
 </div>
 
 <main id="main">
@@ -314,12 +324,11 @@
 
   <!-- ============ DASHBOARD (My technique — signed-in home) ============ -->
   <section id="dashboard" class="hidden" aria-labelledby="dashTitle">
-    <div class="blockhead" style="margin-top:0">
-      <div class="eyebrow">My technique</div>
-      <h2 class="sec" id="dashTitle" tabindex="-1" style="margin-bottom:8px">Dashboard</h2>
+    <div class="blockhead pagehead" style="margin-top:0">
+      <h2 class="sec" id="dashTitle" tabindex="-1">My technique</h2>
+      <span class="ph-right"><button class="btn btn-primary btn-sm" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
       <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
-      <div id="dashReview"></div>
-      <div class="speedline"></div>
+      <div id="dashReview" style="flex-basis:100%"></div>
     </div>
     <!-- Order is the hierarchy: where you stand (per-sport score), what it is
          made of (current form), what to do (focus, plan), what you did
@@ -331,38 +340,44 @@
     <div id="dashForm"></div>
     <div id="dashFocus"></div>
     <div id="dashPlan"></div>
-    <div class="blockhead"><div class="eyebrow">Latest</div><h3>Recent analyses</h3><div class="speedline-sm"></div></div>
+    <div class="blockhead"><h3>Recent</h3></div>
     <div id="dashRecent" class="dash-recent"></div>
+    <!-- Counters. Last in the markup, first on the screen (CSS order): four
+         quiet tiles across the top, the way the artboards open. -->
     <div id="dashCounts" class="dash-counts"></div>
   </section>
 
   <!-- ============ UPLOADER ============ -->
   <section id="uploader" aria-labelledby="uploaderTitle">
-    <!-- Mode tabs -->
-    <div class="modetabs" id="modeSeg" role="tablist" aria-label="Analysis type">
-      <button type="button" role="tab" data-mode="video" aria-selected="true">
-        <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Video Analysis
-      </button>
-      <button type="button" role="tab" data-mode="photo" aria-selected="false">
-        <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg> Photo Express
-      </button>
-    </div>
-
     <div class="card uploader">
-      <h2 class="uphead" id="uploaderTitle" tabindex="-1">Upload <span id="fileNounCap">Video</span></h2>
-
-      <!-- Sport type -->
-      <div class="ctl">
-        <span class="ctl-label" id="sportLabel">Select sport type:</span>
-        <div class="tilerow" id="sportSeg" role="group" aria-labelledby="sportLabel">
-          <button type="button" class="tile-btn" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>Running</button>
-          <button type="button" class="tile-btn" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>Cycling</button>
+      <!-- The page header: what this screen is, one line on how long it
+           takes, and the mode switch (a clip, or one photo for bike fit). -->
+      <div class="pagehead">
+        <h2 class="uphead" id="uploaderTitle" tabindex="-1">Analyze <span id="fileNounCap" class="visually-hidden">Video</span></h2>
+        <span class="ph-lede">One clip from the side. 20–90 seconds to a report.</span>
+        <div class="modetabs" id="modeSeg" role="tablist" aria-label="Analysis type">
+          <button type="button" role="tab" data-mode="video" aria-selected="true">
+            <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Video
+          </button>
+          <button type="button" role="tab" data-mode="photo" aria-selected="false">
+            <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg> Photo · bike fit
+          </button>
         </div>
       </div>
 
-      <!-- Bike position -->
-      <div class="ctl" id="positionField">
-        <span class="ctl-label" id="positionLabel">Bike position:</span>
+      <!-- Sport: a segmented control, the first thing on the page. -->
+      <div class="ctl ctl-sport">
+        <span class="ctl-label" id="sportLabel">Sport</span>
+        <div class="tilerow" id="sportSeg" role="group" aria-labelledby="sportLabel">
+          <button type="button" class="tile-btn" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>Run</button>
+          <button type="button" class="tile-btn" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>Bike</button>
+        </div>
+      </div>
+
+      <!-- Bike position. Under the clip, not above it: the drop zone is the
+           hero of this screen and clears the fold at both sizes. -->
+      <div class="ctl ctl-after-drop" id="positionField">
+        <span class="ctl-label" id="positionLabel">Position</span>
         <div id="positionSeg" role="group" aria-labelledby="positionLabel">
           <div class="posgroup">
             <span class="posgroup-lbl">Road</span>
@@ -397,7 +412,7 @@
            run-specific copy for it, and no runner could ever click it.
            Folded, because Auto-detect is right for nearly every clip. The
            summary states what is set, so the choice is quiet, not hidden. -->
-      <details class="askbox sidebox" id="sideField">
+      <details class="askbox sidebox ctl-after-drop" id="sideField">
         <summary>Camera side: <b id="sideNow">Auto-detect</b> <span class="askopt">change</span></summary>
         <div class="tilerow" id="sideSeg" role="group" aria-label="Camera side">
           <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
@@ -551,12 +566,16 @@
           instead of given a guess.</p>
       </details>
 
-      <!-- Submit -->
-      <button class="btn btn-go btn-block" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
-        Analyze Technique
-      </button>
+      <!-- Submit: the one filled button on the screen, what is left this
+           month beside it, the plans link on the right. -->
+      <div class="analyzerow">
+        <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
+          Analyze
+        </button>
+        <p class="quota-line" id="quota">Free account · monthly analyses included</p>
+        <a href="#pricing" class="plans-link" onclick="event.preventDefault();openPricing()">Compare plans</a>
+      </div>
       <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
-      <p class="quota-line" id="quota">Free account · monthly analyses included</p>
 
       <!-- What happens to the footage, said where the footage is handed over.
            Every claim here is one the privacy policy already makes and the
@@ -682,6 +701,8 @@
     <div class="rrail hidden" id="reportRail">
       <span class="rrail-score" id="railScore"></span>
       <nav class="rrail-nav" id="railNav" aria-label="Report sections"></nav>
+      <!-- Desktop only: confidence and coverage, under the section list. -->
+      <div class="rrail-meta" id="railMeta"></div>
     </div>
 
     <div class="result-top" id="resultTop">
@@ -1272,21 +1293,91 @@
     <div class="addon-strip hidden" id="ordersBox" aria-live="polite"></div>
 
     <p class="pricing-foot" id="pricingFoot"></p>
+  </section>
 
-    <!-- The privacy policy promises deletion on request; this is that request,
-         self-serve. It lives here, next to Manage subscription (which its own
-         copy tells you to use first) rather than shouting from the dashboard --
-         collapsed, because nobody arrives at their plan page wanting to leave.
-         Signed-out visitors browsing prices never see it. -->
-    <details class="danger-disc hidden" id="delAccount">
-      <summary>Delete account and all its data</summary>
-      <div class="dd-body">
-        <p>Removes your account, saved analyses, usage history, feedback and order
-          history. This cannot be undone. If you have an active subscription,
-          cancel it in <b>Manage subscription</b> first.</p>
-        <button class="btn btn-outline btn-sm danger" type="button" id="delAccountBtn">Delete my account</button>
+  <!-- ============ ACCOUNT ============ -->
+  <section id="account" class="hidden" aria-labelledby="acctTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
+    <div class="pagehead"><h2 class="sec" id="acctTitle" tabindex="-1">Account</h2></div>
+    <div class="acct-grid">
+      <div>
+        <div class="acct-card">
+          <h3>Sign-in</h3>
+          <div class="acct-row"><span class="k">Email</span><span class="v ph-no-capture" id="acctEmail">—</span><span></span></div>
+          <div class="acct-row"><span class="k">Password</span><span class="v">set</span><button class="a" type="button" id="acctPwChange">Change</button></div>
+        </div>
+        <div class="acct-card" id="acctPlanCard">
+          <h3>Plan <span class="pill pill-okchip hidden" id="acctPlanPill"><span class="dot" aria-hidden="true"></span>active</span></h3>
+          <div class="acct-stats" id="acctStats"></div>
+          <div class="acct-actions">
+            <button class="btn btn-ghost btn-sm hidden" type="button" id="acctPortal">Manage subscription</button>
+            <a href="#pricing" class="btn btn-link btn-sm" onclick="event.preventDefault();openPricing()">Compare plans</a>
+          </div>
+        </div>
+        <div class="acct-card">
+          <h3>Equipment profiles <span class="pill hidden" id="acctProfPill"><span class="dot" aria-hidden="true"></span><span id="acctProfPillTxt"></span></span></h3>
+          <div class="acct-body">
+            <p class="acct-p" id="acctProfNote">Which bike or shoes each clip was filmed on. One profile per setup keeps the trend lines honest.</p>
+            <button class="btn btn-ghost btn-sm" type="button" id="acctProfiles">Open profiles</button>
+          </div>
+        </div>
       </div>
-    </details>
+      <div>
+        <div class="acct-card">
+          <h3>Data &amp; privacy</h3>
+          <div class="acct-body">
+            <p class="acct-p">Clips are deleted from our servers after processing unless you saved them. Every measurement in a saved report can be copied out as text from the report itself.</p>
+            <a href="/privacy" class="btn btn-link btn-sm">Privacy policy</a>
+          </div>
+          <div class="acct-body">
+            <h4>Delete account</h4>
+            <!-- The privacy policy promises deletion on request; this is that
+                 request, self-serve. Folded: nobody opens their account page
+                 wanting to leave. -->
+            <details class="danger-disc hidden" id="delAccount" style="margin-top:0;border-top:0;padding-top:0">
+              <summary>Delete account and all its data</summary>
+              <div class="dd-body">
+                <p>Removes your account, saved analyses, usage history, feedback and order
+                  history. This cannot be undone. If you have an active subscription,
+                  cancel it in <b>Manage subscription</b> first.</p>
+                <button class="btn btn-outline btn-sm danger" type="button" id="delAccountBtn">Delete my account</button>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div class="acct-card">
+          <div class="acct-actions" style="border-top:0"><span>Signed in on this device</span><button class="btn btn-ghost btn-sm right" type="button" id="acctLogout">Sign out</button></div>
+        </div>
+        <p class="acct-foot">built by one triathlete who reads every reply · <a href="#" id="acctWhatsNew">What’s new</a> · <a href="mailto:support@getflapp.com">Send feedback</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROFILES ============ -->
+  <section id="profiles" class="hidden" aria-labelledby="profTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
+    <div class="pagehead">
+      <h2 class="sec" id="profTitle" tabindex="-1">Profiles</h2>
+      <span class="ph-lede">Equipment is what makes two analyses comparable. One profile per bike, per pair of shoes.</span>
+      <span class="ph-right"><span class="pill" id="profCount"><span class="dot" aria-hidden="true"></span><span id="profCountTxt"></span></span><button class="btn btn-ghost btn-sm" type="button" id="profAdd">Add profile</button></span>
+    </div>
+    <div class="prof-head">
+      <div class="seg seg-sm" role="group" aria-label="Filter profiles" id="profFilter">
+        <button type="button" data-pf="all" aria-pressed="true">All</button>
+        <button type="button" data-pf="bike" aria-pressed="false">Bikes</button>
+        <button type="button" data-pf="run" aria-pressed="false">Shoes</button>
+        <button type="button" data-pf="archived" aria-pressed="false">Archived</button>
+      </div>
+      <span class="prof-note">changing a profile does not rewrite past analyses — they keep the equipment they were run with</span>
+    </div>
+    <div class="prof-list" id="profList"></div>
+    <div class="prof-edit hidden" id="profEdit">
+      <div><label for="profName" id="profEditLbl">Name</label><input id="profName" type="text" maxlength="60" placeholder="e.g. Canyon Aeroad, Vaporfly 3"></div>
+      <div><label for="profSport">Sport</label><select id="profSport"><option value="bike">Bike</option><option value="run">Run</option></select></div>
+      <div><label for="profKind">Type</label><select id="profKind"></select></div>
+      <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="profSave">Save profile</button><button class="btn btn-ghost btn-sm" type="button" id="profCancel">Cancel</button></div>
+    </div>
+    <div class="prof-limit hidden" id="profLimit"></div>
   </section>
 
   <!-- ============ WHAT'S NEW (release notes) ============ -->
@@ -1426,15 +1517,17 @@ function trackReset(){
 try{ if(window.flappAnalytics) window.flappAnalytics.register({build: BUILD}); }catch(e){}
 
 /* ---- brand colors for JS (mirror of the :root tokens above) ---- */
-const C = { blue:'#2F6DE0', navy:'#14294B', coral:'#F1553F', coralBtn:'#CE3F2B', warn:'#C97B10', orange:'#DE5F33' };
-/* Semantic status scale — mirror of the --st-* tokens. `*_FILL` = vivid form
-   for shapes/graphics; the plain values are the AA-safe text form. */
-const ST = { good:'#1F7A45', warn:'#9A5E0B', bad:'#CE3F2B',
-             goodFill:'#2E9E5B', warnFill:'#C97B10', badFill:'#F1553F' };
-/* Grade badge scale — one semantic hue ramp (green→amber→red), so A..F reads
-   as a scale instead of five unrelated brand colours. B was navy before and
-   collided with headings/score; now it's a green-amber midpoint tone. */
-const GRADE_COLORS = { A:ST.goodFill, B:'#3E8F52', C:ST.warnFill, D:C.orange, F:ST.badFill };
+const C = { blue:'#2457C5', navy:'#14181F', coral:'#F1553F', coralBtn:'#C5221F', warn:'#B7791F', orange:'#B7791F', ink3:'#5B6470', line:'#D9DDE3' };
+/* Semantic status scale — mirror of the --st-* tokens. `*_FILL` = the status
+   line (shapes, bands); the plain values are the text form, AA on its tint. */
+const ST = { good:'#14532A', warn:'#6B4E06', bad:'#7E1611',
+             goodFill:'#2E7D3A', warnFill:'#B7791F', badFill:'#C5221F',
+             goodBg:'#D5EBD9', warnBg:'#F7EAC8', badBg:'#F6D9D6' };
+/* Grade colours are retired on the Instrument system: a grade is a mono
+   letter beside its number, and the number carries the meaning. The map
+   stays because the share card and a few badges still ask for it, and
+   every answer is ink. */
+const GRADE_COLORS = { A:C.navy, B:C.navy, C:C.navy, D:C.navy, F:C.navy };
 const POSITION_NAMES = { road_hoods:'Road · Hoods', road_drops:'Road · Drops', tt_aero:'Time Trial', triathlon:'Triathlon', casual:'Casual' };
 /* one-line description per position so users know which to pick (TT vs Tri, Hoods vs Drops) */
 const POSITION_HINTS = {
@@ -1454,18 +1547,20 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp',
   compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
   whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp',
-  expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp'};
+  expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp',
+  account:'Account — Flapp', profiles:'Profiles — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
   whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin',
-  expertadmin:'expertAdmin', reviewreport:'reviewReport'};
+  expertadmin:'expertAdmin', reviewreport:'reviewReport',
+  account:'account', profiles:'profiles'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navProgress', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert' };
-const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', trends:'#botProgress', compare:'#botProgress' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles' };
+const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', profiles:'#botMore', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -1525,6 +1620,8 @@ const ROUTED_STATES = {
   feedbackadmin: () => openFeedbackAdmin(),
   compare:       () => openCompare(),
   expertadmin:   () => openExpertAdmin(),
+  account:       () => openAccount(),
+  profiles:      () => openProfiles(),
   // The sample needs no order; a delivered report is refetched by id.
   reviewreport:  (e) => e.sample ? openSampleReport() : openReviewReport(e.orderId),
   // The saved analysis may have been deleted (or cleared) since the entry was
@@ -1613,6 +1710,16 @@ function renderQuota(){
       : `<b>${tier==='admin'?'Admin':'Free'}</b> plan`;
   }
   ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
+  // The corner of the phone's top bar and the plan line under the sidebar:
+  // "7 / 10 left", and a bar that fills with what is used.
+  const top=$('#quotaTop');
+  if(top) top.textContent = (auth&&q) ? `${q.remaining} / ${q.limit} left` : '';
+  const pl=$('#planQuota'), bar=$('#planBar');
+  if(pl){
+    if(q){ pl.innerHTML=`<b>${q.remaining}</b> of <b>${q.limit}</b> analyses left`; }
+    else { pl.innerHTML=''; }
+  }
+  if(bar){ const used=q&&q.limit?Math.max(0,Math.min(100,100*(q.limit-q.remaining)/q.limit)):0; bar.style.setProperty('--used',used+'%'); }
 }
 
 /* ============================================================
@@ -2617,7 +2724,11 @@ function angleBandFor(key,sport,res,value){
 const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
 /* Range-bar zone fills — the vivid (graphics) form of the semantic scale, so
    the bars match the pills/badges instead of using a second Tailwind palette. */
-const GR_ZONE={optimal:ST.goodFill,warning:ST.warnFill,critical:ST.badFill};
+/* The range bar paints only the target band: a green zone on a hairline
+   track. The warning and critical zones are transparent -- the marker's
+   distance from the band says how far off a value is, and the chip says
+   which way. `tri` (the marker colour) is overridden to ink by the CSS. */
+const GR_ZONE={optimal:ST.goodBg,warning:'transparent',critical:'transparent'};
 /* Warning margin = max(10% of range width, floor), matching the backend
    _metric_margin so the status pill agrees with the coach notes / score.
    The floor is 3 for degrees; metrics that aren't degrees carry their own,
@@ -3146,7 +3257,7 @@ function lmedDraw(){
   const P=i=>{ const p=pts[i]; return (p&&p.x!=null&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
   ctx.lineCap='round'; ctx.lineJoin='round';
   // bones: glow, then line
-  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
+  [[7*k,'rgba(14,17,22,.55)'],[3*k,'#2457C5']].forEach(([w,col])=>{
     ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
     LMED_BONES[lmed.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
     ctx.stroke();
@@ -3155,8 +3266,8 @@ function lmedDraw(){
   dots.forEach(i=>{ const p=P(i); if(!p) return;
     const r=Math.max(5,7*k), moved=!!lmed.moved[i], live=lmed.drag===i;
     ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
-    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#B7791F':'#2457C5'; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#B7791F'; ctx.stroke(); }
   });
   // live angle at the vertex being dragged
   const tri=LMED_VERTEX[lmed.side][lmed.drag];
@@ -3345,7 +3456,7 @@ function vedDraw(){
   ctx.clearRect(0,0,W,H);
   const P=L=>{ const p=vedPoint(L); return (p&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
   ctx.lineCap='round'; ctx.lineJoin='round';
-  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
+  [[7*k,'rgba(14,17,22,.55)'],[3*k,'#2457C5']].forEach(([w,col])=>{
     ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
     LMED_BONES[ved.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
     ctx.stroke();
@@ -3353,8 +3464,8 @@ function vedDraw(){
   ved.draggable.forEach(L=>{ const p=P(L); if(!p) return;
     const r=Math.max(5,7*k), moved=!!(ved.pending[L]||ved.existing[L]), live=ved.drag===L;
     ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
-    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#B7791F':'#2457C5'; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#B7791F'; ctx.stroke(); }
   });
   const tri=LMED_VERTEX[ved.side][ved.drag];
   if(tri){ const pts=tri.map(vedPoint); if(pts.every(Boolean)){ const ang=lmedAngle(pts[0],pts[1],pts[2],ved.aspect), p=P(ved.drag);
@@ -3739,6 +3850,147 @@ async function createProfile(name){
     return j.id;
   }catch(e){ toast('Could not add that setup.'); return null; }
 }
+/* ============================================================
+   Profiles screen — the list, add, rename, archive, restore.
+
+   A profile is name · sport · kind · archived, and nothing the pipeline
+   measures depends on it. Archiving keeps every analysis and trend; delete
+   is offered second and unfiles rather than removes.
+   ============================================================ */
+const PROFILE_KIND_LABEL={road:'road',tt:'TT',trainer:'trainer',gravel:'gravel',mtb:'MTB',shoes:'shoes',other:'other'};
+const PROFILE_KINDS_FOR={bike:['road','tt','trainer','gravel','mtb','other'],run:['shoes','other']};
+state.profFilter='all'; state.profEditId=null;
+function profKindOptions(sport, current){
+  return (PROFILE_KINDS_FOR[sport]||PROFILE_KINDS_FOR.bike).map(k=>`<option value="${k}"${k===current?' selected':''}>${PROFILE_KIND_LABEL[k]||k}</option>`).join('');
+}
+function renderProfiles(){
+  const list=$('#profList'); if(!list) return;
+  const all=PROFILES.profiles||[], f=state.profFilter;
+  const rows=all.filter(p=> f==='archived' ? p.archived : (!p.archived && (f==='all' || p.sport===f)));
+  const used=PROFILES.used||0, limit=PROFILES.limit||1;
+  const cnt=$('#profCountTxt'); if(cnt) cnt.textContent=`${used} of ${limit} used`;
+  const pill=$('#profCount'); if(pill){ pill.className='pill '+(used>=limit?'pill-warnchip':'pill-low'); }
+  [...$('#profFilter').children].forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.pf===f)));
+  if(PROFILES.error){ list.innerHTML=`<div class="prof-row"><span class="p-name">Your profiles didn’t load.</span><span></span><span></span><span class="p-acts"><button type="button" data-retryprofiles="1">Retry</button></span></div>`;
+    list.querySelector('[data-retryprofiles]').addEventListener('click',()=>loadProfiles().then(renderProfiles)); return; }
+  if(!rows.length){
+    list.innerHTML=`<div class="prof-row"><span class="p-name" style="color:var(--c-ink-faint);font-weight:400">${f==='archived'?'Nothing archived.':'No profiles yet — add the bike or the shoes you film in.'}</span></div>`;
+  } else {
+    list.innerHTML=rows.map(p=>`<div class="prof-row${p.archived?' is-archived':''}" data-id="${p.id}">
+      <div><div class="p-name">${esc(p.name)} <span class="p-kind">${esc(PROFILE_KIND_LABEL[p.kind]||p.kind||'')}</span>${p.archived?'<span class="p-kind">archived</span>':''}</div>
+        <div class="p-sub">${p.sport==='run'?'run':'bike'}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}</div></div>
+      <div class="p-sub">${p.archived?'out of the picker, still in your history':'in the picker on Analyze'}</div>
+      <div class="p-n">${p.analyses!=null?p.analyses:'—'}<small>analyses</small></div>
+      <div class="p-acts">
+        ${p.archived
+          ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
+          : `<button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
+      </div></div>`).join('');
+  }
+  const lim=$('#profLimit');
+  if(lim){
+    const full=used>=limit;
+    lim.classList.toggle('hidden', !full || f==='archived');
+    if(full) lim.innerHTML=`<span>You’ve used ${limit===1?'your one profile':`all ${limit} profiles`}. ${limit<10?'Full gives you ten, so each bike and each pair of shoes keeps its own trend line — and you can compare one setup against another instead of averaging them.':'Archive one to add another.'}</span>${limit<10?'<button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>':''}`;
+  }
+  const add=$('#profAdd'); if(add) add.disabled = used>=limit;
+}
+function openProfiles(){
+  if(!auth){ openAuth('login'); return; }
+  loadProfiles().then(renderProfiles);
+  renderProfiles();
+  setState('profiles',{focus:'#profTitle'});
+}
+function showProfEdit(p){
+  const box=$('#profEdit'); if(!box) return;
+  state.profEditId=p?p.id:null;
+  $('#profEditLbl').textContent=p?'Rename':'Name';
+  $('#profName').value=p?p.name:'';
+  const sp=$('#profSport'); sp.value=p?p.sport:state.sport||'bike'; sp.disabled=!!p;
+  $('#profKind').innerHTML=profKindOptions(sp.value, p?p.kind:(sp.value==='run'?'shoes':'road'));
+  box.classList.remove('hidden'); $('#profName').focus();
+}
+async function profPatch(id, body){
+  try{
+    const r=await fetch('/me/profiles/'+id,{method:'PATCH',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(j.detail||'Could not update that profile.',{duration:6000}); return false; }
+    return true;
+  }catch(e){ toast('Could not update that profile.'); return false; }
+}
+(function wireProfiles(){
+  const list=$('#profList'); if(!list) return;
+  $('#profFilter').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.profFilter=b.dataset.pf; renderProfiles(); });
+  $('#profAdd').addEventListener('click',()=>showProfEdit(null));
+  $('#profCancel').addEventListener('click',()=>{ $('#profEdit').classList.add('hidden'); state.profEditId=null; });
+  $('#profSport').addEventListener('change',e=>{ $('#profKind').innerHTML=profKindOptions(e.target.value, e.target.value==='run'?'shoes':'road'); });
+  $('#profSave').addEventListener('click',async()=>{
+    const name=$('#profName').value.trim(); if(!name){ $('#profName').focus(); return; }
+    const sport=$('#profSport').value, kind=$('#profKind').value;
+    let ok;
+    if(state.profEditId!=null) ok=await profPatch(state.profEditId,{name,kind});
+    else{
+      try{
+        const r=await fetch('/me/profiles',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({name,sport,kind})});
+        const j=await r.json().catch(()=>({}));
+        ok=r.ok; if(!ok) toast(j.detail||'Could not add that profile.',{duration:6000});
+      }catch(e){ ok=false; toast('Could not add that profile.'); }
+    }
+    if(ok){ $('#profEdit').classList.add('hidden'); state.profEditId=null; await loadProfiles(); renderProfiles(); toast(state.profEditId==null?'Saved.':'Renamed.'); }
+  });
+  list.addEventListener('click',async e=>{
+    const b=e.target.closest('[data-act]'); if(!b) return;
+    const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
+    const p=(PROFILES.profiles||[]).find(x=>x.id===id); if(!p) return;
+    if(b.dataset.act==='edit'){ showProfEdit(p); return; }
+    if(b.dataset.act==='archive'){ if(await profPatch(id,{archived:true})){ await loadProfiles(); renderProfiles(); toast(`${p.name} archived. Its analyses stay.`); } return; }
+    if(b.dataset.act==='restore'){ if(await profPatch(id,{archived:false})){ await loadProfiles(); renderProfiles(); } return; }
+    if(b.dataset.act==='delete'){
+      confirmDialog({title:`Delete ${p.name}?`, body:'The profile goes; its analyses stay in your history, unfiled.', okLabel:'Delete', onOk:async()=>{
+        try{ const r=await fetch('/me/profiles/'+id,{method:'DELETE',headers:authHeaders()}); if(!r.ok) throw 0; await loadProfiles(); renderProfiles(); }
+        catch(_e){ toast('Could not delete that profile.'); }
+      }});
+    }
+  });
+})();
+
+/* ============================================================
+   Account screen — sign-in, plan, profiles, data & privacy, sign out.
+   Everything on it already existed somewhere (the pricing page, the sidebar,
+   the uploader); this is the one place that gathers it.
+   ============================================================ */
+function renderAccount(){
+  const sec=$('#account'); if(!sec) return;
+  const em=$('#acctEmail'); if(em) em.textContent=auth?auth.email:'—';
+  const card=((PLANS&&PLANS.cards)||[]).find(c=>auth&&c.tier===auth.tier);
+  const q=quotaLoad();
+  const planName=card?card.name:(auth&&auth.tier==='admin'?'Admin':'Starter');
+  const price=card&&card.prices&&card.prices[0]?`${card.prices[0].display||''}`:(auth&&auth.tier==='starter'?'free':'');
+  const stats=$('#acctStats');
+  if(stats) stats.innerHTML=`
+    <div class="acct-stat"><div class="k">Current</div><div class="v">${esc(planName)}</div><div class="s">${esc(price)}</div></div>
+    <div class="acct-stat"><div class="k">This ${auth&&auth.tier==='admin'?'day':'month'}</div><div class="v">${q?`${q.limit-q.remaining} / ${q.limit}`:'—'}</div><div class="s">analyses used</div></div>
+    <div class="acct-stat"><div class="k">Profiles</div><div class="v">${PROFILES.used||0} / ${PROFILES.limit||1}</div><div class="s">equipment profiles</div></div>`;
+  const paid=auth&&auth.tier&&auth.tier!=='starter'&&auth.tier!=='admin';
+  const pill=$('#acctPlanPill'); if(pill) pill.classList.toggle('hidden', !paid);
+  const portal=$('#acctPortal'); if(portal) portal.classList.toggle('hidden', !paid);
+  const pp=$('#acctProfPill'), ppt=$('#acctProfPillTxt');
+  if(pp&&ppt){ pp.classList.toggle('hidden', !auth); ppt.textContent=`${PROFILES.used||0} of ${PROFILES.limit||1} used · ${planName}`; pp.className='pill '+((PROFILES.used||0)>=(PROFILES.limit||1)?'pill-warnchip':'pill-low'); }
+}
+function openAccount(){
+  if(!auth){ openAuth('login'); return; }
+  renderAccount();
+  setState('account',{focus:'#acctTitle'});
+}
+(function wireAccount(){
+  const sec=$('#account'); if(!sec) return;
+  $('#acctLogout').addEventListener('click',logout);
+  $('#acctPortal').addEventListener('click',()=>{ if(typeof openPortal==='function') openPortal(); });
+  $('#acctProfiles').addEventListener('click',openProfiles);
+  $('#acctPwChange').addEventListener('click',()=>openAuth('forgot'));
+  $('#acctWhatsNew').addEventListener('click',e=>{ e.preventDefault(); openWhatsNew(); });
+})();
+
 /* The shared upsell panel. `data-src` tags where the CTA fired for later
    analytics (no tracking wired yet). One of these per screen — never more. */
 function teaserPanelHtml(items, opts){
@@ -5445,10 +5697,35 @@ function renderReportRail(r, sport){
   // A withheld score is not a missing one, and the rail is too small to explain
   // the difference -- so it says nothing and leaves that to the scorecard.
   sc.innerHTML = (!r.score_withheld && r.technique_score!=null)
-    ? `${r.technique_score}<small>/100</small>`
+    ? `${r.technique_score}`
       + (r.letter_grade?` <span class="rrail-grade">${esc(r.letter_grade)}</span>`:'')
     : '';
+  // Under the list, on desktop: how much footage the number was built from.
+  const meta=$('#railMeta');
+  if(meta){
+    const lvl=r.analysis_confidence&&r.analysis_confidence.level;
+    const conf=lvl?`confidence · ${lvl}`:'';
+    const fr=r.frames_analyzed;
+    const tb=r.time_base_measured===false?'time base: assumed':(r.time_base_measured?'time base: measured':'');
+    meta.innerHTML=[conf,fr?`${fr} frames`:'',tb].filter(Boolean).map(esc).join('<br>');
+  }
   rail.classList.remove('hidden');
+  watchRailSections(items.map(([id])=>id));
+}
+/* Which section the reader is in, marked on the rail as they scroll: the
+   topmost heading above the middle of the screen wins. */
+let _railObs=null;
+function watchRailSections(ids){
+  if(_railObs){ _railObs.disconnect(); _railObs=null; }
+  if(!('IntersectionObserver' in window)) return;
+  const mark=id=>{ document.querySelectorAll('#railNav [data-rail]').forEach(b=>b.classList.toggle('is-here', b.dataset.rail===id)); };
+  const seen=new Map();
+  _railObs=new IntersectionObserver(entries=>{
+    entries.forEach(en=>seen.set(en.target.id, en.isIntersecting));
+    const first=ids.find(id=>seen.get(id));
+    if(first) mark(first);
+  },{rootMargin:'-20% 0px -60% 0px',threshold:0});
+  ids.forEach(id=>{ const el=$('#'+id); if(el) _railObs.observe(el); });
 }
 $('#railNav').addEventListener('click',e=>{
   const b=e.target.closest('[data-rail]'); if(!b) return;
@@ -5727,10 +6004,11 @@ function shareVerdict(score){
    site was the one that never looked like Flapp. Warm every face the card draws
    with, then wait for the font set to settle. If Google Fonts is blocked or the
    API is missing we just fall through and the CSS fallbacks apply. */
-const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // wordmark / numerals
-const CARD_BODY='Manrope,system-ui,sans-serif';          // labels
-const CARD_FACES=['900 italic 58px Archivo','900 italic 74px Archivo',
-  '800 24px Manrope','700 26px Manrope','700 30px Manrope','700 34px Manrope'];
+const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // the wordmark, nothing else
+const CARD_BODY='"IBM Plex Sans",system-ui,sans-serif';  // labels
+const CARD_MONO='"IBM Plex Mono",ui-monospace,Menlo,monospace';   // every numeral
+const CARD_FACES=['900 italic 58px Archivo','500 96px "IBM Plex Mono"','500 40px "IBM Plex Mono"',
+  '500 22px "IBM Plex Mono"','500 26px "IBM Plex Mono"','400 28px "IBM Plex Sans"'];
 /* The address on the card is the product's, not the page's: a card built on a
    phone in the LAN test build or on a dev box must not advertise localhost. */
 const CARD_HOST='getflapp.com';
@@ -5757,7 +6035,7 @@ async function buildShareCard(card){
   const sport=card.sport||'run';
   const score=card.score;
   const grade=(card.grade && card.grade!=='—')?String(card.grade):null;
-  const W=1080, P=56, CORAL='#F1553F', INK='#0A1119'; /* --c-coral: the one artifact that leaves the site stays on brand */
+  const W=1080, P=56, CORAL='#F1553F', INK='#0E1116', MUTED='#98A2B3', SOFT='#C6CCD6'; /* the wordmark dot is the one coral; the ground is surface/ground dark */
 
   let img=null;
   if(card.keyframe){ try{ img=await loadImg(card.keyframe); }catch(e){ img=null; } }
@@ -5789,73 +6067,55 @@ async function buildShareCard(card){
   x.fillStyle=INK; x.fillRect(0,0,W,H);
   if(img){
     drawBlurredCover(x,img,W,H);
-    x.fillStyle='rgba(8,15,28,.74)'; x.fillRect(0,0,W,H);
+    x.fillStyle='rgba(14,17,22,.78)'; x.fillRect(0,0,W,H);
   }else{
     const bg=x.createLinearGradient(0,0,0,H);
-    bg.addColorStop(0,'#0E1F38'); bg.addColorStop(1,INK);
+    bg.addColorStop(0,'#161A21'); bg.addColorStop(1,INK);
     x.fillStyle=bg; x.fillRect(0,0,W,H);
   }
 
-  // ---- header ----
+  // ---- header: the wordmark (letters inverse, the dot unchanged) ----
   x.textBaseline='middle'; x.textAlign='left';
   x.fillStyle='#fff'; x.font=`900 italic 58px ${CARD_DISPLAY}`;
-  x.fillText('FLAPP',P,HEAD/2);
-  const wm=x.measureText('FLAPP').width;
-  x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+20,HEAD/2-16,10,0,7); x.fill();
-  x.textAlign='right'; x.fillStyle='#C2CFE0'; x.font=`700 26px ${CARD_BODY}`;
-  try{ x.letterSpacing='3px'; }catch(e){}
-  x.fillText(sport==='bike'?'CYCLING TECHNIQUE':'RUNNING TECHNIQUE',W-P,HEAD/2);
-  try{ x.letterSpacing='0px'; }catch(e){}
+  x.fillText('Flapp',P,HEAD/2);
+  const wm=x.measureText('Flapp').width;
+  x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+16,HEAD/2-14,8,0,7); x.fill();
+  x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 22px ${CARD_MONO}`;
+  x.fillText(sport==='bike'?'CYCLING · TECHNIQUE':'RUNNING · TECHNIQUE',W-P,HEAD/2);
 
-  // ---- the frame, whole ----
+  // ---- the frame, whole: a rectangle on a hairline, no lift ----
   if(img){
-    x.save(); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=40; x.shadowOffsetY=16;
-    x.fillStyle=INK; rrect(x,dx,dy,dw,dh,28); x.fill(); x.restore();
-    x.save(); rrect(x,dx,dy,dw,dh,28); x.clip();
+    x.fillStyle=INK; x.fillRect(dx,dy,dw,dh);
     x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
-    x.restore();
-    rrect(x,dx,dy,dw,dh,28); x.lineWidth=2; x.strokeStyle='rgba(255,255,255,.16)'; x.stroke();
+    x.lineWidth=2; x.strokeStyle='rgba(255,255,255,.16)'; x.strokeRect(dx+1,dy+1,dw-2,dh-2);
   }else{
     // No still to show (a result the server kept the frame back from): the
     // score itself becomes the picture rather than an empty frame.
-    const gcx=W/2, gcy=regionY+regionH/2, GR=250;
-    x.lineWidth=36; x.lineCap='round';
-    x.beginPath(); x.arc(gcx,gcy,GR,0,7); x.strokeStyle='rgba(255,255,255,.12)'; x.stroke();
-    if(score!=null){
-      const a0=-Math.PI/2, a1=a0+2*Math.PI*Math.max(0.02,Math.min(1,score/100));
-      x.beginPath(); x.arc(gcx,gcy,GR,a0,a1); x.strokeStyle=CORAL; x.stroke();
-    }
-    x.lineCap='butt'; x.textAlign='center'; x.fillStyle='#fff'; x.font=`900 italic 220px ${CARD_DISPLAY}`;
-    x.fillText(score==null?'—':String(score),gcx-8,gcy+12);
+    const gcx=W/2, gcy=regionY+regionH/2;
+    x.textAlign='center'; x.fillStyle='#fff'; x.font=`500 240px ${CARD_MONO}`;
+    x.fillText(score==null?'—':String(score),gcx,gcy);
     x.textAlign='left';
   }
 
-  // ---- footer: the score, and where to get one ----
+  // ---- footer: the score, said once, and where to get one ----
   const fy=H-FOOT, cy=fy+FOOT/2;
   x.fillStyle='rgba(255,255,255,.12)'; x.fillRect(P,fy,W-2*P,2);
-  const R=82, lw=16, rcx=P+R+4;
   let lx=P;
-  if(img){                                   // without a frame the big ring above already says it
-    x.lineWidth=lw; x.lineCap='round';
-    x.beginPath(); x.arc(rcx,cy,R,0,7); x.strokeStyle='rgba(255,255,255,.14)'; x.stroke();
-    if(score!=null){
-      const a0=-Math.PI/2, a1=a0+2*Math.PI*Math.max(0.02,Math.min(1,score/100));
-      x.beginPath(); x.arc(rcx,cy,R,a0,a1); x.strokeStyle=CORAL; x.stroke();
-    }
-    x.lineCap='butt';
-    x.textAlign='center'; x.fillStyle='#fff'; x.font=`900 italic 74px ${CARD_DISPLAY}`;
-    x.fillText(score==null?'—':String(score),rcx-3,cy+4);
-    x.textAlign='left';
-    lx=rcx+R+36;
+  const gradeTxt=(grade&&/^[A-F][+-]?$/.test(grade))?grade:null;
+  if(img){                                   // without a frame the big numeral above already says it
+    x.fillStyle='#fff'; x.font=`500 96px ${CARD_MONO}`;
+    const sTxt=score==null?'—':String(score);
+    x.fillText(sTxt,lx,cy-2);
+    lx+=x.measureText(sTxt).width+18;
+    if(gradeTxt){ x.fillStyle=MUTED; x.font=`500 40px ${CARD_MONO}`; x.fillText(gradeTxt,lx,cy+16); lx+=x.measureText(gradeTxt).width+36; }
+    else lx+=18;
   }
-  x.fillStyle='#8EA3BD'; x.font=`800 24px ${CARD_BODY}`;
-  try{ x.letterSpacing='2px'; }catch(e){}
-  x.fillText('TECHNIQUE SCORE',lx,cy-24);
-  try{ x.letterSpacing='0px'; }catch(e){}
-  x.fillStyle='#fff'; x.font=`700 34px ${CARD_BODY}`;
-  const gradeLine=score==null?'Not graded':!grade?'out of 100':/^[A-F][+-]?$/.test(grade)?'Grade '+grade:grade;
-  x.fillText(gradeLine,lx,cy+24);
-  x.textAlign='right'; x.fillStyle='#C2CFE0'; x.font=`700 30px ${CARD_BODY}`;
+  x.fillStyle=MUTED; x.font=`500 22px ${CARD_MONO}`;
+  x.fillText('TECHNIQUE SCORE',lx,cy-22);
+  x.fillStyle=SOFT; x.font=`400 28px ${CARD_BODY}`;
+  const gradeLine=score==null?'Not graded — see the report':!grade?'out of 100':gradeTxt?`${sport==='bike'?'Ride':'Run'} · grade ${grade}`:grade;
+  x.fillText(gradeLine,lx,cy+20);
+  x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 26px ${CARD_MONO}`;
   x.fillText(CARD_HOST,W-P,cy);
   x.textAlign='left'; x.textBaseline='alphabetic';
 
@@ -6105,21 +6365,29 @@ let auth=null;                       // {email, tier, is_pro} when signed in
 const getToken=()=>{ try{ return localStorage.getItem(TKEY); }catch(e){ return null; } };
 function authHeaders(h){ h=h||{}; const t=getToken(); return t?Object.assign({},h,{Authorization:'Bearer '+t}):h; }
 function renderAuth(){
-  // Render into both the sidebar box and the mobile top-bar box.
-  const boxes=[$('#authbox'),$('#authboxM')].filter(Boolean);
-  const markup = auth
-    // `ph-no-capture`: autocapture records the text of whatever is clicked, and
-    // this element is the signed-in address. It travels as a person property
-    // (once, on identify) or not at all.
-    ? `<span class="usermail ph-no-capture" title="${esc(auth.email)}">${esc(auth.email)}</span><button class="btn btn-ghost btn-sm" data-logout type="button">Log out</button>`
-    : `<button class="btn btn-primary btn-sm" data-login type="button">Log in</button>`;
-  boxes.forEach(box=>{ box.innerHTML=markup; });
+  // The sidebar's plan line, and the phone top bar's compact box. Signed in,
+  // the sidebar shows which plan and what is left (the bar fills with what
+  // is used) and links to Account; the phone bar shows nothing but the quota
+  // -- Log out lives on the Account screen. Signed out, one Log in button.
+  const side=$('#authbox'), mob=$('#authboxM');
+  const planName=(()=>{ if(!auth) return ''; const card=((PLANS&&PLANS.cards)||[]).find(c=>c.tier===auth.tier); return card?card.name:(auth.tier==='admin'?'Admin':'Starter'); })();
+  if(side){
+    side.innerHTML = auth
+      ? `<a href="#account" class="planline" id="planLine" onclick="event.preventDefault();openAccount()">
+           <span class="pl-name"><span>${esc(planName)}</span><span class="ph-no-capture" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${esc(auth.email)}">${esc(auth.email.split('@')[0])}</span></span>
+           <span class="pl-quota" id="planQuota"></span>
+           <span class="pl-bar" id="planBar" aria-hidden="true"><i></i></span>
+         </a>`
+      : `<button class="btn btn-ghost btn-sm btn-login" data-login type="button">Log in</button>`;
+  }
+  if(mob){
+    mob.innerHTML = auth ? '' : `<button class="btn btn-ghost btn-sm" data-login type="button">Log in</button>`;
+  }
   document.querySelectorAll('[data-logout]').forEach(b=>b.addEventListener('click',logout));
   document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openAuth('login')));
-  // The dashboard ("My technique") is an account feature -- reveal its nav
-  // entries only when signed in. `authed` gates the mobile back-to-home buttons.
-  $('#navHome').classList.toggle('hidden', !auth);
-  $('#botHome').classList.toggle('hidden', !auth);
+  // The account features -- My technique, Compare, Profiles, Account -- exist
+  // only for someone who has one. `authed` gates the mobile back-to-home buttons.
+  ['#navHome','#botHome','#navCompare','#navProfiles','#navAccount'].forEach(sel=>{ const el=$(sel); if(el) el.classList.toggle('hidden', !auth); });
   // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
@@ -6132,7 +6400,8 @@ function renderAuth(){
   // Say what the button will actually do: signed out it opens sign-up first,
   // then runs the analysis on the file already chosen.
   const go=$('#analyze');
-  if(go) go.textContent = auth ? 'Analyze Technique' : 'Create free account & analyze';
+  if(go) go.textContent = auth ? 'Analyze' : 'Create free account & analyze';
+  if(typeof renderAccount==='function') renderAccount();
   // Both of these answer "who is asking", and both were rendered ONCE at boot
   // -- before checkAuth() had an answer. So a signed-in athlete read "Free
   // account required · 10 analyses" off their own uploader, having just signed
@@ -6288,7 +6557,10 @@ function init(){
   // storage asynchronously; wait for it so checkAuth sees the token. On the web
   // FLAPP_BRIDGE is undefined and this resolves immediately.
   const bridgeReady=(window.FLAPP_BRIDGE&&window.FLAPP_BRIDGE.ready)||Promise.resolve();
-  bridgeReady.then(()=>checkAuth()).then(handleCheckoutReturn);   // then resolve any Stripe return
+  // Account-only deep links wait for this: opened before /auth/me answered,
+  // they would ask a signed-in athlete to sign in.
+  const authReady=bridgeReady.then(()=>checkAuth());
+  authReady.then(handleCheckoutReturn);   // then resolve any Stripe return
   const clReady=initChangelog();            // release notes + unread dot on the nav
   syncActiveNav(document.body.dataset.state || 'upload');   // highlight the current section
   const m=location.hash.match(/^#job=([a-z0-9]+)$/i);
@@ -6311,6 +6583,8 @@ function init(){
     // The landing page sends new users straight to the sign-up form.
     else if(location.hash==='#signup'){ clean(); openAuth('register'); }
     else if(location.hash==='#pricing'){ clean(); openPricing(); }
+    else if(location.hash==='#account'){ clean(); authReady.then(openAccount); }
+    else if(location.hash==='#profiles'){ clean(); authReady.then(openProfiles); }
     // Admin-only destinations, reachable from the Academy sidebar. The views
     // themselves are behind an admin API, so a non-admin following a stale link
     // lands on an empty screen rather than on anything they shouldn't see.
@@ -7143,6 +7417,10 @@ function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTi
 $('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
 $('#navAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
 $('#navPricing').addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
+$('#navCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare(); });
+$('#navProfiles').addEventListener('click',e=>{ e.preventDefault(); openProfiles(); });
+$('#navAccount').addEventListener('click',e=>{ e.preventDefault(); openAccount(); });
+$('#botMore').addEventListener('click',e=>{ e.preventDefault(); openNav(); });
 $('#profileSel').addEventListener('change',e=>{
   if(e.target.value==='__new'){ showProfileInput(true); return; }
   state.profileId=e.target.value||null;
@@ -7881,7 +8159,7 @@ function renderDashboard(){
   $('#dashCounts').innerHTML=`
     <span class="dcount"><b>${all.length}</b> analyses</span>
     <span class="dcount"><b>${monthCount}</b> this month</span>
-    <span class="dcount">last <b>${last?agoStr(last.at):'—'}</b></span>`;
+    <span class="dcount"><b>${last?agoStr(last.at):'—'}</b> last analysis</span>`;
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
   renderCurrentForm(all);
   renderDashFocus(all);

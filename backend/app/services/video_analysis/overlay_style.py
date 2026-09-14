@@ -36,17 +36,34 @@ FONT_REGULAR = _FONT_DIR / "DejaVuSans.ttf"
 FONT_BOLD = _FONT_DIR / "DejaVuSans-Bold.ttf"
 
 # --- palette (RGB) --------------------------------------------------------
-NEON = (61, 255, 110)          # skeleton / in-range value
-NEON_DIM = (30, 190, 80)       # glow underlay
-AMBER = (255, 168, 46)         # warning value
-ROSE = (255, 91, 77)           # out-of-range value
-CHIP_BG = (26, 30, 36)         # dark chip fill
-CHIP_EDGE = (86, 94, 105)      # chip hairline
-INK = (232, 238, 245)          # chip label text
-INK_SOFT = (150, 160, 172)     # secondary text
-LEADER = (196, 204, 214)       # leader line
+# The Instrument system's "over footage" rules (design handoff, Sep 2026):
+# the skeleton is the accent on a 55% ink halo -- the accent alone is 2.6:1
+# on daylight asphalt, with the halo 8.4:1 -- and a chip is a solid card
+# with a border in ink or its status line, never a transparent label.
+ACCENT = (36, 87, 197)         # skeleton line, the one accent
+HALO = (14, 17, 22)            # under every bone and dot, at 55%
+NEON = ACCENT                  # legacy name: "the skeleton colour"
+NEON_DIM = HALO                # legacy name: "what sits under it"
+# status/good/warn/bad as text · line · tint -- each text AA on its own tint
+GOOD_TEXT, GOOD_LINE, GOOD_TINT = (20, 83, 42), (46, 125, 58), (213, 235, 217)
+WARN_TEXT, WARN_LINE, WARN_TINT = (107, 78, 6), (183, 121, 31), (247, 234, 200)
+BAD_TEXT, BAD_LINE, BAD_TINT = (126, 22, 17), (197, 34, 31), (246, 217, 214)
+AMBER = WARN_LINE              # legacy names for the two warning shades
+ROSE = BAD_LINE
+CHIP_BG = (255, 255, 255)      # a chip is a solid white card
+CHIP_EDGE = (20, 24, 31)       # bordered in ink/1 unless a status line takes over
+CHIP_DARK = (20, 24, 31)       # the header badge and title plates stay dark
+INK = (20, 24, 31)             # chip label text (ink/1)
+INK_SOFT = (91, 100, 112)      # secondary text (ink/3)
+INK_INVERSE = (242, 244, 247)  # text on the dark badge
+LEADER = (255, 255, 255)       # leader line, over a halo
+SHADOW = (20, 24, 31)          # shadow/on-footage: 0 2 6 at ~28%
 
-STATUS_COLORS = {"good": NEON, "warn": AMBER, "bad": ROSE, "muted": INK_SOFT}
+# Shapes drawn on the footage -- arcs, rings, the header value -- take the
+# status LINE. Text on a chip takes the status TEXT (AA on the chip's tint).
+STATUS_COLORS = {"good": GOOD_LINE, "warn": WARN_LINE, "bad": BAD_LINE, "muted": INK_SOFT}
+STATUS_TEXT = {"good": GOOD_TEXT, "warn": WARN_TEXT, "bad": BAD_TEXT, "muted": INK_SOFT}
+STATUS_TINT = {"good": GOOD_TINT, "warn": WARN_TINT, "bad": BAD_TINT}
 
 
 def _bgr(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
@@ -214,47 +231,33 @@ def draw_glow_skeleton(
     line_w: int = 2,
     dot_r: int = 4,
 ) -> None:
-    """Draw a neon skeleton with an optional soft glow, in place.
+    """Draw the accent skeleton on its halo, in place.
 
-    The glow is a blurred copy of the bones screened back over the frame -- one
-    blur for the whole skeleton, not per bone, and built small (see
-    :data:`GLOW_LAYER_LONG_EDGE`), so it is affordable on every frame of a clip
-    rather than only on a one-off still.
+    ``glow`` keeps its name from the neon days; it now switches the halo: a
+    55% ink stroke four pixels wider than every bone, and a filled disc under
+    every joint. It is part of the skeleton, not an option -- the accent on
+    its own fails on asphalt and on grass -- so callers leave it on. One
+    ``addWeighted`` over the frame does the 55%, which is cheaper than the
+    blurred layer it replaces and still affordable on every frame of a clip.
     """
     if not segments and not dots:
         return
 
     if glow:
-        h, w = frame.shape[:2]
-        # Draw the glow small, blur it there, scale it back. `f` <= 1 always:
-        # a frame already smaller than the glow canvas is left at its own size.
-        f = min(1.0, GLOW_LAYER_LONG_EDGE / max(w, h, 1))
-        gw, gh = max(1, int(round(w * f))), max(1, int(round(h * f)))
-        layer = np.zeros((gh, gw, frame.shape[2]), dtype=frame.dtype)
-        gw_line = max(1, int(round((line_w + 5) * f)))
-        gr_dot = max(1, int(round((dot_r + 3) * f)))
+        halo = frame.copy()
+        hw = line_w + 4
         for (a, b) in segments:
-            cv2_mod.line(
-                layer, (int(a[0] * f), int(a[1] * f)), (int(b[0] * f), int(b[1] * f)),
-                _bgr(NEON_DIM), gw_line, cv2_mod.LINE_AA,
-            )
+            cv2_mod.line(halo, a, b, _bgr(HALO), hw, cv2_mod.LINE_AA)
         for p in dots:
-            cv2_mod.circle(
-                layer, (int(p[0] * f), int(p[1] * f)), gr_dot,
-                _bgr(NEON_DIM), -1, cv2_mod.LINE_AA,
-            )
-        sigma = max(1.0, GLOW_BLUR_SIGMA * f * max(1.0, w / 900))
-        layer = cv2_mod.GaussianBlur(layer, (0, 0), sigmaX=sigma, sigmaY=sigma)
-        if (gw, gh) != (w, h):
-            layer = cv2_mod.resize(layer, (w, h), interpolation=cv2_mod.INTER_LINEAR)
-        # screen-ish blend: keep the brighter of frame/glow so it never darkens
-        cv2_mod.max(frame, layer, dst=frame)
+            cv2_mod.circle(halo, p, dot_r + 2, _bgr(HALO), -1, cv2_mod.LINE_AA)
+        cv2_mod.addWeighted(halo, 0.55, frame, 0.45, 0.0, dst=frame)
 
     for (a, b) in segments:
-        cv2_mod.line(frame, a, b, _bgr(NEON), line_w, cv2_mod.LINE_AA)
+        cv2_mod.line(frame, a, b, _bgr(ACCENT), line_w, cv2_mod.LINE_AA)
+    ring = max(1, int(round(dot_r / 3)))   # the 1.5 px ink ring, scaled with the dot
     for p in dots:
-        cv2_mod.circle(frame, p, dot_r, _bgr(NEON), -1, cv2_mod.LINE_AA)
-        cv2_mod.circle(frame, p, dot_r, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, dot_r, _bgr(ACCENT), -1, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, dot_r, _bgr(HALO), ring, cv2_mod.LINE_AA)
 
 
 def draw_corrected_marks(
@@ -268,8 +271,9 @@ def draw_corrected_marks(
     reviewer -- is entitled to know which points those are.
     """
     for p in points:
-        cv2_mod.circle(frame, p, r, _bgr(NEON), 2, cv2_mod.LINE_AA)
-        cv2_mod.circle(frame, p, r + 3, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, r + 1, _bgr(HALO), 4, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, r, _bgr(WARN_LINE), 2, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p, r + 4, _bgr(INK_INVERSE), 1, cv2_mod.LINE_AA)
 
 
 def draw_leader(
@@ -277,8 +281,14 @@ def draw_leader(
     joint: tuple[int, int], anchor: tuple[int, int],
     color_rgb: tuple[int, int, int],
 ) -> None:
-    """Thin leader line from a label chip to its joint, with an anchor ring."""
+    """Thin leader line from a label chip to its joint, with an anchor ring.
+
+    Drawn on a halo like the bones, so it reads on a pale path as well as on
+    a dark garage.
+    """
+    cv2_mod.line(frame, joint, anchor, _bgr(HALO), 3, cv2_mod.LINE_AA)
     cv2_mod.line(frame, joint, anchor, _bgr(LEADER), 1, cv2_mod.LINE_AA)
+    cv2_mod.circle(frame, joint, 6, _bgr(HALO), 3, cv2_mod.LINE_AA)
     cv2_mod.circle(frame, joint, 5, _bgr(color_rgb), 1, cv2_mod.LINE_AA)
     cv2_mod.circle(frame, joint, 2, _bgr(color_rgb), -1, cv2_mod.LINE_AA)
 
@@ -441,10 +451,22 @@ class ChipLayer:
 
     # -- painters --------------------------------------------------------
     @staticmethod
-    def _render_chip(d, rect, label, value, status, lab_s, val_s, pad_x, gap) -> None:
+    def _shadow(d, rect) -> None:
+        """shadow/on-footage: 0 2 6 at ~28%, as two soft steps under the card."""
         x1, y1, x2, y2 = rect
-        radius = max(6, (y2 - y1) // 3)
-        d.rounded_rectangle(rect, radius=radius, fill=CHIP_BG + (225,), outline=CHIP_EDGE + (140,), width=1)
+        d.rounded_rectangle((x1 - 1, y1 + 2, x2 + 1, y2 + 4), radius=3, fill=SHADOW + (34,))
+        d.rounded_rectangle((x1, y1 + 2, x2, y2 + 2), radius=2, fill=SHADOW + (48,))
+
+    @staticmethod
+    def _render_chip(d, rect, label, value, status, lab_s, val_s, pad_x, gap) -> None:
+        """A solid card on a 2 px radius: white (or the status tint), bordered
+        in ink or the status line, the label in ink and the value in the
+        status text colour. Never a transparent label over footage."""
+        x1, y1, x2, y2 = rect
+        ChipLayer._shadow(d, rect)
+        tint = STATUS_TINT.get(status, CHIP_BG)
+        edge = STATUS_COLORS.get(status, CHIP_EDGE) if status in STATUS_TINT else CHIP_EDGE
+        d.rounded_rectangle(rect, radius=2, fill=tint + (255,), outline=edge + (255,), width=1)
 
         lab_f, val_f = _font(False, lab_s), _font(True, val_s)
         cy = (y1 + y2) // 2
@@ -452,7 +474,7 @@ class ChipLayer:
         d.text((lx, cy), label, font=lab_f, fill=INK + (255,), anchor="lm")
         lw = lab_f.getbbox(label)[2] - lab_f.getbbox(label)[0]
         d.text((lx + lw + gap, cy), value, font=val_f,
-               fill=STATUS_COLORS.get(status, INK) + (255,), anchor="lm")
+               fill=STATUS_TEXT.get(status, INK) + (255,), anchor="lm")
 
     @staticmethod
     def _render_header(d, at, sport, score, grade, status, right_text, frame_w, scale) -> None:
@@ -470,15 +492,17 @@ class ChipLayer:
         w = pad_x * 2 + lw + vw + tw
 
         x, y = at
-        d.rounded_rectangle((x, y, x + w, y + h), radius=max(8, h // 3),
-                            fill=CHIP_BG + (225,), outline=CHIP_EDGE + (140,), width=1)
+        # The score badge stays a dark plate: it is the one label that is not
+        # a measurement at a joint, and it is read against the frame's corner.
+        d.rounded_rectangle((x, y, x + w, y + h), radius=2,
+                            fill=CHIP_DARK + (230,), outline=None)
         cy = y + h // 2
-        d.text((x + pad_x, cy), lab, font=lab_f, fill=INK + (255,), anchor="lm")
+        d.text((x + pad_x, cy), lab, font=lab_f, fill=INK_INVERSE + (255,), anchor="lm")
         d.text((x + pad_x + lw, cy), score, font=val_f,
-               fill=STATUS_COLORS.get(status, NEON) + (255,), anchor="lm")
+               fill=INK_INVERSE + (255,), anchor="lm")
         if tail:
             d.text((x + pad_x + lw + vw, cy), tail, font=lab_f,
-                   fill=STATUS_COLORS.get(status, NEON) + (255,), anchor="lm")
+                   fill=(198, 204, 214, 255), anchor="lm")
 
         if right_text and frame_w:
             rf = _font(True, max(11, int(17 * scale)))
@@ -488,30 +512,44 @@ class ChipLayer:
             # pixels, and the title is the expendable one -- drop it rather
             # than paint "RUNNING PROFILE" through "RUN: 69/100 · Fair".
             if frame_w - margin - rw >= x + w + int(12 * scale):
+                tw_pad = int(8 * scale)
+                d.rounded_rectangle(
+                    (frame_w - margin - rw - tw_pad, cy - int(12 * scale),
+                     frame_w - margin + tw_pad, cy + int(12 * scale)),
+                    radius=2, fill=CHIP_DARK + (190,),
+                )
                 d.text((frame_w - margin, cy), right_text, font=rf,
-                       fill=INK_SOFT + (215,), anchor="rm")
+                       fill=(198, 204, 214, 255), anchor="rm")
 
     @staticmethod
     def _render_caption(d, rect, text, status, size, pad_x, plate) -> None:
         x1, y1, x2, y2 = rect
         if plate:
-            d.rounded_rectangle(rect, radius=max(5, (y2 - y1) // 3),
-                                fill=CHIP_BG + (215,), outline=CHIP_EDGE + (120,), width=1)
+            d.rounded_rectangle(rect, radius=2, fill=CHIP_DARK + (230,), outline=None)
         d.text((x1 + pad_x, (y1 + y2) // 2), text, font=_font(True, size),
-               fill=STATUS_COLORS.get(status, INK) + (255,), anchor="lm")
+               fill=(STATUS_COLORS.get(status, INK_INVERSE) if status in STATUS_COLORS else INK_INVERSE) + (255,),
+               anchor="lm")
 
     @staticmethod
     def _render_brand(d, at, main, sub, scale) -> None:
+        """The wordmark on a 72% ink scrim: letters inverse, the coral dot unchanged."""
         mf = _font(True, max(12, int(19 * scale)))
         sf = _font(False, max(8, int(10 * scale)))
         x, y = at
-        d.text((x, y), main, font=mf, fill=(255, 255, 255, 225), anchor="rs")
+        dot = max(2, int(3 * scale))
+        tw = mf.getbbox(main)[2] - mf.getbbox(main)[0]
+        th = mf.getbbox(main)[3] - mf.getbbox(main)[1]
+        pad = int(6 * scale)
+        d.rounded_rectangle((x - tw - dot * 2 - pad * 2 - 2, y - th - pad, x + pad, y + pad + (int(12 * scale) if sub else 0)),
+                            radius=2, fill=CHIP_DARK + (184,))
+        d.text((x - dot * 2 - 2, y), main, font=mf, fill=INK_INVERSE + (255,), anchor="rs")
+        d.ellipse((x - dot * 2, y - th + dot, x, y - th + dot * 3), fill=(241, 85, 63, 255))
         if sub:
-            d.text((x, y + int(12 * scale)), sub, font=sf, fill=INK_SOFT + (190,), anchor="rs")
+            d.text((x, y + int(12 * scale)), sub, font=sf, fill=(198, 204, 214, 210), anchor="rs")
 
 
 __all__ = [
-    "NEON", "AMBER", "ROSE", "STATUS_COLORS",
+    "NEON", "AMBER", "ROSE", "STATUS_COLORS", "STATUS_TEXT", "STATUS_TINT", "ACCENT", "HALO",
     "status_for", "text_size", "draw_glow_skeleton", "draw_leader", "ChipLayer",
     "draw_corrected_marks", "skeleton_weights", "FONT_REGULAR", "FONT_BOLD",
 ]
