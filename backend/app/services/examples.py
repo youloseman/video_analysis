@@ -521,9 +521,9 @@ _CSS = """
   padding:28px;text-align:center}
 .ex-cta h2{font-family:var(--f-display);font-weight:600;font-size:20px;color:var(--c-ink);margin:0 0 8px}
 .ex-cta p{font-size:14.5px;color:var(--c-ink-soft);margin:0 0 18px}
-.ex-btn{display:inline-block;background:var(--c-blue);color:#fff;font-weight:500;
+.ex-btn{display:inline-block;background:var(--c-action);color:var(--c-action-ink);font-weight:500;
   padding:11px 24px;border-radius:0;text-decoration:none;min-height:44px}
-.ex-btn:hover{background:var(--c-blue-dk)}
+.ex-btn:hover{background:var(--c-action-dk)}
 .ex-back{display:block;font-size:13.5px;color:var(--c-blue-dk);margin-bottom:14px;text-decoration:none}
 .ex-back:hover{text-decoration:underline;text-underline-offset:3px}
 /* Full column width: the rule above it spans the page, and a 76ch measure

@@ -737,7 +737,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .hero .wrap{position:relative;z-index:1;padding:14px 24px 16px}
 .hero .eyebrow{color:rgba(255,255,255,.72)}
 .hero h1{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.2;letter-spacing:0;margin:4px 0 0;color:#fff}
-.hero h1 .accent{color:#A7C2F9}
+.hero h1 .accent{color:var(--c-coral)}
 .hero-line{margin:4px 0 0;font-size:13px;line-height:1.45;color:rgba(255,255,255,.82);max-width:72ch}
 body:not([data-state="upload"]) .hero .wrap,
 body.authed .hero .wrap{padding:12px 24px}
@@ -855,17 +855,17 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
   display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 @media(pointer:fine){ .btn{min-height:40px} }
 .btn svg{transition:transform .15s ease}
-.btn-primary{background:var(--c-blue);color:var(--c-blue-ink);padding:9px 20px}
-.btn-primary:hover{background:var(--c-blue-dk);color:var(--c-blue-ink)}
-.btn-primary:active{background:var(--c-blue-active)}
+.btn-primary{background:var(--c-action);color:var(--c-action-ink);padding:9px 20px}
+.btn-primary:hover{background:var(--c-action-dk);color:var(--c-action-ink)}
+.btn-primary:active{background:var(--c-action-dk)}
 .btn-danger{background:transparent;color:var(--st-bad);border-color:var(--st-bad-fill);padding:9px 20px}
 .btn-danger:hover{background:var(--st-bad-bg)}
 .confirm-actions{display:flex;gap:12px;justify-content:flex-end}
 .confirm-actions .btn{padding:9px 18px}
 /* "Go" was the coral action. It is the primary now: one filled button. */
-.btn-go{background:var(--c-blue);color:var(--c-blue-ink);font-size:15px;padding:12px 28px}
-.btn-go:hover{background:var(--c-blue-dk);color:var(--c-blue-ink)}
-.btn-go:active{background:var(--c-blue-active)}
+.btn-go{background:var(--c-action);color:var(--c-action-ink);font-size:15px;padding:12px 28px}
+.btn-go:hover{background:var(--c-action-dk);color:var(--c-action-ink)}
+.btn-go:active{background:var(--c-action-dk)}
 .btn-ghost{background:var(--c-bg);color:var(--c-ink);border-color:var(--c-line-strong);padding:9px 18px}
 .btn-ghost:hover{background:var(--c-panel);border-color:var(--c-ink)}
 /* Pressed = 1px down while held. Hover never moves anything. */

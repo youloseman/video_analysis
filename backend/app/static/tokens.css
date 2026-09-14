@@ -49,10 +49,13 @@
   --c-blue-ink:#FFFFFF;                /* label on the filled primary (5.4:1) */
 
   /* ---- brand ---- */
-  --c-coral:#F1553F;                   /* the wordmark dot and nothing else */
-  /* Legacy "go" colours, now the destructive pair: status/bad/line and a
-     darker step. Nothing sells in coral any more. */
-  --c-coral-btn:#C5221F; --c-coral-dk:#A91C1A;
+  --c-coral:#F1553F;                   /* the wordmark dot, and the accent word in the band */
+  /* Coral is the colour of ACTION: the one filled button a screen has
+     (Analyze, Unlock, Choose a plan) wears it, and nothing else does. The
+     button tier is the AA-safe step of the brand coral (4.6:1 with white);
+     -dk is its hover. Blue stays with navigation, data and links. */
+  --c-coral-btn:#CE3F2B; --c-coral-dk:#B8341F;
+  --c-action:var(--c-coral-btn); --c-action-dk:var(--c-coral-dk); --c-action-ink:#FFFFFF;
 
   /* Sport colours are retired: an icon takes the colour of its row. */
   --c-swim:#5B6470; --c-bike:#5B6470; --c-run:#5B6470;
@@ -103,7 +106,7 @@
   --st-warn:#F3C969; --st-warn-fill:#C9911F; --st-warn-bg:#35290A;
   --st-bad:#F79189;  --st-bad-fill:#E0524C;  --st-bad-bg:#3A1512; --st-bad-text:#F79189;
   --c-warn:#C9911F; --c-warn-text:#F3C969; --c-orange:#C9911F;
-  --c-coral-btn:#E0524C; --c-coral-dk:#F79189;
+  --c-coral-btn:#F1553F; --c-coral-dk:#F79189; --c-action-ink:#0E1116;
   --shadow:0 2px 6px rgba(0,0,0,.40); --shadow-lg:0 12px 32px rgba(0,0,0,.40);
 }
 :root{--st-good-band:var(--st-good-bg)}   /* range bands: the pill tint on light, its own step on dark */
