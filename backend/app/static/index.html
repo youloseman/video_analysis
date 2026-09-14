@@ -603,14 +603,21 @@
 
       <!-- Submit: the one filled button on the screen, what is left this
            month beside it, the plans link on the right. -->
-      <div class="analyzerow">
-        <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
-          Analyze
-        </button>
-        <p class="quota-line" id="quota">Free account · monthly analyses included</p>
-        <a href="#pricing" class="plans-link" onclick="event.preventDefault();openPricing()">Compare plans</a>
+      <!-- Sticky to the bottom of the window until the page scrolls past its
+           natural place, so the five steps above never put the button out of
+           reach. On a phone it sits above the tab bar. -->
+      <div class="analyzebar">
+        <div class="analyzerow">
+          <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
+            Analyze
+          </button>
+          <div class="analyzemeta">
+            <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
+            <p class="quota-line" id="quota">Free account · monthly analyses included</p>
+          </div>
+          <a href="#pricing" class="plans-link" onclick="event.preventDefault();openPricing()">Compare plans</a>
+        </div>
       </div>
-      <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
 
       <!-- What happens to the footage, said where the footage is handed over.
            Every claim here is one the privacy policy already makes and the

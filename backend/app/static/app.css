@@ -1117,9 +1117,16 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .subhint{display:block;font-size:12px;font-weight:400;color:var(--c-ink-faint);margin-top:2px}
 
 /* submit: the one filled button, the quota beside it, "Compare plans" right */
-.analyzerow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:16px 0 0}
+.analyzebar{position:sticky;bottom:0;z-index:7;background:var(--c-bg);border:1px solid var(--c-line);
+  padding:12px 20px;margin:0 0 12px;box-shadow:var(--shadow)}
+@media(max-width:900px){ .analyzebar{bottom:calc(68px + env(safe-area-inset-bottom,0))} }
+.analyzerow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0}
+.analyzemeta{display:flex;flex-direction:column;gap:2px;flex:1 1 200px;min-width:0}
+.analyzemeta .hint{margin:0;font-size:13px;color:var(--c-ink-soft)}
+.analyzemeta .quota-line{margin:0;flex:0 0 auto}
+.analyzemeta .hint{flex:0 0 auto}
 .analyzerow .btn-go{width:auto;padding:10px 26px}
-.analyzerow .quota-line{margin:0;padding:0;border:0;text-align:left;flex:1 1 200px}
+.analyzerow .quota-line{margin:0;padding:0;border:0;text-align:left}
 .analyzerow .plans-link{margin-left:auto;font-size:13px;color:var(--c-blue-dk);text-decoration:none;font-weight:500}
 .analyzerow .plans-link:hover{text-decoration:underline;text-underline-offset:3px}
 .btn-block{width:100%;justify-content:center}
@@ -1701,9 +1708,11 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .again-row{flex-direction:column;align-items:stretch;text-align:center}
   table.data{font-size:13px}
   table.data td,table.data thead th{padding:8px}
-  .analyzerow{flex-direction:column;align-items:stretch}
-  .analyzerow .btn-go{width:100%}
-  .analyzerow .plans-link{margin-left:0}
+  .analyzebar{padding:10px 14px}
+  .analyzerow{gap:10px}
+  .analyzerow .btn-go{flex:1 1 100%;width:100%}
+  .analyzemeta{flex:1 1 auto}
+  .analyzerow .plans-link{margin-left:auto}
   .pagehead .ph-right{margin-left:0}
 }
 
