@@ -55,7 +55,9 @@
    "range": 87.4,
    "valid_frames": 496,
    "nan_frames": 55,
-   "nan_pct": 10.0
+   "nan_pct": 10.0,
+   "artefact_frames": 0,
+   "artefact_pct": 0.0
   },
   "hip": {
    "min": 146.5,
@@ -67,7 +69,9 @@
    "range": 33.2,
    "valid_frames": 496,
    "nan_frames": 55,
-   "nan_pct": 10.0
+   "nan_pct": 10.0,
+   "artefact_frames": 0,
+   "artefact_pct": 0.0
   },
   "elbow": {
    "min": 63.5,
@@ -79,7 +83,9 @@
    "range": 67.6,
    "valid_frames": 469,
    "nan_frames": 82,
-   "nan_pct": 14.9
+   "nan_pct": 14.9,
+   "artefact_frames": 0,
+   "artefact_pct": 0.0
   },
   "ankle": {
    "min": 80.1,
@@ -91,7 +97,9 @@
    "range": 39.8,
    "valid_frames": 496,
    "nan_frames": 55,
-   "nan_pct": 10.0
+   "nan_pct": 10.0,
+   "artefact_frames": 0,
+   "artefact_pct": 0.0
   },
   "trunk": {
    "min": -4.0,
@@ -103,7 +111,9 @@
    "range": 14.4,
    "valid_frames": 551,
    "nan_frames": 0,
-   "nan_pct": 0.0
+   "nan_pct": 0.0,
+   "artefact_frames": 0,
+   "artefact_pct": 0.0
   }
  },
  "sport_specific_metrics": {
@@ -120,6 +130,7 @@
    "factors": {
     "landmark_quality_pct": 75.1,
     "angles_with_high_nan": [],
+    "artefact_angles": [],
     "majority_angles_gated": false,
     "fallback_triggered": false,
     "cutoff_reduced": false,

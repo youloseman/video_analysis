@@ -451,7 +451,8 @@ _CSS = """
    number: the word overflowed it and sat on top of "93/100". Stacked, and
    sized by its content -- min-width equal to the height keeps a single
    letter round, a word stretches the pill. */
-.ex-score{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.ex-score{display:flex;flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:6px 12px}
+.ex-score .why,.ex-cov{flex-basis:100%}
 .ex-score .n{font-family:var(--f-mono);font-size:56px;font-weight:500;color:var(--c-ink);
   line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .ex-score .n small{font-size:14px;color:var(--c-ink-faint);font-weight:400;letter-spacing:0}
@@ -523,7 +524,8 @@ _CSS = """
 .ex-btn{display:inline-block;background:var(--c-blue);color:#fff;font-weight:500;
   padding:11px 24px;border-radius:0;text-decoration:none;min-height:44px}
 .ex-btn:hover{background:var(--c-blue-dk)}
-.ex-back{display:inline-block;font-size:13.5px;color:var(--c-blue-dk);margin-bottom:16px;text-decoration:none}
+.ex-back{display:block;font-size:13.5px;color:var(--c-blue-dk);margin-bottom:14px;text-decoration:none}
+.ex-back:hover{text-decoration:underline;text-underline-offset:3px}
 /* Full column width: the rule above it spans the page, and a 76ch measure
    under a full-width rule read as a broken paragraph rather than a note. */
 .ex-note{font-size:12.5px;color:var(--c-ink-faint);line-height:1.6;margin-top:30px;
