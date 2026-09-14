@@ -330,10 +330,15 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .tcard-score{background:var(--c-bg);grid-column:1/-1}
 .tc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .tc-lbl{font-weight:600;font-size:13.5px;color:var(--c-ink)}
-.tc-val{font-family:var(--f-mono);font-weight:500;font-size:22px;color:var(--c-ink)}
-.tc-sub{font-size:11.5px;color:var(--c-ink-faint);margin-top:2px;font-family:var(--f-mono)}
+.tc-val{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:24px;color:var(--c-ink);letter-spacing:-.01em}
+.tc-sub{font-size:11.5px;color:var(--c-ink-faint);margin-top:6px;font-family:var(--f-mono);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tdelta{font-weight:500}
-.tdelta.imp{color:var(--st-good)}.tdelta.reg{color:var(--st-bad)}.tdelta.sta{color:var(--c-ink-faint)}
+/* A delta is a chip, as on the landing: green when it went the right way. */
+.tdelta{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 9px;border-radius:999px;border:1px solid var(--c-line);background:var(--c-bg);color:var(--c-ink-faint);white-space:nowrap}
+.tdelta.imp{color:var(--c-live-good);background:var(--c-live-good-bg);border-color:var(--c-live-good-line)}
+.tdelta.reg{color:var(--c-live-bad);background:var(--c-live-bad-bg);border-color:var(--c-live-bad-line)}
+.tdelta.sta{color:var(--c-ink-faint)}
 .tchart{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
 /* ---------- Dashboard ("My technique") ---------- */
 /* Order is the design's: the counters strip first (four tiles), the two sport
@@ -369,7 +374,12 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
   font-feature-settings:"tnum" 1;color:var(--c-ink)!important}
 .ds-score small{font-family:var(--f-mono);font-size:16px;color:var(--c-ink-faint);font-style:normal;font-weight:400;margin-left:4px}
 .dspark{width:160px;height:52px;flex:none}
-.ds-delta{margin-top:8px;font-size:13px;color:var(--c-ink-soft)}
+/* was -> now, as the landing's proof tiles: the first score struck through,
+   the latest in Archivo, the change as a chip. */
+.ds-delta{margin-top:10px;font-size:13px;color:var(--c-ink-soft);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.d-was{font-family:var(--f-mono);font-size:14px;color:var(--c-ink-faint);text-decoration:line-through;text-decoration-color:rgba(241,85,63,.55);text-decoration-thickness:2px}
+.d-arrow{color:var(--c-ink-faint);font-size:12px}
+.d-now{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;line-height:1;color:var(--c-ink);letter-spacing:-.01em}
 .ds-actions{display:flex;gap:8px;margin-top:14px}
 .dfocus{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:16px 18px;margin-bottom:20px}
 .dfocus .ic{width:16px;height:16px;vertical-align:-2px;margin-right:4px}
@@ -407,7 +417,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .dform-sub .ic{width:16px;height:16px;color:var(--c-ink-faint)}
 .dform-when{font-weight:400;color:var(--c-ink-faint);font-size:11.5px;font-family:var(--f-mono)}
 table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:nowrap;text-align:right}
-.dform-tr .tdelta{font-size:12px}
+.dform-tr .tdelta{font-size:10.5px}
 .dform-first{color:var(--c-ink-faint);font-weight:400}
 .dform-segrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
 .dform-seg{margin:0}
@@ -614,30 +624,33 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
    the elements stay in the markup for the sections that anchor to them. */
 .speedline,.speedline-sm{display:none}
 /* Eyebrow = h3 in the type scale: mono, 11 px, caps, +8% tracking, muted. */
-.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint)}
+/* The eyebrow carries the landing's coral dot: the one small brand mark on
+   every section of every screen. */
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);display:inline-flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c-coral);flex:none}
 
 /* Status pill: a word beside a glyph, on its own tint, with a hairline in
    the status line. The dot is the glyph the markup already carries. */
 .pill{display:inline-flex;align-items:center;gap:7px;font-family:var(--f-mono);font-size:11px;font-weight:500;
-  letter-spacing:.02em;text-transform:none;color:var(--c-ink);padding:2px 8px;border-radius:var(--radius-xs);border:1px solid var(--c-line-strong);background:var(--c-bg)}
+  letter-spacing:.02em;text-transform:none;color:var(--c-ink);padding:2px 10px;border-radius:999px;white-space:nowrap;border:1px solid var(--c-line-strong);background:var(--c-bg)}
 .pill .dot{width:7px;height:7px;border-radius:50%;flex:none}
 .pill-high{background:var(--st-bad-bg);color:var(--st-bad);border-color:var(--st-bad-fill)}.pill-high .dot{background:var(--st-bad-fill)}
 .pill-medium{background:var(--st-warn-bg);color:var(--st-warn);border-color:var(--st-warn-fill)}.pill-medium .dot{background:var(--st-warn-fill)}
 .pill-low{background:var(--c-panel);color:var(--c-ink-soft)}.pill-low .dot{background:var(--c-ink-faint)}
 .pill-info{background:var(--c-panel-blue);color:var(--c-blue-dk);border-color:var(--c-blue-dk)}.pill-info .dot{background:var(--c-blue)}
-.pill-good{background:var(--st-good-bg);color:var(--st-good);border-color:var(--st-good-fill)}.pill-good .dot{background:var(--st-good-fill)}
+.pill-good{background:var(--c-live-good-bg);color:var(--c-live-good);border-color:var(--c-live-good-line)}.pill-good .dot{background:var(--c-live-good-fill)}
 .pill-warnchip{background:var(--st-warn-bg);color:var(--st-warn);border-color:var(--st-warn-fill)}.pill-warnchip .dot{background:var(--st-warn-fill)}
-.pill-okchip{background:var(--st-good-bg);color:var(--st-good);border-color:var(--st-good-fill)}.pill-okchip .dot{background:var(--st-good-fill)}
+.pill-okchip{background:var(--c-live-good-bg);color:var(--c-live-good);border-color:var(--c-live-good-line)}.pill-okchip .dot{background:var(--c-live-good-fill)}
 
 /* Confidence badge */
 .confwrap{margin-top:12px}
 .confbtn{display:inline-flex;align-items:center;gap:7px;font-family:var(--f-mono);font-size:11px;font-weight:500;
-  letter-spacing:.02em;color:var(--c-ink);padding:2px 8px;border-radius:var(--radius-xs);
+  letter-spacing:.02em;color:var(--c-ink);padding:2px 10px;border-radius:999px;
   border:1px solid var(--c-line-strong);background:var(--c-bg);cursor:pointer;line-height:1.5}
 .confbtn .dot{width:7px;height:7px;border-radius:50%;flex:none}
 .confbtn .caret{font-size:9px;opacity:.6;transition:transform .15s}
 .confbtn[aria-expanded="true"] .caret{transform:rotate(180deg)}
-.confbtn.c-high{background:var(--st-good-bg);color:var(--st-good);border-color:var(--st-good-fill)}.confbtn.c-high .dot{background:var(--st-good-fill)}
+.confbtn.c-high{background:var(--c-live-good-bg);color:var(--c-live-good);border-color:var(--c-live-good-line)}.confbtn.c-high .dot{background:var(--c-live-good-fill)}
 .confbtn.c-medium{background:var(--st-warn-bg);color:var(--st-warn);border-color:var(--st-warn-fill)}.confbtn.c-medium .dot{background:var(--st-warn-fill)}
 .confbtn.c-low{background:var(--st-bad-bg);color:var(--st-bad);border-color:var(--st-bad-fill)}.confbtn.c-low .dot{background:var(--st-bad-fill)}
 .confexp{margin-top:10px;font-size:13px;line-height:1.55;color:var(--c-ink-soft);
@@ -729,8 +742,15 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
    Brand navy to the accent, left to right. Signed out on the upload screen it
    carries the one-line pitch; everywhere else it thins to the eyebrow. On a
    phone it goes: 120 px of strapline is 120 px the upload button loses. */
-.hero{background:linear-gradient(135deg,var(--c-brand-navy) 0%,var(--c-brand-mid) 60%,var(--c-blue) 100%);
-  color:#fff;position:relative;overflow:hidden}
+.hero{color:#fff;position:relative;overflow:hidden;
+  background:
+    radial-gradient(900px 420px at 88% -40%, rgba(47,109,224,.55), transparent 60%),
+    radial-gradient(520px 320px at -6% 140%, rgba(241,85,63,.28), transparent 60%),
+    linear-gradient(135deg,var(--c-brand-navy) 0%,var(--c-brand-mid) 60%,var(--c-blue) 100%)}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:40px 40px;
+  -webkit-mask-image:radial-gradient(700px 300px at 50% 50%,#000 30%,transparent 80%);mask-image:radial-gradient(700px 300px at 50% 50%,#000 30%,transparent 80%)}
 .hero::after{content:"";position:absolute;right:-40px;top:0;bottom:0;width:320px;
   background:
     linear-gradient(115deg,transparent 44%,rgba(255,255,255,.10) 44%,rgba(255,255,255,.10) 48%,transparent 48%),
@@ -748,7 +768,7 @@ body:not([data-state="upload"]) .hero-line,
 body.authed .hero-line{display:none}
 @media(max-width:560px){
   .hero{background:none}
-  .hero::after{display:none}
+  .hero::after,.hero::before{display:none}
   .hero .wrap{padding:0}
   .hero .eyebrow,.hero-line{display:none}
   .hero h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -891,10 +911,12 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .uploader .pagehead{margin-bottom:16px}
 .ustep{background:var(--c-bg);border:1px solid var(--c-line);padding:18px 20px 20px;margin:0 0 12px}
 .ustep-head{display:flex;align-items:flex-start;gap:14px;margin:0 0 14px}
-.ustep-n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--c-brand-navy);color:#fff;
-  font-family:var(--f-mono);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center}
-.ustep-n::before{counter-increment:ustep;content:counter(ustep)}
-.ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:16px;line-height:28px;color:var(--c-ink);margin:0;text-transform:none;letter-spacing:0}
+/* The step numeral is the landing's "How it works" numeral: Archivo italic,
+   no fill, a blue outline. */
+.ustep-n{flex:none;min-width:56px;font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:40px;line-height:1;
+  color:transparent;-webkit-text-stroke:1.5px var(--c-blue);letter-spacing:-.02em;display:flex;align-items:flex-start;margin-top:-2px}
+.ustep-n::before{counter-increment:ustep;content:counter(ustep,decimal-leading-zero)}
+.ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:17px;line-height:1.3;color:var(--c-ink);margin:4px 0 2px;text-transform:none;letter-spacing:0}
 .ustep-head p{font-size:13px;color:var(--c-ink-faint);margin:0;line-height:1.45}
 /* Inside a step the rows sit on hairlines; the last one has no rule under it. */
 .ustep .askbox:last-child,.ustep .switch:last-child,.ustep .overlay-locked:last-child{border-bottom:0}
@@ -1179,54 +1201,86 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .progress-card .cancelrow{text-align:left;margin-top:20px}
 
 /* ---------- Results ----------
-   The player first, full width; the score card under it as a horizontal
-   strip: the numeral and grade, the meta, the pills. */
+   The score card is the landing's dark tile: brand navy with the hero's
+   glows, the score in Archivo italic, the grade a chip in its colour, the
+   meta in white. The one dark object on a light report -- the number the
+   report is about. */
 .result-top{display:flex;flex-direction:column;gap:16px;align-items:stretch;margin-top:0}
 .result-top > #videoCol,.result-top > div:not(.scorecard){order:-1}
 .result-top.no-video{display:flex}
-.scorecard{padding:18px 20px;position:relative;overflow:hidden;display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 20px;align-items:start}
-.scorecard::before{display:none}
+.scorecard{padding:22px 24px;position:relative;overflow:hidden;display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 22px;align-items:start;
+  color:#fff;border-color:var(--c-brand-navy);
+  background:
+    radial-gradient(520px 260px at 92% -30%, rgba(47,109,224,.55), transparent 60%),
+    radial-gradient(360px 220px at -8% 130%, rgba(241,85,63,.30), transparent 60%),
+    linear-gradient(135deg,var(--c-brand-navy) 0%,#10233F 60%,var(--c-brand-mid) 100%)}
+.scorecard::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:40px 40px;-webkit-mask-image:radial-gradient(600px 260px at 40% 50%,#000 20%,transparent 80%);mask-image:radial-gradient(600px 260px at 40% 50%,#000 20%,transparent 80%)}
+.scorecard > *{position:relative}
 .scorecard > .sporttag,.scorecard > .pill{align-self:start;justify-self:start;grid-column:3}
-.scorecard > .sporttag{grid-row:1}
-.sharebtn{margin-top:12px;width:auto;justify-content:center;grid-column:3;justify-self:start}
+.scorecard > .sporttag{grid-row:1;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.25);color:#fff}
+.scorecard > .sporttag .ic{color:rgba(255,255,255,.8)}
+.sharebtn{margin-top:14px;width:auto;justify-content:center;grid-column:3;justify-self:start}
 #printBtnHost{grid-column:3}
-.score-label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);margin-top:0;grid-column:1/span 2;grid-row:1}
-/* The technique score is the one number that speaks in the brand's voice:
-   Archivo, heavy italic. Every other numeral stays mono and tabular. */
-.score-num{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:60px;line-height:1;
-  color:var(--c-ink);letter-spacing:-.03em;margin-top:6px;grid-column:1;grid-row:2;display:flex;align-items:baseline;gap:6px}
-.score-num small{font-family:var(--f-mono);font-size:14px;color:var(--c-ink-faint);font-style:normal;font-weight:400;letter-spacing:0}
-.score-delta{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;font-weight:500;color:var(--c-ink-faint);font-family:var(--f-mono);grid-column:1/span 2;grid-row:3}
+.score-label{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;color:rgba(255,255,255,.6);margin-top:0;grid-column:1/span 2;grid-row:1}
+.score-num{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:64px;line-height:1;
+  color:#fff;letter-spacing:-.02em;margin-top:8px;grid-column:1;grid-row:2;display:flex;align-items:baseline;gap:6px}
+.score-num small{font-family:var(--f-mono);font-size:14px;color:rgba(255,255,255,.55);font-style:normal;font-weight:400;letter-spacing:0}
+/* The change since last time, as the landing's delta chip. */
+.score-delta{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;font-weight:500;font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase;
+  grid-column:1/span 2;grid-row:3;justify-self:start;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.75);background:rgba(255,255,255,.06)}
 .score-delta .sd-val{font-family:var(--f-mono);font-weight:500;font-feature-settings:"tnum" 1}
-.score-delta.imp .sd-val{color:var(--st-good)}
-.score-delta.reg .sd-val{color:var(--st-bad)}
-.score-delta.sta .sd-val{color:var(--c-ink-faint)}
+.score-delta.imp{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:#7BE0A2}
+.score-delta.imp .sd-val{color:#7BE0A2}
+.score-delta.reg{background:rgba(241,85,63,.16);border-color:rgba(241,85,63,.45);color:#FFB3A6}
+.score-delta.reg .sd-val{color:#FFB3A6}
+.score-delta .sd-was{margin-left:2px;color:rgba(255,255,255,.5);text-transform:none;letter-spacing:0}
 .score-delta .ic{width:12px;height:12px}
-.score-delta.imp .ic{color:var(--st-good)}
-.score-delta.reg .ic{color:var(--st-bad);transform:rotate(180deg)}
-/* The grade sits beside the number as a mono letter: "74 B". */
-/* The grade sits beside the number, on its baseline: "74 B". */
-.graderow{display:flex;align-items:center;gap:8px;margin-top:0;grid-column:2;grid-row:2;align-self:end;padding-bottom:6px;flex-wrap:wrap}
-.grade{display:inline-flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-weight:500;
-  font-style:normal;font-size:24px;min-width:0;height:auto;padding:0;border-radius:var(--radius);border:0;color:var(--c-ink-faint);flex:none;line-height:1}
-.grade.grade-word{font-size:14px;letter-spacing:.02em;text-transform:uppercase;padding:0}
-.gradelbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);display:none}
+.score-delta.imp .ic{color:#7BE0A2}
+.score-delta.reg .ic{color:#FFB3A6;transform:rotate(180deg)}
+/* The grade: a chip in its colour beside the number -- green for A/B, amber
+   for C, red below, like the landing's score card. */
+.graderow{display:flex;align-items:center;gap:8px;margin-top:0;grid-column:2;grid-row:2;align-self:end;padding-bottom:10px;flex-wrap:wrap}
+.grade{display:inline-flex;align-items:center;justify-content:center;font-family:var(--f-brand);font-weight:900;font-style:italic;
+  font-size:22px;min-width:40px;height:40px;padding:0 10px;border-radius:var(--radius-lg);border:0;color:#fff;background:rgba(255,255,255,.14);flex:none;line-height:1}
+.grade[data-g="a"],.grade[data-g="b"]{background:var(--c-live-good-fill);color:#fff}
+.grade[data-g="c"]{background:#C97B10;color:#fff}
+.grade[data-g="d"],.grade[data-g="f"]{background:var(--c-coral-btn);color:#fff}
+.grade.grade-word{font-size:13px;letter-spacing:.04em;text-transform:uppercase;padding:0 12px;font-family:var(--f-mono);font-style:normal;font-weight:500}
+.gradelbl{display:none}
 .graderow > div{display:flex;flex-direction:column;gap:4px}
-.score-meta{font-size:13px;color:var(--c-ink-soft);margin-top:0;margin-bottom:0;line-height:1.7;border-top:0;padding-top:0;grid-column:3;grid-row:2/span 2;align-self:start}
-.score-meta b{color:var(--c-ink);font-weight:500}
-.score-meta .mono{font-family:var(--f-mono);font-weight:500;color:var(--c-ink)}
-.score-none{font-family:var(--f-mono);font-style:normal;font-weight:500;text-transform:none;font-size:.4em;letter-spacing:0;color:var(--c-ink-faint)}
-.score-none-why{font-size:13.5px;line-height:1.55;color:var(--c-ink-soft);
-  max-width:64ch;margin:8px 0 0;padding:12px 14px;background:var(--c-panel-quiet);
-  border-left:3px solid var(--c-warn);border-radius:var(--radius);grid-column:1/-1}
-.score-none-why b{color:var(--c-ink)}
+.graderow .pill{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
+.graderow .pill-okchip{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:#7BE0A2}
+.graderow .pill-warnchip{background:rgba(201,123,16,.22);border-color:rgba(201,123,16,.55);color:#FFD08A}
+.score-meta{font-size:13px;color:rgba(255,255,255,.72);margin-top:0;margin-bottom:0;line-height:1.7;border-top:0;padding-top:0;grid-column:3;grid-row:2/span 2;align-self:start}
+.score-meta b{color:#fff;font-weight:500}
+.score-meta .mono{font-family:var(--f-mono);font-weight:500;color:#fff}
+.score-meta a{color:#A7C2F9}
+.score-none{font-family:var(--f-mono);font-style:normal;font-weight:500;text-transform:none;font-size:.4em;letter-spacing:0;color:rgba(255,255,255,.6)}
+.score-none-why{font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85);
+  max-width:64ch;margin:8px 0 0;padding:12px 14px;background:rgba(255,255,255,.08);
+  border-left:3px solid #FFD08A;border-radius:0;grid-column:1/-1}
+.score-none-why b{color:#fff}
 .score-meta .cov-why{display:inline-block;margin-top:2px;font-size:12px}
 .confwrap{grid-column:3}
+.scorecard .confbtn{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
+.scorecard .confbtn.c-high{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:#7BE0A2}
+.scorecard .confbtn.c-high .dot{background:#7BE0A2}
+.scorecard .confbtn.c-medium{background:rgba(201,123,16,.22);border-color:rgba(201,123,16,.55);color:#FFD08A}
+.scorecard .confbtn.c-medium .dot{background:#FFD08A}
+.scorecard .confbtn.c-low{background:rgba(241,85,63,.16);border-color:rgba(241,85,63,.45);color:#FFB3A6}
+.scorecard .confbtn.c-low .dot{background:#FFB3A6}
+.scorecard .confexp{background:rgba(255,255,255,.08);color:rgba(255,255,255,.85)}
+.scorecard .conffactors{color:rgba(255,255,255,.55)}
+.scorecard .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.scorecard .btn-ghost:hover{background:rgba(255,255,255,.1);border-color:#fff}
 .sc-scorerow{display:contents}
 @media(max-width:640px){
   .scorecard{padding:16px;grid-template-columns:1fr;gap:8px}
   .scorecard > *{grid-column:1!important;grid-row:auto!important}
-  .score-num{font-size:44px}
+  .scorecard .score-label{order:-1}
+  .score-num{font-size:48px}
   #historyDetail .scorecard .sharebtn{margin-top:8px}
   #historyDetail .score-meta{display:block}
 }
@@ -1508,7 +1562,7 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .tile .t-def{font-family:var(--f-body);font-size:12.5px;line-height:1.45;color:var(--c-ink-soft);margin:8px 0 0;padding-top:8px;border-top:1px dashed var(--c-line);
   text-transform:none;letter-spacing:0;font-weight:400}
 @media print{ .tile .t-what{display:none} .tile .t-def{display:block !important} }
-.tile .t-ref .st-good{color:var(--st-good);font-weight:500}
+.tile .t-ref .st-good{color:var(--c-live-good);font-weight:500}
 .tile .t-ref .st-warn{color:var(--st-warn);font-weight:500}
 .tile .t-ref .st-bad{color:var(--st-bad);font-weight:500}
 
@@ -1521,7 +1575,7 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .grbar .gr-chip{position:absolute;transform:translateX(-50%);white-space:nowrap;
   font-family:var(--f-mono);font-size:11px;font-weight:500;line-height:1;
   padding:2px 5px;border-radius:var(--radius-xs);background:var(--c-bg);color:var(--c-ink)}
-.grbar .gr-chip.gr-good{color:var(--st-good)}
+.grbar .gr-chip.gr-good{color:var(--c-live-good)}
 .grbar .gr-chip.gr-warn{color:var(--c-warn-text)}
 .grbar .gr-chip.gr-bad{color:var(--st-bad-text)}
 .grbar .gr-track{position:relative;height:8px;border-radius:var(--radius-xs);overflow:visible;margin-top:2px}
@@ -1530,7 +1584,7 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
   background:var(--c-ink);transform:translateX(-1px);filter:none}
 .grbar .gr-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);
   font-size:10.5px;color:var(--c-ink-faint);margin-top:8px;font-weight:400}
-.grbar .gr-scale .gr-opt{color:var(--st-good);font-weight:500;white-space:nowrap}
+.grbar .gr-scale .gr-opt{color:var(--c-live-good);font-weight:500;white-space:nowrap}
 .grbar .gr-src{font-size:10.5px;color:var(--c-ink-faint);margin-top:6px;line-height:1.4;
   min-height:29px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 @media(max-width:640px){ .grbar .gr-scale{font-size:10px} }

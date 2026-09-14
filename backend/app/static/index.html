@@ -2675,6 +2675,11 @@ function setGrade(sel,value){
   g.textContent=v;
   g.setAttribute('aria-label','Grade '+v);
   g.classList.toggle('grade-word', v.length>1 && v!=='—');
+  // The score card's grade is a filled chip coloured by CSS (green A/B,
+  // amber C, coral below); every other grade badge keeps its inline colour.
+  const letter=/^[A-F]$/.test(v)?v.toLowerCase():'';
+  if(letter) g.dataset.g=letter; else delete g.dataset.g;
+  if(g.closest('.scorecard')){ g.style.borderColor=''; g.style.color=''; return; }
   const gc=GRADE_COLORS[v]||C.navy;
   g.style.borderColor=gc; g.style.color=gc;
 }
@@ -6741,10 +6746,11 @@ function renderScoreDelta(sel, kind, sport, score){
   const d=score-prev.score;
   const cls=d>0?'imp':d<0?'reg':'sta';
   const noun=sport==='bike'?'ride':'run';
-  const txt=d===0?'Same as' : `${d>0?'+':''}${d} vs`;
+  // was -> now, then the change: "64 -> 68  +4 vs last ride"
   host.className='score-delta '+cls;
   host.innerHTML=(d===0?'' : `<svg class="ic" aria-hidden="true"><use href="#i-arr-up"/></svg>`)
-    +`<span class="sd-val">${esc(txt)}</span> your last ${noun}`;
+    +`<span class="sd-val">${d===0?'same as':(d>0?'+':'')+d+' vs'}</span> last ${noun}`
+    +`<span class="sd-was">(was ${esc(String(prev.score))})</span>`;
 }
 function reRenderData(){ const s=document.body.dataset.state; if(s==='history') renderHistList(); else if(s==='trends') renderProgress(); }
 async function refreshCloud(){
@@ -7987,9 +7993,12 @@ function sportCard(sport, entries){
   const last=entries[0];
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
   // Says WHAT it is compared against. "0 · steady" read as a measurement.
+  // The landing's proof tile: first score struck through, latest in Archivo,
+  // the change as a chip.
   const deltaHtml=!dd ? '<span class="hint">first analysis — trends build from #2</span>'
-    : dd.delta===0 ? `<span class="tdelta sta">no change since your first</span>`
-    : `<span class="tdelta ${dd.cls}">${dd.delta>0?'+':''}${dd.delta} since your first${dd.trend?' · '+dd.trend:''}</span>`;
+    : `<span class="d-was">${scores[0]}</span><span class="d-arrow">→</span><span class="d-now">${scores[scores.length-1]}</span>`
+      +(dd.delta===0 ? `<span class="tdelta sta">no change</span>`
+        : `<span class="tdelta ${dd.cls}">${dd.delta>0?'+':''}${dd.delta}${dd.trend?' · '+dd.trend:''}</span>`);
   // Personal record: the latest score is a *new* PB only when it strictly beats
   // every prior one (a tie just shows "Best N · date", no fanfare).
   const best=scores.length?Math.max(...scores):null;

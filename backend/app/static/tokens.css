@@ -71,6 +71,12 @@
   --st-bad:#7E1611;  --st-bad-fill:#C5221F;  --st-bad-bg:#F6D9D6;
   --st-bad-text:#7E1611;
 
+  /* ---- "good", said out loud: the landing's green for the moments that are
+     positive -- in range, improving, high confidence, nothing to fix. The
+     status scale keeps its AA-on-tint text for tables; these are the chips. */
+  --c-live-good:#1F7A45; --c-live-good-fill:#2E9E5B; --c-live-good-bg:#E6F4EC; --c-live-good-line:#BCE3CC;
+  --c-live-bad:#B8371F; --c-live-bad-bg:#FDECE8; --c-live-bad-line:#F3C2B8;
+
   /* ---- over footage only ---- */
   --ov-halo:rgba(14,17,22,.55);        /* under every skeleton line; width = stroke + 4 */
   --shadow-footage:0 2px 6px rgba(20,24,31,.28);
