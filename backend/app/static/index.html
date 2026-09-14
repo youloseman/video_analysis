@@ -6073,7 +6073,7 @@ function shareVerdict(score){
 const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // the wordmark, nothing else
 const CARD_BODY='"IBM Plex Sans",system-ui,sans-serif';  // labels
 const CARD_MONO='"IBM Plex Mono",ui-monospace,Menlo,monospace';   // every numeral
-const CARD_FACES=['900 italic 58px Archivo','500 96px "IBM Plex Mono"','500 40px "IBM Plex Mono"',
+const CARD_FACES=['900 italic 58px Archivo','900 italic 104px Archivo','500 40px "IBM Plex Mono"',
   '500 22px "IBM Plex Mono"','500 26px "IBM Plex Mono"','400 28px "IBM Plex Sans"'];
 /* The address on the card is the product's, not the page's: a card built on a
    phone in the LAN test build or on a dev box must not advertise localhost. */
@@ -6158,7 +6158,7 @@ async function buildShareCard(card){
     // No still to show (a result the server kept the frame back from): the
     // score itself becomes the picture rather than an empty frame.
     const gcx=W/2, gcy=regionY+regionH/2;
-    x.textAlign='center'; x.fillStyle='#fff'; x.font=`500 240px ${CARD_MONO}`;
+    x.textAlign='center'; x.fillStyle='#fff'; x.font=`900 italic 250px ${CARD_DISPLAY}`;
     x.fillText(score==null?'—':String(score),gcx,gcy);
     x.textAlign='left';
   }
@@ -6169,7 +6169,7 @@ async function buildShareCard(card){
   let lx=P;
   const gradeTxt=(grade&&/^[A-F][+-]?$/.test(grade))?grade:null;
   if(img){                                   // without a frame the big numeral above already says it
-    x.fillStyle='#fff'; x.font=`500 96px ${CARD_MONO}`;
+    x.fillStyle='#fff'; x.font=`900 italic 104px ${CARD_DISPLAY}`;
     const sTxt=score==null?'—':String(score);
     x.fillText(sTxt,lx,cy-2);
     lx+=x.measureText(sTxt).width+18;

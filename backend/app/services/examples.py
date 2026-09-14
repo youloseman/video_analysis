@@ -453,7 +453,7 @@ _CSS = """
    letter round, a word stretches the pill. */
 .ex-score{display:flex;flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:6px 12px}
 .ex-score .why,.ex-cov{flex-basis:100%}
-.ex-score .n{font-family:var(--f-mono);font-size:56px;font-weight:500;color:var(--c-ink);
+.ex-score .n{font-family:var(--f-brand);font-size:60px;font-weight:900;font-style:italic;color:var(--c-ink);
   line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .ex-score .n small{font-size:14px;color:var(--c-ink-faint);font-weight:400;letter-spacing:0}
 .ex-score .g{font-family:var(--f-mono);font-style:normal;font-weight:500;
