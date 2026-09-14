@@ -784,13 +784,15 @@ main{padding:24px 0 64px}
 .pagehead .ph-right{margin-left:auto;font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint);display:flex;align-items:center;gap:12px}
 .card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius)}
 .cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
-h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-transform:none;
-  font-size:20px;line-height:1.3;letter-spacing:0;margin:4px 0 8px}
+/* Section headings speak in the landing's voice: Archivo italic, like the
+   band headline and the score. The eyebrow above stays mono. */
+h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--c-ink);text-transform:none;
+  font-size:22px;line-height:1.25;letter-spacing:-.01em;margin:4px 0 8px}
 .blockhead{margin:32px 0 12px}
 .blockhead .eyebrow{display:inline-flex;align-items:center;gap:8px}
 .blockhead .eyebrow .ic{width:13px;height:13px}
-.blockhead h3{font-family:var(--f-display);font-weight:600;text-transform:none;
-  font-size:20px;line-height:1.3;color:var(--c-ink);letter-spacing:0;margin:2px 0 0}
+.blockhead h3{font-family:var(--f-brand);font-weight:900;font-style:italic;text-transform:none;
+  font-size:22px;line-height:1.25;color:var(--c-ink);letter-spacing:-.01em;margin:2px 0 0}
 /* The section masthead of a report reads as one line: "Report · Your results". */
 .screenhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 16px;padding-bottom:14px;border-bottom:1px solid var(--c-line)}
 .screenhead h2{margin:0;font-size:16px}
