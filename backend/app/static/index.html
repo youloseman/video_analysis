@@ -196,7 +196,7 @@
     <a href="#" id="navFeedback" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Feedback</span></a>
     <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Reviews</span></a>
     <div class="navgroup-bottom">
-      <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>Plans</span></a>
+      <a href="#" id="navPricing" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>Pricing</span></a>
       <a href="/examples" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg><span>Examples</span></a>
       <a href="/academy" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg><span>Academy</span></a>
       <a href="#" id="navNew" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span>What’s new</span><span class="newdot hidden" id="navNewDot" aria-hidden="true"></span></a>
@@ -313,10 +313,15 @@
   </div>
 </div>
 
-<!-- No slogan: the first app screen is the tool. The h1 stays as the page
-     outline's root for a screen reader; nothing here paints. -->
+<!-- The band across the top. Signed out on the upload screen it carries the
+     one-line pitch; everywhere else it thins to the eyebrow and stays as the
+     page's blue edge. The h1 is the page outline's root either way. -->
 <div class="hero">
-  <h1>Flapp — running &amp; cycling technique analysis</h1>
+  <div class="wrap">
+    <div class="eyebrow">Video biomechanics · Run &amp; Bike</div>
+    <h1>Your technique, <span class="accent">measured</span></h1>
+    <p class="hero-line">Every joint angle against reference ranges, a 0&ndash;100 score and a fix-first plan.</p>
+  </div>
 </div>
 
 <main id="main">
@@ -350,98 +355,71 @@
   <!-- ============ UPLOADER ============ -->
   <section id="uploader" aria-labelledby="uploaderTitle">
     <div class="card uploader">
-      <!-- The page header: what this screen is, one line on how long it
-           takes, and the mode switch (a clip, or one photo for bike fit). -->
+      <!-- The screen is a short numbered walk: what, which sport, the clip,
+           (the position, on a bike), the optional details, then the button.
+           Each step is its own block so the eye lands on one thing at a time;
+           the numbers are CSS counters, so a hidden step (Position, for a
+           run) leaves no gap in the count. -->
       <div class="pagehead">
         <h2 class="uphead" id="uploaderTitle" tabindex="-1">Analyze <span id="fileNounCap" class="visually-hidden">Video</span></h2>
-        <span class="ph-lede">One clip from the side. 20–90 seconds to a report.</span>
-        <div class="modetabs" id="modeSeg" role="tablist" aria-label="Analysis type">
+        <span class="ph-lede">A few choices, one clip from the side. 20–90 seconds to a report.</span>
+      </div>
+
+      <!-- Step: video or photo -->
+      <div class="ustep" id="stepMode">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3>What are you analysing?</h3><p>A clip for the full report, or one photo for a static bike fit.</p></div></div>
+        <div class="modetabs bigtiles" id="modeSeg" role="tablist" aria-label="Analysis type">
           <button type="button" role="tab" data-mode="video" aria-selected="true">
-            <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Video
+            <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
+            <span><b>Video</b><small>5–15 s side-view clip · run or bike</small></span>
           </button>
           <button type="button" role="tab" data-mode="photo" aria-selected="false">
-            <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg> Photo · bike fit
+            <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg>
+            <span><b>Photo</b><small>One side-view still · bike fit only</small></span>
           </button>
         </div>
       </div>
 
-      <!-- Sport: a segmented control, the first thing on the page. -->
-      <div class="ctl ctl-sport">
-        <span class="ctl-label" id="sportLabel">Sport</span>
-        <div class="tilerow" id="sportSeg" role="group" aria-labelledby="sportLabel">
-          <button type="button" class="tile-btn" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>Run</button>
-          <button type="button" class="tile-btn" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>Bike</button>
+      <!-- Step: sport -->
+      <div class="ustep" id="stepSport">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3 id="sportLabel">Sport</h3></div></div>
+        <div class="ctl ctl-sport">
+          <div class="tilerow" id="sportSeg" role="group" aria-labelledby="sportLabel">
+            <button type="button" class="tile-btn" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>Run</button>
+            <button type="button" class="tile-btn" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>Bike</button>
+          </div>
         </div>
       </div>
 
-      <!-- Bike position. Under the clip, not above it: the drop zone is the
-           hero of this screen and clears the fold at both sizes. -->
-      <div class="ctl ctl-after-drop" id="positionField">
-        <span class="ctl-label" id="positionLabel">Position</span>
-        <div id="positionSeg" role="group" aria-labelledby="positionLabel">
-          <div class="posgroup">
-            <span class="posgroup-lbl">Road</span>
-            <div class="tilerow">
-              <button type="button" class="tile-btn" data-position="road_hoods" aria-pressed="false">Hoods</button>
-              <button type="button" class="tile-btn" data-position="road_drops" aria-pressed="false">Drops</button>
-            </div>
-          </div>
-          <div class="posgroup">
-            <span class="posgroup-lbl">Aero</span>
-            <div class="tilerow">
-              <button type="button" class="tile-btn" data-position="tt_aero" aria-pressed="false">Time Trial</button>
-              <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">Triathlon</button>
-            </div>
-          </div>
-          <!-- A real label, not a spacer: once the groups wrap on a phone this
-               button sits beside the aero pair, and an empty heading made
-               Casual read as a third aero position. -->
-          <div class="posgroup">
-            <span class="posgroup-lbl">Upright</span>
-            <div class="tilerow">
-              <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
-            </div>
-          </div>
+      <!-- Step: the clip. The drop zone and the camera side by side: filming
+           right here is the second door into the product, not a footnote
+           under the first one. -->
+      <div class="ustep" id="stepClip">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3>Your <span id="fileNounLow">clip</span></h3><p id="clipLede">Drop a file, pick one from your phone, or film right here with a framing guide.</p></div></div>
+        <div class="cliprow">
+          <input type="file" id="file" class="visually-hidden" accept="video/*"
+                 aria-describedby="dropHelp" aria-labelledby="uploaderTitle">
+          <label class="drop" id="drop" for="file">
+            <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+            <b id="dropTitle">Drag &amp; drop video or click to browse</b>
+            <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
+          </label>
+
+          <!-- Outside the <label> on purpose: a button inside it would also open
+               the file picker. Hidden when the browser can't record (no camera
+               API, no MediaRecorder) — a dead button teaches distrust, and the
+               file path above is the fallback either way. -->
+          <p class="camrow hidden" id="camRow">
+            <button class="camtile" id="camOpen" type="button">
+              <svg class="ic-lg" aria-hidden="true"><use href="#i-camera"/></svg>
+              <b>Record with camera</b>
+              <small>Framing guide &amp; 5 s self-timer — prop the phone and go</small>
+            </button>
+          </p>
         </div>
-        <p class="poshint" id="posHint"></p>
-      </div>
-
-      <!-- Camera side. OUTSIDE the bike-position block, which is where it lived
-           until now -- and since that block is hidden for running, the two-sided
-           RUN session was unreachable: the backend supports it, syncPairSlot has
-           run-specific copy for it, and no runner could ever click it.
-           Folded, because Auto-detect is right for nearly every clip. The
-           summary states what is set, so the choice is quiet, not hidden. -->
-      <details class="askbox sidebox ctl-after-drop" id="sideField">
-        <summary>Camera side: <b id="sideNow">Auto-detect</b> <span class="askopt">change</span></summary>
-        <div class="tilerow" id="sideSeg" role="group" aria-label="Camera side">
-          <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
-          <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
-          <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
-          <button type="button" class="tile-btn" data-side="both" aria-pressed="false">Both sides</button>
-        </div>
-        <p class="poshint" id="sideHint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
-      </details>
-
-      <!-- Drop zone -->
-      <input type="file" id="file" class="visually-hidden" accept="video/*"
-             aria-describedby="dropHelp" aria-labelledby="uploaderTitle">
-      <label class="drop" id="drop" for="file">
-        <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
-        <b id="dropTitle">Drag &amp; drop video or click to browse</b>
-        <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
-      </label>
-
-      <!-- Outside the <label> on purpose: a button inside it would also open
-           the file picker. Hidden when the browser can't record (no camera
-           API, no MediaRecorder) — a dead button teaches distrust, and the
-           file path above is the fallback either way. -->
-      <p class="camrow hidden" id="camRow">
-        <button class="btn btn-ghost btn-sm" id="camOpen" type="button">
-          <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
-          Or record right here — with a framing guide &amp; self-timer
-        </button>
-      </p>
 
       <div class="filepreview" id="filepreview">
         <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
@@ -483,6 +461,62 @@
       <!-- Pre-flight notes on the selected clip (duration, orientation).
            Filled by checkClip() from the browser's own metadata. -->
       <ul class="preflight hidden" id="preflight"></ul>
+      </div><!-- /stepClip -->
+
+      <!-- Step: bike position. Two levels: the family first (Road / Aero /
+           Upright), then the exact position within it -- five buttons in one
+           row asked the rider to know what "Drops" and "Triathlon" had in
+           common before they could choose. Hidden for a run. -->
+      <div class="ustep" id="positionField">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3 id="positionLabel">Position</h3><p>Where your hands are. Pick the family, then the exact position.</p></div></div>
+        <div class="seg poscat" id="posCat" role="group" aria-label="Position family">
+          <button type="button" data-cat="road" aria-pressed="false">Road</button>
+          <button type="button" data-cat="aero" aria-pressed="true">Aero</button>
+          <button type="button" data-cat="upright" aria-pressed="false">Upright</button>
+        </div>
+        <div id="positionSeg" role="group" aria-labelledby="positionLabel" data-cat="aero">
+          <div class="posgroup" data-cat="road">
+            <span class="posgroup-lbl">Road</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="road_hoods" aria-pressed="false">Hoods</button>
+              <button type="button" class="tile-btn" data-position="road_drops" aria-pressed="false">Drops</button>
+            </div>
+          </div>
+          <div class="posgroup" data-cat="aero">
+            <span class="posgroup-lbl">Aero</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="tt_aero" aria-pressed="false">Time Trial</button>
+              <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">Triathlon</button>
+            </div>
+          </div>
+          <div class="posgroup" data-cat="upright">
+            <span class="posgroup-lbl">Upright</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
+            </div>
+          </div>
+        </div>
+        <p class="poshint" id="posHint"></p>
+      </div>
+
+      <!-- Step: the optional details. Camera side sits OUTSIDE the bike-only
+           block above (inside it, a run could never start a two-sided
+           session); folded, because Auto-detect is right for nearly every
+           clip, and the summary states what is set. -->
+      <div class="ustep ustep-details" id="stepDetails">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3>Details</h3><p>All optional. Auto-detect is right for nearly every clip.</p></div></div>
+      <details class="askbox sidebox" id="sideField">
+        <summary>Camera side: <b id="sideNow">Auto-detect</b> <span class="askopt">change</span></summary>
+        <div class="tilerow" id="sideSeg" role="group" aria-label="Camera side">
+          <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
+          <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
+          <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
+          <button type="button" class="tile-btn" data-side="both" aria-pressed="false">Both sides</button>
+        </div>
+        <p class="poshint" id="sideHint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
+      </details>
 
       <!-- Which setup this was filmed on. Sits next to the clip rather than
            on a settings screen because it is a property of THIS recording:
@@ -565,6 +599,7 @@
           &mdash; a view the camera didn&rsquo;t see, a force we can&rsquo;t measure &mdash; you&rsquo;ll be told that
           instead of given a guess.</p>
       </details>
+      </div><!-- /stepDetails -->
 
       <!-- Submit: the one filled button on the screen, what is left this
            month beside it, the plans link on the right. -->
@@ -629,7 +664,7 @@
                  that is hip HEIGHT in the frame, and turning sideways does not
                  move it. Up-and-down shake does, at step frequency, which is
                  why it cannot be filtered out afterwards. -->
-            <p><b>Film from the side</b>, camera at hip height. A few degrees off exactly 90&deg; actually helps separate the legs. <b>Turning to follow you is fine</b> — it&rsquo;s up-and-down shake that hurts, not panning.</p>
+            <p><b>Film from the side, camera at hip height.</b> A few degrees off exactly 90&deg; actually helps separate the legs. <b>Turning to follow you is fine</b> — it&rsquo;s up-and-down shake that hurts, not panning.</p>
           </li>
         </ol>
 
@@ -2052,6 +2087,8 @@ $('#modeSeg').addEventListener('click',e=>{
     : 'MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)';
   $('#change').textContent = photo?'Change photo':'Change clip';
   $('#fileNounCap').textContent = photo?'Photo':'Video';
+  $('#fileNounLow').textContent = photo?'photo':'clip';
+  $('#clipLede').textContent = photo?'One side-view still of you on the bike, at the bottom of the pedal stroke.':'Drop a file, pick one from your phone, or film right here with a framing guide.';
   syncOverlayField();             // photo has nothing to annotate; free gets no render
   $('#guides .g-dur').classList.toggle('hidden', photo); // duration guideline is video-only
   if(typeof renderHeightField==='function') renderHeightField();
@@ -2087,14 +2124,36 @@ $('#heightInput').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.
 $('#mobGoal').addEventListener('change', ()=>{ saveMobGoal(); });
 $('#mobClear').addEventListener('click', ()=>{ clearMobility(); });
 
-/* ---- bike position tiles (grouped: Road / Aero / Casual) ---- */
+/* ---- bike position, two levels: the family (Road / Aero / Upright), then
+   the exact position inside it. The family buttons only reveal a group; the
+   position buttons are the ones that set state. ---- */
+function posCatOf(position){
+  const b=$(`#positionSeg [data-position="${position}"]`);
+  const g=b&&b.closest('.posgroup'); return g?g.dataset.cat:'aero';
+}
+function syncPosCat(){
+  const cat=posCatOf(state.position);
+  $('#positionSeg').dataset.cat=cat;
+  $('#posCat').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.cat===cat)));
+}
+$('#posCat').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(posCatOf(state.position)!==b.dataset.cat){
+    // Switching family picks that family's first position, so the summary
+    // never says "Aero" over a Road choice.
+    const first=$(`#positionSeg .posgroup[data-cat="${b.dataset.cat}"] button`);
+    if(first) first.click();
+  }
+});
 $('#positionSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   state.position=b.dataset.position;
   $('#positionSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  syncPosCat();
   updatePosHint();
   readyHint();
 });
+syncPosCat();
 /* Camera-side override (bike): the rider knows which side they filmed. */
 state.cameraSide = state.cameraSide || 'auto';
 state.fileB = state.fileB || null;

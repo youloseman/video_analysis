@@ -76,7 +76,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .profilefilter button{font-family:var(--f-body);font-size:13px;font-weight:500;cursor:pointer;min-height:32px;
   padding:5px 12px;border-radius:var(--radius);border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink-soft)}
 .profilefilter button:hover{background:var(--c-panel)}
-.profilefilter button[aria-pressed="true"]{background:var(--c-ink);border-color:var(--c-ink);color:var(--c-bg)}
+.profilefilter button[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
 
 /* ---------- Pricing section ---------- */
 .pricing-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
@@ -89,7 +89,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .billtoggle button{font-family:var(--f-body);font-weight:500;font-size:13px;border:0;cursor:pointer;min-height:36px;
   padding:6px 14px;border-radius:0;background:transparent;color:var(--c-ink-soft);transition:background-color .15s ease-out,color .15s ease-out}
 .billtoggle button:hover{background:var(--c-panel)}
-.billtoggle button[aria-pressed="true"]{background:var(--c-ink);color:var(--c-bg)}
+.billtoggle button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
 .billtoggle .save{font-family:var(--f-mono);font-size:10.5px;font-weight:500;color:inherit;opacity:.8;margin-left:6px}
 .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;align-items:stretch}
 @media(max-width:900px){.tiers{grid-template-columns:1fr;max-width:440px;margin-left:auto;margin-right:auto}}
@@ -724,12 +724,34 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .botlink:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px;border-radius:var(--radius-btn)}
 .backhome-row{display:none;margin:0 0 16px}
 
-/* ---------- Hero ----------
-   Retired. The first app screen is the tool, not a slogan; the element stays
-   in the markup as the page-outline root (an h1 the screen reader can find)
-   and as the anchor other tests navigate by. Nothing paints. */
-.hero{display:block;height:0;overflow:hidden}
-.hero h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* ---------- The band across the top ----------
+   Brand navy to the accent, left to right. Signed out on the upload screen it
+   carries the one-line pitch; everywhere else it thins to the eyebrow. On a
+   phone it goes: 120 px of strapline is 120 px the upload button loses. */
+.hero{background:linear-gradient(135deg,var(--c-brand-navy) 0%,var(--c-brand-mid) 60%,var(--c-blue) 100%);
+  color:#fff;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-40px;top:0;bottom:0;width:320px;
+  background:
+    linear-gradient(115deg,transparent 44%,rgba(255,255,255,.10) 44%,rgba(255,255,255,.10) 48%,transparent 48%),
+    linear-gradient(115deg,transparent 56%,rgba(255,255,255,.06) 56%,rgba(255,255,255,.06) 60%,transparent 60%)}
+.hero .wrap{position:relative;z-index:1;padding:14px 24px 16px}
+.hero .eyebrow{color:rgba(255,255,255,.72)}
+.hero h1{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.2;letter-spacing:0;margin:4px 0 0;color:#fff}
+.hero h1 .accent{color:#A7C2F9}
+.hero-line{margin:4px 0 0;font-size:13px;line-height:1.45;color:rgba(255,255,255,.82);max-width:72ch}
+body:not([data-state="upload"]) .hero .wrap,
+body.authed .hero .wrap{padding:12px 24px}
+body:not([data-state="upload"]) .hero h1,
+body.authed .hero h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body:not([data-state="upload"]) .hero-line,
+body.authed .hero-line{display:none}
+@media(max-width:560px){
+  .hero{background:none}
+  .hero::after{display:none}
+  .hero .wrap{padding:0}
+  .hero .eyebrow,.hero-line{display:none}
+  .hero h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}
 
 /* ---------- Main / cards / section headers ---------- */
 main{padding:24px 0 64px}
@@ -859,29 +881,60 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .btn-link:hover{text-decoration:underline;text-underline-offset:3px}
 
 /* ---------- Uploader ----------
-   No card around the form: the page is the ground, the drop zone is the one
-   white rectangle, and everything under it is a row on a hairline. */
-#uploader{max-width:900px;margin:0;display:block}
-.uploader{padding:0;margin-top:0;position:relative;z-index:5;width:100%;background:transparent;border:0;display:flex;flex-direction:column}
-/* The drop zone is the hero: it comes before the bike position and the camera
-   side, which the markup keeps above it (the tests pin that order). */
-.uploader > *{order:2}
-.uploader > .pagehead,.uploader > .ctl-sport,.uploader > #file,.uploader > .drop,.uploader > .camrow,
-.uploader > .filepreview,.uploader > .pairslot,.uploader > .preflight{order:1}
-.uploader > .ctl-after-drop{order:2}
+   A numbered walk. Each step is a white block on the page ground with a
+   navy number, a title and one line under it; the counter is CSS, so a
+   hidden step (Position, for a run) leaves no gap in the numbering. */
+#uploader{max-width:900px;margin:0;display:block;counter-reset:ustep}
+.uploader{padding:0;margin-top:0;position:relative;z-index:5;width:100%;background:transparent;border:0}
 .uphead{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-ink);margin:0}
 .uploader .pagehead{margin-bottom:16px}
-.uploader .pagehead .modetabs{margin-left:auto}
+.ustep{background:var(--c-bg);border:1px solid var(--c-line);padding:18px 20px 20px;margin:0 0 12px}
+.ustep-head{display:flex;align-items:flex-start;gap:14px;margin:0 0 14px}
+.ustep-n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--c-brand-navy);color:#fff;
+  font-family:var(--f-mono);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center}
+.ustep-n::before{counter-increment:ustep;content:counter(ustep)}
+.ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:16px;line-height:28px;color:var(--c-ink);margin:0;text-transform:none;letter-spacing:0}
+.ustep-head p{font-size:13px;color:var(--c-ink-faint);margin:0;line-height:1.45}
+/* Inside a step the rows sit on hairlines; the last one has no rule under it. */
+.ustep .askbox:last-child,.ustep .switch:last-child,.ustep .overlay-locked:last-child{border-bottom:0}
+/* The clip: the drop zone and the camera tile side by side. */
+.cliprow{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:12px;align-items:stretch}
+/* No camera (a photo, or a browser that cannot record): the drop zone takes the row. */
+.cliprow:has(.camrow.hidden){grid-template-columns:1fr}
+.cliprow .drop{margin:0}
+.camrow{margin:0;display:flex}
+.camrow.hidden{display:none}
+.camtile{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;
+  padding:22px 16px;background:var(--c-panel-blue);border:1px solid var(--c-blue);color:var(--c-ink);cursor:pointer;
+  font-family:var(--f-body);transition:background-color .15s ease-out,border-color .15s ease-out;min-height:44px}
+.camtile .ic-lg{width:30px;height:30px;color:var(--c-blue);margin-bottom:4px}
+.camtile b{font-size:14.5px;font-weight:600;color:var(--c-brand-navy)}
+.camtile small{font-size:12px;color:var(--c-ink-soft);line-height:1.4}
+.camtile:hover{background:#DCE6FB;border-color:var(--c-brand-navy)}
+.camtile:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+@media(max-width:640px){ .cliprow{grid-template-columns:1fr} .camtile{padding:14px 16px;flex-direction:row;text-align:left;gap:12px} .camtile .ic-lg{margin:0;width:24px;height:24px} .camtile b{display:block} }
+/* Position family, then the exact position. */
+.poscat{margin:0 0 12px}
+#positionSeg .posgroup{display:none}
+#positionSeg[data-cat="road"] .posgroup[data-cat="road"],
+#positionSeg[data-cat="aero"] .posgroup[data-cat="aero"],
+#positionSeg[data-cat="upright"] .posgroup[data-cat="upright"]{display:flex}
+#positionSeg .posgroup-lbl{display:none}
 
-/* Mode tabs (video / photo) ride the header as a small outline segment. */
-.modetabs{display:inline-flex;gap:0;padding:0;background:var(--c-bg);border:1px solid var(--c-line-strong);
-  border-radius:var(--radius);position:relative;z-index:6}
-.modetabs button{font-family:var(--f-body);font-weight:500;font-size:12.5px;color:var(--c-ink-soft);
-  background:transparent;border:none;border-radius:0;padding:5px 12px;min-height:32px;cursor:pointer;display:flex;align-items:center;gap:6px;
+/* Mode tiles (video / photo): two big tiles in step one. */
+.modetabs{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0;background:var(--c-bg);border:1px solid var(--c-line-strong);position:relative;z-index:6;max-width:640px}
+.modetabs button{font-family:var(--f-body);font-weight:500;font-size:14px;color:var(--c-ink-soft);text-align:left;
+  background:transparent;border:none;border-left:1px solid var(--c-line);border-radius:0;padding:14px 16px;min-height:44px;cursor:pointer;display:flex;align-items:center;gap:12px;
   transition:background-color .15s,color .15s}
-.modetabs button .ic{width:14px;height:14px}
+.modetabs button:first-child{border-left:0}
+.modetabs button .ic{width:20px;height:20px;color:var(--c-ink-faint);flex:none}
+.modetabs button span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.modetabs button b{font-weight:600;color:var(--c-ink);font-size:14.5px}
+.modetabs button small{font-size:12px;color:var(--c-ink-faint);line-height:1.35}
 .modetabs button:hover{background:var(--c-panel);color:var(--c-ink)}
-.modetabs button[aria-selected="true"]{background:var(--c-ink);color:var(--c-bg)}
+.modetabs button[aria-selected="true"]{background:var(--c-brand-navy);color:#fff}
+.modetabs button[aria-selected="true"] .ic,.modetabs button[aria-selected="true"] b{color:#fff}
+.modetabs button[aria-selected="true"] small{color:rgba(255,255,255,.75)}
 .modetabs button:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 
 /* Segmented control: a chosen value keeps the ink fill -- that contrast now
@@ -893,17 +946,17 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .seg button:first-child{border-left:0}
 .seg button .ic{width:15px;height:15px}
 .seg button:hover{background:var(--c-panel);color:var(--c-ink)}
-.seg button[aria-pressed="true"]{background:var(--c-ink);color:var(--c-bg)}
+.seg button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
 
 /* control rows (label left, control right, on a hairline) */
 .ctl{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px 16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--c-line)}
 .ctl-label{display:block;font-size:13px;font-weight:400;color:var(--c-ink-soft);margin:0}
 /* The sport picker is the first row and the first control: a segment, not a
    row of tiles. It has no label of its own on the artboards. */
-.ctl.ctl-sport{grid-template-columns:1fr;border-bottom:0;padding:0 0 12px}
+.ctl.ctl-sport{grid-template-columns:1fr;border-bottom:0;padding:0}
 .ctl.ctl-sport .ctl-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .tilerow{display:inline-flex;gap:0;border:1px solid var(--c-line-strong);background:var(--c-bg)}
-.ctl-sport .tilerow{display:grid;grid-template-columns:1fr 1fr;width:100%;max-width:360px}
+.ctl-sport .tilerow{display:grid;grid-template-columns:1fr 1fr;width:100%;max-width:640px}
 #positionSeg{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
 .posgroup{display:flex;flex-direction:row;align-items:center;gap:8px;flex:0 1 auto;min-width:0}
 .posgroup-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);flex:none}
@@ -928,7 +981,7 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .tile-btn[aria-pressed="true"] .ic{color:inherit}
 .tile-btn:hover{background:var(--c-panel);color:var(--c-ink)}
 .tile-btn:active{background:var(--c-panel)}
-.tile-btn[aria-pressed="true"]{background:var(--c-ink);color:var(--c-bg);font-weight:500}
+.tile-btn[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff;font-weight:500}
 .tile-btn:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px}
 .ctl-sport .tile-btn{min-height:44px;font-size:14px}
 
@@ -958,22 +1011,23 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .guides li b{color:var(--c-ink);font-weight:500}
 
 /* ---- Capture guide ----
-   "How to film it": eyebrow, a lede, three numbered rows -- figure at 120 px
-   beside its rule -- and the folded list of six. The figures are the four
-   approved assets, used verbatim. */
-.capguide{border:0;border-radius:0;padding:0;margin:20px 0 0;background:transparent}
+   "How to film it": three panels in one row, the figure above its rule,
+   the folded list of six under them. The figures are the four approved
+   assets, used verbatim. */
+.capguide{border:1px solid var(--c-line);border-radius:0;padding:18px 20px 20px;margin:20px 0 0;background:var(--c-bg)}
 .capguide .eyebrow{display:flex;align-items:center;gap:12px}
 .cg-lede{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:8px 0 0;max-width:64ch}
-.cg-body{display:flex;flex-direction:column;gap:0;margin:14px 0 0;padding:0;list-style:none;counter-reset:cg;
-  border:1px solid var(--c-line);background:var(--c-bg)}
-.cg-step{margin:0;display:grid;grid-template-columns:36px 136px minmax(0,1fr);gap:0 16px;align-items:center;padding:14px 18px;border-top:1px solid var(--c-line)}
-.cg-step:first-child{border-top:0}
-.cg-step::before{counter-increment:cg;content:counter(cg);font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);align-self:center}
+.cg-body{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:16px 0 0;padding:0;list-style:none;counter-reset:cg;
+  border:1px solid var(--c-line)}
+.cg-step{margin:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:18px 16px 16px;border-left:1px solid var(--c-line);position:relative}
+.cg-step:first-child{border-left:0}
+.cg-step::before{counter-increment:cg;content:counter(cg);position:absolute;left:12px;top:12px;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
 .cg-fig{width:120px;height:120px;aspect-ratio:1;display:block;margin:0}
-.cg-step p{position:relative;padding-left:0;margin:0;font-size:13.5px;line-height:1.5;color:var(--c-ink-soft)}
-.cg-step p b{color:var(--c-ink);font-weight:600;display:block;margin-bottom:2px}
+.cg-step p{position:relative;padding-left:0;margin:0;font-size:13px;line-height:1.5;color:var(--c-ink-soft)}
+.cg-step p b{color:var(--c-ink);font-weight:600}
+.cg-step p b:first-child{display:block;margin-bottom:2px}
 .cg-step p::before{display:none}
-.cg-more{margin-top:8px;border:1px solid var(--c-line);background:var(--c-bg);padding:0}
+.cg-more{margin-top:10px;border:1px solid var(--c-line);background:var(--c-bg);padding:0}
 .cg-more summary{font-size:13.5px;font-weight:500;color:var(--c-ink);cursor:pointer;min-height:40px;display:flex;align-items:center;gap:10px;padding:0 18px;list-style:none}
 .cg-more summary::-webkit-details-marker{display:none}
 .cg-more summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s ease;color:var(--c-ink-faint)}
@@ -998,10 +1052,11 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .trustrow a{color:var(--c-ink-soft);text-decoration:underline;text-underline-offset:2px}
 .trustrow a:hover{color:var(--c-ink)}
 @media(max-width:640px){
-  .capguide{padding:0}
-  .cg-body{gap:0}
-  .cg-step{grid-template-columns:24px 88px minmax(0,1fr);gap:0 12px;padding:12px}
-  .cg-fig{width:80px;height:80px}
+  .capguide{padding:14px}
+  .cg-body{grid-template-columns:1fr}
+  .cg-step{flex-direction:row;text-align:left;align-items:center;gap:14px;padding:12px 12px 12px 34px;border-left:0;border-top:1px solid var(--c-line)}
+  .cg-step:first-child{border-top:0}
+  .cg-fig{width:80px;height:80px;flex:none}
   .trustrow li{border-right:0;margin:0;padding:0;display:inline}
   .trustrow{display:block}
 }
@@ -1104,7 +1159,7 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .step.active{color:var(--c-ink);background:var(--c-panel-blue)}
 .step.active .sdot{border-color:var(--c-blue);color:var(--c-blue)}
 .step.done{color:var(--c-ink-soft)}
-.step.done .sdot{border-color:var(--c-ink);background:var(--c-ink);color:var(--c-bg)}
+.step.done .sdot{border-color:var(--c-brand-navy);background:var(--c-brand-navy);color:#fff}
 .step .sline{display:none}
 .pbar{height:4px;background:var(--c-line);border-radius:0;overflow:hidden;max-width:none;margin:0}
 .pbar .fill{height:100%;width:0;border-radius:0;background:var(--c-blue);transition:width .3s ease}
@@ -1400,7 +1455,7 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .phasepick{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--c-bg);border:1px solid var(--c-line);border-radius:0;padding:12px 14px;margin:0 0 14px}
 .phasepick-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);line-height:1.5}
 .phasepick-lbl .hint{text-transform:none;letter-spacing:0;font-weight:400;font-size:12px;font-family:var(--f-body)}
-.seg-sm button[aria-pressed="true"]{background:var(--c-ink);color:var(--c-bg)}
+.seg-sm button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
 .aero-lead{font-size:14px;line-height:1.55;color:var(--c-ink);margin:14px 0 6px}
 .aero-gauge{width:100%;max-width:400px;height:auto;display:block;margin:6px 0 10px}
 .aero-levers-h{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);margin:10px 0 8px}
@@ -1413,7 +1468,7 @@ h2.sec{font-family:var(--f-display);font-weight:600;color:var(--c-ink);text-tran
 .lev-lbl{font-weight:600;font-size:13.5px;color:var(--c-ink)}
 .lev-txt{font-size:13px;color:var(--c-ink-soft);line-height:1.45;margin-top:3px}
 .lev-tag{font-family:var(--f-mono);font-weight:500;font-size:11px;padding:1px 8px;border-radius:var(--radius-xs);white-space:nowrap;border:1px solid var(--c-line-strong)}
-.lev-w{background:var(--c-ink);color:var(--c-bg);border-color:var(--c-ink)}
+.lev-w{background:var(--c-brand-navy);color:#fff;border-color:var(--c-brand-navy)}
 .lev-cue{background:var(--c-panel-blue);color:var(--c-blue-dk);border-color:var(--c-blue-dk)}
 .lev-ok{background:var(--st-good-bg);color:var(--st-good);border-color:var(--st-good-fill)}
 .aero-cue{display:flex;gap:8px;align-items:flex-start;background:var(--c-panel-quiet);border:1px solid var(--c-line);border-radius:0;padding:12px 14px;font-size:13.5px;color:var(--c-ink);margin:8px 0}
@@ -1662,15 +1717,15 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   display:inline-flex;align-items:center;gap:7px}
 .fb-thumb:hover{border-color:var(--c-ink);color:var(--c-ink)}
 .fb-thumb .ic{width:14px;height:14px}
-.fb-thumb[aria-pressed="true"]{background:var(--c-ink);border-color:var(--c-ink);color:var(--c-bg)}
-.fb-thumb.fb-down[aria-pressed="true"]{background:var(--c-ink);border-color:var(--c-ink);color:var(--c-bg)}
+.fb-thumb[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
+.fb-thumb.fb-down[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
 .fb-more{margin-top:14px;padding:16px;background:var(--c-bg);border:1px solid var(--c-line);border-radius:0}
 .fb-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);margin:0 0 8px}
 .fb-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
 .fb-tag{font-family:var(--f-body);font-weight:400;font-size:13px;color:var(--c-ink-soft);
   background:var(--c-bg);border:1px solid var(--c-line-strong);border-radius:0;padding:5px 12px;min-height:36px;cursor:pointer;display:inline-flex;align-items:center}
 .fb-tag:hover{border-color:var(--c-ink)}
-.fb-tag[aria-pressed="true"]{background:var(--c-ink);border-color:var(--c-ink);color:var(--c-bg)}
+.fb-tag[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
 .fb-more textarea{width:100%;padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-xs);
   font-size:14px;font-family:var(--f-body);resize:vertical;min-height:76px;color:var(--c-ink);background:var(--c-bg)}
 .fb-more textarea:focus{border-color:var(--c-blue)}

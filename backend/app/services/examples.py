@@ -412,14 +412,14 @@ def _cta() -> str:
 # ---------------------------------------------------------------------------
 
 _CSS = """
-.ex-hero{background:linear-gradient(135deg,#14294B 0%,#1D3E77 60%,#2F6DE0 100%);
-  color:#fff;padding:44px 0 40px}
+.ex-hero{background:linear-gradient(135deg,var(--c-brand-navy) 0%,var(--c-brand-mid) 60%,var(--c-blue) 100%);
+  color:#fff;padding:36px 0 34px}
 .ex-hero .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
-.ex-hero .eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;
-  text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:12px}
-.ex-hero h1{font-family:var(--f-display);font-weight:900;font-style:italic;
-  text-transform:uppercase;font-size:clamp(30px,5vw,50px);line-height:1;margin:0 0 14px}
-.ex-hero p{color:rgba(255,255,255,.88);max-width:62ch;font-size:17px;line-height:1.55;margin:0}
+.ex-hero .eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:rgba(255,255,255,.72);margin-bottom:10px}
+.ex-hero h1{font-family:var(--f-display);font-weight:600;font-style:normal;
+  text-transform:none;font-size:clamp(24px,3.4vw,32px);line-height:1.2;margin:0 0 10px}
+.ex-hero p{color:rgba(255,255,255,.85);max-width:62ch;font-size:14.5px;line-height:1.55;margin:0}
 /* width:100% is load-bearing. `.appshell` is a column flex container, and a
    flex item with auto cross-axis margins does not stretch -- it is sized to
    fit its content. So the widest thing on the page (the reference table, which
@@ -428,24 +428,23 @@ _CSS = """
    its own box. */
 .ex-wrap{width:100%;max-width:1000px;margin:0 auto;padding:36px 24px 72px}
 .ex-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.ex-card{display:block;background:#fff;border:1px solid var(--c-line);
-  border-radius:var(--radius-lg);overflow:hidden;text-decoration:none;color:inherit;
-  box-shadow:var(--shadow);transition:box-shadow .15s,transform .15s}
-.ex-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.ex-card{display:block;background:var(--c-bg);border:1px solid var(--c-line);
+  border-radius:0;overflow:hidden;text-decoration:none;color:inherit;transition:border-color .15s ease-out}
+.ex-card:hover{border-color:var(--c-ink)}
 .ex-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--c-media-bg)}
 /* Block, not inline: this was a <span>, and padding on an inline box does not
    indent the lines that wrap -- the blurb ran into the card edge. */
 .ex-card .body{display:block;padding:16px 18px 18px}
-.ex-card .tag{font-family:var(--f-mono);font-size:10.5px;font-weight:600;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--c-blue)}
-.ex-card h2{font-size:17px;color:var(--c-navy);margin:6px 0 6px;line-height:1.25}
+.ex-card .tag{font-family:var(--f-mono);font-size:10.5px;font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint)}
+.ex-card h2{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-ink);margin:6px 0 6px;line-height:1.3}
 .ex-card p{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:0}
 .ex-badge{display:inline-block;font-family:var(--f-mono);font-size:10.5px;
-  font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;
-  border-radius:4px;background:var(--c-panel-blue);color:var(--c-blue-dk);margin-bottom:14px}
+  font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;
+  border-radius:2px;border:1px solid var(--c-blue-dk);color:var(--c-blue-dk);margin-bottom:14px}
 .ex-top{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;margin-bottom:8px}
 .ex-shot{flex:1 1 300px;min-width:260px}
-.ex-shot img{width:100%;border-radius:var(--radius);background:var(--c-media-bg)}
+.ex-shot img{width:100%;border-radius:0;border:1px solid var(--c-line);background:var(--c-media-bg)}
 .ex-side{flex:1 1 260px}
 /* The grade is a letter on a video result ("B") and a word on a photo one
    ("Excellent"), so the badge cannot be a fixed-width circle beside the
@@ -453,33 +452,32 @@ _CSS = """
    sized by its content -- min-width equal to the height keeps a single
    letter round, a word stretches the pill. */
 .ex-score{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
-.ex-score .n{font-family:var(--f-mono);font-size:46px;font-weight:600;color:var(--c-navy);
-  line-height:1;font-variant-numeric:tabular-nums}
-.ex-score .n small{font-size:18px;color:var(--c-ink-soft)}
-.ex-score .g{font-family:var(--f-display);font-style:italic;font-weight:900;
-  font-size:26px;color:var(--c-blue);border:2.5px solid var(--c-blue);
-  border-radius:999px;box-sizing:border-box;min-width:52px;height:52px;padding:0 18px;
-  white-space:nowrap;display:inline-flex;align-items:center;justify-content:center}
-.ex-score-none .n{font-family:var(--f-display);font-style:italic;font-size:30px;
-  color:var(--c-warn);text-transform:uppercase}
+.ex-score .n{font-family:var(--f-mono);font-size:56px;font-weight:500;color:var(--c-ink);
+  line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.ex-score .n small{font-size:14px;color:var(--c-ink-faint);font-weight:400;letter-spacing:0}
+.ex-score .g{font-family:var(--f-mono);font-style:normal;font-weight:500;
+  font-size:24px;color:var(--c-ink-faint);border:0;border-radius:0;box-sizing:border-box;min-width:0;height:auto;padding:0;
+  white-space:nowrap;display:inline-flex;align-items:center}
+.ex-score-none .n{font-family:var(--f-mono);font-style:normal;font-size:22px;
+  color:var(--c-ink-faint);text-transform:none}
 .ex-score-none .why{font-size:13px;color:var(--c-ink-soft);margin:0;line-height:1.5;
   align-self:stretch}
 .ex-cov{font-size:13.5px;color:var(--c-ink-soft);margin:14px 0 0;line-height:1.6;
   border-top:1px solid var(--c-line);padding-top:12px}
-.ex-cov b{color:var(--c-navy);font-family:var(--f-mono)}
+.ex-cov b{color:var(--c-ink);font-family:var(--f-mono);font-weight:500}
 .ex-cov-why{display:block;font-size:12.5px;color:var(--c-ink-faint);margin-top:4px}
 .ex-sec{margin-top:38px}
-.ex-sec h2{font-family:var(--f-display);font-weight:800;font-size:22px;
-  color:var(--c-navy);margin:0 0 8px}
+.ex-sec h2{font-family:var(--f-display);font-weight:600;font-size:20px;
+  color:var(--c-ink);margin:0 0 8px}
 .ex-lede{font-size:14.5px;color:var(--c-ink-soft);max-width:70ch;margin:0 0 14px;line-height:1.6}
-.ex-tw{overflow-x:auto;border:1px solid var(--c-line);border-radius:var(--radius);background:#fff}
+.ex-tw{overflow-x:auto;border:1px solid var(--c-line);border-radius:0;background:var(--c-bg)}
 .ex-bands{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
 .ex-bands th,.ex-bands td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--c-line)}
-.ex-bands thead th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--c-ink-soft);background:var(--c-panel)}
+.ex-bands thead th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;font-weight:500;
+  text-transform:uppercase;color:var(--c-ink-faint);background:var(--c-bg);border-bottom:1px solid var(--c-line-strong)}
 .ex-bands tbody tr:last-child td{border-bottom:none}
 .ex-bands td.v,.ex-bands td.b{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.ex-bands td.m{font-weight:600;color:var(--c-navy)}
+.ex-bands td.m{font-weight:500;color:var(--c-ink)}
 .ex-bands td.s{font-size:12px;color:var(--c-ink-faint)}
 .ex-bands tr.ok td.v{color:var(--st-good)}
 /* Three states, not two: "near" is the analyzer's own "acceptable" -- outside
@@ -515,17 +513,17 @@ _CSS = """
   clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .ex-list{margin:0;padding-left:20px;font-size:14.5px;color:var(--c-ink-soft);line-height:1.65}
 .ex-list li{margin:0 0 8px}
-.ex-list b{color:var(--c-navy)}
+.ex-list b{color:var(--c-ink);font-weight:600}
 .ex-kino{margin-top:38px}
-.ex-kino img{width:100%;border-radius:var(--radius);background:var(--c-media-bg)}
-.ex-cta{margin-top:48px;background:var(--c-panel-blue);border-radius:var(--radius-lg);
-  padding:30px 28px;text-align:center}
-.ex-cta h2{font-family:var(--f-display);font-weight:800;font-size:24px;color:var(--c-navy);margin:0 0 8px}
+.ex-kino img{width:100%;border-radius:0;border:1px solid var(--c-line);background:var(--c-media-bg)}
+.ex-cta{margin-top:48px;background:var(--c-panel-blue);border:1px solid var(--c-line);border-radius:0;
+  padding:28px;text-align:center}
+.ex-cta h2{font-family:var(--f-display);font-weight:600;font-size:20px;color:var(--c-ink);margin:0 0 8px}
 .ex-cta p{font-size:14.5px;color:var(--c-ink-soft);margin:0 0 18px}
-.ex-btn{display:inline-block;background:var(--c-coral-btn);color:#fff;font-weight:700;
-  padding:13px 26px;border-radius:var(--radius-btn);text-decoration:none;min-height:44px}
-.ex-btn:hover{background:var(--c-coral-dk)}
-.ex-back{display:inline-block;font-size:13.5px;color:var(--c-blue);margin-bottom:16px;text-decoration:none}
+.ex-btn{display:inline-block;background:var(--c-blue);color:#fff;font-weight:500;
+  padding:11px 24px;border-radius:0;text-decoration:none;min-height:44px}
+.ex-btn:hover{background:var(--c-blue-dk)}
+.ex-back{display:inline-block;font-size:13.5px;color:var(--c-blue-dk);margin-bottom:16px;text-decoration:none}
 /* Full column width: the rule above it spans the page, and a 76ch measure
    under a full-width rule read as a broken paragraph rather than a note. */
 .ex-note{font-size:12.5px;color:var(--c-ink-faint);line-height:1.6;margin-top:30px;
@@ -638,9 +636,9 @@ def render_sample(s: Sample, base_url: str) -> str:
         f'<main class="ex-wrap">'
         '<a class="ex-back" href="/examples">&larr; All samples</a>'
         '<span class="ex-badge">Sample report</span>'
-        f"<h1 style=\"font-family:var(--f-display);font-weight:900;font-style:italic;"
-        f'text-transform:uppercase;font-size:clamp(26px,4vw,38px);color:var(--c-navy);'
-        f'margin:0 0 10px;line-height:1.05">{_esc(s.title)}</h1>'
+        f"<h1 style=\"font-family:var(--f-display);font-weight:600;"
+        f'font-size:clamp(22px,3vw,28px);color:var(--c-ink);'
+        f'margin:0 0 10px;line-height:1.25">{_esc(s.title)}</h1>'
         f'<p class="ex-lede" style="font-size:16px">{_esc(s.blurb)}</p>'
         f'<div class="ex-top">{shot}'
         f'<div class="ex-side">{_score_block(s)}</div></div>'

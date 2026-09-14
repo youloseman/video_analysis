@@ -39,6 +39,11 @@
   --c-ink-faint:#5B6470;               /* ink/3: labels and units, 7.0:1 on white */
   --c-ink-disabled:#8A929E;            /* ink/4: disabled only (3.1:1) — never for content */
 
+  /* ---- brand navy: the band across the top of the app, and the fill of a
+     chosen value (Run / Bike, a segment, a filter) so a selection reads as
+     part of the same blue rather than as a black block. ---- */
+  --c-brand-navy:#14294B; --c-brand-mid:#1D3E77;
+
   /* ---- accent: the only one ---- */
   --c-blue:#2457C5; --c-blue-dk:#1C46A3; --c-blue-active:#163A87;
   --c-blue-ink:#FFFFFF;                /* label on the filled primary (5.4:1) */
@@ -87,6 +92,7 @@
    attribute, never by media query: the handoff is explicit that shipping dark
    means auditing every screen, not flipping a variable. */
 :root[data-theme="dark"]{
+  --c-brand-navy:#5B8DF0; --c-brand-mid:#3A5FB0;
   --c-ground:#0E1116; --c-bg:#161A21; --c-panel:#1F242C; --c-panel-blue:#12203C;
   --c-panel-quiet:#1F242C;             /* panel/quiet is dropped on dark: sunken + a top hairline */
   --c-line:#272D36; --c-line-strong:#3A424E; --c-blue-soft:#3A424E;
