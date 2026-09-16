@@ -286,6 +286,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* history */
 .hist-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 6px}
+.hist-tools[hidden]{display:none}   /* "Clear all" over an empty history */
 .hist-count{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
 .hist-clear{color:var(--st-bad)}
 .hist-clear:hover{background:var(--st-bad-bg);border-color:var(--st-bad-fill)}
@@ -357,13 +358,19 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 #dashCounts{order:1} #dashSummary{order:2} #dashSports{order:3} #dashForm{order:4}
 #dashFocus{order:5} #dashPlan{order:6} #dashboard > .blockhead:not(:first-child){order:7} #dashRecent{order:8}
 .dash-summary:not(:empty){margin:4px 0 20px}
-.dash-welcome{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:22px}
+/* The empty-state figures: the "How to film it" line set, drawn for the
+   moments the app has nothing to show yet (media/empty-*.webp). */
+.empty-fig{display:block;width:120px;height:120px;flex:none}
+.dash-welcome{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:22px;display:flex;align-items:center;gap:22px}
 .dash-welcome p{margin:0 0 14px;color:var(--c-ink)}
+.dash-welcome .empty-fig{width:104px;height:104px}
+@media(max-width:560px){ .dash-welcome{flex-direction:column;align-items:flex-start;gap:12px} }
 /* full-height centered empty state for History / Progress views */
 .emptybox{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
   gap:12px;min-height:38vh;padding:44px 32px;border:1px solid var(--c-line);border-radius:var(--radius);
   background:var(--c-bg);max-width:560px;margin:0 auto;width:100%}
 .emptybox .ic-lg{color:var(--c-ink-faint)}
+.emptybox .empty-fig{margin-bottom:4px}
 .emptybox h4{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-ink);margin:0}
 .emptybox p{margin:0;max-width:44ch;color:var(--c-ink-soft);font-size:13.5px;line-height:1.55}
 .emptybox .btn{margin-top:4px}
@@ -389,7 +396,11 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .d-arrow{color:var(--c-ink-faint);font-size:12px}
 .d-now{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;line-height:1;color:var(--c-ink);letter-spacing:-.01em}
 .ds-actions{display:flex;gap:8px;margin-top:14px}
-.dfocus{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:16px 18px;margin-bottom:20px}
+.dfocus{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:16px 18px;margin-bottom:20px;position:relative}
+/* "Nothing to fix" carries the figure top-right; the text keeps clear of it. */
+.dfocus-clean{padding-right:130px}
+.dfocus-clean .empty-fig{position:absolute;top:14px;right:18px;width:96px;height:96px}
+@media(max-width:560px){ .dfocus-clean{padding-right:18px} .dfocus-clean .empty-fig{position:static;width:80px;height:80px;margin-bottom:4px} }
 .dfocus .ic{width:16px;height:16px;vertical-align:-2px;margin-right:4px}
 .dfocus-body{font-size:13.5px;line-height:1.55;color:var(--c-ink);margin:6px 0 12px}
 .dfocus-body p{margin:0 0 8px}
@@ -1276,8 +1287,11 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .score-none{font-family:var(--f-mono);font-style:normal;font-weight:500;text-transform:none;font-size:.4em;letter-spacing:0;color:rgba(255,255,255,.6)}
 .score-none-why{font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85);
   max-width:64ch;margin:8px 0 0;padding:12px 14px;background:rgba(255,255,255,.08);
-  border-left:3px solid #FFD08A;border-radius:0;grid-column:1/-1}
+  border-left:3px solid #FFD08A;border-radius:0;grid-column:1/-1;display:flex;align-items:center;gap:14px}
 .score-none-why b{color:#fff}
+/* The "athlete too small" figure on a white plate, since the card is navy. */
+.score-none-why .sn-fig{flex:none;width:64px;height:64px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center}
+.score-none-why .sn-fig img{width:52px;height:52px;display:block}
 .score-meta .cov-why{display:inline-block;margin-top:2px;font-size:12px}
 .confwrap{grid-column:3}
 .scorecard .confbtn{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}

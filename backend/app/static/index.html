@@ -345,7 +345,7 @@
     <div id="dashForm"></div>
     <div id="dashFocus"></div>
     <div id="dashPlan"></div>
-    <div class="blockhead"><h3>Recent</h3></div>
+    <div class="blockhead" id="dashRecentHead"><h3>Recent</h3></div>
     <div id="dashRecent" class="dash-recent"></div>
     <!-- Counters. Last in the markup, first on the screen (CSS order): four
          quiet tiles across the top, the way the artboards open. -->
@@ -5522,10 +5522,11 @@ function render(job,opts){
   const wh=$('#scoreWithheld');
   if(wh){
     wh.innerHTML = withheld
-      ? `<b>We didn\u2019t score this clip.</b> ${esc(withheld.detail||'')}
+      ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
+         <span><b>We didn\u2019t score this clip.</b> ${esc(withheld.detail||'')}
          Everything we could measure is still below \u2014 the angles, the findings and
          how to refilm it. What we\u2019re holding back is the one number that would
-         have summarised them.`
+         have summarised them.</span>`
       : '';
     wh.classList.toggle('hidden', !withheld);
   }
@@ -7275,7 +7276,7 @@ function renderHistList(){
   }
   if(!a.length){
     w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
-      <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
+      <img class="empty-fig" src="/media/empty-first.webp" alt="" width="120" height="120">
       <h4>No analyses yet</h4>
       <p>Run your first clip and it’ll be saved here, so you can revisit scores and track your form over time.</p>
       <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
@@ -7964,7 +7965,7 @@ function renderProgress(){
     const noun=sport==='bike'?'rides':'runs';
     const have=all.length;
     grid.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
-      <svg class="ic-lg" aria-hidden="true"><use href="#i-progress"/></svg>
+      <img class="empty-fig" src="/media/empty-trends.webp" alt="" width="120" height="120">
       <h4>${have===0?'No trends yet':'One more to go'}</h4>
       <p>Analyze at least <b>2</b> ${noun} to unlock progress charts — you have <b>${have}</b> so far. Each new analysis adds a point.</p>
       <button class="btn btn-primary" data-analyze="${sport==='bike'?'bike':'run'}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a ${sport==='bike'?'ride':'run'}</button>
@@ -8139,7 +8140,8 @@ function renderDashFocus(all){
   const clean=!!m&&/nothing/i.test(m[1]);
   const body=m?m[2].trim():'';
   if(body){
-    host.innerHTML=`<div class="dfocus">
+    host.innerHTML=`<div class="dfocus${clean?' dfocus-clean':''}">
+      ${clean?'<img class="empty-fig" src="/media/empty-nothing-to-fix.webp" alt="" width="96" height="96">':''}
       <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-${clean?'check':'target'}"/></svg> ${clean?'Holding well':'Work on this'}</div>
         <h3>${clean?'Nothing to fix':'Your focus'}</h3><div class="speedline-sm"></div></div>
       <div class="dfocus-body">${mdToHtml(body)}</div>
@@ -8264,10 +8266,14 @@ function renderDashboard(){
   const all=loadHist();
   const nameEl=auth&&auth.email?auth.email.split('@')[0]:null;
   // First-run / empty state: friendly CTA, hide the widgets.
+  $('#dashRecentHead').classList.toggle('hidden', !all.length);
   if(!all.length){
     $('#dashSummary').innerHTML=`<div class="dash-welcome">
-      <p><b>Welcome${nameEl?', '+esc(nameEl):''}.</b> Run your first analysis and your technique, progress and focus areas will build up here.</p>
-      <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
+      <img class="empty-fig" src="/media/empty-first.webp" alt="" width="120" height="120">
+      <div>
+        <p><b>Welcome${nameEl?', '+esc(nameEl):''}.</b> Run your first analysis and your technique, progress and focus areas will build up here.</p>
+        <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
+      </div>
     </div>`;
     $('#dashSports').innerHTML=''; $('#dashForm').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML=''; $('#dashRecent').innerHTML=''; $('#dashCounts').innerHTML='';
     return;
