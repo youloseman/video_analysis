@@ -340,6 +340,14 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .tdelta.reg{color:var(--c-live-bad);background:var(--c-live-bad-bg);border-color:var(--c-live-bad-line)}
 .tdelta.sta{color:var(--c-ink-faint)}
 .tchart{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
+/* A series with no change: a short strip of dots on a line and one sentence,
+   not a tall box with a straight line across it. */
+.tflat{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.tflat-line{display:flex;justify-content:space-between;align-items:center;height:12px;position:relative;padding:0 2px}
+.tflat-line::before{content:"";position:absolute;left:6px;right:6px;top:50%;margin-top:-1px;border-top:2px solid var(--c-blue)}
+.tflat-line i{width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid var(--c-blue);position:relative;box-sizing:border-box}
+.tflat-line i:last-child{background:var(--c-blue);width:11px;height:11px;outline:1.5px solid rgba(36,87,197,.25);outline-offset:2px}
+.tflat-note{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint)}
 /* ---------- Dashboard ("My technique") ---------- */
 /* Order is the design's: the counters strip first (four tiles), the two sport
    cards -- the entry point, 56 px numeral -- then form, focus + plan side by
@@ -1652,9 +1660,29 @@ table.data tr.t-farrow:hover{background:none}
   background-attachment:local, local, scroll, scroll;
 }
 @media print{ .tablewrap{background:none;overflow:visible} }
+/* Phone: a data table is stacked, not scrolled. Each row becomes a card-like
+   block -- the row header on its own line, then every cell as "LABEL / value"
+   (the label comes from the column header, copied onto the cell by
+   labelTables()). Seven columns scrolled sideways hid the status pill, the
+   one cell that says whether the number is fine. */
 @media(max-width:640px){
-  .tablewrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:28px;pointer-events:none;
-    background:linear-gradient(90deg,transparent,var(--c-bg))}
+  .tablewrap{background:none;overflow:visible}
+  .tablewrap table.data thead{display:none}
+  .tablewrap table.data,.tablewrap table.data tbody{display:block}
+  .tablewrap table.data tr{display:flex;flex-wrap:wrap;gap:10px 18px;padding:12px 0;border-bottom:1px solid var(--c-line)}
+  .tablewrap table.data tbody tr:hover{background:none}
+  .tablewrap table.data tbody th{flex:1 1 auto;order:-2;padding:0;border:0;font-size:14px}
+  /* The status pill sits on the name line, right-aligned; the numbers follow
+     on their own line (tr::after is the line break). */
+  .tablewrap table.data td.col-status{order:-1;flex:0 0 auto;margin-left:auto}
+  .tablewrap table.data td.col-status::before{display:none}
+  .tablewrap table.data tr::after{content:"";flex:0 0 100%;order:-1;margin:-10px 0 0}
+  .tablewrap table.data td{display:flex;flex-direction:column;gap:3px;padding:0;border:0;text-align:left;font-size:13px;min-width:0}
+  .tablewrap table.data td::before{content:attr(data-l);font-family:var(--f-mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint)}
+  .tablewrap table.data td:empty,.tablewrap table.data td:not([data-l])::before,.tablewrap table.data td[colspan]::before{display:none}
+  .tablewrap table.data td[colspan]{flex:0 0 100%}
+  .tablewrap table.data tr.t-farrow{padding:8px 0 4px}
+  .tablewrap table.data th .ang-src{display:inline;margin-left:6px}
 }
 
 details.raw{margin-top:28px}

@@ -1919,6 +1919,26 @@ const MAX_MB=200;
 function fmtSize(b){ return b>=1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
 // `kind`: true/'err' = rejection (red), 'warn' = advisory (amber), else neutral.
 // Stays on textContent -- messages interpolate user-supplied file names.
+/* On a phone every data table is stacked (app.css, max-width:640px) and each
+   cell shows its column header as a small label. The header text is copied
+   onto the cells here, once per table, whenever a table lands in the DOM --
+   the tables are built by a dozen renderers and this is the one place. */
+function labelTables(root){
+  (root||document).querySelectorAll('table.data').forEach(t=>{
+    const hs=[...t.querySelectorAll('thead th')].map(h=>h.textContent.replace(/\s+/g,' ').trim());
+    if(!hs.length) return;
+    t.querySelectorAll('tbody tr').forEach(tr=>{
+      let i=0;
+      [...tr.children].forEach(c=>{
+        if(c.tagName==='TD' && !c.hasAttribute('data-l') && !c.hasAttribute('colspan')) c.setAttribute('data-l',hs[i]||'');
+        i+=c.colSpan||1;
+      });
+    });
+  });
+}
+new MutationObserver(muts=>{
+  for(const m of muts){ for(const n of m.addedNodes){ if(n.nodeType===1 && (n.matches('table.data,tbody,tr')||n.querySelector('table.data'))){ labelTables(); return; } } }
+}).observe(document.documentElement,{childList:true,subtree:true});
 function hintMsg(msg,kind=false){
   const h=$('#hint'); h.textContent=msg;
   h.classList.toggle('err',kind===true||kind==='err');
@@ -7854,8 +7874,18 @@ function renderBiomechanics(bio, sport){
   block.classList.remove('hidden');
 }
 
-function trendChart(vals,dates,opt,unit){
-  const W=340,H=132,pad={l:10,r:12,t:16,b:14}, n=vals.length;
+/* `wide` is the score card, which spans the grid: a 340-wide drawing scaled
+   to a full row stood 400 px tall. A flat series (every value the same) gets
+   a short strip instead of a tall box with one straight line across it --
+   the card's chip already says "steady"; the chart only needs to agree. */
+function trendChart(vals,dates,opt,unit,wide){
+  const n=vals.length;
+  if(n>=2 && Math.max(...vals)===Math.min(...vals)){
+    const v=vals[n-1];
+    const note=(opt && v>=opt[0] && v<=opt[1] ? 'in range, ' : '')+`no change across ${n} analyses`;
+    return `<div class="tflat" role="img" aria-label="${esc(note)}"><span class="tflat-line">${'<i></i>'.repeat(n)}</span><span class="tflat-note">${esc(note)}</span></div>`;
+  }
+  const W=wide?1000:340, H=wide?140:132, pad={l:10,r:12,t:16,b:14};
   let lo=Math.min(...vals), hi=Math.max(...vals);
   if(opt){ lo=Math.min(lo,opt[0]); hi=Math.max(hi,opt[1]); }
   if(lo===hi){ lo-=1; hi+=1; }
@@ -7956,7 +7986,7 @@ function renderProgress(){
     return `<div class="tcard${m.key==='score'?' tcard-score':''}">
       <div class="tc-head"><span class="tc-lbl">${esc(m.label)}</span><span class="tc-val">${Math.round(last*10)/10}${m.unit||''}</span></div>
       <div class="tc-sub"><span class="tdelta ${tcls}">${deltaStr}${trend?' · '+trend:''}</span> · ${series.length} analyses</div>
-      ${trendChart(series,dser,opt,m.unit)}
+      ${trendChart(series,dser,opt,m.unit, m.key==='score' && window.innerWidth>640)}
     </div>`;
   }).join('');
   // Free tier: the score trend is real; the rest are gated -> show them as
