@@ -50,14 +50,28 @@ def test_the_camera_side_control_is_not_inside_the_bike_only_block():
     assert 'id="sideField"' in UPLOADER
 
 
+def test_the_session_type_is_decided_before_the_footage():
+    """"Both sides" changes the SHAPE of the footage step (one slot or two),
+    so it is asked before the footage, in its own step, as a tile that says
+    what it costs -- not a fold inside "all optional" details that reached
+    back up the page and rebuilt the clip step after a file was in it
+    (docs/ANALYZE_FLOW_PLAN.md)."""
+    assert UPLOADER.index('id="stepFilm"') < UPLOADER.index('id="stepClip"')
+    film = _block(UPLOADER, "stepFilm")
+    assert 'data-film="both"' in film and 'data-film="one"' in film
+    assert 'id="sideSeg"' in film, "the side sub-control belongs with the session tiles"
+    details = _block(UPLOADER, "stepDetails")
+    assert 'id="sideField"' not in details and 'data-side="both"' not in details
+    # The choices that change what the footage IS all come before it.
+    for step in ("stepWhat", "positionField", "stepFilm"):
+        assert UPLOADER.index(f'id="{step}"') < UPLOADER.index('id="stepClip"'), step
+
+
 def test_the_folded_controls_state_what_they_are_set_to():
     """A fold that says nothing while closed is a hidden control."""
-    side = _block(UPLOADER, "sideField")
-    assert side.startswith("<details"), "camera side is meant to fold"
-    assert 'id="sideNow"' in side, "the folded camera-side control shows no setting"
-    assert "function syncSideSummary(" in SPA
     opt = _block(UPLOADER, "optBox")
     assert 'id="profileField"' in opt and 'id="heightField"' in opt
+    assert 'id="mobSummary"' in _block(UPLOADER, "mobBox")
 
 
 def test_history_cards_do_not_nest_one_control_in_another():

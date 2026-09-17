@@ -369,8 +369,10 @@
   <!-- ============ UPLOADER ============ -->
   <section id="uploader" aria-labelledby="uploaderTitle">
     <div class="card uploader">
-      <!-- The screen is a short numbered walk: what, which sport, the clip,
-           (the position, on a bike), the optional details, then the button.
+      <!-- The screen is a short numbered walk: what, (the position, on a
+           bike), how it was filmed, the footage, the optional details, then
+           the button. Every decision that changes what the footage IS comes
+           before the footage (docs/ANALYZE_FLOW_PLAN.md).
            Each step is its own block so the eye lands on one thing at a time;
            the numbers are CSS counters, so a hidden step (Position, for a
            run) leaves no gap in the count. -->
@@ -379,40 +381,118 @@
         <span class="ph-lede">A few choices, one clip from the side. 20–90 seconds to a report.</span>
       </div>
 
-      <!-- Step: video or photo -->
-      <div class="ustep" id="stepMode">
+      <!-- Step 01: what. One choice, three tiles: the old "Video / Photo" and
+           "Run / Bike" were one decision split in two, and Photo is bike-only,
+           so the invalid pair (photo + run) had to be hidden by code. The two
+           old segments stay in the DOM, hidden, as the state controls the
+           tiles drive: every handler (mode reset, profile/height/mobility,
+           capture guide) hangs off them and is untouched. -->
+      <div class="ustep" id="stepWhat">
         <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <div><h3>What are you analysing?</h3><p>A clip for the full report, or one photo for a static bike fit.</p></div></div>
-        <div class="modetabs bigtiles" id="modeSeg" role="tablist" aria-label="Analysis type">
-          <button type="button" role="tab" data-mode="video" aria-selected="true">
-            <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
-            <span><b>Video</b><small>5–15 s side-view clip · run or bike</small></span>
+          <div><h3>What are we analysing?</h3><p>One clip from the side, or one photo for a static bike fit.</p></div></div>
+        <div class="modetabs bigtiles what" id="whatSeg" role="group" aria-label="What to analyse">
+          <button type="button" data-what="run-video" aria-pressed="false">
+            <svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>
+            <span><b>Run · video</b><small>5–15 s side-view clip</small></span>
           </button>
-          <button type="button" role="tab" data-mode="photo" aria-selected="false">
+          <button type="button" data-what="bike-video" aria-pressed="true">
+            <svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>
+            <span><b>Bike · video</b><small>5–15 s side-view clip</small></span>
+          </button>
+          <button type="button" data-what="bike-photo" aria-pressed="false">
             <svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg>
-            <span><b>Photo</b><small>One side-view still · bike fit only</small></span>
+            <span><b>Bike · photo</b><small>One still · static bike fit</small></span>
           </button>
         </div>
-      </div>
-
-      <!-- Step: sport -->
-      <div class="ustep" id="stepSport">
-        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <div><h3 id="sportLabel">Sport</h3></div></div>
-        <div class="ctl ctl-sport">
+        <div hidden>
+          <div class="modetabs bigtiles" id="modeSeg" role="tablist" aria-label="Analysis type">
+            <button type="button" role="tab" data-mode="video" aria-selected="true">Video</button>
+            <button type="button" role="tab" data-mode="photo" aria-selected="false">Photo</button>
+          </div>
+          <span id="sportLabel" hidden>Sport</span>
           <div class="tilerow" id="sportSeg" role="group" aria-labelledby="sportLabel">
-            <button type="button" class="tile-btn" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>Run</button>
-            <button type="button" class="tile-btn" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>Bike</button>
+            <button type="button" class="tile-btn" data-sport="run" aria-pressed="false">Run</button>
+            <button type="button" class="tile-btn" data-sport="bike" aria-pressed="true">Bike</button>
           </div>
         </div>
       </div>
 
-      <!-- Step: the clip. The drop zone and the camera side by side: filming
-           right here is the second door into the product, not a footnote
-           under the first one. -->
+      <!-- Step: bike position. Two levels: the family first (Road / Aero /
+           Upright), then the exact position within it -- five buttons in one
+           row asked the rider to know what "Drops" and "Triathlon" had in
+           common before they could choose. Hidden for a run. -->
+      <div class="ustep" id="positionField">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3 id="positionLabel">Position</h3><p>Where your hands are. Pick the family, then the exact position.</p></div></div>
+        <div class="seg poscat" id="posCat" role="group" aria-label="Position family">
+          <button type="button" data-cat="road" aria-pressed="false">Road</button>
+          <button type="button" data-cat="aero" aria-pressed="true">Aero</button>
+          <button type="button" data-cat="upright" aria-pressed="false">Upright</button>
+        </div>
+        <div id="positionSeg" role="group" aria-labelledby="positionLabel" data-cat="aero">
+          <div class="posgroup" data-cat="road">
+            <span class="posgroup-lbl">Road</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="road_hoods" aria-pressed="false">Hoods</button>
+              <button type="button" class="tile-btn" data-position="road_drops" aria-pressed="false">Drops</button>
+            </div>
+          </div>
+          <div class="posgroup" data-cat="aero">
+            <span class="posgroup-lbl">Aero</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="tt_aero" aria-pressed="false">Time Trial</button>
+              <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">Triathlon</button>
+            </div>
+          </div>
+          <div class="posgroup" data-cat="upright">
+            <span class="posgroup-lbl">Upright</span>
+            <div class="tilerow">
+              <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
+            </div>
+          </div>
+        </div>
+        <p class="poshint" id="posHint"></p>
+      </div>
+
+      <!-- Step 03: how it was filmed. The session type -- one side or both --
+           used to be a fold inside "all optional" details, and choosing it
+           reached back up the page and rebuilt the clip step into two slots.
+           It decides the shape of the footage step, so it comes before it.
+           #sideSeg keeps its four values (auto / left / right / both): the
+           tiles and the sub-control are inputs to the same state. -->
+      <div class="ustep" id="stepFilm">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3>How was it filmed?</h3><p>A side view measures the leg nearest the camera. Film both sides if you want the whole athlete.</p></div></div>
+        <div class="filmtiles" id="sideField">
+          <div class="modetabs bigtiles film" id="filmSeg" role="group" aria-label="Camera setup">
+            <button type="button" data-film="one" aria-pressed="true">
+              <img class="fig" src="/media/film-side.webp" alt="" width="512" height="512" decoding="async">
+              <span><b>One side</b><small>Camera on one side of you. We measure the leg nearest it.</small></span>
+            </button>
+            <button type="button" data-film="both" aria-pressed="false">
+              <img class="fig" src="/media/empty-trends.webp" alt="" width="512" height="512" decoding="async">
+              <span><b>Both sides — two clips</b><small>The same ride, filmed from each side. One merged score and a left-vs-right answer. Uses <b>2</b> of your monthly analyses.</small></span>
+            </button>
+          </div>
+          <div class="sidesub" id="sideSub">
+            <span class="sidesub-lbl">Which side faces the camera</span>
+            <div class="tilerow" id="sideSeg" role="group" aria-label="Camera side">
+              <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
+              <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
+              <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
+              <button type="button" class="tile-btn" data-side="both" aria-pressed="false" hidden>Both sides</button>
+            </div>
+          </div>
+          <p class="poshint" id="sideHint">Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
+        </div>
+      </div>
+
+      <!-- Step 04: the footage. Its shape follows step 03 -- one drop zone
+           (with the camera beside it), two labelled cards, or a photo -- and
+           never changes once a file is in it. -->
       <div class="ustep" id="stepClip">
         <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <div><h3>Your <span id="fileNounLow">clip</span></h3><p id="clipLede">Drop a file, pick one from your phone, or film right here with a framing guide.</p></div></div>
+          <div><h3 id="clipTitle">Your clip</h3><span id="fileNounLow" hidden>clip</span><p id="clipLede">Drop a file, pick one from your phone, or film right here with a framing guide.</p></div></div>
         <div class="cliprow">
           <input type="file" id="file" class="visually-hidden" accept="video/*"
                  aria-describedby="dropHelp" aria-labelledby="uploaderTitle">
@@ -477,61 +557,11 @@
       <ul class="preflight hidden" id="preflight"></ul>
       </div><!-- /stepClip -->
 
-      <!-- Step: bike position. Two levels: the family first (Road / Aero /
-           Upright), then the exact position within it -- five buttons in one
-           row asked the rider to know what "Drops" and "Triathlon" had in
-           common before they could choose. Hidden for a run. -->
-      <div class="ustep" id="positionField">
-        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <div><h3 id="positionLabel">Position</h3><p>Where your hands are. Pick the family, then the exact position.</p></div></div>
-        <div class="seg poscat" id="posCat" role="group" aria-label="Position family">
-          <button type="button" data-cat="road" aria-pressed="false">Road</button>
-          <button type="button" data-cat="aero" aria-pressed="true">Aero</button>
-          <button type="button" data-cat="upright" aria-pressed="false">Upright</button>
-        </div>
-        <div id="positionSeg" role="group" aria-labelledby="positionLabel" data-cat="aero">
-          <div class="posgroup" data-cat="road">
-            <span class="posgroup-lbl">Road</span>
-            <div class="tilerow">
-              <button type="button" class="tile-btn" data-position="road_hoods" aria-pressed="false">Hoods</button>
-              <button type="button" class="tile-btn" data-position="road_drops" aria-pressed="false">Drops</button>
-            </div>
-          </div>
-          <div class="posgroup" data-cat="aero">
-            <span class="posgroup-lbl">Aero</span>
-            <div class="tilerow">
-              <button type="button" class="tile-btn" data-position="tt_aero" aria-pressed="false">Time Trial</button>
-              <button type="button" class="tile-btn" data-position="triathlon" aria-pressed="true">Triathlon</button>
-            </div>
-          </div>
-          <div class="posgroup" data-cat="upright">
-            <span class="posgroup-lbl">Upright</span>
-            <div class="tilerow">
-              <button type="button" class="tile-btn" data-position="casual" aria-pressed="false">Casual</button>
-            </div>
-          </div>
-        </div>
-        <p class="poshint" id="posHint"></p>
-      </div>
-
-      <!-- Step: the optional details. Camera side sits OUTSIDE the bike-only
-           block above (inside it, a run could never start a two-sided
-           session); folded, because Auto-detect is right for nearly every
-           clip, and the summary states what is set. -->
+      <!-- Step 05: the optional details, all folded; each summary line states
+           what is set. The camera side moved up to step 03. -->
       <div class="ustep ustep-details" id="stepDetails">
         <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <div><h3>Details</h3><p>All optional. Auto-detect is right for nearly every clip.</p></div></div>
-      <details class="askbox sidebox" id="sideField">
-        <summary>Camera side: <b id="sideNow">Auto-detect</b> <span class="askopt">change</span></summary>
-        <div class="tilerow" id="sideSeg" role="group" aria-label="Camera side">
-          <button type="button" class="tile-btn" data-side="auto" aria-pressed="true">Auto-detect</button>
-          <button type="button" class="tile-btn" data-side="left" aria-pressed="false">My left side</button>
-          <button type="button" class="tile-btn" data-side="right" aria-pressed="false">My right side</button>
-          <button type="button" class="tile-btn" data-side="both" aria-pressed="false">Both sides</button>
-        </div>
-        <p class="poshint" id="sideHint">Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
-      </details>
-
+          <div><h3>Details</h3><p>All optional. Fold anything open only if it applies to this clip.</p></div></div>
       <!-- Which setup this was filmed on. Sits next to the clip rather than
            on a settings screen because it is a property of THIS recording:
            asking afterwards gets you an honest shrug. -->
@@ -2144,8 +2174,8 @@ function noFileHint(){
    gradient; one still waiting stays an outline. Mode, sport and position
    have defaults, so on a fresh screen 03 is the one outline that matters. */
 function syncSteps(){
-  const done={stepMode:true, stepSport:true, stepClip:!!state.file,
-    positionField:state.sport==='bike', stepDetails:false};
+  const done={stepWhat:true, positionField:state.sport==='bike', stepFilm:true,
+    stepClip:!!state.file && (!isPair() || !!state.fileB), stepDetails:false};
   for(const id in done){ const el=$('#'+id); if(el) el.classList.toggle('done', done[id]); }
 }
 function readyHint(){
@@ -2175,7 +2205,10 @@ $('#modeSeg').addEventListener('click',e=>{
   $('#change').textContent = photo?'Change photo':'Change clip';
   $('#fileNounCap').textContent = photo?'Photo':'Video';
   $('#fileNounLow').textContent = photo?'photo':'clip';
-  $('#clipLede').textContent = photo?'One side-view still of you on the bike, at the bottom of the pedal stroke.':'Drop a file, pick one from your phone, or film right here with a framing guide.';
+  syncWhatTiles();                // step 03 folds for a photo; the footage head follows
+  // A photo has one side: a pair session left over from video ends here, and
+  // the button, the tiles and the hint all follow through syncPairSlot.
+  if(photo && state.cameraSide==='both') $('#sideSeg [data-side="auto"]').click(); else syncPairSlot();
   syncOverlayField();             // photo has nothing to annotate; free gets no render
   $('#guides .g-dur').classList.toggle('hidden', photo); // duration guideline is video-only
   if(typeof renderHeightField==='function') renderHeightField();
@@ -2183,6 +2216,41 @@ $('#modeSeg').addEventListener('click',e=>{
   renderCamRow();      // recording is a video affordance; photos come from the picker
   readyHint();
 });
+
+/* ---- step 01: what. Three tiles that drive the two hidden state controls
+   (#modeSeg, #sportSeg), so every handler hanging off those keeps working.
+   Sport first, then mode: the mode handler reset()s the file, and a photo
+   tile on a run would otherwise leave "run" behind for one tick. ---- */
+const WHAT_OF={'run-video':['video','run'],'bike-video':['video','bike'],'bike-photo':['photo','bike']};
+$('#whatSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-what]'); if(!b) return;
+  const [mode,sport]=WHAT_OF[b.dataset.what];
+  if(state.sport!==sport) $(`#sportSeg [data-sport="${sport}"]`).click();
+  if(state.mode!==mode) $(`#modeSeg [data-mode="${mode}"]`).click();
+  syncWhatTiles();
+});
+function syncWhatTiles(){
+  const key=`${state.sport}-${state.mode}`;
+  $('#whatSeg').querySelectorAll('button[data-what]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.what===key)));
+  // A photo has one side: step 03 folds away, and the footage step says "photo".
+  $('#stepFilm').classList.toggle('hidden', state.mode==='photo');
+  syncClipHead();
+}
+/* The footage step's title says what it is waiting for: one clip, two clips
+   or a photo -- so the shape of the step and its name never disagree. */
+function syncClipHead(){
+  const t=$('#clipTitle'), l=$('#clipLede'); if(!t||!l) return;
+  if(state.mode==='photo'){ t.textContent='Your photo'; l.textContent='One side-view still of you on the bike, at the bottom of the pedal stroke.'; }
+  else if(isPair()){ t.textContent='Your two clips'; l.textContent=`One per side of the same ${state.sport==='bike'?'ride':'run'}: your LEFT side in the first card, your RIGHT side in the second.`; }
+  else { t.textContent='Your clip'; l.textContent='Drop a file, pick one from your phone, or film right here with a framing guide.'; }
+}
+/* The button says what it will do. Called after auth is known (renderAuth)
+   and whenever the session type changes -- never at script load, since
+   `auth` is declared further down. */
+function syncAnalyzeLabel(){
+  const go=$('#analyze'); if(!go) return;
+  go.textContent = !auth ? 'Create free account & analyze' : (isPair() ? 'Analyze both clips' : 'Analyze');
+}
 
 /* ---- sport tiles ---- */
 $('#sportSeg').addEventListener('click',e=>{
@@ -2195,7 +2263,8 @@ $('#sportSeg').addEventListener('click',e=>{
   [...$('#sportSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   $('#positionField').classList.toggle('hidden', state.sport!=='bike');
   syncCaptureGuide();
-  readyHint();
+  syncWhatTiles();
+  syncPairSlot();                 // the side sub-control is bike-only; the hint copy follows the sport
 });
 /* The capture figure shows the sport being filmed — a runner's framing and a
    rider's are different pictures, and the wrong one teaches the wrong shape. */
@@ -2250,6 +2319,23 @@ $('#sideSeg') && $('#sideSeg').addEventListener('click',e=>{
   $('#sideSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
   syncPairSlot();
 });
+/* ---- step 03: the two tiles. "Both sides" IS cameraSide='both'; "One side"
+   hands the value back to the sub-control (auto unless the rider had set a
+   side before). A file already loaded stays: it is the single clip, or the
+   LEFT card, whichever the tiles now mean. ---- */
+let lastOneSide='auto';
+$('#filmSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-film]'); if(!b) return;
+  if(b.dataset.film==='both'){ if(state.cameraSide!=='both') lastOneSide=state.cameraSide||'auto'; $('#sideSeg [data-side="both"]').click(); }
+  else if(state.cameraSide==='both') $(`#sideSeg [data-side="${lastOneSide}"]`).click();
+});
+function syncFilmTiles(){
+  const on=isPair();
+  $('#filmSeg').querySelectorAll('button[data-film]').forEach(x=>x.setAttribute('aria-pressed', String((x.dataset.film==='both')===on)));
+  // The side sub-control is a bike thing: a run side view has no unilateral
+  // lock to declare (see syncPairSlot), so for a run only the tiles show.
+  $('#sideSub').classList.toggle('hidden', on || state.sport!=='bike');
+}
 /* The folded control still has to say what it is set to, or folding it would
    be hiding it. Reads the chosen button's own label so the two can never
    disagree about what "both" is called. */
@@ -2284,12 +2370,17 @@ function syncPairSlot(){
   const hint=$('#sideHint');
   if(hint) hint.innerHTML = on
     ? (state.sport==='run'
-        ? 'Two clips of the <b>same run</b>, one filmed from each side. Each clip can only measure the leg nearest the camera, so this is the only way to see both — and because both clips also measure your cadence, contact time and trunk lean independently, the gap between them tells us how much to trust the rest. Spends two clips of your plan.'
-        : 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict — the only way to measure both legs, and it spends two clips of your plan.')
-    : 'Which side of <b>you</b> faces the camera. Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.';
+        ? 'Two clips of the <b>same run</b>, one filmed from each side. Each clip can only measure the leg nearest the camera, so this is the only way to see both — and because both clips also measure your cadence, contact time and trunk lean independently, the gap between them tells us how much to trust the rest.'
+        : 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict — the only way to measure both legs.')
+    : (state.sport==='run'
+        ? 'A run side view measures the leg nearest the camera and reads cadence, contact and flight time from the whole stride.'
+        : 'Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.');
   if(!on){ state.fileB=null; pairRevoke('b'); }
   if(on) renderPairCards();
   syncSideSummary();
+  syncFilmTiles();
+  syncClipHead();
+  syncAnalyzeLabel();
   readyHint();
 }
 /* Object URLs for the card thumbnails, kept per slot so replacing a clip
@@ -2381,7 +2472,7 @@ function updatePosHint(){
   el.innerHTML=POSITION_HINTS[state.position]||'';
 }
 updatePosHint();   // show the default position's description on load
-syncSteps();
+syncWhatTiles(); syncFilmTiles(); syncSteps();
 $('#pAgain').addEventListener('click',()=>reset());
 lmedBind(); vedBind();
 
@@ -6698,8 +6789,7 @@ function renderAuth(){
   if(del){ del.classList.toggle('hidden', !auth); if(!auth) del.open=false; }
   // Say what the button will actually do: signed out it opens sign-up first,
   // then runs the analysis on the file already chosen.
-  const go=$('#analyze');
-  if(go) go.textContent = auth ? 'Analyze' : 'Create free account & analyze';
+  syncAnalyzeLabel();
   syncAnalyzeBtn();
   if(!state.file && typeof noFileHint==='function') noFileHint();
   if(typeof renderAccount==='function') renderAccount();
