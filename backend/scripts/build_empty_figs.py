@@ -6,7 +6,7 @@ different blues, so: thicken the strokes (a MinFilter dilates ink on white),
 crop to the ink with a margin, square, 512 px, lift white to alpha, and set
 every blue to the token accent. Navy and the green ticks are left alone.
 
-    python scripts/build_empty_figs.py [stroke]    # stroke: MinFilter size, default 13
+    python scripts/build_empty_figs.py [stroke]    # stroke: MinFilter size for the hairline set, default 13
 """
 import sys
 from pathlib import Path
@@ -17,7 +17,10 @@ from PIL import Image, ImageFilter
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "docs" / "design-assets"
 OUT = ROOT / "backend" / "app" / "static" / "media"
-NAMES = ["empty-first", "empty-withheld", "empty-nothing-to-fix", "empty-trends"]
+# name -> MinFilter size. Most sources came out hairline; both-sides was
+# drawn at the reference stroke already and is left alone (1 = no dilation).
+NAMES = {"empty-first": 13, "empty-withheld": 13, "empty-nothing-to-fix": 13, "empty-trends": 13,
+         "empty-both-sides": 1}
 ACCENT = (36 / 255, 87 / 255, 197 / 255)  # --c-blue
 
 
@@ -34,7 +37,9 @@ def unwhite(img: Image.Image) -> Image.Image:
 
 
 def build(name: str, thick: int) -> None:
-    im = Image.open(SRC / f"{name}.jpg").convert("RGB").filter(ImageFilter.MinFilter(thick))
+    im = Image.open(SRC / f"{name}.jpg").convert("RGB")
+    if thick > 1:
+        im = im.filter(ImageFilter.MinFilter(thick))
     g = np.asarray(im.convert("L"))
     ys, xs = np.where(g < 235)
     y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
@@ -48,6 +53,6 @@ def build(name: str, thick: int) -> None:
 
 
 if __name__ == "__main__":
-    thick = int(sys.argv[1]) if len(sys.argv) > 1 else 13
-    for n in NAMES:
-        build(n, thick)
+    override = int(sys.argv[1]) if len(sys.argv) > 1 else None
+    for n, thick in NAMES.items():
+        build(n, override if override is not None and thick > 1 else thick)
