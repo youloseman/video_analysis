@@ -29,6 +29,21 @@ from app.services.video_analysis.pipeline import (
     landmarks_to_pixels,
 )
 
+
+def _status_for_cfg(cfg: dict[str, Any], value: float) -> str:
+    """The colour zone for one callout, honouring a one-sided band.
+
+    A label config may say ``open_ok``: past the top of its band the joint is
+    not wrong, only more open than the reference (the bike hip -- see
+    ``_get_angle_display_config``). Everything else is the shared symmetric
+    rule, so the overlay colours what the score card and the coach notes do.
+    """
+    opt_min, opt_max = cfg["optimal"]
+    if cfg.get("open_ok") and value is not None and value > opt_max:
+        return "good"
+    return overlay_style.status_for(value, opt_min, opt_max)
+
+
 # Phase colors (BGR for OpenCV). Warm = propulsive, cool = setup, gray = unknown.
 SWIM_PHASE_COLORS: dict[str, tuple[int, int, int]] = {
     "entry":    (200, 200, 100),   # cyan-ish
@@ -771,7 +786,7 @@ class VideoVisualizer:
                     continue
 
                 opt_min, opt_max = cfg["optimal"]
-                status = overlay_style.status_for(angle_val, opt_min, opt_max)
+                status = _status_for_cfg(cfg, angle_val)
                 status_rgb = overlay_style.STATUS_COLORS.get(
                     status, overlay_style.INK_SOFT,
                 )
@@ -857,31 +872,11 @@ class VideoVisualizer:
                             chips.metric_chip((hlx, hly), "HEAD POSITION", h_text,
                                               h_status, scale=_sk)
 
-            # Pelvic ratio (use summary average)
-            pelvic = self.summary.get("pelvic_ratio", 0)
-            if pelvic > 0 and bh_px > 40 and self._annotates("pelvic_ratio"):
-                from app.services.video_analysis.biomechanics.cycling_positions import get_cycling_reference
-                ref = get_cycling_reference(self.cycling_position)
-                p_min, p_max = ref["pelvic_ratio"]
-                if self.hide_angle_values:
-                    p_status, p_text = "muted", "LOCKED"
-                else:
-                    # ratio, not degrees -> small margin floor
-                    p_status = overlay_style.status_for(
-                        pelvic, p_min, p_max, min_margin=0.3,
-                    )
-                    p_text = f"{pelvic:.1f}x"
-                hp_i2 = 23 if near == "left" else 24
-                hpx2, hpy2, _ = pixel_coords[hp_i2]
-                off_px = max(50, int(bh_px * 0.35))
-                plx = max(5, min(width - 5, hpx2 - int(off_px * 0.5)))
-                ply = max(20, min(height - 20, hpy2 + int(off_px * 0.6)))
-                overlay_style.draw_leader(
-                    cv2_mod, frame, (hpx2, hpy2), (plx, ply),
-                    overlay_style.STATUS_COLORS.get(p_status, overlay_style.INK_SOFT),
-                )
-                chips.metric_chip((plx, ply), "PELVIC TILT", p_text, p_status,
-                                  scale=_sk, align="right")
+            # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
+            # places by inference, drawn beside a hip that already carries a chip;
+            # on the frame it read as a second, unexplained verdict about the same
+            # joint. The number stays in the report's tiles and the score. Artur's
+            # call, 2026-09-17.
 
         # -- 3. (header is staged on `chips` up top and painted in the flush below) --
 
@@ -915,10 +910,15 @@ class VideoVisualizer:
     # that shows up in a quarter of the stride is still a fault, but a joint
     # that only grazes the band on a handful of frames is noise.
     _MATERIAL_FRAME_SHARE = 0.25
-    # Always annotated. These carry the score in both sports -- knee extension
-    # is the headline number of a bike fit and trunk lean of a running stride --
+    # Always annotated, per sport. These carry the score -- knee extension is
+    # the headline number of a bike fit and trunk lean of a running stride --
     # so their absence would read as "not measured" rather than as "fine".
-    _HEADLINE_KEYS = ("knee", "trunk")
+    # The bike adds the hip: a rider asked where it was, and on a fit the hip
+    # is the number that decides whether a low position is one the body can
+    # hold. Not on the run: there the hip is phase-dependent (it reads ~180
+    # with the thigh under the body whatever the runner does), and a chip
+    # that is green at every stance and meaningless in between says nothing.
+    _HEADLINE_KEYS = {"bike": ("knee", "trunk", "hip"), "run": ("knee", "trunk")}
     # Ceiling on joint callouts per frame. Four labelled joints over a moving
     # body is about what a person can read; past that the frame is decoration.
     _MAX_CALLOUTS = 4
@@ -934,13 +934,15 @@ class VideoVisualizer:
         if self.annotation_level == "all":
             return keys
 
+        headline = self._HEADLINE_KEYS.get(self.sport_type, self._HEADLINE_KEYS["run"])
+
         def is_headline(key: str) -> bool:
             # Match on whole words, so "trunk" catches both the bike's
             # trunk_angle and the run's trunk_lean, and "knee" catches
             # left_knee / right_knee without also catching a hypothetical
             # kneecap_something.
             parts = key.split("_")
-            return any(h in parts for h in self._HEADLINE_KEYS)
+            return any(h in parts for h in headline)
 
         material = {k for k in keys if is_headline(k)}
         scored: list[tuple[float, float, str]] = []
@@ -949,13 +951,12 @@ class VideoVisualizer:
             if key in material:
                 continue
             values = self.analyzer.angle_history.get(key) or []
-            opt_min, opt_max = cfg["optimal"]
             readable = flagged = bad = 0
             for val in values:
                 if val is None or np.isnan(val):
                     continue
                 readable += 1
-                status = overlay_style.status_for(val, opt_min, opt_max)
+                status = _status_for_cfg(cfg, val)
                 if status != "good":
                     flagged += 1
                 if status == "bad":

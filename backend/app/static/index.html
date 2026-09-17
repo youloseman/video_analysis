@@ -9112,6 +9112,11 @@ function renderBilateral(b){
       </div>`;
     }).join('')}</div>` : '';
 
+  // The server put the clips right when they were in each other's slots;
+  // the banner above says so at length, this is the reminder on the panel.
+  const swappedFlag=b.slots_swapped
+    ? '<span class="bil-flag bil-warn" title="The clip marked Left was filmed from the right and vice versa; they were swapped before analysis">slots were swapped</span>' : '';
+
   if(!b.combined){
     // When the reason is one clip's, name the clip: the rider then knows
     // which side to re-film rather than both.
@@ -9122,7 +9127,7 @@ function renderBilateral(b){
       : (BIL_REASONS[b.reason]||'These two clips could not be merged.');
     host.innerHTML=`<div class="bil">
       <div class="bil-h"><b>Two-sided session</b>
-        <span class="bil-flag bil-warn">not merged</span></div>
+        <span class="bil-flag bil-warn">not merged</span>${swappedFlag}</div>
       <p class="bil-note" style="margin-top:0">${esc(reason)}
       ${b.scale_chord_disagreement_pct!=null?` (They disagree by <b>${b.scale_chord_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
       ${vids}
@@ -9138,7 +9143,7 @@ function renderBilateral(b){
     ? `<span class="bil-flag bil-ok">clips agree to ${agree.worst}\u00b0</span>`
     : (agree.agree===false ? `<span class="bil-flag bil-warn">clips differ by ${agree.worst}\u00b0</span>` : '');
   host.innerHTML=`<div class="bil">
-    <div class="bil-h"><b>Two-sided session</b>${agreeFlag}</div>
+    <div class="bil-h"><b>Two-sided session</b>${agreeFlag}${swappedFlag}</div>
     <div class="bil-val">${Math.round(b.knee_at_bdc*10)/10}\u00b0${unc!=null?` <small>\u00b1${Math.round(unc)}\u00b0</small>`:''}</div>
     <p class="bil-note" style="margin-top:2px">Knee at the bottom of the stroke, measured from <b>both</b> clips against one body. Each clip on its own only ever sees one leg.</p>
     ${vids}

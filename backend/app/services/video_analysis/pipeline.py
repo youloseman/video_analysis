@@ -281,6 +281,7 @@ class VideoAnalysisPipeline:
           optimal:    (min, max) range for color coding
           name:       short display name
           offset_dir: direction to push label away from body
+          open_ok:    (optional) a value ABOVE the band is fine, not a fault
         """
         if sport_type == "run":
             # Running uses unprefixed keys (knee, hip, elbow, trunk)
@@ -336,9 +337,18 @@ class VideoAnalysisPipeline:
                 near_shoulder_key, near_shoulder_idx = "right_shoulder", 12
                 near_forearm_key, near_wrist_idx = "right_forearm_tilt", 16
 
+            # The hip band is the position's own (hip_angle_max), the same one
+            # the report tiles and the served reference_bands read -- this
+            # said (30, 80) for every position while the tile graded a road
+            # hip against (55, 65), so the overlay could paint a hip green
+            # that the card marked down, or red at 89 deg where the card said
+            # "in range". And it is ASYMMETRIC, like everywhere else on the
+            # page: a hip closed past the band is the fault (compression, the
+            # iliac-artery floor); a hip open past it is a comfort trade-off,
+            # never red. `open_ok` carries that to the colour.
             return [
                 {"key": near_knee_key,     "idx": near_knee_idx,     "optimal": ref["knee_at_bdc"],   "name": "Knee",    "offset_dir": "left"},
-                {"key": near_hip_key,      "idx": near_hip_idx,      "optimal": (30, 80),             "name": "Hip",     "offset_dir": "up-left"},
+                {"key": near_hip_key,      "idx": near_hip_idx,      "optimal": ref["hip_angle_max"], "name": "Hip",     "offset_dir": "up-left", "open_ok": True},
                 {"key": "trunk_angle",     "idx": 11,                "optimal": ref["trunk_angle"],    "name": "Trunk",   "offset_dir": "up"},
                 {"key": near_elbow_key,    "idx": near_elbow_idx,    "optimal": ref["elbow_angle"],    "name": "Elbow",   "offset_dir": "up-left"},
                 {"key": near_shoulder_key, "idx": near_shoulder_idx, "optimal": ref["shoulder_angle"], "name": "Shldr",   "offset_dir": "right"},

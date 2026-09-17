@@ -593,11 +593,33 @@ def _apply_camera_side_override(
     """
     if override not in ("left", "right") or sport_type != "bike":
         return detected, (lock_meta or {})
+    meta = dict(lock_meta or {})
+    conflict = None
     if detected != override:
-        logger.info("CAMERA_SIDE_OVERRIDDEN", detected=detected, user=override)
+        votes = [v for v in (meta.get("votes") or []) if v in ("left", "right")]
+        against = sum(1 for v in votes if v != override)
+        # Confident = the vote was not a fallback and (nearly) every frame
+        # that voted said the other side. Measured on the one pair we have:
+        # with the slots swapped, both clips voted 5 of 5 against the slot.
+        confident = (
+            not meta.get("fallback")
+            and len(votes) >= 3
+            and against >= max(3, math.ceil(0.8 * len(votes)))
+        )
+        conflict = {
+            "detected": detected, "user": override,
+            "votes_against": against, "votes": len(votes),
+            "confident": confident,
+        }
+        logger.info("CAMERA_SIDE_OVERRIDDEN", **conflict)
     return override, {
-        **(lock_meta or {}),
+        **meta,
         "user_set": True, "votes": [override], "fallback": False,
+        # What the footage said when it disagreed with the rider. The
+        # two-sided job reads this to catch clips put in the wrong slots --
+        # a clip analysed as the wrong side measures the far leg, which is
+        # not a worse answer but a different question, silently.
+        "conflict": conflict,
     }
 
 
@@ -799,6 +821,19 @@ def analyze_from_frames(
     quality_warnings = _build_quality_warnings(
         landmark_quality, sport_type, skeleton_jumps,
     )
+    # The rider said one side and the footage says the other. The rider's
+    # word still stands (a single-clip form where they chose it), but not in
+    # silence: every near-side number below is of the leg they named, and if
+    # that is the far leg the report is about the wrong leg.
+    side_conflict = early_lock_meta.get("conflict")
+    if side_conflict and side_conflict.get("confident"):
+        quality_warnings.insert(0, (
+            f"You set the camera side to {side_conflict['user']}, but the footage "
+            f"reads as filmed from the {side_conflict['detected']} "
+            f"({side_conflict['votes_against']} of {side_conflict['votes']} frames "
+            f"agree). Every near-side number here assumes the {side_conflict['user']} "
+            f"leg is nearest the camera -- if it is not, re-run with Auto-detect."
+        ))
 
     # Reduce this clip to the geometry a two-sided merge needs, while the
     # stabilized frames are still here. A side view measures one leg, so a
@@ -1518,6 +1553,9 @@ def analyze_from_frames(
         "sport_type": sport_type,
         "cycling_position": cycling_position if is_bike else None,
         "camera_side": analyzer.camera_side,
+        # Present only when a stated side disagreed with the footage; the
+        # two-sided job reads `confident` to swap or refuse (see main.py).
+        "camera_side_conflict": early_lock_meta.get("conflict"),
         "frames_analyzed": len(raw_frame_data),
         # Withheld, not zeroed and not hidden by the client: when the gate
         # fired we are saying the clip could not be measured properly, and a

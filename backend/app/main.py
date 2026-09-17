@@ -786,17 +786,28 @@ def _process_pair_job(
     job["status"] = "processing"
     logger.info("PAIR_JOB_START", job_id=job_id, position=cycling_position)
     try:
-        results = {}
-        for n, (side, path, overlay) in enumerate(
-            (("left", left_path, overlay_left), ("right", right_path, overlay_right)),
-            start=1,
-        ):
+        # The slots ARE the side declaration, and on a bike each clip is
+        # analysed as the side its slot names -- a clip in the wrong slot is
+        # measured on its far leg, which produces a full report about the
+        # wrong leg and nothing that looks like an error. The footage says
+        # which side it is (the depth vote, which every single-clip analysis
+        # already trusts), so the job checks the slot against it: two clips
+        # swapped with each other are put right and the rider is told; two
+        # clips of the same side are refused, because no swap makes a pair.
+        # At most one analysis is thrown away.
+        slots = {"left": (left_path, overlay_left), "right": (right_path, overlay_right)}
+        swapped = False
+        results: dict[str, dict[str, Any]] = {}
+        while len(results) < 2:
+            side = "left" if "left" not in results else "right"
+            n = len(results) + 1
+            path, overlay = slots[side]
             job["stage"] = f"Analyzing the {side}-side clip ({n} of 2)…"
             hook = job_progress_hook(
                 job, sport, prefix=f"{side.capitalize()} side, {n} of 2 · ",
                 span=((n - 1) / 2, n / 2),
             )
-            results[side] = run_analysis(
+            res = run_analysis(
                 path, sport, cycling_position if sport == "bike" else None,
                 overlay_path=overlay,
                 recommendations=False,
@@ -810,13 +821,40 @@ def _process_pair_job(
                 camera_side_override=side if sport == "bike" else None,
                 progress=hook,
             )
-            if results[side].get("status") != "completed":
+            if res.get("status") != "completed":
                 job["status"] = "failed"
                 job["error"] = (
                     f"The {side}-side clip could not be analysed: "
-                    f"{results[side].get('error_message') or 'unknown error'}"
+                    f"{res.get('error_message') or 'unknown error'}"
                 )
                 return
+            conflict = res.get("camera_side_conflict") or {}
+            if conflict.get("confident"):
+                # The side they are missing is the one neither clip shows.
+                missing = "right" if conflict["detected"] == "left" else "left"
+                if side == "left" and not swapped:
+                    logger.info("PAIR_SLOTS_SWAPPED", job_id=job_id, **conflict)
+                    slots = {"left": slots["right"], "right": slots["left"]}
+                    swapped = True
+                    continue
+                # Either both clips read as the same side, or the swap did
+                # not help: there is no pair here.
+                job["status"] = "failed"
+                job["error"] = (
+                    f"Both clips look like they were filmed from the "
+                    f"{conflict['detected']} side ({conflict['votes_against']} of "
+                    f"{conflict['votes']} frames agree on the one in the {side} "
+                    f"slot). A two-sided session needs one clip of each side -- "
+                    f"film the {missing} side and try again."
+                )
+                logger.info("PAIR_SAME_SIDE", job_id=job_id, slot=side, **conflict)
+                return
+            results[side] = res
+        if swapped:
+            # The overlays were rendered to the paths the slots named, and
+            # the slots were swapped: what is in overlay_left.mp4 is now the
+            # right side's clip. Follow the files.
+            overlay_left, overlay_right = overlay_right, overlay_left
 
         job["stage"], job["progress"] = "Merging both sides…", 99
         if sport == "run":
@@ -847,6 +885,21 @@ def _process_pair_job(
                 results["left"], results["right"], cycling_position,
                 recommendations=True,
             )
+        if swapped:
+            # The loud channel, first in line: the rider's own labelling was
+            # wrong and the session silently doing the right thing would leave
+            # them believing the slots mean nothing.
+            summary = dict(merged.get("sport_specific_metrics") or {})
+            summary["quality_warnings"] = [
+                "The two clips were in each other's slots -- the one marked "
+                "Left was filmed from the right side and vice versa. They were "
+                "swapped before analysis, so every number here is the side the "
+                "footage actually shows.",
+                *(summary.get("quality_warnings") or []),
+            ]
+            merged["sport_specific_metrics"] = summary
+            if isinstance(merged.get("bilateral"), dict):
+                merged["bilateral"]["slots_swapped"] = True
         safe = _json_safe(merged)
         # BOTH overlays are kept and both are offered. The rider filmed two
         # clips; showing one and silently dropping the other was the first

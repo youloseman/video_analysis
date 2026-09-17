@@ -955,28 +955,11 @@ def _generate_photo_thumbnail(
                     )
                     chips.metric_chip((hlx, hly), "HEAD POSITION", h_text, h_status, scale=_sk)
 
-        # Pelvic ratio: small label near hip
-        pelvic_val = angles.get("pelvic_ratio")
-        if pelvic_val is not None and not math.isnan(pelvic_val) and pelvic_val > 0 and bh_px > 40:
-            ref_p = get_cycling_reference(cycling_position)
-            p_min, p_max = ref_p["pelvic_ratio"]
-            if hide_angle_values:
-                p_status, p_text = "muted", "LOCKED"
-            else:
-                # ratio, not degrees -> small margin floor
-                p_status = overlay_style.status_for(pelvic_val, p_min, p_max, min_margin=0.3)
-                p_text = f"{pelvic_val:.1f}x"
-            hp_i2 = 23 if camera_side == "left" else 24
-            hpx2, hpy2, _ = pixel_coords[hp_i2]
-            off_px = max(50, int(bh_px * 0.35))
-            plx = max(5, min(w - 5, hpx2 - int(off_px * 0.5)))
-            ply = max(20, min(h - 20, hpy2 + int(off_px * 0.6)))
-            overlay_style.draw_leader(
-                cv2_mod, frame, (hpx2, hpy2), (plx, ply),
-                overlay_style.STATUS_COLORS.get(p_status, overlay_style.INK_SOFT),
-            )
-            chips.metric_chip((plx, ply), "PELVIC TILT", p_text, p_status,
-                              scale=_sk, align="right")
+        # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
+        # places by inference, drawn beside a hip that already carries a chip;
+        # on the frame it read as a second, unexplained verdict about the same
+        # joint. The number stays in the report's tiles and the score. Artur's
+        # call, 2026-09-17.
 
     # --- 3. BRANDING, then paint the header + every chip in one PIL pass ---
     chips.brand((w - _pad, h - _pad), "FLAPP",
