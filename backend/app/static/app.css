@@ -484,6 +484,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .paircard-empty b{font-size:14px;font-weight:600}
 .paircard-empty small{font-size:12px}
 .paircard .change{margin-top:auto;align-self:flex-start}
+.paircard .rec{align-self:center;margin-top:-8px;margin-bottom:6px}
 .pairhint{text-align:left;margin:12px 0 0}
 @media(max-width:640px){.pairgrid{grid-template-columns:1fr}}
 .bil{margin:18px 0 0;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;background:var(--c-bg)}

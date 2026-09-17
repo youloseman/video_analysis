@@ -1838,6 +1838,7 @@ $('#change').addEventListener('click',()=>fileInput.click());
 const CAM_MAX_S=15, CAM_COUNTDOWN_S=5;
 const camEls={};
 let camState=null;   // {stream, rec, chunks, mime, timers:[]} while the modal is open
+let camSlot='a';     // which clip the recording becomes -- see openCam()
 
 function camSupported(){
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia
@@ -1860,7 +1861,11 @@ function camClearTimers(){
   camState.timers.forEach(t=>{ clearTimeout(t); clearInterval(t); });
   camState.timers=[];
 }
-async function openCam(){
+/* `slot` is which clip the recording becomes: 'a' (the single clip, or the
+   LEFT card) or 'b' (the RIGHT card of a both-sides session). Called from a
+   click listener too, so anything that is not a slot name means 'a'. */
+async function openCam(slot){
+  camSlot = slot==='b' ? 'b' : 'a';
   const modal=$('#camModal');
   $('#camErr').classList.add('hidden'); $('#camErr').textContent='';
   $('#camCount').classList.add('hidden'); $('#camRec').classList.add('hidden');
@@ -1950,8 +1955,11 @@ function camKeep(){
   const ext=base==='video/mp4'?'mp4':'webm';
   const blob=new Blob(camState.chunks,{type:base});
   const file=new File([blob],`flapp-recording-${Date.now()}.${ext}`,{type:base});
+  const slot=camSlot;
   closeCam();
-  setFile(file);       // the same path a picked file takes — preflight included
+  // The same path a picked file takes -- size limit, preview, preflight.
+  if(slot==='b') setFileB(file); else setFile(file);
+  track('analyze_step_done', {step:'clip', slot, source:'record'});
 }
 $('#camOpen').addEventListener('click',openCam);
 $('#camClose').addEventListener('click',closeCam);
@@ -2051,6 +2059,7 @@ function setFile(f){
     }
   }
   state.file=f;
+  track('analyze_step_done', {step:'clip', slot:'a', mode:state.mode});
   const url=URL.createObjectURL(f);
   const vid=$('#preview'), img=$('#previewImg');
   if(photo){ img.src=url; img.classList.remove('hidden'); vid.classList.add('hidden'); vid.removeAttribute('src'); }
@@ -2228,6 +2237,7 @@ $('#whatSeg').addEventListener('click',e=>{
   if(state.sport!==sport) $(`#sportSeg [data-sport="${sport}"]`).click();
   if(state.mode!==mode) $(`#modeSeg [data-mode="${mode}"]`).click();
   syncWhatTiles();
+  track('analyze_step_done', {step:'what', value:b.dataset.what});
 });
 function syncWhatTiles(){
   const key=`${state.sport}-${state.mode}`;
@@ -2308,6 +2318,7 @@ $('#positionSeg').addEventListener('click',e=>{
   syncPosCat();
   updatePosHint();
   readyHint();
+  track('analyze_step_done', {step:'position', value:state.position});
 });
 syncPosCat();
 /* Camera-side override (bike): the rider knows which side they filmed. */
@@ -2328,6 +2339,7 @@ $('#filmSeg').addEventListener('click',e=>{
   const b=e.target.closest('button[data-film]'); if(!b) return;
   if(b.dataset.film==='both'){ if(state.cameraSide!=='both') lastOneSide=state.cameraSide||'auto'; $('#sideSeg [data-side="both"]').click(); }
   else if(state.cameraSide==='both') $(`#sideSeg [data-side="${lastOneSide}"]`).click();
+  track('analyze_step_done', {step:'film', value:b.dataset.film, sport:state.sport});
 });
 function syncFilmTiles(){
   const on=isPair();
@@ -2404,6 +2416,9 @@ const PAIR_SLOTS=[
 ];
 function pairFileOf(slot){ return slot==='a' ? state.file : state.fileB; }
 function renderPairCards(){
+  // Each empty card can be filmed right here, like the single-clip step: the
+  // recorder takes the slot, so a LEFT recording lands in the LEFT card.
+  const canRecord = camSupported() && !!camMime();
   PAIR_SLOTS.forEach(({slot,id,label,sub})=>{
     const card=$(id); if(!card) return;
     const f=pairFileOf(slot);
@@ -2421,7 +2436,8 @@ function renderPairCards(){
          <div class="paircard-empty">
            <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
            <b>Drop or click to browse</b><small>${sub}</small>
-         </div>`;
+         </div>
+         ${canRecord ? `<button type="button" class="btn btn-ghost btn-sm rec" data-rec="${slot}"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Record this side</button>` : ''}`;
   });
   const n=(state.file?1:0)+(state.fileB?1:0);
   const h=$('#pairHint');
@@ -2438,11 +2454,14 @@ function setFileB(f){
     hintMsg(`The second clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB.`,'warn'); return;
   }
   state.fileB=f; renderPairCards(); readyHint();
+  track('analyze_step_done', {step:'clip', slot:'b'});
 }
 (function wirePairCards(){
   const host=$('#pairSlot'); if(!host) return;
   const inpB=$('#fileB');
   host.addEventListener('click',e=>{
+    const rec=e.target.closest('[data-rec]');
+    if(rec){ openCam(rec.dataset.rec); return; }   // not the card's picker
     const btn=e.target.closest('[data-pick]');
     const card=e.target.closest('.paircard');
     // A filled card only opens the picker via its own button -- clicking the
@@ -2621,6 +2640,14 @@ function analyzePair(){
   if(state.sport==='bike') fd.append('position', state.position);
   fd.append('overlay', $('#overlay').checked ? 'true':'false');
   if(focusText()) fd.append('focus', focusText());
+  // The same event the single-clip path sends, so the funnel counts a session
+  // as one analysis started -- with `session:'pair'` to tell the two apart.
+  track('analysis_started', {
+    mode:'video', sport:state.sport, session:'pair',
+    position: state.sport==='bike' ? state.position : null,
+    overlay: $('#overlay').checked,
+    file_mb: Math.round((state.file.size+state.fileB.size)/104857.6)/10,
+  });
 
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
     <span class="fchip">${esc(state.fileB.name)}</span>

@@ -1,6 +1,6 @@
 # Analyze page — flow transformation plan
 
-Status: Phase 1 SHIPPED (17 Sep 2026). Phases 2 and 3 are open.
+Status: Phases 1–3 SHIPPED (17 Sep 2026). Open: the both-sides figure for the step-03 tile.
 
 ## Why the current page fails
 
@@ -147,13 +147,14 @@ folded last, step numerals, copy, tests updated, desktop + phone screenshots
 of: fresh screen, bike + one side + clip, run + both sides with 1 and 2 clips,
 photo. Estimated at one working session.
 
-**Phase 2 — record per side.** "Record with camera" inside each LEFT/RIGHT
-card (the recorder gets a target slot). Today the recorder is single-clip
-only, so in pair mode the cards offer browse/drop.
+**Phase 2 — record per side.** SHIPPED: "Record this side" inside each empty
+LEFT/RIGHT card; `openCam(slot)` aims the recorder, `camKeep` lands the clip
+in that card through the same setFile/setFileB path a picked file takes.
 
-**Phase 3 — measure it.** PostHog step events (`analyze_step_done` with the
-step id) so the drop-off between 03 and 04, and the share of Both-sides
-sessions, are numbers rather than guesses.
+**Phase 3 — measure it.** SHIPPED: `analyze_step_done` with `step` = what /
+position / film / clip (`value`, `slot`, `source:'record'` when filmed
+here); the pair session now sends `analysis_started` with `session:'pair'`
+like the single-clip path, so the funnel counts it.
 
 ## Not doing
 
