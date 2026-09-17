@@ -74,7 +74,33 @@ def _side_card(result: dict[str, Any]) -> dict[str, Any]:
         "quality_warnings": _warnings_of(result)[:3],
         "keyframe_base64": result.get("keyframe_base64"),
         "has_keyframe": bool(result.get("keyframe_base64")),
+        # The clip's own joint table. A side view measures the near leg, so
+        # each clip of a session fills the half of the angle table the other
+        # cannot see -- without this the report showed one clip's six rows and
+        # asked the rider to "analyze the other side" he had just uploaded.
+        "angle_statistics": _compact_angle_stats(result.get("angle_statistics")),
     }
+
+
+# What the angle table reads per joint (see angleTableRows in the SPA): the
+# percentiles it prints, the mean it grades, and the frame counts behind the
+# "valid" column. Everything else on a stats entry is per-frame detail that
+# would double the size of a session result for nothing the page shows.
+_ANGLE_STAT_FIELDS = (
+    "min", "mean", "max", "p05", "p95",
+    "valid_frames", "nan_frames", "artefact_frames", "artefact_pct",
+)
+
+
+def _compact_angle_stats(stats: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(stats, dict):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for key, entry in stats.items():
+        if not isinstance(entry, dict):
+            continue
+        out[str(key)] = {f: entry.get(f) for f in _ANGLE_STAT_FIELDS if f in entry}
+    return out
 
 
 def build_pair_result(

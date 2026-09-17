@@ -136,6 +136,26 @@ async def job_ids_to_keep(
     return keep
 
 
+async def user_owns_job(db: AsyncSession, user_id: int, job_id: str) -> bool:
+    """Whether one of this user's stored analyses points at ``job_id``.
+
+    The in-memory job store empties on every deploy and forgets finished jobs
+    after ``job_ttl_hours`` regardless; the files under that id outlive both.
+    This is how a signed-in athlete's own footage is recognised once the store
+    no longer remembers who uploaded it -- "the video stopped playing half an
+    hour later" was a redeploy between the upload and the replay, not an
+    expiry, and the file was on the volume the whole time.
+    """
+    if not job_id:
+        return False
+    found = await db.scalar(
+        select(Analysis.id)
+        .where(Analysis.user_id == user_id, Analysis.job_id == job_id)
+        .limit(1)
+    )
+    return found is not None
+
+
 async def job_ids_for_user(
     db: AsyncSession, user_id: int, client_ids: list[str] | None = None,
 ) -> list[str]:

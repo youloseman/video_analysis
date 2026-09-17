@@ -496,8 +496,19 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .bil-side span{display:block;color:var(--c-ink-faint);font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
 .bil-side b{font-size:18px;font-family:var(--f-mono);font-weight:500}
 .bil-side-alone{display:block;color:var(--c-ink-faint);font-size:12px;margin-top:2px}
-.bil-shot{width:100%;aspect-ratio:16/9;height:auto;object-fit:contain;border-radius:var(--radius-xs);
-  background:var(--c-media-bg);margin-bottom:8px}
+/* The stills are portrait (a phone held upright, as the guide asks). In a
+   16:9 box that left a figure ninety pixels tall between two black bars --
+   "the photos are too small and nothing can be read". The box now follows
+   the frame, and the frame opens full size on a tap (#shotModal). */
+.bil-shot{width:100%;height:auto;max-height:340px;object-fit:contain;border-radius:var(--radius-xs);
+  background:var(--c-media-bg);margin-bottom:8px;display:block}
+.bil-shot-btn{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in;border-radius:var(--radius-xs);font:inherit;color:inherit}
+.bil-shot-btn:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+.bil-why{display:block;color:var(--c-ink-faint);font-size:12px;line-height:1.45;margin-top:6px}
+/* In the player's place when its source is gone (see the capture-phase
+   `error` listener in index.html). */
+.video-gone{padding:22px 18px;border:1px dashed var(--c-line);border-radius:var(--radius-xs);background:var(--c-panel);
+  color:var(--c-ink-soft);font-size:13px;line-height:1.55;text-align:center}
 .bil-vids{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 .bil-vid video{width:100%;border-radius:var(--radius-xs);background:var(--c-media-bg)}
 .bil-vid-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 0}
@@ -576,6 +587,22 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .modal{position:fixed;inset:0;background:rgba(14,17,22,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
 .modal.hidden{display:none}
 .modal-card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:24px 24px 22px;max-width:420px;width:100%;position:relative;box-shadow:var(--shadow-lg)}
+/* The frame lightbox: the whole viewport, dark, the image fitted -- and at
+   "actual size" the image at its own pixels inside a scrolling box, which is
+   what reading a 720-wide still's angle chips on a phone needs. */
+.modal-shot{padding:0;background:rgba(14,17,22,.96)}
+.shot-card{position:relative;width:100%;height:100%;display:flex;flex-direction:column;min-height:0}
+.shot-close{position:absolute;right:10px;top:10px;z-index:2;color:#fff;background:rgba(255,255,255,.1);border-radius:50%}
+.shot-close svg{color:#fff}
+.shot-scroll{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+.shot-scroll img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;cursor:default}
+.shot-scroll.zoomed{display:block;cursor:default}
+.shot-scroll.zoomed img{max-width:none;max-height:none;margin:0 auto}
+.shot-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;
+  color:rgba(255,255,255,.75);font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  border-top:1px solid rgba(255,255,255,.12)}
+.shot-bar .btn-ghost{color:#fff;border-color:rgba(255,255,255,.35);background:transparent}
+.shot-bar .btn-ghost:hover{background:rgba(255,255,255,.1)}
 .cardmodal-card{max-width:420px}
 /* ---- Built-in camera ---- */
 .cammodal-card{max-width:440px}
@@ -1257,6 +1284,11 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .result-top{display:flex;flex-direction:column;gap:16px;align-items:stretch;margin-top:0}
 .result-top > #videoCol,.result-top > div:not(.scorecard){order:-1}
 .result-top.no-video{display:flex}
+/* A two-sided session: the single player was the base clip twice over, so it
+   leaves the screen and the session panel carries both clips. The column
+   stays in the DOM because print wants the annotated still it holds. */
+.result-top.pair > #videoCol{display:none}
+@media print{.result-top.pair > #videoCol{display:block}}
 .scorecard{padding:22px 24px;position:relative;overflow:hidden;display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 22px;align-items:start;
   color:#fff;border-color:var(--c-brand-navy);
   background:
@@ -1306,6 +1338,31 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .score-meta b{color:#fff;font-weight:500}
 .score-meta .mono{font-family:var(--f-mono);font-weight:500;color:#fff}
 .score-meta a{color:#A7C2F9}
+/* What the score is built from (renderScoreBreakdown): a fourth column that
+   exists only while there is a breakdown to show, so a withheld score or a
+   teaser keeps the three-column tile. Under 900px it drops beneath the meta
+   as a ruled block; the phone rule further down then stacks everything. */
+.scorecard.has-bd{grid-template-columns:auto auto minmax(0,1fr) minmax(250px,1.35fr)}
+.score-bd{grid-column:4;grid-row:1/span 5;align-self:start;font-size:12px;color:rgba(255,255,255,.72);
+  padding-left:22px;border-left:1px solid rgba(255,255,255,.14);min-width:0}
+.bd-h{display:flex;justify-content:space-between;gap:8px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:8px}
+.bd-key{letter-spacing:.04em;text-transform:none;color:rgba(255,255,255,.45);white-space:nowrap}
+.bd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(44px,64px) 26px 30px;align-items:center;gap:8px;line-height:1.7}
+.bd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-bar{height:5px;background:rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.bd-bar i{display:block;height:100%;background:rgba(255,255,255,.7)}
+.bd-good .bd-bar i{background:#7BE0A2}
+.bd-warn .bd-bar i{background:#FFD08A}
+.bd-bad .bd-bar i{background:#FFB3A6}
+.bd-val{font-family:var(--f-mono);color:#fff;text-align:right;font-feature-settings:"tnum" 1}
+.bd-w{font-family:var(--f-mono);color:rgba(255,255,255,.45);text-align:right;font-feature-settings:"tnum" 1}
+.bd-out .bd-name,.bd-out .bd-val{color:rgba(255,255,255,.4)}
+@media(max-width:900px){
+  .scorecard.has-bd{grid-template-columns:auto auto minmax(0,1fr)}
+  .score-bd{grid-column:1/span 3;grid-row:auto;padding-left:0;border-left:0;
+    border-top:1px solid rgba(255,255,255,.14);padding-top:12px;margin-top:10px}
+}
 .score-none{font-family:var(--f-mono);font-style:normal;font-weight:500;text-transform:none;font-size:.4em;letter-spacing:0;color:rgba(255,255,255,.6)}
 .score-none-why{font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85);
   max-width:64ch;margin:8px 0 0;padding:12px 14px;background:rgba(255,255,255,.08);

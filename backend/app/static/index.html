@@ -287,6 +287,20 @@
   </div>
 </div>
 
+<!-- A frame at full size. The two-sided session's stills sit on cards a
+     few hundred pixels wide, where the angle chips the analyser painted on
+     them cannot be read -- and the still is the one place a rider can check
+     the skeleton sat on the right leg. "Actual size" shows the frame at its
+     own pixels and lets it scroll. -->
+<div class="modal modal-shot hidden" id="shotModal" role="dialog" aria-modal="true" aria-labelledby="shotCap">
+  <div class="shot-card">
+    <button class="modal-close shot-close" id="shotClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+    <div class="shot-scroll" id="shotScroll"><img id="shotImg" alt=""></div>
+    <div class="shot-bar"><span id="shotCap"></span>
+      <button class="btn btn-ghost btn-sm" id="shotZoom" type="button">Actual size</button></div>
+  </div>
+</div>
+
 <!-- Built-in camera. The countdown and auto-stop exist because the athlete is
      alone: the phone leans on a bottle, they press Start, and by the time the
      count reaches zero they are on the bike or already running — nobody is
@@ -763,6 +777,7 @@
         </div>
         <p class="score-none-why hidden" id="scoreWithheld"></p>
         <div class="score-meta" id="scoreMeta"></div>
+        <div class="score-bd hidden" id="scoreBd" aria-label="What the score is built from"></div>
         <div class="confwrap hidden" id="confBadge"></div>
         <button class="btn btn-primary btn-sm sharebtn hidden" id="shareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share result</span>
@@ -908,6 +923,7 @@
         <h3>Key metrics</h3>
         <div class="speedline-sm"></div>
       </div>
+      <p class="hint hidden" id="metricsNote" style="text-align:left;margin:0 0 14px"></p>
       <div class="tiles" id="tiles"></div>
       <!-- The readings with no band, in their own grid: in one grid a banded
            tile that spills into the last row stretched the one-word cards
@@ -2575,6 +2591,25 @@ function withJobToken(url,id){
   if(!t) return u;
   return u+(u.includes('?')?'&':'?')+'t='+encodeURIComponent(t);
 }
+/* A <video> whose source answers 404 sits there as a black box with a play
+   button that does nothing. That is what a replay looked like after the
+   server restarted between the analysis and the visit: the job store is
+   memory, and the file now outlives it only for a signed-in owner. Say so in
+   the player's place. Media `error` events do not bubble, so this listens in
+   the capture phase; the element is hidden rather than removed because the
+   report reuses #overlayVideo for the next result. */
+document.addEventListener('error', e=>{
+  const v=e.target;
+  if(!(v instanceof HTMLVideoElement)) return;
+  const src=v.currentSrc||v.getAttribute('src')||'';
+  if(!/\/jobs\/[a-z0-9]+\/overlay/i.test(src) || v.classList.contains('hidden')) return;
+  const note=document.createElement('div'); note.className='video-gone';
+  note.innerHTML = (typeof auth!=='undefined' && auth)
+    ? 'This overlay is no longer on the server — the footage behind it has passed its retention period. Every measurement on this page is unaffected.'
+    : 'This overlay is no longer on the server. Videos outlive the session only for signed-in accounts — sign in before analysing to keep them in your History.';
+  v.classList.add('hidden');
+  v.insertAdjacentElement('afterend', note);
+}, true);
 
 const ANALYZE_STAGE='Detecting pose &amp; computing biomechanics… usually takes <b>30–60 s</b>';
 function startPolling(){
@@ -5434,6 +5469,49 @@ const CONF_META={
   medium:{cls:'c-medium', label:'Medium confidence'},
   low:   {cls:'c-low',    label:'Low confidence'},
 };
+/* What the score is built from, in the score tile's spare column.
+
+   The tile spans the report and its content stopped a third of the way
+   across; the rest was navy. The number's own components are the one thing
+   that belongs beside it -- each measure, its weight in the rubric, and how
+   it scored -- and the server has sent them with every result without the
+   page ever rendering them. Not decoration: a reader who sees "Elbow 41"
+   beside "91" knows where the nine points went.
+
+   Weights mirror CYCLING_WEIGHTS / RUNNING_WEIGHTS in technique_scorer.py;
+   test_score_breakdown_spa.py reads both and fails if they drift. */
+const SCORE_PARTS={
+  bike:{knee_bdc:['Knee at bottom',.22],trunk_angle:['Trunk',.18],knee_tdc:['Knee at top',.15],
+        elbow_angle:['Elbow',.10],shoulder_angle:['Shoulder',.10],head_alignment:['Head position',.10],
+        pelvic_ratio:['Pelvis',.05],forearm_tilt:['Forearm',.05],saddle_fit:['Saddle height',.05]},
+  run:{cadence:['Cadence',.16],trunk_lean:['Trunk lean',.13],overstride:['Overstride',.13],
+       knee_contact:['Knee at contact',.12],phase_stability:['Stride stability',.12],
+       elbow_swing:['Arm swing',.09],vertical_osc:['Vertical oscillation',.09],
+       knee_swing:['Knee in swing',.08],waveform_similarity:['Stride shape',.08]},
+};
+function renderScoreBreakdown(r, sport){
+  const host=$('#scoreBd'); if(!host) return;
+  const card=host.closest('.scorecard');
+  const parts=r.score_breakdown||{}, names=SCORE_PARTS[sport]||{};
+  const cov=r.score_coverage||{}, excluded=cov.excluded||{}, missing=cov.missing||[];
+  const rows=Object.keys(names)
+    .filter(k=>parts[k]!=null || excluded[k] || missing.includes(k))
+    .sort((a,b)=>names[b][1]-names[a][1])
+    .map(k=>{
+      const v=parts[k], w=Math.round(names[k][1]*100), out=v==null;
+      // A component the scorer excluded or could not measure is listed and
+      // greyed rather than dropped: "not scored" is part of the answer.
+      const cls=out?'bd-out':v>=80?'bd-good':v>=60?'bd-warn':'bd-bad';
+      const title=out?(excluded[k]?`Not graded: ${excluded[k]}`:'Not measurable on this clip'):`${Math.round(v)} of 100, weight ${w}%`;
+      return `<div class="bd-row ${cls}" title="${esc(String(title))}"><span class="bd-name">${esc(names[k][0])}</span>
+        <span class="bd-bar" aria-hidden="true"><i style="width:${out?0:Math.max(2,Math.min(100,Math.round(v)))}%"></i></span>
+        <span class="bd-val">${out?'—':Math.round(v)}</span><span class="bd-w">${w}%</span></div>`;
+    });
+  const show=rows.length>0 && r.technique_score!=null && !r.score_withheld;
+  host.classList.toggle('hidden', !show);
+  if(card) card.classList.toggle('has-bd', show);
+  host.innerHTML=show?`<div class="bd-h"><span>What the score is built from</span><span class="bd-key">score · weight</span></div>${rows.join('')}`:'';
+}
 function renderConfidence(conf){
   const host=$('#confBadge'); if(!host) return;
   // older results (or a scorer failure) won't carry this — hide gracefully
@@ -5641,6 +5719,7 @@ function render(job,opts){
   const cov=coverageLine(r.score_coverage);
   if(cov) parts.push(cov);
   $('#scoreMeta').innerHTML=parts.join('<br>');
+  renderScoreBreakdown(r, sport);
 
   renderBilateral(r.bilateral);
   renderRunSession(r.run_session);
@@ -5652,7 +5731,23 @@ function render(job,opts){
 
   // overlay video (persistence note lives in the video caption; without the
   // video the report is just as ephemeral — surface the note separately)
-  if(job.overlay_url){
+  //
+  // A two-sided session carries BOTH overlays in its own panel, so the single
+  // player here -- which could only ever show the base clip -- was that clip
+  // twice and the other side once. The panel is the player for a pair. The
+  // column stays in the DOM (hidden by .pair on screen) because print reads
+  // the annotated still it holds.
+  const pairVids=!!(r.bilateral && r.bilateral.overlays && Object.keys(r.bilateral.overlays).length);
+  $('#resultTop').classList.toggle('pair', pairVids);
+  $('#videoCol').querySelectorAll('.video-gone').forEach(n=>n.remove());
+  $('#overlayVideo').classList.remove('hidden');
+  if(pairVids){
+    const vEl=$('#overlayVideo');
+    vEl.pause(); vEl.removeAttribute('src'); vEl.removeAttribute('poster'); vEl.load();
+    $('#videoCol').classList.remove('hidden');
+    $('#resultTop').classList.remove('no-video');
+    $('#ephemNote').classList.add('hidden');
+  } else if(job.overlay_url){
     // <video> and the download link can't send an Authorization header, so the
     // job token travels in the query string for these two.
     let ov=withJobToken(job.overlay_url, job.job_id);
@@ -5762,23 +5857,48 @@ function render(job,opts){
 
   // tiles
   renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s));
+  // Whose numbers these are. On a two-sided session the readings are either
+  // the merge of both clips or, when the merge was refused, one clip's --
+  // and a rider who uploaded two clips reads an unlabelled block as both.
+  const mn=$('#metricsNote');
+  if(mn){
+    const bl=r.bilateral;
+    if(bl && bl.combined){
+      mn.textContent='Measured from both clips of this session, against one shared body.';
+      mn.classList.remove('hidden');
+    } else if(bl){
+      mn.innerHTML=`From the <b>${esc(bl.metrics_side||'one')}-side clip alone</b> — the two clips could not be merged (see the session panel above). The joint table below shows each clip’s own side.`;
+      mn.classList.remove('hidden');
+    } else { mn.classList.add('hidden'); mn.textContent=''; }
+  }
 
-  // angle table — merge in the opposite side from a previously saved analysis
-  // (side-view only captures the near side; the far side is 0%-valid). If the
-  // user has already analyzed the other side of the same sport/position, fill
-  // those far-side rows with the real measurements from that clip.
+  // angle table — merge in the opposite side (side-view only captures the
+  // near side; the far side is 0%-valid). A two-sided session carries the
+  // other clip's own joint table, so between the two every row is a real
+  // measurement -- the first version asked the rider to "analyze the other
+  // side" of the pair he had just uploaded. Otherwise, if the user has
+  // already analyzed the other side of the same sport/position, fill those
+  // far-side rows with the real measurements from that saved clip.
   const liveStats=r.angle_statistics||{};
-  const paired=findPairedEntry(sport, r.cycling_position||null, r.camera_side||null);
+  const sessionOther=sessionOtherSide(r);
+  const paired=sessionOther?null:findPairedEntry(sport, r.cycling_position||null, r.camera_side||null);
   const merged=mergeAngleStats(liveStats, r.camera_side||null,
-    paired?paired.angleStats:null, paired?paired.cameraSide:null);
-  const srcMap=paired?angleSourceLabels(liveStats, r.camera_side||null, paired):null;
+    sessionOther?sessionOther.angle_statistics:(paired?paired.angleStats:null),
+    sessionOther?sessionOther.camera_side:(paired?paired.cameraSide:null));
+  let srcMap=null;
+  if(sessionOther){
+    srcMap={}; merged.filledFromPair.forEach(k=>{ srcMap[k]=`${sessionOther.camera_side} clip · this session`; });
+    if(!Object.keys(srcMap).length) srcMap=null;
+  } else if(paired){
+    srcMap=angleSourceLabels(liveStats, r.camera_side||null, paired);
+  }
   $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap);
   // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).
   $('#angleNorefNote').classList.toggle('hidden', sport!=='run');
   // no reference bands for this sport's angles -> hide the Optimal/Status columns
   $('#angleTable').classList.toggle('no-opt',
     !anglesHaveOpt(merged.stats, sport, r.cycling_position||null));
-  updateAngleMergeNote(paired, r.camera_side||null);
+  updateAngleMergeNote(paired, r.camera_side||null, sessionOther);
 
   // advanced biomechanics (phase portraits / coordination / waveform vs reference)
   renderBiomechanics(s.biomechanics, sport);
@@ -6243,6 +6363,10 @@ async function buildShareCard(card){
   }
 
   // ---- footer: the score, said once, and where to get one ----
+  // The header's last word was right-aligned and the alignment is canvas
+  // state, not per-call: left as it was, the score below drew leftwards from
+  // x=56 and fell off the card, and the grade landed on top of its own line.
+  x.textAlign='left';
   const fy=H-FOOT, cy=fy+FOOT/2;
   // The rule above the score is the speed gradient -- the app's one stripe,
   // on the one image of it that travels.
@@ -6461,6 +6585,32 @@ function closeCardModal(){
   if(state.cardUrl){ try{ URL.revokeObjectURL(state.cardUrl); }catch(e){} state.cardUrl=null; }
   modalClosed($('#cardModal'));
 }
+/* The frame lightbox (see #shotModal). One handler serves every .bil-shot-btn
+   the session panel renders, so a re-render does not have to rebind. */
+function openShot(src, caption){
+  const m=$('#shotModal'), img=$('#shotImg'); if(!m||!img) return;
+  img.src=src; img.alt=caption||'Annotated frame';
+  $('#shotCap').textContent=caption||'';
+  $('#shotScroll').classList.remove('zoomed'); $('#shotZoom').textContent='Actual size';
+  m.classList.remove('hidden');
+  modalOpened(m, closeShot);
+  $('#shotClose').focus();
+}
+function closeShot(){
+  const m=$('#shotModal'); if(!m) return;
+  m.classList.add('hidden'); $('#shotImg').removeAttribute('src');
+  modalClosed(m);
+}
+$('#shotClose').addEventListener('click',closeShot);
+$('#shotModal').addEventListener('click',e=>{ if(e.target.id==='shotModal'||e.target.id==='shotScroll') closeShot(); });
+$('#shotZoom').addEventListener('click',()=>{
+  const z=$('#shotScroll').classList.toggle('zoomed');
+  $('#shotZoom').textContent=z?'Fit to screen':'Actual size';
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.bil-shot-btn'); if(!b) return;
+  const img=b.querySelector('img'); if(img&&img.src) openShot(img.src, img.alt);
+});
 async function cardModalShare(){
   const file=state.cardFile; if(!file) return;
   try{ await navigator.share({files:[file], title:'My Flapp technique score', text:state.cardText}); }
@@ -7042,10 +7192,22 @@ function findPairedEntry(sport, position, side, excludeId){
   pick.sort((a,b)=>(b.at||0)-(a.at||0));
   return pick[0]||null;
 }
+/* The other clip of a two-sided session, when this result is one: the card
+   whose side is not the one the result's own joint rows came from, carrying
+   that clip's joint table. Null for a single clip. */
+function sessionOtherSide(r){
+  const b=r&&r.bilateral; if(!b||!Array.isArray(b.sides)) return null;
+  const base=b.metrics_side||b.base_side||null;
+  return b.sides.find(c=>c && c.camera_side && c.camera_side!==base
+    && c.angle_statistics && Object.keys(c.angle_statistics).length) || null;
+}
 /* Small note under the table explaining the two-sided state. */
-function updateAngleMergeNote(paired, side){
+function updateAngleMergeNote(paired, side, sessionOther){
   const el=$('#angleMergeNote'); if(!el) return;
-  if(paired){
+  if(sessionOther){
+    el.innerHTML=`Both sides shown: each clip of this session measured its own near side — the <b>${esc(sessionOther.camera_side)}</b> rows come from the ${esc(sessionOther.camera_side)}-side clip.`;
+    el.classList.remove('hidden');
+  } else if(paired){
     const other=paired.cameraSide||'the other side';
     el.innerHTML=`Both sides shown: near side from this clip, <b>${esc(other)} side</b> filled from your ${esc(fmtWhen(paired.at))} analysis.`;
     el.classList.remove('hidden');
@@ -8793,18 +8955,34 @@ function renderBilateral(b){
   const host=$('#bilateralBlock'); if(!host) return;
   if(!b){ host.innerHTML=''; return; }
   const sides=(b.sides||[]).slice().sort(a=>a.camera_side==='left'?-1:1);
-  // Each clip's own annotated frame sits on its card: a two-sided session
-  // that shows one photo looks like only half of it happened.
+  // Each clip's own annotated frame sits on its card, and opens full size on
+  // a tap: at card width the angle chips cannot be read, and the frame is
+  // the one place a rider can check the skeleton sat on the right leg.
+  //
+  // What a card no longer carries is that clip's own knee angle. Two knee
+  // numbers side by side read as left-versus-right, and on a real pair they
+  // sat 9 deg apart because one clip was filmed from the drive side with the
+  // chainring behind the ankle -- the gap was the chainring, not the legs.
+  // The session's one number lives in the header; a card says what the clip
+  // was worth as evidence, and why when it was worth nothing.
   const cards=sides.map(c=>{
     const name=esc((c.camera_side||'').replace(/^./,m=>m.toUpperCase()));
+    const failed=c.revolutions==null;
+    const why=failed?((c.quality_warnings||[])[0]||''):'';
+    const evidence=failed
+      ? '<span class="bil-flag bil-warn">no usable pedal circle</span>'
+      : `${c.revolutions} pedal revolution${c.revolutions===1?'':'s'} tracked`;
     return `<div class="bil-side">
-      ${c.keyframe_base64?`<img class="bil-shot" src="${c.keyframe_base64}" alt="${name} side annotated frame">`:''}
+      ${c.keyframe_base64?`<button class="bil-shot-btn" type="button" data-shot="${esc(c.camera_side||'')}" aria-label="Open the ${esc(c.camera_side||'')} side frame full size">
+        <img class="bil-shot" src="${c.keyframe_base64}" alt="${name} side annotated frame"></button>`:''}
       <span>${name} side alone</span>
-      <b>${c.knee_at_bdc==null?'—':Math.round(c.knee_at_bdc*10)/10+'\u00b0'}</b>
-      <small class="bil-note" style="margin:2px 0 0">${c.revolutions==null?'':c.revolutions+' pedal revolutions'}</small>
+      <small class="bil-note" style="margin:2px 0 0">${evidence}</small>
+      ${why?`<small class="bil-why">${esc(why)}</small>`:''}
     </div>`;
   }).join('');
-  // Both overlays, both downloadable. The rider filmed two clips.
+  // Both overlays, both downloadable. The rider filmed two clips -- and they
+  // come first in the panel, before the stills: the videos are the session,
+  // the stills are the two moments the analyser read.
   const ovs=b.overlays||{};
   const vids=Object.keys(ovs).length ? `<div class="bil-vids">${
     ['left','right'].filter(sd=>ovs[sd]).map(sd=>{
@@ -8818,14 +8996,21 @@ function renderBilateral(b){
     }).join('')}</div>` : '';
 
   if(!b.combined){
+    // When the reason is one clip's, name the clip: the rider then knows
+    // which side to re-film rather than both.
+    const failedSide=b.reason==='geometry_unavailable'
+      ? (sides.find(c=>c.revolutions==null)||{}).camera_side : null;
+    const reason=failedSide
+      ? `The ${failedSide}-side clip couldn\u2019t be reduced to a usable pedal circle — the tracker never held the ankle on the path long enough — so there was nothing to merge the other clip against.`
+      : (BIL_REASONS[b.reason]||'These two clips could not be merged.');
     host.innerHTML=`<div class="bil">
       <div class="bil-h"><b>Two-sided session</b>
         <span class="bil-flag bil-warn">not merged</span></div>
-      <p class="bil-note" style="margin-top:0">${esc(BIL_REASONS[b.reason]||'These two clips could not be merged.')}
+      <p class="bil-note" style="margin-top:0">${esc(reason)}
       ${b.scale_chord_disagreement_pct!=null?` (They disagree by <b>${b.scale_chord_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
-      <div class="bil-sides">${cards}</div>
-      <p class="bil-note">Both clips were analysed and both are real, but <b>every number above this panel — the score, the ranges, the saddle verdict — was measured from the ${esc(b.metrics_side||'one')}-side clip alone</b>, not from the pair. We are withholding the merged verdict, not the measurements: a combined number we can\u2019t stand behind is worse than none.</p>
       ${vids}
+      <div class="bil-sides">${cards}</div>
+      <p class="bil-note">Both clips were analysed and both are real, but <b>the score, the readings and the saddle verdict above were measured from the ${esc(b.metrics_side||'one')}-side clip alone</b>, not from the pair; the joint table shows each clip\u2019s own near side. We are withholding the merged verdict, not the measurements: a combined number we can\u2019t stand behind is worse than none.</p>
     </div>`;
     return;
   }
@@ -8839,15 +9024,15 @@ function renderBilateral(b){
     <div class="bil-h"><b>Two-sided session</b>${agreeFlag}</div>
     <div class="bil-val">${Math.round(b.knee_at_bdc*10)/10}\u00b0${unc!=null?` <small>\u00b1${Math.round(unc)}\u00b0</small>`:''}</div>
     <p class="bil-note" style="margin-top:2px">Knee at the bottom of the stroke, measured from <b>both</b> clips against one body. Each clip on its own only ever sees one leg.</p>
+    ${vids}
     <div class="bil-sides">${cards}</div>
-    <p class="bil-note"><b>The two clips read differently, and that gap is the instrument, not your legs.</b>
+    <p class="bil-note"><b>Read alone, the two clips put this knee a few degrees apart — and that gap is the instrument, not your legs.</b>
       A side view can only see the leg nearest the camera, so the two clips have to be put on a common
       scale before they can be pooled — and we measured that whatever difference is left between the
       sides afterwards is just that scaling, restated. Left-right difference and scale error cannot be
       told apart this way, so this session deliberately reports <b>no asymmetry number</b>. If you want
       one, that is a fitter with hands on you.</p>
     <p class="bil-note">The \u00b1 is not decoration: the hip joint sits inside the pelvis where no camera can see it, and near full extension a 1% error in leg length moves this angle about 4\u00b0. Merging both sides removes the disagreement between the two clips; it cannot remove what they get wrong together.</p>
-    ${vids}
   </div>`;
 }
 /* The two-sided RUN session.

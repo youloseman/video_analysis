@@ -93,6 +93,7 @@ from app.core.jobs import (
     JOBS,
     SLOT_WAIT_TIMEOUT_S,
     authorized_job,
+    job_file,
     pending_jobs,
     queue_ahead,
     log_storage_configuration,
@@ -2177,22 +2178,40 @@ def job_export(
 
 
 @app.get("/jobs/{job_id}/overlay")
-def job_overlay(
+async def job_overlay(
     job_id: str,
     t: str | None = None,
     side: str | None = None,
     user: User | None = Depends(optional_user),
+    db: AsyncSession = Depends(get_session),
 ) -> FileResponse:
     # Same gate as the poll. The token rides in the query string here because
     # this URL is consumed by <video src> and a download link, neither of which
     # can set a header.
-    job = authorized_job(job_id, t, user.id if user else None)
-    # A two-sided session rendered one overlay per clip, and both are the
-    # athlete's own footage -- serving only the one the merge happened to be
-    # built on hides half of what they filmed.
-    overlay_path = job.get("overlay_path")
-    if side in ("left", "right"):
-        overlay_path = (job.get("overlay_paths") or {}).get(side)
+    try:
+        job = authorized_job(job_id, t, user.id if user else None)
+    except HTTPException:
+        # The job store is memory. A deploy empties it, and it forgets
+        # finished jobs after job_ttl_hours regardless -- but the rendered
+        # file is on the volume for the whole retention period, and the
+        # athlete whose history points at this job is entitled to it for as
+        # long as it exists. Without this, "the video stopped playing half an
+        # hour later" was every redeploy between an upload and a replay.
+        # Anonymous callers have nothing to be recognised by once the token
+        # is gone with the job; for them the 404 stands.
+        from app.services.retention import user_owns_job
+
+        if user is None or not await user_owns_job(db, user.id, job_id):
+            raise
+        stem = f"overlay_{side}" if side in ("left", "right") else "overlay"
+        overlay_path = job_file(job_id, stem)
+    else:
+        # A two-sided session rendered one overlay per clip, and both are the
+        # athlete's own footage -- serving only the one the merge happened to
+        # be built on hides half of what they filmed.
+        overlay_path = job.get("overlay_path")
+        if side in ("left", "right"):
+            overlay_path = (job.get("overlay_paths") or {}).get(side)
     if not overlay_path or not Path(overlay_path).exists():
         raise HTTPException(404, "overlay not available for this job")
     suffix = f"_{side}" if side in ("left", "right") else ""
