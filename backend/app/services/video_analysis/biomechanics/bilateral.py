@@ -499,6 +499,51 @@ def merge_summaries(
     return merged
 
 
+# The subset of _AVERAGED_METRICS a partial merge may pool: what both cameras
+# see of ONE structure. Not the knee, at either end of the stroke -- a partial
+# merge exists precisely because one clip's knee could not be put on the
+# other's scale, and averaging angles the two clips cannot reconcile would be
+# the full merge's mistake with the safeguard removed.
+_MIDLINE_METRICS = tuple(k for k in _AVERAGED_METRICS if k != "knee_at_tdc")
+
+
+def merge_summaries_partial(
+    summary_knee: dict[str, Any], summary_other: dict[str, Any],
+) -> dict[str, Any]:
+    """One set of metrics when the knee cannot be pooled but the rider can.
+
+    Measured on the pair that motivated this (IMG_4527 / IMG_4525): the
+    drive-side clip's pedal circle could not be reduced -- the far leg was
+    occluded on 138 of 180 frames, and admitting those frames put its BDC
+    chord 7% short of the other clip's, on a length the bike fixes -- while
+    the two clips agreed on the trunk to 4.8 deg, the hip to 1.5, the shoulder
+    to 4.1, the elbow to 1.2. Refusing the whole session over the knee threw
+    away four measurements the pair had made twice and agreed on.
+
+    So: built on the clip whose knee is trustworthy (``summary_knee``), the
+    midline metrics averaged with the other clip, the knee and everything
+    derived from it (per-side keys, ``near_side``, the saddle verdict) left as
+    that one clip measured them. The scorer reads ``near_side`` first, so the
+    score is that clip's knee against the pooled rest -- not an invented
+    second leg.
+    """
+    merged = dict(summary_knee)
+    for key in _MIDLINE_METRICS:
+        a, b = summary_knee.get(key), summary_other.get(key)
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            merged[key] = (float(a) + float(b)) / 2.0
+        elif isinstance(b, (int, float)) and not isinstance(a, (int, float)):
+            merged[key] = float(b)
+    merged["camera_side"] = "both"
+    merged["camera_side_label"] = "Both sides"
+    merged["frames_analyzed"] = (
+        int(summary_knee.get("frames_analyzed") or 0)
+        + int(summary_other.get("frames_analyzed") or 0)
+    )
+    merged.pop("bilateral", None)
+    return merged
+
+
 def _rev_count(summary: dict[str, Any]) -> int:
     geom = summary.get("bilateral_geometry") or {}
     return int(geom.get("revolutions") or 0)

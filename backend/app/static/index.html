@@ -5831,7 +5831,7 @@ function render(job,opts){
 
   // meta
   const parts=[];
-  if(r.camera_side) parts.push(`Camera: <b>${esc(r.camera_side)} side</b>`);
+  if(r.camera_side) parts.push(`Camera: <b>${r.camera_side==='both'?'both sides':esc(r.camera_side)+' side'}</b>`);
   if(r.frames_analyzed!=null) parts.push(`<span class="mono">${r.frames_analyzed}</span> frames analyzed`);
   if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position))}</b>`);
   const cov=coverageLine(r.score_coverage);
@@ -5983,6 +5983,10 @@ function render(job,opts){
     const bl=r.bilateral;
     if(bl && bl.combined){
       mn.textContent='Measured from both clips of this session, against one shared body.';
+      mn.classList.remove('hidden');
+    } else if(bl && bl.partial){
+      const ks=bl.knee_single||{}, ag=bl.agreement||{};
+      mn.innerHTML=`Trunk, hip, shoulder and elbow: <b>both clips</b>, pooled (they agree to ${ag.worst}°). Knee at the bottom and top of the stroke, and the saddle verdict: the <b>${esc(ks.side||'one')}-side clip alone</b> — see the session panel above for why.`;
       mn.classList.remove('hidden');
     } else if(bl){
       mn.innerHTML=`From the <b>${esc(bl.metrics_side||'one')}-side clip alone</b> — the two clips could not be merged (see the session panel above). The joint table below shows each clip’s own side.`;
@@ -9067,7 +9071,9 @@ const BIL_REASONS={
   missing_side:'Only one side came through.',
   degenerate_geometry:'The two clips produced a leg geometry that cannot be solved — usually a tracking failure rather than anything about your fit.',
   not_combinable:'These two clips could not be merged into one verdict.',
+  midline_disagree:'The two clips disagree about the rider’s trunk, shoulder or hip by more than the method’s own error allows — they don’t read as two views of the same ride. Re-film both sides in one sitting, same position, same bike.',
 };
+const BIL_GAP_NAMES={trunk_angle_avg:'trunk',hip_angle_avg:'hip',shoulder_angle_avg:'shoulder',elbow_angle_avg:'elbow'};
 function renderBilateral(b){
   const host=$('#bilateralBlock'); if(!host) return;
   if(!b){ host.innerHTML=''; return; }
@@ -9116,6 +9122,31 @@ function renderBilateral(b){
   // the banner above says so at length, this is the reminder on the panel.
   const swappedFlag=b.slots_swapped
     ? '<span class="bil-flag bil-warn" title="The clip marked Left was filmed from the right and vice versa; they were swapped before analysis">slots were swapped</span>' : '';
+
+  if(b.partial){
+    // The knee could not be pooled, the rest of the rider could. The
+    // session's number is the midline agreement -- what the two clips
+    // measured twice and how far apart they landed -- and the knee is shown
+    // as one clip's, with the clip named. See bilateral_session._partial.
+    const agree=b.agreement||{};
+    const ks=b.knee_single||{};
+    const gaps=Object.entries(agree.gaps||{}).map(([k,v])=>`${esc(BIL_GAP_NAMES[k]||k)} ${v}°`).join(' · ');
+    const drive=b.reason==='geometry_unavailable' && ks.side==='left';
+    const whyKnee=b.reason==='geometry_unavailable'
+      ? `the ${esc(ks.side==='left'?'right':'left')}-side clip’s pedal circle couldn’t be measured${drive?' — it was filmed from the drive side, where the chainring sits behind the ankle at the bottom of the stroke':''}`
+      : `the two clips couldn’t be put on one scale${b.scale_chord_disagreement_pct!=null?` (they disagree by ${b.scale_chord_disagreement_pct}% on a length that cannot change)`:''}`;
+    host.innerHTML=`<div class="bil">
+      <div class="bil-h"><b>Two-sided session</b>
+        <span class="bil-flag bil-ok">merged, except the knee</span>${swappedFlag}</div>
+      <p class="bil-note" style="margin-top:0">Trunk, hip, shoulder and elbow were measured by <b>both</b> clips and pooled. The two clips agree to <b>${agree.worst}°</b> on them${gaps?` (${gaps})`:''} — that gap is this session’s own error bar, measured on the day.</p>
+      <div class="bil-val">${ks.value==null?'—':Math.round(ks.value*10)/10}° <small>${esc(ks.side||'')} clip only${ks.revolutions!=null?` · ${ks.revolutions} revolutions`:''}</small></div>
+      <p class="bil-note" style="margin-top:2px">Knee at the bottom of the stroke, and the saddle verdict built on it, from the <b>${esc(ks.side||'one')}-side clip alone</b> — ${whyKnee}. It was not pooled with the other clip, because a knee the two clips cannot put on one scale would be an average of two different rulers.</p>
+      ${vids}
+      <div class="bil-sides">${cards}</div>
+      <p class="bil-note">A side view can only see the leg nearest the camera, so no left-right comparison is offered here either: the difference between the two clips’ own knee readings is the instrument, not your legs.</p>
+    </div>`;
+    return;
+  }
 
   if(!b.combined){
     // When the reason is one clip's, name the clip: the rider then knows

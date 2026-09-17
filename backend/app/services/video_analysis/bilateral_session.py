@@ -22,6 +22,7 @@ from app.services.video_analysis.biomechanics.bilateral import (
     SideGeometry,
     combine_sides,
     merge_summaries,
+    merge_summaries_partial,
     midline_agreement,
 )
 
@@ -124,21 +125,29 @@ def build_pair_result(
         return _refusal(result_a, result_b, "sides_not_identified")
 
     left, right = sides["left"], sides["right"]
-    geom_left = SideGeometry.from_dict(left.get("bilateral_geometry"))
-    geom_right = SideGeometry.from_dict(right.get("bilateral_geometry"))
-    if geom_left is None or geom_right is None:
-        # One clip was too disturbed to reduce -- most often the tracker never
-        # held the ankle on the pedal path long enough. Nothing to merge.
-        return _refusal(left, right, "geometry_unavailable")
-
-    fit = combine_sides(geom_left, geom_right)
+    # Computed before anything can refuse: it is the evidence a partial merge
+    # stands on when the knee cannot be pooled.
     agreement = midline_agreement(
         left.get("sport_specific_metrics") or {},
         right.get("sport_specific_metrics") or {},
     )
+    geom_left = SideGeometry.from_dict(left.get("bilateral_geometry"))
+    geom_right = SideGeometry.from_dict(right.get("bilateral_geometry"))
+    if geom_left is None or geom_right is None:
+        # One clip was too disturbed to reduce -- most often the tracker never
+        # held the ankle on the pedal path long enough. The knee cannot be
+        # pooled; the rest of the rider may still be.
+        return _without_pooled_knee(
+            left, right, "geometry_unavailable", agreement,
+            cycling_position, recommendations,
+        )
+
+    fit = combine_sides(geom_left, geom_right)
     if not fit.combined:
-        return _refusal(left, right, fit.reason or "not_combinable",
-                        fit=fit, agreement=agreement)
+        return _without_pooled_knee(
+            left, right, fit.reason or "not_combinable", agreement,
+            cycling_position, recommendations, fit=fit,
+        )
 
     merged_summary = merge_summaries(
         left.get("sport_specific_metrics") or {},
@@ -195,6 +204,158 @@ def build_pair_result(
         score=result.get("technique_score"),
         knee=fit.knee_at_bdc and round(fit.knee_at_bdc, 1),
         agree=agreement.get("agree"),
+    )
+    return result
+
+
+# Knee-pooling failures a partial merge may stand in for. Not `leg_mismatch`:
+# that one says the two legs are too different to be one rider on one fit,
+# and a session that agrees on the trunk but not on who is riding is not a
+# session. Not the side-identity failures either -- there is no pair to be
+# partial about.
+_PARTIAL_OK_REASONS = frozenset({
+    "geometry_unavailable", "no_shared_scale", "degenerate_geometry",
+    "scale_mismatch",
+})
+
+
+def _without_pooled_knee(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    reason: str,
+    agreement: dict[str, Any],
+    cycling_position: str | None,
+    recommendations: bool,
+    fit: Any = None,
+) -> dict[str, Any]:
+    """The knee could not be pooled. Decide between a partial merge and none.
+
+    A partial merge needs two things: a reason of the kind that says "the
+    knee" rather than "not one rider", and the midline metrics AGREEING --
+    that agreement is the whole basis for pooling them, and it is the number
+    the panel prints as the session's own error bar. Without it the clips are
+    refused for disagreeing, which is a truer reason than the knee's.
+    """
+    if reason not in _PARTIAL_OK_REASONS:
+        return _refusal(left, right, reason, fit=fit, agreement=agreement)
+    if agreement.get("agree") is False:
+        return _refusal(left, right, "midline_disagree", fit=fit, agreement=agreement)
+    if agreement.get("agree") is None:
+        # Nothing both clips measured: no evidence to merge on.
+        return _refusal(left, right, reason, fit=fit, agreement=agreement)
+    knee, other = _knee_clip(left, right)
+    if knee is None:
+        return _refusal(left, right, reason, fit=fit, agreement=agreement)
+    return _partial(knee, other, reason, agreement, cycling_position,
+                    recommendations, fit=fit)
+
+
+def _knee_clip(
+    left: dict[str, Any], right: dict[str, Any],
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Which clip's knee the session stands on: the one with a pedal circle,
+    or with more revolutions behind it when both have one."""
+    def _revs(r: dict[str, Any]) -> int:
+        return int((r.get("bilateral_geometry") or {}).get("revolutions") or 0)
+
+    def _has_knee(r: dict[str, Any]) -> bool:
+        v = (r.get("sport_specific_metrics") or {}).get("knee_at_bdc")
+        return isinstance(v, (int, float))
+
+    ranked = sorted((r for r in (left, right) if _has_knee(r)),
+                    key=_revs, reverse=True)
+    if not ranked:
+        return None, None
+    knee = ranked[0]
+    return knee, (right if knee is left else left)
+
+
+def _partial(
+    knee: dict[str, Any],
+    other: dict[str, Any],
+    reason: str,
+    agreement: dict[str, Any],
+    cycling_position: str | None,
+    recommendations: bool,
+    fit: Any = None,
+) -> dict[str, Any]:
+    """Merged on everything both clips see; the knee from one clip, said so."""
+    knee_side, other_side = _side_of(knee), _side_of(other)
+    merged_summary = merge_summaries_partial(
+        knee.get("sport_specific_metrics") or {},
+        other.get("sport_specific_metrics") or {},
+    )
+    result = {k: v for k, v in knee.items() if k not in _PER_SIDE_ONLY}
+    result["sport_specific_metrics"] = merged_summary
+    result["camera_side"] = "both"
+    result["frames_analyzed"] = (
+        int(knee.get("frames_analyzed") or 0) + int(other.get("frames_analyzed") or 0)
+    )
+
+    scoring = _rescore(merged_summary, knee, cycling_position)
+    result["technique_score"] = scoring.get("overall_score")
+    result["letter_grade"] = scoring.get("letter_grade")
+    result["score_breakdown"] = scoring.get("component_scores")
+    if scoring.get("coverage") is not None:
+        result["score_coverage"] = scoring.get("coverage")
+    result["fit_plan"] = _rebuild_fit_plan(merged_summary, knee, cycling_position, scoring)
+
+    # Why the knee is one clip's, in the words the reason deserves. The
+    # drive-side case is named as such: the runner already warns that clip
+    # about the chainring, and the same fact explains why it has no circle.
+    if reason == "geometry_unavailable":
+        drive = other_side == "right"
+        why = (
+            f"the {other_side}-side clip's pedal circle could not be measured"
+            + (" -- it was filmed from the drive side, where the chainring sits "
+               "behind the ankle at the bottom of the stroke" if drive else "")
+        )
+    else:
+        pct = None if fit is None else fit.as_dict().get("scale_chord_disagreement_pct")
+        why = (
+            "the two clips could not be put on one scale"
+            + (f" (they disagree by {pct}% on a length that cannot change between "
+               f"two clips of one bike)" if pct is not None else "")
+        )
+    lead = (
+        f"Merged on everything both clips see: trunk, hip, shoulder and elbow "
+        f"agree to {agreement.get('worst')}°. The knee at the bottom of the "
+        f"stroke, and the saddle verdict built on it, come from the {knee_side}-side "
+        f"clip alone, because {why}."
+    )
+    seen, warnings = set(), [lead]
+    for r in (knee, other):
+        for w in _warnings_of(r):
+            if w not in seen:
+                seen.add(w)
+                warnings.append(w)
+    merged_summary["quality_warnings"] = warnings
+
+    geom = knee.get("bilateral_geometry") or {}
+    result["bilateral"] = {
+        "combined": False,
+        "partial": True,
+        "reason": reason,
+        "agreement": agreement,
+        "sides": [_side_card(r) for r in (knee, other)],
+        "base_side": knee_side,
+        "knee_side": knee_side,
+        "knee_single": {
+            "side": knee_side,
+            "value": merged_summary.get("knee_at_bdc"),
+            "revolutions": geom.get("revolutions"),
+        },
+        "scale_chord_disagreement_pct": (
+            None if fit is None else fit.as_dict().get("scale_chord_disagreement_pct")
+        ),
+    }
+    result["keyframe_base64"] = knee.get("keyframe_base64")
+    if recommendations:
+        result["ai_recommendations"] = _coach(result, cycling_position)
+    logger.info(
+        "BILATERAL_SESSION", combined=False, partial=True, reason=reason,
+        knee_side=knee_side, score=result.get("technique_score"),
+        agree_worst=agreement.get("worst"),
     )
     return result
 
