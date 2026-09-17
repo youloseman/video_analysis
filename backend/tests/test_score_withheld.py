@@ -125,9 +125,21 @@ def test_the_runner_passes_none_to_both_kinograms():
     from app.services.video_analysis import runner
 
     src = inspect.getsource(runner.analyze_from_frames)
-    assert src.count("None if score_withheld else (") == 2, (
-        "a kinogram call site is not honouring the withheld score"
+    # Two kinograms and the overlay/keyframe visualizer. The visualizer was
+    # the one missed: its keyframe carried "100/100 · A" on a withheld result.
+    assert src.count("None if score_withheld else (") == 3, (
+        "a badge call site is not honouring the withheld score"
     )
+
+
+def test_the_overlay_badge_says_not_scored_for_a_withheld_score():
+    import inspect
+
+    from app.services.video_analysis import video_visualizer
+
+    src = inspect.getsource(video_visualizer.VideoVisualizer)
+    assert "if _score is None:" in src
+    assert '"not scored"' in src
 
 
 # --------------------------------------------------------------------------

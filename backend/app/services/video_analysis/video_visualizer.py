@@ -151,7 +151,7 @@ class VideoVisualizer:
         cycling_position: str | None,
         output_dir: str,
         analysis_id: int,
-        technique_score: int,
+        technique_score: int | None,
         letter_grade: str,
         angle_stats: dict[str, Any] | None = None,
         summary: dict[str, Any] | None = None,
@@ -728,10 +728,19 @@ class VideoVisualizer:
 
         # Header first so it reserves the top strip (chips get nudged clear of it).
         _sport_labels = {"run": "RUN", "bike": "BIKE", "swim": "SWIM"}
+        # A withheld score is None here, and the badge says so: this frame
+        # is the one part of the report that travels on its own, and a
+        # "100/100 · A" stamped on a clip the analysis declined to score
+        # outlives every warning that explained why. That is what the
+        # keyframes of a pair analysed on the wrong legs carried.
         _score = self.technique_score
-        _hdr_status = (
-            "good" if _score >= 75 else "warn" if _score >= 60 else "bad"
-        )
+        if _score is None:
+            _score_txt, _grade_txt, _hdr_status = "not scored", "", "warn"
+        else:
+            _score_txt, _grade_txt = f"{_score}/100", self.letter_grade
+            _hdr_status = (
+                "good" if _score >= 75 else "warn" if _score >= 60 else "bad"
+            )
         _title = (
             "AERODYNAMIC PROFILE"
             if (self.sport_type == "bike"
@@ -741,7 +750,7 @@ class VideoVisualizer:
         _pad = int(max(10, height * 0.018))
         chips.header(
             (_pad, _pad), _sport_labels.get(self.sport_type, self.sport_type.upper()),
-            f"{_score}/100", self.letter_grade, _hdr_status,
+            _score_txt, _grade_txt, _hdr_status,
             right_text=_title, frame_w=width, scale=_sk,
         )
 

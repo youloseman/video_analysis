@@ -1366,11 +1366,19 @@ def analyze_from_frames(
             cycling_position=cycling_position,
             output_dir=str(_base.resolve().parent),
             analysis_id=(_base.stem if overlay_path else "keyframe"),
+            # Same rule as the two kinogram call sites below: a withheld
+            # score is None, and the badge prints "not scored". This one was
+            # missed, and the keyframes of the swapped-slot pair read
+            # "100/100 · A" over a result whose score was withheld.
             technique_score=(
-                scoring["overall_score"]
-                if scoring.get("overall_score") is not None else 0
+                None if score_withheld else (
+                    scoring["overall_score"]
+                    if scoring.get("overall_score") is not None else 0
+                )
             ),
-            letter_grade=scoring.get("letter_grade") or "--",
+            letter_grade=(
+                "" if score_withheld else (scoring.get("letter_grade") or "--")
+            ),
             angle_stats=angle_stats,
             summary=summary,
             # Always drawn WITH its numbers. Rendering the teaser's copy as the
