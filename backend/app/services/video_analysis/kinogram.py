@@ -1107,6 +1107,11 @@ def render_kinogram(
             )
             y -= 34
 
+    # The speed gradient between the tiles and the footer -- the same stripe
+    # the share card and the app carry, on the image that travels furthest.
+    overlay_style.draw_speed_rule(
+        canvas, OUTER_PAD, canvas_w - OUTER_PAD, canvas_h - OUTER_PAD - FOOTER_H - 2, 3,
+    )
     chips.caption(
         (OUTER_PAD, canvas_h - OUTER_PAD - FOOTER_H + 6),
         footer, scale=0.85, status="muted", plate=False,

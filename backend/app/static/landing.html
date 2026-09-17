@@ -130,6 +130,10 @@ h2.sec{
   text-transform:none;letter-spacing:-.015em;
 }
 h2.sec .accent{color:var(--c-coral)}
+/* The speedline under every section title -- the same stripe the app draws
+   under its page titles (--g-speed). Centred where the head is centred. */
+h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px;background:var(--g-speed);margin:18px 0 0}
+.showcase-head h2.sec::after,.proof-head h2.sec::after,.pricing-head h2.sec::after{margin-left:auto;margin-right:auto}
 .on-dark h2.sec{color:#fff}
 .lede{max-width:620px;color:var(--c-ink-soft);font-size:17.5px}
 .on-dark .lede{color:rgba(255,255,255,.78)}

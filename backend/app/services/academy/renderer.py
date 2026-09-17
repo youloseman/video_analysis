@@ -131,6 +131,19 @@ _HUB_CSS = """
 @media(max-width:640px){.acard.feat{flex-direction:column}.acard.feat .stripe{width:auto;height:3px}}
 """
 
+# The reading-progress bar: how far through the <article> the reader is.
+_READ_JS = """
+(function(){
+  var a=document.querySelector('article'); if(!a) return;
+  var bar=document.createElement('div'); bar.id='readbar'; bar.setAttribute('aria-hidden','true'); document.body.appendChild(bar);
+  var t=null;
+  function upd(){ t=null; var top=a.offsetTop, h=a.offsetHeight-window.innerHeight;
+    var p=h>0?Math.max(0,Math.min(1,(window.scrollY-top)/h)):1; bar.style.width=(p*100).toFixed(1)+'%'; }
+  window.addEventListener('scroll',function(){ if(!t) t=requestAnimationFrame(upd); },{passive:true});
+  window.addEventListener('resize',upd); upd();
+})();
+"""
+
 _ARTICLE_CSS = """
 .article-wrap{max-width:760px;margin:0 auto;padding:36px 24px 16px}
 .crumbs{font-size:13px;color:var(--c-ink-soft);margin-bottom:20px}
@@ -142,6 +155,11 @@ _ARTICLE_CSS = """
 .article-head .rt{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft)}
 .article-head h1{font-family:var(--f-display);font-weight:600;font-style:normal;text-transform:none;
   font-size:clamp(24px,3.4vw,32px);line-height:1.2;letter-spacing:0;color:var(--c-ink)}
+/* The speedline under the title, as under every page title in the app. */
+.article-head h1::after{content:"";display:block;width:72px;height:4px;border-radius:999px;background:var(--g-speed);margin-top:14px}
+/* Reading progress: the speed gradient along the top of the viewport, as far
+   as the reader has scrolled through the article. */
+#readbar{position:fixed;top:0;left:0;height:3px;width:0;background:var(--g-speed);z-index:120;pointer-events:none}
 .article-head .lede{font-size:17px;line-height:1.55;color:var(--c-ink-soft);margin-top:14px}
 .article-head{padding-bottom:22px;border-bottom:1px solid var(--c-line);margin-bottom:28px}
 /* article body typography */
@@ -531,7 +549,7 @@ def render_article(article: Article, base_url: str) -> str:
         active="academy",
         jsonld=jsonld,
         og_type="article",
-        extra_js=widget_js,
+        extra_js=widget_js + _READ_JS,
     )
 
 

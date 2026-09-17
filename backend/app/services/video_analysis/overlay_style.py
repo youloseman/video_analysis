@@ -307,6 +307,35 @@ def draw_leader(
     cv2_mod.circle(frame, joint, 2, _bgr(color_rgb), -1, cv2_mod.LINE_AA)
 
 
+# The speed gradient -- the app's one stripe (tokens.css --g-speed): blue
+# running through violet into coral. Drawn on the images that leave the app
+# (the kinogram, the wordmark plate on the overlay) so they carry the same
+# signature as the share card. Never a status colour.
+SPEED_STOPS = ((36, 87, 197), (106, 90, 200), (241, 85, 63))
+
+
+def speed_gradient(width: int) -> np.ndarray:
+    """RGB row of ``width`` pixels along the speed gradient, uint8 (width, 3)."""
+    width = max(1, int(width))
+    t = np.linspace(0.0, 1.0, width)
+    a, b, c = (np.array(s, dtype=np.float32) for s in SPEED_STOPS)
+    left = a[None, :] + (b - a)[None, :] * np.clip(t / 0.45, 0, 1)[:, None]
+    right = b[None, :] + (c - b)[None, :] * np.clip((t - 0.45) / 0.55, 0, 1)[:, None]
+    row = np.where((t < 0.45)[:, None], left, right)
+    return np.clip(row + 0.5, 0, 255).astype(np.uint8)
+
+
+def draw_speed_rule(frame: np.ndarray, x0: int, x1: int, y: int, thickness: int = 3) -> None:
+    """Paint the speed gradient as a horizontal rule on a BGR frame, in place."""
+    h, w = frame.shape[:2]
+    x0, x1 = max(0, int(x0)), min(w, int(x1))
+    y0, y1 = max(0, int(y)), min(h, int(y) + max(1, int(thickness)))
+    if x1 <= x0 or y1 <= y0:
+        return
+    row = speed_gradient(x1 - x0)[:, ::-1]          # RGB -> BGR
+    frame[y0:y1, x0:x1] = row[None, :, :]
+
+
 # --- PIL chip layer -------------------------------------------------------
 
 class ChipLayer:
@@ -554,16 +583,22 @@ class ChipLayer:
         tw = mf.getbbox(main)[2] - mf.getbbox(main)[0]
         th = mf.getbbox(main)[3] - mf.getbbox(main)[1]
         pad = int(6 * scale)
-        d.rounded_rectangle((x - tw - dot * 2 - pad * 2 - 2, y - th - pad, x + pad, y + pad + (int(12 * scale) if sub else 0)),
-                            radius=2, fill=CHIP_DARK + (184,))
+        left, bottom = x - tw - dot * 2 - pad * 2 - 2, y + pad + (int(12 * scale) if sub else 0)
+        d.rounded_rectangle((left, y - th - pad, x + pad, bottom), radius=2, fill=CHIP_DARK + (184,))
         d.text((x - dot * 2 - 2, y), main, font=mf, fill=INK_INVERSE + (255,), anchor="rs")
         d.ellipse((x - dot * 2, y - th + dot, x, y - th + dot * 3), fill=(241, 85, 63, 255))
         if sub:
             d.text((x, y + int(12 * scale)), sub, font=sf, fill=(198, 204, 214, 210), anchor="rs")
+        # The speed gradient along the bottom edge of the plate: the app's one
+        # stripe, on every frame that leaves it.
+        rule = speed_gradient(x + pad - left)
+        for i, (r, g, b) in enumerate(rule.tolist()):
+            d.line((left + i, bottom - 1, left + i, bottom), fill=(r, g, b, 255))
 
 
 __all__ = [
     "NEON", "AMBER", "ROSE", "STATUS_COLORS", "STATUS_TEXT", "STATUS_TINT", "ACCENT", "HALO",
     "status_for", "text_size", "draw_glow_skeleton", "draw_leader", "ChipLayer",
     "draw_corrected_marks", "skeleton_weights", "FONT_REGULAR", "FONT_BOLD",
+    "speed_gradient", "draw_speed_rule", "SPEED_STOPS",
 ]

@@ -1919,6 +1919,26 @@ const MAX_MB=200;
 function fmtSize(b){ return b>=1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
 // `kind`: true/'err' = rejection (red), 'warn' = advisory (amber), else neutral.
 // Stays on textContent -- messages interpolate user-supplied file names.
+/* The page-load bar (#loadbar): every same-origin GET the app makes for its
+   own data lights a 3 px speed gradient along the top of the viewport; it
+   finishes when the last one lands. Static files and the analysis job poll
+   are left out -- the progress card already shows that one. */
+(function(){
+  const bar=document.createElement('div'); bar.id='loadbar'; bar.setAttribute('aria-hidden','true');
+  document.body.appendChild(bar);
+  let inflight=0, show=null;
+  const orig=window.fetch;
+  window.fetch=function(input,init){
+    const url=typeof input==='string'?input:(input&&input.url)||'';
+    const method=((init&&init.method)||(input&&input.method)||'GET').toUpperCase();
+    const track=method==='GET' && url.startsWith('/') && !/^\/(jobs|media|static)\b|\.(webp|png|jpe?g|mp4|css|js|json)(\?|$)/.test(url);
+    if(!track) return orig.apply(this,arguments);
+    if(++inflight===1) show=setTimeout(()=>{ bar.classList.remove('end'); bar.classList.add('on'); },150);
+    const done=()=>{ if(--inflight>0) return; clearTimeout(show);
+      if(bar.classList.contains('on')){ bar.classList.add('end'); setTimeout(()=>{ if(!inflight) bar.classList.remove('on','end'); },350); } };
+    return orig.apply(this,arguments).then(r=>{ done(); return r; },e=>{ done(); throw e; });
+  };
+})();
 /* On a phone every data table is stacked (app.css, max-width:640px) and each
    cell shows its column header as a small label. The header text is copied
    onto the cells here, once per table, whenever a table lands in the DOM --
@@ -2102,8 +2122,18 @@ function showCaptureGuide(){
 function noFileHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
   hintMsg(auth ? `Upload a ${noun} to continue` : `Sign up now, or add a ${noun} first — it runs right after`);
+  syncSteps();
+}
+/* A step whose choice is in place shows its numeral filled with the speed
+   gradient; one still waiting stays an outline. Mode, sport and position
+   have defaults, so on a fresh screen 03 is the one outline that matters. */
+function syncSteps(){
+  const done={stepMode:true, stepSport:true, stepClip:!!state.file,
+    positionField:state.sport==='bike', stepDetails:false};
+  for(const id in done){ const el=$('#'+id); if(el) el.classList.toggle('done', done[id]); }
 }
 function readyHint(){
+  syncSteps();
   if(!state.file){ noFileHint(); return; }
   if(isPair() && !state.fileB){ hintMsg('Add the right-side clip to run the two-sided session'); return; }
   const sportTxt = state.sport==='bike' ? `Cycling — ${POSITION_NAMES[state.position]}` : 'Running';
@@ -2335,6 +2365,7 @@ function updatePosHint(){
   el.innerHTML=POSITION_HINTS[state.position]||'';
 }
 updatePosHint();   // show the default position's description on load
+syncSteps();
 $('#pAgain').addEventListener('click',()=>reset());
 lmedBind(); vedBind();
 
