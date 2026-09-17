@@ -379,3 +379,40 @@ def test_a_clean_capture_adds_no_noise_to_the_export():
         "sport_specific_metrics": {"capture_report": report()},
     })
     assert "Capture:" not in md
+
+
+# --- which side of the bike -------------------------------------------------
+# Every bike has a drive side, and from it the chainring sits behind the near
+# ankle at the bottom of the stroke. On the 17 Sep pair that clip had no
+# pedal circle at all. The row tells the rider which clip is which before the
+# two-sided merge has to explain itself.
+
+def test_the_non_drive_side_passes():
+    c = check(report(sport_type="bike", camera_side="left"), "drive_side")
+    assert c["status"] == "good"
+    assert "non-drive" in c["measured"]
+
+
+def test_the_drive_side_is_flagged_and_says_what_it_is_still_good_for():
+    c = check(report(sport_type="bike", camera_side="right"), "drive_side")
+    assert c["status"] == "warn" and c["impact"] == "medium"
+    assert "chainring toward the camera" in c["measured"]
+    assert "no usable pedal circle" in c["measured"]
+    assert "trunk, shoulder, elbow and hip" in c["action"]
+    assert "film the other side" in c["action"]
+
+
+def test_a_drive_side_clip_that_did_reduce_reports_its_repeatability():
+    c = check(report(sport_type="bike", camera_side="right",
+                     pedal_circle={"revolutions": 8, "chord_sd": 0.0399}),
+              "drive_side")
+    assert "8 pedal revolutions" in c["measured"]
+    assert "4.0% of crank radius" in c["measured"]
+
+
+def test_running_has_no_drive_side():
+    assert check(report(sport_type="run", camera_side="right"), "drive_side") is None
+
+
+def test_an_unknown_side_has_no_row():
+    assert check(report(sport_type="bike", camera_side=None), "drive_side") is None

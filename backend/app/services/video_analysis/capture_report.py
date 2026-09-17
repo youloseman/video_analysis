@@ -421,6 +421,52 @@ def _time_base_check(
     )
 
 
+def _drive_side_check(
+    sport_type: str, camera_side: str | None, pedal_circle: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Which side of the bike the camera was on, and what that cost.
+
+    Every bike has a drive side, and from it the chainring sits behind the
+    near ankle at the bottom of the stroke. Measured on the 17 Sep pair: the
+    drive-side clip's near ankle stayed on its circle, but the far leg was
+    occluded on 138 of 180 frames and no pedal circle could be reduced;
+    admitting those frames put the bottom-of-stroke chord 7% short of the
+    other clip's with a spread 3.4x wider. So the knee at the bottom -- the
+    saddle-height number -- is the one reading this side cannot be trusted
+    for, while the upper body and hip are as good as from the other side.
+
+    A two-sided session always has one such clip; this row is what tells the
+    rider which clip is which before the merge has to explain itself.
+    """
+    if sport_type != "bike" or camera_side not in ("left", "right"):
+        return None
+    if camera_side == "left":
+        return _check(
+            "drive_side", "Which side of the bike you filmed", "good", "medium",
+            "non-drive side (chainring away from the camera)",
+            "non-drive side for the saddle-height check -- the chainring sits "
+            "behind the ankle at the bottom of the stroke on the other side",
+        )
+    revs = (pedal_circle or {}).get("revolutions")
+    measured = "drive side (chainring toward the camera)"
+    if revs:
+        sd = (pedal_circle or {}).get("chord_sd")
+        measured += f"; {revs} pedal revolutions reduced"
+        if isinstance(sd, (int, float)):
+            measured += f", bottom-of-stroke repeatability {sd * 100:.1f}% of crank radius"
+    else:
+        measured += "; no usable pedal circle"
+    return _check(
+        "drive_side", "Which side of the bike you filmed", "warn", "medium",
+        measured,
+        "non-drive side for the saddle-height check -- the chainring sits "
+        "behind the ankle at the bottom of the stroke on this side",
+        "This side is fine for the trunk, shoulder, elbow and hip. For the "
+        "knee at the bottom of the stroke and the saddle verdict, film the "
+        "other side -- or film both and let the session merge them.",
+    )
+
+
 def build_capture_report(
     *,
     sport_type: str,
@@ -435,6 +481,8 @@ def build_capture_report(
     tracked_ratio: float | None = None,
     slow_motion_factor: Any = None,
     camera_view: dict[str, Any] | None = None,
+    camera_side: str | None = None,
+    pedal_circle: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """An ordered, quantified account of how the recording limited the analysis.
 
@@ -454,6 +502,7 @@ def build_capture_report(
     checks = [
         framing_check,
         _camera_view_check(camera_view),
+        _drive_side_check(sport_type, camera_side, pedal_circle),
         _orientation_check(frame_width, frame_height, framing_ok),
         legs,
         _camera_motion_check(camera_motion),

@@ -486,6 +486,10 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .paircard .change{margin-top:auto;align-self:flex-start}
 .paircard .rec{align-self:center;margin-top:-8px;margin-bottom:6px}
 .pairhint{text-align:left;margin:12px 0 0}
+/* The drive-side note under the two bike cards: advice for the take, set
+   apart from the "n of 2 clips" status line above it. */
+.pairnote{display:block;margin-top:10px;padding:10px 12px;border-left:3px solid var(--c-blue);
+  background:var(--c-panel);color:var(--c-ink-soft);font-size:13px;line-height:1.5}
 @media(max-width:640px){.pairgrid{grid-template-columns:1fr}}
 .bil{margin:18px 0 0;border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;background:var(--c-bg)}
 .bil-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}

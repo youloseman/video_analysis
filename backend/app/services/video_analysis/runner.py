@@ -1320,6 +1320,10 @@ def analyze_from_frames(
             # Slow motion stretches the picture, not the stride: at 8x, twelve
             # seconds of playback holds a second and a half of running.
             slow_motion_factor=summary.get("slow_motion_factor"),
+            # Bike: which side of the bike the camera was on, and whether a
+            # pedal circle survived it -- the drive side rarely yields one.
+            camera_side=analyzer.camera_side if is_bike else None,
+            pedal_circle=bilateral_geometry,
         )
         logger.info(
             "CAPTURE_REPORT",

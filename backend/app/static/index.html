@@ -471,7 +471,7 @@
             </button>
             <button type="button" data-film="both" aria-pressed="false">
               <img class="fig" src="/media/empty-both-sides.webp" alt="" width="512" height="512" decoding="async">
-              <span><b>Both sides — two clips</b><small>The same ride, filmed from each side. One merged score and a left-vs-right answer. Uses <b>2</b> of your monthly analyses.</small></span>
+              <span><b>Both sides — two clips</b><small>The same ride, filmed from each side. One merged score and one saddle verdict from both legs. Uses <b>2</b> of your monthly analyses.</small></span>
             </button>
           </div>
           <div class="sidesub" id="sideSub">
@@ -2414,6 +2414,15 @@ const PAIR_SLOTS=[
   {slot:'a', id:'#pairCardA', label:'Left side', sub:'Your LEFT side faces the camera'},
   {slot:'b', id:'#pairCardB', label:'Right side', sub:'Your RIGHT side faces the camera'},
 ];
+/* What a rider should know BEFORE filming a bike pair, not after the merge
+   has to explain itself: one of the two clips is always the drive side,
+   and from there the chainring sits behind the ankle at the bottom of the
+   stroke -- that clip gives the upper body and hip, the other gives the
+   knee and the saddle verdict. Measured on the first pair filmed after the
+   feature shipped: the drive-side clip had no usable pedal circle at all. */
+const PAIR_BIKE_NOTE='<b>One of these is your drive side</b> (chainring toward the camera — the right side on most bikes). '
+  +'It reads the trunk, shoulder, elbow and hip fine; the knee at the bottom of the stroke and the saddle verdict come from the other clip. '
+  +'Give the <b>non-drive</b> side the careful take: square-on, whole crank circle in frame, camera about hip height.';
 function pairFileOf(slot){ return slot==='a' ? state.file : state.fileB; }
 function renderPairCards(){
   // Each empty card can be filmed right here, like the single-clip step: the
@@ -2441,9 +2450,13 @@ function renderPairCards(){
   });
   const n=(state.file?1:0)+(state.fileB?1:0);
   const h=$('#pairHint');
-  if(h) h.innerHTML = n===2
-    ? '<b>Both clips loaded.</b> They\u2019ll be analysed together into one score, one saddle verdict and one left-vs-right answer.'
-    : `<b>${n} of 2 clips.</b> Add the ${state.file?'right':'left'}-side clip — a session needs one of each side.`;
+  // No left-right verdict is promised here: the session reports no asymmetry
+  // number on purpose (see renderBilateral), and a promise the panel then
+  // explains it cannot keep is worse than none.
+  if(h) h.innerHTML = (n===2
+    ? '<b>Both clips loaded.</b> They\u2019ll be analysed together into one score and one saddle verdict.'
+    : `<b>${n} of 2 clips.</b> Add the ${state.file?'right':'left'}-side clip — a session needs one of each side.`)
+    + (state.sport==='bike' ? `<br><span class="pairnote">${PAIR_BIKE_NOTE}</span>` : '');
 }
 function setFileB(f){
   if(!f) return;

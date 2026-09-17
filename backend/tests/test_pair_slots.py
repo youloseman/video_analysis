@@ -162,3 +162,28 @@ class TestTheHipCallout:
 
         assert "hip" in VideoVisualizer._HEADLINE_KEYS["bike"]
         assert "hip" not in VideoVisualizer._HEADLINE_KEYS["run"]
+
+
+class TestWhatTheUploaderSaysBeforeFilming:
+    """The drive side is explained BEFORE the take, not by the merge afterwards."""
+
+    @pytest.fixture(scope="class")
+    def html(self):
+        from pathlib import Path
+        return (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+
+    def test_the_bike_pair_form_names_the_drive_side_and_what_each_clip_is_for(self, html):
+        i = html.index("const PAIR_BIKE_NOTE=")
+        note = html[i:html.index("\nfunction pairFileOf", i)]
+        assert "drive side" in note and "chainring" in note
+        assert "non-drive" in note
+        assert "saddle verdict" in note
+
+    def test_the_note_is_shown_for_bike_pairs_only(self, html):
+        i = html.index("function renderPairCards(")
+        fn = html[i:html.index("\nfunction ", i + 10)]
+        assert "state.sport==='bike'" in fn and "PAIR_BIKE_NOTE" in fn
+
+    def test_no_left_vs_right_answer_is_promised(self, html):
+        """The session reports no asymmetry number on purpose."""
+        assert "left-vs-right answer" not in html
