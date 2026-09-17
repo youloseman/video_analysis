@@ -71,6 +71,11 @@
   --st-bad:#7E1611;  --st-bad-fill:#C5221F;  --st-bad-bg:#F6D9D6;
   --st-bad-text:#7E1611;
 
+  /* ---- the speed gradient: blue running into coral, the old brand's one
+     stripe. Motion and progress only -- never a surface, never a meter of
+     good-to-bad. */
+  --g-speed:linear-gradient(90deg,var(--c-blue) 0%,#6A5AC8 45%,var(--c-coral) 100%);
+
   /* ---- "good", said out loud: the landing's green for the moments that are
      positive -- in range, improving, high confidence, nothing to fix. The
      status scale keeps its AA-on-tint text for tables; these are the chips. */

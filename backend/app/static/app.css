@@ -644,10 +644,12 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .ic-lg{width:40px;height:40px}
 
 /* ---------- Shared brand elements ---------- */
-/* Speedlines were the old brand's skewed gradient bar under every heading.
-   The Instrument system draws structure with hairlines, so they are gone;
-   the elements stay in the markup for the sections that anchor to them. */
-.speedline,.speedline-sm{display:none}
+/* The speedline -- the old brand's gradient stripe -- is back under the
+   page title only (Your results, Your history, Your progress…): one stripe
+   per screen. The small one under every block stays off; blocks are
+   structured with hairlines. */
+.speedline{height:4px;width:72px;border-radius:999px;background:var(--g-speed);margin:2px 0 0}
+.speedline-sm{display:none}
 /* Eyebrow = h3 in the type scale: mono, 11 px, caps, +8% tracking, muted. */
 /* The eyebrow carries the landing's coral dot: the one small brand mark on
    every section of every screen. */
@@ -729,7 +731,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .planline .pl-quota{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-soft);margin-top:3px}
 .planline .pl-quota b{font-weight:500;color:var(--c-ink)}
 .planline .pl-bar{height:3px;background:var(--c-line);margin-top:8px;position:relative;overflow:hidden}
-.planline .pl-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c-blue);width:var(--used,0%)}
+.planline .pl-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--g-speed);width:var(--used,0%)}
 .planline:hover .pl-name{color:var(--c-ink)}
 .authbox .btn-login{width:100%;justify-content:center}
 
@@ -769,6 +771,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
    phone it goes: 120 px of strapline is 120 px the upload button loses. */
 .hero{color:#fff;position:relative;overflow:hidden;
   background:
+    var(--g-speed) left bottom/100% 3px no-repeat,
     radial-gradient(900px 420px at 88% -40%, rgba(47,109,224,.55), transparent 60%),
     radial-gradient(520px 320px at -6% 140%, rgba(241,85,63,.28), transparent 60%),
     linear-gradient(135deg,var(--c-brand-navy) 0%,var(--c-brand-mid) 60%,var(--c-blue) 100%)}
@@ -822,6 +825,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .screenhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 16px;padding-bottom:14px;border-bottom:1px solid var(--c-line)}
 .screenhead h2{margin:0;font-size:16px}
 .screenhead .eyebrow{display:inline-flex}
+.screenhead .speedline{display:none}   /* the one-line masthead has no room under it */
 
 /* ---------- Report rail (sticky table of contents) ----------
    Desktop: a left column beside the report -- the score at the top, one row
@@ -1218,8 +1222,10 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .step.done{color:var(--c-ink-soft)}
 .step.done .sdot{border-color:var(--c-brand-navy);background:var(--c-brand-navy);color:#fff}
 .step .sline{display:none}
-.pbar{height:4px;background:var(--c-line);border-radius:var(--radius);overflow:hidden;max-width:none;margin:0}
-.pbar .fill{height:100%;width:0;border-radius:var(--radius);background:var(--c-blue);transition:width .3s ease}
+/* The progress bar is the speed gradient: blue running into coral as the
+   analysis runs, the way the old brand drew it. */
+.pbar{height:8px;background:var(--c-line);border-radius:999px;overflow:hidden;max-width:none;margin:0}
+.pbar .fill{height:100%;width:0;border-radius:999px;background:var(--g-speed) left/100% 100% no-repeat;transition:width .3s ease}
 .pbar.indet .fill{width:30%;animation:indet 1.4s ease-in-out infinite}
 @keyframes indet{0%{margin-left:-30%}100%{margin-left:100%}}
 @media (prefers-reduced-motion:reduce){.pbar.indet .fill{animation:none;width:100%;opacity:.35}}

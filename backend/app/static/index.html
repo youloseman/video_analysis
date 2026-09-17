@@ -1939,6 +1939,15 @@ function labelTables(root){
 new MutationObserver(muts=>{
   for(const m of muts){ for(const n of m.addedNodes){ if(n.nodeType===1 && (n.matches('table.data,tbody,tr')||n.querySelector('table.data'))){ labelTables(); return; } } }
 }).observe(document.documentElement,{childList:true,subtree:true});
+/* The fill is the speed gradient drawn across the WHOLE track, revealed as
+   far as the progress goes -- so the tip is wherever the gradient is at that
+   point, not always coral. background-size needs the track/fill ratio. */
+function setFill(pct){
+  const f=$('#pfill'); if(!f) return;
+  const p=Math.max(0,Math.min(100,+pct||0));
+  f.style.width=p+'%';
+  f.style.backgroundSize=(p>0?(10000/p).toFixed(1):'100')+'% 100%';
+}
 function hintMsg(msg,kind=false){
   const h=$('#hint'); h.textContent=msg;
   h.classList.toggle('err',kind===true||kind==='err');
@@ -2422,7 +2431,7 @@ function analyze(){
   setSteps(1);
   const pbar=$('#pbar');
   pbar.classList.remove('indet'); pbar.setAttribute('aria-valuenow','0');
-  $('#pfill').style.width='0%';
+  setFill(0);
   stage('Uploading…');
 
   const xhr=new XMLHttpRequest();
@@ -2434,7 +2443,7 @@ function analyze(){
   xhr.upload.onprogress=e=>{
     if(!e.lengthComputable) return;
     const pct=Math.round(e.loaded/e.total*100);
-    $('#pfill').style.width=pct+'%';
+    setFill(pct);
     pbar.setAttribute('aria-valuenow',String(pct));
     if(e.loaded>=e.total){ stage('Upload received — starting analysis…'); }
     else stage(`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`);
@@ -2483,7 +2492,7 @@ function analyzePair(){
   setSteps(1);
   const pbar=$('#pbar');
   pbar.classList.remove('indet'); pbar.setAttribute('aria-valuenow','0');
-  $('#pfill').style.width='0%';
+  setFill(0);
   stage('Uploading two clips…');
 
   const xhr=new XMLHttpRequest();
@@ -2493,7 +2502,7 @@ function analyzePair(){
   xhr.upload.onprogress=e=>{
     if(!e.lengthComputable) return;
     const pct=Math.round(e.loaded/e.total*100);
-    $('#pfill').style.width=pct+'%';
+    setFill(pct);
     pbar.setAttribute('aria-valuenow',String(pct));
     if(e.loaded>=e.total) stage('Uploads received — starting the session…');
     else stage(`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`);
@@ -2613,7 +2622,7 @@ async function pollOnce(){
       if(typeof j.progress==='number'){
         pbar.classList.remove('indet'); pbar.removeAttribute('aria-valuetext');
         pbar.setAttribute('aria-valuenow',String(j.progress));
-        $('#pfill').style.width=j.progress+'%';
+        setFill(j.progress);
         if(j.progress>=50 && j.progress<75) announce('Analysis halfway');
       }
     }
@@ -6204,7 +6213,11 @@ async function buildShareCard(card){
 
   // ---- footer: the score, said once, and where to get one ----
   const fy=H-FOOT, cy=fy+FOOT/2;
-  x.fillStyle='rgba(255,255,255,.12)'; x.fillRect(P,fy,W-2*P,2);
+  // The rule above the score is the speed gradient -- the app's one stripe,
+  // on the one image of it that travels.
+  const rule=x.createLinearGradient(P,0,W-P,0);
+  rule.addColorStop(0,'#2457C5'); rule.addColorStop(.45,'#6A5AC8'); rule.addColorStop(1,CORAL);
+  x.fillStyle=rule; x.fillRect(P,fy,W-2*P,3);
   let lx=P;
   const gradeTxt=(grade&&/^[A-F][+-]?$/.test(grade))?grade:null;
   if(img){                                   // without a frame the big numeral above already says it
