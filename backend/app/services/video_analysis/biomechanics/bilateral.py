@@ -69,17 +69,28 @@ _KNEE = {"left": 25, "right": 26}
 _ANKLE = {"left": 27, "right": 28}
 _SHOULDER = {"left": 11, "right": 12}
 
-# A revolution needs enough bottom-of-orbit samples to have a median worth
-# taking, and a clip needs enough revolutions for the spread to mean anything.
-_MIN_BOTTOM_SAMPLES_PER_REV = 2
+# A clip needs enough revolutions for the spread to mean anything; a
+# revolution needs at least one frame at the bottom of the orbit.
+#
+# One, not two, and a wider bottom window than the first version's -- both
+# measured on 18 Sep. At 30 fps and ~80 rpm a revolution is 22 frames and
+# the bottom 30 degrees of the orbit is one or two of them; IMG_4528 (a
+# non-drive clip, 4.7 s) put ZERO frames inside y>0.90 |x|<0.25 -- its
+# orbit tops out at 0.89 radii, slightly flattened -- and at y>0.85 |x|<0.35
+# it had one frame in most revolutions and two in some. Requiring two
+# refused a clip whose circle was perfectly good. The wider window and the
+# single-sample floor gave it 3 revolutions at chord 4.253 / sd 0.013, and
+# moved the hoods clip that already reduced (IMG_4527, 8 revolutions) from
+# chord 4.717 to 4.736: +0.4%, inside its own sd of 0.011.
+_MIN_BOTTOM_SAMPLES_PER_REV = 1
 _MIN_REVOLUTIONS = 3
 _MIN_MEASURED_FRAMES = 40
 
 # "Bottom of the orbit": the ankle within this band of its circle, in radii.
 # No phase, no rotation direction, no peak picking -- just the foot at the
 # bottom, which is the one crank position both clips can agree on.
-_BOTTOM_MIN_Y = 0.90
-_BOTTOM_MAX_X = 0.25
+_BOTTOM_MIN_Y = 0.85
+_BOTTOM_MAX_X = 0.35
 # Frames whose ankle sits this far off the fitted circle are not on the pedal
 # path at all (the tracker is on the chainring or the mat) and cannot define
 # the bottom of the stroke.

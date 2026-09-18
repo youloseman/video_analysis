@@ -2449,7 +2449,8 @@ const PAIR_SLOTS=[
    feature shipped: the drive-side clip had no usable pedal circle at all. */
 const PAIR_BIKE_NOTE='<b>One of these is your drive side</b> (chainring toward the camera — the right side on most bikes). '
   +'It reads the trunk, shoulder, elbow and hip fine; the knee at the bottom of the stroke and the saddle verdict come from the other clip. '
-  +'Give the <b>non-drive</b> side the careful take: square-on, whole crank circle in frame, camera about hip height.';
+  +'Give the <b>non-drive</b> side the careful take: square-on, whole crank circle in frame, camera about hip height, '
+  +'and <b>8–15 seconds</b> of steady pedalling — shorter clips are analysed too, but at 30 fps each revolution puts only a frame or two at the bottom of the stroke, and the merge wants a few of those.';
 function pairFileOf(slot){ return slot==='a' ? state.file : state.fileB; }
 function renderPairCards(){
   // Each empty card can be filmed right here, like the single-clip step: the
@@ -3027,8 +3028,8 @@ const RUN_ANGLE_OPT={ trunk:[2,10], elbow:[85,100] };
 // CYCLING_POSITIONS. Keep in sync with that file. hip_angle is the mean hip and
 // is asymmetric (above max = comfort/OK) -- handled in the tile logic.
 const BIKE_POSITION_OPT={
-  road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[90,120],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[55,70],forearm_tilt:[5,20],pelvic_ratio:[1.5,3.5]},
-  road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[85,110],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[52,68],forearm_tilt:[0,15],pelvic_ratio:[1.8,3.5]},
+  road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[80,100],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[55,70],forearm_tilt:[5,20],pelvic_ratio:[1.5,3.5]},
+  road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[75,95],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[52,68],forearm_tilt:[0,15],pelvic_ratio:[1.8,3.5]},
   tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[42,60],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
   triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[45,62],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
   casual:{trunk_angle:[45,60],elbow_angle:[130,165],shoulder_angle:[100,140],knee_at_bdc:[135,150],knee_at_tdc:[60,80],hip_at_tdc:[68,88],forearm_tilt:[-5,15],pelvic_ratio:[1.5,3.5]},

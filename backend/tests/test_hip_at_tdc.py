@@ -140,3 +140,57 @@ class TestTheReport:
         ao = html[j:html.index("\nfunction ", j + 10)]
         assert "if(base==='hip') return null;" in ao
         assert "hip_angle:[" not in html, "the position table's hip key must say what it is"
+
+
+class TestTheShoulderBand:
+    """Checked against sources on 2026-09-18 (see META): fitters put the
+    torso-to-upper-arm angle on the hoods at about 90 (85-90, ~90, 90-100).
+    The band this replaced was 90-120 -- floor on the textbook value, thirty
+    degrees of room above it -- and every road clip in the repo failed it."""
+
+    def test_the_road_bands_sit_around_ninety_not_above_it(self):
+        h = CYCLING_POSITIONS["road_hoods"]["shoulder_angle"]
+        d = CYCLING_POSITIONS["road_drops"]["shoulder_angle"]
+        assert h[0] < 90 < h[1], h
+        assert d[0] < h[0] and d[1] < h[1], "drops lower the torso, so the arm closes"
+        for pos, meta in (("road_hoods", "BikeDynamics"), ("road_drops", "Derived")):
+            from app.services.video_analysis.biomechanics.cycling_positions import get_position_meta
+            assert meta in get_position_meta(pos, "shoulder_angle")["source"]
+
+    def test_the_spa_table_mirrors_them(self):
+        from pathlib import Path
+        html = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+        h = CYCLING_POSITIONS["road_hoods"]["shoulder_angle"]
+        d = CYCLING_POSITIONS["road_drops"]["shoulder_angle"]
+        assert f"road_hoods:{{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[{h[0]},{h[1]}]" in html
+        assert f"road_drops:{{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[{d[0]},{d[1]}]" in html
+
+
+class TestShortBikeClips:
+    def test_a_short_bike_clip_is_nudged_not_refused(self):
+        from app.services.video_analysis.capture_report import build_capture_report
+
+        rep = build_capture_report(sport_type="bike", duration_s=5.5, frame_width=720, frame_height=1280,
+                                   framing={"subject_height_px": 700, "subject_height_frac": 0.55},
+                                   tracking_stability={})
+        row = next(c for c in rep["checks"] if c["id"] == "duration")
+        assert row["status"] == "warn" and row["impact"] == "low"
+        assert "Analysed in full" in row["action"]
+        assert "8-15 s" in row["target"]
+        # the same length on a run clip is simply good
+        rep = build_capture_report(sport_type="run", duration_s=5.5, frame_width=720, frame_height=1280,
+                                   framing={"subject_height_px": 700, "subject_height_frac": 0.55},
+                                   tracking_stability={"leg_swap_pct": 1.0})
+        assert next(c for c in rep["checks"] if c["id"] == "duration")["status"] == "good"
+
+    def test_the_pair_note_says_eight_seconds_and_that_shorter_still_runs(self):
+        from pathlib import Path
+        html = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+        i = html.index("const PAIR_BIKE_NOTE=")
+        note = html[i:html.index("\nfunction pairFileOf", i)]
+        assert "8–15 seconds" in note and "shorter clips are analysed too" in note
+
+    def test_one_bottom_sample_per_revolution_is_enough(self):
+        from app.services.video_analysis.biomechanics import bilateral as B
+        assert B._MIN_BOTTOM_SAMPLES_PER_REV == 1
+        assert B._BOTTOM_MIN_Y <= 0.85 and B._BOTTOM_MAX_X >= 0.35

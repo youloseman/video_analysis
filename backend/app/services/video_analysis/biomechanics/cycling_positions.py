@@ -48,7 +48,7 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "hip_angle_max": (55, 65),      # avg hip angle (above optimal = comfort/OK)
         "hip_at_tdc": (55, 70),         # hip angle at top of stroke (closed)
         "hip_at_bdc": (100, 120),       # hip angle at bottom of stroke (open)
-        "shoulder_angle": (90, 120),
+        "shoulder_angle": (80, 100),    # torso-to-upper-arm ~85-90 (fitters); see META
         "forearm_tilt": (5, 20),
         "head_alignment": (50, 100),    # less critical on road
         "pelvic_ratio": (1.5, 3.5),
@@ -63,7 +63,7 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "hip_angle_max": (50, 65),      # avg hip angle in drops (above = OK)
         "hip_at_tdc": (52, 68),
         "hip_at_bdc": (95, 118),
-        "shoulder_angle": (85, 110),
+        "shoulder_angle": (75, 95),     # hoods band less the ~10 deg the torso drops; see META
         "forearm_tilt": (0, 15),
         "head_alignment": (60, 100),
         "pelvic_ratio": (1.8, 3.5),
@@ -148,8 +148,25 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             "note": "ASYMMETRIC: above optimal = comfort (OK). Below optimal = closed hip (risk).",
         },
         "shoulder_angle": {
-            "source": "General bike fit guidance; shoulders relaxed",
-            "note": "Less critical for road. Focus on comfort over number.",
+            # Checked against sources on 2026-09-18. Fitters converge on the
+            # torso-to-upper-arm angle at the shoulder being ABOUT 90 on the
+            # hoods: BikeDynamics fit guidelines "upper arm to torso angle of
+            # 85 to 90 deg" (bikedynamics.co.uk/guidelines.htm), BikeFit
+            # "around 90 degrees" (bikefit.com, handlebar adjustments), and
+            # one approach at 90-100. The band this replaced was 90-120 --
+            # its FLOOR sat on the textbook value and it ran 30 deg above it,
+            # so every road clip in the repo failed it (73-88 measured) while
+            # the same rider's TT clips passed their own sourced band. One
+            # study of 50 trained cyclists reports a shoulder angle of 112 +/- 7
+            # "as a true clinical joint" (Sports Med Health Sci 2021); as
+            # clinical flexion from arm-at-side that is 68 in this convention
+            # and the rider is inside it, as an included angle it is not --
+            # the paper's definition could not be checked, so it is recorded
+            # and not used.
+            "source": "BikeDynamics fit guidelines (upper arm to torso 85-90 deg); BikeFit (~90 deg)",
+            "warning_low": 72,
+            "warning_high": 108,
+            "note": "The angle at the shoulder between torso and upper arm. Less critical than the knee; a closed reading usually means a short reach.",
         },
     },
     "road_drops": {
@@ -171,6 +188,15 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             "source": "Retul; derived from competitive rider trunk 30-45 deg",
             "warning_low": 45,
             "note": "ASYMMETRIC: above optimal = comfort (OK). Below optimal = closed hip.",
+        },
+        "shoulder_angle": {
+            # No source gives a separate drops number. Derived: the hoods band
+            # shifted down by the ~10 deg the torso drops between hoods and
+            # drops (BikeDynamics), since the hands stay on the same bar and
+            # the elbows bend more. Recorded as derived, not measured.
+            "source": "Derived from the hoods band (BikeDynamics: torso ~10 deg lower in the drops)",
+            "warning_low": 67,
+            "warning_high": 103,
         },
     },
     "tt_aero": {

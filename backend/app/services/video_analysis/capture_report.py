@@ -65,6 +65,13 @@ FRAMING_TARGET_PX = 550
 DURATION_MIN_S = 3.0
 DURATION_GOOD_S = 5.0
 DURATION_LONG_S = 20.0
+# A bike clip wants more than a run clip does, and the reason is arithmetic:
+# at 30 fps and ~80 rpm one pedal revolution is 22 frames, of which one or
+# two are at the bottom of the stroke where the knee is read and the
+# two-sided merge finds its ruler. Five seconds is six revolutions; eight is
+# ten. A shorter clip is still analysed -- this is the row that says why
+# the numbers would have been steadier.
+DURATION_GOOD_BIKE_S = 8.0
 
 # Share of sampled frames the pose model actually found somebody in. Below
 # this, the clip's LENGTH stops describing how much movement it holds -- the
@@ -263,6 +270,7 @@ def _duration_check(
     duration_s: float | None, sampling_degraded: Any,
     tracked_ratio: float | None = None,
     slow_motion_factor: Any = None,
+    sport_type: str = "run",
 ) -> dict[str, Any]:
     """How much USABLE movement the clip holds, which is not its length.
 
@@ -280,7 +288,10 @@ def _duration_check(
             "duration", "How long the clip runs", "unknown", "medium",
             "could not be read", f"{DURATION_GOOD_S:.0f}-10 s of steady movement",
         )
-    target = f"{DURATION_GOOD_S:.0f}-10 s of steady movement"
+    target = (
+        f"{DURATION_GOOD_BIKE_S:.0f}-15 s of steady pedalling" if sport_type == "bike"
+        else f"{DURATION_GOOD_S:.0f}-10 s of steady movement"
+    )
 
     try:
         slow = float(slow_motion_factor or 1) or 1.0
@@ -334,6 +345,15 @@ def _duration_check(
             measured, target,
             "Enough to measure, but not enough to average. A few more seconds "
             "makes every timing metric steadier.",
+        )
+    if sport_type == "bike" and duration_s < DURATION_GOOD_BIKE_S:
+        return _check(
+            "duration", "How long the clip runs", "warn", "low",
+            measured, f"{DURATION_GOOD_BIKE_S:.0f}-15 s of steady pedalling",
+            "Analysed in full. At 30 fps each pedal revolution puts only one "
+            "or two frames at the bottom of the stroke, where the knee is "
+            "read and a two-sided session finds its shared ruler -- eight "
+            "seconds gives the average about ten revolutions instead of six.",
         )
     if sampling_degraded or duration_s > DURATION_LONG_S:
         return _check(
@@ -508,6 +528,7 @@ def build_capture_report(
         _camera_motion_check(camera_motion),
         _duration_check(
             duration_s, sampling_degraded, tracked_ratio, slow_motion_factor,
+            sport_type=sport_type,
         ),
         _time_base_check(time_base_uncertain, legs_unreliable),
     ]
