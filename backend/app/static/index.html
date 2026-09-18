@@ -1731,6 +1731,8 @@ function syncActiveNav(name){
 
 function setState(name, {focus=null, route=null}={}){
   document.body.dataset.state = name;
+  // Two clips playing under a hidden section is two decoders for nothing.
+  if(name!=='compare' && typeof cmpSyncUnmount==='function') cmpSyncUnmount();
   document.title = TITLES[name] || TITLES.upload;
   const showId = SECTIONS[name];
   Object.values(SECTIONS).forEach(id=>{
@@ -4323,6 +4325,219 @@ function fpMountHistory(host,url,entryId){
     .then(j=>{ if(j&&j.timeline&&host.isConnected) p.load(j.timeline); })
     .catch(()=>{});
   return p;
+}
+
+/* ============================================================
+   Two clips, locked cycle to cycle (FlappSync). The Compare screen's
+   before/after and left/right modes get the two overlays side by side,
+   synchronized on what the analysis detected: the near foot's strikes on a
+   run, the knee's BDC on a bike. Wall-clock sync is the wrong tool here --
+   two clips at 25 and 29.97 fps drift apart in minutes (a fifteen-year-old
+   Kinovea thread), and two runs at different cadences are never in step for
+   more than a stride. So the LEFT clip is the master and the RIGHT one
+   follows it in cycle phase: master at 40% through its stride 3 -> follower
+   shown at 40% through its stride 3. Paused or stepping, that is an exact
+   seek; playing, the follower runs at (its cycle / master cycle) x speed and
+   is re-anchored at every master event, so drift can never exceed one cycle.
+
+   When the follower has fewer cycles it loops them; the readout says so.
+   Fewer than two anchors on either side -> no lock, plain side by side from
+   each clip's start, and the panel says that instead.
+   ============================================================ */
+const SYNC_ANCHOR={run:'contact', bike:'bdc'};
+const SYNC_TOL_S=0.06;   // follower is re-seeked past this drift, playing
+const cmpSync={host:null,A:null,B:null,ta:null,tb:null,ka:0,rvfc:0,speed:1,scrubbing:false,anchA:[],anchB:[],locked:false,bound:false};
+
+function cmpSyncUnmount(){
+  const c=cmpSync;
+  if(c.rvfc&&c.A&&c.A.cancelVideoFrameCallback){ c.A.cancelVideoFrameCallback(c.rvfc); }
+  [c.A,c.B].forEach(v=>{ if(v){ try{ v.pause(); }catch(e){} } });
+  c.host=null; c.A=c.B=null; c.ta=c.tb=null; c.rvfc=0; c.bound=false; c.locked=false;
+}
+/* Anchor times (seconds) of a timeline: the frames of its anchor events. */
+function syncAnchors(tl){
+  const kind=SYNC_ANCHOR[tl.sport]; if(!kind) return [];
+  return (tl.events||[]).filter(e=>e.kind===kind).map(e=>tl.frames[e.k]/tl.fps).sort((a,b)=>a-b);
+}
+/* Where a time sits in a clip's cycles: {i, phi} -- cycle index and 0..1
+   through it. Before the first anchor and after the last, the neighbouring
+   cycle's length is borrowed so the answer stays continuous. */
+function syncPhase(anch,t){
+  const n=anch.length; if(n<2) return {i:0,phi:0};
+  if(t<anch[0]){ const d=anch[1]-anch[0]; return {i:-1,phi:Math.max(0,1-(anch[0]-t)/d)}; }
+  for(let i=0;i<n-1;i++){ if(t<anch[i+1]) return {i,phi:(t-anch[i])/(anch[i+1]-anch[i])}; }
+  const d=anch[n-1]-anch[n-2]; return {i:n-1,phi:Math.min(0.999,(t-anch[n-1])/d)};
+}
+/* The follower's time for the master's cycle/phase. Cycles wrap when the
+   follower has fewer; before the master's first anchor the follower shows
+   the same lead-in fraction of its own first cycle. */
+function syncFollowTime(anchB,i,phi,durB){
+  const nb=anchB.length-1;                       // whole cycles in B
+  if(nb<1) return Math.min(durB||0,Math.max(0,phi));
+  if(i<0){ const d=anchB[1]-anchB[0]; return Math.max(0,anchB[0]-(1-phi)*d); }
+  const j=((i%nb)+nb)%nb;
+  return anchB[j]+phi*(anchB[j+1]-anchB[j]);
+}
+function syncCycleRate(anchA,anchB,i){
+  const na=anchA.length-1, nb=anchB.length-1; if(na<1||nb<1) return 1;
+  const ia=Math.max(0,Math.min(na-1,i)), jb=((ia%nb)+nb)%nb;
+  return (anchB[jb+1]-anchB[jb])/(anchA[ia+1]-anchA[ia]);
+}
+
+async function mountCompareVideo(Ae,Be,sides){
+  const host=$('#cmpVideo'); if(!host) return;
+  cmpSyncUnmount();
+  const ok=e=>e && e.kind==='video' && e.jobId && e.access==='full';
+  if(!auth || !ok(Ae) || !ok(Be)){ host.innerHTML=''; return; }
+  const tagA=sides?'Left side':'Before', tagB=sides?'Right side':'After';
+  host.innerHTML=`<div class="sy-loading">Loading the two clips…</div>`;
+  const get=async(e,what)=>{ try{ const r=await fetch('/me/analyses/'+encodeURIComponent(e.id)+'/'+what,{headers:authHeaders()}); return r.ok?await r.json():null; }catch(_e){ return null; } };
+  const [oa,ob,ta,tb]=await Promise.all([get(Ae,'overlays'),get(Be,'overlays'),get(Ae,'timeline'),get(Be,'timeline')]);
+  // The screen moved on while these were in flight.
+  if(!host.isConnected || !state.cmp || (state.cmp.aId!==Ae.id&&!sides) ) { if(!host.isConnected) return; }
+  const ua=oa&&oa.overlays&&oa.overlays.single, ub=ob&&ob.overlays&&ob.overlays.single;
+  if(!ua||!ub){ host.innerHTML=`<p class="hint" style="text-align:left">The two clips can’t be played together — ${!ua&&!ub?'neither overlay is':'one overlay is no longer'} on the server (clips are kept for their retention period, the numbers above are kept for good).</p>`; return; }
+  const api=window.FLAPP_API_BASE||'';
+  const sport=(ta&&ta.timeline&&ta.timeline.sport)||state.cmp.sport;
+  // "step" on a run: the gait phase says a foot is down, either foot, so
+  // the anchors are foot strikes of both legs.
+  const noun=sport==='bike'?'stroke':'step';
+  host.innerHTML=`<div class="sy" tabindex="0" aria-label="Two clips side by side, synchronized">
+    <div class="sy-head"><b>Side by side</b> <span class="sy-lock"></span></div>
+    <div class="sy-stage">
+      <div class="sy-col"><div class="sy-tag">${tagA} · ${esc(fmtWhen(Ae.at))}</div><video class="sy-a" src="${esc(api+ua)}" muted playsinline preload="metadata" aria-label="${tagA} overlay"></video><div class="sy-sub sy-suba"></div></div>
+      <div class="sy-col"><div class="sy-tag">${tagB} · ${esc(fmtWhen(Be.at))}</div><video class="sy-b" src="${esc(api+ub)}" muted playsinline preload="metadata" aria-label="${tagB} overlay"></video><div class="sy-sub sy-subb"></div></div>
+    </div>
+    <canvas class="fp-strip sy-strip" aria-label="Timeline of the ${tagA} clip; drag to scrub both"></canvas>
+    <div class="fp-ctl">
+      <button class="btn btn-ghost btn-sm sy-play" type="button" aria-label="Play or pause both">▶</button>
+      <button class="btn btn-ghost btn-sm sy-prev" type="button" aria-label="Previous frame" title="Previous frame (←)">◀</button>
+      <button class="btn btn-ghost btn-sm sy-next" type="button" aria-label="Next frame" title="Next frame (→)">▶</button>
+      <span class="fp-ev sy-ev"><button class="btn btn-ghost btn-sm sy-evprev" type="button" title="Previous ${noun} (Shift+←)">⏮ ${noun}</button><button class="btn btn-ghost btn-sm sy-evnext" type="button" title="Next ${noun} (Shift+→)">${noun} ⏭</button></span>
+      <span class="fp-speed sy-speed" role="group" aria-label="Playback speed"><button type="button" data-speed="0.25">¼×</button><button type="button" data-speed="0.5">½×</button><button type="button" data-speed="1" aria-pressed="true">1×</button></span>
+      <span class="fp-time mono sy-time"></span>
+    </div>
+    <p class="sy-note"></p></div>`;
+  const c=cmpSync; c.host=host.querySelector('.sy'); c.A=host.querySelector('.sy-a'); c.B=host.querySelector('.sy-b');
+  c.ta=ta&&ta.timeline||null; c.tb=tb&&tb.timeline||null; c.ka=0; c.speed=1; c.tagA=tagA; c.tagB=tagB; c.noun=noun;
+  c.anchA=c.ta?syncAnchors(c.ta):[]; c.anchB=c.tb?syncAnchors(c.tb):[];
+  c.locked=c.anchA.length>=2&&c.anchB.length>=2;
+  // Two clips of one athlete do not differ in cadence by half. When the
+  // median cycles disagree past that, one clip's events are not the other
+  // clip's events (a far-away clip whose stances were half missed, say), and
+  // a lock would play the follower at x7 -- which is not a comparison.
+  let why='';
+  if(c.locked){
+    const med=a=>{ const d=a.slice(1).map((v,i)=>v-a[i]).sort((x,y)=>x-y); return d[Math.floor(d.length/2)]; };
+    const ratio=med(c.anchB)/med(c.anchA);
+    if(!(ratio>=0.6&&ratio<=1.67)){ c.locked=false; why=`the ${noun}s detected in the two clips are too different to be the same thing (one is ×${ratio.toFixed(1)} the other), so locking them would compare a ${noun} to something else`; }
+  }
+  const lock=host.querySelector('.sy-lock'), note=host.querySelector('.sy-note');
+  if(c.locked){
+    const na=c.anchA.length-1, nb=c.anchB.length-1;
+    lock.innerHTML=`<span class="bil-flag bil-ok">locked ${noun} to ${noun}</span>`;
+    note.textContent=`${tagA} leads; ${tagB} follows it through each ${noun} — the ${sport==='bike'?'bottom of the stroke':'foot strike'} on the left lands on the ${sport==='bike'?'bottom of the stroke':'foot strike'} on the right, whatever the cadence. `
+      +(na!==nb?`${tagA} has ${na} ${noun}s and ${tagB} ${nb}; the shorter one repeats. `:'')
+      +'Two clips are two camera setups: compare the positions, not the pixels.';
+    host.querySelector('.sy-ev').classList.remove('hidden');
+  } else {
+    lock.innerHTML=`<span class="bil-flag bil-warn">not locked</span>`;
+    note.textContent=`The two clips play from their own starts: ${why||(!c.ta||!c.tb?'one of them was analyzed before the frame record existed':'too few detected '+noun+'s to lock them')}. Step and scrub still move both.`;
+    host.querySelector('.sy-ev').classList.add('hidden');
+  }
+  cmpSyncBind();
+  cmpSyncPaint();
+  track('compare_video',{sport,locked:c.locked,mode:sides?'sides':'sessions'});
+}
+/* Master frame helpers, mirroring FlappPlayer. Without a timeline the
+   master steps by its own nominal fps. */
+function cmpSyncFps(){ return (cmpSync.ta&&cmpSync.ta.fps)||30; }
+function cmpSyncSeekMaster(t,pause){
+  const c=cmpSync; if(!c.A) return;
+  if(pause){ c.A.pause(); c.B.pause(); }
+  t=Math.max(0,Math.min(isFinite(c.A.duration)?c.A.duration:t,t));
+  c.A.currentTime=t; cmpSyncFollow(true);
+}
+/* Put the follower where the master is. Exact when asked (paused, stepping,
+   scrubbing); while playing, only when it has drifted past tolerance. */
+function cmpSyncFollow(exact){
+  const c=cmpSync; if(!c.A||!c.B) return;
+  const t=c.A.currentTime; let tb=t, rate=1;
+  if(c.locked){
+    const ph=syncPhase(c.anchA,t);
+    tb=syncFollowTime(c.anchB,ph.i,ph.phi,c.B.duration);
+    rate=syncCycleRate(c.anchA,c.anchB,ph.i);
+    c.phase=ph;
+  }
+  const want=c.speed*rate;
+  if(Math.abs((c.B.playbackRate||1)-want)>0.01) c.B.playbackRate=want;
+  if(exact||Math.abs(c.B.currentTime-tb)>SYNC_TOL_S){ try{ c.B.currentTime=tb; }catch(e){} }
+  cmpSyncPaint();
+}
+function cmpSyncBind(){
+  const c=cmpSync; if(c.bound||!c.host) return; c.bound=true;
+  const q=s=>c.host.querySelector(s);
+  const tick=()=>{ cmpSyncFollow(false); if(!c.A.paused&&c.A.requestVideoFrameCallback) c.rvfc=c.A.requestVideoFrameCallback(tick); };
+  c.A.addEventListener('play',()=>{ q('.sy-play').textContent='❚❚'; c.B.play().catch(()=>{});
+    if(c.A.requestVideoFrameCallback) c.rvfc=c.A.requestVideoFrameCallback(tick); });
+  c.A.addEventListener('pause',()=>{ q('.sy-play').textContent='▶'; c.B.pause(); cmpSyncFollow(true); });
+  c.A.addEventListener('ended',()=>{ c.B.pause(); q('.sy-play').textContent='▶'; });
+  c.A.addEventListener('seeked',()=>{ if(c.A.paused) cmpSyncFollow(true); });
+  c.A.addEventListener('timeupdate',()=>{ if(!c.A.requestVideoFrameCallback) cmpSyncFollow(false); });
+  c.A.addEventListener('loadedmetadata',cmpSyncPaint);
+  const toggle=()=>{ if(c.A.paused) c.A.play().catch(()=>{}); else c.A.pause(); };
+  [c.A,c.B].forEach(v=>v.addEventListener('click',toggle));
+  q('.sy-play').addEventListener('click',toggle);
+  const step=d=>{ const fps=cmpSyncFps(), f=Math.floor(c.A.currentTime*fps+1e-4)+d; cmpSyncSeekMaster((f+0.5)/fps,true); };
+  q('.sy-prev').addEventListener('click',()=>step(-1)); q('.sy-next').addEventListener('click',()=>step(1));
+  const jump=d=>{ if(!c.locked) return; const t=c.A.currentTime+0.001*d; let target=null;
+    if(d>0) target=c.anchA.find(a=>a>t+0.02); else { for(let i=c.anchA.length-1;i>=0;i--) if(c.anchA[i]<t-0.02){ target=c.anchA[i]; break; } }
+    if(target!=null) cmpSyncSeekMaster(target+0.5/cmpSyncFps(),true); };
+  q('.sy-evprev').addEventListener('click',()=>jump(-1)); q('.sy-evnext').addEventListener('click',()=>jump(1));
+  q('.sy-speed').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; c.speed=+b.dataset.speed; c.A.playbackRate=c.speed;
+    c.host.querySelectorAll('.sy-speed button').forEach(x=>x.setAttribute('aria-pressed',String(+x.dataset.speed===c.speed))); cmpSyncFollow(true); });
+  c.host.addEventListener('keydown',e=>{
+    if(e.target.closest('button')&&e.key===' ') return;
+    if(e.key===' '){ e.preventDefault(); toggle(); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); e.shiftKey?jump(-1):step(-1); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); e.shiftKey?jump(1):step(1); }
+  });
+  const strip=q('.sy-strip');
+  const at=ev=>{ const b=strip.getBoundingClientRect(); const x=Math.max(0,Math.min(1,(ev.clientX-b.left)/Math.max(1,b.width))); return x*(isFinite(c.A.duration)?c.A.duration:0); };
+  strip.addEventListener('pointerdown',ev=>{ c.scrubbing=true; strip.setPointerCapture(ev.pointerId); cmpSyncSeekMaster(at(ev),true); ev.preventDefault(); });
+  strip.addEventListener('pointermove',ev=>{ if(c.scrubbing) cmpSyncSeekMaster(at(ev),true); });
+  const up=()=>{ c.scrubbing=false; }; strip.addEventListener('pointerup',up); strip.addEventListener('pointercancel',up);
+  window.addEventListener('resize',()=>{ if(c.host&&c.host.isConnected) cmpSyncPaint(); });
+}
+/* The master's strip (phases, anchors, playhead) and the two readouts. */
+function cmpSyncPaint(){
+  const c=cmpSync; if(!c.host||!c.host.isConnected) return;
+  const T=fpTokens(), st=c.host.querySelector('.sy-strip'), ta=c.ta, dur=isFinite(c.A.duration)?c.A.duration:((ta&&ta.frames[ta.frames.length-1]/ta.fps)||1);
+  const W=st.clientWidth||600, H=26, dpr=window.devicePixelRatio||1;
+  if(st.width!==Math.round(W*dpr)||st.height!==Math.round(H*dpr)){ st.width=Math.round(W*dpr); st.height=Math.round(H*dpr); st.style.height=H+'px'; }
+  const g=st.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  g.fillStyle=T.bg; g.fillRect(0,0,W,H);
+  const x=t=>dur>0?t/dur*W:0;
+  if(ta&&ta.phases&&ta.phase_legend){
+    const stance=new Set(ta.stance_phases||[]); let start=0, n=ta.frames.length;
+    for(let k=1;k<=n;k++){ if(k===n||ta.phases[k]!==ta.phases[start]){ const p=ta.phase_legend[ta.phases[start]];
+      g.fillStyle=p==='unknown'?T.line:(stance.has(p)?T.stance:T.blue); g.globalAlpha=p==='unknown'?0.5:(stance.has(p)?0.55:0.3);
+      const x0=x(ta.frames[start]/ta.fps), x1=x((ta.frames[Math.min(k,n-1)]+(k===n?1:0))/ta.fps);
+      g.fillRect(x0,6,Math.max(1,x1-x0),H-12); start=k; } }
+    g.globalAlpha=1;
+  } else { g.fillStyle=T.line; g.fillRect(0,H/2-1,W,2);
+    g.fillStyle=T.blue; g.globalAlpha=0.16; for(let i=0;i+1<c.anchA.length;i+=2) g.fillRect(x(c.anchA[i]),6,Math.max(1,x(c.anchA[i+1])-x(c.anchA[i])),H-12); g.globalAlpha=1; }
+  g.strokeStyle=T.ink; g.lineWidth=1; g.globalAlpha=0.9;
+  c.anchA.forEach(t=>{ const px=Math.round(x(t))+0.5; g.beginPath(); g.moveTo(px,2); g.lineTo(px,H-2); g.stroke(); });
+  g.globalAlpha=1; const px=Math.round(x(c.A.currentTime))+0.5; g.strokeStyle=T.blue; g.lineWidth=2; g.beginPath(); g.moveTo(px,0); g.lineTo(px,H); g.stroke();
+  const fps=cmpSyncFps(), fA=Math.floor(c.A.currentTime*fps+1e-4);
+  const fB=c.tb?Math.floor(c.B.currentTime*c.tb.fps+1e-4):Math.round(c.B.currentTime*30);
+  let where='';
+  if(c.locked&&c.phase){ const i=c.phase.i, n=c.anchA.length-1; where=i<0?`before the first ${c.noun}`:(i>=n?`after the last ${c.noun}`:`${c.noun} ${i+1} of ${n} · ${Math.round(c.phase.phi*100)}%`); }
+  c.host.querySelector('.sy-time').textContent=`${c.A.currentTime.toFixed(2)} s · frame ${fA}${where?' · '+where:''}`;
+  c.host.querySelector('.sy-suba').textContent=`${c.tagA} · frame ${fA}`;
+  const rate=c.B.playbackRate||1, rateTxt=(c.locked&&Math.abs(rate/c.speed-1)>0.02)?` · plays at ×${(rate/c.speed).toFixed(2)} to keep pace`:'';
+  c.host.querySelector('.sy-subb').textContent=`${c.tagB} · frame ${fB}${rateTxt}`;
 }
 
 /* ============================================================
@@ -10141,6 +10356,10 @@ function renderCompare(){
        two sides as equal — and if you want a real asymmetry answer, that is a fitter with
        hands on you, not a phone.</p>`:'');
   if(!setups&&!sidesMode){ observeKeyframes($('#cmpBody')); wireBaSlider(); }
+  // The two clips themselves, locked stride to stride (or stroke to stroke).
+  // Sessions and sides only: a setup is an average and has no clip.
+  if(!setups){ $('#cmpBody').insertAdjacentHTML('beforeend','<div id="cmpVideo" class="cmp-video"></div>'); mountCompareVideo(A,B,sidesMode); }
+  else cmpSyncUnmount();
   // The AI read is written to explain progress between two runs of the same
   // thing. Pointed at two bikes -- or at two LEGS -- it would confidently
   // narrate improvement that is really just a different thing, so only the

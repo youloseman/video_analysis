@@ -1499,6 +1499,22 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fp:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px}
 @media(max-width:640px){.fp-time{margin-left:0;width:100%;white-space:normal}.fp-chart{height:130px}}
 @media print{.fp-ui,.fp-rawwrap{display:none!important}}
+/* ---------- Two clips locked cycle to cycle (FlappSync, Compare) ---------- */
+.cmp-video{margin-top:20px}
+.sy{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);overflow:hidden}
+.sy:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px}
+.sy-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--c-line);font-size:13px}
+.sy-stage{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--c-media-bg)}
+.sy-col{position:relative;background:var(--c-media-bg);min-width:0}
+.sy-col video{display:block;width:100%;max-height:520px;background:var(--c-media-bg);cursor:pointer}
+.sy-tag{position:absolute;top:8px;left:8px;z-index:1;font-family:var(--f-mono);font-size:10.5px;font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;color:#fff;background:rgba(20,24,31,.8);padding:3px 8px;border-radius:var(--radius-xs)}
+.sy-sub{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);background:var(--c-bg);padding:5px 10px;border-top:1px solid var(--c-line)}
+.sy-loading{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);padding:14px}
+.sy-note{font-size:12.5px;color:var(--c-ink-faint);padding:8px 14px 12px;margin:0;border-top:1px solid var(--c-line)}
+.sy .fp-ctl{border-top:1px solid var(--c-line)}
+@media(max-width:640px){.sy-stage{grid-template-columns:1fr}.sy-col video{max-height:380px}}
+@media print{.cmp-video{display:none!important}}
 /* In the cabinet the player sits in a card, not the report column. */
 .bil-vid-player .fp-stage video{width:100%;border-radius:var(--radius-xs) var(--radius-xs) 0 0}
 .bil-vid-player .fp-ui{border:1px solid var(--c-line);border-top:0;border-radius:0 0 var(--radius-xs) var(--radius-xs)}
