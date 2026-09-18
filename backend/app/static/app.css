@@ -1464,15 +1464,30 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fp-ctl .btn{min-height:32px;padding:4px 10px}
 .fp-ev{display:inline-flex;gap:4px}
 .fp-evlbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.04em}
-.fp-speed,.fp-layers{display:inline-flex;border:1px solid var(--c-line-strong);border-radius:var(--radius);overflow:hidden;background:var(--c-bg)}
-.fp-speed button,.fp-layers button{font-family:var(--f-mono);font-size:12px;font-weight:500;border:0;background:transparent;
+.fp-speed,.fp-layers,.fp-trail{display:inline-flex;border:1px solid var(--c-line-strong);border-radius:var(--radius);overflow:hidden;background:var(--c-bg)}
+.fp-speed button,.fp-layers button,.fp-trail button{font-family:var(--f-mono);font-size:12px;font-weight:500;border:0;background:transparent;
   color:var(--c-ink-soft);min-height:30px;padding:4px 9px;cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
-.fp-speed button:hover,.fp-layers button:hover{background:var(--c-panel)}
+.fp-speed button:hover,.fp-layers button:hover,.fp-trail button:hover{background:var(--c-panel)}
 .fp-speed button[aria-pressed="true"],.fp-layers button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
+/* The trail's own colour marks its selected joint, so the row reads as
+   "layer: skeleton, trail: foot" rather than two identical navy pills. */
+.fp-trail button[aria-pressed="true"]{background:#FFA82E;color:#14181F}
 .fp-time{font-size:12px;color:var(--c-ink-faint);margin-left:auto;white-space:nowrap}
 .fp-here{color:var(--c-ink);font-weight:500}
 .fp-graph{padding:8px 12px 10px;border-top:1px solid var(--c-line)}
-.fp-metrics{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.fp-graphhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.fp-metrics{display:flex;gap:4px;flex-wrap:wrap}
+/* ---------- Angle convention toggle ----------
+   A reading preference, so it is drawn like the speed control: a pair of
+   mono buttons on a hairline, nothing that looks like a verdict. */
+.convtoggle{display:inline-flex;border:1px solid var(--c-line-strong);border-radius:var(--radius);overflow:hidden;background:var(--c-bg);flex:0 0 auto}
+.convtoggle button{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.04em;border:0;background:transparent;
+  color:var(--c-ink-soft);min-height:26px;padding:3px 9px;cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
+.convtoggle button:hover{background:var(--c-panel)}
+.convtoggle button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
+.convrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+.convnote{font-size:12px;color:var(--c-ink-faint);max-width:64ch}
+@media print{.convtoggle{display:none!important}}
 .fp-metrics button{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;
   border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink-soft);padding:3px 9px;border-radius:var(--radius-xs);cursor:pointer;min-height:26px}
 /* A joint the overlay gave no callout -- still plottable, drawn quieter. */

@@ -857,9 +857,18 @@
                   <button type="button" data-layer="skeleton">Skeleton</button>
                   <button type="button" data-layer="raw">Clip</button>
                 </span>
+                <!-- The path one joint has just travelled, on the Skeleton
+                     layer. Buttons are built per sport in FlappPlayer.load. -->
+                <span class="fp-trail hidden" role="group" aria-label="Joint trail"></span>
               </div>
               <div class="fp-graph">
-                <div class="fp-metrics" role="tablist" aria-label="Angle to plot"></div>
+                <div class="fp-graphhead">
+                  <div class="fp-metrics" role="tablist" aria-label="Angle to plot"></div>
+                  <span class="convtoggle" role="group" aria-label="Angle convention">
+                    <button type="button" data-conv="included" aria-pressed="true">Included</button>
+                    <button type="button" data-conv="anatomical" aria-pressed="false">Anatomical</button>
+                  </span>
+                </div>
                 <canvas class="fp-chart" aria-label="Angle over the clip; click to jump"></canvas>
                 <div class="fp-graphnote">Angle per frame, the same filtered series the table reads. Shaded: the reference band. Click the curve to jump there.</div>
               </div>
@@ -1012,6 +1021,15 @@
         <div class="eyebrow">Detail</div>
         <h3>Joint angles</h3>
         <div class="speedline-sm"></div>
+      </div>
+      <!-- How a joint angle is written, not how it is measured: the grade
+           does not move with this. See angleConv(). -->
+      <div class="convrow">
+        <span class="convtoggle" role="group" aria-label="Angle convention">
+          <button type="button" data-conv="included" aria-pressed="true">Included angle</button>
+          <button type="button" data-conv="anatomical" aria-pressed="false">Anatomical</button>
+        </span>
+        <span class="convnote">Included: between the two segments, 180° = straight. Anatomical: flexion from straight, 0° = straight; ankle as dorsiflexion from neutral. Same measurement, same verdicts.</span>
       </div>
       <p class="anglemerge hidden" id="angleMergeNote"></p>
       <div class="tablewrap">
@@ -3109,6 +3127,79 @@ function angleBandFor(key,sport,res,value){
   if(sport!=='run' && base==='hip' && value!=null && value>opt[1]) return [opt[0],value];
   return opt;
 }
+/* ---- Angle convention ----
+   Every joint angle is MEASURED as the included angle between two segments
+   (180 = straight). Clinicians and most bike-fit tables state the same
+   joint as flexion from straight (0 = straight; the Retul "35-45 deg of
+   knee extension" is 135-145 included) and the ankle as dorsiflexion from
+   neutral. The convention is a reading preference, so it is applied where
+   a number is printed and nowhere else: every grade, band check and score
+   is computed on the measured value, and a monotone map cannot change a
+   verdict. The bike ankle (knee-ankle-toe) is not a clinical joint angle
+   and stays as measured. */
+const ANGLE_CONV_KEY='flapp_angle_conv';
+function angleConv(){ try{ return localStorage.getItem(ANGLE_CONV_KEY)==='anatomical'?'anatomical':'included'; }catch(e){ return 'included'; } }
+function anatomical(){ return angleConv()==='anatomical'; }
+/* What a key is, once the side prefix and the phase suffix are stripped:
+   knee_at_bdc, left_hip, hip_angle_avg, knee_max all mean a flexion joint. */
+function angleConvKind(key,sport){
+  const base=String(key||'').replace(/^left_|^right_/,'');
+  if(/^(knee|hip|elbow)(_at_(bdc|tdc)|_max|_min|_angle_avg|_angle)?$/.test(base)) return 'flex';
+  if(base==='ankle'&&sport==='run') return 'dorsi';
+  return null;
+}
+function angleDisp(key,v,sport){
+  if(v==null||!anatomical()) return v;
+  const k=angleConvKind(key,sport);
+  return k==='flex'?180-v:k==='dorsi'?90-v:v;
+}
+/* A band, mapped. The map reverses order, so the ends are re-sorted. */
+function bandDisp(key,band,sport){
+  if(!band||!anatomical()||!angleConvKind(key,sport)) return band;
+  const a=angleDisp(key,band[0],sport), b=angleDisp(key,band[1],sport);
+  return [Math.min(a,b),Math.max(a,b)];
+}
+/* "Knee · bottom" -> "Knee flexion · bottom"; "Ankle" -> "Ankle dorsiflexion". */
+function angleConvLabel(key,sport,label){
+  const k=angleConvKind(key,sport); if(!k||!anatomical()) return label;
+  const s=String(label), word=k==='flex'?' flexion':' dorsiflexion';
+  // After the joint's name ("Right knee" -> "Right knee flexion"), or at the
+  // end when the label does not name it.
+  return /\b(knee|hip|elbow|ankle)\b/i.test(s) ? s.replace(/\b(knee|hip|elbow|ankle)\b/i, m=>m+word) : s+word;
+}
+/* A joint-angle tile: the number, the band and the label in the reading
+   convention; the grade from the measured value (see tile()). */
+function tileA(lbl,key,val,ref,range,sport){
+  const d=v=>angleDisp(key,v,sport);
+  let rg=range;
+  if(range&&range.value!=null&&range.lo!=null&&range.hi!=null){
+    const b=bandDisp(key,[range.lo,range.hi],sport);
+    rg=Object.assign({},range,{value:d(range.value),lo:b[0],hi:b[1]});
+  }
+  return tile(angleConvLabel(key,sport,lbl),num(d(val)),'°',ref,null,false,rg);
+}
+function setAngleConv(v){
+  try{ localStorage.setItem(ANGLE_CONV_KEY,v==='anatomical'?'anatomical':'included'); }catch(e){}
+  track('angle_convention',{value:angleConv()});
+  rerenderAngleViews();
+}
+/* Everything on the page that prints a joint angle, redrawn in the current
+   convention. The report's tiles and table, the player's curve and chips,
+   and the saved report open in the cabinet. */
+function rerenderAngleViews(){
+  document.querySelectorAll('[data-conv]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.conv===angleConv())));
+  const r=state.lastResult;
+  if(r&&r.sport_type&&!$('#results').classList.contains('hidden')&&!(r.locked&&r.locked.reason!=='preview')){
+    const s=r.sport_specific_metrics||{}, sport=r.sport_type;
+    renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s));
+    renderAngleTable(r, sport);
+  }
+  if(fpMain&&fpMain.tl) fpMain.paint();
+  if(state.histPlayer&&state.histPlayer.tl) state.histPlayer.paint();
+  if(state.histOpen) renderHistoryAngles(state.histOpen);
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-conv]'); if(b) setAngleConv(b.dataset.conv); });
+
 const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
 /* Range-bar zone fills — the vivid (graphics) form of the semantic scale, so
    the bars match the pills/badges instead of using a second Tailwind palette. */
@@ -3223,10 +3314,13 @@ function tile(lbl,val,unit,ref,cls,isText=false,range=null){
   // ones (see the #tiles render) and drawn denser, so a one-word card never
   // has to stretch to the height of a range bar beside it.
   let what='', def='';
-  if(METRIC_DEFS[lbl]){
+  // The definition is keyed on the measured name; the convention suffix
+  // (see angleConvLabel) is not part of it.
+  const defKey=String(lbl).replace(/ (flexion|dorsiflexion)/,'');
+  if(METRIC_DEFS[defKey]){
     const id='tdef'+(++_defSeq);
     what=`<button type="button" class="t-what" aria-label="What is ${esc(lbl)}?" aria-expanded="false" aria-controls="${id}">?</button>`;
-    def=`<p class="t-def hidden" id="${id}">${esc(METRIC_DEFS[lbl])}</p>`;
+    def=`<p class="t-def hidden" id="${id}">${esc(METRIC_DEFS[defKey])}</p>`;
   }
   return `<div class="tile ${cls||''}${bar?'':' tile-short'}"><div class="t-lbl">${dot}${esc(lbl)}${what}</div>${valHtml}${refLine}${def}${bar}</div>`;
 }
@@ -3271,8 +3365,8 @@ function bikeTiles(s, position){
     if(b) return R(val,b.lo,b.hi,'°',b.source||null);
     const r=bikePosRange(position,key); return r?R(val,r[0],r[1],'°'):null;
   };
-  if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°',null,null,false,rng('knee_at_bdc',s.knee_at_bdc,'knee_at_bdc')));
-  if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°',null,null,false,rng('knee_at_tdc',s.knee_at_tdc,'knee_at_tdc')));
+  if(s.knee_at_bdc!=null) t.push(tileA('Knee · bottom','knee_at_bdc',s.knee_at_bdc,null,rng('knee_at_bdc',s.knee_at_bdc,'knee_at_bdc'),'bike'));
+  if(s.knee_at_tdc!=null) t.push(tileA('Knee · top','knee_at_tdc',s.knee_at_tdc,null,rng('knee_at_tdc',s.knee_at_tdc,'knee_at_tdc'),'bike'));
   // Hip is asymmetric: above optimal max = more open = comfort/OK, never a fault.
   // The reading is the CLOSED hip -- torso to thigh at the top of the stroke
   // -- because that is what the band describes. This tile used to grade the
@@ -3287,12 +3381,12 @@ function bikeTiles(s, position){
     const hipRange = hb
       ? R(s.hip_at_tdc, hb.lo, Math.max(hb.hi, s.hip_at_tdc), '°', hb.source||null)
       : (hr ? R(s.hip_at_tdc, hr[0], Math.max(hr[1], s.hip_at_tdc), '°') : null);
-    t.push(tile('Hip · top of stroke',num(s.hip_at_tdc),'°',
-      s.hip_angle_avg!=null?`averages ${num(s.hip_angle_avg)}° over the stroke`:null,null,false,hipRange));
+    t.push(tileA('Hip · top of stroke','hip_at_tdc',s.hip_at_tdc,
+      s.hip_angle_avg!=null?`averages ${num(angleDisp('hip_angle_avg',s.hip_angle_avg,'bike'))}° over the stroke`:null,hipRange,'bike'));
   } else if(s.hip_angle_avg!=null){
-    t.push(tile('Hip · average',num(s.hip_angle_avg),'°','stroke mean — the closed hip at the top was not measured'));
+    t.push(tileA('Hip · average','hip_angle_avg',s.hip_angle_avg,'stroke mean — the closed hip at the top was not measured',null,'bike'));
   }
-  if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg')));
+  if(s.elbow_angle_avg!=null) t.push(tileA('Elbow','elbow_angle_avg',s.elbow_angle_avg,null,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg'),'bike'));
   if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg')));
   if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,rng('shoulder_angle',s.shoulder_angle_avg,'shoulder_angle_avg')));
   // How the foot is carried through the stroke, and where it spent it. Only
@@ -3343,8 +3437,8 @@ function runTiles(s){
   if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×',s.overstride_estimated?'× leg length ahead of hip (est.)':'× leg length ahead of hip',null,false,RB('overstride_ratio',s.overstride_ratio,0,0.15,'×')));
   // Knee is scored at two gait phases, not as a full-cycle mean: knee_max is
   // extension near footstrike (contact), knee_min is peak flexion in swing.
-  if(s.knee_max!=null) t.push(tile('Knee · contact',num(s.knee_max),'°',null,null,false,RB('knee_max',s.knee_max,160,175,'°')));
-  if(s.knee_min!=null) t.push(tile('Knee · swing',num(s.knee_min),'°',null,null,false,RB('knee_min',s.knee_min,80,100,'°')));
+  if(s.knee_max!=null) t.push(tileA('Knee · contact','knee_max',s.knee_max,null,RB('knee_max',s.knee_max,160,175,'°'),'run'));
+  if(s.knee_min!=null) t.push(tileA('Knee · swing','knee_min',s.knee_min,null,RB('knee_min',s.knee_min,80,100,'°'),'run'));
   t.push(...kneeVelocityTiles(s));
   return t;
 }
@@ -3868,6 +3962,12 @@ FlappPlayer.prototype={
       this.rawUrl=URL.createObjectURL(opts.rawFile); this.raw.src=this.rawUrl;
       lay.classList.remove('hidden');
     } else lay.classList.add('hidden');
+    // Trails draw a joint's path in the picture, which is the joint's path
+    // only while the camera holds still. A clip whose vertical bounce the
+    // analyzer traced to the camera (camera_motion "bad") gets no trail
+    // rather than a smeared one.
+    this.trail=''; this.trailOk=(opts.cameraMotion||'')!=='bad';
+    this.renderTrail();
     this.setLayer('overlay',true); this.setSpeed(1);
     this.renderMetrics(); this.evLabels();
     this.k=0; this.paint();
@@ -3929,6 +4029,8 @@ FlappPlayer.prototype={
     q('.fp-evnext').addEventListener('click',()=>this.jumpEvent(1));
     q('.fp-speed').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) this.setSpeed(+b.dataset.speed); });
     q('.fp-layers').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) this.setLayer(b.dataset.layer); });
+    q('.fp-trail').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; this.trail=b.dataset.trail||'';
+      this.renderTrail(); this.paint(); track('player_used',{action:'trail',joint:this.trail||'none'}); });
     q('.fp-metrics').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ this.metric=b.dataset.key; this.renderMetrics(); this.paintChart(); track('player_used',{action:'metric',key:this.metric}); } });
     // Keyboard, when the player has focus: space, arrows, shift+arrows.
     r.addEventListener('keydown',e=>{
@@ -3975,8 +4077,25 @@ FlappPlayer.prototype={
     this.rawWrap.classList.toggle('hidden',layer==='overlay');
     this.canvas.classList.toggle('hidden',layer!=='skeleton');
     this.root.querySelectorAll('.fp-layers button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.layer===layer)));
+    this.renderTrail();
     if(was) to.play().catch(()=>{}); else this.paint();
     if(!silent) track('player_used',{action:'layer',layer});
+  },
+  /* Which joint can leave a trail: the foot, knee and hip on a run; the
+     ankle, knee and hip on a bike. Offered on the Skeleton layer only --
+     it is drawn on that canvas. */
+  trailJoints(){
+    const L=this.tl.camera_side==='right'?1:0;
+    return this.tl.sport==='bike'
+      ? [['ankle',27+L],['knee',25+L],['hip',23+L]]
+      : [['foot',31+L],['knee',25+L],['hip',23+L]];
+  },
+  renderTrail(){
+    const host=this.root.querySelector('.fp-trail'); if(!host||!this.tl) return;
+    const show=this.layer==='skeleton'&&!!this.rawUrl&&this.trailOk;
+    host.classList.toggle('hidden',!show); if(!show) return;
+    const opts=[['','No trail'],...this.trailJoints().map(([n])=>[n,n[0].toUpperCase()+n.slice(1)])];
+    host.innerHTML=opts.map(([v,l])=>`<button type="button" data-trail="${v}" aria-pressed="${v===this.trail}">${l}</button>`).join('');
   },
   /* The event buttons jump between BDC/TDC on a bike, foot strike/toe-off
      on a run; the title says which, the readout names the one landed on. */
@@ -3989,9 +4108,13 @@ FlappPlayer.prototype={
   renderMetrics(){
     const host=this.root.querySelector('.fp-metrics');
     host.innerHTML=this.metrics.map(m=>`<button type="button" role="tab" data-key="${esc(m.key)}" aria-selected="${m.key===this.metric}"${m.callout?'':' class="quiet"'}>${esc(m.name)}</button>`).join('');
+    this.root.querySelectorAll('[data-conv]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.conv===angleConv())));
   },
   /* ---- painting ---- */
-  paint(){ if(!this.tl) return; this.paintReadout(); this.paintStrip(); this.paintChart(); if(this.layer==='skeleton') this.paintSkeleton(); },
+  paint(){ if(!this.tl) return; this.paintReadout(); this.paintStrip(); this.paintChart(); if(this.layer==='skeleton') this.paintSkeleton();
+    const note=this.root.querySelector('.fp-graphnote');
+    if(note) note.textContent='Angle per frame, the same filtered series the table reads. Shaded: the reference band. Click the curve to jump there.'
+      +(anatomical()?' Shown as flexion from straight (0° = straight); the annotated render keeps the included angle.':''); },
   paintReadout(){
     const tl=this.tl, k=this.k, i=tl.frames[k]||0;
     this.root.querySelector('.fp-t').textContent=(i/this.fps).toFixed(2)+' s';
@@ -4054,18 +4177,25 @@ FlappPlayer.prototype={
     const s=tl.series[m.key], n=s.length, P=this.chartPad(), pw=W-P.l-P.r, ph=H-P.t-P.b;
     const vals=s.filter(v=>v!=null);
     if(!vals.length) return;
-    let lo=Math.min(...vals,m.band[0]), hi=Math.max(...vals,m.band[1]);
+    // Drawn in the reading convention, graded on the measured value: D maps
+    // a value to where it is plotted, bd is the band there. The map reverses
+    // order, which is why "open" (past the band) shades the other side.
+    const D=v=>angleDisp(m.key,v,tl.sport), bd=bandDisp(m.key,m.band,tl.sport), flipped=D(1)<D(0);
+    const dvals=vals.map(D);
+    let lo=Math.min(...dvals,bd[0]), hi=Math.max(...dvals,bd[1]);
     const pad=Math.max(2,(hi-lo)*0.08); lo-=pad; hi+=pad;
-    const x=k=>P.l+(n>1?k/(n-1):0)*pw, y=v=>P.t+(1-(v-lo)/(hi-lo))*ph;
+    const x=k=>P.l+(n>1?k/(n-1):0)*pw, y=v=>P.t+(1-(D(v)-lo)/(hi-lo))*ph, yd=v=>P.t+(1-(v-lo)/(hi-lo))*ph;
     // band
     g.fillStyle=T.band; g.globalAlpha=0.7;
-    g.fillRect(P.l,y(m.band[1]),pw,Math.max(1,y(m.band[0])-y(m.band[1])));
-    if(m.open_ok){ g.globalAlpha=0.3; g.fillRect(P.l,P.t,pw,Math.max(0,y(m.band[1])-P.t)); }
+    g.fillRect(P.l,yd(bd[1]),pw,Math.max(1,yd(bd[0])-yd(bd[1])));
+    if(m.open_ok){ g.globalAlpha=0.3;
+      if(flipped) g.fillRect(P.l,yd(bd[0]),pw,Math.max(0,P.t+ph-yd(bd[0])));
+      else g.fillRect(P.l,P.t,pw,Math.max(0,yd(bd[1])-P.t)); }
     g.globalAlpha=1;
     // axis
     g.strokeStyle=T.line; g.lineWidth=1; g.beginPath(); g.moveTo(P.l,P.t); g.lineTo(P.l,P.t+ph); g.lineTo(P.l+pw,P.t+ph); g.stroke();
     g.fillStyle=T.faint; g.font=`10px ${T.mono}`; g.textAlign='right'; g.textBaseline='middle';
-    [m.band[0],m.band[1]].forEach(v=>{ g.fillText(Math.round(v)+'°',P.l-4,y(v)); });
+    [bd[0],bd[1]].forEach(v=>{ g.fillText(Math.round(v)+'°',P.l-4,yd(v)); });
     g.textBaseline='alphabetic';
     // phase bands behind the curve (run), faint
     if(tl.phases&&tl.phase_legend){ const stance=new Set(tl.stance_phases||[]); let start=0;
@@ -4096,7 +4226,7 @@ FlappPlayer.prototype={
     g.strokeStyle=T.blue; g.lineWidth=1.5; g.beginPath(); g.moveTo(px,P.t); g.lineTo(px,P.t+ph); g.stroke();
     if(v!=null){ g.fillStyle=onEvent?(T[grade(v)]||T.ink):T.ink; g.beginPath(); g.arc(px,y(v),4,0,Math.PI*2); g.fill();
       g.strokeStyle=T.bg; g.lineWidth=1.5; g.stroke(); }
-    const txt=`${m.name} ${v==null?'—':Math.round(v)+'°'}${m.at?' · band at '+m.at.toUpperCase():''}`;
+    const txt=`${angleConvLabel(m.key,tl.sport,m.name)} ${v==null?'—':Math.round(D(v))+'°'}${m.at?' · band at '+m.at.toUpperCase():''}`;
     g.font=`600 11px ${T.mono}`; const tw=g.measureText(txt).width+10;
     const tx=Math.min(W-P.r-tw, Math.max(P.l, px+6));
     g.fillStyle=T.ink; g.globalAlpha=0.9; g.fillRect(tx,P.t-12,tw,16); g.globalAlpha=1;
@@ -4119,6 +4249,25 @@ FlappPlayer.prototype={
     const g=c.getContext('2d'), k=this.k; g.clearRect(0,0,W,H);
     const P=j=>{ const col=tl.points[String(j)]; const p=col&&col[k]; return (p&&p[2]>=0.3)?[p[0]*W,p[1]*H]:null; };
     g.lineCap='round'; g.lineJoin='round';
+    // The trail: where the chosen joint has been over the last ~0.8 s,
+    // fading into the past -- the past only, the way a shooting star
+    // reads; the future would draw the answer over the question.
+    const tj=this.trail&&this.trailJoints().find(([n])=>n===this.trail);
+    if(tj&&this.trailOk){
+      const col=tl.points[String(tj[1])]||[], n=tl.frames.length;
+      const secs=Math.max(0.1,(tl.frames[n-1]||1)/this.fps), N=Math.max(4,Math.round(0.8*n/secs));
+      let prev=null;
+      for(let i=Math.max(0,k-N);i<=k;i++){
+        const p=col[i]; if(!p||p[2]<0.3){ prev=null; continue; }
+        const q=[p[0]*W,p[1]*H], a=(i-(k-N))/N;
+        if(prev){ g.strokeStyle='#FFA82E'; g.globalAlpha=0.15+0.85*a; g.lineWidth=Math.max(1,(1+3*a)*s);
+          g.beginPath(); g.moveTo(prev[0],prev[1]); g.lineTo(q[0],q[1]); g.stroke(); }
+        prev=q;
+      }
+      g.globalAlpha=1;
+      if(prev){ g.fillStyle='#FFA82E'; g.beginPath(); g.arc(prev[0],prev[1],Math.max(4,5*s),0,Math.PI*2); g.fill();
+        g.lineWidth=Math.max(1,1.5*s); g.strokeStyle='#fff'; g.stroke(); }
+    }
     [[8*s,'rgba(30,190,80,.45)'],[3*s,'#3DFF6E']].forEach(([w,col])=>{
       g.lineWidth=Math.max(1,w); g.strokeStyle=col; g.beginPath();
       tl.bones.forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ g.moveTo(A[0],A[1]); g.lineTo(B[0],B[1]); } });
@@ -4130,7 +4279,7 @@ FlappPlayer.prototype={
     this.metrics.filter(m=>m.callout&&m.joint!=null).forEach((m,ci)=>{
       const p=P(m.joint), val=tl.series[m.key][k]; if(!p||val==null) return;
       const st=fpStatus(val,m.band,m.open_ok), col=this.tok[st]||this.tok.faint;
-      const txt=`${m.name.toUpperCase()} ${Math.round(val)}°`, tw=g.measureText(txt).width+14*s;
+      const txt=`${m.name.toUpperCase()} ${Math.round(angleDisp(m.key,val,tl.sport))}°`, tw=g.measureText(txt).width+14*s;
       const right=p[0]<W*0.6; const x=right?Math.min(W-tw-4,p[0]+22*s):Math.max(4,p[0]-22*s-tw);
       const y=Math.max(fs+6,Math.min(H-6,p[1]-14*s+ci*0));
       g.strokeStyle=col; g.lineWidth=Math.max(1,1.5*s); g.beginPath(); g.moveTo(p[0],p[1]); g.lineTo(right?x:x+tw,y-fs/2+2); g.stroke();
@@ -4156,6 +4305,7 @@ function fpMountHistory(host,url,entryId){
       <canvas class="fp-canvas hidden" aria-hidden="true"></canvas></div></div>
     ${$('#fpMain .fp-ui').outerHTML}</div>`;
   const p=new FlappPlayer(host.querySelector('.fp'));
+  state.histPlayer=p;
   fetch('/me/analyses/'+encodeURIComponent(entryId)+'/timeline',{headers:authHeaders()})
     .then(r=>r.ok?r.json():null)
     .then(j=>{ if(j&&j.timeline&&host.isConnected) p.load(j.timeline); })
@@ -6168,7 +6318,10 @@ function angleTableRows(A, sport, position, srcByKey){
     const cls=muted?'num muted':'num';
     const opt=angleBandFor(k,sport,ctx,a.mean);
     // "no ref" reads as a deliberate state; a bare em-dash reads as failed data.
-    const optTxt=opt?`${num(opt[0],0)}–${num(opt[1],0)}°`:'<span class="noref">no ref</span>';
+    // Printed in the reading convention (see angleDisp); graded below on the
+    // measured value.
+    const optD=bandDisp(k,opt,sport);
+    const optTxt=optD?`${num(optD[0],0)}–${num(optD[1],0)}°`:'<span class="noref">no ref</span>';
     const artPct=a.artefact_pct!=null?a.artefact_pct:(tot?art/tot*100:0);
     const flagged=art>0 && artPct>ARTEFACT_FLAG_PCT;
     let statusCell='<td class="col-status muted"></td>';
@@ -6187,14 +6340,17 @@ function angleTableRows(A, sport, position, srcByKey){
     // Low/High are the 5th/95th percentile, the same figures the score reads:
     // over hundreds of frames a true extreme is a single sample, always in the
     // alarming direction. Older saved results carry only min/max.
-    const lo=a.p05!=null?a.p05:a.min, hi=a.p95!=null?a.p95:a.max;
+    const loM=a.p05!=null?a.p05:a.min, hiM=a.p95!=null?a.p95:a.max;
+    // The map reverses order (180 - x), so Low stays the low number.
+    const dl=angleDisp(k,loM,sport), dh=angleDisp(k,hiM,sport);
+    const lo=(dl!=null&&dh!=null)?Math.min(dl,dh):dl, hi=(dl!=null&&dh!=null)?Math.max(dl,dh):dh;
     // A side-view clip measures the near leg. The far one has no numbers at
     // all, and on a bike that is six rows of em-dashes in the middle of the
     // table -- the reader scans them looking for the value that is not there.
     // Folded away, with a count, because "not captured" is information and
     // deleting the rows would hide which joints those are.
-    return `<tr${unseen(k)?' class="t-far hidden"':''}><th scope="row">${esc(pretty(k))}${src}</th>
-      <td class="${cls}">${num(lo,0)}</td><td class="${cls}">${num(a.mean,0)}</td>
+    return `<tr${unseen(k)?' class="t-far hidden"':''}><th scope="row">${esc(angleConvLabel(k,sport,pretty(k)))}${src}</th>
+      <td class="${cls}">${num(lo,0)}</td><td class="${cls}">${num(angleDisp(k,a.mean,sport),0)}</td>
       <td class="${cls}">${num(hi,0)}</td>
       <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>${statusCell}
       <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
@@ -6218,6 +6374,32 @@ document.addEventListener('click', e=>{
     ? `Show ${rows.length} joint${rows.length>1?'s':''} the camera could not see`
     : 'Hide the joints with no measurement';
 });
+
+/* The report's joint table, merged with the opposite side when one exists.
+   Its own function so a change of angle convention can redraw it alone. */
+function renderAngleTable(r, sport){
+  document.querySelectorAll('#anglesBlock [data-conv]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.conv===angleConv())));
+  const liveStats=r.angle_statistics||{};
+  const sessionOther=sessionOtherSide(r);
+  const paired=sessionOther?null:findPairedEntry(sport, r.cycling_position||null, r.camera_side||null);
+  const merged=mergeAngleStats(liveStats, r.camera_side||null,
+    sessionOther?sessionOther.angle_statistics:(paired?paired.angleStats:null),
+    sessionOther?sessionOther.camera_side:(paired?paired.cameraSide:null));
+  let srcMap=null;
+  if(sessionOther){
+    srcMap={}; merged.filledFromPair.forEach(k=>{ srcMap[k]=`${sessionOther.camera_side} clip · this session`; });
+    if(!Object.keys(srcMap).length) srcMap=null;
+  } else if(paired){
+    srcMap=angleSourceLabels(liveStats, r.camera_side||null, paired);
+  }
+  $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap);
+  // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).
+  $('#angleNorefNote').classList.toggle('hidden', sport!=='run');
+  // no reference bands for this sport's angles -> hide the Optimal/Status columns
+  $('#angleTable').classList.toggle('no-opt',
+    !anglesHaveOpt(merged.stats, sport, r.cycling_position||null));
+  updateAngleMergeNote(paired, r.camera_side||null, sessionOther);
+}
 
 function render(job,opts){
   opts=opts||{};
@@ -6366,7 +6548,7 @@ function render(job,opts){
     // -- while the clip is still in this browser -- the skeleton and bare
     // clip layers. Without a record (older job, or a run that failed to
     // build one) the <video> keeps its native controls.
-    fpMainPlayer().load(r.timeline, {rawFile: state.file});
+    fpMainPlayer().load(r.timeline, {rawFile: state.file, cameraMotion: (s.camera_motion||{}).verdict});
     $('#downloadOverlay').href=ov;
     $('#videoCol').classList.remove('hidden');
     $('#resultTop').classList.remove('no-video');
@@ -6488,26 +6670,7 @@ function render(job,opts){
   // side" of the pair he had just uploaded. Otherwise, if the user has
   // already analyzed the other side of the same sport/position, fill those
   // far-side rows with the real measurements from that saved clip.
-  const liveStats=r.angle_statistics||{};
-  const sessionOther=sessionOtherSide(r);
-  const paired=sessionOther?null:findPairedEntry(sport, r.cycling_position||null, r.camera_side||null);
-  const merged=mergeAngleStats(liveStats, r.camera_side||null,
-    sessionOther?sessionOther.angle_statistics:(paired?paired.angleStats:null),
-    sessionOther?sessionOther.camera_side:(paired?paired.cameraSide:null));
-  let srcMap=null;
-  if(sessionOther){
-    srcMap={}; merged.filledFromPair.forEach(k=>{ srcMap[k]=`${sessionOther.camera_side} clip · this session`; });
-    if(!Object.keys(srcMap).length) srcMap=null;
-  } else if(paired){
-    srcMap=angleSourceLabels(liveStats, r.camera_side||null, paired);
-  }
-  $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap);
-  // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).
-  $('#angleNorefNote').classList.toggle('hidden', sport!=='run');
-  // no reference bands for this sport's angles -> hide the Optimal/Status columns
-  $('#angleTable').classList.toggle('no-opt',
-    !anglesHaveOpt(merged.stats, sport, r.cycling_position||null));
-  updateAngleMergeNote(paired, r.camera_side||null, sessionOther);
+  renderAngleTable(r, sport);
 
   // advanced biomechanics (phase portraits / coordination / waveform vs reference)
   renderBiomechanics(s.biomechanics, sport);
