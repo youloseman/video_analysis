@@ -515,6 +515,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .video-gone{padding:22px 18px;border:1px dashed var(--c-line);border-radius:var(--radius-xs);background:var(--c-panel);
   color:var(--c-ink-soft);font-size:13px;line-height:1.55;text-align:center}
 .bil-vids{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.bil-vids-one{grid-template-columns:1fr;max-width:520px}
 .bil-vid video{width:100%;border-radius:var(--radius-xs);background:var(--c-media-bg)}
 .bil-vid-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 0}
 .bil-vid-h span{font-family:var(--f-mono);font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--c-ink-faint)}

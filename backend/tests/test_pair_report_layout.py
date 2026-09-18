@@ -269,3 +269,73 @@ class TestGettingBackToTheReport:
         fn = _fn(html, "renderHistoryBilateral")
         assert "merged, except the knee" in fn and "not merged" in fn
         assert "renderHistoryBilateral(e);" in _fn(html, "renderHistoryDetail")
+
+
+class TestTheSavedReportsVideo:
+    """The overlay outlives the job on the volume, but a saved report could not
+    reach it: the job token is gone and a <video> sends no header. A media
+    token -- one job, one hour, no other use -- rides in the URL instead."""
+
+    def test_a_media_token_opens_its_job_and_nothing_else(self):
+        from app.core.security import _decode_uid, create_media_token, media_token_user
+
+        tok = create_media_token(7, "job123")
+        assert media_token_user(tok, "job123") == 7
+        assert media_token_user(tok, "job999") is None, "scoped to one job"
+        assert _decode_uid(tok) is None, "never a session"
+
+    async def test_the_overlay_endpoint_accepts_a_media_token_for_the_owner(
+        self, db, make_user, tmp_path, monkeypatch,
+    ):
+        from app import main
+        from app.core import jobs
+        from app.core.security import create_media_token
+        from app.models.analysis import Analysis
+
+        monkeypatch.setattr(jobs, "job_dir_for", lambda jid: tmp_path / jid)
+        job_id = uuid.uuid4().hex[:12]
+        (tmp_path / job_id).mkdir()
+        (tmp_path / job_id / "overlay_right.mp4").write_bytes(b"\x00\x00\x00\x1cftypisom")
+        owner = await make_user()
+        other = await make_user()
+        db.add(Analysis(user_id=owner.id, client_id="h9", created_at_ms=1,
+                        job_id=job_id, sport="bike", kind="video", score=90, data={}))
+        await db.commit()
+        resp = await main.job_overlay(job_id, t=None, side="right", mt=create_media_token(owner.id, job_id), user=None, db=db)
+        assert Path(resp.path).name == "overlay_right.mp4"
+        with pytest.raises(HTTPException):
+            await main.job_overlay(job_id, t=None, side="right", mt=create_media_token(other.id, job_id), user=None, db=db)
+        with pytest.raises(HTTPException):
+            await main.job_overlay(job_id, t=None, side="right", mt=create_media_token(owner.id, "another"), user=None, db=db)
+
+    async def test_the_cabinet_is_handed_urls_for_the_files_that_exist(
+        self, db, make_user, tmp_path, monkeypatch,
+    ):
+        from app.api import me
+        from app.core import jobs
+        from app.models.analysis import Analysis
+        from app.models.user import TIER_FULL
+
+        monkeypatch.setattr(jobs, "job_dir_for", lambda jid: tmp_path / jid)
+        job_id = uuid.uuid4().hex[:12]
+        (tmp_path / job_id).mkdir()
+        for side in ("left", "right"):
+            (tmp_path / job_id / f"overlay_{side}.mp4").write_bytes(b"\x00")
+        user = await make_user(tier=TIER_FULL)
+        db.add(Analysis(user_id=user.id, client_id="h10", created_at_ms=1,
+                        job_id=job_id, sport="bike", kind="video", score=90, data={}))
+        await db.commit()
+        out = await me.get_overlays("h10", user=user, db=db)
+        assert set(out["overlays"]) == {"left", "right"}
+        assert out["overlays"]["left"].startswith(f"/jobs/{job_id}/overlay?side=left&mt=")
+        # a photo, or a clip whose overlay was swept: nothing, not an error
+        db.add(Analysis(user_id=user.id, client_id="h11", created_at_ms=2,
+                        job_id=None, sport="bike", kind="photo", score=90, data={}))
+        await db.commit()
+        assert (await me.get_overlays("h11", user=user, db=db))["overlays"] == {}
+
+    def test_the_history_page_asks_for_them_on_open(self, html):
+        fn = _fn(html, "renderHistoryVideos")
+        assert "/overlays'" in fn
+        assert "e.access!=='full'" in fn
+        assert "renderHistoryVideos(e);" in _fn(html, "renderHistoryDetail")

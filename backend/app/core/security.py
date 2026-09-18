@@ -54,6 +54,45 @@ def _decode_uid(token: str) -> int | None:
 
 
 # ---------------------------------------------------------------------------
+# Media tokens. A <video src> cannot send the Authorization header, so a saved
+# report's overlay has to be fetched with a credential in the URL. Not the
+# session JWT: a URL is logged, cached and copied, and it would carry the
+# whole account for thirty days. This one names ONE job, is dead in an hour,
+# and opens nothing else -- _decode_uid rejects it as a session the same way
+# it rejects a reset token.
+# ---------------------------------------------------------------------------
+MEDIA_TOKEN_TTL = _dt.timedelta(hours=1)
+_MEDIA_PURPOSE = "media"
+
+
+def create_media_token(user_id: int, job_id: str) -> str:
+    now = _dt.datetime.now(_dt.timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "purpose": _MEDIA_PURPOSE,
+        "job": job_id,
+        "iat": now,
+        "exp": now + MEDIA_TOKEN_TTL,
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=_JWT_ALG)
+
+
+def media_token_user(token: str, job_id: str) -> int | None:
+    """The user id a media token was issued to, if it is for ``job_id`` and
+    still live; None for anything else (a session, a reset, another job)."""
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[_JWT_ALG])
+    except Exception:  # noqa: BLE001
+        return None
+    if payload.get("purpose") != _MEDIA_PURPOSE or payload.get("job") != job_id:
+        return None
+    try:
+        return int(payload["sub"])
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Password reset tokens. Stateless on purpose: no table, no migration (raw-SQL
 # ALTERs here are untested and have taken production down before). The token
 # carries a fingerprint of the password hash it was issued against, so it is

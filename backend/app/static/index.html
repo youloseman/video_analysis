@@ -1287,9 +1287,12 @@
         </div>
       </div>
     </div>
+    <!-- The overlay video(s) of a saved report, fetched on open through a
+         media token (the file outlives the job on the volume; the <video>
+         tag has no header to send, so the token rides in its URL). -->
+    <div id="hdVideos"></div>
     <!-- A two-sided session, as the cabinet remembers it: what was merged,
-         what was not, and the knee's provenance. The fresh report's panel
-         carried the two overlays and two stills; this holds the verdict. -->
+         what was not, and the knee's provenance. -->
     <div id="hdBilateral"></div>
     <!-- The same offer the fresh report made, for a report opened later. The
          teaser was saved, the athlete went to read the plans, came back to the
@@ -1565,6 +1568,7 @@ const $ = s => document.querySelector(s);
 const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, histProfile:null, polling:null, xhr:null, pollStart:0, pollFirst:0, pollMisses:0, remaining:null,
   kfCache:{}, kfPending:{},     // cloud keyframes, fetched per entry (see fetchKeyframe)
   kinoCache:{},                 // cloud kinograms, same bargain (renderHistoryKinogram)
+  ovCache:{},                   // overlay URLs per entry, minted for an hour (renderHistoryVideos)
   rehydrated:{} };              // entries already re-fetched after a purchase (see rehydrateEntry)
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -6989,7 +6993,7 @@ function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){}
   track('logged_out',{}); trackReset();
   auth=null; state.cloudHist=null;
   state.kfCache={}; state.kfPending={};        // never carry one account's frames into the next
-  state.kinoCache={}; state.rehydrated={};
+  state.kinoCache={}; state.ovCache={}; state.rehydrated={};
   renderAuth();
   // Signed out lands on the marketing page — the mirror of the entry rule,
   // where a stored session on "/" sends you straight here.
@@ -7725,6 +7729,7 @@ function renderHistoryDetail(e){
   if(e.position) parts.push(`Position: <b>${esc(POSITION_NAMES[e.position]||e.position)}</b>`);
   parts.push(fmtWhen(e.at));
   $('#hdMeta').innerHTML=parts.join('<br>');
+  renderHistoryVideos(e);
   renderHistoryBilateral(e);
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderHistoryPlan(e);
@@ -7732,6 +7737,38 @@ function renderHistoryDetail(e){
   renderHistoryKinogram(e);
   renderHistoryExport(e);
   renderHistoryUpsell(e);
+}
+/* The overlay video(s) of a saved report. The files live on the volume for
+   the clip's retention period; what the cabinet lacked was a way to ask for
+   them -- the job token died with the job and a <video> sends no header.
+   /me/analyses/{id}/overlays answers with URLs carrying a one-hour media
+   token for that one job. Fetched on open, like the kinogram, and only for
+   a signed-in reader with full access to a VIDEO entry that has a job. */
+function renderHistoryVideos(e){
+  const host=$('#hdVideos'); if(!host) return;
+  host.innerHTML='';
+  if(!e || e.kind!=='video' || !e.jobId || e.access!=='full' || !auth) return;
+  const show=ovs=>{
+    if(!state.histOpen || state.histOpen.id!==e.id) return;
+    const sides=ovs.single ? [['single',ovs.single]] : ['left','right'].filter(k=>ovs[k]).map(k=>[k,ovs[k]]);
+    if(!sides.length) return;
+    const api=window.FLAPP_API_BASE||'';
+    host.innerHTML=`<div class="bil" style="margin-top:14px"><div class="bil-h"><b>Annotated overlay</b>
+        <span class="bil-flag bil-ok">from your clip${sides.length>1?'s':''}</span></div>
+      <div class="bil-vids${sides.length===1?' bil-vids-one':''}">${sides.map(([k,url])=>`<div class="bil-vid">
+        <video src="${api}${url}" controls playsinline preload="metadata" aria-label="${k==='single'?'':k+' side '}annotated overlay"></video>
+        <div class="bil-vid-h"><span>${k==='single'?'overlay':k+' side'}</span>
+          <a class="btn btn-ghost btn-sm" href="${api}${url}" download><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> .mp4</a></div>
+      </div>`).join('')}</div>
+      <p class="bil-note">Kept for the clip’s retention period, then deleted with it.</p></div>`;
+  };
+  const cached=state.ovCache[e.id];
+  if(cached){ show(cached); return; }
+  if(cached===null) return;
+  fetch('/me/analyses/'+encodeURIComponent(e.id)+'/overlays',{headers:authHeaders()})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{ const o=(j&&j.overlays)||null; state.ovCache[e.id]=(o&&Object.keys(o).length)?o:null; if(o) show(o); })
+    .catch(()=>{});
 }
 /* The two-sided session in the cabinet. Same three states as the fresh
    report's panel, in a few lines: what the session concluded and on what

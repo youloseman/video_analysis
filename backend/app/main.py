@@ -2235,14 +2235,25 @@ async def job_overlay(
     job_id: str,
     t: str | None = None,
     side: str | None = None,
+    mt: str | None = None,
     user: User | None = Depends(optional_user),
     db: AsyncSession = Depends(get_session),
 ) -> FileResponse:
     # Same gate as the poll. The token rides in the query string here because
     # this URL is consumed by <video src> and a download link, neither of which
     # can set a header.
+    #
+    # ``mt`` is a media token (security.create_media_token): the History page
+    # plays a saved report's overlay through it, since the <video> there has
+    # no header to send either and the job token is long gone. It names one
+    # job and one user; the user still has to own the analysis.
+    from app.core.security import media_token_user
+
+    user_id = user.id if user else None
+    if user_id is None and mt:
+        user_id = media_token_user(mt, job_id)
     try:
-        job = authorized_job(job_id, t, user.id if user else None)
+        job = authorized_job(job_id, t, user_id)
     except HTTPException:
         # The job store is memory. A deploy empties it, and it forgets
         # finished jobs after job_ttl_hours regardless -- but the rendered
@@ -2254,7 +2265,7 @@ async def job_overlay(
         # is gone with the job; for them the 404 stands.
         from app.services.retention import user_owns_job
 
-        if user is None or not await user_owns_job(db, user.id, job_id):
+        if user_id is None or not await user_owns_job(db, user_id, job_id):
             raise
         stem = f"overlay_{side}" if side in ("left", "right") else "overlay"
         overlay_path = job_file(job_id, stem)

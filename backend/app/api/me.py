@@ -272,6 +272,57 @@ async def get_keyframe(
     return {"keyframe": (row.data or {}).get("keyframe")}
 
 
+@router.get("/analyses/{client_id}/overlays")
+async def get_overlays(
+    client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Playable URLs for a saved analysis's overlay video(s), for an hour.
+
+    The overlays outlive the job now -- they sit on the volume for the
+    clip's retention period -- but a saved report had no way to reach them:
+    the job token is gone with the job, and a <video> cannot send the
+    session header. So this mints a media token (one job, one hour) and
+    returns the URLs with it attached: ``left``/``right`` for a two-sided
+    session, ``single`` for one clip, and nothing for a photo or a clip
+    whose overlay was never rendered or has been swept.
+
+    Paid readers only, like the kinogram: the overlay is part of what the
+    plan buys.
+    """
+    from app.core.jobs import job_file
+    from app.core.security import create_media_token
+
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    if access_for_stored(user, row) != ACCESS_FULL:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="This report has not been unlocked.",
+        )
+    if not row.job_id:
+        return {"overlays": {}}
+    token = create_media_token(user.id, row.job_id)
+    base = f"/jobs/{row.job_id}/overlay"
+    out: dict[str, str] = {}
+    for side in ("left", "right"):
+        if job_file(row.job_id, f"overlay_{side}"):
+            out[side] = f"{base}?side={side}&mt={token}"
+    if not out and job_file(row.job_id, "overlay"):
+        out["single"] = f"{base}?mt={token}"
+    return {"overlays": out}
+
+
 @router.get("/analyses/{client_id}/kinogram")
 async def get_kinogram(
     client_id: str,
