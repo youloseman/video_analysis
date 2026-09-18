@@ -2183,8 +2183,10 @@ function noFileHint(){
    gradient; one still waiting stays an outline. Mode, sport and position
    have defaults, so on a fresh screen 03 is the one outline that matters. */
 function syncSteps(){
+  // Details are all optional, so that step is never "waiting": filled like
+  // the others, leaving the footage step as the one outline that matters.
   const done={stepWhat:true, positionField:state.sport==='bike', stepFilm:true,
-    stepClip:!!state.file && (!isPair() || !!state.fileB), stepDetails:false};
+    stepClip:!!state.file && (!isPair() || !!state.fileB), stepDetails:true};
   for(const id in done){ const el=$('#'+id); if(el) el.classList.toggle('done', done[id]); }
 }
 function readyHint(){
