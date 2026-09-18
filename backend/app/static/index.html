@@ -465,12 +465,14 @@
           <div><h3>How was it filmed?</h3><p>A side view measures the leg nearest the camera. Film both sides if you want the whole athlete.</p></div></div>
         <div class="filmtiles" id="sideField">
           <div class="modetabs bigtiles film" id="filmSeg" role="group" aria-label="Camera setup">
+            <!-- The figures follow the sport (syncFilmTiles): a runner or a
+                 rider, one phone or two. -->
             <button type="button" data-film="one" aria-pressed="true">
-              <img class="fig" src="/media/film-side.webp" alt="" width="512" height="512" decoding="async">
+              <img class="fig" src="/media/film-one-bike.webp" alt="" width="720" height="300" decoding="async">
               <span><b>One side</b><small>Camera on one side of you. We measure the leg nearest it.</small></span>
             </button>
             <button type="button" data-film="both" aria-pressed="false">
-              <img class="fig" src="/media/empty-both-sides.webp" alt="" width="512" height="512" decoding="async">
+              <img class="fig" src="/media/film-both-bike.webp" alt="" width="720" height="300" decoding="async">
               <span><b>Both sides — two clips</b><small>The same ride, filmed from each side. One merged score and one saddle verdict from both legs. Uses <b>2</b> of your monthly analyses.</small></span>
             </button>
           </div>
@@ -2360,7 +2362,11 @@ $('#filmSeg').addEventListener('click',e=>{
 });
 function syncFilmTiles(){
   const on=isPair();
-  $('#filmSeg').querySelectorAll('button[data-film]').forEach(x=>x.setAttribute('aria-pressed', String((x.dataset.film==='both')===on)));
+  $('#filmSeg').querySelectorAll('button[data-film]').forEach(x=>{
+    x.setAttribute('aria-pressed', String((x.dataset.film==='both')===on));
+    const fig=x.querySelector('.fig'), src=`/media/film-${x.dataset.film}-${state.sport==='run'?'run':'bike'}.webp`;
+    if(fig && fig.getAttribute('src')!==src) fig.setAttribute('src',src);
+  });
   // The side sub-control is a bike thing: a run side view has no unilateral
   // lock to declare (see syncPairSlot), so for a run only the tiles show.
   $('#sideSub').classList.toggle('hidden', on || state.sport!=='bike');
