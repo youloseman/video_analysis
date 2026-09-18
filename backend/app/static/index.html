@@ -3967,6 +3967,7 @@ FlappPlayer.prototype={
     // analyzer traced to the camera (camera_motion "bad") gets no trail
     // rather than a smeared one.
     this.trail=''; this.trailOk=(opts.cameraMotion||'')!=='bad';
+    this.rawBad=false; this.rawGuard();
     this.renderTrail();
     this.setLayer('overlay',true); this.setSpeed(1);
     this.renderMetrics(); this.evLabels();
@@ -4022,6 +4023,12 @@ FlappPlayer.prototype={
       v.addEventListener('click',()=>this.toggle());
     });
     this.canvas.addEventListener('click',()=>this.toggle());
+    // The original is whatever the phone recorded. A browser that cannot
+    // decode it (HEVC without hardware support, an odd container) fires
+    // `error` on the element -- it does not bubble, so the listener is here
+    // -- and the two layers that need the picture step aside.
+    this.raw.addEventListener('error',()=>{ if(!this.rawUrl) return; this.rawBad=true; this.rawGuard();
+      if(this.layer!=='overlay') this.setLayer('overlay',true); });
     q('.fp-play').addEventListener('click',()=>this.toggle());
     q('.fp-prev').addEventListener('click',()=>this.step(-1));
     q('.fp-next').addEventListener('click',()=>this.step(1));
@@ -4065,8 +4072,13 @@ FlappPlayer.prototype={
   },
   setSpeed(s){ this.speed=s; [this.video,this.raw].forEach(v=>{ v.playbackRate=s; });
     this.root.querySelectorAll('.fp-speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===s))); },
+  rawGuard(){
+    const why='Your clip’s format can’t be played in this browser — the annotated render still can.';
+    this.root.querySelectorAll('.fp-layers button').forEach(b=>{ if(b.dataset.layer==='overlay') return;
+      b.disabled=!!this.rawBad; if(this.rawBad) b.title=why; else b.removeAttribute('title'); });
+  },
   setLayer(layer,silent){
-    if(!this.tl) return; if(layer!=='overlay'&&!this.rawUrl) layer='overlay';
+    if(!this.tl) return; if(layer!=='overlay'&&(!this.rawUrl||this.rawBad)) layer='overlay';
     const from=this.cur(), was=!from.paused, t=from.currentTime;
     if(this.rvfc&&from.cancelVideoFrameCallback){ from.cancelVideoFrameCallback(this.rvfc); this.rvfc=0; }
     from.pause();

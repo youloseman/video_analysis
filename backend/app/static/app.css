@@ -1468,6 +1468,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fp-speed button,.fp-layers button,.fp-trail button{font-family:var(--f-mono);font-size:12px;font-weight:500;border:0;background:transparent;
   color:var(--c-ink-soft);min-height:30px;padding:4px 9px;cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
 .fp-speed button:hover,.fp-layers button:hover,.fp-trail button:hover{background:var(--c-panel)}
+.fp-layers button:disabled{color:var(--c-ink-disabled);cursor:not-allowed;background:transparent}
 .fp-speed button[aria-pressed="true"],.fp-layers button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
 /* The trail's own colour marks its selected joint, so the row reads as
    "layer: skeleton, trail: foot" rather than two identical navy pills. */
