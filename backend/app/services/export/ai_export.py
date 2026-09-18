@@ -479,13 +479,41 @@ def _missing_context(sport: str) -> str:
 # Builders
 # ---------------------------------------------------------------------------
 
+def _own_notes(notes: str | None, coach_name: str | None) -> str:
+    """The human coach's own note on this report, when one was written.
+
+    Placed right after the model's notes and above everything derived: it is
+    the one section written by somebody who has seen the athlete, and a
+    reader (human or model) should weigh it accordingly.
+    """
+    text = " ".join(str(notes or "").split())
+    if not text:
+        return ""
+    who = f" ({coach_name.strip()})" if coach_name and coach_name.strip() else ""
+    return "\n".join([
+        f"## The athlete's own coach's notes{who}",
+        "",
+        "Written by a person, on this report. Treat it as ground truth about "
+        "context the video cannot show, and defer to it where it conflicts "
+        "with a derived reading.",
+        "",
+        str(notes).strip(),
+    ])
+
+
 def build_markdown(
     result: dict[str, Any],
     *,
     job_id: str | None = None,
     generated_at: datetime | None = None,
+    coach_notes: str | None = None,
+    coach_name: str | None = None,
 ) -> str:
-    """Render one analysis result as an AI-readable Markdown document."""
+    """Render one analysis result as an AI-readable Markdown document.
+
+    ``coach_notes`` / ``coach_name``: the human coach's note on this saved
+    report and who wrote it, from the history entry (see api.coach).
+    """
     sport = _sport_of(result)
     generated = _now_iso(generated_at)
     sections = [
@@ -497,6 +525,7 @@ def build_markdown(
         _issues(result),
         _plan(result),
         _coach(result),
+        _own_notes(coach_notes, coach_name),
         _advanced(result),
         _quality(result),
         _not_measured(sport),

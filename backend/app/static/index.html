@@ -965,6 +965,18 @@
       <div class="coach" id="coach"></div>
     </div>
 
+    <!-- The human coach's note on this report (Full). Written here, saved on
+         the history entry, printed under the coach's name, exported with the
+         report. See renderCoachNote. -->
+    <div class="block block-coach hidden" id="coachNoteBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Your notes</div>
+        <h3 id="coachNoteTitle">Coach’s own notes</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="cnote" id="coachNote"></div>
+    </div>
+
     <div class="block" id="planBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Training plan</div>
@@ -1378,6 +1390,14 @@
       </div>
       <div class="coach" id="hdCoach"></div>
     </div>
+    <div class="block block-coach hidden" id="hdCoachNoteBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Your notes</div>
+        <h3>Coach’s own notes</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="cnote" id="hdCoachNote"></div>
+    </div>
     <div class="block hidden" id="hdPlanBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Training plan</div>
@@ -1488,6 +1508,12 @@
             <p class="acct-p" id="acctProfNote">Which bike or shoes each clip was filmed on. One profile per setup keeps the trend lines honest.</p>
             <button class="btn btn-ghost btn-sm" type="button" id="acctProfiles">Open profiles</button>
           </div>
+        </div>
+        <!-- The coach behind the account (Full). Name and mark on every
+             printed report, and the cue library the note editor offers. -->
+        <div class="acct-card" id="acctCoachCard">
+          <h3>Coach profile <span class="pill pill-low hidden" id="acctCoachPill"><span class="dot" aria-hidden="true"></span>Full</span></h3>
+          <div class="acct-body" id="acctCoachBody"></div>
         </div>
       </div>
       <div>
@@ -4894,6 +4920,129 @@ function syncOverlayField(){
    protection. For a printable copy of numbers they already have, that is the
    right amount of effort to spend.
    ============================================================ */
+/* ============================================================
+   The coach behind a Full account. Two halves: the profile on the account
+   (name, mark, cue library -- /me/coach), and the note on each report,
+   which lives on the history entry (coachNote / coachName) so it prints
+   under the coach's name, opens with the saved report and rides the AI
+   export. The report's AI coach block is the model's voice; this block is
+   the person's, and it says so.
+   ============================================================ */
+const COACH={allowed:false,name:'',tagline:'',logo:null,cues:[],loaded:false};
+function coachOn(){ return !!(auth&&COACH.allowed); }
+async function loadCoach(){
+  COACH.allowed=false; COACH.loaded=false;
+  if(!auth) return;
+  try{ const r=await fetch('/me/coach',{headers:authHeaders()}); if(r.ok){ Object.assign(COACH, await r.json()); COACH.loaded=true; } }catch(e){}
+  renderCoachCard();
+  if(state.lastResult&&!$('#results').classList.contains('hidden')) renderCoachNote('coachNote', state.videoHistId);
+}
+async function saveCoach(patch){
+  const body={name:COACH.name,tagline:COACH.tagline,logo:COACH.logo,cues:COACH.cues,...patch};
+  const r=await fetch('/me/coach',{method:'PUT',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){ toast(j.detail||('Could not save (HTTP '+r.status+').')); return false; }
+  Object.assign(COACH,j); renderCoachCard(); return true;
+}
+/* The mark: read the file, draw it no taller than 96 px, hand back a data
+   URI. Done here so a 4 MB logo never leaves the browser as 4 MB. */
+function coachLogoFromFile(file){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{ URL.revokeObjectURL(url);
+      const k=Math.min(1,96/img.height,320/img.width), c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(img.width*k)); c.height=Math.max(1,Math.round(img.height*k));
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      res(c.toDataURL('image/png')); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('unreadable')); };
+    img.src=url;
+  });
+}
+function renderCoachCard(){
+  const card=$('#acctCoachCard'), body=$('#acctCoachBody'), pill=$('#acctCoachPill'); if(!card||!body) return;
+  if(!auth){ card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  if(!COACH.allowed){
+    pill.classList.add('hidden');
+    body.innerHTML=`<p class="acct-p">Your name and mark on every report you hand to an athlete, a library of your own cues, and a note of yours on each report — printed, saved and exported with it.</p>
+      <a href="#pricing" class="btn btn-link btn-sm" onclick="event.preventDefault();openPricing()">Part of the Full plan</a>`;
+    return;
+  }
+  pill.classList.remove('hidden');
+  body.innerHTML=`<div class="coachform">
+      <div><label for="coachName">Name on the report</label><input type="text" id="coachName" maxlength="60" placeholder="Coach Artur" value="${esc(COACH.name||'')}"></div>
+      <div><label for="coachTag">One line under it</label><input type="text" id="coachTag" maxlength="120" placeholder="UESCA-certified · Nanaimo, BC" value="${esc(COACH.tagline||'')}"></div>
+      <div><label>Mark</label><div class="coachlogo">
+        ${COACH.logo?`<img src="${COACH.logo}" alt="Your mark">`:''}
+        <input type="file" id="coachLogoFile" accept="image/png,image/jpeg,image/webp" class="visually-hidden">
+        <button class="btn btn-ghost btn-sm" type="button" id="coachLogoPick">${COACH.logo?'Replace':'Add a mark'}</button>
+        ${COACH.logo?`<button class="btn btn-ghost btn-sm" type="button" id="coachLogoDrop">Remove</button>`:''}
+        <p class="hint">PNG, JPEG or WebP; shown about 48 px tall on the report.</p></div></div>
+      <div><label for="coachCues">Cue library — one per line</label>
+        <textarea id="coachCues" placeholder="Land under your hips, not in front of them&#10;Quiet upper body — let the legs do the work&#10;Heel drops a touch earlier through the bottom">${esc((COACH.cues||[]).join('\n'))}</textarea>
+        <p class="hint" style="margin:4px 0 0">Offered as one-click chips when you write a note on a report. ${(COACH.cues||[]).length} of 40.</p></div>
+      <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="coachSave">Save coach profile</button><span class="cnote-status" id="coachStatus"></span></div>
+    </div>`;
+  const st=$('#coachStatus');
+  $('#coachSave').addEventListener('click',async()=>{
+    st.textContent='Saving…';
+    const ok=await saveCoach({name:$('#coachName').value,tagline:$('#coachTag').value,
+      cues:$('#coachCues').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,40)});
+    if(ok){ toast('Coach profile saved.'); track('coach_profile_saved',{cues:COACH.cues.length,logo:!!COACH.logo}); }
+  });
+  $('#coachLogoPick').addEventListener('click',()=>$('#coachLogoFile').click());
+  $('#coachLogoFile').addEventListener('change',async e=>{
+    const f=e.target.files&&e.target.files[0]; if(!f) return;
+    try{ const uri=await coachLogoFromFile(f); if(uri.length>200*1024*1.4){ toast('That mark is still too large after resizing — try a simpler image.'); return; }
+      await saveCoach({name:$('#coachName').value,tagline:$('#coachTag').value,logo:uri}); }
+    catch(_e){ toast('That file could not be read as an image.'); }
+  });
+  const drop=$('#coachLogoDrop'); if(drop) drop.addEventListener('click',()=>saveCoach({logo:null}));
+}
+/* Update one saved entry in place -- the cabinet's copy and the server's. */
+async function patchEntry(id, patch){
+  if(!id) return null;
+  const list=loadHist(); const e=list.find(x=>x.id===id); if(!e) return null;
+  Object.assign(e, patch);
+  if(auth){
+    state.cloudHist=(state.cloudHist||[]).map(x=>x.id===id?e:x);
+    try{ await fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)}); }catch(_e){ return null; }
+  } else persistHist(list);
+  return e;
+}
+/* The note block on a report. `hostId` is the block's inner element
+   (coachNote on the fresh report, hdCoachNote in the cabinet); `entryId`
+   the saved entry the note belongs to. A coach gets the editor; anyone
+   else with a note on the entry (an athlete reading a coach's report on the
+   same account) gets it read-only; no coach and no note -> hidden. */
+function renderCoachNote(hostId, entryId){
+  const host=$('#'+hostId), block=host&&host.closest('.block'); if(!host||!block) return;
+  const e=entryId?loadHist().find(x=>x.id===entryId):null;
+  const note=(e&&e.coachNote)||'', by=(e&&e.coachName)||'';
+  if(!coachOn()&&!note){ block.classList.add('hidden'); return; }
+  block.classList.remove('hidden');
+  const title=block.querySelector('h3'); if(title) title.textContent=coachOn()?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(by?`${by}’s notes`:'Coach’s notes');
+  if(!coachOn()){
+    host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}</div>`:''}`;
+    return;
+  }
+  const cues=(COACH.cues||[]);
+  host.innerHTML=`<div class="cnote-read hidden">${esc(note)}</div>
+    <textarea id="${hostId}Text" placeholder="What you saw that the numbers did not — and the one thing to work on before the next clip.">${esc(note)}</textarea>
+    ${cues.length?`<div class="cnote-cues"><span class="cnote-cuelbl">Cues</span>${cues.map(c=>`<button type="button" data-cue="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:`<p class="cnote-empty">Add cues to your <a href="#account" onclick="event.preventDefault();openAccount()">coach profile</a> and they appear here as one-click chips.</p>`}
+    <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="${hostId}Save"${entryId?'':' disabled title="This report has not been saved yet"'}>Save note</button>
+      <span class="cnote-status" id="${hostId}Status">${note?'Saved on this report · prints under your name · included in the export.':'Saved on this report, printed under your name, included in the AI export.'}</span></div>`;
+  const ta=$('#'+hostId+'Text'), st=$('#'+hostId+'Status');
+  host.querySelectorAll('[data-cue]').forEach(b=>b.addEventListener('click',()=>{
+    const v=ta.value.trim(); ta.value=(v?v+(v.endsWith('.')||v.endsWith('\n')?' ':'. '):'')+b.dataset.cue; ta.focus(); }));
+  $('#'+hostId+'Save').addEventListener('click',async()=>{
+    st.textContent='Saving…';
+    const ok=await patchEntry(entryId,{coachNote:ta.value.trim(),coachName:COACH.name||''});
+    st.textContent=ok?'Saved.':'Could not save — check your connection.';
+    if(ok){ host.querySelector('.cnote-read').textContent=ta.value.trim(); track('coach_note_saved',{chars:ta.value.trim().length}); }
+  });
+}
+
 function renderPrintHead(meta){
   const el=$('#printHead'); if(!el) return;
   const bits=[];
@@ -4906,11 +5055,16 @@ function renderPrintHead(meta){
   const who = meta.athlete ? `<span class="ph-who">${esc(meta.athlete)}</span>` : '';
   const conf = meta.confidence
     ? ` \u00b7 ${esc(pretty(meta.confidence))} confidence` : '';
-  el.innerHTML=`<div class="ph-top"><div class="ph-brand">Flapp</div>${who}</div>
+  // A coach's report carries the coach's mark and name where the brand sat;
+  // Flapp moves to the footer line, as the instrument rather than the author.
+  const brand = (coachOn()&&(COACH.name||COACH.logo))
+    ? `<div class="ph-coach">${COACH.logo?`<img src="${COACH.logo}" alt="">`:''}<div><div class="ph-coachname">${esc(COACH.name||'')}</div>${COACH.tagline?`<div class="ph-coachtag">${esc(COACH.tagline)}</div>`:''}</div></div>`
+    : `<div class="ph-brand">Flapp</div>`;
+  el.innerHTML=`<div class="ph-top">${brand}${who}</div>
     <div class="ph-meta">
       <span>${esc(bits.join(' \u00b7 '))}</span>
       <span>${meta.score==null?'':'Technique '+esc(String(meta.score))+'/100'}${meta.grade?' ('+esc(meta.grade)+')':''}${conf}</span>
-      <span>getflapp.com</span>
+      <span>${coachOn()&&COACH.name?'Analysed with Flapp \u00b7 ':''}getflapp.com</span>
     </div>`;
 }
 /* Shown to the tier that pays for it. Everyone else keeps Ctrl-P, which is
@@ -4946,7 +5100,7 @@ function renderPrintable(r, entry){
         against your own earlier clips — not a laboratory measurement, and not a
         substitute for a bike fit or a clinician.</p>`
       + (conf?`<p><b>Confidence on this clip:</b> ${esc(conf)}</p>`:'')
-      + `<p>Flapp by Clariva · getflapp.com</p>`;
+      + ((coachOn()&&COACH.name)?`<p><b>Prepared by ${esc(COACH.name)}</b>${COACH.tagline?' · '+esc(COACH.tagline):''} — with Flapp by Clariva · getflapp.com</p>`:`<p>Flapp by Clariva · getflapp.com</p>`);
   }
 }
 function printButtonHtml(){
@@ -5156,6 +5310,8 @@ function renderAccount(){
   const portal=$('#acctPortal'); if(portal) portal.classList.toggle('hidden', !paid);
   const pp=$('#acctProfPill'), ppt=$('#acctProfPillTxt');
   if(pp&&ppt){ pp.classList.toggle('hidden', !auth); ppt.textContent=`${PROFILES.used||0} of ${PROFILES.limit||1} used · ${planName}`; pp.className='pill '+((PROFILES.used||0)>=(PROFILES.limit||1)?'pill-warnchip':'pill-low'); }
+  renderCoachCard();
+  if(auth&&!COACH.loaded) loadCoach();
 }
 function openAccount(){
   if(!auth){ openAuth('login'); return; }
@@ -6968,6 +7124,7 @@ function render(job,opts){
   mountFeedback('fbHost','video',r,state.videoHistId,
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
+  renderCoachNote('coachNote', state.videoHistId);
   // The joint editor: bike, paid (the server refuses everything else), the
   // clip still in this browser to draw on, and not a merged two-clip session.
   const canAdjust=!!(sport==='bike'&&!r.locked&&state.file&&state.jobId&&auth&&auth.tier!=='starter'
@@ -7883,6 +8040,7 @@ async function checkAuth(){
   trackIdentify();
   renderAuth();
   if(auth){
+    loadCoach();
     await migrateAndLoad();
     // Signed-in users land on their dashboard ("My technique"), unless a job is
     // being restored or they've already navigated off the initial screen.
@@ -8607,6 +8765,7 @@ function renderHistoryDetail(e){
   renderHistoryVideos(e);
   renderHistoryBilateral(e);
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
+  renderCoachNote('hdCoachNote', e.id);
   renderHistoryPlan(e);
   renderHistoryAngles(e);
   renderHistoryKinogram(e);

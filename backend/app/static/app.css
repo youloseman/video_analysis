@@ -1499,6 +1499,37 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fp:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px}
 @media(max-width:640px){.fp-time{margin-left:0;width:100%;white-space:normal}.fp-chart{height:130px}}
 @media print{.fp-ui,.fp-rawwrap{display:none!important}}
+/* ---------- The coach: profile card, the note on a report ----------
+   The note is the one block on the report written by a person; it is drawn
+   like the AI coach's block (same class family) so the two read as two voices
+   on the same page, with the author's name where the model's eyebrow sits. */
+.cnote textarea{width:100%;min-height:110px;font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink);
+  padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-xs);background:var(--c-bg);resize:vertical}
+.cnote-cues{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.cnote-cues button{font-family:var(--f-body);font-size:12.5px;border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink-soft);
+  padding:3px 10px;border-radius:var(--radius);cursor:pointer;min-height:28px}
+.cnote-cues button:hover{background:var(--c-panel)}
+.cnote-cues .cnote-cuelbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);align-self:center;margin-right:4px}
+.cnote-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+.cnote-status{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
+.cnote-read{white-space:pre-wrap;font-size:14px;line-height:1.55;color:var(--c-ink)}
+.cnote-by{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);margin-top:8px}
+.cnote-empty{font-size:13px;color:var(--c-ink-faint)}
+.coachform{display:grid;gap:10px}
+.coachform label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint);display:block;margin-bottom:4px}
+.coachform input[type=text],.coachform textarea{width:100%;font-family:var(--f-body);font-size:13.5px;padding:8px 10px;border:1px solid var(--c-line-strong);
+  border-radius:var(--radius-xs);background:var(--c-bg);color:var(--c-ink)}
+.coachform textarea{min-height:120px;resize:vertical;line-height:1.5}
+.coachlogo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.coachlogo img{height:48px;width:auto;max-width:200px;border:1px solid var(--c-line);background:#fff;padding:3px}
+.coachlogo .hint{margin:0}
+/* Printed: the coach's mark and name take the brand slot; the note prints. */
+.ph-coach{display:flex;align-items:center;gap:10px}
+.ph-coach img{height:36px;width:auto;max-width:160px}
+.ph-coach .ph-coachname{font-family:var(--f-display);font-weight:600;font-size:15px;color:#14181F}
+.ph-coach .ph-coachtag{font-size:11px;color:#555}
+@media print{.cnote textarea,.cnote-cues,.cnote-actions{display:none!important}.cnote-read{display:block!important}}
+
 /* ---------- Two clips locked cycle to cycle (FlappSync, Compare) ---------- */
 .cmp-video{margin-top:20px}
 .sy{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);overflow:hidden}

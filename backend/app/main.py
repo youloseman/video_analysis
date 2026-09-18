@@ -409,6 +409,10 @@ app.include_router(changelog_routes.router)
 app.include_router(examples_routes.router)
 # Off-bike mobility screens: /mobility (profile), /mobility/screen (measure).
 app.include_router(mobility_routes.router)
+# The coach behind a Full account: /me/coach (name, mark, cue library).
+from app.api import coach as coach_routes  # noqa: E402
+
+app.include_router(coach_routes.router)
 
 
 # --------------------------------------------------------------------------

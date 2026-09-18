@@ -449,8 +449,14 @@ async def export_analysis(
         return JSONResponse(
             ai_export.build_json(row.result, job_id=client_id), headers=disposition,
         )
+    # The coach's own note travels with the entry, not the result (it was
+    # written on the saved report, by a person). Into the markdown it goes.
+    entry = row.data or {}
     return PlainTextResponse(
-        ai_export.build_markdown(row.result, job_id=client_id),
+        ai_export.build_markdown(
+            row.result, job_id=client_id,
+            coach_notes=entry.get("coachNote"), coach_name=entry.get("coachName"),
+        ),
         media_type="text/markdown; charset=utf-8",
         headers=disposition,
     )
