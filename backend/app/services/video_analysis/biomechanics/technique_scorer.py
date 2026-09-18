@@ -613,15 +613,18 @@ def classify_metric_severity(
     if opt_min <= value <= opt_max:
         return "OPTIMAL"
 
-    # Check META for warning thresholds
+    # Check META for warning thresholds. The closed-hip evidence (floor,
+    # medical warning) is filed under hip_angle_max; hip_at_tdc is the
+    # measurement it was written about.
     pos = position or "road_hoods"
-    meta = CYCLING_POSITIONS_META.get(pos, {}).get(metric_key, {})
+    meta_key = "hip_angle_max" if metric_key == "hip_at_tdc" else metric_key
+    meta = CYCLING_POSITIONS_META.get(pos, {}).get(meta_key, {})
     warning_low = meta.get("warning_low")
     warning_high = meta.get("warning_high")
     has_medical = "medical_warning" in meta
 
     # ASYMMETRIC scoring for hip angle: above optimal = comfort (OK), below = risk
-    if metric_key == "hip_angle_max":
+    if metric_key in ("hip_angle_max", "hip_at_tdc"):
         if value > opt_max:
             # Above optimal = more open hip = comfort trade-off, always OK
             return "ACCEPTABLE"
@@ -686,10 +689,12 @@ def build_severity_map(
     if tdc and tdc > 0:
         severity_map["knee_at_tdc"] = classify_metric_severity(position, "knee_at_tdc", tdc)
 
-    # Hip angle
-    hip = summary.get("hip_angle_max") or summary.get("hip_angle_avg")
+    # Hip angle: the closed value at the top of the stroke, which is what the
+    # band describes. No fallback to the stroke mean -- graded against a
+    # closed-hip band it can only ever read "open", which is not a verdict.
+    hip = summary.get("hip_at_tdc")
     if hip and hip > 0:
-        severity_map["hip_angle_max"] = classify_metric_severity(position, "hip_angle_max", hip)
+        severity_map["hip_at_tdc"] = classify_metric_severity(position, "hip_at_tdc", hip)
 
     # Other metrics
     for summary_key, ref_key in metric_keys_map.items():

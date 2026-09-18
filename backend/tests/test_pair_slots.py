@@ -146,7 +146,7 @@ class TestTheHipCallout:
                 "bike", {"camera_side": "left"}, cycling_position=pos,
             )
             hip = next(c for c in cfgs if c["key"] == "left_hip")
-            assert tuple(hip["optimal"]) == tuple(get_cycling_reference(pos)["hip_angle_max"])
+            assert tuple(hip["optimal"]) == tuple(get_cycling_reference(pos)["hip_at_tdc"])
             assert hip.get("open_ok") is True
 
     def test_an_open_hip_is_green_a_closed_one_is_not(self):

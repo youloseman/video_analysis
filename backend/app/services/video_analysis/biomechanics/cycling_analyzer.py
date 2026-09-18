@@ -42,6 +42,11 @@ ANKLE_BDC_PLANTARFLEXION_DEG = 125.0
 # Plausibility envelope for a sampled ankle-at-BDC value; readings
 # outside this are tracking noise, not a real foot angle.
 _ANKLE_BDC_BOUNDS = (60.0, 170.0)
+# Torso-thigh angle at the top and bottom of the stroke. TT riders close to
+# ~40 at TDC and a casual rider opens past 130 at BDC; outside these the
+# sample is a tracking artefact.
+_HIP_TDC_BOUNDS = (20.0, 110.0)
+_HIP_BDC_BOUNDS = (60.0, 160.0)
 
 # --- Pedalling style -------------------------------------------------------
 #
@@ -604,6 +609,8 @@ class CyclingAnalyzer(SportAnalyzer):
             # so the caller can sample other joint angles (e.g. ankle)
             # at the bottom of the pedal stroke.
             "bdc_indices": bdc_idx,
+            # ...and of the TDC extrema, where the hip is most closed.
+            "tdc_indices": tdc_idx,
         }
 
     def _knee_series(self, side: str) -> list[float]:
@@ -720,8 +727,41 @@ class CyclingAnalyzer(SportAnalyzer):
                         diag["plantarflexion_at_bdc"] = True
                         result[f"{side}_plantarflexion_at_bdc"] = True
                         self._record_plantarflexion_warning()
+                # The hip at both ends of the stroke, on the same frames.
+                # The closed value at TDC is the one every hip band in
+                # cycling_positions describes (Retul's "hip closed"), and
+                # the one the 45 deg medical floor is about. The stroke MEAN
+                # -- hip_angle_avg -- was what used to be graded against
+                # those bands: on a road rider it sits around 85-90, so the
+                # check could only ever read "open, fine" and the floor was
+                # unreachable. Measured on the 17 Sep pairs: min 61-65 /
+                # mean 87-89 on hoods, min 49-54 / mean 74-82 in drops.
+                hip_tdc = self._series_at(f"{side}_hip", peaks["tdc_indices"], _HIP_TDC_BOUNDS)
+                hip_bdc = self._series_at(f"{side}_hip", peaks["bdc_indices"], _HIP_BDC_BOUNDS)
+                if hip_tdc is not None:
+                    result[f"{side}_hip_at_tdc"] = hip_tdc
+                if hip_bdc is not None:
+                    result[f"{side}_hip_at_bdc"] = hip_bdc
             self._bdc_tdc_diag[side] = diag
         return result
+
+    def _series_at(
+        self, key: str, indices: list[int], bounds: tuple[float, float],
+    ) -> float | None:
+        """Median of one ``angle_history`` series over the given frames.
+
+        ``None`` when the series was never measured, every sample is NaN, or
+        the median falls outside ``bounds`` (tracking noise, not a joint).
+        """
+        series = self.angle_history.get(key)
+        if not series:
+            return None
+        n = len(series)
+        samples = [series[i] for i in indices if 0 <= i < n and not math.isnan(series[i])]
+        if not samples:
+            return None
+        val = float(np.median(samples))
+        return val if bounds[0] <= val <= bounds[1] else None
 
     def _ankle_at_bdc(
         self, side: str, bdc_indices: list[int],
@@ -851,6 +891,8 @@ class CyclingAnalyzer(SportAnalyzer):
         "elbow_angle_avg":  (60.0, 180.0),
         "shoulder_angle_avg": (50.0, 150.0),
         "hip_angle_avg":    (25.0, 100.0),
+        "hip_at_tdc":       (20.0, 110.0),
+        "hip_at_bdc":       (60.0, 160.0),
         "pelvic_ratio":     (1.0,  8.0),
         "forearm_tilt_avg": (-30.0, 45.0),
     }
@@ -996,6 +1038,10 @@ class CyclingAnalyzer(SportAnalyzer):
         # action plan builder and technique scorer).
         self._set_if_plausible(summary, "knee_at_bdc", bdc_tdc.get(f"{near}_knee_at_bdc"))
         self._set_if_plausible(summary, "knee_at_tdc", bdc_tdc.get(f"{near}_knee_at_tdc"))
+        # The hip at the top of the stroke is what the hip bands describe;
+        # the mean (hip_angle_avg, above) stays as an unbanded reading.
+        self._set_if_plausible(summary, "hip_at_tdc", bdc_tdc.get(f"{near}_hip_at_tdc"))
+        self._set_if_plausible(summary, "hip_at_bdc", bdc_tdc.get(f"{near}_hip_at_bdc"))
 
         # BDC/TDC estimation diagnostics for the near (analysed) side:
         # which method produced the values, how many pedal revolutions

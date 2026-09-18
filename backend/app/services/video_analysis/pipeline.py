@@ -348,7 +348,7 @@ class VideoAnalysisPipeline:
             # never red. `open_ok` carries that to the colour.
             return [
                 {"key": near_knee_key,     "idx": near_knee_idx,     "optimal": ref["knee_at_bdc"],   "name": "Knee",    "offset_dir": "left"},
-                {"key": near_hip_key,      "idx": near_hip_idx,      "optimal": ref["hip_angle_max"], "name": "Hip",     "offset_dir": "up-left", "open_ok": True},
+                {"key": near_hip_key,      "idx": near_hip_idx,      "optimal": ref["hip_at_tdc"],    "name": "Hip",     "offset_dir": "up-left", "open_ok": True},
                 {"key": "trunk_angle",     "idx": 11,                "optimal": ref["trunk_angle"],    "name": "Trunk",   "offset_dir": "up"},
                 {"key": near_elbow_key,    "idx": near_elbow_idx,    "optimal": ref["elbow_angle"],    "name": "Elbow",   "offset_dir": "up-left"},
                 {"key": near_shoulder_key, "idx": near_shoulder_idx, "optimal": ref["shoulder_angle"], "name": "Shldr",   "offset_dir": "right"},

@@ -357,8 +357,12 @@ def get_medical_warnings(
     pos = position or "road_hoods"
     category = CYCLING_POSITIONS.get(pos, {}).get("category", "road")
 
-    # Hip angle closure risk (primarily TT/triathlon)
-    hip_min = metrics.get("hip_angle_min")
+    # Hip angle closure risk (primarily TT/triathlon). The closed hip is the
+    # value at the top of the stroke; the older keys are kept for callers
+    # that still pass them.
+    hip_min = metrics.get("hip_at_tdc")
+    if hip_min is None:
+        hip_min = metrics.get("hip_angle_min")
     if hip_min is None:
         hip_min = metrics.get("hip_angle_max")
 

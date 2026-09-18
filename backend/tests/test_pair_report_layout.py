@@ -234,3 +234,38 @@ class TestTheOverlayAfterARestart:
             assert resp.path == str(overlay)
         finally:
             main.JOBS.pop(job_id, None)
+
+
+class TestGettingBackToTheReport:
+    """Artur followed the aero panel's link out of a two-sided report and could
+    not get back: Back opened the analyze form, and History showed a card
+    that did not say it was the session."""
+
+    def test_the_report_keeps_its_job_in_the_url(self, html):
+        fn = _fn(html, "recordRoute")
+        assert "name==='results' && state.jobId ? '#job='+state.jobId" in fn
+
+    def test_a_restored_report_reuses_its_history_entry(self, html):
+        """init() restores /app#job=… by polling; the render that follows
+        must overwrite the entry saved the first time, not add a twin."""
+        i = html.index("async function pollOnce(")
+        fn = html[i:html.index("\nfunction ", i + 10)]
+        assert "e.jobId===state.jobId" in fn
+        assert "reuseHistId: prior.id" in fn
+
+    def test_the_history_card_says_both_sides(self, html):
+        fn = _fn(html, "renderHistList")
+        assert "e.bilateral||e.cameraSide==='both'?'both sides'" in fn
+
+    def test_the_saved_entry_carries_the_sessions_verdict(self, html):
+        fn = _fn(html, "entryFromResult")
+        for k in ("partial:", "knee_single:", "agreement:", "sides:", "slots_swapped:"):
+            assert k in fn, k
+        assert "keyframe_base64" not in fn[fn.index("bilateral:"):fn.index("score:isV")], \
+            "the side stills must not double the entry"
+
+    def test_the_history_detail_renders_the_session(self, html):
+        assert 'id="hdBilateral"' in html
+        fn = _fn(html, "renderHistoryBilateral")
+        assert "merged, except the knee" in fn and "not merged" in fn
+        assert "renderHistoryBilateral(e);" in _fn(html, "renderHistoryDetail")

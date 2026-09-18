@@ -551,7 +551,8 @@ def build_metrics_block(
 _METRIC_LABELS = {
     "knee_at_bdc": "Knee angle at bottom of stroke (BDC)",
     "knee_at_tdc": "Knee angle at top of stroke (TDC)",
-    "hip_angle_avg": "Hip angle",
+    "hip_angle_avg": "Hip angle (stroke average)",
+    "hip_at_tdc": "Hip angle at top of stroke (closed)",
     "trunk_angle_avg": "Trunk angle",
     "elbow_angle_avg": "Elbow angle",
     "shoulder_angle_avg": "Shoulder angle",
@@ -597,7 +598,7 @@ def _metric_statuses(
         # encodes this by stretching the upper bound to the measurement; do the
         # same here, or the coach is handed "hip out of range" for a number the
         # athlete is looking at marked in range.
-        if field == "hip_angle_avg":
+        if field in ("hip_angle_avg", "hip_at_tdc"):
             hi = max(hi, value)
         # A ratio lives on a 2-4 scale; the 3.0 degree floor would swallow it
         # whole and call every reading "check".

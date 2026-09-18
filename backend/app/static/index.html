@@ -1285,6 +1285,10 @@
         </div>
       </div>
     </div>
+    <!-- A two-sided session, as the cabinet remembers it: what was merged,
+         what was not, and the knee's provenance. The fresh report's panel
+         carried the two overlays and two stills; this holds the verdict. -->
+    <div id="hdBilateral"></div>
     <!-- The same offer the fresh report made, for a report opened later. The
          teaser was saved, the athlete went to read the plans, came back to the
          cabinet -- and the $4 button had only ever existed on the screen they
@@ -1731,7 +1735,18 @@ function recordRoute(name, data){
   const url=location.pathname+location.search;
   // Transient view: leave the entry pointing at the last real destination, so
   // Back (and Forward) across it still land somewhere restorable.
-  if(!ROUTED_STATES[name]){ setUrl(url); return; }
+  //
+  // The report keeps its #job= hash. It used to be stripped here with the
+  // other transient views, so a link out of the report (the aero panel's
+  // "how to get lower", an Academy article) and Back landed on /app with no
+  // hash -- the analyze form -- and the report that had just been read was
+  // nowhere to be found. With the hash, Back is a fresh load of /app#job=…,
+  // which init() restores by polling the job; the history entry is reused
+  // by job id (see pollOnce), so the restore does not duplicate it.
+  if(!ROUTED_STATES[name]){
+    setUrl(url + (name==='results' && state.jobId ? '#job='+state.jobId : ''));
+    return;
+  }
   const entry=Object.assign({v:name}, data||{});
   const samePlace=history.state && history.state.v===name;
   // The first routed state takes over the entry the app was loaded into, so
@@ -2798,7 +2813,10 @@ async function pollOnce(){
         seconds: state.analyzeStart ? Math.round((Date.now()-state.analyzeStart)/1000) : null,
         tier: auth ? auth.tier : 'anonymous',
       });
-      render(j);
+      // A report restored from #job= (Back from an article, a refresh) is the
+      // same analysis: write it over its own history entry, not beside it.
+      const prior=loadHist().find(e=>e && e.jobId && e.jobId===state.jobId);
+      render(j, prior ? {reuseHistId: prior.id} : undefined);
     }
     else if(j.status==='failed'){ clearInterval(state.polling); fail(j.error||'The analysis failed on this clip.',{tips:true,counted:true}); }
     else if(j.status==='queued'){
@@ -2999,11 +3017,11 @@ const RUN_ANGLE_OPT={ trunk:[2,10], elbow:[85,100] };
 // CYCLING_POSITIONS. Keep in sync with that file. hip_angle is the mean hip and
 // is asymmetric (above max = comfort/OK) -- handled in the tile logic.
 const BIKE_POSITION_OPT={
-  road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[90,120],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_angle:[55,65],forearm_tilt:[5,20],pelvic_ratio:[1.5,3.5]},
-  road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[85,110],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_angle:[50,65],forearm_tilt:[0,15],pelvic_ratio:[1.8,3.5]},
-  tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_angle:[35,55],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
-  triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_angle:[40,55],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
-  casual:{trunk_angle:[45,60],elbow_angle:[130,165],shoulder_angle:[100,140],knee_at_bdc:[135,150],knee_at_tdc:[60,80],hip_angle:[65,85],forearm_tilt:[-5,15],pelvic_ratio:[1.5,3.5]},
+  road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[90,120],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[55,70],forearm_tilt:[5,20],pelvic_ratio:[1.5,3.5]},
+  road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[85,110],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[52,68],forearm_tilt:[0,15],pelvic_ratio:[1.8,3.5]},
+  tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[42,60],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
+  triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[45,62],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
+  casual:{trunk_angle:[45,60],elbow_angle:[130,165],shoulder_angle:[100,140],knee_at_bdc:[135,150],knee_at_tdc:[60,80],hip_at_tdc:[68,88],forearm_tilt:[-5,15],pelvic_ratio:[1.5,3.5]},
 };
 const BIKE_ANGLE_OPT_DEFAULT=BIKE_POSITION_OPT.road_hoods;
 /* per-position range for a bike metric key; falls back to road_hoods */
@@ -3015,6 +3033,10 @@ function angleOptimal(key,sport,res){
   const map=(res&&res.cycling_position&&BIKE_POSITION_OPT[res.cycling_position])||BIKE_ANGLE_OPT_DEFAULT;
   // 'trunk' in stats is the same as 'trunk_angle'
   if(base==='trunk') return map.trunk_angle||null;
+  // The table's hip row is the stroke MEAN of a joint that swings 50 deg
+  // every revolution; no band describes that. The closed hip is graded on
+  // its own tile (bikeTiles).
+  if(base==='hip') return null;
   return map[base+'_angle']||map[base]||null;
 }
 /* The band a measurement is actually judged against.
@@ -3198,16 +3220,23 @@ function bikeTiles(s, position){
   if(s.knee_at_bdc!=null) t.push(tile('Knee · bottom',num(s.knee_at_bdc),'°',null,null,false,rng('knee_at_bdc',s.knee_at_bdc,'knee_at_bdc')));
   if(s.knee_at_tdc!=null) t.push(tile('Knee · top',num(s.knee_at_tdc),'°',null,null,false,rng('knee_at_tdc',s.knee_at_tdc,'knee_at_tdc')));
   // Hip is asymmetric: above optimal max = more open = comfort/OK, never a fault.
-  // The video summary emits hip_angle_avg (NOT hip_angle_max) -- use that.
-  const hipV = s.hip_angle_avg!=null ? s.hip_angle_avg : s.hip_angle_max;
-  if(hipV!=null){
-    const hr=bikePosRange(position,'hip_angle');
-    // treat an open hip (above max) as in-range by extending the upper bound
-    const hb=(state.bands||{})['hip_angle_avg'];
+  // The reading is the CLOSED hip -- torso to thigh at the top of the stroke
+  // -- because that is what the band describes. This tile used to grade the
+  // stroke MEAN (hip_angle_avg) against the same closed-hip band: on a road
+  // rider the mean sits 20-30 deg above it, so the tile read "in range,
+  // 55-88" with its upper bound stretched to the number, every time. The
+  // mean is still shown, as a reading with no band, when there is no TDC
+  // value (older results).
+  if(s.hip_at_tdc!=null){
+    const hr=bikePosRange(position,'hip_at_tdc');
+    const hb=(state.bands||{})['hip_at_tdc'];
     const hipRange = hb
-      ? R(hipV, hb.lo, Math.max(hb.hi, hipV), '°', hb.source||null)
-      : (hr ? R(hipV, hr[0], Math.max(hr[1], hipV), '°') : null);
-    t.push(tile('Hip angle',num(hipV),'°',null,null,false,hipRange));
+      ? R(s.hip_at_tdc, hb.lo, Math.max(hb.hi, s.hip_at_tdc), '°', hb.source||null)
+      : (hr ? R(s.hip_at_tdc, hr[0], Math.max(hr[1], s.hip_at_tdc), '°') : null);
+    t.push(tile('Hip · top of stroke',num(s.hip_at_tdc),'°',
+      s.hip_angle_avg!=null?`averages ${num(s.hip_angle_avg)}° over the stroke`:null,null,false,hipRange));
+  } else if(s.hip_angle_avg!=null){
+    t.push(tile('Hip · average',num(s.hip_angle_avg),'°','stroke mean — the closed hip at the top was not measured'));
   }
   if(s.elbow_angle_avg!=null) t.push(tile('Elbow',num(s.elbow_angle_avg),'°',null,null,false,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg')));
   if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg')));
@@ -7370,7 +7399,16 @@ function entryFromResult(kind,res,base){
       profileId:b.profileId||null,
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
-      bilateral:res.bilateral?{combined:!!res.bilateral.combined,knee_at_bdc:res.bilateral.knee_at_bdc,uncertainty_deg:res.bilateral.uncertainty_deg,scale_anchor:res.bilateral.scale_anchor}:null,
+      // The session, compactly: enough for the cabinet to say this was a
+      // two-sided session and what came of it (merged / partial / refused),
+      // without the two stills -- the entry already carries one keyframe and
+      // a second would double it.
+      bilateral:res.bilateral?{combined:!!res.bilateral.combined,partial:!!res.bilateral.partial,
+        reason:res.bilateral.reason||null,knee_at_bdc:res.bilateral.knee_at_bdc,uncertainty_deg:res.bilateral.uncertainty_deg,
+        scale_anchor:res.bilateral.scale_anchor,knee_single:res.bilateral.knee_single||null,
+        agreement:res.bilateral.agreement?{agree:res.bilateral.agreement.agree,worst:res.bilateral.agreement.worst,gaps:res.bilateral.agreement.gaps||{}}:null,
+        slots_swapped:!!res.bilateral.slots_swapped,
+        sides:(res.bilateral.sides||[]).map(c=>({camera_side:c.camera_side,revolutions:c.revolutions==null?null:c.revolutions,frames_analyzed:c.frames_analyzed}))}:null,
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||b.keyframe||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
@@ -7635,7 +7673,7 @@ function renderHistList(){
   w.innerHTML=a.map(e=>`<div class="hcard" data-id="${e.id}">
     <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
       <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
-    <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind)}</button>
+    <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
       <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
   </div>`).join('');
   observeKeyframes(w);
@@ -7677,16 +7715,50 @@ function renderHistoryDetail(e){
   setGrade('#hdGrade', e.grade);
   setSportTag('#hdSportTag','#hdSportTagIcon','#hdSportTagText',e.sport);
   const parts=[esc(e.kind)];
-  if(e.cameraSide) parts.push(`Camera: <b>${esc(e.cameraSide)} side</b>`);
+  if(e.cameraSide) parts.push(`Camera: <b>${e.cameraSide==='both'?'both sides':esc(e.cameraSide)+' side'}</b>`);
   if(e.position) parts.push(`Position: <b>${esc(POSITION_NAMES[e.position]||e.position)}</b>`);
   parts.push(fmtWhen(e.at));
   $('#hdMeta').innerHTML=parts.join('<br>');
+  renderHistoryBilateral(e);
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderHistoryPlan(e);
   renderHistoryAngles(e);
   renderHistoryKinogram(e);
   renderHistoryExport(e);
   renderHistoryUpsell(e);
+}
+/* The two-sided session in the cabinet. Same three states as the fresh
+   report's panel, in a few lines: what the session concluded and on what
+   evidence. Older entries carry only {combined, knee_at_bdc}; they still
+   render, as a merged or refused session without the detail. */
+function renderHistoryBilateral(e){
+  const host=$('#hdBilateral'); if(!host) return;
+  const b=e&&e.bilateral;
+  if(!b){ host.innerHTML=''; return; }
+  const ag=b.agreement||{};
+  const sides=(b.sides||[]).map(c=>`${esc(c.camera_side||'')}: ${c.revolutions==null?'no pedal circle':c.revolutions+' revolutions'}`).join(' · ');
+  const gaps=Object.entries(ag.gaps||{}).map(([k,v])=>`${esc(BIL_GAP_NAMES[k]||k)} ${v}°`).join(' · ');
+  let flag, val, note;
+  if(b.combined){
+    flag='<span class="bil-flag bil-ok">merged</span>';
+    val=b.knee_at_bdc==null?'':`<div class="bil-val">${Math.round(b.knee_at_bdc*10)/10}°${b.uncertainty_deg!=null?` <small>±${Math.round(b.uncertainty_deg)}°</small>`:''}</div>`;
+    note='Knee at the bottom of the stroke, from both clips against one body.';
+  } else if(b.partial){
+    const ks=b.knee_single||{};
+    flag='<span class="bil-flag bil-ok">merged, except the knee</span>';
+    val=ks.value==null?'':`<div class="bil-val">${Math.round(ks.value*10)/10}° <small>${esc(ks.side||'')} clip only</small></div>`;
+    note=`Trunk, hip, shoulder and elbow pooled from both clips${ag.worst!=null?` (they agree to ${ag.worst}°${gaps?': '+gaps:''})`:''}. The knee and the saddle verdict are the ${esc(ks.side||'one')}-side clip’s.`;
+  } else {
+    flag='<span class="bil-flag bil-warn">not merged</span>';
+    val='';
+    note=esc(BIL_REASONS[b.reason]||'The two clips could not be merged into one verdict.');
+  }
+  host.innerHTML=`<div class="bil">
+    <div class="bil-h"><b>Two-sided session</b>${flag}${b.slots_swapped?'<span class="bil-flag bil-warn">slots were swapped</span>':''}</div>
+    ${val}
+    <p class="bil-note" style="margin-top:2px">${note}</p>
+    ${sides?`<p class="bil-note">${sides}</p>`:''}
+  </div>`;
 }
 /* The unlock offer on a saved report that is still gated.
 
@@ -7940,7 +8012,7 @@ const TREND_METRICS={
   bike:[
     {key:'score',label:'Technique score',unit:'',hi:true},
     {key:'knee',label:'Knee angle',unit:'°',sideFloor:12},
-    {key:'hip',label:'Hip angle',unit:'°',sideFloor:12},
+    {key:'hip',label:'Hip · top of stroke',unit:'°',sideFloor:12},
     {key:'trunk',label:'Trunk angle',unit:'°',sideFloor:8},
     {key:'elbow',label:'Elbow angle',unit:'°',sideFloor:12},
     {key:'shoulder',label:'Shoulder angle',unit:'°',sideFloor:12},
@@ -7984,7 +8056,7 @@ function extractTrends(kind,res,sport){
     const s=res.sport_specific_metrics||{};
     put('score',res.technique_score);
     if(sport==='bike'){
-      put('knee',s.knee_at_bdc,[138,145]); put('hip',s.hip_angle_max);
+      put('knee',s.knee_at_bdc,[138,145]); put('hip',s.hip_at_tdc!=null?s.hip_at_tdc:s.hip_angle_avg);
       put('trunk',s.trunk_angle_avg); put('elbow',s.elbow_angle_avg);
       put('shoulder',s.shoulder_angle_avg); put('pelvic_ratio',s.pelvic_ratio,[2,4]);
       putVel(s);

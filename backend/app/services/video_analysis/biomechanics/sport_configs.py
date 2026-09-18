@@ -415,9 +415,15 @@ def reference_bands(
         meta = (CYCLING_POSITIONS_META or {}).get(cycling_position or "road_hoods", {})
         # Cycling already carries its citations as data (per range), so they are
         # read rather than transcribed.
+        # The hip band is the CLOSED hip -- torso to thigh at the top of the
+        # stroke, which is what Retul's window and the 45 deg medical floor
+        # describe -- so it is served against hip_at_tdc. It used to be served
+        # against hip_angle_avg, the stroke mean, which on a road rider sits
+        # 20-30 deg above any closed-hip band: the check could never fail on
+        # the side it exists to catch. The mean is still emitted, unbanded.
         for field, band_key in (
             ("knee_at_bdc", "knee_at_bdc"), ("knee_at_tdc", "knee_at_tdc"),
-            ("hip_angle_avg", "hip_angle_max"), ("elbow_angle_avg", "elbow_angle"),
+            ("hip_at_tdc", "hip_at_tdc"), ("elbow_angle_avg", "elbow_angle"),
             ("trunk_angle_avg", "trunk_angle"), ("shoulder_angle_avg", "shoulder_angle"),
             ("forearm_tilt_avg", "forearm_tilt"), ("pelvic_ratio", "pelvic_ratio"),
         ):
@@ -425,7 +431,9 @@ def reference_bands(
             if not band or len(band) != 2:
                 continue
             out[field] = {"lo": band[0], "hi": band[1]}
-            src = (meta.get(band_key) or {}).get("source")
+            # The closed-hip evidence is filed under hip_angle_max in META.
+            src = (meta.get("hip_angle_max" if band_key == "hip_at_tdc" else band_key)
+                   or {}).get("source")
             if src:
                 out[field]["source"] = src
     return out

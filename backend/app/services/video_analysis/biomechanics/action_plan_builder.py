@@ -68,7 +68,10 @@ _SUMMARY_KEY_MAP: dict[str, str] = {
     "trunk_angle":      "trunk_angle_avg",
     "elbow_angle":      "elbow_angle_avg",
     "shoulder_angle":   "shoulder_angle_avg",
-    "hip_angle":        "hip_angle_avg",
+    # The closed hip at the top of the stroke -- the bands are about that.
+    # The stroke mean (hip_angle_avg) sits 20-30 deg above any closed-hip
+    # band on a road rider, so graded against one it never fired.
+    "hip_angle":        "hip_at_tdc",
     "pelvic_ratio":     "pelvic_ratio",
     "forearm_tilt":     "forearm_tilt_avg",
     "head_alignment":   "head_alignment_avg",
@@ -314,7 +317,7 @@ class Diagnostic:
 
     component: str  # "saddle_height" | "saddle_fore_aft" | "bar_position" | "crank_length"
     status: str  # "needs_adjustment" | "optimal"
-    metric_name: str  # "knee_at_bdc" | "hip_angle_avg" | "trunk_angle" | "knee_at_tdc"
+    metric_name: str  # "knee_at_bdc" | "hip_at_tdc" | "trunk_angle" | "knee_at_tdc"
     current_value: float
     target_range: tuple[float, float]
     action: str  # "raise_saddle" | "lower_saddle" | "move_saddle_back" | etc.
@@ -542,7 +545,7 @@ def build_action_plan(
     # Priority 2: Saddle Fore/Aft (hip angle -- ASYMMETRIC scoring)
     # ------------------------------------------------------------------
     hip_avg = _get_value("hip_angle", sm)
-    hip_min, hip_max = ref["hip_angle_max"]
+    hip_min, hip_max = ref["hip_at_tdc"]
 
     if hip_avg is not None:
         hip_class = _classify(hip_avg, hip_min, hip_max, "hip_angle")
@@ -550,7 +553,7 @@ def build_action_plan(
             # ASYMMETRIC: above optimal = more comfort, NOT a problem
             _add_good_metric(
                 good_metrics, "hip_angle", hip_avg,
-                (hip_min, hip_max), "Hip angle (open, comfortable)",
+                (hip_min, hip_max), "Hip at top of stroke (open, comfortable)",
             )
         elif hip_class == "out_low":
             # Hip too closed -- check kinematic chain
@@ -559,13 +562,13 @@ def build_action_plan(
                 diagnostics.append(Diagnostic(
                     component="saddle_fore_aft",
                     status="needs_adjustment",
-                    metric_name="hip_angle_avg",
+                    metric_name="hip_at_tdc",
                     current_value=round(hip_avg, 1),
                     target_range=(hip_min, hip_max),
                     action="reassess_after_saddle_height",
                     amount="",
                     reason=(
-                        f"Hip angle is {hip_avg:.0f} deg "
+                        f"Hip angle at the top of the stroke is {hip_avg:.0f} deg "
                         f"(optimal {hip_min:.0f}-{hip_max:.0f} deg). "
                         f"This is linked to saddle height -- raising the "
                         f"saddle will also open the hip angle. Reassess "
@@ -584,13 +587,13 @@ def build_action_plan(
                 diagnostics.append(Diagnostic(
                     component="saddle_fore_aft",
                     status="needs_adjustment",
-                    metric_name="hip_angle_avg",
+                    metric_name="hip_at_tdc",
                     current_value=round(hip_avg, 1),
                     target_range=(hip_min, hip_max),
                     action="move_saddle_forward",
                     amount="5mm",
                     reason=(
-                        f"Hip angle is {hip_avg:.0f} deg "
+                        f"Hip angle at the top of the stroke is {hip_avg:.0f} deg "
                         f"(optimal {hip_min:.0f}-{hip_max:.0f} deg). "
                         f"Hip is too closed -- move saddle forward 5mm "
                         f"to open hip angle."
@@ -603,7 +606,7 @@ def build_action_plan(
             border = hip_class == "borderline_low"
             _add_good_metric(
                 good_metrics, "hip_angle", hip_avg,
-                (hip_min, hip_max), "Hip angle",
+                (hip_min, hip_max), "Hip at top of stroke",
                 borderline=border,
                 note=_borderline_note("low", hip_min, hip_max) if border else None,
             )
@@ -625,7 +628,7 @@ def build_action_plan(
             medical_warnings.append({
                 "type": "triathlon_hip_flexor",
                 "message": (
-                    f"Hip angle is {hip_avg:.0f} deg. For triathlon, a hip angle "
+                    f"Hip angle at the top of the stroke is {hip_avg:.0f} deg. For triathlon, a hip angle "
                     f"below 55 deg can compromise hip flexor function for the run "
                     f"leg. Consider a slightly more open position to preserve "
                     f"running ability off the bike."

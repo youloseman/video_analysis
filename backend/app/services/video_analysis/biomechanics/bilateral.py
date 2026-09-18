@@ -428,6 +428,7 @@ class BilateralFit:
 # it doubles as this session's error gauge.
 _AVERAGED_METRICS = (
     "knee_at_tdc",
+    "hip_at_tdc",
     "trunk_angle_avg",
     "hip_angle_avg",
     "elbow_angle_avg",
@@ -500,11 +501,11 @@ def merge_summaries(
 
 
 # The subset of _AVERAGED_METRICS a partial merge may pool: what both cameras
-# see of ONE structure. Not the knee, at either end of the stroke -- a partial
-# merge exists precisely because one clip's knee could not be put on the
-# other's scale, and averaging angles the two clips cannot reconcile would be
-# the full merge's mistake with the safeguard removed.
-_MIDLINE_METRICS = tuple(k for k in _AVERAGED_METRICS if k != "knee_at_tdc")
+# see of ONE structure. Not the leg at either end of the stroke (knee and hip
+# at TDC) -- a partial merge exists precisely because one clip's leg could
+# not be put on the other's scale, and averaging angles the two clips cannot
+# reconcile would be the full merge's mistake with the safeguard removed.
+_MIDLINE_METRICS = tuple(k for k in _AVERAGED_METRICS if k not in ("knee_at_tdc", "hip_at_tdc"))
 
 
 def merge_summaries_partial(

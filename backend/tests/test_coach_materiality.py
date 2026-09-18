@@ -76,16 +76,19 @@ def test_an_open_hip_is_never_a_problem():
     """Closing the hip is the risk; opening it is a comfort trade-off. The
     results table stretches the upper bound to the measurement, and the coach
     has to agree with the page the athlete is reading."""
-    statuses = _metric_statuses("bike", POSITION, _summary(hip_angle_avg=72.9))
-    assert statuses["hip_angle_avg"][0] == "good"
+    # The graded hip is the closed one at the top of the stroke (hip_at_tdc);
+    # the stroke mean carries no band any more.
+    statuses = _metric_statuses("bike", POSITION, _summary(hip_at_tdc=72.9))
+    assert statuses["hip_at_tdc"][0] == "good"
+    assert "hip_angle_avg" not in statuses
     assert "Hip angle" not in _materiality_block(
-        "bike", POSITION, _summary(hip_angle_avg=72.9),
+        "bike", POSITION, _summary(hip_at_tdc=72.9),
     )
 
 
 def test_a_closing_hip_still_is_a_problem():
-    block = _materiality_block("bike", POSITION, _summary(hip_angle_avg=30.0))
-    assert "Hip angle" in block.split("may appear in Fix first):")[1]
+    block = _materiality_block("bike", POSITION, _summary(hip_at_tdc=30.0))
+    assert "Hip angle at top of stroke" in block.split("may appear in Fix first):")[1]
 
 
 def test_the_metric_lines_carry_the_same_verdict_as_the_list():

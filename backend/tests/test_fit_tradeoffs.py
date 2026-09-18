@@ -133,7 +133,7 @@ def test_fore_aft_direction_agrees_with_the_action_plan():
     plan = build_action_plan(
         position="triathlon",
         angle_statistics={},
-        sport_specific_metrics={"knee_at_bdc": 141.0, "hip_angle_avg": 25.0},
+        sport_specific_metrics={"knee_at_bdc": 141.0, "hip_at_tdc": 25.0},
         technique_score=70,
         letter_grade="B",
         detected_issues=[],
