@@ -359,6 +359,40 @@ async def get_kinogram(
     return {"kinogram": (row.result or {}).get("kinogram_base64")}
 
 
+@router.get("/analyses/{client_id}/timeline")
+async def get_timeline(
+    client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The frame-by-frame record of a saved analysis, for its player.
+
+    Fetched when the saved overlay is opened, like the overlay URLs and the
+    kinogram: it is tens of kilobytes the listing has no use for. ``null``
+    for a photo, a pair, or a report analyzed before the record existed --
+    the player then falls back to the plain video controls.
+
+    Paid readers only, like the overlay it plays over.
+    """
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    if access_for_stored(user, row) != ACCESS_FULL:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="This report has not been unlocked.",
+        )
+    return {"timeline": (row.result or {}).get("timeline")}
+
+
 @router.get("/analyses/{client_id}/export")
 async def export_analysis(
     client_id: str,

@@ -742,6 +742,11 @@ class CyclingAnalyzer(SportAnalyzer):
                     result[f"{side}_hip_at_tdc"] = hip_tdc
                 if hip_bdc is not None:
                     result[f"{side}_hip_at_bdc"] = hip_bdc
+                # The frames themselves, for the player's stroke markers
+                # (see ``timeline``). Kept on the diag only -- the summary
+                # copies its fields by name, so these never reach the report.
+                diag["bdc_indices"] = list(peaks["bdc_indices"])
+                diag["tdc_indices"] = list(peaks["tdc_indices"])
             self._bdc_tdc_diag[side] = diag
         return result
 

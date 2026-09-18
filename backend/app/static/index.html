@@ -821,7 +821,50 @@
              about the position, so it stands in when this is printed. -->
         <img id="printKeyframe" class="hidden" alt="Annotated frame from your clip">
         <div class="videoframe" id="videoframe">
-          <video id="overlayVideo" controls playsinline aria-label="Annotated analysis overlay video"></video>
+          <!-- The player. The overlay mp4 is what plays; the record behind it
+               (result.timeline) is what the controls, the strip and the curve
+               read. Without a record the <video> keeps its native controls
+               and the rest stays hidden -- see FlappPlayer. -->
+          <div class="fp" id="fpMain">
+            <div class="fp-stage">
+              <video id="overlayVideo" controls playsinline aria-label="Annotated analysis overlay video"></video>
+              <!-- The clip as filmed, for the Skeleton / Clip layers. Only
+                   ever the file still in this browser: the server keeps the
+                   overlay, not the original. -->
+              <div class="fp-rawwrap hidden">
+                <video class="fp-raw" muted playsinline preload="metadata" aria-hidden="true"></video>
+                <canvas class="fp-canvas hidden" aria-hidden="true"></canvas>
+              </div>
+            </div>
+            <div class="fp-ui hidden">
+              <canvas class="fp-strip" aria-label="Timeline: phases and events; drag to scrub"></canvas>
+              <div class="fp-ctl">
+                <button class="btn btn-ghost btn-sm fp-play" type="button" aria-label="Play or pause">▶</button>
+                <button class="btn btn-ghost btn-sm fp-prev" type="button" aria-label="Previous frame" title="Previous frame (←)">◀</button>
+                <button class="btn btn-ghost btn-sm fp-next" type="button" aria-label="Next frame" title="Next frame (→)">▶</button>
+                <span class="fp-ev">
+                  <button class="btn btn-ghost btn-sm fp-evprev" type="button" title="Previous event (Shift+←)">⏮ <span class="fp-evlbl">event</span></button>
+                  <button class="btn btn-ghost btn-sm fp-evnext" type="button" title="Next event (Shift+→)"><span class="fp-evlbl">event</span> ⏭</button>
+                </span>
+                <span class="fp-speed" role="group" aria-label="Playback speed">
+                  <button type="button" data-speed="0.25">¼×</button>
+                  <button type="button" data-speed="0.5">½×</button>
+                  <button type="button" data-speed="1" aria-pressed="true">1×</button>
+                </span>
+                <span class="fp-time mono"><span class="fp-t">0.00 s</span> <span class="fp-f">· frame 0</span> <span class="fp-here"></span></span>
+                <span class="fp-layers hidden" role="group" aria-label="Layers">
+                  <button type="button" data-layer="overlay" aria-pressed="true">Annotated</button>
+                  <button type="button" data-layer="skeleton">Skeleton</button>
+                  <button type="button" data-layer="raw">Clip</button>
+                </span>
+              </div>
+              <div class="fp-graph">
+                <div class="fp-metrics" role="tablist" aria-label="Angle to plot"></div>
+                <canvas class="fp-chart" aria-label="Angle over the clip; click to jump"></canvas>
+                <div class="fp-graphnote">Angle per frame, the same filtered series the table reads. Shaded: the reference band. Click the curve to jump there.</div>
+              </div>
+            </div>
+          </div>
           <div class="videocap">
             <span>Annotated overlay · skeleton + the joints worth watching<br>
               <span class="note">Callouts mark what sits outside its range — every angle is in the table below. Results aren’t stored, so download to keep it.</span></span>
@@ -3739,6 +3782,388 @@ function renderCorrectionBadge(res,hostId){
 }
 
 /* ============================================================
+   The player. The overlay mp4 is a picture of the analysis; this is the
+   analysis under the picture. It reads `result.timeline` (see the backend's
+   timeline.py): the analyzed frame indices, the near-side skeleton, one
+   angle curve per callout with its band, the gait phases and the events --
+   foot strike / toe-off on a run, BDC / TDC on a bike.
+
+   What that buys, in the order the forum kept asking Kinovea for it:
+   * frame stepping, slow speeds, drag-to-scrub on a strip that shows the
+     phases -- so a moment can be found rather than paused at;
+   * jump to the next event -- the events are detected, nobody sets them;
+   * the curve under the video with a playhead, click to jump -- the number
+     on the joint becomes a shape over the stride;
+   * layers: the annotated render, the bare skeleton over the clip, or the
+     clip alone. The last two draw client-side over the original file, so
+     they exist only while that file is still in this browser.
+
+   Time is frames: the record's frame i sits at [i/fps, (i+1)/fps) in both
+   the overlay mp4 and the original (the overlay is written frame for frame
+   at the source fps), so one mapping serves both layers. Seeks land in the
+   middle of the interval; reads take the floor.
+
+   One instance per player: the report's (#fpMain) and, when a saved report
+   is opened, one built into the history detail. No record -> the <video>
+   keeps its native controls and nothing else appears.
+   ============================================================ */
+const FP_PHASE_NAMES={initial_contact:'Contact',loading_response:'Loading',midstance:'Midstance',
+  terminal_stance:'Toe-off prep',pre_swing:'Toe-off',initial_swing:'Swing (early)',
+  mid_swing:'Swing (mid)',terminal_swing:'Swing (late)',unknown:'—'};
+const FP_EVENT_NAMES={contact:'foot strike',toe_off:'toe-off',bdc:'BDC',tdc:'TDC'};
+/* Statuses are the report's own tokens; the strip and the curve read them
+   from the stylesheet so a theme change reaches the canvas too. */
+function fpTokens(){
+  const cs=getComputedStyle(document.documentElement), g=n=>cs.getPropertyValue(n).trim();
+  return {good:g('--st-good-fill')||'#2E7D3A', warn:g('--st-warn-fill')||'#B7791F', bad:g('--st-bad-fill')||'#C5221F',
+    band:g('--st-good-bg')||'#D5EBD9', ink:g('--c-ink')||'#14181F', faint:g('--c-ink-faint')||'#6B7280',
+    line:g('--c-line')||'#E5E7EB', bg:g('--c-bg')||'#fff', blue:g('--c-blue')||'#2457C5',
+    stance:g('--c-orange')||'#D97706', swing:g('--c-blue-soft')||'#BFD3F7', mono:g('--f-mono')||'ui-monospace,monospace'};
+}
+/* Same rule as the backend's overlay_style.status_for and the table. */
+function fpStatus(v,band,openOk){
+  if(v==null||Number.isNaN(v)) return 'muted';
+  const [lo,hi]=band; if(openOk&&v>hi) return 'good';
+  const m=Math.max((hi-lo)*0.10,3);
+  if(v>=lo&&v<=hi) return 'good';
+  if(v>=lo-m&&v<=hi+m) return 'warn';
+  return 'bad';
+}
+
+function FlappPlayer(root){
+  this.root=root;
+  this.video=root.querySelector('video:not(.fp-raw)');
+  this.raw=root.querySelector('.fp-raw');
+  this.rawWrap=root.querySelector('.fp-rawwrap');
+  this.canvas=root.querySelector('.fp-canvas');
+  this.ui=root.querySelector('.fp-ui');
+  this.strip=root.querySelector('.fp-strip');
+  this.chart=root.querySelector('.fp-chart');
+  this.tl=null; this.k=-1; this.speed=1; this.layer='overlay'; this.metric=null;
+  this.rawUrl=null; this.rvfc=0; this.scrubbing=false; this.bound=false;
+  this.tok=fpTokens();
+}
+FlappPlayer.prototype={
+  /* The video that is currently on screen (the overlay render, or the
+     original clip under the Skeleton / Clip layers). */
+  cur(){ return this.layer==='overlay'?this.video:this.raw; },
+  load(tl,opts){
+    opts=opts||{};
+    this.unload();
+    if(!tl||!tl.frames||!tl.frames.length){ this.video.controls=true; return false; }
+    this.tl=tl; this.fps=tl.fps||30; this.tok=fpTokens();
+    this.events=(tl.events||[]).slice().sort((a,b)=>a.k-b.k);
+    // Callouts first, then the rest; the first callout is what the curve
+    // opens on -- for a bike the knee, for a run the knee too.
+    this.metrics=(tl.metrics||[]).filter(m=>tl.series&&tl.series[m.key]);
+    this.metrics.sort((a,b)=>(b.callout?1:0)-(a.callout?1:0));
+    this.metric=this.metrics.length?this.metrics[0].key:null;
+    this.video.controls=false; this.ui.classList.remove('hidden');
+    this.root.classList.add('fp-on'); this.root.setAttribute('tabindex','0');
+    if(!this.bound) this.bind();
+    // The layers need the file itself. No file (a saved report, a reload)
+    // -> no toggle, and the annotated render is the only layer.
+    const lay=this.root.querySelector('.fp-layers');
+    if(opts.rawFile){
+      this.rawUrl=URL.createObjectURL(opts.rawFile); this.raw.src=this.rawUrl;
+      lay.classList.remove('hidden');
+    } else lay.classList.add('hidden');
+    this.setLayer('overlay',true); this.setSpeed(1);
+    this.renderMetrics(); this.evLabels();
+    this.k=0; this.paint();
+    // Sizes are only knowable once the stage has its width.
+    requestAnimationFrame(()=>this.paint());
+    return true;
+  },
+  unload(){
+    const v=this.video;
+    if(this.rvfc&&v.cancelVideoFrameCallback){ v.cancelVideoFrameCallback(this.rvfc); this.rvfc=0; }
+    if(this.raw){ try{ this.raw.pause(); }catch(e){} this.raw.removeAttribute('src'); this.raw.load(); }
+    if(this.rawUrl){ URL.revokeObjectURL(this.rawUrl); this.rawUrl=null; }
+    this.tl=null; this.k=-1; this.layer='overlay';
+    this.ui.classList.add('hidden'); this.root.classList.remove('fp-on'); this.root.removeAttribute('tabindex');
+    this.rawWrap.classList.add('hidden'); this.canvas.classList.add('hidden'); this.video.classList.remove('hidden');
+    this.video.controls=true;
+  },
+  /* ---- time <-> frames ---- */
+  frameAt(t){ return Math.floor(t*this.fps+1e-4); },
+  recOf(frameIdx){ // nearest analyzed ordinal, binary search over sorted indices
+    const a=this.tl.frames; let lo=0, hi=a.length-1;
+    while(lo<hi){ const m=(lo+hi)>>1; if(a[m]<frameIdx) lo=m+1; else hi=m; }
+    if(lo>0 && Math.abs(a[lo-1]-frameIdx)<=Math.abs(a[lo]-frameIdx)) lo=lo-1;
+    return lo;
+  },
+  seekRec(k,pause){
+    if(!this.tl) return; k=Math.max(0,Math.min(this.tl.frames.length-1,k));
+    const v=this.cur(); if(pause) v.pause();
+    v.currentTime=(this.tl.frames[k]+0.5)/this.fps;
+    this.k=k; this.paint();
+  },
+  sync(t){
+    if(!this.tl) return;
+    const k=this.recOf(this.frameAt(t==null?this.cur().currentTime:t));
+    if(k!==this.k){ this.k=k; this.paint(); }
+  },
+  /* ---- controls ---- */
+  bind(){
+    this.bound=true;
+    const r=this.root, q=s=>r.querySelector(s);
+    const onFrame=(now,md)=>{ this.sync(md&&md.mediaTime!=null?md.mediaTime:undefined); const v=this.cur();
+      if(!v.paused&&v.requestVideoFrameCallback) this.rvfc=v.requestVideoFrameCallback(onFrame); };
+    [this.video,this.raw].forEach(v=>{
+      v.addEventListener('play',()=>{ if(v!==this.cur()) return; q('.fp-play').textContent='❚❚';
+        if(v.requestVideoFrameCallback) this.rvfc=v.requestVideoFrameCallback(onFrame); });
+      v.addEventListener('pause',()=>{ if(v!==this.cur()) return; q('.fp-play').textContent='▶'; this.sync(); });
+      v.addEventListener('seeked',()=>{ if(v===this.cur()) this.sync(); });
+      v.addEventListener('timeupdate',()=>{ if(v===this.cur()&&!v.requestVideoFrameCallback) this.sync(); });
+      v.addEventListener('loadedmetadata',()=>{ if(v===this.cur()) this.paint(); });
+      v.addEventListener('ended',()=>{ if(v===this.cur()) q('.fp-play').textContent='▶'; });
+      // A click on the picture is play/pause, like every player.
+      v.addEventListener('click',()=>this.toggle());
+    });
+    this.canvas.addEventListener('click',()=>this.toggle());
+    q('.fp-play').addEventListener('click',()=>this.toggle());
+    q('.fp-prev').addEventListener('click',()=>this.step(-1));
+    q('.fp-next').addEventListener('click',()=>this.step(1));
+    q('.fp-evprev').addEventListener('click',()=>this.jumpEvent(-1));
+    q('.fp-evnext').addEventListener('click',()=>this.jumpEvent(1));
+    q('.fp-speed').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) this.setSpeed(+b.dataset.speed); });
+    q('.fp-layers').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) this.setLayer(b.dataset.layer); });
+    q('.fp-metrics').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ this.metric=b.dataset.key; this.renderMetrics(); this.paintChart(); track('player_used',{action:'metric',key:this.metric}); } });
+    // Keyboard, when the player has focus: space, arrows, shift+arrows.
+    r.addEventListener('keydown',e=>{
+      if(!this.tl||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+      // Space on a focused button is that button's own click; only a bare
+      // space on the player is play/pause.
+      if(e.key===' '){ if(e.target.closest('button')) return; e.preventDefault(); this.toggle(); }
+      else if(e.key==='ArrowLeft'){ e.preventDefault(); e.shiftKey?this.jumpEvent(-1):this.step(-1); }
+      else if(e.key==='ArrowRight'){ e.preventDefault(); e.shiftKey?this.jumpEvent(1):this.step(1); }
+    });
+    // Drag to scrub on the strip and on the curve. Pointer capture so a drag
+    // that leaves the canvas keeps scrubbing.
+    [this.strip,this.chart].forEach(c=>{
+      const at=ev=>{ const b=c.getBoundingClientRect(); const pad=c===this.chart?this.chartPad():{l:0,r:0};
+        const x=(ev.clientX-b.left-pad.l)/Math.max(1,b.width-pad.l-pad.r);
+        return Math.round(Math.max(0,Math.min(1,x))*(this.tl.frames.length-1)); };
+      c.addEventListener('pointerdown',ev=>{ if(!this.tl) return; this.scrubbing=true; c.setPointerCapture(ev.pointerId);
+        this.seekRec(at(ev),true); ev.preventDefault(); track('player_used',{action:'scrub',where:c===this.chart?'curve':'strip'}); });
+      c.addEventListener('pointermove',ev=>{ if(!this.scrubbing) return; this.seekRec(at(ev),true); });
+      const up=()=>{ this.scrubbing=false; };
+      c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+    });
+    window.addEventListener('resize',()=>{ if(this.tl) this.paint(); });
+  },
+  toggle(){ const v=this.cur(); if(!this.tl) return; if(v.paused){ v.play().catch(()=>{}); track('player_used',{action:'play',speed:this.speed,layer:this.layer}); } else v.pause(); },
+  step(d){ if(!this.tl) return; this.seekRec(this.k+d,true); track('player_used',{action:'step'}); },
+  jumpEvent(d){
+    if(!this.tl||!this.events.length) return;
+    const k=this.k; let target=null;
+    if(d>0) target=this.events.find(e=>e.k>k); else { for(let i=this.events.length-1;i>=0;i--) if(this.events[i].k<k){ target=this.events[i]; break; } }
+    if(target){ this.seekRec(target.k,true); track('player_used',{action:'event',kind:target.kind}); }
+  },
+  setSpeed(s){ this.speed=s; [this.video,this.raw].forEach(v=>{ v.playbackRate=s; });
+    this.root.querySelectorAll('.fp-speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===s))); },
+  setLayer(layer,silent){
+    if(!this.tl) return; if(layer!=='overlay'&&!this.rawUrl) layer='overlay';
+    const from=this.cur(), was=!from.paused, t=from.currentTime;
+    if(this.rvfc&&from.cancelVideoFrameCallback){ from.cancelVideoFrameCallback(this.rvfc); this.rvfc=0; }
+    from.pause();
+    this.layer=layer;
+    const to=this.cur();
+    if(to!==from){ try{ to.currentTime=t; }catch(e){} }
+    this.video.classList.toggle('hidden',layer!=='overlay');
+    this.rawWrap.classList.toggle('hidden',layer==='overlay');
+    this.canvas.classList.toggle('hidden',layer!=='skeleton');
+    this.root.querySelectorAll('.fp-layers button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.layer===layer)));
+    if(was) to.play().catch(()=>{}); else this.paint();
+    if(!silent) track('player_used',{action:'layer',layer});
+  },
+  /* The event buttons jump between BDC/TDC on a bike, foot strike/toe-off
+     on a run; the title says which, the readout names the one landed on. */
+  evLabels(){
+    const what=this.tl.sport==='bike'?'BDC or TDC':'foot strike or toe-off';
+    this.root.querySelector('.fp-evprev').title=`Previous ${what} (Shift+←)`;
+    this.root.querySelector('.fp-evnext').title=`Next ${what} (Shift+→)`;
+    this.root.querySelector('.fp-ev').classList.toggle('hidden',!this.events.length);
+  },
+  renderMetrics(){
+    const host=this.root.querySelector('.fp-metrics');
+    host.innerHTML=this.metrics.map(m=>`<button type="button" role="tab" data-key="${esc(m.key)}" aria-selected="${m.key===this.metric}"${m.callout?'':' class="quiet"'}>${esc(m.name)}</button>`).join('');
+  },
+  /* ---- painting ---- */
+  paint(){ if(!this.tl) return; this.paintReadout(); this.paintStrip(); this.paintChart(); if(this.layer==='skeleton') this.paintSkeleton(); },
+  paintReadout(){
+    const tl=this.tl, k=this.k, i=tl.frames[k]||0;
+    this.root.querySelector('.fp-t').textContent=(i/this.fps).toFixed(2)+' s';
+    this.root.querySelector('.fp-f').textContent='· frame '+i;
+    // What is happening on this frame: the phase (run) and, on an event
+    // frame or its neighbours, the event.
+    let here='';
+    if(tl.phases&&tl.phase_legend){ const p=tl.phase_legend[tl.phases[k]]; if(p&&p!=='unknown') here=FP_PHASE_NAMES[p]||p; }
+    const ev=this.events.find(e=>Math.abs(e.k-k)<=1);
+    if(ev) here=(here?here+' · ':'')+(FP_EVENT_NAMES[ev.kind]||ev.kind);
+    if(tl.cycles&&tl.cycles[k]) here=(here?here+' · ':'')+'stride '+tl.cycles[k];
+    this.root.querySelector('.fp-here').textContent=here;
+  },
+  /* The strip: phases as bands (run), events as ticks, the playhead. */
+  paintStrip(){
+    const c=this.strip, tl=this.tl, T=this.tok, n=tl.frames.length;
+    const W=c.clientWidth||c.parentNode.clientWidth||600, H=26, dpr=window.devicePixelRatio||1;
+    if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){ c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); c.style.height=H+'px'; }
+    const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    const x=k=>n>1?k/(n-1)*W:0;
+    g.fillStyle=T.bg; g.fillRect(0,0,W,H);
+    if(tl.phases&&tl.phase_legend){
+      // Run: stance warm, swing cool -- the overlay's own bar, on the page.
+      const stance=new Set(tl.stance_phases||[]);
+      let start=0;
+      for(let k=1;k<=n;k++){
+        if(k===n||tl.phases[k]!==tl.phases[start]){
+          const p=tl.phase_legend[tl.phases[start]];
+          g.fillStyle=p==='unknown'?T.line:(stance.has(p)?T.stance:T.blue);
+          g.globalAlpha=p==='unknown'?0.5:(stance.has(p)?0.55:0.3);
+          g.fillRect(x(start),6,Math.max(1,x(k)-x(start)),H-12); start=k;
+        }
+      }
+      g.globalAlpha=1;
+    } else {
+      // Bike: every other revolution shaded, BDC to BDC, so a stroke can be
+      // found by eye. Nothing between strokes the analyzer did not find.
+      g.fillStyle=T.line; g.fillRect(0,H/2-1,W,2);
+      const bdc=this.events.filter(e=>e.kind==='bdc');
+      g.fillStyle=T.blue; g.globalAlpha=0.16;
+      for(let i=0;i+1<bdc.length;i+=2) g.fillRect(x(bdc[i].k),6,Math.max(1,x(bdc[i+1].k)-x(bdc[i].k)),H-12);
+      g.globalAlpha=1;
+    }
+    g.strokeStyle=T.ink; g.lineWidth=1;
+    this.events.forEach(e=>{ const px=Math.round(x(e.k))+0.5; g.globalAlpha=e.kind==='contact'||e.kind==='bdc'?0.9:0.45;
+      g.beginPath(); g.moveTo(px,2); g.lineTo(px,H-2); g.stroke(); });
+    g.globalAlpha=1;
+    const px=Math.round(x(this.k))+0.5; g.strokeStyle=T.blue; g.lineWidth=2;
+    g.beginPath(); g.moveTo(px,0); g.lineTo(px,H); g.stroke();
+  },
+  chartPad(){ return {l:34,r:8,t:14,b:18}; },
+  /* The curve: one metric over the clip, its band shaded, the line coloured
+     by zone, the playhead with the value at it. */
+  paintChart(){
+    const c=this.chart, tl=this.tl, T=this.tok, m=this.metrics.find(x=>x.key===this.metric);
+    const W=c.clientWidth||c.parentNode.clientWidth||600, H=window.innerWidth<640?130:160, dpr=window.devicePixelRatio||1;
+    if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){ c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); c.style.height=H+'px'; }
+    const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    if(!m) return;
+    const s=tl.series[m.key], n=s.length, P=this.chartPad(), pw=W-P.l-P.r, ph=H-P.t-P.b;
+    const vals=s.filter(v=>v!=null);
+    if(!vals.length) return;
+    let lo=Math.min(...vals,m.band[0]), hi=Math.max(...vals,m.band[1]);
+    const pad=Math.max(2,(hi-lo)*0.08); lo-=pad; hi+=pad;
+    const x=k=>P.l+(n>1?k/(n-1):0)*pw, y=v=>P.t+(1-(v-lo)/(hi-lo))*ph;
+    // band
+    g.fillStyle=T.band; g.globalAlpha=0.7;
+    g.fillRect(P.l,y(m.band[1]),pw,Math.max(1,y(m.band[0])-y(m.band[1])));
+    if(m.open_ok){ g.globalAlpha=0.3; g.fillRect(P.l,P.t,pw,Math.max(0,y(m.band[1])-P.t)); }
+    g.globalAlpha=1;
+    // axis
+    g.strokeStyle=T.line; g.lineWidth=1; g.beginPath(); g.moveTo(P.l,P.t); g.lineTo(P.l,P.t+ph); g.lineTo(P.l+pw,P.t+ph); g.stroke();
+    g.fillStyle=T.faint; g.font=`10px ${T.mono}`; g.textAlign='right'; g.textBaseline='middle';
+    [m.band[0],m.band[1]].forEach(v=>{ g.fillText(Math.round(v)+'°',P.l-4,y(v)); });
+    g.textBaseline='alphabetic';
+    // phase bands behind the curve (run), faint
+    if(tl.phases&&tl.phase_legend){ const stance=new Set(tl.stance_phases||[]); let start=0;
+      for(let k=1;k<=n;k++){ if(k===n||tl.phases[k]!==tl.phases[start]){ const p=tl.phase_legend[tl.phases[start]];
+        if(stance.has(p)){ g.fillStyle=T.stance; g.globalAlpha=0.08; g.fillRect(x(start),P.t,Math.max(1,x(k)-x(start)),ph); }
+        start=k; } } g.globalAlpha=1; }
+    // events
+    g.strokeStyle=T.ink; g.globalAlpha=0.25; g.lineWidth=1;
+    this.events.forEach(e=>{ const px=Math.round(x(e.k))+0.5; g.beginPath(); g.moveTo(px,P.t); g.lineTo(px,P.t+ph); g.stroke(); });
+    g.globalAlpha=1;
+    // The curve, a null breaks it. A whole-cycle band colours every segment
+    // by its zone; a band that applies at one event (m.at: the bike knee at
+    // BDC, the hip at TDC) leaves the curve in ink and grades the event
+    // dots instead -- see timeline.py on why.
+    const grade=v=>fpStatus(v,m.band,m.open_ok);
+    g.lineWidth=1.8; g.lineJoin='round'; g.lineCap='round';
+    let prev=null;
+    for(let k=0;k<n;k++){ const v=s[k]; if(v==null){ prev=null; continue; }
+      if(prev!=null){ const st=m.at?'ink':grade(v); g.strokeStyle=T[st==='muted'?'faint':st];
+        g.globalAlpha=m.at?0.75:1; g.beginPath(); g.moveTo(x(k-1),y(prev)); g.lineTo(x(k),y(v)); g.stroke(); }
+      prev=v; }
+    g.globalAlpha=1;
+    if(m.at){ this.events.filter(e=>e.kind===m.at&&s[e.k]!=null).forEach(e=>{
+      g.fillStyle=T[grade(s[e.k])]||T.ink; g.beginPath(); g.arc(x(e.k),y(s[e.k]),3.5,0,Math.PI*2); g.fill(); }); }
+    // playhead
+    const k=this.k, v=s[k], px=x(k);
+    const onEvent=!m.at||this.events.some(e=>e.kind===m.at&&Math.abs(e.k-k)<=1);
+    g.strokeStyle=T.blue; g.lineWidth=1.5; g.beginPath(); g.moveTo(px,P.t); g.lineTo(px,P.t+ph); g.stroke();
+    if(v!=null){ g.fillStyle=onEvent?(T[grade(v)]||T.ink):T.ink; g.beginPath(); g.arc(px,y(v),4,0,Math.PI*2); g.fill();
+      g.strokeStyle=T.bg; g.lineWidth=1.5; g.stroke(); }
+    const txt=`${m.name} ${v==null?'—':Math.round(v)+'°'}${m.at?' · band at '+m.at.toUpperCase():''}`;
+    g.font=`600 11px ${T.mono}`; const tw=g.measureText(txt).width+10;
+    const tx=Math.min(W-P.r-tw, Math.max(P.l, px+6));
+    g.fillStyle=T.ink; g.globalAlpha=0.9; g.fillRect(tx,P.t-12,tw,16); g.globalAlpha=1;
+    g.fillStyle=T.bg; g.textAlign='left'; g.fillText(txt,tx+5,P.t);
+    // time axis label
+    g.fillStyle=T.faint; g.font=`10px ${T.mono}`; g.textAlign='left';
+    g.fillText('0 s',P.l,H-4); g.textAlign='right'; g.fillText(((tl.frames[n-1]||0)/this.fps).toFixed(1)+' s',P.l+pw,H-4);
+  },
+  /* The skeleton layer over the original clip: the editor's drawing (same
+     bones, same neon), plus a chip per callout with the frame's value. */
+  paintSkeleton(){
+    const c=this.canvas, v=this.raw, tl=this.tl; if(!v.videoWidth) return;
+    const cap=1600, kk=Math.min(1,cap/Math.max(v.videoWidth,v.videoHeight));
+    const W=Math.round(v.videoWidth*kk), H=Math.round(v.videoHeight*kk);
+    if(c.width!==W||c.height!==H){ c.width=W; c.height=H; }
+    // Sizes are chosen in CSS pixels of the picture as shown, then scaled to
+    // the canvas: a 1080p portrait shown 313 px wide would otherwise get
+    // chips a third the size of the same chips on a 720p landscape.
+    const css=c.getBoundingClientRect().width||W, s=(W/css)*Math.max(0.8,Math.min(1.4,css/600));
+    const g=c.getContext('2d'), k=this.k; g.clearRect(0,0,W,H);
+    const P=j=>{ const col=tl.points[String(j)]; const p=col&&col[k]; return (p&&p[2]>=0.3)?[p[0]*W,p[1]*H]:null; };
+    g.lineCap='round'; g.lineJoin='round';
+    [[8*s,'rgba(30,190,80,.45)'],[3*s,'#3DFF6E']].forEach(([w,col])=>{
+      g.lineWidth=Math.max(1,w); g.strokeStyle=col; g.beginPath();
+      tl.bones.forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ g.moveTo(A[0],A[1]); g.lineTo(B[0],B[1]); } });
+      g.stroke(); });
+    Object.keys(tl.points).forEach(j=>{ const p=P(+j); if(!p) return; const r=Math.max(4,5*s);
+      g.beginPath(); g.arc(p[0],p[1],r,0,Math.PI*2); g.fillStyle='#3DFF6E'; g.fill();
+      g.lineWidth=Math.max(1,1.5*s); g.strokeStyle='#fff'; g.stroke(); });
+    const fs=Math.max(11,12*s); g.font=`700 ${fs}px ${this.tok.mono}`;
+    this.metrics.filter(m=>m.callout&&m.joint!=null).forEach((m,ci)=>{
+      const p=P(m.joint), val=tl.series[m.key][k]; if(!p||val==null) return;
+      const st=fpStatus(val,m.band,m.open_ok), col=this.tok[st]||this.tok.faint;
+      const txt=`${m.name.toUpperCase()} ${Math.round(val)}°`, tw=g.measureText(txt).width+14*s;
+      const right=p[0]<W*0.6; const x=right?Math.min(W-tw-4,p[0]+22*s):Math.max(4,p[0]-22*s-tw);
+      const y=Math.max(fs+6,Math.min(H-6,p[1]-14*s+ci*0));
+      g.strokeStyle=col; g.lineWidth=Math.max(1,1.5*s); g.beginPath(); g.moveTo(p[0],p[1]); g.lineTo(right?x:x+tw,y-fs/2+2); g.stroke();
+      g.fillStyle='rgba(20,24,31,.88)'; g.beginPath(); g.roundRect(x,y-fs-4*s,tw,fs+10*s,4*s); g.fill();
+      g.fillStyle=col; g.fillRect(x,y-fs-4*s,3*s,fs+10*s);
+      g.fillStyle='#fff'; g.textAlign='left'; g.fillText(txt,x+8*s,y); });
+    // The phase, top-left, on a run.
+    if(tl.phases&&tl.phase_legend){ const ph=tl.phase_legend[tl.phases[k]];
+      if(ph&&ph!=='unknown'){ const t=(FP_PHASE_NAMES[ph]||ph).toUpperCase(); g.font=`700 ${fs}px ${this.tok.mono}`;
+        const tw=g.measureText(t).width+16*s; g.fillStyle='rgba(20,24,31,.8)'; g.fillRect(10*s,10*s,tw,fs+10*s);
+        g.fillStyle='#fff'; g.fillText(t,18*s,10*s+fs+2*s); } }
+  }
+};
+let fpMain=null;
+function fpMainPlayer(){ if(!fpMain) fpMain=new FlappPlayer($('#fpMain')); return fpMain; }
+/* The player of one saved overlay in the history detail. Built into `host`
+   around a <video> for `url`; the record arrives a fetch later and, when
+   there is one, turns the native controls into the player. */
+function fpMountHistory(host,url,entryId){
+  host.innerHTML=`<div class="fp"><div class="fp-stage">
+      <video src="${esc(url)}" controls playsinline preload="metadata" aria-label="Annotated overlay"></video>
+      <div class="fp-rawwrap hidden"><video class="fp-raw" muted playsinline aria-hidden="true"></video>
+      <canvas class="fp-canvas hidden" aria-hidden="true"></canvas></div></div>
+    ${$('#fpMain .fp-ui').outerHTML}</div>`;
+  const p=new FlappPlayer(host.querySelector('.fp'));
+  fetch('/me/analyses/'+encodeURIComponent(entryId)+'/timeline',{headers:authHeaders()})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{ if(j&&j.timeline&&host.isConnected) p.load(j.timeline); })
+    .catch(()=>{});
+  return p;
+}
+
+/* ============================================================
    Joint editor — video, bike. Same idea as the photo editor with one more
    axis: a drag is a constant offset for that joint on EVERY frame, so the
    athlete scrubs the clip to see the moved point follow the joint. The
@@ -5916,6 +6341,7 @@ function render(job,opts){
   $('#overlayVideo').classList.remove('hidden');
   if(pairVids){
     const vEl=$('#overlayVideo');
+    fpMainPlayer().unload();
     vEl.pause(); vEl.removeAttribute('src'); vEl.removeAttribute('poster'); vEl.load();
     $('#videoCol').classList.remove('hidden');
     $('#resultTop').classList.remove('no-video');
@@ -5936,11 +6362,17 @@ function render(job,opts){
     if(r.keyframe_base64) vEl.setAttribute('poster', r.keyframe_base64);
     else vEl.removeAttribute('poster');
     vEl.src=ov;
+    // The player over it: frame stepping, the event jumps, the curve, and
+    // -- while the clip is still in this browser -- the skeleton and bare
+    // clip layers. Without a record (older job, or a run that failed to
+    // build one) the <video> keeps its native controls.
+    fpMainPlayer().load(r.timeline, {rawFile: state.file});
     $('#downloadOverlay').href=ov;
     $('#videoCol').classList.remove('hidden');
     $('#resultTop').classList.remove('no-video');
     $('#ephemNote').classList.add('hidden');
   } else {
+    fpMainPlayer().unload();
     $('#videoCol').classList.add('hidden');
     $('#resultTop').classList.add('no-video');
     const ep=$('#ephemNote');
@@ -6827,6 +7259,7 @@ function reset(keepFile=false){
   if(keepFile && state.file) readyHint();
   // Poster too, or the next clip opens showing the previous athlete's keyframe.
   const ov=$('#overlayVideo');
+  fpMainPlayer().unload();
   ov.pause(); ov.removeAttribute('src'); ov.removeAttribute('poster'); ov.load();
   setUrl(location.pathname+location.search);
   setState('upload',{focus:'#uploaderTitle'});
@@ -7757,11 +8190,17 @@ function renderHistoryVideos(e){
     host.innerHTML=`<div class="bil" style="margin-top:14px"><div class="bil-h"><b>Annotated overlay</b>
         <span class="bil-flag bil-ok">from your clip${sides.length>1?'s':''}</span></div>
       <div class="bil-vids${sides.length===1?' bil-vids-one':''}">${sides.map(([k,url])=>`<div class="bil-vid">
-        <video src="${api}${url}" controls playsinline preload="metadata" aria-label="${k==='single'?'':k+' side '}annotated overlay"></video>
+        <div class="bil-vid-player" data-side="${k}"><video src="${api}${url}" controls playsinline preload="metadata" aria-label="${k==='single'?'':k+' side '}annotated overlay"></video></div>
         <div class="bil-vid-h"><span>${k==='single'?'overlay':k+' side'}</span>
           <a class="btn btn-ghost btn-sm" href="${api}${url}" download><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> .mp4</a></div>
       </div>`).join('')}</div>
       <p class="bil-note">Kept for the clip’s retention period, then deleted with it.</p></div>`;
+    // One clip gets the player -- the record travels with the stored result.
+    // A pair keeps two plain videos: its result carries no record (see the
+    // backend's _PER_SIDE_ONLY), so there is nothing to build one on.
+    if(sides.length===1&&sides[0][0]==='single'){
+      fpMountHistory(host.querySelector('.bil-vid-player'), api+sides[0][1], e.id);
+    }
   };
   const cached=state.ovCache[e.id];
   if(cached){ show(cached); return; }

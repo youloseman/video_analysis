@@ -1359,6 +1359,7 @@ def analyze_from_frames(
     overlay_video_path = None
     keyframe_base64 = None
     keyframe_free_base64 = None
+    timeline = None
     try:
         from app.services.video_analysis.video_visualizer import VideoVisualizer
         _base = Path(overlay_path) if overlay_path else Path(video_path)
@@ -1391,6 +1392,26 @@ def analyze_from_frames(
             # the clip they could have been redrawn from is gone in 6 hours.
             hide_angle_values=False,
         )
+        # The per-frame record the player reads (see ``timeline``). Built off
+        # the visualizer's own callout list and phase sequence, so what the
+        # page can scrub to is exactly what the overlay drew. Its own guard:
+        # a still that failed to render must not cost the curve, and vice
+        # versa.
+        try:
+            from app.services.video_analysis.timeline import build_timeline
+
+            timeline = build_timeline(
+                analyzer=analyzer,
+                frame_data=raw_frame_data,
+                sport_type=sport_type,
+                video_info=video_info,
+                label_configs=visualizer.label_configs,
+                material_keys=visualizer._material_keys,
+                phase_sequence=visualizer._phase_sequence,
+                cycle_numbers=visualizer._cycle_numbers,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("TIMELINE_FAILED", err=str(e))
         keyframe_base64 = visualizer.render_keyframe()
         if keyframe_base64 is None:
             # Loud like overlay_failed: a null image with no flag reads as
@@ -1587,6 +1608,11 @@ def analyze_from_frames(
         "score_coverage": scoring.get("coverage"),
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
         "overlay_video_path": overlay_video_path,
+        # The frame-by-frame record behind the overlay -- the skeleton, the
+        # angle curves, the phases and the events -- for the player to scrub,
+        # step and graph. Paid by construction: absent from the free
+        # allowlist. See ``timeline``.
+        "timeline": timeline,
         "keyframe_base64": keyframe_base64,
         # The number-free copy for readers who have not paid. Present only when
         # one was asked for; the gate serves it *as* ``keyframe_base64`` and

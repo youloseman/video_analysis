@@ -32,6 +32,9 @@ logger = structlog.get_logger(__name__)
 _PER_SIDE_ONLY = (
     "keyframe_base64", "overlay_video_path", "kinogram_base64",
     "bilateral_geometry", "ai_recommendations",
+    # One clip's frame record; the session plays two overlays. No timeline
+    # on a pair until it carries one per side.
+    "timeline",
 )
 
 

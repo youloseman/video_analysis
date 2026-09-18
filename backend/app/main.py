@@ -872,9 +872,13 @@ def _process_pair_job(
             # dict had more keys, so a session could show the left clip's score
             # above the right clip's knee angles, both labelled "both sides".
             base = results[session["base_side"]]
+            # `timeline` too: it is one clip's frames, and the pair panel
+            # plays two overlays. Until it carries one record per side, a
+            # session has no player timeline rather than the wrong one.
             merged = {k: v for k, v in base.items()
                       if k not in ("keyframe_base64", "overlay_video_path",
-                                   "kinogram_base64", "ai_recommendations")}
+                                   "kinogram_base64", "ai_recommendations",
+                                   "timeline")}
             merged["run_session"] = session["session"]
             merged["keyframe_base64"] = base.get("keyframe_base64")
             if session["merged_summary"] is not None:

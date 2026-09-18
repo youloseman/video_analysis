@@ -1446,6 +1446,47 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;font-family:var(--f-mono)}
 .videocap .note{color:var(--c-ink-faint);font-family:var(--f-body)}
 
+/* ---------- The player (FlappPlayer) ----------
+   The overlay mp4 on a dark stage; under it the strip, the controls and the
+   curve, on the page ground behind hairlines like every other instrument.
+   The Skeleton / Clip layers play the original file in a wrap that shrinks
+   to the picture, so the canvas over it is the picture's exact size -- a
+   portrait clip letterboxed in a full-width box would stretch the skeleton. */
+.fp{position:relative}
+.fp-stage{position:relative;background:var(--c-media-bg);text-align:center;line-height:0}
+.fp-on .fp-stage video{cursor:pointer}
+.fp-rawwrap{position:relative;display:inline-block;max-width:100%;line-height:0}
+.fp-rawwrap video{display:block;width:auto;max-width:100%;max-height:560px;background:var(--c-media-bg)}
+.fp-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:pointer}
+.fp-ui{background:var(--c-bg);border-top:1px solid var(--c-line);line-height:1.5;text-align:left}
+.fp-strip{display:block;width:100%;height:26px;cursor:ew-resize;touch-action:none}
+.fp-ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--c-line)}
+.fp-ctl .btn{min-height:32px;padding:4px 10px}
+.fp-ev{display:inline-flex;gap:4px}
+.fp-evlbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.04em}
+.fp-speed,.fp-layers{display:inline-flex;border:1px solid var(--c-line-strong);border-radius:var(--radius);overflow:hidden;background:var(--c-bg)}
+.fp-speed button,.fp-layers button{font-family:var(--f-mono);font-size:12px;font-weight:500;border:0;background:transparent;
+  color:var(--c-ink-soft);min-height:30px;padding:4px 9px;cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
+.fp-speed button:hover,.fp-layers button:hover{background:var(--c-panel)}
+.fp-speed button[aria-pressed="true"],.fp-layers button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
+.fp-time{font-size:12px;color:var(--c-ink-faint);margin-left:auto;white-space:nowrap}
+.fp-here{color:var(--c-ink);font-weight:500}
+.fp-graph{padding:8px 12px 10px;border-top:1px solid var(--c-line)}
+.fp-metrics{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.fp-metrics button{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;
+  border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink-soft);padding:3px 9px;border-radius:var(--radius-xs);cursor:pointer;min-height:26px}
+/* A joint the overlay gave no callout -- still plottable, drawn quieter. */
+.fp-metrics button.quiet{border-style:dashed}
+.fp-metrics button[aria-selected="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
+.fp-chart{display:block;width:100%;height:160px;cursor:crosshair;touch-action:none}
+.fp-graphnote{font-size:11.5px;color:var(--c-ink-faint);margin-top:4px}
+.fp:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px}
+@media(max-width:640px){.fp-time{margin-left:0;width:100%;white-space:normal}.fp-chart{height:130px}}
+@media print{.fp-ui,.fp-rawwrap{display:none!important}}
+/* In the cabinet the player sits in a card, not the report column. */
+.bil-vid-player .fp-stage video{width:100%;border-radius:var(--radius-xs) var(--radius-xs) 0 0}
+.bil-vid-player .fp-ui{border:1px solid var(--c-line);border-top:0;border-radius:0 0 var(--radius-xs) var(--radius-xs)}
+
 /* ---------- Joint editor (photo, bike) ---------- */
 .lmed{margin-top:12px;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);overflow:hidden}
 .lmed-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
