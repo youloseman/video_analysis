@@ -487,10 +487,16 @@ def build_action_plan(
     knee_bdc = _get_value("knee_at_bdc", sm)
     bdc_min, bdc_max = ref["knee_at_bdc"]
     saddle_has_raise = False
+    # The millimetres, when the crank circle gave the clip a ruler (see
+    # saddle_estimate). "5mm" stays the amount when it did not -- a step to
+    # take and re-measure, not a distance to the target.
+    from app.services.video_analysis.biomechanics.saddle_estimate import format_amount
+    saddle_est = sm.get("saddle_estimate") if isinstance(sm.get("saddle_estimate"), dict) else None
 
     if knee_bdc is not None:
         knee_class = _classify(knee_bdc, bdc_min, bdc_max, "knee_at_bdc")
         if knee_class == "out_low":
+            amt = format_amount(saddle_est, "raise")
             diagnostics.append(Diagnostic(
                 component="saddle_height",
                 status="needs_adjustment",
@@ -498,18 +504,23 @@ def build_action_plan(
                 current_value=round(knee_bdc, 1),
                 target_range=(bdc_min, bdc_max),
                 action="raise_saddle",
-                amount="5mm",
+                amount=amt or "5mm",
                 reason=(
                     f"Knee angle at BDC is {knee_bdc:.0f} deg "
                     f"(optimal {bdc_min:.0f}-{bdc_max:.0f} deg). "
-                    f"Insufficient extension -- raise saddle by 5mm, "
-                    f"ride 30 min before reassessing."
+                    + (f"Insufficient extension -- raise the saddle about "
+                       f"{amt} to bring the knee to mid-band, "
+                       f"ride 30 min before reassessing."
+                       if amt else
+                       "Insufficient extension -- raise saddle by 5mm, "
+                       "ride 30 min before reassessing.")
                 ),
                 priority=1,
             ))
             saddle_has_raise = True
             active_priorities.append("saddle height")
         elif knee_class == "out_high":
+            amt = format_amount(saddle_est, "lower")
             diagnostics.append(Diagnostic(
                 component="saddle_height",
                 status="needs_adjustment",
@@ -517,12 +528,16 @@ def build_action_plan(
                 current_value=round(knee_bdc, 1),
                 target_range=(bdc_min, bdc_max),
                 action="lower_saddle",
-                amount="5mm",
+                amount=amt or "5mm",
                 reason=(
                     f"Knee angle at BDC is {knee_bdc:.0f} deg "
                     f"(optimal {bdc_min:.0f}-{bdc_max:.0f} deg). "
-                    f"Overextension -- lower saddle by 5mm, "
-                    f"ride 30 min before reassessing."
+                    + (f"Overextension -- lower the saddle about {amt} "
+                       f"to bring the knee to mid-band, "
+                       f"ride 30 min before reassessing."
+                       if amt else
+                       "Overextension -- lower saddle by 5mm, "
+                       "ride 30 min before reassessing.")
                 ),
                 priority=1,
             ))

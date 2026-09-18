@@ -481,6 +481,7 @@ def _process_job(
     focus: str | None = None,
     mobility_profile: dict[str, Any] | None = None,
     camera_side_override: str | None = None,
+    crank_length_mm: float | None = None,
 ) -> None:
     """Run the analysis for a job (executed in a threadpool by BackgroundTasks).
 
@@ -552,6 +553,7 @@ def _process_job(
             # be run again with the athlete's joint corrections applied. Same
             # directory, same retention: they expire with the footage.
             frames_store=str(Path(input_path).parent / "landmarks.npz"),
+            crank_length_mm=crank_length_mm,
             progress=job_progress_hook(job, sport),
         )
         safe = _json_safe(result)
@@ -701,6 +703,7 @@ def _process_recompute(
                 params.get("camera_side_override") or meta.get("camera_side_override")
             ),
             corrections=corrections or None,
+            crank_length_mm=params.get("crank_length_mm"),
         )
         if result.get("status") != "completed":
             raise RuntimeError(result.get("error_message") or "re-measurement failed")
@@ -1463,6 +1466,10 @@ async def analyze_endpoint(
     focus: str | None = Form(
         None, description="Optional: what the athlete wants looked at closely.",
     ),
+    crank_length_mm: float | None = Form(
+        None, description="Bike only, optional: the rider's crank length in mm "
+        "(150-185). Scales the saddle-height estimate; 172.5 assumed without it.",
+    ),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> JobCreated:
@@ -1502,6 +1509,11 @@ async def analyze_endpoint(
                     400, "camera_side must be 'left' or 'right'",
                 )
             side_override = camera_side
+    crank: float | None = None
+    if sport == "bike" and crank_length_mm is not None:
+        if not (150.0 <= crank_length_mm <= 185.0):
+            raise HTTPException(400, "crank_length_mm must be between 150 and 185")
+        crank = float(crank_length_mm)
 
     if not settings.model_path.exists():
         raise HTTPException(
@@ -1557,6 +1569,7 @@ async def analyze_endpoint(
             "athlete_height_cm": user.height_cm,
             "focus": _clean_focus(focus),
             "camera_side_override": side_override,
+            "crank_length_mm": crank,
         },
         "frames_store": str(job_dir / "landmarks.npz"),
         "input_path": str(input_path),
@@ -1574,7 +1587,7 @@ async def analyze_endpoint(
         _process_job, job_id, str(input_path), sport, cycling_position,
         overlay_path, free, preview, user.height_cm, _clean_focus(focus),
         _stored_mobility(user) if sport == "bike" else None,
-        side_override,
+        side_override, crank,
     )
     await _record_and_headers(response, request, user, db, "video")
     logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)

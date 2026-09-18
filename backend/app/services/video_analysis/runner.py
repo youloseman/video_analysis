@@ -632,6 +632,7 @@ def run_analysis(
     mobility_profile: dict[str, Any] | None = None,
     camera_side_override: str | None = None,
     frames_store: str | Path | None = None,
+    crank_length_mm: float | None = None,
     progress: ProgressFn | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
@@ -744,6 +745,7 @@ def run_analysis(
         athlete_height_cm=athlete_height_cm, focus=focus,
         mobility_profile=mobility_profile,
         camera_side_override=camera_side_override,
+        crank_length_mm=crank_length_mm,
         progress=progress,
     )
 
@@ -766,9 +768,14 @@ def analyze_from_frames(
     mobility_profile: dict[str, Any] | None = None,
     camera_side_override: str | None = None,
     corrections: list[dict[str, Any]] | None = None,
+    crank_length_mm: float | None = None,
     progress: ProgressFn | None = None,
 ) -> dict[str, Any]:
     """Everything the report says, from STABILIZED landmark frames.
+
+    ``crank_length_mm`` (cycling only): the rider's crank, the one length a
+    side view of a bike carries. It scales the saddle estimate; omitted, the
+    172.5 mm default is used and the result says it was assumed.
 
     The measuring half of :func:`run_analysis`, split off so it can run
     without the detector: on frames a previous analysis stored, on frames an
@@ -1516,6 +1523,31 @@ def analyze_from_frames(
     fit_plan = None
     mobility_fit = None
     if is_bike:
+        # The saddle change in millimetres, from the crank circle the clip
+        # already measured (see saddle_estimate). Into the summary BEFORE the
+        # plan is built, so the plan's amount and the coach's prose carry the
+        # same number. Its own guard: an estimate must never cost the plan.
+        try:
+            from app.services.video_analysis.biomechanics.cycling_positions import (
+                get_cycling_reference,
+            )
+            from app.services.video_analysis.biomechanics.saddle_estimate import (
+                estimate_saddle_change,
+            )
+
+            _bdc_diag = (summary.get("diagnostics") or {}).get("bdc_tdc") or {}
+            _est = estimate_saddle_change(
+                bilateral_geometry, summary.get("knee_at_bdc"),
+                get_cycling_reference(cycling_position)["knee_at_bdc"],
+                crank_length_mm,
+                bdc_variability_deg=_bdc_diag.get("bdc_variability_deg"),
+                camera_side=analyzer.camera_side,
+            )
+            if _est:
+                summary["saddle_estimate"] = _est
+                logger.info("SADDLE_ESTIMATE", **{k: v for k, v in _est.items() if k != "basis"})
+        except Exception as e:  # noqa: BLE001
+            logger.warning("SADDLE_ESTIMATE_FAILED", err=str(e))
         try:
             from app.services.video_analysis.biomechanics.action_plan_builder import (
                 action_plan_to_json,

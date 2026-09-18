@@ -592,6 +592,16 @@
         <span class="hunit">cm</span>
       </div>
       <p class="hint profilehint hidden" id="heightHint"></p>
+      <!-- The bike's one real length. The ankle traces the crank, so a crank
+           length turns the saddle verdict into millimetres; 172.5 is assumed
+           without it and the report says so. Kept on this device. -->
+      <div class="profilefield hidden" id="crankField">
+        <label for="crankInput">Crank length</label>
+        <input id="crankInput" type="number" inputmode="decimal" min="150" max="185" step="2.5"
+               placeholder="172.5" aria-describedby="crankHint">
+        <span class="hunit">mm</span>
+      </div>
+      <p class="hint profilehint hidden" id="crankHint"></p>
       </details>
 
       <!-- Overlay toggle (video only) -->
@@ -2373,6 +2383,8 @@ function syncCaptureGuide(){
    mid-word reads as the field fighting you. */
 $('#heightInput').addEventListener('blur', ()=>{ saveHeight(); });
 $('#heightInput').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.blur(); });
+$('#crankInput').addEventListener('blur', ()=>{ saveCrank(); });
+$('#crankInput').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.blur(); });
 $('#mobGoal').addEventListener('change', ()=>{ saveMobGoal(); });
 $('#mobClear').addEventListener('click', ()=>{ clearMobility(); });
 
@@ -2682,6 +2694,7 @@ function analyze(){
     fd.append('camera_side', state.cameraSide);
   fd.append('overlay',$('#overlay').checked ? 'true':'false');
   if(focusText()) fd.append('focus', focusText());
+  if(state.sport==='bike' && crankMm()!=null) fd.append('crank_length_mm', String(crankMm()));
 
   const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
   $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
@@ -3407,7 +3420,20 @@ function bikeTiles(s, position){
   }
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
   if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'/100','higher is better'));
-  if(s.saddle_height_assessment) t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'','',s.saddle_height_assessment==='optimal'?'good':'warn',true));
+  if(s.saddle_height_assessment){
+    // The millimetres, when the crank circle gave the clip a ruler. Said
+    // with its interval and its assumption -- a "raise 8 mm" with neither
+    // reads as a measurement of the bike, and it is an estimate of one.
+    const est=s.saddle_estimate;
+    let ref='';
+    if(est&&est.direction&&est.direction!=='none'){
+      const toBand=Math.abs(Math.round(est.to_band_mm||0)), toMid=Math.abs(Math.round(est.delta_mm));
+      ref=`${est.direction} ≈${toMid} mm (±${Math.round(est.ci_mm)}) to mid-band${toBand&&toBand<toMid?`, ≈${toBand} mm to reach it`:''} · ${est.crank_source==='given'?`your ${est.crank_length_mm} mm cranks`:'assuming 172.5 mm cranks'}${est.drive_side?' · drive-side clip, less certain':''}`;
+    } else if(est&&!est.in_band&&s.saddle_height_assessment==='acceptable'){
+      ref=`≈${Math.abs(Math.round(est.to_band_mm||0))} mm outside the band — within tolerance`;
+    }
+    t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'',ref,s.saddle_height_assessment==='optimal'?'good':'warn',true));
+  }
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
   // Aero now has its own headline panel (renderAeroPanel), not a tile.
   return t;
@@ -5856,7 +5882,32 @@ async function refreshAuth(){
    changes an answer, and asking outside them is asking for a body
    measurement for nothing.
    ============================================================ */
+/* The crank length: the bike's one known length, the ruler behind the
+   saddle estimate in millimetres. Remembered on this device (no account
+   field -- a bike is not a body measurement, and the rider may have three). */
+const CRANK_KEY='flapp_crank_mm';
+function crankMm(){ try{ const v=parseFloat(localStorage.getItem(CRANK_KEY)||''); return (v>=150&&v<=185)?v:null; }catch(e){ return null; } }
+function renderCrankField(){
+  const box=$('#crankField'), hint=$('#crankHint'), input=$('#crankInput');
+  if(!box||!input) return;
+  const show = state.sport==='bike' && state.mode!=='photo';
+  box.classList.toggle('hidden', !show); hint.classList.toggle('hidden', !show);
+  if(!show) return;
+  const v=crankMm();
+  if(document.activeElement!==input) input.value = v==null ? '' : String(v);
+  hint.textContent = v!=null
+    ? `Turns the saddle verdict into millimetres, scaled to your ${v} mm cranks.`
+    : 'Optional — the saddle-height estimate assumes 172.5 mm cranks without it (a 165 mm crank makes it 4% smaller).';
+}
+function saveCrank(){
+  const input=$('#crankInput'); if(!input) return;
+  const raw=input.value.trim(), v=raw===''?null:parseFloat(raw);
+  if(v!==null && !(v>=150&&v<=185)){ $('#crankHint').textContent='Cranks run 150–185 mm — check the number.'; return; }
+  try{ if(v==null) localStorage.removeItem(CRANK_KEY); else localStorage.setItem(CRANK_KEY,String(v)); }catch(e){}
+  renderCrankField();
+}
 function renderHeightField(){
+  renderCrankField();
   const box=$('#heightField'), hint=$('#heightHint'), input=$('#heightInput');
   if(!box||!input) return;
   const show = !!auth && state.sport==='run' && state.mode!=='photo';
