@@ -1512,7 +1512,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .cnote-cues .cnote-cuelbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);align-self:center;margin-right:4px}
 .cnote-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
 .cnote-status{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
-.cnote-read{white-space:pre-wrap;font-size:14px;line-height:1.55;color:var(--c-ink)}
+.cnote-read{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.55;color:var(--c-ink)}
 .cnote-by{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);margin-top:8px}
 .cnote-empty{font-size:13px;color:var(--c-ink-faint)}
 .coachform{display:grid;gap:10px}
@@ -1529,6 +1529,25 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .ph-coach .ph-coachname{font-family:var(--f-display);font-weight:600;font-size:15px;color:#14181F}
 .ph-coach .ph-coachtag{font-size:11px;color:#555}
 @media print{.cnote textarea,.cnote-cues,.cnote-actions{display:none!important}.cnote-read{display:block!important}}
+
+/* ---------- Coach Notes: the offer at the foot of a report ----------
+   A rectangle on the page like every report section, on the accent tint the
+   upsell panel uses, one filled button. Not a card that floats. */
+.notes-offer{margin-top:20px}
+.no-card{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-panel-blue);padding:18px 22px}
+.no-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.no-chip{font-family:var(--f-mono);font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--c-blue-dk)}
+.no-price{font-family:var(--f-mono);font-size:22px;font-weight:500;color:var(--c-ink);letter-spacing:-.02em}
+.no-price small{font-size:11px;color:var(--c-ink-faint);letter-spacing:0;margin-left:4px}
+.no-t{font-family:var(--f-display);font-weight:600;font-size:18px;line-height:1.3;color:var(--c-ink);margin:0 0 6px}
+.no-p{font-size:13.5px;color:var(--c-ink-soft);max-width:62ch;margin:0 0 10px;line-height:1.5}
+.no-fence{color:var(--c-ink-faint);font-size:12.5px}
+.no-fence a{color:var(--c-blue-dk)}
+.no-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px}
+.no-note{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
+.ex-kind{font-family:var(--f-mono);font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:#14181F;background:#FFA82E;padding:1px 6px;border-radius:var(--radius-xs);margin-right:6px;vertical-align:1px}
+.ex-count{display:block;text-align:right;font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);margin-top:2px}
+@media print{.notes-offer{display:none!important}}
 
 /* ---------- Two clips locked cycle to cycle (FlappSync, Compare) ---------- */
 .cmp-video{margin-top:20px}

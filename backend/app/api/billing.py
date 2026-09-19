@@ -189,7 +189,15 @@ async def expert_review_slots(
     """Whether a review can be taken on right now. Public: the card asks before
     it offers a button, and "fully booked" is better said before payment."""
     left = await review_slots_left(db)
-    return {"left": left, "open": left is None or left > 0}
+    notes_left = await notes_slots_left(db)
+    notes_open = settings.coach_notes_enabled and (notes_left is None or notes_left > 0)
+    return {
+        "left": left, "open": left is None or left > 0,
+        "notes": {
+            "left": notes_left, "open": notes_open,
+            "paused": not settings.coach_notes_enabled,
+        },
+    }
 
 
 @router.get("/plans")
@@ -263,6 +271,45 @@ async def review_slots_left(db: AsyncSession) -> int | None:
         or 0
     )
     return max(0, cap - taken)
+
+
+async def notes_slots_left(db: AsyncSession) -> int | None:
+    """Coach Notes still open this week (None = no ceiling). Same shape and
+    the same reasoning as ``review_slots_left``; its own counter so the two
+    products cannot sell each other out."""
+    cap = settings.coach_notes_slots_per_week
+    if cap <= 0:
+        return None
+    since = _now_ms() - WEEK_MS
+    taken = int(
+        await db.scalar(
+            select(func.count(Order.id)).where(
+                Order.plan == expert_review.PLAN_NOTES,
+                Order.status != ORDER_REFUNDED,
+                Order.created_at_ms >= since,
+            )
+        )
+        or 0
+    )
+    return max(0, cap - taken)
+
+
+async def _require_notes_slot(db: AsyncSession) -> None:
+    if not settings.coach_notes_enabled:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Coach Notes are paused this week -- the coach is away. "
+            "The Expert Review queue is still open.",
+        )
+    left = await notes_slots_left(db)
+    if left is None or left > 0:
+        return
+    logger.info("NOTES_SLOTS_FULL", cap=settings.coach_notes_slots_per_week)
+    raise HTTPException(
+        status.HTTP_503_SERVICE_UNAVAILABLE,
+        "This week's Coach Notes are fully booked. They open again on "
+        "Monday -- email support@getflapp.com if yours is time-sensitive.",
+    )
 
 
 async def _require_review_slot(db: AsyncSession) -> None:
@@ -380,6 +427,15 @@ async def create_checkout(
             status.HTTP_400_BAD_REQUEST,
             "Choose which analysis you'd like to unlock.",
         )
+    # Coach Notes are written ON one report; without it there is nothing to
+    # write on, and unlike the review there is no picker in the queue.
+    if body.plan == expert_review.PLAN_NOTES:
+        if not (body.analysis_client_id or "").strip():
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Open the report you'd like the notes on first.",
+            )
+        await _require_notes_slot(db)
 
     if body.plan == "expert":
         await _require_review_slot(db)
@@ -403,7 +459,7 @@ async def create_checkout(
             "— or email support@getflapp.com and we'll sort it out.",
         )
 
-    is_subscription = body.plan not in ("expert", "unlock")
+    is_subscription = body.plan not in ("expert", "unlock", expert_review.PLAN_NOTES)
     base = _base_url(request)
 
     # Already subscribed? A second Checkout does not upgrade anyone -- it creates
@@ -530,7 +586,7 @@ async def my_report(
     return {
         "order": _order_out(order),
         "report": order.report,
-        "sections": expert_review.sections_for(sport),
+        "sections": expert_review.sections_for(sport, order.plan),
         "context": {
             "sport": sport, "kind": entry.get("kind"),
             "score": entry.get("score"), "grade": entry.get("grade"),
@@ -637,7 +693,7 @@ async def admin_order_detail(
     sport = (entry or {}).get("sport") or "run"
     # An untouched order opens on a seeded draft rather than a blank page.
     report = order.report if not expert_review.is_empty(order.report) else \
-        expert_review.prefill(entry)
+        expert_review.prefill(entry, order.plan)
     return {
         **_order_out(order),
         "email": email,
@@ -646,8 +702,8 @@ async def admin_order_detail(
         "history": [_analysis_brief(a) for a in history],
         "report": report,
         "sport": sport,
-        "sections": expert_review.sections_for(sport),
-        "missing_required": expert_review.missing_required(report, sport),
+        "sections": expert_review.sections_for(sport, order.plan),
+        "missing_required": expert_review.missing_required(report, sport, order.plan),
         # Whether the clip is still on disk. The player is only drawn when it
         # is -- a dead <video> element reads as a broken page, not as "this one
         # predates stored footage".
@@ -737,14 +793,14 @@ async def admin_update_order(
         sport = (entry or {}).get("sport") or "run"
         # Normalised server-side: the editor is not the last word on what may be
         # stored on an order row.
-        order.report = expert_review.normalize_report(body.report, sport)
+        order.report = expert_review.normalize_report(body.report, sport, order.plan)
     order.updated_at_ms = _now_ms()
     await db.commit()
     return {
         **_order_out(order), "admin_note": order.admin_note,
         "report": order.report,
         "missing_required": expert_review.missing_required(
-            order.report, _sport_of(order.report),
+            order.report, _sport_of(order.report), order.plan,
         ),
     }
 
@@ -767,7 +823,7 @@ async def admin_publish_report(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
     sport = (entry or {}).get("sport") or "run"
-    missing = expert_review.missing_required(order.report, sport)
+    missing = expert_review.missing_required(order.report, sport, order.plan)
     if missing:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -782,8 +838,13 @@ async def admin_publish_report(
     # seen THIS version, and silently changing what they already read is worse
     # than telling them twice.
     order.read_at_ms = None
+    # Coach Notes are delivered INTO the report: onto the athlete's history
+    # entry, where the note block already renders, prints and exports them.
+    # Re-publishing overwrites the same field, so an edit reaches the report.
+    if expert_review.is_notes_plan(order.plan):
+        await _write_notes_to_entry(db, order)
     await db.commit()
-    logger.info("REVIEW_DELIVERED", order_id=order.id, user_id=order.user_id)
+    logger.info("REVIEW_DELIVERED", order_id=order.id, user_id=order.user_id, plan=order.plan)
 
     # Tell them. Only on first delivery -- a typo fix should not re-email
     # someone. Blocking network call, so it goes to the threadpool; a mail
@@ -792,13 +853,46 @@ async def admin_publish_report(
     if first_delivery:
         buyer = await db.get(User, order.user_id)
         if buyer is not None:
-            subject, text, html = expert_review.ready_email(
-                order.report, f"{_base_url(request)}/app",
+            mail = (
+                expert_review.notes_ready_email
+                if expert_review.is_notes_plan(order.plan)
+                else expert_review.ready_email
             )
+            subject, text, html = mail(order.report, f"{_base_url(request)}/app")
             emailed = await run_in_threadpool(
                 notify.send_email, buyer.email, subject, text, html,
             )
     return {**_order_out(order), "report": order.report, "emailed": emailed}
+
+
+async def _write_notes_to_entry(db: AsyncSession, order: Order) -> None:
+    """Put delivered Coach Notes on the analysis they were bought for.
+
+    The entry's ``coachNote`` / ``coachName`` are what the report's note block
+    reads (the same fields a coach-user's own note would use). Reassigned,
+    not mutated: JSON columns do not track in-place edits.
+    """
+    if not order.analysis_client_id:
+        logger.warning("NOTES_NO_ENTRY", order_id=order.id)
+        return
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == order.user_id,
+                Analysis.client_id == order.analysis_client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        logger.warning("NOTES_ENTRY_GONE", order_id=order.id, analysis=order.analysis_client_id)
+        return
+    reviewer = str((order.report or {}).get("reviewer") or "").strip() or "Flapp coach"
+    row.data = {
+        **(row.data or {}),
+        "coachNote": expert_review.notes_text(order.report),
+        "coachName": reviewer,
+        "coachOrderId": order.id,
+    }
 
 
 @router.post("/orders/{order_id}/read", status_code=status.HTTP_204_NO_CONTENT)

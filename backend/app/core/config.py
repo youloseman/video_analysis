@@ -124,6 +124,7 @@ class Settings:
     stripe_price_full_y: str | None = None         # $99 / year
     stripe_price_expert: str | None = None         # $39 one-time
     stripe_price_unlock: str | None = None         # $4 one-time
+    stripe_price_notes: str | None = None          # $12 one-time (Coach Notes)
 
     # Expert Reviews accepted per rolling week. The deliverable is ~40 minutes
     # of one person's attention, so this is the only product here whose supply
@@ -132,6 +133,15 @@ class Settings:
     # the queue is empty on purpose: a limit added after the rush is an apology.
     # 0 disables the check.
     expert_review_slots_per_week: int = 5
+    # Coach Notes accepted per rolling week -- ~12 minutes each, so more of
+    # them, but the same finite person. 0 disables the check. Separate from
+    # the review cap so a run on the cheap product cannot sell out the
+    # expensive one.
+    coach_notes_slots_per_week: int = 15
+    # The pause button. Off = the card says "paused" and checkout refuses,
+    # nothing else changes; delivered notes stay readable. For the week the
+    # one person who writes them cannot.
+    coach_notes_enabled: bool = True
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
     public_base_url: str | None = None
@@ -178,6 +188,7 @@ class Settings:
             "full_yearly": self.stripe_price_full_y,
             "expert": self.stripe_price_expert,
             "unlock": self.stripe_price_unlock,
+            "notes": self.stripe_price_notes,
         }
 
     @property
@@ -288,6 +299,12 @@ def _load_settings() -> Settings:
         stripe_price_enthusiast_y=os.environ.get("STRIPE_PRICE_ENTHUSIAST_Y") or None,
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
+        stripe_price_notes=os.environ.get("STRIPE_PRICE_NOTES") or None,
+        coach_notes_slots_per_week=_int_env(
+            "COACH_NOTES_SLOTS_PER_WEEK", Settings.coach_notes_slots_per_week,
+        ),
+        coach_notes_enabled=(os.environ.get("COACH_NOTES_ENABLED") or "1").strip().lower()
+        not in ("0", "false", "no", "off"),
         stripe_price_unlock=os.environ.get("STRIPE_PRICE_UNLOCK") or None,
         expert_review_slots_per_week=_int_env(
             "EXPERT_REVIEW_SLOTS_PER_WEEK", Settings.expert_review_slots_per_week,

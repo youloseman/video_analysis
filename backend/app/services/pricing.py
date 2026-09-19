@@ -194,6 +194,34 @@ CARDS: tuple[Card, ...] = (
         ),
         cta_label="Unlock this report",
     ),
+    # The rung under the Expert Review. Sold on the report itself, at the
+    # moment somebody has read the AI's notes and wants a person's; also on
+    # the pricing page so the ladder (AI -> Notes -> Review) is visible. What
+    # makes it a different product rather than a cheaper one is the FORMAT --
+    # see services/expert_review.py NOTES_SECTIONS.
+    Card(
+        id="notes",
+        name="Coach Notes",
+        kind="addon",
+        badge="Add-on · any plan",
+        tagline=(
+            "A coach reads this analysis and writes back three things — "
+            "on the report, within 72 hours."
+        ),
+        prices=(
+            Price(plan="notes", amount=1200, per="once",
+                  note="per report", interval="once"),
+        ),
+        features=(
+            Feature("The first thing to change, in one line"),
+            Feature("Three notes — what a coach sees that the numbers didn't"),
+            Feature("Written on your report: prints and exports with it"),
+            # The fence, said out loud: those are the Expert Review's, and a
+            # buyer who wanted them should know before paying a third.
+            Feature("Trust judgement, a four-week plan, position trade-offs", on=False),
+        ),
+        cta_label="Add Coach Notes",
+    ),
     Card(
         id="expert",
         name="Expert Review",

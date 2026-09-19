@@ -119,6 +119,88 @@ SECTIONS: tuple[dict[str, Any], ...] = (
 
 SECTION_BY_KEY = {s["key"]: s for s in SECTIONS}
 
+# --------------------------------------------------------------------------
+# Coach Notes: the rung below the Expert Review.
+#
+# Same rails -- an order, the queue, the editor, a delivery -- and a different
+# promise: "three things a coach sees", within 72 hours, a third of the price.
+# What keeps it from being an Expert Review at a third of the price is the
+# FORMAT, enforced here rather than by discipline: one line naming the first
+# thing to change and exactly three notes, each capped at ~40 words. No
+# trust judgement, no plan, no re-test date, no trade-offs -- the card that
+# sells it says so and points at the Expert Review for those.
+#
+# Delivered INTO the report (the athlete's history entry, ``coachNote``)
+# rather than onto a page of its own: it is a note on this analysis, and it
+# prints and exports with it.
+# --------------------------------------------------------------------------
+PLAN_EXPERT = "expert"
+PLAN_NOTES = "notes"
+NOTES_ORDER_PLANS = (PLAN_NOTES,)
+MAX_NOTE_CHARS = 240        # ~40 words
+MAX_FIRST_CHARS = 200
+
+NOTES_SECTIONS: tuple[dict[str, Any], ...] = (
+    {
+        "key": "first",
+        "title": "The first thing to change",
+        "kind": "prose",
+        "required": True,
+        "max": MAX_FIRST_CHARS,
+        "hint": "One sentence. If they read nothing else, this.",
+    },
+    {
+        "key": "note_1",
+        "title": "Note 1",
+        "kind": "prose",
+        "required": True,
+        "max": MAX_NOTE_CHARS,
+        "hint": "What you see that the numbers did not say. About 40 words.",
+    },
+    {
+        "key": "note_2",
+        "title": "Note 2",
+        "kind": "prose",
+        "required": True,
+        "max": MAX_NOTE_CHARS,
+        "hint": "About 40 words.",
+    },
+    {
+        "key": "note_3",
+        "title": "Note 3",
+        "kind": "prose",
+        "required": True,
+        "max": MAX_NOTE_CHARS,
+        "hint": "About 40 words. Three is the format -- not two, not five.",
+    },
+)
+
+
+def is_notes_plan(plan: str | None) -> bool:
+    return (plan or "") in NOTES_ORDER_PLANS
+
+
+def notes_text(report: dict[str, Any] | None) -> str:
+    """The delivered notes as the plain text the report block shows.
+
+    The first line stands alone; the three notes are numbered. This is what
+    prints under the coach's name and rides the export -- see api.billing's
+    publish, which writes it onto the athlete's entry.
+    """
+    r = report or {}
+    lines: list[str] = []
+    first = str(r.get("first") or "").strip()
+    if first:
+        lines.append(f"First thing to change: {first}")
+    notes = [str(r.get(k) or "").strip() for k in ("note_1", "note_2", "note_3")]
+    notes = [n for n in notes if n]
+    if notes:
+        if lines:
+            lines.append("")
+        lines.extend(f"{i}. {n}" for i, n in enumerate(notes, 1))
+    return "\n".join(lines)
+
+
 PRIORITY_FIELDS = ("title", "why", "change", "check")
 PRIORITY_LABELS = {
     "title": "What",
@@ -133,17 +215,25 @@ FIT_LABELS = {
 }
 
 
-def sections_for(sport: str | None) -> tuple[dict[str, Any], ...]:
-    """The sections that apply to this sport (the fit table is cycling-only)."""
+def sections_for(
+    sport: str | None, plan: str | None = PLAN_EXPERT,
+) -> tuple[dict[str, Any], ...]:
+    """The sections of this product that apply to this sport.
+
+    Coach Notes has one section list whatever the sport; the Expert Review's
+    fit table is cycling-only.
+    """
+    if is_notes_plan(plan):
+        return NOTES_SECTIONS
     return tuple(
         s for s in SECTIONS
         if not s.get("sports") or (sport or "run") in s["sports"]
     )
 
 
-def blank_report(sport: str | None = None) -> dict[str, Any]:
+def blank_report(sport: str | None = None, plan: str | None = PLAN_EXPERT) -> dict[str, Any]:
     out: dict[str, Any] = {"version": REPORT_VERSION, "reviewer": ""}
-    for s in sections_for(sport):
+    for s in sections_for(sport, plan):
         out[s["key"]] = [] if s["kind"] in ("priorities", "fit") else ""
     return out
 
@@ -193,16 +283,16 @@ def _quality_sentences(entry: dict[str, Any]) -> list[str]:
     return lines
 
 
-def prefill(entry: dict[str, Any] | None) -> dict[str, Any]:
+def prefill(entry: dict[str, Any] | None, plan: str | None = PLAN_EXPERT) -> dict[str, Any]:
     """A starting draft for an order, given the athlete's stored analysis.
 
     Only ``trust`` is seeded -- it is the one section that is genuinely derived
     rather than judged. Seeding the rest would invite shipping a report nobody
-    actually wrote.
+    actually wrote. Coach Notes seeds nothing: every line of it is judgement.
     """
     sport = (entry or {}).get("sport") or "run"
-    draft = blank_report(sport)
-    if entry:
+    draft = blank_report(sport, plan)
+    if entry and not is_notes_plan(plan):
         draft["trust"] = "\n".join(_quality_sentences(entry))
     return draft
 
@@ -225,30 +315,35 @@ def _rows(raw: Any, fields: tuple[str, ...], cap: int) -> list[dict[str, str]]:
     return out
 
 
-def normalize_report(raw: Any, sport: str | None = None) -> dict[str, Any]:
+def normalize_report(
+    raw: Any, sport: str | None = None, plan: str | None = PLAN_EXPERT,
+) -> dict[str, Any]:
     """Coerce whatever the editor posted into the stored shape.
 
     An allowlist over the section list: a key that is not a section cannot be
     smuggled into the order row, and a section that does not apply to this sport
-    is dropped rather than stored and silently never rendered.
+    is dropped rather than stored and silently never rendered. A section's own
+    ``max`` (the Coach Notes word budget) wins over the prose default.
     """
     raw = raw if isinstance(raw, dict) else {}
     out: dict[str, Any] = {
         "version": REPORT_VERSION,
         "reviewer": _clip(raw.get("reviewer"), MAX_REVIEWER_CHARS),
     }
-    for s in sections_for(sport):
+    for s in sections_for(sport, plan):
         key, kind = s["key"], s["kind"]
         if kind == "priorities":
             out[key] = _rows(raw.get(key), PRIORITY_FIELDS, MAX_PRIORITIES)
         elif kind == "fit":
             out[key] = _rows(raw.get(key), FIT_FIELDS, MAX_FIT_ROWS)
         else:
-            out[key] = _clip(raw.get(key), MAX_PROSE_CHARS)
+            out[key] = _clip(raw.get(key), int(s.get("max") or MAX_PROSE_CHARS))
     return out
 
 
-def missing_required(report: Any, sport: str | None = None) -> list[str]:
+def missing_required(
+    report: Any, sport: str | None = None, plan: str | None = PLAN_EXPERT,
+) -> list[str]:
     """Required sections still empty. Publishing is blocked on this being [].
 
     A half-written report reaching a paying customer is worse than a late one,
@@ -257,7 +352,7 @@ def missing_required(report: Any, sport: str | None = None) -> list[str]:
     """
     report = report if isinstance(report, dict) else {}
     return [
-        s["title"] for s in sections_for(sport)
+        s["title"] for s in sections_for(sport, plan)
         if s.get("required") and not report.get(s["key"])
     ]
 
@@ -267,7 +362,7 @@ def is_empty(report: Any) -> bool:
     if not isinstance(report, dict):
         return True
     return not any(
-        report.get(s["key"]) for s in SECTIONS
+        report.get(s["key"]) for s in (*SECTIONS, *NOTES_SECTIONS)
     ) and not report.get("reviewer")
 
 
@@ -292,6 +387,39 @@ def _esc(s: str) -> str:
     return (
         str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     )
+
+
+def notes_ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
+    """(subject, text, html) for delivered Coach Notes.
+
+    Carries the first line -- the one thing to change -- and sends them to
+    the report, where the three notes sit under the analysis they are about.
+    """
+    first = _first_paragraph((report or {}).get("first") or "", limit=200)
+    reviewer = (report or {}).get("reviewer") or "your coach"
+    subject = "Your Coach Notes are on your report"
+    text = (
+        "A coach has read your analysis.\n\n"
+        f"First thing to change: {first}\n\n"
+        f"— {reviewer}\n\n"
+        f"The three notes are on your report, under the coach's notes:\n{app_url}\n"
+    )
+    html = (
+        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
+        'font-size:16px;line-height:1.6;color:#14294B;max-width:520px">'
+        '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;'
+        'color:#2F6DE0;margin:0 0 6px">Flapp · Coach Notes</p>'
+        '<h1 style="font-size:22px;margin:0 0 18px">A coach has read your analysis</h1>'
+        f'<p style="margin:0 0 16px"><b>First thing to change:</b> {_esc(first)}</p>'
+        f'<p style="margin:0 0 24px;color:#5A6478">— {_esc(reviewer)}</p>'
+        f'<p style="margin:0 0 24px"><a href="{_esc(app_url)}" '
+        'style="background:#2F6DE0;color:#fff;text-decoration:none;'
+        'padding:12px 20px;border-radius:8px;display:inline-block;'
+        'font-weight:600">Read the three notes</a></p>'
+        '<p style="font-size:13px;color:#5A6478;margin:0">They sit on the report '
+        'they are about, and print and export with it.</p></div>'
+    )
+    return subject, text, html
 
 
 def ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:

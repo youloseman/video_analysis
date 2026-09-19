@@ -1115,6 +1115,11 @@
 
     <details class="raw hidden" id="rawBlock"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
 
+    <!-- A person's eyes on this report: Coach Notes ($) and, above it, the
+         Expert Review. Offered at the bottom, after the athlete has read what
+         the machine had to say -- see renderNotesOffer. -->
+    <div class="notes-offer hidden" id="notesOffer"></div>
+
     <!-- Result feedback: the only way to learn where the analyzer misfires. -->
     <div class="fb hidden" id="fbHost"></div>
 
@@ -1453,6 +1458,7 @@
         </button>
       </div>
     </div>
+    <div class="notes-offer hidden" id="hdNotesOffer"></div>
   </section>
 
   <!-- ============ PRICING ============ -->
@@ -4930,10 +4936,17 @@ function syncOverlayField(){
    the person's, and it says so.
    ============================================================ */
 const COACH={allowed:false,name:'',tagline:'',logo:null,cues:[],loaded:false};
-function coachOn(){ return !!(auth&&COACH.allowed); }
+/* The coach-as-user tools -- the profile card, the note editor, the
+   branded print head -- are PARKED (Artur, 2026-09-18): built, tested, and
+   switched off until coaches show up asking for them. The same note block
+   stays live read-only, because it is where paid Coach Notes are delivered
+   (see api.billing._write_notes_to_entry). Flip this to bring the tools
+   back; nothing else changes. */
+const COACH_TOOLS=false;
+function coachOn(){ return COACH_TOOLS && !!(auth&&COACH.allowed); }
 async function loadCoach(){
   COACH.allowed=false; COACH.loaded=false;
-  if(!auth) return;
+  if(!auth||!COACH_TOOLS) return;
   try{ const r=await fetch('/me/coach',{headers:authHeaders()}); if(r.ok){ Object.assign(COACH, await r.json()); COACH.loaded=true; } }catch(e){}
   renderCoachCard();
   if(state.lastResult&&!$('#results').classList.contains('hidden')) renderCoachNote('coachNote', state.videoHistId);
@@ -4961,7 +4974,7 @@ function coachLogoFromFile(file){
 }
 function renderCoachCard(){
   const card=$('#acctCoachCard'), body=$('#acctCoachBody'), pill=$('#acctCoachPill'); if(!card||!body) return;
-  if(!auth){ card.classList.add('hidden'); return; }
+  if(!auth||!COACH_TOOLS){ card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
   if(!COACH.allowed){
     pill.classList.add('hidden');
@@ -5022,9 +5035,13 @@ function renderCoachNote(hostId, entryId){
   const note=(e&&e.coachNote)||'', by=(e&&e.coachName)||'';
   if(!coachOn()&&!note){ block.classList.add('hidden'); return; }
   block.classList.remove('hidden');
-  const title=block.querySelector('h3'); if(title) title.textContent=coachOn()?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(by?`${by}’s notes`:'Coach’s notes');
+  // Delivered Coach Notes (bought) read as "Coach Notes"; a coach-user's own
+  // note reads under their name. The eyebrow follows.
+  const bought=!!(e&&e.coachOrderId);
+  const title=block.querySelector('h3'); if(title) title.textContent=coachOn()?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(bought?'Coach Notes':(by?`${by}’s notes`:'Coach’s notes'));
+  const eb=block.querySelector('.eyebrow'); if(eb&&!coachOn()) eb.innerHTML=`<svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> ${bought?'A person read this':'Your notes'}`;
   if(!coachOn()){
-    host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}</div>`:''}`;
+    host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}${bought?' · read your clip and this analysis':''}</div>`:''}`;
     return;
   }
   const cues=(COACH.cues||[]);
@@ -5042,6 +5059,73 @@ function renderCoachNote(hostId, entryId){
     st.textContent=ok?'Saved.':'Could not save — check your connection.';
     if(ok){ host.querySelector('.cnote-read').textContent=ta.value.trim(); track('coach_note_saved',{chars:ta.value.trim().length}); }
   });
+}
+
+/* ============================================================
+   Coach Notes -- the offer on the report.
+
+   The rung under the Expert Review: a coach reads this analysis and writes
+   back one line and three notes, onto the report, for a third of the price.
+   Offered at the BOTTOM of the report, after the AI's notes and the plan:
+   that is the moment somebody knows what the machine said and wants a
+   person's view of it. The card knows the order's state for this entry
+   (none / booked / delivered) and never sells the same report twice.
+   ============================================================ */
+function notesCard(){ return ((PLANS&&PLANS.cards)||[]).find(c=>c.id==='notes')||null; }
+function notesPrice(){ const c=notesCard(); return (c&&c.prices&&c.prices[0])?c.prices[0].display:''; }
+state.ordersCache=null;
+async function loadOrders(force){
+  if(!auth) { state.ordersCache=null; return []; }
+  if(state.ordersCache&&!force) return state.ordersCache;
+  try{ const r=await fetch('/billing/orders',{headers:authHeaders()}); if(r.ok){ state.ordersCache=await r.json(); return state.ordersCache; } }catch(e){}
+  return state.ordersCache||[];
+}
+async function renderNotesOffer(hostId, entryId){
+  const host=$('#'+hostId); if(!host) return;
+  const card=notesCard();
+  if(!card||!entryId){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  const price=(card.prices||[])[0]||{};
+  const orders=await loadOrders();
+  if(!host.isConnected) return;
+  const mine=orders.filter(o=>o.plan==='notes'&&o.analysis_client_id===entryId&&o.status!=='refunded');
+  const done=mine.find(o=>o.status==='delivered'), open=mine.find(o=>o.status!=='delivered');
+  // Delivered: the note block above already shows them; the card steps back
+  // to the next rung. Booked: say so, with the promise.
+  let body;
+  if(done){
+    body=`<div class="no-head"><span class="no-chip">Coach Notes · delivered</span></div>
+      <p class="no-p">Your Coach Notes are on this report, under <b>Coach Notes</b> above. Want the full picture — which numbers to trust, a four-week plan, position trade-offs? That is the Expert Review.</p>
+      <div class="no-cta"><button class="btn btn-outline btn-sm" type="button" onclick="startCheckout('expert',${esc(JSON.stringify(entryId))})">Expert Review${expertPriceLabel()}</button></div>`;
+  } else if(open){
+    // The order's own status line talks about "your review"; the notes say
+    // it in their own words.
+    const st=open.status==='in_review'?'a coach is on it':'booked';
+    body=`<div class="no-head"><span class="no-chip">Coach Notes · ${st}</span></div>
+      <p class="no-p">A coach has this report. You’ll get an email when the notes are on it — usually within 72 hours.</p>`;
+  } else {
+    const avail=!!(price.available&&price.plan);
+    body=`<div class="no-head"><span class="no-chip">A person’s eyes on this</span><span class="no-price">${esc(price.display||'')} <small>${esc(price.per||'')}</small></span></div>
+      <h3 class="no-t">Coach Notes — three things a coach sees</h3>
+      <p class="no-p">A coach reads this analysis and your clip and writes back: <b>the first thing to change</b>, in one line, and <b>three notes</b> — what a person sees that the numbers didn’t. Written on this report, within 72 hours; prints and exports with it.</p>
+      <p class="no-p no-fence">Not a full review: no trust judgement, no four-week plan, no position trade-offs. Those are the <a href="#pricing" onclick="event.preventDefault();openPricing()">Expert Review</a>${expertPriceLabel()}.</p>
+      <div class="no-cta">${avail
+        ?`<button class="btn btn-primary btn-sm" type="button" data-notesbuy><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Add Coach Notes — ${esc(price.display||'')}</button>`
+        :`<button class="btn btn-primary btn-sm" type="button" disabled>Coach Notes — coming soon</button>`}
+        <span class="no-note" id="${hostId}Slots"></span></div>`;
+  }
+  host.innerHTML=`<div class="no-card">${body}</div>`;
+  host.classList.remove('hidden');
+  const buy=host.querySelector('[data-notesbuy]');
+  if(buy){
+    buy.addEventListener('click',()=>{ track('notes_offer_clicked',{entry:entryId}); startCheckout('notes',entryId); });
+    // Sold out or paused is better said before the click.
+    fetch('/billing/expert-review/slots').then(r=>r.ok?r.json():null).then(j=>{
+      const n=j&&j.notes; const sl=$('#'+hostId+'Slots'); if(!n||!sl) return;
+      if(!n.open){ buy.disabled=true; sl.textContent=n.paused?'Paused this week — the coach is away.':'This week’s notes are fully booked — open again Monday.'; }
+      else if(n.left!=null&&n.left<=3) sl.textContent=`${n.left} left this week`;
+    }).catch(()=>{});
+  }
+  track('notes_offer_shown',{entry:entryId,state:done?'delivered':open?'booked':'offer'});
 }
 
 function renderPrintHead(meta){
@@ -5494,11 +5578,13 @@ function tierCardHtml(card){
    told about is indistinguishable from one that was never granted. */
 function addonCardHtml(card){
   const price=(card.prices||[])[0]||null;
-  const credits=(auth&&auth.expert_credits)||0;
+  const notes=card.id==='notes';
+  const credits=notes?0:((auth&&auth.expert_credits)||0);
+  const plan=notes?'notes':'expert';
   const buy = credits>0
     ? `<button class="btn btn-primary" type="button" onclick="startCheckout('expert')">Use your included review</button>`
     : (price&&price.available&&price.plan
-        ? `<button class="btn btn-outline" type="button" onclick="startCheckout('expert')">${esc(card.cta_label||'Add Expert Review')}</button>`
+        ? `<button class="btn btn-outline" type="button" onclick="startCheckout('${esc(plan)}')">${esc(card.cta_label||'Add Expert Review')}</button>`
         : DEAD_BTN+'Coming soon</button>');
   return `<div class="tier tier-solo">
     ${card.badge?`<span class="poptag poptag-addon">${esc(card.badge)}</span>`:''}
@@ -5511,7 +5597,7 @@ function addonCardHtml(card){
         <div class="tier-price"><span class="amt">${credits>0?'Included':esc(price?price.display:'')}</span><span class="per">${credits>0?'':esc(price?price.per:'')}</span></div>
         <p class="tier-sub">${credits>0?`<b>${credits}</b> left on your plan`:esc(price?price.note:'')}</p>
         <div class="solo-btns">
-          <button class="btn btn-ghost btn-sm" type="button" id="ctaExpertSample">See a sample</button>
+          ${notes?'':'<button class="btn btn-ghost btn-sm" type="button" id="ctaExpertSample">See a sample</button>'}
           ${buy}
         </div>
       </div>
@@ -5613,16 +5699,21 @@ async function renderOrders(){
     orders=await r.json();
   }catch(e){ box.classList.add('hidden'); return; }   // never block the page on this
   if(!orders.length){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  const NAME={expert:'Expert Review',expert_credit:'Expert Review',notes:'Coach Notes',unlock:'Report unlock'};
   box.innerHTML=orders.map(o=>`
     <span class="ao-chip">Your order</span>
     <div>
-      <div class="ao-name">Expert Review</div>
+      <div class="ao-name">${esc(NAME[o.plan]||'Expert Review')}</div>
       <div class="ao-desc">${esc(o.status_label||'')} <span class="hint">· ${esc(shortDate(o.created_at_ms))}</span></div>
     </div>
     <div class="ao-price">${esc(money(o.amount_total,o.currency))}</div>
-    ${o.has_report?`<button class="btn btn-primary btn-sm" type="button" data-openreview="${o.id}">Read your review</button>`:''}`).join('');
+    ${o.has_report?(o.plan==='notes'
+      ?`<button class="btn btn-primary btn-sm" type="button" data-opennotesentry="${esc(o.analysis_client_id||'')}">Open the report</button>`
+      :`<button class="btn btn-primary btn-sm" type="button" data-openreview="${o.id}">Read your review</button>`):''}`).join('');
   box.querySelectorAll('[data-openreview]').forEach(b=>
     b.addEventListener('click',()=>openReviewReport(b.dataset.openreview)));
+  box.querySelectorAll('[data-opennotesentry]').forEach(b=>
+    b.addEventListener('click',()=>{ if(loadHist().some(e=>e.id===b.dataset.opennotesentry)) openHistory(b.dataset.opennotesentry); else toast('That report is no longer in your history.'); }));
   box.classList.remove('hidden');
 }
 /* ============================================================
@@ -5702,19 +5793,28 @@ async function renderReviewCard(){
   }catch(e){ return; }
   const ready=orders.filter(o=>o.has_report);
   if(!ready.length) return;
-  host.innerHTML=ready.slice(0,3).map(o=>`
+  // Coach Notes live on the report they were written on, so their card opens
+  // that report; a review has a page of its own.
+  host.innerHTML=ready.slice(0,3).map(o=>{ const n=o.plan==='notes'; return `
     <div class="rev-card${o.unread?' is-unread':''}">
       ${o.unread?'<span class="rev-dot" aria-hidden="true"></span>':''}
       <div>
-        <div class="rev-t">${o.unread?'Your Expert Review is ready':'Your Expert Review'}</div>
+        <div class="rev-t">${n?(o.unread?'Your Coach Notes are on your report':'Your Coach Notes'):(o.unread?'Your Expert Review is ready':'Your Expert Review')}</div>
         <div class="rev-s">${o.unread
-          ? 'A human read your analysis and wrote back — priorities, a four-week plan, and when to film again.'
+          ? (n?'A coach read your analysis and wrote back — the first thing to change, and three notes.'
+              :'A human read your analysis and wrote back — priorities, a four-week plan, and when to film again.')
           : 'Delivered '+esc(shortDate(o.delivered_at_ms))}</div>
       </div>
-      <button class="btn ${o.unread?'btn-primary':'btn-outline'} btn-sm" type="button" data-openreview="${o.id}">${o.unread?'Read it':'Read again'}</button>
-    </div>`).join('');
+      <button class="btn ${o.unread?'btn-primary':'btn-outline'} btn-sm" type="button" ${n?`data-opennotes="${o.id}" data-entry="${esc(o.analysis_client_id||'')}"`:`data-openreview="${o.id}"`}>${o.unread?'Read it':'Read again'}</button>
+    </div>`; }).join('');
   host.querySelectorAll('[data-openreview]').forEach(b=>
     b.addEventListener('click',()=>openReviewReport(b.dataset.openreview)));
+  host.querySelectorAll('[data-opennotes]').forEach(b=>
+    b.addEventListener('click',()=>{
+      fetch('/billing/orders/'+encodeURIComponent(b.dataset.opennotes)+'/read',{method:'POST',headers:authHeaders()}).then(()=>renderReviewCard()).catch(()=>{});
+      if(b.dataset.entry&&loadHist().some(e=>e.id===b.dataset.entry)) openHistory(b.dataset.entry);
+      else toast('That report is no longer in your history.');
+    }));
 }
 
 /* ---- the athlete's copy ---- */
@@ -5814,11 +5914,11 @@ async function loadExpertQueue(){
   list.innerHTML=shown.map(o=>`
     <div class="ex-card">
       <div>
-        <div class="ex-em">${esc(o.email||'—')}</div>
+        <div class="ex-em">${o.plan==='notes'?'<span class="ex-kind">Notes</span> ':''}${esc(o.email||'—')}</div>
         <div class="ex-sub">#${o.id} · ${esc(money(o.amount_total,o.currency))} · ${esc(shortDate(o.created_at_ms))}${o.analysis_client_id?'':' · <b>no clip chosen</b>'}</div>
       </div>
       ${exPill(o)}
-      <button class="btn btn-outline btn-sm" type="button" data-exopen="${o.id}">${o.status==='delivered'?'View':(o.has_draft?'Continue':'Write review')}</button>
+      <button class="btn btn-outline btn-sm" type="button" data-exopen="${o.id}">${o.status==='delivered'?'View':(o.has_draft?'Continue':(o.plan==='notes'?'Write notes':'Write review'))}</button>
     </div>`).join('');
 }
 
@@ -5893,8 +5993,13 @@ function exFieldHtml(s, report){
       </div>`;
     }).join('')}</div>`;
   }
+  // A section with its own budget (Coach Notes: ~40 words) gets a hard cap
+  // and a counter -- the format is the product, and it is enforced in the
+  // field rather than by discipline. The server clips to the same number.
+  const cap=s.max?` maxlength="${s.max}"`:'';
+  const counter=s.max?`<span class="ex-count" data-excount="${s.key}">${(report[s.key]||'').length}/${s.max}</span>`:'';
   return `<div class="ex-fld">${head}
-    <textarea id="ex_${s.key}" data-exsec="${s.key}" rows="${s.key==='verdict'?4:6}">${esc(report[s.key]||'')}</textarea></div>`;
+    <textarea id="ex_${s.key}" data-exsec="${s.key}"${cap} rows="${s.max?(s.max<=200?2:3):(s.key==='verdict'?4:6)}"${s.max?` oninput="this.nextElementSibling.textContent=this.value.length+'/${s.max}'"`:''}>${esc(report[s.key]||'')}</textarea>${counter}</div>`;
 }
 
 function exEditorHtml(d){
@@ -5905,10 +6010,11 @@ function exEditorHtml(d){
   <div class="backhome-row"><button class="btn btn-ghost btn-sm" type="button" id="exBack"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Queue</button></div>
   <div class="blockhead" style="margin-top:0">
     <div class="eyebrow">Order #${d.id} · ${esc(d.email||'')} · ${esc(money(d.amount_total,d.currency))}</div>
-    <h3 class="sec" style="margin-bottom:8px">${done?'Delivered review':'Write the review'}</h3>
+    <h3 class="sec" style="margin-bottom:8px">${d.plan==='notes'?(done?'Delivered Coach Notes':'Write the Coach Notes'):(done?'Delivered review':'Write the review')}</h3>
     <div class="speedline"></div>
   </div>
-  ${done?'<p class="hint" style="text-align:left">This review has been delivered. Edits you save are visible to the athlete immediately.</p>':''}
+  ${d.plan==='notes'?'<p class="hint" style="text-align:left">One line and three notes, about 40 words each. They land on the athlete’s report under “Coach Notes”, print and export with it. Not a review: no trust judgement, no plan, no re-test — if you find yourself writing those, that is the $39 product.</p>':''}
+  ${done?'<p class="hint" style="text-align:left">This has been delivered. Edits you save and re-publish reach the athlete’s report immediately.</p>':''}
   <div class="ex-grid">
     <div>
       <div class="ex-fld">
@@ -6279,6 +6385,16 @@ async function handleCheckoutReturn(){
     openPricing();
     return;
   }
+  // Coach Notes land ON a report, so the place to go back to is that report.
+  if(plan==='notes'){
+    let id=null;
+    try{ id=sessionStorage.getItem('flapp_notes_for'); sessionStorage.removeItem('flapp_notes_for'); }catch(e){}
+    toast('Payment received — a coach has your report. You’ll get an email when the notes are on it.',{duration:7000});
+    state.ordersCache=null;
+    await refreshCloud();
+    if(id&&loadHist().some(e=>e.id===id)) openHistory(id); else openDashboard();
+    return;
+  }
   // An unlock grants no tier either, and it opens exactly one report -- so
   // there is nothing to poll for. Reload history (the webhook has written the
   // entitlement onto the row) and open the thing they just paid for.
@@ -6318,19 +6434,22 @@ function openUpgrade(){ openPricing(); }
 
 /* Ask which analysis an Expert Review is for. Resolves to a client id, or null
    if the athlete backed out. Nothing is charged until this is answered. */
-function pickAnalysis(){
+function pickAnalysis(plan){
+  const notes=plan==='notes';
   const list=loadHist();
   if(!list.length){
-    toast('Run an analysis first — an Expert Review is written against one of yours.',
+    toast(notes?'Run an analysis first — Coach Notes are written on one of your reports.'
+               :'Run an analysis first — an Expert Review is written against one of yours.',
       {action:'Analyze',onAction:()=>reset(),duration:6000});
     return Promise.resolve(null);
   }
   const modal=$('#pickModal');
   // Someone spending an included review is not "continuing to payment", and
   // telling them they are is how a benefit reads like a second charge.
-  const credits=(auth&&auth.expert_credits)||0;
+  const credits=notes?0:((auth&&auth.expert_credits)||0);
   const eb=$('#pickEyebrow');
-  if(eb) eb.textContent = credits>0 ? 'Expert Review · included with your plan'
+  if(eb) eb.textContent = notes ? 'Coach Notes'+(notesPrice()?' · '+notesPrice():'')
+                        : credits>0 ? 'Expert Review · included with your plan'
                                     : 'Expert Review'+expertPriceLabel();
   const ok=$('#pickOk');
   if(ok) ok.textContent = credits>0 ? 'Use my included review' : 'Continue to payment';
@@ -6378,6 +6497,13 @@ async function startCheckout(plan, analysisIdArg){
   if(plan==='expert'){
     analysisId=await pickAnalysis();
     if(!analysisId) return;              // backed out, or nothing to review yet
+  }
+  // Notes are written on one report: from a report the id is known; from the
+  // pricing page the athlete picks one, like the review.
+  if(plan==='notes'){
+    if(!analysisId) analysisId=await pickAnalysis('notes');
+    if(!analysisId) return;
+    try{ sessionStorage.setItem('flapp_notes_for', analysisId); }catch(e){}
   }
   if(plan==='unlock'){
     try{ sessionStorage.setItem('flapp_unlocking', analysisId); }catch(e){}
@@ -7126,6 +7252,7 @@ function render(job,opts){
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
   renderCoachNote('coachNote', state.videoHistId);
+  renderNotesOffer('notesOffer', state.videoHistId);
   // The joint editor: bike, paid (the server refuses everything else), the
   // clip still in this browser to draw on, and not a merged two-clip session.
   const canAdjust=!!(sport==='bike'&&!r.locked&&state.file&&state.jobId&&auth&&auth.tier!=='starter'
@@ -8767,6 +8894,7 @@ function renderHistoryDetail(e){
   renderHistoryBilateral(e);
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderCoachNote('hdCoachNote', e.id);
+  renderNotesOffer('hdNotesOffer', e.access==='full'||!e.locked ? e.id : null);
   renderHistoryPlan(e);
   renderHistoryAngles(e);
   renderHistoryKinogram(e);

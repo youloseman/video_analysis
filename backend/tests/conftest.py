@@ -35,6 +35,7 @@ os.environ["STRIPE_PRICE_ENTHUSIAST_Y"] = "price_test_enthusiast_yearly"
 os.environ["STRIPE_PRICE_FULL_Y"] = "price_test_full_yearly"
 os.environ["STRIPE_PRICE_EXPERT"] = "price_test_expert"
 os.environ["STRIPE_PRICE_UNLOCK"] = "price_test_unlock"
+os.environ["STRIPE_PRICE_NOTES"] = "price_test_notes"
 # --------------------------------------------------------------------------
 
 from sqlalchemy.ext.asyncio import (  # noqa: E402
