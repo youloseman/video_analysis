@@ -83,7 +83,9 @@ def test_the_background_rhythm_still_alternates(html, order):
         ("HOW IT WORKS", "panel"),
         ("SPLIT 1", "dark"),
         ("SPLIT 2", "bg"),           # .split paints nothing -> body, --c-bg
-        ("WHY FLAPP", "dark"),
+        # WHY FLAPP (the dark divider) came out 2026-09-18: it restated the
+        # hero, and the page was 23 phone screens long. bg -> panel still
+        # alternates without it.
         ("DUAL PATH", "panel"),
         ("PRICING", "white"),
     ]

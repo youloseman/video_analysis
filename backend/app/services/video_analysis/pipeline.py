@@ -346,14 +346,24 @@ class VideoAnalysisPipeline:
             # page: a hip closed past the band is the fault (compression, the
             # iliac-artery floor); a hip open past it is a comfort trade-off,
             # never red. `open_ok` carries that to the colour.
-            return [
+            configs = [
                 {"key": near_knee_key,     "idx": near_knee_idx,     "optimal": ref["knee_at_bdc"],   "name": "Knee",    "offset_dir": "left"},
                 {"key": near_hip_key,      "idx": near_hip_idx,      "optimal": ref["hip_at_tdc"],    "name": "Hip",     "offset_dir": "up-left", "open_ok": True},
                 {"key": "trunk_angle",     "idx": 11,                "optimal": ref["trunk_angle"],    "name": "Trunk",   "offset_dir": "up"},
                 {"key": near_elbow_key,    "idx": near_elbow_idx,    "optimal": ref["elbow_angle"],    "name": "Elbow",   "offset_dir": "up-left"},
                 {"key": near_shoulder_key, "idx": near_shoulder_idx, "optimal": ref["shoulder_angle"], "name": "Shldr",   "offset_dir": "right"},
-                {"key": near_forearm_key,  "idx": near_wrist_idx,    "optimal": ref["forearm_tilt"],   "name": "Forearm", "offset_dir": "down-right"},
             ]
+            # Forearm tilt is a fitted quantity on aero bars only (see
+            # technique_scorer.score_cycling): off them the forearm slopes to
+            # the bar by geometry, and a red "FOREARM -41" chip on a hoods
+            # clip was grading the handlebar. No callout, no curve.
+            from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+
+            if cycling_pos in AERO_POSITIONS:
+                configs.append(
+                    {"key": near_forearm_key,  "idx": near_wrist_idx,    "optimal": ref["forearm_tilt"],   "name": "Forearm", "offset_dir": "down-right"},
+                )
+            return configs
         elif sport_type == "swim":
             return [
                 {"key": "left_shoulder",  "idx": 11, "optimal": (160, 180), "name": "L.Shldr", "offset_dir": "up"},

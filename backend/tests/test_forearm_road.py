@@ -53,3 +53,13 @@ def test_the_plan_does_not_praise_a_hoods_forearm():
         technique_score=90, letter_grade="A", detected_issues=[],
     )
     assert any(g.get("metric") == "forearm_tilt" for g in aero.good_metrics)
+
+
+def test_the_overlay_draws_no_forearm_callout_off_aero_bars():
+    from app.services.video_analysis.pipeline import VideoAnalysisPipeline
+
+    p = VideoAnalysisPipeline()
+    hoods = [c["key"] for c in p._get_angle_display_config("bike", {"camera_side": "left"}, None, cycling_position="road_hoods")]
+    aero = [c["key"] for c in p._get_angle_display_config("bike", {"camera_side": "left"}, None, cycling_position="triathlon")]
+    assert "left_forearm_tilt" not in hoods
+    assert "left_forearm_tilt" in aero
