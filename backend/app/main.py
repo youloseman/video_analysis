@@ -1123,6 +1123,10 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
         html_doc = html_doc.replace(
             pricing.EXPERT_PRICE_TOKEN, pricing.headline_price("expert"),
         )
+    if pricing.NOTES_PRICE_TOKEN in html_doc:
+        html_doc = html_doc.replace(
+            pricing.NOTES_PRICE_TOKEN, pricing.headline_price("notes"),
+        )
     if pricing.FREE_LIMIT_TOKEN in html_doc:
         html_doc = html_doc.replace(
             pricing.FREE_LIMIT_TOKEN, str(pricing.starter_monthly_limit()),

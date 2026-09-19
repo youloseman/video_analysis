@@ -379,6 +379,7 @@ def starter_monthly_limit() -> int:
 # points at the Expert Review mid-page, before the pricing section). Same
 # catalogue, so an amount cannot be updated in one of the two and not the other.
 EXPERT_PRICE_TOKEN = "<!--EXPERT-PRICE-->"
+NOTES_PRICE_TOKEN = "<!--NOTES-PRICE-->"
 
 
 # The plan table inside the Terms of Service. That document is the one where a

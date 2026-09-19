@@ -1167,9 +1167,9 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
       <div class="step rv" data-d="1">
         <div class="n">01</div>
         <h3>Film a clip — or snap a photo</h3>
-        <p>Prop your phone at hip height, side-on, and capture <b>10–20 seconds</b> of running or
+        <p>Prop your phone at hip height, side-on, and capture <b>8–15 seconds</b> of running or
           riding. Short on time? <b>One side-view photo</b> is enough for a full angle read-out.</p>
-        <div class="tagrow"><span class="mtag">Video or photo</span><span class="mtag">Side view</span><span class="mtag">10–20 s</span></div>
+        <div class="tagrow"><span class="mtag">Video or photo</span><span class="mtag">Side view</span><span class="mtag">8–15 s</span></div>
       </div>
       <div class="step rv" data-d="2">
         <div class="n">02</div>
@@ -1177,14 +1177,14 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
         <p>Pose estimation locks onto <b>33 landmarks</b> — ankles, knees, hips, spine, shoulders.
           A photo is measured on the spot; a clip is measured on <b>every frame</b>, through the
           full movement cycle.</p>
-        <div class="tagrow"><span class="mtag">Pose estimation</span><span class="mtag">60 fps sampling</span></div>
+        <div class="tagrow"><span class="mtag">Pose estimation</span><span class="mtag">Every frame</span></div>
       </div>
       <div class="step rv" data-d="3">
         <div class="n">03</div>
         <h3>Get the verdict</h3>
         <p>A <b>0–100 score</b> with a grade, every angle against reference ranges, an annotated
           overlay and an AI action plan telling you <b>what to change first</b>.</p>
-        <div class="tagrow"><span class="mtag">Score + grade</span><span class="mtag">Overlay video</span><span class="mtag">Action plan</span></div>
+        <div class="tagrow"><span class="mtag">Score + grade</span><span class="mtag">Player + overlay</span><span class="mtag">Action plan</span></div>
       </div>
     </div>
   </div>
@@ -1200,7 +1200,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
         where you sit inside, or outside, the reference range.</p>
       <div class="feat-list rv" data-d="3" id="featsMeasure">
         <div class="feat-item active" data-img="media/biomech.webp" data-fit="cover"
-             data-pill="Lab-grade · 60 fps" data-pillclass=""
+             data-pill="Lab-grade · every frame" data-pillclass=""
              data-alt="Advanced biomechanics: form vs reference charts, movement stability loops and joint coordination plots">
           <h4>Lab-grade biomechanics</h4>
           <p>Cycle-by-cycle repeatability, joint coordination and your averaged movement against
@@ -1213,6 +1213,14 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
           <p>Knee, hip, elbow, shoulder, trunk — each with your value, the reference range, and a
             verdict: optimal, acceptable, or out of range.</p>
         </div>
+        <div class="feat-item" data-img="media/player.webp" data-fit="contain"
+             data-pill="The player" data-pillclass="blue"
+             data-alt="The report's player: an annotated pedal stroke paused at the bottom, a strip of detected strokes, frame-step and speed controls, and the knee angle drawn as a curve over the whole clip with the bottom-of-stroke points marked">
+          <h4>Under the video, the curve</h4>
+          <p>Step through your stride or stroke a frame at a time, jump to the next foot strike or
+            bottom-of-stroke, and watch each joint as a curve over the whole clip — the number on
+            the joint, as a shape.</p>
+        </div>
         <div class="feat-item" data-img="media/aero.webp" data-fit="contain"
              data-pill="Aero &amp; watts" data-pillclass="blue"
              data-alt="Aero and watts read-out: time-trial tuck zone, about 80 percent of upright drag">
@@ -1224,7 +1232,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
     </div>
     <div class="shotframe rv-scale" id="measureFrame" data-fit="cover" role="button" tabindex="0"
          aria-label="Enlarge this screenshot">
-      <span class="label-pill" id="measurePill">Lab-grade · 60 fps</span>
+      <span class="label-pill" id="measurePill">Lab-grade · every frame</span>
       <img id="measureImg" src="media/biomech.webp" alt="Advanced biomechanics: form vs reference charts, movement stability loops and joint coordination plots" loading="lazy">
       <div class="fade"></div>
       <span class="zoomtag"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5L18 18M9 6.5v5M6.5 9h5"/></svg>Click to enlarge</span>
@@ -1268,8 +1276,10 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
       </div>
       <p class="split-note rv" data-d="4">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="6" r="3.2"/></svg>
-        <span>Want a human in the loop too? <b>Expert Review</b> adds a personal breakdown from a
-          competing triathlete on top of the AI — <a href="#pricing"><!--EXPERT-PRICE-->, any plan</a>.</span>
+        <span>Want a person in the loop too? <b>Coach Notes</b> — the first thing to change and three
+          notes from a coach, written on your report within 72 hours, <a href="#pricing"><!--NOTES-PRICE--></a>.
+          Or the full <b>Expert Review</b> from a competing triathlete — which numbers to trust, a
+          four-week plan, the trade-offs — <a href="#pricing"><!--EXPERT-PRICE-->, any plan</a>.</span>
       </p>
     </div>
   </div>
@@ -1298,7 +1308,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
         <ul>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Trunk lean, knee flexion &amp; hip extension — measured, not eyeballed</li>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Overstriding and foot-contact geometry flagged automatically</li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Gait-phase overlay: contact, stance and toe-off on your own video</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Gait-phase overlay: contact, stance and toe-off on your own video — step through it frame by frame, every angle as a curve</li>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Drills ranked by impact in your AI action plan</li>
         </ul>
         <p class="p-foot">Treadmill or outdoor · any pace</p>
@@ -1309,8 +1319,8 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
         <p class="p-lede">A pro fit is worth it — once. Flapp keeps you honest between fits, after
           a saddle swap, or when that knee starts talking on long rides.</p>
         <ul>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Knee extension at the bottom of the stroke vs fit-standard ranges</li>
-          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Hip, torso and elbow angles across the pedal cycle</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Knee extension at the bottom of the stroke vs fit-standard ranges — and the saddle change in millimetres, with its margin</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Hip, torso and elbow angles across the pedal cycle — locked stroke to stroke against your last clip</li>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Aero position read-out from your trunk angle</li>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Road or TT position, indoor trainer or outside</li>
         </ul>
@@ -1341,7 +1351,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
     <div class="faq-list">
       <details>
         <summary>What kind of video do I need?<span class="pm">+</span></summary>
-        <div class="a">A <b>side-view clip, 10–20 seconds</b>, filmed roughly at hip height. Any modern
+        <div class="a">A <b>side-view clip, 8–15 seconds</b>, filmed roughly at hip height. Any modern
           phone camera works. For running: treadmill or a straight outdoor section. For cycling: an
           indoor trainer is ideal, outdoor works too. The clearer the side view, the better the measurement.</div>
       </details>
@@ -1361,8 +1371,9 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
         <summary>Can it replace a professional bike fit or running coach?<span class="pm">+</span></summary>
         <div class="a">No — and it doesn't try to. Think of Flapp as the <b>check between the fits</b> and
           the coach's second pair of eyes: it puts numbers on what changed after a saddle swap, a training
-          block or an injury, and tells you when something drifted out of range. If you want a human in
-          the loop, the Expert Review add-on gets you a personal breakdown from a competing triathlete.</div>
+          block or an injury, and tells you when something drifted out of range. If you want a person in
+          the loop, <b>Coach Notes</b> gets three things a coach sees written on your report, and the
+          <b>Expert Review</b> add-on a full personal breakdown from a competing triathlete.</div>
       </details>
       <details>
         <summary>What happens to my videos?<span class="pm">+</span></summary>

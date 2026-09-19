@@ -118,6 +118,7 @@ def _served(name: str) -> str:
     doc = doc.replace(pricing.LANDING_TOKEN, pricing.render_landing_pricing())
     doc = doc.replace(pricing.TERMS_TOKEN, pricing.render_terms_table())
     doc = doc.replace(pricing.EXPERT_PRICE_TOKEN, pricing.headline_price("expert"))
+    doc = doc.replace(pricing.NOTES_PRICE_TOKEN, pricing.headline_price("notes"))
     return doc
 
 
