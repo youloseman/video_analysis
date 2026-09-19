@@ -3456,7 +3456,8 @@ function bikeTiles(s, position){
       const toBand=Math.abs(Math.round(est.to_band_mm||0)), toMid=Math.abs(Math.round(est.delta_mm));
       ref=`${est.direction} ≈${toMid} mm (±${Math.round(est.ci_mm)}) to mid-band${toBand&&toBand<toMid?`, ≈${toBand} mm to reach it`:''} · ${est.crank_source==='given'?`your ${est.crank_length_mm} mm cranks`:'assuming 172.5 mm cranks'}${est.drive_side?' · drive-side clip, less certain':''}`;
     } else if(est&&!est.in_band&&s.saddle_height_assessment==='acceptable'){
-      ref=`≈${Math.abs(Math.round(est.to_band_mm||0))} mm outside the band — within tolerance`;
+      const tb=Math.abs(Math.round(est.to_band_mm||0));
+      ref=tb<1?'at the edge of the band — within tolerance':`≈${tb} mm outside the band — within tolerance`;
     }
     t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'',ref,s.saddle_height_assessment==='optimal'?'good':'warn',true));
   }

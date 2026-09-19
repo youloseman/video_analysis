@@ -796,10 +796,14 @@ def build_action_plan(
         good_metrics, "shoulder_angle", _get_value("shoulder_angle", sm),
         ref["shoulder_angle"], "Shoulder angle",
     )
-    _check_informational_metric(
-        good_metrics, "forearm_tilt", _get_value("forearm_tilt", sm),
-        ref["forearm_tilt"], "Forearm tilt",
-    )
+    # Forearm tilt is a fitted quantity on aero bars only; on the hoods or the
+    # drops the forearm slopes to the bar by geometry (see technique_scorer),
+    # so "in range" there would praise nothing.
+    if position in AERO_POSITIONS:
+        _check_informational_metric(
+            good_metrics, "forearm_tilt", _get_value("forearm_tilt", sm),
+            ref["forearm_tilt"], "Forearm tilt",
+        )
     _check_informational_metric(
         good_metrics, "head_alignment", _get_value("head_alignment", sm),
         ref["head_alignment"], "Head alignment",

@@ -183,8 +183,11 @@ def test_a_sparse_running_clip_reports_how_sparse():
 # cycling
 # --------------------------------------------------------------------------
 
+# Scored on aero bars, where all nine measures apply. Off them the forearm
+# tilt is not part of the rubric (see test_forearm_road.py), and the total
+# says eight.
 def test_cycling_score_carries_coverage():
-    cov = score_cycling(_bike_summary(), {})["coverage"]
+    cov = score_cycling(_bike_summary(), {}, cycling_position="triathlon")["coverage"]
     assert cov["measures_total"] == len(CYCLING_WEIGHTS)
     assert cov["measures_scored"] == len(CYCLING_WEIGHTS)
 
@@ -193,7 +196,7 @@ def test_cycling_missing_measures_are_named():
     summary = _bike_summary()
     del summary["head_alignment_avg"]
     del summary["pelvic_ratio"]
-    cov = score_cycling(summary, {})["coverage"]
+    cov = score_cycling(summary, {}, cycling_position="triathlon")["coverage"]
     assert set(cov["missing"]) == {"head_alignment", "pelvic_ratio"}
     assert cov["measures_scored"] == len(CYCLING_WEIGHTS) - 2
 
@@ -203,7 +206,7 @@ def test_every_coverage_key_is_a_real_weight_key():
     here would print a raw key at the reader."""
     for weights, cov in (
         (RUNNING_WEIGHTS, score_running(_run_summary(), _RUN_ANGLES)["coverage"]),
-        (CYCLING_WEIGHTS, score_cycling(_bike_summary(), {})["coverage"]),
+        (CYCLING_WEIGHTS, score_cycling(_bike_summary(), {}, cycling_position="triathlon")["coverage"]),
     ):
         assert set(cov["scored"]) | set(cov["missing"]) == set(weights)
 

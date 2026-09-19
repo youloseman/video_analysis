@@ -48,7 +48,6 @@ CYCLING_WEIGHTS = {
     "forearm_tilt": 0.05,
     "saddle_fit": 0.05,
 }
-
 SWIMMING_WEIGHTS = {
     "elbow_catch": 0.18,
     "body_rotation": 0.18,
@@ -430,10 +429,25 @@ def score_cycling(
     if shoulder > 0:
         components["shoulder_angle"] = score_in_range(shoulder, *ref["shoulder_angle"])
 
-    # Forearm tilt (can be negative for some positions)
+    # Forearm tilt -- an AERO-BAR metric: the extension/armrest tilt the UCI
+    # regulates and the wind-tunnel work describes, measured wrist against
+    # elbow. On the hoods or the drops the forearm slopes DOWN to the bar as a
+    # matter of geometry, and the band that was scored here ((5, 20) for
+    # hoods, the aero source pasted over) made it a lottery: two hoods clips
+    # of one rider read -42 deg and were silently dropped by the summary
+    # bound, a third read -25, passed, and lost five points to a target no
+    # road fit has ever stated. Off aero bars it is not a measure of the fit
+    # at all, so it leaves the rubric rather than being listed as ungraded:
+    # a road position is scored on eight measures, and says eight.
+    from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+
+    weights = dict(CYCLING_WEIGHTS)
     forearm = summary.get("forearm_tilt_avg")
-    if forearm is not None and not (forearm == 0 and summary.get("frames_analyzed", 0) == 0):
-        components["forearm_tilt"] = score_in_range(forearm, *ref["forearm_tilt"])
+    if cycling_position in AERO_POSITIONS:
+        if forearm is not None and not (forearm == 0 and summary.get("frames_analyzed", 0) == 0):
+            components["forearm_tilt"] = score_in_range(forearm, *ref["forearm_tilt"])
+    else:
+        weights.pop("forearm_tilt", None)
 
     # Head alignment (already a score 0-100, use directly)
     head = summary.get("head_alignment_avg", 0)
@@ -446,7 +460,7 @@ def score_cycling(
         components["pelvic_ratio"] = score_in_range(pelvic, *ref["pelvic_ratio"])
 
     overall = compute_weighted_score(
-        components, CYCLING_WEIGHTS,
+        components, weights,
         worst_pull=WORST_COMPONENT_PULL,
         exclude_from_worst=CYCLING_DERIVED_COMPONENTS,
     )
@@ -454,7 +468,7 @@ def score_cycling(
         "overall_score": overall,
         "letter_grade": assign_grade(overall),
         "component_scores": components,
-        "coverage": score_coverage(components, CYCLING_WEIGHTS),
+        "coverage": score_coverage(components, weights),
     }
 
 
