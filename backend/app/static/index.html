@@ -2716,6 +2716,7 @@ function analyze(){
     duration_s: state.duration ? Math.round(state.duration) : null,
     signed_in: !!auth, tier: auth ? auth.tier : 'anonymous',
   });
+  state.pollSeen=false;
   state.analyzeStart=Date.now();
   if(isPair()) return analyzePair();
   const fd=new FormData();
@@ -2910,12 +2911,29 @@ async function pollOnce(){
   try{
     const r=await fetch(withJobToken('/jobs/'+state.jobId, state.jobId),{headers:authHeaders()});
     if(r.status===404 || r.status===410){
+      // A job we have already seen alive does not vanish on its own: its TTL
+      // is hours and only its owner can delete it. Within a poll interval,
+      // the one thing that removes it is the process that held it being
+      // replaced -- a deploy, and with several people pushing to main that
+      // happens inside a 60-second analysis often enough to have a name in
+      // the incident notes. The file is still here, so send it again rather
+      // than hand the athlete an error for something they did not do. Once:
+      // a second vanishing is not a deploy.
+      if(state.pollSeen && !state.resubmitted && state.file && (!isPair() || state.fileB)){
+        clearInterval(state.polling);
+        state.resubmitted=true;
+        track('analysis_resubmitted',{mode:state.mode, sport:state.sport, seconds:Math.round((Date.now()-state.analyzeStart)/1000)});
+        stage('The server was updated mid-analysis — sending your clip again…');
+        announce('Server updated, resubmitting');
+        setTimeout(analyze, 1500);
+        return;
+      }
       // Also what an unauthorized read looks like — the server answers 404 on
       // purpose rather than confirming that someone else's job id exists.
       return fail('We lost track of this analysis (the server may have restarted). Please try again.',{keepFile:true});
     }
     if(!r.ok) throw new Error('http '+r.status);
-    state.pollMisses=0;
+    state.pollMisses=0; state.pollSeen=true;
     const j=await r.json();
     if(j.status==='completed'){
       clearInterval(state.polling); setSteps(3);
@@ -7964,7 +7982,7 @@ async function shareHistory(){
 function reset(keepFile=false){
   clearInterval(state.polling);
   jobTokenClear(state.jobId);          // done with this job; don't hoard its token
-  state.jobId=null; state.keepFileOnRetry=false;
+  state.jobId=null; state.keepFileOnRetry=false; state.resubmitted=false;
   state.lastResult=null; state.photoRes=null;
   state.photoPose=null; state.photoCorrections=[]; state.photoHistId=null; lmedClose();
   $('#pAdjust').classList.add('hidden'); $('#pCorrBadge').classList.add('hidden');
