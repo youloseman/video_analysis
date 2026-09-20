@@ -109,3 +109,132 @@ async def test_an_account_with_no_data_deletes_cleanly(db, make_user):
     uid, model = user.id, type(user)
     await delete_account(DeleteAccountBody(password=PASSWORD), user, db)
     assert await db.get(model, uid) is None
+
+
+# --------------------------------------------------------------------------
+# A live subscription is cancelled in Stripe, or the deletion does not happen.
+#
+# Before this, deleting the account removed the row Stripe's webhooks resolve a
+# customer to and nothing else: the card kept being charged, the renewal found
+# nobody (WEBHOOK_NO_USER), and the customer's first clue was a statement line
+# from a service they had left -- a chargeback, not a support ticket.
+# --------------------------------------------------------------------------
+class _FakeStripe:
+    """Just enough of ``stripe.Subscription`` to see what deletion asks of it."""
+
+    def __init__(self, subs, fail=False):
+        self.subs = subs
+        self.fail = fail
+        self.cancelled: list[str] = []
+        self.listed_for: list[str] = []
+
+    def list(self, customer, status, limit):
+        self.listed_for.append(customer)
+        fake = self
+
+        class _Page:
+            def auto_paging_iter(self):
+                return iter(fake.subs)
+
+        return _Page()
+
+    def cancel(self, sub_id):
+        if self.fail:
+            import stripe as _stripe
+
+            raise _stripe.StripeError("boom")
+        self.cancelled.append(sub_id)
+
+
+class _Sub:
+    def __init__(self, id, status):
+        self.id, self.status = id, status
+
+
+@pytest.fixture
+def stripe_on(monkeypatch):
+    """Billing configured (the real settings object is frozen) and the
+    Subscription API swapped for a recorder."""
+    import dataclasses
+
+    from app.api import billing
+    from app.core.config import settings
+
+    monkeypatch.setattr(
+        billing, "settings", dataclasses.replace(settings, stripe_secret_key="sk_test_x"),
+    )
+
+    def _install(subs, fail=False):
+        fake = _FakeStripe(subs, fail)
+        monkeypatch.setattr(billing.stripe, "Subscription", fake)
+        return fake
+
+    return _install
+
+
+async def _subscriber(make_user, status="active"):
+    user = await make_user(
+        email="paying@example.com", tier="enthusiast",
+        stripe_customer_id="cus_123", subscription_status=status,
+    )
+    user.password_hash = hash_password(PASSWORD)
+    return user
+
+
+async def test_deleting_a_subscriber_cancels_their_subscription(db, make_user, stripe_on):
+    user = await _subscriber(make_user)
+    await db.commit()
+    fake = stripe_on([_Sub("sub_live", "active"), _Sub("sub_old", "canceled")])
+    uid, model = user.id, type(user)
+
+    await delete_account(DeleteAccountBody(password=PASSWORD), user, db)
+
+    assert fake.listed_for == ["cus_123"]
+    assert fake.cancelled == ["sub_live"]        # the dead one is left alone
+    assert await db.get(model, uid) is None
+
+
+async def test_a_past_due_subscription_is_cancelled_too(db, make_user, stripe_on):
+    """Still billing -- Stripe is retrying the card -- so still stopped."""
+    user = await _subscriber(make_user, status="past_due")
+    await db.commit()
+    fake = stripe_on([_Sub("sub_retrying", "past_due")])
+    await delete_account(DeleteAccountBody(password=PASSWORD), user, db)
+    assert fake.cancelled == ["sub_retrying"]
+
+
+async def test_if_stripe_refuses_nothing_is_deleted(db, make_user, stripe_on):
+    """A deletion that leaves a subscription billing is worse than one that
+    has to be retried, so the failure is fatal and the account stays."""
+    user = await _subscriber(make_user)
+    await db.commit()
+    stripe_on([_Sub("sub_live", "active")], fail=True)
+    uid, model = user.id, type(user)
+
+    with pytest.raises(HTTPException) as e:
+        await delete_account(DeleteAccountBody(password=PASSWORD), user, db)
+    assert e.value.status_code == 502
+    assert "not deleted" in e.value.detail
+    assert await db.get(model, uid) is not None
+
+
+async def test_the_wrong_password_never_reaches_stripe(db, make_user, stripe_on):
+    user = await _subscriber(make_user)
+    await db.commit()
+    fake = stripe_on([_Sub("sub_live", "active")])
+    with pytest.raises(HTTPException):
+        await delete_account(DeleteAccountBody(password="nope"), user, db)
+    assert fake.cancelled == [] and fake.listed_for == []
+
+
+async def test_a_free_account_never_touches_stripe(db, make_user, stripe_on):
+    """No customer, no subscription: no API call, and no 503 from a deployment
+    where billing is not configured at all."""
+    user = await make_user(email="free@example.com")
+    user.password_hash = hash_password(PASSWORD)
+    await db.commit()
+    fake = stripe_on([_Sub("sub_x", "active")])
+    uid, model = user.id, type(user)
+    await delete_account(DeleteAccountBody(password=PASSWORD), user, db)
+    assert fake.listed_for == []
+    assert await db.get(model, uid) is None

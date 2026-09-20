@@ -86,6 +86,17 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
     # Expert Review reach the actual footage weeks later. Photo analyses have
     # none: nothing was ever written to disk for them.
     job_id = str(entry.get("jobId") or "")[:64] or None
+    if job_id and not await _owned_job(db, user, job_id):
+        # Somebody else's upload. Taken on trust, the id alone would hand over
+        # the whole analysis: ``_attach_result`` copies the full result from
+        # the store, ``/overlays`` mints a media token for the footage, and
+        # deleting the entry deletes the clip -- all on the strength of a
+        # twelve-character id that rides in the result URL and in the
+        # overlay's download filename. The entry is still saved; it just does
+        # not point at footage that is not theirs.
+        logger.warning("JOB_LINK_REFUSED", user_id=user.id, job_id=job_id)
+        entry.pop("jobId", None)
+        job_id = None
     profile_id = await _owned_profile_id(db, user, entry.get("profileId"))
     sport = entry.get("sport")
     kind = entry.get("kind")
@@ -140,6 +151,30 @@ async def _owned_profile_id(
         select(Profile.id).where(Profile.id == pid, Profile.user_id == user.id)
     )
     return int(owned) if owned else None
+
+
+async def _owned_job(db: AsyncSession, user: User, job_id: str) -> bool:
+    """Whether this account may link ``job_id`` to one of its history entries.
+
+    Two ways to be the owner, mirroring ``jobs.authorized_job``: the live job
+    in the store names this user, or -- once the store has forgotten the job
+    (a redeploy, or ``job_ttl_hours``) -- one of this user's own rows already
+    points at it, which is how it got there in the first place. A job nobody
+    remembers and nobody has claimed is NOT claimable: the files under that id
+    may still be on the volume, and "first to name it owns it" is the exact
+    rule this exists to refuse.
+    """
+    from app.core.jobs import JOBS
+
+    job = JOBS.get(job_id)
+    if job is not None:
+        return job.get("owner_user_id") == user.id
+    mine = await db.scalar(
+        select(Analysis.id).where(
+            Analysis.user_id == user.id, Analysis.job_id == job_id,
+        )
+    )
+    return mine is not None
 
 
 async def _enforce_cap(db: AsyncSession, user: User) -> None:

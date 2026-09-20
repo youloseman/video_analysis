@@ -1538,8 +1538,8 @@
               <summary>Delete account and all its data</summary>
               <div class="dd-body">
                 <p>Removes your account, saved analyses, usage history, feedback and order
-                  history. This cannot be undone. If you have an active subscription,
-                  cancel it in <b>Manage subscription</b> first.</p>
+                  history, and cancels any active subscription so nothing is charged
+                  afterwards. This cannot be undone.</p>
                 <button class="btn btn-outline btn-sm danger" type="button" id="delAccountBtn">Delete my account</button>
               </div>
             </details>
@@ -8392,8 +8392,8 @@ function deleteAccount(){
     title:'Delete your account?',
     body:`<p style="margin:0 0 10px">This permanently removes <b>${esc(auth.email)}</b>, every saved analysis,
       your usage history, any feedback you sent and your order history. It cannot be undone.</p>
-      <p class="hint" style="text-align:left;margin:0 0 10px">An active subscription is not cancelled by this —
-      cancel it in <b>Manage subscription</b> first, or you'll keep being billed.</p>
+      <p class="hint" style="text-align:left;margin:0 0 10px">An active subscription is cancelled at the same
+      time — you won't be billed again.</p>
       <label class="fld"><span>Confirm your password</span>
         <input type="password" id="delPass" autocomplete="current-password"></label>`,
     okLabel:'Delete permanently',
@@ -8410,7 +8410,12 @@ async function doDeleteAccount(password){
       headers:authHeaders({'Content-Type':'application/json'}),
       body:JSON.stringify({password})});
     if(r.status===401){ toast('Wrong password — your account was not deleted.'); return; }
-    if(!r.ok){ toast('Could not delete the account — please try again.'); return; }
+    if(!r.ok){
+      // A 502 here is "your subscription could not be cancelled, so nothing
+      // was deleted" -- the server's sentence says what to do about it.
+      const j=await r.json().catch(()=>({}));
+      toast(j.detail || 'Could not delete the account — please try again.',{duration:7000}); return;
+    }
     // Everything server-side is gone; drop the local copies too so nothing
     // lingers on this device.
     try{ localStorage.removeItem(TKEY); localStorage.removeItem(HKEY); }catch(e){}

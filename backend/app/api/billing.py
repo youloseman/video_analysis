@@ -150,6 +150,11 @@ def _base_url(request: Request) -> str:
 # switch plans. ``incomplete``/``canceled``/``unpaid`` are deliberately absent:
 # those never charge again, so a fresh Checkout is the right move.
 LIVE_SUB_STATUSES = ("active", "trialing", "past_due")
+# States in which Stripe has stopped charging for good. A subscription that
+# reaches one of these has ended, whether or not a ``deleted`` event follows,
+# so the tier it granted goes with it. ``incomplete`` is neither: the first
+# payment is still pending and may yet land.
+DEAD_SUB_STATUSES = ("unpaid", "canceled", "incomplete_expired")
 
 
 def has_live_subscription(user: User) -> bool:
@@ -158,6 +163,54 @@ def has_live_subscription(user: User) -> bool:
         user.stripe_customer_id
         and user.subscription_status in LIVE_SUB_STATUSES
     )
+
+
+async def cancel_live_subscriptions(user: User) -> list[str]:
+    """Stop billing this customer: cancel every subscription Stripe still runs
+    for them. Returns the ids cancelled.
+
+    Called from account deletion. Until it was, deleting an account removed
+    the user row and nothing else: the card kept being charged every period,
+    the renewal webhook found nobody to credit (``WEBHOOK_NO_USER``), and the
+    customer's first sign that anything was wrong was a statement line from a
+    service they had already left -- which is a chargeback, not a support
+    ticket. The privacy policy said "cancel first"; a promise the product has
+    to make the customer keep for it is not one.
+
+    Immediate cancellation, no proration: the account is going, so there is
+    no access left to keep until the period ends. Any Stripe failure raises --
+    a deletion that leaves a subscription billing is worse than one that has
+    to be retried.
+    """
+    _require_stripe()
+    customer_id = str(user.stripe_customer_id or "")
+
+    def _cancel_all() -> list[str]:
+        done: list[str] = []
+        subs = stripe.Subscription.list(customer=customer_id, status="all", limit=100)
+        for sub in subs.auto_paging_iter():
+            # ``canceled`` and ``incomplete_expired`` never bill again and
+            # cannot be cancelled twice. Everything else -- including
+            # ``incomplete``, which a late payment could still activate --
+            # is stopped.
+            if sub.status in ("canceled", "incomplete_expired"):
+                continue
+            stripe.Subscription.cancel(sub.id)
+            done.append(sub.id)
+        return done
+
+    try:
+        cancelled = await run_in_threadpool(_cancel_all)
+    except stripe.StripeError as e:  # noqa: BLE001
+        logger.warning("SUB_CANCEL_FAILED", err=str(e), user_id=user.id)
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "We couldn't cancel your subscription just now, so the account was "
+            "not deleted. Try again in a minute, or cancel it first under "
+            "Manage subscription.",
+        )
+    logger.info("SUBS_CANCELLED", user_id=user.id, subscriptions=cancelled)
+    return cancelled
 
 
 def _portal_url(customer_id: str, return_to: str) -> str:
@@ -1288,6 +1341,17 @@ async def _on_subscription_change(db: AsyncSession, obj: Any) -> None:
     if status_str in ("active", "trialing") and tier:
         _set_tier(user, tier)
         logger.info("SUB_SYNCED", user_id=user.id, tier=tier, status=status_str)
+    elif status_str in DEAD_SUB_STATUSES:
+        # The subscription stopped billing without a ``deleted`` event. That
+        # is what Stripe sends when the dashboard's failed-payment rule is
+        # "mark unpaid" rather than "cancel", when the first invoice was never
+        # paid, or when a cancellation arrives as an update. Until this
+        # branch existed the status was recorded and the tier kept -- a
+        # non-payer on the paid plan for as long as nobody noticed.
+        # ``past_due`` is deliberately not here: Stripe is still retrying
+        # the card, and the customer keeps access through the grace period.
+        _set_tier(user, TIER_STARTER)
+        logger.info("SUB_LAPSED", user_id=user.id, status=status_str)
 
 
 async def _on_subscription_deleted(db: AsyncSession, obj: Any) -> None:

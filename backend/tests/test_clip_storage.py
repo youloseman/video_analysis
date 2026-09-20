@@ -52,7 +52,21 @@ def store_clip(uploads, job_id: str, suffix: str = ".mov"):
     return clip
 
 
+def live_job(job_id: str, owner, **extra):
+    """Register a job in the store the way ``/analyze`` does, owned by ``owner``.
+
+    The client saves an entry seconds after the result appears, while the job
+    is still in memory -- and that live job is what proves the upload was
+    theirs. A save that names a job the store does not remember is refused
+    (see ``me._owned_job``), so every test that links one plants it first.
+    """
+    jobstore.JOBS[job_id] = {
+        "status": "completed", "owner_user_id": owner.id, "token": "t", **extra,
+    }
+
+
 async def save_entry(db, user, *, client_id="h1", job_id="j1"):
+    live_job(job_id, user)
     await me._upsert(db, user, {"id": client_id, "at": 1, "jobId": job_id})
     await db.commit()
 
@@ -74,6 +88,49 @@ async def test_a_photo_analysis_records_no_upload(db, make_user):
     await db.commit()
     row = (await db.execute(select(Analysis))).scalar_one()
     assert row.job_id is None
+
+
+async def test_another_accounts_job_cannot_be_linked(db, make_user):
+    """The id alone is not ownership. It rides in the result URL and in the
+    overlay's download filename, and until this check a stranger who had it
+    could save an entry naming it and receive the whole analysis: the full
+    result copied from the store, a media token for the footage, and the
+    power to delete the clip by deleting their own entry."""
+    victim = await make_user()
+    stranger = await make_user()
+    live_job("job-v", victim, result={"technique_score": 81, "angle_statistics": {"knee": 1}})
+    await me._upsert(db, stranger, {"id": "hX", "at": 1, "jobId": "job-v"})
+    await db.commit()
+    row = (await db.execute(select(Analysis).where(Analysis.user_id == stranger.id))).scalar_one()
+    assert row.job_id is None
+    assert row.result is None
+    assert "jobId" not in row.data
+    # And nothing downstream recognises them as the owner.
+    from app.services.retention import user_owns_job
+
+    assert not await user_owns_job(db, stranger.id, "job-v")
+
+
+async def test_a_job_the_store_has_forgotten_is_not_up_for_grabs(db, make_user):
+    """After a redeploy the store is empty but the files are still on the
+    volume. "Nobody remembers it" must not become "first to name it owns it"."""
+    user = await make_user()
+    await me._upsert(db, user, {"id": "h1", "at": 1, "jobId": "job-gone"})
+    await db.commit()
+    row = (await db.execute(select(Analysis))).scalar_one()
+    assert row.job_id is None
+
+
+async def test_the_owner_keeps_the_link_after_the_store_forgets(db, make_user):
+    """The legitimate version of the case above: the row that already points
+    at the job is the proof, so a later re-save that names it again is fine."""
+    user = await make_user()
+    await save_entry(db, user, job_id="job-abc")
+    jobstore.JOBS.clear()
+    await me._upsert(db, user, {"id": "h1", "at": 2, "jobId": "job-abc"})
+    await db.commit()
+    row = (await db.execute(select(Analysis))).scalar_one()
+    assert row.job_id == "job-abc"
 
 
 async def test_re_saving_from_the_thin_list_does_not_lose_the_link(db, make_user):

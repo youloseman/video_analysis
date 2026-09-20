@@ -361,17 +361,26 @@ async def delete_account(
     submitted feedback (which can carry an annotated photo of them), and order
     history. Uploaded footage is covered too: clips now outlive the analysis
     that produced them (see ``services.retention``), so they have to be removed
-    here rather than left to run out their own retention period.
+    here rather than left to run out their own retention period. A live
+    subscription is cancelled in Stripe first (``billing.cancel_live_subscriptions``).
     """
     if not verify_password(body.password, user.password_hash):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Wrong password — the account was not deleted.",
         )
 
+    from app.api.billing import cancel_live_subscriptions, has_live_subscription
     from app.models.analysis import Analysis
     from app.models.feedback import Feedback
     from app.models.order import ORDER_DELIVERED, ORDER_REFUNDED, Order
     from app.models.usage import UsageEvent
+
+    # Stop the billing before the row that Stripe's webhooks resolve a customer
+    # to is gone. Before anything else, and fatal on failure: every other step
+    # here is recoverable, a card that keeps being charged for a deleted
+    # account is not.
+    if has_live_subscription(user):
+        await cancel_live_subscriptions(user)
 
     # An Expert Review that was paid for but never delivered is money owed. It
     # is their account to delete, so this does not block -- but it must not

@@ -173,6 +173,40 @@ async def test_past_due_records_the_status_without_granting_a_tier(db, make_user
     assert user.tier == TIER_STARTER
 
 
+@pytest.mark.parametrize("status", ["unpaid", "canceled", "incomplete_expired"])
+async def test_a_subscription_that_stopped_billing_drops_the_tier(db, make_user, status):
+    """No ``deleted`` event arrives when the dashboard's failed-payment rule is
+    "mark unpaid", or when the opening invoice simply expires. Recording the
+    status and keeping the tier left a non-payer on the paid plan."""
+    user = await make_user(tier=TIER_FULL, stripe_customer_id="cus_1")
+    await _apply_event(db, subscription_event(
+        "customer.subscription.updated", status=status, price=PRICE_FULL_Y,
+    ))
+    await db.refresh(user)
+    assert user.subscription_status == status
+    assert user.tier == TIER_STARTER
+
+
+async def test_an_incomplete_first_payment_is_not_a_lapse(db, make_user):
+    """The card may still clear; nothing to take away yet either."""
+    user = await make_user(tier=TIER_STARTER, stripe_customer_id="cus_1")
+    await _apply_event(db, subscription_event(
+        "customer.subscription.updated", status="incomplete",
+    ))
+    await db.refresh(user)
+    assert user.tier == TIER_STARTER
+    assert user.subscription_status == "incomplete"
+
+
+async def test_a_lapse_never_downgrades_an_admin(db, make_user):
+    user = await make_user(tier=TIER_ADMIN, stripe_customer_id="cus_1")
+    await _apply_event(db, subscription_event(
+        "customer.subscription.updated", status="unpaid",
+    ))
+    await db.refresh(user)
+    assert user.tier == TIER_ADMIN
+
+
 async def test_an_unknown_price_does_not_grant_a_tier(db, make_user):
     """A price created in the Stripe dashboard but never added to the env must
     not silently map to a plan."""
