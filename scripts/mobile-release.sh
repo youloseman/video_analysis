@@ -15,8 +15,8 @@ branch=$(git rev-parse --abbrev-ref HEAD)
 if [ "$branch" != "main" ]; then
   echo "on '$branch' -- the app is built from main. Switch first." >&2; exit 1
 fi
-if [ -n "$(git status --porcelain)" ]; then
-  echo "working tree is not clean -- commit or stash first." >&2; exit 1
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "tracked files are modified -- commit or stash first (untracked files are fine: the build takes what is committed)." >&2; exit 1
 fi
 git fetch -q origin main
 if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
