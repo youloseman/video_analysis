@@ -20,8 +20,10 @@
 #      the certificate is useless without it.
 #   4. App Store Connect -> Apps: create the app (bundle ID ca.clarivagroups.flapp
 #      -- register the identifier at developer.apple.com/account first).
-#   5. Push to main (or start the workflow manually) -> build lands in
-#      TestFlight -> install on the iPhone via the TestFlight app.
+#   5. Run scripts/mobile-release.sh (pushes a mobile/* tag) or start the
+#      workflow manually -> build lands in TestFlight -> install on the
+#      iPhone via the TestFlight app. Codemagic -> app -> Settings needs the
+#      GitHub webhook once for tag builds to arrive (Settings shows the URL).
 #
 # Signing is done by the script steps below, NOT by an `environment.ios_signing`
 # block: that block only looks up files uploaded to Codemagic's own "Code
@@ -75,8 +77,20 @@ workflows:
         - ios_signing_creds   # CERTIFICATE_PRIVATE_KEY
       vars:
         BUNDLE_ID: ca.clarivagroups.flapp
+    # Built on a tag, not on every push. The app is a copy of the SPA taken
+    # at build time, so it needs a rebuild to show UI changes -- but a build
+    # per push is 12 min of Mac time each and the free plan has ~500 a month.
+    # So: push a tag when the phone should catch up, from the repo root:
+    #     scripts/mobile-release.sh           (tags mobile/<UTC date-time>, pushes it)
+    # Server-side changes need no build; the installed app already talks to
+    # the deployed API.
     triggering:
-      events: []            # manual builds for now; enable push triggers later
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'mobile/*'
+          include: true
+      cancel_previous_builds: true
     scripts:
       # Runs first so a signing failure explains itself. The automatic signing
       # step is silent when the API key can't do its job; this prints exactly
