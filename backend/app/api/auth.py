@@ -45,7 +45,18 @@ LOGIN_ATTEMPTS = 10          # per (ip, email) ...
 LOGIN_WINDOW_S = 15 * 60     # ... per 15 minutes
 RESET_REQUESTS = 3           # per email ...
 RESET_WINDOW_S = 60 * 60     # ... per hour
+# Sign-ups per IP. Login and reset were throttled; registration was not, and
+# it is the one that mints entitlements -- ten free analyses and a full free
+# preview per address, with no email verification in the way. Generous enough
+# for a club signing up from one wifi; not enough to script.
+REGISTER_PER_IP = 8
+REGISTER_WINDOW_S = 60 * 60
 _attempts: dict[str, deque[float]] = {}
+
+# A real bcrypt hash of nothing in particular, checked against when the
+# address is unknown, so "no such account" costs the same ~250 ms as "wrong
+# password" and the timing does not say which.
+_DUMMY_HASH = hash_password("timing-equaliser")
 
 
 def _throttle(key: str, limit: int, window_s: int) -> None:
@@ -128,7 +139,10 @@ class UserOut(BaseModel):
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-async def register(body: Credentials, db: AsyncSession = Depends(get_session)) -> TokenOut:
+async def register(
+    body: Credentials, request: Request = None, db: AsyncSession = Depends(get_session),
+) -> TokenOut:
+    _throttle(f"register:{_caller(request)}", REGISTER_PER_IP, REGISTER_WINDOW_S)
     exists = (
         await db.execute(select(User).where(User.email == body.email))
     ).scalar_one_or_none()
@@ -144,7 +158,7 @@ async def register(body: Credentials, db: AsyncSession = Depends(get_session)) -
     is_admin = bool(settings.admin_email) and body.email == settings.admin_email
     user = User(
         email=body.email,
-        password_hash=hash_password(body.password),
+        password_hash=await run_in_threadpool(hash_password, body.password),
         tier=TIER_ADMIN if is_admin else TIER_STARTER,
     )
     db.add(user)
@@ -168,7 +182,17 @@ async def login(
     ).scalar_one_or_none()
     # One message for both "no such account" and "wrong password": the form
     # must not double as a directory of who has signed up.
-    if user is None or not verify_password(body.password, user.password_hash):
+    # bcrypt is ~250 ms of CPU by design. Off the event loop, or every login
+    # freezes the single worker for everyone else -- and the throttle above
+    # only bounds attempts per (ip, email), not how many households log in
+    # at once. The unknown-address branch still pays the same time so the
+    # response cannot say which half of the check failed.
+    ok = user is not None and await run_in_threadpool(
+        verify_password, body.password, user.password_hash,
+    )
+    if user is None:
+        await run_in_threadpool(verify_password, body.password, _DUMMY_HASH)
+    if not ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password.")
     return TokenOut(
         token=create_token(user.id), email=user.email,
@@ -270,7 +294,7 @@ async def reset_password(body: ResetBody, db: AsyncSession = Depends(get_session
             status.HTTP_400_BAD_REQUEST,
             "This reset link is invalid or has expired — request a new one.",
         )
-    user.password_hash = hash_password(body.password)
+    user.password_hash = await run_in_threadpool(hash_password, body.password)
     await db.commit()
     logger.info("PASSWORD_RESET", user_id=user.id)
     return TokenOut(
@@ -364,7 +388,7 @@ async def delete_account(
     here rather than left to run out their own retention period. A live
     subscription is cancelled in Stripe first (``billing.cancel_live_subscriptions``).
     """
-    if not verify_password(body.password, user.password_hash):
+    if not await run_in_threadpool(verify_password, body.password, user.password_hash):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Wrong password — the account was not deleted.",
         )

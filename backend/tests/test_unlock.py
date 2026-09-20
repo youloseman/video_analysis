@@ -131,6 +131,92 @@ async def test_an_unlock_must_name_the_report_it_buys(db, make_user, monkeypatch
     assert exc.value.status_code == 400
 
 
+def _stripe_on(monkeypatch):
+    monkeypatch.setattr(
+        billing, "settings", dataclasses.replace(settings, stripe_secret_key="sk_test_x"),
+    )
+
+
+async def test_an_unlock_is_refused_for_a_report_that_is_not_theirs(db, make_user, monkeypatch):
+    _stripe_on(monkeypatch)
+    user = await make_user()
+    with pytest.raises(HTTPException) as exc:
+        await create_checkout(
+            CheckoutIn(plan="unlock", analysis_client_id="nope"), None, user, db,
+        )
+    assert exc.value.status_code == 404
+
+
+async def test_a_subscriber_is_not_charged_for_an_unlock(db, make_user, monkeypatch):
+    """Their plan already opens it; $4 would buy nothing. The client hides the
+    button, but a stale tab from before the upgrade still had it."""
+    _stripe_on(monkeypatch)
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await store(db, user)
+    with pytest.raises(HTTPException) as exc:
+        await create_checkout(
+            CheckoutIn(plan="unlock", analysis_client_id="h1"), None, user, db,
+        )
+    assert exc.value.status_code == 409
+
+
+async def test_an_already_unlocked_report_is_not_sold_twice(db, make_user, monkeypatch):
+    _stripe_on(monkeypatch)
+    user = await make_user(tier=TIER_STARTER)
+    await store(db, user, unlocked=123)
+    with pytest.raises(HTTPException) as exc:
+        await create_checkout(
+            CheckoutIn(plan="unlock", analysis_client_id="h1"), None, user, db,
+        )
+    assert exc.value.status_code == 409
+
+
+async def test_a_report_with_nothing_stored_is_not_sold(db, make_user, monkeypatch):
+    """Saved before full results were kept: the listing says sellable=false,
+    and now so does the server."""
+    _stripe_on(monkeypatch)
+    user = await make_user(tier=TIER_STARTER)
+    await store(db, user, result=None)
+    with pytest.raises(HTTPException) as exc:
+        await create_checkout(
+            CheckoutIn(plan="unlock", analysis_client_id="h1"), None, user, db,
+        )
+    assert exc.value.status_code == 409
+    assert "nothing to unlock" in exc.value.detail
+
+
+async def test_a_sellable_teaser_reaches_stripe(db, make_user, monkeypatch):
+    """The guard lets the legitimate case through to Checkout."""
+    _stripe_on(monkeypatch)
+    user = await make_user(tier=TIER_STARTER)
+    await store(db, user)
+    calls = {}
+
+    def fake_create(**kw):
+        calls.update(kw)
+
+        class _S:
+            url = "https://checkout.stripe.test/s"
+
+        return _S()
+
+    class _Cust:
+        id = "cus_new"
+
+    monkeypatch.setattr(billing.stripe.Customer, "create", lambda **kw: _Cust())
+    monkeypatch.setattr(billing.stripe.checkout.Session, "create", fake_create)
+    out = await create_checkout(
+        CheckoutIn(plan="unlock", analysis_client_id="h1"), _FakeRequest(), user, db,
+    )
+    assert out["url"].startswith("https://checkout.stripe.test/")
+    assert calls["mode"] == "payment"
+    assert calls["metadata"]["analysis_client_id"] == "h1"
+
+
+class _FakeRequest:
+    base_url = "https://getflapp.com/"
+
+
 async def test_paying_opens_exactly_that_report(db, make_user):
     user = await make_user(tier=TIER_STARTER)
     row = await store(db, user)

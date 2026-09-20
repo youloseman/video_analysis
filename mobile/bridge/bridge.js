@@ -96,12 +96,29 @@
   }, true);
 
   /* -- 4. No purchase paths in the store build ---------------------------- */
+  // Every selector here is a place the web app sells something. The list
+  // has to grow with the product: the Coach Notes card (.no-card, $12) was
+  // added to the report after this list was written and shipped a buy
+  // button into the native bundle for two days. When a new offer lands in
+  // the SPA, its container goes here in the same commit.
+  // The list is pinned by backend/tests/test_native_purchase_paths.py, in
+  // both directions: a surface the SPA sells must be here, and a selector
+  // here must still exist in the SPA. It drifted both ways once -- #botPricing
+  // and #ctaExpert were gone, and .addon-strip had become the ORDERS box, so
+  // the store build hid a subscriber's delivered reviews instead of a price.
   var st = document.createElement('style');
   st.textContent = [
-    '.flapp-native #navPricing', '.flapp-native #botPricing',
+    '.flapp-native #navPricing',
+    // Teaser card: the upgrade row and the price tag.
     '.flapp-native .upsell .cta-row', '.flapp-native .upsell .price-tag',
-    '.flapp-native #pricing .tier-cta', '.flapp-native #ctaExpert',
-    '.flapp-native .addon-strip'
+    // Pricing page: the tier buttons and the add-on cards' buy block.
+    '.flapp-native #pricing .tier-cta', '.flapp-native .solo-buy',
+    // Coach Notes / Expert Review offer on the report: the price tag and the
+    // button row (which also carries the "coming soon" and the Expert Review
+    // rung once notes are delivered).
+    '.flapp-native .no-price', '.flapp-native .no-cta',
+    // The per-report unlock, wherever the teaser card renders it.
+    '.flapp-native .btn-unlock'
   ].join(',') + '{display:none!important}';
   document.head.appendChild(st);
 

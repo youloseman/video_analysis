@@ -183,3 +183,50 @@ def test_forgot_over_http_needs_no_account():
     with patch.object(auth_api.notify, "send_email", return_value=True), TestClient(main.app) as c:
         r = c.post("/auth/forgot", json={"email": "nobody-at-all@example.invalid"})
     assert r.status_code == 200 and r.json() == {"sent": True}
+
+
+# --------------------------------------------------------------------------
+# Sign-up throttle. Registration mints entitlements (a free preview, ten
+# analyses a month) with no email verification in the way, and it was the one
+# form with no cap at all.
+# --------------------------------------------------------------------------
+async def test_sign_ups_are_capped_per_ip(db):
+    for i in range(auth_api.REGISTER_PER_IP):
+        out = await auth_api.register(
+            auth_api.Credentials(email=f"farm{i}@example.com", password="long-enough-pw"),
+            _request(), db,
+        )
+        assert out.tier == "starter"
+    with pytest.raises(HTTPException) as e:
+        await auth_api.register(
+            auth_api.Credentials(email="farm-x@example.com", password="long-enough-pw"),
+            _request(), db,
+        )
+    assert e.value.status_code == 429
+
+
+async def test_the_sign_up_cap_is_per_ip(db):
+    """A club on one wifi is not the same as a script: another address is
+    unaffected by the first one's tally."""
+    for i in range(auth_api.REGISTER_PER_IP):
+        await auth_api.register(
+            auth_api.Credentials(email=f"club{i}@example.com", password="long-enough-pw"),
+            _request("203.0.113.7"), db,
+        )
+    out = await auth_api.register(
+        auth_api.Credentials(email="elsewhere@example.com", password="long-enough-pw"),
+        _request("198.51.100.2"), db,
+    )
+    assert out.email == "elsewhere@example.com"
+
+
+async def test_an_unknown_address_costs_the_same_as_a_wrong_password(db, user):
+    """Both branches run a bcrypt check, so response time does not say which
+    addresses have accounts."""
+    with patch.object(auth_api, "verify_password", wraps=verify_password) as vp:
+        with pytest.raises(HTTPException):
+            await auth_api.login(
+                auth_api.LoginBody(email="nobody@example.com", password="whatever-pw"),
+                _request(), db,
+            )
+        assert vp.call_count == 1

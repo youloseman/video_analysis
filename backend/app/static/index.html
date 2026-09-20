@@ -6377,9 +6377,8 @@ async function openPortal(){
     const r=await fetch('/billing/portal',{method:'POST',headers:authHeaders()});
     const j=await r.json().catch(()=>({}));
     if(r.ok && j.url){ window.location.href=j.url; return; }
-    if([404,405,501,503].includes(r.status)){ toast('Billing management is being set up — check back soon.'); return; }
-    toast(j.detail || 'Could not open billing management.');
-  }catch(e){ toast('Could not open billing management.'); }
+    toast(j.detail || 'Could not open billing management — please try again in a minute.');
+  }catch(e){ toast('Network error — check your connection and try again.'); }
 }
 // Handle the return from Stripe Checkout (success_url / cancel_url).
 async function handleCheckoutReturn(){
@@ -6552,13 +6551,12 @@ async function startCheckout(plan, analysisIdArg){
         window.location.href=j.url; return;   // → Stripe hosted checkout
       }
     }
-    // Endpoint not live yet: 404/405 → friendly "coming soon".
-    if(r.status===404 || r.status===405 || r.status===501){
-      toast('Secure checkout is being set up — it goes live shortly. Thanks!'); return;
-    }
-    // Endpoint exists but returned an error — surface its message.
-    toast(j.detail || 'Could not start checkout — please try again.');
-  }catch(e){ toast('Secure checkout is being set up — it goes live shortly. Thanks!'); }
+    // Billing is live, so nothing here is "coming soon" any more: a failure
+    // is either the server's own sentence (503 sold out, 400 pick a report)
+    // or a plain error to retry. Telling a customer with a card out that
+    // checkout "is being set up" was the pre-launch wording.
+    toast(j.detail || 'Could not start checkout — please try again in a minute.');
+  }catch(e){ toast('Network error — check your connection and try again.'); }
 }
 
 /* Capture report — how the RECORDING limited the measurement.

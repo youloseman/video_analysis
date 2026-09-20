@@ -53,6 +53,7 @@ from app.models.user import (
     User,
 )
 from app.services import analytics, expert_review, notify, pricing
+from app.services.result_gating import ACCESS_FULL, access_for_stored
 
 
 def _now_ms() -> int:
@@ -213,10 +214,18 @@ async def cancel_live_subscriptions(user: User) -> list[str]:
     return cancelled
 
 
-def _portal_url(customer_id: str, return_to: str) -> str:
-    return stripe.billing_portal.Session.create(
+# Every call into the Stripe SDK below goes through the threadpool. The SDK
+# is synchronous -- each call is an HTTPS round trip of a few hundred
+# milliseconds -- and this service runs one worker on one event loop, so a
+# call made inline stalls every other request for its duration: the polls
+# of somebody else's analysis, the health check, the next login. Same
+# treatment ``notify.send_email`` already gets, for the same reason.
+async def _portal_url(customer_id: str, return_to: str) -> str:
+    portal = await run_in_threadpool(
+        stripe.billing_portal.Session.create,
         customer=customer_id, return_url=return_to,
-    ).url
+    )
+    return portal.url
 
 
 def tier_for_plan(plan: str) -> str | None:
@@ -379,6 +388,40 @@ async def _require_review_slot(db: AsyncSession) -> None:
     )
 
 
+async def _require_unlockable(
+    db: AsyncSession, user: User, analysis_client_id: str,
+) -> None:
+    """Refuse to charge $4 for a report that would open nothing.
+
+    The client hides the button in these cases; the server did not check, so
+    a stale tab or a hand-made request could pay for a report that is already
+    open (a subscriber, or one bought twice), or one with nothing stored
+    behind it (saved before full results were kept -- ``sellable`` is false
+    on the listing). Each of those is a refund to process later.
+    """
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == analysis_client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "That analysis is not in your history.",
+        )
+    if access_for_stored(user, row) == ACCESS_FULL:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "This report is already open for you.",
+        )
+    if not row.result:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This report was saved before full results were stored, so there "
+            "is nothing to unlock. Run the clip again to get a report you can open.",
+        )
+
+
 def _credit_session_key(user_id: int, analysis_client_id: str) -> str:
     """Idempotency key standing in for a Stripe session on a credit order.
 
@@ -475,11 +518,14 @@ async def create_checkout(
     # An unlock buys one specific report, so an unnamed one is meaningless --
     # and unlike the Expert Review there is no human downstream to work out
     # which was meant.
-    if body.plan == "unlock" and not (body.analysis_client_id or "").strip():
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Choose which analysis you'd like to unlock.",
-        )
+    if body.plan == "unlock":
+        unlock_id = (body.analysis_client_id or "").strip()[:64]
+        if not unlock_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Choose which analysis you'd like to unlock.",
+            )
+        await _require_unlockable(db, user, unlock_id)
     # Coach Notes are written ON one report; without it there is nothing to
     # write on, and unlike the review there is no picker in the queue.
     if body.plan == expert_review.PLAN_NOTES:
@@ -521,7 +567,7 @@ async def create_checkout(
     # client explain why.
     if is_subscription and has_live_subscription(user):
         try:
-            url = _portal_url(str(user.stripe_customer_id), f"{base}/")
+            url = await _portal_url(str(user.stripe_customer_id), f"{base}/")
         except stripe.StripeError as e:  # noqa: BLE001
             logger.warning("PORTAL_FAILED", err=str(e), user_id=user.id)
             raise HTTPException(
@@ -533,7 +579,8 @@ async def create_checkout(
     # Reuse the user's Stripe customer across purchases; create on first use.
     customer_id = user.stripe_customer_id
     if not customer_id:
-        customer = stripe.Customer.create(
+        customer = await run_in_threadpool(
+            stripe.Customer.create,
             email=user.email, metadata={"user_id": str(user.id)},
         )
         customer_id = customer.id
@@ -541,7 +588,8 @@ async def create_checkout(
         await db.commit()
 
     try:
-        session_obj = stripe.checkout.Session.create(
+        session_obj = await run_in_threadpool(
+            stripe.checkout.Session.create,
             mode="subscription" if is_subscription else "payment",
             customer=customer_id,
             client_reference_id=str(user.id),
@@ -1031,13 +1079,11 @@ async def customer_portal(
             status.HTTP_400_BAD_REQUEST, "No billing account yet — subscribe first.",
         )
     try:
-        portal = stripe.billing_portal.Session.create(
-            customer=user.stripe_customer_id, return_url=f"{_base_url(request)}/app",
-        )
+        url = await _portal_url(str(user.stripe_customer_id), f"{_base_url(request)}/app")
     except stripe.StripeError as e:  # noqa: BLE001
         logger.warning("PORTAL_FAILED", err=str(e), user_id=user.id)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Could not open billing portal.")
-    return {"url": portal.url}
+    return {"url": url}
 
 
 @router.post("/webhook")

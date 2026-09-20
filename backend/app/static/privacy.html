@@ -65,7 +65,7 @@
 <main>
 <div class="wrap">
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 20 August 2026</p>
+  <p class="updated">Last updated: 20 September 2026</p>
   <div class="speedline"></div>
 
   <p class="lede"><b>Short version:</b> We keep only what we need to run the service — your account email (if you sign up), your subscription tier, and a count of the analyses you run. Your uploaded video or photo is processed and then automatically deleted; it is never sold or handed to an advertiser. Only anonymous numeric measurements go to the AI that writes your coaching notes. If you buy an <b>Expert Review</b>, a real person reviews your clip. We run no advertising trackers.</p>
@@ -74,15 +74,14 @@
 
   <h2>1. What we collect</h2>
 
-  <h3>If you use Flapp without an account</h3>
+  <h3>If you visit without an account</h3>
   <ul>
-    <li>The <b>video or photo</b> you upload for analysis.</li>
-    <li>The <b>sport and position</b> you select (e.g. cycling, TT/Tri).</li>
-    <li>Your <b>IP address</b>, which reaches our server automatically with any web request.</li>
+    <li>Your <b>IP address</b>, which reaches our server automatically with any web request. You can read the site, the Academy and the sample reports without an account; running an analysis requires one.</li>
   </ul>
 
   <h3>If you create an account</h3>
   <ul>
+    <li>The <b>video or photo</b> you upload for analysis, and the <b>sport and position</b> you select (e.g. cycling, TT/Tri).</li>
     <li>Your <b>email address</b> and a <b>password</b> (we store only a salted one-way hash of the password — never the password itself).</li>
     <li>Your <b>subscription tier</b> and account creation date.</li>
     <li>A <b>usage record</b>: one row per analysis (timestamp and whether it was a video or a photo), used to enforce your plan's quota. It does not contain the media or the results.</li>
@@ -135,12 +134,12 @@
   </ul>
 
   <h2>6. Your IP address</h2>
-  <p>For anonymous visitors, we use the IP address for two purposes: to enforce the free-tier limit (a small number of analyses per day), and to limit how much feedback a single client can send.</p>
-  <p>For the analysis limit, IP addresses are kept in the server's memory on a rolling 24-hour window and cleared automatically — they are not written to a database, linked to your media, or shared. For feedback, we store a <b>one-way salted hash</b> of the IP alongside the feedback record — never the address itself — so that re-rating the same analysis updates your own entry instead of creating a duplicate. The hash cannot be used to contact you or to look you up elsewhere.</p>
+  <p>We use the IP address to limit how fast one client can sign up, sign in, ask for a password reset, or send feedback — protection against automated abuse, not tracking. Running an analysis requires an account, so the analysis quota is counted on your account, not on your address.</p>
+  <p>For the sign-up, sign-in and reset limits, IP addresses are kept in the server's memory for at most an hour and cleared automatically — they are not written to a database, linked to your media, or shared. For feedback, we store a <b>one-way salted hash</b> of the IP alongside the feedback record — never the address itself — so that re-rating the same analysis updates your own entry instead of creating a duplicate. The hash cannot be used to contact you or to look you up elsewhere.</p>
 
   <h2>7. Cookies and product analytics</h2>
   <!--ANALYTICS:OFF-->
-  <p>Flapp runs no analytics or advertising trackers. If you sign in, we use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking. Your remaining daily quota (for anonymous use) is stored in your own browser's local storage, on your device — not on our server.</p>
+  <p>Flapp runs no analytics or advertising trackers. If you sign in, we use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking.</p>
   <!--/ANALYTICS:OFF-->
   <!--ANALYTICS:ON-->
   <p>Flapp runs <b>no advertising trackers</b>, and nothing here is shared with an ad network or sold. We do use one <b>product analytics</b> tool — <b>PostHog</b> — to see how the app is actually used: which pages get opened, whether an analysis was started and whether it finished, when someone reaches a paywall, and when a purchase completes. It is what tells us which parts of the product are working, and we have no other way to know.</p>
@@ -153,7 +152,7 @@
   <p>What it does <b>not</b> record: your video or photo, the annotated frames, the coaching text, your password, your card details, or the message you write in a feedback box. <b>Session replay is turned off.</b></p>
   <p>PostHog stores a cookie and a browser-local id to recognise a returning visit. We honour your browser's <b>"Do Not Track"</b> setting: with it on, nothing is collected. You can also turn analytics off for this browser here:</p>
   <p><button type="button" id="phOptOut" class="optout">Turn off analytics on this device</button> <span id="phOptOutMsg" class="optout-msg" role="status"></span></p>
-  <p>If you sign in, we also use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking. Your remaining daily quota (for anonymous use) is stored in your own browser's local storage, on your device — not on our server.</p>
+  <p>If you sign in, we also use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking.</p>
   <script>
   /* The button only exists as a working control when analytics is actually
      configured (see backend/app/services/analytics.py) -- otherwise there is
@@ -199,7 +198,7 @@
     <tr><td>Uploaded video (standard)</td><td><b>7 days</b> on the free plan, <b>30 days</b> on a paid plan, from the analysis — then deleted automatically. Sooner if you delete the analysis or your account.</td></tr>
     <tr><td>Uploaded photo</td><td>Not stored. A photo analysis is done in memory and the file is never written to disk.</td></tr>
     <tr><td>Uploaded video (Expert Review)</td><td>Kept until the review is delivered — however long that takes — then deleted within 7 days.</td></tr>
-    <tr><td>Anonymous IP (free-tier limit)</td><td>Rolling 24 hours, in memory only.</td></tr>
+    <tr><td>IP address (sign-up / sign-in / reset limits)</td><td>At most 1 hour, in memory only.</td></tr>
     <tr><td>Result feedback (rating, comment, technical context)</td><td>Kept while it's still useful for improving the analyzer, unless you ask us to delete it.</td></tr>
     <tr><td>Annotated still attached to feedback (opt-in only)</td><td>Deleted once we've acted on that report, or on request.</td></tr>
     <tr><td>Account (email, password hash, tier)</td><td>Until you delete your account — which you can do yourself, in the app.</td></tr>

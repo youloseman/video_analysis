@@ -88,6 +88,7 @@ from app.core.compression import (
 )
 from app.core.config import settings
 from app.core.db import SessionLocal, get_session, init_db
+from app.core.headers import SecurityHeadersMiddleware
 from app.core.jobs import (
     ANALYSIS_SLOTS,
     JOBS,
@@ -108,6 +109,7 @@ from app.services import analytics, pricing
 from app.services.analytics import log_analytics_configuration
 from app.services.export import ai_export
 from app.services.notify import log_email_configuration
+from app.services.preview_release import release_orphaned_previews
 from app.services.result_gating import (
     ACCESS_FULL,
     ACCESS_PREVIEW,
@@ -317,6 +319,12 @@ async def lifespan(app: FastAPI):
     if keep is not None:
         swept = await run_in_threadpool(sweep_upload_dirs, keep)
         logger.info("SWEEP_STARTUP", dirs_deleted=swept, retained=len(keep))
+    # The same restart that emptied the store took every in-flight analysis
+    # with it, and a new account's one free preview if that is what was
+    # running. Hand those back before the first request, not after the first
+    # complaint (see services/preview_release.py).
+    async with SessionLocal() as db:
+        await release_orphaned_previews(db)
     sweeper = asyncio.create_task(sweeper_loop())
     try:
         yield
@@ -346,6 +354,9 @@ app = FastAPI(
 # app/core/compression.py for why the stock middleware would break the overlay
 # video.
 app.add_middleware(SelectiveGZipMiddleware, minimum_size=1000)
+# HSTS, no framing, no sniffing, referrer trimmed -- on every response, the
+# streamed video included. See core/headers.py for what is deliberately absent.
+app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS. The SPA is served by THIS app, so the website needs no cross-origin
 # access at all -- every request it makes is same-origin, and CORS headers
