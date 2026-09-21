@@ -2315,20 +2315,8 @@ function showCaptureGuide(){
 function noFileHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
   hintMsg(auth ? `Upload a ${noun} to continue` : `Sign up now, or add a ${noun} first — it runs right after`);
-  syncSteps();
-}
-/* A step whose choice is in place shows its numeral filled with the speed
-   gradient; one still waiting stays an outline. Mode, sport and position
-   have defaults, so on a fresh screen 03 is the one outline that matters. */
-function syncSteps(){
-  // Details are all optional, so that step is never "waiting": filled like
-  // the others, leaving the footage step as the one outline that matters.
-  const done={stepWhat:true, positionField:state.sport==='bike', stepFilm:true,
-    stepClip:!!state.file && (!isPair() || !!state.fileB), stepDetails:true};
-  for(const id in done){ const el=$('#'+id); if(el) el.classList.toggle('done', done[id]); }
 }
 function readyHint(){
-  syncSteps();
   if(!state.file){ noFileHint(); return; }
   if(isPair() && !state.fileB){ hintMsg('Add the right-side clip to run the two-sided session'); return; }
   const sportTxt = state.sport==='bike' ? `Cycling — ${POSITION_NAMES[state.position]}` : 'Running';
@@ -2651,7 +2639,7 @@ function updatePosHint(){
   el.innerHTML=POSITION_HINTS[state.position]||'';
 }
 updatePosHint();   // show the default position's description on load
-syncWhatTiles(); syncFilmTiles(); syncSteps();
+syncWhatTiles(); syncFilmTiles();
 $('#pAgain').addEventListener('click',()=>reset());
 lmedBind(); vedBind();
 

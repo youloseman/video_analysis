@@ -983,13 +983,16 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .ustep{background:var(--c-bg);border:1px solid var(--c-line);padding:18px 20px 20px;margin:0 0 12px}
 .ustep-head{display:flex;align-items:flex-start;gap:14px;margin:0 0 14px}
 /* The step numeral is the landing's "How it works" numeral: Archivo italic,
-   no fill, a blue outline. */
+   filled with the speed gradient. Every step reads the same -- an earlier
+   version outlined the one still waiting for a file, and it read as a
+   broken numeral rather than a state. Solid blue is the fallback where a
+   browser cannot clip a background to text. */
 .ustep-n{flex:none;min-width:56px;font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:40px;line-height:1;
-  color:transparent;-webkit-text-stroke:1.5px var(--c-blue);letter-spacing:-.02em;display:flex;align-items:flex-start;margin-top:-2px}
+  color:var(--c-blue);letter-spacing:-.02em;display:flex;align-items:flex-start;margin-top:-2px}
+@supports (-webkit-background-clip:text) or (background-clip:text){
+  .ustep-n{color:transparent;background:var(--g-speed);-webkit-background-clip:text;background-clip:text}
+}
 .ustep-n::before{counter-increment:ustep;content:counter(ustep,decimal-leading-zero)}
-/* A step whose choice is in place: the numeral filled with the speed
-   gradient instead of outlined. */
-.ustep.done .ustep-n{-webkit-text-stroke:0;color:transparent;background:var(--g-speed);-webkit-background-clip:text;background-clip:text}
 .ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:17px;line-height:1.3;color:var(--c-ink);margin:4px 0 2px;text-transform:none;letter-spacing:0}
 .ustep-head p{font-size:13px;color:var(--c-ink-faint);margin:0;line-height:1.45}
 /* Inside a step the rows sit on hairlines; the last one has no rule under it. */
