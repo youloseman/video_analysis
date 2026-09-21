@@ -176,6 +176,7 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
   display:inline-flex;align-items:flex-end;gap:3px;line-height:1;
 }
 .wordmark .dot{width:6px;height:6px;border-radius:50%;background:var(--c-coral);transform:translateY(-10px)}
+.wordmark .mark{width:34px;height:28px;flex:none;align-self:center;margin-right:4px;transform:translateY(-1px)}
 .nav-links{display:flex;gap:22px;margin-left:6px}
 .nav-links a{color:rgba(255,255,255,.8);text-decoration:none;font-weight:700;font-size:14px;padding:6px 2px;transition:color .15s}
 .nav-links a:hover{color:#fff}
@@ -837,11 +838,24 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
 </style>
 </head>
 <body>
+<!-- The brand mark (docs/design-assets/logo/mark-mono.svg): the F with two
+     motion trails and the coral joint dot. Letters take currentColor; the dot
+     is the wordmark's coral and nothing else. Same symbol as the app shell. -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-mark" viewBox="0 0 780 632">
+    <g transform="translate(148 -168)">
+      <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".22" transform="translate(155.5 0) skewX(-11) translate(-148 0)"/>
+      <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".45" transform="translate(155.5 0) skewX(-11) translate(-74 0)"/>
+      <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" transform="translate(155.5 0) skewX(-11)"/>
+      <circle cx="446" cy="246" r="78" fill="#F1553F" transform="translate(155.5 0) skewX(-11)"/>
+    </g>
+  </symbol>
+</svg>
 
 <!-- ================= NAV ================= -->
 <nav class="nav" id="nav" aria-label="Main">
   <div class="nav-inner">
-    <a class="wordmark" href="/">Flapp<span class="dot"></span></a>
+    <a class="wordmark" href="/"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>Flapp<span class="dot"></span></a>
     <div class="nav-links">
       <a href="#report">The report</a>
       <!-- Named in the nav because it is what most visitors arrive for, and
@@ -1352,7 +1366,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <a class="wordmark" href="/">Flapp<span class="dot"></span></a>
+        <a class="wordmark" href="/"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>Flapp<span class="dot"></span></a>
         <p class="foot-tag">Side-view running &amp; cycling form analysis. Film it, measure it, fix it.</p>
       </div>
       <div class="foot-col">

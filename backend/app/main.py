@@ -1222,9 +1222,8 @@ def favicon_svg() -> FileResponse:
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon_ico() -> FileResponse:
-    # No .ico asset; hand back the SVG so browsers requesting /favicon.ico still
-    # get the brand mark instead of a 404.
-    return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+    # A real 16/32/48 ICO, built from the SVG master by scripts/build_brand.py.
+    return FileResponse(STATIC_DIR / "favicon.ico", media_type="image/x-icon")
 
 
 @app.get("/og-image.png", include_in_schema=False)

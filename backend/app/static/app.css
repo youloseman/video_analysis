@@ -735,6 +735,9 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .wordmark{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;line-height:1;
   text-transform:none;letter-spacing:-.02em;color:var(--c-ink);display:flex;align-items:flex-end;gap:3px;cursor:pointer;text-decoration:none}
 .wordmark .dot{width:6px;height:6px;border-radius:50%;background:var(--c-coral);transform:translateY(-10px)}
+/* The mark before the word, sized as in the lockup master: about one and a
+   half times the wordmark's size, its F sitting on the word's baseline. */
+.wordmark .mark{width:34px;height:28px;flex:none;align-self:center;margin-right:4px;transform:translateY(-1px)}
 
 .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);z-index:40;
   background:var(--c-bg);border-right:1px solid var(--c-line);display:flex;flex-direction:column;
