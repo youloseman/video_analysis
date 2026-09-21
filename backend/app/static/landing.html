@@ -173,10 +173,12 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 .wordmark{
   font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;
   text-transform:none;letter-spacing:-.02em;color:#fff;text-decoration:none;
-  display:inline-flex;align-items:flex-end;gap:3px;line-height:1;
+  display:inline-flex;align-items:center;gap:9px;line-height:1;
 }
-.wordmark .dot{width:6px;height:6px;border-radius:50%;background:var(--c-coral);transform:translateY(-10px)}
-.wordmark .mark{width:34px;height:28px;flex:none;align-self:center;margin-right:4px;transform:translateY(-1px)}
+/* The lockup on the dark ground: the navy tile keeps a hairline so it reads
+   as a tile, the dot lives in it and nowhere else. */
+.wordmark .wm-tile{flex:none;width:30px;height:30px;border-radius:6px;background:#14294B;border:1px solid rgba(255,255,255,.18);box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+.wordmark .wm-tile .mark{width:21px;height:17px;color:#fff}
 .nav-links{display:flex;gap:22px;margin-left:6px}
 .nav-links a{color:rgba(255,255,255,.8);text-decoration:none;font-weight:700;font-size:14px;padding:6px 2px;transition:color .15s}
 .nav-links a:hover{color:#fff}
@@ -829,6 +831,8 @@ footer{background:#060F1F;color:rgba(255,255,255,.75);padding:64px 0 44px;font-s
 @media(max-width:820px){.foot-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.foot-grid{grid-template-columns:1fr}}
 footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
+footer .wordmark .wm-tile{width:36px;height:36px}
+footer .wordmark .wm-tile .mark{width:25px;height:20px}
 .foot-tag{max-width:34ch;color:rgba(255,255,255,.5);font-size:13.5px}
 .foot-col h4{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.62);margin-bottom:14px;font-weight:600}
 .foot-col a{display:block;color:rgba(255,255,255,.78);text-decoration:none;padding:4px 0;font-weight:600}
@@ -855,7 +859,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
 <!-- ================= NAV ================= -->
 <nav class="nav" id="nav" aria-label="Main">
   <div class="nav-inner">
-    <a class="wordmark" href="/"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>Flapp<span class="dot"></span></a>
+    <a class="wordmark" href="/"><span class="wm-tile"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>Flapp</a>
     <div class="nav-links">
       <a href="#report">The report</a>
       <!-- Named in the nav because it is what most visitors arrive for, and
@@ -1366,7 +1370,7 @@ footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <a class="wordmark" href="/"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>Flapp<span class="dot"></span></a>
+        <a class="wordmark" href="/"><span class="wm-tile"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>Flapp</a>
         <p class="foot-tag">Side-view running &amp; cycling form analysis. Film it, measure it, fix it.</p>
       </div>
       <div class="foot-col">

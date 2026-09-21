@@ -35,7 +35,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
    gradient -- the real layout sits blurred underneath and is the argument. */
 .upsell{position:relative;border:1px solid var(--c-line);border-radius:var(--radius);
   background:var(--c-panel-blue);padding:20px 22px;margin-top:20px}
-.upsell h3{font-family:var(--f-display);font-weight:600;font-size:18px;line-height:1.3;color:var(--c-ink);margin:2px 0 4px}
+.upsell h3{font-family:var(--f-display);font-weight:600;font-size:18px;line-height:1.3;color:var(--c-head);margin:2px 0 4px}
 .upsell p{color:var(--c-ink-soft);max-width:60ch;margin-bottom:14px;font-size:13.5px}
 .upsell ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin:0 0 16px}
 @media(max-width:560px){.upsell ul{grid-template-columns:1fr}}
@@ -82,7 +82,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .pricing-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
 .pricing-head .eyebrow{display:none}
 .pricing-head h2{font-family:var(--f-display);font-weight:600;font-size:20px;line-height:1.3;
-  color:var(--c-ink);letter-spacing:0;margin:0}
+  color:var(--c-head);letter-spacing:0;margin:0}
 .pricing-head p{color:var(--c-ink-soft);max-width:52ch;margin:0;font-size:13.5px;flex:1 1 320px}
 .billtoggle{display:inline-flex;margin:0;padding:0;border:1px solid var(--c-line-strong);
   border-radius:var(--radius);background:var(--c-bg);overflow:hidden}
@@ -371,7 +371,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
   background:var(--c-bg);max-width:560px;margin:0 auto;width:100%}
 .emptybox .ic-lg{color:var(--c-ink-faint)}
 .emptybox .empty-fig{margin-bottom:4px}
-.emptybox h4{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-ink);margin:0}
+.emptybox h4{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:0}
 .emptybox p{margin:0;max-width:44ch;color:var(--c-ink-soft);font-size:13.5px;line-height:1.55}
 .emptybox .btn{margin-top:4px}
 .emptybox .emptysub{font-size:12.5px;color:var(--c-ink-faint)}
@@ -733,17 +733,17 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 /* The wordmark: Archivo, heavy italic, lowercase, letters in ink; a round
    coral dot after it -- the one coral in the product. Never tracked caps. */
 .wordmark{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;line-height:1;
-  text-transform:none;letter-spacing:-.02em;color:var(--c-ink);display:flex;align-items:flex-end;gap:3px;cursor:pointer;text-decoration:none}
-.wordmark .dot{width:6px;height:6px;border-radius:50%;background:var(--c-coral);transform:translateY(-10px)}
-/* The mark before the word, sized as in the lockup master: about one and a
-   half times the wordmark's size, its F sitting on the word's baseline. */
-.wordmark .mark{width:34px;height:28px;flex:none;align-self:center;margin-right:4px;transform:translateY(-1px)}
+  text-transform:none;letter-spacing:-.02em;color:var(--c-head);display:flex;align-items:center;gap:9px;cursor:pointer;text-decoration:none}
+/* The lockup: the app-icon tile, then the name. The coral dot lives in the
+   tile and nowhere else -- a second dot after the word, or a bare F beside
+   "Flapp", read as the mark said twice. */
+.wordmark .wm-tile{flex:none;width:30px;height:30px;border-radius:var(--radius-lg);background:var(--c-brand-navy);display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.wordmark .wm-tile .mark{width:21px;height:17px;color:#fff}
 
 .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);z-index:40;
   background:var(--c-bg);border-right:1px solid var(--c-line);display:flex;flex-direction:column;
   padding:0 8px 12px;gap:0}
 .sidebar > .wordmark{height:56px;padding:0 10px;font-size:22px;border-bottom:1px solid var(--c-line);margin:0 -8px 8px;padding-left:18px;align-items:center}
-.sidebar > .wordmark .dot{transform:translateY(-6px)}
 .sidenav{display:flex;flex-direction:column;gap:1px;margin-top:4px;flex:1}
 /* Where I am, not what I chose: the current item is a tint plus a 2 px accent
    bar and an accent glyph -- never a filled block. Hover steps to sunken. */
@@ -847,20 +847,20 @@ main{padding:24px 0 64px}
 /* The page header: title left, its one-line lede beside it, the quota or the
    one action on the right. Mirrors the artboards' 56 px band. */
 .pagehead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 20px;padding:0 0 14px;border-bottom:1px solid var(--c-line)}
-.pagehead h2,.pagehead .ph-title{font-family:var(--f-display);font-weight:600;font-size:16px;line-height:1.3;color:var(--c-ink);margin:0;text-transform:none;letter-spacing:0}
+.pagehead h2,.pagehead .ph-title{font-family:var(--f-display);font-weight:600;font-size:16px;line-height:1.3;color:var(--c-head);margin:0;text-transform:none;letter-spacing:0}
 .pagehead .ph-lede{font-size:13px;color:var(--c-ink-faint);flex:1 1 200px}
 .pagehead .ph-right{margin-left:auto;font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint);display:flex;align-items:center;gap:12px}
 .card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius)}
 .cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
 /* Section headings speak in the landing's voice: Archivo italic, like the
    band headline and the score. The eyebrow above stays mono. */
-h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--c-ink);text-transform:none;
+h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--c-head);text-transform:none;
   font-size:22px;line-height:1.25;letter-spacing:-.01em;margin:4px 0 8px}
 .blockhead{margin:32px 0 12px}
 .blockhead .eyebrow{display:inline-flex;align-items:center;gap:8px}
 .blockhead .eyebrow .ic{width:13px;height:13px}
 .blockhead h3{font-family:var(--f-brand);font-weight:900;font-style:italic;text-transform:none;
-  font-size:22px;line-height:1.25;color:var(--c-ink);letter-spacing:-.01em;margin:2px 0 0}
+  font-size:22px;line-height:1.25;color:var(--c-head);letter-spacing:-.01em;margin:2px 0 0}
 /* The section masthead of a report reads as one line: "Report · Your results". */
 .screenhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 16px;padding-bottom:14px;border-bottom:1px solid var(--c-line)}
 .screenhead h2{margin:0;font-size:16px}
@@ -978,7 +978,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
    hidden step (Position, for a run) leaves no gap in the numbering. */
 #uploader{max-width:900px;margin:0;display:block;counter-reset:ustep}
 .uploader{padding:0;margin-top:0;position:relative;z-index:5;width:100%;background:transparent;border:0}
-.uphead{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-ink);margin:0}
+.uphead{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:0}
 .uploader .pagehead{margin-bottom:16px}
 .ustep{background:var(--c-bg);border:1px solid var(--c-line);padding:18px 20px 20px;margin:0 0 12px}
 .ustep-head{display:flex;align-items:flex-start;gap:14px;margin:0 0 14px}
@@ -993,7 +993,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   .ustep-n{color:transparent;background:var(--g-speed);-webkit-background-clip:text;background-clip:text}
 }
 .ustep-n::before{counter-increment:ustep;content:counter(ustep,decimal-leading-zero)}
-.ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:17px;line-height:1.3;color:var(--c-ink);margin:4px 0 2px;text-transform:none;letter-spacing:0}
+.ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:17px;line-height:1.3;color:var(--c-head);margin:4px 0 2px;text-transform:none;letter-spacing:0}
 .ustep-head p{font-size:13px;color:var(--c-ink-faint);margin:0;line-height:1.45}
 /* Inside a step the rows sit on hairlines; the last one has no rule under it. */
 .ustep .askbox:last-child,.ustep .switch:last-child,.ustep .overlay-locked:last-child{border-bottom:0}
@@ -1278,7 +1278,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
    chrome; elapsed time in mono. */
 .progress-card{padding:28px 0;max-width:640px;margin:0}
 .progress-card{background:transparent;border:0}
-.progress-card h2{font-family:var(--f-display);font-weight:600;text-transform:none;color:var(--c-ink);font-size:20px;text-align:left}
+.progress-card h2{font-family:var(--f-display);font-weight:600;text-transform:none;color:var(--c-head);font-size:20px;text-align:left}
 .jobchip{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;margin:8px 0 20px}
 .jobchip .fchip{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);background:transparent;
   border:1px solid var(--c-line-strong);border-radius:var(--radius-xs);padding:2px 8px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1962,12 +1962,12 @@ details.raw pre{background:var(--c-media-bg);color:#C6CCD6;font-family:var(--f-m
 
 /* ---------- Error / limit ---------- */
 .error-card{padding:24px;border-left:3px solid var(--st-bad-fill);max-width:640px}
-.error-card h2{font-family:var(--f-display);font-weight:600;text-transform:none;color:var(--c-ink);font-size:20px;margin-bottom:8px}
+.error-card h2{font-family:var(--f-display);font-weight:600;text-transform:none;color:var(--c-head);font-size:20px;margin-bottom:8px}
 .error-card p{color:var(--c-ink-soft)}
 .error-card ul{margin:14px 0 0;padding-left:20px;color:var(--c-ink-soft);font-size:13.5px;line-height:1.7}
 .error-card .actions-row{margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .limit-card{border-left-color:var(--st-warn-fill)}
-.limit-card h2{color:var(--c-ink)}
+.limit-card h2{color:var(--c-head)}
 .limit-card .bigwait{font-family:var(--f-mono);font-weight:500;color:var(--c-ink)}
 
 footer{border-top:1px solid var(--c-line);padding:20px 0 40px;font-size:11.5px;color:var(--c-ink-faint);font-family:var(--f-mono)}
@@ -1980,7 +1980,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .acct-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
 @media(max-width:900px){ .acct-grid{grid-template-columns:1fr} }
 .acct-card{background:var(--c-bg);border:1px solid var(--c-line);margin-bottom:16px}
-.acct-card h3{font-family:var(--f-display);font-weight:600;font-size:15px;color:var(--c-ink);margin:0;padding:12px 18px;border-bottom:1px solid var(--c-line);display:flex;align-items:center;gap:10px}
+.acct-card h3{font-family:var(--f-display);font-weight:600;font-size:15px;color:var(--c-head);margin:0;padding:12px 18px;border-bottom:1px solid var(--c-line);display:flex;align-items:center;gap:10px}
 .acct-row{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 18px;border-top:1px solid var(--c-line);font-size:13.5px}
 .acct-row:first-of-type,.acct-card h3 + .acct-row{border-top:0}
 .acct-row .k{color:var(--c-ink-faint)}
@@ -1996,7 +1996,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .acct-p{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:0 0 10px}
 .acct-body{padding:14px 18px;border-top:1px solid var(--c-line)}
 .acct-body:first-of-type{border-top:0}
-.acct-body h4{font-family:var(--f-display);font-weight:600;font-size:14px;color:var(--c-ink);margin:0 0 6px}
+.acct-body h4{font-family:var(--f-display);font-weight:600;font-size:14px;color:var(--c-head);margin:0 0 6px}
 .acct-foot{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);line-height:1.7;margin-top:6px}
 .acct-foot a{color:var(--c-blue-dk);text-decoration:none}
 @media(max-width:560px){ .acct-row{grid-template-columns:1fr;gap:4px} }
@@ -2111,7 +2111,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .wn-entry.is-new::before{background:var(--c-blue)}
 .wn-when{font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--c-ink-faint);display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .wn-badge{font-family:var(--f-mono);font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--c-blue-dk);border:1px solid var(--c-blue-dk);padding:1px 6px;border-radius:var(--radius-xs)}
-.wn-entry h3{font-family:var(--f-display);text-transform:none;color:var(--c-ink);font-weight:600;font-size:16px;line-height:1.3;margin:0 0 8px}
+.wn-entry h3{font-family:var(--f-display);text-transform:none;color:var(--c-head);font-weight:600;font-size:16px;line-height:1.3;margin:0 0 8px}
 .wn-entry p{font-size:14px;line-height:1.65;color:var(--c-ink);margin:8px 0;max-width:66ch}
 .wn-entry ul,.wn-entry ol{margin:8px 0;padding-left:20px}
 .wn-entry li{font-size:14px;line-height:1.65;color:var(--c-ink);margin:4px 0;max-width:64ch}

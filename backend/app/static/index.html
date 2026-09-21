@@ -170,7 +170,7 @@
          already opened the menu. -->
     <span class="newdot hidden" id="navToggleDot" aria-hidden="true"></span>
   </button>
-  <div class="wordmark" id="wordmarkM" role="link" tabindex="0"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>Flapp<span class="dot"></span></div>
+  <div class="wordmark" id="wordmarkM" role="link" tabindex="0"><span class="wm-tile"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>Flapp</div>
   <!-- What is left this month, in the corner the artboards keep it in. -->
   <span class="quota-top" id="quotaTop"></span>
   <div class="authbox authbox-m" id="authboxM"></div>
@@ -192,7 +192,7 @@
 
 <!-- Left sidebar (primary navigation) -->
 <aside class="sidebar" id="sidebar" aria-label="Main">
-  <div class="wordmark" id="wordmark" role="link" tabindex="0"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>Flapp<span class="dot"></span></div>
+  <div class="wordmark" id="wordmark" role="link" tabindex="0"><span class="wm-tile"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>Flapp</div>
   <nav class="sidenav" aria-label="Site">
     <!-- Where you go, in the order the artboards list it. Nothing in the nav
          is filled: the one filled button on a screen is the screen's action.
@@ -7635,6 +7635,24 @@ function shareVerdict(score){
    with, then wait for the font set to settle. If Google Fonts is blocked or the
    API is missing we just fall through and the CSS fallbacks apply. */
 const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // the wordmark, nothing else
+/* The brand mark on a canvas: the same F, trails and dot as the #i-mark
+   symbol, drawn inside a navy tile of side `s` at (px,py). */
+const MARK_F=new Path2D('M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z');
+function drawMarkTile(x, px, py, s){
+  x.save();
+  x.fillStyle='#14294B'; x.beginPath(); x.roundRect(px,py,s,s,s*0.23); x.fill();
+  x.lineWidth=2; x.strokeStyle='rgba(255,255,255,.18)'; x.stroke();
+  // the symbol's viewBox is 780 x 632; the mark fills ~70% of the tile
+  const k=(s*0.7)/780; x.translate(px+s*0.15, py+(s-632*k)/2); x.scale(k,k); x.translate(148,-168);
+  const skew=Math.tan(-11*Math.PI/180);
+  for(const [dx,a] of [[-148,.22],[-74,.45],[0,1]]){
+    x.save(); x.translate(155.5,0); x.transform(1,0,skew,1,0,0); x.translate(dx,0);
+    x.globalAlpha=a; x.fillStyle='#fff'; x.fill(MARK_F); x.restore();
+  }
+  x.save(); x.translate(155.5,0); x.transform(1,0,skew,1,0,0);
+  x.fillStyle='#F1553F'; x.beginPath(); x.arc(446,246,78,0,7); x.fill(); x.restore();
+  x.restore();
+}
 const CARD_BODY='"IBM Plex Sans",system-ui,sans-serif';  // labels
 const CARD_MONO='"IBM Plex Mono",ui-monospace,Menlo,monospace';   // every numeral
 const CARD_FACES=['900 italic 58px Archivo','900 italic 104px Archivo','500 40px "IBM Plex Mono"',
@@ -7704,12 +7722,11 @@ async function buildShareCard(card){
     x.fillStyle=bg; x.fillRect(0,0,W,H);
   }
 
-  // ---- header: the wordmark (letters inverse, the dot unchanged) ----
+  // ---- header: the lockup -- the navy tile with the mark, then the name ----
+  drawMarkTile(x, P, HEAD/2-40, 80);
   x.textBaseline='middle'; x.textAlign='left';
   x.fillStyle='#fff'; x.font=`900 italic 58px ${CARD_DISPLAY}`;
-  x.fillText('Flapp',P,HEAD/2);
-  const wm=x.measureText('Flapp').width;
-  x.fillStyle=CORAL; x.beginPath(); x.arc(P+wm+16,HEAD/2-14,8,0,7); x.fill();
+  x.fillText('Flapp',P+80+24,HEAD/2);
   x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 22px ${CARD_MONO}`;
   x.fillText(sport==='bike'?'CYCLING · TECHNIQUE':'RUNNING · TECHNIQUE',W-P,HEAD/2);
 

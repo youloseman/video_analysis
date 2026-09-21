@@ -95,12 +95,11 @@ OG_HTML = """<!doctype html><html><head>
   .word{position:absolute;left:96px;top:378px;display:flex;align-items:flex-end;gap:10px;
         font-family:Archivo,sans-serif;font-style:italic;font-weight:900;font-size:96px;line-height:1;
         letter-spacing:-.02em;color:#fff}
-  .word i{display:block;width:22px;height:22px;border-radius:50%%;background:#F1553F;transform:translateY(-52px)}
   .tag{position:absolute;left:96px;top:504px;font-size:34px;color:#C6CCD6}
   .url{position:absolute;right:96px;bottom:52px;font-size:26px;font-weight:600;color:#8A929E}
 </style></head><body><div class="wrap">
   <img class="mark" src="%(mark)s">
-  <div class="word">Flapp<i></i></div>
+  <div class="word">Flapp</div>
   <div class="tag">The triathlete&rsquo;s honest technique lab</div>
   <div class="url">getflapp.com</div>
 </div></body></html>"""

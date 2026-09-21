@@ -34,6 +34,7 @@
 
   /* ---- ink ---- */
   --c-ink:#14181F;                     /* ink/1: headings, values */
+  --c-head:#14294B;                    /* headings and the wordmark: brand navy on light */
   --c-navy:#14181F;                    /* legacy name for ink/1 — the app's "navy" is ink now */
   --c-ink-soft:#3C424C;                /* ink/2: body */
   --c-ink-faint:#5B6470;               /* ink/3: labels and units, 7.0:1 on white */
@@ -111,7 +112,7 @@
   --c-ground:#0E1116; --c-bg:#161A21; --c-panel:#1F242C; --c-panel-blue:#12203C;
   --c-panel-quiet:#1F242C;             /* panel/quiet is dropped on dark: sunken + a top hairline */
   --c-line:#272D36; --c-line-strong:#3A424E; --c-blue-soft:#3A424E;
-  --c-ink:#F2F4F7; --c-navy:#F2F4F7; --c-ink-soft:#C6CCD6; --c-ink-faint:#98A2B3; --c-ink-disabled:#7C8698;
+  --c-ink:#F2F4F7; --c-head:#F2F4F7; --c-navy:#F2F4F7; --c-ink-soft:#C6CCD6; --c-ink-faint:#98A2B3; --c-ink-disabled:#7C8698;
   --c-blue:#5B8DF0; --c-blue-dk:#7BA3F5; --c-blue-active:#A7C2F9;
   --c-blue-ink:#0E1116;                /* the filled primary never takes a white label on dark (2.6:1) */
   --st-good:#7EE0A0; --st-good-fill:#3FA05C; --st-good-bg:#12301D; --st-good-band:#1B4A2C;
