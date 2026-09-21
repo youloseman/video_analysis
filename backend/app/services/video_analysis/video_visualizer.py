@@ -228,7 +228,12 @@ class VideoVisualizer:
             self._phase_labels = RUN_PHASE_LABELS
             # Legend uses coarse stance/swing families, not all 8 raw phases.
             self._phase_legend_order = ["midstance", "pre_swing", "mid_swing"]
-            self._cycle_noun = "Stride"
+            # "Step", not "stride": the gait phase reads "a foot is down" for
+            # EITHER foot (see landmark_stabilizer / the gait-phase fix), so
+            # each new stance is one step of either leg -- 26 of them in 12 s
+            # is 130/min, half a cadence, which is what a step count is.
+            # A stride is two of these.
+            self._cycle_noun = "Step"
 
         if sport_type in ("swim", "run") and hasattr(analyzer, "frame_results"):
             phase_key = "stroke_phase" if sport_type == "swim" else "gait_phase"

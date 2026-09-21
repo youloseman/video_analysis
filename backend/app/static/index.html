@@ -3983,7 +3983,12 @@ function renderCorrectionBadge(res,hostId){
 const FP_PHASE_NAMES={initial_contact:'Contact',loading_response:'Loading',midstance:'Midstance',
   terminal_stance:'Toe-off prep',pre_swing:'Toe-off',initial_swing:'Swing (early)',
   mid_swing:'Swing (mid)',terminal_swing:'Swing (late)',unknown:'—'};
-const FP_EVENT_NAMES={contact:'foot strike',toe_off:'toe-off',bdc:'BDC',tdc:'TDC'};
+/* Run events read "step": the gait phase is "a foot is down" for either
+   foot, so a contact is one foot landing and a toe-off one foot leaving --
+   which foot, it cannot say, and on that frame the other foot is doing the
+   opposite. "foot strike" beside a "Toe-off" phase label read as a
+   contradiction; it was two feet. Per-leg phases would earn the finer words. */
+const FP_EVENT_NAMES={contact:'step lands',toe_off:'step leaves',bdc:'BDC',tdc:'TDC'};
 /* Statuses are the report's own tokens; the strip and the curve read them
    from the stylesheet so a theme change reaches the canvas too. */
 function fpTokens(){
@@ -4191,7 +4196,7 @@ FlappPlayer.prototype={
   /* The event buttons jump between BDC/TDC on a bike, foot strike/toe-off
      on a run; the title says which, the readout names the one landed on. */
   evLabels(){
-    const what=this.tl.sport==='bike'?'BDC or TDC':'foot strike or toe-off';
+    const what=this.tl.sport==='bike'?'BDC or TDC':'step (a foot lands or leaves)';
     this.root.querySelector('.fp-evprev').title=`Previous ${what} (Shift+←)`;
     this.root.querySelector('.fp-evnext').title=`Next ${what} (Shift+→)`;
     this.root.querySelector('.fp-ev').classList.toggle('hidden',!this.events.length);
@@ -4217,7 +4222,7 @@ FlappPlayer.prototype={
     if(tl.phases&&tl.phase_legend){ const p=tl.phase_legend[tl.phases[k]]; if(p&&p!=='unknown') here=FP_PHASE_NAMES[p]||p; }
     const ev=this.events.find(e=>Math.abs(e.k-k)<=1);
     if(ev) here=(here?here+' · ':'')+(FP_EVENT_NAMES[ev.kind]||ev.kind);
-    if(tl.cycles&&tl.cycles[k]) here=(here?here+' · ':'')+'stride '+tl.cycles[k];
+    if(tl.cycles&&tl.cycles[k]) here=(here?here+' · ':'')+'step '+tl.cycles[k];
     this.root.querySelector('.fp-here').textContent=here;
   },
   /* The strip: phases as bands (run), events as ticks, the playhead. */
@@ -4522,7 +4527,7 @@ async function mountCompareVideo(Ae,Be,sides){
   if(c.locked){
     const na=c.anchA.length-1, nb=c.anchB.length-1;
     lock.innerHTML=`<span class="bil-flag bil-ok">locked ${noun} to ${noun}</span>`;
-    note.textContent=`${tagA} leads; ${tagB} follows it through each ${noun} — the ${sport==='bike'?'bottom of the stroke':'foot strike'} on the left lands on the ${sport==='bike'?'bottom of the stroke':'foot strike'} on the right, whatever the cadence. `
+    note.textContent=`${tagA} leads; ${tagB} follows it through each ${noun} — the ${sport==='bike'?'bottom of the stroke':'landing'} on the left lands on the ${sport==='bike'?'bottom of the stroke':'landing'} on the right, whatever the cadence. `
       +(na!==nb?`${tagA} has ${na} ${noun}s and ${tagB} ${nb}; the shorter one repeats. `:'')
       +'Two clips are two camera setups: compare the positions, not the pixels.';
     host.querySelector('.sy-ev').classList.remove('hidden');
