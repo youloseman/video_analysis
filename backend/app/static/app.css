@@ -1497,7 +1497,15 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fp-chart{display:block;width:100%;height:160px;cursor:crosshair;touch-action:none}
 .fp-graphnote{font-size:11.5px;color:var(--c-ink-faint);margin-top:4px}
 .fp:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px}
-@media(max-width:640px){.fp-time{margin-left:0;width:100%;white-space:normal}.fp-chart{height:130px}}
+/* On a phone the readout is two fixed lines -- time and frame, then what is
+   happening -- so a frame with a phase, an event and a stride number is the
+   same height as a frame with nothing. When it wrapped on some frames and
+   not others, everything under it jumped on every step. */
+@media(max-width:640px){
+  .fp-time{margin-left:0;width:100%;white-space:nowrap;overflow:hidden;line-height:1.5;min-height:3em}
+  .fp-time .fp-here{display:block;min-height:1.5em;overflow:hidden;text-overflow:ellipsis}
+  .fp-chart{height:130px}
+}
 @media print{.fp-ui,.fp-rawwrap{display:none!important}}
 /* ---------- The coach: profile card, the note on a report ----------
    The note is the one block on the report written by a person; it is drawn
