@@ -24,19 +24,33 @@ SPA = ROOT / "backend" / "app" / "static" / "index.html"
 # selector in the bridge  ->  a string that proves the surface exists in the SPA
 PURCHASE_SURFACES = {
     "#navPricing": 'id="navPricing"',
-    ".upsell .cta-row": 'class="cta-row"',
-    ".upsell .price-tag": "price-tag",
-    "#pricing .tier-cta": 'class="tier-cta"',
-    ".solo-buy": 'class="solo-buy"',
-    ".no-price": 'class="no-price"',
-    ".no-cta": 'class="no-cta"',
+    # The pricing screen whole -- a price list with no in-app way to buy is
+    # the same rejection as a buy button -- and every link into it.
+    "#pricing": 'id="pricing"',
+    'a[href="#pricing"]': 'href="#pricing"',
+    ".plans-link": 'class="plans-link"',
+    # The report's teaser card whole, and the per-report unlock wherever it is.
+    ".upsell": 'class="upsell"',
     ".btn-unlock": "btn-unlock",
+    ".solo-buy": 'class="solo-buy"',
+    # The Coach Notes / Expert Review card in every state (offer, booked,
+    # delivered-with-upsell). Delivered notes render in .cnote, not here.
+    ".notes-offer": 'class="notes-offer',
+    # Anything else wired inline to a purchase function.
+    '[onclick*="startCheckout"]': "startCheckout(",
+    '[onclick*="openPricing"]': "openPricing()",
+    '[onclick*="openUpgrade"]': "openUpgrade",
 }
 
 # Things the bridge must NOT hide: they carry what a customer already paid
 # for, and a stale selector once did exactly this (.addon-strip had become
 # the orders box, so the store build hid delivered reviews).
-MUST_STAY_VISIBLE = ("#ordersBox", ".addon-strip", "#history", ".no-card")
+MUST_STAY_VISIBLE = ("#ordersBox", ".addon-strip", "#history", ".cnote", "#coachNoteBlock")
+
+# The functions every purchase path in the SPA ends in. Natively each is
+# replaced by a no-op that says purchases are not available here -- so a
+# call site the CSS list misses still sells nothing.
+PURCHASE_FUNCTIONS = ("openPricing", "openUpgrade", "startCheckout", "openPortal")
 
 
 @pytest.fixture(scope="module")
@@ -63,7 +77,7 @@ def test_every_checkout_call_site_has_a_known_container(spa):
     attribute is not on the list is a new surface, and the answer is to add
     it, not to loosen this."""
     known = ("tier-cta", "cta-row", "solo-buy", "no-cta", "btn-unlock",
-             "data-notesbuy", "navPricing")
+             "data-notesbuy", "navPricing", "onclick=\"startCheckout")
     for i, line in enumerate(spa.splitlines(), 1):
         if "startCheckout('" not in line or "function startCheckout" in line:
             continue
@@ -99,3 +113,23 @@ def test_every_selector_in_the_bridge_is_accounted_for(bridge):
         f"bridge hides {sorted(listed - set(PURCHASE_SURFACES))} which this test "
         f"does not know, or is missing {sorted(set(PURCHASE_SURFACES) - listed)}"
     )
+
+
+@pytest.mark.parametrize("name", PURCHASE_FUNCTIONS)
+def test_every_purchase_function_is_neutralised_natively(bridge, spa, name):
+    assert f"function {name}(" in spa, f"{name} is gone from the SPA -- drop it from PURCHASE_FUNCTIONS"
+    assert f"'{name}'" in bridge, f"{name} is a purchase path in the SPA but the bridge does not override it"
+
+
+def test_no_checkout_outside_the_named_functions(spa):
+    """Every request to /billing/checkout or /billing/portal lives inside one
+    of PURCHASE_FUNCTIONS, so overriding those four is overriding all of it."""
+    lines = spa.splitlines()
+    for i, line in enumerate(lines):
+        if "'/billing/checkout'" not in line and "'/billing/portal'" not in line:
+            continue
+        if line.lstrip().startswith(("//", "*", "/*")) or "Checkout hits" in line:
+            continue
+        above = "\n".join(lines[max(0, i - 40):i])
+        heads = [k for k in PURCHASE_FUNCTIONS if f"function {k}(" in above]
+        assert heads, f"index.html:{i + 1} talks to billing outside every purchase function: {line.strip()[:100]}"

@@ -109,18 +109,37 @@
   var st = document.createElement('style');
   st.textContent = [
     '.flapp-native #navPricing',
-    // Teaser card: the upgrade row and the price tag.
-    '.flapp-native .upsell .cta-row', '.flapp-native .upsell .price-tag',
-    // Pricing page: the tier buttons and the add-on cards' buy block.
-    '.flapp-native #pricing .tier-cta', '.flapp-native .solo-buy',
-    // Coach Notes / Expert Review offer on the report: the price tag and the
-    // button row (which also carries the "coming soon" and the Expert Review
-    // rung once notes are delivered).
-    '.flapp-native .no-price', '.flapp-native .no-cta',
-    // The per-report unlock, wherever the teaser card renders it.
-    '.flapp-native .btn-unlock'
+    // The whole pricing screen, not only its buttons: a price list for
+    // digital goods with no way to buy them in-app is the same 3.1.1
+    // rejection as a button. openPricing() is also a no-op natively (below),
+    // so a link the CSS misses still opens nothing.
+    '.flapp-native #pricing', '.flapp-native a[href="#pricing"]', '.flapp-native .plans-link',
+    // The report's teaser card (Upgrade to unlock / $4), whole.
+    '.flapp-native .upsell', '.flapp-native .btn-unlock', '.flapp-native .solo-buy',
+    // The Coach Notes / Expert Review card at the foot of the report, in
+    // every state: offer, booked, and delivered (which pitches the Expert
+    // Review). Delivered notes themselves render in #coachNoteBlock / .cnote,
+    // which stays; a booked order shows in #ordersBox, which stays.
+    '.flapp-native .notes-offer',
+    // Anything else wired inline to the checkout or pricing functions.
+    '.flapp-native [onclick*="startCheckout"]', '.flapp-native [onclick*="openPricing"]',
+    '.flapp-native [onclick*="openUpgrade"]'
   ].join(',') + '{display:none!important}';
   document.head.appendChild(st);
+
+  // Belt and braces: whatever the CSS misses, the functions themselves do
+  // nothing natively. Function declarations at script scope are writable
+  // window properties and every call site resolves the name at click time
+  // (inline onclick=, closures, the hash router), so reassigning once the SPA
+  // has loaded covers them all. The toast steers nowhere -- it must not.
+  var NOT_HERE = 'Plans and purchases are not available in this version of the app.';
+  window.addEventListener('DOMContentLoaded', function () {
+    ['openPricing', 'openUpgrade', 'startCheckout', 'openPortal'].forEach(function (name) {
+      window[name] = function () {
+        if (typeof window.toast === 'function') window.toast(NOT_HERE);
+      };
+    });
+  });
 
   /* -- 5. Fit the phone: notch, home bar, native feel ---------------------- */
   // The bundle's viewport is viewport-fit=cover (sync-www.mjs), so the page
