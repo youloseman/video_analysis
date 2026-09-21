@@ -33,6 +33,9 @@ if (existsSync(pbx)) {
   // demand iPad screenshots and puts the phone layout in front of the
   // reviewer on a 13-inch screen.
   if (/TARGETED_DEVICE_FAMILY = "1,2"/.test(x)) fails.push('ios TARGETED_DEVICE_FAMILY is "1,2" -- v1 ships iPhone only (set to 1)');
+  // ITMS-90068: from spring 2027 App Store Connect refuses uploads below
+  // iOS 15. Capacitor's template says 14.0 and `cap add` writes it back.
+  if (/IPHONEOS_DEPLOYMENT_TARGET = 14\.0/.test(x)) fails.push('ios IPHONEOS_DEPLOYMENT_TARGET is 14.0 -- App Store Connect warns (ITMS-90068); set 15.0 in pbxproj and Podfile');
 }
 
 // The icon and splash are real brand assets, not the Capacitor placeholders
