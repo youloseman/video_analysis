@@ -103,6 +103,11 @@ class Settings:
     # Account promoted to the ``admin`` tier on startup (15 analyses/day). Set to
     # your own email via ADMIN_EMAIL in prod; case-insensitive match.
     admin_email: str | None = None
+    # Accounts that get the Full tier on sign-up without paying: App Review's
+    # demo login, and nothing else. Comma-separated, lower-cased. A reviewer
+    # who lands on a Starter account sees a locked report and no way to
+    # unlock it in the app (there is none, by design) -- and rejects on 2.1.
+    reviewer_emails: tuple[str, ...] = ()
 
     # Free-tier teaser: how many annotated phase photos the starter plan sees
     # (1 = one photo with the angle NUMBERS hidden; the "soft" default. 2 =
@@ -290,6 +295,9 @@ def _load_settings() -> Settings:
         jwt_secret=os.environ.get("JWT_SECRET") or Settings.jwt_secret,
         jwt_expire_days=_int_env("JWT_EXPIRE_DAYS", Settings.jwt_expire_days),
         admin_email=(os.environ.get("ADMIN_EMAIL") or "").strip().lower() or None,
+        reviewer_emails=tuple(
+            e.strip().lower() for e in (os.environ.get("REVIEWER_EMAILS") or "").split(",") if e.strip()
+        ),
         starter_teaser_photos=_int_env(
             "STARTER_TEASER_PHOTOS", Settings.starter_teaser_photos,
         ),

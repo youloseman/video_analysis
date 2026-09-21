@@ -100,6 +100,7 @@ curl -s $BASE/jobs/<job_id>/overlay -o overlay.mp4
 | `VA_JOB_TTL_HOURS` | `6` | How long a finished job stays pollable before it and its upload directory are deleted. `0` disables the sweeper (debugging only — the disk then grows unbounded). |
 | `VA_JOB_SWEEP_INTERVAL_S` | `600` | How often the reaper runs. |
 | `VA_RATE_LIMIT_PER_DAY` | `3` | Anonymous per-IP daily analyses. `0` disables. |
+| `REVIEWER_EMAILS` | *(unset)* | Comma-separated e-mails that get the **Full** tier at sign-up without paying — App Review's demo login. Set before the account is registered; nothing else reads it. |
 | `GEMINI_TIMEOUT_S` | `20` | Hard ceiling on one request to either provider. Coaching is optional by design — a timeout degrades to "no coaching", never to a failed analysis. |
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Primary coaching model. **The thinking knob differs by generation and the code picks it from the model name** (`thinking_level` on 3.x, `thinking_budget` on 2.5) — measured, because `gemini-3.5-flash-lite` answers a `thinking_budget` with a bare `400 INVALID_ARGUMENT`. An unknown name still works: the first attempt is retried once with no tuning at all. |
 | `OPENAI_API_KEY` | *(unset)* | Enables the **fallback** provider, used only when the primary fails. Deliberately a different vendor: an outage, a suspended key or a retired model takes a whole vendor with it, so a second Gemini model would not be a fallback. Unset = Gemini-only, exactly as before. |

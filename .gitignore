@@ -40,6 +40,8 @@ Thumbs.db
 # ...except the landing page's hero clip, which is a product asset the app
 # serves, not a local recording lying around.
 !backend/app/static/media/hero.mp4
+# ...and the eight-second clip App Review's notes link to, same reason.
+!backend/app/static/media/review-sample-run.mp4
 
 # Local SQLite DB (dev only; prod uses Postgres)
 *.db

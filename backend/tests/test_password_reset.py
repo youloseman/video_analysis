@@ -230,3 +230,18 @@ async def test_an_unknown_address_costs_the_same_as_a_wrong_password(db, user):
                 _request(), db,
             )
         assert vp.call_count == 1
+
+
+# --------------------------------------------------------------------------
+# App Review's demo login
+# --------------------------------------------------------------------------
+async def test_a_reviewer_email_signs_up_on_the_full_tier(db, monkeypatch):
+    from app.models.user import TIER_FULL, TIER_STARTER
+
+    import dataclasses
+
+    monkeypatch.setattr(auth_api, "settings", dataclasses.replace(settings, reviewer_emails=("appreview@getflapp.com",)))
+    out = await auth_api.register(auth_api.Credentials(email="AppReview@getflapp.com", password="review-pass-1"), _request(), db)
+    assert out.tier == TIER_FULL
+    other = await auth_api.register(auth_api.Credentials(email="someone@example.com", password="review-pass-1"), _request("198.51.100.9"), db)
+    assert other.tier == TIER_STARTER

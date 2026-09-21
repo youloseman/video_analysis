@@ -153,13 +153,16 @@ async def register(
     # Promote the configured admin account on sign-up too, not only at startup,
     # so registering the admin email while the server is already running still
     # grants admin immediately.
-    from app.models.user import TIER_ADMIN, TIER_STARTER
+    from app.models.user import TIER_ADMIN, TIER_FULL, TIER_STARTER
 
     is_admin = bool(settings.admin_email) and body.email == settings.admin_email
+    # App Review's demo login: Full from the first sign-in, so the reviewer
+    # sees the product rather than a locked report with no unlock in the app.
+    is_reviewer = body.email in settings.reviewer_emails
     user = User(
         email=body.email,
         password_hash=await run_in_threadpool(hash_password, body.password),
-        tier=TIER_ADMIN if is_admin else TIER_STARTER,
+        tier=TIER_ADMIN if is_admin else TIER_FULL if is_reviewer else TIER_STARTER,
     )
     db.add(user)
     await db.commit()

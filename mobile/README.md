@@ -44,3 +44,11 @@ allowed. See the plan artifact + `flapp-mobile-plan` memory.
 are in that file's header comment (App Store Connect API key → Codemagic
 integration named `appstore`, a `CERTIFICATE_PRIVATE_KEY` secure variable in
 the `ios_signing_creds` group, create the app with bundle `ca.clarivagroups.flapp`).
+
+## Brand assets
+
+`brand/*.svg` are the source of truth for the app icon (light / dark / tinted)
+and the launch splash. `python scripts/render-brand.py` rasterises them into
+`ios/App/App/Assets.xcassets`; `check-native.mjs` refuses the Capacitor
+placeholders, which a `cap add` would put back. The design files they come from
+are the "Flapp Logo" canvases in the design export.
