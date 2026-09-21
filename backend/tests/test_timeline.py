@@ -81,3 +81,21 @@ def test_a_free_reader_never_receives_the_record():
     assert res["timeline"] is not None
     assert "timeline" not in gate_free_result(res)
     assert "timeline" not in gate_preview_result(res)
+
+
+def test_a_band_about_the_mean_says_so():
+    """The run elbow swings 40 deg a stride around a ~90 deg carry; the band is
+    about the carry. The record marks it so the curve is not graded frame by
+    frame, and the served bands carry the same word for the table."""
+    from app.services.video_analysis.biomechanics.sport_configs import reference_bands
+
+    res = _analyze(_frames())
+    at = {m["key"]: m["at"] for m in res["timeline"]["metrics"]}
+    assert at["right_knee"] == "bdc" and at["right_hip"] == "tdc"
+    assert at["trunk_angle"] == "mean" and at["right_shoulder"] == "mean"
+    bands = reference_bands("bike", "triathlon")
+    assert bands["knee_at_bdc"]["applies"] == "bdc"
+    assert bands["trunk_angle_avg"]["applies"] == "mean"
+    run = reference_bands("run")
+    assert run["trunk_lean_avg"]["applies"] == "mean"
+    assert run["knee_min"]["applies"] == "min" and run["cadence_spm"]["applies"] == "value"

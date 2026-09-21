@@ -370,6 +370,37 @@ RUNNING_REFERENCE_SOURCES: dict[str, str] = {
 # two vocabularies genuinely differ (``knee_max`` is the contact angle), and a
 # clever mapping would be the kind of thing that silently attaches the wrong
 # citation to a metric.
+# What each band is a statement ABOUT. A band is graded against one number,
+# and the report shows several: a mean, a p5/p95 spread, a curve over the
+# whole cycle. Without this the page invites the wrong comparison -- an elbow
+# that swings 57-100 over a stride beside "80-95 · in range" reads as a
+# contradiction, when the band was always about the carry (the mean) and the
+# swing is just the swing. Served with every band, read by the table, the
+# tiles and the player's curve, so the three say the same thing.
+#   mean  -- the whole-clip mean is graded; the spread is the movement
+#   bdc / tdc -- the value at that event (bike knee / hip)
+#   min / max -- the extreme over the cycle (run knee in swing / at contact)
+#   value -- a single-valued metric (cadence, contact time)
+BAND_APPLIES: dict[str, str] = {
+    # run, by band key
+    "elbow_angle": "mean", "trunk_lean": "mean", "cadence_spm": "value",
+    "ground_contact_ms": "value", "flight_time_ms": "value",
+    "overstride_ratio": "value", "vertical_oscillation_cm": "value",
+    "knee_at_initial_contact": "max", "knee_at_swing": "min",
+    "knee_at_midstance": "point",
+    # bike, by band key
+    "knee_at_bdc": "bdc", "knee_at_tdc": "tdc", "hip_at_tdc": "tdc",
+    "elbow_angle_bike": "mean", "trunk_angle": "mean", "shoulder_angle": "mean",
+    "forearm_tilt": "mean", "pelvic_ratio": "mean",
+}
+
+
+def band_applies(band_key: str, sport_type: str = "run") -> str:
+    if sport_type == "bike" and band_key == "elbow_angle":
+        return BAND_APPLIES["elbow_angle_bike"]
+    return BAND_APPLIES.get(band_key, "mean")
+
+
 _RUN_FIELD_TO_BAND: dict[str, str] = {
     "cadence_spm": "cadence_spm",
     "trunk_lean_avg": "trunk_lean",
@@ -399,7 +430,7 @@ def reference_bands(
             band = RUNNING_REFERENCE.get(band_key)
             if not band:
                 continue
-            out[field] = {"lo": band[0], "hi": band[1]}
+            out[field] = {"lo": band[0], "hi": band[1], "applies": band_applies(band_key, "run")}
             src = RUNNING_REFERENCE_SOURCES.get(band_key)
             if src:
                 out[field]["source"] = src
@@ -430,7 +461,7 @@ def reference_bands(
             band = ref.get(band_key)
             if not band or len(band) != 2:
                 continue
-            out[field] = {"lo": band[0], "hi": band[1]}
+            out[field] = {"lo": band[0], "hi": band[1], "applies": band_applies(band_key, "bike")}
             # The closed-hip evidence is filed under hip_angle_max in META.
             src = (meta.get("hip_angle_max" if band_key == "hip_at_tdc" else band_key)
                    or {}).get("source")

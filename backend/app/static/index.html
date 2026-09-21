@@ -1057,14 +1057,14 @@
       <div class="tablewrap">
         <table class="data" id="angleTable">
           <caption class="visually-hidden">Joint angle statistics: 5th percentile, mean, 95th percentile, optimal range, status and share of valid frames per angle</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num col-opt">Optimal</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Valid</th></tr></thead>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num col-opt">Optimal <small class="thq">mean</small></th><th scope="col" class="col-status">Status <small class="thq">mean</small></th><th scope="col" class="num">Valid</th></tr></thead>
           <tbody id="angleRows"></tbody>
         </table>
       </div>
       <p class="hint norefnote hidden" id="angleNorefNote" style="text-align:left;margin-top:12px">
         <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
       <p class="hint" id="angleStatNote" style="text-align:left;margin-top:8px">
-        <b>Low / High</b> are the 5th and 95th percentile, not the single most extreme frame. A frame that reads outside the physiological range for a joint is a tracking artefact: it is excluded from every number and counted in an <b>artefact</b> pill instead.</p>
+        <b>Optimal</b> and <b>Status</b> are about the <b>mean</b> — the carry of the arm, the lean of the trunk over the whole clip. <b>Low / High</b> are the 5th and 95th percentile: how far the joint swings each cycle, which is the movement, not a fault — an elbow at 57° at the back of the swing and 100° at the front is one normal arm swing around a 84° carry. A frame that reads outside the physiological range for a joint is a tracking artefact: it is excluded from every number and counted in an <b>artefact</b> pill instead.</p>
     </div>
 
     <!-- Folded by default, and the fold is the point. Eight charts of
@@ -4205,6 +4205,7 @@ FlappPlayer.prototype={
   paint(){ if(!this.tl) return; this.paintReadout(); this.paintStrip(); this.paintChart(); if(this.layer==='skeleton') this.paintSkeleton();
     const note=this.root.querySelector('.fp-graphnote');
     if(note) note.textContent='Angle per frame, the same filtered series the table reads. Shaded: the reference band. Click the curve to jump there.'
+      +(this.metric&&(this.metrics.find(x=>x.key===this.metric)||{}).at==='mean'?' This band is about the mean (dashed line); the swing around it is the movement.':'')
       +(anatomical()?' Shown as flexion from straight (0° = straight); the annotated render keeps the included angle.':''); },
   paintReadout(){
     const tl=this.tl, k=this.k, i=tl.frames[k]||0;
@@ -4309,15 +4310,23 @@ FlappPlayer.prototype={
         g.globalAlpha=m.at?0.75:1; g.beginPath(); g.moveTo(x(k-1),y(prev)); g.lineTo(x(k),y(v)); g.stroke(); }
       prev=v; }
     g.globalAlpha=1;
-    if(m.at){ this.events.filter(e=>e.kind===m.at&&s[e.k]!=null).forEach(e=>{
+    // A band about the MEAN (the run elbow's carry, the bike trunk): the
+    // graded thing is one horizontal line, drawn in its zone's colour, and
+    // the swing around it is the movement. See BAND_APPLIES in sport_configs.
+    const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+    if(m.at==='mean'){
+      const st=grade(mean); g.strokeStyle=T[st]||T.ink; g.lineWidth=1.5; g.setLineDash([5,4]);
+      g.beginPath(); g.moveTo(P.l,y(mean)); g.lineTo(P.l+pw,y(mean)); g.stroke(); g.setLineDash([]);
+    } else if(m.at){ this.events.filter(e=>e.kind===m.at&&s[e.k]!=null).forEach(e=>{
       g.fillStyle=T[grade(s[e.k])]||T.ink; g.beginPath(); g.arc(x(e.k),y(s[e.k]),3.5,0,Math.PI*2); g.fill(); }); }
     // playhead
     const k=this.k, v=s[k], px=x(k);
-    const onEvent=!m.at||this.events.some(e=>e.kind===m.at&&Math.abs(e.k-k)<=1);
+    const onEvent=!m.at||(m.at!=='mean'&&this.events.some(e=>e.kind===m.at&&Math.abs(e.k-k)<=1));
     g.strokeStyle=T.blue; g.lineWidth=1.5; g.beginPath(); g.moveTo(px,P.t); g.lineTo(px,P.t+ph); g.stroke();
     if(v!=null){ g.fillStyle=onEvent?(T[grade(v)]||T.ink):T.ink; g.beginPath(); g.arc(px,y(v),4,0,Math.PI*2); g.fill();
       g.strokeStyle=T.bg; g.lineWidth=1.5; g.stroke(); }
-    const txt=`${angleConvLabel(m.key,tl.sport,m.name)} ${v==null?'—':Math.round(D(v))+'°'}${m.at?' · band at '+m.at.toUpperCase():''}`;
+    const meanTxt=m.at==='mean'?` · mean ${Math.round(D(mean))}° ${ST_WORD[grade(mean)]||''}`:'';
+    const txt=`${angleConvLabel(m.key,tl.sport,m.name)} ${v==null?'—':Math.round(D(v))+'°'}${m.at&&m.at!=='mean'?' · band at '+m.at.toUpperCase():meanTxt}`;
     g.font=`600 11px ${T.mono}`; const tw=g.measureText(txt).width+10;
     const tx=Math.min(W-P.r-tw, Math.max(P.l, px+6));
     g.fillStyle=T.ink; g.globalAlpha=0.9; g.fillRect(tx,P.t-12,tw,16); g.globalAlpha=1;
@@ -6867,7 +6876,7 @@ function renderConfidence(conf){
    from an angle_statistics dict. `srcByKey` optionally maps an angle key -> a
    short provenance label (e.g. "left · Mar 3") to show which analysis a merged
    row came from. */
-const ANGLE_PILL_WORD={good:'in range',warn:'check',bad:'out of range'};
+const ANGLE_PILL_WORD={good:'mean in range',warn:'mean · check',bad:'mean out of range'};
 const ANGLE_PILL_CLS={good:'pill-good',warn:'pill-medium',bad:'pill-high'};
 /* Share of frames outside the joint's physiological envelope above which the
    row is flagged and its status withheld (mirrors base_analyzer.ARTEFACT_FLAG_PCT). */
@@ -9066,7 +9075,7 @@ function renderHistoryAngles(e){
     // fit a phone, and without it the last one is simply cut off the side of
     // the card -- statuses reading "OPTIMA" and "PHASE DEPEN".
     host.innerHTML=`<div class="tablewrap"><table class="data">
-      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Valid</th></tr></thead>
+      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num">Optimal <small class="thq">mean</small></th><th scope="col">Status <small class="thq">mean</small></th><th scope="col" class="num">Valid</th></tr></thead>
       <tbody>${angleTableRows(merged.stats, e.sport, e.position||null, srcMap)}</tbody></table></div>`;
     if(note){
       if(paired){ note.innerHTML=`Both sides shown: <b>${esc(e.cameraSide||'this')} side</b> from this analysis, <b>${esc(paired.cameraSide||'other')} side</b> filled from your ${esc(fmtWhen(paired.at))} analysis.`; note.classList.remove('hidden'); }
@@ -9815,7 +9824,9 @@ function currentFormTable(sport, entries){
     const optTxt=opt?`${opt[0]}–${opt[1]}${m.unit||''}`:'<span class="noref">no ref</span>';
     let statusCell='<td class="col-status muted"></td>';
     if(opt){ const z=grZone(v,opt[0],opt[1],m.key); const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
-      statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`; }
+      // Single-valued metrics (cadence, knee at contact): the plain words, not
+      // the joint table's "mean" ones.
+      statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ST_WORD[zc]}</span></td>`; }
     let trendCell='<td class="dform-tr"><span class="dform-first">first</span></td>';
     if(!single){
       const pv=prev?prev.trends[m.key]:null;

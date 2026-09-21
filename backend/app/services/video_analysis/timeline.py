@@ -198,12 +198,21 @@ def build_timeline(
         # coloured against such a band frame by frame reads as a fault for
         # most of every revolution; the client grades those at their event
         # instead. Every other band is a whole-cycle band.
+        # And the other kind of band: one about the whole-clip MEAN (the run
+        # elbow's ~90 deg carry, the bike trunk). Coloured frame by frame, a
+        # curve that swings 40 deg every stride reads as a fault twice a
+        # stride; the client grades the mean line instead. Same vocabulary
+        # as sport_configs.BAND_APPLIES.
         at = None
         if sport_type == "bike":
             if key.endswith("_knee"):
                 at = "bdc"
             elif key.endswith("_hip"):
                 at = "tdc"
+            elif key in ("trunk_angle",) or key.endswith(("_elbow", "_shoulder", "_forearm_tilt")):
+                at = "mean"
+        elif sport_type == "run" and key in ("elbow", "trunk"):
+            at = "mean"
         metrics.append({
             "key": key,
             "name": str(cfg["name"]),
