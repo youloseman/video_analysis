@@ -78,8 +78,6 @@
     <circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-6"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 3 2.5 19.5h19L12 3z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 3l2.1 5.6L20 11l-5.9 2.4L12 19l-2.1-5.6L4 11l5.9-2.4L12 3z"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -182,7 +180,9 @@
 <!-- Mobile bottom tab bar (shown < 900px): thumb-reachable primary nav -->
 <nav class="botnav" id="botnav" aria-label="Primary">
   <a href="#" id="botHome" class="botlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
-  <a href="#" id="botAnalyze" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg><span>Analyze</span></a>
+  <!-- The plus sits in a span of its own so the disc can rise out of the row
+       without moving the label with it (see .bot-plus). -->
+  <a href="#" id="botAnalyze" class="botlink"><span class="bot-plus"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg></span><span>Analyze</span></a>
   <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
   <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
   <!-- Everything else lives in the drawer: Plans, Examples, Academy, Account.
@@ -356,6 +356,7 @@
   <!-- ============ DASHBOARD (My technique — signed-in home) ============ -->
   <section id="dashboard" class="hidden" aria-labelledby="dashTitle">
     <div class="blockhead pagehead" style="margin-top:0">
+      <div class="dash-date" id="dashDate"></div>
       <h2 class="sec" id="dashTitle" tabindex="-1">My technique</h2>
       <span class="ph-right"><button class="btn btn-primary btn-sm" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
       <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
@@ -819,7 +820,14 @@
       <div class="card scorecard">
         <span class="sporttag" id="sportTag"><svg class="ic" id="sportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="sportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
-        <div class="score-num" id="scoreNum">—<small>/100</small></div>
+        <div class="ring" id="scoreRing" role="img" aria-label="Technique score">
+            <svg viewBox="0 0 144 144" aria-hidden="true">
+              <circle class="ring-track" cx="72" cy="72" r="66" fill="none" stroke-width="12"/>
+              <circle class="ring-bar" cx="72" cy="72" r="66" fill="none" stroke-width="12"
+                      stroke-dasharray="414.7" stroke-dashoffset="414.7" transform="rotate(-90 72 72)"/>
+            </svg>
+            <div class="ring-inner"><div class="score-num" id="scoreNum">—<small>/100</small></div></div>
+          </div>
         <div class="score-delta hidden" id="scoreDelta"></div>
         <div class="graderow">
           <span class="grade" id="grade" role="img" aria-label="Grade">—</span>
@@ -943,20 +951,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Beside the clip, not a screen below it: the overlay is worth
+           watching only once you know what you are looking for, and these
+           three lines are that. Markup order still reads score -> findings
+           -> coach -> plan, which is the argument (test_report_structure). -->
+      <div class="block" id="issuesBlock">
+        <div class="blockhead">
+          <div class="eyebrow">Technique</div>
+          <h3>Findings</h3>
+          <div class="speedline-sm"></div>
+        </div>
+        <div id="issues"></div>
+      </div>
     </div>
 
     <div id="gateBanner"></div>
     <div id="bilateralBlock"></div>
     <p class="hint hidden ephem-note" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
-
-    <div class="block" id="issuesBlock">
-      <div class="blockhead">
-        <div class="eyebrow">Technique</div>
-        <h3>Findings</h3>
-        <div class="speedline-sm"></div>
-      </div>
-      <div id="issues"></div>
-    </div>
 
     <div class="block hidden" id="aeroBlock">
       <div class="blockhead">
@@ -969,7 +981,7 @@
 
     <div class="block block-coach" id="coachBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> Coach</div>
         <h3>Coach’s notes</h3>
         <div class="speedline-sm"></div>
       </div>
@@ -1048,6 +1060,13 @@
            beside it to its own height. Two grids, and each row is only as
            tall as what is in it. -->
       <div class="tiles tiles-short" id="tilesShort"></div>
+      <!-- Four readings answer "is anything out of range". The rest answer
+           "by how much", which is the next question, not the first one. -->
+      <button class="btn btn-link tiles-more hidden" id="tilesMore" type="button"
+              aria-expanded="false" aria-controls="tilesRest">
+        <svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg><span>More metrics</span>
+      </button>
+      <div class="tiles hidden" id="tilesRest"></div>
     </div>
 
     <div class="block" id="anglesBlock">
@@ -1107,14 +1126,14 @@
          services/export/ai_export.py. -->
     <div class="block hidden" id="exportBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Your data</div>
-        <h3>Take this to any AI</h3>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Your data</div>
+        <h3>Your numbers, as a file</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 18px">One file with every measurement, its reference range, how far to trust it — and the conventions a chatbot otherwise gets backwards (our joint angles are <b>internal</b>: 180° is a straight limb, not 180° of flexion). Paste it into ChatGPT, Claude or Gemini and keep digging.</p>
+      <p class="hint" style="text-align:left;margin:0 0 18px">One file with every measurement, its reference range, how far to trust it — and the conventions a chatbot otherwise gets backwards (our joint angles are <b>internal</b>: 180° is a straight limb, not 180° of flexion). Paste it into any assistant, or hand it to your coach.</p>
       <div class="exportrow">
         <button class="btn btn-primary btn-sm" id="exportCopy" type="button">
-          <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="exportCopyTxt">Copy for AI</span>
+          <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="exportCopyTxt">Copy as text</span>
         </button>
         <button class="btn btn-ghost btn-sm" id="exportMd" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .md
@@ -1159,7 +1178,14 @@
       <div class="card scorecard">
         <span class="sporttag" id="pSportTag"><svg class="ic" id="pSportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="pSportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
-        <div class="score-num" id="pScoreNum">—<small>/100</small></div>
+        <div class="ring" id="pScoreRing" role="img" aria-label="Technique score">
+            <svg viewBox="0 0 144 144" aria-hidden="true">
+              <circle class="ring-track" cx="72" cy="72" r="66" fill="none" stroke-width="12"/>
+              <circle class="ring-bar" cx="72" cy="72" r="66" fill="none" stroke-width="12"
+                      stroke-dasharray="414.7" stroke-dashoffset="414.7" transform="rotate(-90 72 72)"/>
+            </svg>
+            <div class="ring-inner"><div class="score-num" id="pScoreNum">—<small>/100</small></div></div>
+          </div>
         <div class="score-delta hidden" id="pScoreDelta"></div>
         <div class="graderow">
           <span class="grade" id="pGrade" role="img" aria-label="Grade">—</span>
@@ -1218,7 +1244,7 @@
 
     <div class="block block-coach" id="pCoachBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> Coach</div>
         <h3>Coach’s notes</h3>
         <div class="speedline-sm"></div>
       </div>
@@ -1367,7 +1393,14 @@
         <!-- wrapper lets mobile put the grade to the RIGHT of the score; on
              desktop it's a plain block so they stack as before -->
         <div class="sc-scorerow">
-          <div class="score-num" id="hdScore">—<small>/100</small></div>
+          <div class="ring" id="hdScoreRing" role="img" aria-label="Technique score">
+            <svg viewBox="0 0 144 144" aria-hidden="true">
+              <circle class="ring-track" cx="72" cy="72" r="66" fill="none" stroke-width="12"/>
+              <circle class="ring-bar" cx="72" cy="72" r="66" fill="none" stroke-width="12"
+                      stroke-dasharray="414.7" stroke-dashoffset="414.7" transform="rotate(-90 72 72)"/>
+            </svg>
+            <div class="ring-inner"><div class="score-num" id="hdScore">—<small>/100</small></div></div>
+          </div>
           <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div></div></div>
         </div>
         <div class="score-meta" id="hdMeta"></div>
@@ -1401,7 +1434,7 @@
     <div id="hdUpsellHost" class="hidden"></div>
     <div class="block block-coach hidden" id="hdCoachBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> AI Coach</div>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg> Coach</div>
         <h3>Coach’s notes</h3>
         <div class="speedline-sm"></div>
       </div>
@@ -1453,14 +1486,14 @@
 
     <div class="block hidden" id="hdExportBlock">
       <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Your data</div>
-        <h3>Take this to any AI</h3>
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Your data</div>
+        <h3>Your numbers, as a file</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 18px">Every measurement from this report, its reference range, and the conventions a chatbot otherwise gets backwards — built from the saved analysis, so it still works long after the clip is gone.</p>
+      <p class="hint" style="text-align:left;margin:0 0 18px">Every measurement from this report, its reference range, and the conventions another reader otherwise gets backwards — built from the saved analysis, so it still works long after the clip is gone.</p>
       <div class="exportrow">
         <button class="btn btn-primary btn-sm" id="hdExportCopy" type="button">
-          <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="hdExportCopyTxt">Copy for AI</span>
+          <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="hdExportCopyTxt">Copy as text</span>
         </button>
         <button class="btn btn-ghost btn-sm" id="hdExportMd" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .md
@@ -1476,7 +1509,7 @@
   <!-- ============ PRICING ============ -->
   <section id="pricing" class="hidden" aria-labelledby="pricingTitle">
     <div class="pricing-head">
-      <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Plans</div>
+      <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Plans</div>
       <h2 id="pricingTitle" tabindex="-1">Train on real numbers, not guesswork</h2>
       <p>Start free. Upgrade when you want the measurements, coaching and video that tell you exactly what to change.</p>
       <div class="billtoggle" role="group" aria-label="Billing period">
@@ -3065,6 +3098,48 @@ const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 /* Grade badge: set text + colour, and switch to the wide "word" layout when
    the value isn't a single letter (e.g. "Good"), so it never overflows the
    square box. */
+/* Which band a score falls in. The same three steps the grade uses, kept
+   here as one function so a ring, a badge and a chip can never disagree. */
+function scoreStatus(n){ return (n==null||!isFinite(n)) ? null : n>=80?'good':n>=60?'watch':'fix'; }
+/* The ring around a score. The markup is static (three of them are in the
+   page); this only moves the arc and names the band. r=66, so the circle is
+   2*pi*66 = 414.7 long and the offset is what is left of it. */
+const RING_LEN=414.7;
+function setScoreRing(sel,score){
+  const ring=$(sel); if(!ring) return;
+  const st=scoreStatus(score);
+  ring.classList.remove('ring-good','ring-watch','ring-fix');
+  if(st) ring.classList.add('ring-'+st);
+  const bar=ring.querySelector('.ring-bar');
+  if(bar) bar.setAttribute('stroke-dashoffset',(RING_LEN*(1-(st?Math.max(0,Math.min(100,score))/100:0))).toFixed(1));
+  ring.setAttribute('aria-label', st?`Technique score ${score} out of 100`:'Not scored');
+}
+/* The same ring where the score is built into a template instead of sitting
+   in the page: the dashboard's sport cards and the two Compare pickers. */
+function ringHtml(score,size,inner){
+  const st=scoreStatus(score), sw=Math.round(size/12), r=(size-sw)/2, c=2*Math.PI*r;
+  const off=c*(1-(st?Math.max(0,Math.min(100,score))/100:0));
+  return `<div class="ring ${st?'ring-'+st:''}" role="img" aria-label="${st?'Score '+score+' out of 100':'Not scored'}">
+    <svg viewBox="0 0 ${size} ${size}" aria-hidden="true">
+      <circle class="ring-track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke-width="${sw}"/>
+      <circle class="ring-bar" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke-width="${sw}"
+        stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/>
+    </svg><div class="ring-inner">${inner}</div></div>`;
+}
+/* Which part of the body a finding is about, as a glyph. Read off the issue
+   type the backend sends, so a type we have never seen still gets a shape
+   rather than nothing. */
+function issueGlyph(type){
+  const t=String(type||'').toLowerCase();
+  const id = /cadence|rpm|contact|flight|time/.test(t) ? 'i-clock'
+    : /stride|foot|strike|step|landing/.test(t) ? 'i-run'
+    : /saddle|reach|bar|stem|seat/.test(t) ? 'i-bike'
+    : /trunk|lean|torso|posture|head|pelvi|shoulder/.test(t) ? 'i-person'
+    : /knee|hip|ankle|shin|elbow|arm|angle/.test(t) ? 'i-ruler'
+    : /aero|drag/.test(t) ? 'i-aero'
+    : 'i-target';
+  return `<span class="i-icon"><svg class="ic" aria-hidden="true"><use href="#${id}"/></svg></span>`;
+}
 function setGrade(sel,value){
   const g=$(sel); if(!g) return;
   const v=(value==null||value==='')?'—':String(value);
@@ -3116,7 +3191,7 @@ function mdInline(s){
    is to read the server log. */
 function coachDisclaimer(rec){
   const model=(rec&&rec.model)?` · written by <span class="mono">${esc(rec.model)}</span>`:'';
-  return `<div class="disclaimer">AI-generated suggestions — sanity-check anything major with your coach.${model}</div>`;
+  return `<div class="disclaimer">Written from the measurements — sanity-check anything major with your coach.${model}</div>`;
 }
 function mdToHtml(md){
   const e=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -3402,11 +3477,37 @@ document.addEventListener('click',e=>{
    tiles stretch at all), and the range-less row is short because nothing in it
    is tall. Before this a "Position: Balanced" card sat beside a six-line banded
    one and was stretched to match it: one word and a void. */
+const TILES_KEPT=4;
 function renderTiles(list){
   const banded=list.filter(t=>!t.includes('tile-short')), short=list.filter(t=>t.includes('tile-short'));
-  $('#tiles').innerHTML = banded.join('') || (short.length ? '' : '<p class="hint" style="text-align:left">No summary metrics available.</p>');
+  $('#tiles').innerHTML = banded.slice(0,TILES_KEPT).join('') || (short.length ? '' : '<p class="hint" style="text-align:left">No summary metrics available.</p>');
   const sh=$('#tilesShort'); if(sh){ sh.innerHTML=short.join(''); sh.classList.toggle('hidden', !short.length); }
+  // The rest keep their order and their range bars; they are just not the
+  // first thing. The fold's own state survives a re-render (the angle
+  // convention toggle rebuilds these tiles under the reader).
+  const rest=$('#tilesRest'), more=$('#tilesMore');
+  if(rest&&more){
+    const wasOpen=!rest.classList.contains('hidden');
+    const extra=banded.slice(TILES_KEPT);
+    rest.innerHTML=extra.join('');
+    more.classList.toggle('hidden', !extra.length);
+    setTilesFold(extra.length ? wasOpen : false);
+  }
 }
+function setTilesFold(open){
+  const rest=$('#tilesRest'), more=$('#tilesMore'); if(!rest||!more) return;
+  const n=rest.children.length;
+  rest.classList.toggle('hidden', !open);
+  more.setAttribute('aria-expanded', String(open));
+  const lbl=more.querySelector('span');
+  if(lbl) lbl.textContent = open ? 'Fewer metrics' : `${n} more metric${n===1?'':'s'}`;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#tilesMore'); if(!b) return;
+  setTilesFold($('#tilesRest').classList.contains('hidden'));
+});
+// Paper has no folds: everything measured is on the printed report.
+addEventListener('beforeprint',()=>setTilesFold(true));
 /* helper: {value,lo,hi,unit} for the range bar */
 function R(value,lo,hi,unit,src){ return {value,lo,hi,unit,src}; }
 /* The band the server graded against, preferred over the copy below.
@@ -4833,6 +4934,7 @@ function renderPhoto(res,opts){
   const sport=res.sport||state.sport;
   const sc=res.score||{}; const score=sc.overall_score;
   $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
+  setScoreRing('#pScoreRing', score);
   renderScoreDelta('#pScoreDelta', 'photo', sport, score);   // before saveToHistory()
   setGrade('#pGrade', sc.grade);
 
@@ -4918,7 +5020,7 @@ function renderPhoto(res,opts){
    goes; `blockIds` are the paid sections to hide. Returns true when locked.
    ============================================================ */
 const UNLOCK_COPY={
-  coaching:'AI coaching & personal action plan',
+  coaching:'Coaching notes & a personal action plan',
   plan:'Corrective drills — what to actually do about it',
   fit:'Fit adjustments — what to move on the bike, and by how much',
   angles:'Exact joint-angle measurements',
@@ -4926,7 +5028,7 @@ const UNLOCK_COPY={
   ranges:'Cadence, ranges & benchmark metrics',
   kinogram:'Kinogram — the five key positions of your stride, side by side',
   video:'Annotated video + slow-motion replay',
-  export:'Export your numbers for ChatGPT, Claude or Gemini',
+  export:'Export your numbers as a file',
 };
 /* `second_phase` — "Second phase photo (contact & drive)" — used to be on that
    list. Nothing has ever produced one: the whole feature was this label and two
@@ -6084,7 +6186,7 @@ function exEditorHtml(d){
         <option value="">— pick the clip —</option>${opts}
       </select>
       <p class="hint" style="text-align:left;font-size:12px;margin:8px 0 0">The athlete chose this at checkout. Change it if they picked the wrong one.</p>
-      ${a.report?`<div class="rr-h" style="margin-top:16px">What the AI told them</div><div class="ex-sub-card" style="font-size:12.5px;max-height:220px;overflow:auto">${mdToHtml(a.report)}</div>`:''}
+      ${a.report?`<div class="rr-h" style="margin-top:16px">What the report told them</div><div class="ex-sub-card" style="font-size:12.5px;max-height:220px;overflow:auto">${mdToHtml(a.report)}</div>`:''}
     </aside>
   </div>`;
 }
@@ -7019,6 +7121,7 @@ function render(job,opts){
       : '';
     wh.classList.toggle('hidden', !withheld);
   }
+  setScoreRing('#scoreRing', withheld ? null : r.technique_score);
   // must run before saveToHistory() at the end of render(), or it compares
   // this analysis against itself
   renderScoreDelta('#scoreDelta', 'video', sport, r.technique_score);
@@ -7219,6 +7322,7 @@ function render(job,opts){
       const sevCls=['high','medium','low'].includes(sev)?sev:'low';
       const lead=i===0 && issues.length>1;
       return `<div class="issue ${sevCls}${lead?' issue-lead':''}">
+        ${issueGlyph(it.type)}
         ${lead?'<div class="i-first">Fix first</div>':''}
         <div class="i-top"><span class="i-type">${esc(pretty(it.type||''))}</span>
           <span class="pill pill-${sevCls}"><span class="dot" aria-hidden="true"></span>${esc(it.severity||'')}</span></div>
@@ -7233,7 +7337,9 @@ function render(job,opts){
   // aero & watts headline panel (bike only; hidden for run + when N/A)
   if(sport==='bike') renderAeroPanel(s); else $('#aeroBlock').classList.add('hidden');
 
-  // tiles
+  // tiles. The fold is reset per report: carrying it over from the last one
+  // means a reader who opened it once never sees the short version again.
+  setTilesFold(false);
   renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s));
   // Whose numbers these are. On a two-sided session the readings are either
   // the merge of both clips or, when the merge was refused, one clip's --
@@ -7828,7 +7934,7 @@ async function fetchExport(fmt, url){
     // Paid feature. The gated result is a score and nothing else, so a free
     // export would be an empty document — send them to the upgrade path
     // instead of handing over a file that says nothing.
-    toast('The AI export is on the paid plans.');
+    toast('The export is on the paid plans.');
     if(window.openUpgrade) openUpgrade();
     return null;
   }
@@ -7882,7 +7988,7 @@ function exportCopy(o){
     where:o.where||'result'});
   return withExportBusy(btn,txt,'Preparing…',async()=>{
     const res=await fetchExport('md', o.url); if(!res) return;
-    if(await copyText(res.text)) toast('Copied — paste it into ChatGPT, Claude or Gemini.');
+    if(await copyText(res.text)) toast('Copied — paste it into any assistant.');
     else { downloadText(res.text,res.name,'text/markdown;charset=utf-8'); toast('Clipboard blocked — saved the file instead.'); }
   });
 }
@@ -8894,7 +9000,7 @@ function renderHistList(){
   // Now the title is the real button and the whole card is a mouse-sized
   // target for it; the delete is a sibling, reachable on its own.
   w.innerHTML=a.map(e=>`<div class="hcard" data-id="${e.id}">
-    <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span>
+    <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore ${e.score==null?'':'sc-'+scoreStatus(e.score)}">${e.score==null?'—':e.score}</span>
       <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
     <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
       <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
@@ -8935,6 +9041,7 @@ function renderHistoryDetail(e){
   state.histOpen=e;
   renderHistoryKeyframe(e);
   $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
+  setScoreRing('#hdScoreRing', e.score);
   setGrade('#hdGrade', e.grade);
   setSportTag('#hdSportTag','#hdSportTagIcon','#hdSportTagText',e.sport);
   const parts=[esc(e.kind)];
@@ -9630,7 +9737,7 @@ function lockedTrendCard(m){
     <div class="tlock">${fakeSpark(m.key)}</div>
   </div>`;
 }
-const PROGRESS_TEASER_ITEMS=['Every joint & gait metric tracked','Optimal-range bands to aim for','An AI read on what changed between runs'];
+const PROGRESS_TEASER_ITEMS=['Every joint & gait metric tracked','Optimal-range bands to aim for','A written read on what changed between runs'];
 function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
@@ -9731,14 +9838,14 @@ function sportCard(sport, entries){
   const newPB=last.score!=null && best!=null && last.score===best && last.score>priorMax && entries.length>=2;
   const bestEntry=best!=null?entries.find(e=>e.score===best):null;
   const pb=newPB
-    ? `<span class="ds-pb ds-pb-new"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> New personal best</span>`
+    ? `<span class="ds-pb ds-pb-new"><svg class="ic" aria-hidden="true"><use href="#i-arr-up"/></svg> New personal best</span>`
     : (best!=null && entries.length>=2 ? `<span class="ds-pb">Best <b>${best}</b>${bestEntry?' · '+esc(shortDate(bestEntry.at)):''}</span>` : '');
   return `<div class="dsport">
     <div class="ds-head"><span><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</span>
       <span class="ds-count">${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
     <div class="ds-scorerow">
       <div class="ds-scorebox">
-        <div class="ds-score" style="color:${GRADE_COLORS[last.grade]||C.navy}">${last.score==null?'—':last.score}<small>/100</small></div>
+        ${ringHtml(last.score,96,`<div class="ds-score" style="color:${GRADE_COLORS[last.grade]||C.navy}">${last.score==null?'—':last.score}<small>/100</small></div>`)}
         <div class="hint">${esc(last.grade||'—')} · ${agoStr(last.at)}</div>
       </div>
       ${scores.length>=2?miniSpark(scores):''}
@@ -9833,7 +9940,7 @@ function renderDashFocus(all){
     title:'Unlock your full technique',
     body:'You’re seeing your score and history. Upgrade to see the measurements, ranked focus areas and a personal drill plan that tell you <em>what to change</em>.'}) : '';
 }
-const DASH_TEASER_ITEMS=['Every joint & gait metric, tracked over time','Your ranked focus areas','A personal action plan with drills','AI coaching on what to change'];
+const DASH_TEASER_ITEMS=['Every joint & gait metric, tracked over time','Your ranked focus areas','A personal action plan with drills','Coaching notes on what to change'];
 /* ---------- Current form: latest reading per metric, where it sits vs the
    optimal band, and how it moved since the previous analysis. Reuses the
    trend maps saved on each entry + the same status vocabulary as the angle
@@ -9943,6 +10050,8 @@ function dashRecentCard(e){
 }
 function renderDashboard(){
   renderReviewCard();
+  const dd=$('#dashDate');
+  if(dd){ try{ dd.textContent=new Date().toLocaleDateString(UI_LOCALE,{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dd.textContent=''; } }
   const all=loadHist();
   const nameEl=auth&&auth.email?auth.email.split('@')[0]:null;
   // First-run / empty state: friendly CTA, hide the widgets.
@@ -10720,7 +10829,7 @@ function renderCompare(){
       <div class="cmp-when">${setups
         ? esc(e._profile.name)+' · '+e._profile.n+' clip'+(e._profile.n>1?'s':'')+' averaged'
         : esc(fmtWhen(e.at))}</div>
-      <div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>
+      ${ringHtml(e.score,80,`<div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>`)}
     </div>`).join('')}
   </div>`;
   const rowFn = sidesMode
@@ -10779,11 +10888,11 @@ function renderSidePickers(){
    nudge for signed-out users. Cached per A/B pair in state.cmp.summary. */
 function renderCompareSummary(){
   const host=$('#cmpSummary'); if(!host) return;
-  if(!auth){ host.innerHTML=`<div class="cmp-ai cmp-ai-lock"><b>AI progress summary</b> — sign in to get a coach's read on what changed between these two runs.</div>`; return; }
+  if(!auth){ host.innerHTML=`<div class="cmp-ai cmp-ai-lock"><b>Progress summary</b> — sign in to get a coach's read on what changed between these two runs.</div>`; return; }
   const c=state.cmp;
   if(c.summary){ host.innerHTML=`<div class="cmp-ai"><div class="cmp-ai-h">Coach's read</div>${mdToHtml(c.summary)}</div>`; return; }
   if(c.summaryLoading){ host.innerHTML=`<div class="cmp-ai cmp-ai-load">Analyzing your progress…</div>`; return; }
-  host.innerHTML=`<div class="again-row" style="margin:0 0 16px"><button class="btn btn-ghost btn-sm" id="cmpAiBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg> Get AI progress summary</button></div>`;
+  host.innerHTML=`<div class="again-row" style="margin:0 0 16px"><button class="btn btn-ghost btn-sm" id="cmpAiBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Summarise the change</button></div>`;
   const btn=$('#cmpAiBtn'); if(btn) btn.addEventListener('click',fetchCompareSummary);
 }
 function fetchCompareSummary(){

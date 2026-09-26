@@ -292,13 +292,20 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .hist-clear:hover{background:var(--st-bad-bg);border-color:var(--st-bad-fill)}
 .hist-clear .ic{width:14px;height:14px}
 .hist-hint{color:var(--c-ink-soft);font-size:13px}
-#histList{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.hcard{position:relative;border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden;background:var(--c-bg);cursor:pointer;transition:border-color .15s ease-out;text-align:left;padding:0}
-.hcard:hover{border-color:var(--c-ink)}
+/* A list, not a gallery: fifteen analyses fit on one screen, the dates line
+   up under each other, and the score badges read down the right edge. The
+   card's own border becomes the row rule. */
+#histList{display:flex;flex-direction:column;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:2px 14px}
+.hcard{position:relative;display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:center;
+  border:0;border-bottom:1px solid var(--c-line);border-radius:0;background:transparent;cursor:pointer;
+  transition:border-color .15s ease-out;text-align:left;padding:10px 96px 10px 0;overflow:visible}
+.hcard:last-child{border-bottom:0}
+.hcard:hover .htitle{text-decoration:underline}
 .hcard:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 .hthumb-none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.28)}
-.hthumb-none .ic{width:34px;height:34px}
-.hthumb{position:relative;background:var(--c-media-bg);aspect-ratio:16/10;overflow:hidden}
+.hthumb-none .ic{width:22px;height:22px}
+.hthumb{position:relative;width:64px;height:48px;flex:none;background:var(--c-media-bg);
+  border:1px solid var(--c-line);border-radius:var(--radius-xs);overflow:hidden}
 .hthumb img{width:100%;height:100%;object-fit:cover;display:block}
 .kf-load::after,#hdImg.kf-wait{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.07) 50%,transparent 70%);background-size:220% 100%;animation:kfshine 1.4s ease-in-out infinite}
 .kf-load::after{content:"";position:absolute;inset:0}
@@ -308,23 +315,27 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .kf-img{opacity:0;transition:opacity .15s ease-out}
 .kf-img.kf-in{opacity:1}
 .kf-slot{aspect-ratio:16/10}
-/* The score on a thumbnail: a mono figure on an ink card. The JS still hands
-   it a grade colour inline; on the Instrument system the figure is the
-   information and the colour is not, so the card overrides it. */
-.hscore{position:absolute;left:8px;top:8px;font-family:var(--f-mono);font-weight:500;font-size:15px;color:var(--c-bg);
-  padding:2px 8px;border-radius:var(--radius-xs);background:rgba(14,17,22,.82)!important}
-.hmeta{padding:10px 12px 12px}
+/* The score badge holds the right edge of the row, in the band its number
+   falls in: reading the column tells you how the month went without reading a
+   single date. The letter grade stays inside the report. */
+.hscore{position:absolute;right:48px;top:50%;transform:translateY(-50%);width:44px;height:44px;
+  display:grid;place-items:center;padding:0;border:2px solid var(--c-line-strong);border-radius:var(--radius-lg);
+  font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:17px;color:var(--c-ink);background:var(--c-panel)}
+.hscore.sc-good{color:var(--c-live-good);border-color:var(--c-live-good-fill);background:var(--c-live-good-bg)}
+.hscore.sc-watch{color:var(--c-warn-text);border-color:var(--c-warn);background:var(--st-warn-bg)}
+.hscore.sc-fix{color:var(--st-bad-text);border-color:var(--c-coral-btn);background:var(--c-live-bad-bg)}
+.hmeta{padding:0;min-width:0}
 .htitle{font-weight:600;font-size:13.5px;text-transform:capitalize;background:none;border:0;padding:0;
   font-family:inherit;color:inherit;cursor:pointer;text-align:left;line-height:inherit}
 .htitle:focus-visible{outline:2px solid var(--c-blue);outline-offset:3px;border-radius:var(--radius-xs)}
 .hsub{font-size:11.5px;color:var(--c-ink-faint);margin-top:3px;font-family:var(--f-mono)}
-.hdel{position:absolute;right:4px;top:4px;width:44px;height:44px;border:none;background:none;
-  color:#fff;cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
-.hdel .hdel-glyph{width:28px;height:28px;border-radius:50%;background:rgba(14,17,22,.6);
-  display:flex;align-items:center;justify-content:center;transition:background-color .15s ease-out}
+.hdel{position:absolute;right:0;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;background:none;
+  color:var(--c-ink-faint);cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
+.hdel .hdel-glyph{width:32px;height:32px;border-radius:50%;background:transparent;
+  display:flex;align-items:center;justify-content:center;transition:background-color .15s ease-out,color .15s ease-out}
 .hdel .hdel-glyph svg{width:14px;height:14px}
-.hdel:hover .hdel-glyph{background:var(--st-bad-fill)}
-.hdel:focus-visible{outline:2px solid #fff;outline-offset:-2px;border-radius:var(--radius-btn)}
+.hdel:hover .hdel-glyph{background:var(--st-bad-bg);color:var(--st-bad)}
+.hdel:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px;border-radius:var(--radius-btn)}
 /* progress / trends */
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:12px}
 .tcard{border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:14px 16px 12px}
@@ -355,8 +366,14 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
    side, recent. The markup keeps its old order; the flex order re-sorts it. */
 #dashboard{display:flex;flex-direction:column}
 #dashboard > .blockhead:first-child{order:0;margin:0 0 16px}
-#dashCounts{order:1} #dashSummary{order:2} #dashSports{order:3} #dashForm{order:4}
-#dashFocus{order:5} #dashPlan{order:6} #dashboard > .blockhead:not(:first-child){order:7} #dashRecent{order:8}
+/* The counters used to open the screen: "62 analyses, 1 this month" is
+   bookkeeping, and it was holding the first line. Now the two sport cards --
+   the score and where it is going -- are what the screen opens with, and the
+   counts close it. */
+#dashSummary{order:1} #dashSports{order:2} #dashFocus{order:3} #dashForm{order:4}
+#dashPlan{order:5} #dashCounts{order:6} #dashboard > .blockhead:not(:first-child){order:7} #dashRecent{order:8}
+/* The date, in the corner a training app keeps it. */
+.dash-date{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint);flex:1 1 100%;margin-bottom:-8px}
 .dash-summary:not(:empty){margin:4px 0 20px}
 /* The empty-state figures: the "How to film it" line set, drawn for the
    moments the app has nothing to show yet (media/empty-*.webp). */
@@ -383,6 +400,13 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .ds-head .ic{width:16px;height:16px;vertical-align:-3px;margin-right:6px;color:var(--c-ink-faint)}
 .ds-count{font-size:11.5px;font-weight:400;color:var(--c-ink-faint);font-family:var(--f-mono)}
 .ds-scorerow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.ds-scorebox{display:flex;align-items:center;gap:14px;min-width:0}
+.dsport .ring{width:96px;height:96px}
+.ring .ds-score{font-size:34px}
+.ring .ds-score small{display:none}
+.cmp-card .ring{width:80px;height:80px;margin:2px auto 0}
+.ring .cmp-score{font-size:28px;margin:0}
+.ring .cmp-score small{display:none}
 /* The numeral is the entry point of the screen. The JS colours it by grade
    inline; the number carries the meaning here, so ink it is. */
 .ds-score{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:56px;line-height:1;letter-spacing:-.02em;
@@ -411,9 +435,13 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .focus-top .tdelta{font-size:12px;font-family:var(--f-mono)}
 .focus-sub{font-size:12.5px;color:var(--c-ink-soft);margin:4px 0 10px}
 .focus-item .btn{padding:5px 12px;font-size:12px;min-height:32px}
-.dash-recent{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
-.drec{display:flex;gap:10px;align-items:center;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:8px;cursor:pointer;transition:border-color .15s ease-out,background-color .15s ease-out}
-.drec:hover,.drec:focus-visible{border-color:var(--c-ink);outline:none}
+/* The same row the cabinet uses, so "recent" and History are one idea shown
+   at two lengths rather than two components. */
+.dash-recent{display:flex;flex-direction:column;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg);padding:2px 14px}
+.drec{display:flex;gap:12px;align-items:center;border:0;border-bottom:1px solid var(--c-line);border-radius:0;background:transparent;padding:10px 0;cursor:pointer;transition:border-color .15s ease-out,background-color .15s ease-out}
+.drec:last-child{border-bottom:0}
+.drec:hover .drec-title,.drec:focus-visible .drec-title{text-decoration:underline}
+.drec:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
 .drec-thumb{position:relative;width:64px;height:48px;flex:none;border-radius:var(--radius-xs);overflow:hidden;background:var(--c-media-bg)}
 .drec-thumb img{width:100%;height:100%;object-fit:cover}
 .drec-score{position:absolute;left:4px;bottom:4px;color:#fff;font-family:var(--f-mono);font-weight:500;font-size:12px;padding:1px 6px;border-radius:var(--radius-xs);background:rgba(14,17,22,.82)!important}
@@ -757,8 +785,16 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--c-blue)}
 .navlink-ext{color:var(--c-ink-soft);font-weight:500;font-size:13px}
 /* The Analyze entry used to be the nav's one filled control. On this system a
-   filled block in the nav means nothing: the filled button is on the page. */
-.navlink-cta{background:transparent;color:var(--c-ink-soft);margin-bottom:0}
+   filled block in the nav means nothing -- so the accent moves into the glyph
+   and the row stays a row: the one action on the sidebar, recognisable by
+   shape, with no block competing with the page's own button. */
+.navlink-cta{background:transparent;color:var(--c-ink);margin-bottom:0;order:5;margin-top:10px;font-weight:600}
+.navlink-cta .ic{width:30px;height:30px;padding:7px;box-sizing:border-box;flex:none;
+  border-radius:50%;background:var(--c-action);color:var(--c-action-ink)}
+.navlink-cta[aria-current="page"]{background:transparent}
+.navlink-cta[aria-current="page"] .ic{color:var(--c-action-ink)}
+.navlink-cta[aria-current="page"]::before{display:none}
+.sidenav .navgroup-bottom{order:10}
 .navlink-cta:hover{background:var(--c-panel);color:var(--c-ink)}
 .navlink-cta[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-ink)}
 .navsep{height:1px;background:var(--c-line);margin:8px 2px}
@@ -803,6 +839,18 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .botlink[aria-current="page"]{color:var(--c-ink)}
 .botlink[aria-current="page"] .ic{color:var(--c-blue)}
 .botlink:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px;border-radius:var(--radius-btn)}
+/* The one action, where the thumb is: signed in, Analyze rises out of the
+   row as a coral disc in the middle of five. Signed out the row is four items
+   and has no middle, so it stays a tab like the others -- a raised button at
+   position two of four reads as a mistake. */
+.bot-plus{display:grid;place-items:center}
+.bot-plus .ic{width:22px;height:22px}
+body.authed #botHome{order:1} body.authed #botHistory{order:2} body.authed #botAnalyze{order:3}
+body.authed #botProgress{order:4} body.authed #botMore{order:5}
+body.authed #botAnalyze .bot-plus{width:52px;height:52px;margin-top:-26px;border-radius:50%;
+  background:var(--c-action);color:var(--c-action-ink);box-shadow:var(--shadow)}
+body.authed #botAnalyze .bot-plus .ic{width:26px;height:26px;color:var(--c-action-ink)}
+body.authed #botAnalyze[aria-current="page"] .bot-plus{background:var(--c-action-dk)}
 .backhome-row{display:none;margin:0 0 16px}
 
 /* ---------- The band across the top ----------
@@ -1111,14 +1159,39 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .ctl-sport .tile-btn{min-height:44px;font-size:14px}
 
 /* drop zone: the one white rectangle on the page */
-.drop{display:block;border:1px dashed var(--c-line-strong);border-radius:var(--radius);padding:36px 24px;
-  text-align:center;cursor:pointer;transition:border-color .15s,background-color .15s;background:var(--c-bg);margin:0 0 4px}
-.drop:hover,.drop.drag,#file:focus-visible + .drop{border-color:var(--c-blue);background:var(--c-panel-blue)}
+/* The drop zone is a viewfinder: the dark ground the clip will be played on,
+   with the rule-of-thirds grid and the four corner brackets the in-app camera
+   draws. It is the one place on this screen that shows what the product looks
+   at, which is also the thing the capture guide below is about. */
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:200px;border:1px solid var(--c-line-strong);border-radius:var(--radius);padding:36px 24px;
+  text-align:center;cursor:pointer;transition:border-color .15s,background-color .15s;
+  color:#F5F7FA;margin:0 0 4px;background:var(--c-media-bg);overflow:hidden}
+/* The rule of thirds -- the grid the capture guide's first rule is about. */
+.drop::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(245,247,250,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(245,247,250,.10) 1px,transparent 1px);
+  background-size:100% 33.34%,33.34% 100%}
+/* Four corner brackets. Inset by 12px so each one is a plain keyword corner
+   of this box; four-value background positions are where the first attempt
+   lost three of them. */
+.drop::after{content:"";position:absolute;inset:12px;pointer-events:none;
+  background:
+    linear-gradient(#F5F7FA,#F5F7FA) left top/26px 3px no-repeat,
+    linear-gradient(#F5F7FA,#F5F7FA) left top/3px 26px no-repeat,
+    linear-gradient(#F5F7FA,#F5F7FA) right top/26px 3px no-repeat,
+    linear-gradient(#F5F7FA,#F5F7FA) right top/3px 26px no-repeat,
+    linear-gradient(#F5F7FA,#F5F7FA) left bottom/26px 3px no-repeat,
+    linear-gradient(#F5F7FA,#F5F7FA) left bottom/3px 26px no-repeat,
+    linear-gradient(#F5F7FA,#F5F7FA) right bottom/26px 3px no-repeat,
+    linear-gradient(#F5F7FA,#F5F7FA) right bottom/3px 26px no-repeat}
+.drop > *{position:relative}
+.drop:hover,.drop.drag,#file:focus-visible + .drop{border-color:#F5F7FA;background:var(--c-media-bg)}
 #file:focus-visible + .drop{box-shadow:var(--ring)}
 .drop.err{border-color:var(--st-bad-fill)}
-.drop .ic-lg{margin:0 auto 12px;color:var(--c-ink-faint);display:block;width:32px;height:32px}
-.drop b{color:var(--c-head);font-weight:600;font-size:15px}
-.drop small{display:block;color:var(--c-ink-faint);font-size:12.5px;margin-top:6px}
+.drop .ic-lg{margin:0 auto 12px;color:#F5F7FA;display:block;width:32px;height:32px}
+.drop b{color:#F5F7FA;font-weight:600;font-size:15px}
+.drop small{display:inline-block;color:#C4CCD6;font-size:12.5px;margin-top:6px;
+  background:rgba(14,17,22,.66);padding:5px 12px;border-radius:999px}
 
 .filepreview{display:none;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:12px;gap:20px;align-items:center;margin:0 0 4px}
 .filepreview.show{display:flex}
@@ -1318,9 +1391,16 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
    glows, the score in Archivo italic, the grade a chip in its colour, the
    meta in white. The one dark object on a light report -- the number the
    report is about. */
-.result-top{display:flex;flex-direction:column;gap:16px;align-items:stretch;margin-top:0}
-.result-top > #videoCol,.result-top > div:not(.scorecard){order:-1}
-.result-top.no-video{display:flex}
+/* Score first, then the two things that answer "so what": the clip on the
+   left, the findings beside it. They used to be a screen apart, so the reader
+   watched the overlay with no idea what to look for. */
+.result-top{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px 24px;align-items:start;margin-top:0}
+.result-top > .scorecard{grid-column:1/-1}
+.result-top > #videoCol{grid-column:1}
+.result-top > #issuesBlock{grid-column:2;margin-top:0}
+.result-top.no-video > #issuesBlock,.result-top.pair > #issuesBlock{grid-column:1/-1}
+#historyDetail .result-top{grid-template-columns:minmax(0,1fr)}
+#historyDetail .result-top > *{grid-column:1}
 /* A two-sided session: the single player was the base clip twice over, so it
    leaves the screen and the session panel carries both clips. The column
    stays in the DOM because print wants the annotated still it holds. */
@@ -1344,6 +1424,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .score-label{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;color:rgba(255,255,255,.6);margin-top:0;grid-column:1/span 2;grid-row:1}
 .score-num{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:64px;line-height:1;
   color:#fff;letter-spacing:-.02em;margin-top:8px;grid-column:1;grid-row:2;display:flex;align-items:baseline;gap:6px}
+/* Inside a ring the numeral is centred, not baseline-aligned, and the ring
+   takes the grid slot the numeral used to hold. */
+.scorecard .ring{grid-column:1;grid-row:2;margin-top:8px}
+.ring .score-num{grid-column:auto;grid-row:auto;margin:0;font-size:44px;justify-content:center}
+.ring .score-num small{display:none}
+.ring .score-none{font-size:15px;line-height:1.2;max-width:104px;white-space:normal}
 .score-num small{font-family:var(--f-mono);font-size:14px;color:rgba(255,255,255,.55);font-style:normal;font-weight:400;letter-spacing:0}
 /* The change since last time, as the landing's delta chip. */
 .score-delta{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;font-weight:500;font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase;
@@ -1427,6 +1513,8 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   .scorecard > *{grid-column:1!important;grid-row:auto!important}
   .scorecard .score-label{order:-1}
   .score-num{font-size:48px}
+  .scorecard .ring{width:118px;height:118px;justify-self:start}
+  .ring .score-num{font-size:38px}
   #historyDetail .scorecard .sharebtn{margin-top:8px}
   #historyDetail .score-meta{display:block}
 }
@@ -1451,6 +1539,27 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .videocap{font-size:12px;color:var(--c-ink-faint);padding:8px 14px;background:var(--c-bg);border-top:1px solid var(--c-line);
   display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;font-family:var(--f-mono)}
 .videocap .note{color:var(--c-ink-faint);font-family:var(--f-body)}
+
+/* ---------- The score ring ----------
+   0-100 drawn once around the number that already says it. The number stays
+   the reading -- this is how far along the scale it sits, which is the one
+   thing a bare figure cannot show. Colour is the grade's band, and it is
+   never the only carrier: the letter sits beside it. */
+.ring{position:relative;display:inline-grid;place-items:center;flex:none;width:144px;height:144px}
+.ring > svg{position:absolute;inset:0;width:100%;height:100%}
+.ring-track{stroke:var(--c-line)}
+.ring-bar{stroke-linecap:round;transition:stroke-dashoffset .15s ease-out;stroke:var(--c-line-strong)}
+.ring-good .ring-bar{stroke:var(--c-live-good-fill)}
+.ring-watch .ring-bar{stroke:var(--c-warn)}
+.ring-fix .ring-bar{stroke:var(--c-coral-btn)}
+.ring-inner{position:relative;display:grid;place-items:center;text-align:center;line-height:1}
+/* On the navy score tile the track is a light hairline and the arc takes the
+   tile's own chip colours, which are tuned for that ground. */
+.scorecard .ring-track{stroke:rgba(255,255,255,.16)}
+.scorecard .ring-good .ring-bar{stroke:#7BE0A2}
+.scorecard .ring-watch .ring-bar{stroke:#FFD08A}
+.scorecard .ring-fix .ring-bar{stroke:#FFB3A6}
+@media (prefers-reduced-motion:reduce){ .ring-bar{transition:none} }
 
 /* ---------- The player (FlappPlayer) ----------
    The overlay mp4 on a dark stage; under it the strip, the controls and the
@@ -1634,12 +1743,23 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .coach .disclaimer{font-size:11.5px;color:var(--c-ink-faint);margin-top:14px;padding-top:12px;border-top:1px solid var(--c-line);font-family:var(--f-mono)}
 
 /* A finding: a row with a 3 px status rail, the pill, the claim, the number it fired on. */
-.issue{border-radius:var(--radius);padding:14px 16px;background:var(--c-bg);border:1px solid var(--c-line);margin-bottom:8px;border-left:3px solid var(--c-line-strong)}
+/* A finding is a card you scan, not a paragraph you read: the glyph says
+   which part of the body it is about before the words do, and takes the
+   severity's tint. The left rule stays -- it is what sorts the list. */
+.issue{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;align-items:center;
+  border-radius:var(--radius);padding:14px 16px;background:var(--c-bg);border:1px solid var(--c-line);margin-bottom:8px;border-left:3px solid var(--c-line-strong)}
+.issue > *{grid-column:2}
+.issue .i-icon{grid-column:1;grid-row:1/span 4;align-self:center;width:40px;height:40px;
+  display:grid;place-items:center;border-radius:var(--radius-lg);background:var(--c-panel);color:var(--c-ink-faint)}
+.issue .i-icon .ic{width:22px;height:22px}
+.issue.high .i-icon{color:var(--st-bad);background:var(--st-bad-bg)}
+.issue.medium .i-icon{color:var(--st-warn);background:var(--st-warn-bg)}
+.issue.low .i-icon{color:var(--c-live-good);background:var(--c-live-good-bg)}
 .issue.high{border-left-color:var(--st-bad-fill)} .issue.medium{border-left-color:var(--st-warn-fill)}
 .issue.issue-lead{border-left-width:3px;box-shadow:none}
 .issue .i-first{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);margin-bottom:6px}
-.issue .i-top{display:flex;justify-content:space-between;gap:16px;align-items:center}
-.issue .i-type{font-weight:600;color:var(--c-head);font-size:14px}
+.issue .i-top{display:flex;justify-content:flex-start;gap:10px;align-items:center;flex-wrap:wrap}
+.issue .i-type{font-weight:600;color:var(--c-head);font-size:15px}
 .issue .i-rec{font-size:13.5px;color:var(--c-ink-soft);margin-top:6px;max-width:72ch;line-height:1.5}
 .issue .i-val-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);margin-top:8px;display:inline-block}
 .issue .i-val{font-family:var(--f-mono);font-size:12px;color:var(--c-ink)}
@@ -1777,6 +1897,15 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .tile .grbar{margin-top:auto;padding-top:10px}
 .tile:not(:has(.grbar)) .t-ref{margin-top:auto}
 .tiles-short{margin-top:10px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+/* Four readings answer "is anything out of range"; the rest answer "by how
+   much", which is a second question. The fold says how many are behind it --
+   a count, so nobody has to open it to find out whether it is worth opening. */
+.tiles-more{margin-top:12px;display:inline-flex;align-items:center;gap:6px}
+.tiles-more .ic{width:14px;height:14px;flex:none;transition:transform .15s ease-out}
+.tiles-more[aria-expanded="true"] .ic{transform:rotate(180deg)}
+@media (prefers-reduced-motion:reduce){ .tiles-more .ic{transition:none} }
+#tilesRest{margin-top:12px}
+@media print{ #tilesRest{display:grid!important} .tiles-more{display:none!important} }
 .tile.tile-short{padding:12px 14px 12px;min-height:0}
 .tile.tile-short .t-val{font-size:20px;margin-top:6px}
 .tile.tile-short .t-val.txt{font-size:15px;margin-top:8px}
@@ -2037,6 +2166,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .appshell{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
   body.authed .backhome-row{display:block}
   .result-top{grid-template-columns:1fr}
+  .result-top > *{grid-column:1}
   .scorecard{max-width:none}
 }
 @media(min-width:901px){ .scrim{display:none!important} }
