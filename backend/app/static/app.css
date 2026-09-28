@@ -1509,12 +1509,27 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .scorecard .btn-ghost:hover{background:rgba(255,255,255,.1);border-color:#fff}
 .sc-scorerow{display:contents}
 @media(max-width:640px){
-  .scorecard{padding:16px;grid-template-columns:1fr;gap:8px}
-  .scorecard > *{grid-column:1!important;grid-row:auto!important}
-  .scorecard .score-label{order:-1}
+  /* The phone card reads in two short lines -- what it is, then the score
+     with its grade beside it -- and only then the prose. Stacked one item
+     per row, the label, the sport, the ring, the grade and the meta were
+     five rows and the findings started 600px down the page. */
+  .scorecard{display:flex;flex-wrap:wrap;align-items:center;padding:16px;gap:10px 14px}
+  .scorecard > *{grid-column:auto!important;grid-row:auto!important}
+  .scorecard .score-label{order:1;flex:1 1 100%;margin:0}
+  /* The sport chip is top-aligned on the desktop grid, where it sits in a
+     column of its own. Beside a 104px ring it has to centre with it. */
+  .scorecard > .sporttag{order:2;align-self:center}
+  .scorecard .ring{order:3;width:104px;height:104px;margin:0;flex:0 0 auto}
+  .scorecard .graderow{order:4;flex:0 0 auto;padding:0}
+  .scorecard .score-delta{order:5;flex:1 1 100%;margin:0}
+  .scorecard .score-none-why{order:6;flex:1 1 100%}
+  .scorecard .score-meta{order:7;flex:1 1 100%}
+  .scorecard .confwrap{order:8;flex:1 1 100%}
+  .scorecard .score-bd{order:9;flex:1 1 100%;margin:0;padding-top:10px}
+  .scorecard .sharebtn{order:10;margin:0}
+  .scorecard #printBtnHost{order:11}
   .score-num{font-size:48px}
-  .scorecard .ring{width:118px;height:118px;justify-self:start}
-  .ring .score-num{font-size:38px}
+  .ring .score-num{font-size:34px}
   #historyDetail .scorecard .sharebtn{margin-top:8px}
   #historyDetail .score-meta{display:block}
 }
@@ -1749,7 +1764,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .issue{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;align-items:center;
   border-radius:var(--radius);padding:14px 16px;background:var(--c-bg);border:1px solid var(--c-line);margin-bottom:8px;border-left:3px solid var(--c-line-strong)}
 .issue > *{grid-column:2}
-.issue .i-icon{grid-column:1;grid-row:1/span 4;align-self:center;width:40px;height:40px;
+.issue .i-icon{grid-column:1;grid-row:1/span 4;align-self:start;width:40px;height:40px;
   display:grid;place-items:center;border-radius:var(--radius-lg);background:var(--c-panel);color:var(--c-ink-faint)}
 .issue .i-icon .ic{width:22px;height:22px}
 .issue.high .i-icon{color:var(--st-bad);background:var(--st-bad-bg)}
@@ -2165,8 +2180,17 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .botnav{display:grid}
   .appshell{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
   body.authed .backhome-row{display:block}
-  .result-top{grid-template-columns:1fr}
-  .result-top > *{grid-column:1}
+  /* One column, and the placements above have to be beaten at their own
+     specificity: #issuesBlock carries an id, so a `> *` reset never reaches
+     it and the findings end up in an implicit second column. */
+  .result-top{grid-template-columns:minmax(0,1fr)}
+  .result-top > *,
+  .result-top > .scorecard,
+  .result-top > #videoCol,
+  .result-top > #issuesBlock,
+  .result-top.no-video > #issuesBlock,
+  .result-top.pair > #issuesBlock{grid-column:1}
+  .result-top > #issuesBlock{margin-top:0}
   .scorecard{max-width:none}
 }
 @media(min-width:901px){ .scrim{display:none!important} }
@@ -2184,10 +2208,23 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .filepreview video{width:100%}
   .filepreview img#previewImg{width:100%;max-width:260px;margin:0 auto}
   .guides{grid-template-columns:1fr;gap:8px}
-  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  /* Two columns on a phone, and each row as tall as its own card: the
+     shared baseline that lets range bars be compared across a row costs a
+     200px void here, next to a tile whose caption runs to five lines. */
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}
   .progress-card{padding:20px 0}
   .step span.slbl{display:inline}
   .videocap{flex-direction:column;align-items:flex-start}
+  /* Five rows of controls under a phone-sized clip is more chrome than
+     video. Tightened so transport+events, speed+time, and the two button
+     groups each take one row. */
+  .fp-ctl{gap:5px;padding:7px 8px}
+  .fp-ctl .btn{min-height:30px;padding:3px 8px}
+  .fp-evlbl{font-size:10.5px}
+  .fp-speed button,.fp-layers button,.fp-trail button{min-height:30px;padding:3px 5px;font-size:11px}
+  .fp-time{font-size:11px;margin-left:0}
+  .fp-graph{padding:6px 10px 8px}
+  .fp-graphnote{font-size:11px}
   .blockhead{margin-top:28px}
   .again-row{flex-direction:column;align-items:stretch;text-align:center}
   table.data{font-size:13px}

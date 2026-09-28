@@ -85,3 +85,47 @@ def test_navigation_icons_are_not_all_the_same_one():
     assert '<use href="#i-list"/></svg> Training plan' in SPA
     for symbol in ("i-tag", "i-grid", "i-bell", "i-film", "i-list"):
         assert f'id="{symbol}"' in SPA, f"{symbol} is referenced but not defined"
+
+def _media_block(css: str, query: str) -> str:
+    """Every @media body carrying ``query``, concatenated, braces balanced.
+
+    There is more than one 900px query in the stylesheet; taking the first
+    and calling it "the phone rules" is how this helper first lied.
+    """
+    out, at = [], 0
+    while True:
+        i = css.find(query, at)
+        if i < 0:
+            return "\n".join(out)
+        i = css.index("{", i)
+        depth = 0
+        for j in range(i, len(css)):
+            if css[j] == "{":
+                depth += 1
+            elif css[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+        out.append(css[i + 1:j])
+        at = j
+
+
+def test_the_phone_report_is_one_column_all_the_way_down():
+    """The findings sit beside the clip on a desk and under it on a phone.
+
+    ``.result-top > #issuesBlock{grid-column:2}`` carries an id, so the
+    obvious phone reset -- ``.result-top > *{grid-column:1}`` -- never reaches
+    it, whichever comes last. The findings were placed in a column the phone
+    grid does not have, the grid grew an implicit one to hold them, and the
+    report scrolled sideways with the findings squeezed to one word per line.
+    Any later placement added to .result-top has to be reset here by name.
+    """
+    phone = _media_block(CSS, "max-width:900px")
+    assert phone, "the 900px query is gone"
+    assert re.search(r"\.result-top\s*>\s*#issuesBlock[^{]*\{[^}]*grid-column:1", phone), (
+        "the phone reset no longer beats the desktop placement's id specificity"
+    )
+    # Every id-carrying placement inside .result-top needs the same treatment.
+    placed = set(re.findall(r"\.result-top[^,{]*>\s*#(\w+)\s*[,{]", CSS))
+    reset = set(re.findall(r"\.result-top[^,{]*>\s*#(\w+)\s*[,{]", phone))
+    assert placed <= reset, f"placed on the desktop grid but not reset for a phone: {placed - reset}"
