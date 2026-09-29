@@ -27,14 +27,23 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+# The runner image is PINNED, not `ubuntu-latest`. GitHub moves that label to a
+# new Ubuntu on a date of its choosing (26 lands 2026-10-19), and this workflow
+# is the only thing that ships the product -- an OS bump should be a commit
+# somebody made on purpose, not a Tuesday on which the deploy stops working.
+# Bump it deliberately; the old image keeps working until it is retired.
+#
+# The action versions are the ones that run on Node 24. v4/v5 were forced onto
+# it with a deprecation warning, which is the state just before they stop
+# running at all.
 jobs:
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'      # matches the Dockerfile base image
           cache: pip
@@ -59,9 +68,9 @@ jobs:
   deploy:
     name: Deploy to Railway
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
