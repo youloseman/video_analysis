@@ -1,11 +1,13 @@
-"""The container's memory budget, reported so the concurrency cap can be set
-on evidence.
+"""The container's budget, reported so the concurrency cap can be set on
+evidence instead of on a guess.
 
-One analysis peaks at ~600 MB and leaves ~287 MB of loaded pose model resident.
-``max_concurrent_analyses`` is therefore a memory budget, and it was set to 2
-without anybody being able to see the budget from inside. An OOM on a
-single-worker deploy does not fail one request -- it takes the worker down and
-every clip being analysed with it.
+One analysis peaks at ~600 MB and leaves ~287 MB of loaded pose model resident,
+so ``max_concurrent_analyses`` looked like a memory budget -- and it was set to
+2 without anybody being able to see the budget from inside. Then this told us:
+production has 7629 MB and is using 1.2% of it. Memory is not the constraint.
+CPU is, which is why the quota is reported beside it, and why the host's core
+count is reported separately -- on a shared runtime that number is much larger
+than the slice this container may actually use.
 
 The readers are deliberately incapable of raising: /health must not start
 failing because a kernel spelled a cgroup file differently, so every one of
@@ -15,6 +17,7 @@ about memory when there is nothing to say.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -110,11 +113,55 @@ def test_a_nearly_full_container_reports_no_headroom(cg):
 
 def test_nothing_knowable_is_an_empty_report(cg, tmp_path, monkeypatch):
     """Keys absent, not null: a row of nulls on a laptop reads like a broken
-    container rather than like a machine with no container at all."""
-    for name in ("_V2_LIMIT", "_V2_USAGE", "_V1_LIMIT", "_V1_USAGE"):
+    container rather than like a machine with no container at all.
+
+    ``host_cpus`` survives, because that one is always knowable -- and on a
+    machine with no quota it is the only CPU number there is.
+    """
+    for name in ("_V2_LIMIT", "_V2_USAGE", "_V1_LIMIT", "_V1_USAGE",
+                 "_V2_CPU_MAX", "_V1_CPU_QUOTA", "_V1_CPU_PERIOD"):
         monkeypatch.setattr(meminfo, name, tmp_path / "absent")
     monkeypatch.setattr(meminfo, "process_rss_bytes", lambda: None)
-    assert meminfo.memory_health() == {}
+    assert set(meminfo.memory_health()) <= {"host_cpus"}
+
+
+# --------------------------------------------------------------------------
+# the CPU quota -- the half that actually binds
+# --------------------------------------------------------------------------
+
+def test_a_quota_is_read_as_cores(tmp_path, monkeypatch):
+    """cpu.max is "quota period" in microseconds. 400000/100000 is four cores."""
+    f = tmp_path / "cpu.max"
+    f.write_text("400000 100000")
+    monkeypatch.setattr(meminfo, "_V2_CPU_MAX", f)
+    assert meminfo.cpu_quota() == 4.0
+
+
+def test_an_uncapped_container_has_no_quota(tmp_path, monkeypatch):
+    f = tmp_path / "cpu.max"
+    f.write_text("max 100000")
+    monkeypatch.setattr(meminfo, "_V2_CPU_MAX", f)
+    monkeypatch.setattr(meminfo, "_V1_CPU_QUOTA", tmp_path / "absent")
+    assert meminfo.cpu_quota() is None
+
+
+def test_a_broken_quota_file_is_not_an_error(tmp_path, monkeypatch):
+    f = tmp_path / "cpu.max"
+    f.write_text("garbage")
+    monkeypatch.setattr(meminfo, "_V2_CPU_MAX", f)
+    monkeypatch.setattr(meminfo, "_V1_CPU_QUOTA", tmp_path / "absent")
+    assert meminfo.cpu_quota() is None
+
+
+def test_the_report_separates_the_quota_from_the_host(tmp_path, monkeypatch):
+    """Reading the host's core count as available parallelism is how a
+    CPU-bound cap gets set to a number the container cannot honour."""
+    f = tmp_path / "cpu.max"
+    f.write_text("200000 100000")
+    monkeypatch.setattr(meminfo, "_V2_CPU_MAX", f)
+    out = meminfo.memory_health()
+    assert out["cpu_cores"] == 2.0
+    assert out["host_cpus"] == os.cpu_count()
 
 
 def test_health_still_answers_without_a_cgroup():

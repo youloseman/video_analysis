@@ -13,10 +13,21 @@ Measured on a real clip (720p, 11 s, pose model "heavy"):
 
 So one analysis is ~315 MB of working set on top of a ~287 MB floor, and a
 worker running N of them wants roughly ``287 + N x 315`` MB. At the current
-cap of 2 that is around 900 MB before anything else the process is doing --
-which is why the answer to "can we raise it" is "look at this endpoint on the
-real container first". An OOM here is not a slow request: it takes the single
-worker down and every in-flight analysis with it.
+cap of 2 that is around 900 MB.
+
+And then this endpoint answered the question it was built to ask, with a result
+that went the other way: production reports 7629 MB with 1.2% of it used.
+Memory is nowhere near the constraint -- there is room for something like
+twenty more concurrent analyses. What binds is CPU, which is why ``cpu_quota``
+is here too: an analysis is CPU-bound from end to end (~95 s of one, measured),
+so the cap is really a question about cores, and ``os.cpu_count()`` answers
+about the HOST rather than about the slice this container may use.
+
+The cap is still 2, deliberately. Raising it is an env var away
+(``VA_MAX_CONCURRENT_ANALYSES``) and wants watching under real concurrent load,
+which there has not been any of yet -- and an OOM or a stalled worker here is
+not a slow request: it takes the single worker down and every in-flight
+analysis with it.
 
 Everything is best-effort and Linux-shaped. On a developer's Windows machine
 every reader returns None and /health simply says nothing about memory, which
@@ -25,6 +36,7 @@ is the truth -- there is no container limit to report.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 # cgroup v2 (what Railway, Fly and modern Docker use), then v1 as a fallback.
@@ -77,6 +89,38 @@ def process_rss_bytes() -> int | None:
     return None
 
 
+_V2_CPU_MAX = Path("/sys/fs/cgroup/cpu.max")
+_V1_CPU_QUOTA = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+_V1_CPU_PERIOD = Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+
+
+def cpu_quota() -> float | None:
+    """How many cores this container may actually use, if it is capped.
+
+    The other half of the concurrency question, and the half that binds here.
+    Memory turned out not to be the constraint at all -- the box reports 7.6 GB
+    with 1.2% used -- while an analysis is CPU-bound from end to end, so what
+    decides how many can run at once is how many cores there are to run them
+    on. ``os.cpu_count()`` answers about the HOST, which on a shared runtime is
+    a much larger and entirely fictional number; the cgroup quota is the real
+    one.
+    """
+    try:
+        raw = _V2_CPU_MAX.read_text().split()
+        if len(raw) == 2 and raw[0] != "max":
+            return int(raw[0]) / int(raw[1])
+    except (OSError, ValueError, ZeroDivisionError):
+        pass
+    try:
+        quota = int(_V1_CPU_QUOTA.read_text().strip())
+        period = int(_V1_CPU_PERIOD.read_text().strip())
+        if quota > 0 and period > 0:
+            return quota / period
+    except (OSError, ValueError, ZeroDivisionError):
+        pass
+    return None
+
+
 def memory_health() -> dict[str, object]:
     """What /health reports. Keys are absent rather than null when unknowable,
     so a developer's machine does not print a row of nulls that look like a
@@ -99,4 +143,13 @@ def memory_health() -> dict[str, object]:
         # derived from anything at runtime: it is a property of the pose model,
         # not of this request.
         out["headroom_analyses"] = max(0, int((limit - usage) / (315 * mb)))
+    cores = cpu_quota()
+    if cores:
+        out["cpu_cores"] = round(cores, 2)
+    # The host's count, for contrast: on a shared runtime it is much larger
+    # than the quota, and reading it as available parallelism is how a
+    # CPU-bound cap gets set to a number the container cannot honour.
+    host = os.cpu_count()
+    if host:
+        out["host_cpus"] = host
     return out
