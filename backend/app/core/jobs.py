@@ -191,6 +191,60 @@ def log_storage_usage(path: Path | None = None) -> float | None:
     return ratio
 
 
+class UploadTooLarge(Exception):
+    """An upload ran past its cap. The partial file has already been removed."""
+
+
+# How much of an upload is held in memory at a time while it is copied to disk.
+# One megabyte: small enough that a dozen concurrent uploads are a rounding
+# error against the container, large enough that a 150 MB clip is 150 write
+# calls rather than 150 thousand.
+UPLOAD_CHUNK_BYTES = 1024 * 1024
+
+
+def save_upload(src: Any, dest: Path, max_bytes: int) -> int:
+    """Copy a file-like object to ``dest`` in chunks. Returns bytes written.
+
+    **Blocking, by design** -- call it through ``run_in_threadpool``. The whole
+    point is that neither the read nor the write happens on the event loop.
+
+    This replaces ``dest.write_bytes(await upload.read())``, which had three
+    problems that only show up on the clips people actually film. ``.read()``
+    pulls the entire upload into one ``bytes`` object, so a 30-second 4K phone
+    clip (~150 MB) was 150 MB of resident memory, and the queue admits eight of
+    those. The size check came *after* that read, so the cap bounded what was
+    stored and not what was buffered. And ``write_bytes`` is synchronous inside
+    an ``async def``, so the event loop stopped -- no polling, no health check,
+    nothing -- for as long as the write took.
+
+    Refusing past ``max_bytes`` rather than truncating: half a video is not a
+    smaller video, and an analysis of one would fail somewhere much less
+    legible than here. The partial file is deleted before the exception leaves,
+    so a refused upload never leaves bytes on the volume.
+    """
+    written = 0
+    try:
+        # A file-like handed over by the framework may sit anywhere; the whole
+        # upload is what we want, so start at the top.
+        try:
+            src.seek(0)
+        except (OSError, AttributeError):  # not seekable -- take it as it comes
+            pass
+        with dest.open("wb") as out:
+            while True:
+                chunk = src.read(UPLOAD_CHUNK_BYTES)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > max_bytes:
+                    raise UploadTooLarge
+                out.write(chunk)
+    except BaseException:
+        dest.unlink(missing_ok=True)
+        raise
+    return written
+
+
 def job_dir_for(job_id: str) -> Path:
     """Where one upload's files live. Derived from the id, not stored."""
     return settings.uploads_dir / job_id

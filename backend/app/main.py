@@ -93,12 +93,15 @@ from app.core.jobs import (
     ANALYSIS_SLOTS,
     JOBS,
     SLOT_WAIT_TIMEOUT_S,
+    UploadTooLarge,
     authorized_job,
+    delete_job_files,
     job_file,
     pending_jobs,
     queue_ahead,
     log_storage_configuration,
     retained_job_ids,
+    save_upload,
     sweep_upload_dirs,
     sweeper_loop,
 )
@@ -1100,17 +1103,34 @@ def _static_version(filename: str) -> str:
     return hashlib.sha256(data).hexdigest()[:12]
 
 
-def _serve_shell(request: Request, filename: str, canonical_path: str) -> Response:
-    """Serve an inlined static HTML shell (landing page or SPA).
+# Rendered shells, keyed by everything that can change one. Same reasoning as
+# ``_static_version`` above, and the same lifetime: the inputs are the file on
+# disk, the price catalogue, the analytics key and the request's own origin --
+# the first three are fixed for the life of the process, and the fourth is one
+# of a handful of hostnames that answer.
+#
+# It is worth caching because the work is not small: the SPA shell is ~650 KB,
+# and rendering it means a disk read, ten full-document string replacements and
+# two SHA-256 passes -- about 19 ms of CPU, measured, on a machine faster than
+# the container. That was being paid on EVERY request to ``/`` or ``/app``,
+# including the ones that end in a 304, because the ETag can only be compared
+# after the document it describes has been built. On a single-worker box whose
+# CPU is already the analysis bottleneck, that is the landing page competing
+# with somebody's clip.
+#
+# ``lru_cache`` rather than a plain dict for the bound: the origin comes from
+# request headers, so an attacker varying Host must not be able to grow this
+# without limit. Same backstop as ``_BROTLI_CACHE_MAX``, same handful of real
+# entries (2 documents x the domains that answer).
+@lru_cache(maxsize=8)
+def _render_shell(
+    filename: str, canonical_path: str, origin: str,
+) -> tuple[str, bytes, str]:
+    """``(html, utf-8 body, etag)`` for one shell on one origin.
 
-    OG/Twitter ``og:url`` and ``og:image`` are stored as root-relative paths in
-    the static file and rewritten to absolute URLs here, using the request's
-    own origin — so link previews resolve on any host (localhost, Railway,
-    custom domain) without hardcoding a base URL.
-
-    Behind Railway's proxy TLS terminates at the edge, so ``request.base_url``
-    reports http:// even on an https:// request -- trust X-Forwarded-Proto (as
-    the Academy pages already do) or the tags advertise insecure URLs.
+    Pure by construction: everything it reads is either a constant for the
+    process or one of its three arguments. Call ``cache_clear`` after changing
+    a static file or the price catalogue under a running server (tests do).
     """
     html_doc = (STATIC_DIR / filename).read_text(encoding="utf-8")
     # Analytics goes in before the build stamp on purpose: switching it on
@@ -1156,11 +1176,6 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
         html_doc = html_doc.replace(
             "__BUILD__", hashlib.sha256(html_doc.encode("utf-8")).hexdigest()[:12],
         )
-    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
-    host = request.headers.get("x-forwarded-host") or request.headers.get(
-        "host", request.url.netloc
-    )
-    origin = f"{proto}://{host}".rstrip("/")
     html_doc = html_doc.replace('content="/og-image.png"', f'content="{origin}/og-image.png"')
     html_doc = html_doc.replace(
         f'property="og:url" content="{canonical_path}"',
@@ -1177,6 +1192,27 @@ def _serve_shell(request: Request, filename: str, canonical_path: str) -> Respon
     # to always revalidate, with an ETag so an unchanged shell still costs a 304.
     body = html_doc.encode("utf-8")
     etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
+    return html_doc, body, etag
+
+
+def _serve_shell(request: Request, filename: str, canonical_path: str) -> Response:
+    """Serve an inlined static HTML shell (landing page or SPA).
+
+    OG/Twitter ``og:url`` and ``og:image`` are stored as root-relative paths in
+    the static file and rewritten to absolute URLs by ``_render_shell``, using
+    the request's own origin — so link previews resolve on any host (localhost,
+    Railway, custom domain) without hardcoding a base URL.
+
+    Behind Railway's proxy TLS terminates at the edge, so ``request.base_url``
+    reports http:// even on an https:// request -- trust X-Forwarded-Proto (as
+    the Academy pages already do) or the tags advertise insecure URLs.
+    """
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host") or request.headers.get(
+        "host", request.url.netloc
+    )
+    origin = f"{proto}://{host}".rstrip("/")
+    html_doc, body, etag = _render_shell(filename, canonical_path, origin)
     # Vary on our own account: this response can now come back in two encodings,
     # and a shared cache that missed that would hand brotli bytes to a client
     # that only reads gzip. The gzip middleware adds this header for the
@@ -1546,17 +1582,31 @@ async def analyze_endpoint(
             f"allowed: {sorted(ALLOWED_SUFFIXES)}",
         )
 
-    data = await video.read()
-    if len(data) == 0:
-        raise HTTPException(400, "empty upload")
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(413, f"file too large (> {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)")
-
+    # The id is minted before the clip is validated now, because streaming it
+    # to disk needs somewhere to stream it TO. A rejected upload takes its
+    # directory with it -- see the cleanups below.
     job_id = uuid.uuid4().hex[:12]
     job_dir = settings.uploads_dir / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     input_path = job_dir / f"input{suffix}"
-    input_path.write_bytes(data)
+    try:
+        size = await run_in_threadpool(
+            save_upload, video.file, input_path, MAX_UPLOAD_BYTES,
+        )
+    except UploadTooLarge:
+        delete_job_files(job_id, job_dir)
+        raise HTTPException(
+            413, f"file too large (> {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+        ) from None
+    except OSError as e:
+        delete_job_files(job_id, job_dir)
+        logger.warning("UPLOAD_WRITE_FAILED", job_id=job_id, err=str(e))
+        raise HTTPException(
+            507, "We couldn't store this clip. Please try again in a moment.",
+        ) from None
+    if size == 0:
+        delete_job_files(job_id, job_dir)
+        raise HTTPException(400, "empty upload")
 
     # The overlay video is a paid unlock. Leave ``overlay_path`` unset for a free
     # caller even when the form asked for one: the worker would skip rendering
@@ -1608,7 +1658,7 @@ async def analyze_endpoint(
         side_override, crank,
     )
     await _record_and_headers(response, request, user, db, "video")
-    logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=len(data), ip=ip)
+    logger.info("JOB_QUEUED", job_id=job_id, sport=sport, bytes=size, ip=ip)
     return JobCreated(
         job_id=job_id, status="queued",
         poll_url=f"/jobs/{job_id}", job_token=job_token,
@@ -1710,23 +1760,40 @@ async def analyze_pair_endpoint(
     for side, upload in (("left", video_left), ("right", video_right)):
         suffix = Path(upload.filename or "").suffix.lower() or ".mp4"
         if suffix not in ALLOWED_SUFFIXES:
+            # The right clip being rejected leaves the left one already on
+            # disk, and no job will ever claim it. Take the directory with us,
+            # the same as every other refusal in this loop.
+            delete_job_files(job_id, job_dir)
             raise HTTPException(
                 400, f"unsupported file type '{suffix}' for the {side} clip; "
                 f"allowed: {sorted(ALLOWED_SUFFIXES)}",
             )
-        data = await upload.read()
-        if len(data) == 0:
-            raise HTTPException(400, f"the {side} clip is empty")
-        if len(data) > MAX_UPLOAD_BYTES:
+        path = job_dir / f"{side}{suffix}"
+        # Streamed, for the reasons in core/jobs.save_upload -- and doubly so
+        # here, where a pair is two clips and the old path held both of them in
+        # memory at once.
+        try:
+            size = await run_in_threadpool(
+                save_upload, upload.file, path, MAX_UPLOAD_BYTES,
+            )
+        except UploadTooLarge:
+            delete_job_files(job_id, job_dir)
             raise HTTPException(
                 413,
                 f"the {side} clip is too large "
                 f"(> {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
-            )
-        path = job_dir / f"{side}{suffix}"
-        path.write_bytes(data)
+            ) from None
+        except OSError as e:
+            delete_job_files(job_id, job_dir)
+            logger.warning("UPLOAD_WRITE_FAILED", job_id=job_id, side=side, err=str(e))
+            raise HTTPException(
+                507, "We couldn't store these clips. Please try again in a moment.",
+            ) from None
+        if size == 0:
+            delete_job_files(job_id, job_dir)
+            raise HTTPException(400, f"the {side} clip is empty")
         paths[side] = str(path)
-        total_bytes += len(data)
+        total_bytes += size
 
     overlay_left = str(job_dir / "overlay_left.mp4") if overlay else None
     overlay_right = str(job_dir / "overlay_right.mp4") if overlay else None
