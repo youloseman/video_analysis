@@ -902,8 +902,20 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
         <div class="screen">
           <!-- ?v=2 breaks the copies browsers cached while /media went out with
                no cache headers at all; the mount revalidates now, so a later
-               swap of this file needs no new number here. -->
-          <video src="media/hero.mp4?v=2" autoplay muted loop playsinline preload="auto"
+               swap of this file needs no new number here.
+
+               The poster is not decoration. Until it existed this was a black
+               rectangle for as long as the clip took to buffer -- and it STAYS
+               black whenever autoplay is refused, which on iOS is any phone in
+               Low Power Mode. A still of the product doing its job is the
+               right thing to show in both cases, and it is 76 KB against the
+               clip's two megabytes.
+
+               preload="metadata", not "auto": the browser still fetches enough
+               to autoplay, but it is no longer told to pull the whole file
+               ahead of everything else on the page. -->
+          <video src="media/hero.mp4?v=2" poster="media/hero-poster.webp"
+                 autoplay muted loop playsinline preload="metadata"
                  aria-label="Runner filmed from the side with an AI skeleton overlay and joint angles drawn on every frame"></video>
         </div>
       </div>
