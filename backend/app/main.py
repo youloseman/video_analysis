@@ -34,6 +34,7 @@ import hmac
 import json
 import math
 import os
+import re
 import secrets
 import shutil
 import threading
@@ -89,6 +90,7 @@ from app.core.compression import (
 from app.core.config import settings
 from app.core.db import SessionLocal, get_session, init_db
 from app.core.headers import SecurityHeadersMiddleware
+from app.core.meminfo import memory_health
 from app.core.jobs import (
     ANALYSIS_SLOTS,
     JOBS,
@@ -1093,6 +1095,62 @@ class _RevalidatingStatic(StaticFiles):
 app.mount("/media", _RevalidatingStatic(directory=STATIC_DIR / "media"), name="media")
 
 
+# The SPA's own code, lifted out of the document it is written in.
+#
+# index.html carries the whole app in one <script> block -- 538 KB of it,
+# against ~110 KB of markup. That is the source file, and it stays the source
+# file: the front-end tests read it as a string, and the mobile shell copies it
+# whole into a local bundle where a second file would buy nothing. The split
+# happens on the way OUT instead, so the served page is markup with a
+# content-hashed <script src> and the code is a resource of its own.
+#
+# What that buys is caching. The shell is stamped with a build id and served
+# no-cache, so every deploy re-sends the entire document to everyone who comes
+# back. Most deploys do not touch the app's code -- a colour, a heading, a
+# price -- and after this one those cost a 25 KB document instead of a 163 KB
+# one, with the code answered out of the browser's cache on a URL that only
+# changes when the code does.
+#
+# Attribute-less <script>…</script>, which is how both of the SPA's are
+# written. The BIGGEST one is the app; the small bootstrap in <head> has to
+# stay where it is (it runs before the body exists), and so does anything
+# analytics injects later.
+_INLINE_SCRIPT = re.compile(r"<script>(.*?)</script>", re.DOTALL)
+
+# Below this, extracting is a losing trade: a round trip costs more than the
+# bytes. Comfortably above the head bootstrap (362 chars) and the landing
+# page's scripts, comfortably below the app (538 KB).
+_SPA_SCRIPT_MIN = 50_000
+
+
+@lru_cache(maxsize=4)
+def _spa_script(filename: str) -> str | None:
+    """The app's inline script body, or None if this shell has no big one.
+
+    Only the landing page is in the second category, and it is small enough
+    that taking its script out would trade a cacheable resource for an extra
+    round trip on the page whose whole job is to paint fast.
+    """
+    try:
+        doc = (STATIC_DIR / filename).read_text(encoding="utf-8")
+    except OSError:
+        return None
+    bodies = _INLINE_SCRIPT.findall(doc)
+    if not bodies:
+        return None
+    biggest = max(bodies, key=len)
+    return biggest if len(biggest) >= _SPA_SCRIPT_MIN else None
+
+
+@lru_cache(maxsize=4)
+def _spa_script_version(filename: str) -> str:
+    """Content hash of the extracted script, for its cache-busting URL."""
+    body = _spa_script(filename)
+    if body is None:
+        return "0"
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:12]
+
+
 @lru_cache(maxsize=8)
 def _static_version(filename: str) -> str:
     """A short hash of a static file's bytes, for cache-busting its URL.
@@ -1175,6 +1233,23 @@ def _render_shell(
         '<link rel="stylesheet" href="/app.css">',
         f'<link rel="stylesheet" href="/app.css?v={_static_version("app.css")}">',
     )
+    # And lift the app's own code out of the document onto a hashed URL of its
+    # own (see _spa_script). The <script src> takes the exact position the
+    # inline block held -- last thing in the body, not deferred -- so execution
+    # order is the one the app was written for.
+    #
+    # Also before the build stamp, and for a better reason than the CSS: the
+    # hash in this URL is of the code itself, so stamping afterwards is what
+    # makes a JS-only change produce a new build id. Without that ordering the
+    # id would only track the markup, and the field that records which build
+    # produced a piece of feedback would stop moving when the app did.
+    script = _spa_script(filename)
+    if script is not None:
+        html_doc = html_doc.replace(
+            f"<script>{script}</script>",
+            f'<script src="/app.js?v={_spa_script_version(filename)}"></script>',
+            1,
+        )
     # Stamp a build id so every piece of result feedback records which build
     # produced it. Digested from the file as-is, before the per-host rewrites
     # below, so the same shell reports the same build on every domain.
@@ -1352,6 +1427,56 @@ def app_css(request: Request) -> Response:
     )
 
 
+@app.get("/app.js", include_in_schema=False)
+def app_js(request: Request) -> Response:
+    """The SPA's code, lifted out of index.html on the way out.
+
+    Cached exactly like app.css and for the same reason: the ``?v=`` the shell
+    appends is a hash of these bytes, so changed code is a changed URL and
+    there is nothing to revalidate. Served without the hash it falls back to
+    revalidating, because then we cannot know the copy they hold is current.
+
+    404 rather than an empty body when there is no script to serve: a page
+    asking for this that gets 200 and nothing would be a blank app with no
+    error, which is the single worst way for this to fail.
+    """
+    body = _spa_script("index.html")
+    if body is None:
+        raise HTTPException(404, "no extracted script")
+    version = _spa_script_version("index.html")
+    versioned = request.query_params.get("v") == version
+    headers = {
+        "Cache-Control": (
+            "public, max-age=31536000, immutable" if versioned
+            else "no-cache, must-revalidate"
+        ),
+        "Vary": "Accept-Encoding",
+    }
+    # Brotli, same as the shell and for a sharper reason. Splitting the app out
+    # of the document costs compression efficiency -- 527 KB of code compresses
+    # worse alone than it did sharing a window with the markup -- and the
+    # gzip middleware alone gives back 178 KB against the 163 KB the whole
+    # undivided document used to cost. That would make a first visit WORSE,
+    # which is not a trade worth making for a caching win. Brotli closes it.
+    #
+    # Compressed once per distinct script (the key is a hash of these bytes)
+    # and kept, exactly like the shell -- see core/compression for why this is
+    # not middleware.
+    if accepts_brotli(request.headers.get("accept-encoding", "")):
+        packed = brotli_encode(body.encode("utf-8"), f"app.js:{version}")
+        if packed is not None:
+            return Response(
+                content=packed,
+                media_type="application/javascript; charset=utf-8",
+                headers={**headers, "Content-Encoding": "br"},
+            )
+    return Response(
+        content=body,
+        media_type="application/javascript; charset=utf-8",
+        headers=headers,
+    )
+
+
 @app.get("/manifest.webmanifest", include_in_schema=False)
 def manifest() -> FileResponse:
     """Web app manifest — makes /app installable to the home screen."""
@@ -1437,6 +1562,14 @@ def health() -> dict[str, Any]:
         "queued": sum(1 for j in pending if j["status"] == "queued"),
         "capacity": settings.max_concurrent_analyses,
         "stored_jobs": len(JOBS),
+        # The number behind ``capacity``. One analysis peaks at ~600 MB and
+        # leaves ~287 MB of loaded model resident, so the cap is a memory
+        # budget and not a throughput preference -- and it was set without
+        # anybody being able to see the budget. An OOM on a single-worker
+        # deploy takes every in-flight analysis with it, so this is the row to
+        # read before raising the cap. Empty off a container (a laptop has no
+        # limit to report) rather than a row of nulls.
+        "memory": memory_health(),
         # Can this deployment actually take money, and is every plan wired up?
         #
         # It could not be checked from outside. The answer existed only as a

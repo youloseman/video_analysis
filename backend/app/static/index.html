@@ -16,6 +16,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Flapp">
 <script>
+  // The build id, stamped by the server (main._render_shell) into the token
+  // below. It lives HERE, in the document, and not beside its only reader
+  // further down, because the app's own script is lifted out onto /app.js on
+  // the way out -- and a static file is not templated, so a __BUILD__ left
+  // inside it would read as the literal token forever and every report would
+  // be filed against build "dev".
+  //
+  // The token is replaced with a hash of the finished document, which by then
+  // contains the content hash of /app.js -- so this moves when the markup
+  // moves and when the code moves, which is what a build id is for.
+  window.__FLAPP_BUILD__ = '__BUILD__'.indexOf('_') === 0 ? 'dev' : '__BUILD__';
+</script>
+<script>
   // Register the service worker after load so it never competes with app boot.
   // Failure is non-fatal — the app works fine without it (SW only adds
   // installability + an offline fallback).
@@ -1761,7 +1774,9 @@ const DEBUG = new URLSearchParams(location.search).has('debug');
 /* Build id, stamped by the server from a digest of this document (see main.py
    ::root). Rides along on every piece of feedback so a report can be pinned to
    the exact shell it came from -- "dev" when served straight off disk. */
-const BUILD = '__BUILD__'.indexOf('_')===0 ? 'dev' : '__BUILD__';
+// Set by the document, not by this file: see the note beside __FLAPP_BUILD__
+// in <head>. This script is served from /app.js, which nothing templates.
+const BUILD = window.__FLAPP_BUILD__ || 'dev';
 
 /* ============================================================
    Product analytics (PostHog) — see backend/app/services/analytics.py
