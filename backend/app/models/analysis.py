@@ -60,7 +60,20 @@ class Analysis(Base):
     # free analysis could never become a paid one: unlocking had nothing to
     # reveal, and subscribing could not open the history somebody had built
     # while free.
-    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    #
+    # ``none_as_null`` so that "there is no result" has exactly ONE
+    # representation in the database. A bare ``JSON`` column persists Python
+    # ``None`` as the JSON literal ``null`` -- a value that is present, so
+    # ``IS NULL`` is false for it, while ``bool(row.result)`` is still false.
+    # Two spellings of the same state, disagreeing depending on whether you ask
+    # in SQL or in Python. ``list_analyses`` asks in SQL (it must: the whole
+    # point is not to fetch half a megabyte to find out whether it is there),
+    # so the ambiguity had to go rather than be worked around with a
+    # JSON-equality test -- Postgres ``json`` has no equality operator at all,
+    # which the SQLite suite would never have told us.
+    result: Mapped[dict | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True,
+    )
     # This analysis was the account's one free preview. Server-set, so that
     # re-opening it months later still shows what it showed on the day.
     preview: Mapped[bool] = mapped_column(

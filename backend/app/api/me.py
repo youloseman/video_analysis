@@ -9,6 +9,14 @@ a ~100-160 KB base64 JPEG, so a full history would otherwise be an 8-16 MB JSON
 on every dashboard load -- worst for the most active (most valuable) accounts.
 Each entry carries ``has_keyframe`` instead and the client pulls frames one at a
 time from ``/analyses/{client_id}/keyframe`` as cards scroll into view.
+
+It does not *read* the stored result either. ``Analysis.result`` is the
+analyzer's full output (~490 KB a row) and the list serves none of it, so it is
+deferred and the one bit the response wants -- whether a report exists to sell
+-- is answered in SQL. That the frame is still fetched out of ``data`` and
+dropped in Python is the remaining cost here, and the only portable way to drop
+it in the query is dialect-specific JSONB that the SQLite test suite would
+never exercise.
 """
 
 from __future__ import annotations
@@ -23,6 +31,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from app.core.db import get_session
 from app.core.security import get_current_user
@@ -244,7 +253,8 @@ async def _delete_stored_clips(
 
 
 def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
-                     user: User | None = None) -> dict[str, Any]:
+                     user: User | None = None,
+                     sellable: bool | None = None) -> dict[str, Any]:
     """Entry minus its base64 frame, flagged so the client knows to fetch it.
 
     ``access`` rides along because the client stored whatever it was shown at
@@ -252,6 +262,11 @@ def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
     or after paying to unlock this one report. It is the signal to go and fetch
     the real thing from ``/analyses/{id}/result`` instead of re-rendering a
     stale teaser.
+
+    ``sellable`` is passed in rather than read off the row, because the only
+    thing it asks of ``Analysis.result`` is whether there is one -- and the
+    caller can get that answer from the database without fetching half a
+    megabyte of JSON to look at it. See ``list_analyses``.
     """
     thin = {k: v for k, v in data.items() if k != "keyframe"}
     thin["has_keyframe"] = bool(data.get("keyframe"))
@@ -261,7 +276,7 @@ def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
         thin["access"] = access_for_stored(user, row)
         # Nothing to reveal: written before results were stored server-side, so
         # an unlock would sell an empty report.
-        thin["sellable"] = bool(row.result)
+        thin["sellable"] = bool(row.result if sellable is None else sellable)
     return thin
 
 
@@ -271,8 +286,24 @@ async def list_analyses(
     db: AsyncSession = Depends(get_session),
     profile_id: int | None = None,
 ) -> list[dict[str, Any]]:
+    # ``Analysis.result`` is deliberately NOT fetched. It is the analyzer's
+    # complete output -- kinogram and keyframe as base64 among it -- and it
+    # measures around 490 KB per row against the ~140 KB of ``data`` beside it.
+    # None of it is served here: the response needs exactly one fact about it,
+    # "is there one", which ``is_not(None)`` answers in the database without
+    # reading the value. This used to be a bare ``select(Analysis)``, so a
+    # hundred-entry history read roughly 63 MB out of Postgres and into Python
+    # to build a response of one or two -- on every load of the app by a
+    # signed-in athlete, i.e. exactly the people with the longest histories.
+    #
+    # ``defer`` rather than a column list so that adding a column to the model
+    # does not silently stop it reaching the client; and the ``sellable``
+    # expression is selected alongside rather than read off the row afterwards,
+    # because touching the deferred attribute would issue a fresh query PER ROW
+    # and land somewhere worse than where this started.
     query = (
-        select(Analysis)
+        select(Analysis, Analysis.result.is_not(None).label("sellable"))
+        .options(defer(Analysis.result))
         .where(Analysis.user_id == user.id)
         .order_by(Analysis.created_at_ms.desc())
         .limit(MAX_PER_USER)
@@ -282,8 +313,11 @@ async def list_analyses(
         # road-bike angles and TT angles are both correct and describe nobody
         # when averaged together.
         query = query.where(Analysis.profile_id == profile_id)
-    rows = (await db.execute(query)).scalars().all()
-    return [_without_keyframe(r.data, r, user) for r in rows]
+    rows = (await db.execute(query)).all()
+    return [
+        _without_keyframe(row.data, row, user, sellable=bool(sellable))
+        for row, sellable in rows
+    ]
 
 
 @router.get("/analyses/{client_id}/keyframe")

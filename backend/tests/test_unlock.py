@@ -318,6 +318,54 @@ async def test_the_history_list_says_what_each_entry_may_show(db, make_user):
     assert by_id["h3"]["sellable"] is False
 
 
+async def test_the_history_list_never_fetches_the_stored_results(db, make_user):
+    """The listing serves none of ``Analysis.result`` and must not read it.
+
+    It is the analyzer's complete output -- around 490 KB a row against the
+    ~140 KB of ``data`` beside it -- and this endpoint runs on every load of
+    the app by a signed-in athlete, for up to a hundred rows. A bare
+    ``select(Analysis)`` here was pulling tens of megabytes out of the database
+    and into Python to build a response of one or two.
+
+    Pinned on the emitted SQL rather than on a timing, because the regression
+    is silent: re-adding the column changes nothing an assertion on the
+    response could see. ``sellable`` is still expected to be right -- it is
+    answered by ``IS NOT NULL``, which reads no value -- so the test next door
+    stays the guard on the behaviour while this one guards the cost.
+    """
+    from sqlalchemy import event
+
+    user = await make_user(tier=TIER_STARTER)
+    await store(db, user, client_id="h1")
+
+    seen: list[str] = []
+    bind = db.get_bind()
+    engine = getattr(bind, "sync_engine", bind)
+
+    def record(conn, cursor, statement, params, context, executemany):
+        seen.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        rows = await me.list_analyses(user, db)
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+    selects = [s for s in seen if "FROM analyses" in s]
+    assert selects, "the listing issued no query against analyses"
+    for sql in selects:
+        # The column may only appear inside the IS NOT NULL that answers
+        # "sellable" -- never as a column being fetched.
+        fetched = sql.replace("analyses.result IS NOT NULL", "")
+        assert "analyses.result" not in fetched, (
+            f"the listing fetches the stored result again:\n{sql}"
+        )
+    # And nothing lazy-loaded it afterwards, which would be worse: one extra
+    # query per row instead of one big one.
+    assert len(selects) == 1, f"one query expected, got {len(selects)}"
+    assert rows[0]["sellable"] is True
+
+
 async def test_reading_another_accounts_report_is_a_404(db, make_user):
     mine = await make_user()
     theirs = await make_user()
