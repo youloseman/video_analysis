@@ -214,6 +214,16 @@ def _migrate_analyses(conn) -> None:
     if "unlocked_at_ms" not in cols:
         conn.execute(text("ALTER TABLE analyses ADD COLUMN unlocked_at_ms BIGINT"))
         logger.info("MIGRATED", change="analyses.unlocked_at_ms added")
+    if "keyframe" not in cols:
+        # TEXT, not VARCHAR(n): it holds a base64 data URI of an annotated
+        # frame, which is ~45 KB and has no sensible upper bound. Nullable with
+        # no SQL backfill -- moving the existing frames out of ``data`` means
+        # parsing JSON per row, which is a different operation in every dialect
+        # and exactly the kind of thing that has taken this service down
+        # before. services/keyframe_store.py does it in Python instead, after
+        # startup, through the ORM.
+        conn.execute(text("ALTER TABLE analyses ADD COLUMN keyframe TEXT"))
+        logger.info("MIGRATED", change="analyses.keyframe added")
     if "profile_id" not in cols:
         # No FK in the ALTER: SQLite cannot add one to an existing table, and
         # the column is nullable anyway -- a deleted profile is meant to leave

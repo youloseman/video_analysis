@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -87,3 +88,18 @@ class Analysis(Base):
     kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # The annotated frame, as a base64 data URI, in a column of its own.
+    #
+    # It used to live inside ``data``, and it is 98% of it -- measured across
+    # stored rows: ~45 KB of frame against ~0.9 KB of everything else the entry
+    # holds. The history list serves ``data`` and strips the frame out of it,
+    # so every listing read fifty times what it sent, for up to a hundred rows,
+    # on every load of the app. A JSON blob cannot be half-fetched; a column
+    # can, which is the whole reason this moved.
+    #
+    # ``/analyses/{id}/keyframe`` was already the way the client gets a frame,
+    # one card at a time as they scroll, so nothing about the API changes.
+    # Rows written before this carry theirs in ``data`` still, and
+    # ``services/keyframe_store.py`` moves them across at startup; both places
+    # are read until that has run.
+    keyframe: Mapped[str | None] = mapped_column(Text, nullable=True)

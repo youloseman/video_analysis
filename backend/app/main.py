@@ -111,6 +111,7 @@ from app.models.user import User
 from app.services import analytics, pricing
 from app.services.analytics import log_analytics_configuration
 from app.services.export import ai_export
+from app.services.keyframe_store import backfill_keyframes
 from app.services.notify import log_email_configuration
 from app.services.preview_release import release_orphaned_previews
 from app.services.result_gating import (
@@ -328,6 +329,11 @@ async def lifespan(app: FastAPI):
     # complaint (see services/preview_release.py).
     async with SessionLocal() as db:
         await release_orphaned_previews(db)
+        # Frames written before they had a column of their own still sit inside
+        # the history blob, where the listing cannot avoid reading them. Moving
+        # them is a data rewrite, so it is resumable and bounded rather than
+        # something a deploy waits on: see services/keyframe_store.py.
+        await backfill_keyframes(db)
     sweeper = asyncio.create_task(sweeper_loop())
     try:
         yield

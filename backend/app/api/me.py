@@ -10,13 +10,16 @@ on every dashboard load -- worst for the most active (most valuable) accounts.
 Each entry carries ``has_keyframe`` instead and the client pulls frames one at a
 time from ``/analyses/{client_id}/keyframe`` as cards scroll into view.
 
-It does not *read* the stored result either. ``Analysis.result`` is the
-analyzer's full output (~490 KB a row) and the list serves none of it, so it is
-deferred and the one bit the response wants -- whether a report exists to sell
--- is answered in SQL. That the frame is still fetched out of ``data`` and
-dropped in Python is the remaining cost here, and the only portable way to drop
-it in the query is dialect-specific JSONB that the SQLite test suite would
-never exercise.
+Neither of the two big things is read to build that list. ``Analysis.result``
+is the analyzer's full output (~490 KB a row) and ``Analysis.keyframe`` is the
+annotated frame (~45 KB); the list serves neither, so both are deferred and the
+two facts the response does want -- is there a report to sell, is there a frame
+to fetch -- are answered by ``IS NOT NULL`` without reading either value. What
+is left of an entry is under a kilobyte.
+
+The frame only became skippable once it stopped being a key inside ``data``:
+a JSON blob is fetched whole or not at all. See services/keyframe_store.py for
+the move and for why rows written earlier are read from both places.
 """
 
 from __future__ import annotations
@@ -43,6 +46,7 @@ from app.models.profile import (
     Profile,
 )
 from app.models.user import User, profile_limit
+from app.services.keyframe_store import split_keyframe, stored_keyframe
 from app.services.result_gating import (
     ACCESS_FULL,
     access_for_stored,
@@ -110,13 +114,13 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
     sport = entry.get("sport")
     kind = entry.get("kind")
     score = entry.get("score")
+    # The frame goes to its own column, never back into the blob: it is 98% of
+    # the entry's bytes and the history list has to be able to not read it.
+    entry, frame = split_keyframe(entry)
     if row is not None:
         # The client edits entries it fetched from the thin list (no frame), so
         # a re-save that omits the keyframe must not wipe the stored one.
-        if not entry.get("keyframe"):
-            stored = (row.data or {}).get("keyframe")
-            if stored:
-                entry["keyframe"] = stored
+        row.keyframe = frame or stored_keyframe(row)
         row.data = entry
         row.created_at_ms = at
         # A re-save from the thin list carries no jobId, and losing the link
@@ -136,7 +140,7 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
         row = Analysis(
             user_id=user.id, client_id=cid, created_at_ms=at, job_id=job_id,
             profile_id=profile_id,
-            sport=sport, kind=kind, score=score, data=entry,
+            sport=sport, kind=kind, score=score, data=entry, keyframe=frame,
         )
         if job_id:
             _attach_result(row, job_id)
@@ -254,7 +258,8 @@ async def _delete_stored_clips(
 
 def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
                      user: User | None = None,
-                     sellable: bool | None = None) -> dict[str, Any]:
+                     sellable: bool | None = None,
+                     has_keyframe: bool | None = None) -> dict[str, Any]:
     """Entry minus its base64 frame, flagged so the client knows to fetch it.
 
     ``access`` rides along because the client stored whatever it was shown at
@@ -269,7 +274,13 @@ def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
     megabyte of JSON to look at it. See ``list_analyses``.
     """
     thin = {k: v for k, v in data.items() if k != "keyframe"}
-    thin["has_keyframe"] = bool(data.get("keyframe"))
+    # ``data`` still carries the frame on rows the backfill has not reached, so
+    # either source counts. Passed in by the listing, which asks the database
+    # about the column rather than fetching it.
+    thin["has_keyframe"] = (
+        bool(data.get("keyframe")) if has_keyframe is None
+        else bool(has_keyframe or data.get("keyframe"))
+    )
     if row is not None:
         # The server's filing wins over whatever the client last remembered.
         thin["profileId"] = row.profile_id
@@ -301,9 +312,19 @@ async def list_analyses(
     # expression is selected alongside rather than read off the row afterwards,
     # because touching the deferred attribute would issue a fresh query PER ROW
     # and land somewhere worse than where this started.
+    # ``Analysis.keyframe`` is deferred for the same reason and is the larger
+    # half of it: the annotated frame is ~45 KB against the ~0.9 KB of
+    # everything else an entry holds, and this endpoint has never served it --
+    # the client fetches frames one at a time from /analyses/{id}/keyframe as
+    # cards scroll in. It could only be skipped once it stopped being a key
+    # inside ``data``; see services/keyframe_store.py.
     query = (
-        select(Analysis, Analysis.result.is_not(None).label("sellable"))
-        .options(defer(Analysis.result))
+        select(
+            Analysis,
+            Analysis.result.is_not(None).label("sellable"),
+            Analysis.keyframe.is_not(None).label("has_keyframe"),
+        )
+        .options(defer(Analysis.result), defer(Analysis.keyframe))
         .where(Analysis.user_id == user.id)
         .order_by(Analysis.created_at_ms.desc())
         .limit(MAX_PER_USER)
@@ -315,8 +336,11 @@ async def list_analyses(
         query = query.where(Analysis.profile_id == profile_id)
     rows = (await db.execute(query)).all()
     return [
-        _without_keyframe(row.data, row, user, sellable=bool(sellable))
-        for row, sellable in rows
+        _without_keyframe(
+            row.data, row, user,
+            sellable=bool(sellable), has_keyframe=bool(has_frame),
+        )
+        for row, sellable, has_frame in rows
     ]
 
 
@@ -338,7 +362,7 @@ async def get_keyframe(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
         )
-    return {"keyframe": (row.data or {}).get("keyframe")}
+    return {"keyframe": stored_keyframe(row)}
 
 
 @router.get("/analyses/{client_id}/overlays")
