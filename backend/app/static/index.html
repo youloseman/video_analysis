@@ -337,7 +337,7 @@
     <button class="modal-close" id="cardClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
     <div class="eyebrow" style="color:var(--c-blue)">Share</div>
     <h2 id="cardModalTitle" class="modal-title" style="margin-bottom:12px">Your result card</h2>
-    <div class="cardprev-wrap"><img id="cardPreview" alt="Your Flapp result card"></div>
+    <div class="cardprev-wrap"><img id="cardPreview" alt="Your Flapp result card" class="ph-no-capture"></div>
     <p class="hint" id="cardSaveHint" style="text-align:center;margin:12px 0 14px">Long-press the image to save it to your photos.</p>
     <div class="cardmodal-actions">
       <button class="btn btn-primary hidden" id="cardShareBtn" type="button" style="width:100%;justify-content:center">
@@ -358,7 +358,7 @@
 <div class="modal modal-shot hidden" id="shotModal" role="dialog" aria-modal="true" aria-labelledby="shotCap">
   <div class="shot-card">
     <button class="modal-close shot-close" id="shotClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="shot-scroll" id="shotScroll"><img id="shotImg" alt=""></div>
+    <div class="shot-scroll" id="shotScroll"><img id="shotImg" alt="" class="ph-no-capture"></div>
     <div class="shot-bar"><span id="shotCap"></span>
       <button class="btn btn-ghost btn-sm" id="shotZoom" type="button">Actual size</button></div>
   </div>
@@ -376,7 +376,7 @@
     <h2 id="camTitle" class="modal-title" style="margin-bottom:12px">Film it right here</h2>
     <p class="cam-err hidden" id="camErr" role="alert"></p>
     <div class="cam-stage" id="camStage">
-      <video id="camView" autoplay muted playsinline></video>
+      <video id="camView" autoplay muted playsinline class="ph-no-capture"></video>
       <div class="cam-guides" aria-hidden="true"><span class="cam-guide-lbl">Head to feet between the lines</span></div>
       <div class="cam-count hidden" id="camCount" aria-hidden="true"></div>
       <div class="cam-rec hidden" id="camRec"><span class="dot" aria-hidden="true"></span><span id="camRecT">0:00 / 0:15</span></div>
@@ -582,8 +582,8 @@
         </div>
 
       <div class="filepreview" id="filepreview">
-        <video id="preview" muted playsinline aria-label="Preview of your selected clip"></video>
-        <img id="previewImg" class="hidden" alt="Preview of your selected photo">
+        <video id="preview" muted playsinline aria-label="Preview of your selected clip" class="ph-no-capture"></video>
+        <img id="previewImg" class="hidden ph-no-capture" alt="Preview of your selected photo">
         <!-- Shown when the browser cannot decode the clip it was just handed --
              an iPhone .MOV is usually HEVC, which Chrome on Windows will not
              play. The analysis is server-side and unaffected; only the preview
@@ -900,7 +900,7 @@
       <div id="videoCol">
         <!-- Paper cannot play a video. The annotated still says the same thing
              about the position, so it stands in when this is printed. -->
-        <img id="printKeyframe" class="hidden" alt="Annotated frame from your clip">
+        <img id="printKeyframe" class="hidden ph-no-capture" alt="Annotated frame from your clip">
         <div class="videoframe" id="videoframe">
           <!-- The player. The overlay mp4 is what plays; the record behind it
                (result.timeline) is what the controls, the strip and the curve
@@ -908,7 +908,7 @@
                and the rest stays hidden -- see FlappPlayer. -->
           <div class="fp" id="fpMain">
             <div class="fp-stage">
-              <video id="overlayVideo" controls playsinline aria-label="Annotated analysis overlay video"></video>
+              <video id="overlayVideo" controls playsinline aria-label="Annotated analysis overlay video" class="ph-no-capture"></video>
               <!-- The clip as filmed, for the Skeleton / Clip layers. Only
                    ever the file still in this browser: the server keeps the
                    overlay, not the original. -->
@@ -980,9 +980,9 @@
               <span class="hint" id="vEdHint"></span></span>
           </div>
           <div class="lmed-wrap ved-wrap" id="vEdWrap">
-            <video id="vEdVideo" muted playsinline preload="auto"></video>
-            <canvas class="ved-c" id="vEdCanvas" aria-label="Your clip with movable joint points"></canvas>
-            <canvas class="lmed-loupe hidden" id="vEdLoupe" width="132" height="132" aria-hidden="true"></canvas>
+            <video id="vEdVideo" muted playsinline preload="auto" class="ph-no-capture"></video>
+            <canvas class="ved-c ph-no-capture" id="vEdCanvas" aria-label="Your clip with movable joint points"></canvas>
+            <canvas class="lmed-loupe hidden ph-no-capture" id="vEdLoupe" width="132" height="132" aria-hidden="true"></canvas>
           </div>
           <div class="ved-ctl">
             <button class="btn btn-ghost btn-sm" id="vEdPlay" type="button" aria-label="Play or pause">▶</button>
@@ -1085,7 +1085,7 @@
       </div>
       <p class="hint" id="kinoHint" style="text-align:left;margin:0 0 16px">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
       <div class="videoframe">
-        <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles"></div>
+        <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles" class="ph-no-capture"></div>
         <div class="videocap">
           <span><span id="kinoMethod">Positions after the ALTIS Kinogram Method</span><br>
             <span class="note" id="kinoNote"></span></span>
@@ -1250,7 +1250,7 @@
       <div>
         <div class="videoframe">
           <img id="pImage" alt="Annotated form analysis — skeleton and joint angles on your photo"
-               style="display:block;width:100%;background:var(--c-media-bg)">
+               style="display:block;width:100%;background:var(--c-media-bg)" class="ph-no-capture">
           <div class="videocap">
             <span>Annotated photo · skeleton + joint angles<br>
               <span class="note">Results aren’t stored — download to keep it.</span></span>
@@ -1274,8 +1274,8 @@
               <span class="hint" id="pEdHint">Only the camera-side joints count.</span></span>
           </div>
           <div class="lmed-wrap" id="pEdWrap">
-            <canvas class="lmed-c" id="pEdCanvas" aria-label="Your photo with movable joint points"></canvas>
-            <canvas class="lmed-loupe hidden" id="pEdLoupe" width="132" height="132" aria-hidden="true"></canvas>
+            <canvas class="lmed-c ph-no-capture" id="pEdCanvas" aria-label="Your photo with movable joint points"></canvas>
+            <canvas class="lmed-loupe hidden ph-no-capture" id="pEdLoupe" width="132" height="132" aria-hidden="true"></canvas>
           </div>
           <div class="lmed-actions">
             <span class="lmed-status" id="pEdStatus">Nothing moved yet.</span>
@@ -1463,7 +1463,7 @@
         <div class="videoframe" id="hdImgWrap">
           <!-- background-color (not the `background` shorthand) so .kf-wait can
                paint its loading shimmer over it -->
-          <img id="hdImg" alt="Saved annotated keyframe" style="display:block;width:100%;background-color:var(--c-media-bg)">
+          <img id="hdImg" alt="Saved annotated keyframe" style="display:block;width:100%;background-color:var(--c-media-bg)" class="ph-no-capture">
           <div class="videocap">
             <span>Saved keyframe · skeleton + joint angles</span>
             <a class="btn btn-ghost btn-sm" id="hdDownload" download="flapp-analysis.jpg"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download</a>
@@ -1525,7 +1525,7 @@
         <div class="speedline-sm"></div>
       </div>
       <div class="videoframe">
-        <div class="kinowrap"><img id="hdKinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles"></div>
+        <div class="kinowrap"><img id="hdKinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles" class="ph-no-capture"></div>
         <div class="videocap">
           <span class="note">Rendered when this clip was analyzed. The footage itself expires after a few hours; this does not.</span>
           <a class="btn btn-ghost btn-sm" id="hdDownloadKinogram" download="flapp-kinogram.jpg">

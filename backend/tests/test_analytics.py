@@ -178,8 +178,13 @@ def test_the_real_policy_names_posthog_when_it_is_on(analytics_on):
     doc = (STATIC / "privacy.html").read_text(encoding="utf-8")
     on = analytics.apply_disclosure(doc)
     assert "PostHog" in on
-    # The claim that has to stay true in code: replay off, media never sent.
-    assert "Session replay is off" in on
+    # This used to assert "Session replay is off", because it was. Replay is
+    # now on, and the promise it guards has narrowed to the half that still
+    # holds and is the one that matters: the athlete's own footage is never in
+    # it. tests/test_replay_masking.py is what makes that true element by
+    # element; this checks the document says so.
+    assert "blocked out of the replay" in on
+    assert "Never your media" in on
     assert "no analytics or advertising trackers" not in on
 
 

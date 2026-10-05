@@ -149,7 +149,10 @@
     <li><b>Product events</b>: an analysis started, completed or failed, the sport, the score and grade, whether a result was locked behind a plan, checkout started, purchase completed. <b>None of these contain your media</b>, your filename, or anything you typed.</li>
     <li>If you're signed in, your <b>account id and email</b>, so the same person is not counted as several — and so we can delete your analytics history along with your account if you ask.</li>
   </ul>
-  <p>What it does <b>not</b> record: your video or photo, the annotated frames, the coaching text, your password, your card details, or the message you write in a feedback box. <b>Session replay is turned off.</b></p>
+  <p>What it does <b>not</b> record: your video or photo, the annotated frames, the coaching text, your password, your card details, or the message you write in a feedback box.</p>
+  <p><b>Session replay.</b> We record a playback of how the pages themselves behave — which buttons you press, where you scroll, where something confuses or breaks. It is how we find the parts of Flapp that do not work without having to ask you.</p>
+  <p>Your footage is <b>excluded from it</b>. Every element that can show you — the camera preview while you film, the clip you picked, the annotated frames, the kinogram, the overlay video and the joint editors — is blocked out of the recording and plays back as an empty box. Everything you type is masked as well. We do this because a replay records the page, and on a results page the page contains a video of you.</p>
+  <p>You can switch this off, along with the rest of the analytics, with the button below.</p>
   <p>PostHog stores a cookie and a browser-local id to recognise a returning visit. We honour your browser's <b>"Do Not Track"</b> setting: with it on, nothing is collected. You can also turn analytics off for this browser here:</p>
   <p><button type="button" id="phOptOut" class="optout">Turn off analytics on this device</button> <span id="phOptOutMsg" class="optout-msg" role="status"></span></p>
   <p>If you sign in, we also use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking.</p>
@@ -185,7 +188,7 @@
     <tr><td><b>Railway</b> (hosting)</td><td>Runs the app and temporarily stores uploads during processing.</td></tr>
     <tr><td><b>Google Gemini API</b></td><td>Receives only anonymous numeric metrics to write coaching text — no images, no identifiers.</td></tr>
     <tr><td><b>Payment processor</b></td><td>Handles card payments for paid plans. Holds your payment details under its own privacy policy; we never see your full card number.</td></tr>
-    <!--ANALYTICS:ON--><tr><td><b>PostHog</b> (product analytics)</td><td>Receives page views and product events (see section 7), plus your account id and email if you're signed in. Never your media, and never your feedback text. Session replay is off.</td></tr><!--/ANALYTICS:ON-->
+    <!--ANALYTICS:ON--><tr><td><b>PostHog</b> (product analytics)</td><td>Receives page views and product events (see section 7), plus your account id and email if you're signed in, and a replay of how the pages behave. Never your media — your footage and the annotated frames are blocked out of the replay — and never your feedback text.</td></tr><!--/ANALYTICS:ON-->
   </table>
   <p>We do <b>not</b> sell, rent, or share your personal information with anyone else, and we do not use it for third-party advertising.</p>
 
