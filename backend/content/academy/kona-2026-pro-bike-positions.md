@@ -44,8 +44,8 @@ The day after the Ironman World Championship we ran fourteen professional bike p
 
 | Angle | Median | Middle half | Full range | Flapp's triathlon range |
 |---|---|---|---|---|
-| Torso, from horizontal | 20° | 17–24° | 12–39° | 20–30° |
-| Shoulder, torso to upper arm | 85° | 77–88° | 70–97° | 80–105° |
+| Torso, from horizontal | 20° | 17–24° | 12–32° | 20–30° |
+| Shoulder, torso to upper arm | 85° | 77–88° | 71–97° | 80–105° |
 | Elbow | 80° | 76–89° | 62–107° | 75–110° |
 | Forearm tilt, above horizontal | 25° | 21–26° | 10–31° | 5–30° |
 
@@ -73,7 +73,7 @@ Six of the fourteen positions were below 20°. Pros can hold that: years of cond
 
 ## 3. A closed shoulder is a choice, not an error
 
-In five of the fourteen positions the upper arm was closer than 80° to the torso, the lowest at 70°. Fit guidance still puts the reference at 90°: elbows under the shoulders. But the people who wrote that guidance never called less than 90° a fault. Dan Empfield's original description of the measurement says an angle below 90° is the athlete's personal choice, and that it is an angle opened past 90° that can become a problem. Fintelman's riders, in their own preferred positions, averaged 91° give or take 5°.
+In five of the fourteen positions the upper arm was closer than 80° to the torso, the lowest at 71°. Fit guidance still puts the reference at 90°: elbows under the shoulders. But the people who wrote that guidance never called less than 90° a fault. Dan Empfield's original description of the measurement says an angle below 90° is the athlete's personal choice, and that it is an angle opened past 90° that can become a problem. Fintelman's riders, in their own preferred positions, averaged 91° give or take 5°.
 
 ![Rider C: the shoulder closed to 71°, forearms at 28°, elbow at 62°.](/media/academy/kona-2026/rider-c.webp)
 
@@ -91,7 +91,7 @@ Every position we measured, ordered from the flattest forearms to the steepest. 
 
 ![Position 3 of 14: forearm tilt 19°, torso 19°, shoulder 77°, elbow 77°.](/media/academy/kona-2026/position-03.webp)
 
-![Position 4 of 14: forearm tilt 21°, torso 39°, shoulder 70°, elbow 88°.](/media/academy/kona-2026/position-04.webp)
+![Position 4 of 14: forearm tilt 21°, torso 30°, shoulder 77°, elbow 86°. The ringed shoulder point was moved by hand: the model had put it on the top edge of the back.](/media/academy/kona-2026/position-04.webp)
 
 ![Position 5 of 14: forearm tilt 21°, torso 25°, shoulder 86°, elbow 90°.](/media/academy/kona-2026/position-05.webp)
 
@@ -116,7 +116,7 @@ Every position we measured, ordered from the flattest forearms to the steepest. 
 
 No knee angles and no saddle verdicts. In a single race photo the crank is wherever it happened to be, so the knee angle is not a saddle-height reading. There is a second reason. Every one of these photos was taken from the drive side, the side with the chainring, because the riders crossed the frame in the same direction past photographers on one side of the road. On two bikes of our own we measured that the drive side reads the knee at the bottom of the stroke 8–10° lower than it really is: the ankle point slides onto the dark chainring behind it. So we left the legs out rather than publish numbers we know are biased.
 
-How we measured: fifteen photographs. One was rejected. The model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one. On the other fourteen, angles were measured in 2D on the side of the body nearest the camera, with an instrument spread of roughly 2–3°. Some athletes may appear in more than one photo; we could not check, so each photo counts as one position. The labels on the photographs are drawn by the same renderer the app uses on your own photos. It is one race, one day and one roadside viewpoint, so read these as the shape of a field, not as anyone's exact fit. We do not name the athletes: we cannot verify who is in every frame, and the point is the position, not the person.
+How we measured: fifteen photographs. One was rejected. The model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one. On the other fourteen, angles were measured in 2D on the side of the body nearest the camera, with an instrument spread of roughly 2–3°. Some athletes may appear in more than one photo; we could not check, so each photo counts as one position. The labels on the photographs are drawn by the same renderer the app uses on your own photos. In one photo, position 4, the model put the shoulder point on the top edge of the back instead of in the joint. We moved it down into the deltoid by hand, the way the app lets you correct a point, and the ring on that figure marks it; it changed that rider's torso from 39° to 30°. Every other point is the model's own. It is one race, one day and one roadside viewpoint, so read these as the shape of a field, not as anyone's exact fit. We do not name the athletes: we cannot verify who is in every frame, and the point is the position, not the person.
 
 ## What to take for your own position
 

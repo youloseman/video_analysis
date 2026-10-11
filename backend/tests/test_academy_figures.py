@@ -61,10 +61,18 @@ class TestTheKonaDraft:
         tilts = [float(m) for m in re.findall(r"Position \d+ of 14: forearm tilt (\d+)", text)]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
+    def test_the_one_hand_corrected_point_is_disclosed(self):
+        """Position 4: the model put the shoulder on the top edge of the back
+        (torso read 39 deg); moved into the joint by hand it reads 30. The
+        article says so, in the caption and in the method."""
+        text = DRAFT.read_text(encoding="utf-8")
+        assert "Position 4 of 14: forearm tilt 21°, torso 30°" in text
+        assert "moved by hand" in text and "from 39° to 30°" in text
+
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 20° | 17–24° | 12–39° | 20–30° |",
-                    "| Shoulder, torso to upper arm | 85° | 77–88° | 70–97° | 80–105° |",
+        for row in ("| Torso, from horizontal | 20° | 17–24° | 12–32° | 20–30° |",
+                    "| Shoulder, torso to upper arm | 85° | 77–88° | 71–97° | 80–105° |",
                     "| Elbow | 80° | 76–89° | 62–107° | 75–110° |",
                     "| Forearm tilt, above horizontal | 25° | 21–26° | 10–31° | 5–30° |"):
             assert row in text, row
