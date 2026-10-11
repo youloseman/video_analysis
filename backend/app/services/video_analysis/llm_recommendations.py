@@ -346,8 +346,16 @@ def _bike_data_block(
         # meant every cycling clip reported "Hip angle: n/a" to the coach --
         # silently hiding the one metric with a documented medical floor (hip
         # closure below 45 deg, iliac artery). Same fallback the scorer uses.
-        f"- Hip angle: {_fmt(summary.get('hip_angle_max') or summary.get('hip_angle_avg'), '°')}"
-        f"{rng('hip_angle_max', 'hip_angle_avg')}",
+        # The CLOSED hip at the top of the stroke, against the closed-hip band
+        # -- the reading every other surface has graded since hip_at_tdc. This
+        # line still handed the coach the stroke MEAN against that band
+        # ("Hip angle: 85 (optimal 55-65)"), which reads as a hip far too
+        # open. The mean follows as context, with no band.
+        (f"- Hip angle at top of stroke (closed): {_fmt(summary.get('hip_at_tdc'), '°')}"
+         f"{rng('hip_at_tdc', 'hip_at_tdc')}; stroke average "
+         f"{_fmt(summary.get('hip_angle_avg'), '°')} (no band -- it swings 50 deg a revolution)"
+         if summary.get("hip_at_tdc") is not None else
+         f"- Hip angle (stroke average, not graded): {_fmt(summary.get('hip_angle_avg'), '°')}"),
         f"- Trunk angle: {_fmt(summary.get('trunk_angle_avg'), '°')}"
         f"{rng('trunk_angle', 'trunk_angle_avg')}",
         f"- Elbow angle: {_fmt(summary.get('elbow_angle_avg'), '°')}"
@@ -621,6 +629,19 @@ def _metric_statuses(
         # whole and call every reading "check".
         margin = 0.3 if field == "pelvic_ratio" else 3.0
         status = overlay_style.status_for(value, lo, hi, min_margin=margin)
+        # On aero bars a flat trunk and a closed shoulder cost no / little
+        # points and are amber on every surface (cycling_positions); here too,
+        # or the materiality block files them under "Fix first" while the data
+        # block tells the coach not to fix them.
+        if value < lo and status == "bad" and sport_type == "bike":
+            from app.services.video_analysis.biomechanics.cycling_positions import (
+                SHOULDER_CLOSED_OK_POSITIONS,
+                trunk_below_aero_floor,
+            )
+            if (field == "trunk_angle_avg" and trunk_below_aero_floor(position, value)) or (
+                field == "shoulder_angle_avg" and position in SHOULDER_CLOSED_OK_POSITIONS
+            ):
+                status = "warn"
         out[field] = (status, value, lo, hi)
     return out
 

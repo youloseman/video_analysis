@@ -139,3 +139,29 @@ class TestTheSurfaces:
         assert "metric==='trunk_low_ok'" in HTML
         assert "trR.metric='trunk_low_ok'" in HTML
         assert "faster, if you can hold it and still make power" in HTML
+
+
+class TestTheCoachIsNotToldToFixIt:
+    """The materiality block decides what may become "Fix first". It graded
+    symmetrically, so a flat aero trunk and a closed aero shoulder were
+    "OUT OF RANGE" there while the data block told the coach not to fix them."""
+
+    def test_aero_trunk_and_shoulder_are_borderline_not_material(self):
+        from app.services.video_analysis.llm_recommendations import _metric_statuses
+        st = _metric_statuses("bike", "triathlon", {"trunk_angle_avg": 12.0, "shoulder_angle_avg": 68.0})
+        assert st["trunk_angle_avg"][0] == "warn" and st["shoulder_angle_avg"][0] == "warn"
+
+    def test_road_keeps_them_material(self):
+        from app.services.video_analysis.llm_recommendations import _metric_statuses
+        st = _metric_statuses("bike", "road_drops", {"trunk_angle_avg": 18.0, "shoulder_angle_avg": 60.0})
+        assert st["trunk_angle_avg"][0] == "bad" and st["shoulder_angle_avg"][0] == "bad"
+
+
+def test_the_video_coach_reads_the_closed_hip_not_the_stroke_mean():
+    """Leftover of the hip_at_tdc fix: the coach line still printed the mean
+    against the closed band ("Hip angle: 85 (optimal 55-65)")."""
+    from app.services.video_analysis.llm_recommendations import _bike_data_block
+    block = _bike_data_block(88, "B", "road_hoods", [], {"hip_at_tdc": 52.0, "hip_angle_avg": 85.0})
+    hip = next(line for line in block.splitlines() if "Hip" in line)
+    assert "top of stroke" in hip and "52.0" in hip and "(optimal 55-70" in hip
+    assert "85.0" in hip and "no band" in hip
