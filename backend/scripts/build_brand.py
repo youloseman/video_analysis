@@ -6,7 +6,8 @@ trails and the coral joint dot. Everything a browser, a phone home screen or a
 store listing needs is a raster at a fixed size, and those are generated here
 so a change to the mark is one edit and one run.
 
-    python backend/scripts/build_brand.py
+    python backend/scripts/build_brand.py          # everything
+    python backend/scripts/build_brand.py --og     # the social preview only
 
 Needs Pillow and Playwright with Chromium (`pip install playwright pillow &&
 playwright install chromium`). Chromium is the rasteriser because it renders
@@ -91,13 +92,19 @@ OG_HTML = """<!doctype html><html><head>
   .wrap{position:relative;width:1200px;height:630px;font-family:"IBM Plex Sans",system-ui,sans-serif}
   /* icon-foreground keeps the mark inside its 66 %% safe zone, so it is drawn
      larger and pulled up-left to land where the tile version sat. */
-  .mark{position:absolute;left:24px;top:-4px;width:450px;height:450px}
-  .word{position:absolute;left:96px;top:378px;display:flex;align-items:flex-end;gap:10px;
-        font-family:Archivo,sans-serif;font-style:italic;font-weight:900;font-size:96px;line-height:1;
+  .mark{position:absolute;left:30px;top:24px;width:330px;height:330px}
+  .word{position:absolute;left:80px;top:300px;display:flex;align-items:flex-end;gap:10px;
+        font-family:Archivo,sans-serif;font-style:italic;font-weight:900;font-size:88px;line-height:1;
         letter-spacing:-.02em;color:#fff}
-  .tag{position:absolute;left:96px;top:504px;font-size:34px;color:#C6CCD6}
-  .url{position:absolute;right:96px;bottom:52px;font-size:26px;font-weight:600;color:#8A929E}
+  .tag{position:absolute;left:80px;top:410px;width:400px;font-size:31px;line-height:1.25;color:#C6CCD6}
+  .url{position:absolute;left:80px;bottom:52px;font-size:24px;font-weight:600;color:#8A929E}
+  /* Artur's line drawing (og-illustration.jpg) fills the right half. Its own
+     ground is lifted out in _og_art(), so the lines sit on the brand navy;
+     the left edge fades so the streamlines run in under the tagline. */
+  .art{position:absolute;right:14px;top:50%%;height:590px;transform:translateY(-50%%);
+       -webkit-mask-image:linear-gradient(to right,transparent 0,#000 18%%)}
 </style></head><body><div class="wrap">
+  <img class="art" src="%(art)s">
   <img class="mark" src="%(mark)s">
   <div class="word">Flapp</div>
   <div class="tag">The triathlete&rsquo;s honest technique lab</div>
@@ -105,11 +112,39 @@ OG_HTML = """<!doctype html><html><head>
 </div></body></html>"""
 
 
+def _og_art() -> str:
+    """The illustration as a transparent PNG data URI, cropped to its drawing.
+
+    The JPEG is drawn on a flat #203054 that is not the brand navy, so pasting
+    it would show a lighter square. Each pixel is read as line colour laid over
+    that ground and un-blended: alpha grows with the distance from the ground,
+    and the colour is what, at that alpha, gives the pixel back.
+    """
+    import io
+
+    import numpy as np
+
+    rgb = np.asarray(Image.open(MASTERS / "og-illustration.jpg").convert("RGB")).astype(np.float32)
+    edge = np.concatenate([rgb[:40].reshape(-1, 3), rgb[-40:].reshape(-1, 3),
+                           rgb[:, :40].reshape(-1, 3), rgb[:, -40:].reshape(-1, 3)])
+    ground = np.median(edge, axis=0)
+    dist = np.abs(rgb - ground).max(axis=2)
+    alpha = np.clip((dist - 10.0) / 100.0, 0.0, 1.0)  # JPEG noise on the ground is within 8
+    a = np.maximum(alpha, 1e-3)[..., None]
+    colour = np.clip(ground + (rgb - ground) / a, 0, 255)
+    out = Image.fromarray(np.dstack([colour, alpha * 255]).astype(np.uint8), "RGBA")
+    out = out.crop(out.getchannel("A").point(lambda v: 255 if v > 24 else 0).getbbox())
+    buf = io.BytesIO()
+    out.save(buf, "PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
 def build_og(page, out: Path) -> None:
     page.set_viewport_size({"width": 1200, "height": 630})
     # icon-foreground is the white F with the CORAL dot on a transparent ground;
     # mark-mono-white would put a white dot there.
-    page.set_content(OG_HTML % {"navy": NAVY, "mark": _svg_data_uri(MASTERS / "icon-foreground.svg")})
+    page.set_content(OG_HTML % {"navy": NAVY, "mark": _svg_data_uri(MASTERS / "icon-foreground.svg"),
+                                "art": _og_art()})
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(400)
     page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": 1200, "height": 630})
@@ -141,6 +176,13 @@ def main() -> int:
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(device_scale_factor=1)
+
+        if "--og" in sys.argv[1:]:
+            # Only the social preview: the icons stay byte-for-byte as they are.
+            build_og(page, STATIC / "og-image.png")
+            browser.close()
+            print(f"  {(STATIC / 'og-image.png').relative_to(ROOT)}")
+            return 0
 
         def png(svg: str, size: int, out: Path, transparent: bool = False) -> Path:
             _render(page, MASTERS / f"{svg}.svg", size, out, transparent=transparent)
