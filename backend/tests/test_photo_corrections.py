@@ -172,8 +172,12 @@ def test_the_helmet_reading_survives_a_correction():
     after = res["angles"]["helmet_above_back"]
     assert before > 0 and after != before
     row = res["angles_with_context"]["helmet_above_back"]
-    assert row["status"] == "phase_dependent" and row["unscored_reason"].startswith("Kona pros")
-    assert "helmet_above_back" not in res["score"]["per_angle"], "measured, never scored"
+    if res["helmet_points"]["check"]:
+        assert row["status"] == "phase_dependent"
+        assert "helmet_above_back" not in res["score"]["per_angle"], "a flagged reading is not scored"
+    else:
+        assert row["status"] in ("optimal", "acceptable") and row["optimal_max"] == 23.0
+        assert "helmet_above_back" in res["score"]["per_angle"]
 
 
 def test_a_tampered_silhouette_is_refused():
@@ -300,3 +304,32 @@ def test_a_point_that_is_neither_a_joint_nor_a_helmet_point_is_refused():
     photo, blob = _helmet_blob()
     with pytest.raises(ValueError, match="cannot be adjusted"):
         PC.recompute_photo(photo, "bike", "triathlon", blob, [{"landmark": 102, "dx": 0.0, "dy": 0.01}])
+
+
+class TestTheHelmetPenalty:
+    """Artur, 2026-10-11: penalise a head held too high. Free up to the
+    highest Kona pro (+23 % of torso), amber and never red above it, only on
+    aero positions and only on a reading that can be trusted."""
+
+    def _score(self, value, position="triathlon", check=False):
+        from app.services.video_analysis import photo_analyzer as PA
+        angles = {"trunk": 25.0, "shoulder": 90.0, "elbow": 90.0, "forearm_tilt": 15.0,
+                  "helmet_above_back": value}
+        ranges = PA._with_helmet_band(PA._get_cycling_optimal_ranges(position, "uncertain"),
+                                      position in PA._AERO_POSITIONS and not check)
+        return PA._score_photo_angles(angles, ranges, "bike", PA.PHOTO_CYCLING_WEIGHTS_UNCERTAIN,
+                                      cycling_position=position, pedal_phase="uncertain")
+
+    def test_up_to_the_highest_pro_costs_nothing(self):
+        assert self._score(23.0)["per_angle"]["helmet_above_back"]["score"] == 100
+        assert self._score(-5.0)["per_angle"]["helmet_above_back"]["score"] == 100
+
+    def test_above_it_costs_a_little_and_never_more_than_amber(self):
+        hi = self._score(33.0)
+        assert hi["per_angle"]["helmet_above_back"]["score"] == 80
+        assert self._score(80.0)["per_angle"]["helmet_above_back"]["score"] == 70, "floored"
+        assert hi["overall_score"] < self._score(20.0)["overall_score"]
+
+    def test_a_flagged_reading_and_a_road_position_are_not_scored(self):
+        assert "helmet_above_back" not in self._score(40.0, check=True)["per_angle"]
+        assert "helmet_above_back" not in self._score(40.0, position="road_hoods")["per_angle"]

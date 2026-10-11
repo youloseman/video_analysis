@@ -41,7 +41,7 @@ class TestTheKonaDraft:
         invalidate_cache()
         art = get_article("kona-2026-pro-bike-positions")
         assert art is not None and art.meta.category == "bike-aero"
-        assert len(art.sources) >= 8
+        assert len(art.sources) >= 9
         assert art.body_html.count("<figure>") >= 5
 
     def test_every_figure_it_shows_exists(self):
@@ -71,8 +71,8 @@ class TestTheKonaDraft:
         moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
         assert text.split("---", 2)[2].lstrip().startswith("**Updated 11 October 2026.**")
-        assert "36 of the 60 points moved" in text
-        assert "A ringed point is one we moved into the joint by hand." in text
+        assert "37 of the 60 joint points moved" in text
+        assert "A ringed point is one we moved by hand" in text
         assert "shoulder 84° to 87°, elbow 78° to 83°" in text
 
     def test_uci_is_not_presented_as_a_triathlon_rule(self):
@@ -87,8 +87,9 @@ class TestTheKonaDraft:
         text = DRAFT.read_text(encoding="utf-8")
         for row in ("| Torso, from horizontal | 20° | 19–22° | 13–25° | 20–30° |",
                     "| Shoulder, torso to upper arm | 87° | 82–89° | 74–96° | 80–105° |",
-                    "| Elbow | 83° | 76–88° | 66–93° | 75–110° |",
-                    "| Forearm tilt, above horizontal | 25° | 22–27° | 19–32° | 5–30° |"):
+                    "| Elbow | 83° | 75–88° | 66–93° | 75–110° |",
+                    "| Forearm tilt, above horizontal | 25° | 22–27° | 19–32° | 5–30° |",
+                    "| Helmet above the back, % of torso length | 17% | 14–19% | 12–23% | up to 23% |"):
             assert row in text, row
 
     def test_the_article_column_cannot_be_pushed_wider_than_a_phone(self):
@@ -107,3 +108,17 @@ class TestThePictureAgreesWithItsTable:
         }
         src = (BACKEND / "app" / "services" / "video_analysis" / "photo_analyzer.py").read_text(encoding="utf-8")
         assert 'row_status={k: v.get("status") for k, v in angles_with_context.items()}' in src
+
+
+def test_the_head_section_says_what_replaced_100_of_100_and_why():
+    """A reader asked what "head position 100/100" on every rider meant; it
+    meant nothing (an ear under a line inside the body). The article says so,
+    gives the helmet reading that replaced it, its level reference, the hand
+    moves on flush helmet tails, and the one study behind the penalty."""
+    text = DRAFT.read_text(encoding="utf-8")
+    assert "## 4. The head: how far the helmet rises above the back" in text
+    assert "level because the wind is" in text
+    assert "on five of the fifteen photos the automatic back point landed on the helmet" in text
+    assert "up to 6.4%" in text and "Beaumont" in text
+    from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_RANGE
+    assert KONA_PRO_RANGE == (12.0, 23.0), "the app's reference is the article's"

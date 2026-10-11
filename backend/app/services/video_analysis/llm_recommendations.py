@@ -952,13 +952,21 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
                 KONA_PRO_MEDIAN,
                 KONA_PRO_RANGE,
             )
+            status = v.get("status")
+            verdict = (
+                "above every Kona pro -- amber, a small penalty; you may suggest "
+                "dropping the head a little if the rider can still see the road"
+                if status == "acceptable" else
+                "within the Kona pro field -- no fault" if status == "optimal" else
+                "NOT scored (the reading needs the rider to check the top-of-back "
+                "point, or the position is not an aero one) -- do NOT judge it"
+            )
             lines.append(
                 f"- {v.get('label', k)}: {v.get('value')}% of torso length [how far the "
                 f"top of the helmet rises above a level line through the top of the "
-                f"back; NOT degrees, NOT scored]. Kona 2026 pros: {KONA_PRO_RANGE[0]:+.0f}% "
-                f"to {KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.0f}%. Some helmet "
-                f"above the back is normal (the rider has to see the road). You may "
-                f"say where this sits against the pros; do NOT call it a fault."
+                f"back; NOT degrees]. Kona 2026 pros: {KONA_PRO_RANGE[0]:+.0f}% "
+                f"to {KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.0f}%. "
+                f"Verdict: {verdict}. Some helmet above the back is normal."
             )
             continue
         # Unresolved pedal-phase joints (ankle always; hip when the crank

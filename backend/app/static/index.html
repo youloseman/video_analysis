@@ -3900,7 +3900,7 @@ function angleRow(k,a){
      sign doing double duty ("-2–10"). Spell the range out in that case. */
   const opt=(a.optimal_min!=null&&a.optimal_max!=null)
     ? (a.optimal_min<0 ? `${a.optimal_min} to ${a.optimal_max}` : `${a.optimal_min}–${a.optimal_max}`)
-    : '—';
+    : (a.optimal_max!=null ? `≤ ${a.optimal_max}` : '—');   /* one-sided band: helmet above back */
   return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
     <td class="num">${val}</td><td class="num">${opt}</td>
     <td><span class="pill pill-${cls}" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>${esc(word)}</span></td></tr>`;

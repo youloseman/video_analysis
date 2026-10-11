@@ -416,7 +416,7 @@ _PHASE_DEPENDENT_BIKE = frozenset({"knee", "hip", "ankle", "pelvic_ratio"})
 # source gives a target for it (head_silhouette.py). 2026-10-11.
 PHOTO_CYCLING_WEIGHTS = {
     "knee": 0.24, "trunk": 0.20, "shoulder": 0.13,
-    "elbow": 0.11, "forearm_tilt": 0.05,
+    "elbow": 0.11, "forearm_tilt": 0.05, "helmet_above_back": 0.06,
 }
 # Near TDC/BDC from a single photo: the pedal phase is only a guess, so trust
 # the knee less than a true motion-capture dead-centre -- shift its weight to
@@ -430,15 +430,23 @@ PHOTO_CYCLING_WEIGHTS = {
 # a closed hip is the one cycling metric with a medical consequence.
 PHOTO_CYCLING_WEIGHTS_PHASED = {
     "knee": 0.14, "trunk": 0.24, "shoulder": 0.14,
-    "elbow": 0.11, "forearm_tilt": 0.05, "hip": 0.12,
+    "elbow": 0.11, "forearm_tilt": 0.05, "hip": 0.12, "helmet_above_back": 0.06,
 }
 # Crank position unknown: the score is the upper body only, and says so. The
 # knee used to stay in at 0.06 against a 60-155 band -- free points, since
 # almost any knee lands in that band.
 PHOTO_CYCLING_WEIGHTS_UNCERTAIN = {
     "trunk": 0.27, "shoulder": 0.15,
-    "elbow": 0.12, "forearm_tilt": 0.05,
+    "elbow": 0.12, "forearm_tilt": 0.05, "helmet_above_back": 0.06,
 }
+# The helmet term (2026-10-11, Artur's call) only exists in a score when the
+# reading is trustworthy and the position is an aero one -- see
+# _with_helmet_band. It costs nothing up to the highest Kona pro (+23 % of
+# torso length) and is amber, never red, above it: the only study (Beaumont
+# 2018, CFD) compares head up with head down -- up to 6.4 % drag -- and gives
+# no curve to hang a red line on. Half the old head weight.
+_HELMET_BAND = (-100.0, KONA_PRO_RANGE[1])
+_HELMET_SCORE_FLOOR = 70
 _BIKE_PHASE_WEIGHTS = {
     "bdc": PHOTO_CYCLING_WEIGHTS_PHASED,
     "tdc": PHOTO_CYCLING_WEIGHTS_PHASED,
@@ -572,6 +580,23 @@ _HELMET_NOTE = (
     "the back is normal -- you have to see the road."
 )
 
+_HELMET_HIGH_NOTE = (
+    "Higher than any of the fifteen Kona pros. A head up against a head down "
+    "cost up to 6.4 % more drag in a CFD study of time-trial helmets (Beaumont "
+    "2018). Amber, a small penalty: drop the head if you can still see the "
+    "road and hold it."
+)
+
+
+def _with_helmet_band(
+    ranges: dict[str, tuple[float, float]], scored: bool,
+) -> dict[str, tuple[float, float]]:
+    """The bike bands plus the helmet band when the helmet term is scored."""
+    if not scored:
+        return ranges
+    return {**ranges, "helmet_above_back": _HELMET_BAND}
+
+
 _HELMET_CHECK_WARNING = (
     "Check the top-of-back point: your helmet's tail seems to lie on your back, "
     "and where back ends and helmet begins is hard to see. If the green point "
@@ -631,6 +656,8 @@ def _score_photo_angles(
         )
         if score is None:
             continue
+        if angle_key == "helmet_above_back":
+            score = max(score, _HELMET_SCORE_FLOOR)  # amber at worst, see _HELMET_BAND
 
         per_angle[angle_key] = {
             "score": score,
@@ -1135,8 +1162,13 @@ def _generate_photo_thumbnail(
         hlx = max(5, min(w - 5, (max(ph[0], nose_x) if ahead > 0 else min(ph[0], nose_x))
                          + ahead * int(60 * _sk)))
         hly = max(20, min(h - 20, ph[1]))
-        overlay_style.draw_leader(cv2_mod, frame, ph, (hlx, hly), overlay_style.INK_SOFT)
-        chips.metric_chip((hlx, hly), "HELMET ABOVE BACK", h_text, "muted", scale=_sk,
+        # Coloured by the table's own verdict: green up to the highest Kona
+        # pro, amber above; grey while the reading is unscored.
+        h_status = "muted" if hide_angle_values else _ROW_TO_CHIP.get(
+            (row_status or {}).get("helmet_above_back"), "muted")
+        h_rgb = overlay_style.STATUS_COLORS.get(h_status, overlay_style.INK_SOFT)
+        overlay_style.draw_leader(cv2_mod, frame, ph, (hlx, hly), h_rgb)
+        chips.metric_chip((hlx, hly), "HELMET ABOVE BACK", h_text, h_status, scale=_sk,
                           align="left" if ahead > 0 else "right")
 
     # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
@@ -1645,6 +1677,7 @@ def analyze_from_pose(
     # 4. Compute angles (sport-specific)
     angles: dict[str, float] = {}
     helmet: dict[str, Any] | None = None  # bike only: see head_silhouette.py
+    helmet_scored = False
     pedal_phase: str | None = None  # Only set for cycling
     gait_phase: str = "uncertain"   # Only meaningful for running
     thigh_dev: float = math.nan     # Only measured for running
@@ -1776,7 +1809,16 @@ def analyze_from_pose(
                 trunk_angle=trunk,
             )
 
-        optimal_ranges = _get_cycling_optimal_ranges(cycling_position, pedal_phase)
+        # The helmet term joins the score only on an aero position and only
+        # when the reading can be trusted: no "check the point" flag, or a
+        # point the athlete placed. A flagged reading can be 10 points low.
+        helmet_scored = (
+            helmet is not None and cycling_position in _AERO_POSITIONS
+            and not helmet.get("check")
+        )
+        optimal_ranges = _with_helmet_band(
+            _get_cycling_optimal_ranges(cycling_position, pedal_phase), helmet_scored,
+        )
         phase_bands = _bike_phase_bands(cycling_position)
         hip_phase = pedal_phase
 
@@ -1856,14 +1898,24 @@ def analyze_from_pose(
         # names a target. The rider gets the field it was calibrated on.
         if sport == "bike" and angle_name == "helmet_above_back":
             lo, hi = KONA_PRO_RANGE
-            angles_with_context[angle_name] = {
-                "value": angle_value, "label": lbl,
-                "optimal_min": None, "optimal_max": None,
-                "status": "phase_dependent",
-                "unscored_reason": f"Kona pros {lo:+.0f} to {hi:+.0f}%",
-                "note": _HELMET_NOTE + (
-                    " " + _HELMET_CHECK_WARNING if helmet and helmet.get("check") else ""),
-            }
+            if helmet_scored:
+                high = angle_value > hi
+                angles_with_context[angle_name] = {
+                    "value": angle_value, "label": lbl,
+                    "optimal_min": None, "optimal_max": hi,
+                    "status": "acceptable" if high else "optimal",
+                    "note": _HELMET_NOTE + (" " + _HELMET_HIGH_NOTE if high else ""),
+                }
+            else:
+                flagged = bool(helmet and helmet.get("check"))
+                angles_with_context[angle_name] = {
+                    "value": angle_value, "label": lbl,
+                    "optimal_min": None, "optimal_max": None,
+                    "status": "phase_dependent",
+                    "unscored_reason": ("check the green point" if flagged
+                                        else f"Kona pros {lo:+.0f} to {hi:+.0f}%"),
+                    "note": _HELMET_NOTE + (" " + _HELMET_CHECK_WARNING if flagged else ""),
+                }
             continue
         # Bike ankle: measured, but never judged from a still (2D ankle too noisy).
         if sport == "bike" and angle_name == "ankle":
@@ -1967,7 +2019,9 @@ def analyze_from_pose(
     elif sport == "bike":
         score_by_phase = {
             p: _score_photo_angles(
-                angles, _get_cycling_optimal_ranges(cycling_position, p), sport,
+                angles, _with_helmet_band(
+                    _get_cycling_optimal_ranges(cycling_position, p), helmet_scored,
+                ), sport,
                 _BIKE_PHASE_WEIGHTS[p], cycling_position=cycling_position,
                 pedal_phase=p,
             )

@@ -32,6 +32,10 @@ sources:
     year: 2025
     title: "IRONMAN Tweaks Drafting, Cycling Equipment Rules for 2025"
     finding: "IRONMAN's 2025 rules regulate aerobar length for the first time: extensions must not extend beyond the leading edge of the front wheel (rule 5.3(c)). The coverage names no limit on tilt."
+  - author: "Beaumont, F., Taiar, R., Polidori, G., Trenchard, H. & Grappe, F."
+    year: 2018
+    title: "Aerodynamic study of time-trial helmets in cycling racing using CFD analysis (Journal of Biomechanics, 67, 1–8)"
+    finding: "Three time-trial helmets, each with the head up and the head down, simulated at 15 m/s: for a given head position the helmet's shape changed drag by under 1.5%, while the head position changed it by up to about 6.4%."
   - author: "Steinmetz, M."
     year: 2024
     title: "Aero Evolution: Kona Pro Bike Positions (Slowtwitch)"
@@ -42,9 +46,9 @@ sources:
     finding: "A 90° torso-to-upper-arm angle is the reference; less than 90° is the athlete's personal choice, while an angle more obtuse than 90° can become an issue."
 ---
 
-**Updated 11 October 2026.** After the first version went out, readers pointed out that some of the pose model's points sat off the joints. They were right, so we checked every point on every photo and moved the ones that missed into the joint by hand. We also added a fifteenth position a reader asked about: Trevor Foley, from an earlier Kona. All the numbers, figures and photos below are the corrected ones; what changed is listed under "How we measured".
+**Updated 11 October 2026.** After the first version went out, readers pointed out that some of the pose model's points sat off the joints. They were right, so we checked every point on every photo and moved the ones that missed into the joint by hand. We also added a fifteenth position a reader asked about: Trevor Foley, from an earlier Kona. And we replaced the "head position" reading, which another reader rightly called meaningless, with a measurement of how far the helmet rises above the back (section 4). All the numbers, figures and photos below are the corrected ones; what changed is listed under "How we measured".
 
-The day after the Ironman World Championship we ran fourteen professional bike positions, taken from race photographs, through the same pose model Flapp uses on your clips, plus one more that a reader sent in. The median pro rode with the torso 20° above horizontal, the upper arm at 87° to the torso, the elbow bent to 83° and the forearms tilted 25° up. The forearms are the story: not one of the fifteen rode them flat.
+The day after the Ironman World Championship we ran fourteen professional bike positions, taken from race photographs, through the same pose model Flapp uses on your clips, plus one more that a reader sent in. The median pro rode with the torso 20° above horizontal, the upper arm at 87° to the torso, the elbow bent to 83° and the forearms tilted 25° up, with the top of the helmet 17% of a torso length above the top of the back. The forearms are the story: not one of the fifteen rode them flat.
 
 ## The median Kona position
 
@@ -52,8 +56,9 @@ The day after the Ironman World Championship we ran fourteen professional bike p
 |---|---|---|---|---|
 | Torso, from horizontal | 20° | 19–22° | 13–25° | 20–30° |
 | Shoulder, torso to upper arm | 87° | 82–89° | 74–96° | 80–105° |
-| Elbow | 83° | 76–88° | 66–93° | 75–110° |
+| Elbow | 83° | 75–88° | 66–93° | 75–110° |
 | Forearm tilt, above horizontal | 25° | 22–27° | 19–32° | 5–30° |
+| Helmet above the back, % of torso length | 17% | 14–19% | 12–23% | up to 23% |
 
 ![Each dot is one of the fifteen positions; the green strip is the range Flapp uses for a triathlon aero position. Amber marks a reading below the range that costs no points.](/media/academy/kona-2026/field.webp)
 
@@ -67,9 +72,9 @@ The aerodynamics back them. In a 2025 study that modelled one professional rider
 
 ![Rider A, the flattest forearms in the field: 19°, with the elbow open to 91°. Flapp's overlay on the race photograph.](/media/academy/kona-2026/rider-a.webp)
 
-![Rider B, one of the steepest: forearms at 28°, elbow closed to 75°, torso at 15°.](/media/academy/kona-2026/rider-b.webp)
+![Rider B, one of the steepest: forearms at 30°, elbow closed to 73°, torso at 15°.](/media/academy/kona-2026/rider-b.webp)
 
-Two cautions. The saving is rider-specific, and the same study found that a smaller frontal area did not automatically mean less drag. And the elbow pays for it: when the hands rise, the elbow tends to close. Across the field the two moved in opposite directions (r = −0.63). Four riders sat below the 75° elbow floor in our own range. That floor was written for flatter forearms; we have not lowered it because we have not yet found a fitter or a study that names a lower number. If you ride tilted extensions, read your elbow angle together with your forearm tilt, not on its own.
+Two cautions. The saving is rider-specific, and the same study found that a smaller frontal area did not automatically mean less drag. And the elbow pays for it: when the hands rise, the elbow tends to close. Across the field the two moved in opposite directions (r = −0.64). Four riders sat below the 75° elbow floor in our own range. That floor was written for flatter forearms; we have not lowered it because we have not yet found a fitter or a study that names a lower number. If you ride tilted extensions, read your elbow angle together with your forearm tilt, not on its own.
 
 ## 2. The torso is not as low as you would think
 
@@ -91,45 +96,53 @@ Two positions closed the shoulder further, to 76° and 74°. The people who wrot
 
 What to check if you ride like Rider C: whether the shoulders are shrugged up toward the ears, which is tiring and hard to breathe through, and whether the arms are carrying you or you are holding yourself up.
 
+## 4. The head: how far the helmet rises above the back
+
+The first version of this article showed a "head position" score of 100/100 on every rider, and a reader asked what that could possibly mean. Fairly: it checked whether the ear sat below a line through the hip and shoulder joints, and that line runs inside the body. The ear is at cheekbone height, so every aero rider passed, and the helmet, the part that actually sits in the wind, was never looked at.
+
+So we measure the helmet instead. The pose model also finds the rider's outline. Through the highest point of the back we draw a level line, level because the wind is, and measure how far the top of the helmet rises above it, as a share of torso length. Where a helmet's tail lies flat on the back the outline cannot show where back ends and helmet begins, and on five of the fifteen photos the automatic back point landed on the helmet. We moved those by hand, the way the app now lets you move them on your own photo.
+
+Every Kona pro had the helmet above the back: from 12% to 23% of a torso length, median 17%, half the field between 14% and 19%. That is normal. You have to see the road, and an aero helmet's tail is shaped to meet the back, not to hide under it. What it costs to go higher has been measured only as a comparison of two positions: in a CFD study of time-trial helmets, head up against head down changed drag by up to 6.4%, more than switching between three helmets did.
+
 ## All fifteen positions
 
-Every position we measured, ordered from the flattest forearms to the steepest. The labels are Flapp's own readings for a triathlon position: green inside the range, amber just outside it or below it at no cost, red outside it. A ringed point is one we moved into the joint by hand. Knee, hip and ankle are left off for the reasons in the next section.
+Every position we measured, ordered from the flattest forearms to the steepest. The labels are Flapp's own readings for a triathlon position: green inside the range, amber just outside it or below it at no cost, red outside it. A ringed point is one we moved by hand, and the green dot by the shoulders is the top of the back the helmet reading starts from. Knee, hip and ankle are left off for the reasons in the next section.
 
-![Position 1 of 15: forearm tilt 19°, torso 23°, shoulder 86°, elbow 91°.](/media/academy/kona-2026/position-01.webp)
+![Position 1 of 15: forearm tilt 19°, torso 23°, shoulder 86°, elbow 91°, helmet +22% above the back.](/media/academy/kona-2026/position-01.webp)
 
-![Position 2 of 15: forearm tilt 21°, torso 25°, shoulder 83°, elbow 88°.](/media/academy/kona-2026/position-02.webp)
+![Position 2 of 15: forearm tilt 21°, torso 25°, shoulder 83°, elbow 88°, helmet +14% above the back.](/media/academy/kona-2026/position-02.webp)
 
-![Position 3 of 15: forearm tilt 22°, torso 25°, shoulder 86°, elbow 89°.](/media/academy/kona-2026/position-03.webp)
+![Position 3 of 15: forearm tilt 22°, torso 25°, shoulder 86°, elbow 89°, helmet +19% above the back.](/media/academy/kona-2026/position-03.webp)
 
-![Position 4 of 15: forearm tilt 22°, torso 15°, shoulder 90°, elbow 83°.](/media/academy/kona-2026/position-04.webp)
+![Position 4 of 15: forearm tilt 22°, torso 15°, shoulder 90°, elbow 83°, helmet +19% above the back.](/media/academy/kona-2026/position-04.webp)
 
-![Position 5 of 15: forearm tilt 22°, torso 19°, shoulder 89°, elbow 86°.](/media/academy/kona-2026/position-05.webp)
+![Position 5 of 15: forearm tilt 22°, torso 19°, shoulder 89°, elbow 86°, helmet +12% above the back.](/media/academy/kona-2026/position-05.webp)
 
-![Position 6 of 15: forearm tilt 24°, torso 20°, shoulder 88°, elbow 84°.](/media/academy/kona-2026/position-06.webp)
+![Position 6 of 15: forearm tilt 24°, torso 20°, shoulder 88°, elbow 84°, helmet +14% above the back.](/media/academy/kona-2026/position-06.webp)
 
-![Position 7 of 15: forearm tilt 24°, torso 19°, shoulder 81°, elbow 76°.](/media/academy/kona-2026/position-07.webp)
+![Position 7 of 15: forearm tilt 24°, torso 19°, shoulder 81°, elbow 76°, helmet +20% above the back.](/media/academy/kona-2026/position-07.webp)
 
-![Position 8 of 15: forearm tilt 25°, torso 22°, shoulder 74°, elbow 71°.](/media/academy/kona-2026/position-08.webp)
+![Position 8 of 15: forearm tilt 25°, torso 22°, shoulder 74°, elbow 71°, helmet +13% above the back.](/media/academy/kona-2026/position-08.webp)
 
-![Position 9 of 15: forearm tilt 26°, torso 22°, shoulder 92°, elbow 88°.](/media/academy/kona-2026/position-09.webp)
+![Position 9 of 15: forearm tilt 26°, torso 22°, shoulder 92°, elbow 88°, helmet +18% above the back.](/media/academy/kona-2026/position-09.webp)
 
-![Position 10 of 15: forearm tilt 26°, torso 13°, shoulder 96°, elbow 82°.](/media/academy/kona-2026/position-10.webp)
+![Position 10 of 15: forearm tilt 26°, torso 13°, shoulder 96°, elbow 82°, helmet +17% above the back.](/media/academy/kona-2026/position-10.webp)
 
-![Position 11 of 15: forearm tilt 26°, torso 25°, shoulder 94°, elbow 93°.](/media/academy/kona-2026/position-11.webp)
+![Position 11 of 15: forearm tilt 26°, torso 25°, shoulder 94°, elbow 93°, helmet +23% above the back.](/media/academy/kona-2026/position-11.webp)
 
-![Position 12 of 15: forearm tilt 28°, torso 19°, shoulder 76°, elbow 66°.](/media/academy/kona-2026/position-12.webp)
+![Position 12 of 15: forearm tilt 28°, torso 19°, shoulder 76°, elbow 66°, helmet +13% above the back.](/media/academy/kona-2026/position-12.webp)
 
-![Position 13 of 15: forearm tilt 28°, torso 15°, shoulder 89°, elbow 75°.](/media/academy/kona-2026/position-13.webp)
+![Position 13 of 15: forearm tilt 29°, torso 19°, shoulder 81°, elbow 70°, helmet +14% above the back. Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race.](/media/academy/kona-2026/position-13.webp)
 
-![Position 14 of 15: forearm tilt 29°, torso 19°, shoulder 81°, elbow 70°. Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race.](/media/academy/kona-2026/position-14.webp)
+![Position 14 of 15: forearm tilt 30°, torso 15°, shoulder 88°, elbow 73°, helmet +17% above the back.](/media/academy/kona-2026/position-14.webp)
 
-![Position 15 of 15: forearm tilt 32°, torso 21°, shoulder 87°, elbow 76°.](/media/academy/kona-2026/position-15.webp)
+![Position 15 of 15: forearm tilt 32°, torso 21°, shoulder 87°, elbow 76°, helmet +19% above the back.](/media/academy/kona-2026/position-15.webp)
 
 ## What we did not measure, and why
 
 No knee angles and no saddle verdicts. In a single race photo the crank is wherever it happened to be, so the knee angle is not a saddle-height reading. There is a second reason. Every one of these photos was taken from the drive side, the side with the chainring, because the riders crossed the frame in the same direction past photographers on one side of the road. On two bikes of our own we measured that the drive side reads the knee at the bottom of the stroke 8–10° lower than it really is: the ankle point slides onto the dark chainring behind it. So we left the legs out rather than publish numbers we know are biased.
 
-How we measured: fifteen photographs from the 2026 race. One was rejected. The model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one. Position 14 is the one addition: Trevor Foley, from a photo a reader shared in the comments. It comes from an earlier Kona, not the 2026 race, and we do not know who took it. On all fifteen, angles were measured in 2D on the side of the body nearest the camera, from four points: shoulder, elbow, wrist and hip. A pose model's points are its best guess at where each joint is, not the bony landmarks a fitter would mark by hand, and in the first version of this article several of them missed. So we went through all fifteen photos and moved every point that missed into the joint by hand, the same way the app lets you correct a point on your own photo. 36 of the 60 points moved, by a median of under 2 cm. The largest move, about 8 cm, was the shoulder in position 9, which the model had put on the top edge of the back. Centimetres here are estimated from each rider's own hip-to-shoulder distance, taken as 50 cm. Every moved point is ringed on its photo.
+How we measured: fifteen photographs from the 2026 race. One was rejected. The model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one. Position 13 is the one addition: Trevor Foley, from a photo a reader shared in the comments. It comes from an earlier Kona, not the 2026 race, and we do not know who took it. On all fifteen, angles were measured in 2D on the side of the body nearest the camera, from four points: shoulder, elbow, wrist and hip. A pose model's points are its best guess at where each joint is, not the bony landmarks a fitter would mark by hand, and in the first version of this article several of them missed. So we went through all fifteen photos and moved every point that missed into the joint by hand, the same way the app lets you correct a point on your own photo. 37 of the 60 joint points moved, by a median of about 1.5 cm. The largest move, about 8 cm, was the shoulder in position 9, which the model had put on the top edge of the back. Centimetres here are estimated from each rider's own hip-to-shoulder distance, taken as 50 cm. Every moved point is ringed on its photo. The helmet reading is taken from the rider's outline, not from these four points; its top-of-back point was moved by hand on five photos, where the helmet's tail lay flat on the back.
 
 Against the model's own points, the corrections moved the medians by 5° at most: torso and forearm tilt 20° and 25° before and after, shoulder 84° to 87°, elbow 78° to 83°. They changed single riders more. The flattest forearm went from 10° to 19°, and the number of shoulders closed below 80° went from six to two. That is why we report the field rather than anyone's exact fit. Some athletes may appear in more than one photo; we could not check, so each photo counts as one position. The labels on the photographs are drawn by the same renderer the app uses on your own photos. It is one race, one day and one roadside viewpoint, so read these as the shape of a field, not as anyone's exact fit. We do not name the 2026 athletes: we cannot verify who is in every frame, and the point is the position, not the person. The one name here is the one a reader gave us with his photo.
 
@@ -138,10 +151,11 @@ Against the model's own points, the corrections moved the medians by 5° at most
 - **Try some forearm tilt before you chase a lower torso.** It is the trend with the best evidence and it is cheap to adjust. Every position here had at least 19°, and the middle half sat between 22° and 27°. Keep the elbows narrow; that is where most of the measured saving came from.
 - **Do not copy a 15° torso.** Find the lowest angle you can hold for your race distance and still make your power, then test it in training at race effort.
 - **A closed shoulder is fine** if you are not shrugging and you can breathe.
+- **Keep the helmet within the pros' range.** Every Kona pro's helmet rose 12–23% of a torso length above the back. If yours rises more, drop the head a little, as far as you can while still seeing the road.
 - **Measure yourself the same way.** Film from the side away from the chainring, camera at hip height, and include the bottom of the pedal stroke. If a point lands off a joint, drag it into place before you read the numbers. Then you can put your own numbers next to the table above.
 
 ## What we changed in Flapp
 
-Measuring this field showed that three of our own rules were behind it, and we changed each one only as far as a source supports. The forearm-tilt range now runs to 30°. That is the ceiling road time trials allow under UCI rules; triathlon sets none, and one Kona position went past it, so read it as a reference, not a rule. A shoulder closed below the range on aero bars is amber and costs a third of the penalty, because no source calls it a fault. The aero estimate, which used to put every torso below 28° in one bucket, now separates three steps using Fintelman's measured frontal areas. And a torso flatter than the range costs no points, but comes with the concern you read above.
+Measuring this field showed that three of our own rules were behind it, and we changed each one only as far as a source supports. The forearm-tilt range now runs to 30°. That is the ceiling road time trials allow under UCI rules; triathlon sets none, and one Kona position went past it, so read it as a reference, not a rule. A shoulder closed below the range on aero bars is amber and costs a third of the penalty, because no source calls it a fault. The aero estimate, which used to put every torso below 28° in one bucket, now separates three steps using Fintelman's measured frontal areas. And a torso flatter than the range costs no points, but comes with the concern you read above. The head reading that gave every rider 100/100 is gone. In its place the app measures the helmet above the back, lets you move both points it is measured between, and asks you to check the top-of-back point when the helmet's tail lies flat on it. A helmet up to 23% of a torso length above the back, the highest Kona pro, costs nothing. Above that it is amber with a small penalty, never red, because the one study we have compares two head positions and draws no line between them.
 
 [Measure your own position](/app)
