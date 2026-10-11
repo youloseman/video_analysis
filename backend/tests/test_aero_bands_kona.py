@@ -116,7 +116,7 @@ class TestTheClosedShoulder:
     def test_the_report_tile_caps_it_at_amber(self):
         i = HTML.index("function grZone(")
         fn = HTML[i:HTML.index("\n}", i)]
-        assert "metric==='shoulder_closed_ok' && v<lo" in fn
+        assert "metric==='shoulder_closed_ok'" in fn and "v<lo) return 'warning'" in fn
         assert "shR.metric='shoulder_closed_ok'" in HTML
 
 

@@ -130,9 +130,9 @@ def _headroom_fraction(entry: dict[str, Any], direction: int) -> float | None:
 def _is_aero_gain(metric: str, direction: int, position: str | None) -> bool:
     """True when leaving the band this way is the point, not a side effect.
 
-    A trunk flatter than its comfort band is the goal of an aero position --
-    the same judgement _classify_angle_status makes when it returns
-    "aero_optimized" instead of "needs_work". Without this, the ranking warns
+    A trunk flatter than its comfort band costs no points in an aero position
+    (cycling_positions.AERO_TRUNK_LOW_CONCERN) -- the report states the trade,
+    it does not call it a fault. Without this, the ranking warns
     that a lever would "push the trunk out of its band" and steers the coach
     away from an adjustment that made the rider faster.
     """

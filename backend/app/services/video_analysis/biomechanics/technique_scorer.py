@@ -411,7 +411,17 @@ def score_cycling(
     # Trunk angle
     trunk = summary.get("trunk_angle_avg", 0)
     if trunk > 0:
-        components["trunk_angle"] = score_in_range(trunk, *ref["trunk_angle"])
+        # On aero bars a trunk flatter than the band costs nothing -- the photo
+        # and the fit plan already said so; the clip was the one surface that
+        # still took points for it. The concern is shown instead
+        # (cycling_positions.AERO_TRUNK_LOW_CONCERN).
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            trunk_below_aero_floor,
+        )
+        if trunk_below_aero_floor(cycling_position, trunk):
+            components["trunk_angle"] = 100.0
+        else:
+            components["trunk_angle"] = score_in_range(trunk, *ref["trunk_angle"])
 
     # Saddle fit (derived from near-side BDC)
     saddle = summary.get("saddle_height_assessment", "")
@@ -662,6 +672,13 @@ def classify_metric_severity(
         if distance > 15:
             return "CRITICAL"
         return "WARNING"
+
+    # Trunk on aero bars, flatter than the band: no points, never past
+    # ACCEPTABLE -- the concern is said, the rider is not marked down.
+    if metric_key == "trunk_angle" and value < opt_min:
+        from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+        if pos in AERO_POSITIONS:
+            return "ACCEPTABLE"
 
     # Shoulder on aero bars, closed past the band: the athlete's choice, never
     # past ACCEPTABLE (Empfield 2007; SHOULDER_CLOSED_OK_POSITIONS).

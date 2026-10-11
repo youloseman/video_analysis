@@ -362,6 +362,23 @@ def _bike_data_block(
     if isinstance(arch, dict) and arch.get("label"):
         lines.append(f"- Position archetype: {arch['label']} — {arch.get('description', '')}")
 
+    # Aero trunk under the band: the same instruction the photo coach gets
+    # (AERO_TRUNK_LOW_CONCERN) -- no fault, no "raise the bars", the trade
+    # said once.
+    from app.services.video_analysis.biomechanics.cycling_positions import (
+        trunk_below_aero_floor,
+    )
+    if trunk_below_aero_floor(position, summary.get("trunk_angle_avg")):
+        lines.append(
+            "- The trunk is BELOW its band on aero bars. It costs no points and is "
+            "NOT a fault: do not list it as one, do not advise raising the bars. "
+            "Say once, plainly, that this is faster through the air but is the "
+            "position pros hold after years of conditioning; most age-group "
+            "athletes cannot hold it and make power, and a lower torso costs "
+            "maximal power and metabolic efficiency (Fintelman 2015) — so keep it "
+            "only if they can breathe, push and hold it late in the race."
+        )
+
     # Foot posture through the stroke. Given as a style plus where the stroke
     # was spent, so the coach can connect a toe-down foot to a saddle-height
     # reading rather than treating the two as unrelated observations.
@@ -937,24 +954,30 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             f"auto-detected crank position; the rider can correct that]"
             if v.get("bands") and v.get("phase") in ("bdc", "tdc") else ""
         )
-        # Aero trunk below the comfort band: a deliberate trade-off, not a
-        # defect. Without this the coach "fixes" a world-class tuck by telling
-        # the rider to raise the bars.
-        status = v.get("status") or ""
-        if status.startswith("aero_"):
+        # Aero trunk below the comfort band: costs no points and is not a
+        # defect -- but not a strength either. Pros hold it; most age-groupers
+        # cannot (AERO_TRUNK_LOW_CONCERN). The coach states the trade once and
+        # never "fixes" it by telling the rider to raise the bars.
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            AERO_TRUNK_EXTREME_DEG,
+            trunk_below_aero_floor,
+        )
+        if (sport == "bike" and k == "trunk"
+                and trunk_below_aero_floor(res.get("cycling_position"), v.get("value"))):
+            extreme = (v.get("value") or 99) < AERO_TRUNK_EXTREME_DEG
             lines.append(
                 f"- {v.get('label', k)}: {v.get('value')}{unit} "
-                f"(comfort band {v.get('optimal_min')}-{v.get('optimal_max')}{unit}, "
-                f"{status}) — BELOW the band on purpose: flatter is the "
-                f"aerodynamic goal here. Do NOT list this as a fault, do NOT "
-                f"advise raising the bars or opening the trunk. "
-                + (
-                    "It is aggressive enough to be worth one line about "
-                    "sustainability -- breathing and holding it for the full "
-                    "event -- and nothing more."
-                    if status == "aero_extreme"
-                    else "Treat it as a strength."
-                )
+                f"(comfort band {v.get('optimal_min')}-{v.get('optimal_max')}{unit}) "
+                f"— BELOW the band. It costs no points and is NOT a fault: do "
+                f"not list it as one, do not advise raising the bars. Say once, "
+                f"plainly, that this is faster through the air but is the "
+                f"position pros hold after years of conditioning; most "
+                f"age-group athletes cannot hold it and make power, and a lower "
+                f"torso costs maximal power and metabolic efficiency "
+                f"(Fintelman 2015) — so keep it only if they can breathe, push "
+                f"and hold it late in the race."
+                + (" At this angle that question is the main one, not a footnote."
+                   if extreme else "")
             )
             continue
         lines.append(

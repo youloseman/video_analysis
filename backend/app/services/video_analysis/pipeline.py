@@ -356,10 +356,17 @@ class VideoAnalysisPipeline:
             # On aero bars a closed shoulder is the athlete's choice (Empfield
             # 2007): amber at most on the overlay, as on the card.
             from app.services.video_analysis.biomechanics.cycling_positions import (
+                AERO_POSITIONS as AERO_POSITIONS_FOR_TRUNK,
+            )
+            from app.services.video_analysis.biomechanics.cycling_positions import (
                 SHOULDER_CLOSED_OK_POSITIONS,
             )
             if cycling_pos in SHOULDER_CLOSED_OK_POSITIONS:
                 configs[-1]["closed_ok"] = True
+            # Trunk flatter than the band on aero bars: no points, amber with
+            # the concern (AERO_TRUNK_LOW_CONCERN) -- never red on the video.
+            if cycling_pos in AERO_POSITIONS_FOR_TRUNK:
+                next(c for c in configs if c["key"] == "trunk_angle")["closed_ok"] = True
             # Forearm tilt is a fitted quantity on aero bars only (see
             # technique_scorer.score_cycling): off them the forearm slopes to
             # the bar by geometry, and a red "FOREARM -41" chip on a hoods

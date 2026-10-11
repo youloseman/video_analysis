@@ -3414,7 +3414,7 @@ function grZone(v,lo,hi,metric){
   if(v>=lo && v<=hi) return 'optimal';
   /* Aero-bar shoulder closed past the band: the athlete's choice, never red
      (server: cycling_positions.SHOULDER_CLOSED_OK_POSITIONS). */
-  if(metric==='shoulder_closed_ok' && v<lo) return 'warning';
+  if((metric==='shoulder_closed_ok'||metric==='trunk_low_ok') && v<lo) return 'warning';
   if((v>=lo-m && v<lo) || (v>hi && v<=hi+m)) return 'warning';
   return 'critical';
 }
@@ -3609,7 +3609,15 @@ function bikeTiles(s, position){
     t.push(tileA('Hip · average','hip_angle_avg',s.hip_angle_avg,'stroke mean — the closed hip at the top was not measured',null,'bike'));
   }
   if(s.elbow_angle_avg!=null) t.push(tileA('Elbow','elbow_angle_avg',s.elbow_angle_avg,null,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg'),'bike'));
-  if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg')));
+  if(s.trunk_angle_avg!=null){
+    /* Aero bars, flatter than the band: no points (server), amber here, and
+       the trade said in a line -- pros hold it, most age-groupers cannot. */
+    const trR=rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg');
+    const aero=(position==='tt_aero'||position==='triathlon');
+    const low=aero&&trR&&s.trunk_angle_avg<trR.lo;
+    if(low) trR.metric='trunk_low_ok';
+    t.push(tile('Trunk',num(s.trunk_angle_avg),'°',low?'Flatter than the band: faster, if you can hold it and still make power':null,null,false,trR));
+  }
   if(s.shoulder_angle_avg!=null){
     const shR=rng('shoulder_angle',s.shoulder_angle_avg,'shoulder_angle_avg');
     if(shR&&(position==='tt_aero'||position==='triathlon')) shR.metric='shoulder_closed_ok';

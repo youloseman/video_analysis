@@ -36,6 +36,7 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_POSITIONS,
     AERO_TRUNK_EXTREME_DEG,
     HIP_MEDICAL_MIN_DEG,
+    AERO_TRUNK_LOW_CONCERN,
     SHOULDER_CLOSED_FORGIVENESS,
     SHOULDER_CLOSED_OK_POSITIONS,
     get_cycling_reference,
@@ -533,7 +534,9 @@ def _assign_photo_grade(score: int) -> str:
 # gently. Being above the max (too upright / too open = draggy) keeps the full
 # penalty. Format: angle_key -> (low_tolerance, high_tolerance).
 _AERO_TOLERANCES = {
-    "trunk": (3.0, 1.0),   # flat aero back below min: forgiven; too upright: full penalty
+    # flat aero back below min: no points at all (AERO_TRUNK_LOW_CONCERN is
+    # shown instead); too upright: full penalty
+    "trunk": (math.inf, 1.0),
     "hip":   (2.5, 1.0),   # closed aero hip below min: mostly forgiven
     # closed shoulder on aero bars: the athlete's choice (Empfield 2007) -- see
     # cycling_positions.SHOULDER_CLOSED_OK_POSITIONS
@@ -547,14 +550,10 @@ _SHOULDER_CLOSED_NOTE = (
     "breathe and push at race power, and that the arms carry you without a shrug."
 )
 
-_AERO_TRUNK_NOTE = (
-    "Flatter than the comfort band -- in an aero position that is the goal, "
-    "not a fault. Keep it if you can hold it and breathe at race power."
-)
 _AERO_TRUNK_EXTREME_NOTE = (
-    "Extremely low. Aerodynamically this is as good as it gets; the open "
-    "question is sustainability -- breathing, power and holding the tuck for "
-    "the full event. Judge it on how it feels late in a race, not on the number."
+    "Below 12 degrees the question is no longer aero but whether the body can "
+    "do the work there at all -- a flat back was the one position that changed "
+    "power and metabolic cost significantly against every other (Fintelman 2015)."
 )
 
 
@@ -1801,14 +1800,20 @@ def analyze_from_pose(
             and not math.isnan(angle_value)
             and angle_value < opt_min
         ):
+            # Amber with the concern, not "aero gain": the same reading on the
+            # video, the overlay and the fit plan (AERO_TRUNK_LOW_CONCERN).
+            # Below AERO_TRUNK_EXTREME_DEG the sustainability caveat is added.
             extreme = angle_value < AERO_TRUNK_EXTREME_DEG
+            note = AERO_TRUNK_LOW_CONCERN.format(lo=opt_min, hi=opt_max)
+            if extreme:
+                note += " " + _AERO_TRUNK_EXTREME_NOTE
             angles_with_context[angle_name] = {
                 "value": angle_value,
                 "optimal_min": opt_min,
                 "optimal_max": opt_max,
-                "status": "aero_extreme" if extreme else "aero_optimized",
+                "status": "acceptable",
                 "label": lbl,
-                "note": _AERO_TRUNK_EXTREME_NOTE if extreme else _AERO_TRUNK_NOTE,
+                "note": note,
             }
             continue
         # Aero-bar shoulder closed past the band: a choice, not a fault --

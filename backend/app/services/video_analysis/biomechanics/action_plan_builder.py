@@ -18,6 +18,7 @@ from typing import Any
 from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_POSITIONS,
     AERO_TRUNK_EXTREME_DEG,
+    AERO_TRUNK_LOW_CONCERN,
     CYCLING_POSITIONS,
     get_cycling_reference,
     get_medical_warnings,
@@ -439,8 +440,11 @@ def _add_good_metric(
     }
     if borderline:
         entry["borderline"] = True
-        if note:
-            entry["note"] = note
+    # The note travels whether or not the value is borderline: the aero trunk
+    # passes ``note`` without ``borderline``, and its caveat was being dropped
+    # here -- the fit plan said it in code and to nobody.
+    if note:
+        entry["note"] = note
     good_metrics.append(entry)
 
 
@@ -682,18 +686,18 @@ def build_action_plan(
             ))
             active_priorities.append("bar position")
         elif trunk_class == "out_low" and position in AERO_POSITIONS:
-            # ASYMMETRIC (aero): flatter than the comfort band is the point of
-            # the position, not a fit error -- telling an aero rider to raise
-            # the bars because the back is low is backwards. Report it as a
-            # strength; below _AERO_TRUNK_EXTREME_DEG add the one caveat that
-            # is actually open (can they hold it for the full event?).
+            # ASYMMETRIC (aero): flatter than the comfort band is not a fit
+            # error -- telling an aero rider to raise the bars because the back
+            # is low is backwards -- and it costs no points. But it is not
+            # sold as a strength either: pros hold it, most age-groupers
+            # cannot, and the note says so (AERO_TRUNK_LOW_CONCERN). Below
+            # _AERO_TRUNK_EXTREME_DEG the medical-style caveat is added too.
             _add_good_metric(
                 good_metrics, "trunk_angle", trunk_avg,
                 (trunk_min, trunk_max), "Trunk angle (aero)",
                 note=(
-                    f"Trunk angle is {trunk_avg:.0f} deg, flatter than the "
-                    f"{trunk_min:.0f}-{trunk_max:.0f} deg comfort band. In an "
-                    f"aero position that is the goal, not a fault."
+                    f"Trunk angle is {trunk_avg:.0f} deg. "
+                    + AERO_TRUNK_LOW_CONCERN.format(lo=trunk_min, hi=trunk_max)
                 ),
             )
             if trunk_avg < AERO_TRUNK_EXTREME_DEG and not any(

@@ -38,6 +38,34 @@ AERO_POSITIONS = frozenset({"tt_aero", "triathlon"})
 SHOULDER_CLOSED_OK_POSITIONS = AERO_POSITIONS
 SHOULDER_CLOSED_FORGIVENESS = 3.0
 
+# On aero bars a trunk flatter than the band costs NO points and is never
+# called a strength either: amber, with this concern, on the photo, the video
+# score and tile, the overlay and the fit plan alike. Artur's call
+# (2026-10-11): six of fourteen Kona 2026 pros rode under the triathlon floor,
+# and they can -- years of conditioning, four-plus hours at a time. Most
+# age-groupers cannot, and the evidence says what it costs them: maximal power
+# and every physiological variable fall as the torso drops, and a flat back
+# changed them significantly against every other position (Fintelman 2015,
+# J Sports Sci, n=19 TT riders and triathletes). The band's floor stays where
+# it is; under it the rider is told the trade, not marked down for making it.
+AERO_TRUNK_LOW_CONCERN = (
+    "Flatter than the {lo:.0f}-{hi:.0f} deg band. That is faster through the "
+    "air and costs nothing in the score -- but it is the position pros hold for "
+    "four-plus hours after years of conditioning. Most age-group athletes "
+    "cannot: a lower torso cuts the power you can make and raises the cost of "
+    "making it (Fintelman 2015). Keep it only if you can breathe, push and hold "
+    "it late in the race."
+)
+AERO_TRUNK_LOW_CONCERN_SHORT = "Flatter than the band: faster, if you can hold it and still make power"
+
+
+def trunk_below_aero_floor(position: str | None, trunk: float | None) -> bool:
+    """True when an aero-bar trunk is flatter than its band: no points lost,
+    amber with :data:`AERO_TRUNK_LOW_CONCERN` everywhere it is shown."""
+    if position not in AERO_POSITIONS or trunk is None or trunk != trunk:
+        return False
+    return trunk < CYCLING_POSITIONS[position]["trunk_angle"][0]
+
 # Below this a trunk angle stops being "more aero" and becomes a question about
 # whether the rider can hold it, breathe and make power for the full event.
 # Still not a fit error -- the honest read is a caveat, not "raise your bars".
