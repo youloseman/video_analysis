@@ -5,7 +5,7 @@
 #
 # Motus requirements.txt uses `>=`; we pin `==` here for a reproducible MVP.
 
-mediapipe==0.10.35
+mediapipe==1.1.0
 opencv-python-headless==4.13.0.92
 # mediapipe hard-depends on opencv-contrib-python (unpinned upstream); pin it
 # to the SAME version Motus runs so the fresh resolver doesn't pull an

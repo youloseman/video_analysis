@@ -27,7 +27,6 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
     calculate_body_rotation,
     calculate_forearm_tilt_2d,
     calculate_forward_sign,
-    calculate_head_alignment_2d,
     calculate_segment_to_vertical,
     calculate_shank_foot_angle_2d,
     calculate_signed_segment_to_vertical,
@@ -42,6 +41,12 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
     get_cycling_reference,
     get_medical_warnings,
     get_position_label,
+)
+from app.services.video_analysis.biomechanics.head_silhouette import (
+    KONA_PRO_MEDIAN,
+    KONA_PRO_RANGE,
+    helmet_above_back,
+    top_contour,
 )
 from app.services.video_analysis.pipeline import _draw_dashed_line
 from app.services.video_analysis.biomechanics.sport_configs import (
@@ -135,6 +140,7 @@ _ANGLE_LABELS: dict[str, dict[str, str]] = {
         "shoulder": "Shoulder Angle",
         "forearm_tilt": "Forearm Tilt",
         "head_alignment": "Head Tuck",
+        "helmet_above_back": "Helmet above back, % torso",
         "pelvic_ratio": "Pelvic Rotation",
     },
     "swim": {
@@ -400,13 +406,18 @@ PHOTO_RUNNING_WEIGHTS = {
 # hip over trunk, so it sweeps with the hip -- is never scored from a still.
 _PHASE_DEPENDENT_BIKE = frozenset({"knee", "hip", "ankle", "pelvic_ratio"})
 
+# No head term in any of these. The old "Head position" score (ear below the
+# hip-shoulder joint line) came back 100 for every aero rider -- all fifteen
+# Kona 2026 pros -- so its 11-13 % of the weight was free points. Its
+# replacement, helmet above the back line, is measured but not scored: no
+# source gives a target for it (head_silhouette.py). 2026-10-11.
 PHOTO_CYCLING_WEIGHTS = {
-    "knee": 0.24, "trunk": 0.20, "shoulder": 0.13, "head_alignment": 0.11,
+    "knee": 0.24, "trunk": 0.20, "shoulder": 0.13,
     "elbow": 0.11, "forearm_tilt": 0.05,
 }
 # Near TDC/BDC from a single photo: the pedal phase is only a guess, so trust
 # the knee less than a true motion-capture dead-centre -- shift its weight to
-# the pedal-phase-independent trunk/shoulder/head metrics.
+# the pedal-phase-independent trunk/shoulder metrics.
 #
 # Hip IS scored here, unlike the other profiles. The exclusion in
 # _PHASE_DEPENDENT_BIKE exists because a stroke-average band faults good
@@ -415,14 +426,14 @@ PHOTO_CYCLING_WEIGHTS = {
 # could show "Hip angle: needs work" in the table and 100/100 as the score, and
 # a closed hip is the one cycling metric with a medical consequence.
 PHOTO_CYCLING_WEIGHTS_PHASED = {
-    "knee": 0.14, "trunk": 0.24, "shoulder": 0.14, "head_alignment": 0.12,
+    "knee": 0.14, "trunk": 0.24, "shoulder": 0.14,
     "elbow": 0.11, "forearm_tilt": 0.05, "hip": 0.12,
 }
 # Crank position unknown: the score is the upper body only, and says so. The
 # knee used to stay in at 0.06 against a 60-155 band -- free points, since
 # almost any knee lands in that band.
 PHOTO_CYCLING_WEIGHTS_UNCERTAIN = {
-    "trunk": 0.27, "shoulder": 0.15, "head_alignment": 0.13,
+    "trunk": 0.27, "shoulder": 0.15,
     "elbow": 0.12, "forearm_tilt": 0.05,
 }
 _BIKE_PHASE_WEIGHTS = {
@@ -548,6 +559,14 @@ _SHOULDER_CLOSED_NOTE = (
     "Upper arm closer to the torso than the 90-degree fitters aim for. On aero "
     "bars that is the athlete's choice, not a fault -- check you can still "
     "breathe and push at race power, and that the arms carry you without a shrug."
+)
+
+_HELMET_NOTE = (
+    "How far the top of the helmet rises above a line drawn along your back, "
+    "as a share of torso length. Negative means the helmet stays under the line. "
+    f"The Kona 2026 pros ranged from {KONA_PRO_RANGE[0]:+.0f}% to "
+    f"{KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.0f}%. Some helmet above "
+    "the back is normal -- you have to see the road."
 )
 
 _AERO_TRUNK_EXTREME_NOTE = (
@@ -868,6 +887,7 @@ def _generate_photo_thumbnail(
     corrected: list[int] | None = None,
     row_status: dict[str, str] | None = None,
     show_header: bool = True,
+    helmet: dict[str, Any] | None = None,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
@@ -1067,51 +1087,35 @@ def _generate_photo_thumbnail(
             chips.metric_chip((lx, ly), label_name, value_txt, status,
                               scale=_sk, align=align)
 
-    # --- 2b. HEAD ALIGNMENT + PELVIC RATIO overlays (bike only) ---
-    if sport == "bike" and len(pixel_coords) > 25:
-        s11x, s11y, _ = pixel_coords[11]
-        h23x, h23y, _ = pixel_coords[23]
-        bh_px = max(50.0, abs(s11y - h23y))
+    # --- 2b. HELMET ABOVE THE BACK LINE (bike only) ---
+    # The line fitted along the back's silhouette edge, carried forward over
+    # the head, and a tick from it up to the top of the helmet: the picture of
+    # exactly what the number measures (head_silhouette.py). Neutral colour --
+    # it is shown, not judged. The old "HEAD POSITION 100/100" chip is gone
+    # with the score it drew (2026-10-11).
+    if sport == "bike" and helmet:
+        (bx, by), (fx, fy) = helmet["line"]
+        hx_, hy_ = helmet["head_point"]
+        p0 = (int(bx * w), int(by * h))
+        p1 = (int(fx * w), int(fy * h))
+        ph = (int(hx_ * w), int(hy_ * h))
+        _draw_dashed_line(cv2_mod, frame, p0, p1, (180, 180, 255), max(1, int(2 * _sk)))
+        cv2_mod.line(frame, p1, ph, overlay_style.INK_SOFT, max(1, int(2 * _sk)), cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, ph, max(3, int(4 * _sk)), overlay_style.INK_SOFT, -1, cv2_mod.LINE_AA)
+        if hide_angle_values:
+            h_text = "LOCKED"
+        else:
+            h_text = f"{helmet['value']:+.0f}%"
+        hlx = max(5, min(w - 5, ph[0] + int(28 * _sk)))
+        hly = max(20, min(h - 20, ph[1] - int(26 * _sk)))
+        overlay_style.draw_leader(cv2_mod, frame, ph, (hlx, hly), overlay_style.INK_SOFT)
+        chips.metric_chip((hlx, hly), "HELMET ABOVE BACK", h_text, "muted", scale=_sk)
 
-        # Head alignment: dashed back-line + score near ear
-        head_val = angles.get("head_alignment")
-        if head_val is not None and not math.isnan(head_val) and head_val > 0 and bh_px > 40:
-            if camera_side == "left":
-                sh_i, hp_i, ear_i = 11, 23, 7
-            else:
-                sh_i, hp_i, ear_i = 12, 24, 8
-
-            shx, shy, shv = pixel_coords[sh_i]
-            hpx, hpy, hpv = pixel_coords[hp_i]
-            eax, eay, eav = pixel_coords[ear_i]
-
-            if shv >= _VIS_THRESHOLD and hpv >= _VIS_THRESHOLD:
-                _draw_dashed_line(cv2_mod, frame, (hpx, hpy), (shx, shy), (180, 180, 255), 1)
-                dx_ext = shx - hpx
-                dy_ext = shy - hpy
-                ext_x = shx + int(dx_ext * 0.5)
-                ext_y = shy + int(dy_ext * 0.5)
-                _draw_dashed_line(cv2_mod, frame, (shx, shy), (ext_x, ext_y), (180, 180, 255), 1)
-
-                if eav >= _VIS_THRESHOLD:
-                    if hide_angle_values:
-                        h_status, h_text = "muted", "LOCKED"
-                    else:
-                        h_status = "good" if head_val >= 75 else ("warn" if head_val >= 50 else "bad")
-                        h_text = f"{head_val:.0f}/100"
-                    hlx = max(5, min(w - 5, eax + int(28 * _sk)))
-                    hly = max(20, min(h - 20, eay - int(26 * _sk)))
-                    overlay_style.draw_leader(
-                        cv2_mod, frame, (eax, eay), (hlx, hly),
-                        overlay_style.STATUS_COLORS.get(h_status, overlay_style.INK_SOFT),
-                    )
-                    chips.metric_chip((hlx, hly), "HEAD POSITION", h_text, h_status, scale=_sk)
-
-        # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
-        # places by inference, drawn beside a hip that already carries a chip;
-        # on the frame it read as a second, unexplained verdict about the same
-        # joint. The number stays in the report's tiles and the score. Artur's
-        # call, 2026-09-17.
+    # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
+    # places by inference, drawn beside a hip that already carries a chip;
+    # on the frame it read as a second, unexplained verdict about the same
+    # joint. The number stays in the report's tiles and the score. Artur's
+    # call, 2026-09-17.
 
     # --- 3. BRANDING, then paint the header + every chip in one PIL pass ---
     chips.brand((w - _pad, h - _pad), "FLAPP",
@@ -1405,6 +1409,7 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
 
     wl = None
     nl = None
+    silhouette_top: list[float | None] | None = None
 
     try:
         from pathlib import Path as _Path
@@ -1428,12 +1433,14 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
                 break
 
         if _model_path:
+            want_mask = _segmentation_mask_supported()
             options = PoseLandmarkerOptions(
                 base_options=BaseOptions(model_asset_path=_model_path),
                 running_mode=RunningMode.IMAGE,
                 num_poses=1,
                 min_pose_detection_confidence=0.5,
                 min_pose_presence_confidence=0.5,
+                output_segmentation_masks=want_mask,
             )
             landmarker = PoseLandmarker.create_from_options(options)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
@@ -1443,6 +1450,8 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
             if result.pose_world_landmarks:
                 wl = result.pose_world_landmarks[0]
                 nl = result.pose_landmarks[0]
+                if want_mask and result.segmentation_masks:
+                    silhouette_top = top_contour(result.segmentation_masks[0].numpy_view())
     except Exception as tasks_err:
         logger.warning("Tasks API failed for photo, trying legacy", err=str(tasks_err))
 
@@ -1496,7 +1505,27 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
         "camera_side": camera_side,
         "avg_visibility": avg_vis,
         "warnings": warnings,
+        # The silhouette's top edge, for the helmet-above-back reading (see
+        # biomechanics/head_silhouette.py). None on the legacy path or a
+        # MediaPipe that cannot hand the mask over safely.
+        "silhouette_top": silhouette_top,
     }
+
+
+def _segmentation_mask_supported() -> bool:
+    """Whether this MediaPipe can return the person mask without dying.
+
+    0.10.35 aborts the whole process (a C++ CHECK, not an exception) the
+    moment a float segmentation mask is read -- on Windows and on Linux alike,
+    verified 2026-10-11. 1.x reads it. A CHECK cannot be caught, so the mask is
+    never even requested from an older build.
+    """
+    import mediapipe as mp
+
+    try:
+        return int(str(mp.__version__).split(".")[0]) >= 1
+    except (ValueError, AttributeError):
+        return False
 
 
 def analyze_photo(
@@ -1532,6 +1561,7 @@ def analyze_photo(
         pose_result["image"], pose_result["world"], pose_result["normalized"],
         pose_result["camera_side"], list(pose_result["warnings"]),
         sport, cycling_position, hide_angle_values=hide_angle_values,
+        silhouette_top=pose_result.get("silhouette_top"),
     )
     response["processing_time_seconds"] = round(time.time() - start_time, 3)
 
@@ -1557,6 +1587,7 @@ def analyze_from_pose(
     hide_angle_values: bool = False,
     corrections: list[dict[str, Any]] | None = None,
     render_thumbnail: bool = True,
+    silhouette_top: list[float | None] | None = None,
 ) -> dict[str, Any]:
     """The measuring half of :func:`analyze_photo`: angles, score, picture.
 
@@ -1569,7 +1600,9 @@ def analyze_from_pose(
     ``corrections``: the athlete's adjustments already applied to ``nl`` by
     the caller. Echoed into the result and ringed on the thumbnail, never
     applied here. ``render_thumbnail=False`` skips the picture (a baseline
-    measurement nobody will look at).
+    measurement nobody will look at). ``silhouette_top``: the person mask's top
+    edge from :func:`detect_pose_in_image`, for the helmet-above-back reading;
+    without it that row is simply absent.
     """
     import cv2  # for the annotated thumbnail
 
@@ -1578,6 +1611,7 @@ def analyze_from_pose(
 
     # 4. Compute angles (sport-specific)
     angles: dict[str, float] = {}
+    helmet: dict[str, Any] | None = None  # bike only: see head_silhouette.py
     pedal_phase: str | None = None  # Only set for cycling
     gait_phase: str = "uncertain"   # Only meaningful for running
     thigh_dev: float = math.nan     # Only measured for running
@@ -1668,16 +1702,19 @@ def analyze_from_pose(
             forearm_tilt, _ = calculate_forearm_tilt_2d(pl, 14, 16)
         angles["forearm_tilt"] = _safe_round(forearm_tilt)
 
-        # Head alignment (score 0-100). Read off the image plane like every
-        # other bike angle here, and like the video path has since it moved to
-        # image landmarks -- this was the one reading still on the world
-        # skeleton, which also meant an athlete moving the ear point would
-        # have changed the picture and not the score.
-        if camera_side == "left":
-            head_score, _ = calculate_head_alignment_2d(pl, 11, 23, 7)
-        else:
-            head_score, _ = calculate_head_alignment_2d(pl, 12, 24, 8)
-        angles["head_alignment"] = _safe_round(head_score)
+        # Helmet above the back line, off the silhouette (head_silhouette.py).
+        # It replaces the "Head position" score: ear below a line through the
+        # hip and shoulder joint centres, a line that runs inside the body, so
+        # every aero rider got 100/100 -- all fifteen Kona pros did -- and the
+        # helmet, the part that actually sits in the wind, was never looked at.
+        # Measured and shown, not scored: no fit source sets a target for it.
+        if silhouette_top:
+            helmet = helmet_above_back(
+                silhouette_top, (nl[_sh].x, nl[_sh].y), (nl[_hp].x, nl[_hp].y),
+                (nl[0].x, nl[0].y), _aspect,
+            )
+        if helmet is not None:
+            angles["helmet_above_back"] = helmet["value"]
 
         # Pelvic ratio (derived: hip / trunk)
         hip_val = angles.get("hip")
@@ -1776,6 +1813,18 @@ def analyze_from_pose(
                 "note": ("Hip angle over torso angle. The hip opens and closes with "
                          "every pedal stroke, so one frame cannot place it against "
                          "the range -- a clip measures it over whole revolutions."),
+            }
+            continue
+        # Helmet above the back line: measured, never judged -- no fit source
+        # names a target. The rider gets the field it was calibrated on.
+        if sport == "bike" and angle_name == "helmet_above_back":
+            lo, hi = KONA_PRO_RANGE
+            angles_with_context[angle_name] = {
+                "value": angle_value, "label": lbl,
+                "optimal_min": None, "optimal_max": None,
+                "status": "phase_dependent",
+                "unscored_reason": f"Kona pros {lo:+.0f} to {hi:+.0f}%",
+                "note": _HELMET_NOTE,
             }
             continue
         # Bike ankle: measured, but never judged from a still (2D ankle too noisy).
@@ -1904,6 +1953,7 @@ def analyze_from_pose(
             optimal_ranges=optimal_ranges,
             corrected=[int(c["landmark"]) for c in (corrections or [])],
             row_status={k: v.get("status") for k, v in angles_with_context.items()},
+            helmet=helmet,
         )
         thumbnail_b64 = (
             f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"

@@ -944,6 +944,23 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         # Units are explicit: two bike metrics are NOT degrees, and without the
         # unit the model narrates them as "96 degrees" / "3.94 degrees".
         unit, unit_note = _PHOTO_METRIC_UNITS.get(k, (" deg", ""))
+        # Helmet above the back line: measured off the silhouette, never
+        # scored, and the only context for it is the pro field it was
+        # calibrated on. The coach may mention it; it may not grade it.
+        if k == "helmet_above_back":
+            from app.services.video_analysis.biomechanics.head_silhouette import (
+                KONA_PRO_MEDIAN,
+                KONA_PRO_RANGE,
+            )
+            lines.append(
+                f"- {v.get('label', k)}: {v.get('value')}% of torso length [how far the "
+                f"top of the helmet rises above a line along the back; NOT degrees, "
+                f"NOT scored]. Kona 2026 pros: {KONA_PRO_RANGE[0]:+.0f}% to "
+                f"{KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.0f}%. Some helmet "
+                f"above the back is normal (the rider has to see the road). You may "
+                f"say where this sits against the pros; do NOT call it a fault."
+            )
+            continue
         # Unresolved pedal-phase joints (ankle always; hip when the crank
         # position could not be determined): no band applies, so the coach has
         # nothing to judge against and must not invent a verdict.

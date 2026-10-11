@@ -138,12 +138,63 @@ def test_a_moved_hip_reaches_the_knee_angle_and_the_baseline_stays():
     assert res["cycling_position"] == "triathlon"
 
 
-def test_a_moved_ear_reaches_the_head_alignment_score():
-    """The one bike reading that used to come off the world skeleton; a moved
-    ear changing the picture and not the score was a bug waiting to be found."""
-    base, _ = _recompute([{"landmark": 8, "dx": 0.0, "dy": -0.001}])
-    moved, _ = _recompute([{"landmark": 8, "dx": 0.0, "dy": -0.08}])
-    assert moved["angles"]["head_alignment"] != base["angles"]["head_alignment"]
+def _silhouette_top() -> list:
+    """A rider's top edge, as head_silhouette.top_contour hands it over: a
+    straight back from hip to shoulder a little above the joint line, then a
+    helmet rising over it in front of the shoulder, nothing elsewhere."""
+    from app.services.video_analysis.biomechanics.head_silhouette import CONTOUR_COLUMNS
+
+    edge = []
+    for j in range(CONTOUR_COLUMNS):
+        x = (j + 0.5) / CONTOUR_COLUMNS
+        if 0.34 <= x <= 0.76:
+            edge.append(round(0.345 - (x - 0.38) * (0.075 / 0.34), 4))
+        elif 0.76 < x <= 0.95:
+            edge.append(0.22)
+        else:
+            edge.append(None)
+    return edge
+
+
+def test_the_helmet_reading_survives_a_correction():
+    """The silhouette edge travels in the signed pose, so a re-measured photo
+    keeps its helmet-above-back row; moving the shoulder moves the torso the
+    reading is a share of, so the number follows the correction."""
+    photo = _photo_bytes()
+    pose = _pose_result(photo)
+    pose["silhouette_top"] = _silhouette_top()
+    blob = PC.build_pose_blob(photo, pose)
+    assert blob["silhouette_top"] == pose["silhouette_top"]
+
+    res = PC.recompute_photo(photo, "bike", "triathlon", blob,
+                             [{"landmark": 12, "dx": 0.0, "dy": 0.03}])
+    before = res["baseline"]["angles"]["helmet_above_back"]
+    after = res["angles"]["helmet_above_back"]
+    assert before > 0 and after != before
+    row = res["angles_with_context"]["helmet_above_back"]
+    assert row["status"] == "phase_dependent" and row["unscored_reason"].startswith("Kona pros")
+    assert "helmet_above_back" not in res["score"]["per_angle"], "measured, never scored"
+
+
+def test_a_tampered_silhouette_is_refused():
+    photo = _photo_bytes()
+    pose = _pose_result(photo)
+    pose["silhouette_top"] = _silhouette_top()
+    blob = PC.build_pose_blob(photo, pose)
+    blob["silhouette_top"] = [0.0 if v is not None else None for v in blob["silhouette_top"]]
+    with pytest.raises(ValueError, match="not issued by this server"):
+        PC.verify_pose_blob(blob, photo)
+
+
+def test_a_pose_issued_before_the_silhouette_still_verifies():
+    """Blobs from before the silhouette existed carry no such key; a rider
+    mid-edit across the deploy must not be told to analyze again."""
+    photo = _photo_bytes()
+    blob = PC.build_pose_blob(photo, _pose_result(photo))
+    assert "silhouette_top" not in blob
+    PC.verify_pose_blob(blob, photo)
+    res, _ = _recompute([{"landmark": 24, "dx": 0.0, "dy": 0.02}])
+    assert "helmet_above_back" not in res["angles"]
 
 
 def test_the_geometry_gets_a_say_on_a_single_photo():

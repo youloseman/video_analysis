@@ -25,6 +25,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from app.core.config import settings
+from app.services.video_analysis.biomechanics.head_silhouette import CONTOUR_COLUMNS
 from app.services.video_analysis.biomechanics.corrections import (
     DRAGGABLE_LANDMARKS,
     apply_corrections,
@@ -67,8 +68,11 @@ def _unpack(rows: list[list[Any]]) -> list[SimpleNamespace]:
 
 
 def _canonical(blob: dict[str, Any]) -> bytes:
+    # The silhouette edge is signed when the blob carries one. Blobs issued
+    # before it existed have no such key and verify exactly as they did.
+    keys = _SIGNED_KEYS + (("silhouette_top",) if "silhouette_top" in blob else ())
     return json.dumps(
-        {k: blob.get(k) for k in _SIGNED_KEYS},
+        {k: blob.get(k) for k in keys},
         sort_keys=True, separators=(",", ":"), allow_nan=False,
     ).encode()
 
@@ -96,6 +100,10 @@ def build_pose_blob(image_bytes: bytes, pose_result: dict[str, Any]) -> dict[str
         # Which points the editor may offer -- decided here, not in the client.
         "draggable": list(DRAGGABLE_LANDMARKS.get(side, ())),
     }
+    # The silhouette's top edge: the helmet-above-back reading needs it again
+    # after a correction, and there is no second model pass to get it from.
+    if pose_result.get("silhouette_top"):
+        blob["silhouette_top"] = list(pose_result["silhouette_top"])
     blob["token"] = _sign(blob)
     return blob
 
@@ -112,6 +120,12 @@ def verify_pose_blob(blob: Any, image_bytes: bytes) -> dict[str, Any]:
             raise ValueError("pose landmarks are malformed -- analyze the photo again")
     if blob.get("camera_side") not in ("left", "right"):
         raise ValueError("pose camera side is malformed -- analyze the photo again")
+    if "silhouette_top" in blob:
+        edge = blob["silhouette_top"]
+        if not isinstance(edge, list) or len(edge) != CONTOUR_COLUMNS or not all(
+            v is None or (isinstance(v, (int, float)) and 0.0 <= v <= 1.0) for v in edge
+        ):
+            raise ValueError("pose silhouette is malformed -- analyze the photo again")
     token = blob.get("token")
     if not isinstance(token, str) or not hmac.compare_digest(token, _sign(blob)):
         raise ValueError("this pose was not issued by this server for this photo")
@@ -157,10 +171,11 @@ def recompute_photo(
     warnings = list(blob.get("warnings") or [])
 
     # Baseline: the automatic reading, measured on the pose as detected.
+    silhouette_top = blob.get("silhouette_top")
     baseline = analyze_from_pose(
         image, _unpack(blob["world"]), _unpack(blob["landmarks"]), side, warnings,
         sport, cycling_position, hide_angle_values=hide_angle_values,
-        render_thumbnail=False,
+        render_thumbnail=False, silhouette_top=silhouette_top,
     )
 
     frame = {
@@ -181,6 +196,7 @@ def recompute_photo(
         # from "triathlon" to "casual" and change every band under them.
         cycling_position or baseline.get("cycling_position"),
         hide_angle_values=hide_angle_values, corrections=corrections,
+        silhouette_top=silhouette_top,
     )
     result["baseline"] = {
         "angles": baseline.get("angles"),
