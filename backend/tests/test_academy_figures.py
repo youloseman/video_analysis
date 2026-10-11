@@ -41,7 +41,7 @@ class TestTheKonaDraft:
         invalidate_cache()
         art = get_article("kona-2026-pro-bike-positions")
         assert art is not None and art.meta.category == "bike-aero"
-        assert len(art.sources) >= 7
+        assert len(art.sources) >= 8
         assert art.body_html.count("<figure>") >= 5
 
     def test_every_figure_it_shows_exists(self):
@@ -61,20 +61,31 @@ class TestTheKonaDraft:
         tilts = [float(m) for m in re.findall(r"Position \d+ of 14: forearm tilt (\d+)", text)]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
-    def test_the_one_hand_corrected_point_is_disclosed(self):
-        """Position 4: the model put the shoulder on the top edge of the back
-        (torso read 39 deg); moved into the joint by hand it reads 30. The
-        article says so, in the caption and in the method."""
+    def test_the_hand_corrections_are_disclosed(self):
+        """Readers pointed out points sitting off the joints; Artur moved the
+        ones that missed on all fourteen photos (2026-10-11). The article says
+        it was updated, how many points moved and by how much, rings every
+        moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
-        assert "Position 4 of 14: forearm tilt 21°, torso 30°" in text
-        assert "moved by hand" in text and "from 39° to 30°" in text
+        assert text.split("---", 2)[2].lstrip().startswith("**Updated 11 October 2026.**")
+        assert "33 of the 56 points moved" in text
+        assert "A ringed point is one we moved into the joint by hand." in text
+        assert "shoulder 85° to 88°, elbow 80° to 84°, forearm tilt 25° to 24°" in text
+
+    def test_uci_is_not_presented_as_a_triathlon_rule(self):
+        """UCI equipment rules govern road time trials, not Ironman, whose 2025
+        rules limit extension length and not tilt (Artur, 2026-10-11)."""
+        text = DRAFT.read_text(encoding="utf-8")
+        assert "Those rules do not apply to Ironman." in text
+        assert "the UCI limit." not in text
+        assert "The rules moved first." not in text
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 20° | 17–24° | 12–32° | 20–30° |",
-                    "| Shoulder, torso to upper arm | 85° | 77–88° | 71–97° | 80–105° |",
-                    "| Elbow | 80° | 76–89° | 62–107° | 75–110° |",
-                    "| Forearm tilt, above horizontal | 25° | 21–26° | 10–31° | 5–30° |"):
+        for row in ("| Torso, from horizontal | 20° | 19–23° | 13–25° | 20–30° |",
+                    "| Shoulder, torso to upper arm | 88° | 84–89° | 74–96° | 80–105° |",
+                    "| Elbow | 84° | 76–88° | 66–93° | 75–110° |",
+                    "| Forearm tilt, above horizontal | 24° | 22–26° | 19–32° | 5–30° |"):
             assert row in text, row
 
     def test_the_article_column_cannot_be_pushed_wider_than_a_phone(self):
