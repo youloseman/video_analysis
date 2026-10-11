@@ -3,8 +3,8 @@
 The Kona article is the first Academy piece with images, so the converter
 learned one block: a line holding ``![caption](/media/...)``. Only our own
 /media/ paths become an <img>; an article never hotlinks someone else's
-picture. The article ships as a ``.DRAFT.md`` -- it is not published until
-Artur renames it -- and every figure it points at must exist.
+picture. The article went out as a ``.DRAFT.md`` and was published on Artur's word
+(2026-10-11); every figure it points at must exist.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.services.academy.parser import CONTENT_DIR, markdown_to_html
 
 BACKEND = Path(__file__).resolve().parents[1]
 MEDIA = BACKEND / "app" / "static" / "media"
-DRAFT = CONTENT_DIR / "kona-2026-pro-bike-positions.DRAFT.md"
+DRAFT = CONTENT_DIR / "kona-2026-pro-bike-positions.md"
 
 
 class TestTheFigureBlock:
@@ -36,11 +36,13 @@ class TestTheFigureBlock:
 
 
 class TestTheKonaDraft:
-    def test_it_is_a_draft_and_not_served(self):
+    def test_it_is_published_with_its_sources(self):
         from app.services.academy import get_article, invalidate_cache
         invalidate_cache()
-        assert DRAFT.exists()
-        assert get_article("kona-2026-pro-bike-positions") is None
+        art = get_article("kona-2026-pro-bike-positions")
+        assert art is not None and art.meta.category == "bike-aero"
+        assert len(art.sources) >= 7
+        assert art.body_html.count("<figure>") >= 5
 
     def test_every_figure_it_shows_exists(self):
         text = DRAFT.read_text(encoding="utf-8")
