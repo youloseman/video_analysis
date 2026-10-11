@@ -568,7 +568,7 @@ _HELMET_NOTE = (
     "How far the top of the helmet rises above a level line through the top of "
     "your back -- level because the wind is -- as a share of torso length. "
     f"The Kona 2026 pros ranged from {KONA_PRO_RANGE[0]:+.0f}% to "
-    f"{KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.1f}%. Some helmet above "
+    f"{KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.0f}%. Some helmet above "
     "the back is normal -- you have to see the road."
 )
 

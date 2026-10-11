@@ -956,7 +956,7 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
                 f"- {v.get('label', k)}: {v.get('value')}% of torso length [how far the "
                 f"top of the helmet rises above a level line through the top of the "
                 f"back; NOT degrees, NOT scored]. Kona 2026 pros: {KONA_PRO_RANGE[0]:+.0f}% "
-                f"to {KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.1f}%. Some helmet "
+                f"to {KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.0f}%. Some helmet "
                 f"above the back is normal (the rider has to see the road). You may "
                 f"say where this sits against the pros; do NOT call it a fault."
             )

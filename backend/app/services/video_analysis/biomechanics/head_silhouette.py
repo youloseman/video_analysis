@@ -75,11 +75,12 @@ BACK_TOP_POINT = 100
 HELMET_TOP_POINT = 101
 HELMET_POINT_NAMES = {BACK_TOP_POINT: "top of the back", HELMET_TOP_POINT: "top of the helmet"}
 
-# The Kona pro field this was calibrated on (n=15, 2026-10-11): 6.1-23.2 %,
-# median 14.5, middle half 12-20. Moving the shoulder and hip points by hand
-# changed no rider by more than 0.7 %.
-KONA_PRO_RANGE = (6.0, 23.0)
-KONA_PRO_MEDIAN = 14.5
+# The Kona pro field, every top-of-back and top-of-helmet point checked by hand
+# (Artur, 2026-10-11, n=15): 11.8-22.6 %, median 17.0, middle half 13.8-18.8.
+# Five of the fifteen needed the back point moved off a flush helmet tail; the
+# automatic reading had them up to 10 points low (8.7 against 18.6).
+KONA_PRO_RANGE = (12.0, 23.0)
+KONA_PRO_MEDIAN = 17.0
 
 
 def top_contour(mask: np.ndarray, columns: int = CONTOUR_COLUMNS) -> list[float | None]:
