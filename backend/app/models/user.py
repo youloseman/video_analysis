@@ -84,6 +84,21 @@ class User(Base):
     tier: Mapped[str] = mapped_column(
         String(20), default=TIER_STARTER, server_default=TIER_STARTER, nullable=False,
     )
+    # When a tier was GIVEN rather than bought, the moment it stops.
+    #
+    # NULL means permanent, which is what every tier was until now: Stripe put
+    # it there and a Stripe webhook takes it away. A hand-granted tier has no
+    # webhook coming — nothing in the system would ever have revoked it — so
+    # "full for ten days" was really "full forever, unless somebody remembers".
+    # One date on the row makes the promise keepable; services/tier_grants.py
+    # is what keeps it.
+    #
+    # Deliberately NOT a second source of truth about paid plans. Everything
+    # that sets a tier from Stripe clears this, so a grant can never outlive a
+    # purchase or cut one short.
+    tier_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
     is_pro: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # --- Billing (Stripe, Stage 4). Null until the user starts a checkout. ---
     stripe_customer_id: Mapped[str | None] = mapped_column(

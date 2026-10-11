@@ -148,6 +148,21 @@ def _migrate_users(conn) -> None:
             conn.execute(text(_ddl))
             logger.info("MIGRATED", change=f"users.{_col} added")
 
+    if "tier_until" not in cols:
+        # WITH TIME ZONE spelled out, for the reason the mobility column above
+        # records: the model declares DateTime(timezone=True) and a bare
+        # TIMESTAMP is *without* time zone on Postgres, so create_all on a
+        # fresh database and this ALTER on an existing one would produce two
+        # different columns -- and the existing one would reject every write.
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN tier_until TIMESTAMP WITH TIME ZONE"
+        ))
+        # NULL for everyone, and that is correct rather than lazy: every tier
+        # that exists today is either free, bought through Stripe, or admin.
+        # None of those expire, and inventing an end date for them would
+        # revoke a plan somebody is paying for.
+        logger.info("MIGRATED", change="users.tier_until added")
+
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()
     if admin:

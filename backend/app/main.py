@@ -116,6 +116,7 @@ from app.services.export import ai_export
 from app.services.keyframe_store import backfill_keyframes
 from app.services.notify import log_email_configuration
 from app.services.preview_release import release_orphaned_previews
+from app.services.tier_grants import expire_tier_grants, grant_sweeper_loop
 from app.services.result_gating import (
     ACCESS_FULL,
     ACCESS_PREVIEW,
@@ -336,11 +337,22 @@ async def lifespan(app: FastAPI):
         # them is a data rewrite, so it is resumable and bounded rather than
         # something a deploy waits on: see services/keyframe_store.py.
         await backfill_keyframes(db)
+        # Once at boot as well as every ten minutes: a grant that ran out
+        # while the process was down should be gone when it is serving again,
+        # not ten minutes later.
+        expired = await expire_tier_grants(db)
+        if expired:
+            logger.info("TIER_GRANTS_SWEPT", expired=expired, at="startup")
     sweeper = asyncio.create_task(sweeper_loop())
+    # A tier handed over by hand ("full for ten days, thanks for the
+    # feedback") has no Stripe webhook coming to take it back. This is what
+    # takes it back -- see services/tier_grants.py.
+    grants = asyncio.create_task(grant_sweeper_loop())
     try:
         yield
     finally:
         sweeper.cancel()
+        grants.cancel()
 
 
 # Hide the interactive API docs in production (they expose the full endpoint

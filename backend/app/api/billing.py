@@ -54,6 +54,7 @@ from app.models.user import (
 )
 from app.services import analytics, expert_review, notify, pricing
 from app.services.result_gating import ACCESS_FULL, access_for_stored
+from app.services.tier_grants import clear_grant
 
 
 def _now_ms() -> int:
@@ -1133,9 +1134,18 @@ async def _user_by_customer(db: AsyncSession, customer_id: Any) -> User | None:
 
 
 def _set_tier(user: User, tier: str) -> None:
-    """Set a user's tier unless they're admin (billing never touches admins)."""
+    """Set a user's tier unless they're admin (billing never touches admins).
+
+    Also clears any hand-granted expiry date. Everything Stripe decides is
+    permanent until Stripe decides otherwise, so a tier that arrives through
+    here must not be left on somebody's ten-day clock — that clock would
+    revoke a subscription the customer is paying for. It is cleared on the way
+    DOWN as well, which is what makes a lapse end a grant too: a single place,
+    rather than a rule to remember at six call sites.
+    """
     if user.tier != TIER_ADMIN:
         user.tier = tier
+        clear_grant(user)
 
 
 async def _apply_event(db: AsyncSession, event: Any) -> None:
