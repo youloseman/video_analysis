@@ -83,12 +83,38 @@ AERO_ZONES: list[dict[str, Any]] = [
         "cda": 0.231,
         "rel": 0.87,
     },
+    # Below 28 deg the anchor study has one posture, so this used to be one
+    # bucket -- and 10 of 14 Kona 2026 pros landed in it, the scale going
+    # silent exactly where a triathlete looks for the next step. Fintelman's
+    # thesis (Birmingham 2015, Table 3.2, n=19 TT riders and triathletes)
+    # MEASURED frontal area at 24 / 16 / 8 / 0 deg: 0.335 / 0.318 / 0.302 /
+    # 0.288 m^2. Each zone below is centred on one measured angle, its edges
+    # halfway to the next, and steps down from the van Druenen TT anchor by
+    # the measured frontal-area ratio. Frontal area, not drag area: the
+    # conservative choice (Underwood 2011 found drag area falling faster,
+    # ~16 % over 2-20 deg), and Maddocks & Walker 2025 warn the two need not
+    # move together. The 0 deg point is left out: Fintelman found a flat back
+    # cost power and metabolism significantly against every other position.
     {
         "key": "tt_tuck",
         "label": "Time-trial tuck",
-        "trunk_band": (0, 28),       # TT / tri aero
+        "trunk_band": (20, 28),      # centred on Fintelman's 24 deg
         "cda": 0.213,
         "rel": 0.80,
+    },
+    {
+        "key": "tt_low",
+        "label": "Low time-trial tuck",
+        "trunk_band": (12, 20),      # centred on 16 deg: 0.318 / 0.335 frontal area
+        "cda": round(0.213 * 0.318 / 0.335, 3),
+        "rel": round(0.80 * 0.318 / 0.335, 3),
+    },
+    {
+        "key": "tt_flat",
+        "label": "Flat time-trial tuck",
+        "trunk_band": (0, 12),       # centred on 8 deg: 0.302 / 0.335 frontal area
+        "cda": round(0.213 * 0.302 / 0.335, 3),
+        "rel": round(0.80 * 0.302 / 0.335, 3),
     },
 ]
 
@@ -128,6 +154,40 @@ _DISCLAIMER = (
     "Real drag also depends on clothing, helmet, speed and wind. "
     "Flatter is only faster if you can still make power and breathe there."
 )
+
+
+# Relative drag against trunk angle inside the TT range, on Fintelman's
+# measured points (frontal area, scaled to the van Druenen TT anchor at 24
+# deg). Linear between them, flat beyond: nothing measured above 24 in this
+# series, and the 0 deg point is excluded (see AERO_ZONES).
+_TT_REL_POINTS: tuple[tuple[float, float], ...] = (
+    (8.0, 0.80 * 0.302 / 0.335),
+    (16.0, 0.80 * 0.318 / 0.335),
+    (24.0, 0.80),
+)
+_TT_RANGE_TOP = 28.0
+
+
+def _rel_for_trunk(trunk_angle: float) -> float:
+    """Drag relative to upright at this trunk angle.
+
+    Inside the TT range it is interpolated on measured points, so a two-degree
+    change is worth two degrees: the zone-step figure would have credited a
+    triathlete moving 22 -> 20 deg with the whole 24 -> 16 deg saving (5 %)
+    where the measured slope gives 1.3 %. Above it the zones are qualitative
+    postures with no angles, and their step is all there is.
+    """
+    if trunk_angle >= _TT_RANGE_TOP:
+        return float(_zone_for_trunk(trunk_angle)["rel"])
+    pts = _TT_REL_POINTS
+    if trunk_angle <= pts[0][0]:
+        return pts[0][1]
+    if trunk_angle >= pts[-1][0]:
+        return pts[-1][1]
+    for (a0, r0), (a1, r1) in zip(pts, pts[1:]):
+        if a0 <= trunk_angle <= a1:
+            return r0 + (r1 - r0) * (trunk_angle - a0) / (a1 - a0)
+    return pts[-1][1]
 
 
 def _zone_for_trunk(trunk_angle: float) -> dict[str, Any]:
@@ -259,10 +319,14 @@ def estimate_aero(
         "zone_key": current["key"],
         "zone_label": current["label"],
         "cda_reference": current["cda"],
-        "drag_vs_upright_pct": round(current["rel"] * 100),
+        "drag_vs_upright_pct": round(_rel_for_trunk(trunk_angle) * 100),
         "reference_speed_kmh": REF_SPEED_KMH,
         "disclaimer": _DISCLAIMER,
-        "source": "van Druenen & Blocken 2023 (Computers & Fluids 257)",
+        "source": (
+            "van Druenen & Blocken 2023 (Computers & Fluids 257)"
+            + ("; below 28 deg: Fintelman 2015 (PhD, Birmingham), measured frontal area"
+               if trunk_angle < _TT_RANGE_TOP else "")
+        ),
         "next_zone": None,
     }
 
@@ -281,7 +345,13 @@ def estimate_aero(
         # the saving is above rounding noise. The watt figure is rounded
         # to the nearest 5 W so it reads as an order-of-magnitude, not a
         # precise measurement.
-        rel_saving = (current["rel"] - next_zone["rel"]) / current["rel"]
+        # The target sits ON the boundary of the next zone, and a boundary
+        # belongs to the zone above it ([lo, hi)), so read the next zone's
+        # own figure there rather than the current zone's again.
+        rel_now = _rel_for_trunk(trunk_angle)
+        rel_target = (_rel_for_trunk(target_trunk) if target_trunk < _TT_RANGE_TOP
+                      else float(next_zone["rel"]))
+        rel_saving = (rel_now - rel_target) / rel_now
         if target_trunk < trunk_angle and rel_saving >= _MIN_MEANINGFUL_SAVING:
             watts = watts_saved_at(rel_saving, REF_SPEED_KMH)
             watts_low = watts_saved_at(rel_saving, REF_SPEED_LOW_KMH)

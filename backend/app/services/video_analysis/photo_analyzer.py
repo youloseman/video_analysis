@@ -36,6 +36,8 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_POSITIONS,
     AERO_TRUNK_EXTREME_DEG,
     HIP_MEDICAL_MIN_DEG,
+    SHOULDER_CLOSED_FORGIVENESS,
+    SHOULDER_CLOSED_OK_POSITIONS,
     get_cycling_reference,
     get_medical_warnings,
     get_position_label,
@@ -533,8 +535,17 @@ def _assign_photo_grade(score: int) -> str:
 _AERO_TOLERANCES = {
     "trunk": (3.0, 1.0),   # flat aero back below min: forgiven; too upright: full penalty
     "hip":   (2.5, 1.0),   # closed aero hip below min: mostly forgiven
+    # closed shoulder on aero bars: the athlete's choice (Empfield 2007) -- see
+    # cycling_positions.SHOULDER_CLOSED_OK_POSITIONS
+    "shoulder": (SHOULDER_CLOSED_FORGIVENESS, 1.0),
 }
 _AERO_POSITIONS = AERO_POSITIONS
+
+_SHOULDER_CLOSED_NOTE = (
+    "Upper arm closer to the torso than the 90-degree fitters aim for. On aero "
+    "bars that is the athlete's choice, not a fault -- check you can still "
+    "breathe and push at race power, and that the arms carry you without a shrug."
+)
 
 _AERO_TRUNK_NOTE = (
     "Flatter than the comfort band -- in an aero position that is the goal, "
@@ -1798,6 +1809,24 @@ def analyze_from_pose(
                 "status": "aero_extreme" if extreme else "aero_optimized",
                 "label": lbl,
                 "note": _AERO_TRUNK_EXTREME_NOTE if extreme else _AERO_TRUNK_NOTE,
+            }
+            continue
+        # Aero-bar shoulder closed past the band: a choice, not a fault --
+        # amber at most, with the reason (see SHOULDER_CLOSED_OK_POSITIONS).
+        if (
+            sport == "bike"
+            and angle_name == "shoulder"
+            and cycling_position in SHOULDER_CLOSED_OK_POSITIONS
+            and not math.isnan(angle_value)
+            and angle_value < opt_min
+        ):
+            angles_with_context[angle_name] = {
+                "value": angle_value,
+                "optimal_min": opt_min,
+                "optimal_max": opt_max,
+                "status": "acceptable",
+                "label": lbl,
+                "note": _SHOULDER_CLOSED_NOTE,
             }
             continue
         angles_with_context[angle_name] = {

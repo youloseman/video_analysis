@@ -41,6 +41,10 @@ def _status_for_cfg(cfg: dict[str, Any], value: float) -> str:
     opt_min, opt_max = cfg["optimal"]
     if cfg.get("open_ok") and value is not None and value > opt_max:
         return "good"
+    # ``closed_ok``: past the BOTTOM of the band is a choice, not a fault (the
+    # aero-bar shoulder) -- amber at most, never red.
+    if cfg.get("closed_ok") and value is not None and value < opt_min:
+        return "warn"
     return overlay_style.status_for(value, opt_min, opt_max)
 
 

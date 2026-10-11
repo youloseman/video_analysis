@@ -424,10 +424,21 @@ def score_cycling(
     if elbow > 0:
         components["elbow_angle"] = score_in_range(elbow, *ref["elbow_angle"])
 
-    # Shoulder angle (near-side)
+    # Shoulder angle (near-side). On aero bars a shoulder closed past the band
+    # is the athlete's choice (Empfield 2007) -- it costs a third as much per
+    # degree, the same forgiveness the photo path applies. Opened past it is a
+    # fault at the full rate. See cycling_positions.SHOULDER_CLOSED_OK_POSITIONS.
     shoulder = summary.get("shoulder_angle_avg", 0)
     if shoulder > 0:
-        components["shoulder_angle"] = score_in_range(shoulder, *ref["shoulder_angle"])
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            SHOULDER_CLOSED_FORGIVENESS,
+            SHOULDER_CLOSED_OK_POSITIONS,
+        )
+        sh_lo, sh_hi = ref["shoulder_angle"]
+        graded = shoulder
+        if cycling_position in SHOULDER_CLOSED_OK_POSITIONS and shoulder < sh_lo:
+            graded = sh_lo - (sh_lo - shoulder) / SHOULDER_CLOSED_FORGIVENESS
+        components["shoulder_angle"] = score_in_range(graded, sh_lo, sh_hi)
 
     # Forearm tilt -- an AERO-BAR metric: the extension/armrest tilt the UCI
     # regulates and the wind-tunnel work describes, measured wrist against
@@ -651,6 +662,15 @@ def classify_metric_severity(
         if distance > 15:
             return "CRITICAL"
         return "WARNING"
+
+    # Shoulder on aero bars, closed past the band: the athlete's choice, never
+    # past ACCEPTABLE (Empfield 2007; SHOULDER_CLOSED_OK_POSITIONS).
+    if metric_key == "shoulder_angle" and value < opt_min:
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            SHOULDER_CLOSED_OK_POSITIONS,
+        )
+        if pos in SHOULDER_CLOSED_OK_POSITIONS:
+            return "ACCEPTABLE"
 
     # Symmetric scoring for all other metrics
     # Check medical risk first (hip angle closure)

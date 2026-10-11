@@ -3284,8 +3284,8 @@ const RUN_ANGLE_OPT={ trunk:[2,10], elbow:[85,100] };
 const BIKE_POSITION_OPT={
   road_hoods:{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[80,100],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[55,70],forearm_tilt:[5,20],pelvic_ratio:[1.5,3.5]},
   road_drops:{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[75,95],knee_at_bdc:[135,145],knee_at_tdc:[65,75],hip_at_tdc:[52,68],forearm_tilt:[0,15],pelvic_ratio:[1.8,3.5]},
-  tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[42,60],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
-  triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[45,62],forearm_tilt:[5,25],pelvic_ratio:[2.0,4.0]},
+  tt_aero:{trunk_angle:[15,30],elbow_angle:[75,110],shoulder_angle:[80,100],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[42,60],forearm_tilt:[5,30],pelvic_ratio:[2.0,4.0]},
+  triathlon:{trunk_angle:[20,30],elbow_angle:[75,110],shoulder_angle:[80,105],knee_at_bdc:[138,145],knee_at_tdc:[60,72],hip_at_tdc:[45,62],forearm_tilt:[5,30],pelvic_ratio:[2.0,4.0]},
   casual:{trunk_angle:[45,60],elbow_angle:[130,165],shoulder_angle:[100,140],knee_at_bdc:[135,150],knee_at_tdc:[60,80],hip_at_tdc:[68,88],forearm_tilt:[-5,15],pelvic_ratio:[1.5,3.5]},
 };
 const BIKE_ANGLE_OPT_DEFAULT=BIKE_POSITION_OPT.road_hoods;
@@ -3412,6 +3412,9 @@ function grMargin(lo,hi,metric){
 function grZone(v,lo,hi,metric){
   const m=grMargin(lo,hi,metric);
   if(v>=lo && v<=hi) return 'optimal';
+  /* Aero-bar shoulder closed past the band: the athlete's choice, never red
+     (server: cycling_positions.SHOULDER_CLOSED_OK_POSITIONS). */
+  if(metric==='shoulder_closed_ok' && v<lo) return 'warning';
   if((v>=lo-m && v<lo) || (v>hi && v<=hi+m)) return 'warning';
   return 'critical';
 }
@@ -3607,7 +3610,11 @@ function bikeTiles(s, position){
   }
   if(s.elbow_angle_avg!=null) t.push(tileA('Elbow','elbow_angle_avg',s.elbow_angle_avg,null,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg'),'bike'));
   if(s.trunk_angle_avg!=null) t.push(tile('Trunk',num(s.trunk_angle_avg),'°',null,null,false,rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg')));
-  if(s.shoulder_angle_avg!=null) t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,rng('shoulder_angle',s.shoulder_angle_avg,'shoulder_angle_avg')));
+  if(s.shoulder_angle_avg!=null){
+    const shR=rng('shoulder_angle',s.shoulder_angle_avg,'shoulder_angle_avg');
+    if(shR&&(position==='tt_aero'||position==='triathlon')) shR.metric='shoulder_closed_ok';
+    t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,shR));
+  }
   // How the foot is carried through the stroke, and where it spent it. Only
   // toe-down is flagged: it lengthens the effective leg, which is what makes a
   // too-high saddle read as correctly set. Heel-down and ankling are styles,

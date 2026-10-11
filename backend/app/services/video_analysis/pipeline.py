@@ -353,6 +353,13 @@ class VideoAnalysisPipeline:
                 {"key": near_elbow_key,    "idx": near_elbow_idx,    "optimal": ref["elbow_angle"],    "name": "Elbow",   "offset_dir": "up-left"},
                 {"key": near_shoulder_key, "idx": near_shoulder_idx, "optimal": ref["shoulder_angle"], "name": "Shldr",   "offset_dir": "right"},
             ]
+            # On aero bars a closed shoulder is the athlete's choice (Empfield
+            # 2007): amber at most on the overlay, as on the card.
+            from app.services.video_analysis.biomechanics.cycling_positions import (
+                SHOULDER_CLOSED_OK_POSITIONS,
+            )
+            if cycling_pos in SHOULDER_CLOSED_OK_POSITIONS:
+                configs[-1]["closed_ok"] = True
             # Forearm tilt is a fitted quantity on aero bars only (see
             # technique_scorer.score_cycling): off them the forearm slopes to
             # the bar by geometry, and a red "FOREARM -41" chip on a hoods
