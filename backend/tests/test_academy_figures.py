@@ -51,26 +51,29 @@ class TestTheKonaDraft:
         for src in srcs:
             assert (MEDIA / src.removeprefix("/media/")).is_file(), src
 
-    def test_all_fourteen_positions_are_shown_on_their_photographs(self):
+    def test_all_fifteen_positions_are_shown_on_their_photographs(self):
         """Artur's call (2026-10-11): the figures first went out drawn on a
         neutral ground; he asked for the race photographs, every one. The
-        frame where the model found the motorbike passenger stays out."""
+        frame where the model found the motorbike passenger stays out. The
+        fifteenth is Trevor Foley, a reader's photo from an earlier Kona,
+        and its caption says so."""
         text = DRAFT.read_text(encoding="utf-8")
         shown = re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)
-        assert shown == [f"{n:02d}" for n in range(1, 15)]
-        tilts = [float(m) for m in re.findall(r"Position \d+ of 14: forearm tilt (\d+)", text)]
+        assert shown == [f"{n:02d}" for n in range(1, 16)]
+        assert "Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
+        tilts = [float(m) for m in re.findall(r"Position \d+ of 15: forearm tilt (\d+)", text)]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
     def test_the_hand_corrections_are_disclosed(self):
         """Readers pointed out points sitting off the joints; Artur moved the
-        ones that missed on all fourteen photos (2026-10-11). The article says
+        ones that missed on all fifteen photos (2026-10-11). The article says
         it was updated, how many points moved and by how much, rings every
         moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
         assert text.split("---", 2)[2].lstrip().startswith("**Updated 11 October 2026.**")
-        assert "33 of the 56 points moved" in text
+        assert "36 of the 60 points moved" in text
         assert "A ringed point is one we moved into the joint by hand." in text
-        assert "shoulder 85° to 88°, elbow 80° to 84°, forearm tilt 25° to 24°" in text
+        assert "shoulder 84° to 87°, elbow 78° to 83°" in text
 
     def test_uci_is_not_presented_as_a_triathlon_rule(self):
         """UCI equipment rules govern road time trials, not Ironman, whose 2025
@@ -82,10 +85,10 @@ class TestTheKonaDraft:
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 20° | 19–23° | 13–25° | 20–30° |",
-                    "| Shoulder, torso to upper arm | 88° | 84–89° | 74–96° | 80–105° |",
-                    "| Elbow | 84° | 76–88° | 66–93° | 75–110° |",
-                    "| Forearm tilt, above horizontal | 24° | 22–26° | 19–32° | 5–30° |"):
+        for row in ("| Torso, from horizontal | 20° | 19–22° | 13–25° | 20–30° |",
+                    "| Shoulder, torso to upper arm | 87° | 82–89° | 74–96° | 80–105° |",
+                    "| Elbow | 83° | 76–88° | 66–93° | 75–110° |",
+                    "| Forearm tilt, above horizontal | 25° | 22–27° | 19–32° | 5–30° |"):
             assert row in text, row
 
     def test_the_article_column_cannot_be_pushed_wider_than_a_phone(self):
