@@ -21,6 +21,12 @@ measures every photo with the checked points and writes the article figures,
 the social exports, the field chart and ``<work>/rebuilt.json`` (stats +
 captions) for the article text.
 
+Each photo carries a group ("pro" / "age_group") and a category ("men" /
+"women"), set in the editor (stored with its corrections) or given to ``add``.
+The article is built from the pros only; rebuilt.json also breaks every metric
+down by group and category, for the pro-vs-age-group and men-vs-women
+comparisons once there are enough photos.
+
 Keys per photo: S E W H are the near-side shoulder, elbow, wrist and hip;
 B and T are the top of the back and the top of the helmet the helmet reading
 is taken between (head_silhouette.py). Needs the backend requirements with
@@ -75,7 +81,8 @@ def _detect(photo: Path):
     return p
 
 
-def add(study: dict, photo: str, label: str | None, race: str) -> dict:
+def add(study: dict, photo: str, label: str | None, race: str,
+        group: str = "pro", category: str | None = None) -> dict:
     from PIL import Image
     from app.services.video_analysis.biomechanics.head_silhouette import helmet_above_back
 
@@ -110,6 +117,7 @@ def add(study: dict, photo: str, label: str | None, race: str) -> dict:
     img.save(work_dir(study) / "img" / f"p{n:02d}.webp", "WEBP", quality=86, method=6)
     model = {k: [round((x - x0) * scale, 1), round((y - y0) * scale, 1)] for k, (x, y) in px.items()}
     entry = {"n": n, "key": Path(rel).stem, "photo": rel, "race": race, "side": side,
+             "group": group, "category": category,
              "w": img.width, "h": img.height, "origin": [x0, y0], "scale": round(scale, 6),
              "model": model, "start": dict(model)}
     if label:
@@ -125,7 +133,8 @@ def editor(study: dict) -> Path:
     """The point editor page, data embedded; crops already in <work>/img."""
     data = [{"n": e["n"], "src_index": e["key"], "photo": e["photo"], "label": e.get("label"),
              "img": f"img/p{e['n']:02d}.webp", "w": e["w"], "h": e["h"], "origin": e["origin"],
-             "model": e["model"], "start": e["start"]} for e in study["entries"]]
+             "model": e["model"], "start": e["start"],
+             "group": e.get("group", "pro"), "category": e.get("category")} for e in study["entries"]]
     page = (HERE / "editor_template.html").read_text(encoding="utf-8")
     page = page.replace("__DATA__", json.dumps(data, separators=(",", ":")))
     out = work_dir(study) / "editor.html"
@@ -137,11 +146,12 @@ def editor(study: dict) -> Path:
 
 # ---------------------------------------------------------------- rebuild
 
-def _corrections(study: dict) -> dict[int, dict]:
+def _records(study: dict) -> dict[int, dict]:
+    """The editor's saved documents, by editor number."""
     out = {}
     for f in glob.glob(str(work_dir(study) / "corrections" / "*.json")):
         r = json.loads(Path(f).read_text(encoding="utf-8"))
-        out[int(r["n"])] = r.get("moved") or {}
+        out[int(r["n"])] = r
     return out
 
 
@@ -222,9 +232,17 @@ def rebuild(study: dict) -> None:
     from PIL import Image
 
     work = work_dir(study)
-    moves = _corrections(study)
-    items = [_measure(e, moves.get(e["n"], {}), True) for e in study["entries"]]
-    items.sort(key=lambda d: d["angles"]["forearm_tilt"])
+    recs = _records(study)
+    measured = []
+    for e in study["entries"]:
+        rec = recs.get(e["n"], {})
+        d = _measure(e, rec.get("moved") or {}, True)
+        d["group"] = rec.get("group") or e.get("group", "pro")
+        d["category"] = rec.get("category") or e.get("category")
+        measured.append(d)
+    groups = _group_stats(measured)
+    # The article, its figures and the social exports are the pros only.
+    items = sorted((d for d in measured if d["group"] == "pro"), key=lambda d: d["angles"]["forearm_tilt"])
     media = ROOT / study["media"]
     social = ROOT / study["social"]
     social.mkdir(parents=True, exist_ok=True)
@@ -286,8 +304,11 @@ def rebuild(study: dict) -> None:
             "joint_move_max_cm": max(cm) if cm else 0.0,
             "helmet_back_points_moved": sum(d["helmet_moved"] for d in items),
         },
-        "positions": [{"n": n, "key": d["key"], "editor_n": d["n"], **{k: d["angles"][k] for k in SHOWN},
-                       "rows": d["rows"]} for n, d in enumerate(items, 1)],
+        "positions": [{"n": n, "key": d["key"], "editor_n": d["n"], "category": d["category"],
+                       **{k: d["angles"][k] for k in SHOWN}, "rows": d["rows"]}
+                      for n, d in enumerate(items, 1)],
+        "groups": groups,
+        "untagged": [d["n"] for d in measured if not d["category"]],
         "captions": captions,
     }
     (work / "rebuilt.json").write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -297,6 +318,28 @@ def rebuild(study: dict) -> None:
               f"range {s['min']:.1f}-{s['max']:.1f}")
     print(json.dumps(out["counts"]))
     print(f"r(elbow, forearm) = {out['r_elbow_forearm']:.3f}; {work / 'rebuilt.json'}")
+
+
+def _group_stats(measured: list) -> dict:
+    """Median and middle half of every metric per group, per category, and
+    per group x category -- only where a cell has photos in it."""
+    import numpy as np
+
+    cells: dict[str, list] = {}
+    for d in measured:
+        for name in (d["group"], f"{d['group']}/{d['category'] or 'untagged'}"):
+            cells.setdefault(name, []).append(d)
+    out = {}
+    for name, ds in sorted(cells.items()):
+        row = {"n": len(ds)}
+        for k in SHOWN:
+            v = np.array([d["angles"][k] for d in ds if d["angles"].get(k) is not None])
+            if v.size:
+                q1, q3 = np.percentile(v, [25, 75])
+                row[k] = {"median": round(float(np.median(v)), 1), "q1": round(float(q1), 1),
+                          "q3": round(float(q3), 1)}
+        out[name] = row
+    return out
 
 
 def _field_chart(study: dict, items: list, media: Path, social: Path) -> None:
@@ -336,12 +379,14 @@ def main() -> int:
     a.add_argument("photo")
     a.add_argument("--label")
     a.add_argument("--race", default="Kona 2026")
+    a.add_argument("--group", default="pro", choices=("pro", "age_group"))
+    a.add_argument("--category", choices=("men", "women"))
     sub.add_parser("editor")
     sub.add_parser("rebuild")
     args = ap.parse_args()
     study = load(args.study)
     if args.cmd == "add":
-        add(study, args.photo, args.label, args.race)
+        add(study, args.photo, args.label, args.race, args.group, args.category)
         editor(study)
     elif args.cmd == "editor":
         editor(study)
