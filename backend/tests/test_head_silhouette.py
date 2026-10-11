@@ -124,3 +124,24 @@ def test_the_same_helmet_gap_reads_the_same_over_any_back(climb_px):
     assert got["value"] == pytest.approx(expected, abs=1.5)
     (x0, y0), (x1, y1) = got["line"]
     assert y0 == y1, "the reference line is level"
+
+
+def test_a_flush_helmet_tail_asks_for_a_check_and_a_placed_point_clears_it():
+    """A helmet whose tail lies on the back leaves no step in the outline:
+    the reading flags itself, and once the athlete has placed the points
+    the flag is gone and the number is theirs."""
+    from app.services.video_analysis.biomechanics.head_silhouette import (
+        BACK_TOP_POINT,
+        apply_point_corrections,
+    )
+    m = _rider(helmet_top_px=150)
+    # fill the gap between the back and the helmet: the tail lies flush
+    for x in range(int(0.60 * W), int(0.68 * W)):
+        col = np.nonzero(m[:, x])[0]
+        top = col.min() if col.size else H
+        m[min(top, 205):, x] = True
+    got = _read(m)
+    assert got is not None and got["check"] is True
+    fixed = apply_point_corrections(got, {BACK_TOP_POINT: (0.0, 0.02)})
+    assert fixed["check"] is False and fixed["moved"] == [BACK_TOP_POINT]
+    assert fixed["value"] > got["value"] and fixed["auto_value"] == got["value"]

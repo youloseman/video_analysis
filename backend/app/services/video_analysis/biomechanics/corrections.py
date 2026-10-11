@@ -95,6 +95,7 @@ def _finite(v: Any) -> bool:
 
 def normalize_corrections(
     raw: list[dict[str, Any]] | None, camera_side: str,
+    *, extra_points: dict[int, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Validate and merge what the client sent into one entry per landmark.
 
@@ -104,7 +105,10 @@ def normalize_corrections(
     """
     if camera_side not in DRAGGABLE_LANDMARKS:
         raise ValueError("camera side must be 'left' or 'right'")
-    allowed = DRAGGABLE_LANDMARKS[camera_side]
+    # ``extra_points``: points that are not MediaPipe joints but can still be
+    # placed by hand, id -> name (a photo's top of back / top of helmet).
+    names = {**LANDMARK_NAMES, **(extra_points or {})}
+    allowed = tuple(DRAGGABLE_LANDMARKS[camera_side]) + tuple(extra_points or ())
     merged: dict[int, dict[str, Any]] = {}
     for entry in raw or []:
         if not isinstance(entry, dict):
@@ -113,7 +117,7 @@ def normalize_corrections(
         if not isinstance(idx, int) or isinstance(idx, bool):
             raise ValueError("correction.landmark must be a MediaPipe index")
         if idx not in allowed:
-            name = LANDMARK_NAMES.get(idx, f"landmark {idx}")
+            name = names.get(idx, f"landmark {idx}")
             raise ValueError(
                 f"{name} cannot be adjusted on a clip filmed from the "
                 f"{camera_side}: only the {camera_side}-side joints are measured."
@@ -124,7 +128,7 @@ def normalize_corrections(
         dx, dy = float(dx), float(dy)
         if abs(dx) > MAX_OFFSET or abs(dy) > MAX_OFFSET:
             raise ValueError(
-                f"{LANDMARK_NAMES[idx]} moved more than a quarter of the frame; "
+                f"{names[idx]} moved more than a quarter of the frame; "
                 "that is further than a joint can be from where the model put it."
             )
         frame_idx = entry.get("frame_idx")
@@ -140,7 +144,7 @@ def normalize_corrections(
         # applying the moment a caller skipped it.
         if abs(cur["dx"]) > MAX_OFFSET or abs(cur["dy"]) > MAX_OFFSET:
             raise ValueError(
-                f"{LANDMARK_NAMES[idx]} has now been moved more than a quarter "
+                f"{names[idx]} has now been moved more than a quarter "
                 "of the frame in total; that is further than a joint can be "
                 "from where the model put it. Reset it and start again."
             )

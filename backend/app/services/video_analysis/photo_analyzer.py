@@ -43,8 +43,11 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
     get_position_label,
 )
 from app.services.video_analysis.biomechanics.head_silhouette import (
+    BACK_TOP_POINT,
+    HELMET_TOP_POINT,
     KONA_PRO_MEDIAN,
     KONA_PRO_RANGE,
+    apply_point_corrections,
     helmet_above_back,
     top_contour,
 )
@@ -567,6 +570,13 @@ _HELMET_NOTE = (
     f"The Kona 2026 pros ranged from {KONA_PRO_RANGE[0]:+.0f}% to "
     f"{KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.1f}%. Some helmet above "
     "the back is normal -- you have to see the road."
+)
+
+_HELMET_CHECK_WARNING = (
+    "Check the top-of-back point: your helmet's tail seems to lie on your back, "
+    "and where back ends and helmet begins is hard to see. If the green point "
+    "sits on the helmet, use Adjust joints to drag it to the highest point of "
+    "your back."
 )
 
 _AERO_TRUNK_EXTREME_NOTE = (
@@ -1102,6 +1112,15 @@ def _generate_photo_thumbnail(
         _draw_dashed_line(cv2_mod, frame, p0, p1, (180, 180, 255), max(1, int(2 * _sk)))
         cv2_mod.line(frame, p1, ph, overlay_style.INK_SOFT, max(1, int(2 * _sk)), cv2_mod.LINE_AA)
         cv2_mod.circle(frame, ph, max(3, int(4 * _sk)), overlay_style.INK_SOFT, -1, cv2_mod.LINE_AA)
+        # The top of the back is where the reading starts; on a flush helmet
+        # tail it is the point most worth checking, so it is drawn, in the
+        # same green the editor offers it in.
+        cv2_mod.circle(frame, p0, max(4, int(5 * _sk)), (110, 255, 61), -1, cv2_mod.LINE_AA)
+        cv2_mod.circle(frame, p0, max(4, int(5 * _sk)), (255, 255, 255), 1, cv2_mod.LINE_AA)
+        placed = [pt for pid, pt in ((BACK_TOP_POINT, p0), (HELMET_TOP_POINT, ph))
+                  if pid in (helmet.get("moved") or [])]
+        if placed:
+            overlay_style.draw_corrected_marks(cv2_mod, frame, placed, r=max(7, int(9 * _sk)))
         if hide_angle_values:
             h_text = "LOCKED"
         else:
@@ -1580,7 +1599,9 @@ def analyze_photo(
         # model pass -- see services/photo_corrections.
         from app.services.photo_corrections import build_pose_blob
 
-        response["pose"] = build_pose_blob(image_bytes, pose_result)
+        response["pose"] = build_pose_blob(
+            image_bytes, pose_result, helmet_points="helmet_points" in response,
+        )
     return response
 
 
@@ -1597,6 +1618,7 @@ def analyze_from_pose(
     corrections: list[dict[str, Any]] | None = None,
     render_thumbnail: bool = True,
     silhouette_top: list[float | None] | None = None,
+    helmet_offsets: dict[int, tuple[float, float]] | None = None,
 ) -> dict[str, Any]:
     """The measuring half of :func:`analyze_photo`: angles, score, picture.
 
@@ -1611,7 +1633,9 @@ def analyze_from_pose(
     applied here. ``render_thumbnail=False`` skips the picture (a baseline
     measurement nobody will look at). ``silhouette_top``: the person mask's top
     edge from :func:`detect_pose_in_image`, for the helmet-above-back reading;
-    without it that row is simply absent.
+    without it that row is simply absent. ``helmet_offsets``: the athlete's
+    own top-of-back / top-of-helmet placement (head_silhouette.BACK_TOP_POINT
+    / HELMET_TOP_POINT -> dx, dy), applied to the silhouette's guess.
     """
     import cv2  # for the annotated thumbnail
 
@@ -1722,8 +1746,12 @@ def analyze_from_pose(
                 silhouette_top, (nl[_sh].x, nl[_sh].y), (nl[_hp].x, nl[_hp].y),
                 (nl[0].x, nl[0].y), _aspect,
             )
+        if helmet is not None and helmet_offsets:
+            helmet = apply_point_corrections(helmet, helmet_offsets)
         if helmet is not None:
             angles["helmet_above_back"] = helmet["value"]
+            if helmet.get("check"):
+                warnings.append(_HELMET_CHECK_WARNING)
 
         # Pelvic ratio (derived: hip / trunk)
         hip_val = angles.get("hip")
@@ -1833,7 +1861,8 @@ def analyze_from_pose(
                 "optimal_min": None, "optimal_max": None,
                 "status": "phase_dependent",
                 "unscored_reason": f"Kona pros {lo:+.0f} to {hi:+.0f}%",
-                "note": _HELMET_NOTE,
+                "note": _HELMET_NOTE + (
+                    " " + _HELMET_CHECK_WARNING if helmet and helmet.get("check") else ""),
             }
             continue
         # Bike ankle: measured, but never judged from a still (2D ankle too noisy).
@@ -1985,6 +2014,16 @@ def analyze_from_pose(
         # measurement for an automatic one.
         "corrections": list(corrections) if corrections else None,
     }
+    if helmet is not None:
+        # Where the two points were read, so the editor can offer them for
+        # dragging: auto_* is the silhouette's own guess, which the client's
+        # stored corrections are offsets from.
+        response["helmet_points"] = {
+            "back": helmet["back_point"], "helmet": helmet["head_point"],
+            "auto_back": helmet.get("auto_back_point", helmet["back_point"]),
+            "auto_helmet": helmet.get("auto_head_point", helmet["head_point"]),
+            "check": bool(helmet.get("check")), "moved": helmet.get("moved", []),
+        }
 
     if sport == "run":
         response["gait_phase"] = gait_phase

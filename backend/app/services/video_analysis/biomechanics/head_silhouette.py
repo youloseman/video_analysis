@@ -62,6 +62,19 @@ CLIMB_WINDOW = 0.02
 MAX_FIT_RMS = 0.03
 MIN_BACK_COLUMNS = 8
 
+# A boundary the edge barely climbs at is a guess: a helmet tail lying flush on
+# the back leaves no step, and the "top of the back" is then often on the
+# tail. On the Kona photos a climb under this (torso lengths), or a back top
+# found right at the boundary, flagged every misplaced back point (7 of 7) at
+# the cost of 3 false alarms in 8 -- cheap for a "check this point" note.
+CHECK_CLIMB = 0.04
+
+# The two points the athlete can drag, as pseudo-landmark ids next to the
+# 33 MediaPipe ones (photo corrections address points by index).
+BACK_TOP_POINT = 100
+HELMET_TOP_POINT = 101
+HELMET_POINT_NAMES = {BACK_TOP_POINT: "top of the back", HELMET_TOP_POINT: "top of the helmet"}
+
 # The Kona pro field this was calibrated on (n=15, 2026-10-11): 6.1-23.2 %,
 # median 14.5, middle half 12-20. Moving the shoulder and hip points by hand
 # changed no rider by more than 0.7 %.
@@ -168,12 +181,48 @@ def helmet_above_back(
 
     back_y, back_j = back
     head_y, head_j = head
-    return {
-        "value": round(float(back_y - head_y) / torso * 100.0, 1),
+    ahead = contour[min(n - 1, max(0, boundary + step * win))]
+    climb = (contour[boundary] - ahead) / torso if (
+        contour[boundary] is not None and ahead is not None) else 0.0
+    return _geometry(
+        (x_of(back_j), back_y), (x_of(head_j), head_y), torso,
+        boundary_x=x_of(boundary), fit_rms_pct=rms / torso * 100.0,
+        check=bool(climb < CHECK_CLIMB or abs(back_j - boundary) <= 1),
+    )
+
+
+def _geometry(back: tuple[float, float], head: tuple[float, float], torso: float,
+              **extra: Any) -> dict[str, Any]:
+    out = {
+        "value": round(float(back[1] - head[1]) / torso * 100.0, 1),
         # A level line through the top of the back, out to the helmet's top.
-        "line": [[round(x_of(back_j), 4), round(back_y, 4)],
-                 [round(x_of(head_j), 4), round(back_y, 4)]],
-        "head_point": [round(x_of(head_j), 4), round(head_y, 4)],
-        "boundary_x": round(x_of(boundary), 4),
-        "fit_rms_pct": round(rms / torso * 100.0, 2),
+        "line": [[round(back[0], 4), round(back[1], 4)],
+                 [round(head[0], 4), round(back[1], 4)]],
+        "back_point": [round(back[0], 4), round(back[1], 4)],
+        "head_point": [round(head[0], 4), round(head[1], 4)],
+        "torso": torso,
     }
+    for k, v in extra.items():
+        out[k] = round(v, 4) if isinstance(v, float) else v
+    return out
+
+
+def apply_point_corrections(
+    helmet: dict[str, Any], offsets: dict[int, tuple[float, float]],
+) -> dict[str, Any]:
+    """The reading with the athlete's own top-of-back / top-of-helmet points.
+
+    ``offsets`` maps BACK_TOP_POINT / HELMET_TOP_POINT to (dx, dy) in
+    normalized image units, added to where the silhouette put them. A point
+    the athlete placed is a point checked: the "check this point" flag goes.
+    """
+    bdx, bdy = offsets.get(BACK_TOP_POINT, (0.0, 0.0))
+    hdx, hdy = offsets.get(HELMET_TOP_POINT, (0.0, 0.0))
+    (bx, by), (hx, hy) = helmet["back_point"], helmet["head_point"]
+    return _geometry(
+        (bx + bdx, by + bdy), (hx + hdx, hy + hdy), helmet["torso"],
+        auto_value=helmet["value"],
+        auto_back_point=helmet.get("auto_back_point", helmet["back_point"]),
+        auto_head_point=helmet.get("auto_head_point", helmet["head_point"]),
+        moved=sorted(offsets), check=False,
+    )

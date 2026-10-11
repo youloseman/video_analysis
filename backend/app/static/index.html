@@ -3952,7 +3952,16 @@ const LMED_BONES={
   left:[[7,11],[11,13],[13,15],[11,23],[23,25],[25,27],[27,29],[27,31],[29,31]],
   right:[[8,12],[12,14],[14,16],[12,24],[24,26],[26,28],[28,30],[28,32],[30,32]]};
 const LMED_NAMES={7:'ear',8:'ear',11:'shoulder',12:'shoulder',13:'elbow',14:'elbow',15:'wrist',16:'wrist',
-  23:'hip',24:'hip',25:'knee',26:'knee',27:'ankle',28:'ankle',29:'heel',30:'heel',31:'toe',32:'toe'};
+  23:'hip',24:'hip',25:'knee',26:'knee',27:'ankle',28:'ankle',29:'heel',30:'heel',31:'toe',32:'toe',
+  100:'top of back',101:'top of helmet'};
+/* Not joints: the two points the helmet reading is taken between (backend
+   head_silhouette.BACK_TOP_POINT / HELMET_TOP_POINT). */
+const LMED_BACK=100, LMED_HELMET=101;
+function lmedHelmetPct(pts){
+  const b=pts[LMED_BACK], t=pts[LMED_HELMET]; if(!b||!t) return null;
+  const [si,hi]=lmed.side==='left'?[11,23]:[12,24], S=pts[si], H=pts[hi]; if(!S||!H) return null;
+  const torso=Math.hypot((S.x-H.x)*lmed.aspect, S.y-H.y); return torso?(b.y-t.y)/torso*100:null;
+}
 /* Which three points make the angle at a vertex (mirrors the backend's
    CYCLING_PHOTO_ANGLES) — for the live read-out while dragging. The number
    the report prints still comes from the server; this is a preview. */
@@ -3975,6 +3984,8 @@ function lmedDraggable(){ return (state.photoPose&&state.photoPose.draggable)||[
 function lmedStartPoints(){
   const pose=state.photoPose; if(!pose) return null;
   const pts=pose.landmarks.map(r=>({x:r[0],y:r[1],vis:r[3]==null?1:r[3]}));
+  const hp=state.photoRes&&state.photoRes.helmet_points;
+  if(hp){ pts[LMED_BACK]={x:hp.auto_back[0],y:hp.auto_back[1],vis:1}; pts[LMED_HELMET]={x:hp.auto_helmet[0],y:hp.auto_helmet[1],vis:1}; }
   (state.photoCorrections||[]).forEach(c=>{ const p=pts[c.landmark]; if(p&&p.x!=null){ p.x+=c.dx; p.y+=c.dy; } });
   return pts;
 }
@@ -3983,7 +3994,10 @@ function lmedOpen(){
   lmed.side=state.photoPose.camera_side||res.camera_side||'right';
   lmed.orig=lmedStartPoints(); lmed.pts=lmed.orig.map(p=>({...p})); lmed.moved={}; lmed.drag=-1;
   const ed=$('#pEditor'); ed.classList.remove('hidden'); lmed.open=true;
-  $('#pEdHint').textContent=`Only the ${lmed.side}-side joints count on a side view.`;
+  const hpc=res.helmet_points&&res.helmet_points.check;
+  $('#pEdHint').textContent=hpc
+    ? 'Check the green top-of-back point first: if it sits on your helmet, drag it to the highest point of your back.'
+    : `Only the ${lmed.side}-side joints count on a side view.`;
   lmedStatus();
   const img=new Image();
   if(lmed.url){ URL.revokeObjectURL(lmed.url); lmed.url=null; }
@@ -4019,6 +4033,11 @@ function lmedDraw(){
     LMED_BONES[lmed.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
     ctx.stroke();
   });
+  // the helmet reading: a level line through the top of the back, and the gap up to the helmet
+  const B=P(LMED_BACK), T=P(LMED_HELMET);
+  if(B&&T){ ctx.setLineDash([8*k,6*k]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle='#3DFF6E';
+    ctx.beginPath(); ctx.moveTo(Math.min(B[0],T[0])-30*k,B[1]); ctx.lineTo(Math.max(B[0],T[0])+30*k,B[1]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle='#FFA82E'; ctx.beginPath(); ctx.moveTo(T[0],B[1]); ctx.lineTo(T[0],T[1]); ctx.stroke(); }
   // draggable joints: ring + dot; a moved one carries a second ring
   dots.forEach(i=>{ const p=P(i); if(!p) return;
     const r=Math.max(5,7*k), moved=!!lmed.moved[i], live=lmed.drag===i;
@@ -4026,6 +4045,13 @@ function lmedDraw(){
     ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
     if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
   });
+  // live helmet reading while either of its points is dragged
+  if(lmed.drag===LMED_BACK||lmed.drag===LMED_HELMET){ const v=lmedHelmetPct(pts), p=P(lmed.drag);
+    if(v!=null&&p){ const txt=`Helmet ${v>=0?'+':''}${Math.round(v)}%`, fs=Math.max(12,15*k);
+      ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;
+      const x=Math.min(W-tw-4, Math.max(4, p[0]+18*k)), y=Math.max(fs+8, p[1]-18*k);
+      ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } }
   // live angle at the vertex being dragged
   const tri=LMED_VERTEX[lmed.side][lmed.drag];
   if(tri){ const [a,b,cc]=tri.map(i=>pts[i]); const ang=lmedAngle(a,b,cc); const p=P(lmed.drag);
@@ -4067,7 +4093,7 @@ function lmedCorrections(){
 function lmedStatus(msg,warn){
   const st=$('#pEdStatus'), n=lmedCorrections().length;
   st.classList.toggle('warn',!!warn);
-  st.textContent=msg||(n?`${n} joint${n>1?'s':''} moved: ${Object.keys(lmed.moved).map(i=>LMED_NAMES[i]).join(', ')}.`:'Nothing moved yet.');
+  st.textContent=msg||(n?`${n} point${n>1?'s':''} moved: ${Object.keys(lmed.moved).map(i=>LMED_NAMES[i]).join(', ')}.`:'Nothing moved yet.');
   $('#pEdApply').setAttribute('aria-disabled',String(!n));
 }
 function lmedClose(){

@@ -25,7 +25,10 @@ from types import SimpleNamespace
 from typing import Any
 
 from app.core.config import settings
-from app.services.video_analysis.biomechanics.head_silhouette import CONTOUR_COLUMNS
+from app.services.video_analysis.biomechanics.head_silhouette import (
+    CONTOUR_COLUMNS,
+    HELMET_POINT_NAMES,
+)
 from app.services.video_analysis.biomechanics.corrections import (
     DRAGGABLE_LANDMARKS,
     apply_corrections,
@@ -87,8 +90,14 @@ def image_sha256(image_bytes: bytes) -> str:
     return hashlib.sha256(image_bytes).hexdigest()
 
 
-def build_pose_blob(image_bytes: bytes, pose_result: dict[str, Any]) -> dict[str, Any]:
-    """What the client keeps so it can ask for a re-measurement later."""
+def build_pose_blob(
+    image_bytes: bytes, pose_result: dict[str, Any], *, helmet_points: bool = False,
+) -> dict[str, Any]:
+    """What the client keeps so it can ask for a re-measurement later.
+
+    ``helmet_points``: the photo carries a helmet reading, so its top-of-back
+    and top-of-helmet points are offered for dragging too.
+    """
     side = pose_result["camera_side"]
     blob: dict[str, Any] = {
         "v": POSE_VERSION,
@@ -98,7 +107,8 @@ def build_pose_blob(image_bytes: bytes, pose_result: dict[str, Any]) -> dict[str
         "world": _pack(pose_result["world"]),
         "warnings": [str(w) for w in (pose_result.get("warnings") or [])],
         # Which points the editor may offer -- decided here, not in the client.
-        "draggable": list(DRAGGABLE_LANDMARKS.get(side, ())),
+        "draggable": list(DRAGGABLE_LANDMARKS.get(side, ()))
+        + (list(HELMET_POINT_NAMES) if helmet_points else []),
     }
     # The silhouette's top edge: the helmet-above-back reading needs it again
     # after a correction, and there is no second model pass to get it from.
@@ -162,9 +172,16 @@ def recompute_photo(
         )
     blob = verify_pose_blob(pose_blob, image_bytes)
     side = blob["camera_side"]
-    corrections = normalize_corrections(corrections_raw, side)
+    corrections = normalize_corrections(
+        corrections_raw, side, extra_points=HELMET_POINT_NAMES,
+    )
     if not corrections:
         raise ValueError("No adjustment to apply -- move a joint point first.")
+    # The top of the back and of the helmet are not skeleton joints: they move
+    # the helmet reading only, never a landmark or a bone length.
+    joints = [c for c in corrections if c["landmark"] not in HELMET_POINT_NAMES]
+    helmet_offsets = {c["landmark"]: (c["dx"], c["dy"])
+                      for c in corrections if c["landmark"] in HELMET_POINT_NAMES}
 
     image = decode_photo(image_bytes)
     h, w = image.shape[:2]
@@ -184,9 +201,9 @@ def recompute_photo(
         "frame_width": w, "frame_height": h,
     }
     plausibility = check_plausibility(
-        [frame], corrections, side, aspect=(w / h) if h else 1.0, min_samples=1,
-    )
-    apply_corrections([frame], corrections, "bike")
+        [frame], joints, side, aspect=(w / h) if h else 1.0, min_samples=1,
+    ) if joints else []
+    apply_corrections([frame], joints, "bike")
 
     result = analyze_from_pose(
         image, frame["world_landmarks"], frame["normalized_landmarks"], side,
@@ -196,7 +213,7 @@ def recompute_photo(
         # from "triathlon" to "casual" and change every band under them.
         cycling_position or baseline.get("cycling_position"),
         hide_angle_values=hide_angle_values, corrections=corrections,
-        silhouette_top=silhouette_top,
+        silhouette_top=silhouette_top, helmet_offsets=helmet_offsets,
     )
     result["baseline"] = {
         "angles": baseline.get("angles"),

@@ -262,3 +262,41 @@ def test_accounts_do_not_share_a_cap():
     for i in range(limit):
         take_recompute(1, "enthusiast", now=1000.0 + i)
     assert take_recompute(2, "enthusiast", now=1000.0)[0]
+
+
+def _helmet_blob():
+    photo = _photo_bytes()
+    pose = _pose_result(photo)
+    pose["silhouette_top"] = _silhouette_top()
+    return photo, PC.build_pose_blob(photo, pose, helmet_points=True)
+
+
+def test_the_top_of_back_and_helmet_are_offered_for_dragging():
+    _, blob = _helmet_blob()
+    assert 100 in blob["draggable"] and 101 in blob["draggable"]
+    photo = _photo_bytes()
+    assert 100 not in PC.build_pose_blob(photo, _pose_result(photo))["draggable"]
+
+
+def test_moving_the_top_of_back_moves_the_helmet_reading_and_nothing_else():
+    """Artur, 2026-10-11: on a helmet tail lying flush on the back the
+    silhouette cannot tell where the back ends, so the athlete places the
+    point. It is not a joint: no angle, bone or landmark may move with it."""
+    photo, blob = _helmet_blob()
+    res = PC.recompute_photo(photo, "bike", "triathlon", blob,
+                             [{"landmark": 100, "dx": 0.0, "dy": 0.02}])
+    base = res["baseline"]["angles"]
+    assert res["angles"]["helmet_above_back"] > base["helmet_above_back"], "lower back top, taller helmet"
+    for k, v in base.items():
+        if k != "helmet_above_back":
+            assert res["angles"][k] == v, k
+    hp = res["helmet_points"]
+    assert hp["moved"] == [100] and hp["check"] is False
+    assert hp["auto_back"] != hp["back"]
+    assert res["plausibility_warnings"] == []
+
+
+def test_a_point_that_is_neither_a_joint_nor_a_helmet_point_is_refused():
+    photo, blob = _helmet_blob()
+    with pytest.raises(ValueError, match="cannot be adjusted"):
+        PC.recompute_photo(photo, "bike", "triathlon", blob, [{"landmark": 102, "dx": 0.0, "dy": 0.01}])
