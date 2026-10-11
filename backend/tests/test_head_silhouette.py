@@ -1,14 +1,15 @@
-"""Helmet above the back line, read off the person silhouette.
+"""Helmet above the top of the back, read off the person silhouette.
 
 Replaces the photo "Head position" score, which put the ear under a line
 through the hip and shoulder joint centres -- a line inside the body -- and so
 gave 100/100 to every aero rider, all fifteen Kona 2026 pros included. A
 reader called it meaningless and was right (2026-10-11).
 
-These pin the geometry on hand-drawn masks: a helmet over the back reads
-positive, one tucked under it reads negative, the number is a share of torso
-length (so it does not depend on image size), and a silhouette that cannot
-carry the reading gives none rather than a wrong one.
+These pin the geometry on hand-drawn masks: the reference is level (the
+wind is), so the same helmet gap reads the same over a climbing back and a
+flat one; the number is a share of torso length (so it does not depend on
+image size); and a silhouette that cannot carry the reading gives none
+rather than a wrong one.
 """
 from __future__ import annotations
 
@@ -32,7 +33,7 @@ def _rider(helmet_top_px: int, size=(H, W), back_lift_px: int = 30) -> np.ndarra
     m = np.zeros((h, w), bool)
     sx, sy = SHOULDER[0] * w, SHOULDER[1] * h
     hx, hy = HIP[0] * w, HIP[1] * h
-    for x in range(int(hx) - 20, int(sx) + 40):
+    for x in range(int(hx - 20 * w / W), int(sx + 40 * w / W)):
         y_back = hy + (x - hx) * (sy - hy) / (sx - hx) - back_lift_px * h / H
         m[int(y_back):int(hy) + 80, x] = True
     cx, r = int(0.72 * w), int(0.07 * w)
@@ -89,3 +90,37 @@ def test_a_back_that_is_not_a_straight_edge_gives_no_reading():
     for x in range(int(HIP[0] * W), int(SHOULDER[0] * W)):
         m[: int(rng.integers(0, int(0.45 * H))), x] = rng.random() < 0.5
     assert _read(m) is None
+
+
+def _level_case(climb_px: int, gap_px: int = 60):
+    """A back from x=280 to x=640 that climbs ``climb_px`` toward the
+    shoulder, joint points 30 px under its surface, and a helmet whose top is
+    ``gap_px`` above the back's highest point. Returns (reading, expected %)."""
+    m = np.zeros((H, W), bool)
+    y0 = 330
+    for x in range(260, 680):
+        t = min(1.0, max(0.0, (x - 280) / 360))
+        m[int(y0 - climb_px * t):520, x] = True
+    back_top = y0 - climb_px
+    r = 70
+    yy, xx = np.ogrid[:H, :W]
+    m |= (xx - 730) ** 2 + (yy - (back_top - gap_px + r)) ** 2 <= r ** 2
+    hip = (280 / W, (y0 + 30) / H)
+    shoulder = (640 / W, (back_top + 30) / H)
+    torso_px = float(np.hypot(360, climb_px))
+    got = helmet_above_back(top_contour(m), shoulder, hip, (790 / W, (back_top + 40) / H), W / H)
+    return got, gap_px / torso_px * 100
+
+
+@pytest.mark.parametrize("climb_px", [0, 60, 120])
+def test_the_same_helmet_gap_reads_the_same_over_any_back(climb_px):
+    """Artur, 2026-10-11: a line carried forward ALONG the back rose into the
+    helmet of a rider whose back climbs to the shoulders and stayed low for a
+    flat one -- -3 % against +16 % for helmets at much the same height. The
+    wind is level, so the reference is a level line through the top of the
+    back."""
+    got, expected = _level_case(climb_px)
+    assert got is not None
+    assert got["value"] == pytest.approx(expected, abs=1.5)
+    (x0, y0), (x1, y1) = got["line"]
+    assert y0 == y1, "the reference line is level"

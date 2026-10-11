@@ -1,4 +1,4 @@
-"""How far the helmet sits above the line of the back, read off the silhouette.
+"""How far the helmet rises above the top of the back, read off the silhouette.
 
 Replaces the photo "Head position" score (``calculate_head_alignment_2d``),
 which asked whether the ear landmark sat below a line through the hip and
@@ -8,20 +8,33 @@ answer was "yes" for every aero rider: all fifteen Kona 2026 pros scored
 100/100, and a reader rightly called it meaningless (2026-10-11). It also never
 saw the helmet, which is what actually sticks up into the wind.
 
-This reads the person mask the pose model already produces (MediaPipe >= 1.0;
-the float-mask accessor crashes the process in 0.10.35, on Linux too):
+The reference is HORIZONTAL, because the wind is (Artur, 2026-10-11). A first
+version carried a line fitted along the back forward over the head; a back
+that climbs toward the shoulders then lifted the line into the helmet and a
+flat one left it low, so two riders with the same helmet height read -3 % and
++16 %.
+
+From the person mask the pose model already produces (MediaPipe >= 1.0; the
+float-mask accessor crashes the process in 0.10.35, on Linux too):
 
 1. The top edge of the silhouette, one value per image column.
-2. A straight line fitted to that edge along the mid-back, 20-75 % of the way
-   from hip to shoulder. The upper end stops short of the shoulder because an
-   aero helmet's tail lies on the upper back and would drag the line up.
-3. The line extended forward over the head. The reading is how far the
-   highest point of the head/helmet rises above it, as a percentage of torso
-   length (hip to shoulder). Negative = the helmet stays under the back line.
+2. Where the back ends and the helmet begins. An aero helmet's tail often lies
+   on the upper back, right where the back is highest, so the boundary is
+   found, not assumed: walking forward from 75 % of hip -> shoulder, the first
+   column where the edge climbs steeper than 45 deg (a back or a shoulder never
+   does; a helmet's rear edge does) or sits STEP above a line fitted to the
+   mid-back.
+3. The top of the back = the highest edge from 20 % of hip -> shoulder up to
+   that boundary. The top of the helmet = the highest edge from there to just
+   past the nose. The reading is the vertical gap, as a percentage of torso
+   length (hip to shoulder).
+
+Where the tail lies flush on the back there is no step to find and the
+boundary is soft: about +/-3 % on the Kona photos.
 
 Measured, not graded: no fit source gives a target for it. What the rider gets
 alongside it is the field it was calibrated on -- the Kona 2026 professional
-positions, -3 % to +16 %, median +4 %.
+positions (see KONA_PRO_RANGE).
 """
 from __future__ import annotations
 
@@ -35,19 +48,25 @@ import numpy as np
 # the signed pose blob a few kilobytes.
 CONTOUR_COLUMNS = 512
 
-# Mid-back span the line is fitted on, as fractions of hip -> shoulder.
+# Mid-back span: the back-surface fit, and where the back's top is searched from.
 BACK_SPAN = (0.20, 0.75)
-# Head zone: from the shoulder forward to the nose plus this much torso.
+# Head zone reaches this much torso past the nose.
 HEAD_REACH = 0.15
+# The helmet starts where the edge sits this far above the mid-back fit...
+STEP = 0.025
+# ...or climbs steeper than 45 deg over this window (both in torso lengths).
+CLIMB_WINDOW = 0.02
 # A back edge that is not close to straight is not a back (a jersey flapping,
 # an arm or a bottle merged into the silhouette): no reading. The fifteen
 # Kona positions fitted within 0.4-1.6 % of torso length.
 MAX_FIT_RMS = 0.03
 MIN_BACK_COLUMNS = 8
 
-# The Kona 2026 pro field this was calibrated on (n=15, hand-checked points).
-KONA_PRO_RANGE = (-3.0, 16.0)
-KONA_PRO_MEDIAN = 4.0
+# The Kona pro field this was calibrated on (n=15, 2026-10-11): 6.1-23.2 %,
+# median 14.5, middle half 12-20. Moving the shoulder and hip points by hand
+# changed no rider by more than 0.7 %.
+KONA_PRO_RANGE = (6.0, 23.0)
+KONA_PRO_MEDIAN = 14.5
 
 
 def top_contour(mask: np.ndarray, columns: int = CONTOUR_COLUMNS) -> list[float | None]:
@@ -79,13 +98,13 @@ def helmet_above_back(
     nose: tuple[float, float],
     aspect: float,
 ) -> dict[str, Any] | None:
-    """Helmet height above the back line, % of torso length -- or None.
+    """Helmet top above the top of the back, % of torso length -- or None.
 
     ``shoulder``/``hip``/``nose`` are normalized image coordinates (x of the
     width, y of the height) of the near side; ``aspect`` is width / height, so
     x * aspect and y share one unit. None when the silhouette cannot carry the
     reading: no contour, a back edge too short or too crooked to be a back, no
-    head in front of the shoulder, or a helmet cut off by the top of the frame.
+    head in front of the back, or a helmet cut off by the top of the frame.
     """
     if not contour or aspect <= 0:
         return None
@@ -94,8 +113,8 @@ def helmet_above_back(
     hx, hy = hip
     torso = math.hypot((sx - hx) * aspect, sy - hy)
     if torso <= 1e-6 or abs(sx - hx) * aspect < 0.25 * torso:
-        return None  # torso near vertical in the image: no back to run a line along
-    facing = 1.0 if sx > hx else -1.0
+        return None  # torso near vertical in the image: no back to measure along
+    step = 1 if sx > hx else -1
 
     def col(x: float) -> int:
         return int(min(n - 1, max(0, math.floor(x * n))))
@@ -104,43 +123,57 @@ def helmet_above_back(
         return (j + 0.5) / n
 
     a, b = (col(hx + f * (sx - hx)) for f in BACK_SPAN)
-    back = [(x_of(j) * aspect, contour[j]) for j in range(min(a, b), max(a, b) + 1)
-            if contour[j] is not None]
-    span = abs(b - a) + 1
-    if len(back) < max(MIN_BACK_COLUMNS, 0.6 * span):
+    mid = [(x_of(j) * aspect, contour[j]) for j in range(min(a, b), max(a, b) + 1)
+           if contour[j] is not None]
+    if len(mid) < max(MIN_BACK_COLUMNS, 0.6 * (abs(b - a) + 1)):
         return None
-    xs = np.array([p[0] for p in back])
-    ys = np.array([p[1] for p in back])
+    xs = np.array([p[0] for p in mid])
+    ys = np.array([p[1] for p in mid])
     k, c = np.polyfit(xs, ys, 1)
     rms = float(np.sqrt(np.mean((ys - (k * xs + c)) ** 2)))
     if rms / torso > MAX_FIT_RMS:
         return None
 
-    reach = nose[0] + facing * HEAD_REACH * torso / aspect
-    h0, h1 = sorted((col(sx), col(reach)))
-    best = None
-    for j in range(h0, h1 + 1):
+    # Walk forward from 75 % to where the helmet begins.
+    end = col(nose[0])
+    win = max(1, round(CLIMB_WINDOW * torso / aspect * n))
+    boundary = None
+    j = b
+    while (end - j) * step > 0:
         y = contour[j]
-        if y is None:
-            continue
-        X = x_of(j) * aspect
-        above = (k * X + c) - y
-        if best is None or above > best[0]:
-            best = (above, j, y)
-    if best is None:
+        ahead = contour[min(n - 1, max(0, j + step * win))]
+        if y is not None:
+            climbs = ahead is not None and (y - ahead) > CLIMB_WINDOW * torso
+            if climbs or (k * x_of(j) * aspect + c) - y > STEP * torso:
+                boundary = j
+                break
+        j += step
+    if boundary is None:
+        boundary = col(sx)
+
+    def highest(j0: int, j1: int) -> tuple[float, int] | None:
+        best = None
+        for jj in range(min(j0, j1), max(j0, j1) + 1):
+            y = contour[jj]
+            if y is not None and (best is None or y < best[0]):
+                best = (y, jj)
+        return best
+
+    back = highest(a, boundary)
+    head = highest(boundary, col(nose[0] + step * HEAD_REACH * torso / aspect))
+    if back is None or head is None:
         return None
-    above, j, y = best
-    if y <= 0.002:
+    if head[0] <= 0.002:
         return None  # the silhouette runs off the top of the frame: helmet cut off
 
-    def line_y(x: float) -> float:
-        return float(k * x * aspect + c)
-
-    x_back = x_of(min(a, b) if facing > 0 else max(a, b))
+    back_y, back_j = back
+    head_y, head_j = head
     return {
-        "value": round(float(above) / torso * 100.0, 1),
-        "line": [[round(x_back, 4), round(line_y(x_back), 4)],
-                 [round(x_of(j), 4), round(line_y(x_of(j)), 4)]],
-        "head_point": [round(x_of(j), 4), round(float(y), 4)],
+        "value": round(float(back_y - head_y) / torso * 100.0, 1),
+        # A level line through the top of the back, out to the helmet's top.
+        "line": [[round(x_of(back_j), 4), round(back_y, 4)],
+                 [round(x_of(head_j), 4), round(back_y, 4)]],
+        "head_point": [round(x_of(head_j), 4), round(head_y, 4)],
+        "boundary_x": round(x_of(boundary), 4),
         "fit_rms_pct": round(rms / torso * 100.0, 2),
     }

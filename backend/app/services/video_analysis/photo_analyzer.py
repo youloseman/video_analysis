@@ -562,10 +562,10 @@ _SHOULDER_CLOSED_NOTE = (
 )
 
 _HELMET_NOTE = (
-    "How far the top of the helmet rises above a line drawn along your back, "
-    "as a share of torso length. Negative means the helmet stays under the line. "
+    "How far the top of the helmet rises above a level line through the top of "
+    "your back -- level because the wind is -- as a share of torso length. "
     f"The Kona 2026 pros ranged from {KONA_PRO_RANGE[0]:+.0f}% to "
-    f"{KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.0f}%. Some helmet above "
+    f"{KONA_PRO_RANGE[1]:+.0f}%, median {KONA_PRO_MEDIAN:+.1f}%. Some helmet above "
     "the back is normal -- you have to see the road."
 )
 
@@ -1088,9 +1088,9 @@ def _generate_photo_thumbnail(
                               scale=_sk, align=align)
 
     # --- 2b. HELMET ABOVE THE BACK LINE (bike only) ---
-    # The line fitted along the back's silhouette edge, carried forward over
-    # the head, and a tick from it up to the top of the helmet: the picture of
-    # exactly what the number measures (head_silhouette.py). Neutral colour --
+    # A level line through the top of the back, out to the helmet, and a tick
+    # from it up to the top of the helmet: the picture of exactly what the
+    # number measures (head_silhouette.py). Neutral colour --
     # it is shown, not judged. The old "HEAD POSITION 100/100" chip is gone
     # with the score it drew (2026-10-11).
     if sport == "bike" and helmet:
@@ -1106,10 +1106,19 @@ def _generate_photo_thumbnail(
             h_text = "LOCKED"
         else:
             h_text = f"{helmet['value']:+.0f}%"
-        hlx = max(5, min(w - 5, ph[0] + int(28 * _sk)))
-        hly = max(20, min(h - 20, ph[1] - int(26 * _sk)))
+        # Out in front of the face: above the helmet sit the trunk and
+        # shoulder chips, and there the placer ran out of room and stacked
+        # this one on top of the trunk's value.
+        nose_x = pixel_coords[0][0] if len(pixel_coords) > 0 else ph[0]
+        # Facing from the back toward the helmet; the nose can sit straight
+        # under the helmet's top and give no direction at all.
+        ahead = 1 if p1[0] >= p0[0] else -1
+        hlx = max(5, min(w - 5, (max(ph[0], nose_x) if ahead > 0 else min(ph[0], nose_x))
+                         + ahead * int(60 * _sk)))
+        hly = max(20, min(h - 20, ph[1]))
         overlay_style.draw_leader(cv2_mod, frame, ph, (hlx, hly), overlay_style.INK_SOFT)
-        chips.metric_chip((hlx, hly), "HELMET ABOVE BACK", h_text, "muted", scale=_sk)
+        chips.metric_chip((hlx, hly), "HELMET ABOVE BACK", h_text, "muted", scale=_sk,
+                          align="left" if ahead > 0 else "right")
 
     # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
     # places by inference, drawn beside a hip that already carries a chip;
@@ -1702,7 +1711,7 @@ def analyze_from_pose(
             forearm_tilt, _ = calculate_forearm_tilt_2d(pl, 14, 16)
         angles["forearm_tilt"] = _safe_round(forearm_tilt)
 
-        # Helmet above the back line, off the silhouette (head_silhouette.py).
+        # Helmet above the top of the back, off the silhouette (head_silhouette.py).
         # It replaces the "Head position" score: ear below a line through the
         # hip and shoulder joint centres, a line that runs inside the body, so
         # every aero rider got 100/100 -- all fifteen Kona pros did -- and the
