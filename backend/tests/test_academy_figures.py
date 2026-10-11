@@ -51,12 +51,15 @@ class TestTheKonaDraft:
         for src in srcs:
             assert (MEDIA / src.removeprefix("/media/")).is_file(), src
 
-    def test_no_race_photograph_is_published(self):
-        """The figures are Flapp's overlay drawn on a neutral ground; the
-        versions on the agency photographs stay out of the repo."""
-        folder = MEDIA / "academy" / "kona-2026"
-        assert not list(folder.glob("*photo*"))
-        assert not (BACKEND.parent / "secrets" / "kona-2026").joinpath(".keep").exists()
+    def test_all_fourteen_positions_are_shown_on_their_photographs(self):
+        """Artur's call (2026-10-11): the figures first went out drawn on a
+        neutral ground; he asked for the race photographs, every one. The
+        frame where the model found the motorbike passenger stays out."""
+        text = DRAFT.read_text(encoding="utf-8")
+        shown = re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)
+        assert shown == [f"{n:02d}" for n in range(1, 15)]
+        tilts = [float(m) for m in re.findall(r"Position \d+ of 14: forearm tilt (\d+)", text)]
+        assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")

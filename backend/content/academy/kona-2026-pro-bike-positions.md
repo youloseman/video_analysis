@@ -49,7 +49,7 @@ The day after the Ironman World Championship we ran fourteen professional bike p
 | Elbow | 80° | 76–89° | 62–107° | 75–110° |
 | Forearm tilt, above horizontal | 25° | 21–26° | 10–31° | 5–30° |
 
-![Each dot is one of the fourteen athletes; the green strip is the range Flapp uses for a triathlon aero position. Amber marks a reading below the range that costs no points.](/media/academy/kona-2026/field.webp)
+![Each dot is one of the fourteen positions; the green strip is the range Flapp uses for a triathlon aero position. Amber marks a reading below the range that costs no points.](/media/academy/kona-2026/field.webp)
 
 ## 1. The hands have gone up
 
@@ -57,7 +57,7 @@ In seven of the fourteen positions the forearms were tilted more than 25° above
 
 The rules moved first. From 1 January 2023 the UCI raised the maximum tilt of the armrests from 15° to 30°, and the field has filled that space. The aerodynamics followed: in a 2025 study that modelled one professional rider and checked the model in a wind tunnel, very high hands alone cut drag area by 3%. Combined with narrow elbows the saving grew to 7.7% for high hands and 11.2% for very high hands. Mat Steinmetz, a fitter who works with professional triathletes, describes the same change from the other side: 10–20° of bar tilt supports the upper body, relaxes the shoulders and makes a pocket for the head.
 
-![Rider A, the traditional shape: forearms almost flat at 10°, elbow open to 107°. Flapp's own overlay, drawn without the photo.](/media/academy/kona-2026/rider-a.webp)
+![Rider A, the traditional shape: forearms almost flat at 10°, elbow open to 107°. Flapp's overlay on the race photograph.](/media/academy/kona-2026/rider-a.webp)
 
 ![Rider B, the new one: forearms at 31°, elbow closed to 71°, torso at 15°.](/media/academy/kona-2026/rider-b.webp)
 
@@ -81,11 +81,42 @@ In five of the fourteen positions the upper arm was closer than 80° to the tors
 
 What to check if you ride like Rider C: whether the shoulders are shrugged up toward the ears, which is tiring and hard to breathe through, and whether the arms are carrying you or you are holding yourself up.
 
+## All fourteen positions
+
+Every position we measured, ordered from the flattest forearms to the steepest. The labels are Flapp's own readings for a triathlon position: green inside the range, amber just outside it or below it at no cost, red outside it. Knee, hip and ankle are left off for the reasons in the next section.
+
+![Position 1 of 14: forearm tilt 10°, torso 22°, shoulder 95°, elbow 107°.](/media/academy/kona-2026/position-01.webp)
+
+![Position 2 of 14: forearm tilt 13°, torso 30°, shoulder 77°, elbow 94°.](/media/academy/kona-2026/position-02.webp)
+
+![Position 3 of 14: forearm tilt 19°, torso 19°, shoulder 77°, elbow 77°.](/media/academy/kona-2026/position-03.webp)
+
+![Position 4 of 14: forearm tilt 21°, torso 39°, shoulder 70°, elbow 88°.](/media/academy/kona-2026/position-04.webp)
+
+![Position 5 of 14: forearm tilt 21°, torso 25°, shoulder 86°, elbow 90°.](/media/academy/kona-2026/position-05.webp)
+
+![Position 6 of 14: forearm tilt 23°, torso 16°, shoulder 89°, elbow 82°.](/media/academy/kona-2026/position-06.webp)
+
+![Position 7 of 14: forearm tilt 24°, torso 15°, shoulder 86°, elbow 78°.](/media/academy/kona-2026/position-07.webp)
+
+![Position 8 of 14: forearm tilt 25°, torso 21°, shoulder 82°, elbow 78°.](/media/academy/kona-2026/position-08.webp)
+
+![Position 9 of 14: forearm tilt 26°, torso 20°, shoulder 74°, elbow 68°.](/media/academy/kona-2026/position-09.webp)
+
+![Position 10 of 14: forearm tilt 26°, torso 12°, shoulder 96°, elbow 82°.](/media/academy/kona-2026/position-10.webp)
+
+![Position 11 of 14: forearm tilt 26°, torso 32°, shoulder 88°, elbow 93°.](/media/academy/kona-2026/position-11.webp)
+
+![Position 12 of 14: forearm tilt 28°, torso 19°, shoulder 71°, elbow 62°.](/media/academy/kona-2026/position-12.webp)
+
+![Position 13 of 14: forearm tilt 30°, torso 21°, shoulder 84°, elbow 75°.](/media/academy/kona-2026/position-13.webp)
+
+![Position 14 of 14: forearm tilt 31°, torso 15°, shoulder 88°, elbow 71°.](/media/academy/kona-2026/position-14.webp)
 ## What we did not measure, and why
 
 No knee angles and no saddle verdicts. In a single race photo the crank is wherever it happened to be, so the knee angle is not a saddle-height reading. There is a second reason. Every one of these photos was taken from the drive side, the side with the chainring, because the riders crossed the frame in the same direction past photographers on one side of the road. On two bikes of our own we measured that the drive side reads the knee at the bottom of the stroke 8–10° lower than it really is: the ankle point slides onto the dark chainring behind it. So we left the legs out rather than publish numbers we know are biased.
 
-How we measured: fifteen photographs. One was rejected. The model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one. On the other fourteen, angles were measured in 2D on the side of the body nearest the camera, with an instrument spread of roughly 2–3°. Some athletes may appear in more than one photo; we could not check, so each photo counts as one position. It is one race, one day and one roadside viewpoint, so read these as the shape of a field, not as anyone's exact fit. We do not name the athletes: we cannot verify who is in every frame, and the point is the position, not the person.
+How we measured: fifteen photographs. One was rejected. The model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one. On the other fourteen, angles were measured in 2D on the side of the body nearest the camera, with an instrument spread of roughly 2–3°. Some athletes may appear in more than one photo; we could not check, so each photo counts as one position. The labels on the photographs are drawn by the same renderer the app uses on your own photos. It is one race, one day and one roadside viewpoint, so read these as the shape of a field, not as anyone's exact fit. We do not name the athletes: we cannot verify who is in every frame, and the point is the position, not the person.
 
 ## What to take for your own position
 
