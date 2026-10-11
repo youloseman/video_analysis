@@ -3842,7 +3842,10 @@ async function analyzePhoto(){
   }
 }
 
-const P_STATUS_CLS={optimal:'good','in_range':'good',good:'good',
+/* acceptable / needs_work are what the server's _classify_angle_status and
+   classifyAngle() below actually return. They were missing, so every
+   out-of-range row on a photo report fell through to the neutral grey pill. */
+const P_STATUS_CLS={optimal:'good','in_range':'good',good:'good',acceptable:'medium',needs_work:'high',
   too_low:'medium',too_high:'medium',low:'medium',high:'medium',slightly_low:'medium',slightly_high:'medium',
   out_of_range:'high',poor:'high',phase_dependent:'info',
   aero_optimized:'good',aero_extreme:'info'};
@@ -3856,11 +3859,13 @@ function classifyAngle(v,lo,hi){
   const m=Math.max((hi-lo)*0.10,3.0);
   return (v>=lo-m&&v<=hi+m) ? 'acceptable' : 'needs_work';
 }
-/* Resolve the hip row for the chosen pedal phase (bdc/tdc/uncertain). */
-function hipForPhase(hip,phase){
-  const o={value:hip.value,label:hip.label,bands:hip.bands,note:hip.note};
-  const band=(phase==='bdc'||phase==='tdc')&&hip.bands&&hip.bands[phase];
-  if(band){ o.optimal_min=band[0]; o.optimal_max=band[1]; o.status=classifyAngle(hip.value,band[0],band[1]); }
+/* Resolve a pedal-dependent row (knee, hip) for the chosen pedal phase
+   (bdc/tdc/uncertain). Both swing 50-80 deg every revolution, so the band
+   exists only at a named crank position. */
+function rowForPhase(a,phase){
+  const o={value:a.value,label:a.label,bands:a.bands,note:a.note};
+  const band=(phase==='bdc'||phase==='tdc')&&a.bands&&a.bands[phase];
+  if(band){ o.optimal_min=band[0]; o.optimal_max=band[1]; o.status=classifyAngle(a.value,band[0],band[1]); }
   else { o.optimal_min=o.optimal_max=null; o.status='phase_dependent'; o.unscored_reason='pedal position'; }
   return o;
 }
@@ -3888,20 +3893,33 @@ function renderPhotoAngles(){
   const A=res.angles_with_context||{}, phase=state.pedalPhase||'uncertain';
   const rows=Object.keys(A).map(k=>{
     let a=A[k];
-    if(k==='hip'&&a.bands) a=hipForPhase(a,phase);   // interactive hip verdict
+    if(a.bands) a=rowForPhase(a,phase);   // knee + hip: scored at the chosen pedal position
     return angleRow(k,a);
   }).join('');
   $('#pAngleRows').innerHTML=rows||'<tr><td colspan="4" class="muted">No angle data.</td></tr>';
-  const hip=A.hip, pick=$('#pPhasePick');
-  if(hip&&hip.bands){
+  // No picker over a withheld photo: there is no score for it to move.
+  const banded=Object.values(A).find(a=>a&&a.bands), pick=$('#pPhasePick');
+  if(banded&&!(res.score&&res.score.withheld)){
     pick.classList.remove('hidden');
     document.querySelectorAll('#pPhasePick [data-phase]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.phase===phase)));
     $('#pPhaseHint').textContent = phase==='uncertain'
-      ? "we couldn't tell — pick to score the hip"
-      : (phase===hip.phase ? 'auto-detected · fix if wrong' : 'you set this');
+      ? "we couldn't tell — pick to score the knee and hip"
+      : (phase===res.pedal_phase ? 'auto-detected · fix if wrong' : 'you set this');
   } else pick.classList.add('hidden');
 }
-function setPhotoPedalPhase(p){ state.pedalPhase=p; renderPhotoAngles(); }
+/* The server scored every pedal position; a correction swaps the number as
+   well as the table, so the score never disagrees with the rows under it. */
+function setPhotoPedalPhase(p){
+  state.pedalPhase=p;
+  const res=state.photoRes, byPhase=res&&res.score_by_phase;
+  if(byPhase&&byPhase[p]){
+    const sc=byPhase[p];
+    $('#pScoreNum').innerHTML=(sc.overall_score==null?'—':sc.overall_score)+'<small>/100</small>';
+    setScoreRing('#pScoreRing', sc.overall_score);
+    setGrade('#pGrade', sc.grade);
+  }
+  renderPhotoAngles();
+}
 
 /* ============================================================
    Joint editor — photo, bike (docs/LANDMARK_CORRECTION_PLAN_RU.md)
@@ -4996,7 +5014,7 @@ function renderPhoto(res,opts){
   const parts=[];
   if(res.camera_side) parts.push(`Camera: <b>${esc(res.camera_side)} side</b>`);
   if(sport==='bike'&&res.cycling_position) parts.push(`Position: <b>${esc(res.cycling_position_label||POSITION_NAMES[res.cycling_position]||pretty(res.cycling_position))}</b>`);
-  if(sport==='bike'&&res.pedal_phase) parts.push(`Pedal: <b>${esc(String(res.pedal_phase).replace(/_/g,' '))}</b>`);
+  if(sport==='bike'&&res.pedal_phase) parts.push(`Pedal: <b>${esc({bdc:'bottom of stroke',tdc:'top of stroke',uncertain:'not sure'}[res.pedal_phase]||String(res.pedal_phase).replace(/_/g,' '))}</b>`);
   // Which instant of the stride the frame caught — it decides which bands the
   // hip is judged against, so it belongs next to the score, not buried.
   if(sport==='run'&&res.gait_phase) parts.push(`Stride: <b>${esc(String(res.gait_phase).replace(/_/g,' '))}</b>`);
@@ -5046,11 +5064,10 @@ function renderPhoto(res,opts){
     cb.classList.remove('hidden');
   } else cb.classList.add('hidden');
 
-  // Interactive hip verdict: default to the detected pedal phase.
+  // Interactive knee + hip verdict: default to the detected pedal phase.
   // state.photoRes must be set BEFORE renderPhotoAngles() -- it reads the result
   // from state, and bailed out on an empty table when it was assigned later.
-  const _hip=(res.angles_with_context||{}).hip;
-  state.pedalPhase=(_hip&&_hip.phase)||'uncertain';
+  state.pedalPhase=res.pedal_phase||'uncertain';
   state.photoRes=res;
   renderPhotoAngles();
 

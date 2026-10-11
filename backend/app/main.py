@@ -2039,8 +2039,10 @@ async def analyze_photo_endpoint(
 
     # Free callers don't get AI coaching (it's a paid unlock) -- except on the
     # one preview, which exists precisely to show what the paid report reads
-    # like.
-    if coaching and (not free or preview):
+    # like. A withheld photo gets none either: coaching a pose we could not
+    # measure is the score-withheld rule broken in prose.
+    withheld = (result.get("score") or {}).get("withheld")
+    if coaching and (not free or preview) and not withheld:
         from app.services.video_analysis.llm_recommendations import (
             generate_photo_recommendations,
         )
@@ -2157,7 +2159,7 @@ async def analyze_photo_recompute_endpoint(
         raise HTTPException(500, "photo re-measurement failed")
 
     result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
-    if coaching:
+    if coaching and not (result.get("score") or {}).get("withheld"):
         from app.services.video_analysis.llm_recommendations import (
             generate_photo_recommendations,
         )

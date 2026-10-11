@@ -247,34 +247,96 @@ def _get_running_optimal_ranges(
     return ranges
 
 
+# The crank positions a still can be scored at. "uncertain" is not a position:
+# it is the honest answer when the photo does not say where the crank was.
+BIKE_PHOTO_PHASES = ("bdc", "tdc", "uncertain")
+_LEGACY_PHASE = {"near_bdc": "bdc", "near_tdc": "tdc", "mid_stroke": "uncertain"}
+_BIKE_PHASE_NOTES = {
+    "knee": ("The knee straightens at the bottom of the stroke and bends at the "
+             "top. Mark where the pedal was to score it — at the bottom it is "
+             "the saddle-height reading."),
+    "hip": ("Hip opens at the bottom of the stroke and closes at the top — pick "
+            "the pedal position to score it."),
+}
+
+
+_WITHHELD_MESSAGES = {
+    "leg_not_measured": (
+        "No score: the leg nearest the camera could not be measured, so this "
+        "photo cannot say anything about the fit. Usually another person or the "
+        "bike is in front of the leg, or the model found someone else in the "
+        "frame. One rider, full side view, leg against a plain background."
+    ),
+}
+
+
+def _bike_photo_withheld(angles: dict[str, float]) -> str | None:
+    """Why a bike photo gets no score at all, or None if it gets one.
+
+    A bike-fit photo is about the leg. Without a measured knee the score was
+    built from the torso and arms alone -- and on a Kona race photo with a
+    camera motorbike in frame, the torso and arms were the motorbike
+    passenger's: trunk 83 deg, printed as 38/100. The rule the video has kept
+    since the quality gate: when we cannot measure the thing, no number.
+    """
+    knee = angles.get("knee")
+    if knee is None or math.isnan(knee):
+        return "leg_not_measured"
+    return None
+
+
+def _bike_phase_bands(cycling_position: str | None) -> dict[str, dict[str, list[float]]]:
+    """The knee and hip bands at each dead centre, for one position.
+
+    Both joints sweep through 50-80 deg every revolution, so a band means
+    something only at a named crank position. The knee bands are widened
+    (-12/+8): a still cannot verify the crank is exactly at dead centre, and a
+    rider should not be faulted for a frame caught a few degrees off it.
+    """
+    ref = get_cycling_reference(cycling_position)
+    return {
+        "knee": {
+            "bdc": [ref["knee_at_bdc"][0] - 12, ref["knee_at_bdc"][1] + 8],
+            "tdc": [ref["knee_at_tdc"][0] - 12, ref["knee_at_tdc"][1] + 8],
+        },
+        "hip": {"bdc": list(ref["hip_at_bdc"]), "tdc": list(ref["hip_at_tdc"])},
+    }
+
+
 def _get_cycling_optimal_ranges(
     cycling_position: str | None,
-    pedal_phase: str = "near_bdc",
+    pedal_phase: str = "bdc",
 ) -> dict[str, tuple[float, float]]:
-    """Position-dependent cycling ranges with pedal-phase-aware knee range."""
+    """The bands a single bike photo is scored against, at one crank position.
+
+    Upper-body bands do not depend on the crank and always apply. The knee and
+    hip apply only at a named dead centre. Three readings are never scored from
+    a still:
+
+    - the knee and hip at an uncertain crank position. The old fallback scored
+      the knee against 60-155 there, and because the position was guessed FROM
+      the knee, a saddle far too low -- knee 118 at the bottom of the stroke --
+      was filed as "mid-stroke" and scored 100. A still could only ever fault a
+      saddle that was too high.
+    - the pelvic ratio. It is hip / trunk, so it inherits the hip's sweep, and
+      its 2-4 band was set on the stroke-AVERAGE hip the video measures. On a
+      single frame it read 5.7 on a world-class position and cost it 33 points.
+    - the ankle (2D ankle from a still is too noisy to judge).
+    """
+    phase = _LEGACY_PHASE.get(pedal_phase, pedal_phase)
     ref = get_cycling_reference(cycling_position)
-    # A single photo cannot verify the crank is truly at TDC/BDC -- the pedal
-    # phase is a coarse guess from the knee angle alone. So widen the band on
-    # both sides (not just -10 on the min) to avoid faulting a rider for a knee
-    # angle caught slightly off the assumed dead-centre.
-    if pedal_phase == "near_bdc":
-        knee_range = (ref["knee_at_bdc"][0] - 12, ref["knee_at_bdc"][1] + 8)
-    elif pedal_phase == "near_tdc":
-        knee_range = (ref["knee_at_tdc"][0] - 12, ref["knee_at_tdc"][1] + 8)
-    else:
-        # Mid-stroke: very wide range -- cannot reliably score
-        knee_range = (60, 155)
-    return {
-        "knee": knee_range,
-        "hip": ref["hip_angle_max"],
+    ranges: dict[str, tuple[float, float]] = {
         "trunk": ref["trunk_angle"],
         "elbow": ref["elbow_angle"],
-        "ankle": (70, 110),
         "shoulder": ref["shoulder_angle"],
         "forearm_tilt": ref["forearm_tilt"],
         "head_alignment": ref["head_alignment"],
-        "pelvic_ratio": ref["pelvic_ratio"],
     }
+    if phase in ("bdc", "tdc"):
+        bands = _bike_phase_bands(cycling_position)
+        ranges["knee"] = tuple(bands["knee"][phase])
+        ranges["hip"] = tuple(bands["hip"][phase])
+    return ranges
 
 
 def _get_swimming_optimal_ranges() -> dict[str, tuple[float, float]]:
@@ -304,11 +366,13 @@ PHOTO_RUNNING_WEIGHTS = {
 # near-BDC hip reads ~95deg, well above the average band). They are therefore
 # measured + shown but NOT scored or judged from a still. (See the interactive
 # pedal-phase picker for the follow-up that scores them against the right band.)
-_PHASE_DEPENDENT_BIKE = frozenset({"hip", "ankle"})
+# The knee joins them at an uncertain crank position, and the pelvic ratio --
+# hip over trunk, so it sweeps with the hip -- is never scored from a still.
+_PHASE_DEPENDENT_BIKE = frozenset({"knee", "hip", "ankle", "pelvic_ratio"})
 
 PHOTO_CYCLING_WEIGHTS = {
     "knee": 0.24, "trunk": 0.20, "shoulder": 0.13, "head_alignment": 0.11,
-    "elbow": 0.11, "pelvic_ratio": 0.08, "forearm_tilt": 0.05,
+    "elbow": 0.11, "forearm_tilt": 0.05,
 }
 # Near TDC/BDC from a single photo: the pedal phase is only a guess, so trust
 # the knee less than a true motion-capture dead-centre -- shift its weight to
@@ -322,12 +386,19 @@ PHOTO_CYCLING_WEIGHTS = {
 # a closed hip is the one cycling metric with a medical consequence.
 PHOTO_CYCLING_WEIGHTS_PHASED = {
     "knee": 0.14, "trunk": 0.24, "shoulder": 0.14, "head_alignment": 0.12,
-    "elbow": 0.11, "pelvic_ratio": 0.08, "forearm_tilt": 0.05, "hip": 0.12,
+    "elbow": 0.11, "forearm_tilt": 0.05, "hip": 0.12,
 }
-# Mid-stroke: knee unreliable, redistribute weight to the phase-independent set.
-PHOTO_CYCLING_WEIGHTS_MIDSTROKE = {
-    "knee": 0.06, "trunk": 0.27, "shoulder": 0.15, "head_alignment": 0.13,
-    "elbow": 0.12, "pelvic_ratio": 0.08, "forearm_tilt": 0.05,
+# Crank position unknown: the score is the upper body only, and says so. The
+# knee used to stay in at 0.06 against a 60-155 band -- free points, since
+# almost any knee lands in that band.
+PHOTO_CYCLING_WEIGHTS_UNCERTAIN = {
+    "trunk": 0.27, "shoulder": 0.15, "head_alignment": 0.13,
+    "elbow": 0.12, "forearm_tilt": 0.05,
+}
+_BIKE_PHASE_WEIGHTS = {
+    "bdc": PHOTO_CYCLING_WEIGHTS_PHASED,
+    "tdc": PHOTO_CYCLING_WEIGHTS_PHASED,
+    "uncertain": PHOTO_CYCLING_WEIGHTS_UNCERTAIN,
 }
 PHOTO_SWIMMING_WEIGHTS = {
     "left_elbow": 0.20, "right_elbow": 0.10,
@@ -803,9 +874,14 @@ def _generate_photo_thumbnail(
 
     # Header first: it reserves the top strip so no metric chip lands under it.
     _sport_labels = {"run": "RUN", "bike": "BIKE", "swim": "SWIM"}
-    _overall = score_data.get("overall_score", 0)
-    _grade = score_data.get("grade", "")
-    _hdr_status = "good" if _overall >= 75 else "warn" if _overall >= 60 else "bad"
+    _overall = score_data.get("overall_score")
+    _grade = score_data.get("grade") or ""
+    if _overall is None:
+        # Withheld: no number anywhere, the picture included.
+        _hdr_status, _score_text = "muted", "not scored"
+    else:
+        _hdr_status = "good" if _overall >= 75 else "warn" if _overall >= 60 else "bad"
+        _score_text = f"{_overall}/100"
     _title = (
         "AERODYNAMIC PROFILE"
         if (sport == "bike" and cycling_position in ("tt_aero", "triathlon"))
@@ -813,7 +889,7 @@ def _generate_photo_thumbnail(
     )
     _pad = int(max(10, h * 0.018))
     chips.header((_pad, _pad), _sport_labels.get(sport, sport.upper()),
-                 f"{_overall}/100", _grade, _hdr_status,
+                 _score_text, _grade, _hdr_status,
                  right_text=_title, frame_w=w, scale=_sk)
 
     # --- 2. ANGLE ARCS + LABELS ---
@@ -1032,19 +1108,27 @@ def _auto_detect_cycling_position(trunk_angle: float) -> str:
 
 
 def _estimate_pedal_phase(knee_angle: float) -> str:
-    """Estimate pedal phase from single-photo knee angle.
+    """A first guess at the crank position, from the knee alone.
 
-    Returns: 'near_bdc', 'near_tdc', or 'mid_stroke'.
-    BDC = leg extended (high angle), TDC = leg flexed (low angle).
+    Returns 'bdc', 'tdc' or 'uncertain'. It is a GUESS and the result says so:
+    the rider can overrule it, and every score is computed for every position
+    so overruling it is instant.
+
+    Why the middle is "uncertain" and not "mid-stroke": the same knee angle is
+    the crank half-way round on a well-set saddle AND the bottom of the stroke
+    on a saddle that is too low. One still cannot tell those apart -- the
+    midpoint of the two ankles would locate the bottom bracket, but on 14 Kona
+    race photos the far ankle was visible on 5 and contradicted the knee on one
+    of those. Calling the frame "mid-stroke" asserted the first reading, and
+    then the knee went unjudged exactly when it mattered.
     """
     if math.isnan(knee_angle):
-        return "mid_stroke"
+        return "uncertain"
     if knee_angle >= 125:
-        return "near_bdc"
-    elif knee_angle <= 85:
-        return "near_tdc"
-    else:
-        return "mid_stroke"
+        return "bdc"
+    if knee_angle <= 85:
+        return "tdc"
+    return "uncertain"
 
 
 # Gait-phase thresholds, in degrees of thigh deviation from vertical
@@ -1482,7 +1566,13 @@ def analyze_from_pose(
             val, _ = calculate_angle_2d(pl, a, b, c)
             angles[name] = _safe_round(val)
 
-        trunk_from_vert = calculate_segment_to_vertical(pl, 11, 23)
+        # The NEAR shoulder and hip, like every other bike angle here. This read
+        # 11/23 (left) whatever side faced the camera, so on a right-side photo
+        # the trunk came from the far, half-hidden side -- and went NaN, taking
+        # the pelvic ratio with it, whenever that side fell under the
+        # visibility threshold.
+        _sh, _hp = (11, 23) if camera_side == "left" else (12, 24)
+        trunk_from_vert = calculate_segment_to_vertical(pl, _sh, _hp)
         trunk = 90.0 - trunk_from_vert  # Convert to from-horizontal (bike fitting convention)
         angles["trunk"] = _safe_round(trunk)
 
@@ -1512,9 +1602,12 @@ def analyze_from_pose(
                 and not math.isnan(hip_val) and not math.isnan(trunk_val)):
             angles["pelvic_ratio"] = round(hip_val / trunk_val, 2)
 
-        # Pedal phase estimation from knee angle
+        # The crank position: a guess from the knee, overrulable by the rider.
+        # Everything that depends on it -- knee and hip bands, the score --
+        # is computed for all three positions below, so the client can switch
+        # without asking the server again.
         knee_val = angles.get("knee")
-        pedal_phase = _estimate_pedal_phase(knee_val) if knee_val is not None else "mid_stroke"
+        pedal_phase = _estimate_pedal_phase(knee_val) if knee_val is not None else "uncertain"
 
         if not cycling_position:
             cycling_position = _auto_detect_cycling_position(trunk)
@@ -1525,20 +1618,8 @@ def analyze_from_pose(
             )
 
         optimal_ranges = _get_cycling_optimal_ranges(cycling_position, pedal_phase)
-
-        # Phase 2 -- interactive hip verdict. Hip swings open->closed across the
-        # stroke, so score it against the band for the *guessed* crank position
-        # and ship both bands so the client can re-score if the rider corrects
-        # the phase. Overlay colours hip by the guessed band (muted if unsure);
-        # ankle stays informational (2D ankle is too noisy to judge from a still).
-        _cref = get_cycling_reference(cycling_position)
-        hip_bands = {"bdc": list(_cref["hip_at_bdc"]), "tdc": list(_cref["hip_at_tdc"])}
-        hip_phase = {"near_bdc": "bdc", "near_tdc": "tdc"}.get(pedal_phase, "uncertain")
-        if hip_phase in ("bdc", "tdc"):
-            optimal_ranges["hip"] = tuple(hip_bands[hip_phase])
-        else:
-            optimal_ranges.pop("hip", None)
-        optimal_ranges.pop("ankle", None)
+        phase_bands = _bike_phase_bands(cycling_position)
+        hip_phase = pedal_phase
 
     elif sport == "swim":
         for name, (a, b, c) in SWIMMING_PHOTO_ANGLES.items():
@@ -1573,25 +1654,38 @@ def analyze_from_pose(
 
     for angle_name, angle_value in angles.items():
         lbl = labels.get(angle_name, angle_name.replace("_", " ").title())
-        # Bike hip: interactive phase verdict. Ship both BDC/TDC bands + the
-        # guessed phase so the client can re-score if the rider corrects it;
-        # score now against the guessed band (or leave unscored if uncertain).
-        if sport == "bike" and angle_name == "hip":
+        # Bike knee and hip: interactive phase verdict. Ship both BDC/TDC bands
+        # + the guessed phase so the client can re-score if the rider corrects
+        # it; score now against the guessed band, or leave unscored if unsure.
+        if sport == "bike" and angle_name in ("knee", "hip"):
+            bands = phase_bands[angle_name]
             entry: dict[str, Any] = {
                 "value": angle_value, "label": lbl,
-                "bands": hip_bands, "phase": hip_phase,
-                "note": ("Hip opens at the bottom of the stroke and closes at the "
-                         "top — pick the pedal position to score it."),
+                "bands": bands, "phase": pedal_phase,
+                "note": _BIKE_PHASE_NOTES[angle_name],
             }
-            if hip_phase in ("bdc", "tdc"):
-                lo, hi = hip_bands[hip_phase]
+            if pedal_phase in ("bdc", "tdc"):
+                lo, hi = bands[pedal_phase]
                 entry["optimal_min"], entry["optimal_max"] = lo, hi
                 entry["status"] = _classify_angle_status(angle_value, lo, hi)
             else:
                 entry["optimal_min"] = entry["optimal_max"] = None
                 entry["status"] = "phase_dependent"
                 entry["unscored_reason"] = "pedal position"
-            angles_with_context["hip"] = entry
+            angles_with_context[angle_name] = entry
+            continue
+        # Bike pelvic ratio: hip over trunk, so it sweeps with the hip, and its
+        # band is a stroke average. Shown, never judged from a still.
+        if sport == "bike" and angle_name == "pelvic_ratio":
+            angles_with_context[angle_name] = {
+                "value": angle_value, "label": lbl,
+                "optimal_min": None, "optimal_max": None,
+                "status": "phase_dependent",
+                "unscored_reason": "needs a clip",
+                "note": ("Hip angle over torso angle. The hip opens and closes with "
+                         "every pedal stroke, so one frame cannot place it against "
+                         "the range -- a clip measures it over whole revolutions."),
+            }
             continue
         # Bike ankle: measured, but never judged from a still (2D ankle too noisy).
         if sport == "bike" and angle_name == "ankle":
@@ -1659,19 +1753,28 @@ def analyze_from_pose(
             "label": lbl,
         }
 
-    # 6. Score. Single-photo knee reliability depends on the (guessed) pedal
-    # phase: mid-stroke = knee nearly ignored; near TDC/BDC = knee down-weighted
-    # (the crank position can't be verified from one still).
-    weights_override = None
-    if sport == "bike":
-        if pedal_phase == "mid_stroke":
-            weights_override = PHOTO_CYCLING_WEIGHTS_MIDSTROKE
-        elif pedal_phase in ("near_tdc", "near_bdc"):
-            weights_override = PHOTO_CYCLING_WEIGHTS_PHASED
-    score_data = _score_photo_angles(
-        angles, optimal_ranges, sport, weights_override,
-        cycling_position=cycling_position,
-    )
+    # 6. Score. On a bike it is computed for every crank position, so the
+    # rider's correction of the guessed one changes the number as well as the
+    # table -- the server stays the only scorer.
+    score_by_phase: dict[str, dict[str, Any]] | None = None
+    withheld = _bike_photo_withheld(angles) if sport == "bike" else None
+    if withheld:
+        score_data = {"overall_score": None, "grade": None, "per_angle": {},
+                      "withheld": withheld}
+        warnings.append(_WITHHELD_MESSAGES[withheld])
+    elif sport == "bike":
+        score_by_phase = {
+            p: _score_photo_angles(
+                angles, _get_cycling_optimal_ranges(cycling_position, p), sport,
+                _BIKE_PHASE_WEIGHTS[p], cycling_position=cycling_position,
+            )
+            for p in BIKE_PHOTO_PHASES
+        }
+        score_data = score_by_phase[pedal_phase]
+    else:
+        score_data = _score_photo_angles(
+            angles, optimal_ranges, sport, None, cycling_position=cycling_position,
+        )
 
     # 7. Thumbnail
     thumbnail_b64: str | None = None
@@ -1723,10 +1826,14 @@ def analyze_from_pose(
         response["cycling_position"] = cycling_position
         response["cycling_position_label"] = get_position_label(cycling_position)
         response["pedal_phase"] = pedal_phase
-        if pedal_phase == "mid_stroke":
+        if score_by_phase is not None:
+            response["score_by_phase"] = score_by_phase
+        if pedal_phase == "uncertain" and not withheld:
             warnings.append(
-                "Knee captured at mid-pedal-stroke -- knee angle scoring is reduced. "
-                "For saddle height assessment, use a photo at the bottom of the pedal stroke."
+                "We couldn't tell where the pedal was in this photo, so the knee and "
+                "hip are measured but not scored, and the score is your upper body. "
+                "If the pedal was at the bottom of the stroke, mark it under the "
+                "angles -- the knee there is the saddle-height reading."
             )
 
         # Medical thresholds. The video path has run these since the start; the
