@@ -748,6 +748,16 @@ def _is_near_side(idx: int, camera_side: str | None) -> bool:
     return True
 
 
+# angles_with_context status -> overlay chip status
+_ROW_TO_CHIP = {
+    "optimal": "good",
+    "acceptable": "warn",
+    "needs_work": "bad",
+    "phase_dependent": "muted",
+    "insufficient_visibility": "muted",
+}
+
+
 def _score_to_color(score: int | None) -> tuple[int, int, int]:
     """Map score to BGR color for thumbnail drawing."""
     if score is None:
@@ -856,6 +866,8 @@ def _generate_photo_thumbnail(
     hide_angle_values: bool = False,
     optimal_ranges: dict[str, tuple[float, float]] | None = None,
     corrected: list[int] | None = None,
+    row_status: dict[str, str] | None = None,
+    show_header: bool = True,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
@@ -940,9 +952,12 @@ def _generate_photo_thumbnail(
         else ("CYCLING PROFILE" if sport == "bike" else "RUNNING PROFILE")
     )
     _pad = int(max(10, h * 0.018))
-    chips.header((_pad, _pad), _sport_labels.get(sport, sport.upper()),
-                 _score_text, _grade, _hdr_status,
-                 right_text=_title, frame_w=w, scale=_sk)
+    # ``show_header=False``: the skeleton and its angles without a score --
+    # for figures that describe a position rather than grade one.
+    if show_header:
+        chips.header((_pad, _pad), _sport_labels.get(sport, sport.upper()),
+                     _score_text, _grade, _hdr_status,
+                     right_text=_title, frame_w=w, scale=_sk)
 
     # --- 2. ANGLE ARCS + LABELS ---
     if len(pixel_coords) > 25:
@@ -1031,12 +1046,21 @@ def _generate_photo_thumbnail(
                 # smaller margin floor than the degree default. Joints with no
                 # band here (bike ankle always; hip when the crank position is
                 # uncertain) render neutral -- not judged from a still.
-                opt = optimal_ranges.get(angle_key)
-                floor = 0.3 if angle_key == "pelvic_ratio" else 3.0
-                status = (
-                    overlay_style.status_for(angle_value, *opt, min_margin=floor)
-                    if opt else "muted"
-                )
+                # The table's own verdict when there is one, so the picture and
+                # the rows under it cannot disagree. The picture used to grade
+                # every chip symmetrically on its own: a flat aero trunk and a
+                # closed aero shoulder showed red over rows that said amber and
+                # cost no points, and the knee ignored its dead-centre slack.
+                row = (row_status or {}).get(angle_key)
+                if row in _ROW_TO_CHIP:
+                    status = _ROW_TO_CHIP[row]
+                else:
+                    opt = optimal_ranges.get(angle_key)
+                    floor = 0.3 if angle_key == "pelvic_ratio" else 3.0
+                    status = (
+                        overlay_style.status_for(angle_value, *opt, min_margin=floor)
+                        if opt else "muted"
+                    )
 
             status_rgb = overlay_style.STATUS_COLORS.get(status, overlay_style.INK_SOFT)
             overlay_style.draw_leader(cv2_mod, frame, (jx, jy), (lx, ly), status_rgb)
@@ -1879,6 +1903,7 @@ def analyze_from_pose(
             hide_angle_values=hide_angle_values,
             optimal_ranges=optimal_ranges,
             corrected=[int(c["landmark"]) for c in (corrections or [])],
+            row_status={k: v.get("status") for k, v in angles_with_context.items()},
         )
         thumbnail_b64 = (
             f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"

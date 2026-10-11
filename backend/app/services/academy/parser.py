@@ -10,7 +10,8 @@ Design goals
   ``python-frontmatter`` / ``markdown``. The converter supports exactly the
   subset the writing guide uses: ATX headings, paragraphs, ordered/unordered
   lists, GitHub-style tables, blockquotes, ``**bold**`` / ``*italic*`` /
-  ``` `code` ``` and links.
+  ``` `code` ``` and links -- plus a figure: a line of its own holding
+  ``![caption](/media/...)``, our own media only (see ``_FIGURE``).
 * **In-memory cache.** First access parses every file; subsequent calls are
   served from memory. Call :func:`invalidate_cache` (or restart the process /
   redeploy) to pick up edits.
@@ -226,6 +227,21 @@ def markdown_to_html(md: str) -> str:
             i += 1
             continue
 
+        # figure: ``![caption](/media/...)`` alone on a line. Only our own
+        # /media/ paths -- an article never hotlinks or embeds someone
+        # else's image. The caption is the alt text and the figcaption both.
+        fg = _FIGURE.match(stripped)
+        if fg:
+            cap = fg.group(1).strip()
+            out.append(
+                '<figure><img src="' + html.escape(fg.group(2)) + '" alt="'
+                + html.escape(_strip_inline(cap)) + '" loading="lazy" decoding="async">'
+                + ("<figcaption>" + _inline(cap) + "</figcaption>" if cap else "")
+                + "</figure>"
+            )
+            i += 1
+            continue
+
         # fenced code block ``` ... ```
         if stripped.startswith("```"):
             i += 1
@@ -284,10 +300,18 @@ def markdown_to_html(md: str) -> str:
     return "\n".join(out)
 
 
+_FIGURE = re.compile(r"^!\[([^\]]*)\]\((/media/[A-Za-z0-9_./-]+\.(?:webp|png|jpe?g))\)$")
+
+
+def _strip_inline(text: str) -> str:
+    """Caption text without Markdown markers, for an alt attribute."""
+    return re.sub(r"[*`]", "", text)
+
+
 def _is_block_start(lines: list[str], i: int, n: int) -> bool:
     """True if line ``i`` begins a non-paragraph block (so a paragraph stops)."""
     s = lines[i].strip()
-    if s.startswith(("#", ">", "```")):
+    if s.startswith(("#", ">", "```")) or _FIGURE.match(s):
         return True
     if re.match(r"^[-*]\s+", s) or re.match(r"^\d+\.\s+", s):
         return True

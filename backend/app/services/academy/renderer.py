@@ -145,7 +145,11 @@ _READ_JS = """
 """
 
 _ARTICLE_CSS = """
-.article-wrap{max-width:760px;margin:0 auto;padding:36px 24px 16px}
+.article-wrap{max-width:760px;margin:0 auto;padding:36px 24px 16px;
+  /* .appshell is a column flex and this centres itself with auto margins, so
+     without a width it shrink-wraps its content: a five-column table pushed the
+     whole article 12px past a 390px phone. Same trap as the examples page. */
+  width:100%;min-width:0;box-sizing:border-box}
 .crumbs{font-size:13px;color:var(--c-ink-soft);margin-bottom:20px}
 .crumbs a{color:var(--c-ink-soft);text-decoration:none}
 .crumbs a:hover{color:var(--c-ink)}
@@ -170,6 +174,9 @@ _ARTICLE_CSS = """
 .prose h3{font-family:var(--f-body);font-weight:600;font-size:18px;color:var(--c-ink);margin:28px 0 10px}
 .prose h4{font-weight:600;font-size:16px;color:var(--c-ink);margin:22px 0 8px}
 .prose p{margin:0 0 18px}
+.prose figure{margin:26px 0 28px}
+.prose figure img{display:block;width:100%;height:auto;border:1px solid var(--c-line);background:#fff}
+.prose figcaption{margin-top:8px;font-size:13.5px;line-height:1.5;color:var(--c-ink-faint)}
 .prose ul,.prose ol{margin:0 0 18px;padding-left:24px}
 .prose li{margin:0 0 8px}
 .prose li::marker{color:var(--c-ink-faint)}
