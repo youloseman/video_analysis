@@ -1505,6 +1505,18 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
             landmarker = PoseLandmarker.create_from_options(options)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
             result = landmarker.detect(mp_image)
+            if not result.pose_world_landmarks and max(h_img, w_img) > _RETRY_MAX_SIDE:
+                # A clean side view at 3050 px came back "no pose" and was found
+                # at 1400 (Kona photo, 2026-10-11) -- the detector misses large
+                # frames it handles fine smaller. Landmarks are normalized and
+                # the silhouette edge is a fraction of the height, so a reading
+                # off the smaller copy maps straight back onto the full photo.
+                k = _RETRY_MAX_SIDE / max(h_img, w_img)
+                small = cv2.resize(image_rgb, (round(w_img * k), round(h_img * k)),
+                                   interpolation=cv2.INTER_AREA)
+                result = landmarker.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=small))
+                logger.info("PHOTO_POSE_RETRY_SMALLER", side=max(h_img, w_img),
+                            found=bool(result.pose_world_landmarks))
             landmarker.close()
 
             if result.pose_world_landmarks:
@@ -1570,6 +1582,11 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
         # MediaPipe that cannot hand the mask over safely.
         "silhouette_top": silhouette_top,
     }
+
+
+# Longest side of the downscaled copy a large photo is retried on when the
+# detector finds no pose at full size (see detect_pose_in_image).
+_RETRY_MAX_SIDE = 1400
 
 
 def _segmentation_mask_supported() -> bool:
