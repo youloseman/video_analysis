@@ -189,3 +189,56 @@ class TestTheStatusColours:
         table = html[i:html.index("};", i)]
         assert re.search(r"\bacceptable:'medium'", table)
         assert re.search(r"\bneeds_work:'high'", table)
+
+
+class TestTheSaddleIsJudgedLikeTheVideoJudgesIt:
+    """Approved by Artur 2026-10-11: a knee marked at the bottom of the stroke
+    and well under the band read "needs work" in the table while the overall
+    stayed 94 "Excellent" -- 2 pts/deg against a band widened -12/+8."""
+
+    def test_the_table_shows_the_reference_band_not_a_widened_one(self):
+        from app.services.video_analysis.biomechanics.cycling_positions import get_cycling_reference
+        res = _measure(142.0)
+        assert res["angles_with_context"]["knee"]["bands"]["bdc"] == list(get_cycling_reference("tt_aero")["knee_at_bdc"])
+
+    def test_the_slope_is_the_videos(self):
+        from app.services.video_analysis.biomechanics.technique_scorer import (
+            SCORE_ANGLE_TOLERANCE,
+            score_in_range,
+        )
+        band = (138.0, 145.0)
+        # past the crank allowance the photo loses exactly what the video does
+        crank_lo = PA._CRANK_SLACK_DEG["bdc"][0]
+        for knee in (128.0, 124.0):
+            photo = PA._score_single_angle(
+                knee, *band, falloff=PA._knee_falloff(band), slack=PA._KNEE_SLACK["bdc"],
+            )
+            video = score_in_range(knee + crank_lo, *band, tolerance=SCORE_ANGLE_TOLERANCE)
+            assert abs(photo - max(20.0, video)) <= 1.0, (knee, photo, video)
+
+    def test_the_slack_is_what_a_frame_near_dead_centre_can_cost(self):
+        assert PA._CRANK_SLACK_DEG["bdc"] == (3.0, 2.0)
+        assert PA._CRANK_SLACK_DEG["tdc"] == (2.0, 3.0)
+        assert PA._KNEE_SLACK["bdc"] == (5.0, 4.0)
+
+    def test_a_red_knee_row_always_costs_points_and_an_amber_one_never_does(self):
+        band, slack = (138.0, 145.0), PA._KNEE_SLACK["bdc"]
+        for knee in range(120, 160):
+            status = PA._classify_angle_status(float(knee), *band, slack=slack)
+            score = PA._score_single_angle(float(knee), *band, falloff=PA._knee_falloff(band), slack=slack)
+            if status == "needs_work":
+                assert score < 100, knee
+            else:
+                assert score == 100, knee
+
+    def test_a_low_saddle_marked_at_the_bottom_is_not_excellent(self):
+        res = _measure(120.0)
+        assert res["score_by_phase"]["bdc"]["grade"] not in ("Excellent", "Good")
+        assert res["score_by_phase"]["bdc"]["per_angle"]["knee"]["score"] <= 30
+
+    def test_the_client_status_follows_the_same_slack(self):
+        html = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+        i = html.index("function classifyAngle(")
+        fn = html[i:html.index("\n}", i)]
+        assert "slack" in fn
+        assert "classifyAngle(a.value,band[0],band[1],a.slack&&a.slack[phase])" in html

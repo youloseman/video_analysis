@@ -289,18 +289,45 @@ def _bike_phase_bands(cycling_position: str | None) -> dict[str, dict[str, list[
     """The knee and hip bands at each dead centre, for one position.
 
     Both joints sweep through 50-80 deg every revolution, so a band means
-    something only at a named crank position. The knee bands are widened
-    (-12/+8): a still cannot verify the crank is exactly at dead centre, and a
-    rider should not be faulted for a frame caught a few degrees off it.
+    something only at a named crank position. These are the reference bands
+    themselves -- the ones the video grades against and the table prints. The
+    allowance for a frame caught a little off dead centre is applied by the
+    scorer (``_KNEE_SLACK``), not by widening what the rider is shown.
     """
     ref = get_cycling_reference(cycling_position)
     return {
-        "knee": {
-            "bdc": [ref["knee_at_bdc"][0] - 12, ref["knee_at_bdc"][1] + 8],
-            "tdc": [ref["knee_at_tdc"][0] - 12, ref["knee_at_tdc"][1] + 8],
-        },
+        "knee": {"bdc": list(ref["knee_at_bdc"]), "tdc": list(ref["knee_at_tdc"])},
         "hip": {"bdc": list(ref["hip_at_bdc"]), "tdc": list(ref["hip_at_tdc"])},
     }
+
+
+# Degrees of knee reading forgiven before the score starts falling, per side
+# (low, high), at each dead centre. Two parts, both measured rather than felt:
+#
+#   crank position: modelled on a 0.45/0.45 m leg over a 170 mm crank, a frame
+#     taken within 10 deg of bottom dead centre reads the knee 3 deg more bent
+#     on one side of it and 2 deg straighter on the other (the knee peaks just
+#     off BDC and is flat there). At the top it mirrors: off-TDC reads OPEN.
+#   instrument: the same 2 deg the video forgives (SCORE_ANGLE_TOLERANCE).
+#
+# The old allowance was a -12/+8 widened band -- +/-30 deg of crank, and on
+# the same model 12 deg of knee is ~4.5 cm of saddle height left unflagged.
+_CRANK_SLACK_DEG = {"bdc": (3.0, 2.0), "tdc": (2.0, 3.0)}
+_INSTRUMENT_SLACK_DEG = 2.0
+_KNEE_SLACK = {
+    p: (lo + _INSTRUMENT_SLACK_DEG, hi + _INSTRUMENT_SLACK_DEG)
+    for p, (lo, hi) in _CRANK_SLACK_DEG.items()
+}
+
+
+def _knee_falloff(band: tuple[float, float]) -> float:
+    """Points lost per degree past the slack: the video's slope
+    (``technique_scorer.score_in_range``: 100 / (2 x band width)), so a photo
+    and a clip of one saddle cannot disagree about how bad it is. On the TT
+    BDC band (138-145) that is 7.1 per degree, against the flat 2.0 every photo
+    metric used to share."""
+    width = max(band[1] - band[0], 1.0)
+    return 100.0 / (2.0 * width)
 
 
 def _get_cycling_optimal_ranges(
@@ -450,6 +477,7 @@ def _score_single_angle(
     value: float, optimal_min: float, optimal_max: float,
     low_tolerance: float = 1.0, high_tolerance: float = 1.0,
     falloff: float | None = None,
+    slack: tuple[float, float] = (0.0, 0.0),
 ) -> int | None:
     """Score one angle 0-100 by distance from the optimal range.
 
@@ -461,6 +489,9 @@ def _score_single_angle(
     (values > 1.0 = more lenient). Used to make a metric asymmetric, e.g.
     a deep aero trunk being *below* the optimal min is far less of a fault
     than being above it, so we forgive the low side more gently.
+
+    ``slack`` (low, high): degrees past the band forgiven outright before any
+    penalty -- the measurement's own uncertainty, not leniency about the fault.
     """
     if math.isnan(value):
         return None
@@ -474,9 +505,9 @@ def _score_single_angle(
     FLOOR = 20
 
     if value < optimal_min:
-        distance = (optimal_min - value) / max(low_tolerance, 0.1)
+        distance = max(0.0, optimal_min - value - slack[0]) / max(low_tolerance, 0.1)
     else:
-        distance = (value - optimal_max) / max(high_tolerance, 0.1)
+        distance = max(0.0, value - optimal_max - slack[1]) / max(high_tolerance, 0.1)
 
     score = 100.0 - distance * per_unit
     return int(round(max(FLOOR, min(100.0, score))))
@@ -522,8 +553,14 @@ def _score_photo_angles(
     sport: str,
     weights_override: dict[str, float] | None = None,
     cycling_position: str | None = None,
+    pedal_phase: str | None = None,
 ) -> dict[str, Any]:
-    """Score all angles and compute weighted overall score."""
+    """Score all angles and compute weighted overall score.
+
+    ``pedal_phase`` ("bdc"/"tdc") puts the bike knee on the video's slope with
+    the dead-centre slack; at the bottom it is the saddle-height reading, the
+    one fit number every other contact point is set from.
+    """
     weights = weights_override or _PHOTO_WEIGHTS.get(sport, PHOTO_RUNNING_WEIGHTS)
     is_aero = sport == "bike" and cycling_position in _AERO_POSITIONS
     per_angle: dict[str, dict[str, Any]] = {}
@@ -544,9 +581,14 @@ def _score_photo_angles(
         if angle_key == "hip" and value < HIP_MEDICAL_MIN_DEG:
             low_tol = 1.0
         scale = _NON_DEGREE_SCALES.get(angle_key)
+        falloff = scale[1] if scale else None
+        slack = (0.0, 0.0)
+        if sport == "bike" and angle_key == "knee" and pedal_phase in _KNEE_SLACK:
+            falloff = _knee_falloff((opt_min, opt_max))
+            slack = _KNEE_SLACK[pedal_phase]
         score = _score_single_angle(
             value, opt_min, opt_max, low_tol, high_tol,
-            falloff=scale[1] if scale else None,
+            falloff=falloff, slack=slack,
         )
         if score is None:
             continue
@@ -1071,12 +1113,18 @@ def _detect_camera_side(world_landmarks) -> str:
 def _classify_angle_status(
     value: float, optimal_min: float, optimal_max: float,
     metric: str | None = None,
+    slack: tuple[float, float] | None = None,
 ) -> str:
     """Classify a measurement: optimal / acceptable / needs_work.
 
     ``metric`` selects the tolerance scale -- degrees by default, or the
     metric's own units for ratios (see _NON_DEGREE_SCALES). Without it a
     ratio inherits a 3.0 margin and can never leave "acceptable".
+
+    ``slack`` (low, high) replaces the margin where the scorer forgives a
+    measured uncertainty (the bike knee at a dead centre): "acceptable" is
+    exactly the zone the score does not penalise, so a red row always costs
+    points and an amber one never does.
     """
     if math.isnan(value):
         return "insufficient_visibility"
@@ -1084,9 +1132,12 @@ def _classify_angle_status(
     if optimal_min <= value <= optimal_max:
         return "optimal"
 
-    margin = _metric_margin(metric, optimal_min, optimal_max)
+    if slack is not None:
+        lo_m, hi_m = slack
+    else:
+        lo_m = hi_m = _metric_margin(metric, optimal_min, optimal_max)
 
-    if (optimal_min - margin) <= value <= (optimal_max + margin):
+    if (optimal_min - lo_m) <= value <= (optimal_max + hi_m):
         return "acceptable"
 
     return "needs_work"
@@ -1664,10 +1715,16 @@ def analyze_from_pose(
                 "bands": bands, "phase": pedal_phase,
                 "note": _BIKE_PHASE_NOTES[angle_name],
             }
+            knee_slack = angle_name == "knee"
+            if knee_slack:
+                entry["slack"] = {p: list(s) for p, s in _KNEE_SLACK.items()}
             if pedal_phase in ("bdc", "tdc"):
                 lo, hi = bands[pedal_phase]
                 entry["optimal_min"], entry["optimal_max"] = lo, hi
-                entry["status"] = _classify_angle_status(angle_value, lo, hi)
+                entry["status"] = _classify_angle_status(
+                    angle_value, lo, hi,
+                    slack=_KNEE_SLACK[pedal_phase] if knee_slack else None,
+                )
             else:
                 entry["optimal_min"] = entry["optimal_max"] = None
                 entry["status"] = "phase_dependent"
@@ -1767,6 +1824,7 @@ def analyze_from_pose(
             p: _score_photo_angles(
                 angles, _get_cycling_optimal_ranges(cycling_position, p), sport,
                 _BIKE_PHASE_WEIGHTS[p], cycling_position=cycling_position,
+                pedal_phase=p,
             )
             for p in BIKE_PHOTO_PHASES
         }
