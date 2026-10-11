@@ -33,7 +33,13 @@ TIER_LIMITS: dict[str, tuple[int, str]] = {
     # anti-abuse ceiling now, not a product tier.
     TIER_STARTER: (10, "month"),
     TIER_ENTHUSIAST: (30, "month"),
-    TIER_FULL: (120, "month"),
+    # 120 -> 60. Nobody has ever come close: the heaviest real month across
+    # every account is single digits, and an athlete filming themselves twice
+    # a week lands around eight. A hundred and twenty was a number chosen to
+    # feel unlimited, and the cost of that is that it is also the number a
+    # scraper gets if an account is ever taken. Sixty is still far more than
+    # the product is used for and half the exposure.
+    TIER_FULL: (60, "month"),
     TIER_ADMIN: (15, "day"),
 }
 

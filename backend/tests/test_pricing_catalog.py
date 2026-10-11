@@ -101,6 +101,30 @@ def test_one_currency_everywhere():
     assert pricing.catalog()["currency"] == "usd"
 
 
+def test_no_card_writes_its_own_quota_down():
+    """The number of analyses a plan buys has one home: TIER_LIMITS.
+
+    It used to be typed into the card as well, and the two drifted the moment
+    Full went from 120 to 60 a month -- the code enforced sixty while the
+    price list went on promising a hundred and twenty, which is the kind of
+    discrepancy a customer discovers and is entitled to be annoyed about.
+    Same reasoning as the prices themselves: one catalogue, no transcriptions.
+    """
+    from app.models.user import tier_limit
+
+    for card in pricing.CARDS:
+        if not card.tier:
+            continue
+        quota = str(tier_limit(card.tier)[0])
+        quoted = [f.text for f in card.features
+                  if "analyses" in f.text or "/mo" in f.text]
+        assert quoted, f"the {card.tier} card never says how many analyses it buys"
+        for line in quoted:
+            assert f"<b>{quota}</b>" in line, (
+                f"the {card.tier} card says {line!r} but the code enforces {quota}"
+            )
+
+
 # --------------------------------------------------------------------------
 # The documents that used to hold their own copies
 # --------------------------------------------------------------------------

@@ -46,7 +46,7 @@ async def add_events(db, user_id: int, when: list[datetime]) -> None:
     [
         (TIER_STARTER, (10, "month")),
         (TIER_ENTHUSIAST, (30, "month")),
-        (TIER_FULL, (120, "month")),
+        (TIER_FULL, (60, "month")),
         (TIER_ADMIN, (15, "day")),
     ],
 )

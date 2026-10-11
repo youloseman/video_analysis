@@ -103,7 +103,7 @@ CARDS: tuple[Card, ...] = (
                   interval="forever"),
         ),
         features=(
-            Feature("<b>10</b> analyses / month"),
+            Feature(f"<b>{tier_limit('starter')[0]}</b> analyses / month"),
             Feature("<b>Your first report in full</b> — findings + coaching"),
             Feature("After that: score + skeleton, or <b>$4</b> to unlock one"),
             # Signed-in free accounts have always had cloud history -- /me
@@ -131,7 +131,7 @@ CARDS: tuple[Card, ...] = (
                   note="billed annually", interval="year"),
         ),
         features=(
-            Feature("<b>30</b> analyses / month"),
+            Feature(f"<b>{tier_limit('enthusiast')[0]}</b> analyses / month"),
             Feature("Full AI coaching + action plan"),
             Feature("Exact joint angles, no watermark"),
             Feature("Overlay video + slow-motion"),
@@ -160,7 +160,7 @@ CARDS: tuple[Card, ...] = (
         #   Expert Review -> users.expert_credits, granted on purchase and on
         #                    renewal, spent without touching Stripe
         features=(
-            Feature("Everything in Enthusiast, <b>120</b>/mo"),
+            Feature(f"Everything in Enthusiast, <b>{tier_limit('full')[0]}</b>/mo"),
             Feature("<b>10</b> equipment profiles — every bike and pair of shoes"),
             Feature("Compare one setup against another, not just week to week"),
             Feature("Branded PDF report to keep or hand to a coach"),
