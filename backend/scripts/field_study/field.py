@@ -156,7 +156,49 @@ def _records(study: dict) -> dict[int, dict]:
     return out
 
 
-def _measure(entry: dict, moved: dict, render: bool):
+# Face landmarks in MediaPipe's pose model: nose, eyes, ears, mouth corners.
+FACE = tuple(range(11))
+
+
+def _blur_face(img, nl, scale_px: float):
+    """Pixelate the face, feathered at the edge. Returns a new image.
+
+    Age-groupers are private people: a pro's face is the reason a race photo is
+    news, an age-grouper's is not, and they did not ask to appear in an article
+    about bike positions. Every age-group render is blurred before anything is
+    drawn on it, so no copy with a face exists outside the source photo.
+
+    The region is the face landmarks' box, padded by a share of the torso
+    length (``scale_px``): on a side view the near ear and the nose can sit a
+    few pixels apart, and a box that tight would leave the eye and the mouth.
+    """
+    import cv2
+    import numpy as np
+
+    H, W = img.shape[:2]
+    xs = [nl[i].x * W for i in FACE]
+    ys = [nl[i].y * H for i in FACE]
+    pad = max(0.18 * scale_px, 0.6 * max(max(xs) - min(xs), max(ys) - min(ys)))
+    x0, x1 = int(max(0, min(xs) - pad)), int(min(W, max(xs) + pad))
+    y0, y1 = int(max(0, min(ys) - pad)), int(min(H, max(ys) + pad))
+    if x1 - x0 < 4 or y1 - y0 < 4:
+        return img
+    out = img.copy()
+    roi = out[y0:y1, x0:x1]
+    blocks = max(4, (x1 - x0) // 14)
+    small = cv2.resize(roi, (blocks, max(4, blocks * (y1 - y0) // (x1 - x0))),
+                       interpolation=cv2.INTER_AREA)
+    pix = cv2.GaussianBlur(cv2.resize(small, (x1 - x0, y1 - y0), interpolation=cv2.INTER_NEAREST),
+                           (0, 0), (x1 - x0) / 20)
+    mask = np.zeros((y1 - y0, x1 - x0), np.float32)
+    cv2.ellipse(mask, ((x1 - x0) // 2, (y1 - y0) // 2), ((x1 - x0) // 2, (y1 - y0) // 2),
+                0, 0, 360, 1.0, -1)
+    mask = cv2.GaussianBlur(mask, (0, 0), (x1 - x0) / 16)[..., None]
+    out[y0:y1, x0:x1] = (pix * mask + roi * (1 - mask)).astype(img.dtype)
+    return out
+
+
+def _measure(entry: dict, moved: dict, render: bool, blur_face: bool = False):
     import cv2
     from app.services.video_analysis import photo_analyzer as PA
     from app.services.video_analysis.biomechanics import head_silhouette as HS
@@ -213,6 +255,10 @@ def _measure(entry: dict, moved: dict, render: bool):
                for k in KEYS if k in moved and math.hypot(*moved[k]) >= 0.5],
            "helmet_moved": bool(helmet and helmet["moved"])}
     if render:
+        if blur_face:
+            torso = math.dist((nl[ids["S"]].x * W, nl[ids["S"]].y * H),
+                              (nl[ids["H"]].x * W, nl[ids["H"]].y * H))
+            p["image"] = _blur_face(p["image"], nl, torso)
         ranges = PA._with_helmet_band(PA._get_cycling_optimal_ranges("triathlon", "uncertain"), True)
         out["jpg"] = PA._generate_photo_thumbnail(
             cv2, p["image"], nl, angles, r["score_by_phase"]["uncertain"], side, "bike",
@@ -258,8 +304,9 @@ def rebuild(study: dict) -> None:
         rec = recs.get(e["n"], {})
         if (rec.get("group") or e.get("group")) == "excluded":
             continue
-        d = _measure(e, rec.get("moved") or {}, True)
-        d["group"] = rec.get("group") or e.get("group", "pro")
+        group = rec.get("group") or e.get("group", "pro")
+        d = _measure(e, rec.get("moved") or {}, True, blur_face=(group == "age_group"))
+        d["group"] = group
         d["category"] = rec.get("category") or e.get("category")
         if d["group"] != "excluded":
             measured.append(d)
@@ -294,6 +341,19 @@ def rebuild(study: dict) -> None:
             f"![Position {n} of {count}: forearm tilt {a['forearm_tilt']:.0f}°, torso {a['trunk']:.0f}°, "
             f"shoulder {a['shoulder']:.0f}°, elbow {a['elbow']:.0f}°{helmet}.{extra}]"
             f"(/media/academy/{Path(study['media']).name}/position-{n:02d}.webp)")
+    # Age-groupers: their own folder, faces blurred (_blur_face), never into
+    # the article media until there is an age-group article to put them in.
+    ag_dir = social / "age-group"
+    ag_dir.mkdir(exist_ok=True)
+    for old in glob.glob(str(ag_dir / "*.jpg")):
+        os.remove(old)
+    for d in measured:
+        if d["group"] == "age_group":
+            a = d["angles"]
+            Image.open(io.BytesIO(d["jpg"])).convert("RGB").save(
+                ag_dir / (f"editor-{d['n']:02d}_{d['category'] or 'untagged'}"
+                          f"_forearm-{a['forearm_tilt']:.0f}_torso-{a['trunk']:.0f}.jpg"),
+                "JPEG", quality=93)
     for tag, key in study["riders"].items():
         d = next(x for x in items if x["key"] == key)
         webp(d["jpg"], media / f"rider-{tag}.webp", 84)
