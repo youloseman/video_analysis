@@ -319,6 +319,43 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 /* ============================================================
    Report showcase — real product screenshots
    ============================================================ */
+/* ---------- Kona study: the announcement under the hero ---------- */
+.hero-news{
+  display:inline-flex;align-items:center;gap:10px;margin:0 0 14px;max-width:100%;
+  font-size:14px;font-weight:600;color:#fff;text-decoration:none;
+  border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:5px 14px 5px 5px;
+  background:rgba(255,255,255,.07);transition:background-color .15s ease-out,border-color .15s ease-out;
+}
+.hero-news:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.4)}
+.hero-news b{flex:none;font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:#fff;background:var(--c-coral-btn);border-radius:999px;padding:4px 10px}
+.hero-news svg{flex:none;width:15px;height:15px}
+.hero-news + .hero-badge{display:flex;width:max-content}
+.kona{background:var(--c-panel);padding:110px 0}
+.kona-cols{display:grid;grid-template-columns:1fr 1.06fr;gap:56px;align-items:center}
+@media(max-width:960px){.kona-cols{grid-template-columns:1fr;gap:44px}}
+.kona h2.sec{font-size:clamp(30px,4vw,44px)}
+.kona-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:30px}
+.kona-stat{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-lg);padding:16px 18px}
+.ks-num{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:34px;line-height:1;
+  color:var(--c-navy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ks-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--c-coral);margin:8px 0 6px;font-weight:600}
+.kona-stat p{font-size:14px;line-height:1.45;color:var(--c-ink-soft)}
+.kona-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.kona-figs{display:grid;gap:14px}
+.kona-figs .shotframe{min-height:0}
+/* Top-left: the overlay's own labels fill the top-right of the photo. */
+.kona-figs .label-pill{right:auto;left:18px}
+.kona-cap{font-size:13px;color:var(--c-ink-faint);margin-top:-2px}
+@media(max-width:560px){
+  .kona{padding:84px 0}
+  .kona-stats{gap:10px}
+  .kona-stat{padding:13px 14px}
+  .ks-num{font-size:28px}
+  .kona-cta .btn{width:100%}
+  .hero-news{font-size:13px}
+}
 .showcase{background:var(--c-bg);padding:110px 0 120px}
 .showcase-head{text-align:center;max-width:760px;margin:0 auto 56px}
 .showcase-head .lede{margin:0 auto}
@@ -881,6 +918,11 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
   <div class="grid-tex"></div>
   <div class="wrap">
     <div>
+      <!-- The Kona study, announced where every visitor looks first. Points at
+           the section below rather than straight at the article, so a reader
+           sees the numbers before deciding to leave the page for them. -->
+      <a class="hero-news ld ld1" href="#kona"><b>New</b>Kona 2026: 21 pro bike positions, measured
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       <div class="hero-badge ld ld1"><i></i>AI form analysis · run &amp; ride</div>
       <h1 class="ld ld2">Your technique,<br><span class="accent">measured.</span></h1>
       <p class="sub ld ld3">Film a <b>10-second side-view clip</b> of your run or ride — or just
@@ -933,6 +975,65 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
 </header>
 
 <!-- ================= METRIC TICKER ================= -->
+
+<!-- ================= KONA STUDY ================= -->
+<!-- The Kona 2026 article went round the triathlon groups (50k views on the
+     first post). This is its front door on the landing: the four findings as
+     numbers, the article's own figures, and the article one click away. The
+     figures are the published ones in /media/academy/kona-2026/. -->
+<section id="kona" class="kona">
+  <div class="wrap kona-cols">
+    <div>
+      <p class="eyebrow">New research · Ironman World Championship 2026</p>
+      <h2 class="sec">We measured 21 pro<br>bike positions <span class="accent">at Kona.</span></h2>
+      <p class="lede">Race photographs, run through the same pose model Flapp uses on your clips,
+        with every joint point checked by hand. This is how the world's best actually sit on a
+        triathlon bike, and what an age-grouper should take from it.</p>
+      <div class="kona-stats">
+        <div class="kona-stat">
+          <div class="ks-num">25°</div>
+          <div class="ks-lbl">Forearm tilt, median</div>
+          <p>Not one pro rode flat forearms. All twenty-one were at 19° or more.</p>
+        </div>
+        <div class="kona-stat">
+          <div class="ks-num">21°</div>
+          <div class="ks-lbl">Torso from horizontal</div>
+          <p>Low, but not flat. A fully flat back is never the fastest trade.</p>
+        </div>
+        <div class="kona-stat">
+          <div class="ks-num">87°</div>
+          <div class="ks-lbl">Shoulder angle</div>
+          <p>Right on the classic 90° reference. A closed shoulder is a choice, not an error.</p>
+        </div>
+        <div class="kona-stat">
+          <div class="ks-num">+19%</div>
+          <div class="ks-lbl">Helmet above the back</div>
+          <p>Twenty of the twenty-one kept it within 23% of a torso length.</p>
+        </div>
+      </div>
+      <div class="cta-row kona-cta">
+        <a class="btn btn-accent btn-lg" id="konaRead" href="/academy/kona-2026-pro-bike-positions">Read the study
+          <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="btn btn-outline btn-lg" id="konaGo" href="/app#signup">Measure your own position</a>
+      </div>
+    </div>
+    <div class="kona-figs">
+      <div class="shotframe" data-fit="contain" role="button" tabindex="0" aria-label="Enlarge this figure">
+        <span class="label-pill">Kona 2026 · pro</span>
+        <img src="/media/academy/kona-2026/rider-b.webp" width="1179" height="771" loading="lazy"
+             alt="A professional triathlete at the 2026 Ironman World Championship with Flapp's overlay: forearm tilt 28°, torso 16°, shoulder 91°, elbow 78°, helmet 17% above the back">
+        <span class="zoomtag"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5L18 18M9 6.5v5M6.5 9h5"/></svg>Click to enlarge</span>
+      </div>
+      <div class="shotframe" data-fit="contain" role="button" tabindex="0" aria-label="Enlarge this figure">
+        <img src="/media/academy/kona-2026/field.webp" width="1600" height="841" loading="lazy"
+             alt="Chart: the twenty-one pro positions as dots against Flapp's triathlon ranges for torso, shoulder, elbow and forearm tilt, with the field median marked on each">
+        <span class="zoomtag"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5L18 18M9 6.5v5M6.5 9h5"/></svg>Click to enlarge</span>
+      </div>
+      <p class="kona-cap">Every dot is one pro position; the green strip is the range Flapp grades a
+        triathlon aero position against.</p>
+    </div>
+  </div>
+</section>
 
 <!-- ================= REPORT SHOWCASE ================= -->
 <section id="report" class="showcase">

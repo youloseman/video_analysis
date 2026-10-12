@@ -77,6 +77,7 @@ def test_the_background_rhythm_still_alternates(html, order):
     panels together reads as one long grey slab. This is the constraint that
     decided which pair could be swapped."""
     bg = [                       # prefix -> painted background, in one list so
+        ("KONA STUDY", "panel"),     # under the dark hero, above the report
         ("REPORT SHOWCASE", "bg"),   # adjacency here is adjacency on the page
         ("PROOF", "panel"),
         ("TRACKSIDE", "bg"),
