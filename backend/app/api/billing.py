@@ -726,6 +726,38 @@ async def _analysis_entry(
     return (row.data or None) if row is not None else None
 
 
+async def _analysis_media(
+    db: AsyncSession, user_id: int, client_id: str | None,
+) -> dict[str, str | None]:
+    """The pictures a reviewer needs, at full detail.
+
+    The history entry is what the athlete was served -- for a free preview,
+    a keyframe with its numbers held back -- and keyframes moved out of it
+    into their own column anyway, so the queue drew an empty frame on the
+    first real Coach Notes order (2026-10-12). The stored result keeps the
+    annotated frame WITH its numbers and the kinogram: the reviewer is not the
+    free reader.
+    """
+    if not client_id:
+        return {"keyframe": None, "kinogram": None}
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user_id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return {"keyframe": None, "kinogram": None}
+    res = row.result or {}
+    keyframe = res.get("keyframe_base64") or row.keyframe or (row.data or {}).get("keyframe")
+    kinogram = res.get("kinogram_base64")
+    return {
+        "keyframe": keyframe if isinstance(keyframe, str) else None,
+        "kinogram": kinogram if isinstance(kinogram, str) else None,
+    }
+
+
 def _analysis_brief(a: Analysis) -> dict[str, Any]:
     """One line per analysis for the reviewer's picker -- never the keyframe."""
     return {
@@ -801,6 +833,7 @@ async def admin_order_detail(
         "email": email,
         "admin_note": order.admin_note,
         "analysis": entry,
+        "media": await _analysis_media(db, order.user_id, order.analysis_client_id),
         "history": [_analysis_brief(a) for a in history],
         "report": report,
         "sport": sport,

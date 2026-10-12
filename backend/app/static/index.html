@@ -6210,8 +6210,25 @@ async function openOrderEditor(orderId){
   }catch(e){ host.innerHTML='<p class="hint" style="text-align:left">Couldn’t open that order.</p>'; return; }
   state.exOrder=d;
   host.innerHTML=exEditorHtml(d);
-  const kf=$('#exKeyframe');
-  if(kf && d.analysis && d.analysis.keyframe) kf.src=d.analysis.keyframe;
+  const kf=$('#exKeyframe'), kg=$('#exKinogram'), media=d.media||{};
+  if(kf) kf.src=media.keyframe||(d.analysis&&d.analysis.keyframe)||'';
+  if(kg&&media.kinogram) kg.src=media.kinogram;
+  if(d.clip_available) exLoadClip(d.id);
+}
+/* The clip is admin-only, and a <video src> request cannot carry the bearer
+   token -- the player sat black on a 401 (first real Coach Notes order,
+   2026-10-12). Fetched with the token instead and handed to the player as a
+   blob; typed mp4 so an H.264 .mov plays in Chrome too. */
+async function exLoadClip(orderId){
+  const v=$('#exClip'), note=$('#exClipNote'); if(!v) return;
+  try{
+    const r=await fetch('/admin/orders/'+encodeURIComponent(orderId)+'/clip',{headers:authHeaders()});
+    if(!r.ok) throw new Error('http '+r.status);
+    const blob=new Blob([await r.arrayBuffer()],{type:'video/mp4'});
+    if(v.dataset.url) URL.revokeObjectURL(v.dataset.url);
+    v.dataset.url=URL.createObjectURL(blob); v.src=v.dataset.url;
+    if(note) note.textContent='The athlete’s original clip.';
+  }catch(e){ if(note) note.textContent='Couldn’t load the clip ('+(e.message||'error')+').'; }
 }
 
 function exFieldHtml(s, report){
@@ -6289,8 +6306,9 @@ function exEditorHtml(d){
     </div>
     <aside class="ex-side">
       <div class="rr-h">The analysis</div>
-      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);margin-bottom:12px;background:#000" src="/admin/orders/${d.id}/clip" aria-label="The athlete&#39;s original clip"></video>`:''}
-      ${a.keyframe||a.has_keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip">':'<p class="hint" style="text-align:left;margin:0 0 12px">No stored frame.</p>'}
+      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);margin-bottom:12px;background:#000" aria-label="The athlete&#39;s original clip"></video><p class="hint" id="exClipNote" style="text-align:left;margin:0 0 12px">Loading the clip…</p>`:''}
+      ${(d.media&&d.media.keyframe)||a.keyframe||a.has_keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip">':'<p class="hint" style="text-align:left;margin:0 0 12px">No stored frame.</p>'}
+      ${d.media&&d.media.kinogram?'<img id="exKinogram" alt="Kinogram: one revolution of the athlete\'s pedal stroke" style="width:100%;border-radius:var(--radius);margin-bottom:12px">':''}
       <dl>
         <dt>Score</dt><dd>${a.score==null?'—':esc(String(a.score))}/100${a.grade?' ('+esc(a.grade)+')':''}</dd>
         <dt>Sport</dt><dd>${esc(pretty(a.sport||d.sport||'—'))}</dd>
