@@ -24,7 +24,7 @@ from typing import Any
 
 import stripe
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -1122,7 +1122,8 @@ async def customer_portal(
 
 @router.post("/webhook")
 async def webhook(
-    request: Request, db: AsyncSession = Depends(get_session),
+    request: Request, background: BackgroundTasks,
+    db: AsyncSession = Depends(get_session),
 ) -> dict[str, bool]:
     if not settings.stripe_enabled or not settings.stripe_webhook_secret:
         raise HTTPException(
@@ -1141,7 +1142,11 @@ async def webhook(
     except (ValueError, stripe.SignatureVerificationError):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid signature")
     event = json.loads(payload)
-    await _apply_event(db, event)
+    sale = await _apply_event(db, event)
+    if sale:
+        # After the response: Stripe wants its 2xx quickly, and a mail outage
+        # must never turn into a webhook failure that Stripe then retries.
+        background.add_task(notify.notify_sale, sale, f"{_base_url(request)}/app#reviews")
     return {"received": True}
 
 
@@ -1181,11 +1186,13 @@ def _set_tier(user: User, tier: str) -> None:
         clear_grant(user)
 
 
-async def _apply_event(db: AsyncSession, event: Any) -> None:
+async def _apply_event(db: AsyncSession, event: Any) -> dict[str, Any] | None:
+    """Apply one Stripe event. Returns the sale to announce, if it is a new one."""
     etype = event["type"]
     obj = event["data"]["object"]
+    sale = None
     if etype == "checkout.session.completed":
-        await _on_checkout_completed(db, obj)
+        sale = await _on_checkout_completed(db, obj)
     elif etype in ("customer.subscription.created", "customer.subscription.updated"):
         await _on_subscription_change(db, obj)
     elif etype == "customer.subscription.deleted":
@@ -1193,27 +1200,29 @@ async def _apply_event(db: AsyncSession, event: Any) -> None:
     elif etype == "invoice.payment_succeeded":
         await _on_invoice_paid(db, obj)
     else:
-        return
+        return None
     await db.commit()
+    return sale
 
 
-async def _record_order(db: AsyncSession, user: User, obj: Any) -> None:
+async def _record_order(db: AsyncSession, user: User, obj: Any) -> bool:
     """Insert (once) the one-time purchase this Checkout Session paid for.
 
     Idempotent on the session id: Stripe retries a webhook until it gets a 2xx,
     so the same ``checkout.session.completed`` can arrive several times.
+    Returns whether this delivery was the first.
     """
     session_id = str(obj.get("id") or "")
     if not session_id:
         logger.warning("ORDER_NO_SESSION_ID", user_id=user.id)
-        return
+        return False
     existing = (
         await db.execute(
             select(Order).where(Order.stripe_session_id == session_id)
         )
     ).scalar_one_or_none()
     if existing is not None:
-        return
+        return False
     now = _now_ms()
     meta = obj.get("metadata") or {}
     analysis_id = str(meta.get("analysis_client_id") or "").strip()[:64] or None
@@ -1238,9 +1247,16 @@ async def _record_order(db: AsyncSession, user: User, obj: Any) -> None:
         amount=obj.get("amount_total"), currency=obj.get("currency"),
         analysis=analysis_id,
     )
+    return True
 
 
-async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
+async def _on_checkout_completed(db: AsyncSession, obj: Any) -> dict[str, Any] | None:
+    """Apply a paid Checkout Session; return it as a sale if it is news.
+
+    "News" is the first delivery: a one-time order is new when its row is, a
+    subscription when the account was not already active on that tier. Stripe
+    redelivers until it gets a 2xx, and the owner should hear about a sale once.
+    """
     user = await _user_by_id(db, obj.get("client_reference_id"))
     if user is None:
         user = await _user_by_customer(db, obj.get("customer"))
@@ -1249,7 +1265,7 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
         # itself, so passing it raises TypeError and turns an unmatched webhook
         # into a 500 that Stripe then retries forever.
         logger.warning("WEBHOOK_NO_USER", stripe_event="checkout.session.completed")
-        return
+        return None
     # Keep the customer id linked (in case it was created Stripe-side).
     if obj.get("customer") and not user.stripe_customer_id:
         user.stripe_customer_id = str(obj["customer"])
@@ -1271,9 +1287,17 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
         },
     )
 
+    sale = {
+        "user_id": user.id, "email": user.email, "mode": obj.get("mode"),
+        "plan": str(meta_all.get("plan") or ""), "tier": meta_all.get("tier") or None,
+        "amount_total": obj.get("amount_total"), "currency": obj.get("currency"),
+        "analysis_client_id": str(meta_all.get("analysis_client_id") or "") or None,
+        "paid_ms": _now_ms(),
+    }
     if obj.get("mode") == "subscription":
         meta = obj.get("metadata") or {}
         tier = meta.get("tier") or None
+        is_new = not (tier and user.tier == tier and user.subscription_status == "active")
         if tier:
             _set_tier(user, tier)
             user.subscription_status = "active"
@@ -1288,18 +1312,20 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> None:
         # is a year out; granting on it is tracked with the rest of the Full
         # build-out.
         if tier == TIER_FULL and grant_expert_credits(user, str(obj.get("id") or "")):
+            sale["credit_granted"] = True
             logger.info(
                 "CREDIT_GRANTED", user_id=user.id,
                 credits=user.expert_credits, reason="full_subscription",
             )
-    else:
-        # A one-time purchase grants no tier, so nothing about the account would
-        # otherwise change. Record the order -- it is the only trace the customer
-        # (and the fulfilment queue) has that they paid.
-        await _record_order(db, user, obj)
-        meta = obj.get("metadata") or {}
-        if str(meta.get("plan") or "") == "unlock":
-            await _apply_unlock(db, user, meta.get("analysis_client_id"))
+        return sale if is_new else None
+    # A one-time purchase grants no tier, so nothing about the account would
+    # otherwise change. Record the order -- it is the only trace the customer
+    # (and the fulfilment queue) has that they paid.
+    is_new = await _record_order(db, user, obj)
+    meta = obj.get("metadata") or {}
+    if str(meta.get("plan") or "") == "unlock":
+        await _apply_unlock(db, user, meta.get("analysis_client_id"))
+    return sale if is_new else None
 
 
 async def _apply_unlock(

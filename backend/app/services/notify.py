@@ -216,3 +216,90 @@ def analysis_ready_email(
         'Stop sending me these</a></p></div>'
     )
     return subject, text, html
+
+
+# --------------------------------------------------------------------------
+# "Somebody paid" -- to the owner, not the customer.
+#
+# The first Coach Notes order (2026-10-11) was found two days in, by
+# accident, in the Stripe dashboard: nothing told anybody a review was owed,
+# and it comes with a 72-hour promise. Every sale is announced; the ones that
+# owe work say so in the subject line.
+# --------------------------------------------------------------------------
+REVIEW_PLANS = {"expert": "Expert Review", "notes": "Coach Notes"}
+NOTES_DUE_HOURS = 72
+
+
+def _local_time(ms: int) -> str:
+    from datetime import UTC, datetime
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    t = datetime.fromtimestamp(ms / 1000, UTC)
+    utc = t.strftime("%a %d %b %H:%M UTC")
+    try:
+        pt = t.astimezone(ZoneInfo("America/Vancouver"))
+    except ZoneInfoNotFoundError:   # no tz database in the image: UTC alone is still right
+        return utc
+    return f"{pt.strftime('%a %d %b %H:%M')} Pacific ({utc})"
+
+
+def sale_email(sale: dict, admin_url: str) -> tuple[str, str, str]:
+    """(subject, text, html) for the owner when a payment lands."""
+    plan = str(sale.get("plan") or "")
+    amount = sale.get("amount_total")
+    money = (f"{amount / 100:.2f} {str(sale.get('currency') or '').upper()}".strip()
+             if isinstance(amount, (int, float)) else "amount unknown")
+    review = REVIEW_PLANS.get(plan)
+    if sale.get("mode") == "subscription":
+        what = f"Subscription: {sale.get('tier') or 'unknown tier'}"
+    elif review:
+        what = review
+    elif plan == "unlock":
+        what = "Report unlock"
+    else:
+        what = plan or "One-time purchase"
+
+    rows = [("What", what), ("Amount", money), ("Buyer", sale.get("email") or "?"),
+            ("Paid", _local_time(sale["paid_ms"]))]
+    if review:
+        rows.append(("Analysis", sale.get("analysis_client_id")
+                     or "NOT LINKED -- pick one in the queue"))
+        if plan == "notes":
+            rows.append(("Due", _local_time(sale["paid_ms"] + NOTES_DUE_HOURS * 3600_000)
+                         + f" -- promised within {NOTES_DUE_HOURS} h"))
+    if sale.get("credit_granted"):
+        rows.append(("Note", "Includes an Expert Review credit -- the athlete can now order one."))
+
+    subject = (f"ACTION: new {review} order — {money}" if review
+               else f"New sale: {what} — {money}")
+    text = "\n".join(f"{k}: {v}" for k, v in rows)
+    if review:
+        text += f"\n\nOpen the review queue:\n{admin_url}\n"
+    html = (
+        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
+        'font-size:15px;line-height:1.6;color:#14294B;max-width:520px">'
+        f'<h1 style="font-size:20px;margin:0 0 12px">{_esc_html(subject)}</h1>'
+        '<table style="border-collapse:collapse">'
+        + "".join(
+            f'<tr><td style="padding:3px 14px 3px 0;color:#5A6478">{_esc_html(k)}</td>'
+            f'<td style="padding:3px 0"><b>{_esc_html(str(v))}</b></td></tr>'
+            for k, v in rows)
+        + "</table>"
+        + (f'<p style="margin:20px 0 0"><a href="{_esc_html(admin_url)}" '
+           'style="background:#2F6DE0;color:#fff;text-decoration:none;'
+           'padding:10px 18px;border-radius:8px;display:inline-block;'
+           'font-weight:600">Open the review queue</a></p>' if review else "")
+        + "</div>"
+    )
+    return subject, text, html
+
+
+def notify_sale(sale: dict, admin_url: str) -> bool:
+    """Email the owner about one sale. Blocking: run it off the event loop."""
+    to = settings.admin_email
+    if not to:
+        logger.warning("SALE_NOT_ANNOUNCED", reason="ADMIN_EMAIL not set",
+                       plan=sale.get("plan"), user_id=sale.get("user_id"))
+        return False
+    subject, text, html = sale_email(sale, admin_url)
+    return send_email(to, subject, text, html)
