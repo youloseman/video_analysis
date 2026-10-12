@@ -169,14 +169,17 @@ def _measure(entry: dict, moved: dict, render: bool):
     nl = [SimpleNamespace(x=lm.x, y=lm.y, z=lm.z, visibility=lm.visibility) for lm in p["normalized"]]
     corrected = []
     for k in KEYS:
+        # Every point in a study is checked by hand -- moved or confirmed where
+        # it was -- so it is seen, whatever the model's confidence in its own
+        # guess. Only raising the moved ones dropped angles as "insufficient
+        # visibility" twice: a misread video frame (editor #19), then a wrist
+        # Artur left where the model had put it, unsure (#23: elbow and forearm
+        # went NaN and took the pro medians with them).
+        nl[ids[k]].visibility = 1.0
         dx, dy = moved.get(k, (0.0, 0.0))
         if math.hypot(dx, dy) >= 0.5:
             nl[ids[k]].x += dx / scale / W
             nl[ids[k]].y += dy / scale / H
-            # A point a person placed is seen, whatever the model's confidence
-            # in its own guess was: a video frame the model misread (editor
-            # #19) otherwise dropped every angle as "insufficient visibility".
-            nl[ids[k]].visibility = 1.0
             corrected.append(ids[k])
     ox, oy = entry["origin"]
 
