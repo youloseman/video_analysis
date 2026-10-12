@@ -24,7 +24,6 @@ from app.services.video_analysis.pipeline import (
     MIN_OVERLAY_VISIBILITY,
     SPORT_SAMPLE_RATES,
     VideoAnalysisPipeline,
-    _draw_dashed_line,
     build_skeleton_geometry,
     landmarks_to_pixels,
 )
@@ -838,63 +837,18 @@ class VideoVisualizer:
                 chips.metric_chip((lx, ly), str(cfg["name"]).upper(), value_txt,
                                   status, scale=_sk, align=align)
 
-        # -- 2b. Head alignment + pelvic ratio overlays (bike only) --
-        if self.sport_type == "bike" and len(pixel_coords) > 25:
-            near = self.summary.get("near_side", "left")
-            s11x, s11y, _ = pixel_coords[11]
-            h23x, h23y, _ = pixel_coords[23]
-            bh_px = abs(s11y - h23y)
-
-            # Per-frame head alignment from extra_metrics
-            fr = (
-                self.analyzer.frame_results[analyzed_idx]
-                if analyzed_idx < len(self.analyzer.frame_results)
-                else None
-            )
-            if fr and fr.extra_metrics and bh_px > 40:
-                head_key = f"{near}_head_alignment"
-                head_score = fr.extra_metrics.get(head_key)
-                if head_score is not None and not np.isnan(head_score) and head_score > 0:
-                    if near == "left":
-                        sh_i, hp_i, ear_i = 11, 23, 7
-                    else:
-                        sh_i, hp_i, ear_i = 12, 24, 8
-
-                    shx, shy, shv = pixel_coords[sh_i]
-                    hpx, hpy, hpv = pixel_coords[hp_i]
-                    eax, eay, eav = pixel_coords[ear_i]
-
-                    if shv >= MIN_OVERLAY_VISIBILITY and hpv >= MIN_OVERLAY_VISIBILITY:
-                        _draw_dashed_line(cv2_mod, frame, (hpx, hpy), (shx, shy), (180, 180, 255), 1)
-                        dx_ext = shx - hpx
-                        dy_ext = shy - hpy
-                        ext_x = shx + int(dx_ext * 0.5)
-                        ext_y = shy + int(dy_ext * 0.5)
-                        _draw_dashed_line(cv2_mod, frame, (shx, shy), (ext_x, ext_y), (180, 180, 255), 1)
-
-                        if eav >= MIN_OVERLAY_VISIBILITY and self._annotates("head_alignment"):
-                            if self.hide_angle_values:
-                                h_status, h_text = "muted", "LOCKED"
-                            else:
-                                h_status = (
-                                    "good" if head_score >= 75
-                                    else ("warn" if head_score >= 50 else "bad")
-                                )
-                                h_text = f"{head_score:.0f}/100"
-                            hlx = max(5, min(width - 5, eax + int(28 * _sk)))
-                            hly = max(20, min(height - 20, eay - int(26 * _sk)))
-                            overlay_style.draw_leader(
-                                cv2_mod, frame, (eax, eay), (hlx, hly),
-                                overlay_style.STATUS_COLORS.get(h_status, overlay_style.INK_SOFT),
-                            )
-                            chips.metric_chip((hlx, hly), "HEAD POSITION", h_text,
-                                              h_status, scale=_sk)
-
-            # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
-            # places by inference, drawn beside a hip that already carries a chip;
-            # on the frame it read as a second, unexplained verdict about the same
-            # joint. The number stays in the report's tiles and the score. Artur's
-            # call, 2026-09-17.
+        # -- 2b. No head chip (bike) --
+        # The per-frame "HEAD POSITION n/100" chip drew the ear-under-the-
+        # joint-line score every aero rider passed. Its replacement, helmet
+        # above the top of the back, is one reading per clip off a few
+        # silhouette frames (video_helmet.py) and lives in the report; there is
+        # no per-frame outline to draw it from. 2026-10-12.
+        #
+        # No pelvic-ratio chip either. It is a ratio of two pelvis landmarks the
+        # model places by inference, drawn beside a hip that already carries a
+        # chip; on the frame it read as a second, unexplained verdict about the
+        # same joint. The number stays in the report's tiles and the score.
+        # Artur's call, 2026-09-17.
 
         # -- 3. (header is staged on `chips` up top and painted in the flush below) --
 
@@ -998,9 +952,6 @@ class VideoVisualizer:
         # clip-level verdicts, so they are judged on those rather than on a
         # frame count.
         if self.sport_type == "bike":
-            head_avg = self.summary.get("head_alignment_avg")
-            if isinstance(head_avg, (int, float)) and not np.isnan(head_avg) and head_avg < 75:
-                material.add("head_alignment")
             pelvic = self.summary.get("pelvic_ratio")
             if isinstance(pelvic, (int, float)) and pelvic > 0:
                 from app.services.video_analysis.biomechanics.cycling_positions import (

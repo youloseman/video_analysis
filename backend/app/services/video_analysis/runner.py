@@ -1114,6 +1114,22 @@ def analyze_from_frames(
         except Exception as e:  # noqa: BLE001 -- a metric must not break the run
             logger.warning("PEAK_VELOCITY_LIFT_FAILED", err=str(e))
 
+    # Helmet above the top of the back -- the photo report's reading, so a
+    # photo and a clip of one rider agree about the head (video_helmet.py).
+    # Replaces the old "head position" score in the clip's rubric; measured
+    # before scoring because the scorer grades it.
+    if is_bike:
+        try:
+            from app.services.video_analysis.video_helmet import measure_clip_helmet
+
+            clip_helmet = measure_clip_helmet(video_path, raw_frame_data, analyzer.camera_side)
+            if clip_helmet:
+                summary["helmet_above_back"] = clip_helmet["value"]
+                summary["helmet_check"] = clip_helmet["check"]
+                summary["helmet_samples"] = clip_helmet["values"]
+        except Exception as e:  # noqa: BLE001 -- a metric must not break the run
+            logger.warning("CLIP_HELMET_FAILED", err=str(e))
+
     # Step 4: partial-analysis quality gate.
     max_valid_frames = max(
         (

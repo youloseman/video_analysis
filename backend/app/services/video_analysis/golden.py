@@ -210,6 +210,7 @@ def build_record(result: dict[str, Any]) -> dict[str, Any]:
         # bike
         "knee_at_bdc", "knee_at_tdc", "trunk_angle_avg", "hip_angle_avg",
         "elbow_angle_avg", "shoulder_angle_avg", "head_alignment_avg",
+        "helmet_above_back",
         "pelvic_ratio", "forearm_tilt_avg", "ankle_at_bdc",
         "knee_extension_velocity_dps", "knee_flexion_velocity_dps",
         # run
@@ -226,6 +227,7 @@ def build_record(result: dict[str, Any]) -> dict[str, Any]:
     for key in (
         "saddle_height_assessment", "near_side", "foot_strike",
         "slow_motion_factor", "time_base_uncertain", "position_archetype",
+        "helmet_check",
     ):
         if key in sm:
             value = sm[key]

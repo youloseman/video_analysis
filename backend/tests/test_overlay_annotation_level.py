@@ -101,7 +101,9 @@ def test_all_level_keeps_every_joint():
 
 
 def test_bike_extras_follow_their_own_clip_level_verdict():
-    """Head position and pelvic tilt are judged on the summary, not on frames."""
+    """Pelvic tilt is judged on the summary, not on frames. The head chip is
+    gone (2026-10-12): it drew the ear-under-the-joint-line score every aero
+    rider passed, and its replacement is one reading per clip, in the report."""
     configs = [_cfg("right_knee", (138, 145))]
     history = {"right_knee": [140.0] * 20}
     quiet = _visualizer(configs, history,
@@ -109,9 +111,9 @@ def test_bike_extras_follow_their_own_clip_level_verdict():
     assert not quiet._annotates("head_alignment")
     assert not quiet._annotates("pelvic_ratio")
 
-    flagged = _visualizer(configs, history,
-                          summary={"head_alignment_avg": 40.0, "pelvic_ratio": 0})
-    assert flagged._annotates("head_alignment")
+    low = _visualizer(configs, history,
+                      summary={"head_alignment_avg": 40.0, "pelvic_ratio": 0})
+    assert not low._annotates("head_alignment"), "no per-frame head verdict any more"
 
 
 def test_a_clean_clip_still_shows_the_headline_joints():

@@ -64,7 +64,7 @@ def _bike_summary(**over):
         "trunk_angle_avg": 45.0,
         "elbow_angle_avg": 150.0,
         "shoulder_angle_avg": 88.0,
-        "head_alignment_avg": 80.0,
+        "helmet_above_back": 18.0,
         "pelvic_ratio": 0.5,
         "forearm_tilt_avg": 5.0,
         "saddle_height_assessment": "optimal",
@@ -194,10 +194,10 @@ def test_cycling_score_carries_coverage():
 
 def test_cycling_missing_measures_are_named():
     summary = _bike_summary()
-    del summary["head_alignment_avg"]
+    del summary["shoulder_angle_avg"]
     del summary["pelvic_ratio"]
     cov = score_cycling(summary, {}, cycling_position="triathlon")["coverage"]
-    assert set(cov["missing"]) == {"head_alignment", "pelvic_ratio"}
+    assert set(cov["missing"]) == {"shoulder_angle", "pelvic_ratio"}
     assert cov["measures_scored"] == len(CYCLING_WEIGHTS) - 2
 
 

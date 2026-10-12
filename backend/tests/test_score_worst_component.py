@@ -30,21 +30,24 @@ def _scored(components: dict[str, float]) -> int:
     )
 
 
-# Component scores as the two clips actually produced them.
+# Component scores as the two clips actually produced them. Their head score
+# (99.9 and 100) became the helmet term in 2026-10 at 0.06 instead of 0.10:
+# the plain means below moved by a point or two, the pulled scores and the
+# grades they pin did not.
 FB01 = {
     "knee_bdc": 100.0, "knee_tdc": 91.42, "trunk_angle": 97.35,
     "saddle_fit": 100.0, "elbow_angle": 100.0, "shoulder_angle": 84.68,
-    "forearm_tilt": 100.0, "head_alignment": 99.91, "pelvic_ratio": 100.0,
+    "forearm_tilt": 100.0, "helmet_above_back": 100.0, "pelvic_ratio": 100.0,
 }
 FB02 = {
     "knee_bdc": 30.5, "knee_tdc": 100.0, "trunk_angle": 100.0,
     "saddle_fit": 40.0, "elbow_angle": 100.0, "shoulder_angle": 100.0,
-    "forearm_tilt": 100.0, "head_alignment": 100.0, "pelvic_ratio": 100.0,
+    "forearm_tilt": 100.0, "helmet_above_back": 100.0, "pelvic_ratio": 100.0,
 }
 
 
 def test_a_saddle_clearly_too_high_no_longer_reads_as_a_b():
-    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 81   # the old mean
+    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 80   # the old mean
     assert _scored(FB02) == 63
     assert assign_grade(_scored(FB02)) == "C"
 
@@ -62,7 +65,7 @@ def test_a_clean_position_is_left_alone():
 
 def test_one_wrecked_component_can_no_longer_hide_behind_eight_good_ones():
     wrecked = _bike(knee_bdc=0.0, saddle_fit=40.0)
-    assert compute_weighted_score(wrecked, CYCLING_WEIGHTS) == 75
+    assert compute_weighted_score(wrecked, CYCLING_WEIGHTS) == 73
     assert _scored(wrecked) == 48
 
 
@@ -82,8 +85,16 @@ def test_an_unweighted_extra_score_cannot_define_the_worst_case():
 def test_the_plain_mean_is_still_the_default():
     """Running and swimming keep the old aggregation until there is a fixture
     to measure the change against."""
-    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 81
+    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 80
 
 
 def test_no_measured_component_still_returns_the_neutral_default():
     assert _scored({}) == 50
+
+
+def test_a_perfect_position_is_100_whatever_the_weights_sum_to():
+    """The weights stopped summing to exactly 1.0 when the helmet term came in
+    at 0.06; a position perfect on every component averaged to 99.99999 and
+    was truncated to 99."""
+    assert sum(CYCLING_WEIGHTS.values()) != 1.0
+    assert compute_weighted_score(_bike(), CYCLING_WEIGHTS) == 100

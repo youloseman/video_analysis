@@ -3638,7 +3638,12 @@ function bikeTiles(s, position){
                 ps.style==='toe_down'?'warn':null, true));
   }
   if(s.pelvic_ratio!=null) t.push(tile('Pelvic ratio',num(s.pelvic_ratio,2),'×'));
-  if(s.head_alignment_avg!=null) t.push(tile('Head align',num(s.head_alignment_avg),'/100','higher is better'));
+  /* Helmet above the top of the back (video_helmet.py): the photo's reading.
+     The old 'Head align /100' tile showed a score every aero rider passed. */
+  if(s.helmet_above_back!=null){ const hv=s.helmet_above_back;
+    t.push(tile('Helmet above back',(hv>=0?'+':'')+num(hv,1),'%',
+      s.helmet_check?'not graded: no clear helmet edge · film in your race helmet':'of torso · Kona pros +12 to +28%',
+      (!s.helmet_check&&hv>23)?'warn':null)); }
   if(s.saddle_height_assessment){
     // The millimetres, when the crank circle gave the clip a ruler. Said
     // with its interval and its assumption -- a "raise 8 mm" with neither
@@ -6910,7 +6915,7 @@ const COVERAGE_NAMES={
   knee_swing:'knee in swing', waveform_similarity:'stride shape',
   knee_bdc:'knee at the bottom', knee_tdc:'knee at the top',
   trunk_angle:'trunk angle', elbow_angle:'elbow angle',
-  shoulder_angle:'shoulder angle', head_alignment:'head position',
+  shoulder_angle:'shoulder angle', head_alignment:'head position', helmet_above_back:'helmet above back',
   pelvic_ratio:'pelvic tilt', forearm_tilt:'forearm tilt',
   saddle_fit:'saddle fit',
 };
@@ -7036,7 +7041,7 @@ const CONF_META={
    test_score_breakdown_spa.py reads both and fails if they drift. */
 const SCORE_PARTS={
   bike:{knee_bdc:['Knee at bottom',.22],trunk_angle:['Trunk',.18],knee_tdc:['Knee at top',.15],
-        elbow_angle:['Elbow',.10],shoulder_angle:['Shoulder',.10],head_alignment:['Head position',.10],
+        elbow_angle:['Elbow',.10],shoulder_angle:['Shoulder',.10],helmet_above_back:['Helmet above back',.06],
         pelvic_ratio:['Pelvis',.05],forearm_tilt:['Forearm',.05],saddle_fit:['Saddle height',.05]},
   run:{cadence:['Cadence',.16],trunk_lean:['Trunk lean',.13],overstride:['Overstride',.13],
        knee_contact:['Knee at contact',.12],phase_stability:['Stride stability',.12],

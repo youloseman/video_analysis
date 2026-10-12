@@ -135,7 +135,6 @@
   "score_breakdown": {
    "elbow_angle": 100.0,
    "forearm_tilt": 100.0,
-   "head_alignment": 88.41,
    "knee_bdc": 74.0,
    "knee_tdc": 100.0,
    "pelvic_ratio": 100.0,
@@ -151,6 +150,7 @@
   "summary.elbow_angle_avg": 96.36,
   "summary.forearm_tilt_avg": 15.99,
   "summary.head_alignment_avg": 88.41,
+  "summary.helmet_above_back": 17.1,
   "summary.hip_angle_avg": 72.97,
   "summary.knee_at_bdc": 150.64,
   "summary.knee_at_tdc": 62.07,
@@ -167,13 +167,12 @@
   "confidence_level": "medium",
   "coverage": {
    "excluded": [],
-   "measures_scored": 9,
-   "measures_total": 9,
+   "measures_scored": 8,
+   "measures_total": 8,
    "missing": [],
    "scored": [
     "elbow_angle",
     "forearm_tilt",
-    "head_alignment",
     "knee_bdc",
     "knee_tdc",
     "pelvic_ratio",
@@ -209,7 +208,6 @@
   "score_components": [
    "elbow_angle",
    "forearm_tilt",
-   "head_alignment",
    "knee_bdc",
    "knee_tdc",
    "pelvic_ratio",
@@ -220,6 +218,7 @@
   "score_withheld": null,
   "sport_type": "bike",
   "status": "completed",
+  "summary.helmet_check": true,
   "summary.near_side": "left",
   "summary.position_archetype": "saddle_chaser",
   "summary.saddle_height_assessment": "too_high",

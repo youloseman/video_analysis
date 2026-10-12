@@ -598,11 +598,19 @@ def _with_helmet_band(
     return {**ranges, "helmet_above_back": _HELMET_BAND}
 
 
+# Two different riders trip the flag: an aero helmet whose tail lies flush on
+# the back (the point can land on the helmet), and no helmet at all -- a
+# trainer session filmed bare-headed, where the neck rises into the head with
+# no edge to find. On Artur's own trainer clips the point was right and the
+# flag fired anyway. Both get the same honest answer: not graded until a
+# person has placed the point, and the reading compares with pros in aero
+# helmets, so it means most with the race helmet on.
 _HELMET_CHECK_WARNING = (
-    "Check the top-of-back point: your helmet's tail seems to lie on your back, "
-    "and where back ends and helmet begins is hard to see. If the green point "
-    "sits on the helmet, use Adjust joints to drag it to the highest point of "
-    "your back."
+    "Check the top-of-back point: the outline shows no clear edge where your "
+    "back ends and your helmet begins. If you wore your race helmet and the "
+    "green point sits on it, use Adjust joints to drag it to the highest point "
+    "of your back. Without a helmet this reads your head, not a helmet: the "
+    "Kona pros it is compared with all wore aero helmets."
 )
 
 _AERO_TRUNK_EXTREME_NOTE = (

@@ -15,16 +15,19 @@ from app.services.video_analysis.biomechanics.technique_scorer import score_cycl
 SUMMARY = {
     "frames_analyzed": 150, "knee_at_bdc": 140.0, "knee_at_tdc": 70.0,
     "trunk_angle_avg": 45.0, "elbow_angle_avg": 155.0, "shoulder_angle_avg": 90.0,
-    "head_alignment_avg": 90.0, "pelvic_ratio": 2.5, "saddle_height_assessment": "optimal",
+    "helmet_above_back": 15.0, "pelvic_ratio": 2.5, "saddle_height_assessment": "optimal",
     "forearm_tilt_avg": -25.0,
 }
 
 
-def test_the_hoods_are_scored_on_eight_measures_and_say_eight():
+def test_the_hoods_are_scored_on_seven_measures_and_say_seven():
+    """Forearm tilt and the helmet reading are aero-bar measures: off the
+    bars both leave the rubric rather than counting as missing."""
     out = score_cycling(SUMMARY, {}, cycling_position="road_hoods")
     assert "forearm_tilt" not in out["component_scores"]
+    assert "helmet_above_back" not in out["component_scores"]
     cov = out["coverage"]
-    assert cov["measures_total"] == 8 and cov["measures_scored"] == 8
+    assert cov["measures_total"] == 7 and cov["measures_scored"] == 7
     assert cov["missing"] == [] and cov["weight_covered"] == 1.0
     assert out["overall_score"] >= 95
     drops = score_cycling(SUMMARY, {}, cycling_position="road_drops")

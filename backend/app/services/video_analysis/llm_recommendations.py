@@ -363,7 +363,7 @@ def _bike_data_block(
         f"- Shoulder angle: {_fmt(summary.get('shoulder_angle_avg'), '°')}"
         f"{rng('shoulder_angle', 'shoulder_angle_avg')}",
         f"- Pelvic ratio: {_fmt(summary.get('pelvic_ratio'), 'x')}",
-        f"- Head alignment score: {_fmt(summary.get('head_alignment_avg'))}",
+        _helmet_prompt_line(summary),
         f"- Saddle height assessment: {summary.get('saddle_height_assessment', 'n/a')}",
     ]
     arch = summary.get("position_archetype")
@@ -672,11 +672,16 @@ def _materiality_block(
         elif status == "warn":
             borderline.append(shown)
 
-    # Head alignment is a 0-100 score rather than a banded angle, so it has no
-    # entry in reference_bands; the overlay's own bar is the one to match.
-    head = summary.get("head_alignment_avg")
-    if isinstance(head, (int, float)) and not math.isnan(float(head)) and head < 75:
-        material.append(f"Head alignment ({float(head):.0f}/100)")
+    # The helmet reading: amber at worst (never a fix-first item), and only
+    # where the scorer grades it -- aero bars, a reading that did not flag
+    # itself.
+    helmet = summary.get("helmet_above_back")
+    if isinstance(helmet, (int, float)) and not summary.get("helmet_check"):
+        from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+
+        if helmet > KONA_PRO_FREE_UP_TO:
+            borderline.append(f"Helmet {helmet:+.0f}% of torso above the back "
+                              f"(Kona pros: up to +{KONA_PRO_FREE_UP_TO:.0f}%)")
 
     lines: list[str] = []
     if material:
@@ -914,6 +919,27 @@ _PHOTO_METRIC_UNITS: dict[str, tuple[str, str]] = {
     "head_alignment": ("/100", " [a 0-100 tuck score, NOT degrees]"),
     "pelvic_ratio": ("x", " [a ratio, NOT degrees]"),
 }
+
+
+def _helmet_prompt_line(summary: dict[str, Any]) -> str:
+    """The clip's helmet reading for the coach, with how to read it."""
+    from app.services.video_analysis.biomechanics.head_silhouette import (
+        KONA_PRO_FREE_UP_TO,
+        KONA_PRO_MEDIAN,
+        KONA_PRO_RANGE,
+    )
+
+    v = summary.get("helmet_above_back")
+    if not isinstance(v, (int, float)):
+        return "- Helmet above the back: not measured on this clip"
+    note = (" -- NOT graded: the outline shows no clear helmet edge (a helmet tail "
+            "lying on the back, or no helmet at all, e.g. a trainer session); do NOT "
+            "judge it, at most suggest filming in the race helmet"
+            if summary.get("helmet_check") else "")
+    return (f"- Helmet above the back: {v:+.1f}% of torso length [how far the top of "
+            f"the helmet rises above a level line through the top of the back; NOT "
+            f"degrees]. Kona pros {KONA_PRO_RANGE[0]:+.0f}% to {KONA_PRO_RANGE[1]:+.0f}%, "
+            f"median {KONA_PRO_MEDIAN:+.0f}%, free up to +{KONA_PRO_FREE_UP_TO:.0f}%{note}")
 
 
 def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:

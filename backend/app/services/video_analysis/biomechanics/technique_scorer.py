@@ -43,7 +43,12 @@ CYCLING_WEIGHTS = {
     "knee_tdc": 0.15,
     "elbow_angle": 0.10,
     "shoulder_angle": 0.10,
-    "head_alignment": 0.10,
+    # Was "head_alignment": 0.10 -- the ear under a line through the joint
+    # centres, which every aero rider passed (all twenty-one Kona pros scored
+    # 100): a tenth of the score for free. Its replacement is the photo's
+    # helmet-above-back reading, at the photo's weight, graded only on aero
+    # positions and only when the reading can be trusted (score_cycling).
+    "helmet_above_back": 0.06,
     "pelvic_ratio": 0.05,
     "forearm_tilt": 0.05,
     "saddle_fit": 0.05,
@@ -166,7 +171,10 @@ def compute_weighted_score(
         if candidates:
             overall -= worst_pull * (overall - min(candidates))
 
-    return int(np.clip(overall, 0, 100))
+    # The epsilon is floating-point dust, not leniency: with weights that do
+    # not sum to exactly 1.0 a position perfect on every component averaged
+    # to 99.99999 and truncated to 99.
+    return int(np.clip(overall + 1e-9, 0, 100))
 
 
 def score_coverage(
@@ -377,6 +385,15 @@ def score_running(
     }
 
 
+def helmet_component_score(value: float) -> float:
+    """The helmet reading as a 0-100 component: the photo scorer's rule."""
+    from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+
+    if value <= KONA_PRO_FREE_UP_TO:
+        return 100.0
+    return max(70.0, 100.0 - 2.0 * (value - KONA_PRO_FREE_UP_TO))
+
+
 def score_cycling(
     summary: dict[str, Any],
     angle_stats: dict[str, dict[str, float]],
@@ -470,10 +487,18 @@ def score_cycling(
     else:
         weights.pop("forearm_tilt", None)
 
-    # Head alignment (already a score 0-100, use directly)
-    head = summary.get("head_alignment_avg", 0)
-    if head > 0:
-        components["head_alignment"] = head
+    # Helmet above the top of the back (video_helmet.py): free up to where
+    # twenty of the twenty-one Kona pros sat, amber with a small penalty
+    # above, never red -- the photo rule, from the same constants. Off aero
+    # bars, or when the reading flagged itself (a helmet tail lying flush on
+    # the back can put the top-of-back point on the helmet), it is shown and
+    # not graded, so it leaves the rubric rather than counting as missing.
+    helmet = summary.get("helmet_above_back")
+    if (cycling_position in AERO_POSITIONS and helmet is not None
+            and not summary.get("helmet_check")):
+        components["helmet_above_back"] = helmet_component_score(helmet)
+    else:
+        weights.pop("helmet_above_back", None)
 
     # Pelvic ratio (scored against ratio thresholds)
     pelvic = summary.get("pelvic_ratio", 0)
@@ -724,7 +749,6 @@ def build_severity_map(
         "elbow_angle_avg": "elbow_angle",
         "shoulder_angle_avg": "shoulder_angle",
         "forearm_tilt_avg": "forearm_tilt",
-        "head_alignment_avg": "head_alignment",
         "pelvic_ratio": "pelvic_ratio",
     }
 
@@ -752,5 +776,16 @@ def build_severity_map(
         val = summary.get(summary_key)
         if val is not None and (not isinstance(val, (int, float)) or val != 0):
             severity_map[ref_key] = classify_metric_severity(position, ref_key, float(val))
+
+    # Helmet above the back: graded where score_cycling grades it, amber at
+    # worst -- above where twenty of the twenty-one Kona pros sat.
+    helmet = summary.get("helmet_above_back")
+    if isinstance(helmet, (int, float)) and not summary.get("helmet_check"):
+        from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+        from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+
+        if position in AERO_POSITIONS:
+            severity_map["helmet_above_back"] = (
+                "OPTIMAL" if helmet <= KONA_PRO_FREE_UP_TO else "ACCEPTABLE")
 
     return severity_map

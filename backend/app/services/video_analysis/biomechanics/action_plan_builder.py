@@ -808,10 +808,19 @@ def build_action_plan(
             good_metrics, "forearm_tilt", _get_value("forearm_tilt", sm),
             ref["forearm_tilt"], "Forearm tilt",
         )
-    _check_informational_metric(
-        good_metrics, "head_alignment", _get_value("head_alignment", sm),
-        ref["head_alignment"], "Head alignment",
-    )
+    # No "Head alignment" strong point: that score praised every aero rider
+    # (an ear under a line inside the body). The helmet reading that replaced
+    # it is praised only where it is graded -- aero bars, a trusted reading --
+    # and within where twenty of the twenty-one Kona pros sat.
+    helmet = sm.get("helmet_above_back")
+    if (position in AERO_POSITIONS and isinstance(helmet, (int, float))
+            and not sm.get("helmet_check")):
+        from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+
+        _check_informational_metric(
+            good_metrics, "helmet_above_back", float(helmet),
+            (-100.0, KONA_PRO_FREE_UP_TO), "Helmet above the back",
+        )
     _check_informational_metric(
         good_metrics, "pelvic_ratio", _get_value("pelvic_ratio", sm),
         ref["pelvic_ratio"], "Pelvic rotation ratio",
