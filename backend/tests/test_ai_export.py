@@ -123,7 +123,10 @@ def test_no_findings_reads_as_a_result_not_as_a_gap():
     """"Nothing flagged" has to be stated, or a model invents a finding out of a
     metric sitting a degree off its band."""
     md = ai_export.build_markdown(_bike_result())
-    assert "no material problem found" in md
+    assert "None flagged" in md
+    # ...and not as "no problems": the first paid order's coach leaned on
+    # exactly that sentence to write "Nothing to fix" over two red rows.
+    assert "no material problem found" not in md
 
 
 def test_tracked_frame_counts_are_carried_per_angle():

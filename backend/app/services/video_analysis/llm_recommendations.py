@@ -19,6 +19,7 @@ from typing import Any
 import structlog
 
 from app.core.config import settings
+from app.services.video_analysis import concern_hints
 from app.services.video_analysis.biomechanics.fit_tradeoffs import (
     build_tradeoff_block,
 )
@@ -45,12 +46,18 @@ SYSTEM_PROMPT = (
     "working as \"on the edge of the band, worth an eye\".\n"
     "- Only a metric clearly outside its range (marked out of range / "
     "needs_work), or a rule-based detected issue, may become a Fix first item.\n"
-    "- If nothing clears that floor, DO NOT invent a problem and do not pad "
-    "the section to reach three. Rename the heading to **Nothing to fix** and "
-    "use it to say what the athlete should hold on to, plus any sustainability "
-    "caveat the data actually contains. Telling an athlete their position is "
-    "solid, when it is, is the correct answer -- not a failure to find "
-    "something.\n\n"
+    "- The data states the material problems outright. When it lists ANY, "
+    "Fix first must address them (up to three, most important first) and "
+    "**Nothing to fix** is forbidden -- an empty rule-based issue list does not "
+    "change that. If the footage cannot tell you the cause, say what to check "
+    "or try first; never call a listed problem fine, solid or harmonious.\n"
+    "- Only when the data says the material problems are NONE: do not invent "
+    "one and do not pad the section to reach three. Rename the heading to "
+    "**Nothing to fix** and use it to say what the athlete should hold on to, "
+    "plus any sustainability caveat the data actually contains.\n"
+    "- A checklist of every reading outside or on the edge of its band, with "
+    "what to check, is appended under your text automatically. Do not write "
+    "your own list of all the numbers.\n\n"
     "TRADE-OFFS (this governs every fix you prescribe):\n"
     "- Body angles on a bike are coupled: the contact points are the saddle, "
     "the bars and the pedals, so almost nothing moves alone. When the data "
@@ -536,15 +543,18 @@ def _knee_velocity_line(summary: dict) -> str:
 
 def _issues_block(issues: list[dict]) -> str:
     if not issues:
-        # The video prompt ships raw numbers with no per-metric status, so the
-        # rule-based checks are the materiality signal here. "Nothing flagged"
-        # has to be stated as a result, or the model reads the bare numbers and
-        # manufactures a finding out of a metric sitting a degree off its band.
+        # "Nothing flagged" has to be stated as a result, or a model reads the
+        # bare numbers and manufactures a finding out of a metric sitting a
+        # degree off its band. But it must not read as "no problems": these
+        # checks cover a few metrics only (on a bike, saddle height and trunk),
+        # and "Treat this as no material problem found" is the sentence the
+        # first paid order's coach quoted back while writing "Nothing to fix"
+        # over knee-at-TDC 85 (60-72) and pelvic ratio 4.9 (2-4).
         return (
-            "Detected issues: NONE flagged by the rule-based checks. Treat this "
-            "as no material problem found. Only flag a metric here if it is "
-            "CLEARLY outside the optimal range stated above -- not a degree or "
-            "two off. If nothing is, use the **Nothing to fix** variant."
+            "Detected issues (rule-based checks): none flagged. These checks "
+            "cover only a few measurements -- the per-metric verdicts decide "
+            "what is a problem, not this line. A metric a degree or two off its "
+            "band is not one."
         )
     out = ["Detected issues (rule-based):"]
     for it in issues[:6]:
@@ -707,6 +717,82 @@ def _materiality_block(
     return "\n".join(lines)
 
 
+def _video_concerns(
+    sport_type: str, position: str | None, summary: dict,
+) -> list[dict[str, Any]]:
+    """Everything outside or on the edge of its band, for the checklist.
+
+    The same statuses the materiality block hands the model, so the checklist
+    under the report and the instruction above it cannot disagree.
+    """
+    out = [
+        concern_hints.concern(field, _METRIC_LABELS.get(field, field.replace("_", " ")),
+                              value, lo, hi, material=(status == "bad"))
+        for field, (status, value, lo, hi)
+        in _metric_statuses(sport_type, position, summary).items()
+        if status in ("bad", "warn")
+    ]
+    helmet = summary.get("helmet_above_back")
+    if (sport_type == "bike" and isinstance(helmet, (int, float))
+            and not summary.get("helmet_check")):
+        from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+        from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+
+        if position in AERO_POSITIONS and helmet > KONA_PRO_FREE_UP_TO:
+            out.append(concern_hints.concern(
+                "helmet_above_back", "Helmet above the back", float(helmet),
+                None, KONA_PRO_FREE_UP_TO, material=False,
+            ))
+    return out
+
+
+def _photo_concerns(sport: str, res: dict[str, Any]) -> list[dict[str, Any]]:
+    """The photo's own per-angle statuses: needs_work is out, acceptable is the edge."""
+    out = []
+    for key, v in (res.get("angles_with_context") or {}).items():
+        status = v.get("status")
+        value = v.get("value")
+        if status not in ("needs_work", "acceptable") or not isinstance(value, (int, float)):
+            continue
+        field = concern_hints.photo_field(sport, key, v)
+        out.append(concern_hints.concern(
+            field, v.get("label") or key, float(value),
+            v.get("optimal_min"), v.get("optimal_max"),
+            material=(status == "needs_work"),
+        ))
+    return out
+
+
+def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str) -> dict[str, Any] | None:
+    """Write the report, refuse "Nothing to fix" over a red row, add the checklist.
+
+    The prompt forbids it; the first paid order showed a prompt is not enough
+    (the model listed the two red rows and wrote "Nothing to fix" over them).
+    One retry with the rejection spelled out; if the model still insists, the
+    section is replaced with the out-of-band rows and their hints.
+    """
+    got = _complete(SYSTEM_PROMPT, prompt, 1200, tag=tag)
+    if not got:
+        return None
+    text, model = got["text"], got["model"]
+    material = [c for c in concerns if c["material"]]
+    if material and concern_hints.NOTHING_TO_FIX.search(text):
+        logger.warning("coach_nothing_to_fix_over_material", tag=tag, model=model,
+                       material=[c["field"] for c in material])
+        names = "; ".join(c["label"] for c in material)
+        again = _complete(SYSTEM_PROMPT, (
+            f"{prompt}\n\nYOUR PREVIOUS DRAFT WAS REJECTED: it used **Nothing to "
+            f"fix** although these measurements are clearly outside their bands: "
+            f"{names}. Write the **Fix first** section and address them. If the "
+            "cause is uncertain, say what to check -- never that it is fine."
+        ), 1200, tag=tag)
+        if again and not concern_hints.NOTHING_TO_FIX.search(again["text"]):
+            text, model = again["text"], again["model"]
+        else:
+            text = concern_hints.replace_nothing_to_fix(text, concerns)
+    return {"report": concern_hints.with_worth_a_look(text, concerns), "model": model}
+
+
 def _focus_block(focus: str | None) -> str:
     """What the athlete asked us to look at, quoted to the coach.
 
@@ -839,10 +925,10 @@ def generate_recommendations(
         detected_issues or [], angle_statistics or {}, sport_specific_metrics or {},
         fit_plan, focus,
     )
-    got = _complete(SYSTEM_PROMPT, prompt, 1200, tag="video")
-    if not got:
-        return None
-    return {"report": got["text"], "model": got["model"]}
+    concerns = _video_concerns(
+        sport_type, cycling_position, sport_specific_metrics or {},
+    )
+    return _coach(prompt, concerns, tag="video")
 
 
 PROGRESS_SYSTEM_PROMPT = (
@@ -1118,7 +1204,4 @@ def generate_photo_recommendations(
 ) -> dict[str, Any] | None:
     """Coaching from a single-photo analysis. Returns {report, model} or None."""
     prompt = _build_photo_prompt(sport, photo_result)
-    got = _complete(SYSTEM_PROMPT, prompt, 1200, tag="photo")
-    if not got:
-        return None
-    return {"report": got["text"], "model": got["model"]}
+    return _coach(prompt, _photo_concerns(sport, photo_result), tag="photo")

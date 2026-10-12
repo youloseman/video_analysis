@@ -250,9 +250,10 @@ def _issues(result: dict[str, Any]) -> str:
     if not issues:
         return (
             "## Detected issues\n\n"
-            "None. The rule-based checks flagged nothing on this clip -- treat "
-            "that as \"no material problem found\", not as \"not checked\". Do not "
-            "manufacture a problem out of a metric sitting slightly off its band."
+            "None flagged. These rule-based checks cover only a few measurements "
+            "(on a bike, saddle height and trunk), so this is not a verdict on the "
+            "rest: a metric clearly outside its band above is still a finding. Do "
+            "not manufacture one out of a metric sitting slightly off its band."
         )
     lines = ["## Detected issues", "", "Rule-based checks, strongest signal first."]
     for issue in issues:

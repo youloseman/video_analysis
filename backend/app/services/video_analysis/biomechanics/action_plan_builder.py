@@ -835,9 +835,12 @@ def build_action_plan(
             f"Each adjustment: 5mm only, ride 30 minutes before reassessing."
         )
     else:
+        # Not "all metrics are within optimal ranges": knee at TDC above its
+        # band and pelvic ratio outside its band produce no adjustment here,
+        # so an empty list is a statement about adjustments, not about bands.
         fitting_note = (
-            "All primary metrics are within optimal ranges. "
-            "Maintain current setup and re-analyze after 4-6 weeks of training."
+            "No saddle, bar or crank change is indicated by the fit checks. "
+            "Re-analyze after 4-6 weeks of training."
         )
 
     # The rider's own range has the last word on "go lower".
