@@ -45,6 +45,7 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
 from app.services.video_analysis.biomechanics.head_silhouette import (
     BACK_TOP_POINT,
     HELMET_TOP_POINT,
+    KONA_PRO_FREE_UP_TO,
     KONA_PRO_MEDIAN,
     KONA_PRO_RANGE,
     apply_point_corrections,
@@ -441,11 +442,11 @@ PHOTO_CYCLING_WEIGHTS_UNCERTAIN = {
 }
 # The helmet term (2026-10-11, Artur's call) only exists in a score when the
 # reading is trustworthy and the position is an aero one -- see
-# _with_helmet_band. It costs nothing up to the highest Kona pro (+23 % of
-# torso length) and is amber, never red, above it: the only study (Beaumont
+# _with_helmet_band. It costs nothing up to where twenty of the twenty-one
+# Kona pros sat (+23 % of torso length) and is amber, never red, above it: the only study (Beaumont
 # 2018, CFD) compares head up with head down -- up to 6.4 % drag -- and gives
 # no curve to hang a red line on. Half the old head weight.
-_HELMET_BAND = (-100.0, KONA_PRO_RANGE[1])
+_HELMET_BAND = (-100.0, KONA_PRO_FREE_UP_TO)
 _HELMET_SCORE_FLOOR = 70
 _BIKE_PHASE_WEIGHTS = {
     "bdc": PHOTO_CYCLING_WEIGHTS_PHASED,
@@ -581,7 +582,7 @@ _HELMET_NOTE = (
 )
 
 _HELMET_HIGH_NOTE = (
-    "Higher than any of the fifteen Kona pros. A head up against a head down "
+    "Higher than twenty of the twenty-one Kona pros. A head up against a head down "
     "cost up to 6.4 % more drag in a CFD study of time-trial helmets (Beaumont "
     "2018). Amber, a small penalty: drop the head if you can still see the "
     "road and hold it."
@@ -1916,10 +1917,11 @@ def analyze_from_pose(
         if sport == "bike" and angle_name == "helmet_above_back":
             lo, hi = KONA_PRO_RANGE
             if helmet_scored:
-                high = angle_value > hi
+                free = KONA_PRO_FREE_UP_TO
+                high = angle_value > free
                 angles_with_context[angle_name] = {
                     "value": angle_value, "label": lbl,
-                    "optimal_min": None, "optimal_max": hi,
+                    "optimal_min": None, "optimal_max": free,
                     "status": "acceptable" if high else "optimal",
                     "note": _HELMET_NOTE + (" " + _HELMET_HIGH_NOTE if high else ""),
                 }

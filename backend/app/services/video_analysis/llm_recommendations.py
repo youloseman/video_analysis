@@ -954,7 +954,7 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             )
             status = v.get("status")
             verdict = (
-                "above every Kona pro -- amber, a small penalty; you may suggest "
+                "above 20 of the 21 Kona pros -- amber, a small penalty; you may suggest "
                 "dropping the head a little if the rider can still see the road"
                 if status == "acceptable" else
                 "within the Kona pro field -- no fault" if status == "optimal" else

@@ -51,17 +51,18 @@ class TestTheKonaDraft:
         for src in srcs:
             assert (MEDIA / src.removeprefix("/media/")).is_file(), src
 
-    def test_all_fifteen_positions_are_shown_on_their_photographs(self):
+    def test_every_position_is_shown_on_its_photograph(self):
         """Artur's call (2026-10-11): the figures first went out drawn on a
         neutral ground; he asked for the race photographs, every one. The
-        frame where the model found the motorbike passenger stays out. The
-        fifteenth is Trevor Foley, a reader's photo from an earlier Kona,
-        and its caption says so."""
+        frame where the model found the motorbike passenger stays out, and so
+        does the age-grouper (kept for a pro-vs-age-group comparison). One is
+        Trevor Foley, a reader's photo from an earlier Kona, and its caption
+        says so. Twenty-one since 2026-10-12."""
         text = DRAFT.read_text(encoding="utf-8")
         shown = re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)
-        assert shown == [f"{n:02d}" for n in range(1, 16)]
+        assert shown == [f"{n:02d}" for n in range(1, 22)]
         assert "Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        tilts = [float(m) for m in re.findall(r"Position \d+ of 15: forearm tilt (\d+)", text)]
+        tilts = [float(m) for m in re.findall(r"Position \d+ of 21: forearm tilt (\d+)", text)]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
     def test_the_hand_corrections_are_disclosed(self):
@@ -70,10 +71,10 @@ class TestTheKonaDraft:
         it was updated, how many points moved and by how much, rings every
         moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
-        assert text.split("---", 2)[2].lstrip().startswith("**Updated 11 October 2026.**")
-        assert "37 of the 60 joint points moved" in text
+        assert text.split("---", 2)[2].lstrip().startswith("**Updated 12 October 2026.**")
+        assert "57 of the 84 joint points moved" in text
         assert "A ringed point is one we moved by hand" in text
-        assert "shoulder 84° to 87°, elbow 78° to 83°" in text
+        assert "shoulder 86° to 87°, elbow 82° to 84°" in text
 
     def test_uci_is_not_presented_as_a_triathlon_rule(self):
         """UCI equipment rules govern road time trials, not Ironman, whose 2025
@@ -85,11 +86,11 @@ class TestTheKonaDraft:
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 20° | 19–22° | 13–25° | 20–30° |",
-                    "| Shoulder, torso to upper arm | 87° | 82–89° | 74–96° | 80–105° |",
-                    "| Elbow | 83° | 75–88° | 66–93° | 75–110° |",
-                    "| Forearm tilt, above horizontal | 25° | 22–27° | 19–32° | 5–30° |",
-                    "| Helmet above the back, % of torso length | 17% | 14–19% | 12–23% | up to 23% |"):
+        for row in ("| Torso, from horizontal | 21° | 19–25° | 13–27° | 20–30° |",
+                    "| Shoulder, torso to upper arm | 87° | 86–91° | 74–97° | 80–105° |",
+                    "| Elbow | 84° | 77–88° | 66–101° | 75–110° |",
+                    "| Forearm tilt, above horizontal | 25° | 22–28° | 19–32° | 5–30° |",
+                    "| Helmet above the back, % of torso length | 19% | 14–22% | 12–28% | up to 23% |"):
             assert row in text, row
 
     def test_the_article_column_cannot_be_pushed_wider_than_a_phone(self):
@@ -118,7 +119,9 @@ def test_the_head_section_says_what_replaced_100_of_100_and_why():
     text = DRAFT.read_text(encoding="utf-8")
     assert "## 4. The head: how far the helmet rises above the back" in text
     assert "level because the wind is" in text
-    assert "on five of the fifteen photos the automatic back point landed on the helmet" in text
+    assert "on nine of the twenty-one photos the automatic back point landed on the helmet" in text
     assert "up to 6.4%" in text and "Beaumont" in text
     from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_RANGE
-    assert KONA_PRO_RANGE == (12.0, 23.0), "the app's reference is the article's"
+    from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+    assert KONA_PRO_RANGE == (12.0, 28.0), "the app's reference is the article's"
+    assert KONA_PRO_FREE_UP_TO == 23.0

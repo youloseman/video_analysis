@@ -173,6 +173,10 @@ def _measure(entry: dict, moved: dict, render: bool):
         if math.hypot(dx, dy) >= 0.5:
             nl[ids[k]].x += dx / scale / W
             nl[ids[k]].y += dy / scale / H
+            # A point a person placed is seen, whatever the model's confidence
+            # in its own guess was: a video frame the model misread (editor
+            # #19) otherwise dropped every angle as "insufficient visibility".
+            nl[ids[k]].visibility = 1.0
             corrected.append(ids[k])
     ox, oy = entry["origin"]
 
@@ -199,6 +203,7 @@ def _measure(entry: dict, moved: dict, render: bool):
     angles = {k: r["angles"].get(k) for k in SHOWN}
     rows = {k: r["angles_with_context"][k]["status"] for k in SHOWN if k in r["angles_with_context"]}
     out = {"key": entry["key"], "n": entry["n"], "race": entry["race"], "label": entry.get("label"),
+           "caption_note": entry.get("caption_note"),
            "angles": angles, "rows": rows, "corrected": sorted(corrected),
            "moved_cm": [round(math.hypot(*moved[k]) / scale / math.dist(
                (nl[ids["S"]].x * W, nl[ids["S"]].y * H), (nl[ids["H"]].x * W, nl[ids["H"]].y * H)) * 50, 2)
@@ -226,6 +231,17 @@ def _measure(entry: dict, moved: dict, render: bool):
 
 _NUMBER_WORDS = ("zero one two three four five six seven eight nine ten eleven twelve thirteen "
                  "fourteen fifteen sixteen seventeen eighteen nineteen twenty").split()
+
+
+def _number_word(n: int) -> str:
+    """'twenty-one' -- the chart title spells its count like the article does."""
+    if n < len(_NUMBER_WORDS):
+        return _NUMBER_WORDS[n]
+    tens = {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty", 6: "sixty", 7: "seventy",
+            8: "eighty", 9: "ninety"}
+    if n < 100:
+        return tens[n // 10] + (f"-{_NUMBER_WORDS[n % 10]}" if n % 10 else "")
+    return str(n)
 
 
 def rebuild(study: dict) -> None:
@@ -268,9 +284,7 @@ def rebuild(study: dict) -> None:
         Image.open(io.BytesIO(d["jpg"])).convert("RGB").save(
             social / f"position-{n:02d}{tag}_forearm-{a['forearm_tilt']:.0f}_torso-{a['trunk']:.0f}.jpg",
             "JPEG", quality=93)
-        extra = ""
-        if d["race"] != "Kona 2026":
-            extra = f" {d.get('label') or 'A reader'}'s photo; {d['race']}, not the 2026 race."
+        extra = f" {d['caption_note']}" if d.get("caption_note") else ""
         helmet = (f", helmet {a['helmet_above_back']:+.0f}% above the back"
                   if a.get("helmet_above_back") is not None else "")
         captions.append(
@@ -356,9 +370,8 @@ def _field_chart(study: dict, items: list, media: Path, social: Path) -> None:
         s, n = re.subn(r"(%s:\s*\{[^}]*?v:\[)[^\]]*(\])" % k, lambda m: m.group(1) + vals + m.group(2),
                        s, flags=re.S)
         assert n == 1, k
-    word = _NUMBER_WORDS[len(items)] if len(items) < len(_NUMBER_WORDS) else str(len(items))
+    word = _number_word(len(items))
     s = re.sub(r"<h2>\w+ pro positions", f"<h2>{word.capitalize()} pro positions", s)
-    s = re.sub(r"all \w+ were shot from the drive side", f"all {word} were shot from the drive side", s)
     page = work_dir(study) / "field_chart.html"
     page.write_text(s, encoding="utf-8")
     png = page.with_suffix(".png")
