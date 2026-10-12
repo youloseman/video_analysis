@@ -21,7 +21,8 @@ measures every photo with the checked points and writes the article figures,
 the social exports, the field chart and ``<work>/rebuilt.json`` (stats +
 captions) for the article text.
 
-Each photo carries a group ("pro" / "age_group") and a category ("men" /
+Each photo carries a group ("pro" / "age_group", or "excluded" -- a duplicate
+rider, an oblique camera, a frame the model cannot read) and a category ("men" /
 "women"), set in the editor (stored with its corrections) or given to ``add``.
 The article is built from the pros only; rebuilt.json also breaks every metric
 down by group and category, for the pro-vs-age-group and men-vs-women
@@ -236,10 +237,13 @@ def rebuild(study: dict) -> None:
     measured = []
     for e in study["entries"]:
         rec = recs.get(e["n"], {})
+        if (rec.get("group") or e.get("group")) == "excluded":
+            continue
         d = _measure(e, rec.get("moved") or {}, True)
         d["group"] = rec.get("group") or e.get("group", "pro")
         d["category"] = rec.get("category") or e.get("category")
-        measured.append(d)
+        if d["group"] != "excluded":
+            measured.append(d)
     groups = _group_stats(measured)
     # The article, its figures and the social exports are the pros only.
     items = sorted((d for d in measured if d["group"] == "pro"), key=lambda d: d["angles"]["forearm_tilt"])
