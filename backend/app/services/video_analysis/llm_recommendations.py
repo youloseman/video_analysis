@@ -1179,6 +1179,17 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             f"Material problems: NONE. Every measured angle is {excuse}. Do not "
             "invent a fix -- use the **Nothing to fix** variant of that section."
         )
+        # A clean photo must not end with nothing to do: say what one still
+        # could not grade, and the one step that would (next_steps, in the
+        # order a fitter would take them).
+        steps = [s.get("title") for s in (res.get("next_steps") or []) if s.get("title")]
+        if steps:
+            lines.append(
+                "In **Nothing to fix**, after what to hold on to, say in one sentence "
+                "what this single photo could NOT grade, and name the ONE next step "
+                "that would -- the first that applies from this list: "
+                + "; ".join(steps) + ". Do not end the report with nothing to do."
+            )
     if borderline:
         lines.append(
             "Just outside the band but WITHIN TOLERANCE (not problems, no "

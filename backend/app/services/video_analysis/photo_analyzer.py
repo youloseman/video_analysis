@@ -606,12 +606,58 @@ def _with_helmet_band(
 # person has placed the point, and the reading compares with pros in aero
 # helmets, so it means most with the race helmet on.
 _HELMET_CHECK_WARNING = (
-    "Check the top-of-back point: the outline shows no clear edge where your "
-    "back ends and your helmet begins. If you wore your race helmet and the "
-    "green point sits on it, use Adjust joints to drag it to the highest point "
-    "of your back. Without a helmet this reads your head, not a helmet: the "
-    "Kona pros it is compared with all wore aero helmets."
+    "We couldn't read a helmet against your back: the outline shows no clear "
+    "edge where the back ends and the helmet begins, which usually means a road "
+    "helmet, or none. On aero bars a race (aero) helmet is the cheapest gain in "
+    "this picture, and with it on you get a head reading. If you did wear it and "
+    "the green point sits on the helmet, use Adjust joints to drag it to the "
+    "highest point of your back."
 )
+
+
+def _photo_next_steps(
+    sport: str, cycling_position: str | None, pedal_phase: str | None,
+    withheld: bool, camera_side: str | None, helmet: dict[str, Any] | None,
+) -> list[dict[str, str]]:
+    """Where to go from this photo -- present whatever the score.
+
+    A clean photo used to end the report: 100, "Nothing to fix", and a rider
+    with nowhere to go (and no reason to come back). What a single still cannot
+    tell, each with the one thing that would -- the pedal position, a clip, the
+    race helmet, the other side of the bike, the pro field -- said every time,
+    in the order a fitter would take them.
+    """
+    steps: list[dict[str, str]] = []
+    aero = sport == "bike" and cycling_position in _AERO_POSITIONS
+    if sport == "bike" and pedal_phase == "uncertain" and not withheld:
+        steps.append({"key": "pedal", "title": "Mark the pedal position",
+                      "text": "Under the angles, say whether the crank was at the bottom or the "
+                              "top, or shoot a frame at the bottom of the stroke: the knee there is "
+                              "the saddle-height reading, the one fit number everything else is set "
+                              "from. Until then the score is your upper body."})
+    if aero and (helmet is None or helmet.get("check")):
+        steps.append({"key": "helmet", "title": "Put on your race helmet",
+                      "text": "We could not read a helmet against your back here, which usually means "
+                              "a road helmet. On aero bars an aero helmet is the cheapest gain in "
+                              "this picture, and with it on the head gets measured too."})
+    if sport == "bike" and camera_side == "right":
+        steps.append({"key": "side", "title": "Film from the non-drive side",
+                      "text": "This photo is from the chainring side. The chainring sits behind the "
+                              "ankle at the bottom of the stroke and disturbs the knee reading; the "
+                              "other side of the bike measures the leg cleanly."})
+    steps.append({"key": "clip", "title": "Film a 10-second clip",
+                  "text": ("A photo is one instant. A side-on clip measures the whole stroke: the "
+                           "knee at the top and the bottom, the hip through the revolution, how "
+                           "steady the position is. That is what the fit is judged on."
+                           if sport == "bike" else
+                           "A photo is one instant of the stride. A side-on clip measures cadence, "
+                           "contact time, overstride and every joint through the whole cycle.")})
+    if aero:
+        steps.append({"key": "pros", "title": "Put your numbers beside the Kona pros",
+                      "text": "The Kona 2026 column in the table shows where 32 pros sat for each "
+                              "angle. A number inside its band can still sit a long way from the "
+                              "field; that gap is the next place to look."})
+    return steps
 
 _AERO_TRUNK_EXTREME_NOTE = (
     "Below 12 degrees the question is no longer aero but whether the body can "
@@ -1012,6 +1058,8 @@ def _generate_photo_thumbnail(
     else:
         _hdr_status = "good" if _overall >= 75 else "warn" if _overall >= 60 else "bad"
         _score_text = f"{_overall}/100"
+        if score_data.get("partial"):
+            _grade = f"{_grade} · upper body"
     _title = (
         "AERODYNAMIC PROFILE"
         if (sport == "bike" and cycling_position in ("tt_aero", "triathlon"))
@@ -2054,6 +2102,11 @@ def analyze_from_pose(
             )
             for p in BIKE_PHOTO_PHASES
         }
+        # Crank position unknown: the score is the upper body only, and every
+        # surface that prints it says so -- the badge, the picture, the phase
+        # picker. A bare 100 on such a frame read as a perfect position
+        # (Gabriel's photo, 2026-10-13); it was four measures out of six.
+        score_by_phase["uncertain"]["partial"] = "upper body only"
         score_data = score_by_phase[pedal_phase]
     else:
         score_data = _score_photo_angles(
@@ -2161,6 +2214,12 @@ def analyze_from_pose(
         )
         if archetype:
             response["position_archetype"] = archetype
+
+    # Where to go from here, whatever the score (see _photo_next_steps).
+    response["next_steps"] = _photo_next_steps(
+        sport, cycling_position, pedal_phase if sport == "bike" else None,
+        bool(withheld), camera_side, helmet,
+    )
 
     logger.info(
         "PHOTO_ANALYSIS_COMPLETE",

@@ -197,6 +197,12 @@ def quality_block(result: dict[str, Any]) -> dict[str, Any]:
     level = confidence.get("level")
     if level:
         block["confidence"] = level
+    # Where to go from a photo (next_steps) travels with the free score for the
+    # same reason capture_report does: it is the part that says how to get a
+    # better result, and a paywall in front of that would be charging admission
+    # to the instructions.
+    if result.get("next_steps"):
+        block["next_steps"] = list(result["next_steps"])
     return block
 
 

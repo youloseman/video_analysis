@@ -1245,6 +1245,7 @@
           <span class="grade" id="pGrade" role="img" aria-label="Grade">—</span>
           <div><div class="gradelbl">Grade</div></div>
         </div>
+        <div class="score-partial hidden" id="pPartial"></div>
         <div class="score-meta" id="pScoreMeta"></div>
         <button class="btn btn-primary btn-sm sharebtn hidden" id="pShareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="pShareBtnTxt">Share result</span>
@@ -1326,6 +1327,18 @@
           <tbody id="pAngleRows"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Where to go from here. Present whatever the score: a clean photo used
+         to end the report, and an athlete with a 100 had nowhere to go. -->
+    <div class="block hidden" id="pNextBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Next</div>
+        <h3>Where to go from here</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hint" style="text-align:left;margin:0 0 10px">What one photo can't tell you, and the one thing that would.</p>
+      <ul class="next-steps" id="pNextList"></ul>
     </div>
 
     <details class="raw hidden" id="pRawBlock"><summary>Raw result JSON</summary><pre id="pRawJson"></pre></details>
@@ -3984,8 +3997,26 @@ function setPhotoPedalPhase(p){
     $('#pScoreNum').innerHTML=(sc.overall_score==null?'—':sc.overall_score)+'<small>/100</small>';
     setScoreRing('#pScoreRing', sc.overall_score);
     setGrade('#pGrade', sc.grade);
+    setPhotoPartial(sc);
   }
   renderPhotoAngles();
+}
+/* "upper body only": the crank position is unknown, so the knee and hip are
+   not in the number. Said beside the score, because a bare 100 on such a
+   frame reads as a perfect position. */
+function setPhotoPartial(sc){
+  const el=$('#pPartial'); if(!el) return;
+  const p=sc&&sc.partial;
+  el.classList.toggle('hidden',!p);
+  el.textContent=p?`${p} — mark the pedal position below to score the knee and hip`:'';
+}
+/* Where to go from this photo, whatever the score. Served with the result
+   (free readers included: it is how to get a better one), rendered here. */
+function renderPhotoNext(steps){
+  const blk=$('#pNextBlock'), host=$('#pNextList'); if(!blk||!host) return;
+  if(!steps||!steps.length){ blk.classList.add('hidden'); host.innerHTML=''; return; }
+  host.innerHTML=steps.map(s=>`<li><b>${esc(s.title||'')}</b> ${esc(s.text||'')}</li>`).join('');
+  blk.classList.remove('hidden');
 }
 
 /* ============================================================
@@ -5101,6 +5132,7 @@ function renderPhoto(res,opts){
   setScoreRing('#pScoreRing', score);
   renderScoreDelta('#pScoreDelta', 'photo', sport, score);   // before saveToHistory()
   setGrade('#pGrade', sc.grade);
+  setPhotoPartial(sc);
 
   setSportTag('#pSportTag','#pSportTagIcon','#pSportTagText',sport);
 
@@ -5136,6 +5168,7 @@ function renderPhoto(res,opts){
   $('#pWarnings').innerHTML = warns.length
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
     : `<div class="banner good"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
+  renderPhotoNext(res.next_steps||(res.quality&&res.quality.next_steps)||[]);
 
   // Free-tier teaser: hide paid sections, show upgrade panel, stop early.
   $('#pUpsellHost').classList.add('hidden');
