@@ -111,7 +111,9 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
     "tt_aero": {
         "label": "TT - Aero",
         "category": "tt",
-        "trunk_angle": (15, 30),        # Retul TT ~20 deg; track 4.5-8.6 deg
+        # Upper end 30 -> 25 (Artur, 2026-10-13): a rider sitting up at 29 deg
+        # on a TT bike read "in range" and scored 98. See META for why 25.
+        "trunk_angle": (15, 25),        # Retul TT ~20 deg; track 4.5-8.6 deg
         "elbow_angle": (75, 110),       # elbows bent on aero pads, NOT straight
         "knee_at_bdc": (138, 145),      # Retul TT/Tri: 37-42 deg extension
         "knee_at_tdc": (60, 72),        # more closed hip angle in aero
@@ -126,7 +128,7 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
     "triathlon": {
         "label": "Triathlon - Aero",
         "category": "tt",
-        "trunk_angle": (20, 30),        # more conservative than pure TT (~25 vs ~20)
+        "trunk_angle": (20, 25),        # ~25 recommended as the upper end; Kona pros 18-22
         "elbow_angle": (75, 110),       # same pad setup as TT
         "knee_at_bdc": (138, 145),      # Retul TT/Tri fit window
         "knee_at_tdc": (60, 72),
@@ -241,7 +243,10 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
     },
     "tt_aero": {
         "trunk_angle": {
-            "source": "Retul TT fit; surplus power peak 4.5-8.6 deg (track)",
+            "source": (
+                "Retul TT fit; surplus power peak 4.5-8.6 deg (track); upper end 25: "
+                "Kona 2026 pro field (n=32) median 20, middle half 18-22, max 27"
+            ),
             "warning_low": 10,
             "warning_high": 35,
         },
@@ -317,7 +322,15 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             "note": "Closed past the band: amber, a third of the penalty (SHOULDER_CLOSED_OK_POSITIONS).",
         },
         "trunk_angle": {
-            "source": "Triathlon position norms; ~25 deg recommended",
+            "source": (
+                "Triathlon position norms: ~25 deg recommended as the upper end; "
+                "Kona 2026 pro field (n=32): median 20, middle half 18-22, max 27"
+            ),
+            "note": (
+                "Upper end 30 -> 25 (Artur, 2026-10-13). At 30 a rider sitting up on "
+                "a tri bike like a road bike (29 deg, above every Kona pro) read "
+                "'in range' and scored 98. 26-28 is amber, above 28 costs points."
+            ),
             "warning_low": 15,
             "warning_high": 35,
         },

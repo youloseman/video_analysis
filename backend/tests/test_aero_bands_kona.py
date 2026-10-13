@@ -194,3 +194,18 @@ class TestTheHeadLever:
         assert head["status"] == "unknown" and "race helmet" in head["cue"]
         assert AE.with_helmet_lever(base, 25.9, False, "road_hoods")["levers"] == [
             lv for lv in base["levers"] if lv["key"] != "head"]
+
+
+def test_a_tri_bike_ridden_like_a_road_bike_is_not_an_a():
+    """Artur, 2026-10-13: a rider sitting up at 29 deg on a tri bike (above
+    every Kona pro, max 27) read 'in range' and scored 98. The aero torso band
+    now ends at 25: 26-28 amber, above that it costs points."""
+    from app.services.video_analysis import overlay_style as OS
+    from app.services.video_analysis.biomechanics.cycling_positions import get_cycling_reference
+    for pos in ("triathlon", "tt_aero"):
+        lo, hi = get_cycling_reference(pos)["trunk_angle"]
+        assert hi == 25
+        assert OS.status_for(24.0, lo, hi, min_margin=3.0) == "good"
+        assert OS.status_for(27.0, lo, hi, min_margin=3.0) == "warn"
+        assert OS.status_for(29.0, lo, hi, min_margin=3.0) == "bad"
+    assert "triathlon:{trunk_angle:[20,25]," in HTML and "tt_aero:{trunk_angle:[15,25]," in HTML
