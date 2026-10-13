@@ -1150,6 +1150,8 @@ async def webhook(
         # After the response: Stripe wants its 2xx quickly, and a mail outage
         # must never turn into a webhook failure that Stripe then retries.
         background.add_task(notify.notify_sale, sale, f"{_base_url(request)}/app#reviews")
+        if sale.get("plan") == "unlock" and sale.get("analysis_client_id"):
+            background.add_task(_coach_after_unlock, sale["user_id"], sale["analysis_client_id"])
     return {"received": True}
 
 
@@ -1329,6 +1331,33 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> dict[str, Any] |
     if str(meta.get("plan") or "") == "unlock":
         await _apply_unlock(db, user, meta.get("analysis_client_id"))
     return sale if is_new else None
+
+
+async def _coach_after_unlock(user_id: int, client_id: str) -> None:
+    """Write the coaching an unlocked report was run without, right away.
+
+    A free analysis makes no LLM call; the coaching used to be written lazily,
+    the first time the unlocked report was fetched from the server. When the
+    page showed its own saved copy instead, it never was: the first $4 unlock
+    after this shipped (2026-10-12) paid for a report with no coach in it.
+    Done here, on the payment, it no longer depends on what the page fetches.
+    """
+    from app.api.me import _ensure_coaching
+    from app.core.db import SessionLocal
+
+    try:
+        async with SessionLocal() as db:
+            row = (
+                await db.execute(
+                    select(Analysis).where(
+                        Analysis.user_id == user_id, Analysis.client_id == client_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if row is not None:
+                await _ensure_coaching(db, row)
+    except Exception as e:  # noqa: BLE001 -- the lazy path still covers it
+        logger.warning("UNLOCK_COACHING_FAILED", analysis=client_id, err=str(e))
 
 
 async def _apply_unlock(

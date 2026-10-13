@@ -373,3 +373,30 @@ async def test_reading_another_accounts_report_is_a_404(db, make_user):
     with pytest.raises(HTTPException) as exc:
         await me.get_analysis_result("h1", mine, db)
     assert exc.value.status_code == 404
+
+
+async def test_an_unlock_writes_the_coaching_on_the_payment(db, make_user, monkeypatch):
+    """The first $4 unlock after the lazy-coaching path shipped came back
+    without a coach (2026-10-12): the page showed its own copy and never asked
+    the server for the report, so the lazy call never ran. The payment itself
+    now writes it."""
+    from contextlib import asynccontextmanager
+
+    from app.services.video_analysis import llm_recommendations as llm
+
+    user = await make_user()
+    await store(db, user, client_id="u1", result={**FULL_RESULT, "ai_recommendations": None})
+    calls = []
+    monkeypatch.setattr(llm, "generate_recommendations",
+                        lambda *a, **k: calls.append(k) or {"report": "**Overall** — ok.", "model": "fake"})
+
+    @asynccontextmanager
+    async def same_session():
+        yield db
+
+    import app.core.db as core_db
+    monkeypatch.setattr(core_db, "SessionLocal", same_session)
+    await billing._coach_after_unlock(user.id, "u1")
+    row = (await db.execute(select(Analysis).where(Analysis.client_id == "u1"))).scalar_one()
+    assert row.result["ai_recommendations"]["report"] == "**Overall** — ok."
+    assert "fit_plan" in calls[0] and "focus" in calls[0]

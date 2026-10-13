@@ -164,18 +164,24 @@ _TT_REL_POINTS: tuple[tuple[float, float], ...] = (
     (8.0, 0.80 * 0.302 / 0.335),
     (16.0, 0.80 * 0.318 / 0.335),
     (24.0, 0.80),
+    # The road-drops posture of the anchor study, at the middle of its band.
+    # Linear from the TT posture to it: a rider at 29 deg sits between the
+    # two measured postures, not at the step between them. Without this a
+    # rider at 28.9 was told a degree flatter was worth 8 % (2026-10-13).
+    (33.0, 0.87),
 )
-_TT_RANGE_TOP = 28.0
+_TT_RANGE_TOP = 33.0
 
 
 def _rel_for_trunk(trunk_angle: float) -> float:
     """Drag relative to upright at this trunk angle.
 
-    Inside the TT range it is interpolated on measured points, so a two-degree
-    change is worth two degrees: the zone-step figure would have credited a
-    triathlete moving 22 -> 20 deg with the whole 24 -> 16 deg saving (5 %)
-    where the measured slope gives 1.3 %. Above it the zones are qualitative
-    postures with no angles, and their step is all there is.
+    Up to the road-drops posture (33 deg) it is interpolated between measured
+    postures, so a two-degree change is worth two degrees: the zone-step figure
+    would have credited a triathlete moving 22 -> 20 deg with the whole
+    24 -> 16 deg saving (5 %) where the measured slope gives 1.3 %. Above it the
+    zones are qualitative postures with no angles, and their step is all there
+    is.
     """
     if trunk_angle >= _TT_RANGE_TOP:
         return float(_zone_for_trunk(trunk_angle)["rel"])
@@ -202,48 +208,72 @@ def _zone_for_trunk(trunk_angle: float) -> dict[str, Any]:
     return AERO_ZONES[-1]
 
 
-# --- Secondary aero levers (head tuck, elbow bend). Only meaningful in an
+# --- Secondary aero levers (head, elbow bend). Only meaningful in an
 # aero-bar position, where the anchors below actually apply. Torso stays the
 # quantified primary; these enrich the picture. ---
-HEAD_TUCK_MAX_DRAG = 0.046   # track testing: a full head tuck saves ~4.6% drag
-HEAD_FLOOR_SCORE = 30.0      # head_alignment at/below this = no tuck at all
 _AERO_BAR_POSITIONS = {"tt_aero", "triathlon"}
 
 
-def _head_lever(
-    head_alignment: float | None,
-    head_optimal_band: tuple[float, float] | None,
+def helmet_lever(
+    helmet_above_back: float | None,
+    helmet_check: bool | None,
     position: str | None,
 ) -> dict[str, Any] | None:
-    """Head-tuck lever from the head-alignment score (0-100, higher = better).
+    """The head lever, from the helmet reading (head_silhouette.py).
 
-    Quantified against the ~4.6% head-tuck anchor, scaled by how far the
-    score sits below the position's optimal floor. Aero-bar positions only.
+    This lever used to read the old head-alignment score -- an ear under a line
+    through the joint centres, which every aero rider passed -- and told a rider
+    sitting up with the head high (a $4 report, 2026-10-13) that the head was
+    "well tucked". It reads the helmet above the back now, against the same
+    Kona field and free band the score uses. Qualitative: the one study we
+    have (Beaumont 2018, CFD) compares head up with head down, up to ~6.4 %
+    drag, and gives no curve to turn a percentage of torso into watts.
     """
-    if position not in _AERO_BAR_POSITIONS:
+    if position not in _AERO_BAR_POSITIONS or helmet_above_back is None:
         return None
-    if head_alignment is None or head_optimal_band is None:
-        return None
-    lo = float(head_optimal_band[0])
-    if head_alignment >= lo:
-        return {"key": "head", "label": "Head tuck", "status": "ok",
-                "cue": "Head is well tucked into your shoulder line."}
-    frac = max(0.0, min(1.0, (lo - head_alignment) / max(lo - HEAD_FLOOR_SCORE, 1e-6)))
-    drag = frac * HEAD_TUCK_MAX_DRAG
-    if drag < _MIN_MEANINGFUL_SAVING:
-        return {"key": "head", "label": "Head tuck", "status": "ok",
-                "cue": "Head is close to a good tuck."}
+    from app.services.video_analysis.biomechanics.head_silhouette import (
+        KONA_PRO_FREE_UP_TO,
+        KONA_PRO_UNDER_FREE,
+    )
+    if helmet_check:
+        return {"key": "head", "label": "Head", "status": "unknown", "qualitative": True,
+                "cue": "We could not read the helmet against your back on this clip "
+                       "(no clear helmet edge -- often a road helmet). Film in your race "
+                       "helmet to get a head reading."}
+    if helmet_above_back <= KONA_PRO_FREE_UP_TO:
+        return {"key": "head", "label": "Head", "status": "ok",
+                "cue": f"Helmet {helmet_above_back:+.0f}% of a torso above your back: "
+                       f"where {KONA_PRO_UNDER_FREE} Kona pros rode."}
     return {
-        "key": "head", "label": "Head tuck", "status": "available",
-        "cue": "Drop your gaze and tuck your head so it sits in line with your "
-               "shoulders and back — don't lift it to look up the road.",
-        "drag_reduction_pct": round(drag * 100, 1),
-        "approx_watts_saved": watts_saved_at(drag, REF_SPEED_KMH),
-        "watts_saved_range": [
-            watts_saved_at(drag, REF_SPEED_LOW_KMH),
-            watts_saved_at(drag, REF_SPEED_HIGH_KMH),
-        ],
+        "key": "head", "label": "Head", "status": "available", "qualitative": True,
+        "cue": f"Your helmet sits {helmet_above_back:+.0f}% of a torso above your back, "
+               f"higher than {KONA_PRO_UNDER_FREE} Kona pros (up to "
+               f"+{KONA_PRO_FREE_UP_TO:.0f}%). Drop the head toward the line of your "
+               "back, as far as you can still see the road: head up against head "
+               "down changed drag by up to ~6% in a CFD study.",
     }
+
+
+def with_helmet_lever(
+    aero: dict[str, Any] | None,
+    helmet_above_back: float | None,
+    helmet_check: bool | None,
+    position: str | None,
+) -> dict[str, Any] | None:
+    """The aero read-out with its head lever replaced by the helmet reading.
+
+    The helmet is measured after the analyzer builds the aero read-out (it
+    needs the clip's frames re-read through the segmentation model), so the
+    runner calls this once it has the value.
+    """
+    if not isinstance(aero, dict):
+        return aero
+    levers = [lv for lv in aero.get("levers") or [] if lv.get("key") != "head"]
+    lever = helmet_lever(helmet_above_back, helmet_check, position)
+    if lever is not None:
+        torso_at = next((i for i, lv in enumerate(levers) if lv.get("key") == "torso"), -1)
+        levers.insert(torso_at + 1, lever)
+    return {**aero, "levers": levers}
 
 
 def _elbow_lever(
@@ -280,8 +310,6 @@ def estimate_aero(
     cycling_position: str | None,
     *,
     optimal_trunk_band: tuple[float, float] | None = None,
-    head_alignment: float | None = None,
-    head_optimal_band: tuple[float, float] | None = None,
     elbow_angle: float | None = None,
     elbow_optimal_band: tuple[float, float] | None = None,
 ) -> dict[str, Any] | None:
@@ -325,7 +353,7 @@ def estimate_aero(
         "source": (
             "van Druenen & Blocken 2023 (Computers & Fluids 257)"
             + ("; below 28 deg: Fintelman 2015 (PhD, Birmingham), measured frontal area"
-               if trunk_angle < _TT_RANGE_TOP else "")
+               if trunk_angle < 28.0 else "")
         ),
         "next_zone": None,
     }
@@ -333,10 +361,14 @@ def estimate_aero(
     # Is there a flatter zone, and does the fit allow reaching for it?
     next_zone = AERO_ZONES[cur_idx + 1] if cur_idx + 1 < len(AERO_ZONES) else None
     if next_zone is not None:
-        # Target the boundary between current and next band (the top of
-        # the next band), but never flatter than the position's optimal
-        # floor -- aero must not push past a safe fit.
-        target_trunk = float(next_zone["trunk_band"][1])
+        # Target the MIDDLE of the next zone, never flatter than the
+        # position's optimal floor -- aero must not push past a safe fit.
+        # It used to target the zone's top edge, and read the whole step
+        # between zones as the saving: a rider at 28.9 deg was told to go
+        # "toward 28.0 deg" for 8 % less drag and ~15 W -- a degree is not
+        # worth that (a $4 report, 2026-10-13).
+        lo_z, hi_z = next_zone["trunk_band"]
+        target_trunk = (float(lo_z) + float(hi_z)) / 2.0
         floor = optimal_trunk_band[0] if optimal_trunk_band else None
         if floor is not None:
             target_trunk = max(target_trunk, float(floor))
@@ -393,7 +425,6 @@ def estimate_aero(
         levers.append({"key": "torso", "label": "Torso angle", "status": "ok",
                        "cue": "Torso is well-placed for this position."})
     for lever in (
-        _head_lever(head_alignment, head_optimal_band, cycling_position),
         _elbow_lever(elbow_angle, elbow_optimal_band, cycling_position),
     ):
         if lever is not None:

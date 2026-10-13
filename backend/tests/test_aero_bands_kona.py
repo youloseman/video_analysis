@@ -139,8 +139,22 @@ class TestTheAeroScale:
         # no suggestion, where the zone step would have claimed 5 %.
         r = AE.estimate_aero(22.0, "triathlon", optimal_trunk_band=(20, 30))
         assert r["next_zone"] is None
-        r = AE.estimate_aero(26.0, "tt_aero", optimal_trunk_band=(15, 30))
-        assert r["next_zone"] is not None and r["next_zone"]["drag_reduction_pct"] < 3.0
+        # The saving is the slope between the two angles, nothing more.
+        r = AE.estimate_aero(26.0, "triathlon", optimal_trunk_band=(20, 30))
+        nz = r["next_zone"]
+        expect = (AE._rel_for_trunk(26.0) - AE._rel_for_trunk(nz["target_trunk_angle"])) / AE._rel_for_trunk(26.0)
+        assert nz["drag_reduction_pct"] == pytest.approx(expect * 100, abs=0.1)
+
+    def test_a_degree_over_the_tt_zone_is_not_worth_a_zone(self):
+        """A $4 report (2026-10-13), torso 28.9 on a tri bike: told to go
+        'toward 28.0' for 8 % and ~15 W, the whole step between two postures.
+        Now the target is the middle of the next zone and the saving is the
+        slope between the measured postures."""
+        r = AE.estimate_aero(28.9, "triathlon", optimal_trunk_band=(20, 30))
+        assert r["next_zone"]["target_trunk_angle"] == 24.0
+        assert r["next_zone"]["drag_reduction_pct"] < 5.0
+        a, b = AE._rel_for_trunk(27.9), AE._rel_for_trunk(28.1)
+        assert abs(a - b) < 0.005, "no step at 28 deg"
 
     def test_the_road_steps_are_unchanged(self):
         r = AE.estimate_aero(33.0, "triathlon", optimal_trunk_band=(20, 30))
@@ -151,3 +165,32 @@ class TestTheAeroScale:
     def test_the_source_says_where_the_number_came_from(self):
         assert "Fintelman" in AE.estimate_aero(16.0, "tt_aero", optimal_trunk_band=(15, 30))["source"]
         assert "Fintelman" not in AE.estimate_aero(40.0, "road_hoods", optimal_trunk_band=(40, 55))["source"]
+
+
+class TestTheHeadLever:
+    """The aero head lever read the retired head score and told a rider with
+    the head held high that it was 'well tucked' (2026-10-13). It reads the
+    helmet now, on the same field and free band as the score."""
+
+    def test_no_head_score_reaches_the_aero_read_out(self):
+        import inspect
+        assert "head_alignment" not in inspect.signature(AE.estimate_aero).parameters
+        r = AE.estimate_aero(24.0, "triathlon", optimal_trunk_band=(20, 30))
+        assert not any(lv["key"] == "head" for lv in r["levers"])
+
+    def test_a_high_helmet_is_a_lever_a_low_one_is_fine(self):
+        base = AE.estimate_aero(24.0, "triathlon", optimal_trunk_band=(20, 30))
+        high = AE.with_helmet_lever(base, 27.0, False, "triathlon")
+        head = next(lv for lv in high["levers"] if lv["key"] == "head")
+        assert head["status"] == "available" and "Kona pros" in head["cue"]
+        assert "drag_reduction_pct" not in head, "no invented watt figure"
+        low = AE.with_helmet_lever(base, 15.0, False, "triathlon")
+        assert next(lv for lv in low["levers"] if lv["key"] == "head")["status"] == "ok"
+
+    def test_an_unreadable_helmet_asks_for_the_race_helmet(self):
+        base = AE.estimate_aero(29.0, "triathlon", optimal_trunk_band=(20, 30))
+        out = AE.with_helmet_lever(base, 25.9, True, "triathlon")
+        head = next(lv for lv in out["levers"] if lv["key"] == "head")
+        assert head["status"] == "unknown" and "race helmet" in head["cue"]
+        assert AE.with_helmet_lever(base, 25.9, False, "road_hoods")["levers"] == [
+            lv for lv in base["levers"] if lv["key"] != "head"]

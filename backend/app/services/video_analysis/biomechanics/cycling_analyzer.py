@@ -1097,12 +1097,8 @@ class CyclingAnalyzer(SportAnalyzer):
                 aero_trunk,
                 self.cycling_position,
                 optimal_trunk_band=self.reference.get("trunk_angle"),
-                head_alignment=(
-                    head_alignment_avg
-                    if head_alignment_avg is not None
-                    and not np.isnan(head_alignment_avg) else None
-                ),
-                head_optimal_band=self.reference.get("head_alignment"),
+                # The head lever is added by the runner from the helmet
+                # reading (aero_estimator.with_helmet_lever).
                 elbow_angle=elbow_avg,
                 elbow_optimal_band=self.reference.get("elbow_angle"),
             )

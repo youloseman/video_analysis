@@ -1130,6 +1130,13 @@ def analyze_from_frames(
                 summary["helmet_samples"] = clip_helmet["values"]
         except Exception as e:  # noqa: BLE001 -- a metric must not break the run
             logger.warning("CLIP_HELMET_FAILED", err=str(e))
+        # The aero read-out's head lever, from the helmet just measured.
+        from app.services.video_analysis.biomechanics.aero_estimator import with_helmet_lever
+        if summary.get("aero_estimate"):
+            summary["aero_estimate"] = with_helmet_lever(
+                summary["aero_estimate"], summary.get("helmet_above_back"),
+                summary.get("helmet_check"), cycling_position,
+            )
 
     # Step 4: partial-analysis quality gate.
     max_valid_frames = max(
