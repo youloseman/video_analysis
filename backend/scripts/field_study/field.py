@@ -260,16 +260,22 @@ def _measure(entry: dict, moved: dict, render: bool, blur_face: bool = False):
                               (nl[ids["H"]].x * W, nl[ids["H"]].y * H))
             p["image"] = _blur_face(p["image"], nl, torso)
         ranges = PA._with_helmet_band(PA._get_cycling_optimal_ranges("triathlon", "uncertain"), True)
+        # No score_by_phase when the app withholds the score: the near leg was
+        # not found (editor #30: a disc wheel behind it). The study measures
+        # the upper body only, so the photo still counts; it just has no score.
+        score = (r.get("score_by_phase") or {}).get("uncertain") or r["score"]
         out["jpg"] = PA._generate_photo_thumbnail(
-            cv2, p["image"], nl, angles, r["score_by_phase"]["uncertain"], side, "bike",
+            cv2, p["image"], nl, angles, score, side, "bike",
             PA._build_arc_triplets("bike", side), cycling_position="triathlon",
             optimal_ranges=ranges, row_status=rows, show_header=False,
             corrected=sorted(corrected), helmet=helmet)
         full = PA.analyze_from_pose(p["image"], p["world"], nl, side, [], "bike", "triathlon",
                                     silhouette_top=p["silhouette_top"], helmet_offsets=offsets)
         full["pedal_phase"] = "uncertain"
-        full["score"] = full["score_by_phase"]["uncertain"]
+        full["score"] = (full.get("score_by_phase") or {}).get("uncertain") or full["score"]
         for k in ("knee", "hip"):
+            if k not in full["angles_with_context"]:
+                continue
             full["angles_with_context"][k].update(status="phase_dependent", optimal_min=None,
                                                   optimal_max=None, unscored_reason="pedal position")
         full["warnings"] = []
