@@ -488,7 +488,7 @@ def score_cycling(
         weights.pop("forearm_tilt", None)
 
     # Helmet above the top of the back (video_helmet.py): free up to where
-    # twenty of the twenty-one Kona pros sat, amber with a small penalty
+    # thirty of the thirty-four Kona pros sat, amber with a small penalty
     # above, never red -- the photo rule, from the same constants. Off aero
     # bars, or when the reading flagged itself (a helmet tail lying flush on
     # the back can put the top-of-back point on the helmet), it is shown and
@@ -778,7 +778,7 @@ def build_severity_map(
             severity_map[ref_key] = classify_metric_severity(position, ref_key, float(val))
 
     # Helmet above the back: graded where score_cycling grades it, amber at
-    # worst -- above where twenty of the twenty-one Kona pros sat.
+    # worst -- above where thirty of the thirty-four Kona pros sat.
     helmet = summary.get("helmet_above_back")
     if isinstance(helmet, (int, float)) and not summary.get("helmet_check"):
         from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS

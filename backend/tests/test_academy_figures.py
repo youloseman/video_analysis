@@ -57,12 +57,14 @@ class TestTheKonaDraft:
         frame where the model found the motorbike passenger stays out, and so
         does the age-grouper (kept for a pro-vs-age-group comparison). One is
         Trevor Foley, a reader's photo from an earlier Kona, and its caption
-        says so. Twenty-one since 2026-10-12."""
+        says so. Twenty-one since 2026-10-12; thirty-four measured and twenty-five
+        shown since the broadcast stills came in (Artur, 2026-10-12: stills count
+        in the numbers, but are too soft to print -- the article says how many)."""
         text = DRAFT.read_text(encoding="utf-8")
         shown = re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)
-        assert shown == [f"{n:02d}" for n in range(1, 22)]
+        assert shown == [f"{n:02d}" for n in range(1, 26)]
         assert "Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        tilts = [float(m) for m in re.findall(r"Position \d+ of 21: forearm tilt (\d+)", text)]
+        tilts = [float(m) for m in re.findall(r"Position \d+ of 25: forearm tilt (\d+)", text)]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
     def test_the_hand_corrections_are_disclosed(self):
@@ -72,9 +74,9 @@ class TestTheKonaDraft:
         moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
         assert text.split("---", 2)[2].lstrip().startswith("**Updated 12 October 2026.**")
-        assert "57 of the 84 joint points moved" in text
+        assert "82 of the 136 joint points moved" in text
         assert "A ringed point is one we moved by hand" in text
-        assert "shoulder 86° to 87°, elbow 82° to 84°" in text
+        assert "on the original fifteen photos, the medians moved by 2° at most" in text
 
     def test_uci_is_not_presented_as_a_triathlon_rule(self):
         """UCI equipment rules govern road time trials, not Ironman, whose 2025
@@ -86,11 +88,11 @@ class TestTheKonaDraft:
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 21° | 19–25° | 13–27° | 20–30° |",
-                    "| Shoulder, torso to upper arm | 87° | 86–91° | 74–97° | 80–105° |",
-                    "| Elbow | 84° | 77–88° | 66–101° | 75–110° |",
-                    "| Forearm tilt, above horizontal | 25° | 22–28° | 19–32° | 5–30° |",
-                    "| Helmet above the back, % of torso length | 19% | 14–22% | 12–28% | up to 23% |"):
+        for row in ("| Torso, from horizontal | 20° | 18–22° | 12–27° | 20–30° |",
+                    "| Shoulder, torso to upper arm | 87° | 83–92° | 74–100° | 80–105° |",
+                    "| Elbow | 83° | 76–88° | 66–102° | 75–110° |",
+                    "| Forearm tilt, above horizontal | 26° | 23–28° | 19–32° | 5–30° |",
+                    "| Helmet above the back, % of torso length | 18% | 14–22% | 7–33% | up to 23% |"):
             assert row in text, row
 
     def test_the_article_column_cannot_be_pushed_wider_than_a_phone(self):
@@ -119,9 +121,17 @@ def test_the_head_section_says_what_replaced_100_of_100_and_why():
     text = DRAFT.read_text(encoding="utf-8")
     assert "## 4. The head: how far the helmet rises above the back" in text
     assert "level because the wind is" in text
-    assert "on nine of the twenty-one photos the automatic back point landed on the helmet" in text
+    assert "on seventeen of the thirty-four positions we moved a helmet point by hand" in text
     assert "up to 6.4%" in text and "Beaumont" in text
     from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_RANGE
     from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
-    assert KONA_PRO_RANGE == (12.0, 28.0), "the app's reference is the article's"
+    assert KONA_PRO_RANGE == (7.0, 33.0), "the app's reference is the article's"
     assert KONA_PRO_FREE_UP_TO == 23.0
+
+
+def test_the_stills_count_and_the_article_says_so():
+    """Nine positions are broadcast or social-media stills: in every number,
+    not printed. The reader is told how many of each."""
+    text = DRAFT.read_text(encoding="utf-8")
+    assert "twenty-five positions are shown as photographs below, but all thirty-four" in text
+    assert "## 5. Men and women: a first look" in text

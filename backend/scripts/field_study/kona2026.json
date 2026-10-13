@@ -663,6 +663,24 @@
      510.9,
      17.0
     ]
+   },
+   "frozen": {
+    "image": "upload/field-study/kona2026/frozen/p10.webp",
+    "angles": {
+     "trunk": 12.8,
+     "shoulder": 95.6,
+     "elbow": 82.5,
+     "forearm_tilt": 25.9,
+     "helmet_above_back": 16.6
+    },
+    "rows": {
+     "trunk": "acceptable",
+     "shoulder": "optimal",
+     "elbow": "optimal",
+     "forearm_tilt": "optimal",
+     "helmet_above_back": "optimal"
+    },
+    "why": "source photo left upload/ after its points were checked; angles and figure from the 2026-10-12 rebuild"
    }
   },
   {
@@ -1798,7 +1816,8 @@
      130.3,
      163.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 28,
@@ -2070,7 +2089,8 @@
      213.3,
      131.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 32,
@@ -2138,7 +2158,8 @@
      136.7,
      95.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 33,
@@ -2206,7 +2227,8 @@
      176.2,
      121.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 34,
@@ -2274,7 +2296,8 @@
      233.8,
      96.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 35,
@@ -2342,7 +2365,8 @@
      199.6,
      78.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 36,
@@ -2410,7 +2434,8 @@
      208.2,
      93.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 37,
@@ -2478,7 +2503,8 @@
      287.6,
      76.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 38,
@@ -2546,7 +2572,8 @@
      209.9,
      83.0
     ]
-   }
+   },
+   "figure": false
   },
   {
    "n": 39,

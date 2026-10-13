@@ -299,6 +299,33 @@ def _number_word(n: int) -> str:
     return str(n)
 
 
+def _frozen(entry: dict, moved: dict) -> dict:
+    """A photo whose source file is gone, from the measurement already made.
+
+    Editor #10's original left the upload folder after its points had been
+    checked and its figure published. The angles and the rendered figure are
+    kept in the study (``frozen``), so the position still counts; the
+    centimetre size of each hand correction is recomputed from the stored
+    model points, which are in the same crop pixels as the offsets.
+    """
+    from PIL import Image
+
+    f = entry["frozen"]
+    scale = entry.get("scale", 1.0)
+    pt = {k: (entry["model"][k][0] + moved.get(k, (0, 0))[0],
+              entry["model"][k][1] + moved.get(k, (0, 0))[1]) for k in KEYS}
+    torso = math.dist(pt["S"], pt["H"]) / scale
+    buf = io.BytesIO()
+    Image.open(ROOT / f["image"]).convert("RGB").save(buf, "JPEG", quality=95)
+    return {"key": entry["key"], "n": entry["n"], "race": entry["race"], "label": entry.get("label"),
+            "caption_note": entry.get("caption_note"), "angles": dict(f["angles"]),
+            "rows": dict(f["rows"]), "corrected": [],
+            "moved_cm": [round(math.hypot(*moved[k]) / scale / torso * 50, 2)
+                         for k in KEYS if k in moved and math.hypot(*moved[k]) >= 0.5],
+            "helmet_moved": any(math.hypot(*moved.get(k, (0, 0))) >= 0.5 for k in ("B", "T")),
+            "jpg": buf.getvalue(), "report": None}
+
+
 def rebuild(study: dict) -> None:
     import numpy as np
     from PIL import Image
@@ -311,8 +338,12 @@ def rebuild(study: dict) -> None:
         if (rec.get("group") or e.get("group")) == "excluded":
             continue
         group = rec.get("group") or e.get("group", "pro")
-        d = _measure(e, rec.get("moved") or {}, True, blur_face=(group == "age_group"))
+        if not (ROOT / e["photo"]).exists() and e.get("frozen"):
+            d = _frozen(e, rec.get("moved") or {})
+        else:
+            d = _measure(e, rec.get("moved") or {}, True, blur_face=(group == "age_group"))
         d["group"] = group
+        d["figure"] = e.get("figure", True)
         d["category"] = rec.get("category") or e.get("category")
         if d["group"] != "excluded":
             measured.append(d)
@@ -332,8 +363,12 @@ def rebuild(study: dict) -> None:
     for old in glob.glob(str(media / "position-*.webp")) + glob.glob(str(social / "position-*.jpg")):
         os.remove(old)
     count = len(items)
+    # Every pro counts in the numbers; only the ones whose photo is good enough
+    # to print get a figure. Broadcast screen grabs measure fine once the points
+    # are checked by hand, but they are too soft and too small to publish.
+    shown = [d for d in items if d["figure"]]
     captions = []
-    for n, d in enumerate(items, 1):
+    for n, d in enumerate(shown, 1):
         a = d["angles"]
         webp(d["jpg"], media / f"position-{n:02d}.webp", 82)
         tag = f"_{d['key']}" if d["race"] != "Kona 2026" else ""
@@ -344,7 +379,7 @@ def rebuild(study: dict) -> None:
         helmet = (f", helmet {a['helmet_above_back']:+.0f}% above the back"
                   if a.get("helmet_above_back") is not None else "")
         captions.append(
-            f"![Position {n} of {count}: forearm tilt {a['forearm_tilt']:.0f}°, torso {a['trunk']:.0f}°, "
+            f"![Position {n} of {len(shown)}: forearm tilt {a['forearm_tilt']:.0f}°, torso {a['trunk']:.0f}°, "
             f"shoulder {a['shoulder']:.0f}°, elbow {a['elbow']:.0f}°{helmet}.{extra}]"
             f"(/media/academy/{Path(study['media']).name}/position-{n:02d}.webp)")
     # Age-groupers: their own folder, faces blurred (_blur_face), never into
@@ -391,7 +426,9 @@ def rebuild(study: dict) -> None:
             "joint_move_max_cm": max(cm) if cm else 0.0,
             "helmet_back_points_moved": sum(d["helmet_moved"] for d in items),
         },
+        "shown": len(shown),
         "positions": [{"n": n, "key": d["key"], "editor_n": d["n"], "category": d["category"],
+                       "figure": (shown.index(d) + 1) if d in shown else None,
                        **{k: d["angles"][k] for k in SHOWN}, "rows": d["rows"]}
                       for n, d in enumerate(items, 1)],
         "groups": groups,

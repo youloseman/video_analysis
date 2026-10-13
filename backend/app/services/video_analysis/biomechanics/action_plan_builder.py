@@ -811,7 +811,7 @@ def build_action_plan(
     # No "Head alignment" strong point: that score praised every aero rider
     # (an ear under a line inside the body). The helmet reading that replaced
     # it is praised only where it is graded -- aero bars, a trusted reading --
-    # and within where twenty of the twenty-one Kona pros sat.
+    # and within where thirty of the thirty-four Kona pros sat.
     helmet = sm.get("helmet_above_back")
     if (position in AERO_POSITIONS and isinstance(helmet, (int, float))
             and not sm.get("helmet_check")):
