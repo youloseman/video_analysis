@@ -411,6 +411,13 @@ def _bike_data_block(
     # CdA -- give the coach the zone + the flatten-delta so its advice
     # stays consistent with what the rider sees, and remind it the
     # number is relative.
+    # The pro field, for an aero rider: where the fastest people on the day
+    # sat, said once and marked as context (kona_field.py).
+    from app.services.video_analysis.biomechanics.kona_field import pro_field_prompt_block
+    pro = pro_field_prompt_block(position)
+    if pro:
+        lines.append("- " + pro)
+
     aero = summary.get("aero_estimate")
     if isinstance(aero, dict):
         nxt = aero.get("next_zone")
@@ -1188,6 +1195,10 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         )
         if tradeoffs:
             lines.append(tradeoffs)
+        from app.services.video_analysis.biomechanics.kona_field import pro_field_prompt_block
+        pro = pro_field_prompt_block(res.get("cycling_position"))
+        if pro:
+            lines.append(pro)
 
     warns = res.get("warnings") or []
     if warns:

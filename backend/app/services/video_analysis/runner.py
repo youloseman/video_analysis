@@ -56,6 +56,7 @@ from app.services.video_analysis.biomechanics.landmark_stabilizer import (
 from app.services.video_analysis.biomechanics.quality_gate import (
     evaluate_quality_gate,
 )
+from app.services.video_analysis.biomechanics.kona_field import pro_field
 from app.services.video_analysis.biomechanics.sport_configs import reference_bands
 from app.services.video_analysis.biomechanics.running_analyzer import (
     RunningAnalyzer,
@@ -1694,6 +1695,9 @@ def analyze_from_frames(
         "reference_bands": reference_bands(
             sport_type, cycling_position if is_bike else None,
         ),
+        # Where the Kona pros sat (kona_field.py): shown beside the bands on
+        # aero positions, graded against nowhere. None off the aero bars.
+        "pro_field": pro_field(cycling_position) if is_bike else None,
         # The athlete's own adjustments to the joint points these numbers were
         # read from, when there are any. Carried on the result so no reader
         # can take an adjusted measurement for an automatic one.

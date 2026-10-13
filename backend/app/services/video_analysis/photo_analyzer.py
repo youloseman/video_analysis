@@ -2122,6 +2122,10 @@ def analyze_from_pose(
         response["cycling_position"] = cycling_position
         response["cycling_position_label"] = get_position_label(cycling_position)
         response["pedal_phase"] = pedal_phase
+        # Where the Kona pros sat, beside the bands on aero positions
+        # (kona_field.py). Context, never a grade.
+        from app.services.video_analysis.biomechanics.kona_field import pro_field
+        response["pro_field"] = pro_field(cycling_position)
         if score_by_phase is not None:
             response["score_by_phase"] = score_by_phase
         if pedal_phase == "uncertain" and not withheld:

@@ -1139,7 +1139,7 @@
       <div class="tablewrap">
         <table class="data" id="angleTable">
           <caption class="visually-hidden">Joint angle statistics: 5th percentile, mean, 95th percentile, optimal range, status and share of valid frames per angle</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num col-opt">Optimal <small class="thq">mean</small></th><th scope="col" class="col-status">Status <small class="thq">mean</small></th><th scope="col" class="num">Valid</th></tr></thead>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num col-opt">Optimal <small class="thq">mean</small></th><th scope="col" class="num col-pro">Kona pros <small class="thq">median · middle half</small></th><th scope="col" class="col-status">Status <small class="thq">mean</small></th><th scope="col" class="num">Valid</th></tr></thead>
           <tbody id="angleRows"></tbody>
         </table>
       </div>
@@ -1147,6 +1147,9 @@
         <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
       <p class="hint" id="angleStatNote" style="text-align:left;margin-top:8px">
         <b>Optimal</b> and <b>Status</b> are about the <b>mean</b> — the carry of the arm, the lean of the trunk over the whole clip. <b>Low / High</b> are the 5th and 95th percentile: how far the joint swings each cycle, which is the movement, not a fault — an elbow at 57° at the back of the swing and 100° at the front is one normal arm swing around a 84° carry. A frame that reads outside the physiological range for a joint is a tracking artefact: it is excluded from every number and counted in an <b>artefact</b> pill instead.</p>
+      <!-- The pro column, explained: a field to place yourself against, never a
+           target. Filled by renderAngleTable from the served pro_field. -->
+      <p class="hint hidden" id="angleProNote" style="text-align:left;margin-top:8px"></p>
     </div>
 
     <!-- Folded by default, and the fold is the point. Eight charts of
@@ -1317,9 +1320,9 @@
         </div>
       </div>
       <div class="tablewrap">
-        <table class="data">
-          <caption class="visually-hidden">Joint angles with measured value, optimal range and status</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th></tr></thead>
+        <table class="data" id="pAngleTable">
+          <caption class="visually-hidden">Joint angles with measured value, optimal range, the Kona pro field and status</caption>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Optimal</th><th scope="col" class="num col-pro">Kona pros <small class="thq">median · middle half</small></th><th scope="col">Status</th></tr></thead>
           <tbody id="pAngleRows"></tbody>
         </table>
       </div>
@@ -3368,6 +3371,7 @@ function tileA(lbl,key,val,ref,range,sport){
   if(range&&range.value!=null&&range.lo!=null&&range.hi!=null){
     const b=bandDisp(key,[range.lo,range.hi],sport);
     rg=Object.assign({},range,{value:d(range.value),lo:b[0],hi:b[1]});
+    if(range.pro){ const m=bandDisp(key,[range.pro.q1,range.pro.q3],sport); rg.pro=Object.assign({},range.pro,{median:d(range.pro.median),q1:m[0],q3:m[1]}); }
   }
   return tile(angleConvLabel(key,sport,lbl),num(d(val)),'°',ref,null,false,rg);
 }
@@ -3420,7 +3424,7 @@ function grZone(v,lo,hi,metric){
 }
 /* Horizontal 5-zone bar (red|amber|green|amber|red) with a marker triangle at `value`.
    Axis = optimal ± one warning margin ± one critical margin (mirrors GradientRangeBar). */
-function gradientRangeBar(value,lo,hi,unit,metric,src){
+function gradientRangeBar(value,lo,hi,unit,metric,src,pro){
   // warning margin matches grZone so the green optimal band on the bar agrees
   // with the status pill (see grMargin for the non-degree metrics).
   const opt=hi-lo, m=grMargin(lo,hi,metric);
@@ -3453,7 +3457,9 @@ function gradientRangeBar(value,lo,hi,unit,metric,src){
   return `<div class="grbar">`
     +`<div class="gr-chiprow"><span class="gr-chip gr-${chipCls}" style="left:${chipL.toFixed(1)}%">${vtxt}${u}</span></div>`
     +`<div class="gr-track" style="background:${grad}" role="img" aria-label="Value ${num(value,1)}${u}, optimal ${num(lo,1)} to ${num(hi,1)}${u}, ${zWord}">`
-    +`<span class="gr-tri" style="left:${mk.toFixed(1)}%;border-top-color:${tri}"></span></div>`
+    +`<span class="gr-tri" style="left:${mk.toFixed(1)}%;border-top-color:${tri}"></span>`
+    +(pro&&pro.median>=axMin&&pro.median<=axMax?`<span class="gr-pro-tick" style="left:${P(pro.median).toFixed(1)}%" title="Kona pros' median"></span>`:'')
+    +`</div>`
     +`<div class="gr-scale"><span>${num(axMin,0)}</span>`
     +`<span class="gr-opt">${num(lo,0)}–${num(hi,0)}${u}</span>`
     +`<span>${num(axMax,0)}</span></div>`
@@ -3463,6 +3469,9 @@ function gradientRangeBar(value,lo,hi,unit,metric,src){
     // when uncited) at a fixed two-line height, so the track above it sits on
     // one shared line across every card in the row. Cards used to place the
     // bar wherever their note's line count happened to push it.
+    // The Kona field, where there is one: the pros' median (the tick on the
+    // track) and their middle half. Shown, not graded.
+    +(pro?`<div class="gr-pro"><span class="gr-pro-mark" aria-hidden="true"></span>Kona pros ${num(pro.median,0)}${u} <small>· middle half ${num(pro.q1,0)}–${num(pro.q3,0)}${u}</small></div>`:'')
     +`<div class="gr-src">${src?`Band: ${esc(src)}`:''}</div>`
     +`</div>`;
 }
@@ -3498,7 +3507,7 @@ function tile(lbl,val,unit,ref,cls,isText=false,range=null){
   let bar='';
   if(range && range.value!=null && range.lo!=null && range.hi!=null){
     if(!cls){ const z=grZone(range.value,range.lo,range.hi,range.metric); cls=z==='optimal'?'good':z==='warning'?'warn':'bad'; }
-    bar=gradientRangeBar(range.value,range.lo,range.hi,range.unit!=null?range.unit:unit,range.metric,range.src);
+    bar=gradientRangeBar(range.value,range.lo,range.hi,range.unit!=null?range.unit:unit,range.metric,range.src,range.pro);
   }
   const stWord = cls ? `${ref?' · ':''}<span class="st-${cls}">${ST_WORD[cls]}</span>` : '';
   const refLine = (ref||cls) ? `<div class="t-ref">${ref?esc(ref):''}${stWord}</div>` : '';
@@ -3583,9 +3592,13 @@ function bikeTiles(s, position){
   // Served band first (it knows the position and carries the citation), the
   // local position table second.
   const rng=(key,val,field)=>{
-    const b=(state.bands||{})[field];
-    if(b) return R(val,b.lo,b.hi,'°',b.source||null);
-    const r=bikePosRange(position,key); return r?R(val,r[0],r[1],'°'):null;
+    const b=(state.bands||{})[field], pr=bikePosRange(position,key);
+    const r=b?R(val,b.lo,b.hi,'°',b.source||null):(pr?R(val,pr[0],pr[1],'°'):null);
+    // The Kona field beside the band, on aero positions: a tick on the track
+    // at the pros' median and a line under it (kona_field.py).
+    const p=state.pro&&state.pro.metrics&&state.pro.metrics[field];
+    if(r&&p) r.pro={median:p.median,q1:p.q1,q3:p.q3,n:state.pro.n};
+    return r;
   };
   if(s.knee_at_bdc!=null) t.push(tileA('Knee · bottom','knee_at_bdc',s.knee_at_bdc,null,rng('knee_at_bdc',s.knee_at_bdc,'knee_at_bdc'),'bike'));
   if(s.knee_at_tdc!=null) t.push(tileA('Knee · top','knee_at_tdc',s.knee_at_tdc,null,rng('knee_at_tdc',s.knee_at_tdc,'knee_at_tdc'),'bike'));
@@ -3623,6 +3636,12 @@ function bikeTiles(s, position){
     if(shR&&(position==='tt_aero'||position==='triathlon')) shR.metric='shoulder_closed_ok';
     t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,shR));
   }
+  // Forearm tilt is a fitted quantity on aero bars only (on the hoods the
+  // forearm slopes to the bar by geometry), and it is the Kona story: every
+  // pro had the hands up. A tile here, beside the pros' figure.
+  if(s.forearm_tilt_avg!=null&&(position==='tt_aero'||position==='triathlon')){
+    t.push(tile('Forearm tilt',num(s.forearm_tilt_avg),'°','above horizontal',null,false,rng('forearm_tilt',s.forearm_tilt_avg,'forearm_tilt_avg')));
+  }
   // How the foot is carried through the stroke, and where it spent it. Only
   // toe-down is flagged: it lengthens the effective leg, which is what makes a
   // too-high saddle read as correctly set. Heel-down and ankling are styles,
@@ -3642,7 +3661,10 @@ function bikeTiles(s, position){
      The old 'Head align /100' tile showed a score every aero rider passed. */
   if(s.helmet_above_back!=null){ const hv=s.helmet_above_back;
     t.push(tile('Helmet above back',(hv>=0?'+':'')+num(hv,1),'%',
-      s.helmet_check?'not graded: no clear helmet edge · film in your race helmet':'of torso · Kona pros +7 to +33%',
+      s.helmet_check?'not graded: no clear helmet edge · film in your race helmet':
+        (state.pro&&state.pro.metrics&&state.pro.metrics.helmet_above_back
+          ? `of torso · Kona pros +${num(state.pro.metrics.helmet_above_back.median,0)}%, middle half +${num(state.pro.metrics.helmet_above_back.q1,0)} to +${num(state.pro.metrics.helmet_above_back.q3,0)}%`
+          : 'of torso · Kona pros +7 to +33%'),
       (!s.helmet_check&&hv>23)?'warn':null)); }
   if(s.saddle_height_assessment){
     // The millimetres, when the crank circle gave the clip a ruler. Said
@@ -3891,12 +3913,33 @@ function rowForPhase(a,phase){
   else { o.optimal_min=o.optimal_max=null; o.status='phase_dependent'; o.unscored_reason='pedal position'; }
   return o;
 }
-function angleRow(k,a){
+/* Where the Kona pros sat, for one row of a table (kona_field.py). The field
+   keys are the video summary's; a photo row and a joint-table row are mapped
+   onto them, and the figures go through the reading convention like every
+   other printed angle. A field, not a band: shown, never graded. */
+const PRO_FIELD_KEY={trunk:'trunk_angle_avg',trunk_angle_avg:'trunk_angle_avg',shoulder:'shoulder_angle_avg',shoulder_angle_avg:'shoulder_angle_avg',
+  elbow:'elbow_angle_avg',elbow_angle_avg:'elbow_angle_avg',forearm_tilt:'forearm_tilt_avg',forearm_tilt_avg:'forearm_tilt_avg',helmet_above_back:'helmet_above_back'};
+function proFor(key,pro){
+  if(!pro||!pro.metrics) return null;
+  const base=String(key).replace(/^left_|^right_/,'');
+  return pro.metrics[PRO_FIELD_KEY[base]]||null;
+}
+function proCell(key,pro,sport,unit){
+  const p=proFor(key,pro);
+  if(!p) return '<td class="num col-pro muted">—</td>';
+  const u=unit||'°';
+  const med=sport?angleDisp(key,p.median,sport):p.median;
+  const mid=sport?bandDisp(key,[p.q1,p.q3],sport):[p.q1,p.q3];
+  const sign=u==='%'&&med>=0?'+':'';
+  return `<td class="num col-pro" title="Median of ${pro.n} Kona pros; the middle half sat between ${num(mid[0],0)} and ${num(mid[1],0)}${u}"><span class="pro-v">${sign}${num(med,0)}${u} <small class="pro-mid">${num(mid[0],0)}–${num(mid[1],0)}</small></span></td>`;
+}
+function angleRow(k,a,pro){
   const stt=a.status||'unknown';
   const val=a.value==null?'—':(typeof a.value==='number'?Math.round(a.value*10)/10:a.value);
+  const proTd=pro===undefined?'':proCell(k,pro,null,k==='helmet_above_back'?'%':'°');
   if(stt==='phase_dependent'){
     return `<tr class="row-info"><th scope="row">${esc(a.label||pretty(k))}</th>
-      <td class="num">${val}</td><td class="num muted">—</td>
+      <td class="num">${val}</td><td class="num muted">—</td>${proTd}
       <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · ${esc(a.unscored_reason||'phase')}</span></td></tr>`;
   }
   const cls=P_STATUS_CLS[stt]||'low';
@@ -3907,18 +3950,20 @@ function angleRow(k,a){
     ? (a.optimal_min<0 ? `${a.optimal_min} to ${a.optimal_max}` : `${a.optimal_min}–${a.optimal_max}`)
     : (a.optimal_max!=null ? `≤ ${a.optimal_max}` : '—');   /* one-sided band: helmet above back */
   return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
-    <td class="num">${val}</td><td class="num">${opt}</td>
+    <td class="num">${val}</td><td class="num">${opt}</td>${proTd}
     <td><span class="pill pill-${cls}" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>${esc(word)}</span></td></tr>`;
 }
 function renderPhotoAngles(){
   const res=state.photoRes; if(!res) return;
   const A=res.angles_with_context||{}, phase=state.pedalPhase||'uncertain';
+  const pro=res.pro_field||null;
   const rows=Object.keys(A).map(k=>{
     let a=A[k];
     if(a.bands) a=rowForPhase(a,phase);   // knee + hip: scored at the chosen pedal position
-    return angleRow(k,a);
+    return angleRow(k,a,pro);
   }).join('');
-  $('#pAngleRows').innerHTML=rows||'<tr><td colspan="4" class="muted">No angle data.</td></tr>';
+  $('#pAngleRows').innerHTML=rows||'<tr><td colspan="5" class="muted">No angle data.</td></tr>';
+  const pt=$('#pAngleTable'); if(pt) pt.classList.toggle('no-pro', !pro);
   // No picker over a withheld photo: there is no score for it to move.
   const banded=Object.values(A).find(a=>a&&a.bands), pick=$('#pPhasePick');
   if(banded&&!(res.score&&res.score.withheld)){
@@ -7130,8 +7175,13 @@ function anglesHaveOpt(A, sport, position){
   const ctx={cycling_position:position};
   return Object.keys(A||{}).some(k=>!!angleOptimal(k,sport,ctx));
 }
-function angleTableRows(A, sport, position, srcByKey){
+function angleTableRows(A, sport, position, srcByKey, pro){
   A = A || {};
+  // `pro` undefined: no column at all (the cabinet's saved table); null: the
+  // column exists but this result has no field (hidden by .no-pro); object:
+  // the Kona figures for every row that has them.
+  const proTd=k=>pro===undefined?'':proCell(k,pro,sport,'°');
+  const cols=pro===undefined?7:8;
   const ctx = {cycling_position: position};
   // A joint with no mean is either one the camera never saw (folded away
   // below) or one whose every frame failed the physiological envelope --
@@ -7181,12 +7231,12 @@ function angleTableRows(A, sport, position, srcByKey){
     return `<tr${unseen(k)?' class="t-far hidden"':''}><th scope="row">${esc(angleConvLabel(k,sport,pretty(k)))}${src}</th>
       <td class="${cls}">${num(lo,0)}</td><td class="${cls}">${num(angleDisp(k,a.mean,sport),0)}</td>
       <td class="${cls}">${num(hi,0)}</td>
-      <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>${statusCell}
+      <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>${proTd(k)}${statusCell}
       <td class="pct ${muted?'muted':''}">${pct}%</td></tr>`;
   });
-  if(!rows.length) return '<tr><td colspan="7" class="muted">No angle data.</td></tr>';
+  if(!rows.length) return `<tr><td colspan="${cols}" class="muted">No angle data.</td></tr>`;
   const far=Object.keys(A).filter(unseen).length;
-  if(far) rows.push(`<tr class="t-farrow"><td colspan="7">
+  if(far) rows.push(`<tr class="t-farrow"><td colspan="${cols}">
     <button class="btn btn-ghost btn-sm" type="button" data-showfar>
       Show ${far} joint${far>1?'s':''} the camera could not see</button></td></tr>`);
   return rows.join('');
@@ -7221,7 +7271,14 @@ function renderAngleTable(r, sport){
   } else if(paired){
     srcMap=angleSourceLabels(liveStats, r.camera_side||null, paired);
   }
-  $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap);
+  const pro=state.pro||null;
+  $('#angleRows').innerHTML=angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap, pro);
+  $('#angleTable').classList.toggle('no-pro', !pro);
+  const pn=$('#angleProNote');
+  if(pn){
+    pn.classList.toggle('hidden', !pro);
+    if(pro) pn.innerHTML=`<b>Kona pros</b> — the median and middle half of ${pro.n} professional positions we measured at the 2026 Ironman World Championship (${pro.men} men, ${pro.women} women), every joint point checked by hand. A field to place yourself against, not a target: the pros hold positions most age-groupers cannot. <a href="${esc(pro.article||'/academy/kona-2026-pro-bike-positions')}" target="_blank" rel="noopener">Read the study</a>.`;
+  }
   // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).
   $('#angleNorefNote').classList.toggle('hidden', sport!=='run');
   // no reference bands for this sport's angles -> hide the Optimal/Status columns
@@ -7237,6 +7294,8 @@ function render(job,opts){
   // Bands this result was graded against, straight from the server. Cleared
   // per render so a bike result never grades a run with a rider's ranges.
   state.bands = r.reference_bands || null;
+  // Where the Kona pros sat (aero positions only), served with the bands.
+  state.pro = r.pro_field || null;
 
   // score + grade. A withheld score is not a missing one: the analysis ran,
   // measured everything it could, and declined to summarise it in a figure

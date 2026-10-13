@@ -43,6 +43,8 @@ from typing import Any
 
 import numpy as np
 
+from app.services.video_analysis.biomechanics.kona_field import KONA_PRO_FIELD
+
 # Columns kept of the silhouette's top edge. 512 resolves a helmet on any
 # photo the app accepts (a 1179 px wide frame -> 2.3 px per column) and keeps
 # the signed pose blob a few kilobytes.
@@ -75,13 +77,15 @@ BACK_TOP_POINT = 100
 HELMET_TOP_POINT = 101
 HELMET_POINT_NAMES = {BACK_TOP_POINT: "top of the back", HELMET_TOP_POINT: "top of the helmet"}
 
+_HELMET_FIELD = KONA_PRO_FIELD["helmet_above_back"]
+
 # The Kona pro field, every top-of-back and top-of-helmet point checked by hand
 # (Artur, n=32 since 2026-10-12; 21 men, 11 women; race photographs plus
 # broadcast stills): 6.7-33.0 %, median 18.4, middle half 13.9-21.5.
 # Sixteen needed a helmet point moved, mostly the back point off a flush
 # helmet tail, where the automatic reading runs up to 10 points low.
-KONA_PRO_RANGE = (7.0, 33.0)
-KONA_PRO_MEDIAN = 18.4
+KONA_PRO_RANGE = (float(round(_HELMET_FIELD["lo"])), float(round(_HELMET_FIELD["hi"])))
+KONA_PRO_MEDIAN = _HELMET_FIELD["median"]
 # Where the helmet starts to cost points. Not the highest pro: twenty-nine of
 # the thirty-two sat at +23 % or lower, and the three above it (up to +33 %)
 # should not widen the free band for everyone. Unchanged from n=21.

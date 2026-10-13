@@ -635,7 +635,21 @@ def build_json(
             "coach_report": (result.get("ai_recommendations") or {}).get("report"),
         },
         "reference_ranges": reference,
+        # The Kona pro field (aero positions only): where the fastest riders
+        # on the day sat, for the receiving model to place a number against.
+        # A field, not a band -- nothing is graded on it.
+        "kona_pro_field": _pro_field_for(result),
     }
+
+
+def _pro_field_for(result: dict[str, Any]) -> dict[str, Any] | None:
+    if result.get("sport_type") != "bike":
+        return None
+    try:
+        from app.services.video_analysis.biomechanics.kona_field import pro_field
+        return pro_field(result.get("cycling_position"))
+    except Exception:  # noqa: BLE001 -- context, never a reason to fail
+        return None
 
 
 def export_filename(
