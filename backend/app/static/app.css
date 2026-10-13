@@ -2047,24 +2047,21 @@ table.data th.num,table.data td.num{text-align:right;font-variant-numeric:tabula
 /* Equal columns. Left to itself the browser sizes each column to its widest
    cell, so a table of numbers came out ragged: a wide Optimal, a narrow Mean.
    Fixed layout instead: the name column and the status pill get a set share,
-   every other column splits the rest evenly. Desktop only -- on a phone the
-   rows are stacked into cards (below) and have no columns to align. */
-@media(min-width:641px){
-  table.data{table-layout:fixed}
-  table.data thead th:first-child{width:16%}
-  table.data thead th.col-status{width:23%}
-  table.data tbody th{overflow-wrap:anywhere}
-  /* Narrow, even number columns: tighter padding, one line per figure. */
-  table.data th.num,table.data td.num,table.data td.pct{padding-left:8px;padding-right:8px}
-  table.data td.num,table.data td.pct{white-space:nowrap}
-  table.data th.col-status,table.data td.col-status{padding-left:12px;padding-right:8px}
-  /* Header qualifiers (p5, mean, median · middle half) on their own line,
-     and the pros' middle half under their median, so neither forces a
-     column wider than its neighbours. */
-  table.data thead th .thq{display:block;margin-left:0;margin-top:2px}
-  table.data td.col-pro .pro-mid{display:block;margin-left:0}
-}
-table.data thead th .thq{font-family:var(--f-mono);font-size:10px;letter-spacing:0;text-transform:none;font-weight:400;color:var(--c-ink-faint);margin-left:2px}
+   every other column splits the rest evenly. On a phone the rows are
+   stacked into cards (the 640px block below), which overrides all of this. */
+table.data{table-layout:fixed}
+table.data thead th:first-child{width:16%}
+table.data thead th.col-status{width:23%}
+table.data tbody th{overflow-wrap:anywhere}
+/* Narrow, even number columns: tighter padding, one line per figure. */
+table.data th.num,table.data td.num,table.data td.pct{padding-left:8px;padding-right:8px}
+table.data td.num,table.data td.pct{white-space:nowrap}
+table.data th.col-status,table.data td.col-status{padding-left:12px;padding-right:8px}
+/* Header qualifiers (p5, mean, median · middle half) on their own line,
+   and the pros' middle half under their median, so neither forces a
+   column wider than its neighbours. */
+table.data td.col-pro .pro-mid{display:block;margin-left:0}
+table.data thead th .thq{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:0;text-transform:none;font-weight:400;color:var(--c-ink-faint);margin-top:2px}
 table.data td,table.data tbody th{padding:10px 14px;border-bottom:1px solid var(--c-line)}
 table.data tbody th{text-align:left;font-weight:500;color:var(--c-ink)}
 table.data tbody tr:hover{background:var(--c-panel)}
