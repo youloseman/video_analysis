@@ -402,16 +402,32 @@ async def test_an_unlock_writes_the_coaching_on_the_payment(db, make_user, monke
     assert "fit_plan" in calls[0] and "focus" in calls[0]
 
 
-async def test_an_unlock_is_not_in_the_review_queue(db, make_user):
-    """Order #3 (2026-10-13), a $4 unlock, sat in the Expert queue and opened
-    the full review form. Nothing about it needs a person."""
+async def test_an_unlock_is_in_the_queue_as_a_check_not_a_review(db, make_user):
+    """Order #3 (2026-10-13), a $4 unlock, opened the full Expert Review form.
+    Artur wants every paid report in front of him anyway, to catch what the
+    product got wrong -- so an unlock is a CHECK: the stored result and the coach
+    text the athlete got, a note, a tick. Never a form, never a send."""
     admin = await make_user()
     buyer = await make_user()
     await store(db, buyer, client_id="h1")
     await _apply_event(db, unlock_event(buyer.id, client_id="h1", session_id="cs_q"))
     queue = await billing.admin_orders(admin, db)
-    assert all(o["plan"] != "unlock" for o in queue)
+    item = next(o for o in queue if o["plan"] == "unlock")
+    assert item["kind"] == "check" and item["checked"] is False and item["has_draft"] is False
     order = (await db.execute(select(Order).where(Order.stripe_session_id == "cs_q"))).scalar_one()
+    detail = await billing.admin_order_detail(order.id, admin, db)
+    assert detail["kind"] == "check" and "sections" not in detail
+    assert detail["result"]["score"] == 74 and detail["result"]["coach_report"] == "lift your cadence"
+
+    # A note and a tick; a report or a status is refused, and publish too.
+    out = await billing.admin_update_order(order.id, billing.OrderPatch(admin_note="score too kind", checked=True), admin, db)
+    assert out["qa"]["checked_at"] and out["admin_note"] == "score too kind" and out["status"] == "paid"
+    with pytest.raises(HTTPException):
+        await billing.admin_update_order(order.id, billing.OrderPatch(report={"verdict": "x"}), admin, db)
     with pytest.raises(HTTPException) as exc:
-        await billing.admin_order_detail(order.id, admin, db)
-    assert exc.value.status_code == 400 and "nothing to write" in exc.value.detail
+        await billing.admin_publish_report(order.id, None, admin, db)
+    assert exc.value.status_code == 400
+    assert next(o for o in await billing.admin_orders(admin, db) if o["plan"] == "unlock")["checked"] is True
+    # The athlete's own view of the order is untouched: nothing delivered.
+    mine = await billing.my_orders(buyer, db)
+    assert mine[0]["status"] == "paid" and not mine[0].get("unread")

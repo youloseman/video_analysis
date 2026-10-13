@@ -6176,6 +6176,7 @@ async function openSampleReport(){
    ============================================================ */
 const EX_PRIO_SLOTS=3, EX_FIT_SLOTS=4;
 function exPill(o){
+  if(o.kind==='check') return o.checked?'<span class="ex-pill is-done">checked</span>':'<span class="ex-pill is-todo">to check</span>';
   if(o.status==='delivered') return '<span class="ex-pill is-done">delivered</span>';
   if(o.status==='refunded')  return '<span class="ex-pill">refunded</span>';
   if(o.has_draft)            return '<span class="ex-pill is-draft">draft</span>';
@@ -6200,10 +6201,12 @@ async function loadExpertQueue(){
   }catch(e){ list.innerHTML='<p class="hint" style="text-align:left">Couldn’t load the queue.</p>'; return; }
   state.exFilter=state.exFilter||'open';
   const f=state.exFilter;
+  // A paid unlock is a check: open until ticked, done once it is.
+  const done=o=>o.kind==='check'?o.checked:(o.status==='delivered');
   const shown=orders.filter(o=>
     f==='all' ? true :
-    f==='delivered' ? o.status==='delivered' :
-    (o.status!=='delivered' && o.status!=='refunded'));
+    f==='delivered' ? done(o) :
+    (!done(o) && o.status!=='refunded'));
   if(!shown.length){
     list.innerHTML=`<p class="hint" style="text-align:left">${f==='open'?'Nothing waiting. Every paid review has been delivered.':'No orders here.'}</p>`;
     return;
@@ -6211,11 +6214,11 @@ async function loadExpertQueue(){
   list.innerHTML=shown.map(o=>`
     <div class="ex-card">
       <div>
-        <div class="ex-em">${o.plan==='notes'?'<span class="ex-kind">Notes</span> ':''}${esc(o.email||'—')}</div>
+        <div class="ex-em">${o.plan==='notes'?'<span class="ex-kind">Notes</span> ':(o.kind==='check'?'<span class="ex-kind">Check</span> ':'')}${esc(o.email||'—')}</div>
         <div class="ex-sub">#${o.id} · ${esc(money(o.amount_total,o.currency))} · ${esc(shortDate(o.created_at_ms))}${o.analysis_client_id?'':' · <b>no clip chosen</b>'}</div>
       </div>
       ${exPill(o)}
-      <button class="btn btn-outline btn-sm" type="button" data-exopen="${o.id}">${o.status==='delivered'?'View':(o.has_draft?'Continue':(o.plan==='notes'?'Write notes':'Write review'))}</button>
+      <button class="btn btn-outline btn-sm" type="button" data-exopen="${o.id}">${o.kind==='check'?(o.checked?'View':'Check'):(o.status==='delivered'?'View':(o.has_draft?'Continue':(o.plan==='notes'?'Write notes':'Write review')))}</button>
     </div>`).join('');
 }
 
@@ -6254,7 +6257,7 @@ async function openOrderEditor(orderId){
     d=await r.json();
   }catch(e){ host.innerHTML='<p class="hint" style="text-align:left">Couldn’t open that order.</p>'; return; }
   state.exOrder=d;
-  host.innerHTML=exEditorHtml(d);
+  host.innerHTML=d.kind==='check'?exCheckHtml(d):exEditorHtml(d);
   const kf=$('#exKeyframe'), kg=$('#exKinogram'), media=d.media||{};
   if(kf) kf.src=media.keyframe||(d.analysis&&d.analysis.keyframe)||'';
   if(kg&&media.kinogram) kg.src=media.kinogram;
@@ -6400,6 +6403,74 @@ function exCollect(){
     }
   });
   return out;
+}
+
+/* A paid unlock, for Artur to read the way the athlete did and catch what the
+   product got wrong: a position the bands flatter, a coach text that disagrees
+   with its own table. Nothing on this screen reaches the athlete. */
+function exCheckHtml(d){
+  const r=d.result||{}, m=r.metrics||{}, b=r.bands||{}, sb=r.score_breakdown||{};
+  const LBL={knee_at_bdc:'Knee · bottom',knee_at_tdc:'Knee · top',hip_at_tdc:'Hip · top',hip_angle_avg:'Hip · average',
+    trunk_angle_avg:'Trunk',shoulder_angle_avg:'Shoulder',elbow_angle_avg:'Elbow',forearm_tilt_avg:'Forearm tilt',
+    pelvic_ratio:'Pelvic ratio',helmet_above_back:'Helmet above back',cadence_spm:'Cadence',trunk_lean_avg:'Trunk lean',
+    overstride_ratio:'Overstride',vertical_oscillation_cm:'Vertical oscillation',ground_contact_ms:'Ground contact'};
+  const rows=Object.keys(m).map(k=>{
+    const band=b[k]; const v=m[k];
+    const st=band?(v<band.lo?'below':v>band.hi?'above':'in'):'';
+    return `<tr><th scope="row">${esc(LBL[k]||pretty(k))}</th><td class="num">${esc(String(Math.round(v*10)/10))}${k==='helmet_above_back'?'%':''}</td>
+      <td class="num">${band?`${band.lo}–${band.hi}`:'—'}</td><td>${st?`<span class="pill ${st==='in'?'pill-good':'pill-medium'}"><span class="dot" aria-hidden="true"></span>${st==='in'?'in band':st}</span>`:''}</td></tr>`;
+  }).join('');
+  const parts=Object.entries(sb).map(([k,v])=>`${esc(pretty(k))} ${Math.round(v)}`).join(' · ');
+  const warns=(r.warnings||[]).map(w=>`<li>${esc(w)}</li>`).join('');
+  const checked=!!(d.qa&&d.qa.checked_at);
+  return `
+  <div class="backhome-row"><button class="btn btn-ghost btn-sm" type="button" id="exBack"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Queue</button></div>
+  <div class="blockhead" style="margin-top:0">
+    <div class="eyebrow">Order #${d.id} · ${esc(d.email||'')} · ${esc(money(d.amount_total,d.currency))} · report unlock</div>
+    <h3 class="sec" style="margin-bottom:8px">Check a paid report</h3>
+    <div class="speedline"></div>
+  </div>
+  <p class="hint" style="text-align:left">Nothing here reaches the athlete. Read it the way they did: does the score fit the clip, do the bands flatter the position, does the coach text agree with the table? Write what you find in the note; fixes go to the product.</p>
+  <div class="ex-grid">
+    <div>
+      <p style="margin:0 0 10px"><b>Score ${r.score==null?'—':esc(String(r.score))}/100${r.grade?' ('+esc(r.grade)+')':''}</b> · ${esc(pretty(r.sport||''))}${r.position?' · '+esc(pretty(r.position)):''}${r.camera_side?' · '+esc(r.camera_side)+' side':''}${r.helmet_check?' · helmet not read':''}</p>
+      ${parts?`<p class="hint" style="text-align:left;margin:0 0 12px">${parts}</p>`:''}
+      <div class="tablewrap"><table class="data"><thead><tr><th scope="col">Measure</th><th scope="col" class="num">Value</th><th scope="col" class="num">Band</th><th scope="col" class="col-status">vs band</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="muted">No measurements stored.</td></tr>'}</tbody></table></div>
+      ${warns?`<div class="rr-h" style="margin-top:16px">Capture warnings shown</div><ul class="hint" style="text-align:left">${warns}</ul>`:''}
+      <div class="rr-h" style="margin-top:16px">Coach text the athlete got</div>
+      <div class="ex-sub-card" style="font-size:13px">${r.coach_report?mdToHtml(r.coach_report):'<p class="hint" style="text-align:left;margin:0"><b>None.</b> This report has no coach text.</p>'}</div>
+      <div class="ex-fld" style="margin-top:16px">
+        <label for="ex_note">What's wrong, if anything</label>
+        <p class="ex-hint">Never shown to the athlete.</p>
+        <textarea id="ex_note" rows="4">${esc(d.admin_note||'')}</textarea>
+      </div>
+      <div class="ex-bar">
+        <span class="ex-status" id="exStatus">${checked?'Checked '+esc(shortDate(d.qa.checked_at)):''}</span>
+        <button class="btn btn-outline btn-sm" type="button" id="exCheckSave">Save note</button>
+        <button class="btn btn-primary btn-sm" type="button" id="exCheckDone">${checked?'Mark unchecked':'Mark checked'}</button>
+      </div>
+    </div>
+    <aside class="ex-side">
+      <div class="rr-h">The analysis</div>
+      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);margin-bottom:12px;background:#000" aria-label="The athlete&#39;s original clip"></video><p class="hint" id="exClipNote" style="text-align:left;margin:0 0 12px">Loading the clip…</p>`:'<p class="hint" style="text-align:left;margin:0 0 12px">The clip is no longer stored.</p>'}
+      ${d.media&&d.media.keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip" style="width:100%;border-radius:var(--radius);margin-bottom:12px">':''}
+      ${d.media&&d.media.kinogram?'<img id="exKinogram" alt="Kinogram: one cycle" style="width:100%;border-radius:var(--radius);margin-bottom:12px">':''}
+    </aside>
+  </div>`;
+}
+async function exCheckSave(checked){
+  const d=state.exOrder; if(!d) return;
+  const st=$('#exStatus'); if(st) st.textContent='Saving…';
+  const body={admin_note:($('#ex_note')||{}).value||''};
+  if(checked!==undefined) body.checked=checked;
+  try{
+    const r=await fetch('/admin/orders/'+d.id,{method:'PATCH',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.detail||'save failed');
+    d.qa=j.qa||{}; d.admin_note=j.admin_note;
+    if(checked!==undefined){ toast(checked?'Marked checked.':'Back in the queue.'); openExpertAdmin(); return; }
+    if(st) st.textContent='Saved.';
+  }catch(e){ if(st) st.textContent='Could not save.'; }
 }
 
 async function exSaveDraft(opts){
@@ -10526,6 +10597,8 @@ $('#expertAdmin').addEventListener('click',e=>{
   const open=e.target.closest('[data-exopen]');   if(open){ openOrderEditor(open.dataset.exopen); return; }
   if(e.target.closest('#exBack')){ openExpertAdmin(); return; }
   if(e.target.closest('#exSave')){ exSaveDraft(); return; }
+  if(e.target.closest('#exCheckSave')){ exCheckSave(); return; }
+  if(e.target.closest('#exCheckDone')){ exCheckSave(!(state.exOrder&&state.exOrder.qa&&state.exOrder.qa.checked_at)); return; }
   if(e.target.closest('#exPublish')){ exPublish(); return; }
   if(e.target.closest('#exPreview')){ exShowPreview(); return; }
   if(e.target.closest('#exMailTest')){ exMailTest(); return; }

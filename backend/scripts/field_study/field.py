@@ -336,7 +336,27 @@ def _frozen(entry: dict, moved: dict) -> dict:
             "jpg": buf.getvalue(), "report": None}
 
 
+# The bands the article's figures are drawn against: the ones it was published
+# with. The app's aero torso band ended at 30 until 2026-10-13 and ends at 25
+# now; redrawn with 25, four of the pros come out amber -- and painting a pro's
+# position as a fault in public is not something to do (Artur, 2026-10-13).
+ARTICLE_BANDS = {"triathlon": {"trunk_angle": (20, 30)}}
+
+
 def rebuild(study: dict) -> None:
+    from app.services.video_analysis.biomechanics import cycling_positions as CP
+
+    saved = {pos: {k: CP.CYCLING_POSITIONS[pos][k] for k in bands} for pos, bands in ARTICLE_BANDS.items()}
+    for pos, bands in ARTICLE_BANDS.items():
+        CP.CYCLING_POSITIONS[pos].update(bands)
+    try:
+        _rebuild(study)
+    finally:
+        for pos, bands in saved.items():
+            CP.CYCLING_POSITIONS[pos].update(bands)
+
+
+def _rebuild(study: dict) -> None:
     import numpy as np
     from PIL import Image
 

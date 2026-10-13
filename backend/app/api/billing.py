@@ -770,6 +770,18 @@ def _analysis_brief(a: Analysis) -> dict[str, Any]:
 # purchase too, and the queue listed it -- opening it showed the full Expert
 # Review form for a report that needs nobody (order #3, 2026-10-13).
 REVIEW_ORDER_PLANS = (expert_review.PLAN_EXPERT, expert_review.PLAN_NOTES)
+# Paid reports nobody writes, but Artur reads (2026-10-13): every $4 unlock
+# sits in the queue as a "check" -- the clip, the numbers and the coach text
+# the athlete paid for, so a wrong position or a coach that contradicts its own
+# table is caught by a person. Nothing is ever sent from a check; it is marked
+# done on the order row only (report = {"qa": {...}}, never shown: a check
+# never leaves "paid", and the athlete's view only reads delivered reports).
+CHECK_ORDER_PLANS = ("unlock",)
+
+
+def _qa(order: Order) -> dict[str, Any]:
+    r = order.report if isinstance(order.report, dict) else {}
+    return r.get("qa") if isinstance(r.get("qa"), dict) else {}
 
 
 def _require_review_order(order: Order | None) -> Order:
@@ -793,7 +805,7 @@ async def admin_orders(
         await db.execute(
             select(Order, User.email)
             .join(User, User.id == Order.user_id)
-            .where(Order.plan.in_(REVIEW_ORDER_PLANS))
+            .where(Order.plan.in_(REVIEW_ORDER_PLANS + CHECK_ORDER_PLANS))
             .order_by(Order.created_at_ms.desc())
             .limit(200)
         )
@@ -803,7 +815,9 @@ async def admin_orders(
             **_order_out(o), "email": email, "admin_note": o.admin_note,
             # The queue needs to distinguish "nothing written" from "drafted but
             # not sent"; `has_report` deliberately only speaks about delivery.
-            "has_draft": not expert_review.is_empty(o.report),
+            "has_draft": (o.plan not in CHECK_ORDER_PLANS) and not expert_review.is_empty(o.report),
+            "kind": "check" if o.plan in CHECK_ORDER_PLANS else "write",
+            "checked": bool(_qa(o).get("checked_at")),
         }
         for o, email in rows
     ]
@@ -832,6 +846,8 @@ async def admin_order_detail(
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     order, email = row
+    if order.plan in CHECK_ORDER_PLANS:
+        return await _check_detail(db, order, email)
     _require_review_order(order)
 
     entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
@@ -862,6 +878,48 @@ async def admin_order_detail(
         # is -- a dead <video> element reads as a broken page, not as "this one
         # predates stored footage".
         "clip_available": await _clip_path(db, order) is not None,
+    }
+
+
+async def _check_detail(db: AsyncSession, order: Order, email: str) -> dict[str, Any]:
+    """What a paid report showed the athlete, for a person to check."""
+    row = None
+    if order.analysis_client_id:
+        row = (
+            await db.execute(
+                select(Analysis).where(
+                    Analysis.user_id == order.user_id,
+                    Analysis.client_id == order.analysis_client_id,
+                )
+            )
+        ).scalar_one_or_none()
+    res = (row.result if row is not None else None) or {}
+    metrics = res.get("sport_specific_metrics") or {}
+    keep = ("knee_at_bdc", "knee_at_tdc", "hip_at_tdc", "hip_angle_avg", "trunk_angle_avg",
+            "shoulder_angle_avg", "elbow_angle_avg", "forearm_tilt_avg", "pelvic_ratio",
+            "helmet_above_back", "cadence_spm", "trunk_lean_avg", "overstride_ratio",
+            "vertical_oscillation_cm", "ground_contact_ms")
+    return {
+        **_order_out(order),
+        "email": email,
+        "admin_note": order.admin_note,
+        "kind": "check",
+        "qa": _qa(order),
+        "analysis": (row.data if row is not None else None),
+        "media": await _analysis_media(db, order.user_id, order.analysis_client_id),
+        "clip_available": await _clip_path(db, order) is not None,
+        "result": {
+            "sport": res.get("sport_type") or (row.sport if row is not None else None),
+            "kind": row.kind if row is not None else None,
+            "score": res.get("technique_score"), "grade": res.get("letter_grade"),
+            "position": res.get("cycling_position"), "camera_side": res.get("camera_side"),
+            "metrics": {k: metrics.get(k) for k in keep if metrics.get(k) is not None},
+            "helmet_check": metrics.get("helmet_check"),
+            "bands": res.get("reference_bands") or {},
+            "score_breakdown": res.get("score_breakdown") or {},
+            "warnings": (metrics.get("quality_warnings") or []) + list(res.get("warnings") or []),
+            "coach_report": (res.get("ai_recommendations") or {}).get("report"),
+        },
     }
 
 
@@ -918,6 +976,8 @@ class OrderPatch(BaseModel):
     # Re-point the order at a different analysis (wrong clip picked at checkout,
     # or none picked at all).
     analysis_client_id: str | None = None
+    # A paid unlock is checked, not written: tick or untick it.
+    checked: bool | None = None
 
 
 @admin_router.patch("/admin/orders/{order_id}")
@@ -928,7 +988,21 @@ async def admin_update_order(
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Move an order through the fulfilment states / save a draft / leave a note."""
-    order = _require_review_order(await db.get(Order, order_id))
+    order = await db.get(Order, order_id)
+    if order is not None and order.plan in CHECK_ORDER_PLANS:
+        if body.report is not None or body.status is not None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                                "A check takes a note and a tick; nothing is sent from it.")
+        if body.admin_note is not None:
+            order.admin_note = body.admin_note.strip()[:2000] or None
+        if body.checked is not None:
+            qa = dict(_qa(order))
+            qa["checked_at"] = _now_ms() if body.checked else None
+            order.report = {"qa": qa}
+        order.updated_at_ms = _now_ms()
+        await db.commit()
+        return {**_order_out(order), "admin_note": order.admin_note, "qa": _qa(order)}
+    order = _require_review_order(order)
     if body.status is not None:
         if body.status not in ORDER_STATUSES:
             raise HTTPException(

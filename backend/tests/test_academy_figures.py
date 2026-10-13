@@ -91,7 +91,7 @@ class TestTheKonaDraft:
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 20° | 18–22° | 12–27° | 20–25° |",
+        for row in ("| Torso, from horizontal | 20° | 18–22° | 12–27° | 20–30° |",
                     "| Shoulder, torso to upper arm | 88° | 83–92° | 74–100° | 80–105° |",
                     "| Elbow | 84° | 76–88° | 66–102° | 75–110° |",
                     "| Forearm tilt, above horizontal | 26° | 23–28° | 19–32° | 5–30° |",
