@@ -76,17 +76,17 @@ HELMET_TOP_POINT = 101
 HELMET_POINT_NAMES = {BACK_TOP_POINT: "top of the back", HELMET_TOP_POINT: "top of the helmet"}
 
 # The Kona pro field, every top-of-back and top-of-helmet point checked by hand
-# (Artur, n=33 since 2026-10-12; 21 men, 12 women; race photographs plus
-# broadcast stills): 6.7-33.0 %, median 18.4, middle half 13.9-21.6.
+# (Artur, n=32 since 2026-10-12; 21 men, 11 women; race photographs plus
+# broadcast stills): 6.7-33.0 %, median 18.4, middle half 13.9-21.5.
 # Sixteen needed a helmet point moved, mostly the back point off a flush
 # helmet tail, where the automatic reading runs up to 10 points low.
 KONA_PRO_RANGE = (7.0, 33.0)
 KONA_PRO_MEDIAN = 18.4
 # Where the helmet starts to cost points. Not the highest pro: twenty-nine of
-# the thirty-three sat at +23 % or lower, and the four above it (up to +33 %)
+# the thirty-two sat at +23 % or lower, and the three above it (up to +33 %)
 # should not widen the free band for everyone. Unchanged from n=21.
 KONA_PRO_FREE_UP_TO = 23.0
-KONA_PRO_UNDER_FREE = "29 of the 33"
+KONA_PRO_UNDER_FREE = "29 of the 32"
 
 
 def top_contour(mask: np.ndarray, columns: int = CONTOUR_COLUMNS) -> list[float | None]:

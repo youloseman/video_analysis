@@ -95,7 +95,7 @@ _HINTS: dict[tuple[str, str], str] = {
         "split-nose saddle) opens the hip."
     ),
     ("helmet_above_back", "high"): (
-        "The helmet sits higher above the back than 29 of the 33 Kona pros. "
+        "The helmet sits higher above the back than 29 of the 32 Kona pros. "
         "Dropping the head a little cuts drag, as long as you can still see the "
         "road."
     ),

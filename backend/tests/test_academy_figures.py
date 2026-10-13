@@ -41,7 +41,7 @@ class TestTheKonaDraft:
         invalidate_cache()
         art = get_article("kona-2026-pro-bike-positions")
         assert art is not None and art.meta.category == "bike-aero"
-        assert len(art.sources) >= 9
+        assert len(art.sources) >= 8
         assert art.body_html.count("<figure>") >= 5
 
     def test_every_figure_it_shows_exists(self):
@@ -57,14 +57,15 @@ class TestTheKonaDraft:
         frame where the model found the motorbike passenger stays out, and so
         does the age-grouper (kept for a pro-vs-age-group comparison). One is
         Trevor Foley, a reader's photo from an earlier Kona, and its caption
-        says so. Twenty-one since 2026-10-12; thirty-three since the broadcast stills came in,
+        says so. Twenty-one since 2026-10-12; thirty-two since the broadcast stills came in and the
+        duplicates went out,
         every one shown (Artur, 2026-10-12: the stills go in too; the article
         says how many are stills)."""
         text = DRAFT.read_text(encoding="utf-8")
         shown = re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)
-        assert shown == [f"{n:02d}" for n in range(1, 34)]
+        assert shown == [f"{n:02d}" for n in range(1, 33)]
         assert "Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        tilts = [float(m) for m in re.findall(r"Position \d+ of 33: forearm tilt (\d+)", text)]
+        tilts = [float(m) for m in re.findall(r"Position \d+ of 32: forearm tilt (\d+)", text)]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
     def test_the_hand_corrections_are_disclosed(self):
@@ -74,7 +75,7 @@ class TestTheKonaDraft:
         moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
         assert text.split("---", 2)[2].lstrip().startswith("**Updated 12 October 2026.**")
-        assert "80 of the 132 joint points moved" in text
+        assert "77 of the 128 joint points moved" in text
         assert "A ringed point is one we moved by hand" in text
         assert "on the original fifteen photos, the medians moved by 2° at most" in text
 
@@ -85,13 +86,15 @@ class TestTheKonaDraft:
         assert "Those rules do not apply to Ironman." in text
         assert "the UCI limit." not in text
         assert "The rules moved first." not in text
+        # Not a source for an Ironman article either (Artur, 2026-10-12).
+        assert 'author: "UCI"' not in text
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
         for row in ("| Torso, from horizontal | 20° | 18–22° | 13–27° | 20–30° |",
                     "| Shoulder, torso to upper arm | 87° | 83–92° | 74–100° | 80–105° |",
-                    "| Elbow | 83° | 77–88° | 66–102° | 75–110° |",
-                    "| Forearm tilt, above horizontal | 26° | 24–28° | 19–32° | 5–30° |",
+                    "| Elbow | 84° | 77–88° | 66–102° | 75–110° |",
+                    "| Forearm tilt, above horizontal | 26° | 23–28° | 19–32° | 5–30° |",
                     "| Helmet above the back, % of torso length | 18% | 14–22% | 7–33% | up to 23% |"):
             assert row in text, row
 
@@ -122,7 +125,7 @@ def test_the_head_section_measures_the_helmet():
     assert "100/100" not in text and '"head position"' not in text
     assert "## 4. The head: how far the helmet rises above the back" in text
     assert "level because the wind is" in text
-    assert "on sixteen of the thirty-three positions we moved a helmet point by hand" in text
+    assert "on sixteen of the thirty-two positions we moved a helmet point by hand" in text
     assert "up to 6.4%" in text and "Beaumont" in text
     from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_RANGE
     from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
@@ -135,6 +138,6 @@ def test_the_stills_count_and_the_article_says_so():
     rest; the reader is told how many. The men-vs-women gap is reported as
     what it is: within the noise (Mann-Whitney, every angle p > 0.2)."""
     text = DRAFT.read_text(encoding="utf-8")
-    assert "Eight of them are broadcast and social-media stills" in text
+    assert "Seven of them are broadcast and social-media stills" in text
     assert "## 5. Men and women: a first look" in text
     assert "none of these differences stands out from noise" in text
