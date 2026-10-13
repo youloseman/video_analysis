@@ -113,12 +113,13 @@ class TestThePictureAgreesWithItsTable:
         assert 'row_status={k: v.get("status") for k, v in angles_with_context.items()}' in src
 
 
-def test_the_head_section_says_what_replaced_100_of_100_and_why():
-    """A reader asked what "head position 100/100" on every rider meant; it
-    meant nothing (an ear under a line inside the body). The article says so,
-    gives the helmet reading that replaced it, its level reference, the hand
-    moves on flush helmet tails, and the one study behind the penalty."""
+def test_the_head_section_measures_the_helmet():
+    """The helmet reading, its level reference, the hand moves on flush helmet
+    tails, and the one study behind the penalty. The old "head position"
+    100/100 score is no longer in the app, so the article no longer talks
+    about it (Artur, 2026-10-12)."""
     text = DRAFT.read_text(encoding="utf-8")
+    assert "100/100" not in text and '"head position"' not in text
     assert "## 4. The head: how far the helmet rises above the back" in text
     assert "level because the wind is" in text
     assert "on seventeen of the thirty-four positions we moved a helmet point by hand" in text
