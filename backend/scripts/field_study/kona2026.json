@@ -2633,6 +2633,75 @@
      81.0
     ]
    }
+  },
+  {
+   "n": 40,
+   "key": "photo_2026-10-13_00-20-17_crop",
+   "photo": "upload/photo_2026-10-13_00-20-17_crop.jpg",
+   "race": "Kona 2026",
+   "side": "right",
+   "group": "pro",
+   "category": "men",
+   "w": 504,
+   "h": 309,
+   "origin": [
+    244,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     273.2,
+     140.7
+    ],
+    "E": [
+     291.6,
+     236.4
+    ],
+    "W": [
+     375.4,
+     190.3
+    ],
+    "H": [
+     92.1,
+     173.0
+    ],
+    "B": [
+     189.4,
+     63.0
+    ],
+    "T": [
+     277.7,
+     67.0
+    ]
+   },
+   "start": {
+    "S": [
+     273.2,
+     140.7
+    ],
+    "E": [
+     291.6,
+     236.4
+    ],
+    "W": [
+     375.4,
+     190.3
+    ],
+    "H": [
+     92.1,
+     173.0
+    ],
+    "B": [
+     189.4,
+     63.0
+    ],
+    "T": [
+     277.7,
+     67.0
+    ]
+   },
+   "note": "a sharper photograph of the rider in editor #36 (broadcast still), which it replaces; cropped around the rider (photo_2026-10-13_00-20-17.jpg, box 100,200,880,820) because the full frame finds no pose"
   }
  ]
 }
