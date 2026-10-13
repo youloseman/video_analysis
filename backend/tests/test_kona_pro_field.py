@@ -107,7 +107,7 @@ def test_the_export_carries_it_beside_the_reference_ranges():
 # --- the page shows it ------------------------------------------------------
 
 def test_the_joint_table_and_the_photo_table_have_the_column():
-    assert SPA.count('class="num col-pro">Kona pros') == 2
+    assert SPA.count('class="num col-pro" title="Kona 2026 pros: median, and the middle half of the field under it">Kona 2026</th>') == 2
     assert "state.pro = r.pro_field || null" in SPA
     assert "angleTableRows(merged.stats, sport, r.cycling_position||null, srcMap, pro)" in SPA
     assert "classList.toggle('no-pro', !pro)" in SPA
