@@ -21,8 +21,10 @@ ORDER_2 = {
     "hip_angle_avg": 75.0, "trunk_angle_avg": 15.4, "elbow_angle_avg": 92.6,
     "shoulder_angle_avg": 91.6, "forearm_tilt_avg": 15.7, "pelvic_ratio": 4.9,
 }
+# Clean means inside every band AND inside the Kona field: a clip inside its
+# bands but outside the field gets a "Worth a look" of its own now.
 CLEAN = {**ORDER_2, "knee_at_bdc": 141.0, "knee_at_tdc": 66.0,
-         "trunk_angle_avg": 25.0, "pelvic_ratio": 3.0}
+         "trunk_angle_avg": 25.0, "pelvic_ratio": 3.0, "forearm_tilt_avg": 25.0}
 
 THE_REPORT_IT_WROTE = (
     "**Overall** — Your 15.4° trunk angle is lower than the band.\n\n"
@@ -125,3 +127,62 @@ def test_photo_rows_get_the_same_hints(monkeypatch):
     assert [c["field"] for c in concerns] == ["knee_at_tdc", "helmet_above_back"]
     section = concern_hints.worth_a_look(concerns)
     assert "up to 23%" in section and "short cranks" in section
+
+
+# Artur's own clip (2026-10-13): 100/100, every band met, forearms at 17 --
+# below every one of the 32 Kona pros -- and a report that said nothing.
+MY_CLIP = {
+    "knee_at_bdc": 143.2, "knee_at_tdc": 63.6, "hip_at_tdc": 49.0, "hip_angle_avg": 70.0,
+    "trunk_angle_avg": 21.2, "elbow_angle_avg": 92.2, "shoulder_angle_avg": 87.0,
+    "forearm_tilt_avg": 17.1, "pelvic_ratio": 3.2, "helmet_above_back": 9.6, "helmet_check": True,
+    "camera_side": "right", "tracking_stability": {"framing": {"verdict": "small"}},
+}
+
+
+def test_inside_every_band_but_outside_the_pro_field_is_still_worth_a_look():
+    from app.services.video_analysis.biomechanics.kona_field import pro_gaps
+    assert llm._video_concerns("bike", "triathlon", MY_CLIP) == [], "every band met"
+    gaps = pro_gaps("triathlon", MY_CLIP)
+    assert [g["field"] for g in gaps] == ["forearm_tilt_avg"]
+    assert gaps[0]["side"] == "low" and gaps[0]["lo"] == 18.8
+    section = concern_hints.worth_a_look([], gaps)
+    assert section.startswith("**Worth a look**")
+    assert "Forearm tilt**: 17.1°, inside its band but below every one of the 32 Kona pros" in section
+    # The flagged helmet (9.6, no edge) is not a gap: it was never read.
+    assert "Helmet" not in section
+    # A field already on the concern list is not listed twice.
+    both = concern_hints.worth_a_look(
+        [concern_hints.concern("forearm_tilt_avg", "Forearm tilt", 17.1, 5, 30, material=False)], gaps)
+    assert both.count("Forearm tilt") == 1
+    # Off the aero bars there is no field to compare with.
+    assert pro_gaps("road_hoods", MY_CLIP) == []
+
+
+def test_a_clean_clip_still_ends_with_where_to_go():
+    steps = concern_hints.video_next_steps("bike", "triathlon", MY_CLIP, [{"field": "forearm_tilt_avg",
+                                           "label": "Forearm tilt", "value": 17.1, "lo": 18.8, "hi": 32.0, "median": 25.9, "n": 32}])
+    assert [s["key"] for s in steps] == ["side", "framing", "helmet", "pros", "refilm"]
+    assert "forearm tilt 17.1° against 18.8-32°" in steps[3]["text"]
+    # A clean, well-filmed clip on a road bike keeps only the re-film step.
+    assert [s["key"] for s in concern_hints.video_next_steps("bike", "road_hoods", {"camera_side": "left"})] == ["refilm"]
+
+
+def test_the_coach_is_told_about_the_field_and_the_next_step(monkeypatch):
+    prompts = _scripted(monkeypatch, "**Overall** — fine.\n\n**Nothing to fix** — Hold it.\n\n**Next session** — Relax.")
+    rec = llm.generate_recommendations("bike", 100, "A", [], {}, MY_CLIP, cycling_position="triathlon",
+                                       next_steps=[{"key": "side", "title": "Film from the non-drive side", "text": "x"}])
+    p = prompts[0]
+    assert "MATERIAL PROBLEMS: NONE" in p
+    assert "OUTSIDE the whole Kona 2026 pro field" in p and "Forearm tilt 17 (all 32 pros 19-32)" in p
+    assert "Film from the non-drive side" in p and "Do not end the report with nothing to do." in p
+    # And the checklist under the report carries the gap, before Next session.
+    r = rec["report"]
+    assert "**Worth a look**" in r and r.index("**Worth a look**") < r.index("**Next session**")
+    assert "below every one of the 32 Kona pros" in r
+
+
+def test_the_clip_report_has_the_block_too():
+    from conftest import read_spa
+    spa = read_spa()
+    assert 'id="nextBlock"' in spa
+    assert "renderNextSteps('nextBlock','nextList', r.next_steps||(r.quality&&r.quality.next_steps)||[])" in spa

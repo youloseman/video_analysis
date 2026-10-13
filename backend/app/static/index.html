@@ -1152,6 +1152,17 @@
       <p class="hint hidden" id="angleProNote" style="text-align:left;margin-top:8px"></p>
     </div>
 
+    <!-- Where to go from here, whatever the score (result.next_steps). -->
+    <div class="block hidden" id="nextBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Next</div>
+        <h3>Where to go from here</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <p class="hint" style="text-align:left;margin:0 0 10px">What this clip could not settle, where the pros sit, and what to film next.</p>
+      <ul class="next-steps" id="nextList"></ul>
+    </div>
+
     <!-- Folded by default, and the fold is the point. Eight charts of
          cycle-by-cycle analysis is the deepest thing in the report and the
          least actionable, and opened flat it put "23% match" in red directly
@@ -4010,10 +4021,11 @@ function setPhotoPartial(sc){
   el.classList.toggle('hidden',!p);
   el.textContent=p?`${p} — mark the pedal position below to score the knee and hip`:'';
 }
-/* Where to go from this photo, whatever the score. Served with the result
-   (free readers included: it is how to get a better one), rendered here. */
-function renderPhotoNext(steps){
-  const blk=$('#pNextBlock'), host=$('#pNextList'); if(!blk||!host) return;
+/* Where to go from here, whatever the score -- the photo's block and the
+   clip's. Served with the result (free readers included: it is how to get a
+   better one), rendered here. */
+function renderNextSteps(blkId, listId, steps){
+  const blk=$('#'+blkId), host=$('#'+listId); if(!blk||!host) return;
   if(!steps||!steps.length){ blk.classList.add('hidden'); host.innerHTML=''; return; }
   host.innerHTML=steps.map(s=>`<li><b>${esc(s.title||'')}</b> ${esc(s.text||'')}</li>`).join('');
   blk.classList.remove('hidden');
@@ -5168,7 +5180,7 @@ function renderPhoto(res,opts){
   $('#pWarnings').innerHTML = warns.length
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
     : `<div class="banner good"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
-  renderPhotoNext(res.next_steps||(res.quality&&res.quality.next_steps)||[]);
+  renderNextSteps('pNextBlock','pNextList',res.next_steps||(res.quality&&res.quality.next_steps)||[]);
 
   // Free-tier teaser: hide paid sections, show upgrade panel, stop early.
   $('#pUpsellHost').classList.add('hidden');
@@ -7405,6 +7417,7 @@ function render(job,opts){
   state.bands = r.reference_bands || null;
   // Where the Kona pros sat (aero positions only), served with the bands.
   state.pro = r.pro_field || null;
+  renderNextSteps('nextBlock','nextList', r.next_steps||(r.quality&&r.quality.next_steps)||[]);
 
   // score + grade. A withheld score is not a missing one: the analysis ran,
   // measured everything it could, and declined to summarise it in a figure

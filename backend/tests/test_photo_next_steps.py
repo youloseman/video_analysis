@@ -76,7 +76,7 @@ def test_the_coach_is_told_a_clean_photo_still_has_a_next_step():
 def test_the_page_shows_both():
     assert 'id="pPartial"' in SPA and "function setPhotoPartial" in SPA
     assert SPA.count("setPhotoPartial(sc);") == 2, "on render and on a phase change"
-    assert 'id="pNextBlock"' in SPA and "renderPhotoNext(res.next_steps||(res.quality&&res.quality.next_steps)||[])" in SPA
-    i = SPA.index("renderPhotoNext(res.next_steps")
+    assert 'id="pNextBlock"' in SPA and "renderNextSteps('pNextBlock','pNextList',res.next_steps||(res.quality&&res.quality.next_steps)||[])" in SPA
+    i = SPA.index("renderNextSteps('pNextBlock'")
     assert i < SPA.index("if(res.locked){", i), "drawn before the teaser returns, so a free reader sees it"
     assert ".score-partial{" in CSS and ".next-steps li{" in CSS

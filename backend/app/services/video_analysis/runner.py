@@ -1598,6 +1598,15 @@ def analyze_from_frames(
 
     # Step 7 (Milestone 5): LLM coaching recommendations. Skips gracefully when
     # no API key is configured or the call fails -- never blocks the result.
+    # Where to go from this clip, whatever the score (concern_hints). Built
+    # before the coach writes, so the coach can name the first step.
+    from app.services.video_analysis import concern_hints
+    from app.services.video_analysis.biomechanics.kona_field import pro_gaps
+    next_steps = concern_hints.video_next_steps(
+        sport_type, cycling_position if is_bike else None, summary,
+        pro_gaps(cycling_position, summary) if is_bike else [],
+    )
+
     ai_recommendations = None
     if recommendations:
         _report(progress, "coach", None)
@@ -1614,6 +1623,7 @@ def analyze_from_frames(
             cycling_position=cycling_position if is_bike else None,
             fit_plan=fit_plan,
             focus=focus,
+            next_steps=next_steps,
         )
 
     # Step 8: structured training plan (running only, deterministic -- no LLM).
@@ -1705,6 +1715,8 @@ def analyze_from_frames(
         # Where the Kona pros sat (kona_field.py): shown beside the bands on
         # aero positions, graded against nowhere. None off the aero bars.
         "pro_field": pro_field(cycling_position) if is_bike else None,
+        # Where to go from here, whatever the score (concern_hints.video_next_steps).
+        "next_steps": next_steps,
         # The athlete's own adjustments to the joint points these numbers were
         # read from, when there are any. Carried on the result so no reader
         # can take an adjusted measurement for an automatic one.

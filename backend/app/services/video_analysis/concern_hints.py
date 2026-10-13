@@ -195,12 +195,78 @@ def _line(c: dict[str, Any]) -> str:
             f"{c['hint']}")
 
 
-def worth_a_look(concerns: list[dict[str, Any]]) -> str:
-    """The checklist section, clearly-out readings first. '' when clean."""
-    if not concerns:
-        return ""
+def _gap_line(g: dict[str, Any]) -> str:
+    unit = unit_for(g["field"])
+    where = "below" if g["side"] == "low" else "above"
+    return (f"- **{g['label']}**: {_num(g['value'])}{unit}, inside its band but {where} "
+            f"every one of the {g['n']} Kona pros ({_num(g['lo'])}-{_num(g['hi'])}{unit}, "
+            f"median {_num(g['median'])}{unit}). Not a fault; the field is where the next gain "
+            f"usually is. {hint_for(g['field'], g['side'])}")
+
+
+def worth_a_look(concerns: list[dict[str, Any]], gaps: list[dict[str, Any]] = ()) -> str:
+    """The checklist section: clearly-out readings first, edges, then the
+    readings inside their band but outside the Kona field. '' when clean."""
     ordered = sorted(concerns, key=lambda c: not c["material"])
-    return "**Worth a look**\n" + "\n".join(_line(c) for c in ordered)
+    seen = {c["field"] for c in concerns}
+    lines = [_line(c) for c in ordered] + [_gap_line(g) for g in gaps if g["field"] not in seen]
+    if not lines:
+        return ""
+    return "**Worth a look**\n" + "\n".join(lines)
+
+
+# Framing verdicts the clip's tracking report files (tracking_stability.framing).
+_SMALL_FRAMING = ("small", "tiny")
+
+
+def video_next_steps(
+    sport: str, cycling_position: str | None, summary: dict[str, Any],
+    gaps: list[dict[str, Any]] = (),
+) -> list[dict[str, str]]:
+    """Where to go from this clip, whatever the score (the photo has its own).
+
+    A clean clip used to end the report at "Nothing to fix". What the capture
+    limited, what sits outside the pro field, and what to film next, in the
+    order a fitter would take them.
+    """
+    from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+
+    steps: list[dict[str, str]] = []
+    aero = sport == "bike" and cycling_position in AERO_POSITIONS
+    framing = ((summary.get("tracking_stability") or {}).get("framing") or {}).get("verdict")
+    if sport == "bike" and summary.get("camera_side") == "right":
+        steps.append({"key": "side", "title": "Film from the non-drive side",
+                      "text": "This clip is from the chainring side. The chainring sits behind the "
+                              "ankle at the bottom of the stroke and disturbs the knee there, so the "
+                              "saddle-height reading is the least reliable number on it. The other "
+                              "side of the bike measures the leg cleanly."})
+    if framing in _SMALL_FRAMING:
+        steps.append({"key": "framing", "title": "Fill the frame",
+                      "text": "You are small in the picture, and at that size the two legs are a few "
+                              "pixels apart. Film closer, or zoom in so you span most of the height: "
+                              "it does more for accuracy than any other change."})
+    if aero and (summary.get("helmet_above_back") is None or summary.get("helmet_check")):
+        steps.append({"key": "helmet", "title": "Film in your race helmet",
+                      "text": "We could not read a helmet against your back on this clip, which "
+                              "usually means a road helmet or none. On aero bars an aero helmet is the "
+                              "cheapest gain there is, and with it on the head gets measured too."})
+    if gaps:
+        parts = []
+        for g in gaps:
+            unit = unit_for(g["field"])
+            parts.append(f"{g['label'].lower()} {_num(g['value'])}{unit} against {_num(g['lo'])}-"
+                         f"{_num(g['hi'])}{unit} for all {g['n']} of them")
+        steps.append({"key": "pros", "title": "Where the Kona pros sit",
+                      "text": "Inside the bands, but outside the whole pro field: " + "; ".join(parts)
+                              + ". Not a fault, and not a target (the pros hold positions most "
+                              "age-groupers cannot), but it is where your next gain most likely is."})
+    steps.append({"key": "refilm", "title": "Change one thing, then film again",
+                  "text": ("One adjustment at a time, 30 minutes on it, then the same side and the "
+                           "same framing: History puts the two clips side by side."
+                           if sport == "bike" else
+                           "One cue at a time, a week on it, then the same framing: History puts "
+                           "the two clips side by side.")})
+    return steps
 
 
 NOTHING_TO_FIX = re.compile(r"\*\*\s*Nothing to fix\s*\*\*", re.I)
@@ -217,9 +283,10 @@ def replace_nothing_to_fix(report: str, concerns: list[dict[str, Any]]) -> str:
     return _NOTHING_SECTION.sub(lambda _m: fix, report, count=1)
 
 
-def with_worth_a_look(report: str, concerns: list[dict[str, Any]]) -> str:
+def with_worth_a_look(report: str, concerns: list[dict[str, Any]],
+                      gaps: list[dict[str, Any]] = ()) -> str:
     """The checklist goes before Next session, so the single cue still ends it."""
-    section = worth_a_look(concerns)
+    section = worth_a_look(concerns, gaps)
     if not section:
         return report
     m = _NEXT_SESSION.search(report)

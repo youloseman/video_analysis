@@ -629,6 +629,7 @@ async def _ensure_coaching(db: AsyncSession, row: Analysis) -> None:
             result.get("cycling_position"),
             fit_plan=result.get("fit_plan"),
             focus=result.get("focus"),
+            next_steps=result.get("next_steps"),
         )
     except Exception as e:  # noqa: BLE001
         logger.warning("LAZY_COACHING_FAILED", analysis=row.client_id, err=str(e))

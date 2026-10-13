@@ -63,6 +63,40 @@ def pro_field(cycling_position: str | None) -> dict[str, Any] | None:
     }
 
 
+KONA_PRO_LABELS = {
+    "trunk_angle_avg": "Trunk angle", "shoulder_angle_avg": "Shoulder angle",
+    "elbow_angle_avg": "Elbow angle", "forearm_tilt_avg": "Forearm tilt",
+    "helmet_above_back": "Helmet above the back",
+}
+
+
+def pro_gaps(cycling_position: str | None, summary: dict[str, Any]) -> list[dict[str, Any]]:
+    """Readings outside the WHOLE Kona field, whatever their band says.
+
+    A clip can sit inside every band and still outside where all 32 pros
+    rode: Artur's own clip (2026-10-13) scored 100 with the forearms at 17 deg,
+    below every pro (19-32). Not a fault -- the field is not a band -- but it
+    is where the next gain is, and a report that scores 100 and says nothing
+    about it has nothing to offer. Aero positions only; a helmet reading that
+    flagged itself is skipped.
+    """
+    if cycling_position not in AERO_FIELD_POSITIONS:
+        return []
+    out = []
+    for field, f in KONA_PRO_FIELD.items():
+        v = summary.get(field)
+        if not isinstance(v, (int, float)):
+            continue
+        if field == "helmet_above_back" and summary.get("helmet_check"):
+            continue
+        if f["lo"] <= v <= f["hi"]:
+            continue
+        out.append({"field": field, "label": KONA_PRO_LABELS[field], "value": float(v),
+                    "lo": f["lo"], "hi": f["hi"], "median": f["median"],
+                    "side": "high" if v > f["hi"] else "low", "n": KONA_PRO_N})
+    return out
+
+
 def pro_field_prompt_block(cycling_position: str | None) -> str:
     """The field for the coach: context for an aero rider, never a rubric."""
     if cycling_position not in AERO_FIELD_POSITIONS:

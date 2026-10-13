@@ -665,6 +665,7 @@ def _metric_statuses(
 
 def _materiality_block(
     sport_type: str, position: str | None, summary: dict,
+    next_steps: list[dict] | None = None,
 ) -> str:
     """Which measurements are allowed to become a "Fix first" item.
 
@@ -716,6 +717,25 @@ def _materiality_block(
             f"MATERIAL PROBLEMS: NONE. Every banded measurement is {excuse}. Do "
             "not invent a fix -- use the **Nothing to fix** variant."
         )
+        # A clean clip is not a finished one. What sits outside the pro field,
+        # and what to do next, so Nothing to fix never ends with nothing to do.
+        from app.services.video_analysis.biomechanics.kona_field import pro_gaps
+        gaps = pro_gaps(position, summary) if sport_type == "bike" else []
+        if gaps:
+            lines.append(
+                "INSIDE their bands but OUTSIDE the whole Kona 2026 pro field (not "
+                "faults, no drill, no fit change -- but name them in **Nothing to "
+                "fix** as where the next gain most likely is): "
+                + "; ".join(f"{g['label']} {g['value']:.0f} (all {g['n']} pros {g['lo']:.0f}-{g['hi']:.0f})"
+                            for g in gaps)
+            )
+        steps = [s.get("title") for s in (next_steps or []) if s.get("title")]
+        if steps:
+            lines.append(
+                "In **Nothing to fix**, after what to hold on to, name the ONE next step "
+                "that would tell more -- the first that applies from this list: "
+                + "; ".join(steps) + ". Do not end the report with nothing to do."
+            )
     if borderline:
         lines.append(
             "Just outside the band but WITHIN TOLERANCE (not problems, no "
@@ -770,7 +790,8 @@ def _photo_concerns(sport: str, res: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str) -> dict[str, Any] | None:
+def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
+           gaps: list[dict[str, Any]] = ()) -> dict[str, Any] | None:
     """Write the report, refuse "Nothing to fix" over a red row, add the checklist.
 
     The prompt forbids it; the first paid order showed a prompt is not enough
@@ -797,7 +818,7 @@ def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str) -> dict[str, A
             text, model = again["text"], again["model"]
         else:
             text = concern_hints.replace_nothing_to_fix(text, concerns)
-    return {"report": concern_hints.with_worth_a_look(text, concerns), "model": model}
+    return {"report": concern_hints.with_worth_a_look(text, concerns, gaps), "model": model}
 
 
 def _focus_block(focus: str | None) -> str:
@@ -876,6 +897,7 @@ def _build_prompt(
     sport_type: str, score: Any, grade: Any, position: str | None,
     issues: list[dict], angle_stats: dict, summary: dict,
     fit_plan: dict | None = None, focus: str | None = None,
+    next_steps: list[dict] | None = None,
 ) -> str:
     data = build_metrics_block(
         sport_type, score, grade, position, issues, angle_stats, summary,
@@ -906,7 +928,7 @@ def _build_prompt(
         )
     fit = _fit_plan_block(fit_plan)
     asked = _focus_block(focus)
-    material = _materiality_block(sport_type, position, summary)
+    material = _materiality_block(sport_type, position, summary, next_steps)
     return (
         f"{data}{caveat}\n\n{material}\n\n{_issues_block(issues)}"
         + (f"\n\n{fit}" if fit else "")
@@ -925,17 +947,21 @@ def generate_recommendations(
     cycling_position: str | None = None,
     fit_plan: dict[str, Any] | None = None,
     focus: str | None = None,
+    next_steps: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """Return ``{"report": markdown, "model": name}`` or ``None`` (graceful)."""
+    from app.services.video_analysis.biomechanics.kona_field import pro_gaps
+
     prompt = _build_prompt(
         sport_type, technique_score, letter_grade, cycling_position,
         detected_issues or [], angle_statistics or {}, sport_specific_metrics or {},
-        fit_plan, focus,
+        fit_plan, focus, next_steps,
     )
     concerns = _video_concerns(
         sport_type, cycling_position, sport_specific_metrics or {},
     )
-    return _coach(prompt, concerns, tag="video")
+    gaps = pro_gaps(cycling_position, sport_specific_metrics or {}) if sport_type == "bike" else []
+    return _coach(prompt, concerns, tag="video", gaps=gaps)
 
 
 PROGRESS_SYSTEM_PROMPT = (
@@ -1225,5 +1251,15 @@ def generate_photo_recommendations(
     sport: str, photo_result: dict[str, Any],
 ) -> dict[str, Any] | None:
     """Coaching from a single-photo analysis. Returns {report, model} or None."""
+    from app.services.video_analysis.biomechanics.kona_field import pro_gaps
+
     prompt = _build_photo_prompt(sport, photo_result)
-    return _coach(prompt, _photo_concerns(sport, photo_result), tag="photo")
+    # The photo's rows, mapped onto the summary fields the field is keyed by.
+    as_summary = {
+        concern_hints.photo_field(sport, k, v): v.get("value")
+        for k, v in (photo_result.get("angles_with_context") or {}).items()
+        if isinstance(v.get("value"), (int, float))
+    }
+    as_summary["helmet_check"] = bool((photo_result.get("helmet_points") or {}).get("check"))
+    gaps = pro_gaps(photo_result.get("cycling_position"), as_summary) if sport == "bike" else []
+    return _coach(prompt, _photo_concerns(sport, photo_result), tag="photo", gaps=gaps)
