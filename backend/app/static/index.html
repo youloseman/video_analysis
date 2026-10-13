@@ -1322,7 +1322,7 @@
       <div class="tablewrap">
         <table class="data" id="pAngleTable">
           <caption class="visually-hidden">Joint angles with measured value, optimal range, the Kona pro field and status</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Optimal</th><th scope="col" class="num col-pro">Kona pros <small class="thq">median · middle half</small></th><th scope="col">Status</th></tr></thead>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Optimal</th><th scope="col" class="num col-pro">Kona pros <small class="thq">median · middle half</small></th><th scope="col" class="col-status">Status</th></tr></thead>
           <tbody id="pAngleRows"></tbody>
         </table>
       </div>
@@ -9399,7 +9399,7 @@ function renderHistoryAngles(e){
     // fit a phone, and without it the last one is simply cut off the side of
     // the card -- statuses reading "OPTIMA" and "PHASE DEPEN".
     host.innerHTML=`<div class="tablewrap"><table class="data">
-      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num">Optimal <small class="thq">mean</small></th><th scope="col">Status <small class="thq">mean</small></th><th scope="col" class="num">Valid</th></tr></thead>
+      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Low <small class="thq">p5</small></th><th scope="col" class="num">Mean</th><th scope="col" class="num">High <small class="thq">p95</small></th><th scope="col" class="num">Optimal <small class="thq">mean</small></th><th scope="col" class="col-status">Status <small class="thq">mean</small></th><th scope="col" class="num">Valid</th></tr></thead>
       <tbody>${angleTableRows(merged.stats, e.sport, e.position||null, srcMap)}</tbody></table></div>`;
     if(note){
       if(paired){ note.innerHTML=`Both sides shown: <b>${esc(e.cameraSide||'this')} side</b> from this analysis, <b>${esc(paired.cameraSide||'other')} side</b> filled from your ${esc(fmtWhen(paired.at))} analysis.`; note.classList.remove('hidden'); }
@@ -9410,7 +9410,7 @@ function renderHistoryAngles(e){
     if(note) note.classList.add('hidden');
     const rows=(e.metrics||[]).map(m=>`<tr><th scope="row">${esc(m.label)}</th><td class="num">${esc(m.value)}</td><td class="num">${esc(m.sub||'')}</td><td>${m.statusCls?`<span class="pill pill-${m.statusCls}"><span class="dot" aria-hidden="true"></span>${esc(m.statusWord)}</span>`:''}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No measurements.</td></tr>';
     host.innerHTML=`<div class="tablewrap"><table class="data">
-      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Detail</th><th scope="col">Status</th></tr></thead>
+      <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Detail</th><th scope="col" class="col-status">Status</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   }
 }
@@ -10171,7 +10171,7 @@ function currentFormTable(sport, entries){
     <div class="dform-sub"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
       <span class="dform-when">· latest ${esc(shortDate(cur.at))}</span></div>
     <div class="tablewrap"><table class="data">
-      <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Since last</th></tr></thead>
+      <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Since last</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
   </div>`;
 }
@@ -10192,7 +10192,7 @@ function lockedFormBody(sport, e){
   return `<div class="dform-sport"><div class="dform-sub"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
     <span class="dform-when">· latest ${esc(shortDate(e.at))}</span></div>
     <div class="tablewrap"><table class="data">
-      <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col">Status</th><th scope="col" class="num">Since last</th></tr></thead>
+      <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Since last</th></tr></thead>
       <tbody>${scoreRow}${lockRows}</tbody></table></div></div>`;
 }
 /* One Run/Bike toggle (mirrors the Progress screen) + the selected sport's
