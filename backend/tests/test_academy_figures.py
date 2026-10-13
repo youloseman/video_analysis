@@ -75,7 +75,7 @@ class TestTheKonaDraft:
         moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
         assert text.split("---", 2)[2].lstrip().startswith("**Updated 12 October 2026.**")
-        assert "77 of the 128 joint points moved" in text
+        assert "75 of the 128 joint points moved" in text
         assert "A ringed point is one we moved by hand" in text
         assert "on the original fifteen photos, the medians moved by 2° at most" in text
 
@@ -91,9 +91,9 @@ class TestTheKonaDraft:
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 20° | 18–22° | 13–27° | 20–30° |",
-                    "| Shoulder, torso to upper arm | 87° | 83–92° | 74–100° | 80–105° |",
-                    "| Elbow | 84° | 77–88° | 66–102° | 75–110° |",
+        for row in ("| Torso, from horizontal | 20° | 18–22° | 12–27° | 20–30° |",
+                    "| Shoulder, torso to upper arm | 88° | 83–92° | 74–100° | 80–105° |",
+                    "| Elbow | 84° | 76–88° | 66–102° | 75–110° |",
                     "| Forearm tilt, above horizontal | 26° | 23–28° | 19–32° | 5–30° |",
                     "| Helmet above the back, % of torso length | 18% | 14–22% | 7–33% | up to 23% |"):
             assert row in text, row
@@ -138,6 +138,6 @@ def test_the_stills_count_and_the_article_says_so():
     rest; the reader is told how many. The men-vs-women gap is reported as
     what it is: within the noise (Mann-Whitney, every angle p > 0.2)."""
     text = DRAFT.read_text(encoding="utf-8")
-    assert "Seven of them are broadcast and social-media stills" in text
+    assert "Six of them are broadcast and social-media stills" in text
     assert "## 5. Men and women: a first look" in text
     assert "none of these differences stands out from noise" in text

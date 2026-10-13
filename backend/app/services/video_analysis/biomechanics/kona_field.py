@@ -35,11 +35,12 @@ KONA_PRO_SOURCE = (
 
 # Per summary field: median, middle half (q1-q3) and the full range.
 KONA_PRO_FIELD: dict[str, dict[str, float]] = {
-    "trunk_angle_avg":    {"median": 20.2, "q1": 18.4, "q3": 22.2, "lo": 12.8, "hi": 27.1},
-    "shoulder_angle_avg": {"median": 87.2, "q1": 83.0, "q3": 91.9, "lo": 74.1, "hi": 99.6},
-    "elbow_angle_avg":    {"median": 83.7, "q1": 76.7, "q3": 87.7, "lo": 66.4, "hi": 102.3},
-    "forearm_tilt_avg":   {"median": 25.7, "q1": 23.3, "q3": 28.2, "lo": 18.8, "hi": 32.0},
-    "helmet_above_back":  {"median": 18.4, "q1": 13.9, "q3": 21.5, "lo": 6.7, "hi": 33.0},
+    "trunk_angle_avg":    {"median": 20.2, "q1": 18.3, "q3": 22.2, "lo": 12.2, "hi": 27.1},
+    "shoulder_angle_avg": {"median": 87.7, "q1": 83.0, "q3": 91.8, "lo": 74.1, "hi": 99.6},
+    "elbow_angle_avg":    {"median": 83.7, "q1": 76.4, "q3": 87.7, "lo": 66.4, "hi": 102.3},
+    "forearm_tilt_avg":   {"median": 25.9, "q1": 23.4, "q3": 28.4, "lo": 18.8, "hi": 32.0},
+    # n=31: one rider caught ducking the head is left out of the helmet only.
+    "helmet_above_back":  {"median": 18.4, "q1": 14.0, "q3": 21.6, "lo": 6.7, "hi": 33.0},
 }
 
 # Units per field, for whoever prints these (the coach prompt, the export).

@@ -247,6 +247,15 @@ def _measure(entry: dict, moved: dict, render: bool, blur_face: bool = False):
                              helmet_offsets=offsets)
     angles = {k: r["angles"].get(k) for k in SHOWN}
     rows = {k: r["angles_with_context"][k]["status"] for k in SHOWN if k in r["angles_with_context"]}
+    # A reading the person checking the points judged unrepresentative of the
+    # position -- editor #40, a rider caught ducking the head under the back
+    # line for an instant -- leaves the numbers and the figure; the rest of
+    # the photo still counts.
+    for k in entry.get("skip", ()):
+        angles[k] = None
+        rows.pop(k, None)
+    if "helmet_above_back" in entry.get("skip", ()):
+        helmet = None
     out = {"key": entry["key"], "n": entry["n"], "race": entry["race"], "label": entry.get("label"),
            "caption_note": entry.get("caption_note"),
            "angles": angles, "rows": rows, "corrected": sorted(corrected),
@@ -265,7 +274,8 @@ def _measure(entry: dict, moved: dict, render: bool, blur_face: bool = False):
         # the upper body only, so the photo still counts; it just has no score.
         score = (r.get("score_by_phase") or {}).get("uncertain") or r["score"]
         out["jpg"] = PA._generate_photo_thumbnail(
-            cv2, p["image"], nl, angles, score, side, "bike",
+            cv2, p["image"], nl, {k: v for k, v in angles.items() if k not in entry.get("skip", ())},
+            score, side, "bike",
             PA._build_arc_triplets("bike", side), cycling_position="triathlon",
             optimal_ranges=ranges, row_status=rows, show_header=False,
             corrected=sorted(corrected), helmet=helmet)

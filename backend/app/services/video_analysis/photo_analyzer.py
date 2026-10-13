@@ -442,7 +442,7 @@ PHOTO_CYCLING_WEIGHTS_UNCERTAIN = {
 }
 # The helmet term (2026-10-11, Artur's call) only exists in a score when the
 # reading is trustworthy and the position is an aero one -- see
-# _with_helmet_band. It costs nothing up to where twenty-nine of the thirty-two
+# _with_helmet_band. It costs nothing up to where twenty-eight of the thirty-one
 # Kona pros sat (+23 % of torso length) and is amber, never red, above it: the only study (Beaumont
 # 2018, CFD) compares head up with head down -- up to 6.4 % drag -- and gives
 # no curve to hang a red line on. Half the old head weight.
@@ -582,7 +582,7 @@ _HELMET_NOTE = (
 )
 
 _HELMET_HIGH_NOTE = (
-    "Higher than twenty-nine of the thirty-two Kona pros. A head up against a head down "
+    "Higher than twenty-eight of the thirty-one Kona pros. A head up against a head down "
     "cost up to 6.4 % more drag in a CFD study of time-trial helmets (Beaumont "
     "2018). Amber, a small penalty: drop the head if you can still see the "
     "road and hold it."

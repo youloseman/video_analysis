@@ -2701,7 +2701,11 @@
      67.0
     ]
    },
-   "note": "a sharper photograph of the rider in editor #36 (broadcast still), which it replaces; cropped around the rider (photo_2026-10-13_00-20-17.jpg, box 100,200,880,820) because the full frame finds no pose"
+   "note": "a sharper photograph of the rider in editor #36 (broadcast still), which it replaces; cropped around the rider (photo_2026-10-13_00-20-17.jpg, box 100,200,880,820) because the full frame finds no pose",
+   "skip": [
+    "helmet_above_back"
+   ],
+   "skip_why": "Artur: an unusual instant -- the rider has ducked the head; the helmet reading is not this position"
   }
  ]
 }
