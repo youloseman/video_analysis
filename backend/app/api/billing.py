@@ -766,16 +766,34 @@ def _analysis_brief(a: Analysis) -> dict[str, Any]:
     }
 
 
+# The one-time purchases a person has to write. A $4 unlock is a one-time
+# purchase too, and the queue listed it -- opening it showed the full Expert
+# Review form for a report that needs nobody (order #3, 2026-10-13).
+REVIEW_ORDER_PLANS = (expert_review.PLAN_EXPERT, expert_review.PLAN_NOTES)
+
+
+def _require_review_order(order: Order | None) -> Order:
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    if order.plan not in REVIEW_ORDER_PLANS:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"A {order.plan} order has nothing to write: it is fulfilled automatically.",
+        )
+    return order
+
+
 @admin_router.get("/admin/orders")
 async def admin_orders(
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    """Fulfilment queue: every one-time purchase with the buyer's email."""
+    """Fulfilment queue: the purchases a person writes, with the buyer's email."""
     rows = (
         await db.execute(
             select(Order, User.email)
             .join(User, User.id == Order.user_id)
+            .where(Order.plan.in_(REVIEW_ORDER_PLANS))
             .order_by(Order.created_at_ms.desc())
             .limit(200)
         )
@@ -814,6 +832,7 @@ async def admin_order_detail(
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     order, email = row
+    _require_review_order(order)
 
     entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
     history = (
@@ -909,9 +928,7 @@ async def admin_update_order(
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Move an order through the fulfilment states / save a draft / leave a note."""
-    order = await db.get(Order, order_id)
-    if order is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    order = _require_review_order(await db.get(Order, order_id))
     if body.status is not None:
         if body.status not in ORDER_STATUSES:
             raise HTTPException(
@@ -953,9 +970,7 @@ async def admin_publish_report(
     delivered" the instant this succeeds, so the completeness gate belongs here
     rather than in the editor's markup, where it would be advisory.
     """
-    order = await db.get(Order, order_id)
-    if order is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    order = _require_review_order(await db.get(Order, order_id))
     entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
     sport = (entry or {}).get("sport") or "run"
     missing = expert_review.missing_required(order.report, sport, order.plan)

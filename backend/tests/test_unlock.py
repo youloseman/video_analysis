@@ -400,3 +400,18 @@ async def test_an_unlock_writes_the_coaching_on_the_payment(db, make_user, monke
     row = (await db.execute(select(Analysis).where(Analysis.client_id == "u1"))).scalar_one()
     assert row.result["ai_recommendations"]["report"] == "**Overall** — ok."
     assert "fit_plan" in calls[0] and "focus" in calls[0]
+
+
+async def test_an_unlock_is_not_in_the_review_queue(db, make_user):
+    """Order #3 (2026-10-13), a $4 unlock, sat in the Expert queue and opened
+    the full review form. Nothing about it needs a person."""
+    admin = await make_user()
+    buyer = await make_user()
+    await store(db, buyer, client_id="h1")
+    await _apply_event(db, unlock_event(buyer.id, client_id="h1", session_id="cs_q"))
+    queue = await billing.admin_orders(admin, db)
+    assert all(o["plan"] != "unlock" for o in queue)
+    order = (await db.execute(select(Order).where(Order.stripe_session_id == "cs_q"))).scalar_one()
+    with pytest.raises(HTTPException) as exc:
+        await billing.admin_order_detail(order.id, admin, db)
+    assert exc.value.status_code == 400 and "nothing to write" in exc.value.detail
