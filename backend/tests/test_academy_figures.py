@@ -57,14 +57,14 @@ class TestTheKonaDraft:
         frame where the model found the motorbike passenger stays out, and so
         does the age-grouper (kept for a pro-vs-age-group comparison). One is
         Trevor Foley, a reader's photo from an earlier Kona, and its caption
-        says so. Twenty-one since 2026-10-12; thirty-four measured and twenty-five
-        shown since the broadcast stills came in (Artur, 2026-10-12: stills count
-        in the numbers, but are too soft to print -- the article says how many)."""
+        says so. Twenty-one since 2026-10-12; thirty-four since the broadcast stills came in,
+        every one shown (Artur, 2026-10-12: the stills go in too; the article
+        says how many are stills)."""
         text = DRAFT.read_text(encoding="utf-8")
         shown = re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)
-        assert shown == [f"{n:02d}" for n in range(1, 26)]
+        assert shown == [f"{n:02d}" for n in range(1, 35)]
         assert "Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        tilts = [float(m) for m in re.findall(r"Position \d+ of 25: forearm tilt (\d+)", text)]
+        tilts = [float(m) for m in re.findall(r"Position \d+ of 34: forearm tilt (\d+)", text)]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
 
     def test_the_hand_corrections_are_disclosed(self):
@@ -130,8 +130,10 @@ def test_the_head_section_says_what_replaced_100_of_100_and_why():
 
 
 def test_the_stills_count_and_the_article_says_so():
-    """Nine positions are broadcast or social-media stills: in every number,
-    not printed. The reader is told how many of each."""
+    """Nine positions are broadcast or social-media stills, shown with the
+    rest; the reader is told how many. The men-vs-women gap is reported as
+    what it is: within the noise (Mann-Whitney, every angle p > 0.2)."""
     text = DRAFT.read_text(encoding="utf-8")
-    assert "twenty-five positions are shown as photographs below, but all thirty-four" in text
+    assert "Nine of them are broadcast and social-media stills" in text
     assert "## 5. Men and women: a first look" in text
+    assert "none of these differences stands out from noise" in text
