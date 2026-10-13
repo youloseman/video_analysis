@@ -5329,7 +5329,7 @@ async function patchEntry(id, patch){
 function renderCoachNote(hostId, entryId){
   const host=$('#'+hostId), block=host&&host.closest('.block'); if(!host||!block) return;
   const e=entryId?loadHist().find(x=>x.id===entryId):null;
-  const note=(e&&e.coachNote)||'', by=(e&&e.coachName)||'';
+  const note=(e&&e.coachNote)||'', by=(e&&e.coachName)||'', bio=(e&&e.coachBio)||'';
   if(!coachOn()&&!note){ block.classList.add('hidden'); return; }
   block.classList.remove('hidden');
   // Delivered Coach Notes (bought) read as "Coach Notes"; a coach-user's own
@@ -5338,7 +5338,7 @@ function renderCoachNote(hostId, entryId){
   const title=block.querySelector('h3'); if(title) title.textContent=coachOn()?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(bought?'Coach Notes':(by?`${by}’s notes`:'Coach’s notes'));
   const eb=block.querySelector('.eyebrow'); if(eb&&!coachOn()) eb.innerHTML=`<svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> ${bought?'A person read this':'Your notes'}`;
   if(!coachOn()){
-    host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}${bought?' · read your clip and this analysis':''}</div>`:''}`;
+    host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}${bought?' · read your clip and this analysis':''}</div>${bio?`<div class="cnote-bio">${esc(bio)}</div>`:''}`:''}`;
     return;
   }
   const cues=(COACH.cues||[]);
@@ -6070,7 +6070,7 @@ function reportMeta(ctx, report){
   return [
     c.sport ? `${esc(pretty(c.sport))} · <b>${esc(c.kind||'video')}</b>` : '',
     (c.score!=null) ? `Automated score <b>${esc(String(c.score))}/100</b>${c.grade?' ('+esc(c.grade)+')':''}` : '',
-    r.reviewer ? `Reviewed by <b>${esc(r.reviewer)}</b>` : '',
+    r.reviewer ? `Reviewed by <b>${esc(r.reviewer)}</b>${r.reviewer_bio?` · ${esc(r.reviewer_bio)}`:''}` : '',
     c.delivered_at_ms ? `Delivered <b>${esc(shortDate(c.delivered_at_ms))}</b>` : '',
   ];
 }
@@ -6335,6 +6335,11 @@ function exEditorHtml(d){
         <label for="ex_reviewer">Signed by</label>
         <input type="text" id="ex_reviewer" data-exmeta="reviewer" value="${esc(r.reviewer||'')}" placeholder="Artur Podgornyi">
       </div>
+      <div class="ex-fld">
+        <label for="ex_reviewer_bio">Who they are</label>
+        <p class="ex-hint">One line under the name on the athlete's report and in the email: "Professional triathlete, …". Max 140 characters.</p>
+        <input type="text" id="ex_reviewer_bio" data-exmeta="reviewer_bio" maxlength="140" value="${esc(r.reviewer_bio||'')}" placeholder="Professional triathlete">
+      </div>
       ${(d.sections||[]).map(s=>exFieldHtml(s,r)).join('')}
       <div class="ex-fld">
         <label for="ex_note">Internal note</label>
@@ -6376,7 +6381,7 @@ function exEditorHtml(d){
    and fit rows are left in — normalize_report drops them, so the reviewer can
    leave slots empty without thinking about it. */
 function exCollect(){
-  const d=state.exOrder||{}; const out={reviewer:($('#ex_reviewer')||{}).value||''};
+  const d=state.exOrder||{}; const out={reviewer:($('#ex_reviewer')||{}).value||'', reviewer_bio:($('#ex_reviewer_bio')||{}).value||''};
   (d.sections||[]).forEach(s=>{
     if(s.kind==='priorities'){
       out[s.key]=Array.from({length:EX_PRIO_SLOTS},(_,i)=>{

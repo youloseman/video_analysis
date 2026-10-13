@@ -1652,6 +1652,8 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .cnote-status{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
 .cnote-read{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.55;color:var(--c-ink)}
 .cnote-by{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);margin-top:8px}
+/* Who the coach is, under the name: the athlete paid for this person's eye. */
+.cnote-bio{font-size:13px;color:var(--c-ink-soft);margin-top:3px}
 .cnote-empty{font-size:13px;color:var(--c-ink-faint)}
 .coachform{display:grid;gap:10px}
 .coachform label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint);display:block;margin-bottom:4px}

@@ -167,3 +167,39 @@ def test_the_ready_email_carries_the_first_line_only():
     assert "Coach Notes" in subject
     assert "Shorten the stride." in text and "secret A" not in text
     assert "secret A" not in html
+
+
+async def test_the_athlete_sees_who_wrote_the_notes(db, make_user, monkeypatch):
+    """Artur, 2026-10-13: the first outside coach (a professional triathlete)
+    signs his notes with his name and who he is, so the athlete knows whose eye
+    they paid for. The line rides the entry, the email and the export."""
+    monkeypatch.setattr(billing, "_base_url", lambda request: "https://getflapp.com")
+    monkeypatch.setattr(billing.notify, "send_email", lambda *a, **k: True)
+    user = await make_user()
+    order = await _paid_notes_order(db, user)
+    await billing.admin_update_order(
+        order.id,
+        billing.OrderPatch(report={"reviewer": "Bogdan Kovalenko", "reviewer_bio": "Professional triathlete",
+                                   "first": "Raise the cockpit.", "note_1": "A", "note_2": "B", "note_3": "C"}),
+        user, db,
+    )
+    await billing.admin_publish_report(order.id, None, user, db)
+    row = (await db.execute(select(Analysis).where(Analysis.client_id == "h1"))).scalar_one()
+    assert row.data["coachName"] == "Bogdan Kovalenko"
+    assert row.data["coachBio"] == "Professional triathlete"
+    _, text, html = er.notes_ready_email(order.report, "https://x/app")
+    assert "— Bogdan Kovalenko, Professional triathlete" in text and "Professional triathlete" in html
+
+
+def test_the_bio_is_clipped_and_optional():
+    out = er.normalize_report({"reviewer": "A", "reviewer_bio": "x" * 400}, "bike", "notes")
+    assert len(out["reviewer_bio"]) <= er.MAX_REVIEWER_BIO_CHARS
+    assert er.signed_by({"reviewer": "A"}, "your coach") == "A"
+    assert er.signed_by({}, "your coach") == "your coach"
+
+
+def test_the_report_and_the_editor_show_the_bio():
+    from conftest import read_spa
+    spa = read_spa()
+    assert 'data-exmeta="reviewer_bio"' in spa and "reviewer_bio:($('#ex_reviewer_bio')||{}).value" in spa
+    assert '<div class="cnote-bio">${esc(bio)}</div>' in spa

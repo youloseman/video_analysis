@@ -548,7 +548,8 @@ async def export_analysis(
     return PlainTextResponse(
         ai_export.build_markdown(
             row.result, job_id=client_id,
-            coach_notes=entry.get("coachNote"), coach_name=entry.get("coachName"),
+            coach_notes=entry.get("coachNote"),
+            coach_name=", ".join(x for x in (entry.get("coachName"), entry.get("coachBio")) if x),
         ),
         media_type="text/markdown; charset=utf-8",
         headers=disposition,

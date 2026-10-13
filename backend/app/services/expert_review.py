@@ -38,6 +38,10 @@ MAX_LINE_CHARS = 300
 MAX_PRIORITIES = 3
 MAX_FIT_ROWS = 6
 MAX_REVIEWER_CHARS = 80
+# Who the reviewer is, in one line under the name ("Professional triathlete,
+# 2x IRONMAN 70.3 winner"). The athlete paid for a person's eye and should be
+# able to see whose -- Artur, 2026-10-13, when the first coach signed on.
+MAX_REVIEWER_BIO_CHARS = 140
 
 # kind:
 #   "prose"      -> one Markdown block
@@ -329,6 +333,7 @@ def normalize_report(
     out: dict[str, Any] = {
         "version": REPORT_VERSION,
         "reviewer": _clip(raw.get("reviewer"), MAX_REVIEWER_CHARS),
+        "reviewer_bio": _clip(raw.get("reviewer_bio"), MAX_REVIEWER_BIO_CHARS),
     }
     for s in sections_for(sport, plan):
         key, kind = s["key"], s["kind"]
@@ -389,6 +394,14 @@ def _esc(s: str) -> str:
     )
 
 
+def signed_by(report: dict[str, Any] | None, fallback: str) -> str:
+    """'Name, who they are' -- the line a note or a review is signed with."""
+    r = report or {}
+    name = str(r.get("reviewer") or "").strip() or fallback
+    bio = str(r.get("reviewer_bio") or "").strip()
+    return f"{name}, {bio}" if bio else name
+
+
 def notes_ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
     """(subject, text, html) for delivered Coach Notes.
 
@@ -396,7 +409,7 @@ def notes_ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, s
     the report, where the three notes sit under the analysis they are about.
     """
     first = _first_paragraph((report or {}).get("first") or "", limit=200)
-    reviewer = (report or {}).get("reviewer") or "your coach"
+    reviewer = signed_by(report, "your coach")
     subject = "Your Coach Notes are on your report"
     text = (
         "A coach has read your analysis.\n\n"
@@ -425,7 +438,7 @@ def notes_ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, s
 def ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
     """(subject, text, html) telling an athlete their review has landed."""
     verdict = _first_paragraph((report or {}).get("verdict") or "")
-    reviewer = (report or {}).get("reviewer") or "your reviewer"
+    reviewer = signed_by(report, "your reviewer")
     subject = "Your Flapp Expert Review is ready"
     text = (
         "Your Expert Review is ready.\n\n"

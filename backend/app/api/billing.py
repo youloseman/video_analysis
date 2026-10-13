@@ -1022,10 +1022,13 @@ async def _write_notes_to_entry(db: AsyncSession, order: Order) -> None:
         logger.warning("NOTES_ENTRY_GONE", order_id=order.id, analysis=order.analysis_client_id)
         return
     reviewer = str((order.report or {}).get("reviewer") or "").strip() or "Flapp coach"
+    bio = str((order.report or {}).get("reviewer_bio") or "").strip()
     row.data = {
         **(row.data or {}),
         "coachNote": expert_review.notes_text(order.report),
         "coachName": reviewer,
+        # Who the coach is, printed under the name on the note block.
+        "coachBio": bio,
         "coachOrderId": order.id,
     }
 
