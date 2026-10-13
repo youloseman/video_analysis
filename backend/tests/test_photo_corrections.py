@@ -308,7 +308,7 @@ def test_a_point_that_is_neither_a_joint_nor_a_helmet_point_is_refused():
 
 class TestTheHelmetPenalty:
     """Artur, 2026-10-11: penalise a head held too high. Free up to the
-    point where thirty of the thirty-four Kona pros sat (+23 % of torso), amber and never red above it, only on
+    point where twenty-nine of the thirty-three Kona pros sat (+23 % of torso), amber and never red above it, only on
     aero positions and only on a reading that can be trusted."""
 
     def _score(self, value, position="triathlon", check=False):
