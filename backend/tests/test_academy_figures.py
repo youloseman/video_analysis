@@ -17,7 +17,8 @@ BACKEND = Path(__file__).resolve().parents[1]
 MEDIA = BACKEND / "app" / "static" / "media"
 DRAFT = CONTENT_DIR / "kona-2026-pro-bike-positions.md"
 # Article positions whose frame is a still from video (kona2026.json ``video``).
-VIDEO_FRAMES = (5, 13, 20, 21, 22, 25, 29)
+# Shown until 2026-10-14, when Artur took every frame out of the article.
+VIDEO_FRAMES: tuple[int, ...] = ()
 
 
 class TestTheFigureBlock:
@@ -79,7 +80,7 @@ class TestTheKonaDraft:
         tilts = [int(t) for _, t in rows]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
         assert "Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        assert "The race photographs are not reproduced here" in text
+        assert "The photographs and frames themselves are not reproduced here" in text
         # Athletes named where Artur could tell (2026-10-14); the one rider in
         # two frames is kept and said so, not hidden.
         assert "| 1 | Kristian Blummenfelt | Men |" in text
