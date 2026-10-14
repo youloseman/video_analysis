@@ -66,9 +66,7 @@ Triathlon never had the rule that held road time trials back. Under UCI rules, t
 
 The aerodynamics back them. In a 2025 study that modelled one professional rider and checked the model in a wind tunnel, very high hands alone cut drag area by 3%. Combined with narrow elbows the saving grew to 7.7% for high hands and 11.2% for very high hands. Mat Steinmetz, a fitter who works with professional triathletes, describes the same change from the other side: 10–20° of bar tilt supports the upper body, relaxes the shoulders and makes a pocket for the head.
 
-![Kristian Blummenfelt, the flattest forearms in the field: 19°, with the elbow open to 91°. Flapp's overlay on the race photograph. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/rider-a.webp)
-
-![Imogen Simmonds, one of the steeper ones: forearms at 28°, elbow closed to 78°, torso at 16°. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/rider-b.webp)
+At the two ends of the field: the flattest forearms, at 19°, came with the elbow open to 91°; one of the steeper positions had the forearms at 28°, the elbow closed to 78° and the torso at 16°.
 
 Two cautions. The saving is rider-specific, and the same study found that a smaller frontal area did not automatically mean less drag. And the elbow pays for it: when the hands rise, the elbow tends to close. Across the field the two moved in opposite directions (r = −0.69). Seven riders, about a fifth of the field, sat below the 75° elbow floor in our own range. That floor was written for flatter forearms; we have not lowered it because we have not yet found a fitter or a study that names a lower number. If you ride tilted extensions, read your elbow angle together with your forearm tilt, not on its own.
 
@@ -86,9 +84,7 @@ Most of the field sat close to the classic reference. The median upper arm was a
 
 Four positions closed the shoulder below 80°, the furthest to 74°. The people who wrote the guidance never called that a fault. Dan Empfield's original description of the measurement says an angle below 90° is the athlete's personal choice, and that it is an angle opened past 90° that can become a problem.
 
-![Gustav Iden: the shoulder closed to 74°, forearms at 25°, elbow at 71°. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/rider-c.webp)
-
-![The same position in Flapp's joint-angle table. The shoulder below its range reads "acceptable", amber, with no points lost. The elbow is flagged; see the caution in section 1.](/media/academy/kona-2026/rider-c-table.webp)
+![The most closed shoulder in the field, 74°, with the forearms at 25° and the elbow at 71°, in Flapp's joint-angle table. The shoulder below its range reads "acceptable", amber, with no points lost. The elbow is flagged; see the caution in section 1.](/media/academy/kona-2026/rider-c-table.webp)
 
 What to check if you ride with the shoulder that closed: whether the shoulders are shrugged up toward the ears, which is tiring and hard to breathe through, and whether the arms are carrying you or you are holding yourself up.
 
@@ -104,7 +100,7 @@ Twenty-one of the positions are men's and eleven are women's. We expected the tw
 
 ## All thirty-two positions
 
-Every position we measured, ordered from the flattest forearms to the steepest. Six of them are broadcast and social-media stills, softer and smaller than the photographs; their points were checked by hand like the rest. Where we could tell who the athlete is, the table names them. Every position is shown on its photograph below the table. Knee, hip and ankle are left out for the reasons in the next section.
+Every position we measured, ordered from the flattest forearms to the steepest. Six of them are broadcast and social-media stills, softer and smaller than the photographs; their points were checked by hand like the rest. Where we could tell who the athlete is, the table names them. The photographs and frames themselves are not reproduced here; what we publish is the measurements. Knee, hip and ankle are left out for the reasons in the next section.
 
 | # | Athlete | Field | Forearm tilt | Torso | Shoulder | Elbow | Helmet above the back |
 |---|---|---|---|---|---|---|---|
@@ -143,78 +139,11 @@ Every position we measured, ordered from the flattest forearms to the steepest. 
 
 Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race. Positions 5 and 18 are the same athlete, Matthew Hanson, in two frames: a broadcast still and a race photograph. We kept both; dropping either moves no median by more than half a degree. The one helmet left blank is the rider caught with the head ducked under the line of the back (section 4).
 
-The race photographs are by Scott Flathouse ([@scottflathousephoto](https://www.instagram.com/scottflathousephoto/)), used with his permission. If you raced Kona, you may find your own photos from the day on [his site](https://www.scottflathousephoto.com/events/). The labels are Flapp's own readings for a triathlon position: green inside the range, amber just outside it or below it at no cost, red outside it. A ringed point is one we moved by hand, and the green dot by the shoulders is the top of the back the helmet reading starts from. The legs are drawn but not measured, for the reasons in the next section.
-
-![Position 1 of 32, Kristian Blummenfelt: forearm tilt 19°, torso 23°, shoulder 86°, elbow 91°, helmet +22% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-01.webp)
-
-![Position 2 of 32, Jenny Jendryschik: forearm tilt 19°, torso 22°, shoulder 100°, elbow 102°, helmet +23% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-02.webp)
-
-![Position 3 of 32, Gregory Barnaby: forearm tilt 21°, torso 25°, shoulder 83°, elbow 88°, helmet +14% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-03.webp)
-
-![Position 4 of 32, Vincent Luis: forearm tilt 21°, torso 21°, shoulder 86°, elbow 86°, helmet +18% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-04.webp)
-
-![Position 5 of 32, Matthew Hanson: forearm tilt 22°, torso 25°, shoulder 97°, elbow 101°, helmet +22% above the back. Still from video.](/media/academy/kona-2026/position-05.webp)
-
-![Position 6 of 32, Patrick Lange: forearm tilt 22°, torso 25°, shoulder 86°, elbow 89°, helmet +19% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-06.webp)
-
-![Position 7 of 32, Lucy Charles-Barclay: forearm tilt 22°, torso 15°, shoulder 90°, elbow 83°, helmet +19% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-07.webp)
-
-![Position 8 of 32, Ben Kanute: forearm tilt 22°, torso 19°, shoulder 89°, elbow 86°, helmet +12% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-08.webp)
-
-![Position 9 of 32, Taylor Knibb: forearm tilt 24°, torso 26°, shoulder 87°, elbow 89°, helmet +28% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-09.webp)
-
-![Position 10 of 32, Rudy Von Berg: forearm tilt 24°, torso 20°, shoulder 88°, elbow 84°, helmet +14% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-10.webp)
-
-![Position 11 of 32, Cameron Wurf: forearm tilt 24°, torso 19°, shoulder 81°, elbow 76°, helmet +20% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-11.webp)
-
-![Position 12 of 32, Hannah Berry: forearm tilt 24°, torso 20°, shoulder 93°, elbow 88°, helmet +18% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-12.webp)
-
-![Position 13 of 32, Magnus Ditlev: forearm tilt 25°, torso 20°, shoulder 92°, elbow 88°, helmet +17% above the back. Still from video.](/media/academy/kona-2026/position-13.webp)
-
-![Position 14 of 32, Gustav Iden: forearm tilt 25°, torso 22°, shoulder 74°, elbow 71°, helmet +13% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-14.webp)
-
-![Position 15 of 32, Sam Long: forearm tilt 26°, torso 22°, shoulder 92°, elbow 88°, helmet +18% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-15.webp)
-
-![Position 16 of 32, Kristian Høgenhaug: forearm tilt 26°, torso 13°, shoulder 96°, elbow 82°, helmet +17% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-16.webp)
-
-![Position 17 of 32: forearm tilt 26°, torso 27°, shoulder 86°, elbow 87°, helmet +23% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-17.webp)
-
-![Position 18 of 32, Matthew Hanson: forearm tilt 26°, torso 25°, shoulder 94°, elbow 93°, helmet +23% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-18.webp)
-
-![Position 19 of 32: forearm tilt 26°, torso 23°, shoulder 87°, elbow 84°, helmet +18% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-19.webp)
-
-![Position 20 of 32: forearm tilt 27°, torso 21°, shoulder 83°, elbow 77°, helmet +33% above the back. Still from video.](/media/academy/kona-2026/position-20.webp)
-
-![Position 21 of 32: forearm tilt 28°, torso 18°, shoulder 79°, elbow 70°, helmet +8% above the back. Still from video.](/media/academy/kona-2026/position-21.webp)
-
-![Position 22 of 32: forearm tilt 28°, torso 17°, shoulder 82°, elbow 71°, helmet +22% above the back. Still from video.](/media/academy/kona-2026/position-22.webp)
-
-![Position 23 of 32, Imogen Simmonds: forearm tilt 28°, torso 16°, shoulder 91°, elbow 78°, helmet +17% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-23.webp)
-
-![Position 24 of 32, Jason West: forearm tilt 28°, torso 19°, shoulder 76°, elbow 66°, helmet +13% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-24.webp)
-
-![Position 25 of 32: forearm tilt 28°, torso 18°, shoulder 95°, elbow 84°, helmet +20% above the back. Still from video.](/media/academy/kona-2026/position-25.webp)
-
-![Position 26 of 32: forearm tilt 29°, torso 12°, shoulder 88°, elbow 71°. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-26.webp)
-
-![Position 27 of 32, Trevor Foley: forearm tilt 29°, torso 19°, shoulder 81°, elbow 70°, helmet +14% above the back. From a photo a reader shared; an earlier Kona, not the 2026 race.](/media/academy/kona-2026/position-27.webp)
-
-![Position 28 of 32: forearm tilt 29°, torso 13°, shoulder 95°, elbow 79°, helmet +7% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-28.webp)
-
-![Position 29 of 32, Jana Uderstadt: forearm tilt 29°, torso 21°, shoulder 78°, elbow 70°, helmet +14% above the back. Still from video.](/media/academy/kona-2026/position-29.webp)
-
-![Position 30 of 32: forearm tilt 31°, torso 20°, shoulder 88°, elbow 77°, helmet +21% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-30.webp)
-
-![Position 31 of 32: forearm tilt 32°, torso 21°, shoulder 87°, elbow 76°, helmet +19% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-31.webp)
-
-![Position 32 of 32: forearm tilt 32°, torso 18°, shoulder 92°, elbow 78°, helmet +23% above the back. Photo: Scott Flathouse (@scottflathousephoto).](/media/academy/kona-2026/position-32.webp)
-
-
 ## What we did not measure, and why
 
 No knee angles and no saddle verdicts. In a single race photo the crank is wherever it happened to be, so the knee angle is not a saddle-height reading. There is a second reason. Twenty-two of the thirty-two positions were seen from the drive side, the side with the chainring, because most riders crossed the frame in the same direction past photographers on one side of the road. On two bikes of our own we measured that the drive side reads the knee at the bottom of the stroke 8–10° lower than it really is: the ankle point slides onto the dark chainring behind it. So we left the legs out rather than publish numbers we know are biased.
 
-How we measured: thirty-two professional positions. The race photographs are Scott Flathouse's, published with his permission. Twenty-five come from photographs of the 2026 race and six from stills of the race broadcast and of riders' own social-media posts; the twenty-sixth photograph is Trevor Foley, from an earlier Kona, which a reader shared in the comments, and we do not know who took it. Eight frames were left out: one where the model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one; two broadcast stills too blurred for the model to find a rider at all; three that showed a rider already counted; one still too poor to trust; and one broadcast still replaced by a sharper photograph of the same rider. Further screen grabs of riders already in the set were not counted twice. Three age-group athletes are kept out of these numbers too; we are collecting those to compare with the pros.
+How we measured: thirty-two professional positions. Twenty-five come from photographs of the 2026 race and six from stills of the race broadcast and of riders' own social-media posts; the twenty-sixth photograph is Trevor Foley, from an earlier Kona, which a reader shared in the comments, and we do not know who took it. Eight frames were left out: one where the model had found the passenger on the camera motorbike instead of the rider, and Flapp returned no score rather than a wrong one; two broadcast stills too blurred for the model to find a rider at all; three that showed a rider already counted; one still too poor to trust; and one broadcast still replaced by a sharper photograph of the same rider. Further screen grabs of riders already in the set were not counted twice. Three age-group athletes are kept out of these numbers too; we are collecting those to compare with the pros.
 
 On every position, angles were measured in 2D on the side of the body nearest the camera, from four points: shoulder, elbow, wrist and hip. A pose model's points are its best guess at where each joint is, not the bony landmarks a fitter would mark by hand, and in the first version of this article several of them missed. So we went through every photo and every still and moved each point that missed into the joint by hand, the same way the app lets you correct a point on your own photo. 75 of the 128 joint points moved, by a median of about 2 cm. One 2026 photograph is itself a still from video, where the model had mixed up the joints; every point on it was placed by hand. On the other photographs the largest move was about 8 cm. Centimetres here are estimated from each rider's own hip-to-shoulder distance, taken as 50 cm. The helmet reading is taken from the rider's outline, not from these four points.
 
