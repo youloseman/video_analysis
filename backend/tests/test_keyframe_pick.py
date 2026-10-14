@@ -90,3 +90,23 @@ def test_the_bike_keyframe_agrees_with_the_reported_knee():
     # Without a reported knee, the old rule stands: the lowest ankle.
     v.summary = {}
     assert v._pick_keyframe_idx() == 50
+
+
+def test_the_keyframe_agrees_with_the_knee_it_prints():
+    """The label on the picture comes from the analyzer's filtered series, the
+    one knee_at_bdc is read from -- not from the frame's landmarks. A Coach
+    Notes client (2026-10-14) got a frame whose landmarks read 142.3 (within
+    3 of 144.7) while its label printed 137.8."""
+    frames = [_leg_frame(120.0) for _ in range(100)]
+    for k in range(40, 60):
+        frames[k] = _leg_frame(142.0, ankle_drop=0.05)     # the bottom of the stroke
+    v = _viz(frames)
+    v.summary = {"knee_at_bdc": 144.7}
+    series = [120.0] * 100
+    for k in range(40, 60):
+        series[k] = 137.8                 # landmarks agree, the printed value does not
+    series[47] = 144.5                    # the one frame that prints the report's knee
+    v.analyzer = SimpleNamespace(angle_history={"right_knee": series})
+    picked = v._pick_keyframe_idx()
+    assert picked == 47
+    assert abs(v._near_knee_deg(picked) - 144.7) <= 3.0

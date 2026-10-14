@@ -638,13 +638,25 @@ class VideoVisualizer:
         return best_idx
 
     def _near_knee_deg(self, i: int) -> float | None:
-        """The near knee on one frame, in true image proportions -- the angle
-        the keyframe draws there (the analyzer measures on image landmarks x
-        aspect too; see the world-vs-image note)."""
+        """The near knee the keyframe PRINTS on one frame.
+
+        That is the analyzer's filtered series -- the one knee_at_bdc is read
+        from -- not the raw landmarks: on a Coach Notes client's clip
+        (2026-10-14) the picker chose a frame whose landmarks read 142.3,
+        within 3 deg of knee_at_bdc 144.7, while the label printed 137.8 from
+        the series; she had asked about her saddle. The landmarks (in true
+        image proportions) are the fallback when no series is to hand.
+        """
         hip_i, knee_i, ankle_i = {"left": (23, 25, 27), "right": (24, 26, 28)}.get(
             self.camera_side or "", (None, None, None))
         if hip_i is None:
             return None
+        analyzer = getattr(self, "analyzer", None)
+        series = (getattr(analyzer, "angle_history", None) or {}).get(f"{self.camera_side}_knee")
+        if series is not None and i < len(series):
+            v = series[i]
+            if isinstance(v, (int, float)) and not math.isnan(v):
+                return float(v)
         fd = self.frame_data_list[i]
         lms = fd["normalized_landmarks"]
         pts = []
