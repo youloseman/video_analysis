@@ -221,6 +221,15 @@ def _attach_result(row: Analysis, job_id: str) -> None:
     result = job.get("result")
     if not result:
         return
+    # The coach text is written onto the ROW later -- on unlock, or lazily on
+    # the first entitled read -- and never onto the job: a free run makes no
+    # LLM call. A re-save inside the job's lifetime used to copy the job's
+    # result back over it, coach-less: a $4 unlock (2026-10-14) showed its text
+    # in the page's own copy while the server's had none, so another device
+    # would have paid for a second, different one.
+    prev = row.result or {}
+    if prev.get("ai_recommendations") and not result.get("ai_recommendations"):
+        result = {**result, "ai_recommendations": prev["ai_recommendations"]}
     row.result = result
     # Whether this was the account's free preview is decided by the server at
     # upload time and recorded here, so re-opening the report a year later still

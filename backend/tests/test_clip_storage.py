@@ -252,3 +252,22 @@ async def test_an_order_with_no_analysis_chosen_has_no_clip(db, make_user):
     user = await make_user()
     order = await make_order(db, user, client_id=None)
     assert await billing._clip_path(db, order) is None
+
+
+async def test_a_resave_keeps_the_coach_text_written_after_the_run(db, make_user):
+    """A $4 unlock (2026-10-14): the coach text was written onto the row on
+    payment, then the page re-saved the entry while its job was still live and
+    the job's own result -- a free run, no coach -- was copied back over it.
+    The page kept its copy; the server lost it."""
+    user = await make_user()
+    live_job("j1", user, result={"technique_score": 100, "ai_recommendations": None})
+    await me._upsert(db, user, {"id": "h1", "at": 1, "jobId": "j1"})
+    await db.commit()
+    row = (await db.execute(select(Analysis))).scalar_one()
+    row.result = {**row.result, "ai_recommendations": {"report": "**Overall** — ok.", "model": "m"}}
+    await db.commit()
+    await me._upsert(db, user, {"id": "h1", "at": 1, "jobId": "j1", "report": "**Overall** — ok."})
+    await db.commit()
+    await db.refresh(row)
+    assert row.result["ai_recommendations"]["report"] == "**Overall** — ok."
+    assert row.result["technique_score"] == 100
