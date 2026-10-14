@@ -32,6 +32,7 @@ def _viz(frames):
     v.frame_data_list = frames
     v.camera_side = "right"
     v.sport_type = "bike"
+    v.summary = {}
     return v
 
 
@@ -55,3 +56,37 @@ def test_all_undrawable_still_returns_a_frame():
     frames = [_frame(leg_nan=True) for _ in range(50)]
     picked = _viz(frames)._pick_keyframe_idx()
     assert 0 <= picked < 50
+
+
+def _leg_frame(knee_deg: float, ankle_drop: float = 0.0):
+    """A right-side frame whose near knee reads ``knee_deg``: hip above the
+    knee, the shin swung to the angle; ``ankle_drop`` lowers the ankle."""
+    lms = [_lm() for _ in range(33)]
+    hip, knee = (0.5, 0.3), (0.55, 0.5)
+    thigh = math.atan2(hip[1] - knee[1], hip[0] - knee[0])
+    shin = thigh - math.radians(knee_deg)
+    ax, ay = knee[0] + 0.2 * math.cos(shin), knee[1] + 0.2 * math.sin(shin)
+    ay += ankle_drop
+    for i, (x, y) in ((24, hip), (26, knee), (28, (ax, ay)), (30, (ax - 0.02, ay)), (32, (ax + 0.04, ay))):
+        lms[i] = _lm(x=x, y=y)
+    return {"normalized_landmarks": lms, "frame_width": 1000, "frame_height": 1000}
+
+
+def test_the_bike_keyframe_agrees_with_the_reported_knee():
+    """A subscriber's report (2026-10-14) led with the leg drawn between his
+    two legs: the lowest-ankle frame was the one where MediaPipe misplaced the
+    ankle, knee 133 on the picture against knee_at_bdc 139.7 in the table.
+    Among the bottom-of-stroke frames, the one that reads the reported knee
+    is drawn."""
+    frames = [_leg_frame(120.0) for _ in range(100)]
+    for k in range(40, 60):
+        frames[k] = _leg_frame(139.5)
+    frames[50] = _leg_frame(133.0, ankle_drop=0.05)    # the lowest, and wrong
+    v = _viz(frames)
+    v.summary = {"knee_at_bdc": 139.7}
+    picked = v._pick_keyframe_idx()
+    assert picked != 50
+    assert abs(v._near_knee_deg(picked) - 139.7) <= 3.0
+    # Without a reported knee, the old rule stands: the lowest ankle.
+    v.summary = {}
+    assert v._pick_keyframe_idx() == 50

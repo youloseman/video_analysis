@@ -96,6 +96,11 @@ _RUN_STANCE_PHASES = frozenset({
 # Disabled by default for this standalone app. To brand the output, drop a
 # transparent PNG at the path below and set WATERMARK_ENABLED = True. The Motus
 # watermark asset is intentionally NOT bundled here.
+# How far the bike keyframe's near knee may sit from the report's knee_at_bdc.
+# The BDC read is a median over revolutions, so an honest bottom frame lands
+# within a degree or two of it; 133 against 139.7 is the leg drawn wrong.
+_KEYFRAME_KNEE_TOL = 3.0
+
 WATERMARK_ENABLED = False
 WATERMARK_OPACITY = 0.9                       # global blend strength on top of the PNG's own alpha
 WATERMARK_PATH = Path(__file__).parent / "assets" / "watermark.png"
@@ -558,8 +563,14 @@ class VideoVisualizer:
         ungated near-side leg before visibility gets a vote.
         """
         n = len(self.frame_data_list)
-        cand = sorted({int(n * p) for p in
-                       (0.30 + 0.02 * k for k in range(21))})
+        if self.sport_type == "bike":
+            # Every frame of the middle of the clip: picking a bike frame is
+            # landmark arithmetic, no decoding, and 21 samples left the
+            # knee-agreement check below a handful of frames to choose from.
+            cand = list(range(int(n * 0.15), int(n * 0.85)))
+        else:
+            cand = sorted({int(n * p) for p in
+                           (0.30 + 0.02 * k for k in range(21))})
         cand = [i for i in cand if 0 <= i < n] or [n // 2]
 
         side_leg = {
@@ -598,6 +609,23 @@ class VideoVisualizer:
                 if len(ys) >= 5:
                     ys.sort(reverse=True)          # image y grows downward
                     pool = [i for _, i in ys[:max(3, len(ys) // 5)]]
+                # ... and of those, one whose knee reads what the report
+                # says. The lowest ankle is also where a misplaced ankle
+                # lands: a subscriber's clip (2026-10-14) led its report with
+                # the leg drawn between his two legs, knee 133 on the picture
+                # against knee_at_bdc 139.7 in the table. An ungated frame can
+                # still be wrong (MediaPipe swapping legs mid-stroke); a frame
+                # that agrees with the measured number is the one that shows
+                # it.
+                target = self.summary.get("knee_at_bdc")
+                if isinstance(target, (int, float)) and not math.isnan(target):
+                    scored = sorted(
+                        (abs(k - target), i) for i in pool
+                        if (k := self._near_knee_deg(i)) is not None
+                    )
+                    if scored:
+                        close = [i for d, i in scored if d <= _KEYFRAME_KNEE_TOL]
+                        pool = close or [scored[0][1]]
 
         best_idx, best_vis = pool[0], -1.0
         for i in pool:
@@ -608,6 +636,32 @@ class VideoVisualizer:
             if vis > best_vis:
                 best_vis, best_idx = vis, i
         return best_idx
+
+    def _near_knee_deg(self, i: int) -> float | None:
+        """The near knee on one frame, in true image proportions -- the angle
+        the keyframe draws there (the analyzer measures on image landmarks x
+        aspect too; see the world-vs-image note)."""
+        hip_i, knee_i, ankle_i = {"left": (23, 25, 27), "right": (24, 26, 28)}.get(
+            self.camera_side or "", (None, None, None))
+        if hip_i is None:
+            return None
+        fd = self.frame_data_list[i]
+        lms = fd["normalized_landmarks"]
+        pts = []
+        for idx in (hip_i, knee_i, ankle_i):
+            x, y = getattr(lms[idx], "x", None), getattr(lms[idx], "y", None)
+            if x is None or y is None or math.isnan(x) or math.isnan(y):
+                return None
+            pts.append((x, y))
+        aspect = (fd.get("frame_width") or 1) / (fd.get("frame_height") or 1)
+        (hx, hy), (kx, ky), (ax, ay) = pts
+        v1 = ((hx - kx) * aspect, hy - ky)
+        v2 = ((ax - kx) * aspect, ay - ky)
+        n1, n2 = math.hypot(*v1), math.hypot(*v2)
+        if n1 < 1e-9 or n2 < 1e-9:
+            return None
+        cosv = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
+        return math.degrees(math.acos(cosv))
 
     def _pose_for_video_frame(
         self, video_frame_idx: int,
