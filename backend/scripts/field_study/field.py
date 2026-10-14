@@ -390,8 +390,14 @@ def _rebuild(study: dict) -> None:
             im = im.resize((1200, int(1200 * im.height / im.width)), Image.LANCZOS)
         im.save(path, "WEBP", quality=q, method=6)
 
-    for old in glob.glob(str(media / "position-*.webp")) + glob.glob(str(social / "position-*.jpg")):
+    for old in (glob.glob(str(media / "position-*.webp")) + glob.glob(str(media / "rider-?.webp"))
+                + glob.glob(str(social / "position-*.jpg"))):
         os.remove(old)
+    # The race photographs belong to their photographers: Slowtwitch asked
+    # for theirs to come down (2026-10-13), so a study with publish_photos
+    # false writes no photo into the served media -- the article carries a
+    # table of the numbers instead -- and keeps the overlays local.
+    publish = study.get("publish_photos", True)
     count = len(items)
     # Every pro counts in the numbers; only the ones whose photo is good enough
     # to print get a figure. Broadcast screen grabs measure fine once the points
@@ -400,7 +406,8 @@ def _rebuild(study: dict) -> None:
     captions = []
     for n, d in enumerate(shown, 1):
         a = d["angles"]
-        webp(d["jpg"], media / f"position-{n:02d}.webp", 82)
+        if publish:
+            webp(d["jpg"], media / f"position-{n:02d}.webp", 82)
         tag = f"_{d['key']}" if d["race"] != "Kona 2026" else ""
         Image.open(io.BytesIO(d["jpg"])).convert("RGB").save(
             social / f"position-{n:02d}{tag}_forearm-{a['forearm_tilt']:.0f}_torso-{a['trunk']:.0f}.jpg",
@@ -427,7 +434,8 @@ def _rebuild(study: dict) -> None:
                 "JPEG", quality=93)
     for tag, key in study["riders"].items():
         d = next(x for x in items if x["key"] == key)
-        webp(d["jpg"], media / f"rider-{tag}.webp", 84)
+        if publish:
+            webp(d["jpg"], media / f"rider-{tag}.webp", 84)
     (work / "reports.json").write_text(json.dumps(
         {t.upper(): next(x for x in items if x["key"] == k)["report"] for t, k in study["riders"].items()},
         default=str), encoding="utf-8")

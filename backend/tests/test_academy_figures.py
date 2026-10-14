@@ -42,12 +42,14 @@ class TestTheKonaDraft:
         art = get_article("kona-2026-pro-bike-positions")
         assert art is not None and art.meta.category == "bike-aero"
         assert len(art.sources) >= 8
-        assert art.body_html.count("<figure>") >= 5
+        # Our own chart and the app's table: no race photograph (2026-10-13).
+        assert art.body_html.count("<figure>") == 2
 
     def test_every_figure_it_shows_exists(self):
         text = DRAFT.read_text(encoding="utf-8")
         srcs = re.findall(r"^!\[[^\]]*\]\((/media/[^)]+)\)$", text, flags=re.M)
-        assert len(srcs) >= 5
+        assert srcs == ["/media/academy/kona-2026/field.webp",
+                        "/media/academy/kona-2026/rider-c-table.webp"]
         for src in srcs:
             assert (MEDIA / src.removeprefix("/media/")).is_file(), src
 
@@ -60,13 +62,20 @@ class TestTheKonaDraft:
         says so. Twenty-one since 2026-10-12; thirty-two since the broadcast stills came in and the
         duplicates went out,
         every one shown (Artur, 2026-10-12: the stills go in too; the article
-        says how many are stills)."""
+        says how many are stills). Then Slowtwitch asked for its photographs to
+        come down (2026-10-13): no race image is published any more, and the
+        thirty-two positions are a table of the numbers."""
         text = DRAFT.read_text(encoding="utf-8")
-        shown = re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)
-        assert shown == [f"{n:02d}" for n in range(1, 33)]
-        assert "Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        tilts = [float(m) for m in re.findall(r"Position \d+ of 32: forearm tilt (\d+)", text)]
+        assert not re.search(r"/media/academy/kona-2026/(position-\d\d|rider-[abc])\.webp", text)
+        rows = re.findall(r"^\| (\d+) \| (?:Men|Women) \| (\d+)° \|", text, re.M)
+        assert [int(n) for n, _ in rows] == list(range(1, 33))
+        tilts = [int(t) for _, t in rows]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
+        assert "Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
+        assert "what we publish is our measurements, not the pictures" in text
+        # Nor are the files served: a removed figure is a deleted one.
+        for name in [f"position-{n:02d}" for n in range(1, 33)] + ["rider-a", "rider-b", "rider-c"]:
+            assert not (MEDIA / "academy" / "kona-2026" / f"{name}.webp").exists(), name
 
     def test_the_hand_corrections_are_disclosed(self):
         """Readers pointed out points sitting off the joints; Artur moved the
@@ -76,7 +85,6 @@ class TestTheKonaDraft:
         text = DRAFT.read_text(encoding="utf-8")
         assert text.split("---", 2)[2].lstrip().startswith("**Updated 12 October 2026.**")
         assert "75 of the 128 joint points moved" in text
-        assert "A ringed point is one we moved by hand" in text
         assert "on the original fifteen photos, the medians moved by 2° at most" in text
 
     def test_uci_is_not_presented_as_a_triathlon_rule(self):
