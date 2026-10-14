@@ -1527,6 +1527,11 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
     wl = None
     nl = None
     silhouette_top: list[float | None] | None = None
+    # Set when the pose was only found by the last-resort low-threshold pass.
+    # Travels with the result so the warnings can say so and the analytics can
+    # count it -- a marginal reading that looks identical to a confident one is
+    # the thing this whole ladder must not produce.
+    low_confidence = False
 
     try:
         from pathlib import Path as _Path
@@ -1551,32 +1556,92 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
 
         if _model_path:
             want_mask = _segmentation_mask_supported()
-            options = PoseLandmarkerOptions(
-                base_options=BaseOptions(model_asset_path=_model_path),
-                running_mode=RunningMode.IMAGE,
-                num_poses=1,
-                min_pose_detection_confidence=0.5,
-                min_pose_presence_confidence=0.5,
-                output_segmentation_masks=want_mask,
-            )
-            landmarker = PoseLandmarker.create_from_options(options)
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-            result = landmarker.detect(mp_image)
-            if not result.pose_world_landmarks and max(h_img, w_img) > _RETRY_MAX_SIDE:
-                # A clean side view at 3050 px came back "no pose" and was found
-                # at 1400 (Kona photo, 2026-10-11) -- the detector misses large
-                # frames it handles fine smaller. Landmarks are normalized and
-                # the silhouette edge is a fraction of the height, so a reading
-                # off the smaller copy maps straight back onto the full photo.
-                k = _RETRY_MAX_SIDE / max(h_img, w_img)
-                small = cv2.resize(image_rgb, (round(w_img * k), round(h_img * k)),
-                                   interpolation=cv2.INTER_AREA)
-                result = landmarker.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=small))
-                logger.info("PHOTO_POSE_RETRY_SMALLER", side=max(h_img, w_img),
-                            found=bool(result.pose_world_landmarks))
-            landmarker.close()
 
-            if result.pose_world_landmarks:
+            def _attempt(rgb, conf: float):
+                options = PoseLandmarkerOptions(
+                    base_options=BaseOptions(model_asset_path=_model_path),
+                    running_mode=RunningMode.IMAGE,
+                    num_poses=1,
+                    min_pose_detection_confidence=conf,
+                    min_pose_presence_confidence=conf,
+                    output_segmentation_masks=want_mask,
+                )
+                landmarker = PoseLandmarker.create_from_options(options)
+                try:
+                    return landmarker.detect(
+                        mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb))
+                finally:
+                    landmarker.close()
+
+            def _smaller(rgb):
+                k = _RETRY_MAX_SIDE / max(h_img, w_img)
+                return cv2.resize(rgb, (round(w_img * k), round(h_img * k)),
+                                  interpolation=cv2.INTER_AREA)
+
+            # The ladder, in the order it is tried. Order is the whole design:
+            #
+            # 1. Full size at the normal threshold -- what every photo that
+            #    works today gets, unchanged.
+            # 2. Downscaled, same threshold. A clean side view at 3050 px came
+            #    back "no pose" and was found at 1400 (Kona photo, 2026-10-11):
+            #    the detector misses large frames it handles fine smaller.
+            #    Landmarks are normalized and the silhouette edge is a fraction
+            #    of the height, so a reading off the smaller copy maps straight
+            #    back onto the full photo.
+            # 3 and 4. The same two at a LOW threshold, and only ever last.
+            #
+            # The low pass is quarantined at the end because it is not a more
+            # sensitive version of the same answer -- it is a different one.
+            # Measured on the photo set: the detector is deterministic (two
+            # runs at 0.5 agree to 0.0000), and dropping to 0.2 moves joints by
+            # up to a quarter of the frame on photos that already worked. So it
+            # must never be reached by a photo the normal threshold can handle;
+            # the only thing it is allowed to replace is a dead end.
+            #
+            # What it risks is locking onto the wrong body -- the failure
+            # `_bike_photo_withheld` exists for, after a race photo was scored
+            # off a camera motorbike's passenger. That is why the result is
+            # marked: the gate still withholds, and the athlete is told the
+            # reading was marginal rather than being handed a confident-looking
+            # number off a weak detection.
+            # The normal threshold, full size then smaller. One low-threshold
+            # attempt after them, and only one: the low pass is a single
+            # mechanism, so a reading it produces and the stability check
+            # rejects must end the search. Trying it again on a resized copy
+            # would be asking the same unreliable question until it answered
+            # the way we wanted -- which is exactly how a skeleton drawn on a
+            # bicycle frame got through the first version of this.
+            ladder = [("full", image_rgb, _POSE_CONFIDENCE)]
+            if max(h_img, w_img) > _RETRY_MAX_SIDE:
+                ladder.append(("smaller", _smaller(image_rgb), _POSE_CONFIDENCE))
+            ladder.append(("low-confidence", image_rgb, _POSE_CONFIDENCE_LAST_RESORT))
+
+            result = None
+            for step, (label, rgb, conf) in enumerate(ladder):
+                result = _attempt(rgb, conf)
+                if not result.pose_world_landmarks:
+                    result = None
+                    continue
+                if conf < _POSE_CONFIDENCE and not _agrees_across_scale(
+                    result.pose_landmarks[0], rgb, conf, _attempt,
+                ):
+                    # Found something, and it moves when the image is resized.
+                    # That is not a body (see _LOW_CONFIDENCE_AGREEMENT).
+                    logger.info("PHOTO_POSE_UNSTABLE", attempt=label)
+                    result = None
+                    break
+                if step:
+                    logger.info(
+                        "PHOTO_POSE_FOUND_ON_RETRY", attempt=label,
+                        side=max(h_img, w_img), confidence=conf,
+                    )
+                low_confidence = conf < _POSE_CONFIDENCE
+                break
+            else:
+                logger.info("PHOTO_POSE_NOT_FOUND", side=max(h_img, w_img),
+                            attempts=len(ladder))
+
+            if result is not None and result.pose_world_landmarks:
                 wl = result.pose_world_landmarks[0]
                 nl = result.pose_landmarks[0]
                 if want_mask and result.segmentation_masks:
@@ -1627,12 +1692,24 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
             "Try a clearer, well-lit photo for more accurate results."
         )
 
+    if low_confidence:
+        # Said plainly and first, because this reading is weaker than the ones
+        # the rest of the report is written as though it were. Without it the
+        # athlete cannot tell a marginal detection from a confident one, and
+        # the numbers look equally certain either way.
+        warnings.insert(0, (
+            "We could only just make out your body in this photo, so these "
+            "measurements are less reliable than usual. A sharper side-on "
+            "shot with your whole body in frame would be worth retaking."
+        ))
+
     return {
         "world": wl,
         "normalized": nl,
         "image": image,
         "camera_side": camera_side,
         "avg_visibility": avg_vis,
+        "low_confidence": low_confidence,
         "warnings": warnings,
         # The silhouette's top edge, for the helmet-above-back reading (see
         # biomechanics/head_silhouette.py). None on the legacy path or a
@@ -1644,6 +1721,106 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
 # Longest side of the downscaled copy a large photo is retried on when the
 # detector finds no pose at full size (see detect_pose_in_image).
 _RETRY_MAX_SIDE = 1400
+
+# The detector's confidence threshold, and the one used only after every
+# attempt at the normal threshold has come back empty.
+#
+# These are two different questions, not one knob with two settings. Measured
+# on the stored photo set: the detector is deterministic -- the same image at
+# 0.5 twice gives landmarks identical to four decimal places -- and the same
+# image at 0.2 can put joints a QUARTER of the frame away from where 0.5 put
+# them. So the low threshold does not find the same skeleton more readily; it
+# finds a different skeleton. Running everything at 0.2 would silently change
+# the angles of every photo that works today.
+#
+# It earns its place only where the alternative is nothing at all: a photo the
+# normal threshold cannot see is currently a dead end that costs the athlete
+# their attempt and tells them to try a better photo. A marginal reading they
+# are warned about, and which the score gate can still withhold, is worth more
+# than that.
+_POSE_CONFIDENCE = 0.5
+_POSE_CONFIDENCE_LAST_RESORT = 0.2
+
+# A low-threshold detection is believed only if the same photo, fed at a
+# different size, puts the joints in the same place.
+#
+# The low pass does not simply find bodies more readily -- it also assembles
+# them out of whatever is lying around. Measured on the stored photos: on a
+# race shot it put a correct skeleton on the rider; on another it draped one
+# over the frame and the saddle while the rider's own legs, plainly visible,
+# got nothing. Average landmark visibility does not separate those two (0.99
+# and 0.83), so believing the flag alone would turn some dead ends into
+# confident reports measured off a bicycle.
+#
+# What does separate them is stability. A body is in the same place whatever
+# resolution it is found at; a pose assembled out of frame tubes is an
+# artefact of one particular rasterisation and moves when that changes.
+# Measured, median joint displacement between two scales:
+#
+#     correct skeleton on the rider      0.010, 0.020
+#     skeleton on the bicycle frame      0.062
+#     skeleton across a photo collage    0.166, 0.286
+#
+# Nothing lands between 0.020 and 0.062, so the cut sits in that gap. Six
+# photos is a small sample for a threshold, which is the other reason the
+# accepted reading is still flagged, still warned about, and still subject to
+# the score gate rather than trusted outright.
+_LOW_CONFIDENCE_AGREEMENT = 0.035
+# Verified against SEVERAL sizes, and judged on the worst of them. One
+# comparison is not enough: a skeleton draped over a bicycle frame agreed
+# with itself between 1252 px and 900 px and disagreed at 1000 px, so a single
+# check is a coin flip. Across three it has nowhere to hide -- the numbers in
+# the comment above are each the worst of three.
+_LOW_CONFIDENCE_VERIFY_SIDES = (1000, 800, 640)
+# Shoulders, elbows, hips, knees, ankles -- the joints the analysis measures.
+_AGREEMENT_JOINTS = (11, 12, 13, 14, 23, 24, 25, 26, 27, 28)
+
+
+def _agrees_across_scale(found, rgb, conf: float, attempt) -> bool:
+    """Whether the same pose turns up when the photo is fed at another size.
+
+    ``found`` is the normalized landmark list already detected in ``rgb``;
+    ``attempt`` runs the detector. Each size is compared on the MEDIAN joint
+    displacement -- so one landmark on a limb the model is genuinely unsure
+    about cannot veto an otherwise solid reading -- and the verdict is the
+    WORST of those medians, because an artefact only has to hold still once to
+    look convincing.
+
+    Answers True when the check cannot be made at all: every verification size
+    is larger than the photo, or no second pass found anything. A guard that
+    cannot run should not silently become a rejection; the reading is flagged
+    and gated regardless.
+    """
+    import cv2  # imported lazily here, as everywhere else in this module
+
+    h, w = rgb.shape[:2]
+    worst = 0.0
+    checks = 0
+    for side in _LOW_CONFIDENCE_VERIFY_SIDES:
+        if max(h, w) <= side:
+            continue
+        k = side / max(h, w)
+        other = attempt(
+            cv2.resize(rgb, (round(w * k), round(h * k)),
+                       interpolation=cv2.INTER_AREA),
+            conf,
+        )
+        if not other.pose_landmarks:
+            continue
+        them = other.pose_landmarks[0]
+        checks += 1
+        worst = max(worst, float(np.median([
+            np.hypot(found[i].x - them[i].x, found[i].y - them[i].y)
+            for i in _AGREEMENT_JOINTS
+        ])))
+    if not checks:
+        return True
+    if worst > _LOW_CONFIDENCE_AGREEMENT:
+        logger.info(
+            "PHOTO_POSE_SCALE_DISAGREEMENT", spread=round(worst, 4), checks=checks,
+        )
+        return False
+    return True
 
 
 def _segmentation_mask_supported() -> bool:
