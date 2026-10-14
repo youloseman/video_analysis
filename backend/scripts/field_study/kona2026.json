@@ -5,7 +5,7 @@
  "media": "backend/app/static/media/academy/kona-2026",
  "social": "upload/kona-2026-overlays",
  "work": "upload/field-study/kona2026",
- "publish_photos": false,
+ "publish_photos": "video",
  "riders": {
   "a": "0",
   "b": "14",
@@ -1273,7 +1273,8 @@
      193.9
     ]
    },
-   "note": "video screenshot; the model mixed up the joints; likely the same rider as editor #10"
+   "note": "video screenshot; the model mixed up the joints; likely the same rider as editor #10",
+   "video": true
   },
   {
    "n": 20,
@@ -1817,7 +1818,8 @@
      130.3,
      163.0
     ]
-   }
+   },
+   "video": true
   },
   {
    "n": 28,
@@ -2089,7 +2091,8 @@
      213.3,
      131.0
     ]
-   }
+   },
+   "video": true
   },
   {
    "n": 32,
@@ -2157,7 +2160,8 @@
      136.7,
      95.0
     ]
-   }
+   },
+   "video": true
   },
   {
    "n": 33,
@@ -2293,7 +2297,8 @@
      233.8,
      96.0
     ]
-   }
+   },
+   "video": true
   },
   {
    "n": 35,
@@ -2361,7 +2366,8 @@
      199.6,
      78.0
     ]
-   }
+   },
+   "video": true
   },
   {
    "n": 36,
@@ -2497,7 +2503,8 @@
      287.6,
      76.0
     ]
-   }
+   },
+   "video": true
   },
   {
    "n": 38,

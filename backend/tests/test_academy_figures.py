@@ -16,6 +16,8 @@ from app.services.academy.parser import CONTENT_DIR, markdown_to_html
 BACKEND = Path(__file__).resolve().parents[1]
 MEDIA = BACKEND / "app" / "static" / "media"
 DRAFT = CONTENT_DIR / "kona-2026-pro-bike-positions.md"
+# Article positions whose frame is a still from video (kona2026.json ``video``).
+VIDEO_FRAMES = (5, 13, 20, 21, 22, 25, 29)
 
 
 class TestTheFigureBlock:
@@ -42,14 +44,16 @@ class TestTheKonaDraft:
         art = get_article("kona-2026-pro-bike-positions")
         assert art is not None and art.meta.category == "bike-aero"
         assert len(art.sources) >= 8
-        # Our own chart and the app's table: no race photograph (2026-10-13).
-        assert art.body_html.count("<figure>") == 2
+        # Our chart, the app's table and the seven video frames; no race
+        # photograph (2026-10-13).
+        assert art.body_html.count("<figure>") == 2 + len(VIDEO_FRAMES)
 
     def test_every_figure_it_shows_exists(self):
         text = DRAFT.read_text(encoding="utf-8")
         srcs = re.findall(r"^!\[[^\]]*\]\((/media/[^)]+)\)$", text, flags=re.M)
-        assert srcs == ["/media/academy/kona-2026/field.webp",
-                        "/media/academy/kona-2026/rider-c-table.webp"]
+        assert srcs == (["/media/academy/kona-2026/field.webp",
+                         "/media/academy/kona-2026/rider-c-table.webp"]
+                        + [f"/media/academy/kona-2026/position-{n:02d}.webp" for n in VIDEO_FRAMES])
         for src in srcs:
             assert (MEDIA / src.removeprefix("/media/")).is_file(), src
 
@@ -63,18 +67,22 @@ class TestTheKonaDraft:
         duplicates went out,
         every one shown (Artur, 2026-10-12: the stills go in too; the article
         says how many are stills). Then Slowtwitch asked for its photographs to
-        come down (2026-10-13): no race image is published any more, and the
-        thirty-two positions are a table of the numbers."""
+        come down (2026-10-13): no race photograph is published any more, and
+        the thirty-two positions are a table of the numbers. The frames taken
+        from video -- broadcast and riders' own posts -- stay (Artur, same day)."""
         text = DRAFT.read_text(encoding="utf-8")
-        assert not re.search(r"/media/academy/kona-2026/(position-\d\d|rider-[abc])\.webp", text)
+        shown = [int(n) for n in re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)]
+        assert shown == list(VIDEO_FRAMES)
+        assert not re.search(r"/media/academy/kona-2026/rider-[abc]\.webp", text)
         rows = re.findall(r"^\| (\d+) \| (?:Men|Women) \| (\d+)° \|", text, re.M)
         assert [int(n) for n, _ in rows] == list(range(1, 33))
         tilts = [int(t) for _, t in rows]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
         assert "Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        assert "what we publish is our measurements, not the pictures" in text
-        # Nor are the files served: a removed figure is a deleted one.
-        for name in [f"position-{n:02d}" for n in range(1, 33)] + ["rider-a", "rider-b", "rider-c"]:
+        assert "The race photographs are not reproduced here" in text
+        # Nor are the photographs served: a removed figure is a deleted one.
+        gone = [f"position-{n:02d}" for n in range(1, 33) if n not in VIDEO_FRAMES]
+        for name in gone + ["rider-a", "rider-b", "rider-c"]:
             assert not (MEDIA / "academy" / "kona-2026" / f"{name}.webp").exists(), name
 
     def test_the_hand_corrections_are_disclosed(self):

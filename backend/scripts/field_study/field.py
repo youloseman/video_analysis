@@ -374,6 +374,7 @@ def _rebuild(study: dict) -> None:
             d = _measure(e, rec.get("moved") or {}, True, blur_face=(group == "age_group"))
         d["group"] = group
         d["figure"] = e.get("figure", True)
+        d["video"] = e.get("video", False)
         d["category"] = rec.get("category") or e.get("category")
         if d["group"] != "excluded":
             measured.append(d)
@@ -394,9 +395,10 @@ def _rebuild(study: dict) -> None:
                 + glob.glob(str(social / "position-*.jpg"))):
         os.remove(old)
     # The race photographs belong to their photographers: Slowtwitch asked
-    # for theirs to come down (2026-10-13), so a study with publish_photos
-    # false writes no photo into the served media -- the article carries a
-    # table of the numbers instead -- and keeps the overlays local.
+    # for theirs to come down (2026-10-13). publish_photos false writes no
+    # photo into the served media -- the article carries a table of the
+    # numbers instead -- and "video" writes only the frames taken from video
+    # (entries flagged ``video``), which Artur keeps in the article.
     publish = study.get("publish_photos", True)
     count = len(items)
     # Every pro counts in the numbers; only the ones whose photo is good enough
@@ -406,7 +408,7 @@ def _rebuild(study: dict) -> None:
     captions = []
     for n, d in enumerate(shown, 1):
         a = d["angles"]
-        if publish:
+        if publish is True or (publish == "video" and d.get("video")):
             webp(d["jpg"], media / f"position-{n:02d}.webp", 82)
         tag = f"_{d['key']}" if d["race"] != "Kona 2026" else ""
         Image.open(io.BytesIO(d["jpg"])).convert("RGB").save(
@@ -434,7 +436,7 @@ def _rebuild(study: dict) -> None:
                 "JPEG", quality=93)
     for tag, key in study["riders"].items():
         d = next(x for x in items if x["key"] == key)
-        if publish:
+        if publish is True:
             webp(d["jpg"], media / f"rider-{tag}.webp", 84)
     (work / "reports.json").write_text(json.dumps(
         {t.upper(): next(x for x in items if x["key"] == k)["report"] for t, k in study["riders"].items()},

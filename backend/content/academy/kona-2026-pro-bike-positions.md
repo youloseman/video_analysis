@@ -100,7 +100,7 @@ Twenty-one of the positions are men's and eleven are women's. We expected the tw
 
 ## All thirty-two positions
 
-Every position we measured, ordered from the flattest forearms to the steepest. Six of them are broadcast and social-media stills, softer and smaller than the photographs; their points were checked by hand like the rest. The photographs belong to the people who took them, so what we publish is our measurements, not the pictures. Knee, hip and ankle are left out for the reasons in the next section.
+Every position we measured, ordered from the flattest forearms to the steepest. Six of them are broadcast and social-media stills, softer and smaller than the photographs; their points were checked by hand like the rest. The race photographs are not reproduced here; the seven frames taken from video are shown below the table. Knee, hip and ankle are left out for the reasons in the next section.
 
 | # | Field | Forearm tilt | Torso | Shoulder | Elbow | Helmet above the back |
 |---|---|---|---|---|---|---|
@@ -138,6 +138,22 @@ Every position we measured, ordered from the flattest forearms to the steepest. 
 | 32 | Women | 32° | 18° | 92° | 78° | +23% |
 
 Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race. The one helmet left blank is the rider caught with the head ducked under the line of the back (section 4).
+
+The frames taken from video, from the race broadcast and from riders' own posts, with Flapp's overlay. The labels are Flapp's own readings for a triathlon position: green inside the range, amber just outside it or below it at no cost, red outside it. A ringed point is one we moved by hand.
+
+![Position 5 of 32: forearm tilt 22°, torso 25°, shoulder 97°, elbow 101°, helmet +22% above the back.](/media/academy/kona-2026/position-05.webp)
+
+![Position 13 of 32: forearm tilt 25°, torso 20°, shoulder 92°, elbow 88°, helmet +17% above the back.](/media/academy/kona-2026/position-13.webp)
+
+![Position 20 of 32: forearm tilt 27°, torso 21°, shoulder 83°, elbow 77°, helmet +33% above the back.](/media/academy/kona-2026/position-20.webp)
+
+![Position 21 of 32: forearm tilt 28°, torso 18°, shoulder 79°, elbow 70°, helmet +8% above the back.](/media/academy/kona-2026/position-21.webp)
+
+![Position 22 of 32: forearm tilt 28°, torso 17°, shoulder 82°, elbow 71°, helmet +22% above the back.](/media/academy/kona-2026/position-22.webp)
+
+![Position 25 of 32: forearm tilt 28°, torso 18°, shoulder 95°, elbow 84°, helmet +20% above the back.](/media/academy/kona-2026/position-25.webp)
+
+![Position 29 of 32: forearm tilt 29°, torso 21°, shoulder 78°, elbow 70°, helmet +14% above the back.](/media/academy/kona-2026/position-29.webp)
 
 ## What we did not measure, and why
 
