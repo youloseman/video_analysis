@@ -121,6 +121,13 @@ class User(Base):
     expert_credits: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0", nullable=False,
     )
+    # Free report unlocks Artur grants by hand -- a thank-you for a reported
+    # bug (the first went to a subscriber who found the keyframe drawing his
+    # leg in the wrong place, 2026-10-14). A balance like expert_credits: spent
+    # one at a time by the unlock button instead of a $4 checkout.
+    unlock_credits: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False,
+    )
     # The analysis that spent this account's one free preview -- the single
     # report a free user gets in a form worth judging us by (see
     # services/result_gating.py). Stored as the JOB id rather than a timestamp

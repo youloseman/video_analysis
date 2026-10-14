@@ -431,3 +431,52 @@ async def test_an_unlock_is_in_the_queue_as_a_check_not_a_review(db, make_user):
     # The athlete's own view of the order is untouched: nothing delivered.
     mine = await billing.my_orders(buyer, db)
     assert mine[0]["status"] == "paid" and not mine[0].get("unread")
+
+
+async def test_a_granted_free_unlock_opens_the_report_without_stripe(db, make_user, monkeypatch):
+    """Artur gives a report away by hand -- the first went to a subscriber who
+    reported the keyframe drawing his leg wrong (2026-10-14). The unlock button
+    spends the credit: the report opens, an order is kept for the review queue
+    (as a check, like a paid unlock), and Stripe is never asked."""
+    _stripe_on(monkeypatch)
+
+    def no_stripe(**kw):
+        raise AssertionError("a granted unlock must not reach Stripe")
+
+    monkeypatch.setattr(billing.stripe.checkout.Session, "create", no_stripe)
+    coached = []
+
+    async def fake_coach(user_id, client_id):
+        coached.append(client_id)
+
+    monkeypatch.setattr(billing, "_coach_after_unlock", fake_coach)
+    user = await make_user(tier=TIER_STARTER)
+    user.unlock_credits = 1
+    await db.commit()
+    row = await store(db, user)
+    out = await create_checkout(CheckoutIn(plan="unlock", analysis_client_id="h1"), None, user, db)
+    assert out["mode"] == "unlock_credit" and out["credits_left"] == 0
+    await db.refresh(row)
+    assert access_for_stored(user, row) == ACCESS_FULL
+    order = (await db.execute(select(Order))).scalar_one()
+    assert order.plan == "unlock_credit" and order.amount_total == 0
+    assert order.plan in billing.CHECK_ORDER_PLANS
+    import asyncio
+    await asyncio.sleep(0)
+    assert coached == ["h1"], "the coach text is written for it, like a paid unlock"
+    # Spent: the next report goes to the till as usual.
+    await store(db, user, client_id="h2")
+    monkeypatch.setattr(billing.stripe.checkout.Session, "create",
+                        lambda **kw: type("S", (), {"url": "https://checkout.stripe.test/s"})())
+    monkeypatch.setattr(billing.stripe.Customer, "create", lambda **kw: type("C", (), {"id": "cus_x"})())
+    out = await create_checkout(CheckoutIn(plan="unlock", analysis_client_id="h2"), _FakeRequest(), user, db)
+    assert out["url"].startswith("https://checkout.stripe.test/")
+
+
+def test_the_page_offers_a_granted_unlock_as_free():
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "function freeUnlocks()" in spa
+    assert "'Unlock this report — free'" in spa
+    assert "j.mode==='unlock_credit'" in spa
+    assert "unlock_credits:j.unlock_credits||0" in spa

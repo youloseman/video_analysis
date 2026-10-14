@@ -123,6 +123,9 @@ class TokenOut(BaseModel):
     # instead of "buy one" -- and because a benefit nobody is told about is
     # indistinguishable from one that was never granted.
     expert_credits: int = 0
+    # Free report unlocks granted by hand (users.unlock_credits): the unlock
+    # button says "free" while there is one.
+    unlock_credits: int = 0
     # Who this browser is, for analytics only (see services/analytics.py). The
     # server sends purchases under the same id, which is what joins "signed up,
     # analysed twice, opened pricing" to "paid" as one person rather than two.
@@ -134,6 +137,7 @@ class UserOut(BaseModel):
     tier: str
     is_pro: bool  # kept for back-compat; derived from tier
     expert_credits: int = 0
+    unlock_credits: int = 0
     analytics_id: str = ""
     height_cm: int | None = None
 
@@ -171,6 +175,7 @@ async def register(
         token=create_token(user.id), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        unlock_credits=user.unlock_credits or 0,
         analytics_id=analytics.person_id(user),
     )
 
@@ -201,6 +206,7 @@ async def login(
         token=create_token(user.id), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        unlock_credits=user.unlock_credits or 0,
         analytics_id=analytics.person_id(user),
     )
 
@@ -304,6 +310,7 @@ async def reset_password(body: ResetBody, db: AsyncSession = Depends(get_session
         token=create_token(user.id), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        unlock_credits=user.unlock_credits or 0,
         analytics_id=analytics.person_id(user),
     )
 
@@ -313,6 +320,7 @@ async def me(user: User = Depends(get_current_user)) -> UserOut:
     return UserOut(
         email=user.email, tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        unlock_credits=user.unlock_credits or 0,
         analytics_id=analytics.person_id(user),
         height_cm=user.height_cm,
     )
@@ -347,6 +355,7 @@ async def set_height(
     return UserOut(
         email=user.email, tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
+        unlock_credits=user.unlock_credits or 0,
         analytics_id=analytics.person_id(user),
         height_cm=user.height_cm,
     )

@@ -94,6 +94,12 @@ def _migrate_users(conn) -> None:
             "UPDATE users SET expert_credits = 1 WHERE tier = 'full'"
         ))
         logger.info("MIGRATED", change="users.expert_credits added + granted to full")
+    if "unlock_credits" not in cols:
+        # Same shape as expert_credits: arithmetic on every read, so never NULL.
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN unlock_credits INTEGER NOT NULL DEFAULT 0"
+        ))
+        logger.info("MIGRATED", change="users.unlock_credits added")
     if "free_preview_job_id" not in cols:
         conn.execute(text(
             "ALTER TABLE users ADD COLUMN free_preview_job_id VARCHAR(64)"

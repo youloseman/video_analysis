@@ -5773,7 +5773,7 @@ function teaserPanelHtml(items, opts){
     }).join('')}</ul>
     <div class="cta-row">
       <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
-      ${opts.unlockId?`<button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Unlock just this report — ${esc(unlockPrice())}</button>`:''}
+      ${opts.unlockId?`<button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Unlock this report — free':'Unlock just this report — '+esc(unlockPrice())}</button>`:''}
       <span class="price-tag">${fromPriceLabel()}</span>
     </div>
     ${opts.unlockNudge||''}
@@ -5794,7 +5794,7 @@ function renderUpsell(containerId, locked, blockIds, unlockId){
   // The preview is not for sale a second time: it already showed the coaching,
   // and what is left of it is the measurement table, which is what a plan is
   // for. Only a teaser has a whole report sitting behind it, unread.
-  const sellable = unlockId && locked.reason!=='preview' && unlockPrice();
+  const sellable = unlockId && locked.reason!=='preview' && (unlockPrice() || freeUnlocks()>0);
   host.innerHTML=teaserPanelHtml(items, locked.reason==='preview'
     ? {src:'preview', chip:'Your free report', title:'That was one report. The plan is what changes the next one.',
        body:previewBody(locked)}
@@ -5989,6 +5989,8 @@ function expertPriceLabel(){ const p=expertPrice(); return p?' · '+p:''; }
 /* "from $X/mo" for the upsell panels: the cheapest recurring monthly price we
    sell. Empty until the catalogue lands, which is why loadPlans() is warmed at
    startup — a locked report can be the first pricing the visitor ever sees. */
+/* Free unlocks granted by hand (a thank-you for a reported bug). */
+function freeUnlocks(){ return (auth&&auth.unlock_credits)||0; }
 function unlockPrice(){
   const c=((PLANS&&PLANS.cards)||[]).find(x=>x.id==='unlock');
   return (c&&c.prices&&c.prices[0]) ? c.prices[0].display : '';
@@ -6041,7 +6043,7 @@ async function renderOrders(){
     orders=await r.json();
   }catch(e){ box.classList.add('hidden'); return; }   // never block the page on this
   if(!orders.length){ box.classList.add('hidden'); box.innerHTML=''; return; }
-  const NAME={expert:'Expert Review',expert_credit:'Expert Review',notes:'Coach Notes',unlock:'Report unlock'};
+  const NAME={expert:'Expert Review',expert_credit:'Expert Review',notes:'Coach Notes',unlock:'Report unlock',unlock_credit:'Report unlock (free)'};
   box.innerHTML=orders.map(o=>`
     <span class="ao-chip">Your order</span>
     <div>
@@ -6952,6 +6954,14 @@ async function startCheckout(plan, analysisIdArg){
       // Paid out of the Expert Reviews the plan already includes. Nothing to
       // redirect to — the order exists. Spend the credit locally too, or the
       // card keeps offering one that is gone until the next reload.
+      // A granted free unlock: opened server-side already, nothing to pay.
+      if(j.mode==='unlock_credit'){
+        try{ sessionStorage.removeItem('flapp_unlocking'); }catch(e){}
+        if(auth) auth.unlock_credits=j.credits_left||0;
+        toast('Unlocked with your free report — opening it.',{duration:5000});
+        await refreshCloud();
+        openHistory(analysisId); return;
+      }
       if(j.mode==='credit'){
         if(auth) auth.expert_credits=j.credits_left||0;
         toast('Booked with the Expert Review included in your plan — we’ll email you when it’s ready.',{duration:6000});
@@ -8601,7 +8611,7 @@ async function submitAuth(e){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
-    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,
+    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,
       analytics_id:j.analytics_id||null};
     // Name the person first, then record the act — so the sign-up itself is
     // attributed to the account rather than to the anonymous visitor who

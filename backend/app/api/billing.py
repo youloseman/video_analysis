@@ -17,6 +17,8 @@ frontend degrades to a "coming soon" message instead of erroring.
 
 from __future__ import annotations
 
+import asyncio
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -434,6 +436,46 @@ def _credit_session_key(user_id: int, analysis_client_id: str) -> str:
     return f"credit:{user_id}:{analysis_client_id}"
 
 
+_BACKGROUND: set[asyncio.Task] = set()
+
+
+async def _redeem_unlock_credit(
+    db: AsyncSession, user: User, analysis_client_id: str,
+) -> dict[str, Any]:
+    """Open one report on a granted credit: no Stripe, an order for the record.
+
+    The order is what puts it in the review queue as a check, like a paid
+    unlock -- Artur reads every report somebody was given, not only the ones
+    they paid for. The same session-key constraint as the Expert Review credit
+    keeps a double click from spending two.
+    """
+    key = f"unlock-credit:{user.id}:{analysis_client_id}"
+    now = _now_ms()
+    order = Order(
+        user_id=user.id, stripe_session_id=key, plan="unlock_credit",
+        amount_total=0, currency=pricing.CURRENCY, status=ORDER_PAID,
+        created_at_ms=now, updated_at_ms=now, analysis_client_id=analysis_client_id,
+    )
+    db.add(order)
+    user.unlock_credits = max(0, (user.unlock_credits or 0) - 1)
+    await _apply_unlock(db, user, analysis_client_id)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        await db.refresh(user)
+        logger.info("UNLOCK_CREDIT_DUPLICATE", user_id=user.id, analysis=analysis_client_id)
+        return {"mode": "unlock_credit", "credits_left": user.unlock_credits or 0}
+    # The coach text, written after the response like a paid unlock's; the
+    # task is held so the loop cannot collect it mid-call.
+    task = asyncio.create_task(_coach_after_unlock(user.id, analysis_client_id))
+    _BACKGROUND.add(task)
+    task.add_done_callback(_BACKGROUND.discard)
+    logger.info("UNLOCK_CREDIT_REDEEMED", user_id=user.id, analysis=analysis_client_id,
+                credits_left=user.unlock_credits)
+    return {"mode": "unlock_credit", "order_id": order.id, "credits_left": user.unlock_credits or 0}
+
+
 async def _redeem_expert_credit(
     db: AsyncSession, user: User, analysis_client_id: str,
 ) -> dict[str, Any]:
@@ -527,6 +569,9 @@ async def create_checkout(
                 "Choose which analysis you'd like to unlock.",
             )
         await _require_unlockable(db, user, unlock_id)
+        # A granted free unlock is spent before Stripe is consulted.
+        if (user.unlock_credits or 0) > 0:
+            return await _redeem_unlock_credit(db, user, unlock_id)
     # Coach Notes are written ON one report; without it there is nothing to
     # write on, and unlike the review there is no picker in the queue.
     if body.plan == expert_review.PLAN_NOTES:
@@ -776,7 +821,7 @@ REVIEW_ORDER_PLANS = (expert_review.PLAN_EXPERT, expert_review.PLAN_NOTES)
 # table is caught by a person. Nothing is ever sent from a check; it is marked
 # done on the order row only (report = {"qa": {...}}, never shown: a check
 # never leaves "paid", and the athlete's view only reads delivered reports).
-CHECK_ORDER_PLANS = ("unlock",)
+CHECK_ORDER_PLANS = ("unlock", "unlock_credit")
 
 
 def _qa(order: Order) -> dict[str, Any]:
