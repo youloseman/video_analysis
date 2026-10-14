@@ -100,50 +100,50 @@ Twenty-one of the positions are men's and eleven are women's. We expected the tw
 
 ## All thirty-two positions
 
-Every position we measured, ordered from the flattest forearms to the steepest. Six of them are broadcast and social-media stills, softer and smaller than the photographs; their points were checked by hand like the rest. The race photographs are not reproduced here; the seven frames taken from video are shown below the table. Knee, hip and ankle are left out for the reasons in the next section.
+Every position we measured, ordered from the flattest forearms to the steepest. Six of them are broadcast and social-media stills, softer and smaller than the photographs; their points were checked by hand like the rest. Where we could tell who the athlete is, the table names them. The race photographs are not reproduced here; the seven frames taken from video are shown below the table. Knee, hip and ankle are left out for the reasons in the next section.
 
-| # | Field | Forearm tilt | Torso | Shoulder | Elbow | Helmet above the back |
-|---|---|---|---|---|---|---|
-| 1 | Men | 19° | 23° | 86° | 91° | +22% |
-| 2 | Women | 19° | 22° | 100° | 102° | +23% |
-| 3 | Men | 21° | 25° | 83° | 88° | +14% |
-| 4 | Men | 21° | 21° | 86° | 86° | +18% |
-| 5 | Men | 22° | 25° | 97° | 101° | +22% |
-| 6 | Men | 22° | 25° | 86° | 89° | +19% |
-| 7 | Women | 22° | 15° | 90° | 83° | +19% |
-| 8 | Men | 22° | 19° | 89° | 86° | +12% |
-| 9 | Women | 24° | 26° | 87° | 89° | +28% |
-| 10 | Men | 24° | 20° | 88° | 84° | +14% |
-| 11 | Men | 24° | 19° | 81° | 76° | +20% |
-| 12 | Women | 24° | 20° | 93° | 88° | +18% |
-| 13 | Men | 25° | 20° | 92° | 88° | +17% |
-| 14 | Men | 25° | 22° | 74° | 71° | +13% |
-| 15 | Men | 26° | 22° | 92° | 88° | +18% |
-| 16 | Men | 26° | 13° | 96° | 82° | +17% |
-| 17 | Men | 26° | 27° | 86° | 87° | +23% |
-| 18 | Men | 26° | 25° | 94° | 93° | +23% |
-| 19 | Women | 26° | 23° | 87° | 84° | +18% |
-| 20 | Women | 27° | 21° | 83° | 77° | +33% |
-| 21 | Men | 28° | 18° | 79° | 70° | +8% |
-| 22 | Women | 28° | 17° | 82° | 71° | +22% |
-| 23 | Women | 28° | 16° | 91° | 78° | +17% |
-| 24 | Men | 28° | 19° | 76° | 66° | +13% |
-| 25 | Women | 28° | 18° | 95° | 84° | +20% |
-| 26 | Men | 29° | 12° | 88° | 71° | — |
-| 27 | Men | 29° | 19° | 81° | 70° | +14% |
-| 28 | Men | 29° | 13° | 95° | 79° | +7% |
-| 29 | Women | 29° | 21° | 78° | 70° | +14% |
-| 30 | Men | 31° | 20° | 88° | 77° | +21% |
-| 31 | Men | 32° | 21° | 87° | 76° | +19% |
-| 32 | Women | 32° | 18° | 92° | 78° | +23% |
+| # | Athlete | Field | Forearm tilt | Torso | Shoulder | Elbow | Helmet above the back |
+|---|---|---|---|---|---|---|---|
+| 1 | Kristian Blummenfelt | Men | 19° | 23° | 86° | 91° | +22% |
+| 2 | Jenny Jendryschik | Women | 19° | 22° | 100° | 102° | +23% |
+| 3 | Gregory Barnaby | Men | 21° | 25° | 83° | 88° | +14% |
+| 4 | Vincent Luis | Men | 21° | 21° | 86° | 86° | +18% |
+| 5 | Matthew Hanson | Men | 22° | 25° | 97° | 101° | +22% |
+| 6 | Patrick Lange | Men | 22° | 25° | 86° | 89° | +19% |
+| 7 | Lucy Charles-Barclay | Women | 22° | 15° | 90° | 83° | +19% |
+| 8 | Ben Kanute | Men | 22° | 19° | 89° | 86° | +12% |
+| 9 | Taylor Knibb | Women | 24° | 26° | 87° | 89° | +28% |
+| 10 | Rudy Von Berg | Men | 24° | 20° | 88° | 84° | +14% |
+| 11 | Cameron Wurf | Men | 24° | 19° | 81° | 76° | +20% |
+| 12 | Hannah Berry | Women | 24° | 20° | 93° | 88° | +18% |
+| 13 | Magnus Ditlev | Men | 25° | 20° | 92° | 88° | +17% |
+| 14 | Gustav Iden | Men | 25° | 22° | 74° | 71° | +13% |
+| 15 | Sam Long | Men | 26° | 22° | 92° | 88° | +18% |
+| 16 | Kristian Høgenhaug | Men | 26° | 13° | 96° | 82° | +17% |
+| 17 | — | Men | 26° | 27° | 86° | 87° | +23% |
+| 18 | Matthew Hanson | Men | 26° | 25° | 94° | 93° | +23% |
+| 19 | — | Women | 26° | 23° | 87° | 84° | +18% |
+| 20 | — | Women | 27° | 21° | 83° | 77° | +33% |
+| 21 | — | Men | 28° | 18° | 79° | 70° | +8% |
+| 22 | — | Women | 28° | 17° | 82° | 71° | +22% |
+| 23 | Imogen Simmonds | Women | 28° | 16° | 91° | 78° | +17% |
+| 24 | Jason West | Men | 28° | 19° | 76° | 66° | +13% |
+| 25 | — | Women | 28° | 18° | 95° | 84° | +20% |
+| 26 | — | Men | 29° | 12° | 88° | 71° | — |
+| 27 | Trevor Foley | Men | 29° | 19° | 81° | 70° | +14% |
+| 28 | — | Men | 29° | 13° | 95° | 79° | +7% |
+| 29 | Jana Uderstadt | Women | 29° | 21° | 78° | 70° | +14% |
+| 30 | — | Men | 31° | 20° | 88° | 77° | +21% |
+| 31 | — | Men | 32° | 21° | 87° | 76° | +19% |
+| 32 | — | Women | 32° | 18° | 92° | 78° | +23% |
 
-Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race. The one helmet left blank is the rider caught with the head ducked under the line of the back (section 4).
+Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race. Positions 5 and 18 are the same athlete, Matthew Hanson, in two frames: a broadcast still and a race photograph. We kept both; dropping either moves no median by more than half a degree. The one helmet left blank is the rider caught with the head ducked under the line of the back (section 4).
 
 The frames taken from video, from the race broadcast and from riders' own posts, with Flapp's overlay. The labels are Flapp's own readings for a triathlon position: green inside the range, amber just outside it or below it at no cost, red outside it. A ringed point is one we moved by hand.
 
-![Position 5 of 32: forearm tilt 22°, torso 25°, shoulder 97°, elbow 101°, helmet +22% above the back.](/media/academy/kona-2026/position-05.webp)
+![Position 5 of 32, Matthew Hanson: forearm tilt 22°, torso 25°, shoulder 97°, elbow 101°, helmet +22% above the back.](/media/academy/kona-2026/position-05.webp)
 
-![Position 13 of 32: forearm tilt 25°, torso 20°, shoulder 92°, elbow 88°, helmet +17% above the back.](/media/academy/kona-2026/position-13.webp)
+![Position 13 of 32, Magnus Ditlev: forearm tilt 25°, torso 20°, shoulder 92°, elbow 88°, helmet +17% above the back.](/media/academy/kona-2026/position-13.webp)
 
 ![Position 20 of 32: forearm tilt 27°, torso 21°, shoulder 83°, elbow 77°, helmet +33% above the back.](/media/academy/kona-2026/position-20.webp)
 
@@ -153,7 +153,7 @@ The frames taken from video, from the race broadcast and from riders' own posts,
 
 ![Position 25 of 32: forearm tilt 28°, torso 18°, shoulder 95°, elbow 84°, helmet +20% above the back.](/media/academy/kona-2026/position-25.webp)
 
-![Position 29 of 32: forearm tilt 29°, torso 21°, shoulder 78°, elbow 70°, helmet +14% above the back.](/media/academy/kona-2026/position-29.webp)
+![Position 29 of 32, Jana Uderstadt: forearm tilt 29°, torso 21°, shoulder 78°, elbow 70°, helmet +14% above the back.](/media/academy/kona-2026/position-29.webp)
 
 ## What we did not measure, and why
 
@@ -163,7 +163,7 @@ How we measured: thirty-two professional positions. Twenty-five come from photog
 
 On every position, angles were measured in 2D on the side of the body nearest the camera, from four points: shoulder, elbow, wrist and hip. A pose model's points are its best guess at where each joint is, not the bony landmarks a fitter would mark by hand, and in the first version of this article several of them missed. So we went through every photo and every still and moved each point that missed into the joint by hand, the same way the app lets you correct a point on your own photo. 75 of the 128 joint points moved, by a median of about 2 cm. One 2026 photograph is itself a still from video, where the model had mixed up the joints; every point on it was placed by hand. On the other photographs the largest move was about 8 cm. Centimetres here are estimated from each rider's own hip-to-shoulder distance, taken as 50 cm. The helmet reading is taken from the rider's outline, not from these four points.
 
-When we first corrected the points, on the original fifteen photos, the medians moved by 2° at most; single riders moved more. That is why we report the field rather than anyone's exact fit. Some athletes may appear in more than one frame that we could not tell apart; where two frames clearly showed the same rider we kept one. It is one race and one roadside course, so read these as the shape of a field, not as anyone's exact fit. We do not name the 2026 athletes: we cannot verify who is in every frame, and the point is the position, not the person. The one name here is the one a reader gave us with his photo.
+When we first corrected the points, on the original fifteen photos, the medians moved by 2° at most; single riders moved more. That is why we report the field rather than anyone's exact fit. Some athletes may appear in more than one frame that we could not tell apart; where two frames clearly showed the same rider we kept one, with the one exception named under the table. It is one race and one roadside course, so read these as the shape of a field, not as anyone's exact fit. The names come from the race number on the bike, checked against the published pro start list, or from the athlete being clearly recognisable in the frame; where we could not be sure, the row is left blank. The point is still the position, not the person.
 
 ## What to take for your own position
 

@@ -74,12 +74,17 @@ class TestTheKonaDraft:
         shown = [int(n) for n in re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)]
         assert shown == list(VIDEO_FRAMES)
         assert not re.search(r"/media/academy/kona-2026/rider-[abc]\.webp", text)
-        rows = re.findall(r"^\| (\d+) \| (?:Men|Women) \| (\d+)° \|", text, re.M)
+        rows = re.findall(r"^\| (\d+) \| [^|]+ \| (?:Men|Women) \| (\d+)° \|", text, re.M)
         assert [int(n) for n, _ in rows] == list(range(1, 33))
         tilts = [int(t) for _, t in rows]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
         assert "Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
         assert "The race photographs are not reproduced here" in text
+        # Athletes named where Artur could tell (2026-10-14); the one rider in
+        # two frames is kept and said so, not hidden.
+        assert "| 1 | Kristian Blummenfelt | Men |" in text
+        assert "Positions 5 and 18 are the same athlete, Matthew Hanson" in text
+        assert "We do not name the 2026 athletes" not in text
         # Nor are the photographs served: a removed figure is a deleted one.
         gone = [f"position-{n:02d}" for n in range(1, 33) if n not in VIDEO_FRAMES]
         for name in gone + ["rider-a", "rider-b", "rider-c"]:
