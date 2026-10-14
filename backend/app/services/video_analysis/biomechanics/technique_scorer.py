@@ -493,9 +493,10 @@ def score_cycling(
     # bars, or when the reading flagged itself (a helmet tail lying flush on
     # the back can put the top-of-back point on the helmet), it is shown and
     # not graded, so it leaves the rubric rather than counting as missing.
-    helmet = summary.get("helmet_above_back")
-    if (cycling_position in AERO_POSITIONS and helmet is not None
-            and not summary.get("helmet_check")):
+    from app.services.video_analysis.biomechanics.head_silhouette import graded_helmet
+
+    helmet = graded_helmet(summary.get("helmet_above_back"), summary.get("helmet_check"))
+    if cycling_position in AERO_POSITIONS and helmet is not None:
         components["helmet_above_back"] = helmet_component_score(helmet)
     else:
         weights.pop("helmet_above_back", None)
@@ -779,8 +780,10 @@ def build_severity_map(
 
     # Helmet above the back: graded where score_cycling grades it, amber at
     # worst -- above where twenty-eight of the thirty-one Kona pros sat.
-    helmet = summary.get("helmet_above_back")
-    if isinstance(helmet, (int, float)) and not summary.get("helmet_check"):
+    from app.services.video_analysis.biomechanics.head_silhouette import graded_helmet
+
+    helmet = graded_helmet(summary.get("helmet_above_back"), summary.get("helmet_check"))
+    if helmet is not None:
         from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
         from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
 

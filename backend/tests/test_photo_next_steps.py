@@ -41,16 +41,17 @@ def test_every_photo_ends_with_where_to_go_from_here():
     # Marked at the bottom of the stroke there is no pedal step to take.
     steps = PA._photo_next_steps("bike", "tt_aero", "bdc", False, "left", {"value": 15.0, "check": False})
     assert [s["key"] for s in steps] == ["clip", "pros"]
-    # A road helmet (no edge to read) is a step, said as advice.
+    # Never a helmet step: its type cannot be told from the side, and riders
+    # in aero helmets were told to put one on (2026-10-14).
     steps = PA._photo_next_steps("bike", "triathlon", "bdc", False, "left", {"value": 15.0, "check": True})
-    assert steps[0]["key"] == "helmet" and "aero helmet" in steps[0]["text"]
+    assert "helmet" not in [s["key"] for s in steps]
     # A runner's photo has a clip to film and no bike steps.
     assert [s["key"] for s in PA._photo_next_steps("run", None, None, False, "left", None)] == ["clip"]
 
 
-def test_the_helmet_flag_leads_with_the_advice():
-    assert PA._HELMET_CHECK_WARNING.startswith("We couldn't read a helmet against your back")
-    assert "cheapest gain" in PA._HELMET_CHECK_WARNING
+def test_the_helmet_flag_gives_no_helmet_advice():
+    assert PA._HELMET_CHECK_WARNING.startswith("We couldn't find a clear edge where your back ends")
+    assert "race" not in PA._HELMET_CHECK_WARNING and "road helmet" not in PA._HELMET_CHECK_WARNING
     assert "drag it to the highest point of your back" in PA._HELMET_CHECK_WARNING
 
 

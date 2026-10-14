@@ -94,6 +94,27 @@ KONA_PRO_FREE_UP_TO = 23.0
 KONA_PRO_UNDER_FREE = "28 of the 31"
 
 
+def graded_helmet(value: Any, check: Any) -> float | None:
+    """The helmet reading the score and the report may judge, or None.
+
+    The "check" flag fires when no clear edge separates the helmet from the
+    back: the top-of-back point may then sit on a helmet tail lying flat on
+    it, which puts it too HIGH and the reading too LOW (up to 10 points on
+    the Kona photos). It never errs the other way -- the helmet's top is the
+    highest point of the head zone either way. So a flagged reading is a lower
+    bound: one already above the free band is a finding (the head is at least
+    that high), one inside it says nothing. Until 2026-10-14 every flagged
+    reading was dropped: a Coach Notes client sat at +27 %, head visibly high,
+    and lost no points while the report told her, in her aero helmet, to film
+    in her race helmet.
+    """
+    if not isinstance(value, (int, float)):
+        return None
+    if check and value <= KONA_PRO_FREE_UP_TO:
+        return None
+    return float(value)
+
+
 def top_contour(mask: np.ndarray, columns: int = CONTOUR_COLUMNS) -> list[float | None]:
     """The silhouette's top edge: per column, the highest person pixel as a
     fraction of image height (0 = top), or None where the column is empty."""

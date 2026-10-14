@@ -187,11 +187,18 @@ class TestTheHeadLever:
         low = AE.with_helmet_lever(base, 15.0, False, "triathlon")
         assert next(lv for lv in low["levers"] if lv["key"] == "head")["status"] == "ok"
 
-    def test_an_unreadable_helmet_asks_for_the_race_helmet(self):
+    def test_an_unreadable_helmet_is_not_graded_and_suggests_no_helmet(self):
+        """A flagged reading inside the free band says nothing; one above it is
+        a lower bound and counts. No helmet advice either way: riders already
+        in aero helmets were told to put one on (2026-10-14)."""
         base = AE.estimate_aero(29.0, "triathlon", optimal_trunk_band=(20, 30))
+        out = AE.with_helmet_lever(base, 19.0, True, "triathlon")
+        head = next(lv for lv in out["levers"] if lv["key"] == "head")
+        assert head["status"] == "unknown" and "helmet" not in head["cue"].split("helmet begins")[1]
+        assert "race helmet" not in head["cue"]
         out = AE.with_helmet_lever(base, 25.9, True, "triathlon")
         head = next(lv for lv in out["levers"] if lv["key"] == "head")
-        assert head["status"] == "unknown" and "race helmet" in head["cue"]
+        assert head["status"] == "available" and "+26%" in head["cue"]
         assert AE.with_helmet_lever(base, 25.9, False, "road_hoods")["levers"] == [
             lv for lv in base["levers"] if lv["key"] != "head"]
 

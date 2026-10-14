@@ -21,10 +21,10 @@ ORDER_2 = {
     "hip_angle_avg": 75.0, "trunk_angle_avg": 15.4, "elbow_angle_avg": 92.6,
     "shoulder_angle_avg": 91.6, "forearm_tilt_avg": 15.7, "pelvic_ratio": 4.9,
 }
-# Clean means inside every band AND inside the Kona field: a clip inside its
-# bands but outside the field gets a "Worth a look" of its own now.
+# Clean means inside every band, off its limits (see _edge_side), AND inside
+# the Kona field: either of the others gets a "Worth a look" of its own now.
 CLEAN = {**ORDER_2, "knee_at_bdc": 141.0, "knee_at_tdc": 66.0,
-         "trunk_angle_avg": 25.0, "pelvic_ratio": 3.0, "forearm_tilt_avg": 25.0}
+         "trunk_angle_avg": 22.5, "pelvic_ratio": 3.0, "forearm_tilt_avg": 25.0}
 
 THE_REPORT_IT_WROTE = (
     "**Overall** — Your 15.4° trunk angle is lower than the band.\n\n"
@@ -161,8 +161,8 @@ def test_inside_every_band_but_outside_the_pro_field_is_still_worth_a_look():
 def test_a_clean_clip_still_ends_with_where_to_go():
     steps = concern_hints.video_next_steps("bike", "triathlon", MY_CLIP, [{"field": "forearm_tilt_avg",
                                            "label": "Forearm tilt", "value": 17.1, "lo": 18.8, "hi": 32.0, "median": 25.9, "n": 32}])
-    assert [s["key"] for s in steps] == ["side", "framing", "helmet", "pros", "refilm"]
-    assert "forearm tilt 17.1° against 18.8-32°" in steps[3]["text"]
+    assert [s["key"] for s in steps] == ["side", "framing", "pros", "refilm"]
+    assert "forearm tilt 17.1° against 18.8-32°" in steps[2]["text"]
     # A clean, well-filmed clip on a road bike keeps only the re-film step.
     assert [s["key"] for s in concern_hints.video_next_steps("bike", "road_hoods", {"camera_side": "left"})] == ["refilm"]
 
@@ -186,3 +186,26 @@ def test_the_clip_report_has_the_block_too():
     spa = read_spa()
     assert 'id="nextBlock"' in spa
     assert "renderNextSteps('nextBlock','nextList', r.next_steps||(r.quality&&r.quality.next_steps)||[])" in spa
+
+
+# A Coach Notes client (2026-10-14), who asked about her seat height: every
+# band met, knee at the bottom 0.3 deg under the top of 138-145 -- and the
+# report "confirmed" the saddle optimal.
+SEAT = {"knee_at_bdc": 144.66, "knee_at_tdc": 65.67, "hip_at_tdc": 48.55, "trunk_angle_avg": 20.39,
+        "shoulder_angle_avg": 84.39, "elbow_angle_avg": 81.54, "forearm_tilt_avg": 22.72,
+        "pelvic_ratio": 3.46}
+
+
+def test_a_reading_at_the_limit_is_listed_and_never_called_optimal(monkeypatch):
+    concerns = llm._video_concerns("bike", "triathlon", SEAT)
+    edges = {c["field"]: c for c in concerns if c.get("edge")}
+    assert set(edges) == {"knee_at_bdc"}, "a flat torso on aero bars costs nothing: not an edge"
+    assert edges["knee_at_bdc"]["side"] == "high" and not edges["knee_at_bdc"]["material"]
+    section = concern_hints.worth_a_look(concerns)
+    assert "144.7° vs 138-145°, inside the band, at its upper limit" in section
+    assert "saddle may be a touch high" in section
+    prompts = _scripted(monkeypatch, "**Overall** — fine.\n\n**Nothing to fix** — Hold it.\n\n**Next session** — Relax.")
+    llm.generate_recommendations("bike", 100, "A", [], {}, SEAT, cycling_position="triathlon",
+                                 focus="seat height.")
+    assert "AT THE LIMIT" in prompts[0] and "Knee" in prompts[0].split("AT THE LIMIT")[1]
+    assert "NEVER call these optimal, confirmed" in prompts[0]

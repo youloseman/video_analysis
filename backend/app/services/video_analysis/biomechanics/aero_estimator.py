@@ -234,12 +234,14 @@ def helmet_lever(
     from app.services.video_analysis.biomechanics.head_silhouette import (
         KONA_PRO_FREE_UP_TO,
         KONA_PRO_UNDER_FREE,
+        graded_helmet,
     )
-    if helmet_check:
+    # No helmet advice: from the side we cannot tell which helmet anyone is
+    # wearing, and telling riders in aero helmets to put one on cost a review.
+    if graded_helmet(helmet_above_back, helmet_check) is None:
         return {"key": "head", "label": "Head", "status": "unknown", "qualitative": True,
-                "cue": "We could not read the helmet against your back on this clip "
-                       "(no clear helmet edge -- often a road helmet). Film in your race "
-                       "helmet to get a head reading."}
+                "cue": "We could not tell where your back ends and the helmet begins on "
+                       "this clip, so the head is not graded on it."}
     if helmet_above_back <= KONA_PRO_FREE_UP_TO:
         return {"key": "head", "label": "Head", "status": "ok",
                 "cue": f"Helmet {helmet_above_back:+.0f}% of a torso above your back: "

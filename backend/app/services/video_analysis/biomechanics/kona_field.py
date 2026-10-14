@@ -87,8 +87,11 @@ def pro_gaps(cycling_position: str | None, summary: dict[str, Any]) -> list[dict
         v = summary.get(field)
         if not isinstance(v, (int, float)):
             continue
-        if field == "helmet_above_back" and summary.get("helmet_check"):
-            continue
+        if field == "helmet_above_back":
+            from app.services.video_analysis.biomechanics.head_silhouette import graded_helmet
+            v = graded_helmet(v, summary.get("helmet_check"))
+            if v is None:
+                continue
         if f["lo"] <= v <= f["hi"]:
             continue
         out.append({"field": field, "label": KONA_PRO_LABELS[field], "value": float(v),

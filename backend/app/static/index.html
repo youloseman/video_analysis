@@ -3685,11 +3685,11 @@ function bikeTiles(s, position){
      The old 'Head align /100' tile showed a score every aero rider passed. */
   if(s.helmet_above_back!=null){ const hv=s.helmet_above_back;
     t.push(tile('Helmet above back',(hv>=0?'+':'')+num(hv,1),'%',
-      s.helmet_check?'not graded: no clear helmet edge · film in your race helmet':
+      (s.helmet_check&&hv<=23)?'not graded: no clear edge between back and helmet':
         (state.pro&&state.pro.metrics&&state.pro.metrics.helmet_above_back
           ? `of torso · Kona pros +${num(state.pro.metrics.helmet_above_back.median,0)}%, middle half +${num(state.pro.metrics.helmet_above_back.q1,0)} to +${num(state.pro.metrics.helmet_above_back.q3,0)}%`
           : 'of torso · Kona pros +7 to +33%'),
-      (!s.helmet_check&&hv>23)?'warn':null)); }
+      hv>23?'warn':null)); }
   if(s.saddle_height_assessment){
     // The millimetres, when the crank circle gave the clip a ruler. Said
     // with its interval and its assumption -- a "raise 8 mm" with neither

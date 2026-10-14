@@ -68,6 +68,8 @@ SYSTEM_PROMPT = (
     "prescription. \"Raise the stack 10mm; this opens the hip but sits you up "
     "and costs you aerodynamically\" is a coaching instruction. \"Raise the "
     "stack 10mm\" is half of one.\n"
+    "- NEVER suggest buying, wearing or filming in a different helmet: from a "
+    "side view we cannot tell which helmet the rider has on.\n"
     "- NEVER praise a metric and then prescribe something that degrades it "
     "without saying so. If the only fix available damages something that is "
     "working, say that plainly and let the athlete decide -- that judgement is "
@@ -663,6 +665,37 @@ def _metric_statuses(
     return out
 
 
+# Inside the band but this close to a limit, as a share of the band's width.
+_EDGE_SHARE = 0.10
+
+
+def _edge_side(field: str, value: float, lo: float, hi: float,
+               position: str | None) -> str | None:
+    """"high"/"low" when a value inside its band sits at a limit whose
+    crossing would cost points; None otherwise.
+
+    A Coach Notes client asked about her saddle (2026-10-14): knee at the
+    bottom 144.7 against 138-145, 0.3 deg from the top, measured +/-2-3 -- and
+    the report "confirmed" the height optimal. Not a fault and no points lost;
+    but not the middle of the band either, and a question about it deserves
+    to hear that. Sides where crossing is free are left out: an open hip, and
+    a torso flatter than the band on aero bars.
+    """
+    if not lo < hi or not lo <= value <= hi:
+        return None
+    m = _EDGE_SHARE * (hi - lo)
+    side = "high" if hi - value <= m else "low" if value - lo <= m else None
+    if side is None:
+        return None
+    if field in ("hip_angle_avg", "hip_at_tdc") and side == "high":
+        return None
+    if field == "trunk_angle_avg" and side == "low":
+        from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+        if position in AERO_POSITIONS:
+            return None
+    return side
+
+
 def _materiality_block(
     sport_type: str, position: str | None, summary: dict,
     next_steps: list[dict] | None = None,
@@ -681,7 +714,7 @@ def _materiality_block(
     is stated, not hoped for.
     """
     statuses = _metric_statuses(sport_type, position, summary)
-    material, borderline = [], []
+    material, borderline, edges = [], [], []
     for field, (status, value, lo, hi) in statuses.items():
         label = _METRIC_LABELS.get(field, field.replace("_", " "))
         shown = f"{label} ({value:.1f}, band {lo}-{hi})"
@@ -689,12 +722,16 @@ def _materiality_block(
             material.append(shown)
         elif status == "warn":
             borderline.append(shown)
+        elif side := _edge_side(field, value, lo, hi, position):
+            edges.append(f"{shown}, at the {'upper' if side == 'high' else 'lower'} limit")
 
     # The helmet reading: amber at worst (never a fix-first item), and only
     # where the scorer grades it -- aero bars, a reading that did not flag
     # itself.
-    helmet = summary.get("helmet_above_back")
-    if isinstance(helmet, (int, float)) and not summary.get("helmet_check"):
+    from app.services.video_analysis.biomechanics.head_silhouette import graded_helmet
+
+    helmet = graded_helmet(summary.get("helmet_above_back"), summary.get("helmet_check"))
+    if helmet is not None:
         from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
 
         if helmet > KONA_PRO_FREE_UP_TO:
@@ -741,6 +778,14 @@ def _materiality_block(
             "Just outside the band but WITHIN TOLERANCE (not problems, no "
             "drills, no fit changes for these): " + "; ".join(borderline)
         )
+    if edges:
+        lines.append(
+            "AT THE LIMIT -- inside the band but at its very edge, within the "
+            "measurement's own +/-2-3 deg: not a fault and no fix, but NEVER call "
+            "these optimal, confirmed or well within the range. If the athlete's "
+            "question is about one, say plainly that it sits at the limit and what "
+            "would tip it over: " + "; ".join(edges)
+        )
     return "\n".join(lines)
 
 
@@ -752,16 +797,25 @@ def _video_concerns(
     The same statuses the materiality block hands the model, so the checklist
     under the report and the instruction above it cannot disagree.
     """
+    statuses = _metric_statuses(sport_type, position, summary)
     out = [
         concern_hints.concern(field, _METRIC_LABELS.get(field, field.replace("_", " ")),
                               value, lo, hi, material=(status == "bad"))
-        for field, (status, value, lo, hi)
-        in _metric_statuses(sport_type, position, summary).items()
+        for field, (status, value, lo, hi) in statuses.items()
         if status in ("bad", "warn")
     ]
-    helmet = summary.get("helmet_above_back")
-    if (sport_type == "bike" and isinstance(helmet, (int, float))
-            and not summary.get("helmet_check")):
+    # Inside the band, at a limit that costs points to cross (see _edge_side).
+    for field, (status, value, lo, hi) in statuses.items():
+        side = _edge_side(field, value, lo, hi, position) if status == "good" else None
+        if side:
+            c = concern_hints.concern(field, _METRIC_LABELS.get(field, field.replace("_", " ")),
+                                      value, lo, hi, material=False)
+            c.update(side=side, hint=concern_hints.hint_for(field, side), edge=True)
+            out.append(c)
+    from app.services.video_analysis.biomechanics.head_silhouette import graded_helmet
+
+    helmet = graded_helmet(summary.get("helmet_above_back"), summary.get("helmet_check"))
+    if sport_type == "bike" and helmet is not None:
         from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
         from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
 
@@ -1051,10 +1105,13 @@ def _helmet_prompt_line(summary: dict[str, Any]) -> str:
     v = summary.get("helmet_above_back")
     if not isinstance(v, (int, float)):
         return "- Helmet above the back: not measured on this clip"
-    note = (" -- NOT graded: the outline shows no clear helmet edge (a helmet tail "
-            "lying on the back, or no helmet at all, e.g. a trainer session); do NOT "
-            "judge it, at most suggest filming in the race helmet"
-            if summary.get("helmet_check") else "")
+    note = ""
+    if summary.get("helmet_check"):
+        note = (" -- a LOWER BOUND: the outline shows no clear edge between back and "
+                "helmet, which only ever reads low, so the head is at least this high"
+                if v > KONA_PRO_FREE_UP_TO else
+                " -- NOT graded: the outline shows no clear edge between back and helmet, "
+                "so the reading may be low; do NOT judge it either way")
     return (f"- Helmet above the back: {v:+.1f}% of torso length [how far the top of "
             f"the helmet rises above a level line through the top of the back; NOT "
             f"degrees]. Kona pros {KONA_PRO_RANGE[0]:+.0f}% to {KONA_PRO_RANGE[1]:+.0f}%, "

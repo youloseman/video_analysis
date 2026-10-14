@@ -49,6 +49,7 @@ from app.services.video_analysis.biomechanics.head_silhouette import (
     KONA_PRO_MEDIAN,
     KONA_PRO_RANGE,
     apply_point_corrections,
+    graded_helmet,
     helmet_above_back,
     top_contour,
 )
@@ -606,12 +607,9 @@ def _with_helmet_band(
 # person has placed the point, and the reading compares with pros in aero
 # helmets, so it means most with the race helmet on.
 _HELMET_CHECK_WARNING = (
-    "We couldn't read a helmet against your back: the outline shows no clear "
-    "edge where the back ends and the helmet begins, which usually means a road "
-    "helmet, or none. On aero bars a race (aero) helmet is the cheapest gain in "
-    "this picture, and with it on you get a head reading. If you did wear it and "
-    "the green point sits on the helmet, use Adjust joints to drag it to the "
-    "highest point of your back."
+    "We couldn't find a clear edge where your back ends and your helmet begins, "
+    "so the helmet reading may be low and is not graded. If the green point sits "
+    "on the helmet, use Adjust joints to drag it to the highest point of your back."
 )
 
 
@@ -624,7 +622,8 @@ def _photo_next_steps(
     A clean photo used to end the report: 100, "Nothing to fix", and a rider
     with nowhere to go (and no reason to come back). What a single still cannot
     tell, each with the one thing that would -- the pedal position, a clip, the
-    race helmet, the other side of the bike, the pro field -- said every time,
+    other side of the bike, the pro field -- said every time (never a helmet:
+    its type cannot be told from the side),
     in the order a fitter would take them.
     """
     steps: list[dict[str, str]] = []
@@ -635,11 +634,6 @@ def _photo_next_steps(
                               "top, or shoot a frame at the bottom of the stroke: the knee there is "
                               "the saddle-height reading, the one fit number everything else is set "
                               "from. Until then the score is your upper body."})
-    if aero and (helmet is None or helmet.get("check")):
-        steps.append({"key": "helmet", "title": "Put on your race helmet",
-                      "text": "We could not read a helmet against your back here, which usually means "
-                              "a road helmet. On aero bars an aero helmet is the cheapest gain in "
-                              "this picture, and with it on the head gets measured too."})
     if sport == "bike" and camera_side == "right":
         steps.append({"key": "side", "title": "Film from the non-drive side",
                       "text": "This photo is from the chainring side. The chainring sits behind the "
@@ -2065,7 +2059,7 @@ def analyze_from_pose(
         # point the athlete placed. A flagged reading can be 10 points low.
         helmet_scored = (
             helmet is not None and cycling_position in _AERO_POSITIONS
-            and not helmet.get("check")
+            and graded_helmet(helmet.get("value"), helmet.get("check")) is not None
         )
         optimal_ranges = _with_helmet_band(
             _get_cycling_optimal_ranges(cycling_position, pedal_phase), helmet_scored,

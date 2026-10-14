@@ -190,7 +190,9 @@ def _line(c: dict[str, Any]) -> str:
         band = f"up to {_num(c['hi'])}{unit}"
     else:
         band = f"{_num(c['lo'])}-{_num(c['hi'])}{unit}"
-    where = "outside the band" if c["material"] else "on the edge of the band"
+    where = ("outside the band" if c["material"] else
+             f"inside the band, at its {'upper' if c['side'] == 'high' else 'lower'} limit"
+             if c.get("edge") else "on the edge of the band")
     return (f"- **{c['label']}**: {_num(c['value'])}{unit} vs {band}, {where}. "
             f"{c['hint']}")
 
@@ -229,11 +231,11 @@ def video_next_steps(
     limited, what sits outside the pro field, and what to film next, in the
     order a fitter would take them.
     """
-    from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
-
     steps: list[dict[str, str]] = []
-    aero = sport == "bike" and cycling_position in AERO_POSITIONS
     framing = ((summary.get("tracking_stability") or {}).get("framing") or {}).get("verdict")
+    # No helmet step: from the side the helmet's type cannot be told, and
+    # "film in your race helmet" reached riders already wearing one (a Coach
+    # Notes client and a 1-star review, 2026-10-14).
     if sport == "bike" and summary.get("camera_side") == "right":
         steps.append({"key": "side", "title": "Film from the non-drive side",
                       "text": "This clip is from the chainring side. The chainring sits behind the "
@@ -245,11 +247,6 @@ def video_next_steps(
                       "text": "You are small in the picture, and at that size the two legs are a few "
                               "pixels apart. Film closer, or zoom in so you span most of the height: "
                               "it does more for accuracy than any other change."})
-    if aero and (summary.get("helmet_above_back") is None or summary.get("helmet_check")):
-        steps.append({"key": "helmet", "title": "Film in your race helmet",
-                      "text": "We could not read a helmet against your back on this clip, which "
-                              "usually means a road helmet or none. On aero bars an aero helmet is the "
-                              "cheapest gain there is, and with it on the head gets measured too."})
     if gaps:
         parts = []
         for g in gaps:
