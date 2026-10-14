@@ -30,7 +30,10 @@ comparisons once there are enough photos.
 
 Keys per photo: S E W H are the near-side shoulder, elbow, wrist and hip;
 B and T are the top of the back and the top of the helmet the helmet reading
-is taken between (head_silhouette.py). Needs the backend requirements with
+is taken between (head_silhouette.py). K A L F are the near-side knee, ankle,
+heel and toe: measured nowhere, but drawn on every figure, so readers judge the
+whole skeleton by them (added 2026-10-14 by ``legs``, which widens each crop
+down to the feet at the same scale so saved offsets stay valid). Needs the backend requirements with
 MediaPipe >= 1.0 -- the silhouette is unavailable on older builds -- and
 Playwright with Chromium for the field chart.
 """
@@ -53,6 +56,9 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 KEYS = ("S", "E", "W", "H")
 NEAR = {"right": {"S": 12, "E": 14, "W": 16, "H": 24}, "left": {"S": 11, "E": 13, "W": 15, "H": 23}}
+LEGS = {"right": {"K": 26, "A": 28, "L": 30, "F": 32}, "left": {"K": 25, "A": 27, "L": 29, "F": 31}}
+# The hand is drawn off the wrist (pinky, index, thumb): it moves with it.
+HAND = {"right": (18, 20, 22), "left": (17, 19, 21)}
 SHOWN = ("trunk", "shoulder", "elbow", "forearm_tilt", "helmet_above_back")
 CROP_MAX_W = 900  # editor crops are downscaled to this; ``scale`` records by how much
 
@@ -128,6 +134,57 @@ def add(study: dict, photo: str, label: str | None, race: str,
     print(f"added {rel} as editor position {n} ({side} side, helmet "
           f"{helmet['value'] if helmet else 'n/a'}%{' CHECK' if helmet and helmet.get('check') else ''})")
     return entry
+
+
+def legs(study: dict) -> None:
+    """Add the near-side knee, ankle, heel and toe to every photo's editor crop.
+
+    The crops were cut around the upper body; most stop above the knee. Each
+    is widened to take in the feet at the SAME scale, and every stored point
+    moves with the new origin -- so the offsets already saved in the editor
+    (crop pixels relative to the model point) stay exactly as valid as they
+    were. A photo whose detection no longer lands on its stored shoulder is
+    left alone rather than given points that do not match it.
+    """
+    from PIL import Image
+
+    for e in study["entries"]:
+        if "K" in e["model"] or not (ROOT / e["photo"]).exists():
+            continue
+        p = _detect(ROOT / e["photo"])
+        nl = p["normalized"]
+        H, W = p["image"].shape[:2]
+        side = p["camera_side"]
+        scale, (ox, oy) = e.get("scale", 1.0), e["origin"]
+        s = nl[NEAR[side]["S"]]
+        drift = math.dist(((s.x * W - ox) * scale, (s.y * H - oy) * scale), e["model"]["S"])
+        if drift > 3:
+            print(f"#{e['n']}: detection drifted {drift:.1f}px from the stored shoulder -- skipped")
+            continue
+        leg = {k: (nl[i].x * W, nl[i].y * H) for k, i in LEGS[side].items()
+               if 0 <= nl[i].x <= 1 and 0 <= nl[i].y <= 1}
+        torso = math.dist((nl[NEAR[side]["S"]].x * W, nl[NEAR[side]["S"]].y * H),
+                          (nl[NEAR[side]["H"]].x * W, nl[NEAR[side]["H"]].y * H))
+        pad = 0.15 * torso
+        x1, y1 = ox + e["w"] / scale, oy + e["h"] / scale
+        nx0 = max(0, int(min([ox] + [x - pad for x, _ in leg.values()])))
+        ny0 = max(0, int(min([oy] + [y - pad for _, y in leg.values()])))
+        nx1 = min(W, int(max([x1] + [x + pad for x, _ in leg.values()])))
+        ny1 = min(H, int(max([y1] + [y + pad for _, y in leg.values()])))
+        dx, dy = (ox - nx0) * scale, (oy - ny0) * scale
+        for pts in (e["model"], e["start"]):
+            for k in pts:
+                pts[k] = [round(pts[k][0] + dx, 1), round(pts[k][1] + dy, 1)]
+        for k, (x, y) in leg.items():
+            pt = [round((x - nx0) * scale, 1), round((y - ny0) * scale, 1)]
+            e["model"][k], e["start"][k] = pt, list(pt)
+        img = Image.open(ROOT / e["photo"]).convert("RGB").crop((nx0, ny0, nx1, ny1))
+        if scale < 1.0:
+            img = img.resize((round((nx1 - nx0) * scale), round((ny1 - ny0) * scale)), Image.LANCZOS)
+        img.save(work_dir(study) / "img" / f"p{e['n']:02d}.webp", "WEBP", quality=86, method=6)
+        e["origin"], e["w"], e["h"] = [nx0, ny0], img.width, img.height
+        print(f"#{e['n']}: {''.join(leg)} added, crop {img.width}x{img.height}")
+    save(study)
 
 
 def editor(study: dict) -> Path:
@@ -236,6 +293,21 @@ def _measure(entry: dict, moved: dict, render: bool, blur_face: bool = False):
             nl[ids[k]].x += dx / scale / W
             nl[ids[k]].y += dy / scale / H
             corrected.append(ids[k])
+    # The legs and the hand: drawn, never measured. A moved leg point is
+    # placed where it was put and shown (visibility 1); the hand keeps its
+    # shape around a moved wrist.
+    for k, i in LEGS[side].items():
+        dx, dy = moved.get(k, (0.0, 0.0))
+        if k in entry["model"] and math.hypot(dx, dy) >= 0.5:
+            nl[i].x += dx / scale / W
+            nl[i].y += dy / scale / H
+            nl[i].visibility = 1.0
+            corrected.append(i)
+    wdx, wdy = moved.get("W", (0.0, 0.0))
+    if math.hypot(wdx, wdy) >= 0.5:
+        for i in HAND[side]:
+            nl[i].x += wdx / scale / W
+            nl[i].y += wdy / scale / H
     ox, oy = entry["origin"]
 
     def placed(key):
@@ -270,7 +342,7 @@ def _measure(entry: dict, moved: dict, render: bool, blur_face: bool = False):
     if "helmet_above_back" in entry.get("skip", ()):
         helmet = None
     out = {"key": entry["key"], "n": entry["n"], "race": entry["race"], "label": entry.get("label"),
-           "caption_note": entry.get("caption_note"),
+           "caption_note": entry.get("caption_note"), "credit": entry.get("credit"),
            "angles": angles, "rows": rows, "corrected": sorted(corrected),
            "moved_cm": [round(math.hypot(*moved[k]) / scale / math.dist(
                (nl[ids["S"]].x * W, nl[ids["S"]].y * H), (nl[ids["H"]].x * W, nl[ids["H"]].y * H)) * 50, 2)
@@ -388,6 +460,8 @@ def _rebuild(study: dict) -> None:
         d["group"] = group
         d["figure"] = e.get("figure", True)
         d["video"] = e.get("video", False)
+        d["name"] = " ".join((rec.get("name") or "").split()) or None
+        d["credit"] = e.get("credit", study.get("credit") if not e.get("video") else None)
         d["category"] = rec.get("category") or e.get("category")
         if d["group"] != "excluded":
             measured.append(d)
@@ -428,10 +502,15 @@ def _rebuild(study: dict) -> None:
             social / f"position-{n:02d}{tag}_forearm-{a['forearm_tilt']:.0f}_torso-{a['trunk']:.0f}.jpg",
             "JPEG", quality=93)
         extra = f" {d['caption_note']}" if d.get("caption_note") else ""
+        if d.get("video"):
+            extra += " Still from video."
+        elif d.get("credit"):
+            extra += f" Photo: {d['credit']}."
         helmet = (f", helmet {a['helmet_above_back']:+.0f}% above the back"
                   if a.get("helmet_above_back") is not None else "")
+        who = f", {d['name']}" if d.get("name") else ""
         captions.append(
-            f"![Position {n} of {len(shown)}: forearm tilt {a['forearm_tilt']:.0f}°, torso {a['trunk']:.0f}°, "
+            f"![Position {n} of {len(shown)}{who}: forearm tilt {a['forearm_tilt']:.0f}°, torso {a['trunk']:.0f}°, "
             f"shoulder {a['shoulder']:.0f}°, elbow {a['elbow']:.0f}°{helmet}.{extra}]"
             f"(/media/academy/{Path(study['media']).name}/position-{n:02d}.webp)")
     # Age-groupers: their own folder, faces blurred (_blur_face), never into
@@ -481,6 +560,7 @@ def _rebuild(study: dict) -> None:
         },
         "shown": len(shown),
         "positions": [{"n": n, "key": d["key"], "editor_n": d["n"], "category": d["category"],
+                       "name": d.get("name"), "video": bool(d.get("video")),
                        "figure": (shown.index(d) + 1) if d in shown else None,
                        **{k: d["angles"][k] for k in SHOWN}, "rows": d["rows"]}
                       for n, d in enumerate(items, 1)],
@@ -558,6 +638,7 @@ def main() -> int:
     a.add_argument("--group", default="pro", choices=("pro", "age_group"))
     a.add_argument("--category", choices=("men", "women"))
     sub.add_parser("editor")
+    sub.add_parser("legs")
     sub.add_parser("rebuild")
     args = ap.parse_args()
     study = load(args.study)
@@ -565,6 +646,9 @@ def main() -> int:
         add(study, args.photo, args.label, args.race, args.group, args.category)
         editor(study)
     elif args.cmd == "editor":
+        editor(study)
+    elif args.cmd == "legs":
+        legs(study)
         editor(study)
     else:
         rebuild(study)

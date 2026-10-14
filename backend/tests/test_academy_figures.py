@@ -17,8 +17,9 @@ BACKEND = Path(__file__).resolve().parents[1]
 MEDIA = BACKEND / "app" / "static" / "media"
 DRAFT = CONTENT_DIR / "kona-2026-pro-bike-positions.md"
 # Article positions whose frame is a still from video (kona2026.json ``video``).
-# Shown until 2026-10-14, when Artur took every frame out of the article.
-VIDEO_FRAMES: tuple[int, ...] = ()
+# Article positions whose frame is a still from video (kona2026.json ``video``).
+VIDEO_FRAMES = (5, 13, 20, 21, 22, 25, 29)
+SCOTT = "Photo: Scott Flathouse (@scottflathousephoto)."
 
 
 class TestTheFigureBlock:
@@ -45,16 +46,16 @@ class TestTheKonaDraft:
         art = get_article("kona-2026-pro-bike-positions")
         assert art is not None and art.meta.category == "bike-aero"
         assert len(art.sources) >= 8
-        # Our chart, the app's table and the seven video frames; no race
-        # photograph (2026-10-13).
-        assert art.body_html.count("<figure>") == 2 + len(VIDEO_FRAMES)
+        # The chart, riders A-C, the app's table and all thirty-two positions.
+        assert art.body_html.count("<figure>") == 1 + 3 + 1 + 32
 
     def test_every_figure_it_shows_exists(self):
         text = DRAFT.read_text(encoding="utf-8")
         srcs = re.findall(r"^!\[[^\]]*\]\((/media/[^)]+)\)$", text, flags=re.M)
-        assert srcs == (["/media/academy/kona-2026/field.webp",
-                         "/media/academy/kona-2026/rider-c-table.webp"]
-                        + [f"/media/academy/kona-2026/position-{n:02d}.webp" for n in VIDEO_FRAMES])
+        assert srcs == (["/media/academy/kona-2026/field.webp"]
+                        + [f"/media/academy/kona-2026/rider-{r}.webp" for r in "abc"]
+                        + ["/media/academy/kona-2026/rider-c-table.webp"]
+                        + [f"/media/academy/kona-2026/position-{n:02d}.webp" for n in range(1, 33)])
         for src in srcs:
             assert (MEDIA / src.removeprefix("/media/")).is_file(), src
 
@@ -68,28 +69,35 @@ class TestTheKonaDraft:
         duplicates went out,
         every one shown (Artur, 2026-10-12: the stills go in too; the article
         says how many are stills). Then Slowtwitch asked for its photographs to
-        come down (2026-10-13): no race photograph is published any more, and
-        the thirty-two positions are a table of the numbers. The frames taken
-        from video -- broadcast and riders' own posts -- stay (Artur, same day)."""
+        come down (2026-10-13) and every image came out. Scott Flathouse, who
+        took them, then gave written permission (2026-10-14) on three
+        conditions: credit, his Instagram, and a link to where athletes find
+        their own photos. Every photograph carries the credit; the stills say
+        they are stills; the gallery paragraph links his events page."""
         text = DRAFT.read_text(encoding="utf-8")
         shown = [int(n) for n in re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)]
-        assert shown == list(VIDEO_FRAMES)
-        assert not re.search(r"/media/academy/kona-2026/rider-[abc]\.webp", text)
+        assert shown == list(range(1, 33))
+        caps = {int(m.group(1)): m.group(0)
+                for m in re.finditer(r"^!\[Position (\d+) of 32.*$", text, re.M)}
+        for n, cap in caps.items():
+            if n in VIDEO_FRAMES:
+                assert "Still from video." in cap and SCOTT not in cap, n
+            elif n == 27:
+                assert "From a photo a reader shared" in cap and SCOTT not in cap
+            else:
+                assert SCOTT in cap, n
+        assert "https://www.scottflathousephoto.com/events/" in text
+        assert "https://www.instagram.com/scottflathousephoto/" in text
         rows = re.findall(r"^\| (\d+) \| [^|]+ \| (?:Men|Women) \| (\d+)° \|", text, re.M)
         assert [int(n) for n, _ in rows] == list(range(1, 33))
         tilts = [int(t) for _, t in rows]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
         assert "Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        assert "The photographs and frames themselves are not reproduced here" in text
         # Athletes named where Artur could tell (2026-10-14); the one rider in
         # two frames is kept and said so, not hidden.
         assert "| 1 | Kristian Blummenfelt | Men |" in text
         assert "Positions 5 and 18 are the same athlete, Matthew Hanson" in text
         assert "We do not name the 2026 athletes" not in text
-        # Nor are the photographs served: a removed figure is a deleted one.
-        gone = [f"position-{n:02d}" for n in range(1, 33) if n not in VIDEO_FRAMES]
-        for name in gone + ["rider-a", "rider-b", "rider-c"]:
-            assert not (MEDIA / "academy" / "kona-2026" / f"{name}.webp").exists(), name
 
     def test_the_hand_corrections_are_disclosed(self):
         """Readers pointed out points sitting off the joints; Artur moved the

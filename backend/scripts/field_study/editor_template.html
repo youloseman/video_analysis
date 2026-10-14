@@ -76,7 +76,7 @@ input.t:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
 <div class="wrap">
   <header>
     <h1>Kona Point Check</h1>
-    <p class="lede">Новое: точки B (верх спины, зелёная) и T (верх шлема, жёлтая). B ставь на самую высокую точку спины, не на шлем; T на самую высокую точку шлема. Линия через B горизонтальная, «Шлем над спиной» пересчитывается сразу. Суставы S, E, W, H по-прежнему можно двигать. Правки сохраняются сами.</p>
+    <p class="lede">Новое: ноги. K — колено, A — лодыжка, L — пятка, F — носок; кадры расширены до ступней. Ноги не входят в замеры, но рисуются на каждом фото в статье, поэтому их тоже стоит поставить точно. Сдвинутое раньше сохранилось. B — верх спины, T — верх шлема, S, E, W, H — суставы руки и бедро. Правки сохраняются сами.</p>
   </header>
 
   <nav class="chips" id="chips" aria-label="Позиции"></nav>
@@ -156,7 +156,9 @@ input.t:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
 
 <script>
 const DATA = __DATA__;
-const JOINTS = [["S","Плечо"],["E","Локоть"],["W","Запястье"],["H","Бедро"],["B","Верх спины"],["T","Верх шлема"]];
+const ALL_JOINTS = [["S","Плечо"],["E","Локоть"],["W","Запястье"],["H","Бедро"],["K","Колено"],["A","Лодыжка"],["L","Пятка"],["F","Носок"],["B","Верх спины"],["T","Верх шлема"]];
+// A photo carries the keys it has: the frozen one (#10) has no legs.
+const jointsOf = p => ALL_JOINTS.filter(([k]) => p.model[k]);
 const state = {i:0, sel:"S", zoom:false, edits:{}, notes:{}, tags:{}, names:{}};  // tags[n] = {group, category}  // edits[n] = {S:[x,y],...} crop px
 let db = null, saveTimers = {};
 
@@ -192,18 +194,19 @@ function renderSvg(){
     l.setAttribute("x1",P[a][0]);l.setAttribute("y1",P[a][1]);l.setAttribute("x2",P[b][0]);l.setAttribute("y2",P[b][1]);
     l.setAttribute("stroke","#FFFFFF");l.setAttribute("stroke-width",r*0.35);l.setAttribute("stroke-opacity","0.9");svg.appendChild(l)};
   line("H","S");line("S","E");line("E","W");
+  if(P.K&&P.A&&P.L&&P.F){line("H","K");line("K","A");line("A","L");line("L","F");line("A","F");}
   if(P.B&&P.T){ // a level line through the top of the back, and the gap up to the helmet
     const l=document.createElementNS(NS,"line");l.setAttribute("x1",Math.min(P.B[0],P.T[0])-r*4);l.setAttribute("x2",Math.max(P.B[0],P.T[0])+r*4);
     l.setAttribute("y1",P.B[1]);l.setAttribute("y2",P.B[1]);l.setAttribute("stroke","#3DFF6E");l.setAttribute("stroke-width",r*0.3);l.setAttribute("stroke-dasharray",`${r} ${r*0.6}`);svg.appendChild(l);
     const g=document.createElementNS(NS,"line");g.setAttribute("x1",P.T[0]);g.setAttribute("x2",P.T[0]);g.setAttribute("y1",P.B[1]);g.setAttribute("y2",P.T[1]);
     g.setAttribute("stroke","#FF6B52");g.setAttribute("stroke-width",r*0.3);svg.appendChild(g);}
-  for(const [k] of JOINTS){
+  for(const [k] of jointsOf(p)){
     const m=p.model[k];
     if(Math.hypot(P[k][0]-m[0],P[k][1]-m[1])>0.5){const g=document.createElementNS(NS,"circle");
       g.setAttribute("cx",m[0]);g.setAttribute("cy",m[1]);g.setAttribute("r",r);g.setAttribute("fill","none");
       g.setAttribute("stroke","#FFFFFF");g.setAttribute("stroke-width",r*0.25);g.setAttribute("stroke-dasharray",`${r*0.5} ${r*0.4}`);svg.appendChild(g)}
   }
-  for(const [k] of JOINTS){
+  for(const [k] of jointsOf(p)){
     const c=document.createElementNS(NS,"circle");c.setAttribute("cx",P[k][0]);c.setAttribute("cy",P[k][1]);c.setAttribute("r",r);
     c.setAttribute("fill",k===state.sel?"#F0533A":(k==="B"?"#1E8A5A":k==="T"?"#B7791F":"#14294B"));c.setAttribute("stroke","#FFFFFF");c.setAttribute("stroke-width",r*0.35);
     c.style.cursor="grab";c.dataset.k=k;svg.appendChild(c);
@@ -226,7 +229,8 @@ function renderPanel(){
     return `<tr><td>${LABEL[k]}</td><td class="num">${base[k].toFixed(1)}${u}</td><td class="num">${now[k].toFixed(1)}${u}</td><td class="num ${cls}">${d>=0?"+":""}${d.toFixed(1)}</td></tr>`}).join("");
   $("joints").innerHTML="";
   const P=pts(p);
-  for(const [k,name] of JOINTS){const b=document.createElement("button");b.type="button";b.className="joint";
+  if(!p.model[state.sel]) state.sel="S";
+  for(const [k,name] of jointsOf(p)){const b=document.createElement("button");b.type="button";b.className="joint";
     b.setAttribute("aria-pressed",k===state.sel?"true":"false");
     const dx=P[k][0]-p.model[k][0], dy=P[k][1]-p.model[k][1];
     b.innerHTML=`${name}<small>${Math.hypot(dx,dy)<0.5?"как у модели":`сдвиг ${dx>=0?"+":""}${dx.toFixed(0)}, ${dy>=0?"+":""}${dy.toFixed(0)} px`}</small>`;
@@ -319,7 +323,7 @@ function record(p){
   const P=pts(p), o=p.origin, a=angles(P);
   return {n:p.n, src_index:p.src_index, photo:p.photo,
     points_photo_px:Object.fromEntries(Object.entries(P).map(([k,v])=>[k,[+(v[0]+o[0]).toFixed(1),+(v[1]+o[1]).toFixed(1)]])),
-    moved:Object.fromEntries(JOINTS.map(([k])=>[k,[+(P[k][0]-p.model[k][0]).toFixed(1),+(P[k][1]-p.model[k][1]).toFixed(1)]])),
+    moved:Object.fromEntries(jointsOf(p).map(([k])=>[k,[+(P[k][0]-p.model[k][0]).toFixed(1),+(P[k][1]-p.model[k][1]).toFixed(1)]])),
     angles:Object.fromEntries(Object.entries(a).map(([k,v])=>[k,+v.toFixed(1)])),
     note:state.notes[p.n]||"", name:nameOf(p), ...tagsOf(p), updated:new Date().toISOString()};
 }
@@ -350,7 +354,7 @@ renderAll();status("Подключаюсь к хранилищу…");
   if(!db){status("Хранилище недоступно: правки остаются в этом браузере");return}
   try{const snap=await db.collection("corrections").get();
     for(const d of snap.docs){const r=d.data();const p=DATA.find(x=>x.n===r.n);if(!p||!r.moved)continue;
-      const e={};for(const [k,v] of Object.entries(r.moved)){e[k]=[p.model[k][0]+v[0],p.model[k][1]+v[1]]}
+      const e={};for(const [k,v] of Object.entries(r.moved)){if(p.model[k])e[k]=[p.model[k][0]+v[0],p.model[k][1]+v[1]]}
       state.edits[p.n]=e;state.notes[p.n]=r.note||"";if(typeof r.name==="string")state.names[p.n]=r.name;
       if(r.group||r.category) state.tags[p.n]={group:r.group||null,category:r.category||null}}
     renderAll();status("Готово. Правки сохраняются автоматически","ok");
