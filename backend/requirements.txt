@@ -21,6 +21,10 @@ pillow-heif==1.3.0
 
 # --- API (Milestone 3): upload -> analyze -> JSON + overlay ---
 fastapi==0.136.1
+# Pinned: fastapi only asks for >=0.46, and app/core/compression.py rides
+# Starlette's GZipResponder internals. 1.8.0 arrived unannounced on the next
+# build and turned every 304 into a 500 (2026-10-13). Bump it on purpose.
+starlette==1.8.0
 uvicorn[standard]==0.47.0
 python-multipart==0.0.29
 pydantic==2.13.4

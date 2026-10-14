@@ -59,28 +59,33 @@ GZIP_CONTENT_TYPES = (
 class _SelectiveGZipResponder(GZipResponder):
     """GZipResponder that opts out of binary and partial-content responses.
 
-    Rides the base class's own passthrough: it already forwards a response
-    untouched whenever ``content_type_is_excluded`` is set (that is how it skips
-    ``text/event-stream``), so raising the flag for anything outside
-    :data:`GZIP_CONTENT_TYPES` is the entire change.
+    A response it opts out of never reaches the base class at all: the start
+    message and every body message go straight to the wire. The decision is
+    made on the start message, before delegating, so it does not depend on how
+    the base orders its own sends.
 
-    The flag is raised *after* delegating, because the base assigns it from the
-    response headers while handling the start message and would otherwise clear
-    ours. That ordering is safe: nothing is written to the wire during the start
-    message -- it is buffered precisely so the headers can still be edited.
+    It used to depend on exactly that. The flag ``content_type_is_excluded``
+    was raised *after* the base had buffered the start message, and Starlette
+    up to 1.7 sent the buffered start along with the first body. 1.8.0 sends
+    it from the start branch instead and passes excluded bodies straight
+    through -- so the late flag sent a body with no start before it. Every
+    304 (no content type, so excluded) became a 500 on prod, 2026-10-13.
     """
 
+    _bypass = False
+
     async def send_with_compression(self, message: Message) -> None:
-        await super().send_with_compression(message)
-        if message["type"] != "http.response.start" or self.content_type_is_excluded:
+        if message["type"] == "http.response.start":
+            headers = Headers(raw=message["headers"])
+            content_type = headers.get("content-type", "").split(";")[0].strip().lower()
+            # A 206 body is a slice of the file, described by byte offsets into
+            # the uncompressed original -- never compress it.
+            partial = message.get("status") == 206 or "content-range" in headers
+            self._bypass = partial or not content_type.startswith(GZIP_CONTENT_TYPES)
+        if self._bypass:
+            await self.send(message)
             return
-        headers = Headers(raw=message["headers"])
-        content_type = headers.get("content-type", "").split(";")[0].strip().lower()
-        # A 206 body is a slice of the file, described by byte offsets into the
-        # uncompressed original -- never compress it.
-        partial = message.get("status") == 206 or "content-range" in headers
-        if partial or not content_type.startswith(GZIP_CONTENT_TYPES):
-            self.content_type_is_excluded = True
+        await super().send_with_compression(message)
 
 
 class SelectiveGZipMiddleware(GZipMiddleware):
