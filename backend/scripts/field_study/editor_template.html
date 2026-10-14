@@ -56,6 +56,19 @@ textarea{width:100%;box-sizing:border-box;min-height:64px;font:14px var(--body);
 .status.ok{color:var(--good)}
 .status.bad{color:var(--coral)}
 .legend{font-size:13px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+input.t{width:100%;box-sizing:border-box;font:15px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+input.t:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
+.hint{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 0;font-size:13px;color:var(--muted)}
+.hint b{color:var(--ink);font-weight:600}
+.wrap>.card{min-width:0}
+.roster{overflow-x:auto}
+.roster table{min-width:760px}
+.roster td,.roster th{text-align:left;white-space:nowrap}
+.roster td.num,.roster th.num{text-align:right}
+.roster input.t{padding:5px 8px;font-size:14px;min-width:180px}
+.roster button.go{font:500 13px var(--mono);padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.roster tr.off td{color:var(--muted)}
+.roster .sug{font-size:12px;color:var(--muted)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 @media (prefers-reduced-motion:no-preference){.chip,.joint,button.b{transition:border-color .15s,background .15s}}
 </style>
@@ -115,6 +128,10 @@ textarea{width:100%;box-sizing:border-box;min-height:64px;font:14px var(--body);
             <button class="b" type="button" data-f="category" data-v="women">Женщины</button>
           </div>
         </div>
+        <h2>Имя спортсмена</h2>
+        <input class="t" id="name" type="text" placeholder="Имя Фамилия" autocomplete="off" spellcheck="false">
+        <div class="hint" id="nameHint"></div>
+        <p class="status" id="artPos" style="margin:8px 0 12px"></p>
         <h2>Заметка к фото</h2>
         <textarea id="note" placeholder="Например: бедро не видно, ставлю по шву шорт"></textarea>
         <div class="toolbar"><span class="status" id="status">Загрузка…</span></div>
@@ -126,12 +143,21 @@ textarea{width:100%;box-sizing:border-box;min-height:64px;font:14px var(--body);
       </div>
     </aside>
   </div>
+
+  <section class="card">
+    <h2>Все фото: имена и значения</h2>
+    <p class="status" style="margin:0 0 10px">Значения те, что опубликованы в статье. Подсказка взята по стартовому номеру на кадре и стартовому листу; «Взять» ставит её в поле, пустые заполни сам. Всё сохраняется само.</p>
+    <div class="roster"><table>
+      <thead><tr><th>Фото</th><th>В статье</th><th>Имя</th><th class="num">Предпл.</th><th class="num">Корпус</th><th class="num">Плечо</th><th class="num">Локоть</th><th class="num">Шлем</th></tr></thead>
+      <tbody id="roster"></tbody>
+    </table></div>
+  </section>
 </div>
 
 <script>
 const DATA = __DATA__;
 const JOINTS = [["S","Плечо"],["E","Локоть"],["W","Запястье"],["H","Бедро"],["B","Верх спины"],["T","Верх шлема"]];
-const state = {i:0, sel:"S", zoom:false, edits:{}, notes:{}, tags:{}};  // tags[n] = {group, category}  // edits[n] = {S:[x,y],...} crop px
+const state = {i:0, sel:"S", zoom:false, edits:{}, notes:{}, tags:{}, names:{}};  // tags[n] = {group, category}  // edits[n] = {S:[x,y],...} crop px
 let db = null, saveTimers = {};
 
 const $ = id => document.getElementById(id);
@@ -192,7 +218,8 @@ function renderSvg(){
 
 function renderPanel(){
   const p=pos(), now=angles(pts(p)), base=angles(p.model);
-  $("posTitle").textContent=p.label?`${p.n}. ${p.label}`:`Позиция ${p.n} из ${DATA.length}`;
+  const nm=nameOf(p);
+  $("posTitle").textContent=nm?`${p.n}. ${nm}`:`Фото ${p.n} из ${DATA.length}`;
   $("angles").innerHTML=Object.keys(LABEL).map(k=>{const d=now[k]-base[k];
     const cls=Math.abs(d)<0.05?"d-zero":"d-up";
     const u=UNIT[k]||"°";
@@ -205,15 +232,53 @@ function renderPanel(){
     b.innerHTML=`${name}<small>${Math.hypot(dx,dy)<0.5?"как у модели":`сдвиг ${dx>=0?"+":""}${dx.toFixed(0)}, ${dy>=0?"+":""}${dy.toFixed(0)} px`}</small>`;
     b.onclick=()=>{state.sel=k;renderSvg();renderPanel()};$("joints").appendChild(b)}
   $("note").value=state.notes[p.n]||"";
+  if(document.activeElement!==$("name")) $("name").value=nameOf(p);
+  renderHint(p);
+  $("artPos").textContent=where(p);
   const t=tagsOf(p);
   document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",String(t[b.dataset.f]===b.dataset.v)));
 }
+
+function nameOf(p){return state.names[p.n]!==undefined?state.names[p.n]:(p.label||"")}
+function where(p){const g=tagsOf(p).group;
+  if(g==="excluded")return "Не учитывается";
+  if(g==="age_group")return "Любитель, в статью не идёт";
+  if(p.article)return `В статье: позиция ${p.article} из 32${p.video?" · кадр из видео, показан":" · фото не публикуется, только цифры"}`;
+  return "В статье: после пересборки"}
+function renderHint(p){const h=$("nameHint");h.innerHTML="";
+  if(!p.name_hint)return;
+  const s=document.createElement("span");s.innerHTML=`Подсказка: <b></b> — `;s.querySelector("b").textContent=p.name_hint;
+  s.append(document.createTextNode(p.name_why||""));h.appendChild(s);
+  if(nameOf(p)!==p.name_hint){const b=document.createElement("button");b.type="button";b.className="b";b.textContent="Взять";
+    b.onclick=()=>setName(p,p.name_hint);h.appendChild(b)}}
+function setName(p,v){state.names[p.n]=v;if(pos()===p){$("name").value=v;renderPanel()}renderRoster();queueSave(p.n,600)}
+const fmt=(v,u)=>v==null?"—":(u==="%"?(v>=0?"+":"")+v.toFixed(0)+"%":v.toFixed(0)+"°");
+function renderRoster(){const tb=$("roster"),focus=document.activeElement&&document.activeElement.dataset.n;
+  if(focus)return; // never redraw under the cursor
+  tb.innerHTML="";
+  for(const p of [...DATA].sort((a,b)=>(a.article||99)-(b.article||99)||a.n-b.n)){
+    const tr=document.createElement("tr"),v=p.vals||{},g=tagsOf(p).group;if(!p.article)tr.className="off";
+    const go=document.createElement("button");go.type="button";go.className="go";go.textContent="#"+p.n;
+    go.onclick=()=>{state.i=DATA.indexOf(p);renderAll();window.scrollTo({top:0,behavior:"smooth"})};
+    const td0=document.createElement("td");td0.appendChild(go);tr.appendChild(td0);
+    const td1=document.createElement("td");td1.textContent=p.article?String(p.article)+(p.video?" · видео":""):(g==="age_group"?"любитель":g==="excluded"?"не учит.":"—");tr.appendChild(td1);
+    const td2=document.createElement("td"),inp=document.createElement("input");inp.className="t";inp.dataset.n=p.n;inp.value=nameOf(p);
+    inp.placeholder=p.name_hint?"подсказка: "+p.name_hint:"Имя Фамилия";inp.setAttribute("aria-label","Имя на фото "+p.n);
+    inp.addEventListener("input",()=>{state.names[p.n]=inp.value;if(pos()===p){$("name").value=inp.value;renderHint(p);$("posTitle").textContent=inp.value?`${p.n}. ${inp.value}`:`Фото ${p.n} из ${DATA.length}`}queueSave(p.n,900)});
+    inp.addEventListener("blur",()=>setTimeout(renderRoster,0));
+    td2.appendChild(inp);
+    if(p.name_hint&&nameOf(p)!==p.name_hint){const b=document.createElement("button");b.type="button";b.className="go";b.style.marginLeft="6px";b.textContent="Взять";
+      b.title=p.name_hint+" — "+(p.name_why||"");b.onclick=()=>setName(p,p.name_hint);td2.appendChild(b)}
+    tr.appendChild(td2);
+    for(const [k,u] of [["forearm_tilt"],["trunk"],["shoulder"],["elbow"],["helmet_above_back","%"]]){
+      const td=document.createElement("td");td.className="num";td.textContent=fmt(v[k],u);tr.appendChild(td)}
+    tb.appendChild(tr)}}
 
 function renderAll(){
   const p=pos();
   if($("photo").getAttribute("src")!==p.img){$("photo").src=p.img;$("photo").alt=`Позиция ${p.n}, фото гонщика на Коне`}
   $("canvas").classList.toggle("zoom",state.zoom);$("zoom").textContent=state.zoom?"Уменьшить":"Увеличить";
-  renderChips();renderSvg();renderPanel();
+  renderChips();renderSvg();renderPanel();renderRoster();
 }
 
 function setPoint(k,xy){
@@ -241,10 +306,12 @@ $("zoom").onclick=()=>{state.zoom=!state.zoom;renderAll()};
 $("prev").onclick=()=>{state.i=(state.i+DATA.length-1)%DATA.length;renderAll()};
 $("next").onclick=()=>{state.i=(state.i+1)%DATA.length;renderAll()};
 $("note").addEventListener("input",()=>{const p=pos();state.notes[p.n]=$("note").value;queueSave(p.n,900)});
+$("name").addEventListener("input",()=>{const p=pos();state.names[p.n]=$("name").value;
+  $("posTitle").textContent=$("name").value?`${p.n}. ${$("name").value}`:`Фото ${p.n} из ${DATA.length}`;renderHint(p);renderRoster();queueSave(p.n,900)});
 function tagsOf(p){return Object.assign({group:p.group||null,category:p.category||null},state.tags[p.n]||{})}
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{const p=pos();
   state.tags[p.n]=Object.assign({},state.tags[p.n]||{},{[b.dataset.f]:b.dataset.v});renderPanel();queueSave(p.n,200)});
-document.addEventListener("keydown",ev=>{if(ev.target.tagName==="TEXTAREA")return;
+document.addEventListener("keydown",ev=>{if(ev.target.tagName==="TEXTAREA"||ev.target.tagName==="INPUT")return;
   const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[ev.key];if(!m)return;ev.preventDefault();
   const cur=pts(pos())[state.sel];setPoint(state.sel,[cur[0]+m[0],cur[1]+m[1]]);renderSvg();renderPanel();renderChips();queueSave(pos().n)});
 
@@ -254,14 +321,14 @@ function record(p){
     points_photo_px:Object.fromEntries(Object.entries(P).map(([k,v])=>[k,[+(v[0]+o[0]).toFixed(1),+(v[1]+o[1]).toFixed(1)]])),
     moved:Object.fromEntries(JOINTS.map(([k])=>[k,[+(P[k][0]-p.model[k][0]).toFixed(1),+(P[k][1]-p.model[k][1]).toFixed(1)]])),
     angles:Object.fromEntries(Object.entries(a).map(([k,v])=>[k,+v.toFixed(1)])),
-    note:state.notes[p.n]||"", ...tagsOf(p), updated:new Date().toISOString()};
+    note:state.notes[p.n]||"", name:nameOf(p), ...tagsOf(p), updated:new Date().toISOString()};
 }
 function status(t,cls){const s=$("status");s.textContent=t;s.className="status"+(cls?" "+cls:"")}
 function queueSave(n,delay=500){clearTimeout(saveTimers[n]);saveTimers[n]=setTimeout(()=>save(n),delay)}
 let writing=Promise.resolve();
 function save(n){
   const p=DATA.find(d=>d.n===n);const rec=record(p);
-  try{localStorage.setItem("kona-pt-"+n,JSON.stringify({e:state.edits[n]||{},note:state.notes[n]||""}))}catch(e){}
+  try{localStorage.setItem("kona-pt-"+n,JSON.stringify({e:state.edits[n]||{},note:state.notes[n]||"",name:state.names[n]}))}catch(e){}
   if(!db){status("Сохранено только в этом браузере");return}
   status("Сохраняю…");
   writing=writing.then(()=>db.doc("corrections/p"+String(n).padStart(2,"0")).set(rec))
@@ -275,7 +342,7 @@ function fallback(txt){$("note").value=txt;$("note").select();status("Выдел
 
 // local drafts first, so the page is usable before the store answers
 for(const p of DATA){try{const s=JSON.parse(localStorage.getItem("kona-pt-"+p.n)||"null");
-  if(s){state.edits[p.n]=s.e||{};state.notes[p.n]=s.note||""}}catch(e){}}
+  if(s){state.edits[p.n]=s.e||{};state.notes[p.n]=s.note||"";if(typeof s.name==="string")state.names[p.n]=s.name}}catch(e){}}
 renderAll();status("Подключаюсь к хранилищу…");
 
 (async()=>{
@@ -284,7 +351,7 @@ renderAll();status("Подключаюсь к хранилищу…");
   try{const snap=await db.collection("corrections").get();
     for(const d of snap.docs){const r=d.data();const p=DATA.find(x=>x.n===r.n);if(!p||!r.moved)continue;
       const e={};for(const [k,v] of Object.entries(r.moved)){e[k]=[p.model[k][0]+v[0],p.model[k][1]+v[1]]}
-      state.edits[p.n]=e;state.notes[p.n]=r.note||"";
+      state.edits[p.n]=e;state.notes[p.n]=r.note||"";if(typeof r.name==="string")state.names[p.n]=r.name;
       if(r.group||r.category) state.tags[p.n]={group:r.group||null,category:r.category||null}}
     renderAll();status("Готово. Правки сохраняются автоматически","ok");
   }catch(e){status("Не удалось прочитать сохранённое ("+(e&&e.code||"ошибка")+")","bad")}

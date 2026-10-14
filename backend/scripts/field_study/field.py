@@ -131,11 +131,24 @@ def add(study: dict, photo: str, label: str | None, race: str,
 
 
 def editor(study: dict) -> Path:
-    """The point editor page, data embedded; crops already in <work>/img."""
+    """The point editor page, data embedded; crops already in <work>/img.
+
+    Each photo also carries the athlete's name hint (read from the bib on the
+    frame against the start list, ``name_hint`` / ``name_why``, for Artur to
+    confirm) and, once a rebuild has run, its place in the article and the
+    published values -- the roster card lists them all in one table.
+    """
+    rebuilt = work_dir(study) / "rebuilt.json"
+    placed = ({q["editor_n"]: q for q in json.loads(rebuilt.read_text(encoding="utf-8"))["positions"]}
+              if rebuilt.exists() else {})
     data = [{"n": e["n"], "src_index": e["key"], "photo": e["photo"], "label": e.get("label"),
              "img": f"img/p{e['n']:02d}.webp", "w": e["w"], "h": e["h"], "origin": e["origin"],
              "model": e["model"], "start": e["start"],
-             "group": e.get("group", "pro"), "category": e.get("category")} for e in study["entries"]]
+             "group": e.get("group", "pro"), "category": e.get("category"),
+             "name_hint": e.get("name_hint"), "name_why": e.get("name_why"), "video": bool(e.get("video")),
+             "article": placed[e["n"]]["n"] if e["n"] in placed else None,
+             "vals": ({k: placed[e["n"]][k] for k in SHOWN} if e["n"] in placed else None)}
+            for e in study["entries"]]
     page = (HERE / "editor_template.html").read_text(encoding="utf-8")
     page = page.replace("__DATA__", json.dumps(data, separators=(",", ":")))
     out = work_dir(study) / "editor.html"
