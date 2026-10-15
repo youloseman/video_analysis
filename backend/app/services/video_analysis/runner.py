@@ -1138,6 +1138,26 @@ def analyze_from_frames(
                 summary.get("helmet_check"), cycling_position,
             )
 
+    # Numbers no body can produce leave the report before anything grades,
+    # lists or draws them (plausibility.py) -- the quality gate below then
+    # sees a dropped knee as missing, which is what it is.
+    from app.services.video_analysis.biomechanics.plausibility import (
+        drop_implausible,
+        implausible_warning,
+        position_mismatch,
+    )
+    implausible = drop_implausible(
+        sport_type, cycling_position if is_bike else None, summary, angle_stats,
+        analyzer.angle_history, analyzer.camera_side,
+    )
+    if implausible:
+        summary["implausible"] = implausible
+        quality_warnings.append(implausible_warning(implausible))
+        logger.info("IMPLAUSIBLE_DROPPED", fields=[d["field"] for d in implausible])
+    mismatch = position_mismatch(cycling_position, summary) if is_bike else None
+    if mismatch:
+        quality_warnings.append(mismatch)
+
     # Step 4: partial-analysis quality gate.
     max_valid_frames = max(
         (
@@ -1197,6 +1217,9 @@ def analyze_from_frames(
                 or "The capture quality limited this measurement."
             ),
         }
+    elif mismatch:
+        # Measured right, graded against the wrong position: no number.
+        score_withheld = {"reason": "position_mismatch", "detail": mismatch}
 
     # Step 5: score.
     #
