@@ -61,3 +61,17 @@ def test_run_cadence_and_lean_have_limits_too():
     assert {d["field"] for d in dropped} == {"cadence_spm", "trunk_lean_avg"}
     assert s["ground_contact_ms"] == 101.0 and "trunk_lean" not in hist
     assert P.drop_implausible("run", None, {"cadence_spm": 182.0}, {}, {}, "right") == []
+
+
+def test_a_small_rider_is_told_at_the_top_free_or_paid():
+    """70 % of bike clips in the audit were framed small; the banner by the
+    score says so, and the free result carries what it needs."""
+    from pathlib import Path
+
+    from app.services import result_gating as RG
+    res = {"sport_specific_metrics": {"tracking_stability": {"framing": {
+        "verdict": "small", "subject_height_frac": 0.2757, "subject_height_px": 353}}}}
+    assert RG.quality_block(res)["framing"] == {"verdict": "small", "subject_height_frac": 0.2757}
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert 'id="framingWarn"' in spa and "Accuracy reduced: you\u2019re small in the frame" in spa
+    assert "(r.quality&&r.quality.framing)" in spa

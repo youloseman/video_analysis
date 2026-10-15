@@ -889,6 +889,7 @@
           </div>
         </div>
         <p class="score-none-why hidden" id="scoreWithheld"></p>
+        <p class="score-none-why hidden" id="framingWarn"></p>
         <div class="score-meta" id="scoreMeta"></div>
         <div class="score-bd hidden" id="scoreBd" aria-label="What the score is built from"></div>
         <div class="confwrap hidden" id="confBadge"></div>
@@ -7447,6 +7448,22 @@ function render(job,opts){
          have summarised them.</span>`
       : '';
     wh.classList.toggle('hidden', !withheld);
+  }
+  // Small in the frame: the commonest capture fault (70% of bike clips in the
+  // 2026-10-15 audit) and the root of swapped legs and impossible angles. Said
+  // at the top, next to the number it qualifies -- not only in the list of
+  // capture notes below. Not repeated when the score is withheld already.
+  const fw=$('#framingWarn');
+  if(fw){
+    const fr=((s.tracking_stability||{}).framing)||(r.quality&&r.quality.framing)||null;
+    const small=!withheld && fr && (fr.verdict==='small'||fr.verdict==='tiny');
+    fw.innerHTML = small
+      ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
+         <span><b>Accuracy reduced: you’re small in the frame</b>${fr.subject_height_frac?` (about ${Math.round(fr.subject_height_frac*100)}% of the picture’s height)`:''}.
+         At that size the legs are a few pixels apart and the model can swap them. Film closer or zoom in
+         so you fill most of the height, and the same position will read more reliably.</span>`
+      : '';
+    fw.classList.toggle('hidden', !small);
   }
   setScoreRing('#scoreRing', withheld ? null : r.technique_score);
   // must run before saveToHistory() at the end of render(), or it compares

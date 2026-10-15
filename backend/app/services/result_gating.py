@@ -203,6 +203,11 @@ def quality_block(result: dict[str, Any]) -> dict[str, Any]:
     # to the instructions.
     if result.get("next_steps"):
         block["next_steps"] = list(result["next_steps"])
+    # How small the rider sits in the frame: the report's top banner reads it,
+    # and it is the commonest capture fault -- a free reader needs it most.
+    framing = (metrics.get("tracking_stability") or {}).get("framing")
+    if isinstance(framing, dict) and framing.get("verdict"):
+        block["framing"] = {k: framing.get(k) for k in ("verdict", "subject_height_frac")}
     return block
 
 
