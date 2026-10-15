@@ -43,7 +43,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Flapp">
 <meta property="og:title" content="Flapp — Running &amp; Cycling Form Analysis">
-<meta property="og:description" content="Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — powered by AI pose estimation.">
+<meta property="og:description" content="Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — measured by computer vision, not estimated by eye.">
 <meta property="og:image" content="/og-image.png">
 <meta property="og:url" content="/app">
 <meta name="twitter:card" content="summary_large_image">
@@ -6097,21 +6097,38 @@ function reportFit(rows){
   </table></div>`;
 }
 
+/* The athlete's own pictures, right after the verdict: the evidence for it. */
+function reportFigures(figs){
+  const ok=(figs||[]).filter(f=>f&&typeof f.src==='string'&&f.src.startsWith('data:image/'));
+  if(!ok.length) return '';
+  return `<div class="rr-sec rr-figs">${ok.map(f=>`
+    <figure class="rr-fig rr-fig-${esc(f.kind||'')}"><img src="${f.src}" alt="${esc(f.caption||'')}" loading="lazy">
+      <figcaption>${esc(f.caption||'')}</figcaption></figure>`).join('')}</div>`;
+}
+
 /* `sections` is the server's list; empty optional sections are skipped so a
-   short report reads as short rather than as full of blanks. */
-function renderReportHtml(report, sections, meta){
+   short report reads as short rather than as full of blanks. `figures` (the
+   athlete's frame and kinogram) follow the verdict. */
+function renderReportHtml(report, sections, meta, figures){
   const r=report||{};
+  const figs=reportFigures(figures);
+  let placed=false;
   const bits=(sections||[]).map(s=>{
     const v=r[s.key];
     if(!v || (Array.isArray(v) && !v.length)) return '';
     const body = s.kind==='priorities' ? reportPriorities(v)
                : s.kind==='fit'        ? reportFit(v)
                : reportProse(v);
-    return `<div class="rr-sec"><div class="rr-h">${esc(s.title)}</div>${body}</div>`;
+    const after = (!placed && s.key==='verdict') ? (placed=true, figs) : '';
+    return `<div class="rr-sec"><div class="rr-h">${esc(s.title)}</div>${body}</div>${after}`;
   }).join('');
-  const metaBits=(meta||[]).filter(Boolean).map(m=>`<span>${m}</span>`).join('');
-  return `<div class="rr-wrap">${metaBits?`<div class="rr-meta">${metaBits}</div>`:''}${bits}</div>`;
+  if(!placed && figs) return renderReportHtml.wrap(meta, figs+bits);
+  return renderReportHtml.wrap(meta, bits);
 }
+renderReportHtml.wrap=function(meta, inner){
+  const metaBits=(meta||[]).filter(Boolean).map(m=>`<span>${m}</span>`).join('');
+  return `<div class="rr-wrap">${metaBits?`<div class="rr-meta">${metaBits}</div>`:''}${inner}</div>`;
+};
 
 function reportMeta(ctx, report){
   const c=ctx||{}, r=report||{};
@@ -6189,7 +6206,7 @@ async function openReviewReport(orderId){
       <div class="speedline"></div>
     </div>`
     + renderReportHtml(j.report, j.sections,
-        reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report))
+        reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report), j.figures)
     + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`;
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
 }
@@ -6210,7 +6227,7 @@ async function openSampleReport(){
       <div class="speedline"></div>
     </div>
     <p class="hint" style="text-align:left;max-width:760px;margin:0 auto 22px">A real report for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by a human who has read it.</p>`
-    + renderReportHtml(j.report, j.sections, reportMeta(j.context, j.report))
+    + renderReportHtml(j.report, j.sections, reportMeta(j.context, j.report), j.figures)
     + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See pricing</button></div>`;
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
 }
@@ -6561,7 +6578,10 @@ function exShowPreview(){
     + renderReportHtml(report, d.sections, reportMeta({
         sport:d.sport, kind:(d.analysis||{}).kind, score:(d.analysis||{}).score,
         grade:(d.analysis||{}).grade,
-      }, report));
+      }, report), [
+        (d.media||{}).kinogram ? {src:d.media.kinogram, kind:'kinogram', caption:d.sport==='bike'?'One pedal revolution: the top, the bottom, and 45° either side.':'Five positions of one stride.'} : null,
+        (d.media||{}).keyframe ? {src:d.media.keyframe, kind:'keyframe', caption:'The frame your angles were read on.'} : null,
+      ]);
   host.classList.remove('hidden');
   host.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'});
 }
