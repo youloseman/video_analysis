@@ -374,7 +374,8 @@ _DRAFT = {
     "caveats": "One plane.", "smuggled": "dropped",
 }
 _RESULT = {"sport_type": "bike", "cycling_position": "tt_aero", "technique_score": 67, "letter_grade": "C",
-           "sport_specific_metrics": {"knee_at_bdc": 155.4, "quality_warnings": ["Drive side."]}}
+           "sport_specific_metrics": {"knee_at_bdc": 155.4, "forearm_tilt_avg": 12.9,
+                                      "quality_warnings": ["Drive side."]}}
 
 
 def test_the_draft_is_parsed_from_a_fenced_answer(monkeypatch):
@@ -388,6 +389,8 @@ def test_the_draft_is_parsed_from_a_fenced_answer(monkeypatch):
     assert draft["verdict"].startswith("Your saddle is too high")
     assert "CAPTURE WARNINGS" in seen[0] and "Drive side." in seen[0]
     assert "Never suggest a different helmet" in seen[0]
+    assert "never more\nthan 10 mm at once" in seen[0] and "reads LOW" in seen[0]
+    assert "OUTSIDE THE WHOLE KONA 2026 PRO FIELD" in seen[0] and "Forearm tilt 13" in seen[0]
     report = er.normalize_report(draft, "bike")
     assert "smuggled" not in report and report["fit"][0]["part"] == "Saddle height"
 

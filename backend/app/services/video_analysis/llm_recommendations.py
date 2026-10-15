@@ -968,6 +968,13 @@ on a bike and only where something should actually move (else []). Never call a
 value AT THE LIMIT optimal. Never suggest a different helmet. A torso flatter than
 the band on aero bars is the athlete's trade-off, not a fault. Do not invent
 measurements you were not given.
+Saddle height moves in steps of 5-10 mm, re-filmed between steps -- never more
+than 10 mm at once, whatever total the numbers suggest; say the total as where it
+may end up. Filmed from the drive side (chainring towards the camera), the knee
+at the bottom of the stroke reads LOW -- by up to 8-10 deg on our test bikes -- so
+a high reading there is if anything an underestimate, not a doubt about the
+direction. A reading outside the Kona pro field (listed below when present) is a
+candidate second priority once the first is fixed.
 """
 
 
@@ -989,6 +996,13 @@ def draft_expert_review(result: dict[str, Any]) -> dict[str, Any] | None:
         result.get("detected_issues") or [], result.get("angle_statistics") or {}, summary,
         result.get("fit_plan"), result.get("focus"), result.get("next_steps"),
     )
+    if sport == "bike":
+        from app.services.video_analysis.biomechanics.kona_field import pro_gaps
+        gaps = pro_gaps(position, summary)
+        if gaps:
+            prompt += ("\n\nOUTSIDE THE WHOLE KONA 2026 PRO FIELD (inside the bands): " + "; ".join(
+                f"{g['label']} {g['value']:.0f} (all {g['n']} pros {g['lo']:.0f}-{g['hi']:.0f}, median {g['median']:.0f})"
+                for g in gaps))
     warnings = [str(w) for w in (summary.get("quality_warnings") or result.get("warnings") or [])][:6]
     if warnings:
         prompt += "\n\nCAPTURE WARNINGS (for 'trust'):\n" + "\n".join(f"- {w}" for w in warnings)
