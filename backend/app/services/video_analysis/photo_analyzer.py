@@ -224,8 +224,17 @@ _RUN_HIP_SCORED_NOTES: dict[str, str] = {
 }
 
 
+# Why the knee carries no verdict on a swing frame. Behind ``contact_metrics``.
+_RUN_KNEE_SWING_NOTE = (
+    "Leg is mid-swing — a tightly folded knee here is what a good stride "
+    "looks like (it shortens the lever the hip has to swing), so this "
+    "frame cannot fault it. Use a frame at footstrike for a knee verdict."
+)
+
+
 def _get_running_optimal_ranges(
     gait_phase: str = "uncertain",
+    phased_knee: bool = False,
 ) -> dict[str, tuple[float, float]]:
     """Optimal ranges for a running photo at the detected gait phase.
 
@@ -258,6 +267,21 @@ def _get_running_optimal_ranges(
     band = _RUN_HIP_BANDS.get(gait_phase)
     if band is not None:
         ranges["hip"] = band
+    # ``phased_knee`` (behind contact_metrics): the knee's one wide band was
+    # written when the phase was unknown, and its lower edge (80) faulted the
+    # one thing a swing frame shows -- how far the leg folds. More fold is the
+    # good direction (Folland 2017: a shorter swing lever), and elite runners at
+    # speed fold well past it: a world-class 10,000 m runner's swing frame came
+    # back "needs work" at 63 deg. The phase detector only calls a frame swing
+    # when the knee is already folded (<= 115), so there is no under-folded
+    # swing for a band to catch either. Measured and shown; not scored.
+    #
+    # Footstrike keeps the existing band: the detector's contact window starts
+    # at 140, so (80, 175) is already one-sided there -- it faults only a knee
+    # past 175, which is the near-locked landing RUNNING_REFERENCE names
+    # (>~176 => overstriding).
+    if phased_knee and gait_phase == "swing":
+        ranges.pop("knee", None)
     return ranges
 
 
@@ -510,7 +534,20 @@ _PHOTO_WEIGHTS = {
 #   key -> (acceptable_margin, score points lost per unit outside the band)
 _NON_DEGREE_SCALES: dict[str, tuple[float, float]] = {
     "pelvic_ratio": (0.2, 60.0),
+    # Leg lengths ahead of the hip at footstrike. 250 points per unit: just
+    # past the band (0.20) is amber at ~87, a clear reach (0.35, measured on a
+    # real touchdown) lands at ~50. See _RUN_OVERSTRIDE_BAND.
+    "overstride": (0.05, 250.0),
 }
+
+# Overstride on a running photo at footstrike: the SAME band the video scores
+# against (RUNNING_REFERENCE, Heiderscheit 2011; Souza 2016), so a photo and a
+# clip of one runner cannot disagree about the same reach. Weighted level with
+# the knee: at footstrike it is the reading the instant exists for, and the
+# angles alone never caught it -- a 0.35 reach came back 100/100 "Excellent"
+# because knee 172 and hip 156 both sat inside their bands.
+_RUN_OVERSTRIDE_BAND = RUNNING_REFERENCE["overstride_ratio"]
+_RUN_OVERSTRIDE_WEIGHT = 0.30
 
 _DEFAULT_MARGIN_FLOOR = 3.0
 _DEFAULT_FALLOFF = 2.0
@@ -1088,7 +1125,9 @@ def _generate_photo_thumbnail(
         _hdr_status = "good" if _overall >= 75 else "warn" if _overall >= 60 else "bad"
         _score_text = f"{_overall}/100"
         if score_data.get("partial"):
-            _grade = f"{_grade} · upper body"
+            # The bike's partial score carries no badge text of its own and
+            # keeps the words it always had; the run's names its own.
+            _grade = f"{_grade} · {score_data.get('partial_badge', 'upper body')}"
     _title = (
         "AERODYNAMIC PROFILE"
         if (sport == "bike" and cycling_position in ("tt_aero", "triathlon"))
@@ -1406,33 +1445,65 @@ def _thigh_deviation_deg(landmarks, hip_idx: int, knee_idx: int, forward: float)
     return val if math.isnan(val) else round(val, 1)
 
 
-# Foot strike from the shank-foot angle at contact. Neutral is 90: a smaller
-# angle is a dorsiflexed foot -- toes up, heel first -- and a larger one is
-# plantarflexed, toes down, forefoot first. The five degrees either side of
-# neutral is "midfoot".
+# Foot strike from the foot's angle to the GROUND at contact: heel -> toe
+# against horizontal, positive when the toe is higher than the heel.
 #
-# PROVISIONAL. These are where the physiology says the boundaries should be,
-# not where measured frames put them; BlazePose's heel and toe are its
-# noisiest landmarks, and a thick-soled shoe pulls the ankle up the shin.
-# To be calibrated on broadcast frames before anybody is shown the word
-# (docs/RUN_PHOTO_PLAN_RU.md, 5.2) -- which is why the category travels with
-# the angle it came from and a note saying it is a reading, not a verdict.
-_FOOT_STRIKE_HEEL_BELOW_DEG = 85.0
-_FOOT_STRIKE_FORE_ABOVE_DEG = 95.0
+# The first version read it off the shank-foot angle and got it backwards on
+# exactly the frame it exists for. Shank-foot is measured against the SHIN,
+# and on an overstride the shin leans back -- so the shin's lean and the foot's
+# angle add up. Measured on a real touchdown: shin -15.9 deg, toe +9.4 deg above
+# the heel, shank-foot ~111 deg, read as "forefoot". The landmarks said heel,
+# plainly, and the overstride beside it (0.35) said the same. Foot strike is
+# defined relative to the ground; so is this.
+#
+# Thresholds from Altman & Davis 2012 (Gait & Posture), who classify by foot
+# angle at contact: > 8.1 deg rearfoot, -1.6 to 8.1 midfoot, < -1.6 forefoot.
+# Theirs is relative to a standing calibration frame a single photo does not
+# have, and the image's horizontal is only the ground's if the camera is level
+# -- so the category is provisional, travels with the angle it came from, and
+# carries a note saying it is a reading, not a verdict.
+_FOOT_STRIKE_HEEL_ABOVE_DEG = 8.1
+_FOOT_STRIKE_FORE_BELOW_DEG = -1.6
 
 
-def _foot_strike_from_ankle(ankle_angle: float) -> str | None:
-    if ankle_angle is None or math.isnan(ankle_angle):
+def _foot_strike_from_ground_angle(foot_angle: float) -> str | None:
+    if foot_angle is None or math.isnan(foot_angle):
         return None
-    if ankle_angle < _FOOT_STRIKE_HEEL_BELOW_DEG:
+    if foot_angle > _FOOT_STRIKE_HEEL_ABOVE_DEG:
         return "heel"
-    if ankle_angle > _FOOT_STRIKE_FORE_ABOVE_DEG:
+    if foot_angle < _FOOT_STRIKE_FORE_BELOW_DEG:
         return "forefoot"
     return "midfoot"
 
 
+def _foot_angle_to_ground(
+    nl, heel_i: int, toe_i: int, forward: float, img_w: int, img_h: int,
+) -> float:
+    """Heel -> toe against the image horizontal, in degrees; + = toe up.
+
+    Image-plane landmarks scaled to pixels, so the angle is the one a person
+    would measure on the photo -- normalized x and y are not the same unit on
+    a non-square frame. Signed along the direction of travel, so a runner going
+    left reads the same as one going right. NaN when either landmark is not
+    visible enough, the direction is unknown, or the toe is not ahead of the
+    heel (a foot read backwards is a misread foot, not a reading).
+    """
+    if forward == 0.0 or max(heel_i, toe_i) >= len(nl):
+        return math.nan
+    heel, toe = nl[heel_i], nl[toe_i]
+    if min(getattr(heel, "visibility", 1.0),
+           getattr(toe, "visibility", 1.0)) < _VIS_THRESHOLD:
+        return math.nan
+    along = (toe.x - heel.x) * img_w * forward
+    if along <= 0:
+        return math.nan
+    rise = (heel.y - toe.y) * img_h            # image y grows downwards
+    return math.degrees(math.atan2(rise, along))
+
+
 def _run_contact_metrics(
     wl, camera_side: str, forward: float, angles: dict[str, float],
+    nl=None, img_w: int = 0, img_h: int = 0,
 ) -> dict[str, Any]:
     """What one frame at initial contact can say that no other instant can.
 
@@ -1459,12 +1530,13 @@ def _run_contact_metrics(
         textbook contact.
 
     foot_strike
-        Heel / midfoot / forefoot, from the shank-foot angle already measured
-        for the ankle row. See ``_foot_strike_from_ankle`` for why it is
-        provisional.
+        Heel / midfoot / forefoot, from the foot's angle to the ground (see
+        ``_foot_angle_to_ground`` and why it is not the shank-foot angle).
+        Needs the image-plane landmarks and the frame size; without them it is
+        None rather than a guess.
     """
     _, hip_i, knee_i = RUNNING_PHOTO_ANGLES[camera_side]["hip"]
-    _, ankle_i, _heel_i, _toe_i = RUNNING_PHOTO_ANKLE[camera_side]
+    _, ankle_i, heel_i, toe_i = RUNNING_PHOTO_ANKLE[camera_side]
 
     overstride = math.nan
     if max(hip_i, knee_i, ankle_i) < len(wl):
@@ -1479,18 +1551,21 @@ def _run_contact_metrics(
     shin = calculate_signed_segment_to_vertical(
         wl, knee_i, ankle_i, forward, min_visibility=_VIS_THRESHOLD,
     )
-    ankle_angle = angles.get("ankle", math.nan)
-    strike = _foot_strike_from_ankle(ankle_angle)
+    foot_angle = (
+        _foot_angle_to_ground(nl, heel_i, toe_i, forward, img_w, img_h)
+        if nl is not None and img_w and img_h else math.nan
+    )
 
     return {
         "overstride_ratio": _safe_round(overstride, 3),
         "shin_angle": _safe_round(shin),
-        "foot_strike": strike,
-        "foot_strike_from_ankle_deg": _safe_round(ankle_angle),
+        "foot_strike": _foot_strike_from_ground_angle(foot_angle),
+        "foot_angle_to_ground_deg": _safe_round(foot_angle),
         "foot_strike_note": (
-            "Read from the ankle angle at contact; a category, not a verdict. "
-            "Heel-first is not a fault in itself -- it is the reach that "
-            "comes with it that costs."
+            "Read from the foot's angle to the ground at contact, so it assumes "
+            "the camera was level; a category, not a verdict. Heel-first is "
+            "not a fault in itself -- it is the reach that comes with it that "
+            "costs, and that is the overstride reading."
         ),
     }
 
@@ -2107,12 +2182,16 @@ def analyze_from_pose(
             knee_angle=angles.get("knee"),
         )
 
-        optimal_ranges = _get_running_optimal_ranges(gait_phase)
+        optimal_ranges = _get_running_optimal_ranges(
+            gait_phase, phased_knee=contact_metrics,
+        )
 
         if contact_metrics:
             if gait_phase == "initial_contact":
+                img_h, img_w = image.shape[:2]
                 contact = {"phase": gait_phase, "measured": True,
-                           **_run_contact_metrics(wl, camera_side, forward_sign, angles)}
+                           **_run_contact_metrics(wl, camera_side, forward_sign, angles,
+                                                  nl, img_w, img_h)}
             else:
                 # Not an approximation of the contact readings -- there are
                 # none on this frame. Say which instant it is and what would
@@ -2353,6 +2432,18 @@ def analyze_from_pose(
                 )
             angles_with_context["hip"] = entry
             continue
+        # Run knee on a swing frame (phased_knee): shown, never judged. Without
+        # this branch the generic path below would DROP the row, and the
+        # athlete would lose the number rather than just the verdict.
+        if sport == "run" and angle_name == "knee" and "knee" not in optimal_ranges:
+            angles_with_context["knee"] = {
+                "value": angle_value, "label": lbl, "phase": gait_phase,
+                "optimal_min": None, "optimal_max": None,
+                "status": "phase_dependent",
+                "unscored_reason": "stride position",
+                "note": _RUN_KNEE_SWING_NOTE,
+            }
+            continue
         if angle_name not in optimal_ranges:
             continue
         opt_min, opt_max = optimal_ranges[angle_name]
@@ -2442,10 +2533,47 @@ def analyze_from_pose(
         # (Gabriel's photo, 2026-10-13); it was four measures out of six.
         score_by_phase["uncertain"]["partial"] = "upper body only"
         score_data = score_by_phase[pedal_phase]
+    elif (sport == "run" and contact and contact.get("measured")
+          and contact.get("overstride_ratio") is not None
+          and not math.isnan(contact["overstride_ratio"])):
+        # Footstrike with a measured reach: the reach is scored alongside the
+        # angles. Kept out of ``angles`` on purpose -- that dict is the table
+        # and the picture's labels, and overstride is neither an angle nor
+        # drawable as one; it is reported in the contact block.
+        score_data = _score_photo_angles(
+            {**angles, "overstride": contact["overstride_ratio"]},
+            {**optimal_ranges, "overstride": _RUN_OVERSTRIDE_BAND},
+            sport,
+            {**PHOTO_RUNNING_WEIGHTS, "overstride": _RUN_OVERSTRIDE_WEIGHT},
+        )
+        ratio, (_, hi) = contact["overstride_ratio"], _RUN_OVERSTRIDE_BAND
+        if ratio > hi:
+            # Said in words because it has no line on the picture: a 75 over
+            # five green labels, with the reason nowhere on screen, reads as
+            # the score being wrong.
+            warnings.insert(0, (
+                f"Overstride: your foot lands {ratio:.2f} leg lengths ahead of "
+                f"your hip — under {hi:.2f} is the range (Heiderscheit 2011; "
+                "Souza 2016). A foot reaching out in front brakes every stride. "
+                "It is part of this score, though it has no line on the picture."
+            ))
     else:
         score_data = _score_photo_angles(
             angles, optimal_ranges, sport, None, cycling_position=cycling_position,
         )
+        if sport == "run" and contact_metrics and "knee" not in optimal_ranges:
+            # A swing frame scores trunk, arm and ankle only: the knee and hip
+            # carry no verdict at this instant. The bike learned that a bare
+            # 100 on such a frame reads as a perfect position (Gabriel's photo,
+            # 2026-10-13); a world-class runner's swing frame came back 100 on
+            # three measures out of five. Same flag, in the sport's own words
+            # -- the bike's say "upper body" and "mark the pedal position".
+            score_data["partial"] = "without the knee or hip"
+            score_data["partial_badge"] = "partial"
+            score_data["partial_hint"] = (
+                "a frame at the instant the foot lands scores the knee, the hip "
+                "and the overstride"
+            )
 
     # 7. Thumbnail
     thumbnail_b64: str | None = None

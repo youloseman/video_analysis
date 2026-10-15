@@ -26,10 +26,11 @@ import math
 import pytest
 
 from app.services.video_analysis.photo_analyzer import (
-    _FOOT_STRIKE_FORE_ABOVE_DEG,
-    _FOOT_STRIKE_HEEL_BELOW_DEG,
+    _FOOT_STRIKE_FORE_BELOW_DEG,
+    _FOOT_STRIKE_HEEL_ABOVE_DEG,
     _WITHHELD_MESSAGES,
-    _foot_strike_from_ankle,
+    _foot_angle_to_ground,
+    _foot_strike_from_ground_angle,
     _run_contact_metrics,
     _run_photo_withheld,
 )
@@ -57,27 +58,88 @@ def _pose(*, hip=(0.0, 1.0), knee=(0.0, 0.5), ankle=(0.0, 0.0),
 
 
 # --------------------------------------------------------------------------
-# foot strike, from the ankle angle
+# foot strike, from the foot's angle to the GROUND
 # --------------------------------------------------------------------------
 
 @pytest.mark.parametrize("deg,expected", [
-    (70.0, "heel"), (84.9, "heel"),
-    (85.0, "midfoot"), (90.0, "midfoot"), (95.0, "midfoot"),
-    (95.1, "forefoot"), (115.0, "forefoot"),
+    (20.0, "heel"), (8.2, "heel"),
+    (8.1, "midfoot"), (0.0, "midfoot"), (-1.6, "midfoot"),
+    (-1.7, "forefoot"), (-12.0, "forefoot"),
 ])
 def test_foot_strike_bands(deg, expected):
-    assert _foot_strike_from_ankle(deg) == expected
+    """Altman & Davis 2012: > 8.1 rearfoot, -1.6..8.1 midfoot, < -1.6 forefoot."""
+    assert _foot_strike_from_ground_angle(deg) == expected
 
 
-def test_foot_strike_unknown_when_the_ankle_was_not_measured():
-    assert _foot_strike_from_ankle(math.nan) is None
-    assert _foot_strike_from_ankle(None) is None
+def test_foot_strike_unknown_without_an_angle():
+    assert _foot_strike_from_ground_angle(math.nan) is None
+    assert _foot_strike_from_ground_angle(None) is None
 
 
-def test_the_midfoot_band_straddles_neutral():
-    """Neutral shank-foot is 90. The thresholds are provisional, but whatever
-    they end up as, 90 has to read as midfoot or the category is nonsense."""
-    assert _FOOT_STRIKE_HEEL_BELOW_DEG < 90.0 < _FOOT_STRIKE_FORE_ABOVE_DEG
+def test_a_flat_foot_is_midfoot():
+    assert _FOOT_STRIKE_FORE_BELOW_DEG < 0.0 < _FOOT_STRIKE_HEEL_ABOVE_DEG
+
+
+def _foot(heel, toe, vis=1.0):
+    """Image-plane landmarks with only the left heel (29) and toe (31) set."""
+    lms = [LM(0.5, 0.5) for _ in range(33)]
+    lms[29], lms[31] = LM(*heel, vis), LM(*toe, vis)
+    return lms
+
+
+def test_toe_up_is_positive_and_reads_heel():
+    """Image y grows downwards, so a toe ABOVE the heel has the smaller y."""
+    nl = _foot(heel=(0.50, 0.90), toe=(0.60, 0.88))
+    a = _foot_angle_to_ground(nl, 29, 31, 1.0, 1000, 1000)
+    assert a > 0
+    assert _foot_strike_from_ground_angle(a) == "heel"
+
+
+def test_toe_down_is_negative_and_reads_forefoot():
+    nl = _foot(heel=(0.50, 0.88), toe=(0.60, 0.90))
+    assert _foot_strike_from_ground_angle(
+        _foot_angle_to_ground(nl, 29, 31, 1.0, 1000, 1000)) == "forefoot"
+
+
+def test_running_left_reads_the_same_as_running_right():
+    right = _foot(heel=(0.50, 0.90), toe=(0.60, 0.88))
+    left = _foot(heel=(0.50, 0.90), toe=(0.40, 0.88))
+    assert _foot_angle_to_ground(right, 29, 31, 1.0, 1000, 1000) == pytest.approx(
+        _foot_angle_to_ground(left, 29, 31, -1.0, 1000, 1000))
+
+
+def test_the_angle_is_measured_in_pixels_not_normalized_units():
+    """On a non-square frame normalized x and y are different units. The same
+    landmarks on a 2:1 frame are a flatter foot than on a square one."""
+    nl = _foot(heel=(0.50, 0.90), toe=(0.60, 0.88))
+    square = _foot_angle_to_ground(nl, 29, 31, 1.0, 1000, 1000)
+    wide = _foot_angle_to_ground(nl, 29, 31, 1.0, 2000, 1000)
+    assert wide < square
+
+
+def test_a_foot_read_backwards_is_not_a_reading():
+    """Toe behind the heel along the direction of travel is a misread foot."""
+    nl = _foot(heel=(0.60, 0.90), toe=(0.50, 0.88))
+    assert math.isnan(_foot_angle_to_ground(nl, 29, 31, 1.0, 1000, 1000))
+
+
+def test_an_invisible_foot_is_not_a_reading():
+    nl = _foot(heel=(0.50, 0.90), toe=(0.60, 0.88), vis=0.1)
+    assert math.isnan(_foot_angle_to_ground(nl, 29, 31, 1.0, 1000, 1000))
+
+
+def test_the_shin_does_not_leak_into_the_foot_strike():
+    """The bug this replaced. A real touchdown: shin leaning back 16 deg, toe
+    9.4 deg above the heel. Read against the shin those add up to ~111 deg and
+    came back "forefoot"; read against the ground it is a heel strike, which
+    is what the overstride beside it (0.35) says too. Here the shank leans
+    back hard and the foot is still toe-up: the answer must be heel."""
+    lms = [LM(0.0, 0.0) for _ in range(33)]
+    lms[23], lms[25], lms[27] = LM(0.0, 1.0), LM(0.0, 0.5), LM(0.3, 0.0)
+    nl = _foot(heel=(0.50, 0.90), toe=(0.60, 0.883))      # ~9.6 deg toe-up
+    m = _run_contact_metrics(lms, "left", 1.0, {"ankle": 111.0}, nl, 1000, 1000)
+    assert m["shin_angle"] < -10
+    assert m["foot_strike"] == "heel"
 
 
 # --------------------------------------------------------------------------
@@ -132,10 +194,11 @@ def test_shin_is_absent_without_a_direction_of_travel():
     assert math.isnan(m["shin_angle"])
 
 
-def test_foot_strike_rides_on_the_measured_ankle_angle():
+def test_without_image_landmarks_there_is_no_foot_strike():
+    """No guess from the ankle angle any more: without the image-plane heel
+    and toe the category is absent."""
     m = _run_contact_metrics(_pose(), "left", 1.0, {"ankle": 78.0})
-    assert m["foot_strike"] == "heel"
-    assert m["foot_strike_from_ankle_deg"] == 78.0
+    assert m["foot_strike"] is None
     assert "not a verdict" in m["foot_strike_note"]
 
 

@@ -32,16 +32,22 @@ def _run_pose(knee_deg: float, thigh_forward_deg: float = 30.0):
     the direction of travel resolves. Everything else is filler that stays
     visible and out of the way.
 
-    Image y grows downwards; the world frame mirrors it the way the pedal
-    test does, so the same geometry drives both.
+    Image y grows downwards. The world frame is the image frame recentred and
+    NOT stretched: the overstride and the phase are both read off world
+    landmarks, and a fixture whose world squashes x against y puts the foot
+    somewhere other than where its angles say -- the reach tests below need
+    the thigh and knee to mean what they say.
     """
     hip = np.array([0.45, 0.50])
     thigh_len, shank_len = 0.18, 0.18
     a = math.radians(thigh_forward_deg)
     knee = hip + thigh_len * np.array([math.sin(a), math.cos(a)])
-    # The shank continues from the knee; the internal knee angle is between
-    # thigh (knee->hip) and shank (knee->ankle).
-    b = a + math.radians(180.0 - knee_deg)
+    # Knee flexion swings the shank BACK, as a knee does: a straight leg puts
+    # the ankle on the thigh's line, and bending it brings the foot back
+    # towards (and past) the hip. The internal angle is ``knee_deg`` either
+    # way, which is why the first version, bent the other way, still passed
+    # every phase test -- and would have put every foot far out in front.
+    b = a - math.radians(180.0 - knee_deg)
     ankle = knee + shank_len * np.array([math.sin(b), math.cos(b)])
     shoulder = hip + np.array([0.0, -0.28])
 
@@ -56,7 +62,7 @@ def _run_pose(knee_deg: float, thigh_forward_deg: float = 30.0):
     for j in range(33):
         x, y = pts.get(j, (0.5, 0.1))
         norm.append(SimpleNamespace(x=float(x), y=float(y), z=0.0, visibility=1.0))
-        world.append(SimpleNamespace(x=(float(x) - 0.5) * 1.2, y=(float(y) - 0.5) * 2,
+        world.append(SimpleNamespace(x=float(x) - 0.5, y=float(y) - 0.5,
                                      z=0.0, visibility=1.0))
     return world, norm
 
@@ -128,6 +134,111 @@ def test_on_gives_no_readings_away_from_touchdown_and_says_why():
     assert c["measured"] is False
     assert c["overstride_ratio"] is None and c["shin_angle"] is None
     assert "touchdown" in c["note"]
+
+
+# --------------------------------------------------------------------------
+# the knee on a swing frame, and the partial score it leaves
+# --------------------------------------------------------------------------
+
+def _swing():
+    """Thigh forward, knee folded tight -- the detector's swing."""
+    return _measure(60.0, thigh=35.0, contact_metrics=True)
+
+
+def test_the_fixture_reaches_swing():
+    assert _swing()["gait_phase"] == "swing"
+
+
+def test_off_still_faults_a_tightly_folded_swing_knee():
+    """Today's behaviour, pinned: the one wide band's lower edge (80) marks the
+    fold down. That is the error the flag exists to fix -- a world-class
+    runner's swing frame came back "needs work" at 63 deg."""
+    r = _measure(60.0, thigh=35.0)
+    assert r["angles_with_context"]["knee"]["status"] != "phase_dependent"
+    assert "knee" in r["score"]["per_angle"]
+
+
+def test_on_shows_the_swing_knee_without_judging_it():
+    r = _swing()
+    k = r["angles_with_context"]["knee"]
+    assert k["status"] == "phase_dependent"
+    assert k["value"] == pytest.approx(60.0, abs=2.0)      # the number stays
+    assert "folded" in k["note"]
+    assert "knee" not in r["score"]["per_angle"]
+
+
+def test_on_marks_a_swing_score_as_partial_in_the_runners_words():
+    """A bare 100 on three measures out of five reads as a perfect stride.
+    The bike's words ("upper body", "mark the pedal position") would be wrong
+    here, so the run's carry their own."""
+    sc = _swing()["score"]
+    assert sc["partial"] == "without the knee or hip"
+    assert sc["partial_badge"] == "partial"
+    assert "foot lands" in sc["partial_hint"]
+    assert "pedal" not in sc["partial_hint"]
+
+
+def test_on_footstrike_is_not_partial():
+    assert "partial" not in _measure(165.0, contact_metrics=True)["score"]
+
+
+# --------------------------------------------------------------------------
+# overstride in the score
+# --------------------------------------------------------------------------
+
+def _reaching():
+    """Footstrike on a near-straight leg with the thigh well forward: the foot
+    lands far out in front of the hip."""
+    return _measure(170.0, thigh=30.0, contact_metrics=True)
+
+
+def _under():
+    """Footstrike with the thigh just past the contact threshold and the knee
+    bent to 2 x thigh short of straight: the shank swings back by exactly the
+    thigh's lean, so the ankle lands directly under the hip."""
+    return _measure(140.0, thigh=20.0, contact_metrics=True)
+
+
+def test_the_reach_fixtures_are_both_footstrike():
+    assert _reaching()["gait_phase"] == "initial_contact"
+    assert _under()["gait_phase"] == "initial_contact"
+
+
+def test_overstride_enters_the_score_at_footstrike():
+    r = _measure(165.0, contact_metrics=True)
+    assert "overstride" in r["score"]["per_angle"]
+
+
+def test_overstride_uses_the_videos_band():
+    """A photo and a clip of one runner must not disagree about the same reach."""
+    from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
+    assert PA._RUN_OVERSTRIDE_BAND == RUNNING_REFERENCE["overstride_ratio"]
+
+
+def test_a_clear_reach_costs_the_score_and_is_explained():
+    """The case that came back 100/100 "Excellent" with a 0.35 reach, because
+    the knee and hip both sat inside their bands. The score has to move, and
+    the reason has to be in words -- it has no line on the picture."""
+    r = _reaching()
+    c = r["contact"]
+    assert c["overstride_ratio"] > PA._RUN_OVERSTRIDE_BAND[1]
+    assert r["score"]["per_angle"]["overstride"]["score"] < 100
+    assert r["score"]["overall_score"] < 90
+    assert r["warnings"][0].startswith("Overstride:")
+
+
+def test_a_foot_under_the_hip_is_not_penalised():
+    r = _under()
+    assert r["contact"]["overstride_ratio"] == pytest.approx(0.0, abs=0.02)
+    assert r["score"]["per_angle"]["overstride"]["score"] == 100
+    assert not any(w.startswith("Overstride:") for w in r["warnings"])
+
+
+def test_overstride_stays_out_of_the_angle_table():
+    """It is neither an angle nor drawable as one; it lives in the contact
+    block. In the table it would get a label and an arc it cannot have."""
+    r = _measure(165.0, contact_metrics=True)
+    assert "overstride" not in r["angles_with_context"]
 
 
 def test_on_does_not_touch_the_bike():

@@ -4020,7 +4020,7 @@ function setPhotoPartial(sc){
   const el=$('#pPartial'); if(!el) return;
   const p=sc&&sc.partial;
   el.classList.toggle('hidden',!p);
-  el.textContent=p?`${p} — mark the pedal position below to score the knee and hip`:'';
+  el.textContent=p?`${p} — ${(sc&&sc.partial_hint)||'mark the pedal position below to score the knee and hip'}`:'';
 }
 /* Where to go from here, whatever the score -- the photo's block and the
    clip's. Served with the result (free readers included: it is how to get a
