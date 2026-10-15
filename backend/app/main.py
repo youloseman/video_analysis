@@ -621,6 +621,12 @@ def _process_job(
         )
         if job["status"] == "completed":
             _schedule_ready_mail(job_id)
+            # The clip is kept for weeks; keep it at 1080p (clip_store.py).
+            # Still inside the slot, so encoding never runs beside two analyses.
+            from app.services.clip_store import compress_clip
+            smaller = compress_clip(input_path)
+            if smaller is not None:
+                job["input_path"] = str(smaller)
     except Exception as e:  # noqa: BLE001
         logger.warning("JOB_FAILED", job_id=job_id, err=str(e))
         job["status"] = "failed"
@@ -981,6 +987,9 @@ def _process_pair_job(
             score=safe.get("technique_score"),
         )
         _schedule_ready_mail(job_id)
+        from app.services.clip_store import compress_clip
+        for clip in (left_path, right_path):
+            compress_clip(clip)
     except Exception as e:  # noqa: BLE001
         logger.warning("PAIR_JOB_FAILED", job_id=job_id, err=str(e))
         job["status"] = "failed"
