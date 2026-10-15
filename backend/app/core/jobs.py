@@ -191,6 +191,53 @@ def log_storage_usage(path: Path | None = None) -> float | None:
     return ratio
 
 
+# Below this much free space a new clip is refused with a message instead of
+# written until the write breaks half-way through. The volume was 4.8 GB, 65 %
+# full and filling about 0.7 GB a day when this went in (2026-10-15).
+DISK_REFUSE_FREE_BYTES = 400 * 1024 * 1024
+STORAGE_FULL_MESSAGE = (
+    "We're short of room for new clips right now. Please try again in an hour."
+)
+# The 85 % warning reaches a person, not only the log: at most this often.
+STORAGE_ALERT_EVERY_S = 12 * 3600
+_last_storage_alert = 0.0
+
+
+def disk_refuses_uploads(path: Path | None = None) -> bool:
+    """Whether the volume is too full to take another clip."""
+    try:
+        usage = shutil.disk_usage(path or settings.uploads_dir)
+    except OSError:
+        return False
+    full = usage.free < max(DISK_REFUSE_FREE_BYTES, 0.05 * usage.total)
+    if full:
+        logger.warning("STORAGE_FULL_REFUSING", free_mb=round(usage.free / 2**20),
+                       total_mb=round(usage.total / 2**20))
+    return full
+
+
+def storage_alert(path: Path | None = None, now: float | None = None) -> bool:
+    """Email the admin when the volume is past DISK_WARN_RATIO -- at most once
+    per STORAGE_ALERT_EVERY_S. Blocking (it may send mail): call it through
+    ``run_in_threadpool``. Returns whether a mail went out."""
+    global _last_storage_alert
+    ratio = log_storage_usage(path)
+    if ratio is None or ratio < DISK_WARN_RATIO:
+        return False
+    now = time.time() if now is None else now
+    if now - _last_storage_alert < STORAGE_ALERT_EVERY_S:
+        return False
+    _last_storage_alert = now
+    used, total = storage_usage(path) or (0, 0)
+    from app.services import notify
+
+    text = (f"The video volume is {ratio:.0%} full ({used / 2**30:.1f} of {total / 2**30:.1f} GB). "
+            f"New uploads are refused below {DISK_REFUSE_FREE_BYTES // 2**20} MB free. "
+            "Raise the volume size in Railway (service video-analysis -> Volumes).")
+    return notify.send_email(settings.admin_email, f"Flapp: video storage {ratio:.0%} full",
+                             text, f"<p>{text}</p>")
+
+
 class UploadTooLarge(Exception):
     """An upload ran past its cap. The partial file has already been removed."""
 

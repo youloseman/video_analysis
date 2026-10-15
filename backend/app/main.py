@@ -36,6 +36,7 @@ import math
 import os
 import re
 import secrets
+import errno
 import shutil
 import threading
 import time
@@ -95,8 +96,11 @@ from app.core.jobs import (
     ANALYSIS_SLOTS,
     JOBS,
     SLOT_WAIT_TIMEOUT_S,
+    STORAGE_FULL_MESSAGE,
     UploadTooLarge,
     authorized_job,
+    disk_refuses_uploads,
+    storage_alert,
     delete_job_files,
     job_file,
     pending_jobs,
@@ -1733,6 +1737,12 @@ async def analyze_endpoint(
             f"allowed: {sorted(ALLOWED_SUFFIXES)}",
         )
 
+    # A full volume refuses here, with a sentence, rather than half-way
+    # through the write (core/jobs.disk_refuses_uploads).
+    if await run_in_threadpool(disk_refuses_uploads):
+        await run_in_threadpool(storage_alert)
+        raise HTTPException(503, STORAGE_FULL_MESSAGE)
+
     # The id is minted before the clip is validated now, because streaming it
     # to disk needs somewhere to stream it TO. A rejected upload takes its
     # directory with it -- see the cleanups below.
@@ -1752,12 +1762,16 @@ async def analyze_endpoint(
     except OSError as e:
         delete_job_files(job_id, job_dir)
         logger.warning("UPLOAD_WRITE_FAILED", job_id=job_id, err=str(e))
+        if e.errno == errno.ENOSPC:
+            await run_in_threadpool(storage_alert)
+            raise HTTPException(503, STORAGE_FULL_MESSAGE) from None
         raise HTTPException(
             507, "We couldn't store this clip. Please try again in a moment.",
         ) from None
     if size == 0:
         delete_job_files(job_id, job_dir)
         raise HTTPException(400, "empty upload")
+    await run_in_threadpool(storage_alert)
 
     # The overlay video is a paid unlock. Leave ``overlay_path`` unset for a free
     # caller even when the form asked for one: the worker would skip rendering
@@ -1903,6 +1917,9 @@ async def analyze_pair_endpoint(
             "(backend/models/pose_landmarker_heavy.task)",
         )
 
+    if await run_in_threadpool(disk_refuses_uploads):
+        await run_in_threadpool(storage_alert)
+        raise HTTPException(503, STORAGE_FULL_MESSAGE)
     job_id = uuid.uuid4().hex[:12]
     job_dir = settings.uploads_dir / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -1937,6 +1954,9 @@ async def analyze_pair_endpoint(
         except OSError as e:
             delete_job_files(job_id, job_dir)
             logger.warning("UPLOAD_WRITE_FAILED", job_id=job_id, side=side, err=str(e))
+            if e.errno == errno.ENOSPC:
+                await run_in_threadpool(storage_alert)
+                raise HTTPException(503, STORAGE_FULL_MESSAGE) from None
             raise HTTPException(
                 507, "We couldn't store these clips. Please try again in a moment.",
             ) from None
