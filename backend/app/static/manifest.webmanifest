@@ -1,7 +1,7 @@
 {
   "name": "Flapp — Running & Cycling Form Analysis",
   "short_name": "Flapp",
-  "description": "Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — powered by AI pose estimation.",
+  "description": "Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — measured by computer vision, not estimated by eye.",
   "id": "/app",
   "start_url": "/app?src=pwa",
   "scope": "/",
