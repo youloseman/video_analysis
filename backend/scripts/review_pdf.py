@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.services.expert_review import public_report  # noqa: E402
 from app.services.review_pdf import render_review_html  # noqa: E402
 
 
@@ -46,7 +47,7 @@ def main() -> int:
 
     result = json.loads(Path(a.result).read_text(encoding="utf-8"))
     report = json.loads(Path(a.report).read_text(encoding="utf-8"))
-    report = report.get("report", report)
+    report = public_report(report.get("report", report))
     page = render_review_html(report, result, {
         "athlete": a.athlete, "filmed": a.filmed, "date": a.date,
         "position_label": a.position_label,
@@ -65,8 +66,7 @@ def main() -> int:
                 footer_template=("<div style='width:100%;font:7px IBM Plex Mono,monospace;color:#6E7787;"
                                  "padding:0 15mm;display:flex;justify-content:space-between'>"
                                  "<span>Flapp · Expert Review</span><span><span class='pageNumber'></span>"
-                                 " / <span class='totalPages'></span></span></div>"),
-                margin={"top": "0", "bottom": "10mm", "left": "0", "right": "0"})
+                                 " / <span class='totalPages'></span></span></div>"))
         browser.close()
     print(a.out)
     return 0

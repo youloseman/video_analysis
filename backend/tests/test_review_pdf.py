@@ -28,6 +28,7 @@ RESULT = {
 
 REPORT = {
     "verdict": "Your saddle is **too high**.",
+    "seen": "**The leg runs out at the bottom.** The toes drop.",
     "priorities": [{"title": "Lower the saddle 10 mm", "why": "Knee 155°", "change": "-10 mm", "check": "145–150°"}],
     "fit": [{"part": "Saddle height", "now": "155°", "suggest": "-10 mm", "why": "x", "risk": "y"}],
     "plan": "**Week 1** — saddle down.\n\n**Week 2** — film again.",
@@ -53,8 +54,9 @@ def test_page_carries_the_report_figures_and_escapes_text():
         "athlete": "A", "date": "14 Oct 2026",
         "kinogram": "data:image/jpeg;base64,AAA", "keyframe": "data:image/jpeg;base64,BBB",
     })
-    assert page.count('class="page"') == 4
     assert "<b>too high</b>" in page
+    # the coach first, the numbers after
+    assert page.index("What I see") < page.index("Fix these") < page.index("The numbers behind it")
     assert "data:image/jpeg;base64,AAA" in page and "data:image/jpeg;base64,BBB" in page
     assert "Lower the saddle 10 mm" in page
     assert page.count("class=\"week\"") == 2 and "Saddle down." in page
@@ -65,3 +67,8 @@ def test_page_carries_the_report_figures_and_escapes_text():
 def test_page_renders_without_figures_or_fit():
     page = render_review_html({"verdict": "Fine."}, RESULT, {})
     assert "Kinogram" not in page and "class='fit'" not in page
+
+
+def test_capture_warnings_close_the_numbers_page():
+    page = render_review_html({"verdict": "v"}, RESULT | {"warnings": ["Filmed from the drive side"]}, {})
+    assert page.index("The numbers behind it") < page.index("Filmed from the drive side")

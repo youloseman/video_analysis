@@ -732,11 +732,15 @@ async def my_report(
     sport = entry.get("sport") or _sport_of(order.report)
     return {
         "order": _order_out(order),
-        "report": order.report,
-        "sections": expert_review.sections_for(sport, order.plan),
+        # Without the coach's internal notes to the product.
+        "report": expert_review.public_report(order.report),
+        "sections": expert_review.sections_for(sport, order.plan, report=order.report),
         # Their own frame and kinogram, shown after the verdict.
         "figures": expert_review.review_figures(
             await _analysis_media(db, user.id, order.analysis_client_id), sport),
+        # What the analyzer said about its own capture -- after the coach,
+        # with the numbers, never the coach's job to judge.
+        "capture": "" if expert_review.is_notes_plan(order.plan) else expert_review.capture_notes(entry),
         "context": {
             "sport": sport, "kind": entry.get("kind"),
             "score": entry.get("score"), "grade": entry.get("grade"),
@@ -920,7 +924,7 @@ async def admin_order_detail(
         "history": [_analysis_brief(a) for a in history],
         "report": report,
         "sport": sport,
-        "sections": expert_review.sections_for(sport, order.plan),
+        "sections": expert_review.sections_for(sport, order.plan, report=report, coach=True),
         "missing_required": expert_review.missing_required(report, sport, order.plan),
         # Whether the clip is still on disk. The player is only drawn when it
         # is -- a dead <video> element reads as a broken page, not as "this one

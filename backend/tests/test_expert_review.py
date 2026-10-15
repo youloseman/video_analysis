@@ -89,39 +89,68 @@ def test_priorities_are_capped_because_everything_cannot_be_first():
 # --------------------------------------------------------------------------
 # Prefill — the draft the reviewer opens on
 # --------------------------------------------------------------------------
-def test_prefill_repeats_the_analyzers_own_caveat():
-    draft = er.prefill({"sport": "run", "gated": True, "confidence": "low"})
-    assert "partial" in draft["trust"]
-    assert "low" in draft["trust"]
+def test_capture_notes_repeat_the_analyzers_own_caveat():
+    notes = er.capture_notes({"sport": "run", "gated": True, "confidence": "low"})
+    assert "partial" in notes
+    assert "low" in notes
 
 
-def test_prefill_says_so_when_the_capture_was_clean():
+def test_capture_notes_say_so_when_the_capture_was_clean():
     """Silence would read as 'not assessed'."""
-    entry = {"sport": "run", "gated": False, "confidence": "high"}
-    assert "clean capture" in er.prefill(entry)["trust"]
+    assert "clean capture" in er.capture_notes({"sport": "run", "gated": False, "confidence": "high"})
 
 
 def test_an_entry_with_no_flags_is_not_reported_as_clean():
     """Analyses saved before the flags were persisted look identical to clean
     ones. Calling them clean would invent an all-clear nothing ever gave."""
-    trust = er.prefill({"sport": "run"})["trust"]
-    assert "clean capture" not in trust
-    assert "before capture-quality flags were recorded" in trust
+    notes = er.capture_notes({"sport": "run"})
+    assert "clean capture" not in notes
+    assert "before capture-quality flags were recorded" in notes
 
 
-def test_prefill_survives_the_clients_metrics_being_a_display_list():
+def test_capture_notes_survive_the_clients_metrics_being_a_display_list():
     """``metrics`` on a stored entry is the angle-row list the history card
     renders, not a metrics dict — reading it as one used to 500 the editor."""
     entry = {"sport": "bike", "gated": True,
              "metrics": [{"label": "Right knee", "value": "104°"}]}
-    assert "partial" in er.prefill(entry)["trust"]
+    assert "partial" in er.capture_notes(entry)
 
 
-def test_prefill_seeds_only_the_derived_section():
+def test_the_coach_is_not_asked_to_judge_the_numbers():
+    """Artur, 2026-10-14: the coach's eye leads; how far to trust a measurement
+    is the product's statement (capture_notes), not a section to fill."""
+    keys = [s["key"] for s in er.sections_for("bike", coach=True)]
+    assert "trust" not in keys and "caveats" not in keys
+    assert keys[:2] == ["verdict", "seen"]
+
+
+def test_prefill_seeds_only_the_filming_setup():
     """Seeding judgement sections would invite shipping a report nobody wrote."""
-    draft = er.prefill({"sport": "run"})
-    assert draft["trust"]
-    assert not draft["verdict"] and not draft["priorities"] and not draft["plan"]
+    draft = er.prefill({"sport": "bike"})
+    assert draft["retest"] == er.RETEST_DEFAULT["bike"]
+    assert not draft["verdict"] and not draft["seen"] and not draft["priorities"]
+
+
+# --------------------------------------------------------------------------
+# The coach's internal notes to the product
+# --------------------------------------------------------------------------
+def test_the_disagreement_box_is_stored_but_never_reaches_the_athlete():
+    clean = er.normalize_report({"verdict": "v", "disagree": "knee drawn on the chainring"}, "bike")
+    assert clean["disagree"] == "knee drawn on the chainring"
+    assert "disagree" not in er.public_report(clean)
+    assert "disagree" not in [s["key"] for s in er.sections_for("bike")]
+    assert "disagree" in [s["key"] for s in er.sections_for("bike", coach=True)]
+
+
+def test_a_review_delivered_on_the_old_template_still_reads_whole():
+    old = {"verdict": "v", "trust": "solid", "working": "w", "caveats": "one plane"}
+    keys = [s["key"] for s in er.sections_for("run", report=old)]
+    assert keys.index("trust") == keys.index("verdict") + 1
+    assert keys[-1] == "caveats"
+    # and re-saving it in the editor does not drop them
+    assert er.normalize_report(old, "run")["trust"] == "solid"
+    # a new review never grows them
+    assert "trust" not in [s["key"] for s in er.sections_for("run", report={"verdict": "v"})]
 
 
 def test_prefill_survives_an_order_with_no_analysis_attached():
@@ -182,9 +211,9 @@ async def test_a_new_order_starts_with_no_report(db, make_user):
 # Publishing
 # --------------------------------------------------------------------------
 def test_an_incomplete_report_names_what_is_missing():
-    half = er.normalize_report({"verdict": "written", "trust": "written"}, "run")
+    half = er.normalize_report({"verdict": "written", "working": "written"}, "run")
     missing = er.missing_required(half, "run")
-    assert "What's already working" in missing
+    assert "What I see" in missing
     assert "The verdict" not in missing
 
 
@@ -288,6 +317,21 @@ async def test_a_delivered_review_starts_unread(db, make_user):
     assert _order_out(order)["unread"] is False
 
 
+async def test_the_athletes_copy_leaves_the_coachs_disagreement_out(db, make_user):
+    from app.api.billing import my_report
+
+    user = await make_user()
+    await _apply_event(db, expert_purchase(user.id))
+    order = (await db.execute(select(Order))).scalar_one()
+    order.report = er.SAMPLE_REPORT | {"disagree": "the app drew the far knee"}
+    order.status = ORDER_DELIVERED
+    await db.commit()
+    out = await my_report(order.id, user=user, db=db)
+    assert "disagree" not in out["report"]
+    assert "disagree" not in [s["key"] for s in out["sections"]]
+    assert out["report"]["seen"] == er.SAMPLE_REPORT["seen"]
+
+
 async def test_an_undelivered_order_is_never_unread(db, make_user):
     """`unread` drives a loud card. It must not fire on a draft."""
     from app.api.billing import _order_out
@@ -351,8 +395,10 @@ async def test_the_delivered_report_endpoint_serves_them(db, make_user):
 def test_the_page_draws_them_after_the_verdict_everywhere():
     from pathlib import Path
     spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
-    assert "function renderReportHtml(report, sections, meta, figures)" in spa
+    assert "function renderReportHtml(report, sections, meta, figures, capture)" in spa
     assert "s.key==='verdict'" in spa
     # the athlete's copy, the sample, and the reviewer's preview
-    assert spa.count("j.report), j.figures)") == 2
+    assert spa.count("j.report), j.figures") == 2
+    # internal sections never render on the athlete's page or in the preview
+    assert "filter(s=>!s.internal)" in spa
     assert "{src:d.media.kinogram, kind:'kinogram'" in spa

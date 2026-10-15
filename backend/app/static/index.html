@@ -6073,7 +6073,7 @@ async function renderOrders(){
    Section metadata (titles, order, which apply to which sport) comes from the
    server — see services/expert_review.py — so the template has one definition.
    ============================================================ */
-const PRIO_LABELS={title:'What', why:'Why it matters', change:'What to change', check:"How you'll know it worked"};
+const PRIO_LABELS={title:'What', why:'What I see, and why it matters', change:'What to do', check:"How you'll know it worked"};
 const FIT_COLS=[['part','Part'],['now','Now'],['suggest','Suggested'],['why','Why'],['risk','Trade-off']];
 
 function reportProse(md){ return `<div class="rr-body">${mdToHtml(md||'')}</div>`; }
@@ -6108,12 +6108,16 @@ function reportFigures(figs){
 
 /* `sections` is the server's list; empty optional sections are skipped so a
    short report reads as short rather than as full of blanks. `figures` (the
-   athlete's frame and kinogram) follow the verdict. */
-function renderReportHtml(report, sections, meta, figures){
+   athlete's frame and kinogram) follow the verdict. `capture` -- what the
+   analyzer said about its own clip -- closes it, after the coach: judging the
+   measurement is the product's job, not the coach's. Internal sections (the
+   coach's notes to the product) never render here. */
+function renderReportHtml(report, sections, meta, figures, capture){
   const r=report||{};
   const figs=reportFigures(figures);
   let placed=false;
-  const bits=(sections||[]).map(s=>{
+  const tail=capture?`<div class="rr-sec"><div class="rr-h">About the measurements</div>${reportProse(capture)}</div>`:'';
+  const bits=(sections||[]).filter(s=>!s.internal).map(s=>{
     const v=r[s.key];
     if(!v || (Array.isArray(v) && !v.length)) return '';
     const body = s.kind==='priorities' ? reportPriorities(v)
@@ -6121,7 +6125,7 @@ function renderReportHtml(report, sections, meta, figures){
                : reportProse(v);
     const after = (!placed && s.key==='verdict') ? (placed=true, figs) : '';
     return `<div class="rr-sec"><div class="rr-h">${esc(s.title)}</div>${body}</div>${after}`;
-  }).join('');
+  }).join('')+tail;
   if(!placed && figs) return renderReportHtml.wrap(meta, figs+bits);
   return renderReportHtml.wrap(meta, bits);
 }
@@ -6206,7 +6210,7 @@ async function openReviewReport(orderId){
       <div class="speedline"></div>
     </div>`
     + renderReportHtml(j.report, j.sections,
-        reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report), j.figures)
+        reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report), j.figures, j.capture)
     + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`;
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
 }
@@ -6346,7 +6350,8 @@ async function exLoadClip(orderId){
 
 function exFieldHtml(s, report){
   const req=s.required?' <span class="ex-req" title="required before sending">*</span>':'';
-  const head=`<label for="ex_${s.key}">${esc(s.title)}${req}</label><p class="ex-hint">${esc(s.hint||'')}</p>`;
+  const tag=s.internal?' <span class="ex-pill">internal · not sent</span>':'';
+  const head=`<label for="ex_${s.key}">${esc(s.title)}${req}${tag}</label><p class="ex-hint">${esc(s.hint||'')}</p>`;
   if(s.kind==='priorities'){
     const rows=report[s.key]||[];
     return `<div class="ex-fld">${head}${Array.from({length:EX_PRIO_SLOTS},(_,i)=>{
@@ -6575,7 +6580,7 @@ function exShowPreview(){
   const host=$('#exPreviewHost');
   const report=exCollect();
   host.innerHTML=`<div class="rr-h">Preview — exactly what the athlete sees</div>`
-    + renderReportHtml(report, d.sections, reportMeta({
+    + renderReportHtml(report, (d.sections||[]).filter(s=>!s.internal), reportMeta({
         sport:d.sport, kind:(d.analysis||{}).kind, score:(d.analysis||{}).score,
         grade:(d.analysis||{}).grade,
       }, report), [

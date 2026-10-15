@@ -130,21 +130,28 @@ _LOGO = ('<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><pa
          'transform="translate(5.05 0) skewX(-11)"/></svg>')
 
 _CSS = """
-@page{size:A4;margin:0}
+@page{size:A4;margin:14mm 0 16mm}
+@page:first{margin-top:0}
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{font:9.6pt/1.55 'Manrope','Segoe UI',sans-serif;color:#1E2530;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page{width:210mm;min-height:297mm;padding:14mm 15mm 18mm;position:relative;page-break-after:always;break-after:page}
-.page:last-child{page-break-after:auto;break-after:auto}
+html{margin:0;padding:0}
+body{margin:0;padding:0 15mm;font:9.6pt/1.55 'Manrope','Segoe UI',sans-serif;color:#1E2530;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.numbers{break-before:page}
+.head{margin:22px 0 0;break-after:avoid}
+.lead{color:#5C6675;margin:0 0 12px}
+.seen p{border-left:3px solid #2F6DE0;padding:2px 0 2px 12px;margin:0 0 10px;break-inside:avoid}
+.working{background:#E6F4EC;border-radius:8px;padding:12px 16px;margin:16px 0 0;break-inside:avoid}
+.working h3{color:#1F7A45}
+.working p:last-child{margin:0}
+ul{margin:0 0 8px;padding-left:18px}
 .mono{font-family:'IBM Plex Mono',monospace}
 .eyebrow{font:500 7.6pt 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#6E7787;margin:0 0 6px}
 h1,h2,h3{font-family:'Archivo','Arial Black',sans-serif;font-style:italic;font-weight:800;color:#14294B;margin:0;letter-spacing:-.01em}
 h2{font-size:19pt;margin:0 0 4px}
-h3{font-size:11.5pt;margin:0 0 4px}
+h3{font-size:11.5pt;margin:0 0 4px;break-after:avoid}
 .speed{height:3px;width:58px;background:linear-gradient(90deg,#2F6DE0,#F1553F);border-radius:2px;margin:6px 0 14px}
 p{margin:0 0 8px}
 /* cover */
-.cover-band{background:#14294B;color:#fff;margin:-14mm -15mm 0;padding:12mm 15mm 10mm;position:relative;overflow:hidden}
+.cover-band{background:#14294B;color:#fff;margin:0 -15mm;padding:12mm 15mm 10mm;position:relative;overflow:hidden}
 .cover-band:after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,#2F6DE0,#F1553F)}
 .brand{display:flex;align-items:center;gap:8px;font:italic 900 15pt 'Archivo',sans-serif;letter-spacing:-.01em}
 .brand .dot{color:#F1553F}
@@ -154,23 +161,17 @@ p{margin:0 0 8px}
 .ring{width:118px;height:118px}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:9.4pt}
 .facts dt{font:500 7.6pt 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#6E7787;padding-top:2px}
-.facts dd{margin:0;color:#1E2530;font-weight:600}
+.facts dd{margin:0;color:#fff;font-weight:600}
 .verdict{background:#F3F5F8;border-left:4px solid #F1553F;padding:12px 16px;margin:14px 0 14px;font-size:11pt;line-height:1.55}
 .verdict p:last-child{margin:0}
 .fig{margin:0 0 6px}
 .fig img{display:block;width:100%;border-radius:6px}
 .cap{font-size:8pt;color:#6E7787;margin:4px 0 0}
-.glance{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 0}
-.tile{background:#F3F5F8;border-radius:8px;padding:12px 14px;border-top:3px solid #DCE2EA}
-.tile.good{border-top-color:#2E9E5B}.tile.bad{border-top-color:#F1553F}.tile.blue{border-top-color:#2F6DE0}
-.tile .big{font:italic 900 24pt/1.1 'Archivo',sans-serif;color:#14294B}
-.tile .big.txt{font-size:13pt;line-height:1.25;margin-top:4px}
-.tile .big small{font-size:12pt;color:#5C6675}
-.tile .lbl{font-size:9pt;color:#1E2530;font-weight:600;margin-top:2px}
 /* numbers */
 table.nums{width:100%;border-collapse:collapse;margin:4px 0 10px}
 .nums th{font:500 7.2pt 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#6E7787;text-align:left;padding:0 6px 6px;border-bottom:1px solid #DCE2EA}
-.nums td{padding:6px;border-bottom:1px solid #EEF1F5;vertical-align:middle}
+.nums td{padding:3px 6px;border-bottom:1px solid #EEF1F5;vertical-align:middle}
+.nums td:first-child{width:40mm}
 .nums td.v{font:600 10.5pt 'IBM Plex Mono',monospace;white-space:nowrap}
 .nums td.band,.nums td.pro{font:9pt 'IBM Plex Mono',monospace;color:#5C6675;white-space:nowrap}
 .chip{display:inline-block;font:600 7.4pt 'IBM Plex Mono',monospace;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap}
@@ -181,7 +182,7 @@ table.nums{width:100%;border-collapse:collapse;margin:4px 0 10px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .card{background:#F3F5F8;border-radius:8px;padding:12px 14px}
 .card p:last-child{margin:0}
-.kf{display:grid;grid-template-columns:62mm 1fr;gap:14px;align-items:start}
+.kf{display:grid;grid-template-columns:46mm 1fr;gap:14px;align-items:start}
 .kf img{width:100%;border-radius:6px;display:block}
 /* priorities */
 .prio{display:grid;grid-template-columns:34px 1fr;gap:12px;border:1px solid #DCE2EA;border-radius:8px;padding:12px 14px;margin:0 0 10px;break-inside:avoid}
@@ -197,11 +198,11 @@ table.fit{width:100%;border-collapse:collapse;font-size:8.8pt;margin:4px 0 12px}
 .weeks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 14px}
 .week{background:#F3F5F8;border-radius:8px;padding:10px 11px;border-top:3px solid #2F6DE0;font-size:8.8pt}
 .week b.w{display:block;font:italic 800 10.5pt 'Archivo',sans-serif;color:#14294B;margin-bottom:4px}
-.retest{border:1.5px dashed #2F6DE0;border-radius:8px;padding:12px 14px;margin:0 0 12px;background:#EAF1FC}
+.retest{border:1.5px dashed #2F6DE0;border-radius:8px;padding:12px 14px;margin:0 0 12px;background:#EAF1FC;break-inside:avoid}
 .sign{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid #DCE2EA}
 .sign .who{font:italic 800 12pt 'Archivo',sans-serif;color:#14294B}
 .sign .bio{font-size:8.6pt;color:#5C6675}
-.sec{margin:0 0 14px;break-inside:avoid}
+.sec{margin:16px 0 0;break-inside:avoid}
 """
 
 
@@ -231,28 +232,25 @@ def _weeks(plan: str) -> str:
     return f'<div class="weeks">{"".join(cards)}</div>'
 
 
-def _glance(rows: list[dict[str, Any]], priorities: list[dict[str, Any]]) -> str:
-    """Three tiles under the kinogram: how many angles sit in range, which
-    are off, and the first change -- the review in one line of sight."""
-    graded = [x for x in rows if x["status"] in ("good", "warn", "bad")]
-    if not graded:
+def _capture(result: dict[str, Any], meta: dict[str, Any]) -> str:
+    """What the analyzer said about its own clip: given, or its warnings."""
+    if meta.get("capture"):
+        return _md(meta["capture"])
+    s = result.get("sport_specific_metrics") or {}
+    warns = [str(w) for w in (result.get("warnings") or s.get("quality_warnings") or []) if w][:5]
+    if not warns:
         return ""
-    off = [x for x in graded if x["status"] != "good"]
-    first = (priorities[0].get("title") if priorities else "") or ""
-    tiles = [
-        ("In range", f"{len(graded) - len(off)}<small> of {len(graded)}</small>", "angles inside their range", "good"),
-        ("Worth a look", str(len(off)), ", ".join(x["label"].split(" · ")[0] for x in off) or "nothing outside", "bad" if off else "good"),
-    ]
-    out = [f"<div class='tile {c}'><div class='eyebrow'>{_e(k)}</div><div class='big'>{v}</div><div class='lbl'>{_e(lbl)}</div></div>"
-           for k, v, lbl, c in tiles]
-    if first:
-        out.append(f"<div class='tile blue'><div class='eyebrow'>Change first</div><div class='big txt'>{_e(first)}</div></div>")
-    return "<div class='glance'>" + "".join(out) + "</div>"
+    return "<ul>" + "".join(f"<li>{_e(w)}</li>" for w in warns) + "</ul>"
 
 
 def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dict[str, Any]) -> str:
     """The whole document. ``meta``: athlete, date, kinogram / keyframe data URIs,
-    and optionally ``position_label`` and ``filmed``."""
+    and optionally ``position_label``, ``filmed`` and ``capture`` (Markdown).
+
+    The coach first, the numbers last (Artur, 2026-10-14): the review is a
+    coach's eye on the clip, and the measured angles are the appendix that
+    supports it -- not the page the coach reacts to.
+    """
     r = report or {}
     rows = metric_rows(result)
     side = result.get("camera_side")
@@ -261,7 +259,7 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
         ("Position", meta.get("position_label") or str(result.get("cycling_position") or "").replace("_", " ")),
         ("Filmed", meta.get("filmed")),
         ("Camera", f"{side} side" + (" · chainring side" if side == "right" else "") if side else None),
-        ("Reviewed by", r.get("reviewer")),
+        ("Coach", r.get("reviewer")),
         ("Delivered", meta.get("date")),
     ]
     facts_html = "".join(f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in facts if v)
@@ -277,7 +275,7 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
     prios = "".join(
         f"<div class='prio'><div class='n'>{i}</div><div><h3>{_e(p.get('title'))}</h3><dl>"
         + "".join(f"<dt>{lbl}</dt><dd>{_e(p.get(k))}</dd>" for k, lbl in
-                  (("why", "Why"), ("change", "What to change"), ("check", "How you'll know")) if p.get(k))
+                  (("why", "What I see"), ("change", "What to do"), ("check", "How you'll know")) if p.get(k))
         + "</dl></div></div>"
         for i, p in enumerate(r.get("priorities") or [], 1))
     fit = r.get("fit") or []
@@ -288,54 +286,49 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
 
     kino = meta.get("kinogram")
     kf = meta.get("keyframe")
-    sec = lambda t, body, eyebrow="": (f"<div class='sec'>{f'<div class=eyebrow>{_e(eyebrow)}</div>' if eyebrow else ''}"  # noqa: E731
-                                       f"<h3>{_e(t)}</h3>{body}</div>") if body else ""
 
-    page1 = f"""
-<section class="page">
+    def head(eyebrow: str, title: str) -> str:
+        return f"<div class='head'><div class='eyebrow'>{_e(eyebrow)}</div><h2>{_e(title)}</h2><div class='speed'></div></div>"
+
+    def sec(title: str, body: str) -> str:
+        return f"<div class='sec'><h3>{_e(title)}</h3>{body}</div>" if body else ""
+
+    coach = f"""
+<section class="coach">
   <div class="cover-band">
     <div class="brand">{_LOGO}<span>Flapp<span class="dot">.</span></span></div>
     <h1>Expert Review</h1>
-    <div class="sub">Your position, read by a coach — with the numbers it rests on.</div>
-    <div class="cover-grid">{_ring(result.get('technique_score'), result.get('letter_grade'))}<dl class="facts" style="color:#fff">{facts_html.replace('<dd>', '<dd style="color:#fff">')}</dl></div>
+    <div class="sub">Your position, read by a coach.</div>
+    <div class="cover-grid">{_ring(result.get('technique_score'), result.get('letter_grade'))}<dl class="facts">{facts_html}</dl></div>
   </div>
   <div class="eyebrow" style="margin-top:16px">The verdict</div>
   <div class="verdict">{_md(r.get('verdict'))}</div>
   {f'<div class="eyebrow">One pedal revolution · top, bottom and 45° either side</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure>' if kino else ''}
-  {_glance(rows, r.get('priorities') or [])}
+  {head("The coach's read", "What I see") + f"<div class='seen'>{_md(r.get('seen'))}</div>" if r.get('seen') else ''}
+  {f"<div class='working'><h3>What's already working</h3>{_md(r.get('working'))}</div>" if r.get('working') else ''}
+  {head('The plan', 'Fix these, in this order') + prios if prios else ''}
+  {sec('Position changes', fit_html)}
+  {sec("Don't change this", _md(r.get('dont_change')))}
+  {head('Next four weeks', 'What to do, week by week') + _weeks(r.get('plan')) if r.get('plan') else ''}
+  {f'<div class="retest"><div class="eyebrow" style="color:#2459C2">Film again</div>{_md(r.get("retest"))}</div>' if r.get('retest') else ''}
+  <div class="sign">{_LOGO.replace('#FFFFFF', '#14294B')}<div><div class="who">{_e(r.get('reviewer'))}</div>
+    <div class="bio">{_e(r.get('reviewer_bio'))}{' · ' if r.get('reviewer_bio') else ''}Flapp Expert Review · getflapp.com</div></div></div>
 </section>"""
 
-    page2 = f"""
-<section class="page">
-  <div class="eyebrow">Your numbers</div><h2>Where you sit</h2><div class="speed"></div>
+    numbers = f"""
+<section class="numbers">
+  {head('Appendix', 'The numbers behind it')}
+  <p class="lead">Measured by Flapp from your clip. Your coach used them as support — where the eye and the numbers disagree, the review follows the eye.</p>
   <div class="legend"><span><i><svg width="26" height="10"><rect x="1" y="1" width="24" height="8" rx="2" fill="#E6F4EC" stroke="#2E9E5B"/></svg></i>Flapp range</span>
     <span><i><svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#14294B" stroke-width="3" stroke-linecap="round"/></svg></i>Kona 2026 pros, middle half · tick = median</span>
     <span><i><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#2F6DE0"/></svg></i>You</span></div>
   <table class="nums"><tr><th>Angle</th><th>You</th><th></th><th>Range</th><th>Pros</th><th></th></tr>{num_rows}</table>
   <div class="kf">
     {f'<div><img src="{kf}" alt="The frame the angles were read on"><p class="cap">The frame your angles were read on.</p></div>' if kf else '<div></div>'}
-    <div>{sec('How much to trust these numbers', _md(r.get('trust')))}{sec("What's already working", _md(r.get('working')))}</div>
+    <div>{sec('About the measurements', _capture(result, meta))}{sec('How much to trust these numbers', _md(r.get('trust')))}{sec("What this footage couldn't tell", _md(r.get('caveats')))}</div>
   </div>
-</section>"""
-
-    page3 = f"""
-<section class="page">
-  <div class="eyebrow">The plan</div><h2>Fix these, in this order</h2><div class="speed"></div>
-  {prios}
-  {sec('Position changes', fit_html) if fit_html else ''}
-  {sec("Don't change this", _md(r.get('dont_change')))}
-</section>"""
-
-    page4 = f"""
-<section class="page">
-  <div class="eyebrow">Next four weeks</div><h2>What to do, week by week</h2><div class="speed"></div>
-  {_weeks(r.get('plan'))}
-  <div class="retest"><div class="eyebrow" style="color:#2459C2">Film again</div>{_md(r.get('retest'))}</div>
-  {sec("What this footage couldn't tell me", _md(r.get('caveats')))}
-  <div class="sign">{_LOGO.replace('#FFFFFF', '#14294B')}<div><div class="who">{_e(r.get('reviewer'))}</div>
-    <div class="bio">{_e(r.get('reviewer_bio'))}{' · ' if r.get('reviewer_bio') else ''}Flapp Expert Review · getflapp.com</div></div></div>
-</section>"""
+</section>""" if rows else ""
 
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Flapp Expert Review</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>{_CSS}</style></head><body>{page1}{page2}{page3}{page4}</body></html>"""
+<style>{_CSS}</style></head><body>{coach}{numbers}</body></html>"""

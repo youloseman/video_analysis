@@ -1,16 +1,22 @@
 """The Expert Review deliverable: one report template, three consumers.
 
-The Expert Review is a human reading the machine's output. That framing is
-the whole design here, and it decides the shape of the template:
+The Expert Review is a coach's eye on the athlete's clip. That framing is the
+whole design here, and it decides the shape of the template:
 
-* The expert does NOT write from scratch. The automated analysis already
-  produced angles, a score and AI coaching -- what a buyer is paying for is
-  *judgment on top of it*: which of those numbers to trust, which single thing
-  actually matters, and what to leave alone. Sections are worded as reactions to
-  the analysis, and ``prefill`` seeds the one section that can be derived.
-* It has to be fillable in ~20 minutes. At this price a review that takes two
-  hours is a hobby, not a product, so every section is short and several are
-  lists. (The amount itself lives in services/pricing.py, never here.)
+* The coach leads, the numbers support (Artur, 2026-10-14). The app already
+  gave the athlete angles, a score and automated advice; what the review buys
+  is what a person sees that those cannot -- rhythm, tension, how the position
+  will hold up after two hours, what to leave alone -- and the experience to
+  rank it. A measured angle appears in the coach's text only in brackets, to
+  back up something they saw. It used to be the other way round: sections
+  worded as reactions to the analysis, starting with "how much to trust these
+  numbers". Judging MediaPipe is the product's job, so that part is now
+  generated (``capture_notes``) and sits with the numbers, after the coach.
+* Where the coach's eye and the app disagree, the coach wins on the page and
+  says so privately (the ``internal`` section): that disagreement is the best
+  bug report the product gets, and it never reaches the athlete.
+* It has to be fillable in well under an hour. Every section is short and
+  several are lists. (The amount itself lives in services/pricing.py.)
 * The reviewer can watch the clip. That was not true for most of this file's
   life -- uploads expired six hours after the analysis, so a review bought on
   Tuesday for Monday's ride had only the stored entry and its annotated
@@ -18,7 +24,7 @@ the whole design here, and it decides the shape of the template:
   analysis (``services.retention``), so the sections can assume a human has
   seen the movement rather than a single frame of it. A clip past its retention
   window, or deleted by its owner, is still possible -- the reviewer's screen
-  simply shows no player, and the ``caveats`` section is where that goes.
+  simply shows no player.
 
 The section list is defined once, here, and drives all three renderings -- the
 admin editor, the athlete's copy, and the sample shown on the pricing page --
@@ -47,37 +53,46 @@ MAX_REVIEWER_BIO_CHARS = 140
 #   "prose"      -> one Markdown block
 #   "priorities" -> ordered list of {title, why, change, check}
 #   "fit"        -> table of {part, now, suggest, why, risk}   (cycling only)
+#   "internal": True -> stored with the report, shown only in the editor:
+#                       never in the athlete's copy, the PDF or the sample.
 SECTIONS: tuple[dict[str, Any], ...] = (
     {
         "key": "verdict",
         "title": "The verdict",
         "kind": "prose",
         "required": True,
-        "hint": "Two or three sentences. The one thing they should walk away "
-                "with. Write it last.",
+        "hint": "Two or three sentences in your own words: the one thing they "
+                "should walk away with. Write it last. No numbers needed.",
     },
     {
-        "key": "trust",
-        "title": "How much to trust these numbers",
+        "key": "seen",
+        "title": "What I see",
         "kind": "prose",
         "required": True,
-        "hint": "Which measurements are solid and which to discount, and why. "
-                "Pre-filled from the capture quality — edit it, don't just ship it.",
+        "hint": "Your eye on the clip, not the table. Three to five things the "
+                "app can't measure: rhythm and smoothness, tension in the "
+                "shoulders and neck, the head, rocking, how the foot works, "
+                "left–right differences, whether the position looks holdable "
+                "for the race distance. A number only in brackets, to back up "
+                "what you saw.",
     },
     {
         "key": "working",
         "title": "What's already working",
         "kind": "prose",
         "required": True,
-        "hint": "Name it explicitly. This is what stops them 'fixing' something "
-                "that was fine.",
+        "hint": "What is already right, by eye and by experience. Name it — "
+                "this is what stops them 'fixing' something that was fine.",
     },
     {
         "key": "priorities",
         "title": "Fix these, in this order",
         "kind": "priorities",
         "required": True,
-        "hint": "One to three. Ranked. If everything is a priority, nothing is.",
+        "hint": "One to three, ranked, from your experience. Start from what "
+                "you see; the app's number, if any, goes in brackets. If your "
+                "eye and the app disagree, follow your eye (and say so in the "
+                "internal box at the end).",
     },
     {
         "key": "fit",
@@ -101,27 +116,41 @@ SECTIONS: tuple[dict[str, Any], ...] = (
         "title": "Don't change this",
         "kind": "prose",
         "required": False,
-        "hint": "The anti-list. Especially useful when the AI coaching flagged "
-                "something you disagree with.",
+        "hint": "The anti-list — including anything the automated report told "
+                "them that you wouldn't do.",
     },
     {
         "key": "retest",
         "title": "When to film again",
         "kind": "prose",
         "required": True,
-        "hint": "A date and what to compare. A review with no re-test is a "
-                "one-off opinion.",
+        "hint": "Pre-filled with the standard setup — change the timing or "
+                "what to look at if this athlete needs something else.",
     },
     {
-        "key": "caveats",
-        "title": "What this footage couldn't tell me",
+        "key": "disagree",
+        "title": "Where I disagree with the app",
         "kind": "prose",
         "required": False,
-        "hint": "Honest limits: one plane, one speed, no force data, no history.",
+        "internal": True,
+        "hint": "Never shown to the athlete. Where the app's numbers or advice "
+                "don't match what you see on the clip: a joint drawn in the "
+                "wrong place, a range that flatters or punishes, a verdict "
+                "you'd overturn. This goes straight to the product.",
     },
 )
 
-SECTION_BY_KEY = {s["key"]: s for s in SECTIONS}
+# Sections the template no longer asks for, kept so a review delivered with
+# them still shows them (Artur, 2026-10-14: the coach stopped judging the
+# numbers -- capture_notes does that now -- and the footage's limits went with it).
+LEGACY_SECTIONS: tuple[dict[str, Any], ...] = (
+    {"key": "trust", "title": "How much to trust these numbers", "kind": "prose",
+     "required": False, "after": "verdict"},
+    {"key": "caveats", "title": "What this footage couldn't tell me", "kind": "prose",
+     "required": False, "after": None},
+)
+
+SECTION_BY_KEY = {s["key"]: s for s in (*SECTIONS, *LEGACY_SECTIONS)}
 
 # --------------------------------------------------------------------------
 # Coach Notes: the rung below the Expert Review.
@@ -208,8 +237,8 @@ def notes_text(report: dict[str, Any] | None) -> str:
 PRIORITY_FIELDS = ("title", "why", "change", "check")
 PRIORITY_LABELS = {
     "title": "What",
-    "why": "Why it matters",
-    "change": "What to change",
+    "why": "What I see, and why it matters",
+    "change": "What to do",
     "check": "How you'll know it worked",
 }
 FIT_FIELDS = ("part", "now", "suggest", "why", "risk")
@@ -220,24 +249,42 @@ FIT_LABELS = {
 
 
 def sections_for(
-    sport: str | None, plan: str | None = PLAN_EXPERT,
+    sport: str | None, plan: str | None = PLAN_EXPERT, *,
+    report: dict[str, Any] | None = None, coach: bool = False,
 ) -> tuple[dict[str, Any], ...]:
     """The sections of this product that apply to this sport.
 
     Coach Notes has one section list whatever the sport; the Expert Review's
-    fit table is cycling-only.
+    fit table is cycling-only. ``coach`` adds the internal sections (the
+    editor, and storing them); without it the list is what the athlete sees.
+    A ``report`` written on the old template brings its retired sections
+    back in, where they used to sit, so a delivered review still reads whole.
     """
     if is_notes_plan(plan):
         return NOTES_SECTIONS
-    return tuple(
+    out = [
         s for s in SECTIONS
-        if not s.get("sports") or (sport or "run") in s["sports"]
-    )
+        if (not s.get("sports") or (sport or "run") in s["sports"])
+        and (coach or not s.get("internal"))
+    ]
+    for legacy in LEGACY_SECTIONS:
+        if not (report or {}).get(legacy["key"]):
+            continue
+        keys = [s["key"] for s in out]
+        at = keys.index(legacy["after"]) + 1 if legacy["after"] in keys else len(out)
+        out.insert(at, legacy)
+    return tuple(out)
+
+
+def public_report(report: dict[str, Any] | None) -> dict[str, Any]:
+    """The report without its internal sections -- what may leave the editor."""
+    internal = {s["key"] for s in SECTIONS if s.get("internal")}
+    return {k: v for k, v in (report or {}).items() if k not in internal}
 
 
 def blank_report(sport: str | None = None, plan: str | None = PLAN_EXPERT) -> dict[str, Any]:
     out: dict[str, Any] = {"version": REPORT_VERSION, "reviewer": ""}
-    for s in sections_for(sport, plan):
+    for s in sections_for(sport, plan, coach=True):
         out[s["key"]] = [] if s["kind"] in ("priorities", "fit") else ""
     return out
 
@@ -248,8 +295,8 @@ def blank_report(sport: str | None = None, plan: str | None = PLAN_EXPERT) -> di
 def _quality_sentences(entry: dict[str, Any]) -> list[str]:
     """Read the stored analysis for anything that qualifies its own numbers.
 
-    Deliberately conservative: this is a DRAFT for a human to correct, so it
-    states what the pipeline reported and stops. It never invents a judgement.
+    Deliberately conservative: it states what the pipeline reported and
+    stops. It never invents a judgement.
 
     Note ``entry["metrics"]`` is the client's *display* list of angle rows, not
     a metrics dict -- the quality flags live at the top level, saved alongside
@@ -266,8 +313,7 @@ def _quality_sentences(entry: dict[str, Any]) -> list[str]:
     if "gated" not in entry and "confidence" not in entry and not warnings:
         return [
             "This analysis was saved before capture-quality flags were "
-            "recorded, so there is nothing automated to go on here — judge the "
-            "reliability from the frame yourself."
+            "recorded, so there is no automated read on how clean it was."
         ]
 
     lines: list[str] = []
@@ -287,17 +333,42 @@ def _quality_sentences(entry: dict[str, Any]) -> list[str]:
     return lines
 
 
+def capture_notes(entry: dict[str, Any] | None) -> str:
+    """What the analyzer said about its own capture, for the athlete's copy.
+
+    Shown after the coach, with the numbers: how far to trust a measurement
+    is the product's statement, not the coach's.
+    """
+    return "\n".join(_quality_sentences(entry)) if entry else ""
+
+
+RETEST_DEFAULT = {
+    "bike": (
+        "Film again in four weeks, once the changes have settled: the same "
+        "bike and trainer, side-on from the side away from the chainring, the "
+        "camera level at hip height and close enough that you fill most of the "
+        "frame, helmet on. We'll compare it with this clip."
+    ),
+    "run": (
+        "Film again in four weeks with the same setup: the same treadmill or "
+        "stretch of road, the same easy pace, side-on, the camera level at hip "
+        "height and close enough that you fill most of the frame. We'll "
+        "compare it with this clip."
+    ),
+}
+
+
 def prefill(entry: dict[str, Any] | None, plan: str | None = PLAN_EXPERT) -> dict[str, Any]:
     """A starting draft for an order, given the athlete's stored analysis.
 
-    Only ``trust`` is seeded -- it is the one section that is genuinely derived
-    rather than judged. Seeding the rest would invite shipping a report nobody
-    actually wrote. Coach Notes seeds nothing: every line of it is judgement.
+    Only ``retest`` is seeded -- the standard filming setup, which the coach
+    adjusts rather than writes. Seeding the judgement sections would invite
+    shipping a report nobody actually wrote. Coach Notes seeds nothing.
     """
     sport = (entry or {}).get("sport") or "run"
     draft = blank_report(sport, plan)
-    if entry and not is_notes_plan(plan):
-        draft["trust"] = "\n".join(_quality_sentences(entry))
+    if not is_notes_plan(plan):
+        draft["retest"] = RETEST_DEFAULT["bike" if sport == "bike" else "run"]
     return draft
 
 
@@ -335,7 +406,7 @@ def normalize_report(
         "reviewer": _clip(raw.get("reviewer"), MAX_REVIEWER_CHARS),
         "reviewer_bio": _clip(raw.get("reviewer_bio"), MAX_REVIEWER_BIO_CHARS),
     }
-    for s in sections_for(sport, plan):
+    for s in sections_for(sport, plan, report=raw, coach=True):
         key, kind = s["key"], s["kind"]
         if kind == "priorities":
             out[key] = _rows(raw.get(key), PRIORITY_FIELDS, MAX_PRIORITIES)
@@ -357,7 +428,7 @@ def missing_required(
     """
     report = report if isinstance(report, dict) else {}
     return [
-        s["title"] for s in sections_for(sport, plan)
+        s["title"] for s in sections_for(sport, plan, coach=True)
         if s.get("required") and not report.get(s["key"])
     ]
 
@@ -367,7 +438,7 @@ def is_empty(report: Any) -> bool:
     if not isinstance(report, dict):
         return True
     return not any(
-        report.get(s["key"]) for s in (*SECTIONS, *NOTES_SECTIONS)
+        report.get(s["key"]) for s in (*SECTIONS, *LEGACY_SECTIONS, *NOTES_SECTIONS)
     ) and not report.get("reviewer")
 
 
@@ -516,27 +587,33 @@ SAMPLE_REPORT: dict[str, Any] = {
         "that long reach, not the cause. Fix where the foot lands and the cadence "
         "will come up on its own."
     ),
-    "trust": (
-        "The joint angles here are solid — tracking was clean through the whole "
-        "clip and the near-side leg is fully visible.\n\n"
-        "Two numbers I'd treat loosely: **ground contact time**, because a "
-        "treadmill belt flatters it by 5–10 ms, and **vertical oscillation**, "
-        "which is measured at the hip and will read slightly high if the camera "
-        "wasn't exactly level. Neither changes what I've written below."
+    "seen": (
+        "**You reach for the ground.** Watch the front foot: it lands out in "
+        "front of you with the knee nearly straight, and you can see the whole "
+        "body check slightly on every contact — a small brake, every step (the "
+        "app has your shin about 12° past vertical at landing).\n\n"
+        "**The rhythm is a beat slow, and that's the reach, not your legs.** A "
+        "long step takes time to come back from; shorten where the foot lands "
+        "and the turnover follows.\n\n"
+        "**Your upper body is quiet.** No shoulder lift, no twisting, hands "
+        "relaxed. That's rarer than it sounds at an easy pace.\n\n"
+        "**The left and right sides look the same** from here — no limp, no "
+        "one arm working harder than the other."
     ),
     "working": (
-        "Your trunk position is genuinely good — 8° of forward lean from the "
-        "ankle, held steady across the whole clip. Most runners at your level "
-        "either run stacked upright or break at the waist; you do neither.\n\n"
+        "Your posture is genuinely good: a slight lean from the ankles, held "
+        "the same from the first step of the clip to the last. Most runners at "
+        "your level either run stacked upright or break at the waist; you do "
+        "neither.\n\n"
         "Arm carriage is relaxed and symmetric. Leave both alone."
     ),
     "priorities": [
         {
             "title": "Land closer to your hips",
-            "why": "Your shin is ~12° past vertical at contact, which puts the "
-                   "foot in front of your centre of mass. Every step applies a "
-                   "small brake, and the load goes through a straight knee — "
-                   "that's where the shin-splint history comes from.",
+            "why": "The foot lands out in front with a straight knee, so every "
+                   "step brakes and the shock goes up through the shin — in my "
+                   "experience that's exactly where shin splints come from in "
+                   "runners who move like this (app: shin ~12° past vertical).",
             "change": "Don't reach for the ground with the front leg. Think "
                       "about pulling the foot back underneath you just before "
                       "it lands. Cue: 'land under the hip'.",
@@ -545,9 +622,9 @@ SAMPLE_REPORT: dict[str, Any] = {
         },
         {
             "title": "Let cadence rise on its own — to about 172",
-            "why": "You're at 163. Chasing 180 with the current landing just "
-                   "makes you shuffle. Once the reach is gone, a shorter step "
-                   "raises turnover for free.",
+            "why": "Chasing 180 with the current landing just makes you "
+                   "shuffle — I see it all the time. Once the reach is gone, a "
+                   "shorter step raises turnover for free (app: 163 spm).",
             "change": "Run 4×2 min at 170–174 spm with a metronome, easy pace, "
                       "once a week. Don't hold it for a whole run yet.",
             "check": "170+ feels unremarkable rather than rushed.",
@@ -581,15 +658,10 @@ SAMPLE_REPORT: dict[str, Any] = {
     ),
     "retest": (
         "Film again in four weeks, same setup: same treadmill, same camera "
-        "height, same easy pace. Compare shin angle at contact first, cadence "
-        "second. Ignore the overall score — it moves for reasons that have "
-        "nothing to do with what we're working on."
-    ),
-    "caveats": (
-        "This is one plane, one speed, one clip. I can't see rotation, hip drop "
-        "or anything about how you land when tired — and tired form is what "
-        "actually injures people. If the shin pain comes back on long runs "
-        "specifically, that's a different question and a fresh clip at the end "
-        "of one would tell us more than this did."
+        "height, same easy pace — and a second clip at the end of a long run, "
+        "because tired form is what actually injures people and I can't see it "
+        "here. I'll look at where the foot lands first, the rhythm second. "
+        "Ignore the overall score — it moves for reasons that have nothing to "
+        "do with what we're working on."
     ),
 }
