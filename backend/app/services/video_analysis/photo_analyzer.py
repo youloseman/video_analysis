@@ -281,6 +281,19 @@ _WITHHELD_MESSAGES = {
         "bike is in front of the leg, or the model found someone else in the "
         "frame. One rider, full side view, leg against a plain background."
     ),
+    # Running. Same rule as the bike's, in the sport's own words.
+    "run_leg_not_measured": (
+        "No score: the leg nearest the camera could not be measured, so this "
+        "photo cannot say anything about the stride. Usually another runner or "
+        "an object is in front of it, or the model found someone else in the "
+        "frame. One runner, full side view, both legs clear of the background."
+    ),
+    "stride_phase_uncertain": (
+        "No score: this frame was caught between the moments a stride can be "
+        "judged at. The angles depend on which instant of the cycle the camera "
+        "froze, and this one is neither a foot landing nor a push-off. A frame "
+        "at the instant the foot touches down is the one that says most."
+    ),
 }
 
 
@@ -296,6 +309,28 @@ def _bike_photo_withheld(angles: dict[str, float]) -> str | None:
     knee = angles.get("knee")
     if knee is None or math.isnan(knee):
         return "leg_not_measured"
+    return None
+
+
+def _run_photo_withheld(angles: dict[str, float], gait_phase: str) -> str | None:
+    """Why a running photo gets no score at all, or None if it gets one.
+
+    The bike path has refused a number without a measured knee since the
+    quality gate; the run path had no such rule, so a frame the detector
+    could not place in the stride was still handed a score built on bands
+    chosen for a phase nobody could name. Two refusals, in order of what the
+    athlete can do about them:
+
+    * no knee -- nothing about the stride can be said, same as the bike;
+    * phase ``uncertain`` -- the knee was measured but the frame sits between
+      the instants a stride is judged at, and every band would be a guess.
+      The hip is already left unscored here; the score as a whole now is too.
+    """
+    knee = angles.get("knee")
+    if knee is None or math.isnan(knee):
+        return "run_leg_not_measured"
+    if gait_phase == "uncertain":
+        return "stride_phase_uncertain"
     return None
 
 
@@ -1371,6 +1406,95 @@ def _thigh_deviation_deg(landmarks, hip_idx: int, knee_idx: int, forward: float)
     return val if math.isnan(val) else round(val, 1)
 
 
+# Foot strike from the shank-foot angle at contact. Neutral is 90: a smaller
+# angle is a dorsiflexed foot -- toes up, heel first -- and a larger one is
+# plantarflexed, toes down, forefoot first. The five degrees either side of
+# neutral is "midfoot".
+#
+# PROVISIONAL. These are where the physiology says the boundaries should be,
+# not where measured frames put them; BlazePose's heel and toe are its
+# noisiest landmarks, and a thick-soled shoe pulls the ankle up the shin.
+# To be calibrated on broadcast frames before anybody is shown the word
+# (docs/RUN_PHOTO_PLAN_RU.md, 5.2) -- which is why the category travels with
+# the angle it came from and a note saying it is a reading, not a verdict.
+_FOOT_STRIKE_HEEL_BELOW_DEG = 85.0
+_FOOT_STRIKE_FORE_ABOVE_DEG = 95.0
+
+
+def _foot_strike_from_ankle(ankle_angle: float) -> str | None:
+    if ankle_angle is None or math.isnan(ankle_angle):
+        return None
+    if ankle_angle < _FOOT_STRIKE_HEEL_BELOW_DEG:
+        return "heel"
+    if ankle_angle > _FOOT_STRIKE_FORE_ABOVE_DEG:
+        return "forefoot"
+    return "midfoot"
+
+
+def _run_contact_metrics(
+    wl, camera_side: str, forward: float, angles: dict[str, float],
+) -> dict[str, Any]:
+    """What one frame at initial contact can say that no other instant can.
+
+    Overstride, shin angle and foot strike are all DEFINED at the moment the
+    foot meets the ground; at toe-off or mid-swing they are not approximate,
+    they are meaningless. So the caller only asks for this when the phase
+    detector has placed the frame at ``initial_contact``, and every value here
+    is NaN or None rather than a number whenever its landmarks cannot be read.
+
+    overstride_ratio
+        ``|ankle_x - hip_x| / leg length``, leg length as hip->knee->ankle so a
+        bent knee does not shorten it. Ported from the video analyzer's
+        ``_compute_overstride_ratio`` -- the same quantity at one contact
+        instead of the median over several. Under the hip reads ~0.0-0.15;
+        past ~0.20 the foot is reaching out ahead, which is the braking
+        heel-first landing the word describes. World landmarks (metres), as
+        the video uses, so it is independent of body size and camera distance.
+
+    shin_angle
+        The knee->ankle segment from vertical, SIGNED by the direction of
+        travel: positive is the knee ahead of the ankle, negative is the ankle
+        ahead of the knee -- a shin leaning back towards the camera, which is
+        what a reaching foot looks like from the side. Vertical is the
+        textbook contact.
+
+    foot_strike
+        Heel / midfoot / forefoot, from the shank-foot angle already measured
+        for the ankle row. See ``_foot_strike_from_ankle`` for why it is
+        provisional.
+    """
+    _, hip_i, knee_i = RUNNING_PHOTO_ANGLES[camera_side]["hip"]
+    _, ankle_i, _heel_i, _toe_i = RUNNING_PHOTO_ANKLE[camera_side]
+
+    overstride = math.nan
+    if max(hip_i, knee_i, ankle_i) < len(wl):
+        hip, knee, ankle = wl[hip_i], wl[knee_i], wl[ankle_i]
+        if min(getattr(hip, "visibility", 1.0),
+               getattr(ankle, "visibility", 1.0)) >= _VIS_THRESHOLD:
+            leg_len = (math.dist((hip.x, hip.y), (knee.x, knee.y))
+                       + math.dist((knee.x, knee.y), (ankle.x, ankle.y)))
+            if leg_len > 1e-3:
+                overstride = abs(ankle.x - hip.x) / leg_len
+
+    shin = calculate_signed_segment_to_vertical(
+        wl, knee_i, ankle_i, forward, min_visibility=_VIS_THRESHOLD,
+    )
+    ankle_angle = angles.get("ankle", math.nan)
+    strike = _foot_strike_from_ankle(ankle_angle)
+
+    return {
+        "overstride_ratio": _safe_round(overstride, 3),
+        "shin_angle": _safe_round(shin),
+        "foot_strike": strike,
+        "foot_strike_from_ankle_deg": _safe_round(ankle_angle),
+        "foot_strike_note": (
+            "Read from the ankle angle at contact; a category, not a verdict. "
+            "Heel-first is not a fault in itself -- it is the reach that "
+            "comes with it that costs."
+        ),
+    }
+
+
 def _estimate_run_gait_phase(thigh_dev: float, knee_angle: float) -> str:
     """Which instant of the stride a single running frame caught.
 
@@ -1838,6 +1962,7 @@ def analyze_photo(
     sport: str,
     cycling_position: str | None = None,
     hide_angle_values: bool = False,
+    contact_metrics: bool = False,
 ) -> dict[str, Any]:
     """Analyze a single photo for body position feedback.
 
@@ -1867,6 +1992,7 @@ def analyze_photo(
         pose_result["camera_side"], list(pose_result["warnings"]),
         sport, cycling_position, hide_angle_values=hide_angle_values,
         silhouette_top=pose_result.get("silhouette_top"),
+        contact_metrics=contact_metrics,
     )
     response["processing_time_seconds"] = round(time.time() - start_time, 3)
 
@@ -1896,8 +2022,16 @@ def analyze_from_pose(
     render_thumbnail: bool = True,
     silhouette_top: list[float | None] | None = None,
     helmet_offsets: dict[int, tuple[float, float]] | None = None,
+    contact_metrics: bool = False,
 ) -> dict[str, Any]:
     """The measuring half of :func:`analyze_photo`: angles, score, picture.
+
+    ``contact_metrics`` (running only): also apply the run "no score" rule
+    and, on a frame at initial contact, measure overstride, shin angle and
+    foot strike (``_run_contact_metrics``). Off by default so that nothing an
+    athlete sees changes until the readings have been checked on real frames
+    -- the field-study tool and admin accounts pass True. With it off this
+    function is byte-for-byte what it was.
 
     Takes what :func:`detect_pose_in_image` found -- the decoded image, the
     world and image-plane landmarks, the camera side and the capture warnings
@@ -1926,6 +2060,10 @@ def analyze_from_pose(
     pedal_phase: str | None = None  # Only set for cycling
     gait_phase: str = "uncertain"   # Only meaningful for running
     thigh_dev: float = math.nan     # Only measured for running
+    # Running, behind ``contact_metrics``: the contact-instant readings, or
+    # why there are none. Stays None for every other sport and for callers
+    # that did not ask.
+    contact: dict[str, Any] | None = None
 
     if sport == "run":
         for name, (a, b, c) in RUNNING_PHOTO_ANGLES[camera_side].items():
@@ -1970,6 +2108,26 @@ def analyze_from_pose(
         )
 
         optimal_ranges = _get_running_optimal_ranges(gait_phase)
+
+        if contact_metrics:
+            if gait_phase == "initial_contact":
+                contact = {"phase": gait_phase, "measured": True,
+                           **_run_contact_metrics(wl, camera_side, forward_sign, angles)}
+            else:
+                # Not an approximation of the contact readings -- there are
+                # none on this frame. Say which instant it is and what would
+                # have them.
+                contact = {
+                    "phase": gait_phase, "measured": False,
+                    "overstride_ratio": None, "shin_angle": None,
+                    "foot_strike": None,
+                    "note": (
+                        "Overstride, shin angle and foot strike exist only at "
+                        "the instant the foot lands. This frame is "
+                        f"{'between phases' if gait_phase == 'uncertain' else 'at ' + gait_phase.replace('_', ' ')}"
+                        "; a frame at touchdown would have them."
+                    ),
+                }
 
     elif sport == "bike":
         # Image-plane landmarks, the same source the VIDEO bike path moved to
@@ -2257,7 +2415,12 @@ def analyze_from_pose(
     # rider's correction of the guessed one changes the number as well as the
     # table -- the server stays the only scorer.
     score_by_phase: dict[str, dict[str, Any]] | None = None
-    withheld = _bike_photo_withheld(angles) if sport == "bike" else None
+    if sport == "bike":
+        withheld = _bike_photo_withheld(angles)
+    elif sport == "run" and contact_metrics:
+        withheld = _run_photo_withheld(angles, gait_phase)
+    else:
+        withheld = None
     if withheld:
         score_data = {"overall_score": None, "grade": None, "per_angle": {},
                       "withheld": withheld}
@@ -2332,6 +2495,8 @@ def analyze_from_pose(
 
     if sport == "run":
         response["gait_phase"] = gait_phase
+        if contact_metrics:
+            response["contact"] = contact
         # Tell the athlete how to get the verdict the frame could not give,
         # rather than leaving a silent gap in the table.
         if "hip" not in optimal_ranges:

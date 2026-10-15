@@ -147,6 +147,12 @@ class Settings:
     # nothing else changes; delivered notes stay readable. For the week the
     # one person who writes them cannot.
     coach_notes_enabled: bool = True
+    # Running photos: the metrics a frame at initial contact can give --
+    # overstride, shin angle, foot strike -- and the "no score" rule for a frame
+    # caught between phases. OFF for everyone until they have been checked on
+    # real broadcast frames (docs/RUN_PHOTO_PLAN_RU.md); admin accounts see
+    # them regardless, which is how they get checked. RUN_CONTACT_METRICS=1.
+    run_contact_metrics: bool = False
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
     public_base_url: str | None = None
@@ -313,6 +319,7 @@ def _load_settings() -> Settings:
         ),
         coach_notes_enabled=(os.environ.get("COACH_NOTES_ENABLED") or "1").strip().lower()
         not in ("0", "false", "no", "off"),
+        run_contact_metrics=_bool_env("RUN_CONTACT_METRICS", Settings.run_contact_metrics),
         stripe_price_unlock=os.environ.get("STRIPE_PRICE_UNLOCK") or None,
         expert_review_slots_per_week=_int_env(
             "EXPERT_REVIEW_SLOTS_PER_WEEK", Settings.expert_review_slots_per_week,
