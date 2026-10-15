@@ -734,6 +734,9 @@ async def my_report(
         "order": _order_out(order),
         "report": order.report,
         "sections": expert_review.sections_for(sport, order.plan),
+        # Their own frame and kinogram, shown after the verdict.
+        "figures": expert_review.review_figures(
+            await _analysis_media(db, user.id, order.analysis_client_id), sport),
         "context": {
             "sport": sport, "kind": entry.get("kind"),
             "score": entry.get("score"), "grade": entry.get("grade"),
@@ -1235,6 +1238,7 @@ def expert_review_sample() -> dict[str, Any]:
         "context": expert_review.SAMPLE_CONTEXT,
         "report": expert_review.SAMPLE_REPORT,
         "sections": expert_review.sections_for(expert_review.SAMPLE_SPORT),
+        "figures": expert_review.SAMPLE_FIGURES,
     }
 
 

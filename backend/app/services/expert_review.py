@@ -381,6 +381,29 @@ def is_empty(report: Any) -> bool:
 # either; the one paragraph the reviewer wrote as the takeaway is exactly what
 # earns the click.
 # --------------------------------------------------------------------------
+def review_figures(media: dict[str, Any] | None, sport: str | None) -> list[dict[str, str]]:
+    """The athlete's own pictures, for the delivered review.
+
+    A $39 review used to arrive as text only, while the most convincing thing
+    a reviewer has is the picture: a kinogram where the leg is plainly straight
+    at the bottom says "saddle too high" before a word is read. The frame the
+    angles were read on, and the kinogram when there is one; both from the
+    stored result, at full detail -- the buyer paid for the review, so they are
+    not the free reader.
+    """
+    m = media or {}
+    out: list[dict[str, str]] = []
+    # The kinogram first, full width: the whole movement is the argument.
+    if isinstance(m.get("kinogram"), str) and m["kinogram"].startswith("data:image/"):
+        out.append({"src": m["kinogram"], "kind": "kinogram",
+                    "caption": ("One pedal revolution: the top, the bottom, and 45° either side."
+                                if sport == "bike" else "Five positions of one stride.")})
+    if isinstance(m.get("keyframe"), str) and m["keyframe"].startswith("data:image/"):
+        out.append({"src": m["keyframe"], "kind": "keyframe",
+                    "caption": "The frame your angles were read on."})
+    return out
+
+
 def _first_paragraph(md: str, limit: int = 320) -> str:
     para = (md or "").strip().split("\n\n")[0].replace("\n", " ").strip()
     # Strip the Markdown emphasis markers; this is going into a mail client.
@@ -481,6 +504,8 @@ SAMPLE_CONTEXT = {
     "grade": "C",
     "when": "a 10-second treadmill clip at easy pace",
 }
+# Pictures for the sample, drawn after its verdict like a delivered review's.
+SAMPLE_FIGURES: list[dict[str, str]] = []
 SAMPLE_REPORT: dict[str, Any] = {
     "version": REPORT_VERSION,
     "reviewer": "Artur Podgornyi",

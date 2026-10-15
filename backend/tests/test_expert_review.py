@@ -311,3 +311,48 @@ async def test_a_delivered_order_with_no_report_still_claims_none(db, make_user)
     order.status = ORDER_DELIVERED
     await db.commit()
     assert _order_out(order)["has_report"] is False
+
+
+# --------------------------------------------------------------------------
+# The athlete's own pictures in the delivered review (2026-10-15): a $39
+# review arrived as text only, while a kinogram with the leg straight at the
+# bottom says "saddle too high" before a word is read.
+# --------------------------------------------------------------------------
+KF = "data:image/jpeg;base64,AAAA"
+KINO = "data:image/jpeg;base64,BBBB"
+
+
+def test_the_review_carries_the_frame_and_the_kinogram():
+    figs = er.review_figures({"keyframe": KF, "kinogram": KINO}, "bike")
+    assert [f["kind"] for f in figs] == ["kinogram", "keyframe"]
+    assert "pedal revolution" in figs[0]["caption"]
+    assert "stride" in er.review_figures({"kinogram": KINO}, "run")[0]["caption"]
+    assert er.review_figures({"keyframe": None, "kinogram": "http://x/y.jpg"}, "bike") == []
+
+
+async def test_the_delivered_report_endpoint_serves_them(db, make_user):
+    from app.api.billing import my_report
+    from app.models.analysis import Analysis
+
+    user = await make_user()
+    db.add(Analysis(user_id=user.id, client_id="h1", created_at_ms=1, sport="bike", kind="video",
+                    data={"sport": "bike", "kind": "video"},
+                    result={"keyframe_base64": KF, "kinogram_base64": KINO}))
+    await db.commit()
+    await _apply_event(db, expert_purchase(user.id, analysis="h1"))
+    order = (await db.execute(select(Order))).scalar_one()
+    order.report = er.normalize_report({"verdict": "Lower the saddle."}, "bike")
+    order.status = ORDER_DELIVERED
+    await db.commit()
+    out = await my_report(order.id, user, db)
+    assert [f["src"] for f in out["figures"]] == [KINO, KF]
+
+
+def test_the_page_draws_them_after_the_verdict_everywhere():
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "function renderReportHtml(report, sections, meta, figures)" in spa
+    assert "s.key==='verdict'" in spa
+    # the athlete's copy, the sample, and the reviewer's preview
+    assert spa.count("j.report), j.figures)") == 2
+    assert "{src:d.media.kinogram, kind:'kinogram'" in spa
