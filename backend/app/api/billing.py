@@ -1079,6 +1079,40 @@ async def admin_update_order(
     }
 
 
+@admin_router.post("/admin/orders/{order_id}/draft")
+async def admin_draft_report(
+    order_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """An AI first draft of an Expert Review, for the reviewer to correct.
+
+    Returned, never saved: it fills the editor, and only what the reviewer
+    then saves and publishes is theirs. Coach Notes get none -- every line of
+    those is the coach's own eye.
+    """
+    order = _require_review_order(await db.get(Order, order_id))
+    if expert_review.is_notes_plan(order.plan):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Coach Notes are written by hand.")
+    row = None
+    if order.analysis_client_id:
+        row = (await db.execute(select(Analysis).where(
+            Analysis.user_id == order.user_id,
+            Analysis.client_id == order.analysis_client_id))).scalar_one_or_none()
+    result = (row.result if row is not None else None) or {}
+    if not result:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "This analysis has no stored result to draft from.")
+    from app.services.video_analysis.llm_recommendations import draft_expert_review
+
+    draft = await run_in_threadpool(draft_expert_review, result)
+    if not draft:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY,
+                            "The draft could not be written right now. Try again in a minute.")
+    sport = result.get("sport_type") or (row.sport if row is not None else None) or "run"
+    return {"report": expert_review.normalize_report(draft, sport, order.plan)}
+
+
 @admin_router.post("/admin/orders/{order_id}/publish")
 async def admin_publish_report(
     order_id: int,

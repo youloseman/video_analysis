@@ -947,6 +947,69 @@ def _fit_plan_block(fit_plan: dict | None) -> str:
     return "\n".join(lines)
 
 
+REVIEW_DRAFT_INSTRUCTIONS = """
+You are drafting an EXPERT REVIEW of this analysis for a human coach, who will
+watch the athlete's clip, correct your draft and sign it. Write to the athlete
+("you"), in English, plainly, as a coach who has looked closely. Every claim
+cites a measured number above. Return ONLY one JSON object, no prose around it:
+{
+ "verdict": "2-3 sentences: the ONE thing to take away. If something is outside its band, it is that; if nothing is, the next gain (pro field, limits).",
+ "trust": "Which numbers are solid and which to discount, from the capture warnings above (camera side, framing, tracking). Markdown, short paragraphs.",
+ "working": "What is already right and must not be 'fixed'. Name the numbers.",
+ "priorities": [{"title": "short imperative", "why": "the numbers behind it", "change": "the concrete change, one at a time", "check": "what the next clip should show"}],
+ "fit": [{"part": "saddle height / pad stack / extension angle / ...", "now": "measured", "suggest": "how much", "why": "...", "risk": "what it costs"}],
+ "plan": "Four weeks as markdown paragraphs starting **Week 1** ... **Week 4**: what to do, how often.",
+ "dont_change": "The anti-list: what to leave alone, including anything the automated report suggested that you would not do.",
+ "retest": "When to film again, how (side, framing, camera height) and which numbers to compare first.",
+ "caveats": "What one side-on clip cannot tell."
+}
+Rules: 1-3 priorities, ranked; one change at a time, never two at once. "fit" only
+on a bike and only where something should actually move (else []). Never call a
+value AT THE LIMIT optimal. Never suggest a different helmet. A torso flatter than
+the band on aero bars is the athlete's trade-off, not a fault. Do not invent
+measurements you were not given.
+"""
+
+
+def draft_expert_review(result: dict[str, Any]) -> dict[str, Any] | None:
+    """A first draft of an Expert Review from a stored result, or None.
+
+    For the reviewer, never the athlete: it fills the editor, a person watches
+    the clip, corrects it and signs it (2026-10-15 -- a review written from
+    scratch is 45-60 minutes of a coach; checking a draft against the clip is
+    20-30, which is what makes $39 pay for the coach's time).
+    """
+    import json
+
+    summary = result.get("sport_specific_metrics") or {}
+    sport = result.get("sport_type") or "run"
+    position = result.get("cycling_position")
+    prompt = _build_prompt(
+        sport, result.get("technique_score"), result.get("letter_grade"), position,
+        result.get("detected_issues") or [], result.get("angle_statistics") or {}, summary,
+        result.get("fit_plan"), result.get("focus"), result.get("next_steps"),
+    )
+    warnings = [str(w) for w in (summary.get("quality_warnings") or result.get("warnings") or [])][:6]
+    if warnings:
+        prompt += "\n\nCAPTURE WARNINGS (for 'trust'):\n" + "\n".join(f"- {w}" for w in warnings)
+    got = _complete(SYSTEM_PROMPT, prompt + "\n" + REVIEW_DRAFT_INSTRUCTIONS, 3000, tag="review_draft")
+    if not got:
+        return None
+    text = got["text"].strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text
+        text = text.rsplit("```", 1)[0]
+    start, end = text.find("{"), text.rfind("}")
+    try:
+        draft = json.loads(text[start:end + 1]) if start >= 0 < end else None
+    except ValueError:
+        draft = None
+    if not isinstance(draft, dict):
+        logger.warning("REVIEW_DRAFT_UNPARSEABLE", model=got.get("model"), head=text[:120])
+        return None
+    return draft
+
+
 def _build_prompt(
     sport_type: str, score: Any, grade: Any, position: str | None,
     issues: list[dict], angle_stats: dict, summary: dict,

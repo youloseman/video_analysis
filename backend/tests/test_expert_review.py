@@ -356,3 +356,50 @@ def test_the_page_draws_them_after_the_verdict_everywhere():
     # the athlete's copy, the sample, and the reviewer's preview
     assert spa.count("j.report), j.figures)") == 2
     assert "{src:d.media.kinogram, kind:'kinogram'" in spa
+
+
+# --------------------------------------------------------------------------
+# An AI first draft for the reviewer (2026-10-15): from scratch a review is
+# 45-60 minutes of a coach; checking a draft against the clip is 20-30.
+# --------------------------------------------------------------------------
+_DRAFT = {
+    "verdict": "Your saddle is too high: knee 155 at the bottom.",
+    "trust": "Upper body solid; drive side, so the knee reads low.",
+    "working": "Torso 19, on the Kona median.",
+    "priorities": [{"title": "Lower the saddle 10 mm", "why": "knee 155", "change": "-10 mm",
+                    "check": "knee 145-150"}],
+    "fit": [{"part": "Saddle height", "now": "155", "suggest": "-10 mm", "why": "leg straight",
+             "risk": "hip closes 2"}],
+    "plan": "**Week 1** — ride easy.", "dont_change": "Torso.", "retest": "Two weeks, left side.",
+    "caveats": "One plane.", "smuggled": "dropped",
+}
+_RESULT = {"sport_type": "bike", "cycling_position": "tt_aero", "technique_score": 67, "letter_grade": "C",
+           "sport_specific_metrics": {"knee_at_bdc": 155.4, "quality_warnings": ["Drive side."]}}
+
+
+def test_the_draft_is_parsed_from_a_fenced_answer(monkeypatch):
+    import json
+
+    from app.services.video_analysis import llm_recommendations as llm
+    seen = []
+    monkeypatch.setattr(llm, "_complete", lambda s, p, n, tag: seen.append(p) or {
+        "text": "```json\n" + json.dumps(_DRAFT) + "\n```", "model": "fake"})
+    draft = llm.draft_expert_review(_RESULT)
+    assert draft["verdict"].startswith("Your saddle is too high")
+    assert "CAPTURE WARNINGS" in seen[0] and "Drive side." in seen[0]
+    assert "Never suggest a different helmet" in seen[0]
+    report = er.normalize_report(draft, "bike")
+    assert "smuggled" not in report and report["fit"][0]["part"] == "Saddle height"
+
+
+def test_an_unparseable_draft_is_none(monkeypatch):
+    from app.services.video_analysis import llm_recommendations as llm
+    monkeypatch.setattr(llm, "_complete", lambda *a, **k: {"text": "Sure! Here's my thinking...", "model": "x"})
+    assert llm.draft_expert_review(_RESULT) is None
+
+
+def test_the_editor_offers_it_for_reviews_not_notes():
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "${d.plan==='notes'?'':'<button class=\"btn btn-ghost btn-sm\" type=\"button\" id=\"exDraft\"" in spa
+    assert "async function exDraft()" in spa and "'/admin/orders/'+d.id+'/draft'" in spa

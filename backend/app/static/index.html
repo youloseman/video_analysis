@@ -6416,6 +6416,7 @@ function exEditorHtml(d){
       </div>
       <div class="ex-bar">
         <span class="ex-status" id="exStatus"></span>
+        ${d.plan==='notes'?'':'<button class="btn btn-ghost btn-sm" type="button" id="exDraft" title="Fills the form from the analysis. Watch the clip and correct it before sending.">Draft with AI</button>'}
         <button class="btn btn-ghost btn-sm" type="button" id="exPreview">Preview</button>
         <button class="btn btn-outline btn-sm" type="button" id="exSave">Save draft</button>
         <button class="btn btn-primary btn-sm" type="button" id="exPublish">${done?'Re-publish':'Send to athlete'}</button>
@@ -6568,6 +6569,36 @@ async function exPublish(){
     toast('Review delivered — the athlete can read it now.');
     openExpertAdmin();
   }catch(e){ toast('Could not send the review.'); }
+}
+
+/* An AI first draft into the form -- the reviewer watches the clip and
+   corrects it; nothing is saved or sent until they do. */
+async function exDraft(){
+  const d=state.exOrder; if(!d) return;
+  const cur=exCollect();
+  const filled=(d.sections||[]).some(s=>{ const v=cur[s.key]; if(s.key==='trust') return false;
+    return Array.isArray(v)?v.some(r=>Object.values(r).some(x=>(x||'').trim())):(v||'').trim(); });
+  if(filled && !confirm('Replace what is in the form with an AI draft?')) return;
+  const st=$('#exStatus'); if(st) st.textContent='Writing a draft…';
+  let j=null;
+  try{
+    const r=await fetch('/admin/orders/'+d.id+'/draft',{method:'POST',headers:authHeaders()});
+    j=await r.json().catch(()=>({}));
+    if(!r.ok){ if(st) st.textContent=''; toast(j.detail||'Could not write a draft.',{duration:6000}); return; }
+  }catch(e){ if(st) st.textContent=''; toast('Could not write a draft.'); return; }
+  const rep=j.report||{};
+  (d.sections||[]).forEach(s=>{
+    const v=rep[s.key];
+    if(s.kind==='priorities'||s.kind==='fit'){
+      const n=s.kind==='priorities'?EX_PRIO_SLOTS:EX_FIT_SLOTS, attr=s.kind==='priorities'?'data-exprio':'data-exfit';
+      const keys=s.kind==='priorities'?['title','why','change','check']:FIT_COLS.map(([k])=>k);
+      for(let i=0;i<n;i++) keys.forEach(k=>{ const el=document.querySelector(`[${attr}="${i}"][data-exk="${k}"]`);
+        if(el) el.value=((v||[])[i]||{})[k]||''; });
+    } else {
+      const el=document.querySelector(`[data-exsec="${s.key}"]`); if(el) el.value=v||'';
+    }
+  });
+  if(st) st.textContent='AI draft in the form — watch the clip, correct it, then save.';
 }
 
 function exShowPreview(){
@@ -10694,6 +10725,7 @@ $('#expertAdmin').addEventListener('click',e=>{
   if(e.target.closest('#exCheckDone')){ exCheckSave(!(state.exOrder&&state.exOrder.qa&&state.exOrder.qa.checked_at)); return; }
   if(e.target.closest('#exPublish')){ exPublish(); return; }
   if(e.target.closest('#exPreview')){ exShowPreview(); return; }
+  if(e.target.closest('#exDraft')){ exDraft(); return; }
   if(e.target.closest('#exMailTest')){ exMailTest(); return; }
   const f=e.target.closest('[data-exf]');
   if(f){ state.exFilter=f.dataset.exf;
