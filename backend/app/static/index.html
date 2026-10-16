@@ -5432,19 +5432,36 @@ async function renderNotesOffer(hostId, entryId){
   if(!host.isConnected) return;
   const mine=orders.filter(o=>o.plan==='notes'&&o.analysis_client_id===entryId&&o.status!=='refunded');
   const done=mine.find(o=>o.status==='delivered'), open=mine.find(o=>o.status!=='delivered');
+  // A Full plan already holds a whole Expert Review. This card used to sell
+  // such an athlete the Notes -- and, once they were delivered, the paid
+  // review they already owned. A paying subscriber did exactly that
+  // (2026-10-14). The included review leads; the Notes stay a choice.
+  const credits=(auth&&auth.expert_credits)||0;
+  const useReview=`<button class="btn btn-primary btn-sm" type="button" data-usereview>Use your included Expert Review</button>`;
   // Delivered: the note block above already shows them; the card steps back
   // to the next rung. Booked: say so, with the promise.
   let body;
   if(done){
     body=`<div class="no-head"><span class="no-chip">Coach Notes · delivered</span></div>
-      <p class="no-p">Your Coach Notes are on this report, under <b>Coach Notes</b> above. Want the full picture — which numbers to trust, a four-week plan, position trade-offs? That is the Expert Review.</p>
-      <div class="no-cta"><button class="btn btn-outline btn-sm" type="button" onclick="startCheckout('expert',${esc(JSON.stringify(entryId))})">Expert Review${expertPriceLabel()}</button></div>`;
+      <p class="no-p">Your Coach Notes are on this report, under <b>Coach Notes</b> above. Want the full picture — which numbers to trust, a four-week plan, position trade-offs? That is the Expert Review${credits>0?', and your plan already includes one':''}.</p>
+      <div class="no-cta">${credits>0?useReview
+        :`<button class="btn btn-outline btn-sm" type="button" onclick="startCheckout('expert',${esc(JSON.stringify(entryId))})">Expert Review${expertPriceLabel()}</button>`}</div>`;
   } else if(open){
     // The order's own status line talks about "your review"; the notes say
     // it in their own words.
     const st=open.status==='in_review'?'a coach is on it':'booked';
     body=`<div class="no-head"><span class="no-chip">Coach Notes · ${st}</span></div>
-      <p class="no-p">A coach has this report. You’ll get an email when the notes are on it — usually within 72 hours.</p>`;
+      <p class="no-p">A coach has this report. You’ll get an email when the notes are on it — usually within 72 hours.</p>
+      ${credits>0?`<p class="no-p">Your plan also includes a full Expert Review — worth booking once you have made these changes and filmed again.</p>`:''}`;
+  } else if(credits>0){
+    const avail=!!(price.available&&price.plan);
+    body=`<div class="no-head"><span class="no-chip">A person’s eyes on this</span><span class="no-price">Included</span></div>
+      <h3 class="no-t">Your plan includes a full Expert Review</h3>
+      <p class="no-p">A coach reviews your clip in full: what they see, what to change first, a four-week plan and the position trade-offs. It is already paid for with your plan.</p>
+      <p class="no-p no-fence">Only want the short version? <b>Coach Notes</b> — one line and three notes — are ${esc(price.display||'')} on their own.</p>
+      <div class="no-cta">${useReview}
+        ${avail?`<button class="btn btn-ghost btn-sm" type="button" data-notesbuy>Just the Coach Notes — ${esc(price.display||'')}</button>`:''}
+        <span class="no-note" id="${hostId}Slots"></span></div>`;
   } else {
     const avail=!!(price.available&&price.plan);
     body=`<div class="no-head"><span class="no-chip">A person’s eyes on this</span><span class="no-price">${esc(price.display||'')} <small>${esc(price.per||'')}</small></span></div>
@@ -5458,6 +5475,8 @@ async function renderNotesOffer(hostId, entryId){
   }
   host.innerHTML=`<div class="no-card">${body}</div>`;
   host.classList.remove('hidden');
+  const use=host.querySelector('[data-usereview]');
+  if(use) use.addEventListener('click',()=>{ track('notes_offer_use_review',{entry:entryId}); startCheckout('expert',entryId); });
   const buy=host.querySelector('[data-notesbuy]');
   if(buy){
     buy.addEventListener('click',()=>{ track('notes_offer_clicked',{entry:entryId}); startCheckout('notes',entryId); });
@@ -5468,7 +5487,7 @@ async function renderNotesOffer(hostId, entryId){
       else if(n.left!=null&&n.left<=3) sl.textContent=`${n.left} left this week`;
     }).catch(()=>{});
   }
-  track('notes_offer_shown',{entry:entryId,state:done?'delivered':open?'booked':'offer'});
+  track('notes_offer_shown',{entry:entryId,state:done?'delivered':open?'booked':'offer',has_review:credits>0});
 }
 
 function renderPrintHead(meta){
@@ -5923,6 +5942,9 @@ function addonCardHtml(card){
   const price=(card.prices||[])[0]||null;
   const notes=card.id==='notes';
   const credits=notes?0:((auth&&auth.expert_credits)||0);
+  // On the Notes card the included review is not spent, but it is said: the
+  // full version of what this card sells is already on their plan.
+  const ownsReview=notes&&((auth&&auth.expert_credits)||0)>0;
   const plan=notes?'notes':'expert';
   const buy = credits>0
     ? `<button class="btn btn-primary" type="button" onclick="startCheckout('expert')">Use your included review</button>`
@@ -5938,7 +5960,9 @@ function addonCardHtml(card){
       </div>
       <div class="solo-buy">
         <div class="tier-price"><span class="amt">${credits>0?'Included':esc(price?price.display:'')}</span><span class="per">${credits>0?'':esc(price?price.per:'')}</span></div>
-        <p class="tier-sub">${credits>0?`<b>${credits}</b> left on your plan`:esc(price?price.note:'')}</p>
+        <p class="tier-sub">${credits>0?`<b>${credits}</b> left on your plan`
+          :ownsReview?'Your plan already includes a full <b>Expert Review</b> — the complete version of these notes. Use that first.'
+          :esc(price?price.note:'')}</p>
         <div class="solo-btns">
           ${notes?'':'<button class="btn btn-ghost btn-sm" type="button" id="ctaExpertSample">See a sample</button>'}
           ${buy}

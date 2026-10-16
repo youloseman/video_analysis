@@ -198,6 +198,29 @@ def test_the_bio_is_clipped_and_optional():
     assert er.signed_by({}, "your coach") == "your coach"
 
 
+def test_an_included_review_is_offered_before_the_notes_are_sold():
+    """A paying Full subscriber with an unused Expert Review bought the $12
+    Notes (2026-10-14): the card on the report sold them without a word about
+    the review the plan already held -- and once delivered, offered the $39
+    review they owned. Every state of that card, and the Notes card on the
+    pricing page, now knows about the credit."""
+    from conftest import read_spa
+    spa = read_spa()
+    start = spa.index("async function renderNotesOffer")
+    card = spa[start:spa.index("\n}\n", start)]
+    assert "auth.expert_credits" in card
+    assert "Your plan includes a full Expert Review" in card          # offer
+    assert "your plan already includes one" in card                   # delivered
+    assert "Your plan also includes a full Expert Review" in card     # booked
+    assert "data-usereview" in card and "startCheckout('expert',entryId)" in card
+    # The Notes stay buyable -- a choice, not a wall.
+    assert card.count("data-notesbuy") >= 2
+
+    start = spa.index("function addonCardHtml")
+    addon = spa[start:spa.index("\n}\n", start)]
+    assert "ownsReview" in addon and "Use that first" in addon
+
+
 def test_the_report_and_the_editor_show_the_bio():
     from conftest import read_spa
     spa = read_spa()
