@@ -190,3 +190,22 @@ def test_the_table_uses_the_floor():
     html = SPA.read_text(encoding="utf-8")
     assert "m.hi,m.noise" in html
     assert "within measurement error" in _fn(html, "cmpRow")
+
+
+def test_the_landing_hero_column_cannot_outgrow_a_phone():
+    """The hero badge is `width:max-content`: with the longer wording it was
+    417 px wide on a 390 px phone, and the `1fr` column grew to hold it, so the
+    headline's paragraph ran 51 px off the right edge of the screen."""
+    land = (SPA.parent / "landing.html").read_text(encoding="utf-8")
+    assert ".hero-news + .hero-badge{display:flex;width:max-content;max-width:100%}" in land
+    assert "grid-template-columns:minmax(0,1fr);gap:70px" in land
+
+
+def test_the_how_it_works_steps_each_carry_a_picture_and_end_on_the_recheck():
+    land = (SPA.parent / "landing.html").read_text(encoding="utf-8")
+    how = land[land.index('<section id="how"'):land.index("</section>", land.index('<section id="how"'))]
+    assert how.count('class="step rv"') == 3
+    assert how.count('<img class="shot') == 3
+    assert "Change it. Film again. See what moved." in how
+    for src in ("media/run-raw.webp", "media/run-overlay.webp", "media/compare.webp"):
+        assert (SPA.parent / src).exists()

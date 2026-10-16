@@ -216,7 +216,7 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
   -webkit-mask-image:radial-gradient(900px 600px at 50% 30%,#000 30%,transparent 75%);
           mask-image:radial-gradient(900px 600px at 50% 30%,#000 30%,transparent 75%);}
 .hero .wrap{position:relative;z-index:2;display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center}
-@media(max-width:960px){.hero .wrap{grid-template-columns:1fr;gap:70px}.hero{padding:130px 0 90px}}
+@media(max-width:960px){.hero .wrap{grid-template-columns:minmax(0,1fr);gap:70px}.hero{padding:130px 0 90px}}
 .hero-badge{
   display:inline-flex;align-items:center;gap:9px;margin-bottom:22px;
   font-family:var(--f-mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
@@ -330,7 +330,7 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 .hero-news b{flex:none;font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.12em;
   text-transform:uppercase;color:#fff;background:var(--c-coral-btn);border-radius:999px;padding:4px 10px}
 .hero-news svg{flex:none;width:15px;height:15px}
-.hero-news + .hero-badge{display:flex;width:max-content}
+.hero-news + .hero-badge{display:flex;width:max-content;max-width:100%}
 .kona{background:var(--c-panel);padding:110px 0}
 .kona-cols{display:grid;grid-template-columns:1fr 1.06fr;gap:56px;align-items:center}
 @media(max-width:960px){.kona-cols{grid-template-columns:1fr;gap:44px}}
@@ -407,6 +407,10 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
   color:transparent;-webkit-text-stroke:1.6px var(--c-blue);letter-spacing:-.02em;margin-bottom:16px;
 }
 .step h3{font-family:var(--f-display);font-weight:600;font-size:18px;text-transform:none;letter-spacing:0;color:var(--c-ink);margin-bottom:10px}
+/* A picture per step. The two run frames are tall phone shots, so the box is
+   fixed and they are cropped to the upper body, where the angles are. */
+.step .shot{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;object-position:50% 22%;border-radius:var(--radius-xs);border:1px solid var(--c-line);margin:0 0 18px;background:var(--c-panel)}
+.step .shot-top{object-position:50% 0}
 .step p{font-size:15px;color:var(--c-ink-soft)}
 .step p b{color:var(--c-ink)}
 .step .tagrow{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
@@ -926,9 +930,10 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
       <div class="hero-badge ld ld1"><i></i>Computer-vision form analysis · run &amp; ride</div>
       <h1 class="ld ld2">Your technique,<br><span class="accent">measured.</span></h1>
       <p class="sub ld ld3">Film a <b>10-second side-view clip</b> of your run or ride — or just
-        upload a <b>single photo</b>. Flapp finds <b>33 body landmarks</b>, measures every joint
-        angle against reference ranges and hands back a technique score, an annotated overlay
-        and a coaching plan — in minutes, not sessions.</p>
+        upload a <b>single photo</b>. Flapp finds <b>33 body landmarks</b> and measures every joint
+        angle against its reference range. You get <b>the one change to try first</b>, a technique
+        score and an annotated overlay — and when you film again after the change, <b>exactly what
+        moved</b>. In minutes, not sessions.</p>
       <div class="cta-row ld ld4">
         <a class="btn btn-accent btn-lg" id="heroGo" href="/app#signup">Analyze your form — free
           <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
@@ -1230,11 +1235,12 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
 <section id="how" class="how">
   <div class="wrap">
     <p class="eyebrow rv">How it works</p>
-    <h2 class="sec rv" data-d="1">Shoot. Upload. <span class="accent">Fix.</span></h2>
+    <h2 class="sec rv" data-d="1">Shoot. Fix. <span class="accent">Re-check.</span></h2>
     <p class="lede rv" data-d="2">No sensors, no lab, no motion-capture suit. The camera you already
       own is the instrument — Flapp does the measuring.</p>
     <div class="steps">
       <div class="step rv" data-d="1">
+        <img class="shot" src="media/run-raw.webp" alt="A runner photographed from the side, no overlay: the photo exactly as it was taken" width="640" height="1138" loading="lazy">
         <div class="n">01</div>
         <h3>Film a clip — or snap a photo</h3>
         <p>Prop your phone at hip height, side-on, and capture <b>8–15 seconds</b> of running or
@@ -1242,19 +1248,23 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
         <div class="tagrow"><span class="mtag">Video or photo</span><span class="mtag">Side view</span><span class="mtag">8–15 s</span></div>
       </div>
       <div class="step rv" data-d="2">
+        <img class="shot" src="media/run-overlay.webp" alt="The same photo with the pose skeleton drawn on and the knee, hip, elbow and ankle angles labelled" width="640" height="1138" loading="lazy">
         <div class="n">02</div>
         <h3>Computer vision reads your body</h3>
         <p>Pose estimation locks onto <b>33 landmarks</b> — ankles, knees, hips, spine, shoulders.
           A photo is measured on the spot; a clip is measured on <b>every frame</b>, through the
-          full movement cycle.</p>
-        <div class="tagrow"><span class="mtag">Pose estimation</span><span class="mtag">Every frame</span></div>
+          full movement cycle. Every angle is set against its reference range, and you get <b>one
+          thing to change first</b>.</p>
+        <div class="tagrow"><span class="mtag">Pose estimation</span><span class="mtag">Every frame</span><span class="mtag">Score + plan</span></div>
       </div>
       <div class="step rv" data-d="3">
+        <img class="shot shot-top" src="media/compare.webp" alt="Two clips of the same rider side by side, locked stroke to stroke: before the change on the left, after on the right" width="1052" height="725" loading="lazy">
         <div class="n">03</div>
-        <h3>Get the verdict</h3>
-        <p>A <b>0–100 score</b> with a grade, every angle against reference ranges, an annotated
-          overlay and an action plan telling you <b>what to change first</b>.</p>
-        <div class="tagrow"><span class="mtag">Score + grade</span><span class="mtag">Player + overlay</span><span class="mtag">Action plan</span></div>
+        <h3>Change it. Film again. See what moved.</h3>
+        <p>Make the change, film the same way, and Flapp lines the two up: <b>what moved, what
+          didn’t</b>, and a note when the two clips weren’t filmed alike. Differences smaller than
+          the method can measure are called what they are: noise.</p>
+        <div class="tagrow"><span class="mtag">Before / after</span><span class="mtag">Same side</span><span class="mtag">Noise filtered</span></div>
       </div>
     </div>
   </div>
