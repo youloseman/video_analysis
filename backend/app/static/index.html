@@ -1215,6 +1215,7 @@
     <!-- A person's eyes on this report: Coach Notes ($) and, above it, the
          Expert Review. Offered at the bottom, after the athlete has read what
          the machine had to say -- see renderNotesOffer. -->
+    <div class="hidden" id="cmpNextV"></div>
     <div class="notes-offer hidden" id="notesOffer"></div>
 
     <!-- Result feedback: the only way to learn where the analyzer misfires. -->
@@ -1354,6 +1355,8 @@
     </div>
 
     <details class="raw hidden" id="pRawBlock"><summary>Raw result JSON</summary><pre id="pRawJson"></pre></details>
+
+    <div class="hidden" id="cmpNextP"></div>
 
     <div class="fb hidden" id="pFbHost"></div>
 
@@ -1582,6 +1585,7 @@
         </button>
       </div>
     </div>
+    <div class="hidden" id="cmpNextH"></div>
     <div class="notes-offer hidden" id="hdNotesOffer"></div>
   </section>
 
@@ -5218,6 +5222,7 @@ function renderPhoto(res,opts){
   // a second one: it is the same photo, measured again.
   state.photoHistId=saveToHistory('photo', res, opts.reuseHistId||null);
   mountFeedback('pFbHost','photo',res,state.photoHistId);
+  renderCompareNext('cmpNextP', state.photoHistId, 'result');
   $('#pShareBtn').classList.remove('hidden');
   setState('photoresults',{focus:'#pResultsTitle'});
 }
@@ -5422,6 +5427,21 @@ async function loadOrders(force){
   if(state.ordersCache&&!force) return state.ordersCache;
   try{ const r=await fetch('/billing/orders',{headers:authHeaders()}); if(r.ok){ state.ordersCache=await r.json(); return state.ordersCache; } }catch(e){}
   return state.ordersCache||[];
+}
+/* "Changed something? See what it did." On a report, offered when there is an
+   earlier clip of the SAME kind, setup, side and position to read it against.
+   A clean pair is the whole point: with anything looser the page would be
+   offering a comparison it then has to apologise for. */
+function renderCompareNext(hostId, entryId, from){
+  const host=$('#'+hostId); if(!host) return;
+  host.classList.add('hidden'); host.innerHTML='';
+  const e=entryId&&loadHist().find(x=>x.id===entryId);
+  const prev=e&&e.trends&&cmpPrevious(e);
+  if(!prev) return;
+  host.innerHTML=`<div class="cmp-next"><p><b>Changed something since ${esc(fmtWhen(prev.at))}?</b> See what it did: your two clips side by side, what moved and what stayed put.</p>
+    <button class="btn btn-outline btn-sm" type="button" data-cmpnext><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Compare with that clip</button></div>`;
+  host.classList.remove('hidden');
+  host.querySelector('[data-cmpnext]').addEventListener('click',()=>openCompare(prev.id,e.id,from));
 }
 async function renderNotesOffer(hostId, entryId){
   const host=$('#'+hostId); if(!host) return;
@@ -7781,6 +7801,7 @@ function render(job,opts){
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
   renderCoachNote('coachNote', state.videoHistId);
+  renderCompareNext('cmpNextV', state.videoHistId, 'result');
   renderNotesOffer('notesOffer', state.videoHistId);
   // The joint editor: bike, paid (the server refuses everything else), the
   // clip still in this browser to draw on, and not a merged two-clip session.
@@ -9446,6 +9467,7 @@ function renderHistoryDetail(e){
   renderHistoryBilateral(e);
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderCoachNote('hdCoachNote', e.id);
+  renderCompareNext('cmpNextH', e.id, 'history');
   renderNotesOffer('hdNotesOffer', e.access==='full'||!e.locked ? e.id : null);
   renderHistoryPlan(e);
   renderHistoryAngles(e);
@@ -9771,15 +9793,22 @@ $('#trends').addEventListener('click',e=>{
    agreeing on hip-to-ankle distance to 0.1%. Near full extension the knee
    angle amplifies ~4 deg per 1% of leg-length error, so those centimetres
    land as ~7 deg. Anything under the floor is the method, not the athlete.
-   Metrics with no floor are not compared across sides at all. */
+   Metrics with no floor are not compared across sides at all.
+
+   `noise` is the same idea for two clips from the SAME side: the least a change
+   must be before before/after calls it one. 3 deg is the top of what the
+   mirrored re-run moved the knee (1.4-3.5), which is the pose model disagreeing
+   with itself on one clip. A measured floor per metric from repeat clips of one
+   unchanged position would replace it; until then it is the one number we have
+   evidence for, applied to every bike angle. Run metrics have none yet. */
 const TREND_METRICS={
   bike:[
     {key:'score',label:'Technique score',unit:'',hi:true},
-    {key:'knee',label:'Knee angle',unit:'°',sideFloor:12},
-    {key:'hip',label:'Hip · top of stroke',unit:'°',sideFloor:12},
-    {key:'trunk',label:'Trunk angle',unit:'°',sideFloor:8},
-    {key:'elbow',label:'Elbow angle',unit:'°',sideFloor:12},
-    {key:'shoulder',label:'Shoulder angle',unit:'°',sideFloor:12},
+    {key:'knee',label:'Knee angle',unit:'°',sideFloor:12,noise:3},
+    {key:'hip',label:'Hip · top of stroke',unit:'°',sideFloor:12,noise:3},
+    {key:'trunk',label:'Trunk angle',unit:'°',sideFloor:8,noise:3},
+    {key:'elbow',label:'Elbow angle',unit:'°',sideFloor:12,noise:3},
+    {key:'shoulder',label:'Shoulder angle',unit:'°',sideFloor:12,noise:3},
     {key:'pelvic_ratio',label:'Pelvic ratio',unit:'×'},
     {key:'knee_open_speed',label:'Knee opening speed',unit:'°/s'},
     {key:'knee_close_speed',label:'Knee closing speed',unit:'°/s'},
@@ -10748,16 +10777,91 @@ function toggleCompareCta(){
 }
 /* Pick the two most recent analyses (of the active sport) as the default
    A=older, B=newer pair, then let the user re-pick either side. */
-function openCompare(){
-  const sport=state.progressSport||'bike';
-  const list=loadHist().filter(e=>e.sport===sport && e.trends);
+/* The clip a new one should be read against: the newest EARLIER clip of the
+   same kind, on the same setup, from the same side, in the same position.
+   Anything looser mixes the change with the camera -- a drive-side clip reads
+   the knee at the bottom of the stroke 8-10 deg low, so "before" from one
+   side and "after" from the other reports an improvement that is only the
+   lens. Null when nothing matches; the caller decides what to do then. */
+function cmpSame(a,b){
+  return a.sport===b.sport && a.kind===b.kind
+    && String(a.profileId==null?'':a.profileId)===String(b.profileId==null?'':b.profileId)
+    && (a.cameraSide||'')===(b.cameraSide||'')
+    && (a.position||'')===(b.position||'');
+}
+function cmpPrevious(e,list){
+  return (list||loadHist()).find(x=>x.id!==e.id && x.trends && (x.at||0)<(e.at||0) && cmpSame(x,e))||null;
+}
+/* `from` says where the person came in, for the funnel: 'result', 'history' or
+   'nav'. With two ids it opens that pair; without, the newest clip against the
+   one it should be read against. */
+function openCompare(aId,bId,from){
+  const all=loadHist();
+  const pick=bId&&all.find(e=>e.id===bId);
+  const sport=pick?pick.sport:(state.progressSport||'bike');
+  const list=all.filter(e=>e.sport===sport && e.trends);
   if(list.length<2){ openProgress(); return; }
-  // list is newest-first; default B=newest, A=second-newest.
-  state.cmp={sport, list, aId:list[1].id, bId:list[0].id, summary:null, summaryLoading:false};
+  // list is newest-first; default B=newest, A=its closest like-for-like
+  // predecessor, else simply the second-newest (the page then says why that
+  // pair is not a clean one).
+  const b=(pick&&list.find(e=>e.id===bId))||list[0];
+  const a=(aId&&list.find(e=>e.id===aId))||cmpPrevious(b,list)||list.find(e=>e.id!==b.id);
+  state.cmp={sport, list, aId:a.id, bId:b.id, summary:null, summaryLoading:false};
+  track('compare_opened',{from:from||'nav',like_for_like:cmpSame(a,b)});
   renderCompare();
   setState('compare',{focus:'#compareTitle'});
 }
 function cmpEntry(id){ return (state.cmp.list||[]).find(e=>e.id===id)||null; }
+
+/* Why this pair is not a clean before/after, in words. Empty when it is. */
+function cmpCaveats(A,B){
+  const out=[];
+  if(A.kind!==B.kind) out.push('One is a photo and one is a video. A photo catches a single instant of the stroke; a video measures the whole of it. Compare like with like.');
+  const sa=A.cameraSide, sb=B.cameraSide;
+  if(sa&&sb&&sa!==sb&&sa!=='both'&&sb!=='both')
+    out.push('These were filmed from opposite sides. On a bike the drive side reads the knee at the bottom of the stroke about 8–10° low, so part of any gap here can be the camera, not you. Film both from the same side.');
+  if((A.position||'')!==(B.position||'')&&A.position&&B.position)
+    out.push(`Different positions (${esc(POSITION_NAMES[A.position]||A.position)} and ${esc(POSITION_NAMES[B.position]||B.position)}) have different target ranges.`);
+  if(String(A.profileId==null?'':A.profileId)!==String(B.profileId==null?'':B.profileId))
+    out.push('These are on different setups. For two bikes, use “Two setups” above.');
+  return out;
+}
+/* What actually changed, in plain words and from the numbers alone: no model,
+   nothing invented. A metric is only called changed once it clears the
+   measurement floor (`noise`) -- two clips of one unchanged position already
+   differ by a few degrees, and reporting that as progress would teach people
+   to chase noise. Metrics with neither a floor nor a target range say nothing. */
+function cmpHeadline(A,B,sport,optOf){
+  const at=A.trends||{}, bt=B.trends||{};
+  const rows=[];
+  TREND_METRICS[sport].forEach(m=>{
+    if(m.key==='score') return;
+    const a=at[m.key], b=bt[m.key];
+    if(typeof a!=='number'||typeof b!=='number') return;
+    if(m.noise && Math.abs(b-a)<m.noise) return;
+    const opt=optOf(m.key), dd=metricDelta(a,b,opt,m.hi);
+    let tail='';
+    if(opt){
+      const inA=a>=opt[0]&&a<=opt[1], inB=b>=opt[0]&&b<=opt[1];
+      const rng=`${opt[0]}–${opt[1]}${m.unit||''}`;
+      if(!inA&&inB) tail=`now inside the ${rng} range`;
+      else if(inA&&!inB) tail=`now outside the ${rng} range`;
+      else if(dd.cls==='imp') tail='closer to the range';
+      else if(dd.cls==='reg') tail='further from the range';
+    }
+    if(!tail && !m.noise) return;
+    const r=v=>Math.round(v*10)/10;
+    rows.push({w:opt?Math.abs(distOut(a,opt)-distOut(b,opt)):Math.abs(b-a),
+      html:`<b>${esc(m.label)}</b> ${r(a)}${m.unit||''} → ${r(b)}${m.unit||''}${tail?' — '+tail:''}`});
+  });
+  rows.sort((x,y)=>y.w-x.w);
+  const sc=(typeof A.score==='number'&&typeof B.score==='number')
+    ? `<li><b>Score</b> ${A.score} → ${B.score}</li>` : '';
+  const body=rows.slice(0,3).map(r=>`<li>${r.html}</li>`).join('');
+  return `<div class="cmp-what"><div class="cmp-ai-h">What changed</div>${
+    (sc||body)?`<ul>${sc}${body}</ul>`:''}${
+    body?'':`<p>No measurement moved by more than the method can tell apart. If you made a change, it is smaller than a camera can see — trust how it feels, and give it a few rides.</p>`}</div>`;
+}
 
 /* ============================================================
    Comparing two SETUPS rather than two sessions.
@@ -10885,13 +10989,16 @@ function renderComparePickers(){
   $('#cmpPickers').innerHTML = sel('a',aId)+`<div class="cmp-arrow" aria-hidden="true"><svg class="ic"><use href="#i-arr-l"/></svg></div>`+sel('b',bId);
 }
 /* One delta row: label, A value, B value, and a colored delta verdict. */
-function cmpRow(label,unit,a,b,opt,hi){
+function cmpRow(label,unit,a,b,opt,hi,noise){
   const fmt=v=> v==null?'—':(Math.round(v*100)/100)+(unit||'');
   if(a==null||b==null){
     return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
       <div class="cmp-a">${fmt(a)}</div><div class="cmp-d"><span class="tdelta sta">—</span></div><div class="cmp-b">${fmt(b)}</div></div>`;
   }
   const dd=metricDelta(a,b,opt,hi);
+  // Under the measurement floor the row says so instead of colouring a change
+  // the method cannot see.
+  if(noise && Math.abs(b-a)<noise){ dd.cls='sta'; dd.trend='within measurement error'; }
   const dstr=(dd.delta>0?'+':'')+ (Math.round(dd.delta*100)/100) +(unit||'');
   return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
     <div class="cmp-a">${fmt(a)}</div>
@@ -11229,10 +11336,18 @@ function renderCompare(){
   </div>`;
   const rowFn = sidesMode
     ? (m=>cmpSideRow(m.label,m.unit,at[m.key],bt[m.key],m.sideFloor))
-    : (m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi));
+    : (m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi,m.noise));
   const numRows=TREND_METRICS[sport].map(rowFn).join('');
   const catRows=sidesMode?'':(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key])).join('');
-  $('#cmpBody').innerHTML = head +
+  // Sessions only: a verdict in words first, and the warning if the pair was
+  // not filmed alike. Setups are averages and sides are legs, neither a "did
+  // my change work" question.
+  const verdict = (setups||sidesMode) ? '' : (()=>{
+    const cv=cmpCaveats(A,B);
+    return (cv.length?`<div class="cmp-warn" role="note"><p><b>Not a clean comparison.</b></p>${cv.map(t=>`<p>${t}</p>`).join('')}</div>`:'')
+      + cmpHeadline(A,B,sport,optOf);
+  })();
+  $('#cmpBody').innerHTML = head + verdict +
     `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
        <div class="cmp-lbl">Metric</div>
        <div class="cmp-a">${setups?'A':(sidesMode?'Left':'Before')}</div>
