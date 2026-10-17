@@ -3786,72 +3786,150 @@ function aeroGauge(cur,tgt){
     <text x="${xc.toFixed(1)}" y="${y+24}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--c-blue)">now ${cur}°</text>
   </svg>`;
 }
-/* Personalisation: recompute watts / time saved at any speed from the
-   backend's relative drag saving. Aero power scales with speed^3, and on a
-   flat course at constant power ~85% of resistance is aero, so time saving
-   fraction ~= drag_reduction * aero_share / 3 (standard TT rule of thumb).
-   Both are illustrative, clearly labelled -- physics lives server-side. */
-const AERO_SHARE=0.85, AERO_DIST_KM=40, AERO_SPEEDS=[35,40,45];
-function aeroWattsAt(dragPct, refW, v){ return Math.round(dragPct/100 * refW * Math.pow(v/40,3) / 5)*5; }
-function aeroSecondsSaved(dragPct, v){ const t=AERO_DIST_KM/v*3600; return Math.round(t * (dragPct/100) * AERO_SHARE/3); }
-function fmtSaved(sec){ if(sec<60) return sec+'s'; const m=Math.floor(sec/60), s=sec%60; return s?`${m}m ${s}s`:`${m}m`; }
-function setAeroSpeed(v){
-  const a=state.aero; if(!a) return;
-  state.aeroSpeed=v;
-  const wn=$('#aeroWnum'); if(wn) wn.textContent=aeroWattsAt(a.dragPct,a.refW,v);
-  const sl=$('#aeroSpdLbl'); if(sl) sl.textContent=v;
-  const tm=$('#aeroTime'); if(tm) tm.textContent=fmtSaved(aeroSecondsSaved(a.dragPct,v));
-  document.querySelectorAll('#aeroPanel [data-spd]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.spd===v)));
+/* Minutes on the rider's own course, and "what if" for torso and head.
+   The physics mirrors aero_estimator.time_saved: a flat road at constant
+   power, P = (0.5 rho CdA v^3 + Crr m g v) / eta, solved for the new speed.
+   The torso curve and the head slope come from the server (ae.model), so
+   the two sides cannot drift. Artur, 2026-10-16: "head +30 %, drop it to
+   +10 % -- how much is that over 90 km?" */
+const AERO_DISTANCES=[[20,'Sprint'],[40,'Olympic'],[90,'70.3'],[180,'Ironman']], AERO_SPEEDS=[30,35,40,45];
+// Results stored before the model was served carry none: the same constants.
+const AERO_MODEL_FALLBACK={physics:{rho:1.2,crr:0.004,mass_kg:84,eta:0.975,cda:0.26},
+  torso_points:[[8,0.8*0.302/0.335],[16,0.8*0.318/0.335],[24,0.8],[33,0.87]],
+  head_per_point_pct:[4.6/26.3,6.4/26.3], head_field:[6.7,33], default_distance_km:40, default_speed_kmh:35};
+function aeroPower(v,cda,ph){ return (0.5*ph.rho*cda*v*v*v + ph.crr*ph.mass_kg*9.81*v)/ph.eta; }
+function aeroTimeSaved(red,kmh,km,ph){
+  const v0=kmh/3.6, target=aeroPower(v0,ph.cda,ph), cda1=ph.cda*(1-red);
+  let lo=v0, hi=v0*1.5;
+  for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(aeroPower(m,cda1,ph)<target) lo=m; else hi=m; }
+  const v1=(lo+hi)/2, d=km*1000;
+  return {min:(d/v0-d/v1)/60, w:target-aeroPower(v0,cda1,ph)};
 }
-/* One lever row in the breakdown: torso/head carry watts, elbow is a cue. */
+function aeroTorsoRel(a,pts){
+  if(a<=pts[0][0]) return pts[0][1];
+  if(a>=pts[pts.length-1][0]) return pts[pts.length-1][1];
+  for(let i=1;i<pts.length;i++){ const [a0,r0]=pts[i-1],[a1,r1]=pts[i];
+    if(a<=a1) return r0+(r1-r0)*(a-a0)/(a1-a0); }
+  return pts[pts.length-1][1];
+}
+function aeroHeadRed(now,to,m){
+  const f=m.head_field[0], drop=Math.max(0, Math.max(now,f)-Math.max(to,f));
+  return [drop*m.head_per_point_pct[0]/100, drop*m.head_per_point_pct[1]/100];
+}
+function fmtMin(m){ return m<1 ? Math.round(m*60)+' s' : m.toFixed(1); }
+function fmtMinRange(a,b){
+  if(b<1) return {num:Math.round(a*60)===Math.round(b*60)?`${Math.round(b*60)}`:`${Math.round(a*60)}–${Math.round(b*60)}`, unit:'s'};
+  const A=a.toFixed(1), B=b.toFixed(1);
+  return {num:A===B?B:`${A}–${B}`, unit:'min'};
+}
+function aeroPrefs(){ try{ return JSON.parse(localStorage.getItem('flapp-aero-course')||'null')||{}; }catch(e){ return {}; } }
+function aeroSavePrefs(p){ try{ localStorage.setItem('flapp-aero-course', JSON.stringify(p)); }catch(e){} }
+
+/* One lever row: the measured lever with its share of drag, or a cue. */
 function leverRow(l){
-  const ok=l.status==='ok', w=l.approx_watts_saved;
+  const ok=l.status==='ok', r=l.drag_reduction_range_pct;
   const tag = ok ? '<span class="lev-tag lev-ok">good</span>'
-    : (w ? `<span class="lev-tag lev-w">~${w} W</span>` : '<span class="lev-tag lev-cue">cue</span>');
+    : (l.drag_reduction_pct ? `<span class="lev-tag lev-w">−${r?`${(+r[0]).toFixed(1)}–${(+r[1]).toFixed(1)}`:(+l.drag_reduction_pct).toFixed(1)}% drag</span>` : '<span class="lev-tag lev-cue">cue</span>');
   return `<div class="lev-row${ok?' is-ok':''}">
     <div class="lev-head"><span class="lev-lbl">${esc(l.label)}</span>${tag}</div>
     <div class="lev-txt">${esc(l.cue)}</div></div>`;
 }
+
+function aeroUpdate(){
+  const a=state.aero; if(!a) return;
+  const m=a.model, ph=m.physics;
+  let lo=1, hi=1; const parts=[];
+  if(a.torso){ const r=(aeroTorsoRel(a.torso.now,m.torso_points)-aeroTorsoRel(a.torsoTo,m.torso_points))/aeroTorsoRel(a.torso.now,m.torso_points);
+    const d=Math.max(0,r); lo*=1-d; hi*=1-d; parts.push(d);
+    const o=$('#aeroTorsoOut'); if(o) o.textContent = d>0.0005 ? `${a.torso.now}° → ${a.torsoTo}° · −${(d*100).toFixed(1)}% drag` : `${a.torso.now}° · no change`; }
+  if(a.head){ const [dl,dh]=aeroHeadRed(a.head.now,a.headTo,m);
+    lo*=1-dl; hi*=1-dh; parts.push(dh);
+    const o=$('#aeroHeadOut'); if(o) o.textContent = dh>0.0005
+      ? `+${Math.round(a.head.now)}% → +${a.headTo}% · −${(dl*100).toFixed(1)}–${(dh*100).toFixed(1)}% drag${a.head.lower?' or more':''}`
+      : `+${Math.round(a.head.now)}% · no change`; }
+  if(!a.torso && a.fixed){ lo*=1-a.fixed; hi*=1-a.fixed; parts.push(a.fixed); }
+  const redLo=1-lo, redHi=1-hi;
+  const tLo=aeroTimeSaved(redLo,a.speed,a.dist,ph), tHi=aeroTimeSaved(redHi,a.speed,a.dist,ph);
+  const f=fmtMinRange(tLo.min,tHi.min);
+  const num=$('#aeroMin'), unit=$('#aeroMinUnit'), cap=$('#aeroCap');
+  if(num) num.textContent = parts.some(x=>x>0.0005) ? f.num : '0';
+  if(unit) unit.textContent = f.unit;
+  if(cap) cap.innerHTML = `saved over <b>${a.dist} km</b> at <b>${a.speed} km/h</b><br><span class="hint">−${(redLo*100).toFixed(1)}${redHi-redLo>0.0005?'–'+(redHi*100).toFixed(1):''}% drag · same as ${Math.round(tLo.w)}${Math.round(tHi.w)!==Math.round(tLo.w)?'–'+Math.round(tHi.w):''} W at that speed</span>`;
+  document.querySelectorAll('#aeroPanel [data-dist]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.dist===a.dist)));
+  document.querySelectorAll('#aeroPanel [data-spd]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.spd===a.speed)));
+}
+
 function renderAeroPanel(s){
   const blk=$('#aeroBlock'), host=$('#aeroPanel');
   const ae=s&&s.aero_estimate;
   if(!ae||!ae.zone_label){ blk.classList.add('hidden'); host.innerHTML=''; state.aero=null; return; }
-  const levers=ae.levers||[], nz=ae.next_zone, refW=ae.ref_aero_watts||190;
+  const levers=ae.levers||[], nz=ae.next_zone, m=ae.model||AERO_MODEL_FALLBACK;
   const anyAvail=levers.some(l=>l.status==='available');
-  const oneQuant=(levers.find(l=>l.drag_reduction_pct)||{}).drag_reduction_pct;
-  const headlineDrag = (ae.total_drag_reduction_pct!=null) ? ae.total_drag_reduction_pct
-    : (nz ? nz.drag_reduction_pct : oneQuant);
-  const multiAvail = levers.filter(l=>l.status==='available').length>1;
-
-  if(anyAvail && headlineDrag){
-    state.aero={dragPct:headlineDrag, refW}; state.aeroSpeed=40;
-    const w40=aeroWattsAt(headlineDrag,refW,40), t40=fmtSaved(aeroSecondsSaved(headlineDrag,40));
-    const rW=[aeroWattsAt(headlineDrag,refW,35), aeroWattsAt(headlineDrag,refW,45)];
-    const speedBtns=AERO_SPEEDS.map(v=>`<button type="button" data-spd="${v}" aria-pressed="${v===40}">${v}</button>`).join('');
-    const breakdown = multiAvail
-      ? `<div class="aero-levers-h">Where your watts are <span class="hint">(@ 40 km/h)</span></div><div class="aero-levers">${levers.map(leverRow).join('')}</div>`
-      : (nz ? `<div class="aero-cue"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> <span>Drop your torso ~<b>${Math.max(1,Math.round(ae.trunk_angle-nz.target_trunk_angle))}°</b> flatter — only worth it if you can still hold power and breathe there.</span></div>` : '');
-    host.innerHTML=`
-      <div class="aero-hero">
-        <div class="aero-watts"><span class="aero-w-num" id="aeroWnum">${w40}</span><span class="aero-w-unit">W</span></div>
-        <div class="aero-w-cap">${multiAvail?'total on the table':'saved'} at <b id="aeroSpdLbl">40</b> km/h<br>
-          <span class="hint">≈ <b id="aeroTime">${t40}</b> over ${AERO_DIST_KM} km · range ${rW[0]}–${rW[1]} W over 35–45 km/h</span></div>
-      </div>
-      <div class="aero-speed"><span class="aero-speed-lbl">Your speed</span><div class="seg seg-sm" role="group" aria-label="Your speed">${speedBtns}</div><span class="aero-speed-unit">km/h</span></div>
-      <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag.${multiAvail?' Here’s where the watts are hiding:':''}</p>
-      ${nz?aeroGauge(ae.trunk_angle, nz.target_trunk_angle):''}
-      ${breakdown}
-      <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
-      <p class="aero-disc">Time saved is a rough constant-power estimate on a flat ${AERO_DIST_KM} km course. ${esc(ae.disclaimer||'')}</p>`;
-  } else {
+  const head=levers.find(l=>l.key==='head' && l.now!=null);
+  // Nothing to put a number on (no measured lever, no helmet reading): the
+  // levers as cues, no minutes.
+  if(!anyAvail || !(levers.some(l=>l.drag_reduction_pct) || head)){
     state.aero=null;
     host.innerHTML=`<div class="aero-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-      <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Well-placed: no meaningful aero gains within a safe fit.</span></div>
+      <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag.${anyAvail?'':' Well-placed: no meaningful aero gains within a safe fit.'}</span></div>
+      ${(anyAvail||head)?`<div class="aero-levers" style="margin-top:12px">${(anyAvail?levers:[head]).map(leverRow).join('')}</div>`:''}
       <p class="aero-disc">${esc(ae.disclaimer||'')}</p>`;
+    blk.classList.remove('hidden'); return;
   }
+  const p=aeroPrefs();
+  const dist=AERO_DISTANCES.some(([d])=>d===p.dist)?p.dist:(m.default_distance_km||40);
+  const speed=AERO_SPEEDS.includes(p.speed)?p.speed:(m.default_speed_kmh||35);
+  // The torso slider lives on the measured curve (aero bars, <= 33 deg);
+  // above it the zones have no angles, so the server's step is used as is.
+  const onCurve=ae.trunk_angle!=null && ae.trunk_angle<=m.torso_points[m.torso_points.length-1][0];
+  const torsoFloor=Math.max(m.torso_points[0][0], Math.round(ae.torso_floor ?? m.torso_points[0][0]));
+  const torso=onCurve?{now:Math.round(ae.trunk_angle)}:null;
+  state.aero={model:m, dist, speed, torso, fixed:(!onCurve && nz)?nz.drag_reduction_pct/100:0,
+    torsoTo: torso ? Math.round(nz ? nz.target_trunk_angle : ae.trunk_angle) : null,
+    head: head ? {now:head.now, lower:!!head.lower_bound} : null,
+    headTo: head ? Math.round(head.status==='available' ? head.target : head.now) : null};
+  const a=state.aero;
+  const distBtns=AERO_DISTANCES.map(([d,l])=>`<button type="button" data-dist="${d}" aria-pressed="${d===dist}" title="${d} km">${l}</button>`).join('');
+  const spdBtns=AERO_SPEEDS.map(v=>`<button type="button" data-spd="${v}" aria-pressed="${v===speed}">${v}</button>`).join('');
+  const torsoSlider = torso ? `<div class="aero-wi-row">
+      <label for="aeroTorso" class="aero-wi-lbl">Torso angle</label>
+      <input type="range" id="aeroTorso" min="${Math.min(torsoFloor,torso.now)}" max="${Math.max(torso.now, torsoFloor)}" step="1" value="${a.torsoTo}">
+      <span class="aero-wi-out" id="aeroTorsoOut"></span></div>` : '';
+  const headSlider = head ? `<div class="aero-wi-row">
+      <label for="aeroHead" class="aero-wi-lbl">Helmet above the back</label>
+      <input type="range" id="aeroHead" min="${Math.round(m.head_field[0])}" max="${Math.max(Math.round(head.now), 24)}" step="1" value="${a.headTo}">
+      <span class="aero-wi-out" id="aeroHeadOut"></span></div>` : '';
+  host.innerHTML=`
+    <div class="aero-hero">
+      <div class="aero-watts"><span class="aero-w-num" id="aeroMin">–</span><span class="aero-w-unit" id="aeroMinUnit">min</span></div>
+      <div class="aero-w-cap" id="aeroCap"></div>
+    </div>
+    <div class="aero-speed"><span class="aero-speed-lbl">Your race</span><div class="seg seg-sm" role="group" aria-label="Race distance">${distBtns}</div></div>
+    <div class="aero-speed" style="margin-top:8px"><span class="aero-speed-lbl">Bike speed</span><div class="seg seg-sm" role="group" aria-label="Your average bike speed">${spdBtns}</div><span class="aero-speed-unit">km/h</span></div>
+    <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Here's where the time is:</p>
+    ${nz?aeroGauge(ae.trunk_angle, nz.target_trunk_angle):''}
+    <div class="aero-levers">${levers.map(leverRow).join('')}</div>
+    ${(torsoSlider||headSlider)?`<div class="aero-levers-h">What if <span class="hint">— move a slider, the minutes above follow</span></div>
+      <div class="aero-wi">${torsoSlider}${headSlider}</div>`:''}
+    <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
+    <p class="aero-disc">An estimate, not a measurement: constant power on a flat course, rider + bike ${m.physics.mass_kg} kg, CdA ${m.physics.cda}. Torso from measured frontal area (Fintelman 2015, van Druenen &amp; Blocken 2023).${head?' Head interpolated between head-up and tucked (4.6–6.4% drag) across the Kona 2026 pro range.':''} Lower only pays if you can still hold power, breathe and see the road.</p>`;
+  aeroUpdate();
   blk.classList.remove('hidden');
 }
-$('#aeroPanel').addEventListener('click',e=>{ const b=e.target.closest('[data-spd]'); if(b) setAeroSpeed(+b.dataset.spd); });
+$('#aeroPanel').addEventListener('click',e=>{
+  const a=state.aero; if(!a) return;
+  const d=e.target.closest('[data-dist]'), v=e.target.closest('[data-spd]');
+  if(d) a.dist=+d.dataset.dist; else if(v) a.speed=+v.dataset.spd; else return;
+  aeroSavePrefs({dist:a.dist, speed:a.speed}); aeroUpdate();
+});
+$('#aeroPanel').addEventListener('input',e=>{
+  const a=state.aero; if(!a) return;
+  if(e.target.id==='aeroTorso') a.torsoTo=+e.target.value;
+  else if(e.target.id==='aeroHead') a.headTo=+e.target.value;
+  else return;
+  aeroUpdate();
+  if(!a.tracked){ a.tracked=true; track('aero_whatif_used', {lever:e.target.id==='aeroHead'?'head':'torso'}); }
+});
 
 /* ============================================================
    Photo analysis: synchronous POST /analyze-photo (~5 s)

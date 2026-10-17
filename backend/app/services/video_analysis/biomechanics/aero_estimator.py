@@ -214,6 +214,68 @@ def _zone_for_trunk(trunk_angle: float) -> dict[str, Any]:
 _AERO_BAR_POSITIONS = {"tt_aero", "triathlon"}
 
 
+# --- Time on the course -----------------------------------------------------
+# A drag saving turned into minutes at the rider's own speed and distance,
+# by solving the steady-state power balance on a flat road at constant power:
+#     P = (0.5 rho CdA v^3 + Crr m g v) / eta
+# The saving is relative, so the absolute CdA only sets how much of the
+# resistance is aero; between CdA 0.24 and 0.26 the minutes move by ~5 %.
+# Typical age-group triathlete on a tri bike; the client mirrors these.
+PHYSICS = {"rho": 1.20, "crr": 0.004, "mass_kg": 84.0, "eta": 0.975, "cda": 0.26}
+DEFAULT_SPEED_KMH = 35.0
+# 70.3 for a triathlete, the 40 km TT otherwise.
+DEFAULT_DISTANCE_KM = {"triathlon": 90.0, "tt_aero": 40.0}
+
+
+def _power(v: float, cda: float) -> float:
+    p = PHYSICS
+    return (0.5 * p["rho"] * cda * v ** 3 + p["crr"] * p["mass_kg"] * 9.81 * v) / p["eta"]
+
+
+def time_saved(drag_reduction: float, speed_kmh: float, distance_km: float) -> dict[str, float]:
+    """Minutes saved over ``distance_km`` at the power that holds ``speed_kmh``
+    now, and the watts the same saving is worth at that speed."""
+    cda0 = PHYSICS["cda"]
+    v0 = speed_kmh / 3.6
+    target = _power(v0, cda0)
+    cda1 = cda0 * (1.0 - drag_reduction)
+    lo, hi = v0, v0 * 1.5
+    for _ in range(60):
+        mid = (lo + hi) / 2.0
+        lo, hi = (mid, hi) if _power(mid, cda1) < target else (lo, mid)
+    v1 = (lo + hi) / 2.0
+    d = distance_km * 1000.0
+    return {
+        "minutes": round((d / v0 - d / v1) / 60.0, 1),
+        "watts": round(target - _power(v0, cda1), 1),
+    }
+
+
+# --- The head lever ---------------------------------------------------------
+# Two published end points and no curve between them: head up against head
+# tucked cost 4.6 % in track testing (cycling_positions.py) and up to 6.4 % in
+# a CFD study of TT helmets (Beaumont 2018). Spread over the range the Kona
+# 2026 pros actually rode (helmet +6.7 % .. +33 % of torso above the back), that
+# is 0.17-0.24 % drag per point. An interpolation, labelled as one: a CFD sweep
+# of head heights is what would replace it with a curve. Artur, 2026-10-16:
+# "head +30 %, drop it to +10 % -- how much is that over 90 km?"
+HEAD_PCT_UP_VS_DOWN = (4.6, 6.4)
+HEAD_FIELD = (6.7, 33.0)
+HEAD_TARGET = 18.0  # the Kona pros' median (18.4), in the slider's whole points
+HEAD_PER_POINT = tuple(p / (HEAD_FIELD[1] - HEAD_FIELD[0]) for p in HEAD_PCT_UP_VS_DOWN)
+HEAD_SOURCE = ("Interpolated between two end points -- head up vs tucked: 4.6 % (track test) "
+               "and up to 6.4 % (Beaumont 2018, CFD) -- across the Kona 2026 pro range")
+
+
+def head_drag_reduction(now: float, target: float) -> tuple[float, float]:
+    """(low, high) relative drag saving, in %, of dropping the helmet from
+    ``now`` to ``target`` (both % of torso above the back). Nothing is
+    credited below the lowest pro: no data says lower keeps paying."""
+    lo_bound = HEAD_FIELD[0]
+    drop = max(0.0, max(now, lo_bound) - max(target, lo_bound))
+    return round(drop * HEAD_PER_POINT[0], 1), round(drop * HEAD_PER_POINT[1], 1)
+
+
 def helmet_lever(
     helmet_above_back: float | None,
     helmet_check: bool | None,
@@ -225,9 +287,9 @@ def helmet_lever(
     through the joint centres, which every aero rider passed -- and told a rider
     sitting up with the head high (a $4 report, 2026-10-13) that the head was
     "well tucked". It reads the helmet above the back now, against the same
-    Kona field and free band the score uses. Qualitative: the one study we
-    have (Beaumont 2018, CFD) compares head up with head down, up to ~6.4 %
-    drag, and gives no curve to turn a percentage of torso into watts.
+    Kona field and free band the score uses. Its drag figure is a RANGE
+    (head_drag_reduction): two published end points, no curve between them.
+    A flagged reading above the band is a lower bound, and so is its saving.
     """
     if position not in _AERO_BAR_POSITIONS or helmet_above_back is None:
         return None
@@ -242,17 +304,24 @@ def helmet_lever(
         return {"key": "head", "label": "Head", "status": "unknown", "qualitative": True,
                 "cue": "We could not tell where your back ends and the helmet begins on "
                        "this clip, so the head is not graded on it."}
-    if helmet_above_back <= KONA_PRO_FREE_UP_TO:
-        return {"key": "head", "label": "Head", "status": "ok",
-                "cue": f"Helmet {helmet_above_back:+.0f}% of a torso above your back: "
+    now = float(helmet_above_back)
+    lower_bound = bool(helmet_check)
+    if now <= KONA_PRO_FREE_UP_TO:
+        return {"key": "head", "label": "Head", "status": "ok", "now": round(now, 1),
+                "cue": f"Helmet {now:+.0f}% of a torso above your back: "
                        f"where {KONA_PRO_UNDER_FREE} Kona pros rode."}
+    lo, hi = head_drag_reduction(now, HEAD_TARGET)
     return {
-        "key": "head", "label": "Head", "status": "available", "qualitative": True,
-        "cue": f"Your helmet sits {helmet_above_back:+.0f}% of a torso above your back, "
-               f"higher than {KONA_PRO_UNDER_FREE} Kona pros (up to "
-               f"+{KONA_PRO_FREE_UP_TO:.0f}%). Drop the head toward the line of your "
-               "back, as far as you can still see the road: head up against head "
-               "down changed drag by up to ~6% in a CFD study.",
+        "key": "head", "label": "Head", "status": "available",
+        "now": round(now, 1), "target": HEAD_TARGET, "lower_bound": lower_bound,
+        "drag_reduction_range_pct": [lo, hi],
+        "drag_reduction_pct": round((lo + hi) / 2.0, 1),
+        "source": HEAD_SOURCE,
+        "cue": f"Your helmet sits {'at least ' if lower_bound else ''}{now:+.0f}% of a torso "
+               f"above your back, higher than {KONA_PRO_UNDER_FREE} Kona pros (up to "
+               f"+{KONA_PRO_FREE_UP_TO:.0f}%). Dropping it toward the pros' median "
+               f"(+{HEAD_TARGET:.0f}%) is worth about {lo:.1f}-{hi:.1f}% of drag"
+               f"{' or more' if lower_bound else ''}, as far as you can still see the road.",
     }
 
 
@@ -275,7 +344,57 @@ def with_helmet_lever(
     if lever is not None:
         torso_at = next((i for i, lv in enumerate(levers) if lv.get("key") == "torso"), -1)
         levers.insert(torso_at + 1, lever)
-    return {**aero, "levers": levers}
+    return _with_totals({**aero, "levers": levers}, position)
+
+
+def _combine(reductions: list[float]) -> float:
+    """Drag reductions compound multiplicatively, not additively."""
+    remaining = 1.0
+    for d in reductions:
+        remaining *= (1.0 - d)
+    return 1.0 - remaining
+
+
+def _with_totals(result: dict[str, Any], position: str | None) -> dict[str, Any]:
+    """The combined saving of every quantified lever, as drag and as minutes
+    on the rider's course, plus the model the client re-runs for "what if".
+
+    A lever with a range (the head) gives the total a range; the torso has
+    one figure (measured frontal area, the conservative reading).
+    """
+    out = {k: v for k, v in result.items()
+           if k not in ("total_drag_reduction_pct", "total_watts_saved",
+                        "total_watts_saved_range", "course")}
+    quant = [lv for lv in out.get("levers") or [] if lv.get("drag_reduction_pct")]
+    lows = [(lv.get("drag_reduction_range_pct") or [lv["drag_reduction_pct"]] * 2)[0] / 100.0 for lv in quant]
+    highs = [(lv.get("drag_reduction_range_pct") or [lv["drag_reduction_pct"]] * 2)[1] / 100.0 for lv in quant]
+    mids = [lv["drag_reduction_pct"] / 100.0 for lv in quant]
+    if len(quant) >= 2:
+        total = _combine(mids)
+        out["total_drag_reduction_pct"] = round(total * 100, 1)
+        out["total_watts_saved"] = watts_saved_at(total, REF_SPEED_KMH)
+        out["total_watts_saved_range"] = [watts_saved_at(total, REF_SPEED_LOW_KMH),
+                                          watts_saved_at(total, REF_SPEED_HIGH_KMH)]
+    distance = DEFAULT_DISTANCE_KM.get(position or "", 40.0)
+    if quant:
+        lo, hi = _combine(lows), _combine(highs)
+        t_lo = time_saved(lo, DEFAULT_SPEED_KMH, distance)
+        t_hi = time_saved(hi, DEFAULT_SPEED_KMH, distance)
+        out["course"] = {
+            "distance_km": distance, "speed_kmh": DEFAULT_SPEED_KMH,
+            "drag_reduction_range_pct": [round(lo * 100, 1), round(hi * 100, 1)],
+            "minutes_range": [t_lo["minutes"], t_hi["minutes"]],
+            "watts_range": [t_lo["watts"], t_hi["watts"]],
+        }
+    out["model"] = {
+        "physics": PHYSICS,
+        "torso_points": [list(p) for p in _TT_REL_POINTS],
+        "head_per_point_pct": list(HEAD_PER_POINT),
+        "head_field": list(HEAD_FIELD),
+        "default_distance_km": distance,
+        "default_speed_kmh": DEFAULT_SPEED_KMH,
+    }
+    return out
 
 
 def _elbow_lever(
@@ -407,6 +526,9 @@ def estimate_aero(
     # Expose the reference baseline so the client can personalise the watt
     # figure to the rider's own speed without another server round-trip.
     result["ref_aero_watts"] = REF_AERO_WATTS
+    # How flat the "what if" slider may go: the position's own floor.
+    if optimal_trunk_band:
+        result["torso_floor"] = float(optimal_trunk_band[0])
 
     # ---- Multi-lever breakdown -------------------------------------------
     # Torso is the quantified primary; head/elbow are secondary levers that
@@ -432,23 +554,4 @@ def estimate_aero(
         if lever is not None:
             levers.append(lever)
     result["levers"] = levers
-
-    # Combined quantified opportunity. Drag reductions compound
-    # multiplicatively (1 - product of remaining fractions), not additively.
-    quant = [
-        lv["drag_reduction_pct"] / 100.0
-        for lv in levers if lv.get("drag_reduction_pct")
-    ]
-    if len(quant) >= 2:
-        remaining = 1.0
-        for d in quant:
-            remaining *= (1.0 - d)
-        total_drag = 1.0 - remaining
-        result["total_drag_reduction_pct"] = round(total_drag * 100, 1)
-        result["total_watts_saved"] = watts_saved_at(total_drag, REF_SPEED_KMH)
-        result["total_watts_saved_range"] = [
-            watts_saved_at(total_drag, REF_SPEED_LOW_KMH),
-            watts_saved_at(total_drag, REF_SPEED_HIGH_KMH),
-        ]
-
-    return result
+    return _with_totals(result, cycling_position)

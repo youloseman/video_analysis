@@ -183,7 +183,9 @@ class TestTheHeadLever:
         high = AE.with_helmet_lever(base, 27.0, False, "triathlon")
         head = next(lv for lv in high["levers"] if lv["key"] == "head")
         assert head["status"] == "available" and "Kona pros" in head["cue"]
-        assert "drag_reduction_pct" not in head, "no invented watt figure"
+        # A range, with its source -- never one invented figure.
+        lo, hi = head["drag_reduction_range_pct"]
+        assert 0 < lo < hi and "Interpolated" in head["source"]
         low = AE.with_helmet_lever(base, 15.0, False, "triathlon")
         assert next(lv for lv in low["levers"] if lv["key"] == "head")["status"] == "ok"
 
@@ -201,6 +203,53 @@ class TestTheHeadLever:
         assert head["status"] == "available" and "+26%" in head["cue"]
         assert AE.with_helmet_lever(base, 25.9, False, "road_hoods")["levers"] == [
             lv for lv in base["levers"] if lv["key"] != "head"]
+
+
+class TestMinutesOnTheCourse:
+    """Artur, 2026-10-16: "head +30 %, drop it to +10 % -- how does the CdA
+    move and how much is that over 90 km?" The answer is a range of drag
+    (two published end points for the head) turned into minutes by the power
+    balance at constant power."""
+
+    def test_artur_s_question(self):
+        lo, hi = AE.head_drag_reduction(30.0, 10.0)
+        assert (lo, hi) == (3.5, 4.9)
+        t_lo = AE.time_saved(lo / 100, 35.0, 90.0)
+        t_hi = AE.time_saved(hi / 100, 35.0, 90.0)
+        assert 1.5 <= t_lo["minutes"] < t_hi["minutes"] <= 2.6
+        assert 4 <= t_lo["watts"] < t_hi["watts"] <= 8
+
+    def test_no_credit_below_the_lowest_pro(self):
+        """Nothing measured says lower keeps paying."""
+        assert AE.head_drag_reduction(10.0, 0.0) == AE.head_drag_reduction(10.0, AE.HEAD_FIELD[0])
+        assert AE.head_drag_reduction(5.0, 0.0) == (0.0, 0.0)
+
+    def test_a_lower_bound_reading_says_so(self):
+        base = AE.estimate_aero(24.0, "triathlon", optimal_trunk_band=(20, 30))
+        head = next(lv for lv in AE.with_helmet_lever(base, 28.0, True, "triathlon")["levers"]
+                    if lv["key"] == "head")
+        assert head["lower_bound"] and "at least" in head["cue"] and "or more" in head["cue"]
+
+    def test_the_course_combines_torso_and_head(self):
+        base = AE.estimate_aero(26.0, "triathlon", optimal_trunk_band=(20, 25))
+        out = AE.with_helmet_lever(base, 30.0, False, "triathlon")
+        c = out["course"]
+        assert c["distance_km"] == 90.0 and c["speed_kmh"] == 35.0
+        torso = next(lv for lv in out["levers"] if lv["key"] == "torso")["drag_reduction_pct"]
+        assert c["drag_reduction_range_pct"][0] > torso  # the head adds to it
+        assert 0 < c["minutes_range"][0] < c["minutes_range"][1]
+
+    def test_faster_riders_save_less_time_for_the_same_drag(self):
+        slow, fast = AE.time_saved(0.05, 30.0, 90.0), AE.time_saved(0.05, 40.0, 90.0)
+        assert slow["minutes"] > fast["minutes"] and slow["watts"] < fast["watts"]
+
+    def test_the_client_runs_the_same_model(self):
+        """The sliders re-run the model in the browser: same constants, and
+        results stored before the model was served fall back to them."""
+        for k, v in AE.PHYSICS.items():
+            assert f"{k}:{v:g}" in HTML.replace(" ", ""), k
+        assert "head_per_point_pct:[4.6/26.3,6.4/26.3]" in HTML
+        assert AE.HEAD_PCT_UP_VS_DOWN == (4.6, 6.4) and AE.HEAD_FIELD[1] - AE.HEAD_FIELD[0] == pytest.approx(26.3)
 
 
 def test_a_tri_bike_ridden_like_a_road_bike_is_not_an_a():

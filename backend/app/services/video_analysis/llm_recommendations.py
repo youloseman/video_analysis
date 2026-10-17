@@ -438,6 +438,18 @@ def _bike_data_block(
                 f"(~{aero.get('drag_vs_upright_pct')}% of upright drag) — already "
                 f"well-placed for this position; no flatter target advised."
             )
+        # The same minutes the rider sees in the aero panel, so the coach
+        # quotes them rather than inventing its own.
+        course = aero.get("course")
+        if isinstance(course, dict) and course.get("minutes_range"):
+            m_lo, m_hi = course["minutes_range"]
+            d_lo, d_hi = course.get("drag_reduction_range_pct") or (None, None)
+            lines.append(
+                f"- Aero levers combined (torso + head where measured): ~{d_lo}-{d_hi}% less "
+                f"drag ≈ {m_lo}-{m_hi} min over {course.get('distance_km'):.0f} km at "
+                f"{course.get('speed_kmh'):.0f} km/h (constant power, flat). An estimate, "
+                "not a measurement; quote it as a range."
+            )
     return "\n".join(lines)
 
 
