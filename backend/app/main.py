@@ -1000,7 +1000,7 @@ def _process_pair_job(
         ANALYSIS_SLOTS.release()
 
 
-def unsubscribe_token(user_id: int) -> str:
+def unsubscribe_token(user_id: int, kind: str = "ready") -> str:
     """Signed, login-free proof that this address asked to stop.
 
     HMAC over the id with the app secret: it cannot be guessed for another
@@ -1008,8 +1008,12 @@ def unsubscribe_token(user_id: int) -> str:
     anything held in memory). An unsubscribe link that demands a login is a
     link most people answer with the spam button instead.
     """
+    # One token per list: a link from the product news must not switch off
+    # the analysis-ready mail, or the other way round. The analysis-ready
+    # token keeps its original message so links already sent still work.
+    msg = f"unsub:{user_id}" if kind == "ready" else f"unsub-{kind}:{user_id}"
     return hmac.new(
-        settings.jwt_secret.encode(), f"unsub:{user_id}".encode(), hashlib.sha256,
+        settings.jwt_secret.encode(), msg.encode(), hashlib.sha256,
     ).hexdigest()[:32]
 
 
@@ -1380,7 +1384,10 @@ app.mount("/icons", StaticFiles(directory=STATIC_DIR / "icons"), name="icons")
 
 
 @app.get("/unsubscribe", include_in_schema=False)
-async def unsubscribe(u: int, t: str, db: AsyncSession = Depends(get_session)) -> Response:
+async def unsubscribe(
+    u: int, t: str, list: str | None = None,  # noqa: A002 -- the query parameter's name
+    db: AsyncSession = Depends(get_session),
+) -> Response:
     """One click, no login, from the mail itself.
 
     Always answers the same way, whether or not the signature checked out: a
@@ -1399,10 +1406,20 @@ async def unsubscribe(u: int, t: str, db: AsyncSession = Depends(get_session)) -
         'font-size:24px;margin:0 0 12px}p{color:var(--c-ink-soft);line-height:1.6}'
         'a{color:var(--c-blue)}</style>'
         '<div><h1>Done — no more of those</h1>'
-        '<p>We won\'t email you when an analysis finishes. Your reports are all '
-        'still in your history.</p>'
-        '<p><a href="/app">Back to Flapp</a></p></div>'
+        + ('<p>We won\'t send you Flapp news any more. Mail about your own '
+           'analyses and purchases still comes.</p>' if list == "news" else
+           '<p>We won\'t email you when an analysis finishes. Your reports are all '
+           'still in your history.</p>')
+        + '<p><a href="/app">Back to Flapp</a></p></div>'
     )
+    if list == "news":
+        if hmac.compare_digest(t or "", unsubscribe_token(u, "news")):
+            user = await db.get(User, u)
+            if user:
+                user.news_opt_out = True
+                await db.commit()
+                logger.info("UNSUBSCRIBED", user_id=u, kind="news")
+        return HTMLResponse(page)
     if hmac.compare_digest(t or "", unsubscribe_token(u)):
         user = await db.get(User, u)
         if user:

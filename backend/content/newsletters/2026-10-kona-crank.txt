@@ -1,0 +1,32 @@
+Kona pros don't sit higher. They sit further forward.
+
+Hi,
+
+We spent last week measuring every side-on photo from Kona 2026: 25 pros and 58 age-groupers on the Queen K. On every frame we marked the hip and the crank axle, then compared the two groups.
+
+WHAT WE FOUND
+
+It isn't saddle height. The knee at the bottom of the stroke came out the same for both groups: 145° for the pros, 146° for the age-groupers.
+
+It's where you sit. Draw a line from the crank axle to the hip and measure it from the horizontal behind the rider. The typical pro sat at 88° (middle half 87–90°), the typical Kona age-grouper at 85° (83–87°). Three degrees at the axle is 4–5 cm at the hip: that's how much further forward the pros sit.
+
+It held for the men and for the women. The pros were also a couple of degrees flatter in the torso, without closing the angle at the hip: sitting further forward is what lets them get low.
+
+Two honest limits. These age-groupers all qualified for Kona, so the gap to a typical amateur is probably bigger. And this describes where the fastest riders sat; it isn't a rule for your bike.
+
+MEASURE YOUR OWN
+
+New in Flapp: after a bike analysis, tap "Mark the crank axle". Flapp finds your crank on the chainring and puts the marker there. You check it, or drag it, and see where you sit against the Kona pros and age-groupers, in degrees and in centimetres. On a clip your hip comes from every frame, so the pelvis rocking through the stroke averages out.
+
+For the best read: film side-on, phone level at hip height, both wheels in the picture.
+
+Measure your position: https://getflapp.com/app?utm_source=email&utm_medium=newsletter&utm_campaign=kona_crank
+Available on the Enthusiast plan and up.
+
+Ride fast,
+Artur
+Founder, Flapp
+
+--
+You're getting this because you have a Flapp account. Flapp is operated by Clariva, [MAILING ADDRESS].
+Don't want product news? Unsubscribe in one click: {{UNSUBSCRIBE_URL}}

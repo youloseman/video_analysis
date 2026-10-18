@@ -129,6 +129,14 @@ def _migrate_users(conn) -> None:
             "NOT NULL DEFAULT true"
         ))
         logger.info("MIGRATED", change="users.notify_on_ready added")
+    if "news_opt_out" not in cols:
+        # Spelled ``false``, never an integer: Postgres refuses a numeric
+        # default for a BOOLEAN (that mistake once took prod down for 4 h).
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN news_opt_out BOOLEAN "
+            "NOT NULL DEFAULT false"
+        ))
+        logger.info("MIGRATED", change="users.news_opt_out added")
     # Off-bike mobility. All nullable with no backfill: NULL means "has not
     # done the screens", and that is a state the analysis has to handle
     # anyway -- no data is not a verdict.

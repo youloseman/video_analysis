@@ -185,6 +185,12 @@ class User(Base):
     notify_on_ready: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False, server_default="1",
     )
+    # Product news (services/newsletter.py): off is one click from any issue,
+    # no login, and separate from the analysis-ready mail -- leaving one list
+    # must not silently leave the other.
+    news_opt_out: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False,
     )
