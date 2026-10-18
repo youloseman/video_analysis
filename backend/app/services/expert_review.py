@@ -169,6 +169,9 @@ SECTION_BY_KEY = {s["key"]: s for s in (*SECTIONS, *LEGACY_SECTIONS)}
 # --------------------------------------------------------------------------
 PLAN_EXPERT = "expert"
 PLAN_NOTES = "notes"
+# The review again, at a re-check price, on a NEW clip. Written like the review
+# (it is one); only the price and who may buy it differ.
+PLAN_EXPERT_RECHECK = "expert_recheck"
 NOTES_ORDER_PLANS = (PLAN_NOTES,)
 MAX_NOTE_CHARS = 240        # ~40 words
 MAX_FIRST_CHARS = 200
@@ -496,7 +499,9 @@ def signed_by(report: dict[str, Any] | None, fallback: str) -> str:
     return f"{name}, {bio}" if bio else name
 
 
-def notes_ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
+def notes_ready_email(
+    report: dict[str, Any], app_url: str, recheck: str | None = None,
+) -> tuple[str, str, str]:
     """(subject, text, html) for delivered Coach Notes.
 
     Carries the first line -- the one thing to change -- and sends them to
@@ -510,6 +515,7 @@ def notes_ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, s
         f"First thing to change: {first}\n\n"
         f"— {reviewer}\n\n"
         f"The three notes are on your report, under the coach's notes:\n{app_url}\n"
+        + (f"\n{recheck}\n" if recheck else "")
     )
     html = (
         '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
@@ -524,12 +530,16 @@ def notes_ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, s
         'padding:12px 20px;border-radius:8px;display:inline-block;'
         'font-weight:600">Read the three notes</a></p>'
         '<p style="font-size:13px;color:#5A6478;margin:0">They sit on the report '
-        'they are about, and print and export with it.</p></div>'
+        'they are about, and print and export with it.</p>'
+        + (f'<p style="font-size:14px;margin:18px 0 0">{_esc(recheck)}</p>' if recheck else '')
+        + '</div>'
     )
     return subject, text, html
 
 
-def ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
+def ready_email(
+    report: dict[str, Any], app_url: str, recheck: str | None = None,
+) -> tuple[str, str, str]:
     """(subject, text, html) telling an athlete their review has landed."""
     verdict = _first_paragraph((report or {}).get("verdict") or "")
     reviewer = signed_by(report, "your reviewer")
@@ -540,6 +550,7 @@ def ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
         f"— {reviewer}\n\n"
         f"Read the full review (priorities, the four-week plan and when to "
         f"film again):\n{app_url}\n"
+        + (f"\n{recheck}\n" if recheck else "")
     )
     html = (
         '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
@@ -554,7 +565,9 @@ def ready_email(report: dict[str, Any], app_url: str) -> tuple[str, str, str]:
         'padding:12px 20px;border-radius:8px;display:inline-block;'
         'font-weight:600">Read the full review</a></p>'
         '<p style="font-size:13px;color:#5A6478;margin:0">It has your ranked '
-        'priorities, a four-week plan, and when to film again.</p></div>'
+        'priorities, a four-week plan, and when to film again.</p>'
+        + (f'<p style="font-size:14px;margin:18px 0 0">{_esc(recheck)}</p>' if recheck else '')
+        + '</div>'
     )
     return subject, text, html
 

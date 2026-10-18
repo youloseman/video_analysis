@@ -194,6 +194,28 @@ CARDS: tuple[Card, ...] = (
         ),
         cta_label="Unlock this report",
     ),
+    # Not a card either: offered after a delivered Coach Notes or Expert Review,
+    # to somebody who changed what the coach said and filmed again. The review
+    # is the same product; the lower price is for the second look at the same
+    # athlete. Who may buy it, and once per delivery, is the checkout's rule.
+    Card(
+        id="recheck",
+        name="Expert Review — re-check",
+        kind="single",
+        tagline=(
+            "A full Expert Review of the clip you film after making the changes "
+            "— open for a limited time after your last review or Coach Notes."
+        ),
+        prices=(
+            Price(plan="expert_recheck", amount=2700, per="once",
+                  note="per re-check", interval="once"),
+        ),
+        features=(
+            Feature("The same full review, on the clip you filmed after the changes"),
+            Feature("What moved, what did not, and what to try next"),
+        ),
+        cta_label="Book the re-check",
+    ),
     # The rung under the Expert Review. Sold on the report itself, at the
     # moment somebody has read the AI's notes and wants a person's; also on
     # the pricing page so the ladder (AI -> Notes -> Review) is visible. What

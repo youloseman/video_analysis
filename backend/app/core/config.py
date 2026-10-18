@@ -130,6 +130,11 @@ class Settings:
     stripe_price_expert: str | None = None         # $39 one-time
     stripe_price_unlock: str | None = None         # $4 one-time
     stripe_price_notes: str | None = None          # $12 one-time (Coach Notes)
+    # The Expert Review at a re-check price: for an athlete who has had Notes or a
+    # review and filmed again after making the changes. The window and the
+    # one-per-delivery rule live in the checkout, not in this price.
+    stripe_price_expert_recheck: str | None = None
+    recheck_window_days: int = 45
 
     # Expert Reviews accepted per rolling week. The deliverable is ~40 minutes
     # of one person's attention, so this is the only product here whose supply
@@ -200,6 +205,7 @@ class Settings:
             "expert": self.stripe_price_expert,
             "unlock": self.stripe_price_unlock,
             "notes": self.stripe_price_notes,
+            "expert_recheck": self.stripe_price_expert_recheck,
         }
 
     @property
@@ -314,6 +320,8 @@ def _load_settings() -> Settings:
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
         stripe_price_notes=os.environ.get("STRIPE_PRICE_NOTES") or None,
+        stripe_price_expert_recheck=os.environ.get("STRIPE_PRICE_EXPERT_RECHECK") or None,
+        recheck_window_days=_int_env("RECHECK_WINDOW_DAYS", Settings.recheck_window_days),
         coach_notes_slots_per_week=_int_env(
             "COACH_NOTES_SLOTS_PER_WEEK", Settings.coach_notes_slots_per_week,
         ),

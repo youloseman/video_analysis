@@ -36,6 +36,8 @@ PURCHASE_SURFACES = {
     # The Coach Notes / Expert Review card in every state (offer, booked,
     # delivered-with-upsell). Delivered notes render in .cnote, not here.
     ".notes-offer": 'class="notes-offer',
+    # The re-check block: the review again, offered after delivered notes or a review.
+    ".recheck-offer": 'class="cmp-next recheck-offer"',
     # Anything else wired inline to a purchase function.
     '[onclick*="startCheckout"]': "startCheckout(",
     '[onclick*="openPricing"]': "openPricing()",
@@ -77,7 +79,7 @@ def test_every_checkout_call_site_has_a_known_container(spa):
     attribute is not on the list is a new surface, and the answer is to add
     it, not to loosen this."""
     known = ("tier-cta", "cta-row", "solo-buy", "no-cta", "btn-unlock",
-             "data-notesbuy", "navPricing", "onclick=\"startCheckout")
+             "data-notesbuy", "data-recheck", "navPricing", "onclick=\"startCheckout")
     for i, line in enumerate(spa.splitlines(), 1):
         if "startCheckout('" not in line or "function startCheckout" in line:
             continue

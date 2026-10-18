@@ -5593,6 +5593,38 @@ function renderCoachNote(hostId, entryId){
    ============================================================ */
 function notesCard(){ return ((PLANS&&PLANS.cards)||[]).find(c=>c.id==='notes')||null; }
 function notesPrice(){ const c=notesCard(); return (c&&c.prices&&c.prices[0])?c.prices[0].display:''; }
+/* The re-check: the Expert Review again, cheaper, on a clip filmed after the
+   changes. Who may buy it (a delivered Notes or review, inside a window, once
+   per delivery) is the server's call -- /billing/recheck says yes or no; this
+   only draws it. The amount comes from the catalogue like every other price. */
+function recheckPrice(){
+  const c=((PLANS&&PLANS.cards)||[]).find(x=>x.id==='recheck');
+  return (c&&c.prices&&c.prices[0])||null;
+}
+async function loadRecheck(force){
+  if(!auth){ state.recheck=null; return null; }
+  if(state.recheck&&!force) return state.recheck;
+  try{ const r=await fetch('/billing/recheck',{headers:authHeaders()});
+    if(r.ok){ state.recheck=await r.json(); return state.recheck; } }catch(e){}
+  return state.recheck||null;
+}
+function recheckBlockHtml(rc){
+  const p=recheckPrice();
+  if(!rc||!rc.available||!p||!p.available) return '';
+  const until=new Date(rc.until_ms).toLocaleDateString(UI_LOCALE,{month:'short',day:'numeric'});
+  return `<div class="cmp-next recheck-offer"><p><b>Made the changes? Film again and book a re-check.</b> The same full Expert Review, on your new clip, for ${esc(p.display)}. Open until ${esc(until)}.</p>
+    <button class="btn btn-primary btn-sm" type="button" data-recheck>Book a re-check · ${esc(p.display)}</button></div>`;
+}
+async function renderRecheck(hostId){
+  const host=$('#'+hostId); if(!host) return;
+  host.innerHTML='';
+  if(!PLANS) await loadPlans();
+  const html=recheckBlockHtml(await loadRecheck());
+  if(!html||!host.isConnected) return;
+  host.innerHTML=html;
+  host.querySelector('[data-recheck]').addEventListener('click',()=>{ track('recheck_clicked',{where:hostId}); startCheckout('expert_recheck'); });
+  track('recheck_shown',{where:hostId});
+}
 state.ordersCache=null;
 async function loadOrders(force){
   if(!auth) { state.ordersCache=null; return []; }
@@ -5637,7 +5669,8 @@ async function renderNotesOffer(hostId, entryId){
     body=`<div class="no-head"><span class="no-chip">Coach Notes · delivered</span></div>
       <p class="no-p">Your Coach Notes are on this report, under <b>Coach Notes</b> above. Want the full picture — which numbers to trust, a four-week plan, position trade-offs? That is the Expert Review${credits>0?', and your plan already includes one':''}.</p>
       <div class="no-cta">${credits>0?useReview
-        :`<button class="btn btn-outline btn-sm" type="button" onclick="startCheckout('expert',${esc(JSON.stringify(entryId))})">Expert Review${expertPriceLabel()}</button>`}</div>`;
+        :`<button class="btn btn-outline btn-sm" type="button" onclick="startCheckout('expert',${esc(JSON.stringify(entryId))})">Expert Review${expertPriceLabel()}</button>`}</div>
+      <div id="${hostId}Recheck" style="margin-top:14px"></div>`;
   } else if(open){
     // The order's own status line talks about "your review"; the notes say
     // it in their own words.
@@ -5679,6 +5712,7 @@ async function renderNotesOffer(hostId, entryId){
       else if(n.left!=null&&n.left<=3) sl.textContent=`${n.left} left this week`;
     }).catch(()=>{});
   }
+  if(done) renderRecheck(hostId+'Recheck');
   track('notes_offer_shown',{entry:entryId,state:done?'delivered':open?'booked':'offer',has_review:credits>0});
 }
 
@@ -6260,7 +6294,7 @@ async function renderOrders(){
     orders=await r.json();
   }catch(e){ box.classList.add('hidden'); return; }   // never block the page on this
   if(!orders.length){ box.classList.add('hidden'); box.innerHTML=''; return; }
-  const NAME={expert:'Expert Review',expert_credit:'Expert Review',notes:'Coach Notes',unlock:'Report unlock',unlock_credit:'Report unlock (free)'};
+  const NAME={expert:'Expert Review',expert_credit:'Expert Review',expert_recheck:'Expert Review · re-check',notes:'Coach Notes',unlock:'Report unlock',unlock_credit:'Report unlock (free)'};
   box.innerHTML=orders.map(o=>`
     <span class="ao-chip">Your order</span>
     <div>
@@ -6427,8 +6461,10 @@ async function openReviewReport(orderId){
     </div>`
     + renderReportHtml(j.report, j.sections,
         reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report), j.figures, j.capture)
-    + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`;
+    + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`
+    + `<div id="rrRecheck" style="max-width:760px;margin:18px auto 0"></div>`;
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
+  renderRecheck('rrRecheck');
 }
 
 /* ---- the sample, shown before anyone pays ---- */
@@ -6499,7 +6535,7 @@ async function loadExpertQueue(){
   list.innerHTML=shown.map(o=>`
     <div class="ex-card">
       <div>
-        <div class="ex-em">${o.plan==='notes'?'<span class="ex-kind">Notes</span> ':(o.kind==='check'?'<span class="ex-kind">Check</span> ':'')}${esc(o.email||'—')}</div>
+        <div class="ex-em">${o.plan==='notes'?'<span class="ex-kind">Notes</span> ':(o.plan==='expert_recheck'?'<span class="ex-kind">Re-check</span> ':(o.kind==='check'?'<span class="ex-kind">Check</span> ':''))}${esc(o.email||'—')}</div>
         <div class="ex-sub">#${o.id} · ${esc(money(o.amount_total,o.currency))} · ${esc(shortDate(o.created_at_ms))}${o.analysis_client_id?'':' · <b>no clip chosen</b>'}</div>
       </div>
       ${exPill(o)}
@@ -7058,6 +7094,13 @@ async function handleCheckoutReturn(){
   // The Expert Review is a one-time purchase: it grants no tier, so polling
   // /auth/me for an upgrade would spin for 9 s and then quietly give up.
   // Confirm the order itself instead.
+  if(plan==='expert_recheck'){
+    toast('Payment received — your re-check is booked. We’ll email you when it’s ready.',{duration:7000});
+    state.ordersCache=null; state.recheck=null;
+    await renderOrders();
+    openPricing();
+    return;
+  }
   if(plan==='expert'){
     toast('Payment received — your Expert Review is booked. We’ll email you when it’s ready.',{duration:7000});
     await renderOrders();
@@ -7115,7 +7158,16 @@ function openUpgrade(){ openPricing(); }
    if the athlete backed out. Nothing is charged until this is answered. */
 function pickAnalysis(plan){
   const notes=plan==='notes';
-  const list=loadHist();
+  const recheck=plan==='expert_recheck';
+  // A re-check is booked on a clip filmed AFTER the advice, never the one the
+  // coach saw -- the server refuses the rest, this just does not offer them.
+  const rc=state.recheck||{};
+  const list=recheck ? loadHist().filter(e=>(e.at||0)>(rc.since_ms||0)&&e.id!==rc.source_analysis) : loadHist();
+  if(recheck&&!list.length){
+    toast('Film a new clip after making the changes, then book the re-check on it.',
+      {action:'Analyze',onAction:()=>reset(),duration:7000});
+    return Promise.resolve(null);
+  }
   if(!list.length){
     toast(notes?'Run an analysis first — Coach Notes are written on one of your reports.'
                :'Run an analysis first — an Expert Review is written against one of yours.',
@@ -7125,9 +7177,10 @@ function pickAnalysis(plan){
   const modal=$('#pickModal');
   // Someone spending an included review is not "continuing to payment", and
   // telling them they are is how a benefit reads like a second charge.
-  const credits=notes?0:((auth&&auth.expert_credits)||0);
+  const credits=(notes||recheck)?0:((auth&&auth.expert_credits)||0);
   const eb=$('#pickEyebrow');
-  if(eb) eb.textContent = notes ? 'Coach Notes'+(notesPrice()?' · '+notesPrice():'')
+  if(eb) eb.textContent = recheck ? 'Expert Review · re-check'+((recheckPrice()&&recheckPrice().display)?' · '+recheckPrice().display:'')
+                        : notes ? 'Coach Notes'+(notesPrice()?' · '+notesPrice():'')
                         : credits>0 ? 'Expert Review · included with your plan'
                                     : 'Expert Review'+expertPriceLabel();
   const ok=$('#pickOk');
@@ -7183,6 +7236,11 @@ async function startCheckout(plan, analysisIdArg){
     if(!analysisId) analysisId=await pickAnalysis('notes');
     if(!analysisId) return;
     try{ sessionStorage.setItem('flapp_notes_for', analysisId); }catch(e){}
+  }
+  if(plan==='expert_recheck'){
+    await loadRecheck();                 // the picker filters on what the server just said
+    analysisId=await pickAnalysis('expert_recheck');
+    if(!analysisId) return;
   }
   if(plan==='unlock'){
     try{ sessionStorage.setItem('flapp_unlocking', analysisId); }catch(e){}

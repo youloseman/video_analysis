@@ -328,7 +328,7 @@ async def review_slots_left(db: AsyncSession) -> int | None:
     taken = int(
         await db.scalar(
             select(func.count(Order.id)).where(
-                Order.plan.in_(("expert", "expert_credit")),
+                Order.plan.in_(("expert", "expert_credit", expert_review.PLAN_EXPERT_RECHECK)),
                 Order.status != ORDER_REFUNDED,
                 Order.created_at_ms >= since,
             )
@@ -584,6 +584,9 @@ async def create_checkout(
 
     if body.plan == "expert":
         await _require_review_slot(db)
+    if body.plan == expert_review.PLAN_EXPERT_RECHECK:
+        await _require_recheck(db, user, body.analysis_client_id)
+        await _require_review_slot(db)
 
     _require_stripe()
     # Two different failures were sharing one 400 and one internal-sounding
@@ -604,7 +607,9 @@ async def create_checkout(
             "— or email support@getflapp.com and we'll sort it out.",
         )
 
-    is_subscription = body.plan not in ("expert", "unlock", expert_review.PLAN_NOTES)
+    is_subscription = body.plan not in (
+        "expert", "unlock", expert_review.PLAN_NOTES, expert_review.PLAN_EXPERT_RECHECK,
+    )
     base = _base_url(request)
 
     # Already subscribed? A second Checkout does not upgrade anyone -- it creates
@@ -686,6 +691,121 @@ def _order_out(o: Order) -> dict[str, Any]:
         "unread": (
             bool(o.report) and o.status == ORDER_DELIVERED and not o.read_at_ms
         ),
+    }
+
+
+# --------------------------------------------------------------------------
+# Re-check: the Expert Review again, cheaper, on a NEW clip.
+#
+# For an athlete who had Coach Notes or a review, made the changes and filmed
+# again. Two rules, both enforced here and not in the price: it is open for
+# ``recheck_window_days`` after the last DELIVERY, and once per delivery. No
+# schema: "used" is "a re-check was ordered after that delivery".
+# --------------------------------------------------------------------------
+RECHECK_SOURCE_PLANS = ("expert", "expert_credit", expert_review.PLAN_NOTES)
+DAY_MS = 24 * 60 * 60 * 1000
+
+
+async def recheck_offer(db: AsyncSession, user: User) -> dict[str, Any] | None:
+    """The delivery a re-check hangs off, or None when there is nothing to offer.
+
+    Newest delivered Notes / review inside the window that has not already been
+    followed by a re-check. A re-check does not itself open another one.
+    """
+    if (user.expert_credits or 0) > 0:
+        return None      # the plan's included review comes first -- see create_checkout
+    now = _now_ms()
+    since = now - settings.recheck_window_days * DAY_MS
+    src = (
+        await db.execute(
+            select(Order).where(
+                Order.user_id == user.id,
+                Order.plan.in_(RECHECK_SOURCE_PLANS),
+                Order.status == ORDER_DELIVERED,
+                Order.delivered_at_ms.is_not(None),
+                Order.delivered_at_ms >= since,
+            ).order_by(Order.delivered_at_ms.desc()).limit(1)
+        )
+    ).scalar_one_or_none()
+    if src is None:
+        return None
+    used = await db.scalar(
+        select(func.count(Order.id)).where(
+            Order.user_id == user.id,
+            Order.plan == expert_review.PLAN_EXPERT_RECHECK,
+            Order.status != ORDER_REFUNDED,
+            Order.created_at_ms >= src.delivered_at_ms,
+        )
+    )
+    if used:
+        return None
+    return {
+        "order_id": src.id,
+        "plan": src.plan,
+        "analysis_client_id": src.analysis_client_id,
+        "since_ms": src.created_at_ms,
+        "until_ms": int(src.delivered_at_ms) + settings.recheck_window_days * DAY_MS,
+    }
+
+
+async def _require_recheck(
+    db: AsyncSession, user: User, analysis_client_id: str | None,
+) -> None:
+    if (user.expert_credits or 0) > 0:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Your plan already includes an Expert Review — use that one for your new clip.",
+        )
+    offer = await recheck_offer(db, user)
+    if offer is None:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "A re-check follows a delivered Coach Notes or Expert Review, "
+            "within a limited time, once per delivery.",
+        )
+    clip = (analysis_client_id or "").strip()[:64]
+    if not clip:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Choose the new clip you'd like reviewed.",
+        )
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == clip,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That analysis is not in your history.")
+    # A re-check is a second look at a CHANGE. The clip the coach already saw,
+    # or one filmed before the order that got the advice, shows no change.
+    if clip == offer["analysis_client_id"] or (row.created_at_ms or 0) <= offer["since_ms"]:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "A re-check is for a clip filmed after your review or notes. "
+            "Film again after making the changes, then book it on that clip.",
+        )
+
+
+@router.get("/recheck")
+async def my_recheck(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Whether this account may book a re-check now, and until when.
+
+    The price is not here: it lives in ``/billing/plans`` with every other.
+    """
+    offer = await recheck_offer(db, user)
+    configured = bool(settings.plan_price_map.get(expert_review.PLAN_EXPERT_RECHECK))
+    if offer is None or not configured:
+        return {"available": False}
+    return {
+        "available": True,
+        "until_ms": offer["until_ms"],
+        "since_ms": offer["since_ms"],
+        "source_plan": offer["plan"],
+        "source_analysis": offer["analysis_client_id"],
     }
 
 
@@ -821,7 +941,10 @@ def _analysis_brief(a: Analysis) -> dict[str, Any]:
 # The one-time purchases a person has to write. A $4 unlock is a one-time
 # purchase too, and the queue listed it -- opening it showed the full Expert
 # Review form for a report that needs nobody (order #3, 2026-10-13).
-REVIEW_ORDER_PLANS = (expert_review.PLAN_EXPERT, expert_review.PLAN_NOTES)
+REVIEW_ORDER_PLANS = (
+    expert_review.PLAN_EXPERT, expert_review.PLAN_NOTES,
+    expert_review.PLAN_EXPERT_RECHECK,
+)
 # Paid reports nobody writes, but Artur reads (2026-10-13): every $4 unlock
 # sits in the queue as a "check" -- the clip, the numbers and the coach text
 # the athlete paid for, so a wrong position or a coach that contradicts its own
@@ -1134,11 +1257,32 @@ async def admin_publish_report(
                 if expert_review.is_notes_plan(order.plan)
                 else expert_review.ready_email
             )
-            subject, text, html = mail(order.report, f"{_base_url(request)}/app")
+            subject, text, html = mail(
+                order.report, f"{_base_url(request)}/app",
+                recheck=_recheck_line(order, buyer),
+            )
             emailed = await run_in_threadpool(
                 notify.send_email, buyer.email, subject, text, html,
             )
     return {**_order_out(order), "report": order.report, "emailed": emailed}
+
+
+def _recheck_line(order: Order, buyer: User) -> str | None:
+    """One sentence for the delivery email: the re-check exists, what it costs,
+    how long it stays open. None when it is not on offer to this buyer -- no
+    price configured, the order is itself a re-check, or their plan still holds
+    an unused review (that one comes first)."""
+    if order.plan not in RECHECK_SOURCE_PLANS:
+        return None
+    if not settings.plan_price_map.get(expert_review.PLAN_EXPERT_RECHECK):
+        return None
+    if (buyer.expert_credits or 0) > 0:
+        return None
+    price = pricing.money(pricing.CARD_BY_ID["recheck"].prices[0].amount)
+    return (
+        "Made the changes? Film again and book a re-check: the full Expert "
+        f"Review on your new clip, {price}, open for {settings.recheck_window_days} days."
+    )
 
 
 async def _write_notes_to_entry(db: AsyncSession, order: Order) -> None:

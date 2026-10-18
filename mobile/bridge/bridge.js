@@ -121,6 +121,9 @@
     // Review). Delivered notes themselves render in #coachNoteBlock / .cnote,
     // which stays; a booked order shows in #ordersBox, which stays.
     '.flapp-native .notes-offer',
+    // The re-check (the review again at a lower price, offered after delivered
+    // notes or a review) -- a purchase, so it goes the way of the card above.
+    '.flapp-native .recheck-offer',
     // Anything else wired inline to the checkout or pricing functions.
     '.flapp-native [onclick*="startCheckout"]', '.flapp-native [onclick*="openPricing"]',
     '.flapp-native [onclick*="openUpgrade"]'

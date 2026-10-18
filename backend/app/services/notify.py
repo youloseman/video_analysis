@@ -226,7 +226,8 @@ def analysis_ready_email(
 # and it comes with a 72-hour promise. Every sale is announced; the ones that
 # owe work say so in the subject line.
 # --------------------------------------------------------------------------
-REVIEW_PLANS = {"expert": "Expert Review", "notes": "Coach Notes"}
+REVIEW_PLANS = {"expert": "Expert Review", "notes": "Coach Notes",
+                "expert_recheck": "Expert Review (re-check)"}
 NOTES_DUE_HOURS = 72
 
 
