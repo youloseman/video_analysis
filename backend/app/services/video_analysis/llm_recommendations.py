@@ -310,6 +310,26 @@ def _fmt(v: Any, unit: str = "") -> str:
     return f"{v}{unit}"
 
 
+def hip_over_bb_prompt_line(hob: Any) -> str:
+    """One line for the coach when the athlete has marked the crank axle."""
+    if not isinstance(hob, dict) or hob.get("angle_deg") is None:
+        return ""
+    f = hob.get("field") or {}
+    pro, ag = f.get("pro") or {}, f.get("age_group") or {}
+    ref = ("against the wheel axles" if hob.get("ref") == "axles"
+           else "against the frame edge (phone assumed level)")
+    return (
+        f"- Hip over the crank axle (athlete marked the axle): {hob['angle_deg']} deg from "
+        f"horizontal on the back side, {ref}. Kona 2026 field: pros median {pro.get('median')} "
+        f"(middle half {pro.get('q1')}-{pro.get('q3')}), age-groupers {ag.get('median')} "
+        f"({ag.get('q1')}-{ag.get('q3')}); the pros sit about 3 deg / 4-5 cm further forward. "
+        f"This rider: {hob.get('gap_pro_deg'):+} deg vs the pro median (about "
+        f"{hob.get('gap_pro_cm'):+} cm). A FIELD, not a band: say where they sit, never "
+        "prescribe a saddle move from it alone; forward also changes reach and the knee "
+        "over the pedal."
+    )
+
+
 def _bike_data_block(
     score: Any, grade: Any, position: str | None,
     issues: list[dict], summary: dict,
@@ -419,6 +439,9 @@ def _bike_data_block(
     pro = pro_field_prompt_block(position)
     if pro:
         lines.append("- " + pro)
+    hob_line = hip_over_bb_prompt_line(summary.get("hip_over_bb"))
+    if hob_line:
+        lines.append(hob_line)
 
     aero = summary.get("aero_estimate")
     if isinstance(aero, dict):
@@ -1153,6 +1176,9 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             f"running are instantaneous -- describe what this instant shows, "
             f"do not treat it as the athlete's average form."
         )
+    hob_line = hip_over_bb_prompt_line(res.get("hip_over_bb"))
+    if hob_line:
+        lines.append(hob_line)
     lines.append("Joint angles (value vs optimal, status):")
     for k, v in (res.get("angles_with_context") or {}).items():
         # Units are explicit: two bike metrics are NOT degrees, and without the

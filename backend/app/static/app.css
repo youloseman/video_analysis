@@ -2126,6 +2126,19 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .aero-wi-row input[type=range]{width:100%;accent-color:var(--c-blue);margin:0}
 .aero-wi-out{grid-column:2;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft);font-feature-settings:"tnum" 1}
 .aero-watts{white-space:nowrap}
+/* Hip over the bottom bracket: one number, the Kona field under it. */
+.hob-hero{display:flex;align-items:center;gap:16px;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:14px 18px;margin-bottom:10px}
+.hob-num{font-family:var(--f-mono);font-weight:500;font-size:40px;line-height:1;color:var(--c-ink);font-feature-settings:"tnum" 1;letter-spacing:-.03em}
+.hob-num small{font-size:18px;color:var(--c-ink-faint)}
+.hob-cap{font-size:13px;font-weight:500;color:var(--c-ink-soft)}
+.hob-cap .hint{font-weight:400}
+.hob-scale{width:100%;max-width:420px;height:auto;display:block;margin:4px 0 8px}
+.hob-lead{font-size:14px;line-height:1.55;color:var(--c-ink);margin:8px 0}
+.hob-notes{margin:0 0 8px;padding-left:18px;font-size:12.5px;color:var(--c-ink-soft);line-height:1.5}
+.hob-more{font-size:13px;color:var(--c-ink-soft);margin-top:6px}
+.hob-more summary{cursor:pointer;color:var(--c-blue-dk);font-weight:500}
+.hob-more p{margin:8px 0 0}
+@media (max-width:560px){ .hob-num{font-size:34px} }
 @media (max-width:560px){ .aero-w-num{font-size:36px} .aero-hero{padding:14px 16px;flex-wrap:wrap;gap:6px 16px}
   .aero-wi-row{grid-template-columns:minmax(0,1fr)} .aero-wi-out{grid-column:1} }
 /* "What is this?" beside a measurement's name: a 20 px disc, a 44 px target. */

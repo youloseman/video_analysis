@@ -2134,6 +2134,11 @@ async def analyze_photo_recompute_endpoint(
     ),
     coaching: bool = Form(True, description="Regenerate the AI coaching for the corrected pose."),
     focus: str | None = Form(None, description="Optional: what the athlete wants looked at closely."),
+    bike_points: str | None = Form(
+        None, description=("JSON object of points the athlete placed on the bike, normalized: "
+                           "C (crank axle, required), P (pedal axle), FA / RA (wheel axles)."),
+    ),
+    crank_length_mm: float | None = Form(None, description="Crank length, for the cm scale."),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Measure a photo again with the athlete's joint corrections applied.
@@ -2158,10 +2163,16 @@ async def analyze_photo_recompute_endpoint(
     try:
         pose_obj = json.loads(pose)
         corr_obj = json.loads(corrections)
+        points_obj = json.loads(bike_points) if bike_points else None
     except ValueError:
-        raise HTTPException(400, "pose and corrections must be JSON")
+        raise HTTPException(400, "pose, corrections and bike_points must be JSON")
     if not isinstance(corr_obj, list):
         raise HTTPException(400, "corrections must be a JSON list")
+    if points_obj is not None and not isinstance(points_obj, dict):
+        raise HTTPException(400, "bike_points must be a JSON object")
+    if free and points_obj:
+        # Where the rider sits over the crank: Enthusiast and up (Artur, 2026-10-18).
+        raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
     if free:
         from app.services.video_analysis.biomechanics.corrections import FREE_DRAGGABLE_LANDMARKS
         side = pose_obj.get("camera_side") if isinstance(pose_obj, dict) else None
@@ -2206,7 +2217,8 @@ async def analyze_photo_recompute_endpoint(
 
     try:
         result = await run_in_threadpool(
-            functools.partial(recompute_photo, hide_angle_values=free),
+            functools.partial(recompute_photo, hide_angle_values=free,
+                              bike_points=points_obj, crank_length_mm=crank_length_mm),
             data, sport, cycling_position, pose_obj, corr_obj,
         )
     except ValueError as e:
@@ -2447,6 +2459,86 @@ async def job_corrections(
         "corrections": merged, "plausibility_warnings": warnings,
         "rounds_left": _rounds_left(job),
     }
+
+
+_HIP_OVER_BB_402 = (
+    "Measuring where you sit over the crank is part of the Enthusiast plan and up. "
+    "The automatic measurement is unchanged."
+)
+
+
+class BikePointsIn(BaseModel):
+    points: dict[str, Any]
+    crank_length_mm: float | None = None
+
+
+@app.post("/jobs/{job_id}/bike-points")
+async def job_bike_points(
+    job_id: str,
+    body: BikePointsIn,
+    t: str | None = None,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Where the rider sits over the crank, from the axle the athlete marked.
+
+    The crank axle is fixed in the frame on a trainer; the hip is the median
+    of every tracked frame (biomechanics/hip_over_bb). Synchronous and cheap:
+    no detector, no re-render -- the stored frames and a few points. Paid
+    plans only, like every reading that starts with a point a person placed.
+    """
+    job = authorized_job(job_id, t, user.id)
+    if is_free(user):
+        raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
+    if job.get("sport") != "bike":
+        raise HTTPException(400, "This reading is for cycling clips.")
+    if job.get("pair"):
+        raise HTTPException(400, "Mark the crank on one of the two clips' own analyses.")
+    if job.get("status") in ("queued", "processing"):
+        raise HTTPException(409, "This clip is still being measured -- wait for it to finish.")
+    result = job.get("result")
+    if not result:
+        raise HTTPException(409, "This analysis has no result to measure against.")
+    path = _frames_store_or_410(job)
+
+    from app.services.video_analysis.biomechanics.hip_over_bb import (
+        hip_over_bb,
+        median_hip,
+        normalize_bike_points,
+    )
+    from app.services.video_analysis.landmark_store import load_frames
+
+    try:
+        points = normalize_bike_points(body.points)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    frames, _meta = await run_in_threadpool(load_frames, path)
+    side = result.get("camera_side") or "left"
+    hip, shoulder, n = median_hip(frames, side, job.get("corrections"))
+    if hip is None:
+        raise HTTPException(422, "The hip was not tracked on this clip, so the crank cannot be measured against it.")
+    aspect = 1.0
+    if frames and frames[0].get("frame_height"):
+        aspect = frames[0]["frame_width"] / frames[0]["frame_height"]
+    crank = body.crank_length_mm or (job.get("params") or {}).get("crank_length_mm")
+    try:
+        block = hip_over_bb(
+            hip, points, aspect=aspect, shoulder=shoulder, crank_length_mm=crank,
+            hip_source="video_median", frames=n,
+            cycling_position=result.get("cycling_position") or job.get("cycling_position"),
+        )
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    # Onto the result the athlete's history copies (api/me._attach_result), and
+    # beside the other bike readings so the coach prompt sees it next time.
+    result["hip_over_bb"] = block
+    result["bike_points"] = block["points"]
+    summary = result.get("sport_specific_metrics")
+    if isinstance(summary, dict):
+        summary["hip_over_bb"] = block
+    job["bike_points"] = block["points"]
+    logger.info("HIP_OVER_BB", job_id=job_id, user_id=user.id, angle=block["angle_deg"],
+                ref=block["ref"], frames=n)
+    return {"job_id": job_id, "hip_over_bb": block}
 
 
 @app.delete("/jobs/{job_id}/corrections", status_code=202)

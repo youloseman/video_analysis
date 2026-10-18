@@ -95,3 +95,20 @@ def test_a_free_account_moves_the_knee_and_keeps_its_score():
     finally:
         main.app.dependency_overrides.pop(get_current_user, None)
         reset()
+
+
+def test_a_free_account_cannot_mark_the_crank_on_a_photo():
+    from app.core.security import get_current_user
+    from app.services.correction_limits import reset
+
+    reset()
+    client = _free_client()
+    try:
+        photo, blob = _real_photo_and_pose()
+        r = client.post("/analyze-photo/recompute",
+                        files={"photo": ("ride.jpg", photo, "image/jpeg")},
+                        data=_form(pose=json.dumps(blob), bike_points=json.dumps({"C": [0.5, 0.95]})))
+        assert r.status_code == 402 and "Enthusiast" in r.json()["detail"]
+    finally:
+        main.app.dependency_overrides.pop(get_current_user, None)
+        reset()

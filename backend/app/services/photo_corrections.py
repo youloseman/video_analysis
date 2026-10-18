@@ -152,6 +152,8 @@ def recompute_photo(
     corrections_raw: list[dict[str, Any]] | None,
     *,
     hide_angle_values: bool = False,
+    bike_points: dict[str, Any] | None = None,
+    crank_length_mm: float | None = None,
 ) -> dict[str, Any]:
     """Measure the photo again with the athlete's corrections applied.
 
@@ -160,7 +162,15 @@ def recompute_photo(
     angles and score, kept so the adjustment is visible as a delta),
     ``plausibility_warnings`` and the verified ``pose`` blob handed back.
     Raises ``ValueError`` with a message meant for the athlete.
+
+    ``bike_points``: the crank axle (and, if given, the pedal and wheel
+    axles) the athlete placed -- see biomechanics/hip_over_bb. A photo can
+    be re-measured for that alone, with no joint moved.
     """
+    from app.services.video_analysis.biomechanics.hip_over_bb import (
+        hip_over_bb,
+        normalize_bike_points,
+    )
     from app.services.video_analysis.photo_analyzer import (
         analyze_from_pose,
         decode_photo,
@@ -175,7 +185,8 @@ def recompute_photo(
     corrections = normalize_corrections(
         corrections_raw, side, extra_points=HELMET_POINT_NAMES,
     )
-    if not corrections:
+    points = normalize_bike_points(bike_points) if bike_points else None
+    if not corrections and not points:
         raise ValueError("No adjustment to apply -- move a joint point first.")
     # The top of the back and of the helmet are not skeleton joints: they move
     # the helmet reading only, never a landmark or a bone length.
@@ -222,7 +233,56 @@ def recompute_photo(
     }
     result["plausibility_warnings"] = plausibility
     result["pose"] = blob
+    if points:
+        nl = frame["normalized_landmarks"]
+        hip_i, sh_i = (23, 11) if side == "left" else (24, 12)
+        hip = (float(nl[hip_i].x), float(nl[hip_i].y))
+        if not all(math.isfinite(v) for v in hip):
+            raise ValueError("The hip was not found on this photo, so the crank "
+                             "cannot be measured against it.")
+        sh = (float(nl[sh_i].x), float(nl[sh_i].y))
+        result["hip_over_bb"] = hip_over_bb(
+            hip, points, aspect=(w / h) if h else 1.0,
+            shoulder=sh if all(math.isfinite(v) for v in sh) else None,
+            crank_length_mm=crank_length_mm, hip_source="photo",
+            cycling_position=result.get("cycling_position") or cycling_position,
+        )
+        result["bike_points"] = result["hip_over_bb"]["points"]
+        result["thumbnail_base64"] = _with_hip_over_bb(
+            result.get("thumbnail_base64"), result["hip_over_bb"],
+        )
     return result
+
+
+def _with_hip_over_bb(thumb: Any, hob: dict[str, Any]) -> Any:
+    """The annotated photo with the crank line drawn on, or unchanged."""
+    if not isinstance(thumb, str) or not thumb.startswith("data:image/"):
+        return thumb
+    try:
+        import base64
+
+        import cv2
+        import numpy as np
+
+        from app.services.video_analysis import overlay_style
+
+        _head, b64 = thumb.split(",", 1)
+        img = cv2.imdecode(np.frombuffer(base64.b64decode(b64), np.uint8), cv2.IMREAD_COLOR)
+        if img is None:
+            return thumb
+        th, tw = img.shape[:2]
+        bb = (int(round(hob["points"]["C"][0] * tw)), int(round(hob["points"]["C"][1] * th)))
+        hip = (int(round(hob["hip"][0] * tw)), int(round(hob["hip"][1] * th)))
+        overlay_style.draw_hip_over_bb(
+            cv2, img, bb, hip, float(hob["angle_deg"]),
+            1 if hob.get("facing") == "right" else -1, scale=max(1.0, min(2.4, tw / 900)),
+        )
+        ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 88])
+        if not ok:
+            return thumb
+        return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+    except Exception:  # noqa: BLE001 -- the picture is a courtesy; the number is the product
+        return thumb
 
 
 __all__ = [

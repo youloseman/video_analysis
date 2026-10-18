@@ -290,6 +290,38 @@ def draw_corrected_marks(
         cv2_mod.circle(frame, p, r + 3, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
 
 
+def draw_hip_over_bb(
+    cv2_mod: Any, frame: Any, bb: tuple[int, int], hip: tuple[int, int],
+    angle_deg: float, facing: int, *, scale: float = 1.0,
+) -> None:
+    """The hip-over-crank reading on the footage: the crank axle ringed, the
+    line up to the hip, a level stub on the rider's back side and the angle
+    between them. Drawn in the correction colour: the axle is a point a
+    person placed, not one the model found.
+    """
+    ax, ay = bb
+    hx, hy = hip
+    r = max(7, int(9 * scale))
+    stub = max(40, int(70 * scale))
+    # Ground stub: backwards from the axle, where the angle is read.
+    bx = ax - facing * stub
+    cv2_mod.line(frame, (bx, ay), (ax, ay), _bgr(HALO), max(3, int(5 * scale)), cv2_mod.LINE_AA)
+    cv2_mod.line(frame, (bx, ay), (ax, ay), _bgr(LEADER), max(1, int(2 * scale)), cv2_mod.LINE_AA)
+    cv2_mod.line(frame, (ax, ay), (hx, hy), _bgr(HALO), max(4, int(7 * scale)), cv2_mod.LINE_AA)
+    cv2_mod.line(frame, (ax, ay), (hx, hy), _bgr(AMBER), max(2, int(3 * scale)), cv2_mod.LINE_AA)
+    # The arc between them, at the axle. OpenCV angles run clockwise with y
+    # down; "up and back" from the axle is the arc from the stub to the line.
+    start = 180 if facing > 0 else 0
+    sweep = angle_deg if facing > 0 else -angle_deg
+    cv2_mod.ellipse(frame, (ax, ay), (stub // 2, stub // 2), 0, start, start + sweep,
+                    _bgr(HALO), max(3, int(5 * scale)), cv2_mod.LINE_AA)
+    cv2_mod.ellipse(frame, (ax, ay), (stub // 2, stub // 2), 0, start, start + sweep,
+                    _bgr(AMBER), max(1, int(2 * scale)), cv2_mod.LINE_AA)
+    cv2_mod.circle(frame, (ax, ay), r, _bgr(AMBER), 2, cv2_mod.LINE_AA)
+    cv2_mod.circle(frame, (ax, ay), r + 3, _bgr((250, 255, 250)), 1, cv2_mod.LINE_AA)
+    cv2_mod.circle(frame, (ax, ay), 2, _bgr(AMBER), -1, cv2_mod.LINE_AA)
+
+
 def draw_leader(
     cv2_mod: Any, frame: Any,
     joint: tuple[int, int], anchor: tuple[int, int],

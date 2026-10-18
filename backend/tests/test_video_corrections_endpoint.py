@@ -244,3 +244,38 @@ async def test_a_failed_re_measurement_keeps_the_previous_result(bike_job, monke
     assert "unchanged" in job["recompute_error"]
     assert job["recompute_rounds"] == 0, "an undelivered round is not spent"
     assert not math.isnan(previous["sport_specific_metrics"]["knee_at_bdc"])
+
+
+# --- where the rider sits over the crank ------------------------------------
+
+async def test_the_crank_axle_gives_the_hip_over_bb_from_the_clips_median_hip(bike_job):
+    out = await main.job_bike_points(
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(),
+    )
+    hob = out["hip_over_bb"]
+    assert hob["hip_source"] == "video_median" and hob["frames"] > 0
+    assert 40 < hob["angle_deg"] < 140 and hob["ref"] == "frame"
+    job = JOBS[bike_job]
+    assert job["result"]["hip_over_bb"] == hob
+    assert job["result"]["sport_specific_metrics"]["hip_over_bb"] == hob
+    assert job["bike_points"] == {"C": [0.5, 0.95]}
+
+
+async def test_a_free_account_cannot_mark_the_crank(bike_job):
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as e:
+        await main.job_bike_points(
+            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(tier="starter"),
+        )
+    assert e.value.status_code == 402 and "Enthusiast" in e.value.detail
+
+
+async def test_a_bad_crank_point_is_refused_with_its_reason(bike_job):
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as e:
+        await main.job_bike_points(
+            bike_job, main.BikePointsIn(points={"P": [0.5, 0.95]}), "tok", _user(),
+        )
+    assert e.value.status_code == 422 and "crank axle first" in e.value.detail
