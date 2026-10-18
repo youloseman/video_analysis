@@ -291,6 +291,7 @@
         </div>
         <small class="fldhint hidden" id="authPassHint">At least 8 characters. A short phrase you'll remember beats a clever word.</small>
       </div>
+      <label class="fld hidden" id="authPromoFld"><span>Promo code <small style="font-weight:400;color:var(--c-ink-faint)">optional</small></span><input type="text" id="authPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32"></label>
       <div class="autherr" id="authErr" role="alert"></div>
       <div class="authsent hidden" id="authSent" role="status"></div>
       <button class="btn btn-primary" id="authSubmit" type="submit" style="width:100%">Log in</button>
@@ -9173,6 +9174,8 @@ function setAuthMode(mode,opts){
   $('#authPassFld').classList.toggle('hidden',!m.pass); $('#authPass').required=m.pass;
   if(m.pass){ $('#authPassLabel').textContent=m.passLabel; $('#authPass').setAttribute('autocomplete',m.passAc); }
   $('#authPassHint').classList.toggle('hidden',!m.passHint);
+  $('#authPromoFld').classList.toggle('hidden',mode!=='register');
+  if(mode==='register'&&!$('#authPromo').value) $('#authPromo').value=promoPending();
   $('#authNote').innerHTML=m.note; $('#authToggleTxt').innerHTML=m.toggle;
   document.querySelectorAll('#authModal [data-authmode]').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); setAuthMode(a.dataset.authmode); $(state.authMode==='reset'?'#authPass':'#authEmail').focus(); }));
   $('#authErr').textContent=''; $('#authSent').classList.add('hidden'); $('#authSubmit').classList.remove('hidden');
@@ -9228,6 +9231,8 @@ async function submitAuth(e){
     track(mode==='register'?'signed_up':mode==='reset'?'password_reset':'logged_in',
       {pending_analysis: !!state.pendingAnalyze});
     renderAuth(); closeAuth(); migrateAndLoad();
+    if(mode==='register'){ const pc=($('#authPromo').value||'').trim(); if(pc) promoRemember(pc); }
+    applyPendingPromo();
     if(mode==='reset') toast('Password updated — you\'re logged in.');
     // Someone who hit "Analyze" before signing up gets their run started now,
     // with the file they already chose (see the #analyze handler).
@@ -9246,6 +9251,26 @@ function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){}
   // Signed out lands on the marketing page — the mirror of the entry rule,
   // where a stored session on "/" sends you straight here.
   location.assign('/'); }
+/* Promo codes (services/promo.py): a link ?promo=CODE is remembered in this
+   browser and applied once the visitor is signed in -- new or existing. */
+const PROMO_KEY='flapp-promo';
+function promoRemember(c){ try{ localStorage.setItem(PROMO_KEY, String(c).trim().toUpperCase()); }catch(e){} }
+function promoPending(){ try{ return localStorage.getItem(PROMO_KEY)||''; }catch(e){ return ''; } }
+function promoForget(){ try{ localStorage.removeItem(PROMO_KEY); }catch(e){} }
+(function(){ try{ const q=new URLSearchParams(location.search).get('promo'); if(q){ promoRemember(q);
+  const u=new URL(location.href); u.searchParams.delete('promo'); history.replaceState(null,'',u.pathname+u.search+u.hash); } }catch(e){} })();
+async function applyPendingPromo(){
+  const code=promoPending(); if(!code||!auth) return;
+  try{
+    const r=await fetch('/me/promo',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({code})});
+    const j=await r.json().catch(()=>({}));
+    promoForget();
+    if(!r.ok){ toast(j.detail||'That code could not be used.',{duration:6000}); return; }
+    auth.unlock_credits=j.unlock_credits; renderAuth();
+    track('promo_applied',{code:j.code,added:j.added});
+    toast(`Code ${j.code}: ${j.added} free full reports added. Run an analysis and tap Unlock — it's on us.`,{duration:8000});
+  }catch(e){ /* keep it for the next load */ }
+}
 async function checkAuth(){
   const t=getToken();
   if(t){
@@ -9255,6 +9280,7 @@ async function checkAuth(){
   // 30-day token means 30 days of events filed under an anonymous visitor.
   trackIdentify();
   renderAuth();
+  if(auth) applyPendingPromo();
   if(auth){
     loadCoach();
     await migrateAndLoad();

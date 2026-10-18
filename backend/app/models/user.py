@@ -191,6 +191,9 @@ class User(Base):
     news_opt_out: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False, server_default="0",
     )
+    # The promo code this account redeemed (services/promo.py): one per
+    # account, ever. NULL = none used.
+    promo_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False,
     )

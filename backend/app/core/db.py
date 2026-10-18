@@ -137,6 +137,9 @@ def _migrate_users(conn) -> None:
             "NOT NULL DEFAULT false"
         ))
         logger.info("MIGRATED", change="users.news_opt_out added")
+    if "promo_code" not in cols:
+        conn.execute(text("ALTER TABLE users ADD COLUMN promo_code VARCHAR(32)"))
+        logger.info("MIGRATED", change="users.promo_code added")
     # Off-bike mobility. All nullable with no backfill: NULL means "has not
     # done the screens", and that is a state the analysis has to handle
     # anyway -- no data is not a verdict.

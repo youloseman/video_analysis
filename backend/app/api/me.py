@@ -61,6 +61,32 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/me", tags=["me"])
 
 
+class PromoIn(BaseModel):
+    code: str = Field(..., min_length=1, max_length=32)
+
+
+@router.post("/promo")
+async def redeem_promo(
+    body: PromoIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Redeem a promo code: free full reports, once per account."""
+    from app.services import analytics
+    from app.services.promo import check
+
+    try:
+        credits, code = check(body.code, already=user.promo_code)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    user.unlock_credits = int(user.unlock_credits or 0) + credits
+    user.promo_code = code
+    await db.commit()
+    logger.info("PROMO_REDEEMED", user_id=user.id, code=code, credits=credits)
+    analytics.capture_bg(analytics.person_id(user), "promo_redeemed", {"code": code, "credits": credits})
+    return {"code": code, "added": credits, "unlock_credits": user.unlock_credits}
+
+
 def _now_ms() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
 
