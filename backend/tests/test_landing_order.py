@@ -60,10 +60,21 @@ def test_the_first_photograph_of_a_bike_comes_right_after_the_report(order):
 
 
 @pytest.mark.parametrize("later", [
-    "TRACKSIDE", "HOW IT WORKS", "SPLIT 1", "SPLIT 2", "DUAL PATH", "PRICING",
+    "KONA STUDY", "HOW IT WORKS", "SPLIT 1", "SPLIT 2", "DUAL PATH", "PRICING",
 ])
 def test_the_bike_lands_before_the_rest_of_the_pitch(order, later):
     assert at(order, "PROOF") < at(order, later)
+
+
+def test_the_kona_study_follows_the_proof(order):
+    """The study is evidence about other people; it lands after the page has
+    shown what Flapp does to one rider, not before it."""
+    assert at(order, "KONA STUDY") == at(order, "PROOF") + 1
+
+
+def test_trackside_is_not_back(order):
+    """It repeated How it works one screen apart, with the same photos."""
+    assert not any(name.startswith("TRACKSIDE") for name in order)
 
 
 def test_the_explainer_is_still_above_the_deep_sections(order):
@@ -76,11 +87,15 @@ def test_the_background_rhythm_still_alternates(html, order):
     """The sections stripe --c-bg / --c-panel, so a reorder that lands two
     panels together reads as one long grey slab. This is the constraint that
     decided which pair could be swapped."""
+    # 2026-10-18: TRACKSIDE folded into HOW IT WORKS (they told the same
+    # story twice), and the Kona study moved from under the hero to after the
+    # before/after -- a visitor has to know what Flapp measures before "we
+    # measured the pros" means anything. Kona went panel -> bg to keep the
+    # stripes.
     bg = [                       # prefix -> painted background, in one list so
-        ("KONA STUDY", "panel"),     # under the dark hero, above the report
         ("REPORT SHOWCASE", "bg"),   # adjacency here is adjacency on the page
         ("PROOF", "panel"),
-        ("TRACKSIDE", "bg"),
+        ("KONA STUDY", "bg"),
         ("HOW IT WORKS", "panel"),
         ("SPLIT 1", "dark"),
         ("SPLIT 2", "bg"),           # .split paints nothing -> body, --c-bg

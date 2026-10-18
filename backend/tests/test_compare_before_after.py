@@ -193,19 +193,25 @@ def test_the_table_uses_the_floor():
 
 
 def test_the_landing_hero_column_cannot_outgrow_a_phone():
-    """The hero badge is `width:max-content`: with the longer wording it was
-    417 px wide on a 390 px phone, and the `1fr` column grew to hold it, so the
-    headline's paragraph ran 51 px off the right edge of the screen."""
+    """A `width:max-content` pill in the hero was once 417 px wide on a 390 px
+    phone, and the `1fr` column grew to hold it, so the headline's paragraph
+    ran 51 px off the right edge of the screen. The column is minmax(0,1fr)
+    and the pill that remains is capped."""
     land = (SPA.parent / "landing.html").read_text(encoding="utf-8")
-    assert ".hero-news + .hero-badge{display:flex;width:max-content;max-width:100%}" in land
     assert "grid-template-columns:minmax(0,1fr);gap:70px" in land
+    news = land[land.index(".hero-news{"):]
+    assert "max-width:100%" in news[:news.index("}")]
 
 
-def test_the_how_it_works_steps_each_carry_a_picture_and_end_on_the_recheck():
+def test_the_how_it_works_loop_ends_on_the_recheck_beside_a_real_analysis():
+    """One section since 2026-10-18 (Trackside folded in): four beats ending on
+    the re-check, and the raw -> overlay pair of one real analysis."""
     land = (SPA.parent / "landing.html").read_text(encoding="utf-8")
     how = land[land.index('<section id="how"'):land.index("</section>", land.index('<section id="how"'))]
-    assert how.count('class="step rv"') == 3
-    assert how.count('<img class="shot') == 3
-    assert "Change it. Film again. See what moved." in how
-    for src in ("media/run-raw.webp", "media/run-overlay.webp", "media/compare.webp"):
+    assert how.count("<li>") == 4
+    assert how.rindex("<li>") < how.index("Change it. Film again. See what moved.")
+    for src in ("media/race-frame-raw.webp", "media/race-frame-overlay.webp"):
+        assert f'src="{src}"' in how
         assert (SPA.parent / src).exists()
+    # The photo is somebody else's race photo: the page has to say so.
+    assert "blurred" in how and "measured on the original" in how

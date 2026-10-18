@@ -122,7 +122,10 @@ CARDS: tuple[Card, ...] = (
         id="enthusiast",
         name="Enthusiast",
         tier="enthusiast",
-        badge="Most popular",
+        # "Recommended", not "Most popular": the badge is a claim about other
+        # buyers, and with the customer base this small it is not one the
+        # numbers can back. Which tier we recommend is ours to say.
+        badge="Recommended",
         tagline="The full analysis for one discipline.",
         prices=(
             Price(plan="enthusiast_monthly", amount=900, per="/ month",
@@ -506,6 +509,8 @@ def render_landing_pricing() -> str:
 
     out = f'<div class="tiers">{"".join(cards_html)}</div>'
 
+    # The add-ons sit side by side in their own grid (landing.html .addons).
+    out += '<div class="addons">'
     for card in addons:
         price = card.prices[0]
         out += (
@@ -526,5 +531,6 @@ def render_landing_pricing() -> str:
             f"</div>"
         )
 
+    out += "</div>"
     out += f'<p class="pricing-foot">{FOOTNOTE}</p>'
     return out
