@@ -2085,6 +2085,11 @@ async def analyze_photo_endpoint(
     # Compact annotated frame for the client-side history record.
     result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
 
+    # Where the crank axle is, for the hip-over-crank reading (paid): found in
+    # the picture so the athlete checks a point rather than hunts for one.
+    if sport == "bike" and not free and isinstance(result.get("pose"), dict):
+        result["bike_auto"] = await run_in_threadpool(_photo_bike_auto, data, result["pose"])
+
     # Free callers don't get AI coaching (it's a paid unlock) -- except on the
     # one preview, which exists precisely to show what the paid report reads
     # like. A withheld photo gets none either: coaching a pose we could not
@@ -2139,6 +2144,7 @@ async def analyze_photo_recompute_endpoint(
                            "C (crank axle, required), P (pedal axle), FA / RA (wheel axles)."),
     ),
     crank_length_mm: float | None = Form(None, description="Crank length, for the cm scale."),
+    c_source: str | None = Form(None, description="Where the crank axle came from: auto_* or user."),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Measure a photo again with the athlete's joint corrections applied.
@@ -2228,6 +2234,8 @@ async def analyze_photo_recompute_endpoint(
         raise HTTPException(500, "photo re-measurement failed")
 
     result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
+    if isinstance(result.get("hip_over_bb"), dict):
+        result["hip_over_bb"]["c_source"] = _clean_c_source(c_source)
     if free:
         # The picture follows the athlete's points; the score does not.
         base_score = (result.get("baseline") or {}).get("score")
@@ -2461,15 +2469,117 @@ async def job_corrections(
     }
 
 
+def _clean_c_source(v: Any) -> str:
+    return v if v in ("auto_chainring", "auto_wheels", "auto_guess", "user") else "user"
+
+
 _HIP_OVER_BB_402 = (
     "Measuring where you sit over the crank is part of the Enthusiast plan and up. "
     "The automatic measurement is unchanged."
 )
 
 
+def _photo_bike_auto(image_bytes: bytes, pose: dict[str, Any]) -> dict[str, Any] | None:
+    """The crank axle found on a photo, or None (never raises)."""
+    try:
+        from types import SimpleNamespace
+
+        from app.services.video_analysis.biomechanics.bb_detect import detect_crank, leg_and_hip
+        from app.services.video_analysis.photo_analyzer import decode_photo
+
+        image = decode_photo(image_bytes)
+        h, w = image.shape[:2]
+        lms = [SimpleNamespace(x=r[0] if r[0] is not None else math.nan,
+                               y=r[1] if r[1] is not None else math.nan)
+               for r in pose.get("landmarks") or []]
+        if len(lms) < 33:
+            return None
+        got = leg_and_hip(lms, w, h, pose.get("camera_side") or "right")
+        if got is None:
+            return None
+        hip, leg, facing = got
+        return detect_crank(image, hip, leg, facing)
+    except Exception as e:  # noqa: BLE001 -- a convenience, never a reason to fail a photo
+        logger.warning("BIKE_AUTO_FAILED", kind="photo", err=str(e))
+        return None
+
+
+def _video_bike_auto(video_path: str, frames: list[dict[str, Any]], side: str,
+                     corrections: list[dict[str, Any]] | None) -> dict[str, Any] | None:
+    """The crank axle found on a clip's median frame, or None."""
+    from statistics import median
+
+    from app.services.video_analysis.biomechanics.bb_detect import (
+        detect_crank,
+        leg_and_hip,
+        median_frame,
+    )
+    from app.services.video_analysis.biomechanics.hip_over_bb import median_hip
+
+    image = median_frame(video_path)
+    if image is None:
+        return None
+    h, w = image.shape[:2]
+    hip_n, sh_n, n = median_hip(frames, side, corrections)
+    if hip_n is None:
+        return None
+    # Thigh + shank: the median over the tracked frames (one frame at the top
+    # of the stroke foreshortens the thigh).
+    legs = []
+    for f in frames[:: max(1, len(frames) // 60)]:
+        got = leg_and_hip(f.get("normalized_landmarks") or [], w, h, side)
+        if got:
+            legs.append(got[1])
+    if not legs:
+        return None
+    hip = (hip_n[0] * w, hip_n[1] * h)
+    facing = 1 if (sh_n is None or sh_n[0] >= hip_n[0]) else -1
+    out = detect_crank(image, hip, float(median(legs)), facing)
+    out["frames"] = n
+    return out
+
+
+@app.get("/jobs/{job_id}/bike-auto")
+async def job_bike_auto(
+    job_id: str,
+    t: str | None = None,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Where the crank axle is on this clip, found on the median frame.
+
+    Asked for when the athlete opens the crank marking; cached on the job.
+    Paid plans only, like the reading it starts.
+    """
+    job = authorized_job(job_id, t, user.id)
+    if is_free(user):
+        raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
+    if job.get("sport") != "bike" or not job.get("result"):
+        raise HTTPException(409, "Nothing to search on this analysis.")
+    if job.get("bike_auto") is not None:
+        return {"job_id": job_id, "bike_auto": job["bike_auto"]}
+    path = _frames_store_or_410(job)
+    video = job.get("input_path")
+    if not video or not Path(video).is_file():
+        raise HTTPException(410, "The clip is no longer stored, so the crank cannot be searched for. Place it by hand.")
+    from app.services.video_analysis.landmark_store import load_frames
+
+    frames, _meta = await run_in_threadpool(load_frames, path)
+    side = (job.get("result") or {}).get("camera_side") or "left"
+    try:
+        auto = await run_in_threadpool(_video_bike_auto, video, frames, side, job.get("corrections"))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("BIKE_AUTO_FAILED", kind="video", job_id=job_id, err=str(e))
+        auto = None
+    job["bike_auto"] = auto or {}
+    logger.info("BIKE_AUTO", job_id=job_id, method=(auto or {}).get("method"))
+    return {"job_id": job_id, "bike_auto": job["bike_auto"]}
+
+
 class BikePointsIn(BaseModel):
     points: dict[str, Any]
     crank_length_mm: float | None = None
+    # auto_chainring / auto_wheels / auto_guess (taken as found) or user (moved)
+    c_source: str | None = None
 
 
 @app.post("/jobs/{job_id}/bike-points")
@@ -2530,6 +2640,7 @@ async def job_bike_points(
         raise HTTPException(422, str(e))
     # Onto the result the athlete's history copies (api/me._attach_result), and
     # beside the other bike readings so the coach prompt sees it next time.
+    block["c_source"] = _clean_c_source(body.c_source)
     result["hip_over_bb"] = block
     result["bike_points"] = block["points"]
     summary = result.get("sport_specific_metrics")

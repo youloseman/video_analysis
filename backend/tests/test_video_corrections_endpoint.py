@@ -279,3 +279,25 @@ async def test_a_bad_crank_point_is_refused_with_its_reason(bike_job):
             bike_job, main.BikePointsIn(points={"P": [0.5, 0.95]}), "tok", _user(),
         )
     assert e.value.status_code == 422 and "crank axle first" in e.value.detail
+
+
+async def test_the_clip_crank_search_is_paid_and_needs_the_clip(bike_job):
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as e:
+        await main.job_bike_auto(bike_job, "tok", _user(tier="starter"))
+    assert e.value.status_code == 402
+    with pytest.raises(HTTPException) as e:
+        await main.job_bike_auto(bike_job, "tok", _user())
+    assert e.value.status_code == 410 and "by hand" in e.value.detail
+
+
+async def test_where_the_crank_came_from_rides_with_the_reading(bike_job):
+    out = await main.job_bike_points(
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}, c_source="auto_chainring"), "tok", _user(),
+    )
+    assert out["hip_over_bb"]["c_source"] == "auto_chainring"
+    out = await main.job_bike_points(
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}, c_source="<script>"), "tok", _user(),
+    )
+    assert out["hip_over_bb"]["c_source"] == "user"

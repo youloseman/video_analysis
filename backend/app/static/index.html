@@ -4303,6 +4303,22 @@ function hobDrawOn(ctx, W, H, k, hip, bike, aspect, shoulder, live){
     const tw=ctx.measureText(txt).width+16*k, x=Math.min(W-tw-4,Math.max(4,(cx+hx)/2+14*k)), y=Math.max(fs+8,(cy+hy)/2);
     ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); }
 }
+/* The server's find (biomechanics/bb_detect.py) as editor points: the crank
+   axle flagged auto (the athlete confirms or drags it), the wheel axles only
+   when the chainring confirmed them -- they then count as placed, since they
+   level the picture. The pedal axle is never found; it stays optional. */
+function hobFromAuto(auto, guess){
+  const out={...guess};
+  if(auto&&auto.C){ out[HOB_C]={x:auto.C[0],y:auto.C[1],vis:1,set:auto.method!=='guess',auto:auto.method||'guess'}; }
+  if(auto&&auto.FA&&auto.RA){ out[HOB_FA]={x:auto.FA[0],y:auto.FA[1],vis:1,set:true,auto:'wheels'};
+    out[HOB_RA]={x:auto.RA[0],y:auto.RA[1],vis:1,set:true,auto:'wheels'}; }
+  return out;
+}
+/* Where C came from, for the result: taken as found, or moved by the athlete. */
+function hobCSource(bike, movedC){
+  const c=bike[HOB_C]; if(!c||movedC||!c.auto) return 'user';
+  return 'auto_'+(c.auto==='chainring'?'chainring':c.auto==='wheels'?'wheels':'guess');
+}
 /* Which of the four to send: the crank always, the rest only if placed. */
 function hobPayload(bike){
   const out={}; [HOB_C,HOB_P,HOB_FA,HOB_RA].forEach(L=>{ const p=bike[L]; if(!p) return;
@@ -4310,11 +4326,16 @@ function hobPayload(bike){
   if(out.FA&&!out.RA) delete out.FA; if(out.RA&&!out.FA) delete out.RA;
   return out;
 }
-function hobStatusText(bike){
+function hobStatusText(bike, movedC){
+  const c=bike[HOB_C], wheels=bike[HOB_FA]&&bike[HOB_FA].auto&&!movedC?' Both wheel axles found too, so the picture is levelled on them.':'';
+  if(c&&c.auto&&!movedC){
+    if(c.auto==='chainring') return 'Found your crank axle on the chainring. Check the orange ring sits on its centre — drag it if not — then Measure.'+wheels;
+    if(c.auto==='wheels') return 'Placed from your wheels, so approximate. Drag the ring onto the centre of the crank, then Measure.';
+    return 'We could not find the crank on this picture. Drag the CRANK ring onto the crank axle — where the two crank arms meet.';
+  }
+  if(!c||!c.set) return 'Drag the CRANK ring onto the crank axle — where the two crank arms meet.';
   const set=[HOB_P,HOB_FA,HOB_RA].filter(L=>bike[L]&&bike[L].set).map(L=>HOB_LABEL[L]);
-  const c=bike[HOB_C]&&bike[HOB_C].set;
-  if(!c) return 'Drag the CRANK ring onto the crank axle — where the two crank arms meet.';
-  return 'Crank axle placed'+(set.length?` · also: ${set.join(', ')}`:'')+'. Add the pedal axle for centimetres, both wheel axles to level the picture.';
+  return 'Crank axle placed by you'+(set.length?` · also: ${set.join(', ')}`:'')+'. Add the pedal axle for centimetres, both wheel axles to level the picture.';
 }
 
 /* ---- the report block ---- */
@@ -4361,7 +4382,7 @@ function renderHob(res, which){
         <div class="hob-cap">over the crank axle, from the back<br><span class="hint">${h.hip_source==='video_median'?`hip = median of ${h.frames} frames`:'from this one frame'} · repeatability ±${h.repeatability_deg}°</span></div></div>
       ${aero?hobScale(h.angle_deg):''}
       <p class="hob-lead">${aero?`You sit <b>${Math.abs(gap).toFixed(1)} cm ${ahead?'ahead of':'behind'}</b> the Kona pros' middle (88°) — ${hobPlace(h)}.`:`Measured at ${h.angle_deg}°; the Kona field below was read on aero bars, so it is shown for context only.`}</p>
-      <ul class="hob-notes"><li>${ref}</li><li>${scale}</li></ul>
+      <ul class="hob-notes"><li>${{auto_chainring:'Crank axle found automatically on the chainring.',auto_wheels:'Crank axle placed from the wheels, not checked by hand — worth a look.',auto_guess:'Crank axle estimated, not found — mark it again for a real reading.',user:'Crank axle placed by you.'}[h.c_source]||'Crank axle placed by you.'} ${canMark?'If it is off, tap Mark again and drag it.':''}</li><li>${ref}</li><li>${scale}</li></ul>
       <details class="hob-more"><summary>What this does and doesn't mean</summary>
         <p>${intro}</p>
         <p>It is a field, not a target: it says where the fastest riders sat, not where you must. The pros also sat flatter, and further forward usually goes with lower and closer to the bars. Moving the saddle forward moves the hip about 1:1 — but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again. <a href="${esc(h.article||'/academy/kona-2026-pro-bike-positions')}">How we measured the Kona field →</a></p>
@@ -4434,9 +4455,9 @@ function lmedStartPoints(){
   (state.photoCorrections||[]).forEach(c=>{ const p=pts[c.landmark]; if(p&&p.x!=null){ p.x+=c.dx; p.y+=c.dy; } });
   // The bike points: where they were last placed, else a guess from the leg.
   const side=pose.camera_side||'right', prev=(state.photoRes&&state.photoRes.bike_points)||null;
-  const guess=hobGuess(pts, side, lmed.aspect||1)||{};
+  const start=hobFromAuto(state.photoBikeAuto, hobGuess(pts, side, lmed.aspect||1)||{});
   [HOB_C,HOB_P,HOB_FA,HOB_RA].forEach(L=>{ const k=HOB_KEY[L];
-    if(prev&&prev[k]) pts[L]={x:prev[k][0],y:prev[k][1],vis:1,set:true}; else if(guess[L]) pts[L]={...guess[L],set:false}; });
+    if(prev&&prev[k]) pts[L]={x:prev[k][0],y:prev[k][1],vis:1,set:true}; else if(start[L]) pts[L]={set:false,...start[L]}; });
   return pts;
 }
 function lmedOpen(mode){
@@ -4557,7 +4578,7 @@ function lmedStatus(msg,warn){
   const st=$('#pEdStatus');
   if(lmed.mode==='bike'){ st.classList.toggle('warn',!!warn);
     const bike={}; [HOB_C,HOB_P,HOB_FA,HOB_RA].forEach(L=>{ if(lmed.pts&&lmed.pts[L]) bike[L]={...lmed.pts[L], set:!!(lmed.pts[L].set||lmed.moved[L])}; });
-    st.textContent=msg||hobStatusText(bike);
+    st.textContent=msg||hobStatusText(bike, !!lmed.moved[HOB_C]);
     $('#pEdApply').setAttribute('aria-disabled',String(!(bike[HOB_C]&&bike[HOB_C].set))); return; }
   const n=lmedCorrections().length;
   st.classList.toggle('warn',!!warn);
@@ -4601,7 +4622,8 @@ async function recomputePhoto(){
   fd.append('photo',state.file); fd.append('sport','bike');
   fd.append('position',res.cycling_position||state.position);
   fd.append('pose',JSON.stringify(state.photoPose)); fd.append('corrections',JSON.stringify(all));
-  if(bikePts){ fd.append('bike_points',JSON.stringify(bikePts)); if(crankMm()!=null) fd.append('crank_length_mm',String(crankMm())); }
+  if(bikePts){ fd.append('bike_points',JSON.stringify(bikePts)); if(crankMm()!=null) fd.append('crank_length_mm',String(crankMm()));
+    fd.append('c_source', hobCSource(lmed.pts, !!lmed.moved[HOB_C])); }
   fd.append('coaching',res.locked?'false':'true'); if(focusText()) fd.append('focus',focusText());
   try{
     const r=await fetch('/analyze-photo/recompute',{method:'POST',headers:authHeaders(),body:fd});
@@ -5338,10 +5360,19 @@ function vedBikeStart(){
   const prev=(state.lastResult&&state.lastResult.bike_points)||null, pts=[];
   const rec=ved.curRec>=0?ved.curRec:0;
   ved.draggable.forEach(L=>{ const p=vedPoint(L,rec); if(p) pts[L]=p; });
-  const guess=hobGuess(pts, ved.side, ved.aspect)||{}; const out={};
+  const start=hobFromAuto(ved.bikeAuto, hobGuess(pts, ved.side, ved.aspect)||{}); const out={};
   [HOB_C,HOB_P,HOB_FA,HOB_RA].forEach(L=>{ const k=HOB_KEY[L];
-    if(prev&&prev[k]) out[L]={x:prev[k][0],y:prev[k][1],set:true}; else if(guess[L]) out[L]={...guess[L],set:false}; });
+    if(prev&&prev[k]) out[L]={x:prev[k][0],y:prev[k][1],set:true}; else if(start[L]) out[L]={set:false,...start[L]}; });
+  ved.movedC=false;
   return out;
+}
+/* The server searches the clip's median frame once per job (cached there). */
+async function vedFetchBikeAuto(){
+  ved.bikeAuto=null;
+  try{
+    const r=await fetch(withJobToken('/jobs/'+state.jobId+'/bike-auto', state.jobId),{headers:authHeaders()});
+    if(r.ok){ const j=await r.json(); ved.bikeAuto=(j.bike_auto&&j.bike_auto.C)?j.bike_auto:null; }
+  }catch(e){ /* a convenience: the guess still works */ }
 }
 
 function vedDeltaOf(L){ const e=ved.existing[L]||{dx:0,dy:0}, p=ved.pending[L]||{dx:0,dy:0}; return {dx:e.dx+p.dx, dy:e.dy+p.dy}; }
@@ -5375,6 +5406,7 @@ async function vedOpen(mode){
     ved.draggable=j.draggable||[]; ved.aspect=(j.frame_width&&j.frame_height)?j.frame_width/j.frame_height:1;
     ved.existing={}; (j.corrections||[]).forEach(c=>{ ved.existing[c.landmark]={dx:c.dx,dy:c.dy}; });
     ved.pending={}; ved.drag=-1; ved.curRec=0; ved.cur=ved.idx[0]||0;
+    if(ved.mode==='bike'){ $('#vEdStatus').textContent='Looking for your crank…'; await vedFetchBikeAuto(); }
     ved.bike=ved.mode==='bike'?vedBikeStart():{};
     $('#vEdHint').textContent=ved.mode==='bike'
       ? 'Pedal axle gives centimetres; both wheel axles level the picture (a tilted phone is otherwise read as a position).'
@@ -5454,7 +5486,7 @@ function vedLoupe(ev,show){
 function vedCorrections(){ return Object.keys(ved.pending).map(L=>({landmark:+L, dx:Math.round(ved.pending[L].dx*1e6)/1e6, dy:Math.round(ved.pending[L].dy*1e6)/1e6, frame_idx:ved.cur})).filter(c=>c.dx||c.dy); }
 function vedStatus(msg,warn){
   const st=$('#vEdStatus'); st.classList.toggle('warn',!!warn);
-  if(ved.mode==='bike'){ st.textContent=msg||hobStatusText(ved.bike);
+  if(ved.mode==='bike'){ st.textContent=msg||hobStatusText(ved.bike, !!ved.movedC);
     $('#vEdApply').setAttribute('aria-disabled',String(!(ved.bike[HOB_C]&&ved.bike[HOB_C].set)||ved.busy)); return; }
   const n=vedCorrections().length;
   st.textContent=msg||(n?`${n} joint${n>1?'s':''} moved: ${Object.keys(ved.pending).map(L=>LMED_NAMES[L]).join(', ')} — applies to every frame.`:'Nothing moved yet.');
@@ -5482,7 +5514,7 @@ function vedBind(){
     const q=vedCanvasPoint(ev), L=vedNearest(q); if(L<0) return;
     ved.drag=L; ved.dragFrom={q, pend:{...(ved.pending[L]||{dx:0,dy:0})}}; c.setPointerCapture(ev.pointerId); ev.preventDefault(); vedDraw(); vedLoupe(ev,true); });
   c.addEventListener('pointermove',ev=>{ if(ved.drag<0) return; const q=vedCanvasPoint(ev), f=ved.dragFrom;
-    if(ved.drag>=200){ ved.bike[ved.drag]={x:Math.max(0,Math.min(1,q.x)), y:Math.max(0,Math.min(1,q.y)), set:true}; vedDraw(); vedLoupe(ev,true); ev.preventDefault(); return; }
+    if(ved.drag>=200){ ved.bike[ved.drag]={x:Math.max(0,Math.min(1,q.x)), y:Math.max(0,Math.min(1,q.y)), set:true}; if(ved.drag===HOB_C) ved.movedC=true; vedDraw(); vedLoupe(ev,true); ev.preventDefault(); return; }
     ved.pending[ved.drag]={dx:f.pend.dx+(q.x-f.q.x), dy:f.pend.dy+(q.y-f.q.y)}; vedDraw(); vedLoupe(ev,true); ev.preventDefault(); });
   const up=ev=>{ if(ved.drag<0) return; const L=ved.drag; ved.drag=-1; const p=ved.pending[L];
     if(p&&Math.abs(p.dx)<1e-6&&Math.abs(p.dy)<1e-6) delete ved.pending[L]; vedDraw(); vedLoupe(ev,false); vedStatus(); };
@@ -5513,7 +5545,7 @@ async function applyBikePoints(){
   const pts=hobPayload(ved.bike); if(!pts.C||!state.jobId||ved.busy) return;
   ved.busy=true; vedStatus('Measuring…');
   try{
-    const body={points:pts}; if(crankMm()!=null) body.crank_length_mm=crankMm();
+    const body={points:pts, c_source:hobCSource(ved.bike, !!ved.movedC)}; if(crankMm()!=null) body.crank_length_mm=crankMm();
     const r=await fetch(withJobToken('/jobs/'+state.jobId+'/bike-points', state.jobId),
       {method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
     const j=await r.json().catch(()=>({}));
@@ -5599,6 +5631,7 @@ function renderPhoto(res,opts){
   $('#pAdjust').classList.toggle('hidden',!canAdjust);
   if(!canAdjust) lmedClose();
   renderCorrectionBadge(res);
+  if(res.bike_auto) state.photoBikeAuto=res.bike_auto;      // kept across re-measures
   renderHob(res,'photo');
 
   // A paid result carries `warnings` at the top level; a gated one has them
@@ -9021,7 +9054,7 @@ function reset(keepFile=false){
   jobTokenClear(state.jobId);          // done with this job; don't hoard its token
   state.jobId=null; state.keepFileOnRetry=false; state.resubmitted=false;
   state.lastResult=null; state.photoRes=null;
-  state.photoPose=null; state.photoCorrections=[]; state.photoHistId=null; lmedClose();
+  state.photoPose=null; state.photoCorrections=[]; state.photoHistId=null; state.photoBikeAuto=null; lmedClose();
   $('#pAdjust').classList.add('hidden'); $('#pCorrBadge').classList.add('hidden');
   clearInterval(state.recomputePoll); state.videoHistId=null; ved.busy=false; vedClose();
   $('#vAdjust').classList.add('hidden'); $('#vCorrBadge').classList.add('hidden');

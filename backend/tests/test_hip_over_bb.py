@@ -136,3 +136,76 @@ def test_a_photo_can_be_measured_for_the_crank_alone_and_the_picture_gets_the_li
     assert not res.get("corrections") and res["thumbnail_base64"].startswith("data:image/jpeg")
     with pytest.raises(ValueError, match="No adjustment"):
         PC.recompute_photo(photo, "bike", "triathlon", blob, [])
+
+
+# --- finding the crank axle in the picture ----------------------------------
+
+def _drawn_bike(w=1200, h=900):
+    """Two wheels and a chainring where a tri bike has them, on white, plus
+    the hip where the field's typical rider sits (86 deg, 0.86 leg)."""
+    import math as _m
+
+    import cv2
+    import numpy as np
+
+    from app.services.video_analysis.biomechanics import bb_detect as BB
+
+    leg, rw = 360.0, 150.0
+    rear, front = (300.0, 600.0), (300.0 + 2.9 * rw, 600.0)
+    c = (rear[0] + BB.WHEEL_U * rw, rear[1] + BB.WHEEL_V * rw)
+    img = np.full((h, w, 3), 255, np.uint8)
+    for (x, y), r in ((rear, rw), (front, rw), (c, 0.12 * leg)):
+        cv2.circle(img, (int(x), int(y)), int(r), (20, 20, 20), 6)
+    hip = (c[0] - 0.86 * leg * _m.cos(_m.radians(86)), c[1] - 0.86 * leg * _m.sin(_m.radians(86)))
+    return img, hip, leg, c, rear, front
+
+
+def test_the_crank_is_found_on_the_chainring_and_the_wheels_level_it():
+    from app.services.video_analysis.biomechanics.bb_detect import detect_crank
+
+    img, hip, leg, c, rear, front = _drawn_bike()
+    out = detect_crank(img, hip, leg, 1)
+    assert out["method"] == "chainring" and out["confidence"] == "high"
+    assert out["C"][0] * 1200 == pytest.approx(c[0], abs=6) and out["C"][1] * 900 == pytest.approx(c[1], abs=6)
+    assert out["RA"][0] * 1200 == pytest.approx(rear[0], abs=10)
+    assert out["FA"][0] * 1200 == pytest.approx(front[0], abs=10)
+
+
+def test_a_rider_facing_left_gets_the_axle_below_the_wheel_line_too():
+    import cv2
+
+    from app.services.video_analysis.biomechanics.bb_detect import detect_crank
+
+    img, hip, leg, c, _r, _f = _drawn_bike()
+    flipped = cv2.flip(img, 1)
+    out = detect_crank(flipped, (1200 - hip[0], hip[1]), leg, -1)
+    assert out["method"] == "chainring"
+    assert out["C"][0] * 1200 == pytest.approx(1200 - c[0], abs=6) and out["C"][1] * 900 == pytest.approx(c[1], abs=6)
+
+
+def test_nothing_to_find_is_a_low_confidence_guess_never_an_error():
+    import numpy as np
+
+    from app.services.video_analysis.biomechanics.bb_detect import detect_crank
+
+    out = detect_crank(np.full((900, 1200, 3), 255, np.uint8), (450.0, 300.0), 360.0, 1)
+    assert out["method"] == "guess" and out["confidence"] == "low"
+    assert 0 < out["C"][0] < 1 and 0 < out["C"][1] < 1 and "FA" not in out
+
+
+def test_the_photo_helper_reads_the_pose_blob():
+    import cv2
+
+    from app.main import _photo_bike_auto
+
+    img, hip, leg, c, _r, _f = _drawn_bike()
+    ok, buf = cv2.imencode(".jpg", img)
+    lm = [[0.5, 0.5, 0.0, 1.0] for _ in range(33)]
+    # right side: shoulder ahead of the hip, knee and ankle making thigh + shank = leg
+    lm[24] = [hip[0] / 1200, hip[1] / 900, 0, 1]
+    lm[12] = [(hip[0] + 200) / 1200, (hip[1] - 120) / 900, 0, 1]
+    lm[26] = [(hip[0] + 180) / 1200, hip[1] / 900, 0, 1]
+    lm[28] = [(hip[0] + 180) / 1200, (hip[1] + 180) / 900, 0, 1]
+    out = _photo_bike_auto(buf.tobytes(), {"landmarks": lm, "camera_side": "right"})
+    assert out and out["method"] == "chainring"
+    assert out["C"][0] * 1200 == pytest.approx(c[0], abs=8)
