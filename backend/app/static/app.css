@@ -902,6 +902,9 @@ body:not([data-state="upload"]) .hero h1,
 body.authed .hero h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 body:not([data-state="upload"]) .hero-line,
 body.authed .hero-line{display:none}
+/* The Analyze page carries its own slim header (.uphero), whose h1 is the
+   page root there; the band steps aside rather than say the same thing twice. */
+body[data-state="upload"] .hero{display:none}
 @media(max-width:560px){
   .hero{background:none}
   .hero::after,.hero::before{display:none}
@@ -1040,49 +1043,69 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .btn-link{background:none;border:0;color:var(--c-blue-dk);padding:4px 2px;min-height:0;font-weight:500}
 .btn-link:hover{text-decoration:underline;text-underline-offset:3px}
 
-/* ---------- Uploader ----------
-   A numbered walk. Each step is a white block on the page ground with a
-   navy number, a title and one line under it; the counter is CSS, so a
+/* ---------- Uploader (Analyze page, Oct 2026 layout) ----------
+   A slim header, then two cards: the setup (steps 1-3, one card, hairlines
+   between the steps) on the left and the footage + the button on the right.
+   Below 768 px both wrappers dissolve and every step is its own card, with
+   the summary and the button ending the form. The step counter is CSS, so a
    hidden step (Position, for a run) leaves no gap in the numbering. */
-#uploader{max-width:900px;margin:0;display:block;counter-reset:ustep}
+#uploader{max-width:1120px;margin:0;display:block;counter-reset:ustep}
 .uploader{padding:0;margin-top:0;position:relative;z-index:5;width:100%;background:transparent;border:0}
-.uphead{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:0}
-.uploader .pagehead{margin-bottom:16px}
-.ustep{background:var(--c-bg);border:1px solid var(--c-line);padding:18px 20px 20px;margin:0 0 12px}
-.ustep-head{display:flex;align-items:flex-start;gap:14px;margin:0 0 14px}
-/* The step numeral is the landing's "How it works" numeral: Archivo italic,
-   filled with the speed gradient. Every step reads the same -- an earlier
-   version outlined the one still waiting for a file, and it read as a
-   broken numeral rather than a state. Solid blue is the fallback where a
-   browser cannot clip a background to text. */
-.ustep-n{flex:none;min-width:56px;font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:40px;line-height:1;
-  color:var(--c-blue);letter-spacing:-.02em;display:flex;align-items:flex-start;margin-top:-2px}
+.uploader .pagehead.uphero{display:flex;align-items:flex-end;justify-content:space-between;gap:8px 24px;flex-wrap:wrap;
+  margin:0 0 24px;padding:0;border:0}
+.uphero-t{display:flex;flex-direction:column;gap:4px;min-width:0}
+.uphead{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:34px;line-height:1.1;letter-spacing:-.01em;color:var(--c-head);margin:0}
+.uphero .ph-lede{flex:0 1 360px;font-size:14px;color:var(--c-ink-soft)}
+.upgrid{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.upsetup{flex:1 1 440px;min-width:0;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:4px 24px}
+.upclip{flex:1 1 380px;min-width:0;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:24px;
+  display:flex;flex-direction:column;gap:16px}
+.ustep{padding:20px 0;margin:0;display:flex;flex-direction:column;gap:12px}
+.upsetup .ustep:not(.hidden) ~ .ustep:not(.hidden){border-top:1px solid var(--c-line)}
+.upclip .ustep{padding:0}
+.ustep-head{display:flex;align-items:baseline;gap:12px;margin:0}
+.ustep-head > div{min-width:0}
+/* The step numeral: Archivo italic filled with the speed gradient, the
+   landing's "How it works" numeral -- now inline with its title rather than
+   a 40 px block beside it. Solid blue is the fallback where a browser cannot
+   clip a background to text. */
+.ustep-n{flex:none;font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:24px;line-height:1;
+  color:var(--c-blue);letter-spacing:-.02em;padding-right:2px}
 @supports (-webkit-background-clip:text) or (background-clip:text){
   .ustep-n{color:transparent;background:var(--g-speed);-webkit-background-clip:text;background-clip:text}
 }
 .ustep-n::before{counter-increment:ustep;content:counter(ustep,decimal-leading-zero)}
-.ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:17px;line-height:1.3;color:var(--c-head);margin:4px 0 2px;text-transform:none;letter-spacing:0}
-.ustep-head p{font-size:13px;color:var(--c-ink-faint);margin:0;line-height:1.45}
-/* Inside a step the rows sit on hairlines; the last one has no rule under it. */
-.ustep .askbox:last-child,.ustep .switch:last-child,.ustep .overlay-locked:last-child{border-bottom:0}
-/* The clip: the drop zone and the camera tile side by side. */
-.cliprow{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:12px;align-items:stretch}
-/* No camera (a photo, or a browser that cannot record): the drop zone takes the row. */
-.cliprow:has(.camrow.hidden){grid-template-columns:1fr}
+.ustep-head h3{font-family:var(--f-display);font-weight:600;font-size:16px;line-height:1.3;color:var(--c-head);margin:0;text-transform:none;letter-spacing:0}
+.ustep-head p{font-size:13px;color:var(--c-ink-faint);margin:2px 0 0;line-height:1.45}
+.ustep-head p:empty{display:none}
+/* Inside a fold the rows sit on hairlines; the last one has no rule under it. */
+.ustep-details .askbox:last-child,.ustep-details .switch:last-child,.ustep-details .overlay-locked:last-child{border-bottom:0}
+/* The clip: the drop zone, the camera as a quiet line under it. */
+.cliprow{display:flex;flex-direction:column;gap:12px}
 .cliprow .drop{margin:0}
 .camrow{margin:0;display:flex}
 .camrow.hidden{display:none}
-.camtile{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;
-  padding:22px 16px;background:var(--c-panel-blue);border:1px solid var(--c-blue);color:var(--c-ink);cursor:pointer;
-  font-family:var(--f-body);transition:background-color .15s ease-out,border-color .15s ease-out;min-height:44px}
-.camtile .ic-lg{width:30px;height:30px;color:var(--c-blue);margin-bottom:4px}
-.camtile b{font-size:14.5px;font-weight:600;color:var(--c-brand-navy)}
-.camtile small{font-size:12px;color:var(--c-ink-soft);line-height:1.4}
-.camtile:hover{background:#DCE6FB;border-color:var(--c-brand-navy)}
+.camtile{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;
+  background:var(--c-bg);border:1px solid var(--c-blue);border-radius:var(--radius-btn);color:var(--c-brand-navy);
+  font-family:var(--f-body);font-size:14px;font-weight:600;cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out}
+.camtile .ic{width:18px;height:18px;color:var(--c-blue)}
+.camtile .cam-m{display:none}
+.camtile:hover{background:var(--c-panel-blue);border-color:var(--c-brand-navy)}
 .camtile:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
-@media(max-width:640px){ .cliprow{grid-template-columns:1fr} .camtile{padding:14px 16px;flex-direction:row;text-align:left;gap:12px} .camtile .ic-lg{margin:0;width:24px;height:24px} .camtile b{display:block} }
-/* Position family, then the exact position. */
-.poscat{margin:0 0 12px}
+/* "Details · optional": one fold holding the old step 05. */
+.ustep-details{border-top:1px solid var(--c-line);padding:0}
+.ustep-details > summary{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;list-style:none;
+  font-size:14px;font-weight:600;color:var(--c-ink)}
+.ustep-details > summary::-webkit-details-marker{display:none}
+.ustep-details > summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+  transform:rotate(-45deg);transition:transform .15s ease;color:var(--c-ink-faint);flex:none}
+.ustep-details[open] > summary::before{transform:rotate(45deg)}
+.ustep-details > summary .askopt{margin-left:0;font-weight:400;color:var(--c-ink-faint);font-family:var(--f-body);font-size:14px;text-transform:none;letter-spacing:0}
+.ustep-details[open] > summary{margin-bottom:4px}
+.ustep-details > summary:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+/* Position: the family and the exact position side by side. */
+.posrow{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center}
+.poscat{margin:0}
 #positionSeg .posgroup{display:none}
 #positionSeg[data-cat="road"] .posgroup[data-cat="road"],
 #positionSeg[data-cat="aero"] .posgroup[data-cat="aero"],
@@ -1107,27 +1130,37 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .modetabs button[aria-pressed="true"]{background:var(--c-brand-navy);color:#fff}
 .modetabs button[aria-pressed="true"] .ic,.modetabs button[aria-pressed="true"] b{color:#fff}
 .modetabs button[aria-pressed="true"] small{color:rgba(255,255,255,.75)}
-/* Step 01: three tiles in one row. */
-.modetabs.what{grid-template-columns:repeat(3,1fr);max-width:none}
-/* Step 03: two tiles with a figure each (the "How to film it" line set) and
-   a sentence; the figure sits on a white plate so it reads on the navy fill. */
-.modetabs.film{grid-template-columns:1fr 1fr;max-width:none}
-.modetabs.film button{align-items:flex-start;padding:14px 16px 16px}
-.modetabs.film .fig{width:108px;height:45px;flex:none;border-radius:var(--radius-lg);background:#fff;display:block;padding:2px 6px;box-sizing:border-box}
-.modetabs.film button[aria-pressed="true"] .fig{outline:1px solid rgba(255,255,255,.25)}
+/* Steps 01 and 03: separate tiles with a gap, the chosen one filled navy. */
+.modetabs.what,.modetabs.film{gap:8px;border:0;background:transparent;overflow:visible;max-width:none}
+.modetabs.what{grid-template-columns:repeat(3,minmax(0,1fr))}
+.modetabs.film{grid-template-columns:repeat(2,minmax(0,1fr))}
+.modetabs.what button,.modetabs.film button{border:1px solid var(--c-line-strong);border-radius:var(--radius-btn);background:var(--c-bg);
+  padding:8px 12px;min-height:56px;align-items:center}
+.modetabs.film button{min-height:64px;padding:10px 14px}
+.modetabs.what button:first-child,.modetabs.film button:first-child{border-left:1px solid var(--c-line-strong)}
+.modetabs.what button:hover,.modetabs.film button:hover{background:var(--c-panel)}
+.modetabs.what button[aria-pressed="true"],.modetabs.film button[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy)}
+.modetabs.what button small,.modetabs.film button small{color:var(--c-ink-soft)}
+.modetabs.what button[aria-pressed="true"] small,.modetabs.film button[aria-pressed="true"] small{color:#C7D2EE}
 .modetabs.film small b{font-weight:600;color:inherit;font-size:inherit}
-.sidesub{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
+.sidesub{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-top:12px}
 .sidesub-lbl{font-size:13px;color:var(--c-ink-soft)}
 .filmtiles .poshint{margin-top:8px}
-@media(max-width:640px){
-  .modetabs.what{grid-template-columns:1fr}
-  .modetabs.what button{border-left:0;border-top:1px solid var(--c-line)}
-  .modetabs.what button:first-child{border-top:0}
-  .modetabs.film{grid-template-columns:1fr}
-  .modetabs.film button{border-left:0;border-top:1px solid var(--c-line)}
-  .modetabs.film button:first-child{border-top:0}
-  .modetabs.film .fig{width:86px;height:36px}
-}
+/* The exact position and the camera side: a chosen value is a light-blue
+   fill on an accent border, so it reads as "within" the navy family choice
+   rather than as a second, competing decision. 44 px, every one. */
+.uploader .seg button{min-height:44px;padding:0 18px;font-size:14px}
+.uploader .tilerow{border:0;background:transparent;overflow:visible}
+.uploader .tilerow .tile-btn{min-height:44px;padding:0 18px;font-size:14px;color:var(--c-ink);
+  border:1px solid var(--c-line-strong);margin-left:-1px;position:relative}
+.uploader .tilerow .tile-btn:first-child{margin-left:0;border-radius:var(--radius-btn) 0 0 var(--radius-btn)}
+.uploader .tilerow .tile-btn:last-child,
+.uploader .tilerow .tile-btn:has(+ .tile-btn[hidden]){border-radius:0 var(--radius-btn) var(--radius-btn) 0}
+.uploader .tilerow .tile-btn:only-child{border-radius:var(--radius-btn)}
+.uploader .tilerow .tile-btn[aria-pressed="true"]{background:var(--c-panel-blue);color:var(--c-ink);font-weight:600;
+  border-color:var(--c-blue);z-index:1}
+.uploader .tilerow .tile-btn.hidden + .tile-btn,.uploader .tilerow .tile-btn.hidden{margin-left:0}
+#sideSeg .tile-btn{padding:0 14px;font-size:13px}
 
 /* Segmented control: a chosen value keeps the ink fill -- that contrast now
    means "selected" and nothing else. */
@@ -1232,21 +1265,18 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
    "How to film it": three panels in one row, the figure above its rule,
    the folded list of six under them. The figures are the four approved
    assets, used verbatim. */
-.capguide{border:1px solid var(--c-line);border-radius:var(--radius);padding:18px 20px 20px;margin:20px 0 0;background:var(--c-bg)}
+/* A compact row under the form: figure, bold rule, one line. */
+.capguide{border:1px solid var(--c-line);border-radius:var(--radius);padding:20px 24px;margin:24px 0 0;background:var(--c-bg)}
 .capguide .eyebrow{display:flex;align-items:center;gap:12px}
-.cg-lede{font-size:13.5px;color:var(--c-ink-soft);line-height:1.5;margin:8px 0 0;max-width:64ch}
-.cg-body{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:16px 0 0;padding:0;list-style:none;counter-reset:cg;
-  border:1px solid var(--c-line)}
-.cg-step{margin:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:18px 16px 16px;border-left:1px solid var(--c-line);position:relative}
-.cg-step:first-child{border-left:0}
-.cg-step::before{counter-increment:cg;content:counter(cg);position:absolute;left:12px;top:12px;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
-.cg-fig{width:120px;height:120px;aspect-ratio:1;display:block;margin:0}
-.cg-step p{position:relative;padding-left:0;margin:0;font-size:13px;line-height:1.5;color:var(--c-ink-soft)}
+.cg-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:20px;margin:16px 0 0;padding:0;list-style:none}
+.cg-step{margin:0;display:flex;align-items:flex-start;gap:12px;padding:0;position:relative}
+.cg-fig{width:56px;height:56px;aspect-ratio:1;display:block;margin:0;flex:none}
+.cg-step p{position:relative;padding-left:0;margin:0;font-size:13px;line-height:1.45;color:var(--c-ink-soft)}
 .cg-step p b{color:var(--c-ink);font-weight:600}
-.cg-step p b:first-child{display:block;margin-bottom:2px}
+.cg-step p b:first-child{display:block;margin-bottom:2px;font-size:14px}
 .cg-step p::before{display:none}
-.cg-more{margin-top:10px;border:1px solid var(--c-line);background:var(--c-bg);padding:0}
-.cg-more summary{font-size:13.5px;font-weight:500;color:var(--c-ink);cursor:pointer;min-height:40px;display:flex;align-items:center;gap:10px;padding:0 18px;list-style:none}
+.cg-more{margin-top:16px;border:1px solid var(--c-line);background:var(--c-bg);padding:0}
+.cg-more summary{font-size:13.5px;font-weight:500;color:var(--c-ink);cursor:pointer;min-height:44px;display:flex;align-items:center;gap:10px;padding:0 18px;list-style:none}
 .cg-more summary::-webkit-details-marker{display:none}
 .cg-more summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s ease;color:var(--c-ink-faint)}
 .cg-more[open] summary::before{transform:rotate(45deg)}
@@ -1260,24 +1290,14 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 @keyframes cgflash{0%{box-shadow:0 0 0 2px var(--c-warn)}100%{box-shadow:0 0 0 2px transparent}}
 @media (prefers-reduced-motion:reduce){ .cg-flash{animation:none;outline:2px solid var(--c-warn)} }
 .pf-guide{color:var(--c-blue-dk);font-weight:500;white-space:nowrap}
-/* What happens to the footage, next to the button that hands it over: a quiet
-   tinted strip, three claims separated by hairlines. */
-.trustrow{list-style:none;margin:12px 0 0;padding:10px 14px;border:1px solid var(--c-line);background:var(--c-panel-quiet);
-  display:flex;flex-wrap:wrap;gap:6px 0;font-size:12px;color:var(--c-ink-soft);line-height:1.45}
-.trustrow li{display:flex;align-items:flex-start;gap:8px;padding:0 14px 0 0;margin-right:14px;border-right:1px solid var(--c-line)}
-.trustrow li:last-child{border-right:0;margin-right:0;padding-right:0}
-.trustrow .ic{display:none}
+/* What happens to the footage, at the foot of the card whose button hands it
+   over: three short claims under a hairline. */
+.trustrow{list-style:none;margin:0;padding:12px 0 0;border-top:1px solid var(--c-line);
+  display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--c-ink-soft);line-height:1.45}
+.trustrow li{display:flex;align-items:flex-start;gap:6px}
+.trustrow .ic{width:12px;height:12px;flex:none;margin-top:3px;color:var(--c-ink-faint)}
 .trustrow a{color:var(--c-ink-soft);text-decoration:underline;text-underline-offset:2px}
 .trustrow a:hover{color:var(--c-ink)}
-@media(max-width:640px){
-  .capguide{padding:14px}
-  .cg-body{grid-template-columns:1fr}
-  .cg-step{flex-direction:row;text-align:left;align-items:center;gap:14px;padding:12px 12px 12px 34px;border-left:0;border-top:1px solid var(--c-line)}
-  .cg-step:first-child{border-top:0}
-  .cg-fig{width:80px;height:80px;flex:none}
-  .trustrow li{border-right:0;margin:0;padding:0;display:inline}
-  .trustrow{display:block}
-}
 
 /* Pre-flight notes on the chosen clip */
 .preflight{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:6px}
@@ -1334,19 +1354,20 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .switch:hover input:checked + .box{background:var(--c-blue-dk)}
 .subhint{display:block;font-size:12px;font-weight:400;color:var(--c-ink-faint);margin-top:2px}
 
-/* submit: the one filled button, the quota beside it, "Compare plans" right */
-.analyzebar{position:sticky;bottom:0;z-index:7;background:var(--c-bg);border:1px solid var(--c-line);
-  padding:12px 20px;margin:0 0 12px;box-shadow:var(--shadow)}
-@media(max-width:900px){ .analyzebar{bottom:calc(68px + env(safe-area-inset-bottom,0))} }
-.analyzerow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0}
-.analyzemeta{display:flex;flex-direction:column;gap:2px;flex:1 1 200px;min-width:0}
-.analyzemeta .hint{margin:0;font-size:13px;color:var(--c-ink-soft)}
-.analyzemeta .quota-line{margin:0;flex:0 0 auto}
-.analyzemeta .hint{flex:0 0 auto}
-.analyzerow .btn-go{width:auto;padding:10px 26px}
-.analyzerow .quota-line{margin:0;padding:0;border:0;text-align:left}
-.analyzerow .plans-link{margin-left:auto;font-size:13px;color:var(--c-blue-dk);text-decoration:none;font-weight:500}
-.analyzerow .plans-link:hover{text-decoration:underline;text-underline-offset:3px}
+/* submit: what will be analysed, the one filled button, the status line,
+   then the quota with "Compare plans" on the right. In the clip card. */
+.gobox{display:flex;flex-direction:column;gap:10px}
+.setsum{margin:4px 0 2px;padding:12px 14px;background:var(--c-ground);border-radius:var(--radius);
+  font-family:var(--f-mono);font-size:12px;line-height:1.5;color:var(--c-ink-soft)}
+.setsum:empty{display:none}
+.gobox .btn-go{width:100%;min-height:52px;font-size:16px;font-weight:600}
+.gobox .hint{margin:0;font-size:13px;color:var(--c-ink-soft)}
+.gobox .hint.err{color:var(--st-bad)}
+.gobox .hint.warn{color:var(--c-warn-text)}
+.gometa{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}
+.gometa .quota-line{margin:0;padding:0;border:0;text-align:left}
+.gometa .plans-link{display:inline-flex;align-items:center;min-height:44px;margin:-12px 0;font-size:13px;color:var(--c-blue-dk);text-decoration:underline;text-underline-offset:2px;font-weight:500}
+.gometa .plans-link:hover{color:var(--c-blue-active)}
 .btn-block{width:100%;justify-content:center}
 .hint{font-size:12.5px;color:var(--c-ink-faint);text-align:left;margin-top:8px}
 .hint.err{color:var(--st-bad);font-weight:500}
@@ -2267,7 +2288,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .uploader{padding:0;margin-top:0}
   .modetabs{width:auto}
   .modetabs button{padding:5px 10px;font-size:12px}
-  .uphead{font-size:16px}
   .drop{padding:24px 14px}
   .filepreview{flex-direction:column;align-items:stretch}
   .filepreview video{width:100%}
@@ -2294,12 +2314,55 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .again-row{flex-direction:column;align-items:stretch;text-align:center}
   table.data{font-size:13px}
   table.data td,table.data thead th{padding:8px}
-  .analyzebar{padding:10px 14px}
-  .analyzerow{gap:10px}
-  .analyzerow .btn-go{flex:1 1 100%;width:100%}
-  .analyzemeta{flex:1 1 auto}
-  .analyzerow .plans-link{margin-left:auto}
   .pagehead .ph-right{margin-left:0}
+}
+/* Analyze on a phone: one column, every step its own card, the segments
+   full width, the camera first (that is where the clip gets filmed), and the
+   summary + button ending the form rather than floating over it. */
+@media(max-width:640px){
+  .uploader .pagehead.uphero{flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:16px}
+  .uphead{font-size:28px}
+  .uphero .ph-lede{flex:none}
+  .upgrid{display:block}
+  .upsetup{background:transparent;border:0;padding:0;display:flex;flex-direction:column;gap:16px}
+  .upsetup .ustep,.upclip #stepClip{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:16px}
+  .upclip{background:transparent;border:0;padding:0;margin-top:16px;gap:0}
+  /* Step 04 and its "Details" fold read as one card. */
+  .upclip #stepClip{border-bottom:0;border-radius:var(--radius) var(--radius) 0 0}
+  .upclip .ustep-details{background:var(--c-bg);border:1px solid var(--c-line);border-top:0;border-radius:0 0 var(--radius) var(--radius);padding:0 16px 4px}
+  .upclip .ustep-details > summary{border-top:1px solid var(--c-line)}
+  .ustep-head h3{font-size:15px}
+  .ustep-n{font-size:22px}
+  .modetabs.what button{min-height:60px;padding:8px}
+  .modetabs.what button b{font-size:13px}
+  .modetabs.film{grid-template-columns:1fr}
+  .modetabs.film button{min-height:60px}
+  .posrow{flex-direction:column;align-items:stretch;gap:12px}
+  .poscat{display:flex}
+  .poscat button{flex:1;justify-content:center}
+  #positionSeg{display:block}
+  #positionSeg .posgroup .tilerow{display:flex;flex:1}
+  .uploader .tilerow .tile-btn{flex:1;padding:0 8px}
+  .sidesub{flex-direction:column;align-items:stretch}
+  #sideSeg{display:flex}
+  /* The camera first and filled; the library second, a compact dark slot.
+     Without a camera (a photo, or no recorder) the viewfinder keeps its size. */
+  .cliprow{gap:8px}
+  .camrow{order:-1}
+  .camtile{min-height:56px;background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff;font-size:16px}
+  .camtile .ic{color:#fff;width:20px;height:20px}
+  .camtile:hover{background:var(--c-brand-mid);border-color:var(--c-brand-mid)}
+  .camtile .cam-d{display:none}
+  .camtile .cam-m{display:inline}
+  .cliprow:not(:has(.camrow.hidden)) .drop{min-height:56px;padding:10px 16px;border:2px dashed rgba(245,247,250,.38)}
+  .cliprow:not(:has(.camrow.hidden)) .drop::before,
+  .cliprow:not(:has(.camrow.hidden)) .drop::after,
+  .cliprow:not(:has(.camrow.hidden)) .drop .ic-lg{display:none}
+  .cliprow:not(:has(.camrow.hidden)) .drop small{background:none;padding:0;margin-top:2px;font-size:12px}
+  .gobox{margin-top:16px}
+  .setsum{margin:0;background:var(--c-bg);border:1px solid var(--c-line)}
+  .trustrow{border-top:0;padding-top:12px}
+  .capguide{padding:16px}
 }
 
 /* ---- Result feedback ("does this match what you see?") ---- */
