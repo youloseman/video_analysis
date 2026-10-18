@@ -406,28 +406,31 @@
 
   <!-- ============ DASHBOARD (My technique — signed-in home) ============ -->
   <section id="dashboard" class="hidden" aria-labelledby="dashTitle">
-    <div class="blockhead pagehead" style="margin-top:0">
-      <div class="dash-date" id="dashDate"></div>
-      <h2 class="sec" id="dashTitle" tabindex="-1">My technique</h2>
-      <span class="ph-right"><button class="btn btn-primary btn-sm" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
-      <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
-      <div id="dashReview" style="flex-basis:100%"></div>
+    <!-- The same slim header as Analyze: on this screen the band across the
+         top steps aside (CSS) and this h1 is the page's root. -->
+    <div class="pagehead uphero dashhead">
+      <div class="uphero-t">
+        <span class="eyebrow" id="dashDate"></span>
+        <h1 class="uphead" id="dashTitle" tabindex="-1">My technique</h1>
+      </div>
+      <span class="ph-right"><button class="btn btn-primary" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
     </div>
-    <!-- Order is the hierarchy: where you stand (per-sport score), what it is
-         made of (current form), what to do (focus, plan), what you did
-         (recent). The counters come last -- "62 analyses, 1 this month" is
-         bookkeeping, and it used to hold the top-left corner. The first-run
-         welcome renders into #dashSummary and is moved up by CSS order. -->
+    <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
+    <div id="dashReview"></div>
+    <!-- First run: the welcome, and nothing else (.dash-empty hides the rest). -->
     <div id="dashSummary" class="dash-summary"></div>
-    <div id="dashSports" class="dash-sports"></div>
+    <!-- A dashboard reads top-down: where you stand (a tile per sport, then the
+         counts), where it is going (the score over time) beside what to do
+         about it (focus, drills), what it is made of (current form), and what
+         you did (recent). -->
+    <div class="dkpis"><div id="dashSports" class="dash-sports"></div></div>
+    <!-- The latest run, then the latest ride: the kinogram (or the frame) and
+         what the report says to do about it. -->
+    <div id="dashKino" class="dkinos"></div>
+    <!-- Progress as a picture, and where an aero rider sits among the pros. -->
+    <div class="dvis"><div id="dashThen"></div><div id="dashKona"></div></div>
+    <div class="dgrid"><div id="dashFocus"></div><div id="dashPlan"></div></div>
     <div id="dashForm"></div>
-    <div id="dashFocus"></div>
-    <div id="dashPlan"></div>
-    <div class="blockhead" id="dashRecentHead"><h3>Recent</h3></div>
-    <div id="dashRecent" class="dash-recent"></div>
-    <!-- Counters. Last in the markup, first on the screen (CSS order): four
-         quiet tiles across the top, the way the artboards open. -->
-    <div id="dashCounts" class="dash-counts"></div>
   </section>
 
   <!-- ============ UPLOADER ============ -->
@@ -3672,22 +3675,26 @@ function measRow(m){
     +`<th scope="row"><span class="m-name">${esc(m.lbl)}${what}</span>${sub?`<span class="m-sub">${sub}</span>`:''}${def}</th>`
     +`<td class="m-val num">${valHtml}</td>`
     +`<td class="m-ref">${m.range?measBar(m,st):'<span class="m-noref">no published range</span>'}</td>`
-    +`<td class="m-st"><span class="m-pill">${st.word}</span>${delta?`<span class="m-delta">${delta}</span>`:''}</td>`
+    +`<td class="m-st"><span class="m-pill">${st.word}</span>${delta?`<span class="m-delta">${delta}</span>`:''}${m.trend?`<span class="m-trend">${m.trend}</span>`:''}</td>`
     +`</tr>`;
 }
-/* Needs attention (furthest out first), then in range, then the readings no
-   range applies to -- each under a header that counts it. */
-function renderTiles(list){
-  const host=$('#measRows'); if(!host) return;
+/* The grouped rows of a measurements table: needs attention (furthest out
+   first), in range, not graded -- each under a header that counts it. The
+   report's table and the dashboard's current form are both this. */
+function measBody(list){
   const rows=(list||[]).filter(Boolean);
-  if(!rows.length){ host.innerHTML='<tr><td colspan="4" class="muted">No summary metrics available.</td></tr>'; return; }
   const by={attn:[],ok:[],info:[]};
   rows.forEach(m=>by[measStatus(m).group].push(m));
   by.attn.sort((a,b)=>Math.abs(b.delta||0)-Math.abs(a.delta||0));
   const head=(t,n)=>`<tr class="mgroup"><th colspan="4" scope="colgroup">${t} <span>· ${n}</span></th></tr>`;
-  host.innerHTML=[['Needs attention',by.attn],['In range',by.ok],['Not graded',by.info]]
+  return [['Needs attention',by.attn],['In range',by.ok],['Not graded',by.info]]
     .filter(([,g])=>g.length)
     .map(([t,g])=>head(t,g.length)+g.map(measRow).join('')).join('');
+}
+function renderTiles(list){
+  const host=$('#measRows'); if(!host) return;
+  const rows=(list||[]).filter(Boolean);
+  host.innerHTML = rows.length ? measBody(rows) : '<tr><td colspan="4" class="muted">No summary metrics available.</td></tr>';
 }
 /* helper: {value,lo,hi,unit} for the range bar */
 function R(value,lo,hi,unit,src){ return {value,lo,hi,unit,src}; }
@@ -9877,9 +9884,8 @@ function renderDashPlan(all){
   const foot=allDone
     ? `<span class="dplan-done-note">✓ All drills done</span><button class="btn btn-primary btn-sm" data-analyze="${e.sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Re-test — new ${noun}</button>`
     : `<span class="dplan-prog"><b>${nDone}</b> of <b>${plan.length}</b> done</span><button class="btn btn-ghost btn-sm" data-plan-open="${e.id}">Open plan →</button>`;
-  host.innerHTML=`<div class="dplan">
-    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Training plan</div>
-      <h3>Your drills</h3><div class="speedline-sm"></div></div>
+  host.innerHTML=`<div class="dcard dplan">
+    <div class="dcard-head"><h2>Your drills</h2><span class="dcard-note">${e.sport==='run'?'run':'bike'} plan</span></div>
     <div class="dplan-list">${items}</div>
     <div class="dplan-foot">${foot}</div>
   </div>`;
@@ -10387,21 +10393,24 @@ $('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); 
 function daysSince(ms){ return Math.floor((Date.now()-ms)/86400000); }
 function agoStr(ms){ const d=daysSince(ms); return d<=0?'today':d===1?'1 day ago':d+' days ago'; }
 function shortDate(ms){ try{ return new Date(ms).toLocaleDateString(UI_LOCALE, {month:'short',day:'numeric'}); }catch(e){ return ''; } }
-function miniSpark(vals){
-  const W=132,H=44,p=5,n=vals.length; if(n<2) return '';
+function miniSpark(vals,W=132,H=44){
+  const p=5,n=vals.length; if(n<2) return '';
   let lo=Math.min(...vals),hi=Math.max(...vals); if(lo===hi){lo-=1;hi+=1;}
   const X=i=>p+i*(W-2*p)/(n-1), Y=v=>p+(H-2*p)*(1-(v-lo)/(hi-lo));
   const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
   const lx=X(n-1),ly=Y(vals[n-1]);
   return `<svg viewBox="0 0 ${W} ${H}" class="dspark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.4" fill="var(--c-blue)" stroke="#fff" stroke-width="1.6"/></svg>`;
 }
+/* A KPI tile per sport: the latest score in its ring, the grade, how far it
+   moved since the first analysis, the line of every score, the personal best.
+   Same facts as the old sport card, at a third of the height. */
 function sportCard(sport, entries){
   const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
   if(!entries.length){
-    return `<div class="dsport dsport-empty">
-      <div class="ds-head"><span><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</span></div>
-      <p class="hint" style="text-align:left;margin:8px 0 14px">No ${label.toLowerCase()} analyses yet.</p>
-      <button class="btn btn-primary btn-sm" data-analyze="${sport}">Analyze a ${label.toLowerCase()}</button>
+    return `<div class="dkpi dkpi-sport dkpi-empty">
+      <div class="dkpi-lbl"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</div>
+      <p class="dkpi-note">No ${label.toLowerCase()} analyses yet.</p>
+      <button class="btn btn-link dkpi-act" type="button" data-analyze="${sport}">Analyze a ${sport==='run'?'run':'ride'} →</button>
     </div>`;
   }
   const chron=entries.slice().reverse();               // oldest -> newest
@@ -10409,12 +10418,9 @@ function sportCard(sport, entries){
   const last=entries[0];
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
   // Says WHAT it is compared against. "0 · steady" read as a measurement.
-  // The landing's proof tile: first score struck through, latest in Archivo,
-  // the change as a chip.
-  const deltaHtml=!dd ? '<span class="hint">first analysis — trends build from #2</span>'
-    : `<span class="d-was">${scores[0]}</span><span class="d-arrow">→</span><span class="d-now">${scores[scores.length-1]}</span>`
-      +(dd.delta===0 ? `<span class="tdelta sta">no change</span>`
-        : `<span class="tdelta ${dd.cls}">${dd.delta>0?'+':''}${dd.delta}${dd.trend?' · '+dd.trend:''}</span>`);
+  const deltaHtml=!dd ? '<span class="dkpi-note">first analysis — trends build from #2</span>'
+    : (dd.delta===0 ? `<span class="tdelta sta">no change since first</span>`
+      : `<span class="tdelta ${dd.cls}">${dd.delta>0?'▲ +':'▼ '}${dd.delta} since first</span>`);
   // Personal record: the latest score is a *new* PB only when it strictly beats
   // every prior one (a tie just shows "Best N · date", no fanfare).
   const best=scores.length?Math.max(...scores):null;
@@ -10425,22 +10431,16 @@ function sportCard(sport, entries){
   const pb=newPB
     ? `<span class="ds-pb ds-pb-new"><svg class="ic" aria-hidden="true"><use href="#i-arr-up"/></svg> New personal best</span>`
     : (best!=null && entries.length>=2 ? `<span class="ds-pb">Best <b>${best}</b>${bestEntry?' · '+esc(shortDate(bestEntry.at)):''}</span>` : '');
-  return `<div class="dsport">
-    <div class="ds-head"><span><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</span>
-      <span class="ds-count">${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
-    <div class="ds-scorerow">
-      <div class="ds-scorebox">
-        ${ringHtml(last.score,96,`<div class="ds-score" style="color:${GRADE_COLORS[last.grade]||C.navy}">${last.score==null?'—':last.score}<small>/100</small></div>`)}
-        <div class="hint">${esc(last.grade||'—')} · ${agoStr(last.at)}</div>
-      </div>
-      ${scores.length>=2?miniSpark(scores):''}
+  return `<div class="dkpi dkpi-sport">
+    <div class="dkpi-lbl"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
+      <span class="dkpi-n">${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
+    <div class="dkpi-main">
+      ${ringHtml(last.score,64,`<div class="ds-score">${last.score==null?'—':last.score}</div>`)}
+      <div class="dkpi-side"><span class="dkpi-grade">${esc(last.grade||'—')} <small>· ${agoStr(last.at)}</small></span>${deltaHtml}</div>
     </div>
-    <div class="ds-delta">${deltaHtml}</div>
-    ${pb?`<div class="ds-pbrow">${pb}</div>`:''}
-    <div class="ds-actions">
-      <button class="btn btn-primary btn-sm" data-analyze="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> New</button>
-      ${entries.length>=2?`<button class="btn btn-ghost btn-sm" data-progress="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Progress</button>`:''}
-    </div>
+    ${scores.length>=2?miniSpark(scores,240,36):''}
+    <div class="dkpi-foot">${pb}
+      ${entries.length>=2?`<button class="btn btn-link dkpi-act" type="button" data-progress="${sport}">Progress →</button>`:''}</div>
   </div>`;
 }
 /* Issue type -> human label + which Academy drill/article addresses it.
@@ -10474,18 +10474,18 @@ function focusAreas(all, N=6){
   areas.sort((a,b)=> (b.inLatest-a.inLatest) || (b.count/b.total - a.count/a.total) || (b.count-a.count));
   return areas.slice(0,3);
 }
-function focusCard(a){
+function focusCard(a,i){
   const meta=ISSUE_META[a.type]||{label:pretty(a.type),drill:null};
   const noun=a.sport==='run'?(a.total===1?'run':'runs'):(a.total===1?'ride':'rides');
   const statusCls=a.inLatest?'reg':'imp';
-  const statusTxt=a.inLatest?'needs work':'improving — gone from your latest';
-  const drill=meta.drill?`<a class="btn btn-ghost btn-sm" href="${meta.drill}">Drill & how-to →</a>`:'';
-  return `<div class="focus-item">
-    <div class="focus-top"><span class="focus-lbl">${esc(meta.label)}</span>
-      <span class="tdelta ${statusCls}">${statusTxt}</span></div>
-    <div class="focus-sub">Flagged in <b>${a.count} of ${a.total}</b> of your last ${noun}.</div>
-    ${drill}
-  </div>`;
+  const statusTxt=a.inLatest?'needs work':'improving';
+  const drill=meta.drill?`<a class="btn btn-link dfoc-drill" href="${meta.drill}">Drill →</a>`:'';
+  return `<li class="dfoc">
+    <span class="dfoc-n" aria-hidden="true">${i+1}</span>
+    <div class="dfoc-t"><span class="focus-lbl">${esc(meta.label)}</span>
+      <small>${a.count} of your last ${a.total} ${noun}${a.inLatest?'':' · gone from your latest'}</small></div>
+    <span class="tdelta ${statusCls}">${statusTxt}</span>${drill}
+  </li>`;
 }
 /* Phase 2: aggregated focus areas from typed issues; falls back to the
    latest coach "Fix first" note when there aren't enough issue data yet. */
@@ -10493,11 +10493,9 @@ function renderDashFocus(all){
   const host=$('#dashFocus'); if(!host) return;
   const areas=focusAreas(all);
   if(areas.length){
-    host.innerHTML=`<div class="dfocus">
-      <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Work on this</div>
-        <h3>Your focus areas</h3><div class="speedline-sm"></div></div>
-      <div class="focus-list">${areas.map(focusCard).join('')}</div>
-      <p class="hint" style="margin:12px 0 0">Aggregated from your recent analyses. Fixing these lifts your score fastest.</p>
+    host.innerHTML=`<div class="dcard dfocus">
+      <div class="dcard-head"><h2>Work on this</h2><span class="dcard-note">from your recent analyses</span></div>
+      <ol class="dfoc-list">${areas.map(focusCard).join('')}</ol>
     </div>`;
     return;
   }
@@ -10510,10 +10508,9 @@ function renderDashFocus(all){
   const clean=!!m&&/nothing/i.test(m[1]);
   const body=m?m[2].trim():'';
   if(body){
-    host.innerHTML=`<div class="dfocus${clean?' dfocus-clean':''}">
+    host.innerHTML=`<div class="dcard dfocus${clean?' dfocus-clean':''}">
       ${clean?'<img class="empty-fig" src="/media/empty-nothing-to-fix.webp" alt="" width="96" height="96">':''}
-      <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-${clean?'check':'target'}"/></svg> ${clean?'Holding well':'Work on this'}</div>
-        <h3>${clean?'Nothing to fix':'Your focus'}</h3><div class="speedline-sm"></div></div>
+      <div class="dcard-head"><h2>${clean?'Nothing to fix':'Work on this'}</h2></div>
       <div class="dfocus-body">${mdToHtml(body)}</div>
       <button class="btn btn-ghost btn-sm" data-id="${withReport.id}" data-focus-open="1">Open full analysis →</button>
     </div>`;
@@ -10526,43 +10523,59 @@ function renderDashFocus(all){
     body:'You’re seeing your score and history. Upgrade to see the measurements, ranked focus areas and a personal drill plan that tell you <em>what to change</em>.'}) : '';
 }
 const DASH_TEASER_ITEMS=['Every joint & gait metric, tracked over time','Your ranked focus areas','A personal action plan with drills','Coaching notes on what to change'];
-/* ---------- Current form: latest reading per metric, where it sits vs the
-   optimal band, and how it moved since the previous analysis. Reuses the
-   trend maps saved on each entry + the same status vocabulary as the angle
-   table (grZone -> in range / check / out of range). No new backend. ---------- */
+/* ---------- Current form: the latest reading per metric in the report's
+   measurements table -- same bar, same status words, same tolerance (grZone)
+   -- with how it moved since the previous analysis under the status. ---------- */
+/* The band a dashboard row is graded against. A bike entry knows its position,
+   so the band is the report's own (bikePosRange); the band stored with the
+   entry is the fallback. Hip is not banded here: older entries stored the
+   stroke MEAN under that key, and the closed-hip band does not describe it. */
+const FORM_BIKE_BAND={knee:'knee_at_bdc',trunk:'trunk_angle',elbow:'elbow_angle',shoulder:'shoulder_angle',pelvic_ratio:'pelvic_ratio'};
+function formBand(sport, key, entry){
+  if(sport==='bike'){
+    if(key==='hip') return null;
+    const k=FORM_BIKE_BAND[key];
+    const b=k&&bikePosRange(entry.position,k);
+    if(b) return b;
+  }
+  return (entry.trendOpt&&entry.trendOpt[key])||null;
+}
+const FORM_DEC={overstride:2,pelvic_ratio:2,vertical_oscillation:1};
+/* The latest entry's readings as measurement rows (tile() objects), each with
+   its change since the entry before. */
+function formTiles(sport, entries){
+  const cur=entries[0], prev=entries[1], single=entries.length<2;
+  const aero=cur.position==='tt_aero'||cur.position==='triathlon';
+  if(!cur.trends) return [];
+  return TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
+    const v=cur.trends[m.key]; if(v==null) return null;
+    const unit=String(m.unit||'').trim();
+    const band=formBand(sport,m.key,cur);
+    const range=band?{value:v,lo:band[0],hi:band[1],unit}:null;
+    if(range&&aero&&m.key==='shoulder') range.metric='shoulder_closed_ok';
+    if(range&&aero&&m.key==='trunk'&&v<band[0]) range.metric='trunk_low_ok';
+    const t=tile(m.label,num(v,FORM_DEC[m.key]||0),unit,null,null,false,range);
+    if(single) t.trend='<span class="dform-first">first analysis</span>';
+    else {
+      const pv=prev?prev.trends[m.key]:null;
+      if(pv!=null){ const d=metricDelta(pv,v,band,m.hi);
+        t.trend = d.delta===0 ? '<span class="dform-first">no change</span>'
+          : `<span class="tdelta ${d.cls}">${d.delta>0?'▲ +':'▼ '}${Math.round(Math.abs(d.delta)*100)/100}${measUnit(unit)}</span>`; }
+    }
+    return t;
+  }).filter(Boolean);
+}
 function currentFormTable(sport, entries){
   const cur=entries[0], prev=entries[1], single=entries.length<2;
-  const rows=TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
-    const v=cur.trends[m.key]; if(v==null) return '';
-    const opt=(cur.trendOpt&&cur.trendOpt[m.key])||null;
-    const optTxt=opt?`${opt[0]}–${opt[1]}${m.unit||''}`:'<span class="noref">no ref</span>';
-    let statusCell='<td class="col-status muted"></td>';
-    if(opt){ const z=grZone(v,opt[0],opt[1],m.key); const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
-      // Single-valued metrics (cadence, knee at contact): the plain words, not
-      // the joint table's "mean" ones.
-      statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ST_WORD[zc]}</span></td>`; }
-    let trendCell='<td class="dform-tr"><span class="dform-first">first</span></td>';
-    if(!single){
-      const pv=prev?prev.trends[m.key]:null;
-      if(pv==null){ trendCell='<td class="dform-tr muted">—</td>'; }
-      else { const d=metricDelta(pv,v,opt,m.hi);
-        const tri=d.delta>0?'▲':d.delta<0?'▼':'—';
-        const dstr=(d.delta>0?'+':'')+(Math.round(d.delta*100)/100)+(m.unit||'');
-        trendCell=`<td class="dform-tr"><span class="tdelta ${d.cls}">${tri} ${dstr}</span></td>`; }
-    }
-    return `<tr><th scope="row">${esc(m.label)}</th>
-      <td class="num">${Math.round(v*10)/10}${m.unit||''}</td>
-      <td class="num col-opt ${opt?'':'muted'}">${optTxt}</td>
-      ${statusCell}${trendCell}</tr>`;
-  }).filter(Boolean).join('');
-  if(!rows) return '';
-  const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
+  const rows=formTiles(sport, entries);
+  if(!rows.length) return '';
+  const label=sport==='run'?'Run':'Bike';
   return `<div class="dform-sport">
-    <div class="dform-sub"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
-      <span class="dform-when">· latest ${esc(shortDate(cur.at))}</span></div>
-    <div class="tablewrap"><table class="data">
-      <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Now</th><th scope="col" class="num">Optimal</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Since last</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>
+    <div class="dform-sub">${label} · latest ${esc(shortDate(cur.at))}${single?'':` <span class="dform-when">· change since ${esc(shortDate(prev.at))}</span>`}</div>
+    <div class="meastable-wrap"><table class="meastable">
+      <caption class="visually-hidden">Your latest ${label.toLowerCase()} measurements against their reference ranges, with the change since the analysis before</caption>
+      <thead><tr><th scope="col">Measurement</th><th scope="col" class="num">Now</th><th scope="col">Vs reference</th><th scope="col">Status</th></tr></thead>
+      <tbody>${measBody(rows)}</tbody></table></div>
   </div>`;
 }
 /* Free-tier preview body (one sport): the score is real, every other metric is
@@ -10604,10 +10617,10 @@ function renderCurrentForm(all){
   // The switch is local and says so: the rest of the dashboard covers both
   // sports, and a segmented control at the top of a block reads as a mode
   // for the whole page unless told otherwise.
-  const seg=`<div class="dform-segrow"><div class="seg dform-seg" id="formSeg" role="group" aria-label="Sport shown in this table">
+  const seg=`<div class="seg dform-seg" id="formSeg" role="group" aria-label="Sport shown in this table">
     ${['bike','run'].map(s=>`<button type="button" data-formsport="${s}" aria-pressed="${s===sport}">
       <svg class="ic" aria-hidden="true"><use href="#i-${s}"/></svg> ${s==='run'?'Run':'Bike'}</button>`).join('')}
-  </div><span class="hint dform-seghint">this table only — the rest of the page covers both sports</span></div>`;
+  </div>`;
 
   const entries=all.filter(e=>e.sport===sport && e.trends);
   let body;
@@ -10620,18 +10633,235 @@ function renderCurrentForm(all){
       || `<p class="hint" style="margin:6px 0">No metric data for ${sport} yet.</p>`;
   }
 
-  host.innerHTML=`<div class="dform">
-    <div class="blockhead"><div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Where you are</div>
-      <h3>Current form</h3><div class="speedline-sm"></div></div>
-    ${seg}
+  host.innerHTML=`<div class="dcard dform">
+    <div class="dcard-head"><h2>Current form</h2>${seg}</div>
     <div class="dform-body">${body}</div>
   </div>`;
 }
-function dashRecentCard(e){
-  return `<div class="drec" tabindex="0" role="button" data-id="${e.id}" aria-label="Open ${esc(e.sport)} analysis">
-    <div class="drec-thumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="drec-score" style="background:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}</span></div>
-    <div class="drec-meta"><div class="drec-title">${e.sport==='run'?'Run':'Bike'} · ${esc(e.kind||'video')}</div><div class="hint">${fmtWhen(e.at)}</div></div>
+/* ---------- The latest picture of each sport, with what to do about it ----------
+   The dashboard was all numbers. This puts the athlete back on it: the kinogram
+   of the latest run, then of the latest ride, each beside the two things its
+   report says to fix and the one cue for the next session. A ride with no
+   kinogram shows its annotated frame; one with no picture at all shows the
+   readings furthest from their range, as bars -- something to look at either
+   way. Tips come from the same entry as the picture, so they never disagree. */
+function fetchKinogram(e){
+  if(!e||!e.hasKinogram||e.access!=='full'||!auth) return Promise.resolve(null);
+  if(Object.prototype.hasOwnProperty.call(state.kinoCache,e.id)) return Promise.resolve(state.kinoCache[e.id]);
+  return fetch('/me/analyses/'+encodeURIComponent(e.id)+'/kinogram',{headers:authHeaders()})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{ const k=(j&&j.kinogram)||null; state.kinoCache[e.id]=k; return k; })
+    .catch(()=>null);
+}
+/* One section of the coach's report ("Fix first", "Next session"...), as text. */
+function reportSection(md,name){
+  const m=String(md||'').match(new RegExp('\\*\\*'+name+'\\*\\*\\s*[—:-]?\\s*([\\s\\S]*?)(?=\\n\\s*\\*\\*[A-Z][^*\\n]*\\*\\*\\s*[—:-]|$)','i'));
+  return m?m[1].trim():'';
+}
+const plainMd=s=>String(s||'').replace(/\*\*|__|`/g,'').replace(/\s+/g,' ').trim();
+/* The first sentence, and never more than a line and a half of it. */
+function firstSentence(s,max=120){
+  const t=plainMd(s), m=t.match(/^(.+?[.!?])(\s|$)/);
+  let out=m?m[1]:t;
+  if(out.length>max) out=out.slice(0,max-1).replace(/\s+\S*$/,'')+'…';
+  // The text after "**Overstriding** — " starts mid-sentence, in lower case.
+  return out.charAt(0).toUpperCase()+out.slice(1);
+}
+/* {fix:[{t,d}], next, clean} for one entry, from the richest source it has. */
+function dashTips(e){
+  const out={fix:[],next:'',clean:false,src:''};
+  const fix=reportSection(e.report,'Fix first'), none=reportSection(e.report,'Nothing to fix');
+  if(fix||none){
+    out.src='report';
+    if(none&&!fix){ out.clean=true; }
+    else {
+      // One item per bullet / numbered line; the bold lead is its title.
+      const items=fix.split(/\n\s*(?:[-*•]|\d+[.)])\s+/).map(x=>x.replace(/^(?:[-*•]|\d+[.)])\s+/,'').trim()).filter(Boolean);
+      items.slice(0,2).forEach(it=>{
+        const b=it.match(/^\*\*(.+?)\*\*\s*[—:-]?\s*([\s\S]*)$/);
+        out.fix.push(b?{t:plainMd(b[1]).replace(/[.:]$/,''),d:firstSentence(b[2])}:{t:'',d:firstSentence(it)});
+      });
+    }
+    out.next=firstSentence(reportSection(e.report,'Next session')||reportSection(e.report,'Next'),140);
+    if(out.fix.length||out.clean||out.next) return out;
+  }
+  if((e.plan||[]).length){
+    out.src='plan';
+    e.plan.slice(0,2).forEach(p=>out.fix.push({t:p.label||pretty(p.metric||''),d:firstSentence(p.why||p.instruction||'')}));
+    out.next=firstSentence(e.plan[0].cue||'',140);
+    return out;
+  }
+  if((e.issues||[]).length){
+    out.src='issues';
+    e.issues.slice(0,2).forEach(it=>{ const meta=ISSUE_META[it.type]||{label:pretty(it.type)}; out.fix.push({t:meta.label,d:''}); });
+    return out;
+  }
+  return out;
+}
+function tipsHtml(e,tips){
+  const fix = tips.clean
+    ? `<p class="dk-clean"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Nothing to fix on this ${e.sport==='run'?'run':'ride'}.</p>`
+    : (tips.fix.length ? `<h3 class="dk-h">Fix first</h3><ol class="dk-fix">${tips.fix.map(f=>
+        `<li>${f.t?`<b>${esc(f.t)}</b>`:''}${f.d?`<span>${esc(f.d)}</span>`:''}</li>`).join('')}</ol>` : '');
+  const next = tips.next ? `<h3 class="dk-h">Next session</h3><p class="dk-next">${esc(tips.next)}</p>` : '';
+  // No coach notes on this one (no report, no plan): the readings furthest
+  // from their range say what the labels alone cannot.
+  const bars = !tips.next ? worstBarsHtml(e) : '';
+  const worst = bars ? `<h3 class="dk-h">Furthest from range</h3>${bars}` : '';
+  return fix||next||worst ? fix+next+worst : '<p class="dkpi-note">No coaching notes on this analysis.</p>';
+}
+/* The readings of one entry furthest outside their range, as bars: the
+   picture a ride without a picture still has. */
+function worstBarsHtml(e){
+  const rows=formTiles(e.sport,[e]).filter(m=>m.range&&m.zone!=='optimal')
+    .sort((a,b)=>Math.abs(b.delta||0)-Math.abs(a.delta||0)).slice(0,3);
+  if(!rows.length) return '';
+  return `<ul class="dk-bars">${rows.map(m=>{ const st=measStatus(m);
+    return `<li class="mrow ${st.cls}"><div class="dk-bar-top"><span>${esc(m.lbl)}</span><b class="m-val">${m.val}${measUnit(m.unit)}</b><span class="m-pill">${st.word}</span></div>${measBar(m,st)}</li>`; }).join('')}</ul>`;
+}
+function kinoCard(sport, all){
+  const mine=all.filter(e=>e.sport===sport);
+  if(!mine.length) return '';
+  // The newest analysis that has a kinogram, else the newest one.
+  const e=mine.find(x=>x.hasKinogram&&x.access==='full')||mine[0];
+  const tips=dashTips(e);
+  const label=sport==='run'?'Run':'Ride', icon=sport==='run'?'i-run':'i-bike';
+  const pos=e.position&&POSITION_NAMES[e.position]?` · ${esc(POSITION_NAMES[e.position])}`:'';
+  return `<div class="dcard dkino" data-kino-card="${esc(e.id)}">
+    <div class="dcard-head"><h2><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> Latest ${label.toLowerCase()}</h2>
+      <span class="dcard-note">${esc(shortDate(e.at))}${pos}${e.score!=null?` · <b>${e.score}</b>${e.grade?' '+esc(e.grade):''}`:''}</span>
+      <button type="button" class="btn btn-link" data-id="${esc(e.id)}" data-focus-open="1">Open report →</button></div>
+    <div class="dkino-body">
+      <figure class="dkino-fig kf-load" data-kino-fig="${esc(e.id)}"><img alt="" class="kf-slot"></figure>
+      <div class="dkino-tips">${tipsHtml(e,tips)}</div>
+    </div>
   </div>`;
+}
+/* Fill each card's picture: kinogram, else the frame, else the bars. */
+function fillKinoCards(all){
+  // A phone gets the tips without the picture: five positions shrunk to a
+  // 360 px column cannot be read, and a strip to swipe was no better.
+  const phone=matchMedia('(max-width:640px)').matches;
+  document.querySelectorAll('#dashKino [data-kino-fig]').forEach(fig=>{
+    const e=all.find(x=>x.id===fig.dataset.kinoFig); if(!e) return;
+    if(phone){ fig.parentElement.classList.add('no-fig'); fig.remove(); return; }
+    const img=fig.querySelector('img');
+    // A run kinogram is five positions of one stride; a ride's is the positions
+    // of one revolution, and not always five of them.
+    const cap=e.sport==='run'?'Five positions of one stride':'One pedal revolution';
+    fetchKinogram(e).then(k=>{
+      if(k){ img.src=k; img.alt=`Kinogram: ${cap.toLowerCase()}, ${shortDate(e.at)}`;
+        fig.classList.add('is-kino'); fig.classList.remove('kf-load'); img.classList.remove('kf-slot');
+        fig.insertAdjacentHTML('beforeend',`<figcaption>${cap}</figcaption>`); return; }
+      return fetchKeyframe(e).then(f=>{
+        if(f){ img.src=f; img.alt=`The annotated frame from ${shortDate(e.at)}`;
+          fig.classList.add('is-frame'); fig.classList.remove('kf-load'); img.classList.remove('kf-slot'); return; }
+        // No picture: the readings furthest from range take its place --
+        // unless the tips column already shows them.
+        const body=fig.parentElement, bars=body.querySelector('.dk-bars')?'':worstBarsHtml(e);
+        if(bars) fig.outerHTML=`<div class="dkino-fig is-bars"><h3 class="dk-h">Furthest from range</h3>${bars}</div>`;
+        else { fig.remove(); body.classList.add('no-fig'); }
+      });
+    });
+  });
+}
+function renderDashKino(all){
+  const host=$('#dashKino'); if(!host) return;
+  host.innerHTML=kinoCard('run',all)+kinoCard('bike',all);
+  fillKinoCards(all);
+}
+/* ---------- Then -> now: the first and the latest frame of one sport ----------
+   Progress as a picture: the athlete's own position on the first day and on
+   the latest, side by side, and the readings that moved most between them.
+   Side by side rather than a wipe: two sessions are not filmed from the same
+   spot, and laying one frame over the other would invent a change. */
+const THEN_KEYS={bike:['trunk','knee','elbow','shoulder'],run:['cadence','overstride','trunk_lean','ground_contact']};
+function thenPair(sport, all){
+  const mine=all.filter(e=>e.sport===sport && (keyframeOf(e)||e.has_keyframe));
+  return mine.length>=2 ? {now:mine[0], then:mine[mine.length-1]} : null;
+}
+function thenNowCard(all){
+  const both=['run','bike'].filter(s=>thenPair(s,all));
+  if(!both.length) return '';
+  if(!both.includes(state.thenSport)) state.thenSport=both.includes(all[0].sport)?all[0].sport:both[0];
+  const sport=state.thenSport, {now,then}=thenPair(sport,all);
+  const days=Math.max(1,Math.round((now.at-then.at)/864e5));
+  const seg=both.length>1?`<div class="seg seg-sm" role="group" aria-label="Sport shown">${both.map(s=>
+    `<button type="button" data-thensport="${s}" aria-pressed="${s===sport}">${s==='run'?'Run':'Bike'}</button>`).join('')}</div>`:'';
+  const fig=(e,lbl)=>`<figure class="dthen-fig kf-load" data-then-id="${esc(e.id)}"><img alt="" class="kf-slot">
+      <figcaption><b>${lbl}</b> · ${esc(shortDate(e.at))}${e.score!=null?` · <span class="dthen-sc">${e.score}</span>`:''}</figcaption></figure>`;
+  // The readings that moved, biggest change first; coloured by whether they
+  // moved toward their band (metricDelta), never by direction alone.
+  const ch=TREND_METRICS[sport].filter(m=>THEN_KEYS[sport].includes(m.key)).map(m=>{
+    const a=then.trends&&then.trends[m.key], b=now.trends&&now.trends[m.key];
+    if(a==null||b==null) return null;
+    const band=formBand(sport,m.key,now), d=metricDelta(a,b,band,m.hi), dec=FORM_DEC[m.key]||0, u=measUnit(String(m.unit||'').trim());
+    return {m,a,b,d,rel:Math.abs(b-a)/(band?Math.max(1e-6,band[1]-band[0]):Math.max(1,Math.abs(a))),
+      html:`<li><span>${esc(m.label)}</span><span class="dthen-v">${num(a,dec)}${u} → <b>${num(b,dec)}${u}</b></span>${d.delta===0?'<span class="dform-first">no change</span>':`<span class="tdelta ${d.cls}">${d.delta>0?'▲ +':'▼ '}${num(Math.abs(d.delta),dec||1)}${u}</span>`}</li>`};
+  }).filter(Boolean).sort((x,y)=>y.rel-x.rel).slice(0,3);
+  return `<div class="dcard dthen">
+    <div class="dcard-head"><h2>Then → now</h2>${seg}</div>
+    <p class="dcard-note dthen-sub">Your first and latest ${sport==='run'?'run':'ride'}, ${days} day${days===1?'':'s'} apart</p>
+    <div class="dthen-pair">${fig(then,'First')}${fig(now,'Latest')}</div>
+    ${ch.length?`<ul class="dthen-ch">${ch.map(c=>c.html).join('')}</ul>`:''}
+  </div>`;
+}
+function renderDashThenNow(all){
+  const host=$('#dashThen'); if(!host) return;
+  host.innerHTML=thenNowCard(all);
+  host.querySelectorAll('[data-then-id]').forEach(fig=>{
+    const e=all.find(x=>x.id===fig.dataset.thenId); if(!e) return;
+    fetchKeyframe(e).then(k=>{ const img=fig.querySelector('img'); fig.classList.remove('kf-load');
+      if(k){ img.src=k; img.alt=`${e.sport==='run'?'Run':'Ride'} frame from ${shortDate(e.at)}`; img.classList.remove('kf-slot'); }
+      else fig.classList.add('dthen-none'); });
+  });
+}
+/* ---------- You vs the Kona field (aero positions only) ----------
+   Where the athlete's latest aero position sits among the 32 professional
+   positions measured at Kona 2026: the whole field as a light strip, the
+   middle half darker, the median as a tick, the athlete as a dot. Neutral
+   colours on purpose -- it is a field to place yourself in, never a band to
+   be graded against (kona_field.py says why). */
+const KONA_ROWS=[['trunk','trunk_angle_avg','Trunk angle','flatter','more upright'],
+  ['shoulder','shoulder_angle_avg','Shoulder angle','more closed','more open'],
+  ['elbow','elbow_angle_avg','Elbow angle','more closed','more open']];
+function konaStrip(v,f){
+  const lo=Math.min(f.lo,v), hi=Math.max(f.hi,v), pad=(hi-lo)*0.08||1;
+  const a=lo-pad, b=hi+pad, P=x=>((x-a)/(b-a)*100).toFixed(1);
+  return `<div class="kstrip" aria-hidden="true">
+    <span class="ks-range" style="left:${P(f.lo)}%;width:${(P(f.hi)-P(f.lo)).toFixed(1)}%"></span>
+    <span class="ks-mid" style="left:${P(f.q1)}%;width:${(P(f.q3)-P(f.q1)).toFixed(1)}%"></span>
+    <span class="ks-med" style="left:${P(f.median)}%"></span>
+    <span class="ks-you" style="left:${P(v)}%"></span></div>`;
+}
+function renderDashKona(all){
+  const host=$('#dashKona'); if(!host) return;
+  host.innerHTML='';
+  const e=all.find(x=>x.sport==='bike');
+  if(!e||!e.trends||!(e.position==='tt_aero'||e.position==='triathlon')) return;
+  const draw=field=>{
+    if(!field||!field.metrics||host.dataset.for!==e.id) return;
+    const rows=KONA_ROWS.map(([k,fk,label,lowWord,highWord])=>{
+      const v=e.trends[k], f=field.metrics[fk]; if(v==null||!f) return '';
+      const where = v>=f.q1&&v<=f.q3 ? 'in the middle half of the pros'
+        : v>=f.lo&&v<=f.hi ? `inside the field, ${v<f.median?lowWord:highWord} than most`
+        : `outside the field — ${v<f.lo?lowWord:highWord} than every pro`;
+      return `<li><div class="ks-top"><span>${esc(label)}</span><b>${num(v,0)}°</b></div>
+        ${konaStrip(v,f)}
+        <p class="ks-cap">Pros ${num(f.median,0)}° (middle half ${num(f.q1,0)}–${num(f.q3,0)}°) · you are ${where}</p></li>`;
+    }).join('');
+    if(!rows) return;
+    host.innerHTML=`<div class="dcard dkona">
+      <div class="dcard-head"><h2>You vs the Kona field</h2><span class="dcard-note">${esc(POSITION_NAMES[e.position]||'Aero')} · ${esc(shortDate(e.at))}</span></div>
+      <ul class="ks-legend" aria-hidden="true"><li><i class="ks-l-range"></i>All ${field.n} pros</li><li><i class="ks-l-mid"></i>Middle half</li><li><i class="ks-l-med"></i>Median</li><li><i class="ks-l-you"></i>You</li></ul>
+      <ul class="ks-rows">${rows}</ul>
+      <p class="dkpi-note">${field.n} professional positions measured at the 2026 Ironman World Championship. A field to place yourself in, not a target. <a href="${esc(field.article||'/academy/kona-2026-pro-bike-positions')}">Read the study</a></p>
+    </div>`;
+  };
+  host.dataset.for=e.id;
+  if(state.konaField) { draw(state.konaField); return; }
+  fetch('/me/kona-field',{headers:authHeaders()}).then(r=>r.ok?r.json():null)
+    .then(f=>{ if(f&&f.metrics){ state.konaField=f; draw(f); } }).catch(()=>{});
 }
 function renderDashboard(){
   renderReviewCard();
@@ -10639,8 +10869,8 @@ function renderDashboard(){
   if(dd){ try{ dd.textContent=new Date().toLocaleDateString(UI_LOCALE,{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dd.textContent=''; } }
   const all=loadHist();
   const nameEl=auth&&auth.email?auth.email.split('@')[0]:null;
-  // First-run / empty state: friendly CTA, hide the widgets.
-  $('#dashRecentHead').classList.toggle('hidden', !all.length);
+  // First-run / empty state: the welcome, and the widgets hidden with it.
+  $('#dashboard').classList.toggle('dash-empty', !all.length);
   if(!all.length){
     $('#dashSummary').innerHTML=`<div class="dash-welcome">
       <img class="empty-fig" src="/media/empty-first.webp" alt="" width="120" height="120">
@@ -10649,23 +10879,17 @@ function renderDashboard(){
         <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
       </div>
     </div>`;
-    $('#dashSports').innerHTML=''; $('#dashForm').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML=''; $('#dashRecent').innerHTML=''; $('#dashCounts').innerHTML='';
+    $('#dashSports').innerHTML=''; $('#dashKino').innerHTML=''; $('#dashThen').innerHTML=''; $('#dashKona').innerHTML=''; $('#dashForm').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML='';
     return;
   }
-  const now=new Date();
-  const monthCount=all.filter(e=>{ const d=new Date(e.at); return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth(); }).length;
-  const last=all[0];
   $('#dashSummary').innerHTML='';
-  $('#dashCounts').innerHTML=`
-    <span class="dcount"><b>${all.length}</b> analyses</span>
-    <span class="dcount"><b>${monthCount}</b> this month</span>
-    <span class="dcount"><b>${last?agoStr(last.at):'—'}</b> last analysis</span>`;
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
+  renderDashKino(all);
+  renderDashThenNow(all);
+  renderDashKona(all);
   renderCurrentForm(all);
   renderDashFocus(all);
   renderDashPlan(all);
-  $('#dashRecent').innerHTML=all.slice(0,4).map(dashRecentCard).join('');
-  observeKeyframes($('#dashRecent'));
 }
 function openDashboard(){ renderDashboard(); setState('dashboard',{focus:'#dashTitle'}); }
 $('#navHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); });
@@ -10674,14 +10898,11 @@ $('#botHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard();
 document.querySelectorAll('.backhome').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); openDashboard(); }));
 $('#dashboard').addEventListener('click',e=>{
   const ft=e.target.closest('[data-formsport]'); if(ft){ state.formSport=ft.dataset.formsport; renderCurrentForm(loadHist()); return; }
+  const ts=e.target.closest('[data-thensport]'); if(ts){ state.thenSport=ts.dataset.thensport; renderDashThenNow(loadHist()); return; }
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
   const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress(); return; }
   const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id); return; }
   const po=e.target.closest('[data-plan-open]'); if(po){ openHistory(po.dataset.planOpen); return; }
-  const rc=e.target.closest('.drec'); if(rc){ openHistory(rc.dataset.id); }
-});
-$('#dashboard').addEventListener('keydown',e=>{
-  if((e.key==='Enter'||e.key===' ')){ const rc=e.target.closest('.drec'); if(rc){ e.preventDefault(); openHistory(rc.dataset.id); } }
 });
 /* Go to the uploader preselected for a sport (from a dashboard CTA). */
 function startSportAnalysis(sport){

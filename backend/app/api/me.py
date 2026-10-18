@@ -52,6 +52,7 @@ from app.services.result_gating import (
     access_for_stored,
     gate_for_access,
 )
+from app.services.video_analysis.biomechanics.kona_field import pro_field
 from app.services.video_analysis.llm_recommendations import (
     generate_progress_summary,
 )
@@ -298,6 +299,18 @@ def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
         # an unlock would sell an empty report.
         thin["sellable"] = bool(row.result if sellable is None else sellable)
     return thin
+
+
+@router.get("/kona-field")
+async def get_kona_field(user: User = Depends(get_current_user)) -> dict[str, Any]:
+    """The Kona 2026 pro field (kona_field.py), for the dashboard.
+
+    A result only carries the field when it is an aero analysis, and a history
+    entry carries none, so the dashboard's "you vs the Kona field" card asks
+    here. The same median / middle half / range a result is served -- the
+    published study, nothing per rider. Signed-in only, like the screen.
+    """
+    return pro_field("triathlon") or {}
 
 
 @router.get("/analyses")

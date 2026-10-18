@@ -31,7 +31,7 @@ def test_the_status_is_graded_by_the_reports_own_tolerance():
 
 
 def test_rows_are_grouped_with_the_furthest_out_first():
-    render = _fn("renderTiles")
+    render = _fn("measBody")
     assert "'Needs attention'" in render and "'In range'" in render and "'Not graded'" in render
     assert "Math.abs(b.delta||0)-Math.abs(a.delta||0)" in render
 

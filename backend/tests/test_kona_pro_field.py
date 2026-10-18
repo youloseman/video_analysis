@@ -125,3 +125,20 @@ def test_the_measurements_table_draws_the_pros_median_on_the_range_bar():
 def test_the_forearm_gets_a_tile_on_aero_bars():
     i = SPA.index("t.push(tile('Forearm tilt'")
     assert "position==='tt_aero'||position==='triathlon'" in SPA[i - 200:i]
+
+
+# --- the dashboard -----------------------------------------------------------
+
+async def test_the_dashboard_is_served_the_same_field(make_user):
+    """A history entry carries no field, so the dashboard's Kona card asks for
+    it: the same median / middle half / range a result is served."""
+    from app.api import me
+    field = await me.get_kona_field(await make_user())
+    assert field["n"] == KF.KONA_PRO_N
+    assert field["metrics"]["trunk_angle_avg"] == KF.KONA_PRO_FIELD["trunk_angle_avg"]
+
+
+def test_the_dashboard_card_shows_it_only_on_the_aero_bars():
+    card = SPA[SPA.index("function renderDashKona("):SPA.index("function renderDashboard(")]
+    assert "fetch('/me/kona-field'" in card
+    assert "position==='tt_aero'||" in card and "position==='triathlon'" in card
