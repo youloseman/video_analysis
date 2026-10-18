@@ -44,6 +44,15 @@ DRAGGABLE_LANDMARKS: dict[str, tuple[int, ...]] = {
     "right": (8, 12, 14, 16, 24, 26, 28, 30, 32),
 }
 
+# What a free account may move on a photo: the near-side hip and knee. A knee
+# point set a few centimetres high is the complaint we hear (2026-10-13), and
+# those two points are what the saddle and hip readings hang on. The picture
+# is redrawn; the score stays the automatic one (Artur, 2026-10-18).
+FREE_DRAGGABLE_LANDMARKS: dict[str, tuple[int, ...]] = {
+    "left": (23, 25),
+    "right": (24, 26),
+}
+
 LANDMARK_NAMES: dict[int, str] = {
     7: "left ear", 8: "right ear",
     11: "left shoulder", 12: "right shoulder",
@@ -297,6 +306,7 @@ def apply_corrections(
 
 __all__ = [
     "DRAGGABLE_LANDMARKS",
+    "FREE_DRAGGABLE_LANDMARKS",
     "LANDMARK_NAMES",
     "MAX_OFFSET",
     "OUT_OF_FRAME_MAX_SHARE",

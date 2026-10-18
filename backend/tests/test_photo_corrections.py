@@ -246,9 +246,24 @@ def test_the_first_result_hands_the_pose_out_for_bike_only(monkeypatch):
 
 # --- the daily cap ----------------------------------------------------------
 
-def test_free_accounts_have_no_adjustments_at_all():
-    assert daily_limit("starter") == 0
-    assert take_recompute(1, "starter") == (False, 0, 0)
+def test_free_accounts_get_a_few_hip_and_knee_adjustments():
+    """Artur, 2026-10-18: a free rider may move the hip and the knee; the
+    picture is redrawn, the score stays. A small cap, like the paid ones."""
+    assert daily_limit("starter") == 5
+    assert daily_limit(None) == 0
+
+
+def test_a_free_result_hands_out_the_pose_with_the_hip_and_knee_only():
+    from app.services.result_gating import ACCESS_PREVIEW, ACCESS_TEASER, gate_for_access
+
+    photo = _photo_bytes()
+    blob = PC.build_pose_blob(photo, _pose_result(photo))
+    for access in (ACCESS_TEASER, ACCESS_PREVIEW):
+        kept = gate_for_access({"pose": blob, "angles": {"knee": 140.0}}, access)
+        assert kept["pose"]["draggable"] == [24, 26] and kept["pose"]["scope"] == "free"
+        assert kept["pose"]["token"] == blob["token"]  # still verifies
+        assert "angles" not in kept
+    assert PC.verify_pose_blob(gate_for_access({"pose": blob}, ACCESS_TEASER)["pose"], photo)
 
 
 def test_the_cap_counts_a_rolling_day():

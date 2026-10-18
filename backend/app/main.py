@@ -37,6 +37,7 @@ import os
 import re
 import secrets
 import errno
+import functools
 import shutil
 import threading
 import time
@@ -2138,20 +2139,16 @@ async def analyze_photo_recompute_endpoint(
     """Measure a photo again with the athlete's joint corrections applied.
 
     Synchronous like ``/analyze-photo`` and cheaper: no pose model runs, the
-    signed ``pose`` from the first result is the baseline. Paid plans only, and
-    it spends no analysis quota -- a correction repairs an analysis that was
-    already paid for. It does count against a daily cap (see
-    ``services/correction_limits``).
+    signed ``pose`` from the first result is the baseline. Paid plans move any
+    camera-side joint and get every angle and the score measured again. A free
+    account may move the hip and the knee (the points a slipped knee marker
+    gets wrong): the picture is redrawn on the corrected points, the score
+    stays the automatic one (Artur, 2026-10-18), and the result goes back
+    through the same free gate. No analysis quota either way; a daily cap
+    (see ``services/correction_limits``).
     """
     ip = _client_ip(request)
-    if is_free(user):
-        raise HTTPException(
-            status_code=402,
-            detail=(
-                "Adjusting the joint points is part of a paid plan. The "
-                "automatic measurement above is unchanged."
-            ),
-        )
+    free = is_free(user)
     if sport != "bike":
         raise HTTPException(400, "joint adjustment is available for cycling photos only for now")
     cycling_position: str | None = position or None
@@ -2165,6 +2162,18 @@ async def analyze_photo_recompute_endpoint(
         raise HTTPException(400, "pose and corrections must be JSON")
     if not isinstance(corr_obj, list):
         raise HTTPException(400, "corrections must be a JSON list")
+    if free:
+        from app.services.video_analysis.biomechanics.corrections import FREE_DRAGGABLE_LANDMARKS
+        side = pose_obj.get("camera_side") if isinstance(pose_obj, dict) else None
+        free_pts = FREE_DRAGGABLE_LANDMARKS.get(side or "", ())
+        if any(not isinstance(c, dict) or c.get("landmark") not in free_pts for c in corr_obj):
+            raise HTTPException(
+                status_code=402,
+                detail=(
+                    "On the free plan you can move the hip and the knee. Moving the "
+                    "other joints, and re-scoring, is part of a paid plan."
+                ),
+            )
 
     suffix = Path(photo.filename or "").suffix.lower() or ".jpg"
     if suffix not in ALLOWED_IMAGE_SUFFIXES:
@@ -2197,7 +2206,8 @@ async def analyze_photo_recompute_endpoint(
 
     try:
         result = await run_in_threadpool(
-            recompute_photo, data, sport, cycling_position, pose_obj, corr_obj,
+            functools.partial(recompute_photo, hide_angle_values=free),
+            data, sport, cycling_position, pose_obj, corr_obj,
         )
     except ValueError as e:
         raise HTTPException(422, str(e))
@@ -2206,6 +2216,16 @@ async def analyze_photo_recompute_endpoint(
         raise HTTPException(500, "photo re-measurement failed")
 
     result["keyframe_base64"] = _small_keyframe(result.get("thumbnail_base64"))
+    if free:
+        # The picture follows the athlete's points; the score does not.
+        base_score = (result.get("baseline") or {}).get("score")
+        if base_score is not None:
+            result["score"] = base_score
+        result["score_kept"] = True
+        result = gate_for_access(result, ACCESS_TEASER)
+        logger.info("PHOTO_RECOMPUTE_FREE", ip=ip, user_id=user.id,
+                    corrections=len(result.get("corrections") or []))
+        return _json_safe(result)
     if coaching and not (result.get("score") or {}).get("withheld"):
         from app.services.video_analysis.llm_recommendations import (
             generate_photo_recommendations,

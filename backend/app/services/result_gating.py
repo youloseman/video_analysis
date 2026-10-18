@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.models.user import User, TIER_STARTER
+from app.services.video_analysis.biomechanics.corrections import FREE_DRAGGABLE_LANDMARKS
 
 # ALLOWLIST (not denylist): only these keys survive for a free caller. An
 # allowlist is the safe default -- a new paid field added later is withheld by
@@ -43,6 +44,10 @@ _SAFE_KEYS = frozenset({
     "keyframe_base64", "thumbnail_base64",
     # whether the analyzer distrusted its own measurement (see _quality_block)
     "quality_gate_triggered",
+    # A free photo re-drawn after the athlete moved the hip or knee: what was
+    # moved, what the geometry said about it, and that the score is the
+    # automatic one. Names and offsets, never an angle value.
+    "corrections", "plausibility_warnings", "score_kept",
 })
 
 # Fields lifted out of the (paid) ``sport_specific_metrics`` blob into a compact
@@ -217,6 +222,14 @@ def _trim(
     """Allowlist a result down to ``keys`` and attach the paywall markers."""
     kept: dict[str, Any] = {k: v for k, v in result.items() if k in keys}
     kept["overlay_video_path"] = None  # never a video on a free plan
+    # The signed pose, so a free reader can drag a hip or knee the model put in
+    # the wrong place -- those two points only (the draggable list is not
+    # signed; the recompute endpoint enforces the same list).
+    pose = result.get("pose")
+    if isinstance(pose, dict) and pose.get("camera_side") in FREE_DRAGGABLE_LANDMARKS:
+        free_pts = FREE_DRAGGABLE_LANDMARKS[pose["camera_side"]]
+        kept["pose"] = {**pose, "scope": "free",
+                        "draggable": [i for i in pose.get("draggable") or [] if i in free_pts]}
     # The stored frame is drawn WITH its angle values, because it has to still
     # be worth something on the day somebody pays for it. Free readers get the
     # number-free copy rendered alongside it -- served under the same key, so

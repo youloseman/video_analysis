@@ -18,9 +18,11 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 
-from app.models.user import TIER_ADMIN, TIER_ENTHUSIAST, TIER_FULL
+from app.models.user import TIER_ADMIN, TIER_ENTHUSIAST, TIER_FULL, TIER_STARTER
 
 DAILY_RECOMPUTES: dict[str, int] = {
+    # Free: the hip and knee on a photo only, picture redrawn, score unchanged.
+    TIER_STARTER: 5,
     TIER_ENTHUSIAST: 10,
     TIER_FULL: 40,
     TIER_ADMIN: 15,
@@ -34,7 +36,7 @@ _used: dict[int, list[float]] = defaultdict(list)
 
 
 def daily_limit(tier: str | None) -> int:
-    """0 for a tier that has no corrections at all (the free plan)."""
+    """0 for a tier that has no corrections at all (anonymous)."""
     return DAILY_RECOMPUTES.get(tier or "", 0)
 
 

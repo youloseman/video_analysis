@@ -1327,6 +1327,7 @@
     </div>
 
     <div id="pWarnings"></div>
+    <div id="pAccNote"></div>
 
     <div id="pUpsellHost" class="hidden"></div>
 
@@ -4265,7 +4266,10 @@ function lmedOpen(){
   lmed.orig=lmedStartPoints(); lmed.pts=lmed.orig.map(p=>({...p})); lmed.moved={}; lmed.drag=-1;
   const ed=$('#pEditor'); ed.classList.remove('hidden'); lmed.open=true;
   const hpc=res.helmet_points&&res.helmet_points.check;
-  $('#pEdHint').textContent=hpc
+  const freeScope=state.photoPose.scope==='free';
+  $('#pEdHint').textContent=freeScope
+    ? 'On the free plan you can move the hip and the knee: the picture is redrawn on your points, the score stays the automatic one. Paid plans move every joint and measure every angle and the score again.'
+    : hpc
     ? 'Check the green top-of-back point first: if it sits on your helmet, drag it to the highest point of your back.'
     : `Only the ${lmed.side}-side joints count on a side view.`;
   lmedStatus();
@@ -4399,7 +4403,7 @@ async function recomputePhoto(){
   fd.append('photo',state.file); fd.append('sport','bike');
   fd.append('position',res.cycling_position||state.position);
   fd.append('pose',JSON.stringify(state.photoPose)); fd.append('corrections',JSON.stringify(all));
-  fd.append('coaching','true'); if(focusText()) fd.append('focus',focusText());
+  fd.append('coaching',res.locked?'false':'true'); if(focusText()) fd.append('focus',focusText());
   try{
     const r=await fetch('/analyze-photo/recompute',{method:'POST',headers:authHeaders(),body:fd});
     const j=await r.json().catch(()=>({}));
@@ -4434,7 +4438,8 @@ function renderCorrectionBadge(res,hostId){
   // photo keeps its score under `score`, video at the top level
   const bs=res.baseline&&(res.baseline.score?res.baseline.score.overall_score:res.baseline.technique_score);
   const cs=res.score?res.score.overall_score:res.technique_score;
-  if(bs!=null&&cs!=null&&bs!==cs) txt+=` · score ${bs} → ${cs}`;
+  if(res.score_kept) txt+=' · picture redrawn, score unchanged on the free plan';
+  else if(bs!=null&&cs!=null&&bs!==cs) txt+=` · score ${bs} → ${cs}`;
   if(pw.length) txt+=` · ${pw[0].message}`;
   $('#'+hostId+'Txt').textContent=txt; badge.classList.remove('hidden');
 }
@@ -5342,7 +5347,9 @@ function renderPhoto(res,opts){
   // reload loses the file, and with it the editor -- honestly, not silently.
   state.photoPose=res.pose||null;
   if(!opts.reuseHistId) state.photoCorrections=res.corrections||[];
-  const canAdjust=!!(res.pose&&state.file&&sport==='bike'&&!res.locked);
+  // A free result carries a pose too, limited to the hip and knee (the server
+  // decides which points; see result_gating._trim).
+  const canAdjust=!!(res.pose&&state.file&&sport==='bike');
   $('#pAdjust').classList.toggle('hidden',!canAdjust);
   if(!canAdjust) lmedClose();
   renderCorrectionBadge(res);
@@ -5358,6 +5365,11 @@ function renderPhoto(res,opts){
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
     : `<div class="banner good"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
   renderNextSteps('pNextBlock','pNextList',res.next_steps||(res.quality&&res.quality.next_steps)||[]);
+  // Every photo says what a photo is: one frame. Artur, 2026-10-18 -- riders
+  // took a 100 from one still as the whole truth, and one found the knee point
+  // set high with no way to say so.
+  const adj=sport==='bike'&&canAdjust;
+  $('#pAccNote').innerHTML=`<div class="banner ok"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>A photo is one frame.</b> Treat these numbers as approximate: a joint point that slipped, or ${sport==='bike'?'a crank caught away from the bottom of the stroke':'a frame caught between stride phases'}, moves the angles. A short side-on video is measured frame by frame across ${sport==='bike'?'many pedal strokes':'many strides'}, and that is the accurate read.${adj?` If a joint point landed in the wrong place, tap <b>Adjust joints</b> and drag it${res.pose&&res.pose.scope==='free'?' (the hip and the knee on the free plan)':''} — the photo is measured again.`:''}</span></div>`;
 
   // Free-tier teaser: hide paid sections, show upgrade panel, stop early.
   $('#pUpsellHost').classList.add('hidden');
