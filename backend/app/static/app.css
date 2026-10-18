@@ -1955,25 +1955,73 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .dplan-prog b{color:var(--c-ink);font-weight:500}
 .dplan-done-note{font-size:13px;font-weight:500;color:var(--st-good)}
 
-/* Metric tiles: label mono caps, value mono 24, range bar at the base. */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
-.tile{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:14px 16px;min-height:96px;display:flex;flex-direction:column}
-.tile .grbar{margin-top:auto;padding-top:10px}
-.tile:not(:has(.grbar)) .t-ref{margin-top:auto}
-.tiles-short{margin-top:10px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-/* Four readings answer "is anything out of range"; the rest answer "by how
-   much", which is a second question. The fold says how many are behind it --
-   a count, so nobody has to open it to find out whether it is worth opening. */
-.tiles-more{margin-top:12px;display:inline-flex;align-items:center;gap:6px}
-.tiles-more .ic{width:14px;height:14px;flex:none;transition:transform .15s ease-out}
-.tiles-more[aria-expanded="true"] .ic{transform:rotate(180deg)}
-@media (prefers-reduced-motion:reduce){ .tiles-more .ic{transition:none} }
-#tilesRest{margin-top:12px}
-@media print{ #tilesRest{display:grid!important} .tiles-more{display:none!important} }
-.tile.tile-short{padding:12px 14px 12px;min-height:0}
-.tile.tile-short .t-val{font-size:20px;margin-top:6px}
-.tile.tile-short .t-val.txt{font-size:15px;margin-top:8px}
-.tile.tile-short .t-ref{font-size:11px}
+/* ---------- Measurements table ----------
+   Measurement (name, its source under it) | Yours (mono, status colour) |
+   Vs reference (range bar) | Status (word + signed distance). Grouped:
+   needs attention, in range, not graded. On a phone each row is a card. */
+.meas-legend{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--c-ink-soft)}
+.meas-legend li{display:flex;align-items:center;gap:6px}
+.ml-band{width:24px;height:8px;background:var(--m-band);border-radius:var(--radius-xs)}
+.ml-dot{width:10px;height:10px;border-radius:50%}
+.ml-dot.m-out{background:var(--m-out)} .ml-dot.m-near{background:var(--m-near)} .ml-dot.m-ok{background:var(--m-ok)}
+.meastable-wrap{border:1px solid var(--c-line);border-radius:var(--radius);overflow:hidden}
+.meastable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}
+.meastable thead th{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint);
+  text-align:left;padding:12px 16px;background:var(--c-ground);border-bottom:1px solid var(--c-line)}
+.meastable thead th:nth-child(1){width:34%} .meastable thead th:nth-child(2){width:96px;text-align:right}
+.meastable thead th:nth-child(4){width:132px}
+.meastable .mgroup th{padding:10px 16px;background:var(--c-panel);border-bottom:1px solid var(--c-line);text-align:left;
+  font-size:12px;font-weight:600;color:var(--c-head)}
+.meastable .mgroup th span{font-weight:400;color:var(--c-ink-faint)}
+.meastable .mrow > *{padding:14px 16px;border-bottom:1px solid var(--c-line);vertical-align:middle;text-align:left}
+.meastable tbody tr:last-child > *{border-bottom:0}
+.meastable .mrow th{font-weight:400}
+.m-name{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--c-ink);line-height:1.3}
+.m-sub{display:block;margin-top:2px;font-size:12px;color:var(--c-ink-faint);line-height:1.4}
+.meastable .m-val{text-align:right;font-family:var(--f-mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--c-ink);white-space:nowrap}
+.m-val small{font-size:12px;font-weight:400;color:var(--c-ink-faint)}
+.m-val .m-txt{font-family:var(--f-body);font-size:14px;white-space:normal}
+.mrow.m-ok .m-val{color:var(--m-ok)} .mrow.m-near .m-val{color:var(--m-near-text)} .mrow.m-out .m-val{color:var(--m-out)}
+.mbar{position:relative;height:10px;background:var(--c-panel);border-radius:999px}
+.mbar-band{position:absolute;top:0;bottom:0;background:var(--m-band);border-radius:999px}
+.mbar-mark{position:absolute;top:-3px;width:4px;height:16px;margin-left:-2px;border-radius:var(--radius-xs);background:var(--c-ink)}
+.mbar-mark.m-ok{background:var(--m-ok)} .mbar-mark.m-near{background:var(--m-near)} .mbar-mark.m-out{background:var(--m-out)}
+.mbar-pro{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--c-ink);opacity:.55}
+.mbar-cap{margin-top:6px;font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);line-height:1.5}
+.mbar-procap{white-space:nowrap;margin-left:8px;color:var(--c-ink-soft)}
+.mbar-procap small{font-size:10.5px;color:var(--c-ink-faint)}
+.mbar-promark{display:inline-block;width:2px;height:10px;background:var(--c-ink);opacity:.55;margin-right:5px;vertical-align:-1px}
+.m-noref{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint)}
+.m-pill{display:block;font-size:13px;font-weight:600;color:var(--c-ink-faint)}
+.mrow.m-ok .m-pill{color:var(--m-ok)} .mrow.m-near .m-pill{color:var(--m-near-text)} .mrow.m-out .m-pill{color:var(--m-out)}
+.m-delta{display:block;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft)}
+/* A phone: one list, not a card per reading. Two lines a row -- name and
+   value, then the bar and the verdict -- with the source clipped to one line
+   under the name. About half the height of a card each. */
+@media(max-width:640px){
+  .meastable,.meastable tbody{display:block}
+  .meastable thead{display:none}
+  .meastable .mgroup,.meastable .mgroup th{display:block}
+  .meastable .mgroup th{padding:8px 14px;font-size:12px}
+  .meastable .mrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;
+    padding:12px 14px;border-bottom:1px solid var(--c-line)}
+  .meastable tbody tr:last-child{border-bottom:0}
+  .meastable .mrow > *{padding:0;border:0}
+  .meastable .mrow th{grid-column:1;grid-row:1;min-width:0}
+  .meastable .m-name{font-size:14px}
+  .meastable .m-sub{font-size:11px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+  .meastable .m-val{grid-column:2;grid-row:1;font-size:18px;align-self:start}
+  .meastable .m-ref{grid-column:1;grid-row:2;min-width:0}
+  .meastable .m-ref:has(.m-noref){display:none}
+  /* "Not graded" is the group's own heading; a second line per row saying it again is height. */
+  .meastable .mrow.m-info td.m-st{display:none}
+  .meastable td.m-st{grid-column:2;grid-row:2;text-align:right;white-space:nowrap}
+  .meastable .m-pill{display:inline;font-size:12px}
+  .meastable .m-delta{display:inline;margin-left:6px;font-size:11.5px}
+  .mbar-cap{margin-top:4px;font-size:10.5px}
+  .mbar-procap{white-space:normal;margin-left:0;display:block}
+}
+@media print{ .meastable .mrow{break-inside:avoid} }
 /* ---------- Aero panel ---------- */
 #aeroBlock .eyebrow .ic{width:13px;height:13px;vertical-align:-2px;margin-right:5px}
 .aero-hero{display:flex;align-items:center;gap:16px;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:16px 20px;color:var(--c-ink)}
@@ -2020,29 +2068,15 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .aero-watts{white-space:nowrap}
 @media (max-width:560px){ .aero-w-num{font-size:36px} .aero-hero{padding:14px 16px;flex-wrap:wrap;gap:6px 16px}
   .aero-wi-row{grid-template-columns:minmax(0,1fr)} .aero-wi-out{grid-column:1} }
-.tile .t-lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);display:flex;align-items:center;gap:8px}
-.tile .t-lbl .sdot{width:7px;height:7px;border-radius:50%;flex:none}
-.tile.good .t-lbl .sdot{background:var(--st-good-fill)}
-.tile.warn .t-lbl .sdot{background:var(--st-warn-fill)}
-.tile.bad .t-lbl .sdot{background:var(--st-bad-fill)}
-/* Out-of-range tiles keep a neutral ground: colour is spent on the value and
-   the pill, and surfaces stay neutral. The status line marks the left edge. */
-.tile.warn{background:var(--c-bg);border-color:var(--c-line);border-left:3px solid var(--st-warn-fill)}
-.tile.bad{background:var(--c-bg);border-color:var(--c-line);border-left:3px solid var(--st-bad-fill)}
-.tile .t-val{font-family:var(--f-mono);font-size:26px;font-weight:500;color:var(--c-ink);margin-top:8px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
-.tile .t-val small{font-size:12px;color:var(--c-ink-faint);font-weight:400;letter-spacing:0}
-.tile .t-val.txt{font-family:var(--f-body);font-size:16px;font-weight:600;line-height:1.3;margin-top:10px;letter-spacing:0}
-.tile .t-ref{font-size:11.5px;color:var(--c-ink-faint);margin-top:6px;font-family:var(--f-mono)}
-.tile .t-what{margin-left:auto;flex:none;width:18px;height:18px;border:1px solid var(--c-line-strong);border-radius:50%;
-  background:var(--c-bg);color:var(--c-ink-faint);font:500 10px/1 var(--f-mono);letter-spacing:0;cursor:pointer;
+/* "What is this?" beside a measurement's name: a 20 px disc, a 44 px target. */
+.t-what{position:relative;flex:none;width:20px;height:20px;border:1px solid var(--c-line-strong);border-radius:50%;
+  background:var(--c-bg);color:var(--c-ink-faint);font:500 10px/1 var(--f-mono);letter-spacing:0;cursor:pointer;padding:0;
   display:inline-flex;align-items:center;justify-content:center;transition:color .15s ease-out,border-color .15s ease-out}
-.tile .t-what:hover,.tile .t-what[aria-expanded="true"]{color:var(--c-ink);border-color:var(--c-ink)}
-.tile .t-def{font-family:var(--f-body);font-size:12.5px;line-height:1.45;color:var(--c-ink-soft);margin:8px 0 0;padding-top:8px;border-top:1px dashed var(--c-line);
+.t-what::before{content:"";position:absolute;inset:-12px}
+.t-what:hover,.t-what[aria-expanded="true"]{color:var(--c-ink);border-color:var(--c-ink)}
+.t-def{font-family:var(--f-body);font-size:12.5px;line-height:1.45;color:var(--c-ink-soft);margin:8px 0 0;padding-top:8px;border-top:1px dashed var(--c-line);
   text-transform:none;letter-spacing:0;font-weight:400}
-@media print{ .tile .t-what{display:none} .tile .t-def{display:block !important} }
-.tile .t-ref .st-good{color:var(--c-live-good);font-weight:500}
-.tile .t-ref .st-warn{color:var(--st-warn);font-weight:500}
-.tile .t-ref .st-bad{color:var(--st-bad);font-weight:500}
+@media print{ .t-what{display:none} .t-def{display:block !important} }
 
 /* ---------- Range bar (metric target band + marker) ----------
    A hairline track across the full axis, the target band drawn as a soft
@@ -2293,10 +2327,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .filepreview video{width:100%}
   .filepreview img#previewImg{width:100%;max-width:260px;margin:0 auto}
   .guides{grid-template-columns:1fr;gap:8px}
-  /* Two columns on a phone, and each row as tall as its own card: the
-     shared baseline that lets range bars be compared across a row costs a
-     200px void here, next to a tile whose caption runs to five lines. */
-  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}
   .progress-card{padding:20px 0}
   .step span.slbl{display:inline}
   .videocap{flex-direction:column;align-items:flex-start}

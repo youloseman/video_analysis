@@ -114,9 +114,10 @@ def test_the_joint_table_and_the_photo_table_have_the_column():
     assert "table.data.no-pro .col-pro{display:none}" in CSS
 
 
-def test_the_tiles_draw_the_pros_median_on_the_range_bar():
-    assert "gr-pro-tick" in SPA and ".grbar .gr-pro-tick{" in CSS
-    assert "Kona pros ${num(pro.median,0)}${u} <small>· middle half" in SPA
+def test_the_measurements_table_draws_the_pros_median_on_the_range_bar():
+    bar = SPA[SPA.index("function measBar("):SPA.index("function measRow(")]
+    assert "mbar-pro" in bar and ".mbar-pro{" in CSS
+    assert "Kona pros ${num(pro.median,0)}${u} <small>· middle half" in bar
     # The figures follow the angle convention like every printed angle.
     assert "rg.pro=Object.assign({},range.pro,{median:d(range.pro.median)" in SPA
 

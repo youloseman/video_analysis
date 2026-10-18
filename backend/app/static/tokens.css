@@ -83,6 +83,11 @@
   --c-live-good:#1F7A45; --c-live-good-fill:#2E9E5B; --c-live-good-bg:#E6F4EC; --c-live-good-line:#BCE3CC;
   --c-live-bad:#B8371F; --c-live-bad-bg:#FDECE8; --c-live-bad-line:#F3C2B8;
 
+  /* ---- the measurements table (redesign brief, Oct 2026): status by word
+     AND colour. Amber is a graphics colour (marker, dot); as text it takes
+     the darker step, the brief's #B26A00 is 4.2:1 on white. ---- */
+  --m-ok:#1F7A4D; --m-near:#B26A00; --m-near-text:#8A5600; --m-out:#A3231B; --m-band:#CFE6D9;
+
   /* ---- over footage only ---- */
   --ov-halo:rgba(14,17,22,.55);        /* under every skeleton line; width = stroke + 4 */
   --shadow-footage:0 2px 6px rgba(20,24,31,.28);

@@ -245,33 +245,90 @@ def _bands_table(s: Sample) -> str:
             v = float(value)
         except (TypeError, ValueError):
             continue
+        lo, hi = float(lo), float(hi)
         # The analyzer's own verdict wins where it has one. It knows the
         # tolerance this table's own lede promises -- a knee 1° under an 80°
         # floor is "acceptable" to it, and painting that the same red as a
         # measurement 7° out would contradict the sentence above the table.
+        # Without one, the app's own rule (grZone in the SPA), so a sample
+        # page and a real report never grade one number two ways.
         cls = _BAND_CLASS.get(str(band.get("status")))
+        delta = v - lo if v < lo else (v - hi if v > hi else 0.0)
         if cls is None:
-            cls = "ok" if float(lo) <= v <= float(hi) else "out"
+            cls = "ok" if not delta else ("near" if abs(delta) <= _margin(field, lo, hi) else "out")
         label, unit = _label_unit(field, band)
-        rows.append(
-            f'<tr class="{cls}">'
-            f'<td class="m">{_esc(label)}</td>'
-            f'<td class="v">{_num(v)}{_esc(unit)}</td>'
-            f'<td class="b">{_num(lo)}–{_num(hi)}{_esc(unit)}</td>'
-            f'<td class="s">{_esc(band.get("source") or "")}</td>'
-            "</tr>"
-        )
+        rows.append((cls, abs(delta), _meas_row(cls, label, unit, v, lo, hi, delta,
+                                                 str(band.get("source") or ""))))
     if not rows:
         return ""
+    attn = sorted((r for r in rows if r[0] != "ok"), key=lambda r: -r[1])
+    fine = [r for r in rows if r[0] == "ok"]
+    body = "".join(
+        f'<tr class="ex-grp"><th colspan="4" scope="colgroup">{title} <span>· {len(group)}</span></th></tr>'
+        + "".join(r[2] for r in group)
+        for title, group in (("Needs attention", attn), ("In range", fine)) if group
+    )
     return (
         '<section class="ex-sec"><h2>Measured against published ranges</h2>'
-        '<p class="ex-lede">Every target names where it comes from. A value a '
-        "degree or two outside a band is inside the method&rsquo;s own error, "
-        "not a finding.</p>"
-        '<div class="ex-tw" tabindex="0" role="group" aria-label="Table, scrolls sideways"><table class="ex-bands">'
-        "<thead><tr><th>Measurement</th><th>Yours</th><th>Reference</th>"
-        "<th>Source</th></tr></thead>"
-        f"<tbody>{''.join(rows)}</tbody></table></div></section>"
+        '<p class="ex-lede">Every target names where it comes from. A value '
+        "just past the edge of a band is inside the method&rsquo;s own error, "
+        "so it is marked borderline rather than as a finding.</p>"
+        '<ul class="ex-legend" aria-label="Legend"><li><i class="lb"></i>Reference range</li>'
+        '<li><i class="ld out"></i>Out of range</li><li><i class="ld near"></i>Borderline</li>'
+        '<li><i class="ld ok"></i>In range</li></ul>'
+        '<div class="ex-tw ex-tw-meas"><table class="ex-bands ex-meas">'
+        '<thead><tr><th scope="col">Measurement</th><th scope="col" class="r">Yours</th>'
+        '<th scope="col">Vs reference</th><th scope="col">Status</th></tr></thead>'
+        f"<tbody>{body}</tbody></table></div></section>"
+    )
+
+
+# The warning margin either side of a band: max(10% of its width, a floor) --
+# the SPA's grMargin/MARGIN_FLOOR, kept identical so this page and the app
+# agree on what "borderline" means.
+_MARGIN_FLOOR = {"pelvic_ratio": 0.2, "pelvic_tilt": 0.2}
+
+
+def _margin(field: str, lo: float, hi: float) -> float:
+    return max((hi - lo) * 0.10, _MARGIN_FLOOR.get(field, 3.0))
+
+
+def _signed(x: float, digits: int) -> str:
+    return ("−" if x < 0 else "") + _num(abs(x), digits)
+
+
+def _meas_row(cls: str, label: str, unit: str, v: float, lo: float, hi: float,
+              delta: float, source: str) -> str:
+    """One row: name and source | the value | the range bar | status + distance.
+
+    The bar's scale gives the band room either side and always takes the value
+    in, so how far out a reading is reads as distance on the track.
+    """
+    digits = 2 if (hi - lo) < 1 else 1
+    span = (hi - lo) or max(abs(hi) * 0.1, 1.0)
+    lo_ax = min(lo - span * 0.8, v - span * 0.2)
+    hi_ax = max(hi + span * 0.8, v + span * 0.2)
+
+    def pct(x: float) -> float:
+        return max(0.0, min(100.0, (x - lo_ax) / (hi_ax - lo_ax) * 100))
+
+    word = {"ok": "In range", "near": "Borderline"}.get(cls) or ("Too high" if delta > 0 else "Too low")
+    u = _esc(unit)
+    rng = (f"{_signed(lo, digits)} to {_signed(hi, digits)}{u}" if lo < 0
+           else f"{_num(lo, digits)}–{_num(hi, digits)}{u}")
+    d = f'<span class="d">{"+" if delta > 0 else "−"}{_num(abs(delta), digits)}{u}</span>' if delta else ""
+    return (
+        f'<tr class="{cls}">'
+        f'<th scope="row" class="m"><b>{_esc(label)}</b>'
+        + (f'<span class="src">{_esc(source)}</span>' if source else "")
+        + "</th>"
+        f'<td class="v">{_num(v, digits)}{u}</td>'
+        f'<td class="b"><span class="bar" role="img" aria-label="{_esc(label)} {_num(v, digits)}{u}, reference {rng}, {word.lower()}">'
+        f'<span class="band" style="left:{pct(lo):.1f}%;width:{pct(hi) - pct(lo):.1f}%"></span>'
+        f'<span class="mk" style="left:{pct(v):.1f}%"></span></span>'
+        f'<span class="rng">{rng}</span></td>'
+        f'<td class="s"><span class="w">{word}</span>{d}</td>'
+        "</tr>"
     )
 
 
@@ -491,6 +548,36 @@ _CSS = """
 .ex-bands tr.c-warn td.m{color:var(--c-warn-text)}
 .ex-bands tr.c-bad td.m{color:var(--st-bad)}
 
+/* The measurements table: name + source | value | range bar | status and
+   signed distance, grouped "needs attention" then "in range". Same shape and
+   colours as the report's (app.css .meastable); a card per row on a phone. */
+.ex-legend{list-style:none;display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 12px;padding:0;font-size:12px;color:var(--c-ink-soft)}
+.ex-legend li{display:flex;align-items:center;gap:6px}
+.ex-legend .lb{width:24px;height:8px;background:var(--m-band);border-radius:var(--radius-xs)}
+.ex-legend .ld{width:10px;height:10px;border-radius:50%}
+.ex-legend .ld.out{background:var(--m-out)} .ex-legend .ld.near{background:var(--m-near)} .ex-legend .ld.ok{background:var(--m-ok)}
+.ex-tw-meas{overflow:visible}
+.ex-meas{table-layout:fixed;min-width:0;font-size:13px}
+.ex-meas thead th:nth-child(1){width:34%} .ex-meas thead th:nth-child(2){width:96px;text-align:right}
+.ex-meas thead th:nth-child(4){width:120px}
+.ex-meas thead th{background:var(--c-ground)}
+.ex-meas tr.ex-grp th{padding:10px 14px;background:var(--c-panel);font-size:12px;font-weight:600;color:var(--c-head);text-align:left;border-bottom:1px solid var(--c-line)}
+.ex-meas tr.ex-grp th span{font-weight:400;color:var(--c-ink-faint)}
+.ex-meas th.m,.ex-meas td{padding:14px;vertical-align:middle;border-bottom:1px solid var(--c-line);text-align:left;font-weight:400}
+.ex-meas th.m b{display:block;font-size:14px;font-weight:600;color:var(--c-ink)}
+.ex-meas th.m .src{display:block;margin-top:2px;font-size:12px;color:var(--c-ink-faint)}
+.ex-meas td.v{text-align:right;font-family:var(--f-mono);font-size:18px;font-weight:600;color:var(--c-ink);white-space:nowrap}
+.ex-meas tr.ok td.v,.ex-meas tr.ok .w{color:var(--m-ok)}
+.ex-meas tr.near td.v,.ex-meas tr.near .w{color:var(--m-near-text)}
+.ex-meas tr.out td.v,.ex-meas tr.out .w{color:var(--m-out)}
+.ex-meas .bar{position:relative;display:block;height:10px;background:var(--c-panel);border-radius:999px}
+.ex-meas .bar .band{position:absolute;top:0;bottom:0;background:var(--m-band);border-radius:999px}
+.ex-meas .bar .mk{position:absolute;top:-3px;width:4px;height:16px;margin-left:-2px;border-radius:var(--radius-xs);background:var(--c-ink)}
+.ex-meas tr.ok .mk{background:var(--m-ok)} .ex-meas tr.near .mk{background:var(--m-near)} .ex-meas tr.out .mk{background:var(--m-out)}
+.ex-meas .rng{display:block;margin-top:6px;font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint)}
+.ex-meas td.s .w{display:block;font-size:13px;font-weight:600}
+.ex-meas td.s .d{display:block;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft)}
+
 /* The capture table borrows the band table's chrome but not its shape. Its
    cells are sentences, not numbers, so the band rules that suit "164.6 spm"
    -- monospace, nowrap, a 520px floor -- pushed it off the right edge and
@@ -553,6 +640,24 @@ _CSS = """
   .ex-cap td.b{margin-top:4px}
   .ex-cap td.b::before{content:"Target ";font-family:var(--f-mono);
     font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+  /* The measurements table: one list, two lines a row -- name and value,
+     then the bar and the verdict; the source clipped to one line. */
+  .ex-meas thead{display:none}
+  .ex-meas,.ex-meas tbody{display:block}
+  .ex-meas tr.ex-grp,.ex-meas tr.ex-grp th{display:block}
+  .ex-meas tr.ex-grp th{padding:8px 14px}
+  .ex-meas tr.ok,.ex-meas tr.near,.ex-meas tr.out{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;
+    align-items:center;padding:12px 14px;border-bottom:1px solid var(--c-line)}
+  .ex-meas tbody tr:last-child{border-bottom:0}
+  .ex-meas th.m,.ex-meas td{padding:0;border:0}
+  .ex-meas th.m{grid-column:1;grid-row:1;min-width:0}
+  .ex-meas th.m .src{font-size:11px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+  .ex-meas td.v{grid-column:2;grid-row:1;font-size:18px;align-self:start}
+  .ex-meas td.b{grid-column:1;grid-row:2;min-width:0}
+  .ex-meas td.b .rng{margin-top:4px;font-size:10.5px}
+  .ex-meas td.s{grid-column:2;grid-row:2;text-align:right;white-space:nowrap}
+  .ex-meas td.s .w,.ex-meas td.s .d{display:inline;font-size:12px}
+  .ex-meas td.s .d{margin-left:6px;font-size:11.5px}
 }
 """
 

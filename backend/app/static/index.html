@@ -1111,24 +1111,31 @@
 
     <div class="block" id="metricsBlock">
       <div class="blockhead">
-        <div class="eyebrow">Instrument readings</div>
-        <h3>Key metrics</h3>
+        <div class="eyebrow">Measurements</div>
+        <h3>Measured against published ranges</h3>
         <div class="speedline-sm"></div>
       </div>
+      <p class="hint" id="measLede" style="text-align:left;margin:0 0 12px">Every range names where it comes from. A value just past the edge of a range is inside the method&rsquo;s own error, so it is marked borderline rather than as a finding.</p>
       <p class="hint hidden" id="metricsNote" style="text-align:left;margin:0 0 14px"></p>
-      <div class="tiles" id="tiles"></div>
-      <!-- The readings with no band, in their own grid: in one grid a banded
-           tile that spills into the last row stretched the one-word cards
-           beside it to its own height. Two grids, and each row is only as
-           tall as what is in it. -->
-      <div class="tiles tiles-short" id="tilesShort"></div>
-      <!-- Four readings answer "is anything out of range". The rest answer
-           "by how much", which is the next question, not the first one. -->
-      <button class="btn btn-link tiles-more hidden" id="tilesMore" type="button"
-              aria-expanded="false" aria-controls="tilesRest">
-        <svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg><span>More metrics</span>
-      </button>
-      <div class="tiles hidden" id="tilesRest"></div>
+      <!-- One row per reading, grouped by what it asks of you: the ones out of
+           range first (furthest out on top), then the ones in range, then the
+           readings no published range applies to. Status is a word and a
+           signed distance, never a colour alone. Built by renderTiles() from
+           the same tile() calls the cards used, so the band, its source, the
+           tolerance and the Kona field are the ones the score was built on. -->
+      <ul class="meas-legend" aria-label="Legend">
+        <li><span class="ml-band" aria-hidden="true"></span>Reference range</li>
+        <li><span class="ml-dot m-out" aria-hidden="true"></span>Out of range</li>
+        <li><span class="ml-dot m-near" aria-hidden="true"></span>Borderline</li>
+        <li><span class="ml-dot m-ok" aria-hidden="true"></span>In range</li>
+      </ul>
+      <div class="meastable-wrap">
+        <table class="meastable" id="measTable">
+          <caption class="visually-hidden">Your measurements against their reference ranges, with the status and the distance outside the range</caption>
+          <thead><tr><th scope="col">Measurement</th><th scope="col" class="num">Yours</th><th scope="col">Vs reference</th><th scope="col">Status</th></tr></thead>
+          <tbody id="measRows"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="block" id="anglesBlock">
@@ -3568,77 +3575,120 @@ const METRIC_DEFS={
   'Trunk lean':'Forward lean of the torso from vertical, in degrees; negative means leaning back.',
 };
 let _defSeq=0;
-/* tile(): pass `range={value,lo,hi,unit}` to render a gradient range bar and auto-color the tile. */
+/* tile(): one reading of the measurements table. Pass `range={value,lo,hi,
+   unit,metric,src,pro}` and it is graded by grZone -- the tolerance the score
+   and the coach use, so the table can never call "too high" what the score
+   counted as borderline. A reading without a band may still carry a verdict
+   of its own (`cls`: the saddle, a toe-down foot) or none at all. The name is
+   the cards' it replaced: every builder below still calls it. */
 function tile(lbl,val,unit,ref,cls,isText=false,range=null){
-  let bar='';
+  const m={lbl,val,unit,ref,isText,cls:cls||null,range:null,zone:null,delta:null};
   if(range && range.value!=null && range.lo!=null && range.hi!=null){
-    if(!cls){ const z=grZone(range.value,range.lo,range.hi,range.metric); cls=z==='optimal'?'good':z==='warning'?'warn':'bad'; }
-    bar=gradientRangeBar(range.value,range.lo,range.hi,range.unit!=null?range.unit:unit,range.metric,range.src,range.pro);
+    m.range=range;
+    m.zone=grZone(range.value,range.lo,range.hi,range.metric);
+    m.delta=range.value<range.lo ? range.value-range.lo : (range.value>range.hi ? range.value-range.hi : 0);
+    if(!cls) m.cls=m.zone==='optimal'?'good':m.zone==='warning'?'warn':'bad';
   }
-  const stWord = cls ? `${ref?' · ':''}<span class="st-${cls}">${ST_WORD[cls]}</span>` : '';
-  const refLine = (ref||cls) ? `<div class="t-ref">${ref?esc(ref):''}${stWord}</div>` : '';
-  const dot = cls ? '<span class="sdot" aria-hidden="true"></span>' : '';
-  const valHtml = isText
-    ? `<div class="t-val txt">${esc(val)}</div>`
-    : `<div class="t-val">${val}${unit?(unit==='°'?'°':` <small>${unit}</small>`):''}</div>`;
-  // `tile-short` marks a reading with no band: it is sorted after the banded
-  // ones (see the #tiles render) and drawn denser, so a one-word card never
-  // has to stretch to the height of a range bar beside it.
-  let what='', def='';
-  // The definition is keyed on the measured name; the convention suffix
-  // (see angleConvLabel) is not part of it.
-  const defKey=String(lbl).replace(/ (flexion|dorsiflexion)/,'');
-  if(METRIC_DEFS[defKey]){
-    const id='tdef'+(++_defSeq);
-    what=`<button type="button" class="t-what" aria-label="What is ${esc(lbl)}?" aria-expanded="false" aria-controls="${id}">?</button>`;
-    def=`<p class="t-def hidden" id="${id}">${esc(METRIC_DEFS[defKey])}</p>`;
-  }
-  return `<div class="tile ${cls||''}${bar?'':' tile-short'}"><div class="t-lbl">${dot}${esc(lbl)}${what}</div>${valHtml}${refLine}${def}${bar}</div>`;
+  return m;
 }
-/* One handler for every [?] on the page: tiles are rebuilt by a dozen renderers. */
+/* One handler for every [?] on the page: the table is rebuilt by a dozen renderers. */
 document.addEventListener('click',e=>{
   const b=e.target.closest('.t-what'); if(!b) return;
   const def=document.getElementById(b.getAttribute('aria-controls')); if(!def) return;
   const open=def.classList.toggle('hidden')===false;
   b.setAttribute('aria-expanded',String(open));
 });
-/* Banded readings first, descriptive ones after -- a stable partition, so the
-   order inside each group is the order the builder chose. Rows in the grid then
-   stay homogeneous: every range bar in a row shares a baseline (the reason the
-   tiles stretch at all), and the range-less row is short because nothing in it
-   is tall. Before this a "Position: Balanced" card sat beside a six-line banded
-   one and was stretched to match it: one word and a void. */
-const TILES_KEPT=4;
-function renderTiles(list){
-  const banded=list.filter(t=>!t.includes('tile-short')), short=list.filter(t=>t.includes('tile-short'));
-  $('#tiles').innerHTML = banded.slice(0,TILES_KEPT).join('') || (short.length ? '' : '<p class="hint" style="text-align:left">No summary metrics available.</p>');
-  const sh=$('#tilesShort'); if(sh){ sh.innerHTML=short.join(''); sh.classList.toggle('hidden', !short.length); }
-  // The rest keep their order and their range bars; they are just not the
-  // first thing. The fold's own state survives a re-render (the angle
-  // convention toggle rebuilds these tiles under the reader).
-  const rest=$('#tilesRest'), more=$('#tilesMore');
-  if(rest&&more){
-    const wasOpen=!rest.classList.contains('hidden');
-    const extra=banded.slice(TILES_KEPT);
-    rest.innerHTML=extra.join('');
-    more.classList.toggle('hidden', !extra.length);
-    setTilesFold(extra.length ? wasOpen : false);
+/* Status of one reading: the word, its class, and which group it sits in.
+   Banded: In range / Borderline / Too high|Too low, the direction read off the
+   number as printed (the angle convention can flip it). Unbanded with a
+   verdict: the verdict's own word. Neither: not graded. */
+function measStatus(m){
+  if(m.range){
+    if(m.zone==='optimal') return {word:'In range',cls:'m-ok',group:'ok'};
+    if(m.zone==='warning') return {word:'Borderline',cls:'m-near',group:'attn'};
+    return {word:m.delta>0?'Too high':'Too low',cls:'m-out',group:'attn'};
   }
+  if(m.cls==='good') return {word:'In range',cls:'m-ok',group:'ok'};
+  if(m.cls==='warn') return {word:'Check',cls:'m-near',group:'attn'};
+  if(m.cls==='bad') return {word:'Out of range',cls:'m-out',group:'attn'};
+  return {word:'Not graded',cls:'m-info',group:'info'};
 }
-function setTilesFold(open){
-  const rest=$('#tilesRest'), more=$('#tilesMore'); if(!rest||!more) return;
-  const n=rest.children.length;
-  rest.classList.toggle('hidden', !open);
-  more.setAttribute('aria-expanded', String(open));
-  const lbl=more.querySelector('span');
-  if(lbl) lbl.textContent = open ? 'Fewer metrics' : `${n} more metric${n===1?'':'s'}`;
+/* "+4.9°", "−2.9°", "+12 ms", "+0.05×": signed, a real minus, the unit the
+   reading is printed in. */
+function measNum(v,unit){
+  const d=unit==='×'?2:1, f=Math.pow(10,d);
+  return String(Math.round(Math.abs(v)*f)/f);
 }
-document.addEventListener('click',e=>{
-  const b=e.target.closest('#tilesMore'); if(!b) return;
-  setTilesFold($('#tilesRest').classList.contains('hidden'));
-});
-// Paper has no folds: everything measured is on the printed report.
-addEventListener('beforeprint',()=>setTilesFold(true));
+function measUnit(unit){ return !unit?'':(unit==='°'||unit==='×'||unit==='%')?unit:' '+unit; }
+function measDelta(v,unit){
+  if(!v) return '';
+  return (v>0?'+':'−')+measNum(v,unit)+measUnit(unit);
+}
+function measSigned(v,unit){ return (v<0?'−':'')+measNum(v,unit); }
+function measRange(lo,hi,unit){
+  const u=measUnit(unit);
+  // "-5–15" reads as a minus doing double duty; spell it out.
+  return lo<0 ? `${measSigned(lo,unit)} to ${measSigned(hi,unit)}${u}` : `${measNum(lo,unit)}–${measNum(hi,unit)}${u}`;
+}
+/* The range bar: a grey track, the reference band in green, a 4 px marker at
+   the reading. The scale gives the band room on both sides and always takes
+   the reading in, so how far out a value is reads as distance. */
+function measBar(m,st){
+  const r=m.range, lo=r.lo, hi=r.hi, v=r.value, unit=r.unit!=null?r.unit:m.unit;
+  const span=(hi-lo)||Math.max(Math.abs(hi)*0.1,1);
+  const min=Math.min(lo-span*0.8, v-span*0.2), max=Math.max(hi+span*0.8, v+span*0.2);
+  const P=x=>Math.max(0,Math.min(100,(x-min)/(max-min)*100));
+  const pro=r.pro;
+  const u=measUnit(unit);
+  return `<div class="mbar" role="img" aria-label="${esc(`${m.val}${u}, reference ${measRange(lo,hi,unit)}, ${st.word.toLowerCase()}`)}">`
+    +`<span class="mbar-band" style="left:${P(lo).toFixed(1)}%;width:${(P(hi)-P(lo)).toFixed(1)}%"></span>`
+    +(pro&&pro.median>=min&&pro.median<=max?`<span class="mbar-pro" style="left:${P(pro.median).toFixed(1)}%" title="Kona pros' median"></span>`:'')
+    +`<span class="mbar-mark ${st.cls}" style="left:${P(v).toFixed(1)}%"></span></div>`
+    +`<div class="mbar-cap">${measRange(lo,hi,unit)}`
+    // The Kona field, where there is one: shown beside the band, never graded.
+    +(pro?` <span class="mbar-procap"><span class="mbar-promark" aria-hidden="true"></span>Kona pros ${num(pro.median,0)}${u} <small>· middle half ${num(pro.q1,0)}–${num(pro.q3,0)}${u}</small></span>`:'')
+    +`</div>`;
+}
+function measRow(m){
+  const st=measStatus(m);
+  const unit=m.range&&m.range.unit!=null?m.range.unit:m.unit;
+  let what='', def='';
+  // The definition is keyed on the measured name; the convention suffix
+  // (see angleConvLabel) is not part of it.
+  const defKey=String(m.lbl).replace(/ (flexion|dorsiflexion)/,'');
+  if(METRIC_DEFS[defKey]){
+    const id='tdef'+(++_defSeq);
+    what=`<button type="button" class="t-what" aria-label="What is ${esc(m.lbl)}?" aria-expanded="false" aria-controls="${id}">?</button>`;
+    def=`<p class="t-def hidden" id="${id}">${esc(METRIC_DEFS[defKey])}</p>`;
+  }
+  // Who decided this band, printed rather than hidden behind a hover, and the
+  // reading's own caveat ("estimated from 2D video") beside it.
+  const sub=[m.ref?esc(m.ref):'', m.range&&m.range.src?`Band: ${esc(m.range.src)}`:''].filter(Boolean).join(' · ');
+  const valHtml = m.isText
+    ? `<span class="m-txt">${esc(m.val)}</span>`
+    : `${m.val}${unit==='°'||unit==='×'||unit==='%'?unit:(unit?` <small>${esc(unit)}</small>`:'')}`;
+  const delta = m.range ? measDelta(m.delta,unit) : '';
+  return `<tr class="mrow ${st.cls}">`
+    +`<th scope="row"><span class="m-name">${esc(m.lbl)}${what}</span>${sub?`<span class="m-sub">${sub}</span>`:''}${def}</th>`
+    +`<td class="m-val num">${valHtml}</td>`
+    +`<td class="m-ref">${m.range?measBar(m,st):'<span class="m-noref">no published range</span>'}</td>`
+    +`<td class="m-st"><span class="m-pill">${st.word}</span>${delta?`<span class="m-delta">${delta}</span>`:''}</td>`
+    +`</tr>`;
+}
+/* Needs attention (furthest out first), then in range, then the readings no
+   range applies to -- each under a header that counts it. */
+function renderTiles(list){
+  const host=$('#measRows'); if(!host) return;
+  const rows=(list||[]).filter(Boolean);
+  if(!rows.length){ host.innerHTML='<tr><td colspan="4" class="muted">No summary metrics available.</td></tr>'; return; }
+  const by={attn:[],ok:[],info:[]};
+  rows.forEach(m=>by[measStatus(m).group].push(m));
+  by.attn.sort((a,b)=>Math.abs(b.delta||0)-Math.abs(a.delta||0));
+  const head=(t,n)=>`<tr class="mgroup"><th colspan="4" scope="colgroup">${t} <span>· ${n}</span></th></tr>`;
+  host.innerHTML=[['Needs attention',by.attn],['In range',by.ok],['Not graded',by.info]]
+    .filter(([,g])=>g.length)
+    .map(([t,g])=>head(t,g.length)+g.map(measRow).join('')).join('');
+}
 /* helper: {value,lo,hi,unit} for the range bar */
 function R(value,lo,hi,unit,src){ return {value,lo,hi,unit,src}; }
 /* The band the server graded against, preferred over the copy below.
@@ -7865,9 +7915,7 @@ function render(job,opts){
   // aero & watts headline panel (bike only; hidden for run + when N/A)
   if(sport==='bike') renderAeroPanel(s); else $('#aeroBlock').classList.add('hidden');
 
-  // tiles. The fold is reset per report: carrying it over from the last one
-  // means a reader who opened it once never sees the short version again.
-  setTilesFold(false);
+  // The measurements table (built from the tile() calls).
   renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s));
   // Whose numbers these are. On a two-sided session the readings are either
   // the merge of both clips or, when the merge was refused, one clip's --
