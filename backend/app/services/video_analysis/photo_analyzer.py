@@ -22,6 +22,7 @@ from PIL import Image, ImageOps
 from app.services.video_analysis import overlay_style
 
 from app.services.video_analysis.biomechanics.angle_calculator import (
+    MIN_LANDMARK_VISIBILITY,
     calculate_angle_2d,
     calculate_angle_3d,
     calculate_body_rotation,
@@ -1421,6 +1422,154 @@ _RUN_KNEE_EXTENDED_DEG = 140.0
 _RUN_KNEE_FOLDED_DEG = 115.0
 
 
+def _image_plane(nl: Any, image: np.ndarray) -> list[SimpleNamespace]:
+    """Normalized landmarks with x rescaled by the frame's aspect, z dropped.
+
+    Normalized x spans the width and y the height, so on any non-square frame
+    they are different units; multiplying x by width/height puts both in
+    "frame heights" and an angle read off them is the angle in the picture.
+    The bike reads every angle off this since commit 219c20c -- MediaPipe's
+    world skeleton was ~8 deg off in opposite directions from the two sides.
+    """
+    h, w = image.shape[:2]
+    aspect = (w / h) if h else 1.0
+    return [
+        SimpleNamespace(
+            x=(lm.x * aspect if lm.x is not None else None),
+            y=lm.y,
+            z=0.0,
+            visibility=getattr(lm, "visibility", 1.0),
+        )
+        for lm in nl
+    ]
+
+
+# --------------------------------------------------------------------------
+# Running photo legs, named by where they are, not by the model's left/right.
+#
+# On a single side-on frame MediaPipe's left/right leg labels are a coin toss.
+# Measured on 13 treadmill photos of one runner (2026-10-19): the leg it called
+# "near" was the REAR leg in 12 of them, while the tattooed calf showed the
+# physical legs plainly alternating front and back. So the phase and every leg
+# number were read off whichever leg happened to carry the label -- and not
+# one of the 13 came back as a touchdown, though one plainly was.
+#
+# A video settles identity over time (leg_identity DP); a photo has no time.
+# What a photo does have is position: the STANCE leg is the one whose foot is
+# lowest, and where that foot sits against the hip says which instant this
+# is. So the stance leg is the measured leg, whatever the model called it.
+# --------------------------------------------------------------------------
+_LEG_CHAINS = {"left": (25, 27, 29, 31), "right": (26, 28, 30, 32)}  # knee, ankle, heel, toe
+# The lowest foot must be at least this much lower (in leg lengths) to count
+# as the one on the ground; closer than that is flight or an unreadable frame.
+_RUN_FOOT_CLEAR = 0.03
+# Stance ankle against the hip midpoint, in leg lengths along the direction
+# of travel (+ = ahead). Far enough ahead is a touchdown whatever the knee;
+# ahead at all with a near-straight knee is too (a runner who lands under the
+# hip still lands on a straight-ish leg -- midstance knees sit ~135-145).
+_RUN_CONTACT_AHEAD = 0.10
+_RUN_CONTACT_KNEE = 155.0
+_RUN_TOEOFF_BEHIND = -0.12
+
+
+def _foot_low_point(pl: Any, chain: tuple[int, int, int, int]) -> float:
+    """Image y (down = larger) of the lowest visible point of one foot, or NaN."""
+    ys = [pl[i].y for i in chain[1:]
+          if getattr(pl[i], "visibility", 1.0) >= _VIS_THRESHOLD and pl[i].y is not None]
+    return max(ys) if ys else math.nan
+
+
+def _name_run_legs(nl: Any, wl: Any, image: Any, camera_side: str) -> tuple[Any, Any, dict[str, Any]]:
+    """Pick the stance leg by position and make it the camera-side leg.
+
+    Returns (nl, wl, legs). When the stance leg carries the far label, the two
+    leg chains (knee, ankle, heel, toe) are swapped in copies of both landmark
+    lists, so every later step -- angles, contact readings, the picture --
+    measures and draws the stance leg through the ordinary camera-side
+    indices. Hips are left alone: they are one pelvis, not a leg.
+
+    ``legs``: ``stance`` (front / under / rear), ``dx`` (stance ankle vs the
+    hip midpoint, leg lengths, + = ahead), ``clear`` (one foot is plainly the
+    lowest), ``swapped``, ``swing_knee`` (the other leg's knee). ``clear`` is
+    False and the rest None when the direction of travel or the feet cannot be
+    read -- the phase is then uncertain and the run is not scored.
+    """
+    pl = _image_plane(nl, image)
+    forward = _running_forward_sign(pl)
+    lows = {s: _foot_low_point(pl, c) for s, c in _LEG_CHAINS.items()}
+    hip = SimpleNamespace(x=(pl[23].x + pl[24].x) / 2, y=(pl[23].y + pl[24].y) / 2)
+
+    def leg_len(side: str) -> float:
+        k, a = _LEG_CHAINS[side][:2]
+        h = 23 if side == "left" else 24
+        return math.dist((pl[h].x, pl[h].y), (pl[k].x, pl[k].y)) + \
+            math.dist((pl[k].x, pl[k].y), (pl[a].x, pl[a].y))
+
+    blank = {"stance": None, "dx": None, "clear": False, "swapped": False, "swing_knee": None}
+    if forward == 0 or any(math.isnan(v) for v in lows.values()):
+        return nl, wl, blank
+    length = (leg_len("left") + leg_len("right")) / 2
+    if not length or math.isnan(length):
+        return nl, wl, blank
+    stance = max(lows, key=lows.get)
+    other = "right" if stance == "left" else "left"
+    clear = (lows[stance] - lows[other]) / length >= _RUN_FOOT_CLEAR
+    dx = (pl[_LEG_CHAINS[stance][1]].x - hip.x) * forward / length
+
+    swapped = stance != camera_side
+    if swapped:
+        nl, wl = _swap_leg_chains(nl), _swap_leg_chains(wl)
+        pl = _image_plane(nl, image)
+    # After a swap the stance leg sits on the camera side; the other is swing.
+    far = "right" if camera_side == "left" else "left"
+    fk, fa = _LEG_CHAINS[far][:2]
+    fh = 23 if far == "left" else 24
+    swing_knee, _ = calculate_angle_2d(pl, fh, fk, fa)
+    return nl, wl, {
+        "stance": "front" if dx > 0.05 else ("rear" if dx < -0.05 else "under"),
+        "dx": round(dx, 3), "clear": bool(clear), "swapped": swapped,
+        "swing_knee": _safe_round(swing_knee),
+    }
+
+
+# A landmark's visibility is the model's opinion of its LABEL: having called
+# one leg "far", it rates that leg's knee hidden (0.37-0.48 on the treadmill
+# photos, every other leg point 0.89-0.99) wherever the knee actually is. Once
+# the legs are named by position, a point that low is still read, down to this.
+_SWAPPED_MIN_VIS = 0.3
+
+
+def _swap_leg_chains(landmarks: Any) -> list[Any]:
+    """A copy with the left and right knee/ankle/heel/toe exchanged; the
+    moved points keep their position and are read down to _SWAPPED_MIN_VIS."""
+    out = list(landmarks)
+    for a, b in zip(_LEG_CHAINS["left"], _LEG_CHAINS["right"]):
+        for dst, src in ((a, landmarks[b]), (b, landmarks[a])):
+            vis = getattr(src, "visibility", 1.0)
+            if vis is not None and _SWAPPED_MIN_VIS <= vis < MIN_LANDMARK_VISIBILITY:
+                vis = MIN_LANDMARK_VISIBILITY
+            out[dst] = SimpleNamespace(x=src.x, y=src.y, z=getattr(src, "z", 0.0), visibility=vis)
+    return out
+
+
+def _run_phase_by_position(legs: dict[str, Any], knee: float) -> str:
+    """The stride instant from where the stance foot is, and the stance knee.
+
+    Replaces the thigh-and-knee guess (``_estimate_run_gait_phase``) behind
+    the flag: that one read whichever leg carried the near label, and had no
+    name for a thigh behind the body with the knee folded (early swing), so it
+    filed those frames as midstance or toe-off.
+    """
+    if not legs.get("clear") or legs.get("dx") is None:
+        return "uncertain"
+    dx = legs["dx"]
+    if dx > _RUN_CONTACT_AHEAD or (dx > 0 and not math.isnan(knee) and knee >= _RUN_CONTACT_KNEE):
+        return "initial_contact"
+    if dx < _RUN_TOEOFF_BEHIND:
+        return "toe_off"
+    return "midstance"
+
+
 def _running_forward_sign(landmarks) -> float:
     """Direction of travel, at the photo path's own visibility threshold."""
     return calculate_forward_sign(landmarks, min_visibility=_VIS_THRESHOLD)
@@ -2141,18 +2290,33 @@ def analyze_from_pose(
     contact: dict[str, Any] | None = None
 
     if sport == "run":
+        # Behind the flag, the run reads the picture like the bike does
+        # (_image_plane): the world skeleton's per-side bias moves the knee,
+        # and the stride phase is decided on the knee and the thigh, so the
+        # bias could file a frame under the wrong phase and judge it against
+        # the wrong bands. Off, the world skeleton stays -- users' numbers do
+        # not move until the flag does.
+        #
+        # And behind the same flag the measured leg is the STANCE leg, found by
+        # position (see _name_run_legs); its landmarks are moved onto the
+        # camera-side indices, so everything below -- and the picture --
+        # follows it without knowing.
+        legs: dict[str, Any] | None = None
+        if contact_metrics:
+            nl, wl, legs = _name_run_legs(nl, wl, image, camera_side)
+        rl = _image_plane(nl, image) if contact_metrics else wl
         for name, (a, b, c) in RUNNING_PHOTO_ANGLES[camera_side].items():
-            val, _ = calculate_angle_2d(wl, a, b, c)
+            val, _ = calculate_angle_2d(rl, a, b, c)
             angles[name] = _safe_round(val)
 
         # Ankle: shank axis vs foot axis (see RUNNING_PHOTO_ANKLE).
         k_i, a_i, h_i, t_i = RUNNING_PHOTO_ANKLE[camera_side]
-        ankle_val, _ = calculate_shank_foot_angle_2d(wl, k_i, a_i, h_i, t_i)
+        ankle_val, _ = calculate_shank_foot_angle_2d(rl, k_i, a_i, h_i, t_i)
         angles["ankle"] = _safe_round(ankle_val)
 
         # Direction of travel first: both the trunk sign and the stride phase
         # are meaningless without it.
-        forward_sign = _running_forward_sign(wl)
+        forward_sign = _running_forward_sign(rl)
 
         # Signed, so leaning BACK is distinguishable from leaning forward. The
         # unsigned reading reported both as the same positive number, which let
@@ -2162,7 +2326,7 @@ def analyze_from_pose(
         # and the partial-body warning below already tells the athlete why.
         sh_idx, hp_idx = RUNNING_TRUNK_LANDMARKS[camera_side]
         trunk = calculate_signed_segment_to_vertical(
-            wl, sh_idx, hp_idx, forward_sign, min_visibility=_VIS_THRESHOLD,
+            rl, sh_idx, hp_idx, forward_sign, min_visibility=_VIS_THRESHOLD,
         )
         angles["trunk"] = _safe_round(trunk)
 
@@ -2171,15 +2335,19 @@ def analyze_from_pose(
         # (see _RUN_HIP_BANDS), so choosing one without the phase is what made
         # a hand-picked knee-drive frame come back as "hip too closed".
         _, run_hip_idx, run_knee_idx = RUNNING_PHOTO_ANGLES[camera_side]["hip"]
-        thigh_dev = _thigh_deviation_deg(wl, run_hip_idx, run_knee_idx, forward_sign)
-        gait_phase = _estimate_run_gait_phase(
-            thigh_dev, angles.get("knee", math.nan),
-        )
+        thigh_dev = _thigh_deviation_deg(rl, run_hip_idx, run_knee_idx, forward_sign)
+        if legs is not None:
+            gait_phase = _run_phase_by_position(legs, angles.get("knee", math.nan))
+        else:
+            gait_phase = _estimate_run_gait_phase(
+                thigh_dev, angles.get("knee", math.nan),
+            )
         logger.info(
             "PHOTO_RUN_GAIT_PHASE",
             gait_phase=gait_phase,
             thigh_deviation=thigh_dev,
             knee_angle=angles.get("knee"),
+            legs=legs,
         )
 
         optimal_ranges = _get_running_optimal_ranges(
@@ -2190,7 +2358,7 @@ def analyze_from_pose(
             if gait_phase == "initial_contact":
                 img_h, img_w = image.shape[:2]
                 contact = {"phase": gait_phase, "measured": True,
-                           **_run_contact_metrics(wl, camera_side, forward_sign, angles,
+                           **_run_contact_metrics(rl, camera_side, forward_sign, angles,
                                                   nl, img_w, img_h)}
             else:
                 # Not an approximation of the contact readings -- there are
@@ -2207,6 +2375,9 @@ def analyze_from_pose(
                         "; a frame at touchdown would have them."
                     ),
                 }
+            # Which leg the numbers are from, said by position: the model's
+            # left/right is not trustworthy on one frame (see _name_run_legs).
+            contact["legs"] = legs
 
     elif sport == "bike":
         # Image-plane landmarks, the same source the VIDEO bike path moved to
@@ -2219,15 +2390,7 @@ def analyze_from_pose(
         # is rescaled by the aspect before any angle is read.
         _h_img, _w_img = image.shape[:2]
         _aspect = (_w_img / _h_img) if _h_img else 1.0
-        pl = [
-            SimpleNamespace(
-                x=(lm.x * _aspect if lm.x is not None else None),
-                y=lm.y,
-                z=0.0,
-                visibility=getattr(lm, "visibility", 1.0),
-            )
-            for lm in nl
-        ]
+        pl = _image_plane(nl, image)
 
         for name, (a, b, c) in CYCLING_PHOTO_ANGLES[camera_side].items():
             val, _ = calculate_angle_2d(pl, a, b, c)

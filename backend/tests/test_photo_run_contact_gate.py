@@ -6,6 +6,12 @@ OFF a running photo comes back exactly as it did before this work -- no
 ``contact`` key, and a frame the detector cannot place still scored -- and
 with it ON the readings appear and the "no score" rule applies.
 
+With the flag ON the photo also stops trusting the model's left/right leg
+labels (see ``_name_run_legs``): the measured leg is the STANCE leg, the one
+whose foot is lowest, and the stride instant is read off where that foot sits
+against the hip. The fixture therefore draws two legs, a stance leg and a
+swing leg, and can put either on either label.
+
 The OFF half is the one that matters while nothing has been checked on real
 frames: it is the promise that athletes see no change until somebody decides
 they should.
@@ -24,67 +30,78 @@ cv2 = pytest.importorskip("cv2", reason="the photo path decodes and draws with O
 from app.services.video_analysis import photo_analyzer as PA  # noqa: E402
 
 W, H = 800, 1000
+LEFT_LEG = (25, 27, 29, 31)
+RIGHT_LEG = (26, 28, 30, 32)
 
 
-def _run_pose(knee_deg: float, thigh_forward_deg: float = 30.0):
-    """A LEFT-side runner whose near thigh is ``thigh_forward_deg`` ahead of
-    vertical and whose near knee is ``knee_deg``. Feet point forward (+x) so
-    the direction of travel resolves. Everything else is filler that stays
-    visible and out of the way.
+def _run_pose(knee_deg: float, thigh_forward_deg: float = 30.0, *,
+              other_lift: float = 0.15, on_far_label: bool = False,
+              knee_vis: float = 1.0):
+    """A runner seen from the LEFT, facing +x.
+
+    The described leg has its thigh ``thigh_forward_deg`` ahead of vertical
+    and its knee at ``knee_deg``. The other leg trails behind with its foot
+    ``other_lift`` (frame heights) above where it would touch -- a swing leg,
+    so the described one is the stance leg. ``other_lift`` that puts both feet
+    at one height is a frame in flight.
+
+    ``on_far_label``: the described leg carries the RIGHT (far) labels, the
+    way MediaPipe hands them out on a single frame about half the time.
 
     Image y grows downwards. The world frame is the image frame recentred and
-    NOT stretched: the overstride and the phase are both read off world
-    landmarks, and a fixture whose world squashes x against y puts the foot
-    somewhere other than where its angles say -- the reach tests below need
-    the thigh and knee to mean what they say.
+    NOT stretched. Both hips sit on one point: in a side view they nearly do,
+    and it keeps "ahead of the hip" one number.
     """
     hip = np.array([0.45, 0.50])
     thigh_len, shank_len = 0.18, 0.18
     a = math.radians(thigh_forward_deg)
     knee = hip + thigh_len * np.array([math.sin(a), math.cos(a)])
-    # Knee flexion swings the shank BACK, as a knee does: a straight leg puts
-    # the ankle on the thigh's line, and bending it brings the foot back
-    # towards (and past) the hip. The internal angle is ``knee_deg`` either
-    # way, which is why the first version, bent the other way, still passed
-    # every phase test -- and would have put every foot far out in front.
+    # Knee flexion swings the shank BACK, as a knee does.
     b = a - math.radians(180.0 - knee_deg)
     ankle = knee + shank_len * np.array([math.sin(b), math.cos(b)])
     shoulder = hip + np.array([0.0, -0.28])
 
+    # The swing leg: behind, knee bent, foot raised off the stance foot's floor.
+    floor = ankle[1]
+    o_knee = hip + np.array([-0.03, 0.17])
+    o_ankle = np.array([hip[0] - 0.16, floor - other_lift])
+
+    leg = {LEFT_LEG[0]: knee, LEFT_LEG[1]: ankle,
+           LEFT_LEG[2]: ankle + [-0.03, 0.02], LEFT_LEG[3]: ankle + [0.06, 0.02]}
+    oth = {RIGHT_LEG[0]: o_knee, RIGHT_LEG[1]: o_ankle,
+           RIGHT_LEG[2]: o_ankle + [-0.03, 0.02], RIGHT_LEG[3]: o_ankle + [0.06, 0.02]}
+    vis = {LEFT_LEG[0]: knee_vis}
+    if on_far_label:
+        swap = dict(zip(LEFT_LEG, RIGHT_LEG)) | dict(zip(RIGHT_LEG, LEFT_LEG))
+        leg = {swap[k]: v for k, v in leg.items()}
+        oth = {swap[k]: v for k, v in oth.items()}
+        vis = {swap[k]: v for k, v in vis.items()}
+
     pts = {11: shoulder, 12: shoulder + [0.02, 0], 13: shoulder + [0.05, 0.12],
            14: shoulder + [0.07, 0.12], 15: shoulder + [0.10, 0.20],
-           16: shoulder + [0.12, 0.20],
-           23: hip, 24: hip + [0.02, 0], 25: knee, 26: hip + [0.0, 0.18],
-           27: ankle, 28: hip + [0.0, 0.36],
-           29: ankle + [-0.03, 0.02], 31: ankle + [0.06, 0.02],      # heel, toe
-           30: hip + [-0.03, 0.38], 32: hip + [0.06, 0.38]}
+           16: shoulder + [0.12, 0.20], 23: hip, 24: hip, **leg, **oth}
+    # The normalized x is the design x in frame HEIGHTS divided back into frame
+    # widths, so the pose is undistorted in pixels -- the flag-on path reads the
+    # picture (x * W/H), the flag-off path the world skeleton, and both must
+    # see the same body.
     norm, world = [], []
     for j in range(33):
         x, y = pts.get(j, (0.5, 0.1))
-        norm.append(SimpleNamespace(x=float(x), y=float(y), z=0.0, visibility=1.0))
-        world.append(SimpleNamespace(x=float(x) - 0.5, y=float(y) - 0.5,
-                                     z=0.0, visibility=1.0))
+        v = vis.get(j, 1.0)
+        norm.append(SimpleNamespace(x=float(x) * H / W, y=float(y), z=0.0, visibility=v))
+        world.append(SimpleNamespace(x=float(x) - 0.5, y=float(y) - 0.5, z=0.0, visibility=v))
     return world, norm
 
 
-def _measure(knee_deg: float, thigh: float = 30.0, **kw) -> dict:
-    world, norm = _run_pose(knee_deg, thigh)
+def _measure(knee_deg: float, thigh: float = 30.0, *, contact_metrics: bool = False, **pose) -> dict:
+    world, norm = _run_pose(knee_deg, thigh, **pose)
     image = np.full((H, W, 3), 128, dtype=np.uint8)
     return PA.analyze_from_pose(image, world, norm, "left", [], "run", None,
-                                render_thumbnail=False, **kw)
+                                render_thumbnail=False, contact_metrics=contact_metrics)
 
 
-# The geometry must land where the tests think it does, or every assertion
-# below is about the wrong frame.
-
-def test_the_fixture_reaches_initial_contact():
-    assert _measure(165.0)["gait_phase"] == "initial_contact"
-
-
-def test_the_fixture_reaches_an_uncertain_phase():
-    """Thigh forward, knee neither straight enough to be landing nor folded
-    enough to be swinging -- the gap the detector refuses to guess across."""
-    assert _measure(128.0)["gait_phase"] == "uncertain"
+def _on(knee_deg: float, thigh: float = 30.0, **pose) -> dict:
+    return _measure(knee_deg, thigh, contact_metrics=True, **pose)
 
 
 # --------------------------------------------------------------------------
@@ -96,20 +113,100 @@ def test_off_by_default_adds_no_contact_block():
 
 
 def test_off_still_scores_an_uncertain_frame():
-    """Today's behaviour, pinned. Arguably wrong -- which is exactly why the
-    change to it is behind the flag and not in this test."""
+    """Today's behaviour, pinned: the thigh-and-knee guess cannot place a
+    forward thigh on a half-bent knee, and scores it anyway. Arguably wrong --
+    which is exactly why the change to it is behind the flag."""
     r = _measure(128.0)
     assert r["gait_phase"] == "uncertain"
     assert r["score"]["overall_score"] is not None
     assert "withheld" not in r["score"]
 
 
+def test_off_still_faults_a_tightly_folded_swing_knee():
+    """Today's behaviour, pinned: the one wide band's lower edge (80) marks the
+    fold down -- a world-class runner's swing frame came back "needs work" at
+    63 deg. With the flag on, a swing leg is never the measured leg."""
+    r = _measure(60.0, thigh=35.0)
+    assert r["gait_phase"] == "swing"
+    assert "knee" in r["score"]["per_angle"]
+
+
+def test_off_still_reads_the_near_label_whatever_it_is_on():
+    """Off, the leg carrying the near label is measured even when it is the
+    swing leg -- the old behaviour, and the bug the flag fixes."""
+    r = _measure(165.0, on_far_label=True)
+    assert r["angles_with_context"]["knee"]["value"] != pytest.approx(165.0, abs=3.0)
+
+
 # --------------------------------------------------------------------------
-# flag ON
+# flag ON: the stance leg, found by position
+# --------------------------------------------------------------------------
+
+def test_the_stance_leg_is_measured_whichever_label_it_carries():
+    """The model put the landing leg on the FAR labels. It is still the one
+    measured -- and drawn, since it is moved onto the camera-side indices."""
+    for far in (False, True):
+        r = _on(165.0, on_far_label=far)
+        assert r["gait_phase"] == "initial_contact"
+        assert r["angles_with_context"]["knee"]["value"] == pytest.approx(165.0, abs=1.5)
+        assert r["contact"]["legs"]["swapped"] is far
+        assert r["contact"]["legs"]["stance"] == "front"
+
+
+def test_the_swing_leg_is_reported_not_scored():
+    r = _on(165.0)
+    legs = r["contact"]["legs"]
+    assert legs["swing_knee"] is not None and legs["swing_knee"] < 160
+    assert "swing_knee" not in r["score"]["per_angle"]
+
+
+def test_a_knee_point_the_model_calls_hidden_is_still_read_once_moved():
+    """Having labelled a leg "far", the model rates that leg's knee hidden
+    wherever it actually is (0.37-0.48 on real treadmill photos). Once the
+    legs are named by position, such a point is read; one the model barely
+    found at all is not."""
+    r = _on(165.0, on_far_label=True, knee_vis=0.4)
+    assert r["angles_with_context"]["knee"]["value"] == pytest.approx(165.0, abs=1.5)
+    r = _on(165.0, on_far_label=True, knee_vis=0.2)
+    assert r["score"]["withheld"] == "run_leg_not_measured"
+
+
+@pytest.mark.parametrize("knee,thigh,phase", [
+    (165.0, 30.0, "initial_contact"),   # foot well ahead of the hip
+    (160.0, 11.0, "initial_contact"),   # foot just ahead, leg near straight
+    (140.0, 20.0, "midstance"),         # foot under the hip, knee loaded
+    (170.0, -20.0, "toe_off"),          # foot well behind
+])
+def test_the_instant_comes_from_where_the_stance_foot_is(knee, thigh, phase):
+    assert _on(knee, thigh)["gait_phase"] == phase
+
+
+def test_a_frame_in_flight_is_not_placed():
+    """Both feet at one height: no foot is on the ground, nothing to read the
+    instant from -- no score, and saying so."""
+    r = _on(165.0, other_lift=0.0)
+    assert r["gait_phase"] == "uncertain"
+    assert r["score"]["overall_score"] is None
+    assert r["score"]["withheld"] == "stride_phase_uncertain"
+    assert any("No score" in w for w in r["warnings"])
+
+
+def test_phase_thresholds():
+    ph = PA._run_phase_by_position
+    assert ph({"clear": False, "dx": 0.3}, 170.0) == "uncertain"
+    assert ph({"clear": True, "dx": None}, 170.0) == "uncertain"
+    assert ph({"clear": True, "dx": 0.11}, 120.0) == "initial_contact"
+    assert ph({"clear": True, "dx": 0.02}, 156.0) == "initial_contact"
+    assert ph({"clear": True, "dx": 0.02}, 150.0) == "midstance"
+    assert ph({"clear": True, "dx": -0.13}, 160.0) == "toe_off"
+
+
+# --------------------------------------------------------------------------
+# flag ON: the contact readings
 # --------------------------------------------------------------------------
 
 def test_on_measures_the_contact_readings_at_touchdown():
-    c = _measure(165.0, contact_metrics=True)["contact"]
+    c = _on(165.0)["contact"]
     assert c["measured"] is True
     assert c["phase"] == "initial_contact"
     for key in ("overstride_ratio", "shin_angle", "foot_strike"):
@@ -118,16 +215,9 @@ def test_on_measures_the_contact_readings_at_touchdown():
     assert not math.isnan(c["shin_angle"])
 
 
-def test_on_refuses_a_score_between_phases():
-    r = _measure(128.0, contact_metrics=True)
-    assert r["score"]["overall_score"] is None
-    assert r["score"]["withheld"] == "stride_phase_uncertain"
-    assert any("No score" in w for w in r["warnings"])
-
-
 def test_on_gives_no_readings_away_from_touchdown_and_says_why():
     """Toe-off: a scored frame, but overstride does not exist there."""
-    r = _measure(170.0, thigh=-20.0, contact_metrics=True)
+    r = _on(170.0, thigh=-20.0)
     assert r["gait_phase"] == "toe_off"
     assert r["score"]["overall_score"] is not None
     c = r["contact"]
@@ -136,50 +226,8 @@ def test_on_gives_no_readings_away_from_touchdown_and_says_why():
     assert "touchdown" in c["note"]
 
 
-# --------------------------------------------------------------------------
-# the knee on a swing frame, and the partial score it leaves
-# --------------------------------------------------------------------------
-
-def _swing():
-    """Thigh forward, knee folded tight -- the detector's swing."""
-    return _measure(60.0, thigh=35.0, contact_metrics=True)
-
-
-def test_the_fixture_reaches_swing():
-    assert _swing()["gait_phase"] == "swing"
-
-
-def test_off_still_faults_a_tightly_folded_swing_knee():
-    """Today's behaviour, pinned: the one wide band's lower edge (80) marks the
-    fold down. That is the error the flag exists to fix -- a world-class
-    runner's swing frame came back "needs work" at 63 deg."""
-    r = _measure(60.0, thigh=35.0)
-    assert r["angles_with_context"]["knee"]["status"] != "phase_dependent"
-    assert "knee" in r["score"]["per_angle"]
-
-
-def test_on_shows_the_swing_knee_without_judging_it():
-    r = _swing()
-    k = r["angles_with_context"]["knee"]
-    assert k["status"] == "phase_dependent"
-    assert k["value"] == pytest.approx(60.0, abs=2.0)      # the number stays
-    assert "folded" in k["note"]
-    assert "knee" not in r["score"]["per_angle"]
-
-
-def test_on_marks_a_swing_score_as_partial_in_the_runners_words():
-    """A bare 100 on three measures out of five reads as a perfect stride.
-    The bike's words ("upper body", "mark the pedal position") would be wrong
-    here, so the run's carry their own."""
-    sc = _swing()["score"]
-    assert sc["partial"] == "without the knee or hip"
-    assert sc["partial_badge"] == "partial"
-    assert "foot lands" in sc["partial_hint"]
-    assert "pedal" not in sc["partial_hint"]
-
-
 def test_on_footstrike_is_not_partial():
-    assert "partial" not in _measure(165.0, contact_metrics=True)["score"]
+    assert "partial" not in _on(165.0)["score"]
 
 
 # --------------------------------------------------------------------------
@@ -189,14 +237,12 @@ def test_on_footstrike_is_not_partial():
 def _reaching():
     """Footstrike on a near-straight leg with the thigh well forward: the foot
     lands far out in front of the hip."""
-    return _measure(170.0, thigh=30.0, contact_metrics=True)
+    return _on(170.0, thigh=30.0)
 
 
 def _under():
-    """Footstrike with the thigh just past the contact threshold and the knee
-    bent to 2 x thigh short of straight: the shank swings back by exactly the
-    thigh's lean, so the ankle lands directly under the hip."""
-    return _measure(140.0, thigh=20.0, contact_metrics=True)
+    """Footstrike on a near-straight leg with the foot just ahead of the hip."""
+    return _on(160.0, thigh=11.0)
 
 
 def test_the_reach_fixtures_are_both_footstrike():
@@ -205,8 +251,7 @@ def test_the_reach_fixtures_are_both_footstrike():
 
 
 def test_overstride_enters_the_score_at_footstrike():
-    r = _measure(165.0, contact_metrics=True)
-    assert "overstride" in r["score"]["per_angle"]
+    assert "overstride" in _on(165.0)["score"]["per_angle"]
 
 
 def test_overstride_uses_the_videos_band():
@@ -229,7 +274,7 @@ def test_a_clear_reach_costs_the_score_and_is_explained():
 
 def test_a_foot_under_the_hip_is_not_penalised():
     r = _under()
-    assert r["contact"]["overstride_ratio"] == pytest.approx(0.0, abs=0.02)
+    assert r["contact"]["overstride_ratio"] == pytest.approx(0.0, abs=0.03)
     assert r["score"]["per_angle"]["overstride"]["score"] == 100
     assert not any(w.startswith("Overstride:") for w in r["warnings"])
 
@@ -237,8 +282,42 @@ def test_a_foot_under_the_hip_is_not_penalised():
 def test_overstride_stays_out_of_the_angle_table():
     """It is neither an angle nor drawable as one; it lives in the contact
     block. In the table it would get a label and an arc it cannot have."""
-    r = _measure(165.0, contact_metrics=True)
-    assert "overstride" not in r["angles_with_context"]
+    assert "overstride" not in _on(165.0)["angles_with_context"]
+
+
+# --------------------------------------------------------------------------
+# the picture, not the world skeleton
+# --------------------------------------------------------------------------
+
+def _biased(world_shift: float):
+    """The runner with the WORLD skeleton's knee pushed forward and the picture
+    left as it is -- the world-vs-image disagreement the bike had, ~8 deg from
+    one side. Flag off reads the world, flag on reads the picture."""
+    world, norm = _run_pose(165.0)
+    world[25] = SimpleNamespace(x=world[25].x + world_shift, y=world[25].y,
+                                z=0.0, visibility=1.0)
+    return world, norm
+
+
+def test_on_reads_the_picture_not_the_world_skeleton():
+    world, norm = _biased(0.04)
+    image = np.full((H, W, 3), 128, dtype=np.uint8)
+    on = PA.analyze_from_pose(image, world, norm, "left", [], "run", None,
+                              render_thumbnail=False, contact_metrics=True)
+    off = PA.analyze_from_pose(image, world, norm, "left", [], "run", None,
+                               render_thumbnail=False)
+    assert on["angles_with_context"]["knee"]["value"] == pytest.approx(165.0, abs=1.0)
+    assert abs(off["angles_with_context"]["knee"]["value"] - 165.0) > 5.0
+
+
+def test_the_picture_is_read_in_pixels_not_normalized_units():
+    """Normalized x and y are different units on an 800 x 1000 frame. Read
+    raw, this knee would not be 165."""
+    world, norm = _run_pose(165.0)
+    image = np.full((H, W, 3), 128, dtype=np.uint8)
+    pl = PA._image_plane(norm, image)
+    assert PA.calculate_angle_2d(pl, 23, 25, 27)[0] == pytest.approx(165.0, abs=0.5)
+    assert abs(PA.calculate_angle_2d(norm, 23, 25, 27)[0] - 165.0) > 1.0
 
 
 def test_on_does_not_touch_the_bike():
