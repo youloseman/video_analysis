@@ -1153,10 +1153,12 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
      stopwatch loop on the left, ending on the re-check, and one real analysis
      on the right playing raw -> reading -> verdict.
 
-     The photograph is a race photo, not one of ours: the face and every
-     sponsor mark are blurred (scripts/anonymize_landing_photos.py), and the
-     pose was measured on the original so the angles are the athlete's, not
-     the blur's. The caption says both. -->
+     The photograph is a race photo, not one of ours, edited before it was
+     used: the face is replaced with a fictional one, every sponsor mark is
+     removed and the background is changed (scripts/landing_race_photos.py
+     has the details and the pose check). The analysis ran on the edited
+     image, so the numbers are measured on exactly what is shown. The caption
+     says it is edited. -->
 <section id="how" class="how">
   <div class="wrap">
     <div class="track-head">
@@ -1212,9 +1214,9 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
       <figure class="stage-photo">
         <div class="tp-screen">
           <img class="tp-shot tp-raw" src="media/race-frame-raw.webp" loading="lazy" width="820" height="949"
-               alt="A triathlete running on a road lined with palm trees, photographed side-on mid-stride; face and sponsor marks blurred">
+               alt="A triathlete running on a road past black lava rock and scrub, photographed side-on mid-stride from a low angle">
           <img class="tp-shot tp-over" src="media/race-frame-overlay.webp" loading="lazy" width="820" height="949"
-               alt="The same photo as Flapp returned it: skeleton overlay with trunk lean 9 degrees, elbow 76, hip 163, knee 173 and ankle 107, scored 100 out of 100">
+               alt="The same photo as Flapp returned it: skeleton overlay with trunk lean 7 degrees, elbow 75, hip 166, knee 177 in amber and ankle 112, scored 98 out of 100">
           <div class="tp-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
           <div class="tp-scan" aria-hidden="true"></div>
           <span class="tp-badge tp-b-rec"><i></i>Side view · captured</span>
@@ -1222,10 +1224,15 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
         </div>
         <figcaption class="tp-note">
           <span class="tp-note-lbl">One photo, measured</span>
-          <p>A race photo through the same analysis your clip gets: every angle inside its band —
-            <b>nothing to fix on this one.</b> When something is out, it comes back red, with the drill
-            that closes the gap.</p>
-          <p class="tp-fine">Face and sponsor marks blurred for this page; the angles were measured on the original.</p>
+          <!-- The knee reads 176.8 against a band that ends at 175: amber, a
+               reading at the edge of the band rather than a fault. Say that,
+               rather than "nothing to fix", which the amber label beside it
+               would contradict. -->
+          <p>A race photo through the same analysis your clip gets: <b>98 / 100.</b> One reading in
+            amber — the knee, a couple of degrees past straight at mid-stance: borderline, not a fault.
+            When something is really out, it comes back red, with the drill that closes the gap.</p>
+          <p class="tp-fine">Race photo, edited for this page: face and sponsor marks replaced, background
+            changed. The angles are measured on the image you see.</p>
         </figcaption>
       </figure>
     </div>
@@ -1369,15 +1376,15 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
     <h2 class="sec rv" data-d="1">Built for runners.<br>Built for <span class="accent">cyclists.</span></h2>
     <div class="paths">
       <!-- Each card leads with a real analysis of its sport. The run photo is a
-           race photo with the face and sponsor marks blurred (see HOW IT
-           WORKS); the ride is the "after" from the before/after above.
+           race photo, edited like the others (see HOW IT WORKS); the ride
+           is the "after" from the before/after above.
            The run card used to promise injury prevention ("most running
            injuries trace back to mechanics") -- a causal claim the literature
            does not support well enough to sell on. It now promises what the
            tool does: show the stride you cannot see. -->
       <div class="path run rv" data-d="1">
         <img class="p-shot" src="media/race-run-card.webp" width="800" height="622" loading="lazy"
-             alt="A triathlete running past dry grass by the ocean, side-on, with Flapp's skeleton overlay: trunk lean 10 degrees, elbow 102, hip 141, knee 150, ankle 82; face and sponsor marks blurred">
+             alt="A triathlete running past dry grass by the ocean, side-on, with Flapp's skeleton overlay: trunk lean 8 degrees, elbow 96, hip 140, knee 146, ankle 80">
         <p class="p-eyebrow">Running · side view</p>
         <h3>See the stride you can't feel</h3>
         <p class="p-lede">At full speed you can't see your own trunk lean or where your foot lands.
@@ -1388,7 +1395,7 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Gait-phase overlay: contact, stance and toe-off on your own video — step through it frame by frame, every angle as a curve</li>
           <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Drills ranked by impact in your action plan</li>
         </ul>
-        <p class="p-foot">Treadmill or outdoor · any pace<span class="p-credit">Race photo · face &amp; marks blurred</span></p>
+        <p class="p-foot">Treadmill or outdoor · any pace<span class="p-credit">Race photo, edited · face &amp; sponsor marks replaced</span></p>
       </div>
       <div class="path ride rv" data-d="2">
         <img class="p-shot" src="media/after.webp" loading="lazy"
@@ -1473,7 +1480,7 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
 </section>
 
 <!-- ================= FINAL CTA ================= -->
-<!-- The closing band carries a race photo on its right, blurred like the
+<!-- The closing band carries a race photo on its right, edited like the
      others and captioned as such. On a phone it drops under the button,
      shorter, so the call to action stays first. -->
 <div class="cta-band has-photo">
@@ -1495,8 +1502,8 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
     </div>
     <figure class="cta-shot">
       <img src="media/race-run-overlay.webp" width="900" height="1175" loading="lazy"
-           alt="A triathlete running beside the ocean, side-on, with Flapp's skeleton overlay: trunk lean 4 degrees, elbow 67, hip 151, knee 162, ankle 107, scored 97 out of 100; face and sponsor marks blurred">
-      <figcaption>Race photo · face &amp; marks blurred · measured on the original</figcaption>
+           alt="A triathlete running beside the ocean, side-on, with Flapp's skeleton overlay: trunk lean 3 degrees, elbow 64 in amber, hip 153, knee 163, ankle 106, scored 94 out of 100">
+      <figcaption>Race photo, edited · face &amp; sponsor marks replaced · measured on this image</figcaption>
     </figure>
   </div>
 </div>

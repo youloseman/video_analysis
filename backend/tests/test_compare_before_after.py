@@ -213,5 +213,6 @@ def test_the_how_it_works_loop_ends_on_the_recheck_beside_a_real_analysis():
     for src in ("media/race-frame-raw.webp", "media/race-frame-overlay.webp"):
         assert f'src="{src}"' in how
         assert (SPA.parent / src).exists()
-    # The photo is somebody else's race photo: the page has to say so.
-    assert "blurred" in how and "measured on the original" in how
+    # The photo is somebody else's race photo, edited: the page has to say
+    # both, and that the numbers are measured on the picture shown.
+    assert "edited" in how and "measured on the image you see" in how
