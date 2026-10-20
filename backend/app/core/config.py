@@ -183,6 +183,11 @@ class Settings:
     # local development and a self-hosted copy stay silent by default. ---
     # Project API key (`phc_…`). Public by design -- it ends up in the page.
     posthog_key: str | None = None
+    # --- Meta ad pixel (services/ad_pixel.py): public pages only, behind a
+    # consent banner. The id is public by design -- it ends up in the page.
+    # META_PIXEL_ID overrides it; META_PIXEL_ID=off turns the pixel, the
+    # banner and the policy's pixel section off together. ---
+    meta_pixel_id: str | None = "2975958449412807"
     # Ingestion host. `us` or `eu` cloud, or a reverse proxy on our own domain
     # (which is what gets past ad-blockers; see docs/POSTHOG_RU.md).
     posthog_host: str = "https://us.i.posthog.com"
@@ -247,6 +252,17 @@ class Settings:
     @property
     def analytics_enabled(self) -> bool:
         return bool(self.posthog_key)
+
+
+def _pixel_id_env() -> str | None:
+    """META_PIXEL_ID: unset keeps the default, "off"/"0"/"false" disables."""
+    raw = os.environ.get("META_PIXEL_ID")
+    if raw is None:
+        return Settings.meta_pixel_id
+    raw = raw.strip()
+    if raw.lower() in ("", "off", "0", "false", "none"):
+        return None
+    return raw
 
 
 def _int_env(name: str, default: int) -> int:
@@ -342,6 +358,7 @@ def _load_settings() -> Settings:
         smtp_user=os.environ.get("SMTP_USER") or None,
         smtp_password=os.environ.get("SMTP_PASSWORD") or None,
         posthog_key=(os.environ.get("POSTHOG_KEY") or "").strip() or None,
+        meta_pixel_id=_pixel_id_env(),
         posthog_host=(
             (os.environ.get("POSTHOG_HOST") or "").strip().rstrip("/")
             or Settings.posthog_host

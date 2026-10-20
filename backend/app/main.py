@@ -115,7 +115,7 @@ from app.core.jobs import (
 from app.core.net import client_ip
 from app.core.security import get_current_user, optional_user
 from app.models.user import User
-from app.services import analytics, pricing
+from app.services import ad_pixel, analytics, pricing
 from app.services.analytics import log_analytics_configuration
 from app.services.export import ai_export
 from app.services.keyframe_store import backfill_keyframes
@@ -1231,6 +1231,10 @@ def _render_shell(
     # changes what the document contains, so it should change the build id and
     # bust the ETag with it -- exactly like a price change below.
     html_doc = analytics.inject(html_doc)
+    # The ad pixel goes on the marketing page only, never on the app shell:
+    # /app holds the athlete's footage and email, and promises no ad trackers.
+    if filename == "landing.html":
+        html_doc = ad_pixel.inject(html_doc)
     # The landing page prints its prices as plain HTML -- it is a marketing
     # page, so the numbers have to be in the document for crawlers and in the
     # first paint, not fetched afterwards. Rendering them here from the same
@@ -1572,7 +1576,10 @@ def privacy() -> Response:
     # Section 7 ships in two versions -- "we run analytics" and "we don't" --
     # and this is what keeps the true one. See services/analytics.py.
     doc = analytics.apply_disclosure(doc)
-    return HTMLResponse(analytics.inject(doc))
+    # Same for the ad pixel's section -- and the pixel's script is on this
+    # page too, because this is where the choice can be changed.
+    doc = ad_pixel.apply_disclosure(doc)
+    return HTMLResponse(ad_pixel.inject(analytics.inject(doc)))
 
 
 @app.get("/terms", include_in_schema=False)

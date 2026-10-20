@@ -13,7 +13,7 @@ import html
 import json
 from typing import Any
 
-from app.services import analytics
+from app.services import ad_pixel, analytics
 from app.services.academy.parser import Article, ArticleMeta
 from app.services.academy.widgets import render_widgets
 
@@ -396,6 +396,9 @@ def _page(
         # brings people in on, so leaving them unmeasured would hide the one
         # traffic source that is not us telling people about ourselves.
         f"{analytics.snippet_html()}\n"
+        # Public pages, so the consent-gated ad pixel too (sample reports and
+        # What's new share this shell). See services/ad_pixel.py.
+        f"{ad_pixel.snippet_html()}\n"
         "</head>\n<body>\n"
         f'{_sidebar(active)}\n<div class="appshell">\n{body}\n{_footer()}\n</div>\n'
         f"{script}"
