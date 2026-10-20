@@ -45,7 +45,7 @@ a{color:var(--c-blue-dk)}
 /* ---- shared left-sidebar shell (mirrors the app in static/index.html);
        --sidebar-w comes from tokens.css, which both surfaces link ---- */
 .wordmark{font-family:var(--f-brand,var(--f-display));font-weight:900;font-style:italic;font-size:22px;
-  text-transform:none;letter-spacing:-.02em;color:var(--c-ink);display:flex;align-items:flex-end;gap:3px;text-decoration:none;cursor:pointer}
+  text-transform:none;letter-spacing:-.02em;color:var(--c-ink);display:flex;align-items:center;gap:9px;text-decoration:none;cursor:pointer}
 .wordmark .dot{width:6px;height:6px;border-radius:50%;background:var(--c-coral);transform:translateY(-10px)}
 .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);z-index:40;background:var(--c-bg);
   border-right:1px solid var(--c-line);display:flex;flex-direction:column;padding:0 8px 12px;gap:0}
@@ -60,6 +60,19 @@ a{color:var(--c-blue-dk)}
 .navlink[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-ink)}
 .navlink[aria-current="page"] svg{color:var(--c-blue)}
 .navlink[aria-current="page"]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--c-blue)}
+/* [hidden] has to beat .navlink{display:flex}, or the signed-in and admin
+   entries show to every visitor. */
+.navlink[hidden]{display:none}
+.navlink-cta{order:5;margin-top:10px;font-weight:600}
+.navlink-cta svg{width:30px;height:30px;padding:7px;box-sizing:border-box;border-radius:50%;background:var(--c-action);color:var(--c-action-ink)}
+.navlink-cta:hover svg{color:var(--c-action-ink)}
+.sidenav .navgroup-bottom{order:10}
+.wordmark .wm-tile{flex:none;width:30px;height:30px;border-radius:var(--radius-lg);background:var(--c-brand-navy);display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.wordmark .wm-tile .mark{width:21px;height:17px;color:#fff}
+.planline{display:block;width:100%;text-decoration:none;color:inherit;padding:2px 0}
+.planline .pl-name{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);display:flex;justify-content:space-between;gap:8px}
+.planline .pl-name span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
+.planline:hover .pl-name{color:var(--c-ink)}
 .navgroup-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--c-line);display:flex;flex-direction:column;gap:1px}
 /* account box (bottom of sidebar + mobile top bar), mirrors the app */
 .btn{font-family:var(--f-body);font-weight:500;letter-spacing:0;border-radius:var(--radius);cursor:pointer;
@@ -253,6 +266,23 @@ _ICONS = {
 }
 
 
+# The same paths as the SPA's #i-compare / #i-person / #i-bike / #i-mark.
+_ICONS["compare"] = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H4v16h4"/><path d="M16 4h4v16h-4"/><path d="M12 3v18"/></svg>'
+_ICONS["runner"] = (
+    '<svg viewBox="50 45 383 383" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><defs><mask id="nav-run-cut" maskUnits="userSpaceOnUse" x="50" y="45" width="383" height="383"><rect x="50" y="45" width="383" height="383" fill="#fff"/><path d="M322 160 L232 232 L298 292 L200 332" fill="none" stroke="#000" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><g mask="url(#nav-run-cut)"><path d="M215 250 L78 378" stroke-width="44"/><path d="M318 150 L236 97 L188 158" stroke-width="38"/><path d="M330 190 L350 222 L412 232" stroke-width="30"/></g><path d="M322 160 L232 232" stroke-width="54"/><path d="M232 232 L298 292 L200 332" stroke-width="42"/><circle cx="379" cy="113" r="40" fill="currentColor" stroke="none"/></svg>'
+)
+_ICONS["person"] = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>'
+_ICONS["bike"] = (
+    '<svg viewBox="20 -10.5 258 258" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><defs><mask id="nav-bike-cut-a" maskUnits="userSpaceOnUse" x="20" y="-10.5" width="258" height="258"><rect x="20" y="-10.5" width="258" height="258" fill="#fff"/><path d="M100 82 L178 70 L186 108 L226 110" fill="none" stroke="#000" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/><path d="M112 92 L164 118 L156 176" fill="none" stroke="#000" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></mask><mask id="nav-bike-cut-b" maskUnits="userSpaceOnUse" x="20" y="-10.5" width="258" height="258"><rect x="20" y="-10.5" width="258" height="258" fill="#fff"/><path d="M112 92 L164 118 L156 176" fill="none" stroke="#000" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><g mask="url(#nav-bike-cut-a)"><circle cx="70" cy="170" r="36" stroke-width="16"/><circle cx="228" cy="170" r="36" stroke-width="16"/><path d="M70 170 L140 172" stroke-width="14"/><path d="M140 172 L112 112" stroke-width="14"/><path d="M112 112 L70 170" stroke-width="14"/><path d="M140 172 L202 118" stroke-width="14"/><path d="M202 118 L112 112" stroke-width="14"/><path d="M202 118 L228 170" stroke-width="14"/><path d="M202 118 L206 108 L232 112" stroke-width="14"/><path d="M96 106 L126 108" stroke-width="17"/><path d="M150 180 L162 180" stroke-width="14"/><circle cx="140" cy="172" r="10" fill="currentColor" stroke="none"/></g><g mask="url(#nav-bike-cut-b)"><path d="M100 82 L178 70" stroke-width="34"/><path d="M178 70 L186 108 L226 110" stroke-width="16"/></g><path d="M112 92 L164 118 L156 176" stroke-width="20"/><circle cx="222" cy="46" r="23" fill="currentColor" stroke="none"/></svg>'
+)
+# The lockup: the navy app-icon tile, then the name -- as in the app.
+_WORDMARK = (
+    '<span class="wm-tile">'
+    + '<svg class="mark" viewBox="0 0 780 632" aria-hidden="true"><g transform="translate(148 -168)"><path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".22" transform="translate(155.5 0) skewX(-11) translate(-148 0)"/><path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".45" transform="translate(155.5 0) skewX(-11) translate(-74 0)"/><path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" transform="translate(155.5 0) skewX(-11)"/><circle cx="446" cy="246" r="78" fill="#F1553F" transform="translate(155.5 0) skewX(-11)"/></g></svg>'
+    + "</span>Flapp"
+)
+
+
 def _sidebar(active: str) -> str:
     """Left sidebar, kept in lock-step with the app's sidebar in
     ``static/index.html`` so Academy reads as the same product. The app-view
@@ -266,21 +296,23 @@ def _sidebar(active: str) -> str:
         '<div class="topbar">'
         '<button class="topbar-toggle" id="navToggle" type="button" aria-label="Open menu" '
         'aria-expanded="false" aria-controls="sidebar">' + _ICONS["menu"] + "</button>"
-        '<a class="wordmark" href="/">Flapp<span class="dot"></span></a>'
+        '<a class="wordmark" href="/">' + _WORDMARK + "</a>"
         '<div class="authbox authbox-m" id="authboxM"></div>'
         "</div>"
         '<div class="scrim" id="navScrim" hidden></div>'
         # sidebar
         '<aside class="sidebar" id="sidebar" aria-label="Main">'
-        '<a class="wordmark" href="/">Flapp<span class="dot"></span></a>'
+        '<a class="wordmark" href="/">' + _WORDMARK + "</a>"
         '<nav class="sidenav" aria-label="Site">'
         # Home = the signed-in dashboard; hidden until _AUTH_JS confirms a session
         # (mirrors the SPA, where #navHome is auth-gated). Fixes Home vanishing
         # from the menu on Academy pages.
-        f'<a href="/app" class="navlink">{_ICONS["video"]}<span>Analyze</span></a>'
-        f'<a href="/app#home" class="navlink" id="acadHome" hidden>{_ICONS["run"]}<span>My technique</span></a>'
+        f'<a href="/app" class="navlink navlink-cta">{_ICONS["video"]}<span>Analyze</span></a>'
+        f'<a href="/app#home" class="navlink" id="acadHome" hidden>{_ICONS["runner"]}<span>My technique</span></a>'
         f'<a href="/app#progress" class="navlink">{_ICONS["progress"]}<span>Progress</span></a>'
         f'<a href="/app#history" class="navlink">{_ICONS["clock"]}<span>History</span></a>'
+        f'<a href="/app#compare" class="navlink" id="acadCompare" hidden>{_ICONS["compare"]}<span>Compare</span></a>'
+        f'<a href="/app#profiles" class="navlink" id="acadProfiles" hidden>{_ICONS["bike"]}<span>Profiles</span></a>'
         # Admin-only, hidden until _AUTH_JS confirms the tier -- same treatment as
         # Home above. Without these the menu visibly LOSES entries the moment you
         # open an Academy page, which reads as the app breaking rather than as
@@ -292,6 +324,7 @@ def _sidebar(active: str) -> str:
         f'<a href="/examples" class="navlink"{exmp}>{_ICONS["grid"]}<span>Examples</span></a>'
         f'<a href="/academy" class="navlink"{acad}>{_ICONS["book"]}<span>Academy</span></a>'
         f'<a href="/changelog" class="navlink"{chlog}>{_ICONS["bell"]}<span>What\'s new</span></a>'
+        f'<a href="/app#account" class="navlink" id="acadAccount" hidden>{_ICONS["person"]}<span>Account</span></a>'
         "</div>"
         "</nav>"
         '<div class="authbox" id="authbox"></div>'
@@ -332,19 +365,21 @@ _AUTH_JS = (
     "function esc(x){return String(x).replace(/[&<>\"]/g,function(c){"
     "return{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}"
     "function render(a){"
-    "var h=document.getElementById('acadHome');if(h)h.hidden=!a;"
+    "['acadHome','acadCompare','acadProfiles','acadAccount'].forEach(function(id){"
+    "var e=document.getElementById(id);if(e)e.hidden=!a;});"
     "var adm=!!(a&&a.tier==='admin');"
     "['acadFeedback','acadReviews'].forEach(function(id){"
     "var e=document.getElementById(id);if(e)e.hidden=!adm;});"
-    "var m=a?"
-    # `ph-no-capture` keeps the address out of analytics: autocapture records
-    # the text of what you click, and this element is a signed-in user's email.
-    "'<span class=\"usermail ph-no-capture\" title=\"'+esc(a.email)+'\">'+esc(a.email)+"
-    "'</span><button class=\"btn btn-ghost btn-sm\" data-logout type=\"button\">Log out</button>':"
-    "'<a class=\"btn btn-primary btn-sm\" href=\"/app#login\">Log in</a>';"
-    "boxes.forEach(function(b){b.innerHTML=m;});"
-    "document.querySelectorAll('[data-logout]').forEach(function(b){"
-    "b.addEventListener('click',function(){try{localStorage.removeItem('flapp_token');}catch(e){}render(null);});});}"
+    "var plan={starter:'Starter',enthusiast:'Enthusiast',full:'Full',admin:'Admin'};"
+    # Signed in: the app's plan line (Log out lives on Account). `ph-no-capture`
+    # keeps the address out of analytics autocapture.
+    "var side=a?'<a href=\"/app#account\" class=\"planline\"><span class=\"pl-name\"><span>'"
+    "+esc(plan[a.tier]||'Starter')+'</span><span class=\"ph-no-capture\" title=\"'+esc(a.email)+'\">'"
+    "+esc(a.email.split('@')[0])+'</span></span></a>':"
+    "'<a class=\"btn btn-ghost btn-sm\" href=\"/app#login\">Log in</a>';"
+    "var m=a?'':side;"
+    "boxes.forEach(function(b){b.innerHTML=b.id==='authbox'?side:m;});"
+    "}"
     "var tk=null;try{tk=localStorage.getItem('flapp_token');}catch(e){}"
     "render(null);"
     "if(tk){fetch('/auth/me',{headers:{Authorization:'Bearer '+tk}})"

@@ -9362,6 +9362,7 @@ function init(){
     else if(location.hash==='#pricing'){ clean(); openPricing(); }
     else if(location.hash==='#account'){ clean(); authReady.then(openAccount); }
     else if(location.hash==='#profiles'){ clean(); authReady.then(openProfiles); }
+    else if(location.hash==='#compare'){ clean(); authReady.then(openCompare); }
     // Admin-only destinations, reachable from the Academy sidebar. The views
     // themselves are behind an admin API, so a non-admin following a stale link
     // lands on an empty screen rather than on anything they shouldn't see.
