@@ -92,7 +92,7 @@
     <li>Payments are handled by a third-party payment processor. <b>We do not receive or store your full card number.</b> We receive only what the processor returns to us — such as a subscription status and a customer/transaction reference — so we can activate your plan.</li>
   </ul>
 
-  <p>We do not ask for your name, address, phone number, or date of birth, and we do not build advertising or behavioural profiles.<!--ADPIXEL:ON--> On our public pages, and only if you allow it, Meta's ad pixel measures visits for our ads &mdash; see <a href="#ads">section 7</a>.<!--/ADPIXEL:ON--></p>
+  <p>We do not ask for your name, address, phone number, or date of birth, and we do not build advertising or behavioural profiles.<!--ADPIXEL:ON--> On our public pages, Meta's ad pixel measures visits for our ads; you can switch it off, and in Europe it waits for your permission &mdash; see <a href="#ads">section 7</a>.<!--/ADPIXEL:ON--></p>
 
   <h2>2. What we do with your media</h2>
   <ul>
@@ -142,7 +142,7 @@
   <p><!--ADPIXEL:OFF-->Flapp runs no analytics or advertising trackers.<!--/ADPIXEL:OFF--><!--ADPIXEL:ON-->Inside the app, Flapp runs no analytics or advertising trackers; the one ad pixel on our public pages is described below.<!--/ADPIXEL:ON--> If you sign in, we use a token stored in your browser to keep you logged in — this is required for the service to work, not for tracking.</p>
   <!--/ANALYTICS:OFF-->
   <!--ANALYTICS:ON-->
-  <p><!--ADPIXEL:OFF-->Flapp runs <b>no advertising trackers</b>, and nothing here is shared with an ad network or sold.<!--/ADPIXEL:OFF--><!--ADPIXEL:ON-->Inside the app &mdash; where your footage, results and account live &mdash; Flapp runs <b>no advertising trackers</b>, and nothing there is shared with an ad network or sold. Our public pages carry one ad pixel, only with your permission (below).<!--/ADPIXEL:ON--> We do use one <b>product analytics</b> tool — <b>PostHog</b> — to see how the app is actually used: which pages get opened, whether an analysis was started and whether it finished, when someone reaches a paywall, and when a purchase completes. It is what tells us which parts of the product are working, and we have no other way to know.</p>
+  <p><!--ADPIXEL:OFF-->Flapp runs <b>no advertising trackers</b>, and nothing here is shared with an ad network or sold.<!--/ADPIXEL:OFF--><!--ADPIXEL:ON-->Inside the app &mdash; where your footage, results and account live &mdash; Flapp runs <b>no advertising trackers</b>, and nothing there is shared with an ad network or sold. Our public pages carry one ad pixel, which you can switch off (below).<!--/ADPIXEL:ON--> We do use one <b>product analytics</b> tool — <b>PostHog</b> — to see how the app is actually used: which pages get opened, whether an analysis was started and whether it finished, when someone reaches a paywall, and when a purchase completes. It is what tells us which parts of the product are working, and we have no other way to know.</p>
   <p>What it records:</p>
   <ul>
     <li><b>Page and screen views</b>, clicks on buttons and links, and the browser/device type and approximate location (country/region, derived from your IP by PostHog — we do not store your address for this).</li>
@@ -185,8 +185,8 @@
   <!--ADPIXEL:ON-->
   <h3 id="ads">Ad measurement on our public pages (Meta pixel)</h3>
   <p>We advertise Flapp on Facebook and Instagram. To know which ads bring people to us, our <b>public pages</b> &mdash; the home page, the Academy, the sample reports, What's new and this policy &mdash; can load <b>Meta's pixel</b>. It is <b>never</b> loaded inside the app at <code>/app</code>, where your footage, results and account are.</p>
-  <p><b>Nothing loads until you choose "Allow"</b> in the banner on those pages. If your browser sends "Do Not Track", we treat that as a no and do not ask.</p>
-  <p>If you allow it, the pixel sends Meta a <b>page view</b>: the address of the page, your browser and device, your IP address as Meta sees it, and a Meta cookie (<code>_fbp</code>) that recognises a returning browser. We switch off the pixel's automatic collection, so it does not record your clicks or anything you type. Meta processes this under <a href="https://www.facebook.com/privacy/policy/" rel="noopener">its own privacy policy</a> and, if you have a Meta account, may link it to that account &mdash; that is how it measures and targets ads. It never receives your media, your analysis results or your account email from us.</p>
+  <p><b>Whether we ask first depends on where you are.</b> If your browser is set to a European time zone (the EU, EEA, UK and Switzerland) or to French, nothing loads until you choose <b>"Allow"</b> in the banner on those pages. Everywhere else the pixel loads with the page, and you can turn it off at any time with <b>"Ad settings"</b> at the bottom of every public page or the button below &mdash; the choice takes effect immediately and is kept in this browser. If your browser sends <b>"Do Not Track"</b>, the pixel never loads, wherever you are.</p>
+  <p>When it runs, the pixel sends Meta a <b>page view</b>: the address of the page, your browser and device, your IP address as Meta sees it, and a Meta cookie (<code>_fbp</code>) that recognises a returning browser. We switch off the pixel's automatic collection, so it does not record your clicks or anything you type. Meta processes this under <a href="https://www.facebook.com/privacy/policy/" rel="noopener">its own privacy policy</a> and, if you have a Meta account, may link it to that account &mdash; that is how it measures and targets ads. It never receives your media, your analysis results or your account email from us.</p>
   <p><button type="button" id="adChoice" class="optout">Change my ad-measurement choice</button> <span id="adChoiceMsg" class="optout-msg" role="status"></span></p>
   <script>
   (function(){
@@ -210,9 +210,9 @@
     <tr><td><b>Google Gemini API</b></td><td>Receives only anonymous numeric metrics to write coaching text — no images, no identifiers.</td></tr>
     <tr><td><b>Payment processor</b></td><td>Handles card payments for paid plans. Holds your payment details under its own privacy policy; we never see your full card number.</td></tr>
     <!--ANALYTICS:ON--><tr><td><b>PostHog</b> (product analytics)</td><td>Receives page views and product events (see section 7), plus your account id and email if you're signed in, and a replay of how the pages behave. Never your media — your footage and the annotated frames are blocked out of the replay — and never your feedback text.</td></tr><!--/ANALYTICS:ON-->
-    <!--ADPIXEL:ON--><tr><td><b>Meta Platforms</b> (ad measurement, public pages only)</td><td>Only if you allow it: page views on our public pages, with the browser, device, IP address and Meta cookie that come with them (section 7). Never your media, your results or your account email.</td></tr><!--/ADPIXEL:ON-->
+    <!--ADPIXEL:ON--><tr><td><b>Meta Platforms</b> (ad measurement, public pages only)</td><td>Page views on our public pages (unless you switch it off; in Europe only if you allow it), with the browser, device, IP address and Meta cookie that come with them (section 7). Never your media, your results or your account email.</td></tr><!--/ADPIXEL:ON-->
   </table>
-  <p>We do <b>not</b> sell or rent your personal information.<!--ADPIXEL:OFF--> We do not share it with anyone else, and we do not use it for third-party advertising.<!--/ADPIXEL:OFF--><!--ADPIXEL:ON--> Apart from the ad pixel on our public pages, which runs only with your permission, we do not share it with anyone else for advertising.<!--/ADPIXEL:ON--></p>
+  <p>We do <b>not</b> sell or rent your personal information.<!--ADPIXEL:OFF--> We do not share it with anyone else, and we do not use it for third-party advertising.<!--/ADPIXEL:OFF--><!--ADPIXEL:ON--> Apart from the ad pixel on our public pages, which you can switch off, we do not share it with anyone else for advertising.<!--/ADPIXEL:ON--></p>
 
   <h2>9. International transfers</h2>
   <p>Clariva operates Flapp from Canada, and our providers (above) may process data on servers in Canada, the United States, or elsewhere. If you access Flapp from the EU/UK, this means your data may be transferred outside your country. We rely on the providers' own safeguards (such as standard contractual clauses) for these transfers, and we keep the personal data involved to the minimum described here.</p>
@@ -230,7 +230,7 @@
     <tr><td>Usage records (analysis counts)</td><td>Deleted when your account is deleted.</td></tr>
     <tr><td>Saved analyses + their annotated stills</td><td>Deleted when your account is deleted, or per item whenever you like.</td></tr>
     <tr><td>Billing records</td><td>Kept as long as tax/accounting law requires.</td></tr>
-    <!--ADPIXEL:ON--><tr><td>Meta pixel cookie and your choice (section 7)</td><td>The <code>_fbp</code> cookie lasts 90 days and is set only if you allow the pixel. Your yes/no is kept in your browser until you change it or clear site data. What Meta keeps is governed by Meta's policy.</td></tr><!--/ADPIXEL:ON-->
+    <!--ADPIXEL:ON--><tr><td>Meta pixel cookie and your choice (section 7)</td><td>The <code>_fbp</code> cookie lasts 90 days and is set only when the pixel runs. Your yes/no is kept in your browser until you change it or clear site data. What Meta keeps is governed by Meta's policy.</td></tr><!--/ADPIXEL:ON-->
     <!--ANALYTICS:ON--><tr><td>Product analytics events (section 7)</td><td>Kept for up to <b>12 months</b>, then deleted. Events tied to your account are deleted on request, or when you delete your account.</td></tr><!--/ANALYTICS:ON-->
   </table>
 

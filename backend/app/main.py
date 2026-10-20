@@ -1234,7 +1234,7 @@ def _render_shell(
     # The ad pixel goes on the marketing page only, never on the app shell:
     # /app holds the athlete's footage and email, and promises no ad trackers.
     if filename == "landing.html":
-        html_doc = ad_pixel.inject(html_doc)
+        html_doc = ad_pixel.inject(ad_pixel.apply_disclosure(html_doc))
     # The landing page prints its prices as plain HTML -- it is a marketing
     # page, so the numbers have to be in the document for crawlers and in the
     # first paint, not fetched afterwards. Rendering them here from the same

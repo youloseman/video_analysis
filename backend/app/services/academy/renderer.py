@@ -339,7 +339,10 @@ def _footer() -> str:
         '<span><a href="/academy">Academy</a> · '
         '<a href="/privacy">Privacy</a> · '
         '<a href="/terms">Terms</a> · '
-        '<a href="/docs" target="_blank" rel="noopener">API</a> · '
+        # Reopens the ad-pixel choice; only while the pixel is on.
+        + ('<a href="/privacy#ads" data-ad-settings>Ad settings</a> · '
+           if ad_pixel.enabled() else "")
+        + '<a href="/docs" target="_blank" rel="noopener">API</a> · '
         '<a href="/health" target="_blank" rel="noopener">status</a></span>'
         "</div></footer>"
     )

@@ -5,9 +5,11 @@ Four promises, each one a sentence somebody reads on the site:
 1. **Public pages only.** The landing page, the Academy, the sample reports,
    What's new and the privacy policy carry it; /app never does -- the upload
    screen says "No ad trackers in the app".
-2. **Nothing before consent.** Meta's script URL appears only inside the
-   function the Allow button calls. The ``<noscript><img>`` fallback Meta hands
-   out fires without asking anyone, so it must never be on a page.
+2. **Asked first where the law wants it.** Meta's script URL appears only
+   inside ``load()``, which runs after Allow, on a stored yes, or straight away
+   for a browser outside Europe that is not set to French. Do Not Track and a
+   stored no stop it everywhere. The ``<noscript><img>`` fallback Meta hands out
+   fires without asking anyone, so it must never be on a page.
 3. **No automatic collection.** ``autoConfig`` is set off before ``init``.
 4. **The policy matches the switch.** With the pixel on it names Meta and
    explains the banner; with it off it says there are no ad trackers at all.
@@ -77,14 +79,38 @@ def test_the_loader_is_requested_only_from_the_consent_path():
     assert js.count(LOADER) == 1
     load_fn = js[js.index("function load()"):js.index("var bar=null;")]
     assert LOADER in load_fn, "Meta's script must be requested from load() and nowhere else"
-    # load() runs from allow(), or from a stored yes -- never unconditionally.
+    # load() runs from allow(), from a stored yes, or outside the ask-first
+    # regions -- and never past a no or Do Not Track.
     tail = js[js.index("var dnt="):]
-    assert "if(c==='yes' && !dnt){ load(); return; }" in tail
+    assert tail.index("if(dnt || c==='no') return;") < tail.index("load()")
+    assert "if(c==='yes' || !asksFirst()){ load(); return; }" in tail
 
 
 def test_do_not_track_is_a_no():
     js = ad_pixel.snippet_html()
-    assert "if(c==='no' || dnt) return;" in js
+    assert "if(dnt || c==='no') return;" in js
+
+
+def test_europe_and_french_browsers_are_asked_first():
+    js = ad_pixel.snippet_html()
+    ask = js[js.index("function asksFirst()"):js.index("var dnt=")]
+    assert "tz.indexOf('Europe/')===0" in ask
+    assert "'Atlantic/Canary'" in ask and "'Atlantic/Reykjavik'" in ask
+    assert "l.indexOf('fr-')===0" in ask
+    # A browser that cannot say its time zone is treated as European.
+    assert "if(!tz) return true;" in ask
+    # No escaped regex in a Python string: a "\b" there turns into a
+    # backspace character and silently breaks the match.
+    assert "\x08" not in js
+
+
+@pytest.mark.parametrize("path", ["/", "/academy"])
+def test_every_public_footer_can_reopen_the_choice(client, path):
+    assert 'data-ad-settings>Ad settings</a>' in client.get(path).text
+
+
+def test_the_landing_keeps_no_markers(client):
+    assert "ADPIXEL" not in client.get("/").text
 
 
 def test_no_noscript_beacon_anywhere(client):
@@ -109,6 +135,7 @@ def test_off_means_no_banner_and_no_script(client, pixel_off):
     for path in ("/", "/academy", "/privacy"):
         html = client.get(path).text
         assert "flappAds" not in html and LOADER not in html, path
+        assert "data-ad-settings" not in html, path
 
 
 def test_the_real_policy_has_balanced_branches():
@@ -121,7 +148,8 @@ def test_with_the_pixel_on_the_policy_names_meta_and_the_banner(client):
     html = client.get("/privacy").text
     assert "Meta Platforms" in html
     assert 'id="ads"' in html
-    assert "Nothing loads until you choose" in html
+    assert "Whether we ask first depends on where you are" in html
+    assert "Do Not Track" in html and "Ad settings" in html
     assert "never</b> loaded inside the app" in html
     assert "ADPIXEL" not in html
 

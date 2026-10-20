@@ -1,15 +1,23 @@
-"""The Meta ad pixel on Flapp's public pages, behind a consent banner.
+"""The Meta ad pixel on Flapp's public pages: asked first in Europe, notice
+and opt-out elsewhere.
 
-Added 2026-10-19 to measure paid social ads. Three decisions, all Artur's:
+Added 2026-10-19 to measure paid social ads. Decisions, all Artur's:
 
 * **Public pages only** -- the landing page, the Academy, the sample reports,
   What's new and the privacy policy (where the choice can be changed). Never
   inside /app: that is where the athlete's footage, results and account email
   live, and the app's upload screen promises "no ad trackers in the app".
-* **Nothing before consent.** The banner asks first; Meta's script is not even
-  requested until the visitor presses Allow, and a browser that sends "Do Not
-  Track" is treated as a no without asking. That is what EU visitors are owed,
-  and it costs a Canadian visitor one click.
+* **Consent where the law asks for it, opt-out elsewhere** (changed the same
+  day: the banner everywhere cost too many visits). Visitors whose browser is
+  in a European time zone (EU/EEA/UK and the Atlantic islands that belong to
+  them) or set to French -- the nearest browser-side proxy for Quebec, whose
+  Law 25 also wants tracking off by default -- get the banner, and Meta's
+  script is not requested until they press Allow. A browser that cannot say
+  its time zone is treated as European: the error goes the safe way.
+  Everyone else gets the pixel with the page, a notice in the privacy policy
+  and an "Ad settings" link in every public footer that turns it off at once
+  and for good (Canada's PIPEDA/BC PIPA accept that for non-sensitive data).
+  "Do Not Track" is a no everywhere, without asking.
 * **No automatic collection.** ``autoConfig`` is off, so Meta does not record
   button clicks or page metadata on its own; the pixel sends page views and
   nothing else. (Automatic advanced matching -- Meta reading email fields --
@@ -78,7 +86,7 @@ _SNIPPET = """<style>
       bar=d.createElement('div');
       bar.className='adc'; bar.setAttribute('role','region'); bar.setAttribute('aria-label','Ad measurement');
       bar.innerHTML='<p>May we use Meta\\'s pixel on these public pages to measure our ads? '+
-        'It never runs inside the app, and nothing loads unless you allow it. '+
+        'It never runs inside the app. '+
         '<a href="/privacy#ads">Details</a></p>'+
         '<div class="adc-b"><button type="button" data-a="no">No thanks</button>'+
         '<button type="button" data-a="yes">Allow</button></div>';
@@ -96,10 +104,27 @@ _SNIPPET = """<style>
     deny:function(){ put('no'); hide(); if(w.fbq) w.fbq('consent','revoke'); },
     ask:function(){ show(); }
   };
+  /* Every link marked data-ad-settings (the footers, the policy) reopens the
+     choice; without this script it is a plain link to the policy section. */
+  d.addEventListener('click',function(e){
+    var a=e.target.closest && e.target.closest('[data-ad-settings]');
+    if(!a) return;
+    e.preventDefault(); show();
+  });
+  function asksFirst(){
+    var tz='';
+    try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
+    if(!tz) return true;
+    if(tz.indexOf('Europe/')===0) return true;
+    if(['Atlantic/Reykjavik','Atlantic/Canary','Atlantic/Madeira','Atlantic/Azores','Atlantic/Faroe','Arctic/Longyearbyen'].indexOf(tz)>=0) return true;
+    var langs=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||''];
+    for(var i=0;i<langs.length;i++){ var l=String(langs[i]||'').toLowerCase(); if(l==='fr'||l.indexOf('fr-')===0) return true; }
+    return false;
+  }
   var dnt=(navigator.doNotTrack==='1'||w.doNotTrack==='1');
   var c=get();
-  if(c==='yes' && !dnt){ load(); return; }
-  if(c==='no' || dnt) return;
+  if(dnt || c==='no') return;
+  if(c==='yes' || !asksFirst()){ load(); return; }
   if(d.body) show(); else d.addEventListener('DOMContentLoaded',show);
 })(window,document);
 </script>"""
