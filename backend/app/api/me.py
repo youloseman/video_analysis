@@ -65,6 +65,22 @@ class PromoIn(BaseModel):
     code: str = Field(..., min_length=1, max_length=32)
 
 
+@router.get("/promo/{code}")
+async def promo_info(code: str) -> dict[str, Any]:
+    """What a code gives, for a visitor who has not signed up yet -- the app
+    says it before asking for an account. No account, so no once-per-account
+    check here; redeeming does that."""
+    from app.services.promo import check
+
+    try:
+        credits, key = check(code, already=None)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(e))
+    from app.services.promo import codes
+
+    return {"code": key, "credits": credits, "until": codes()[key]["until"].isoformat()}
+
+
 @router.post("/promo")
 async def redeem_promo(
     body: PromoIn,

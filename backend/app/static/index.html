@@ -404,6 +404,7 @@
 
 <main id="main">
 <div class="wrap">
+  <div id="promoBanner" class="hidden"></div>
 
   <!-- ============ DASHBOARD (My technique — signed-in home) ============ -->
   <section id="dashboard" class="hidden" aria-labelledby="dashTitle">
@@ -9230,7 +9231,7 @@ async function submitAuth(e){
     trackIdentify();
     track(mode==='register'?'signed_up':mode==='reset'?'password_reset':'logged_in',
       {pending_analysis: !!state.pendingAnalyze});
-    renderAuth(); closeAuth(); migrateAndLoad();
+    renderAuth(); closeAuth(); migrateAndLoad(); renderPromoBanner();
     if(mode==='register'){ const pc=($('#authPromo').value||'').trim(); if(pc) promoRemember(pc); }
     applyPendingPromo();
     if(mode==='reset') toast('Password updated — you\'re logged in.');
@@ -9271,6 +9272,31 @@ async function applyPendingPromo(){
     toast(`Code ${j.code}: ${j.added} free full reports added. Run an analysis and tap Unlock — it's on us.`,{duration:8000});
   }catch(e){ /* keep it for the next load */ }
 }
+/* A visitor who came by a promo link sees what it gives before being asked
+   for anything: the app stays open to look around, the banner says what the
+   code is worth, and one button signs up when they are ready. */
+let promoInfo=null;
+async function renderPromoBanner(){
+  const el=$('#promoBanner'); if(!el) return;
+  const code=promoPending();
+  if(auth||!code){ el.classList.add('hidden'); el.innerHTML=''; return; }
+  if(!promoInfo||promoInfo.code!==code){
+    try{
+      const r=await fetch('/me/promo/'+encodeURIComponent(code)); const j=await r.json().catch(()=>({}));
+      promoInfo=r.ok?j:{code,error:j.detail||'That code could not be used.'};
+    }catch(e){ return; }
+  }
+  if(promoInfo.error){
+    el.innerHTML=`<div class="banner warn" style="margin-top:0;margin-bottom:16px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>Code ${esc(code)}:</b> ${esc(promoInfo.error)}</span></div>`;
+    promoForget();
+  }else{
+    const until=new Date(promoInfo.until+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric'});
+    el.innerHTML=`<div class="banner ok" style="margin-top:0;margin-bottom:16px;align-items:center;flex-wrap:wrap"><svg class="ic" aria-hidden="true" style="margin-top:0"><use href="#i-tag"/></svg>
+      <span style="flex:1;min-width:220px"><b>Code ${esc(promoInfo.code)}: ${promoInfo.credits} full reports free.</b> Look around first, or <a href="/examples">see real reports</a>. When you're ready, create a free account and they're added to it. Sign up by ${esc(until)}.</span>
+      <button class="btn btn-primary btn-sm" type="button" onclick="openAuth('register')">Create free account</button></div>`;
+  }
+  el.classList.remove('hidden');
+}
 async function checkAuth(){
   const t=getToken();
   if(t){
@@ -9280,7 +9306,7 @@ async function checkAuth(){
   // 30-day token means 30 days of events filed under an anonymous visitor.
   trackIdentify();
   renderAuth();
-  if(auth) applyPendingPromo();
+  if(auth) applyPendingPromo(); else renderPromoBanner();
   if(auth){
     loadCoach();
     await migrateAndLoad();

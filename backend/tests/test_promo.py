@@ -40,3 +40,16 @@ async def test_redeeming_adds_the_reports_and_a_second_try_is_refused(db, make_u
     with pytest.raises(HTTPException) as e:
         await redeem_promo(PromoIn(code="RIDE10"), user, db)
     assert e.value.status_code == 400 and user.unlock_credits == 10
+
+
+async def test_a_visitor_can_see_what_a_code_gives_before_signing_up(monkeypatch):
+    from fastapi import HTTPException
+
+    from app.api.me import promo_info
+
+    monkeypatch.setenv("PROMO_CODES", "RIDE10:10:2099-01-01,OLD5:5:2020-01-01")
+    assert await promo_info("ride10") == {"code": "RIDE10", "credits": 10, "until": "2099-01-01"}
+    for bad, words in (("OLD5", "expired"), ("NOPE", "doesn't exist")):
+        with pytest.raises(HTTPException) as e:
+            await promo_info(bad)
+        assert e.value.status_code == 404 and words in e.value.detail
