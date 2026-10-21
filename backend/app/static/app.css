@@ -753,6 +753,10 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
   color:var(--c-ink-faint);cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-btn)}
 .modal-close svg{width:18px;height:18px}
 .modal-close:hover{background:var(--c-panel);color:var(--c-ink)}
+/* The hide button on the analyse screen's goal note (index.html renderGoalNote). */
+.goal-x{flex:none;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:none;border-radius:var(--radius-xs);color:var(--c-ink-soft);cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
+.goal-x:hover{background:var(--c-panel);color:var(--c-ink)}
+.goal-x .ic{width:15px;height:15px;margin:0}
 .fld{display:block;margin-bottom:14px}
 .fld span{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);margin-bottom:6px}
 .fld input{width:100%;padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-xs);font-size:14px;font-family:var(--f-body);background:var(--c-bg);color:var(--c-ink);min-height:40px}

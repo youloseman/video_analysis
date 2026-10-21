@@ -226,6 +226,21 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 .hero .sub{max-width:540px;font-size:18px;color:rgba(255,255,255,.86);margin-bottom:34px}
 .hero .sub b{color:#fff}
 .hero .cta-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+/* The three ways in. Outlined, equal weight, full width of the column so the
+   three read as one question; the nav keeps the one filled button. */
+.goal-q{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.7);margin:0 0 10px}
+.goal-row{display:grid;gap:10px;max-width:520px;margin-bottom:16px}
+.goal-btn{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:14px 18px;border-radius:var(--radius-btn);text-decoration:none;
+  font-weight:600;font-size:16px;color:#fff;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.32);transition:background-color .15s ease-out,border-color .15s ease-out}
+.goal-btn:hover{background:rgba(255,255,255,.12);border-color:#fff}
+.goal-btn svg{flex:none;width:17px;height:17px;color:var(--c-coral)}
+.goal-alt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 22px;font-size:14px}
+.goal-alt a{color:rgba(255,255,255,.82);text-decoration:underline;text-underline-offset:3px}
+.goal-alt a:hover{color:#fff}
+.goal-alt i{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.4);display:inline-block}
 .hero .trust{
   font-family:var(--f-mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;
   color:rgba(255,255,255,.6);display:flex;gap:10px;flex-wrap:wrap;align-items:center;
@@ -948,11 +963,19 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
       <p class="sub ld ld3">Film <b>ten seconds of your run or ride</b> from the side — or upload
         one photo. Flapp measures every joint against its reference range and tells you
         <b>the one change that matters most</b>.</p>
-      <div class="cta-row ld ld4">
-        <a class="btn btn-accent btn-lg" id="heroGo" href="/app">Analyze your form — free
-          <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-        <a class="btn btn-ghost btn-lg" href="#report">See a real report</a>
+      <!-- Three ways in, by problem (2026-10-20). Each lands in the app with
+           ?goal=, which the app remembers and files on every later event and
+           on the person -- so PostHog can say which problem brings the people
+           who end up paying, instead of us guessing. Equal weight on purpose:
+           the question is which one people pick. The plain way in stays, one
+           line down, for whoever is just looking. -->
+      <p class="goal-q ld ld4">What brings you here?</p>
+      <div class="goal-row ld ld4">
+        <a class="goal-btn" id="goalKnee" href="/app?goal=knee"><span>My knee hurts on the bike</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="goal-btn" id="goalFaster" href="/app?goal=faster"><span>I want to be faster</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="goal-btn" id="goalRace" href="/app?goal=race"><span>Check my position before a race</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
+      <p class="goal-alt ld ld4"><a id="heroGo" href="/app">Just looking — open the app</a><i></i><a href="#report">See a real report</a></p>
       <p class="trust ld ld5"><span>A phone clip or one photo is enough</span><i></i><span>Free account · <!--FREE-LIMIT--> analyses / month</span></p>
     </div>
 

@@ -454,6 +454,9 @@
         </div>
         <span class="ph-lede">One side-view clip, 20–90 seconds to a report.</span>
       </header>
+      <!-- Filled by renderGoalNote() when the visitor came in through one of
+           the landing page's "What brings you here?" buttons. -->
+      <div id="goalNote" class="hidden"></div>
 
       <!-- Two columns on a desktop: the setup (steps 1–3) in one card on the
            left, the footage and the button in one card on the right, so the
@@ -1869,6 +1872,17 @@ function track(name, props){
     window.flappAnalytics.capture(name, props||{});
   }catch(e){}
 }
+/* Entry goals (the landing's "What brings you here?"): defined up here,
+   before trackIdentify reads them -- a const used before its line throws,
+   and trackIdentify swallows errors, so identify would silently stop. The
+   rest (URL handling, the note) lives next to the promo code. */
+const GOAL_KEY='flapp-goal', GOAL_NOTE_OFF='flapp-goal-note-off';
+const GOALS={
+  knee:{sport:'bike', text:'<b>Knee on the bike.</b> The reading that matters is your knee at the bottom of the pedal stroke &mdash; the report gives the saddle change in millimetres. Ten seconds of steady pedalling, filmed side-on, is enough.'},
+  faster:{sport:null, text:'<b>Faster.</b> On the bike, the report estimates the minutes your position costs over your race; on the run, it measures overstride and cadence. Pick your sport below.'},
+  race:{sport:'bike', text:'<b>Before a race.</b> Film in your race position, on the bike you will race. The report checks it against the fit ranges and, in an aero position, against the Kona 2026 pro field.'},
+};
+function goalGet(){ try{ const g=localStorage.getItem(GOAL_KEY); return GOALS[g]?g:null; }catch(e){ return null; } }
 /* Tie this browser to the account, using the id the SERVER also files
    purchases under (auth payload `analytics_id`) — otherwise the funnel and the
    payment it ends in are two different people. Falls back to nothing rather
@@ -1876,9 +1890,11 @@ function track(name, props){
 function trackIdentify(){
   try{
     if(!window.flappAnalytics || !auth || !auth.analytics_id) return;
-    window.flappAnalytics.identify(auth.analytics_id, {
-      email: auth.email, tier: auth.tier, is_pro: !!auth.is_pro,
-    });
+    const props={email: auth.email, tier: auth.tier, is_pro: !!auth.is_pro};
+    // The problem that brought them (landing ?goal=): on the person, not only
+    // on browser events, because purchases are filed by the server.
+    const g=goalGet(); if(g) props.entry_goal=g;
+    window.flappAnalytics.identify(auth.analytics_id, props);
   }catch(e){}
 }
 function trackReset(){
@@ -9252,6 +9268,38 @@ function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){}
   // Signed out lands on the marketing page — the mirror of the entry rule,
   // where a stored session on "/" sends you straight here.
   location.assign('/'); }
+/* Entry goal (landing hero, 2026-10-20): ?goal=knee|faster|race says which
+   problem brought the visitor. Remembered like a promo code, sent with every
+   later event (register) and put on the person (trackIdentify), so a purchase
+   can be traced back to the problem that started it. The analyse screen opens
+   on the sport that goal needs, with one line on what to read in the report.
+   Every claim in those lines is a reading the report actually prints. */
+function renderGoalNote(){
+  const el=$('#goalNote'); if(!el) return;
+  let off=false; try{ off=localStorage.getItem(GOAL_NOTE_OFF)==='1'; }catch(e){}
+  const g=goalGet();
+  if(!g||off){ el.classList.add('hidden'); el.innerHTML=''; return; }
+  el.innerHTML=`<div class="banner ok" style="margin:0 0 16px;align-items:center"><svg class="ic" aria-hidden="true" style="margin-top:0"><use href="#i-target"/></svg>
+    <span style="flex:1">${GOALS[g].text}</span>
+    <button type="button" class="goal-x" aria-label="Hide this note" id="goalNoteX"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>`;
+  el.classList.remove('hidden');
+  $('#goalNoteX').addEventListener('click',()=>{ try{ localStorage.setItem(GOAL_NOTE_OFF,'1'); }catch(e){} renderGoalNote(); track('goal_note_hidden',{goal:g}); });
+}
+(function(){ try{
+  const q=new URLSearchParams(location.search).get('goal');
+  if(q&&GOALS[q]){
+    localStorage.setItem(GOAL_KEY,q);
+    localStorage.removeItem(GOAL_NOTE_OFF);     // a fresh choice gets its note back
+    const u=new URL(location.href); u.searchParams.delete('goal'); history.replaceState(null,'',u.pathname+u.search+u.hash);
+    const sport=GOALS[q].sport;
+    if(sport&&state.sport!==sport){ $(`#sportSeg [data-sport="${sport}"]`).click(); syncWhatTiles(); }
+    track('entry_goal_landed',{goal:q});
+  }
+  const g=goalGet();
+  if(g&&window.flappAnalytics) window.flappAnalytics.register({entry_goal:g});
+  renderGoalNote();
+}catch(e){} })();
+
 /* Promo codes (services/promo.py): a link ?promo=CODE is remembered in this
    browser and applied once the visitor is signed in -- new or existing. */
 const PROMO_KEY='flapp-promo';
