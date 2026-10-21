@@ -89,6 +89,66 @@ DETECT_MAX_LONG_EDGE = 1280
 # landmark_stabilizer._gate_leg_identity_breaks.
 LEG_IDENTITY_RESEED_WARN = 3
 
+# Running at 60 fps loses the legs where 30 fps holds them (measured
+# 2026-10-20, docs in memory flapp-60fps-run): six treadmill clips of one
+# runner, the SAME detections, scored 5 of 6 when every second frame was used
+# and 0 of 6 at the full rate -- the leg-identity resolver's frame-counted
+# constants were tuned on 30 fps footage. Until that is fixed at the root, a
+# run clip whose legs come out unstable at this rate or above is DETECTED again
+# on every second frame, and kept that way if that holds. Re-detection, not a
+# second pass over the frames already found: taking every second detection of
+# the 60 fps pass came out worse still (instability 1.45-1.55 against 0.05-0.12
+# for detecting at 30) -- it is the detector's tracking at the full rate that
+# loses the legs, not what is done with its output. It costs a second
+# detection, only on the clips that need it.
+RUN_HALF_RATE_MIN_FPS = 50.0
+
+# Ground contact plus flight time is one step, and cadence says how long a
+# step is. Of 23 run clips analysed at 30 fps on prod none missed by more than
+# 14 %; of 11 at 60 fps three missed by 38-46 % and two of those were shown.
+# Past this the three numbers contradict each other and we cannot tell which
+# is wrong, so contact and flight are not shown.
+RUN_TIMING_TOLERANCE = 0.20
+
+
+def _leg_identity_unstable(ctx: dict[str, Any]) -> bool:
+    return bool(((ctx.get("leg_identity") or {}).get("stability") or {}).get("unstable"))
+
+
+def _check_run_timing(summary: dict[str, Any], issues: list[dict[str, Any]]) -> str | None:
+    """Withhold ground contact and flight time when they do not add up to a
+    step. Returns the warning to show, or None when they agree (or are not
+    all there to compare). Cadence stays: it is measured from the whole
+    stride series, contact and flight from single events."""
+    cad = summary.get("cadence_spm")
+    gct = summary.get("ground_contact_ms")
+    flight = summary.get("flight_time_ms")
+    try:
+        cad, gct, flight = float(cad), float(gct), float(flight)
+    except (TypeError, ValueError):
+        return None
+    if not (cad > 0 and math.isfinite(gct) and math.isfinite(flight)):
+        return None
+    step = 60000.0 / cad
+    err = (gct + flight - step) / step
+    if abs(err) <= RUN_TIMING_TOLERANCE:
+        return None
+    summary["timing_withheld"] = {
+        "ground_contact_ms": round(gct), "flight_time_ms": round(flight),
+        "step_ms": round(step), "mismatch_pct": round(err * 100),
+    }
+    summary["ground_contact_ms"] = None
+    summary["flight_time_ms"] = None
+    issues[:] = [i for i in issues if i.get("type") != "prolonged_ground_contact"]
+    logger.info("RUN_TIMING_WITHHELD", **summary["timing_withheld"])
+    return (
+        f"Ground contact and flight time are not shown: on this clip they add up "
+        f"to {round(gct + flight)} ms, but your cadence puts one step at "
+        f"{round(step)} ms. When the three disagree by this much one of them is "
+        f"wrong and the clip cannot say which. Cadence is measured over the whole "
+        f"run and is kept."
+    )
+
 
 # ===========================================================================
 # Helpers copied verbatim from Motus pipeline.py (module-level, no DB/LLM).
@@ -348,6 +408,7 @@ def extract_frames(
     video_path: str, sport_type: str, fps: float, detector: PoseDetector,
     meta: dict[str, Any] | None = None,
     progress: ProgressFn | None = None,
+    min_sample_rate: int = 1,
 ) -> list[dict[str, Any]]:
     """Iterate the video, CLAHE-enhance each sampled frame, run detection.
 
@@ -362,7 +423,9 @@ def extract_frames(
     into a user-facing caveat rather than reporting a decimated cadence as if it
     were measured at full rate.
     """
-    base_sample_rate = SPORT_SAMPLE_RATES.get(sport_type, 3)
+    # ``min_sample_rate``: a floor on the stride, for the run's half-rate
+    # re-detection (see RUN_HALF_RATE_MIN_FPS).
+    base_sample_rate = max(SPORT_SAMPLE_RATES.get(sport_type, 3), int(min_sample_rate or 1))
     sample_rate = base_sample_rate
 
     cap = cv2.VideoCapture(video_path)
@@ -715,6 +778,42 @@ def run_analysis(
         raw_frame_data, sport_type, camera_angle, fps=fps / _stride,
         context=stabilizer_ctx, camera_view=camera_view,
     )
+    if (sport_type == "run" and fps / _stride >= RUN_HALF_RATE_MIN_FPS
+            and _leg_identity_unstable(stabilizer_ctx)):
+        _half_meta: dict[str, Any] = {}
+        _half_detector = build_detector(sport_type, camera_angle)
+        try:
+            _half = extract_frames(
+                video_path, sport_type, fps, _half_detector, meta=_half_meta,
+                progress=progress, min_sample_rate=_stride * 2,
+            )
+        finally:
+            _half_detector.close()
+        _half_ctx: dict[str, Any] = {}
+        if _half:
+            stabilize_landmarks(
+                _half, sport_type, camera_angle,
+                fps=fps / max(1, int(_half_meta.get("sample_rate") or _stride * 2)),
+                context=_half_ctx, camera_view=camera_view,
+            )
+        _inst = lambda c: (((c.get("leg_identity") or {}).get("stability") or {}).get("instability"))  # noqa: E731
+        _kept = bool(_half) and not _leg_identity_unstable(_half_ctx)
+        logger.info(
+            "RUN_HALF_RATE_FALLBACK", full_fps=round(fps / _stride, 1),
+            instability_full=_inst(stabilizer_ctx), instability_half=_inst(_half_ctx),
+            kept=_kept,
+        )
+        if _kept:
+            _from = round(fps / _stride, 1)
+            _half_meta["half_rate_fallback"] = {
+                "from_fps": _from,
+                "instability_full": _inst(stabilizer_ctx),
+                "instability_half": _inst(_half_ctx),
+            }
+            _half_meta["downsampled"] = True
+            raw_frame_data, stabilizer_ctx = _half, _half_ctx
+            sampling_meta.clear()
+            sampling_meta.update(_half_meta)
 
     # The frames as measured -- post-stabilization, so a re-analysis starts
     # from resolved leg identities and gated gaps, and does not run the
@@ -1085,6 +1184,10 @@ def analyze_from_frames(
     summary = analyzer.compute_summary()
     issues = analyzer.detect_issues()
     angle_stats = analyzer.compute_angle_statistics()
+    if sport_type == "run":
+        _timing_warning = _check_run_timing(summary, issues)
+        if _timing_warning:
+            quality_warnings.append(_timing_warning)
     if advanced_failed:
         # Degrading loudly, like overlay_failed does: without this flag the
         # angles stay unfiltered, the biomechanics block is simply absent,
@@ -1299,6 +1402,15 @@ def analyze_from_frames(
             f"ground contact and flight time are measured in frames, so they "
             f"are coarser than usual."
         )
+    if sampling_meta.get("half_rate_fallback"):
+        # Not the clip's length this time: the full rate lost the legs.
+        summary["sampling_degraded"] = (
+            f"At {sampling_meta['half_rate_fallback']['from_fps']:.0f} fps the pose "
+            f"model kept losing track of which leg is which on this clip; using "
+            f"every second frame (~{sampling_meta.get('effective_fps')} fps) it "
+            f"held them, so this report is built from that. Ground contact and "
+            f"flight time are measured in frames, so they are coarser than usual."
+        )
 
     # An ordered account of what the RECORDING cost the measurement, with the
     # numbers and the fix. Everything it reads is already computed above; what
@@ -1361,7 +1473,12 @@ def analyze_from_frames(
             framing=framing or None,
             tracking_stability=tracking_stability,
             time_base_uncertain=summary.get("time_base_uncertain"),
-            sampling_degraded=summary.get("sampling_degraded"),
+            # Decimated for the frame budget -> "trim the clip". A half-rate
+            # fallback is not about length, and that advice would be wrong.
+            sampling_degraded=(
+                None if sampling_meta.get("half_rate_fallback")
+                else summary.get("sampling_degraded")
+            ),
             camera_motion=camera_motion,
             # Frames with a pose in them over frames looked at. A clip can run
             # ten seconds with the athlete findable in four of them, and every

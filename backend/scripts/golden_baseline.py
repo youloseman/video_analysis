@@ -58,10 +58,28 @@ CLIPS: dict[str, dict[str, object]] = {
         "position": None,
     },
     "run_legs_unstable": {
-        # The opposite end, and the reason the withheld-score path exists:
-        # the legs traded places on 46.8% of frames, the gate fires, the
-        # per-leg components are excluded and no score is published. Pinned so
-        # that path cannot quietly start scoring again.
+        # The opposite end, and the reason the withheld-score path exists: the
+        # gate fires, the per-leg components are excluded and no score is
+        # published. Pinned so that path cannot quietly start scoring again.
+        #
+        # Was IMG_4262 until 2026-10-20. That clip is 59 fps, and its "legs
+        # trading places" turned out to be the detector at 60 fps: detected
+        # again at 30 it tracks one leg through every phase (checked on the
+        # overlay) and scores -- see run_60fps_fallback below. This one, Artur's
+        # treadmill run filmed 30 deg off side-on in front, is unstable at
+        # BOTH rates (instability 0.19 at 60, 1.40 at 30), so it still guards
+        # the withheld path whatever the frame rate does.
+        "path": "upload/photo_run/30_right_HD.MOV",
+        "sport": "run",
+        "position": None,
+    },
+    "run_60fps_fallback": {
+        # A 59 fps clip whose legs come out unstable as detected (0.205) and
+        # stable detected again on every second frame (0.10): the run's
+        # half-rate re-detection (runner.RUN_HALF_RATE_MIN_FPS) kicks in and
+        # the report is built from the 30 fps pass. Pinned so that fallback
+        # cannot quietly stop happening, or start happening to clips it should
+        # not.
         "path": "upload/IMG_4262.MOV",
         "sport": "run",
         "position": None,
