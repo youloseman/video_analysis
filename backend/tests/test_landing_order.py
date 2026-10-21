@@ -66,6 +66,35 @@ def test_the_bike_lands_before_the_rest_of_the_pitch(order, later):
     assert at(order, "PROOF") < at(order, later)
 
 
+def test_the_result_comes_before_the_report(order):
+    """What the athlete gets is said before how the report looks."""
+    assert at(order, "WHAT CHANGES FOR YOU") == at(order, "HERO") + 1
+    assert at(order, "REPORT SHOWCASE") == at(order, "WHAT CHANGES FOR YOU") + 1
+
+
+def test_speed_comes_before_pain_and_every_claim_has_a_source(html):
+    """Artur's order: performance first, then pain. And the cards that make a
+    claim about bodies name where it comes from."""
+    sec = html[html.index('<section id="outcomes"'):]
+    sec = sec[:sec.index("</section>")]
+    tags = [t.split('"')[0] for t in sec.split('class="out-tag ')[1:]]
+    assert tags[0] == "speed" and "pain" in tags
+    assert tags.index("speed") < tags.index("both") < tags.index("pain")
+    for source in ("Heiderscheit", "Bini", "Fintelman", "Kona 2026"):
+        assert source in sec, source
+    # A starting point, not a cure: no card may promise the pain goes away.
+    low = sec.lower()
+    for promise in ("no more pain", "pain-free guaranteed", "prevent injur", "injury-free"):
+        assert promise not in low, promise
+
+
+def test_the_hero_sells_the_result_and_not_the_re_film(html):
+    hero = html[html.index('<header class="hero">'):html.index("</header>")]
+    hero = re.sub(r"<!--.*?-->", "", hero, flags=re.DOTALL)  # visible text only
+    assert "Faster and pain-free" in hero
+    assert "Film again" not in hero
+
+
 def test_the_kona_study_follows_the_proof(order):
     """The study is evidence about other people; it lands after the page has
     shown what Flapp does to one rider, not before it."""
@@ -92,7 +121,10 @@ def test_the_background_rhythm_still_alternates(html, order):
     # before/after -- a visitor has to know what Flapp measures before "we
     # measured the pros" means anything. Kona went panel -> bg to keep the
     # stripes.
+    # 2026-10-20: WHAT CHANGES FOR YOU sits between the dark hero and the
+    # report, on panel.
     bg = [                       # prefix -> painted background, in one list so
+        ("WHAT CHANGES FOR YOU", "panel"),
         ("REPORT SHOWCASE", "bg"),   # adjacency here is adjacency on the page
         ("PROOF", "panel"),
         ("KONA STUDY", "bg"),

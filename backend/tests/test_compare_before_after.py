@@ -209,7 +209,8 @@ def test_the_how_it_works_loop_ends_on_the_recheck_beside_a_real_analysis():
     land = (SPA.parent / "landing.html").read_text(encoding="utf-8")
     how = land[land.index('<section id="how"'):land.index("</section>", land.index('<section id="how"'))]
     assert how.count("<li>") == 4
-    assert how.rindex("<li>") < how.index("Change it. Film again. See what moved.")
+    # The last beat is the re-check, sold as proof the fix worked.
+    assert how.rindex("<li>") < how.index("Know the fix worked")
     for src in ("media/race-frame-raw.webp", "media/race-frame-overlay.webp"):
         assert f'src="{src}"' in how
         assert (SPA.parent / src).exists()
