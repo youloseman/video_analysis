@@ -1755,8 +1755,11 @@ def analyze_from_frames(
         )
         ai_recommendations = generate_recommendations(
             sport_type=sport_type,
-            technique_score=scoring.get("overall_score"),
-            letter_grade=scoring.get("letter_grade"),
+            # The coach never sees a withheld score. Handed the computed one,
+            # it opened a "Not scored" report with "Technique 97/100" (run_test,
+            # 2026-10-22): the prompt's WITHHELD branch only fires on None.
+            technique_score=None if score_withheld else scoring.get("overall_score"),
+            letter_grade=None if score_withheld else scoring.get("letter_grade"),
             detected_issues=issues,
             angle_statistics=angle_stats,
             sport_specific_metrics=summary,

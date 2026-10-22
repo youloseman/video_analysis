@@ -163,6 +163,22 @@ def test_the_coach_is_told_the_score_was_withheld(sport, needle):
     assert "Do not invent a score" in block
 
 
+def test_the_runner_hands_the_coach_none_when_the_score_is_withheld():
+    """The prompt handled None correctly, but the runner never passed None:
+    it handed over the computed score, and a "Not scored" run report opened
+    with "Technique 97/100" (run_test, 2026-10-22)."""
+    import inspect
+    import re
+
+    from app.services.video_analysis import runner
+
+    src = inspect.getsource(runner.analyze_from_frames)
+    call = src[src.index("generate_recommendations("):]
+    call = call[:call.index("next_steps=")]
+    assert re.search(r"technique_score=None if score_withheld else", call)
+    assert re.search(r"letter_grade=None if score_withheld else", call)
+
+
 def test_the_coach_still_gets_a_real_score_when_there_is_one():
     from app.services.video_analysis.llm_recommendations import build_metrics_block
 
