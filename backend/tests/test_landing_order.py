@@ -135,6 +135,7 @@ def test_the_background_rhythm_still_alternates(html, order):
         # hero, and the page was 23 phone screens long. bg -> panel still
         # alternates without it.
         ("DUAL PATH", "panel"),
+        ("WHY NOW", "dark"),          # 2026-10-21, the push before the prices
         ("PRICING", "white"),
     ]
     # `at` raises if a section is missing, so this also pins that the list is

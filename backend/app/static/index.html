@@ -1880,6 +1880,9 @@ const GOAL_KEY='flapp-goal', GOAL_NOTE_OFF='flapp-goal-note-off';
 const GOALS={
   knee:{sport:'bike', text:'<b>Knee on the bike.</b> The reading that matters is your knee at the bottom of the pedal stroke &mdash; the report gives the saddle change in millimetres. Ten seconds of steady pedalling, filmed side-on, is enough.'},
   faster:{sport:null, text:'<b>Faster.</b> On the bike, the report estimates the minutes your position costs over your race; on the run, it measures overstride and cadence. Pick your sport below.'},
+  pain:{sport:null, text:'<b>Something started to hurt.</b> Flapp does not diagnose pain &mdash; see a professional if it is sharp or lasting. It checks the settings that load the joint: on the bike, saddle height and your knee at the bottom of the stroke; on the run, overstride and cadence.'},
+  gear:{sport:null, text:'<b>New bike or shoes.</b> Film the new setup before the first long session. If you have a clip on the old one, the report can line the two up.'},
+  doubt:{sport:null, text:'<b>A second opinion, in numbers.</b> Every joint is set against a published range, with the source named &mdash; so advice can be weighed against a measurement.'},
   race:{sport:'bike', text:'<b>Before a race.</b> Film in your race position, on the bike you will race. The report checks it against the fit ranges and, in an aero position, against the Kona 2026 pro field.'},
 };
 function goalGet(){ try{ const g=localStorage.getItem(GOAL_KEY); return GOALS[g]?g:null; }catch(e){ return null; } }

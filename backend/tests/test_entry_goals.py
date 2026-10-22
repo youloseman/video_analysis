@@ -45,6 +45,15 @@ def test_the_hero_offers_three_ways_in_and_a_plain_one(landing):
     assert 'id="heroGo" href="/app"' in hero
 
 
+def test_why_now_offers_four_moments_and_no_invented_urgency(landing):
+    sec = landing[landing.index('<section id="whynow"'):]
+    sec = sec[:sec.index("</section>")]
+    assert re.findall(r'href="/app\?goal=([a-z]+)"', sec) == ["pain", "race", "gear", "doubt"]
+    low = re.sub(r"<!--.*?-->", "", sec, flags=re.DOTALL).lower()
+    for fake in ("only ", "left", "expires", "countdown", "hurry", "limited"):
+        assert fake not in low, fake
+
+
 def test_every_landing_goal_is_one_the_app_knows(landing, app_html):
     sent = set(re.findall(r'href="/app\?goal=([a-z]+)"', landing))
     assert sent and sent <= _app_goals(app_html)

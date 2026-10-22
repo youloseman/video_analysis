@@ -774,6 +774,20 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 /* ============================================================
    Pricing
    ============================================================ */
+/* ---------- Why now: dark, four moments, each a way in ---------- */
+.whynow{background:linear-gradient(180deg,var(--c-dark) 0%,var(--c-dark2) 100%);color:#fff;padding:100px 0}
+.wn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:36px}
+@media(max-width:960px){.wn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.wn-grid{grid-template-columns:minmax(0,1fr)}.whynow{padding:80px 0}}
+.wn-card{display:flex;flex-direction:column;gap:10px;padding:22px 20px 18px;border-radius:var(--radius-lg);
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#fff;text-decoration:none;
+  transition:background-color .15s ease-out,border-color .15s ease-out}
+.wn-card:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.4)}
+.wn-n{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:var(--c-coral)}
+.wn-card h3{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;line-height:1.15;letter-spacing:-.01em}
+.wn-card p{font-size:15px;line-height:1.5;color:rgba(255,255,255,.78)}
+.wn-go{margin-top:auto;padding-top:8px;display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:#fff}
+.wn-go svg{width:15px;height:15px;color:var(--c-coral)}
 .pricing{background:#fff;padding:120px 0}
 .pricing-head{text-align:center;margin-bottom:8px}
 .pricing-head h2{margin-left:auto;margin-right:auto}
@@ -1487,6 +1501,45 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
   </div>
 </section>
 
+<!-- ================= WHY NOW ================= -->
+<!-- The four moments that turn "some day" into "today" (2026-10-21): it
+     started to hurt, a race is coming, new gear, a doubt. Each is its own way
+     into the app with its own ?goal=, so PostHog can say which moment brings
+     the people who pay. No countdowns, no "only 3 left": urgency here is the
+     athlete's own calendar, never one we invent. -->
+<section id="whynow" class="whynow on-dark">
+  <div class="wrap">
+    <p class="eyebrow">Why now</p>
+    <h2 class="sec">Don't wait <span class="accent">six months.</span></h2>
+    <div class="wn-grid">
+      <a class="wn-card" id="whyNowPain" href="/app?goal=pain">
+        <span class="wn-n">01</span>
+        <h3>It started to hurt.</h3>
+        <p>Don't train through it for months. Check what loads it — today.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a class="wn-card" id="whyNowRace" href="/app?goal=race">
+        <span class="wn-n">02</span>
+        <h3>Race day is on the calendar.</h3>
+        <p>Fix it in training, not on the start line. Every week counts.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a class="wn-card" id="whyNowGear" href="/app?goal=gear">
+        <span class="wn-n">03</span>
+        <h3>New bike. New shoes.</h3>
+        <p>Your old setup doesn't carry over. Check before the first long one.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a class="wn-card" id="whyNowDoubt" href="/app?goal=doubt">
+        <span class="wn-n">04</span>
+        <h3>Saw yourself on video?</h3>
+        <p>Or got advice that contradicts the last? Stop guessing — measure.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
 <!-- ================= PRICING ================= -->
 <section id="pricing" class="pricing">
   <div class="wrap">
@@ -1681,7 +1734,7 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
         track('landing_section_viewed', {section:en.target.id});
       });
     },{threshold:.4});
-    ['outcomes','report','proof','kona','how','pricing','faq'].forEach(function(id){
+    ['outcomes','report','proof','kona','how','whynow','pricing','faq'].forEach(function(id){
       var el=document.getElementById(id); if(el) io.observe(el);
     });
   }
