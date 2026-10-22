@@ -577,7 +577,7 @@
         <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
           <div><h3 id="clipTitle">Your clip</h3><span id="fileNounLow" hidden>clip</span><p id="clipLede"></p></div></div>
         <div class="cliprow">
-          <input type="file" id="file" class="visually-hidden" accept="video/*"
+          <input type="file" id="file" class="visually-hidden" accept="video/*,image/*"
                  aria-describedby="dropHelp" aria-labelledby="uploaderTitle">
           <label class="drop" id="drop" for="file">
             <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
@@ -635,6 +635,10 @@
         </div>
         <p class="hint pairhint" id="pairHint"></p>
       </div>
+
+      <!-- What the clip was read as (prescanClip): sport and, on a bike,
+           the position family, filled into the steps that follow it. -->
+      <div class="scannote hidden" id="scanNote" role="status" aria-live="polite"></div>
 
       <!-- Pre-flight notes on the selected clip (duration, orientation).
            Filled by checkClip() from the browser's own metadata. -->
@@ -2354,9 +2358,17 @@ function rejectFile(msg){
 const MAX_PHOTO_MB=25;
 function setFile(f){
   drop.classList.remove('err');
+  // The file says what it is: a still is a bike photo, a clip is a video.
+  // Refusing "that's not a video" made the athlete go back up and find the
+  // right tile -- on a phone, where the footage now comes first, a long way up.
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  const isImg=f.type.startsWith('image/')||['heic','heif','jpg','jpeg','png','webp'].includes(ext);
+  const isVid=f.type.startsWith('video/')||['mov','mp4','m4v','webm'].includes(ext);
+  if(isImg && state.mode!=='photo') autoPick(()=>$('#whatSeg [data-what="bike-photo"]').click());
+  else if(isVid && state.mode==='photo') autoPick(()=>$('#whatSeg [data-what="bike-video"]').click());
   const photo = state.mode==='photo';
   if(photo){
-    if(!f.type.startsWith('image/')){
+    if(!isImg){
       rejectFile('That doesn’t look like a photo — please choose a jpg, png or heic image.');
       return;
     }
@@ -2365,7 +2377,7 @@ function setFile(f){
       return;
     }
   } else {
-    if(!f.type.startsWith('video/')){
+    if(!isVid){
       rejectFile('That doesn’t look like a video — please choose an mp4, mov or webm clip.');
       return;
     }
@@ -2399,7 +2411,124 @@ function setFile(f){
   renderPreflight();
   if(!photo) checkClip(vid);
   readyHint();
-  bringAnalyzeIntoView();
+  // Footage first (phone): the choices it fills in sit right below it, so
+  // stay here and let the athlete read them on the way down to the button.
+  if(!footageFirst()) bringAnalyzeIntoView();
+  prescanClip(f);
+}
+
+/* ---- Footage first on a phone ----
+   The steps used to ask what the clip is before taking it, which on a phone
+   meant three cards of choices to scroll past before the upload. The clip
+   step moves to the top there (the CSS counters renumber it 01), and the
+   choices below it are proposed from the clip itself. Desktop keeps the two
+   columns: there everything is in sight at once. */
+const PHONE_MQ=matchMedia('(max-width:640px)');
+function footageFirst(){ return PHONE_MQ.matches; }
+function placeClipStep(){
+  const clip=$('#stepClip'), grid=$('#uploader .upgrid'), setup=$('#uploader .upsetup'), col=$('#uploader .upclip');
+  if(!clip||!grid||!setup||!col) return;
+  if(footageFirst()){ if(clip.parentNode!==grid) grid.insertBefore(clip, setup); }
+  else if(clip.parentNode!==col) col.insertBefore(clip, col.firstChild);
+}
+placeClipStep();
+PHONE_MQ.addEventListener('change', placeClipStep);
+
+/* Clicks made for the athlete (from the file type or the pre-scan) must not
+   count as the athlete's own choice, or the next clip could never be read. */
+let autoClicking=false;
+state.userSet={what:false,position:false};
+function autoPick(fn){ autoClicking=true; try{ fn(); } finally{ autoClicking=false; } }
+
+/* Inside a family the picture cannot tell time trial from triathlon or hoods
+   from drops, so it takes the one this athlete picked last time. */
+const POS_DEFAULT={aero:'triathlon',road:'road_hoods',upright:'casual'};
+const POS_KEY='flapp-pos-';
+function posRemembered(cat){
+  let p=null; try{ p=localStorage.getItem(POS_KEY+cat); }catch(e){}
+  return p&&$(`#positionSeg [data-position="${p}"]`)?p:POS_DEFAULT[cat];
+}
+const FAMILY_NAME={aero:'Aero',road:'Road',upright:'Upright'};
+
+/* Six small frames cut out of the clip the browser already holds -- the
+   upload itself waits for the Analyze button as before. */
+async function grabFrames(file,n=6){
+  const url=URL.createObjectURL(file);
+  const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; v.src=url;
+  const wait=(ev,ms)=>new Promise(ok=>{ const t=setTimeout(()=>ok(false),ms); v.addEventListener(ev,()=>{ clearTimeout(t); ok(true); },{once:true}); });
+  try{
+    if(!await wait('loadeddata',8000)){ try{ await v.play(); v.pause(); }catch(e){} }
+    if(!v.videoWidth||!isFinite(v.duration)) return [];
+    const k=Math.min(1,640/Math.max(v.videoWidth,v.videoHeight));
+    const c=document.createElement('canvas'); c.width=Math.round(v.videoWidth*k); c.height=Math.round(v.videoHeight*k);
+    const g=c.getContext('2d'), out=[];
+    for(let i=0;i<n;i++){
+      const seek=wait('seeked',3000); v.currentTime=v.duration*(0.15+0.7*i/(n-1)); await seek;
+      g.drawImage(v,0,0,c.width,c.height);
+      const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.8)); if(b) out.push(b);
+    }
+    return out;
+  }catch(e){ return []; }
+  finally{ v.removeAttribute('src'); v.load(); URL.revokeObjectURL(url); }
+}
+async function grabPhoto(file){
+  try{
+    const bmp=await createImageBitmap(file);
+    const k=Math.min(1,1024/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85)); return b?[b]:[];
+  }catch(e){ return []; }   // HEIC outside Safari: the athlete picks, as before
+}
+async function prescanClip(file){
+  const tok={}; state.prescanTok=tok;
+  const photo=state.mode==='photo';
+  scanNote('scan');
+  const frames=photo?await grabPhoto(file):await grabFrames(file);
+  if(state.prescanTok!==tok||state.file!==file) return;
+  if(!frames.length){ scanNote(null); return; }
+  const fd=new FormData(); frames.forEach((b,i)=>fd.append('frames',b,`f${i}.jpg`)); fd.append('mode',photo?'photo':'video');
+  let j=null;
+  try{ const r=await fetch('/prescan',{method:'POST',body:fd}); if(r.ok) j=await r.json(); }catch(e){}
+  if(state.prescanTok!==tok||state.file!==file) return;
+  applyPrescan(j);
+}
+function applyPrescan(j){
+  if(!j||!j.sport){ scanNote('unsure'); track('prescan',{sport:null}); return; }
+  const ask=[];
+  autoPick(()=>{
+    if(j.sport!==state.sport && state.mode==='video'){
+      if(!state.userSet.what) $(`#whatSeg [data-what="${j.sport}-video"]`).click();
+      else ask.push({what:`${j.sport}-video`, label:j.sport==='run'?'a run':'a ride'});
+    }
+    if(state.sport==='bike' && j.family && posCatOf(state.position)!==j.family){
+      if(!state.userSet.position) $(`#positionSeg [data-position="${posRemembered(j.family)}"]`).click();
+      else ask.push({position:posRemembered(j.family), label:`${FAMILY_NAME[j.family].toLowerCase()} position`});
+    }
+  });
+  track('prescan',{sport:j.sport,family:j.family||null,asked:ask.length});
+  scanNote(ask.length?'ask':'done', j, ask);
+}
+function scanNote(kind,j,ask){
+  const el=$('#scanNote'); if(!el) return;
+  if(!kind){ el.classList.add('hidden'); el.innerHTML=''; return; }
+  const what=()=>{
+    if(state.sport!=='bike') return 'Run';
+    const fam=FAMILY_NAME[posCatOf(state.position)]||'', name=POSITION_NAMES[state.position]||'';
+    return ['Bike', name.startsWith(fam)?name:`${fam} · ${name}`].join(' · ');
+  };
+  let html;
+  if(kind==='scan') html='<span class="sn-dot" aria-hidden="true"></span><span>Reading the clip to fill in the choices…</span>';
+  else if(kind==='unsure') html='<svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span>We couldn’t tell from the clip what it shows — check the choices below.</span>';
+  else if(kind==='done') html=`<svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>From the ${state.mode==='photo'?'photo':'clip'}: <b>${esc(what())}</b>. Not right? Change it below.</span>`;
+  else html=`<svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>This looks like ${ask.map(a=>`<b>${esc(a.label)}</b>`).join(' in a ')}, not what’s selected. ${ask.map((a,i)=>`<button class="btn btn-ghost btn-sm" type="button" data-scan-fix="${i}">Switch</button>`).join(' ')}</span>`;
+  el.innerHTML=html; el.dataset.kind=kind; el.classList.remove('hidden');
+  el.querySelectorAll('[data-scan-fix]').forEach(b=>b.addEventListener('click',()=>{
+    const a=ask[+b.dataset.scanFix];
+    if(a.what) $(`#whatSeg [data-what="${a.what}"]`).click();
+    if(a.position) $(`#positionSeg [data-position="${a.position}"]`).click();
+    scanNote('done');
+  }));
 }
 
 /* Once a clip is chosen, the only thing left to do is press the button -- and
@@ -2421,7 +2550,7 @@ function bringAnalyzeIntoView(){
 function dropCopyFor(photo){
   const touch = matchMedia('(pointer: coarse)').matches;
   // No "record one below": on a phone the camera button sits ABOVE this one.
-  if(touch) return photo ? 'Tap to choose a photo' : 'Tap to choose a clip from your library';
+  if(touch) return photo ? 'Tap to choose a photo' : 'Tap to choose a clip or photo from your library';
   return photo ? 'Drag & drop photo or click to browse' : 'Drag & drop video or click to browse';
 }
 /* Pre-flight: everything we can tell about a clip BEFORE spending an upload
@@ -2514,7 +2643,6 @@ $('#modeSeg').addEventListener('click',e=>{
   [...$('#modeSeg').children].forEach(x=>x.setAttribute('aria-selected', String(x===b)));
   reset();                        // clears the old-mode file first
   state.mode=b.dataset.mode;
-  fileInput.setAttribute('accept', photo?'image/*':'video/*');
   $('#dropTitle').textContent = dropCopyFor(photo);
   $('#dropHelp').textContent = photo
     ? 'JPG, PNG, or HEIC · up to 25 MB'
@@ -2542,10 +2670,11 @@ const WHAT_OF={'run-video':['video','run'],'bike-video':['video','bike'],'bike-p
 $('#whatSeg').addEventListener('click',e=>{
   const b=e.target.closest('button[data-what]'); if(!b) return;
   const [mode,sport]=WHAT_OF[b.dataset.what];
+  if(!autoClicking) state.userSet.what=true;
   if(state.sport!==sport) $(`#sportSeg [data-sport="${sport}"]`).click();
   if(state.mode!==mode) $(`#modeSeg [data-mode="${mode}"]`).click();
   syncWhatTiles();
-  track('analyze_step_done', {step:'what', value:b.dataset.what});
+  if(!autoClicking) track('analyze_step_done', {step:'what', value:b.dataset.what});
 });
 function syncWhatTiles(){
   const key=`${state.sport}-${state.mode}`;
@@ -2653,6 +2782,9 @@ $('#positionSeg').addEventListener('click',e=>{
   syncPosCat();
   updatePosHint();
   readyHint();
+  if(autoClicking) return;
+  state.userSet.position=true;
+  try{ localStorage.setItem(POS_KEY+posCatOf(state.position), state.position); }catch(e){}
   track('analyze_step_done', {step:'position', value:state.position});
 });
 syncPosCat();
@@ -9084,6 +9216,7 @@ function reset(keepFile=false){
     // Network-ish failure: keep the clip loaded so "Try again" is one click.
     drop.classList.remove('err');
   } else {
+    state.prescanTok=null; scanNote(null);
     state.file=null; state.fileB=null; pairRevoke('a'); pairRevoke('b');
     fileInput.value=''; fileInput.removeAttribute('tabindex');
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');

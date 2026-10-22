@@ -164,3 +164,24 @@ like the single-clip path, so the funnel counts it.
   and editable.
 - Moving Details above the footage — optional things do not get to sit
   between the decision and the action.
+
+## Phone: footage first (21 Oct 2026)
+
+Rule 1 is reversed on a phone (≤ 640 px), at Artur's call: the athlete there
+already has the clip, and three cards of choices before the upload was the
+complaint. `placeClipStep()` moves the clip step to the top (the counters
+renumber it 01) and the choices below are **proposed from the clip**:
+
+- the file type picks photo or video (an image is a bike photo);
+- `POST /prescan` reads six 640 px frames the browser cuts from the clip
+  (`services/prescan.py`): run vs bike, and on a bike aero / road / upright.
+  Inside a family (time trial vs triathlon, hoods vs drops) the athlete's last
+  pick is used, since the picture cannot tell;
+- it only fills a control the athlete has not touched; a disagreement with a
+  choice they made is shown as "This looks like …" with a Switch button;
+- when the frames are unsure it says so and fills nothing.
+
+Measured before shipping: 30 / 30 labelled clips in `upload/` right, no wrong
+answers (unsure on unusable poses); 144 / 156 aero race photos with a visible
+arm read aero, 1 read road. Upright has no sample yet. Desktop keeps the two
+columns and the old order.

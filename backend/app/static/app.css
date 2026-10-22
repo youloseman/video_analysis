@@ -881,6 +881,16 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .sidenav .navgroup-bottom{order:10}
 .navlink-cta:hover{background:var(--c-panel);color:var(--c-ink)}
 .navlink-cta[aria-current="page"]{background:var(--c-panel-blue);color:var(--c-ink)}
+/* What the clip was read as, under the preview. */
+.scannote{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px;line-height:1.45;color:var(--c-ink-soft)}
+.scannote b{color:var(--c-ink);font-weight:600}
+.scannote .ic{width:15px;height:15px;flex:none;margin-top:2px;color:var(--c-blue)}
+.scannote[data-kind="done"] .ic{color:var(--st-good)}
+.scannote[data-kind="ask"] .ic{color:var(--st-warn)}
+.scannote .btn{margin-left:4px;padding:2px 10px;min-height:0}
+.scannote .sn-dot{width:8px;height:8px;margin:5px 3px 0;border-radius:50%;background:var(--c-blue);flex:none;animation:snpulse 1s ease-in-out infinite}
+@keyframes snpulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.scannote .sn-dot{animation:none}}
 .navsep{height:1px;background:var(--c-line);margin:8px 2px}
 /* The bottom group: quiet links, then the account line. */
 .sidenav .navgroup-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--c-line);display:flex;flex-direction:column;gap:1px}
@@ -2438,6 +2448,11 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .upclip #stepClip{border-bottom:0;border-radius:var(--radius) var(--radius) 0 0}
   .upclip .ustep-details{background:var(--c-bg);border:1px solid var(--c-line);border-top:0;border-radius:0 0 var(--radius) var(--radius);padding:0 16px 4px}
   .upclip .ustep-details > summary{border-top:1px solid var(--c-line)}
+  /* Footage first (placeClipStep): the clip card leads the column on its own,
+     and Details is a card of its own after the choices. */
+  .upgrid > #stepClip{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .upgrid > #stepClip ~ .upclip .ustep-details{border-top:1px solid var(--c-line);border-radius:var(--radius)}
+  .upgrid > #stepClip ~ .upclip .ustep-details > summary{border-top:0}
   .ustep-head h3{font-size:15px}
   .ustep-n{font-size:22px}
   .modetabs.what button{min-height:60px;padding:8px}
