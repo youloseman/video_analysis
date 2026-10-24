@@ -332,6 +332,67 @@ def _sidebar(active: str) -> str:
     )
 
 
+def _guest_nav(active: str) -> str:
+    """The landing page's top menu, for visitors who are not signed in.
+
+    Artur, 2026-10-24: a visitor who clicks "See 4 real reports" on the
+    landing page arrives here, and the menu they were reading (The report,
+    Bike fit, ... Log in, Analyze free) used to vanish into the app's
+    sidebar -- Progress and History, empty for them. Visitors keep the
+    site's menu; signed-in athletes keep the app's sidebar. Which one shows
+    is decided by the ``signed-in`` class on <html> (see ``_SHELL_PICK`` and
+    ``_AUTH_JS``). Same items and order as landing.html's nav.
+    """
+    acad = ' aria-current="page"' if active == "academy" else ""
+    return (
+        '<nav class="gnav" aria-label="Site">'
+        '<div class="gnav-inner">'
+        '<a class="wordmark" href="/">' + _WORDMARK + "</a>"
+        '<div class="gnav-links">'
+        '<a href="/#report">The report</a>'
+        '<a href="/#proof">Bike fit</a>'
+        '<a href="/#how">How it works</a>'
+        '<a href="/app#pricing">Pricing</a>'
+        f'<a href="/academy"{acad}>Academy</a>'
+        "</div>"
+        '<div class="gnav-cta">'
+        '<a class="gnav-login" href="/app#login">Log in</a>'
+        '<a class="gnav-go" href="/app">Analyze free</a>'
+        "</div></div></nav>"
+    )
+
+
+# Runs in <head>, before anything paints: a stored session means the app's
+# sidebar, no session means the site's top menu. _AUTH_JS corrects it once
+# /auth/me answers (an expired token drops back to the guest menu).
+_SHELL_PICK = (
+    "<script>try{if(localStorage.getItem('flapp_token'))"
+    "document.documentElement.classList.add('signed-in');}catch(e){}</script>"
+)
+
+_GUEST_CSS = (
+    "/* ---- guest vs signed-in shell (see _guest_nav) ---- */"
+    ".gnav{position:sticky;top:0;z-index:50;background:#0B182F;padding:10px 16px}"
+    ".signed-in .gnav{display:none}"
+    "html:not(.signed-in) .sidebar,html:not(.signed-in) .topbar,"
+    "html:not(.signed-in) .scrim{display:none!important}"
+    "html:not(.signed-in) .appshell{margin-left:0}"
+    ".gnav-inner{max-width:920px;margin:0 auto;height:56px;display:flex;align-items:center;gap:26px;"
+    "padding:0 8px 0 18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:999px}"
+    ".gnav .wordmark{color:#fff;font-size:22px}"
+    ".gnav .wm-tile{border:1px solid rgba(255,255,255,.18)}"
+    ".gnav-links{display:flex;gap:22px}"
+    ".gnav-links a,.gnav-login{color:rgba(255,255,255,.8);text-decoration:none;font-weight:700;font-size:14px;"
+    "transition:color .15s ease-out}"
+    ".gnav-links a:hover,.gnav-links a[aria-current],.gnav-login:hover{color:#fff}"
+    ".gnav-cta{margin-left:auto;display:flex;align-items:center;gap:12px}"
+    ".gnav-go{background:var(--c-action);color:var(--c-action-ink);padding:10px 20px;border-radius:999px;"
+    "font-weight:600;font-size:14px;text-decoration:none;transition:background-color .15s ease-out}"
+    ".gnav-go:hover{background:var(--c-action-dk)}"
+    "@media(max-width:760px){.gnav-links,.gnav-login{display:none}.gnav-inner{height:52px}}"
+)
+
+
 def _footer() -> str:
     return (
         "<footer><div class=\"wrap\">"
@@ -387,7 +448,9 @@ _AUTH_JS = (
     "render(null);"
     "if(tk){fetch('/auth/me',{headers:{Authorization:'Bearer '+tk}})"
     ".then(function(r){return r.ok?r.json():null;})"
-    ".then(function(u){if(u)render(u);}).catch(function(){});}"
+    ".then(function(u){if(u)render(u);"
+    "else document.documentElement.classList.remove('signed-in');})"
+    ".catch(function(){});}"
     "})();"
 )
 
@@ -418,6 +481,7 @@ def _page(
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
         '<meta charset="UTF-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        f"{_SHELL_PICK}\n"
         f"<title>{_esc(title)}</title>\n"
         f'<meta name="description" content="{_esc(description)}">\n'
         f'<link rel="canonical" href="{_esc(canonical)}">\n'
@@ -428,7 +492,7 @@ def _page(
         f'<meta property="og:site_name" content="{SITE_NAME}">\n'
         '<meta name="twitter:card" content="summary_large_image">\n'
         f"{_FONTS_LINK}\n"
-        f"<style>{_BASE_CSS}{extra_css}</style>\n"
+        f"<style>{_BASE_CSS}{_GUEST_CSS}{extra_css}</style>\n"
         f"{ld}\n"
         # Academy is the top of the funnel -- these pages are what search
         # brings people in on, so leaving them unmeasured would hide the one
@@ -438,6 +502,7 @@ def _page(
         # What's new share this shell). See services/ad_pixel.py.
         f"{ad_pixel.snippet_html()}\n"
         "</head>\n<body>\n"
+        f'{_guest_nav(active)}\n'
         f'{_sidebar(active)}\n<div class="appshell">\n{body}\n{_footer()}\n</div>\n'
         f"{script}"
         "</body>\n</html>"
