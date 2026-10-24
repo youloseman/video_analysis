@@ -115,7 +115,7 @@ from app.core.jobs import (
 from app.core.net import client_ip
 from app.core.security import get_current_user, optional_user
 from app.models.user import User
-from app.services import ad_pixel, analytics, pricing
+from app.services import ad_pixel, analytics, failure_log, pricing
 from app.services.analytics import log_analytics_configuration
 from app.services.export import ai_export
 from app.services.keyframe_store import backfill_keyframes
@@ -173,6 +173,14 @@ OVERLAY_ENCODER_PRESENT = shutil.which("ffmpeg") is not None
 # scale past one replica (M4b).
 _RATE_WINDOW_S = 24 * 3600
 _rate_hits: dict[str, deque] = {}
+
+
+def _file_mb(path: str | None) -> float | None:
+    """Size of an upload in MB for a failure report; None if it is already gone."""
+    try:
+        return round(os.path.getsize(path) / 1048576, 1) if path else None
+    except OSError:
+        return None
 
 
 def _client_ip(request: Request) -> str:
@@ -632,8 +640,14 @@ def _process_job(
                 job["input_path"] = str(smaller)
     except Exception as e:  # noqa: BLE001
         logger.warning("JOB_FAILED", job_id=job_id, err=str(e))
+        failure_log.report_crash(
+            "video", e, job_id=job_id, sport=sport, position=cycling_position,
+            stage=job.get("stage"), file_mb=_file_mb(input_path),
+        )
         job["status"] = "failed"
-        job["error"] = str(e)
+        # Never the exception's own text: that is how three athletes were
+        # told "'>' not supported between instances of 'NoneType' and 'int'".
+        job["error"] = failure_log.user_message(e)
     finally:
         ANALYSIS_SLOTS.release()
 
@@ -789,6 +803,7 @@ def _process_recompute(
         )
     except Exception as e:  # noqa: BLE001
         logger.warning("RECOMPUTE_FAILED", job_id=job_id, err=str(e))
+        failure_log.report_crash("recompute", e, job_id=job_id, sport=job.get("sport"))
         job["result"] = previous
         if corrections:
             # The round was not delivered, so it is not spent.
@@ -995,8 +1010,13 @@ def _process_pair_job(
             compress_clip(clip)
     except Exception as e:  # noqa: BLE001
         logger.warning("PAIR_JOB_FAILED", job_id=job_id, err=str(e))
+        failure_log.report_crash(
+            "pair", e, job_id=job_id, sport=sport, position=cycling_position,
+            stage=job.get("stage"),
+            file_mb=(_file_mb(left_path) or 0) + (_file_mb(right_path) or 0) or None,
+        )
         job["status"] = "failed"
-        job["error"] = str(e)
+        job["error"] = failure_log.user_message(e)
     finally:
         job["stage"] = None
         ANALYSIS_SLOTS.release()
@@ -2102,10 +2122,20 @@ async def analyze_photo_endpoint(
             contact,
         )
     except ValueError as e:
-        # No pose detected / undecodable image -> user-actionable 422.
+        # No pose detected / undecodable image -> user-actionable 422. The
+        # largest group of athletes we lose (6 of 14 by 24.10) stop here, and
+        # the photo is deleted, so its shape is the only evidence left of why.
+        failure_log.report_rejected(
+            "photo", str(e), sport=sport, position=cycling_position,
+            **failure_log.image_meta(data),
+        )
         raise HTTPException(422, str(e))
     except Exception as e:  # noqa: BLE001
         logger.warning("PHOTO_FAILED", err=str(e), ip=ip)
+        failure_log.report_crash(
+            "photo", e, sport=sport, position=cycling_position,
+            **failure_log.image_meta(data),
+        )
         raise HTTPException(500, "photo analysis failed")
 
     # Compact annotated frame for the client-side history record.

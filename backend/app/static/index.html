@@ -3058,7 +3058,7 @@ function analyze(){
     signed_in: !!auth, tier: auth ? auth.tier : 'anonymous',
   });
   state.pollSeen=false;
-  state.analyzeStart=Date.now();
+  state.analyzeStart=Date.now(); state.restored=false;
   if(isPair()) return analyzePair();
   const fd=new FormData();
   fd.append('video',state.file);
@@ -3099,7 +3099,7 @@ function analyze(){
     else if(pct>=50 && pct<75) announce('Upload 50%');
     else if(pct>=75 && pct<100) announce('Upload 75%');
   };
-  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true});
+  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true,status:0});
   xhr.onload=()=>{
     state.xhr=null;
     const limit=xhr.getResponseHeader('X-RateLimit-Limit'), rem=xhr.getResponseHeader('X-RateLimit-Remaining');
@@ -3108,8 +3108,8 @@ function analyze(){
     if(xhr.status===429){ showLimit(j.detail, xhr.getResponseHeader('Retry-After')); return; }
     // 503 = the server is at capacity, not a problem with the clip. Keep the
     // file so "Try again" is one tap, and don't blame their footage.
-    if(xhr.status===503){ fail(j.detail || 'We’re at capacity right now — please try again in a few minutes.',{keepFile:true}); return; }
-    if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').')); return; }
+    if(xhr.status===503){ fail(j.detail || 'We’re at capacity right now — please try again in a few minutes.',{keepFile:true,status:503}); return; }
+    if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').'),{status:xhr.status}); return; }
     state.jobId=j.job_id;
     jobTokenSave(j.job_id, j.job_token);
     setUrl('#job='+state.jobId);
@@ -3163,16 +3163,16 @@ function analyzePair(){
     if(e.loaded>=e.total) stage('Uploads received — starting the session…');
     else stage(`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`);
   };
-  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true});
+  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true,status:0});
   xhr.onload=()=>{
     state.xhr=null;
     const limit=xhr.getResponseHeader('X-RateLimit-Limit'), rem=xhr.getResponseHeader('X-RateLimit-Remaining');
     if(limit!=null && rem!=null) quotaSave(+limit,+rem);
     let j={}; try{ j=JSON.parse(xhr.responseText); }catch(e){}
-    if(xhr.status===402){ fail(j.detail || 'Two-sided analysis is part of a paid plan.',{keepFile:true}); return; }
+    if(xhr.status===402){ fail(j.detail || 'Two-sided analysis is part of a paid plan.',{keepFile:true,status:402,event:'pair_needs_plan',title:'Two-sided analysis needs a plan'}); return; }
     if(xhr.status===429){ showLimit(j.detail, xhr.getResponseHeader('Retry-After')); return; }
-    if(xhr.status===503){ fail(j.detail || 'We\u2019re at capacity right now — please try again in a few minutes.',{keepFile:true}); return; }
-    if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').')); return; }
+    if(xhr.status===503){ fail(j.detail || 'We\u2019re at capacity right now — please try again in a few minutes.',{keepFile:true,status:503}); return; }
+    if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').'),{status:xhr.status}); return; }
     state.jobId=j.job_id;
     jobTokenSave(j.job_id, j.job_token);
     setUrl('#job='+state.jobId);
@@ -3334,20 +3334,48 @@ function cancelRun(){
   readyHint();
 }
 
-function fail(msg,{tips=false,keepFile=false,counted=false}={}){
+/* A FastAPI `detail` as one sentence. A request that fails form validation
+   comes back as a LIST of {loc, msg}, and handed straight to fail() it rendered
+   "[object Object],[object Object]" on somebody's phone (16.10). */
+function errDetail(d, fallback){
+  if(d==null || d==='') return fallback||'';
+  if(typeof d==='string') return d;
+  if(Array.isArray(d)) return 'Something in the upload was not what we expected. Please try again.';
+  if(typeof d==='object' && d.msg) return String(d.msg);
+  return fallback || String(d);
+}
+function fail(msg,{tips=false,keepFile=false,counted=false,status=null,err=null,
+                   event='analysis_failed',title='Analysis failed'}={}){
   clearInterval(state.polling);
+  // Which form fields a validation error named: the only clue to WHY a request
+  // was malformed, and gone the moment the list is turned into a sentence.
+  const invalid = Array.isArray(msg)
+    ? msg.map(x=>(x&&x.loc&&x.loc.length)?x.loc[x.loc.length-1]:'?').join(',').slice(0,80)
+    : null;
+  msg = errDetail(msg, 'Something went wrong. Please try again.');
+  const f = state.file;
   // `msg` is our own copy (or the server's), never anything the athlete typed,
   // so it is safe to send — and it is the only thing that distinguishes "we
   // could not see a person in the frame" from "the upload died".
-  track('analysis_failed', {
+  track(event, {
     mode:state.mode, sport:state.sport,
     counted: counted,               // did it burn one of their analyses
     reason: String(msg||'').slice(0,120),
     seconds: state.analyzeStart ? Math.round((Date.now()-state.analyzeStart)/1000) : null,
+    // Diagnostics, added 24.10 because 78 failures could not be told apart: a
+    // proxy refusing a big body from a dropped connection, a 48 MP photo from
+    // a screenshot, a tab reopened hours later from a live run. The file's
+    // shape only -- never its name or contents.
+    status: status,                 // HTTP status; 0 = no response at all
+    err: err ? (String(err.name||'Error')+': '+String(err.message||'')).slice(0,100) : null,
+    file_mb: f ? Math.round(f.size/104857.6)/10 : null,
+    file_type: f && f.type ? String(f.type).slice(0,40) : null,
+    restored: !!state.restored,     // an old tab polling a long-expired job
+    invalid_fields: invalid,
   });
   state.keepFileOnRetry=keepFile;
   $('#errorCard').classList.remove('limit-card');
-  $('#errTitle').textContent='Analysis failed';
+  $('#errTitle').textContent=title;
   $('#errText').textContent=msg;
   $('#errNote').classList.toggle('hidden',!counted);
   $('#errTips').classList.toggle('hidden',!tips);
@@ -4211,7 +4239,7 @@ async function analyzePhoto(){
     file_mb: state.file ? Math.round(state.file.size/104857.6)/10 : null,
     signed_in: !!auth, tier: auth ? auth.tier : 'anonymous',
   });
-  state.analyzeStart=Date.now();
+  state.analyzeStart=Date.now(); state.restored=false;
   const fd=new FormData();
   fd.append('photo',state.file);
   fd.append('sport',state.sport);
@@ -4242,7 +4270,7 @@ async function analyzePhoto(){
     if(!r.ok){
       const j=await r.json().catch(()=>({detail:r.statusText}));
       // 422 = no pose detected / bad capture → actionable tips
-      fail(j.detail || ('Photo analysis failed (HTTP '+r.status+').'), {tips:r.status===422, counted:r.ok});
+      fail(j.detail || ('Photo analysis failed (HTTP '+r.status+').'), {tips:r.status===422, counted:r.ok, status:r.status});
       return;
     }
     const res=await r.json();
@@ -4257,7 +4285,7 @@ async function analyzePhoto(){
     });
     renderPhoto(res);
   }catch(err){
-    fail('Network error while analyzing — check your connection and try again.',{keepFile:true});
+    fail('Network error while analyzing — check your connection and try again.',{keepFile:true,err:err});
   }
 }
 
@@ -9559,6 +9587,9 @@ function init(){
   const m=location.hash.match(/^#job=([a-z0-9]+)$/i);
   if(m){
     state.jobId=m[1];
+    // Marks a failure from here as an old tab, not a live run: 8 of the 14
+    // "lost track" reports were this, read as analyses killed by a deploy.
+    state.restored=true;
     $('#jobchip').innerHTML='<span class="fchip">restored session</span>';
     setState('progress');
     startPolling();
