@@ -6467,9 +6467,12 @@ function teaserPanelHtml(items, opts){
       return `<li>${check}<span>${esc(it.text)}${tag}</span></li>`;
     }).join('')}</ul>
     <div class="cta-row">
-      <button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+      ${opts.planBuy
+        ? `<button class="btn btn-primary btn-planbuy" type="button" data-src="${esc(opts.src||'teaser')}" onclick="startCheckout(${esc(JSON.stringify(opts.planBuy.plan))})">Start ${esc(opts.planBuy.name)} — ${esc(opts.planBuy.display)}/mo <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+           <a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare plans</a>`
+        : `<button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>`}
       ${opts.unlockId?`<button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Unlock this report — free':'Unlock just this report — '+esc(unlockPrice())}</button>`:''}
-      <span class="price-tag">${fromPriceLabel()}</span>
+      ${opts.planBuy?'':`<span class="price-tag">${fromPriceLabel()}</span>`}
     </div>
     ${opts.unlockNudge||''}
   </div>`;
@@ -6490,9 +6493,17 @@ function renderUpsell(containerId, locked, blockIds, unlockId){
   // and what is left of it is the measurement table, which is what a plan is
   // for. Only a teaser has a whole report sitting behind it, unread.
   const sellable = unlockId && locked.reason!=='preview' && (unlockPrice() || freeUnlocks()>0);
+  // The preview card carried one button and it opened the price list. Measured
+  // over 109 people who saw only that card: 12% reached pricing and 3 reached
+  // checkout, against 21% straight to checkout wherever a card had a buy
+  // button on it. The two groups differ in motivation, so the gap is not all
+  // interface -- but a direct button is the control that produced 6 of our 13
+  // purchases, and this card is 72% of all paywall impressions and had none.
+  // Same offer as before, one page fewer: the plan is bought from here.
+  const planBuy = (locked.reason==='preview' && auth) ? cheapestMonthly() : null;
   host.innerHTML=teaserPanelHtml(items, locked.reason==='preview'
     ? {src:'preview', chip:'Your free report', title:'That was one report. The plan is what changes the next one.',
-       body:previewBody(locked)}
+       body:previewBody(locked), planBuy:planBuy}
     : {src:'result', unlockId:sellable?unlockId:null, unlockNudge:unlockNudgeHtml()});
   host.classList.remove('hidden');
   // The paywall was actually put in front of someone. Paired with
@@ -6502,6 +6513,11 @@ function renderUpsell(containerId, locked, blockIds, unlockId){
     reason: locked.reason||'locked',
     where: containerId,
     sellable: !!sellable,
+    // Kept separate from `sellable`, which has always meant "the $4 one-off is
+    // on this card". This one says the card can start a plan checkout without
+    // a detour through the price list, so the change reads against the old
+    // numbers instead of blurring them.
+    plan_buy: !!planBuy,
     tier: auth ? auth.tier : 'anonymous',
   });
   return true;
@@ -6711,14 +6727,26 @@ function unlockNudgeHtml(){
     A plan costs about the same per month and adds the overlay video, trends and before / after —
     which one report on its own can never show you.</p>`;
 }
+/* The cheapest monthly plan we can actually charge for, with the card it
+   belongs to. fromPriceLabel() needs only the money; the preview card needs
+   the plan id too, so it can open checkout instead of sending the athlete to
+   the price list to look up the same number. Anything the catalogue reports
+   as unavailable is skipped -- a button that 503s is worse than no button. */
+function cheapestMonthly(){
+  let best=null;
+  ((PLANS&&PLANS.cards)||[]).filter(c=>c.kind==='tier').forEach(c=>{
+    (c.prices||[]).forEach(p=>{
+      if(p.interval!=='month' || !(p.amount>0) || !p.plan || p.available===false) return;
+      if(!best || p.amount<best.amount){
+        best={plan:p.plan, amount:p.amount, display:p.display, name:c.name};
+      }
+    });
+  });
+  return best;
+}
 function fromPriceLabel(){
-  const monthly=((PLANS&&PLANS.cards)||[])
-    .filter(c=>c.kind==='tier')
-    .flatMap(c=>c.prices||[])
-    .filter(p=>p.interval==='month' && p.amount>0);
-  if(!monthly.length) return '';
-  const cheapest=monthly.reduce((a,b)=>a.amount<b.amount?a:b);
-  return 'from <b>'+esc(cheapest.display)+'</b>/mo';
+  const cheapest=cheapestMonthly();
+  return cheapest ? 'from <b>'+esc(cheapest.display)+'</b>/mo' : '';
 }
 loadPlans().then(()=>renderQuota());   // warm it: upsell panels quote a price long before
                                        // Pricing opens, and the signed-out quota line

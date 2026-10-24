@@ -53,6 +53,14 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .upsell .btn-unlock .ic{width:14px;height:14px}
 .upsell .cta-row .btn-primary:not(.btn-unlock){background:transparent;color:var(--c-ink);border-color:var(--c-line-strong)}
 .upsell .cta-row .btn-primary:not(.btn-unlock):hover{background:var(--c-panel)}
+/* On the preview card there is no $4 button for the plan to stand beside, so
+   the outline rule above left the only call to action on the card looking
+   like the secondary one. Where the card buys a plan directly, it is filled. */
+.upsell .cta-row .btn-primary.btn-planbuy{background:var(--c-action);color:var(--c-action-ink);border-color:transparent}
+.upsell .cta-row .btn-primary.btn-planbuy:hover{background:var(--c-action-dk);color:var(--c-action-ink)}
+.upsell .cta-row .plans-link{display:inline-flex;align-items:center;min-height:44px;margin:-12px 0;
+  font-size:13px;color:var(--c-blue-dk);text-decoration:underline;text-underline-offset:2px;font-weight:500}
+.upsell .cta-row .plans-link:hover{color:var(--c-blue-active)}
 .upsell .price-tag{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
 .upsell .price-tag b{color:var(--c-ink);font-size:13px;font-weight:500}
 .lock-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);
