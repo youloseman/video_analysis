@@ -4545,18 +4545,23 @@ function hobStatusText(bike, movedC){
 }
 
 /* ---- the report block ---- */
-function hobScale(angle){
-  const lo=78, hi=96, W=360, H=58, pad=14, y=26;
+function hobScale(h){
+  /* The field comes from the result (hip_over_bb.FIELD) so the bars move with
+     the study. Field labels sit under the bar and "you" alone above it: a
+     reading near the pros' 88 used to print over "pros 88". */
+  const angle=h.angle_deg, f=h.field||{}, fp=f.pro||{}, fa=f.age_group||{};
+  const lo=78, hi=96, W=360, H=72, pad=14, y=26;
   const X=a=>pad+(Math.max(lo,Math.min(hi,a))-lo)/(hi-lo)*(W-2*pad);
-  const ag=[83.3,86.9], pro=[87.0,90.0];
-  return `<svg viewBox="0 0 ${W} ${H}" class="hob-scale" role="img" aria-label="Your hip at ${angle} degrees over the crank; Kona age-groupers mostly 83 to 87, pros 87 to 90">
+  const ag=[fa.q1??83.4, fa.q3??87.0], pro=[fp.q1??86.4, fp.q3??89.7], agM=fa.median??85.1, proM=fp.median??88.0;
+  const r=v=>Math.round(v);
+  return `<svg viewBox="0 0 ${W} ${H}" class="hob-scale" role="img" aria-label="Your hip at ${angle} degrees over the crank; Kona age-groupers mostly ${r(ag[0])} to ${r(ag[1])}, pros ${r(pro[0])} to ${r(pro[1])}">
     <line x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}" stroke="var(--c-line-strong)" stroke-width="2"/>
     <rect x="${X(ag[0]).toFixed(1)}" y="${y-7}" width="${(X(ag[1])-X(ag[0])).toFixed(1)}" height="14" rx="3" fill="var(--c-panel)" stroke="var(--c-line-strong)"/>
     <rect x="${X(pro[0]).toFixed(1)}" y="${y-7}" width="${(X(pro[1])-X(pro[0])).toFixed(1)}" height="14" rx="3" fill="var(--c-brand-navy)" opacity=".85"/>
-    <line x1="${X(85.1).toFixed(1)}" x2="${X(85.1).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="var(--c-ink)" stroke-width="2"/>
-    <line x1="${X(88).toFixed(1)}" x2="${X(88).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="#fff" stroke-width="2"/>
-    <text x="${X(85.1).toFixed(1)}" y="${y+24}" text-anchor="middle" font-size="10" fill="var(--c-ink-soft)">age-groupers 85°</text>
-    <text x="${X(88.5).toFixed(1)}" y="${y-13}" text-anchor="middle" font-size="10" fill="var(--c-ink-soft)">pros 88°</text>
+    <line x1="${X(agM).toFixed(1)}" x2="${X(agM).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="var(--c-ink)" stroke-width="2"/>
+    <line x1="${X(proM).toFixed(1)}" x2="${X(proM).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="#fff" stroke-width="2"/>
+    <text x="${(X(agM)+30).toFixed(1)}" y="${y+24}" text-anchor="end" font-size="10" fill="var(--c-ink-soft)">age-groupers ${r(agM)}°</text>
+    <text x="${(X(proM)-10).toFixed(1)}" y="${y+24}" text-anchor="start" font-size="10" fill="var(--c-ink-soft)">pros ${r(proM)}°</text>
     <text x="${pad}" y="${H-4}" font-size="10" fill="var(--c-ink-faint)">further back</text>
     <text x="${W-pad}" y="${H-4}" text-anchor="end" font-size="10" fill="var(--c-ink-faint)">further forward</text>
     <circle cx="${X(angle).toFixed(1)}" cy="${y}" r="7" fill="var(--c-blue)" stroke="#fff" stroke-width="2.5"/>
@@ -4586,7 +4591,7 @@ function renderHob(res, which){
       : `Centimetres from your cranks (${h.crank_to_hip_cm} cm crank to hip${h.scale_source==='crank_default'?', 172.5 mm cranks assumed':''}).`;
     body=`<div class="hob-hero"><div class="hob-num">${h.angle_deg}<small>°</small></div>
         <div class="hob-cap">over the crank axle, from the back<br><span class="hint">${h.hip_source==='video_median'?`hip = median of ${h.frames} frames`:'from this one frame'} · repeatability ±${h.repeatability_deg}°</span></div></div>
-      ${aero?hobScale(h.angle_deg):''}
+      ${aero?hobScale(h):''}
       <p class="hob-lead">${aero?`You sit <b>${Math.abs(gap).toFixed(1)} cm ${ahead?'ahead of':'behind'}</b> the Kona pros' middle (88°) — ${hobPlace(h)}.`:`Measured at ${h.angle_deg}°; the Kona field below was read on aero bars, so it is shown for context only.`}</p>
       <ul class="hob-notes"><li>${{auto_chainring:'Crank axle found automatically on the chainring.',auto_wheels:'Crank axle placed from the wheels, not checked by hand — worth a look.',auto_guess:'Crank axle estimated, not found — mark it again for a real reading.',user:'Crank axle placed by you.'}[h.c_source]||'Crank axle placed by you.'} ${canMark?'If it is off, tap Mark again and drag it.':''}</li><li>${ref}</li><li>${scale}</li></ul>
       <details class="hob-more"><summary>What this does and doesn't mean</summary>
