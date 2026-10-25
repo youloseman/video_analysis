@@ -38,9 +38,15 @@ def is_test_address(email: str | None) -> bool:
 
 
 def is_recipient(user: Any) -> bool:
-    """Whether this account gets product news."""
+    """Whether this account gets product news.
+
+    Only with express consent (``marketing_opt_in``: the sign-up box or the
+    Account page) since 2026-10-24 -- an account that never ticked it is not
+    on the list, however long it has existed.
+    """
     return (
-        not getattr(user, "news_opt_out", False)
+        bool(getattr(user, "marketing_opt_in", False))
+        and not getattr(user, "news_opt_out", False)
         and getattr(user, "tier", None) != TIER_ADMIN
         and not is_test_address(getattr(user, "email", None))
     )

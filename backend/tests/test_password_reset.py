@@ -193,13 +193,13 @@ def test_forgot_over_http_needs_no_account():
 async def test_sign_ups_are_capped_per_ip(db):
     for i in range(auth_api.REGISTER_PER_IP):
         out = await auth_api.register(
-            auth_api.Credentials(email=f"farm{i}@example.com", password="long-enough-pw"),
+            auth_api.RegisterBody(email=f"farm{i}@example.com", password="long-enough-pw", accept_privacy=True),
             _request(), db,
         )
         assert out.tier == "starter"
     with pytest.raises(HTTPException) as e:
         await auth_api.register(
-            auth_api.Credentials(email="farm-x@example.com", password="long-enough-pw"),
+            auth_api.RegisterBody(email="farm-x@example.com", password="long-enough-pw", accept_privacy=True),
             _request(), db,
         )
     assert e.value.status_code == 429
@@ -210,11 +210,11 @@ async def test_the_sign_up_cap_is_per_ip(db):
     unaffected by the first one's tally."""
     for i in range(auth_api.REGISTER_PER_IP):
         await auth_api.register(
-            auth_api.Credentials(email=f"club{i}@example.com", password="long-enough-pw"),
+            auth_api.RegisterBody(email=f"club{i}@example.com", password="long-enough-pw", accept_privacy=True),
             _request("203.0.113.7"), db,
         )
     out = await auth_api.register(
-        auth_api.Credentials(email="elsewhere@example.com", password="long-enough-pw"),
+        auth_api.RegisterBody(email="elsewhere@example.com", password="long-enough-pw", accept_privacy=True),
         _request("198.51.100.2"), db,
     )
     assert out.email == "elsewhere@example.com"
@@ -241,7 +241,7 @@ async def test_a_reviewer_email_signs_up_on_the_full_tier(db, monkeypatch):
     import dataclasses
 
     monkeypatch.setattr(auth_api, "settings", dataclasses.replace(settings, reviewer_emails=("appreview@getflapp.com",)))
-    out = await auth_api.register(auth_api.Credentials(email="AppReview@getflapp.com", password="review-pass-1"), _request(), db)
+    out = await auth_api.register(auth_api.RegisterBody(email="AppReview@getflapp.com", password="review-pass-1", accept_privacy=True), _request(), db)
     assert out.tier == TIER_FULL
-    other = await auth_api.register(auth_api.Credentials(email="someone@example.com", password="review-pass-1"), _request("198.51.100.9"), db)
+    other = await auth_api.register(auth_api.RegisterBody(email="someone@example.com", password="review-pass-1", accept_privacy=True), _request("198.51.100.9"), db)
     assert other.tier == TIER_STARTER

@@ -14,8 +14,8 @@ import pytest
 from app.services import newsletter as NL
 
 
-def _u(email, tier="starter", out=False):
-    return SimpleNamespace(email=email, tier=tier, news_opt_out=out)
+def _u(email, tier="starter", out=False, marketing=True):
+    return SimpleNamespace(email=email, tier=tier, news_opt_out=out, marketing_opt_in=marketing)
 
 
 @pytest.mark.parametrize("email", [
@@ -32,6 +32,12 @@ def test_athletes_get_it_unless_they_left_or_run_the_place():
     assert NL.is_recipient(_u("jwrdds@comcast.net", tier="full"))
     assert not NL.is_recipient(_u("normap.ca@gmail.com", out=True))
     assert not NL.is_recipient(_u("top.raider90@gmail.com", tier="admin"))
+
+
+def test_no_consent_no_news():
+    """Since 2026-10-24 news needs the athlete's own yes (CASL): an account
+    that never ticked the box is not on the list, however old it is."""
+    assert not NL.is_recipient(_u("normap.ca@gmail.com", marketing=False))
 
 
 def test_the_issue_in_the_repo_renders_and_refuses_without_an_address():

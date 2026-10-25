@@ -6,6 +6,7 @@ import html
 import re
 import time
 from collections import deque
+from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -132,6 +133,22 @@ class TokenOut(BaseModel):
     analytics_id: str = ""
 
 
+class RegisterBody(Credentials):
+    """Sign-up adds the two consents to the credentials.
+
+    ``accept_privacy`` must be true -- the account cannot exist without
+    agreeing to how its data is handled. ``marketing`` is the separate,
+    optional consent to news and offers; it defaults to no.
+    """
+
+    accept_privacy: bool = False
+    marketing: bool = False
+
+
+class MarketingBody(BaseModel):
+    opt_in: bool
+
+
 class UserOut(BaseModel):
     email: str
     tier: str
@@ -140,13 +157,19 @@ class UserOut(BaseModel):
     unlock_credits: int = 0
     analytics_id: str = ""
     height_cm: int | None = None
+    marketing_opt_in: bool = False
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
 async def register(
-    body: Credentials, request: Request = None, db: AsyncSession = Depends(get_session),
+    body: RegisterBody, request: Request = None, db: AsyncSession = Depends(get_session),
 ) -> TokenOut:
     _throttle(f"register:{_caller(request)}", REGISTER_PER_IP, REGISTER_WINDOW_S)
+    if not body.accept_privacy:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Please agree to the Terms and the Privacy Policy to create an account.",
+        )
     exists = (
         await db.execute(select(User).where(User.email == body.email))
     ).scalar_one_or_none()
@@ -167,6 +190,9 @@ async def register(
         email=body.email,
         password_hash=await run_in_threadpool(hash_password, body.password),
         tier=TIER_ADMIN if is_admin else TIER_FULL if is_reviewer else TIER_STARTER,
+        privacy_accepted_at=_now(),
+        marketing_opt_in=bool(body.marketing),
+        marketing_changed_at=_now() if body.marketing else None,
     )
     db.add(user)
     await db.commit()
@@ -315,15 +341,44 @@ async def reset_password(body: ResetBody, db: AsyncSession = Depends(get_session
     )
 
 
-@router.get("/me", response_model=UserOut)
-async def me(user: User = Depends(get_current_user)) -> UserOut:
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _user_out(user: User) -> UserOut:
     return UserOut(
         email=user.email, tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
         analytics_id=analytics.person_id(user),
         height_cm=user.height_cm,
+        marketing_opt_in=bool(user.marketing_opt_in),
     )
+
+
+@router.get("/me", response_model=UserOut)
+async def me(user: User = Depends(get_current_user)) -> UserOut:
+    return _user_out(user)
+
+
+@router.put("/me/marketing", response_model=UserOut)
+async def set_marketing(
+    body: MarketingBody,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> UserOut:
+    """Give or withdraw consent to news and offers by email (Account page).
+
+    Giving it also lifts an earlier one-click unsubscribe from the news list
+    (``news_opt_out``): ticking the box again is the athlete asking back in.
+    Withdrawing sets both, so either flag alone keeps them off the list.
+    """
+    user.marketing_opt_in = body.opt_in
+    user.marketing_changed_at = _now()
+    user.news_opt_out = not body.opt_in
+    await db.commit()
+    logger.info("MARKETING_CONSENT", user_id=user.id, opt_in=body.opt_in)
+    return _user_out(user)
 
 
 class HeightBody(BaseModel):
@@ -352,13 +407,7 @@ async def set_height(
     user.height_cm = body.height_cm
     await db.commit()
     logger.info("HEIGHT_SET", user_id=user.id, height_cm=body.height_cm)
-    return UserOut(
-        email=user.email, tier=user.tier, is_pro=user.is_paid,
-        expert_credits=user.expert_credits or 0,
-        unlock_credits=user.unlock_credits or 0,
-        analytics_id=analytics.person_id(user),
-        height_cm=user.height_cm,
-    )
+    return _user_out(user)
 
 
 class DeleteAccountBody(BaseModel):

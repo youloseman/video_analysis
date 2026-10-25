@@ -292,6 +292,19 @@
         <small class="fldhint hidden" id="authPassHint">At least 8 characters. A short phrase you'll remember beats a clever word.</small>
       </div>
       <label class="fld hidden" id="authPromoFld"><span>Promo code <small style="font-weight:400;color:var(--c-ink-faint)">optional</small></span><input type="text" id="authPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32"></label>
+      <!-- The two consents (2026-10-24), sign-up only. The first is required:
+           no account without agreeing to how its data is handled. The second
+           is separate and unticked: news and offers by email need their own
+           yes (CASL). Service mail -- results, receipts, resets -- goes either
+           way and is said so, so nobody ticks the second box out of fear of
+           missing their own report. -->
+      <div class="consents hidden" id="authConsent">
+        <label class="consent"><input type="checkbox" id="authPrivacy">
+          <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>, including how my personal data is processed. <em>Required</em></span></label>
+        <label class="consent"><input type="checkbox" id="authMarketing">
+          <span>Send me Flapp news, training tips and offers by email. <em>Optional · unsubscribe any time</em></span></label>
+        <p class="consent-note">Emails about your own account — finished analyses, receipts, password resets — come either way.</p>
+      </div>
       <div class="autherr" id="authErr" role="alert"></div>
       <div class="authsent hidden" id="authSent" role="status"></div>
       <button class="btn btn-primary" id="authSubmit" type="submit" style="width:100%">Log in</button>
@@ -1708,6 +1721,13 @@
           <div class="acct-body">
             <p class="acct-p">Clips are deleted from our servers after processing unless you saved them. Every measurement in a saved report can be copied out as text from the report itself.</p>
             <a href="/privacy" class="btn btn-link btn-sm">Privacy policy</a>
+          </div>
+          <div class="acct-body">
+            <h4>Emails</h4>
+            <label class="switch"><input type="checkbox" id="acctMarketing"><span class="box" aria-hidden="true"></span>
+              <span>News, training tips and offers<span class="subhint">Rare. Off any time — here or from any issue.</span></span>
+            </label>
+            <p class="acct-p" style="margin-top:8px">Emails about your own account — finished analyses, receipts, password resets — come either way.</p>
           </div>
           <div class="acct-body">
             <h4>Delete account</h4>
@@ -6461,9 +6481,22 @@ function renderAccount(){
   const portal=$('#acctPortal'); if(portal) portal.classList.toggle('hidden', !paid);
   const pp=$('#acctProfPill'), ppt=$('#acctProfPillTxt');
   if(pp&&ppt){ pp.classList.toggle('hidden', !auth); ppt.textContent=`${PROFILES.used||0} of ${PROFILES.limit||1} used · ${planName}`; pp.className='pill '+((PROFILES.used||0)>=(PROFILES.limit||1)?'pill-warnchip':'pill-low'); }
+  const mk=$('#acctMarketing'); if(mk) mk.checked=!!(auth&&auth.marketing_opt_in);
   renderCoachCard();
   if(auth&&!COACH.loaded) loadCoach();
 }
+/* Give or withdraw marketing consent (PUT /auth/me/marketing). The switch moves at
+   once; if the server says no, it moves back and says why. */
+$('#acctMarketing').addEventListener('change',async e=>{
+  const on=e.target.checked;
+  try{
+    const r=await fetch('/auth/me/marketing',{method:'PUT',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({opt_in:on})});
+    if(!r.ok) throw new Error(String(r.status));
+    if(auth) auth.marketing_opt_in=on;
+    track('marketing_consent_changed',{opt_in:on});
+    toast(on?'You\'re on the list — unsubscribe any time.':'Done — no more news or offers.');
+  }catch(err){ e.target.checked=!on; toast('Could not save that — try again.'); }
+});
 function openAccount(){
   if(!auth){ openAuth('login'); return; }
   renderAccount();
@@ -9371,7 +9404,7 @@ const AUTH_MODES={
             toggle:'New here? <a href="#" data-authmode="register">Create an account</a>'},
   register:{title:'Create account', intro:'Free to start. Your email is your login — no username to remember.',
             submit:'Create account', email:true, pass:true, passLabel:'Password', passAc:'new-password', passHint:true,
-            note:'By creating an account you agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.',
+            note:'',
             toggle:'Have an account? <a href="#" data-authmode="login">Log in</a>'},
   forgot:  {title:'Reset password', intro:'Enter the email you signed up with — that\'s your login. We\'ll send a link to set a new password.',
             submit:'Send reset link', email:true, pass:false, note:'',
@@ -9389,6 +9422,7 @@ function setAuthMode(mode,opts){
   if(m.pass){ $('#authPassLabel').textContent=m.passLabel; $('#authPass').setAttribute('autocomplete',m.passAc); }
   $('#authPassHint').classList.toggle('hidden',!m.passHint);
   $('#authPromoFld').classList.toggle('hidden',mode!=='register');
+  $('#authConsent').classList.toggle('hidden',mode!=='register');
   if(mode==='register'&&!$('#authPromo').value) $('#authPromo').value=promoPending();
   $('#authNote').innerHTML=m.note; $('#authToggleTxt').innerHTML=m.toggle;
   document.querySelectorAll('#authModal [data-authmode]').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); setAuthMode(a.dataset.authmode); $(state.authMode==='reset'?'#authPass':'#authEmail').focus(); }));
@@ -9416,6 +9450,8 @@ async function submitAuth(e){
   // suppressed (novalidate) so the message can sit where the other errors do.
   if(AUTH_MODES[mode].email && !email){ $('#authErr').textContent='Enter your email address.'; $('#authEmail').focus(); return; }
   if(AUTH_MODES[mode].pass && password.length<8){ $('#authErr').textContent='Password must be at least 8 characters.'; $('#authPass').focus(); return; }
+  const marketing=mode==='register' && $('#authMarketing').checked;
+  if(mode==='register' && !$('#authPrivacy').checked){ $('#authErr').textContent='Please agree to the Terms and the Privacy Policy to create an account.'; $('#authPrivacy').focus(); return; }
   btn.disabled=true;
   const post=(path,body)=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   try{
@@ -9432,18 +9468,23 @@ async function submitAuth(e){
     }
     const r = mode==='reset'
       ? await post('/auth/reset',{token:state.resetToken||'',password})
-      : await post('/auth/'+(mode==='register'?'register':'login'),{email,password});
+      : mode==='register'
+        ? await post('/auth/register',{email,password,accept_privacy:true,marketing})
+        : await post('/auth/login',{email,password});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
     auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,
-      analytics_id:j.analytics_id||null};
+      analytics_id:j.analytics_id||null, marketing_opt_in:mode==='register'?marketing:undefined};
     // Name the person first, then record the act — so the sign-up itself is
     // attributed to the account rather than to the anonymous visitor who
     // stopped existing a millisecond ago.
     trackIdentify();
     track(mode==='register'?'signed_up':mode==='reset'?'password_reset':'logged_in',
-      {pending_analysis: !!state.pendingAnalyze});
+      mode==='register' ? {pending_analysis: !!state.pendingAnalyze, marketing_opt_in: marketing}
+                        : {pending_analysis: !!state.pendingAnalyze});
+    // Login carries no consent flags; ask the server so the Account switch is right.
+    if(mode!=='register') fetch('/auth/me',{headers:authHeaders()}).then(r=>r.ok?r.json():null).then(u=>{ if(u&&auth) auth.marketing_opt_in=!!u.marketing_opt_in; }).catch(()=>{});
     renderAuth(); closeAuth(); migrateAndLoad(); renderPromoBanner();
     if(mode==='register'){ const pc=($('#authPromo').value||'').trim(); if(pc) promoRemember(pc); }
     applyPendingPromo();

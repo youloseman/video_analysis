@@ -1443,6 +1443,7 @@ async def unsubscribe(
             user = await db.get(User, u)
             if user:
                 user.news_opt_out = True
+                user.marketing_opt_in = False
                 await db.commit()
                 logger.info("UNSUBSCRIBED", user_id=u, kind="news")
         return HTMLResponse(page)

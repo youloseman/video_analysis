@@ -191,6 +191,27 @@ class User(Base):
     news_opt_out: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False, server_default="0",
     )
+    # Consent, recorded the way it was given (2026-10-24).
+    #
+    # privacy_accepted_at: when the athlete ticked "I agree to the Terms and the
+    # Privacy Policy" at sign-up -- required, so every account created since
+    # has it; NULL means an account from before the box existed.
+    #
+    # marketing_opt_in: express consent to product news, tips and offers by
+    # email -- a separate, unticked-by-default box (Canada's anti-spam law,
+    # CASL, wants consent for commercial email that is express, separate and
+    # recorded). Service mail -- password resets, receipts, "your analysis is
+    # ready", a delivered review -- needs none and is not governed by this.
+    # marketing_changed_at: when it was last given or withdrawn, for the record.
+    privacy_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    marketing_opt_in: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0",
+    )
+    marketing_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
     # The promo code this account redeemed (services/promo.py): one per
     # account, ever. NULL = none used.
     promo_code: Mapped[str | None] = mapped_column(String(32), nullable=True)

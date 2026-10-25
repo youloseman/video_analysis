@@ -140,6 +140,20 @@ def _migrate_users(conn) -> None:
     if "promo_code" not in cols:
         conn.execute(text("ALTER TABLE users ADD COLUMN promo_code VARCHAR(32)"))
         logger.info("MIGRATED", change="users.promo_code added")
+    # Consent (models/user.py). Existing accounts get NO marketing consent:
+    # nobody ticked a box for them, and consent cannot be backfilled. Spelled
+    # ``false`` and WITH TIME ZONE for the Postgres reasons recorded above.
+    for _col, _ddl in (
+        ("privacy_accepted_at",
+         "ALTER TABLE users ADD COLUMN privacy_accepted_at TIMESTAMP WITH TIME ZONE"),
+        ("marketing_opt_in",
+         "ALTER TABLE users ADD COLUMN marketing_opt_in BOOLEAN NOT NULL DEFAULT false"),
+        ("marketing_changed_at",
+         "ALTER TABLE users ADD COLUMN marketing_changed_at TIMESTAMP WITH TIME ZONE"),
+    ):
+        if _col not in cols:
+            conn.execute(text(_ddl))
+            logger.info("MIGRATED", change=f"users.{_col} added")
     # Off-bike mobility. All nullable with no backfill: NULL means "has not
     # done the screens", and that is a state the analysis has to handle
     # anyway -- no data is not a verdict.
