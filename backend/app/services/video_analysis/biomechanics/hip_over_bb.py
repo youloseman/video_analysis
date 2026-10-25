@@ -42,7 +42,7 @@ CM_PER_DEG_TYPICAL = 1.45
 DEFAULT_CRANK_MM = 172.5
 SOURCE = ("Flapp field study, Ironman World Championship 2026: 31 professional and "
           "68 age-group riders, hip and crank axle placed by hand on race photographs")
-ARTICLE = "/academy/kona-2026-pro-bike-positions"
+ARTICLE = "/academy/kona-2026-hip-over-crank"
 
 # What the athlete places, in normalized image coordinates.
 POINT_KEYS = ("C", "P", "FA", "RA")

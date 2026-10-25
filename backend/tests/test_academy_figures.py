@@ -163,3 +163,33 @@ def test_the_stills_count_and_the_article_says_so():
     assert "Six of them are broadcast and social-media stills" in text
     assert "## 5. Men and women: a first look" in text
     assert "none of these differences stands out from noise" in text
+
+
+class TestTheHipOverCrankArticle:
+    """Kona 2026, part two (2026-10-25): where the rider sits over the crank."""
+
+    SLUG = "kona-2026-hip-over-crank"
+
+    def test_it_is_published_and_every_figure_exists(self):
+        from app.services.academy import get_article, invalidate_cache
+        invalidate_cache()
+        art = get_article(self.SLUG)
+        assert art is not None and art.meta.category == "bike-position" and len(art.sources) == 4
+        text = (CONTENT_DIR / f"{self.SLUG}.md").read_text(encoding="utf-8")
+        srcs = re.findall(r"^!\[[^\]]*\]\((/media/[^)]+)\)$", text, flags=re.M)
+        assert len(srcs) == art.body_html.count("<figure>") == 6
+        for src in srcs:
+            assert (MEDIA / src.removeprefix("/media/")).is_file(), src
+
+    def test_the_app_links_here_and_the_link_into_the_app_opens_the_crank_goal(self):
+        from app.services.video_analysis.biomechanics import hip_over_bb
+        assert hip_over_bb.ARTICLE == f"/academy/{self.SLUG}"
+        assert "(/app?goal=crank)" in (CONTENT_DIR / f"{self.SLUG}.md").read_text(encoding="utf-8")
+
+    def test_the_numbers_are_the_fields(self):
+        # The article's middle halves are the app's FIELD, rounded: one study, one set of numbers.
+        from app.services.video_analysis.biomechanics.hip_over_bb import FIELD
+        text = (CONTENT_DIR / f"{self.SLUG}.md").read_text(encoding="utf-8")
+        assert f"{FIELD['pro']['n']} pros" in text and f"{FIELD['age_group']['n']} age-groupers" in text
+        assert f"{round(FIELD['pro']['q1'])}–{round(FIELD['pro']['q3'])}°" in text
+        assert f"{round(FIELD['age_group']['q1'])}–{round(FIELD['age_group']['q3'])}°" in text
