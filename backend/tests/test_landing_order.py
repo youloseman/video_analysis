@@ -196,3 +196,18 @@ def test_the_slider_still_finds_its_control(html):
     assert "cmp.querySelector('input[type=range]')" in html
     frame = html[html.index('<div class="cmp" id="cmp">'):]
     assert "input type=\"range\"" in frame[:frame.index("</div>")]
+
+
+def test_the_coach_block_shows_the_frame_it_talks_about(html):
+    """2026-10-24: the note sits under the photo it was written about, with a
+    pin per joint it names, and links a full review as a PDF that exists."""
+    card = html[html.index('id="coachFrame"'):]
+    card = card[:card.index('<p class="cn-src">')]
+    assert 'src="media/after.webp"' in card
+    pins = re.findall(r'class="cpin (\w+)"[^>]*data-for="([^"]+)"', card)
+    assert ("fix", "fix next") in pins and len(pins) >= 3
+    # every numbered line in the note has its pin
+    for n in re.findall(r'<span class="cnum \w+">(\d)</span>', card):
+        assert f'>{n}</span>' in card[:card.index("</figure>")], n
+    pdf = re.search(r'href="/media/(expert-review-sample\.pdf)"', html)
+    assert pdf and (LANDING.parent / "media" / pdf.group(1)).exists()

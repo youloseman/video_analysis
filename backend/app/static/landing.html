@@ -607,7 +607,22 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 .label-pill.blue{background:var(--c-blue);box-shadow:0 10px 26px rgba(47,109,224,.4)}
 /* The coach's note, typeset like the report's coach block. */
 .coach-card{position:relative;background:var(--c-panel-blue);border:1px solid #D5E2F7;border-radius:var(--radius-xl);
-  padding:28px 30px 22px;box-shadow:var(--shadow-lg);min-height:300px;display:flex;flex-direction:column}
+  padding:0 0 22px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden}
+.coach-card .coach-panel{padding:20px 26px 0}
+.coach-card .cn-src{padding-left:26px;padding-right:26px}
+.cfig{position:relative;margin:0;border-bottom:1px solid #D5E2F7;background:#0B182F}
+.cfig img{display:block;width:100%;height:auto}
+.cpin{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font:700 12.5px/1 var(--f-mono);color:#fff;
+  border:2px solid #fff;box-shadow:0 2px 10px rgba(3,10,24,.45);opacity:0;transition:opacity .15s ease-out}
+.cpin.fix,.cnum.fix{background:var(--c-coral-btn)}
+.cpin.ok,.cnum.ok{background:#1F7A45}
+.coach-card[data-panel="fix"] .cpin[data-for~="fix"],
+.coach-card[data-panel="work"] .cpin[data-for~="work"],
+.coach-card[data-panel="next"] .cpin[data-for~="next"]{opacity:1}
+.cnum{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+  font:700 10.5px/1 var(--f-mono);color:#fff;margin-right:7px;vertical-align:1px}
+.pdf-link{display:block;margin-top:6px;font-weight:600}
 .coach-card .cn-h{font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
   color:var(--c-blue-dk);margin:0 0 8px}
 .coach-card .cn-h ~ .cn-h{margin-top:16px}
@@ -1413,11 +1428,19 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
          real note the TT rider in the before/after got, unedited; only the
          "AI COACH" header of the old capture is gone (no AI branding on the
          report since the design pass of 2026-09-26). -->
-    <div class="coach-card" id="coachFrame" aria-live="polite">
+    <!-- 2026-10-24: the note now sits under the frame it was written about
+         (the "after" of the before/after above), with a numbered pin on each
+         joint it names; the tab on the right decides which pins show. -->
+    <div class="coach-card" id="coachFrame" data-panel="fix" aria-live="polite">
+      <figure class="cfig">
+        <img src="media/after.webp" width="1600" height="974" loading="lazy"
+             alt="The time-trial rider the note is about: Flapp's overlay with elbow 74 degrees in amber, trunk 19, head position 90 out of 100, forearm tilt 23 and shoulder 85; numbered markers on the joints the coach's note discusses">
+        <span class="cpin fix" style="left:60.8%;top:30.8%" data-for="fix next" aria-hidden="true" title="Elbow">1</span><span class="cpin ok" style="left:46.3%;top:6%" data-for="work" aria-hidden="true" title="Trunk">2</span><span class="cpin ok" style="left:62.8%;top:22.6%" data-for="work" aria-hidden="true" title="Head">3</span><span class="cpin ok" style="left:72.8%;top:19.8%" data-for="work" aria-hidden="true" title="Forearms and shoulder">4</span>
+      </figure>
       <div class="coach-panel" data-panel="fix">
         <p class="cn-h">Fix first</p>
         <ul>
-          <li><b>Elbow angle:</b> Your elbow angle of 74.2 degrees is slightly below the optimal
+          <li><span class="cnum fix">1</span><b>Elbow angle:</b> Your elbow angle of 74.2 degrees is slightly below the optimal
             range of 75–110 degrees. While close, a slightly more open elbow can improve comfort and
             stability over long durations.</li>
           <li><b>Drill:</b> Focus on actively pressing your forearms into the pads, allowing your
@@ -1430,15 +1453,15 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
           aerodynamics and power production.</p>
         <p class="cn-h">What's working</p>
         <ul>
-          <li>Your trunk angle of 18.8 degrees is very aggressive and highly aerodynamic.</li>
-          <li>Excellent head tuck (89.7/100) minimizes frontal area effectively.</li>
-          <li>Optimal forearm tilt (23.2 degrees) and shoulder angle (85.4 degrees) contribute to a
+          <li><span class="cnum ok">2</span>Your trunk angle of 18.8 degrees is very aggressive and highly aerodynamic.</li>
+          <li><span class="cnum ok">3</span>Excellent head tuck (89.7/100) minimizes frontal area effectively.</li>
+          <li><span class="cnum ok">4</span>Optimal forearm tilt (23.2 degrees) and shoulder angle (85.4 degrees) contribute to a
             clean aero profile.</li>
         </ul>
       </div>
       <div class="coach-panel" data-panel="next" hidden>
         <p class="cn-h">Next session</p>
-        <p>Focus on maintaining a relaxed, slightly more open elbow angle.</p>
+        <p><span class="cnum fix">1</span>Focus on maintaining a relaxed, slightly more open elbow angle.</p>
       </div>
       <p class="cn-src">Time-trial rider, after the position change · one real report, unedited</p>
     </div>
@@ -1462,7 +1485,11 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
       </div>
       <p class="split-note rv" data-d="4">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="6" r="3.2"/></svg>
-        <span>Want a human too? <b>Coach Notes</b> <a href="#pricing"><!--NOTES-PRICE--></a> · <b>Expert Review</b> from a competing triathlete <a href="#pricing"><!--EXPERT-PRICE--></a></span>
+        <span>Want a human too? <b>Coach Notes</b> <a href="#pricing"><!--NOTES-PRICE--></a> · <b>Expert Review</b> from a competing triathlete <a href="#pricing"><!--EXPERT-PRICE--></a>
+          <!-- The sample Expert Review the app's pricing page already shows,
+               printed by the same template a delivered review uses
+               (scripts/review_pdf.py). -->
+          <a class="pdf-link" id="reviewPdf" href="/media/expert-review-sample.pdf" target="_blank" rel="noopener">See a full Expert Review (PDF)</a></span>
       </p>
     </div>
   </div>
@@ -1801,6 +1828,7 @@ var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
         [].forEach.call(frame.querySelectorAll('.coach-panel'),function(p){
           p.hidden = p.dataset.panel!==it.dataset.panel;
         });
+        frame.dataset.panel=it.dataset.panel;
       }else{
         img.src=it.dataset.img;
         if(it.dataset.alt) img.alt=it.dataset.alt;
