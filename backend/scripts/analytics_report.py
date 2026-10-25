@@ -14,8 +14,8 @@ PostHog.
 Every run opens with "Last 7 days": the seven whole Pacific days before today
 against the seven before those. Whole days on purpose -- the Monday email then
 covers Mon-Sun and the Friday one Fri-Thu, and neither ends on a half-day that
-reads as a collapse. Then the seven standing sections over --days (default all
-time). .github/workflows/analytics-report.yml sends it Monday and Friday.
+reads as a collapse. Then the standing sections over --days (default all
+time), the eighth being the pricing funnel. .github/workflows/analytics-report.yml sends it Monday and Friday.
 
 Credentials, in order: POSTHOG_PERSONAL_KEY / POSTHOG_PROJECT_ID from the
 environment, else mobile/.env (git-ignored). The personal key is a read key
@@ -412,6 +412,8 @@ def last_week() -> dict:
                   FROM events WHERE event='paywall_shown' AND {WEEK}
                   GROUP BY c ORDER BY 2 DESC""")])
 
+    pricing(WEEK, "Pricing funnel")
+
     head("Where they came from")
     label("Sources")
     table(["source", "visitors", "7 days before", "change"],
@@ -486,7 +488,82 @@ def last_week() -> dict:
 
 
 # --------------------------------------------------------------------------
-# The seven standing sections
+# Pricing funnel
+#
+# Prices are seen in two places: the #pricing section of the landing page and
+# the app's pricing screen. Neither is on the way to every sale -- the paywall
+# card sells the $4 unlock and (since 820d698) a plan without a detour -- so
+# this is ORDERED per person: a checkout counts here only if it came after
+# that person first saw prices. Built in Python from one row per person,
+# because "after" is what a uniq() funnel cannot say.
+# --------------------------------------------------------------------------
+LANDING_PRICES = "(event='landing_section_viewed' AND properties.section='pricing')"
+APP_PRICES = "(event='view_opened' AND properties.view='pricing')"
+
+
+def pricing(where: str, title: str) -> None:
+    head(title)
+    steps = {"lp": LANDING_PRICES, "ap": APP_PRICES, "pw": "event='paywall_shown'",
+             "co": "event='checkout_started'", "pd": "event='purchase_completed'"}
+    cols = ", ".join(f"if(countIf({c}) > 0, minIf(timestamp, {c}), NULL)" for c in steps.values())
+    # Timestamps come back as ISO strings in one format, so they compare as text.
+    # The explicit LIMIT matters: HogQL returns 100 rows unless told otherwise,
+    # and one row per person passes that within a week.
+    people = [{"id": r[0], **dict(zip(steps, r[1:]))} for r in q(
+        f"""SELECT person_id, {cols} FROM events
+            WHERE {where} AND ({LANDING_PRICES} OR {APP_PRICES} OR event IN
+              ('paywall_shown', 'checkout_started', 'purchase_completed'))
+            GROUP BY person_id
+            HAVING countIf({LANDING_PRICES} OR {APP_PRICES} OR event IN
+              ('checkout_started', 'purchase_completed')) > 0
+            LIMIT 10000""")]
+    visitors = q(f"SELECT uniq(person_id) FROM events WHERE event={PV} AND {where}")[0][0]
+    for p in people:
+        seen = [t for t in (p["lp"], p["ap"]) if t]
+        p["pr"] = min(seen) if seen else None
+        p["co_after"] = bool(p["pr"] and p["co"] and p["co"] >= p["pr"])
+        p["pd_after"] = bool(p["co_after"] and p["pd"] and p["pd"] >= p["pr"])
+
+    saw = [p for p in people if p["pr"]]
+    co = sum(p["co_after"] for p in saw)
+    pd = sum(p["pd_after"] for p in saw)
+    table(["stage", "people", "of previous", "of visitors"],
+          [["visitor", visitors, "100%", "100%"],
+           ["saw prices", len(saw), pct(len(saw), visitors), pct(len(saw), visitors)],
+           ["then checkout", co, pct(co, len(saw)), pct(co, visitors)],
+           ["then paid", pd, pct(pd, co), pct(pd, visitors)]])
+
+    def row(name, group):
+        c, d = sum(p["co_after"] for p in group), sum(p["pd_after"] for p in group)
+        return [name, len(group), c, pct(c, len(group)), d, pct(d, len(group))]
+
+    label("Where they saw prices")
+    table(["where", "people", "then checkout", "rate", "then paid", "rate"],
+          [row("landing section only", [p for p in saw if p["lp"] and not p["ap"]]),
+           row("app pricing screen only", [p for p in saw if p["ap"] and not p["lp"]]),
+           row("both", [p for p in saw if p["lp"] and p["ap"]])])
+    app = [p for p in saw if p["ap"]]
+    label("How the app pricing screen was reached")
+    table(["first", "people", "then checkout", "rate", "then paid", "rate"],
+          [row("after a paywall", [p for p in app if p["pw"] and p["pw"] <= p["ap"]]),
+           row("without a paywall (menu, link)",
+               [p for p in app if not (p["pw"] and p["pw"] <= p["ap"])])])
+
+    # Every sale, by whether its buyer had seen prices before paying.
+    path = {p["id"]: p for p in people}
+    by: dict[str, list] = {"via prices": [], "straight from a paywall card": []}
+    for pid, plan, t in q(f"""SELECT person_id, properties.plan, timestamp FROM events
+                              WHERE event='purchase_completed' AND {where}"""):
+        p = path.get(pid)
+        via = bool(p and p["pr"] and p["pr"] <= t)
+        by["via prices" if via else "straight from a paywall card"].append((plan, 1))
+    label("Every purchase, by path")
+    table(["path", "purchases", "revenue"],
+          [[k, money(v)[1], f"${money(v)[0]}"] for k, v in by.items()])
+
+
+# --------------------------------------------------------------------------
+# The standing sections
 # --------------------------------------------------------------------------
 def standing(days: int | None) -> None:
     where = f"timestamp >= now() - INTERVAL {days} DAY" if days else "1=1"
@@ -569,6 +646,9 @@ def standing(days: int | None) -> None:
           q(f"""SELECT properties.reason, count(), uniq(person_id)
                 FROM events WHERE event='analysis_failed' AND {where}
                 GROUP BY 1 ORDER BY 2 DESC"""), 8)
+
+    # 8. Pricing -----------------------------------------------------------
+    pricing(where, "8. Pricing funnel")
 
 
 def main() -> None:
