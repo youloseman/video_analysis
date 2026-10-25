@@ -2,9 +2,9 @@
 
 The angle of the line from the crank axle up to the hip joint, measured from
 the horizontal on the rider's back side. It is the one number the Kona 2026
-pros and age-groupers differed on in our field study (hipknee2026, 25 pros
-and 58 age-groupers, every point placed by hand): pros 88.0 deg, age-groupers
-85.1, a 3.2 deg gap [2.1, 4.3] that holds in men and women, about 4-5 cm
+pros and age-groupers differed on in our field study (hipknee2026, 31 pros
+and 68 age-groupers, every point placed by hand): pros 88.0 deg, age-groupers
+85.1, a 3.1 deg gap [2.1, 4.1] that holds in men and women, about 4-5 cm
 further forward over the crank. Knee and hip angles did not differ.
 
 The crank axle is not a landmark the pose model finds, and no pose-derived
@@ -27,20 +27,21 @@ from statistics import median
 from typing import Any
 
 # Pro / age-group fields: median, middle half, full range (final_stats.json,
-# 2026-10-19, Imogen Simmonds frames #6/#7 excluded). A FIELD, never a band.
+# 2026-10-24: Simmonds #6/#7 and blurry #102 excluded; 16 of the frames are Scott
+# Flathouse's full-resolution originals, the rest store previews). A FIELD, never a band.
 FIELD: dict[str, dict[str, float]] = {
-    "pro": {"median": 88.0, "q1": 87.0, "q3": 90.0, "lo": 84.8, "hi": 94.6, "n": 25},
-    "age_group": {"median": 85.1, "q1": 83.3, "q3": 86.9, "lo": 80.3, "hi": 90.6, "n": 58},
+    "pro": {"median": 88.0, "q1": 86.4, "q3": 89.7, "lo": 84.8, "hi": 94.6, "n": 31},
+    "age_group": {"median": 85.1, "q1": 83.4, "q3": 87.0, "lo": 79.0, "hi": 90.6, "n": 68},
 }
-DIFF_DEG = {"hl": 3.2, "ci": [2.1, 4.3]}
+DIFF_DEG = {"hl": 3.1, "ci": [2.1, 4.1]}
 REPEATABILITY_DEG = 1.4
 # Crank-to-hip is about 83 cm on an adult tri bike (the study's image ruler):
 # one degree of this angle is about 1.45 cm of hip travel. Used only when no
 # crank length gives a real scale, and labelled as typical.
 CM_PER_DEG_TYPICAL = 1.45
 DEFAULT_CRANK_MM = 172.5
-SOURCE = ("Flapp field study, Ironman World Championship 2026: 25 professional and "
-          "58 age-group riders, hip and crank axle placed by hand on race photographs")
+SOURCE = ("Flapp field study, Ironman World Championship 2026: 31 professional and "
+          "68 age-group riders, hip and crank axle placed by hand on race photographs")
 ARTICLE = "/academy/kona-2026-pro-bike-positions"
 
 # What the athlete places, in normalized image coordinates.

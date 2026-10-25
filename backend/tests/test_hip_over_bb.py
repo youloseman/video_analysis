@@ -1,6 +1,6 @@
 """Where the rider sits over the crank, from points the athlete placed.
 
-The reading the Kona 2026 pros and age-groupers differed on (3.2 deg, ~4-5 cm).
+The reading the Kona 2026 pros and age-groupers differed on (3.1 deg, ~4-5 cm).
 What would hurt if it broke: the angle read on the wrong side of the rider,
 a tilted phone read as a position, a free account getting a paid reading,
 or the clip's hip taken from one frame instead of the median.
@@ -73,7 +73,7 @@ def test_the_crank_gives_the_centimetres_and_the_default_is_labelled():
 
 
 def test_the_field_rides_along_and_is_a_field():
-    out = HOB.hip_over_bb((0.45, 0.2), {"C": (0.5, 1.0)}, aspect=1.0, cycling_position="triathlon")
+    out = HOB.hip_over_bb((0.44, 0.2), {"C": (0.5, 1.0)}, aspect=1.0, cycling_position="triathlon")
     assert out["field"]["pro"]["median"] == 88.0 and out["field"]["age_group"]["median"] == 85.1
     assert out["aero"] is True and out["repeatability_deg"] == 1.4
     assert out["in_age_group_middle_half"] and not out["in_pro_middle_half"]
