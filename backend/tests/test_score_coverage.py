@@ -201,6 +201,35 @@ def test_cycling_missing_measures_are_named():
     assert cov["measures_scored"] == len(CYCLING_WEIGHTS) - 2
 
 
+_NUMERIC_BIKE_KEYS = [
+    "left_knee_at_bdc", "left_knee_at_tdc", "trunk_angle_avg",
+    "elbow_angle_avg", "shoulder_angle_avg", "pelvic_ratio",
+]
+
+
+@pytest.mark.parametrize("key", _NUMERIC_BIKE_KEYS)
+def test_a_measure_present_as_none_is_missing_not_a_crash(key):
+    """The analyzer can leave a key in the summary with no value. `.get(k, 0)`
+    returned that None and `None > 0` raised, killing the whole analysis --
+    found when a knee_at_bdc came back empty (2026-10-25)."""
+    summary = _bike_summary(**{key: None, "knee_at_bdc": None, "knee_at_tdc": None})
+    result = score_cycling(summary, {}, cycling_position="triathlon")
+    assert result["overall_score"] > 0
+    component = {
+        "left_knee_at_bdc": "knee_bdc", "left_knee_at_tdc": "knee_tdc",
+        "trunk_angle_avg": "trunk_angle", "elbow_angle_avg": "elbow_angle",
+        "shoulder_angle_avg": "shoulder_angle", "pelvic_ratio": "pelvic_ratio",
+    }[key]
+    assert component in result["coverage"]["missing"]
+
+
+@pytest.mark.parametrize("key", ["cadence_spm", "vertical_oscillation_m"])
+def test_a_running_measure_present_as_none_is_missing_not_a_crash(key):
+    result = score_running(_run_summary(**{key: None}), _RUN_ANGLES)
+    component = {"cadence_spm": "cadence", "vertical_oscillation_m": "vertical_osc"}[key]
+    assert component in result["coverage"]["missing"]
+
+
 def test_every_coverage_key_is_a_real_weight_key():
     """Coverage names components; the UI maps those names to English. A typo
     here would print a raw key at the reader."""

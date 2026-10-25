@@ -293,7 +293,7 @@ def score_running(
 
     # Cadence -- the one component that is a rate, and so the one the time base
     # decides. Still reported to the athlete (with its warning); just not graded.
-    cadence = summary.get("cadence_spm", 0)
+    cadence = summary.get("cadence_spm") or 0
     if cadence > 0:
         if time_base_guessed:
             excluded["cadence"] = (
@@ -336,7 +336,7 @@ def score_running(
             )
 
     # Vertical oscillation
-    vert_osc = summary.get("vertical_oscillation_m", 0)
+    vert_osc = summary.get("vertical_oscillation_m") or 0
     if vert_osc > 0:
         vert_osc_cm = vert_osc * 100
         components["vertical_osc"] = score_in_range(
@@ -407,26 +407,26 @@ def score_cycling(
     near = summary.get("near_side", "left")
 
     # Knee at BDC (near-side primary, fall back to any available)
-    near_bdc = summary.get(f"{near}_knee_at_bdc", 0)
+    near_bdc = summary.get(f"{near}_knee_at_bdc") or 0
     if near_bdc > 0:
         components["knee_bdc"] = score_in_range(near_bdc, *ref["knee_at_bdc"])
     else:
         # Fallback: check backward-compat key
-        bdc = summary.get("knee_at_bdc", 0)
+        bdc = summary.get("knee_at_bdc") or 0
         if bdc > 0:
             components["knee_bdc"] = score_in_range(bdc, *ref["knee_at_bdc"])
 
     # Knee at TDC (near-side primary)
-    near_tdc = summary.get(f"{near}_knee_at_tdc", 0)
+    near_tdc = summary.get(f"{near}_knee_at_tdc") or 0
     if near_tdc > 0:
         components["knee_tdc"] = score_in_range(near_tdc, *ref["knee_at_tdc"])
     else:
-        tdc = summary.get("knee_at_tdc", 0)
+        tdc = summary.get("knee_at_tdc") or 0
         if tdc > 0:
             components["knee_tdc"] = score_in_range(tdc, *ref["knee_at_tdc"])
 
     # Trunk angle
-    trunk = summary.get("trunk_angle_avg", 0)
+    trunk = summary.get("trunk_angle_avg") or 0
     if trunk > 0:
         # On aero bars a trunk flatter than the band costs nothing -- the photo
         # and the fit plan already said so; the clip was the one surface that
@@ -447,7 +447,7 @@ def score_cycling(
         components["saddle_fit"] = float(saddle_map[saddle])
 
     # Elbow angle (near-side from elbow_angle_avg which is now near-side)
-    elbow = summary.get("elbow_angle_avg", 0)
+    elbow = summary.get("elbow_angle_avg") or 0
     if elbow > 0:
         components["elbow_angle"] = score_in_range(elbow, *ref["elbow_angle"])
 
@@ -455,7 +455,7 @@ def score_cycling(
     # is the athlete's choice (Empfield 2007) -- it costs a third as much per
     # degree, the same forgiveness the photo path applies. Opened past it is a
     # fault at the full rate. See cycling_positions.SHOULDER_CLOSED_OK_POSITIONS.
-    shoulder = summary.get("shoulder_angle_avg", 0)
+    shoulder = summary.get("shoulder_angle_avg") or 0
     if shoulder > 0:
         from app.services.video_analysis.biomechanics.cycling_positions import (
             SHOULDER_CLOSED_FORGIVENESS,
@@ -502,7 +502,7 @@ def score_cycling(
         weights.pop("helmet_above_back", None)
 
     # Pelvic ratio (scored against ratio thresholds)
-    pelvic = summary.get("pelvic_ratio", 0)
+    pelvic = summary.get("pelvic_ratio") or 0
     if pelvic > 0:
         components["pelvic_ratio"] = score_in_range(pelvic, *ref["pelvic_ratio"])
 
