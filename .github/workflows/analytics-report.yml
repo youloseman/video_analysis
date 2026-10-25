@@ -1,0 +1,47 @@
+# Email the standing analytics report (backend/scripts/analytics_report.py)
+# every Monday and Friday morning, Pacific.
+#
+# 15:00 UTC is 08:00 PDT / 07:00 PST. GitHub starts scheduled runs late under
+# load, sometimes by most of an hour -- harmless here, since the report covers
+# whole Pacific days that ended at midnight. A failed run (PostHog or Resend
+# refusing) fails the job, and GitHub mails whoever last edited this file.
+#
+# Repository secrets, all reads or one-address sends:
+#   POSTHOG_PERSONAL_KEY  phx_... read key (NOT the phc_ ingestion key)
+#   POSTHOG_PROJECT_ID    569204
+#   EMAIL_API_KEY         the Resend key the app uses on Railway
+#   EMAIL_FROM            same as Railway
+#   ADMIN_EMAIL           where the report goes
+#
+# Run it now: Actions -> Analytics report -> Run workflow.
+
+name: Analytics report
+
+on:
+  schedule:
+    - cron: '0 15 * * 1,5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Send report
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      # stdlib only -- no install step.
+      - name: Build and send
+        env:
+          POSTHOG_PERSONAL_KEY: ${{ secrets.POSTHOG_PERSONAL_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+        run: python backend/scripts/analytics_report.py --email
