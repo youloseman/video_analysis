@@ -193,3 +193,13 @@ class TestTheHipOverCrankArticle:
         assert f"{FIELD['pro']['n']} pros" in text and f"{FIELD['age_group']['n']} age-groupers" in text
         assert f"{round(FIELD['pro']['q1'])}–{round(FIELD['pro']['q3'])}°" in text
         assert f"{round(FIELD['age_group']['q1'])}–{round(FIELD['age_group']['q3'])}°" in text
+
+
+def test_every_article_with_figures_opens_them_full_screen():
+    # Most readers are on a phone (Artur, 2026-10-25): a figure must open full size.
+    from app.services.academy import get_article, invalidate_cache
+    from app.services.academy.renderer import render_article
+    invalidate_cache()
+    page = render_article(get_article("kona-2026-hip-over-crank"), "https://getflapp.com")
+    assert "querySelectorAll('.prose figure img')" in page and "#zoom{" in page
+    assert "cursor:zoom-in" in page

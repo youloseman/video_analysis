@@ -157,6 +157,47 @@ _READ_JS = """
 })();
 """
 
+# Figures open full screen (Artur, 2026-10-25: most readers are on a phone, and a
+# chart or a joint table at column width is too small to read). Tap a figure:
+# it fills the screen; tap again for its own pixels, pan with a finger, the
+# spot you tapped centred. The cross, the backdrop or Escape closes it and
+# focus goes back to the figure.
+_ZOOM_JS = """
+(function(){
+  var imgs=[].slice.call(document.querySelectorAll('.prose figure img')); if(!imgs.length) return;
+  var z=document.createElement('div'); z.id='zoom'; z.hidden=true;
+  z.setAttribute('role','dialog'); z.setAttribute('aria-modal','true'); z.setAttribute('aria-label','Enlarged figure');
+  z.innerHTML='<button type="button" class="zoom-x" aria-label="Close">\u00d7</button>'
+    +'<span class="zoom-hint">Tap to zoom</span><div class="zoom-box"><img alt=""></div><p class="zoom-cap"></p>';
+  document.body.appendChild(z);
+  var box=z.querySelector('.zoom-box'), im=box.querySelector('img'), cap=z.querySelector('.zoom-cap'),
+      hint=z.querySelector('.zoom-hint'), from=null;
+  function fit(){ z.classList.remove('full'); hint.textContent='Tap to zoom'; }
+  function open(img){
+    from=img; im.src=img.currentSrc||img.src; im.alt=img.alt||'';
+    var fc=img.closest('figure').querySelector('figcaption'); cap.textContent=fc?fc.textContent:''; cap.hidden=!fc;
+    fit(); z.hidden=false; document.body.style.overflow='hidden'; z.querySelector('.zoom-x').focus();
+  }
+  function close(){ z.hidden=true; im.removeAttribute('src'); document.body.style.overflow=''; if(from) from.focus(); from=null; }
+  imgs.forEach(function(img){
+    img.tabIndex=0; img.setAttribute('role','button');
+    img.setAttribute('aria-label',(img.alt||'Figure')+' \u2014 open full screen');
+    img.addEventListener('click',function(){ open(img); });
+    img.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(img); } });
+  });
+  im.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(z.classList.contains('full')){ fit(); return; }
+    var rx=e.offsetX/im.clientWidth, ry=e.offsetY/im.clientHeight;
+    z.classList.add('full'); hint.textContent='Tap to fit';
+    requestAnimationFrame(function(){
+      box.scrollLeft=rx*im.clientWidth-box.clientWidth/2; box.scrollTop=ry*im.clientHeight-box.clientHeight/2; });
+  });
+  z.addEventListener('click',function(e){ if(e.target===z||e.target===box||e.target.closest('.zoom-x')) close(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!z.hidden) close(); });
+})();
+"""
+
 _ARTICLE_CSS = """
 .article-wrap{max-width:760px;margin:0 auto;padding:36px 24px 16px;
   /* .appshell is a column flex and this centres itself with auto margins, so
@@ -189,6 +230,19 @@ _ARTICLE_CSS = """
 .prose p{margin:0 0 18px}
 .prose figure{margin:26px 0 28px}
 .prose figure img{display:block;width:100%;height:auto;border:1px solid var(--c-line);background:#fff}
+.prose figure img{cursor:zoom-in}
+.prose figure img:focus-visible{outline:2px solid var(--c-blue);outline-offset:3px}
+#zoom{position:fixed;inset:0;z-index:300;background:#0B111D;display:flex;flex-direction:column}
+#zoom[hidden]{display:none}
+#zoom .zoom-box{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;
+  padding:60px 12px 8px;-webkit-overflow-scrolling:touch}
+#zoom .zoom-box img{max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:4px;cursor:zoom-in}
+#zoom.full .zoom-box{display:block}
+#zoom.full .zoom-box img{max-width:none;max-height:none;cursor:zoom-out}
+#zoom .zoom-x{position:absolute;top:10px;right:12px;z-index:1;width:44px;height:44px;border:0;border-radius:50%;
+  background:rgba(255,255,255,.16);color:#fff;font-size:28px;line-height:44px;cursor:pointer}
+#zoom .zoom-hint{position:absolute;top:22px;left:16px;font:12px var(--f-mono);color:#C9D1DE;letter-spacing:.04em}
+#zoom .zoom-cap{margin:0 auto;max-width:760px;padding:8px 16px 16px;font-size:13px;line-height:1.45;color:#C9D1DE;text-align:center}
 .prose figcaption{margin-top:8px;font-size:13.5px;line-height:1.5;color:var(--c-ink-faint)}
 .prose ul,.prose ol{margin:0 0 18px;padding-left:24px}
 .prose li{margin:0 0 8px}
@@ -662,7 +716,7 @@ def render_article(article: Article, base_url: str) -> str:
         active="academy",
         jsonld=jsonld,
         og_type="article",
-        extra_js=widget_js + _READ_JS,
+        extra_js=widget_js + _READ_JS + _ZOOM_JS,
     )
 
 
