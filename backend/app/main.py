@@ -114,7 +114,7 @@ from app.core.jobs import (
 )
 from app.core.net import client_ip
 from app.core.security import get_current_user, optional_user
-from app.models.user import User, has_full
+from app.models.user import User, crank_access
 from app.services import ad_pixel, analytics, failure_log, pricing
 from app.services.analytics import log_analytics_configuration
 from app.services.export import ai_export
@@ -2144,7 +2144,7 @@ async def analyze_photo_endpoint(
 
     # Where the crank axle is, for the hip-over-crank reading (Full): found in
     # the picture so the athlete checks a point rather than hunts for one.
-    if sport == "bike" and has_full(user.tier) and isinstance(result.get("pose"), dict):
+    if sport == "bike" and crank_access(user) and isinstance(result.get("pose"), dict):
         result["bike_auto"] = await run_in_threadpool(_photo_bike_auto, data, result["pose"])
 
     # Free callers don't get AI coaching (it's a paid unlock) -- except on the
@@ -2233,7 +2233,7 @@ async def analyze_photo_recompute_endpoint(
         raise HTTPException(400, "corrections must be a JSON list")
     if points_obj is not None and not isinstance(points_obj, dict):
         raise HTTPException(400, "bike_points must be a JSON object")
-    if points_obj and not has_full(user.tier):
+    if points_obj and not crank_access(user):
         # Where the rider sits over the crank: Full only (Artur, 2026-10-26;
         # it was Enthusiast and up from 2026-10-18).
         raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
@@ -2609,7 +2609,7 @@ async def job_bike_auto(
     Full only, like the reading it starts.
     """
     job = authorized_job(job_id, t, user.id)
-    if not has_full(user.tier):
+    if not crank_access(user):
         raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
     if job.get("sport") != "bike" or not job.get("result"):
         raise HTTPException(409, "Nothing to search on this analysis.")
@@ -2655,7 +2655,7 @@ async def job_bike_points(
     only (Artur, 2026-10-26).
     """
     job = authorized_job(job_id, t, user.id)
-    if not has_full(user.tier):
+    if not crank_access(user):
         raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
     if job.get("sport") != "bike":
         raise HTTPException(400, "This reading is for cycling clips.")

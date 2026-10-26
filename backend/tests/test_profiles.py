@@ -25,7 +25,6 @@ from app.models.user import (
     TIER_FULL,
     TIER_STARTER,
     profile_limit,
-    profile_sport_limit,
 )
 
 
@@ -55,11 +54,6 @@ def test_the_limit_is_where_full_earns_its_price(tier, expected):
     assert profile_limit(tier) == expected
 
 
-def test_only_enthusiast_caps_a_sport():
-    assert profile_sport_limit(TIER_ENTHUSIAST) == 1
-    assert profile_sport_limit(TIER_FULL) is None
-    assert profile_sport_limit(TIER_STARTER) is None
-
 
 def test_an_unknown_tier_gets_the_free_limit():
     assert profile_limit("platinum_unicorn") == profile_limit(TIER_STARTER)
@@ -77,22 +71,16 @@ async def test_a_free_account_keeps_no_setup(db, make_user):
     assert listing["limit"] == 0 and listing["used"] == 0
 
 
-async def test_enthusiast_keeps_one_bike_and_one_pair_of_shoes(db, make_user):
-    """Two profiles, one per sport: a second bike is the comparison Full sells."""
+async def test_enthusiast_keeps_two_of_any_sport(db, make_user):
+    """Two bikes is fine (Artur, 2026-10-26); the side-by-side view is Full's."""
     user = await make_user(tier=TIER_ENTHUSIAST)
     await make_profile(db, user, name="Road", sport="bike")
-    await make_profile(db, user, name="Vaporfly", sport="run", kind="shoes")
+    await make_profile(db, user, name="TT", sport="bike", kind="tt")
     listing = await me.list_profiles(user, db)
-    assert listing["used"] == 2 and listing["limit"] == 2 and listing["per_sport"] == 1
-
-
-async def test_enthusiast_cannot_keep_two_bikes(db, make_user):
-    user = await make_user(tier=TIER_ENTHUSIAST)
-    await make_profile(db, user, name="Road", sport="bike")
+    assert listing["used"] == 2 and listing["limit"] == 2
     with pytest.raises(HTTPException) as exc:
-        await make_profile(db, user, name="TT", sport="bike")
-    assert exc.value.status_code == 402
-    assert "one setup for the bike" in exc.value.detail
+        await make_profile(db, user, name="Vaporfly", sport="run", kind="shoes")
+    assert exc.value.status_code == 402 and "Full keeps ten" in exc.value.detail
 
 
 async def test_full_keeps_several(db, make_user):
@@ -120,6 +108,7 @@ async def test_un_archiving_cannot_smuggle_you_past_the_limit(db, make_user):
     old = await make_profile(db, user, name="Old")
     await me.update_profile(old["id"], me.ProfilePatch(archived=True), user, db)
     await make_profile(db, user, name="New")
+    await make_profile(db, user, name="Newer")
 
     with pytest.raises(HTTPException) as exc:
         await me.update_profile(old["id"], me.ProfilePatch(archived=False), user, db)
@@ -238,3 +227,38 @@ async def test_an_unknown_kind_falls_back_rather_than_erroring(db, make_user):
     user = await make_user(tier=TIER_FULL)
     out = await make_profile(db, user, name="Weird", kind="hovercraft")
     assert out["kind"] == "other"
+
+
+# --------------------------------------------------------------------------
+# The crank reading, kept for Enthusiasts to the end of a paid period
+# --------------------------------------------------------------------------
+def test_crank_access_is_full_or_a_period_paid_before_the_move():
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+
+    from app.models.user import crank_access
+
+    now = datetime.now(timezone.utc)
+    assert crank_access(SimpleNamespace(tier=TIER_FULL, crank_until=None))
+    assert not crank_access(SimpleNamespace(tier=TIER_ENTHUSIAST, crank_until=None))
+    assert crank_access(SimpleNamespace(tier=TIER_ENTHUSIAST, crank_until=now + timedelta(days=3)))
+    assert not crank_access(SimpleNamespace(tier=TIER_ENTHUSIAST, crank_until=now - timedelta(days=3)))
+    # Downgraded to free: the paid period is over whatever the date says.
+    assert not crank_access(SimpleNamespace(tier=TIER_STARTER, crank_until=now + timedelta(days=3)))
+    # SQLite hands the date back naive.
+    naive = (now + timedelta(days=3)).replace(tzinfo=None)
+    assert crank_access(SimpleNamespace(tier=TIER_ENTHUSIAST, crank_until=naive))
+
+
+def test_the_period_end_is_read_where_stripe_keeps_it():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "keep_crank", Path(__file__).resolve().parents[1] / "scripts" / "keep_crank.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.period_end({"current_period_end": 1800000000}) == 1800000000
+    assert mod.period_end({"items": {"data": [{"current_period_end": 1800000500}]}}) == 1800000500
+    assert mod.period_end({"items": {"data": []}}) is None

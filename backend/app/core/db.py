@@ -194,6 +194,14 @@ def _migrate_users(conn) -> None:
         # revoke a plan somebody is paying for.
         logger.info("MIGRATED", change="users.tier_until added")
 
+    if "crank_until" not in cols:
+        # WITH TIME ZONE for the reason tier_until spells out above. NULL for
+        # everyone until scripts/keep_crank.py writes the Enthusiasts' dates.
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN crank_until TIMESTAMP WITH TIME ZONE"
+        ))
+        logger.info("MIGRATED", change="users.crank_until added")
+
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()
     if admin:

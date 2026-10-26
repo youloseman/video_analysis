@@ -27,7 +27,7 @@ from app.core.security import (
     verify_password,
     verify_reset_token,
 )
-from app.models.user import User
+from app.models.user import User, crank_access
 from app.services import analytics, notify
 
 logger = structlog.get_logger()
@@ -127,6 +127,9 @@ class TokenOut(BaseModel):
     # Free report unlocks granted by hand (users.unlock_credits): the unlock
     # button says "free" while there is one.
     unlock_credits: int = 0
+    # Whether the hip-over-crank reading is open: Full, or an Enthusiast kept
+    # on it to the end of a period paid before it moved (models.user).
+    crank_access: bool = False
     # Who this browser is, for analytics only (see services/analytics.py). The
     # server sends purchases under the same id, which is what joins "signed up,
     # analysed twice, opened pricing" to "paid" as one person rather than two.
@@ -155,6 +158,7 @@ class UserOut(BaseModel):
     is_pro: bool  # kept for back-compat; derived from tier
     expert_credits: int = 0
     unlock_credits: int = 0
+    crank_access: bool = False
     analytics_id: str = ""
     height_cm: int | None = None
     marketing_opt_in: bool = False
@@ -202,6 +206,7 @@ async def register(
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
+        crank_access=crank_access(user),
         analytics_id=analytics.person_id(user),
     )
 
@@ -233,6 +238,7 @@ async def login(
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
+        crank_access=crank_access(user),
         analytics_id=analytics.person_id(user),
     )
 
@@ -337,6 +343,7 @@ async def reset_password(body: ResetBody, db: AsyncSession = Depends(get_session
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
+        crank_access=crank_access(user),
         analytics_id=analytics.person_id(user),
     )
 
@@ -350,6 +357,7 @@ def _user_out(user: User) -> UserOut:
         email=user.email, tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
+        crank_access=crank_access(user),
         analytics_id=analytics.person_id(user),
         height_cm=user.height_cm,
         marketing_opt_in=bool(user.marketing_opt_in),

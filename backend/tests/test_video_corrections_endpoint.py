@@ -285,6 +285,28 @@ async def test_enthusiast_cannot_mark_the_crank_either(bike_job):
     assert e.value.status_code == 402
 
 
+async def test_an_enthusiast_who_paid_before_the_move_keeps_the_crank(bike_job):
+    """crank_until: the end of the period they had paid for when it moved."""
+    from datetime import datetime, timedelta, timezone
+
+    from fastapi import HTTPException
+
+    kept = _user(tier="enthusiast")
+    kept.crank_until = datetime.now(timezone.utc) + timedelta(days=20)
+    out = await main.job_bike_points(
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", kept,
+    )
+    assert out["hip_over_bb"]["angle_deg"] > 0
+
+    lapsed = _user(tier="enthusiast")
+    lapsed.crank_until = datetime.now(timezone.utc) - timedelta(days=1)
+    with pytest.raises(HTTPException) as e:
+        await main.job_bike_points(
+            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", lapsed,
+        )
+    assert e.value.status_code == 402
+
+
 async def test_a_bad_crank_point_is_refused_with_its_reason(bike_job):
     from fastapi import HTTPException
 

@@ -27,6 +27,25 @@ FULL_TIERS = (TIER_FULL, TIER_ADMIN)
 def has_full(tier: str | None) -> bool:
     return tier in FULL_TIERS
 
+
+def crank_access(user: object) -> bool:
+    """May this account take the hip-over-crank reading?
+
+    Full does. So does an Enthusiast who had it when it moved to Full, until
+    the end of the period they had already paid for (``crank_until``, set once
+    by scripts/keep_crank.py) -- a feature somebody paid for does not vanish
+    mid-period. Duck-typed: endpoint tests pass plain namespaces.
+    """
+    tier = getattr(user, "tier", None)
+    if has_full(tier):
+        return True
+    until = getattr(user, "crank_until", None)
+    if until is None or tier not in PAID_TIERS:
+        return False
+    if until.tzinfo is None:
+        until = until.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) < until
+
 # Analysis quota per tier: (max analyses, window). "month" = current calendar
 # month (UTC); "day" = rolling 24h. Admin is deliberately a DAILY cap (per
 # Artur's request) rather than unlimited -- it bounds how much CPU our own
@@ -58,11 +77,11 @@ TIER_LIMITS: dict[str, tuple[int, str]] = {
 # give you. So it is where Full earns its price, rather than in a quota nobody
 # reaches.
 #
-# Enthusiast keeps two, one per sport (the bike and the running shoes): that is
-# a profile for everything it films without being the comparison Full sells,
-# because "Two setups" only ever pairs profiles of the same sport. Starter keeps
-# none -- profiles already made on it stay, nothing new is added (Artur,
-# 2026-10-26; it was 1 / 1 / 10).
+# Enthusiast keeps two, of any sport -- two bikes is fine (Artur, 2026-10-26).
+# Each keeps its own trend line; putting two of them side by side ("Two
+# setups") stays Full's, and the SPA gates that view rather than the count.
+# Starter keeps none -- profiles already made on it stay, nothing new is added
+# (it was 1 / 1 / 10).
 PROFILE_LIMITS: dict[str, int] = {
     TIER_STARTER: 0,
     TIER_ENTHUSIAST: 2,
@@ -71,20 +90,11 @@ PROFILE_LIMITS: dict[str, int] = {
 }
 DEFAULT_PROFILE_LIMIT = PROFILE_LIMITS[TIER_STARTER]
 
-# Live profiles per sport, where a tier caps it. Absent = only the total counts.
-PROFILE_SPORT_LIMITS: dict[str, int] = {
-    TIER_ENTHUSIAST: 1,
-}
-
 
 def profile_limit(tier: str | None) -> int:
     """How many live profiles this tier may keep; unknown tiers get the free one."""
     return PROFILE_LIMITS.get(tier or "", DEFAULT_PROFILE_LIMIT)
 
-
-def profile_sport_limit(tier: str | None) -> int | None:
-    """How many live profiles of one sport this tier may keep, or None."""
-    return PROFILE_SPORT_LIMITS.get(tier or "")
 
 
 # Expert Reviews the Full tier includes per paid term. The pricing card says
@@ -127,6 +137,13 @@ class User(Base):
     # that sets a tier from Stripe clears this, so a grant can never outlive a
     # purchase or cut one short.
     tier_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    # The hip-over-crank reading moved from Enthusiast to Full on 2026-10-26.
+    # An Enthusiast who had it keeps it until this moment: the end of the
+    # period they had paid for, read from Stripe once (scripts/keep_crank.py).
+    # NULL for everyone else. See ``crank_access``.
+    crank_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True,
     )
     is_pro: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

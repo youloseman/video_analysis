@@ -4580,9 +4580,10 @@ function renderHob(res, which){
   const blk=$(which==='photo'?'#pHobBlock':'#hobBlock'), host=$(which==='photo'?'#pHobPanel':'#hobPanel'); if(!blk||!host) return;
   const sport=res.sport_type||res.sport||state.sport;
   if(sport!=='bike'||res.pair){ blk.classList.add('hidden'); host.innerHTML=''; return; }
-  // Full only (2026-10-26). A reading already taken on Enthusiast stays shown;
-  // marking again is what the plan gates.
-  const full=!!auth&&['full','admin'].includes(auth.tier);
+  // Full only (2026-10-26), plus an Enthusiast kept on it to the end of a
+  // period paid before that (the server says which: auth.crank_access). A
+  // reading already taken stays shown; marking again is what the plan gates.
+  const full=!!auth&&!!auth.crank_access;
   const h=res.hip_over_bb||null, locked=!!res.locked||!full, canMark=!!state.file&&!locked, aero=['tt_aero','triathlon'].includes(res.cycling_position);
   const intro=`The one number the Kona 2026 pros and age-groupers differed on: where the hip sits over the crank axle. Pros 88°, age-groupers 85° — about 3° or 4–5 cm further forward (${esc('31 pros, 68 age-groupers')}, every point placed by hand). Knee and hip angles did not differ.`;
   let body='';
@@ -6282,6 +6283,7 @@ function renderPrintable(r, entry){
       + ((coachOn()&&COACH.name)?`<p><b>Prepared by ${esc(COACH.name)}</b>${COACH.tagline?' · '+esc(COACH.tagline):''} — with Flapp by Clariva · getflapp.com</p>`:`<p>Flapp by Clariva · getflapp.com</p>`);
   }
 }
+function hasFullPlan(){ return !!auth && ['full','admin'].includes(auth.tier); }
 function printButtonHtml(){
   return (auth && auth.tier==='full')
     ? `<button class="btn btn-ghost btn-sm" type="button" onclick="window.print()">
@@ -6311,12 +6313,9 @@ async function loadProfiles(){
 function liveProfiles(sport){
   return (PROFILES.profiles||[]).filter(p=>!p.archived && (!sport || p.sport===sport));
 }
-/* Room for one more live profile of this sport. Two caps: the plan's total,
-   and Enthusiast's one-per-sport (a second bike is the comparison Full sells). */
-function profileRoom(sport){
-  if((PROFILES.used||0) >= (PROFILES.limit??0)) return false;
-  const per=PROFILES.per_sport;
-  return per==null || !sport || liveProfiles(sport).length < per;
+/* Room for one more live profile, on the plan's total. */
+function profileRoom(){
+  return (PROFILES.used||0) < (PROFILES.limit??0);
 }
 function profileName(id){
   const p=(PROFILES.profiles||[]).find(x=>x.id===id);
@@ -6333,7 +6332,7 @@ function renderProfileField(){
   field.classList.toggle('hidden', none);
   if(hint) hint.classList.toggle('hidden', none);
   if(none) return;
-  const room=profileRoom(state.sport);
+  const room=profileRoom();
   // "Not filed" was the app talking to itself. The question above the box
   // is "which bike or shoes", so the empty answer is "none chosen".
   sel.innerHTML=`<option value="">None chosen</option>`
@@ -6350,9 +6349,7 @@ function renderProfileField(){
       ? 'Naming the setup lets its trend line follow one bike or pair of shoes instead of averaging two.'
       : (PROFILES.limit??0)===0
         ? `Saving your bike or your shoes is part of a paid plan. <a href="#" data-openpricing="1">See plans</a>`
-        : (PROFILES.per_sport!=null && (PROFILES.used||0) < (PROFILES.limit??0))
-          ? `Your plan keeps one setup for the bike and one for running. Comparing one bike against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`
-          : `Your plan keeps <b>${PROFILES.limit}</b> setup${PROFILES.limit>1?'s':''}. Comparing one against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`;
+        : `Your plan keeps <b>${PROFILES.limit}</b> setup${PROFILES.limit>1?'s':''}. Comparing one against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`;
     const link=hint.querySelector('[data-openpricing]');
     if(link) link.addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
   }
@@ -6419,7 +6416,7 @@ function renderProfiles(){
     const full=used>=limit;
     lim.classList.toggle('hidden', !full || f==='archived');
     if(full) lim.innerHTML=limit===0
-      ? `<span>Saving your bike and your shoes is part of a paid plan: Enthusiast keeps one setup for the bike and one for running; Full keeps ten and compares one against another.</span><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>`
+      ? `<span>Saving your bike and your shoes is part of a paid plan: Enthusiast keeps two setups, Full keeps ten and compares one against another.</span><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>`
       : `<span>You’ve used ${limit===1?'your one profile':`all ${limit} profiles`}. ${limit<10?'Full gives you ten, so each bike and each pair of shoes keeps its own trend line — and you can compare one setup against another instead of averaging them.':'Archive one to add another.'}</span>${limit<10?'<button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>':''}`;
   }
   const add=$('#profAdd'); if(add) add.disabled = used>=limit;
@@ -9498,7 +9495,7 @@ async function submitAuth(e){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
-    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,
+    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,crank_access:!!j.crank_access,
       analytics_id:j.analytics_id||null, marketing_opt_in:mode==='register'?marketing:undefined};
     // Name the person first, then record the act — so the sign-up itself is
     // attributed to the account rather than to the anonymous visitor who
@@ -12021,14 +12018,20 @@ function renderCmpMode(){
   const sides=cmpSides();
   const hasSides = state.cmp.sport==='bike' && sides.left.length && sides.right.length;
   if(setups.length<2 && !hasSides){ host.classList.add('hidden'); host.innerHTML=''; state.cmp.mode='sessions'; return; }
+  // Two setups side by side is Full's (2026-10-26). Enthusiast may keep two
+  // bikes -- each with its own trend line -- and sees the view it would open.
+  const setupsOpen=setups.length>=2 && hasFullPlan();
+  if(!setupsOpen && state.cmp.mode==='setups') state.cmp.mode='sessions';
   const m=state.cmp.mode||'sessions';
   host.innerHTML=`<div class="billtoggle" role="group" aria-label="What to compare">
     <button type="button" data-mode="sessions" aria-pressed="${m==='sessions'}">Two sessions</button>
-    ${setups.length>=2?`<button type="button" data-mode="setups" aria-pressed="${m==='setups'}">Two setups</button>`:''}
+    ${setupsOpen?`<button type="button" data-mode="setups" aria-pressed="${m==='setups'}">Two setups</button>`
+      :setups.length>=2?`<button type="button" data-locked="setups" aria-label="Two setups — Full plan"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Two setups · Full</button>`:''}
     ${hasSides?`<button type="button" data-mode="sides" aria-pressed="${m==='sides'}">Left vs right</button>`:''}
   </div>`;
   host.classList.remove('hidden');
   host.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.locked){ openPricing(); return; }
     state.cmp.mode=b.dataset.mode;
     state.cmp.pa=null; state.cmp.pb=null;
     if(b.dataset.mode==='sides'){
