@@ -6674,6 +6674,16 @@ function retryPlans(){ PLANS_ERR=false; renderPricing(); }
    that names prices goes stale the same way the markup did.) */
 let billPeriod='yearly';   // 'monthly' | 'yearly'
 function setBillPeriod(p){ billPeriod=p; drawPricing(); }
+/* The order bump on the Enthusiast card: an Expert Review added to the
+   subscription's first invoice at the catalogue's bump price. */
+let reviewBump=false;
+function bumpHtml(card){
+  const b=PLANS&&PLANS.review_bump;
+  if(card.id!=='enthusiast'||!b||!b.available) return '';
+  if(auth&&auth.tier===card.tier) return '';
+  return `<label class="bump"><input type="checkbox" id="reviewBump"${reviewBump?' checked':''} onchange="reviewBump=this.checked">
+    <span><b>Add a pro triathlete's review of your clip</b> · <b>${esc(b.display)}</b> <s>${esc(b.was)}</s><small>One time, only here. Use it on any clip.</small></span></label>`;
+}
 
 const CURRENT_BADGE='<div class="current-badge"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Your current plan</div>';
 const MANAGE_BTN='<button class="btn btn-ghost btn-sm" type="button" style="width:100%;margin-top:8px" onclick="openPortal()">Manage subscription</button>';
@@ -6725,6 +6735,7 @@ function tierCardHtml(card){
     <div class="tier-price"><span class="amt">${esc(price?price.display:'')}</span><span class="per">${esc(price?price.per:'')}</span></div>
     <p class="tier-sub">${esc(priceNote(price))}</p>
     <ul>${featuresHtml(card.features)}</ul>
+    ${bumpHtml(card)}
     <div class="tier-cta">${tierCtaHtml(card,price)}</div>
   </div>`;
 }
@@ -7824,7 +7835,8 @@ async function startCheckout(plan, analysisIdArg){
     toast('Create a free account first, then pick a plan.',{action:'Sign up',onAction:()=>openAuth('register')}); return;
   }
   if(!plan) return;
-  track('checkout_started', {plan:plan, tier:auth.tier, period:billPeriod});
+  const addReview = reviewBump && /^enthusiast_/.test(plan);
+  track('checkout_started', {plan:plan, tier:auth.tier, period:billPeriod, add_review:addReview});
   let analysisId=analysisIdArg||null;
   // An unlock buys the report in front of you; there is nothing to choose.
   if(plan==='unlock' && !analysisId){ toast('Open a report first, then unlock it.'); return; }
@@ -7850,7 +7862,7 @@ async function startCheckout(plan, analysisIdArg){
   try{
     const r=await fetch('/billing/checkout',{method:'POST',
       headers:authHeaders({'Content-Type':'application/json'}),
-      body:JSON.stringify(analysisId?{plan,analysis_client_id:analysisId}:{plan})});
+      body:JSON.stringify(Object.assign({plan}, analysisId?{analysis_client_id:analysisId}:{}, addReview?{add_review:true}:{}))});
     const j=await r.json().catch(()=>({}));
     if(r.ok){
       // Paid out of the Expert Reviews the plan already includes. Nothing to

@@ -124,6 +124,10 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .tier li.off{color:var(--c-ink-faint)} .tier li.off svg{color:var(--c-ink-disabled)}
 .tier li b{font-weight:600}
 .tier .tier-cta{margin-top:auto}
+/* The order bump on the Enthusiast card: one checkbox, dashed so it reads as optional. */
+.tier .bump{display:flex;gap:10px;align-items:flex-start;margin:0 0 16px;padding:10px 12px;border:1.5px dashed var(--c-line-strong);border-radius:var(--radius-lg);font-size:13px;line-height:1.45;color:var(--c-ink);cursor:pointer}
+.tier .bump input{width:18px;height:18px;margin:1px 0 0;flex:none}
+.tier .bump s{color:var(--c-ink-faint)} .tier .bump small{display:block;color:var(--c-ink-faint);font-size:12px}
 .tier .btn{width:100%;justify-content:center}
 /* Secondary CTA. NOT scoped to .tier — the Expert Review add-on strip uses it
    too. Outline, ink text: the one filled button on the page is the popular tier. */

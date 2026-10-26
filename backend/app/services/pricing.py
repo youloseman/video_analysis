@@ -149,6 +149,9 @@ CARDS: tuple[Card, ...] = (
         tier="full",
         tagline="Every setup you ride, and a human in the loop.",
         prices=(
+            Price(plan="full_monthly", amount=1300, per="/ month",
+                  note="billed monthly · Expert Review on the yearly plan",
+                  interval="month"),
             Price(plan="full_yearly", amount=9900, per="/ year",
                   note="billed annually", interval="year"),
         ),
@@ -169,7 +172,7 @@ CARDS: tuple[Card, ...] = (
             Feature("Compare one setup against another, not just week to week"),
             Feature("Where you sit over the crank, against the Kona pros"),
             Feature("Branded PDF report to keep or hand to a coach"),
-            Feature("<b>1 Expert Review included</b> ($39 value), every year"),
+            Feature("<b>1 Expert Review included</b> ($39 value) every year, on the yearly plan"),
         ),
         cta_label="Go Full",
     ),
@@ -336,11 +339,30 @@ def _price_out(card: Card, price: Price, plan_price_map: dict[str, Any]) -> dict
     }
 
 
-def catalog(plan_price_map: dict[str, Any] | None = None) -> dict[str, Any]:
+# The order bump: an Expert Review added to an Enthusiast checkout, at a
+# first-purchase price. The plans it rides on live in billing.BUMP_PLANS.
+REVIEW_BUMP_AMOUNT = 3500
+
+
+def review_bump(price_id: str | None) -> dict[str, Any]:
+    """What the Enthusiast card offers as its checkbox, and whether it can."""
+    full = CARD_BY_ID["expert"].prices[0].amount
+    return {
+        "amount": REVIEW_BUMP_AMOUNT,
+        "display": money(REVIEW_BUMP_AMOUNT),
+        "was": money(full),
+        "available": bool(price_id),
+    }
+
+
+def catalog(
+    plan_price_map: dict[str, Any] | None = None, bump_price_id: str | None = None,
+) -> dict[str, Any]:
     """The whole price list, JSON-safe. Served by ``GET /billing/plans``."""
     plan_price_map = plan_price_map or {}
     return {
         "currency": CURRENCY,
+        "review_bump": review_bump(bump_price_id),
         "currency_label": CURRENCY_LABEL,
         "annual_saving_pct": annual_saving_pct(),
         "footnote": FOOTNOTE,

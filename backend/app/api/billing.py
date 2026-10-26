@@ -88,6 +88,9 @@ class CheckoutIn(BaseModel):
     # meant. Ignored for subscription plans. It is the client-side id, the same
     # one history and /me/analyses use.
     analysis_client_id: str | None = None
+    # The order bump: add an Expert Review at US$35 to an Enthusiast
+    # subscription. Ignored on any other plan.
+    add_review: bool = False
 
 
 def log_billing_configuration() -> None:
@@ -108,6 +111,9 @@ def log_billing_configuration() -> None:
         logger.error("BILLING_PRICES_MISSING", plans=missing)
     else:
         logger.info("BILLING_READY", plans=sorted(settings.plan_price_map))
+    if not settings.stripe_price_expert_bump:
+        # Not an error: the checkbox simply does not render without it.
+        logger.info("BILLING_BUMP_OFF", reason="STRIPE_PRICE_EXPERT_BUMP unset")
 
     # Two plans pointing at one Stripe price. Always a copy-paste slip -- the
     # ids are long, similar, and gathered by hand from five different screens --
@@ -236,8 +242,23 @@ def tier_for_plan(plan: str) -> str | None:
     return {
         "enthusiast_monthly": "enthusiast",
         "enthusiast_yearly": "enthusiast",
+        "full_monthly": "full",
         "full_yearly": "full",
     }.get(plan)
+
+
+# Plans the order bump (an Expert Review at US$35) may ride on. Full has none:
+# its yearly plan already includes a review, and the bump would undercut it.
+BUMP_PLANS = ("enthusiast_monthly", "enthusiast_yearly")
+
+
+def includes_review(plan: str | None) -> bool:
+    """Whether a subscription plan includes an Expert Review per paid term.
+
+    Full yearly only (Artur, 2026-10-26). Full monthly exists so Full can be
+    tried for a month; a US$39 review inside a US$13 month would be a
+    discount on the review, bought and cancelled."""
+    return plan == "full_yearly"
 
 
 def tier_for_price(price_id: str | None) -> str | None:
@@ -277,7 +298,7 @@ def plans() -> dict[str, Any]:
     id is configured, so a half-configured deploy renders an explanation
     instead of a button that 503s when pressed.
     """
-    return pricing.catalog(settings.plan_price_map)
+    return pricing.catalog(settings.plan_price_map, settings.stripe_price_expert_bump)
 
 
 # --------------------------------------------------------------------------
@@ -638,13 +659,23 @@ async def create_checkout(
         user.stripe_customer_id = customer_id
         await db.commit()
 
+    line_items = [{"price": price_id, "quantity": 1}]
+    # The order bump rides on the subscription's first invoice as a one-time
+    # line; the webhook turns it into a review credit. Silently dropped when
+    # it does not apply, rather than refused: the subscription is the sale.
+    bump = bool(
+        body.add_review and body.plan in BUMP_PLANS and settings.stripe_price_expert_bump
+    )
+    if bump:
+        line_items.append({"price": settings.stripe_price_expert_bump, "quantity": 1})
+
     try:
         session_obj = await run_in_threadpool(
             stripe.checkout.Session.create,
             mode="subscription" if is_subscription else "payment",
             customer=customer_id,
             client_reference_id=str(user.id),
-            line_items=[{"price": price_id, "quantity": 1}],
+            line_items=line_items,
             # Carry the plan back so the client can acknowledge a one-time Expert
             # Review (which grants no tier, so tier-polling would never confirm it).
             success_url=f"{base}/app?checkout=success&plan={body.plan}",
@@ -657,6 +688,7 @@ async def create_checkout(
                 # Round-trips through Stripe so the webhook can attach the order
                 # to the analysis the athlete actually chose.
                 "analysis_client_id": (body.analysis_client_id or "")[:64],
+                "review_bump": "1" if bump else "",
             },
         )
     except stripe.StripeError as e:  # noqa: BLE001
@@ -1602,11 +1634,24 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> dict[str, Any] |
         # succeeded`, which this webhook does not listen for yet. First renewal
         # is a year out; granting on it is tracked with the rest of the Full
         # build-out.
-        if tier == TIER_FULL and grant_expert_credits(user, str(obj.get("id") or "")):
+        #
+        # Full YEARLY only: Full monthly carries no review (includes_review).
+        # The order bump is the other way a subscription checkout buys one.
+        plan = str(meta.get("plan") or "")
+        if includes_review(plan) and grant_expert_credits(user, str(obj.get("id") or "")):
             sale["credit_granted"] = True
             logger.info(
                 "CREDIT_GRANTED", user_id=user.id,
                 credits=user.expert_credits, reason="full_subscription",
+            )
+        elif meta.get("review_bump") == "1" and grant_expert_credits(
+            user, f"{obj.get('id') or ''}:bump",
+        ):
+            sale["credit_granted"] = True
+            sale["review_bump"] = True
+            logger.info(
+                "CREDIT_GRANTED", user_id=user.id,
+                credits=user.expert_credits, reason="order_bump",
             )
         return sale if is_new else None
     # A one-time purchase grants no tier, so nothing about the account would
@@ -1748,7 +1793,9 @@ async def _on_invoice_paid(db: AsyncSession, obj: Any) -> None:
             "currency": (obj.get("currency") or "").upper() or None,
         },
     )
-    if price_tier != TIER_FULL:
+    # Only the yearly Full price owes a review on renewal: a monthly Full
+    # renewal is TIER_FULL too, and would otherwise hand one out every month.
+    if price_tier != TIER_FULL or _price_from_invoice(obj) != settings.stripe_price_full_y:
         return
     if grant_expert_credits(user, str(obj.get("id") or "")):
         logger.info(

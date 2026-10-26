@@ -126,6 +126,7 @@ class Settings:
     stripe_webhook_secret: str | None = None
     stripe_price_enthusiast_m: str | None = None   # $9 / month
     stripe_price_enthusiast_y: str | None = None   # $69 / year
+    stripe_price_full_m: str | None = None         # $13 / month (no review included)
     stripe_price_full_y: str | None = None         # $99 / year
     stripe_price_expert: str | None = None         # $39 one-time
     stripe_price_unlock: str | None = None         # $4 one-time
@@ -135,6 +136,10 @@ class Settings:
     # one-per-delivery rule live in the checkout, not in this price.
     stripe_price_expert_recheck: str | None = None
     recheck_window_days: int = 45
+    # The Expert Review at US$35, added to an Enthusiast checkout as one more
+    # line item (the order bump). Deliberately NOT in plan_price_map: it is not
+    # a plan anybody may buy on its own, only an add-on to a subscription.
+    stripe_price_expert_bump: str | None = None
 
     # Expert Reviews accepted per rolling week. The deliverable is ~40 minutes
     # of one person's attention, so this is the only product here whose supply
@@ -206,6 +211,7 @@ class Settings:
         return {
             "enthusiast_monthly": self.stripe_price_enthusiast_m,
             "enthusiast_yearly": self.stripe_price_enthusiast_y,
+            "full_monthly": self.stripe_price_full_m,
             "full_yearly": self.stripe_price_full_y,
             "expert": self.stripe_price_expert,
             "unlock": self.stripe_price_unlock,
@@ -222,6 +228,8 @@ class Settings:
             out[self.stripe_price_enthusiast_m] = "enthusiast"
         if self.stripe_price_enthusiast_y:
             out[self.stripe_price_enthusiast_y] = "enthusiast"
+        if self.stripe_price_full_m:
+            out[self.stripe_price_full_m] = "full"
         if self.stripe_price_full_y:
             out[self.stripe_price_full_y] = "full"
         return out
@@ -333,7 +341,9 @@ def _load_settings() -> Settings:
         stripe_webhook_secret=os.environ.get("STRIPE_WEBHOOK_SECRET") or None,
         stripe_price_enthusiast_m=os.environ.get("STRIPE_PRICE_ENTHUSIAST_M") or None,
         stripe_price_enthusiast_y=os.environ.get("STRIPE_PRICE_ENTHUSIAST_Y") or None,
+        stripe_price_full_m=os.environ.get("STRIPE_PRICE_FULL_M") or None,
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
+        stripe_price_expert_bump=os.environ.get("STRIPE_PRICE_EXPERT_BUMP") or None,
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
         stripe_price_notes=os.environ.get("STRIPE_PRICE_NOTES") or None,
         stripe_price_expert_recheck=os.environ.get("STRIPE_PRICE_EXPERT_RECHECK") or None,
