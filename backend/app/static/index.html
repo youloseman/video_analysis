@@ -6253,6 +6253,7 @@ function renderPrintHead(meta){
    the browser's, not ours to take away. */
 /* Called once a report is on screen, for both the fresh and the saved view. */
 function renderPrintable(r, entry){
+  printEntryId=(entry&&entry.id)||null;
   const host=$('#printBtnHost');
   if(host) host.innerHTML=printButtonHtml();
   renderPrintHead({
@@ -6286,9 +6287,32 @@ function renderPrintable(r, entry){
   }
 }
 function hasFullPlan(){ return !!auth && ['full','admin'].includes(auth.tier); }
+/* The Full plan's PDF: a designed A4 report the server builds for one saved
+   analysis (/me/analyses/{id}/report), opened in its own tab where Print >
+   Save as PDF keeps it. The tab is opened before the fetch, or a popup
+   blocker eats it; with no saved entry yet it falls back to printing the page. */
+let printEntryId=null;
+async function openReportPdf(){
+  const id=printEntryId||state.videoHistId||state.photoHistId;
+  if(!id){ window.print(); return; }
+  const w=window.open('','_blank');
+  if(!w){ window.print(); return; }
+  w.document.write('<p style="font:16px system-ui,sans-serif;padding:24px;color:#14294B">Preparing your report…</p>');
+  track('report_pdf_opened',{});
+  try{
+    const r=await fetch('/me/analyses/'+encodeURIComponent(id)+'/report',{headers:authHeaders()});
+    if(!r.ok) throw new Error(String(r.status));
+    const html=await r.text();
+    w.document.open(); w.document.write(html); w.document.close();
+  }catch(e){
+    w.close();
+    toast('The PDF report could not be prepared — printing this page instead.');
+    window.print();
+  }
+}
 function printButtonHtml(){
-  return (auth && auth.tier==='full')
-    ? `<button class="btn btn-ghost btn-sm" type="button" onclick="window.print()">
+  return (auth && ['full','admin'].includes(auth.tier))
+    ? `<button class="btn btn-ghost btn-sm" type="button" onclick="openReportPdf()">
          <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Save as PDF</button>`
     : '';
 }

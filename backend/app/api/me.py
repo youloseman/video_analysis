@@ -30,7 +30,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,7 +47,7 @@ from app.models.profile import (
     PROFILE_POSITIONS,
     Profile,
 )
-from app.models.user import User, profile_limit
+from app.models.user import User, has_full, profile_limit
 from app.services.keyframe_store import split_keyframe, stored_keyframe
 from app.services.result_gating import (
     ACCESS_FULL,
@@ -516,6 +516,71 @@ async def get_kinogram(
             detail="This report has not been unlocked.",
         )
     return {"kinogram": (row.result or {}).get("kinogram_base64")}
+
+
+@router.get("/analyses/{client_id}/report", response_class=HTMLResponse)
+async def analysis_report(
+    client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """The Full plan's printable report: one branded A4 document per analysis.
+
+    Served as HTML, not PDF: the browser saves it as a PDF (Print > Save as
+    PDF), on a phone as well, and the server needs no Chromium. The coach text
+    is written first if the report never had it, as when it is opened in-app.
+    """
+    from datetime import datetime, timezone
+
+    from app.models.profile import Profile
+    from app.services.report_pdf import render_report_html
+    from app.services.video_analysis.biomechanics.cycling_positions import (
+        get_position_label,
+    )
+
+    if not has_full(user.tier):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="The PDF report is part of the Full plan.",
+        )
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == user.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    if not row.result:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This analysis was run before full reports were stored.",
+        )
+    await _ensure_coaching(db, row)
+    result = dict(row.result)
+    if (result.get("sport_type") or result.get("sport")) == "bike" and not result.get("pro_field"):
+        result["pro_field"] = pro_field(result.get("cycling_position"))
+    setup = None
+    if row.profile_id:
+        setup = await db.scalar(select(Profile.name).where(
+            Profile.id == row.profile_id, Profile.user_id == user.id))
+    when = datetime.fromtimestamp((row.created_at_ms or 0) / 1000, timezone.utc)
+    today = datetime.now(timezone.utc)
+    position = result.get("cycling_position")
+    html = render_report_html(result, {
+        "athlete": user.email,
+        "setup": setup,
+        "filmed": f"{when.day} {when:%b %Y}",
+        "prepared": f"Prepared {today.day} {today:%b %Y}",
+        "position_label": get_position_label(position) if position else None,
+        "keyframe": stored_keyframe(row),
+        "kinogram": result.get("kinogram_base64"),
+    })
+    logger.info("REPORT_PDF_SERVED", user_id=user.id, analysis=client_id)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/analyses/{client_id}/timeline")
