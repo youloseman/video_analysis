@@ -173,6 +173,7 @@ CARDS: tuple[Card, ...] = (
             Feature("Where you sit over the crank, against the Kona pros"),
             Feature("Branded PDF report to keep or hand to a coach"),
             Feature("<b>1 Expert Review included</b> ($39 value) every year, on the yearly plan"),
+            Feature("Every other Expert Review at the <b>$29</b> member price"),
         ),
         cta_label="Go Full",
     ),
@@ -342,6 +343,9 @@ def _price_out(card: Card, price: Price, plan_price_map: dict[str, Any]) -> dict
 # The order bump: an Expert Review added to an Enthusiast checkout, at a
 # first-purchase price. The plans it rides on live in billing.BUMP_PLANS.
 REVIEW_BUMP_AMOUNT = 3500
+# The Expert Review for Full subscribers (yearly ones once their included review
+# is spent; monthly ones always).
+REVIEW_MEMBER_AMOUNT = 2900
 
 
 def review_bump(price_id: str | None) -> dict[str, Any]:
@@ -355,14 +359,26 @@ def review_bump(price_id: str | None) -> dict[str, Any]:
     }
 
 
+def review_member(price_id: str | None) -> dict[str, Any]:
+    """What a Full subscriber pays for an Expert Review, and whether it is live."""
+    return {
+        "amount": REVIEW_MEMBER_AMOUNT,
+        "display": money(REVIEW_MEMBER_AMOUNT),
+        "was": money(CARD_BY_ID["expert"].prices[0].amount),
+        "available": bool(price_id),
+    }
+
+
 def catalog(
     plan_price_map: dict[str, Any] | None = None, bump_price_id: str | None = None,
+    member_price_id: str | None = None,
 ) -> dict[str, Any]:
     """The whole price list, JSON-safe. Served by ``GET /billing/plans``."""
     plan_price_map = plan_price_map or {}
     return {
         "currency": CURRENCY,
         "review_bump": review_bump(bump_price_id),
+        "review_member": review_member(member_price_id),
         "currency_label": CURRENCY_LABEL,
         "annual_saving_pct": annual_saving_pct(),
         "footnote": FOOTNOTE,

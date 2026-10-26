@@ -155,3 +155,28 @@ def test_the_catalogue_offers_the_bump_only_with_a_price():
     assert pricing.catalog({}, "price_x")["review_bump"]["available"] is True
     off = pricing.catalog({}, None)["review_bump"]
     assert off["available"] is False and off["display"] == "$35" and off["was"] == "$39"
+
+
+# --------------------------------------------------------------------------
+# The Full member price on an Expert Review
+# --------------------------------------------------------------------------
+async def test_a_full_subscriber_buys_a_review_at_the_member_price(db, make_user, monkeypatch):
+    calls = _checkout_spy(monkeypatch)
+    user = await make_user(tier=TIER_FULL)
+    await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h1"), _Req(), user, db)
+    assert calls["line_items"] == [{"price": settings.stripe_price_expert_member, "quantity": 1}]
+    assert calls["metadata"]["plan"] == "expert" and calls["metadata"]["member_price"] == "1"
+
+
+async def test_everyone_else_pays_the_usual_review_price(db, make_user, monkeypatch):
+    calls = _checkout_spy(monkeypatch)
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h1"), _Req(), user, db)
+    assert calls["line_items"] == [{"price": settings.stripe_price_expert, "quantity": 1}]
+    assert calls["metadata"]["member_price"] == ""
+
+
+def test_the_catalogue_reports_the_member_price():
+    m = pricing.catalog({}, None, "price_m")["review_member"]
+    assert m["display"] == "$29" and m["was"] == "$39" and m["available"] is True
+    assert pricing.catalog({}, None, None)["review_member"]["available"] is False

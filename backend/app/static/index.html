@@ -6750,6 +6750,10 @@ function addonCardHtml(card){
   // On the Notes card the included review is not spent, but it is said: the
   // full version of what this card sells is already on their plan.
   const ownsReview=notes&&((auth&&auth.expert_credits)||0)>0;
+  // A Full subscriber with no review left buys one at the member price; the
+  // server picks the Stripe price, this only says so.
+  const rm=PLANS&&PLANS.review_member;
+  const member=!notes&&credits===0&&hasFullPlan()&&rm&&rm.available;
   const plan=notes?'notes':'expert';
   const buy = credits>0
     ? `<button class="btn btn-primary" type="button" onclick="startCheckout('expert')">Use your included review</button>`
@@ -6764,8 +6768,9 @@ function addonCardHtml(card){
         <p class="tier-tagline">${esc(card.tagline)}</p>
       </div>
       <div class="solo-buy">
-        <div class="tier-price"><span class="amt">${credits>0?'Included':esc(price?price.display:'')}</span><span class="per">${credits>0?'':esc(price?price.per:'')}</span></div>
+        <div class="tier-price"><span class="amt">${credits>0?'Included':esc(member?rm.display:(price?price.display:''))}</span><span class="per">${credits>0?'':esc(price?price.per:'')}</span></div>
         <p class="tier-sub">${credits>0?`<b>${credits}</b> left on your plan`
+          :member?`Full member price · usually <s>${esc(rm.was)}</s>`
           :ownsReview?'Your plan already includes a full <b>Expert Review</b> — the complete version of these notes. Use that first.'
           :esc(price?price.note:'')}</p>
         <div class="solo-btns">

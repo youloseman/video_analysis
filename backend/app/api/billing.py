@@ -53,6 +53,7 @@ from app.models.user import (
     TIER_FULL,
     TIER_STARTER,
     User,
+    has_full,
 )
 from app.services import analytics, expert_review, notify, pricing
 from app.services.result_gating import ACCESS_FULL, access_for_stored
@@ -114,6 +115,9 @@ def log_billing_configuration() -> None:
     if not settings.stripe_price_expert_bump:
         # Not an error: the checkbox simply does not render without it.
         logger.info("BILLING_BUMP_OFF", reason="STRIPE_PRICE_EXPERT_BUMP unset")
+    if not settings.stripe_price_expert_member:
+        # Not an error either: Full members pay the full US$39 until it is set.
+        logger.info("BILLING_MEMBER_PRICE_OFF", reason="STRIPE_PRICE_EXPERT_MEMBER unset")
 
     # Two plans pointing at one Stripe price. Always a copy-paste slip -- the
     # ids are long, similar, and gathered by hand from five different screens --
@@ -298,7 +302,10 @@ def plans() -> dict[str, Any]:
     id is configured, so a half-configured deploy renders an explanation
     instead of a button that 503s when pressed.
     """
-    return pricing.catalog(settings.plan_price_map, settings.stripe_price_expert_bump)
+    return pricing.catalog(
+        settings.plan_price_map, settings.stripe_price_expert_bump,
+        settings.stripe_price_expert_member,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -616,6 +623,14 @@ async def create_checkout(
         # A plan key we do not sell. The caller is wrong; 400 is right.
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown plan.")
     price_id = settings.plan_price_map[body.plan]
+    # A Full subscriber buys a review at the member price (Artur, 2026-10-26:
+    # what makes Full by the month worth more than Enthusiast). Same plan key,
+    # same order and fulfilment; only the Stripe price differs.
+    member_price = bool(
+        body.plan == "expert" and has_full(user.tier) and settings.stripe_price_expert_member
+    )
+    if member_price:
+        price_id = settings.stripe_price_expert_member
     if not price_id:
         # A plan we DO sell, whose Stripe price was never configured. That is
         # our mistake, not the caller's -- and it is invisible until somebody
@@ -689,6 +704,7 @@ async def create_checkout(
                 # to the analysis the athlete actually chose.
                 "analysis_client_id": (body.analysis_client_id or "")[:64],
                 "review_bump": "1" if bump else "",
+                "member_price": "1" if member_price else "",
             },
         )
     except stripe.StripeError as e:  # noqa: BLE001

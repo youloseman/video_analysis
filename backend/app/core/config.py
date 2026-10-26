@@ -140,6 +140,10 @@ class Settings:
     # line item (the order bump). Deliberately NOT in plan_price_map: it is not
     # a plan anybody may buy on its own, only an add-on to a subscription.
     stripe_price_expert_bump: str | None = None
+    # The Expert Review at the Full member price (US$29), charged instead of
+    # the US$39 price when a Full subscriber buys one. Like the bump, not a
+    # plan of its own: the plan key stays "expert".
+    stripe_price_expert_member: str | None = None
 
     # Expert Reviews accepted per rolling week. The deliverable is ~40 minutes
     # of one person's attention, so this is the only product here whose supply
@@ -344,6 +348,7 @@ def _load_settings() -> Settings:
         stripe_price_full_m=os.environ.get("STRIPE_PRICE_FULL_M") or None,
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
         stripe_price_expert_bump=os.environ.get("STRIPE_PRICE_EXPERT_BUMP") or None,
+        stripe_price_expert_member=os.environ.get("STRIPE_PRICE_EXPERT_MEMBER") or None,
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
         stripe_price_notes=os.environ.get("STRIPE_PRICE_NOTES") or None,
         stripe_price_expert_recheck=os.environ.get("STRIPE_PRICE_EXPERT_RECHECK") or None,
