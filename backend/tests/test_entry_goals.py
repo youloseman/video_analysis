@@ -38,10 +38,10 @@ def _app_goals(app_html: str) -> set[str]:
     return set(re.findall(r"^\s*([a-z]+):\{sport:", block, flags=re.MULTILINE))
 
 
-def test_the_hero_offers_three_ways_in_and_a_plain_one(landing):
+def test_the_hero_offers_four_ways_in_and_a_plain_one(landing):
     hero = landing[landing.index('<header class="hero">'):landing.index("</header>")]
     goals = re.findall(r'class="goal-btn" id="\w+" href="/app\?goal=([a-z]+)"', hero)
-    assert goals == ["knee", "faster", "race"]
+    assert goals == ["knee", "faster", "race", "run"]
     assert 'id="heroGo" href="/app"' in hero
 
 

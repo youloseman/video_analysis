@@ -216,9 +216,11 @@ def test_an_included_review_is_offered_before_the_notes_are_sold():
     # The Notes stay buyable -- a choice, not a wall.
     assert card.count("data-notesbuy") >= 2
 
-    start = spa.index("function addonCardHtml")
+    # The pricing page's add-ons block (the slots of the shared pricing block).
+    start = spa.index("function prCoachFill")
     addon = spa[start:spa.index("\n}\n", start)]
-    assert "ownsReview" in addon and "Use that first" in addon
+    assert "credits>0" in addon and "Use that first" in addon
+    assert "Use your included review" in addon
 
 
 def test_the_report_and_the_editor_show_the_bio():

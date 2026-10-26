@@ -113,7 +113,10 @@ def test_no_card_writes_its_own_quota_down():
     from app.models.user import tier_limit
 
     for card in pricing.CARDS:
-        if not card.tier:
+        # Starter says "1 full report" and no allowance at all (Artur,
+        # 2026-10-25): after that report a free analysis is a score and a
+        # skeleton, and "10 analyses" read as ten reports.
+        if not card.tier or card.tier == "starter":
             continue
         quota = str(tier_limit(card.tier)[0])
         quoted = [f.text for f in card.features
@@ -185,7 +188,7 @@ def test_the_terms_table_is_rendered_from_the_catalogue():
 def test_the_app_shell_renders_prices_from_the_api_not_from_markup():
     doc = (STATIC / "index.html").read_text(encoding="utf-8")
     assert "/billing/plans" in doc
-    assert 'id="tiersHost"' in doc and 'id="addonHost"' in doc
+    assert 'id="pricingHost"' in doc and "PLANS.html" in doc
 
 
 def test_the_plans_endpoint_is_public():

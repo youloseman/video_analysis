@@ -32,7 +32,6 @@ PURCHASE_SURFACES = {
     # The report's teaser card whole, and the per-report unlock wherever it is.
     ".upsell": 'class="upsell"',
     ".btn-unlock": "btn-unlock",
-    ".solo-buy": 'class="solo-buy"',
     # The Coach Notes / Expert Review card in every state (offer, booked,
     # delivered-with-upsell). Delivered notes render in .cnote, not here.
     ".notes-offer": 'class="notes-offer',

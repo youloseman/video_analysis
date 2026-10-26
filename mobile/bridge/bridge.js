@@ -115,7 +115,7 @@
     // so a link the CSS misses still opens nothing.
     '.flapp-native #pricing', '.flapp-native a[href="#pricing"]', '.flapp-native .plans-link',
     // The report's teaser card (Upgrade to unlock / $4), whole.
-    '.flapp-native .upsell', '.flapp-native .btn-unlock', '.flapp-native .solo-buy',
+    '.flapp-native .upsell', '.flapp-native .btn-unlock',
     // The Coach Notes / Expert Review card at the foot of the report, in
     // every state: offer, booked, and delivered (which pitches the Expert
     // Review). Delivered notes themselves render in #coachNoteBlock / .cnote,

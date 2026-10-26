@@ -76,4 +76,4 @@ def test_rendering_replaces_every_token_with_the_enforced_number():
         pricing.FREE_LIMIT_TOKEN, str(pricing.starter_monthly_limit()),
     )
     assert pricing.FREE_LIMIT_TOKEN not in rendered
-    assert f"{pricing.starter_monthly_limit()} analyses a month" in rendered
+    assert f"{pricing.starter_monthly_limit()} analyses every month" in rendered

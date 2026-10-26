@@ -1659,28 +1659,19 @@
   <section id="pricing" class="hidden" aria-labelledby="pricingTitle">
     <div class="pricing-head">
       <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Plans</div>
-      <h2 id="pricingTitle" tabindex="-1">Train on real numbers, not guesswork</h2>
-      <p>Start free. Upgrade when you want the measurements, coaching and video that tell you exactly what to change.</p>
-      <div class="billtoggle" role="group" aria-label="Billing period">
-        <button type="button" id="billMonthly" aria-pressed="false">Monthly</button>
-        <button type="button" id="billYearly" aria-pressed="true">Yearly<span class="save" id="billSave"></span></button>
-      </div>
+      <h2 id="pricingTitle" tabindex="-1">Find it. Fix it. Prove it.</h2>
+      <p>Every plan covers running and cycling, from a video or a single photo.</p>
     </div>
 
-    <div class="tiers" id="tiersHost"></div>
-
-    <!-- Expert Review: a full-width card under the grid rather than a fourth
-         column. Four tier cards in this container leave ~220px each, and this
-         is the one thing on the page a model cannot reproduce — it used to be
-         a thin strip, which is a strange place for the highest-margin item we
-         sell and the only one with a human behind it. -->
-    <div id="addonHost"></div>
+    <!-- The plans, the comparison and the human add-ons: one block rendered by
+         services/pricing.py (the landing page prints the same one), with slots
+         drawPricing() fills for whoever is signed in. -->
+    <div id="pricingHost"></div>
 
     <!-- One-time purchases. An Expert Review grants no plan, so without this the
          only proof of the payment would be the customer's card statement. -->
     <div class="addon-strip hidden" id="ordersBox" aria-live="polite"></div>
 
-    <p class="pricing-foot" id="pricingFoot"></p>
   </section>
 
   <!-- ============ ACCOUNT ============ -->
@@ -1915,6 +1906,7 @@ const GOALS={
   gear:{sport:null, text:'<b>New bike or shoes.</b> Film the new setup before the first long session. If you have a clip on the old one, the report can line the two up.'},
   doubt:{sport:null, text:'<b>A second opinion, in numbers.</b> Every joint is set against a published range, with the source named &mdash; so advice can be weighed against a measurement.'},
   crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position &mdash; one photo or ten seconds of pedalling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimetres. Full plan.'},
+  run:{sport:'run', text:'<b>Running form.</b> Film 10 seconds from the side, on a treadmill or a straight path, at an easy pace. The report measures your cadence, overstride, how your knee lands and your trunk lean, and names the one thing to change first.'},
   race:{sport:'bike', text:'<b>Before a race.</b> Film in your race position, on the bike you will race. The report checks it against the fit ranges and, in an aero position, against the Kona 2026 pro field.'},
 };
 function goalGet(){ try{ const g=localStorage.getItem(GOAL_KEY); return GOALS[g]?g:null; }catch(e){ return null; } }
@@ -6688,130 +6680,81 @@ async function loadPlans(){
   return PLANS;
 }
 function retryPlans(){ PLANS_ERR=false; renderPricing(); }
-/* Yearly is the default tab, and that is a legibility decision rather than a
-   nudge. Full is annual-only, so the monthly tab shows the tiers in two
-   different units — a per-month price beside a per-year one — and whenever the
-   annual top tier costs less over a year than twelve months of the tier badged
-   Most popular, the reader who does that arithmetic is right and the ladder
-   looks broken. On the yearly tab every tier shares one unit and ascends. The
-   monthly tab still exists for whoever wants month-to-month; it just is not
-   where a first-time visitor lands. The actual fix is a monthly price for the
-   top tier — until that exists, this. (No amounts here on purpose: a comment
-   that names prices goes stale the same way the markup did.) */
+/* The pricing block itself is the server's: services/pricing.py renders it for
+   the landing page and sends the same markup here as `html` in the catalogue.
+   What depends on who is looking -- the buttons, the bump, the review's price --
+   goes into its pr-slot placeholders below. Both billing periods are in the
+   markup; the block's own toggle switches them, and billPeriod follows it so a
+   redraw (sign-in, a purchase coming back) keeps the period the reader picked.
+   Yearly is the default because it puts all three plans in one unit. */
 let billPeriod='yearly';   // 'monthly' | 'yearly'
-function setBillPeriod(p){ billPeriod=p; drawPricing(); }
-/* The order bump on the Enthusiast card: an Expert Review added to the
-   subscription's first invoice at the catalogue's bump price. */
+/* The order bump on Enthusiast: an Expert Review added to the subscription's
+   first invoice at the catalogue's bump price. */
 let reviewBump=false;
-function bumpHtml(card){
-  const b=PLANS&&PLANS.review_bump;
-  if(card.id!=='enthusiast'||!b||!b.available) return '';
-  if(auth&&auth.tier===card.tier) return '';
-  return `<label class="bump"><input type="checkbox" id="reviewBump"${reviewBump?' checked':''} onchange="reviewBump=this.checked">
-    <span><b>Add a pro triathlete's review of your clip</b> · <b>${esc(b.display)}</b> <s>${esc(b.was)}</s><small>One time, only here. Use it on any clip.</small></span></label>`;
-}
 
 const CURRENT_BADGE='<div class="current-badge"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Your current plan</div>';
 const MANAGE_BTN='<button class="btn btn-ghost btn-sm" type="button" style="width:100%;margin-top:8px" onclick="openPortal()">Manage subscription</button>';
-const TICK='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const CROSS='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-const DEAD_BTN='<button class="btn btn-outline" type="button" disabled style="opacity:.45;cursor:default">';
+const DEAD_BTN='<button class="pr-btn pr-btn-dead" type="button" disabled>';
 
-/* The price to show for the selected period, falling back to the card's only
-   one. That fallback is what lets Full render on the monthly tab with its own
-   unit spelled out (below) instead of silently switching units on the reader. */
-function priceFor(card){
-  const want = billPeriod==='yearly' ? 'year' : 'month';
-  return (card.prices||[]).find(p=>p.interval===want) || (card.prices||[])[0] || null;
+function prPrice(card, cycle){
+  return (card.prices||[]).find(p=>p.interval===cycle) || (card.prices||[])[0] || null;
 }
-function priceNote(price){
-  if(!price) return '';
-  const want = billPeriod==='yearly' ? 'year' : 'month';
-  if(price.interval==='year' && want==='month') return 'annual only · no monthly option';
-  return price.note||'';
-}
-/* Feature text is authored in services/pricing.py and carries its own <b> and
-   entities. It is our copy, never anything a user typed, so it goes in as
-   markup on purpose — escaping it would print the tags. */
-function featuresHtml(features){
-  return (features||[]).map(f=>
-    `<li${f.on?'':' class="off"'}>${f.on?TICK:CROSS}<span>${f.text}</span></li>`).join('');
-}
-
-function tierCtaHtml(card, price){
+function prCtaHtml(card, cycle){
   const cur = auth ? auth.tier : null;
+  const label = esc(card.cta_label || ('Choose '+card.name));
   if(card.id==='starter'){
-    if(!auth) return `<button class="btn btn-outline" type="button" onclick="openAuth&&openAuth('register')">Get started free</button>`;
+    if(!auth) return `<button class="pr-btn pr-btn-starter" type="button" onclick="openAuth&&openAuth('register')">${label}</button>`;
     return cur==='starter' ? CURRENT_BADGE : DEAD_BTN+'Free plan</button>';
   }
   if(cur && cur===card.tier) return CURRENT_BADGE+MANAGE_BTN;
   // Advertised, but this deploy has no Stripe price for it. Say so, rather
   // than rendering a button whose only possible outcome is a 503.
+  const price=prPrice(card, cycle);
   if(!price || !price.available || !price.plan) return DEAD_BTN+'Coming soon</button>';
-  const style = card.badge ? 'btn-primary' : 'btn-outline';
-  return `<button class="btn ${style}" type="button" onclick="startCheckout('${esc(price.plan)}')">Choose ${esc(card.name)}</button>`;
+  return `<button class="pr-btn pr-btn-${esc(card.id)}" type="button" onclick="startCheckout('${esc(price.plan)}')">${label}</button>`;
 }
-
-function tierCardHtml(card){
-  const price=priceFor(card);
-  return `<div class="tier${card.badge?' pop':''}" id="tier-${esc(card.id)}">
-    ${card.badge?`<span class="poptag">${esc(card.badge)}</span>`:''}
-    <p class="tier-name">${esc(card.name)}</p>
-    <p class="tier-tagline">${esc(card.tagline)}</p>
-    <div class="tier-price"><span class="amt">${esc(price?price.display:'')}</span><span class="per">${esc(price?price.per:'')}</span></div>
-    <p class="tier-sub">${esc(priceNote(price))}</p>
-    <ul>${featuresHtml(card.features)}</ul>
-    ${bumpHtml(card)}
-    <div class="tier-cta">${tierCtaHtml(card,price)}</div>
-  </div>`;
+/* The same box sits under the table and inside the Enthusiast card on a phone;
+   ticking either ticks both, so what is bought does not depend on the layout. */
+function prBumpHtml(){
+  const b=PLANS&&PLANS.review_bump;
+  if(!b || !b.available || (auth&&auth.tier==='enthusiast')) return '';
+  return `<label class="pr-bump"><input type="checkbox" class="pr-bumpbox"${reviewBump?' checked':''}
+      onchange="reviewBump=this.checked;document.querySelectorAll('.pr-bumpbox').forEach(x=>{x.checked=reviewBump})">
+    <span><b>Add a pro's review of your first clip</b> · <b class="pr-good">US${esc(b.display)}</b>
+      <span class="pr-soft">instead of US${esc(b.was)} · with Enthusiast</span></span></label>`;
 }
-
-/* The add-on card. Someone on Full already owns one of these, so it offers to
-   spend it rather than to sell them a second — an included benefit nobody is
-   told about is indistinguishable from one that was never granted. */
-function addonCardHtml(card){
-  const price=(card.prices||[])[0]||null;
-  const notes=card.id==='notes';
-  const credits=notes?0:((auth&&auth.expert_credits)||0);
-  // On the Notes card the included review is not spent, but it is said: the
-  // full version of what this card sells is already on their plan.
-  const ownsReview=notes&&((auth&&auth.expert_credits)||0)>0;
-  // A Full subscriber with no review left buys one at the member price; the
-  // server picks the Stripe price, this only says so.
-  // Enthusiast's member price is the bump's US$35, Full's its own US$29.
-  const rm=PLANS&&(hasFullPlan()?PLANS.review_member:(auth&&auth.tier==='enthusiast'?PLANS.review_bump:null));
-  const member=!notes&&credits===0&&rm&&rm.available;
-  const plan=notes?'notes':'expert';
-  const buy = credits>0
-    ? `<button class="btn btn-primary" type="button" onclick="startCheckout('expert')">Use your included review</button>`
-    : (price&&price.available&&price.plan
-        ? `<button class="btn btn-outline" type="button" onclick="startCheckout('${esc(plan)}')">${esc(card.cta_label||'Add Expert Review')}</button>`
-        : DEAD_BTN+'Coming soon</button>');
-  return `<div class="tier tier-solo">
-    ${card.badge?`<span class="poptag poptag-addon">${esc(card.badge)}</span>`:''}
-    <div class="solo-head">
-      <div>
-        <p class="tier-name">${esc(card.name)}</p>
-        <p class="tier-tagline">${esc(card.tagline)}</p>
-      </div>
-      <div class="solo-buy">
-        <div class="tier-price"><span class="amt">${credits>0?'Included':esc(member?rm.display:(price?price.display:''))}</span><span class="per">${credits>0?'':esc(price?price.per:'')}</span></div>
-        <p class="tier-sub">${credits>0?`<b>${credits}</b> left on your plan`
-          :member?`${hasFullPlan()?'Full':'Enthusiast'} member price · usually <s>${esc(rm.was)}</s>`
-          :ownsReview?'Your plan already includes a full <b>Expert Review</b> — the complete version of these notes. Use that first.'
-          :esc(price?price.note:'')}</p>
-        <div class="solo-btns">
-          ${notes?'':'<button class="btn btn-ghost btn-sm" type="button" id="ctaExpertSample">See a sample</button>'}
-          ${buy}
-        </div>
-      </div>
-    </div>
-    <ul class="solo-list">${featuresHtml(card.features)}</ul>
-  </div>`;
+/* The human add-ons. Someone on Full already owns a review, so the block
+   offers to spend it rather than to sell them a second -- an included benefit
+   nobody is told about is indistinguishable from one that was never granted.
+   A subscriber with none left sees the member price the server will charge:
+   Full's own, or for Enthusiast the bump's. */
+function prCoachFill(root){
+  const cards=PLANS.cards||[];
+  const first=id=>{ const c=cards.find(x=>x.id===id); return (c&&c.prices&&c.prices[0])||null; };
+  const ex=first('expert'), no=first('notes'), re=first('recheck');
+  const credits=(auth&&auth.expert_credits)||0;
+  const rm=hasFullPlan()?PLANS.review_member:(auth&&auth.tier==='enthusiast'?PLANS.review_bump:null);
+  const member=credits===0&&rm&&rm.available;
+  const fill=(slot,html)=>root.querySelectorAll(`[data-slot="${slot}"]`).forEach(el=>{el.innerHTML=html;});
+  const buy=(plan,price,label)=>price&&price.available
+    ? `<button class="pr-btn-s" type="button" onclick="startCheckout('${esc(plan)}')">${label}</button>`
+    : '<button class="pr-btn-s" type="button" disabled style="opacity:.45;cursor:default">Coming soon</button>';
+  fill('expert-price', credits>0 ? 'Included' : 'US'+esc(member?rm.display:(ex?ex.display:'')));
+  fill('expert-cta', credits>0
+    ? `<button class="pr-btn-s" type="button" onclick="startCheckout('expert')">Use your included review</button>`
+    : buy('expert', ex, 'Get my plan from a pro'));
+  fill('expert-sub', credits>0 ? `<b>${credits}</b> left on your plan`
+    : member ? `${hasFullPlan()?'Full':'Enthusiast'} member price · usually <s>US${esc(rm.was)}</s>`
+    : 'Included once a year with Full, on the yearly plan');
+  fill('notes-cta', buy('notes', no, 'Get notes on my report'));
+  fill('notes-sub', credits>0
+    ? 'Your plan already includes a full Expert Review, the complete version of these notes. Use that first.'
+    : (re ? `Then: a full review of your next clip, US${esc(re.display)}` : ''));
+  fill('sample', '<a href="#" onclick="event.preventDefault();openSampleReport()">see a sample</a>');
 }
 
 function drawPricing(){
-  const host=$('#tiersHost');
+  const host=$('#pricingHost');
   if(!host) return;
   if(!PLANS){
     /* Silently blank tier cards on the pricing page are a dead end that costs
@@ -6821,20 +6764,20 @@ function drawPricing(){
       <button class="btn btn-outline btn-sm" type="button" onclick="retryPlans()">Retry</button></div>`;
     return;                        // renderPricing() re-enters when it lands
   }
-  const m=$('#billMonthly'), y=$('#billYearly');
-  if(m) m.setAttribute('aria-pressed', String(billPeriod==='monthly'));
-  if(y) y.setAttribute('aria-pressed', String(billPeriod==='yearly'));
-  const save=$('#billSave');
-  if(save) save.textContent = PLANS.annual_saving_pct ? `save ~${PLANS.annual_saving_pct}%` : '';
+  // Our own markup from our own server, never anything a user typed.
+  host.innerHTML=PLANS.html||'';
+  const root=host.querySelector('.pr');
+  if(!root) return;
+  const per = billPeriod==='monthly' ? 'month' : 'year';
+  root.dataset.period=per;
+  root.querySelectorAll('[data-per]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.per===per)));
   const cards=PLANS.cards||[];
-  host.innerHTML=cards.filter(c=>c.kind==='tier').map(tierCardHtml).join('');
-  const ah=$('#addonHost');
-  if(ah) ah.innerHTML=cards.filter(c=>c.kind==='addon').map(addonCardHtml).join('');
-  const foot=$('#pricingFoot');
-  if(foot) foot.innerHTML=`<svg aria-hidden="true"><use href="#i-check"/></svg> ${esc(PLANS.footnote||'')}`;
-  // Re-created on every draw, so it is wired here rather than at startup.
-  const sample=$('#ctaExpertSample');
-  if(sample) sample.addEventListener('click',()=>openSampleReport());
+  root.querySelectorAll('[data-slot="cta"]').forEach(slot=>{
+    const card=cards.find(c=>c.id===slot.dataset.card);
+    slot.innerHTML = card ? prCtaHtml(card, slot.dataset.cycle||'year') : '';
+  });
+  root.querySelectorAll('[data-slot="bump"]').forEach(slot=>{ slot.innerHTML=prBumpHtml(); });
+  prCoachFill(root);
 }
 function renderPricing(){
   drawPricing();                          // instant on a repeat open
@@ -10737,8 +10680,11 @@ $('#profileCancel').addEventListener('click',()=>{ showProfileInput(false); rend
 $('#profileNew').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#profileSave').click(); } });
 $('#hBack').addEventListener('click',openHistoryView);
 // Pricing: billing toggle + Expert Review add-on
-$('#billMonthly').addEventListener('click',()=>setBillPeriod('monthly'));
-$('#billYearly').addEventListener('click',()=>setBillPeriod('yearly'));
+// The block's period toggle is inline in its markup; this only remembers it.
+$('#pricingHost').addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-per]');
+  if(b) billPeriod = b.dataset.per==='month' ? 'monthly' : 'yearly';
+});
 $('#delAccountBtn').addEventListener('click',deleteAccount);
 $('#wordmark').addEventListener('click',()=>reset());
 $('#wordmark').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); reset(); } });
