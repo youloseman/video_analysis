@@ -36,17 +36,26 @@ from app.services.tier_grants import as_utc  # noqa: E402
 LIVE = ("active", "trialing", "past_due")
 
 
+def _field(obj: Any, key: str) -> Any:
+    """``obj[key]`` or None. Stripe objects stopped being dicts (no ``.get``)
+    in stripe-python 13+, but indexing works on them and on plain dicts."""
+    try:
+        return obj[key]
+    except (KeyError, TypeError):
+        return None
+
+
 def period_end(sub: Any) -> int | None:
     """When a subscription's current period ends, as a Unix time.
 
     Newer Stripe API versions moved ``current_period_end`` from the
     subscription onto its items, so both places are read.
     """
-    end = sub.get("current_period_end")
+    end = _field(sub, "current_period_end")
     if end:
         return int(end)
-    items = (sub.get("items") or {}).get("data") or []
-    ends = [int(i["current_period_end"]) for i in items if i.get("current_period_end")]
+    items = _field(_field(sub, "items"), "data") or []
+    ends = [int(e) for e in (_field(i, "current_period_end") for i in items) if e]
     return max(ends) if ends else None
 
 
@@ -56,7 +65,7 @@ def paid_until(user: User) -> tuple[datetime | None, str]:
     if not user.stripe_customer_id:
         return None, "no Stripe customer"
     subs = stripe.Subscription.list(customer=user.stripe_customer_id, status="all", limit=20)
-    ends = [period_end(s) for s in subs.auto_paging_iter() if s.get("status") in LIVE]
+    ends = [period_end(s) for s in subs.auto_paging_iter() if _field(s, "status") in LIVE]
     ends = [e for e in ends if e]
     if not ends:
         return None, "no live subscription"

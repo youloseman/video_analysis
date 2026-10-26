@@ -262,6 +262,15 @@ def test_the_period_end_is_read_where_stripe_keeps_it():
     assert mod.period_end({"current_period_end": 1800000000}) == 1800000000
     assert mod.period_end({"items": {"data": [{"current_period_end": 1800000500}]}}) == 1800000500
     assert mod.period_end({"items": {"data": []}}) is None
+    # What Stripe actually returns. Prod's stripe-python (15.x) has no .get on
+    # these -- the first prod run died on exactly that -- so only indexing is
+    # used, which works on every version.
+    from stripe import StripeObject
+
+    sub = StripeObject.construct_from(
+        {"status": "active", "items": {"data": [{"current_period_end": 1800000900}]}}, "sk_test",
+    )
+    assert mod.period_end(sub) == 1800000900 and mod._field(sub, "status") == "active"
 
 
 # --------------------------------------------------------------------------
