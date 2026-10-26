@@ -737,6 +737,12 @@ def _fits(card: Card) -> str:
 def _bump(mode: str) -> str:
     if mode == "app":
         return '<span class="pr-slot" data-slot="bump"></span>'
+    # Not advertised before checkout can honour it: without its Stripe price
+    # the app shows no box, and the landing page must not promise one.
+    from app.core.config import settings
+
+    if not settings.stripe_price_expert_bump:
+        return ""
     return (
         '<p class="pr-bump pr-bump-info"><span class="pr-plus" aria-hidden="true">+</span>'
         "<span><b>Add a pro's review of your first clip</b> · "

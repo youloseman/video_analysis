@@ -151,6 +151,17 @@ async def test_an_enthusiast_purchase_without_the_bump_grants_nothing(db, make_u
     assert (user.expert_credits or 0) == 0
 
 
+def test_the_landing_page_promises_the_bump_only_with_a_price(monkeypatch):
+    """The landing page cannot tick the box itself, so it only describes it --
+    and must not describe a box the app will not show."""
+    from app.core import config
+
+    monkeypatch.setattr(config, "settings", dataclasses.replace(settings, stripe_price_expert_bump=None))
+    assert "pr-bump-info" not in pricing.render_landing_pricing()
+    monkeypatch.setattr(config, "settings", dataclasses.replace(settings, stripe_price_expert_bump="price_x"))
+    assert "pr-bump-info" in pricing.render_landing_pricing()
+
+
 def test_the_catalogue_offers_the_bump_only_with_a_price():
     assert pricing.catalog({}, "price_x")["review_bump"]["available"] is True
     off = pricing.catalog({}, None)["review_bump"]
