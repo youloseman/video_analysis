@@ -290,6 +290,23 @@ def _migrate_analyses(conn) -> None:
         logger.info("MIGRATED", change="analyses.profile_id added")
 
 
+def _migrate_profiles(conn) -> None:
+    """Same idempotent, Alembic-less evolution as the ones above.
+
+    Both columns are nullable with no default: a profile made before them was
+    never told its crank or position, and NULL is the truth about that.
+    """
+    cols = _existing_columns(conn, "profiles")
+    if not cols:  # fresh DB -- create_all already built the current schema.
+        return
+    if "crank_length_mm" not in cols:
+        conn.execute(text("ALTER TABLE profiles ADD COLUMN crank_length_mm FLOAT"))
+        logger.info("MIGRATED", change="profiles.crank_length_mm added")
+    if "bike_position" not in cols:
+        conn.execute(text("ALTER TABLE profiles ADD COLUMN bike_position VARCHAR(16)"))
+        logger.info("MIGRATED", change="profiles.bike_position added")
+
+
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import (  # noqa: F401
@@ -301,4 +318,5 @@ async def init_db() -> None:
         await conn.run_sync(_migrate_users)
         await conn.run_sync(_migrate_orders)
         await conn.run_sync(_migrate_analyses)
+        await conn.run_sync(_migrate_profiles)
     logger.info("DB_READY", backend=settings.async_database_url.split("://", 1)[0])

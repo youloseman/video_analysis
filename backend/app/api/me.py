@@ -40,9 +40,11 @@ from app.core.db import get_session
 from app.core.security import get_current_user
 from app.models.analysis import Analysis
 from app.models.profile import (
+    CRANK_MM_RANGE,
     DEFAULT_KIND,
     MAX_NAME_CHARS,
     PROFILE_KINDS,
+    PROFILE_POSITIONS,
     Profile,
 )
 from app.models.user import User, profile_limit
@@ -815,10 +817,37 @@ async def delete_analysis(
 # on a road bike and the same rider on a TT bike are two correct sets of angles,
 # and averaging them produces a trend line describing nobody.
 # --------------------------------------------------------------------------
+def _crank(v: float | None) -> float | None:
+    if v is None:
+        return None
+    lo, hi = CRANK_MM_RANGE
+    if not lo <= v <= hi:
+        raise ValueError(f"Cranks run {lo:g}–{hi:g} mm — check the number.")
+    return round(float(v), 1)
+
+
+def _position(v: str | None) -> str | None:
+    # An unknown position is dropped rather than refused: it is a convenience
+    # default, and a stale client must not be unable to save a bike over it.
+    return v if v in PROFILE_POSITIONS else None
+
+
 class ProfileIn(BaseModel):
     name: str = Field(min_length=1, max_length=MAX_NAME_CHARS)
     sport: str = "bike"
     kind: str = DEFAULT_KIND
+    crank_length_mm: float | None = None
+    position: str | None = None
+
+    @field_validator("crank_length_mm")
+    @classmethod
+    def _crank_mm(cls, v: float | None) -> float | None:
+        return _crank(v)
+
+    @field_validator("position")
+    @classmethod
+    def _bike_position(cls, v: str | None) -> str | None:
+        return _position(v)
 
     @field_validator("name")
     @classmethod
@@ -840,15 +869,30 @@ class ProfileIn(BaseModel):
 
 
 class ProfilePatch(BaseModel):
+    """Only the fields sent change; sending ``null`` clears crank or position."""
+
     name: str | None = Field(default=None, max_length=MAX_NAME_CHARS)
     kind: str | None = None
     archived: bool | None = None
+    crank_length_mm: float | None = None
+    position: str | None = None
+
+    @field_validator("crank_length_mm")
+    @classmethod
+    def _crank_mm(cls, v: float | None) -> float | None:
+        return _crank(v)
+
+    @field_validator("position")
+    @classmethod
+    def _bike_position(cls, v: str | None) -> str | None:
+        return _position(v)
 
 
 def _profile_out(p: Profile, used: int = 0) -> dict[str, Any]:
     return {
         "id": p.id, "name": p.name, "sport": p.sport, "kind": p.kind,
         "archived": p.archived, "created_at_ms": p.created_at_ms,
+        "crank_length_mm": p.crank_length_mm, "position": p.bike_position,
         "analyses": used,
     }
 
@@ -943,9 +987,12 @@ async def create_profile(
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     await _refuse_if_no_room(db, user)
+    bike = body.sport == "bike"
     row = Profile(
         user_id=user.id, name=body.name, sport=body.sport, kind=body.kind,
         created_at_ms=_now_ms(),
+        crank_length_mm=body.crank_length_mm if bike else None,
+        bike_position=body.position if bike else None,
     )
     db.add(row)
     await db.commit()
@@ -968,6 +1015,11 @@ async def update_profile(
             row.name = name
     if body.kind is not None and body.kind in PROFILE_KINDS:
         row.kind = body.kind
+    if row.sport == "bike":
+        if "crank_length_mm" in body.model_fields_set:
+            row.crank_length_mm = body.crank_length_mm
+        if "position" in body.model_fields_set:
+            row.bike_position = body.position
     if body.archived is not None:
         # Un-archiving can push the account back over its limit (they retired a
         # bike, then downgraded). Refuse rather than silently allow it.

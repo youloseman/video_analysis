@@ -262,3 +262,61 @@ def test_the_period_end_is_read_where_stripe_keeps_it():
     assert mod.period_end({"current_period_end": 1800000000}) == 1800000000
     assert mod.period_end({"items": {"data": [{"current_period_end": 1800000500}]}}) == 1800000500
     assert mod.period_end({"items": {"data": []}}) is None
+
+
+# --------------------------------------------------------------------------
+# A bike profile remembers its cranks and its usual position
+# --------------------------------------------------------------------------
+async def test_a_bike_profile_keeps_its_crank_and_position(db, make_user):
+    user = await make_user(tier=TIER_FULL)
+    tt = await me.create_profile(
+        me.ProfileIn(name="TT", sport="bike", kind="tt", crank_length_mm=170, position="tt_aero"),
+        user, db,
+    )
+    assert tt["crank_length_mm"] == 170.0 and tt["position"] == "tt_aero"
+    listing = await me.list_profiles(user, db)
+    assert listing["profiles"][0]["crank_length_mm"] == 170.0
+
+
+async def test_patching_changes_only_what_was_sent_and_null_clears(db, make_user):
+    user = await make_user(tier=TIER_FULL)
+    p = await me.create_profile(
+        me.ProfileIn(name="Road", crank_length_mm=172.5, position="road_hoods"), user, db,
+    )
+    out = await me.update_profile(p["id"], me.ProfilePatch(name="Road bike"), user, db)
+    assert out["crank_length_mm"] == 172.5 and out["position"] == "road_hoods"
+    out = await me.update_profile(p["id"], me.ProfilePatch(crank_length_mm=None), user, db)
+    assert out["crank_length_mm"] is None and out["position"] == "road_hoods"
+
+
+def test_an_impossible_crank_is_refused_and_an_unknown_position_dropped():
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        me.ProfileIn(name="Road", crank_length_mm=210)
+    assert me.ProfileIn(name="Road", position="superman").position is None
+
+
+async def test_shoes_carry_no_crank(db, make_user):
+    user = await make_user(tier=TIER_FULL)
+    shoes = await me.create_profile(
+        me.ProfileIn(name="Vaporfly", sport="run", kind="shoes", crank_length_mm=170, position="tt_aero"),
+        user, db,
+    )
+    assert shoes["crank_length_mm"] is None and shoes["position"] is None
+
+
+def test_profile_positions_match_the_analyzer():
+    from app.models.profile import PROFILE_POSITIONS
+    from app.services.video_analysis.runner import VALID_POSITIONS
+
+    assert set(PROFILE_POSITIONS) == set(VALID_POSITIONS)
+
+
+def test_choosing_a_bike_profile_sets_the_ruler_the_analysis_sends():
+    """The crank that goes with an analysis is the chosen bike's, then the device's."""
+    from tests.conftest import read_front_end
+
+    spa = read_front_end()
+    assert "function chosenBikeProfile()" in spa
+    assert "const p=chosenBikeProfile(); if(p&&p.crank_length_mm) return p.crank_length_mm;" in spa

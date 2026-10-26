@@ -18,7 +18,7 @@ explanation for why those numbers look different.
 
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -29,6 +29,16 @@ PROFILE_KINDS = ("road", "tt", "trainer", "gravel", "mtb", "shoes", "other")
 DEFAULT_KIND = "other"
 
 MAX_NAME_CHARS = 60
+
+# What a bike profile remembers about the bike, so choosing it fills them in.
+# The crank is the one real length on a bike: it scales the saddle estimate
+# into millimetres and the hip-over-crank reading into centimetres, so two
+# bikes with different cranks now measure on their own rulers. The position is
+# the one a TT bike is ridden in, so picking it stops asking.
+CRANK_MM_RANGE = (150.0, 185.0)
+# Mirrors runner.VALID_POSITIONS (pinned by a test); the runner pulls in the
+# whole vision stack, which a model module should not import.
+PROFILE_POSITIONS = frozenset({"road_hoods", "road_drops", "tt_aero", "triathlon", "casual"})
 
 
 class Profile(Base):
@@ -52,3 +62,8 @@ class Profile(Base):
     archived: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="0", nullable=False,
     )
+    # Bike profiles only; NULL = not told (172.5 mm is assumed, and says so).
+    crank_length_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # "bike_position", not "position": POSITION is an SQL keyword, and the
+    # raw ALTER that adds it never runs against Postgres in the tests.
+    bike_position: Mapped[str | None] = mapped_column(String(16), nullable=True)

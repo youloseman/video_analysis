@@ -1775,6 +1775,8 @@
       <div><label for="profName" id="profEditLbl">Name</label><input id="profName" type="text" maxlength="60" placeholder="e.g. Canyon Aeroad, Vaporfly 3"></div>
       <div><label for="profSport">Sport</label><select id="profSport"><option value="bike">Bike</option><option value="run">Run</option></select></div>
       <div><label for="profKind">Type</label><select id="profKind"></select></div>
+      <div class="prof-bike"><label for="profCrank">Crank length</label><input id="profCrank" type="number" inputmode="decimal" min="150" max="185" step="2.5" placeholder="172.5 mm"></div>
+      <div class="prof-bike"><label for="profPos">Usual position</label><select id="profPos"></select></div>
       <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="profSave">Save profile</button><button class="btn btn-ghost btn-sm" type="button" id="profCancel">Cancel</button></div>
     </div>
     <div class="prof-limit hidden" id="profLimit"></div>
@@ -6365,11 +6367,13 @@ async function createProfile(name){
   try{
     const r=await fetch('/me/profiles',{method:'POST',
       headers:authHeaders({'Content-Type':'application/json'}),
-      body:JSON.stringify({name, sport:state.sport, kind:state.sport==='run'?'shoes':'other'})});
+      body:JSON.stringify({name, sport:state.sport, kind:state.sport==='run'?'shoes':'other',
+        ...(state.sport==='bike'?{position:state.position||null, crank_length_mm:crankMm()}:{})})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ toast(j.detail||'Could not add that setup.',{duration:6000}); return null; }
     state.profileId=j.id;
     await loadProfiles();
+    renderCrankField();
     toast(`Filed under ${j.name}.`);
     return j.id;
   }catch(e){ toast('Could not add that setup.'); return null; }
@@ -6377,8 +6381,9 @@ async function createProfile(name){
 /* ============================================================
    Profiles screen — the list, add, rename, archive, restore.
 
-   A profile is name · sport · kind · archived, and nothing the pipeline
-   measures depends on it. Archiving keeps every analysis and trend; delete
+   A profile is name · sport · kind · archived, and for a bike its crank
+   length and usual position: picking it on Analyze fills both in, and the
+   crank is the ruler behind the saddle estimate in millimetres. Archiving keeps every analysis and trend; delete
    is offered second and unfiles rather than removes.
    ============================================================ */
 const PROFILE_KIND_LABEL={road:'road',tt:'TT',trainer:'trainer',gravel:'gravel',mtb:'MTB',shoes:'shoes',other:'other'};
@@ -6402,7 +6407,7 @@ function renderProfiles(){
   } else {
     list.innerHTML=rows.map(p=>`<div class="prof-row${p.archived?' is-archived':''}" data-id="${p.id}">
       <div><div class="p-name">${esc(p.name)} <span class="p-kind">${esc(PROFILE_KIND_LABEL[p.kind]||p.kind||'')}</span>${p.archived?'<span class="p-kind">archived</span>':''}</div>
-        <div class="p-sub">${p.sport==='run'?'run':'bike'}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}</div></div>
+        <div class="p-sub">${p.sport==='run'?'run':'bike'}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}</div></div>
       <div class="p-sub">${p.archived?'out of the picker, still in your history':'in the picker on Analyze'}</div>
       <div class="p-n">${p.analyses!=null?p.analyses:'—'}<small>analyses</small></div>
       <div class="p-acts">
@@ -6434,7 +6439,19 @@ function showProfEdit(p){
   $('#profName').value=p?p.name:'';
   const sp=$('#profSport'); sp.value=p?p.sport:state.sport||'bike'; sp.disabled=!!p;
   $('#profKind').innerHTML=profKindOptions(sp.value, p?p.kind:(sp.value==='run'?'shoes':'road'));
+  $('#profCrank').value=p&&p.crank_length_mm?String(p.crank_length_mm):'';
+  $('#profPos').innerHTML=profPosOptions(p?p.position:null);
+  syncProfBikeFields();
   box.classList.remove('hidden'); $('#profName').focus();
+}
+const PROFILE_POS_LABEL={road_hoods:'Road — hoods',road_drops:'Road — drops',tt_aero:'Time trial',triathlon:'Triathlon',casual:'Casual'};
+function profPosOptions(current){
+  return `<option value="">Ask each time</option>`+Object.entries(PROFILE_POS_LABEL)
+    .map(([k,l])=>`<option value="${k}"${k===current?' selected':''}>${l}</option>`).join('');
+}
+function syncProfBikeFields(){
+  const bike=$('#profSport').value==='bike';
+  document.querySelectorAll('#profEdit .prof-bike').forEach(el=>el.classList.toggle('hidden', !bike));
 }
 async function profPatch(id, body){
   try{
@@ -6449,15 +6466,18 @@ async function profPatch(id, body){
   $('#profFilter').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.profFilter=b.dataset.pf; renderProfiles(); });
   $('#profAdd').addEventListener('click',()=>showProfEdit(null));
   $('#profCancel').addEventListener('click',()=>{ $('#profEdit').classList.add('hidden'); state.profEditId=null; });
-  $('#profSport').addEventListener('change',e=>{ $('#profKind').innerHTML=profKindOptions(e.target.value, e.target.value==='run'?'shoes':'road'); });
+  $('#profSport').addEventListener('change',e=>{ $('#profKind').innerHTML=profKindOptions(e.target.value, e.target.value==='run'?'shoes':'road'); syncProfBikeFields(); });
   $('#profSave').addEventListener('click',async()=>{
     const name=$('#profName').value.trim(); if(!name){ $('#profName').focus(); return; }
     const sport=$('#profSport').value, kind=$('#profKind').value;
+    const crankRaw=$('#profCrank').value.trim(), crank=crankRaw===''?null:parseFloat(crankRaw);
+    if(sport==='bike' && crank!==null && !(crank>=150&&crank<=185)){ toast('Cranks run 150–185 mm — check the number.'); $('#profCrank').focus(); return; }
+    const bikeBits=sport==='bike'?{crank_length_mm:crank, position:$('#profPos').value||null}:{};
     let ok;
-    if(state.profEditId!=null) ok=await profPatch(state.profEditId,{name,kind});
+    if(state.profEditId!=null) ok=await profPatch(state.profEditId,{name,kind,...bikeBits});
     else{
       try{
-        const r=await fetch('/me/profiles',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({name,sport,kind})});
+        const r=await fetch('/me/profiles',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({name,sport,kind,...bikeBits})});
         const j=await r.json().catch(()=>({}));
         ok=r.ok; if(!ok) toast(j.detail||'Could not add that profile.',{duration:6000});
       }catch(e){ ok=false; toast('Could not add that profile.'); }
@@ -7425,7 +7445,17 @@ async function refreshAuth(){
    saddle estimate in millimetres. Remembered on this device (no account
    field -- a bike is not a body measurement, and the rider may have three). */
 const CRANK_KEY='flapp_crank_mm';
-function crankMm(){ try{ const v=parseFloat(localStorage.getItem(CRANK_KEY)||''); return (v>=150&&v<=185)?v:null; }catch(e){ return null; } }
+/* The bike profile picked on Analyze, if there is one. Its crank wins over the
+   device's: the cranks belong to the bike, and a rider with two bikes may
+   have two lengths. */
+function chosenBikeProfile(){
+  if(state.sport!=='bike'||!state.profileId) return null;
+  return (PROFILES.profiles||[]).find(p=>String(p.id)===String(state.profileId)) || null;
+}
+function crankMm(){
+  const p=chosenBikeProfile(); if(p&&p.crank_length_mm) return p.crank_length_mm;
+  try{ const v=parseFloat(localStorage.getItem(CRANK_KEY)||''); return (v>=150&&v<=185)?v:null; }catch(e){ return null; }
+}
 function renderCrankField(){
   const box=$('#crankField'), hint=$('#crankHint'), input=$('#crankInput');
   if(!box||!input) return;
@@ -7434,15 +7464,27 @@ function renderCrankField(){
   if(!show) return;
   const v=crankMm();
   if(document.activeElement!==input) input.value = v==null ? '' : String(v);
-  hint.textContent = v!=null
-    ? `Turns the saddle verdict into millimetres, scaled to your ${v} mm cranks.`
-    : 'Optional — the saddle-height estimate assumes 172.5 mm cranks without it (a 165 mm crank makes it 4% smaller).';
+  const bike=chosenBikeProfile();
+  hint.textContent = bike
+    ? (bike.crank_length_mm
+        ? `Saved on ${bike.name}: the saddle verdict is scaled to its ${bike.crank_length_mm} mm cranks.`
+        : `Not set for ${bike.name} yet — type it once and it is kept on that bike. 172.5 mm is assumed until then.`)
+    : v!=null
+      ? `Turns the saddle verdict into millimetres, scaled to your ${v} mm cranks.`
+      : 'Optional — the saddle-height estimate assumes 172.5 mm cranks without it (a 165 mm crank makes it 4% smaller).';
 }
-function saveCrank(){
+async function saveCrank(){
   const input=$('#crankInput'); if(!input) return;
   const raw=input.value.trim(), v=raw===''?null:parseFloat(raw);
   if(v!==null && !(v>=150&&v<=185)){ $('#crankHint').textContent='Cranks run 150–185 mm — check the number.'; return; }
-  try{ if(v==null) localStorage.removeItem(CRANK_KEY); else localStorage.setItem(CRANK_KEY,String(v)); }catch(e){}
+  const bike=chosenBikeProfile();
+  if(bike){
+    // A bike profile is chosen: the number belongs to that bike.
+    if(v===(bike.crank_length_mm??null)) return;
+    if(await profPatch(bike.id,{crank_length_mm:v})) bike.crank_length_mm=v;
+  } else {
+    try{ if(v==null) localStorage.removeItem(CRANK_KEY); else localStorage.setItem(CRANK_KEY,String(v)); }catch(e){}
+  }
   renderCrankField();
 }
 function renderHeightField(){
@@ -10615,6 +10657,11 @@ $('#botMore').addEventListener('click',e=>{ e.preventDefault(); openNav(); });
 $('#profileSel').addEventListener('change',e=>{
   if(e.target.value==='__new'){ showProfileInput(true); return; }
   state.profileId=e.target.value||null;
+  // A bike profile carries its usual position and its cranks: picking it
+  // fills both in, and the position can still be changed for this clip.
+  const bike=chosenBikeProfile();
+  if(bike&&bike.position){ const b=$(`#positionSeg [data-position="${bike.position}"]`); if(b) b.click(); }
+  renderCrankField();
 });
 $('#profileSave').addEventListener('click',async()=>{
   const name=$('#profileNew').value.trim();
