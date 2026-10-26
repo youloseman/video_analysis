@@ -153,7 +153,7 @@ p{margin:0 0 8px}
 /* cover */
 .cover-band{background:#14294B;color:#fff;margin:0 -15mm;padding:12mm 15mm 10mm;position:relative;overflow:hidden}
 .cover-band:after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,#2F6DE0,#F1553F)}
-.brand{display:flex;align-items:center;gap:8px;font:italic 900 15pt 'Archivo',sans-serif;letter-spacing:-.01em}
+.brand{display:flex;align-items:center;gap:0;font:italic 900 15pt 'Archivo',sans-serif;letter-spacing:-.01em}
 .brand .dot{color:#F1553F}
 .cover-band h1{color:#fff;font-size:30pt;margin:16px 0 4px}
 .cover-band .sub{color:#B9CDF2;font-size:10pt}
@@ -296,7 +296,7 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
     coach = f"""
 <section class="coach">
   <div class="cover-band">
-    <div class="brand">{_LOGO}<span>Flapp<span class="dot">.</span></span></div>
+    <div class="brand">Flapp<span class="dot">.</span></div>
     <h1>Expert Review</h1>
     <div class="sub">Your position, read by a coach.</div>
     <div class="cover-grid">{_ring(result.get('technique_score'), result.get('letter_grade'))}<dl class="facts">{facts_html}</dl></div>

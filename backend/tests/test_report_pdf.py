@@ -90,3 +90,27 @@ async def test_someone_elses_analysis_is_a_404(db, make_user):
     with pytest.raises(HTTPException) as exc:
         await me.analysis_report("h1", other, db)
     assert exc.value.status_code == 404
+
+
+def test_the_cover_shows_what_the_score_is_built_from():
+    from app.services.report_pdf import breakdown_items
+
+    items = breakdown_items(example("bike-road"))
+    assert items and items[0]["name"] == "Knee at bottom" and items[0]["weight"] == 0.22
+    html = render_report_html(example("bike-road"), {})
+    assert "Score built from" in html
+
+
+def test_a_photo_breakdown_comes_from_its_own_score():
+    from app.services.report_pdf import breakdown_items
+
+    res = {"sport": "bike", "score": {"overall_score": 80, "per_angle": {
+        "knee": {"score": 90, "weight": 0.24}, "elbow": {"score": 41, "weight": 0.11}}}}
+    items = breakdown_items(res)
+    assert [i["name"] for i in items] == ["Knee", "Elbow"]
+    assert "80" in render_report_html(res, {})
+
+
+def test_the_numbers_are_drawn_like_the_app():
+    html = render_report_html(example("bike-road"), {})
+    assert "class='tile'" in html and "class='gr-band'" in html and "class='gr-mk'" in html

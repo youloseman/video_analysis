@@ -18,17 +18,119 @@ from typing import Any
 
 from app.services.review_pdf import (
     _CSS,
-    _LOGO,
     _STATUS_WORD,
-    _bar,
-    _band_txt,
     _e,
-    _fmt,
     _ring,
     metric_rows,
 )
+from app.services.video_analysis.biomechanics.technique_scorer import (
+    CYCLING_WEIGHTS,
+    RUNNING_WEIGHTS,
+)
 
 _SPORT = {"bike": "Cycling", "run": "Running"}
+
+# What the score is built from: the scorer's components, named as the app
+# names them (SCORE_PARTS / PHOTO_PARTS in index.html).
+_PART_NAMES = {
+    "knee_bdc": "Knee at bottom", "trunk_angle": "Trunk", "knee_tdc": "Knee at top",
+    "elbow_angle": "Elbow", "shoulder_angle": "Shoulder", "helmet_above_back": "Helmet above back",
+    "pelvic_ratio": "Pelvis", "forearm_tilt": "Forearm", "saddle_fit": "Saddle height",
+    "cadence": "Cadence", "trunk_lean": "Trunk lean", "overstride": "Overstride",
+    "knee_contact": "Knee at contact", "phase_stability": "Stride stability",
+    "elbow_swing": "Arm swing", "vertical_osc": "Vertical oscillation",
+    "knee_swing": "Knee in swing", "waveform_similarity": "Stride shape",
+    "knee": "Knee", "trunk": "Trunk", "shoulder": "Shoulder", "elbow": "Elbow",
+    "hip": "Hip", "ankle": "Ankle",
+}
+
+
+def breakdown_items(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Each scored component with its score and weight, heaviest first.
+
+    A clip carries ``score_breakdown`` (component -> score) and the weights
+    live in the scorer; a photo carries both on ``score.per_angle``.
+    """
+    items: list[dict[str, Any]] = []
+    parts = result.get("score_breakdown")
+    if isinstance(parts, dict) and parts:
+        sport = result.get("sport_type") or result.get("sport")
+        weights = CYCLING_WEIGHTS if sport == "bike" else RUNNING_WEIGHTS
+        for k, w in weights.items():
+            v = parts.get(k)
+            if isinstance(v, (int, float)):
+                items.append({"name": _PART_NAMES.get(k, k), "score": float(v), "weight": w})
+    else:
+        per = (result.get("score") or {}).get("per_angle") if isinstance(result.get("score"), dict) else None
+        for k, d in (per or {}).items():
+            if isinstance(d, dict) and isinstance(d.get("score"), (int, float)):
+                items.append({"name": _PART_NAMES.get(k, k.replace("_", " ").capitalize()),
+                              "score": float(d["score"]), "weight": float(d.get("weight") or 0)})
+    return sorted(items, key=lambda i: -i["weight"])
+
+
+def _bd_html(items: list[dict[str, Any]]) -> str:
+    """The cover's breakdown: one bar per component, coloured by its score."""
+    if not items:
+        return ""
+    rows = "".join(
+        f"<div class='bd-row'><span class='bd-n'>{_e(i['name'])}</span>"
+        f"<span class='bd-b'><i style='width:{max(2, min(100, round(i['score'])))}%;background:"
+        f"{'#3DBE74' if i['score'] >= 80 else '#E5A23A' if i['score'] >= 60 else '#F1553F'}'></i></span>"
+        f"<span class='bd-v'>{round(i['score'])}</span><span class='bd-w'>{round(i['weight'] * 100)}%</span></div>"
+        for i in items)
+    return (f"<div class='bd'><div class='bd-h'><span>Score built from</span>"
+            f"<span>score · weight</span></div>{rows}</div>")
+
+
+# The range bar as the app draws it (gradientRangeBar in index.html): a hairline
+# track, the green band, a marker at the value with the value above it, and the
+# axis under it -- optimal +/- one warning margin +/- one more, widened to fit
+# a value that falls outside.
+_MARGIN_FLOOR = {"pelvic_ratio": 0.2, "pelvic_tilt": 0.2}
+
+
+def _zone(v: float, lo: float, hi: float, m: float) -> str:
+    if lo <= v <= hi:
+        return "good"
+    return "warn" if lo - m <= v <= hi + m else "bad"
+
+
+def _grbar(row: dict[str, Any]) -> str:
+    v, band, unit, pro = row["value"], row.get("band"), row.get("unit") or "", row.get("pro")
+    if v is None:
+        return "<div class='gr-none'>Not measured on this clip</div>"
+    if not band:
+        return f"<div class='gr-none'>{_e(_num(v))}{_e(unit)} · no reference range for this one</div>"
+    lo, hi = band
+    m = max((hi - lo) * 0.10, _MARGIN_FLOOR.get(row.get("field") or "", 3.0 if unit == "°" else (hi - lo) * 0.25 or 0.1))
+    ax_min, ax_max = lo - 2 * m, hi + 2 * m
+    pad = max((hi - lo) * 0.15, m)
+    ax_min = min(ax_min, v - pad)
+    ax_max = max(ax_max, v + pad)
+    span = (ax_max - ax_min) or 1.0
+
+    def pos(x: float) -> float:
+        return max(0.0, min(100.0, (x - ax_min) / span * 100))
+
+    z = _zone(v, lo, hi, m)
+    mk = max(3.0, min(97.0, pos(v)))
+    vtxt = f"{v:.0f}°" if unit == "°" else _num(v) + unit
+    tick = (f"<span class='gr-pt' style='left:{pos(pro['median']):.1f}%'></span>"
+            if pro and ax_min <= pro.get("median", ax_min - 1) <= ax_max else "")
+    prol = (f"<div class='gr-pro'><span class='gr-pm'></span>Kona pros {_num(pro['median'])}{unit} "
+            f"<small>· middle half {_num(pro['q1'])}–{_num(pro['q3'])}{unit}</small></div>") if pro else ""
+    return (f"<div class='grbar'><div class='gr-chips'><span class='gr-chip {z}' style='left:{max(9, min(91, mk)):.1f}%'>{vtxt}</span></div>"
+            f"<div class='gr-track'><span class='gr-band' style='left:{pos(lo):.1f}%;width:{max(1.0, pos(hi) - pos(lo)):.1f}%'></span>"
+            f"<span class='gr-mk' style='left:{mk:.1f}%'></span>{tick}</div>"
+            f"<div class='gr-scale'><span>{_num(ax_min)}</span><span class='gr-opt'>{_num(lo)}–{_num(hi)}{unit}</span>"
+            f"<span>{_num(ax_max)}</span></div>{prol}</div>")
+
+
+def _tile(row: dict[str, Any]) -> str:
+    st = row.get("status") or "info"
+    return (f"<div class='tile'><div class='tile-h'><span class='tile-l'>{_e(row['label'])}</span>"
+            f"<span class='chip {st}'>{_STATUS_WORD.get(st, '')}</span></div>{_grbar(row)}</div>")
 
 
 def _inline(s: str) -> str:
@@ -152,6 +254,36 @@ _EXTRA_CSS = """
 .ok-list li{margin:0 0 3px}
 .hob{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;background:#F3F5F8;border-radius:8px;padding:12px 16px;margin:4px 0 12px;break-inside:avoid}
 .hob .big{font:italic 900 26pt/1 'Archivo',sans-serif;color:#14294B}
+.cover-grid3{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:center;margin:16px 0 4px}
+.brand{font-size:17pt;gap:0}
+.bd-h span{white-space:nowrap}
+.bd{border-left:1px solid #2A4170;padding-left:16px}
+.bd-h{display:flex;justify-content:space-between;font:500 7pt 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8EA6CF;margin:0 0 5px}
+.bd-row{display:grid;grid-template-columns:minmax(0,1fr) 30mm 7mm 8mm;gap:6px;align-items:center;font-size:8.4pt;line-height:1.75;color:#fff}
+.bd-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-b{height:5px;background:#2A4170;border-radius:3px;overflow:hidden}
+.bd-b i{display:block;height:100%;border-radius:3px}
+.bd-v{font:600 8.4pt 'IBM Plex Mono',monospace;text-align:right}
+.bd-w{font:8pt 'IBM Plex Mono',monospace;color:#8EA6CF;text-align:right}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 12px}
+.tile{border:1px solid #DCE2EA;border-radius:8px;padding:10px 12px 8px;break-inside:avoid}
+.tile-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.tile-l{font-weight:700;color:#14294B;font-size:9.6pt}
+.grbar{margin-top:6px}
+.gr-chips{position:relative;height:15px}
+.gr-chip{position:absolute;transform:translateX(-50%);white-space:nowrap;font:600 9.4pt 'IBM Plex Mono',monospace}
+.gr-chip.good{color:#1F7A45}.gr-chip.warn{color:#9A5E0B}.gr-chip.bad{color:#B8371F}
+.gr-track{position:relative;height:10px;margin-top:2px}
+.gr-track:before{content:"";position:absolute;left:0;right:0;top:4px;height:2px;background:#B9C2CF}
+.gr-band{position:absolute;top:1px;height:8px;background:#DDEFE3;border:1px solid #2E9E5B;border-radius:2px;box-sizing:border-box}
+.gr-mk{position:absolute;top:-3px;width:2px;height:16px;background:#14181F;transform:translateX(-1px)}
+.gr-pt{position:absolute;top:-2px;width:2px;height:14px;background:#14294B;opacity:.55;transform:translateX(-1px)}
+.gr-scale{display:flex;justify-content:space-between;font:7.6pt 'IBM Plex Mono',monospace;color:#6E7787;margin-top:3px}
+.gr-scale .gr-opt{color:#1F7A45;font-weight:600}
+.gr-pro{font:7.8pt 'IBM Plex Mono',monospace;color:#5C6675;margin-top:4px}
+.gr-pro small{color:#8A93A1}
+.gr-pm{display:inline-block;width:2px;height:9px;background:#14294B;opacity:.55;margin-right:5px;vertical-align:-1px}
+.gr-none{font-size:8.4pt;color:#8A93A1;margin-top:8px}
 .foot{margin:18px 0 0;padding-top:10px;border-top:1px solid #DCE2EA;font-size:8pt;color:#6E7787;display:flex;justify-content:space-between}
 """
 
@@ -173,6 +305,9 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     coach = ((result.get("ai_recommendations") or {}).get("report")
              or (result.get("ai_recommendations") or {}).get("summary") or "")
     rows = metric_rows(result) if sport == "bike" else plan_rows(result)
+    sc = result.get("score") if isinstance(result.get("score"), dict) else {}
+    score = result.get("technique_score") if result.get("technique_score") is not None else sc.get("overall_score")
+    grade = result.get("letter_grade") or sc.get("grade")
     side = result.get("camera_side")
     position = meta.get("position_label") or str(result.get("cycling_position") or "").replace("_", " ")
 
@@ -203,10 +338,10 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
 <section>
   <div class="screen"><span>Your Flapp report · use Print, then “Save as PDF”</span><button onclick="window.print()">Save as PDF</button></div>
   <div class="cover-band">
-    <div class="brand">{_LOGO}<span>Flapp<span class="dot">.</span></span></div>
+    <div class="brand">Flapp<span class="dot">.</span></div>
     <h1>Technique Report</h1>
     <div class="sub">What to fix, in what order — and the numbers behind it.</div>
-    <div class="cover-grid">{_ring(result.get('technique_score'), result.get('letter_grade'))}<dl class="facts">{facts_html}</dl></div>
+    <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result))}</div>
   </div>
   {f'<figure class="cover-img"><img src="{meta["keyframe"]}" alt="Your frame, with the angles drawn on it"><p class="cap">The frame your angles were read on.</p></figure>' if meta.get('keyframe') else ''}
   {f'<div class="glance">{glance}</div>' if glance else ''}
@@ -251,13 +386,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
   {retest}
 </section>""" if prio_html else ""
 
-    num_rows = "".join(
-        f"<tr><td>{_e(r['label'])}</td><td class='v'>{_fmt(r['value'], r['unit']) if r['unit'] or r['value'] is None else _num(r['value'])}</td>"
-        f"<td>{_bar(r['value'], r['band'], r['pro'], r['scale'], r['status'])}</td>"
-        f"<td class='band'>{_band_txt(r) if r.get('band') else '—'}</td>"
-        + (f"<td class='pro'>{(_fmt(r['pro']['median'], r['unit']) if r.get('pro') else '—')}</td>" if sport == "bike" else "")
-        + f"<td><span class='chip {r['status']}'>{_STATUS_WORD.get(r['status'], '')}</span></td></tr>"
-        for r in rows)
+    tiles = "".join(_tile(r) for r in rows)
     hob = (result.get("sport_specific_metrics") or {}).get("hip_over_bb") or result.get("hip_over_bb")
     hob_html = ""
     if isinstance(hob, dict) and hob.get("angle_deg") is not None:
@@ -266,9 +395,10 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
                  if isinstance(gap, (int, float)) else "")
         hob_html = (f"<div class='hob'><div class='big'>{_e(hob['angle_deg'])}°</div><div><h3>Hip over the crank</h3>"
                     f"<p style='margin:0'>Measured from the back, over the crank axle. {_e(where)}. Pros 88°, age-groupers 85°.</p></div></div>")
-    legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='1' width='24' height='8' rx='2' fill='#E6F4EC' stroke='#2E9E5B'/></svg></i>Flapp range</span>"
-              + ("<span><i><svg width='26' height='10'><line x1='2' y1='5' x2='24' y2='5' stroke='#14294B' stroke-width='3' stroke-linecap='round'/></svg></i>Kona 2026 pros, middle half</span>" if sport == "bike" else "")
-              + "<span><i><svg width='12' height='12'><circle cx='6' cy='6' r='5' fill='#2F6DE0'/></svg></i>You</span></div>")
+    legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='3' width='24' height='4' fill='#DDEFE3' stroke='#2E9E5B'/></svg></i>Healthy range</span>"
+              "<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14181F'/></svg></i>You</span>"
+              + ("<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14294B' opacity='.6'/></svg></i>Kona 2026 pros' median</span>" if sport == "bike" else "")
+              + "</div>")
     kino = meta.get("kinogram")
     numbers = f"""
 <section class="page">
@@ -277,7 +407,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
   {ok_html}
   {hob_html}
   {legend if rows else ''}
-  {f"<table class='nums'><tr><th>Measure</th><th>You</th><th></th><th>Range</th>{'<th>Pros</th>' if sport == 'bike' else ''}<th></th></tr>{num_rows}</table>" if rows else ''}
+  {f"<div class='tiles'>{tiles}</div>" if rows else ''}
   {f'<div class="eyebrow" style="margin-top:12px">{"One stride, five positions" if sport == "run" else "One pedal revolution"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure>' if kino else ''}
   <div class="foot"><span>Flapp · getflapp.com</span><span>{_e(meta.get('prepared'))}</span></div>
 </section>""" if (rows or kino) else ""

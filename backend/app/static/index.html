@@ -1315,6 +1315,7 @@
         </div>
         <div class="score-partial hidden" id="pPartial"></div>
         <div class="score-meta" id="pScoreMeta"></div>
+        <div class="score-bd hidden" id="pScoreBd" aria-label="What the score is built from"></div>
         <button class="btn btn-primary btn-sm sharebtn hidden" id="pShareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="pShareBtnTxt">Share result</span>
         </button>
@@ -5833,6 +5834,7 @@ function renderPhoto(res,opts){
   // hip is judged against, so it belongs next to the score, not buried.
   if(sport==='run'&&res.gait_phase) parts.push(`Stride: <b>${esc(String(res.gait_phase).replace(/_/g,' '))}</b>`);
   $('#pScoreMeta').innerHTML=parts.join('<br>');
+  renderPhotoBreakdown(res);
 
   const img=res.thumbnail_base64||'';
   $('#pImage').src=img; $('#pDownload').href=img||'#';
@@ -8185,9 +8187,35 @@ const SCORE_PARTS={
        elbow_swing:['Arm swing',.09],vertical_osc:['Vertical oscillation',.09],
        knee_swing:['Knee in swing',.08],waveform_similarity:['Stride shape',.08]},
 };
+/* One component row: name, a bar of its score, the score, its weight. A
+   component that was not scored is listed greyed, not dropped. */
+function bdRowHtml(name, v, w, title){
+  const out=v==null;
+  const cls=out?'bd-out':v>=80?'bd-good':v>=60?'bd-warn':'bd-bad';
+  return `<div class="bd-row ${cls}" title="${esc(String(title))}"><span class="bd-name">${esc(name)}</span>
+        <span class="bd-bar" aria-hidden="true"><i style="width:${out?0:Math.max(2,Math.min(100,Math.round(v)))}%"></i></span>
+        <span class="bd-val">${out?'—':Math.round(v)}</span><span class="bd-w">${w}%</span></div>`;
+}
+function bdShow(host, rows, show){
+  const card=host.closest('.scorecard');
+  host.classList.toggle('hidden', !show);
+  if(card) card.classList.toggle('has-bd', show);
+  host.innerHTML=show?`<div class="bd-h"><span>What the score is built from</span><span class="bd-key">score · weight</span></div>${rows.join('')}`:'';
+}
+/* A photo carries its components on the score itself (score.per_angle), each
+   with its own weight -- the photo rubric is not the video's. */
+const PHOTO_PARTS={knee:'Knee',trunk:'Trunk',shoulder:'Shoulder',elbow:'Elbow',forearm_tilt:'Forearm',
+  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Pelvis'};
+function renderPhotoBreakdown(res){
+  const host=$('#pScoreBd'); if(!host) return;
+  const sc=res.score||{}, per=sc.per_angle||{};
+  const rows=Object.keys(per).map(k=>({k, v:per[k].score, w:Math.round((per[k].weight||0)*100)}))
+    .sort((a,b)=>b.w-a.w)
+    .map(x=>bdRowHtml(PHOTO_PARTS[x.k]||pretty(x.k), x.v, x.w, `${Math.round(x.v)} of 100, weight ${x.w}%`));
+  bdShow(host, rows, rows.length>0 && sc.overall_score!=null);
+}
 function renderScoreBreakdown(r, sport){
   const host=$('#scoreBd'); if(!host) return;
-  const card=host.closest('.scorecard');
   const parts=r.score_breakdown||{}, names=SCORE_PARTS[sport]||{};
   const cov=r.score_coverage||{}, excluded=cov.excluded||{}, missing=cov.missing||[];
   const rows=Object.keys(names)
@@ -8197,16 +8225,10 @@ function renderScoreBreakdown(r, sport){
       const v=parts[k], w=Math.round(names[k][1]*100), out=v==null;
       // A component the scorer excluded or could not measure is listed and
       // greyed rather than dropped: "not scored" is part of the answer.
-      const cls=out?'bd-out':v>=80?'bd-good':v>=60?'bd-warn':'bd-bad';
       const title=out?(excluded[k]?`Not graded: ${excluded[k]}`:'Not measurable on this clip'):`${Math.round(v)} of 100, weight ${w}%`;
-      return `<div class="bd-row ${cls}" title="${esc(String(title))}"><span class="bd-name">${esc(names[k][0])}</span>
-        <span class="bd-bar" aria-hidden="true"><i style="width:${out?0:Math.max(2,Math.min(100,Math.round(v)))}%"></i></span>
-        <span class="bd-val">${out?'—':Math.round(v)}</span><span class="bd-w">${w}%</span></div>`;
+      return bdRowHtml(names[k][0], v, w, title);
     });
-  const show=rows.length>0 && r.technique_score!=null && !r.score_withheld;
-  host.classList.toggle('hidden', !show);
-  if(card) card.classList.toggle('has-bd', show);
-  host.innerHTML=show?`<div class="bd-h"><span>What the score is built from</span><span class="bd-key">score · weight</span></div>${rows.join('')}`:'';
+  bdShow(host, rows, rows.length>0 && r.technique_score!=null && !r.score_withheld);
 }
 function renderConfidence(conf){
   const host=$('#confBadge'); if(!host) return;
