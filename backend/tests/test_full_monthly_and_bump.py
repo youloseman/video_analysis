@@ -168,9 +168,9 @@ async def test_a_full_subscriber_buys_a_review_at_the_member_price(db, make_user
     assert calls["metadata"]["plan"] == "expert" and calls["metadata"]["member_price"] == "1"
 
 
-async def test_everyone_else_pays_the_usual_review_price(db, make_user, monkeypatch):
+async def test_a_free_account_pays_the_usual_review_price(db, make_user, monkeypatch):
     calls = _checkout_spy(monkeypatch)
-    user = await make_user(tier=TIER_ENTHUSIAST)
+    user = await make_user(tier=TIER_STARTER)
     await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h1"), _Req(), user, db)
     assert calls["line_items"] == [{"price": settings.stripe_price_expert, "quantity": 1}]
     assert calls["metadata"]["member_price"] == ""
@@ -180,3 +180,11 @@ def test_the_catalogue_reports_the_member_price():
     m = pricing.catalog({}, None, "price_m")["review_member"]
     assert m["display"] == "$29" and m["was"] == "$39" and m["available"] is True
     assert pricing.catalog({}, None, None)["review_member"]["available"] is False
+
+
+async def test_an_enthusiast_buys_a_review_at_the_bump_price(db, make_user, monkeypatch):
+    calls = _checkout_spy(monkeypatch)
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h1"), _Req(), user, db)
+    assert calls["line_items"] == [{"price": settings.stripe_price_expert_bump, "quantity": 1}]
+    assert calls["metadata"]["member_price"] == "1"

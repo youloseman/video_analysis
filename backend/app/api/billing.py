@@ -50,6 +50,7 @@ from app.models.order import (
 from app.models.user import (
     FULL_EXPERT_CREDITS,
     TIER_ADMIN,
+    TIER_ENTHUSIAST,
     TIER_FULL,
     TIER_STARTER,
     User,
@@ -626,11 +627,13 @@ async def create_checkout(
     # A Full subscriber buys a review at the member price (Artur, 2026-10-26:
     # what makes Full by the month worth more than Enthusiast). Same plan key,
     # same order and fulfilment; only the Stripe price differs.
-    member_price = bool(
-        body.plan == "expert" and has_full(user.tier) and settings.stripe_price_expert_member
-    )
-    if member_price:
-        price_id = settings.stripe_price_expert_member
+    member_price = False
+    if body.plan == "expert" and has_full(user.tier) and settings.stripe_price_expert_member:
+        member_price, price_id = True, settings.stripe_price_expert_member
+    elif body.plan == "expert" and user.tier == TIER_ENTHUSIAST and settings.stripe_price_expert_bump:
+        # Enthusiast's member price is the bump's US$35 -- one Stripe price
+        # for "a review, as an Enthusiast", at checkout or any time after.
+        member_price, price_id = True, settings.stripe_price_expert_bump
     if not price_id:
         # A plan we DO sell, whose Stripe price was never configured. That is
         # our mistake, not the caller's -- and it is invisible until somebody
