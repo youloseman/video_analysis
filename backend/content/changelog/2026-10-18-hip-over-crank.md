@@ -12,4 +12,4 @@ Now you can measure your own:
 
 It is a field, not a target: it says where the fastest riders sat, not where you must. Moving the saddle forward moves the hip about one for one, but it also changes your reach and the knee over the pedal. One change at a time, 5 mm at a time, then film again.
 
-Available on the Enthusiast plan and up.
+Available on the Full plan since 26 October. Enthusiast members who joined before then keep it until the end of the period they paid for.

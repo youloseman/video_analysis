@@ -265,3 +265,21 @@ def test_a_gated_frame_stays_nan_through_the_angle_filter():
     for k in (30, 31, 32, 60, 61, 62, 63, 64):
         assert math.isnan(h["knee"][k]), f"frame {k} was never measured"
     assert not math.isnan(h["knee"][29]) and not math.isnan(h["knee"][65])
+
+
+@pytest.mark.parametrize("fps", [30.0, 60.0])
+def test_the_bike_filter_keeps_the_bottom_of_the_stroke(fps):
+    """The knee at BDC is a peak, and the saddle verdict is read off it. At
+    3 Hz the second pass sat on the stroke's second harmonic and the knee at
+    BDC came out ~3 deg below the skeleton drawn on the same frames (130 prod
+    clips, 2026-10-26). A 90 rpm knee with a realistic second harmonic must
+    keep its peak and its valley within half a degree."""
+    t = np.arange(0, 8.0, 1.0 / fps)
+    f = 1.5  # 90 rpm
+    knee = 105 + 37 * np.cos(2 * np.pi * f * t) + 6 * np.cos(4 * np.pi * f * t + 0.4)
+    h = history(right_knee=knee)
+    bw.apply_butterworth_filter(h, fps, "bike")
+    out = np.array(h["right_knee"])[int(fps):-int(fps)]   # away from the edges
+    ref = knee[int(fps):-int(fps)]
+    assert out.max() == pytest.approx(ref.max(), abs=0.5)
+    assert out.min() == pytest.approx(ref.min(), abs=0.5)

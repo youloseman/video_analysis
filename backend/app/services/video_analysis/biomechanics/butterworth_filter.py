@@ -72,7 +72,14 @@ logger = structlog.get_logger(__name__)
 # docstring for why residual analysis does not currently override them.
 SPORT_CUTOFFS = {
     "run": 4.0,   # Gait cycle ~3Hz, need headroom
-    "bike": 3.0,  # Pedaling ~1.5Hz, more static
+    # Bike: the landmarks already went through 6 Hz (landmark_stabilizer, ~4x
+    # the pedalling fundamental). A second pass at 3 Hz sat right on the
+    # stroke's second harmonic and flattened the bottom of the stroke: across
+    # 130 prod clips the knee at BDC read a median 3.0 deg (p90 5.7) below the
+    # angle of the skeleton drawn on the same frames, which an athlete caught
+    # with a protractor on the keyframe (2026-10-26). Matching stage 1 leaves
+    # the reported angle equal to the drawn one; means do not move.
+    "bike": 6.0,
     "swim": 3.5,  # Stroke rate ~1Hz, moderate movement
 }
 
