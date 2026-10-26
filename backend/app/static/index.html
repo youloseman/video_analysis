@@ -1911,7 +1911,7 @@ const GOALS={
   pain:{sport:null, text:'<b>Something started to hurt.</b> Flapp does not diagnose pain &mdash; see a professional if it is sharp or lasting. It checks the settings that load the joint: on the bike, saddle height and your knee at the bottom of the stroke; on the run, overstride and cadence.'},
   gear:{sport:null, text:'<b>New bike or shoes.</b> Film the new setup before the first long session. If you have a clip on the old one, the report can line the two up.'},
   doubt:{sport:null, text:'<b>A second opinion, in numbers.</b> Every joint is set against a published range, with the source named &mdash; so advice can be weighed against a measurement.'},
-  crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position &mdash; one photo or ten seconds of pedalling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimetres. Enthusiast and up.'},
+  crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position &mdash; one photo or ten seconds of pedalling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimetres. Full plan.'},
   race:{sport:'bike', text:'<b>Before a race.</b> Film in your race position, on the bike you will race. The report checks it against the fit ranges and, in an aero position, against the Kona 2026 pro field.'},
 };
 function goalGet(){ try{ const g=localStorage.getItem(GOAL_KEY); return GOALS[g]?g:null; }catch(e){ return null; } }
@@ -4441,7 +4441,7 @@ function renderNextSteps(blkId, listId, steps){
    more, the pedal axle for a cm scale and both wheel axles to level the
    picture). The two joint editors get a second mode for those four points;
    the report gets a block with the reading against the Kona 2026 field.
-   Enthusiast and up.
+   Full only (it was Enthusiast and up until 2026-10-26).
    ============================================================ */
 const HOB_C=200, HOB_P=201, HOB_FA=202, HOB_RA=203;
 const HOB_KEY={200:'C',201:'P',202:'FA',203:'RA'};
@@ -4580,7 +4580,10 @@ function renderHob(res, which){
   const blk=$(which==='photo'?'#pHobBlock':'#hobBlock'), host=$(which==='photo'?'#pHobPanel':'#hobPanel'); if(!blk||!host) return;
   const sport=res.sport_type||res.sport||state.sport;
   if(sport!=='bike'||res.pair){ blk.classList.add('hidden'); host.innerHTML=''; return; }
-  const h=res.hip_over_bb||null, locked=!!res.locked, canMark=!!state.file&&!locked, aero=['tt_aero','triathlon'].includes(res.cycling_position);
+  // Full only (2026-10-26). A reading already taken on Enthusiast stays shown;
+  // marking again is what the plan gates.
+  const full=!!auth&&['full','admin'].includes(auth.tier);
+  const h=res.hip_over_bb||null, locked=!!res.locked||!full, canMark=!!state.file&&!locked, aero=['tt_aero','triathlon'].includes(res.cycling_position);
   const intro=`The one number the Kona 2026 pros and age-groupers differed on: where the hip sits over the crank axle. Pros 88°, age-groupers 85° — about 3° or 4–5 cm further forward (${esc('31 pros, 68 age-groupers')}, every point placed by hand). Knee and hip angles did not differ.`;
   let body='';
   if(h){
@@ -4601,7 +4604,7 @@ function renderHob(res, which){
       ${canMark?`<div class="aero-foot"><button class="btn btn-ghost btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark again</button></div>`:''}`;
   } else if(locked){
     body=`<p class="hob-lead">${intro}</p>
-      <p class="hint" style="text-align:left"><span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Enthusiast and up</span> Mark the crank axle on your ${which==='photo'?'photo':'clip'} and get your own number against the field. <a href="#" onclick="openPricing();return false">See plans →</a></p>`;
+      <p class="hint" style="text-align:left"><span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Full plan</span> Mark the crank axle on your ${which==='photo'?'photo':'clip'} and get your own number against the field. <a href="#" onclick="openPricing();return false">See plans →</a></p>`;
   } else {
     body=`<p class="hob-lead">${intro}</p>
       ${canMark?`<div class="aero-foot"><button class="btn btn-primary btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark the crank axle</button>
@@ -6308,6 +6311,13 @@ async function loadProfiles(){
 function liveProfiles(sport){
   return (PROFILES.profiles||[]).filter(p=>!p.archived && (!sport || p.sport===sport));
 }
+/* Room for one more live profile of this sport. Two caps: the plan's total,
+   and Enthusiast's one-per-sport (a second bike is the comparison Full sells). */
+function profileRoom(sport){
+  if((PROFILES.used||0) >= (PROFILES.limit??0)) return false;
+  const per=PROFILES.per_sport;
+  return per==null || !sport || liveProfiles(sport).length < per;
+}
 function profileName(id){
   const p=(PROFILES.profiles||[]).find(x=>x.id===id);
   return p?p.name:null;
@@ -6316,11 +6326,14 @@ function renderProfileField(){
   const field=$('#profileField'), sel=$('#profileSel'), hint=$('#profileHint');
   if(!field||!sel) return;
   // Nothing to file against until there is an account to file it under.
-  field.classList.toggle('hidden', !auth);
-  if(hint) hint.classList.toggle('hidden', !auth);
-  if(!auth) return;
-  const mine=liveProfiles(state.sport);
-  const room=(PROFILES.used||0) < (PROFILES.limit||1);
+  const mine=auth?liveProfiles(state.sport):[];
+  // Starter keeps no profiles: no box to fill, unless profiles made before
+  // that rule still hold history.
+  const none=!auth || (!PROFILES.error && (PROFILES.limit??0)===0 && !mine.length);
+  field.classList.toggle('hidden', none);
+  if(hint) hint.classList.toggle('hidden', none);
+  if(none) return;
+  const room=profileRoom(state.sport);
   // "Not filed" was the app talking to itself. The question above the box
   // is "which bike or shoes", so the empty answer is "none chosen".
   sel.innerHTML=`<option value="">None chosen</option>`
@@ -6335,7 +6348,11 @@ function renderProfileField(){
     }
     hint.innerHTML = room
       ? 'Naming the setup lets its trend line follow one bike or pair of shoes instead of averaging two.'
-      : `Your plan keeps <b>${PROFILES.limit}</b> setup${PROFILES.limit>1?'s':''}. Comparing one against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`;
+      : (PROFILES.limit??0)===0
+        ? `Saving your bike or your shoes is part of a paid plan. <a href="#" data-openpricing="1">See plans</a>`
+        : (PROFILES.per_sport!=null && (PROFILES.used||0) < (PROFILES.limit??0))
+          ? `Your plan keeps one setup for the bike and one for running. Comparing one bike against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`
+          : `Your plan keeps <b>${PROFILES.limit}</b> setup${PROFILES.limit>1?'s':''}. Comparing one against another is what the Full plan adds. <a href="#" data-openpricing="1">See plans</a>`;
     const link=hint.querySelector('[data-openpricing]');
     if(link) link.addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
   }
@@ -6377,7 +6394,7 @@ function renderProfiles(){
   const list=$('#profList'); if(!list) return;
   const all=PROFILES.profiles||[], f=state.profFilter;
   const rows=all.filter(p=> f==='archived' ? p.archived : (!p.archived && (f==='all' || p.sport===f)));
-  const used=PROFILES.used||0, limit=PROFILES.limit||1;
+  const used=PROFILES.used||0, limit=PROFILES.limit??0;
   const cnt=$('#profCountTxt'); if(cnt) cnt.textContent=`${used} of ${limit} used`;
   const pill=$('#profCount'); if(pill){ pill.className='pill '+(used>=limit?'pill-warnchip':'pill-low'); }
   [...$('#profFilter').children].forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.pf===f)));
@@ -6401,7 +6418,9 @@ function renderProfiles(){
   if(lim){
     const full=used>=limit;
     lim.classList.toggle('hidden', !full || f==='archived');
-    if(full) lim.innerHTML=`<span>You’ve used ${limit===1?'your one profile':`all ${limit} profiles`}. ${limit<10?'Full gives you ten, so each bike and each pair of shoes keeps its own trend line — and you can compare one setup against another instead of averaging them.':'Archive one to add another.'}</span>${limit<10?'<button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>':''}`;
+    if(full) lim.innerHTML=limit===0
+      ? `<span>Saving your bike and your shoes is part of a paid plan: Enthusiast keeps one setup for the bike and one for running; Full keeps ten and compares one against another.</span><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>`
+      : `<span>You’ve used ${limit===1?'your one profile':`all ${limit} profiles`}. ${limit<10?'Full gives you ten, so each bike and each pair of shoes keeps its own trend line — and you can compare one setup against another instead of averaging them.':'Archive one to add another.'}</span>${limit<10?'<button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>':''}`;
   }
   const add=$('#profAdd'); if(add) add.disabled = used>=limit;
 }
@@ -6480,12 +6499,12 @@ function renderAccount(){
   if(stats) stats.innerHTML=`
     <div class="acct-stat"><div class="k">Current</div><div class="v">${esc(planName)}</div><div class="s">${esc(price)}</div></div>
     <div class="acct-stat"><div class="k">This ${auth&&auth.tier==='admin'?'day':'month'}</div><div class="v">${q?`${q.limit-q.remaining} / ${q.limit}`:'—'}</div><div class="s">analyses used</div></div>
-    <div class="acct-stat"><div class="k">Profiles</div><div class="v">${PROFILES.used||0} / ${PROFILES.limit||1}</div><div class="s">equipment profiles</div></div>`;
+    <div class="acct-stat"><div class="k">Profiles</div><div class="v">${PROFILES.used||0} / ${PROFILES.limit??0}</div><div class="s">equipment profiles</div></div>`;
   const paid=auth&&auth.tier&&auth.tier!=='starter'&&auth.tier!=='admin';
   const pill=$('#acctPlanPill'); if(pill) pill.classList.toggle('hidden', !paid);
   const portal=$('#acctPortal'); if(portal) portal.classList.toggle('hidden', !paid);
   const pp=$('#acctProfPill'), ppt=$('#acctProfPillTxt');
-  if(pp&&ppt){ pp.classList.toggle('hidden', !auth); ppt.textContent=`${PROFILES.used||0} of ${PROFILES.limit||1} used · ${planName}`; pp.className='pill '+((PROFILES.used||0)>=(PROFILES.limit||1)?'pill-warnchip':'pill-low'); }
+  if(pp&&ppt){ pp.classList.toggle('hidden', !auth); ppt.textContent=`${PROFILES.used||0} of ${PROFILES.limit??0} used · ${planName}`; pp.className='pill '+((PROFILES.used||0)>=(PROFILES.limit??0)?'pill-warnchip':'pill-low'); }
   const mk=$('#acctMarketing'); if(mk) mk.checked=!!(auth&&auth.marketing_opt_in);
   renderCoachCard();
   if(auth&&!COACH.loaded) loadCoach();

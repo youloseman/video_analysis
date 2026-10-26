@@ -108,7 +108,7 @@ def test_a_free_account_cannot_mark_the_crank_on_a_photo():
         r = client.post("/analyze-photo/recompute",
                         files={"photo": ("ride.jpg", photo, "image/jpeg")},
                         data=_form(pose=json.dumps(blob), bike_points=json.dumps({"C": [0.5, 0.95]})))
-        assert r.status_code == 402 and "Enthusiast" in r.json()["detail"]
+        assert r.status_code == 402 and "Full" in r.json()["detail"]
     finally:
         main.app.dependency_overrides.pop(get_current_user, None)
         reset()

@@ -45,7 +45,7 @@ from app.models.profile import (
     PROFILE_KINDS,
     Profile,
 )
-from app.models.user import User, profile_limit
+from app.models.user import User, profile_limit, profile_sport_limit
 from app.services.keyframe_store import split_keyframe, stored_keyframe
 from app.services.result_gating import (
     ACCESS_FULL,
@@ -853,6 +853,48 @@ def _profile_out(p: Profile, used: int = 0) -> dict[str, Any]:
     }
 
 
+async def _refuse_if_no_room(db: AsyncSession, user: User, sport: str) -> None:
+    """402 when one more live profile of ``sport`` would pass the plan's limit.
+
+    Two limits, checked in order: the total, then the per-sport cap a tier may
+    set. Enthusiast keeps one bike and one pair of shoes; a second bike is the
+    comparison Full sells, so it is the per-sport cap that holds that line.
+    """
+    live = (
+        await db.execute(
+            select(Profile.sport).where(
+                Profile.user_id == user.id, Profile.archived.is_(False),
+            )
+        )
+    ).scalars().all()
+    limit = profile_limit(user.tier)
+    if limit == 0:
+        # 402, not 403: this is a plan boundary, and the client shows a
+        # different thing for "you cannot" than for "you have not paid".
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Saving your bike or your shoes is part of a paid plan.",
+        )
+    if len(live) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=(
+                f"Your plan keeps {limit} equipment profile"
+                f"{'s' if limit > 1 else ''}. Comparing one setup against "
+                f"another is what the Full plan adds."
+            ),
+        )
+    per_sport = profile_sport_limit(user.tier)
+    if per_sport is not None and sum(1 for s in live if s == sport) >= per_sport:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=(
+                "Your plan keeps one setup for the bike and one for running. "
+                "Comparing one bike against another is what the Full plan adds."
+            ),
+        )
+
+
 async def _owned_profile(db: AsyncSession, user: User, profile_id: int) -> Profile:
     row = (
         await db.execute(
@@ -903,6 +945,7 @@ async def list_profiles(
     return {
         "profiles": [_profile_out(p, int(counts.get(p.id, 0))) for p in rows],
         "limit": profile_limit(user.tier),
+        "per_sport": profile_sport_limit(user.tier),
         "used": live,
     }
 
@@ -913,26 +956,7 @@ async def create_profile(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    limit = profile_limit(user.tier)
-    live = int(
-        await db.scalar(
-            select(func.count(Profile.id)).where(
-                Profile.user_id == user.id, Profile.archived.is_(False),
-            )
-        )
-        or 0
-    )
-    if live >= limit:
-        # 402, not 403: this is a plan boundary, and the client shows a
-        # different thing for "you cannot" than for "you have not paid".
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=(
-                f"Your plan keeps {limit} equipment profile"
-                f"{'s' if limit > 1 else ''}. Comparing one setup against "
-                f"another is what the Full plan adds."
-            ),
-        )
+    await _refuse_if_no_room(db, user, body.sport)
     row = Profile(
         user_id=user.id, name=body.name, sport=body.sport, kind=body.kind,
         created_at_ms=_now_ms(),
@@ -962,21 +986,7 @@ async def update_profile(
         # Un-archiving can push the account back over its limit (they retired a
         # bike, then downgraded). Refuse rather than silently allow it.
         if not body.archived and row.archived:
-            limit = profile_limit(user.tier)
-            live = int(
-                await db.scalar(
-                    select(func.count(Profile.id)).where(
-                        Profile.user_id == user.id, Profile.archived.is_(False),
-                    )
-                )
-                or 0
-            )
-            if live >= limit:
-                raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail=f"Your plan keeps {limit} active profile"
-                           f"{'s' if limit > 1 else ''}.",
-                )
+            await _refuse_if_no_room(db, user, row.sport)
         row.archived = body.archived
     await db.commit()
     return _profile_out(row)

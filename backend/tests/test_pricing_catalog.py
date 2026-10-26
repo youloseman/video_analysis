@@ -242,8 +242,18 @@ def test_every_claim_on_the_full_card_has_something_behind_it():
         assert profile_limit(TIER_FULL) > profile_limit(TIER_ENTHUSIAST) > 0
 
     if "compare" in text:
-        # The comparison needs two profiles, so the limit above IS its gate.
+        # The comparison needs two profiles of one sport, so the per-sport cap
+        # below Full IS its gate.
+        from app.models.user import profile_sport_limit
+
         assert "Two setups" in spa and "profileAggregate" in spa
+        assert profile_sport_limit(TIER_ENTHUSIAST) == 1
+        assert profile_sport_limit(TIER_FULL) is None
+
+    if "crank" in text:
+        from app.main import _HIP_OVER_BB_402
+
+        assert "Full" in _HIP_OVER_BB_402 and "renderHob" in spa
 
     if "pdf" in text:
         assert "@media print" in spa and "printhead" in spa

@@ -19,6 +19,14 @@ VALID_TIERS = (TIER_STARTER, TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
 # Tiers that unlock the full (non-teaser) output + no watermark.
 PAID_TIERS = (TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
 
+# Tiers that get what only Full sells: today, where the rider sits over the
+# crank against the Kona field (Artur, 2026-10-26 -- it was Enthusiast and up).
+FULL_TIERS = (TIER_FULL, TIER_ADMIN)
+
+
+def has_full(tier: str | None) -> bool:
+    return tier in FULL_TIERS
+
 # Analysis quota per tier: (max analyses, window). "month" = current calendar
 # month (UTC); "day" = rolling 24h. Admin is deliberately a DAILY cap (per
 # Artur's request) rather than unlimited -- it bounds how much CPU our own
@@ -44,23 +52,39 @@ TIER_LIMITS: dict[str, tuple[int, str]] = {
 }
 
 
-# Equipment profiles per tier (see models/profile.py). One is enough to say
-# "this is my bike"; keeping several -- road, TT, trainer, two pairs of shoes --
-# is what makes a comparison BETWEEN setups possible, and that is the thing a
-# single bought report structurally cannot give you. So it is where Full earns
-# its price, rather than in a quota nobody reaches.
+# Equipment profiles per tier (see models/profile.py). Keeping several setups
+# of ONE sport -- road, TT, trainer -- is what makes a comparison BETWEEN them
+# possible, and that is the thing a single bought report structurally cannot
+# give you. So it is where Full earns its price, rather than in a quota nobody
+# reaches.
+#
+# Enthusiast keeps two, one per sport (the bike and the running shoes): that is
+# a profile for everything it films without being the comparison Full sells,
+# because "Two setups" only ever pairs profiles of the same sport. Starter keeps
+# none -- profiles already made on it stay, nothing new is added (Artur,
+# 2026-10-26; it was 1 / 1 / 10).
 PROFILE_LIMITS: dict[str, int] = {
-    TIER_STARTER: 1,
-    TIER_ENTHUSIAST: 1,
+    TIER_STARTER: 0,
+    TIER_ENTHUSIAST: 2,
     TIER_FULL: 10,
     TIER_ADMIN: 10,
 }
 DEFAULT_PROFILE_LIMIT = PROFILE_LIMITS[TIER_STARTER]
 
+# Live profiles per sport, where a tier caps it. Absent = only the total counts.
+PROFILE_SPORT_LIMITS: dict[str, int] = {
+    TIER_ENTHUSIAST: 1,
+}
+
 
 def profile_limit(tier: str | None) -> int:
     """How many live profiles this tier may keep; unknown tiers get the free one."""
     return PROFILE_LIMITS.get(tier or "", DEFAULT_PROFILE_LIMIT)
+
+
+def profile_sport_limit(tier: str | None) -> int | None:
+    """How many live profiles of one sport this tier may keep, or None."""
+    return PROFILE_SPORT_LIMITS.get(tier or "")
 
 
 # Expert Reviews the Full tier includes per paid term. The pricing card says

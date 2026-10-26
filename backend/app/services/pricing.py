@@ -139,7 +139,7 @@ CARDS: tuple[Card, ...] = (
             Feature("Exact joint angles, no watermark"),
             Feature("Overlay video + slow-motion"),
             Feature("Cloud history, trends &amp; before / after"),
-            Feature("<b>1</b> equipment profile"),
+            Feature("<b>2</b> equipment profiles — one bike, one pair of shoes"),
         ),
         cta_label="Go Enthusiast",
     ),
@@ -156,6 +156,7 @@ CARDS: tuple[Card, ...] = (
         # and go back one at a time as each becomes true. Every line here now
         # has code and a test behind it:
         #   profiles      -> models/profile.py, PROFILE_LIMITS
+        #   crank         -> biomechanics/hip_over_bb, gated by has_full
         #   comparison    -> the "Two setups" mode, which needs two profiles
         #                    and is therefore gated by the limit above rather
         #                    than by a check we could forget
@@ -166,6 +167,7 @@ CARDS: tuple[Card, ...] = (
             Feature(f"Everything in Enthusiast, <b>{tier_limit('full')[0]}</b>/mo"),
             Feature("<b>10</b> equipment profiles — every bike and pair of shoes"),
             Feature("Compare one setup against another, not just week to week"),
+            Feature("Where you sit over the crank, against the Kona pros"),
             Feature("Branded PDF report to keep or hand to a coach"),
             Feature("<b>1 Expert Review included</b> ($39 value), every year"),
         ),

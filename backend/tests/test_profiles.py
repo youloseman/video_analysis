@@ -25,6 +25,7 @@ from app.models.user import (
     TIER_FULL,
     TIER_STARTER,
     profile_limit,
+    profile_sport_limit,
 )
 
 
@@ -48,24 +49,50 @@ async def save(db, user, *, client_id="h1", profile_id=None, job_id=None):
 # The limit is the product boundary
 # --------------------------------------------------------------------------
 @pytest.mark.parametrize(
-    "tier,expected", [(TIER_STARTER, 1), (TIER_ENTHUSIAST, 1), (TIER_FULL, 10)],
+    "tier,expected", [(TIER_STARTER, 0), (TIER_ENTHUSIAST, 2), (TIER_FULL, 10)],
 )
 def test_the_limit_is_where_full_earns_its_price(tier, expected):
     assert profile_limit(tier) == expected
+
+
+def test_only_enthusiast_caps_a_sport():
+    assert profile_sport_limit(TIER_ENTHUSIAST) == 1
+    assert profile_sport_limit(TIER_FULL) is None
+    assert profile_sport_limit(TIER_STARTER) is None
 
 
 def test_an_unknown_tier_gets_the_free_limit():
     assert profile_limit("platinum_unicorn") == profile_limit(TIER_STARTER)
 
 
-async def test_a_free_account_keeps_one_setup(db, make_user):
+async def test_a_free_account_keeps_no_setup(db, make_user):
     user = await make_user(tier=TIER_STARTER)
-    await make_profile(db, user, name="Road")
     with pytest.raises(HTTPException) as exc:
-        await make_profile(db, user, name="TT")
+        await make_profile(db, user, name="Road")
     # 402, not 403: the client shows a different thing for "you have not paid"
     # than for "you cannot".
     assert exc.value.status_code == 402
+    assert "paid plan" in exc.value.detail
+    listing = await me.list_profiles(user, db)
+    assert listing["limit"] == 0 and listing["used"] == 0
+
+
+async def test_enthusiast_keeps_one_bike_and_one_pair_of_shoes(db, make_user):
+    """Two profiles, one per sport: a second bike is the comparison Full sells."""
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await make_profile(db, user, name="Road", sport="bike")
+    await make_profile(db, user, name="Vaporfly", sport="run", kind="shoes")
+    listing = await me.list_profiles(user, db)
+    assert listing["used"] == 2 and listing["limit"] == 2 and listing["per_sport"] == 1
+
+
+async def test_enthusiast_cannot_keep_two_bikes(db, make_user):
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await make_profile(db, user, name="Road", sport="bike")
+    with pytest.raises(HTTPException) as exc:
+        await make_profile(db, user, name="TT", sport="bike")
+    assert exc.value.status_code == 402
+    assert "one setup for the bike" in exc.value.detail
 
 
 async def test_full_keeps_several(db, make_user):
@@ -79,7 +106,7 @@ async def test_full_keeps_several(db, make_user):
 
 async def test_archiving_frees_a_slot(db, make_user):
     """A retired bike should not hold a paying slot hostage."""
-    user = await make_user(tier=TIER_STARTER)
+    user = await make_user(tier=TIER_ENTHUSIAST)
     first = await make_profile(db, user, name="Old bike")
     await me.update_profile(first["id"], me.ProfilePatch(archived=True), user, db)
     second = await make_profile(db, user, name="New bike")
@@ -89,7 +116,7 @@ async def test_archiving_frees_a_slot(db, make_user):
 async def test_un_archiving_cannot_smuggle_you_past_the_limit(db, make_user):
     """Retire one, downgrade, then bring it back -- that path has to close, or
     the limit is advisory."""
-    user = await make_user(tier=TIER_STARTER)
+    user = await make_user(tier=TIER_ENTHUSIAST)
     old = await make_profile(db, user, name="Old")
     await me.update_profile(old["id"], me.ProfilePatch(archived=True), user, db)
     await make_profile(db, user, name="New")
