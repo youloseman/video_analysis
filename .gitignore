@@ -66,3 +66,5 @@ upload/
 
 # Design review screenshots (v1/v2/v3 comparison) — big, regenerated on demand.
 docs/design-v2-compare/
+# App Store screenshots: regenerated from production, not source
+docs/appstore/
