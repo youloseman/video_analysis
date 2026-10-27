@@ -306,6 +306,15 @@ _WITHHELD_MESSAGES = {
         "bike is in front of the leg, or the model found someone else in the "
         "frame. One rider, full side view, leg against a plain background."
     ),
+    # Same rule and thresholds as the video's position_mismatch.
+    "not_aero": (
+        "No score: on the aero bars the torso sits low and the elbows bent, and "
+        "this photo reads neither. Usually the pose model did not find the rider "
+        "properly -- a screenshot, a rider small in the frame, or text and "
+        "watermarks across the body -- and sometimes the photo is on the base "
+        "bar. Upload the original photo, side-on, with the rider filling most of "
+        "it, or pick the position you rode."
+    ),
     # Running. Same rule as the bike's, in the sport's own words.
     "run_leg_not_measured": (
         "No score: the leg nearest the camera could not be measured, so this "
@@ -322,7 +331,9 @@ _WITHHELD_MESSAGES = {
 }
 
 
-def _bike_photo_withheld(angles: dict[str, float]) -> str | None:
+def _bike_photo_withheld(
+    angles: dict[str, float], cycling_position: str | None = None,
+) -> str | None:
     """Why a bike photo gets no score at all, or None if it gets one.
 
     A bike-fit photo is about the leg. Without a measured knee the score was
@@ -334,6 +345,22 @@ def _bike_photo_withheld(angles: dict[str, float]) -> str | None:
     knee = angles.get("knee")
     if knee is None or math.isnan(knee):
         return "leg_not_measured"
+    # An aero photo that reads like sitting up is, far more often than not, a
+    # skeleton on the wrong body parts: a phone screenshot of a watermarked race
+    # photo read trunk 79 deg and was graded 44/100 (feedback #15, 2026-10-25).
+    # The video has withheld this since position_mismatch; the photo had not.
+    from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+    from app.services.video_analysis.biomechanics.plausibility import (
+        AERO_ELBOW_MAX,
+        AERO_TRUNK_MAX,
+    )
+
+    if cycling_position in AERO_POSITIONS:
+        trunk, elbow = angles.get("trunk"), angles.get("elbow")
+        if (trunk is not None and not math.isnan(trunk) and trunk > AERO_TRUNK_MAX) or (
+            elbow is not None and not math.isnan(elbow) and elbow > AERO_ELBOW_MAX
+        ):
+            return "not_aero"
     return None
 
 
@@ -2670,7 +2697,7 @@ def analyze_from_pose(
     # table -- the server stays the only scorer.
     score_by_phase: dict[str, dict[str, Any]] | None = None
     if sport == "bike":
-        withheld = _bike_photo_withheld(angles)
+        withheld = _bike_photo_withheld(angles, cycling_position)
     elif sport == "run" and contact_metrics:
         withheld = _run_photo_withheld(angles, gait_phase)
     else:

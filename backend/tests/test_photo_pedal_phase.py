@@ -242,3 +242,22 @@ class TestTheSaddleIsJudgedLikeTheVideoJudgesIt:
         fn = html[i:html.index("\n}", i)]
         assert "slack" in fn
         assert "classifyAngle(a.value,band[0],band[1],a.slack&&a.slack[phase])" in html
+
+
+def test_an_aero_photo_that_reads_sitting_up_gets_no_score():
+    """Feedback #15 (2026-10-25): a phone screenshot of a watermarked race
+    photo put the skeleton on the wrong body parts, read trunk 79 deg on a
+    triathlon position, and printed 44/100. The video withholds this
+    (position_mismatch); the photo now does too, with the same thresholds."""
+    from app.services.video_analysis.photo_analyzer import (
+        _WITHHELD_MESSAGES,
+        _bike_photo_withheld,
+    )
+
+    sitting_up = {"knee": 143.0, "trunk": 79.0, "elbow": 95.0}
+    assert _bike_photo_withheld(sitting_up, "triathlon") == "not_aero"
+    assert _bike_photo_withheld({"knee": 143.0, "trunk": 22.0, "elbow": 160.0}, "tt_aero") == "not_aero"
+    assert _bike_photo_withheld({"knee": 143.0, "trunk": 22.0, "elbow": 92.0}, "triathlon") is None
+    assert _bike_photo_withheld(sitting_up, "road_hoods") is None      # not an aero claim
+    assert _bike_photo_withheld({"knee": float("nan"), "trunk": 79.0}, "triathlon") == "leg_not_measured"
+    assert "screenshot" in _WITHHELD_MESSAGES["not_aero"]
