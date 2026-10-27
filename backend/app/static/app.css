@@ -1626,6 +1626,10 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   max-width:64ch;margin:8px 0 0;padding:12px 14px;background:rgba(255,255,255,.08);
   border-left:3px solid #FFD08A;border-radius:0;grid-column:1/-1;display:flex;align-items:center;gap:14px}
 .score-none-why b{color:#fff}
+.score-none-why .wh-next{display:block;margin-top:6px}
+.score-none-why .wh-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.score-none-why .wh-acts .btn{background:#fff;color:var(--c-ink);border-color:#fff}
+.score-none-why .wh-acts .btn:hover{background:rgba(255,255,255,.88)}
 /* The "athlete too small" figure on a white plate, since the card is navy. */
 .score-none-why .sn-fig{flex:none;width:64px;height:64px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center}
 .score-none-why .sn-fig img{width:52px;height:52px;display:block}

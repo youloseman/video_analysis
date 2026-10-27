@@ -1269,6 +1269,7 @@
         </div>
         <div class="score-partial hidden" id="pPartial"></div>
         <div class="score-meta" id="pScoreMeta"></div>
+        <p class="score-none-why hidden" id="pScoreWithheld"></p>
         <div class="score-bd hidden" id="pScoreBd" aria-label="What the score is built from"></div>
         <button class="btn btn-primary btn-sm sharebtn hidden" id="pShareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="pShareBtnTxt">Share result</span>
@@ -5760,11 +5761,37 @@ function pollRecompute(t0,kind){
   },2500);
 }
 
+/* The two ways out of a result we would not score: film or photograph it
+   again, or -- where the joint editor is open to this account -- move the
+   points the model got wrong. The second is offered only where it exists
+   (bike photo; paid bike video): a button that opens nothing is worse. */
+function whActions(sel, canAdjust, adjustBtn){
+  const el=$(sel); if(!el) return;
+  el.querySelectorAll('[data-wh-adjust],[data-wh-adjust-txt]').forEach(n=>n.classList.toggle('hidden',!canAdjust));
+  const r=el.querySelector('[data-wh-refilm]');
+  if(r) r.onclick=()=>{ track('withheld_next',{action:'refilm',where:sel}); reset(); window.scrollTo({top:0,behavior:REDUCED?'auto':'smooth'}); };
+  const a=el.querySelector('[data-wh-adjust]');
+  if(a) a.onclick=()=>{ track('withheld_next',{action:'adjust',where:sel}); const b=$(adjustBtn); if(b){ b.click(); b.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'center'}); } };
+}
 function renderPhoto(res,opts){
   opts=opts||{};
   const sport=res.sport||state.sport;
   const sc=res.score||{}; const score=sc.overall_score;
-  $('#pScoreNum').innerHTML=(score==null?'—':score)+'<small>/100</small>';
+  $('#pScoreNum').innerHTML=sc.withheld ? '<span class="score-none">Not<br>scored</span>' : (score==null?'—':score)+'<small>/100</small>';
+  // A withheld photo says why (the server's sentence, also in the warnings)
+  // and what to do about it, where the number would have been.
+  const pwh=$('#pScoreWithheld');
+  if(pwh){
+    let why=sc.withheld ? ((res.warnings||[]).find(w=>/^No score:/.test(w))||'').replace(/^No score:\s*/,'') : '';
+    why=why.charAt(0).toUpperCase()+why.slice(1);
+    pwh.innerHTML = sc.withheld
+      ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
+         <span><b>We didn\u2019t score this photo.</b> ${esc(why)}
+         <span class="wh-next">Take another photo side-on, with you filling most of the picture<span data-wh-adjust-txt class="hidden"> &mdash; or, if the skeleton landed in the wrong place, move the points by hand and the angles are measured again</span>.</span>
+         <span class="wh-acts"><button class="btn btn-sm" type="button" data-wh-refilm>Take another photo</button><button class="btn btn-sm hidden" type="button" data-wh-adjust>Adjust the joints</button></span></span>`
+      : '';
+    pwh.classList.toggle('hidden', !sc.withheld);
+  }
   setScoreRing('#pScoreRing', score);
   renderScoreDelta('#pScoreDelta', 'photo', sport, score);   // before saveToHistory()
   setGrade('#pGrade', sc.grade);
@@ -5794,6 +5821,7 @@ function renderPhoto(res,opts){
   // decides which points; see result_gating._trim).
   const canAdjust=!!(res.pose&&state.file&&sport==='bike');
   $('#pAdjust').classList.toggle('hidden',!canAdjust);
+  whActions('#pScoreWithheld', canAdjust, '#pAdjust');
   if(!canAdjust) lmedClose();
   renderCorrectionBadge(res);
   if(res.bike_auto) state.photoBikeAuto=res.bike_auto;      // kept across re-measures
@@ -8307,7 +8335,9 @@ function render(job,opts){
          <span><b>We didn\u2019t score this clip.</b> ${esc(withheld.detail||'')}
          Everything we could measure is still below \u2014 the angles, the findings and
          how to refilm it. What we\u2019re holding back is the one number that would
-         have summarised them.</span>`
+         have summarised them.
+         <span class="wh-next">To get a score, film it again side-on and closer, with you filling most of the picture<span data-wh-adjust-txt class="hidden"> &mdash; or, if the skeleton landed in the wrong place, move the points by hand and the clip is measured again</span>.</span>
+         <span class="wh-acts"><button class="btn btn-sm" type="button" data-wh-refilm>Film it again</button><button class="btn btn-sm hidden" type="button" data-wh-adjust>Adjust the joints</button></span></span>`
       : '';
     wh.classList.toggle('hidden', !withheld);
   }
@@ -8601,6 +8631,7 @@ function render(job,opts){
     &&!(r.bilateral&&r.bilateral.combined)&&!r.run_session&&job.rounds_left!=null);
   $('#vAdjust').classList.toggle('hidden',!canAdjust);
   if(!canAdjust) vedClose();
+  whActions('#scoreWithheld', canAdjust, '#vAdjust');
   renderCorrectionBadge(r,'vCorrBadge');
   // The header the printed copy carries. It was only being built on the gated
   // path, so the tier that has the Save-as-PDF button printed a page with no
