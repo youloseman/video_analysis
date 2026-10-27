@@ -1,0 +1,343 @@
+<title>Running Photo Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@1,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: filter + chip strip, then the photo (draggable points) beside its readout; a table of every photo below. Stacks on phones. */
+:root{
+  --bg:#F4F6F9; --panel:#FFFFFF; --ink:#14294B; --muted:#5B6678; --line:#D9DFE8;
+  --coral:#F0533A; --good:#1E8A5A; --warn:#B7791F; --pro:#2C5DA8; --leg:#E3A940;
+  --display:"Archivo",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1A30; --panel:#14294B; --ink:#E8EDF5; --muted:#9AA6BA; --line:#2A3D60;
+  --coral:#FF6B52; --good:#4CC38A; --warn:#E3A940; --pro:#7FA8EA; --leg:#E3A940; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1A30; --panel:#14294B; --ink:#E8EDF5; --muted:#9AA6BA; --line:#2A3D60;
+  --coral:#FF6B52; --good:#4CC38A; --warn:#E3A940; --pro:#7FA8EA; --leg:#E3A940; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding:16px;padding-block:20px 40px;margin:0}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:16px}
+h1{font:italic 800 clamp(24px,4vw,34px)/1.1 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.lede{margin:6px 0 0;color:var(--muted);max-width:80ch}
+.lede b{color:var(--ink);font-weight:600}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.progress{font:13px var(--mono);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:500 13px var(--mono);min-width:48px;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;position:relative;border-bottom:3px solid var(--pro)}
+.chip.ex{opacity:.45}
+.chip[aria-current="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.chip.done::after{content:"✓";position:absolute;top:-2px;right:3px;font-size:11px;color:var(--good)}
+.chip[aria-current="true"].done::after{color:var(--panel)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0}
+.scroller{overflow:auto;border-radius:8px;max-height:80vh}
+.canvas{position:relative;width:100%}
+.canvas.zoom{width:220%}
+.canvas img{display:block;width:100%;max-width:none;user-select:none;-webkit-user-drag:none}
+.canvas svg{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+button.b{font:500 14px var(--body);padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button.b:hover{border-color:var(--ink)}
+button.b:focus-visible,.chip:focus-visible,.joint:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+button.b.primary{background:var(--good);border-color:var(--good);color:#fff}
+button.b.primary[aria-pressed="true"]{background:var(--panel);color:var(--good)}
+.nudge{display:inline-grid;grid-template-columns:repeat(3,36px);grid-template-rows:repeat(3,30px);gap:3px}
+.nudge button{padding:0;font:500 15px var(--mono)}
+.side{display:grid;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.card h2{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:5px 4px;border-bottom:1px solid var(--line);font-size:14px}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-size:12px}
+td.num{font-family:var(--mono)}
+tr.key td{font-weight:600}
+tr.off td{color:var(--muted)}
+.d-up{color:var(--warn)} .d-zero{color:var(--muted)}
+.prod{font:500 13px var(--mono);margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--bg)}
+.joints{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.joint{font:500 14px var(--body);text-align:left;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.joint[aria-pressed="true"]{border-color:var(--coral);box-shadow:inset 0 0 0 1px var(--coral)}
+.joint small{display:block;font:12px var(--mono);color:var(--muted)}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+textarea{width:100%;box-sizing:border-box;font:14px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:56px}
+.status{font:13px var(--mono);color:var(--muted)}
+.status.ok{color:var(--good)} .status.bad{color:var(--coral)}
+.legend{font-size:13px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.list{overflow-x:auto}
+.list table{min-width:760px}
+.list td,.list th{text-align:left;white-space:nowrap}
+.list td.num,.list th.num{text-align:right}
+.list tr{cursor:pointer}
+.list tr:hover td{background:var(--bg)}
+.list tr.ex td{color:var(--muted)}
+.miss{color:var(--coral);font-weight:600}
+@media (prefers-reduced-motion:no-preference){.chip,.joint,button.b{transition:border-color .15s,background .15s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Running Photo Check</h1>
+    <p class="lede">Проверяем, насколько продукт правильно читает бег по одному кадру. На каждом фото: <b>S E W</b> — плечо, локоть, запястье ближней руки; <b>H</b> — бедро (тазобедренный); <b>K A L F</b> — колено, лодыжка, пятка, носок <b>ноги на опоре</b> (той, что на земле или вот-вот коснётся). Если модель поставила ногу на маховую ногу — перетащи все четыре точки на опорную. Отметь фазу шага так, как видишь сам. Если всё на месте — «Проверено». Правки сохраняются сами.</p>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Показать">
+      <button class="b" type="button" data-show="all">Все</button>
+      <button class="b" type="button" data-show="todo">Не проверены</button>
+      <button class="b" type="button" data-show="contact">Касание</button>
+    </div>
+    <span class="progress" id="progress"></span>
+  </div>
+  <nav class="chips" id="chips" aria-label="Фото"></nav>
+
+  <div class="main">
+    <section class="stage">
+      <div class="scroller"><div class="canvas" id="canvas"><img id="photo" alt=""><svg id="svg" aria-label="Точки"></svg></div></div>
+      <div class="toolbar">
+        <button class="b" id="zoom" type="button">Увеличить</button>
+        <button class="b" id="prev" type="button">← Пред.</button>
+        <button class="b" id="next" type="button">След. →</button>
+        <button class="b primary" id="checked" type="button">Проверено ✓</button>
+        <span class="legend"><span><i style="background:#F0533A"></i>выбранная</span><span><i style="background:#E3A940"></i>опорная нога</span><span><i style="border:2px dashed var(--muted);box-sizing:border-box"></i>старт</span></span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h2 id="title">Фото</h2>
+        <table>
+          <thead><tr><th>Что</th><th>Продукт</th><th>Старт</th><th>Сейчас</th></tr></thead>
+          <tbody id="angles"></tbody>
+        </table>
+        <div class="prod" id="prod"></div>
+      </div>
+      <div class="card">
+        <h2>Фаза шага — как видишь ты</h2>
+        <div class="seg" role="group" aria-label="Фаза" id="phases">
+          <button class="b" type="button" data-phase="initial_contact">Касание</button>
+          <button class="b" type="button" data-phase="midstance">Середина опоры</button>
+          <button class="b" type="button" data-phase="toe_off">Отталкивание</button>
+          <button class="b" type="button" data-phase="swing">Мах (обе в воздухе после толчка)</button>
+          <button class="b" type="button" data-phase="flight">Полёт</button>
+          <button class="b" type="button" data-phase="unclear">Непонятно</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Точка</h2>
+        <div class="joints" id="joints"></div>
+        <div class="toolbar">
+          <div class="nudge" aria-label="Сдвиг на 1 пиксель">
+            <span></span><button class="b" data-d="0,-1" type="button" aria-label="Вверх">↑</button><span></span>
+            <button class="b" data-d="-1,0" type="button" aria-label="Влево">←</button><span></span><button class="b" data-d="1,0" type="button" aria-label="Вправо">→</button>
+            <span></span><button class="b" data-d="0,1" type="button" aria-label="Вниз">↓</button><span></span>
+          </div>
+          <div style="display:grid;gap:6px">
+            <button class="b" id="resetPt" type="button">Вернуть точку</button>
+            <button class="b" id="resetAll" type="button">Вернуть все</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Учитывать?</h2>
+        <div class="seg" role="group" aria-label="Учитывать" style="margin-bottom:10px">
+          <button class="b" type="button" data-ex="no">Да</button>
+          <button class="b" type="button" data-ex="yes">Не учитывать (ракурс, обрезано, не бег)</button>
+        </div>
+        <h2>Заметка</h2>
+        <textarea id="note" placeholder="Например: камера сильно спереди; стопа закрыта"></textarea>
+        <div class="toolbar"><span class="status" id="status">Загрузка…</span></div>
+      </div>
+      <div class="card">
+        <h2>Запасной вариант</h2>
+        <p class="status" style="margin:0 0 8px">Если сохранение не работает, скопируй правки и пришли в чат.</p>
+        <button class="b" id="copy" type="button">Скопировать правки</button>
+      </div>
+    </aside>
+  </div>
+
+  <section class="card">
+    <h2>Все фото</h2>
+    <p class="status" style="margin:0 0 10px">«Продукт» — что приложение сказало на этом фото само. Оверстрайд, голень и стопа имеют смысл только на касании. Красным — где фаза продукта не совпала с твоей. Строка открывает фото.</p>
+    <div class="list"><table>
+      <thead><tr><th>Фото</th><th>Набор</th><th>Фаза (ты)</th><th>Фаза (продукт)</th><th class="num">Колено</th><th class="num">Оверстрайд</th><th class="num">Голень</th><th>Приземление</th><th>Статус</th></tr></thead>
+      <tbody id="list"></tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const JOINTS = [["S","Плечо"],["E","Локоть"],["W","Запястье"],["H","Бедро (таз)"],["K","Колено"],["A","Лодыжка"],["L","Пятка"],["F","Носок"]];
+const LEG = new Set(["K","A","L","F"]);
+const PHASE_RU = {initial_contact:"касание",midstance:"середина опоры",toe_off:"отталкивание",swing:"мах",flight:"полёт",unclear:"непонятно",uncertain:"не определил"};
+const STRIKE_RU = {heel:"пятка",midfoot:"середина",forefoot:"носок"};
+const state = {i:0, sel:"K", zoom:false, show:"all", edits:{}, meta:{}};
+let db = null; const timers = {};
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const pos = () => DATA[state.i];
+const pts = p => Object.assign({}, p.model, state.edits[p.n] || {});
+const metaOf = p => Object.assign({group:p.group, phase:null, excluded:false, note:"", checked:false}, state.meta[p.n] || {});
+const setMeta = (p, patch, delay=300) => {state.meta[p.n] = Object.assign(metaOf(p), patch); queueSave(p.n, delay)};
+
+// The same readings as runphoto.py and photo_analyzer's running path.
+function ang(a,b,c){const v1=[a[0]-b[0],a[1]-b[1]],v2=[c[0]-b[0],c[1]-b[1]];
+  const d=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2));return Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI}
+const deg = r => r*180/Math.PI;
+function readings(P,f){
+  const leg=Math.hypot(P.K[0]-P.H[0],P.K[1]-P.H[1])+Math.hypot(P.A[0]-P.K[0],P.A[1]-P.K[1]);
+  const along=f*(P.F[0]-P.L[0]); const foot=along>0?deg(Math.atan2(P.L[1]-P.F[1],along)):NaN;
+  const strike=isNaN(foot)?null:foot>8.1?"heel":foot<-1.6?"forefoot":"midfoot";
+  return {knee:ang(P.H,P.K,P.A), hip:ang(P.S,P.H,P.K), elbow:ang(P.S,P.E,P.W),
+    trunk:deg(Math.atan2(f*(P.S[0]-P.H[0]),P.H[1]-P.S[1])),
+    shin:deg(Math.atan2(f*(P.K[0]-P.A[0]),P.A[1]-P.K[1])),
+    overstride:leg?Math.abs(P.A[0]-P.H[0])/leg:NaN, foot, strike}}
+const ROWS = [["knee","Колено",1,"°"],["hip","Бедро",0,"°"],["elbow","Локоть",0,"°"],["trunk","Корпус (наклон)",0,"°"],
+  ["overstride","Оверстрайд",1,"×"],["shin","Голень",1,"°"],["foot","Стопа к земле",0,"°"]];
+const fmt=(v,u)=>v==null||isNaN(v)?"—":(u==="×"?v.toFixed(2):v.toFixed(1)+"°");
+
+function isMoved(p){const e=state.edits[p.n];if(!e)return false;
+  return Object.keys(e).some(k=>Math.hypot(e[k][0]-p.model[k][0],e[k][1]-p.model[k][1])>0.5)}
+function visible(){return DATA.filter(p=>{const m=metaOf(p);
+  if(state.show==="todo")return !m.checked && !m.excluded;
+  if(state.show==="contact")return m.phase==="initial_contact"; return true})}
+
+function renderChips(){const box=$("chips");box.innerHTML="";
+  for(const p of visible()){const m=metaOf(p),b=document.createElement("button");b.type="button";
+    b.className="chip"+(m.excluded?" ex":"")+(m.checked?" done":"");
+    b.textContent=String(p.n).padStart(2,"0");b.setAttribute("aria-current",p===pos()?"true":"false");
+    b.title=p.group+(m.phase?" · "+PHASE_RU[m.phase]:"");
+    b.onclick=()=>{state.i=DATA.indexOf(p);renderAll()};box.appendChild(b)}
+  const live=DATA.filter(p=>!metaOf(p).excluded),done=live.filter(p=>metaOf(p).checked);
+  const contact=done.filter(p=>metaOf(p).phase==="initial_contact").length;
+  $("progress").textContent=`Проверено ${done.length} из ${live.length} (касаний ${contact})`}
+
+function renderSvg(){
+  const p=pos(),P=pts(p),svg=$("svg"),r=Math.max(5,p.w/110);
+  svg.setAttribute("viewBox",`0 0 ${p.w} ${p.h}`);svg.innerHTML="";
+  const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e};
+  const line=(a,b,col="#FFFFFF",w=0.35)=>el("line",{x1:P[a][0],y1:P[a][1],x2:P[b][0],y2:P[b][1],stroke:col,"stroke-width":r*w,"stroke-opacity":0.9});
+  // the hip's vertical: what overstride is measured against
+  el("line",{x1:P.H[0],y1:P.H[1],x2:P.H[0],y2:p.h,stroke:"#FFFFFF","stroke-width":r*0.18,"stroke-dasharray":`${r} ${r*0.8}`,"stroke-opacity":0.7});
+  line("H","S");line("S","E");line("E","W");line("H","K","#E3A940",0.45);line("K","A","#E3A940",0.45);line("A","L","#E3A940");line("L","F","#E3A940");line("A","F","#E3A940");
+  for(const [k] of JOINTS){const m=p.model[k];
+    if(Math.hypot(P[k][0]-m[0],P[k][1]-m[1])>0.5)el("circle",{cx:m[0],cy:m[1],r,fill:"none",stroke:"#FFFFFF","stroke-width":r*0.25,"stroke-dasharray":`${r*0.5} ${r*0.4}`})}
+  for(const [k] of JOINTS){
+    const fill=k===state.sel?"#F0533A":LEG.has(k)?"#E3A940":"#14294B";
+    el("circle",{cx:P[k][0],cy:P[k][1],r,fill,stroke:"#FFFFFF","stroke-width":r*0.35});
+    const hit=el("circle",{cx:P[k][0],cy:P[k][1],r:r*2.6,fill:"transparent"});hit.dataset.k=k;hit.style.cursor="grab";
+    const t=el("text",{x:P[k][0]+r*1.5,y:P[k][1]-r*1.1,"font-size":r*2.2,"font-family":"IBM Plex Mono, monospace",fill:"#FFFFFF","paint-order":"stroke",stroke:"#14294B","stroke-width":r*0.5});
+    t.textContent=k;t.style.pointerEvents="none"}
+}
+
+function renderPanel(){
+  const p=pos(),m=metaOf(p),now=readings(pts(p),p.facing),base=readings(p.model,p.facing),a=p.auto||{};
+  const atContact=(m.phase||a.phase)==="initial_contact";
+  $("title").textContent=`Фото ${p.n} · ${p.group}${m.phase?" · "+PHASE_RU[m.phase]:""}`;
+  $("angles").innerHTML=ROWS.map(([k,lab,key,u])=>{const contactOnly=["overstride","shin","foot"].includes(k);
+    return `<tr class="${key?"key":""}${contactOnly&&!atContact?" off":""}"><td>${lab}</td><td class="num">${fmt(a[k],u)}</td><td class="num">${fmt(base[k],u)}</td><td class="num">${fmt(now[k],u)}</td></tr>`}).join("")
+    +`<tr><td>Приземление</td><td class="num">${STRIKE_RU[a.strike]||"—"}</td><td class="num">${STRIKE_RU[base.strike]||"—"}</td><td class="num">${STRIKE_RU[now.strike]||"—"}</td></tr>`;
+  const miss=m.phase&&a.phase&&m.phase!==a.phase&&!(m.phase==="unclear");
+  $("prod").innerHTML=`Продукт: фаза <b>${PHASE_RU[a.phase]||"—"}</b>, опорная нога <b>${({front:"впереди",under:"под собой",rear:"сзади"})[a.stance]||"—"}</b>, оценка <b>${a.score??(a.withheld?"нет ("+a.withheld+")":"—")}</b>${miss?` · <span class="miss">фаза не совпала с твоей</span>`:""}`;
+  const P=pts(p);$("joints").innerHTML="";
+  for(const [k,name] of JOINTS){const b=document.createElement("button");b.type="button";b.className="joint";
+    b.setAttribute("aria-pressed",k===state.sel?"true":"false");
+    const dx=P[k][0]-p.model[k][0],dy=P[k][1]-p.model[k][1];
+    b.innerHTML=`${k} · ${name}<small>${Math.hypot(dx,dy)<0.5?"как у модели":`сдвиг ${dx>=0?"+":""}${dx.toFixed(0)}, ${dy>=0?"+":""}${dy.toFixed(0)} px`}</small>`;
+    b.onclick=()=>{state.sel=k;renderSvg();renderPanel()};$("joints").appendChild(b)}
+  document.querySelectorAll("#phases button").forEach(b=>b.setAttribute("aria-pressed",String(m.phase===b.dataset.phase)));
+  document.querySelectorAll(".seg button[data-ex]").forEach(b=>b.setAttribute("aria-pressed",String((b.dataset.ex==="yes")===!!m.excluded)));
+  document.querySelectorAll(".seg button[data-show]").forEach(b=>b.setAttribute("aria-pressed",String(state.show===b.dataset.show)));
+  if(document.activeElement!==$("note"))$("note").value=m.note||"";
+  $("checked").setAttribute("aria-pressed",String(!!m.checked));$("checked").textContent=m.checked?"Проверено ✓ (снять)":"Проверено ✓";
+}
+
+function renderList(){const tb=$("list");tb.innerHTML="";
+  for(const p of visible()){const m=metaOf(p),r=readings(pts(p),p.facing),a=p.auto||{},tr=document.createElement("tr");
+    if(m.excluded)tr.className="ex";
+    const miss=m.phase&&a.phase&&m.phase!==a.phase&&m.phase!=="unclear";
+    tr.innerHTML=`<td>#${p.n}</td><td></td><td></td><td class="${miss?"miss":""}"></td><td class="num">${r.knee.toFixed(0)}°</td><td class="num">${isNaN(r.overstride)?"—":r.overstride.toFixed(2)}</td><td class="num">${r.shin.toFixed(0)}°</td><td></td><td></td>`;
+    tr.children[1].textContent=p.group;tr.children[2].textContent=m.phase?PHASE_RU[m.phase]:"";
+    tr.children[3].textContent=PHASE_RU[a.phase]||"—";tr.children[7].textContent=STRIKE_RU[r.strike]||"—";
+    tr.children[8].textContent=m.excluded?"не учит.":m.checked?"✓ проверено":isMoved(p)?"правки":"";
+    tr.onclick=()=>{state.i=DATA.indexOf(p);renderAll();window.scrollTo({top:0,behavior:"smooth"})};tb.appendChild(tr)}}
+
+function renderAll(){const p=pos();
+  if($("photo").getAttribute("src")!==p.img){$("photo").src=p.img;$("photo").alt=`Фото ${p.n}`}
+  $("canvas").classList.toggle("zoom",state.zoom);$("zoom").textContent=state.zoom?"Уменьшить":"Увеличить";
+  renderChips();renderSvg();renderPanel();renderList()}
+
+function setPoint(k,xy){const p=pos(),e=state.edits[p.n]=Object.assign({},state.edits[p.n]||{});
+  e[k]=[Math.max(0,Math.min(p.w,Math.round(xy[0]*10)/10)),Math.max(0,Math.min(p.h,Math.round(xy[1]*10)/10))]}
+
+// drag by the finger's delta, so the finger never covers where the point lands
+let drag=null;
+$("svg").addEventListener("pointerdown",ev=>{const k=ev.target.dataset&&ev.target.dataset.k;if(!k)return;
+  ev.preventDefault();state.sel=k;const ctm=$("svg").getScreenCTM().inverse();
+  const pt=new DOMPoint(ev.clientX,ev.clientY).matrixTransform(ctm);
+  drag={k,start:[pt.x,pt.y],orig:pts(pos())[k].slice(),ctm};$("svg").setPointerCapture(ev.pointerId);renderSvg();renderPanel()});
+$("svg").addEventListener("pointermove",ev=>{if(!drag)return;const pt=new DOMPoint(ev.clientX,ev.clientY).matrixTransform(drag.ctm);
+  setPoint(drag.k,[drag.orig[0]+pt.x-drag.start[0],drag.orig[1]+pt.y-drag.start[1]]);renderSvg();renderPanel()});
+const endDrag=()=>{if(!drag)return;drag=null;renderChips();renderList();queueSave(pos().n)};
+$("svg").addEventListener("pointerup",endDrag);$("svg").addEventListener("pointercancel",endDrag);
+
+const nudge=(dx,dy)=>{const cur=pts(pos())[state.sel];setPoint(state.sel,[cur[0]+dx,cur[1]+dy]);renderSvg();renderPanel();renderList();queueSave(pos().n)};
+document.querySelectorAll(".nudge button").forEach(b=>b.onclick=()=>nudge(...b.dataset.d.split(",").map(Number)));
+$("resetPt").onclick=()=>{const p=pos();setPoint(state.sel,p.model[state.sel]);renderAll();queueSave(p.n)};
+$("resetAll").onclick=()=>{const p=pos();state.edits[p.n]={};renderAll();queueSave(p.n)};
+$("zoom").onclick=()=>{state.zoom=!state.zoom;renderAll()};
+function step(d){const v=visible();if(!v.length)return;let j=v.indexOf(pos());j=j<0?0:(j+d+v.length)%v.length;state.i=DATA.indexOf(v[j]);renderAll()}
+$("prev").onclick=()=>step(-1);$("next").onclick=()=>step(1);
+$("checked").onclick=()=>{const p=pos(),m=metaOf(p);
+  if(!m.checked&&!m.phase&&!m.excluded){status("Сначала отметь фазу шага","bad");return}
+  setMeta(p,{checked:!m.checked},50);if(!m.checked&&state.show!=="todo")step(1);else renderAll()};
+document.querySelectorAll("#phases button").forEach(b=>b.onclick=()=>{setMeta(pos(),{phase:b.dataset.phase},200);renderAll()});
+document.querySelectorAll(".seg button[data-ex]").forEach(b=>b.onclick=()=>{setMeta(pos(),{excluded:b.dataset.ex==="yes"},200);renderAll()});
+$("note").addEventListener("input",()=>setMeta(pos(),{note:$("note").value},900));
+document.querySelectorAll(".seg button[data-show]").forEach(b=>b.onclick=()=>{state.show=b.dataset.show;
+  const v=visible();if(v.length&&!v.includes(pos()))state.i=DATA.indexOf(v[0]);renderAll()});
+document.addEventListener("keydown",ev=>{if(ev.target.tagName==="TEXTAREA"||ev.target.tagName==="INPUT")return;
+  const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[ev.key];
+  if(m){ev.preventDefault();const s=ev.shiftKey?5:1;nudge(m[0]*s,m[1]*s);return}
+  if(ev.key==="PageDown"){ev.preventDefault();step(1)} else if(ev.key==="PageUp"){ev.preventDefault();step(-1)}});
+
+function record(p){const P=pts(p),m=metaOf(p);
+  return {n:p.n,photo:p.photo,facing:p.facing,
+    moved:Object.fromEntries(JOINTS.map(([k])=>[k,[+(P[k][0]-p.model[k][0]).toFixed(1),+(P[k][1]-p.model[k][1]).toFixed(1)]])),
+    readings:Object.fromEntries(Object.entries(readings(P,p.facing)).map(([k,v])=>[k,typeof v==="number"?(isNaN(v)?null:+v.toFixed(3)):v])),
+    group:m.excluded?"excluded":p.group, phase:m.phase, excluded:!!m.excluded, note:m.note, checked:!!m.checked,
+    updated:new Date().toISOString()}}
+function status(t,cls){const s=$("status");s.textContent=t;s.className="status"+(cls?" "+cls:"")}
+function queueSave(n,delay=500){clearTimeout(timers[n]);timers[n]=setTimeout(()=>save(n),delay)}
+let writing=Promise.resolve();
+function save(n){const p=DATA.find(d=>d.n===n),rec=record(p);
+  try{localStorage.setItem("rp-pt-"+n,JSON.stringify({e:state.edits[n]||{},m:state.meta[n]||{}}))}catch(e){}
+  if(!db){status("Сохранено только в этом браузере");return}
+  status("Сохраняю…");
+  writing=writing.then(()=>db.doc("points/p"+String(n).padStart(2,"0")).set(rec))
+    .then(()=>status("Сохранено, фото "+n,"ok"))
+    .catch(e=>status("Не сохранилось ("+(e&&e.code||"ошибка")+"). Используй «Скопировать правки».","bad"))}
+$("copy").onclick=()=>{const txt=JSON.stringify(DATA.filter(p=>isMoved(p)||state.meta[p.n]).map(record));
+  const done=()=>status("Скопировано","ok");
+  try{navigator.clipboard.writeText(txt).then(done,()=>fallback(txt))}catch(e){fallback(txt)}};
+function fallback(txt){$("note").value=txt;$("note").select();status("Выделено в поле заметки, скопируй вручную","bad")}
+
+for(const p of DATA){try{const s=JSON.parse(localStorage.getItem("rp-pt-"+p.n)||"null");
+  if(s){state.edits[p.n]=s.e||{};if(s.m&&Object.keys(s.m).length)state.meta[p.n]=s.m}}catch(e){}}
+renderAll();status("Подключаюсь к хранилищу…");
+
+(async()=>{
+  try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch(e){db=null}
+  if(!db){status("Хранилище недоступно: правки остаются в этом браузере");return}
+  try{const snap=await db.collection("points").get();
+    for(const d of snap.docs){const r=d.data(),p=DATA.find(x=>x.n===r.n);if(!p||!r.moved)continue;
+      const e={};for(const [k,v] of Object.entries(r.moved)){if(p.model[k])e[k]=[p.model[k][0]+v[0],p.model[k][1]+v[1]]}
+      state.edits[p.n]=e;
+      state.meta[p.n]={group:p.group,phase:r.phase||null,excluded:!!r.excluded,note:r.note||"",checked:!!r.checked}}
+    renderAll();status("Готово. Правки сохраняются автоматически","ok");
+  }catch(e){status("Не удалось прочитать сохранённое ("+(e&&e.code||"ошибка")+")","bad")}
+})();
+</script>

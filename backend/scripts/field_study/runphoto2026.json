@@ -1,0 +1,827 @@
+{
+ "name": "runphoto2026",
+ "editor_url": "https://claude.ai/artifact/EKHNU1Jec6NoUiSWXEAUrC",
+ "work": "upload/field-study/runphoto2026",
+ "duplicates": [],
+ "entries": [
+  {
+   "n": 1,
+   "photo": "upload/photo_run/photo_10_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     380.6,
+     352.3
+    ],
+    "E": [
+     367.5,
+     463.8
+    ],
+    "W": [
+     467.5,
+     498.3
+    ],
+    "H": [
+     351.7,
+     615.0
+    ],
+    "K": [
+     288.9,
+     781.8
+    ],
+    "A": [
+     174.4,
+     894.8
+    ],
+    "L": [
+     137.5,
+     891.4
+    ],
+    "F": [
+     192.4,
+     977.2
+    ]
+   },
+   "auto": {
+    "phase": "toe_off",
+    "knee": 155.2,
+    "hip": 165.7,
+    "elbow": 102.3,
+    "trunk": 6.3,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 100,
+    "withheld": null,
+    "stance": "rear",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 2,
+   "photo": "upload/photo_run/photo_11_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     348.8,
+     354.3
+    ],
+    "E": [
+     260.2,
+     448.9
+    ],
+    "W": [
+     359.3,
+     529.3
+    ],
+    "H": [
+     348.5,
+     624.4
+    ],
+    "K": [
+     453.0,
+     774.0
+    ],
+    "A": [
+     478.5,
+     928.8
+    ],
+    "L": [
+     464.6,
+     959.4
+    ],
+    "F": [
+     552.1,
+     944.1
+    ]
+   },
+   "auto": {
+    "phase": "uncertain",
+    "knee": 154.4,
+    "hip": 145.0,
+    "elbow": 85.9,
+    "trunk": 0.1,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": null,
+    "withheld": "stride_phase_uncertain",
+    "stance": "front",
+    "legs_clear": false
+   }
+  },
+  {
+   "n": 3,
+   "photo": "upload/photo_run/photo_12_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     380.8,
+     368.4
+    ],
+    "E": [
+     359.7,
+     472.4
+    ],
+    "W": [
+     460.1,
+     503.9
+    ],
+    "H": [
+     345.1,
+     635.4
+    ],
+    "K": [
+     276.0,
+     794.4
+    ],
+    "A": [
+     178.0,
+     915.4
+    ],
+    "L": [
+     146.3,
+     914.1
+    ],
+    "F": [
+     204.3,
+     1000.8
+    ]
+   },
+   "auto": {
+    "phase": "toe_off",
+    "knee": 164.5,
+    "hip": 164.1,
+    "elbow": 95.9,
+    "trunk": 7.6,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 100,
+    "withheld": null,
+    "stance": "rear",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 4,
+   "photo": "upload/photo_run/photo_13_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     358.0,
+     402.2
+    ],
+    "E": [
+     301.0,
+     498.7
+    ],
+    "W": [
+     393.7,
+     599.3
+    ],
+    "H": [
+     354.6,
+     654.4
+    ],
+    "K": [
+     405.2,
+     816.3
+    ],
+    "A": [
+     367.3,
+     968.3
+    ],
+    "L": [
+     344.5,
+     999.7
+    ],
+    "F": [
+     354.5,
+     1000.8
+    ]
+   },
+   "auto": {
+    "phase": "midstance",
+    "knee": 148.7,
+    "hip": 161.9,
+    "elbow": 106.8,
+    "trunk": -0.8,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 100,
+    "withheld": null,
+    "stance": "under",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 5,
+   "photo": "upload/photo_run/photo_1_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     378.3,
+     365.2
+    ],
+    "E": [
+     300.5,
+     474.2
+    ],
+    "W": [
+     404.9,
+     548.0
+    ],
+    "H": [
+     380.0,
+     620.9
+    ],
+    "K": [
+     466.8,
+     768.9
+    ],
+    "A": [
+     512.2,
+     930.1
+    ],
+    "L": [
+     505.7,
+     965.5
+    ],
+    "F": [
+     575.8,
+     943.9
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 165.3,
+    "hip": 150.0,
+    "elbow": 89.7,
+    "trunk": -0.4,
+    "overstride": 0.39,
+    "shin": -15.7,
+    "foot": 17.1,
+    "strike": "heel",
+    "score": 70,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 6,
+   "photo": "upload/photo_run/photo_2_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     387.5,
+     401.4
+    ],
+    "E": [
+     324.1,
+     497.0
+    ],
+    "W": [
+     413.6,
+     586.8
+    ],
+    "H": [
+     380.0,
+     634.9
+    ],
+    "K": [
+     416.3,
+     805.0
+    ],
+    "A": [
+     353.0,
+     962.4
+    ],
+    "L": [
+     320.5,
+     997.1
+    ],
+    "F": [
+     417.0,
+     1007.3
+    ]
+   },
+   "auto": {
+    "phase": "midstance",
+    "knee": 146.1,
+    "hip": 166.1,
+    "elbow": 101.6,
+    "trunk": 1.8,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 100,
+    "withheld": null,
+    "stance": "rear",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 7,
+   "photo": "upload/photo_run/photo_3_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     390.5,
+     408.5
+    ],
+    "E": [
+     388.4,
+     537.8
+    ],
+    "W": [
+     494.7,
+     571.0
+    ],
+    "H": [
+     367.4,
+     646.8
+    ],
+    "K": [
+     446.7,
+     790.5
+    ],
+    "A": [
+     339.3,
+     963.7
+    ],
+    "L": [
+     310.5,
+     985.5
+    ],
+    "F": [
+     393.9,
+     1003.5
+    ]
+   },
+   "auto": {
+    "phase": "toe_off",
+    "knee": 119.3,
+    "hip": 145.6,
+    "elbow": 106.4,
+    "trunk": 5.5,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 96,
+    "withheld": null,
+    "stance": "rear",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 8,
+   "photo": "upload/photo_run/photo_4_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     375.1,
+     358.8
+    ],
+    "E": [
+     291.6,
+     468.4
+    ],
+    "W": [
+     392.8,
+     537.2
+    ],
+    "H": [
+     371.0,
+     624.4
+    ],
+    "K": [
+     483.8,
+     779.1
+    ],
+    "A": [
+     505.0,
+     949.6
+    ],
+    "L": [
+     490.7,
+     980.6
+    ],
+    "F": [
+     580.2,
+     963.5
+    ]
+   },
+   "auto": {
+    "phase": "uncertain",
+    "knee": 151.0,
+    "hip": 143.0,
+    "elbow": 86.9,
+    "trunk": 0.9,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": null,
+    "withheld": "stride_phase_uncertain",
+    "stance": "front",
+    "legs_clear": false
+   }
+  },
+  {
+   "n": 9,
+   "photo": "upload/photo_run/photo_5_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     410.2,
+     366.3
+    ],
+    "E": [
+     394.3,
+     477.1
+    ],
+    "W": [
+     484.3,
+     512.5
+    ],
+    "H": [
+     387.4,
+     624.4
+    ],
+    "K": [
+     464.3,
+     772.0
+    ],
+    "A": [
+     503.0,
+     934.4
+    ],
+    "L": [
+     493.8,
+     968.8
+    ],
+    "F": [
+     574.6,
+     949.4
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 165.9,
+    "hip": 147.5,
+    "elbow": 103.4,
+    "trunk": 5.0,
+    "overstride": 0.35,
+    "shin": -13.4,
+    "foot": 13.5,
+    "strike": "heel",
+    "score": 76,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 10,
+   "photo": "upload/photo_run/photo_6_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     374.6,
+     414.2
+    ],
+    "E": [
+     354.3,
+     540.3
+    ],
+    "W": [
+     457.1,
+     590.5
+    ],
+    "H": [
+     371.9,
+     660.5
+    ],
+    "K": [
+     432.2,
+     809.5
+    ],
+    "A": [
+     381.8,
+     959.8
+    ],
+    "L": [
+     360.1,
+     984.7
+    ],
+    "F": [
+     447.7,
+     994.5
+    ]
+   },
+   "auto": {
+    "phase": "midstance",
+    "knee": 139.5,
+    "hip": 157.4,
+    "elbow": 106.8,
+    "trunk": 0.6,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 100,
+    "withheld": null,
+    "stance": "under",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 11,
+   "photo": "upload/photo_run/photo_7_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     371.4,
+     406.4
+    ],
+    "E": [
+     326.9,
+     510.1
+    ],
+    "W": [
+     414.5,
+     600.9
+    ],
+    "H": [
+     362.3,
+     645.2
+    ],
+    "K": [
+     413.4,
+     806.4
+    ],
+    "A": [
+     364.0,
+     953.9
+    ],
+    "L": [
+     336.3,
+     981.5
+    ],
+    "F": [
+     374.2,
+     1008.8
+    ]
+   },
+   "auto": {
+    "phase": "midstance",
+    "knee": 143.9,
+    "hip": 160.2,
+    "elbow": 112.8,
+    "trunk": 2.2,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 100,
+    "withheld": null,
+    "stance": "under",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 12,
+   "photo": "upload/photo_run/photo_8_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     360.4,
+     408.9
+    ],
+    "E": [
+     344.8,
+     531.0
+    ],
+    "W": [
+     451.6,
+     582.9
+    ],
+    "H": [
+     351.8,
+     650.8
+    ],
+    "K": [
+     401.0,
+     820.0
+    ],
+    "A": [
+     343.9,
+     961.5
+    ],
+    "L": [
+     314.3,
+     982.8
+    ],
+    "F": [
+     409.2,
+     995.9
+    ]
+   },
+   "auto": {
+    "phase": "midstance",
+    "knee": 141.8,
+    "hip": 161.8,
+    "elbow": 108.7,
+    "trunk": 2.0,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 100,
+    "withheld": null,
+    "stance": "rear",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 13,
+   "photo": "upload/photo_run/photo_9_2026-10-18_15-55-33.jpg",
+   "group": "treadmill",
+   "side": "right",
+   "facing": 1,
+   "w": 960,
+   "h": 1280,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     364.8,
+     388.3
+    ],
+    "E": [
+     345.7,
+     498.8
+    ],
+    "W": [
+     431.3,
+     582.8
+    ],
+    "H": [
+     353.9,
+     635.5
+    ],
+    "K": [
+     416.5,
+     795.1
+    ],
+    "A": [
+     413.2,
+     954.4
+    ],
+    "L": [
+     395.3,
+     987.3
+    ],
+    "F": [
+     496.6,
+     993.0
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 157.4,
+    "hip": 156.1,
+    "elbow": 124.7,
+    "trunk": 2.5,
+    "overstride": 0.18,
+    "shin": 1.2,
+    "foot": -3.3,
+    "strike": "forefoot",
+    "score": 96,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  }
+ ]
+}
