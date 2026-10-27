@@ -105,6 +105,11 @@ class TestThePhoto:
         # flatten the near shoulder toward hip height: trunk ~13 deg
         for lst in (norm, world):
             lst[12].y = 0.33 if lst is norm else (0.33 - 0.5) * 2
+            # Elbow under the shoulder, forearm forward on the pads: an aero
+            # rider. Straight arms (152 deg) now read as not aero at all and
+            # withhold the score, which is not what this test is about.
+            lst[14].x = lst[12].x
+            lst[14].y = lst[16].y = 0.42 if lst is norm else (0.42 - 0.5) * 2
         res = PA.analyze_from_pose(np.full((1280, 720, 3), 128, np.uint8), world, norm,
                                    "right", [], "bike", "triathlon")
         trunk = res["angles"]["trunk"]
