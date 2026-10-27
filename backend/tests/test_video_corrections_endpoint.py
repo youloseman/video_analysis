@@ -70,8 +70,8 @@ def _run_background(bt: BackgroundTasks) -> None:
 
 # --- reading the points -----------------------------------------------------
 
-def test_the_editor_gets_the_near_side_points_and_the_corrections_in_force(bike_job):
-    out = main.job_landmarks(bike_job, "tok", _user())
+async def test_the_editor_gets_the_near_side_points_and_the_corrections_in_force(bike_job, db):
+    out = await main.job_landmarks(bike_job, "tok", _user(), db)
     assert out["camera_side"] == "right"
     assert out["draggable"] == [8, 12, 14, 16, 24, 26, 28, 30, 32]
     assert len(out["frames"]) == N_FRAMES
@@ -80,22 +80,22 @@ def test_the_editor_gets_the_near_side_points_and_the_corrections_in_force(bike_
     assert out["corrections"] == [] and out["rounds_left"] == 3
 
 
-def test_a_free_account_is_refused_before_anything_is_read(bike_job):
+async def test_a_free_account_is_refused_before_anything_is_read(bike_job, db):
     with pytest.raises(HTTPException) as e:
-        main.job_landmarks(bike_job, "tok", _user(tier="starter"))
+        await main.job_landmarks(bike_job, "tok", _user(tier="starter"), db)
     assert e.value.status_code == 402
 
 
-def test_somebody_else_cannot_read_the_points(bike_job):
+async def test_somebody_else_cannot_read_the_points(bike_job, db):
     with pytest.raises(HTTPException) as e:
-        main.job_landmarks(bike_job, "wrong-token", _user(uid=99))
+        await main.job_landmarks(bike_job, "wrong-token", _user(uid=99), db)
     assert e.value.status_code == 404
 
 
-def test_expired_frames_say_so(bike_job):
+async def test_expired_frames_say_so(bike_job, db):
     Path(JOBS[bike_job]["frames_store"]).unlink()
     with pytest.raises(HTTPException) as e:
-        main.job_landmarks(bike_job, "tok", _user())
+        await main.job_landmarks(bike_job, "tok", _user(), db)
     assert e.value.status_code == 410
 
 
@@ -248,9 +248,9 @@ async def test_a_failed_re_measurement_keeps_the_previous_result(bike_job, monke
 
 # --- where the rider sits over the crank ------------------------------------
 
-async def test_the_crank_axle_gives_the_hip_over_bb_from_the_clips_median_hip(bike_job):
+async def test_the_crank_axle_gives_the_hip_over_bb_from_the_clips_median_hip(bike_job, db):
     out = await main.job_bike_points(
-        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(tier="full"),
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(tier="full"), db,
     )
     hob = out["hip_over_bb"]
     assert hob["hip_source"] == "video_median" and hob["frames"] > 0
@@ -261,31 +261,31 @@ async def test_the_crank_axle_gives_the_hip_over_bb_from_the_clips_median_hip(bi
     assert job["bike_points"] == {"C": [0.5, 0.95]}
 
 
-async def test_a_free_account_cannot_mark_the_crank(bike_job):
+async def test_a_free_account_cannot_mark_the_crank(bike_job, db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as e:
         await main.job_bike_points(
-            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(tier="starter"),
+            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(tier="starter"), db,
         )
     assert e.value.status_code == 402 and "Full" in e.value.detail
 
 
-async def test_enthusiast_cannot_mark_the_crank_either(bike_job):
+async def test_enthusiast_cannot_mark_the_crank_either(bike_job, db):
     """Full only since 2026-10-26: the reading is what Full sells over Enthusiast."""
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as e:
         await main.job_bike_points(
-            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(tier="enthusiast"),
+            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", _user(tier="enthusiast"), db,
         )
     assert e.value.status_code == 402 and "Full" in e.value.detail
     with pytest.raises(HTTPException) as e:
-        await main.job_bike_auto(bike_job, "tok", _user(tier="enthusiast"))
+        await main.job_bike_auto(bike_job, "tok", _user(tier="enthusiast"), db)
     assert e.value.status_code == 402
 
 
-async def test_an_enthusiast_who_paid_before_the_move_keeps_the_crank(bike_job):
+async def test_an_enthusiast_who_paid_before_the_move_keeps_the_crank(bike_job, db):
     """crank_until: the end of the period they had paid for when it moved."""
     from datetime import datetime, timedelta, timezone
 
@@ -294,7 +294,7 @@ async def test_an_enthusiast_who_paid_before_the_move_keeps_the_crank(bike_job):
     kept = _user(tier="enthusiast")
     kept.crank_until = datetime.now(timezone.utc) + timedelta(days=20)
     out = await main.job_bike_points(
-        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", kept,
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", kept, db,
     )
     assert out["hip_over_bb"]["angle_deg"] > 0
 
@@ -302,22 +302,22 @@ async def test_an_enthusiast_who_paid_before_the_move_keeps_the_crank(bike_job):
     lapsed.crank_until = datetime.now(timezone.utc) - timedelta(days=1)
     with pytest.raises(HTTPException) as e:
         await main.job_bike_points(
-            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", lapsed,
+            bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}), "tok", lapsed, db,
         )
     assert e.value.status_code == 402
 
 
-async def test_a_bad_crank_point_is_refused_with_its_reason(bike_job):
+async def test_a_bad_crank_point_is_refused_with_its_reason(bike_job, db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as e:
         await main.job_bike_points(
-            bike_job, main.BikePointsIn(points={"P": [0.5, 0.95]}), "tok", _user(tier="full"),
+            bike_job, main.BikePointsIn(points={"P": [0.5, 0.95]}), "tok", _user(tier="full"), db,
         )
     assert e.value.status_code == 422 and "crank axle first" in e.value.detail
 
 
-async def test_the_clip_crank_search_is_paid_and_needs_the_clip(bike_job):
+async def test_the_clip_crank_search_is_paid_and_needs_the_clip(bike_job, db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as e:
@@ -328,12 +328,85 @@ async def test_the_clip_crank_search_is_paid_and_needs_the_clip(bike_job):
     assert e.value.status_code == 410 and "by hand" in e.value.detail
 
 
-async def test_where_the_crank_came_from_rides_with_the_reading(bike_job):
+async def test_where_the_crank_came_from_rides_with_the_reading(bike_job, db):
     out = await main.job_bike_points(
-        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}, c_source="auto_chainring"), "tok", _user(tier="full"),
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}, c_source="auto_chainring"), "tok", _user(tier="full"), db,
     )
     assert out["hip_over_bb"]["c_source"] == "auto_chainring"
     out = await main.job_bike_points(
-        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}, c_source="<script>"), "tok", _user(tier="full"),
+        bike_job, main.BikePointsIn(points={"C": [0.5, 0.95]}, c_source="<script>"), "tok", _user(tier="full"), db,
     )
     assert out["hip_over_bb"]["c_source"] == "user"
+
+
+# --- from a saved report: the job store has forgotten the job ----------------
+
+async def _saved_report(db, make_user, tmp_path, monkeypatch, tier="full"):
+    """A bike analysis saved to the account, its files on the volume, and the
+    in-memory job gone -- what History sees after a deploy."""
+    import time
+
+    import dataclasses
+
+    import app.core.jobs as jobstore
+    from app.models.analysis import Analysis
+
+    user = await make_user()
+    user.tier = tier
+    job_id = "histcrank01"
+    root = tmp_path / "uploads"
+    monkeypatch.setattr(jobstore, "settings", dataclasses.replace(jobstore.settings, uploads_dir=root))
+    d = root / job_id
+    d.mkdir(parents=True)
+    frames = _frames()
+    save_frames(d / "landmarks.npz", frames, meta={
+        "sport_type": "bike", "cycling_position": "triathlon", "camera_side_override": None,
+        "video_info": VIDEO_INFO, "sampling_meta": {}, "stabilizer_ctx": {}})
+    (d / "input.mp4").write_bytes(b"\x00\x00\x00\x18ftypmp42clip")
+    result = _analyze(_frames())
+    db.add(Analysis(user_id=user.id, client_id="h1", job_id=job_id, created_at_ms=int(time.time() * 1000),
+                    sport="bike", kind="video", data={"id": "h1"}, result=result))
+    await db.commit()
+    JOBS.pop(job_id, None)
+    return user, job_id
+
+
+async def test_a_saved_report_can_mark_the_crank_after_the_job_is_gone(db, make_user, tmp_path, monkeypatch):
+    """Corbin, 2026-10-27: he left the page while the clip was measured and
+    came back through History, where the marking did not exist."""
+    from sqlalchemy import select
+
+    from app.models.analysis import Analysis
+
+    user, job_id = await _saved_report(db, make_user, tmp_path, monkeypatch)
+    pts = await main.job_landmarks(job_id, None, user, db)
+    assert len(pts["frames"]) == N_FRAMES
+    out = await main.job_bike_points(job_id, main.BikePointsIn(points={"C": [0.5, 0.95]}), None, user, db)
+    assert out["hip_over_bb"]["hip_source"] == "video_median"
+    row = (await db.execute(select(Analysis).where(Analysis.job_id == job_id))).scalar_one()
+    await db.refresh(row)
+    assert row.result["hip_over_bb"]["angle_deg"] == out["hip_over_bb"]["angle_deg"], "the reading is kept"
+
+
+async def test_nobody_else_can_rebuild_someone_elses_job(db, make_user, tmp_path, monkeypatch):
+    _, job_id = await _saved_report(db, make_user, tmp_path, monkeypatch)
+    stranger = await make_user()
+    stranger.tier = "full"
+    with pytest.raises(HTTPException) as e:
+        await main.job_landmarks(job_id, None, stranger, db)
+    assert e.value.status_code == 404
+
+
+async def test_the_stored_clip_is_served_to_its_owner_only(db, make_user, tmp_path, monkeypatch):
+    from app.core.security import create_media_token
+
+    user, job_id = await _saved_report(db, make_user, tmp_path, monkeypatch)
+    resp = await main.job_source(job_id, None, user, db)
+    assert Path(resp.path).name == "input.mp4"
+    resp = await main.job_source(job_id, create_media_token(user.id, job_id), None, db)
+    assert Path(resp.path).name == "input.mp4"
+    stranger = await make_user()
+    with pytest.raises(HTTPException):
+        await main.job_source(job_id, None, stranger, db)
+    with pytest.raises(HTTPException):
+        await main.job_source(job_id, None, None, db)

@@ -1868,7 +1868,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .lmed-actions .grp{display:flex;gap:8px;flex-wrap:wrap}
 .lmed-status{font-size:12px;color:var(--c-ink-faint);font-family:var(--f-mono)}
 .lmed-status.warn{color:var(--c-warn-text)}
-.ved-wrap video{display:block;width:100%;max-height:70vh;background:#000}
+/* The box takes the clip's own shape, so the canvas laid over it (inset 0)
+   covers the picture and nothing else: a portrait clip at 100% width and
+   70vh tall was pillarboxed inside its box, and the skeleton was drawn
+   across the black bars (seen on a saved report, 2026-10-27). */
+.ved-wrap{width:fit-content;max-width:100%;margin:0 auto}
+.ved-wrap video{display:block;width:auto;max-width:100%;max-height:70vh;background:#000}
 .ved-wrap canvas.ved-c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
 .ved-ctl{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--c-bg);border-top:1px solid var(--c-line)}
 .ved-ctl input[type=range]{flex:1;min-width:80px;accent-color:var(--c-blue)}

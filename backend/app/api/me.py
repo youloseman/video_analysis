@@ -472,6 +472,9 @@ async def get_overlays(
     if not row.job_id:
         return {"overlays": {}}
     token = create_media_token(user.id, row.job_id)
+    # The clip itself rides along: the crank editor on a saved report draws
+    # on it (/jobs/<id>/source), the file in the browser being long gone.
+    source = f"/jobs/{row.job_id}/source?mt={token}" if job_file(row.job_id, "input") else None
     base = f"/jobs/{row.job_id}/overlay"
     out: dict[str, str] = {}
     for side in ("left", "right"):
@@ -479,7 +482,7 @@ async def get_overlays(
             out[side] = f"{base}?side={side}&mt={token}"
     if not out and job_file(row.job_id, "overlay"):
         out["single"] = f"{base}?mt={token}"
-    return {"overlays": out}
+    return {"overlays": out, "source": source}
 
 
 @router.get("/analyses/{client_id}/kinogram")

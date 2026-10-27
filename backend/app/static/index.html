@@ -1551,6 +1551,18 @@
       </div>
       <div class="cnote" id="hdCoachNote"></div>
     </div>
+    <!-- Where the rider sits over the crank, on a saved report: the reading
+         if one was taken, else the marking -- the clip comes from the server
+         (renderHistoryHob), so leaving the page mid-analysis loses nothing. -->
+    <div class="block hidden" id="hdHobBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Position over the crank</div>
+        <h3>Hip over the bottom bracket</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div id="hdHobPanel"></div>
+      <div id="hdHobEditorHost"></div>
+    </div>
     <div class="block hidden" id="hdPlanBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Training plan</div>
@@ -4526,15 +4538,20 @@ function hobPlace(h){
   if(a<ag.q1) return 'further back than three quarters of the Kona age-groupers';
   return 'between the age-group and pro middle halves';
 }
-function renderHob(res, which){
-  const blk=$(which==='photo'?'#pHobBlock':'#hobBlock'), host=$(which==='photo'?'#pHobPanel':'#hobPanel'); if(!blk||!host) return;
+function renderHob(res, which, opts){
+  opts=opts||{};
+  const blk=$(which==='photo'?'#pHobBlock':which==='history'?'#hdHobBlock':'#hobBlock'),
+        host=$(which==='photo'?'#pHobPanel':which==='history'?'#hdHobPanel':'#hobPanel'); if(!blk||!host) return;
   const sport=res.sport_type||res.sport||state.sport;
   if(sport!=='bike'||res.pair){ blk.classList.add('hidden'); host.innerHTML=''; return; }
   // Full only (2026-10-26), plus an Enthusiast kept on it to the end of a
   // period paid before that (the server says which: auth.crank_access). A
   // reading already taken stays shown; marking again is what the plan gates.
   const full=!!auth&&!!auth.crank_access;
-  const h=res.hip_over_bb||null, locked=!!res.locked||!full, canMark=!!state.file&&!locked, aero=['tt_aero','triathlon'].includes(res.cycling_position);
+  // A saved report marks on the clip the server kept (opts.canMark); a fresh
+  // one on the file still in this browser.
+  const h=res.hip_over_bb||null, locked=!!res.locked||!full,
+        canMark=(which==='history'?!!opts.canMark:!!state.file)&&!locked, aero=['tt_aero','triathlon'].includes(res.cycling_position);
   const intro=`The one number the Kona 2026 pros and age-groupers differed on: where the hip sits over the crank axle. Pros 88°, age-groupers 85° — about 3° or 4–5 cm further forward (${esc('31 pros, 68 age-groupers')}, every point placed by hand). Knee and hip angles did not differ.`;
   let body='';
   if(h){
@@ -4560,14 +4577,51 @@ function renderHob(res, which){
     body=`<p class="hob-lead">${intro}</p>
       ${canMark?`<div class="aero-foot"><button class="btn btn-primary btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark the crank axle</button>
         <span class="hint" style="margin-left:10px">One drag on your ${which==='photo'?'photo':'clip'}; the pedal and wheel axles are optional.</span></div>`
-        :`<p class="hint" style="text-align:left">Open this analysis with the ${which==='photo'?'photo':'clip'} still in the browser to mark the crank — after a reload the file is gone.</p>`}`;
+        :(which==='history'
+          ? `<p class="hint" style="text-align:left">The clip behind this report is no longer stored (clips are kept for your plan’s retention period), so the crank can’t be marked on it. Analyze the clip again to mark it.</p>`
+          : `<p class="hint" style="text-align:left">Open this analysis with the ${which==='photo'?'photo':'clip'} still in the browser to mark the crank — after a reload the file is gone.</p>`)}`;
   }
   host.innerHTML=body; blk.classList.remove('hidden');
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-hob-mark]'); if(!b) return;
   track('hip_over_bb_opened',{mode:b.dataset.hobMark});
   if(b.dataset.hobMark==='photo'){ lmedOpen('bike'); $('#pEditor').scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'}); }
+  else if(b.dataset.hobMark==='history'){ openHistoryCrank(); }
   else { vedOpen('bike'); } });
+
+/* ---- The crank on a saved report ----
+   The report on screen right after an analysis was the only place to mark
+   the crank, and only while the clip was still in the browser. A bike clip
+   takes minutes; people leave and come back through History, and the
+   reading they had paid for was nowhere (2026-10-27). The clip and its
+   measured frames stay on the server for the retention period, so the saved
+   report uses those: the stored result, the stored clip, the same editor. */
+const hobHist={};   // entry id -> {res, src} or null while loading / not available
+async function renderHistoryHob(e){
+  const blk=$('#hdHobBlock'); if(!blk) return;
+  const hide=()=>{ blk.classList.add('hidden'); $('#hdHobPanel').innerHTML=''; };
+  if(!e||e.kind!=='video'||e.sport!=='bike'||!e.jobId||e.bilateral||e.access!=='full'||!auth){ hide(); return; }
+  let c=hobHist[e.id];
+  if(c===undefined){
+    hobHist[e.id]=null; hide();
+    try{
+      const [rr,ro]=await Promise.all([
+        fetch('/me/analyses/'+encodeURIComponent(e.id)+'/result',{headers:authHeaders()}),
+        fetch('/me/analyses/'+encodeURIComponent(e.id)+'/overlays',{headers:authHeaders()})]);
+      const jr=rr.ok?await rr.json():null, jo=ro.ok?await ro.json():null;
+      if(!jr||!jr.result) return;
+      c=hobHist[e.id]={res:jr.result, src:(jo&&jo.source)||null};
+    }catch(err){ delete hobHist[e.id]; return; }
+    if(!state.histOpen||state.histOpen.id!==e.id) return;
+  }
+  if(!c) return;
+  renderHob(c.res,'history',{canMark:!!c.src});
+}
+function openHistoryCrank(){
+  const e=state.histOpen, c=e&&hobHist[e.id]; if(!c||!c.src) return;
+  const api=window.FLAPP_API_BASE||'';
+  vedOpen('bike',{res:c.res, jobId:e.jobId, src:api+c.src, where:'history', host:'#hdHobEditorHost', histId:e.id});
+}
 
 /* ============================================================
    Joint editor — photo, bike (docs/LANDMARK_CORRECTION_PLAN_RU.md)
@@ -5522,7 +5576,7 @@ function vedIds(){ return ved.mode==='bike'?[HOB_C,HOB_P,HOB_FA,HOB_RA]:ved.drag
 /* The bike points start where they were last placed, else on a guess from
    the first frame's leg. Fixed in the frame: the bike does not move on a trainer. */
 function vedBikeStart(){
-  const prev=(state.lastResult&&state.lastResult.bike_points)||null, pts=[];
+  const prev=(ved.res&&ved.res.bike_points)||null, pts=[];
   const rec=ved.curRec>=0?ved.curRec:0;
   ved.draggable.forEach(L=>{ const p=vedPoint(L,rec); if(p) pts[L]=p; });
   const start=hobFromAuto(ved.bikeAuto, hobGuess(pts, ved.side, ved.aspect)||{}); const out={};
@@ -5535,7 +5589,7 @@ function vedBikeStart(){
 async function vedFetchBikeAuto(){
   ved.bikeAuto=null;
   try{
-    const r=await fetch(withJobToken('/jobs/'+state.jobId+'/bike-auto', state.jobId),{headers:authHeaders()});
+    const r=await fetch(withJobToken('/jobs/'+ved.job+'/bike-auto', ved.job),{headers:authHeaders()});
     if(r.ok){ const j=await r.json(); ved.bikeAuto=(j.bike_auto&&j.bike_auto.C)?j.bike_auto:null; }
   }catch(e){ /* a convenience: the guess still works */ }
 }
@@ -5554,17 +5608,27 @@ function vedNearestRec(frameIdx){ // binary search over sorted analyzed indices
   if(lo>0 && Math.abs(a[lo-1]-frameIdx)<=Math.abs(a[lo]-frameIdx)) lo=lo-1;
   return lo;
 }
-async function vedOpen(mode){
-  const r=state.lastResult; if(!r||!state.file||!state.jobId||ved.busy) return;
+async function vedOpen(mode, ctx){
+  // ctx: a saved report's own result, job and stored clip (renderHistoryHob);
+  // without it, the analysis on screen and the file still in this browser.
+  ctx=ctx||{};
+  const r=ctx.res||state.lastResult, jobId=ctx.jobId||state.jobId, src=ctx.src||null;
+  if(!r||!jobId||(!src&&!state.file)||ved.busy) return;
+  ved.res=r; ved.job=jobId; ved.where=ctx.where||'result'; ved.histId=ctx.histId||null;
   ved.mode=mode==='bike'?'bike':'joints';
-  const ed=$('#vEditor'); ed.classList.remove('hidden'); ved.open=true;
+  const ed=$('#vEditor');
+  if(!ved.home) ved.home={parent:ed.parentNode, next:ed.nextSibling};
+  const host=ctx.host?$(ctx.host):null;
+  if(host&&ed.parentNode!==host) host.appendChild(ed);
+  else if(!host&&ed.parentNode!==ved.home.parent) ved.home.parent.insertBefore(ed, ved.home.next);
+  ed.classList.remove('hidden'); ved.open=true;
   $('#vEdApply').textContent=ved.mode==='bike'?'Measure':'Re-measure clip';
   $('#vEdTitle').textContent=ved.mode==='bike'?'Mark the crank axle':'Pause, then drag a joint';
   $('#vEdLead').textContent=ved.mode==='bike'?' — the orange ring, onto the centre of the crank. The bike does not move on a trainer, so one frame is enough; the pedal and wheel axles are optional.':' to where it really is. The move applies to the whole clip — scrub to check it.';
   $('#vEdStatus').textContent='Loading the measured points…'; $('#vEdStatus').classList.remove('warn');
   track('joint_adjust_opened',{sport:'bike',mode:'video',position:r.cycling_position||null});
   try{
-    const rr=await fetch(withJobToken('/jobs/'+state.jobId+'/landmarks', state.jobId),{headers:authHeaders()});
+    const rr=await fetch(withJobToken('/jobs/'+ved.job+'/landmarks', ved.job),{headers:authHeaders()});
     const j=await rr.json().catch(()=>({}));
     if(!rr.ok){ $('#vEdStatus').textContent=j.detail||('Could not load the points (HTTP '+rr.status+').'); $('#vEdStatus').classList.add('warn'); return; }
     ved.data=j; ved.idx=j.frames.map(f=>f.i); ved.fps=j.fps||30; ved.side=j.camera_side||'right';
@@ -5580,7 +5644,7 @@ async function vedOpen(mode){
     const sc=$('#vEdScrub'); sc.max=String(Math.max(0,ved.idx.length-1)); sc.value='0';
     const v=$('#vEdVideo');
     if(ved.url){ URL.revokeObjectURL(ved.url); ved.url=null; }
-    ved.url=URL.createObjectURL(state.file); v.src=ved.url;
+    if(src) v.src=src; else { ved.url=URL.createObjectURL(state.file); v.src=ved.url; }
     v.addEventListener('loadedmetadata',()=>{ vedFit(); v.currentTime=ved.cur/ved.fps; },{once:true});
     vedStatus(); ed.scrollIntoView({behavior:'smooth',block:'nearest'});
   }catch(e){ $('#vEdStatus').textContent='Network error while loading the points.'; $('#vEdStatus').classList.add('warn'); }
@@ -5662,6 +5726,9 @@ function vedClose(){
   if(ved.rvfc&&v.cancelVideoFrameCallback){ v.cancelVideoFrameCallback(ved.rvfc); ved.rvfc=0; }
   $('#vEditor').classList.add('hidden'); ved.open=false; ved.drag=-1; ved.mode='joints'; ved.bike={}; vedLoupe(null,false);
   v.removeAttribute('src'); v.load(); if(ved.url){ URL.revokeObjectURL(ved.url); ved.url=null; }
+  const ed=$('#vEditor');
+  if(ved.home&&ed.parentNode!==ved.home.parent) ved.home.parent.insertBefore(ed, ved.home.next);
+  ved.where='result';
 }
 function vedTogglePlay(){ const v=$('#vEdVideo'); if(v.paused){ v.play().catch(()=>{}); } else v.pause(); }
 function vedStep(d){ const v=$('#vEdVideo'); v.pause(); const rec=Math.max(0,Math.min(ved.idx.length-1,ved.curRec+d)); v.currentTime=ved.idx[rec]/ved.fps; }
@@ -5707,18 +5774,25 @@ async function applyVideoCorrections(){
   }catch(e){ ved.busy=false; vedStatus('Network error — check your connection and try again.',true); }
 }
 async function applyBikePoints(){
-  const pts=hobPayload(ved.bike); if(!pts.C||!state.jobId||ved.busy) return;
+  const pts=hobPayload(ved.bike); if(!pts.C||!ved.job||ved.busy) return;
   ved.busy=true; vedStatus('Measuring…');
   try{
     const body={points:pts, c_source:hobCSource(ved.bike, !!ved.movedC)}; if(crankMm()!=null) body.crank_length_mm=crankMm();
-    const r=await fetch(withJobToken('/jobs/'+state.jobId+'/bike-points', state.jobId),
+    const r=await fetch(withJobToken('/jobs/'+ved.job+'/bike-points', ved.job),
       {method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
     const j=await r.json().catch(()=>({}));
     ved.busy=false;
     if(!r.ok){ vedStatus(j.detail||('Measurement failed (HTTP '+r.status+').'),true); return; }
-    const res=state.lastResult; res.hip_over_bb=j.hip_over_bb; res.bike_points=j.hip_over_bb.points;
+    const res=ved.res; res.hip_over_bb=j.hip_over_bb; res.bike_points=j.hip_over_bb.points;
     if(res.sport_specific_metrics) res.sport_specific_metrics.hip_over_bb=j.hip_over_bb;
-    track('hip_over_bb_measured',{mode:'video',angle:j.hip_over_bb.angle_deg,ref:j.hip_over_bb.ref});
+    track('hip_over_bb_measured',{mode:ved.where==='history'?'history':'video',angle:j.hip_over_bb.angle_deg,ref:j.hip_over_bb.ref});
+    if(ved.where==='history'){
+      // The server has stored the reading on the analysis; redraw the block.
+      vedClose(); renderHob(res,'history',{canMark:true});
+      toast('Measured where you sit over the crank.');
+      const hb=$('#hdHobBlock'); if(hb) hb.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'});
+      return;
+    }
     vedClose(); renderHob(res,'video');
     state.videoHistId=saveToHistory('video', res, state.videoHistId||null);
     toast('Measured where you sit over the crank.');
@@ -10389,6 +10463,7 @@ function renderHistoryDetail(e){
   renderNotesOffer('hdNotesOffer', e.access==='full'||!e.locked ? e.id : null);
   renderHistoryPlan(e);
   renderHistoryAngles(e);
+  renderHistoryHob(e);
   renderHistoryKinogram(e);
   renderHistoryExport(e);
   renderHistoryUpsell(e);

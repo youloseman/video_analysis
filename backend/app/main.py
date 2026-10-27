@@ -707,6 +707,72 @@ def _correction_access(job: dict[str, Any], user: User) -> None:
         )
 
 
+async def _owned_job(
+    job_id: str, token: str | None, user: User, db: AsyncSession,
+) -> dict[str, Any]:
+    """The job, or -- for its owner, once the in-memory store has forgotten it
+    (every deploy, and ``job_ttl_hours`` regardless) -- the job rebuilt from
+    what outlives it: the stored analysis and the files on the volume.
+
+    The crank marking used to be reachable only from the report on screen
+    right after the analysis: leave the page while a bike clip was being
+    measured, come back through History, and the reading a paying athlete had
+    been promised was nowhere (Corbin, 2026-10-27). The clip and its measured
+    frames sit on the volume for the whole retention period; this is what lets
+    a saved report use them. Read-mostly: nothing here re-runs the detector.
+    """
+    try:
+        return authorized_job(job_id, token, user.id)
+    except HTTPException:
+        from sqlalchemy import select
+
+        from app.core.jobs import job_dir_for
+        from app.models.analysis import Analysis
+
+        row = (await db.execute(
+            select(Analysis).where(Analysis.user_id == user.id, Analysis.job_id == job_id)
+            .order_by(Analysis.id.desc()).limit(1)
+        )).scalar_one_or_none()
+        if row is None or not row.result:
+            raise
+        res = dict(row.result)
+        clip = job_file(job_id, "input")
+        return {
+            "status": "completed", "restored": True, "owner_user_id": user.id,
+            "sport": row.sport or res.get("sport_type"),
+            "cycling_position": res.get("cycling_position"),
+            "pair": bool(res.get("pair") or res.get("bilateral")),
+            "result": res,
+            "frames_store": str(job_dir_for(job_id) / "landmarks.npz"),
+            "input_path": str(clip) if clip else None,
+            "corrections": res.get("corrections") or [],
+        }
+
+
+async def _persist_hob(db: AsyncSession, user: User, job_id: str, block: dict[str, Any]) -> None:
+    """Write a crank reading into the stored analysis, so it survives the
+    job store and shows on the saved report -- not only in this tab."""
+    from sqlalchemy import select
+
+    from app.models.analysis import Analysis
+
+    rows = (await db.execute(
+        select(Analysis).where(Analysis.user_id == user.id, Analysis.job_id == job_id)
+    )).scalars().all()
+    for row in rows:
+        if not row.result:
+            continue
+        res = dict(row.result)
+        res["hip_over_bb"] = block
+        res["bike_points"] = block.get("points")
+        ssm = res.get("sport_specific_metrics")
+        if isinstance(ssm, dict):
+            res["sport_specific_metrics"] = {**ssm, "hip_over_bb": block}
+        row.result = res
+    if rows:
+        await db.commit()
+
+
 def _frames_store_or_410(job: dict[str, Any]) -> Path:
     path = job.get("frames_store")
     if not path or not Path(path).is_file():
@@ -2382,10 +2448,11 @@ class CorrectionsIn(BaseModel):
 
 
 @app.get("/jobs/{job_id}/landmarks")
-def job_landmarks(
+async def job_landmarks(
     job_id: str,
     t: str | None = None,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """The measured joint points of every analyzed frame, for the editor.
 
@@ -2394,7 +2461,7 @@ def job_landmarks(
     force are returned beside them, and the client applies the offsets to
     draw, exactly as the server applies them to measure.
     """
-    job = authorized_job(job_id, t, user.id)
+    job = await _owned_job(job_id, t, user, db)
     _correction_access(job, user)
     if job.get("status") != "completed" or not job.get("result"):
         raise HTTPException(409, "This analysis has not finished yet.")
@@ -2405,7 +2472,7 @@ def job_landmarks(
     )
     from app.services.video_analysis.landmark_store import load_frames
 
-    frames, meta = load_frames(path)
+    frames, meta = await run_in_threadpool(load_frames, path)
     side = (job.get("result") or {}).get("camera_side") or "left"
     draggable = list(DRAGGABLE_LANDMARKS.get(side, ()))
 
@@ -2602,13 +2669,14 @@ async def job_bike_auto(
     job_id: str,
     t: str | None = None,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Where the crank axle is on this clip, found on the median frame.
 
     Asked for when the athlete opens the crank marking; cached on the job.
     Full only, like the reading it starts.
     """
-    job = authorized_job(job_id, t, user.id)
+    job = await _owned_job(job_id, t, user, db)
     if not crank_access(user):
         raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
     if job.get("sport") != "bike" or not job.get("result"):
@@ -2646,6 +2714,7 @@ async def job_bike_points(
     body: BikePointsIn,
     t: str | None = None,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Where the rider sits over the crank, from the axle the athlete marked.
 
@@ -2654,7 +2723,7 @@ async def job_bike_points(
     no detector, no re-render -- the stored frames and a few points. Full
     only (Artur, 2026-10-26).
     """
-    job = authorized_job(job_id, t, user.id)
+    job = await _owned_job(job_id, t, user, db)
     if not crank_access(user):
         raise HTTPException(status_code=402, detail=_HIP_OVER_BB_402)
     if job.get("sport") != "bike":
@@ -2705,8 +2774,9 @@ async def job_bike_points(
     if isinstance(summary, dict):
         summary["hip_over_bb"] = block
     job["bike_points"] = block["points"]
+    await _persist_hob(db, user, job_id, block)
     logger.info("HIP_OVER_BB", job_id=job_id, user_id=user.id, angle=block["angle_deg"],
-                ref=block["ref"], frames=n)
+                ref=block["ref"], frames=n, restored=bool(job.get("restored")))
     return {"job_id": job_id, "hip_over_bb": block}
 
 
@@ -2799,6 +2869,30 @@ def job_export(
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@app.get("/jobs/{job_id}/source")
+async def job_source(
+    job_id: str,
+    mt: str | None = None,
+    user: User | None = Depends(optional_user),
+    db: AsyncSession = Depends(get_session),
+) -> FileResponse:
+    """The athlete's own clip, as stored (1080p), for the crank editor on a
+    saved report -- the browser no longer holds the file. Owner only: the
+    session, or a media token (a <video> sends no header), and the analysis
+    must be theirs."""
+    from app.core.security import media_token_user
+    from app.services.retention import user_owns_job
+
+    user_id = user.id if user else (media_token_user(mt, job_id) if mt else None)
+    if user_id is None or not await user_owns_job(db, user_id, job_id):
+        raise HTTPException(404, "unknown job_id")
+    clip = job_file(job_id, "input")
+    if clip is None:
+        raise HTTPException(404, "The clip is no longer stored.")
+    media = {".mov": "video/quicktime", ".webm": "video/webm"}.get(clip.suffix.lower(), "video/mp4")
+    return FileResponse(clip, media_type=media)
 
 
 @app.get("/jobs/{job_id}/overlay")
