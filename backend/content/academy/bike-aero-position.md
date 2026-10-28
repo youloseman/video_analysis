@@ -7,6 +7,11 @@ sport: "bike"
 read_time: 8
 published: "2026-07-14"
 featured: true
+cover: "/media/academy/covers/bike-aero-position.webp"
+cover_alt: "An upright rider on an 1880s high-wheel bicycle beside a triathlete on a time-trial bike, torso line drawn"
+cover_credit: "É.-J. Marey, c. 1885 · National Gallery of Art, CC0 · Flapp footage"
+cover_badge: "1885|2026"
+card: "wide"
 sources:
   - author: "Blocken, B., et al."
     year: 2018

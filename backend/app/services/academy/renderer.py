@@ -11,6 +11,10 @@ from __future__ import annotations
 
 import html
 import json
+import re
+from datetime import date
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from app.services import ad_pixel, analytics
@@ -118,30 +122,83 @@ footer a:hover{text-decoration:underline;text-underline-offset:3px}
 .pill .dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c-ink-faint)}
 """
 
-_HUB_CSS = """
-.acad-hero{background:linear-gradient(135deg,var(--c-brand-navy) 0%,var(--c-brand-mid) 60%,var(--c-blue) 100%);color:#fff;
-  position:relative;overflow:hidden}
-.acad-hero .wrap{max-width:1000px;padding:36px 24px 34px;position:relative;z-index:1}
-.acad-hero .eyebrow{color:rgba(255,255,255,.72)}
-.acad-hero h1{font-family:var(--f-brand);font-weight:900;font-style:italic;text-transform:none;
-  font-size:clamp(26px,3.6vw,36px);line-height:1.1;letter-spacing:-.01em;margin:10px 0 10px}
-.acad-hero p{max-width:560px;font-size:14.5px;color:rgba(255,255,255,.85)}
-.hub{max-width:1000px;margin:0 auto;padding:44px 24px 8px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-.acard{display:flex;flex-direction:column;border:1px solid var(--c-line);border-radius:var(--radius);
+# Article cards with their covers: the hub's rows and an article's "Keep
+# reading" share them. Artur, 2026-10-26: one drawn template on every card read
+# as dry and the articles as interchangeable, so every guide has its own
+# picture -- our footage, or Marey's plates from the 1880s (public domain).
+_CARD_CSS = """
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;grid-auto-flow:dense}
+.acard{display:flex;flex-direction:column;border:1px solid var(--c-line);border-radius:var(--radius-lg);min-width:0;
   background:var(--c-bg);overflow:hidden;text-decoration:none;color:inherit;transition:border-color .15s ease-out}
 .acard:hover{border-color:var(--c-ink)}
+.acard.wide{grid-column:span 2}
+.acard.full{grid-column:1/-1;flex-direction:row}
+.acard.full .media{flex:3 1 0;border-bottom:0;border-right:1px solid var(--c-line)}
+.acard.full .body{flex:2 1 0;justify-content:center;padding:26px 28px}
 .acard .stripe{height:3px;background:var(--c-blue)}
-.acard .body{padding:20px 22px 22px;display:flex;flex-direction:column;gap:10px;flex:1}
+.media{position:relative;display:block;aspect-ratio:16/9;background:var(--c-media-bg);border-bottom:1px solid var(--c-line);overflow:hidden}
+.media img{display:block;width:100%;height:100%;object-fit:cover}
+.media.contain{background:#fff}
+.media.contain img{object-fit:contain;padding:6px;box-sizing:border-box}
+.media .src{position:absolute;left:10px;bottom:10px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.03em;
+  color:#fff;background:rgba(11,17,29,.74);padding:3px 7px;border-radius:var(--radius-xs);
+  max-width:calc(100% - 20px);box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.media.contain .src{background:rgba(255,255,255,.92);color:var(--c-ink-soft);border:1px solid var(--c-line)}
+.media .bdg{position:absolute;top:12px;right:14px;font-family:var(--f-mono);font-weight:500;color:#fff;font-size:32px;
+  line-height:1;letter-spacing:-.02em;text-shadow:0 1px 10px rgba(0,0,0,.5)}
+.media .bdg.sm{left:14px;right:auto;font-size:12px;letter-spacing:.05em;color:#DCE2EC}
+.media .bdg.l,.media .bdg.r{right:auto;font-size:20px}
+.media .bdg.l{left:14px}.media .bdg.r{left:calc(50% + 14px)}
+.acard .body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;flex:1}
 .acard .cat{font-family:var(--f-mono);font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint)}
-.acard h2{font-family:var(--f-display);font-weight:600;font-size:17px;line-height:1.3;color:var(--c-ink)}
-.acard p{font-size:14px;color:var(--c-ink-soft);line-height:1.5;flex:1}
-.acard .meta{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint);margin-top:4px}
-.acard.feat{grid-column:1/-1;flex-direction:row;align-items:stretch}
-.acard.feat .stripe{height:auto;width:3px;flex:none}
-.acard.feat h2{font-size:20px}
+.acard h3{font-family:var(--f-display);font-weight:600;font-size:17px;line-height:1.3;color:var(--c-ink)}
+.acard.wide h3,.acard.full h3{font-size:21px;line-height:1.25}
+.acard p{font-size:14px;color:var(--c-ink-soft);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.acard.full p{-webkit-line-clamp:4}
+.acard .meta{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint);margin-top:auto;padding-top:4px}
+.acard.cta{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
+.acard.cta:hover{border-color:var(--c-ink)}
+.acard.cta .media{border-bottom-color:var(--c-brand-navy)}
+.acard.cta .cat{color:#C9D1DE}.acard.cta h3{color:#fff}
+.acard.cta .go{align-self:flex-start;margin-top:4px;background:var(--c-action);color:var(--c-action-ink);padding:9px 16px;
+  border-radius:var(--radius-btn);font-weight:600;font-size:14px}
+@media(max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .acard.wide{grid-column:auto}
+  .acard.full{flex-direction:column}
+  .acard.full .media{flex:none;border-right:0;border-bottom:1px solid var(--c-line)}
+  .acard.full .body{padding:18px 20px 20px}
+}
+"""
+
+_HUB_CSS = _CARD_CSS + """
+.acad-hero{position:relative;background:#0B111D;color:#fff;overflow:hidden}
+.acad-hero .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:60% 50%;opacity:.8}
+.acad-hero .veil{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,17,29,.95) 0%,rgba(11,17,29,.8) 40%,rgba(11,17,29,.15) 80%)}
+.acad-hero .wrap{max-width:1000px;padding:64px 24px 26px;position:relative;z-index:1}
+.acad-hero .eyebrow{color:#C9D1DE}
+.acad-hero h1{font-family:var(--f-display);font-weight:600;text-transform:none;color:#fff;
+  font-size:clamp(30px,4.4vw,46px);line-height:1.08;letter-spacing:-.015em;margin:12px 0 14px;max-width:620px}
+.acad-hero p{max-width:540px;font-size:16px;line-height:1.55;color:#DCE2EC}
+.hchips{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.hchip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;font-size:14px;font-weight:500;color:#fff;text-decoration:none;background:rgba(11,24,47,.55);
+  transition:border-color .15s ease-out}
+.hchip:hover{border-color:#fff}
+.hchip .n{font-family:var(--f-mono);font-size:12px;color:#C9D1DE}
+.acad-hero .credit{margin-top:34px;font-family:var(--f-mono);font-size:11px;color:#AEB8C8}
+.hub{max-width:1000px;margin:0 auto;padding:40px 24px 8px}
+.sec{margin-bottom:44px;scroll-margin-top:84px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid var(--c-line);
+  padding-bottom:10px;margin-bottom:16px}
+.sec-h h2{font-family:var(--f-display);font-weight:600;font-size:20px;color:var(--c-ink)}
 .empty{color:var(--c-ink-soft);padding:24px 0}
-@media(max-width:640px){.acard.feat{flex-direction:column}.acard.feat .stripe{width:auto;height:3px}}
+@media(max-width:640px){
+  .acad-hero .veil{background:rgba(11,17,29,.8)}
+  .acad-hero .wrap{padding:44px 16px 22px}
+  .hub{padding:32px 16px 8px}
+}
 """
 
 # The reading-progress bar: how far through the <article> the reader is.
@@ -164,7 +221,7 @@ _READ_JS = """
 # focus goes back to the figure.
 _ZOOM_JS = """
 (function(){
-  var imgs=[].slice.call(document.querySelectorAll('.prose figure img')); if(!imgs.length) return;
+  var imgs=[].slice.call(document.querySelectorAll('.cover img, .prose figure img')); if(!imgs.length) return;
   var z=document.createElement('div'); z.id='zoom'; z.hidden=true;
   z.setAttribute('role','dialog'); z.setAttribute('aria-modal','true'); z.setAttribute('aria-label','Enlarged figure');
   z.innerHTML='<button type="button" class="zoom-x" aria-label="Close">\u00d7</button>'
@@ -273,6 +330,29 @@ _ARTICLE_CSS = """
 .backlink{display:inline-flex;align-items:center;gap:6px;margin-bottom:24px;font-size:13px;font-weight:500;color:var(--c-blue-dk);text-decoration:none}
 .backlink svg{width:15px;height:15px;flex:none}
 .backlink:hover{text-decoration:underline;text-underline-offset:3px}
+/* byline: a person, not "Flapp" */
+.byline{display:flex;align-items:center;gap:12px;margin-top:20px}
+.byline .av{width:40px;height:40px;border-radius:50%;background:var(--c-brand-navy);color:#fff;font-size:13px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;flex:none}
+.byline .who{font-size:14px;line-height:1.45;color:var(--c-ink-soft)}
+.byline .who strong{color:var(--c-ink);font-weight:600}
+.byline .when{display:block;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
+/* the cover: the same picture as the article's hub card, credited on the page */
+.cover{margin:0 0 32px}
+.cover .frame{border:1px solid var(--c-line);border-radius:var(--radius-lg);overflow:hidden;background:var(--c-media-bg)}
+.cover.contain .frame{background:#fff;padding:8px}
+.cover img{display:block;width:100%;height:auto;cursor:zoom-in}
+.cover img:focus-visible{outline:2px solid var(--c-blue);outline-offset:3px}
+.cover figcaption{margin-top:8px;font-size:13.5px;line-height:1.5;color:var(--c-ink-faint)}
+.cover .credit{display:block;margin-top:3px;font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
+/* keep reading */
+.more{margin-top:52px}
+.more .sec-h{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--c-line);padding-bottom:10px;margin-bottom:16px}
+.more .sec-h h2{font-family:var(--f-display);font-weight:600;font-size:20px;color:var(--c-ink)}
+.more .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.more .acard h3{font-size:15.5px}
+.more .acard p{display:none}
+@media(max-width:640px){.more .grid{grid-template-columns:minmax(0,1fr)}}
 """
 
 _FONTS_LINK = (
@@ -520,8 +600,24 @@ def _page(
     jsonld: dict[str, Any] | list[dict[str, Any]] | None = None,
     og_type: str = "website",
     extra_js: str = "",
+    image: str | None = None,
+    image_alt: str = "",
 ) -> str:
-    """Assemble a full HTML document with SEO head, header, body, footer."""
+    """Assemble a full HTML document with SEO head, header, body, footer.
+
+    ``image`` is the absolute URL of the page's picture: a shared link, Google
+    Discover and an AI answer all show it, and without one they show nothing
+    or somebody else's."""
+    pic = ""
+    if image:
+        size = _image_size(image.split("/media/", 1)[-1] if "/media/" in image else "")
+        pic = (
+            f'<meta property="og:image" content="{_esc(image)}">\n'
+            + (f'<meta property="og:image:width" content="{size[0]}">\n'
+               f'<meta property="og:image:height" content="{size[1]}">\n' if size else "")
+            + (f'<meta property="og:image:alt" content="{_esc(image_alt)}">\n' if image_alt else "")
+            + f'<meta name="twitter:image" content="{_esc(image)}">\n'
+        )
     ld = ""
     if jsonld is not None:
         ld = (
@@ -544,7 +640,10 @@ def _page(
         f'<meta property="og:description" content="{_esc(description)}">\n'
         f'<meta property="og:url" content="{_esc(canonical)}">\n'
         f'<meta property="og:site_name" content="{SITE_NAME}">\n'
+        f"{pic}"
         '<meta name="twitter:card" content="summary_large_image">\n'
+        # Discover shows a large picture only when the page allows it.
+        '<meta name="robots" content="max-image-preview:large">\n'
         f"{_FONTS_LINK}\n"
         f"<style>{_BASE_CSS}{_GUEST_CSS}{extra_css}</style>\n"
         f"{ld}\n"
@@ -580,37 +679,137 @@ def _sport_pill(sport: str) -> str:
     return f'<span class="pill {cls}"><span class="dot"></span>{label}</span>'
 
 
+# The byline. Search and answer engines weigh who wrote a page; "Flapp" as the
+# author of a study a person measured by hand undersold it.
+AUTHOR = "Artur Podgornyi"
+AUTHOR_ROLE = "triathlete, founder of Flapp"
+
+MEDIA_DIR = Path(__file__).resolve().parents[2] / "static" / "media"
+HERO = "/media/academy/covers/marey-runner-1883.webp"
+HERO_ALT = ("Chronophotograph by Étienne-Jules Marey, about 1883: one runner photographed "
+            "many times on a single plate, every phase of the stride at once")
+HERO_CREDIT = "Photo: É.-J. Marey, c. 1883 · Wellcome Collection · CC BY 4.0"
+CTA_PICTURE = "/media/report-frame.webp"
+
+
+@lru_cache(maxsize=64)
+def _image_size(rel: str) -> tuple[int, int] | None:
+    """(width, height) of a file under static/media, for width/height
+    attributes (no layout shift) and og:image:width/height."""
+    if not rel:
+        return None
+    try:
+        from PIL import Image
+
+        with Image.open(MEDIA_DIR / rel.removeprefix("/media/")) as im:
+            return im.size
+    except Exception:  # noqa: BLE001 - a missing size must never break a page
+        return None
+
+
+def _wh(src: str) -> str:
+    size = _image_size(src)
+    return f' width="{size[0]}" height="{size[1]}"' if size else ""
+
+
+def _date(iso: str | None) -> str:
+    """2026-07-15 -> 15 Jul 2026."""
+    try:
+        d = date.fromisoformat(str(iso))
+    except (TypeError, ValueError):
+        return ""
+    return f"{d.day} {d.strftime('%b')} {d.year}"
+
+
+def _badge(text: str) -> str:
+    if not text:
+        return ""
+    if "|" in text:  # a split picture: one label over each half
+        left, right = (p.strip() for p in text.split("|", 1))
+        return f'<span class="bdg l">{_esc(left)}</span><span class="bdg r">{_esc(right)}</span>'
+    return f'<span class="bdg{" sm" if len(text) > 8 else ""}">{_esc(text)}</span>'
+
+
+def _card(m: ArticleMeta, *, size: str | None = None) -> str:
+    """One article card: its cover, who the picture belongs to, the title."""
+    cls = size if size is not None else m.card
+    media = '<span class="stripe"></span>'
+    if m.cover:
+        fit = " contain" if m.cover_fit == "contain" else ""
+        src_chip = f'<span class="src">{_esc(m.cover_credit)}</span>' if m.cover_credit else ""
+        media = (
+            f'<span class="media{fit}"><img src="{_esc(m.cover)}" alt="{_esc(m.cover_alt)}"{_wh(m.cover)} '
+            f'loading="lazy" decoding="async">{_badge(m.cover_badge)}{src_chip}</span>'
+        )
+    when = _date(m.published)
+    return (
+        f'<a class="acard {m.sport}{" " + cls if cls else ""}" href="/academy/{_esc(m.slug)}">'
+        f"{media}"
+        '<span class="body">'
+        f'<span class="cat">{_esc(m.category_label)} · {m.read_time} min</span>'
+        f"<h3>{_esc(m.title)}</h3>"
+        f"<p>{_esc(m.description)}</p>"
+        + (f'<span class="meta">{when}</span>' if when else "")
+        + "</span></a>"
+    )
+
+
+def _cta_card() -> str:
+    return (
+        '<a class="acard cta wide" href="/app">'
+        f'<span class="media"><img src="{CTA_PICTURE}" alt="A Flapp report frame: a triathlete on a trainer '
+        f'with knee, hip, trunk and elbow angles drawn over the video"{_wh(CTA_PICTURE)} loading="lazy" '
+        'decoding="async" style="object-position:center 58%"></span>'
+        '<span class="body"><span class="cat">Your clip</span>'
+        "<h3>Every angle in these guides, measured on your own video.</h3>"
+        '<span class="go">Analyze free</span></span></a>'
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public: render the hub and a single article
 # ---------------------------------------------------------------------------
 def render_hub(articles: list[ArticleMeta], base_url: str) -> str:
     canonical = f"{base_url}/academy"
-    cards: list[str] = []
-    for m in articles:
-        feat = " feat" if m.featured else ""
-        cards.append(
-            f'<a class="acard {m.sport}{feat}" href="/academy/{_esc(m.slug)}">'
-            '<span class="stripe"></span>'
-            '<span class="body">'
-            f'<span class="cat">{_esc(m.category_label)}</span>'
-            f"<h2>{_esc(m.title)}</h2>"
-            f"<p>{_esc(m.description)}</p>"
-            f'<span class="meta">{m.read_time} min read</span>'
-            "</span></a>"
+    # Studies built on our own data first, then the guides by sport.
+    rows = [
+        ("research", "Research", "Original research", "Our data",
+         [m for m in articles if m.kind == "research"]),
+        ("running", "Running", "Running form", "Guides",
+         [m for m in articles if m.kind != "research" and m.sport == "run"]),
+        ("cycling", "Cycling", "Bike position and aero", "Guides",
+         [m for m in articles if m.kind != "research" and m.sport == "bike"]),
+    ]
+    sections: list[str] = []
+    chips: list[str] = []
+    for key, chip, title, label, metas in rows:
+        if not metas:
+            continue
+        cards = "".join(_card(m) for m in metas)
+        if key == "cycling":
+            cards += _cta_card()
+        n = len(metas)
+        sections.append(
+            f'<section class="sec" id="{key}" aria-labelledby="h-{key}">'
+            f'<div class="sec-h"><h2 id="h-{key}">{title}</h2>'
+            f'<span class="eyebrow">{label} · {n}</span></div>'
+            f'<div class="grid">{cards}</div></section>'
         )
-    grid = (
-        f'<div class="grid">{"".join(cards)}</div>'
-        if cards
-        else '<p class="empty">No articles yet — check back soon.</p>'
-    )
+        chips.append(f'<a class="hchip" href="#{key}">{chip} <span class="n">{n}</span></a>')
+    grid = "".join(sections) or '<p class="empty">No articles yet — check back soon.</p>'
     body = (
-        '<div class="acad-hero"><div class="wrap">'
+        '<header class="acad-hero">'
+        f'<img class="bg" src="{HERO}" alt="{_esc(HERO_ALT)}"{_wh(HERO)} fetchpriority="high">'
+        '<div class="veil"></div><div class="wrap">'
         '<div class="eyebrow">Flapp Academy</div>'
-        "<h1>Train the technique,<br>not just the miles</h1>"
-        "<p>Evidence-based guides on running form, running economy, cycling "
-        "position and aerodynamics — the science behind what our analyzer "
-        "measures.</p>"
-        "</div></div>"
+        "<h1>Running form and bike position, measured</h1>"
+        "<p>In 1883 Étienne-Jules Marey photographed runners many times a second "
+        "to see what the eye misses. We measure the same angles from your phone "
+        "video. These guides explain what the numbers mean, and the studies show "
+        "what we found.</p>"
+        f'<nav class="hchips" aria-label="Sections">{"".join(chips)}</nav>'
+        f'<div class="credit">{_esc(HERO_CREDIT)}</div>'
+        "</div></header>"
         f'<main class="hub">{grid}</main>'
     )
     jsonld = {
@@ -620,6 +819,20 @@ def render_hub(articles: list[ArticleMeta], base_url: str) -> str:
         "url": canonical,
         "description": "Evidence-based guides on running form, running "
         "economy, cycling position and aerodynamics.",
+        "image": base_url + HERO,
+        "mainEntity": {
+            "@type": "ItemList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i + 1,
+                    "url": f"{base_url}/academy/{m.slug}",
+                    "name": m.title,
+                    **({"image": base_url + m.cover} if m.cover else {}),
+                }
+                for i, m in enumerate(articles)
+            ],
+        },
     }
     return _page(
         title=f"Academy — {SITE_NAME} · Running & Cycling Technique Guides",
@@ -631,6 +844,8 @@ def render_hub(articles: list[ArticleMeta], base_url: str) -> str:
         active="academy",
         jsonld=jsonld,
         og_type="website",
+        image=base_url + HERO,
+        image_alt=HERO_ALT,
     )
 
 
@@ -641,6 +856,46 @@ def render_article(article: Article, base_url: str) -> str:
     # CSS/JS. Runs before the lede split so a widget can never be the lede.
     body_html, widget_css, widget_js = render_widgets(article.body_html)
     lede, rest = _lede_and_rest(body_html)
+
+    # The cover. A study whose cover is one of its own figures shows it once,
+    # at the top, with that figure's caption.
+    cover_html = ""
+    if m.cover:
+        caption = ""
+        fig = re.search(r'<figure><img src="' + re.escape(m.cover) + r'"[^>]*>(?:<figcaption>(.*?)</figcaption>)?</figure>\n?',
+                        rest, flags=re.S)
+        if fig:
+            caption = fig.group(1) or ""
+            rest = rest[: fig.start()] + rest[fig.end():]
+        credit = f'<span class="credit">{_esc(m.cover_credit)}</span>' if m.cover_credit else ""
+        cap = f"<figcaption>{caption}{credit}</figcaption>" if caption or credit else ""
+        cover_html = (
+            f'<figure class="cover{" contain" if m.cover_fit == "contain" else ""}"><div class="frame">'
+            f'<img src="{_esc(m.cover)}" alt="{_esc(m.cover_alt)}"{_wh(m.cover)} fetchpriority="high">'
+            f"</div>{cap}</figure>"
+        )
+
+    when = _date(m.published)
+    upd = _date(m.updated) if m.updated and m.updated != m.published else ""
+    byline = (
+        '<div class="byline"><span class="av" aria-hidden="true">AP</span>'
+        f'<span class="who"><strong>{AUTHOR}</strong> · {AUTHOR_ROLE}'
+        + (f'<span class="when">Published {when}{" · Updated " + upd if upd else ""}</span>' if when else "")
+        + "</span></div>"
+    )
+
+    # Keep reading: the same sport first, then the rest; never this article.
+    from app.services.academy.parser import get_all_articles
+
+    others = [a for a in get_all_articles() if a.slug != m.slug]
+    others.sort(key=lambda a: a.sport != m.sport)
+    more = others[:3]
+    more_html = (
+        '<section class="more" aria-labelledby="h-more"><div class="sec-h"><h2 id="h-more">Keep reading</h2>'
+        '<a class="eyebrow" href="/academy">All articles</a></div>'
+        f'<div class="grid">{"".join(_card(a, size="") for a in more)}</div></section>'
+        if more else ""
+    )
 
     # sources
     sources_html = ""
@@ -674,8 +929,10 @@ def render_article(article: Article, base_url: str) -> str:
         f'<span class="rt">{m.read_time} min read</span></div>'
         f"<h1>{_esc(m.title)}</h1>"
         + (f'<p class="lede">{lede}</p>' if lede else "")
+        + byline
         + "</div>"
-        '<div class="speedline"></div>'
+        + cover_html
+        + '<div class="speedline"></div>'
         f'<div class="prose">{rest}</div>'
         f"{sources_html}"
         '<div class="article-cta">'
@@ -683,9 +940,11 @@ def render_article(article: Article, base_url: str) -> str:
         f'<a class="btn btn-primary" href="/">Analyze my video{_ICONS["arr-r"]}</a>'
         "</div>"
         "</article>"
+        f"{more_html}"
         "</div>"
     )
 
+    image = base_url + m.cover if m.cover else None
     jsonld = [
         {
             "@context": "https://schema.org",
@@ -694,9 +953,11 @@ def render_article(article: Article, base_url: str) -> str:
             "description": m.description,
             "url": canonical,
             "mainEntityOfPage": canonical,
-            "author": {"@type": "Organization", "name": SITE_NAME},
-            "publisher": {"@type": "Organization", "name": SITE_NAME},
+            "author": {"@type": "Person", "name": AUTHOR, "jobTitle": "Founder, Flapp"},
+            "publisher": {"@type": "Organization", "name": SITE_NAME, "url": base_url},
+            **({"image": [image]} if image else {}),
             **({"datePublished": m.published} if m.published else {}),
+            **({"dateModified": m.updated or m.published} if (m.updated or m.published) else {}),
         },
         {
             "@context": "https://schema.org",
@@ -712,11 +973,13 @@ def render_article(article: Article, base_url: str) -> str:
         description=m.description,
         canonical=canonical,
         body=body,
-        extra_css=_ARTICLE_CSS + widget_css,
+        extra_css=_ARTICLE_CSS + _CARD_CSS + widget_css,
         active="academy",
         jsonld=jsonld,
         og_type="article",
         extra_js=widget_js + _READ_JS + _ZOOM_JS,
+        image=image,
+        image_alt=m.cover_alt,
     )
 
 
@@ -735,14 +998,21 @@ def render_sitemap(articles: list[ArticleMeta], base_url: str) -> str:
         urls += [(u, None) for u in render_sitemap_entries(base_url)]
     except Exception:  # noqa: BLE001 - a missing sample must not break robots
         pass
+    images = {f"{base_url}/academy": [base_url + HERO]}
     for m in articles:
-        urls.append((f"{base_url}/academy/{m.slug}", m.published))
+        loc = f"{base_url}/academy/{m.slug}"
+        urls.append((loc, m.updated or m.published))
+        if m.cover:
+            images[loc] = [base_url + m.cover]
     parts = ['<?xml version="1.0" encoding="UTF-8"?>',
-             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+             'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">']
     for loc, lastmod in urls:
         entry = f"<url><loc>{_esc(loc)}</loc>"
         if lastmod:
             entry += f"<lastmod>{_esc(lastmod)}</lastmod>"
+        for img in images.get(loc, []):
+            entry += f"<image:image><image:loc>{_esc(img)}</image:loc></image:image>"
         entry += "</url>"
         parts.append(entry)
     parts.append("</urlset>")

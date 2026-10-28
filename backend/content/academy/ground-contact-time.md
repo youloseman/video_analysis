@@ -7,6 +7,10 @@ sport: "run"
 read_time: 7
 published: "2026-07-15"
 featured: false
+cover: "/media/academy/covers/ground-contact-time.webp"
+cover_alt: "Five frames 50 milliseconds apart of one foot on the ground, from touchdown to toe-off"
+cover_credit: "Flapp footage · 60 fps"
+cover_badge: "+0 · +50 · +100 · +150 · +200 ms"
 sources:
   - author: "Santos-Concejero, Granados, Irazusta, et al."
     year: 2014

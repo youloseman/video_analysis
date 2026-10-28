@@ -7,6 +7,9 @@ sport: "run"
 read_time: 8
 published: "2026-07-15"
 featured: false
+cover: "/media/academy/covers/overstriding.webp"
+cover_alt: "Runner at touchdown with a vertical line dropped from the hip and the landing foot marked ahead of it"
+cover_credit: "Flapp footage + Flapp overlay"
 sources:
   - author: "Heiderscheit, Chumanov, Michalski, et al."
     year: 2011

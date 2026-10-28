@@ -28,6 +28,14 @@ example)::
     published    str   opt       ISO date (YYYY-MM-DD) for schema/sitemap
     featured     bool  opt       render large on the hub
     sources      list  opt       [{author, year, title, finding}] bibliography
+    updated      str   opt       ISO date of the last real revision (dateModified)
+    kind         str   opt       guide | research (research gets its own hub row)
+    cover        str   opt       /media/... 16:9 picture: hub card, article head, og:image
+    cover_alt    str   opt       what the cover shows, for alt text
+    cover_credit str   opt       whose picture and under what licence, printed on it
+    cover_badge  str   opt       a short overlay on the card ("180?"); "a|b" labels a split
+    cover_fit    str   opt       cover (default) | contain, for a chart or a drawing
+    card         str   opt       wide | full: the card's size on the hub
 """
 
 from __future__ import annotations
@@ -70,6 +78,14 @@ class ArticleMeta:
     read_time: int
     published: str | None
     featured: bool
+    updated: str | None = None
+    kind: str = "guide"  # guide | research
+    cover: str | None = None
+    cover_alt: str = ""
+    cover_credit: str = ""
+    cover_badge: str = ""
+    cover_fit: str = "cover"
+    card: str = ""  # "" | wide | full
 
 
 @dataclass(frozen=True)
@@ -394,6 +410,13 @@ def _estimate_read_time(md_body: str) -> int:
     return max(1, round(words / _WORDS_PER_MINUTE))
 
 
+def _own_media(value: Any) -> str | None:
+    """A cover is our own /media/ file or nothing -- same rule as a figure:
+    the Academy never hotlinks someone else's picture."""
+    v = str(value or "").strip()
+    return v if re.fullmatch(r"/media/[A-Za-z0-9._/-]+\.(?:webp|jpg|jpeg|png)", v) and ".." not in v else None
+
+
 def _parse_file(path: Path) -> Article | None:
     """Parse one ``.md`` file into an :class:`Article`; None if unusable.
 
@@ -436,6 +459,14 @@ def _parse_file(path: Path) -> Article | None:
         read_time=read_time,
         published=str(fm["published"]).strip() if fm.get("published") else None,
         featured=bool(fm.get("featured", False)),
+        updated=str(fm["updated"]).strip() if fm.get("updated") else None,
+        kind="research" if str(fm.get("kind") or "").strip() == "research" else "guide",
+        cover=_own_media(fm.get("cover")),
+        cover_alt=str(fm.get("cover_alt") or "").strip(),
+        cover_credit=str(fm.get("cover_credit") or "").strip(),
+        cover_badge=str(fm.get("cover_badge") or "").strip(),
+        cover_fit="contain" if str(fm.get("cover_fit") or "").strip() == "contain" else "cover",
+        card=str(fm.get("card") or "").strip() if str(fm.get("card") or "").strip() in ("wide", "full") else "",
     )
     sources = fm.get("sources") if isinstance(fm.get("sources"), list) else []
     return Article(meta=meta, body_html=markdown_to_html(body), sources=sources)

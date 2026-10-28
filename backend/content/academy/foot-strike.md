@@ -7,6 +7,10 @@ sport: "run"
 read_time: 9
 published: "2026-07-15"
 featured: false
+cover: "/media/academy/covers/foot-strike.webp"
+cover_alt: "Close-up of a runner's shoe touching down on a treadmill belt"
+cover_credit: "Flapp footage · 60 fps"
+card: "wide"
 sources:
   - author: "Lieberman, Venkadesan, Werbel, et al."
     year: 2010

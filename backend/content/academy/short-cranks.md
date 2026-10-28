@@ -7,6 +7,10 @@ sport: "bike"
 read_time: 9
 published: "2026-07-14"
 featured: false
+cover: "/media/academy/covers/short-cranks.webp"
+cover_alt: "Close-up of a time-trial bike's crank and chainring with the rider's leg mid-stroke"
+cover_credit: "Flapp footage"
+cover_badge: "165 mm"
 sources:
   - author: "Sports Biomechanics (crank-length kinematics)"
     year: 2025

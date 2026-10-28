@@ -201,5 +201,5 @@ def test_every_article_with_figures_opens_them_full_screen():
     from app.services.academy.renderer import render_article
     invalidate_cache()
     page = render_article(get_article("kona-2026-hip-over-crank"), "https://getflapp.com")
-    assert "querySelectorAll('.prose figure img')" in page and "#zoom{" in page
+    assert "querySelectorAll('.cover img, .prose figure img')" in page and "#zoom{" in page
     assert "cursor:zoom-in" in page

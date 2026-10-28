@@ -7,6 +7,9 @@ sport: "bike"
 read_time: 10
 published: "2026-07-15"
 featured: false
+cover: "/media/academy/covers/cleat-position.webp"
+cover_alt: "Close-up of a white cycling shoe clipped into the pedal at the bottom of the stroke"
+cover_credit: "Flapp footage"
 sources:
   - author: "Bonfatti, M., Bizzoni, E., Gennari, A., Salvioli, S."
     year: 2024

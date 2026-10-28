@@ -7,6 +7,12 @@ sport: "bike"
 read_time: 6
 published: "2026-10-25"
 featured: true
+kind: "research"
+cover: "/media/academy/kona-2026-hip-over-crank/illustration.webp"
+cover_alt: "Illustration to scale: the hip over the crank axle at 88° for the typical Kona pro and 85° for the typical age-grouper, 4–5 cm apart"
+cover_credit: "Illustration: Flapp"
+cover_fit: "contain"
+card: "wide"
 sources:
   - author: "Steinmetz, M."
     year: 2024

@@ -7,6 +7,10 @@ sport: "run"
 read_time: 7
 published: "2026-07-20"
 featured: false
+cover: "/media/academy/covers/trunk-lean.webp"
+cover_alt: "Marey's 1883 chronophotograph of a runner reduced to bright lines along the limbs and trunk"
+cover_credit: "Étienne-Jules Marey, 1883 · public domain"
+card: "full"
 sources:
   - author: "Folland, Allen, Black, Handsaker, Forrester"
     year: 2017

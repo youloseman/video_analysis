@@ -7,6 +7,10 @@ sport: "run"
 read_time: 8
 published: "2026-07-13"
 featured: true
+cover: "/media/academy/covers/running-cadence.webp"
+cover_alt: "Étienne-Jules Marey's 1883 chronophotograph of a runner, six strides on one plate"
+cover_credit: "Étienne-Jules Marey, 1883 · public domain"
+cover_badge: "180?"
 sources:
   - author: "Heiderscheit, Chumanov, Michalski, et al."
     year: 2011

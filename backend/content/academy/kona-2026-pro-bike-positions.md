@@ -7,6 +7,11 @@ sport: "bike"
 read_time: 8
 published: "2026-10-11"
 featured: false
+kind: "research"
+cover: "/media/academy/kona-2026/field.webp"
+cover_alt: "Chart of 32 professional Kona 2026 bike positions against Flapp's ranges: torso, shoulder, elbow and forearm"
+cover_credit: "Chart: Flapp data"
+cover_fit: "contain"
 sources:
   - author: "Fintelman, D. M."
     year: 2015

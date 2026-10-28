@@ -7,6 +7,9 @@ sport: "run"
 read_time: 7
 published: "2026-07-15"
 featured: false
+cover: "/media/academy/covers/vertical-oscillation.webp"
+cover_alt: "Seven frames of the same runner's head across one stride, the highest and lowest points marked"
+cover_credit: "Flapp footage · 7 frames"
 sources:
   - author: "Folland, Allen, Black, et al."
     year: 2017
