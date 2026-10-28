@@ -373,10 +373,37 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 }
 /* ---------- What changes for you ---------- */
 .outcomes{background:var(--c-panel);padding:80px 0}
-.out-head{max-width:760px;margin-bottom:28px}
-.out-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-@media(max-width:960px){.out-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.out-grid{grid-template-columns:minmax(0,1fr)}.outcomes{padding:80px 0}}
+.out-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:28px}
+.out-head > div{max-width:760px}
+/* A carousel on native scrolling: swipe on a phone, arrows and dots once the
+   script below has wired them. Without the script it is still a strip that
+   scrolls, so nothing is ever out of reach. No autoplay. */
+.out-grid{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 32px)/3);gap:16px;
+  overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;
+  padding-bottom:4px}
+.out-grid::-webkit-scrollbar{display:none}
+.out-grid:focus-visible{outline:2px solid var(--c-blue);outline-offset:4px;border-radius:var(--radius-lg)}
+.out-grid > .out-card{scroll-snap-align:start}
+@media(max-width:960px){.out-grid{grid-auto-columns:calc((100% - 16px)/2)}}
+@media(max-width:640px){
+  .out-grid{grid-auto-columns:84%;margin:0 -24px;padding:0 24px 4px;scroll-padding-inline:24px}
+}
+.out-nav{display:none;gap:8px;flex:none}
+.out-js .out-nav{display:flex}
+.out-arrow{width:44px;height:44px;border-radius:50%;border:1px solid var(--c-line);background:var(--c-bg);
+  color:var(--c-navy);display:grid;place-items:center;cursor:pointer;transition:background .15s,border-color .15s}
+.out-arrow svg{width:18px;height:18px}
+.out-arrow:hover:not(:disabled){border-color:var(--c-navy)}
+.out-arrow:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+.out-arrow:disabled{opacity:.35;cursor:default}
+.out-dots{display:none;justify-content:center;gap:8px;margin-top:20px}
+.out-js .out-dots{display:flex}
+.out-dots button{width:8px;height:8px;padding:0;border:0;border-radius:4px;background:var(--c-line);cursor:pointer;
+  transition:width .2s,background .2s}
+.out-dots button[aria-current="true"]{width:22px;background:var(--c-navy)}
+.out-dots button:focus-visible{outline:2px solid var(--c-blue);outline-offset:3px}
+@media(max-width:640px){.out-nav{display:none!important}}
+@media(prefers-reduced-motion:reduce){.out-dots button{transition:none}}
 .out-card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-lg);
   padding:22px 22px 18px;display:flex;flex-direction:column}
 .out-tag{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
@@ -1031,11 +1058,16 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
 <section id="outcomes" class="outcomes">
   <div class="wrap">
     <div class="out-head">
-      <p class="eyebrow">What changes for you</p>
-      <h2 class="sec">Speed you can find<br>Pain you can <span class="accent">trace</span></h2>
-      
+      <div>
+        <p class="eyebrow">What changes for you</p>
+        <h2 class="sec">Speed you can find<br>Pain you can <span class="accent">trace</span></h2>
+      </div>
+      <div class="out-nav">
+        <button type="button" class="out-arrow" id="outPrev" aria-label="Previous" aria-controls="outGrid"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg></button>
+        <button type="button" class="out-arrow" id="outNext" aria-label="Next" aria-controls="outGrid"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 13 10l-5.5 5.5"/></svg></button>
+      </div>
     </div>
-    <div class="out-grid">
+    <div class="out-grid" id="outGrid" tabindex="0" role="region" aria-roledescription="carousel" aria-label="What changes for you">
       <article class="out-card">
         <p class="out-tag speed">Speed · bike</p>
         <h3>Find the minutes in your bike position</h3>
@@ -1073,6 +1105,7 @@ footer .wordmark .wm-tile .mark{width:25px;height:20px}
         <p class="out-foot">Free to start</p>
       </article>
     </div>
+    <div class="out-dots" id="outDots"></div>
   </div>
 </section>
 
@@ -1769,6 +1802,45 @@ var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
   els.forEach(function(el){io.observe(el);});
 })();
 
+
+/* "What changes for you" carousel: arrows step one card, dots mark each
+   resting position (6 cards at 3 on screen = 4 stops), all on the strip's
+   own scroll so swipes and trackpads stay native. */
+(function(){
+  var grid=document.getElementById('outGrid'), dots=document.getElementById('outDots');
+  var prev=document.getElementById('outPrev'), next=document.getElementById('outNext');
+  if(!grid||!dots||!prev||!next) return;
+  var cards=[].slice.call(grid.querySelectorAll('.out-card'));
+  grid.closest('.outcomes').classList.add('out-js');
+  function step(){ return cards.length>1 ? cards[1].offsetLeft-cards[0].offsetLeft : grid.clientWidth; }
+  function stops(){ return Math.max(1, Math.round((grid.scrollWidth-grid.clientWidth)/step())+1); }
+  function at(){ return Math.round(grid.scrollLeft/step()); }
+  function go(i){ grid.scrollTo({left:i*step(),behavior:REDUCED?'auto':'smooth'}); }
+  var n=0;
+  function build(){
+    var s=stops(); if(s===n) return; n=s; dots.innerHTML='';
+    for(var i=0;i<s;i++){
+      var b=document.createElement('button'); b.type='button';
+      b.setAttribute('aria-label','Show card '+(i+1)+' of '+cards.length);
+      b.onclick=(function(k){return function(){go(k);};})(i);
+      dots.appendChild(b);
+    }
+    dots.hidden = s<2;
+  }
+  function sync(){
+    var i=Math.min(at(),n-1), end=grid.scrollLeft+grid.clientWidth>=grid.scrollWidth-2;
+    if(end) i=n-1;
+    [].forEach.call(dots.children,function(b,k){ b.setAttribute('aria-current',k===i?'true':'false'); });
+    prev.disabled = grid.scrollLeft<=2;
+    next.disabled = end;
+  }
+  prev.onclick=function(){ go(Math.max(0,at()-1)); };
+  next.onclick=function(){ go(Math.min(n-1,at()+1)); };
+  var raf=0;
+  grid.addEventListener('scroll',function(){ if(!raf) raf=requestAnimationFrame(function(){ raf=0; sync(); }); },{passive:true});
+  addEventListener('resize',function(){ build(); sync(); });
+  build(); sync();
+})();
 
 /* Feature-list tabs in both splits: clicking an item swaps the screenshot
    beside it. Items are real buttons for keyboard/AT users. */
