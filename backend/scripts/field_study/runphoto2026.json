@@ -1704,6 +1704,384 @@
     "stance": "front",
     "legs_clear": true
    }
+  },
+  {
+   "n": 28,
+   "photo": "upload/run_photos/landing/chicago/images (1).jpg",
+   "group": "chicago",
+   "side": "right",
+   "facing": 1,
+   "w": 386,
+   "h": 518,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     141.5,
+     170.4
+    ],
+    "E": [
+     114.2,
+     221.4
+    ],
+    "W": [
+     149.6,
+     214.1
+    ],
+    "H": [
+     141.7,
+     264.2
+    ],
+    "K": [
+     158.3,
+     340.7
+    ],
+    "A": [
+     131.1,
+     405.4
+    ],
+    "L": [
+     119.5,
+     415.3
+    ],
+    "F": [
+     159.4,
+     426.1
+    ]
+   },
+   "auto": {
+    "phase": "toe_off",
+    "knee": 145.0,
+    "hip": 167.9,
+    "elbow": 50.2,
+    "trunk": -0.1,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 81,
+    "withheld": null,
+    "stance": "rear",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 29,
+   "photo": "upload/run_photos/landing/chicago/images (2).jpg",
+   "group": "chicago",
+   "side": "left",
+   "facing": -1,
+   "w": 495,
+   "h": 619,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     292.1,
+     274.7
+    ],
+    "E": [
+     336.0,
+     302.4
+    ],
+    "W": [
+     309.5,
+     319.1
+    ],
+    "H": [
+     289.5,
+     378.0
+    ],
+    "K": [
+     254.9,
+     445.8
+    ],
+    "A": [
+     254.6,
+     522.8
+    ],
+    "L": [
+     263.5,
+     538.5
+    ],
+    "F": [
+     219.4,
+     538.1
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 153.2,
+    "hip": 154.4,
+    "elbow": 64.6,
+    "trunk": -1.4,
+    "overstride": 0.23,
+    "shin": -0.2,
+    "foot": 0.6,
+    "strike": "midfoot",
+    "score": 89,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 30,
+   "photo": "upload/run_photos/landing/chicago/images (3).jpg",
+   "group": "chicago",
+   "side": "left",
+   "facing": -1,
+   "w": 739,
+   "h": 415,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     346.8,
+     301.6
+    ],
+    "E": [
+     353.9,
+     311.8
+    ],
+    "W": [
+     360.2,
+     324.3
+    ],
+    "H": [
+     344.4,
+     303.4
+    ],
+    "K": [
+     357.9,
+     318.1
+    ],
+    "A": [
+     377.8,
+     333.9
+    ],
+    "L": [
+     381.3,
+     336.4
+    ],
+    "F": [
+     379.9,
+     339.8
+    ]
+   },
+   "auto": {
+    "phase": "uncertain",
+    "knee": null,
+    "hip": null,
+    "elbow": null,
+    "trunk": null,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": null,
+    "withheld": "run_leg_not_measured",
+    "stance": null,
+    "legs_clear": false
+   }
+  },
+  {
+   "n": 31,
+   "photo": "upload/run_photos/landing/chicago/images (4).jpg",
+   "group": "chicago",
+   "side": "left",
+   "facing": -1,
+   "w": 554,
+   "h": 554,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     456.1,
+     281.8
+    ],
+    "E": [
+     494.6,
+     309.9
+    ],
+    "W": [
+     474.3,
+     329.6
+    ],
+    "H": [
+     446.7,
+     362.1
+    ],
+    "K": [
+     430.7,
+     423.1
+    ],
+    "A": [
+     422.7,
+     493.2
+    ],
+    "L": [
+     426.4,
+     505.9
+    ],
+    "F": [
+     404.7,
+     513.1
+    ]
+   },
+   "auto": {
+    "phase": "uncertain",
+    "knee": 171.9,
+    "hip": 172.0,
+    "elbow": 80.2,
+    "trunk": -6.7,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": null,
+    "withheld": "run_legs_unreadable",
+    "stance": null,
+    "legs_clear": false
+   }
+  },
+  {
+   "n": 32,
+   "photo": "upload/run_photos/landing/chicago/images.jpg",
+   "group": "chicago",
+   "side": "right",
+   "facing": 1,
+   "w": 513,
+   "h": 598,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     249.1,
+     248.3
+    ],
+    "E": [
+     261.7,
+     301.2
+    ],
+    "W": [
+     283.9,
+     262.4
+    ],
+    "H": [
+     252.2,
+     354.8
+    ],
+    "K": [
+     333.7,
+     425.2
+    ],
+    "A": [
+     314.2,
+     506.9
+    ],
+    "L": [
+     300.2,
+     515.1
+    ],
+    "F": [
+     335.5,
+     543.0
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 117.4,
+    "hip": 132.5,
+    "elbow": 43.2,
+    "trunk": -1.7,
+    "overstride": 0.32,
+    "shin": 13.4,
+    "foot": -38.4,
+    "strike": "forefoot",
+    "score": 68,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 33,
+   "photo": "upload/run_photos/landing/chicago/Kelvin_Kiptum_2023_Chicago_Marathon.jpg",
+   "group": "chicago",
+   "side": "left",
+   "facing": -1,
+   "w": 1100,
+   "h": 1364,
+   "origin": [
+    791,
+    1513
+   ],
+   "scale": 0.360656,
+   "model": {
+    "S": [
+     505.6,
+     266.4
+    ],
+    "E": [
+     549.3,
+     452.5
+    ],
+    "W": [
+     408.7,
+     430.7
+    ],
+    "H": [
+     545.9,
+     632.2
+    ],
+    "K": [
+     328.6,
+     856.4
+    ],
+    "A": [
+     268.3,
+     1148.0
+    ],
+    "L": [
+     294.1,
+     1206.6
+    ],
+    "F": [
+     157.7,
+     1200.0
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 147.6,
+    "hip": 129.6,
+    "elbow": 68.0,
+    "trunk": 6.3,
+    "overstride": 0.46,
+    "shin": -11.7,
+    "foot": 2.8,
+    "strike": "midfoot",
+    "score": 60,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
   }
  ]
 }

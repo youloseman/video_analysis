@@ -47,6 +47,8 @@ WORK = ROOT / "upload" / "field-study" / "runphoto2026"
 SOURCES = [
     (ROOT / "upload" / "photo_run", "treadmill"),
     (ROOT / "upload" / "run_photos", None),
+    # Race photos one level down (2026-10-28): elites, amateurs, groups.
+    (ROOT / "upload" / "run_photos" / "landing" / "chicago", "chicago"),
 ]
 MAX_W = 1100
 KEYS = ("S", "E", "W", "H", "K", "A", "L", "F")
