@@ -9,10 +9,22 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <!-- The theme Capacitor's BridgeActivity sets on itself, by name, from its
+         own resources; ours wins the merge. On Android 15 with targetSdk 35
+         the window is forced edge to edge, so the WebView would paint under
+         the status bar and under the navigation bar. capacitor.config.json
+         sets adjustMarginsForEdgeToEdge "auto", which makes Capacitor inset
+         the WebView instead, leaving the window background visible in those
+         two strips. The SPA is light only (app.css carries no
+         prefers-color-scheme), so the strips are white like the page, and the
+         system icons drawn in them have to be dark to stay legible. -->
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 
 

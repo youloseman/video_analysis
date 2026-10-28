@@ -6,6 +6,7 @@
     "contentInset": "never"
   },
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "adjustMarginsForEdgeToEdge": "auto"
   }
 }

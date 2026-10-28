@@ -1,16 +1,29 @@
 // Guard: the native projects are generated, so a `cap add` (or a Capacitor
-// upgrade) can silently reset hand-edited native files. This asserts the two
+// upgrade) can silently reset hand-edited native files. This asserts the
 // things we edit by hand survive:
 //   1. the bundle id matches capacitor.config.json everywhere
 //   2. the iOS usage strings are present (without them the WebView file
 //      picker crashes the app the first time it opens the camera)
+//   3. the icons and splash are brand assets, not the Capacitor placeholders
+//   4. the Android release can actually be uploaded (versionCode from the
+//      build, a signing config) and fits the screen (edge-to-edge insets)
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const mobileDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const appId = JSON.parse(readFileSync(join(mobileDir, 'capacitor.config.json'), 'utf8')).appId;
+const capConfig = JSON.parse(readFileSync(join(mobileDir, 'capacitor.config.json'), 'utf8'));
+const appId = capConfig.appId;
 const fails = [];
+
+// Android 15 (targetSdk 35) forces the window edge-to-edge: with Capacitor's
+// default ("disable") nothing insets the WebView, so the page paints under the
+// status bar and the bottom tab bar sits under the navigation bar. "auto" lets
+// Capacitor apply the insets as margins -- the Android half of what
+// contentInset/env(safe-area-inset-*) do on iOS.
+if ((capConfig.android?.adjustMarginsForEdgeToEdge ?? 'disable') !== 'auto') {
+  fails.push('android.adjustMarginsForEdgeToEdge != "auto" -- content draws under the status/navigation bars on Android 15');
+}
 
 const gradle = join(mobileDir, 'android/app/build.gradle');
 if (existsSync(gradle)) {
@@ -18,6 +31,35 @@ if (existsSync(gradle)) {
   if (!g.includes(`applicationId "${appId}"`)) fails.push(`android applicationId != ${appId}`);
   const pkgDir = join(mobileDir, 'android/app/src/main/java', ...appId.split('.'), 'MainActivity.java');
   if (!existsSync(pkgDir)) fails.push(`android MainActivity missing at ${appId.replace(/\./g, '/')}/`);
+  // Play refuses a versionCode it has seen before, so the hard-coded 1 the
+  // template writes makes every release after the first unuploadable.
+  if (/versionCode\s+\d/.test(g)) fails.push('android versionCode is hard-coded 1 -- Play rejects the second upload; take it from the build');
+  // Without this the release build type is signed with the debug key, which
+  // Play rejects at upload ("debuggable" / wrong certificate).
+  if (!g.includes('signingConfig signingConfigs.release')) fails.push('android release build has no signing config');
+}
+
+const styles = join(mobileDir, 'android/app/src/main/res/values/styles.xml');
+if (existsSync(styles)) {
+  const x = readFileSync(styles, 'utf8');
+  // The inset strips (above/below the WebView) show the window background;
+  // the SPA is light-only, so they are white and the system icons in them
+  // must be dark or they vanish.
+  if (!x.includes('windowLightStatusBar')) fails.push('android theme has no windowLightStatusBar -- white status bar strip with white icons');
+}
+
+// `cap add android` restores the template launcher icon, whose adaptive
+// background is white. Ours is the brand navy, which is the cheapest way to
+// tell our mark from the placeholder (a blue cross) without pinning the hash
+// of an asset we are still free to redraw.
+const iconBg = join(mobileDir, 'android/app/src/main/res/values/ic_launcher_background.xml');
+if (existsSync(iconBg) && !/#14294B/i.test(readFileSync(iconBg, 'utf8'))) {
+  fails.push('android ic_launcher_background is not the brand navy -- the Capacitor placeholder icon is back');
+}
+for (const rel of ['android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+                   'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png',
+                   'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png']) {
+  if (existsSync(join(mobileDir, 'android')) && !existsSync(join(mobileDir, rel))) fails.push(`${rel} missing`);
 }
 
 const manifest = join(mobileDir, 'android/app/src/main/AndroidManifest.xml');

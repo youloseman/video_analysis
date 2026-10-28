@@ -1,8 +1,12 @@
-# Codemagic CI — iOS build for the Flapp mobile shell (mobile/).
+# Codemagic CI — the Flapp mobile shell (mobile/), both platforms.
 #
 # Why cloud CI: development happens on Windows; Apple requires macOS/Xcode to
-# build and sign iOS apps. This workflow builds the Capacitor iOS app and
-# uploads it to TestFlight.
+# build and sign iOS apps. Android could be built locally, but keeping both on
+# the same tag is what stops the two stores drifting apart.
+#
+#   android-debug-apk  manual     sideloadable APK, no account, no signing
+#   android-release    tag        signed .aab for Play (setup in its header)
+#   ios-testflight     tag        signed .ipa -> TestFlight (setup below)
 #
 # One-time setup (Artur, after the Apple Developer account is active):
 #   1. App Store Connect -> Users and Access -> Integrations -> App Store
@@ -62,6 +66,84 @@ workflows:
           ./gradlew assembleDebug
     artifacts:
       - mobile/android/app/build/outputs/**/*.apk
+
+  # The Play release: a SIGNED App Bundle, which is the only thing Play accepts.
+  #
+  # One-time setup (Artur):
+  #   1. Codemagic -> Teams -> Code signing identities -> Android keystores:
+  #      upload secrets/android/flapp-upload.jks, reference name  flapp_upload ,
+  #      keystore password / key alias / key password from
+  #      secrets/android/KEYSTORE.md. Codemagic then exports CM_KEYSTORE_PATH,
+  #      CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD, which
+  #      mobile/android/app/build.gradle reads (see its header).
+  #   2. Nothing else: the AAB comes back as a build artifact and goes to
+  #      Play Console -> Testing -> Internal testing -> Create new release ->
+  #      upload. Two minutes by hand, and it keeps the first release free of a
+  #      service account.
+  #
+  # Automating the upload later (worth it from the third release or so):
+  #   Google Cloud -> IAM -> Service accounts: create one, grant it access in
+  #   Play Console -> Users and permissions (Release manager on this app only),
+  #   download the JSON key, add it to Codemagic -> Teams -> Integrations ->
+  #   Google Play, then uncomment the publishing block at the end.
+  android-release:
+    name: Flapp Android -> signed AAB
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      node: 24.13.0
+      java: 21
+      android_signing:
+        - flapp_upload
+    # Same tag as the iOS workflow: one `scripts/mobile-release.sh` sends both
+    # stores the same bundle of the SPA, so the two apps cannot drift apart.
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'mobile/*'
+          include: true
+      cancel_previous_builds: true
+    scripts:
+      - name: Build web bundle
+        script: |
+          cd mobile
+          npm ci
+          npm run check:native      # bundle id, icons, versionCode, signing, insets
+          node scripts/sync-www.mjs
+      - name: Capacitor sync
+        script: |
+          cd mobile
+          npx cap sync android
+      - name: Build signed AAB
+        script: |
+          cd mobile/android
+          chmod +x gradlew
+          # Play refuses a versionCode it has seen; $PROJECT_BUILD_NUMBER is
+          # unique and monotonic per app. versionName stays the marketing
+          # version from build.gradle, so a run of test builds does not move
+          # the version the listing shows.
+          FLAPP_VERSION_CODE="$PROJECT_BUILD_NUMBER" ./gradlew bundleRelease
+      - name: Confirm it is signed with the upload key
+        script: |
+          # An unsigned AAB builds without error and is rejected at upload, so
+          # the check belongs here and not in the Play Console.
+          AAB=mobile/android/app/build/outputs/bundle/release/app-release.aab
+          if unzip -l "$AAB" | grep -q 'META-INF/.*\.RSA'; then
+            echo "OK: $AAB is signed"
+          else
+            echo "FAIL: $AAB has no signature -- was the keystore attached to"
+            echo "      this workflow (environment.android_signing)?"
+            exit 1
+          fi
+    artifacts:
+      - mobile/android/app/build/outputs/bundle/**/*.aab
+      - mobile/android/app/build/outputs/**/mapping.txt
+    # publishing:
+    #   google_play:
+    #     credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS
+    #     track: internal
+    #     submit_as_draft: false
 
   ios-testflight:
     name: Flapp iOS -> TestFlight

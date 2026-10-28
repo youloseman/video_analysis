@@ -1,5 +1,42 @@
 apply plugin: 'com.android.application'
 
+/* -- Version and signing, both supplied from outside -----------------------
+ *
+ * versionCode: Google Play refuses an upload whose versionCode it has already
+ * seen, and it must only ever go up. Hard-coding 1 here meant the second
+ * release could not be uploaded at all, so the number comes from the build:
+ * Codemagic's $PROJECT_BUILD_NUMBER is unique and monotonic per app, the same
+ * value the iOS workflow feeds to agvtool. A local build with nothing set
+ * stays at 1 -- fine for a debug APK, and never uploaded.
+ *
+ * versionName is what the listing shows ("1.0"); it is NOT derived from the
+ * code, so a run of internal-test builds does not inflate the public version.
+ *
+ * Signing: the release keystore is a secret, so it is never in the repo. It
+ * arrives as a file path plus three passwords. Codemagic exports exactly these
+ * CM_* names when an Android keystore is attached to the workflow
+ * (environment.android_signing); FLAPP_* overrides them for a local release
+ * build. With none of them set the release build type simply has no signing
+ * config -- `assembleDebug` still works, `bundleRelease` produces an unsigned
+ * AAB rather than silently shipping a debug-signed one.
+ */
+def envOr = { String flapp, String cm ->
+    System.getenv(flapp) ?: System.getenv(cm) ?: null
+}
+def flappVersionCode = (project.findProperty('flappVersionCode')
+        ?: System.getenv('FLAPP_VERSION_CODE')
+        ?: System.getenv('PROJECT_BUILD_NUMBER')
+        ?: '1') as Integer
+def flappVersionName = (project.findProperty('flappVersionName')
+        ?: System.getenv('FLAPP_VERSION_NAME')
+        ?: '1.0') as String
+def keystorePath = envOr('FLAPP_KEYSTORE_PATH', 'CM_KEYSTORE_PATH')
+def keystoreFile = keystorePath ? file(keystorePath) : null
+def hasKeystore = keystoreFile != null && keystoreFile.exists()
+if (keystorePath && !hasKeystore) {
+    logger.warn("flapp: keystore path set but no file at ${keystorePath} -- release will be unsigned")
+}
+
 android {
     namespace "ca.clarivagroups.flapp"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +44,8 @@ android {
         applicationId "ca.clarivagroups.flapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode flappVersionCode
+        versionName flappVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +53,26 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    if (hasKeystore) {
+        signingConfigs {
+            release {
+                storeFile keystoreFile
+                storePassword envOr('FLAPP_KEYSTORE_PASSWORD', 'CM_KEYSTORE_PASSWORD')
+                keyAlias envOr('FLAPP_KEY_ALIAS', 'CM_KEY_ALIAS')
+                keyPassword envOr('FLAPP_KEY_PASSWORD', 'CM_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            // The WebView loads the bundle from assets, so there is no app
+            // JavaScript for R8 to shrink and nothing it can usefully strip
+            // from the Capacitor bridge (plugins are found by reflection --
+            // minifying them needs keep rules we would be maintaining for a
+            // few hundred KB).
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasKeystore) signingConfig signingConfigs.release
         }
     }
 }

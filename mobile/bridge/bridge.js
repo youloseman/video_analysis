@@ -18,6 +18,10 @@
  *      forbid selling digital subscriptions outside IAP; until the RevenueCat
  *      phase the app must show NO buy buttons and NO "purchase on the web"
  *      steering. Free tier + sign-in for existing subscribers is allowed.
+ *   5. Fit the phone: the notch and home bar on iOS, the forced edge-to-edge
+ *      window on Android 15.
+ *   6. Android's hardware Back button, which Capacitor leaves as "close the
+ *      app" -- see the section for the policy.
  */
 (function () {
   'use strict';
@@ -169,6 +173,70 @@
     '}'
   ].join('\n');
   document.head.appendChild(fit);
+
+  /* -- 6. Android: the hardware Back button -------------------------------- */
+  // Capacitor's BridgeActivity does not override onBackPressed, so without a
+  // listener here Back is the plain Activity default: finish() -- the app
+  // closes, from whatever screen, with an open dialog, mid-analysis. Android
+  // users read that as a crash.
+  //
+  // Registering any 'backButton' listener suppresses that default (see
+  // native-bridge.js), after which this is the whole Back policy:
+  //
+  //   a dialog or the menu is open  ->  close it
+  //   a view was navigated to       ->  go back one view
+  //   the first screen              ->  background the app (NOT exit): the
+  //                                     task stays warm, so coming back lands
+  //                                     on the same report rather than a
+  //                                     cold start of the analyze form.
+  //
+  // The SPA already pushes a history entry per view and restores on popstate,
+  // so going back is history.back(). What it cannot tell us is whether there
+  // IS an entry to go back to -- in the app the SPA takes over the launch
+  // entry with replaceState, so history.length counts the pre-app entries of
+  // the WebView too and history.back() at the root is a silent no-op that
+  // looks like Back is broken. Hence the depth counter: the pushes we have
+  // seen since launch, which is exactly how many times Back may go back.
+  var App = plugins.App;
+  if (App) {
+    var depth = 0;
+    var pushState = history.pushState.bind(history);
+    history.pushState = function () {
+      var r = pushState.apply(null, arguments);
+      depth++;
+      return r;
+    };
+    window.addEventListener('popstate', function () { if (depth > 0) depth--; });
+
+    App.addListener('backButton', function () {
+      // Escape is what every dialog already closes on (the SPA's shared focus
+      // containment calls the modal's own close routine, which stops the
+      // camera recorder, releases the stream, restores focus). The close
+      // button is the fallback for a dialog that opened without registering.
+      var modal = null, all = document.querySelectorAll('.modal:not(.hidden)');
+      for (var i = all.length - 1; i >= 0; i--) {
+        if (all[i].offsetParent !== null || all[i].offsetHeight > 0) { modal = all[i]; break; }
+      }
+      if (modal) {
+        try {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        } catch (e) {}
+        if (!modal.classList.contains('hidden')) {
+          var x = modal.querySelector('.modal-close');
+          if (x) x.click(); else modal.classList.add('hidden');
+        }
+        return;
+      }
+      if (document.body.classList.contains('nav-open')) {
+        try {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        } catch (e) {}
+        return;
+      }
+      if (depth > 0) { history.back(); return; }
+      App.minimizeApp();
+    });
+  }
 
   window.FLAPP_BRIDGE = {
     ready: ready,
