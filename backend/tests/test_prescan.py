@@ -43,7 +43,19 @@ def test_too_few_frames_or_frames_that_disagree_mean_ask():
     assert classify([flipped] * 6) == {"sport": None, "family": None, "frames": 0}
 
 
-def test_a_photo_is_always_a_bike_and_one_frame_is_enough():
+def test_a_photo_of_a_runner_is_a_run():
+    assert classify([RUN], photo=True)["sport"] == "run"
+    # midstance: the swing foot only just behind the hip (treadmill p13: 0.32)
+    assert classify([dict(RUN, ankle_back=0.32)], photo=True)["sport"] == "run"
+
+
+def test_an_upright_rider_with_the_foot_forward_is_still_a_bike():
+    # the two bike photos as upright as a runner: foot ahead of the hip
+    assert classify([dict(UPRIGHT, trunk_deg=85.0, ankle_back=-0.17)], photo=True)["sport"] == "bike"
+    assert classify([UPRIGHT], photo=True)["sport"] == "bike"
+
+
+def test_a_photo_is_otherwise_a_bike_and_one_frame_is_enough():
     assert classify([AERO], photo=True)["family"] == "aero"
     no_arm = {k: v for k, v in AERO.items() if k not in ("elbow_deg", "forearm_deg", "wrist_fwd", "wrist_down")}
     assert classify([no_arm], photo=True) == {"sport": "bike", "family": None, "frames": 1,

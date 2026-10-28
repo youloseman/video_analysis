@@ -876,7 +876,49 @@ def _photo_concerns(sport: str, res: dict[str, Any]) -> list[dict[str, Any]]:
             v.get("optimal_min"), v.get("optimal_max"),
             material=(status == "needs_work"),
         ))
+    # A running photo at touchdown: overstride is scored but lives in the
+    # contact block, not in the angle rows.
+    c = res.get("contact") or {}
+    if sport == "run" and c.get("overstride_status") in ("needs_work", "acceptable"):
+        lo, hi = c.get("overstride_band") or (None, None)
+        out.append(concern_hints.concern(
+            "overstride_ratio", "Overstride", float(c["overstride_ratio"]), lo, hi,
+            material=(c["overstride_status"] == "needs_work"),
+        ))
     return out
+
+
+def _run_contact_prompt_line(c: dict[str, Any]) -> str | None:
+    """The touchdown readings of a running photo, for the coach.
+
+    Only on a frame the detector placed at initial contact -- on any other
+    frame the three do not exist, and saying nothing keeps the model from
+    reaching for them.
+    """
+    if not c.get("measured"):
+        return None
+    parts = []
+    ratio = c.get("overstride_ratio")
+    if ratio is not None:
+        lo, hi = c.get("overstride_band") or (0.0, 0.15)
+        parts.append(
+            f"overstride {ratio:.2f} leg lengths ahead of the hip (range {lo:.2f}-{hi:.2f}, "
+            f"{c.get('overstride_status')}; scored)"
+        )
+    if c.get("shin_angle") is not None:
+        parts.append(
+            f"shin {c['shin_angle']:+.0f} deg from vertical (negative = foot landed ahead "
+            f"of the knee; shown, not scored)"
+        )
+    if c.get("foot_strike"):
+        parts.append(
+            f"foot strike {c['foot_strike']} (a category from a still, not a verdict: "
+            f"heel-first is not a fault in itself, the reach is)"
+        )
+    if not parts:
+        return None
+    return ("At touchdown (this frame is the instant the foot lands): " + "; ".join(parts)
+            + ". Overstride is a fraction of leg length, NOT degrees.")
 
 
 def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
@@ -1266,11 +1308,23 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
                    if extreme else "")
             )
             continue
+        # Run knee where the two knees overlap: the point may be on the swing
+        # leg. Scored, but not a foundation for the main fix.
+        check_note = (
+            " [the two knees overlap in this frame, so the knee point may sit on "
+            "the wrong leg: if you mention the knee, ask the athlete to check the "
+            "point on the picture, and do not build the main fix on it]"
+            if v.get("check") else ""
+        )
         lines.append(
             f"- {v.get('label', k)}: {v.get('value')}{unit} "
             f"(optimal {v.get('optimal_min')}-{v.get('optimal_max')}{unit}, "
-            f"{v.get('status')}){unit_note}{phase_note}"
+            f"{v.get('status')}){unit_note}{phase_note}{check_note}"
         )
+    contact = (res.get("contact") or {}) if sport == "run" else {}
+    contact_line = _run_contact_prompt_line(contact) if contact else None
+    if contact_line:
+        lines.append(contact_line)
     # Materiality is decided HERE, not by the model. The photo result already
     # carries a per-angle status, so the set of things that may be "fixed" is a
     # fact, not a judgement call -- state it plainly rather than hoping the
@@ -1282,6 +1336,10 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             material.append(f"{label} ({v.get('value')})")
         elif status == "acceptable":
             borderline.append(f"{label} ({v.get('value')})")
+    if contact_line and contact.get("overstride_status") == "needs_work":
+        material.append(f"Overstride ({contact['overstride_ratio']:.2f} leg lengths)")
+    elif contact_line and contact.get("overstride_status") == "acceptable":
+        borderline.append(f"Overstride ({contact['overstride_ratio']:.2f} leg lengths)")
     if material:
         lines.append(
             "Material problems (ONLY these may appear in Fix first): "

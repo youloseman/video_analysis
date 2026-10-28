@@ -55,3 +55,19 @@ def test_a_touchdown_photo_reads_the_landing_leg():
     assert r["angles_with_context"]["knee"]["value"] > 155
     assert c["overstride_ratio"] > 0.25
     assert c["foot_strike"] == "heel"
+    # Graded with the score's own band, so the report's block and the line on
+    # the picture carry the same verdict.
+    assert c["overstride_band"] == [0.0, 0.15] and c["overstride_status"] == "needs_work"
+    assert "check" not in r["angles_with_context"]["knee"]
+
+
+@pytest.mark.golden
+def test_crossed_knees_ask_for_a_look_at_the_knee_point():
+    """photo_3 (runphoto2026 p07): the knee point sat on the swing leg, 18 deg
+    off the hand-placed one. Still scored; the athlete is told to check it."""
+    r = analyze_photo(_photo(3).read_bytes(), "run", None, False, True)
+    assert r["contact"]["legs"]["knee_gap"] < 0.2
+    knee = r["angles_with_context"]["knee"]
+    assert knee["check"] is True and "overlap" in knee["note"]
+    assert any(w.startswith("Knee: your two knees overlap") for w in r["warnings"])
+    assert r["score"]["overall_score"] is not None

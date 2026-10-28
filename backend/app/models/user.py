@@ -28,6 +28,19 @@ def has_full(tier: str | None) -> bool:
     return tier in FULL_TIERS
 
 
+def run_photo_access(user: object) -> bool:
+    """May this account analyse a running photo?
+
+    Behind RUN_CONTACT_METRICS until the touchdown readings are checked on
+    real frames; an admin account always may, which is how they get checked.
+    The photo endpoint measures with the contact readings on exactly when
+    this is true, and the app offers the "Run · photo" tile on the same answer.
+    """
+    from app.core.config import settings
+
+    return bool(settings.run_contact_metrics) or getattr(user, "tier", None) == TIER_ADMIN
+
+
 def crank_access(user: object) -> bool:
     """May this account take the hip-over-crank reading?
 

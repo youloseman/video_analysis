@@ -2180,9 +2180,10 @@ async def analyze_photo_endpoint(
     from app.services.video_analysis.photo_analyzer import analyze_photo
     # Running contact readings and the run "no score" rule: switched on for
     # everyone by RUN_CONTACT_METRICS, and always on for an admin account so
-    # they can be checked on real photos before that. See config.
-    from app.models.user import TIER_ADMIN
-    contact = settings.run_contact_metrics or user.tier == TIER_ADMIN
+    # they can be checked on real photos before that. See config. The same
+    # answer offers the app's "Run · photo" tile (/auth/me run_photo).
+    from app.models.user import run_photo_access
+    contact = run_photo_access(user)
     try:
         result = await run_in_threadpool(
             analyze_photo, data, sport, cycling_position, free and not preview,

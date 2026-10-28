@@ -1074,6 +1074,7 @@ def _generate_photo_thumbnail(
     row_status: dict[str, str] | None = None,
     show_header: bool = True,
     helmet: dict[str, Any] | None = None,
+    overstride: dict[str, Any] | None = None,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
@@ -1081,7 +1082,8 @@ def _generate_photo_thumbnail(
     (free-tier teaser): keep the skeleton + arcs but mask the numeric angle
     labels and burn a watermark. ``corrected``: landmark indices the athlete
     placed by hand, ringed so they read as a person's statement rather than
-    a detection.
+    a detection. ``overstride`` (run, at touchdown): the contact block, drawn
+    as the reach it measures.
     """
     # Draw on a canvas at least as big as the overlay geometry expects. Chip
     # type has a hard minimum size, so on a small photo -- a frame cropped out
@@ -1324,6 +1326,39 @@ def _generate_photo_thumbnail(
         chips.metric_chip((hlx, hly), "HELMET ABOVE BACK", h_text, h_status, scale=_sk,
                           align="left" if ahead > 0 else "right")
 
+    # --- 2c. OVERSTRIDE (run, at touchdown) ---
+    # A dashed plumb line from the hip down to the ground and a bar from it out
+    # to the landing ankle: the reach the number is, |ankle_x - hip_x| over leg
+    # length, in the same colour as its verdict in the report.
+    if sport == "run" and overstride and len(pixel_coords) > 32:
+        _, hip_i, _ = RUNNING_PHOTO_ANGLES[camera_side]["hip"]
+        _, ankle_i, _, _ = RUNNING_PHOTO_ANKLE[camera_side]
+        hx_, hy_, hv = pixel_coords[hip_i]
+        ax_, ay_, av = pixel_coords[ankle_i]
+        if min(hv, av) >= _VIS_THRESHOLD and ay_ > hy_:
+            o_status = "muted" if hide_angle_values else _ROW_TO_CHIP.get(
+                overstride.get("overstride_status"), "muted")
+            o_rgb = overlay_style.STATUS_COLORS.get(o_status, overlay_style.INK_SOFT)
+            thick = max(2, int(2 * _sk))
+            _draw_dashed_line(cv2_mod, frame, (hx_, hy_), (hx_, ay_),
+                              (255, 255, 255), max(1, int(2 * _sk)))
+            cv2_mod.line(frame, (hx_, ay_), (ax_, ay_), overlay_style._bgr(o_rgb),
+                         thick, cv2_mod.LINE_AA)
+            for x_ in (hx_, ax_):
+                cv2_mod.line(frame, (x_, ay_ - int(6 * _sk)), (x_, ay_ + int(6 * _sk)),
+                             overlay_style._bgr(o_rgb), thick, cv2_mod.LINE_AA)
+            o_text = "LOCKED" if hide_angle_values else f"{overstride['overstride_ratio']:.2f}x"
+            # Under the hip end of the bar, opening away from the direction of
+            # travel: the ankle's own chip already sits ahead of the foot.
+            ahead = 1 if ax_ >= hx_ else -1
+            olx = max(5, min(w - 5, hx_ - ahead * int(12 * _sk)))
+            # Feet at the bottom edge leave no room below: go above the bar.
+            below = ay_ + int(48 * _sk)
+            oly = below if below < h - int(40 * _sk) else max(20, ay_ - int(40 * _sk))
+            overlay_style.draw_leader(cv2_mod, frame, (hx_, ay_), (olx, oly), o_rgb)
+            chips.metric_chip((olx, oly), "OVERSTRIDE", o_text, o_status, scale=_sk,
+                              align="right" if ahead > 0 else "left")
+
     # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
     # places by inference, drawn beside a hip that already carries a chip;
     # on the frame it read as a second, unexplained verdict about the same
@@ -1532,7 +1567,8 @@ def _name_run_legs(nl: Any, wl: Any, image: Any, camera_side: str) -> tuple[Any,
         return math.dist((pl[h].x, pl[h].y), (pl[k].x, pl[k].y)) + \
             math.dist((pl[k].x, pl[k].y), (pl[a].x, pl[a].y))
 
-    blank = {"stance": None, "dx": None, "clear": False, "swapped": False, "swing_knee": None}
+    blank = {"stance": None, "dx": None, "clear": False, "swapped": False, "swing_knee": None,
+             "knee_gap": None}
     if forward == 0 or any(math.isnan(v) for v in lows.values()):
         return nl, wl, blank
     length = (leg_len("left") + leg_len("right")) / 2
@@ -1552,11 +1588,42 @@ def _name_run_legs(nl: Any, wl: Any, image: Any, camera_side: str) -> tuple[Any,
     fk, fa = _LEG_CHAINS[far][:2]
     fh = 23 if far == "left" else 24
     swing_knee, _ = calculate_angle_2d(pl, fh, fk, fa)
+    nk = _LEG_CHAINS[camera_side][0]
+    knee_gap = math.dist((pl[nk].x, pl[nk].y), (pl[fk].x, pl[fk].y)) / length
     return nl, wl, {
         "stance": "front" if dx > 0.05 else ("rear" if dx < -0.05 else "under"),
         "dx": round(dx, 3), "clear": bool(clear), "swapped": swapped,
         "swing_knee": _safe_round(swing_knee),
+        "knee_gap": round(knee_gap, 3),
     }
+
+
+# Both knees within this many leg lengths of each other: the swing thigh
+# crosses the stance thigh and the model has two knees to choose from. On the
+# runphoto2026 study (27 photos checked by hand, 2026-10-28) every midstance
+# frame sat at 0.09-0.19 and every touchdown at 0.27 or more. Of the eight
+# crossed frames, one (p07) carried the knee 18 deg off; the rest were within
+# 3 deg -- so the knee stays scored, and the athlete is asked to look at it.
+# Which leg is near the camera cannot be told from one frame (the model's
+# near/far label was wrong on 12 of 13 treadmill photos), so overlap is the
+# signal, not "far leg".
+_RUN_KNEES_CROSS = 0.20
+
+_RUN_KNEE_CHECK_NOTE = (
+    "The two knees overlap at this instant, so the knee point can land on the "
+    "wrong leg. Check on the picture that it sits on the leg on the ground; "
+    "if it does not, this knee number is off too."
+)
+_RUN_KNEE_CHECK_WARNING = (
+    "Knee: your two knees overlap in this frame, so check on the picture that "
+    "the knee point sits on the leg on the ground. A frame at the instant the "
+    "foot lands keeps the legs apart."
+)
+
+
+def _run_knees_cross(legs: dict[str, Any] | None) -> bool:
+    gap = (legs or {}).get("knee_gap")
+    return gap is not None and gap < _RUN_KNEES_CROSS
 
 
 # A landmark's visibility is the model's opinion of its LABEL: having called
@@ -2387,6 +2454,14 @@ def analyze_from_pose(
                 contact = {"phase": gait_phase, "measured": True,
                            **_run_contact_metrics(rl, camera_side, forward_sign, angles,
                                                   nl, img_w, img_h)}
+                # The verdict the score and the picture use, so the report's
+                # touchdown block cannot colour it differently.
+                ratio = contact.get("overstride_ratio")
+                if ratio is not None and not math.isnan(ratio):
+                    contact["overstride_band"] = list(_RUN_OVERSTRIDE_BAND)
+                    contact["overstride_status"] = _classify_angle_status(
+                        ratio, *_RUN_OVERSTRIDE_BAND, metric="overstride",
+                    )
             else:
                 # Not an approximation of the contact readings -- there are
                 # none on this frame. Say which instant it is and what would
@@ -2692,6 +2767,16 @@ def analyze_from_pose(
             "label": lbl,
         }
 
+    # Running, behind the flag: the knees overlap, so the stance knee may be
+    # drawn on the swing leg. Still scored -- on the study frames it was right
+    # seven times in eight -- but the athlete is told where to look.
+    if (sport == "run" and contact is not None and "knee" in angles_with_context
+            and _run_knees_cross(contact.get("legs"))):
+        knee_row = angles_with_context["knee"]
+        knee_row["check"] = True
+        knee_row["note"] = " ".join(filter(None, (_RUN_KNEE_CHECK_NOTE, knee_row.get("note"))))
+        warnings.append(_RUN_KNEE_CHECK_WARNING)
+
     # 6. Score. On a bike it is computed for every crank position, so the
     # rider's correction of the guessed one changes the number as well as the
     # table -- the server stays the only scorer.
@@ -2738,14 +2823,13 @@ def analyze_from_pose(
         )
         ratio, (_, hi) = contact["overstride_ratio"], _RUN_OVERSTRIDE_BAND
         if ratio > hi:
-            # Said in words because it has no line on the picture: a 75 over
-            # five green labels, with the reason nowhere on screen, reads as
-            # the score being wrong.
+            # Said in words as well as drawn: a 75 over five green labels, with
+            # the reason only in the picture, reads as the score being wrong.
             warnings.insert(0, (
                 f"Overstride: your foot lands {ratio:.2f} leg lengths ahead of "
                 f"your hip — under {hi:.2f} is the range (Heiderscheit 2011; "
                 "Souza 2016). A foot reaching out in front brakes every stride. "
-                "It is part of this score, though it has no line on the picture."
+                "The dashed line down from your hip shows the reach on the picture."
             ))
     else:
         score_data = _score_photo_angles(
@@ -2778,6 +2862,7 @@ def analyze_from_pose(
             corrected=[int(c["landmark"]) for c in (corrections or [])],
             row_status={k: v.get("status") for k, v in angles_with_context.items()},
             helmet=helmet,
+            overstride=(contact if contact and contact.get("overstride_status") else None),
         )
         thumbnail_b64 = (
             f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"

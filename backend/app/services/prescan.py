@@ -108,6 +108,11 @@ def summarize(frames: list[dict[str, float]]) -> dict[str, float]:
     return s
 
 
+# One photo of a runner (see classify): upright, a foot swung back behind.
+PHOTO_RUN_TRUNK = 80.0
+PHOTO_RUN_BACK = 0.3
+
+
 def _valid(f: dict[str, float]) -> bool:
     # A trunk "below the horizon" is a pose turned upside down by a bad
     # detection, not a rider; such a frame says nothing (5 of 156 race photos).
@@ -123,7 +128,14 @@ def classify(frames: list[dict[str, float]], *, photo: bool = False) -> dict[str
     (2026-10-21): runners 72-89 deg trunk with a foot 0.8-1.1 trunk lengths
     behind the hip; riders 12-45 deg with it at most 0.3. Aero: elbow 65-110
     with the hand above the elbow; road on the hoods: elbow 130-157 with the
-    hand 25-52 deg below it. A photo is always a bike (photo is bike-only).
+    hand 25-52 deg below it.
+
+    A photo is a bike unless it is plainly a runner: trunk at 80 deg or more
+    with a foot at least 0.3 trunk lengths behind the hip. On 27 running photos
+    (runphoto2026, 2026-10-28: treadmill, track, street, every stride instant)
+    the trunk sat at 83-90 and the back foot at 0.32-1.20; of ~150 bike photos
+    the few as upright as that had the foot ahead of the hip (-0.17, -0.26).
+    The app proposes "Run · photo" only where the account has it.
     """
     good = [f for f in frames if _valid(f)]
     out: dict[str, Any] = {"sport": None, "family": None, "frames": len(good)}
@@ -137,7 +149,7 @@ def classify(frames: list[dict[str, float]], *, photo: bool = False) -> dict[str
     upright_share = sum(f["trunk_deg"] >= 60 for f in good) / len(good)
 
     if photo:
-        out["sport"] = "bike"
+        out["sport"] = "run" if (trunk >= PHOTO_RUN_TRUNK and back >= PHOTO_RUN_BACK) else "bike"
     elif trunk >= 65 and back >= 0.6 and upright_share >= 2 / 3:
         out["sport"] = "run"
     elif trunk <= 45 and upright_share <= 1 / 3:

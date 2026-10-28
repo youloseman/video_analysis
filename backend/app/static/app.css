@@ -1219,6 +1219,10 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 /* Steps 01 and 03: separate tiles with a gap, the chosen one filled navy. */
 .modetabs.what,.modetabs.film{gap:8px;border:0;background:transparent;overflow:visible;max-width:none}
 .modetabs.what{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* "Run · photo" is offered to some accounts only (auth.run_photo): four tiles
+   then sit as two rows of two, which stays legible down to a phone. */
+.modetabs.what button[hidden]{display:none}
+.modetabs.what:has(> button[data-what="run-photo"]:not([hidden])){grid-template-columns:repeat(2,minmax(0,1fr))}
 .modetabs.film{grid-template-columns:repeat(2,minmax(0,1fr))}
 .modetabs.what button,.modetabs.film button{border:1px solid var(--c-line-strong);border-radius:var(--radius-btn);background:var(--c-bg);
   padding:8px 12px;min-height:56px;align-items:center}

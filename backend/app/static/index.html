@@ -450,6 +450,11 @@
           <button type="button" data-what="bike-photo" aria-pressed="false">
             <span><b>Bike · photo</b><small>static fit</small></span>
           </button>
+          <!-- Offered only where the account has it (auth.run_photo): the
+               touchdown readings are still being checked on real frames. -->
+          <button type="button" data-what="run-photo" aria-pressed="false" id="whatRunPhoto" hidden>
+            <span><b>Run · photo</b><small>foot landing</small></span>
+          </button>
         </div>
         <div hidden>
           <div class="modetabs bigtiles" id="modeSeg" role="tablist" aria-label="Analysis type">
@@ -1352,6 +1357,18 @@
           <tbody id="pAngleRows"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Running, at the instant the foot lands: the readings only that frame
+         has. Filled by renderPhotoContact; absent for the bike and for a run
+         result that carries no contact block. -->
+    <div class="block hidden" id="pContactBlock">
+      <div class="blockhead">
+        <div class="eyebrow">Run · photo</div>
+        <h3>At touchdown</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div id="pContact"></div>
     </div>
 
     <div class="block hidden" id="pHobBlock">
@@ -2351,8 +2368,9 @@ function setFile(f){
   const ext=(f.name.split('.').pop()||'').toLowerCase();
   const isImg=f.type.startsWith('image/')||['heic','heif','jpg','jpeg','png','webp'].includes(ext);
   const isVid=f.type.startsWith('video/')||['mov','mp4','m4v','webm'].includes(ext);
-  if(isImg && state.mode!=='photo') autoPick(()=>$('#whatSeg [data-what="bike-photo"]').click());
-  else if(isVid && state.mode==='photo') autoPick(()=>$('#whatSeg [data-what="bike-video"]').click());
+  const photoWhat=state.sport==='run'&&runPhotoOn()?'run-photo':'bike-photo';
+  if(isImg && state.mode!=='photo') autoPick(()=>$(`#whatSeg [data-what="${photoWhat}"]`).click());
+  else if(isVid && state.mode==='photo') autoPick(()=>$(`#whatSeg [data-what="${state.sport}-video"]`).click());
   const photo = state.mode==='photo';
   if(photo){
     if(!isImg){
@@ -2482,11 +2500,15 @@ async function prescanClip(file){
 }
 function applyPrescan(j){
   if(!j||!j.sport){ scanNote('unsure'); track('prescan',{sport:null}); return; }
+  // A runner's photo is a bike photo for an account without "Run · photo":
+  // that is the only photo it can analyse.
+  if(j.sport==='run' && state.mode==='photo' && !runPhotoOn()) j=Object.assign({},j,{sport:'bike'});
   const ask=[];
   autoPick(()=>{
-    if(j.sport!==state.sport && state.mode==='video'){
-      if(!state.userSet.what) $(`#whatSeg [data-what="${j.sport}-video"]`).click();
-      else ask.push({what:`${j.sport}-video`, label:j.sport==='run'?'a run':'a ride'});
+    if(j.sport!==state.sport){
+      const what=`${j.sport}-${state.mode}`;
+      if(!state.userSet.what) $(`#whatSeg [data-what="${what}"]`).click();
+      else ask.push({what, label:j.sport==='run'?'a run':'a ride'});
     }
     if(state.sport==='bike' && j.family && posCatOf(state.position)!==j.family){
       if(!state.userSet.position) $(`#positionSeg [data-position="${posRemembered(j.family)}"]`).click();
@@ -2653,7 +2675,15 @@ $('#modeSeg').addEventListener('click',e=>{
    (#modeSeg, #sportSeg), so every handler hanging off those keeps working.
    Sport first, then mode: the mode handler reset()s the file, and a photo
    tile on a run would otherwise leave "run" behind for one tick. ---- */
-const WHAT_OF={'run-video':['video','run'],'bike-video':['video','bike'],'bike-photo':['photo','bike']};
+const WHAT_OF={'run-video':['video','run'],'bike-video':['video','bike'],'bike-photo':['photo','bike'],'run-photo':['photo','run']};
+/* Running from one photo: offered to the accounts the server opens it for. */
+function runPhotoOn(){ return !!(auth&&auth.run_photo); }
+function syncRunPhotoTile(){
+  const t=$('#whatRunPhoto'); if(!t) return;
+  t.hidden=!runPhotoOn();
+  // Signed out (or the flag withdrawn) while the run photo was picked.
+  if(t.hidden && state.sport==='run' && state.mode==='photo') $('#whatSeg [data-what="bike-photo"]').click();
+}
 $('#whatSeg').addEventListener('click',e=>{
   const b=e.target.closest('button[data-what]'); if(!b) return;
   const [mode,sport]=WHAT_OF[b.dataset.what];
@@ -2674,7 +2704,9 @@ function syncWhatTiles(){
    or a photo -- so the shape of the step and its name never disagree. */
 function syncClipHead(){
   const t=$('#clipTitle'), l=$('#clipLede'); if(!t||!l) return;
-  if(state.mode==='photo'){ t.textContent='Your photo'; l.textContent='One side-view still of you on the bike, at the bottom of the pedal stroke.'; }
+  if(state.mode==='photo'){ t.textContent='Your photo'; l.textContent=state.sport==='run'
+    ? 'One side-view still of you running, at the instant a foot lands.'
+    : 'One side-view still of you on the bike, at the bottom of the pedal stroke.'; }
   else if(isPair()){ t.textContent='Your two clips'; l.textContent=`One per side of the same ${state.sport==='bike'?'ride':'run'}: your LEFT side in the first card, your RIGHT side in the second.`; }
   else { t.textContent='Your clip'; l.textContent=''; }
 }
@@ -4283,6 +4315,38 @@ const P_STATUS_CLS={optimal:'good','in_range':'good',good:'good',acceptable:'med
   aero_optimized:'good',aero_extreme:'info'};
 /* Statuses whose raw key doesn't read as plain English in a pill. */
 const P_STATUS_WORD={aero_optimized:'aero gain',aero_extreme:'very aggressive'};
+/* Running photo, at touchdown (res.contact): overstride graded against the
+   server's band and verdict, the shin and the foot strike shown with what
+   they mean. A frame caught at another instant has none of the three, and
+   says so rather than leaving the block out without a word. */
+const STRIKE_WORD={heel:'Heel first',midfoot:'Midfoot',forefoot:'Forefoot'};
+function shinWord(d){ return d==null?'':d<-3?'foot landed ahead of the knee':d>3?'knee ahead of the foot':'shin about vertical'; }
+function renderPhotoContact(res){
+  const blk=$('#pContactBlock'), host=$('#pContact'); if(!blk||!host) return;
+  const c=(res.sport||state.sport)==='run'?res.contact:null;
+  blk.classList.toggle('hidden',!c);
+  if(!c){ host.innerHTML=''; return; }
+  if(!c.measured){
+    host.innerHTML=`<p class="muted">${esc(c.note||'Overstride, shin angle and foot strike exist only at the instant the foot lands.')}</p>`;
+    return;
+  }
+  const info=(label,val,why,title)=>`<tr class="row-info"><th scope="row">${esc(label)}</th><td class="num">${val}</td><td class="muted">${esc(why)}</td>
+    <td><span class="pill pill-info" title="${esc(title||'')}"><span class="dot" aria-hidden="true"></span>shown, not scored</span></td></tr>`;
+  const rows=[];
+  if(c.overstride_ratio!=null){
+    const st=c.overstride_status||'unknown', band=c.overstride_band||[0,0.15];
+    rows.push(`<tr><th scope="row">Overstride</th><td class="num">${num(c.overstride_ratio,2)}×</td>
+      <td class="muted">leg lengths ahead of the hip · range ≤ ${num(band[1],2)}</td>
+      <td><span class="pill pill-${P_STATUS_CLS[st]||'low'}" title="Heiderscheit 2011; Souza 2016"><span class="dot" aria-hidden="true"></span>${esc(P_STATUS_WORD[st]||st.replace(/_/g,' '))}</span></td></tr>`);
+  }
+  if(c.shin_angle!=null) rows.push(info('Shin at touchdown',`${num(c.shin_angle,0)}°`,shinWord(c.shin_angle),
+    'The shin from vertical. A foot landing out ahead of the knee is the braking landing overstride measures.'));
+  if(c.foot_strike) rows.push(info('Foot strike',esc(STRIKE_WORD[c.foot_strike]||c.foot_strike),'which part lands first',c.foot_strike_note));
+  host.innerHTML=`<div class="tablewrap"><table class="data"><caption class="visually-hidden">Readings at the instant the foot lands</caption>
+    <thead><tr><th scope="col">Reading</th><th scope="col" class="num">Value</th><th scope="col">What it is</th><th scope="col" class="col-status">Status</th></tr></thead>
+    <tbody>${rows.join('')||'<tr><td colspan="4" class="muted">The landing leg could not be read on this frame.</td></tr>'}</tbody></table></div>
+    <p class="muted" style="margin-top:8px">Measured on the leg on the ground. The dashed line on the picture drops from your hip; the bar runs out to where the foot landed.</p>`;
+}
 /* Mirror backend _classify_angle_status so hip re-scoring on a phase change is
    instant + client-side (the measured angle never changes -- only the band). */
 function classifyAngle(v,lo,hi,slack){
@@ -4339,7 +4403,10 @@ function angleRow(k,a,pro){
   const opt=(a.optimal_min!=null&&a.optimal_max!=null)
     ? (a.optimal_min<0 ? `${a.optimal_min} to ${a.optimal_max}` : `${a.optimal_min}–${a.optimal_max}`)
     : (a.optimal_max!=null ? `≤ ${a.optimal_max}` : '—');   /* one-sided band: helmet above back */
-  return `<tr><th scope="row">${esc(a.label||pretty(k))}</th>
+  /* a.check (run): the two knees overlap, so the point may sit on the wrong
+     leg -- scored, but the athlete is told to look. */
+  const chk=a.check?` <small class="muted" title="${esc(a.note||'')}">· check the point</small>`:'';
+  return `<tr><th scope="row">${esc(a.label||pretty(k))}${chk}</th>
     <td class="num">${val}</td><td class="num">${opt}</td>${proTd}
     <td><span class="pill pill-${cls}" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>${esc(word)}</span></td></tr>`;
 }
@@ -5924,6 +5991,7 @@ function renderPhoto(res,opts){
   $('#pUpsellHost').classList.add('hidden');
   if(res.locked){
     renderUpsell('pUpsellHost', res.locked, ['pCoachBlock','pAnglesBlock']);
+    $('#pContactBlock').classList.add('hidden');
     renderQuota();
     mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));
     state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
@@ -5946,6 +6014,7 @@ function renderPhoto(res,opts){
   state.pedalPhase=res.pedal_phase||'uncertain';
   state.photoRes=res;
   renderPhotoAngles();
+  renderPhotoContact(res);
 
   if(DEBUG){ $('#pRawBlock').classList.remove('hidden');
     $('#pRawJson').textContent=JSON.stringify(Object.assign({},res,{thumbnail_base64:'<omitted>'}),null,2); }
@@ -8225,11 +8294,15 @@ function bdShow(host, rows, show){
 /* A photo carries its components on the score itself (score.per_angle), each
    with its own weight -- the photo rubric is not the video's. */
 const PHOTO_PARTS={knee:'Knee',trunk:'Trunk',shoulder:'Shoulder',elbow:'Elbow',forearm_tilt:'Forearm',
-  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Pelvis'};
+  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Pelvis',overstride:'Overstride'};
 function renderPhotoBreakdown(res){
   const host=$('#pScoreBd'); if(!host) return;
   const sc=res.score||{}, per=sc.per_angle||{};
-  const rows=Object.keys(per).map(k=>({k, v:per[k].score, w:Math.round((per[k].weight||0)*100)}))
+  /* Shares of what was scored: the server divides by the weights present, so
+     a photo with overstride added (run) or a joint left out (bike) shows the
+     weights the number was really built with, summing to 100. */
+  const tot=Object.values(per).reduce((a,p)=>a+(p.weight||0),0)||1;
+  const rows=Object.keys(per).map(k=>({k, v:per[k].score, w:Math.round((per[k].weight||0)/tot*100)}))
     .sort((a,b)=>b.w-a.w)
     .map(x=>bdRowHtml(PHOTO_PARTS[x.k]||pretty(x.k), x.v, x.w, `${Math.round(x.v)} of 100, weight ${x.w}%`));
   bdShow(host, rows, rows.length>0 && sc.overall_score!=null);
@@ -9485,6 +9558,7 @@ let auth=null;                       // {email, tier, is_pro} when signed in
 const getToken=()=>{ try{ return localStorage.getItem(TKEY); }catch(e){ return null; } };
 function authHeaders(h){ h=h||{}; const t=getToken(); return t?Object.assign({},h,{Authorization:'Bearer '+t}):h; }
 function renderAuth(){
+  syncRunPhotoTile();
   // The sidebar's plan line, and the phone top bar's compact box. Signed in,
   // the sidebar shows which plan and what is left (the bar fills with what
   // is used) and links to Account; the phone bar shows nothing but the quota
@@ -9623,7 +9697,7 @@ async function submitAuth(e){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
-    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,crank_access:!!j.crank_access,
+    auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,crank_access:!!j.crank_access,run_photo:!!j.run_photo,
       analytics_id:j.analytics_id||null, marketing_opt_in:mode==='register'?marketing:undefined};
     // Name the person first, then record the act — so the sign-up itself is
     // attributed to the account rather than to the anonymous visitor who

@@ -822,6 +822,888 @@
     "stance": "front",
     "legs_clear": true
    }
+  },
+  {
+   "n": 14,
+   "photo": "upload/run_photos/landing/1.PNG",
+   "group": "landing",
+   "side": "left",
+   "facing": -1,
+   "w": 635,
+   "h": 402,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     405.3,
+     76.1
+    ],
+    "E": [
+     454.8,
+     107.4
+    ],
+    "W": [
+     442.5,
+     163.1
+    ],
+    "H": [
+     402.6,
+     190.4
+    ],
+    "K": [
+     351.6,
+     254.6
+    ],
+    "A": [
+     314.3,
+     343.2
+    ],
+    "L": [
+     315.2,
+     361.3
+    ],
+    "F": [
+     273.1,
+     337.8
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 164.4,
+    "hip": 142.9,
+    "elbow": 109.8,
+    "trunk": -1.3,
+    "overstride": 0.5,
+    "shin": -22.8,
+    "foot": 29.2,
+    "strike": "heel",
+    "score": 60,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 15,
+   "photo": "upload/run_photos/landing/10.PNG",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 607,
+   "h": 489,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     320.6,
+     95.4
+    ],
+    "E": [
+     313.0,
+     168.6
+    ],
+    "W": [
+     370.9,
+     178.1
+    ],
+    "H": [
+     312.4,
+     232.5
+    ],
+    "K": [
+     349.7,
+     331.4
+    ],
+    "A": [
+     358.9,
+     431.9
+    ],
+    "L": [
+     350.1,
+     455.0
+    ],
+    "F": [
+     405.8,
+     436.0
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 164.5,
+    "hip": 155.9,
+    "elbow": 93.4,
+    "trunk": 3.4,
+    "overstride": 0.23,
+    "shin": -5.2,
+    "foot": 18.8,
+    "strike": "heel",
+    "score": 90,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 16,
+   "photo": "upload/run_photos/landing/11.PNG",
+   "group": "landing",
+   "side": "left",
+   "facing": -1,
+   "w": 650,
+   "h": 480,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     457.8,
+     161.6
+    ],
+    "E": [
+     497.6,
+     196.7
+    ],
+    "W": [
+     480.1,
+     235.2
+    ],
+    "H": [
+     451.8,
+     277.4
+    ],
+    "K": [
+     409.7,
+     351.5
+    ],
+    "A": [
+     390.4,
+     432.6
+    ],
+    "L": [
+     393.1,
+     452.0
+    ],
+    "F": [
+     351.3,
+     429.4
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 163.8,
+    "hip": 153.4,
+    "elbow": 107.0,
+    "trunk": -3.0,
+    "overstride": 0.36,
+    "shin": -13.4,
+    "foot": 28.5,
+    "strike": "heel",
+    "score": 73,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 17,
+   "photo": "upload/run_photos/landing/12.PNG",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 638,
+   "h": 507,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     338.9,
+     200.6
+    ],
+    "E": [
+     305.9,
+     254.7
+    ],
+    "W": [
+     344.1,
+     286.0
+    ],
+    "H": [
+     343.1,
+     316.1
+    ],
+    "K": [
+     384.8,
+     387.6
+    ],
+    "A": [
+     377.9,
+     468.7
+    ],
+    "L": [
+     364.6,
+     483.3
+    ],
+    "F": [
+     412.5,
+     486.2
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 144.9,
+    "hip": 151.8,
+    "elbow": 97.9,
+    "trunk": -2.1,
+    "overstride": 0.21,
+    "shin": 4.8,
+    "foot": -3.4,
+    "strike": "forefoot",
+    "score": 92,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 18,
+   "photo": "upload/run_photos/landing/2.PNG",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 592,
+   "h": 861,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     250.9,
+     249.5
+    ],
+    "E": [
+     181.1,
+     306.5
+    ],
+    "W": [
+     237.2,
+     360.2
+    ],
+    "H": [
+     262.8,
+     408.3
+    ],
+    "K": [
+     350.3,
+     505.5
+    ],
+    "A": [
+     390.1,
+     620.0
+    ],
+    "L": [
+     381.0,
+     646.9
+    ],
+    "F": [
+     448.1,
+     633.9
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 157.1,
+    "hip": 142.3,
+    "elbow": 83.0,
+    "trunk": -4.3,
+    "overstride": 0.51,
+    "shin": -19.1,
+    "foot": 11.0,
+    "strike": "heel",
+    "score": 59,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 19,
+   "photo": "upload/run_photos/landing/3.jpg",
+   "group": "landing",
+   "side": "left",
+   "facing": -1,
+   "w": 669,
+   "h": 622,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     377.1,
+     130.7
+    ],
+    "E": [
+     436.6,
+     192.1
+    ],
+    "W": [
+     366.0,
+     211.6
+    ],
+    "H": [
+     368.0,
+     265.1
+    ],
+    "K": [
+     307.5,
+     357.9
+    ],
+    "A": [
+     262.3,
+     459.4
+    ],
+    "L": [
+     265.1,
+     482.3
+    ],
+    "F": [
+     213.6,
+     461.0
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 170.9,
+    "hip": 150.7,
+    "elbow": 61.3,
+    "trunk": -3.9,
+    "overstride": 0.48,
+    "shin": -24.0,
+    "foot": 22.4,
+    "strike": "heel",
+    "score": 58,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 20,
+   "photo": "upload/run_photos/landing/4.jpg",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 517,
+   "h": 386,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     240.1,
+     87.1
+    ],
+    "E": [
+     201.8,
+     117.1
+    ],
+    "W": [
+     236.1,
+     146.8
+    ],
+    "H": [
+     248.6,
+     183.1
+    ],
+    "K": [
+     290.4,
+     243.4
+    ],
+    "A": [
+     301.5,
+     310.0
+    ],
+    "L": [
+     297.5,
+     323.7
+    ],
+    "F": [
+     331.9,
+     313.4
+    ]
+   },
+   "auto": {
+    "phase": "uncertain",
+    "knee": 154.7,
+    "hip": 150.2,
+    "elbow": 78.9,
+    "trunk": -5.0,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": null,
+    "withheld": "stride_phase_uncertain",
+    "stance": "front",
+    "legs_clear": false
+   }
+  },
+  {
+   "n": 21,
+   "photo": "upload/run_photos/landing/5.jpg",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 384,
+   "h": 512,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     137.7,
+     112.5
+    ],
+    "E": [
+     92.1,
+     151.6
+    ],
+    "W": [
+     137.6,
+     177.1
+    ],
+    "H": [
+     153.4,
+     217.2
+    ],
+    "K": [
+     202.7,
+     302.3
+    ],
+    "A": [
+     218.1,
+     393.7
+    ],
+    "L": [
+     209.3,
+     410.8
+    ],
+    "F": [
+     258.9,
+     417.3
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 159.5,
+    "hip": 158.5,
+    "elbow": 69.9,
+    "trunk": -8.5,
+    "overstride": 0.34,
+    "shin": -9.5,
+    "foot": -7.5,
+    "strike": "forefoot",
+    "score": 75,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 22,
+   "photo": "upload/run_photos/landing/6.jpg",
+   "group": "landing",
+   "side": "left",
+   "facing": -1,
+   "w": 878,
+   "h": 1080,
+   "origin": [
+    321,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     268.1,
+     178.3
+    ],
+    "E": [
+     225.5,
+     317.7
+    ],
+    "W": [
+     193.7,
+     305.5
+    ],
+    "H": [
+     348.4,
+     487.1
+    ],
+    "K": [
+     296.8,
+     731.7
+    ],
+    "A": [
+     246.8,
+     984.9
+    ],
+    "L": [
+     265.1,
+     1031.8
+    ],
+    "F": [
+     144.6,
+     1018.9
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 179.2,
+    "hip": 153.5,
+    "elbow": 86.1,
+    "trunk": 14.6,
+    "overstride": 0.2,
+    "shin": -11.2,
+    "foot": 6.1,
+    "strike": "midfoot",
+    "score": 92,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 23,
+   "photo": "upload/run_photos/landing/7.jpg",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 472,
+   "h": 630,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     175.1,
+     133.7
+    ],
+    "E": [
+     123.3,
+     184.2
+    ],
+    "W": [
+     165.8,
+     230.6
+    ],
+    "H": [
+     180.3,
+     270.6
+    ],
+    "K": [
+     229.8,
+     361.6
+    ],
+    "A": [
+     238.2,
+     465.2
+    ],
+    "L": [
+     225.2,
+     484.8
+    ],
+    "F": [
+     283.9,
+     486.8
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 156.1,
+    "hip": 153.6,
+    "elbow": 91.9,
+    "trunk": -2.2,
+    "overstride": 0.28,
+    "shin": -4.6,
+    "foot": -2.0,
+    "strike": "forefoot",
+    "score": 84,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 24,
+   "photo": "upload/run_photos/landing/8.jpg",
+   "group": "landing",
+   "side": "left",
+   "facing": -1,
+   "w": 1024,
+   "h": 1024,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     528.5,
+     227.2
+    ],
+    "E": [
+     606.0,
+     333.7
+    ],
+    "W": [
+     498.8,
+     384.5
+    ],
+    "H": [
+     528.4,
+     484.1
+    ],
+    "K": [
+     465.1,
+     628.9
+    ],
+    "A": [
+     450.9,
+     815.1
+    ],
+    "L": [
+     463.9,
+     852.5
+    ],
+    "F": [
+     364.4,
+     833.8
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 160.7,
+    "hip": 156.4,
+    "elbow": 79.3,
+    "trunk": -0.0,
+    "overstride": 0.23,
+    "shin": -4.4,
+    "foot": 10.6,
+    "strike": "heel",
+    "score": 90,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 25,
+   "photo": "upload/run_photos/landing/8.PNG",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 584,
+   "h": 483,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     279.6,
+     128.9
+    ],
+    "E": [
+     268.4,
+     202.6
+    ],
+    "W": [
+     327.4,
+     193.8
+    ],
+    "H": [
+     257.6,
+     257.0
+    ],
+    "K": [
+     314.3,
+     344.9
+    ],
+    "A": [
+     336.5,
+     438.9
+    ],
+    "L": [
+     324.3,
+     456.2
+    ],
+    "F": [
+     375.4,
+     465.6
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": null,
+    "hip": null,
+    "elbow": 72.9,
+    "trunk": 9.7,
+    "overstride": 0.39,
+    "shin": null,
+    "foot": -10.4,
+    "strike": "forefoot",
+    "score": null,
+    "withheld": "run_leg_not_measured",
+    "stance": "front",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 26,
+   "photo": "upload/run_photos/landing/9.PNG",
+   "group": "landing",
+   "side": "left",
+   "facing": -1,
+   "w": 483,
+   "h": 645,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 1.0,
+   "model": {
+    "S": [
+     238.3,
+     172.2
+    ],
+    "E": [
+     258.6,
+     247.9
+    ],
+    "W": [
+     229.2,
+     309.4
+    ],
+    "H": [
+     233.1,
+     312.5
+    ],
+    "K": [
+     204.1,
+     408.3
+    ],
+    "A": [
+     229.4,
+     503.2
+    ],
+    "L": [
+     247.3,
+     521.5
+    ],
+    "F": [
+     194.9,
+     538.8
+    ]
+   },
+   "auto": {
+    "phase": "midstance",
+    "knee": 148.3,
+    "hip": 165.3,
+    "elbow": 139.5,
+    "trunk": -2.1,
+    "overstride": null,
+    "shin": null,
+    "foot": null,
+    "strike": null,
+    "score": 95,
+    "withheld": null,
+    "stance": "under",
+    "legs_clear": true
+   }
+  },
+  {
+   "n": 27,
+   "photo": "upload/run_photos/landing/kak-vybrat-begovuyu-dorozhku-dlya-doma_16724119051233251776.jpg",
+   "group": "landing",
+   "side": "right",
+   "facing": 1,
+   "w": 1100,
+   "h": 733,
+   "origin": [
+    0,
+    0
+   ],
+   "scale": 0.814815,
+   "model": {
+    "S": [
+     437.6,
+     112.9
+    ],
+    "E": [
+     366.7,
+     177.2
+    ],
+    "W": [
+     403.8,
+     255.9
+    ],
+    "H": [
+     439.3,
+     314.3
+    ],
+    "K": [
+     504.0,
+     439.7
+    ],
+    "A": [
+     523.2,
+     582.9
+    ],
+    "L": [
+     506.9,
+     611.5
+    ],
+    "F": [
+     589.0,
+     606.9
+    ]
+   },
+   "auto": {
+    "phase": "initial_contact",
+    "knee": 160.3,
+    "hip": 153.2,
+    "elbow": 107.0,
+    "trunk": -0.5,
+    "overstride": 0.29,
+    "shin": -7.6,
+    "foot": 3.2,
+    "strike": "midfoot",
+    "score": 82,
+    "withheld": null,
+    "stance": "front",
+    "legs_clear": true
+   }
   }
  ]
 }
