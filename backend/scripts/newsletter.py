@@ -7,12 +7,23 @@
     python scripts/newsletter.py 2026-10-kona-crank --to you@example.com
     # everyone; safe to re-run -- the log skips anyone already sent
     python scripts/newsletter.py 2026-10-kona-crank --send
+    # only the addresses in a file, when the issue is for some of them
+    python scripts/newsletter.py 2026-10-android-test --list --only testers.txt
+
+``--only`` narrows the list to the addresses in a file (one per line, or
+comma-separated; blank lines and ``#`` comments ignored) -- for an issue that
+is only of interest to some people, such as "help test the Android app" going
+to the athletes who actually use Android. It can only ever REMOVE recipients:
+an address in the file that has not given marketing consent is still not
+written to, so the flag cannot be used to reach someone the consent rule
+excludes.
 
 Runs where the database and the mail key are (the production container).
 Needs NEWSLETTER_ADDRESS (the sender's postal address, required in every
 commercial email under CASL) and PUBLIC_BASE_URL. The send log lives next
 to the uploads, one file per issue, so a crash halfway resumes cleanly.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,10 +54,26 @@ def _unsub_url(user_id: int) -> str:
     return f"{base}/unsubscribe?u={user_id}&t={unsubscribe_token(user_id, 'news')}&list=news"
 
 
-async def _recipients() -> list[User]:
+def read_only_list(path: str) -> set[str]:
+    """The addresses in a ``--only`` file, lower-cased."""
+    raw = Path(path).read_text(encoding="utf-8-sig")
+    out = set()
+    for line in raw.splitlines():
+        line = line.split("#", 1)[0]
+        for part in line.replace(",", " ").split():
+            if "@" in part:
+                out.add(part.strip().lower())
+    return out
+
+
+async def _recipients(only: set[str] | None = None) -> list[User]:
     async with SessionLocal() as db:
         users = (await db.execute(select(User).order_by(User.id))).scalars().all()
-    return [u for u in users if NL.is_recipient(u)]
+    # is_recipient first, always: --only narrows the list, it never widens it.
+    people = [u for u in users if NL.is_recipient(u)]
+    if only is not None:
+        people = [u for u in people if (u.email or "").lower() in only]
+    return people
 
 
 async def main() -> int:
@@ -56,16 +83,30 @@ async def main() -> int:
     g.add_argument("--list", action="store_true", help="print who would get it")
     g.add_argument("--to", help="send one copy to this address only")
     g.add_argument("--send", action="store_true", help="send to every recipient")
+    ap.add_argument(
+        "--only",
+        metavar="FILE",
+        help="restrict to the addresses in FILE (one per line); never widens the list",
+    )
     a = ap.parse_args()
 
     issue = NL.load_issue(a.issue)
     address = os.environ.get("NEWSLETTER_ADDRESS", "")
-    people = await _recipients()
+    only = read_only_list(a.only) if a.only else None
+    people = await _recipients(only)
 
     if a.list:
         for u in people:
             print(u.id, u.email, u.tier)
         print(f"{len(people)} recipients")
+        if only is not None:
+            missed = sorted(only - {(u.email or "").lower() for u in people})
+            print(
+                f"({len(only)} addresses in {a.only}; {len(missed)} of them not on the list "
+                f"-- no account, or no marketing consent)"
+            )
+            for em in missed:
+                print("   skipped:", em)
         return 0
 
     if a.to:
@@ -75,7 +116,9 @@ async def main() -> int:
         return 0 if ok else 1
 
     log_path = Path(settings.uploads_dir) / f"newsletter-{issue['slug']}.json"
-    sent: dict[str, float] = json.loads(log_path.read_text()) if log_path.is_file() else {}
+    sent: dict[str, float] = (
+        json.loads(log_path.read_text()) if log_path.is_file() else {}
+    )
     todo = [u for u in people if str(u.id) not in sent]
     print(f"{len(people)} recipients, {len(sent)} already sent, {len(todo)} to go")
     NL.render(issue, "x", address)  # refuses up front if the issue cannot go out
