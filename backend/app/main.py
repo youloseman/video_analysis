@@ -124,7 +124,6 @@ from app.services.preview_release import release_orphaned_previews
 from app.services.tier_grants import expire_tier_grants, grant_sweeper_loop
 from app.services.result_gating import (
     ACCESS_FULL,
-    ACCESS_PREVIEW,
     ACCESS_TEASER,
     access_for,
     gate_for_access,
@@ -256,6 +255,13 @@ def preview_available(user: User) -> bool:
     claimed = user.free_preview_job_id
     if not claimed:
         return True
+    # A photo used to claim the preview ("photo:<ms>"). It no longer does (see
+    # photo_access), and a claim it left behind does not count: 95 of the
+    # first 183 accounts to meet a paywall spent their one full report on a
+    # still that our own banner calls approximate, and 2 of them paid. Their
+    # first side-on clip is the report the preview exists to show.
+    if claimed.startswith("photo:"):
+        return True
     job = JOBS.get(claimed)
     if not job:
         return False
@@ -269,6 +275,19 @@ def preview_available(user: User) -> bool:
     # (2026-08-31) -- before that a gated clip still carried a score, so this
     # branch had nothing to catch.
     return bool((job.get("result") or {}).get("score_withheld"))
+
+
+def photo_access(user: User) -> str:
+    """How much of a photo result this caller sees: full on a plan, the
+    score-and-skeleton teaser otherwise. Never the preview.
+
+    A photo is one frame and the report says so; the free preview is one
+    report worth judging the product by, and a still is not that report. The
+    photo card sells the first video instead (static/index.html,
+    renderPhotoUpsell). Paywall read of 2026-10-28: photo-first accounts 95,
+    paid 2; video-first 88, paid 14.
+    """
+    return ACCESS_FULL if not is_free(user) else ACCESS_TEASER
 
 
 async def _record_and_headers(
@@ -2176,7 +2195,6 @@ async def analyze_photo_endpoint(
         raise HTTPException(413, f"file too large (> {MAX_PHOTO_BYTES // (1024 * 1024)} MB)")
 
     free = is_free(user)
-    preview = preview_available(user)
     from app.services.video_analysis.photo_analyzer import analyze_photo
     # Running contact readings and the run "no score" rule: switched on for
     # everyone by RUN_CONTACT_METRICS, and always on for an admin account so
@@ -2186,7 +2204,7 @@ async def analyze_photo_endpoint(
     contact = run_photo_access(user)
     try:
         result = await run_in_threadpool(
-            analyze_photo, data, sport, cycling_position, free and not preview,
+            analyze_photo, data, sport, cycling_position, free,
             contact,
         )
     except ValueError as e:
@@ -2214,12 +2232,11 @@ async def analyze_photo_endpoint(
     if sport == "bike" and crank_access(user) and isinstance(result.get("pose"), dict):
         result["bike_auto"] = await run_in_threadpool(_photo_bike_auto, data, result["pose"])
 
-    # Free callers don't get AI coaching (it's a paid unlock) -- except on the
-    # one preview, which exists precisely to show what the paid report reads
-    # like. A withheld photo gets none either: coaching a pose we could not
-    # measure is the score-withheld rule broken in prose.
+    # Free callers don't get AI coaching (it's a paid unlock; a photo has no
+    # preview, see photo_access). A withheld photo gets none either: coaching a
+    # pose we could not measure is the score-withheld rule broken in prose.
     withheld = (result.get("score") or {}).get("withheld")
-    if coaching and (not free or preview) and not withheld:
+    if coaching and not free and not withheld:
         from app.services.video_analysis.llm_recommendations import (
             generate_photo_recommendations,
         )
@@ -2231,16 +2248,10 @@ async def analyze_photo_endpoint(
         )
 
     if free:
-        result = gate_for_access(
-            result, ACCESS_PREVIEW if preview else ACCESS_TEASER,
-        )
-        if preview:
-            # A photo has no job to name, so the claim records the analysis it
-            # was spent on. Nothing hands this one back: the photo path either
-            # raised already or produced a result.
-            user.free_preview_job_id = f"photo:{int(time.time() * 1000)}"
-            await db.commit()
-            logger.info("PREVIEW_CLAIMED", user_id=user.id, kind="photo")
+        result = gate_for_access(result, photo_access(user))
+        # Whether the first side-on clip would still open in full -- the photo
+        # card's main offer is that clip, and it should say so only when true.
+        result["locked"]["preview_waiting"] = preview_available(user)
 
     await _record_and_headers(response, request, user, db, "photo")
     logger.info(

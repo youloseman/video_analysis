@@ -1897,6 +1897,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .banner .ic{margin-top:2px;width:15px;height:15px}
 .banner.warn{background:var(--st-warn-bg);border-color:var(--st-warn-fill);border-left-width:3px;color:var(--c-ink)}
 .banner.warn .ic{color:var(--st-warn)}
+/* The photo report's one loud line: a still is a rough read, film a clip. */
+.banner.ph-limit{background:var(--st-bad-bg);border-color:var(--c-coral-btn);border-left-width:4px;font-size:14px;line-height:1.5}
+.banner.ph-limit .ic{color:var(--c-coral-btn)}
+.banner.ph-limit>span>b:first-child{font-size:16px;font-family:var(--f-display);color:var(--c-head)}
+.banner.ph-limit .ph-limit-go{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-weight:600;color:var(--c-blue);text-decoration:underline;min-height:32px}
+.banner.ph-limit .ph-limit-go .ic{width:14px;height:14px;color:currentColor}
 .banner.ok{background:var(--c-panel-blue);border-color:var(--c-blue);border-left-width:3px;color:var(--c-ink)}
 .banner.ok .ic{color:var(--c-blue)}
 .banner.good{background:var(--st-good-bg);border-color:var(--st-good-fill);border-left-width:3px;color:var(--c-ink)}

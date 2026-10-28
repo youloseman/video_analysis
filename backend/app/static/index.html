@@ -5989,16 +5989,18 @@ function renderPhoto(res,opts){
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(warns.join(' '))}</span></div>`
     : `<div class="banner good"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Clean side-view capture.</span></div>`;
   renderNextSteps('pNextBlock','pNextList',res.next_steps||(res.quality&&res.quality.next_steps)||[]);
-  // Every photo says what a photo is: one frame. Artur, 2026-10-18 -- riders
-  // took a 100 from one still as the whole truth, and one found the knee point
-  // set high with no way to say so.
+  // Every photo says what a photo is, loudly and in two lines. Artur,
+  // 2026-10-18: riders took a 100 from one still as the whole truth; and
+  // 2026-10-28: of the first 183 accounts to meet a paywall, 95 had read a
+  // photo first and 2 of them paid, against 14 of 88 who had read a clip.
+  // The banner's job is to send the reader to the clip, whatever they pay.
   const adj=sport==='bike'&&canAdjust;
-  $('#pAccNote').innerHTML=`<div class="banner ok"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>A photo is one frame.</b> Treat these numbers as approximate: a joint point that slipped, or ${sport==='bike'?'a crank caught away from the bottom of the stroke':'a frame caught between stride phases'}, moves the angles. A short side-on video is measured frame by frame across ${sport==='bike'?'many pedal strokes':'many strides'}, and that is the accurate read.${adj?` If a joint point landed in the wrong place, tap <b>Adjust joints</b> and drag it${res.pose&&res.pose.scope==='free'?' (the hip and the knee on the free plan)':''} — the photo is measured again.`:''}</span></div>`;
+  $('#pAccNote').innerHTML=`<div class="banner warn ph-limit"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>A photo is a rough read.</b> One frame, approximate angles. A short side-on <b>video</b> is measured ${sport==='bike'?'every pedal stroke':'every stride'} and is the accurate result.${adj?` A joint point off? <b>Adjust joints</b>${res.pose&&res.pose.scope==='free'?' (hip and knee on the free plan)':''}.`:''}<br><a href="#" class="ph-limit-go" onclick="event.preventDefault();switchToVideo('banner')">Analyze a video instead <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></a></span></div>`;
 
   // Free-tier teaser: hide paid sections, show upgrade panel, stop early.
   $('#pUpsellHost').classList.add('hidden');
   if(res.locked){
-    renderUpsell('pUpsellHost', res.locked, ['pCoachBlock','pAnglesBlock']);
+    renderPhotoUpsell('pUpsellHost', res.locked, ['pCoachBlock','pAnglesBlock']);
     $('#pContactBlock').classList.add('hidden');
     renderQuota();
     mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));
@@ -6788,6 +6790,52 @@ function previewBody(locked){
   if(c.angles) bits.push(`all <b>${c.angles}</b> joint angles we measured, against their reference ranges`);
   if(!bits.length) return 'You\u2019ve read the findings and the coaching. The measurements behind them, and the drills that fix them, are on a paid plan.';
   return `You\u2019ve read the findings and the coaching. Still behind the blur: ${bits.join(', and ')}.`;
+}
+/* The photo card sells the video, not the plan.
+
+   Paywall read of 2026-10-28: the photo card was 95 of the first 183 paywalls
+   people met, and 2 of them paid; the video card was 88, and 14 paid. People
+   who read a photo first and later filmed a clip paid at the clip's rate.
+   A photo also used to spend the account's one full report (it no longer
+   does -- main.photo_access), so the strongest thing this card can offer is
+   that report, on the first side-on clip. The plan stays as the second
+   offer; there is no $4 here because nothing full is stored behind a photo
+   (the server keeps full results for jobs only, api/me._attach_result). */
+function renderPhotoUpsell(containerId, locked, blockIds){
+  (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
+  const host=$('#'+containerId); if(!host) return false;
+  locked=locked||{};
+  const waiting=!!locked.preview_waiting;
+  const plan=auth?cheapestMonthly():null;
+  host.innerHTML=`<div class="upsell upsell-photo">
+    <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Score only</span>
+    <h3>${waiting?'Your free full report is still unused.':'A photo shows the score and the skeleton.'}</h3>
+    <p>${waiting
+      ?'It opens on your first side-on <b>video</b>: the findings, the coaching, and every angle measured across every stroke. A photo cannot give you that.'
+      :'A side-on <b>video</b> is the accurate read: every angle, every stroke. The full report of a clip comes with a plan.'}</p>
+    <div class="cta-row">
+      <button class="btn btn-go btn-unlock" type="button" data-src="photo" onclick="switchToVideo('card')"><svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg> ${waiting?'Analyze a video — free, in full':'Analyze a video'}</button>
+      ${plan?`<button class="btn btn-primary" type="button" data-src="photo" onclick="startCheckout(${esc(JSON.stringify(plan.plan))})">Start ${esc(plan.name)} — ${esc(plan.display)}/mo</button>`:''}
+      <a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare plans</a>
+    </div>
+  </div>`;
+  host.classList.remove('hidden');
+  track('paywall_shown', {
+    reason: locked.reason||'locked', where: containerId, sellable: false,
+    plan_buy: !!plan, card: 'c_photo', preview_waiting: waiting,
+    tier: auth ? auth.tier : 'anonymous',
+  });
+  return true;
+}
+/* From a photo report to the uploader, set for a clip of the same sport. The
+   "what" tile is the one control that sets sport and mode together, so it is
+   clicked rather than imitated; its handler resets the view. */
+function switchToVideo(from){
+  track('photo_to_video', {from: from||'card', free: isFreeUser(), waiting: !!(state.photoRes&&state.photoRes.locked&&state.photoRes.locked.preview_waiting)});
+  const t=$(`#whatSeg [data-what="${state.sport==='run'?'run':'bike'}-video"]`);
+  if(t) t.click(); else reset();
+  if(state.mode!=='video') reset();
+  setState('upload',{focus:'#uploaderTitle'});
 }
 /* Placeholder until Stage 4 (Stripe) wires real checkout. For now, nudge
    sign-in / show pricing so the CTA is never a dead end. */
@@ -10654,6 +10702,7 @@ function renderHistoryUpsell(e){
   const host=$('#hdUpsellHost'); if(!host) return;
   const gated = e && e.access!=='full' && entryLooksGated(e);
   if(!gated){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  if(e.kind==='photo'){ renderPhotoUpsell('hdUpsellHost', {reason:'teaser'}, []); return; }
   const preview = e.access==='preview';
   const unlockId = (auth && !preview && e.sellable!==false) ? e.id : null;
   // What the $4 buys here is what it buys on the fresh report, minus nothing:
