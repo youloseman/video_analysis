@@ -7224,6 +7224,23 @@ async function exLoadClip(orderId){
   }catch(e){ if(note) note.textContent='Couldn’t load the clip ('+(e.message||'error')+').'; }
 }
 
+/* The coach's Russian brief: one self-contained HTML file (clip, frame,
+   kinogram, numbers, answer form) to send to Bogdan in Telegram. Fetched with
+   the token, like the clip, and saved as a download. */
+async function exDownloadBrief(){
+  const d=state.exOrder||{}, btn=$('#exBrief'), st=$('#exStatus');
+  if(btn) btn.disabled=true; if(st) st.textContent='Building the brief…';
+  try{
+    const r=await fetch('/admin/orders/'+encodeURIComponent(d.id)+'/brief',{headers:authHeaders()});
+    if(!r.ok){ let m='http '+r.status; try{ m=(await r.json()).detail||m; }catch(_){} throw new Error(m); }
+    const url=URL.createObjectURL(new Blob([await r.arrayBuffer()],{type:'text/html'}));
+    const a=document.createElement('a'); a.href=url; a.download='Разбор_для_тренера_заказ_'+d.id+'.html';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),10000);
+    if(st) st.textContent='Brief downloaded — send it to the coach.';
+  }catch(e){ if(st) st.textContent='Couldn’t build the brief ('+(e.message||'error')+').'; }
+  finally{ if(btn) btn.disabled=false; }
+}
+
 function exFieldHtml(s, report){
   const req=s.required?' <span class="ex-req" title="required before sending">*</span>':'';
   const tag=s.internal?' <span class="ex-pill">internal · not sent</span>':'';
@@ -7298,6 +7315,7 @@ function exEditorHtml(d){
       <div class="ex-bar">
         <span class="ex-status" id="exStatus"></span>
         <button class="btn btn-ghost btn-sm" type="button" id="exPreview">Preview</button>
+        ${d.plan==='notes'?'<button class="btn btn-ghost btn-sm" type="button" id="exBrief" title="Russian page for the coach: clip, frame, numbers and an answer form">Coach brief (RU)</button>':''}
         <button class="btn btn-outline btn-sm" type="button" id="exSave">Save draft</button>
         <button class="btn btn-primary btn-sm" type="button" id="exPublish">${done?'Re-publish':'Send to athlete'}</button>
       </div>
@@ -11969,6 +11987,7 @@ $('#expertAdmin').addEventListener('click',e=>{
   if(e.target.closest('#exCheckDone')){ exCheckSave(!(state.exOrder&&state.exOrder.qa&&state.exOrder.qa.checked_at)); return; }
   if(e.target.closest('#exPublish')){ exPublish(); return; }
   if(e.target.closest('#exPreview')){ exShowPreview(); return; }
+  if(e.target.closest('#exBrief')){ exDownloadBrief(); return; }
   if(e.target.closest('#exMailTest')){ exMailTest(); return; }
   const f=e.target.closest('[data-exf]');
   if(f){ state.exFilter=f.dataset.exf;

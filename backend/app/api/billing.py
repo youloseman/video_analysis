@@ -23,12 +23,13 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import stripe
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -56,7 +57,7 @@ from app.models.user import (
     User,
     has_full,
 )
-from app.services import analytics, expert_review, notify, pricing
+from app.services import analytics, coach_brief, expert_review, notify, pricing
 from app.services.result_gating import ACCESS_FULL, access_for_stored
 from app.services.tier_grants import clear_grant
 
@@ -1174,6 +1175,48 @@ async def admin_order_clip(
         # already says which by showing no player at all.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No clip stored for this order.")
     return FileResponse(path, filename=path.name)
+
+
+@admin_router.get("/admin/orders/{order_id}/brief")
+async def admin_order_brief(
+    order_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """The coach's Russian brief for a Coach Notes order, as one HTML file.
+
+    Clip, frame, kinogram, numbers and an answer form in a page Bogdan opens
+    from Telegram with no login. It was assembled by hand from a prod dump
+    until 2026-10-28; the queue now hands it over in one click.
+    """
+    order = await db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    if order.plan != "notes":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The brief is for Coach Notes orders.")
+    row = None
+    if order.analysis_client_id:
+        row = (
+            await db.execute(
+                select(Analysis).where(
+                    Analysis.user_id == order.user_id,
+                    Analysis.client_id == order.analysis_client_id,
+                )
+            )
+        ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pick the athlete's clip on the order first.")
+    path = await _clip_path(db, order)
+    clip = await run_in_threadpool(coach_brief.clip_for_brief, path) if path is not None else None
+    html = coach_brief.render_brief_html(
+        order_id=order.id, paid_ms=order.created_at_ms, result=row.result, entry=row.data,
+        media=await _analysis_media(db, order.user_id, order.analysis_client_id), clip=clip,
+    )
+    name = f"Разбор_для_тренера_заказ_{order.id}.html"
+    return HTMLResponse(html, headers={
+        "Content-Disposition": f"attachment; filename=brief-order-{order.id}.html; filename*=UTF-8''{quote(name)}",
+        "Cache-Control": "no-store",
+    })
 
 
 async def _clip_path(db: AsyncSession, order: Order) -> Path | None:
