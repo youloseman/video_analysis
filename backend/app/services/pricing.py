@@ -763,9 +763,14 @@ def _period_toggle() -> str:
                 f'onclick="{js}">{label}</button>')
     saved = annual_saving_pct()
     badge = f' <span class="pr-save">Save {saved}%</span>' if saved else ""
+    # Monthly is pressed first. Yearly used to be, because it put all three
+    # plans in one unit -- and the checkouts it opened were abandoned: to
+    # 2026-10-28, 25 yearly checkouts produced 3 payments against 4 of 6
+    # monthly ones. $69 up front is the wrong first step for someone holding
+    # their first report; the saving stays on the button for whoever wants it.
     return (
         '<div class="pr-period" role="group" aria-label="Billing period">'
-        + btn("month", "Monthly", False) + btn("year", f"Yearly{badge}", True)
+        + btn("month", "Monthly", True) + btn("year", f"Yearly{badge}", False)
         + "</div>"
     )
 
@@ -960,7 +965,7 @@ def render_pricing(mode: str = "landing") -> str:
     research = _research() if mode == "app" else ""
     return (
         f"<style>{PRICING_CSS}</style>"
-        f'<div class="pr" data-mode="{mode}" data-period="year" data-pick="E,F" data-hide="S">'
+        f'<div class="pr" data-mode="{mode}" data-period="month" data-pick="E,F" data-hide="S">'
         f"{_period_toggle()}{_desk_table(tiers, mode)}{_mob(tiers, mode)}"
         f"{_coach(mode)}{_ask()}{research}"
         f'<p class="pr-foot">{FOOTNOTE}</p></div>'

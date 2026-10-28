@@ -80,6 +80,20 @@ def test_annual_saving_is_computed_from_the_amounts_not_written_down():
     assert pricing.catalog()["annual_saving_pct"] == expected
 
 
+def test_monthly_is_the_period_the_block_opens_on():
+    """Yearly was the default and its checkouts were abandoned (3 paid of 25
+    opened, to 2026-10-28, against 4 of 6 monthly). Both periods stay in the
+    markup; the one pressed first is monthly, on the landing page and in the
+    app alike, and the SPA's own memory of the period starts there too."""
+    for mode in ("landing", "app"):
+        html = pricing.render_pricing(mode)
+        assert 'class="pr" data-mode="%s" data-period="month"' % mode in html
+        assert 'data-per="month" aria-pressed="true"' in html
+        assert 'data-per="year" aria-pressed="false"' in html
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "let billPeriod='monthly';" in spa
+
+
 def test_the_yearly_note_carries_the_same_saving_as_the_badge():
     """Two claims about one discount. They are rendered from one number."""
     cat = pricing.catalog()

@@ -6821,8 +6821,9 @@ function retryPlans(){ PLANS_ERR=false; renderPricing(); }
    goes into its pr-slot placeholders below. Both billing periods are in the
    markup; the block's own toggle switches them, and billPeriod follows it so a
    redraw (sign-in, a purchase coming back) keeps the period the reader picked.
-   Yearly is the default because it puts all three plans in one unit. */
-let billPeriod='yearly';   // 'monthly' | 'yearly'
+   Monthly is the default (see pricing._period_toggle): yearly checkouts were
+   opened and abandoned, 3 paid of 25, against 4 of 6 monthly. */
+let billPeriod='monthly';   // 'monthly' | 'yearly'
 /* The order bump on Enthusiast: an Expert Review added to the subscription's
    first invoice at the catalogue's bump price. */
 let reviewBump=false;
