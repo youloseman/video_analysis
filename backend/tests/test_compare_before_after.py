@@ -217,3 +217,12 @@ def test_the_how_it_works_loop_ends_on_the_recheck_beside_a_real_analysis():
     # The photo is somebody else's race photo, edited: the page has to say
     # both, and that the numbers are measured on the picture shown.
     assert "edited" in how and "measured on the image you see" in how
+
+
+def test_the_coach_line_does_not_name_the_model_to_the_athlete():
+    """Positioning, not decoration: the athlete is told the coaching is written
+    from the measurements, never which model wrote it. Admins still see it."""
+    html = SPA.read_text(encoding="utf-8")
+    fn = _fn(html, "coachDisclaimer")
+    assert "written by" not in fn
+    assert "auth.tier==='admin'" in fn

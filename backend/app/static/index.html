@@ -3504,12 +3504,14 @@ function mdInline(s){
             /(^|[\s([{"'—–])\*(?!\s)([^*\n]+?)(?<!\s)\*(?=[\s.,;:!?)\]}"'—–]|$)/g,
             '$1<em>$2</em>');
 }
-/* The line under every coach block. It names the model that actually wrote the
-   text, which is not decoration: coaching falls back to a second provider when
-   the first one fails, and without this the only way to tell which one answered
-   is to read the server log. */
+/* The line under every coach block. The athlete reads that it is written from
+   the measurements -- not which model wrote it: Flapp is positioned as a
+   measuring instrument, not as AI, and a model name in mono type under the
+   coaching said the opposite on every report (Artur, 2026-10-28). The name is
+   still useful to us -- coaching falls back to a second provider when the
+   first fails -- so an admin still sees it. */
 function coachDisclaimer(rec){
-  const model=(rec&&rec.model)?` · written by <span class="mono">${esc(rec.model)}</span>`:'';
+  const model=(rec&&rec.model&&auth&&auth.tier==='admin')?` · <span class="mono">${esc(rec.model)}</span>`:'';
   return `<div class="disclaimer">Written from the measurements — sanity-check anything major with your coach.${model}</div>`;
 }
 function mdToHtml(md){
