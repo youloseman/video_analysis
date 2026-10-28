@@ -196,7 +196,7 @@ CARDS: tuple[Card, ...] = (
             Feature("Before / after, and trends of every angle"),
             Feature("Your earlier reports open in full"),
             Feature("<b>2</b> saved setups", note="the gear you ride and run with"),
-            Feature("Send the report to ChatGPT or your coach"),
+            Feature("Easy-read file for AI"),
             Feature(f"Expert Review for {usd(REVIEW_BUMP_AMOUNT)}",
                     note=f"member price, instead of {usd(EXPERT_AMOUNT)}"),
         ),
@@ -603,7 +603,7 @@ COMPARE: tuple[tuple[str, tuple[Row, ...]], ...] = (
         Row("Compare two bikes or setups", "", (NO, NO, YES)),
     )),
     ("Advice from a person", (
-        Row("Expert Review", "a pro triathlete's full plan for the next weeks", (
+        Row("Expert Review", "a personal plan for the next weeks", (
             usd(EXPERT_AMOUNT),
             Cell(usd(REVIEW_BUMP_AMOUNT), "member price"),
             {"year": Cell("<b>1 a year included</b>",
@@ -613,7 +613,7 @@ COMPARE: tuple[tuple[str, tuple[Row, ...]], ...] = (
         )),
     )),
     ("Keep and share", (
-        Row("Send the report to ChatGPT or your coach", "",
+        Row("Easy-read file for AI", "",
             (f"With a {usd(UNLOCK_AMOUNT)} report", YES, YES)),
         Row("Branded PDF report", "", (NO, NO, YES)),
     )),
