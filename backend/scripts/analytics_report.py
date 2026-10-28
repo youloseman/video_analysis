@@ -48,9 +48,12 @@ HOST = os.environ.get("POSTHOG_API_HOST", "https://us.posthog.com")
 # Display prices, minor units -> dollars. Mirrors services/pricing.py, which is
 # the source of truth; purchase events carry no amount, so revenue has to be
 # reconstructed from the plan name. If a price moves there, move it here.
+# "expert" is the list price: a member buys it at $29 (Full) or $35
+# (Enthusiast) under the same plan name, so an expert sale may read high.
 PRICE_USD = {
     "unlock": 4, "notes": 12, "expert": 39, "expert_recheck": 27,
-    "enthusiast_monthly": 9, "enthusiast_yearly": 69, "full_yearly": 99,
+    "enthusiast_monthly": 9, "enthusiast_yearly": 69,
+    "full_monthly": 13, "full_yearly": 99,
 }
 
 PV = "'$pageview'"
