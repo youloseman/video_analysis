@@ -428,6 +428,23 @@ def _frozen(entry: dict, moved: dict) -> dict:
 ARTICLE_BANDS = {"triathlon": {"trunk_angle": (20, 30)}}
 
 
+def _credit_band(im, text: str):
+    """The frame with a dark strip under it carrying the photographer's
+    credit, so the credit travels with the picture wherever it is shared."""
+    from PIL import Image, ImageDraw
+
+    from app.services.video_analysis.overlay_style import _font
+
+    h = max(36, round(im.width * 0.047))
+    out = Image.new("RGB", (im.width, im.height + h), (14, 22, 38))
+    out.paste(im, (0, 0))
+    d = ImageDraw.Draw(out)
+    font = _font(False, max(14, round(h * 0.42)))
+    w = d.textlength(text, font=font)
+    d.text(((im.width - w) / 2, im.height + h / 2), text, font=font, fill=(226, 231, 239), anchor="lm")
+    return out
+
+
 def rebuild(study: dict) -> None:
     from app.services.video_analysis.biomechanics import cycling_positions as CP
 
@@ -472,8 +489,10 @@ def _rebuild(study: dict) -> None:
     social = ROOT / study["social"]
     social.mkdir(parents=True, exist_ok=True)
 
-    def webp(jpg, path, q):
+    def webp(jpg, path, q, band=None):
         im = Image.open(io.BytesIO(jpg)).convert("RGB")
+        if band:
+            im = _credit_band(im, band)
         if im.width > 1200:
             im = im.resize((1200, int(1200 * im.height / im.width)), Image.LANCZOS)
         im.save(path, "WEBP", quality=q, method=6)
@@ -486,6 +505,10 @@ def _rebuild(study: dict) -> None:
     # photo into the served media -- the article carries a table of the
     # numbers instead -- and "video" writes only the frames taken from video
     # (entries flagged ``video``), which Artur keeps in the article.
+    # "credited" (Artur, 2026-10-28) writes only the photographs with a
+    # photographer's credit -- Scott Flathouse's, by his permission -- each
+    # with his credit line drawn under the frame; stills and the reader's
+    # photo are measured but not shown.
     publish = study.get("publish_photos", True)
     count = len(items)
     # Every pro counts in the numbers; only the ones whose photo is good enough
@@ -497,6 +520,9 @@ def _rebuild(study: dict) -> None:
         a = d["angles"]
         if publish is True or (publish == "video" and d.get("video")):
             webp(d["jpg"], media / f"position-{n:02d}.webp", 82)
+        elif publish == "credited" and d.get("credit") and not d.get("video"):
+            line = " · ".join(x for x in (f"Photo: {d['credit']}", study.get("credit_link")) if x)
+            webp(d["jpg"], media / f"position-{n:02d}.webp", 82, band=line)
         tag = f"_{d['key']}" if d["race"] != "Kona 2026" else ""
         Image.open(io.BytesIO(d["jpg"])).convert("RGB").save(
             social / f"position-{n:02d}{tag}_forearm-{a['forearm_tilt']:.0f}_torso-{a['trunk']:.0f}.jpg",

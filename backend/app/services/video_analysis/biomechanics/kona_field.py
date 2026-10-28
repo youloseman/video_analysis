@@ -33,14 +33,16 @@ KONA_PRO_SOURCE = (
     "every joint point checked by hand"
 )
 
-# Per summary field: median, middle half (q1-q3) and the full range.
+# Per summary field: median, middle half (q1-q3) and the full range. Re-read
+# 2026-10-28 from the rebuild with Artur's leg-point corrections (hip moved on
+# two positions): trunk q1, shoulder q3 and helmet q3 shifted by under 0.4.
 KONA_PRO_FIELD: dict[str, dict[str, float]] = {
-    "trunk_angle_avg":    {"median": 20.2, "q1": 18.3, "q3": 22.2, "lo": 12.2, "hi": 27.1},
-    "shoulder_angle_avg": {"median": 87.7, "q1": 83.0, "q3": 91.8, "lo": 74.1, "hi": 99.6},
+    "trunk_angle_avg":    {"median": 20.2, "q1": 18.7, "q3": 22.2, "lo": 12.2, "hi": 27.1},
+    "shoulder_angle_avg": {"median": 87.7, "q1": 83.0, "q3": 91.7, "lo": 74.1, "hi": 99.6},
     "elbow_angle_avg":    {"median": 83.7, "q1": 76.4, "q3": 87.7, "lo": 66.4, "hi": 102.3},
     "forearm_tilt_avg":   {"median": 25.9, "q1": 23.4, "q3": 28.4, "lo": 18.8, "hi": 32.0},
     # n=31: one rider caught ducking the head is left out of the helmet only.
-    "helmet_above_back":  {"median": 18.4, "q1": 14.0, "q3": 21.6, "lo": 6.7, "hi": 33.0},
+    "helmet_above_back":  {"median": 18.4, "q1": 14.0, "q3": 21.4, "lo": 6.7, "hi": 33.0},
 }
 
 # Units per field, for whoever prints these (the coach prompt, the export).

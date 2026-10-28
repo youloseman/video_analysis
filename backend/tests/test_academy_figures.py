@@ -19,6 +19,13 @@ DRAFT = CONTENT_DIR / "kona-2026-pro-bike-positions.md"
 # Article positions whose frame is a still from video (kona2026.json ``video``).
 # Shown until 2026-10-14, when Artur took every frame out of the article.
 VIDEO_FRAMES: tuple[int, ...] = ()
+# Article positions on Scott Flathouse's race photographs, shown again since
+# 2026-10-28 (Artur) with his credit on every one: the frame carries it, the
+# caption says it, and the gallery links his Instagram and his events page.
+SCOTT_FRAMES: tuple[int, ...] = (1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19,
+                                 23, 24, 26, 28, 30, 31, 32)
+# Riders A, B and C, shown inline in sections 1 and 3.
+INLINE_FRAMES: tuple[int, ...] = (1, 23, 14)
 
 
 class TestTheFigureBlock:
@@ -45,16 +52,16 @@ class TestTheKonaDraft:
         art = get_article("kona-2026-pro-bike-positions")
         assert art is not None and art.meta.category == "bike-aero"
         assert len(art.sources) >= 8
-        # Our chart, the app's table and the seven video frames; no race
-        # photograph (2026-10-13).
-        assert art.body_html.count("<figure>") == 2 + len(VIDEO_FRAMES)
+        # Our chart, the app's table, riders A-C and Scott's photographs.
+        assert art.body_html.count("<figure>") == 2 + len(INLINE_FRAMES) + len(SCOTT_FRAMES) + len(VIDEO_FRAMES)
 
     def test_every_figure_it_shows_exists(self):
         text = DRAFT.read_text(encoding="utf-8")
         srcs = re.findall(r"^!\[[^\]]*\]\((/media/[^)]+)\)$", text, flags=re.M)
-        assert srcs == (["/media/academy/kona-2026/field.webp",
+        pos = lambda n: f"/media/academy/kona-2026/position-{n:02d}.webp"  # noqa: E731
+        assert srcs == (["/media/academy/kona-2026/field.webp", pos(1), pos(23), pos(14),
                          "/media/academy/kona-2026/rider-c-table.webp"]
-                        + [f"/media/academy/kona-2026/position-{n:02d}.webp" for n in VIDEO_FRAMES])
+                        + [pos(n) for n in sorted(SCOTT_FRAMES + VIDEO_FRAMES)])
         for src in srcs:
             assert (MEDIA / src.removeprefix("/media/")).is_file(), src
 
@@ -70,24 +77,33 @@ class TestTheKonaDraft:
         says how many are stills). Then Slowtwitch asked for its photographs to
         come down (2026-10-13): no race photograph is published any more, and
         the thirty-two positions are a table of the numbers. The frames taken
-        from video -- broadcast and riders' own posts -- stay (Artur, same day)."""
+        from video -- broadcast and riders' own posts -- stay (Artur, same day).
+        Since 2026-10-14 no frame at all; since 2026-10-28 Scott Flathouse's
+        photographs again, with his permission and credit, and only those."""
         text = DRAFT.read_text(encoding="utf-8")
         shown = [int(n) for n in re.findall(r"\(/media/academy/kona-2026/position-(\d\d)\.webp\)", text)]
-        assert shown == list(VIDEO_FRAMES)
+        assert shown == list(INLINE_FRAMES) + sorted(SCOTT_FRAMES + VIDEO_FRAMES)
+        for n in SCOTT_FRAMES:
+            caps = re.findall(rf"^!\[([^\]]*)\]\(/media/academy/kona-2026/position-{n:02d}\.webp\)$", text, re.M)
+            assert caps[-1].startswith(f"Position {n} of 32"), n
+            assert all(c.endswith("Photo: Scott Flathouse (@scottflathousephoto).") for c in caps), n
+        assert "https://www.instagram.com/scottflathousephoto/" in text
+        assert "https://www.scottflathousephoto.com/events/" in text
+        assert "The race photographs are Scott Flathouse's, published with his permission." in text
         assert not re.search(r"/media/academy/kona-2026/rider-[abc]\.webp", text)
         rows = re.findall(r"^\| (\d+) \| [^|]+ \| (?:Men|Women) \| (\d+)° \|", text, re.M)
         assert [int(n) for n, _ in rows] == list(range(1, 33))
         tilts = [int(t) for _, t in rows]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"
         assert "Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race." in text
-        assert "The photographs and frames themselves are not reproduced here" in text
+        assert "the stills from video and the reader's photo are measured but not reproduced" in text
         # Athletes named where Artur could tell (2026-10-14); the one rider in
         # two frames is kept and said so, not hidden.
         assert "| 1 | Kristian Blummenfelt | Men |" in text
         assert "Positions 5 and 18 are the same athlete, Matthew Hanson" in text
         assert "We do not name the 2026 athletes" not in text
         # Nor are the photographs served: a removed figure is a deleted one.
-        gone = [f"position-{n:02d}" for n in range(1, 33) if n not in VIDEO_FRAMES]
+        gone = [f"position-{n:02d}" for n in range(1, 33) if n not in SCOTT_FRAMES + VIDEO_FRAMES]
         for name in gone + ["rider-a", "rider-b", "rider-c"]:
             assert not (MEDIA / "academy" / "kona-2026" / f"{name}.webp").exists(), name
 
@@ -98,7 +114,7 @@ class TestTheKonaDraft:
         moved point, and gives the before-and-after medians."""
         text = DRAFT.read_text(encoding="utf-8")
         assert text.split("---", 2)[2].lstrip().startswith("**Updated 12 October 2026.**")
-        assert "75 of the 128 joint points moved" in text
+        assert "76 of the 128 joint points moved" in text
         assert "on the original fifteen photos, the medians moved by 2° at most" in text
 
     def test_uci_is_not_presented_as_a_triathlon_rule(self):
@@ -113,11 +129,11 @@ class TestTheKonaDraft:
 
     def test_the_numbers_in_the_text_match_the_table(self):
         text = DRAFT.read_text(encoding="utf-8")
-        for row in ("| Torso, from horizontal | 20° | 18–22° | 12–27° | 20–30° |",
+        for row in ("| Torso, from horizontal | 20° | 19–22° | 12–27° | 20–30° |",
                     "| Shoulder, torso to upper arm | 88° | 83–92° | 74–100° | 80–105° |",
                     "| Elbow | 84° | 76–88° | 66–102° | 75–110° |",
                     "| Forearm tilt, above horizontal | 26° | 23–28° | 19–32° | 5–30° |",
-                    "| Helmet above the back, % of torso length | 18% | 14–22% | 7–33% | up to 23% |"):
+                    "| Helmet above the back, % of torso length | 18% | 14–21% | 7–33% | up to 23% |"):
             assert row in text, row
 
     def test_the_article_column_cannot_be_pushed_wider_than_a_phone(self):

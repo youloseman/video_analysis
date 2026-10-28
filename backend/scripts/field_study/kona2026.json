@@ -5,7 +5,8 @@
  "media": "backend/app/static/media/academy/kona-2026",
  "social": "upload/kona-2026-overlays",
  "work": "upload/field-study/kona2026",
- "publish_photos": false,
+ "publish_photos": "credited",
+ "credit_link": "scottflathousephoto.com/events",
  "credit": "Scott Flathouse (@scottflathousephoto)",
  "riders": {
   "a": "0",
