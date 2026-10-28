@@ -246,8 +246,76 @@ def _trim(
         # both buttons against one list, so without this it promises the $4
         # reader a video that buying a stored report cannot produce.
         "unlock_scope": [u for u in unlocks if u in UNLOCK_SCOPE],
+        "lock_summary": lock_summary(result),
     }
     return kept
+
+
+# The order a running plan's issues are read in when picking the one to name.
+_RUN_SEVERITY = {"critical": 0, "significant": 1, "minor": 2}
+
+
+def _worst_finding(result: dict[str, Any]) -> dict[str, Any] | None:
+    """The one finding the paywall names, WITHOUT its value.
+
+    A bike report's fit plan is already in priority order (saddle before
+    cockpit, because each change moves the ones below it); the first
+    diagnostic is the one a fitter would start with. A running plan's issues
+    carry a severity; the worst wins. Without either, the first detected
+    issue gives a type and nothing else. The measured number stays behind the
+    lock in every branch -- the card shows the name and the range, and a blur
+    where the value goes.
+    """
+    for d in (result.get("fit_plan") or {}).get("diagnostics") or []:
+        if isinstance(d, dict) and d.get("metric_name"):
+            rng = d.get("target_range")
+            ok = isinstance(rng, (list, tuple)) and len(rng) == 2
+            return {
+                "metric": str(d["metric_name"]),
+                "label": str(d["metric_name"]).replace("_", " "),
+                "range": [rng[0], rng[1]] if ok else None,
+            }
+    issues = [i for i in (result.get("training_plan") or {}).get("issues") or []
+              if isinstance(i, dict) and i.get("metric")]
+    if issues:
+        i = min(issues, key=lambda x: _RUN_SEVERITY.get(str(x.get("severity")), 9))
+        rng = None
+        if isinstance(i.get("optimal_range"), str) and "-" in i["optimal_range"]:
+            lo, hi = i["optimal_range"].split("-", 1)
+            try:
+                rng = [float(lo), float(hi)]
+            except ValueError:
+                rng = None
+        return {"metric": str(i["metric"]), "label": str(i.get("label") or i["metric"]), "range": rng}
+    for i in result.get("detected_issues") or []:
+        if isinstance(i, dict) and i.get("type"):
+            t = str(i["type"])
+            return {"metric": t, "label": t.replace("_", " "), "range": None}
+    return None
+
+
+def lock_summary(result: dict[str, Any]) -> dict[str, Any]:
+    """What sits behind the lock, counted and named, with no value in it.
+
+    The paywall card used to list nine generic bullets; the preview card
+    already counted its drills and angles, and that card sold. This is the
+    same idea for every gated result: how many findings, how many drills or
+    fit adjustments, how many measured angles, whether a kinogram was built,
+    and the one finding to name (see _worst_finding). Nothing here carries a
+    measurement: the card draws a blur where the number goes, and the number
+    is what the $4 and the plan are for.
+    """
+    issues = result.get("detected_issues") or []
+    fit = (result.get("fit_plan") or {}).get("diagnostics") or []
+    plan = (result.get("training_plan") or {}).get("top_3_priorities") or []
+    return {
+        "findings": sum(1 for i in issues if isinstance(i, dict)),
+        "drills": sum(1 for p in plan if isinstance(p, dict) and p.get("drill")),
+        "adjustments": sum(1 for d in fit if isinstance(d, dict)),
+        "angles": len(result.get("angle_statistics") or {}),
+        "kinogram": bool(result.get("kinogram") or result.get("kinogram_base64")),
+        "worst": _worst_finding(result),
+    }
 
 
 def gate_free_result(result: dict[str, Any]) -> dict[str, Any]:

@@ -68,6 +68,37 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
   color:var(--c-blue-dk);background:var(--c-bg);border:1px solid var(--c-blue-dk);
   padding:2px 8px;border-radius:var(--radius-xs)}
 .lock-chip .ic{width:12px;height:12px}
+/* The teaser card (a locked video report): the named finding, the lock list
+   with counts, then the $4 and the plan side by side. */
+.tc-goal{border-left:3px solid var(--c-coral-btn);background:var(--c-bg);padding:10px 12px;margin:10px 0 14px;font-size:14px;line-height:1.5;color:var(--c-ink)}
+.tc-blur{display:inline-block;padding:0 3px;color:transparent;text-shadow:0 0 8px var(--c-ink);user-select:none;font-family:var(--f-mono)}
+.tc-lkh{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-coral-btn);margin:0 0 6px}
+.upsell ul.tc-lock{display:block;margin:0 0 16px;padding:0 12px;border:1px solid var(--c-line);border-radius:var(--radius);background:var(--c-bg)}
+.upsell ul.tc-lock li{display:grid;grid-template-columns:14px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--c-line);align-items:start}
+.upsell ul.tc-lock li:last-child{border-bottom:0}
+.upsell ul.tc-lock li svg{color:var(--c-ink-faint);margin-top:3px}
+.tc-lock b{display:block;font-size:14px;color:var(--c-ink)}
+.tc-lock span{font-size:12.5px;color:var(--c-ink-soft)}
+.tc-offers{display:grid;gap:10px;margin:0 0 12px}
+.tc-offer{border:1.5px solid var(--c-line-strong);border-radius:var(--radius);padding:12px 14px;background:var(--c-bg)}
+.tc-offer.tc-pri{border-color:var(--c-coral-btn)}
+.tc-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.tc-h b{font-size:15px;color:var(--c-head)}
+.tc-price{font-family:var(--f-display);font-weight:700;font-size:20px;color:var(--c-head);white-space:nowrap}
+.tc-price small{font-family:var(--f-mono);font-weight:400;font-size:10.5px;color:var(--c-ink-faint)}
+.tc-offer p{margin:4px 0 10px;font-size:13px;color:var(--c-ink-soft)}
+.tc-tog{display:inline-flex;gap:2px;padding:3px;margin:6px 0 8px;background:var(--c-ground);border:1px solid var(--c-line);border-radius:999px}
+.tc-tog button{font:600 12.5px var(--f-body);padding:6px 12px;min-height:32px;border:0;border-radius:999px;background:transparent;color:var(--c-ink-soft);cursor:pointer}
+.tc-tog button[aria-pressed=true]{background:var(--c-brand-navy);color:#fff}
+.upsell ul.tc-list{display:block;margin:0 0 10px;padding:0}
+.upsell ul.tc-list li{font-size:13px;padding:2px 0}
+.tc-offer .btn{display:flex;width:100%;justify-content:center;margin-top:2px}
+.tc-offer .btn-planbuy{background:var(--c-blue);color:var(--c-blue-ink);border-color:transparent}
+.tc-offer .btn-planbuy:hover{background:var(--c-blue-dk);color:var(--c-blue-ink)}
+.tc-fine{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);text-align:center;margin-top:8px}
+.tc-or{text-align:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint)}
+.tc-links{text-align:center;font-size:13px}
+@media(min-width:720px){.tc-offers{grid-template-columns:1fr 1fr}.tc-or{display:none}}
 
 .profilefield{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .profilefield label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;

@@ -6735,9 +6735,10 @@ function teaserPanelHtml(items, opts){
     ${opts.unlockNudge||''}
   </div>`;
 }
-function renderUpsell(containerId, locked, blockIds, unlockId){
+function renderUpsell(containerId, locked, blockIds, unlockId, ctx){
   (blockIds||[]).forEach(id=>{ const el=$('#'+id); if(el) el.classList.add('hidden'); });
   const host=$('#'+containerId); if(!host) return false;
+  ctx=ctx||{};
   // What the $4 button delivers, as opposed to what the plan does. Without
   // this split the card offered both against one list, and the one-off buyer
   // was promised an annotated video that buying a stored report cannot make:
@@ -6759,14 +6760,23 @@ function renderUpsell(containerId, locked, blockIds, unlockId){
   // purchases, and this card is 72% of all paywall impressions and had none.
   // Same offer as before, one page fewer: the plan is bought from here.
   const planBuy = (locked.reason==='preview' && auth) ? cheapestMonthly() : null;
-  host.innerHTML=teaserPanelHtml(items, locked.reason==='preview'
-    ? {src:'preview', chip:'Your free report', title:'That was one report. The plan is what changes the next one.',
-       body:previewBody(locked), planBuy:planBuy}
-    : {src:'result', unlockId:sellable?unlockId:null, unlockNudge:unlockNudgeHtml()});
+  const offer = (locked.reason!=='preview' && auth) ? planOffer() : null;
+  const delta = locked.reason!=='preview' ? teaserDelta(ctx) : null;
+  if(locked.reason==='preview'){
+    host.innerHTML=teaserPanelHtml(items, {src:'preview', chip:'Your free report',
+      title:'That was one report. The plan is what changes the next one.',
+      body:previewBody(locked), planBuy:planBuy});
+  } else {
+    // Remembered so the period toggle can redraw the same card in place.
+    state.teaserCard={containerId:containerId, locked:locked, unlockId:unlockId, ctx:ctx};
+    host.innerHTML=teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);
+  }
   host.classList.remove('hidden');
+  if(ctx.rerender) return true;
   // The paywall was actually put in front of someone. Paired with
   // `view_opened{view:'pricing'}` and `checkout_started`, this is the whole
   // conversion question: shown -> considered -> paid.
+  const ls=locked.lock_summary||{};
   track('paywall_shown', {
     reason: locked.reason||'locked',
     where: containerId,
@@ -6775,10 +6785,123 @@ function renderUpsell(containerId, locked, blockIds, unlockId){
     // on this card". This one says the card can start a plan checkout without
     // a detour through the price list, so the change reads against the old
     // numbers instead of blurring them.
-    plan_buy: !!planBuy,
+    plan_buy: !!(planBuy||offer),
+    // Which card this is, so the teaser redesign (2026-10-28) reads against
+    // the numbers before it: a_preview / b_teaser / e_history (c_photo is
+    // renderPhotoUpsell's).
+    card: locked.reason==='preview' ? 'a_preview' : (containerId==='hdUpsellHost' ? 'e_history' : 'b_teaser'),
+    worst: ls.worst ? ls.worst.metric : null,
+    delta: delta ? delta.d : null,
     tier: auth ? auth.tier : 'anonymous',
   });
   return true;
+}
+/* The teaser card: what this clip measured, counted and named, then the two
+   ways to open it. Replaces nine generic bullets and an "Upgrade" button that
+   opened the price list.
+
+   Paywall read of 2026-10-28: on this card people bought the $4 unlock and
+   nothing else (9 checkouts, all unlock); the preview card, which names its
+   counts and carries a plan button, took 23% to checkout against 6% for a
+   card whose only button opened the price list; and yearly checkouts were
+   opened and abandoned (3 paid of 25) while monthly closed 4 of 6. So: the
+   counts and the one finding by name, the $4 as a first-class offer, the plan
+   beside it with monthly pressed first, and the yearly saving one tap away. */
+const WORST_LABELS={
+  knee_at_bdc:'Knee at the bottom of the stroke', knee_at_tdc:'Knee at the top of the stroke',
+  hip_at_tdc:'Hip at the top of the stroke', trunk_angle:'Trunk angle', elbow_angle:'Elbow angle',
+  shoulder_angle:'Shoulder angle', forearm_tilt:'Forearm tilt', pelvic_ratio:'Pelvic rotation',
+  trunk_lean:'Trunk lean', cadence:'Cadence', overstride:'Overstride', knee_flexion:'Knee flexion',
+  saddle_too_low:'Saddle height', saddle_too_high:'Saddle height', trunk_too_aggressive:'Trunk angle',
+  trunk_too_upright:'Trunk angle', excessive_forward_lean:'Trunk lean', heel_strike:'Foot strike',
+};
+const DEGREE_METRIC=/knee|hip|trunk|elbow|shoulder|lean|tilt|angle|flexion/;
+/* The cheapest tier with a monthly price, with its yearly price beside it. */
+function planOffer(){
+  const m=cheapestMonthly(); if(!m) return null;
+  const card=((PLANS&&PLANS.cards)||[]).find(c=>c.kind==='tier'&&(c.prices||[]).some(p=>p.plan===m.plan));
+  const y=card?(card.prices||[]).find(p=>p.interval==='year'&&p.plan&&p.amount>0&&p.available!==false):null;
+  return {name:m.name, monthly:m,
+    yearly:y?{plan:y.plan, display:y.display, amount:y.amount, perMonth:'$'+(y.amount/1200).toFixed(2)}:null,
+    saving:(PLANS&&PLANS.annual_saving_pct)||0};
+}
+/* Score against the previous clip of the same sport, from the cabinet: the
+   score is free, so its change is free too; what moved it is not. */
+function teaserDelta(ctx){
+  if(!ctx||ctx.score==null||!ctx.sport) return null;
+  const prev=loadHist().filter(e=>e&&e.kind==='video'&&e.sport===ctx.sport&&e.score!=null
+      &&e.id!==ctx.entryId&&(!ctx.at||!e.at||e.at<ctx.at))
+    .sort((a,b)=>(b.at||0)-(a.at||0))[0];
+  return prev?{d:Math.round(ctx.score-prev.score), was:prev.score}:null;
+}
+function tcSetPeriod(per){
+  billPeriod = per==='yearly' ? 'yearly' : 'monthly';
+  const t=state.teaserCard; if(!t) return;
+  renderUpsell(t.containerId, t.locked, [], t.unlockId, Object.assign({}, t.ctx, {rerender:true}));
+}
+function teaserCardHtml(locked, unlockId, items, offer, delta, ctx){
+  const ls=locked.lock_summary||{};
+  const sport=ctx.sport||state.sport, bike=sport==='bike', noun=bike?'ride':'run';
+  const scope=locked.unlock_scope||[];
+  const withPlan=unlockId?' <em class="only-plan">with a plan</em>':'';
+  const lock='<svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>';
+  const title = delta
+    ? (delta.d>0 ? `+${delta.d} since your last ${noun}. Something moved. Here is what.`
+      : delta.d<0 ? `${delta.d} since your last ${noun}. Here is what slipped.`
+      : `Same score as your last ${noun}. The angles say whether anything moved.`)
+    : 'The score is yours. What moved it is behind the lock.';
+  let goal='';
+  if(ls.worst&&ls.worst.metric){
+    const w=ls.worst, label=WORST_LABELS[w.metric]||fitWords(w.label||w.metric);
+    const unit=DEGREE_METRIC.test(w.metric)?'°':'';
+    const rng=Array.isArray(w.range)&&w.range.length===2?` against the ${esc(String(w.range[0]))}–${esc(String(w.range[1]))}${unit} range`:'';
+    goal=`<div class="tc-goal">Biggest thing off in this clip: <b>${esc(label)}</b>, measured <span class="tc-blur" aria-label="hidden until the report is open">${unit?'000°':'0.00'}</span>${rng}.</div>`;
+  }
+  const rows=[];
+  if(ls.findings>0) rows.push([`${ls.findings} finding${ls.findings>1?'s':''}`,'What is off, and why it matters',false]);
+  else if((locked.unlocks||[]).indexOf('issues')>=0) rows.push(['Every finding','What is off, and why it matters',false]);
+  if(bike&&ls.adjustments>0) rows.push([`${ls.adjustments} fit adjustment${ls.adjustments>1?'s':''}`,'What to move on the bike, and by how much',false]);
+  if(!bike&&ls.drills>0) rows.push([`${ls.drills} drill${ls.drills>1?'s':''}, ranked`,'What to do first, starting tomorrow',false]);
+  if(ls.angles>0) rows.push([`${ls.angles} joint angles`,'Each against its range, with the source',false]);
+  if(ls.kinogram) rows.push(['Kinogram','The five key positions of your stride, side by side',false]);
+  if((locked.unlocks||[]).indexOf('coaching')>=0) rows.push(['Coaching notes','A personal action plan, in words',false]);
+  if(delta) rows.push(['Did it work?',`This clip against your last ${noun}, angle by angle`,true]);
+  if((locked.unlocks||[]).indexOf('video')>=0) rows.push(['Overlay video',`Every ${bike?'pedal stroke':'stride'}, frame by frame, at ¼ speed`,scope.indexOf('video')<0]);
+  const list = rows.length
+    ? `<ul class="tc-lock">${rows.map(r=>`<li>${lock}<div><b>${esc(r[0])}${r[2]?withPlan:''}</b><span>${esc(r[1])}</span></div></li>`).join('')}</ul>`
+    : `<ul class="tc-lock">${(items||[]).map(it=>`<li>${lock}<div><b>${esc(it.text)}${it.planOnly?withPlan:''}</b></div></li>`).join('')}</ul>`;
+  const price=unlockPrice();
+  const unlock = unlockId ? `<div class="tc-offer tc-pri">
+      <div class="tc-h"><b>Open this report</b><span class="tc-price">${freeUnlocks()>0?'free':esc(price)}</span></div>
+      <p>Findings, ${bike?'fit adjustments':'drills'} and angles for this clip. No subscription.</p>
+      <button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Open this report — free':'Open this report — '+esc(price)}</button>
+    </div>` : '';
+  let plan='';
+  if(offer){
+    const yearly = billPeriod==='yearly' && offer.yearly;
+    const per = yearly ? offer.yearly.perMonth : offer.monthly.display;
+    const planId = yearly ? offer.yearly.plan : offer.monthly.plan;
+    const tog = offer.yearly ? `<div class="tc-tog" role="group" aria-label="Billing period">
+        <button type="button" aria-pressed="${!yearly}" onclick="tcSetPeriod('monthly')">Monthly</button>
+        <button type="button" aria-pressed="${!!yearly}" onclick="tcSetPeriod('yearly')">Yearly${offer.saving?' · save '+esc(String(offer.saving))+'%':''}</button></div>` : '';
+    plan=`<div class="tc-offer${unlockId?'':' tc-pri'}">
+      <div class="tc-h"><b>${esc(offer.name)}</b><span class="tc-price">${esc(per)} <small>/mo</small></span></div>
+      ${tog}
+      <ul class="tc-list"><li>This report and every next clip, in full</li><li>Before / after on the clip you film next</li><li>Overlay video, frame by frame</li></ul>
+      <button class="btn btn-primary btn-planbuy" type="button" data-src="teaser" onclick="startCheckout(${esc(JSON.stringify(planId))})">Start ${esc(offer.name)} <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+      <div class="tc-fine">${yearly?esc(offer.yearly.display)+' billed once for the year':esc(offer.monthly.display)+' a month'} · cancel any time</div>
+    </div>`;
+  }
+  return `<div class="upsell upsell-teaser">
+    <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Score only · report locked</span>
+    <h3>${esc(title)}</h3>
+    ${goal}
+    <div class="tc-lkh">Already measured, waiting behind the lock</div>
+    ${list}
+    <div class="tc-offers">${unlock}${unlock&&plan?'<div class="tc-or">or every report, every clip</div>':''}${plan}</div>
+    <div class="tc-links"><a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare all plans</a></div>
+    ${unlockNudgeHtml()}
+  </div>`;
 }
 /* Concrete, because vague is a strange thing to follow a full report with:
    the server counts what it withheld so this can name it. Falls back to prose
@@ -8737,7 +8860,7 @@ function render(job,opts){
     renderUpsell('upsellHost', r.locked,
       ['coachBlock','planBlock','fitBlock','issuesBlock','metricsBlock','anglesBlock',
        'biomechBlock','kinogramBlock','exportBlock'],
-      entryId);
+      entryId, {sport:r.sport_type||state.sport, score:r.technique_score, entryId:entryId});
     renderQuota();
     mountFeedback('fbHost','video',r,entryId,
       {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
@@ -10302,7 +10425,7 @@ function entryFromResult(kind,res,base){
     // were withheld. Recorded so that paying later can rebuild this entry from
     // the stored analysis instead of leaving the athlete with the teaser they
     // were shown before they paid.
-    if(res.locked) e.locked=true;
+    if(res.locked){ e.locked=true; if(res.locked.lock_summary) e.lockSummary=res.locked.lock_summary; }
     // Whether a kinogram exists for this analysis. A boolean, not the image:
     // see renderHistoryKinogram for why the picture is fetched separately.
     if(res.kinogram_base64) e.hasKinogram=true;
@@ -10711,7 +10834,8 @@ function renderHistoryUpsell(e){
   // expires within hours. Without the scope every bullet reads as included,
   // and the one-off buyer is promised a replay a stored report cannot make.
   const unlock_scope=['coaching','angles','issues','ranges','kinogram','export','fit'];
-  renderUpsell('hdUpsellHost', {reason: preview?'preview':'teaser', unlock_scope}, [], unlockId);
+  renderUpsell('hdUpsellHost', {reason: preview?'preview':'teaser', unlock_scope, lock_summary:e.lockSummary||null},
+    [], unlockId, {sport:e.sport, score:e.score, entryId:e.id, at:e.at});
 }
 /* The AI export of a saved report. Offered only to a reader entitled to it —
    the endpoint answers 402 otherwise, and a button that always says "no" is

@@ -300,6 +300,70 @@ def test_the_preview_counts_what_it_withheld():
     assert counts["plan"] == 1
 
 
+def _bike_result() -> dict:
+    src = full_result()
+    src["sport_type"] = "bike"
+    src["training_plan"] = None
+    src["fit_plan"] = {"diagnostics": [
+        {"component": "saddle", "status": "needs_adjustment", "metric_name": "knee_at_bdc",
+         "current_value": 128.4, "target_range": [138, 145], "action": "raise", "amount": "8-12 mm",
+         "priority": 1},
+        {"component": "cockpit", "status": "needs_adjustment", "metric_name": "trunk_angle",
+         "current_value": 31.0, "target_range": [20, 25], "priority": 2},
+    ]}
+    src["detected_issues"] = [
+        {"type": "saddle_too_low", "severity": "warning", "value": "Knee at BDC: 128 deg"},
+        {"type": "trunk_too_upright", "severity": "info", "value": "31 deg"},
+    ]
+    src["angle_statistics"] = {f"a{i}": {"mean": 100.0 + i} for i in range(12)}
+    return src
+
+
+def test_every_gated_result_counts_what_sits_behind_the_lock():
+    """The teaser card names counts, not "more". Both access levels carry it."""
+    src = _bike_result()
+    for gated in (gate_free_result(src), gate_preview_result(src)):
+        ls = gated["locked"]["lock_summary"]
+        assert ls["findings"] == 2
+        assert ls["adjustments"] == 2
+        assert ls["drills"] == 0
+        assert ls["angles"] == 12
+        assert ls["kinogram"] is False
+    run = full_result()
+    run["kinogram"] = {"frames": 5}
+    ls = gate_free_result(run)["locked"]["lock_summary"]
+    assert ls["drills"] == 1 and ls["kinogram"] is True
+
+
+def test_the_named_finding_is_the_fit_plans_first_line_without_its_value():
+    """A bike plan is in fitting order; the card names the first line, with
+    its range, and the measured number stays behind the lock."""
+    ls = gate_free_result(_bike_result())["locked"]["lock_summary"]
+    assert ls["worst"] == {"metric": "knee_at_bdc", "label": "knee at bdc", "range": [138, 145]}
+    assert "128" not in json.dumps(ls)
+
+
+def test_a_running_plan_names_its_worst_issue_by_severity():
+    src = full_result()
+    src["training_plan"] = {"top_3_priorities": [{"drill": "strides"}], "issues": [
+        {"metric": "cadence", "label": "Cadence", "value": 158, "optimal_range": "170-185", "severity": "minor"},
+        {"metric": "overstride", "label": "Overstride", "value": 0.31, "optimal_range": "0-0.2", "severity": "critical"},
+    ]}
+    ls = gate_free_result(src)["locked"]["lock_summary"]
+    assert ls["worst"] == {"metric": "overstride", "label": "Overstride", "range": [0.0, 0.2]}
+    assert "0.31" not in json.dumps(ls) and "158" not in json.dumps(ls)
+
+
+def test_without_a_plan_the_first_detected_issue_is_named_without_a_range():
+    src = full_result()
+    src["detected_issues"] = [{"type": "excessive_forward_lean", "severity": "warning", "value": "14.2 deg"}]
+    ls = gate_free_result(src)["locked"]["lock_summary"]
+    assert ls["worst"] == {"metric": "excessive_forward_lean", "label": "excessive forward lean", "range": None}
+    assert "14.2" not in json.dumps(ls)
+    src["detected_issues"] = []
+    assert gate_free_result(src)["locked"]["lock_summary"]["worst"] is None
+
+
 def test_the_preview_does_not_offer_back_what_it_just_showed():
     unlocks = gate_preview_result(full_result())["locked"]["unlocks"]
     assert "coaching" not in unlocks and "issues" not in unlocks
