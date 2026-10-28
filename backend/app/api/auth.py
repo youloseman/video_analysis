@@ -29,6 +29,7 @@ from app.core.security import (
 )
 from app.models.user import User, crank_access, run_photo_access
 from app.services import analytics, notify
+from app.services.preview_release import preview_state
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -154,6 +155,14 @@ class MarketingBody(BaseModel):
     opt_in: bool
 
 
+class PreviewOut(BaseModel):
+    """The free full report: still to spend, or spent on which entry and when."""
+
+    available: bool
+    spent_at_ms: int | None = None
+    entry_id: str | None = None
+
+
 class UserOut(BaseModel):
     email: str
     tier: str
@@ -165,6 +174,9 @@ class UserOut(BaseModel):
     analytics_id: str = ""
     height_cm: int | None = None
     marketing_opt_in: bool = False
+    # Only /auth/me fills this (it needs the job store and a query); the
+    # sign-in answers leave it None and the SPA asks /auth/me after them.
+    preview: PreviewOut | None = None
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -372,8 +384,18 @@ def _user_out(user: User) -> UserOut:
 
 
 @router.get("/me", response_model=UserOut)
-async def me(user: User = Depends(get_current_user)) -> UserOut:
-    return _user_out(user)
+async def me(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> UserOut:
+    # Whether the preview is still to spend is decided next to the job store
+    # (main.preview_available), and main imports this router: resolved at
+    # call time, when both are loaded.
+    from app.main import preview_available
+
+    out = _user_out(user)
+    out.preview = PreviewOut(**await preview_state(db, user, preview_available(user)))
+    return out
 
 
 @router.put("/me/marketing", response_model=UserOut)

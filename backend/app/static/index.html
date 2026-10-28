@@ -722,6 +722,9 @@
            choices, and on a phone it ends the form. -->
       <div class="gobox">
         <p class="setsum" id="setupSummary"></p>
+        <!-- Once the one free full report is spent, said here, before the
+             button, with the date: the next clip is score and skeleton. -->
+        <p class="preframe hidden" id="preframe"></p>
         <button class="btn btn-go" id="analyze" type="button" aria-disabled="true" aria-describedby="hint">
           Analyze
         </button>
@@ -2664,6 +2667,7 @@ $('#modeSeg').addEventListener('click',e=>{
   // the button, the tiles and the hint all follow through syncPairSlot.
   if(photo && state.cameraSide==='both') $('#sideSeg [data-side="auto"]').click(); else syncPairSlot();
   syncOverlayField();             // photo has nothing to annotate; free gets no render
+  syncPreframe();                 // the spent-preview line is video-only
   $('#guides .g-dur').classList.toggle('hidden', photo); // duration guideline is video-only
   if(typeof renderHeightField==='function') renderHeightField();
   if(typeof loadMobility==='function') loadMobility();
@@ -2741,6 +2745,37 @@ function syncSetupSummary(){
 function syncAnalyzeLabel(){
   const go=$('#analyze'); if(!go) return;
   go.textContent = !auth ? 'Create free account & analyze' : (isPair() ? 'Analyze both clips' : 'Analyze');
+}
+
+/* The free full report is one per account, and the person who had spent it
+   used to learn that AFTER the next clip was analysed, on the teaser card
+   (paywall read of 2026-10-28). Said before the button instead: when the
+   report was, what this clip will show, and the two ways to a full one.
+   Video only -- a photo is the teaser on a free account regardless
+   (main.photo_access) and its own banner says so. Reads auth.preview, which
+   /auth/me fills (preview_state) and a preview result updates in place. */
+function syncPreframe(){
+  const el=$('#preframe'); if(!el) return;
+  const pv=auth&&auth.preview;
+  const show=!!(auth && isFreeUser() && pv && pv.available===false && state.mode!=='photo');
+  el.classList.toggle('hidden', !show);
+  if(!show){ el.innerHTML=''; state.preframeKey=null; return; }
+  const when = pv.spent_at_ms ? `was <b>${esc(shortDate(pv.spent_at_ms))}</b>` : 'is spent';
+  // The last locked clip, if there is one: its card carries the $4. A photo
+  // has no unlock, and the preview entry is the full report already.
+  const last=loadHist().find(e=>e && e.kind!=='photo' && e.locked && e.lockReason && e.lockReason!=='preview');
+  const price=unlockPrice()||'US$4';
+  el.innerHTML=`Your free full report ${when}. This clip shows the <b>score and the skeleton</b>.<br>`
+    + (last ? `<a href="#" data-pf="last">Open your last report for ${esc(price)}</a> · ` : '')
+    + `<a href="#" data-pf="plans">Every report in full with a plan</a>`;
+  el.querySelectorAll('[data-pf]').forEach(a=>a.addEventListener('click',ev=>{
+    ev.preventDefault();
+    track('preframe_clicked', {to:a.dataset.pf, sport:state.sport});
+    if(a.dataset.pf==='last') openHistory(last.id); else openPricing();
+  }));
+  // One impression per upload screen, not one per keystroke of the setup.
+  const key=`${state.mode}|${!!last}|${pv.spent_at_ms||0}`;
+  if(state.preframeKey!==key){ state.preframeKey=key; track('preframe_shown', {sport:state.sport, has_date:!!pv.spent_at_ms, has_last:!!last}); }
 }
 
 /* ---- sport tiles ---- */
@@ -3306,6 +3341,9 @@ async function pollOnce(){
         seconds: state.analyzeStart ? Math.round((Date.now()-state.analyzeStart)/1000) : null,
         tier: auth ? auth.tier : 'anonymous',
       });
+      // The preview is spent the moment it is shown. Written onto auth here so
+      // the next upload screen says so without another /auth/me round-trip.
+      if(auth && res.locked && res.locked.reason==='preview') auth.preview={available:false, spent_at_ms:Date.now(), entry_id:null};
       // A report restored from #job= (Back from an article, a refresh) is the
       // same analysis: write it over its own history entry, not beside it.
       const prior=loadHist().find(e=>e && e.jobId && e.jobId===state.jobId);
@@ -9775,6 +9813,7 @@ function renderAuth(){
   // then runs the analysis on the file already chosen.
   syncAnalyzeLabel();
   syncAnalyzeBtn();
+  syncPreframe();
   if(!state.file && typeof noFileHint==='function') noFileHint();
   if(typeof renderAccount==='function') renderAccount();
   // Both of these answer "who is asking", and both were rendered ONCE at boot
@@ -9887,7 +9926,7 @@ async function submitAuth(e){
       mode==='register' ? {pending_analysis: !!state.pendingAnalyze, marketing_opt_in: marketing}
                         : {pending_analysis: !!state.pendingAnalyze});
     // Login carries no consent flags; ask the server so the Account switch is right.
-    if(mode!=='register') fetch('/auth/me',{headers:authHeaders()}).then(r=>r.ok?r.json():null).then(u=>{ if(u&&auth) auth.marketing_opt_in=!!u.marketing_opt_in; }).catch(()=>{});
+    if(mode!=='register') fetch('/auth/me',{headers:authHeaders()}).then(r=>r.ok?r.json():null).then(u=>{ if(u&&auth){ auth.marketing_opt_in=!!u.marketing_opt_in; auth.preview=u.preview||null; syncPreframe(); } }).catch(()=>{});
     renderAuth(); closeAuth(); migrateAndLoad(); renderPromoBanner();
     if(mode==='register'){ const pc=($('#authPromo').value||'').trim(); if(pc) promoRemember(pc); }
     applyPendingPromo();
@@ -10425,7 +10464,7 @@ function entryFromResult(kind,res,base){
     // were withheld. Recorded so that paying later can rebuild this entry from
     // the stored analysis instead of leaving the athlete with the teaser they
     // were shown before they paid.
-    if(res.locked){ e.locked=true; if(res.locked.lock_summary) e.lockSummary=res.locked.lock_summary; }
+    if(res.locked){ e.locked=true; e.lockReason=res.locked.reason||'locked'; if(res.locked.lock_summary) e.lockSummary=res.locked.lock_summary; }
     // Whether a kinogram exists for this analysis. A boolean, not the image:
     // see renderHistoryKinogram for why the picture is fetched separately.
     if(res.kinogram_base64) e.hasKinogram=true;

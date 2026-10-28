@@ -98,7 +98,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .tc-fine{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);text-align:center;margin-top:8px}
 .tc-or{text-align:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint)}
 .tc-links{text-align:center;font-size:13px}
-@media(min-width:720px){.tc-offers{grid-template-columns:1fr 1fr}.tc-or{display:none}}
+@media(min-width:640px){.tc-offers{grid-template-columns:1fr 1fr}.tc-or{display:none}}
 
 .profilefield{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .profilefield label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;
@@ -1489,6 +1489,13 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .setsum{margin:4px 0 2px;padding:12px 14px;background:var(--c-ground);border-radius:var(--radius);
   font-family:var(--f-mono);font-size:12px;line-height:1.5;color:var(--c-ink-soft)}
 .setsum:empty{display:none}
+/* The spent-preview line (syncPreframe): a warning tint, two short lines,
+   the two ways to a full report as plain links. */
+.preframe{margin:0;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--c-warn);
+  background:var(--st-warn-bg);font-size:13px;line-height:1.5;color:var(--c-ink)}
+.preframe b{font-weight:600}
+.preframe a{color:var(--c-warn-text);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.preframe.hidden{display:none}
 .gobox .btn-go{width:100%;min-height:52px;font-size:16px;font-weight:600}
 .gobox .hint{margin:0;font-size:13px;color:var(--c-ink-soft)}
 .gobox .hint.err{color:var(--st-bad)}

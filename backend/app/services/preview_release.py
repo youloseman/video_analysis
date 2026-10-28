@@ -24,6 +24,8 @@ analysed inline, so it either raised -- and never claimed -- or was returned.
 from __future__ import annotations
 
 import structlog
+from typing import Any
+
 from sqlalchemy import exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +35,35 @@ from app.models.user import User
 logger = structlog.get_logger()
 
 PHOTO_CLAIM_PREFIX = "photo:"
+
+
+async def preview_state(db: AsyncSession, user: User, available: bool) -> dict[str, Any]:
+    """The account's one free full report, as /auth/me reports it.
+
+    Still to spend: ``{"available": True}``. Spent: when, and on which history
+    entry, read off the saved analysis the claim points at -- so the uploader
+    can say "your free full report was Oct 12" BEFORE the next clip is
+    analysed, instead of the teaser card saying it after. A claim with no
+    saved row behind it (a job still running, or a photo claim from the old
+    rule) is spent without a date, and the line says so without one.
+    """
+    if available:
+        return {"available": True}
+    claimed = user.free_preview_job_id
+    row = None
+    if claimed and not claimed.startswith(PHOTO_CLAIM_PREFIX):
+        row = (
+            await db.execute(
+                select(Analysis.client_id, Analysis.created_at_ms)
+                .where(Analysis.user_id == user.id, Analysis.job_id == claimed)
+                .limit(1)
+            )
+        ).first()
+    return {
+        "available": False,
+        "spent_at_ms": int(row.created_at_ms) if row else None,
+        "entry_id": row.client_id if row else None,
+    }
 
 
 async def release_orphaned_previews(db: AsyncSession) -> int:
