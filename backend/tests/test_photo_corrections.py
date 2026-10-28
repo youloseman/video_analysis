@@ -217,11 +217,15 @@ def test_the_far_leg_cannot_be_adjusted():
         _recompute([{"landmark": 23, "dx": 0.01, "dy": 0.0}])
 
 
-def test_running_photos_are_refused():
+def test_a_bike_pose_is_not_re_measured_as_anything_else():
+    """A run is re-measured from a run pose only (test_photo_run_corrections);
+    swimming not at all."""
     photo = _photo_bytes()
     blob = PC.build_pose_blob(photo, _pose_result(photo))
-    with pytest.raises(ValueError, match="cycling photos only"):
+    with pytest.raises(ValueError, match="different sport"):
         PC.recompute_photo(photo, "run", None, blob, [{"landmark": 24, "dx": 0.01, "dy": 0}])
+    with pytest.raises(ValueError, match="cycling and running photos only"):
+        PC.recompute_photo(photo, "swim", None, blob, [{"landmark": 24, "dx": 0.01, "dy": 0}])
 
 
 def test_the_corrected_pose_keeps_the_position_it_was_filed_under():

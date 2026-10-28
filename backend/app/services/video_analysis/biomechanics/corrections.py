@@ -16,7 +16,9 @@ it -- the offset rides along. What it does not do is move a point on one frame
 only, which would fix one picture and leave every measurement, all of which are
 whole-clip statistics, exactly where it was.
 
-Bike only, for now. The bike analyzer reads every angle off the image-plane
+Bike only on video. (A running PHOTO read behind the run-photo flag takes
+corrections too: it measures off the image plane like the bike -- see
+``apply_corrections(image_plane_angles=...)``.) The bike analyzer reads every angle off the image-plane
 landmarks (the same points the athlete drags), so an image-space offset flows
 straight into the numbers. The run analyzer reads angles off MediaPipe's WORLD
 landmarks, which an image-space drag cannot reach without a mapping that has
@@ -267,6 +269,8 @@ def apply_corrections(
     frames: list[dict[str, Any]],
     corrections: list[dict[str, Any]],
     sport_type: str,
+    *,
+    image_plane_angles: bool = False,
 ) -> dict[int, int]:
     """Shift the corrected landmarks on every frame, in place.
 
@@ -278,9 +282,12 @@ def apply_corrections(
     point we could not measure is not made measurable by an offset.
 
     Returns ``{landmark: frames moved}``. Raises ``ValueError`` for a sport the
-    offset would not reach the measurements of.
+    offset would not reach the measurements of. ``image_plane_angles``: the
+    caller reads this sport's angles off the normalized landmarks too -- the
+    running PHOTO behind ``contact_metrics`` does (photo_analyzer._image_plane),
+    the running clip does not.
     """
-    if sport_type != "bike":
+    if sport_type != "bike" and not image_plane_angles:
         raise ValueError(
             "Joint corrections are available for cycling clips only: the "
             "running analysis measures from a different set of points that an "

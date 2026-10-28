@@ -71,9 +71,10 @@ def _unpack(rows: list[list[Any]]) -> list[SimpleNamespace]:
 
 
 def _canonical(blob: dict[str, Any]) -> bytes:
-    # The silhouette edge is signed when the blob carries one. Blobs issued
-    # before it existed have no such key and verify exactly as they did.
-    keys = _SIGNED_KEYS + (("silhouette_top",) if "silhouette_top" in blob else ())
+    # The silhouette edge and the sport are signed when the blob carries them.
+    # Blobs issued before they existed have no such keys and verify exactly as
+    # they did (a blob without a sport is a bike pose).
+    keys = _SIGNED_KEYS + tuple(k for k in ("silhouette_top", "sport") if k in blob)
     return json.dumps(
         {k: blob.get(k) for k in keys},
         sort_keys=True, separators=(",", ":"), allow_nan=False,
@@ -92,13 +93,23 @@ def image_sha256(image_bytes: bytes) -> str:
 
 def build_pose_blob(
     image_bytes: bytes, pose_result: dict[str, Any], *, helmet_points: bool = False,
+    sport: str = "bike",
 ) -> dict[str, Any]:
     """What the client keeps so it can ask for a re-measurement later.
 
     ``helmet_points``: the photo carries a helmet reading, so its top-of-back
     and top-of-helmet points are offered for dragging too.
+
+    ``sport="run"``: ``pose_result`` carries the legs already NAMED by position
+    (photo_analyzer._name_run_legs) -- the stance leg on the camera-side
+    indices -- so the points the athlete drags are the leg the report
+    measures, not whichever leg the model labelled near. The ear is not
+    offered: no running angle reads it.
     """
     side = pose_result["camera_side"]
+    draggable = list(DRAGGABLE_LANDMARKS.get(side, ()))
+    if sport == "run":
+        draggable = [i for i in draggable if i not in (7, 8)]
     blob: dict[str, Any] = {
         "v": POSE_VERSION,
         "image_sha256": image_sha256(image_bytes),
@@ -107,9 +118,10 @@ def build_pose_blob(
         "world": _pack(pose_result["world"]),
         "warnings": [str(w) for w in (pose_result.get("warnings") or [])],
         # Which points the editor may offer -- decided here, not in the client.
-        "draggable": list(DRAGGABLE_LANDMARKS.get(side, ()))
-        + (list(HELMET_POINT_NAMES) if helmet_points else []),
+        "draggable": draggable + (list(HELMET_POINT_NAMES) if helmet_points else []),
     }
+    if sport != "bike":
+        blob["sport"] = sport
     # The silhouette's top edge: the helmet-above-back reading needs it again
     # after a correction, and there is no second model pass to get it from.
     if pose_result.get("silhouette_top"):
@@ -130,6 +142,8 @@ def verify_pose_blob(blob: Any, image_bytes: bytes) -> dict[str, Any]:
             raise ValueError("pose landmarks are malformed -- analyze the photo again")
     if blob.get("camera_side") not in ("left", "right"):
         raise ValueError("pose camera side is malformed -- analyze the photo again")
+    if blob.get("sport", "bike") not in ("bike", "run"):
+        raise ValueError("pose sport is malformed -- analyze the photo again")
     if "silhouette_top" in blob:
         edge = blob["silhouette_top"]
         if not isinstance(edge, list) or len(edge) != CONTOUR_COLUMNS or not all(
@@ -166,6 +180,11 @@ def recompute_photo(
     ``bike_points``: the crank axle (and, if given, the pedal and wheel
     axles) the athlete placed -- see biomechanics/hip_over_bb. A photo can
     be re-measured for that alone, with no joint moved.
+
+    ``sport="run"``: a running photo read the way the run-photo flag reads it
+    (``contact_metrics``: image-plane angles, the stance leg named by
+    position, the touchdown block). The caller decides who gets that; the
+    pose has to have been issued for a run.
     """
     from app.services.video_analysis.biomechanics.hip_over_bb import (
         hip_over_bb,
@@ -176,14 +195,19 @@ def recompute_photo(
         decode_photo,
     )
 
-    if sport != "bike":
+    if sport not in ("bike", "run"):
         raise ValueError(
-            "Adjusting joint points is available for cycling photos only for now."
+            "Adjusting joint points is available for cycling and running photos only."
         )
     blob = verify_pose_blob(pose_blob, image_bytes)
+    if blob.get("sport", "bike") != sport:
+        raise ValueError("this pose was measured for a different sport -- analyze the photo again")
+    run = sport == "run"
+    if run and bike_points:
+        raise ValueError("The crank axle is marked on cycling photos only.")
     side = blob["camera_side"]
     corrections = normalize_corrections(
-        corrections_raw, side, extra_points=HELMET_POINT_NAMES,
+        corrections_raw, side, extra_points=None if run else HELMET_POINT_NAMES,
     )
     points = normalize_bike_points(bike_points) if bike_points else None
     if not corrections and not points:
@@ -203,7 +227,7 @@ def recompute_photo(
     baseline = analyze_from_pose(
         image, _unpack(blob["world"]), _unpack(blob["landmarks"]), side, warnings,
         sport, cycling_position, hide_angle_values=hide_angle_values,
-        render_thumbnail=False, silhouette_top=silhouette_top,
+        render_thumbnail=False, silhouette_top=silhouette_top, contact_metrics=run,
     )
 
     frame = {
@@ -214,7 +238,7 @@ def recompute_photo(
     plausibility = check_plausibility(
         [frame], joints, side, aspect=(w / h) if h else 1.0, min_samples=1,
     ) if joints else []
-    apply_corrections([frame], joints, "bike")
+    apply_corrections([frame], joints, sport, image_plane_angles=True)
 
     result = analyze_from_pose(
         image, frame["world_landmarks"], frame["normalized_landmarks"], side,
@@ -225,12 +249,18 @@ def recompute_photo(
         cycling_position or baseline.get("cycling_position"),
         hide_angle_values=hide_angle_values, corrections=corrections,
         silhouette_top=silhouette_top, helmet_offsets=helmet_offsets,
+        contact_metrics=run,
     )
     result["baseline"] = {
         "angles": baseline.get("angles"),
         "score": baseline.get("score"),
         "cycling_position": baseline.get("cycling_position"),
     }
+    if run:
+        # A moved foot can move the stride instant and the touchdown readings,
+        # not only the angles.
+        result["baseline"]["gait_phase"] = baseline.get("gait_phase")
+        result["baseline"]["contact"] = baseline.get("contact")
     result["plausibility_warnings"] = plausibility
     result["pose"] = blob
     if points:

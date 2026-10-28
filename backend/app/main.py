@@ -2255,7 +2255,7 @@ async def analyze_photo_recompute_endpoint(
     request: Request,
     response: Response,
     photo: UploadFile = File(..., description="The SAME photo the analysis was run on."),
-    sport: str = Form(..., description="bike (the only sport with corrections so far)"),
+    sport: str = Form(..., description="bike, or run where the run-photo read is on (run_photo_access)"),
     position: str | None = Form(None, description="Cycling position the result was filed under."),
     pose: str = Form(..., description="The `pose` object the analysis returned, verbatim (JSON)."),
     corrections: str = Form(
@@ -2284,9 +2284,14 @@ async def analyze_photo_recompute_endpoint(
     """
     ip = _client_ip(request)
     free = is_free(user)
-    if sport != "bike":
+    # A running photo is re-measured the way it was measured: image-plane,
+    # stance leg named by position -- which is the run-photo read, so it goes
+    # to whoever gets that read (the same rule /analyze-photo uses).
+    from app.models.user import run_photo_access
+
+    if sport not in ("bike", "run") or (sport == "run" and not run_photo_access(user)):
         raise HTTPException(400, "joint adjustment is available for cycling photos only for now")
-    cycling_position: str | None = position or None
+    cycling_position: str | None = (position or None) if sport == "bike" else None
     if cycling_position is not None and cycling_position not in VALID_POSITIONS:
         raise HTTPException(400, f"invalid position; valid: {sorted(VALID_POSITIONS)}")
 

@@ -4724,7 +4724,7 @@ const LMED_VERTEX={
   right:{26:[24,26,28],24:[12,24,26],14:[12,14,16],12:[14,12,24]}};
 const LMED_HIT_PX=22;        // finger-sized grab radius, in CSS pixels
 const LMED_LOUPE_ZOOM=2.5;
-const lmed={img:null,url:null,pts:null,orig:null,side:'right',drag:-1,aspect:1,moved:{},open:false,mode:'joints'};
+const lmed={img:null,url:null,pts:null,orig:null,side:'right',drag:-1,aspect:1,moved:{},open:false,mode:'joints',sport:'bike'};
 
 function lmedAngle(a,b,c,aspect){
   if(aspect==null) aspect=lmed.aspect;
@@ -4752,6 +4752,7 @@ function lmedOpen(mode){
   const res=state.photoRes; if(!res||!state.photoPose||!state.file) return;
   lmed.mode=mode==='bike'?'bike':'joints';
   lmed.side=state.photoPose.camera_side||res.camera_side||'right';
+  lmed.sport=state.photoPose.sport||'bike';
   lmed.orig=lmedStartPoints(); lmed.pts=lmed.orig.map(p=>({...p})); lmed.moved={}; lmed.drag=-1;
   const ed=$('#pEditor'); ed.classList.remove('hidden'); lmed.open=true;
   $('#pEdApply').textContent=lmed.mode==='bike'?'Measure':'Re-measure';
@@ -4763,6 +4764,8 @@ function lmedOpen(mode){
     ? 'Pedal axle gives centimetres; both wheel axles level the picture (a tilted phone is otherwise read as a position).'
     : freeScope
     ? 'On the free plan you can move the hip and the knee: the picture is redrawn on your points, the score stays the automatic one. Paid plans move every joint and measure every angle and the score again.'
+    : lmed.sport==='run'
+    ? 'The leg drawn is the one on the ground — that is the leg measured. Drag its knee, ankle, heel or toe onto that leg if a point sits on the other one.'
     : hpc
     ? 'Check the green top-of-back point first: if it sits on your helmet, drag it to the highest point of your back.'
     : `Only the ${lmed.side}-side joints count on a side view.`;
@@ -4825,7 +4828,7 @@ function lmedDraw(){
       ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
       ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } }
   // live angle at the vertex being dragged
-  const tri=LMED_VERTEX[lmed.side][lmed.drag];
+  const tri=lmed.sport==='run'&&(lmed.drag===11||lmed.drag===12)?null:LMED_VERTEX[lmed.side][lmed.drag];
   if(tri){ const [a,b,cc]=tri.map(i=>pts[i]); const ang=lmedAngle(a,b,cc); const p=P(lmed.drag);
     if(ang!=null&&p){ const txt=`${LMED_NAMES[lmed.drag]} ${Math.round(ang)}°`, fs=Math.max(12,15*k);
       ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;
@@ -4907,8 +4910,9 @@ async function recomputePhoto(){
   const btn=$('#pEdApply'); btn.setAttribute('aria-disabled','true'); lmedStatus('Measuring again…');
   const t0=Date.now();
   const fd=new FormData();
-  fd.append('photo',state.file); fd.append('sport','bike');
-  fd.append('position',res.cycling_position||state.position);
+  const sport=(state.photoPose&&state.photoPose.sport)||'bike';
+  fd.append('photo',state.file); fd.append('sport',sport);
+  if(sport==='bike') fd.append('position',res.cycling_position||state.position);
   fd.append('pose',JSON.stringify(state.photoPose)); fd.append('corrections',JSON.stringify(all));
   if(bikePts){ fd.append('bike_points',JSON.stringify(bikePts)); if(crankMm()!=null) fd.append('crank_length_mm',String(crankMm()));
     fd.append('c_source', hobCSource(lmed.pts, !!lmed.moved[HOB_C])); }
@@ -4924,7 +4928,7 @@ async function recomputePhoto(){
     }
     state.photoCorrections=j.corrections||[];
     if(bikePts&&j.hip_over_bb) track('hip_over_bb_measured',{mode:'photo',angle:j.hip_over_bb.angle_deg,ref:j.hip_over_bb.ref});
-    track('joint_adjust_applied',{n:state.photoCorrections.length,
+    track('joint_adjust_applied',{n:state.photoCorrections.length, sport,
       seconds:Math.round((Date.now()-t0)/1000),
       score_before:(j.baseline&&j.baseline.score&&j.baseline.score.overall_score)!=null?j.baseline.score.overall_score:null,
       score_after:(j.score&&j.score.overall_score)!=null?j.score.overall_score:null});
@@ -4951,6 +4955,9 @@ function renderCorrectionBadge(res,hostId){
   const cs=res.score?res.score.overall_score:res.technique_score;
   if(res.score_kept) txt+=' · picture redrawn, score unchanged on the free plan';
   else if(bs!=null&&cs!=null&&bs!==cs) txt+=` · score ${bs} → ${cs}`;
+  // a run: a moved foot can move the stride instant, and with it every band
+  const gp=res.baseline&&res.baseline.gait_phase, ph=x=>String(x).replace(/_/g,' ');
+  if(gp&&res.gait_phase&&gp!==res.gait_phase) txt+=` · stride ${ph(gp)} → ${ph(res.gait_phase)}`;
   if(pw.length) txt+=` · ${pw[0].message}`;
   $('#'+hostId+'Txt').textContent=txt; badge.classList.remove('hidden');
 }
@@ -5961,8 +5968,9 @@ function renderPhoto(res,opts){
   state.photoPose=res.pose||null;
   if(!opts.reuseHistId) state.photoCorrections=res.corrections||[];
   // A free result carries a pose too, limited to the hip and knee (the server
-  // decides which points; see result_gating._trim).
-  const canAdjust=!!(res.pose&&state.file&&sport==='bike');
+  // decides which points; see result_gating._trim). A run photo carries one
+  // only where the run-photo read is on, with the stance leg as the near leg.
+  const canAdjust=!!(res.pose&&state.file&&(sport==='bike'||sport==='run'));
   $('#pAdjust').classList.toggle('hidden',!canAdjust);
   whActions('#pScoreWithheld', canAdjust, '#pAdjust');
   if(!canAdjust) lmedClose();

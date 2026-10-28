@@ -1612,12 +1612,12 @@ _RUN_KNEES_CROSS = 0.20
 _RUN_KNEE_CHECK_NOTE = (
     "The two knees overlap at this instant, so the knee point can land on the "
     "wrong leg. Check on the picture that it sits on the leg on the ground; "
-    "if it does not, this knee number is off too."
+    "if it does not, drag it there with Adjust joints under the picture."
 )
 _RUN_KNEE_CHECK_WARNING = (
     "Knee: your two knees overlap in this frame, so check on the picture that "
-    "the knee point sits on the leg on the ground. A frame at the instant the "
-    "foot lands keeps the legs apart."
+    "the knee point sits on the leg on the ground (Adjust joints moves it). A "
+    "frame at the instant the foot lands keeps the legs apart."
 )
 
 
@@ -2322,6 +2322,19 @@ def analyze_photo(
 
         response["pose"] = build_pose_blob(
             image_bytes, pose_result, helmet_points="helmet_points" in response,
+        )
+    elif sport == "run" and contact_metrics:
+        # The same, for a run read behind the flag -- but with the legs named
+        # by position first, so the leg the athlete drags is the stance leg
+        # the report measured (see build_pose_blob).
+        from app.services.photo_corrections import build_pose_blob
+
+        nl, wl, _ = _name_run_legs(
+            pose_result["normalized"], pose_result["world"],
+            pose_result["image"], pose_result["camera_side"],
+        )
+        response["pose"] = build_pose_blob(
+            image_bytes, {**pose_result, "normalized": nl, "world": wl}, sport="run",
         )
     return response
 

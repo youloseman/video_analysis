@@ -71,3 +71,22 @@ def test_crossed_knees_ask_for_a_look_at_the_knee_point():
     assert knee["check"] is True and "overlap" in knee["note"]
     assert any(w.startswith("Knee: your two knees overlap") for w in r["warnings"])
     assert r["score"]["overall_score"] is not None
+
+
+@pytest.mark.golden
+@pytest.mark.parametrize("n", range(1, 14))
+def test_the_pose_handed_out_re_measures_to_the_same_report(n):
+    """The pose a run photo hands the joint editor is the one with the legs
+    already named; re-measuring from it, nothing moved but a toe by a hair,
+    must reproduce the report the athlete saw -- angles, phase, score."""
+    from app.services.photo_corrections import recompute_photo
+
+    data = _photo(n).read_bytes()
+    r = analyze_photo(data, "run", None, False, True)
+    heel = 30 if r["pose"]["camera_side"] == "right" else 29
+    out = recompute_photo(data, "run", None, r["pose"],
+                          [{"landmark": heel, "dx": 0.0, "dy": 0.0001}])
+    b = out["baseline"]
+    assert b["angles"] == r["angles"]
+    assert b["gait_phase"] == r["gait_phase"]
+    assert (b["score"] or {}).get("overall_score") == (r["score"] or {}).get("overall_score")
