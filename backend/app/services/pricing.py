@@ -565,6 +565,8 @@ class Row:
     # {"year": ..., "month": ...} dict when the answer depends on the period.
     cells: tuple[Any, Any, Any]
     new: bool = False
+    # A source, said once under the desktop table and pointed to by number.
+    fn: str = ""
 
 
 _E_LIMIT = tier_limit("enthusiast")[0]
@@ -580,10 +582,10 @@ COMPARE: tuple[tuple[str, tuple[Row, ...]], ...] = (
         )),
         Row("Score and angles", "", ("Score on every clip", YES, YES)),
         Row("Overlay video, frame by frame", "", (NO, YES, YES)),
-        Row("AI coach notes, tips to improve, your angles vs the healthy range",
-            "ranges from science research and pro-athlete measures", (
+        Row("AI coach notes, tips to improve, your angles vs the healthy range", "", (
                 Cell("AI notes in your free report", f"tips and angles: {usd(UNLOCK_AMOUNT)}"),
-                YES, YES)),
+                YES, YES),
+            fn="Healthy ranges come from published research and pro-athlete measures."),
         Row("Adjust landmarks manually",
             "cycling · drag a point and the angles recalculate", (
                 Cell("Only hip and knee", "on a photo"),
@@ -780,18 +782,24 @@ def _desk_table(tiers: list[Card], mode: str) -> str:
         f"{_price_html(c)}{_cta(c, mode)}</div></th>"
         for c in tiers
     )
-    body = []
+    body, notes = [], []
     for title, rows in COMPARE:
         body.append(f'<tr class="pr-grp"><th colspan="4" scope="colgroup">{title}</th></tr>')
         for r in rows:
             new = '<span class="pr-new">New</span>' if r.new else ""
             sub = f"<small>{r.sub}</small>" if r.sub else ""
+            fn = ""
+            if r.fn:
+                notes.append(r.fn)
+                fn = f'<sup class="pr-fn">{len(notes)}</sup>'
             cells = "".join(f"<td>{_value(v)}</td>" for v in r.cells)
-            body.append(f'<tr><th scope="row">{r.label}{new}{sub}</th>{cells}</tr>')
+            body.append(f'<tr><th scope="row">{r.label}{fn}{new}{sub}</th>{cells}</tr>')
+    fns = "".join(f" ({i}) {n}" for i, n in enumerate(notes, 1))
     return (
         '<div class="pr-desk"><div class="pr-tablewrap"><table class="pr-table">'
         f'<thead><tr><th class="pr-what"><span>What you get</span></th>{heads}</tr></thead>'
-        f'<tbody>{"".join(body)}</tbody></table></div>'
+        f'<tbody>{"".join(body)}</tbody></table>'
+        f'<p class="pr-tnotes">Notes: ✓ included; — not included.{fns}</p></div>'
         f'<div class="pr-bumprow">{_bump(mode)}</div></div>'
     )
 
@@ -998,18 +1006,24 @@ PRICING_CSS = """
 .pr-slot[data-slot=expert-price],.pr-slot[data-slot=sample]{display:inline;width:auto}
 .pr-btn-s{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:42px;padding:9px 18px;border-radius:999px;background:var(--c-brand-navy);color:#fff;font:700 14px var(--f-body);text-decoration:none;border:0;cursor:pointer}
 .pr-btn-o{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;padding:10px 18px;border-radius:8px;border:1.5px solid var(--c-head);color:var(--c-head);font:700 15px var(--f-body);text-decoration:none;background:var(--c-bg)}
-.pr-yes{color:var(--st-good-fill);font-weight:700;font-size:18px}
-.pr-no{color:var(--c-line-strong);font-size:18px}
-/* ---- desktop: the table ---- */
-.pr-tablewrap{overflow-x:auto;background:var(--c-bg);border:1px solid var(--c-line);border-radius:10px}
-.pr-table{width:100%;border-collapse:separate;border-spacing:0;font-size:15px;line-height:1.4;min-width:760px;table-layout:fixed}
-.pr-table th,.pr-table td{padding:12px 16px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--c-line)}
-.pr-table thead th{vertical-align:top;padding:22px 14px 18px}
-.pr-table tbody th{text-align:left;font-weight:600;width:31%}
-.pr-table td{color:var(--c-ink-soft)}
+.pr-yes{color:var(--c-ink);font-weight:600;font-size:15px}
+.pr-no{color:var(--c-ink-faint)}
+/* ---- desktop: the table, ruled like a research report: heavy rules top and
+   bottom, a thin one under the heads, hairlines between rows ---- */
+.pr-tablewrap{overflow-x:auto;background:var(--c-bg);padding:4px 24px 16px}
+.pr-table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.4;font-variant-numeric:tabular-nums lining-nums;min-width:760px;table-layout:fixed;border-top:2px solid var(--c-brand-navy);border-bottom:2px solid var(--c-brand-navy)}
+.pr-table th,.pr-table td{padding:9px 16px;text-align:center;vertical-align:top;border-bottom:1px solid var(--c-line)}
+.pr-table thead th{vertical-align:bottom;padding:22px 14px 18px;border-bottom:1px solid var(--c-brand-navy)}
+.pr-table tbody th{text-align:left;font-weight:500;width:31%}
+.pr-table td{color:var(--c-ink)}
+.pr-table small{font-size:12px;margin-top:1px}
+.pr-table thead .pr-col-enthusiast,.pr-table tbody tr:not(.pr-grp)>:nth-child(3){background:color-mix(in srgb,var(--c-ink) 4%,var(--c-bg))}
 .pr-table tr:last-child>*{border-bottom:0}
 .pr-table .pr-what{text-align:left;vertical-align:bottom;font-size:13px;color:var(--c-ink-faint);font-weight:500}
-.pr-table tr.pr-grp th{background:var(--c-ground);font:600 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-faint);padding:10px 16px}
+.pr-table tr.pr-grp th{background:transparent;font:700 11.5px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--c-head);padding:18px 16px 6px;border-bottom:1px solid color-mix(in srgb,var(--c-head) 30%,var(--c-bg))}
+.pr-table .pr-new{color:var(--c-coral-btn);background:none;padding:0}
+.pr-fn{font-size:10px;font-weight:600;color:var(--c-blue);margin-left:2px}
+.pr-tnotes{margin:10px 0 0;font-size:11.5px;line-height:1.55;color:var(--c-ink-faint)}
 .pr-head{display:flex;flex-direction:column;gap:7px;align-items:center}
 .pr-head .pr-pills{min-height:26px}
 .pr-head .pr-billed{min-height:18px;margin-bottom:6px}
@@ -1053,16 +1067,16 @@ PRICING_CSS = """
 .pr-chip[aria-pressed=true]{background:var(--c-brand-navy);color:#fff;border-color:var(--c-brand-navy)}
 .pr-chip[aria-pressed=true]::before{content:"✓ "}
 .pr-chip[aria-pressed=false]::before{content:"+ "}
-.pr-cbox{background:var(--c-bg);border:1px solid var(--c-line);border-radius:14px;overflow:hidden}
+.pr-cbox{background:var(--c-bg);border-top:2px solid var(--c-brand-navy);border-bottom:2px solid var(--c-brand-navy);font-variant-numeric:tabular-nums lining-nums}
 .pr-vs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pr[data-hide=S] [data-t=S],.pr[data-hide=E] [data-t=E],.pr[data-hide=F] [data-t=F]{display:none}
-.pr-chead{border-bottom:1px solid var(--c-line)}
-.pr-vhead{padding:14px 16px;font-size:17px;font-weight:700;color:var(--c-head);background:var(--c-panel)}
-.pr-vhead.pr-col-enthusiast{color:var(--c-coral-dk);background:color-mix(in srgb,var(--c-coral-btn) 9%,var(--c-bg))}
-.pr-vhead.pr-col-full{background:color-mix(in srgb,var(--c-blue) 9%,var(--c-bg))}
+.pr-chead{border-bottom:1px solid var(--c-brand-navy)}
+.pr-vhead{padding:12px 16px 8px;font-size:16px;font-weight:700;color:var(--c-head)}
 .pr-crow{border-bottom:1px solid var(--c-line)}
-.pr-clabel{display:block;padding:14px 16px 4px;font-size:14px;color:var(--c-ink-faint)}
-.pr-v{padding:2px 16px 14px;font-size:17px;font-weight:600}
+.pr-clabel{display:block;padding:12px 16px 2px;font-size:13.5px;color:var(--c-ink-faint)}
+.pr-v{padding:2px 16px 12px;font-size:16px;font-weight:600}
+.pr-v .pr-yes{font-size:17px}
+.pr-v .pr-no{font-weight:400}
 .pr-v small{font-size:13px}
 .pr:not(.pr-showall)[data-hide=F] .same-SE,.pr:not(.pr-showall)[data-hide=E] .same-SF,.pr:not(.pr-showall)[data-hide=S] .same-EF{display:none}
 .pr-all{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:44px;box-sizing:border-box;font-size:15px;font-weight:600;color:var(--c-head);cursor:pointer}
@@ -1075,11 +1089,11 @@ PRICING_CSS = """
 .pr-point{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:var(--c-head)}
 .pr-ic{width:36px;height:36px;flex:none;border-radius:999px;background:var(--c-bg);border:1px solid color-mix(in srgb,var(--c-blue) 35%,var(--c-bg));display:flex;align-items:center;justify-content:center;color:var(--c-blue)}
 .pr-ic svg{width:18px;height:18px}
-.pr-coachtable{width:100%;border-collapse:collapse;font-size:15px;line-height:1.45;min-width:600px;table-layout:fixed}
-.pr-coachtable th,.pr-coachtable td{padding:14px 18px;text-align:left;vertical-align:top;border-bottom:1px solid var(--c-line)}
-.pr-coachtable thead th{background:var(--c-ground)}
-.pr-coachtable tbody th{font-weight:600;width:24%}
-.pr-coachtable td{color:var(--c-ink-soft)}
+.pr-coachtable{width:100%;border-collapse:collapse;font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums lining-nums;min-width:600px;table-layout:fixed;border-top:2px solid var(--c-brand-navy);border-bottom:2px solid var(--c-brand-navy)}
+.pr-coachtable th,.pr-coachtable td{padding:10px 16px;text-align:left;vertical-align:top;border-bottom:1px solid var(--c-line)}
+.pr-coachtable thead th{vertical-align:bottom;border-bottom:1px solid var(--c-brand-navy)}
+.pr-coachtable tbody th{font-weight:500;color:var(--c-ink-faint);width:24%}
+.pr-coachtable td{color:var(--c-ink)}
 .pr-coachtable tr:last-child>*{border-bottom:0}
 .pr-coachtable small{margin-top:8px}
 .pr-cname{display:flex;align-items:baseline;gap:10px;white-space:nowrap;font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:24px;color:var(--c-head)}
