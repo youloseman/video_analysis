@@ -322,6 +322,16 @@ _WITHHELD_MESSAGES = {
         "an object is in front of it, or the model found someone else in the "
         "frame. One runner, full side view, both legs clear of the background."
     ),
+    # The legs could not be named at all: no direction of travel, or a foot
+    # not seen. Chicago 2026-10-28: a pacer group shot 3/4 from the front was
+    # told it sat "between the moments" -- true of a frame in flight, not of
+    # one where nobody could tell which way the runner was going.
+    "run_legs_unreadable": (
+        "No score: we could not tell which way you are running or which foot "
+        "is on the ground. That usually means the photo was taken from the "
+        "front or at an angle, or other runners overlap you. One runner, "
+        "side-on, both feet in view."
+    ),
     "stride_phase_uncertain": (
         "No score: this frame was caught between the moments a stride can be "
         "judged at. The angles depend on which instant of the cycle the camera "
@@ -364,7 +374,9 @@ def _bike_photo_withheld(
     return None
 
 
-def _run_photo_withheld(angles: dict[str, float], gait_phase: str) -> str | None:
+def _run_photo_withheld(
+    angles: dict[str, float], gait_phase: str, legs: dict[str, Any] | None = None,
+) -> str | None:
     """Why a running photo gets no score at all, or None if it gets one.
 
     The bike path has refused a number without a measured knee since the
@@ -377,11 +389,16 @@ def _run_photo_withheld(angles: dict[str, float], gait_phase: str) -> str | None
     * phase ``uncertain`` -- the knee was measured but the frame sits between
       the instants a stride is judged at, and every band would be a guess.
       The hip is already left unscored here; the score as a whole now is too.
+      When ``legs`` says the legs could not be named at all (no direction of
+      travel, a foot not seen -- ``stance`` None), the reason is that, not the
+      instant: ``run_legs_unreadable``.
     """
     knee = angles.get("knee")
     if knee is None or math.isnan(knee):
         return "run_leg_not_measured"
     if gait_phase == "uncertain":
+        if legs is not None and legs.get("stance") is None:
+            return "run_legs_unreadable"
         return "stride_phase_uncertain"
     return None
 
@@ -2797,7 +2814,7 @@ def analyze_from_pose(
     if sport == "bike":
         withheld = _bike_photo_withheld(angles, cycling_position)
     elif sport == "run" and contact_metrics:
-        withheld = _run_photo_withheld(angles, gait_phase)
+        withheld = _run_photo_withheld(angles, gait_phase, legs)
     else:
         withheld = None
     if withheld:

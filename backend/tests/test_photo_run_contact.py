@@ -235,10 +235,20 @@ def test_a_missing_knee_outranks_an_uncertain_phase():
     assert _run_photo_withheld({"knee": math.nan}, "uncertain") == "run_leg_not_measured"
 
 
+def test_legs_that_cannot_be_named_are_not_called_a_stride_instant():
+    """No direction of travel / a foot unseen: the athlete is told that, not
+    that the frame fell between two instants (which is what flight means)."""
+    blank = {"stance": None, "dx": None, "clear": False}
+    flight = {"stance": "under", "dx": 0.0, "clear": False}
+    assert _run_photo_withheld({"knee": 160.0}, "uncertain", blank) == "run_legs_unreadable"
+    assert _run_photo_withheld({"knee": 160.0}, "uncertain", flight) == "stride_phase_uncertain"
+    assert _run_photo_withheld({"knee": math.nan}, "uncertain", blank) == "run_leg_not_measured"
+
+
 def test_every_refusal_has_words():
     """A withheld key with no message is a KeyError at the moment of refusal,
     which turns an honest "no score" into a 500."""
-    for key in ("run_leg_not_measured", "stride_phase_uncertain"):
+    for key in ("run_leg_not_measured", "run_legs_unreadable", "stride_phase_uncertain"):
         assert key in _WITHHELD_MESSAGES
         assert "No score" in _WITHHELD_MESSAGES[key]
 
