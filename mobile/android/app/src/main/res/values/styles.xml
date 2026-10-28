@@ -15,9 +15,11 @@
          the status bar and under the navigation bar. capacitor.config.json
          sets adjustMarginsForEdgeToEdge "auto", which makes Capacitor inset
          the WebView instead, leaving the window background visible in those
-         two strips. The SPA is light only (app.css carries no
-         prefers-color-scheme), so the strips are white like the page, and the
-         system icons drawn in them have to be dark to stay legible. -->
+         two strips. The SPA renders light: tokens.css has a dark set, but it
+         is opt in by data-theme and never by media query, so the page does not
+         follow the system theme. The strips are therefore white like the page,
+         and the system icons drawn in them have to be dark to stay legible.
+         If dark mode ever ships, this theme needs a values-night twin. -->
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>

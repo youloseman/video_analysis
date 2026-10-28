@@ -71,7 +71,9 @@ Three Android-only things the shell has to get right, all pinned by
 - **The forced edge-to-edge window.** On Android 15 (targetSdk 35) the page
   would paint under the status bar and the tab bar under the navigation bar.
   `adjustMarginsForEdgeToEdge: "auto"` insets the WebView instead, and the
-  theme paints the two strips white with dark system icons.
+  theme paints the two strips white with dark system icons (the SPA renders
+  light — tokens.css has a dark set but it is opt-in by `data-theme`, not by
+  media query; shipping dark mode means adding a `values-night` theme here).
 - **`versionCode`.** Play refuses a number it has seen, so it comes from
   `$PROJECT_BUILD_NUMBER`; the template's hard-coded `1` would make the second
   release unuploadable.
