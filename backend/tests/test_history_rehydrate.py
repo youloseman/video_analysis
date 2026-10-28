@@ -138,8 +138,9 @@ def test_a_rebuild_keeps_what_identifies_the_entry(spa, field, expr):
 
 
 def test_an_entry_records_that_it_was_built_from_a_gated_payload(spa):
-    """Precise signal for later: the measurements were withheld, not absent."""
-    assert "if(res.locked) e.locked=true;" in body_of(spa, "entryFromResult")
+    """Precise signal for later: the measurements were withheld, not absent --
+    and why (preview / teaser), which the uploader's spent-preview line reads."""
+    assert "if(res.locked){ e.locked=true; e.lockReason=res.locked.reason||'locked';" in body_of(spa, "entryFromResult")
 
 
 def test_older_entries_are_still_recognised_as_gated(spa):
