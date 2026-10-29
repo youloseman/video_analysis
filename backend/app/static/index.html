@@ -4803,7 +4803,7 @@ function lmedOpen(mode){
     : freeScope
     ? 'On the free plan you can move the hip and the knee: the picture is redrawn on your points, the score stays the automatic one. Paid plans move every joint and measure every angle and the score again.'
     : lmed.sport==='run'
-    ? 'The leg drawn is the one on the ground — that is the leg measured. Drag its knee, ankle, heel or toe onto that leg if a point sits on the other one.'
+    ? 'The leg drawn is the one on the ground — that is the leg measured. Drag its knee, ankle, heel or toe onto that leg if a point sits on the other one.'+(state.photoPose.pelvis_hip!=null?' That leg is the far one, so its hip is hidden behind you: the ringed hip should sit where the line along the middle of that thigh meets the hips.':'')
     : hpc
     ? 'Check the green top-of-back point first: if it sits on your helmet, drag it to the highest point of your back.'
     : `Only the ${lmed.side}-side joints count on a side view.`;
@@ -4833,15 +4833,24 @@ function lmedFit(){
 function lmedDraw(){
   const c=$('#pEdCanvas'), ctx=c.getContext('2d'), img=lmed.img, pts=lmed.pts; if(!img||!pts) return;
   const W=c.width, H=c.height, k=W/900, dots=lmedDraggable();
+  const [sh,hipI]=lmed.side==='left'?[11,23]:[12,24];
+  const pelvis=(lmed.sport==='run'&&state.photoPose&&state.photoPose.pelvis_hip!=null)?state.photoPose.pelvis_hip:null;
   ctx.clearRect(0,0,W,H); ctx.drawImage(img,0,0,W,H);
   const P=i=>{ const p=pts[i]; return (p&&p.x!=null&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
   ctx.lineCap='round'; ctx.lineJoin='round';
   // bones: glow, then line
   [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
     ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
-    LMED_BONES[lmed.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
+    LMED_BONES[lmed.side].forEach(([a,b])=>{ if(pelvis!=null&&a===sh&&b===hipI) b=pelvis;
+      const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
     ctx.stroke();
   });
+  // run, far stance leg: the trunk runs to the visible hip; the leg's own hip
+  // (the draggable "hip") is hidden behind the body, joined to it by a dash
+  if(pelvis!=null){ const A=P(pelvis), B=P(hipI);
+    if(A&&B){ ctx.setLineDash([6*k,5*k]); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#fff';
+      ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(A[0],A[1],Math.max(3,4*k),0,Math.PI*2); ctx.fillStyle='#3DFF6E'; ctx.fill(); } }
   // the helmet reading: a level line through the top of the back, and the gap up to the helmet
   const B=P(LMED_BACK), T=P(LMED_HELMET);
   if(B&&T){ ctx.setLineDash([8*k,6*k]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle='#3DFF6E';
@@ -4866,7 +4875,7 @@ function lmedDraw(){
       ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
       ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } }
   // live angle at the vertex being dragged
-  const tri=lmed.sport==='run'&&(lmed.drag===11||lmed.drag===12)?null:LMED_VERTEX[lmed.side][lmed.drag];
+  const tri=lmed.sport==='run'&&(lmed.drag===11||lmed.drag===12||(pelvis!=null&&lmed.drag===hipI))?null:LMED_VERTEX[lmed.side][lmed.drag];
   if(tri){ const [a,b,cc]=tri.map(i=>pts[i]); const ang=lmedAngle(a,b,cc); const p=P(lmed.drag);
     if(ang!=null&&p){ const txt=`${LMED_NAMES[lmed.drag]} ${Math.round(ang)}°`, fs=Math.max(12,15*k);
       ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;

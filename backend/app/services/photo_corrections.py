@@ -103,8 +103,8 @@ def build_pose_blob(
     ``sport="run"``: ``pose_result`` carries the legs already NAMED by position
     (photo_analyzer._name_run_legs) -- the stance leg on the camera-side
     indices -- so the points the athlete drags are the leg the report
-    measures, not whichever leg the model labelled near. The ear is not
-    offered: no running angle reads it.
+    measures, not whichever leg the model labelled near, its hip included.
+    The ear is not offered: no running angle reads it.
     """
     side = pose_result["camera_side"]
     draggable = list(DRAGGABLE_LANDMARKS.get(side, ()))
@@ -122,6 +122,16 @@ def build_pose_blob(
     }
     if sport != "bike":
         blob["sport"] = sport
+    if sport == "run":
+        from app.services.video_analysis.photo_analyzer import _run_pelvis_hip
+
+        # A far stance leg took its own hip across (the point the athlete
+        # drags as "hip"); the visible hip the trunk is read from is then the
+        # other index. For the editor's drawing only -- like ``draggable``,
+        # not signed: the re-measure finds it again from the signed depths.
+        pelvis = _run_pelvis_hip(_unpack(blob["world"]), side)
+        if pelvis != (23 if side == "left" else 24):
+            blob["pelvis_hip"] = pelvis
     # The silhouette's top edge: the helmet-above-back reading needs it again
     # after a correction, and there is no second model pass to get it from.
     if pose_result.get("silhouette_top"):

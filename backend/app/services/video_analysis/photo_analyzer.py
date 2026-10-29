@@ -1092,6 +1092,7 @@ def _generate_photo_thumbnail(
     show_header: bool = True,
     helmet: dict[str, Any] | None = None,
     overstride: dict[str, Any] | None = None,
+    run_pelvis_hip: int | None = None,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
@@ -1100,7 +1101,9 @@ def _generate_photo_thumbnail(
     labels and burn a watermark. ``corrected``: landmark indices the athlete
     placed by hand, ringed so they read as a person's statement rather than
     a detection. ``overstride`` (run, at touchdown): the contact block, drawn
-    as the reach it measures.
+    as the reach it measures. ``run_pelvis_hip``: the visible hip, when the
+    measured leg hangs from the hidden one -- the trunk is drawn to it and
+    the hidden hip as a hollow ring, an estimate.
     """
     # Draw on a canvas at least as big as the overlay geometry expects. Chip
     # type has a hard minimum size, so on a small photo -- a frame cropped out
@@ -1122,10 +1125,14 @@ def _generate_photo_thumbnail(
 
     # --- 1. DRAW SKELETON (neon + soft glow, shared style) ---
     side_filter = camera_side if sport in ("run", "bike") else None
+    trunk_sh, stance_hip = RUNNING_TRUNK_LANDMARKS.get(camera_side, (11, 23))
+    hidden_hip = run_pelvis_hip is not None and len(pixel_coords) > 32
 
     _segments: list[tuple[tuple[int, int], tuple[int, int]]] = []
     for start_idx, end_idx in _POSE_CONNECTIONS:
         if start_idx >= len(pixel_coords) or end_idx >= len(pixel_coords):
+            continue
+        if hidden_hip and {start_idx, end_idx} == {trunk_sh, stance_hip}:
             continue
         sx, sy, sv = pixel_coords[start_idx]
         ex, ey, ev = pixel_coords[end_idx]
@@ -1144,7 +1151,12 @@ def _generate_photo_thumbnail(
             continue
         if side_filter and not _is_near_side(i, side_filter):
             continue
+        if hidden_hip and i == stance_hip:
+            continue
         _dots.append((px, py))
+    if hidden_hip:
+        _segments.append((pixel_coords[trunk_sh][:2], pixel_coords[run_pelvis_hip][:2]))
+        _dots.append(pixel_coords[run_pelvis_hip][:2])
 
     # scale the skeleton weight to the image so it reads on both small and large photos
     _sk = max(1.0, min(2.4, w / 900))
@@ -1152,6 +1164,20 @@ def _generate_photo_thumbnail(
         cv2_mod, frame, _segments, _dots,
         glow=True, line_w=max(2, int(2 * _sk)), dot_r=max(3, int(4 * _sk)),
     )
+    if hidden_hip:
+        # The stance leg's own hip is behind the body: a hollow ring, joined
+        # to the visible hip, says it is the model's estimate.
+        hs, hp = pixel_coords[stance_hip][:2], pixel_coords[run_pelvis_hip][:2]
+        _draw_dashed_line(cv2_mod, frame, hp, hs, (255, 255, 255), max(1, int(_sk)))
+        cv2_mod.circle(frame, hs, max(4, int(5 * _sk)), (110, 255, 61),
+                       max(2, int(2 * _sk)), cv2_mod.LINE_AA)
+        # The hip arc opens between the thigh and the trunk as measured --
+        # the trunk laid onto this hip (see _run_hip_angle).
+        sx, sy, sv = pixel_coords[trunk_sh]
+        pixel_coords.append((hs[0] + sx - hp[0], hs[1] + sy - hp[1], sv))
+        if "hip" in arc_triplets:
+            arc_triplets = {**arc_triplets,
+                            "hip": (len(pixel_coords) - 1, *arc_triplets["hip"][1:])}
     if corrected:
         overlay_style.draw_corrected_marks(
             cv2_mod, frame,
@@ -1565,7 +1591,13 @@ def _name_run_legs(nl: Any, wl: Any, image: Any, camera_side: str) -> tuple[Any,
     leg chains (knee, ankle, heel, toe) are swapped in copies of both landmark
     lists, so every later step -- angles, contact readings, the picture --
     measures and draws the stance leg through the ordinary camera-side
-    indices. Hips are left alone: they are one pelvis, not a leg.
+    indices. Each hip goes with its leg: the thigh is measured from its own
+    hip. Read from the near hip, a far stance leg came out reaching further
+    and bent more than it was -- race photos are taken from slightly ahead,
+    and there the model puts the far hip 0.12-0.17 leg lengths in front of
+    the near one (Chicago 2026: images.jpg overstride 0.32 from the near hip,
+    0.18 from its own; knee 117 vs 131). The trunk stays on the visible hip
+    (``_run_pelvis_hip``).
 
     ``legs``: ``stance`` (front / under / rear), ``dx`` (stance ankle vs the
     hip midpoint, leg lengths, + = ahead), ``clear`` (one foot is plainly the
@@ -1650,17 +1682,56 @@ def _run_knees_cross(legs: dict[str, Any] | None) -> bool:
 _SWAPPED_MIN_VIS = 0.3
 
 
+# A leg moved across takes its hip with it (see _name_run_legs).
+_LEG_SWAP_PAIRS = ((23, 24),) + tuple(zip(_LEG_CHAINS["left"], _LEG_CHAINS["right"]))
+
+
 def _swap_leg_chains(landmarks: Any) -> list[Any]:
-    """A copy with the left and right knee/ankle/heel/toe exchanged; the
+    """A copy with the left and right hip/knee/ankle/heel/toe exchanged; the
     moved points keep their position and are read down to _SWAPPED_MIN_VIS."""
     out = list(landmarks)
-    for a, b in zip(_LEG_CHAINS["left"], _LEG_CHAINS["right"]):
+    for a, b in _LEG_SWAP_PAIRS:
         for dst, src in ((a, landmarks[b]), (b, landmarks[a])):
             vis = getattr(src, "visibility", 1.0)
             if vis is not None and _SWAPPED_MIN_VIS <= vis < MIN_LANDMARK_VISIBILITY:
                 vis = MIN_LANDMARK_VISIBILITY
             out[dst] = SimpleNamespace(x=src.x, y=src.y, z=getattr(src, "z", 0.0), visibility=vis)
     return out
+
+
+def _run_pelvis_hip(wl: Any, camera_side: str) -> int:
+    """The hip the trunk is read from: whichever is nearer the camera.
+
+    Normally the camera-side hip. After _name_run_legs has moved a far stance
+    leg across, its hidden hip sits on the camera-side index and the visible
+    one on the other; the swap carries world depth with each point, so depth
+    still tells them apart -- in a re-measure from the signed pose too, where
+    nothing else records that a swap happened. On the runphoto2026 study the
+    near hip was the shallower one on 32 of 33 photos, by 0.11-0.27 m; the
+    33rd was seven runners with no score.
+    """
+    near = 23 if camera_side == "left" else 24
+    far = 47 - near
+    try:
+        zn, zf = float(wl[near].z), float(wl[far].z)
+    except (AttributeError, IndexError, TypeError, ValueError):
+        return near
+    if math.isnan(zn) or math.isnan(zf):
+        return near
+    return far if zf < zn else near
+
+
+def _run_hip_angle(pl: Any, sh: int, pelvis: int, hip: int, knee: int) -> float:
+    """Trunk against thigh, when the thigh hangs from a different hip point
+    than the trunk: the trunk (shoulder -> visible hip) laid onto the stance
+    hip. Shoulder -> hidden hip would tilt the trunk by the two hips' offset."""
+    S, P, H, K = pl[sh], pl[pelvis], pl[hip], pl[knee]
+    shifted = SimpleNamespace(
+        x=H.x + (S.x - P.x), y=H.y + (S.y - P.y), z=0.0,
+        visibility=min(getattr(S, "visibility", 1.0), getattr(P, "visibility", 1.0)),
+    )
+    val, _ = calculate_angle_2d([shifted, H, K], 0, 1, 2)
+    return val
 
 
 def _run_phase_by_position(legs: dict[str, Any], knee: float) -> str:
@@ -2412,6 +2483,9 @@ def analyze_from_pose(
     # why there are none. Stays None for every other sport and for callers
     # that did not ask.
     contact: dict[str, Any] | None = None
+    # Running, behind the flag: the visible hip's index when the stance leg's
+    # own hip is a different point (a far stance leg), else None.
+    run_pelvis_hip: int | None = None
 
     if sport == "run":
         # Behind the flag, the run reads the picture like the bike does
@@ -2449,6 +2523,15 @@ def analyze_from_pose(
         # score rather than being judged against a band it cannot be placed on,
         # and the partial-body warning below already tells the athlete why.
         sh_idx, hp_idx = RUNNING_TRUNK_LANDMARKS[camera_side]
+        if contact_metrics:
+            # A far stance leg brought its own (hidden) hip across; the trunk
+            # stays on the visible one, and the hip angle is trunk vs thigh.
+            pelvis = _run_pelvis_hip(wl, camera_side)
+            if pelvis != hp_idx:
+                run_pelvis_hip = pelvis
+                angles["hip"] = _safe_round(_run_hip_angle(
+                    rl, sh_idx, pelvis, hp_idx, RUNNING_PHOTO_ANGLES[camera_side]["hip"][2]))
+                hp_idx = pelvis
         trunk = calculate_signed_segment_to_vertical(
             rl, sh_idx, hp_idx, forward_sign, min_visibility=_VIS_THRESHOLD,
         )
@@ -2893,6 +2976,7 @@ def analyze_from_pose(
             row_status={k: v.get("status") for k, v in angles_with_context.items()},
             helmet=helmet,
             overstride=(contact if contact and contact.get("overstride_status") else None),
+            run_pelvis_hip=run_pelvis_hip,
         )
         thumbnail_b64 = (
             f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"

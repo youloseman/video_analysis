@@ -24,8 +24,14 @@ crop-pixel offset per key, ``phase`` = the instant Artur sees, ``group``,
 ``checked``). Pull those docs into ``<work>/points/pNN.json`` with the
 ArtifactData tool before ``compare``.
 
-Keys: S E W -- near shoulder, elbow, wrist; H -- near hip; K A L F -- knee,
-ankle, heel and toe of the leg on (or about to land on) the ground.
+Keys: S E W -- near shoulder, elbow, wrist; H -- the hip of the leg on the
+ground; P -- the visible hip the trunk is read from (a different point only
+when that leg is the far one); K A L F -- knee, ankle, heel and toe of the leg
+on (or about to land on) the ground.
+
+``refresh`` re-reads every photo already in the study (after a change to how
+the product reads them) and keeps its number; Artur's offsets are relative to
+the model's points, so it prints the ones whose base moved.
 """
 from __future__ import annotations
 
@@ -51,7 +57,7 @@ SOURCES = [
     (ROOT / "upload" / "run_photos" / "landing" / "chicago", "chicago"),
 ]
 MAX_W = 1100
-KEYS = ("S", "E", "W", "H", "K", "A", "L", "F")
+KEYS = ("S", "E", "W", "H", "P", "K", "A", "L", "F")
 PHASES = ("initial_contact", "midstance", "toe_off", "swing", "flight", "unclear")
 # Altman & Davis 2012, as photo_analyzer uses them.
 STRIKE_HEEL_ABOVE, STRIKE_FORE_BELOW = 8.1, -1.6
@@ -77,7 +83,7 @@ def _ang(a, b, c) -> float:
 
 
 def readings(P: dict, facing: int) -> dict:
-    """What a frame says, from S E W H K A L F in pixels.
+    """What a frame says, from S E W H P K A L F in pixels (P: the trunk's hip).
 
     The same quantities, conventions and thresholds as photo_analyzer's
     running path, on the image plane: overstride |ankle_x - hip_x| over
@@ -85,15 +91,17 @@ def readings(P: dict, facing: int) -> dict:
     from vertical (+ = shoulder ahead of the hip), foot heel->toe against the
     horizontal (+ = toe up) and its Altman & Davis category.
     """
-    S, E, W, H, K, A, L, F = (P[k] for k in KEYS)
+    S, E, W, H, K, A, L, F = (P[k] for k in ("S", "E", "W", "H", "K", "A", "L", "F"))
+    V = P.get("P") or H   # trunk vs thigh: the trunk laid onto the stance hip
     leg = math.dist(H, K) + math.dist(K, A)
     along = facing * (F[0] - L[0])
     foot = math.degrees(math.atan2(L[1] - F[1], along)) if along > 0 else math.nan
     strike = (None if math.isnan(foot) else "heel" if foot > STRIKE_HEEL_ABOVE
               else "forefoot" if foot < STRIKE_FORE_BELOW else "midfoot")
     return {
-        "knee": _ang(H, K, A), "hip": _ang(S, H, K), "elbow": _ang(S, E, W),
-        "trunk": math.degrees(math.atan2(facing * (S[0] - H[0]), H[1] - S[1])),
+        "knee": _ang(H, K, A), "hip": _ang((H[0] + S[0] - V[0], H[1] + S[1] - V[1]), H, K),
+        "elbow": _ang(S, E, W),
+        "trunk": math.degrees(math.atan2(facing * (S[0] - V[0]), V[1] - S[1])),
         "shin": math.degrees(math.atan2(facing * (K[0] - A[0]), A[1] - K[1])),
         "overstride": abs(A[0] - H[0]) / leg if leg else math.nan,
         "foot": foot, "strike": strike,
@@ -114,11 +122,13 @@ def _detect(path: Path):
         p = PA.detect_pose_in_image(raw)
     except ValueError:
         return None
-    nl, _, legs = PA._name_run_legs(p["normalized"], p["world"], p["image"], p["camera_side"])
+    nl, wl, legs = PA._name_run_legs(p["normalized"], p["world"], p["image"], p["camera_side"])
     side = p["camera_side"]
+    pelvis = PA._run_pelvis_hip(wl, side)
     img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
     Hh, Ww = img.shape[:2]
     ids = {**NEAR[side], **LEGS[side]}
+    ids["P"] = pelvis
     px = {k: (nl[ids[k]].x * Ww, nl[ids[k]].y * Hh) for k in KEYS}
     allpts = [(lm.x * Ww, lm.y * Hh) for lm in nl]
     contact = r.get("contact") or {}
@@ -162,7 +172,7 @@ def _add(path: Path, group: str, n: int, found) -> dict:
     # numbers back; if they do not, a convention differs and compare() would
     # be measuring that difference instead of the detector.
     mine = readings(model, facing)
-    for k in ("knee", "elbow"):
+    for k in ("knee", "hip", "elbow", "trunk"):
         if auto.get(k) is not None and abs(mine[k] - auto[k]) > 1.5:
             print(f"  #{n} note: {k} on model points {mine[k]:.1f} vs product {auto[k]:.1f}")
     print(f"  #{n} {path.name}: {side}, phase {auto['phase']}, stance {auto['stance']}")
@@ -209,6 +219,29 @@ def build(study: dict) -> None:
     print(f"{len(study['entries'])} photos, {len(study['duplicates'])} duplicates")
 
 
+def refresh(study: dict) -> None:
+    """Re-read every photo in the study; numbers, groups and crops stay."""
+    pdir = WORK / "points"
+    for i, e in enumerate(study["entries"]):
+        found = _detect(ROOT / e["photo"])
+        if found is None:
+            print(f"  #{e['n']}: NO POSE now -- kept as it was")
+            continue
+        new = _add(ROOT / e["photo"], e["group"], e["n"], found)
+        moved_base = {k: (round(new["model"][k][0] - e["model"][k][0], 1),
+                          round(new["model"][k][1] - e["model"][k][1], 1))
+                      for k in e["model"] if k in new["model"]
+                      and math.dist(new["model"][k], e["model"][k]) > 0.5}
+        f = pdir / f"p{e['n']:02d}.json"
+        mv = (json.loads(f.read_text(encoding="utf-8")).get("moved") or {}) if f.exists() else {}
+        touched = {k: v for k, v in moved_base.items() if any(mv.get(k, (0, 0)))}
+        if moved_base:
+            print(f"  #{e['n']} model points moved {moved_base}"
+                  + (f" -- Artur had moved {sorted(touched)}: re-base those offsets" if touched else ""))
+        study["entries"][i] = new
+    save(study)
+
+
 def editor(study: dict) -> Path:
     data = [{"n": e["n"], "photo": e["photo"], "img": f"img/p{e['n']:02d}.webp", "w": e["w"],
              "h": e["h"], "group": e["group"], "facing": e["facing"], "model": e["model"],
@@ -240,7 +273,8 @@ def compare(study: dict) -> dict:
         if not rec.get("checked") or rec.get("group") == "excluded":
             continue
         mv = rec.get("moved") or {}
-        P = {k: [e["model"][k][0] + mv.get(k, (0, 0))[0], e["model"][k][1] + mv.get(k, (0, 0))[1]] for k in KEYS}
+        P = {k: [e["model"][k][0] + mv.get(k, (0, 0))[0], e["model"][k][1] + mv.get(k, (0, 0))[1]]
+             for k in KEYS if k in e["model"]}
         rows.append((e, rec.get("phase") or "unclear", readings(P, e["facing"])))
     out: dict = {"n": len(rows), "phase": {}, "errors": {}, "strike": {}}
     for _, phase, _ in rows:
@@ -268,11 +302,14 @@ def compare(study: dict) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=("build", "editor", "compare"))
+    ap.add_argument("cmd", choices=("build", "refresh", "editor", "compare"))
     args = ap.parse_args()
     study = load()
     if args.cmd == "build":
         build(study)
+        editor(study)
+    elif args.cmd == "refresh":
+        refresh(study)
         editor(study)
     elif args.cmd == "editor":
         editor(study)

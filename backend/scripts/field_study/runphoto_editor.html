@@ -80,7 +80,7 @@ textarea{width:100%;box-sizing:border-box;font:14px var(--body);color:var(--ink)
 <div class="wrap">
   <header>
     <h1>Running Photo Check</h1>
-    <p class="lede">Проверяем, насколько продукт правильно читает бег по одному кадру. На каждом фото: <b>S E W</b> — плечо, локоть, запястье ближней руки; <b>H</b> — бедро (тазобедренный); <b>K A L F</b> — колено, лодыжка, пятка, носок <b>ноги на опоре</b> (той, что на земле или вот-вот коснётся) — <b>даже если это дальняя нога</b>, а ближняя в воздухе. Если модель поставила ногу на маховую ногу — перетащи все четыре точки на опорную. Отметь фазу шага так, как видишь сам. Если всё на месте — «Проверено». Правки сохраняются сами.</p>
+    <p class="lede">Проверяем, насколько продукт правильно читает бег по одному кадру. На каждом фото: <b>S E W</b> — плечо, локоть, запястье ближней руки; <b>H</b> — тазобедренный сустав <b>опорной ноги</b>; <b>P</b> — видимое бедро, от него читается корпус (есть только когда опорная нога дальняя: тогда её сустав закрыт телом — ставь H туда, где ось видимой части бедра входит в шорты); <b>K A L F</b> — колено, лодыжка, пятка, носок <b>ноги на опоре</b> (той, что на земле или вот-вот коснётся) — <b>даже если это дальняя нога</b>, а ближняя в воздухе. Если модель поставила ногу на маховую ногу — перетащи все четыре точки на опорную. Отметь фазу шага так, как видишь сам. Если всё на месте — «Проверено». Правки сохраняются сами.</p>
   </header>
 
   <div class="bar">
@@ -170,7 +170,11 @@ textarea{width:100%;box-sizing:border-box;font:14px var(--body);color:var(--ink)
 
 <script>
 const DATA = __DATA__;
-const JOINTS = [["S","Плечо"],["E","Локоть"],["W","Запястье"],["H","Бедро (таз)"],["K","Колено"],["A","Лодыжка"],["L","Пятка"],["F","Носок"]];
+const JOINTS = [["S","Плечо"],["E","Локоть"],["W","Запястье"],["H","Бедро опорной ноги"],["P","Видимое бедро (корпус)"],["K","Колено"],["A","Лодыжка"],["L","Пятка"],["F","Носок"]];
+// P exists only where the stance leg is the far one: its own hip (H) is then a
+// different point from the visible hip the trunk is read from.
+const hasP = p => !!(p.model.P && Math.hypot(p.model.P[0]-p.model.H[0], p.model.P[1]-p.model.H[1]) > 1);
+const jointsOf = p => JOINTS.filter(([k]) => k !== "P" || hasP(p));
 const LEG = new Set(["K","A","L","F"]);
 const PHASE_RU = {initial_contact:"касание",midstance:"середина опоры",toe_off:"отталкивание",swing:"мах",flight:"полёт",unclear:"непонятно",uncertain:"не определил"};
 const STRIKE_RU = {heel:"пятка",midfoot:"середина",forefoot:"носок"};
@@ -188,11 +192,12 @@ function ang(a,b,c){const v1=[a[0]-b[0],a[1]-b[1]],v2=[c[0]-b[0],c[1]-b[1]];
   const d=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2));return Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI}
 const deg = r => r*180/Math.PI;
 function readings(P,f){
+  const V=P.P||P.H;   // the trunk's hip; the hip angle is trunk vs thigh, laid onto H
   const leg=Math.hypot(P.K[0]-P.H[0],P.K[1]-P.H[1])+Math.hypot(P.A[0]-P.K[0],P.A[1]-P.K[1]);
   const along=f*(P.F[0]-P.L[0]); const foot=along>0?deg(Math.atan2(P.L[1]-P.F[1],along)):NaN;
   const strike=isNaN(foot)?null:foot>8.1?"heel":foot<-1.6?"forefoot":"midfoot";
-  return {knee:ang(P.H,P.K,P.A), hip:ang(P.S,P.H,P.K), elbow:ang(P.S,P.E,P.W),
-    trunk:deg(Math.atan2(f*(P.S[0]-P.H[0]),P.H[1]-P.S[1])),
+  return {knee:ang(P.H,P.K,P.A), hip:ang([P.H[0]+P.S[0]-V[0],P.H[1]+P.S[1]-V[1]],P.H,P.K), elbow:ang(P.S,P.E,P.W),
+    trunk:deg(Math.atan2(f*(P.S[0]-V[0]),V[1]-P.S[1])),
     shin:deg(Math.atan2(f*(P.K[0]-P.A[0]),P.A[1]-P.K[1])),
     overstride:leg?Math.abs(P.A[0]-P.H[0])/leg:NaN, foot, strike}}
 const ROWS = [["knee","Колено",1,"°"],["hip","Бедро",0,"°"],["elbow","Локоть",0,"°"],["trunk","Корпус (наклон)",0,"°"],
@@ -222,10 +227,11 @@ function renderSvg(){
   const line=(a,b,col="#FFFFFF",w=0.35)=>el("line",{x1:P[a][0],y1:P[a][1],x2:P[b][0],y2:P[b][1],stroke:col,"stroke-width":r*w,"stroke-opacity":0.9});
   // the hip's vertical: what overstride is measured against
   el("line",{x1:P.H[0],y1:P.H[1],x2:P.H[0],y2:p.h,stroke:"#FFFFFF","stroke-width":r*0.18,"stroke-dasharray":`${r} ${r*0.8}`,"stroke-opacity":0.7});
-  line("H","S");line("S","E");line("E","W");line("H","K","#E3A940",0.45);line("K","A","#E3A940",0.45);line("A","L","#E3A940");line("L","F","#E3A940");line("A","F","#E3A940");
-  for(const [k] of JOINTS){const m=p.model[k];
+  if(hasP(p)){line("P","S");el("line",{x1:P.P[0],y1:P.P[1],x2:P.H[0],y2:P.H[1],stroke:"#FFFFFF","stroke-width":r*0.18,"stroke-dasharray":`${r*0.6} ${r*0.5}`})} else line("H","S");
+  line("S","E");line("E","W");line("H","K","#E3A940",0.45);line("K","A","#E3A940",0.45);line("A","L","#E3A940");line("L","F","#E3A940");line("A","F","#E3A940");
+  for(const [k] of jointsOf(p)){const m=p.model[k];
     if(Math.hypot(P[k][0]-m[0],P[k][1]-m[1])>0.5)el("circle",{cx:m[0],cy:m[1],r,fill:"none",stroke:"#FFFFFF","stroke-width":r*0.25,"stroke-dasharray":`${r*0.5} ${r*0.4}`})}
-  for(const [k] of JOINTS){
+  for(const [k] of jointsOf(p)){
     const fill=k===state.sel?"#F0533A":LEG.has(k)?"#E3A940":"#14294B";
     el("circle",{cx:P[k][0],cy:P[k][1],r,fill,stroke:"#FFFFFF","stroke-width":r*0.35});
     const hit=el("circle",{cx:P[k][0],cy:P[k][1],r:r*2.6,fill:"transparent"});hit.dataset.k=k;hit.style.cursor="grab";
@@ -243,7 +249,7 @@ function renderPanel(){
   const miss=m.phase&&a.phase&&m.phase!==a.phase&&!(m.phase==="unclear");
   $("prod").innerHTML=`Продукт: фаза <b>${PHASE_RU[a.phase]||"—"}</b>, опорная нога <b>${({front:"впереди",under:"под собой",rear:"сзади"})[a.stance]||"—"}</b>, оценка <b>${a.score??(a.withheld?"нет ("+a.withheld+")":"—")}</b>${miss?` · <span class="miss">фаза не совпала с твоей</span>`:""}`;
   const P=pts(p);$("joints").innerHTML="";
-  for(const [k,name] of JOINTS){const b=document.createElement("button");b.type="button";b.className="joint";
+  for(const [k,name] of jointsOf(p)){const b=document.createElement("button");b.type="button";b.className="joint";
     b.setAttribute("aria-pressed",k===state.sel?"true":"false");
     const dx=P[k][0]-p.model[k][0],dy=P[k][1]-p.model[k][1];
     b.innerHTML=`${k} · ${name}<small>${Math.hypot(dx,dy)<0.5?"как у модели":`сдвиг ${dx>=0?"+":""}${dx.toFixed(0)}, ${dy>=0?"+":""}${dy.toFixed(0)} px`}</small>`;
@@ -306,7 +312,7 @@ document.addEventListener("keydown",ev=>{if(ev.target.tagName==="TEXTAREA"||ev.t
 
 function record(p){const P=pts(p),m=metaOf(p);
   return {n:p.n,photo:p.photo,facing:p.facing,
-    moved:Object.fromEntries(JOINTS.map(([k])=>[k,[+(P[k][0]-p.model[k][0]).toFixed(1),+(P[k][1]-p.model[k][1]).toFixed(1)]])),
+    moved:Object.fromEntries(jointsOf(p).map(([k])=>[k,[+(P[k][0]-p.model[k][0]).toFixed(1),+(P[k][1]-p.model[k][1]).toFixed(1)]])),
     readings:Object.fromEntries(Object.entries(readings(P,p.facing)).map(([k,v])=>[k,typeof v==="number"?(isNaN(v)?null:+v.toFixed(3)):v])),
     group:m.excluded?"excluded":p.group, phase:m.phase, excluded:!!m.excluded, note:m.note, checked:!!m.checked,
     updated:new Date().toISOString()}}

@@ -195,3 +195,58 @@ def test_the_endpoint_re_measures_a_run_for_whoever_gets_the_run_read(analyzed, 
         assert j["contact"]["measured"] is True
     finally:
         main.app.dependency_overrides.pop(get_current_user, None)
+
+
+# The far stance leg's own hip, where race photos put it: ahead of the near one
+# (the photographer stands a little in front). Chicago 2026, images.jpg: from
+# the near hip the landing read 0.32 overstride and a 117 deg knee; from its
+# own hip 0.18 and 131.
+_HIP_AHEAD = 0.53
+
+
+@pytest.fixture
+def far_hip_ahead(monkeypatch):
+    from app.services.video_analysis import photo_analyzer as PA
+
+    def pose(b):
+        r = _pose_result(b)
+        r["normalized"][23].x = _HIP_AHEAD
+        r["world"][23].x = (_HIP_AHEAD - 0.5) * 1.2
+        return r
+
+    monkeypatch.setattr(PA, "detect_pose_in_image", pose)
+    photo = _photo_bytes()
+    return photo, PA.analyze_photo(photo, "run", None, False, True)
+
+
+def _img(pt):
+    return (pt[0] * W / H, pt[1])
+
+
+def test_a_far_stance_leg_is_measured_from_its_own_hip(analyzed, far_hip_ahead):
+    _photo, res = far_hip_ahead
+    hip, knee, ankle = _img((_HIP_AHEAD, 0.50)), _img(_STANCE[25]), _img(_STANCE[27])
+    leg = math.dist(hip, knee) + math.dist(knee, ankle)
+    assert res["contact"]["overstride_ratio"] == pytest.approx(abs(ankle[0] - hip[0]) / leg, abs=1e-3)
+    assert res["contact"]["overstride_ratio"] < analyzed[1]["contact"]["overstride_ratio"]
+    # The trunk stays on the visible hip: the stance hip moving changes nothing.
+    assert res["angles"]["trunk"] == analyzed[1]["angles"]["trunk"]
+    # The hip angle is trunk against thigh, not shoulder -> hidden hip -> knee.
+    sh, vis = _img(_BODY[12]), _img(_BODY[24])
+    trunk = (sh[0] - vis[0], sh[1] - vis[1])
+    thigh = (knee[0] - hip[0], knee[1] - hip[1])
+    want = math.degrees(math.acos((trunk[0] * thigh[0] + trunk[1] * thigh[1])
+                                  / (math.hypot(*trunk) * math.hypot(*thigh))))
+    assert res["angles"]["hip"] == pytest.approx(want, abs=0.1)
+
+
+def test_the_hidden_hip_is_the_one_handed_out_to_drag(far_hip_ahead):
+    photo, res = far_hip_ahead
+    pose = res["pose"]
+    # The near-side "hip" the athlete drags is the stance leg's own; the
+    # visible one is named for the drawing only.
+    assert pose["landmarks"][24][0] == _HIP_AHEAD and pose["pelvis_hip"] == 23
+    assert 23 not in pose["draggable"]
+    out = PC.recompute_photo(photo, "run", None, pose, [{"landmark": 32, "dx": 0.005, "dy": 0.0}])
+    assert out["baseline"]["angles"] == res["angles"]
+    assert out["baseline"]["contact"]["overstride_ratio"] == res["contact"]["overstride_ratio"]
