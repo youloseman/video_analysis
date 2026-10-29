@@ -137,8 +137,24 @@ SECTIONS: tuple[dict[str, Any], ...] = (
                 "don't match what you see on the clip: a joint drawn in the "
                 "wrong place, a range that flatters or punishes, a verdict "
                 "you'd overturn. This goes straight to the product.",
+        # A swim clip has no numbers or advice of the app's to disagree with.
+        "sports": ("run", "bike"),
     },
 )
+
+# What the coach is asked to look at on a swim clip, in place of the run/bike
+# hints -- there is no table behind it, so the eye is the whole review.
+SWIM_HINTS = {
+    "seen": "Your eye on the clip. Three to five things: body line (do the hips "
+            "and legs sink?), head position and the breath, the hand entry and "
+            "reach, the catch (does the elbow stay high?), the pull path, the "
+            "kick (from the hip or bent at the knee?), rotation and timing.",
+    "priorities": "One to three, ranked, from your experience. Each one: what "
+                  "you see, what to do (a drill or a cue), and how they'll "
+                  "feel or see that it worked.",
+    "plan": "Concrete: drills, sets, how often -- something they can take to "
+            "the pool and put in a calendar.",
+}
 
 # Sections the template no longer asks for, kept so a review delivered with
 # them still shows them (Artur, 2026-10-14: the coach stopped judging the
@@ -270,6 +286,8 @@ def sections_for(
         if (not s.get("sports") or (sport or "run") in s["sports"])
         and (coach or not s.get("internal"))
     ]
+    if sport == "swim":
+        out = [{**s, "hint": SWIM_HINTS[s["key"]]} if s["key"] in SWIM_HINTS else s for s in out]
     for legacy in LEGACY_SECTIONS:
         if not (report or {}).get(legacy["key"]):
             continue
@@ -342,7 +360,10 @@ def capture_notes(entry: dict[str, Any] | None) -> str:
     Shown after the coach, with the numbers: how far to trust a measurement
     is the product's statement, not the coach's.
     """
-    return "\n".join(_quality_sentences(entry)) if entry else ""
+    # A swim clip was never measured, so there is no capture to qualify.
+    if not entry or entry.get("sport") == "swim":
+        return ""
+    return "\n".join(_quality_sentences(entry))
 
 
 RETEST_DEFAULT = {
@@ -358,6 +379,12 @@ RETEST_DEFAULT = {
         "height and close enough that you fill most of the frame. We'll "
         "compare it with this clip."
     ),
+    "swim": (
+        "Film again in four to six weeks with the same setup: the same pool, "
+        "the camera underwater on the side wall at the same depth, two or "
+        "three lengths at your usual steady pace, so both breathing sides are "
+        "on the clip. We'll compare it with this one."
+    ),
 }
 
 
@@ -371,7 +398,7 @@ def prefill(entry: dict[str, Any] | None, plan: str | None = PLAN_EXPERT) -> dic
     sport = (entry or {}).get("sport") or "run"
     draft = blank_report(sport, plan)
     if not is_notes_plan(plan):
-        draft["retest"] = RETEST_DEFAULT["bike" if sport == "bike" else "run"]
+        draft["retest"] = RETEST_DEFAULT.get(sport, RETEST_DEFAULT["run"])
     return draft
 
 

@@ -2684,3 +2684,48 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .fbrow .fbq{margin-bottom:4px}
   .fb-detail{grid-template-columns:1fr}
 }
+
+/* ---------- Swimming: a clip a coach reviews (no analysis) ---------- */
+.swim-card{padding:28px 30px}
+.swim-h{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:30px;line-height:1.15;letter-spacing:-.01em;color:var(--c-head);margin:10px 0 10px}
+.swim-lede{font-size:15px;line-height:1.55;color:var(--c-ink-soft);max-width:70ch;margin:0 0 22px}
+.swim-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.swim-guide h3,.swim-mine h3{font-family:var(--f-display);font-size:16px;font-weight:600;color:var(--c-head);margin:0 0 10px}
+.swim-guide ol{margin:0;padding-left:20px;font-size:14px;line-height:1.55;color:var(--c-ink)}
+.swim-guide li{margin:0 0 8px}
+.swim-rules{margin:14px 0 0;padding:12px 14px;border:1px solid var(--c-line);background:var(--c-panel-blue);font-size:13.5px;line-height:1.5;color:var(--c-ink)}
+.swim-form{display:flex;flex-direction:column;gap:14px}
+.swim-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;color:var(--c-ink-faint)}
+.swim-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.swim-form select,.swim-form textarea,.swim-form input[type=file]{font-family:var(--f-body);font-size:14px;letter-spacing:0;color:var(--c-ink);background:var(--c-bg);border:1px solid var(--c-line-strong);padding:9px 12px;min-height:40px;width:100%}
+.swim-form textarea{min-height:72px;resize:vertical;line-height:1.5}
+.swim-opt{color:var(--c-ink-faint);font-weight:400}
+.swim-form .swim-consent{flex-direction:row;align-items:flex-start;gap:10px;font-family:var(--f-body);font-size:13.5px;letter-spacing:0;color:var(--c-ink);line-height:1.45}
+.swim-consent input{margin-top:3px;flex:none}
+.swim-consent .swim-opt{display:block;font-size:12.5px}
+.swim-prog{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--c-ink-soft)}
+.swim-bar{flex:1;height:6px;background:var(--c-line);overflow:hidden}
+.swim-bar i{display:block;height:100%;width:0;background:var(--c-blue);transition:width .15s}
+.swim-err{color:var(--st-bad);font-size:13.5px;margin:0;min-height:1em}
+.swim-err:empty{display:none}
+.swim-fine{font-size:13px;color:var(--c-ink-faint);margin:0}
+.swim-meta{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);margin:0 0 16px}
+.swim-player{margin:0 0 16px}
+.swim-player video{display:block;width:100%;max-height:70vh;background:#000;border-radius:var(--radius)}
+.swim-q{font-size:14.5px;line-height:1.5;color:var(--c-ink);margin:0 0 18px}
+.swim-note{border:1px solid var(--c-line);background:var(--c-bg);padding:16px 18px;margin:0 0 16px}
+.swim-note .no-chip{display:block;margin-bottom:8px}
+#swOrders > .no-card + .no-card{margin-top:12px}
+.swim-offers{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+.swim-offers .no-card{display:flex;flex-direction:column}
+.swim-offers .no-cta{margin-top:auto;padding-top:6px}
+.swim-foot{margin-top:22px;padding-top:14px;border-top:1px solid var(--c-line)}
+.swim-mine{margin-top:26px;padding-top:18px;border-top:1px solid var(--c-line)}
+.swim-mineitem{display:block;width:100%;text-align:left;font:inherit;font-size:14px;color:var(--c-ink);background:none;border:1px solid var(--c-line);padding:10px 14px;margin:0 0 8px;cursor:pointer}
+.swim-mineitem:hover{border-color:var(--c-line-strong);background:var(--c-panel-blue)}
+@media(max-width:900px){
+  .swim-card{padding:20px 16px}
+  .swim-h{font-size:24px}
+  .swim-grid,.swim-offers{grid-template-columns:1fr}
+}
+@media(max-width:560px){ .swim-row{grid-template-columns:1fr} }

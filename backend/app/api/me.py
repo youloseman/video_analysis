@@ -464,6 +464,13 @@ async def get_overlays(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
         )
+    # A swim clip is footage and nothing else: there is no report to unlock,
+    # and watching your own upload is not part of what a plan sells.
+    if row.sport == "swim":
+        if not row.job_id or not job_file(row.job_id, "input"):
+            return {"overlays": {}, "source": None}
+        token = create_media_token(user.id, row.job_id)
+        return {"overlays": {}, "source": f"/jobs/{row.job_id}/source?mt={token}"}
     if access_for_stored(user, row) != ACCESS_FULL:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,

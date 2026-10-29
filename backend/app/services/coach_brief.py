@@ -1,5 +1,8 @@
 """The coach's brief for a Coach Notes order: one self-contained Russian HTML page.
 
+Also for any review of a swim clip (render_swim_brief_html): there are no
+numbers there, so that brief is the footage, a checklist and the form.
+
 Bogdan writes the notes in Russian, from Telegram, often on a phone. What he
 needs is the clip, the annotated frame, the kinogram, the numbers against
 their bands, what the automatic report already told the athlete, and a form
@@ -15,6 +18,7 @@ Every string that came from the athlete or the pipeline is escaped.
 from __future__ import annotations
 
 import base64
+import json
 import re
 import shutil
 import subprocess
@@ -129,7 +133,7 @@ def _status(v: float, lo: float, hi: float) -> tuple[str, str, str]:
     return "", "ок", ""
 
 
-def _deadline(paid_ms: int) -> tuple[str, str]:
+def _deadline(paid_ms: int, due_hours: int = NOTES_DUE_HOURS) -> tuple[str, str]:
     """(coach deadline, client deadline), in Vancouver time, in Russian.
 
     The coach's is the evening before the athlete's day: the answer still has
@@ -140,7 +144,7 @@ def _deadline(paid_ms: int) -> tuple[str, str]:
         tz: Any = ZoneInfo("America/Vancouver")
     except Exception:  # noqa: BLE001 -- no tz database in the image: UTC is still a date
         tz = UTC
-    due = datetime.fromtimestamp(paid_ms / 1000, UTC).astimezone(tz) + timedelta(hours=NOTES_DUE_HOURS)
+    due = datetime.fromtimestamp(paid_ms / 1000, UTC).astimezone(tz) + timedelta(hours=due_hours)
     coach = due - timedelta(days=1)
     c = f"{_WEEKDAY_GEN[coach.weekday()]} {coach.day} {_MONTH_GEN[coach.month - 1]}, вечер"
     d = f"{_WEEKDAY_GEN[due.weekday()]} {due.day} {_MONTH_GEN[due.month - 1]}"
@@ -417,7 +421,16 @@ _HEAD = """<!doctype html>
 </head>
 """
 
-_TAIL = """
+# The answer form: one textarea per field, word counters, a draft kept in the
+# browser, and a button that copies the lot as one Telegram message.
+# ``fields``: (label, hint, soft word limit).
+_NOTES_FIELDS = (
+    ("Главное, что изменить", "одно действие на эту неделю, до 25 слов", 25),
+    ("Заметка 1", "до 35 слов", 35),
+    ("Заметка 2", "до 35 слов", 35),
+    ("Заметка 3", "до 35 слов", 35),
+)
+_HOW_NUMBERS = """
   <h2>Как писать</h2>
   <div class="card ex">
     Обращайся на «ты», как на тренировке. Не пересказывай цифры: таблицу клиент уже видел. Нужно то, что видит глаз.
@@ -425,33 +438,14 @@ _TAIL = """
     <b>❌ Бесполезно:</b> «Угол в колене 150°, выше нормы».
     <p class="cap">Без медицинских диагнозов. Если нужен физиотерапевт или байкфиттер, так и напиши.</p>
   </div>
+"""
 
-  <h2>Твой ответ</h2>
-  <div class="card">
-    <label for="f0">Главное, что изменить <span class="hint">одно действие на эту неделю, до 25 слов</span></label>
-    <textarea id="f0" data-max="25"></textarea><div class="count" id="c0"></div>
-
-    <label for="f1">Заметка 1 <span class="hint">до 35 слов</span></label>
-    <textarea id="f1" data-max="35"></textarea><div class="count" id="c1"></div>
-
-    <label for="f2">Заметка 2 <span class="hint">до 35 слов</span></label>
-    <textarea id="f2" data-max="35"></textarea><div class="count" id="c2"></div>
-
-    <label for="f3">Заметка 3 <span class="hint">до 35 слов</span></label>
-    <textarea id="f3" data-max="35"></textarea><div class="count" id="c3"></div>
-
-    <button id="copy" type="button">Скопировать ответ</button>
-    <div class="ok-msg" id="msg"></div>
-    <p class="cap">Нажми, вставь в Telegram и отправь Артуру. Черновик сохраняется в этом браузере, так что можно закрыть страницу и вернуться.</p>
-  </div>
-
-  <p class="cap">🔒 Видео и картинки — личные материалы клиента. Пожалуйста, не пересылай их и удали этот файл после отправки ответа.</p>
-</main>
+_FORM_JS = """
 <script>
 (function(){
   var KEY='flapp-coach-order{{ORDER}}-draft';
-  var names=['Главное, что изменить','Заметка 1','Заметка 2','Заметка 3'];
-  var fields=[0,1,2,3].map(function(i){return document.getElementById('f'+i);});
+  var names={{NAMES}};
+  var fields=names.map(function(_,i){return document.getElementById('f'+i);});
   var saved={};
   try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){}
   function words(s){var t=s.trim();return t?t.split(/\\s+/).length:0;}
@@ -469,7 +463,7 @@ _TAIL = """
   fields.forEach(function(f,i){ if(saved[i]) f.value=saved[i]; f.addEventListener('input',update); });
   update();
   document.getElementById('copy').addEventListener('click',function(){
-    var text='Coach Notes, заказ №{{ORDER}}\\n\\n'+fields.map(function(f,i){
+    var text='{{PRODUCT}}, заказ №{{ORDER}}\\n\\n'+fields.map(function(f,i){
       return names[i]+':\\n'+(f.value.trim()||'—');}).join('\\n\\n');
     var msg=document.getElementById('msg');
     function done(){msg.textContent='Скопировано. Вставь в чат с Артуром.';}
@@ -485,3 +479,126 @@ _TAIL = """
 </body>
 </html>
 """
+
+
+def _answer_html(product: str, fields: tuple[tuple[str, str, int], ...], how: str) -> str:
+    """The form, with {{ORDER}} left for the caller to fill."""
+    boxes = "".join(
+        f'\n    <label for="f{i}">{escape(label)} <span class="hint">{escape(hint)}</span></label>'
+        f'\n    <textarea id="f{i}" data-max="{limit}"></textarea><div class="count" id="c{i}"></div>\n'
+        for i, (label, hint, limit) in enumerate(fields))
+    names = json.dumps([label for label, _, _ in fields], ensure_ascii=False)
+    return (how + f"""
+  <h2>Твой ответ</h2>
+  <div class="card">{boxes}
+    <button id="copy" type="button">Скопировать ответ</button>
+    <div class="ok-msg" id="msg"></div>
+    <p class="cap">Нажми, вставь в Telegram и отправь Артуру. Черновик сохраняется в этом браузере, так что можно закрыть страницу и вернуться.</p>
+  </div>
+
+  <p class="cap">🔒 Видео и картинки — личные материалы клиента. Пожалуйста, не пересылай их и удали этот файл после отправки ответа.</p>
+</main>"""
+            + _FORM_JS.replace("{{NAMES}}", names).replace("{{PRODUCT}}", product))
+
+
+_TAIL = _answer_html("Coach Notes", _NOTES_FIELDS, _HOW_NUMBERS)
+
+
+# --------------------------------------------------------------------------
+# Swimming: no numbers, so the brief is the clip, what the athlete told us,
+# and a checklist of what to look at (services/swim.py says why).
+# --------------------------------------------------------------------------
+# A draft until Bogdan sends his own rubric (asked 2026-10-28): replace the
+# items, keep the shape.
+SWIM_CHECKLIST = (
+    ("Положение тела", "линия голова — таз — пятки; не тонут ли таз и ноги."),
+    ("Голова", "смотрит вниз или вперёд; поднимается ли на вдохе."),
+    ("Вдох", "поворотом корпуса или подъёмом головы; на одну или обе стороны; "
+             "не останавливается ли рука впереди на вдохе."),
+    ("Вход руки и вытяжение", "ширина входа, заход за осевую линию, «шлепок», выпрямляется ли рука вперёд."),
+    ("Захват", "остаётся ли локоть высоко (вертикальное предплечье) или рука «проскальзывает» с опущенным локтем."),
+    ("Гребок", "траектория под телом, доводит ли до бедра."),
+    ("Работа ног", "от бедра или «велосипед» из колена; амплитуда; носки."),
+    ("Вращение и ритм", "перекат с боку на бок, согласованность рук, ровный темп."),
+)
+
+# The Expert Review's sections (services/expert_review.py), in Russian, minus
+# the fit table (bike only) and the internal "disagree" (nothing to disagree with).
+_SWIM_ER_FIELDS = (
+    ("Главный вывод", "2–3 предложения: что атлет должен унести с собой. Пиши последним", 60),
+    ("Что я вижу", "3–5 вещей, которые ты видишь на видео", 120),
+    ("Что уже хорошо", "что трогать не надо и почему", 60),
+    ("Приоритет 1", "что видишь → что делать (упражнение, установка) → как поймёт, что получилось", 70),
+    ("Приоритет 2", "то же, необязательно", 70),
+    ("Приоритет 3", "то же, необязательно", 70),
+    ("План на 4 недели", "упражнения, серии, сколько раз в неделю — чтобы можно было внести в календарь", 120),
+    ("Что не менять", "необязательно", 40),
+    ("Когда переснять", "необязательно; по умолчанию через 4–6 недель, тот же бассейн и ракурс", 40),
+)
+
+_HOW_SWIM = """
+  <h2>Как писать</h2>
+  <div class="card ex">
+    Обращайся на «ты», как на тренировке. Цифр у плавания нет: весь разбор — это то, что видит твой глаз, и упражнения, которые ты бы дал.
+    <b>✅ Хорошо:</b> «На вдохе ты поднимаешь голову вперёд, и ноги сразу проваливаются. Дыши в сторону, одним глазом в воде: упражнение 6-3-6, 4×50 в начале каждой тренировки».
+    <b>❌ Бесполезно:</b> «Техника в целом неплохая, есть над чем поработать».
+    <p class="cap">Без медицинских диагнозов. Если нужен врач или физиотерапевт, так и напиши.</p>
+  </div>
+"""
+
+# The Expert Review promises five days (pricing page); Notes NOTES_DUE_HOURS.
+EXPERT_DUE_HOURS = 5 * 24
+
+
+def _swim_caption(entry: dict[str, Any]) -> str:
+    from app.services import swim
+
+    sw = entry.get("swim") or {}
+    view = swim.VIEWS_RU.get(sw.get("view"))
+    bits = [swim.STROKES_RU.get(sw.get("stroke"), ""), swim.POOLS_RU.get(sw.get("pool"), ""),
+            f"снято {view}" if view else ""]
+    text = ", ".join(b for b in bits if b)
+    return (text[:1].upper() + text[1:] + ".") if text else ""
+
+
+def render_swim_brief_html(*, order_id: int, plan: str, paid_ms: int,
+                           entry: dict[str, Any], clip: bytes | None) -> str:
+    notes = plan == "notes"
+    product = "Coach Notes" if notes else "Expert Review"
+    coach_due, client_due = _deadline(paid_ms, NOTES_DUE_HOURS if notes else EXPERT_DUE_HOURS)
+    focus = entry.get("focus")
+    question = (f"Атлет задал вопрос: <b>«{escape(str(focus))}»</b>. Ответ на него для клиента главный."
+                if focus else "Отдельного вопроса атлет не задал, так что главное выбираешь ты.")
+    caption = escape(_swim_caption(entry))
+    if clip:
+        video = ('<div class="card"><video controls playsinline preload="metadata" src="data:video/mp4;base64,'
+                 + base64.b64encode(clip).decode() + f'"></video><p class="cap">{caption}</p></div>')
+    else:
+        video = ('<div class="card"><p class="cap">Видео в файл не попало (не сохранилось или '
+                 f'слишком большое). Попроси Артура прислать его отдельно. {caption}</p></div>')
+    checklist = "".join(f"<li><b>{escape(k)}</b>: {escape(v)}</li>" for k, v in SWIM_CHECKLIST)
+    need = ("одна главная фраза и три короткие заметки" if notes else
+            "полный разбор: главный вывод, что видишь, что уже хорошо, до трёх приоритетов и план на 4 недели")
+    form = _answer_html(product, _NOTES_FIELDS if notes else _SWIM_ER_FIELDS, _HOW_SWIM)
+    return (_HEAD.replace("{{ORDER}}", str(order_id))
+            + f"""<body>
+<main>
+  <h1>{product}: техника плавания</h1>
+  <p class="sub">{question} Автоматического анализа у плавания нет: ни углов, ни оценки. Клиент купил именно твой взгляд.</p>
+
+  <div class="card deadline">
+    <b>Что нужно:</b> {need}. Внизу страницы есть форма.<br>
+    <b>Когда:</b> до <b>{coach_due}</b>. Клиенту обещан ответ до {client_due}.<br>
+    <b>Сколько времени:</b> минут {"20–30" if notes else "40–60"}.
+  </div>
+
+  <h2>Видео</h2>
+  {video}
+
+  <h2>На что смотреть</h2>
+  <div class="card">
+    <ul>{checklist}</ul>
+    <p class="cap">Черновик чек-листа. Пришли свой, и он заменит этот.</p>
+  </div>
+"""
+            + form.replace("{{ORDER}}", str(order_id)))

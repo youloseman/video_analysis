@@ -65,7 +65,7 @@
 <main>
 <div class="wrap">
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 19 October 2026</p>
+  <p class="updated">Last updated: 28 October 2026</p>
   <div class="speedline"></div>
 
   <p class="lede"><b>Short version:</b> We keep only what we need to run the service — your account email (if you sign up), your subscription tier, and a count of the analyses you run. Your uploaded video or photo is processed and then automatically deleted; it is never sold or handed to an advertiser. Only anonymous numeric measurements go to the AI that writes your coaching notes. If you buy an <b>Expert Review</b>, a real person reviews your clip. We run no advertising trackers.</p>
@@ -99,20 +99,23 @@
   <ul>
     <li>Your clip or photo is processed on our server to detect body pose and measure joint angles.</li>
     <li>For video, we optionally render an annotated "overlay" copy with the skeleton drawn on it, so you can review and download it.</li>
-    <li>The uploaded file and any overlay are stored on our processing infrastructure and <b>deleted automatically at the end of a fixed retention period</b>: <b>7 days</b> on the free plan and <b>30 days</b> on a paid plan, counted from the analysis. Keeping them that long is what lets your saved history refer back to real footage, and what lets a human reviewer actually watch the clip you bought a review for. We do not keep a copy for our own marketing or for training models.</li>
+    <li>A <b>swim clip</b> is not processed at all: nothing measures it. It is stored, under the same retention as any clip, so that the coach whose review you book can watch it.</li>
+    <li>The uploaded file and any overlay are stored on our processing infrastructure and <b>deleted automatically at the end of a fixed retention period</b>: <b>7 days</b> on the free plan and <b>30 days</b> on a paid plan, counted from the analysis. Keeping them that long is what lets your saved history refer back to real footage, and what lets a human reviewer actually watch the clip you bought a review for. We do not keep a copy for our own marketing or for training models (the one exception is a swim clip you opt in, see <a href="#swim-consent">section 3</a>).</li>
     <li>You can <b>delete a clip earlier at any time</b> by deleting the saved analysis it belongs to, or your whole account — in both cases the footage is removed along with the record.</li>
     <li><b>Your video or photo is never uploaded to any third-party AI service.</b> Only anonymous numerical measurements (joint angles, scores, detected issues) are sent to Google's Gemini API to generate the written coaching notes — no images, and nothing that identifies you.</li>
   </ul>
 
   <div class="note">Footage is kept for the retention period above and then deleted for good — Flapp cannot retrieve a clip after that, and neither can you. If you want to keep a result or an overlay video permanently, download it.</div>
 
-  <h2>3. Expert Review — when a person sees your clip</h2>
-  <p>If you purchase an <b>Expert Review</b>, your video is reviewed by a <b>real human reviewer</b> (not only the automated system) who writes a manual assessment. For this feature only:</p>
+  <h2>3. Expert Review and Coach Notes — when a person sees your clip</h2>
+  <p>If you purchase an <b>Expert Review</b> or <b>Coach Notes</b>, your video is reviewed by a <b>real human reviewer</b> (not only the automated system) who writes a manual assessment. For this feature only:</p>
   <ul>
     <li>Your clip is <b>retained until the review is delivered</b> even if its normal retention period would have ended first, so the reviewer can watch it.</li>
     <li>It is accessed solely to produce your review, is not shared further, and is <b>deleted within 7 days of the review being delivered</b> — the short window exists so the reviewer can correct something they wrote about footage that would otherwise already be gone.</li>
   </ul>
-  <p>If you do not buy an Expert Review, no human reviews your footage — it is only processed automatically as described above.</p>
+  <p>If you do not buy an Expert Review or Coach Notes, no human reviews your footage — it is only processed automatically as described above.</p>
+  <p>Please film only yourself. If other people appear in a clip — other swimmers in a pool, for example — the reviewer disregards them, and the clip is handled exactly as above.</p>
+  <p id="swim-consent"><b>Swim clips you opt in.</b> When you upload a swim clip you may tick “You may use this clip to help build automatic swim analysis”. It is unticked unless you tick it. If you do, we may use that clip, while it is stored under the retention above, to develop and test automatic swim analysis — for example by marking body positions on its frames. It is never published and never shared outside Flapp and the people building that analysis for us. You can withdraw it at any time by emailing <a href="mailto:support@getflapp.com">support@getflapp.com</a> or by deleting the clip. Without the tick, none of this happens.</p>
 
   <h2>4. Feedback on your results</h2>
   <p>Under every report there's a "Does this match what you see?" prompt. Rating a result is entirely optional; nothing changes about your analysis if you skip it. When you do send feedback, we store:</p>

@@ -40,5 +40,6 @@ def test_the_admin_is_emailed_at_85_percent_at_most_twice_a_day(monkeypatch):
 
 def test_both_upload_paths_check_before_writing():
     src = (Path(__file__).resolve().parents[1] / "app" / "main.py").read_text(encoding="utf-8")
-    assert src.count("if await run_in_threadpool(disk_refuses_uploads):") == 2
-    assert src.count("if e.errno == errno.ENOSPC:") == 2
+    # /analyze, /analyze-pair and /upload-swim.
+    assert src.count("if await run_in_threadpool(disk_refuses_uploads):") == 3
+    assert src.count("if e.errno == errno.ENOSPC:") == 3

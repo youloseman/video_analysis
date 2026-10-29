@@ -31,7 +31,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,7 +57,7 @@ from app.models.user import (
     User,
     has_full,
 )
-from app.services import analytics, coach_brief, expert_review, notify, pricing, unlock_credit
+from app.services import analytics, coach_brief, expert_review, notify, pricing, swim, unlock_credit
 from app.services.result_gating import ACCESS_FULL, access_for_stored
 from app.services.tier_grants import clear_grant
 
@@ -442,6 +442,12 @@ async def _require_unlockable(
     if row is None:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, "That analysis is not in your history.",
+        )
+    if swim.is_swim(row.sport):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "A swim clip has no automatic report to unlock — a coach reviews it. "
+            "Book Coach Notes or an Expert Review on it instead.",
         )
     if access_for_stored(user, row) == ACCESS_FULL:
         raise HTTPException(
@@ -1046,8 +1052,11 @@ async def admin_orders(
     """Fulfilment queue: the purchases a person writes, with the buyer's email."""
     rows = (
         await db.execute(
-            select(Order, User.email)
+            select(Order, User.email, Analysis.sport)
             .join(User, User.id == Order.user_id)
+            # Outer: an order nobody linked to a clip yet is still owed work.
+            .outerjoin(Analysis, and_(Analysis.user_id == Order.user_id,
+                                      Analysis.client_id == Order.analysis_client_id))
             .where(Order.plan.in_(REVIEW_ORDER_PLANS + CHECK_ORDER_PLANS))
             .order_by(Order.created_at_ms.desc())
             .limit(200)
@@ -1055,14 +1064,14 @@ async def admin_orders(
     ).all()
     return [
         {
-            **_order_out(o), "email": email, "admin_note": o.admin_note,
+            **_order_out(o), "email": email, "admin_note": o.admin_note, "sport": sport,
             # The queue needs to distinguish "nothing written" from "drafted but
             # not sent"; `has_report` deliberately only speaks about delivery.
             "has_draft": (o.plan not in CHECK_ORDER_PLANS) and not expert_review.is_empty(o.report),
             "kind": "check" if o.plan in CHECK_ORDER_PLANS else "write",
             "checked": bool(_qa(o).get("checked_at")),
         }
-        for o, email in rows
+        for o, email, sport in rows
     ]
 
 
@@ -1204,11 +1213,14 @@ async def admin_order_brief(
     Clip, frame, kinogram, numbers and an answer form in a page Bogdan opens
     from Telegram with no login. It was assembled by hand from a prod dump
     until 2026-10-28; the queue now hands it over in one click.
+
+    A swim clip gets one for an Expert Review too: run and bike reviews are
+    written in the claude.ai form, whose checklist has no swimming in it.
     """
     order = await db.get(Order, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    if order.plan != "notes":
+    if order.plan not in REVIEW_ORDER_PLANS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The brief is for Coach Notes orders.")
     row = None
     if order.analysis_client_id:
@@ -1222,12 +1234,21 @@ async def admin_order_brief(
         ).scalar_one_or_none()
     if row is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pick the athlete's clip on the order first.")
+    if order.plan != expert_review.PLAN_NOTES and not swim.is_swim(row.sport):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Run and bike Expert Reviews are written in the review form, not a brief.")
     path = await _clip_path(db, order)
     clip = await run_in_threadpool(coach_brief.clip_for_brief, path) if path is not None else None
-    html = coach_brief.render_brief_html(
-        order_id=order.id, paid_ms=order.created_at_ms, result=row.result, entry=row.data,
-        media=await _analysis_media(db, order.user_id, order.analysis_client_id), clip=clip,
-    )
+    if swim.is_swim(row.sport):
+        html = coach_brief.render_swim_brief_html(
+            order_id=order.id, plan=order.plan, paid_ms=order.created_at_ms,
+            entry=row.data or {}, clip=clip,
+        )
+    else:
+        html = coach_brief.render_brief_html(
+            order_id=order.id, paid_ms=order.created_at_ms, result=row.result, entry=row.data,
+            media=await _analysis_media(db, order.user_id, order.analysis_client_id), clip=clip,
+        )
     name = f"Разбор_для_тренера_заказ_{order.id}.html"
     return HTMLResponse(html, headers={
         "Content-Disposition": f"attachment; filename=brief-order-{order.id}.html; filename*=UTF-8''{quote(name)}",
@@ -1299,9 +1320,9 @@ async def admin_update_order(
         order.admin_note = body.admin_note.strip()[:2000] or None
     if body.analysis_client_id is not None:
         order.analysis_client_id = body.analysis_client_id.strip()[:64] or None
+    entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
+    sport = (entry or {}).get("sport") or _sport_of(order.report)
     if body.report is not None:
-        entry = await _analysis_entry(db, order.user_id, order.analysis_client_id)
-        sport = (entry or {}).get("sport") or "run"
         # Normalised server-side: the editor is not the last word on what may be
         # stored on an order row.
         order.report = expert_review.normalize_report(body.report, sport, order.plan)
@@ -1310,9 +1331,7 @@ async def admin_update_order(
     return {
         **_order_out(order), "admin_note": order.admin_note,
         "report": order.report,
-        "missing_required": expert_review.missing_required(
-            order.report, _sport_of(order.report), order.plan,
-        ),
+        "missing_required": expert_review.missing_required(order.report, sport, order.plan),
     }
 
 
@@ -1676,10 +1695,21 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> dict[str, Any] |
     # the redirect -- an abandoned tab, a blocked script or a dead phone all
     # lose the sale from the funnel while the charge goes through anyway.
     meta_all = obj.get("metadata") or {}
+    # Which sport the bought review is on. Read from the analysis, not the
+    # metadata, so a review bought before this field existed reads the same.
+    sport = None
+    if meta_all.get("analysis_client_id"):
+        sport = await db.scalar(
+            select(Analysis.sport).where(
+                Analysis.user_id == user.id,
+                Analysis.client_id == str(meta_all["analysis_client_id"])[:64],
+            )
+        )
     analytics.capture_bg(
         analytics.person_id(user), "purchase_completed",
         {
             "plan": str(meta_all.get("plan") or "") or None,
+            "sport": sport,
             "tier": meta_all.get("tier") or None,
             "kind": obj.get("mode"),          # subscription | payment
             "revenue": _amount_major(obj.get("amount_total")),
@@ -1696,6 +1726,7 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> dict[str, Any] |
         # The $4 report this subscription was credited with, if any: the sale
         # email says so, which is how the credit's take-up is read by hand.
         "unlock_credit_order": str(meta_all.get("unlock_credit_order") or "") or None,
+        "sport": sport,
         "paid_ms": _now_ms(),
     }
     if obj.get("mode") == "subscription":

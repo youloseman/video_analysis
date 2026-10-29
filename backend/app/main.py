@@ -1972,6 +1972,100 @@ async def analyze_endpoint(
     )
 
 
+@app.post("/upload-swim", status_code=201)
+async def upload_swim_endpoint(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    video: UploadFile = File(..., description="A swim clip, ideally underwater from the side."),
+    stroke: str | None = Form(None, description="freestyle | breaststroke | backstroke | butterfly"),
+    pool: str | None = Form(None, description="pool_25m | pool_50m | pool_25y | endless"),
+    view: str | None = Form(None, description="underwater_side | underwater_front | deck_side"),
+    focus: str | None = Form(None, description="Optional: the athlete's question for the coach."),
+    consent_training: bool = Form(False, description="May this clip help improve the analysis?"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Store a swim clip for a coach to review. Nothing is measured.
+
+    See services/swim.py for why. No queue, no analysis quota -- the clip is
+    only worth anything once a review is bought for it, which is what the
+    unordered-clip cap protects. The history row is written HERE rather than
+    by the client, as with every other upload: there is no result to wait
+    for, and the row is what proves this account owns the footage
+    (retention.user_owns_job) once the job store has forgotten it.
+    """
+    from app.models.analysis import Analysis
+    from app.services import swim
+
+    stroke_v = swim.pick(stroke, swim.STROKES, swim.DEFAULT_STROKE)
+    pool_v = swim.pick(pool, swim.POOLS, swim.DEFAULT_POOL)
+    view_v = swim.pick(view, swim.VIEWS, swim.DEFAULT_VIEW)
+    for name, value, allowed in (
+        ("stroke", stroke_v, swim.STROKES), ("pool", pool_v, swim.POOLS), ("view", view_v, swim.VIEWS),
+    ):
+        if value not in allowed:
+            raise HTTPException(400, f"invalid {name}; valid: {sorted(allowed)}")
+
+    suffix = Path(video.filename or "").suffix.lower() or ".mp4"
+    if suffix not in ALLOWED_SUFFIXES:
+        raise HTTPException(
+            400, f"unsupported file type '{suffix}'; allowed: {sorted(ALLOWED_SUFFIXES)}",
+        )
+    if await swim.unordered_clips(db, user.id) >= swim.MAX_UNORDERED_CLIPS:
+        raise HTTPException(
+            429,
+            f"You already have {swim.MAX_UNORDERED_CLIPS} swim clips waiting for a review. "
+            "Book a review on one of them, or delete one, before uploading another.",
+        )
+    if await run_in_threadpool(disk_refuses_uploads):
+        await run_in_threadpool(storage_alert)
+        raise HTTPException(503, STORAGE_FULL_MESSAGE)
+
+    job_id = uuid.uuid4().hex[:12]
+    job_dir = settings.uploads_dir / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    input_path = job_dir / f"input{suffix}"
+    try:
+        size = await run_in_threadpool(save_upload, video.file, input_path, MAX_UPLOAD_BYTES)
+    except UploadTooLarge:
+        delete_job_files(job_id, job_dir)
+        raise HTTPException(
+            413, f"file too large (> {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+        ) from None
+    except OSError as e:
+        delete_job_files(job_id, job_dir)
+        logger.warning("UPLOAD_WRITE_FAILED", job_id=job_id, err=str(e))
+        if e.errno == errno.ENOSPC:
+            await run_in_threadpool(storage_alert)
+            raise HTTPException(503, STORAGE_FULL_MESSAGE) from None
+        raise HTTPException(
+            507, "We couldn't store this clip. Please try again in a moment.",
+        ) from None
+    if size == 0:
+        delete_job_files(job_id, job_dir)
+        raise HTTPException(400, "empty upload")
+    await run_in_threadpool(storage_alert)
+
+    now_ms = int(time.time() * 1000)
+    entry = swim.build_entry(
+        client_id=f"s{now_ms}{secrets.token_hex(2)}", at_ms=now_ms, job_id=job_id, stroke=stroke_v,
+        pool=pool_v, view=view_v, question=swim.clean_question(focus),
+        consent_training=consent_training, filename=video.filename,
+    )
+    db.add(Analysis(
+        user_id=user.id, client_id=entry["id"], created_at_ms=now_ms, job_id=job_id,
+        sport=swim.SPORT_SWIM, kind="video", score=None, data=entry,
+    ))
+    await db.commit()
+    # Kept for weeks like any clip, so stored at 1080p H.264 like any clip --
+    # which is also what makes an iPhone's HEVC .mov play in the browser.
+    from app.services.clip_store import compress_clip
+    background_tasks.add_task(compress_clip, str(input_path))
+    logger.info("SWIM_UPLOADED", job_id=job_id, user_id=user.id, bytes=size,
+                stroke=stroke_v, view=view_v, ip=_client_ip(request))
+    return entry
+
+
 @app.post("/analyze-pair", status_code=200)
 async def analyze_pair_endpoint(
     background_tasks: BackgroundTasks,

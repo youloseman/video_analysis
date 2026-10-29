@@ -254,7 +254,9 @@ def sale_email(sale: dict, admin_url: str) -> tuple[str, str, str]:
     if sale.get("mode") == "subscription":
         what = f"Subscription: {sale.get('tier') or 'unknown tier'}"
     elif review:
-        what = review
+        # A swim review is written from the footage alone -- say so where the
+        # owner first sees the order, before the queue opens on an empty table.
+        what = f"{review} · SWIM" if sale.get("sport") == "swim" else review
     elif plan == "unlock":
         what = "Report unlock"
     else:
@@ -271,7 +273,7 @@ def sale_email(sale: dict, admin_url: str) -> tuple[str, str, str]:
     if sale.get("credit_granted"):
         rows.append(("Note", "Includes an Expert Review credit -- the athlete can now order one."))
 
-    subject = (f"ACTION: new {review} order — {money}" if review
+    subject = (f"ACTION: new {what} order — {money}" if review
                else f"New sale: {what} — {money}")
     text = "\n".join(f"{k}: {v}" for k, v in rows)
     if review:

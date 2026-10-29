@@ -318,6 +318,7 @@ CARDS: tuple[Card, ...] = (
             Feature("The first thing to change, in one line"),
             Feature("Three notes — what a coach sees that the numbers didn't"),
             Feature("Written on your report: prints and exports with it"),
+            Feature("Swimming too: send a swim clip, reviewed by eye"),
             # The fence, said out loud: those are the Expert Review's, and a
             # buyer who wanted them should know before paying a third.
             Feature("Trust judgement, a four-week plan, position trade-offs", on=False),
@@ -346,6 +347,7 @@ CARDS: tuple[Card, ...] = (
             Feature("What's already working — so you don't &quot;fix&quot; it"),
             Feature("Ranked priorities with drills and a re-test date"),
             Feature("Position changes with their trade-offs (cycling)"),
+            Feature("Swimming too: a swim clip, reviewed by eye, with drills"),
         ),
         cta_label="Add Expert Review",
     ),
@@ -636,6 +638,8 @@ COACH_ROWS = (
      "film to check it worked. Written for you, not copied from a list"),
     ("Arrives as", "Notes inside your report", "A PDF to keep, your numbers at the back"),
     ("Ready in", "72 hours", "5 days"),
+    # Swimming is coach-only: nothing measures a swimmer yet (services/swim.py).
+    ("Sports", "Run, bike — and swim", "Run, bike — and swim"),
 )
 # Who writes them. A name and verifiable results, nothing added.
 COACH_CREDIT = (
@@ -924,11 +928,11 @@ def _coach(mode: str) -> str:
         '<div class="pr-coachmob">'
         f'<div class="pr-ccard"><div class="pr-cname">Coach Notes <span>{n_price}</span></div>'
         "<p><b>One report, one question.</b> The first thing to change and 3 notes on your frames.</p>"
-        f'<p class="pr-mono">Ready in 72 hours · {n_sub}</p>{n_cta}</div>'
+        f'<p class="pr-mono">Ready in 72 hours · run, bike or swim · {n_sub}</p>{n_cta}</div>'
         f'<div class="pr-ccard"><div class="pr-cname">Expert Review <span>{e_price}</span></div>'
         "<p><b>Race coming, something hurts, new bike?</b> What to fix in what order for "
         "4 weeks, with drills.</p>"
-        f'<p class="pr-mono">Ready in 5 days · a PDF to keep · {sample}</p>{e_cta}'
+        f'<p class="pr-mono">Ready in 5 days · run, bike or swim · a PDF to keep · {sample}</p>{e_cta}'
         f'<small class="pr-good-sub">{e_sub}</small></div></div>'
     )
     return (
