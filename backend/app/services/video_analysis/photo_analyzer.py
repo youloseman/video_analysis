@@ -225,6 +225,14 @@ _RUN_HIP_SCORED_NOTES: dict[str, str] = {
 }
 
 
+# Why the elbow carries no verdict on a photo. Behind ``contact_metrics``.
+_RUN_ELBOW_UNSCORED_NOTE = (
+    "The elbow closes as the arm swings forward and opens as it swings back, "
+    "so one photo catches it wherever the swing happened to be. Shown, not "
+    "scored; about 90° through the middle of the swing is the usual carry."
+)
+
+
 # Why the knee carries no verdict on a swing frame. Behind ``contact_metrics``.
 _RUN_KNEE_SWING_NOTE = (
     "Leg is mid-swing — a tightly folded knee here is what a good stride "
@@ -283,6 +291,12 @@ def _get_running_optimal_ranges(
     # (>~176 => overstriding).
     if phased_knee and gait_phase == "swing":
         ranges.pop("knee", None)
+    # Behind the same flag the elbow is shown, not scored: even the full-cycle
+    # band faulted elites caught with the arm at the front of its swing (a
+    # Chicago marathoner at 43 deg, another at 50, 2026-10-28). Where the arm
+    # is in its swing is set by when the shutter fired, as with the swing knee.
+    if phased_knee:
+        ranges.pop("elbow", None)
     return ranges
 
 
@@ -583,6 +597,10 @@ _NON_DEGREE_SCALES: dict[str, tuple[float, float]] = {
     # past the band (0.20) is amber at ~87, a clear reach (0.35, measured on a
     # real touchdown) lands at ~50. See _RUN_OVERSTRIDE_BAND.
     "overstride": (0.05, 250.0),
+    # Degrees, but a wider amber than the 3-degree default: the shin band is
+    # read off 13 photos, not a norm, so -10 to -16 is "worth a look", and
+    # past it each degree costs 5 (-16 -> 70, -24 -> 30). See _RUN_SHIN_BAND.
+    "shin": (6.0, 5.0),
 }
 
 # Overstride on a running photo at footstrike: the SAME band the video scores
@@ -593,6 +611,30 @@ _NON_DEGREE_SCALES: dict[str, tuple[float, float]] = {
 # because knee 172 and hip 156 both sat inside their bands.
 _RUN_OVERSTRIDE_BAND = RUNNING_REFERENCE["overstride_ratio"]
 _RUN_OVERSTRIDE_WEIGHT = 0.30
+
+# Since 2026-10-29 the photo grades the touchdown by the SHIN, not by the
+# reach, and the reach above is no longer scored on a photo. On all 13 race and
+# landing photos Artur marked as a touchdown overstride sat outside the band --
+# 0.18-0.51, median 0.29, Kiptum's 0.37 among them -- and it could hardly do
+# otherwise: a frame is only called a touchdown once the foot is
+# _RUN_CONTACT_AHEAD (0.10) ahead of the hip, which left 0.10-0.15 to be green
+# in. The reach also grows with speed, and a still has no speed. The shin's
+# lean at contact is far less tied to pace, and it already split the set: the
+# plain reaching heel landings read -19 to -24 deg, every other touchdown -13
+# to +13. Overstride is still measured and drawn, as information; the video
+# keeps scoring it against RUNNING_REFERENCE.
+#
+# Band from those 13 photos, not from a published norm: up to 10 deg of
+# backward lean is free, amber to -16 (_NON_DEGREE_SCALES), red past it; a
+# shin leaning forward is no fault at contact. Weighted under the old
+# overstride's 0.30, so one amber reading does not sink a good stride.
+_RUN_SHIN_BAND = (-10.0, 20.0)
+_RUN_SHIN_WEIGHT = 0.20
+_RUN_OVERSTRIDE_INFO = (
+    "Shown, not scored: how far ahead of the hip the foot lands grows with "
+    "speed, and a photo does not know how fast you were going. The shin angle "
+    "is the touchdown reading that is scored."
+)
 
 _DEFAULT_MARGIN_FLOOR = 3.0
 _DEFAULT_FALLOFF = 2.0
@@ -1372,7 +1414,7 @@ def _generate_photo_thumbnail(
     # --- 2c. OVERSTRIDE (run, at touchdown) ---
     # A dashed plumb line from the hip down to the ground and a bar from it out
     # to the landing ankle: the reach the number is, |ankle_x - hip_x| over leg
-    # length, in the same colour as its verdict in the report.
+    # length. Neutral: on a photo it is information, not a verdict.
     if sport == "run" and overstride and len(pixel_coords) > 32:
         _, hip_i, _ = RUNNING_PHOTO_ANGLES[camera_side]["hip"]
         _, ankle_i, _, _ = RUNNING_PHOTO_ANKLE[camera_side]
@@ -2567,14 +2609,18 @@ def analyze_from_pose(
                 contact = {"phase": gait_phase, "measured": True,
                            **_run_contact_metrics(rl, camera_side, forward_sign, angles,
                                                   nl, img_w, img_h)}
-                # The verdict the score and the picture use, so the report's
-                # touchdown block cannot colour it differently.
+                # The verdict the score uses, so the report's touchdown block
+                # cannot colour it differently. The reach is information only
+                # (see _RUN_SHIN_BAND).
+                shin = contact.get("shin_angle")
+                if shin is not None and not math.isnan(shin):
+                    contact["shin_band"] = list(_RUN_SHIN_BAND)
+                    contact["shin_status"] = _classify_angle_status(
+                        shin, *_RUN_SHIN_BAND, metric="shin",
+                    )
                 ratio = contact.get("overstride_ratio")
                 if ratio is not None and not math.isnan(ratio):
-                    contact["overstride_band"] = list(_RUN_OVERSTRIDE_BAND)
-                    contact["overstride_status"] = _classify_angle_status(
-                        ratio, *_RUN_OVERSTRIDE_BAND, metric="overstride",
-                    )
+                    contact["overstride_note"] = _RUN_OVERSTRIDE_INFO
             else:
                 # Not an approximation of the contact readings -- there are
                 # none on this frame. Say which instant it is and what would
@@ -2822,6 +2868,16 @@ def analyze_from_pose(
                 "note": _RUN_KNEE_SWING_NOTE,
             }
             continue
+        if sport == "run" and angle_name == "elbow" and contact_metrics \
+                and "elbow" not in optimal_ranges:
+            angles_with_context["elbow"] = {
+                "value": angle_value, "label": lbl,
+                "optimal_min": None, "optimal_max": None,
+                "status": "phase_dependent",
+                "unscored_reason": "arm swing",
+                "note": _RUN_ELBOW_UNSCORED_NOTE,
+            }
+            continue
         if angle_name not in optimal_ranges:
             continue
         opt_min, opt_max = optimal_ranges[angle_name]
@@ -2921,28 +2977,26 @@ def analyze_from_pose(
         # (Gabriel's photo, 2026-10-13); it was four measures out of six.
         score_by_phase["uncertain"]["partial"] = "upper body only"
         score_data = score_by_phase[pedal_phase]
-    elif (sport == "run" and contact and contact.get("measured")
-          and contact.get("overstride_ratio") is not None
-          and not math.isnan(contact["overstride_ratio"])):
-        # Footstrike with a measured reach: the reach is scored alongside the
+    elif sport == "run" and contact and contact.get("shin_status"):
+        # Footstrike with a measured shin: the shin is scored alongside the
         # angles. Kept out of ``angles`` on purpose -- that dict is the table
-        # and the picture's labels, and overstride is neither an angle nor
-        # drawable as one; it is reported in the contact block.
+        # and the picture's labels; the shin is reported in the contact block.
+        shin, (lo, _) = contact["shin_angle"], _RUN_SHIN_BAND
         score_data = _score_photo_angles(
-            {**angles, "overstride": contact["overstride_ratio"]},
-            {**optimal_ranges, "overstride": _RUN_OVERSTRIDE_BAND},
+            {**angles, "shin": shin},
+            {**optimal_ranges, "shin": _RUN_SHIN_BAND},
             sport,
-            {**PHOTO_RUNNING_WEIGHTS, "overstride": _RUN_OVERSTRIDE_WEIGHT},
+            {**PHOTO_RUNNING_WEIGHTS, "shin": _RUN_SHIN_WEIGHT},
         )
-        ratio, (_, hi) = contact["overstride_ratio"], _RUN_OVERSTRIDE_BAND
-        if ratio > hi:
-            # Said in words as well as drawn: a 75 over five green labels, with
-            # the reason only in the picture, reads as the score being wrong.
+        if shin < lo:
+            # Said in words: a lower number over green joint labels, with the
+            # reason nowhere on the picture, reads as the score being wrong.
             warnings.insert(0, (
-                f"Overstride: your foot lands {ratio:.2f} leg lengths ahead of "
-                f"your hip — under {hi:.2f} is the range (Heiderscheit 2011; "
-                "Souza 2016). A foot reaching out in front brakes every stride. "
-                "The dashed line down from your hip shows the reach on the picture."
+                f"Shin at touchdown: it leans back {abs(shin):.0f}° from vertical, "
+                "so the foot lands out in front of the knee and brakes the "
+                f"stride. Within {abs(lo):.0f}° of vertical is the range we "
+                "score against. A slightly quicker cadence usually brings the "
+                "foot back under you."
             ))
     else:
         score_data = _score_photo_angles(
@@ -2959,7 +3013,7 @@ def analyze_from_pose(
             score_data["partial_badge"] = "partial"
             score_data["partial_hint"] = (
                 "a frame at the instant the foot lands scores the knee, the hip "
-                "and the overstride"
+                "and the shin"
             )
 
     # 7. Thumbnail
@@ -2975,7 +3029,9 @@ def analyze_from_pose(
             corrected=[int(c["landmark"]) for c in (corrections or [])],
             row_status={k: v.get("status") for k, v in angles_with_context.items()},
             helmet=helmet,
-            overstride=(contact if contact and contact.get("overstride_status") else None),
+            overstride=(contact if contact and contact.get("measured")
+                        and contact.get("overstride_ratio") is not None
+                        and not math.isnan(contact["overstride_ratio"]) else None),
             run_pelvis_hip=run_pelvis_hip,
         )
         thumbnail_b64 = (

@@ -31,10 +31,11 @@ def test_the_threshold_splits_the_study_frames():
     assert 0.19 < _RUN_KNEES_CROSS <= 0.27
 
 
-def _touchdown(status="needs_work", ratio=0.39):
+def _touchdown(status="needs_work", shin=-19.1):
     return {
-        "measured": True, "overstride_ratio": ratio, "overstride_band": [0.0, 0.15],
-        "overstride_status": status, "shin_angle": -15.7, "foot_strike": "heel",
+        "measured": True, "overstride_ratio": 0.39, "overstride_note": "Shown, not scored",
+        "shin_angle": shin, "shin_band": [-10.0, 20.0], "shin_status": status,
+        "foot_strike": "heel",
     }
 
 
@@ -54,23 +55,31 @@ def test_a_reaching_landing_is_a_material_problem_for_the_coach():
     prompt = _build_photo_prompt("run", _result(_touchdown()))
     assert "At touchdown" in prompt
     material = next(ln for ln in prompt.splitlines() if ln.startswith("Material problems"))
-    assert "Overstride (0.39" in material and "NONE" not in material
+    assert "Shin at touchdown (-19" in material and "NONE" not in material
+    assert "Overstride" not in material
 
 
 def test_a_landing_just_past_the_band_is_borderline_not_material():
-    prompt = _build_photo_prompt("run", _result(_touchdown("acceptable", 0.17)))
+    prompt = _build_photo_prompt("run", _result(_touchdown("acceptable", -11.7)))
     assert "Material problems: NONE" in prompt
-    assert "Overstride (0.17" in next(ln for ln in prompt.splitlines() if ln.startswith("Just outside"))
+    assert "Shin at touchdown (-12" in next(ln for ln in prompt.splitlines() if ln.startswith("Just outside"))
 
 
-def test_overstride_joins_the_checklist_like_an_angle():
+def test_the_shin_joins_the_checklist_like_an_angle():
     got = _photo_concerns("run", _result(_touchdown()))
-    over = [c for c in got if c["field"] == "overstride_ratio"]
-    assert len(over) == 1 and over[0]["material"] and over[0]["side"] == "high"
+    shin = [c for c in got if c["field"] == "shin_angle"]
+    assert len(shin) == 1 and shin[0]["material"] and shin[0]["side"] == "low"
+    assert "in front of the knee" in shin[0]["hint"]
+    assert not [c for c in got if c["field"] == "overstride_ratio"]
+
+
+def test_the_coach_is_told_the_reach_is_not_a_fault():
+    line = _run_contact_prompt_line(_touchdown())
+    assert "NOT scored" in line and "scored)" in line.split("overstride")[0]
 
 
 def test_a_landing_in_range_adds_nothing():
-    assert _photo_concerns("run", _result(_touchdown("optimal", 0.1))) == []
+    assert _photo_concerns("run", _result(_touchdown("optimal", -4.0))) == []
 
 
 def test_a_frame_away_from_touchdown_says_nothing_about_it():

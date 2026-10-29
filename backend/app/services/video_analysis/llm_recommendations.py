@@ -876,14 +876,14 @@ def _photo_concerns(sport: str, res: dict[str, Any]) -> list[dict[str, Any]]:
             v.get("optimal_min"), v.get("optimal_max"),
             material=(status == "needs_work"),
         ))
-    # A running photo at touchdown: overstride is scored but lives in the
+    # A running photo at touchdown: the shin is scored but lives in the
     # contact block, not in the angle rows.
     c = res.get("contact") or {}
-    if sport == "run" and c.get("overstride_status") in ("needs_work", "acceptable"):
-        lo, hi = c.get("overstride_band") or (None, None)
+    if sport == "run" and c.get("shin_status") in ("needs_work", "acceptable"):
+        lo, hi = c.get("shin_band") or (None, None)
         out.append(concern_hints.concern(
-            "overstride_ratio", "Overstride", float(c["overstride_ratio"]), lo, hi,
-            material=(c["overstride_status"] == "needs_work"),
+            "shin_angle", "Shin at touchdown", float(c["shin_angle"]), lo, hi,
+            material=(c["shin_status"] == "needs_work"),
         ))
     return out
 
@@ -898,17 +898,17 @@ def _run_contact_prompt_line(c: dict[str, Any]) -> str | None:
     if not c.get("measured"):
         return None
     parts = []
-    ratio = c.get("overstride_ratio")
-    if ratio is not None:
-        lo, hi = c.get("overstride_band") or (0.0, 0.15)
-        parts.append(
-            f"overstride {ratio:.2f} leg lengths ahead of the hip (range {lo:.2f}-{hi:.2f}, "
-            f"{c.get('overstride_status')}; scored)"
-        )
     if c.get("shin_angle") is not None:
+        lo, hi = c.get("shin_band") or (-10.0, 20.0)
         parts.append(
             f"shin {c['shin_angle']:+.0f} deg from vertical (negative = foot landed ahead "
-            f"of the knee; shown, not scored)"
+            f"of the knee; range {lo:+.0f} to {hi:+.0f}, {c.get('shin_status')}; scored)"
+        )
+    ratio = c.get("overstride_ratio")
+    if ratio is not None:
+        parts.append(
+            f"overstride {ratio:.2f} leg lengths ahead of the hip (shown, NOT scored: "
+            f"it grows with speed, which a photo does not have -- do not call it a fault)"
         )
     if c.get("foot_strike"):
         parts.append(
@@ -1336,10 +1336,10 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             material.append(f"{label} ({v.get('value')})")
         elif status == "acceptable":
             borderline.append(f"{label} ({v.get('value')})")
-    if contact_line and contact.get("overstride_status") == "needs_work":
-        material.append(f"Overstride ({contact['overstride_ratio']:.2f} leg lengths)")
-    elif contact_line and contact.get("overstride_status") == "acceptable":
-        borderline.append(f"Overstride ({contact['overstride_ratio']:.2f} leg lengths)")
+    if contact_line and contact.get("shin_status") == "needs_work":
+        material.append(f"Shin at touchdown ({contact['shin_angle']:+.0f} deg)")
+    elif contact_line and contact.get("shin_status") == "acceptable":
+        borderline.append(f"Shin at touchdown ({contact['shin_angle']:+.0f} deg)")
     if material:
         lines.append(
             "Material problems (ONLY these may appear in Fix first): "

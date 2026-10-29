@@ -128,6 +128,11 @@ _HINTS: dict[tuple[str, str], str] = {
         "The foot lands well ahead of the body, which brakes each step. A "
         "slightly higher cadence and landing under the hips fix it."
     ),
+    # A running photo at touchdown: the shin leaning back is the reach.
+    ("shin_angle", "low"): (
+        "The foot lands out in front of the knee, which brakes each step. A "
+        "slightly quicker cadence brings it back under you."
+    ),
     ("ground_contact_ms", "high"): (
         "Long ground contact. Short plyometrics (pogo hops, skipping) shorten "
         "it over a few weeks."

@@ -55,9 +55,10 @@ def test_a_touchdown_photo_reads_the_landing_leg():
     assert r["angles_with_context"]["knee"]["value"] > 155
     assert c["overstride_ratio"] > 0.25
     assert c["foot_strike"] == "heel"
-    # Graded with the score's own band, so the report's block and the line on
-    # the picture carry the same verdict.
-    assert c["overstride_band"] == [0.0, 0.15] and c["overstride_status"] == "needs_work"
+    # The reach is shown, not graded; the shin leaning back is (-15.7 deg:
+    # amber, worth a look).
+    assert "overstride_status" not in c
+    assert c["shin_band"] == [-10.0, 20.0] and c["shin_status"] == "acceptable"
     assert "check" not in r["angles_with_context"]["knee"]
 
 

@@ -4353,9 +4353,9 @@ const P_STATUS_CLS={optimal:'good','in_range':'good',good:'good',acceptable:'med
   aero_optimized:'good',aero_extreme:'info'};
 /* Statuses whose raw key doesn't read as plain English in a pill. */
 const P_STATUS_WORD={aero_optimized:'aero gain',aero_extreme:'very aggressive'};
-/* Running photo, at touchdown (res.contact): overstride graded against the
-   server's band and verdict, the shin and the foot strike shown with what
-   they mean. A frame caught at another instant has none of the three, and
+/* Running photo, at touchdown (res.contact): the shin graded against the
+   server's band and verdict; overstride (it grows with speed, which a photo
+   does not have) and the foot strike shown with what they mean. A frame caught at another instant has none of the three, and
    says so rather than leaving the block out without a word. */
 const STRIKE_WORD={heel:'Heel first',midfoot:'Midfoot',forefoot:'Forefoot'};
 function shinWord(d){ return d==null?'':d<-3?'foot landed ahead of the knee':d>3?'knee ahead of the foot':'shin about vertical'; }
@@ -4371,14 +4371,14 @@ function renderPhotoContact(res){
   const info=(label,val,why,title)=>`<tr class="row-info"><th scope="row">${esc(label)}</th><td class="num">${val}</td><td class="muted">${esc(why)}</td>
     <td><span class="pill pill-info" title="${esc(title||'')}"><span class="dot" aria-hidden="true"></span>shown, not scored</span></td></tr>`;
   const rows=[];
-  if(c.overstride_ratio!=null){
-    const st=c.overstride_status||'unknown', band=c.overstride_band||[0,0.15];
-    rows.push(`<tr><th scope="row">Overstride</th><td class="num">${num(c.overstride_ratio,2)}×</td>
-      <td class="muted">leg lengths ahead of the hip · range ≤ ${num(band[1],2)}</td>
-      <td><span class="pill pill-${P_STATUS_CLS[st]||'low'}" title="Heiderscheit 2011; Souza 2016"><span class="dot" aria-hidden="true"></span>${esc(P_STATUS_WORD[st]||st.replace(/_/g,' '))}</span></td></tr>`);
+  if(c.shin_angle!=null){
+    const st=c.shin_status||'unknown', band=c.shin_band||[-10,20];
+    rows.push(`<tr><th scope="row">Shin at touchdown</th><td class="num">${num(c.shin_angle,0)}°</td>
+      <td class="muted">${esc(shinWord(c.shin_angle))} · up to ${num(-band[0],0)}° back is the range</td>
+      <td><span class="pill pill-${P_STATUS_CLS[st]||'low'}" title="The shin from vertical. A foot landing out ahead of the knee brakes the stride."><span class="dot" aria-hidden="true"></span>${esc(P_STATUS_WORD[st]||st.replace(/_/g,' '))}</span></td></tr>`);
   }
-  if(c.shin_angle!=null) rows.push(info('Shin at touchdown',`${num(c.shin_angle,0)}°`,shinWord(c.shin_angle),
-    'The shin from vertical. A foot landing out ahead of the knee is the braking landing overstride measures.'));
+  if(c.overstride_ratio!=null) rows.push(info('Overstride',`${num(c.overstride_ratio,2)}×`,'leg lengths ahead of the hip',
+    c.overstride_note||'Grows with speed, which a photo does not have.'));
   if(c.foot_strike) rows.push(info('Foot strike',esc(STRIKE_WORD[c.foot_strike]||c.foot_strike),'which part lands first',c.foot_strike_note));
   host.innerHTML=`<div class="tablewrap"><table class="data"><caption class="visually-hidden">Readings at the instant the foot lands</caption>
     <thead><tr><th scope="col">Reading</th><th scope="col" class="num">Value</th><th scope="col">What it is</th><th scope="col" class="col-status">Status</th></tr></thead>
@@ -8546,12 +8546,12 @@ function bdShow(host, rows, show){
 /* A photo carries its components on the score itself (score.per_angle), each
    with its own weight -- the photo rubric is not the video's. */
 const PHOTO_PARTS={knee:'Knee',trunk:'Trunk',shoulder:'Shoulder',elbow:'Elbow',forearm_tilt:'Forearm',
-  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Pelvis',overstride:'Overstride'};
+  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Pelvis',overstride:'Overstride',shin:'Shin at touchdown'};
 function renderPhotoBreakdown(res){
   const host=$('#pScoreBd'); if(!host) return;
   const sc=res.score||{}, per=sc.per_angle||{};
   /* Shares of what was scored: the server divides by the weights present, so
-     a photo with overstride added (run) or a joint left out (bike) shows the
+     a photo with the shin added (run) or a joint left out (bike) shows the
      weights the number was really built with, summing to 100. */
   const tot=Object.values(per).reduce((a,p)=>a+(p.weight||0),0)||1;
   const rows=Object.keys(per).map(k=>({k, v:per[k].score, w:Math.round((per[k].weight||0)/tot*100)}))

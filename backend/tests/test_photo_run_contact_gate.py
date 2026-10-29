@@ -231,12 +231,12 @@ def test_on_footstrike_is_not_partial():
 
 
 # --------------------------------------------------------------------------
-# overstride in the score
+# the touchdown in the score: the shin, not the reach
 # --------------------------------------------------------------------------
 
 def _reaching():
     """Footstrike on a near-straight leg with the thigh well forward: the foot
-    lands far out in front of the hip."""
+    lands far out in front of the hip, the shin leaning back 20 deg."""
     return _on(170.0, thigh=30.0)
 
 
@@ -250,33 +250,51 @@ def test_the_reach_fixtures_are_both_footstrike():
     assert _under()["gait_phase"] == "initial_contact"
 
 
-def test_overstride_enters_the_score_at_footstrike():
-    assert "overstride" in _on(165.0)["score"]["per_angle"]
-
-
-def test_overstride_uses_the_videos_band():
-    """A photo and a clip of one runner must not disagree about the same reach."""
-    from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
-    assert PA._RUN_OVERSTRIDE_BAND == RUNNING_REFERENCE["overstride_ratio"]
+def test_the_shin_enters_the_score_at_footstrike_and_the_reach_does_not():
+    """On all 13 marked race/landing touchdowns the reach sat past the video's
+    band -- Kiptum too: a frame is a touchdown only once the foot is 0.10 ahead,
+    and the reach grows with speed a still does not have. It is shown, with
+    the reason; the shin is what is scored."""
+    r = _on(165.0)
+    assert "shin" in r["score"]["per_angle"] and "overstride" not in r["score"]["per_angle"]
+    c = r["contact"]
+    assert c["overstride_ratio"] > PA._RUN_OVERSTRIDE_BAND[1]
+    assert "overstride_status" not in c and "not scored" in c["overstride_note"]
+    assert c["shin_band"] == list(PA._RUN_SHIN_BAND)
 
 
 def test_a_clear_reach_costs_the_score_and_is_explained():
-    """The case that came back 100/100 "Excellent" with a 0.35 reach, because
-    the knee and hip both sat inside their bands. The score has to move, and
-    the reason has to be in words -- it has no line on the picture."""
+    """The shin leaning well back is the reach that brakes: red, it costs the
+    score, and the reason is in words."""
     r = _reaching()
-    c = r["contact"]
-    assert c["overstride_ratio"] > PA._RUN_OVERSTRIDE_BAND[1]
-    assert r["score"]["per_angle"]["overstride"]["score"] < 100
-    assert r["score"]["overall_score"] < 90
-    assert r["warnings"][0].startswith("Overstride:")
+    assert r["contact"]["shin_angle"] < PA._RUN_SHIN_BAND[0] - 6
+    assert r["contact"]["shin_status"] == "needs_work"
+    assert r["score"]["per_angle"]["shin"]["score"] <= 50
+    assert r["score"]["overall_score"] < 80
+    assert r["warnings"][0].startswith("Shin at touchdown:")
+
+
+def test_a_shin_a_little_past_the_band_is_amber():
+    """Kiptum, Chicago 2023: -11.7 deg. Worth a look, not a fault."""
+    r = _on(165.0)
+    assert -16 < r["contact"]["shin_angle"] < -10
+    assert r["contact"]["shin_status"] == "acceptable"
 
 
 def test_a_foot_under_the_hip_is_not_penalised():
     r = _under()
-    assert r["contact"]["overstride_ratio"] == pytest.approx(0.0, abs=0.03)
-    assert r["score"]["per_angle"]["overstride"]["score"] == 100
-    assert not any(w.startswith("Overstride:") for w in r["warnings"])
+    assert r["contact"]["shin_status"] == "optimal"
+    assert r["score"]["per_angle"]["shin"]["score"] == 100
+    assert not any(w.startswith("Shin at touchdown:") for w in r["warnings"])
+
+
+def test_the_elbow_is_shown_not_scored():
+    """Elites caught with the arm at the front of its swing read 43 and 50 deg
+    (Chicago 2026): where the arm is in its swing is when the shutter fired."""
+    r = _on(165.0)
+    assert "elbow" not in r["score"]["per_angle"]
+    row = r["angles_with_context"]["elbow"]
+    assert row["status"] == "phase_dependent" and row["unscored_reason"] == "arm swing"
 
 
 def test_overstride_stays_out_of_the_angle_table():
