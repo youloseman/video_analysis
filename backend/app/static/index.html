@@ -6890,10 +6890,15 @@ function planOffer(){
 /* The three lines under a plan's price on a paywall card. The first one says
    what the money buys in the same unit as the $4 beside it: the $4 opens one
    report, the plan opens thirty a month -- on the old card both read as
-   "this report", and the cheaper one won. */
+   "this report", and the cheaper one won. Artur, 2026-10-29: the thirty is
+   the whole argument, so it is said as reports, with the price of one. */
 function planLines(offer){
   const q=offer&&offer.quota;
-  return [q?`${q.limit} analyses a ${q.window}, each in full`:'Every clip, in full',
+  if(!(q&&q.limit>0)) return ['Every clip, in full','Before / after on the clip you film next','Overlay video, frame by frame'];
+  const yearly = billPeriod==='yearly' && offer.yearly;
+  const perMonth = yearly ? offer.yearly.amount/12 : offer.monthly.amount;   // cents
+  const each = perMonth>0 ? Math.round(perMonth/q.limit) : 0;
+  return [`${q.limit} full reports a ${q.window}${each>0?`, ${each}¢ each`:''}`,
     'Before / after on the clip you film next','Overlay video, frame by frame'];
 }
 /* Score against the previous clip of the same sport, from the cabinet: the
@@ -6972,7 +6977,7 @@ function planOfferHtml(offer, primary, src, lines){
       <button type="button" aria-pressed="${!yearly}" onclick="tcSetPeriod('monthly')">Monthly</button>
       <button type="button" aria-pressed="${!!yearly}" onclick="tcSetPeriod('yearly')">Yearly${offer.saving?' · save '+esc(String(offer.saving))+'%':''}</button></div>` : '';
   return `<div class="tc-offer${primary?' tc-pri':''}">
-    <div class="tc-h"><b>${esc(offer.name)}</b><span class="tc-price">${esc(per)} <small>/mo</small></span></div>
+    <div class="tc-h"><b>${esc(offer.name)}</b><span class="tc-price tc-per">${esc(per)}<small>/mo${offer.quota&&offer.quota.limit>0?' · '+esc(String(offer.quota.limit))+' reports':''}</small></span></div>
     ${tog}
     <ul class="tc-list">${(lines||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>
     <button class="btn btn-primary btn-planbuy" type="button" data-src="${esc(src)}" onclick="startCheckout(${esc(JSON.stringify(planId))})">Start ${esc(offer.name)} <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>

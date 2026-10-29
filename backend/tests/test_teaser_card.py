@@ -84,6 +84,10 @@ def test_the_two_offers_are_priced_in_the_same_unit():
     # server sends with the card (never a number typed into the SPA).
     assert "<small>one report</small>" in SPA and ".tc-price.tc-per{" in CSS
     assert "function planLines(offer){" in SPA
-    assert "${q.limit} analyses a ${q.window}, each in full" in SPA
+    # Artur, 2026-10-29: "30 reports" is the value against the $4 for one, so
+    # it is under the price and first in the list, with the price of one report.
+    assert "${q.limit} full reports a ${q.window}${each>0?`, ${each}¢ each`:''}" in SPA
+    assert "const each = perMonth>0 ? Math.round(perMonth/q.limit) : 0;" in SPA
+    assert "' · '+esc(String(offer.quota.limit))+' reports'" in SPA
     assert "quota:(card&&card.quota)||null," in SPA
     assert SPA.count("planLines(offer)") == 3  # the definition and both cards
