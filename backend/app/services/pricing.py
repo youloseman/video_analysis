@@ -318,7 +318,6 @@ CARDS: tuple[Card, ...] = (
             Feature("The first thing to change, in one line"),
             Feature("Three notes — what a coach sees that the numbers didn't"),
             Feature("Written on your report: prints and exports with it"),
-            Feature("Swimming too: send a swim clip, reviewed by eye"),
             # The fence, said out loud: those are the Expert Review's, and a
             # buyer who wanted them should know before paying a third.
             Feature("Trust judgement, a four-week plan, position trade-offs", on=False),
@@ -347,7 +346,6 @@ CARDS: tuple[Card, ...] = (
             Feature("What's already working — so you don't &quot;fix&quot; it"),
             Feature("Ranked priorities with drills and a re-test date"),
             Feature("Position changes with their trade-offs (cycling)"),
-            Feature("Swimming too: a swim clip, reviewed by eye, with drills"),
         ),
         cta_label="Add Expert Review",
     ),
@@ -638,8 +636,6 @@ COACH_ROWS = (
      "film to check it worked. Written for you, not copied from a list"),
     ("Arrives as", "Notes inside your report", "A PDF to keep, your numbers at the back"),
     ("Ready in", "72 hours", "5 days"),
-    # Swimming is coach-only: nothing measures a swimmer yet (services/swim.py).
-    ("Sports", "Run, bike — and swim", "Run, bike — and swim"),
 )
 # Who writes them. A name and verifiable results, nothing added.
 COACH_CREDIT = (
@@ -928,11 +924,11 @@ def _coach(mode: str) -> str:
         '<div class="pr-coachmob">'
         f'<div class="pr-ccard"><div class="pr-cname">Coach Notes <span>{n_price}</span></div>'
         "<p><b>One report, one question.</b> The first thing to change and 3 notes on your frames.</p>"
-        f'<p class="pr-mono">Ready in 72 hours · run, bike or swim · {n_sub}</p>{n_cta}</div>'
+        f'<p class="pr-mono">Ready in 72 hours · {n_sub}</p>{n_cta}</div>'
         f'<div class="pr-ccard"><div class="pr-cname">Expert Review <span>{e_price}</span></div>'
         "<p><b>Race coming, something hurts, new bike?</b> What to fix in what order for "
         "4 weeks, with drills.</p>"
-        f'<p class="pr-mono">Ready in 5 days · run, bike or swim · a PDF to keep · {sample}</p>{e_cta}'
+        f'<p class="pr-mono">Ready in 5 days · a PDF to keep · {sample}</p>{e_cta}'
         f'<small class="pr-good-sub">{e_sub}</small></div></div>'
     )
     return (
@@ -941,6 +937,53 @@ def _coach(mode: str) -> str:
         f'<h3 class="pr-h2">{COACH_TITLE}</h3><div class="pr-points">{points}</div>'
         f'{table}{cards}<p class="pr-credit"><span class="pr-bk" aria-hidden="true">BK</span>'
         f"<span>{COACH_CREDIT}</span></p></section>"
+    )
+
+
+# Swimming, said on its own and marked new rather than folded into the rows
+# above: it is the one product here with no automatic analysis behind it, and
+# a line in a table would not say so. Coach-only -- nothing measures a swimmer
+# yet (services/swim.py).
+SWIM_TITLE = "Your swim stroke, watched by a pro."
+SWIM_LEDE = (
+    "Film yourself in the pool and upload the clip. A pro triathlete who was a "
+    "swimmer first watches it and tells you what to change: body line, "
+    "breathing, the catch, the kick."
+)
+SWIM_HONEST = "No automatic analysis for swimming yet — no score, no angles. A person watches every clip."
+_SWIMMER = (
+    '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" '
+    'stroke-linecap="round" stroke-linejoin="round"><circle cx="17.5" cy="7" r="2"/>'
+    '<path d="M3 12.5l4.5-3.2 3.8 1.6 2.7-2.4 3.5 2.2"/>'
+    '<path d="M2 17c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1"/>'
+    '<path d="M2 20.5c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1"/></svg>'
+)
+
+
+def _swim(mode: str) -> str:
+    notes, expert = CARD_BY_ID["notes"], CARD_BY_ID["expert"]
+    n_price = usd(notes.prices[0].amount)
+    # The app fills the review's price for whoever is looking (member price,
+    # or "Included"), the same slot the coach table above uses.
+    e_price = ('<span class="pr-slot" data-slot="expert-price"></span>' if mode == "app"
+               else usd(expert.prices[0].amount))
+    cta = ('<button class="pr-swbtn" type="button" onclick="openSwim()">Send a swim clip</button>'
+           if mode == "app" else '<a class="pr-swbtn" href="/app#swim">Send a swim clip</a>')
+    facts = (
+        ("Film it", "underwater, from the side · 15–60 s"),
+        (f"Coach Notes {n_price}", "the first thing to change + 3 notes · 72 hours"),
+        (f"Expert Review {e_price}", "what to fix in what order, with drills · 5 days"),
+    )
+    lis = "".join(f"<li><b>{a}</b><span>{b}</span></li>" for a, b in facts)
+    return (
+        '<section class="pr-swim" aria-label="Swim technique review">'
+        '<div class="pr-swbody">'
+        '<p class="pr-sweye"><span class="pr-swnew">New</span>Swim · a person, not AI</p>'
+        f'<h3 class="pr-swh">{SWIM_TITLE}</h3><p class="pr-swlede">{SWIM_LEDE}</p>'
+        f'<ul class="pr-swfacts">{lis}</ul>'
+        f'<p class="pr-swhonest">{SWIM_HONEST}</p>'
+        f'<div class="pr-swcta">{cta}<span>Nothing is charged at upload</span></div></div>'
+        f'<span class="pr-swic">{_SWIMMER}</span></section>'
     )
 
 
@@ -971,7 +1014,7 @@ def render_pricing(mode: str = "landing") -> str:
         f"<style>{PRICING_CSS}</style>"
         f'<div class="pr" data-mode="{mode}" data-period="month" data-pick="E,F" data-hide="S">'
         f"{_period_toggle()}{_desk_table(tiers, mode)}{_mob(tiers, mode)}"
-        f"{_coach(mode)}{_ask()}{research}"
+        f"{_coach(mode)}{_swim(mode)}{_ask()}{research}"
         f'<p class="pr-foot">{FOOTNOTE}</p></div>'
     )
 
@@ -1117,6 +1160,27 @@ PRICING_CSS = """
 .pr-credit{display:flex;align-items:flex-start;gap:10px;margin:0;font-size:13.5px;line-height:1.5;color:var(--c-ink-soft)}
 .pr-credit b{color:var(--c-head)}
 .pr-bk{width:32px;height:32px;flex:none;border-radius:999px;background:var(--c-brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font:italic 900 12px var(--f-brand)}
+/* ---- swimming: new, so it stands apart -- a fixed navy band in both themes
+   (the theme's navy turns light blue in dark mode), the coral of the app's
+   one action for the badge and the button ---- */
+.pr-swim{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px 32px;align-items:center;background:#14294B;color:#fff;border:1px solid #2A4677;border-left:5px solid var(--c-coral-btn);border-radius:14px;padding:28px 26px;margin-top:6px}
+.pr-swbody{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pr-sweye{display:flex;align-items:center;gap:10px;margin:0;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:#AFC3E8}
+.pr-swnew{font:700 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--c-coral-btn);padding:4px 10px;border-radius:999px}
+.pr-swh{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:30px;line-height:1.1;color:#fff}
+.pr-swlede{margin:0;font-size:16px;line-height:1.5;color:#DCE5F5;max-width:640px}
+.pr-swfacts{list-style:none;margin:4px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.pr-swfacts li{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
+.pr-swfacts b{font-size:15px;color:#fff}
+.pr-swfacts b .pr-slot{display:inline;width:auto}
+.pr-swfacts li>span{font-size:13px;line-height:1.4;color:#AFC3E8}
+.pr-swhonest{margin:0;font-size:13.5px;line-height:1.5;color:#AFC3E8}
+.pr-swcta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.pr-swcta span{font-size:13px;color:#AFC3E8}
+.pr-swbtn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:48px;padding:12px 22px;border-radius:8px;border:0;background:var(--c-coral-btn);color:#fff;font:700 15px var(--f-body);text-decoration:none;cursor:pointer}
+.pr-swbtn:hover{filter:brightness(.93)}
+.pr-swic{width:132px;height:132px;flex:none;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;color:#AFC3E8}
+.pr-swic svg{width:76px;height:76px}
 .pr-ask{display:flex;align-items:center;justify-content:space-between;gap:16px 28px;background:var(--c-bg);border:1px solid var(--c-line);border-radius:10px;padding:22px}
 .pr-ask p{margin:6px 0 0;font-size:15px;line-height:1.5;color:var(--c-ink-soft)}
 .pr-research{display:flex;flex-direction:column;gap:12px}
@@ -1134,5 +1198,10 @@ PRICING_CSS = """
   .pr-points{flex-direction:column;gap:10px}
   .pr-ask{flex-direction:column;align-items:stretch}
   .pr-research>div{grid-template-columns:1fr}
+  .pr-swim{grid-template-columns:1fr;padding:24px 20px}
+  .pr-swic{display:none}
+  .pr-swh{font-size:26px}
+  .pr-swfacts{grid-template-columns:1fr}
+  .pr-swbtn{width:100%}
 }
 """

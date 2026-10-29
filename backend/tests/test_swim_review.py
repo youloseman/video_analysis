@@ -4,8 +4,9 @@ Pinned: a swim clip has no $4 report to unlock; its Expert Review drops the
 fit table and the internal "disagree" box and asks the coach swim questions;
 the re-test and the capture notes are the swim ones; the coach's brief has
 the footage and a checklist instead of a table, for Notes and for a review;
-the queue and the owner's sale email say SWIM; and the owner can play their
-own clip without a paid plan.
+the queue and the owner's sale email say SWIM; the price list sells it in its
+own band, marked new; and the owner can play their own clip without a paid
+plan.
 """
 from __future__ import annotations
 
@@ -199,3 +200,20 @@ async def test_the_owner_can_play_their_swim_clip_without_a_plan(db, make_user, 
     out = await me.get_overlays("s1", user, db)
     assert out["source"].startswith("/jobs/swjob1/source?mt=")
     assert out["overlays"] == {}
+
+
+def test_the_price_list_sells_swimming_on_its_own_marked_new():
+    from app.services import pricing
+
+    app_html, landing = pricing.render_pricing("app"), pricing.render_pricing("landing")
+    for html in (app_html, landing):
+        band = html[html.index('<section class="pr-swim"'):]
+        band = band[:band.index("</section>")]
+        assert '<span class="pr-swnew">New</span>' in band
+        assert "No automatic analysis for swimming yet" in band
+        assert "US$12" in band
+    # The app opens the swim screen in place; the landing deep-links into it.
+    assert 'onclick="openSwim()"' in app_html
+    assert 'href="/app#swim"' in landing
+    # Not repeated in the run/bike rows: the band is where swimming is said.
+    assert "Swimming too" not in app_html and "Run, bike — and swim" not in app_html
