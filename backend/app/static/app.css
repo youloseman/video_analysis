@@ -98,7 +98,8 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .tc-fine{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);text-align:center;margin-top:8px}
 .tc-or{text-align:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint)}
 .tc-links{text-align:center;font-size:13px}
-@media(min-width:640px){.tc-offers{grid-template-columns:1fr 1fr}.tc-or{display:none}}
+@media(min-width:640px){.tc-offers{grid-template-columns:1fr 1fr}.tc-offers.tc-one{grid-template-columns:1fr}.tc-or{display:none}}
+.upsell-preview > p{margin:0 0 12px;font-size:14px;color:var(--c-ink-soft)}
 
 .profilefield{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .profilefield label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;

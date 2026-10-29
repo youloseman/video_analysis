@@ -20,9 +20,10 @@ CSS = (STATIC / "app.css").read_text(encoding="utf-8")
 
 def test_the_locked_video_report_renders_the_teaser_card_not_the_bullet_list():
     assert "function teaserCardHtml(" in SPA
-    assert "host.innerHTML=teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);" in SPA
-    # The preview keeps its own card (step 5 of the spec is separate).
-    assert "title:'That was one report. The plan is what changes the next one.'" in SPA
+    assert ": teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);" in SPA
+    # The preview has its own card (step 5), with the same title as before.
+    assert "? previewCardHtml(locked, offer, ctx)" in SPA
+    assert "<h3>That was one report. The plan is what changes the next one.</h3>" in SPA
 
 
 def test_the_card_names_the_finding_and_blurs_the_number():
@@ -50,3 +51,27 @@ def test_the_fresh_report_and_the_cabinet_both_pass_their_context():
 def test_the_impression_says_which_card_it_was():
     assert "card: locked.reason==='preview' ? 'a_preview' : (containerId==='hdUpsellHost' ? 'e_history' : 'b_teaser')," in SPA
     assert "if(ctx.rerender) return true;" in SPA
+
+
+# Step 5 (2026-10-28): the preview card counts what sits behind the blur and
+# carries the same plan box, toggle included, as the teaser card.
+
+def test_the_preview_card_counts_off_lock_summary_and_never_lists_what_it_showed():
+    assert "function previewCardHtml(locked, offer, ctx){" in SPA
+    assert "const PREVIEW_UNLOCKS=['plan','fit','angles','ranges','kinogram','video','export'];" in SPA
+    body = SPA.split("function previewCardHtml(locked, offer, ctx){", 1)[1].split("\n}\n", 1)[0]
+    assert "ls.adjustments" in body and "ls.drills" in body and "ls.angles" in body
+    assert "has('coaching')" not in body and "has('issues')" not in body
+    assert "startCheckout('unlock'" not in body  # the preview is not for sale a second time
+    assert "function previewBody(" not in SPA
+
+
+def test_both_cards_draw_the_one_plan_box():
+    assert "function planOfferHtml(offer, primary, src, lines){" in SPA
+    assert SPA.count("planOfferHtml(offer, true, 'preview'") == 1
+    assert SPA.count("planOfferHtml(offer, !unlockId, 'teaser'") == 1
+    assert "data-src=\"${esc(src)}\"" in SPA
+    # The toggle redraws whichever card is on screen; both branches remember it.
+    assert "state.teaserCard={containerId:containerId, locked:locked, unlockId:unlockId, ctx:ctx};" in SPA
+    assert "const offer = auth ? planOffer() : null;" in SPA
+    assert ".tc-offers.tc-one{grid-template-columns:1fr}" in CSS

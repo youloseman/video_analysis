@@ -6797,18 +6797,13 @@ function renderUpsell(containerId, locked, blockIds, unlockId, ctx){
   // interface -- but a direct button is the control that produced 6 of our 13
   // purchases, and this card is 72% of all paywall impressions and had none.
   // Same offer as before, one page fewer: the plan is bought from here.
-  const planBuy = (locked.reason==='preview' && auth) ? cheapestMonthly() : null;
-  const offer = (locked.reason!=='preview' && auth) ? planOffer() : null;
+  const offer = auth ? planOffer() : null;
   const delta = locked.reason!=='preview' ? teaserDelta(ctx) : null;
-  if(locked.reason==='preview'){
-    host.innerHTML=teaserPanelHtml(items, {src:'preview', chip:'Your free report',
-      title:'That was one report. The plan is what changes the next one.',
-      body:previewBody(locked), planBuy:planBuy});
-  } else {
-    // Remembered so the period toggle can redraw the same card in place.
-    state.teaserCard={containerId:containerId, locked:locked, unlockId:unlockId, ctx:ctx};
-    host.innerHTML=teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);
-  }
+  // Remembered so the period toggle can redraw the same card in place.
+  state.teaserCard={containerId:containerId, locked:locked, unlockId:unlockId, ctx:ctx};
+  host.innerHTML = locked.reason==='preview'
+    ? previewCardHtml(locked, offer, ctx)
+    : teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);
   host.classList.remove('hidden');
   if(ctx.rerender) return true;
   // The paywall was actually put in front of someone. Paired with
@@ -6823,7 +6818,7 @@ function renderUpsell(containerId, locked, blockIds, unlockId, ctx){
     // on this card". This one says the card can start a plan checkout without
     // a detour through the price list, so the change reads against the old
     // numbers instead of blurring them.
-    plan_buy: !!(planBuy||offer),
+    plan_buy: !!offer,
     // Which card this is, so the teaser redesign (2026-10-28) reads against
     // the numbers before it: a_preview / b_teaser / e_history (c_photo is
     // renderPhotoUpsell's).
@@ -6914,43 +6909,73 @@ function teaserCardHtml(locked, unlockId, items, offer, delta, ctx){
       <p>Findings, ${bike?'fit adjustments':'drills'} and angles for this clip. No subscription.</p>
       <button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Open this report — free':'Open this report — '+esc(price)}</button>
     </div>` : '';
-  let plan='';
-  if(offer){
-    const yearly = billPeriod==='yearly' && offer.yearly;
-    const per = yearly ? offer.yearly.perMonth : offer.monthly.display;
-    const planId = yearly ? offer.yearly.plan : offer.monthly.plan;
-    const tog = offer.yearly ? `<div class="tc-tog" role="group" aria-label="Billing period">
-        <button type="button" aria-pressed="${!yearly}" onclick="tcSetPeriod('monthly')">Monthly</button>
-        <button type="button" aria-pressed="${!!yearly}" onclick="tcSetPeriod('yearly')">Yearly${offer.saving?' · save '+esc(String(offer.saving))+'%':''}</button></div>` : '';
-    plan=`<div class="tc-offer${unlockId?'':' tc-pri'}">
-      <div class="tc-h"><b>${esc(offer.name)}</b><span class="tc-price">${esc(per)} <small>/mo</small></span></div>
-      ${tog}
-      <ul class="tc-list"><li>This report and every next clip, in full</li><li>Before / after on the clip you film next</li><li>Overlay video, frame by frame</li></ul>
-      <button class="btn btn-primary btn-planbuy" type="button" data-src="teaser" onclick="startCheckout(${esc(JSON.stringify(planId))})">Start ${esc(offer.name)} <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
-      <div class="tc-fine">${yearly?esc(offer.yearly.display)+' billed once for the year':esc(offer.monthly.display)+' a month'} · cancel any time</div>
-    </div>`;
-  }
+  const plan = offer ? planOfferHtml(offer, !unlockId, 'teaser', ['This report and every next clip, in full','Before / after on the clip you film next','Overlay video, frame by frame']) : '';
   return `<div class="upsell upsell-teaser">
     <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Score only · report locked</span>
     <h3>${esc(title)}</h3>
     ${goal}
     <div class="tc-lkh">Already measured, waiting behind the lock</div>
     ${list}
-    <div class="tc-offers">${unlock}${unlock&&plan?'<div class="tc-or">or every report, every clip</div>':''}${plan}</div>
+    <div class="tc-offers${unlock&&plan?'':' tc-one'}">${unlock}${unlock&&plan?'<div class="tc-or">or every report, every clip</div>':''}${plan}</div>
     <div class="tc-links"><a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare all plans</a></div>
     ${unlockNudgeHtml()}
   </div>`;
 }
-/* Concrete, because vague is a strange thing to follow a full report with:
-   the server counts what it withheld so this can name it. Falls back to prose
-   when the counts are missing (an older stored result). */
-function previewBody(locked){
-  const c=locked.counts||{};
-  const bits=[];
-  if(c.plan) bits.push(`<b>${c.plan}</b> corrective drill${c.plan>1?'s':''} picked for what we just found`);
-  if(c.angles) bits.push(`all <b>${c.angles}</b> joint angles we measured, against their reference ranges`);
-  if(!bits.length) return 'You\u2019ve read the findings and the coaching. The measurements behind them, and the drills that fix them, are on a paid plan.';
-  return `You\u2019ve read the findings and the coaching. Still behind the blur: ${bits.join(', and ')}.`;
+/* The plan box on a paywall card: name, price per month for the pressed
+   period, the Monthly / Yearly toggle (monthly pressed first -- yearly
+   checkouts were abandoned 3 of 25 paid, monthly closed 4 of 6), three lines
+   on what the plan is, the buy button, and what is actually billed. One
+   function for the teaser card and the preview card, so the two never drift. */
+function planOfferHtml(offer, primary, src, lines){
+  const yearly = billPeriod==='yearly' && offer.yearly;
+  const per = yearly ? offer.yearly.perMonth : offer.monthly.display;
+  const planId = yearly ? offer.yearly.plan : offer.monthly.plan;
+  const tog = offer.yearly ? `<div class="tc-tog" role="group" aria-label="Billing period">
+      <button type="button" aria-pressed="${!yearly}" onclick="tcSetPeriod('monthly')">Monthly</button>
+      <button type="button" aria-pressed="${!!yearly}" onclick="tcSetPeriod('yearly')">Yearly${offer.saving?' · save '+esc(String(offer.saving))+'%':''}</button></div>` : '';
+  return `<div class="tc-offer${primary?' tc-pri':''}">
+    <div class="tc-h"><b>${esc(offer.name)}</b><span class="tc-price">${esc(per)} <small>/mo</small></span></div>
+    ${tog}
+    <ul class="tc-list">${(lines||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>
+    <button class="btn btn-primary btn-planbuy" type="button" data-src="${esc(src)}" onclick="startCheckout(${esc(JSON.stringify(planId))})">Start ${esc(offer.name)} <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+    <div class="tc-fine">${yearly?esc(offer.yearly.display)+' billed once for the year':esc(offer.monthly.display)+' a month'} · cancel any time</div>
+  </div>`;
+}
+/* What the preview still withholds, when the server did not say (a preview
+   reopened from the cabinet without its unlocks). Mirrors
+   result_gating._PREVIEW_UNLOCKS: no coaching, no issues -- those were shown. */
+const PREVIEW_UNLOCKS=['plan','fit','angles','ranges','kinogram','video','export'];
+/* The preview card (state A of the paywall spec, 2026-10-28). The reader has
+   just had the findings and the coaching in full; what is behind the blur is
+   the measurement table and the drills or fit moves, and this card counts
+   them off lock_summary the way the teaser card does, instead of a generic
+   bullet list. One offer, the plan, with the period toggle -- the preview is
+   not for sale a second time (see renderUpsell). Same title as before, which
+   test_teaser_card pins. */
+function previewCardHtml(locked, offer, ctx){
+  const ls=locked.lock_summary||{};
+  const sport=ctx.sport||state.sport, bike=sport==='bike';
+  const unlocks=locked.unlocks||PREVIEW_UNLOCKS;
+  const has=k=>unlocks.indexOf(k)>=0;
+  const lock='<svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>';
+  const rows=[];
+  if(bike&&has('fit')) rows.push([ls.adjustments>0?`${ls.adjustments} fit adjustment${ls.adjustments>1?'s':''}`:'Fit adjustments','What to move on the bike, and by how much']);
+  if(!bike&&has('plan')) rows.push([ls.drills>0?`${ls.drills} drill${ls.drills>1?'s':''}, ranked`:'Corrective drills','What to do first, starting tomorrow']);
+  if(has('angles')) rows.push([ls.angles>0?`${ls.angles} joint angles`:'Every joint angle','Each against its range, with the source']);
+  if(has('ranges')) rows.push(['Cadence and benchmark ranges','Where you sit against the field']);
+  if(ls.kinogram&&has('kinogram')) rows.push(['Kinogram','The five key positions of your stride, side by side']);
+  if(has('video')) rows.push(['Overlay video',`Every ${bike?'pedal stroke':'stride'}, frame by frame, at ¼ speed`]);
+  rows.push(['Did it work?','Your next clip against this one, angle by angle']);
+  const plan = offer ? planOfferHtml(offer, true, 'preview', ['This report and every next clip, in full','Before / after on the clip you film next','Overlay video, frame by frame']) : '';
+  return `<div class="upsell upsell-teaser upsell-preview">
+    <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Your free report</span>
+    <h3>That was one report. The plan is what changes the next one.</h3>
+    <p>You’ve read the findings and the coaching. The numbers behind them are measured and waiting.</p>
+    <div class="tc-lkh">Measured, still behind the blur</div>
+    <ul class="tc-lock">${rows.map(r=>`<li>${lock}<div><b>${esc(r[0])}</b><span>${esc(r[1])}</span></div></li>`).join('')}</ul>
+    <div class="tc-offers tc-one">${plan||`<button class="btn btn-primary" type="button" data-src="preview" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>`}</div>
+    <div class="tc-links"><a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare all plans</a></div>
+  </div>`;
 }
 /* The photo card sells the video, not the plan.
 
