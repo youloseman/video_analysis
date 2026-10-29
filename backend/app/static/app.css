@@ -1540,6 +1540,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .preframe b{font-weight:600}
 .preframe a{color:var(--c-warn-text);font-weight:600;text-decoration:underline;text-underline-offset:2px}
 .preframe.hidden{display:none}
+/* "Your $4 counts toward your first month" on the report it opened and on Account. */
+.unlock-credit{margin:0 0 14px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--st-good-fill);
+  background:var(--st-good-bg);font-size:13px;line-height:1.5;color:var(--c-ink)}
+.unlock-credit b{font-weight:600}
+.unlock-credit a{color:var(--st-good);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.unlock-credit .ic{width:14px;height:14px;vertical-align:-2px}
 .gobox .btn-go{width:100%;min-height:52px;font-size:16px;font-weight:600}
 .gobox .hint{margin:0;font-size:13px;color:var(--c-ink-soft)}
 .gobox .hint.err{color:var(--st-bad)}

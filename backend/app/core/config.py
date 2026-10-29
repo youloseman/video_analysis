@@ -144,6 +144,11 @@ class Settings:
     # the US$39 price when a Full subscriber buys one. Like the bump, not a
     # plan of its own: the plan key stays "expert".
     stripe_price_expert_member: str | None = None
+    # The $4 report credited to the plan bought after it (services/unlock_credit):
+    # a Stripe coupon, fixed US$4 off, duration once, restricted to the plan
+    # products. Unset, nothing is credited and nothing is promised.
+    stripe_coupon_unlock_credit: str | None = None
+    unlock_credit_window_days: int = 7
 
     # Expert Reviews accepted per rolling week. The deliverable is ~40 minutes
     # of one person's attention, so this is the only product here whose supply
@@ -349,6 +354,10 @@ def _load_settings() -> Settings:
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
         stripe_price_expert_bump=os.environ.get("STRIPE_PRICE_EXPERT_BUMP") or None,
         stripe_price_expert_member=os.environ.get("STRIPE_PRICE_EXPERT_MEMBER") or None,
+        stripe_coupon_unlock_credit=os.environ.get("STRIPE_COUPON_UNLOCK_CREDIT") or None,
+        unlock_credit_window_days=_int_env(
+            "UNLOCK_CREDIT_WINDOW_DAYS", Settings.unlock_credit_window_days,
+        ),
         stripe_price_expert=os.environ.get("STRIPE_PRICE_EXPERT") or None,
         stripe_price_notes=os.environ.get("STRIPE_PRICE_NOTES") or None,
         stripe_price_expert_recheck=os.environ.get("STRIPE_PRICE_EXPERT_RECHECK") or None,

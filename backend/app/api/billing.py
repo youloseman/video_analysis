@@ -57,7 +57,7 @@ from app.models.user import (
     User,
     has_full,
 )
-from app.services import analytics, coach_brief, expert_review, notify, pricing
+from app.services import analytics, coach_brief, expert_review, notify, pricing, unlock_credit
 from app.services.result_gating import ACCESS_FULL, access_for_stored
 from app.services.tier_grants import clear_grant
 
@@ -679,6 +679,13 @@ async def create_checkout(
         await db.commit()
 
     line_items = [{"price": price_id, "quantity": 1}]
+    # A $4 report bought in the last week comes off the plan's first invoice
+    # (services/unlock_credit). Stripe takes either a fixed discount or the
+    # promotion-code box on a session, never both, so a credited session has
+    # no box: the $4 is the larger of the two for anyone it applies to.
+    credited = (
+        await unlock_credit.credited_unlock(db, user, _now_ms()) if is_subscription else None
+    )
     # The order bump rides on the subscription's first invoice as a one-time
     # line; the webhook turns it into a review credit. Silently dropped when
     # it does not apply, rather than refused: the subscription is the sale.
@@ -699,11 +706,15 @@ async def create_checkout(
             # Review (which grants no tier, so tier-polling would never confirm it).
             success_url=f"{base}/app?checkout=success&plan={body.plan}",
             cancel_url=f"{base}/app?checkout=cancel",
-            allow_promotion_codes=True,
+            **(
+                {"discounts": [{"coupon": settings.stripe_coupon_unlock_credit}]}
+                if credited else {"allow_promotion_codes": True}
+            ),
             metadata={
                 "user_id": str(user.id),
                 "plan": body.plan,
                 "tier": tier_for_plan(body.plan) or "",
+                "unlock_credit_order": str(credited.id) if credited else "",
                 # Round-trips through Stripe so the webhook can attach the order
                 # to the analysis the athlete actually chose.
                 "analysis_client_id": (body.analysis_client_id or "")[:64],
@@ -714,6 +725,11 @@ async def create_checkout(
     except stripe.StripeError as e:  # noqa: BLE001
         logger.warning("CHECKOUT_FAILED", err=str(e), user_id=user.id)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Could not start checkout.")
+    if credited:
+        logger.info(
+            "CHECKOUT_UNLOCK_CREDITED", user_id=user.id, plan=body.plan,
+            order_id=credited.id, coupon=settings.stripe_coupon_unlock_credit,
+        )
     return {"url": session_obj.url}
 
 
@@ -1677,6 +1693,9 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> dict[str, Any] |
         "plan": str(meta_all.get("plan") or ""), "tier": meta_all.get("tier") or None,
         "amount_total": obj.get("amount_total"), "currency": obj.get("currency"),
         "analysis_client_id": str(meta_all.get("analysis_client_id") or "") or None,
+        # The $4 report this subscription was credited with, if any: the sale
+        # email says so, which is how the credit's take-up is read by hand.
+        "unlock_credit_order": str(meta_all.get("unlock_credit_order") or "") or None,
         "paid_ms": _now_ms(),
     }
     if obj.get("mode") == "subscription":

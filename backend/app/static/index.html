@@ -1675,6 +1675,7 @@
         <div class="acct-card" id="acctPlanCard">
           <h3>Plan <span class="pill pill-okchip hidden" id="acctPlanPill"><span class="dot" aria-hidden="true"></span>active</span></h3>
           <div class="acct-stats" id="acctStats"></div>
+          <div id="acctCredit"></div>
           <div class="acct-actions">
             <button class="btn btn-ghost btn-sm hidden" type="button" id="acctPortal">Manage subscription</button>
             <a href="#pricing" class="btn btn-link btn-sm" onclick="event.preventDefault();openPricing()">Compare plans</a>
@@ -6720,6 +6721,7 @@ function renderAccount(){
     <div class="acct-stat"><div class="k">This ${auth&&auth.tier==='admin'?'day':'month'}</div><div class="v">${q?`${q.limit-q.remaining} / ${q.limit}`:'—'}</div><div class="s">analyses used</div></div>
     <div class="acct-stat"><div class="k">Profiles</div><div class="v">${PROFILES.used||0} / ${PROFILES.limit??0}</div><div class="s">equipment profiles</div></div>`;
   const paid=auth&&auth.tier&&auth.tier!=='starter'&&auth.tier!=='admin';
+  const uc=$('#acctCredit'); if(uc) uc.innerHTML=unlockCreditHtml('account');
   const pill=$('#acctPlanPill'); if(pill) pill.classList.toggle('hidden', !paid);
   const portal=$('#acctPortal'); if(portal) portal.classList.toggle('hidden', !paid);
   const pp=$('#acctProfPill'), ppt=$('#acctProfPillTxt');
@@ -6858,6 +6860,24 @@ const WORST_LABELS={
   trunk_too_upright:'Trunk angle', excessive_forward_lean:'Trunk lean', heel_strike:'Foot strike',
 };
 const DEGREE_METRIC=/knee|hip|trunk|elbow|shoulder|lean|tilt|angle|flexion/;
+/* "Your $4 counts toward your first month." Said AFTER the $4 is paid -- on
+   the opened report and on Account -- and never on a card that is still
+   selling the $4 (Artur, 2026-10-29). /auth/me says whether and until when,
+   and only says it with the coupon configured, so this never promises a
+   discount the checkout cannot take off. Nine $4 buyers, no plans: the $9
+   read as paying for the same thing twice; this makes the $4 the first $4. */
+function unlockCreditHtml(where){
+  const c=auth&&auth.unlock_credit;
+  if(!c||!isFreeUser()||!(c.until_ms>Date.now())) return '';
+  const offer=planOffer(); if(!offer||!(offer.monthly.amount>0)) return '';
+  const money=minor=>'$'+(minor%100?(minor/100).toFixed(2):String(minor/100));
+  const first=Math.max(0, offer.monthly.amount-c.amount_minor);
+  if(!state.creditSeen) state.creditSeen={};
+  const key=where+':'+c.order_id;
+  if(!state.creditSeen[key]){ state.creditSeen[key]=1; track('unlock_credit_shown',{where:where, amount:c.amount_minor}); }
+  return `<p class="unlock-credit"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Your <b>${esc(money(c.amount_minor))}</b> counts toward your first month, until <b>${esc(shortDate(c.until_ms))}</b>.
+    <a href="#pricing" data-uc="${esc(where)}" onclick="event.preventDefault();track('unlock_credit_clicked',{where:this.dataset.uc});startCheckout(${esc(JSON.stringify(offer.monthly.plan))})">Start ${esc(offer.name)}: ${esc(money(first))} for the first month, then ${esc(offer.monthly.display)}</a></p>`;
+}
 /* The cheapest tier with a monthly price, with its yearly price beside it. */
 function planOffer(){
   const m=cheapestMonthly(); if(!m) return null;
@@ -8128,6 +8148,9 @@ async function handleCheckoutReturn(){
       if(!id || (row && row.access==='full')) break;
       await new Promise(r=>setTimeout(r,1500));
     }
+    // The $4 just paid counts toward a plan for a week (/auth/me says until
+    // when); fetched here so the report opens with that line on it.
+    try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ const u=await r.json(); if(auth){ auth.unlock_credit=u.unlock_credit||null; auth.preview=u.preview||null; } } }catch(e){}
     if(id) openHistory(id); else openHistoryView();
     return;
   }
@@ -8217,7 +8240,7 @@ async function startCheckout(plan, analysisIdArg){
   }
   if(!plan) return;
   const addReview = reviewBump && /^enthusiast_/.test(plan);
-  track('checkout_started', {plan:plan, tier:auth.tier, period:billPeriod, add_review:addReview});
+  track('checkout_started', {plan:plan, tier:auth.tier, period:billPeriod, add_review:addReview, credit: !!(auth&&auth.unlock_credit)});
   let analysisId=analysisIdArg||null;
   // An unlock buys the report in front of you; there is nothing to choose.
   if(plan==='unlock' && !analysisId){ toast('Open a report first, then unlock it.'); return; }
@@ -10906,7 +10929,13 @@ function renderHistoryBilateral(e){
 function renderHistoryUpsell(e){
   const host=$('#hdUpsellHost'); if(!host) return;
   const gated = e && e.access!=='full' && entryLooksGated(e);
-  if(!gated){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  if(!gated){
+    // The report they paid $4 for: where the button was, what the $4 now buys next.
+    const c=auth&&auth.unlock_credit;
+    host.innerHTML = (e && e.access==='full' && c && c.entry_id===e.id) ? unlockCreditHtml('report') : '';
+    host.classList.toggle('hidden', !host.innerHTML);
+    return;
+  }
   if(e.kind==='photo'){ renderPhotoUpsell('hdUpsellHost', {reason:'teaser'}, []); return; }
   const preview = e.access==='preview';
   const unlockId = (auth && !preview && e.sellable!==false) ? e.id : null;

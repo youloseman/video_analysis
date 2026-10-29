@@ -28,7 +28,7 @@ from app.core.security import (
     verify_reset_token,
 )
 from app.models.user import User, crank_access, run_photo_access
-from app.services import analytics, notify
+from app.services import analytics, notify, unlock_credit
 from app.services.preview_release import preview_state
 
 logger = structlog.get_logger()
@@ -163,6 +163,14 @@ class PreviewOut(BaseModel):
     entry_id: str | None = None
 
 
+class UnlockCreditOut(BaseModel):
+    """A paid $4 report still inside its credit window (services/unlock_credit)."""
+    amount_minor: int
+    until_ms: int
+    entry_id: str | None = None
+    order_id: int
+
+
 class UserOut(BaseModel):
     email: str
     tier: str
@@ -177,6 +185,9 @@ class UserOut(BaseModel):
     # Only /auth/me fills this (it needs the job store and a query); the
     # sign-in answers leave it None and the SPA asks /auth/me after them.
     preview: PreviewOut | None = None
+    # The $4 report that counts toward the next plan, while it still does.
+    # Only /auth/me fills this too, and only with the coupon configured.
+    unlock_credit: UnlockCreditOut | None = None
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -395,6 +406,10 @@ async def me(
 
     out = _user_out(user)
     out.preview = PreviewOut(**await preview_state(db, user, preview_available(user)))
+    credit = unlock_credit.credit_state(
+        await unlock_credit.credited_unlock(db, user, int(time.time() * 1000))
+    )
+    out.unlock_credit = UnlockCreditOut(**credit) if credit else None
     return out
 
 
