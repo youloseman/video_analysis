@@ -6797,10 +6797,12 @@ function renderUpsell(containerId, locked, blockIds, unlockId, ctx){
   const items=(locked.unlocks||Object.keys(UNLOCK_COPY))
     .map(k=>({text:UNLOCK_COPY[k], planOnly:!!(scope&&scope.indexOf(k)<0)}))
     .filter(x=>x.text);
-  // The preview is not for sale a second time: it already showed the coaching,
-  // and what is left of it is the measurement table, which is what a plan is
-  // for. Only a teaser has a whole report sitting behind it, unread.
-  const sellable = unlockId && locked.reason!=='preview' && (unlockPrice() || freeUnlocks()>0);
+  // The preview is for sale too (Artur, 2026-10-29): it showed the coaching,
+  // and the $4 opens what it blurred -- the fit moves or drills, every angle,
+  // the ranges, the kinogram -- the same stored report the teaser sells.
+  // Until then the card that is 72% of paywall impressions had one price on
+  // it, and "30 reports for $9" reads as a value only against "$4 for one".
+  const sellable = unlockId && (unlockPrice() || freeUnlocks()>0);
   // The preview card carried one button and it opened the price list. Measured
   // over 109 people who saw only that card: 12% reached pricing and 3 reached
   // checkout, against 21% straight to checkout wherever a card had a buy
@@ -6813,7 +6815,7 @@ function renderUpsell(containerId, locked, blockIds, unlockId, ctx){
   // Remembered so the period toggle can redraw the same card in place.
   state.teaserCard={containerId:containerId, locked:locked, unlockId:unlockId, ctx:ctx};
   host.innerHTML = locked.reason==='preview'
-    ? previewCardHtml(locked, offer, ctx)
+    ? previewCardHtml(locked, sellable?unlockId:null, offer, ctx)
     : teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);
   host.classList.remove('hidden');
   if(ctx.rerender) return true;
@@ -6946,12 +6948,8 @@ function teaserCardHtml(locked, unlockId, items, offer, delta, ctx){
   const list = rows.length
     ? `<ul class="tc-lock">${rows.map(r=>`<li>${lock}<div><b>${esc(r[0])}${r[2]?withPlan:''}</b><span>${esc(r[1])}</span></div></li>`).join('')}</ul>`
     : `<ul class="tc-lock">${(items||[]).map(it=>`<li>${lock}<div><b>${esc(it.text)}${it.planOnly?withPlan:''}</b></div></li>`).join('')}</ul>`;
-  const price=unlockPrice();
-  const unlock = unlockId ? `<div class="tc-offer tc-pri">
-      <div class="tc-h"><b>Open this report</b><span class="tc-price tc-per">${freeUnlocks()>0?'free':esc(price)}<small>one report</small></span></div>
-      <p>This clip only: findings, ${bike?'fit adjustments':'drills'} and angles. No subscription.</p>
-      <button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Open this report — free':'Open this report — '+esc(price)}</button>
-    </div>` : '';
+  const unlock = unlockId ? unlockOfferHtml(unlockId, 'Open this report',
+    `This clip only: findings, ${bike?'fit adjustments':'drills'} and angles. No subscription.`) : '';
   const plan = offer ? planOfferHtml(offer, !unlockId, 'teaser', planLines(offer)) : '';
   return `<div class="upsell upsell-teaser">
     <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Score only · report locked</span>
@@ -6963,6 +6961,18 @@ function teaserCardHtml(locked, unlockId, items, offer, delta, ctx){
     <div class="tc-links"><a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare all plans</a></div>
     ${unlockNudgeHtml()}
   </div>`;
+}
+/* The $4 box on a paywall card: what this one report costs, in the same
+   unit as the plan box beside it ("one report" under the price, against
+   "/mo · 30 reports"). One function for the teaser card and the preview
+   card; only the title and the line under it differ. */
+function unlockOfferHtml(unlockId, title, blurb){
+  const price=unlockPrice(), free=freeUnlocks()>0;
+  return `<div class="tc-offer tc-pri">
+      <div class="tc-h"><b>${esc(title)}</b><span class="tc-price tc-per">${free?'free':esc(price)}<small>one report</small></span></div>
+      <p>${esc(blurb)}</p>
+      <button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${free?'Open this report — free':'Open this report — '+esc(price)}</button>
+    </div>`;
 }
 /* The plan box on a paywall card: name, price per month for the pressed
    period, the Monthly / Yearly toggle (monthly pressed first -- yearly
@@ -6992,31 +7002,41 @@ const PREVIEW_UNLOCKS=['plan','fit','angles','ranges','kinogram','video','export
    just had the findings and the coaching in full; what is behind the blur is
    the measurement table and the drills or fit moves, and this card counts
    them off lock_summary the way the teaser card does, instead of a generic
-   bullet list. One offer, the plan, with the period toggle -- the preview is
-   not for sale a second time (see renderUpsell). Same title as before, which
-   test_teaser_card pins. */
-function previewCardHtml(locked, offer, ctx){
+   bullet list. Two offers, as on the teaser card: the $4 opens the rest of
+   this report (Artur, 2026-10-29 -- the card had one price, and 30 reports
+   for $9 is a value only against $4 for one), the plan beside it with the
+   period toggle. The overlay video and the before / after are the plan's
+   alone, and say so. Same title as before, which test_teaser_card pins. */
+function previewCardHtml(locked, unlockId, offer, ctx){
   const ls=locked.lock_summary||{};
   const sport=ctx.sport||state.sport, bike=sport==='bike';
   const unlocks=locked.unlocks||PREVIEW_UNLOCKS;
   const has=k=>unlocks.indexOf(k)>=0;
+  const withPlan=unlockId?' <em class="only-plan">with a plan</em>':'';
   const lock='<svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>';
   const rows=[];
-  if(bike&&has('fit')) rows.push([ls.adjustments>0?`${ls.adjustments} fit adjustment${ls.adjustments>1?'s':''}`:'Fit adjustments','What to move on the bike, and by how much']);
-  if(!bike&&has('plan')) rows.push([ls.drills>0?`${ls.drills} drill${ls.drills>1?'s':''}, ranked`:'Corrective drills','What to do first, starting tomorrow']);
-  if(has('angles')) rows.push([ls.angles>0?`${ls.angles} joint angles`:'Every joint angle','Each against its range, with the source']);
-  if(has('ranges')) rows.push(['Cadence and benchmark ranges','Where you sit against the field']);
-  if(ls.kinogram&&has('kinogram')) rows.push(['Kinogram','The five key positions of your stride, side by side']);
-  if(has('video')) rows.push(['Overlay video',`Every ${bike?'pedal stroke':'stride'}, frame by frame, at ¼ speed`]);
-  rows.push(['Did it work?','Your next clip against this one, angle by angle']);
-  const plan = offer ? planOfferHtml(offer, true, 'preview', planLines(offer)) : '';
+  if(bike&&has('fit')) rows.push([ls.adjustments>0?`${ls.adjustments} fit adjustment${ls.adjustments>1?'s':''}`:'Fit adjustments','What to move on the bike, and by how much',false]);
+  if(!bike&&has('plan')) rows.push([ls.drills>0?`${ls.drills} drill${ls.drills>1?'s':''}, ranked`:'Corrective drills','What to do first, starting tomorrow',false]);
+  if(has('angles')) rows.push([ls.angles>0?`${ls.angles} joint angles`:'Every joint angle','Each against its range, with the source',false]);
+  if(has('ranges')) rows.push(['Cadence and benchmark ranges','Where you sit against the field',false]);
+  if(ls.kinogram&&has('kinogram')) rows.push(['Kinogram','The five key positions of your stride, side by side',false]);
+  if(has('video')) rows.push(['Overlay video',`Every ${bike?'pedal stroke':'stride'}, frame by frame, at ¼ speed`,true]);
+  rows.push(['Did it work?','Your next clip against this one, angle by angle',true]);
+  const unlock = unlockId ? unlockOfferHtml(unlockId, 'Open the rest',
+    `This clip only: ${bike?'fit adjustments':'drills'}, every angle and the ranges. No subscription.`) : '';
+  const plan = offer ? planOfferHtml(offer, !unlockId, 'preview', planLines(offer)) : '';
+  const both = !!(unlock&&plan);
+  const q = offer&&offer.quota&&offer.quota.limit>0 ? offer.quota : null;
+  const lead = both
+    ? `: open them for ${freeUnlocks()>0?'free':esc(unlockPrice())}, or take the plan and get ${q?esc(String(q.limit))+' reports a '+esc(q.window):'every report'}`
+    : '';
   return `<div class="upsell upsell-teaser upsell-preview">
     <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Your free report</span>
     <h3>That was one report. The plan is what changes the next one.</h3>
-    <p>You’ve read the findings and the coaching. The numbers behind them are measured and waiting.</p>
+    <p>You’ve read the findings and the coaching. The numbers behind them are measured and waiting${lead}.</p>
     <div class="tc-lkh">Measured, still behind the blur</div>
-    <ul class="tc-lock">${rows.map(r=>`<li>${lock}<div><b>${esc(r[0])}</b><span>${esc(r[1])}</span></div></li>`).join('')}</ul>
-    <div class="tc-offers tc-one">${plan||`<button class="btn btn-primary" type="button" data-src="preview" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>`}</div>
+    <ul class="tc-lock">${rows.map(r=>`<li>${lock}<div><b>${esc(r[0])}${r[2]?withPlan:''}</b><span>${esc(r[1])}</span></div></li>`).join('')}</ul>
+    <div class="tc-offers${both?'':' tc-one'}">${unlock}${both?'<div class="tc-or">or every report, every clip</div>':''}${plan||(unlock?'':`<button class="btn btn-primary" type="button" data-src="preview" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>`)}</div>
     <div class="tc-links"><a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare all plans</a></div>
   </div>`;
 }
@@ -9067,14 +9087,16 @@ function render(job,opts){
   if(DEBUG){ $('#rawBlock').classList.remove('hidden'); $('#rawJson').textContent=JSON.stringify(r,null,2); }
 
   renderQuota();
-  // A preview keeps the findings and the coaching -- the two sections that
-  // explain the score in words -- and blurs the measurement table and the
-  // drills, which are the ongoing product rather than the sample.
-  if(r.locked) renderUpsell('upsellHost', r.locked,
-    ['planBlock','fitBlock','metricsBlock','anglesBlock','biomechBlock','kinogramBlock','exportBlock']);
   // A re-measurement REPLACES this session's history entry: same clip,
   // measured again. The server copies the corrected result onto it.
+  // Stored before the card is drawn: the entry id is what the $4 buys.
   state.videoHistId=saveToHistory('video', r, opts.reuseHistId||null);
+  // A preview keeps the findings and the coaching -- the two sections that
+  // explain the score in words -- and blurs the measurement table and the
+  // drills, which the $4 opens and the plan keeps opening.
+  if(r.locked) renderUpsell('upsellHost', r.locked,
+    ['planBlock','fitBlock','metricsBlock','anglesBlock','biomechBlock','kinogramBlock','exportBlock'],
+    state.videoHistId, {sport:r.sport_type||state.sport, score:r.technique_score, entryId:state.videoHistId});
   mountFeedback('fbHost','video',r,state.videoHistId,
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
@@ -10928,9 +10950,8 @@ function renderHistoryBilateral(e){
    `access` is the server's word on what this account may see of the entry
    (full / preview / teaser), refreshed on every listing, so it is the thing
    to decide by -- not the `locked` marker the client wrote at save time,
-   which does not know about a plan bought since. A preview is not offered the
-   $4 button, for the same reason the fresh report does not: its coaching has
-   already been read, and what is left is what a plan is for. */
+   which does not know about a plan bought since. A preview is offered the
+   $4 button like a teaser (2026-10-29): what it blurred is stored. */
 function renderHistoryUpsell(e){
   const host=$('#hdUpsellHost'); if(!host) return;
   const gated = e && e.access!=='full' && entryLooksGated(e);
@@ -10943,7 +10964,7 @@ function renderHistoryUpsell(e){
   }
   if(e.kind==='photo'){ renderPhotoUpsell('hdUpsellHost', {reason:'teaser'}, []); return; }
   const preview = e.access==='preview';
-  const unlockId = (auth && !preview && e.sellable!==false) ? e.id : null;
+  const unlockId = (auth && e.sellable!==false) ? e.id : null;
   // What the $4 buys here is what it buys on the fresh report, minus nothing:
   // the server's UNLOCK_SCOPE (result_gating.py), which never included the
   // video -- it is rendered only for a paying run and lives on a job that

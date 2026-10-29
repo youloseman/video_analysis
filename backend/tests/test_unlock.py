@@ -217,6 +217,38 @@ class _FakeRequest:
     base_url = "https://getflapp.com/"
 
 
+async def test_the_free_preview_is_sold_like_a_teaser(db, make_user, monkeypatch):
+    """Artur, 2026-10-29: the preview card carries the $4 too. What the preview
+    blurred (drills or fit moves, angles, ranges, kinogram) is the stored
+    report, so the guard lets it through and paying opens it in full."""
+    _stripe_on(monkeypatch)
+    user = await make_user(tier=TIER_STARTER)
+    row = await store(db, user, preview=True)
+    calls = {}
+
+    def fake_create(**kw):
+        calls.update(kw)
+
+        class _S:
+            url = "https://checkout.stripe.test/s"
+
+        return _S()
+
+    class _Cust:
+        id = "cus_new"
+
+    monkeypatch.setattr(billing.stripe.Customer, "create", lambda **kw: _Cust())
+    monkeypatch.setattr(billing.stripe.checkout.Session, "create", fake_create)
+    await create_checkout(
+        CheckoutIn(plan="unlock", analysis_client_id="h1"), _FakeRequest(), user, db,
+    )
+    assert calls["mode"] == "payment" and calls["metadata"]["analysis_client_id"] == "h1"
+    await _apply_event(db, unlock_event(user.id))
+    await db.refresh(row)
+    assert row.preview and row.unlocked_at_ms
+    assert access_for_stored(user, row) == ACCESS_FULL
+
+
 async def test_paying_opens_exactly_that_report(db, make_user):
     user = await make_user(tier=TIER_STARTER)
     row = await store(db, user)

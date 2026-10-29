@@ -22,7 +22,7 @@ def test_the_locked_video_report_renders_the_teaser_card_not_the_bullet_list():
     assert "function teaserCardHtml(" in SPA
     assert ": teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);" in SPA
     # The preview has its own card (step 5), with the same title as before.
-    assert "? previewCardHtml(locked, offer, ctx)" in SPA
+    assert "? previewCardHtml(locked, sellable?unlockId:null, offer, ctx)" in SPA
     assert "<h3>That was one report. The plan is what changes the next one.</h3>" in SPA
 
 
@@ -57,18 +57,41 @@ def test_the_impression_says_which_card_it_was():
 # carries the same plan box, toggle included, as the teaser card.
 
 def test_the_preview_card_counts_off_lock_summary_and_never_lists_what_it_showed():
-    assert "function previewCardHtml(locked, offer, ctx){" in SPA
+    assert "function previewCardHtml(locked, unlockId, offer, ctx){" in SPA
     assert "const PREVIEW_UNLOCKS=['plan','fit','angles','ranges','kinogram','video','export'];" in SPA
-    body = SPA.split("function previewCardHtml(locked, offer, ctx){", 1)[1].split("\n}\n", 1)[0]
+    body = SPA.split("function previewCardHtml(locked, unlockId, offer, ctx){", 1)[1].split("\n}\n", 1)[0]
     assert "ls.adjustments" in body and "ls.drills" in body and "ls.angles" in body
     assert "has('coaching')" not in body and "has('issues')" not in body
-    assert "startCheckout('unlock'" not in body  # the preview is not for sale a second time
     assert "function previewBody(" not in SPA
+
+
+# 2026-10-29, Artur: the preview card is where 72% of paywalls are met, and it
+# carried one price. "30 reports for $9" is a value only against "$4 for one",
+# so the $4 is on this card too, and it opens the rest of this report.
+
+def test_the_preview_card_sells_the_rest_of_the_report_for_four_dollars():
+    body = SPA.split("function previewCardHtml(locked, unlockId, offer, ctx){", 1)[1].split("\n}\n", 1)[0]
+    assert "unlockOfferHtml(unlockId, 'Open the rest'," in body
+    assert "planOfferHtml(offer, !unlockId, 'preview', planLines(offer))" in body
+    # The video and the before / after stay the plan's; the card says so.
+    assert "frame by frame, at ¼ speed`,true]" in body
+    assert "'Your next clip against this one, angle by angle',true]" in body
+    assert "const withPlan=unlockId?' <em class=\"only-plan\">with a plan</em>':'';" in body
+    # One $4 box for both cards.
+    assert "function unlockOfferHtml(unlockId, title, blurb){" in SPA
+    assert SPA.count("unlockOfferHtml(unlockId, 'Open this report',") == 1
+    assert "const sellable = unlockId && (unlockPrice() || freeUnlocks()>0);" in SPA
+    # The fresh preview is stored before its card is drawn: the id is what the $4 buys.
+    pv = SPA.split("state.videoHistId=saveToHistory('video', r, opts.reuseHistId||null);", 1)[1]
+    assert pv.index("state.videoHistId, {sport:r.sport_type||state.sport, score:r.technique_score, entryId:state.videoHistId});") < 600
+    # The cabinet sells a preview entry like a teaser.
+    assert "const unlockId = (auth && e.sellable!==false) ? e.id : null;" in SPA
+    assert "!preview && e.sellable" not in SPA
 
 
 def test_both_cards_draw_the_one_plan_box():
     assert "function planOfferHtml(offer, primary, src, lines){" in SPA
-    assert SPA.count("planOfferHtml(offer, true, 'preview'") == 1
+    assert SPA.count("planOfferHtml(offer, !unlockId, 'preview'") == 1
     assert SPA.count("planOfferHtml(offer, !unlockId, 'teaser'") == 1
     assert "data-src=\"${esc(src)}\"" in SPA
     # The toggle redraws whichever card is on screen; both branches remember it.

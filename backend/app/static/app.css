@@ -53,9 +53,10 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .upsell .btn-unlock .ic{width:14px;height:14px}
 .upsell .cta-row .btn-primary:not(.btn-unlock){background:transparent;color:var(--c-ink);border-color:var(--c-line-strong)}
 .upsell .cta-row .btn-primary:not(.btn-unlock):hover{background:var(--c-panel)}
-/* On the preview card there is no $4 button for the plan to stand beside, so
-   the outline rule above left the only call to action on the card looking
-   like the secondary one. Where the card buys a plan directly, it is filled. */
+/* Where a card has no $4 button for the plan to stand beside (a report with
+   nothing stored behind it), the outline rule above left the only call to
+   action looking like the secondary one. Where the card buys a plan directly,
+   it is filled. */
 .upsell .cta-row .btn-primary.btn-planbuy{background:var(--c-action);color:var(--c-action-ink);border-color:transparent}
 .upsell .cta-row .btn-primary.btn-planbuy:hover{background:var(--c-action-dk);color:var(--c-action-ink)}
 .upsell .cta-row .plans-link{display:inline-flex;align-items:center;min-height:44px;margin:-12px 0;
