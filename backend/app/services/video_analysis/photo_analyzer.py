@@ -1135,6 +1135,7 @@ def _generate_photo_thumbnail(
     helmet: dict[str, Any] | None = None,
     overstride: dict[str, Any] | None = None,
     run_pelvis_hip: int | None = None,
+    shin: dict[str, Any] | None = None,
 ) -> bytes:
     """Generate annotated thumbnail with skeleton, angle labels, and score badge.
 
@@ -1143,7 +1144,9 @@ def _generate_photo_thumbnail(
     labels and burn a watermark. ``corrected``: landmark indices the athlete
     placed by hand, ringed so they read as a person's statement rather than
     a detection. ``overstride`` (run, at touchdown): the contact block, drawn
-    as the reach it measures. ``run_pelvis_hip``: the visible hip, when the
+    as the reach it measures. ``shin`` (run, at touchdown): the contact block
+    when the shin was graded -- a chip on the shin in its row's colour.
+    ``run_pelvis_hip``: the visible hip, when the
     measured leg hangs from the hidden one -- the trunk is drawn to it and
     the hidden hip as a hollow ring, an estimate.
     """
@@ -1442,6 +1445,27 @@ def _generate_photo_thumbnail(
             oly = below if below < h - int(40 * _sk) else max(20, ay_ - int(40 * _sk))
             overlay_style.draw_leader(cv2_mod, frame, (hx_, ay_), (olx, oly), o_rgb)
             chips.metric_chip((olx, oly), "OVERSTRIDE", o_text, o_status, scale=_sk,
+                              align="right" if ahead > 0 else "left")
+
+    # --- 2d. SHIN AT TOUCHDOWN (run) ---
+    # A fifth of the score, and the one reading that decides a touchdown, so
+    # it is on the picture like the joints: a chip at mid-shin, behind the
+    # leg (the knee and ankle chips sit ahead of it), coloured by its row.
+    if sport == "run" and shin and len(pixel_coords) > 32:
+        _, knee_i, ankle_i = RUNNING_PHOTO_ANGLES[camera_side]["knee"]
+        hip_i = RUNNING_PHOTO_ANGLES[camera_side]["hip"][1]
+        kx_, ky_, kv = pixel_coords[knee_i]
+        ax_, ay_, av = pixel_coords[ankle_i]
+        if min(kv, av) >= _VIS_THRESHOLD:
+            s_status = "muted" if hide_angle_values else _ROW_TO_CHIP.get(
+                shin.get("shin_status"), "muted")
+            s_rgb = overlay_style.STATUS_COLORS.get(s_status, overlay_style.INK_SOFT)
+            s_text = "LOCKED" if hide_angle_values else f"{shin['shin_angle']:+.0f}°"
+            mx, my = (kx_ + ax_) // 2, (ky_ + ay_) // 2
+            ahead = 1 if ax_ >= pixel_coords[hip_i][0] else -1
+            slx = max(5, min(w - 5, mx - ahead * int(40 * _sk)))
+            overlay_style.draw_leader(cv2_mod, frame, (mx, my), (slx, my), s_rgb)
+            chips.metric_chip((slx, my), "SHIN", s_text, s_status, scale=_sk,
                               align="right" if ahead > 0 else "left")
 
     # No pelvic-ratio chip. It is a ratio of two pelvis landmarks the model
@@ -3033,6 +3057,7 @@ def analyze_from_pose(
                         and contact.get("overstride_ratio") is not None
                         and not math.isnan(contact["overstride_ratio"]) else None),
             run_pelvis_hip=run_pelvis_hip,
+            shin=(contact if contact and contact.get("shin_status") else None),
         )
         thumbnail_b64 = (
             f"data:{_THUMB_MIME};base64,{base64.b64encode(thumbnail_bytes).decode()}"

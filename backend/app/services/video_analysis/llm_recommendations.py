@@ -1374,6 +1374,20 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             "Just outside the band but WITHIN TOLERANCE (not problems, no "
             "drills, no fit changes for these): " + ", ".join(borderline)
         )
+        # Not a fix is not the same as clean. The Kiptum photo came back
+        # "a well-aligned, low-braking touchdown ... Nothing to fix" over an
+        # amber shin whose own line, two inches lower, says the foot lands in
+        # front of the knee and brakes.
+        lines.append(
+            "Do NOT describe these as ideal, clean or problem-free, and do not "
+            "say everything is inside its band. If you use **Nothing to fix**, "
+            "say in it that nothing is out of range but the reading(s) above sit "
+            "on the edge."
+            + (" The shin on the edge means the foot landed slightly ahead of the "
+               "knee: never call this touchdown low-braking, braking-free or "
+               "landing under the body."
+               if contact_line and contact.get("shin_status") == "acceptable" else "")
+        )
 
     # Which lever actually fixes what, and what it costs elsewhere. Computed,
     # not left to the model: joint angles on a bike are coupled through a

@@ -97,3 +97,64 @@ def test_a_crossed_knee_is_named_to_the_coach():
             "label": "Knee angle", "check": True}
     prompt = _build_photo_prompt("run", _result({"measured": False}, knee))
     assert "knees overlap" in prompt
+
+
+def test_the_checklist_writes_a_signed_band_as_one():
+    """"-11.7° vs -10-20°" read as a typo in the Kiptum report."""
+    from app.services.video_analysis.concern_hints import worth_a_look
+
+    text = worth_a_look(_photo_concerns("run", _result(_touchdown("acceptable", -11.7))))
+    assert "-11.7° vs -10° to +20°" in text
+    assert "-10-20" not in text
+
+
+def test_an_edge_shin_is_not_a_braking_free_touchdown():
+    """Kiptum: "a low-braking touchdown ... Nothing to fix" over an amber shin
+    whose own line says the foot lands in front of the knee and brakes."""
+    prompt = _build_photo_prompt("run", _result(_touchdown("acceptable", -11.7)))
+    assert "never call this touchdown low-braking" in prompt
+    assert "Do NOT describe these as ideal" in prompt
+    clean = _build_photo_prompt("run", _result(_touchdown("optimal", -4.0)))
+    assert "low-braking" not in clean and "Do NOT describe these" not in clean
+
+
+def test_the_shin_is_on_the_picture_in_its_rows_colour(monkeypatch):
+    import pytest
+
+    cv2 = pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from app.services.video_analysis import overlay_style
+    from app.services.video_analysis import photo_analyzer as pa
+
+    staged = []
+    real = overlay_style.ChipLayer.metric_chip
+
+    def spy(self, anchor, label, value, status, **kw):
+        staged.append((label, value, status))
+        return real(self, anchor, label, value, status, **kw)
+
+    monkeypatch.setattr(overlay_style.ChipLayer, "metric_chip", spy)
+    lms = [SimpleNamespace(x=0.5, y=0.5, z=0.0, visibility=0.2) for _ in range(33)]
+    for i, (x, y) in {
+        0: (.40, .09), 12: (.47, .24), 14: (.50, .36), 16: (.42, .42), 24: (.50, .50),
+        26: (.44, .66), 28: (.40, .82), 30: (.42, .84), 32: (.36, .85),
+    }.items():
+        lms[i] = SimpleNamespace(x=x, y=y, z=0.0, visibility=0.95)
+    angles = {"knee": 158.0, "hip": 140.0, "trunk": 6.0}
+    ranges = pa._get_running_optimal_ranges("initial_contact")
+    photo = np.full((1400, 900, 3), 120, np.uint8)
+
+    def draw(**kw):
+        staged.clear()
+        pa._generate_photo_thumbnail(
+            cv2, photo, lms, angles, pa._score_photo_angles(angles, ranges, "run"),
+            "right", "run", pa._build_arc_triplets("run", "right"),
+            optimal_ranges=ranges, **kw)
+        return [s for s in staged if s[0] == "SHIN"]
+
+    assert draw(shin=_touchdown("acceptable", -11.7)) == [("SHIN", "-12°", "warn")]
+    assert draw(shin=_touchdown("acceptable", -11.7), hide_angle_values=True)[0][1] == "LOCKED"
+    assert draw() == []

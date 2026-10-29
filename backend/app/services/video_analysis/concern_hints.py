@@ -191,14 +191,20 @@ def _num(v: float) -> str:
 
 def _line(c: dict[str, Any]) -> str:
     unit = unit_for(c["field"])
+    value = _num(c["value"])
     if c["lo"] is None and c["hi"] is not None:
         band = f"up to {_num(c['hi'])}{unit}"
+    elif c["lo"] < 0:
+        # A signed band: "-10-20°" read as a typo. Both ends and the value
+        # carry their sign.
+        band = f"{c['lo']:+g}{unit} to {c['hi']:+g}{unit}"
+        value = f"{c['value']:+.1f}".rstrip("0").rstrip(".")
     else:
         band = f"{_num(c['lo'])}-{_num(c['hi'])}{unit}"
     where = ("outside the band" if c["material"] else
              f"inside the band, at its {'upper' if c['side'] == 'high' else 'lower'} limit"
              if c.get("edge") else "on the edge of the band")
-    return (f"- **{c['label']}**: {_num(c['value'])}{unit} vs {band}, {where}. "
+    return (f"- **{c['label']}**: {value}{unit} vs {band}, {where}. "
             f"{c['hint']}")
 
 
