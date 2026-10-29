@@ -75,3 +75,15 @@ def test_both_cards_draw_the_one_plan_box():
     assert "state.teaserCard={containerId:containerId, locked:locked, unlockId:unlockId, ctx:ctx};" in SPA
     assert "const offer = auth ? planOffer() : null;" in SPA
     assert ".tc-offers.tc-one{grid-template-columns:1fr}" in CSS
+
+
+def test_the_two_offers_are_priced_in_the_same_unit():
+    # Artur, 2026-10-28, off the restyled card: "$4" and "$9 /mo" read as the
+    # same thing for the price of a coffee. The $4 says it opens one report;
+    # the plan's first line says how many a month, off the tier table the
+    # server sends with the card (never a number typed into the SPA).
+    assert "<small>one report</small>" in SPA and ".tc-price.tc-per{" in CSS
+    assert "function planLines(offer){" in SPA
+    assert "${q.limit} analyses a ${q.window}, each in full" in SPA
+    assert "quota:(card&&card.quota)||null," in SPA
+    assert SPA.count("planLines(offer)") == 3  # the definition and both cards

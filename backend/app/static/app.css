@@ -100,6 +100,49 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .tc-links{text-align:center;font-size:13px}
 @media(min-width:640px){.tc-offers{grid-template-columns:1fr 1fr}.tc-offers.tc-one{grid-template-columns:1fr}.tc-or{display:none}}
 .upsell-preview > p{margin:0 0 12px;font-size:14px;color:var(--c-ink-soft)}
+/* The paywall cards in the price list's dress (Artur, 2026-10-28): its
+   headline face for the title and the amounts, its 8px buttons at 48px, its
+   highlighted-card border and shadow, its period pill, its tick list and its
+   navy-ruled table lines. One look from the price list to the lock. Later in
+   the sheet than the rules above on purpose: same selectors, these win. */
+.upsell-teaser,.upsell-photo{padding:22px 20px;border-radius:var(--radius-card)}
+.upsell-teaser h3,.upsell-photo h3{font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:24px;line-height:1.12;margin:8px 0 10px}
+.upsell-teaser .lock-chip,.upsell-photo .lock-chip{font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--c-coral-dk);border:1px solid color-mix(in srgb,var(--c-coral-btn) 40%,var(--c-bg));background:color-mix(in srgb,var(--c-coral-btn) 12%,var(--c-bg));border-radius:999px;padding:4px 10px}
+.upsell-teaser .tc-goal{border-left:3px solid var(--c-coral-btn);border-radius:0 var(--radius-cta) var(--radius-cta) 0;font-size:15px}
+.tc-lkh{font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint);margin:0 0 4px}
+.upsell ul.tc-lock{padding:0;border:0;border-top:2px solid var(--c-brand-navy);border-bottom:2px solid var(--c-brand-navy);border-radius:0;background:transparent;margin:0 0 18px}
+.upsell ul.tc-lock li{padding:11px 2px;grid-template-columns:22px 1fr;gap:8px}
+.upsell ul.tc-lock li svg{color:var(--c-head);width:16px;height:16px;margin-top:2px}
+.tc-lock b{font-size:15.5px;font-weight:700;color:var(--c-head)}
+.tc-lock span{font-size:13.5px;color:var(--c-ink-soft)}
+.tc-offers{gap:12px;align-items:start}
+.tc-offer{border:2px solid color-mix(in srgb,var(--c-coral-btn) 40%,var(--c-bg));border-radius:var(--radius-card);padding:20px 18px;background:var(--c-bg)}
+.tc-offer.tc-pri{border:2px solid var(--c-brand-navy);box-shadow:var(--shadow)}
+.tc-h{align-items:baseline;margin-bottom:4px}
+.tc-h b{font-size:20px;font-weight:700}
+.tc-price{font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:30px;line-height:1.05}
+.tc-price small{font:400 13px var(--f-mono);font-style:normal;letter-spacing:0;color:var(--c-ink-faint)}
+.tc-price.tc-per{display:inline-flex;flex-direction:column;align-items:flex-end}
+.tc-price.tc-per small{font-size:11px;margin-top:2px}
+.tc-offer p{font-size:14px;margin:4px 0 12px}
+.tc-tog{padding:4px;gap:4px;margin:8px 0 12px;background:var(--c-bg)}
+.tc-tog button{font:600 14px var(--f-body);padding:9px 16px;min-height:40px}
+.tc-tog button[aria-pressed=true]{background:var(--c-brand-navy);color:#fff}
+.upsell ul.tc-list{display:flex;flex-direction:column;gap:9px;margin:0 0 14px}
+.upsell ul.tc-list li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;font-size:15px;line-height:1.4;padding:0;color:var(--c-ink)}
+.upsell ul.tc-list li::before{content:"✓";color:var(--st-good-fill);font-weight:700;font-size:17px;line-height:1.25}
+.tc-offer .btn,.upsell-photo .cta-row .btn{min-height:48px;padding:12px 14px;border-radius:var(--radius-cta);font:700 15px var(--f-body);border:1.5px solid transparent}
+.tc-offer .btn .ic{width:16px;height:16px}
+.tc-offer .btn-planbuy{background:var(--c-coral-btn);color:#fff}
+.tc-offer .btn-planbuy:hover{background:var(--c-coral-dk);color:#fff}
+.tc-offer .btn-unlock{background:var(--c-bg);color:var(--c-head);border-color:var(--c-head)}
+.tc-offer .btn-unlock:hover{background:var(--c-panel);color:var(--c-head)}
+.tc-fine{font:500 13px var(--f-body);color:var(--c-ink-soft);margin-top:10px}
+.tc-or{font:500 11px var(--f-mono);letter-spacing:.08em}
+.tc-links{margin-top:14px}
+.tc-links .plans-link{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border:1.5px solid var(--c-head);border-radius:999px;font-size:15px;font-weight:700;color:var(--c-head);text-decoration:none;background:var(--c-bg)}
+.tc-links .plans-link:hover{background:var(--c-panel)}
+.upsell-preview > p{font-size:15px}
 
 .profilefield{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .profilefield label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;

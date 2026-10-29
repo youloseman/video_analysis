@@ -6863,9 +6863,18 @@ function planOffer(){
   const m=cheapestMonthly(); if(!m) return null;
   const card=((PLANS&&PLANS.cards)||[]).find(c=>c.kind==='tier'&&(c.prices||[]).some(p=>p.plan===m.plan));
   const y=card?(card.prices||[]).find(p=>p.interval==='year'&&p.plan&&p.amount>0&&p.available!==false):null;
-  return {name:m.name, monthly:m,
+  return {name:m.name, monthly:m, quota:(card&&card.quota)||null,
     yearly:y?{plan:y.plan, display:y.display, amount:y.amount, perMonth:'$'+(y.amount/1200).toFixed(2)}:null,
     saving:(PLANS&&PLANS.annual_saving_pct)||0};
+}
+/* The three lines under a plan's price on a paywall card. The first one says
+   what the money buys in the same unit as the $4 beside it: the $4 opens one
+   report, the plan opens thirty a month -- on the old card both read as
+   "this report", and the cheaper one won. */
+function planLines(offer){
+  const q=offer&&offer.quota;
+  return [q?`${q.limit} analyses a ${q.window}, each in full`:'Every clip, in full',
+    'Before / after on the clip you film next','Overlay video, frame by frame'];
 }
 /* Score against the previous clip of the same sport, from the cabinet: the
    score is free, so its change is free too; what moved it is not. */
@@ -6914,11 +6923,11 @@ function teaserCardHtml(locked, unlockId, items, offer, delta, ctx){
     : `<ul class="tc-lock">${(items||[]).map(it=>`<li>${lock}<div><b>${esc(it.text)}${it.planOnly?withPlan:''}</b></div></li>`).join('')}</ul>`;
   const price=unlockPrice();
   const unlock = unlockId ? `<div class="tc-offer tc-pri">
-      <div class="tc-h"><b>Open this report</b><span class="tc-price">${freeUnlocks()>0?'free':esc(price)}</span></div>
-      <p>Findings, ${bike?'fit adjustments':'drills'} and angles for this clip. No subscription.</p>
+      <div class="tc-h"><b>Open this report</b><span class="tc-price tc-per">${freeUnlocks()>0?'free':esc(price)}<small>one report</small></span></div>
+      <p>This clip only: findings, ${bike?'fit adjustments':'drills'} and angles. No subscription.</p>
       <button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Open this report — free':'Open this report — '+esc(price)}</button>
     </div>` : '';
-  const plan = offer ? planOfferHtml(offer, !unlockId, 'teaser', ['This report and every next clip, in full','Before / after on the clip you film next','Overlay video, frame by frame']) : '';
+  const plan = offer ? planOfferHtml(offer, !unlockId, 'teaser', planLines(offer)) : '';
   return `<div class="upsell upsell-teaser">
     <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Score only · report locked</span>
     <h3>${esc(title)}</h3>
@@ -6975,7 +6984,7 @@ function previewCardHtml(locked, offer, ctx){
   if(ls.kinogram&&has('kinogram')) rows.push(['Kinogram','The five key positions of your stride, side by side']);
   if(has('video')) rows.push(['Overlay video',`Every ${bike?'pedal stroke':'stride'}, frame by frame, at ¼ speed`]);
   rows.push(['Did it work?','Your next clip against this one, angle by angle']);
-  const plan = offer ? planOfferHtml(offer, true, 'preview', ['This report and every next clip, in full','Before / after on the clip you film next','Overlay video, frame by frame']) : '';
+  const plan = offer ? planOfferHtml(offer, true, 'preview', planLines(offer)) : '';
   return `<div class="upsell upsell-teaser upsell-preview">
     <span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Your free report</span>
     <h3>That was one report. The plan is what changes the next one.</h3>
