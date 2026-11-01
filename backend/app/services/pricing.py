@@ -976,7 +976,7 @@ def _swim(mode: str) -> str:
     )
     lis = "".join(f"<li><b>{a}</b><span>{b}</span></li>" for a, b in facts)
     return (
-        '<section class="pr-swim" aria-label="Swim technique review">'
+        '<section class="pr-swim" id="pr-swim" aria-label="Swim technique review">'
         '<div class="pr-swbody">'
         '<p class="pr-sweye"><span class="pr-swnew">New</span>Swim · a person, not AI</p>'
         f'<h3 class="pr-swh">{SWIM_TITLE}</h3><p class="pr-swlede">{SWIM_LEDE}</p>'
@@ -1163,7 +1163,7 @@ PRICING_CSS = """
 /* ---- swimming: new, so it stands apart -- a fixed navy band in both themes
    (the theme's navy turns light blue in dark mode), the coral of the app's
    one action for the badge and the button ---- */
-.pr-swim{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px 32px;align-items:center;background:#14294B;color:#fff;border:1px solid #2A4677;border-left:5px solid var(--c-coral-btn);border-radius:14px;padding:28px 26px;margin-top:6px}
+.pr-swim{scroll-margin-top:100px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px 32px;align-items:center;background:#14294B;color:#fff;border:1px solid #2A4677;border-left:5px solid var(--c-coral-btn);border-radius:14px;padding:28px 26px;margin-top:6px}
 .pr-swbody{display:flex;flex-direction:column;gap:12px;min-width:0}
 .pr-sweye{display:flex;align-items:center;gap:10px;margin:0;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:#AFC3E8}
 .pr-swnew{font:700 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--c-coral-btn);padding:4px 10px;border-radius:999px}

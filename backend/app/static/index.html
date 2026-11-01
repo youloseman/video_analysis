@@ -387,6 +387,8 @@
     </div>
     <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
     <div id="dashReview"></div>
+    <!-- The swim launch, until it is closed or a swim clip is sent. -->
+    <div id="dashSwim"></div>
     <!-- First run: the welcome, and nothing else (.dash-empty hides the rest). -->
     <div id="dashSummary" class="dash-summary"></div>
     <!-- A dashboard reads top-down: where you stand (a tile per sport, then the
@@ -459,7 +461,7 @@
           <!-- Not an analysis: a swim clip goes to a coach (openSwim). It opens
                its own screen rather than reshaping this form. -->
           <button type="button" data-what="swim" aria-pressed="false" id="whatSwim">
-            <span><b>Swim · video</b><small>coach review</small></span>
+            <span><b>Swim · video <i class="new-pill">New</i></b><small>your stroke, reviewed by a pro</small></span>
           </button>
         </div>
         <div hidden>
@@ -12397,6 +12399,7 @@ function renderDashKona(all){
 }
 function renderDashboard(){
   renderReviewCard();
+  renderDashSwim();
   const dd=$('#dashDate');
   if(dd){ try{ dd.textContent=new Date().toLocaleDateString(UI_LOCALE,{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dd.textContent=''; } }
   const all=loadHist();
@@ -12422,6 +12425,32 @@ function renderDashboard(){
   renderCurrentForm(all);
   renderDashFocus(all);
   renderDashPlan(all);
+}
+/* The swim launch on the home screen. Gone for good once closed, and not
+   shown to anyone who has already sent a swim clip -- they found it. */
+const SWIM_NEWS_KEY='flapp_swim_news_closed';
+function renderDashSwim(){
+  const host=$('#dashSwim'); if(!host) return;
+  let closed=false; try{ closed=localStorage.getItem(SWIM_NEWS_KEY)==='1'; }catch(e){}
+  if(closed||!auth||swimList().length){ host.innerHTML=''; return; }
+  host.innerHTML=`<div class="swim-news" role="region" aria-label="New: swim stroke reviews">
+    <span class="swim-news-ic" aria-hidden="true"><svg class="ic"><use href="#i-swim"/></svg></span>
+    <div class="swim-news-t">
+      <p class="swim-news-eye"><i class="new-pill">New</i>Swim · a person, not AI</p>
+      <h2>Your swim stroke, reviewed by a pro</h2>
+      <p>Film yourself in the pool and send the clip. A pro triathlete who was a swimmer first watches it and tells you what to change. Coach Notes or a full Expert Review, same prices as run and bike.</p>
+    </div>
+    <div class="swim-news-cta">
+      <button class="btn btn-primary" type="button" id="swNewsGo">Send a swim clip</button>
+      <button class="swim-news-x" type="button" id="swNewsX" aria-label="Close">&times;</button>
+    </div>
+  </div>`;
+  if(!state.swimNewsShown){ state.swimNewsShown=true; track('swim_news_shown',{}); }
+  $('#swNewsGo').addEventListener('click',()=>{ track('swim_news_clicked',{}); openSwim(); });
+  $('#swNewsX').addEventListener('click',()=>{
+    try{ localStorage.setItem(SWIM_NEWS_KEY,'1'); }catch(e){}
+    track('swim_news_closed',{}); host.innerHTML='';
+  });
 }
 function openDashboard(){ renderDashboard(); setState('dashboard',{focus:'#dashTitle'}); }
 $('#navHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); });

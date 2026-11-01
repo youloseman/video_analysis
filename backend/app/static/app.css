@@ -2729,3 +2729,30 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .swim-grid,.swim-offers{grid-template-columns:1fr}
 }
 @media(max-width:560px){ .swim-row{grid-template-columns:1fr} }
+
+/* ---- The swim launch (2026-10-31): loud on purpose, for a while ---- */
+.new-pill{display:inline-block;margin-left:6px;vertical-align:2px;font:700 10px var(--f-mono);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--c-coral-btn);padding:3px 8px;border-radius:999px}
+/* The swim tile takes its own row, ringed in coral, so it is not one more
+   option among the analyses. */
+.modetabs.what button[data-what="swim"]{grid-column:1/-1;border:1.5px solid var(--c-coral-btn);background:color-mix(in srgb,var(--c-coral-btn) 7%,var(--c-bg))}
+.modetabs.what button[data-what="swim"]:hover{background:color-mix(in srgb,var(--c-coral-btn) 12%,var(--c-bg))}
+.modetabs.what button[data-what="swim"]:first-child{border-left:1.5px solid var(--c-coral-btn)}
+.swim-news{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px 22px;align-items:center;margin:0 0 20px;padding:20px 22px;border-radius:var(--radius-card);background:#14294B;color:#fff;border:1px solid #2A4677;border-left:5px solid var(--c-coral-btn)}
+.swim-news-ic{width:60px;height:60px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);color:#AFC3E8}
+.swim-news-ic .ic{width:32px;height:32px}
+.swim-news-t{display:flex;flex-direction:column;gap:6px;min-width:0}
+.swim-news-eye{display:flex;align-items:center;gap:10px;margin:0;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:#AFC3E8}
+.swim-news-eye .new-pill{margin-left:0}
+.swim-news h2{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:24px;line-height:1.15;color:#fff}
+.swim-news-t>p:last-child{margin:0;font-size:15px;line-height:1.5;color:#DCE5F5}
+.swim-news-cta{display:flex;align-items:center;gap:8px}
+.swim-news-x{width:40px;height:40px;border:0;border-radius:999px;background:transparent;color:#AFC3E8;font-size:24px;line-height:1;cursor:pointer}
+.swim-news-x:hover{background:rgba(255,255,255,.1);color:#fff}
+@media (max-width:640px){
+  .swim-news{grid-template-columns:minmax(0,1fr) auto;padding:18px 16px}
+  .swim-news-ic{display:none}
+  .swim-news-cta{grid-column:1/-1;grid-row:2}
+  .swim-news-cta .btn{flex:1}
+  .swim-news-x{position:absolute;right:10px;top:10px}
+  .swim-news{position:relative}
+}
