@@ -1895,6 +1895,11 @@ const BUILD = window.__FLAPP_BUILD__ || 'dev';
    What is deliberately NOT sent: nothing from the clip itself, no filenames,
    no free-text the athlete typed. Sports, scores, plans and screen names only.
    ============================================================ */
+/* Stamped on every `paywall_shown` so a redesign reads against the one before
+   it by version, not by guessing from deploy times (the 28-29 Oct cards could
+   not be told apart). Bump it in the same commit as any change to what a
+   paywall card offers or says. */
+const PAYWALL_VERSION='2026-10-31-a';
 function track(name, props){
   try{
     if(!window.flappAnalytics) return;
@@ -7104,6 +7109,7 @@ function renderUpsell(containerId, locked, blockIds, unlockId, ctx){
     worst: ls.worst ? ls.worst.metric : null,
     delta: delta ? delta.d : null,
     tier: auth ? auth.tier : 'anonymous',
+    paywall_version: PAYWALL_VERSION,
   });
   return true;
 }
@@ -7337,7 +7343,7 @@ function renderPhotoUpsell(containerId, locked, blockIds){
   track('paywall_shown', {
     reason: locked.reason||'locked', where: containerId, sellable: false,
     plan_buy: !!plan, card: 'c_photo', preview_waiting: waiting,
-    tier: auth ? auth.tier : 'anonymous',
+    tier: auth ? auth.tier : 'anonymous', paywall_version: PAYWALL_VERSION,
   });
   return true;
 }
