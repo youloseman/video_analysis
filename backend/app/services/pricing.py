@@ -900,8 +900,11 @@ def _coach(mode: str) -> str:
         sample = '<span class="pr-slot" data-slot="sample"></span>'
     else:
         e_price = usd(expert.prices[0].amount)
-        n_cta = '<a class="pr-btn-s" href="/app">Get notes on my report</a>'
-        e_cta = '<a class="pr-btn-s" href="/app#pricing">Get my plan from a pro</a>'
+        # No account needed: the form takes the clip, the email and the
+        # payment in one go (services/guest.py; landing.html opens it).
+        n_cta = '<button class="pr-btn-s" type="button" data-guest-order="notes">Send a clip for notes</button>'
+        e_cta = ('<button class="pr-btn-s" type="button" data-guest-order="expert">'
+                 "Send a clip for a review</button>")
         n_sub = f"Then: a full review of your next clip, {usd(RECHECK_AMOUNT)}"
         e_sub = "Included once a year with Full, on the yearly plan"
         sample = (f'<a href="{SAMPLE_REVIEW_PDF}" target="_blank" rel="noopener">'
@@ -972,7 +975,9 @@ def _swim(mode: str) -> str:
     e_price = ('<span class="pr-slot" data-slot="expert-price"></span>' if mode == "app"
                else usd(expert.prices[0].amount))
     cta = ('<button class="pr-swbtn" type="button" onclick="openSwim()">Send a swim clip</button>'
-           if mode == "app" else '<a class="pr-swbtn" href="/app#swim">Send a swim clip</a>')
+           if mode == "app" else
+           '<button class="pr-swbtn" type="button" data-guest-order="notes" data-guest-sport="swim">'
+           "Send a swim clip</button>")
     facts = (
         ("Film it", "underwater, from the side · 15–60 s"),
         (f"Coach Notes {n_price}", "the first thing to change + 3 notes · 72 hours"),
@@ -1024,8 +1029,110 @@ def render_pricing(mode: str = "landing") -> str:
 
 
 def render_landing_pricing() -> str:
-    """The landing page's pricing block (see render_pricing)."""
-    return render_pricing("landing")
+    """The landing page's pricing block (see render_pricing), and the form its
+    coach buttons open."""
+    return render_pricing("landing") + guest_dialog()
+
+
+# The coach order from the home page, without signing up (services/guest.py).
+# Rendered here so its prices are the price list's; landing.html drives it.
+GUEST_TIPS = {
+    "bike": "Side-on, the whole bike in frame, camera at hip height. 15–30 s of steady pedalling.",
+    "run": "Side-on, the whole body in frame, 10 s or more of steady running. A treadmill is fine.",
+    "swim": "Underwater from the side, 30–60 cm deep, 3–5 m away, two or three lengths. "
+            "Ask the pool first, and film only your own lane.",
+}
+GUEST_POSITIONS = (("road_hoods", "Road · hoods"), ("road_drops", "Road · drops"),
+                   ("tt_aero", "Time trial"), ("triathlon", "Triathlon"), ("casual", "Casual"))
+GUEST_STROKES = (("freestyle", "Freestyle"), ("breaststroke", "Breaststroke"),
+                 ("backstroke", "Backstroke"), ("butterfly", "Butterfly"))
+
+
+def guest_dialog() -> str:
+    n_price = usd(CARD_BY_ID["notes"].prices[0].amount)
+    e_price = usd(CARD_BY_ID["expert"].prices[0].amount)
+    sports = "".join(
+        f'<label><input type="radio" name="sport" value="{v}"{" checked" if v == "bike" else ""}>'
+        f"<span>{t}</span></label>"
+        for v, t in (("bike", "Bike"), ("run", "Run"), ("swim", "Swim")))
+    plans = (
+        f'<label class="go-plan"><input type="radio" name="plan" value="notes" checked data-price="{n_price}">'
+        f"<span><b>Coach Notes · {n_price}</b><small>The first thing to change and 3 notes · 72 hours</small></span></label>"
+        f'<label class="go-plan"><input type="radio" name="plan" value="expert" data-price="{e_price}">'
+        f"<span><b>Expert Review · {e_price}</b><small>What to fix in what order, with drills · 5 days</small></span></label>"
+    )
+    opts = lambda pairs: "".join(f'<option value="{v}">{t}</option>' for v, t in pairs)  # noqa: E731
+    tips = "".join(f'<p class="go-tip" data-for="{k}"{" hidden" if k != "bike" else ""}>{v}</p>'
+                   for k, v in GUEST_TIPS.items())
+    return f"""<style>{GUEST_CSS}</style>
+<dialog class="go" id="guestOrder" aria-labelledby="goTitle">
+<form class="go-form" id="goForm" novalidate>
+  <div class="go-head"><div><p class="go-eye">No account needed</p>
+    <h3 id="goTitle">Send your clip to the coach</h3></div>
+    <button class="go-x" type="button" id="goClose" aria-label="Close">&times;</button></div>
+  <fieldset class="go-seg"><legend>What is in the clip</legend>{sports}</fieldset>
+  <fieldset class="go-plans"><legend>What you get</legend>{plans}</fieldset>
+  {tips}
+  <label class="go-field" data-only="bike">Position<select id="goPosition">{opts(GUEST_POSITIONS)}</select></label>
+  <label class="go-field" data-only="swim" hidden>Stroke<select id="goStroke">{opts(GUEST_STROKES)}</select></label>
+  <label class="go-field">Your clip<input type="file" id="goFile" accept="video/*" required></label>
+  <label class="go-field"><span>What should the coach look at? <i>optional</i></span>
+    <textarea id="goFocus" maxlength="200" rows="2" placeholder="e.g. My knee hurts after an hour"></textarea></label>
+  <label class="go-field">Your email<input type="email" id="goEmail" autocomplete="email" required></label>
+  <p class="go-fine">We make a Flapp account with this email so you can read the answer: after paying you get a link to set a password.</p>
+  <label class="go-check"><input type="checkbox" id="goPrivacy" required>
+    <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and the
+    <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+  <label class="go-check"><input type="checkbox" id="goMarketing">
+    <span>Send me training tips and product news. <i>Optional</i></span></label>
+  <button class="go-go" type="submit" id="goGo">Upload and pay {n_price}</button>
+  <div class="go-prog" id="goProg" hidden><div class="go-bar"><i id="goBar"></i></div><span id="goProgTxt"></span></div>
+  <p class="go-err" id="goErr" role="alert"></p>
+  <p class="go-fine">The clip is taken as it is. If the coach can't read it, we'll ask you to film it again or refund you.</p>
+</form>
+</dialog>
+<div class="go-done" id="goDone" role="status" hidden><p id="goDoneTxt"></p>
+  <button type="button" class="go-x" id="goDoneX" aria-label="Close">&times;</button></div>"""
+
+
+GUEST_CSS = """
+.go{margin:auto;overflow:auto;overscroll-behavior:contain;border:0;padding:0;border-radius:var(--radius-xl,16px);width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 32px);background:var(--c-bg);color:var(--c-ink);box-shadow:var(--shadow-lg)}
+.go::backdrop{background:rgba(11,24,47,.6)}
+.go [hidden],.go-done[hidden]{display:none!important}
+.go-form{display:flex;flex-direction:column;gap:14px;padding:24px 24px 20px;font:15px/1.5 var(--f-body)}
+.go-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.go-eye{margin:0 0 4px;font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--c-coral)}
+.go h3{margin:0;font:900 italic 24px/1.15 var(--f-brand);letter-spacing:-.01em}
+.go-x{border:0;background:transparent;font-size:26px;line-height:1;color:var(--c-ink-faint);cursor:pointer;padding:2px 6px}
+.go fieldset{border:0;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap}
+.go legend{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);margin-bottom:6px;padding:0}
+.go-seg label{flex:1 1 0;min-width:80px}
+.go-seg input,.go-plan input{position:absolute;opacity:0;pointer-events:none}
+.go-seg span{display:block;text-align:center;padding:9px 10px;border:1px solid var(--c-line-strong);border-radius:8px;font-weight:600;cursor:pointer}
+.go-seg input:checked+span{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
+.go-plans{flex-direction:column}
+.go-plan span{display:flex;flex-direction:column;padding:10px 14px;border:1px solid var(--c-line-strong);border-radius:10px;cursor:pointer}
+.go-plan small{color:var(--c-ink-soft);font-size:13px}
+.go-plan input:checked+span{border-color:var(--c-coral-btn);box-shadow:inset 0 0 0 1px var(--c-coral-btn);background:var(--c-panel)}
+.go-seg input:focus-visible+span,.go-plan input:focus-visible+span{box-shadow:var(--ring)}
+.go-tip{margin:0;padding:10px 12px;border-radius:8px;background:var(--c-panel);font-size:13.5px;color:var(--c-ink-soft)}
+.go-field{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:14px}
+.go-field i,.go-check i{font-style:normal;font-weight:400;color:var(--c-ink-faint)}
+.go-field input,.go-field select,.go-field textarea{font:400 15px var(--f-body);padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:8px;background:var(--c-bg);color:var(--c-ink);width:100%;box-sizing:border-box}
+.go-check{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.go-check input{margin-top:4px;flex:none}
+.go-fine{margin:0;font-size:13px;color:var(--c-ink-faint)}
+.go-go{min-height:48px;border:0;border-radius:8px;background:var(--c-coral-btn);color:#fff;font:700 16px var(--f-body);cursor:pointer}
+.go-go:disabled{opacity:.6;cursor:default}
+.go-prog{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--c-ink-soft)}
+.go-bar{flex:1;height:6px;background:var(--c-line);border-radius:999px;overflow:hidden}
+.go-bar i{display:block;height:100%;width:0;background:var(--c-blue);transition:width .15s}
+.go-err{margin:0;color:var(--c-coral-dk);font-size:14px}
+.go-err:empty{display:none}
+.go-done{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;display:flex;gap:12px;align-items:flex-start;width:min(560px,calc(100vw - 32px));padding:16px 18px;border-radius:12px;background:var(--c-brand-navy);color:#fff;box-shadow:var(--shadow-lg);font:15px/1.5 var(--f-body)}
+.go-done p{margin:0}
+.go-done .go-x{color:#fff}
+"""
 
 
 # Colours come from tokens.css, which both pages load; the tints are mixed from

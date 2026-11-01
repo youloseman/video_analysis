@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import hashlib
+import secrets
 
 import bcrypt
 import jwt
@@ -107,16 +108,36 @@ def _hash_fingerprint(password_hash: str) -> str:
     return hashlib.sha256(password_hash.encode("utf-8")).hexdigest()[:16]
 
 
-def create_reset_token(user: User) -> str:
+def create_reset_token(user: User, ttl: _dt.timedelta | None = None) -> str:
+    """``ttl``: longer than the hour a reset gets only for the "set your
+    password" link of a guest order, whose delivery email can arrive days later."""
     now = _dt.datetime.now(_dt.timezone.utc)
     payload = {
         "sub": str(user.id),
         "purpose": _RESET_PURPOSE,
         "ph": _hash_fingerprint(user.password_hash),
         "iat": now,
-        "exp": now + RESET_TOKEN_TTL,
+        "exp": now + (ttl or RESET_TOKEN_TTL),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=_JWT_ALG)
+
+
+# ---------------------------------------------------------------------------
+# Guest accounts: made from the email on a coach order sent from the home page
+# without signing up (services/guest.py). The hash is not a bcrypt hash, so no
+# password matches it; setting one through the reset link turns it into an
+# ordinary account, and the same link stops working (the fingerprint moves).
+# ---------------------------------------------------------------------------
+GUEST_HASH_PREFIX = "guest!"
+
+
+def guest_password_hash() -> str:
+    return GUEST_HASH_PREFIX + secrets.token_hex(16)
+
+
+def is_guest(user: User | None) -> bool:
+    """An account nobody has set a password on yet."""
+    return bool(user and (user.password_hash or "").startswith(GUEST_HASH_PREFIX))
 
 
 async def verify_reset_token(token: str, db: AsyncSession) -> User | None:

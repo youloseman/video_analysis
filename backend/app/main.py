@@ -1972,6 +1972,43 @@ async def analyze_endpoint(
     )
 
 
+async def _store_clip(video: UploadFile, suffix: str) -> tuple[str, Path, int]:
+    """Stream a clip to a fresh job directory: ``(job_id, path, bytes)``.
+
+    For the uploads nothing measures before a person looks (a swim clip, a
+    guest order). A full volume refuses before the write, with a sentence; a
+    rejected upload takes its directory with it.
+    """
+    if await run_in_threadpool(disk_refuses_uploads):
+        await run_in_threadpool(storage_alert)
+        raise HTTPException(503, STORAGE_FULL_MESSAGE)
+    job_id = uuid.uuid4().hex[:12]
+    job_dir = settings.uploads_dir / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    input_path = job_dir / f"input{suffix}"
+    try:
+        size = await run_in_threadpool(save_upload, video.file, input_path, MAX_UPLOAD_BYTES)
+    except UploadTooLarge:
+        delete_job_files(job_id, job_dir)
+        raise HTTPException(
+            413, f"file too large (> {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+        ) from None
+    except OSError as e:
+        delete_job_files(job_id, job_dir)
+        logger.warning("UPLOAD_WRITE_FAILED", job_id=job_id, err=str(e))
+        if e.errno == errno.ENOSPC:
+            await run_in_threadpool(storage_alert)
+            raise HTTPException(503, STORAGE_FULL_MESSAGE) from None
+        raise HTTPException(
+            507, "We couldn't store this clip. Please try again in a moment.",
+        ) from None
+    if size == 0:
+        delete_job_files(job_id, job_dir)
+        raise HTTPException(400, "empty upload")
+    await run_in_threadpool(storage_alert)
+    return job_id, input_path, size
+
+
 @app.post("/upload-swim", status_code=201)
 async def upload_swim_endpoint(
     background_tasks: BackgroundTasks,
@@ -2017,34 +2054,7 @@ async def upload_swim_endpoint(
             f"You already have {swim.MAX_UNORDERED_CLIPS} swim clips waiting for a review. "
             "Book a review on one of them, or delete one, before uploading another.",
         )
-    if await run_in_threadpool(disk_refuses_uploads):
-        await run_in_threadpool(storage_alert)
-        raise HTTPException(503, STORAGE_FULL_MESSAGE)
-
-    job_id = uuid.uuid4().hex[:12]
-    job_dir = settings.uploads_dir / job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
-    input_path = job_dir / f"input{suffix}"
-    try:
-        size = await run_in_threadpool(save_upload, video.file, input_path, MAX_UPLOAD_BYTES)
-    except UploadTooLarge:
-        delete_job_files(job_id, job_dir)
-        raise HTTPException(
-            413, f"file too large (> {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
-        ) from None
-    except OSError as e:
-        delete_job_files(job_id, job_dir)
-        logger.warning("UPLOAD_WRITE_FAILED", job_id=job_id, err=str(e))
-        if e.errno == errno.ENOSPC:
-            await run_in_threadpool(storage_alert)
-            raise HTTPException(503, STORAGE_FULL_MESSAGE) from None
-        raise HTTPException(
-            507, "We couldn't store this clip. Please try again in a moment.",
-        ) from None
-    if size == 0:
-        delete_job_files(job_id, job_dir)
-        raise HTTPException(400, "empty upload")
-    await run_in_threadpool(storage_alert)
+    job_id, input_path, size = await _store_clip(video, suffix)
 
     now_ms = int(time.time() * 1000)
     entry = swim.build_entry(
@@ -2064,6 +2074,142 @@ async def upload_swim_endpoint(
     logger.info("SWIM_UPLOADED", job_id=job_id, user_id=user.id, bytes=size,
                 stroke=stroke_v, view=view_v, ip=_client_ip(request))
     return entry
+
+
+@app.post("/guest-order", status_code=201)
+async def guest_order_endpoint(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    video: UploadFile = File(..., description="The clip, as it is -- nothing is checked before paying."),
+    email: str = Form(..., description="Where the review is delivered; the account is made from it."),
+    sport: str = Form(..., description="bike | run | swim"),
+    plan: str = Form(..., description="notes | expert"),
+    accept_privacy: bool = Form(False),
+    marketing: bool = Form(False),
+    focus: str | None = Form(None, description="Optional: the athlete's question for the coach."),
+    position: str | None = Form(None, description="Bike only: the cycling position."),
+    stroke: str | None = Form(None),
+    pool: str | None = Form(None),
+    view: str | None = Form(None),
+    consent_training: bool = Form(False),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """A coach order from the home page: clip, email and payment, no sign-up.
+
+    See services/guest.py. Answers with the Stripe Checkout URL; the order
+    itself is recorded by the webhook, like any other. A bike or run clip is
+    analysed now and filed in the account's History when done; a swim clip is
+    filed as it is, as /upload-swim does.
+    """
+    from app.api import auth as auth_api
+    from app.api import billing as billing_api
+    from app.models.analysis import Analysis
+    from app.services import guest, swim
+
+    auth_api._throttle(f"guest-order:{_client_ip(request)}", guest.ORDERS_PER_IP, guest.ORDERS_WINDOW_S)
+    guest.check_order(sport, plan, accept_privacy)
+    address = guest.clean_email(email)
+    suffix = Path(video.filename or "").suffix.lower() or ".mp4"
+    if suffix not in ALLOWED_SUFFIXES:
+        raise HTTPException(
+            400, f"unsupported file type '{suffix}'; allowed: {sorted(ALLOWED_SUFFIXES)}",
+        )
+    cycling_position: str | None = None
+    if sport == "bike":
+        cycling_position = position or DEFAULT_BIKE_POSITION
+        if cycling_position not in VALID_POSITIONS:
+            raise HTTPException(400, f"invalid position; valid: {sorted(VALID_POSITIONS)}")
+    if sport != "swim":
+        if not settings.model_path.exists():
+            raise HTTPException(503, "pose model not installed on the server")
+        if len(pending_jobs()) >= settings.max_queued_analyses:
+            raise HTTPException(
+                503, "We're at capacity right now. Please try again in a few minutes.",
+                headers={"Retry-After": "120"},
+            )
+    # Sold out, paused or unpriced is said before the upload, not after it.
+    if plan == "notes":
+        await billing_api._require_notes_slot(db)
+    else:
+        await billing_api._require_review_slot(db)
+    billing_api._require_stripe()
+    if not settings.plan_price_map.get(plan):
+        raise HTTPException(503, "This can't be purchased right now. Please try again shortly.")
+
+    user = await guest.account_for(db, address, marketing)
+    if sport == "swim" and await swim.unordered_clips(db, user.id) >= swim.MAX_UNORDERED_CLIPS:
+        raise HTTPException(
+            429, "There are already swim clips waiting for payment on this email. "
+            "Pay for one of them, or email support@getflapp.com.",
+        )
+    job_id, input_path, size = await _store_clip(video, suffix)
+    now_ms = int(time.time() * 1000)
+    question = swim.clean_question(focus)
+    if sport == "swim":
+        entry = swim.build_entry(
+            client_id=f"s{now_ms}{secrets.token_hex(2)}", at_ms=now_ms, job_id=job_id,
+            stroke=swim.pick(stroke, swim.STROKES, swim.DEFAULT_STROKE),
+            pool=swim.pick(pool, swim.POOLS, swim.DEFAULT_POOL),
+            view=swim.pick(view, swim.VIEWS, swim.DEFAULT_VIEW),
+            question=question, consent_training=consent_training, filename=video.filename,
+        )
+    else:
+        entry = guest.pending_entry(
+            client_id=f"h{now_ms}{secrets.token_hex(2)}", at_ms=now_ms, job_id=job_id,
+            sport=sport, position=cycling_position, question=question,
+        )
+    row = Analysis(
+        user_id=user.id, client_id=entry["id"], created_at_ms=now_ms, job_id=job_id,
+        sport=sport, kind="video", score=None, data=entry,
+    )
+    db.add(row)
+    await db.commit()
+    # The payment page before the analysis: a request that fails runs none of
+    # its background tasks, so a job registered first would sit "queued"
+    # forever and count against the queue limit. If Stripe refuses, the clip
+    # and its row go -- nothing was bought.
+    try:
+        out = await billing_api.start_checkout(
+            billing_api.CheckoutIn(plan=plan, analysis_client_id=entry["id"]),
+            request, user, db, return_to=guest.RETURN_TO,
+        )
+    except Exception as e:  # noqa: BLE001
+        await db.delete(row)
+        await db.commit()
+        delete_job_files(job_id, input_path.parent)
+        if isinstance(e, HTTPException):
+            raise
+        logger.warning("GUEST_CHECKOUT_FAILED", err=str(e), user_id=user.id)
+        raise HTTPException(502, "Could not open the payment page. Please try again in a minute.") from None
+
+    from app.services.clip_store import compress_clip
+    if sport == "swim":
+        background_tasks.add_task(compress_clip, str(input_path))
+    else:
+        JOBS[job_id] = {
+            "status": "queued", "sport": sport, "cycling_position": cycling_position,
+            "result": None, "error": None, "overlay_path": None,
+            "created_at": time.time(), "job_dir": str(input_path.parent),
+            "token": secrets.token_urlsafe(24), "owner_user_id": user.id,
+            # Nobody is waiting on a page for this one: no "your analysis is
+            # ready" mail -- the receipt and the coach's answer are the emails.
+            "mailed": True,
+            "params": {"athlete_height_cm": None, "focus": question,
+                       "camera_side_override": None, "crank_length_mm": None},
+            "frames_store": str(input_path.parent / "landmarks.npz"),
+            "input_path": str(input_path), "corrections": [], "recompute_rounds": 0,
+            "baseline": None,
+        }
+        background_tasks.add_task(
+            _process_job, job_id, str(input_path), sport, cycling_position,
+            None, True, False, None, question, None, None, None,
+        )
+        # Runs after the analysis: a request's background tasks run in order.
+        background_tasks.add_task(guest.file_analysis, user.id, entry["id"], job_id)
+    analytics.capture_bg(analytics.person_id(user), "guest_order_started", {"sport": sport, "plan": plan})
+    logger.info("GUEST_ORDER", job_id=job_id, user_id=user.id, sport=sport, plan=plan,
+                bytes=size, ip=_client_ip(request))
+    return {"url": out.get("url"), "analysis_client_id": entry["id"]}
 
 
 @app.post("/analyze-pair", status_code=200)

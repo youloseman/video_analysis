@@ -257,6 +257,10 @@ def sale_email(sale: dict, admin_url: str) -> tuple[str, str, str]:
         # A swim review is written from the footage alone -- say so where the
         # owner first sees the order, before the queue opens on an empty table.
         what = f"{review} · SWIM" if sale.get("sport") == "swim" else review
+        # Ordered from the home page without an account: the athlete reads the
+        # result only after setting a password from the email they were sent.
+        if sale.get("guest"):
+            what += " · GUEST"
     elif plan == "unlock":
         what = "Report unlock"
     else:

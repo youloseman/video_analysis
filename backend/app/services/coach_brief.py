@@ -286,6 +286,17 @@ def clip_for_brief(path: Path) -> bytes | None:
         return None
 
 
+def _machine_line(entry: dict[str, Any]) -> str:
+    """What the app managed. A clip sent from the home page is taken as it
+    comes (services/guest.py), so the automatic analysis can fail on it --
+    and the order stands: the coach reviews it by eye."""
+    if entry.get("analysisFailed"):
+        return ("<b>Автоанализ не смог прочитать этот клип</b>, цифр нет. Клиент присылал без регистрации, "
+                "клип принимаем как есть: дай совет по тому, что видно глазами. Если совсем ничего не понять, "
+                "напиши Артуру: попросим переснять или вернём деньги.")
+    return "Приложение посчитало углы, теперь нужен взгляд живого тренера."
+
+
 def render_brief_html(*, order_id: int, paid_ms: int, result: dict[str, Any] | None,
                       entry: dict[str, Any] | None, media: dict[str, str | None],
                       clip: bytes | None) -> str:
@@ -294,7 +305,8 @@ def render_brief_html(*, order_id: int, paid_ms: int, result: dict[str, Any] | N
     sport = result.get("sport_type") or entry.get("sport") or "run"
     rows = _rows(result)
     coach_due, client_due = _deadline(paid_ms)
-    focus = result.get("focus")
+    # A guest's question rides on the entry: a run that failed has no result to carry it.
+    focus = result.get("focus") or entry.get("question")
     question = (f"Атлет задал вопрос: <b>«{escape(str(focus))}»</b>. Ответ на него для клиента главный."
                 if focus else "Отдельного вопроса атлет не задал, так что главное выбираешь ты.")
     score = result.get("technique_score")
@@ -348,7 +360,7 @@ def render_brief_html(*, order_id: int, paid_ms: int, result: dict[str, Any] | N
             + f"""<body>
 <main>
   <h1>Coach Notes: {escape(_title(result, entry))}</h1>
-  <p class="sub">{question} Приложение посчитало углы, теперь нужен взгляд живого тренера.</p>
+  <p class="sub">{question} {_machine_line(entry)}</p>
 
   <div class="card deadline">
     <b>Что нужно:</b> одна главная фраза и три короткие заметки, внизу страницы есть форма.<br>

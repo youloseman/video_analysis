@@ -38,7 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import jobs
 from app.core.config import settings
 from app.core.db import get_session
-from app.core.security import get_current_user, require_admin
+from app.core.security import get_current_user, is_guest, require_admin
 from app.models.analysis import Analysis
 from app.models.order import (
     ORDER_DELIVERED,
@@ -57,7 +57,9 @@ from app.models.user import (
     User,
     has_full,
 )
-from app.services import analytics, coach_brief, expert_review, notify, pricing, swim, unlock_credit
+from app.services import (
+    analytics, coach_brief, expert_review, guest, notify, pricing, swim, unlock_credit,
+)
 from app.services.result_gating import ACCESS_FULL, access_for_stored
 from app.services.tier_grants import clear_grant
 
@@ -577,6 +579,15 @@ async def create_checkout(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
+    return await start_checkout(body, request, user, db)
+
+
+async def start_checkout(
+    body: CheckoutIn, request: Request, user: User, db: AsyncSession,
+    *, return_to: str | None = None,
+) -> dict[str, Any]:
+    """``return_to``: where Stripe sends a guest order back -- the home page
+    they ordered from, not an app they have no password for (services/guest)."""
     # An Expert Review the account already owns is spent here, before Stripe is
     # consulted at all: the Full tier includes one, and sending that customer
     # to a payment page to buy a thing they have already bought is how an
@@ -710,8 +721,10 @@ async def create_checkout(
             line_items=line_items,
             # Carry the plan back so the client can acknowledge a one-time Expert
             # Review (which grants no tier, so tier-polling would never confirm it).
-            success_url=f"{base}/app?checkout=success&plan={body.plan}",
-            cancel_url=f"{base}/app?checkout=cancel",
+            success_url=(f"{base}{return_to}?order=paid&plan={body.plan}" if return_to
+                         else f"{base}/app?checkout=success&plan={body.plan}"),
+            cancel_url=(f"{base}{return_to}?order=cancelled" if return_to
+                        else f"{base}/app?checkout=cancel"),
             **(
                 {"discounts": [{"coupon": settings.stripe_coupon_unlock_credit}]}
                 if credited else {"allow_promotion_codes": True}
@@ -1386,8 +1399,11 @@ async def admin_publish_report(
                 if expert_review.is_notes_plan(order.plan)
                 else expert_review.ready_email
             )
+            # A guest has no password to open the app with: the button sets one
+            # and signs them straight in (services/guest.py).
             subject, text, html = mail(
-                order.report, f"{_base_url(request)}/app",
+                order.report,
+                guest.set_password_link(buyer) if is_guest(buyer) else f"{_base_url(request)}/app",
                 recheck=_recheck_line(order, buyer),
             )
             emailed = await run_in_threadpool(
@@ -1567,6 +1583,8 @@ async def webhook(
         background.add_task(notify.notify_sale, sale, f"{_base_url(request)}/app#reviews")
         if sale.get("plan") == "unlock" and sale.get("analysis_client_id"):
             background.add_task(_coach_after_unlock, sale["user_id"], sale["analysis_client_id"])
+        if sale.get("guest") and sale.get("plan") in REVIEW_ORDER_PLANS:
+            background.add_task(guest.send_welcome, sale["user_id"], sale["plan"], sale.get("sport"))
     return {"received": True}
 
 
@@ -1727,6 +1745,7 @@ async def _on_checkout_completed(db: AsyncSession, obj: Any) -> dict[str, Any] |
         # email says so, which is how the credit's take-up is read by hand.
         "unlock_credit_order": str(meta_all.get("unlock_credit_order") or "") or None,
         "sport": sport,
+        "guest": is_guest(user),
         "paid_ms": _now_ms(),
     }
     if obj.get("mode") == "subscription":

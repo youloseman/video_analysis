@@ -1966,6 +1966,92 @@ var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
   },{passive:true});
   update();
 })();
+/* ---- A coach order without an account (services/guest.py). The pricing
+   block's coach buttons open the form; it uploads the clip and goes straight
+   to Stripe. The account is made from the email, and the password link comes
+   by email after paying. ---- */
+(function(){
+  var dlg=document.getElementById('guestOrder'); if(!dlg) return;
+  function track(n,p){ try{ if(window.flappAnalytics) window.flappAnalytics.capture(n,p||{}); }catch(e){} }
+  var form=document.getElementById('goForm'), err=document.getElementById('goErr'), go=document.getElementById('goGo');
+  function $id(id){ return document.getElementById(id); }
+  function val(name){ var c=form.querySelector('input[name="'+name+'"]:checked'); return c?c.value:''; }
+  function sync(){
+    var sport=val('sport'), p=form.querySelector('input[name="plan"]:checked');
+    [].forEach.call(form.querySelectorAll('.go-tip'),function(t){ t.hidden=t.getAttribute('data-for')!==sport; });
+    [].forEach.call(form.querySelectorAll('[data-only]'),function(f){ f.hidden=f.getAttribute('data-only')!==sport; });
+    go.textContent='Upload and pay '+(p?p.getAttribute('data-price'):'');
+  }
+  form.addEventListener('change',sync);
+  function signedIn(){ try{ return !!localStorage.getItem('flapp_token'); }catch(e){ return false; } }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-guest-order]'); if(!b) return;
+    var sport=b.getAttribute('data-guest-sport')||'bike', plan=b.getAttribute('data-guest-order');
+    // Signed in already: the app does this, on the account they have.
+    if(signedIn()){ location.href=sport==='swim'?'/app#swim':'/app#pricing'; return; }
+    form.querySelector('input[name="sport"][value="'+sport+'"]').checked=true;
+    form.querySelector('input[name="plan"][value="'+plan+'"]').checked=true;
+    err.textContent=''; sync();
+    if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+    track('guest_form_opened',{sport:sport,plan:plan});
+  });
+  $id('goClose').addEventListener('click',function(){ if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); });
+  function fail(code, detail){
+    go.disabled=false; $id('goProg').hidden=true;
+    var msg = typeof detail==='string' ? detail
+      : (detail && detail[0] && detail[0].msg) ? detail[0].msg : '';
+    err.textContent = msg || (code===413 ? 'This clip is too big (over 200 MB). Trim it to under a minute and try again.'
+      : code===0 ? 'The upload did not get through. Check your connection and try again.'
+      : 'Something went wrong on our side. Please try again in a minute.');
+    // They already have an account: the app is one click away.
+    if(code===409){ var a=document.createElement('a'); a.href='/app'; a.textContent=' Log in →'; err.appendChild(a); }
+    track('guest_upload_failed',{status:code});
+  }
+  form.addEventListener('submit',function(e){
+    e.preventDefault(); err.textContent='';
+    var file=$id('goFile').files[0], email=$id('goEmail').value.trim();
+    if(!file){ err.textContent='Choose your clip first.'; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Enter a valid email address.'; return; }
+    if(!$id('goPrivacy').checked){ err.textContent='Please agree to the Terms and the Privacy Policy.'; return; }
+    var sport=val('sport'), plan=val('plan'), fd=new FormData();
+    fd.append('video',file); fd.append('email',email); fd.append('sport',sport); fd.append('plan',plan);
+    fd.append('accept_privacy','true'); fd.append('marketing',$id('goMarketing').checked?'true':'false');
+    var focus=$id('goFocus').value.trim(); if(focus) fd.append('focus',focus);
+    if(sport==='bike') fd.append('position',$id('goPosition').value);
+    if(sport==='swim') fd.append('stroke',$id('goStroke').value);
+    var bar=$id('goBar'), txt=$id('goProgTxt');
+    go.disabled=true; $id('goProg').hidden=false; bar.style.width='0'; txt.textContent='Uploading…';
+    track('guest_upload_started',{sport:sport,plan:plan,file_mb:Math.round(file.size/1048576)});
+    var xhr=new XMLHttpRequest();
+    xhr.open('POST','/guest-order');
+    xhr.upload.onprogress=function(ev){
+      if(!ev.lengthComputable) return;
+      var pc=Math.round(ev.loaded/ev.total*100); bar.style.width=pc+'%';
+      txt.textContent=pc<100?'Uploading… '+pc+'%':'Opening the payment page…';
+    };
+    xhr.onload=function(){
+      var j={}; try{ j=JSON.parse(xhr.responseText||'{}'); }catch(_e){}
+      if(xhr.status>=200&&xhr.status<300&&j.url){ track('guest_checkout_redirect',{sport:sport,plan:plan}); location.href=j.url; return; }
+      fail(xhr.status, j.detail);
+    };
+    xhr.onerror=function(){ fail(0); };
+    xhr.send(fd);
+  });
+  // Back from Stripe (billing.start_checkout, return_to).
+  var q=new URLSearchParams(location.search), o=q.get('order');
+  if(o==='paid'||o==='cancelled'){
+    var done=$id('goDone');
+    $id('goDoneTxt').textContent = o==='paid'
+      ? 'Payment received — your clip is with the coach. Check your email: we sent a link to set your password and follow your order.'
+      : 'Checkout cancelled — no charge was made. You can send the clip again any time.';
+    done.hidden=false;
+    $id('goDoneX').addEventListener('click',function(){ done.hidden=true; });
+    track('guest_checkout_returned',{result:o,plan:q.get('plan')||null});
+    q.delete('order'); q.delete('plan');
+    var rest=q.toString();
+    history.replaceState(null,'',location.pathname+(rest?'?'+rest:'')+location.hash);
+  }
+})();
 </script>
 </body>
 </html>

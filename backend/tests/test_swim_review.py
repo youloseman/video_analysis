@@ -214,8 +214,8 @@ def test_the_price_list_sells_swimming_on_its_own_marked_new():
         assert "US$12" in band
         # A subscriber is told why a swim clip is charged, and what Full saves.
         assert "Full members" in band and "US$29" in band
-    # The app opens the swim screen in place; the landing deep-links into it.
+    # The app opens the swim screen in place; the landing opens the guest order form.
     assert 'onclick="openSwim()"' in app_html
-    assert 'href="/app#swim"' in landing
+    assert 'data-guest-order="notes" data-guest-sport="swim"' in landing
     # Not repeated in the run/bike rows: the band is where swimming is said.
     assert "Swimming too" not in app_html and "Run, bike — and swim" not in app_html

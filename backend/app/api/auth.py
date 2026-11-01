@@ -24,6 +24,7 @@ from app.core.security import (
     create_token,
     get_current_user,
     hash_password,
+    is_guest,
     verify_password,
     verify_reset_token,
 )
@@ -204,8 +205,13 @@ async def register(
         await db.execute(select(User).where(User.email == body.email))
     ).scalar_one_or_none()
     if exists:
+        # Made from a coach order sent without signing up (services/guest.py):
+        # the account is theirs once they prove the mailbox, not by claiming it.
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "An account with this email already exists.",
+            status.HTTP_409_CONFLICT,
+            "We made an account with this email when you sent a clip to the coach. "
+            "Use “Forgot password” to set one." if is_guest(exists)
+            else "An account with this email already exists.",
         )
     # Promote the configured admin account on sign-up too, not only at startup,
     # so registering the admin email while the server is already running still
