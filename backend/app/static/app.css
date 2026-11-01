@@ -1917,6 +1917,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .no-chip{font-family:var(--f-mono);font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--c-blue-dk)}
 .no-price{font-family:var(--f-mono);font-size:22px;font-weight:500;color:var(--c-ink);letter-spacing:-.02em}
 .no-price small{font-size:11px;color:var(--c-ink-faint);letter-spacing:0;margin-left:4px}
+.no-price s{font-size:14px;color:var(--c-ink-faint);margin-left:6px}
 .no-t{font-family:var(--f-display);font-weight:600;font-size:18px;line-height:1.3;color:var(--c-head);margin:0 0 6px}
 .no-p{font-size:13.5px;color:var(--c-ink-soft);max-width:62ch;margin:0 0 10px;line-height:1.5}
 .no-fence{color:var(--c-ink-faint);font-size:12.5px}
@@ -2709,6 +2710,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .swim-err{color:var(--st-bad);font-size:13.5px;margin:0;min-height:1em}
 .swim-err:empty{display:none}
 .swim-fine{font-size:13px;color:var(--c-ink-faint);margin:0}
+.swim-why{margin:0 0 10px}
+.swim-plan{margin:0 0 22px;padding:14px 16px;border-radius:var(--radius-card);background:var(--c-panel-quiet);border:1px solid var(--c-line);font-size:14px;line-height:1.5;color:var(--c-ink-soft);max-width:90ch}
+.swim-plan b{color:var(--c-ink)}
+.swim-plan ul{margin:6px 0 0;padding-left:18px}
 .swim-meta{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);margin:0 0 16px}
 .swim-player{margin:0 0 16px}
 .swim-player video{display:block;width:100%;max-height:70vh;background:#000;border-radius:var(--radius)}
@@ -2743,6 +2748,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .swim-news-t{display:flex;flex-direction:column;gap:6px;min-width:0}
 .swim-news-eye{display:flex;align-items:center;gap:10px;margin:0;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:#AFC3E8}
 .swim-news-eye .new-pill{margin-left:0}
+.swim-news-plan{margin:4px 0 0;padding-top:8px;border-top:1px solid rgba(255,255,255,.14);font-size:13px;line-height:1.45;color:#CFDBF2}
+.swim-news-plan b{color:#fff}
 .swim-news h2{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:24px;line-height:1.15;color:#fff}
 .swim-news-t>p:last-child{margin:0;font-size:15px;line-height:1.5;color:#DCE5F5}
 .swim-news-cta{display:flex;align-items:center;gap:8px}

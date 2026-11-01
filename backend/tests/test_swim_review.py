@@ -210,8 +210,10 @@ def test_the_price_list_sells_swimming_on_its_own_marked_new():
         band = html[html.index('<section class="pr-swim"'):]
         band = band[:band.index("</section>")]
         assert '<span class="pr-swnew">New</span>' in band
-        assert "No automatic analysis for swimming yet" in band
+        assert "Not part of a plan" in band
         assert "US$12" in band
+        # A subscriber is told why a swim clip is charged, and what Full saves.
+        assert "Full members" in band and "US$29" in band
     # The app opens the swim screen in place; the landing deep-links into it.
     assert 'onclick="openSwim()"' in app_html
     assert 'href="/app#swim"' in landing

@@ -950,7 +950,11 @@ SWIM_LEDE = (
     "swimmer first watches it and tells you what to change: body line, "
     "breathing, the catch, the kick."
 )
-SWIM_HONEST = "No automatic analysis for swimming yet — no score, no angles. A person watches every clip."
+SWIM_HONEST = ("Not part of a plan: there is no automatic analysis for swimming yet, so a person "
+               "watches every clip and it is paid per clip.")
+# A subscriber's two reasons to stay on the plan for a swim clip.
+SWIM_MEMBERS = (f"<b>Full members</b> pay {usd(REVIEW_MEMBER_AMOUNT)} for the review, and the review "
+                "included with yearly Full covers a swim clip.")
 _SWIMMER = (
     '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" '
     'stroke-linecap="round" stroke-linejoin="round"><circle cx="17.5" cy="7" r="2"/>'
@@ -978,10 +982,10 @@ def _swim(mode: str) -> str:
     return (
         '<section class="pr-swim" id="pr-swim" aria-label="Swim technique review">'
         '<div class="pr-swbody">'
-        '<p class="pr-sweye"><span class="pr-swnew">New</span>Swim · a person, not AI</p>'
+        '<p class="pr-sweye"><span class="pr-swnew">New</span>Swim · coach review</p>'
         f'<h3 class="pr-swh">{SWIM_TITLE}</h3><p class="pr-swlede">{SWIM_LEDE}</p>'
         f'<ul class="pr-swfacts">{lis}</ul>'
-        f'<p class="pr-swhonest">{SWIM_HONEST}</p>'
+        f'<p class="pr-swhonest">{SWIM_HONEST}</p><p class="pr-swmem">{SWIM_MEMBERS}</p>'
         f'<div class="pr-swcta">{cta}<span>Nothing is charged at upload</span></div></div>'
         f'<span class="pr-swic">{_SWIMMER}</span></section>'
     )
@@ -1175,6 +1179,8 @@ PRICING_CSS = """
 .pr-swfacts b .pr-slot{display:inline;width:auto}
 .pr-swfacts li>span{font-size:13px;line-height:1.4;color:#AFC3E8}
 .pr-swhonest{margin:0;font-size:13.5px;line-height:1.5;color:#AFC3E8}
+.pr-swmem{margin:-6px 0 0;font-size:13.5px;line-height:1.5;color:#CFDBF2}
+.pr-swmem b{color:#fff}
 .pr-swcta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
 .pr-swcta span{font-size:13px;color:#AFC3E8}
 .pr-swbtn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:48px;padding:12px 22px;border-radius:8px;border:0;background:var(--c-coral-btn);color:#fff;font:700 15px var(--f-body);text-decoration:none;cursor:pointer}

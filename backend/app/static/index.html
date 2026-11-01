@@ -461,7 +461,7 @@
           <!-- Not an analysis: a swim clip goes to a coach (openSwim). It opens
                its own screen rather than reshaping this form. -->
           <button type="button" data-what="swim" aria-pressed="false" id="whatSwim">
-            <span><b>Swim · video <i class="new-pill">New</i></b><small>your stroke, reviewed by a pro</small></span>
+            <span><b>Swim · coach review <i class="new-pill">New</i></b><small id="whatSwimNote">a pro watches your clip</small></span>
           </button>
         </div>
         <div hidden>
@@ -6460,6 +6460,38 @@ function swimMeta(e){
 }
 function swimOpts(map, sel){ return Object.entries(map).map(([k,v])=>`<option value="${k}"${k===sel?' selected':''}>${esc(v)}</option>`).join(''); }
 
+/* A subscriber meets a price on a swim clip where run and bike never charged
+   them, so every swim screen says why: the plan covers the automatic analysis,
+   a swim clip is a coach's time. Null for a signed-out or free account. */
+function swimPlan(){
+  if(!auth) return null;
+  const credits=auth.expert_credits||0;
+  const name=hasFullPlan()?'Full':(auth.tier==='enthusiast'?'Enthusiast':'');
+  if(!credits&&!name) return null;
+  return {credits, name, member:memberReview(), notes:notesPrice(), list:(memberReview()||{}).was||expertPrice()};
+}
+function syncSwimTile(){
+  const n=$('#whatSwimNote'); if(!n) return;
+  const draw=()=>{
+    const p=swimPlan();
+    n.textContent = p&&p.credits ? 'your included Expert Review covers it'
+      : 'a pro watches your clip'+(notesPrice()?' · from '+notesPrice():'');
+  };
+  draw();
+  if(!PLANS) loadPlans().then(draw);
+}
+function swimPlanBanner(p){
+  if(p.credits) return '<b>Your plan includes an Expert Review</b>, and it covers a swim clip too.';
+  const review=p.member?`<b>${esc(p.member.display)}</b> at your member price`:esc(expertPrice());
+  return `<b>Your ${esc(p.name)} plan</b> still covers your run and bike analysis. A swim clip is watched by a person, so it is paid per clip: Coach Notes ${esc(p.notes)}, Expert Review ${review}.`;
+}
+function swimPlanBox(p){
+  if(p.credits) return `<div class="swim-plan"><b>What your plan covers here.</b> Run and bike analysis is automatic and in your plan. Swimming is watched by a coach, and <b>the Expert Review included with your plan covers a swim clip</b>. Use it on the next screen.</div>`;
+  const review=p.member?`<b>Expert Review ${esc(p.member.display)}</b> instead of ${esc(p.member.was)}`:`Expert Review ${esc(expertPrice())}`;
+  return `<div class="swim-plan"><b>What your ${esc(p.name)} plan covers here.</b><ul>
+      <li>Run and bike: automatic analysis, in your plan.</li>
+      <li>Swim: there is no automatic analysis yet, so a coach watches each clip. It is paid per clip${p.member?', at your member price':''}: ${review}, Coach Notes ${esc(p.notes)}.</li></ul></div>`;
+}
 function openSwim(){
   track('swim_tile_clicked',{signed_in:!!auth});
   // The clip is stored against an account and only worth anything once a
@@ -6477,6 +6509,7 @@ function renderSwimUpload(){
     <h1 class="swim-h" id="swTitle" tabindex="-1">Get your swim stroke reviewed by a pro</h1>
     <p class="swim-lede">Upload a clip of yourself swimming. A professional triathlete — a swimmer before that — watches it and writes back what to change first.
       <b>There is no automatic analysis for swimming yet</b>: no angles and no score, just a coach’s eye on your stroke.</p>
+    ${swimPlan()?swimPlanBox(swimPlan()):''}
     <div class="swim-grid">
       <div class="swim-guide">
         <h3>How to film it</h3>
@@ -6628,12 +6661,16 @@ function swimOffersHtml(notesDone){
         :'<button class="btn btn-outline btn-sm" type="button" disabled>Coach Notes — coming soon</button>'}
         <span class="no-note" data-slots="notes"></span></div></div>`;
   const review=`<div class="no-card">
-      <div class="no-head"><span class="no-chip">Expert Review</span><span class="no-price">${credits>0?'Included':esc(expertPrice()||'')}</span></div>
+      <div class="no-head"><span class="no-chip">Expert Review</span><span class="no-price">${credits>0?'Included'
+        :(memberReview()?`${esc(memberReview().display)}<small>member price</small><s>${esc(memberReview().was)}</s>`:esc(expertPrice()||''))}</span></div>
       <h3 class="no-t">The full review of your stroke</h3>
       <p class="no-p">What the coach sees, what is already working, the fixes in order — each with a drill — and a four-week plan you can take to the pool. Within five days, as a report and a PDF.</p>
       <div class="no-cta"><button class="btn btn-primary btn-sm" type="button" data-swbuy="expert">${credits>0?'Use your included Expert Review':'Book an Expert Review'+esc(expertPriceLabel())}</button>
         <span class="no-note" data-slots="expert"></span></div></div>`;
-  return `${notesDone?'<p class="swim-fine">Want the whole picture after the notes? That is the Expert Review.</p>':''}<div class="swim-offers">${notes}${review}</div>`;
+  const p=swimPlan();
+  const why=!p?'':p.credits?'The Expert Review included with your plan covers this swim clip.'
+    :`Your ${esc(p.name)} plan covers run and bike analysis. A swim clip is a coach’s time, so it is paid per clip${p.member?', at your member price':''}.`;
+  return `${notesDone?'<p class="swim-fine">Want the whole picture after the notes? That is the Expert Review.</p>':''}${why?`<p class="swim-fine swim-why">${why}</p>`:''}<div class="swim-offers">${notes}${review}</div>`;
 }
 /* Sold out or paused is better said before the click. */
 function swimSlots(host){
@@ -7437,8 +7474,8 @@ function prCoachFill(root){
   const first=id=>{ const c=cards.find(x=>x.id===id); return (c&&c.prices&&c.prices[0])||null; };
   const ex=first('expert'), no=first('notes'), re=first('recheck');
   const credits=(auth&&auth.expert_credits)||0;
-  const rm=hasFullPlan()?PLANS.review_member:(auth&&auth.tier==='enthusiast'?PLANS.review_bump:null);
-  const member=credits===0&&rm&&rm.available;
+  const rm=memberReview();
+  const member=credits===0&&!!rm;
   const fill=(slot,html)=>root.querySelectorAll(`[data-slot="${slot}"]`).forEach(el=>{el.innerHTML=html;});
   const buy=(plan,price,label)=>price&&price.available
     ? `<button class="pr-btn-s" type="button" onclick="startCheckout('${esc(plan)}')">${label}</button>`
@@ -7491,8 +7528,17 @@ function renderPricing(){
    than on its card. Empty until the catalogue lands: a missing suffix reads
    fine, a stale number does not. */
 function expertPrice(){
+  const m=memberReview(); if(m) return m.display;
   const c=((PLANS&&PLANS.cards)||[]).find(x=>x.id==='expert');
   return (c&&c.prices&&c.prices[0]) ? c.prices[0].display : '';
+}
+/* What a subscriber is charged for a review instead of the list price: Full's
+   member price, or Enthusiast's bump -- the same rule as checkout (billing.py).
+   Null for everyone else, and while that Stripe price is not set. */
+function memberReview(){
+  if(!PLANS||!auth) return null;
+  const rm=hasFullPlan()?PLANS.review_member:(auth.tier==='enthusiast'?PLANS.review_bump:null);
+  return rm&&rm.available?rm:null;
 }
 function expertPriceLabel(){ const p=expertPrice(); return p?' · '+p:''; }
 /* "from $X/mo" for the upsell panels: the cheapest recurring monthly price we
@@ -10155,6 +10201,7 @@ const getToken=()=>{ try{ return localStorage.getItem(TKEY); }catch(e){ return n
 function authHeaders(h){ h=h||{}; const t=getToken(); return t?Object.assign({},h,{Authorization:'Bearer '+t}):h; }
 function renderAuth(){
   syncRunPhotoTile();
+  syncSwimTile();
   // The sidebar's plan line, and the phone top bar's compact box. Signed in,
   // the sidebar shows which plan and what is left (the bar fills with what
   // is used) and links to Account; the phone bar shows nothing but the quota
@@ -12442,9 +12489,10 @@ function renderDashSwim(){
   host.innerHTML=`<div class="swim-news" role="region" aria-label="New: swim stroke reviews">
     <span class="swim-news-ic" aria-hidden="true"><svg class="ic"><use href="#i-swim"/></svg></span>
     <div class="swim-news-t">
-      <p class="swim-news-eye"><i class="new-pill">New</i>Swim · a person, not AI</p>
+      <p class="swim-news-eye"><i class="new-pill">New</i>Swim · coach review</p>
       <h2>Your swim stroke, reviewed by a pro</h2>
-      <p>Film yourself in the pool and send the clip. A pro triathlete who was a swimmer first watches it and tells you what to change. Coach Notes or a full Expert Review, same prices as run and bike.</p>
+      <p>Film yourself in the pool and send the clip. A pro triathlete who was a swimmer first watches it and tells you what to change.${swimPlan()?'':' Paid per clip: Coach Notes or a full Expert Review.'}</p>
+      ${swimPlan()?`<p class="swim-news-plan">${swimPlanBanner(swimPlan())}</p>`:''}
     </div>
     <div class="swim-news-cta">
       <button class="btn btn-primary" type="button" id="swNewsGo">Send a swim clip</button>
