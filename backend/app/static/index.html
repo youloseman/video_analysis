@@ -349,6 +349,9 @@
       <div class="cam-guides" aria-hidden="true"><span class="cam-guide-lbl">Head to feet between the lines</span></div>
       <div class="cam-count hidden" id="camCount" aria-hidden="true"></div>
       <div class="cam-rec hidden" id="camRec"><span class="dot" aria-hidden="true"></span><span id="camRecT">0:00 / 0:15</span></div>
+      <!-- Live GO / NO-GO on the preview (camLive*): the frame turns green
+           when the shot will measure, red when it will not. -->
+      <div class="cam-live hidden" id="camLive" role="status" aria-live="polite"><span class="cl-tag" id="camLiveTag"></span><span id="camLiveT"></span></div>
     </div>
     <div class="cam-actions">
       <button class="btn btn-primary" id="camStart" type="button">Start — records after a 5&#8202;s countdown</button>
@@ -2242,6 +2245,7 @@ async function openCam(slot){
     if(!$('#camModal').classList.contains('hidden')){
       camState={stream, rec:null, chunks:[], mime:camMime(), timers:[]};
       $('#camView').srcObject=stream;
+      camLiveStart();
     } else stream.getTracks().forEach(t=>t.stop());   // closed while we waited
   }catch(err){
     const msg = err && err.name==='NotAllowedError'
@@ -2254,6 +2258,7 @@ async function openCam(slot){
   }
 }
 function closeCam(){
+  camLiveStop();
   camClearTimers();
   if(camState){
     if(camState.rec && camState.rec.state!=='inactive'){
@@ -2269,6 +2274,7 @@ function closeCam(){
 }
 function camStartFlow(){
   if(!camState) return;
+  track('cam_start',{live:(camLiveState.verdict&&camLiveState.verdict.verdict)||null});
   $('#camStart').classList.add('hidden');
   let n=CAM_COUNTDOWN_S;
   const count=$('#camCount');
@@ -2291,6 +2297,9 @@ function camRecord(){
     $('#camErr').classList.remove('hidden');
     return;
   }
+  // The pose model shares the phone's GPU with the encoder; a weak phone
+  // drops recorded frames to keep the overlay going. The shot is framed by now.
+  camLiveStop();
   camState.rec=rec; camState.chunks=[];
   rec.ondataavailable=e=>{ if(e.data && e.data.size) camState.chunks.push(e.data); };
   rec.onstop=()=>camKeep();
@@ -2319,6 +2328,104 @@ function camKeep(){
   if(slot==='b') setFileB(file); else setFile(file);
   track('analyze_step_done', {step:'clip', slot, source:'record'});
 }
+/* ---- Live GO / NO-GO on the preview ----
+   Mike (bike fitter, 2026-11-01) wanted a badly framed clip caught before it
+   is analysed; the prescan does that once a clip is picked, this does it while
+   the phone is still on the tripod. MediaPipe's own web build finds the pose
+   in the preview a few times a second, on the phone -- no frame leaves it.
+
+   Same bars as prescan.capture_check, in pixels of the frame the server's
+   detector will see (long edge capped at 1280); test_cam_live_spa.py fails if
+   these drift from the Python. The lite model is plenty for the two things
+   judged here -- how tall the rider is and which way they face -- and the
+   angles are still measured on the server. Anything that fails (old phone, no
+   WebGL, no network for the model) leaves the camera exactly as it was. */
+const CAM_LIVE={tinyPx:300, smallPx:400, detectLongEdge:1280, everyMs:200, keep:6};
+const CAM_LIVE_LIB='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const CAM_LIVE_MODEL='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+const camLiveState={on:false, verdict:null, recent:[], raf:0, last:0};
+let camLiveModel=null;   // kept across openings: building it is the slow part
+async function camLiveLoad(){
+  if(camLiveModel) return camLiveModel;
+  const vision=await import(`${CAM_LIVE_LIB}/vision_bundle.mjs`);
+  const files=await vision.FilesetResolver.forVisionTasks(`${CAM_LIVE_LIB}/wasm`);
+  const make=delegate=>vision.PoseLandmarker.createFromOptions(files,{
+    baseOptions:{modelAssetPath:CAM_LIVE_MODEL, delegate}, runningMode:'VIDEO', numPoses:1});
+  try{ camLiveModel=await make('GPU'); }catch(e){ camLiveModel=await make('CPU'); }
+  return camLiveModel;
+}
+/* One frame's reading: null when nobody is there, else the rider's height in
+   detector pixels (null when the feet or the head are out of shot), which
+   way they face, and whether they lean over handlebars. */
+function camLiveRead(lms, vw, vh){
+  const P=i=>lms[i], ok=i=>P(i)&&(P(i).visibility==null||P(i).visibility>=0.3);
+  if(![11,12,23,24].every(ok)) return null;
+  const sh={x:(P(11).x+P(12).x)/2, y:(P(11).y+P(12).y)/2}, hp={x:(P(23).x+P(24).x)/2, y:(P(23).y+P(24).y)/2};
+  // 0 = flat, 90 = upright, in pixels so a portrait frame reads true
+  const trunk=Math.atan2((hp.y-sh.y)*vh, Math.abs(sh.x-hp.x)*vw)*180/Math.PI;
+  const ankles=[27,28].filter(ok).map(i=>P(i).y);
+  let px=null;
+  if(ok(0) && ankles.length){
+    const low=Math.max(...ankles), span=low-P(0).y;
+    if(span>0.01 && low<=0.99 && P(0).y>=0.01)
+      px=Math.round(span*vh*Math.min(1, CAM_LIVE.detectLongEdge/Math.max(vw,vh)));
+  }
+  return {px, facingRight:P(0).x>=hp.x, bike:trunk<=55};
+}
+/* The last few readings decide, so one bad frame does not flash the border. */
+function camLiveVerdict(rs){
+  const seen=rs.filter(Boolean);
+  if(seen.length<rs.length/2) return {verdict:'no_go', code:'not_found', text:'Can’t see you — get your whole body in the frame'};
+  const pxs=seen.map(r=>r.px).filter(v=>v!=null).sort((a,b)=>a-b);
+  if(pxs.length<seen.length/2) return {verdict:'no_go', code:'cut_off', text:'Head to feet in the frame — something’s cut off'};
+  const px=pxs[Math.floor(pxs.length/2)];
+  if(px<CAM_LIVE.tinyPx) return {verdict:'no_go', code:'tiny', px, text:'Move closer — you’re too small to measure'};
+  const bike=seen.filter(r=>r.bike).length>seen.length/2;
+  const drive=bike && seen.filter(r=>r.facingRight).length>=seen.length*2/3;
+  if(px<CAM_LIVE.smallPx) return {verdict:'check', code:'small', px, text:'A bit closer for cleaner angles'};
+  if(drive) return {verdict:'check', code:'drive_side', px, text:'Chainring side — the other side reads the knee better'};
+  return {verdict:'go', code:'go', px, text:'Good — this will measure'};
+}
+const CAM_LIVE_TAG={go:'GO', check:'CHECK', no_go:'NO-GO'};
+function camLivePaint(v){
+  const stage=$('#camStage'), box=$('#camLive');
+  if(!v){ delete stage.dataset.live; box.classList.add('hidden'); return; }
+  stage.dataset.live=v.verdict;
+  $('#camLiveTag').textContent=CAM_LIVE_TAG[v.verdict];
+  $('#camLiveT').textContent=v.text;
+  box.classList.remove('hidden');
+}
+async function camLiveStart(){
+  camLiveState.on=true; camLiveState.recent=[]; camLiveState.verdict=null;
+  let model;
+  try{ model=await camLiveLoad(); }
+  catch(e){ camLiveState.on=false; track('cam_live',{ok:false}); return; }
+  if(!camLiveState.on || !camState) return;
+  track('cam_live',{ok:true});
+  const view=$('#camView');
+  const step=now=>{
+    if(!camLiveState.on) return;
+    camLiveState.raf=requestAnimationFrame(step);
+    if(now-camLiveState.last<CAM_LIVE.everyMs || view.readyState<2 || !view.videoWidth) return;
+    camLiveState.last=now;
+    let r=null;
+    try{
+      const res=model.detectForVideo(view, now);
+      if(res.landmarks && res.landmarks.length) r=camLiveRead(res.landmarks[0], view.videoWidth, view.videoHeight);
+    }catch(e){ camLiveStop(); return; }
+    const rs=camLiveState.recent; rs.push(r); if(rs.length>CAM_LIVE.keep) rs.shift();
+    if(rs.length<3) return;
+    const v=camLiveVerdict(rs);
+    if(!camLiveState.verdict || v.code!==camLiveState.verdict.code){ camLiveState.verdict=v; camLivePaint(v); }
+  };
+  camLiveState.raf=requestAnimationFrame(step);
+}
+function camLiveStop(){
+  camLiveState.on=false;
+  cancelAnimationFrame(camLiveState.raf);
+  camLivePaint(null);
+}
+
 $('#camOpen').addEventListener('click',openCam);
 $('#camClose').addEventListener('click',closeCam);
 $('#camStart').addEventListener('click',camStartFlow);

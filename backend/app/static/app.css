@@ -828,6 +828,17 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
   .cam-rec .dot{animation:campulse 1.2s ease-in-out infinite}
   @keyframes campulse{50%{opacity:.35}}
 }
+.cam-stage::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;transition:box-shadow .2s}
+.cam-stage[data-live="go"]::after{box-shadow:inset 0 0 0 5px var(--st-good-fill)}
+.cam-stage[data-live="check"]::after{box-shadow:inset 0 0 0 5px var(--st-warn-fill)}
+.cam-stage[data-live="no_go"]::after{box-shadow:inset 0 0 0 5px var(--st-bad-fill)}
+.cam-live{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;align-items:center;
+  padding:7px 10px;border-radius:var(--radius);background:rgba(3,10,24,.72);color:#fff;font-size:13px;font-weight:500;line-height:1.35}
+.cl-tag{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;padding:2px 6px;border-radius:3px;color:#fff;flex:none}
+.cam-stage[data-live="go"] .cl-tag{background:var(--st-good-fill)}
+.cam-stage[data-live="check"] .cl-tag{background:var(--st-warn-fill)}
+.cam-stage[data-live="no_go"] .cl-tag{background:var(--st-bad-fill)}
+@media (prefers-reduced-motion: reduce){.cam-stage::after{transition:none}}
 .cam-actions{display:flex;gap:10px}
 .cam-actions .btn{flex:1}
 .cam-err{font-size:13px;color:var(--st-bad);line-height:1.5;margin:0 0 12px}
