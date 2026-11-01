@@ -27,6 +27,10 @@ async def prescan(
     request: Request,
     frames: list[UploadFile] = File(...),
     mode: str = Form("video"),
+    # The clip's own size: the frames sent are shrunk to 640 px, and the
+    # rider's size is judged in the frame the full analysis will see.
+    video_w: int | None = Form(None),
+    video_h: int | None = Form(None),
 ) -> dict[str, Any]:
     _throttle(f"prescan:{client_ip(request)}", PER_IP, WINDOW_S)
     if not frames or len(frames) > MAX_FRAMES:
@@ -39,4 +43,7 @@ async def prescan(
         images.append(raw)
     from app.services.prescan import scan_images
 
-    return await run_in_threadpool(scan_images, images, photo=(mode == "photo"))
+    ok = all(isinstance(v, int) and 0 < v <= 10000 for v in (video_w, video_h))
+    dims = (video_w, video_h) if ok else (None, None)
+    return await run_in_threadpool(scan_images, images, photo=(mode == "photo"),
+                                   video_w=dims[0], video_h=dims[1])

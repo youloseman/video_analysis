@@ -217,6 +217,8 @@ def _num(v: float) -> str:
 
 _COMPONENT = {"saddle_height": "Saddle height", "saddle_setback": "Saddle fore-aft",
               "bar_position": "Bar position", "bar_reach": "Bar reach", "cleats": "Cleats"}
+# Same words as the app's FIT_EFFORT (index.html).
+_EFFORT = {"home": "at home, 5 min", "depends": "home or bike shop", "shop": "bike shop"}
 
 
 def _fit_priorities(fit: dict[str, Any]) -> list[dict[str, Any]]:
@@ -228,7 +230,11 @@ def _fit_priorities(fit: dict[str, Any]) -> list[dict[str, Any]]:
         action = str(d.get("action") or "").replace("_", " ").capitalize()
         amount = f" {d['amount']}" if d.get("amount") else ""
         comp = _COMPONENT.get(d.get("component"), str(d.get("component") or "").replace("_", " ").capitalize())
-        out.append({"label": comp, "drill": (action + amount).strip() or None, "why": d.get("reason")})
+        drill = (action + amount).strip()
+        effort = d.get("effort") or {}
+        if drill and effort.get("level") in _EFFORT:
+            drill += f" · {_EFFORT[effort['level']]}"
+        out.append({"label": comp, "drill": drill or None, "why": d.get("reason")})
     return out
 
 

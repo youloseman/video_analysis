@@ -620,6 +620,9 @@
            the position family, filled into the steps that follow it. -->
       <div class="scannote hidden" id="scanNote" role="status" aria-live="polite"></div>
 
+      <!-- GO / NO-GO on the filming, from the same frames (prescan.capture_check). -->
+      <div class="capcheck hidden" id="capCheck" role="status" aria-live="polite"></div>
+
       <!-- Pre-flight notes on the selected clip (duration, orientation).
            Filled by checkClip() from the browser's own metadata. -->
       <ul class="preflight hidden" id="preflight"></ul>
@@ -2498,6 +2501,7 @@ async function grabFrames(file,n=6){
     const k=Math.min(1,640/Math.max(v.videoWidth,v.videoHeight));
     const c=document.createElement('canvas'); c.width=Math.round(v.videoWidth*k); c.height=Math.round(v.videoHeight*k);
     const g=c.getContext('2d'), out=[];
+    out.dims=[v.videoWidth,v.videoHeight];
     for(let i=0;i<n;i++){
       const seek=wait('seeked',3000); v.currentTime=v.duration*(0.15+0.7*i/(n-1)); await seek;
       g.drawImage(v,0,0,c.width,c.height);
@@ -2519,17 +2523,19 @@ async function grabPhoto(file){
 async function prescanClip(file){
   const tok={}; state.prescanTok=tok;
   const photo=state.mode==='photo';
-  scanNote('scan');
+  scanNote('scan'); renderCapCheck(null);
   const frames=photo?await grabPhoto(file):await grabFrames(file);
   if(state.prescanTok!==tok||state.file!==file) return;
   if(!frames.length){ scanNote(null); return; }
   const fd=new FormData(); frames.forEach((b,i)=>fd.append('frames',b,`f${i}.jpg`)); fd.append('mode',photo?'photo':'video');
+  if(frames.dims){ fd.append('video_w',frames.dims[0]); fd.append('video_h',frames.dims[1]); }
   let j=null;
   try{ const r=await fetch('/prescan',{method:'POST',body:fd}); if(r.ok) j=await r.json(); }catch(e){}
   if(state.prescanTok!==tok||state.file!==file) return;
   applyPrescan(j);
 }
 function applyPrescan(j){
+  renderCapCheck(j&&j.capture);
   if(!j||!j.sport){ scanNote('unsure'); track('prescan',{sport:null}); return; }
   // A runner's photo is a bike photo for an account without "Run · photo":
   // that is the only photo it can analyse.
@@ -2546,8 +2552,23 @@ function applyPrescan(j){
       else ask.push({position:posRemembered(j.family), label:`${FAMILY_NAME[j.family].toLowerCase()} position`});
     }
   });
-  track('prescan',{sport:j.sport,family:j.family||null,asked:ask.length});
+  track('prescan',{sport:j.sport,family:j.family||null,asked:ask.length,
+    capture:(j.capture&&j.capture.verdict)||null,capture_codes:((j.capture&&j.capture.reasons)||[]).map(r=>r.code).join(',')||null});
   scanNote(ask.length?'ask':'done', j, ask);
+}
+/* GO / NO-GO: what the filming will cost, said before the upload. Never
+   blocks the button -- a NO-GO clip can still be analysed, the athlete just
+   knows the numbers will not hold up. */
+const CAP_HEAD={go:['GO','Good to analyse'],check:['CHECK','Worth a look before you upload'],no_go:['NO-GO','Re-film recommended']};
+function renderCapCheck(c){
+  const el=$('#capCheck'); if(!el) return;
+  if(!c||!CAP_HEAD[c.verdict]){ el.classList.add('hidden'); el.innerHTML=''; delete el.dataset.verdict; return; }
+  const [tag,head]=CAP_HEAD[c.verdict];
+  const rs=(c.reasons||[]).map(r=>`<li>${esc(r.text||'')}</li>`).join('');
+  el.innerHTML=`<div class="cc-head"><span class="cc-tag">${tag}</span><span>${head}</span></div>`
+    +(rs?`<ul class="cc-list">${rs}</ul>`:'')
+    +(c.verdict==='no_go'?'<p class="cc-foot">You can still analyse it, but the numbers won’t hold up.</p>':'');
+  el.dataset.verdict=c.verdict; el.classList.remove('hidden');
 }
 function scanNote(kind,j,ask){
   const el=$('#scanNote'); if(!el) return;
@@ -8841,6 +8862,14 @@ const FIT_PART={
   crank_length:'Crank length',
 };
 const fitWords=s=>String(s||'').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
+/* Who makes the change (fit_plan diagnostics[].effort, action_plan_builder.fix_effort):
+   a remote rider has no mechanic, so a five-minute saddle tweak and a cockpit
+   swap must not read as the same job. */
+const FIT_EFFORT={home:'At home · 5 min',depends:'Home or bike shop',shop:'Bike shop'};
+function fitEffortHtml(e){
+  if(!e||!FIT_EFFORT[e.level]) return '';
+  return `<div class="fit-effort fe-${e.level}"><span class="fe-tag">${FIT_EFFORT[e.level]}</span>${e.note?` <span class="fe-note">${esc(e.note)}</span>`:''}</div>`;
+}
 function renderFitPlan(plan){
   const block=$('#fitBlock'); if(!block) return;
   const diags=(plan&&plan.diagnostics)||[];
@@ -8873,6 +8902,7 @@ function renderFitPlan(plan){
         <div class="fit-nums"><b>${now}</b>${target?` <span class="fit-arrow">→</span> <b>${target}</b>`:''}</div>
         ${d.action?`<div class="fit-action">${esc(FIT_ACTION[d.action]||fitWords(d.action))} ${amount}</div>`:''}
         ${d.reason?`<div class="fit-why">${esc(d.reason)}</div>`:''}
+        ${fitEffortHtml(d.effort)}
       </div>
     </div>`;
   }).join('') + warns.map(w=>
@@ -10174,7 +10204,7 @@ function reset(keepFile=false){
     // Network-ish failure: keep the clip loaded so "Try again" is one click.
     drop.classList.remove('err');
   } else {
-    state.prescanTok=null; scanNote(null);
+    state.prescanTok=null; scanNote(null); renderCapCheck(null);
     state.file=null; state.fileB=null; pairRevoke('a'); pairRevoke('b');
     fileInput.value=''; fileInput.removeAttribute('tabindex');
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');

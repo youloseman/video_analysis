@@ -89,6 +89,15 @@ def frame_features(lms: Any, w: int, h: int) -> dict[str, float] | None:
         out["ankle_drop"] = max(drops)
     out["hip_x"] = mhp[0] / trunk
     out["hip_y"] = mhp[1] / trunk
+    out["facing"] = facing
+    # Nose to the lower ankle as a share of the frame height: the same span
+    # tracking_diagnostics.compute_framing measures on the full analysis.
+    ankles = [_pt(lms, i, w, h) for i in (L_AN, R_AN)]
+    ankles = [a for a in ankles if a[2] >= MIN_VIS * 0.6]
+    if ankles and nose[2] >= MIN_VIS * 0.6 and h:
+        span = (max(a[1] for a in ankles) - nose[1]) / h
+        if span > 0.01:
+            out["height_frac"] = span
     return out
 
 
@@ -97,7 +106,7 @@ def summarize(frames: list[dict[str, float]]) -> dict[str, float]:
     foot ever went (a runner's back-swing shows in one frame, not the median)."""
     keys = {k for f in frames for k in f}
     s = {k: median(f[k] for f in frames if k in f) for k in keys
-         if k not in ("hip_x", "hip_y", "ankle_back")}
+         if k not in ("hip_x", "hip_y", "ankle_back", "facing", "height_frac")}
     backs = [f["ankle_back"] for f in frames if "ankle_back" in f]
     if backs:
         s["ankle_back_max"] = max(backs)
@@ -171,6 +180,89 @@ def classify(frames: list[dict[str, float]], *, photo: bool = False) -> dict[str
     return out
 
 
+# ---- GO / NO-GO on the filming ---------------------------------------------
+#
+# Mike (bike fitter, 2026-11-01): flag a badly filmed clip BEFORE it is
+# analysed, not in the report after. The full analysis already says all of
+# this in its capture report; these are the two faults that cost the most and
+# that six small frames can see: the rider too small in the frame, and on a
+# bike the chainring side toward the camera.
+#
+# Only "tiny" is a NO-GO: on the one clip cropped three ways the legs were
+# swapped on 43-46% of frames at 116-255 px against 1.8% at 452 px, so below
+# the tiny bar the measurement does not hold. Everything else is CHECK -- the
+# clip is still worth analysing, the athlete should know what it costs. The
+# camera being square to the bike is not judged here: camera_view's threshold
+# for it is not calibrated on a real off-axis clip.
+
+def capture_check(frames: list[dict[str, float]], *, sport: str | None,
+                  video_w: int | None = None, video_h: int | None = None,
+                  photo: bool = False) -> dict[str, Any]:
+    """``verdict`` go / check / no_go, with ``reasons`` worst first."""
+    from app.services.video_analysis.biomechanics.tracking_diagnostics import (
+        FRAMING_SMALL_PX,
+        FRAMING_TINY_PX,
+    )
+    from app.services.video_analysis.capture_report import (
+        DETECT_MAX_LONG_EDGE,
+        FRAMING_TARGET_PX,
+    )
+
+    good = [f for f in frames if _valid(f)]
+    reasons: list[dict[str, str]] = []
+    out: dict[str, Any] = {"verdict": "go", "reasons": reasons}
+    if not good or (not photo and len(good) < 3):
+        reasons.append({
+            "code": "not_found", "level": "check",
+            "text": "We couldn't find you clearly in a quick look at the clip. "
+                    "Make sure the whole body is in shot, side-on, with nobody else in the frame.",
+        })
+        out["verdict"] = "check"
+        return out
+
+    # Rider size, in pixels of the frame the detector will see. A photo is
+    # analysed at its own size and the bars are calibrated on video, so a
+    # photo is not judged on it.
+    fracs = [f["height_frac"] for f in good if "height_frac" in f]
+    if not photo and fracs and video_w and video_h and len(fracs) >= len(good) / 2:
+        frac = median(fracs)
+        detect_h = video_h * min(1.0, DETECT_MAX_LONG_EDGE / max(video_w, video_h))
+        px = round(frac * detect_h)
+        out["subject_px"] = px
+        if px < FRAMING_TINY_PX:
+            reasons.append({
+                "code": "tiny", "level": "no_go",
+                "text": f"You're too small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
+                        "At this size the model mixes up your legs. Move the camera closer "
+                        "or zoom in so you fill most of the frame.",
+            })
+        elif px < FRAMING_SMALL_PX:
+            reasons.append({
+                "code": "small", "level": "check",
+                "text": f"You're a bit small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
+                        "Closer or zoomed in gives cleaner angles.",
+            })
+
+    # Facing right in the image puts the rider's right side -- the chainring
+    # side -- toward the lens (a phone's back camera does not mirror).
+    if sport == "bike":
+        facing = [f["facing"] for f in good if "facing" in f]
+        if facing and sum(1 for x in facing if x > 0) >= 2 / 3 * len(facing):
+            reasons.append({
+                "code": "drive_side", "level": "check",
+                "text": "This looks like the chainring side. From here the chainring hides the ankle "
+                        "at the bottom of the stroke, so the knee reads low. Film the other side "
+                        "for the saddle-height check.",
+            })
+
+    if any(r["level"] == "no_go" for r in reasons):
+        out["verdict"] = "no_go"
+    elif reasons:
+        out["verdict"] = "check"
+    reasons.sort(key=lambda r: r["level"] != "no_go")
+    return out
+
+
 # ---- pose on the frames ---------------------------------------------------
 
 def _model_path() -> str | None:
@@ -186,7 +278,8 @@ def _model_path() -> str | None:
     return None
 
 
-def scan_images(images: list[bytes], *, photo: bool = False) -> dict[str, Any]:
+def scan_images(images: list[bytes], *, photo: bool = False,
+                video_w: int | None = None, video_h: int | None = None) -> dict[str, Any]:
     """Find a pose in each small JPEG and classify them together. One
     landmarker for all of them: building the heavy model is most of the cost
     of a single detection."""
@@ -213,4 +306,7 @@ def scan_images(images: list[bytes], *, photo: bool = False) -> dict[str, Any]:
                 f = frame_features(res.pose_landmarks[0], img.shape[1], img.shape[0])
                 if f:
                     feats.append(f)
-    return classify(feats, photo=photo)
+    out = classify(feats, photo=photo)
+    out["capture"] = capture_check(feats, sport=out["sport"], video_w=video_w,
+                                   video_h=video_h, photo=photo)
+    return out

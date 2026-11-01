@@ -959,6 +959,58 @@ def _check_informational_metric(
 
 
 # ---------------------------------------------------------------------------
+# How hard each change is to make
+# ---------------------------------------------------------------------------
+# A remote rider has no mechanic. Mike (bike fitter, 2026-11-01): swapping the
+# new aero bars on a disc-brake bike is a shop job, and a plan that lists it
+# next to "raise the saddle 5 mm" as if they cost the same reads as if the
+# fitter never touched a bike. So each change says who makes it:
+#   home    -- an Allen key and five minutes
+#   depends -- at home on one kind of bike, a shop job on another
+#   shop    -- a new part, or hoses and cables to re-route
+_EFFORT_SADDLE_HEIGHT = (
+    "home",
+    "An Allen key on the seatpost clamp. Mark the post first so you can go back.",
+)
+_EFFORT_FORE_AFT = (
+    "home",
+    "An Allen key under the saddle, within the marks on the rails. Further than "
+    "the rails allow needs a different seatpost.",
+)
+_EFFORT_BARS_ROAD = (
+    "depends",
+    "Spacers under a regular stem: at home. An integrated cockpit with the "
+    "hoses inside the bars: a bike shop job.",
+)
+_EFFORT_BARS_AERO = (
+    "depends",
+    "Pad risers or stack spacers on the extensions: often at home. An "
+    "integrated front end with the hoses run inside: a bike shop job.",
+)
+_EFFORT_CRANKS = (
+    "shop",
+    "New cranks, fitted by a shop.",
+)
+
+
+def fix_effort(component: str, action: str, position: str) -> dict[str, str] | None:
+    """Who can make this change, or None when there is nothing to change."""
+    if action in ("reassess_after_saddle_height", "improve_mobility"):
+        return None
+    if component == "saddle_height":
+        level, note = _EFFORT_SADDLE_HEIGHT
+    elif component == "saddle_fore_aft":
+        level, note = _EFFORT_FORE_AFT
+    elif component == "bar_position":
+        level, note = _EFFORT_BARS_AERO if position in AERO_POSITIONS else _EFFORT_BARS_ROAD
+    elif component == "crank_length":
+        level, note = _EFFORT_CRANKS
+    else:
+        return None
+    return {"level": level, "note": note}
+
+
+# ---------------------------------------------------------------------------
 # Serialization
 # ---------------------------------------------------------------------------
 
@@ -984,6 +1036,10 @@ def action_plan_to_json(plan: ActionPlan) -> dict[str, Any]:
                 "reason": d.reason,
                 "priority": d.priority,
                 "linked_to": d.linked_to,
+                "effort": (
+                    fix_effort(d.component, d.action, plan.position)
+                    if d.status == "needs_adjustment" else None
+                ),
             }
             for d in plan.diagnostics
         ],
