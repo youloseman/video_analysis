@@ -2763,26 +2763,26 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 }
 @media(max-width:560px){ .swim-row{grid-template-columns:1fr} }
 
-/* ---- The swim launch (2026-10-31): loud on purpose, for a while ---- */
+/* ---- The swim launch (2026-10-31); the home-screen card went quiet and to the foot 2026-11-02 ---- */
 .new-pill{display:inline-block;margin-left:6px;vertical-align:2px;font:700 10px var(--f-mono);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--c-blue);padding:3px 8px;border-radius:999px}
 /* The swim tile takes its own row, ringed in coral, so it is not one more
    option among the analyses. */
 .modetabs.what button[data-what="swim"]{grid-column:1/-1;border:1.5px solid var(--c-blue);background:color-mix(in srgb,var(--c-blue) 7%,var(--c-bg))}
 .modetabs.what button[data-what="swim"]:hover{background:color-mix(in srgb,var(--c-blue) 12%,var(--c-bg))}
 .modetabs.what button[data-what="swim"]:first-child{border-left:1.5px solid var(--c-blue)}
-.swim-news{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px 22px;align-items:center;margin:0 0 20px;padding:20px 22px;border-radius:var(--radius-card);background:#14294B;color:#fff;border:1px solid #2A4677;border-left:5px solid var(--c-blue)}
-.swim-news-ic{width:60px;height:60px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);color:#AFC3E8}
-.swim-news-ic .ic{width:32px;height:32px}
-.swim-news-t{display:flex;flex-direction:column;gap:6px;min-width:0}
-.swim-news-eye{display:flex;align-items:center;gap:10px;margin:0;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:#AFC3E8}
+.swim-news{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px 18px;align-items:center;margin:20px 0 0;padding:16px 18px;border-radius:var(--radius-card);background:var(--c-panel);color:var(--c-ink);border:1px solid var(--c-line)}
+.swim-news-ic{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:var(--c-bg);border:1px solid var(--c-line);color:var(--c-ink-soft)}
+.swim-news-ic .ic{width:24px;height:24px}
+.swim-news-t{display:flex;flex-direction:column;gap:4px;min-width:0}
+.swim-news-eye{display:flex;align-items:center;gap:10px;margin:0;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-soft)}
 .swim-news-eye .new-pill{margin-left:0}
-.swim-news-plan{margin:4px 0 0;padding-top:8px;border-top:1px solid rgba(255,255,255,.14);font-size:13px;line-height:1.45;color:#CFDBF2}
-.swim-news-plan b{color:#fff}
-.swim-news h2{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:24px;line-height:1.15;color:#fff}
-.swim-news-t>p:last-child{margin:0;font-size:15px;line-height:1.5;color:#DCE5F5}
+.swim-news-plan{margin:2px 0 0;font-size:13px;line-height:1.45;color:var(--c-ink-soft)}
+.swim-news-plan b{color:var(--c-ink)}
+.swim-news h2{margin:0;font-size:17px;font-weight:600;line-height:1.3;color:var(--c-ink)}
+.swim-news-t>p:last-child{margin:0;font-size:14px;line-height:1.5;color:var(--c-ink-soft)}
 .swim-news-cta{display:flex;align-items:center;gap:8px}
-.swim-news-x{width:40px;height:40px;border:0;border-radius:999px;background:transparent;color:#AFC3E8;font-size:24px;line-height:1;cursor:pointer}
-.swim-news-x:hover{background:rgba(255,255,255,.1);color:#fff}
+.swim-news-x{width:36px;height:36px;border:0;border-radius:999px;background:transparent;color:var(--c-ink-soft);font-size:22px;line-height:1;cursor:pointer}
+.swim-news-x:hover{background:var(--c-bg);color:var(--c-ink)}
 @media (max-width:640px){
   .swim-news{grid-template-columns:minmax(0,1fr) auto;padding:18px 16px}
   .swim-news-ic{display:none}

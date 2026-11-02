@@ -390,8 +390,6 @@
     </div>
     <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
     <div id="dashReview"></div>
-    <!-- The swim launch, until it is closed or a swim clip is sent. -->
-    <div id="dashSwim"></div>
     <!-- First run: the welcome, and nothing else (.dash-empty hides the rest). -->
     <div id="dashSummary" class="dash-summary"></div>
     <!-- A dashboard reads top-down: where you stand (a tile per sport, then the
@@ -406,6 +404,9 @@
     <div class="dvis"><div id="dashThen"></div><div id="dashKona"></div></div>
     <div class="dgrid"><div id="dashFocus"></div><div id="dashPlan"></div></div>
     <div id="dashForm"></div>
+    <!-- The swim review, last: the page is about your technique first. Until
+         it is closed or a swim clip is sent. -->
+    <div id="dashSwim"></div>
   </section>
 
   <!-- ============ UPLOADER ============ -->
@@ -12656,8 +12657,9 @@ function renderDashboard(){
   renderDashFocus(all);
   renderDashPlan(all);
 }
-/* The swim launch on the home screen. Gone for good once closed, and not
-   shown to anyone who has already sent a swim clip -- they found it. */
+/* The swim review at the foot of the home screen (Artur 2026-11-02: at the
+   top it read as an ad). Gone for good once closed, and not shown to anyone
+   who has already sent a swim clip -- they found it. */
 const SWIM_NEWS_KEY='flapp_swim_news_closed';
 function renderDashSwim(){
   const host=$('#dashSwim'); if(!host) return;
@@ -12672,7 +12674,7 @@ function renderDashSwim(){
       ${swimPlan()?`<p class="swim-news-plan">${swimPlanBanner(swimPlan())}</p>`:''}
     </div>
     <div class="swim-news-cta">
-      <button class="btn btn-primary" type="button" id="swNewsGo">Send a swim clip</button>
+      <button class="btn btn-ghost" type="button" id="swNewsGo">Send a swim clip</button>
       <button class="swim-news-x" type="button" id="swNewsX" aria-label="Close">&times;</button>
     </div>
   </div>`;
