@@ -189,10 +189,13 @@ def test_the_home_page_coach_buttons_open_the_form_not_the_app():
 
 def test_the_form_shows_an_unsigned_example_for_each_sport_and_product():
     examples = pricing._guest_examples()
-    assert examples.count('class="go-excard"') == 6
-    for plan in ("notes", "expert"):
-        for sport in ("bike", "run", "swim"):
-            assert f'data-plan="{plan}" data-sport="{sport}"' in examples
-    # our wording, so never under the coach's name
-    assert "Kovalenko" not in examples and "Illustrative wording" in examples
+    assert examples.count('class="go-excard"') == 4
+    for sport in ("bike", "run", "swim"):
+        assert f'data-plan="notes" data-sport="{sport}"' in examples
+    # the app's whole sample review, for any sport, with no PDF promised
+    assert 'data-plan="expert" data-sport="any"' in examples
+    assert "Land closer to your hips" in examples and "When to film again" in examples
+    assert "PDF" not in examples
+    # not under anyone's name
+    assert "Kovalenko" not in examples and "Podgornyi" not in examples
     assert 'id="goEx"' in pricing.render_landing_pricing()

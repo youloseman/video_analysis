@@ -1983,7 +1983,7 @@ var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
     // The example follows what they picked: these notes, for this sport.
     var plan=p?p.value:'notes';
     [].forEach.call(form.querySelectorAll('.go-excard'),function(c){
-      c.hidden=!(c.getAttribute('data-plan')===plan&&c.getAttribute('data-sport')===sport); });
+      var s=c.getAttribute('data-sport'); c.hidden=!(c.getAttribute('data-plan')===plan&&(s===sport||s==='any')); });
     go.textContent='Upload and pay '+(p?p.getAttribute('data-price'):'');
   }
   form.addEventListener('change',sync);

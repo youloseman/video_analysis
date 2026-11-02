@@ -1049,8 +1049,9 @@ GUEST_STROKES = (("freestyle", "Freestyle"), ("breaststroke", "Breaststroke"),
 
 
 # What a guest gets, shown before they pay: Coach Notes as they land on the
-# report (the first thing, three notes) and the opening of an Expert Review.
-# Our wording, shown unsigned; swap in Bogdan's own once he writes them
+# report (the first thing, three notes); the Expert Review shows the app's
+# whole sample. Notes wording is ours, shown unsigned; swap in Bogdan's own
+# once he writes them
 # (Artur, 2026-11-01).
 GUEST_NOTES_EXAMPLES = {
     "bike": (
@@ -1078,32 +1079,6 @@ GUEST_NOTES_EXAMPLES = {
          "put it in in front of the shoulder."),
     ),
 }
-GUEST_REVIEW_EXAMPLES = {
-    "bike": (
-        "The position is close. It's the saddle that's wrong, not the bike: you sit too far back, so your "
-        "arms carry nothing and your back does the work. Fore-aft first, then height, then the cockpit.",
-        ("Saddle forward, bars with it",
-         "Hips behind the cranks: the pads carry no weight and the lower back holds you up.",
-         "Saddle 1–1.5 cm forward, base bar the same. Ride it for a week before touching anything else.",
-         "Next clip: elbow under the shoulder, knee about 140° at the bottom of the stroke."),
-    ),
-    "run": (
-        "Your cadence isn't the problem. You land with the foot well ahead of your hips and brake on "
-        "every step; the low cadence is a symptom of that reach. Fix where the foot lands and it comes up.",
-        ("Land closer to your hips",
-         "The straight knee at landing sends the shock up the shin — that's where shin splints come from.",
-         "Don't reach for the ground. Pull the foot back under you just before it lands: 'land under the hip'.",
-         "Next clip: shin within about 5° of vertical at contact, knee soft, not locked."),
-    ),
-    "swim": (
-        "You're a strong swimmer dragging your legs. The head position sinks the hips; fix that and the "
-        "rest gets easier. Breathing second, the left-arm entry third.",
-        ("Head down",
-         "Looking forward lifts the chest and drops the hips, so the legs hang in the water like an anchor.",
-         "6×50 m with a snorkel, eyes on the black line. Then the same without it, keeping the head still.",
-         "Next clip: heels break the surface, and the back of the head is level with the water."),
-    ),
-}
 
 
 def _guest_examples() -> str:
@@ -1122,18 +1097,38 @@ def _guest_examples() -> str:
             '<p class="go-exeye">Coach Notes · example, not your clip</p>'
             f'<p class="go-exfirst"><span>First thing to change</span>{first}</p>'
             f"<ol>{lis}</ol>{by(sport)}</div>")
-    for sport, (verdict, (title, why, change, check)) in GUEST_REVIEW_EXAMPLES.items():
-        out.append(
-            f'<div class="go-excard" data-plan="expert" data-sport="{sport}" hidden>'
-            '<p class="go-exeye">Expert Review · example, not your clip</p>'
-            f'<p class="go-exverdict"><span>The coach\'s verdict</span>{verdict}</p>'
-            f'<div class="go-expri"><b>Priority 1 · {title}</b>'
-            f"<p><i>Why</i>{why}</p><p><i>Change</i>{change}</p><p><i>Check</i>{check}</p></div>"
-            '<p class="go-exmore">Also in the review: two more priorities with drills · a 4-week plan · '
-            "what not to change · when to film again · a PDF to keep</p>"
-            f'{by(sport)}<a class="go-exlink" href="{SAMPLE_REVIEW_PDF}" target="_blank" rel="noopener">'
-            f"See a full sample review{'' if sport == 'run' else ' (a running one)'}, PDF →</a></div>")
+    out.append(_review_sample())
     return "".join(out)
+
+
+def _review_sample() -> str:
+    """The whole sample Expert Review, the one the app's pricing page shows,
+    for every sport until the coach's own bike sample is approved. Unsigned,
+    and no PDF promised (Artur, 2026-11-01)."""
+    from app.services.expert_review import SAMPLE_CONTEXT, SAMPLE_REPORT
+    from app.services.review_pdf import _e, _md
+
+    r = SAMPLE_REPORT
+
+    def sec(title: str, body: str) -> str:
+        return f'<div class="go-exsec"><span>{title}</span>{body}</div>' if body else ""
+
+    prios = "".join(
+        f'<div class="go-expri"><b>Priority {i} · {_e(p["title"])}</b>'
+        f'<p><i>What I see</i>{_e(p["why"])}</p><p><i>What to do</i>{_e(p["change"])}</p>'
+        f'<p><i>How you\'ll know</i>{_e(p["check"])}</p></div>'
+        for i, p in enumerate(r["priorities"], 1))
+    return (
+        '<div class="go-excard" data-plan="expert" data-sport="any" hidden>'
+        f'<p class="go-exeye">Expert Review · sample · {_e(SAMPLE_CONTEXT["when"])}</p>'
+        f'<div class="go-exverdict"><span>The verdict</span>{_md(r["verdict"])}</div>'
+        + sec("What I see", _md(r["seen"]))
+        + sec("What's already working", _md(r["working"]))
+        + sec("Fix these, in this order", prios)
+        + sec("The next four weeks", _md(r["plan"]))
+        + sec("Don't change this", _md(r["dont_change"]))
+        + sec("When to film again", _md(r["retest"]))
+        + '<p class="go-exby">A sample. Yours is written for your own clip.</p></div>')
 
 
 def guest_dialog() -> str:
@@ -1221,7 +1216,11 @@ GUEST_CSS = """
 .go-exmore{color:var(--c-ink-soft);font-size:13px}
 .go-exby{color:var(--c-ink-faint);font-size:13px}
 .go-exby b{color:var(--c-ink);font-weight:600}
-.go-exlink{font-size:13.5px;font-weight:600}
+.go-exverdict{font-weight:500}
+.go-exsec{display:flex;flex-direction:column;gap:6px;color:var(--c-ink-soft)}
+.go-exsec>span{font:500 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint)}
+.go-exsec b,.go-exverdict b{color:var(--c-ink)}
+.go-exverdict p+p,.go-exsec p+p{margin-top:6px}
 .go-tip{margin:0;padding:10px 12px;border-radius:8px;background:var(--c-panel);font-size:13.5px;color:var(--c-ink-soft)}
 .go-field{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:14px}
 .go-field i,.go-check i{font-style:normal;font-weight:400;color:var(--c-ink-faint)}
