@@ -2538,7 +2538,13 @@ function setFile(f){
   const vid=$('#preview'), img=$('#previewImg');
   if(photo){ img.src=url; img.classList.remove('hidden'); vid.classList.add('hidden'); vid.removeAttribute('src'); }
   else {
-    vid.src=url; vid.classList.remove('hidden'); img.classList.add('hidden'); img.removeAttribute('src');
+    // iOS paints nothing for a picked clip until it plays: the athlete saw a
+    // black box and could not tell whether the upload had taken (Artur,
+    // 2026-11-02). Ask for the metadata and a frame just past the start, and
+    // the prescan hangs one of its own frames on it as the poster below.
+    setPreviewPoster(null);
+    vid.preload='metadata';
+    vid.src=url+'#t=0.1'; vid.classList.remove('hidden'); img.classList.add('hidden'); img.removeAttribute('src');
     // Decided by what the element actually managed to load, not by sniffing the
     // filename: plenty of .MOV files play fine, and plenty of .mp4 files do not.
     const place=$('#previewPlace');
@@ -2596,6 +2602,18 @@ function posRemembered(cat){
 }
 const FAMILY_NAME={aero:'Aero',road:'Road',upright:'Upright'};
 
+/* A canvas as a JPEG Blob, through toDataURL rather than toBlob. Chromium
+   encodes toBlob (and OffscreenCanvas.convertToBlob) as an idle-time task,
+   and an Android WebView with a <video> on the page has no idle time: each
+   call waited out a ~4 s timeout, so reading a clip took 31 s on a moto g
+   play (Android 16) where toDataURL encodes the same frame in ~11 ms. */
+async function canvasJpeg(c,q){
+  try{
+    const u=c.toDataURL('image/jpeg',q), bin=atob(u.slice(u.indexOf(',')+1));
+    const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
+    return new Blob([a],{type:'image/jpeg'});
+  }catch(e){ return await new Promise(r=>c.toBlob(r,'image/jpeg',q)); }
+}
 /* Six small frames cut out of the clip the browser already holds -- the
    upload itself waits for the Analyze button as before. */
 async function grabFrames(file,n=6){
@@ -2612,7 +2630,7 @@ async function grabFrames(file,n=6){
     for(let i=0;i<n;i++){
       const seek=wait('seeked',3000); v.currentTime=v.duration*(0.15+0.7*i/(n-1)); await seek;
       g.drawImage(v,0,0,c.width,c.height);
-      const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.8)); if(b) out.push(b);
+      const b=await canvasJpeg(c,0.8); if(b) out.push(b);
     }
     return out;
   }catch(e){ return []; }
@@ -2624,7 +2642,7 @@ async function grabPhoto(file){
     const k=Math.min(1,1024/Math.max(bmp.width,bmp.height));
     const c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
     c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
-    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85)); return b?[b]:[];
+    const b=await canvasJpeg(c,0.85); return b?[b]:[];
   }catch(e){ return []; }   // HEIC outside Safari: the athlete picks, as before
 }
 async function prescanClip(file){
@@ -2634,12 +2652,22 @@ async function prescanClip(file){
   const frames=photo?await grabPhoto(file):await grabFrames(file);
   if(state.prescanTok!==tok||state.file!==file) return;
   if(!frames.length){ scanNote(null); return; }
+  if(!photo) setPreviewPoster(frames[0]);
   const fd=new FormData(); frames.forEach((b,i)=>fd.append('frames',b,`f${i}.jpg`)); fd.append('mode',photo?'photo':'video');
   if(frames.dims){ fd.append('video_w',frames.dims[0]); fd.append('video_h',frames.dims[1]); }
   let j=null;
   try{ const r=await fetch('/prescan',{method:'POST',body:fd}); if(r.ok) j=await r.json(); }catch(e){}
   if(state.prescanTok!==tok||state.file!==file) return;
   applyPrescan(j);
+}
+/* The prescan's first frame (15 % in) as the preview's poster: a picture of
+   the athlete says "your clip is in" where a black box said nothing. */
+let previewPosterUrl=null;
+function setPreviewPoster(blob){
+  const vid=$('#preview'); if(!vid) return;
+  if(previewPosterUrl){ URL.revokeObjectURL(previewPosterUrl); previewPosterUrl=null; }
+  if(blob){ previewPosterUrl=URL.createObjectURL(blob); vid.poster=previewPosterUrl; }
+  else vid.removeAttribute('poster');
 }
 function applyPrescan(j){
   renderCapCheck(j&&j.capture);
@@ -10065,10 +10093,10 @@ async function buildShareCard(card){
 
   // JPEG, not PNG: the card is a photograph under type, so PNG's lossless
   // encoding bought nothing and cost 2-4 MB per share (and the quality argument
-  // passed to toBlob was silently ignored for PNG anyway). At q=0.9 this lands
+  // passed to the encoder was silently ignored for PNG anyway). At q=0.9 this lands
   // around 300 KB with no visible difference. The ground fills the canvas
   // first, so there's no alpha to lose.
-  return await new Promise(res=>cv.toBlob(b=>res(b),'image/jpeg',0.9));
+  return await canvasJpeg(cv,0.9);
 }
 /* toast(msg) — plain message; toast(msg,{action,onAction,duration}) adds an
    inline action button (e.g. Undo). */
@@ -10311,7 +10339,7 @@ function reset(keepFile=false){
     // Network-ish failure: keep the clip loaded so "Try again" is one click.
     drop.classList.remove('err');
   } else {
-    state.prescanTok=null; scanNote(null); renderCapCheck(null);
+    state.prescanTok=null; scanNote(null); renderCapCheck(null); setPreviewPoster(null);
     state.file=null; state.fileB=null; pairRevoke('a'); pairRevoke('b');
     fileInput.value=''; fileInput.removeAttribute('tabindex');
     drop.classList.remove('hidden','err'); fprev.classList.remove('show');
