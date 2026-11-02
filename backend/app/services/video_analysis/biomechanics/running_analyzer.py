@@ -26,6 +26,7 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
     calculate_signed_segment_to_vertical,
 )
 from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
+from app.services.video_analysis.biomechanics.cycling_analyzer import _image_plane
 from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
 from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
 
@@ -166,8 +167,19 @@ GROUND_CONTACT_PHASES: frozenset[str] = frozenset({
 class RunningAnalyzer(SportAnalyzer):
     """Analyzer for running technique -- near-side only."""
 
-    def __init__(self, fps: float = 30.0, height_cm: float | None = None):
+    def __init__(
+        self, fps: float = 30.0, height_cm: float | None = None,
+        frame_aspect: float | None = None,
+    ):
         super().__init__(sport_type="run", fps=fps)
+        # Frame W/H. When known, joint angles and trunk lean are measured on
+        # the IMAGE landmarks in true proportions -- the skeleton the overlay
+        # draws -- as the bike (219c20c) and the run photo already are, not on
+        # MediaPipe's world skeleton. The world skeleton read an elite
+        # runner's knee at contact 150.6 deg where the picture shows 156-160
+        # (IMG_5455), and IMG_4004 163 vs 172 (2026-11-02). None keeps the
+        # legacy world path for callers that do not know the frame.
+        self.frame_aspect = frame_aspect
         self.near_ankle_y_history: deque[float] = deque(maxlen=int(fps * 2))
         self.hip_center_y_history: deque[float] = deque(maxlen=int(fps * 2))
         self.prev_near_phase = GaitPhase.UNKNOWN
@@ -1313,6 +1325,11 @@ class RunningAnalyzer(SportAnalyzer):
         """
         wl = world_landmarks
         nl = normalized_landmarks
+        # What the angles are measured on (see __init__: frame_aspect).
+        al = (
+            [_image_plane(lm, self.frame_aspect) for lm in nl]
+            if self.frame_aspect and nl is not None else wl
+        )
 
         # Estimate body scale on first frame
         if not self._body_scale_estimated:
@@ -1327,13 +1344,13 @@ class RunningAnalyzer(SportAnalyzer):
         visibility: dict[str, float] = {}
 
         for joint_name, (idx_a, idx_b, idx_c) in angle_defs.items():
-            angle_val, vis = calculate_angle_2d(wl, idx_a, idx_b, idx_c)
+            angle_val, vis = calculate_angle_2d(al, idx_a, idx_b, idx_c)
             angles[joint_name] = angle_val
             visibility[joint_name] = vis
 
         # Ankle: shank axis vs foot axis (see RUNNING_ANKLE_LANDMARKS).
         k_i, a_i, h_i, t_i = RUNNING_ANKLE_LANDMARKS[near]
-        ankle_val, ankle_vis = calculate_shank_foot_angle_2d(wl, k_i, a_i, h_i, t_i)
+        ankle_val, ankle_vis = calculate_shank_foot_angle_2d(al, k_i, a_i, h_i, t_i)
         angles["ankle"] = ankle_val
         visibility["ankle"] = ankle_vis
 
@@ -1349,7 +1366,7 @@ class RunningAnalyzer(SportAnalyzer):
         # whose sign nobody can vouch for.
         sh_idx, hp_idx = TRUNK_LANDMARKS[near]
         trunk_val = calculate_signed_segment_to_vertical(
-            wl, sh_idx, hp_idx, calculate_forward_sign(wl),
+            al, sh_idx, hp_idx, calculate_forward_sign(al),
         )
         angles["trunk"] = trunk_val
         self.trunk_lean_values.append(trunk_val)

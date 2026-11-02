@@ -97,3 +97,28 @@ def test_overstride_is_shown_not_scored():
     reaching = score_running(dict(_summary(), overstride_ratio=0.49), _knee(48.0))
     assert "overstride" not in reaching["component_scores"]
     assert "overstride_ratio" not in reference_bands("run")
+
+
+def test_run_angles_are_measured_on_the_image_when_the_frame_is_known():
+    """As the bike and the run photo: the world skeleton read the elite's knee
+    at contact 150.6 deg where the picture shows ~156-160 (IMG_5455)."""
+    from app.services.video_analysis.biomechanics.running_analyzer import RunningAnalyzer
+
+    aspect = 9 / 16                       # portrait phone clip
+    # A right angle at the knee IN PIXELS: hip straight above, ankle straight
+    # ahead. Normalized x is a fraction of the (narrow) width, so divide by it.
+    def nl_pt(px_x, px_y):
+        return SimpleNamespace(x=px_x / aspect, y=px_y, z=0.0, visibility=1.0)
+    nl = [nl_pt(0.30, 0.50) for _ in range(33)]
+    nl[24], nl[26], nl[28] = nl_pt(0.30, 0.40), nl_pt(0.30, 0.60), nl_pt(0.50, 0.60)
+    # A world skeleton that disagrees (a straight leg).
+    wl = [SimpleNamespace(x=0.0, y=0.0, z=0.0, visibility=1.0) for _ in range(33)]
+    wl[24], wl[26], wl[28] = (SimpleNamespace(x=0.0, y=y, z=0.0, visibility=1.0) for y in (-0.4, 0.0, 0.4))
+
+    image = RunningAnalyzer(fps=30.0, frame_aspect=aspect)
+    image.camera_side = "right"
+    assert abs(image.analyze_frame(wl, nl, 0.0).angles["knee"] - 90.0) < 0.5
+
+    legacy = RunningAnalyzer(fps=30.0)
+    legacy.camera_side = "right"
+    assert legacy.analyze_frame(wl, nl, 0.0).angles["knee"] > 170.0

@@ -988,7 +988,13 @@ def analyze_from_frames(
         if hasattr(analyzer, "_near_side"):
             analyzer._near_side = locked_side
     else:
-        analyzer = RunningAnalyzer(fps=fps, height_cm=athlete_height_cm)
+        # Same switch as the bike's: angles on the image, not the world skeleton.
+        _fw = raw_frame_data[0].get("frame_width") if raw_frame_data else None
+        _fh = raw_frame_data[0].get("frame_height") if raw_frame_data else None
+        analyzer = RunningAnalyzer(
+            fps=fps, height_cm=athlete_height_cm,
+            frame_aspect=(_fw / _fh) if _fw and _fh else None,
+        )
         # Vote the camera side over the WHOLE clip BEFORE measuring anything.
         # The vote itself is unchanged (same per-frame test, same majority and
         # tie rule as finalize_camera_side) -- it just happens up front now.
