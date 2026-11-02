@@ -419,17 +419,20 @@ app.add_middleware(SecurityHeadersMiddleware)
 #
 # The one legitimate cross-origin caller is the mobile shell (mobile/): the
 # same SPA bundled into a Capacitor WebView, which runs on capacitor://localhost
-# (iOS) or http://localhost (Android) and calls this API by absolute URL. Those
-# two origins are always allowed -- a web page cannot forge a capacitor://
-# origin, and http://localhost is only ever a developer's own machine. Without
-# them every request from the installed app dies on the preflight and the app
-# reports "Network error" for a login that works in Safari.
+# (iOS) or https://localhost (Android: Capacitor's default androidScheme has
+# been https since 6) and calls this API by absolute URL. Those origins are
+# always allowed -- a web page cannot forge a capacitor:// origin, and
+# localhost is only ever the device itself or a developer's own machine.
+# Without them every request from the installed app dies on the preflight and
+# the app reports "Network error" for a login that works in the browser. The
+# Android one was missing until the app first ran on a phone (2026-11-01):
+# http://localhost was listed on the assumption of the old default.
 #
 # So: VA_CORS_ORIGINS="*" opts back into the old permissive behaviour; an
 # explicit comma-separated list is added ON TOP of the native origins;
 # otherwise wildcard locally (a frontend on :3000 during development) and, in
 # production, the native app origins only.
-NATIVE_APP_ORIGINS = ["capacitor://localhost", "http://localhost"]
+NATIVE_APP_ORIGINS = ["capacitor://localhost", "https://localhost", "http://localhost"]
 
 
 def cors_origins(env: Mapping[str, str] = os.environ) -> list[str]:
