@@ -139,3 +139,12 @@ def test_the_system_bar_strips_stay_legible() -> None:
     x = STYLES.read_text(encoding="utf-8")
     assert "android:windowLightStatusBar" in x
     assert "android:windowBackground" in x
+
+
+def test_min_sdk_meets_play_upload_floor() -> None:
+    """Play refused the first upload: 'automatic protection requires a minimum
+    SDK version of 24'. Capacitor's template writes 23."""
+    import re
+    src = (ROOT / "mobile" / "android" / "variables.gradle").read_text(encoding="utf-8")
+    m = re.search(r"minSdkVersion\s*=\s*(\d+)", src)
+    assert m and int(m.group(1)) >= 24

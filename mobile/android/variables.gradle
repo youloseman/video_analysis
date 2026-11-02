@@ -1,5 +1,7 @@
 ext {
-    minSdkVersion = 23
+    // Play's automatic protection refuses a bundle below 24 at upload (first
+    // seen 2026-11-01); Capacitor's template writes 23 and `cap add` restores it.
+    minSdkVersion = 24
     compileSdkVersion = 35
     targetSdkVersion = 35
     androidxActivityVersion = '1.9.2'

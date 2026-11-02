@@ -39,6 +39,14 @@ if (existsSync(gradle)) {
   if (!g.includes('signingConfig signingConfigs.release')) fails.push('android release build has no signing config');
 }
 
+// Play refuses the upload outright below 24 ("Play automatic protection
+// requires a minimum SDK version of 24"); the Capacitor template says 23.
+const vars = join(mobileDir, 'android/variables.gradle');
+if (existsSync(vars)) {
+  const m = readFileSync(vars, 'utf8').match(/minSdkVersion\s*=\s*(\d+)/);
+  if (!m || Number(m[1]) < 24) fails.push(`android minSdkVersion is ${m ? m[1] : 'missing'} -- Play refuses a bundle below 24`);
+}
+
 const styles = join(mobileDir, 'android/app/src/main/res/values/styles.xml');
 if (existsSync(styles)) {
   const x = readFileSync(styles, 'utf8');
