@@ -185,3 +185,14 @@ def test_the_home_page_coach_buttons_open_the_form_not_the_app():
     assert "Coach Notes · US$12" in landing
     # The app keeps its own buttons.
     assert "data-guest-order" not in pricing.render_pricing("app")
+
+
+def test_the_form_shows_an_unsigned_example_for_each_sport_and_product():
+    examples = pricing._guest_examples()
+    assert examples.count('class="go-excard"') == 6
+    for plan in ("notes", "expert"):
+        for sport in ("bike", "run", "swim"):
+            assert f'data-plan="{plan}" data-sport="{sport}"' in examples
+    # our wording, so never under the coach's name
+    assert "Kovalenko" not in examples and "Illustrative wording" in examples
+    assert 'id="goEx"' in pricing.render_landing_pricing()

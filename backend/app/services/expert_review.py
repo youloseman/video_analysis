@@ -557,7 +557,7 @@ def notes_ready_email(
         'padding:12px 20px;border-radius:8px;display:inline-block;'
         'font-weight:600">Read the three notes</a></p>'
         '<p style="font-size:13px;color:#5A6478;margin:0">They sit on the report '
-        'they are about, and print and export with it.</p>'
+        'they are about. Open it any time from History.</p>'
         + (f'<p style="font-size:14px;margin:18px 0 0">{_esc(recheck)}</p>' if recheck else '')
         + '</div>'
     )

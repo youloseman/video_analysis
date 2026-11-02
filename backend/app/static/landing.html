@@ -1980,9 +1980,14 @@ var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
     var sport=val('sport'), p=form.querySelector('input[name="plan"]:checked');
     [].forEach.call(form.querySelectorAll('.go-tip'),function(t){ t.hidden=t.getAttribute('data-for')!==sport; });
     [].forEach.call(form.querySelectorAll('[data-only]'),function(f){ f.hidden=f.getAttribute('data-only')!==sport; });
+    // The example follows what they picked: these notes, for this sport.
+    var plan=p?p.value:'notes';
+    [].forEach.call(form.querySelectorAll('.go-excard'),function(c){
+      c.hidden=!(c.getAttribute('data-plan')===plan&&c.getAttribute('data-sport')===sport); });
     go.textContent='Upload and pay '+(p?p.getAttribute('data-price'):'');
   }
   form.addEventListener('change',sync);
+  $id('goEx').addEventListener('toggle',function(){ if(this.open) track('guest_example_opened',{sport:val('sport'),plan:val('plan')}); });
   function signedIn(){ try{ return !!localStorage.getItem('flapp_token'); }catch(e){ return false; } }
   document.addEventListener('click',function(e){
     var b=e.target.closest&&e.target.closest('[data-guest-order]'); if(!b) return;

@@ -69,6 +69,27 @@ def test_page_renders_without_figures_or_fit():
     assert "Kinogram" not in page and "class='fit'" not in page
 
 
+RUN_RESULT = {
+    "sport_type": "run",
+    "technique_score": 74,
+    "letter_grade": "C",
+    "training_plan": {"issues": [{"metric": "cadence_spm", "label": "Cadence", "value": 163,
+                                  "range": [170, 190], "severity": "moderate"}]},
+}
+
+
+def test_a_run_review_carries_no_bike_rows():
+    page = render_review_html({"verdict": "v"}, RUN_RESULT, {"kinogram": "data:image/jpeg;base64,AAA"})
+    assert "Helmet above the back" not in page and "Kona 2026" not in page
+    assert "Not measured" not in page and "pedal revolution" not in page
+    assert "One stride" in page and "Your running, read by a coach." in page
+
+
+def test_a_run_review_with_nothing_measured_has_no_numbers_page():
+    page = render_review_html({"verdict": "v"}, {"sport_type": "run"}, {})
+    assert "The numbers behind it" not in page
+
+
 def test_capture_warnings_close_the_numbers_page():
     page = render_review_html({"verdict": "v"}, RESULT | {"warnings": ["Filmed from the drive side"]}, {})
     assert page.index("The numbers behind it") < page.index("Filmed from the drive side")

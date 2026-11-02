@@ -33,6 +33,11 @@ _BIKE_ROWS: tuple[tuple[str, str, str, tuple[float, float]], ...] = (
     ("pelvic_ratio", "Pelvis rocking (ratio)", "", (1, 6)),
     ("helmet_above_back", "Helmet above the back", "%", (0, 40)),
 )
+_SUBTITLE = {
+    "bike": "Your position, read by a coach.",
+    "run": "Your running, read by a coach.",
+    "swim": "Your stroke, read by a coach.",
+}
 _STATUS_WORD = {"good": "In range", "warn": "At the edge", "bad": "Outside", "info": "Measured", "na": "Not measured"}
 
 
@@ -251,14 +256,22 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
     coach's eye on the clip, and the measured angles are the appendix that
     supports it -- not the page the coach reacts to.
     """
+    # report_pdf imports from this module, so its run rows come in late.
+    from app.services.report_pdf import plan_rows
+
     r = report or {}
-    rows = metric_rows(result)
+    sport = result.get("sport_type") or result.get("sport") or ""
+    bike = sport == "bike"
+    # The angle table, the helmet row and the Kona pro field are a bike's;
+    # a run's numbers are the ones its plan already judged (as in report_pdf).
+    rows = metric_rows(result) if bike else plan_rows(result)
     side = result.get("camera_side")
     facts = [
         ("Athlete", meta.get("athlete")),
-        ("Position", meta.get("position_label") or str(result.get("cycling_position") or "").replace("_", " ")),
+        ("Position", (meta.get("position_label") or str(result.get("cycling_position") or "").replace("_", " "))
+         if bike else None),
         ("Filmed", meta.get("filmed")),
-        ("Camera", f"{side} side" + (" · chainring side" if side == "right" else "") if side else None),
+        ("Camera", f"{side} side" + (" · chainring side" if bike and side == "right" else "") if side else None),
         ("Coach", r.get("reviewer")),
         ("Delivered", meta.get("date")),
     ]
@@ -298,12 +311,12 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
   <div class="cover-band">
     <div class="brand">Flapp<span class="dot">.</span></div>
     <h1>Expert Review</h1>
-    <div class="sub">Your position, read by a coach.</div>
+    <div class="sub">{_SUBTITLE.get(sport, _SUBTITLE["bike"])}</div>
     <div class="cover-grid">{_ring(result.get('technique_score'), result.get('letter_grade'))}<dl class="facts">{facts_html}</dl></div>
   </div>
   <div class="eyebrow" style="margin-top:16px">The verdict</div>
   <div class="verdict">{_md(r.get('verdict'))}</div>
-  {f'<div class="eyebrow">One pedal revolution · top, bottom and 45° either side</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure>' if kino else ''}
+  {f'<div class="eyebrow">{"One pedal revolution · top, bottom and 45° either side" if bike else "One stride, five positions"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure>' if kino else ''}
   {head("The coach's read", "What I see") + f"<div class='seen'>{_md(r.get('seen'))}</div>" if r.get('seen') else ''}
   {f"<div class='working'><h3>What's already working</h3>{_md(r.get('working'))}</div>" if r.get('working') else ''}
   {head('The plan', 'Fix these, in this order') + prios if prios else ''}
@@ -320,9 +333,9 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
   {head('Appendix', 'The numbers behind it')}
   <p class="lead">Measured by Flapp from your clip. Your coach used them as support — where the eye and the numbers disagree, the review follows the eye.</p>
   <div class="legend"><span><i><svg width="26" height="10"><rect x="1" y="1" width="24" height="8" rx="2" fill="#E6F4EC" stroke="#2E9E5B"/></svg></i>Flapp range</span>
-    <span><i><svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#14294B" stroke-width="3" stroke-linecap="round"/></svg></i>Kona 2026 pros, middle half · tick = median</span>
+    {'<span><i><svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#14294B" stroke-width="3" stroke-linecap="round"/></svg></i>Kona 2026 pros, middle half · tick = median</span>' if bike else ''}
     <span><i><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#2F6DE0"/></svg></i>You</span></div>
-  <table class="nums"><tr><th>Angle</th><th>You</th><th></th><th>Range</th><th>Pros</th><th></th></tr>{num_rows}</table>
+  <table class="nums"><tr><th>{"Angle" if bike else "Measure"}</th><th>You</th><th></th><th>Range</th><th>{"Pros" if bike else ""}</th><th></th></tr>{num_rows}</table>
   <div class="kf">
     {f'<div><img src="{kf}" alt="The frame the angles were read on"><p class="cap">The frame your angles were read on.</p></div>' if kf else '<div></div>'}
     <div>{sec('About the measurements', _capture(result, meta))}{sec('How much to trust these numbers', _md(r.get('trust')))}{sec("What this footage couldn't tell", _md(r.get('caveats')))}</div>

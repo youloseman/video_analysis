@@ -631,7 +631,7 @@ COACH_POINTS = (
 COACH_ROWS = (
     ("Take it when", "You have one report and one question",
      "A race is coming, something hurts, or you got a new bike"),
-    ("You get", "The first thing to change, and 3 notes pinned on your frames",
+    ("You get", "The first thing to change, and 3 short notes on your report",
      "What he sees, what to fix in what order for 4 weeks, drills, and what to "
      "film to check it worked. Written for you, not copied from a list"),
     ("Arrives as", "Notes inside your report", "A PDF to keep, your numbers at the back"),
@@ -1048,6 +1048,94 @@ GUEST_STROKES = (("freestyle", "Freestyle"), ("breaststroke", "Breaststroke"),
                  ("backstroke", "Backstroke"), ("butterfly", "Butterfly"))
 
 
+# What a guest gets, shown before they pay: Coach Notes as they land on the
+# report (the first thing, three notes) and the opening of an Expert Review.
+# Our wording, shown unsigned; swap in Bogdan's own once he writes them
+# (Artur, 2026-11-01).
+GUEST_NOTES_EXAMPLES = {
+    "bike": (
+        "Slide the saddle forward 1–1.5 cm and bring the bars with it — you're sitting behind the bike, mate.",
+        ("Your hips are well behind the cranks, so your arms just rest on the pads with no weight on them. "
+         "Moving forward puts you over the pedals and takes the load off your lower back.",
+         "Once the saddle's forward, check the height again. Forward makes it effectively lower, "
+         "so it may want 3–5 mm up.",
+         "Your knee comes close to your chest at the top of the stroke. Not urgent, but if it still feels "
+         "jammed after the move, shorter cranks are the next thing to try."),
+    ),
+    "run": (
+        "Stop reaching with the front foot — land under your hips.",
+        ("Your foot lands well ahead of you with the knee nearly straight, so every step brakes a little. "
+         "You can see the body check on each contact.",
+         "Cadence will come up by itself once the step is shorter. Don't chase 180 with a metronome yet.",
+         "Posture and arms are good: relaxed shoulders, a slight lean from the ankles. Leave them alone."),
+    ),
+    "swim": (
+        "Get your head down, mate — look at the bottom of the pool, not ahead.",
+        ("Because you look forward, your hips and legs sink and you drag them behind you. "
+         "Head down and the legs come up on their own.",
+         "When you breathe you lift the whole head. Turn it with the body and keep one goggle in the water.",
+         "Nice high elbow on the right arm. The left one crosses the centre line at entry: "
+         "put it in in front of the shoulder."),
+    ),
+}
+GUEST_REVIEW_EXAMPLES = {
+    "bike": (
+        "The position is close. It's the saddle that's wrong, not the bike: you sit too far back, so your "
+        "arms carry nothing and your back does the work. Fore-aft first, then height, then the cockpit.",
+        ("Saddle forward, bars with it",
+         "Hips behind the cranks: the pads carry no weight and the lower back holds you up.",
+         "Saddle 1–1.5 cm forward, base bar the same. Ride it for a week before touching anything else.",
+         "Next clip: elbow under the shoulder, knee about 140° at the bottom of the stroke."),
+    ),
+    "run": (
+        "Your cadence isn't the problem. You land with the foot well ahead of your hips and brake on "
+        "every step; the low cadence is a symptom of that reach. Fix where the foot lands and it comes up.",
+        ("Land closer to your hips",
+         "The straight knee at landing sends the shock up the shin — that's where shin splints come from.",
+         "Don't reach for the ground. Pull the foot back under you just before it lands: 'land under the hip'.",
+         "Next clip: shin within about 5° of vertical at contact, knee soft, not locked."),
+    ),
+    "swim": (
+        "You're a strong swimmer dragging your legs. The head position sinks the hips; fix that and the "
+        "rest gets easier. Breathing second, the left-arm entry third.",
+        ("Head down",
+         "Looking forward lifts the chest and drops the hips, so the legs hang in the water like an anchor.",
+         "6×50 m with a snorkel, eyes on the black line. Then the same without it, keeping the head still.",
+         "Next clip: heels break the surface, and the back of the head is level with the water."),
+    ),
+}
+
+
+def _guest_examples() -> str:
+    """Every example, hidden but the one for the picked sport and product."""
+    def by(sport: str) -> str:
+        # Unsigned until the coach has written his own: these words are ours,
+        # so they must not carry his name. Nothing measures a swimmer.
+        seen = "watching your clip" if sport == "swim" else "watching your clip and reading the analysis"
+        return f'<p class="go-exby">Illustrative wording. Yours is written by the coach after {seen}.</p>'
+
+    out = []
+    for sport, (first, notes) in GUEST_NOTES_EXAMPLES.items():
+        lis = "".join(f"<li>{n}</li>" for n in notes)
+        out.append(
+            f'<div class="go-excard" data-plan="notes" data-sport="{sport}" hidden>'
+            '<p class="go-exeye">Coach Notes · example, not your clip</p>'
+            f'<p class="go-exfirst"><span>First thing to change</span>{first}</p>'
+            f"<ol>{lis}</ol>{by(sport)}</div>")
+    for sport, (verdict, (title, why, change, check)) in GUEST_REVIEW_EXAMPLES.items():
+        out.append(
+            f'<div class="go-excard" data-plan="expert" data-sport="{sport}" hidden>'
+            '<p class="go-exeye">Expert Review · example, not your clip</p>'
+            f'<p class="go-exverdict"><span>The coach\'s verdict</span>{verdict}</p>'
+            f'<div class="go-expri"><b>Priority 1 · {title}</b>'
+            f"<p><i>Why</i>{why}</p><p><i>Change</i>{change}</p><p><i>Check</i>{check}</p></div>"
+            '<p class="go-exmore">Also in the review: two more priorities with drills · a 4-week plan · '
+            "what not to change · when to film again · a PDF to keep</p>"
+            f'{by(sport)}<a class="go-exlink" href="{SAMPLE_REVIEW_PDF}" target="_blank" rel="noopener">'
+            f"See a full sample review{'' if sport == 'run' else ' (a running one)'}, PDF →</a></div>")
+    return "".join(out)
+
+
 def guest_dialog() -> str:
     n_price = usd(CARD_BY_ID["notes"].prices[0].amount)
     e_price = usd(CARD_BY_ID["expert"].prices[0].amount)
@@ -1072,6 +1160,7 @@ def guest_dialog() -> str:
     <button class="go-x" type="button" id="goClose" aria-label="Close">&times;</button></div>
   <fieldset class="go-seg"><legend>What is in the clip</legend>{sports}</fieldset>
   <fieldset class="go-plans"><legend>What you get</legend>{plans}</fieldset>
+  <details class="go-ex" id="goEx"><summary>See an example of what you get</summary>{_guest_examples()}</details>
   {tips}
   <label class="go-field" data-only="bike">Position<select id="goPosition">{opts(GUEST_POSITIONS)}</select></label>
   <label class="go-field" data-only="swim" hidden>Stroke<select id="goStroke">{opts(GUEST_STROKES)}</select></label>
@@ -1115,6 +1204,24 @@ GUEST_CSS = """
 .go-plan small{color:var(--c-ink-soft);font-size:13px}
 .go-plan input:checked+span{border-color:var(--c-coral-btn);box-shadow:inset 0 0 0 1px var(--c-coral-btn);background:var(--c-panel)}
 .go-seg input:focus-visible+span,.go-plan input:focus-visible+span{box-shadow:var(--ring)}
+.go-ex{border:1px solid var(--c-line);border-radius:10px;background:var(--c-panel)}
+.go-ex summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:14px;color:var(--c-blue);list-style:none}
+.go-ex summary::-webkit-details-marker{display:none}
+.go-ex summary::after{content:" ▾"}
+.go-ex[open] summary::after{content:" ▴"}
+.go-excard{display:flex;flex-direction:column;gap:10px;margin:0 10px 10px;padding:14px 16px;border-radius:8px;background:var(--c-bg);border:1px solid var(--c-line);font-size:14px;line-height:1.5}
+.go-excard p{margin:0}
+.go-exeye{font:500 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint)}
+.go-exfirst,.go-exverdict{font-weight:600;color:var(--c-ink)}
+.go-exfirst span,.go-exverdict span{display:block;font:500 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--c-coral);margin-bottom:2px}
+.go-excard ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--c-ink-soft)}
+.go-expri{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-left:3px solid var(--c-coral-btn);background:var(--c-panel);border-radius:0 6px 6px 0}
+.go-expri p{color:var(--c-ink-soft)}
+.go-expri i{font-style:normal;font-weight:600;color:var(--c-ink);margin-right:6px}
+.go-exmore{color:var(--c-ink-soft);font-size:13px}
+.go-exby{color:var(--c-ink-faint);font-size:13px}
+.go-exby b{color:var(--c-ink);font-weight:600}
+.go-exlink{font-size:13.5px;font-weight:600}
 .go-tip{margin:0;padding:10px 12px;border-radius:8px;background:var(--c-panel);font-size:13.5px;color:var(--c-ink-soft)}
 .go-field{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:14px}
 .go-field i,.go-check i{font-style:normal;font-weight:400;color:var(--c-ink-faint)}
