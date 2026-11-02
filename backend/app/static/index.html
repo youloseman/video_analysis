@@ -5632,9 +5632,12 @@ FlappPlayer.prototype={
       g.lineWidth=Math.max(1,1.5*s); g.strokeStyle='#fff'; g.stroke(); });
     const fs=Math.max(11,12*s); g.font=`700 ${fs}px ${this.tok.mono}`;
     this.metrics.filter(m=>m.callout&&m.joint!=null).forEach((m,ci)=>{
-      const p=P(m.joint), val=tl.series[m.key][k]; if(!p||val==null) return;
-      const st=fpStatus(val,m.band,m.open_ok), col=this.tok[st]||this.tok.faint;
-      const txt=`${m.name.toUpperCase()} ${Math.round(angleDisp(m.key,val,tl.sport))}°`, tw=g.measureText(txt).width+14*s;
+      // A joint drawn on a frame whose angle was refused (the knee at a leg
+      // crossing) keeps a muted dash: dropping the chip made it blink through
+      // every crossing, and a held number would be one nobody measured.
+      const p=P(m.joint), val=tl.series[m.key][k]; if(!p) return;
+      const st=val==null?'muted':fpStatus(val,m.band,m.open_ok), col=this.tok[st]||this.tok.faint;
+      const txt=`${m.name.toUpperCase()} ${val==null?'—':Math.round(angleDisp(m.key,val,tl.sport))+'°'}`, tw=g.measureText(txt).width+14*s;
       const right=p[0]<W*0.6; const x=right?Math.min(W-tw-4,p[0]+22*s):Math.max(4,p[0]-22*s-tw);
       const y=Math.max(fs+6,Math.min(H-6,p[1]-14*s+ci*0));
       g.strokeStyle=col; g.lineWidth=Math.max(1,1.5*s); g.beginPath(); g.moveTo(p[0],p[1]); g.lineTo(right?x:x+tw,y-fs/2+2); g.stroke();

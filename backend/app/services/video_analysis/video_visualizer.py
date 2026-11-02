@@ -857,8 +857,7 @@ class VideoVisualizer:
                     continue
                 # Use per-frame angle value (not mean)
                 angle_val = frame_angles.get(cfg["key"])
-                if angle_val is None or np.isnan(angle_val):
-                    continue
+                unread = angle_val is None or np.isnan(angle_val)
 
                 lm_idx = cfg["idx"]
                 if lm_idx >= len(pixel_coords):
@@ -866,6 +865,21 @@ class VideoVisualizer:
 
                 _, _, lm_vis = pixel_coords[lm_idx]
                 if lm_vis < MIN_OVERLAY_VISIBILITY:
+                    continue
+
+                if unread:
+                    # The joint is drawn but its angle was refused on this
+                    # frame (a gated landmark, e.g. the knee at a leg
+                    # crossing). Dropping the chip made it blink on and off
+                    # through every crossing (IMG_5455, 2026-11-01); a muted
+                    # dash keeps it in place without inventing a number.
+                    dx, dy = offset_vectors.get(cfg["offset_dir"], (offset_px, 0))
+                    jx, jy, _ = pixel_coords[lm_idx]
+                    lx = max(5, min(width - 5, jx + dx))
+                    ly = max(20, min(height - 20, jy + dy))
+                    overlay_style.draw_leader(cv2_mod, frame, (jx, jy), (lx, ly), overlay_style.INK_SOFT)
+                    chips.metric_chip((lx, ly), str(cfg["name"]).upper(), "—",
+                                      "muted", scale=_sk, align="right" if dx < 0 else "left")
                     continue
 
                 opt_min, opt_max = cfg["optimal"]
