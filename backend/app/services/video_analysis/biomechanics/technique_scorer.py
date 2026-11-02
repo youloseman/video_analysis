@@ -324,8 +324,15 @@ def score_running(
                 knee_max, *RUNNING_REFERENCE["knee_at_initial_contact"]
             ))
         if knee_min is not None:
-            _score_or_exclude("knee_swing", score_in_range(
-                knee_min, *RUNNING_REFERENCE["knee_at_swing"]
+            # One-sided: any fold up to the ceiling is full marks; past it the
+            # penalty runs on the typical band's slope (KNEE_SWING_TYPICAL),
+            # not on the much wider display band's.
+            from app.services.video_analysis.biomechanics.sport_configs import (
+                KNEE_SWING_TYPICAL,
+            )
+            swing_hi = RUNNING_REFERENCE["knee_at_swing"][1]
+            _score_or_exclude("knee_swing", 100.0 if knee_min <= swing_hi else score_in_range(
+                knee_min, *KNEE_SWING_TYPICAL
             ))
 
     if "elbow" in angle_stats:

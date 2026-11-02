@@ -1698,7 +1698,7 @@ class RunningAnalyzer(SportAnalyzer):
                         "type": "insufficient_knee_drive",
                         "severity": "info",
                         "value": f"Min knee = {min_knee:.0f} deg",
-                        "recommendation": "Increase knee drive in swing phase. Target minimum knee angle: 80-100 deg.",
+                        "recommendation": "Increase knee drive in swing phase: the knee should fold to 100 deg or less.",
                     })
 
         return issues

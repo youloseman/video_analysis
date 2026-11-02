@@ -392,6 +392,20 @@ def stabilize_landmarks(
                 # own fundamental; at any normal cadence this branch never
                 # runs and the shipped cutoff stands.
                 cutoff_override = max(1.0, 6.0 * cycle_hz)
+        elif sport_type == "run":
+            # The same blind spot on a slow-motion run: the 8 Hz target is
+            # ~5.5x a normal stride, and at 4x slow motion the stride sits at
+            # 0.4 Hz container time, so the filter passed 20x the signal and
+            # every frame's re-detection jitter with it -- four times as
+            # visible as at normal speed, because the limb moves a quarter as
+            # far per frame (IMG_5455, an elite runner, 2026-11-01). Any real
+            # run strides above RUN_SLOWMO_STRIDE_HZ, so normal clips keep the
+            # shipped cutoff.
+            run_cycle_frames = _estimate_cycle_frames(frame_results, fps)
+            if run_cycle_frames:
+                stride_hz = fps / run_cycle_frames
+                if stride_hz < RUN_SLOWMO_STRIDE_HZ:
+                    cutoff_override = max(1.0, RUN_CUTOFF_PER_STRIDE * stride_hz)
         smoothed, butter_meta = _apply_butterworth_landmarks(
             frame_results, sport_type, camera_angle, fps,
             target_cutoff_override=cutoff_override,
@@ -1352,6 +1366,13 @@ BUTTER_LANDMARK_CUTOFF_HZ: dict[tuple[str, str | None], float] = {
     # defensible values.
     ("run", None): 8.0,
 }
+# Slow-motion run: a stride (one foot to the same foot) slower than this in
+# container time is not running at normal speed -- 1.0 Hz is 120 spm, below
+# any real run (REAL_RUN_SPM_MIN is 140). The cutoff then follows the clip's
+# own stride at the ratio the shipped run target keeps to a normal one
+# (8 Hz over a ~1.45 Hz stride).
+RUN_SLOWMO_STRIDE_HZ = 1.0
+RUN_CUTOFF_PER_STRIDE = 5.5
 BUTTER_LANDMARK_ORDER = 4
 # filtfilt needs enough samples beyond the padlen (default 3*order*2 for
 # SOS) to be numerically stable. 24 matches what the existing angle

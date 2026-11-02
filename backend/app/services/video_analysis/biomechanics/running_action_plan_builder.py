@@ -14,7 +14,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.services.video_analysis.biomechanics.sport_configs import RUNNING_REFERENCE
+from app.services.video_analysis.biomechanics.sport_configs import (
+    KNEE_SWING_TYPICAL,
+    RUNNING_REFERENCE,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +60,9 @@ _RANGES: dict[str, tuple[float, float]] = {
     "trunk_lean":   RUNNING_REFERENCE["trunk_lean"],
     "knee_contact": (160, 175),   # degrees  (knee_max from summary)
     "elbow_angle":  (85, 100),    # degrees  (elbow_mean from summary)
-    "knee_swing":   (80, 100),    # degrees  (knee_min from summary)
+    # One-sided already: _FAULT_DIRECTION makes a deeper fold benign. The
+    # typical band is kept for the severity scale, which follows its width.
+    "knee_swing":   KNEE_SWING_TYPICAL,  # degrees (knee_min from summary)
 }
 
 # Map summary keys -> our metric names
@@ -299,7 +304,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
         "weeks_to_improvement": 6,
     },
     "knee_swing_insufficient": {
-        "problem": "Insufficient knee flexion in swing ({value} deg, optimal 80-100 deg)",
+        "problem": "Insufficient knee flexion in swing ({value} deg, the knee should fold to 100 deg or less)",
         "drill": "High Knee March",
         "instruction": (
             "March with maximum knee lift 3x20 m. "

@@ -27,6 +27,12 @@ from typing import Any
 # Reference ranges reconciled against a 2024 literature review (values below are
 # our INTERNAL joint angles, 180 deg = straight; papers report FLEXION from
 # straight, so internal = 180 - flexion).
+# Folland 2017's typical swing fold (~86 internal), the band the swing knee
+# was graded on before it became one-sided. Kept for the WIDTH: score_in_range
+# and the plan's severity scale with band width, and the 30-100 display band
+# would make a knee that does not fold cost 3.5x less than it did.
+KNEE_SWING_TYPICAL = (80, 100)
+
 RUNNING_REFERENCE = {
     # deg lean from vertical, SIGNED by the direction of travel: positive =
     # leaning forward, negative = leaning back (see
@@ -55,8 +61,14 @@ RUNNING_REFERENCE = {
     # ~134 deg internal (more flexion at higher cadence).
     "knee_at_midstance": (130, 150),
     # internal at peak swing flexion. Folland 2017: ~94 deg flexion = ~86 deg
-    # internal (shortens the swing lever).
-    "knee_at_swing": (80, 100),
+    # internal (shortens the swing lever). ONE-SIDED: the fault is a knee that
+    # does not fold (above 100); a deeper fold is not a fault, and it deepens
+    # with speed. The floor is the fold a sprinter's swing knee reaches (~30,
+    # see base_analyzer.ANGLE_ENVELOPES), not a target. It was 80, which
+    # graded an elite runner's 48 deg swing 24/100 and cost him 8 points
+    # through the worst-component pull (IMG_5455, 2026-11-01). Past 100 the
+    # penalty keeps the slope of the typical band (KNEE_SWING_TYPICAL).
+    "knee_at_swing": (30, 100),
     # deg (~90 deg arm carry). Napier, "Science of Running": elbows ~90 deg;
     # restricting arm swing raises metabolic cost.
     "elbow_angle": (85, 100),

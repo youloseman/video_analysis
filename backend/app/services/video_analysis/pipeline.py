@@ -25,6 +25,12 @@ from app.services.video_analysis.biomechanics.sport_configs import (
 )
 
 RUN_TRUNK_BAND = _RUNNING_REFERENCE["trunk_lean"]
+# The knee label sweeps the whole stride, so its band runs from the swing fold
+# (one-sided: any fold up to 100 is fine) to the top of the contact band.
+RUN_KNEE_BAND = (
+    _RUNNING_REFERENCE["knee_at_swing"][0],
+    _RUNNING_REFERENCE["knee_at_initial_contact"][1],
+)
 
 # --- frame sampling (read by landmark_stabilizer) --------------------------
 FRAME_SAMPLE_RATE = 3
@@ -310,7 +316,7 @@ class VideoAnalysisPipeline:
                     hip_label = "Swing Hip"
 
             return [
-                {"key": "knee",   "idx": knee_idx,  "optimal": (80, 175),  "name": knee_label,  "offset_dir": "left"},
+                {"key": "knee",   "idx": knee_idx,  "optimal": RUN_KNEE_BAND, "name": knee_label,  "offset_dir": "left"},
                 {"key": "hip",    "idx": hip_idx,   "optimal": (150, 180), "name": hip_label,   "offset_dir": "up-left"},
                 # Shared band, not a fourth hardcoded copy: this said (0, 12)
                 # while the scorer said (2, 10), so the overlay could colour a

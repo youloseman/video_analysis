@@ -3,82 +3,84 @@
   "angles": {
    "ankle": {
     "artefact_frames": 0,
-    "max": 155.6,
-    "mean": 91.0,
-    "min": 52.2,
+    "max": 132.9,
+    "mean": 90.6,
+    "min": 57.7,
     "nan_pct": 3.6,
-    "range": 103.4,
-    "std": 21.8,
+    "range": 75.2,
+    "std": 20.1,
     "valid_frames": 349
    },
    "elbow": {
     "artefact_frames": 0,
-    "max": 145.7,
-    "mean": 111.8,
-    "min": 76.1,
+    "max": 143.8,
+    "mean": 111.9,
+    "min": 79.7,
     "nan_pct": 7.2,
-    "range": 69.6,
-    "std": 19.0,
+    "range": 64.1,
+    "std": 18.9,
     "valid_frames": 336
    },
    "hip": {
     "artefact_frames": 0,
-    "max": 178.8,
+    "max": 179.0,
     "mean": 154.8,
-    "min": 118.1,
+    "min": 117.7,
     "nan_pct": 3.3,
-    "range": 60.7,
-    "std": 17.1,
+    "range": 61.3,
+    "std": 17.0,
     "valid_frames": 350
    },
    "knee": {
     "artefact_frames": 0,
-    "max": 170.6,
+    "max": 169.6,
     "mean": 129.3,
-    "min": 62.0,
+    "min": 62.5,
     "nan_pct": 3.3,
-    "range": 108.6,
-    "std": 34.2,
+    "range": 107.1,
+    "std": 34.0,
     "valid_frames": 350
    },
    "trunk": {
     "artefact_frames": 0,
-    "max": 15.1,
-    "mean": 5.9,
-    "min": -6.8,
+    "max": 14.9,
+    "mean": 5.8,
+    "min": -8.1,
     "nan_pct": 3.6,
-    "range": 21.9,
-    "std": 4.7,
+    "range": 23.0,
+    "std": 4.9,
     "valid_frames": 349
    }
   },
   "score_breakdown": {
-   "elbow_swing": 67.3333,
+   "elbow_swing": 67.0,
    "knee_contact": 100.0,
-   "knee_swing": 70.0,
+   "knee_swing": 100.0,
    "overstride": 100.0,
-   "phase_stability": 98.7,
+   "phase_stability": 99.2,
    "trunk_lean": 100.0,
    "vertical_osc": 100.0,
-   "waveform_similarity": 73.3
+   "waveform_similarity": 69.8
   },
   "stability.flip_pct": 0.0,
   "stability.leg_collapse_pct": 0.3,
   "stability.leg_swap_pct": 2.5,
   "subject_height_px": 171.0,
   "summary.cadence_spm": 168.7,
-  "summary.knee_extension_velocity_dps": 96.1,
-  "summary.knee_flexion_velocity_dps": 116.0,
-  "summary.overstride_ratio": 0.205,
+  "summary.flight_time_ms": null,
+  "summary.ground_contact_ms": null,
+  "summary.knee_extension_velocity_dps": 74.7,
+  "summary.knee_flexion_velocity_dps": 74.4,
+  "summary.overstride_ratio": 0.306,
   "summary.stance_fraction": 0.727,
-  "summary.trunk_lean_avg": 5.9,
-  "summary.vertical_oscillation_m": 0.0939,
-  "technique_score": 90.0
+  "summary.trunk_lean_avg": 5.8,
+  "summary.vertical_oscillation_m": 0.0954,
+  "technique_score": 93.0
  },
  "exact": {
   "camera_side": "right",
   "capture_verdict": "poor",
-  "confidence_level": "medium",
+  "confidence_level": "low",
   "coverage": {
    "excluded": [
     "cadence"
@@ -128,9 +130,9 @@
   "score_withheld": null,
   "sport_type": "run",
   "status": "completed",
-  "summary.foot_strike": "midfoot",
+  "summary.foot_strike": "heel",
   "summary.near_side": "right",
   "summary.slow_motion_factor": 8,
-  "warning_count": 1
+  "warning_count": 2
  }
 }
