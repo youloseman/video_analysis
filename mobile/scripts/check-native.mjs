@@ -45,6 +45,9 @@ const vars = join(mobileDir, 'android/variables.gradle');
 if (existsSync(vars)) {
   const m = readFileSync(vars, 'utf8').match(/minSdkVersion\s*=\s*(\d+)/);
   if (!m || Number(m[1]) < 24) fails.push(`android minSdkVersion is ${m ? m[1] : 'missing'} -- Play refuses a bundle below 24`);
+  // Play refuses a release targeting below 36 (from 2026); the template says 35.
+  const t = readFileSync(vars, 'utf8').match(/targetSdkVersion\s*=\s*(\d+)/);
+  if (!t || Number(t[1]) < 36) fails.push(`android targetSdkVersion is ${t ? t[1] : 'missing'} -- Play refuses a release below 36`);
 }
 
 const styles = join(mobileDir, 'android/app/src/main/res/values/styles.xml');

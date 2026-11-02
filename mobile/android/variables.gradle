@@ -2,8 +2,11 @@ ext {
     // Play's automatic protection refuses a bundle below 24 at upload (first
     // seen 2026-11-01); Capacitor's template writes 23 and `cap add` restores it.
     minSdkVersion = 24
-    compileSdkVersion = 35
-    targetSdkVersion = 35
+    // Play refuses a release below targetSdk 36 (2026-11-01). Targeting 36 turns
+    // predictive back on: Back reaches us only through OnBackPressedDispatcher,
+    // which @capacitor/app already uses (see bridge.js section 6).
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     androidxActivityVersion = '1.9.2'
     androidxAppCompatVersion = '1.7.0'
     androidxCoordinatorLayoutVersion = '1.2.0'

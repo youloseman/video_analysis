@@ -148,3 +148,17 @@ def test_min_sdk_meets_play_upload_floor() -> None:
     src = (ROOT / "mobile" / "android" / "variables.gradle").read_text(encoding="utf-8")
     m = re.search(r"minSdkVersion\s*=\s*(\d+)", src)
     assert m and int(m.group(1)) >= 24
+
+
+def test_target_sdk_meets_play_release_floor() -> None:
+    """Play's release check: 'must target at least API level 36'. Targeting 36
+    makes Back predictive, which only reaches OnBackPressedDispatcher -- the
+    path @capacitor/app takes."""
+    import re
+    src = (ROOT / "mobile" / "android" / "variables.gradle").read_text(encoding="utf-8")
+    m = re.search(r"targetSdkVersion\s*=\s*(\d+)", src)
+    assert m and int(m.group(1)) >= 36
+    app_plugin = ROOT / "mobile" / "node_modules" / "@capacitor" / "app" / "android"
+    if app_plugin.exists():
+        java = "".join(p.read_text(encoding="utf-8") for p in app_plugin.rglob("AppPlugin.java"))
+        assert "getOnBackPressedDispatcher().addCallback" in java
