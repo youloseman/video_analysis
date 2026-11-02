@@ -128,6 +128,11 @@
     // The re-check (the review again at a lower price, offered after delivered
     // notes or a review) -- a purchase, so it goes the way of the card above.
     '.flapp-native .recheck-offer',
+    // The swim review is the same coach's paid review, so its entry points
+    // go: the tile on the analyze form (it printed "from $12" once the API
+    // answered the Android origin) and the dashboard announcement. A
+    // delivered swim review opens from History and stays.
+    '.flapp-native #whatSwim', '.flapp-native #dashSwim',
     // Anything else wired inline to the checkout or pricing functions.
     '.flapp-native [onclick*="startCheckout"]', '.flapp-native [onclick*="openPricing"]',
     '.flapp-native [onclick*="openUpgrade"]'
@@ -141,7 +146,7 @@
   // has loaded covers them all. The toast steers nowhere -- it must not.
   var NOT_HERE = 'Plans and purchases are not available in this version of the app.';
   window.addEventListener('DOMContentLoaded', function () {
-    ['openPricing', 'openUpgrade', 'startCheckout', 'openPortal'].forEach(function (name) {
+    ['openPricing', 'openUpgrade', 'startCheckout', 'openPortal', 'openSwim'].forEach(function (name) {
       window[name] = function () {
         if (typeof window.toast === 'function') window.toast(NOT_HERE);
       };

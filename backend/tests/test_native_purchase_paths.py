@@ -37,6 +37,10 @@ PURCHASE_SURFACES = {
     ".notes-offer": 'class="notes-offer',
     # The re-check block: the review again, offered after delivered notes or a review.
     ".recheck-offer": 'class="cmp-next recheck-offer"',
+    # The swim review's entry points: the analyze-form tile and the dashboard
+    # announcement. Delivered swim reviews open from History and stay.
+    "#whatSwim": 'id="whatSwim"',
+    "#dashSwim": 'id="dashSwim"',
     # Anything else wired inline to a purchase function.
     '[onclick*="startCheckout"]': "startCheckout(",
     '[onclick*="openPricing"]': "openPricing()",
@@ -51,7 +55,7 @@ MUST_STAY_VISIBLE = ("#ordersBox", ".addon-strip", "#history", ".cnote", "#coach
 # The functions every purchase path in the SPA ends in. Natively each is
 # replaced by a no-op that says purchases are not available here -- so a
 # call site the CSS list misses still sells nothing.
-PURCHASE_FUNCTIONS = ("openPricing", "openUpgrade", "startCheckout", "openPortal")
+PURCHASE_FUNCTIONS = ("openPricing", "openUpgrade", "startCheckout", "openPortal", "openSwim")
 
 
 @pytest.fixture(scope="module")
