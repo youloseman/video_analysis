@@ -9,7 +9,7 @@ published: "2026-07-15"
 updated: "2026-11-02"
 featured: false
 cover: "/media/academy/covers/overstriding.webp"
-cover_alt: "Runner at touchdown with a vertical line dropped from the hip and the landing foot marked ahead of it"
+cover_alt: "Runner at touchdown on a treadmill, a vertical line dropped from the hip and the landing foot marked 0.36 leg lengths ahead of it, on a nearly straight knee"
 cover_credit: "Flapp footage + Flapp overlay"
 sources:
   - author: "Heiderscheit, Chumanov, Michalski, et al."
