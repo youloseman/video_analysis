@@ -176,7 +176,8 @@ def test_a_sparse_running_clip_reports_how_sparse():
     cov = result["coverage"]
     assert result["overall_score"] > 0
     assert cov["measures_scored"] == 1
-    assert cov["weight_covered"] == pytest.approx(RUNNING_WEIGHTS["trunk_lean"], abs=1e-3)
+    share = RUNNING_WEIGHTS["trunk_lean"] / sum(RUNNING_WEIGHTS.values())
+    assert cov["weight_covered"] == pytest.approx(share, abs=1e-3)
 
 
 # --------------------------------------------------------------------------

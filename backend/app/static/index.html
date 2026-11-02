@@ -4284,7 +4284,9 @@ function runTiles(s){
     // strike itself -- so no good/warn verdict here.
     t.push(tile('Foot strike',fsMap[s.foot_strike]||pretty(s.foot_strike),'',s.foot_strike_estimated?'estimated from 2D video':null,null,true));
   }
-  if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×',s.overstride_estimated?'× leg length ahead of hip (est.)':'× leg length ahead of hip',null,false,RB('overstride_ratio',s.overstride_ratio,0,0.15,'×')));
+  // Shown, not graded (technique_scorer.RUNNING_WEIGHTS): it grows with speed,
+  // and the contact frame on phone video is too coarse to judge it.
+  if(s.overstride_ratio!=null) t.push(tile('Overstride',num(s.overstride_ratio,2),'×','× leg length ahead of hip · shown, not scored: it grows with speed'));
   // Knee is scored at two gait phases, not as a full-cycle mean: knee_max is
   // extension near footstrike (contact), knee_min is peak flexion in swing.
   if(s.knee_max!=null) t.push(tileA('Knee · contact','knee_max',s.knee_max,null,RB('knee_max',s.knee_max,160,175,'°'),'run'));
@@ -9083,7 +9085,7 @@ const SCORE_PARTS={
   bike:{knee_bdc:['Knee at bottom',.22],trunk_angle:['Trunk',.18],knee_tdc:['Knee at top',.15],
         elbow_angle:['Elbow',.10],shoulder_angle:['Shoulder',.10],helmet_above_back:['Helmet above back',.06],
         pelvic_ratio:['Pelvis',.05],forearm_tilt:['Forearm',.05],saddle_fit:['Saddle height',.05]},
-  run:{cadence:['Cadence',.16],trunk_lean:['Trunk lean',.13],overstride:['Overstride',.13],
+  run:{cadence:['Cadence',.16],trunk_lean:['Trunk lean',.13],
        knee_contact:['Knee at contact',.12],phase_stability:['Stride stability',.12],
        elbow_swing:['Arm swing',.09],vertical_osc:['Vertical oscillation',.09],
        knee_swing:['Knee in swing',.08],waveform_similarity:['Stride shape',.08]},

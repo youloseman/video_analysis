@@ -80,16 +80,14 @@
    "excluded": [
     "knee_contact",
     "knee_swing",
-    "overstride",
     "phase_stability",
     "waveform_similarity"
    ],
    "measures_scored": 4,
-   "measures_total": 9,
+   "measures_total": 8,
    "missing": [
     "knee_contact",
     "knee_swing",
-    "overstride",
     "phase_stability",
     "waveform_similarity"
    ],
@@ -99,7 +97,7 @@
     "trunk_lean",
     "vertical_osc"
    ],
-   "weight_covered": 0.47
+   "weight_covered": 0.54
   },
   "cycling_position": null,
   "fit_plan": [],
@@ -109,9 +107,7 @@
   "has_keyframe": true,
   "has_kinogram": true,
   "has_pedaling_style": false,
-  "issues": [
-   "overstriding"
-  ],
+  "issues": [],
   "letter_grade": null,
   "quality_gate_profile": null,
   "quality_gate_triggered": true,

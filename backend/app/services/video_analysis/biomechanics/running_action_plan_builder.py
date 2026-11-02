@@ -25,7 +25,8 @@ from app.services.video_analysis.biomechanics.sport_configs import (
 # ---------------------------------------------------------------------------
 RUNNING_DIAGNOSIS_ORDER: list[str] = [
     "cadence",        # 1. Cadence -- foundation of running efficiency
-    "overstride",     # 2. Overstride -- braking + impact at foot-strike
+    # "overstride" left the order on 2026-11-02: shown, not graded (see
+    # technique_scorer.RUNNING_WEIGHTS), so it no longer earns a drill.
     "vertical_osc",   # 3. Vertical oscillation -- energy waste
     "trunk_lean",     # 4. Trunk lean -- propulsive force direction
     "knee_contact",   # 5. Knee angle at contact -- impact loading

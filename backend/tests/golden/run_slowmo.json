@@ -56,7 +56,6 @@
    "elbow_swing": 67.0,
    "knee_contact": 100.0,
    "knee_swing": 100.0,
-   "overstride": 100.0,
    "phase_stability": 99.2,
    "trunk_lean": 100.0,
    "vertical_osc": 100.0,
@@ -75,7 +74,7 @@
   "summary.stance_fraction": 0.727,
   "summary.trunk_lean_avg": 5.8,
   "summary.vertical_oscillation_m": 0.0954,
-  "technique_score": 93.0
+  "technique_score": 92.0
  },
  "exact": {
   "camera_side": "right",
@@ -85,8 +84,8 @@
    "excluded": [
     "cadence"
    ],
-   "measures_scored": 8,
-   "measures_total": 9,
+   "measures_scored": 7,
+   "measures_total": 8,
    "missing": [
     "cadence"
    ],
@@ -94,13 +93,12 @@
     "elbow_swing",
     "knee_contact",
     "knee_swing",
-    "overstride",
     "phase_stability",
     "trunk_lean",
     "vertical_osc",
     "waveform_similarity"
    ],
-   "weight_covered": 0.84
+   "weight_covered": 0.816
   },
   "cycling_position": null,
   "fit_plan": [],
@@ -110,9 +108,7 @@
   "has_keyframe": true,
   "has_kinogram": true,
   "has_pedaling_style": false,
-  "issues": [
-   "overstriding"
-  ],
+  "issues": [],
   "letter_grade": "A",
   "quality_gate_profile": null,
   "quality_gate_triggered": false,
@@ -121,7 +117,6 @@
    "elbow_swing",
    "knee_contact",
    "knee_swing",
-   "overstride",
    "phase_stability",
    "trunk_lean",
    "vertical_osc",

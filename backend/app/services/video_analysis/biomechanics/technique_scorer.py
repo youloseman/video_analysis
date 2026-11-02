@@ -32,7 +32,12 @@ RUNNING_WEIGHTS = {
     "cadence": 0.16,
     "elbow_swing": 0.09,
     "vertical_osc": 0.09,
-    "overstride": 0.13,        # foot landing ahead of hip -- braking / impact
+    # "overstride" (0.13) left the score on 2026-11-02 and is shown, not
+    # graded. It never graded anything: score_in_range's 2.0 DEGREE tolerance
+    # swallowed its whole 0-0.15 ratio band, so every clip scored 100 on it.
+    # And it cannot be graded honestly yet -- the contact event fires 1-2 real
+    # frames before touchdown, while at race pace the reading moves ~0.25 leg
+    # lengths in 40 ms (IMG_5455: 0.49 at the event, ~0.36 at touchdown).
     "phase_stability": 0.12,
     "waveform_similarity": 0.08,
 }
@@ -350,16 +355,7 @@ def score_running(
             vert_osc_cm, *RUNNING_REFERENCE["vertical_oscillation_cm"]
         )
 
-    # Overstride: ratio in [0, 0.15] scores 100; higher (foot lands further
-    # ahead of the hip) is penalised. Only present when measured from >= 2
-    # clean foot-strikes.
-    overstride = summary.get("overstride_ratio")
-    if overstride is not None and overstride >= 0:
-        # Measured as how far the LEADING foot lands ahead of the hip, so it
-        # depends on knowing which foot is leading.
-        _score_or_exclude("overstride", score_in_range(
-            overstride, *RUNNING_REFERENCE["overstride_ratio"]
-        ))
+    # Overstride is reported, not scored (see RUNNING_WEIGHTS).
 
     # Advanced biomechanics components
     bio = summary.get("biomechanics")

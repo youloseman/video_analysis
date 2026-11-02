@@ -167,5 +167,7 @@ def test_the_faults_that_are_real_survive_all_of_this():
     )
     keys = drills(plan)
     assert keys.get("cadence") == "cadence_low"
-    assert keys.get("overstride") == "overstride_high"
     assert keys.get("vertical_osc") == "vertical_osc_high"
+    # Overstride is shown, not graded, since 2026-11-02 (technique_scorer
+    # RUNNING_WEIGHTS): even a 0.30 reach earns no drill.
+    assert "overstride" not in keys

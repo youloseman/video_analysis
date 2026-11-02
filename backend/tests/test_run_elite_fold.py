@@ -89,3 +89,11 @@ def test_normal_speed_run_keeps_the_shipped_cutoff():
     ctx: dict = {}
     stabilize_landmarks(_running(180, 21.0), "run", None, fps=30.0, context=ctx)
     assert ctx["butterworth_meta"]["actual_cutoff_hz"] == 6.0
+
+
+def test_overstride_is_shown_not_scored():
+    """It never graded anything (a 2.0 DEGREE tolerance swallowed its 0-0.15
+    ratio band) and the contact frame is too coarse to grade it honestly."""
+    reaching = score_running(dict(_summary(), overstride_ratio=0.49), _knee(48.0))
+    assert "overstride" not in reaching["component_scores"]
+    assert "overstride_ratio" not in reference_bands("run")

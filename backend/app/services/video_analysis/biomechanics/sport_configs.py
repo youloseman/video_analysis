@@ -418,7 +418,7 @@ _RUN_FIELD_TO_BAND: dict[str, str] = {
     "trunk_lean_avg": "trunk_lean",
     "ground_contact_ms": "ground_contact_ms",
     "flight_time_ms": "flight_time_ms",
-    "overstride_ratio": "overstride_ratio",
+    # overstride_ratio is not served: shown, not graded (technique_scorer).
     "vertical_oscillation_cm": "vertical_oscillation_cm",
     "knee_max": "knee_at_initial_contact",
     "knee_min": "knee_at_swing",

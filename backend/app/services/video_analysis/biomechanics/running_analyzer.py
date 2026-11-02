@@ -1623,28 +1623,9 @@ class RunningAnalyzer(SportAnalyzer):
                     "recommendation": f"Trunk lean is {avg_trunk:.0f} deg. Optimal range: {RUNNING_REFERENCE['trunk_lean'][0]}-{RUNNING_REFERENCE['trunk_lean'][1]} deg.",
                 })
 
-        # Overstriding: foot landing well ahead of the hip at contact. A
-        # ratio above ~0.20 (foot-ahead distance > 20% of leg length) is the
-        # threshold; a co-occurring heel strike reinforces it in the message.
-        overstride_ratio, overstride_n = self._compute_overstride_ratio()
-        if overstride_ratio > 0.20 and overstride_n >= 2:
-            foot_strike, _angle, _n = self._compute_foot_strike()
-            heel_note = (
-                " with a heel strike" if foot_strike == "heel" else ""
-            )
-            issues.append({
-                "type": "overstriding",
-                "severity": "warning",
-                "value": f"{overstride_ratio:.2f} x leg length ahead of hip",
-                "recommendation": (
-                    f"The foot is landing ~{overstride_ratio:.0%} of a leg "
-                    f"length ahead of the hip at contact{heel_note}. This "
-                    f"brakes each step and raises impact load. Increasing "
-                    f"cadence toward {RUNNING_REFERENCE['cadence_spm'][0]}-"
-                    f"{RUNNING_REFERENCE['cadence_spm'][1]} spm and landing "
-                    f"with the foot closer under the hip reduces overstride."
-                ),
-            })
+        # No "overstriding" issue any more: the reading is shown, not graded
+        # (technique_scorer.RUNNING_WEIGHTS says why). It told an elite runner
+        # landing at race pace to fix his overstride (IMG_5455, 2026-11-01).
 
         # Low cadence. One number, one verdict: the scorer already refuses to
         # grade a cadence whose time base was INFERRED (slow-mo multiplier)

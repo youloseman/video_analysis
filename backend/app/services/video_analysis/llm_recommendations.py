@@ -510,7 +510,9 @@ def _run_data_block(
     if overstride is not None:
         overstride_line = (
             f"- Overstride: {overstride:.2f} x leg length ahead of hip at "
-            f"contact (target < 0.15; higher = braking/overstride, estimated)"
+            f"contact (shown, NOT graded: it grows with speed and the contact "
+            f"frame on phone video is too coarse to judge it -- do not call it "
+            f"a fault or build advice on it)"
         )
     else:
         overstride_line = "- Overstride: n/a"

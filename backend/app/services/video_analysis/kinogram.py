@@ -499,10 +499,8 @@ def _metrics_for(
         )
         return [
             _graded("KNEE", knee, "knee_at_initial_contact"),
-            _graded(
-                "OVERSTRIDE", overstride,
-                "overstride_ratio", min_margin=0.05, fmt="ratio",
-            ),
+            # Shown, not graded -- as in the report (technique_scorer).
+            _plain("OVERSTRIDE", overstride, fmt="ratio"),
         ]
     if key == "full_support":
         return [
