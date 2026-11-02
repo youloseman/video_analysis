@@ -99,6 +99,21 @@ def test_back_depth_counts_the_spa_pushes(bridge: str, spa: str) -> None:
     assert "history.replaceState(entry" in spa
 
 
+def test_back_returns_to_the_start_tab_before_leaving(bridge: str, spa: str) -> None:
+    """Found on a phone: a guest's Back from History backgrounded the app.
+
+    The launch screen is never recorded, so the first tab a guest opens has
+    no entry behind it. The start tab is the first visible bottom tab, which
+    only works while Home comes before Analyze and is hidden for guests.
+    """
+    assert "'.botnav .botlink:not(.hidden)'" in bridge
+    assert "start.click()" in bridge
+    assert "here !== 'progress'" in bridge
+    botnav = spa[spa.index('<nav class="botnav"'):]
+    assert botnav.index('id="botHome"') < botnav.index('id="botAnalyze"')
+    assert '<body data-state="upload">' in spa
+
+
 def test_release_version_code_comes_from_the_build() -> None:
     g = GRADLE.read_text(encoding="utf-8")
     assert "versionCode flappVersionCode" in g

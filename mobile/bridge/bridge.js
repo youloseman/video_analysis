@@ -185,7 +185,8 @@
   //
   //   a dialog or the menu is open  ->  close it
   //   a view was navigated to       ->  go back one view
-  //   the first screen              ->  background the app (NOT exit): the
+  //   any other screen              ->  the start tab (Home / Analyze)
+  //   the start tab                 ->  background the app (NOT exit): the
   //                                     task stays warm, so coming back lands
   //                                     on the same report rather than a
   //                                     cold start of the analyze form.
@@ -234,6 +235,24 @@
         return;
       }
       if (depth > 0) { history.back(); return; }
+      // Nothing to go back to is not the same as being on the first screen.
+      // The screen the app opens on is never recorded (body[data-state]
+      // starts at "upload" without a setState), so a guest who taps History
+      // from it lands there with no entry behind it, and Back used to
+      // background the app from History. Back first returns to the start tab
+      // -- the first visible bottom tab: Home when signed in, Analyze for a
+      // guest -- as Android's own bottom-navigation apps do, and only the
+      // start tab backgrounds the app. A running analysis is left alone:
+      // the Analyze tab resets the form and would stop polling the job.
+      var start = document.querySelector('.botnav .botlink:not(.hidden)');
+      var startState = start && start.id === 'botHome' ? 'dashboard' : 'upload';
+      var here = document.body.dataset.state;
+      if (start && here !== startState && here !== 'progress') {
+        start.click();
+        // The click pushes an entry; from the start tab Back must still leave.
+        depth = 0;
+        return;
+      }
       App.minimizeApp();
     });
   }
