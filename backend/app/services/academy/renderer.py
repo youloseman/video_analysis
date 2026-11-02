@@ -877,12 +877,13 @@ def render_article(article: Article, base_url: str) -> str:
 
     when = _date(m.published)
     upd = _date(m.updated) if m.updated and m.updated != m.published else ""
+    when_html = f'<span class="when">Published {when}{" · Updated " + upd if upd else ""}</span>' if when else ""
     byline = (
         '<div class="byline"><span class="av" aria-hidden="true">AP</span>'
         f'<span class="who"><strong>{AUTHOR}</strong> · {AUTHOR_ROLE}'
-        + (f'<span class="when">Published {when}{" · Updated " + upd if upd else ""}</span>' if when else "")
+        + when_html
         + "</span></div>"
-    )
+    ) if m.byline else (f'<div class="byline"><span class="who">{when_html}</span></div>' if when_html else "")
 
     # Keep reading: the same sport first, then the rest; never this article.
     from app.services.academy.parser import get_all_articles
@@ -953,7 +954,8 @@ def render_article(article: Article, base_url: str) -> str:
             "description": m.description,
             "url": canonical,
             "mainEntityOfPage": canonical,
-            "author": {"@type": "Person", "name": AUTHOR, "jobTitle": "Founder, Flapp"},
+            "author": ({"@type": "Person", "name": AUTHOR, "jobTitle": "Founder, Flapp"} if m.byline
+                       else {"@type": "Organization", "name": SITE_NAME, "url": base_url}),
             "publisher": {"@type": "Organization", "name": SITE_NAME, "url": base_url},
             **({"image": [image]} if image else {}),
             **({"datePublished": m.published} if m.published else {}),

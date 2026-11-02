@@ -6,6 +6,7 @@ category: "running-form"
 sport: "run"
 read_time: 8
 published: "2026-07-15"
+updated: "2026-11-02"
 featured: false
 cover: "/media/academy/covers/overstriding.webp"
 cover_alt: "Runner at touchdown with a vertical line dropped from the hip and the landing foot marked ahead of it"
@@ -27,6 +28,14 @@ sources:
     year: 2017
     title: "Running technique is an important component of running economy and performance (Medicine & Science in Sports & Exercise)"
     finding: "Braking at footstrike is energetically costly: the speed lost to the brake must be regained with expensive propulsion, so overstriding hurts running economy and performance, not just impact load."
+  - author: "Lieberman, Warrener, Wang & Castillo"
+    year: 2015
+    title: "Effects of stride frequency and foot position at landing on braking force, hip torque, impact peak force and the metabolic cost of running in humans (Journal of Experimental Biology)"
+    finding: "Landing further ahead of the hip went with larger braking forces; landing further ahead of the knee, with higher impact peaks and loading rates. The authors suggest landing at the end of swing with a relatively vertical tibia."
+  - author: "Dorn, Schache & Pandy"
+    year: 2012
+    title: "Muscular strategy shift in human running: dependence of running speed on hip and ankle muscle performance (Journal of Experimental Biology)"
+    finding: "Up to about 7 m/s, runners go faster mainly by lengthening the stride."
 ---
 
 Overstriding is the single most common form fault a side-view camera catches — and one of the few that quietly makes you slower *and* more likely to get hurt at the same time. The good news: it is also one of the easiest to shift, because it is mostly a byproduct of two things you can already control.
@@ -42,7 +51,13 @@ Picture the instant your foot touches down. Draw a vertical line down from your 
 - **Under or just ahead of the hip** — good. The leg can accept load and roll straight into pushing you forward.
 - **Well ahead of the hip, knee nearly straight** — overstriding. The foot is reaching out in front of the body.
 
-That horizontal distance — how far the foot lands ahead of the hip — is what Flapp measures at each foot-strike and reports as your **overstride** value, scaled to your leg length so it is comparable between runners of different heights. Lower is better; a landing close to underneath the hip scores best.
+That horizontal distance — how far the foot lands ahead of the hip — is what Flapp measures at each foot-strike and reports as your **overstride** value, scaled to your leg length so it is comparable between runners of different heights. At an easy pace, lower is usually better. But the number also grows with speed, so on its own it can't tell a reach from a fast stride. That's what the shin is for.
+
+## Distance or shin?
+
+Up to about 7 m/s, runners go faster mostly by lengthening the stride (Dorn 2012), and a longer stride puts the landing foot further ahead of the hip. Andreas Almgren won the 2026 New York City Marathon landing 0.45 leg lengths in front of his hip, which by the distance alone is a big overstride. His shin was 12–13° from vertical and his knee bent to 150°. A reach at the same distance looks different: the shin tipped back 20° or more and the knee nearly straight. We put the numbers side by side in [New York's winner lands half a leg in front of his hips](/academy/nyc-2026-landing-ahead-of-the-hip).
+
+Lieberman's treadmill study separates the two: landing further ahead of the hip went with more braking, and landing further ahead of the knee, with a sharper impact. The authors' advice was to land with a relatively vertical tibia (Lieberman 2015). The distance ahead of the hip grows with speed whatever you do; the shin is the part you can change. That's why Flapp grades a landing **photo** by the shin: within about 10° of vertical is fine, and the distance ahead of the hip is shown but not scored.
 
 ## Why a foot out in front brakes you
 

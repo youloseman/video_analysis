@@ -36,6 +36,7 @@ example)::
     cover_badge  str   opt       a short overlay on the card ("180?"); "a|b" labels a split
     cover_fit    str   opt       cover (default) | contain, for a chart or a drawing
     card         str   opt       wide | full: the card's size on the hub
+    byline       bool  opt       false: no person under the title, only the date
 """
 
 from __future__ import annotations
@@ -86,6 +87,7 @@ class ArticleMeta:
     cover_badge: str = ""
     cover_fit: str = "cover"
     card: str = ""  # "" | wide | full
+    byline: bool = True
 
 
 @dataclass(frozen=True)
@@ -467,6 +469,7 @@ def _parse_file(path: Path) -> Article | None:
         cover_badge=str(fm.get("cover_badge") or "").strip(),
         cover_fit="contain" if str(fm.get("cover_fit") or "").strip() == "contain" else "cover",
         card=str(fm.get("card") or "").strip() if str(fm.get("card") or "").strip() in ("wide", "full") else "",
+        byline=fm.get("byline") is not False,
     )
     sources = fm.get("sources") if isinstance(fm.get("sources"), list) else []
     return Article(meta=meta, body_html=markdown_to_html(body), sources=sources)

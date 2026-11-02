@@ -65,7 +65,7 @@ def test_an_article_carries_its_picture_in_the_head_and_the_schema(metas):
         ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page).group(1))
         art = ld[0]
         assert art["image"] == [BASE + m.cover]
-        assert art["author"]["@type"] == "Person"
+        assert art["author"]["@type"] == ("Person" if m.byline else "Organization")
         assert page.count(f'src="{m.cover}"') == 1, f"{m.slug} shows its cover twice"
 
 
@@ -81,3 +81,23 @@ def test_the_sitemap_lists_each_cover(metas):
     assert 'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' in xml
     for m in metas:
         assert f"<image:loc>{BASE}{m.cover}</image:loc>" in xml
+
+
+def test_an_article_can_go_out_without_the_byline(tmp_path):
+    """Artur, 2026-11-02: the NYC landing piece goes out without his name under
+    the title. ``byline: false`` drops the person, keeps the date, and the
+    schema names Flapp as the author instead of claiming a person."""
+    from app.services.academy.parser import _parse_file
+
+    src = (
+        '---\nslug: "x"\ntitle: "T"\ndescription: "D"\ncategory: "running-form"\n'
+        'published: "2026-11-03"\n{flag}---\n\nLede.\n'
+    )
+    on, off = tmp_path / "on.md", tmp_path / "off.md"
+    on.write_text(src.format(flag=""), encoding="utf-8")
+    off.write_text(src.format(flag="byline: false\n"), encoding="utf-8")
+    with_name, without = render_article(_parse_file(on), BASE), render_article(_parse_file(off), BASE)
+    assert "Artur Podgornyi" in with_name
+    assert "Artur Podgornyi" not in without
+    assert "Published 3 Nov 2026" in without
+    assert '"Person"' in with_name and '"Person"' not in without
