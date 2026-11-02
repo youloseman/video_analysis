@@ -2764,13 +2764,13 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 @media(max-width:560px){ .swim-row{grid-template-columns:1fr} }
 
 /* ---- The swim launch (2026-10-31): loud on purpose, for a while ---- */
-.new-pill{display:inline-block;margin-left:6px;vertical-align:2px;font:700 10px var(--f-mono);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--c-coral-btn);padding:3px 8px;border-radius:999px}
+.new-pill{display:inline-block;margin-left:6px;vertical-align:2px;font:700 10px var(--f-mono);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--c-blue);padding:3px 8px;border-radius:999px}
 /* The swim tile takes its own row, ringed in coral, so it is not one more
    option among the analyses. */
-.modetabs.what button[data-what="swim"]{grid-column:1/-1;border:1.5px solid var(--c-coral-btn);background:color-mix(in srgb,var(--c-coral-btn) 7%,var(--c-bg))}
-.modetabs.what button[data-what="swim"]:hover{background:color-mix(in srgb,var(--c-coral-btn) 12%,var(--c-bg))}
-.modetabs.what button[data-what="swim"]:first-child{border-left:1.5px solid var(--c-coral-btn)}
-.swim-news{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px 22px;align-items:center;margin:0 0 20px;padding:20px 22px;border-radius:var(--radius-card);background:#14294B;color:#fff;border:1px solid #2A4677;border-left:5px solid var(--c-coral-btn)}
+.modetabs.what button[data-what="swim"]{grid-column:1/-1;border:1.5px solid var(--c-blue);background:color-mix(in srgb,var(--c-blue) 7%,var(--c-bg))}
+.modetabs.what button[data-what="swim"]:hover{background:color-mix(in srgb,var(--c-blue) 12%,var(--c-bg))}
+.modetabs.what button[data-what="swim"]:first-child{border-left:1.5px solid var(--c-blue)}
+.swim-news{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px 22px;align-items:center;margin:0 0 20px;padding:20px 22px;border-radius:var(--radius-card);background:#14294B;color:#fff;border:1px solid #2A4677;border-left:5px solid var(--c-blue)}
 .swim-news-ic{width:60px;height:60px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);color:#AFC3E8}
 .swim-news-ic .ic{width:32px;height:32px}
 .swim-news-t{display:flex;flex-direction:column;gap:6px;min-width:0}

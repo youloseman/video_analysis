@@ -2540,11 +2540,12 @@ function setFile(f){
   else {
     // iOS paints nothing for a picked clip until it plays: the athlete saw a
     // black box and could not tell whether the upload had taken (Artur,
-    // 2026-11-02). Ask for the metadata and a frame just past the start, and
-    // the prescan hangs one of its own frames on it as the poster below.
+    // 2026-11-02). The prescan hangs one of its own frames on it as the poster
+    // (setPreviewPoster). No "#t=0.1" media fragment on the blob URL: iOS
+    // Safari failed to load it and showed "No preview in this browser".
     setPreviewPoster(null);
     vid.preload='metadata';
-    vid.src=url+'#t=0.1'; vid.classList.remove('hidden'); img.classList.add('hidden'); img.removeAttribute('src');
+    vid.src=url; vid.classList.remove('hidden'); img.classList.add('hidden'); img.removeAttribute('src');
     // Decided by what the element actually managed to load, not by sniffing the
     // filename: plenty of .MOV files play fine, and plenty of .mp4 files do not.
     const place=$('#previewPlace');
@@ -2666,7 +2667,13 @@ let previewPosterUrl=null;
 function setPreviewPoster(blob){
   const vid=$('#preview'); if(!vid) return;
   if(previewPosterUrl){ URL.revokeObjectURL(previewPosterUrl); previewPosterUrl=null; }
-  if(blob){ previewPosterUrl=URL.createObjectURL(blob); vid.poster=previewPosterUrl; }
+  if(blob){
+    previewPosterUrl=URL.createObjectURL(blob); vid.poster=previewPosterUrl;
+    // The prescan just decoded this clip in this browser, so whatever the
+    // <video> element reported, the clip is readable here: show the picture.
+    const place=$('#previewPlace'); if(place) place.classList.add('hidden');
+    vid.classList.remove('hidden');
+  }
   else vid.removeAttribute('poster');
 }
 function applyPrescan(j){
