@@ -105,16 +105,24 @@ Play пометит его «not optimised for tablets» — публикаци�
 
 | Тип | Linked to user | Обязательно | Назначение |
 |---|---|---|---|
-| Personal info → Email address | Да | Да | Account management |
-| Photos and videos → Videos | Да | Да | App functionality |
+| Personal info → Email address | Да | Да | Account management, Developer communications |
+| Personal info → Name | Да | Нет (имена профилей атлетов) | App functionality |
+| Location → Approximate location | Да | Нет (страна/регион из IP в PostHog; отключается) | Analytics |
+| Photos and videos → Videos | Да | Нет | App functionality |
 | Photos and videos → Photos | Да | Нет (только bike-photo) | App functionality |
 | Health and fitness → Fitness info | Да | Да | App functionality |
-| App activity → App interactions | Да | Нет | Analytics |
+| App activity → App interactions | Да | Нет (отключается в privacy) | Analytics |
+| App activity → Other user-generated content | Да | Нет (отзывы на результат) | App functionality |
 | App info and performance → Crash logs | Да | Нет | Analytics |
 | App info and performance → Diagnostics | Да | Нет | Analytics |
 | Device or other IDs | Да | Нет | Analytics |
 
-**Чего НЕ собираем** — явное «нет»: местоположение, контакты, календарь, SMS,
+Местоположение — только приблизительное, которое PostHog выводит из IP
+(privacy.html, раздел про аналитику); Google требует его декларировать.
+«Обязательно = Нет» у аналитики, потому что в privacy есть «Turn off
+analytics on this device».
+
+**Чего НЕ собираем** — явное «нет»: точное местоположение, контакты, календарь, SMS,
 аудио, файлы, финансовая информация, платёжные данные, история поиска, список
 установленных приложений.
 
@@ -155,7 +163,7 @@ Play пометит его «not optimised for tablets» — публикаци�
 | App access | **All functionality is available without special access**, но дать ревьюверу тестовый аккаунт — см. ниже |
 | Government apps | No |
 | Financial features | None |
-| Health apps declaration | Не применимо: Health Connect не используем |
+| Health apps declaration | Activity and fitness; Health Connect не используем, медицинских функций нет |
 | Data deletion | URL из раздела 3 |
 | News app | No |
 
