@@ -1,6 +1,6 @@
 # Deploy main to Railway.
 #
-# The Railway service is NOT connected to this GitHub repo (see DEPLOY.md), so
+# Railway's own GitHub auto-deploy is DISABLED (see DEPLOY.md, Option B), so
 # merging to main ships nothing on its own -- that is how three PRs merged on
 # 2026-07-30 without reaching production. Rather than depend on fixing the
 # source connection in the Railway dashboard, this runs the same `railway up

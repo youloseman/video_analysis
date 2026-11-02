@@ -36,7 +36,15 @@ the `--ignore` line in the workflow.
 To deploy without pushing (e.g. re-run a failed deploy): Actions → **Deploy** →
 **Run workflow**.
 
-## Option B — Railway's own GitHub integration (NOT connected)
+## Option B — Railway's own GitHub integration (connected, auto-deploy OFF)
+
+**State since 2026-11-01:** the repo IS connected in Railway, but **Auto
+deploys when pushed to GitHub** is **disabled**. It had been on since at least
+2026-10-12 without anyone noticing: every push deployed twice, and the GitHub
+build went live with no tests at all -- 0c2f7bb failed CI and was in
+production for five minutes anyway. Leave it disabled; Option A is the only
+path to production. If you ever turn it back on, tick **Wait for CI** and
+delete the deploy job below, or the two will race again.
 
 Native builds triggered by Railway itself, no Actions minutes, no token in
 GitHub. Would replace Option A. Needs the Railway **web dashboard**; there is no
