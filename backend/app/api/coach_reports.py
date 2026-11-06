@@ -130,14 +130,16 @@ async def stop_sharing(
 
 def _mail(to: str, athlete: str, coach: str, sport: str | None, url: str) -> bool:
     """From the coach, about the athlete's own clip. It names no price."""
+    from app.api.coach_link import in_sentence
     from app.services import notify
 
     esc = notify._esc_html
     noun = "ride" if sport == "bike" else "run"
+    mid = in_sentence(coach)
     subject = f"{coach} sent you your {noun} report"
     text = (
         f"Hi {athlete},\n\n{coach} sent you the report on your {noun}.\n\nOpen it: {url}\n\n"
-        f"The link works for {SHARE_DAYS} days. Measured by Flapp, sent because {coach} uploaded your clip; "
+        f"The link works for {SHARE_DAYS} days. Measured by Flapp, sent because {mid} uploaded your clip; "
         "write to support@getflapp.com if that is wrong.\n"
     )
     html = (
@@ -148,7 +150,7 @@ def _mail(to: str, athlete: str, coach: str, sport: str | None, url: str) -> boo
         f'<p style="margin:0 0 24px"><a href="{esc(url)}" style="background:#2F6DE0;color:#fff;text-decoration:none;'
         'padding:12px 20px;border-radius:8px;display:inline-block;font-weight:600">Open the report</a></p>'
         f'<p style="font-size:12px;color:#8A94A3;margin:0">The link works for {SHARE_DAYS} days. Measured by Flapp, '
-        f'sent because {esc(coach)} uploaded your clip. If that is wrong, write to support@getflapp.com.</p></div>'
+        f'sent because {esc(mid)} uploaded your clip. If that is wrong, write to support@getflapp.com.</p></div>'
     )
     return notify.send_email(to, subject, text, html)
 

@@ -107,7 +107,11 @@ def render_intake_page(ctx: dict[str, Any] | None) -> str:
             "<h1>This link isn't active</h1>"
             '<p class="lede">Ask your coach for a new one.</p>'
         ))
+    from app.api.coach_link import in_sentence
+
     coach, athlete = escape(ctx["coach"]), escape(ctx["athlete"])
+    mid = in_sentence(ctx["coach"])
+    mid_html = escape(mid)
     logo = ctx.get("logo") or ""
     head = (
         '<div class="who">'
@@ -117,9 +121,9 @@ def render_intake_page(ctx: dict[str, Any] | None) -> str:
         + "</div></div>"
     )
     if ctx.get("linked"):
-        return _doc(f"Your clip for {ctx['coach']}", head + (
+        return _doc(f"Your clip for {mid}", head + (
             f"<h1>Hi {athlete}</h1>"
-            f'<p class="lede">Your Flapp account is already linked to {coach}. '
+            f'<p class="lede">Your Flapp account is already linked to {mid_html}. '
             "Film and upload in the app, and they will see it.</p>"
             '<div class="card"><a href="/app">Open Flapp</a></div>'
         ))
@@ -130,8 +134,8 @@ def render_intake_page(ctx: dict[str, Any] | None) -> str:
     )
     positions = "".join(f'<option value="{v}">{label}</option>' for v, label in _POSITIONS)
     token = escape(ctx["token"], quote=True)
-    return _doc(f"Send your clip to {ctx['coach']}", head + (
-        f"<h1>{athlete}, send your clip to {coach}</h1>"
+    return _doc(f"Send your clip to {mid}", head + (
+        f"<h1>{athlete}, send your clip to {mid_html}</h1>"
         '<p class="lede">No account needed. It takes a minute to send, and you will know right away if it needs filming again.</p>'
         '<div class="card"><ul class="tips">'
         "<li>Film from the side, square on, with the camera at hip height.</li>"
@@ -144,7 +148,7 @@ def render_intake_page(ctx: dict[str, Any] | None) -> str:
         f'<div id="posBox"><label class="f" for="position">Position</label><select id="position" name="position">{positions}</select></div>'
         '<label class="f" for="video">Your clip</label><input id="video" name="video" type="file" accept="video/*">'
         '<label class="ok"><input type="checkbox" name="accept">'
-        f"<span>I want {coach} to see this clip and the report made from it. They keep it in their account.</span></label>"
+        f"<span>I want {mid_html} to see this clip and the report made from it. They keep it in their account.</span></label>"
         '<button id="go" type="submit">Send to my coach</button>'
         '<div class="bar hidden" id="bar"><i></i></div><p class="msg" id="msg" role="status" aria-live="polite"></p>'
         "</form>"

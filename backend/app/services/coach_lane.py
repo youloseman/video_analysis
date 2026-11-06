@@ -177,6 +177,7 @@ async def run_upload(upload_id: int) -> None:
     from app.core import db as core_db
     from app.core.jobs import job_file
     from app.services.usage_limits import check_quota, record_usage
+    from app.services.video_analysis.capture_report import film_notes_of
 
     async with core_db.SessionLocal() as db:
         up = await db.get(CoachUpload, upload_id)
@@ -247,6 +248,11 @@ async def run_upload(upload_id: int) -> None:
         row.athlete_id = up.athlete_id
         row.profile_id = up.profile_id
         _attach_result(row, job_id)
+        # What the analysis measured replaces the quick look: "couldn't find you"
+        # is stale once it has found them, and the look can't count frames tracked.
+        notes = film_notes_of(row.result, await capture_for(db, coach_id))
+        if notes is not None:
+            up.reasons = notes or None
         await _close(db, up, coach, STATUS_DONE)
 
 

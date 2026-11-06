@@ -132,6 +132,75 @@ async def test_a_no_go_costs_no_quota_and_can_be_run_anyway(make_user, db, lane)
     assert len(await me.list_analyses(coach, db)) == 1
 
 
+async def test_a_finished_clip_carries_what_the_analysis_found(make_user, db, lane, monkeypatch):
+    """The quick look's guess gives way to the measurement, and the coach sees it."""
+    monkeypatch.setattr(coach_lane, "scan_clip", lambda path, sport, bars: {
+        "verdict": "check", "reasons": [{"code": "not_found", "level": "check", "text": "Couldn't find you."}],
+    })
+    lane.job = {**GOOD, "result": {**GOOD["result"], "sport_specific_metrics": {"capture_report": {"checks": [
+        {"id": "drive_side", "status": "warn", "measured": "drive side"},
+    ]}}}}
+    coach, a = await coach_with_athlete(make_user, db)
+    out = await send(db, coach, a)
+    await coach_lane.run_upload(out["id"])
+    item = (await api.list_uploads(None, coach, db))["items"][0]
+    assert item["status"] == "done" and [r["code"] for r in item["reasons"]] == ["drive_side"]
+
+
+async def test_a_finished_clip_with_no_capture_report_keeps_the_quick_look(make_user, db, lane, monkeypatch):
+    monkeypatch.setattr(coach_lane, "scan_clip", lambda path, sport, bars: {
+        "verdict": "check", "reasons": [{"code": "small", "level": "check", "text": "A bit small."}],
+    })
+    coach, a = await coach_with_athlete(make_user, db)
+    out = await send(db, coach, a)
+    await coach_lane.run_upload(out["id"])
+    assert (await api.list_uploads(None, coach, db))["items"][0]["reasons"][0]["code"] == "small"
+
+
+async def test_a_clip_keeps_the_date_it_was_filmed_and_the_clock_for_deleting_it(make_user, db, lane):
+    coach, a = await coach_with_athlete(make_user, db)
+    may = 1_780_000_000_000
+    out = await api.upload_to_batch(clip("IMG_1.MOV"), "batch01", "bike", None, None, a["id"], None, coach, db, may)
+    row = (await db.execute(select(Analysis))).scalar_one()
+    assert row.data["filmedAt"] == may and row.data["fileName"] == "IMG_1.MOV"
+    # Retention counts from the row: a clip filmed months ago must not expire on arrival.
+    assert row.created_at_ms > may and row.data["at"] == row.created_at_ms
+    await coach_lane.run_upload(out["id"])
+    await db.refresh(row)  # the lane wrote through its own session
+    assert (await me.list_analyses(coach, db))[0]["filmedAt"] == may
+
+
+@pytest.mark.parametrize("bad", [0, 1_000_000, 9_999_999_999_999, "soon", None])
+async def test_a_date_nobody_could_have_filmed_on_is_not_kept(make_user, db, lane, bad):
+    coach, a = await coach_with_athlete(make_user, db)
+    await api.upload_to_batch(clip(), "batch01", "bike", None, None, a["id"], None, coach, db, bad)
+    assert "filmedAt" not in (await db.execute(select(Analysis))).scalar_one().data
+
+
+async def test_an_unnamed_coach_never_shows_an_athlete_their_address(make_user, db, lane, monkeypatch):
+    from app.api import coach_link
+
+    coach, a = await coach_with_athlete(make_user, db, email="private.person@example.com")
+    assert (await coach_link.coach_display(db, coach))["name"] == "Your coach"
+    token = (await roster.list_athletes(coach, db))["athletes"][0]["upload_token"]
+    page = (await api.intake_page(token, db)).body.decode()
+    assert "private.person" not in page
+    assert "send your clip to your coach" in page and "I want your coach to see" in page
+    sent = []
+    monkeypatch.setattr(notify, "send_email", lambda to, subject, text, html: sent.append((subject, text)) or True)
+    reports._mail("andy@example.com", "Andy", "Your coach", "bike", "https://x/r/t")
+    assert sent[0][0] == "Your coach sent you your ride report"
+    assert "sent because your coach uploaded" in sent[0][1]
+
+
+async def test_a_named_coach_keeps_their_name_in_every_sentence(make_user, db, lane):
+    coach, a = await coach_with_athlete(make_user, db)
+    await coach_api.put_coach(coach_api.CoachIn(name="Coach Mike"), coach, db)
+    token = (await roster.list_athletes(coach, db))["athletes"][0]["upload_token"]
+    page = (await api.intake_page(token, db)).body.decode()
+    assert "send your clip to Coach Mike" in page and "I want Coach Mike to see" in page
+
+
 async def test_a_clip_we_cannot_check_still_runs(make_user, db, lane, monkeypatch):
     coach, a = await coach_with_athlete(make_user, db)
     def boom(*a, **k):

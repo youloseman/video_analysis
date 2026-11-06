@@ -55,6 +55,9 @@ DAY_MS = 24 * 3600 * 1000
 # What the coach sees when they open the batch screen with no batch in hand.
 RECENT_DAYS = 14
 RECENT_LIMIT = 60
+# 1 January 2015. Older than the app's every clip, and it stops a zero or a
+# seconds-for-milliseconds slip passing for a date.
+FILMED_FLOOR_MS = 1_420_070_400_000
 
 
 def _now_ms() -> int:
@@ -82,6 +85,7 @@ async def _accept(
     db: AsyncSession, coach: User, video: UploadFile, *, sport: str, position: str | None,
     camera_side: str | None, athlete_id: int | None, profile_id: int | None,
     batch_id: str | None, source: str, extra: dict[str, Any] | None = None,
+    filmed_at_ms: Any = None,
 ) -> CoachUpload:
     """Everything both doors share: the checks, the clip, the rows, the queue."""
     from app.core.config import settings
@@ -121,6 +125,13 @@ async def _accept(
     entry.update(extra or {})
     # Scanned and filed by the lane; the column stays NULL until then, so the
     # squad's numbers do not count a clip that may yet turn out a NO-GO.
+    if video.filename:
+        entry["fileName"] = video.filename[:MAX_FILENAME_CHARS]
+    # Kept apart from ``at``, which is when the row was made: retention counts
+    # from there, and a clip filmed in May must not expire the day it arrives.
+    filmed = _filmed_at(filmed_at_ms, now)
+    if filmed:
+        entry["filmedAt"] = filmed
     db.add(Analysis(user_id=coach.id, client_id=client_id, created_at_ms=now, job_id=job_id,
                     sport=sport, kind="video", score=None, data=entry))
     up = CoachUpload(
@@ -136,6 +147,12 @@ async def _accept(
     coach_lane.enqueue(up.id)
     logger.info("COACH_UPLOAD", upload_id=up.id, source=source, bytes=size, coach_user_id=coach.id)
     return up
+
+
+def _filmed_at(raw: Any, now: int) -> int | None:
+    """The file's own date, when it can be one: phones and copies can report
+    anything, and a date nobody could have filmed on is worse than none."""
+    return raw if isinstance(raw, int) and FILMED_FLOOR_MS <= raw <= now else None
 
 
 def _item(up: CoachUpload, names: dict[int, str]) -> dict[str, Any]:
@@ -159,6 +176,7 @@ async def upload_to_batch(
     profile_id: int | None = Form(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    filmed_at_ms: int | None = Form(None),
 ) -> dict[str, Any]:
     """One file of a batch. It goes in line and the request returns."""
     from app.api.me import _owned_profile_id
@@ -189,7 +207,7 @@ async def upload_to_batch(
     up = await _accept(
         db, user, video, sport=sport, position=position, camera_side=camera_side or None,
         athlete_id=athlete_id, profile_id=await _owned_profile_id(db, user, profile_id),
-        batch_id=batch_id, source=SOURCE_BATCH,
+        batch_id=batch_id, source=SOURCE_BATCH, filmed_at_ms=filmed_at_ms,
     )
     return _item(up, {})
 

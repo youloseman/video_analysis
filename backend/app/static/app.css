@@ -758,6 +758,8 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .cmp-lbl{font-weight:500;font-size:13px;color:var(--c-ink)}
 .cmp-a,.cmp-b{font-family:var(--f-mono);font-weight:500;font-size:14px;color:var(--c-ink);text-align:center;font-variant-numeric:tabular-nums}
 .cmp-a{color:var(--c-ink-faint)}
+.cmp-people .cmp-a{color:var(--c-ink)}
+.cmp-a.cmp-off,.cmp-b.cmp-off{color:var(--c-coral-btn);font-weight:600}
 .cmp-d{text-align:center;font-size:12.5px;font-family:var(--f-mono)}
 .cmp-trend{font-weight:500;font-size:11px}
 .cmp-ai{border:1px solid var(--c-line);border-left:3px solid var(--c-blue);border-radius:var(--radius);background:var(--c-panel-blue);padding:14px 16px;margin:0 0 20px}
@@ -1655,6 +1657,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
    watched the overlay with no idea what to look for. */
 .result-top{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px 24px;align-items:start;margin-top:0}
 .result-top > .scorecard{grid-column:1/-1}
+.result-top > #hdFilmNotes:empty{display:none}
 .result-top > #videoCol{grid-column:1}
 .result-top > #issuesBlock{grid-column:2;margin-top:0}
 .result-top.no-video > #issuesBlock,.result-top.pair > #issuesBlock{grid-column:1/-1}
@@ -2833,6 +2836,11 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .sq-chip b{font-weight:500}
 .sq-chip.sq-off b{color:var(--c-coral-btn);font-weight:600}
 .sq-d{font-size:10.5px;color:var(--c-ink-faint);font-weight:400}
+.sq-gap{display:block;font-size:11.5px;margin-top:2px}
+.sq-table small.sq-film,.sq-film{display:block;font-family:var(--f-body);font-size:11.5px;font-weight:400;color:var(--st-warn);margin-top:3px;white-space:normal;max-width:230px}
+.sq-film .ic{width:11px;height:11px;vertical-align:-1px}
+.prog-side{margin:0 0 18px}
+.prog-side .subhint{margin-top:6px}
 .sq-table .sq-pick{width:28px;padding-right:0}
 .sq-table .sq-thumb{width:76px;padding-right:0}
 .sq-name{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--c-head);cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--c-line-strong)}
@@ -2887,6 +2895,17 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .bat-name .p-kind,.bat-list .p-kind{font-family:var(--f-mono);font-size:10.5px;color:var(--c-ink-faint);border:1px solid var(--c-line-strong);padding:0 5px;border-radius:var(--radius-xs)}
 .bat-state{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft)}
 .bat-state.sq-off{color:var(--c-coral-btn)}
+.bat-state.bat-noted{color:var(--st-warn)}
+.bat-named{display:flex;align-items:center;gap:12px}
+.bat-file{min-width:0}
+.bat-file small{display:block;font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);margin-top:2px}
+.bat-thumb{flex:none;width:72px;height:72px;border-radius:var(--radius-xs);background:var(--c-media-bg);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.bat-thumb img{display:block;width:100%;height:100%;object-fit:contain}
+.bat-nothumb{color:var(--c-ink-faint)}
+.sq-nameask{background:var(--c-bg);border:1px solid var(--c-line);border-left:3px solid var(--c-blue);border-radius:var(--radius);padding:12px 16px;margin:0 0 16px}
+.sq-nameask label{display:block;font-size:13.5px;line-height:1.5;color:var(--c-ink);margin:0 0 8px}
+.sq-nameask-row{display:flex;flex-wrap:wrap;gap:8px}
+.sq-nameask input{flex:1 1 200px;min-width:0;max-width:340px;font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--c-line-strong);border-radius:var(--radius-xs);background:var(--c-bg);color:var(--c-ink)}
 .bat-go{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:14px 0 22px}
 .bat-h{font-family:var(--f-display);font-size:14px;margin:0 0 10px;color:var(--c-head)}
 .p-copy{background:none;border:0;color:var(--c-blue);font:inherit;font-size:12px;cursor:pointer;padding:0 2px;text-decoration:underline}

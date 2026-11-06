@@ -34,6 +34,7 @@ rather than buried.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.services.video_analysis.biomechanics.tracking_diagnostics import (
@@ -504,6 +505,80 @@ def _drive_side_check(
     )
 
 
+def film_notes(
+    checks: list[dict[str, Any]] | None, bars: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """What somebody reading the numbers has to know about how they were filmed.
+
+    Narrower than the checks on purpose. The report's checks are advice on the
+    next clip; these are a warning about this one, and they travel to Squad, the
+    lane and the document a coach hands an athlete. So the list holds only what
+    can make a number wrong:
+
+    - ``leg_identity`` is out: ``leg_swap_pct`` is the detector's noise before
+      the identity resolver, and a clean run clip scoring 94 reads 30% on it.
+      A clip the resolver could not save loses its score (quality gate).
+    - a long clip, a short-but-usable one, a landscape phone: advice, not error.
+
+    Worded for two readers at once (coach and athlete), so never "you".
+    ``bars`` is a coach's grid (models.coach.clean_capture): their size bar and
+    their chainring switch silence these too, as they do the check before a run.
+    """
+    grid = bars or {}
+    notes: list[dict[str, Any]] = []
+    for c in checks or []:
+        code, status, measured = c.get("id"), c.get("status"), str(c.get("measured") or "")
+        if code == "framing" and status in ("warn", "bad"):
+            found = re.search(r"(\d+) px", measured)
+            px = int(found.group(1)) if found else None
+            if px is not None and grid.get("small_px") and px >= grid["small_px"]:
+                continue
+            if c.get("label") == "Resolution of the file":
+                notes.append({
+                    "code": code, "level": status, "px": px, "short": "low-resolution file",
+                    "text": f"Low-resolution file: {measured}. Angles can read less exactly. "
+                            "Send the original from the camera roll.",
+                })
+            else:
+                notes.append({
+                    "code": code, "level": status, "px": px, "short": "small in the frame",
+                    "text": f"Small in the frame: {measured}. The legs can swap and angles read "
+                            "less exactly. Film closer or zoom in.",
+                })
+        elif code == "drive_side" and status == "warn" and grid.get("drive_side", True):
+            notes.append({
+                "code": code, "level": status, "short": "chainring side, knee reads low",
+                "text": "Chainring side: the knee at the bottom of the stroke reads about 8 to 10 "
+                        "degrees low, so don't set the saddle from this clip. Trunk, shoulder, elbow "
+                        "and hip are fine. Film the other side for the knee.",
+            })
+        elif code == "duration" and status == "bad":
+            notes.append({
+                "code": code, "level": status, "short": "little usable footage",
+                "text": f"Little usable footage: {measured.replace('you were', 'the athlete was')}. "
+                        "The numbers rest on very little movement.",
+            })
+        elif code == "camera_motion" and status == "bad":
+            notes.append({
+                "code": code, "level": status, "short": "shaky camera",
+                "text": f"Shaky camera: {measured.replace('your hips', 'the hips')}. "
+                        "Vertical oscillation can't be trusted on this clip.",
+            })
+    notes.sort(key=lambda n: n["level"] != "bad")
+    return notes
+
+
+def film_notes_of(
+    result: dict[str, Any] | None, bars: dict[str, Any] | None = None,
+) -> list[dict[str, Any]] | None:
+    """The notes on a stored result; None when it holds no capture report (a
+    photo, or a run that never got as far as one), which is not "nothing to say"."""
+    r = result or {}
+    report = ((r.get("sport_specific_metrics") or {}).get("capture_report")
+              or (r.get("quality") or {}).get("capture_report"))
+    return film_notes(report.get("checks"), bars) if report else None
+
+
 def build_capture_report(
     *,
     sport_type: str,
@@ -565,6 +640,7 @@ def build_capture_report(
         "headline": headline,
         "checks": checks,
         "problem_count": sum(1 for c in checks if c["status"] in ("bad", "warn")),
+        "notes": film_notes(checks),
     }
 
 
@@ -574,4 +650,6 @@ __all__ = [
     "FRAMING_TARGET_PX",
     "FRAMING_WARN_PX",
     "build_capture_report",
+    "film_notes",
+    "film_notes_of",
 ]

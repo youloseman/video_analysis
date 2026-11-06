@@ -101,3 +101,178 @@ def test_the_camera_reads_the_coachs_bars():
     assert "COACH.capture" in src
     assert "grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx)" in src
     assert "grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx)" in src
+
+
+# --------------------------------------------------------------------------
+# A change of side is not a change of rider
+# --------------------------------------------------------------------------
+def run_js(body: str) -> dict:
+    out = subprocess.run([node, "-e", body], capture_output=True, text=True, timeout=30)
+    assert out.returncode == 0, out.stderr
+    return json.loads(out.stdout)
+
+
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_the_squad_reads_a_clip_against_one_from_the_same_side_only():
+    script = fn("cmpSame") + fn("cmpPrevious") + fn("cmpGapWord") + """
+    const base={sport:'bike',kind:'video',athleteId:1,position:'tt_aero',trends:{knee:150}};
+    const right={...base,id:'r',at:30,cameraSide:'right'}, left={...base,id:'l',at:20,cameraSide:'left'},
+          left0={...base,id:'l0',at:10,cameraSide:'left'};
+    const es=[right,left,left0];
+    console.log(JSON.stringify({afterSwitch:cmpPrevious(right,es),left:cmpPrevious(left,es).id,
+      gap:cmpGapWord(right,es),none:cmpGapWord(left0,es)}));"""
+    got = run_js(script)
+    assert got["afterSwitch"] is None and got["left"] == "l0"
+    assert "other side" in got["gap"] and got["none"] == ""
+
+
+def test_no_screen_draws_a_line_or_a_delta_across_two_sides():
+    assert "cmpPrevious(es[0],es)" in fn("renderSquadHome")
+    assert "cmpPrevious(e,es)" in fn("openAthlete")
+    assert "state.progressSide" in fn("renderProgress")
+    assert "e.cameraSide===state.progressSide" in fn("renderProgress")
+    assert "sameSide" in fn("sportCard")
+    assert "cmpPrevious(cur,entries)" in fn("formTiles") and "cmpPrevious(cur,entries)" in fn("currentFormTable")
+    assert "every[0].cameraSide" in fn("thenPair")
+
+
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_a_coachs_own_bars_silence_the_filming_notes():
+    script = "const coachOn=()=>true;let COACH={capture:{small_px:300,drive_side:false}};\n" + fn("filmNotesOf") + fn("filmLook") + """
+    const notes=[{code:'framing',level:'warn',px:320,short:'small'},{code:'drive_side',level:'warn',short:'chain'},{code:'duration',level:'bad',short:'little'}];
+    const quiet=filmNotesOf({filmNotes:notes}).map(n=>n.code);
+    COACH={};
+    const all=filmNotesOf({filmNotes:notes}).map(n=>n.code);
+    const small={filmNotes:[notes[0]]};
+    console.log(JSON.stringify({quiet,all,look:filmLook({filmNotes:notes}).code,smallOnly:filmLook(small)}));"""
+    got = run_js(script)
+    assert got["quiet"] == ["duration"] and got["all"] == ["framing", "drive_side", "duration"]
+    # Small in the frame alone is on the row but not under Needs attention.
+    assert got["look"] == "drive_side" and got["smallOnly"] is None
+
+
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_a_rebuilt_entry_keeps_its_filming_notes():
+    script = (
+        "const metricsFromVideo=()=>[],metricsFromPhoto=()=>[],compactAngleStats=()=>({}),"
+        "extractTrends=()=>({t:{},o:{},c:{}});\n" + fn("entryFromResult") + """
+    const n=[{code:'drive_side',level:'warn',short:'s',text:'t'}];
+    const full=entryFromResult('video',{sport_type:'bike',sport_specific_metrics:{capture_report:{notes:n}}},{id:'a',at:1});
+    const free=entryFromResult('video',{sport_type:'bike',quality:{capture_report:{notes:n}}},{id:'b',at:1});
+    const clean=entryFromResult('video',{sport_type:'bike',sport_specific_metrics:{capture_report:{notes:[]}}},{id:'c',at:1});
+    console.log(JSON.stringify({full:full.filmNotes,free:free.filmNotes,clean:clean.filmNotes||null}));""")
+    got = run_js(script)
+    assert got["full"][0]["code"] == "drive_side" and got["free"][0]["code"] == "drive_side"
+    assert got["clean"] is None
+
+
+def test_the_lane_says_what_it_found_on_a_finished_clip():
+    src = fn("renderLane")
+    assert "i.status!=='done'" not in src and "Ready, read the note" in src
+
+
+def test_a_coach_is_not_offered_a_way_to_wipe_the_squad():
+    src = fn("renderHistList")
+    assert "hint.hidden=!all.length||hasCoachPlan()" in src
+    assert "clr.classList.toggle('hidden',hasCoachPlan())" in src
+    assert "if(hasCoachPlan()) return;" in fn("clearAllHistory")
+
+
+
+# --------------------------------------------------------------------------
+# Two people are not a before and after
+# --------------------------------------------------------------------------
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_two_people_read_as_a_gap_and_never_as_progress():
+    script = "const esc=s=>s;\n" + fn("cmpGapRow") + """
+    const m={key:'knee',label:'Knee',unit:' deg',noise:3};
+    const A={trends:{knee:153},trendOpt:{knee:[138,145]}}, B={trends:{knee:145},trendOpt:{knee:[138,145]}};
+    const close={trends:{knee:147},trendOpt:{}};
+    console.log(JSON.stringify({row:cmpGapRow(m,A,B),near:cmpGapRow(m,A,{...close,trends:{knee:151}})}));"""
+    got = run_js(script)
+    assert "closer" not in got["row"] and "further" not in got["row"]
+    assert "tdelta sta" in got["row"] and ">8 deg<" in got["row"]
+    assert 'cmp-a cmp-off' in got["row"] and 'cmp-b cmp-off' not in got["row"]
+    assert "within error" in got["near"]
+
+
+def test_the_compare_page_says_two_athletes_when_it_is_two_athletes():
+    src = fn("renderCompare")
+    assert "people?'Two athletes':'Before / after'" in src
+    assert "(setups||sidesMode||people) ? '' : baSliderHtml" in src
+    assert "if(people) return" in src, "two people get no WHAT CHANGED headline"
+    assert "Back to Squad" in src
+    assert "different people" not in fn("cmpCaveats"), "the page says so itself; it is not a caveat on a before/after"
+
+
+def test_the_menu_does_not_open_on_two_people_when_one_person_has_two_clips():
+    src = fn("openCompare")
+    assert "hasCoachPlan()&&list.find(e=>cmpPrevious(e,list))" in src
+    assert "!cmpPeople(e,b)" in src
+    assert "!cmpPeople(e,who)" in fn("cmpSides"), "left vs right is one person's two legs"
+
+
+# --------------------------------------------------------------------------
+# The batch's rows
+# --------------------------------------------------------------------------
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_a_row_is_not_filed_under_the_coach_by_default():
+    script = "const esc=s=>s;let squad=[{id:7,name:'Maya'}];const liveAthletes=()=>squad;\n" + fn("batchAthleteOptions") + fn("batchWhose") + """
+    const open=batchAthleteOptions('');
+    const me=batchAthleteOptions('me');
+    const maya=batchAthleteOptions(7);
+    squad=[]; const alone=batchAthleteOptions('');
+    console.log(JSON.stringify({open,me,maya,alone,w1:batchWhose({athleteId:'me'}),w2:batchWhose({athleteId:'7'}),w3:batchWhose({athleteId:''})}));"""
+    got = run_js(script)
+    assert got["open"].startswith('<option value="">Choose') and 'value="me" selected' not in got["open"]
+    assert 'value="me" selected' in got["me"] and 'value="7" selected' in got["maya"]
+    # No squad: there is nobody else it could be.
+    assert 'value="me" selected' in got["alone"] and "Choose" not in got["alone"]
+    assert got["w1"] is None and got["w2"] == "7" and got["w3"] is None
+
+
+def test_the_batch_waits_for_an_answer_and_sends_only_real_ids():
+    src = fn("renderBatch")
+    assert "go.disabled=b.running||!todo||unnamed>0" in src and "first." in src
+    assert "batchWhose(it)" in fn("batchSendVideo") and "filmed_at_ms" in fn("batchSendVideo")
+    assert "batchWhose(it)" in fn("batchSendPhoto")
+    assert "batchWhose(x)" in fn("batchGo")
+
+
+def test_a_sent_clip_leaves_the_list_for_the_lane():
+    assert "!(x.state==='sent'&&x.kind==='video')" in fn("batchGo")
+    assert "it.state==='sent'?'<span></span>'" in fn("renderBatch")
+
+
+def test_a_thumbnail_arriving_does_not_close_an_open_dropdown():
+    src = fn("batchThumbs")
+    assert "renderBatch" not in src and "el.outerHTML=batchThumbHtml(it)" in src
+
+
+def test_the_date_a_clip_was_filmed_decides_the_order_and_survives_a_rebuild():
+    assert "(b.filmedAt||b.at||0)-(a.filmedAt||a.at||0)" in fn("coachPool")
+    assert "x.filmedAt||x.at" in fn("cmpPrevious")
+    assert "'filmedAt','fileName'" in fn("entryFromResult")
+    assert "fmtWhen(e.at)" not in SPA, "every date on a clip reads filmedAt first"
+
+
+# --------------------------------------------------------------------------
+# The coach's name
+# --------------------------------------------------------------------------
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_the_squad_asks_for_the_name_only_until_there_is_one():
+    script = "let on=true;const coachOn=()=>on;let COACH={loaded:true,name:''};\n" + fn("coachNameAsk") + """
+    const ask=coachNameAsk();
+    COACH.name='  '; const blank=coachNameAsk();
+    COACH.name='Coach Mike'; const named=coachNameAsk();
+    COACH={loaded:false,name:''}; const early=coachNameAsk();
+    console.log(JSON.stringify({ask,blank,named,early}));"""
+    got = run_js(script)
+    assert "sqCoachName" in got["ask"] and "sqCoachName" in got["blank"]
+    assert got["named"] == "" and got["early"] == "", "no flash of the question before the profile has loaded"
+
+
+def test_both_squad_screens_carry_the_question_and_it_redraws_once_loaded():
+    src = fn("renderSquadHome")
+    assert src.count("${coachNameAsk()}") == 2 and src.count("wireCoachNameAsk()") == 2
+    assert "renderSquadHome()" in fn("loadCoach")

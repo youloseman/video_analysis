@@ -42,15 +42,24 @@ class LinkIn(BaseModel):
     consent: bool = False
 
 
+# What an athlete reads until the coach has given a name. Not the account's local
+# part: that handed "coach.test", or a private address's first half, to athletes.
+NO_COACH_NAME = "Your coach"
+
+
+def in_sentence(name: str) -> str:
+    """The name for the middle of a sentence."""
+    return "your coach" if name == NO_COACH_NAME else name
+
+
 async def coach_display(db: AsyncSession, coach: User) -> dict[str, Any]:
-    """The coach as the athlete sees them: the profile's name, else the
-    account's local part."""
+    """The coach as the athlete sees them: the profile's name, else no name."""
     prof = (
         await db.execute(select(CoachProfile).where(CoachProfile.user_id == coach.id))
     ).scalar_one_or_none()
     d = (prof.data if prof else None) or {}
     return {
-        "name": d.get("name") or coach.email.split("@")[0],
+        "name": (d.get("name") or "").strip() or NO_COACH_NAME,
         "tagline": d.get("tagline") or "",
     }
 

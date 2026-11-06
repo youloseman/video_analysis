@@ -57,7 +57,7 @@ async def test_the_code_links_and_the_coach_is_named(make_user, db):
     andy = await make_user(tier=TIER_ENTHUSIAST)
     a = await add(db, coach)
     out = await link(db, andy, a["upload_token"])
-    assert out["coach"]["name"] == "john" and out["coach"]["athlete_name"] == "Andy"
+    assert out["coach"]["name"] == "Your coach" and out["coach"]["athlete_name"] == "Andy"
     assert "switch this off" in out["consent_text"]
     # Idempotent: the same code again is the same link.
     again = await link(db, andy, a["upload_token"])
@@ -199,10 +199,10 @@ async def test_the_note_lands_on_the_athletes_entry_under_the_coachs_name(make_u
     await link(db, andy, a["upload_token"])
     await save(db, andy, client_id="a1", score=80)
     out = await api.write_note(a["id"], "a1", api.NoteIn(note="  Drop the heel earlier. "), coach, db)
-    assert out == {"coachNote": "Drop the heel earlier.", "coachName": "coach.john", "coachBio": ""}
+    assert out == {"coachNote": "Drop the heel earlier.", "coachName": "Your coach", "coachBio": ""}
     row = (await db.execute(select(Analysis).where(Analysis.client_id == "a1"))).scalar_one()
-    assert row.data["coachNote"] == "Drop the heel earlier." and row.data["coachName"] == "coach.john"
-    assert sent == [("andy@example.com", "coach.john")]
+    assert row.data["coachNote"] == "Drop the heel earlier." and row.data["coachName"] == "Your coach"
+    assert sent == [("andy@example.com", "Your coach")]
     # Editing an existing note does not mail again.
     await api.write_note(a["id"], "a1", api.NoteIn(note="Drop the heel a touch earlier."), coach, db)
     assert len(sent) == 1

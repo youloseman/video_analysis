@@ -620,13 +620,15 @@ async def render_saved_report(
         who = await db.scalar(select(Athlete.name).where(
             Athlete.id == (athlete_id or row.athlete_id), Athlete.coach_user_id == reader.id)) or who
     coach = None
+    capture_bars = None
     if has_coach(reader.tier):
         prof = await db.get(CoachProfile, reader.id)
         d = (prof.data if prof else None) or {}
+        capture_bars = d.get("capture") or None
         if d.get("name") or d.get("logo"):
             coach = {"name": d.get("name") or "", "tagline": d.get("tagline") or "", "logo": d.get("logo")}
     entry = row.data or {}
-    when = datetime.fromtimestamp((row.created_at_ms or 0) / 1000, timezone.utc)
+    when = datetime.fromtimestamp((entry.get("filmedAt") or row.created_at_ms or 0) / 1000, timezone.utc)
     today = datetime.now(timezone.utc)
     position = result.get("cycling_position")
     return render_report_html(result, {
@@ -638,6 +640,7 @@ async def render_saved_report(
         "keyframe": stored_keyframe(row),
         "kinogram": result.get("kinogram_base64"),
         "coach": coach,
+        "capture_bars": capture_bars,
         "coach_note": entry.get("coachNote") or "",
         "coach_note_by": entry.get("coachName") or "",
     })

@@ -27,6 +27,7 @@ from app.services.video_analysis.biomechanics.technique_scorer import (
     CYCLING_WEIGHTS,
     RUNNING_WEIGHTS,
 )
+from app.services.video_analysis.capture_report import film_notes_of
 
 _SPORT = {"bike": "Cycling", "run": "Running"}
 
@@ -297,6 +298,31 @@ _EXTRA_CSS = """
 .gr-pm{display:inline-block;width:2px;height:9px;background:#14294B;opacity:.55;margin-right:5px;vertical-align:-1px}
 .gr-none{font-size:8.4pt;color:#8A93A1;margin-top:8px}
 .foot{margin:18px 0 0;padding-top:10px;border-top:1px solid #DCE2EA;font-size:8pt;color:#6E7787;display:flex;justify-content:space-between}
+.filmnote{background:#FFF3DC;border-left:3px solid #E5A23A;border-radius:4px;padding:10px 14px;margin:0 0 14px;break-inside:avoid}
+.filmnote ul{margin:4px 0 0}
+.filmnote li{margin:0 0 3px}
+/* The document is A4 in millimetres, and a coach's link opens on a phone. Screen
+   only: Save as PDF prints the A4 page from any device. */
+@media screen and (max-width:720px){
+  body{padding:0 16px;font-size:14px}
+  .screen{margin:0 -16px;padding:10px 16px;font-size:13px}
+  .screen button{flex:none;font-size:13px}
+  .cover-band{margin:0 -16px;padding:24px 16px 20px}
+  .cover-band h1{font-size:30px}
+  .cover-grid3{grid-template-columns:auto minmax(0,1fr);gap:14px}
+  .ring{width:96px;height:96px}
+  .facts{font-size:13px;gap:3px 10px}
+  .facts dd{overflow-wrap:anywhere;min-width:0}
+  .bd{grid-column:1/-1;border-left:0;padding-left:0;border-top:1px solid #2A4170;padding-top:12px}
+  .bd-row{grid-template-columns:minmax(0,1fr) 72px 26px 32px;font-size:13px}
+  .cover-img img{max-height:none}
+  .glance,.tiles,.two{grid-template-columns:minmax(0,1fr)}
+  .prio dl{grid-template-columns:minmax(0,1fr)}
+  .prio dt{padding-top:6px}
+  .legend,.foot{flex-wrap:wrap;gap:6px 14px}
+  h2{font-size:24px}
+  h3{font-size:16px}
+}
 """
 
 
@@ -328,7 +354,8 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         ("Sport", " · ".join(x for x in (_SPORT.get(sport, sport.title()), position if sport == "bike" else "") if x)),
         ("Setup", meta.get("setup")),
         ("Filmed", meta.get("filmed")),
-        ("Camera", f"{side} side" if side else None),
+        ("Camera", ("both sides" if side == "both" else f"{side} side"
+                    + (" · chainring side" if sport == "bike" and side == "right" else "")) if side else None),
         ("Prepared", meta.get("prepared")),
     ]
     facts_html = "".join(f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in facts if v)
@@ -364,6 +391,14 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         + "".join(f"<p>{_e(p)}</p>" for p in note.split("\n") if p.strip())
         + "</div>"
     ) if note else ""
+    # Read from the capture report here, so a report saved before these notes
+    # existed carries them as well. ``capture_bars`` is the coach's own grid.
+    film = film_notes_of(result, meta.get("capture_bars")) or []
+    film_html = (
+        "<div class='filmnote'><div class='eyebrow'>How this clip was filmed</div><ul>"
+        + "".join(f"<li>{_e(n['text'])}</li>" for n in film)
+        + "</ul></div>"
+    ) if film else ""
 
     cover = f"""
 <section>
@@ -387,9 +422,10 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
 <section class="page">
   {head("The coach's read", "What's off, and what to change first")}
   {note_html}
+  {film_html}
   {f'<div class="coachtext">{markdown(coach)}</div>' if coach else ''}
   {("<div class='eyebrow' style='margin-top:6px'>What the measurements flagged</div>" + findings) if findings else ''}
-  {'' if (coach or findings) else '<p class="lead">Nothing in this clip is outside its range. Keep filming the same way and watch the trend.</p>'}
+  {'' if (coach or findings or film) else '<p class="lead">Nothing in this clip is outside its range. Keep filming the same way and watch the trend.</p>'}
 </section>"""
 
     prio_html = "".join(

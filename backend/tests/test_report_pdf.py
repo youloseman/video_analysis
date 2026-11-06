@@ -53,6 +53,39 @@ def test_a_bike_report_turns_the_fit_plan_into_the_plan():
     assert html.index("Saddle height —") < html.index("Bar position —")
 
 
+def _filmed(*checks: dict) -> dict:
+    return {"sport_type": "bike", "camera_side": "right",
+            "sport_specific_metrics": {"capture_report": {"checks": list(checks)}}}
+
+
+CHAIN = {"id": "drive_side", "status": "warn", "measured": "drive side"}
+SMALL = {"id": "framing", "status": "warn", "label": "How much of the frame you fill",
+         "measured": "320 px tall (25% of the frame height)"}
+
+
+def test_the_report_says_how_the_clip_was_filmed():
+    html = render_report_html(_filmed(CHAIN, SMALL), {})
+    assert "How this clip was filmed" in html and "knee at the bottom of the stroke reads about 8 to 10" in html
+    assert "Small in the frame: 320 px tall" in html and "right side · chainring side" in html
+    # "Keep filming the same way" can't stand under "film the other side".
+    assert "Keep filming the same way" not in html
+
+
+def test_a_clean_clip_has_no_filming_note():
+    assert "How this clip was filmed" not in render_report_html(_filmed({"id": "framing", "status": "good"}), {})
+
+
+def test_a_coachs_bars_reach_the_report():
+    html = render_report_html(_filmed(CHAIN, SMALL), {"capture_bars": {"small_px": 300, "drive_side": False}})
+    assert "How this clip was filmed" not in html
+
+
+def test_the_document_has_a_phone_layout_and_stays_a4_in_print():
+    css = render_report_html(_filmed(), {})
+    assert "@media screen and (max-width:720px)" in css
+    assert "size:A4" in css
+
+
 def test_nothing_from_the_result_is_written_unescaped():
     res = example("run-treadmill")
     res["detected_issues"] = [{"type": "x", "value": "<b>v</b>", "recommendation": "<img src=x onerror=1>"}]

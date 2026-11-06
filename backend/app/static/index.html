@@ -1506,6 +1506,7 @@
       </div>
     </div>
     <div class="profilefilter" id="progAthleteFilter"></div>
+    <div id="progSide"></div>
     <p class="hint" style="text-align:left;margin:-8px 0 18px">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
     <div class="again-row" id="compareCta" style="margin:0 0 18px;display:none">
       <button class="btn btn-ghost btn-sm" id="btnCompare" type="button">
@@ -1577,6 +1578,7 @@
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="hShareBtnTxt">Share result</span>
         </button>
       </div>
+      <div id="hdFilmNotes"></div>
       <div>
         <div class="videoframe" id="hdImgWrap">
           <!-- background-color (not the `background` shorthand) so .kf-wait can
@@ -5841,7 +5843,8 @@ async function mountCompareVideo(Ae,Be,sides){
   cmpSyncUnmount();
   const ok=e=>e && e.kind==='video' && e.jobId && e.access==='full';
   if(!auth || !ok(Ae) || !ok(Be)){ host.innerHTML=''; return; }
-  const tagA=sides?'Left side':'Before', tagB=sides?'Right side':'After';
+  const people=!sides&&cmpPeople(Ae,Be);
+  const tagA=sides?'Left side':people?cmpWho(Ae):'Before', tagB=sides?'Right side':people?cmpWho(Be):'After';
   host.innerHTML=`<div class="sy-loading">Loading the two clips…</div>`;
   const get=async(e,what)=>{ try{ const r=await fetch(meUrl(e,what),{headers:authHeaders()}); return r.ok?await r.json():null; }catch(_e){ return null; } };
   const [oa,ob,ta,tb]=await Promise.all([get(Ae,'overlays'),get(Be,'overlays'),get(Ae,'timeline'),get(Be,'timeline')]);
@@ -6463,6 +6466,8 @@ async function loadCoach(){
   try{ const r=await fetch('/me/coach',{headers:authHeaders()}); if(r.ok){ Object.assign(COACH, await r.json()); COACH.loaded=true; } }catch(e){}
   renderCoachCard();
   if(state.lastResult&&!$('#results').classList.contains('hidden')) renderCoachNote('coachNote', state.videoHistId);
+  // Squad can draw before this answers, and it asks for the name from what's here.
+  if(hasCoachPlan()&&document.body.dataset.state==='dashboard'&&!state.squadMe) renderSquadHome();
 }
 async function saveCoach(patch){
   const body={name:COACH.name,tagline:COACH.tagline,logo:COACH.logo,cues:COACH.cues,...patch};
@@ -6832,7 +6837,7 @@ function renderSwimUpload(){
         <p class="swim-fine">Nothing is charged at upload: you choose Coach Notes or an Expert Review on the next screen.</p>
       </form>
     </div>
-    ${waiting.length?`<div class="swim-mine"><h3>Your swim clips</h3>${waiting.map(e=>`<button type="button" class="swim-mineitem" data-swopen="${esc(e.id)}"><b>${esc(fmtWhen(e.at))}</b> · ${esc(swimMeta(e))}</button>`).join('')}</div>`:''}
+    ${waiting.length?`<div class="swim-mine"><h3>Your swim clips</h3>${waiting.map(e=>`<button type="button" class="swim-mineitem" data-swopen="${esc(e.id)}"><b>${esc(fmtWhen(e.filmedAt||e.at))}</b> · ${esc(swimMeta(e))}</button>`).join('')}</div>`:''}
   </div>`;
   $('#swForm').addEventListener('submit',ev=>{ ev.preventDefault(); swimUpload(); });
   $('#swHost').querySelectorAll('[data-swopen]').forEach(b=>b.addEventListener('click',()=>openSwimEntry(b.dataset.swopen)));
@@ -6882,7 +6887,7 @@ function renderSwimEntry(e){
   $('#swHost').innerHTML=`<div class="card swim-card">
     <span class="eyebrow">Swim · coach review</span>
     <h1 class="swim-h" id="swTitle" tabindex="-1">Your swim clip</h1>
-    <p class="swim-meta">${esc(swimMeta(e))} · ${esc(fmtWhen(e.at))}</p>
+    <p class="swim-meta">${esc(swimMeta(e))} · ${esc(fmtWhen(e.filmedAt||e.at))}</p>
     <div class="swim-player" id="swPlayer"><p class="swim-fine">Loading your clip…</p></div>
     ${e.focus?`<p class="swim-q"><b>Your question for the coach:</b> “${esc(e.focus)}”</p>`:''}
     <div id="swNotes"></div>
@@ -7001,7 +7006,7 @@ function swimCardsHtml(){
   return swimList().map(e=>`<div class="hcard hcard-swim" data-id="${esc(e.id)}">
     <div class="hthumb"><span class="hthumb-none" aria-hidden="true"><svg class="ic"><use href="#i-swim"/></svg></span></div>
     <div class="hmeta"><button type="button" class="htitle" aria-label="Open swim clip">Swim · coach review</button>
-      <div class="hsub">${fmtWhen(e.at)}${e.swim&&e.swim.stroke?' · '+esc(SWIM_STROKES[e.swim.stroke]||''):''}</div></div>
+      <div class="hsub">${fmtWhen(e.filmedAt||e.at)}${e.swim&&e.swim.stroke?' · '+esc(SWIM_STROKES[e.swim.stroke]||''):''}</div></div>
   </div>`).join('');
 }
 
@@ -9076,7 +9081,7 @@ function pickAnalysis(plan){
       <input type="radio" name="pickan" value="${esc(e.id)}"${i===0?' checked':''}>
       <div>
         <div class="ex-em">${isSwim(e)?'Swim · coach review':`${e.score==null?'—':esc(String(e.score))}/100 · ${esc(pretty(e.sport||''))}`}</div>
-        <div class="ex-sub">${esc(e.kind||'video')} · ${esc(fmtWhen(e.at))}</div>
+        <div class="ex-sub">${esc(e.kind||'video')} · ${esc(fmtWhen(e.filmedAt||e.at))}</div>
       </div>
     </label>`).join('');
   modal.classList.remove('hidden');
@@ -11153,7 +11158,7 @@ function coachPool(){
   const own=loadHist();
   const seen=new Set(own.map(e=>e.id)), out=own.slice();
   Object.values(state.linkedHist||{}).forEach(l=>(l||[]).forEach(e=>{ if(!seen.has(e.id)){ seen.add(e.id); out.push(e); } }));
-  return out.sort((a,b)=>(b.at||0)-(a.at||0));
+  return out.sort((a,b)=>(b.filmedAt||b.at||0)-(a.filmedAt||a.at||0));
 }
 async function loadAllLinked(){
   await Promise.all(liveAthletes().filter(a=>a.linked).map(a=>loadLinkedHist(a.id)));
@@ -11321,6 +11326,7 @@ async function doDeleteAccount(password){
    optimistically with an Undo window (same shape as historyDelete) as a safety
    net, deferring the server-side bulk delete until that window closes. */
 function clearAllHistory(){
+  if(hasCoachPlan()) return;
   const snapshot=loadHist().slice();
   if(!snapshot.length) return;
   const n=snapshot.length;
@@ -11467,7 +11473,7 @@ function entryFromResult(kind,res,base){
       // entry must not lose either, or the server saves over them.
       ...(b.athleteId!=null?{athleteId:b.athleteId}:{}),
       ...(b.linkedAthleteId?{linkedAthleteId:b.linkedAthleteId}:{}),
-      ...Object.fromEntries(['label','coachNote','coachName','coachBio','coachOrderId','intakeConsentAt'].filter(k=>b[k]!=null).map(k=>[k,b[k]])),
+      ...Object.fromEntries(['label','coachNote','coachName','coachBio','coachOrderId','intakeConsentAt','filmedAt','fileName'].filter(k=>b[k]!=null).map(k=>[k,b[k]])),
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
       // The session, compactly: enough for the cabinet to say this was a
@@ -11483,6 +11489,11 @@ function entryFromResult(kind,res,base){
       score:isV?res.technique_score:sc.overall_score, grade:isV?res.letter_grade:sc.grade,
       keyframe:res.keyframe_base64||res.thumbnail_base64||b.keyframe||null, report:(res.ai_recommendations||{}).report||null,
       metrics:isV?metricsFromVideo(res):metricsFromPhoto(res) };
+    // What the filming did to these numbers (capture_report.film_notes): a coach
+    // reads them on Squad and the saved report, long after the live result.
+    const capRep=(res.quality&&res.quality.capture_report)||(res.sport_specific_metrics||{}).capture_report;
+    const notes=(capRep&&capRep.notes)||b.filmNotes;
+    if(notes&&notes.length) e.filmNotes=notes;
     // Built from a gated payload: the measurements below are not missing, they
     // were withheld. Recorded so that paying later can rebuild this entry from
     // the stored analysis instead of leaving the athlete with the teaser they
@@ -11759,7 +11770,10 @@ function renderHistList(){
   // Follows the cabinet rather than the filtered view: "Clear all" is about
   // everything, and hiding it because one setup is empty would be a lie.
   if(tools) tools.hidden=!all.length;
-  if(hint) hint.hidden=!all.length;
+  // "Run for someone else? Clear them" is right for one rider who lent a phone.
+  // On a coach's account those clips are the work.
+  if(hint) hint.hidden=!all.length||hasCoachPlan();
+  const clr=$('#histClear'); if(clr) clr.classList.toggle('hidden',hasCoachPlan());
   if(a.length){ const c=$('#histCount'); if(c) c.textContent=`${a.length} ${a.length===1?'analysis':'analyses'}`; }
   if(!a.length && all.length){
     w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
@@ -11790,7 +11804,7 @@ function renderHistList(){
     <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore ${e.score==null?'':'sc-'+scoreStatus(e.score)}">${e.score==null?'—':e.score}</span>
       ${e.linkedAthleteId?'':`<button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button>`}</div>
     <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
-      <div class="hsub">${e.label?'<b>'+esc(e.label)+'</b> · ':''}${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
+      <div class="hsub">${e.label?'<b>'+esc(e.label)+'</b> · ':''}${fmtWhen(e.filmedAt||e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
   </div>`).join('');
   observeKeyframes(w);
 }
@@ -11838,8 +11852,10 @@ function renderHistoryDetail(e){
   renderLabelRow(e);
   if(e.cameraSide) parts.push(`Camera: <b>${e.cameraSide==='both'?'both sides':esc(e.cameraSide)+' side'}</b>`);
   if(e.position) parts.push(`Position: <b>${esc(POSITION_NAMES[e.position]||e.position)}</b>`);
-  parts.push(fmtWhen(e.at));
+  parts.push(fmtWhen(e.filmedAt||e.at));
   $('#hdMeta').innerHTML=parts.join('<br>');
+  const film=filmNotesOf(e);
+  $('#hdFilmNotes').innerHTML=film.length?`<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>How this clip was filmed.</b> ${film.map(n=>esc(n.text)).join(' ')}</span></div>`:'';
   renderHistoryVideos(e);
   renderHistoryBilateral(e);
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
@@ -12612,9 +12628,18 @@ function renderProgress(){
   // with nobody chosen is looking at their own.
   renderAthleteFilter('progAthleteFilter', histSource(), {progress:true});
   const pool=(hasCoachPlan()&&state.histAthlete==null)?histSource().filter(e=>e.athleteId==null):histSource();
-  const all=applyProfileFilter(
+  const everySide=applyProfileFilter(
     pool.filter(e=>e.sport===sport && e.trends)
   ).slice().reverse();   // oldest -> newest
+  // One side per line. The same rider from the other side reads a different
+  // knee (cmpSame), and a line through both draws the camera as progress. A clip
+  // from before the side was recorded stays on the line: it can't be told apart.
+  const sides=['left','right','both'].filter(s=>everySide.some(e=>e.cameraSide===s));
+  if(!sides.includes(state.progressSide)) state.progressSide=[...everySide].reverse().map(e=>e.cameraSide).find(s=>sides.includes(s))||null;
+  const all=everySide.filter(e=>!e.cameraSide||!state.progressSide||e.cameraSide===state.progressSide);
+  const sideHost=$('#progSide');
+  sideHost.innerHTML=sides.length>1?`<div class="prog-side"><div class="seg seg-sm" role="group" aria-label="Camera side">${sides.map(s=>`<button type="button" data-pside="${s}" aria-pressed="${s===state.progressSide}">${s==='both'?'Both sides':s==='left'?'Left side':'Right side'}</button>`).join('')}</div><span class="subhint">Each side keeps its own line: changing side moves the numbers by itself.</span></div>`:'';
+  sideHost.querySelectorAll('[data-pside]').forEach(b=>b.addEventListener('click',()=>{ state.progressSide=b.dataset.pside; renderProgress(); }));
   const grid=$('#progGrid'), teaser=$('#progTeaser');
   if(teaser) teaser.innerHTML='';
   if(all.length<2){
@@ -12623,13 +12648,13 @@ function renderProgress(){
     grid.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
       <img class="empty-fig" src="/media/empty-trends.webp" alt="" width="120" height="120">
       <h4>${have===0?'No trends yet':'One more to go'}</h4>
-      <p>Analyze at least <b>2</b> ${noun} to unlock progress charts — you have <b>${have}</b> so far. Each new analysis adds a point.</p>
+      <p>Analyze at least <b>2</b> ${noun}${sides.length>1?' from this side':''} to unlock progress charts — you have <b>${have}</b> so far. Each new analysis adds a point.</p>
       <button class="btn btn-primary" data-analyze="${sport==='bike'?'bike':'run'}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a ${sport==='bike'?'ride':'run'}</button>
       ${auth?'':'<p class="emptysub">Saved on this device. <a href="#" data-openauth="register">Log in</a> to sync across devices.</p>'}
     </div>`;
     return;
   }
-  const dates=all.map(e=>fmtWhen(e.at));
+  const dates=all.map(e=>fmtWhen(e.filmedAt||e.at));
   const shown=new Set();
   const realCards=TREND_METRICS[sport].map(m=>{
     const series=[], dser=[];
@@ -12662,7 +12687,7 @@ function openProgress(){
   renderProgress(); toggleCompareCta(); setState('trends',{focus:'#trendsTitle'});
 }
 $('#navProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
-$('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.progressSport=b.dataset.sport; renderProgress(); toggleCompareCta(); });
+$('#progSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.progressSport=b.dataset.sport; state.progressSide=null; renderProgress(); toggleCompareCta(); });
 
 /* ============================================================
    Dashboard ("My technique") — signed-in home. Aggregates the
@@ -12693,9 +12718,12 @@ function sportCard(sport, entries){
       <button class="btn btn-link dkpi-act" type="button" data-analyze="${sport}">Analyze a ${sport==='run'?'run':'ride'} →</button>
     </div>`;
   }
-  const chron=entries.slice().reverse();               // oldest -> newest
-  const scores=chron.map(e=>e.score).filter(v=>v!=null);
+  // The delta, the line and the personal best stay on the latest clip's side: a
+  // change of side is not a change of rider (cmpSame).
   const last=entries[0];
+  const sameSide=entries.filter(e=>!e.cameraSide||!last.cameraSide||e.cameraSide===last.cameraSide);
+  const chron=sameSide.slice().reverse();               // oldest -> newest
+  const scores=chron.map(e=>e.score).filter(v=>v!=null);
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
   // Says WHAT it is compared against. "0 · steady" read as a measurement.
   const deltaHtml=!dd ? '<span class="dkpi-note">first analysis — trends build from #2</span>'
@@ -12704,13 +12732,13 @@ function sportCard(sport, entries){
   // Personal record: the latest score is a *new* PB only when it strictly beats
   // every prior one (a tie just shows "Best N · date", no fanfare).
   const best=scores.length?Math.max(...scores):null;
-  const priorScores=entries.slice(1).map(e=>e.score).filter(v=>v!=null);
+  const priorScores=sameSide.slice(1).map(e=>e.score).filter(v=>v!=null);
   const priorMax=priorScores.length?Math.max(...priorScores):-Infinity;
-  const newPB=last.score!=null && best!=null && last.score===best && last.score>priorMax && entries.length>=2;
-  const bestEntry=best!=null?entries.find(e=>e.score===best):null;
+  const newPB=last.score!=null && best!=null && last.score===best && last.score>priorMax && sameSide.length>=2;
+  const bestEntry=best!=null?sameSide.find(e=>e.score===best):null;
   const pb=newPB
     ? `<span class="ds-pb ds-pb-new"><svg class="ic" aria-hidden="true"><use href="#i-arr-up"/></svg> New personal best</span>`
-    : (best!=null && entries.length>=2 ? `<span class="ds-pb">Best <b>${best}</b>${bestEntry?' · '+esc(shortDate(bestEntry.at)):''}</span>` : '');
+    : (best!=null && sameSide.length>=2 ? `<span class="ds-pb">Best <b>${best}</b>${bestEntry?' · '+esc(shortDate(bestEntry.at)):''}</span>` : '');
   return `<div class="dkpi dkpi-sport">
     <div class="dkpi-lbl"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
       <span class="dkpi-n">${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
@@ -12824,7 +12852,7 @@ const FORM_DEC={overstride:2,pelvic_ratio:2,vertical_oscillation:1};
 /* The latest entry's readings as measurement rows (tile() objects), each with
    its change since the entry before. */
 function formTiles(sport, entries){
-  const cur=entries[0], prev=entries[1], single=entries.length<2;
+  const cur=entries[0], prev=cmpPrevious(cur,entries), single=entries.length<2;
   const aero=cur.position==='tt_aero'||cur.position==='triathlon';
   if(!cur.trends) return [];
   return TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
@@ -12846,12 +12874,12 @@ function formTiles(sport, entries){
   }).filter(Boolean);
 }
 function currentFormTable(sport, entries){
-  const cur=entries[0], prev=entries[1], single=entries.length<2;
+  const cur=entries[0], prev=cmpPrevious(cur,entries), single=entries.length<2;
   const rows=formTiles(sport, entries);
   if(!rows.length) return '';
   const label=sport==='run'?'Run':'Bike';
   return `<div class="dform-sport">
-    <div class="dform-sub">${label} · latest ${esc(shortDate(cur.at))}${single?'':` <span class="dform-when">· change since ${esc(shortDate(prev.at))}</span>`}</div>
+    <div class="dform-sub">${label} · latest ${esc(shortDate(cur.at))}${prev?` <span class="dform-when">· change since ${esc(shortDate(prev.at))}</span>`:''}</div>
     <div class="meastable-wrap"><table class="meastable">
       <caption class="visually-hidden">Your latest ${label.toLowerCase()} measurements against their reference ranges, with the change since the analysis before</caption>
       <thead><tr><th scope="col">Measurement</th><th scope="col" class="num">Now</th><th scope="col">Vs reference</th><th scope="col">Status</th></tr></thead>
@@ -13057,7 +13085,9 @@ function renderDashKino(all){
    spot, and laying one frame over the other would invent a change. */
 const THEN_KEYS={bike:['trunk','knee','elbow','shoulder'],run:['cadence','overstride','trunk_lean','ground_contact']};
 function thenPair(sport, all){
-  const mine=all.filter(e=>e.sport===sport && (keyframeOf(e)||e.has_keyframe));
+  const every=all.filter(e=>e.sport===sport && (keyframeOf(e)||e.has_keyframe));
+  // First and latest from one side, or the readings under the pictures are the camera's.
+  const mine=every.filter(e=>!e.cameraSide||!every[0].cameraSide||e.cameraSide===every[0].cameraSide);
   return mine.length>=2 ? {now:mine[0], then:mine[mine.length-1]} : null;
 }
 function thenNowCard(all){
@@ -13218,7 +13248,32 @@ state.squadMe=false; state.squadPick=[]; state.squadKona='trunk';
 function squadEntriesFor(a){
   return coachPool().filter(e=>e&&String(e.athleteId)===String(a.id));
 }
-function squadChips(e, prev){
+/* What the filming did to this clip's numbers, minus what this coach has said is
+   not worth a word: their size bar and chainring switch (Account, framing bars). */
+function filmNotesOf(e){
+  const grid=(coachOn()&&COACH.capture)||{};
+  return ((e&&e.filmNotes)||[]).filter(n=>
+    !(n.code==='drive_side'&&grid.drive_side===false)
+    &&!(n.code==='framing'&&n.px!=null&&grid.small_px&&n.px>=grid.small_px));
+}
+/* Worth a line under Needs attention. "Small in the frame" alone isn't: most
+   clips filmed in the wild are, and a list that always fills stops being read. */
+function filmLook(e){ return filmNotesOf(e).find(n=>n.level==='bad'||n.code==='drive_side')||null; }
+function sideWord(e){ return e.cameraSide==='both'?'both sides':e.cameraSide?e.cameraSide+' side':''; }
+function filmFlag(e){
+  const ns=filmNotesOf(e);
+  return ns.length?`<small class="sq-film" title="${esc(ns.map(n=>n.text).join(' '))}"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> ${esc(ns.map(n=>n.short).join(' · '))}</small>`:'';
+}
+/* Why this clip shows no change, when an earlier one of the sport exists. */
+function cmpGapWord(e,es){
+  const o=(es||[]).find(x=>x.id!==e.id&&x.trends&&(x.filmedAt||x.at||0)<(e.filmedAt||e.at||0)&&x.sport===e.sport);
+  if(!o) return '';
+  if((o.cameraSide||'')!==(e.cameraSide||'')) return 'no change shown: filmed from the other side';
+  if(o.kind!==e.kind) return 'no change shown: one is a photo';
+  if((o.position||'')!==(e.position||'')) return 'no change shown: another position';
+  return 'no change shown: another setup';
+}
+function squadChips(e, prev, gap){
   const ms=SQUAD_METRICS[e.sport]||SQUAD_METRICS.bike, t=e.trends||{};
   const chips=ms.filter(m=>t[m.key]!=null).map(m=>{
     const v=t[m.key], opt=(e.trendOpt||{})[m.key];
@@ -13228,7 +13283,8 @@ function squadChips(e, prev){
     const dTxt=d==null||Math.abs(d)<0.05?'':`<small class="sq-d">${d>0?'▲':'▼'}${Math.abs(d).toFixed(m.key==='overstride'?2:0)}</small>`;
     return `<span class="sq-chip${off?' sq-off':''}" title="${opt?`range ${opt[0]}–${opt[1]}${m.unit}`:'no range for this one'}"><small>${esc(m.label)}</small><b>${v}${m.unit}</b>${dTxt}</span>`;
   }).join('');
-  return chips||'<span class="sq-na">numbers appear when the report opens</span>';
+  if(!chips) return '<span class="sq-na">numbers appear when the report opens</span>';
+  return chips+(!prev&&gap?`<span class="sq-na sq-gap">${esc(gap)}</span>`:'');
 }
 function squadOutOfRange(e){
   if(!e||!e.trends) return false;
@@ -13258,6 +13314,21 @@ function renderSquadKona(rows){
   fetch('/me/kona-field',{headers:authHeaders()}).then(r=>r.ok?r.json():null)
     .then(f=>{ if(f&&f.metrics){ state.konaField=f; draw(f); } }).catch(()=>{});
 }
+/* Athletes meet the coach on the upload link and the report, and without this the
+   only name there is "Your coach". Asked where the coach already is, one field. */
+function coachNameAsk(){
+  if(!coachOn()||!COACH.loaded||(COACH.name||'').trim()) return '';
+  return `<form class="sq-nameask" id="sqNameAsk"><label for="sqCoachName"><b>What should your athletes call you?</b> Your upload links and reports say “Your coach” until you add a name.</label>
+    <div class="sq-nameask-row"><input type="text" id="sqCoachName" maxlength="60" placeholder="Coach Alex Rivers" autocomplete="name"><button class="btn btn-ghost btn-sm" type="submit">Save</button></div></form>`;
+}
+function wireCoachNameAsk(){
+  const f=$('#sqNameAsk'); if(!f) return;
+  f.addEventListener('submit',async e=>{ e.preventDefault();
+    const inp=$('#sqCoachName'), name=inp.value.trim();
+    if(!name){ inp.focus(); return; }
+    if(await saveCoach({name})){ track('coach_name_saved',{from:'squad'}); toast('Saved. Your mark and a line under your name are in Account, Coach profile.',{duration:6000}); renderSquadHome(); }
+  });
+}
 function renderSquadHome(){
   const host=$('#squadHome'), sec=$('#dashboard'); if(!host||!sec) return;
   sec.classList.add('dash-squad'); host.classList.remove('hidden');
@@ -13265,7 +13336,7 @@ function renderSquadHome(){
   const dd=$('#dashDate'); if(dd){ try{ dd.textContent=new Date().toLocaleDateString(UI_LOCALE,{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dd.textContent=''; } }
   const squad=liveAthletes();
   if(!squad.length){
-    host.innerHTML=`<div class="sq-empty">
+    host.innerHTML=`${coachNameAsk()}<div class="sq-empty">
       <h2>Your squad starts here</h2>
       <ol class="dk-fix">
         <li><b>Add your athletes.</b> A name is enough; email and a note are optional.</li>
@@ -13275,10 +13346,13 @@ function renderSquadHome(){
       <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes()">Add an athlete</button></div>
       <p class="hint" style="text-align:left;margin-top:14px">Your own clips live under <a href="#" onclick="event.preventDefault();state.squadMe=true;openDashboard()">My technique</a>.</p>
     </div>`;
+    wireCoachNameAsk();
     return;
   }
   const now=Date.now(), month=30*86400000;
-  const rows=squad.map(a=>{ const es=squadEntriesFor(a); return {a, es, last:es[0]||null, prev:es.find((x,i)=>i>0&&es[0]&&x.sport===es[0].sport)||null}; });
+  // The change is against the last clip like this one (cmpPrevious), never just
+  // the last one: from the other side the difference is the camera.
+  const rows=squad.map(a=>{ const es=squadEntriesFor(a); return {a, es, last:es[0]||null, prev:es[0]?cmpPrevious(es[0],es):null}; });
   const clips30=rows.reduce((n,r)=>n+r.es.filter(e=>now-(e.at||0)<month).length,0);
   const quiet=rows.filter(r=>!r.last||now-(r.last.at||0)>=month);
   const off=rows.filter(r=>squadOutOfRange(r.last));
@@ -13290,6 +13364,7 @@ function renderSquadHome(){
   const att=(id,txt)=>`<li><button type="button" class="sq-attbtn" data-open="${id}">${txt}</button></li>`;
   const attention=[
     ...refilm.slice(0,3).map(i=>`<li><button type="button" class="sq-attbtn" data-batch="1">${esc(i.athlete_name||i.filename||'A clip')}: clip to film again</button></li>`),
+    ...rows.filter(r=>filmLook(r.last)).map(r=>att(r.a.id,`${esc(r.a.name)}: last ${r.last.sport==='run'?'run':'ride'}, ${esc(filmLook(r.last).short)}`)),
     ...off.map(r=>att(r.a.id,`${esc(r.a.name)}: outside the range in the last ${r.last.sport==='run'?'run':'ride'}`)),
     ...lapsed.map(r=>att(r.a.id,`${esc(r.a.name)}: on the free plan, so you see what they see`)),
     ...quiet.map(r=>att(r.a.id,`${esc(r.a.name)}: ${r.last?'no clip for '+Math.round((now-r.last.at)/86400000)+' days':'no clip yet'}`)),
@@ -13300,12 +13375,12 @@ function renderSquadHome(){
       <td class="sq-pick"><input type="checkbox" data-pick="${r.a.id}" aria-label="Compare ${esc(r.a.name)}"${picked?' checked':''}${e&&e.trends?'':' disabled'}></td>
       <td class="sq-thumb">${e?`<div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>`:''}</td>
       <th scope="row"><button type="button" class="sq-name" data-open="${r.a.id}">${esc(r.a.name)}</button>${r.a.linked?'<span class="p-kind p-linked">linked</span>':''}<small>${esc(ATHLETE_SPORT_LABEL[r.a.sport]||'')}${r.a.note?' · '+esc(r.a.note):''}</small></th>
-      <td class="sq-last">${e?`${esc(fmtWhen(e.at))}<small>${e.sport==='run'?'run':'ride'}${e.label?' · '+esc(e.label):''}</small>`:'—'}</td>
-      <td class="sq-chips">${e?squadChips(e,r.prev):'<span class="sq-na">no clip yet</span>'}</td>
+      <td class="sq-last">${e?`${esc(fmtWhen(e.filmedAt||e.at))}<small>${e.sport==='run'?'run':'ride'}${sideWord(e)?' · '+sideWord(e):''}${e.label?' · '+esc(e.label):''}</small>${filmFlag(e)}`:'—'}</td>
+      <td class="sq-chips">${e?squadChips(e,r.prev,r.prev?'':cmpGapWord(e,r.es)):'<span class="sq-na">no clip yet</span>'}</td>
       <td class="sq-score">${e&&e.score!=null?e.score:'—'}</td></tr>`;
   };
   const feed=coachPool().filter(e=>e.athleteId!=null).slice(0,8);
-  host.innerHTML=`
+  host.innerHTML=`${coachNameAsk()}
     <div class="sq-toolbar"><button class="btn btn-ghost btn-sm" type="button" id="sqBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload a batch</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAthletes()">Manage athletes</button><button class="btn btn-ghost btn-sm" type="button" id="sqCompare" disabled>Compare two</button></div>
     <div class="sq-kpis">${kpi(squad.length,'athletes')}${kpi(clips30,'clips · 30 days')}${kpi(inLine.length,'in the lane')}${kpi(refilm.length,'to film again')}</div>
     ${attention.length?`<div class="sq-att"><h2>Needs attention</h2><ul>${attention.join('')}</ul></div>`:`<div class="sq-att sq-att-ok">Everyone is filmed and in range.</div>`}
@@ -13314,8 +13389,9 @@ function renderSquadHome(){
       <tbody>${rows.map(row).join('')}</tbody></table></div>
     <p class="hint sq-foot" style="text-align:left">Red is outside the range the report uses; plain has no range or is inside it. Tick two to compare them side by side.</p>
     <div id="sqKona"></div>
-    ${feed.length?`<div class="sq-feed"><h2>Latest clips</h2><div class="sq-feedgrid">${feed.map(e=>`<button type="button" class="sq-clip" data-entry="${esc(e.id)}"><span class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</span><span class="sq-cliptxt"><b>${esc(athleteName(e.athleteId)||'')}</b><small>${e.sport==='run'?'Run':'Bike'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.at))}${e.label?' · '+esc(e.label):''}</small></span></button>`).join('')}</div></div>`:''}
+    ${feed.length?`<div class="sq-feed"><h2>Latest clips</h2><div class="sq-feedgrid">${feed.map(e=>`<button type="button" class="sq-clip" data-entry="${esc(e.id)}"><span class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</span><span class="sq-cliptxt"><b>${esc(athleteName(e.athleteId)||'')}</b><small>${e.sport==='run'?'Run':'Bike'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}${e.label?' · '+esc(e.label):''}</small></span></button>`).join('')}</div></div>`:''}
     <div class="sq-me"><button class="btn btn-ghost btn-sm" type="button" id="sqMe">My technique</button><span class="subhint">your own clips, as before</span></div>`;
+  wireCoachNameAsk();
   host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openAthlete(b.dataset.open)));
   host.querySelectorAll('[data-batch]').forEach(b=>b.addEventListener('click',openBatch));
   host.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openHistory(b.dataset.entry)));
@@ -13332,7 +13408,8 @@ function renderSquadHome(){
     const [p,q]=state.squadPick.map(id=>rows.find(r=>String(r.a.id)===id));
     if(!p||!q||!p.last||!q.last) return;
     // Same sport, or there is nothing to line up.
-    const b=q.last, a=p.es.find(e=>e.sport===b.sport&&e.trends);
+    // Their clip from the same side when there is one: the gap is then the riders.
+    const b=q.last, a=p.es.find(e=>e.sport===b.sport&&e.trends&&e.cameraSide===b.cameraSide)||p.es.find(e=>e.sport===b.sport&&e.trends);
     if(!a){ toast(`${p.a.name} has no ${b.sport==='run'?'run':'ride'} to set beside this one.`); return; }
     track('squad_compared',{});
     openCompare(a.id,b.id,'squad');
@@ -13375,12 +13452,12 @@ function openAthlete(id){
       ${mine.length?`<p class="hint" style="text-align:left">Setups: ${mine.map(p=>esc(p.name)).join(' · ')}</p>`:''}
       <div class="sq-tablewrap"><table class="sq-table">
         <thead><tr><th scope="col"></th><th scope="col">Session</th><th scope="col">Key readings · change since the one before</th><th scope="col" class="sq-score">Score</th></tr></thead>
-        <tbody>${es.map((e,i)=>{ const prev=es.slice(i+1).find(x=>x.sport===e.sport); return `<tr>
+        <tbody>${es.map(e=>{ const prev=cmpPrevious(e,es); return `<tr>
           <td class="sq-thumb"><div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div></td>
-          <th scope="row"><button type="button" class="sq-name" data-entry="${esc(e.id)}">${e.label?esc(e.label):esc(fmtWhen(e.at))}</button><small>${e.label?esc(fmtWhen(e.at))+' · ':''}${e.sport==='run'?'run':'ride'}${e.kind==='photo'?' photo':''}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</small></th>
-          <td class="sq-chips">${squadChips(e,prev)}</td>
+          <th scope="row"><button type="button" class="sq-name" data-entry="${esc(e.id)}">${e.label?esc(e.label):esc(fmtWhen(e.filmedAt||e.at))}</button><small>${e.label?esc(fmtWhen(e.filmedAt||e.at))+' · ':''}${e.sport==='run'?'run':'ride'}${e.kind==='photo'?' photo':''}${sideWord(e)?' · '+sideWord(e):''}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}${e.fileName?' · '+esc(e.fileName):''}</small>${filmFlag(e)}</th>
+          <td class="sq-chips">${squadChips(e,prev,prev?'':cmpGapWord(e,es))}</td>
           <td class="sq-score">${e.score!=null?e.score:'—'}</td></tr>`; }).join('')||`<tr><td colspan="4" class="sq-na">No clips yet.</td></tr>`}</tbody></table></div>
-      ${notes.length?`<div class="sq-feed"><h2>Your notes</h2><ul class="ad-notes">${notes.map(e=>`<li><button type="button" class="sq-attbtn" data-entry="${esc(e.id)}">${esc(e.label||fmtWhen(e.at))}</button><div class="cnote-read">${esc(e.coachNote)}</div></li>`).join('')}</ul></div>`:''}`;
+      ${notes.length?`<div class="sq-feed"><h2>Your notes</h2><ul class="ad-notes">${notes.map(e=>`<li><button type="button" class="sq-attbtn" data-entry="${esc(e.id)}">${esc(e.label||fmtWhen(e.filmedAt||e.at))}</button><div class="cnote-read">${esc(e.coachNote)}</div></li>`).join('')}</ul></div>`:''}`;
     list.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openHistory(b.dataset.entry)));
     $('#adAnalyze').addEventListener('click',()=>{ state.athleteId=String(a.id); state.profileId=null; if(a.sport==='run'||a.sport==='bike') startSportAnalysis(a.sport); else reset(); renderProfileField(); });
     const lk=$('#adLink'); if(lk) lk.addEventListener('click',()=>{ track('athlete_link_copied',{}); copyText(athleteLink(a),'Link copied. It needs no account.'); });
@@ -13409,6 +13486,8 @@ async function loadLane(){
 }
 function openBatch(){
   if(!hasCoachPlan()){ openAccount(); return; }
+  // Rebuilt on every visit: the roster may have grown since the last.
+  const def=$('#batAthlete'); if(def) def.innerHTML='';
   renderBatch();
   setState('batch',{focus:'#batTitle'});
   loadLane().then(renderLane);
@@ -13425,24 +13504,72 @@ function pollLane(){
     pollLane();
   }, open?4000:20000);
 }
+/* With a squad to file under, a row starts unanswered: "Me" as the default put an
+   athlete's clip in the coach's own trend line whenever a row was skipped. */
 function batchAthleteOptions(cur){
-  return `<option value="">Me</option>`+liveAthletes().map(a=>`<option value="${a.id}"${String(a.id)===String(cur||'')?' selected':''}>${esc(a.name)}</option>`).join('');
+  const squad=liveAthletes();
+  return (squad.length?`<option value="">Choose…</option>`:'')
+    +`<option value="me"${cur==='me'||(!squad.length&&!cur)?' selected':''}>Me</option>`
+    +squad.map(a=>`<option value="${a.id}"${String(a.id)===String(cur||'')?' selected':''}>${esc(a.name)}</option>`).join('');
+}
+function batchWhose(it){ return it.athleteId&&it.athleteId!=='me'?it.athleteId:null; }
+function batchSportOf(id){ const a=liveAthletes().find(x=>String(x.id)===String(id)); return a&&(a.sport==='run'||a.sport==='bike')?a.sport:null; }
+/* The file's own date. It decides the order and the date on the report, so a
+   batch of May and June clips reads as May and June. */
+function batchFilmedAt(file){ const t=file.lastModified; return typeof t==='number'&&t>0&&t<=Date.now()?t:null; }
+/* A frame to recognise the rider by, drawn here and never uploaded. Not every
+   browser decodes an iPhone's HEVC: the row then has the file's name and date. */
+function batchThumbOf(it){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(it.file);
+    let over=false, timer=null;
+    const draw=(el,w,h)=>{ if(!w||!h) return '';
+      const k=Math.min(1,160/Math.max(w,h)), c=document.createElement('canvas');
+      c.width=Math.round(w*k); c.height=Math.round(h*k);
+      try{ c.getContext('2d').drawImage(el,0,0,c.width,c.height); return c.toDataURL('image/jpeg',.7); }catch(_e){ return ''; } };
+    const done=src=>{ if(over) return; over=true; clearTimeout(timer); URL.revokeObjectURL(url); it.thumb=src||''; res(); };
+    timer=setTimeout(()=>done(''),8000);
+    if(it.kind==='photo'){
+      const im=new Image(); im.onload=()=>done(draw(im,im.naturalWidth,im.naturalHeight)); im.onerror=()=>done(''); im.src=url; return;
+    }
+    const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto';
+    v.onloadedmetadata=()=>{ v.currentTime=Math.min(1,(v.duration||2)/2); };
+    v.onseeked=()=>done(draw(v,v.videoWidth,v.videoHeight));
+    v.onerror=()=>done('');
+    v.src=url;
+  });
+}
+/* One at a time, and into the row's own cell: redrawing the list would close a
+   dropdown somebody has open. */
+async function batchThumbs(){
+  const b=state.batch; if(b.thumbing) return; b.thumbing=true;
+  for(let it=b.items.find(x=>x.thumb===undefined);it;it=b.items.find(x=>x.thumb===undefined)){
+    await batchThumbOf(it);
+    const el=document.querySelector(`#batList [data-k="${it.key}"] .bat-thumb`);
+    if(el) el.outerHTML=batchThumbHtml(it);
+  }
+  b.thumbing=false;
+}
+function batchThumbHtml(it){
+  return it.thumb?`<span class="bat-thumb"><img src="${it.thumb}" alt=""></span>`
+    :`<span class="bat-thumb bat-nothumb"><svg class="ic" aria-hidden="true"><use href="#i-${it.kind==='photo'?'camera':'video'}"/></svg></span>`;
 }
 function renderBatch(){
   const b=state.batch, host=$('#batList'); if(!host) return;
   const def=$('#batAthlete'); if(def&&!def.options.length) def.innerHTML=batchAthleteOptions(state.athleteId);
-  host.innerHTML=b.items.map((it,i)=>`<div class="bat-row" data-i="${i}">
-      <div class="bat-name"><span class="p-kind">${it.kind}</span> ${esc(it.file.name)}</div>
+  host.innerHTML=b.items.map((it,i)=>`<div class="bat-row" data-i="${i}" data-k="${it.key}">
+      <div class="bat-name bat-named">${batchThumbHtml(it)}<span class="bat-file">${esc(it.file.name)}<small>${it.kind}${batchFilmedAt(it.file)?' · '+esc(fmtWhen(batchFilmedAt(it.file))):''}</small></span></div>
       <select data-f="athleteId" aria-label="Whose clip"${b.running?' disabled':''}>${batchAthleteOptions(it.athleteId)}</select>
       <select data-f="sport" aria-label="Sport"${b.running?' disabled':''}><option value="bike"${it.sport==='bike'?' selected':''}>Bike</option><option value="run"${it.sport==='run'?' selected':''}>Run</option></select>
       <div class="bat-state ${it.state==='failed'?'sq-off':''}">${esc(it.msg||(it.state==='ready'?'':it.state))}</div>
-      <button type="button" class="p-copy" data-rm="${i}"${b.running?' disabled':''}>remove</button>
+      ${it.state==='sent'?'<span></span>':`<button type="button" class="p-copy" data-rm="${i}"${b.running?' disabled':''}>remove</button>`}
     </div>`).join('');
   const go=$('#batGo');
   // A file that failed goes again: the ones already sent stay sent.
   const todo=b.items.filter(x=>x.state==='ready'||x.state==='failed').length;
-  if(go){ go.disabled=b.running||!todo; go.textContent=b.running?'Sending…':`${b.items.some(x=>x.state==='failed')?'Send again':'Send'} ${todo||''} to analysis`; }
-  $('#batHint').textContent=b.items.length?`${b.items.length} of ${BATCH_MAX}. Each clip uses one analysis from your plan; a clip stopped by the framing check uses none.`:'';
+  const unnamed=b.items.filter(x=>(x.state==='ready'||x.state==='failed')&&!x.athleteId).length;
+  if(go){ go.disabled=b.running||!todo||unnamed>0; go.textContent=b.running?'Sending…':`${b.items.some(x=>x.state==='failed')?'Send again':'Send'} ${todo||''} to analysis`; }
+  $('#batHint').textContent=unnamed?`Choose whose ${unnamed===1?'clip this is':'these '+unnamed+' clips are'} first.`:b.items.length?`${b.items.length} of ${BATCH_MAX}. Each clip uses one analysis from your plan; a clip stopped by the framing check uses none.`:'';
 }
 const BATCH_MAX=10;
 function batchAdd(files){
@@ -13453,16 +13580,19 @@ function batchAdd(files){
     if(b.items.length>=BATCH_MAX){ dropped++; return; }
     const photo=(file.type||'').startsWith('image/');
     if(!photo&&!(file.type||'').startsWith('video/')&&!/\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(file.name)){ dropped++; return; }
-    b.items.push({file,kind:photo?'photo':'video',athleteId:def&&def.value||'',sport:sp?sp.value:'bike',state:'ready',msg:''});
+    b.seq=(b.seq||0)+1;
+    b.items.push({key:b.seq,file,kind:photo?'photo':'video',athleteId:def&&def.value||'',sport:sp?sp.value:'bike',state:'ready',msg:''});
   });
   if(dropped) toast(`A batch holds ${BATCH_MAX} clips and photos. ${dropped} left out.`);
   renderBatch();
+  batchThumbs();
 }
 function batchSendVideo(it){
   return new Promise(res=>{
     const d=new FormData(); d.append('video',it.file); d.append('batch_id',state.batch.id); d.append('sport',it.sport);
     if(it.sport==='bike'){ const p=$('#batPos'); if(p&&p.value) d.append('position',p.value); }
-    if(it.athleteId) d.append('athlete_id',it.athleteId);
+    if(batchWhose(it)) d.append('athlete_id',batchWhose(it));
+    if(batchFilmedAt(it.file)) d.append('filmed_at_ms',String(batchFilmedAt(it.file)));
     const x=new XMLHttpRequest(); x.open('POST','/me/coach-uploads');
     const h=authHeaders(); Object.keys(h).forEach(k=>x.setRequestHeader(k,h[k]));
     x.upload.onprogress=ev=>{ if(ev.lengthComputable){ it.msg=`Sending ${Math.round(100*ev.loaded/ev.total)}%`; renderBatch(); } };
@@ -13482,7 +13612,7 @@ async function batchSendPhoto(it){
     const r=await fetch('/analyze-photo',{method:'POST',headers:authHeaders(),body:d});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ it.state='failed'; it.msg=typeof j.detail==='string'?j.detail:'Could not read this photo'; return; }
-    const e=entryFromResult('photo',j,{id:'h'+Date.now()+Math.random().toString(36).slice(2,6),at:Date.now(),athleteId:it.athleteId?Number(it.athleteId):null});
+    const e=entryFromResult('photo',j,{id:'h'+Date.now()+Math.random().toString(36).slice(2,6),at:Date.now(),athleteId:batchWhose(it)?Number(batchWhose(it)):null,fileName:it.file.name,filmedAt:batchFilmedAt(it.file)});
     state.cloudHist=[e,...(state.cloudHist||[])];
     await fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)});
     it.state='sent'; it.msg='Ready';
@@ -13492,7 +13622,7 @@ async function batchGo(){
   const b=state.batch;
   if(b.running) return;
   b.items.forEach(x=>{ if(x.state==='failed'){ x.state='ready'; x.msg=''; } });
-  if(b.items.some(x=>x.state==='ready'&&x.athleteId)&&!await confirmOthers()) return;
+  if(b.items.some(x=>x.state==='ready'&&batchWhose(x))&&!await confirmOthers()) return;
   b.running=true;
   b.id=b.id&&(state.laneItems||[]).some(i=>i.batch_id===b.id&&['queued','scanning','running'].includes(i.status))?b.id:Math.random().toString(36).slice(2,12).padEnd(8,'0');
   track('batch_started',{files:b.items.length});
@@ -13505,6 +13635,9 @@ async function batchGo(){
   }
   b.running=false;
   const sent=b.items.filter(x=>x.state==='sent').length, failed=b.items.filter(x=>x.state==='failed').length;
+  // A sent clip lives in the lane below from here on, with its real state. Its
+  // row would stay "In line" for good, with a "remove" that removes nothing.
+  b.items=b.items.filter(x=>!(x.state==='sent'&&x.kind==='video'));
   renderBatch();
   toast(failed?`${sent} sent, ${failed} did not go through.`:'All sent. You can close this page; we will email you when they are ready.',{duration:7000});
   await loadLane(); renderLane(); pollLane();
@@ -13516,9 +13649,10 @@ function renderLane(){
   if(!items.length){ host.innerHTML=''; return; }
   host.innerHTML=`<h3 class="bat-h">The lane · last two weeks</h3><div class="prof-list">`+items.map(i=>{
     const why=(i.reasons||[]).map(r=>r.text).join(' ')||i.error||'';
+    const noted=i.status==='done'&&why;
     return `<div class="bat-row bat-lane" data-id="${i.id}">
-      <div class="bat-name">${esc(i.filename||'Clip')}<small>${i.athlete_name?esc(i.athlete_name)+' · ':''}${i.sport==='run'?'run':'bike'}${i.source==='intake'?' · sent by them':''}</small>${why&&i.status!=='done'?`<small class="bat-why">${esc(why)}</small>`:''}</div>
-      <div class="bat-state ${['no_go','failed'].includes(i.status)?'sq-off':''}">${esc(LANE_WORD[i.status]||i.status)}</div>
+      <div class="bat-name">${esc(i.filename||'Clip')}<small>${i.athlete_name?esc(i.athlete_name)+' · ':''}${i.sport==='run'?'run':'bike'}${i.source==='intake'?' · sent by them':''}</small>${why?`<small class="bat-why">${esc(why)}</small>`:''}</div>
+      <div class="bat-state ${['no_go','failed'].includes(i.status)?'sq-off':noted?'bat-noted':''}">${noted?'Ready, read the note':esc(LANE_WORD[i.status]||i.status)}</div>
       <div class="p-acts">
         ${i.status==='done'?`<button type="button" data-open="${esc(i.client_id)}">Open</button>`:''}
         ${i.status==='no_go'?`<button type="button" data-any="${i.id}">Run anyway</button>`:''}
@@ -13549,13 +13683,24 @@ function renderLane(){
   $('#batGo').addEventListener('click',batchGo);
   $('#batList').addEventListener('change',e=>{
     const row=e.target.closest('[data-i]'), f=e.target.dataset.f; if(!row||!f) return;
-    state.batch.items[Number(row.dataset.i)][f]=e.target.value;
+    const it=state.batch.items[Number(row.dataset.i)];
+    it[f]=e.target.value;
+    // Tom runs: choosing him answers the sport as well.
+    if(f==='athleteId'&&batchSportOf(it.athleteId)) it.sport=batchSportOf(it.athleteId);
+    renderBatch();
   });
   $('#batList').addEventListener('click',e=>{
     const rm=e.target.closest('[data-rm]'); if(!rm) return;
     state.batch.items.splice(Number(rm.dataset.rm),1); renderBatch();
   });
   $('#batSport').addEventListener('change',e=>{ $('#batPosBox').classList.toggle('hidden',e.target.value!=='bike'); });
+  // "Unless you say otherwise" also reaches the rows nobody has answered yet.
+  $('#batAthlete').addEventListener('change',e=>{
+    const v=e.target.value, sp=batchSportOf(v), s=$('#batSport');
+    if(sp&&s.value!==sp){ s.value=sp; $('#batPosBox').classList.toggle('hidden',sp!=='bike'); }
+    state.batch.items.forEach(it=>{ if(!it.athleteId&&it.state==='ready'){ it.athleteId=v; if(sp) it.sport=sp; } });
+    renderBatch();
+  });
 })();
 /* Asked once per account, the first time a clip is filed under somebody else
    (privacy.html section 3, terms.html section 3). Resolves to whether they said yes. */
@@ -13907,8 +14052,11 @@ function cmpSame(a,b){
     && (a.position||'')===(b.position||'');
 }
 function cmpPrevious(e,list){
-  return (list||loadHist()).find(x=>x.id!==e.id && x.trends && (x.at||0)<(e.at||0) && cmpSame(x,e))||null;
+  return (list||loadHist()).find(x=>x.id!==e.id && x.trends && (x.filmedAt||x.at||0)<(e.filmedAt||e.at||0) && cmpSame(x,e))||null;
 }
+/* Two people side by side: a gap between them, never a change. */
+function cmpPeople(A,B){ return !!A&&!!B&&String(A.athleteId==null?'':A.athleteId)!==String(B.athleteId==null?'':B.athleteId); }
+function cmpWho(e){ return athleteName(e.athleteId)||'You'; }
 /* `from` says where the person came in, for the funnel: 'result', 'history' or
    'nav'. With two ids it opens that pair; without, the newest clip against the
    one it should be read against. */
@@ -13921,9 +14069,12 @@ function openCompare(aId,bId,from){
   // list is newest-first; default B=newest, A=its closest like-for-like
   // predecessor, else simply the second-newest (the page then says why that
   // pair is not a clean one).
-  const b=(pick&&list.find(e=>e.id===bId))||list[0];
-  const a=(aId&&list.find(e=>e.id===aId))||cmpPrevious(b,list)||list.find(e=>e.id!==b.id);
-  state.cmp={sport, list, aId:a.id, bId:b.id, summary:null, summaryLoading:false};
+  // A coach's pool holds a whole squad, and its two newest clips are usually two
+  // people. Coming in from the menu they get the newest clip that has a real
+  // before, then one person's two clips; two people only when nothing else exists.
+  const b=(pick&&list.find(e=>e.id===bId))||(hasCoachPlan()&&list.find(e=>cmpPrevious(e,list)))||list[0];
+  const a=(aId&&list.find(e=>e.id===aId))||cmpPrevious(b,list)||list.find(e=>e.id!==b.id&&!cmpPeople(e,b))||list.find(e=>e.id!==b.id);
+  state.cmp={sport, list, aId:a.id, bId:b.id, from:from||'nav', summary:null, summaryLoading:false};
   track('compare_opened',{from:from||'nav',like_for_like:cmpSame(a,b)});
   renderCompare();
   setState('compare',{focus:'#compareTitle'});
@@ -13933,11 +14084,10 @@ function cmpEntry(id){ return (state.cmp.list||[]).find(e=>e.id===id)||null; }
 /* Why this pair is not a clean before/after, in words. Empty when it is. */
 function cmpCaveats(A,B){
   const out=[];
-  if(String(A.athleteId||'')!==String(B.athleteId||'')) out.push(`These are two different people${athleteName(A.athleteId)&&athleteName(B.athleteId)?` (${esc(athleteName(A.athleteId))} and ${esc(athleteName(B.athleteId))})`:''}, so a gap here is a difference between them and not a change.`);
   if(A.kind!==B.kind) out.push('One is a photo and one is a video. A photo catches a single instant of the stroke; a video measures the whole of it. Compare like with like.');
   const sa=A.cameraSide, sb=B.cameraSide;
   if(sa&&sb&&sa!==sb&&sa!=='both'&&sb!=='both')
-    out.push('These were filmed from opposite sides. On a bike the drive side reads the knee at the bottom of the stroke about 8–10° low, so part of any gap here can be the camera, not you. Film both from the same side.');
+    out.push('These were filmed from opposite sides. On a bike the drive side reads the knee at the bottom of the stroke about 8–10° low, so part of any gap here can be the camera, not the rider. Film both from the same side.');
   if((A.position||'')!==(B.position||'')&&A.position&&B.position)
     out.push(`Different positions (${esc(POSITION_NAMES[A.position]||A.position)} and ${esc(POSITION_NAMES[B.position]||B.position)}) have different target ranges.`);
   if(String(A.profileId==null?'':A.profileId)!==String(B.profileId==null?'':B.profileId))
@@ -14026,7 +14176,10 @@ function profileAggregate(pid, sport){
   };
 }
 function cmpSides(){
-  const list=(state.cmp.list||[]);
+  // One person's two legs: a squad's pool would otherwise offer Maya's left
+  // against Tom's right.
+  const who=cmpEntry(state.cmp.bId);
+  const list=(state.cmp.list||[]).filter(e=>!cmpPeople(e,who));
   return {
     left: list.filter(e=>e.cameraSide==='left'),
     right: list.filter(e=>e.cameraSide==='right'),
@@ -14034,6 +14187,7 @@ function cmpSides(){
 }
 function renderCmpMode(){
   const host=$('#cmpMode'); if(!host) return;
+  if(cmpPeople(cmpEntry(state.cmp.aId),cmpEntry(state.cmp.bId))){ host.classList.add('hidden'); host.innerHTML=''; state.cmp.mode='sessions'; return; }
   const setups=cmpProfiles(state.cmp.sport);
   const sides=cmpSides();
   const hasSides = state.cmp.sport==='bike' && sides.left.length && sides.right.length;
@@ -14105,9 +14259,10 @@ function renderSetupPickers(){
 }
 function renderComparePickers(){
   const {list,aId,bId}=state.cmp;
-  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.label?esc(e.label)+' · ':''}${esc(fmtWhen(e.at))} · ${e.score==null?'—':e.score}/100</option>`;
+  const people=cmpPeople(cmpEntry(aId),cmpEntry(bId));
+  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.label?esc(e.label)+' · ':''}${esc(fmtWhen(e.filmedAt||e.at))}${sideWord(e)?' · '+sideWord(e):''} · ${e.score==null?'—':e.score}/100</option>`;
   const sel=(side,cur)=>`<label class="cmp-pick">
-      <span class="cmp-pick-lbl">${side==='a'?'Before':'After'}</span>
+      <span class="cmp-pick-lbl">${people?(side==='a'?'First':'Second'):side==='a'?'Before':'After'}</span>
       <select class="cmp-select" data-side="${side}">${list.map(e=>opt(e,cur)).join('')}</select>
     </label>`;
   $('#cmpPickers').innerHTML = sel('a',aId)+`<div class="cmp-arrow" aria-hidden="true"><svg class="ic"><use href="#i-arr-l"/></svg></div>`+sel('b',bId);
@@ -14129,11 +14284,23 @@ function cmpRow(label,unit,a,b,opt,hi,noise){
     <div class="cmp-d"><span class="tdelta ${dd.cls}">${dstr}${dd.trend?'<span class="cmp-trend"> · '+dd.trend+'</span>':''}</span></div>
     <div class="cmp-b">${fmt(b)}</div></div>`;
 }
+/* Two people's reading: the gap and nothing about direction. Neutral, like left
+   vs right. Red is outside the range that person's own report uses. */
+function cmpGapRow(m,A,B){
+  const a=(A.trends||{})[m.key], b=(B.trends||{})[m.key], unit=m.unit||'';
+  const fmt=v=> v==null?'—':(Math.round(v*100)/100)+unit;
+  const off=(v,e)=>{ const o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1])?' cmp-off':''; };
+  const gap=a==null||b==null?'—':m.noise&&Math.abs(b-a)<m.noise?'within error':Math.round(Math.abs(b-a)*100)===0?'same':fmt(Math.abs(b-a));
+  return `<div class="cmp-row"><div class="cmp-lbl">${esc(m.label)}</div>
+    <div class="cmp-a${off(a,A)}">${fmt(a)}</div>
+    <div class="cmp-d"><span class="tdelta sta">${gap}</span></div>
+    <div class="cmp-b${off(b,B)}">${fmt(b)}</div></div>`;
+}
 /* Categorical row (foot strike): changed / unchanged, colored toward `good`. */
-function cmpCatRow(label,map,good,a,b){
+function cmpCatRow(label,map,good,a,b,people){
   const disp=v=> v==null?'—':(map[v]||pretty(v));
-  let cls='sta', note='unchanged';
-  if(a!=null&&b!=null&&a!==b){ cls = b===good?'imp':(a===good?'reg':'sta'); note = b===good?'improved':(a===good?'regressed':'changed'); }
+  let cls='sta', note=people?'same':'unchanged';
+  if(a!=null&&b!=null&&a!==b){ if(people) note='different'; else { cls = b===good?'imp':(a===good?'reg':'sta'); note = b===good?'improved':(a===good?'regressed':'changed'); } }
   return `<div class="cmp-row"><div class="cmp-lbl">${esc(label)}</div>
     <div class="cmp-a">${esc(disp(a))}</div>
     <div class="cmp-d"><span class="tdelta ${cls}">${note}</span></div>
@@ -14441,42 +14608,50 @@ function renderCompare(){
     renderComparePickers();
   }
   if(!A||!B){ $('#cmpBody').innerHTML=''; return; }
+  const people=!setups&&!sidesMode&&cmpPeople(A,B);
+  $('#compareTitle').textContent=people?'Two athletes':'Before / after';
+  const cmpEye=$('#compare .eyebrow'); if(cmpEye) cmpEye.textContent=people?'Side by side':'Track your change';
+  const toSquad=hasCoachPlan()&&(people||state.cmp.from==='squad');
+  $('#cmpBack').lastChild.textContent=toSquad?' Back to Squad':' Back to progress';
+  $('#cmpBody').classList.toggle('cmp-people',people);
   const at=A.trends||{}, bt=B.trends||{}, ac=A.trendCat||{}, bc=B.trendCat||{};
   // Prefer B's optimal band, fall back to A's.
   const optOf=k=> (B.trendOpt&&B.trendOpt[k]) || (A.trendOpt&&A.trendOpt[k]) || null;
   // Header: the wipe (when both frames exist) over two cards with date + score.
-  const wipe = (setups||sidesMode) ? '' : baSliderHtml(A,B);
-  const tagA = setups?'Setup A':(sidesMode?'Left side':'Before');
-  const tagB = setups?'Setup B':(sidesMode?'Right side':'After');
+  // No wipe between two people: it reads as the same rider, moved.
+  const wipe = (setups||sidesMode||people) ? '' : baSliderHtml(A,B);
+  const tagA = setups?'Setup A':(sidesMode?'Left side':people?esc(cmpWho(A)):'Before');
+  const tagB = setups?'Setup B':(sidesMode?'Right side':people?esc(cmpWho(B)):'After');
   const head=wipe+`<div class="cmp-head">
     ${[[A,tagA],[B,tagB]].map(([e,tag])=>`<div class="cmp-card">
       <div class="cmp-tag">${tag}</div>
       ${(setups||wipe)?'':cmpThumb(e,tag)}
       <div class="cmp-when">${setups
         ? esc(e._profile.name)+' · '+e._profile.n+' clip'+(e._profile.n>1?'s':'')+' averaged'
-        : esc(fmtWhen(e.at))}</div>
+        : esc(fmtWhen(e.filmedAt||e.at))+(people&&sideWord(e)?' · '+sideWord(e):'')}</div>
       ${ringHtml(e.score,80,`<div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>`)}
     </div>`).join('')}
   </div>`;
-  const rowFn = sidesMode
+  const rowFn = people ? (m=>cmpGapRow(m,A,B)) : sidesMode
     ? (m=>cmpSideRow(m.label,m.unit,at[m.key],bt[m.key],m.sideFloor))
     : (m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi,m.noise));
   const numRows=TREND_METRICS[sport].map(rowFn).join('');
-  const catRows=sidesMode?'':(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key])).join('');
+  const catRows=sidesMode?'':(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key],people)).join('');
   // Sessions only: a verdict in words first, and the warning if the pair was
   // not filmed alike. Setups are averages and sides are legs, neither a "did
   // my change work" question.
   const verdict = (setups||sidesMode) ? '' : (()=>{
     const cv=cmpCaveats(A,B);
-    return (cv.length?`<div class="cmp-warn" role="note"><p><b>Not a clean comparison.</b></p>${cv.map(t=>`<p>${t}</p>`).join('')}</div>`:'')
-      + cmpHeadline(A,B,sport,optOf);
+    const warn=head=>cv.length?`<div class="cmp-warn" role="note"><p><b>${head}</b></p>${cv.map(t=>`<p>${t}</p>`).join('')}</div>`:'';
+    if(people) return `<p class="hint" style="text-align:left;margin:0 0 14px">Two people, not a before and after. A gap here is a difference between them, and the right number for one body may not be the right one for the other.</p>`+warn('Filmed differently, so part of the gap can be the camera.');
+    return warn('Not a clean comparison.') + cmpHeadline(A,B,sport,optOf);
   })();
   $('#cmpBody').innerHTML = head + verdict +
     `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
        <div class="cmp-lbl">Metric</div>
-       <div class="cmp-a">${setups?'A':(sidesMode?'Left':'Before')}</div>
-       <div class="cmp-d">${setups?'Difference':(sidesMode?'Asymmetry':'Change')}</div>
-       <div class="cmp-b">${setups?'B':(sidesMode?'Right':'After')}</div>
+       <div class="cmp-a">${setups?'A':(sidesMode?'Left':people?tagA:'Before')}</div>
+       <div class="cmp-d">${setups?'Difference':(sidesMode?'Asymmetry':people?'Gap':'Change')}</div>
+       <div class="cmp-b">${setups?'B':(sidesMode?'Right':people?tagB:'After')}</div>
      </div>${numRows}${catRows}</div>`
     + (setups?`<p class="hint" style="text-align:left;margin:16px 0 0">Averaged across everything filmed on each setup. A difference here is
        the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'')
@@ -14508,7 +14683,7 @@ function renderCompare(){
 function renderSidePickers(){
   const {aId,bId}=state.cmp;
   const sides=cmpSides();
-  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(fmtWhen(e.at))} · ${e.score==null?'—':e.score}/100</option>`;
+  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(fmtWhen(e.filmedAt||e.at))} · ${e.score==null?'—':e.score}/100</option>`;
   const sel=(side,list,cur,lbl)=>`<label class="cmp-pick">
       <span class="cmp-pick-lbl">${lbl}</span>
       <select class="cmp-select" data-side="${side}">${list.map(e=>opt(e,cur)).join('')}</select>
@@ -14547,7 +14722,9 @@ document.addEventListener('change',e=>{ const s=e.target.closest('.cmp-select');
   if(s.dataset.side==='a') state.cmp.aId=s.value; else state.cmp.bId=s.value;
   state.cmp.summary=null; state.cmp.summaryLoading=false; renderCompare(); });
 $('#btnCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare(); });
-$('#cmpBack').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
+$('#cmpBack').addEventListener('click',e=>{ e.preventDefault();
+  const c=state.cmp, people=c&&cmpPeople(cmpEntry(c.aId),cmpEntry(c.bId));
+  if(hasCoachPlan()&&c&&(people||c.from==='squad')){ state.squadMe=false; openDashboard(); } else openProgress(); });
 
 /* Exposed for testing/screenshots */
 window.__flapp={setState,render,renderBilateral,renderRunSession,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overlayBounds};
