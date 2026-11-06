@@ -56,6 +56,16 @@ def test_no_video_downloads_before_it_is_near(html):
     assert len(re.findall(r"<video[^>]*\sdata-src=", html)) == 3
 
 
+def test_every_clip_on_the_page_reaches_the_deploy(html):
+    """`railway up` honours .gitignore, which ignores every .mp4 but the ones it
+    names, so a clip added with `git add -f` passes CI and is a 404 in production."""
+    ignore = (STATIC.parents[2] / ".gitignore").read_text(encoding="utf-8")
+    clips = set(re.findall(r'data-src="(media/[^"?]+\.mp4)', html))
+    assert clips
+    for clip in clips:
+        assert f"!backend/app/static/{clip}" in ignore, clip
+
+
 def test_the_hero_keeps_its_line_and_every_way_in(html):
     hero = html[html.index('<header class="hero">'):html.index("</header>")]
     assert "Faster and pain-free" in hero
