@@ -1,6 +1,6 @@
-"""The coach profile of a Full account: GET / PUT ``/me/coach``.
+"""The coach profile of a Coach account: GET / PUT ``/me/coach``.
 
-Full and admin only. The report a coach hands an athlete carries the
+Coach and admin only. The report a coach hands an athlete carries the
 coach's name and mark and the coach's own notes; a plan that does not
 include handing reports to athletes has no use for any of it, so the other
 tiers get a 402 that says which plan does. See ``models.coach``.
@@ -29,12 +29,10 @@ from app.models.coach import (
     MAX_TAGLINE_CHARS,
     CoachProfile,
 )
-from app.models.user import TIER_ADMIN, TIER_FULL, User
+from app.models.user import COACH_TIERS, User
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/me", tags=["coach"])
-
-COACH_TIERS = (TIER_FULL, TIER_ADMIN)
 
 
 def coach_allowed(user: User | None) -> bool:
@@ -46,7 +44,7 @@ def _require_coach(user: User) -> None:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="The coach profile -- your name and mark on the report, and your "
-                   "cue library -- is part of the Full plan.",
+                   "cue library -- is part of the Coach plan.",
         )
 
 

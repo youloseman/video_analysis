@@ -13,15 +13,31 @@ from app.core.db import Base
 TIER_STARTER = "starter"
 TIER_ENTHUSIAST = "enthusiast"
 TIER_FULL = "full"
+# The coach: everything Full has, plus a roster of athletes, their intake
+# links, the squad table and the coach's own brand on the report. A tier
+# rather than a flag on the account so that grants, limits, Stripe's
+# price->tier map and the client's plan checks all work the way they already
+# do for Full (docs/COACH_AREA_PLAN_RU.md).
+TIER_COACH = "coach"
 TIER_ADMIN = "admin"
-VALID_TIERS = (TIER_STARTER, TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
+VALID_TIERS = (TIER_STARTER, TIER_ENTHUSIAST, TIER_FULL, TIER_COACH, TIER_ADMIN)
 
 # Tiers that unlock the full (non-teaser) output + no watermark.
-PAID_TIERS = (TIER_ENTHUSIAST, TIER_FULL, TIER_ADMIN)
+PAID_TIERS = (TIER_ENTHUSIAST, TIER_FULL, TIER_COACH, TIER_ADMIN)
 
 # Tiers that get what only Full sells: today, where the rider sits over the
 # crank against the Kona field (Artur, 2026-10-26 -- it was Enthusiast and up).
-FULL_TIERS = (TIER_FULL, TIER_ADMIN)
+# Coach sits above Full and gets all of it.
+FULL_TIERS = (TIER_FULL, TIER_COACH, TIER_ADMIN)
+
+# Tiers that run a roster: athletes, intake links, the squad table, the
+# coach's name and mark on the report. The account tools behind /me/coach
+# and /me/athletes answer 402 to everyone else.
+COACH_TIERS = (TIER_COACH, TIER_ADMIN)
+
+
+def has_coach(tier: str | None) -> bool:
+    return tier in COACH_TIERS
 
 
 def has_full(tier: str | None) -> bool:
@@ -80,6 +96,9 @@ TIER_LIMITS: dict[str, tuple[int, str]] = {
     # scraper gets if an account is ever taken. Sixty is still far more than
     # the product is used for and half the exposure.
     TIER_FULL: (60, "month"),
+    # A coach runs other people's clips: fifteen athletes filming twice a
+    # month is already 30, and a camp week doubles it.
+    TIER_COACH: (150, "month"),
     TIER_ADMIN: (15, "day"),
 }
 
@@ -99,7 +118,10 @@ PROFILE_LIMITS: dict[str, int] = {
     TIER_STARTER: 0,
     TIER_ENTHUSIAST: 2,
     TIER_FULL: 10,
-    TIER_ADMIN: 10,
+    # Setups live inside athletes on a roster (a TT bike and a road bike per
+    # person); fifteen athletes at two or three each is where this lands.
+    TIER_COACH: 50,
+    TIER_ADMIN: 50,
 }
 DEFAULT_PROFILE_LIMIT = PROFILE_LIMITS[TIER_STARTER]
 
@@ -107,6 +129,34 @@ DEFAULT_PROFILE_LIMIT = PROFILE_LIMITS[TIER_STARTER]
 def profile_limit(tier: str | None) -> int:
     """How many live profiles this tier may keep; unknown tiers get the free one."""
     return PROFILE_LIMITS.get(tier or "", DEFAULT_PROFILE_LIMIT)
+
+
+# Athletes on a roster (models/athlete.py). Only the coach tier keeps one;
+# everybody else's history is their own. Past fifteen is "write to us" until
+# a real coach gets there -- seats are not sold yet.
+ATHLETE_LIMITS: dict[str, int] = {
+    TIER_COACH: 15,
+    TIER_ADMIN: 15,
+}
+
+
+def athlete_limit(tier: str | None) -> int:
+    return ATHLETE_LIMITS.get(tier or "", 0)
+
+
+# Saved analyses an account keeps before the oldest are dropped (api/me.py).
+# A hundred was plenty for one athlete; a roster of fifteen filming twice a
+# month passes it inside a season, and losing an athlete's spring to make
+# room for another's autumn is the wrong trade.
+HISTORY_CAPS: dict[str, int] = {
+    TIER_COACH: 1000,
+    TIER_ADMIN: 1000,
+}
+DEFAULT_HISTORY_CAP = 100
+
+
+def history_cap(tier: str | None) -> int:
+    return HISTORY_CAPS.get(tier or "", DEFAULT_HISTORY_CAP)
 
 
 

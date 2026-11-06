@@ -480,10 +480,13 @@ app.include_router(examples_routes.router)
 app.include_router(mobility_routes.router)
 from app.api import prescan as prescan_routes  # noqa: E402
 app.include_router(prescan_routes.router)
-# The coach behind a Full account: /me/coach (name, mark, cue library).
+# The coach behind a Coach account: /me/coach (name, mark, cue library) and
+# /me/athletes (the roster). docs/COACH_AREA_PLAN_RU.md.
+from app.api import athletes as athlete_routes  # noqa: E402
 from app.api import coach as coach_routes  # noqa: E402
 
 app.include_router(coach_routes.router)
+app.include_router(athlete_routes.router)
 
 
 # --------------------------------------------------------------------------

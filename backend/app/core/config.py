@@ -128,6 +128,8 @@ class Settings:
     stripe_price_enthusiast_y: str | None = None   # $69 / year
     stripe_price_full_m: str | None = None         # $13 / month (no review included)
     stripe_price_full_y: str | None = None         # $99 / year
+    stripe_price_coach_m: str | None = None        # $25 / month (the coach plan)
+    stripe_price_coach_y: str | None = None        # $199 / year (1 review included)
     stripe_price_expert: str | None = None         # $39 one-time
     stripe_price_unlock: str | None = None         # $4 one-time
     stripe_price_notes: str | None = None          # $12 one-time (Coach Notes)
@@ -222,6 +224,8 @@ class Settings:
             "enthusiast_yearly": self.stripe_price_enthusiast_y,
             "full_monthly": self.stripe_price_full_m,
             "full_yearly": self.stripe_price_full_y,
+            "coach_monthly": self.stripe_price_coach_m,
+            "coach_yearly": self.stripe_price_coach_y,
             "expert": self.stripe_price_expert,
             "unlock": self.stripe_price_unlock,
             "notes": self.stripe_price_notes,
@@ -241,6 +245,10 @@ class Settings:
             out[self.stripe_price_full_m] = "full"
         if self.stripe_price_full_y:
             out[self.stripe_price_full_y] = "full"
+        if self.stripe_price_coach_m:
+            out[self.stripe_price_coach_m] = "coach"
+        if self.stripe_price_coach_y:
+            out[self.stripe_price_coach_y] = "coach"
         return out
 
     @property
@@ -352,6 +360,8 @@ def _load_settings() -> Settings:
         stripe_price_enthusiast_y=os.environ.get("STRIPE_PRICE_ENTHUSIAST_Y") or None,
         stripe_price_full_m=os.environ.get("STRIPE_PRICE_FULL_M") or None,
         stripe_price_full_y=os.environ.get("STRIPE_PRICE_FULL_Y") or None,
+        stripe_price_coach_m=os.environ.get("STRIPE_PRICE_COACH_M") or None,
+        stripe_price_coach_y=os.environ.get("STRIPE_PRICE_COACH_Y") or None,
         stripe_price_expert_bump=os.environ.get("STRIPE_PRICE_EXPERT_BUMP") or None,
         stripe_price_expert_member=os.environ.get("STRIPE_PRICE_EXPERT_MEMBER") or None,
         stripe_coupon_unlock_credit=os.environ.get("STRIPE_COUPON_UNLOCK_CREDIT") or None,

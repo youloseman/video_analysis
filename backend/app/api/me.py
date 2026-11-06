@@ -47,7 +47,7 @@ from app.models.profile import (
     PROFILE_POSITIONS,
     Profile,
 )
-from app.models.user import User, has_full, profile_limit
+from app.models.user import User, has_full, history_cap, profile_limit
 from app.services.keyframe_store import split_keyframe, stored_keyframe
 from app.services.result_gating import (
     ACCESS_FULL,
@@ -156,6 +156,11 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
         entry.pop("jobId", None)
         job_id = None
     profile_id = await _owned_profile_id(db, user, entry.get("profileId"))
+    # Whose clip, on a coach's account. Same trust rule as the profile: only
+    # one of the caller's own athletes, else unfiled (api/athletes.py).
+    from app.api.athletes import owned_athlete_id
+
+    athlete_id = await owned_athlete_id(db, user, entry.get("athleteId"))
     sport = entry.get("sport")
     kind = entry.get("kind")
     score = entry.get("score")
@@ -181,10 +186,12 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
         # time an entry is edited would empty the profiles over a week.
         if profile_id is not None:
             row.profile_id = profile_id
+        if athlete_id is not None:
+            row.athlete_id = athlete_id
     else:
         row = Analysis(
             user_id=user.id, client_id=cid, created_at_ms=at, job_id=job_id,
-            profile_id=profile_id,
+            profile_id=profile_id, athlete_id=athlete_id,
             sport=sport, kind=kind, score=score, data=entry, keyframe=frame,
         )
         if job_id:
@@ -236,12 +243,15 @@ async def _owned_job(db: AsyncSession, user: User, job_id: str) -> bool:
 
 
 async def _enforce_cap(db: AsyncSession, user: User) -> None:
+    # By tier: a roster of fifteen passes a hundred rows inside a season, and
+    # dropping one athlete's spring to make room for another's autumn is the
+    # wrong trade (models.user.HISTORY_CAPS).
     stale = (
         await db.execute(
             select(Analysis.id)
             .where(Analysis.user_id == user.id)
             .order_by(Analysis.created_at_ms.desc())
-            .offset(MAX_PER_USER)
+            .offset(history_cap(user.tier))
         )
     ).scalars().all()
     if stale:
@@ -338,6 +348,7 @@ def _without_keyframe(data: dict[str, Any], row: Analysis | None = None,
     if row is not None:
         # The server's filing wins over whatever the client last remembered.
         thin["profileId"] = row.profile_id
+        thin["athleteId"] = row.athlete_id
         thin["access"] = access_for_stored(user, row)
         # Nothing to reveal: written before results were stored server-side, so
         # an unlock would sell an empty report.
@@ -362,6 +373,7 @@ async def list_analyses(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
     profile_id: int | None = None,
+    athlete_id: int | None = None,
 ) -> list[dict[str, Any]]:
     # ``Analysis.result`` is deliberately NOT fetched. It is the analyzer's
     # complete output -- kinogram and keyframe as base64 among it -- and it
@@ -393,8 +405,10 @@ async def list_analyses(
         .options(defer(Analysis.result), defer(Analysis.keyframe))
         .where(Analysis.user_id == user.id)
         .order_by(Analysis.created_at_ms.desc())
-        .limit(MAX_PER_USER)
+        .limit(history_cap(user.tier))
     )
+    if athlete_id is not None:
+        query = query.where(Analysis.athlete_id == athlete_id)
     if profile_id is not None:
         # Filtering to one setup is what makes a trend line mean something:
         # road-bike angles and TT angles are both correct and describe nobody
@@ -913,6 +927,9 @@ class ProfileIn(BaseModel):
     kind: str = DEFAULT_KIND
     crank_length_mm: float | None = None
     position: str | None = None
+    # On a coach's account: whose setup this is. Checked against the roster
+    # on the way in; anybody else's id files it as the coach's own.
+    athlete_id: int | None = None
 
     @field_validator("crank_length_mm")
     @classmethod
@@ -968,6 +985,7 @@ def _profile_out(p: Profile, used: int = 0) -> dict[str, Any]:
         "id": p.id, "name": p.name, "sport": p.sport, "kind": p.kind,
         "archived": p.archived, "created_at_ms": p.created_at_ms,
         "crank_length_mm": p.crank_length_mm, "position": p.bike_position,
+        "athlete_id": p.athlete_id,
         "analyses": used,
     }
 
@@ -1063,11 +1081,14 @@ async def create_profile(
 ) -> dict[str, Any]:
     await _refuse_if_no_room(db, user)
     bike = body.sport == "bike"
+    from app.api.athletes import owned_athlete_id
+
     row = Profile(
         user_id=user.id, name=body.name, sport=body.sport, kind=body.kind,
         created_at_ms=_now_ms(),
         crank_length_mm=body.crank_length_mm if bike else None,
         bike_position=body.position if bike else None,
+        athlete_id=await owned_athlete_id(db, user, body.athlete_id),
     )
     db.add(row)
     await db.commit()

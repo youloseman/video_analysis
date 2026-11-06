@@ -67,3 +67,9 @@ class Profile(Base):
     # "bike_position", not "position": POSITION is an SQL keyword, and the
     # raw ALTER that adds it never runs against Postgres in the tests.
     bike_position: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # On a coach's account, whose setup this is (models/athlete.py): the
+    # picker on Analyze shows the chosen athlete's bikes, not the coach's own.
+    # NULL = the account holder's.
+    athlete_id: Mapped[int | None] = mapped_column(
+        ForeignKey("athletes.id", ondelete="SET NULL"), index=True, nullable=True,
+    )

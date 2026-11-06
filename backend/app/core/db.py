@@ -288,6 +288,16 @@ def _migrate_analyses(conn) -> None:
             "ON analyses (profile_id)"
         ))
         logger.info("MIGRATED", change="analyses.profile_id added")
+    if "athlete_id" not in cols:
+        # Same shape as profile_id, for the same reasons: nullable, no
+        # default, no FK in the ALTER. NULL is the truth about every row
+        # written before rosters existed -- the account holder's own clip.
+        conn.execute(text("ALTER TABLE analyses ADD COLUMN athlete_id INTEGER"))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_analyses_athlete_id "
+            "ON analyses (athlete_id)"
+        ))
+        logger.info("MIGRATED", change="analyses.athlete_id added")
 
 
 def _migrate_profiles(conn) -> None:
@@ -305,12 +315,18 @@ def _migrate_profiles(conn) -> None:
     if "bike_position" not in cols:
         conn.execute(text("ALTER TABLE profiles ADD COLUMN bike_position VARCHAR(16)"))
         logger.info("MIGRATED", change="profiles.bike_position added")
+    if "athlete_id" not in cols:
+        conn.execute(text("ALTER TABLE profiles ADD COLUMN athlete_id INTEGER"))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_profiles_athlete_id ON profiles (athlete_id)"
+        ))
+        logger.info("MIGRATED", change="profiles.athlete_id added")
 
 
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import (  # noqa: F401
-        analysis, coach, feedback, order, profile, usage, user,
+        analysis, athlete, coach, feedback, order, profile, usage, user,
     )
 
     async with engine.begin() as conn:

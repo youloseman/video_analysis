@@ -51,6 +51,7 @@ from app.models.order import (
 from app.models.user import (
     FULL_EXPERT_CREDITS,
     TIER_ADMIN,
+    TIER_COACH,
     TIER_ENTHUSIAST,
     TIER_FULL,
     TIER_STARTER,
@@ -111,11 +112,22 @@ def log_billing_configuration() -> None:
     if not settings.stripe_enabled:
         logger.info("BILLING_DISABLED", reason="STRIPE_SECRET_KEY unset")
         return
-    missing = sorted(p for p, price in settings.plan_price_map.items() if not price)
+    # The Coach plan is built but not on sale (docs/COACH_AREA_PLAN_RU.md,
+    # phase 4): with neither of its prices set it is dormant by design, not a
+    # misconfiguration, and the error below would cry wolf on every deploy.
+    # One of the two set and the other not IS the copy-paste slip.
+    coach_prices = {"coach_monthly", "coach_yearly"}
+    coach_off = not any(settings.plan_price_map.get(p) for p in coach_prices)
+    missing = sorted(
+        p for p, price in settings.plan_price_map.items()
+        if not price and not (coach_off and p in coach_prices)
+    )
     if missing:
         logger.error("BILLING_PRICES_MISSING", plans=missing)
     else:
-        logger.info("BILLING_READY", plans=sorted(settings.plan_price_map))
+        logger.info("BILLING_READY", plans=sorted(set(settings.plan_price_map) - (coach_prices if coach_off else set())))
+    if coach_off:
+        logger.info("BILLING_COACH_OFF", reason="STRIPE_PRICE_COACH_M/Y unset -- Coach plan by grant only")
     if not settings.stripe_price_expert_bump:
         # Not an error: the checkbox simply does not render without it.
         logger.info("BILLING_BUMP_OFF", reason="STRIPE_PRICE_EXPERT_BUMP unset")
@@ -252,6 +264,8 @@ def tier_for_plan(plan: str) -> str | None:
         "enthusiast_yearly": "enthusiast",
         "full_monthly": "full",
         "full_yearly": "full",
+        "coach_monthly": "coach",
+        "coach_yearly": "coach",
     }.get(plan)
 
 
@@ -265,8 +279,9 @@ def includes_review(plan: str | None) -> bool:
 
     Full yearly only (Artur, 2026-10-26). Full monthly exists so Full can be
     tried for a month; a US$39 review inside a US$13 month would be a
-    discount on the review, bought and cancelled."""
-    return plan == "full_yearly"
+    discount on the review, bought and cancelled. Coach yearly carries the
+    same one: it is Full and more, and the yearly commitment is the same."""
+    return plan in ("full_yearly", "coach_yearly")
 
 
 def tier_for_price(price_id: str | None) -> str | None:
@@ -1924,9 +1939,11 @@ async def _on_invoice_paid(db: AsyncSession, obj: Any) -> None:
             "currency": (obj.get("currency") or "").upper() or None,
         },
     )
-    # Only the yearly Full price owes a review on renewal: a monthly Full
-    # renewal is TIER_FULL too, and would otherwise hand one out every month.
-    if price_tier != TIER_FULL or _price_from_invoice(obj) != settings.stripe_price_full_y:
+    # Only the yearly Full and Coach prices owe a review on renewal: a monthly
+    # renewal maps to the same tier, and would otherwise hand one out every
+    # month.
+    yearly_prices = {p for p in (settings.stripe_price_full_y, settings.stripe_price_coach_y) if p}
+    if price_tier not in (TIER_FULL, TIER_COACH) or _price_from_invoice(obj) not in yearly_prices:
         return
     if grant_expert_credits(user, str(obj.get("id") or "")):
         logger.info(

@@ -39,6 +39,7 @@ from app.models.analysis import Analysis
 from app.models.order import ORDER_DELIVERED, ORDER_REFUNDED, Order
 from app.models.user import (
     TIER_ADMIN,
+    TIER_COACH,
     TIER_ENTHUSIAST,
     TIER_FULL,
     TIER_STARTER,
@@ -52,6 +53,10 @@ RETENTION_DAYS: dict[str, int] = {
     TIER_STARTER: 7,
     TIER_ENTHUSIAST: 30,
     TIER_FULL: 30,
+    # 30 like every paid plan: privacy.html section 2 promises "30 days on a
+    # paid plan", and a longer window for coaches is a policy change first
+    # (docs/COACH_AREA_PLAN_RU.md, phase 3), not a number here.
+    TIER_COACH: 30,
     TIER_ADMIN: 30,
 }
 # An unknown tier is treated as the free one. Erring towards the shorter period

@@ -1,9 +1,10 @@
 """The coach profile (``/me/coach``) and the note in the export.
 
-Pinned: the profile is Full/admin only and says so; it round-trips and is
-cleaned (whitespace, duplicate cues, the cue cap); a logo that is not an
-image or too large is refused; and a note saved on a history entry reaches
-the Markdown export under the coach's name.
+Pinned: the profile is Coach/admin only and says so (Full is NOT a coach
+since the Coach plan exists -- 2026-11-05); it round-trips and is cleaned
+(whitespace, duplicate cues, the cue cap); a logo that is not an image or too
+large is refused; and a note saved on a history entry reaches the Markdown
+export under the coach's name.
 """
 from __future__ import annotations
 
@@ -13,24 +14,27 @@ import pytest
 from fastapi import HTTPException
 
 from app.api import coach as api
-from app.models.user import TIER_ENTHUSIAST, TIER_FULL
+from app.models.user import TIER_COACH, TIER_ENTHUSIAST, TIER_FULL
 from app.services.export import ai_export
 
 
-async def test_only_the_full_plan_has_a_coach_profile(make_user, db):
+async def test_only_the_coach_plan_has_a_coach_profile(make_user, db):
     starter = await make_user()
     got = await api.get_coach(starter, db)
     assert got["allowed"] is False and got["name"] == ""
     with pytest.raises(HTTPException) as e:
         await api.put_coach(api.CoachIn(name="X"), starter, db)
     assert e.value.status_code == 402
-    enth = await make_user(tier=TIER_ENTHUSIAST)
-    with pytest.raises(HTTPException):
-        await api.put_coach(api.CoachIn(name="X"), enth, db)
+    assert "Coach plan" in e.value.detail
+    for tier in (TIER_ENTHUSIAST, TIER_FULL):
+        other = await make_user(tier=tier)
+        assert (await api.get_coach(other, db))["allowed"] is False
+        with pytest.raises(HTTPException):
+            await api.put_coach(api.CoachIn(name="X"), other, db)
 
 
 async def test_the_profile_round_trips_and_is_cleaned(make_user, db):
-    user = await make_user(tier=TIER_FULL)
+    user = await make_user(tier=TIER_COACH)
     body = api.CoachIn(
         name="  Coach   Artur ", tagline="UESCA  · Nanaimo",
         cues=["Land under the hips", "land under the hips", "  ", "Quiet arms"],
@@ -46,7 +50,7 @@ async def test_the_profile_round_trips_and_is_cleaned(make_user, db):
 
 
 async def test_a_mark_must_be_a_small_image(make_user, db):
-    user = await make_user(tier=TIER_FULL)
+    user = await make_user(tier=TIER_COACH)
     with pytest.raises(HTTPException) as e:
         await api.put_coach(api.CoachIn(logo="data:text/html;base64,PGI+"), user, db)
     assert e.value.status_code == 422

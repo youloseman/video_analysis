@@ -97,6 +97,23 @@ def test_a_missing_price_is_named_at_startup(monkeypatch):
     assert missing[0]["log_level"] == "error"
 
 
+def test_the_dormant_coach_plan_is_not_a_missing_price(monkeypatch):
+    """Both Coach prices unset = not on sale yet, said as info. One of the two
+    set = the copy-paste slip the error exists for."""
+    _use(monkeypatch, stripe_secret_key="sk_live_x",
+         stripe_price_coach_m=None, stripe_price_coach_y=None)
+    with structlog.testing.capture_logs() as logs:
+        log_billing_configuration()
+    assert not [e for e in logs if e["event"] == "BILLING_PRICES_MISSING"]
+    assert any(e["event"] == "BILLING_COACH_OFF" for e in logs)
+    _use(monkeypatch, stripe_secret_key="sk_live_x",
+         stripe_price_coach_m="price_cm", stripe_price_coach_y=None)
+    with structlog.testing.capture_logs() as logs:
+        log_billing_configuration()
+    missing = [e for e in logs if e["event"] == "BILLING_PRICES_MISSING"]
+    assert missing and missing[0]["plans"] == ["coach_yearly"]
+
+
 def test_a_test_mode_key_is_flagged_at_startup(monkeypatch):
     """The failure this catches is a launch where every real card is declined."""
     _use(monkeypatch, stripe_secret_key="sk_test_abc123")

@@ -18,13 +18,15 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 
-from app.models.user import TIER_ADMIN, TIER_ENTHUSIAST, TIER_FULL, TIER_STARTER
+from app.models.user import TIER_ADMIN, TIER_COACH, TIER_ENTHUSIAST, TIER_FULL, TIER_STARTER
 
 DAILY_RECOMPUTES: dict[str, int] = {
     # Free: the hip and knee on a photo only, picture redrawn, score unchanged.
     TIER_STARTER: 5,
     TIER_ENTHUSIAST: 10,
     TIER_FULL: 40,
+    # Several athletes' clips corrected in one sitting.
+    TIER_COACH: 100,
     TIER_ADMIN: 15,
 }
 # Rounds of adjustment one analysis may go through. Offsets accumulate, so

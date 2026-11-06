@@ -99,6 +99,9 @@
     <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></symbol>
   <symbol id="i-person" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></symbol>
+  <!-- Two people: the roster. -->
+  <symbol id="i-people" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.8"/><path d="M17.5 14.2a6.5 6.5 0 0 1 4 5.8"/></symbol>
   <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></symbol>
   <symbol id="i-ruler" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -210,6 +213,7 @@
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
     <a href="#" id="navCompare" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg><span>Compare</span></a>
     <a href="#" id="navProfiles" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>Profiles</span></a>
+    <a href="#" id="navAthletes" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span>Athletes</span></a>
     <!-- Admin-only: result feedback inbox and the Expert Review queue. -->
     <a href="#" id="navFeedback" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Feedback</span></a>
     <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Reviews</span></a>
@@ -642,6 +646,12 @@
            asking afterwards gets you an honest shrug. -->
       <details class="askbox optbox" id="optBox">
         <summary>Setup &amp; body details <span class="askopt">optional</span></summary>
+      <!-- Whose clip (a coach's roster). Hidden unless the account keeps one. -->
+      <div class="profilefield hidden" id="athleteField">
+        <label for="athleteSel">Whose clip is this</label>
+        <select id="athleteSel" aria-describedby="athleteHint"></select>
+      </div>
+      <p class="hint profilehint hidden" id="athleteHint">Files the report under them: their history, their trend, their name on the printed report.</p>
       <div class="profilefield" id="profileField">
         <label for="profileSel">Which bike or shoes</label>
         <select id="profileSel" aria-describedby="profileHint"></select>
@@ -1465,6 +1475,7 @@
     <p class="hint hist-hint" id="histHint" hidden style="text-align:left;margin:-4px 0 18px">
       Analyses run for someone else? Tap <b>✕</b> on a card to remove just that one, or <b>Clear all</b> to reset your stats.
     </p>
+    <div class="profilefilter" id="histAthleteFilter"></div>
     <div class="profilefilter" id="histFilter"></div>
     <div id="histList"></div>
   </section>
@@ -1769,12 +1780,39 @@
     <div class="prof-edit hidden" id="profEdit">
       <div><label for="profName" id="profEditLbl">Name</label><input id="profName" type="text" maxlength="60" placeholder="e.g. Canyon Aeroad, Vaporfly 3"></div>
       <div><label for="profSport">Sport</label><select id="profSport"><option value="bike">Bike</option><option value="run">Run</option></select></div>
+      <div class="prof-who hidden"><label for="profAthlete">Whose</label><select id="profAthlete"></select></div>
       <div><label for="profKind">Type</label><select id="profKind"></select></div>
       <div class="prof-bike"><label for="profCrank">Crank length</label><input id="profCrank" type="number" inputmode="decimal" min="150" max="185" step="2.5" placeholder="172.5 mm"></div>
       <div class="prof-bike"><label for="profPos">Usual position</label><select id="profPos"></select></div>
       <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="profSave">Save profile</button><button class="btn btn-ghost btn-sm" type="button" id="profCancel">Cancel</button></div>
     </div>
     <div class="prof-limit hidden" id="profLimit"></div>
+  </section>
+
+  <!-- ============ ATHLETES (the Coach plan's roster) ============ -->
+  <section id="athletes" class="hidden" aria-labelledby="athTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
+    <div class="pagehead">
+      <h2 class="sec" id="athTitle" tabindex="-1">Athletes</h2>
+      <span class="ph-lede">Everyone you coach. Each one keeps their own history and trends, and their name goes on the reports you hand them.</span>
+      <span class="ph-right"><span class="pill" id="athCount"><span class="dot" aria-hidden="true"></span><span id="athCountTxt"></span></span><button class="btn btn-ghost btn-sm" type="button" id="athAdd">Add athlete</button></span>
+    </div>
+    <div class="prof-head">
+      <div class="seg seg-sm" role="group" aria-label="Filter athletes" id="athFilter">
+        <button type="button" data-af="all" aria-pressed="true">Squad</button>
+        <button type="button" data-af="archived" aria-pressed="false">Archived</button>
+      </div>
+      <span class="prof-note">pick the athlete on Analyze before you run their clip — a clip filed under nobody is yours</span>
+    </div>
+    <div class="prof-list" id="athList"></div>
+    <div class="prof-edit hidden" id="athEdit">
+      <div><label for="athName" id="athEditLbl">Name</label><input id="athName" type="text" maxlength="60" placeholder="e.g. Andrew Solomon"></div>
+      <div><label for="athSport">Sport</label><select id="athSport"><option value="both">Triathlon · both</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
+      <div><label for="athEmail">Email <span class="askopt">optional</span></label><input id="athEmail" type="email" maxlength="320" placeholder="where their reports go, later"></div>
+      <div><label for="athNote">One line <span class="askopt">optional</span></label><input id="athNote" type="text" maxlength="240" placeholder="goal race, what you're working on"></div>
+      <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="athSave">Save athlete</button><button class="btn btn-ghost btn-sm" type="button" id="athCancel">Cancel</button></div>
+    </div>
+    <div class="prof-limit hidden" id="athLimit"></div>
   </section>
 
   <!-- ============ WHAT'S NEW (release notes) ============ -->
@@ -1876,7 +1914,7 @@
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, histProfile:null, polling:null, xhr:null, pollStart:0, pollFirst:0, pollMisses:0, remaining:null,
+const state = { file:null, sport:'bike', position:'triathlon', mode:'video', jobId:null, profileId:null, athleteId:null, histProfile:null, histAthlete:null, polling:null, xhr:null, pollStart:0, pollFirst:0, pollMisses:0, remaining:null,
   kfCache:{}, kfPending:{},     // cloud keyframes, fetched per entry (see fetchKeyframe)
   kinoCache:{},                 // cloud kinograms, same bargain (renderHistoryKinogram)
   ovCache:{},                   // overlay URLs per entry, minted for an hour (renderHistoryVideos)
@@ -1982,20 +2020,20 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
   whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp',
   expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp',
-  account:'Account — Flapp', profiles:'Profiles — Flapp',
+  account:'Account — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp',
   swim:'Swim review — Flapp', swimdetail:'Your swim clip — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
   whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin',
   expertadmin:'expertAdmin', reviewreport:'reviewReport',
-  account:'account', profiles:'profiles', swim:'swim', swimdetail:'swim'};
+  account:'account', profiles:'profiles', athletes:'athletes', swim:'swim', swimdetail:'swim'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles' };
-const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', profiles:'#botMore', pricing:'#botMore', whatsnew:'#botMore' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes' };
+const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', profiles:'#botMore', athletes:'#botMore', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -2157,7 +2195,7 @@ function renderQuota(){
     const q=card&&card.quota;
     txt = q
       ? `${esc(card.name)} · <b>${q.limit}</b> analyses per ${esc(q.window)}`
-      : `<b>${tier==='admin'?'Admin':'Free'}</b> plan`;
+      : `<b>${tier==='admin'?'Admin':tier==='coach'?'Coach':'Free'}</b> plan`;
   }
   ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
   // The corner of the phone's top bar and the plan line under the sidebar:
@@ -6342,17 +6380,17 @@ function syncOverlayField(){
    the person's, and it says so.
    ============================================================ */
 const COACH={allowed:false,name:'',tagline:'',logo:null,cues:[],loaded:false};
-/* The coach-as-user tools -- the profile card, the note editor, the
-   branded print head -- are PARKED (Artur, 2026-09-18): built, tested, and
-   switched off until coaches show up asking for them. The same note block
-   stays live read-only, because it is where paid Coach Notes are delivered
-   (see api.billing._write_notes_to_entry). Flip this to bring the tools
-   back; nothing else changes. */
-const COACH_TOOLS=false;
-function coachOn(){ return COACH_TOOLS && !!(auth&&COACH.allowed); }
+/* The coach-as-user tools -- the profile card, the note editor, the branded
+   print head -- were parked from 2026-09-18 to 2026-11-05 behind a global
+   flag. They are now the Coach plan's: the server says who may have them
+   (`allowed` on /me/coach, Coach and admin), and that answer is the only
+   switch. The same note block stays live read-only for everyone else,
+   because it is where paid Coach Notes are delivered (see
+   api.billing._write_notes_to_entry). docs/COACH_AREA_PLAN_RU.md. */
+function coachOn(){ return !!(auth&&COACH.allowed); }
 async function loadCoach(){
   COACH.allowed=false; COACH.loaded=false;
-  if(!auth||!COACH_TOOLS) return;
+  if(!auth) return;
   try{ const r=await fetch('/me/coach',{headers:authHeaders()}); if(r.ok){ Object.assign(COACH, await r.json()); COACH.loaded=true; } }catch(e){}
   renderCoachCard();
   if(state.lastResult&&!$('#results').classList.contains('hidden')) renderCoachNote('coachNote', state.videoHistId);
@@ -6380,15 +6418,12 @@ function coachLogoFromFile(file){
 }
 function renderCoachCard(){
   const card=$('#acctCoachCard'), body=$('#acctCoachBody'), pill=$('#acctCoachPill'); if(!card||!body) return;
-  if(!auth||!COACH_TOOLS){ card.classList.add('hidden'); return; }
+  // Shown to the plan that has it, not advertised to the rest: the Coach
+  // plan has no public price yet, and a card that sells it would point at
+  // nothing. The pricing page takes that job when the plan goes on sale.
+  if(!coachOn()){ card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
-  if(!COACH.allowed){
-    pill.classList.add('hidden');
-    body.innerHTML=`<p class="acct-p">Your name and mark on every report you hand to an athlete, a library of your own cues, and a note of yours on each report — printed, saved and exported with it.</p>
-      <a href="#pricing" class="btn btn-link btn-sm" onclick="event.preventDefault();openPricing()">Part of the Full plan</a>`;
-    return;
-  }
-  pill.classList.remove('hidden');
+  pill.classList.remove('hidden'); pill.lastChild.textContent='Coach';
   body.innerHTML=`<div class="coachform">
       <div><label for="coachName">Name on the report</label><input type="text" id="coachName" maxlength="60" placeholder="Coach Artur" value="${esc(COACH.name||'')}"></div>
       <div><label for="coachTag">One line under it</label><input type="text" id="coachTag" maxlength="120" placeholder="UESCA-certified · Nanaimo, BC" value="${esc(COACH.tagline||'')}"></div>
@@ -6439,14 +6474,17 @@ function renderCoachNote(hostId, entryId){
   const host=$('#'+hostId), block=host&&host.closest('.block'); if(!host||!block) return;
   const e=entryId?loadHist().find(x=>x.id===entryId):null;
   const note=(e&&e.coachNote)||'', by=(e&&e.coachName)||'', bio=(e&&e.coachBio)||'';
-  if(!coachOn()&&!note){ block.classList.add('hidden'); return; }
-  block.classList.remove('hidden');
   // Delivered Coach Notes (bought) read as "Coach Notes"; a coach-user's own
-  // note reads under their name. The eyebrow follows.
+  // note reads under their name. The eyebrow follows. A bought note is never
+  // editable, not even by a coach-user: the editor would save over Bogdan's
+  // words under the coach's own name.
   const bought=!!(e&&e.coachOrderId);
-  const title=block.querySelector('h3'); if(title) title.textContent=coachOn()?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(bought?'Coach Notes':(by?`${by}’s notes`:'Coach’s notes'));
-  const eb=block.querySelector('.eyebrow'); if(eb&&!coachOn()) eb.innerHTML=`<svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> ${bought?'A person read this':'Your notes'}`;
-  if(!coachOn()){
+  const editing=coachOn()&&!bought;
+  if(!editing&&!note){ block.classList.add('hidden'); return; }
+  block.classList.remove('hidden');
+  const title=block.querySelector('h3'); if(title) title.textContent=editing?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(bought?'Coach Notes':(by?`${by}’s notes`:'Coach’s notes'));
+  const eb=block.querySelector('.eyebrow'); if(eb) eb.innerHTML=`<svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> ${editing?'Your notes':bought?'A person read this':'Your notes'}`;
+  if(!editing){
     host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}${bought?' · read your clip and this analysis':''}</div>${bio?`<div class="cnote-bio">${esc(bio)}</div>`:''}`:''}`;
     return;
   }
@@ -6917,7 +6955,10 @@ function renderPrintable(r, entry){
     when: fmtWhen((entry&&entry.at) || Date.now()),
     score: r.technique_score!=null ? r.technique_score : (entry&&entry.score),
     grade: r.letter_grade || (entry&&entry.grade) || '',
-    athlete: (auth&&auth.email) || '',
+    // Whose clip: the athlete on the roster when there is one, else the
+    // account -- a report handed to an athlete must not carry the coach's
+    // email as the person in it.
+    athlete: athleteName((entry&&entry.athleteId)||state.athleteId) || (auth&&auth.email) || '',
     confidence: (r.analysis_confidence&&r.analysis_confidence.level) || '',
     position: r.cycling_position_label || (r.cycling_position?pretty(r.cycling_position):''),
   });
@@ -6941,7 +6982,13 @@ function renderPrintable(r, entry){
       + ((coachOn()&&COACH.name)?`<p><b>Prepared by ${esc(COACH.name)}</b>${COACH.tagline?' · '+esc(COACH.tagline):''} — with Flapp by Clariva · getflapp.com</p>`:`<p>Flapp by Clariva · getflapp.com</p>`);
   }
 }
-function hasFullPlan(){ return !!auth && ['full','admin'].includes(auth.tier); }
+/* Full and everything above it: Coach is Full plus a roster. */
+const FULL_TIERS=['full','coach','admin'];
+function hasFullPlan(){ return !!auth && FULL_TIERS.includes(auth.tier); }
+function hasCoachPlan(){ return !!auth && ['coach','admin'].includes(auth.tier); }
+/* The plan's name when the catalogue has no card for it (Coach has no card
+   until its Stripe prices exist; admin never does). */
+function tierLabel(tier){ return tier==='admin'?'Admin':tier==='coach'?'Coach':'Starter'; }
 /* The Full plan's PDF: a designed A4 report the server builds for one saved
    analysis (/me/analyses/{id}/report), opened in its own tab where Print >
    Save as PDF keeps it. The tab is opened before the fetch, or a popup
@@ -6966,7 +7013,7 @@ async function openReportPdf(){
   }
 }
 function printButtonHtml(){
-  return (auth && ['full','admin'].includes(auth.tier))
+  return hasFullPlan()
     ? `<button class="btn btn-ghost btn-sm" type="button" onclick="openReportPdf()">
          <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Save as PDF</button>`
     : '';
@@ -7002,11 +7049,18 @@ function profileName(id){
   const p=(PROFILES.profiles||[]).find(x=>x.id===id);
   return p?p.name:null;
 }
+/* Setups shown for the clip being filed: the chosen athlete's, or the
+   coach's own when nobody is chosen. A rider's TT bike is theirs alone. */
+function profilesForPick(sport){
+  const who=state.athleteId||null;
+  return liveProfiles(sport).filter(p=>(p.athlete_id||null)===who);
+}
 function renderProfileField(){
   const field=$('#profileField'), sel=$('#profileSel'), hint=$('#profileHint');
   if(!field||!sel) return;
+  renderAthleteField();
   // Nothing to file against until there is an account to file it under.
-  const mine=auth?liveProfiles(state.sport):[];
+  const mine=auth?profilesForPick(state.sport):[];
   // Starter keeps no profiles: no box to fill, unless profiles made before
   // that rule still hold history.
   const none=!auth || (!PROFILES.error && (PROFILES.limit??0)===0 && !mine.length);
@@ -7047,6 +7101,7 @@ async function createProfile(name){
     const r=await fetch('/me/profiles',{method:'POST',
       headers:authHeaders({'Content-Type':'application/json'}),
       body:JSON.stringify({name, sport:state.sport, kind:state.sport==='run'?'shoes':'other',
+        athlete_id:state.athleteId||null,
         ...(state.sport==='bike'?{position:state.position||null, crank_length_mm:crankMm()}:{})})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ toast(j.detail||'Could not add that setup.',{duration:6000}); return null; }
@@ -7086,7 +7141,7 @@ function renderProfiles(){
   } else {
     list.innerHTML=rows.map(p=>`<div class="prof-row${p.archived?' is-archived':''}" data-id="${p.id}">
       <div><div class="p-name">${esc(p.name)} <span class="p-kind">${esc(PROFILE_KIND_LABEL[p.kind]||p.kind||'')}</span>${p.archived?'<span class="p-kind">archived</span>':''}</div>
-        <div class="p-sub">${p.sport==='run'?'run':'bike'}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}</div></div>
+        <div class="p-sub">${athleteName(p.athlete_id)?esc(athleteName(p.athlete_id))+' · ':''}${p.sport==='run'?'run':'bike'}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}</div></div>
       <div class="p-sub">${p.archived?'out of the picker, still in your history':'in the picker on Analyze'}</div>
       <div class="p-n">${p.analyses!=null?p.analyses:'—'}<small>analyses</small></div>
       <div class="p-acts">
@@ -7118,6 +7173,15 @@ function showProfEdit(p){
   $('#profName').value=p?p.name:'';
   const sp=$('#profSport'); sp.value=p?p.sport:state.sport||'bike'; sp.disabled=!!p;
   $('#profKind').innerHTML=profKindOptions(sp.value, p?p.kind:(sp.value==='run'?'shoes':'road'));
+  // Whose setup, on a coach's account. Fixed once made: a bike does not
+  // change owner, and re-filing its history would be the wrong tool for it.
+  const who=$('#profAthlete'), whoBox=who&&who.closest('.prof-who');
+  if(who&&whoBox){
+    const squad=hasCoachPlan()?liveAthletes():[];
+    whoBox.classList.toggle('hidden', !squad.length);
+    who.innerHTML=`<option value="">Mine</option>`+squad.map(a=>`<option value="${a.id}"${p&&String(p.athlete_id)===String(a.id)?' selected':''}>${esc(a.name)}</option>`).join('');
+    who.disabled=!!p;
+  }
   $('#profCrank').value=p&&p.crank_length_mm?String(p.crank_length_mm):'';
   $('#profPos').innerHTML=profPosOptions(p?p.position:null);
   syncProfBikeFields();
@@ -7156,7 +7220,8 @@ async function profPatch(id, body){
     if(state.profEditId!=null) ok=await profPatch(state.profEditId,{name,kind,...bikeBits});
     else{
       try{
-        const r=await fetch('/me/profiles',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({name,sport,kind,...bikeBits})});
+        const who=$('#profAthlete'); const athlete_id=who&&who.value?Number(who.value):null;
+        const r=await fetch('/me/profiles',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({name,sport,kind,athlete_id,...bikeBits})});
         const j=await r.json().catch(()=>({}));
         ok=r.ok; if(!ok) toast(j.detail||'Could not add that profile.',{duration:6000});
       }catch(e){ ok=false; toast('Could not add that profile.'); }
@@ -7180,6 +7245,139 @@ async function profPatch(id, body){
 })();
 
 /* ============================================================
+   Athletes — the Coach plan's roster (/me/athletes).
+
+   An athlete is a label the coach owns on their own history: analyses and
+   setups point at one, History and Progress filter by one, the printed
+   report names them. Not an account -- nobody signs in. The list, add,
+   rename, archive and delete mirror the Profiles screen above, on purpose:
+   one pattern to learn. docs/COACH_AREA_PLAN_RU.md.
+   ============================================================ */
+let ATHLETES={allowed:false,athletes:[],limit:0,used:0};
+state.athFilter='all'; state.athEditId=null;
+async function loadAthletes(){
+  if(!auth){ ATHLETES={allowed:false,athletes:[],limit:0,used:0}; renderAthleteField(); return; }
+  try{
+    const r=await fetch('/me/athletes',{headers:authHeaders()});
+    if(r.ok){ ATHLETES=await r.json(); ATHLETES.error=false; } else ATHLETES.error=true;
+  }catch(e){ ATHLETES.error=true; }
+  renderAthleteField();
+}
+function liveAthletes(){ return (ATHLETES.athletes||[]).filter(a=>!a.archived); }
+function athleteName(id){
+  if(id==null) return null;
+  const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(id));
+  return a?a.name:null;
+}
+const ATHLETE_SPORT_LABEL={both:'triathlon',bike:'bike',run:'run'};
+/* The "whose clip" box on Analyze: only for an account with a roster, and
+   only once somebody is on it. */
+function renderAthleteField(){
+  const field=$('#athleteField'), sel=$('#athleteSel'), hint=$('#athleteHint');
+  if(!field||!sel) return;
+  const mine=auth&&ATHLETES.allowed?liveAthletes():[];
+  const none=!mine.length;
+  field.classList.toggle('hidden', none);
+  if(hint) hint.classList.toggle('hidden', none);
+  if(none){ state.athleteId=null; return; }
+  if(state.athleteId&&!mine.some(a=>String(a.id)===String(state.athleteId))) state.athleteId=null;
+  sel.innerHTML=`<option value="">Me — my own clip</option>`
+    + mine.map(a=>`<option value="${a.id}"${String(a.id)===String(state.athleteId)?' selected':''}>${esc(a.name)}</option>`).join('');
+}
+function renderAthletes(){
+  const list=$('#athList'); if(!list) return;
+  const all=ATHLETES.athletes||[], f=state.athFilter;
+  const rows=all.filter(a=> f==='archived' ? a.archived : !a.archived);
+  const used=ATHLETES.used||0, limit=ATHLETES.limit??0;
+  const cnt=$('#athCountTxt'); if(cnt) cnt.textContent=`${used} of ${limit}`;
+  const pill=$('#athCount'); if(pill) pill.className='pill '+(used>=limit?'pill-warnchip':'pill-low');
+  [...$('#athFilter').children].forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.af===f)));
+  if(ATHLETES.error){ list.innerHTML=`<div class="prof-row"><span class="p-name">Your athletes didn’t load.</span><span></span><span></span><span class="p-acts"><button type="button" data-retryath="1">Retry</button></span></div>`;
+    list.querySelector('[data-retryath]').addEventListener('click',()=>loadAthletes().then(renderAthletes)); return; }
+  if(!rows.length){
+    list.innerHTML=`<div class="prof-row"><span class="p-name" style="color:var(--c-ink-faint);font-weight:400">${f==='archived'?'Nobody archived.':'Nobody yet — add the first athlete you coach, then pick them on Analyze.'}</span></div>`;
+  } else {
+    list.innerHTML=rows.map(a=>`<div class="prof-row${a.archived?' is-archived':''}" data-id="${a.id}">
+      <div><div class="p-name">${esc(a.name)} <span class="p-kind">${esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||'')}</span>${a.archived?'<span class="p-kind">archived</span>':''}</div>
+        <div class="p-sub">${a.note?esc(a.note):(a.email?esc(a.email):'no note yet')}</div></div>
+      <div class="p-sub">${a.last_at_ms?`last clip ${esc(fmtWhen(a.last_at_ms))}${a.last_score!=null?` · <b>${a.last_score}</b>/100`:''}`:'no clips yet'}</div>
+      <div class="p-n">${a.analyses!=null?a.analyses:'—'}<small>analyses</small></div>
+      <div class="p-acts">
+        ${a.archived
+          ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
+          : `<button type="button" data-act="history">History</button><button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
+      </div></div>`).join('');
+  }
+  const lim=$('#athLimit');
+  if(lim){
+    const full=used>=limit;
+    lim.classList.toggle('hidden', !full || f==='archived');
+    if(full) lim.innerHTML=`<span>You’ve used all ${limit} places. Archive an athlete who has moved on, or <a href="mailto:support@getflapp.com">write to us</a> for a bigger squad.</span>`;
+  }
+  const add=$('#athAdd'); if(add) add.disabled = used>=limit;
+}
+function openAthletes(){
+  if(!auth){ openAuth('login'); return; }
+  if(!hasCoachPlan()){ openAccount(); return; }
+  loadAthletes().then(renderAthletes);
+  renderAthletes();
+  setState('athletes',{focus:'#athTitle'});
+}
+function showAthEdit(a){
+  const box=$('#athEdit'); if(!box) return;
+  state.athEditId=a?a.id:null;
+  $('#athEditLbl').textContent=a?'Rename':'Name';
+  $('#athName').value=a?a.name:'';
+  $('#athSport').value=a?a.sport:'both';
+  $('#athEmail').value=a&&a.email?a.email:'';
+  $('#athNote').value=a&&a.note?a.note:'';
+  box.classList.remove('hidden'); $('#athName').focus();
+}
+async function athPatch(id, body){
+  try{
+    const r=await fetch('/me/athletes/'+id,{method:'PATCH',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(j.detail||'Could not update that athlete.',{duration:6000}); return false; }
+    return true;
+  }catch(e){ toast('Could not update that athlete.'); return false; }
+}
+(function wireAthletes(){
+  const list=$('#athList'); if(!list) return;
+  $('#athFilter').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.athFilter=b.dataset.af; renderAthletes(); });
+  $('#athAdd').addEventListener('click',()=>showAthEdit(null));
+  $('#athCancel').addEventListener('click',()=>{ $('#athEdit').classList.add('hidden'); state.athEditId=null; });
+  $('#athSave').addEventListener('click',async()=>{
+    const name=$('#athName').value.trim(); if(!name){ $('#athName').focus(); return; }
+    const email=$('#athEmail').value.trim()||null, sport=$('#athSport').value, note=$('#athNote').value.trim()||null;
+    let ok; const editing=state.athEditId!=null;
+    if(editing) ok=await athPatch(state.athEditId,{name,email,sport,note});
+    else{
+      try{
+        const r=await fetch('/me/athletes',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({name,email,sport,note})});
+        const j=await r.json().catch(()=>({}));
+        ok=r.ok; if(!ok) toast((j.detail&&typeof j.detail==='string')?j.detail:'Could not add that athlete — check the email.',{duration:6000});
+      }catch(e){ ok=false; toast('Could not add that athlete.'); }
+    }
+    if(ok){ $('#athEdit').classList.add('hidden'); state.athEditId=null; await loadAthletes(); renderAthletes(); toast(editing?'Saved.':`${name} is on the squad.`); track(editing?'athlete_edited':'athlete_added',{n:ATHLETES.used}); }
+  });
+  list.addEventListener('click',async e=>{
+    const b=e.target.closest('[data-act]'); if(!b) return;
+    const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
+    const a=(ATHLETES.athletes||[]).find(x=>x.id===id); if(!a) return;
+    if(b.dataset.act==='history'){ state.histAthlete=String(id); state.histProfile=null; openHistoryView(); return; }
+    if(b.dataset.act==='edit'){ showAthEdit(a); return; }
+    if(b.dataset.act==='archive'){ if(await athPatch(id,{archived:true})){ await loadAthletes(); renderAthletes(); toast(`${a.name} archived. Their clips stay.`); } return; }
+    if(b.dataset.act==='restore'){ if(await athPatch(id,{archived:false})){ await loadAthletes(); renderAthletes(); } return; }
+    if(b.dataset.act==='delete'){
+      confirmDialog({title:`Remove ${a.name}?`, body:'The athlete goes from the squad; their analyses stay in your history, under nobody.', okLabel:'Remove', onOk:async()=>{
+        try{ const r=await fetch('/me/athletes/'+id,{method:'DELETE',headers:authHeaders()}); if(!r.ok) throw 0; await loadAthletes(); renderAthletes(); }
+        catch(_e){ toast('Could not remove that athlete.'); }
+      }});
+    }
+  });
+})();
+
+/* ============================================================
    Account screen — sign-in, plan, profiles, data & privacy, sign out.
    Everything on it already existed somewhere (the pricing page, the sidebar,
    the uploader); this is the one place that gathers it.
@@ -7189,7 +7387,7 @@ function renderAccount(){
   const em=$('#acctEmail'); if(em) em.textContent=auth?auth.email:'—';
   const card=((PLANS&&PLANS.cards)||[]).find(c=>auth&&c.tier===auth.tier);
   const q=quotaLoad();
-  const planName=card?card.name:(auth&&auth.tier==='admin'?'Admin':'Starter');
+  const planName=card?card.name:tierLabel(auth&&auth.tier);
   const price=card&&card.prices&&card.prices[0]?`${card.prices[0].display||''}`:(auth&&auth.tier==='starter'?'free':'');
   const stats=$('#acctStats');
   if(stats) stats.innerHTML=`
@@ -10385,7 +10583,7 @@ function renderAuth(){
   // is used) and links to Account; the phone bar shows nothing but the quota
   // -- Log out lives on the Account screen. Signed out, one Log in button.
   const side=$('#authbox'), mob=$('#authboxM');
-  const planName=(()=>{ if(!auth) return ''; const card=((PLANS&&PLANS.cards)||[]).find(c=>c.tier===auth.tier); return card?card.name:(auth.tier==='admin'?'Admin':'Starter'); })();
+  const planName=(()=>{ if(!auth) return ''; const card=((PLANS&&PLANS.cards)||[]).find(c=>c.tier===auth.tier); return card?card.name:tierLabel(auth.tier); })();
   if(side){
     side.innerHTML = auth
       ? `<a href="#account" class="planline" id="planLine" onclick="event.preventDefault();openAccount()">
@@ -10403,6 +10601,9 @@ function renderAuth(){
   // The account features -- My technique, Compare, Profiles, Account -- exist
   // only for someone who has one. `authed` gates the mobile back-to-home buttons.
   ['#navHome','#botHome','#navCompare','#navProfiles','#navAccount'].forEach(sel=>{ const el=$(sel); if(el) el.classList.toggle('hidden', !auth); });
+  // The roster is the Coach plan's. Not shown as a locked link to the rest:
+  // the plan has no public price yet (docs/COACH_AREA_PLAN_RU.md, phase 4).
+  $('#navAthletes').classList.toggle('hidden', !hasCoachPlan());
   // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
@@ -10640,6 +10841,7 @@ async function checkAuth(){
   if(auth) applyPendingPromo(); else renderPromoBanner();
   if(auth){
     loadCoach();
+    await loadAthletes();
     await migrateAndLoad();
     // Signed-in users land on their dashboard ("My technique"), unless a job is
     // being restored or they've already navigated off the initial screen.
@@ -10696,6 +10898,7 @@ function init(){
     else if(location.hash==='#pricing'){ clean(); openPricing(); }
     else if(location.hash==='#account'){ clean(); authReady.then(openAccount); }
     else if(location.hash==='#profiles'){ clean(); authReady.then(openProfiles); }
+    else if(location.hash==='#athletes'){ clean(); authReady.then(openAthletes); }
     else if(location.hash==='#compare'){ clean(); authReady.then(openCompare); }
     // The pricing block's swim band. A guest has nowhere to keep the clip, so
     // they get the sign-up form; the swim tile is on the dashboard after it.
@@ -11115,7 +11318,7 @@ function saveToHistory(kind,res,reuseId){
     // re-measured with the athlete's joint corrections is the same analysis,
     // not a new one. The cloud upsert is keyed on the id already.
     const e=entryFromResult(kind,res,{ id:reuseId||('h'+Date.now()), at:Date.now(),
-      jobId:state.jobId||null, profileId:state.profileId||null });
+      jobId:state.jobId||null, profileId:state.profileId||null, athleteId:state.athleteId||null });
     if(auth){
       state.cloudHist=[e,...(state.cloudHist||[]).filter(x=>x.id!==e.id)];
       fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)}).catch(()=>{});
@@ -11260,10 +11463,36 @@ function observeKeyframes(root){
    is a real answer rather than an empty one -- most history predates profiles.
    ============================================================ */
 function applyProfileFilter(list){
+  // The athlete first (a coach's roster), then the setup within it. Both
+  // filters are the cabinet's -- History and Progress read the same state.
+  let out=list;
+  const a=state.histAthlete;
+  if(a!=null) out=String(a)==='0' ? out.filter(e=>e && e.athleteId==null) : out.filter(e=>e && String(e.athleteId)===String(a));
   const f=state.histProfile;
-  if(f==null) return list;
-  if(String(f)==='0') return list.filter(e=>e && e.profileId==null);
-  return list.filter(e=>e && String(e.profileId)===String(f));
+  if(f==null) return out;
+  if(String(f)==='0') return out.filter(e=>e && e.profileId==null);
+  return out.filter(e=>e && String(e.profileId)===String(f));
+}
+/* The roster chips above History: one per athlete with clips, plus "Mine"
+   for the coach's own. Hidden unless there is a roster to filter by. */
+function renderAthleteFilter(hostId, list){
+  const host=$('#'+hostId); if(!host) return;
+  const counts={own:0};
+  (list||[]).forEach(e=>{ if(!e) return; if(e.athleteId==null) counts.own++; else counts[e.athleteId]=(counts[e.athleteId]||0)+1; });
+  const named=(ATHLETES.athletes||[]).filter(a=>counts[a.id]);
+  if(!hasCoachPlan() || !named.length){ host.classList.add('hidden'); host.innerHTML=''; if(state.histAthlete!=null){ state.histAthlete=null; } return; }
+  const chip=(val,label,n)=>`<button type="button" data-af="${val==null?'':val}"
+    aria-pressed="${String(state.histAthlete??'')===String(val??'')}">${esc(label)} · ${n}</button>`;
+  host.innerHTML=chip(null,'Everyone',(list||[]).length)
+    + named.map(a=>chip(a.id,a.name,counts[a.id])).join('')
+    + (counts.own?chip(0,'Mine',counts.own):'');
+  host.classList.remove('hidden');
+  host.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    const v=b.dataset.af;
+    state.histAthlete = v==='' ? null : v;
+    state.histProfile=null;
+    renderHistList(); renderProgress();
+  }));
 }
 function renderProfileFilter(hostId, list){
   const host=$('#'+hostId); if(!host) return;
@@ -11293,6 +11522,7 @@ function renderProfileFilter(hostId, list){
 
 function renderHistList(){
   const all=loadHist();
+  renderAthleteFilter('histAthleteFilter', all);
   renderProfileFilter('histFilter', all);
   const a=applyProfileFilter(all), w=$('#histList');
   const swims=state.histProfile==null ? swimCardsHtml() : '';
@@ -11333,7 +11563,7 @@ function renderHistList(){
   w.innerHTML=swims+a.map(e=>`<div class="hcard" data-id="${e.id}">
     <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore ${e.score==null?'':'sc-'+scoreStatus(e.score)}">${e.score==null?'—':e.score}</span>
       <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
-    <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
+    <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
       <div class="hsub">${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
   </div>`).join('');
   observeKeyframes(w);
@@ -11377,6 +11607,7 @@ function renderHistoryDetail(e){
   setGrade('#hdGrade', e.grade);
   setSportTag('#hdSportTag','#hdSportTagIcon','#hdSportTagText',e.sport);
   const parts=[esc(e.kind)];
+  if(athleteName(e.athleteId)) parts.unshift(`Athlete: <b>${esc(athleteName(e.athleteId))}</b>`);
   if(e.cameraSide) parts.push(`Camera: <b>${e.cameraSide==='both'?'both sides':esc(e.cameraSide)+' side'}</b>`);
   if(e.position) parts.push(`Position: <b>${esc(POSITION_NAMES[e.position]||e.position)}</b>`);
   parts.push(fmtWhen(e.at));
@@ -11652,6 +11883,7 @@ $('#navAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
 $('#navPricing').addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
 $('#navCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare(); });
 $('#navProfiles').addEventListener('click',e=>{ e.preventDefault(); openProfiles(); });
+$('#navAthletes').addEventListener('click',e=>{ e.preventDefault(); openAthletes(); });
 $('#navAccount').addEventListener('click',e=>{ e.preventDefault(); openAccount(); });
 $('#botMore').addEventListener('click',e=>{ e.preventDefault(); openNav(); });
 $('#profileSel').addEventListener('change',e=>{
@@ -11670,6 +11902,13 @@ $('#profileSave').addEventListener('click',async()=>{
   await createProfile(name);
 });
 $('#profileCancel').addEventListener('click',()=>{ showProfileInput(false); renderProfileField(); });
+$('#athleteSel').addEventListener('change',e=>{
+  state.athleteId=e.target.value||null;
+  // Their bikes, not the coach's: the setup picker follows the person.
+  state.profileId=null;
+  renderProfileField();
+  if(typeof renderCrankField==='function') renderCrankField();
+});
 $('#profileNew').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#profileSave').click(); } });
 $('#hBack').addEventListener('click',openHistoryView);
 $('#swBack').addEventListener('click',()=>{ if(document.body.dataset.state==='swimdetail') openHistoryView(); else reset(); });

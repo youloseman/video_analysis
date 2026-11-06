@@ -51,6 +51,13 @@ class Analysis(Base):
     profile_id: Mapped[int | None] = mapped_column(
         ForeignKey("profiles.id", ondelete="SET NULL"), index=True, nullable=True,
     )
+    # Whose clip this is, on a coach's account (models/athlete.py). Same
+    # reasoning as ``profile_id``: a column because history, trends and the
+    # squad table filter on it, and because the server, not the client,
+    # decides whose roster it belongs to. NULL = the account holder's own.
+    athlete_id: Mapped[int | None] = mapped_column(
+        ForeignKey("athletes.id", ondelete="SET NULL"), index=True, nullable=True,
+    )
     # The analyzer's own output, complete, written by the server -- NOT by the
     # client, which only ever receives what its plan allows and would otherwise
     # be the authority on its own entitlements. ``data`` above is the client's
