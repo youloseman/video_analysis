@@ -375,6 +375,7 @@ def evaluate_quality_gate(
     bdc_present: bool | None = None,
     tdc_present: bool | None = None,
     leg_identity_unstable: bool | None = None,
+    runner_lost: bool | None = None,
 ) -> dict[str, Any]:
     """Decide whether the Partial Analysis gate fires.
 
@@ -532,6 +533,20 @@ def evaluate_quality_gate(
             "single-leg number is mixed from both."
         )
 
+    # --- criterion 8: the skeleton left the runner (run) ---------
+    # Criterion 7 asks which leg a label is on. This asks whether it is on the
+    # runner. Run00000851 spent part of its clip on an excavator with
+    # instability 0.0, nothing missing, and a 95/A to show for it. A body cannot
+    # jump, so a broken hip path says what no nan_pct can. Reaches here only when
+    # a second look through a window that follows him did not bring him back.
+    runner_triggered = bool(runner_lost)
+    if runner_triggered:
+        reasons.append(
+            "The pose model lost the runner on part of this clip and settled on "
+            "something else in the picture, so these numbers are not all his. "
+            "Filming closer, with less going on behind him, keeps it on him."
+        )
+
     triggered = (
         phase_triggered
         or landmark_triggered
@@ -540,6 +555,7 @@ def evaluate_quality_gate(
         or lower_body_triggered
         or bdc_tdc_triggered
         or legs_triggered
+        or runner_triggered
     )
 
     return {

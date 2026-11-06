@@ -86,7 +86,7 @@ def _wire(monkeypatch, *, video_fps, unstable_at):
 
     monkeypatch.setattr(runner, "build_detector", lambda *a, **k: _Det())
 
-    def fake_extract(path, sport, fps, det, meta=None, progress=None, min_sample_rate=1):
+    def fake_extract(path, sport, fps, det, meta=None, progress=None, min_sample_rate=1, follow=None):
         calls["extract"].append(min_sample_rate)
         k = min_sample_rate
         meta.update({"sample_rate": k, "base_sample_rate": k, "effective_fps": video_fps / k,

@@ -65,6 +65,11 @@ from app.services.video_analysis.biomechanics.tracking_diagnostics import (
     compute_framing,
     compute_near_side_cues,
 )
+from app.services.video_analysis.biomechanics.runner_path import (
+    FollowWindow,
+    plan_follow,
+    trace_runner,
+)
 from app.services.video_analysis.biomechanics.technique_scorer import (
     score_analysis,
 )
@@ -409,6 +414,7 @@ def extract_frames(
     meta: dict[str, Any] | None = None,
     progress: ProgressFn | None = None,
     min_sample_rate: int = 1,
+    follow: FollowWindow | None = None,
 ) -> list[dict[str, Any]]:
     """Iterate the video, CLAHE-enhance each sampled frame, run detection.
 
@@ -425,6 +431,9 @@ def extract_frames(
     """
     # ``min_sample_rate``: a floor on the stride, for the run's half-rate
     # re-detection (see RUN_HALF_RATE_MIN_FPS).
+    # ``follow``: look only through this window, from the source pixels. The
+    # frames come back at the window's scale, for the stabiliser, and the caller
+    # puts them back on the whole picture (see biomechanics/runner_path.py).
     base_sample_rate = max(SPORT_SAMPLE_RATES.get(sport_type, 3), int(min_sample_rate or 1))
     sample_rate = base_sample_rate
 
@@ -505,6 +514,10 @@ def extract_frames(
         total_sampled += 1
         timestamp_ms = (frame_idx / video_fps) * 1000.0
 
+        if follow is not None:
+            _ox, _oy = follow.origin(frame_idx)
+            frame = frame[_oy:_oy + follow.size, _ox:_ox + follow.size]
+
         # Downscale oversized frames before detection (normalized landmarks =>
         # pose is unchanged at 720p, but 4K detection is much slower). CLAHE
         # then runs on the smaller frame too. Stored frame_width/height stay
@@ -548,6 +561,11 @@ def extract_frames(
                 record["leg_patches"] = describe_legs(
                     frame, detector_frame.normalized_landmarks,
                 )
+            if follow is not None:
+                record["normalized_landmarks"] = follow.to_zoom(
+                    detector_frame.normalized_landmarks, frame_idx,
+                )
+                record["frame_width"] = record["frame_height"] = follow.size
             frame_results.append(record)
 
         frame_idx += 1
@@ -611,6 +629,52 @@ def get_video_info(video_path: str) -> dict[str, float]:
     cap.release()
     duration = frame_count / fps if fps > 0 else 0.0
     return {"fps": float(fps), "frame_count": float(frame_count), "duration": duration}
+
+
+def _second_look_if_lost(
+    video_path: str, frames: list[dict[str, Any]], meta: dict[str, Any],
+    fps: float, frame_count: int, progress: ProgressFn | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any], FollowWindow | None]:
+    """Run only: if the detector lost the runner, detect again through a window
+    that follows him. The second pass stands only if it holds him for longer, and
+    it can never cost the first: whatever is left lost is the gate's to withhold.
+    """
+    first = trace_runner(frames, fps)
+    if first is None:
+        return frames, meta, None
+    meta["runner_path"] = first.summary()
+    if not first.lost:
+        return frames, meta, None
+    follow = plan_follow(
+        first, frame_count, fps,
+        int(frames[0].get("frame_width") or 0), int(frames[0].get("frame_height") or 0),
+    )
+    if follow is None:
+        return frames, meta, None
+    second_meta: dict[str, Any] = {}
+    try:
+        detector = build_detector("run", None)
+        try:
+            second = extract_frames(
+                video_path, "run", fps, detector, meta=second_meta,
+                progress=progress, follow=follow,
+            )
+        finally:
+            detector.close()
+        again = trace_runner(second, fps) if second else None
+    except Exception as e:  # noqa: BLE001 -- the first pass is still a result
+        logger.warning("RUN_SECOND_LOOK_FAILED", err=str(e))
+        return frames, meta, None
+    kept = again is not None and int(again.on_runner.sum()) > int(first.on_runner.sum())
+    logger.info(
+        "RUN_SECOND_LOOK", first=first.summary(), kept=kept, window_px=follow.size,
+        second=again.summary() if again is not None else None,
+    )
+    if not kept:
+        return frames, meta, None
+    second_meta["runner_path"] = again.summary()
+    second_meta["second_look"] = {"window_px": follow.size, "first_pass": first.summary()}
+    return second, second_meta, follow
 
 
 def _json_safe(obj: Any) -> Any:
@@ -764,7 +828,16 @@ def run_analysis(
             ),
         }
 
-    # Step 2a: stabilize (visibility gate + flip fix + smooth).
+    # Step 2a: did the detector stay on the runner? Reads the raw landmarks: the
+    # stabiliser below would smooth a jump into a glide.
+    follow: FollowWindow | None = None
+    if sport_type == "run":
+        raw_frame_data, sampling_meta, follow = _second_look_if_lost(
+            video_path, raw_frame_data, sampling_meta, fps,
+            int(video_info["frame_count"]), progress,
+        )
+
+    # Step 2b: stabilize (visibility gate + flip fix + smooth).
     # The smoothing filters must see the rate the SAMPLED series actually
     # has: on long clips adaptive sampling raises the stride (e.g. every
     # 4th frame of a 60 fps clip -> a 15 Hz series). Feeding the raw video
@@ -785,7 +858,7 @@ def run_analysis(
         try:
             _half = extract_frames(
                 video_path, sport_type, fps, _half_detector, meta=_half_meta,
-                progress=progress, min_sample_rate=_stride * 2,
+                progress=progress, min_sample_rate=_stride * 2, follow=follow,
             )
         finally:
             _half_detector.close()
@@ -811,9 +884,15 @@ def run_analysis(
                 "instability_half": _inst(_half_ctx),
             }
             _half_meta["downsampled"] = True
+            for _key in ("runner_path", "second_look"):
+                if _key in sampling_meta:
+                    _half_meta[_key] = sampling_meta[_key]
             raw_frame_data, stabilizer_ctx = _half, _half_ctx
             sampling_meta.clear()
             sampling_meta.update(_half_meta)
+
+    if follow is not None:
+        follow.restore(raw_frame_data)
 
     # The frames as measured -- post-stabilization, so a re-analysis starts
     # from resolved leg identities and gated gaps, and does not run the
@@ -1049,6 +1128,11 @@ def analyze_from_frames(
             min(1.0, DETECT_MAX_LONG_EDGE / float(max(_fw, _fh)))
             if max(_fw, _fh) else 1.0
         )
+        # A second look saw the runner through a window, so the pixels he got
+        # are the window's: the source's, unless the window itself was capped.
+        _window = ((sampling_meta or {}).get("second_look") or {}).get("window_px")
+        if _window:
+            _scale = min(1.0, DETECT_MAX_LONG_EDGE / float(_window))
         framing = compute_framing(raw_frame_data, detect_height_px=_fh * _scale, sport=sport_type)
         if not is_bike:
             near_cues = compute_near_side_cues(raw_frame_data)
@@ -1079,11 +1163,15 @@ def analyze_from_frames(
         "leg_identity_gate": stabilizer_ctx.get("leg_identity_gate"),
         "framing": framing or None,
         "near_side_cues": near_cues or None,
+        # Run only: whether the skeleton stayed on the runner at all, and
+        # whether it took a second look to keep it there.
+        "runner_path": (sampling_meta or {}).get("runner_path"),
+        "second_look": (sampling_meta or {}).get("second_look"),
     }
     logger.info(
         "TRACKING_STABILITY",
         **{k: v for k, v in tracking_stability.items()
-           if k not in ("framing", "near_side_cues")},
+           if k not in ("framing", "near_side_cues", "runner_path", "second_look")},
     )
     # Read the NEAR leg only. The far leg is expected to be a mess on a side
     # view -- its median deviation is 3.5x the near leg's -- and it is neither
@@ -1303,6 +1391,12 @@ def analyze_from_frames(
         # which is why the gate had no way to fire on it -- see criterion 7.
         leg_identity_unstable=(
             bool(_stability.get("unstable")) if sport_type == "run" else None
+        ),
+        # The skeleton left the runner and even a second look did not keep it
+        # on him: what follows was partly measured on something else.
+        runner_lost=(
+            bool(((sampling_meta or {}).get("runner_path") or {}).get("lost"))
+            if sport_type == "run" else None
         ),
     )
 

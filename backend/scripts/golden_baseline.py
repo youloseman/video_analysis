@@ -73,6 +73,15 @@ CLIPS: dict[str, dict[str, object]] = {
         "sport": "run",
         "position": None,
     },
+    "run_lost_runner": {
+        # A 4K stadium clip whose first pass spends part of its length on an
+        # excavator and a grandstand. Pinned on the second look, which holds the
+        # runner for all 252 frames: 187 spm against about 186 counted by hand.
+        # Without it this clip reads 95/A with no cadence and no kinogram.
+        "path": "upload/Run00000851.mp4",
+        "sport": "run",
+        "position": None,
+    },
     "run_60fps_fallback": {
         # A 59 fps clip whose legs come out unstable as detected (0.205) and
         # stable detected again on every second frame (0.10): the run's

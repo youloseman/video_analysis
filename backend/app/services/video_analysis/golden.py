@@ -186,6 +186,8 @@ def build_record(result: dict[str, Any]) -> dict[str, Any]:
             "has_aero": sm.get("aero_estimate") is not None,
             "has_pedaling_style": sm.get("pedaling_style") is not None,
             "warning_count": len(sm.get("quality_warnings") or []),
+            # Only when it happened, so clips it never touches keep their records.
+            **({"second_look": True} if sampling.get("second_look") else {}),
         },
         # --- approximate: measurements ---
         "approx": {
