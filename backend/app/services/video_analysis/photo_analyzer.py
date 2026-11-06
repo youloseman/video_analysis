@@ -2739,6 +2739,13 @@ def analyze_from_pose(
                 trunk_angle=trunk,
             )
 
+        # Forearm tilt is an aero-bar measure (technique_scorer): on the hoods
+        # or the drops the forearm slopes to the bar by geometry. Scored here
+        # against the same pasted aero band the video dropped, -57 on a clean
+        # hoods photo read 20/100 and the worst-metric pull took 82 to 58.
+        if cycling_position not in _AERO_POSITIONS:
+            angles.pop("forearm_tilt", None)
+
         # The helmet term joins the score only on an aero position and only
         # when the reading can be trusted: no "check the point" flag, or a
         # point the athlete placed. A flagged reading can be 10 points low.

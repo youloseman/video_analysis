@@ -66,3 +66,61 @@ def test_the_overlay_draws_no_forearm_callout_off_aero_bars():
     aero = [c["key"] for c in p._get_angle_display_config("bike", {"camera_side": "left"}, None, cycling_position="triathlon")]
     assert "left_forearm_tilt" not in hoods
     assert "left_forearm_tilt" in aero
+
+
+def test_the_road_levers_name_road_parts():
+    from app.services.video_analysis.biomechanics.fit_tradeoffs import rank_adjustments
+
+    def row(label, value, lo, hi, status="needs_work"):
+        return {"label": label, "value": value, "optimal_min": lo, "optimal_max": hi, "status": status}
+
+    closed = {"shoulder": row("Shoulder", 70, 80, 100), "trunk": row("Trunk", 29, 40, 55),
+              "forearm_tilt": row("Forearm", -57, 5, 20)}
+    road = " ".join(r["label"] for r in rank_adjustments(closed, "road_hoods"))
+    assert "raise the bars" in road
+    assert "aerobar" not in road and "extensions" not in road and "pads" not in road
+    aero = " ".join(r["label"] for r in rank_adjustments(closed, "triathlon"))
+    assert "aerobar" in aero and "tilt the extensions" in aero
+
+
+def _coach_with(monkeypatch, drafts):
+    from app.services.video_analysis import llm_recommendations as L
+
+    calls = []
+
+    def fake(system, prompt, max_tokens, tag=None):
+        calls.append(prompt)
+        return {"text": drafts[min(len(calls) - 1, len(drafts) - 1)], "model": "m"}
+
+    monkeypatch.setattr(L, "_complete", fake)
+    return L, calls
+
+
+def test_a_road_report_naming_aero_kit_is_sent_back(monkeypatch):
+    L, calls = _coach_with(monkeypatch, ["Raise the aerobar stack 10mm.", "Raise the bars 10mm."])
+    out = L._coach("p", [], tag="photo", road=True)
+    assert len(calls) == 2 and out["report"] == "Raise the bars 10mm."
+
+
+def test_a_road_report_that_insists_loses_the_sentence(monkeypatch):
+    L, _ = _coach_with(monkeypatch, ["Your elbow is fine. Tilt the extensions up 10 deg. Hold it."])
+    out = L._coach("p", [], tag="photo", road=True)
+    assert "extensions" not in out["report"]
+    assert "Your elbow is fine." in out["report"] and "Hold it." in out["report"]
+
+
+def test_aero_positions_and_knee_extension_are_left_alone(monkeypatch):
+    L, calls = _coach_with(monkeypatch, ["Raise the aerobar stack 10mm."])
+    assert "aerobar" in L._coach("p", [], tag="photo", road=False)["report"]
+    assert len(calls) == 1
+    L, calls = _coach_with(monkeypatch, ["Knee extension at the bottom is good. Raising the bars costs aero."])
+    assert "Knee extension" in L._coach("p", [], tag="photo", road=True)["report"]
+    assert len(calls) == 1
+
+
+def test_the_road_checklist_talks_about_the_stem():
+    from app.services.video_analysis import concern_hints as H
+
+    c = H.concern("shoulder_angle_avg", "Shoulder", 70.0, 80, 100, material=True)
+    assert "arm support" in c["hint"]
+    assert "stem" in H.for_road([c])[0]["hint"] and "arm support" not in H.for_road([c])[0]["hint"]

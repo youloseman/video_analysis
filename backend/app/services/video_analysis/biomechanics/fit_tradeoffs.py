@@ -98,6 +98,18 @@ ADJUSTMENTS: dict[str, dict[str, Any]] = {
     },
 }
 
+# The same levers on a road or casual bike, which has no pads or extensions.
+# The coach is told to recommend from the top of this list, so an aero label
+# here reached the report word for word: a rider on the hoods was told to
+# "raise the aerobar stack".
+_OFF_AERO_LABELS = {
+    "raise_bars": "raise the bars 10-15mm (headset spacers or stem angle)",
+    "lower_bars": "lower the bars 10-15mm (headset spacers or stem angle)",
+    "extend_reach": "a stem about 10mm longer",
+    "shorten_reach": "a stem about 10mm shorter",
+}
+_AERO_ONLY = frozenset({"tilt_extensions_up"})
+
 # Below this share of its band remaining in the direction of travel, a metric
 # that is currently in range is treated as about to leave it.
 _HEADROOM_TIGHT = 0.25
@@ -160,8 +172,11 @@ def rank_adjustments(
     if not problems:
         return []
 
+    aero = cycling_position in AERO_POSITIONS
     ranked: list[dict[str, Any]] = []
-    for adj in ADJUSTMENTS.values():
+    for name, adj in ADJUSTMENTS.items():
+        if name in _AERO_ONLY and not aero:
+            continue
         moves = adj["moves"]
         fixes = [
             angles[k].get("label", k)
@@ -198,7 +213,7 @@ def rank_adjustments(
                 )
 
         ranked.append({
-            "label": adj["label"],
+            "label": adj["label"] if aero else _OFF_AERO_LABELS.get(name, adj["label"]),
             "fixes": fixes,
             "costs": costs,
             "breaks": breaks,

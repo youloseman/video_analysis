@@ -156,8 +156,29 @@ _UNITS = {
 }
 
 
+# "Arm support" and "elbows behind the shoulders" describe aero pads. On the
+# hoods the same closed angle is a question of reach.
+_ROAD_HINTS: dict[tuple[str, str], str] = {
+    ("shoulder_angle_avg", "low"): (
+        "The arms sit close to the torso, which usually means a short reach or "
+        "a low front end. If your neck or shoulders tire, try a stem about 10 mm "
+        "longer."
+    ),
+    ("shoulder_angle_avg", "high"): (
+        "The arms reach well forward, which loads the neck and shoulders. Try a "
+        "stem about 10 mm shorter."
+    ),
+}
+
+
 def hint_for(field: str, side: str) -> str:
     return _HINTS.get((field, side), _DEFAULT_HINT)
+
+
+def for_road(concerns: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The checklist as a rider without pads or extensions should read it."""
+    return [{**c, "hint": _ROAD_HINTS.get((c["field"], c["side"]), c["hint"])}
+            for c in concerns]
 
 
 def unit_for(field: str) -> str:

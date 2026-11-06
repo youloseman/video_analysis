@@ -12,6 +12,7 @@ missing, or the call fails -- analysis never depends on the LLM.
 from __future__ import annotations
 
 import math
+import re
 import time
 from collections import deque
 from typing import Any
@@ -923,19 +924,48 @@ def _run_contact_prompt_line(c: dict[str, Any]) -> str | None:
             + ". Overstride is a fraction of leg length, NOT degrees.")
 
 
+# Kit a road bike does not have. Not "aero" on its own: raising the bars does
+# cost drag on the hoods, and the report should say so.
+_AERO_KIT = (
+    r"aero[\s-]?bars?|aero[\s-]?pads?|arm[\s-]?pads?|arm[\s-]?rests?|arm support"
+    r"|(?:the|aero|tri|tt) extensions?|extensions? (?:up|angle|tilt)|pad (?:stack|reach)"
+)
+_AERO_KIT_RE = re.compile(_AERO_KIT, re.IGNORECASE)
+_AERO_KIT_SENTENCE = re.compile(
+    rf"[^.!?\n]*(?:{_AERO_KIT})[^.!?\n]*[.!?]?[ \t]*", re.IGNORECASE,
+)
+
+
+def _road_kit_note(position: str | None) -> str:
+    """Prompt line naming the bike, so the coach cannot prescribe aero kit."""
+    from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+    if position in AERO_POSITIONS:
+        return ""
+    return (
+        "Equipment: this rider is on a road or casual bike. It has NO aero bars, "
+        "pads or extensions: the front end is the bars, stem and headset spacers. "
+        "Never mention aero bars, pads or extensions."
+    )
+
+
 def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
-           gaps: list[dict[str, Any]] = ()) -> dict[str, Any] | None:
+           gaps: list[dict[str, Any]] = (), road: bool = False) -> dict[str, Any] | None:
     """Write the report, refuse "Nothing to fix" over a red row, add the checklist.
 
     The prompt forbids it; the first paid order showed a prompt is not enough
     (the model listed the two red rows and wrote "Nothing to fix" over them).
     One retry with the rejection spelled out; if the model still insists, the
     section is replaced with the out-of-band rows and their hints.
+
+    ``road`` holds the report to the same standard on aero kit: a retry, then
+    the sentences naming it are cut.
     """
     got = _complete(SYSTEM_PROMPT, prompt, 1200, tag=tag)
     if not got:
         return None
     text, model = got["text"], got["model"]
+    if road:
+        concerns = concern_hints.for_road(concerns)
     material = [c for c in concerns if c["material"]]
     if material and concern_hints.NOTHING_TO_FIX.search(text):
         logger.warning("coach_nothing_to_fix_over_material", tag=tag, model=model,
@@ -951,6 +981,18 @@ def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
             text, model = again["text"], again["model"]
         else:
             text = concern_hints.replace_nothing_to_fix(text, concerns)
+    if road and _AERO_KIT_RE.search(text):
+        logger.warning("coach_aero_kit_on_road", tag=tag, model=model)
+        again = _complete(SYSTEM_PROMPT, (
+            f"{prompt}\n\nYOUR PREVIOUS DRAFT WAS REJECTED: it mentioned aero bars, "
+            "pads or extensions, and this bike has none. Write it again using the "
+            "bars, stem and headset spacers."
+        ), 1200, tag=tag)
+        if (again and not _AERO_KIT_RE.search(again["text"])
+                and not (material and concern_hints.NOTHING_TO_FIX.search(again["text"]))):
+            text, model = again["text"], again["model"]
+        else:
+            text = _AERO_KIT_SENTENCE.sub("", text)
     return {"report": concern_hints.with_worth_a_look(text, concerns, gaps), "model": model}
 
 
@@ -1062,8 +1104,10 @@ def _build_prompt(
     fit = _fit_plan_block(fit_plan)
     asked = _focus_block(focus)
     material = _materiality_block(sport_type, position, summary, next_steps)
+    kit = _road_kit_note(position) if sport_type == "bike" else ""
     return (
         f"{data}{caveat}\n\n{material}\n\n{_issues_block(issues)}"
+        + (f"\n\n{kit}" if kit else "")
         + (f"\n\n{fit}" if fit else "")
         + (f"\n\n{asked}" if asked else "")
         + "\n\nWrite the coaching feedback now, following the required section structure."
@@ -1094,7 +1138,8 @@ def generate_recommendations(
         sport_type, cycling_position, sport_specific_metrics or {},
     )
     gaps = pro_gaps(cycling_position, sport_specific_metrics or {}) if sport_type == "bike" else []
-    return _coach(prompt, concerns, tag="video", gaps=gaps)
+    road = sport_type == "bike" and bool(_road_kit_note(cycling_position))
+    return _coach(prompt, concerns, tag="video", gaps=gaps, road=road)
 
 
 PROGRESS_SYSTEM_PROMPT = (
@@ -1210,6 +1255,9 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             f"Position: {res.get('cycling_position_label') or res.get('cycling_position')} "
             f"| pedal phase in this photo: {res.get('pedal_phase')}"
         )
+        kit = _road_kit_note(res.get("cycling_position"))
+        if kit:
+            lines.append(kit)
     elif sport == "run" and res.get("gait_phase"):
         # Which instant of the stride the shutter caught. Without it the model
         # narrates every still as though it were mid-stance, and "prescribes"
@@ -1431,4 +1479,5 @@ def generate_photo_recommendations(
     }
     as_summary["helmet_check"] = bool((photo_result.get("helmet_points") or {}).get("check"))
     gaps = pro_gaps(photo_result.get("cycling_position"), as_summary) if sport == "bike" else []
-    return _coach(prompt, _photo_concerns(sport, photo_result), tag="photo", gaps=gaps)
+    road = sport == "bike" and bool(_road_kit_note(photo_result.get("cycling_position")))
+    return _coach(prompt, _photo_concerns(sport, photo_result), tag="photo", gaps=gaps, road=road)

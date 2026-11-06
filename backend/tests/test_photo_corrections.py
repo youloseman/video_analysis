@@ -352,3 +352,24 @@ class TestTheHelmetPenalty:
     def test_a_flagged_reading_and_a_road_position_are_not_scored(self):
         assert "helmet_above_back" not in self._score(40.0, check=True)["per_angle"]
         assert "helmet_above_back" not in self._score(40.0, position="road_hoods")["per_angle"]
+
+
+def test_a_road_photo_does_not_measure_the_forearm_and_an_aero_one_does(monkeypatch):
+    """The forearm slopes to the bar on the hoods: not a reading of the fit.
+    A clean hoods photo at -57 read 20/100, and the worst-metric pull took
+    82 to 58. Corrected results come through the same rule."""
+    from app.services.video_analysis import photo_analyzer as PA
+
+    photo = _photo_bytes()
+    monkeypatch.setattr(PA, "detect_pose_in_image", lambda b: _pose_result(b))
+    road = PA.analyze_photo(photo, "bike", "road_hoods")
+    assert "forearm_tilt" not in road["angles"]
+    assert "forearm_tilt" not in road["angles_with_context"]
+    assert "forearm_tilt" not in road["score"]["per_angle"]
+    for phase in road["score_by_phase"].values():
+        assert "forearm_tilt" not in phase["per_angle"]
+    assert "forearm_tilt" not in PA.analyze_photo(photo, "bike", "road_drops")["angles_with_context"]
+    aero = PA.analyze_photo(photo, "bike", "triathlon")
+    assert "forearm_tilt" in aero["angles_with_context"]
+    corrected, _ = _recompute([{"landmark": 12, "dx": 0.0, "dy": 0.01}], position="road_hoods")
+    assert "forearm_tilt" not in corrected["angles_with_context"]
