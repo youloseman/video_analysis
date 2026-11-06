@@ -107,7 +107,7 @@ def scan_clip(path: str, sport: str | None, thresholds: dict[str, Any] | None) -
         cap.release()
     if not images:
         return None
-    return (scan_images(images, video_w=w, video_h=h, thresholds=thresholds) or {}).get("capture")
+    return (scan_images(images, video_w=w, video_h=h, thresholds=thresholds, sport=sport) or {}).get("capture")
 
 
 def _shrink(path: str) -> None:

@@ -45,9 +45,13 @@ def test_a_well_filled_frame_passes():
 
 def test_the_clip_that_fooled_the_old_threshold_now_fails():
     """255 px was rated OK while the pose model swapped the legs on 46% of
-    frames. A false all-clear on the measurement everything rests on."""
+    frames. A false all-clear on the measurement everything rests on. Running
+    has lower bars since 2026-11-06, and this is why 255 px is still a warning
+    there and not a pass."""
     rep = report(framing={"subject_height_px": 255, "subject_height_frac": 0.199})
-    assert check(rep, "framing")["status"] == "bad"
+    assert check(rep, "framing")["status"] == "warn"
+    bike = report(sport_type="bike", framing={"subject_height_px": 255, "subject_height_frac": 0.199})
+    assert check(bike, "framing")["status"] == "bad"
 
 
 def test_the_cropped_version_of_that_same_clip_passes():
@@ -61,11 +65,12 @@ def test_the_cropped_version_of_that_same_clip_passes():
     (FRAMING_GOOD_PX, "good"), (900, "good"),
 ])
 def test_framing_bands(px, expected):
-    assert check(report(framing={"subject_height_px": px}), "framing")["status"] == expected
+    c = check(report(sport_type="bike", framing={"subject_height_px": px}), "framing")
+    assert c["status"] == expected
 
 
 def test_framing_says_how_much_to_zoom_rather_than_just_saying_too_small():
-    c = check(report(framing={"subject_height_px": 275}), "framing")
+    c = check(report(sport_type="bike", framing={"subject_height_px": 275}), "framing")
     assert "2.0x" in c["action"]           # 550 target / 275 measured
     assert "275 px" in c["measured"]
 
@@ -74,7 +79,7 @@ def test_a_downscaled_export_is_not_blamed_on_standing_too_far_away():
     """Real clip, 2026-08-21: framed at 37% of the frame, but the FILE was
     554 px tall. Telling somebody to zoom in 2.7x is advice they cannot act
     on -- the pixels were gone before we saw them."""
-    c = check(report(frame_width=312, frame_height=554,
+    c = check(report(sport_type="bike", frame_width=312, frame_height=554,
                      framing={"subject_height_px": 207,
                               "subject_height_frac": 0.373}), "framing")
     assert c["status"] == "bad"
@@ -86,7 +91,7 @@ def test_a_downscaled_export_is_not_blamed_on_standing_too_far_away():
 def test_genuinely_standing_too_far_away_still_gets_told_to_zoom():
     """The same small pixel count, but from a full-resolution file: now the
     framing really is the fault."""
-    c = check(report(frame_width=1080, frame_height=1920,
+    c = check(report(sport_type="bike", frame_width=1080, frame_height=1920,
                      framing={"subject_height_px": 207,
                               "subject_height_frac": 0.16}), "framing")
     assert c["label"] == "How much of the frame you fill"
@@ -96,7 +101,7 @@ def test_genuinely_standing_too_far_away_still_gets_told_to_zoom():
 def test_a_small_file_that_was_ALSO_badly_framed_is_told_to_zoom():
     """A low-resolution file only excuses the framing when the framing would
     otherwise have been enough."""
-    c = check(report(frame_width=312, frame_height=554,
+    c = check(report(sport_type="bike", frame_width=312, frame_height=554,
                      framing={"subject_height_px": 55,
                               "subject_height_frac": 0.10}), "framing")
     assert c["label"] == "How much of the frame you fill"
@@ -294,6 +299,7 @@ def test_the_worst_problem_leads():
 
 def test_high_impact_wins_ties_within_the_same_status():
     rep = report(
+        sport_type="bike",
         duration_s=4.0,                                    # warn, medium impact
         framing={"subject_height_px": 300},                # warn, high impact
         tracking_stability={"leg_swap_pct": 2.0},
@@ -416,3 +422,14 @@ def test_running_has_no_drive_side():
 
 def test_an_unknown_side_has_no_row():
     assert check(report(sport_type="bike", camera_side=None), "drive_side") is None
+
+
+@pytest.mark.parametrize("px,expected", [(190, "bad"), (200, "warn"), (299, "warn"), (300, "good")])
+def test_a_runner_is_held_to_the_running_bars(px, expected):
+    assert check(report(framing={"subject_height_px": px}, sport_type="run"), "framing")["status"] == expected
+
+
+def test_a_runner_is_not_told_to_fill_a_frame_they_are_passing_through():
+    c = check(report(framing={"subject_height_px": 254}, sport_type="run"), "framing")
+    assert "sideways" in c["action"] and "x," not in c["action"]
+

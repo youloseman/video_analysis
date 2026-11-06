@@ -39,6 +39,7 @@ from typing import Any
 from app.services.video_analysis.biomechanics.tracking_diagnostics import (
     FRAMING_SMALL_PX,
     FRAMING_TINY_PX,
+    framing_bars,
 )
 
 # The long-edge cap every clip is shrunk to before detection. Imported rather
@@ -95,6 +96,7 @@ def _check(
 
 def _framing_check(
     framing: dict[str, Any] | None, frame_height: int | None = None,
+    sport_type: str | None = None,
 ) -> dict[str, Any]:
     """How many pixels of athlete the pose model got, and which fault cost them.
 
@@ -113,16 +115,19 @@ def _framing_check(
             "could not be measured", f"about {FRAMING_TARGET_PX} px tall",
         )
     pct = f" ({frac * 100:.0f}% of the frame height)" if frac else ""
+    run = sport_type == "run"
+    warn_px, good_px = framing_bars(sport_type) if run else (FRAMING_WARN_PX, FRAMING_GOOD_PX)
     target = (
+        f"{good_px} px or more -- enough for the legs to stay apart" if run else
         f"{FRAMING_TARGET_PX} px or more -- roughly two thirds of the frame height"
     )
-    if px >= FRAMING_GOOD_PX:
+    if px >= good_px:
         return _check(
             "framing", "How much of the frame you fill", "good", "high",
             f"{px} px tall{pct}", target,
         )
 
-    status = "bad" if px < FRAMING_WARN_PX else "warn"
+    status = "bad" if px < warn_px else "warn"
 
     # Would this framing have been enough on a full-resolution file? If so the
     # athlete did nothing wrong and the pixels were lost before we saw them.
@@ -144,6 +149,18 @@ def _framing_check(
             "culprits).",
         )
 
+    if run:
+        # A runner passing the camera cannot fill a frame and stay in it. What
+        # they can change is which way the phone is held: the same stretch of
+        # track in landscape has them about 1.8 times taller (2240/W px against
+        # 1260/W px, for W metres of track in shot).
+        return _check(
+            "framing", "How much of the frame you fill", status, "high",
+            f"{px} px tall{pct}", target,
+            "Running past the camera? Turn the phone sideways: the same stretch of "
+            "track in landscape has you about 1.8 times taller. Otherwise stand "
+            "closer or zoom in, as long as a whole stride stays in shot.",
+        )
     zoom = FRAMING_TARGET_PX / float(px)
     return _check(
         "framing", "How much of the frame you fill", status, "high",
@@ -514,7 +531,7 @@ def build_capture_report(
     tracking = tracking_stability or {}
     framing = framing if framing is not None else (tracking.get("framing") or {})
 
-    framing_check = _framing_check(framing, frame_height)
+    framing_check = _framing_check(framing, frame_height, sport_type)
     framing_ok = framing_check["status"] == "good"
     legs = _leg_identity_check(tracking.get("leg_swap_pct"), sport_type)
     legs_unreliable = bool(legs and legs["status"] in ("warn", "bad"))

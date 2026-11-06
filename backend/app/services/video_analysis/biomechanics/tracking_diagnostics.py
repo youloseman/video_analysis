@@ -82,6 +82,28 @@ _MIN_NEAR_SIDE_SCORE = 1.0
 # bar at the limb width where it demonstrably works.
 FRAMING_TINY_PX = 300
 FRAMING_SMALL_PX = 400
+# Running has its own, lower bars (Artur, 2026-11-06). A runner passing the camera
+# cannot fill the frame: a portrait phone that holds 5 m of track has them about
+# 250 px tall, and telling them to come closer means losing the stride.
+#
+# Measured by shrinking the runner on a same-size canvas, four clips through the
+# whole pipeline (elite road, road race, two treadmill):
+#   250 px  knee mean within 2 deg, trunk within 1.5 deg, cadence holds on 3 of 4
+#   200 px  the same on 3 of 4; the fourth was refused by the quality gate, loudly
+#   150 px  no pose found on 3 of 4; the fourth read cadence 207 against 180
+# So the cliff is between 150 and 200, and 200-300 is a warning rather than a stop.
+# The padding was plain grey, kinder than a real far-away background, and one real
+# clip at 255 px did swap its legs on 45.6% of frames, which is why it is a warning.
+# The bike bars were not part of this and stay where they are.
+RUN_FRAMING_TINY_PX = 200
+RUN_FRAMING_SMALL_PX = 300
+
+
+def framing_bars(sport: str | None) -> tuple[int, int]:
+    """``(tiny, small)`` in detector pixels for this sport. Unknown gets the strict ones."""
+    if sport == "run":
+        return RUN_FRAMING_TINY_PX, RUN_FRAMING_SMALL_PX
+    return FRAMING_TINY_PX, FRAMING_SMALL_PX
 
 
 def _stack(frame_results: list[dict[str, Any]], key: str, attr: str) -> np.ndarray:
@@ -115,6 +137,7 @@ def _seg_len(x: np.ndarray, y: np.ndarray, a: int, b: int) -> np.ndarray:
 def compute_framing(
     frame_results: list[dict[str, Any]],
     detect_height_px: float | None = None,
+    sport: str | None = None,
 ) -> dict[str, Any]:
     """How much of the frame the athlete fills, and how many pixels that is.
 
@@ -152,9 +175,8 @@ def compute_framing(
     # level and silently drops a colliding field.
     verdict = None
     if px is not None:
-        verdict = "tiny" if px < FRAMING_TINY_PX else (
-            "small" if px < FRAMING_SMALL_PX else "ok"
-        )
+        tiny, small = framing_bars(sport)
+        verdict = "tiny" if px < tiny else ("small" if px < small else "ok")
     return {
         "subject_height_frac": round(frac, 4) if frac is not None else None,
         "subject_height_px": px,
@@ -300,6 +322,9 @@ def score_near_side_cues(cues: dict[str, float | None]) -> dict[str, Any]:
 __all__ = [
     "FRAMING_SMALL_PX",
     "FRAMING_TINY_PX",
+    "RUN_FRAMING_SMALL_PX",
+    "RUN_FRAMING_TINY_PX",
+    "framing_bars",
     "compute_framing",
     "compute_near_side_cues",
 ]

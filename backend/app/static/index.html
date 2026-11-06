@@ -2446,7 +2446,7 @@ function camKeep(){
    judged here -- how tall the rider is and which way they face -- and the
    angles are still measured on the server. Anything that fails (old phone, no
    WebGL, no network for the model) leaves the camera exactly as it was. */
-const CAM_LIVE={tinyPx:300, smallPx:400, detectLongEdge:1280, everyMs:200, keep:6};
+const CAM_LIVE={tinyPx:300, smallPx:400, runTinyPx:200, runSmallPx:300, detectLongEdge:1280, everyMs:200, keep:6};
 const CAM_LIVE_LIB='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const CAM_LIVE_MODEL='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 const camLiveState={on:false, verdict:null, recent:[], raf:0, last:0};
@@ -2486,10 +2486,11 @@ function camLiveVerdict(rs){
   if(pxs.length<seen.length/2) return {verdict:'no_go', code:'cut_off', text:'Head to feet in the frame — something’s cut off'};
   const px=pxs[Math.floor(pxs.length/2)];
   const grid=(coachOn()&&COACH.capture)||{};
-  if(px<(grid.tiny_px||CAM_LIVE.tinyPx)) return {verdict:'no_go', code:'tiny', px, text:'Move closer — you’re too small to measure'};
   const bike=seen.filter(r=>r.bike).length>seen.length/2;
+  // A runner passing the camera cannot fill the frame: running has lower bars.
+  if(px<(grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx))) return {verdict:'no_go', code:'tiny', px, text:'Move closer — you’re too small to measure'};
   const drive=bike && seen.filter(r=>r.facingRight).length>=seen.length*2/3;
-  if(px<(grid.small_px||CAM_LIVE.smallPx)) return {verdict:'check', code:'small', px, text:'A bit closer for cleaner angles'};
+  if(px<(grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx))) return {verdict:'check', code:'small', px, text:bike?'A bit closer for cleaner angles':'A bit small — fine, but closer is cleaner'};
   if(drive&&grid.drive_side!==false) return {verdict:'check', code:'drive_side', px, text:'Chainring side — the other side reads the knee better'};
   return {verdict:'go', code:'go', px, text:'Good — this will measure'};
 }
@@ -2761,7 +2762,7 @@ async function prescanClip(file){
   if(state.prescanTok!==tok||state.file!==file) return;
   if(!frames.length){ scanNote(null); return; }
   if(!photo) setPreviewPoster(frames[0]);
-  const fd=new FormData(); frames.forEach((b,i)=>fd.append('frames',b,`f${i}.jpg`)); fd.append('mode',photo?'photo':'video');
+  const fd=new FormData(); frames.forEach((b,i)=>fd.append('frames',b,`f${i}.jpg`)); fd.append('mode',photo?'photo':'video'); fd.append('sport',state.sport||'');
   if(frames.dims){ fd.append('video_w',frames.dims[0]); fd.append('video_h',frames.dims[1]); }
   let j=null;
   try{ const r=await fetch('/prescan',{method:'POST',body:fd}); if(r.ok) j=await r.json(); }catch(e){}
@@ -6508,7 +6509,7 @@ function renderCoachCard(){
     </div>
     <div class="coachgrid">
       <h4>Framing check · GO / NO-GO</h4>
-      <p class="hint" style="text-align:left;margin:0">How tall the rider must be in the frame the analysis sees. Your bars decide what is flagged before a clip runs, on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
+      <p class="hint" style="text-align:left;margin:0">How tall the athlete must be in the frame the analysis sees. The standard bars are 300 and 400 px on a bike, 200 and 300 px on a run; bars you save here apply to both, on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
       <div class="gridrow">
         <div><label for="capTiny">NO-GO under</label><input type="number" id="capTiny" min="200" max="600" step="10" value="${(COACH.capture&&COACH.capture.tiny_px)||300}"> <span class="hint">px</span></div>
         <div><label for="capSmall">Warn under</label><input type="number" id="capSmall" min="200" max="800" step="10" value="${(COACH.capture&&COACH.capture.small_px)||400}"> <span class="hint">px</span></div>

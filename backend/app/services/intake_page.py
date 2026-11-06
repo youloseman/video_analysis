@@ -135,7 +135,7 @@ def render_intake_page(ctx: dict[str, Any] | None) -> str:
         '<p class="lede">No account needed. It takes a minute to send, and you will know right away if it needs filming again.</p>'
         '<div class="card"><ul class="tips">'
         "<li>Film from the side, square on, with the camera at hip height.</li>"
-        "<li>Fill most of the frame, with your whole body in shot.</li>"
+        "<li>Keep your whole body in shot, as big as you can. Running past the camera? Hold the phone sideways.</li>"
         "<li>Keep the camera still for 10 to 15 seconds.</li>"
         "<li>On a bike, film the side without the chainring.</li>"
         "</ul></div>"

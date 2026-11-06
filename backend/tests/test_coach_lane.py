@@ -22,6 +22,9 @@ from app.api import coach_reports as reports
 from app.api import coach_uploads as api
 from app.api import me
 from app.api.billing import _set_tier
+# Imported up here, before any test swaps core_db.SessionLocal: main binds the name
+# when it is first imported, and a lazy first import would bind the test's session.
+from app.main import app as _app  # noqa: F401
 from app.core import db as core_db
 from app.core import jobs as core_jobs
 from app.models.analysis import Analysis
@@ -382,7 +385,7 @@ FRAME = {"height_frac": 0.5, "facing": -1, "shoulder": 1}
 
 def verdict(px, bars=None):
     frames = [{**FRAME, "height_frac": px / 720}] * 4
-    return capture_check(frames, sport="run", video_w=1280, video_h=720, thresholds=bars)
+    return capture_check(frames, sport="bike", video_w=1280, video_h=720, thresholds=bars)
 
 
 @pytest.fixture

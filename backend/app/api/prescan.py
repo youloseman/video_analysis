@@ -35,6 +35,8 @@ async def prescan(
     # rider's size is judged in the frame the full analysis will see.
     video_w: int | None = Form(None),
     video_h: int | None = Form(None),
+    # The tile chosen on Analyze: which bars apply when the frames cannot say.
+    sport: str | None = Form(None),
     user: User | None = Depends(optional_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
@@ -58,4 +60,5 @@ async def prescan(
 
         bars = await capture_for(db, user.id)
     return await run_in_threadpool(scan_images, images, photo=(mode == "photo"),
-                                   video_w=dims[0], video_h=dims[1], thresholds=bars)
+                                   video_w=dims[0], video_h=dims[1], thresholds=bars,
+                                   sport_hint=sport if sport in ("run", "bike") else None)

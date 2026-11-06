@@ -98,4 +98,6 @@ def test_the_batch_size_matches_the_servers():
 
 def test_the_camera_reads_the_coachs_bars():
     src = fn("camLiveVerdict")
-    assert "COACH.capture" in src and "grid.tiny_px||CAM_LIVE.tinyPx" in src
+    assert "COACH.capture" in src
+    assert "grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx)" in src
+    assert "grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx)" in src

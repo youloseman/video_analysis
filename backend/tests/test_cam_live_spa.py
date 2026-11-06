@@ -13,6 +13,8 @@ from pathlib import Path
 from app.services.video_analysis.biomechanics.tracking_diagnostics import (
     FRAMING_SMALL_PX,
     FRAMING_TINY_PX,
+    RUN_FRAMING_SMALL_PX,
+    RUN_FRAMING_TINY_PX,
 )
 from app.services.video_analysis.capture_report import DETECT_MAX_LONG_EDGE
 
@@ -29,6 +31,8 @@ def test_the_live_camera_uses_the_prescan_bars():
     live = _cam_live()
     assert live["tinyPx"] == FRAMING_TINY_PX
     assert live["smallPx"] == FRAMING_SMALL_PX
+    assert live["runTinyPx"] == RUN_FRAMING_TINY_PX
+    assert live["runSmallPx"] == RUN_FRAMING_SMALL_PX
     assert live["detectLongEdge"] == DETECT_MAX_LONG_EDGE
 
 

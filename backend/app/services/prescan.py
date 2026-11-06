@@ -206,8 +206,7 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
     check says before a clip is analysed and nothing about what is measured.
     """
     from app.services.video_analysis.biomechanics.tracking_diagnostics import (
-        FRAMING_SMALL_PX,
-        FRAMING_TINY_PX,
+        framing_bars,
     )
     from app.services.video_analysis.capture_report import (
         DETECT_MAX_LONG_EDGE,
@@ -215,8 +214,9 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
     )
 
     bars = thresholds or {}
-    tiny_px = int(bars.get("tiny_px") or FRAMING_TINY_PX)
-    small_px = int(bars.get("small_px") or FRAMING_SMALL_PX)
+    std_tiny, std_small = framing_bars(sport)
+    tiny_px = int(bars.get("tiny_px") or std_tiny)
+    small_px = int(bars.get("small_px") or std_small)
     good = [f for f in frames if _valid(f)]
     reasons: list[dict[str, str]] = []
     out: dict[str, Any] = {"verdict": "go", "reasons": reasons}
@@ -241,15 +241,25 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
         if px < tiny_px:
             reasons.append({
                 "code": "tiny", "level": "no_go",
-                "text": f"You're too small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
-                        "At this size the model mixes up your legs. Move the camera closer "
-                        "or zoom in so you fill most of the frame.",
+                "text": (
+                    f"You're too small in the frame ({px} px tall). Below {tiny_px} px the model starts "
+                    "to lose you. Move closer or zoom in; running past the camera, turn the phone sideways."
+                ) if sport == "run" else (
+                    f"You're too small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
+                    "At this size the model mixes up your legs. Move the camera closer "
+                    "or zoom in so you fill most of the frame."
+                ),
             })
         elif px < small_px:
             reasons.append({
                 "code": "small", "level": "check",
-                "text": f"You're a bit small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
-                        "Closer or zoomed in gives cleaner angles.",
+                "text": (
+                    f"You're a bit small in the frame ({px} px tall). The numbers usually hold at "
+                    "this size, but the legs can swap. Running past the camera? Turn the phone sideways."
+                ) if sport == "run" else (
+                    f"You're a bit small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
+                    "Closer or zoomed in gives cleaner angles."
+                ),
             })
 
     # Facing right in the image puts the rider's right side -- the chainring
@@ -289,10 +299,15 @@ def _model_path() -> str | None:
 
 def scan_images(images: list[bytes], *, photo: bool = False,
                 video_w: int | None = None, video_h: int | None = None,
-                thresholds: dict[str, Any] | None = None) -> dict[str, Any]:
+                thresholds: dict[str, Any] | None = None,
+                sport: str | None = None, sport_hint: str | None = None) -> dict[str, Any]:
     """Find a pose in each small JPEG and classify them together. One
     landmarker for all of them: building the heavy model is most of the cost
-    of a single detection."""
+    of a single detection.
+
+    Which bars apply: ``sport`` when somebody said (a coach's batch), else what the
+    frames look like, else ``sport_hint`` (the tile chosen on Analyze), because a
+    small runner is exactly the clip a few frames may not classify."""
     import cv2
     import mediapipe as mp
     import numpy as np
@@ -317,6 +332,6 @@ def scan_images(images: list[bytes], *, photo: bool = False,
                 if f:
                     feats.append(f)
     out = classify(feats, photo=photo)
-    out["capture"] = capture_check(feats, sport=out["sport"], video_w=video_w,
+    out["capture"] = capture_check(feats, sport=sport or out["sport"] or sport_hint, video_w=video_w,
                                    video_h=video_h, photo=photo, thresholds=thresholds)
     return out

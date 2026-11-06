@@ -119,8 +119,8 @@ def test_too_small_to_hold_the_legs_is_no_go_and_says_so_first():
 
 
 def test_small_but_workable_and_the_chainring_side_are_only_check():
-    small = _cap(dict(RUN, facing=1.0, height_frac=0.5), sport="run", video_w=1920, video_h=1080)
-    assert small["verdict"] == "check" and [r["code"] for r in small["reasons"]] == ["small"]
+    small = _cap(dict(RUN, facing=1.0, height_frac=0.5), sport="bike", video_w=1920, video_h=1080)
+    assert small["verdict"] == "check" and [r["code"] for r in small["reasons"]][0] == "small"
     drive = _cap(dict(AERO, facing=1.0, height_frac=0.8), sport="bike", video_w=1920, video_h=1080)
     assert drive["verdict"] == "check" and [r["code"] for r in drive["reasons"]] == ["drive_side"]
 
@@ -153,3 +153,29 @@ def test_frame_features_carry_the_facing_and_the_nose_to_ankle_span():
     f = frame_features(lms, 1280, 720)
     assert f["facing"] == 1.0
     assert f["height_frac"] == pytest.approx(0.5)      # nose 0.30 to the LOWER ankle 0.80
+
+
+# Running has its own bars: measured in tracking_diagnostics.RUN_FRAMING_*.
+@pytest.mark.parametrize("px,verdict,code", [
+    (450, "go", None), (300, "go", None),
+    (254, "check", "small"),      # the stadium clip, portrait, 2026-11-06
+    (200, "check", "small"),
+    (190, "no_go", "tiny"),
+])
+def test_a_runner_has_lower_bars(px, verdict, code):
+    got = _cap(dict(RUN, facing=1.0, height_frac=px / 720), sport="run", video_w=1280, video_h=720)
+    assert got["verdict"] == verdict and got["subject_px"] == px
+    assert [r["code"] for r in got["reasons"]] == ([code] if code else [])
+
+
+def test_the_bike_bars_did_not_move():
+    bike = _cap(dict(AERO, facing=-1.0, height_frac=254 / 720), sport="bike", video_w=1280, video_h=720)
+    assert bike["verdict"] == "no_go"
+    unknown = _cap(dict(RUN, facing=-1.0, height_frac=254 / 720), sport=None, video_w=1280, video_h=720)
+    assert unknown["verdict"] == "no_go"
+
+
+def test_a_small_runner_is_told_what_they_can_actually_do():
+    got = _cap(dict(RUN, facing=1.0, height_frac=254 / 720), sport="run", video_w=1280, video_h=720)
+    assert "sideways" in got["reasons"][0]["text"]
+

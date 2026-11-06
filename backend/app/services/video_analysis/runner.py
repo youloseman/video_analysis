@@ -1049,7 +1049,7 @@ def analyze_from_frames(
             min(1.0, DETECT_MAX_LONG_EDGE / float(max(_fw, _fh)))
             if max(_fw, _fh) else 1.0
         )
-        framing = compute_framing(raw_frame_data, detect_height_px=_fh * _scale)
+        framing = compute_framing(raw_frame_data, detect_height_px=_fh * _scale, sport=sport_type)
         if not is_bike:
             near_cues = compute_near_side_cues(raw_frame_data)
         logger.info("CAPTURE_FRAMING", **framing)
