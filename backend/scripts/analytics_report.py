@@ -79,6 +79,12 @@ FORTNIGHT = f"{RECENT} AND {DAY} >= {TODAY} - 14 AND {DAY} < {TODAY}"
 # Referrers that are us: our own pages, and the return from checkout.
 OWN = ("getflapp.com", "checkout.stripe.com")
 
+# A tab reopened on an expired job fails with "we lost track of this analysis"
+# though nothing was running (app sets `restored`; unmarked before 29 Oct). All
+# 7 in the week to 5 Nov were this, and they read 37% failures for a real 11%.
+FAILED = "event='analysis_failed' AND (properties.restored IS NULL OR properties.restored = false)"
+OLD_TAB = "event='analysis_failed' AND properties.restored = true"
+
 FLOOR_NOTE = ("Floor, not a measurement: ad-blockers drop posthog.com and the "
               "proxy is not up. Our own browsing is included.")
 
@@ -354,7 +360,7 @@ def last_week() -> dict:
                    uniqIf(person_id, {THIS}), uniqIf(person_id, {PREV})
                   FROM events WHERE event={PV} AND {FORTNIGHT}
                   GROUP BY p ORDER BY 2 DESC, 3 DESC""")
-    failed = q(f"SELECT uniqIf(person_id, event='analysis_failed') FROM events WHERE {WEEK}")[0][0]
+    failed = q(f"SELECT uniqIf(person_id, {FAILED}) FROM events WHERE {WEEK}")[0][0]
 
     head("At a glance")
     pw, co = cur[5], cur[6]
@@ -472,8 +478,11 @@ def last_week() -> dict:
     label("What the athlete saw fail (analysis_failed)")
     table(["reason", "times", "people"],
           q(f"""SELECT properties.reason, count(), uniq(person_id)
-                FROM events WHERE event='analysis_failed' AND {WEEK}
+                FROM events WHERE {FAILED} AND {WEEK}
                 GROUP BY 1 ORDER BY 2 DESC"""), 8)
+    old = q(f"SELECT count() FROM events WHERE {OLD_TAB} AND {WEEK}")[0][0]
+    if old:
+        note(f"Left out: {old} from old tabs reopened on an expired job, not analyses that failed.")
     # Anonymous server-side records (services/failure_log.py), so times only.
     label("Server crashes (analysis_error)")
     table(["error", "times"],
@@ -647,8 +656,11 @@ def standing(days: int | None) -> None:
     note(f"Quality gate fired on {g[0]} of {g[1]} completed runs ({pct(g[0], g[1])}).")
     table(["failure", "times", "people"],
           q(f"""SELECT properties.reason, count(), uniq(person_id)
-                FROM events WHERE event='analysis_failed' AND {where}
+                FROM events WHERE {FAILED} AND {where}
                 GROUP BY 1 ORDER BY 2 DESC"""), 8)
+    old = q(f"SELECT count() FROM events WHERE {OLD_TAB} AND {where}")[0][0]
+    note(f"Left out: {old} from old tabs reopened on an expired job. Marked since 29 Oct; "
+         "any before that are still in the table.")
 
     # 8. Pricing -----------------------------------------------------------
     pricing(where, "8. Pricing funnel")

@@ -1675,6 +1675,12 @@
       <h2 id="pricingTitle" tabindex="-1">Find it. Fix it. Prove it.</h2>
       <p>Every plan covers running and cycling, from a video or a single photo.</p>
     </div>
+    <!-- For whoever reached the prices before running anything: 160 of 182 such
+         people left here in the month to 5 Nov, and only 1 had seen a result. -->
+    <div id="pricingFree" class="pricing-free hidden">
+      <span>Not sure yet? Your first full report is free, no card needed.</span>
+      <button class="btn btn-go btn-sm" type="button" onclick="pricingFreeGo()">Analyze a clip free</button>
+    </div>
 
     <!-- The plans, the comparison and the human add-ons: one block rendered by
          services/pricing.py (the landing page prints the same one), with slots
@@ -7887,7 +7893,16 @@ function drawPricing(){
   root.querySelectorAll('[data-slot="bump"]').forEach(slot=>{ slot.innerHTML=prBumpHtml(); });
   prCoachFill(root);
 }
+/* To the uploader, not to sign-up: "Start free" on the Starter card opens the
+   register form, and a visitor who has seen nothing yet should see the product. */
+function pricingFreeGo(){
+  track('pricing_free_cta', {guest: !auth});
+  reset();
+  setState('upload',{focus:'#uploaderTitle'});
+}
 function renderPricing(){
+  const fr=$('#pricingFree');
+  if(fr) fr.classList.toggle('hidden', !(isFreeUser() && !loadHist().length));
   drawPricing();                          // instant on a repeat open
   loadPlans().then(()=>drawPricing());    // and again once the catalogue lands
 }
