@@ -275,8 +275,13 @@ def video_next_steps(
                               "saddle-height reading is the least reliable number on it. The other "
                               "side of the bike measures the leg cleanly."})
     if framing in _SMALL_FRAMING:
-        steps.append({"key": "framing", "title": "Fill the frame",
+        steps.append({"key": "framing", "title": "Hold the phone sideways" if sport == "run" else "Fill the frame",
                       "text": "You are small in the picture, and at that size the two legs are a few "
+                              "pixels apart. Running past the camera, a phone held sideways has you "
+                              "about 1.8 times taller on the same stretch of track. Otherwise stand "
+                              "closer, as long as a whole stride stays in shot."
+                      if sport == "run" else
+                              "You are small in the picture, and at that size the two legs are a few "
                               "pixels apart. Film closer, or zoom in so you span most of the height: "
                               "it does more for accuracy than any other change."})
     if gaps:

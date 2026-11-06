@@ -202,7 +202,10 @@ class RunningAnalyzer(SportAnalyzer):
         self._body_scale_source = "unknown"
         # Set once _compute_cadence recognises a slow-motion clip; every
         # time-derived metric divides by it (see _median_frame_spacing_ms).
-        self._slowmo_factor: int | None = None
+        self._slowmo_factor: float | None = None
+        self._slowmo_capture_fps: int | None = None
+        self._slowmo_cadence: float = 0.0
+        self._slowmo_checked = False
         self._analyzer_warnings: list[str] = []
 
     def _estimate_body_scale(self, nl: Any) -> None:
@@ -312,6 +315,11 @@ class RunningAnalyzer(SportAnalyzer):
         fps = self.get_effective_fps()
         if not fps or fps <= 0:
             return None
+        # The smoothing below is written in seconds: on a slow clip it has to be
+        # seconds of running, not seconds of playback.
+        self._detect_slow_motion()
+        if self._slowmo_factor:
+            fps *= self._slowmo_factor
 
         lower_x = np.full(n, np.nan)
         lower_y = np.full(n, np.nan)
@@ -702,6 +710,120 @@ class RunningAnalyzer(SportAnalyzer):
     # deliberately absent -- it maps a normal stride onto ~85 spm, which is
     # also a plausible (if slow) real rhythm.
     SLOW_MOTION_FACTORS = (4, 8)
+    # What a phone films slow motion at. A frame of it is 1/240 s whatever the
+    # container claims, which is what makes this readable from frames alone: an
+    # iPhone's edit list once reported 26.65 fps for a clip that plays at 30.
+    SLOW_MOTION_CAPTURE_FPS = (120, 240, 480, 960)
+    # Slower than this in the file, and nobody is running in real time: walking is
+    # already 100+. Half a normal cadence is 2x slow motion or a real shuffle, and
+    # nothing separates them, so that band is left alone.
+    SLOW_MOTION_PLAYBACK_SPM_MAX = 75.0
+    # A running cadence, wide enough that doubling the capture rate can never land
+    # inside it twice: exactly one rate fits any step, so the answer is determined.
+    SLOW_MOTION_SPM_RANGE = (125.0, 250.0)
+    # In real time the feet cross most of their range in a handful of frames; in
+    # slow motion each frame moves them a sliver. Measured on real clips: 2.4-2.6%
+    # of the range per frame at 8x, 6.1% at 4x, 8-20% at normal speed filmed at 58
+    # fps (a 30 fps clip moves twice that). It is one of two things that stop a
+    # tracking hiccup at normal speed, which can also look like two far-apart steps,
+    # from being read as slow motion; the other is a real-time rhythm in the bounce.
+    SLOW_MOTION_MOTION_PER_FRAME_MAX = 0.075
+    SLOW_MOTION_MIN_GAP_RANGE = 0.03
+
+    def _step_frames_from_ankle_gap(self) -> tuple[float, int, float] | None:
+        """``(source frames per step, steps seen, motion per frame)``, or None.
+
+        How far apart the feet are along the direction of travel, unsigned: it
+        peaks once a step whichever foot is in front, so a left/right swap cannot
+        touch it, and it is a difference, so a panning camera cancels out. It
+        reads a clip with one whole step in it, which the spectrum cannot: a slow
+        clip of a runner crossing the frame holds about a second of running.
+        """
+        if len(self.frame_results) < 30 or not self.fps or self.fps <= 0:
+            return None
+        ts, gap = [], []
+        for fr in self.frame_results:
+            nl = fr.extra_metrics.get("_norm_landmarks")
+            if nl is None:
+                continue
+            try:
+                a, b = nl[27].x, nl[28].x
+            except (IndexError, TypeError, AttributeError):
+                continue
+            if a is None or b is None or math.isnan(a) or math.isnan(b):
+                continue
+            ts.append(fr.timestamp_ms)
+            gap.append(abs(a - b))
+        if len(ts) < 30:
+            return None
+        t = np.asarray(ts, dtype=float)
+        dt = float(np.median(np.diff(t)))
+        if dt <= 0:
+            return None
+        grid = np.arange(t[0], t[-1], dt)
+        if len(grid) < 30:
+            return None
+        sig = np.interp(grid, t, np.asarray(gap, dtype=float))
+        # Padded with the edge value: a plain moving average sags at both ends of
+        # the clip and pulls an end peak inward by a few frames.
+        sig = np.convolve(np.pad(sig, 3, mode="edge"), np.ones(7) / 7.0, mode="valid")
+        span = float(np.percentile(sig, 95) - np.percentile(sig, 5))
+        if span < self.SLOW_MOTION_MIN_GAP_RANGE:
+            return None
+        from scipy.signal import find_peaks
+
+        peaks, _ = find_peaks(sig, prominence=0.35 * span, distance=8)
+        if len(peaks) < 2:
+            return None
+        heights = sig[peaks]
+        if float(heights.min()) < 0.6 * float(heights.max()):
+            return None
+        intervals = np.diff(peaks).astype(float)
+        step = float(np.median(intervals))
+        if len(intervals) >= 2 and float(np.max(np.abs(intervals - step))) > 0.35 * step:
+            return None
+        # First peak to last averages out the integer frames; the median above
+        # only had to say the steps were regular.
+        step = float(peaks[-1] - peaks[0]) / len(intervals)
+        motion = float(np.median(np.abs(np.diff(sig)))) / span
+        return step * dt * self.fps / 1000.0, len(peaks), motion
+
+    def _detect_slow_motion(self) -> None:
+        """Settle the time base, once, before anything reads time.
+
+        It used to be the last resort after every other cadence method, so a short
+        slow clip either fell through them all, or worse, got an accepted cadence
+        off a slowed rhythm (136 spm on a clip running at 195). People film slow
+        motion on purpose and it is the better footage: forty frames of a stance
+        instead of five.
+        """
+        if self._slowmo_checked:
+            return
+        self._slowmo_checked = True
+        read = self._step_frames_from_ankle_gap()
+        if read is None:
+            return
+        step_frames, steps, motion = read
+        playback_spm = 60.0 * self.fps / step_frames
+        logger.info("SLOW_MOTION_CHECK", step_frames=round(step_frames, 1), steps=steps,
+                    playback_spm=round(playback_spm, 1), motion=round(motion, 4))
+        if playback_spm >= self.SLOW_MOTION_PLAYBACK_SPM_MAX or motion > self.SLOW_MOTION_MOTION_PER_FRAME_MAX:
+            return
+        if self._cadence_spectral() > 0:
+            return      # the ankles bounce at a real running rhythm in the file's own time
+        lo, hi = self.SLOW_MOTION_SPM_RANGE
+        fits = [c for c in self.SLOW_MOTION_CAPTURE_FPS if lo <= 60.0 * c / step_frames < hi]
+        if len(fits) != 1:
+            return
+        capture = fits[0]
+        self._slowmo_capture_fps = capture
+        # What the file's clock is off by, whatever it claims to run at.
+        self._slowmo_factor = capture / self.fps
+        self._slowmo_cadence = round(60.0 * capture / step_frames, 1)
+        logger.info(
+            "SLOW_MOTION", capture_fps=capture, steps=steps, step_frames=round(step_frames, 1),
+            motion=round(motion, 4), cadence_spm=self._slowmo_cadence,
+        )
     # A clip slower than this is not someone running at normal speed.
     REAL_RUN_SPM_MIN = 140.0
     # Where an inferred cadence has to land to be believable.
@@ -760,6 +882,14 @@ class RunningAnalyzer(SportAnalyzer):
         caller (compute_summary) omits the value in that case so a phantom
         0.0 doesn't reach downstream consumers as a measurement.
         """
+        self._detect_slow_motion()
+        if self._slowmo_capture_fps:
+            self._record_warning(
+                f"Filmed in slow motion ({self._slowmo_capture_fps} fps): cadence, ground "
+                f"contact and flight time are in real time, worked out from the frames."
+            )
+            logger.info("CADENCE_RESULT", method="slow_motion_steps", cadence_spm=f"{self._slowmo_cadence:.1f}")
+            return self._slowmo_cadence
         if self.frame_results:
             duration_ms = self.frame_results[-1].timestamp_ms - self.frame_results[0].timestamp_ms
             logger.info(
@@ -1138,6 +1268,16 @@ class RunningAnalyzer(SportAnalyzer):
                 i += 1
         return runs
 
+    def _landing_frame_indices(self) -> list[int]:
+        """Near-foot contacts that were filmed as landings.
+
+        A run that begins on the clip's first frame is the edge of the recording:
+        the foot came down before anyone was filming. Reading "the moment of
+        contact" there put overstride at 0.73 off a foot already deep into its
+        stance (IMG_5605, 2026-11-06). The kinogram refuses the same run.
+        """
+        return [i for i in self._contact_frame_indices() if i > 0]
+
     def _contact_frame_indices(self, min_run: int = 3) -> list[int]:
         """Frames where the NEAR foot begins a ground contact.
 
@@ -1212,7 +1352,7 @@ class RunningAnalyzer(SportAnalyzer):
         with an occluded ankle are skipped. Returns (median_ratio, n_used).
         Returns (0.0, 0) when it cannot be measured -- caller omits it.
         """
-        contact_idxs = self._contact_frame_indices()
+        contact_idxs = self._landing_frame_indices()
         if not contact_idxs:
             return 0.0, 0
 
@@ -1271,7 +1411,7 @@ class RunningAnalyzer(SportAnalyzer):
         the run threshold and returns (None, nan, n) when too few clean
         contacts exist. Returns (pattern, median_angle_deg, n_used).
         """
-        contact_idxs = self._contact_frame_indices()
+        contact_idxs = self._landing_frame_indices()
         if not contact_idxs:
             return None, float("nan"), 0
 
@@ -1526,7 +1666,14 @@ class RunningAnalyzer(SportAnalyzer):
         if self._slowmo_factor:
             # Say so wherever these numbers travel: they are real-time values
             # reconstructed from a slowed clip, not measured off the timeline.
-            summary["slow_motion_factor"] = self._slowmo_factor
+            # The label is the phone's "8x": the scale itself can differ when a
+            # container's clock is off (see SLOW_MOTION_CAPTURE_FPS).
+            summary["slow_motion_factor"] = (
+                round(self._slowmo_capture_fps / 30.0) if self._slowmo_capture_fps
+                else round(self._slowmo_factor)
+            )
+            if self._slowmo_capture_fps:
+                summary["slow_motion_capture_fps"] = self._slowmo_capture_fps
             summary["time_base_inferred"] = True
 
         # What share of the clip the near foot was called "on the ground".

@@ -49,6 +49,7 @@ async def test_no_box_no_link(make_user, db):
         await link(db, andy, a["upload_token"], consent=False)
     assert e.value.status_code == 400
     assert (await api.get_coach_link(andy, db))["coach"] is None
+    assert (await api.get_coach_link(andy, db))["available"] is False
 
 
 async def test_the_code_links_and_the_coach_is_named(make_user, db):
@@ -229,3 +230,36 @@ async def test_a_note_on_a_model_b_entry_needs_that_athletes_filing(make_user, d
     assert e.value.status_code == 404
     out = await api.write_note(a["id"], "b1", api.NoteIn(note="Right one"), coach, db)
     assert out["coachNote"] == "Right one"
+
+
+# --------------------------------------------------------------------------
+# Who is offered "My coach" while this is a pilot
+# --------------------------------------------------------------------------
+async def test_my_coach_is_shown_only_to_the_pilot(make_user, db):
+    from app.models.user import TIER_ADMIN
+
+    coach = await make_user(tier=TIER_COACH)
+    stranger = await make_user(tier=TIER_ENTHUSIAST)
+    andy = await make_user(tier=TIER_ENTHUSIAST, email="Andy@Example.com")
+    admin = await make_user(tier=TIER_ADMIN)
+    assert (await api.get_coach_link(stranger, db))["available"] is False
+    assert (await api.get_coach_link(admin, db))["available"] is True
+    a = await add(db, coach, email="andy@example.com")
+    assert (await api.get_coach_link(andy, db))["available"] is True
+    # Off the roster, off the pilot.
+    await roster.update_athlete(a["id"], roster.AthletePatch(archived=True), coach, db)
+    assert (await api.get_coach_link(andy, db))["available"] is False
+    await roster.update_athlete(a["id"], roster.AthletePatch(archived=False), coach, db)
+    # A roster only counts while its coach is on the plan.
+    coach.tier = TIER_STARTER
+    await db.commit()
+    assert (await api.get_coach_link(andy, db))["available"] is False
+
+
+async def test_somebody_already_linked_keeps_the_way_to_unlink(make_user, db):
+    coach = await make_user(tier=TIER_COACH)
+    andy = await make_user(tier=TIER_ENTHUSIAST)
+    a = await add(db, coach)       # no email on the row
+    await link(db, andy, a["upload_token"])
+    assert (await api.get_coach_link(andy, db))["available"] is True
+

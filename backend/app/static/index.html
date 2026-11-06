@@ -1842,7 +1842,7 @@
     <div class="prof-edit hidden" id="athEdit">
       <div><label for="athName" id="athEditLbl">Name</label><input id="athName" type="text" maxlength="60" placeholder="e.g. Andrew Solomon"></div>
       <div><label for="athSport">Sport</label><select id="athSport"><option value="both">Triathlon · both</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
-      <div><label for="athEmail">Email <span class="askopt">optional</span></label><input id="athEmail" type="email" maxlength="320" placeholder="where their reports go, later"></div>
+      <div><label for="athEmail">Email <span class="askopt">optional</span></label><input id="athEmail" type="email" maxlength="320" placeholder="their Flapp email, to link their account"></div>
       <div><label for="athNote">One line <span class="askopt">optional</span></label><input id="athNote" type="text" maxlength="240" placeholder="goal race, what you're working on"></div>
       <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="athSave">Save athlete</button><button class="btn btn-ghost btn-sm" type="button" id="athCancel">Cancel</button></div>
     </div>
@@ -7496,16 +7496,19 @@ function renderAccount(){
 /* ---- My coach: the athlete's side of the link (/me/coach-link) ---- */
 let LINK={loaded:false,coach:null,consent_text:''};
 async function loadCoachLink(){
-  LINK={loaded:false,coach:null,consent_text:''};
+  LINK={loaded:false,loading:true,coach:null,consent_text:''};
   if(!auth) return;
   try{ const r=await fetch('/me/coach-link',{headers:authHeaders()}); if(r.ok){ Object.assign(LINK, await r.json()); LINK.loaded=true; } }catch(e){}
-  renderCoachLink();
+  LINK.loading=false;
+  if(LINK.loaded) renderCoachLink();
 }
 function renderCoachLink(){
   const card=$('#acctLinkCard'), body=$('#acctLinkBody'); if(!card||!body) return;
-  if(!auth||hasCoachPlan()){ card.classList.add('hidden'); return; }
+  if(!auth||hasCoachPlan()&&!(auth.tier==='admin')){ card.classList.add('hidden'); return; }
+  // Stays hidden until the server says this account is in the pilot.
+  if(!LINK.loaded){ card.classList.add('hidden'); if(!LINK.loading){ LINK.loading=true; loadCoachLink(); } return; }
+  if(!LINK.available){ card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
-  if(!LINK.loaded){ body.innerHTML='<p class="acct-p">Loading…</p>'; if(auth) loadCoachLink(); return; }
   if(LINK.coach){
     const c=LINK.coach;
     body.innerHTML=`<p class="acct-p"><b>${esc(c.name)}</b>${c.tagline?' · '+esc(c.tagline):''} can see your analyses, annotated frames and clips since ${esc(fmtWhen(c.since_ms))}, and can leave notes on your reports.</p>
@@ -9679,8 +9682,9 @@ function render(job,opts){
     fw.innerHTML = small
       ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
          <span><b>Accuracy reduced: you’re small in the frame</b>${fr.subject_height_frac?` (about ${Math.round(fr.subject_height_frac*100)}% of the picture’s height)`:''}.
-         At that size the legs are a few pixels apart and the model can swap them. Film closer or zoom in
-         so you fill most of the height, and the same position will read more reliably.</span>`
+         At that size the legs are a few pixels apart and the model can swap them. ${(r.sport_type||r.sport)==='run'
+           ?'Running past the camera? Hold the phone sideways: the same stretch of track has you about 1.8 times taller.'
+           :'Film closer or zoom in so you fill most of the height, and the same position will read more reliably.'}</span>`
       : '';
     fw.classList.toggle('hidden', !small);
   }

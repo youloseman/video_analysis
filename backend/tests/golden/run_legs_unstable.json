@@ -102,7 +102,7 @@
   "cycling_position": null,
   "fit_plan": [],
   "frames_analyzed": 645,
-  "framing_verdict": "small",
+  "framing_verdict": "ok",
   "has_aero": false,
   "has_keyframe": true,
   "has_kinogram": true,

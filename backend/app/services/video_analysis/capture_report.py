@@ -323,10 +323,10 @@ def _duration_check(
             f"{duration_s:.1f} s of playback, but filmed at {slow:.0f}x slow "
             f"motion -- {real_s:.1f} s of actual running",
             target,
-            "Slow motion stretches the picture, not the stride: there are only "
-            f"{real_s:.1f} s of movement in here however long it takes to "
-            "watch. Film at normal speed and the same recording length becomes "
-            f"{slow:.0f} times the strides to measure.",
+            "Slow motion is the sharpest footage for contact and flight, but it "
+            f"stretches the picture and not the stride: this holds {real_s:.1f} s of "
+            "running. Stand further along so the runner stays in shot longer, or "
+            "keep filming for a few more strides.",
         )
 
     if tracked_ratio is not None and tracked_ratio < TRACKED_RATIO_WARN:

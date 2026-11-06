@@ -198,7 +198,7 @@ def test_slow_motion_is_measured_in_running_not_in_playback():
     assert c["status"] == "bad"
     assert c["label"] == "How much running the clip holds"
     assert "1.5 s of actual running" in c["measured"]
-    assert "8 times the strides" in c["action"]
+    assert "holds 1.5 s of running" in c["action"] and "keep filming" in c["action"]
 
 
 def test_a_long_enough_slow_motion_clip_is_not_penalised():

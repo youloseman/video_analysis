@@ -16,7 +16,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.athletes import _now_ms, _owned, _require_coach
@@ -86,13 +86,34 @@ async def _link_out(db: AsyncSession, link: CoachLink | None) -> dict[str, Any]:
     }
 
 
+async def _in_the_pilot(db: AsyncSession, user: User) -> bool:
+    """Whether this account is shown "My coach" while the coach area is a pilot
+    (Artur, 2026-11-06): an admin, somebody already linked, or somebody a coach has
+    put on a roster under this email. Nothing here to maintain: adding the athlete
+    is what lets them in, and the code still has to come from the coach."""
+    from app.models.user import TIER_ADMIN
+
+    if user.tier == TIER_ADMIN:
+        return True
+    rows = (await db.execute(
+        select(User.tier)
+        .join(Athlete, Athlete.coach_user_id == User.id)
+        .where(func.lower(Athlete.email) == user.email.lower(), Athlete.archived.is_(False))
+    )).scalars().all()
+    return any(has_coach(t) for t in rows)
+
+
 @router.get("/coach-link")
 async def get_coach_link(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    """Who, if anyone, this account has let in: the athlete's side."""
-    return await _link_out(db, await _live_link_for_user(db, user.id))
+    """Who, if anyone, this account has let in: the athlete's side. ``available``
+    says whether to offer it at all."""
+    live = await _live_link_for_user(db, user.id)
+    out = await _link_out(db, live)
+    out["available"] = live is not None or await _in_the_pilot(db, user)
+    return out
 
 
 @router.post("/coach-link", status_code=status.HTTP_201_CREATED)
