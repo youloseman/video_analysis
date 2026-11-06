@@ -151,6 +151,10 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .profilefield select,.profilefield input{font-family:var(--f-body);font-size:13.5px;
   padding:8px 10px;border:1px solid var(--c-line-strong);border-radius:var(--radius-xs);background:var(--c-bg);
   color:var(--c-ink);min-width:200px;flex:1 1 200px;min-height:36px}
+/* The coach's "whose clip" step: the field sits under its own numbered head,
+   so it needs no top margin, and a list of names reads better at a fixed width. */
+.whofield{margin-top:0}
+.whofield select{flex:0 1 360px;max-width:360px}
 .profilehint{text-align:left;margin:6px 0 0;font-size:12.5px}
 #heightField input{min-width:90px;flex:0 0 90px}
 #heightField .hunit{font-size:13px;color:var(--c-ink-faint)}

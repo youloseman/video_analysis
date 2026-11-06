@@ -554,6 +554,19 @@
           <p class="poshint" id="sideHint">Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.</p>
         </div>
       </div>
+      <!-- Step: whose clip (a coach's roster). Its own numbered step, not a
+           line inside the optional fold (Artur, 2026-11-06): for a coach it is
+           the decision that files the report, and a clip filed under nobody is
+           the coach's own. Hidden for everyone without a roster, so the
+           numbering below simply closes up. -->
+      <div class="ustep hidden" id="stepWho">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3>Whose clip is this?</h3><p id="athleteHint">Files the report under them: their history, their trend, their name on the printed report.</p></div></div>
+        <div class="profilefield whofield" id="athleteField">
+          <label for="athleteSel" class="visually-hidden">Athlete</label>
+          <select id="athleteSel" aria-describedby="athleteHint"></select>
+        </div>
+      </div>
       </div><!-- /upsetup -->
 
       <div class="upclip">
@@ -646,12 +659,6 @@
            asking afterwards gets you an honest shrug. -->
       <details class="askbox optbox" id="optBox">
         <summary>Setup &amp; body details <span class="askopt">optional</span></summary>
-      <!-- Whose clip (a coach's roster). Hidden unless the account keeps one. -->
-      <div class="profilefield hidden" id="athleteField">
-        <label for="athleteSel">Whose clip is this</label>
-        <select id="athleteSel" aria-describedby="athleteHint"></select>
-      </div>
-      <p class="hint profilehint hidden" id="athleteHint">Files the report under them: their history, their trend, their name on the printed report.</p>
       <div class="profilefield" id="profileField">
         <label for="profileSel">Which bike or shoes</label>
         <select id="profileSel" aria-describedby="profileHint"></select>
@@ -7279,12 +7286,13 @@ const ATHLETE_SPORT_LABEL={both:'triathlon',bike:'bike',run:'run'};
 /* The "whose clip" box on Analyze: only for an account with a roster, and
    only once somebody is on it. */
 function renderAthleteField(){
-  const field=$('#athleteField'), sel=$('#athleteSel'), hint=$('#athleteHint');
-  if(!field||!sel) return;
+  const step=$('#stepWho'), sel=$('#athleteSel');
+  if(!step||!sel) return;
   const mine=auth&&ATHLETES.allowed?liveAthletes():[];
   const none=!mine.length;
-  field.classList.toggle('hidden', none);
-  if(hint) hint.classList.toggle('hidden', none);
+  // The whole numbered step comes and goes: without a roster there is no
+  // question to ask, and the steps after it close up.
+  step.classList.toggle('hidden', none);
   if(none){ state.athleteId=null; return; }
   if(state.athleteId&&!mine.some(a=>String(a.id)===String(state.athleteId))) state.athleteId=null;
   sel.innerHTML=`<option value="">Me — my own clip</option>`
