@@ -484,9 +484,11 @@ app.include_router(prescan_routes.router)
 # /me/athletes (the roster). docs/COACH_AREA_PLAN_RU.md.
 from app.api import athletes as athlete_routes  # noqa: E402
 from app.api import coach as coach_routes  # noqa: E402
+from app.api import coach_link as coach_link_routes  # noqa: E402
 
 app.include_router(coach_routes.router)
 app.include_router(athlete_routes.router)
+app.include_router(coach_link_routes.router)
 
 
 # --------------------------------------------------------------------------
@@ -1346,7 +1348,7 @@ def _render_shell(
     html_doc = analytics.inject(html_doc)
     # The ad pixel goes on the marketing page only, never on the app shell:
     # /app holds the athlete's footage and email, and promises no ad trackers.
-    if filename == "landing.html":
+    if filename in ("landing.html", "landing-v3.html"):
         html_doc = ad_pixel.inject(ad_pixel.apply_disclosure(html_doc))
     # The landing page prints its prices as plain HTML -- it is a marketing
     # page, so the numbers have to be in the document for crawlers and in the
@@ -1471,6 +1473,12 @@ def root(request: Request) -> Response:
     """Marketing landing page. The app itself lives at /app; a script on the
     landing page forwards legacy hash deep-links (/#job=… etc.) to /app."""
     return _serve_shell(request, "landing.html", "/")
+
+
+@app.get("/v3", include_in_schema=False)
+def landing_v3(request: Request) -> Response:
+    """The scroll-driven landing, previewed beside the live one until it replaces it."""
+    return _serve_shell(request, "landing-v3.html", "/")
 
 
 @app.get("/app", include_in_schema=False)

@@ -336,6 +336,6 @@ class TestTheSavedReportsVideo:
 
     def test_the_history_page_asks_for_them_on_open(self, html):
         fn = _fn(html, "renderHistoryVideos")
-        assert "/overlays'" in fn
+        assert "meUrl(e,'overlays')" in fn
         assert "e.access!=='full'" in fn
         assert "renderHistoryVideos(e);" in _fn(html, "renderHistoryDetail")

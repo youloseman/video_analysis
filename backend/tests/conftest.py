@@ -54,7 +54,7 @@ from app.core.db import Base  # noqa: E402
 # test having imported it, which is how the suite passed for a while by luck of
 # import order.
 from app.models import (  # noqa: E402,F401
-    analysis, athlete, coach, feedback, order, profile, usage, user,
+    analysis, athlete, coach, coach_link, feedback, order, profile, usage, user,
 )
 from app.models.user import TIER_STARTER, User  # noqa: E402
 

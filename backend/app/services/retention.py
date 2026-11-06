@@ -53,10 +53,9 @@ RETENTION_DAYS: dict[str, int] = {
     TIER_STARTER: 7,
     TIER_ENTHUSIAST: 30,
     TIER_FULL: 30,
-    # 30 like every paid plan: privacy.html section 2 promises "30 days on a
-    # paid plan", and a longer window for coaches is a policy change first
-    # (docs/COACH_AREA_PLAN_RU.md, phase 3), not a number here.
-    TIER_COACH: 30,
+    # Sixty: a coach reviews a clip next to the one filmed after the change,
+    # weeks later. privacy.html sections 2 and 10 say so (Artur, 2026-11-06).
+    TIER_COACH: 60,
     TIER_ADMIN: 30,
 }
 # An unknown tier is treated as the free one. Erring towards the shorter period

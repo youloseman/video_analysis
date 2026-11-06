@@ -138,6 +138,9 @@ def _out(a: Athlete, stats: tuple[int, int | None, int | None] | None = None) ->
         "id": a.id, "name": a.name, "email": a.email, "sport": a.sport,
         "note": a.note, "archived": a.archived, "created_at_ms": a.created_at_ms,
         "upload_token": a.upload_token,
+        # Model A: the athlete's own account is behind this row; their clips
+        # are theirs, read through the link (api/coach_link.py).
+        "linked": a.linked_user_id is not None,
         "analyses": n, "last_at_ms": last_at, "last_score": last_score,
     }
 
@@ -170,10 +173,12 @@ async def owned_athlete_id(db: AsyncSession, user: User, raw: Any) -> int | None
 
 
 async def _refuse_if_no_room(db: AsyncSession, user: User) -> None:
+    # Linked athletes (model A) are on their own plans and take no seat.
     live = int(
         await db.scalar(
             select(func.count(Athlete.id)).where(
                 Athlete.coach_user_id == user.id, Athlete.archived.is_(False),
+                Athlete.linked_user_id.is_(None),
             )
         )
         or 0
@@ -228,6 +233,34 @@ async def _stats(db: AsyncSession, user: User) -> dict[int, tuple[int, int | Non
     return out
 
 
+async def _linked_stats(
+    db: AsyncSession, rows: list[Athlete],
+) -> dict[int, tuple[int, int | None, int | None]]:
+    """The same three numbers for linked athletes, from THEIR history."""
+    linked = {a.linked_user_id: a.id for a in rows if a.linked_user_id is not None}
+    if not linked:
+        return {}
+    agg = (
+        await db.execute(
+            select(Analysis.user_id, func.count(Analysis.id), func.max(Analysis.created_at_ms))
+            .where(Analysis.user_id.in_(list(linked)))
+            .group_by(Analysis.user_id)
+        )
+    ).all()
+    latest = {uid: last for uid, _n, last in agg}
+    scores = (
+        await db.execute(
+            select(Analysis.user_id, Analysis.score, Analysis.created_at_ms)
+            .where(Analysis.user_id.in_(list(latest)))
+        )
+    ).all()
+    last_score = {uid: sc for uid, sc, at in scores if latest.get(uid) == at}
+    return {
+        linked[uid]: (int(n), int(last) if last is not None else None, last_score.get(uid))
+        for uid, n, last in agg
+    }
+
+
 @router.get("/athletes")
 async def list_athletes(
     user: User = Depends(get_current_user),
@@ -245,8 +278,8 @@ async def list_athletes(
             .order_by(Athlete.archived, Athlete.name)
         )
     ).scalars().all()
-    stats = await _stats(db, user)
-    live = sum(1 for a in rows if not a.archived)
+    stats = {**(await _stats(db, user)), **(await _linked_stats(db, rows))}
+    live = sum(1 for a in rows if not a.archived and a.linked_user_id is None)
     return {
         "allowed": True,
         "athletes": [_out(a, stats.get(a.id)) for a in rows],

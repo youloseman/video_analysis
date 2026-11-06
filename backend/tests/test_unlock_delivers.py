@@ -243,7 +243,7 @@ def test_the_entry_carries_a_flag_and_not_the_picture(spa):
 
 
 def test_the_picture_is_fetched_from_the_endpoint_that_gates_it(spa, me_py):
-    assert "'/me/analyses/'+encodeURIComponent(e.id)+'/kinogram'" in spa
+    assert "fetch(meUrl(e,'kinogram')" in spa
     assert '@router.get("/analyses/{client_id}/kinogram")' in me_py
 
 
@@ -299,7 +299,7 @@ async def test_the_export_does_not_reach_another_account(db, make_user):
 
 
 def test_the_cabinet_asks_the_stored_route_not_the_job(spa, me_py):
-    assert "'/me/analyses/'+encodeURIComponent(e.id)+'/export?format='+fmt" in spa
+    assert "meUrl(e,'export?format='+fmt)" in spa
     assert '@router.get("/analyses/{client_id}/export")' in me_py
     assert 'id="hdExportBlock"' in spa
 

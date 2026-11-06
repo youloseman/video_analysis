@@ -368,6 +368,32 @@ async def get_kona_field(user: User = Depends(get_current_user)) -> dict[str, An
     return pro_field("triathlon") or {}
 
 
+async def _row_for_reader(
+    db: AsyncSession, user: User, client_id: str, athlete_id: int | None,
+) -> tuple[User, Analysis]:
+    """The analysis a reader may open, and whose it is.
+
+    Normally the caller's own. With ``athlete_id`` naming a LINKED athlete on
+    the caller's roster (api/athletes.py), the athlete's -- read at the
+    athlete's access level, which is the promise the consent box made.
+    """
+    from app.api.coach_link import reader_owner
+
+    owner = await reader_owner(db, user, athlete_id)
+    row = (
+        await db.execute(
+            select(Analysis).where(
+                Analysis.user_id == owner.id, Analysis.client_id == client_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
+        )
+    return owner, row
+
+
 @router.get("/analyses")
 async def list_analyses(
     user: User = Depends(get_current_user),
@@ -375,6 +401,15 @@ async def list_analyses(
     profile_id: int | None = None,
     athlete_id: int | None = None,
 ) -> list[dict[str, Any]]:
+    return await _list_rows(db, user, profile_id=profile_id, athlete_id=athlete_id)
+
+
+async def _list_rows(
+    db: AsyncSession, owner: User, *, profile_id: int | None = None,
+    athlete_id: int | None = None,
+) -> list[dict[str, Any]]:
+    """``owner``'s history, thin. The coach's view of a linked athlete calls
+    this with the athlete as owner (api/athletes.py)."""
     # ``Analysis.result`` is deliberately NOT fetched. It is the analyzer's
     # complete output -- kinogram and keyframe as base64 among it -- and it
     # measures around 490 KB per row against the ~140 KB of ``data`` beside it.
@@ -403,9 +438,9 @@ async def list_analyses(
             Analysis.keyframe.is_not(None).label("has_keyframe"),
         )
         .options(defer(Analysis.result), defer(Analysis.keyframe))
-        .where(Analysis.user_id == user.id)
+        .where(Analysis.user_id == owner.id)
         .order_by(Analysis.created_at_ms.desc())
-        .limit(history_cap(user.tier))
+        .limit(history_cap(owner.tier))
     )
     if athlete_id is not None:
         query = query.where(Analysis.athlete_id == athlete_id)
@@ -417,7 +452,7 @@ async def list_analyses(
     rows = (await db.execute(query)).all()
     return [
         _without_keyframe(
-            row.data, row, user,
+            row.data, row, owner,
             sellable=bool(sellable), has_keyframe=bool(has_frame),
         )
         for row, sellable, has_frame in rows
@@ -429,19 +464,10 @@ async def get_keyframe(
     client_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
 ) -> dict[str, Any]:
     """The annotated keyframe for one of the caller's analyses (data URI)."""
-    row = (
-        await db.execute(
-            select(Analysis).where(
-                Analysis.user_id == user.id, Analysis.client_id == client_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
-        )
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
     return {"keyframe": stored_keyframe(row)}
 
 
@@ -450,6 +476,7 @@ async def get_overlays(
     client_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
 ) -> dict[str, Any]:
     """Playable URLs for a saved analysis's overlay video(s), for an hour.
 
@@ -467,32 +494,22 @@ async def get_overlays(
     from app.core.jobs import job_file
     from app.core.security import create_media_token
 
-    row = (
-        await db.execute(
-            select(Analysis).where(
-                Analysis.user_id == user.id, Analysis.client_id == client_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
-        )
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
     # A swim clip is footage and nothing else: there is no report to unlock,
     # and watching your own upload is not part of what a plan sells.
     if row.sport == "swim":
         if not row.job_id or not job_file(row.job_id, "input"):
             return {"overlays": {}, "source": None}
-        token = create_media_token(user.id, row.job_id)
+        token = create_media_token(owner.id, row.job_id)
         return {"overlays": {}, "source": f"/jobs/{row.job_id}/source?mt={token}"}
-    if access_for_stored(user, row) != ACCESS_FULL:
+    if access_for_stored(owner, row) != ACCESS_FULL:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="This report has not been unlocked.",
         )
     if not row.job_id:
         return {"overlays": {}}
-    token = create_media_token(user.id, row.job_id)
+    token = create_media_token(owner.id, row.job_id)
     # The clip itself rides along: the crank editor on a saved report draws
     # on it (/jobs/<id>/source), the file in the browser being long gone.
     source = f"/jobs/{row.job_id}/source?mt={token}" if job_file(row.job_id, "input") else None
@@ -511,6 +528,7 @@ async def get_kinogram(
     client_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
 ) -> dict[str, Any]:
     """The kinogram for one of the caller's analyses, if they may see it.
 
@@ -523,18 +541,8 @@ async def get_kinogram(
     so that it exists on the day it is bought, and handing it out beforehand
     would give away the thing that was rendered to be sold.
     """
-    row = (
-        await db.execute(
-            select(Analysis).where(
-                Analysis.user_id == user.id, Analysis.client_id == client_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
-        )
-    if access_for_stored(user, row) != ACCESS_FULL:
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
+    if access_for_stored(owner, row) != ACCESS_FULL:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="This report has not been unlocked.",
@@ -547,6 +555,7 @@ async def analysis_report(
     client_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
 ) -> HTMLResponse:
     """The Full plan's printable report: one branded A4 document per analysis.
 
@@ -567,17 +576,7 @@ async def analysis_report(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="The PDF report is part of the Full plan.",
         )
-    row = (
-        await db.execute(
-            select(Analysis).where(
-                Analysis.user_id == user.id, Analysis.client_id == client_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
-        )
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
     if not row.result:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -590,12 +589,19 @@ async def analysis_report(
     setup = None
     if row.profile_id:
         setup = await db.scalar(select(Profile.name).where(
-            Profile.id == row.profile_id, Profile.user_id == user.id))
+            Profile.id == row.profile_id, Profile.user_id == owner.id))
+    # Whose report: the athlete on the roster when there is one, else the
+    # account. A coach's email on an athlete's report is the wrong name.
+    who = owner.email
+    if row.athlete_id or athlete_id:
+        from app.models.athlete import Athlete as _Athlete
+        who = await db.scalar(select(_Athlete.name).where(
+            _Athlete.id == (athlete_id or row.athlete_id), _Athlete.coach_user_id == user.id)) or who
     when = datetime.fromtimestamp((row.created_at_ms or 0) / 1000, timezone.utc)
     today = datetime.now(timezone.utc)
     position = result.get("cycling_position")
     html = render_report_html(result, {
-        "athlete": user.email,
+        "athlete": who,
         "setup": setup,
         "filmed": f"{when.day} {when:%b %Y}",
         "prepared": f"Prepared {today.day} {today:%b %Y}",
@@ -612,6 +618,7 @@ async def get_timeline(
     client_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
 ) -> dict[str, Any]:
     """The frame-by-frame record of a saved analysis, for its player.
 
@@ -622,18 +629,8 @@ async def get_timeline(
 
     Paid readers only, like the overlay it plays over.
     """
-    row = (
-        await db.execute(
-            select(Analysis).where(
-                Analysis.user_id == user.id, Analysis.client_id == client_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
-        )
-    if access_for_stored(user, row) != ACCESS_FULL:
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
+    if access_for_stored(owner, row) != ACCESS_FULL:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="This report has not been unlocked.",
@@ -647,6 +644,7 @@ async def export_analysis(
     format: str = "md",
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
 ) -> Response:
     """The AI export of a SAVED analysis, rather than of a live job.
 
@@ -660,18 +658,8 @@ async def export_analysis(
     Nothing new is generated here -- the stored result is the same input the
     job route hands to the same builder.
     """
-    row = (
-        await db.execute(
-            select(Analysis).where(
-                Analysis.user_id == user.id, Analysis.client_id == client_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
-        )
-    if access_for_stored(user, row) != ACCESS_FULL:
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
+    if access_for_stored(owner, row) != ACCESS_FULL:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="The AI export is available once this report is unlocked.",
@@ -716,6 +704,7 @@ async def get_analysis_result(
     client_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
 ) -> dict[str, Any]:
     """The stored analysis itself, trimmed to what the caller may now see.
 
@@ -724,17 +713,7 @@ async def get_analysis_result(
     day. This serves the analyzer's output, gated at read time -- so subscribing
     opens every past report, and a one-off unlock opens exactly one.
     """
-    row = (
-        await db.execute(
-            select(Analysis).where(
-                Analysis.user_id == user.id, Analysis.client_id == client_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.",
-        )
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
     if not row.result:
         # Ran before results were stored server-side. Saying so is better than
         # returning a shell that looks like a report we lost.
@@ -742,7 +721,7 @@ async def get_analysis_result(
             status_code=status.HTTP_409_CONFLICT,
             detail="This analysis was run before full reports were stored.",
         )
-    access = access_for_stored(user, row)
+    access = access_for_stored(owner, row)
     if access == ACCESS_FULL:
         await _ensure_coaching(db, row)
     return {

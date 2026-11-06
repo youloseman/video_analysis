@@ -63,13 +63,13 @@ def body_of(spa: str, name: str) -> str:
 def test_the_spa_fetches_the_stored_result(spa):
     """The bug in one assertion. This endpoint existed, was gated correctly,
     was tested, and was never requested by anything."""
-    assert "/result'" in spa and "/me/analyses/" in spa
+    assert "meUrl(e,'result')" in spa and "/me/analyses/" in spa
 
 
 def test_the_url_the_client_builds_is_a_route_the_server_declares(spa, me_py):
     """Two files, one string. A rename on either side is a silent 404 that
     looks exactly like "the report just didn't unlock"."""
-    assert '/me/analyses/\'+encodeURIComponent(e.id)+\'/result\'' in spa
+    assert "fetch(meUrl(e,'result')" in spa and "'/me/analyses/'+encodeURIComponent(id)+'/'+suffix" in spa
     assert '@router.get("/analyses/{client_id}/result")' in me_py
 
 
