@@ -22,6 +22,7 @@ from app.core.db import get_session
 from app.core.security import get_current_user
 from app.models.coach import (
     LOGO_PREFIXES,
+    clean_capture,
     MAX_CUE_CHARS,
     MAX_CUES,
     MAX_LOGO_BYTES,
@@ -91,6 +92,10 @@ def _public(row: CoachProfile | None) -> dict[str, Any]:
         "logo": d.get("logo") or None,
         "cues": list(d.get("cues") or []),
         "updated_at_ms": row.updated_at_ms if row else None,
+        # The coach's GO / NO-GO grid; null = the standard bars.
+        "capture": d.get("capture") or None,
+        # When they confirmed they may upload other people's footage.
+        "others_ok_at_ms": d.get("others_ok_at_ms") or None,
     }
 
 
@@ -127,8 +132,73 @@ async def put_coach(
         db.add(row)
     else:
         # Reassigned, not mutated: JSON columns do not track in-place edits.
-        row.data = data
+        # The grid and the confirmation have their own endpoints and stay.
+        row.data = {**(row.data or {}), **data}
         row.updated_at_ms = now
     await db.commit()
     logger.info("COACH_PROFILE_SAVED", user_id=user.id, cues=len(data["cues"]), logo=bool(data["logo"]))
     return {"allowed": True, **_public(row)}
+
+
+async def capture_for(db: AsyncSession, user_id: int) -> dict[str, Any] | None:
+    """A coach's GO / NO-GO grid, or None for the standard bars."""
+    row = (
+        await db.execute(select(CoachProfile).where(CoachProfile.user_id == user_id))
+    ).scalar_one_or_none()
+    return ((row.data if row else None) or {}).get("capture") or None
+
+
+async def _patch_data(db: AsyncSession, user: User, patch: dict[str, Any]) -> dict[str, Any]:
+    row = await _row_for(db, user)
+    now = int(time.time() * 1000)
+    if row is None:
+        row = CoachProfile(user_id=user.id, updated_at_ms=now, data=patch)
+        db.add(row)
+    else:
+        row.data = {**(row.data or {}), **patch}
+        row.updated_at_ms = now
+    await db.commit()
+    return {"allowed": True, **_public(row)}
+
+
+class CaptureIn(BaseModel):
+    tiny_px: int | None = None
+    small_px: int | None = None
+    drive_side: bool = True
+    # True goes back to the standard bars.
+    reset: bool = False
+
+
+@router.put("/coach/capture")
+async def put_capture(
+    body: CaptureIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The coach's own GO / NO-GO grid (asked for by a fitter who knows what his
+    clients' cameras do). It moves what is flagged before an analysis, not what
+    the analysis measures, and it reaches the camera and the intake page too."""
+    _require_coach(user)
+    if body.reset:
+        return await _patch_data(db, user, {"capture": None})
+    if body.tiny_px is None or body.small_px is None:
+        raise HTTPException(422, "Give both sizes, or reset to the standard bars.")
+    try:
+        grid = clean_capture(body.model_dump(exclude={"reset"}))
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    logger.info("COACH_CAPTURE_SAVED", user_id=user.id, **(grid or {}))
+    return await _patch_data(db, user, {"capture": grid})
+
+
+@router.post("/coach/others-consent")
+async def confirm_others(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """The coach confirms they have permission to upload other people's footage
+    (privacy.html section 3, terms.html section 3). Asked once, kept on the
+    profile with its date."""
+    _require_coach(user)
+    logger.info("COACH_OTHERS_CONFIRMED", user_id=user.id)
+    return await _patch_data(db, user, {"others_ok_at_ms": int(time.time() * 1000)})

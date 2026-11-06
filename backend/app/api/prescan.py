@@ -8,11 +8,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from app.api.auth import _throttle
+from app.core.db import get_session
 from app.core.net import client_ip
+from app.core.security import optional_user
+from app.models.user import User, has_coach
 
 router = APIRouter(tags=["prescan"])
 
@@ -31,6 +35,8 @@ async def prescan(
     # rider's size is judged in the frame the full analysis will see.
     video_w: int | None = Form(None),
     video_h: int | None = Form(None),
+    user: User | None = Depends(optional_user),
+    db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     _throttle(f"prescan:{client_ip(request)}", PER_IP, WINDOW_S)
     if not frames or len(frames) > MAX_FRAMES:
@@ -45,5 +51,11 @@ async def prescan(
 
     ok = all(isinstance(v, int) and 0 < v <= 10000 for v in (video_w, video_h))
     dims = (video_w, video_h) if ok else (None, None)
+    # A coach's own grid, when a coach is the one asking.
+    bars = None
+    if isinstance(user, User) and has_coach(user.tier):
+        from app.api.coach import capture_for
+
+        bars = await capture_for(db, user.id)
     return await run_in_threadpool(scan_images, images, photo=(mode == "photo"),
-                                   video_w=dims[0], video_h=dims[1])
+                                   video_w=dims[0], video_h=dims[1], thresholds=bars)

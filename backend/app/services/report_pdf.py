@@ -255,6 +255,12 @@ _EXTRA_CSS = """
 .finding h3{margin:0}
 .finding p{grid-column:1/-1;margin:0}
 .coachtext{border-left:3px solid #2F6DE0;padding:2px 0 2px 14px;margin:0 0 14px}
+.coachbrand{display:flex;align-items:center;gap:12px;margin:0 0 6px}
+.coachbrand img{height:44px;width:auto;max-width:150px;background:#fff;border-radius:4px;padding:3px}
+.coachbrand b{display:block;font:600 14pt 'IBM Plex Sans',sans-serif;color:#fff}
+.coachbrand small{display:block;font-size:8pt;color:#C5D3EA}
+.coachnote{background:#F3F5F8;border-left:3px solid #14294B;border-radius:4px;padding:10px 14px;margin:0 0 14px;break-inside:avoid}
+.coachnote p{margin:4px 0 0}
 .coachtext h3{margin:12px 0 4px}
 .coachtext h3:first-child{margin-top:0}
 .ok-list li{margin:0 0 3px}
@@ -340,11 +346,30 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         f"each against its range{', with the Kona pro field' if sport == 'bike' else ''}</div>" if rows else "",
     ])
 
+    # A coach's report carries the coach's mark where Flapp sat; Flapp moves to
+    # a line under it, as the instrument rather than the author.
+    coach_brand = meta.get("coach") or {}
+    logo = coach_brand.get("logo") or ""
+    brand = (
+        "<div class='coachbrand'>"
+        + (f"<img src='{_e(logo)}' alt=''>" if str(logo).startswith("data:image/") else "")
+        + f"<div><b>{_e(coach_brand.get('name'))}</b>"
+        + (f"<small>{_e(coach_brand.get('tagline'))}</small>" if coach_brand.get("tagline") else "")
+        + "<small>Measured with Flapp · getflapp.com</small></div></div>"
+    ) if (coach_brand.get("name") or logo) else '<div class="brand">Flapp<span class="dot">.</span></div>'
+    note = str(meta.get("coach_note") or "").strip()
+    note_by = meta.get("coach_note_by") or coach_brand.get("name") or "Your coach"
+    note_html = (
+        f"<div class='coachnote'><div class='eyebrow'>{_e(note_by)}’s notes</div>"
+        + "".join(f"<p>{_e(p)}</p>" for p in note.split("\n") if p.strip())
+        + "</div>"
+    ) if note else ""
+
     cover = f"""
 <section>
   <div class="screen"><span>Your Flapp report · use Print, then “Save as PDF”</span><button onclick="window.print()">Save as PDF</button></div>
   <div class="cover-band">
-    <div class="brand">Flapp<span class="dot">.</span></div>
+    {brand}
     <h1>Technique Report</h1>
     <div class="sub">What to fix, in what order — and the numbers behind it.</div>
     <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result))}</div>
@@ -361,6 +386,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     read = f"""
 <section class="page">
   {head("The coach's read", "What's off, and what to change first")}
+  {note_html}
   {f'<div class="coachtext">{markdown(coach)}</div>' if coach else ''}
   {("<div class='eyebrow' style='margin-top:6px'>What the measurements flagged</div>" + findings) if findings else ''}
   {'' if (coach or findings) else '<p class="lead">Nothing in this clip is outside its range. Keep filming the same way and watch the trend.</p>'}

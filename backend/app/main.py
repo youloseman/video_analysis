@@ -380,11 +380,16 @@ async def lifespan(app: FastAPI):
     # feedback") has no Stripe webhook coming to take it back. This is what
     # takes it back -- see services/tier_grants.py.
     grants = asyncio.create_task(grant_sweeper_loop())
+    # A coach's batch and intake clips, one at a time (services/coach_lane.py).
+    from app.services.coach_lane import lane_loop
+
+    lane = asyncio.create_task(lane_loop())
     try:
         yield
     finally:
         sweeper.cancel()
         grants.cancel()
+        lane.cancel()
 
 
 # Hide the interactive API docs in production (they expose the full endpoint
@@ -485,10 +490,14 @@ app.include_router(prescan_routes.router)
 from app.api import athletes as athlete_routes  # noqa: E402
 from app.api import coach as coach_routes  # noqa: E402
 from app.api import coach_link as coach_link_routes  # noqa: E402
+from app.api import coach_reports as coach_report_routes  # noqa: E402
+from app.api import coach_uploads as coach_upload_routes  # noqa: E402
 
 app.include_router(coach_routes.router)
 app.include_router(athlete_routes.router)
 app.include_router(coach_link_routes.router)
+app.include_router(coach_upload_routes.router)
+app.include_router(coach_report_routes.router)
 
 
 # --------------------------------------------------------------------------

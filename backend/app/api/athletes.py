@@ -233,6 +233,22 @@ async def _stats(db: AsyncSession, user: User) -> dict[int, tuple[int, int | Non
     return out
 
 
+def _merged(
+    a: dict[int, tuple[int, int | None, int | None]],
+    b: dict[int, tuple[int, int | None, int | None]],
+) -> dict[int, tuple[int, int | None, int | None]]:
+    """Both counts added; the date and score of whichever clip is latest."""
+    out = dict(a)
+    for aid, (n, last, score) in b.items():
+        if aid not in out:
+            out[aid] = (n, last, score)
+            continue
+        n0, last0, score0 = out[aid]
+        newer = (last or 0) >= (last0 or 0)
+        out[aid] = (n0 + n, last if newer else last0, score if newer else score0)
+    return out
+
+
 async def _linked_stats(
     db: AsyncSession, rows: list[Athlete],
 ) -> dict[int, tuple[int, int | None, int | None]]:
@@ -243,7 +259,7 @@ async def _linked_stats(
     agg = (
         await db.execute(
             select(Analysis.user_id, func.count(Analysis.id), func.max(Analysis.created_at_ms))
-            .where(Analysis.user_id.in_(list(linked)))
+            .where(Analysis.user_id.in_(list(linked)), Analysis.sport != "swim")
             .group_by(Analysis.user_id)
         )
     ).all()
@@ -278,7 +294,7 @@ async def list_athletes(
             .order_by(Athlete.archived, Athlete.name)
         )
     ).scalars().all()
-    stats = {**(await _stats(db, user)), **(await _linked_stats(db, rows))}
+    stats = _merged(await _stats(db, user), await _linked_stats(db, rows))
     live = sum(1 for a in rows if not a.archived and a.linked_user_id is None)
     return {
         "allowed": True,

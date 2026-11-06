@@ -197,8 +197,14 @@ def classify(frames: list[dict[str, float]], *, photo: bool = False) -> dict[str
 
 def capture_check(frames: list[dict[str, float]], *, sport: str | None,
                   video_w: int | None = None, video_h: int | None = None,
-                  photo: bool = False) -> dict[str, Any]:
-    """``verdict`` go / check / no_go, with ``reasons`` worst first."""
+                  photo: bool = False,
+                  thresholds: dict[str, Any] | None = None) -> dict[str, Any]:
+    """``verdict`` go / check / no_go, with ``reasons`` worst first.
+
+    ``thresholds`` is a coach's own grid (models.coach.clean_capture): the size
+    bars, and whether the chainring side is worth a word. It decides what this
+    check says before a clip is analysed and nothing about what is measured.
+    """
     from app.services.video_analysis.biomechanics.tracking_diagnostics import (
         FRAMING_SMALL_PX,
         FRAMING_TINY_PX,
@@ -208,6 +214,9 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
         FRAMING_TARGET_PX,
     )
 
+    bars = thresholds or {}
+    tiny_px = int(bars.get("tiny_px") or FRAMING_TINY_PX)
+    small_px = int(bars.get("small_px") or FRAMING_SMALL_PX)
     good = [f for f in frames if _valid(f)]
     reasons: list[dict[str, str]] = []
     out: dict[str, Any] = {"verdict": "go", "reasons": reasons}
@@ -229,14 +238,14 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
         detect_h = video_h * min(1.0, DETECT_MAX_LONG_EDGE / max(video_w, video_h))
         px = round(frac * detect_h)
         out["subject_px"] = px
-        if px < FRAMING_TINY_PX:
+        if px < tiny_px:
             reasons.append({
                 "code": "tiny", "level": "no_go",
                 "text": f"You're too small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
                         "At this size the model mixes up your legs. Move the camera closer "
                         "or zoom in so you fill most of the frame.",
             })
-        elif px < FRAMING_SMALL_PX:
+        elif px < small_px:
             reasons.append({
                 "code": "small", "level": "check",
                 "text": f"You're a bit small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
@@ -245,7 +254,7 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
 
     # Facing right in the image puts the rider's right side -- the chainring
     # side -- toward the lens (a phone's back camera does not mirror).
-    if sport == "bike":
+    if sport == "bike" and bars.get("drive_side", True):
         facing = [f["facing"] for f in good if "facing" in f]
         if facing and sum(1 for x in facing if x > 0) >= 2 / 3 * len(facing):
             reasons.append({
@@ -279,7 +288,8 @@ def _model_path() -> str | None:
 
 
 def scan_images(images: list[bytes], *, photo: bool = False,
-                video_w: int | None = None, video_h: int | None = None) -> dict[str, Any]:
+                video_w: int | None = None, video_h: int | None = None,
+                thresholds: dict[str, Any] | None = None) -> dict[str, Any]:
     """Find a pose in each small JPEG and classify them together. One
     landmarker for all of them: building the heavy model is most of the cost
     of a single detection."""
@@ -308,5 +318,5 @@ def scan_images(images: list[bytes], *, photo: bool = False,
                     feats.append(f)
     out = classify(feats, photo=photo)
     out["capture"] = capture_check(feats, sport=out["sport"], video_w=video_w,
-                                   video_h=video_h, photo=photo)
+                                   video_h=video_h, photo=photo, thresholds=thresholds)
     return out

@@ -1505,6 +1505,7 @@
         <button type="button" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg> Run</button>
       </div>
     </div>
+    <div class="profilefilter" id="progAthleteFilter"></div>
     <p class="hint" style="text-align:left;margin:-8px 0 18px">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
     <div class="again-row" id="compareCta" style="margin:0 0 18px;display:none">
       <button class="btn btn-ghost btn-sm" id="btnCompare" type="button">
@@ -1571,6 +1572,7 @@
           <input type="text" id="hdLabel" maxlength="40" placeholder="Label this session — e.g. May Race" aria-label="Session label">
           <button class="btn btn-ghost btn-sm" type="button" id="hdLabelSave">Save</button>
         </div>
+        <div class="hdcoach" id="hdCoachActions"></div>
         <button class="btn btn-primary btn-sm sharebtn" id="hShareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="hShareBtnTxt">Share result</span>
         </button>
@@ -1833,8 +1835,9 @@
         <button type="button" data-af="all" aria-pressed="true">Squad</button>
         <button type="button" data-af="archived" aria-pressed="false">Archived</button>
       </div>
-      <span class="prof-note">pick the athlete on Analyze before you run their clip — a clip filed under nobody is yours</span>
+      <span class="prof-note">open an athlete for their upload link and their code</span>
     </div>
+    <div class="ad-stays" id="athStays"><b>What stays, what goes.</b> Numbers, annotated frames, kinograms and the written notes stay with every analysis. Uploaded clips and overlay videos are kept for 60 days on this plan; a linked athlete’s, for as long as their own plan keeps them. A photo keeps its frame and numbers and has no stored report to reopen, so correct its joints while it is fresh.</div>
     <div class="prof-list" id="athList"></div>
     <div class="prof-edit hidden" id="athEdit">
       <div><label for="athName" id="athEditLbl">Name</label><input id="athName" type="text" maxlength="60" placeholder="e.g. Andrew Solomon"></div>
@@ -1844,6 +1847,39 @@
       <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="athSave">Save athlete</button><button class="btn btn-ghost btn-sm" type="button" id="athCancel">Cancel</button></div>
     </div>
     <div class="prof-limit hidden" id="athLimit"></div>
+  </section>
+
+  <!-- ============ ONE ATHLETE (Coach plan) ============ -->
+  <section id="athleteDetail" class="hidden" aria-labelledby="adName">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Squad</button></div>
+    <div class="pagehead">
+      <h2 class="sec" id="adName" tabindex="-1"></h2>
+      <span class="ph-lede" id="adLede"></span>
+    </div>
+    <div id="adBody"></div>
+  </section>
+
+  <!-- ============ BATCH (Coach plan) ============ -->
+  <section id="batch" class="hidden" aria-labelledby="batTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Squad</button></div>
+    <div class="pagehead">
+      <h2 class="sec" id="batTitle" tabindex="-1">Upload a batch</h2>
+      <span class="ph-lede">Up to 10 clips and photos. Send them and go for a coffee: videos are analysed one by one, we email you when they are done, and you can close this page.</span>
+    </div>
+    <div class="bat-defaults">
+      <div><label for="batAthlete">Whose, unless you say otherwise</label><select id="batAthlete"></select></div>
+      <div><label for="batSport">Sport</label><select id="batSport"><option value="bike">Bike</option><option value="run">Run</option></select></div>
+      <div id="batPosBox"><label for="batPos">Bike position</label><select id="batPos"><option value="triathlon">Triathlon / aero</option><option value="tt_aero">Time trial</option><option value="road_hoods">Road, hoods</option><option value="road_drops">Road, drops</option><option value="casual">Upright</option></select></div>
+    </div>
+    <label class="drop" id="batDrop" for="batFiles">
+      <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+      <b>Drop clips and photos here, or click to pick them</b>
+      <small>Side-on, whole body in frame. Each one is checked against your framing bars first.</small>
+    </label>
+    <input type="file" id="batFiles" class="visually-hidden" accept="video/*,image/*" multiple aria-label="Clips and photos">
+    <div class="prof-list bat-list" id="batList"></div>
+    <div class="bat-go"><button class="btn btn-primary" type="button" id="batGo" disabled>Send to analysis</button><span class="hint" id="batHint"></span></div>
+    <div id="batLane"></div>
   </section>
 
   <!-- ============ WHAT'S NEW (release notes) ============ -->
@@ -2051,20 +2087,20 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
   whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp',
   expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp',
-  account:'Account — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp',
+  account:'Account — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp', athletedetail:'Athlete — Flapp', batch:'Batch — Flapp',
   swim:'Swim review — Flapp', swimdetail:'Your swim clip — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
   whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin',
   expertadmin:'expertAdmin', reviewreport:'reviewReport',
-  account:'account', profiles:'profiles', athletes:'athletes', swim:'swim', swimdetail:'swim'};
+  account:'account', profiles:'profiles', athletes:'athletes', athletedetail:'athleteDetail', batch:'batch', swim:'swim', swimdetail:'swim'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes' };
-const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', profiles:'#botMore', athletes:'#botMore', pricing:'#botMore', whatsnew:'#botMore' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes', athletedetail:'#navAthletes', batch:'#navHome' };
+const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -2449,11 +2485,12 @@ function camLiveVerdict(rs){
   const pxs=seen.map(r=>r.px).filter(v=>v!=null).sort((a,b)=>a-b);
   if(pxs.length<seen.length/2) return {verdict:'no_go', code:'cut_off', text:'Head to feet in the frame — something’s cut off'};
   const px=pxs[Math.floor(pxs.length/2)];
-  if(px<CAM_LIVE.tinyPx) return {verdict:'no_go', code:'tiny', px, text:'Move closer — you’re too small to measure'};
+  const grid=(coachOn()&&COACH.capture)||{};
+  if(px<(grid.tiny_px||CAM_LIVE.tinyPx)) return {verdict:'no_go', code:'tiny', px, text:'Move closer — you’re too small to measure'};
   const bike=seen.filter(r=>r.bike).length>seen.length/2;
   const drive=bike && seen.filter(r=>r.facingRight).length>=seen.length*2/3;
-  if(px<CAM_LIVE.smallPx) return {verdict:'check', code:'small', px, text:'A bit closer for cleaner angles'};
-  if(drive) return {verdict:'check', code:'drive_side', px, text:'Chainring side — the other side reads the knee better'};
+  if(px<(grid.small_px||CAM_LIVE.smallPx)) return {verdict:'check', code:'small', px, text:'A bit closer for cleaner angles'};
+  if(drive&&grid.drive_side!==false) return {verdict:'check', code:'drive_side', px, text:'Chainring side — the other side reads the knee better'};
   return {verdict:'go', code:'go', px, text:'Good — this will measure'};
 }
 const CAM_LIVE_TAG={go:'GO', check:'CHECK', no_go:'NO-GO'};
@@ -4972,7 +5009,7 @@ const hobHist={};   // entry id -> {res, src} or null while loading / not availa
 async function renderHistoryHob(e){
   const blk=$('#hdHobBlock'); if(!blk) return;
   const hide=()=>{ blk.classList.add('hidden'); $('#hdHobPanel').innerHTML=''; };
-  if(!e||e.kind!=='video'||e.sport!=='bike'||!e.jobId||e.bilateral||e.access!=='full'||!auth){ hide(); return; }
+  if(!e||e.kind!=='video'||e.sport!=='bike'||!e.jobId||e.bilateral||e.access!=='full'||!auth||e.linkedAthleteId){ hide(); return; }
   let c=hobHist[e.id];
   if(c===undefined){
     hobHist[e.id]=null; hide();
@@ -6468,7 +6505,25 @@ function renderCoachCard(){
         <textarea id="coachCues" placeholder="Land under your hips, not in front of them&#10;Quiet upper body — let the legs do the work&#10;Heel drops a touch earlier through the bottom">${esc((COACH.cues||[]).join('\n'))}</textarea>
         <p class="hint" style="margin:4px 0 0">Offered as one-click chips when you write a note on a report. ${(COACH.cues||[]).length} of 40.</p></div>
       <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="coachSave">Save coach profile</button><span class="cnote-status" id="coachStatus"></span></div>
+    </div>
+    <div class="coachgrid">
+      <h4>Framing check · GO / NO-GO</h4>
+      <p class="hint" style="text-align:left;margin:0">How tall the rider must be in the frame the analysis sees. Your bars decide what is flagged before a clip runs, on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
+      <div class="gridrow">
+        <div><label for="capTiny">NO-GO under</label><input type="number" id="capTiny" min="200" max="600" step="10" value="${(COACH.capture&&COACH.capture.tiny_px)||300}"> <span class="hint">px</span></div>
+        <div><label for="capSmall">Warn under</label><input type="number" id="capSmall" min="200" max="800" step="10" value="${(COACH.capture&&COACH.capture.small_px)||400}"> <span class="hint">px</span></div>
+      </div>
+      <label class="switch"><input type="checkbox" id="capDrive"${!COACH.capture||COACH.capture.drive_side!==false?' checked':''}><span class="box" aria-hidden="true"></span><span>Warn about the chainring side<span class="subhint">From that side the chainring hides the ankle, so the knee reads low.</span></span></label>
+      <div class="cnote-actions"><button class="btn btn-ghost btn-sm" type="button" id="capSave">Save the bars</button>${COACH.capture?'<button class="btn btn-link btn-sm" type="button" id="capReset">Back to the standard bars</button>':''}<span class="cnote-status" id="capStatus"></span></div>
     </div>`;
+  const putCap=async body=>{
+    const r=await fetch('/me/coach/capture',{method:'PUT',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(j.detail||'Could not save the bars.',{duration:6000}); return; }
+    Object.assign(COACH,j); renderCoachCard(); toast('Framing bars saved.'); track('coach_capture_saved',{reset:!!body.reset});
+  };
+  $('#capSave').addEventListener('click',()=>putCap({tiny_px:Number($('#capTiny').value),small_px:Number($('#capSmall').value),drive_side:$('#capDrive').checked}));
+  const capR=$('#capReset'); if(capR) capR.addEventListener('click',()=>putCap({reset:true}));
   const st=$('#coachStatus');
   $('#coachSave').addEventListener('click',async()=>{
     st.textContent='Saving…';
@@ -6514,7 +6569,7 @@ function renderCoachNote(hostId, entryId){
   if(!editing&&!note){ block.classList.add('hidden'); return; }
   block.classList.remove('hidden');
   const title=block.querySelector('h3'); if(title) title.textContent=editing?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(bought?'Coach Notes':(by?`${by}’s notes`:'Coach’s notes'));
-  const eb=block.querySelector('.eyebrow'); if(eb) eb.innerHTML=`<svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> ${editing?'Your notes':bought?'A person read this':'Your notes'}`;
+  const eb=block.querySelector('.eyebrow'); if(eb) eb.innerHTML=`<svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> ${editing?'Your notes':bought?'A person read this':'From your coach'}`;
   if(!editing){
     host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}${bought?' · read your clip and this analysis':''}</div>${bio?`<div class="cnote-bio">${esc(bio)}</div>`:''}`:''}`;
     return;
@@ -6989,7 +7044,7 @@ function renderPrintable(r, entry){
     // Whose clip: the athlete on the roster when there is one, else the
     // account -- a report handed to an athlete must not carry the coach's
     // email as the person in it.
-    athlete: athleteName((entry&&entry.athleteId)||state.athleteId) || (auth&&auth.email) || '',
+    athlete: athleteName(entry?entry.athleteId:state.athleteId) || (auth&&auth.email) || '',
     confidence: (r.analysis_confidence&&r.analysis_confidence.level) || '',
     position: r.cycling_position_label || (r.cycling_position?pretty(r.cycling_position):''),
   });
@@ -7332,12 +7387,12 @@ function renderAthletes(){
     list.innerHTML=rows.map(a=>`<div class="prof-row${a.archived?' is-archived':''}" data-id="${a.id}">
       <div><div class="p-name">${esc(a.name)} <span class="p-kind">${esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||'')}</span>${a.linked?'<span class="p-kind p-linked">linked · own plan</span>':''}${a.archived?'<span class="p-kind">archived</span>':''}</div>
         <div class="p-sub">${a.note?esc(a.note):(a.email?esc(a.email):'no note yet')}</div></div>
-      <div class="p-sub">${a.last_at_ms?`last clip ${esc(fmtWhen(a.last_at_ms))}${a.last_score!=null?` · <b>${a.last_score}</b>/100`:''}`:'no clips yet'}${a.archived?'':`<br><span class="p-code">code <code>${esc(a.upload_token)}</code> <button type="button" class="p-copy" data-act="copy" title="Copy the code">copy</button></span>`}</div>
+      <div class="p-sub">${a.last_at_ms?`last clip ${esc(fmtWhen(a.last_at_ms))}${a.last_score!=null?` · <b>${a.last_score}</b>/100`:''}`:'no clips yet'}</div>
       <div class="p-n">${a.analyses!=null?a.analyses:'—'}<small>analyses</small></div>
       <div class="p-acts">
         ${a.archived
           ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
-          : `<button type="button" data-act="history">History</button><button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
+          : `<button type="button" data-act="open">Open</button><button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
       </div></div>`).join('');
   }
   const lim=$('#athLimit');
@@ -7396,16 +7451,7 @@ async function athPatch(id, body){
     const b=e.target.closest('[data-act]'); if(!b) return;
     const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
     const a=(ATHLETES.athletes||[]).find(x=>x.id===id); if(!a) return;
-    if(b.dataset.act==='copy'){
-      try{ await navigator.clipboard.writeText(a.upload_token); toast('Code copied. Your athlete enters it under Account → My coach.'); track('athlete_code_copied',{}); }
-      catch(_e){ toast('Could not copy — select the code and copy it by hand.'); }
-      return;
-    }
-    if(b.dataset.act==='history'){
-      state.histAthlete=String(id); state.histProfile=null;
-      if(a.linked && !state.linkedHist[String(id)]) await loadLinkedHist(id);
-      openHistoryView(); return;
-    }
+    if(b.dataset.act==='open'){ openAthlete(id); return; }
     if(b.dataset.act==='edit'){ showAthEdit(a); return; }
     if(b.dataset.act==='archive'){ if(await athPatch(id,{archived:true})){ await loadAthletes(); renderAthletes(); toast(`${a.name} archived. Their clips stay.`); } return; }
     if(b.dataset.act==='restore'){ if(await athPatch(id,{archived:false})){ await loadAthletes(); renderAthletes(); } return; }
@@ -7456,7 +7502,7 @@ async function loadCoachLink(){
 }
 function renderCoachLink(){
   const card=$('#acctLinkCard'), body=$('#acctLinkBody'); if(!card||!body) return;
-  if(!auth){ card.classList.add('hidden'); return; }
+  if(!auth||hasCoachPlan()){ card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
   if(!LINK.loaded){ body.innerHTML='<p class="acct-p">Loading…</p>'; if(auth) loadCoachLink(); return; }
   if(LINK.coach){
@@ -7901,6 +7947,8 @@ function prCtaHtml(card, cycle){
     return cur==='starter' ? CURRENT_BADGE : DEAD_BTN+'Free plan</button>';
   }
   if(cur && cur===card.tier) return CURRENT_BADGE+MANAGE_BTN;
+  // A coach already has everything on these cards.
+  if(cur==='coach') return DEAD_BTN+'Included in your Coach plan</button>';
   // Advertised, but this deploy has no Stripe price for it. Say so, rather
   // than rendering a button whose only possible outcome is a 503.
   const price=prPrice(card, cycle);
@@ -10701,6 +10749,7 @@ function renderAuth(){
   $('#navAthletes').classList.toggle('hidden', !hasCoachPlan());
   // The coach's home is the squad; the label says so.
   const homeLbl=document.querySelector('#navHome span'); if(homeLbl) homeLbl.textContent=hasCoachPlan()?'Squad':'My technique';
+  document.body.classList.toggle('coach-plan', hasCoachPlan());
   // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
@@ -10940,6 +10989,8 @@ async function checkAuth(){
     loadCoach();
     await loadAthletes();
     await migrateAndLoad();
+    // A coach's home draws from linked athletes' histories too.
+    if(hasCoachPlan()) loadAllLinked().then(reRenderData);
     // Signed-in users land on their dashboard ("My technique"), unless a job is
     // being restored or they've already navigated off the initial screen.
     if(document.body.dataset.state==='upload' && !location.hash.startsWith('#job=')) openDashboard();
@@ -10996,6 +11047,7 @@ function init(){
     else if(location.hash==='#account'){ clean(); authReady.then(openAccount); }
     else if(location.hash==='#profiles'){ clean(); authReady.then(openProfiles); }
     else if(location.hash==='#athletes'){ clean(); authReady.then(openAthletes); }
+    else if(location.hash==='#batch'){ clean(); authReady.then(openBatch); }
     else if(location.hash==='#compare'){ clean(); authReady.then(openCompare); }
     // The pricing block's swim band. A guest has nowhere to keep the clip, so
     // they get the sign-up form; the swim tile is on the dashboard after it.
@@ -11090,10 +11142,24 @@ async function loadLinkedHist(athleteId){
 }
 /* What History and Progress read: the coach's own cabinet, or, with a
    linked athlete chosen, that athlete's. */
-function histSource(){
-  const a=state.histAthlete;
-  if(a!=null && linkedAthlete(a)) return state.linkedHist[String(a)]||[];
-  return loadHist();
+function histSource(){ return hasCoachPlan()?coachPool():loadHist(); }
+/* A coach's own cabinet plus every linked athlete's, newest first. */
+function coachPool(){
+  const own=loadHist();
+  const seen=new Set(own.map(e=>e.id)), out=own.slice();
+  Object.values(state.linkedHist||{}).forEach(l=>(l||[]).forEach(e=>{ if(!seen.has(e.id)){ seen.add(e.id); out.push(e); } }));
+  return out.sort((a,b)=>(b.at||0)-(a.at||0));
+}
+async function loadAllLinked(){
+  await Promise.all(liveAthletes().filter(a=>a.linked).map(a=>loadLinkedHist(a.id)));
+}
+/* Clips the lane filed: the server keeps the analysis, and the app rebuilds
+   the entry it always builds (angles, trends, plan) the first time it sees one. */
+async function rehydrateServerFiled(){
+  if(!hasCoachPlan()) return;
+  const todo=(state.cloudHist||[]).filter(e=>e.serverFiled&&!e.trends).slice(0,20);
+  for(const e of todo){ await rehydrateEntry(e); }
+  if(todo.length) reRenderData();
 }
 function findEntry(id){
   if(!id) return null;
@@ -11120,7 +11186,7 @@ function renderScoreDelta(sel, kind, sport, score){
   if(!host) return;
   host.className='score-delta hidden';
   if(score==null) return;
-  const prev=loadHist().find(e=>e.sport===sport && e.kind===kind && e.score!=null);
+  const prev=loadHist().find(e=>e.sport===sport && e.kind===kind && e.score!=null && String(e.athleteId||'')===String(state.athleteId||''));
   if(!prev) return;
   const d=score-prev.score;
   const cls=d>0?'imp':d<0?'reg':'sta';
@@ -11131,14 +11197,16 @@ function renderScoreDelta(sel, kind, sport, score){
     +`<span class="sd-val">${d===0?'same as':(d>0?'+':'')+d+' vs'}</span> last ${noun}`
     +`<span class="sd-was">(was ${esc(String(prev.score))})</span>`;
 }
-function reRenderData(){ const s=document.body.dataset.state; if(s==='history') renderHistList(); else if(s==='trends') renderProgress(); }
+function reRenderData(){ const s=document.body.dataset.state; if(s==='history') renderHistList(); else if(s==='trends') renderProgress(); else if(s==='dashboard'&&hasCoachPlan()&&!state.squadMe) renderSquadHome(); else if(s==='athletedetail'&&state.athleteOpen!=null) openAthleteRefresh(); }
+function openAthleteRefresh(){ const was=_restoringRoute; _restoringRoute=true; try{ openAthlete(state.athleteOpen); } finally{ _restoringRoute=was; } }
 async function refreshCloud(){
   if(!auth){ state.cloudHist=null; return; }
   try{ const r=await fetch('/me/analyses',{headers:authHeaders()}); if(r.ok){
     const all=await r.json();
     state.cloudHist=all.filter(e=>!isSwim(e));
     state.swimHist=all.filter(isSwim);
-    reRenderData(); } }catch(e){}
+    reRenderData();
+    rehydrateServerFiled(); } }catch(e){}
 }
 async function migrateAndLoad(){
   if(!auth) return;
@@ -11390,6 +11458,11 @@ function entryFromResult(kind,res,base){
     const b=base||{}, isV=kind==='video', sc=res.score||{};
     const e={ id:b.id, at:b.at||Date.now(), kind, jobId:isV?(b.jobId||null):null,
       profileId:b.profileId||null,
+      // Whose clip (a coach's roster), and what a person wrote on it: a rebuilt
+      // entry must not lose either, or the server saves over them.
+      ...(b.athleteId!=null?{athleteId:b.athleteId}:{}),
+      ...(b.linkedAthleteId?{linkedAthleteId:b.linkedAthleteId}:{}),
+      ...Object.fromEntries(['label','coachNote','coachName','coachBio','coachOrderId','intakeConsentAt'].filter(k=>b[k]!=null).map(k=>[k,b[k]])),
       sport:res.sport_type||res.sport,
       position:res.cycling_position||null, cameraSide:res.camera_side||null,
       // The session, compactly: enough for the cabinet to say this was a
@@ -11449,8 +11522,11 @@ function saveToHistory(kind,res,reuseId){
     // `reuseId`: overwrite that entry instead of adding one -- a photo
     // re-measured with the athlete's joint corrections is the same analysis,
     // not a new one. The cloud upsert is keyed on the id already.
-    const e=entryFromResult(kind,res,{ id:reuseId||('h'+Date.now()), at:Date.now(),
-      jobId:state.jobId||null, profileId:state.profileId||null, athleteId:state.athleteId||null });
+    // Re-measuring an entry keeps its filing, its label and any note on it.
+    const prior=reuseId?findEntry(reuseId):null;
+    const e=entryFromResult(kind,res,{ ...(prior||{}), id:reuseId||('h'+Date.now()), at:Date.now(),
+      jobId:state.jobId||null, profileId:state.profileId||(prior&&prior.profileId)||null,
+      athleteId:prior?(prior.athleteId??null):(state.athleteId?Number(state.athleteId):null) });
     if(auth){
       state.cloudHist=[e,...(state.cloudHist||[]).filter(x=>x.id!==e.id)];
       fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)}).catch(()=>{});
@@ -11503,6 +11579,14 @@ async function rehydrateEntry(e){
     // across so the rebuilt entry is not suddenly ungated-looking to the code
     // that just decided it was gated.
     fresh.access=e.access; fresh.sellable=e.sellable;
+    // Somebody else's row, read through the coach link: rebuilt for this
+    // reading, and never saved. A POST here would file a copy of the athlete's
+    // report in the coach's own account, where unlinking could not reach it.
+    if(e.linkedAthleteId){
+      const k=String(e.linkedAthleteId);
+      state.linkedHist[k]=(state.linkedHist[k]||[]).map(x=>x.id===fresh.id?fresh:x);
+      return fresh;
+    }
     state.cloudHist=(state.cloudHist||[]).map(x=>x.id===fresh.id?fresh:x);
     // Persist it, so the cards, the dashboard and the trend lines stop showing
     // the teaser too. A re-save that omits the keyframe cannot wipe the stored
@@ -11566,7 +11650,7 @@ let kfObserver=null;
 /* `node` is either the thumb container or the <img> itself. */
 function fillKeyframe(node){
   const id=node.dataset.kf; if(!id) return;
-  const e=loadHist().find(x=>x.id===id); if(!e) return;
+  const e=findEntry(id); if(!e) return;
   fetchKeyframe(e).then(k=>{
     node.classList.remove('kf-load');
     const img=node.tagName==='IMG'?node:node.querySelector('img'); if(!img) return;
@@ -11607,20 +11691,21 @@ function applyProfileFilter(list){
 }
 /* The roster chips above History: one per athlete with clips, plus "Mine"
    for the coach's own. Hidden unless there is a roster to filter by. */
-function renderAthleteFilter(hostId, list){
+function renderAthleteFilter(hostId, list, opts){
   const host=$('#'+hostId); if(!host) return;
+  const progress=!!(opts&&opts.progress);
   const own=loadHist();
   const counts={own:0};
   (own||[]).forEach(e=>{ if(!e) return; if(e.athleteId==null) counts.own++; else counts[e.athleteId]=(counts[e.athleteId]||0)+1; });
   // A linked athlete's clips are theirs, counted by the roster listing.
   (ATHLETES.athletes||[]).forEach(a=>{ if(a.linked&&!a.archived&&a.analyses) counts[a.id]=a.analyses; });
   const named=(ATHLETES.athletes||[]).filter(a=>counts[a.id]);
-  if(!hasCoachPlan() || !named.length){ host.classList.add('hidden'); host.innerHTML=''; if(state.histAthlete!=null){ state.histAthlete=null; } return; }
+  if(!hasCoachPlan() || !named.length){ host.classList.add('hidden'); host.innerHTML=''; return; }
   const chip=(val,label,n)=>`<button type="button" data-af="${val==null?'':val}"
     aria-pressed="${String(state.histAthlete??'')===String(val??'')}">${esc(label)} · ${n}</button>`;
-  host.innerHTML=chip(null,'Everyone',(own||[]).length)
+  host.innerHTML=(progress?chip(null,'Mine',counts.own):chip(null,'Everyone',histSource().length))
     + named.map(a=>chip(a.id,a.name,counts[a.id])).join('')
-    + (counts.own?chip(0,'Mine',counts.own):'');
+    + (!progress&&counts.own?chip(0,'Mine',counts.own):'');
   host.classList.remove('hidden');
   host.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     const v=b.dataset.af;
@@ -11698,7 +11783,7 @@ function renderHistList(){
   // target for it; the delete is a sibling, reachable on its own.
   w.innerHTML=swims+a.map(e=>`<div class="hcard" data-id="${e.id}">
     <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore ${e.score==null?'':'sc-'+scoreStatus(e.score)}">${e.score==null?'—':e.score}</span>
-      <button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button></div>
+      ${e.linkedAthleteId?'':`<button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button>`}</div>
     <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
       <div class="hsub">${e.label?'<b>'+esc(e.label)+'</b> · ':''}${fmtWhen(e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
   </div>`).join('');
@@ -11755,7 +11840,10 @@ function renderHistoryDetail(e){
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderCoachNote('hdCoachNote', e.id);
   renderCompareNext('cmpNextH', e.id, 'history');
-  renderNotesOffer('hdNotesOffer', e.access==='full'||!e.locked ? e.id : null);
+  renderNotesOffer('hdNotesOffer', !e.linkedAthleteId&&(e.access==='full'||!e.locked) ? e.id : null);
+  renderCoachActions(e);
+  const hb=$('#hBack'); if(hb) hb.lastChild.textContent=(hasCoachPlan()&&e.athleteId!=null&&athleteName(e.athleteId))?` Back to ${athleteName(e.athleteId)}`:' Back to history';
+  const hs=$('#hShareBtn'); if(hs) hs.classList.toggle('hidden', !!e.linkedAthleteId);
   renderHistoryPlan(e);
   renderHistoryAngles(e);
   renderHistoryHob(e);
@@ -11871,6 +11959,12 @@ function renderHistoryBilateral(e){
 function renderHistoryUpsell(e){
   const host=$('#hdUpsellHost'); if(!host) return;
   const gated = e && e.access!=='full' && entryLooksGated(e);
+  // Their plan opens this, not the coach's card: nothing here is for sale to you.
+  if(e&&e.linkedAthleteId){
+    host.innerHTML=gated?`<p class="hint" style="text-align:left">${esc(athleteName(e.athleteId)||'Your athlete')} is on the free plan, so you see what they see. The full report opens when they are on a paid plan.</p>`:'';
+    host.classList.toggle('hidden', !gated);
+    return;
+  }
   if(!gated){
     // The report they paid $4 for: where the button was, what the $4 now buys next.
     const c=auth&&auth.unlock_credit;
@@ -12043,6 +12137,7 @@ function renderDashPlan(all){
   </div>`;
 }
 function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTitle'}); }
+Object.assign(ROUTED_STATES,{athletes:()=>openAthletes(), athletedetail:r=>openAthlete(r.id), batch:()=>openBatch()});
 $('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
 $('#navAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
 $('#navPricing').addEventListener('click',e=>{ e.preventDefault(); openPricing(); });
@@ -12067,15 +12162,21 @@ $('#profileSave').addEventListener('click',async()=>{
   await createProfile(name);
 });
 $('#profileCancel').addEventListener('click',()=>{ showProfileInput(false); renderProfileField(); });
-$('#athleteSel').addEventListener('change',e=>{
-  state.athleteId=e.target.value||null;
+$('#athleteSel').addEventListener('change',async e=>{
+  const sel=e.target, chosen=sel.value||null;
+  if(chosen&&!await confirmOthers()){ sel.value=state.athleteId||''; return; }
+  state.athleteId=chosen;
   // Their bikes, not the coach's: the setup picker follows the person.
   state.profileId=null;
   renderProfileField();
   if(typeof renderCrankField==='function') renderCrankField();
 });
 $('#profileNew').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#profileSave').click(); } });
-$('#hBack').addEventListener('click',openHistoryView);
+$('#hBack').addEventListener('click',()=>{
+  const e=state.histOpen;
+  if(hasCoachPlan()&&e&&e.athleteId!=null&&athleteName(e.athleteId)){ openAthlete(e.athleteId); return; }
+  openHistoryView();
+});
 $('#swBack').addEventListener('click',()=>{ if(document.body.dataset.state==='swimdetail') openHistoryView(); else reset(); });
 // Pricing: billing toggle + Expert Review add-on
 // The block's period toggle is inline in its markup; this only remembers it.
@@ -12190,6 +12291,7 @@ function extractTrends(kind,res,sport){
       put('knee',s.knee_at_bdc,[138,145]); put('hip',s.hip_at_tdc!=null?s.hip_at_tdc:s.hip_angle_avg);
       put('trunk',s.trunk_angle_avg); put('elbow',s.elbow_angle_avg);
       put('shoulder',s.shoulder_angle_avg); put('pelvic_ratio',s.pelvic_ratio,[2,4]);
+      put('hip_over',(res.hip_over_bb||s.hip_over_bb||{}).angle_deg);
       putVel(s);
     } else {
       put('cadence',s.cadence_spm,[170,190]);
@@ -12501,8 +12603,12 @@ const PROGRESS_TEASER_ITEMS=['Every joint & gait metric tracked','Optimal-range 
 function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
+  // One person's trend: a line through a whole squad describes nobody. A coach
+  // with nobody chosen is looking at their own.
+  renderAthleteFilter('progAthleteFilter', histSource(), {progress:true});
+  const pool=(hasCoachPlan()&&state.histAthlete==null)?histSource().filter(e=>e.athleteId==null):histSource();
   const all=applyProfileFilter(
-    histSource().filter(e=>e.sport===sport && e.trends)
+    pool.filter(e=>e.sport===sport && e.trends)
   ).slice().reverse();   // oldest -> newest
   const grid=$('#progGrid'), teaser=$('#progTeaser');
   if(teaser) teaser.innerHTML='';
@@ -13037,7 +13143,8 @@ function renderDashboard(){
   renderDashSwim();
   const dd=$('#dashDate');
   if(dd){ try{ dd.textContent=new Date().toLocaleDateString(UI_LOCALE,{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dd.textContent=''; } }
-  const all=loadHist();
+  // On a coach's account, the coach's own clips: their athletes have the squad.
+  const all=loadHist().filter(e=>e.athleteId==null);
   const nameEl=auth&&auth.email?auth.email.split('@')[0]:null;
   // First-run / empty state: the welcome, and the widgets hidden with it.
   $('#dashboard').classList.toggle('dash-empty', !all.length);
@@ -13090,32 +13197,61 @@ function renderDashSwim(){
   });
 }
 /* ============================================================
-   Squad — the coach's home. The athlete opens the app asking "how am I?";
+   Squad -- the coach's home. The athlete opens the app asking "how am I?";
    the coach asks "who needs attention, and what changed?". Same section,
-   same design system, a different composition: a strip of the coach's
-   numbers, then one row per athlete with the metrics that matter for their
-   sport against the band, the change since their last clip, and the score
-   last and grey (John Bye distrusts the score; the angles he can check).
-   A linked athlete's rows are theirs, fetched through the coach link.
+   same design system, a different composition: the coach's numbers, then one
+   row per athlete with the readings that matter for their sport against the
+   range, the change since their last clip, and the score last and grey (a coach
+   checks the angles; the score is the summary). A linked athlete's rows are
+   theirs, fetched through the coach link.
    ============================================================ */
 const SQUAD_METRICS={
-  bike:[{key:'knee',label:'Knee BDC',unit:'°'},{key:'trunk',label:'Trunk',unit:'°'},{key:'hip',label:'Hip TDC',unit:'°'}],
+  bike:[{key:'knee',label:'Knee BDC',unit:'°'},{key:'trunk',label:'Trunk',unit:'°'},{key:'hip',label:'Hip TDC',unit:'°'},{key:'hip_over',label:'Hip over crank',unit:'°'}],
   run:[{key:'cadence',label:'Cadence',unit:''},{key:'overstride',label:'Overstride',unit:'×'},{key:'trunk_lean',label:'Lean',unit:'°'}],
 };
-state.squadMe=false;
+state.squadMe=false; state.squadPick=[]; state.squadKona='trunk';
 function squadEntriesFor(a){
-  if(a.linked) return (state.linkedHist[String(a.id)]||[]).slice().sort((x,y)=>(y.at||0)-(x.at||0));
-  return loadHist().filter(e=>e&&String(e.athleteId)===String(a.id)).slice().sort((x,y)=>(y.at||0)-(x.at||0));
+  return coachPool().filter(e=>e&&String(e.athleteId)===String(a.id));
 }
-function squadCell(e, prev, m){
-  const t=(e&&e.trends)||{}, v=t[m.key];
-  if(v==null) return `<td class="sq-na">—</td>`;
-  const opt=((e.trendOpt||{})[m.key]);
-  const inBand=!opt || (v>=opt[0]&&v<=opt[1]);
-  const pv=prev&&prev.trends?prev.trends[m.key]:null;
-  const d=pv!=null?v-pv:null;
-  const dTxt=d==null||Math.abs(d)<0.05?'':`<small class="sq-d">${d>0?'▲':'▼'}${Math.abs(d).toFixed(m.key==='overstride'?2:0)}</small>`;
-  return `<td class="${inBand?'sq-ok':'sq-off'}" title="${opt?`band ${opt[0]}–${opt[1]}${m.unit}`:'no band for this one'}">${v}${m.unit}${dTxt}</td>`;
+function squadChips(e, prev){
+  const ms=SQUAD_METRICS[e.sport]||SQUAD_METRICS.bike, t=e.trends||{};
+  const chips=ms.filter(m=>t[m.key]!=null).map(m=>{
+    const v=t[m.key], opt=(e.trendOpt||{})[m.key];
+    const off=opt&&(v<opt[0]||v>opt[1]);
+    const pv=prev&&prev.trends?prev.trends[m.key]:null;
+    const d=pv!=null?v-pv:null;
+    const dTxt=d==null||Math.abs(d)<0.05?'':`<small class="sq-d">${d>0?'▲':'▼'}${Math.abs(d).toFixed(m.key==='overstride'?2:0)}</small>`;
+    return `<span class="sq-chip${off?' sq-off':''}" title="${opt?`range ${opt[0]}–${opt[1]}${m.unit}`:'no range for this one'}"><small>${esc(m.label)}</small><b>${v}${m.unit}</b>${dTxt}</span>`;
+  }).join('');
+  return chips||'<span class="sq-na">numbers appear when the report opens</span>';
+}
+function squadOutOfRange(e){
+  if(!e||!e.trends) return false;
+  return (SQUAD_METRICS[e.sport]||[]).some(m=>{ const v=e.trends[m.key], o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1]); });
+}
+function renderSquadKona(rows){
+  const host=$('#sqKona'); if(!host) return;
+  const aero=rows.map(r=>({a:r.a,e:r.es.find(x=>x.sport==='bike'&&x.trends&&(x.position==='tt_aero'||x.position==='triathlon'))})).filter(r=>r.e);
+  if(!aero.length){ host.innerHTML=''; return; }
+  const draw=field=>{
+    const row=KONA_ROWS.find(k=>k[0]===state.squadKona)||KONA_ROWS[0];
+    const [k,fk,label,lowWord,highWord]=row, f=field.metrics[fk];
+    if(!f){ host.innerHTML=''; return; }
+    const lines=aero.filter(r=>r.e.trends[k]!=null).map(r=>{
+      const v=r.e.trends[k];
+      const where=v>=f.q1&&v<=f.q3?'in the middle half':v>=f.lo&&v<=f.hi?`inside the field, ${v<f.median?lowWord:highWord} than most`:`outside the field, ${v<f.lo?lowWord:highWord} than every pro`;
+      return `<li title="${esc(r.a.name)}: ${num(v,0)}°, ${esc(where)}"><div class="ks-top"><span>${esc(r.a.name)}</span><b>${num(v,0)}°</b></div>${konaStrip(v,f)}<p class="ks-cap">${esc(where)}</p></li>`;
+    }).join('');
+    host.innerHTML=`<div class="dcard dkona sq-konacard">
+      <div class="dcard-head"><h2>Against the Kona pros</h2><div class="seg seg-sm" role="group" aria-label="Which reading" id="sqKonaSeg">${KONA_ROWS.map(x=>`<button type="button" data-k="${x[0]}" aria-pressed="${x[0]===k}">${esc(x[2].replace(' angle',''))}</button>`).join('')}</div></div>
+      <ul class="ks-legend" aria-hidden="true"><li><i class="ks-l-range"></i>All ${field.n} pros</li><li><i class="ks-l-mid"></i>Middle half</li><li><i class="ks-l-med"></i>Median ${num(f.median,0)}°</li><li><i class="ks-l-you"></i>Your athlete</li></ul>
+      <ul class="ks-rows">${lines||'<li class="sq-na">No aero clip with this reading yet.</li>'}</ul>
+      <p class="dkpi-note">Each athlete's latest aero clip. ${field.n} professional positions at the 2026 Ironman World Championship: a field to place someone in, not a target.</p></div>`;
+    host.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{ state.squadKona=b.dataset.k; draw(field); }));
+  };
+  if(state.konaField) return draw(state.konaField);
+  fetch('/me/kona-field',{headers:authHeaders()}).then(r=>r.ok?r.json():null)
+    .then(f=>{ if(f&&f.metrics){ state.konaField=f; draw(f); } }).catch(()=>{});
 }
 function renderSquadHome(){
   const host=$('#squadHome'), sec=$('#dashboard'); if(!host||!sec) return;
@@ -13123,73 +13259,362 @@ function renderSquadHome(){
   const t=$('#dashTitle'); if(t) t.textContent='Squad';
   const dd=$('#dashDate'); if(dd){ try{ dd.textContent=new Date().toLocaleDateString(UI_LOCALE,{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dd.textContent=''; } }
   const squad=liveAthletes();
-  // Linked athletes' histories, once: fetched together, then drawn again.
-  const missing=squad.filter(a=>a.linked&&!state.linkedHist[String(a.id)]);
-  if(missing.length&&!state.squadLoading){
-    state.squadLoading=true;
-    Promise.all(missing.map(a=>loadLinkedHist(a.id))).then(()=>{ state.squadLoading=false; if(document.body.dataset.state==='dashboard'&&!state.squadMe) renderSquadHome(); });
-  }
   if(!squad.length){
     host.innerHTML=`<div class="sq-empty">
       <h2>Your squad starts here</h2>
       <ol class="dk-fix">
         <li><b>Add your athletes.</b> A name is enough; email and a note are optional.</li>
-        <li><b>Run their first clip</b> — pick the athlete on Analyze — or hand them their code so they link their own account to you.</li>
-        <li><b>Compare them here:</b> every athlete on one table, against the band and against their last clip.</li>
+        <li><b>Get their clips in.</b> Run one on Analyze, drop a batch, send them their link, or have them link their own account with their code.</li>
+        <li><b>Compare them here:</b> everyone on one table, against the range, against their last clip and against the Kona pros.</li>
       </ol>
-      <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes()">Add an athlete</button><button class="btn btn-ghost" type="button" data-analyze="bike">Analyze a clip</button></div>
+      <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes()">Add an athlete</button></div>
       <p class="hint" style="text-align:left;margin-top:14px">Your own clips live under <a href="#" onclick="event.preventDefault();state.squadMe=true;openDashboard()">My technique</a>.</p>
     </div>`;
     return;
   }
   const now=Date.now(), month=30*86400000;
-  const rows=squad.map(a=>{ const es=squadEntriesFor(a); return {a, es, last:es[0]||null, prev:es[1]||null}; });
+  const rows=squad.map(a=>{ const es=squadEntriesFor(a); return {a, es, last:es[0]||null, prev:es.find((x,i)=>i>0&&es[0]&&x.sport===es[0].sport)||null}; });
   const clips30=rows.reduce((n,r)=>n+r.es.filter(e=>now-(e.at||0)<month).length,0);
   const quiet=rows.filter(r=>!r.last||now-(r.last.at||0)>=month);
-  const offBand=rows.filter(r=>{ const e=r.last; if(!e||!e.trends) return false; const ms=SQUAD_METRICS[e.sport]||[]; return ms.some(m=>{ const v=e.trends[m.key], o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1]); }); });
+  const off=rows.filter(r=>squadOutOfRange(r.last));
+  const lapsed=rows.filter(r=>r.a.linked&&r.last&&r.last.linkedAthleteId&&r.last.access!=='full');
+  const lane=state.laneItems||[];
+  const refilm=lane.filter(i=>i.status==='no_go');
+  const inLine=lane.filter(i=>['queued','scanning','running'].includes(i.status));
   const kpi=(n,l)=>`<div class="sq-kpi"><b>${n}</b><span>${l}</span></div>`;
+  const att=(id,txt)=>`<li><button type="button" class="sq-attbtn" data-open="${id}">${txt}</button></li>`;
   const attention=[
-    ...quiet.map(r=>`<li>${esc(r.a.name)} — ${r.last?'no clip for '+Math.round((now-r.last.at)/86400000)+' days':'no clip yet'}</li>`),
-    ...offBand.map(r=>`<li>${esc(r.a.name)} — outside the band in the last ${r.last.sport==='run'?'run':'ride'}</li>`),
+    ...refilm.slice(0,3).map(i=>`<li><button type="button" class="sq-attbtn" data-batch="1">${esc(i.athlete_name||i.filename||'A clip')}: clip to film again</button></li>`),
+    ...off.map(r=>att(r.a.id,`${esc(r.a.name)}: outside the range in the last ${r.last.sport==='run'?'run':'ride'}`)),
+    ...lapsed.map(r=>att(r.a.id,`${esc(r.a.name)}: on the free plan, so you see what they see`)),
+    ...quiet.map(r=>att(r.a.id,`${esc(r.a.name)}: ${r.last?'no clip for '+Math.round((now-r.last.at)/86400000)+' days':'no clip yet'}`)),
   ].slice(0,5);
   const row=r=>{
-    const e=r.last, sport=e?e.sport:(r.a.sport==='run'?'run':'bike');
-    const ms=SQUAD_METRICS[sport]||SQUAD_METRICS.bike;
-    const cells=e?ms.map(m=>squadCell(e,r.prev&&r.prev.sport===e.sport?r.prev:null,m)).join(''):`<td class="sq-na" colspan="3">no clip yet</td>`;
+    const e=r.last, picked=state.squadPick.includes(String(r.a.id));
     return `<tr data-id="${r.a.id}">
-      <th scope="row"><span class="sq-name">${esc(r.a.name)}</span>${r.a.linked?'<span class="p-kind p-linked">linked</span>':''}<small>${esc(ATHLETE_SPORT_LABEL[r.a.sport]||'')}${r.a.note?' · '+esc(r.a.note):''}</small></th>
+      <td class="sq-pick"><input type="checkbox" data-pick="${r.a.id}" aria-label="Compare ${esc(r.a.name)}"${picked?' checked':''}${e&&e.trends?'':' disabled'}></td>
+      <td class="sq-thumb">${e?`<div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>`:''}</td>
+      <th scope="row"><button type="button" class="sq-name" data-open="${r.a.id}">${esc(r.a.name)}</button>${r.a.linked?'<span class="p-kind p-linked">linked</span>':''}<small>${esc(ATHLETE_SPORT_LABEL[r.a.sport]||'')}${r.a.note?' · '+esc(r.a.note):''}</small></th>
       <td class="sq-last">${e?`${esc(fmtWhen(e.at))}<small>${e.sport==='run'?'run':'ride'}${e.label?' · '+esc(e.label):''}</small>`:'—'}</td>
-      ${cells}
-      <td class="sq-score">${e&&e.score!=null?e.score:'—'}</td>
-      <td class="sq-open"><button type="button" class="btn btn-ghost btn-sm" data-open="${r.a.id}">Open</button></td></tr>`;
+      <td class="sq-chips">${e?squadChips(e,r.prev):'<span class="sq-na">no clip yet</span>'}</td>
+      <td class="sq-score">${e&&e.score!=null?e.score:'—'}</td></tr>`;
   };
+  const feed=coachPool().filter(e=>e.athleteId!=null).slice(0,8);
   host.innerHTML=`
-    <div class="sq-kpis">${kpi(squad.length,'athletes')}${kpi(clips30,'clips · 30 days')}${kpi(quiet.length,'quiet 30+ days')}${kpi(offBand.length,'outside the band')}</div>
+    <div class="sq-toolbar"><button class="btn btn-ghost btn-sm" type="button" id="sqBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload a batch</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAthletes()">Manage athletes</button><button class="btn btn-ghost btn-sm" type="button" id="sqCompare" disabled>Compare two</button></div>
+    <div class="sq-kpis">${kpi(squad.length,'athletes')}${kpi(clips30,'clips · 30 days')}${kpi(inLine.length,'in the lane')}${kpi(refilm.length,'to film again')}</div>
     ${attention.length?`<div class="sq-att"><h2>Needs attention</h2><ul>${attention.join('')}</ul></div>`:`<div class="sq-att sq-att-ok">Everyone is filmed and in range.</div>`}
     <div class="sq-tablewrap"><table class="sq-table">
-      <thead><tr><th scope="col">Athlete</th><th scope="col">Last clip</th><th scope="col" colspan="3">Key angles · against the band · change since last clip</th><th scope="col" class="sq-score">Score</th><th scope="col"></th></tr></thead>
+      <thead><tr><th scope="col"></th><th scope="col"></th><th scope="col">Athlete</th><th scope="col">Last clip</th><th scope="col">Key readings · change since their last clip</th><th scope="col" class="sq-score">Score</th></tr></thead>
       <tbody>${rows.map(row).join('')}</tbody></table></div>
-    <p class="hint sq-foot" style="text-align:left">Angles lead; the score is the summary, not the verdict. Bands and their sources are in the <a href="/academy">Academy</a>. ${state.squadLoading?'Loading linked athletes…':''}</p>
-    <div class="sq-me"><button class="btn btn-ghost btn-sm" type="button" id="sqMe">My technique →</button><span class="subhint">your own clips, as before</span></div>`;
-  host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',async()=>{
-    const id=b.dataset.open, a=linkedAthlete(id);
-    state.histAthlete=String(id); state.histProfile=null;
-    if(a&&!state.linkedHist[String(id)]) await loadLinkedHist(id);
-    openHistoryView();
+    <p class="hint sq-foot" style="text-align:left">Red is outside the range the report uses; plain has no range or is inside it. Tick two to compare them side by side.</p>
+    <div id="sqKona"></div>
+    ${feed.length?`<div class="sq-feed"><h2>Latest clips</h2><div class="sq-feedgrid">${feed.map(e=>`<button type="button" class="sq-clip" data-entry="${esc(e.id)}"><span class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</span><span class="sq-cliptxt"><b>${esc(athleteName(e.athleteId)||'')}</b><small>${e.sport==='run'?'Run':'Bike'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.at))}${e.label?' · '+esc(e.label):''}</small></span></button>`).join('')}</div></div>`:''}
+    <div class="sq-me"><button class="btn btn-ghost btn-sm" type="button" id="sqMe">My technique</button><span class="subhint">your own clips, as before</span></div>`;
+  host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openAthlete(b.dataset.open)));
+  host.querySelectorAll('[data-batch]').forEach(b=>b.addEventListener('click',openBatch));
+  host.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openHistory(b.dataset.entry)));
+  const syncPick=()=>{ const c=$('#sqCompare'); if(c){ c.disabled=state.squadPick.length!==2; c.textContent=state.squadPick.length===2?'Compare these two':'Compare two'; } };
+  host.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('change',()=>{
+    const id=b.dataset.pick;
+    state.squadPick=state.squadPick.filter(x=>x!==id);
+    if(b.checked) state.squadPick.push(id);
+    if(state.squadPick.length>2){ const out=state.squadPick.shift(); const o=host.querySelector(`[data-pick="${out}"]`); if(o) o.checked=false; }
+    syncPick();
   }));
-  const me=$('#sqMe'); if(me) me.addEventListener('click',()=>{ state.squadMe=true; openDashboard(); });
-  track('squad_opened',{athletes:squad.length});
+  syncPick();
+  $('#sqCompare').addEventListener('click',()=>{
+    const [p,q]=state.squadPick.map(id=>rows.find(r=>String(r.a.id)===id));
+    if(!p||!q||!p.last||!q.last) return;
+    // Same sport, or there is nothing to line up.
+    const b=q.last, a=p.es.find(e=>e.sport===b.sport&&e.trends);
+    if(!a){ toast(`${p.a.name} has no ${b.sport==='run'?'run':'ride'} to set beside this one.`); return; }
+    track('squad_compared',{});
+    openCompare(a.id,b.id,'squad');
+  });
+  $('#sqBatch').addEventListener('click',openBatch);
+  $('#sqMe').addEventListener('click',()=>{ state.squadMe=true; openDashboard(); });
+  observeKeyframes(host);
+  renderSquadKona(rows);
+  if(!state.squadSeen){ state.squadSeen=true; track('squad_opened',{athletes:squad.length}); loadLane().then(()=>{ if(document.body.dataset.state==='dashboard'&&!state.squadMe) renderSquadHome(); }); }
+}
+/* ============================================================
+   One athlete: the series over time. A coach asked for May Race, June Race,
+   Current Setup in one place, and was faking it with equipment profiles.
+   ============================================================ */
+function athleteLink(a){ return location.origin+'/a/'+a.upload_token; }
+async function copyText(text, done){
+  try{ await navigator.clipboard.writeText(text); toast(done); }
+  catch(_e){ toast('Could not copy. Select it and copy by hand.'); }
+}
+function openAthlete(id){
+  const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(id));
+  if(!a){ openAthletes(); return; }
+  state.athleteOpen=a.id;
+  const list=$('#adBody'); if(!list) return;
+  const draw=()=>{
+    const es=squadEntriesFor(a);
+    const notes=es.filter(e=>e.coachNote);
+    const mine=(PROFILES.profiles||[]).filter(p=>String(p.athlete_id)===String(a.id)&&!p.archived);
+    $('#adName').textContent=a.name;
+    $('#adLede').textContent=[ATHLETE_SPORT_LABEL[a.sport],a.note,a.email].filter(Boolean).join(' · ');
+    const ready=es.filter(e=>e.trends);
+    list.innerHTML=`
+      <div class="sq-toolbar">
+        <button class="btn btn-primary btn-sm" type="button" id="adAnalyze"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip for ${esc(a.name)}</button>
+        ${a.linked?'':`<button class="btn btn-ghost btn-sm" type="button" id="adLink">Copy their upload link</button>`}
+        <button class="btn btn-ghost btn-sm" type="button" id="adCode">Copy their link code</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="adProgress"${ready.length<2?' disabled title="Two clips make a trend"':''}>Progress charts</button>
+      </div>
+      <p class="hint" style="text-align:left">${a.linked?`${esc(a.name)} linked their own account. You see what their plan shows them; clips they film reach you by themselves.`:`The upload link needs no account: they send a clip and it lands here. The code links their own Flapp account to you instead.`}</p>
+      ${mine.length?`<p class="hint" style="text-align:left">Setups: ${mine.map(p=>esc(p.name)).join(' · ')}</p>`:''}
+      <div class="sq-tablewrap"><table class="sq-table">
+        <thead><tr><th scope="col"></th><th scope="col">Session</th><th scope="col">Key readings · change since the one before</th><th scope="col" class="sq-score">Score</th></tr></thead>
+        <tbody>${es.map((e,i)=>{ const prev=es.slice(i+1).find(x=>x.sport===e.sport); return `<tr>
+          <td class="sq-thumb"><div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div></td>
+          <th scope="row"><button type="button" class="sq-name" data-entry="${esc(e.id)}">${e.label?esc(e.label):esc(fmtWhen(e.at))}</button><small>${e.label?esc(fmtWhen(e.at))+' · ':''}${e.sport==='run'?'run':'ride'}${e.kind==='photo'?' photo':''}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</small></th>
+          <td class="sq-chips">${squadChips(e,prev)}</td>
+          <td class="sq-score">${e.score!=null?e.score:'—'}</td></tr>`; }).join('')||`<tr><td colspan="4" class="sq-na">No clips yet.</td></tr>`}</tbody></table></div>
+      ${notes.length?`<div class="sq-feed"><h2>Your notes</h2><ul class="ad-notes">${notes.map(e=>`<li><button type="button" class="sq-attbtn" data-entry="${esc(e.id)}">${esc(e.label||fmtWhen(e.at))}</button><div class="cnote-read">${esc(e.coachNote)}</div></li>`).join('')}</ul></div>`:''}`;
+    list.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openHistory(b.dataset.entry)));
+    $('#adAnalyze').addEventListener('click',()=>{ state.athleteId=String(a.id); state.profileId=null; if(a.sport==='run'||a.sport==='bike') startSportAnalysis(a.sport); else reset(); renderProfileField(); });
+    const lk=$('#adLink'); if(lk) lk.addEventListener('click',()=>{ track('athlete_link_copied',{}); copyText(athleteLink(a),'Link copied. It needs no account.'); });
+    $('#adCode').addEventListener('click',()=>{ track('athlete_code_copied',{}); copyText(a.upload_token,'Code copied. They enter it under Account, My coach.'); });
+    $('#adProgress').addEventListener('click',()=>{ state.histAthlete=String(a.id); state.histProfile=null; const r=ready[0]; if(r) state.progressSport=r.sport; openProgress(); });
+    observeKeyframes(list);
+  };
+  draw();
+  setState('athletedetail',{focus:'#adName',route:{id:a.id}});
+  if(a.linked) loadLinkedHist(a.id).then(()=>{ if(document.body.dataset.state==='athletedetail'&&state.athleteOpen===a.id) draw(); });
+}
+/* ============================================================
+   A batch: up to ten clips and photos, and go for a coffee.
+
+   One request per file, so a bad connection loses one file and not the lot. A
+   video goes to the coach's lane (services/coach_lane.py) and the page may be
+   closed from then on. A photo is measured at once through /analyze-photo and
+   saved here, because a photo is never written to disk (privacy.html section 10).
+   ============================================================ */
+state.batch={items:[],running:false,id:null}; state.laneItems=[];
+const LANE_WORD={queued:'In line',scanning:'Checking the framing',running:'Analysing',done:'Ready',no_go:'Film again',failed:'Could not read'};
+async function loadLane(){
+  if(!hasCoachPlan()) return [];
+  try{ const r=await fetch('/me/coach-uploads',{headers:authHeaders()}); if(r.ok){ state.laneItems=(await r.json()).items||[]; } }catch(e){}
+  return state.laneItems;
+}
+function openBatch(){
+  if(!hasCoachPlan()){ openAccount(); return; }
+  renderBatch();
+  setState('batch',{focus:'#batTitle'});
+  loadLane().then(renderLane);
+  pollLane();
+}
+function pollLane(){
+  clearTimeout(state.lanePoll);
+  const open=(state.laneItems||[]).some(i=>['queued','scanning','running'].includes(i.status));
+  state.lanePoll=setTimeout(async()=>{
+    if(document.body.dataset.state!=='batch') return;
+    const before=(state.laneItems||[]).filter(i=>i.status==='done').length;
+    await loadLane(); renderLane();
+    if((state.laneItems||[]).filter(i=>i.status==='done').length>before) refreshCloud().then(rehydrateServerFiled);
+    pollLane();
+  }, open?4000:20000);
+}
+function batchAthleteOptions(cur){
+  return `<option value="">Me</option>`+liveAthletes().map(a=>`<option value="${a.id}"${String(a.id)===String(cur||'')?' selected':''}>${esc(a.name)}</option>`).join('');
+}
+function renderBatch(){
+  const b=state.batch, host=$('#batList'); if(!host) return;
+  const def=$('#batAthlete'); if(def&&!def.options.length) def.innerHTML=batchAthleteOptions(state.athleteId);
+  host.innerHTML=b.items.map((it,i)=>`<div class="bat-row" data-i="${i}">
+      <div class="bat-name"><span class="p-kind">${it.kind}</span> ${esc(it.file.name)}</div>
+      <select data-f="athleteId" aria-label="Whose clip"${b.running?' disabled':''}>${batchAthleteOptions(it.athleteId)}</select>
+      <select data-f="sport" aria-label="Sport"${b.running?' disabled':''}><option value="bike"${it.sport==='bike'?' selected':''}>Bike</option><option value="run"${it.sport==='run'?' selected':''}>Run</option></select>
+      <div class="bat-state ${it.state==='failed'?'sq-off':''}">${esc(it.msg||(it.state==='ready'?'':it.state))}</div>
+      <button type="button" class="p-copy" data-rm="${i}"${b.running?' disabled':''}>remove</button>
+    </div>`).join('');
+  const go=$('#batGo');
+  // A file that failed goes again: the ones already sent stay sent.
+  const todo=b.items.filter(x=>x.state==='ready'||x.state==='failed').length;
+  if(go){ go.disabled=b.running||!todo; go.textContent=b.running?'Sending…':`${b.items.some(x=>x.state==='failed')?'Send again':'Send'} ${todo||''} to analysis`; }
+  $('#batHint').textContent=b.items.length?`${b.items.length} of ${BATCH_MAX}. Each clip uses one analysis from your plan; a clip stopped by the framing check uses none.`:'';
+}
+const BATCH_MAX=10;
+function batchAdd(files){
+  const b=state.batch, def=$('#batAthlete'), sp=$('#batSport');
+  b.items=b.items.filter(x=>x.state!=='sent');
+  let dropped=0;
+  [...files].forEach(file=>{
+    if(b.items.length>=BATCH_MAX){ dropped++; return; }
+    const photo=(file.type||'').startsWith('image/');
+    if(!photo&&!(file.type||'').startsWith('video/')&&!/\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(file.name)){ dropped++; return; }
+    b.items.push({file,kind:photo?'photo':'video',athleteId:def&&def.value||'',sport:sp?sp.value:'bike',state:'ready',msg:''});
+  });
+  if(dropped) toast(`A batch holds ${BATCH_MAX} clips and photos. ${dropped} left out.`);
+  renderBatch();
+}
+function batchSendVideo(it){
+  return new Promise(res=>{
+    const d=new FormData(); d.append('video',it.file); d.append('batch_id',state.batch.id); d.append('sport',it.sport);
+    if(it.sport==='bike'){ const p=$('#batPos'); if(p&&p.value) d.append('position',p.value); }
+    if(it.athleteId) d.append('athlete_id',it.athleteId);
+    const x=new XMLHttpRequest(); x.open('POST','/me/coach-uploads');
+    const h=authHeaders(); Object.keys(h).forEach(k=>x.setRequestHeader(k,h[k]));
+    x.upload.onprogress=ev=>{ if(ev.lengthComputable){ it.msg=`Sending ${Math.round(100*ev.loaded/ev.total)}%`; renderBatch(); } };
+    x.onload=()=>{ let j={}; try{ j=JSON.parse(x.responseText); }catch(_e){}
+      if(x.status>=200&&x.status<300){ it.state='sent'; it.msg='In line'; }
+      else { it.state='failed'; it.msg=typeof j.detail==='string'?j.detail:'Did not go through'; }
+      res(); };
+    x.onerror=()=>{ it.state='failed'; it.msg='The connection dropped'; res(); };
+    x.send(d);
+  });
+}
+async function batchSendPhoto(it){
+  it.msg='Measuring…'; renderBatch();
+  const d=new FormData(); d.append('photo',it.file); d.append('sport',it.sport); d.append('coaching','true');
+  if(it.sport==='bike'){ const p=$('#batPos'); if(p&&p.value) d.append('position',p.value); }
+  try{
+    const r=await fetch('/analyze-photo',{method:'POST',headers:authHeaders(),body:d});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ it.state='failed'; it.msg=typeof j.detail==='string'?j.detail:'Could not read this photo'; return; }
+    const e=entryFromResult('photo',j,{id:'h'+Date.now()+Math.random().toString(36).slice(2,6),at:Date.now(),athleteId:it.athleteId?Number(it.athleteId):null});
+    state.cloudHist=[e,...(state.cloudHist||[])];
+    await fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)});
+    it.state='sent'; it.msg='Ready';
+  }catch(_e){ it.state='failed'; it.msg='The connection dropped'; }
+}
+async function batchGo(){
+  const b=state.batch;
+  if(b.running) return;
+  b.items.forEach(x=>{ if(x.state==='failed'){ x.state='ready'; x.msg=''; } });
+  if(b.items.some(x=>x.state==='ready'&&x.athleteId)&&!await confirmOthers()) return;
+  b.running=true;
+  b.id=b.id&&(state.laneItems||[]).some(i=>i.batch_id===b.id&&['queued','scanning','running'].includes(i.status))?b.id:Math.random().toString(36).slice(2,12).padEnd(8,'0');
+  track('batch_started',{files:b.items.length});
+  renderBatch();
+  for(const it of b.items){
+    if(it.state!=='ready') continue;
+    it.state='sending'; it.msg='Sending…'; renderBatch();
+    if(it.kind==='photo') await batchSendPhoto(it); else await batchSendVideo(it);
+    renderBatch();
+  }
+  b.running=false;
+  const sent=b.items.filter(x=>x.state==='sent').length, failed=b.items.filter(x=>x.state==='failed').length;
+  renderBatch();
+  toast(failed?`${sent} sent, ${failed} did not go through.`:'All sent. You can close this page; we will email you when they are ready.',{duration:7000});
+  await loadLane(); renderLane(); pollLane();
+  loadAthletes();
+}
+function renderLane(){
+  const host=$('#batLane'); if(!host) return;
+  const items=state.laneItems||[];
+  if(!items.length){ host.innerHTML=''; return; }
+  host.innerHTML=`<h3 class="bat-h">The lane · last two weeks</h3><div class="prof-list">`+items.map(i=>{
+    const why=(i.reasons||[]).map(r=>r.text).join(' ')||i.error||'';
+    return `<div class="bat-row bat-lane" data-id="${i.id}">
+      <div class="bat-name">${esc(i.filename||'Clip')}<small>${i.athlete_name?esc(i.athlete_name)+' · ':''}${i.sport==='run'?'run':'bike'}${i.source==='intake'?' · sent by them':''}</small>${why&&i.status!=='done'?`<small class="bat-why">${esc(why)}</small>`:''}</div>
+      <div class="bat-state ${['no_go','failed'].includes(i.status)?'sq-off':''}">${esc(LANE_WORD[i.status]||i.status)}</div>
+      <div class="p-acts">
+        ${i.status==='done'?`<button type="button" data-open="${esc(i.client_id)}">Open</button>`:''}
+        ${i.status==='no_go'?`<button type="button" data-any="${i.id}">Run anyway</button>`:''}
+        ${['running','scanning'].includes(i.status)?'':`<button type="button" data-del="${i.id}">Remove</button>`}
+      </div></div>`;
+  }).join('')+`</div>`;
+  host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',async()=>{
+    if(!findEntry(b.dataset.open)) await refreshCloud();
+    const e=findEntry(b.dataset.open);
+    if(e){ await rehydrateEntry(e); openHistory(b.dataset.open); } else toast('That report is no longer in your history.');
+  }));
+  host.querySelectorAll('[data-any]').forEach(b=>b.addEventListener('click',async()=>{
+    const r=await fetch('/me/coach-uploads/'+b.dataset.any+'/run-anyway',{method:'POST',headers:authHeaders()});
+    if(!r.ok) toast('Could not run it.'); await loadLane(); renderLane(); pollLane();
+  }));
+  host.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
+    const r=await fetch('/me/coach-uploads/'+b.dataset.del,{method:'DELETE',headers:authHeaders()});
+    if(!r.ok) toast('Could not remove it.'); await loadLane(); renderLane();
+  }));
+}
+(function wireBatch(){
+  const inp=$('#batFiles'); if(!inp) return;
+  inp.addEventListener('change',e=>{ batchAdd(e.target.files); inp.value=''; });
+  const drop=$('#batDrop');
+  ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('over')));
+  drop.addEventListener('drop',e=>{ e.preventDefault(); batchAdd(e.dataTransfer.files); });
+  $('#batGo').addEventListener('click',batchGo);
+  $('#batList').addEventListener('change',e=>{
+    const row=e.target.closest('[data-i]'), f=e.target.dataset.f; if(!row||!f) return;
+    state.batch.items[Number(row.dataset.i)][f]=e.target.value;
+  });
+  $('#batList').addEventListener('click',e=>{
+    const rm=e.target.closest('[data-rm]'); if(!rm) return;
+    state.batch.items.splice(Number(rm.dataset.rm),1); renderBatch();
+  });
+  $('#batSport').addEventListener('change',e=>{ $('#batPosBox').classList.toggle('hidden',e.target.value!=='bike'); });
+})();
+/* Asked once per account, the first time a clip is filed under somebody else
+   (privacy.html section 3, terms.html section 3). Resolves to whether they said yes. */
+function confirmOthers(){
+  if(!coachOn()||COACH.others_ok_at_ms) return Promise.resolve(true);
+  return new Promise(res=>{
+    let answered=false;
+    confirmDialog({title:'Someone else’s clip',
+      body:'<p>You’re about to analyse footage of another person. Flapp processes it the same way as yours, and the report lands in your account under their name.</p><p><b>By continuing you confirm you have this person’s permission to upload their footage and keep their report in your account, and that you’ll delete it if they ask.</b></p>',
+      okLabel:'I have their permission',
+      onOk:async()=>{
+        answered=true;
+        try{ const r=await fetch('/me/coach/others-consent',{method:'POST',headers:authHeaders()}); if(r.ok){ Object.assign(COACH, await r.json()); track('coach_others_confirmed',{}); res(true); return; } }catch(_e){}
+        toast('Could not save that. Please try again.'); res(false);
+      }});
+    // Closing the dialog any other way is a no.
+    const modal=$('#confirmModal');
+    const watch=setInterval(()=>{ if(modal.classList.contains('hidden')){ clearInterval(watch); if(!answered) res(false); } },150);
+  });
+}
+/* What the coach does with a filed report: send it, or see that the athlete
+   already has it. Under the score on a saved report. */
+async function renderCoachActions(e){
+  const host=$('#hdCoachActions'); if(!host) return;
+  host.innerHTML='';
+  if(!hasCoachPlan()||!e||e.athleteId==null) return;
+  const name=athleteName(e.athleteId)||'your athlete';
+  if(e.linkedAthleteId){ host.innerHTML=`<p class="hint" style="text-align:left;margin:10px 0 0">${esc(name)} has this report in their own app. Your note reaches them there.</p>`; return; }
+  if(e.kind!=='video'||e.sellable===false) return;
+  const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(e.athleteId));
+  const base='/me/athletes/'+encodeURIComponent(e.athleteId)+'/analyses/'+encodeURIComponent(e.id);
+  const draw=url=>{
+    // With no address to mail, once the link exists there is nothing left to press.
+    host.innerHTML=`${url&&!(a&&a.email)?'':`<button class="btn btn-ghost btn-sm" type="button" id="hdSend"><svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg> ${a&&a.email?(url?`Send to ${esc(name)} again`:`Send to ${esc(name)}`):'Make a link for '+esc(name)}</button>`}
+      ${url?`<div class="hdlink"><button type="button" class="p-copy" id="hdLinkCopy">copy the link</button> · <button type="button" class="p-copy" id="hdLinkOff">turn it off</button><small>Opens without an account, for 90 days. Under your name and mark.</small></div>`:''}`;
+    const sendBtn=$('#hdSend'); if(sendBtn) sendBtn.addEventListener('click',async()=>{
+      try{
+        const r=await fetch(base+'/send',{method:'POST',headers:authHeaders()});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok){ toast(j.detail||'Could not send it.',{duration:6000}); return; }
+        track('report_sent_to_athlete',{mailed:!!j.mailed});
+        toast(j.mailed?`Sent to ${j.email}.`:'Link ready. Copy it and send it yourself.');
+        draw(j.url);
+      }catch(_e){ toast('Could not send it.'); }
+    });
+    const c=$('#hdLinkCopy'); if(c) c.addEventListener('click',()=>copyText(url,'Link copied.'));
+    const off=$('#hdLinkOff'); if(off) off.addEventListener('click',async()=>{
+      const r=await fetch(base+'/share',{method:'DELETE',headers:authHeaders()});
+      if(r.ok){ toast('That link no longer works.'); draw(null); } else toast('Could not turn it off.');
+    });
+  };
+  draw(null);
+  try{ const r=await fetch(base+'/share',{headers:authHeaders()}); if(r.ok){ const j=await r.json(); if(state.histOpen&&state.histOpen.id===e.id) draw(j.url); } }catch(_e){}
 }
 function openDashboard(){
   const sec=$('#dashboard'), host=$('#squadHome');
+  const back=$('#dashSquadBack'); if(back) back.remove();
   if(hasCoachPlan() && !state.squadMe){ renderSquadHome(); }
   else {
     if(sec) sec.classList.remove('dash-squad'); if(host) host.classList.add('hidden');
     const t=$('#dashTitle'); if(t) t.textContent='My technique';
     renderDashboard();
     // A coach on their own page: a way back to the squad.
-    const back=$('#dashSquadBack'); if(back) back.remove();
-    if(hasCoachPlan()){ const h=$('#dashSummary'); if(h) h.insertAdjacentHTML('beforebegin',`<p id="dashSquadBack" class="hint" style="text-align:left;margin:0 0 12px"><a href="#" onclick="event.preventDefault();state.squadMe=false;openDashboard()">← Back to the squad</a></p>`); }
+    if(hasCoachPlan()){ const h=$('#dashSummary'); if(h) h.insertAdjacentHTML('beforebegin',`<p id="dashSquadBack" class="hint" style="text-align:left;margin:0 0 12px"><a href="#" onclick="event.preventDefault();state.squadMe=false;openDashboard()">Back to the squad</a></p>`); }
   }
   setState('dashboard',{focus:'#dashTitle'});
 }
@@ -13471,6 +13896,7 @@ function toggleCompareCta(){
    lens. Null when nothing matches; the caller decides what to do then. */
 function cmpSame(a,b){
   return a.sport===b.sport && a.kind===b.kind
+    && String(a.athleteId==null?'':a.athleteId)===String(b.athleteId==null?'':b.athleteId)
     && String(a.profileId==null?'':a.profileId)===String(b.profileId==null?'':b.profileId)
     && (a.cameraSide||'')===(b.cameraSide||'')
     && (a.position||'')===(b.position||'');
@@ -13482,7 +13908,7 @@ function cmpPrevious(e,list){
    'nav'. With two ids it opens that pair; without, the newest clip against the
    one it should be read against. */
 function openCompare(aId,bId,from){
-  const all=loadHist();
+  const all=hasCoachPlan()?coachPool():loadHist();
   const pick=bId&&all.find(e=>e.id===bId);
   const sport=pick?pick.sport:(state.progressSport||'bike');
   const list=all.filter(e=>e.sport===sport && e.trends);
@@ -13502,6 +13928,7 @@ function cmpEntry(id){ return (state.cmp.list||[]).find(e=>e.id===id)||null; }
 /* Why this pair is not a clean before/after, in words. Empty when it is. */
 function cmpCaveats(A,B){
   const out=[];
+  if(String(A.athleteId||'')!==String(B.athleteId||'')) out.push(`These are two different people${athleteName(A.athleteId)&&athleteName(B.athleteId)?` (${esc(athleteName(A.athleteId))} and ${esc(athleteName(B.athleteId))})`:''}, so a gap here is a difference between them and not a change.`);
   if(A.kind!==B.kind) out.push('One is a photo and one is a video. A photo catches a single instant of the stroke; a video measures the whole of it. Compare like with like.');
   const sa=A.cameraSide, sb=B.cameraSide;
   if(sa&&sb&&sa!==sb&&sa!=='both'&&sb!=='both')
@@ -13673,7 +14100,7 @@ function renderSetupPickers(){
 }
 function renderComparePickers(){
   const {list,aId,bId}=state.cmp;
-  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(fmtWhen(e.at))} · ${e.score==null?'—':e.score}/100</option>`;
+  const opt=(e,sel)=>`<option value="${e.id}"${e.id===sel?' selected':''}>${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.label?esc(e.label)+' · ':''}${esc(fmtWhen(e.at))} · ${e.score==null?'—':e.score}/100</option>`;
   const sel=(side,cur)=>`<label class="cmp-pick">
       <span class="cmp-pick-lbl">${side==='a'?'Before':'After'}</span>
       <select class="cmp-select" data-side="${side}">${list.map(e=>opt(e,cur)).join('')}</select>
@@ -14092,6 +14519,9 @@ function renderCompareSummary(){
   const host=$('#cmpSummary'); if(!host) return;
   if(!auth){ host.innerHTML=`<div class="cmp-ai cmp-ai-lock"><b>Progress summary</b> — sign in to get a coach's read on what changed between these two runs.</div>`; return; }
   const c=state.cmp;
+  // "What changed" has no meaning between two people.
+  const pA=cmpEntry(c.aId), pB=cmpEntry(c.bId);
+  if(pA&&pB&&String(pA.athleteId||'')!==String(pB.athleteId||'')){ host.innerHTML=''; return; }
   if(c.summary){ host.innerHTML=`<div class="cmp-ai"><div class="cmp-ai-h">Coach's read</div>${mdToHtml(c.summary)}</div>`; return; }
   if(c.summaryLoading){ host.innerHTML=`<div class="cmp-ai cmp-ai-load">Analyzing your progress…</div>`; return; }
   host.innerHTML=`<div class="again-row" style="margin:0 0 16px"><button class="btn btn-ghost btn-sm" id="cmpAiBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Summarise the change</button></div>`;

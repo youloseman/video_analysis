@@ -31,6 +31,28 @@ MAX_LOGO_BYTES = 200 * 1024
 LOGO_PREFIXES = ("data:image/png;base64,", "data:image/jpeg;base64,", "data:image/webp;base64,")
 
 
+# The coach's own GO / NO-GO grid. Bounded on both sides: below 200 px the pose
+# model mixes up the legs whatever the bar says (tracking_diagnostics measured
+# it), and a NO-GO bar above 600 px refuses clips the analysis reads well.
+CAPTURE_TINY_RANGE = (200, 600)
+CAPTURE_SMALL_RANGE = (200, 800)
+
+
+def clean_capture(raw: dict | None) -> dict | None:
+    """The grid as stored, or None for "the standard bars". Raises ValueError
+    on a size that is out of range or a warning bar under the NO-GO bar."""
+    if not raw:
+        return None
+    tiny, small = int(raw["tiny_px"]), int(raw["small_px"])
+    if not CAPTURE_TINY_RANGE[0] <= tiny <= CAPTURE_TINY_RANGE[1]:
+        raise ValueError(f"The NO-GO size must be {CAPTURE_TINY_RANGE[0]}-{CAPTURE_TINY_RANGE[1]} px.")
+    if not CAPTURE_SMALL_RANGE[0] <= small <= CAPTURE_SMALL_RANGE[1]:
+        raise ValueError(f"The warning size must be {CAPTURE_SMALL_RANGE[0]}-{CAPTURE_SMALL_RANGE[1]} px.")
+    if small < tiny:
+        raise ValueError("The warning size can't be below the NO-GO size.")
+    return {"tiny_px": tiny, "small_px": small, "drive_side": bool(raw.get("drive_side", True))}
+
+
 class CoachProfile(Base):
     __tablename__ = "coach_profiles"
 

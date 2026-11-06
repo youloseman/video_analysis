@@ -47,7 +47,7 @@ from app.models.profile import (
     PROFILE_POSITIONS,
     Profile,
 )
-from app.models.user import User, has_full, history_cap, profile_limit
+from app.models.user import User, has_coach, has_full, history_cap, profile_limit
 from app.services.keyframe_store import split_keyframe, stored_keyframe
 from app.services.result_gating import (
     ACCESS_FULL,
@@ -456,6 +456,9 @@ async def _list_rows(
             sellable=bool(sellable), has_keyframe=bool(has_frame),
         )
         for row, sellable, has_frame in rows
+        # A coach's clip still in the lane, or stopped by the check, is not a
+        # report yet. The batch screen speaks for those (services/coach_lane.py).
+        if not (row.data or {}).get("coachHold")
     ]
 
 
@@ -563,27 +566,47 @@ async def analysis_report(
     PDF), on a phone as well, and the server needs no Chromium. The coach text
     is written first if the report never had it, as when it is opened in-app.
     """
-    from datetime import datetime, timezone
-
-    from app.models.profile import Profile
-    from app.services.report_pdf import render_report_html
-    from app.services.video_analysis.biomechanics.cycling_positions import (
-        get_position_label,
-    )
-
     if not has_full(user.tier):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="The PDF report is part of the Full plan.",
         )
     owner, row = await _row_for_reader(db, user, client_id, athlete_id)
+    # The coach reads a linked athlete at the athlete's level, here as on every
+    # other reader: the plan that opens this report is theirs, not the coach's.
+    if owner.id != user.id and access_for_stored(owner, row) != ACCESS_FULL:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="This report has not been unlocked on your athlete's plan.",
+        )
     if not row.result:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This analysis was run before full reports were stored.",
         )
     await _ensure_coaching(db, row)
-    result = dict(row.result)
+    html = await render_saved_report(db, reader=user, owner=owner, row=row, athlete_id=athlete_id)
+    logger.info("REPORT_PDF_SERVED", user_id=user.id, analysis=client_id)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
+async def render_saved_report(
+    db: AsyncSession, *, reader: User, owner: User, row: Analysis, athlete_id: int | None,
+) -> str:
+    """The branded document for one stored analysis. ``reader`` is whose mark
+    goes on it (a coach's, when a coach is the one handing it over); ``owner``
+    whose analysis it is."""
+    from datetime import datetime, timezone
+
+    from app.models.athlete import Athlete
+    from app.models.coach import CoachProfile
+    from app.models.profile import Profile
+    from app.services.report_pdf import render_report_html
+    from app.services.video_analysis.biomechanics.cycling_positions import (
+        get_position_label,
+    )
+
+    result = dict(row.result or {})
     if (result.get("sport_type") or result.get("sport")) == "bike" and not result.get("pro_field"):
         result["pro_field"] = pro_field(result.get("cycling_position"))
     setup = None
@@ -594,13 +617,19 @@ async def analysis_report(
     # account. A coach's email on an athlete's report is the wrong name.
     who = owner.email
     if row.athlete_id or athlete_id:
-        from app.models.athlete import Athlete as _Athlete
-        who = await db.scalar(select(_Athlete.name).where(
-            _Athlete.id == (athlete_id or row.athlete_id), _Athlete.coach_user_id == user.id)) or who
+        who = await db.scalar(select(Athlete.name).where(
+            Athlete.id == (athlete_id or row.athlete_id), Athlete.coach_user_id == reader.id)) or who
+    coach = None
+    if has_coach(reader.tier):
+        prof = await db.get(CoachProfile, reader.id)
+        d = (prof.data if prof else None) or {}
+        if d.get("name") or d.get("logo"):
+            coach = {"name": d.get("name") or "", "tagline": d.get("tagline") or "", "logo": d.get("logo")}
+    entry = row.data or {}
     when = datetime.fromtimestamp((row.created_at_ms or 0) / 1000, timezone.utc)
     today = datetime.now(timezone.utc)
     position = result.get("cycling_position")
-    html = render_report_html(result, {
+    return render_report_html(result, {
         "athlete": who,
         "setup": setup,
         "filmed": f"{when.day} {when:%b %Y}",
@@ -608,9 +637,10 @@ async def analysis_report(
         "position_label": get_position_label(position) if position else None,
         "keyframe": stored_keyframe(row),
         "kinogram": result.get("kinogram_base64"),
+        "coach": coach,
+        "coach_note": entry.get("coachNote") or "",
+        "coach_note_by": entry.get("coachName") or "",
     })
-    logger.info("REPORT_PDF_SERVED", user_id=user.id, analysis=client_id)
-    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/analyses/{client_id}/timeline")

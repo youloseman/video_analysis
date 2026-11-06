@@ -202,6 +202,10 @@ class User(Base):
     tier_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True,
     )
+    # What a grant sits on top of. A customer paying for Full who is handed the
+    # Coach plan for a pilot goes back to Full when it ends, not to the free
+    # plan while Stripe keeps charging. NULL = nothing paid underneath.
+    tier_after_grant: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # The hip-over-crank reading moved from Enthusiast to Full on 2026-10-26.
     # An Enthusiast who had it keeps it until this moment: the end of the
     # period they had paid for, read from Stripe once (scripts/keep_crank.py).

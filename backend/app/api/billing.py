@@ -1633,10 +1633,19 @@ def _set_tier(user: User, tier: str) -> None:
     revoke a subscription the customer is paying for. It is cleared on the way
     DOWN as well, which is what makes a lapse end a grant too: a single place,
     rather than a rule to remember at six call sites.
+
+    The one exception is a granted Coach plan over a smaller paid one (a Full
+    subscriber on a coach pilot). Every monthly renewal lands here, and letting
+    it end the pilot would drop a coach's roster on a billing date. The grant
+    stays, and what Stripe said is what they return to when it ends.
     """
-    if user.tier != TIER_ADMIN:
-        user.tier = tier
-        clear_grant(user)
+    if user.tier == TIER_ADMIN:
+        return
+    if user.tier == TIER_COACH and user.tier_until is not None and tier != TIER_COACH:
+        user.tier_after_grant = None if tier == TIER_STARTER else tier
+        return
+    user.tier = tier
+    clear_grant(user)
 
 
 async def _apply_event(db: AsyncSession, event: Any) -> dict[str, Any] | None:

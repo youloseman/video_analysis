@@ -238,11 +238,13 @@ async def athlete_analyses(
     owner = await linked_owner(db, user, athlete_id)
     if owner is None:
         return await me_api._list_rows(db, user, athlete_id=row.id)
-    out = await me_api._list_rows(db, owner)
-    for e in out:
+    theirs = [e for e in await me_api._list_rows(db, owner) if e.get("sport") != "swim"]
+    for e in theirs:
         e["athleteId"] = row.id
         e["linkedAthleteId"] = row.id
-    return out
+    # What the coach ran for them before they linked, or since, stays in view.
+    mine = await me_api._list_rows(db, user, athlete_id=row.id)
+    return sorted(theirs + mine, key=lambda e: e.get("at") or 0, reverse=True)
 
 
 class NoteIn(BaseModel):
@@ -267,10 +269,18 @@ async def write_note(
     _require_coach(user)
     row_a = await _owned(db, user, athlete_id)
     owner = (await linked_owner(db, user, athlete_id)) or user
-    q = select(Analysis).where(Analysis.user_id == owner.id, Analysis.client_id == client_id)
-    if owner.id == user.id:
-        q = q.where(Analysis.athlete_id == row_a.id)
-    row = (await db.execute(q)).scalar_one_or_none()
+    row = None
+    if owner.id != user.id:
+        row = (await db.execute(select(Analysis).where(
+            Analysis.user_id == owner.id, Analysis.client_id == client_id,
+        ))).scalar_one_or_none()
+    if row is None:
+        # The coach's own clip, filed under this athlete.
+        owner = user
+        row = (await db.execute(select(Analysis).where(
+            Analysis.user_id == user.id, Analysis.client_id == client_id,
+            Analysis.athlete_id == row_a.id,
+        ))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
     data = dict(row.data or {})

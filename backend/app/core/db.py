@@ -202,6 +202,11 @@ def _migrate_users(conn) -> None:
         ))
         logger.info("MIGRATED", change="users.crank_until added")
 
+    if "tier_after_grant" not in cols:
+        # Nullable, no default: NULL is the truth for every account today.
+        conn.execute(text("ALTER TABLE users ADD COLUMN tier_after_grant VARCHAR(20)"))
+        logger.info("MIGRATED", change="users.tier_after_grant added")
+
     # Promote the configured admin account (idempotent).
     admin = (settings.admin_email or "").strip().lower()
     if admin:
@@ -326,7 +331,7 @@ def _migrate_profiles(conn) -> None:
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import (  # noqa: F401
-        analysis, athlete, coach, coach_link, feedback, order, profile, usage, user,
+        analysis, athlete, coach, coach_link, coach_upload, feedback, order, profile, usage, user,
     )
 
     async with engine.begin() as conn:

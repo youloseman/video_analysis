@@ -173,6 +173,11 @@ def send_email(to: str, subject: str, text: str, html: str) -> bool:
 # minutes ago, and the polite version of "we will email you" is "and here is
 # how to stop".
 # --------------------------------------------------------------------------
+def base_url() -> str:
+    """Where links in a mail point."""
+    return (settings.public_base_url or "https://getflapp.com").rstrip("/")
+
+
 def _esc_html(s: str) -> str:
     return (str(s).replace("&", "&amp;").replace("<", "&lt;")
             .replace(">", "&gt;").replace('"', "&quot;"))

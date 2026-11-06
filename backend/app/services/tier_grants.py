@@ -29,7 +29,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import SessionLocal
@@ -73,6 +73,7 @@ def clear_grant(user: User) -> None:
     safer than remembering to do it at six call sites.
     """
     user.tier_until = None
+    user.tier_after_grant = None
 
 
 async def grant_tier(
@@ -103,6 +104,11 @@ async def grant_tier(
         logger.info("TIER_GRANT_SKIPPED_ADMIN", email=email)
         return user
 
+    # Somebody paying through Stripe goes back to what they pay for. Read only
+    # when no grant is running: a grant over a grant keeps the original answer.
+    if user.tier_until is None:
+        paying = user.subscription_status in ("active", "trialing", "past_due")
+        user.tier_after_grant = user.tier if paying and user.tier != TIER_STARTER else None
     user.tier = tier
     user.tier_until = _now() + timedelta(days=days)
     await db.commit()
@@ -114,7 +120,8 @@ async def grant_tier(
 
 
 async def expire_tier_grants(db: AsyncSession, now: datetime | None = None) -> int:
-    """Put expired grants back on the free plan. Returns how many.
+    """Put expired grants back on the plan underneath: what they pay for, else
+    the free plan. Returns how many.
 
     One UPDATE rather than a read-then-write loop: the set of rows is small
     and the operation is naturally expressed as "everything past its date".
@@ -129,7 +136,10 @@ async def expire_tier_grants(db: AsyncSession, now: datetime | None = None) -> i
             User.tier_until <= cutoff,
             User.tier != TIER_ADMIN,
         )
-        .values(tier=TIER_STARTER, tier_until=None)
+        .values(
+            tier=func.coalesce(User.tier_after_grant, TIER_STARTER),
+            tier_until=None, tier_after_grant=None,
+        )
         .returning(User.id, User.email)
     )
     rows = result.fetchall()
