@@ -40,6 +40,8 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-24.04
+    # The suite takes about three minutes. A hang once sat here for four hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 

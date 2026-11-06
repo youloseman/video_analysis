@@ -464,3 +464,35 @@ async def test_a_grant_on_nobody_paying_still_ends_on_the_free_plan(make_user, d
     john = await make_user(tier=TIER_FULL)   # Full by grant, nothing charged
     await grant_tier(db, john.email, TIER_COACH, 30)
     assert john.tier_after_grant is None
+
+
+# --------------------------------------------------------------------------
+# The lane and the app's lifetime
+# --------------------------------------------------------------------------
+def test_the_app_starts_and_stops_with_the_lane_again_and_again():
+    """An app that stops at once must find the lane idle. It once opened a session
+    as it started, and stopping inside that hung CI for four hours."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    for _ in range(5):
+        with TestClient(app) as c:
+            assert c.get("/health").status_code == 200
+
+
+def test_the_lane_opens_no_session_until_it_has_a_clip():
+    import inspect
+
+    src = inspect.getsource(coach_lane.lane_loop)
+    assert "SessionLocal" not in src and "await requeue_open" not in src
+
+
+def test_a_clip_with_no_lane_running_waits_for_the_next_start(monkeypatch):
+    monkeypatch.setattr(coach_lane, "_queue", None)
+    coach_lane.enqueue(1)      # no lane: nothing raises
+    coach_lane.open_lane()
+    coach_lane.enqueue(2)
+    assert coach_lane._queue.qsize() == 1
+    monkeypatch.setattr(coach_lane, "_queue", None)
+

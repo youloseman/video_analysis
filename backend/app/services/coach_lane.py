@@ -52,15 +52,25 @@ MAX_LANE_BACKLOG = 60
 SCAN_FRAMES = 6
 SCAN_LONG_EDGE = 640
 
-_queue: asyncio.Queue[int] = asyncio.Queue()
+# Made by open_lane, on the running loop: a queue belongs to the loop that first
+# waits on it, and an import-time one would die on the second loop a process sees.
+_queue: asyncio.Queue[int] | None = None
 
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
 
 
+def open_lane() -> None:
+    global _queue
+    _queue = asyncio.Queue()
+
+
 def enqueue(upload_id: int) -> None:
-    _queue.put_nowait(upload_id)
+    """Put a clip in line. With no lane running the row simply stays queued, and
+    requeue_open finds it when one starts."""
+    if _queue is not None:
+        _queue.put_nowait(upload_id)
 
 
 def scan_clip(path: str, sport: str | None, thresholds: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -320,12 +330,15 @@ async def requeue_open() -> int:
 
 
 async def lane_loop() -> None:
-    try:
-        await requeue_open()
-    except Exception as e:  # noqa: BLE001 -- start anyway; new clips still run
-        logger.warning("LANE_REQUEUE_FAILED", err=str(e))
+    """The lane itself. It touches the database only with a clip in hand: startup
+    work belongs before the app serves (main.lifespan calls requeue_open). A task
+    that opens a session as it starts can be cancelled inside it by an app that
+    stops at once, and that hung the whole test run on Linux (CI, 2026-11-06)."""
+    queue = _queue
+    if queue is None:
+        return
     while True:
-        upload_id = await _queue.get()
+        upload_id = await queue.get()
         try:
             await run_upload(upload_id)
         except asyncio.CancelledError:

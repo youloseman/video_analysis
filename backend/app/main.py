@@ -381,8 +381,13 @@ async def lifespan(app: FastAPI):
     # takes it back -- see services/tier_grants.py.
     grants = asyncio.create_task(grant_sweeper_loop())
     # A coach's batch and intake clips, one at a time (services/coach_lane.py).
-    from app.services.coach_lane import lane_loop
+    from app.services.coach_lane import lane_loop, open_lane, requeue_open
 
+    open_lane()
+    try:
+        await requeue_open()
+    except Exception as e:  # noqa: BLE001 -- serve anyway; new clips still run
+        logger.warning("LANE_REQUEUE_FAILED", err=str(e))
     lane = asyncio.create_task(lane_loop())
     try:
         yield
