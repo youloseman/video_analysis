@@ -93,6 +93,13 @@ async def test_an_athlete_round_trips_with_an_intake_token(make_user, db):
     assert listing["athletes"][0]["id"] == a["id"]
 
 
+def test_a_typo_in_the_email_is_refused_without_a_validator_library():
+    with pytest.raises(ValueError):
+        api.AthleteIn(name="A", email="not-an-email")
+    assert api.AthleteIn(name="A", email="  Andy@Example.com ").email == "andy@example.com"
+    assert api.AthleteIn(name="A", email="").email is None
+
+
 async def test_an_unknown_sport_is_the_triathlete(make_user, db):
     coach = await make_user(tier=TIER_COACH)
     a = await add(db, coach, sport="curling")

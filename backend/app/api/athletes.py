@@ -19,7 +19,9 @@ from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr, Field, field_validator
+import re
+
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -70,9 +72,25 @@ def _clean_note(v: str | None) -> str | None:
     return note or None
 
 
+# Enough of an email check to catch a typo, not a validator library: the
+# address is where a report may be sent later, and a wrong one bounces, which
+# is recoverable. (pydantic's EmailStr needs email-validator, which the
+# deployment does not install -- CI run 42193670072 found that out.)
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _clean_email(v: str | None) -> str | None:
+    email = (v or "").strip().lower()
+    if not email:
+        return None
+    if len(email) > 320 or not _EMAIL.match(email):
+        raise ValueError("That email address doesn't look right.")
+    return email
+
+
 class AthleteIn(BaseModel):
     name: str = Field(max_length=MAX_NAME_CHARS * 2)
-    email: EmailStr | None = None
+    email: str | None = None
     sport: str = DEFAULT_SPORT
     note: str | None = Field(default=None, max_length=MAX_NOTE_CHARS * 2)
 
@@ -80,6 +98,11 @@ class AthleteIn(BaseModel):
     @classmethod
     def _name(cls, v: str) -> str:
         return _clean_name(v)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str | None) -> str | None:
+        return _clean_email(v)
 
     @field_validator("sport")
     @classmethod
@@ -96,12 +119,17 @@ class AthletePatch(BaseModel):
     """Only the fields sent change; ``email: null`` clears it."""
 
     name: str | None = Field(default=None, max_length=MAX_NAME_CHARS * 2)
-    email: EmailStr | None = None
+    email: str | None = None
     sport: str | None = None
     note: str | None = Field(default=None, max_length=MAX_NOTE_CHARS * 2)
     archived: bool | None = None
     # True mints a new intake link; the old one stops working at once.
     rotate_token: bool = False
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str | None) -> str | None:
+        return _clean_email(v)
 
 
 def _out(a: Athlete, stats: tuple[int, int | None, int | None] | None = None) -> dict[str, Any]:
