@@ -1,0 +1,2074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
+<meta name="robots" content="noindex">
+<script>
+/* Runs before anything paints, so a returning user never sees the pitch flash.
+   Two jobs:
+     1. App-intent hashes (old share links, Academy nav) belong to /app.
+     2. A stored session means this visitor has already signed up — send them
+        straight into the app instead of the marketing page.
+   `?stay=1` is the escape hatch for reading the landing page while signed in,
+   and `location.replace` keeps Back from bouncing between the two. Crawlers
+   have no token, so the indexed page is always the landing itself. */
+(function(){
+  try{
+    var h=location.hash||'';
+    if(/^#(job=|login|signup|progress|history|home|whatsnew|pricing)/.test(h)){
+      location.replace('/app'+h); return;
+    }
+    if(localStorage.getItem('flapp_token') && location.search.indexOf('stay=1')<0 && location.pathname!=='/v3'){
+      location.replace('/app');
+    }
+  }catch(e){}
+})();
+</script>
+<script>
+/* The scroll presentation runs only for people who have not asked for less
+   motion; everyone else, and anyone without JS, gets the same page as blocks. */
+try{ if(!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('m'); }catch(e){}
+</script>
+<title>Flapp — Running &amp; Cycling Form Analysis from Video</title>
+<meta name="description" content="Upload a side-view clip of your run or ride. Flapp tracks 33 body landmarks, measures your joint angles against recommended ranges and returns a technique score, an annotated overlay video and a coaching plan.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<!-- PWA: let visitors install straight from the landing (start_url is /app). -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#08090C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Flapp">
+<script>
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+  }
+</script>
+<link rel="canonical" href="/">
+<!-- Social preview. og:url and og:image are absolute-rewritten per-request by the
+     root route so link previews resolve regardless of host. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Flapp">
+<meta property="og:title" content="Flapp — Running &amp; Cycling Form Analysis from Video">
+<meta property="og:description" content="Film a side-view clip. Computer vision tracks 33 body landmarks and measures every joint angle against published reference ranges — technique score, annotated overlay, and what to change first.">
+<meta property="og:image" content="/og-image.png">
+<meta property="og:url" content="/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Flapp — Running &amp; Cycling Form Analysis from Video">
+<meta name="twitter:description" content="Film a side-view clip. Computer vision tracks 33 body landmarks and measures every joint angle against published reference ranges.">
+<meta name="twitter:image" content="/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@1,900;0,800;0,900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Shared design tokens (static/tokens.css), before this page's own styles
+     so the overrides below win. -->
+<link rel="stylesheet" href="/tokens.css">
+<style>
+:root{
+  --c-dark:#0B182F; --c-dark2:#0E1D38; --c-dark3:#122647;
+  /* The landing reads the shared tokens (tokens.css) like every other
+     surface: warm ground, ink, the one accent, coral as the colour of
+     action, Plex for text and Archivo for the headline voice. What is
+     restated here is the page's own: the dark section grounds, one deeper
+     shadow for the phone, and a radius scale a step above the app's --
+     marketing surfaces are larger, and a 4 px corner reads sharp on a
+     full-bleed card. */
+  --radius:8px; --radius-btn:6px; --radius-lg:12px; --radius-xl:16px;
+  --shadow-lg:0 12px 32px rgba(20,24,31,.14);
+  --shadow-dark:0 30px 80px rgba(3,10,24,.55);
+  --skew:0deg;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{font-family:var(--f-body);font-size:16px;line-height:1.6;color:var(--c-ink);background:var(--c-bg);overflow-x:hidden}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+a{color:var(--c-blue)}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--radius-xs)}
+img,svg,video{max-width:100%}
+b,strong{font-weight:600}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  font-family:var(--f-body);font-size:15px;font-weight:600;letter-spacing:0;
+  padding:12px 26px;border-radius:var(--radius-btn);cursor:pointer;text-decoration:none;
+  border:1px solid transparent;transition:background-color .15s ease-out,border-color .15s ease-out,color .15s ease-out;
+}
+.btn svg{width:17px;height:17px;transition:transform .15s ease}
+.btn:hover svg{transform:translateX(4px)}
+.btn-primary{background:var(--c-action);color:var(--c-action-ink)}
+.btn-primary:hover{background:var(--c-action-dk)}
+.btn-accent{background:var(--c-action);color:var(--c-action-ink)}
+.btn-accent:hover{background:var(--c-action-dk)}
+.btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+.btn-ghost:hover{background:rgba(255,255,255,.1);border-color:#fff}
+.btn-outline{background:var(--c-bg);color:var(--c-ink);border-color:var(--c-line-strong)}
+.btn-outline:hover{background:var(--c-panel);border-color:var(--c-ink)}
+.btn-lg{padding:15px 30px;font-size:16px}
+.btn-sm{padding:9px 18px;font-size:14px}
+
+/* ---------- Section furniture ---------- */
+section{position:relative}
+.pad{padding:104px 0}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  font-weight:500;color:var(--c-ink-faint);margin-bottom:14px;
+  border:0;border-radius:0;padding:0;background:transparent;
+}
+.eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c-coral)}
+.on-dark .eyebrow{color:rgba(255,255,255,.62)}
+h2.sec{
+  font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--c-ink);
+  font-size:clamp(30px,4.4vw,46px);line-height:1.06;margin-bottom:18px;
+  text-transform:none;letter-spacing:-.015em;
+}
+h2.sec .accent{color:var(--c-coral)}
+/* The speedline under every section title -- the same stripe the app draws
+   under its page titles (--g-speed). Centred where the head is centred. */
+h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px;background:var(--g-speed);margin:18px 0 0}
+.showcase-head h2.sec::after,.proof-head h2.sec::after,.pricing-head h2.sec::after{margin-left:auto;margin-right:auto}
+.on-dark h2.sec{color:#fff}
+.lede{max-width:620px;color:var(--c-ink-soft);font-size:17.5px}
+.on-dark .lede{color:rgba(255,255,255,.78)}
+
+/* ---------- Load-in choreography ----------
+   Circles burst out of a point, then the hero content lifts in behind them.
+   Pure CSS so it plays even before the scripts run. The orbs animate the
+   standalone `scale` property, not `transform`, so the parallax script can own
+   `transform` on the same elements without the two fighting. */
+.orb-1{animation-delay:.05s}
+.orb-2{animation-delay:.17s}
+.orb-3{animation-delay:.29s}
+/* Same burst for circles further down, fired when they scroll into view. */
+.cta-band .orb.b{transition-delay:.12s}
+@media(prefers-reduced-motion:reduce){
+  .hero .orb,.hero .grid-tex,.ld,.stage,.phone{animation:none}
+}
+
+/* reveal-on-scroll; [data-d] adds stagger */
+/* No reveal-on-scroll and no burst: the page is shown at rest. .rv, .rv-scale and .pop are inert. */
+
+/* ============================================================
+   Floating pill nav
+   ============================================================ */
+.nav{position:fixed;top:14px;left:0;right:0;z-index:80;pointer-events:none}
+.nav-inner{
+  pointer-events:auto;margin:0 auto;max-width:920px;height:60px;
+  display:flex;align-items:center;gap:26px;padding:0 10px 0 22px;
+  background:rgba(11,24,47,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.09);border-radius:999px;
+  box-shadow:0 8px 30px rgba(3,10,24,.35);transition:box-shadow .3s ease,background .3s ease;
+}
+.nav.scrolled .nav-inner{background:rgba(11,24,47,.94);box-shadow:0 14px 44px rgba(3,10,24,.5)}
+@media(max-width:960px){.nav{padding:0 14px}}
+/* Kept in lock-step with the app shell's .wordmark (static/index.html) so the
+   mark reads identically on both — only the colour flips for the dark ground. */
+.wordmark{
+  font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;
+  text-transform:none;letter-spacing:-.02em;color:#fff;text-decoration:none;
+  display:inline-flex;align-items:center;gap:9px;line-height:1;
+}
+/* The lockup on the dark ground: the navy tile keeps a hairline so it reads
+   as a tile, the dot lives in it and nowhere else. */
+.wordmark .wm-tile{flex:none;width:30px;height:30px;border-radius:6px;background:#14294B;border:1px solid rgba(255,255,255,.18);box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+.wordmark .wm-tile .mark{width:21px;height:17px;color:#fff}
+.nav-links{display:flex;gap:22px;margin-left:6px}
+.nav-links a{color:rgba(255,255,255,.8);text-decoration:none;font-weight:700;font-size:14px;padding:6px 2px;transition:color .15s}
+.nav-links a:hover{color:#fff}
+.nav-cta{margin-left:auto;display:flex;align-items:center;gap:12px}
+.nav-cta .login{color:rgba(255,255,255,.8);text-decoration:none;font-weight:700;font-size:14px}
+.nav-cta .login:hover{color:#fff}
+.nav .btn{padding:10px 20px;font-size:14px;border-radius:999px}
+@media(max-width:760px){
+  .nav-links{display:none}
+  .nav-cta .login{display:none}
+  .nav-inner{height:54px}
+}
+
+/* zoom affordance */
+.zoomtag{
+  position:absolute;left:16px;bottom:16px;z-index:4;display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--c-navy);background:rgba(255,255,255,.94);border:1px solid var(--c-line);
+  border-radius:999px;padding:7px 13px;box-shadow:var(--shadow);
+  opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease;pointer-events:none;
+}
+.shotframe:hover .zoomtag,.shotframe:focus-visible .zoomtag{opacity:1;transform:none}
+.zoomtag svg{width:13px;height:13px}
+@media(hover:none){.zoomtag{opacity:1;transform:none}}
+
+/* ---------- Lightbox: read a screenshot at full size ---------- */
+.lb{
+  position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+  padding:28px;background:rgba(6,15,31,.88);backdrop-filter:blur(6px);
+}
+.lb[hidden]{display:none}
+.lb img{
+  max-width:min(1100px,100%);max-height:100%;object-fit:contain;
+  border-radius:14px;box-shadow:0 40px 90px rgba(3,10,24,.6);background:#fff;
+}
+.lb-close{
+  position:absolute;top:20px;right:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;
+  display:flex;align-items:center;justify-content:center;transition:background .15s;
+}
+.lb-close:hover{background:rgba(255,255,255,.24)}
+.lb-close svg{width:18px;height:18px}
+@media(max-width:640px){.lb{padding:14px}.lb-close{top:10px;right:12px}}
+/* The coach's note, typeset like the report's coach block. */
+.coach-card{position:relative;background:var(--c-panel-blue);border:1px solid #D5E2F7;border-radius:var(--radius-xl);
+  padding:0 0 22px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden}
+.coach-card .coach-panel{padding:20px 26px 0}
+.coach-card .cn-src{padding-left:26px;padding-right:26px}
+.cfig{position:relative;margin:0;border-bottom:1px solid #D5E2F7;background:#0B182F}
+.cfig img{display:block;width:100%;height:auto}
+.cpin{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font:700 12.5px/1 var(--f-mono);color:#fff;
+  border:2px solid #fff;box-shadow:0 2px 10px rgba(3,10,24,.45);opacity:0;transition:opacity .15s ease-out}
+.cpin.fix,.cnum.fix{background:var(--c-coral-btn)}
+.cpin.ok,.cnum.ok{background:#1F7A45}
+.coach-card[data-panel="fix"] .cpin[data-for~="fix"],
+.coach-card[data-panel="work"] .cpin[data-for~="work"],
+.coach-card[data-panel="next"] .cpin[data-for~="next"]{opacity:1}
+.cnum{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+  font:700 10.5px/1 var(--f-mono);color:#fff;margin-right:7px;vertical-align:1px}
+.pdf-link{display:block;margin-top:6px;font-weight:600}
+.coach-card .cn-h{font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--c-blue-dk);margin:0 0 8px}
+.coach-card .cn-h ~ .cn-h{margin-top:16px}
+.coach-card p,.coach-card li{font-size:15.5px;line-height:1.55;color:var(--c-ink)}
+.coach-card ul{margin:0;padding-left:18px;display:grid;gap:8px}
+.coach-card li b{color:var(--c-navy)}
+.coach-card .cn-src{margin-top:auto;padding-top:18px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--c-ink-soft)}
+.split-note a{color:var(--c-blue-dk)}
+.cmp-wrap{max-width:980px;margin:0 auto;position:relative}
+.cmp{
+  position:relative;border-radius:var(--radius-xl);overflow:hidden;
+  box-shadow:var(--shadow-lg);border:1px solid var(--c-line);
+  aspect-ratio:1600/974;background:#0B182F;
+  --pos:50%;
+  touch-action:pan-y;
+}
+.cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;user-select:none}
+/* Both sides stay in full colour: the flagged angles on the "before" frame are
+   printed in red by the analyser, and desaturating them threw that away. */
+.cmp .before{clip-path:inset(0 calc(100% - var(--pos)) 0 0)}
+.cmp .divider{
+  position:absolute;top:0;bottom:0;left:var(--pos);width:3px;margin-left:-1.5px;
+  background:#fff;box-shadow:0 0 18px rgba(3,10,24,.5);pointer-events:none;z-index:3;
+}
+.cmp .grip{
+  position:absolute;top:50%;left:var(--pos);transform:translate(-50%,-50%);z-index:4;
+  width:52px;height:52px;border-radius:50%;background:#fff;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;gap:3px;
+  box-shadow:0 10px 30px rgba(3,10,24,.45);
+}
+.cmp .grip svg{width:30px;height:16px;color:var(--c-navy)}
+.cmp input[type=range]{
+  position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize;z-index:5;
+  -webkit-appearance:none;appearance:none;background:transparent;
+}
+.cmp input[type=range]:focus-visible ~ .grip{box-shadow:0 10px 30px rgba(3,10,24,.45),var(--ring)}
+/* Score pills. Laid over the top of the frame here; a row above it on a phone
+   -- see the media query below. */
+.cmp-tags{
+  position:absolute;top:16px;left:16px;right:16px;z-index:4;pointer-events:none;
+  display:flex;justify-content:space-between;gap:10px;
+}
+.cmp-tag{
+  font-family:var(--f-mono);font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:#fff;padding:8px 15px;border-radius:999px;backdrop-filter:blur(5px);
+  border:1px solid rgba(255,255,255,.25);
+}
+/* Solid grounds and white values: the translucent washes put a 10.5px tinted
+   number on a tinted pill at 3.4-4.1:1, over footage that changes under it. */
+.cmp-tag.b{background:#A83A22;border-color:rgba(255,180,166,.5)}
+.cmp-tag.b em{font-style:normal;color:#fff;font-weight:700}
+.cmp-tag.a{background:#1F7A45}
+.cmp-tag.a em{font-style:normal;color:#fff;font-weight:700}
+@media(max-width:640px){
+  /* The frame is ~350px wide here and the pills are ~150px each, so overlaid
+     they sit squarely on the angle labels. Above the image they read as a
+     caption for the comparison, which is what they always were. */
+  .cmp-tags{
+    position:static;margin-bottom:12px;justify-content:flex-start;flex-wrap:wrap;
+    gap:8px;backdrop-filter:none;
+  }
+  .cmp-tag{font-size:10.5px;padding:7px 12px;letter-spacing:.1em}
+}
+.cmp-hint{
+  text-align:center;margin-top:14px;font-family:var(--f-mono);font-size:11px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-soft);
+}
+/* the plan card floating over the slider bottom-left */
+.plancard{
+  position:absolute;left:-26px;bottom:-34px;z-index:6;max-width:330px;
+  background:#fff;border-radius:16px;padding:16px 20px;
+  box-shadow:0 24px 70px rgba(20,41,75,.3);border:1px solid var(--c-line);
+}
+@media(max-width:1080px){.plancard{left:8px}}
+@media(max-width:640px){.plancard{position:static;max-width:none;margin-top:18px;box-shadow:var(--shadow)}}
+.plancard .pc-lbl{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--c-coral-dk);margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.plancard .pc-lbl i{width:7px;height:7px;border-radius:50%;background:var(--c-coral)}
+.plancard ul{list-style:none;display:grid;gap:7px}
+.plancard li{display:flex;gap:9px;font-size:13px;line-height:1.45;color:var(--c-ink)}
+.plancard li svg{flex:0 0 auto;width:14px;height:14px;margin-top:2.5px;color:var(--c-blue)}
+.plancard li b{color:var(--c-navy)}
+/* delta board */
+.deltas{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:48px}
+@media(max-width:980px){.deltas{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.deltas{grid-template-columns:repeat(2,1fr)}}
+.delta{
+  background:#fff;border:1px solid var(--c-line);border-radius:var(--radius-lg);
+  padding:20px 18px 18px;text-align:center;box-shadow:var(--shadow);
+}
+.delta .d-lbl{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-soft);margin-bottom:10px;min-height:2.2em;display:flex;align-items:center;justify-content:center}
+.delta .d-row{display:flex;align-items:baseline;justify-content:center;gap:7px;flex-wrap:wrap}
+.delta .d-was{font-family:var(--f-mono);font-size:15px;color:var(--c-ink-faint);text-decoration:line-through;text-decoration-color:rgba(241,85,63,.55);text-decoration-thickness:2px}
+.delta .d-was.bad{color:var(--st-bad,#CE3F2B);text-decoration:none;border-bottom:2px solid rgba(241,85,63,.45)}
+.delta .d-arrow{color:var(--c-ink-faint);font-size:13px}
+.delta .d-now{font-family:var(--f-display);font-weight:900;font-style:italic;font-size:27px;line-height:1;color:var(--c-navy);letter-spacing:-.01em}
+.delta .d-chip{
+  display:inline-block;margin-top:10px;font-family:var(--f-mono);font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--st-good);
+  background:#E6F4EC;border:1px solid #BCE3CC;border-radius:999px;padding:3px 10px;
+}
+.delta.hero-delta{background:var(--c-navy);border-color:var(--c-navy)}
+.delta.hero-delta .d-lbl{color:rgba(255,255,255,.55)}
+.delta.hero-delta .d-now{color:#fff;font-size:31px}
+.delta.hero-delta .d-was{color:rgba(255,255,255,.5)}
+.delta.hero-delta .d-arrow{color:rgba(255,255,255,.5)}
+.delta.hero-delta .d-chip{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:#7BE0A2}
+.proof-clips{max-width:760px;margin:36px auto 0}
+.proof-clips .browser{margin:0 auto}
+.proof-clips-cap{margin:18px auto 0;text-align:center;max-width:62ch;font-size:15px;line-height:1.55;color:var(--c-ink-soft)}
+.proof-clips-cap b{color:var(--c-ink)}
+.proof-cta{display:flex;justify-content:center;margin-top:28px}
+/* ---------- Why now: dark, four moments, each a way in ---------- */
+.whynow{background:linear-gradient(180deg,var(--c-dark) 0%,var(--c-dark2) 100%);color:#fff;padding:80px 0}
+.wn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:24px}
+@media(max-width:960px){.wn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.wn-grid{grid-template-columns:minmax(0,1fr)}.whynow{padding:80px 0}}
+.wn-card{display:flex;flex-direction:column;gap:10px;padding:22px 20px 18px;border-radius:var(--radius-lg);
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#fff;text-decoration:none;
+  transition:background-color .15s ease-out,border-color .15s ease-out}
+.wn-card:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.4)}
+.wn-n{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:var(--c-coral)}
+.wn-card h3{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;line-height:1.15;letter-spacing:-.01em}
+.wn-card p{font-size:15px;line-height:1.5;color:rgba(255,255,255,.78)}
+.wn-go{margin-top:auto;padding-top:8px;display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:#fff}
+.wn-go svg{width:15px;height:15px;color:var(--c-coral)}
+.pricing{background:var(--c-ground);padding:80px 0}
+.pricing-head{text-align:center;margin-bottom:8px}
+.pricing-head h2{margin-left:auto;margin-right:auto}
+.pricing-head .lede{margin:0 auto}
+/* The block itself (table on a wide screen, cards on a phone) and its styles
+   are rendered by services/pricing.py, the same block the app shows. */
+
+/* ============================================================
+   FAQ
+   ============================================================ */
+.faq{background:var(--c-panel);padding:80px 0}
+.faq-list{max-width:780px;margin-top:24px}
+.faq details{background:#fff;border:1px solid var(--c-line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+.faq summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:14px;
+  padding:19px 22px;font-weight:800;font-size:15.5px;color:var(--c-navy);
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .pm{
+  flex:0 0 auto;margin-left:auto;width:24px;height:24px;border-radius:50%;
+  background:var(--c-panel-blue);color:var(--c-blue-dk);display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:15px;transition:transform .18s ease;
+}
+.faq details[open] summary .pm{transform:rotate(45deg);background:var(--c-navy);color:#fff}
+.faq .a{padding:0 22px 20px;color:var(--c-ink-soft);font-size:15px;max-width:64ch}
+.faq .a b{color:var(--c-ink)}
+
+/* ============================================================
+   Final CTA + footer
+   ============================================================ */
+.cta-band{
+  position:relative;overflow:hidden;color:#fff;text-align:center;padding:130px 0;
+  background:
+    radial-gradient(900px 600px at 80% 0%, rgba(47,109,224,.4), transparent 60%),
+    linear-gradient(150deg,#0B182F 0%, #14294B 60%, #1D3E77 100%);
+}
+.cta-band .orb{position:absolute;border-radius:50%;pointer-events:none}
+.cta-band .orb.a{width:420px;height:420px;left:-160px;top:-160px;
+  background:radial-gradient(circle at 35% 35%, #F1553F, #C13A26 75%);opacity:.65}
+.cta-band .orb.b{width:260px;height:260px;right:-90px;bottom:-110px;
+  background:radial-gradient(circle at 35% 35%, #4E86EC, #1D3E77 80%);opacity:.75}
+.cta-band .wrap{position:relative;z-index:2}
+.cta-band.has-photo{text-align:left;padding:80px 0}
+.cta-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center}
+.cta-band.has-photo p{margin-left:0}
+.cta-shot{margin:0;justify-self:end;width:100%;max-width:380px}
+.cta-shot img{display:block;width:100%;height:auto;border-radius:var(--radius-xl);
+  border:1px solid rgba(255,255,255,.14);box-shadow:var(--shadow-dark)}
+.cta-shot figcaption{margin-top:10px;font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:rgba(255,255,255,.5)}
+@media(max-width:860px){
+  .cta-band.has-photo{text-align:center;padding:90px 0}
+  .cta-grid{grid-template-columns:1fr;gap:40px}
+  .cta-band.has-photo p{margin-left:auto}
+  .cta-shot{justify-self:center;max-width:240px}
+}
+.cta-band h2{
+  font-family:var(--f-brand);font-weight:900;font-style:italic;text-transform:none;
+  font-size:clamp(34px,5.4vw,60px);line-height:1;letter-spacing:-.012em;margin-bottom:20px;
+}
+.cta-band h2 .accent{color:var(--c-coral)}
+.cta-band p{color:rgba(255,255,255,.85);max-width:52ch;margin:0 auto 34px}
+.cta-band .mono-note{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-top:22px}
+/* Quieter second line: the promises, not the offer. */
+.cta-band .trust-note{margin-top:10px;font-size:10.5px;letter-spacing:.08em;color:rgba(255,255,255,.48)}
+.cta-band .trust-note a{color:rgba(255,255,255,.72);text-decoration:underline}
+.cta-band .trust-note a:hover{color:#fff}
+
+footer{background:#060F1F;color:rgba(255,255,255,.75);padding:64px 0 44px;font-size:14px}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:36px;margin-bottom:44px}
+@media(max-width:820px){.foot-grid{grid-template-columns:1fr 1fr}}
+/* Phone: the brand on its own row, the three link lists side by side --
+   stacked one per row the footer was 800px of mostly air. */
+@media(max-width:520px){.foot-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 16px}.foot-grid>div:first-child{grid-column:1/-1}}
+footer .wordmark{font-size:26px;margin-bottom:10px;display:inline-flex}
+footer .wordmark .wm-tile{width:36px;height:36px}
+footer .wordmark .wm-tile .mark{width:25px;height:20px}
+.foot-tag{max-width:34ch;color:rgba(255,255,255,.5);font-size:13.5px}
+.foot-col h4{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.62);margin-bottom:14px;font-weight:600}
+.foot-col a{display:block;color:rgba(255,255,255,.78);text-decoration:none;padding:4px 0;font-weight:600}
+.foot-col a:hover{color:#fff}
+.foot-base{border-top:1px solid rgba(255,255,255,.1);padding-top:24px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between;font-size:12.5px;color:rgba(255,255,255,.62)}
+.foot-base .mono{letter-spacing:.06em}
+
+/* ============================================================
+   Scroll presentation. One engine: a .scene is tall, its .pin sticks, and the
+   script writes the scene's progress to --p (0..1) and its step to data-i.
+   Everything visual is CSS reading those. Native scrolling, nothing hijacks
+   the wheel. Without JS or with reduced motion html has no .m: scenes are
+   plain blocks, shown in their final state.
+   ============================================================ */
+:root{--g:#08090C;--g2:#101318;--w:#F4F3EF;--w2:rgba(244,243,239,.68);--hair:rgba(255,255,255,.13);--sk:#6BF08A}
+body{background:var(--g);overflow-x:clip}
+.dk{background:var(--g);color:var(--w)}
+.scene{position:relative}
+.m .scene{height:calc(var(--len,3)*100svh)}
+.m .pin{position:sticky;top:0;height:100svh;overflow:hidden}
+.kick{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--w2);margin-bottom:12px}
+.h{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(36px,6vw,84px);line-height:.98;letter-spacing:-.018em}
+.h .accent{color:var(--c-coral)}
+.num{font-family:var(--f-brand);font-weight:900;font-style:italic;line-height:.92;letter-spacing:-.025em;font-size:clamp(68px,13vw,190px);color:#fff}
+.ln{font-size:clamp(17px,1.7vw,22px);line-height:1.35;color:var(--w);max-width:30ch;margin-top:14px}
+.src{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--w2);margin-top:14px}
+.src a,.credit a{color:inherit}
+.credit{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.04em;color:rgba(255,255,255,.72)}
+.sec-pad{padding:clamp(72px,11vw,150px) 0}
+.tail{margin-top:clamp(28px,4vw,48px);display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.tail .plain{color:#fff;font-weight:600}
+
+/* ---------- Hero: a Kona frame, and the skeleton draws itself on it ---------- */
+.hero{background:var(--g);color:#fff;--len:2.5}
+.hero .pin{min-height:100svh;overflow:hidden}
+html:not(.m) .hero .pin,html:not(.m) .bk .pin{position:relative}
+.hf{position:absolute;bottom:0;right:calc(-.1*100svh);height:calc(100% - 40px);aspect-ratio:1000/950;margin:0;
+  transform:scale(calc(1 + var(--p,0)*.03));transform-origin:40% 100%;will-change:transform}
+.hf>img:not(.hf-chip){-webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.4) 9%,#000 24%),linear-gradient(180deg,transparent 0,#000 11%,#000 90%,transparent);
+  mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.4) 9%,#000 24%),linear-gradient(180deg,transparent 0,#000 11%,#000 90%,transparent);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.hf .hf-chip{position:absolute;left:0;top:8.52%;width:26.27%;height:auto;opacity:clamp(0,(var(--p,1) - .5)/.1,1)}
+.hf img{display:block;width:100%;height:100%;object-fit:cover}
+.hf .hf-ov{position:absolute;inset:0;opacity:clamp(0,(var(--p,1) - .5)/.1,1)}
+.hf svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;opacity:calc(1 - clamp(0,(var(--p,0) - .58)/.04,1))}
+html:not(.m) .hf svg{display:none}
+/* The same neon and glow as overlay_style.py: NEON over NEON_DIM. */
+.bone{fill:none;stroke:#3DFF6E;stroke-width:3;stroke-linecap:round;stroke-dasharray:1;
+  stroke-dashoffset:calc(1 - clamp(0,(var(--p,1) - var(--a))/.06,1))}
+.bone.gl{stroke:#1EBE50;stroke-width:8;opacity:.4}
+.jt{fill:#3DFF6E;opacity:clamp(0,(var(--p,1) - var(--a))/.03,1)}
+.hc,.he{position:relative;z-index:2;width:min(calc(100vw - 80svh - 6vw),660px);margin-left:clamp(24px,6vw,104px)}
+.hc{padding-top:clamp(92px,19svh,210px);
+  opacity:calc(1 - clamp(0,(var(--p,0) - .04)/.14,1));transform:translateY(calc(var(--p,0)*-70px))}
+.past .hc{pointer-events:none;visibility:hidden}
+.he{position:absolute;left:0;top:clamp(110px,22svh,240px);
+  opacity:clamp(0,(var(--p,0) - .56)/.12,1)}
+html:not(.m) .he{display:none}
+.hero h1{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(34px,min(3.9vw,6.4svh),74px);line-height:1;letter-spacing:-.02em;margin:0 0 16px}
+.hero h1 .accent{color:var(--c-coral)}
+.hero .sub{font-size:clamp(16px,1.5vw,20px);line-height:1.4;color:var(--w);margin-bottom:22px}
+.goal-q{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--w2);margin-bottom:10px}
+.goal-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.goal-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:var(--radius-btn);
+  background:rgba(8,9,12,.62);border:1px solid rgba(255,255,255,.3);color:#fff;font-weight:600;font-size:14px;line-height:1.25;text-decoration:none;
+  transition:background-color .15s ease-out,border-color .15s ease-out}
+.goal-btn:hover{background:rgba(8,9,12,.85);border-color:#fff}
+.goal-btn svg{flex:none;width:15px;height:15px;color:var(--c-coral)}
+.goal-alt{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;margin-bottom:10px}
+.goal-alt a{color:#fff}
+.goal-alt i{width:1px;background:rgba(255,255,255,.3)}
+.trust{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--w2)}
+.trust i{width:1px;background:rgba(255,255,255,.3)}
+.hf-credit{position:absolute;right:16px;bottom:12px;z-index:3;text-shadow:0 1px 3px #000}
+.scroll-cue{position:absolute;left:50%;bottom:16px;z-index:3;transform:translateX(-50%);font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--w2);
+  opacity:calc(1 - clamp(0,var(--p,0)/.05,1))}
+html:not(.m) .scroll-cue{display:none}
+@media(max-aspect-ratio:13/10){
+  .hero .pin{--hfw:min(100vw,calc(100svh - 420px));--hfb:clamp(160px,21svh,204px)}
+  .hf{top:auto;left:50%;right:auto;bottom:var(--hfb);width:var(--hfw);height:auto;
+    transform:translateX(-50%) scale(calc(1 + var(--p,0)*.03));transform-origin:50% 100%}
+  .hf>img:not(.hf-chip){-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 10%,#000 92%,transparent),linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent);
+    mask-image:linear-gradient(180deg,transparent 0,#000 10%,#000 92%,transparent),linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent)}
+  .hc,.he{width:auto;margin:0 16px}
+  .hc{padding-top:78px;display:flex;flex-direction:column;min-height:100svh}
+  .he{top:84px;left:0;right:0}
+  .goal-wrap{margin-top:auto;padding-bottom:20px}
+  .goal-q,.trust{display:none}
+  .goal-btn{font-size:13px;padding:9px 11px}
+  .goal-alt{font-size:13px;margin:0}
+  .hero h1{font-size:clamp(30px,8.6vw,58px)}
+  .hero .sub{margin-bottom:0}
+  .hf-credit{left:16px;right:16px;bottom:var(--hfb);font-size:9px;letter-spacing:0;line-height:1.35;text-align:center}
+  .scroll-cue{display:none}
+  .goal-wrap{position:relative;z-index:3}
+}
+.hero-news{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(8,9,12,.62);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:13px;font-weight:600;text-decoration:none;width:max-content;max-width:100%}
+.hero-news b{background:var(--c-coral);color:#14181F;font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px;font-weight:600}
+.hero-news svg{width:13px;height:13px}
+
+/* ---------- Key figures, beside the product on a phone clip ---------- */
+.figs-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(28px,6vw,90px);align-items:center}
+.clip{position:relative;margin:0;justify-self:center;width:min(100%,400px)}
+.clip video,.clip img{display:block;width:100%;height:auto;border-radius:var(--radius-xl);background:#000;border:1px solid var(--hair)}
+.clip figcaption{margin-top:10px}
+.figs{display:grid;grid-template-columns:1fr 1fr;gap:clamp(26px,4vw,52px) clamp(20px,3vw,44px);margin-top:clamp(26px,4vw,46px)}
+.fig .v{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(50px,7.4vw,106px);line-height:.95;letter-spacing:-.025em;color:#fff;white-space:nowrap}
+.fig .v small{font-size:.42em;letter-spacing:-.01em;margin-left:.08em}
+.fig p{margin-top:8px;font-size:15px;line-height:1.35;color:var(--w2)}
+@media(max-width:820px){.figs-grid{grid-template-columns:minmax(0,1fr)}.clip{order:2;width:min(78%,340px)}}
+
+/* ---------- Beats: one picture, one number, one line ---------- */
+.beats{--len:2.7}
+.ob{background:var(--g);color:#fff;position:relative;overflow:hidden;min-height:92svh}
+.m .ob{position:absolute;inset:0;min-height:0;opacity:0;pointer-events:none}
+.m .ob.on{pointer-events:auto}
+.ob>img{position:absolute;top:0;right:0;width:62%;height:100%;object-fit:cover;object-position:var(--op,50% 50%);padding-top:66px;box-sizing:border-box;will-change:transform;transform:scale(calc(1 + var(--p,0)*.06));transform-origin:60% 8%;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 24%),linear-gradient(180deg,transparent 3%,#000 12%,#000 90%,transparent);
+  mask-image:linear-gradient(90deg,transparent 0,#000 24%),linear-gradient(180deg,transparent 3%,#000 12%,#000 90%,transparent);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.ob>.credit{opacity:clamp(0,(.4 - var(--a,0))/.1,1)}
+.ob-txt{opacity:clamp(0,(.4 - var(--a,0))/.1,1);transform:translateY(calc(var(--d,0)*60px));position:absolute;left:clamp(24px,6vw,104px);right:clamp(24px,6vw,104px);bottom:clamp(40px,11svh,120px);z-index:2}
+.out-tag{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:10px;color:var(--w2)}
+.ob .credit{position:absolute;right:16px;bottom:12px;z-index:3;text-shadow:0 1px 3px #000}
+@media(max-aspect-ratio:13/10){
+  .ob>img{width:100%;height:64%;padding-top:64px;-webkit-mask-image:linear-gradient(180deg,#000 66%,transparent);mask-image:linear-gradient(180deg,#000 66%,transparent)}
+  .ob-txt{bottom:calc(env(safe-area-inset-bottom,0px) + 26px);left:16px;right:16px}
+  .ob .credit{bottom:auto;top:calc(64% - 26px);right:auto;left:16px;font-size:9.5px}
+}
+
+/* ---------- The report: frames change, text steps ---------- */
+.rp{--len:2.7}
+.rp .pin{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(20px,4vw,64px);align-items:center;padding:84px clamp(24px,6vw,104px) 40px}
+.rp-stage{position:relative;height:100%;min-height:0}
+.rp-stage figure{margin:0;height:100%;display:flex;align-items:center;justify-content:center}
+.m .rp-stage figure{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(calc(var(--d,0)*60px))}
+.m .rp-stage figure.on{pointer-events:auto}
+.rp-stage>figure{width:100%}
+.rp-frame{cursor:zoom-in}
+.rp-frame img{display:block;width:100%;height:100%;max-height:100%;object-fit:cover;object-position:50% 74%;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent),linear-gradient(180deg,transparent 0,#000 12%,#000 88%,transparent);
+  mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent),linear-gradient(180deg,transparent 0,#000 12%,#000 88%,transparent);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.rp-table{display:flex;flex-direction:column;justify-content:center;align-items:stretch!important;gap:10px}
+.rp-table figcaption,.rp-curve figcaption{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--w2)}
+.rp-table ol{list-style:none;margin:0;padding:0;width:100%}
+.rp-table li{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(62px,.55fr) minmax(0,1.9fr) minmax(84px,.7fr);gap:14px;align-items:center;padding:clamp(7px,1.25svh,13px) 0;border-top:1px solid var(--hair)}
+.rp-table .m b{display:block;font-size:15px;font-weight:600;color:#fff;line-height:1.2}
+.rp-table .m span{display:block;font-size:11.5px;line-height:1.25;color:var(--w2);margin-top:2px}
+.rp-table .v{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(20px,1.9vw,27px);letter-spacing:-.01em;white-space:nowrap}
+.rp-table .bar{display:block;position:relative;height:6px;border-radius:3px;background:rgba(255,255,255,.1)}
+.rp-table .band{position:absolute;top:0;bottom:0;border-radius:3px;background:rgba(107,240,138,.32)}
+.rp-table .mk{position:absolute;top:-5px;width:4px;height:16px;margin-left:-2px;border-radius:2px;left:var(--to)}
+.m .rp-table .mk{left:var(--from);transition:left .55s cubic-bezier(.2,.7,.2,1);transition-delay:calc(var(--i)*45ms)}
+.m .rp-table.on .mk{left:var(--to)}
+.rp-table .b span{display:block;margin-top:6px;font-family:var(--f-mono);font-size:11px;color:var(--w2)}
+.rp-table .s b{display:block;font-size:13.5px;font-weight:600}
+.rp-table .s span{display:block;font-family:var(--f-mono);font-size:11.5px;color:var(--w2)}
+.rp-table li.out .v,.rp-table li.out .s b{color:#FF8E7C}
+.rp-table li.near .v,.rp-table li.near .s b{color:#F2C14E}
+.rp-table li.ok .v,.rp-table li.ok .s b{color:#6BF08A}
+.rp-table li.out .mk{background:#FF6B57}
+.rp-table li.near .mk{background:#F2C14E}
+.rp-table li.ok .mk{background:#6BF08A}
+.rp-curve{flex-direction:column;align-items:stretch!important;justify-content:center!important;gap:12px}
+.rp-curve figcaption b{color:#fff;font-weight:600}
+.rp-curve svg{display:block;width:100%;height:auto;overflow:visible}
+.cv-band{fill:rgba(107,240,138,.24)}
+.cv-line{fill:none;stroke:#3DFF6E;stroke-width:3;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-dasharray:1;stroke-dashoffset:clamp(0,calc(var(--d,0)*2),1)}
+.cv-dot{opacity:clamp(0,calc((1 - var(--d,0)*2 - var(--o))/.08),1)}
+html:not(.m) .cv-dot{opacity:1}
+.cv-dot circle{fill:#fff;stroke:#08090C;stroke-width:2}
+.cv-dot text{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:24px;fill:#fff;text-anchor:middle}
+.rp-txt{position:relative;min-height:0}
+.m .rp-txt{height:100%}
+.m .rp-step{position:absolute;left:0;right:0;top:50%;transform:translateY(calc(-50% + var(--d,0)*90px));opacity:0}
+.rp-step{padding:18px 0}
+.rp-step .big{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(46px,6.4vw,92px);line-height:.98;letter-spacing:-.02em;color:#fff}
+.rp-step .big small{font-size:.42em}
+.rp-foot{position:absolute;left:clamp(24px,6vw,104px);bottom:14px;font-size:14px;color:var(--w2);z-index:3}
+.rp-foot a{color:#fff}
+html:not(.m) .rp .pin{grid-template-columns:1fr;height:auto}
+html:not(.m) .rp-foot{position:static}
+@media(max-aspect-ratio:13/10){
+  .m .rp .pin{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 168px;padding:78px 16px 38px;gap:8px}
+  .rp-foot{left:16px;bottom:8px;font-size:13px}
+  .rp-table li{grid-template-columns:minmax(0,1.6fr) 62px minmax(0,1fr);gap:10px;padding:7px 0}
+  .rp-table .m span,.rp-table .s,.rp-table .b span{display:none}
+  .rp-table .m b{font-size:13.5px}
+  .rp-table .v{font-size:19px}
+  .rp-curve{justify-content:flex-start!important}
+  .rp-step{padding:0}
+  .m .rp-step{top:0;transform:translateY(calc(var(--d,0)*50px))}
+  .rp-step .big{font-size:clamp(36px,10vw,60px)}
+  .rp-step .ln{margin-top:8px;font-size:16px}
+}
+
+/* ---------- Proof, dark, wiped by the scroll ---------- */
+.proof.dk{padding:0;background:var(--g);color:var(--w)}
+.proof-scene{--len:2.3}
+.proof-scene .pin{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:10px clamp(24px,4vw,60px);align-items:center;align-content:center;padding:84px clamp(24px,5vw,80px) 30px}
+.proof-head{text-align:left;max-width:none;margin:0}
+.proof-head .h{font-size:clamp(30px,3.7vw,54px)}
+.proof-head .ln{margin:10px 0 0;max-width:none}
+.proof-head b{color:#fff}
+.score{font-size:clamp(110px,15vw,228px);margin-top:clamp(10px,2svh,24px);white-space:nowrap;font-variant-numeric:lining-nums}
+.score small{font-size:.2em;letter-spacing:0;margin-left:.1em;color:var(--w2)}
+.proof-head .plancard{position:static;margin-top:clamp(12px,2.4svh,26px);max-width:none;background:transparent;border:0;border-top:1px solid var(--hair);border-radius:0;padding:14px 0 0}
+.cmp-wrap{width:100%;max-width:min(100%,calc((100svh - 150px)*1.642));margin:0 auto}
+.cmp{border-color:var(--hair);box-shadow:none}
+.cmp-hint{color:var(--w2);margin:0;grid-column:2}
+.plancard{box-shadow:none;color:var(--w)}
+.plancard li,.plancard li b{color:var(--w)}
+.plancard .pc-lbl{color:var(--c-coral)}
+@media(max-aspect-ratio:13/10){
+  .proof-scene .pin{grid-template-columns:minmax(0,1fr);gap:12px;padding:70px 16px 12px;align-content:center}
+  .score{font-size:clamp(84px,25vw,150px);margin-top:4px}
+  .cmp-hint{display:none}
+  .proof-head .plancard{margin-top:8px;padding-top:10px}
+}
+@media(max-aspect-ratio:13/10) and (max-height:760px){.proof-head .plancard{display:none}}
+.deltas{grid-template-columns:repeat(5,minmax(0,1fr));gap:0;border-top:1px solid var(--hair)}
+@media(max-width:860px){.deltas{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.delta{background:none;border:0;border-left:1px solid var(--hair);border-radius:0;box-shadow:none;padding:18px 16px 18px;text-align:left}
+.delta:first-child{border-left:0;padding-left:0}
+.delta .d-lbl{justify-content:flex-start;min-height:0;margin-bottom:12px;color:var(--w2)}
+.delta .d-row{flex-direction:column;align-items:flex-start;gap:0}
+.delta .d-arrow{display:none}
+.delta .d-was{font-size:17px;color:rgba(255,255,255,.55)}
+.delta .d-was.bad{color:#FF9C8A;border:0;text-decoration:line-through;text-decoration-color:rgba(255,156,138,.6)}
+.delta .d-now,.delta.hero-delta .d-now{font-size:clamp(40px,4.6vw,68px);color:#fff}
+.delta .d-chip{background:none;border:0;padding:0;margin-top:8px;color:#7BE0A2}
+.delta.hero-delta{background:none;border-color:var(--hair)}
+.delta.hero-delta .d-lbl{color:var(--w2)}
+.delta.hero-delta .d-chip{background:none;border:0;color:#7BE0A2}
+.proof-rest{padding:clamp(20px,3vw,40px) 0 clamp(72px,10vw,130px)}
+.proof-clips-cap{color:var(--w2)}
+.proof-clips-cap b{color:#fff}
+.browser{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--hair);background:#111;position:relative;cursor:zoom-in}
+.browser .bar{display:flex;align-items:center;gap:6px;padding:9px 12px;background:#15181E}
+.browser .bar i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.24)}
+.browser .bar .url{margin-left:8px;font-family:var(--f-mono);font-size:11px;color:var(--w2)}
+.browser img{display:block;width:100%;height:auto}
+
+/* ---------- Kona: the field moves past as the page scrolls ---------- */
+.kw-scene{--len:4}
+.kw-scene .pin{display:flex;flex-direction:column;justify-content:center;gap:clamp(14px,3svh,30px);padding:84px 0 22px}
+.kw-head{padding:0 clamp(24px,6vw,104px);display:flex;flex-wrap:wrap;gap:12px 48px;align-items:flex-end;justify-content:space-between}
+.kw-head .ln{margin:0;max-width:34ch;color:var(--w2)}
+.kw{display:flex;gap:12px;height:min(40svh,380px);padding:0 clamp(24px,6vw,104px);width:max-content;
+  transform:translateX(calc(var(--p,0)*var(--kw,0px)*-1));will-change:transform}
+.kw img{display:block;height:100%;width:auto;max-width:none;border-radius:var(--radius);background:#1a1d22}
+html:not(.m) .kw-wrap{overflow-x:auto;scroll-snap-type:x proximity}
+html:not(.m) .kw img{scroll-snap-align:center}
+.kw-credit{padding:0 clamp(24px,6vw,104px)}
+@media(max-width:640px){.kw{height:min(34svh,300px)}}
+.kona-rest{padding:clamp(40px,6vw,80px) 0 clamp(72px,10vw,130px)}
+.kona-duo{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,72px)}
+@media(max-width:860px){.kona-duo{grid-template-columns:minmax(0,1fr)}}
+.kc-tag{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--w2);margin-bottom:10px}
+.kc-tag b{color:var(--c-coral);margin-right:8px;font-weight:600}
+.kona-card h3{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(24px,2.8vw,36px);line-height:1.06;letter-spacing:-.012em;color:#fff}
+.kona-stats{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:20px 0}
+.ks-num{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(42px,5.4vw,72px);line-height:1;letter-spacing:-.02em;color:#fff;white-space:nowrap}
+.ks-num small{font-size:.38em;color:var(--w2);letter-spacing:0}
+.ks-lbl{margin-top:6px;font-size:14.5px;line-height:1.35;color:var(--w2)}
+.kc-fig{margin:0 0 18px;border-radius:var(--radius-lg);overflow:hidden;background:#fff;cursor:zoom-in}
+.kc-fig img{display:block;width:100%;height:auto}
+.kona-cta{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}
+.kc-go{color:#fff;font-weight:600}
+.btn-line{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+.btn-line:hover{border-color:#fff}
+
+/* ---------- Bike: points on one rider ---------- */
+.bk{--len:3.8}
+.bk .pin{min-height:100svh;overflow:hidden}
+.bf{position:absolute;top:auto;bottom:0;left:0;height:calc(100% - 44px);aspect-ratio:1000/950;margin:0;overflow:hidden;
+  -webkit-mask-image:linear-gradient(270deg,transparent 0,#000 20%),linear-gradient(180deg,transparent 0,#000 8%,#000 90%,transparent);
+  mask-image:linear-gradient(270deg,transparent 0,#000 20%),linear-gradient(180deg,transparent 0,#000 8%,#000 90%,transparent);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.bf-in{position:absolute;inset:0;transform-origin:0 0;will-change:transform}
+.bf img{display:block;width:100%;height:100%;object-fit:cover}
+.bf svg{position:absolute;inset:0;width:100%;height:100%}
+.sp{opacity:0;transition:opacity .2s ease-out}
+.bk[data-i="0"] .sp0,.bk[data-i="1"] .sp1,.bk[data-i="2"] .sp2,.bk[data-i="3"] .sp3{opacity:1}
+.sp circle{fill:none;stroke:#fff;stroke-width:2.5}
+.sp circle+circle{stroke:#08090C;stroke-width:1}
+.bk-src{position:absolute;right:clamp(24px,6vw,104px);bottom:16px;z-index:3;margin:0}
+.bk-src a{color:#fff}
+html:not(.m) .bf svg{display:none}
+.bk-txt{position:absolute;right:clamp(24px,6vw,104px);top:50%;transform:translateY(-50%);width:min(36vw,480px);z-index:2}
+.m .bk-txt{height:60%}
+.m .bk-step{position:absolute;left:0;right:0;top:50%;transform:translateY(calc(-50% + var(--d,0)*90px));opacity:0}
+.bk-step{padding:18px 0}
+.bk-step .big{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(68px,10vw,150px);line-height:.95;letter-spacing:-.025em;color:#fff;white-space:nowrap}
+.bk .credit{position:absolute;left:16px;bottom:12px;z-index:3;text-shadow:0 1px 3px #000}
+@media(max-aspect-ratio:13/10){
+  .bk .pin{--bfw:min(100vw,calc(100svh - 300px))}
+  .bf{top:64px;bottom:auto;left:50%;width:var(--bfw);height:auto;transform:translateX(-50%);
+    -webkit-mask-image:linear-gradient(180deg,#000 88%,transparent),linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent);
+    mask-image:linear-gradient(180deg,#000 88%,transparent),linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent)}
+  .bk-src{left:16px;right:16px;bottom:4px;font-size:10px}
+  .bk-txt,.m .bk-txt{left:16px;right:16px;width:auto;top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);transform:none;height:190px}
+  .m .bk-step{top:auto;bottom:0;transform:translateY(calc(var(--d,0)*50px))}
+  .bk-step{padding:0}
+  .bk .credit{left:16px;right:16px;text-align:center;bottom:auto;top:calc(64px + var(--bfw)*.95 - 28px);font-size:9px;line-height:1.35;letter-spacing:0}
+  .bk-step .big{font-size:clamp(60px,17vw,100px)}
+}
+html:not(.m) .bk .pin{min-height:0;height:auto}
+html:not(.m) .bf{position:relative;width:min(100%,720px);height:auto;top:auto;bottom:auto}
+html:not(.m) .bk-src{position:static;margin:8px 16px}
+html:not(.m) .bk-txt{position:static;transform:none;width:auto;margin:0 16px}
+html:not(.m) .bk .credit{position:static;margin:8px 16px}
+
+/* ---------- The aero tool: your angle, in minutes ---------- */
+.aero{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(28px,6vw,90px);align-items:center}
+@media(max-width:820px){.aero{grid-template-columns:minmax(0,1fr)}}
+.aero .num{font-size:clamp(84px,15vw,210px);white-space:nowrap}
+.aero .num small{font-size:.32em;margin-left:.1em;letter-spacing:0}
+.aero-ctl label{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--w2)}
+.aero-ctl output{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:42px;letter-spacing:-.02em;color:#fff}
+.aero-ctl input[type=range]{width:100%;height:44px;margin:6px 0 2px;accent-color:var(--c-coral);cursor:ew-resize}
+.aero-ends{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--w2)}
+.aero-dist{display:flex;gap:8px;margin-top:22px}
+.aero-dist button{flex:1;min-height:44px;background:transparent;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius-btn);color:#fff;font-family:var(--f-mono);font-size:13px;cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out}
+.aero-dist button:hover{border-color:#fff}
+.aero-dist button[aria-pressed=true]{background:var(--w);color:#14181F;border-color:var(--w)}
+
+/* ---------- Run ---------- */
+.run-grid{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(28px,6vw,90px);align-items:center}
+@media(max-width:820px){.run-grid{grid-template-columns:minmax(0,1fr)}.run-grid .clip{width:min(72%,320px)}}
+.run-pts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:clamp(22px,3vw,34px) 0}
+.run-pts b{display:block;font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(19px,2.3vw,32px);line-height:1;letter-spacing:-.015em;color:#fff}
+.run-pts span{display:block;margin-top:6px;font-size:14px;line-height:1.3;color:var(--w2)}
+.kino{margin:0;border-radius:var(--radius-lg);overflow:hidden;background:#fff;cursor:zoom-in}
+.kino img{display:block;width:100%;height:auto}
+.kino-cap{margin-top:10px}
+@media(max-width:640px){.kino-wrap{overflow-x:auto;scroll-snap-type:x proximity}.kino{width:760px}}
+
+/* ---------- Where the foot lands: an illustration, labelled as one ---------- */
+.pair-head{margin-top:clamp(56px,8vw,110px)}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(8px,1.4vw,18px);margin-top:clamp(20px,3vw,34px)}
+.pair figure{margin:0}
+.pair .fr{position:relative;border-radius:var(--radius-lg);overflow:hidden}
+.pair img{display:block;width:100%;height:auto}
+.pair svg{position:absolute;inset:0;width:100%;height:100%}
+.pair line{stroke:#3DFF6E;stroke-width:3;vector-effect:non-scaling-stroke;stroke-linecap:round}
+.pair line.up{stroke:#fff;stroke-width:1.5;stroke-dasharray:5 5}
+.pair circle{fill:#3DFF6E;stroke:#08090C;stroke-width:.3}
+.pair figcaption{margin-top:10px;font-size:clamp(14px,1.4vw,18px);line-height:1.3;color:#fff}
+.pair figcaption span{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--w2);margin-bottom:4px}
+
+/* ---------- How ---------- */
+.how-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(28px,6vw,90px);align-items:center}
+@media(max-width:860px){.how-grid{grid-template-columns:minmax(0,1fr)}}
+.steps{list-style:none;margin-top:clamp(26px,4vw,44px);display:grid;gap:clamp(18px,3vw,30px)}
+.steps li{display:grid;grid-template-columns:clamp(104px,17vw,250px) 1fr;gap:18px;align-items:baseline;border-top:1px solid var(--hair);padding-top:clamp(14px,2vw,20px)}
+.steps .clk{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:clamp(25px,3.6vw,50px);letter-spacing:-.02em;line-height:1;color:#fff;white-space:nowrap}
+@media(max-width:560px){.steps li{grid-template-columns:minmax(0,1fr);gap:6px}}
+.steps h4{font-size:17px;font-weight:600;color:#fff;margin-bottom:2px}
+.steps p{font-size:15px;line-height:1.4;color:var(--w2)}
+.steps p b{color:#fff}
+/* The phone in the garage plays the real clip, in the rectangle its green screen had. */
+.tripod{margin:0;justify-self:center;width:min(100%,calc(86svh*.558),500px)}
+.tr-fr{position:relative;-webkit-mask-image:linear-gradient(180deg,#000 88%,transparent);mask-image:linear-gradient(180deg,#000 88%,transparent)}
+.tr-fr img{display:block;width:100%;height:auto;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+.tr-fr video{position:absolute;left:41.54%;top:41.13%;width:19.01%;height:22.46%;object-fit:cover;border-radius:11%/5%;background:#000}
+.tr-fr i{position:absolute;left:46.22%;top:41.13%;width:9.51%;height:.87%;background:#000;border-radius:0 0 30% 30%/0 0 100% 100%}
+.tripod figcaption{margin-top:8px}
+@media(max-width:860px){.tripod{width:min(82%,340px)}}
+
+/* ---------- Coach ---------- */
+.coach-grid{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:clamp(28px,6vw,80px);align-items:center}
+@media(max-width:860px){.coach-grid{grid-template-columns:minmax(0,1fr)}}
+.feat-list{margin-top:22px;display:grid;gap:6px}
+.feat-item{padding:14px 16px;border-radius:var(--radius-lg);border-left:3px solid transparent;cursor:pointer;transition:background-color .15s ease-out}
+.feat-item h4{font-size:17px;font-weight:600;color:#fff;margin-bottom:2px}
+.feat-item p{font-size:15px;line-height:1.4;color:var(--w2)}
+.feat-item:hover{background:rgba(255,255,255,.05)}
+.feat-item.active{background:rgba(255,255,255,.09);border-left-color:var(--c-coral)}
+.split-note{margin-top:18px;font-size:14.5px;line-height:1.5;color:var(--w2)}
+.split-note b{color:#fff}
+.split-note a{color:#fff}
+.split-note svg{display:none}
+#coach .h,#how .h,#run .h{font-size:clamp(36px,4.8vw,68px)}
+[id]{scroll-margin-top:84px}
+.scene[id],section[id]{scroll-margin-top:0}
+
+/* ---------- Swim: one chapter the camera cannot do alone ---------- */
+.swim-sec{background:var(--g);color:#fff}
+.swim-slot{padding-bottom:clamp(48px,7vw,90px)}
+/* The block's phone layout is a container query on .pr, which it has just left. */
+#swimSlot{container-type:inline-size}
+.swim-slot .pr-swim{margin:0}
+.swim{position:relative;overflow:hidden;background:var(--g);color:#fff;min-height:78svh;display:flex;align-items:center}
+.swim>img{position:absolute;top:0;right:0;width:68%;height:100%;object-fit:cover;object-position:50% 60%;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 30%),linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent);
+  mask-image:linear-gradient(90deg,transparent 0,#000 30%),linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.swim-txt{position:relative;z-index:2;width:min(46vw,560px);margin-left:clamp(24px,6vw,104px);padding:64px 0}
+.swim .credit{position:absolute;right:16px;bottom:12px;z-index:3;text-shadow:0 1px 3px #000}
+.swim .tail a{color:#fff;font-weight:600}
+@media(max-aspect-ratio:13/10){
+  .swim{display:block;min-height:0}
+  .swim>img{position:relative;width:100%;height:auto;aspect-ratio:16/9;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 72%,transparent);mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 72%,transparent);-webkit-mask-composite:source-over;mask-composite:add}
+  .swim-txt{width:auto;margin:0 16px;padding:12px 0 56px}
+  .swim .credit{position:static;margin:0 16px 8px;font-size:9.5px}
+}
+
+/* ---------- The closing band: the road, and the real report in a hand ---------- */
+.cta-band.has-photo{background:linear-gradient(180deg,var(--g) 0,transparent 22%,transparent 80%,var(--g)),linear-gradient(90deg,rgba(8,9,12,.94) 0,rgba(8,9,12,.62) 55%,rgba(8,9,12,.3) 100%),url(media/v3/gen-road.webp) 50% 40%/cover no-repeat var(--g);padding:clamp(70px,9vw,120px) 0}
+.cta-shot{max-width:320px}
+.cta-shot img{border:0;border-radius:0;box-shadow:none}
+.cta-shot figcaption{display:none}
+@media(max-width:860px){.cta-shot{max-width:230px}}
+
+/* ---------- Side rail: where am I, on a wide screen ---------- */
+.rail{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:70;display:grid;gap:4px;mix-blend-mode:difference}
+.rail a{display:flex;align-items:center;justify-content:flex-end;gap:8px;height:22px;color:#fff;text-decoration:none;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.rail span{opacity:0;transition:opacity .15s ease-out}
+.rail a:hover span,.rail a:focus-visible span{opacity:1}
+.rail i{width:7px;height:7px;border-radius:50%;border:1px solid #fff}
+.rail a[aria-current=true] i{background:#fff}
+@media(max-width:1180px){.rail{display:none}}
+
+/* The block rendered by services/pricing.py and everything under it keep the
+   light ground: this is where the page stops presenting and starts selling. */
+
+/* ---------- One ground from the first screen to the last ----------
+   Pricing is services/pricing.py, shared with the app and light there. Its CSS
+   reads tokens, so the dark version is the same tokens restated for this page. */
+.pr,.go,.pr-swim{--c-bg:#101318;--c-panel:#191D24;--c-panel-blue:#121A2B;--c-line:rgba(255,255,255,.14);--c-line-strong:rgba(255,255,255,.34);
+  --c-ink:#F4F3EF;--c-head:#fff;--c-ink-soft:rgba(244,243,239,.8);--c-ink-faint:rgba(244,243,239,.64);--c-ink-disabled:rgba(244,243,239,.42);
+  --c-brand-navy:#2C4A82;--c-blue:#9DB8F2;--c-coral-dk:#FF9A89;--st-good:#7BE0A2;--st-good-bg:rgba(46,158,91,.2);--st-good-fill:#6FD893;--shadow:none}
+.pricing{background:var(--g);color:var(--w)}
+.pr .pr-col-enthusiast .pr-lead{color:#FF9A89}
+.pr .pr-table .pr-new{color:#FF8E7C}
+.go{background:var(--g2);color:var(--w);color-scheme:dark}
+.go a{color:#fff}
+.go::backdrop{background:rgba(4,5,7,.72)}
+.faq{background:var(--g);color:var(--w)}
+.faq details{background:var(--g2);border-color:var(--hair)}
+.faq summary{color:#fff}
+.faq summary .pm{background:rgba(255,255,255,.1);color:#fff}
+.faq details[open] summary .pm{background:#fff;color:#14181F}
+.faq .a{color:var(--w2)}
+.faq .a b{color:#fff}
+.faq .a a{color:#fff}
+.faq .wrap>.eyebrow{display:flex;justify-content:center}
+.faq .wrap>h2.sec{text-align:center}
+.faq-list{margin-left:auto;margin-right:auto}
+/* The old section heads, in the voice of the rest. */
+.eyebrow{color:var(--w2)}
+.eyebrow::before{display:none}
+h2.sec{color:#fff;font-size:clamp(34px,5vw,68px);line-height:1}
+h2.sec::after{display:none}
+.lede{color:var(--w2)}
+.lede b{color:#fff}
+/* Navy swells in the middle of Why now and is gone at both edges. */
+.whynow{background:linear-gradient(180deg,var(--g) 0,#0D1730 34%,#0D1730 66%,var(--g) 100%)}
+footer{background:var(--g)}
+/* A pinned scene dissolves to the ground in its last moments, so it leaves as
+   nothing rather than as a hard edge scrolling away. */
+.m .hero .pin::after,.m .beats .pin::after,.m .rp .pin::after,.m .kw-scene .pin::after,.m .bk .pin::after{
+  content:"";position:absolute;inset:0;z-index:6;pointer-events:none;background:var(--g);opacity:clamp(0,(var(--p,0) - .96)/.04,1)}
+@media(max-width:640px){
+  .pricing,.faq,.whynow{padding:56px 0}
+  .cta-band.has-photo{padding:60px 0}
+}
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-mark" viewBox="0 0 780 632">
+    <g transform="translate(148 -168)">
+      <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".22" transform="translate(155.5 0) skewX(-11) translate(-148 0)"/>
+      <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".45" transform="translate(155.5 0) skewX(-11) translate(-74 0)"/>
+      <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" transform="translate(155.5 0) skewX(-11)"/>
+      <circle cx="446" cy="246" r="78" fill="#F1553F" transform="translate(155.5 0) skewX(-11)"/>
+    </g>
+  </symbol>
+</svg>
+<!-- ================= NAV ================= -->
+<nav class="nav" id="nav" aria-label="Main">
+  <div class="nav-inner">
+    <a class="wordmark" href="/"><span class="wm-tile"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>Flapp</a>
+    <div class="nav-links">
+      <a href="#report">The report</a>
+      <!-- Named in the nav because it is what most visitors arrive for, and
+           the page had no word for it above the fold. -->
+      <a href="#proof">Bike fit</a>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/academy">Academy</a>
+    </div>
+    <div class="nav-cta">
+      <a class="login" id="navLogin" href="/app#login">Log in</a>
+      <a class="btn btn-accent" id="navGo" href="/app">Analyze free</a>
+    </div>
+  </div>
+</nav>
+
+<nav class="rail" aria-label="Chapters">
+  <a href="#report"><span>Report</span><i></i></a>
+  <a href="#proof"><span>Bike fit</span><i></i></a>
+  <a href="#bike"><span>Bike</span><i></i></a>
+  <a href="#run"><span>Run</span><i></i></a>
+  <a href="#how"><span>How it works</span><i></i></a>
+  <a href="#pricing"><span>Pricing</span><i></i></a>
+  <a href="#kona"><span>Research</span><i></i></a>
+  <a href="#coach"><span>Coach</span><i></i></a>
+</nav>
+<!-- ================= HERO ================= -->
+<!-- A Kona frame, and the page draws the measurement on it as the visitor
+     scrolls. The joints and the angles are the field study's hand-checked ones
+     (upload/field-study/kona2026/corrections/p17.json, backend/scripts/
+     landing_v3_media.py); no score on him, the study never gave one. -->
+<header class="hero">
+  <div class="scene" data-scene id="heroScene">
+    <div class="pin">
+      <figure class="hf">
+        <img src="media/v3/kona-hero-raw-2000.webp" srcset="media/v3/kona-hero-raw-1200.webp 1200w, media/v3/kona-hero-raw-2000.webp 2000w" sizes="(max-aspect-ratio:13/10) 100vw, 100vh" width="2000" height="1900" fetchpriority="high"
+             alt="A professional triathlete on a time-trial bike at the Ironman World Championship 2026, side-on">
+        <img class="hf-ov" src="media/v3/kona-hero-ov-2000.webp" srcset="media/v3/kona-hero-ov-1200.webp 1200w, media/v3/kona-hero-ov-2000.webp 2000w" sizes="(max-aspect-ratio:13/10) 100vw, 100vh" width="2000" height="1900" loading="lazy"
+             alt="The same frame with Flapp's overlay: trunk 21 degrees, shoulder 86, elbow 86, forearm tilt 21, helmet 18 percent above the back">
+        <img class="hf-chip" src="media/v3/kona-hero-chip.webp" width="578" height="77" loading="lazy" alt="">
+        <svg viewBox="0 0 1000 950" aria-hidden="true">
+          <line class="bone gl" pathLength="1" style="--a:0.14" x1="611" y1="320" x2="360" y2="222"/><line class="bone" pathLength="1" style="--a:0.14" x1="611" y1="320" x2="360" y2="222"/>
+          <line class="bone gl" pathLength="1" style="--a:0.182" x1="360" y1="222" x2="316" y2="364"/><line class="bone" pathLength="1" style="--a:0.182" x1="360" y1="222" x2="316" y2="364"/>
+          <line class="bone gl" pathLength="1" style="--a:0.224" x1="316" y1="364" x2="181" y2="313"/><line class="bone" pathLength="1" style="--a:0.224" x1="316" y1="364" x2="181" y2="313"/>
+          <line class="bone gl" pathLength="1" style="--a:0.266" x1="611" y1="320" x2="418" y2="460"/><line class="bone" pathLength="1" style="--a:0.266" x1="611" y1="320" x2="418" y2="460"/>
+          <line class="bone gl" pathLength="1" style="--a:0.308" x1="418" y1="460" x2="561" y2="637"/><line class="bone" pathLength="1" style="--a:0.308" x1="418" y1="460" x2="561" y2="637"/>
+          <line class="bone gl" pathLength="1" style="--a:0.35" x1="561" y1="637" x2="596" y2="663"/><line class="bone" pathLength="1" style="--a:0.35" x1="561" y1="637" x2="596" y2="663"/>
+          <line class="bone gl" pathLength="1" style="--a:0.392" x1="596" y1="663" x2="495" y2="708"/><line class="bone" pathLength="1" style="--a:0.392" x1="596" y1="663" x2="495" y2="708"/>
+          <line class="bone gl" pathLength="1" style="--a:0.434" x1="495" y1="708" x2="561" y2="637"/><line class="bone" pathLength="1" style="--a:0.434" x1="495" y1="708" x2="561" y2="637"/>
+          <circle class="jt" style="--a:0.14" cx="611" cy="320" r="5"/>
+          <circle class="jt" style="--a:0.182" cx="360" cy="222" r="5"/>
+          <circle class="jt" style="--a:0.224" cx="316" cy="364" r="5"/>
+          <circle class="jt" style="--a:0.266" cx="611" cy="320" r="5"/>
+          <circle class="jt" style="--a:0.308" cx="418" cy="460" r="5"/>
+          <circle class="jt" style="--a:0.35" cx="561" cy="637" r="5"/>
+          <circle class="jt" style="--a:0.392" cx="596" cy="663" r="5"/>
+          <circle class="jt" style="--a:0.434" cx="495" cy="708" r="5"/>
+          <circle class="jt" style="--a:.3" cx="181" cy="313" r="5"/>
+        </svg>
+      </figure>
+      <p class="credit hf-credit">Photo: Scott Flathouse (<a href="https://www.instagram.com/scottflathousephoto/" rel="noopener">@scottflathousephoto</a>) · <a href="https://www.scottflathousephoto.com/events/" rel="noopener">scottflathousephoto.com/events</a></p>
+
+      <div class="hc">
+        <div>
+          <a class="hero-news" href="#pr-swim"><b>New</b>Swim stroke reviews by a pro triathlete
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          <h1>Faster and pain-free<br><span class="accent">starts with one change</span></h1>
+          <p class="sub">Film <b>10 seconds</b> from the side. Get <b>the one change</b> that matters.</p>
+        </div>
+        <div class="goal-wrap">
+          <!-- Ways in, by problem: each lands in the app with ?goal=, so PostHog
+               can say which problem brings the people who end up paying. -->
+          <p class="goal-q">What brings you here?</p>
+          <div class="goal-row">
+            <a class="goal-btn" id="goalKnee" href="/app?goal=knee"><span>My knee hurts on the bike</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <a class="goal-btn" id="goalFaster" href="/app?goal=faster"><span>I want to be faster</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <a class="goal-btn" id="goalRace" href="/app?goal=race"><span>Check my position before a race</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <a class="goal-btn" id="goalRun" href="/app?goal=run"><span>Improve my running form</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          </div>
+          <p class="goal-alt"><a id="heroGo" href="/app">Just looking — open the app</a><i></i><a href="#report">See a real report</a></p>
+          <p class="trust"><span>Phone clip or one photo</span><i></i><span><!--FREE-LIMIT--> free analyses / month</span></p>
+        </div>
+      </div>
+
+      <div class="he" aria-hidden="true">
+        <p class="kick">One frame · Kona 2026</p>
+        <p class="h">Every joint.<br><span class="accent">Measured.</span></p>
+        <p class="ln">The same overlay your clip gets. Every point on this pro checked by hand.</p>
+      </div>
+      <p class="scroll-cue" aria-hidden="true">Scroll</p>
+    </div>
+  </div>
+</header>
+
+<!-- ================= KEY FIGURES ================= -->
+<section id="figures" class="dk sec-pad">
+  <div class="wrap figs-grid">
+    <figure class="clip">
+      <video data-src="media/v3/tt-dark.mp4" poster="media/v3/tt-dark-poster.webp" muted loop playsinline preload="none" width="1072" height="1906"
+             aria-label="A triathlete on a trainer in the aero position, on black, with Flapp's overlay as the analysis returned it: score 75 out of 100, grade B, and the trunk, hip and knee angles updating on every frame"></video>
+      <figcaption class="credit">A real analysis of a 9-second phone clip. Room darkened, numbers untouched.</figcaption>
+    </figure>
+    <div>
+      <p class="kick">From your phone</p>
+      <h2 class="h">No lab.<br>No <span class="accent">booking.</span></h2>
+      <div class="figs">
+        <div class="fig"><div class="v">10<small>s</small></div><p>of filming, side-on. One photo works too.</p></div>
+        <div class="fig"><div class="v">33</div><p>body landmarks tracked on every frame.</p></div>
+        <div class="fig"><div class="v">30–60<small>s</small></div><p>to the verdict on a clip. About 5 on a photo.</p></div>
+        <div class="fig"><div class="v">1</div><p>change to make first. Nothing wrong? We say so.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= WHAT CHANGES FOR YOU ================= -->
+<!-- Speed first, then pain (Artur's order). Each number is sourced and says
+     what it is: the minutes are aero_estimator.time_saved for trunk 30 to 20
+     degrees, 35 km/h, 90 km. No beat promises an outcome Flapp does not
+     measure. -->
+<section id="outcomes" class="dk">
+  <div class="scene beats" data-scene data-steps=".ob" aria-label="What changes for you">
+    <div class="pin">
+      <article class="ob on">
+        <img src="media/v3/kona-bike-ov-1200.webp" srcset="media/v3/kona-bike-ov-1200.webp 1200w, media/v3/kona-bike-ov-2000.webp 2000w" sizes="(max-aspect-ratio:13/10) 100vw, 62vw" width="2000" height="1900" loading="lazy" style="--op:50% 30%"
+             alt="A professional triathlete at the Ironman World Championship 2026, side-on, with Flapp's overlay of her measured angles">
+        <div class="ob-txt">
+          <p class="out-tag speed">Speed · bike</p>
+          <div class="num">3.9<small style="font-size:.34em"> min</small></div>
+          <p class="ln">Trunk from 30° to 20°, over 90 km. Find yours, beside 32 pros.</p>
+          <p class="src">Estimate at 35 km/h · Fintelman et al. 2015 · <a href="/academy/kona-2026-pro-bike-positions">Flapp Kona 2026 study</a></p>
+        </div>
+        <p class="credit">Photo: Scott Flathouse (<a href="https://www.instagram.com/scottflathousephoto/" rel="noopener">@scottflathousephoto</a>) · <a href="https://www.scottflathousephoto.com/events/" rel="noopener">scottflathousephoto.com/events</a></p>
+      </article>
+      <article class="ob">
+        <img src="media/v3/gen-run-ov.webp" width="1180" height="1080" loading="lazy" style="--op:50% 10%"
+             alt="A generated image of a runner on a coastal road, side-on, with Flapp's overlay measured on it: trunk lean 7 degrees, elbow 71, hip 162, knee 141, ankle 89">
+        <div class="ob-txt">
+          <p class="out-tag both">Speed + knees · run</p>
+          <div class="num">+5–10<small style="font-size:.4em">%</small></div>
+          <p class="ln">Cadence cuts the braking on every stride, and the load on the knee.</p>
+          <p class="src">Heiderscheit et al. 2011</p>
+        </div>
+        <p class="credit">Generated image · measured on this image</p>
+      </article>
+      <article class="ob">
+        <img src="media/v3/knee-bottom.webp" width="720" height="760" loading="lazy" style="--op:50% 60%"
+             alt="A triathlete's leg at the bottom of the pedal stroke, on black, with Flapp's overlay showing the knee angle">
+        <div class="ob-txt">
+          <p class="out-tag pain">Pain · bike</p>
+          <div class="num">5<small style="font-size:.4em">%</small></div>
+          <p class="ln">A saddle that far off changes knee angles by a third. Get the fix in millimetres.</p>
+          <p class="src">Bini, Hume &amp; Croft 2011</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= REPORT SHOWCASE ================= -->
+<!-- One real report, /examples/bike-road: a rider with six readings flagged, on
+     purpose -- a showcase where everything is green says nothing about what the
+     tool finds. -->
+<section id="report" class="dk">
+  <div class="scene rp" data-scene data-steps=".rp-step,.rp-stage figure">
+    <div class="pin">
+      <div class="rp-stage">
+        <figure class="rp-frame shotframe" role="button" tabindex="0" aria-label="Enlarge this frame"><img src="media/examples/bike-road.webp" width="720" height="1280" loading="lazy"
+             alt="A road rider on an indoor trainer, filmed from the side, with the pose skeleton drawn on and the trunk, hip, elbow and knee angles labelled"></figure>
+        <figure class="rp-table"><figcaption>Measured against published ranges</figcaption><ol><li class="out" style="--i:0"><div class="m"><b>Elbow angle</b><span>Retul road fit window</span></div><div class="v">93.6°</div><div class="b"><i class="bar"><i class="band" style="left:44.0%;width:31.1%"></i><i class="mk" style="--to:6.2%;--from:59.5%"></i></i><span>130–160°</span></div><div class="s"><b>Too low</b><span>−36.4°</span></div></li><li class="out" style="--i:1"><div class="m"><b>Hip angle</b><span>Retul; derived from competitive rider trunk 30-45 deg</span></div><div class="v">72°</div><div class="b"><i class="bar"><i class="band" style="left:30.8%;width:38.5%"></i><i class="mk" style="--to:87.1%;--from:50.0%"></i></i><span>50–65°</span></div><div class="s"><b>Too high</b><span>+7°</span></div></li><li class="out" style="--i:2"><div class="m"><b>Trunk angle</b><span>Competitive road rider norms</span></div><div class="v">23.1°</div><div class="b"><i class="bar"><i class="band" style="left:30.8%;width:38.5%"></i><i class="mk" style="--to:13.1%;--from:50.0%"></i></i><span>30–45°</span></div><div class="s"><b>Too low</b><span>−6.9°</span></div></li><li class="out" style="--i:3"><div class="m"><b>Knee at the bottom of the stroke</b><span>Retul; Bini et al. 2011</span></div><div class="v">149.9°</div><div class="b"><i class="bar"><i class="band" style="left:30.8%;width:38.5%"></i><i class="mk" style="--to:88.1%;--from:50.0%"></i></i><span>135–145°</span></div><div class="s"><b>Too high</b><span>+4.9°</span></div></li><li class="near" style="--i:4"><div class="m"><b>Knee at the top of the stroke</b></div><div class="v">62.1°</div><div class="b"><i class="bar"><i class="band" style="left:30.8%;width:38.5%"></i><i class="mk" style="--to:19.6%;--from:50.0%"></i></i><span>65–75°</span></div><div class="s"><b>Borderline</b><span>−2.9°</span></div></li><li class="near" style="--i:5"><div class="m"><b>Forearm tilt</b></div><div class="v">17.3°</div><div class="b"><i class="bar"><i class="band" style="left:30.8%;width:38.5%"></i><i class="mk" style="--to:75.0%;--from:50.0%"></i></i><span>0–15°</span></div><div class="s"><b>Borderline</b><span>+2.3°</span></div></li><li class="ok" style="--i:6"><div class="m"><b>Shoulder angle</b></div><div class="v">88.3°</div><div class="b"><i class="bar"><i class="band" style="left:30.8%;width:38.5%"></i><i class="mk" style="--to:35.8%;--from:50.0%"></i></i><span>85–110°</span></div><div class="s"><b>In range</b></div></li><li class="ok" style="--i:7"><div class="m"><b>Pelvic tilt ratio</b></div><div class="v">3.1</div><div class="b"><i class="bar"><i class="band" style="left:30.8%;width:38.5%"></i><i class="mk" style="--to:60.4%;--from:50.0%"></i></i><span>1.8–3.5</span></div><div class="s"><b>In range</b></div></li></ol></figure>
+        <figure class="rp-curve">
+          <figcaption><b>Knee</b> · bottom of each stroke marked · target 138–145°</figcaption>
+          <svg viewBox="0 0 1000 440" role="img" aria-label="The knee angle over five pedal strokes of a real clip, with the bottom of each stroke marked against the target band">
+            <rect class="cv-band" x="0" y="73.3" width="1000" height="30.2"/>
+            <path class="cv-line" pathLength="1" d="M0.0 401.6 L4.2 396.9 L8.5 390.4 L12.7 382.6 L16.9 373.1 L21.2 361.1 L25.4 346.4 L29.7 329.1 L33.9 308.9 L38.1 286.9 L42.4 263.1 L46.6 238.5 L50.8 213.5 L55.1 188.1 L59.3 163.1 L63.6 138.0 L67.8 113.9 L72.0 90.6 L76.3 69.5 L80.5 50.9 L84.7 37.1 L89.0 27.6 L93.2 22.9 L97.5 23.3 L101.7 26.7 L105.9 33.6 L110.2 42.3 L114.4 52.2 L118.6 63.8 L122.9 77.2 L127.1 93.2 L131.4 111.7 L135.6 132.0 L190.7 402.9 L194.9 411.1 L199.2 415.0 L203.4 414.5 L207.6 411.1 L211.9 405.9 L216.1 399.5 L220.3 391.7 L224.6 382.6 L228.8 372.3 L233.1 360.2 L237.3 345.5 L241.5 328.3 L245.8 308.9 L250.0 287.3 L254.2 264.0 L258.5 239.8 L262.7 215.3 L266.9 190.7 L271.2 166.1 L275.4 141.5 L279.7 118.2 L283.9 97.1 L288.1 78.1 L292.4 62.1 L296.6 50.0 L300.8 42.3 L305.1 38.4 L309.3 38.4 L313.6 41.4 L317.8 47.0 L322.0 55.6 L326.3 67.3 L330.5 81.5 L334.7 98.8 L339.0 119.1 L343.2 141.5 L389.8 398.2 L394.1 409.4 L398.3 416.3 L402.5 419.3 L406.8 419.7 L411.0 418.4 L415.3 414.5 L419.5 409.4 L423.7 402.5 L428.0 394.3 L432.2 383.9 L436.4 371.8 L440.7 357.2 L444.9 340.8 L449.2 321.4 L453.4 299.8 L457.6 276.1 L461.9 250.6 L466.1 223.9 L470.3 196.3 L474.6 168.2 L478.8 141.1 L483.1 115.2 L487.3 91.5 L491.5 71.6 L495.8 55.6 L500.0 44.0 L504.2 37.5 L508.5 35.4 L512.7 36.7 L516.9 41.0 L521.2 47.0 L525.4 55.2 L529.7 65.6 L533.9 78.9 L538.1 95.8 L542.4 116.5 L546.6 140.2 L589.0 398.2 L593.2 409.4 L601.7 416.7 L605.9 415.8 L610.2 412.8 L614.4 408.5 L618.6 402.9 L622.9 396.4 L627.1 388.7 L631.4 379.2 L635.6 367.5 L639.8 354.2 L644.1 338.2 L648.3 319.6 L652.5 298.1 L656.8 274.8 L661.0 248.9 L665.3 222.2 L669.5 195.0 L673.7 167.4 L678.0 141.5 L682.2 117.3 L686.4 96.2 L690.7 78.5 L694.9 64.7 L699.2 55.6 L703.4 50.0 L707.6 48.3 L711.9 49.6 L716.1 53.5 L720.3 59.1 L724.6 67.3 L728.8 77.6 L733.1 90.6 L737.3 106.5 L741.5 125.1 L745.8 145.4 L800.8 407.6 L805.1 414.1 L809.3 415.0 L813.6 412.4 L817.8 407.2 L822.0 400.3 L826.3 392.1 L830.5 383.1 L834.7 372.7 L839.0 360.2 L843.2 345.5 L847.5 327.8 L851.7 307.1 L855.9 284.3 L860.2 258.8 L864.4 232.1 L868.6 204.0 L872.9 175.6 L877.1 148.0 L881.4 121.6 L885.6 97.5 L889.8 76.8 L894.1 60.4 L898.3 48.3 L902.5 41.0 L906.8 38.0 L911.0 38.4 L915.3 42.3 L919.5 47.9 L923.7 55.6 L928.0 65.6 L932.2 77.6 L936.4 92.7 L940.7 111.3 L944.9 133.3 L949.2 157.9 L991.5 405.9 L995.8 417.1 L1000.0 423.6"/>
+            <g class="cv-dot" style="--o:0.1"><circle cx="93.2" cy="22.9" r="6"/><text x="93.2" y="6.899999999999999">157°</text></g><g class="cv-dot" style="--o:0.3"><circle cx="309.3" cy="38.4" r="6"/><text x="309.3" y="22.4">153°</text></g><g class="cv-dot" style="--o:0.5"><circle cx="508.5" cy="35.4" r="6"/><text x="508.5" y="19.4">154°</text></g><g class="cv-dot" style="--o:0.7"><circle cx="707.6" cy="48.3" r="6"/><text x="707.6" y="32.3">151°</text></g><g class="cv-dot" style="--o:0.9"><circle cx="906.8" cy="38.0" r="6"/><text x="906.8" y="22.0">153°</text></g>
+          </svg>
+          <p class="credit">From the analysis of the 9-second clip above. Every frame, not a sketch.</p>
+        </figure>
+      </div>
+      <div class="rp-txt">
+        <div class="rp-step on"><p class="kick">A real report</p><div class="big">70<small> / 100</small></div><p class="ln">Your own frame, every angle on it, from one 10-second clip.</p></div>
+        <div class="rp-step"><p class="kick">Every joint vs its source</p><div class="big">6 flags</div><p class="ln">Your value, the reference band, the study behind it.</p></div>
+        <div class="rp-step"><p class="kick">Under the video</p><div class="big">Every stroke</div><p class="ln">Step frame by frame. Every joint as a curve.</p></div>
+      </div>
+      <p class="rp-foot"><a href="/examples">See 4 sample reports</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PROOF — before / after ================= -->
+<!-- The wipe follows the scroll until the visitor takes the handle. -->
+<section id="proof" class="proof dk">
+  <div class="scene proof-scene" data-scene>
+    <div class="pin">
+      <div class="proof-head">
+        <p class="kick">Bike fit · before / after · same rider, same road</p>
+        <h2 class="h">Watch the score <span class="accent">move</span></h2>
+        <div class="num score" aria-label="Technique score 85 before, 99 after"><span id="liveScore">99</span><small>/100</small></div>
+        <p class="ln">Hip flagged at <b>35°</b>. Two fixes later, <b>99/100</b>.</p>
+        <div class="plancard">
+        <div class="pc-lbl"><i></i>The plan Flapp gave</div>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Open the hip</b> — 35° vs 45–62°</span></li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Rotate the pelvis</b> — 1.4× vs 2–4×</span></li>
+        </ul>
+      </div>
+      </div>
+      <div class="cmp-wrap">
+      <!-- Outside .cmp on purpose. Overlaid on the frame at desktop widths,
+           these become a row above it on a phone: at 390px the two pills
+           covered the very angle labels the section exists to show off. -->
+      <div class="cmp-tags">
+        <span class="cmp-tag b">Before · <em>85/100</em></span>
+        <span class="cmp-tag a">After · <em>99/100</em></span>
+      </div>
+      <div class="cmp" id="cmp">
+        <img class="after" src="media/after.webp" width="1600" height="974" alt="After: time-trial position scored 99 out of 100, trunk angle 19 degrees, hip angle 46 degrees, all angles in range" loading="lazy">
+        <img class="before" src="media/before.webp" width="1600" height="974" alt="Before: time-trial position scored 85 out of 100, hip angle 35 degrees and pelvic tilt flagged out of range" loading="lazy">
+        <input type="range" min="0" max="100" value="50" step="0.5"
+               aria-label="Comparison slider: reveal the before or after position">
+        <div class="divider"></div>
+        <div class="grip" aria-hidden="true">
+          <svg viewBox="0 0 30 16" fill="none"><path d="M9 2L3 8l6 6M21 2l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      
+    </div>
+    <p class="cmp-hint">◂ Drag to compare ▸</p>
+    </div>
+  </div>
+  <div class="proof-rest"><div class="wrap">
+    <div class="deltas">
+      <div class="delta hero-delta">
+        <div class="d-lbl">Technique score</div>
+        <div class="d-row"><span class="d-was">85</span><span class="d-arrow">→</span><span class="d-now">99</span></div>
+        <span class="d-chip">+14 pts</span>
+      </div>
+      <div class="delta">
+        <div class="d-lbl">Hip angle</div>
+        <div class="d-row"><span class="d-was bad">35°</span><span class="d-arrow">→</span><span class="d-now">46°</span></div>
+        <span class="d-chip">Back in range</span>
+      </div>
+      <div class="delta">
+        <div class="d-lbl">Pelvic rotation</div>
+        <div class="d-row"><span class="d-was bad">1.4×</span><span class="d-arrow">→</span><span class="d-now">2.5×</span></div>
+        <span class="d-chip">Back in range</span>
+      </div>
+      <div class="delta">
+        <div class="d-lbl">Trunk angle</div>
+        <div class="d-row"><span class="d-was">24°</span><span class="d-arrow">→</span><span class="d-now">19°</span></div>
+        <span class="d-chip">Aero gain</span>
+      </div>
+      <div class="delta">
+        <div class="d-lbl">Head tuck</div>
+        <div class="d-row"><span class="d-was">78</span><span class="d-arrow">→</span><span class="d-now">90</span></div>
+        <span class="d-chip">+12 pts</span>
+      </div>
+    </div>
+
+    <!-- The same idea on clips: Compare plays the two overlays side by side,
+         locked stroke to stroke (or step to step) on the events the analysis
+         detected, so a saddle change can be watched, not just read. -->
+    <div class="proof-clips">
+      <div class="browser" role="button" tabindex="0" aria-label="Enlarge this screenshot">
+        <div class="bar"><i></i><i></i><i></i><span class="url">getflapp.com/app — before / after</span></div>
+        <img src="media/compare.webp" width="1052" height="725" alt="Two trainer clips of the same rider side by side, locked stroke to stroke: the before on the left, the after on the right, one control row, and a strip of detected strokes with the playhead on stroke 5 of 8" loading="lazy">
+        <span class="zoomtag"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5L18 18M9 6.5v5M6.5 9h5"/></svg>Click to enlarge</span>
+      </div>
+      <p class="proof-clips-cap">Clips too: before and after, <b>locked stroke to stroke</b>.</p>
+    </div>
+
+    <div class="proof-cta">
+      <a class="btn btn-accent btn-lg" href="/app">Analyze your form — free
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      
+    </div>
+  </div></div>
+</section>
+
+<!-- ================= BIKE ================= -->
+<!-- Four things the report reads, on one rider. The big numbers are the study's
+     pro medians, not this rider's: she is the picture, the field is the number. -->
+<section id="bike" class="dk">
+  <div class="scene bk" data-scene data-steps=".bk-step">
+    <div class="pin">
+      <figure class="bf"><div class="bf-in" id="bikeCam">
+        <img src="media/v3/kona-bike-ov-1200.webp" srcset="media/v3/kona-bike-ov-1200.webp 1200w, media/v3/kona-bike-ov-2000.webp 2000w" sizes="(max-aspect-ratio:13/10) 150vw, 150vh" width="2000" height="1900" loading="lazy"
+             alt="A professional triathlete at the Ironman World Championship 2026, side-on, with Flapp's overlay: trunk 26 degrees, shoulder 87, elbow 89, forearm tilt 24, helmet 28 percent above the back">
+        <svg viewBox="0 0 1000 950" aria-hidden="true">
+          <g class="sp sp0"><circle cx="550" cy="411" r="17"/><circle cx="550" cy="411" r="19"/></g>
+          <g class="sp sp1"><circle cx="356" cy="292" r="17"/><circle cx="356" cy="292" r="19"/></g>
+          <g class="sp sp2"><circle cx="464" cy="240" r="17"/><circle cx="464" cy="240" r="19"/></g>
+          <g class="sp sp3"><circle cx="651" cy="62" r="17"/><circle cx="651" cy="62" r="19"/></g>
+        </svg>
+      </div></figure>
+      <p class="credit">Photo: Scott Flathouse (<a href="https://www.instagram.com/scottflathousephoto/" rel="noopener">@scottflathousephoto</a>) · <a href="https://www.scottflathousephoto.com/events/" rel="noopener">scottflathousephoto.com/events</a></p>
+      <div class="bk-txt">
+        <div class="bk-step on"><p class="kick">Knee at the bottom</p><div class="big">145°</div><p class="ln">The Kona pros' median. Yours comes with the saddle fix in millimetres.</p></div>
+        <div class="bk-step"><p class="kick">Hip over the crank</p><div class="big">88°</div><p class="ln">The Kona pros' median, 4–5 cm further forward than age-groupers at 85°.</p></div>
+        <div class="bk-step"><p class="kick">Trunk</p><div class="big">20°</div><p class="ln">The pros' median. This rider 26°. Every degree turned into drag and minutes.</p></div>
+        <div class="bk-step"><p class="kick">Helmet above the back</p><div class="big">+18%</div><p class="ln">The pros' median. This rider +28%. Head height is drag you can read from the side.</p></div>
+      </div>
+      <p class="src bk-src">Medians from our <a href="#kona">Kona 2026 study</a></p>
+    </div>
+  </div>
+  <div class="sec-pad">
+    <div class="wrap aero" id="aeroTool">
+      <div>
+        <p class="kick">Your position, in time</p>
+        <div class="num" aria-live="polite"><span id="aeroMin">3.9</span><small>min</small></div>
+        <p class="ln" id="aeroLine">From your trunk angle to the Kona pros' median.</p>
+        <p class="src">Estimate on a flat road at 35 km/h, same power · Fintelman et al. 2015</p>
+      </div>
+      <div class="aero-ctl">
+        <label for="aeroTrunk">Your trunk angle <output id="aeroOut" for="aeroTrunk">30°</output></label>
+        <input type="range" id="aeroTrunk" min="20" max="33" step="1" value="30">
+        <div class="aero-ends"><span>20° pros' median</span><span>33° road drops</span></div>
+        <div class="aero-dist" role="group" aria-label="Race distance">
+          <button type="button" data-km="40" aria-pressed="false">40 km</button>
+          <button type="button" data-km="90" aria-pressed="true">90 km</button>
+          <button type="button" data-km="180" aria-pressed="false">180 km</button>
+        </div>
+        <div class="tail"><a class="btn btn-accent" id="aeroGo" href="/app?goal=faster">Measure your angle — free</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RUN ================= -->
+<section id="run" class="dk sec-pad" style="padding-top:0">
+  <div class="wrap run-grid">
+    <figure class="clip">
+      <video data-src="media/hero.mp4?v=2" poster="media/hero-poster.webp" muted loop playsinline preload="none" width="720" height="1280"
+             aria-label="Runner filmed from the side with a pose-tracking skeleton overlay and joint angles drawn on every frame"></video>
+    </figure>
+    <div>
+      <p class="kick">Running · side view</p>
+      <h2 class="h">See the stride<br>you <span class="accent">can't feel</span></h2>
+      <div class="run-pts">
+        <div><b>Overstride</b><span>and foot contact, flagged</span></div>
+        <div><b>5 positions</b><span>of one stride, frozen</span></div>
+        <div><b>Any pace</b><span>treadmill or outdoor</span></div>
+      </div>
+      <div class="kino-wrap"><figure class="kino shotframe" role="button" tabindex="0" aria-label="Enlarge this kinogram"><img src="media/examples/run-treadmill-kinogram.webp" width="1100" height="378" loading="lazy" alt="Kinogram: five positions of one running stride from a real treadmill report, with the skeleton drawn on each"></figure></div>
+      <p class="credit kino-cap">One real stride, from a sample report</p>
+    </div>
+  </div>
+  <div class="wrap pair-head">
+    <p class="kick">Where the foot lands</p>
+    <h3 class="h" style="font-size:clamp(28px,3.8vw,54px)">It's the shin, <span class="accent">not the reach</span></h3>
+    <div class="pair">
+      <figure>
+        <div class="fr"><img src="media/v3/gen-pair-reach.webp" width="1100" height="1244" loading="lazy" alt="Illustration: a runner about to land with the foot far ahead and the knee almost straight, the shin leaning forward">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line class="up" x1="71" y1="61" x2="71" y2="79"/><line x1="71" y1="61" x2="80" y2="78"/></svg></div>
+        <figcaption><span>Illustration</span>Foot past the knee, leg almost straight.</figcaption>
+      </figure>
+      <figure>
+        <div class="fr"><img src="media/v3/gen-pair-under.webp" width="1100" height="1244" loading="lazy" alt="Illustration: a runner about to land with the knee bent and the shin close to vertical">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line class="up" x1="76" y1="63" x2="76" y2="83"/><line x1="76" y1="63" x2="77.4" y2="82.5"/></svg></div>
+        <figcaption><span>Illustration</span>Shin near vertical, knee bent.</figcaption>
+      </figure>
+    </div>
+    <p class="src">The further the foot lands ahead of the knee, the higher the impact · Lieberman et al. 2015 · <a href="/academy/nyc-2026-landing-ahead-of-the-hip">What the New York winners do</a></p>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section id="how" class="dk sec-pad" style="padding-top:0">
+  <div class="wrap how-grid">
+    <div>
+      <p class="kick">How it works</p>
+      <h2 class="h">Shoot, fix,<br><span class="accent">re-check</span></h2>
+      <ol class="steps">
+        <li><span class="clk">0:00</span><div><h4>Film a clip, or snap a photo</h4><p>Side-on, hip height, <b>8–15 s</b>.</p></div></li>
+        <li><span class="clk">0:12</span><div><h4>Upload where you're standing</h4><p>In the browser. Nothing to install.</p></div></li>
+        <li><span class="clk">0:17</span><div><h4>The verdict lands on your own frame</h4><p>Green, amber, red, and <b>one fix first</b>.</p></div></li>
+        <li><span class="clk">Re-check</span><div><h4>Know the fix worked, before race day</h4><p>Film again. See <b>what moved</b>, and what's just noise.</p></div></li>
+      </ol>
+      <div class="tail"><a class="btn btn-accent btn-lg" href="/app">Analyze your form — free</a></div>
+    </div>
+    <figure class="tripod">
+      <div class="tr-fr">
+        <img src="media/v3/gen-tripod.webp" width="768" height="1376" loading="lazy" alt="A phone upright on a small tripod in a garage, filming a cyclist on a trainer side-on; its screen shows Flapp's overlay on a rider">
+        <video data-src="media/v3/tt-dark.mp4" poster="media/v3/tt-dark-poster.webp" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <i aria-hidden="true"></i>
+      </div>
+      <figcaption class="credit">Generated scene. The clip on its screen is a real analysis.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section id="pricing" class="pricing">
+  <div class="wrap">
+    <div class="pricing-head">
+      <p class="eyebrow">Pricing</p>
+      <h2 class="sec">Find it. Fix it. <span class="accent">Prove it.</span></h2>
+      <p class="lede">Every plan covers <b>running and cycling</b>, from a <b>video or a single photo</b>.</p>
+    </div>
+    <!--PRICING-->
+  </div>
+</section>
+
+<!-- ================= KONA STUDY ================= -->
+<!-- Two studies. The field goes past on its own photographs, in the study's
+     order, flattest forearm first; Scott Flathouse's credit is burnt into each
+     frame and repeated under the strip. -->
+<section id="kona" class="kona dk">
+  <div class="scene kw-scene" data-scene id="konaScene">
+    <div class="pin">
+      <div class="kw-head">
+        <div>
+          <p class="kick">Our research · Ironman World Championship 2026</p>
+          <h2 class="h">How the best <span class="accent">actually sit</span></h2>
+        </div>
+        <p class="ln">12 of the 32 positions we measured, flattest forearm first. Every point checked by hand.</p>
+      </div>
+      <div class="kw-wrap"><div class="kw" id="konaWall">
+        <img src="/media/academy/kona-2026/position-03.webp" width="1179" height="829" loading="lazy" alt="Position 3 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-04.webp" width="1200" height="1255" loading="lazy" alt="Position 4 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-07.webp" width="1179" height="826" loading="lazy" alt="Position 7 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-09.webp" width="1200" height="1255" loading="lazy" alt="Position 9 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-10.webp" width="1179" height="827" loading="lazy" alt="Position 10 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-12.webp" width="1179" height="1208" loading="lazy" alt="Position 12 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-15.webp" width="1179" height="832" loading="lazy" alt="Position 15 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-17.webp" width="1179" height="840" loading="lazy" alt="Position 17 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-19.webp" width="1168" height="1335" loading="lazy" alt="Position 19 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-26.webp" width="906" height="762" loading="lazy" alt="Position 26 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-28.webp" width="1067" height="768" loading="lazy" alt="Position 28 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+        <img src="/media/academy/kona-2026/position-32.webp" width="1179" height="1213" loading="lazy" alt="Position 32 of 32 at the Ironman World Championship 2026, with the measured angles drawn on. Photo: Scott Flathouse">
+      </div></div>
+      <p class="credit kw-credit">Photos: Scott Flathouse (<a href="https://www.instagram.com/scottflathousephoto/" rel="noopener">@scottflathousephoto</a>) · <a href="https://www.scottflathousephoto.com/events/" rel="noopener">scottflathousephoto.com/events</a></p>
+    </div>
+  </div>
+  <div class="kona-rest">
+    <div class="wrap kona-duo">
+      <article class="kona-card">
+        <p class="kc-tag">Study 1 · 32 pros</p>
+        <h3>Hands up. Torso low, never flat.</h3>
+        <div class="kona-stats">
+          <div class="kona-stat"><div class="ks-num">26°</div><div class="ks-lbl">Forearm tilt, median. No pro rode flat.</div></div>
+          <div class="kona-stat"><div class="ks-num">20°</div><div class="ks-lbl">Torso from horizontal, median.</div></div>
+        </div>
+        <div class="shotframe kc-fig" role="button" tabindex="0" aria-label="Enlarge this figure">
+          <img src="/media/academy/kona-2026/field.webp" width="1600" height="841" loading="lazy"
+               alt="Chart: the thirty-two pro positions as dots against Flapp's triathlon ranges for torso, shoulder, elbow and forearm tilt, with the field median marked">
+        </div>
+        <div class="kona-cta">
+          <a class="btn btn-line" id="konaRead" href="/academy/kona-2026-pro-bike-positions">Read the study</a>
+          <a class="kc-go" id="konaGo" href="/app?goal=race">Check your aero position</a>
+        </div>
+      </article>
+      <article class="kona-card kona-card-new">
+        <p class="kc-tag"><b>New</b>Study 2 · 31 pros, 68 age-groupers</p>
+        <h3>Pros don't sit higher. They sit further forward.</h3>
+        <div class="kona-stats">
+          <div class="kona-stat"><div class="ks-num">88° <small>vs 85°</small></div><div class="ks-lbl">Hip over the crank: 4–5 cm further forward.</div></div>
+          <div class="kona-stat"><div class="ks-num">145° <small>vs 146°</small></div><div class="ks-lbl">Knee at the bottom. A tie: it isn't saddle height.</div></div>
+        </div>
+        <div class="shotframe kc-fig" role="button" tabindex="0" aria-label="Enlarge this figure">
+          <img src="/media/academy/kona-2026-hip-over-crank/illustration.webp" width="1600" height="893" loading="lazy"
+               alt="Illustration, lines to scale: from the crank axle at 88 degrees for the typical pro and 85 degrees for the typical Kona age-grouper, 4 to 5 cm apart at the hip">
+        </div>
+        <div class="kona-cta">
+          <a class="btn btn-line" id="konaRead2" href="/academy/kona-2026-hip-over-crank">Read the study</a>
+          <a class="kc-go" id="konaGo2" href="/app?goal=crank">Check your hip over crank</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COACH ================= -->
+<section id="coach" class="dk sec-pad" style="padding-top:0">
+  <div class="wrap coach-grid">
+    <div class="coach-card" id="coachFrame" data-panel="fix" aria-live="polite">
+      <figure class="cfig">
+        <img src="media/after.webp" width="1600" height="974" loading="lazy"
+             alt="The time-trial rider the note is about: Flapp's overlay with elbow 74 degrees in amber, trunk 19, head position 90 out of 100, forearm tilt 23 and shoulder 85; numbered markers on the joints the coach's note discusses">
+        <span class="cpin fix" style="left:60.8%;top:30.8%" data-for="fix next" aria-hidden="true" title="Elbow">1</span><span class="cpin ok" style="left:46.3%;top:6%" data-for="work" aria-hidden="true" title="Trunk">2</span><span class="cpin ok" style="left:62.8%;top:22.6%" data-for="work" aria-hidden="true" title="Head">3</span><span class="cpin ok" style="left:72.8%;top:19.8%" data-for="work" aria-hidden="true" title="Forearms and shoulder">4</span>
+      </figure>
+      <div class="coach-panel" data-panel="fix">
+        <p class="cn-h">Fix first</p>
+        <ul>
+          <li><span class="cnum fix">1</span><b>Elbow angle:</b> Your elbow angle of 74.2 degrees is slightly below the optimal
+            range of 75–110 degrees. While close, a slightly more open elbow can improve comfort and
+            stability over long durations.</li>
+          <li><b>Drill:</b> Focus on actively pressing your forearms into the pads, allowing your
+            elbows to naturally open a degree or two.</li>
+        </ul>
+      </div>
+      <div class="coach-panel" data-panel="work" hidden>
+        <p class="cn-h">Overall</p>
+        <p>Your aero position is exceptionally strong, demonstrating excellent balance between
+          aerodynamics and power production.</p>
+        <p class="cn-h">What's working</p>
+        <ul>
+          <li><span class="cnum ok">2</span>Your trunk angle of 18.8 degrees is very aggressive and highly aerodynamic.</li>
+          <li><span class="cnum ok">3</span>Excellent head tuck (89.7/100) minimizes frontal area effectively.</li>
+          <li><span class="cnum ok">4</span>Optimal forearm tilt (23.2 degrees) and shoulder angle (85.4 degrees) contribute to a
+            clean aero profile.</li>
+        </ul>
+      </div>
+      <div class="coach-panel" data-panel="next" hidden>
+        <p class="cn-h">Next session</p>
+        <p><span class="cnum fix">1</span>Focus on maintaining a relaxed, slightly more open elbow angle.</p>
+      </div>
+      <p class="cn-src">Time-trial rider, after the position change · one real report, unedited</p>
+    </div>
+    <div>
+      <p class="kick">From numbers to orders</p>
+      <h2 class="h">Coached like<br>an <span class="accent">athlete</span></h2>
+      <div class="feat-list" id="featsCoach">
+        <div class="feat-item active" data-panel="fix" data-pill="Fix first">
+          <h4>Fix first, not fix everything</h4>
+          <p>One issue. Why it matters. The drill that fixes it.</p>
+        </div>
+        <div class="feat-item" data-panel="work" data-pill="What's working">
+          <h4>What's already working</h4>
+          <p>The angles to protect — so you don't break a strength.</p>
+        </div>
+        <div class="feat-item" data-panel="next" data-pill="Next session">
+          <h4>One focus for next session</h4>
+          <p>One cue for your next ride or run.</p>
+        </div>
+      </div>
+      <p class="split-note">Want a human too? A pro triathlete can read your clip: Coach Notes and Expert Review are <a href="#pricing">in the plans</a>. <a class="pdf-link" id="reviewPdf" href="/media/expert-review-sample.pdf" target="_blank" rel="noopener">See a full Expert Review (PDF)</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SWIM ================= -->
+<!-- Coach-only: no model reads a stroke here, and the copy says who does. -->
+<section id="swim" class="swim-sec">
+  <div class="swim">
+    <img src="media/v3/gen-swim.webp" width="1024" height="569" loading="lazy" alt="A generated image of a triathlete swimming freestyle in open water, side-on">
+    <div class="swim-txt">
+      <p class="kick">New · Swim</p>
+      <h2 class="h">Your stroke,<br>read by <span class="accent">a pro</span></h2>
+      <p class="ln">A pro triathlete watches your clip and tells you what to change.</p>
+    </div>
+    <p class="credit">Generated image</p>
+  </div>
+  <!-- The swim block of the price list moves here when the script runs. Without
+       a script it simply stays with the prices. -->
+  <div class="wrap swim-slot" id="swimSlot"></div>
+</section>
+
+<!-- ================= WHY NOW ================= -->
+<!-- The four moments that turn "some day" into "today" (2026-10-21): it
+     started to hurt, a race is coming, new gear, a doubt. Each is its own way
+     into the app with its own ?goal=, so PostHog can say which moment brings
+     the people who pay. No countdowns, no "only 3 left": urgency here is the
+     athlete's own calendar, never one we invent. -->
+<section id="whynow" class="whynow on-dark">
+  <div class="wrap">
+    <p class="eyebrow">Why now</p>
+    <h2 class="sec">Don't wait <span class="accent">six months</span></h2>
+    <div class="wn-grid">
+      <a class="wn-card" id="whyNowPain" href="/app?goal=pain">
+        <span class="wn-n">01</span>
+        <h3>It started to hurt</h3>
+        <p>Don't train through it for months. Check what loads it — today.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a class="wn-card" id="whyNowRace" href="/app?goal=race">
+        <span class="wn-n">02</span>
+        <h3>Race day is on the calendar</h3>
+        <p>Fix it in training, not on the start line. Every week counts.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a class="wn-card" id="whyNowGear" href="/app?goal=gear">
+        <span class="wn-n">03</span>
+        <h3>New bike, new shoes</h3>
+        <p>Your old setup doesn't carry over. Check before the first long one.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a class="wn-card" id="whyNowDoubt" href="/app?goal=doubt">
+        <span class="wn-n">04</span>
+        <h3>Saw yourself on video?</h3>
+        <p>Or got advice that contradicts the last? Stop guessing — measure.</p>
+        <span class="wn-go">Check now <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq" class="faq">
+  <div class="wrap">
+    <p class="eyebrow">FAQ</p>
+    <h2 class="sec">Fair questions</h2>
+    <div class="faq-list">
+      <details>
+        <summary>What kind of video do I need?<span class="pm">+</span></summary>
+        <div class="a">A <b>side-view clip, 8–15 seconds</b>, filmed roughly at hip height. Any modern
+          phone camera works. For running: treadmill or a straight outdoor section. For cycling: an
+          indoor trainer is ideal, outdoor works too. The clearer the side view, the better the measurement.</div>
+      </details>
+      <details>
+        <summary>How accurate is the analysis?<span class="pm">+</span></summary>
+        <div class="a">Flapp uses pose estimation that tracks <b>33 body landmarks per frame</b> — the same
+          class of technology used in sports-science research. It's not a lab motion-capture rig, and we
+          don't pretend it is: each report includes a confidence read-out, and low-quality footage is
+          flagged rather than silently scored.</div>
+      </details>
+      <details>
+        <summary>Do I need any sensors or special equipment?<span class="pm">+</span></summary>
+        <div class="a">No. <b>Your phone is the sensor.</b> No wearables, no markers, no app to install —
+          Flapp runs in the browser.</div>
+      </details>
+      <details>
+        <summary>Can it replace a professional bike fit or running coach?<span class="pm">+</span></summary>
+        <div class="a">No — and it doesn't try to. Think of Flapp as the <b>check between the fits</b> and
+          the coach's second pair of eyes: it puts numbers on what changed after a saddle swap, a training
+          block or an injury, and tells you when something drifted out of range. If you want a person in
+          the loop, <b>Coach Notes</b> gets three things a coach sees written on your report, and the
+          <b>Expert Review</b> add-on a full personal breakdown from a competing triathlete.</div>
+      </details>
+      <details>
+        <summary>What happens to my videos?<span class="pm">+</span></summary>
+        <div class="a">Your clip is used to run your analysis, and your results belong to you. Reports
+          live in <b>your private cloud history</b> on every plan — free included — so you can track
+          progress; clips themselves auto-delete on your plan's schedule. See the
+          <a href="/privacy">privacy policy</a> for details.</div>
+      </details>
+      <details>
+        <summary>Is it really free to try?<span class="pm">+</span></summary>
+        <div class="a">Yes — <b><!--FREE-LIMIT--> analyses every month, no card required</b>, and your
+          first report comes in full. After that the free tier shows your skeleton overlay and
+          technique score; the exact angle numbers, the coaching notes and the overlay video are part of the
+          paid plans.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<!-- The closing band: the road at dawn behind it, a real report on the phone. -->
+<div class="cta-band has-photo">
+  <div class="wrap cta-grid">
+    <div class="cta-copy">
+    <h2 >Ready to see your<br><span class="accent">real form?</span></h2>
+    <p >Your next easy session is all the data you need.</p>
+    <a class="btn btn-accent btn-lg" id="ctaGo" href="/app">Analyze your form — free
+      <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    <p class="mono-note">Free account · <!--FREE-LIMIT--> analyses / month · no card required</p>
+    <!-- The one link on this page that answers "what do I actually get"
+         without asking for an account first. -->
+    <p class="mono-note" style="margin-top:14px"><a href="/examples" style="color:rgba(255,255,255,.8);text-decoration:underline">See 4 real reports first</a></p>
+    <!-- The same three promises the app shows beside its upload button, and
+         the privacy policy makes in full. -->
+    <!-- "in the app": this page itself may load Meta's pixel, with consent
+         (services/ad_pixel.py); the app never does. -->
+    <p class="mono-note trust-note">Your clip never reaches an AI service · clips auto-delete ·
+      no ad trackers in the app &mdash; <a href="/privacy">privacy policy</a></p>
+    </div>
+    <figure class="cta-shot">
+      <img src="media/v3/gen-phone.webp" width="900" height="1698" loading="lazy"
+           alt="A phone showing a real Flapp report: a rider on a trainer with the skeleton overlay and the score">
+    </figure>
+  </div>
+</div>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="wordmark" href="/"><span class="wm-tile"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>Flapp</a>
+        <p class="foot-tag">Side-view running &amp; cycling form analysis. Film it, measure it, fix it.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Product</h4>
+        <a href="#report">The report</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="/app">Open the app</a>
+      </div>
+      <div class="foot-col">
+        <h4>Learn</h4>
+        <a href="/academy">Academy</a>
+        <a href="/changelog">What's new</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <!-- Reopens the ad-pixel choice (services/ad_pixel.py); kept only
+             while the pixel is on. -->
+        <!--ADPIXEL:ON--><a href="/privacy#ads" data-ad-settings>Ad settings</a><!--/ADPIXEL:ON-->
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>© 2026 Flapp by Clariva. All rights reserved.</span>
+      <span class="mono">MADE ON VANCOUVER ISLAND · TESTED ON REAL LEGS</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= LIGHTBOX ================= -->
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
+  <button class="lb-close" type="button" aria-label="Close">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+  </button>
+  <img id="lbImg" alt="">
+</div>
+
+<script>
+/* Hash forwarding and the signed-in redirect both run in <head> — see the
+   script there. Anything below only affects visitors who stay on the page. */
+
+/* Signed-in visitors (here via ?stay=1) get "Open app" instead of the CTAs, and
+   every sign-up link drops its #signup hash — they already have an account. */
+(function(){
+  var tok=null;
+  try{ tok=localStorage.getItem('flapp_token'); }catch(e){}
+  if(!tok) return;
+  var go=document.getElementById('navGo');
+  if(go) go.textContent='Open app';
+  var login=document.getElementById('navLogin');
+  if(login) login.remove();
+  [].forEach.call(document.querySelectorAll('a[href="/app#signup"]'),function(a){
+    a.setAttribute('href','/app');
+  });
+})();
+
+/* ---- Analytics (PostHog). `window.flappAnalytics` is injected by the server
+   only when a key is configured, so all of this is a no-op otherwise.
+   The landing page's whole job is to move someone into the app: what is worth
+   measuring is which CTA did it, and how far down the page people get before
+   they decide. ---- */
+(function(){
+  function track(name, props){
+    try{ if(window.flappAnalytics) window.flappAnalytics.capture(name, props||{}); }catch(e){}
+  }
+  document.addEventListener('click', function(e){
+    var a=e.target.closest && e.target.closest('a[href^="/app"]');
+    if(!a) return;
+    /* Where on the page they said yes. The hero and the nav live outside any
+       <section>, and lumping the hero CTA in with the nav one would hide the
+       difference between "convinced by the pitch" and "clicked before reading". */
+    var box=a.closest('section, header.hero, nav, .cta-band, footer');
+    var where = !box ? 'page'
+      : box.id ? box.id
+      : box.classList.contains('hero') ? 'hero'
+      : box.classList.contains('cta-band') ? 'closing-cta'
+      : box.tagName === 'FOOTER' ? 'footer' : 'nav';
+    track('landing_cta_clicked', {
+      cta: a.id || null,
+      section: where,
+      label: (a.textContent||'').trim().slice(0,40),
+      to_signup: a.getAttribute('href').indexOf('#signup')>-1,
+    });
+  });
+  /* How far they read. Fired once per section, so "nobody ever reaches
+     pricing" and "everybody reaches pricing and leaves" stop looking alike. */
+  if('IntersectionObserver' in window){
+    var seen={};
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(!en.isIntersecting || seen[en.target.id]) return;
+        seen[en.target.id]=1;
+        track('landing_section_viewed', {section:en.target.id});
+      });
+    },{rootMargin:'-50% 0px -50% 0px'});
+    ['figures','outcomes','report','proof','kona','bike','run','how','coach','whynow','swim','pricing','faq'].forEach(function(id){
+      var el=document.getElementById(id); if(el) io.observe(el);
+    });
+  }
+})();
+
+/* Nav: heavier shadow once the page scrolls. */
+(function(){
+  var nav=document.getElementById('nav');
+  var on=false;
+  addEventListener('scroll',function(){
+    var s=scrollY>10;
+    if(s!==on){ on=s; nav.classList.toggle('scrolled',s); }
+  },{passive:true});
+})();
+
+var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Feature-list tabs in both splits: clicking an item swaps the screenshot
+   beside it. Items are real buttons for keyboard/AT users. */
+(function(){
+  function wire(listId,frameId,imgId,pillId){
+    var list=document.getElementById(listId), frame=document.getElementById(frameId);
+    if(!list||!frame) return;
+    var img=document.getElementById(imgId), pill=document.getElementById(pillId);
+    var items=[].slice.call(list.querySelectorAll('.feat-item'));
+    items.forEach(function(it){
+      it.setAttribute('role','button');
+      it.setAttribute('tabindex','0');
+      it.setAttribute('aria-pressed',it.classList.contains('active')?'true':'false');
+    });
+    function pick(it){
+      if(!it||it.classList.contains('active')) return;
+      items.forEach(function(x){ x.classList.remove('active'); x.setAttribute('aria-pressed','false'); });
+      it.classList.add('active'); it.setAttribute('aria-pressed','true');
+      if(it.dataset.panel){
+        [].forEach.call(frame.querySelectorAll('.coach-panel'),function(p){
+          p.hidden = p.dataset.panel!==it.dataset.panel;
+        });
+        frame.dataset.panel=it.dataset.panel;
+      }else{
+        img.src=it.dataset.img;
+        if(it.dataset.alt) img.alt=it.dataset.alt;
+        frame.dataset.fit=it.dataset.fit||'contain';
+      }
+      if(pill){
+        pill.textContent=it.dataset.pill;
+        pill.className='label-pill '+(it.dataset.pillclass||'');
+      }
+    }
+    list.addEventListener('click',function(e){ pick(e.target.closest('.feat-item')); });
+    list.addEventListener('keydown',function(e){
+      if(e.key!=='Enter'&&e.key!==' ') return;
+      var it=e.target.closest('.feat-item');
+      if(it){ e.preventDefault(); pick(it); }
+    });
+  }
+  wire('featsCoach','coachFrame','coachImg','coachPill');
+})();
+
+/* Lightbox — the app's own type is small inside a landing-page frame, so every
+   product screenshot opens full size. Returns focus where it came from. */
+(function(){
+  var frames=[].slice.call(document.querySelectorAll('.shotframe,.browser'));
+  if(!frames.length) return;
+  var lb=document.getElementById('lb'), lbImg=document.getElementById('lbImg'),
+      lbClose=lb&&lb.querySelector('.lb-close'), opener=null;
+  if(!lb) return;
+  function open(src,alt,from){
+    lbImg.src=src; lbImg.alt=alt||'';
+    lb.hidden=false; document.body.style.overflow='hidden';
+    opener=from; lbClose.focus();
+  }
+  function close(){
+    lb.hidden=true; lbImg.removeAttribute('src'); document.body.style.overflow='';
+    if(opener&&opener.focus) opener.focus();
+    opener=null;
+  }
+  frames.forEach(function(f){
+    var img=f.querySelector('img');
+    if(!img) return;
+    f.addEventListener('click',function(){ open(img.currentSrc||img.src,img.alt,f); });
+    f.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(img.currentSrc||img.src,img.alt,f); }
+    });
+  });
+  lb.addEventListener('click',function(e){ if(e.target===lb||e.target===lbImg||e.target.closest('.lb-close')) close(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!lb.hidden) close(); });
+})();
+
+/* Before/after: an invisible full-size range input drives the clip, so mouse,
+   touch and keyboard all work through one control. */
+(function(){
+  var cmp=document.getElementById('cmp');
+  if(!cmp) return;
+  var range=cmp.querySelector('input[type=range]');
+  var live=document.getElementById('liveScore');
+  /* 85 at the before, 99 at the after: the two measured scores and the wipe between. */
+  cmp._score=function(v){ if(live) live.textContent=Math.round(99-(v/100)*14); };
+  function set(v){ cmp.style.setProperty('--pos', v+'%'); }
+  range.addEventListener('input',function(){ set(range.value); cmp._score(+range.value); });
+  set(range.value);
+})();
+/* ---- A coach order without an account (services/guest.py). The pricing
+   block's coach buttons open the form; it uploads the clip and goes straight
+   to Stripe. The account is made from the email, and the password link comes
+   by email after paying. ---- */
+(function(){
+  var dlg=document.getElementById('guestOrder'); if(!dlg) return;
+  function track(n,p){ try{ if(window.flappAnalytics) window.flappAnalytics.capture(n,p||{}); }catch(e){} }
+  var form=document.getElementById('goForm'), err=document.getElementById('goErr'), go=document.getElementById('goGo');
+  function $id(id){ return document.getElementById(id); }
+  function val(name){ var c=form.querySelector('input[name="'+name+'"]:checked'); return c?c.value:''; }
+  function sync(){
+    var sport=val('sport'), p=form.querySelector('input[name="plan"]:checked');
+    [].forEach.call(form.querySelectorAll('.go-tip'),function(t){ t.hidden=t.getAttribute('data-for')!==sport; });
+    [].forEach.call(form.querySelectorAll('[data-only]'),function(f){ f.hidden=f.getAttribute('data-only')!==sport; });
+    // The example follows what they picked: these notes, for this sport.
+    var plan=p?p.value:'notes';
+    [].forEach.call(form.querySelectorAll('.go-excard'),function(c){
+      var s=c.getAttribute('data-sport'); c.hidden=!(c.getAttribute('data-plan')===plan&&(s===sport||s==='any')); });
+    go.textContent='Upload and pay '+(p?p.getAttribute('data-price'):'');
+  }
+  form.addEventListener('change',sync);
+  $id('goEx').addEventListener('toggle',function(){ if(this.open) track('guest_example_opened',{sport:val('sport'),plan:val('plan')}); });
+  function signedIn(){ try{ return !!localStorage.getItem('flapp_token'); }catch(e){ return false; } }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-guest-order]'); if(!b) return;
+    var sport=b.getAttribute('data-guest-sport')||'bike', plan=b.getAttribute('data-guest-order');
+    // Signed in already: the app does this, on the account they have.
+    if(signedIn()){ location.href=sport==='swim'?'/app#swim':'/app#pricing'; return; }
+    form.querySelector('input[name="sport"][value="'+sport+'"]').checked=true;
+    form.querySelector('input[name="plan"][value="'+plan+'"]').checked=true;
+    err.textContent=''; sync();
+    if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+    track('guest_form_opened',{sport:sport,plan:plan});
+  });
+  $id('goClose').addEventListener('click',function(){ if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); });
+  function fail(code, detail){
+    go.disabled=false; $id('goProg').hidden=true;
+    var msg = typeof detail==='string' ? detail
+      : (detail && detail[0] && detail[0].msg) ? detail[0].msg : '';
+    err.textContent = msg || (code===413 ? 'This clip is too big (over 200 MB). Trim it to under a minute and try again.'
+      : code===0 ? 'The upload did not get through. Check your connection and try again.'
+      : 'Something went wrong on our side. Please try again in a minute.');
+    // They already have an account: the app is one click away.
+    if(code===409){ var a=document.createElement('a'); a.href='/app'; a.textContent=' Log in →'; err.appendChild(a); }
+    track('guest_upload_failed',{status:code});
+  }
+  form.addEventListener('submit',function(e){
+    e.preventDefault(); err.textContent='';
+    var file=$id('goFile').files[0], email=$id('goEmail').value.trim();
+    if(!file){ err.textContent='Choose your clip first.'; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Enter a valid email address.'; return; }
+    if(!$id('goPrivacy').checked){ err.textContent='Please agree to the Terms and the Privacy Policy.'; return; }
+    var sport=val('sport'), plan=val('plan'), fd=new FormData();
+    fd.append('video',file); fd.append('email',email); fd.append('sport',sport); fd.append('plan',plan);
+    fd.append('accept_privacy','true'); fd.append('marketing',$id('goMarketing').checked?'true':'false');
+    var focus=$id('goFocus').value.trim(); if(focus) fd.append('focus',focus);
+    if(sport==='bike') fd.append('position',$id('goPosition').value);
+    if(sport==='swim') fd.append('stroke',$id('goStroke').value);
+    var bar=$id('goBar'), txt=$id('goProgTxt');
+    go.disabled=true; $id('goProg').hidden=false; bar.style.width='0'; txt.textContent='Uploading…';
+    track('guest_upload_started',{sport:sport,plan:plan,file_mb:Math.round(file.size/1048576)});
+    var xhr=new XMLHttpRequest();
+    xhr.open('POST','/guest-order');
+    xhr.upload.onprogress=function(ev){
+      if(!ev.lengthComputable) return;
+      var pc=Math.round(ev.loaded/ev.total*100); bar.style.width=pc+'%';
+      txt.textContent=pc<100?'Uploading… '+pc+'%':'Opening the payment page…';
+    };
+    xhr.onload=function(){
+      var j={}; try{ j=JSON.parse(xhr.responseText||'{}'); }catch(_e){}
+      if(xhr.status>=200&&xhr.status<300&&j.url){ track('guest_checkout_redirect',{sport:sport,plan:plan}); location.href=j.url; return; }
+      fail(xhr.status, j.detail);
+    };
+    xhr.onerror=function(){ fail(0); };
+    xhr.send(fd);
+  });
+  // Back from Stripe (billing.start_checkout, return_to).
+  var q=new URLSearchParams(location.search), o=q.get('order');
+  if(o==='paid'||o==='cancelled'){
+    var done=$id('goDone');
+    $id('goDoneTxt').textContent = o==='paid'
+      ? 'Payment received — your clip is with the coach. Check your email: we sent a link to set your password and follow your order.'
+      : 'Checkout cancelled — no charge was made. You can send the clip again any time.';
+    done.hidden=false;
+    $id('goDoneX').addEventListener('click',function(){ done.hidden=true; });
+    track('guest_checkout_returned',{result:o,plan:q.get('plan')||null});
+    q.delete('order'); q.delete('plan');
+    var rest=q.toString();
+    history.replaceState(null,'',location.pathname+(rest?'?'+rest:'')+location.hash);
+  }
+})();
+
+/* ---- The scroll engine. Reads where each scene is and writes --p (0..1); the
+   CSS does the rest. Steps are not switched, they are scrubbed: every element
+   of a step list gets its distance from the current position as --d and its
+   opacity from that, so each notch of the wheel moves something. --p eases
+   towards the scroll position, which turns wheel notches into a glide. Only
+   runs on html.m (set in <head>), so reduced motion and no-JS get plain blocks
+   in their final state. ---- */
+(function(){
+  var root=document.documentElement;
+  if(!root.classList.contains('m')) return;
+  var scenes=[].slice.call(document.querySelectorAll('[data-scene]'));
+  var WALL_SPEED=1.5;               /* px of photos per px of scroll, on any screen */
+  var wall=document.getElementById('konaWall'), wallScene=wall&&wall.closest('[data-scene]');
+  function measure(){
+    if(!wall) return;
+    var run=Math.max(0,wall.scrollWidth-innerWidth);
+    wall.style.setProperty('--kw',run+'px');
+    wallScene.style.height=Math.round(innerHeight+run/WALL_SPEED)+'px';
+  }
+  scenes.forEach(function(s){
+    s._lists=s.dataset.steps ? s.dataset.steps.split(',').map(function(sel){ return [].slice.call(s.querySelectorAll(sel)); }) : [];
+    s._n=s._lists.length ? s._lists[0].length : 0;
+    s._p=0;
+  });
+  var hero=document.getElementById('heroScene');
+  var cmp=document.getElementById('cmp'), range=cmp&&cmp.querySelector('input[type=range]'), proof=cmp&&cmp.closest('[data-scene]'), held=false;
+  if(range){ ['pointerdown','keydown','touchstart'].forEach(function(ev){ range.addEventListener(ev,function(){ held=true; },{passive:true}); }); }
+  function clamp(x){ return Math.min(1,Math.max(0,x)); }
+  /* The bike chapter's camera: it travels from joint to joint inside a fixed
+     frame, in fractions of that frame. */
+  var cam=document.getElementById('bikeCam'), bike=cam&&cam.closest('[data-scene]');
+  var STOPS=[[.55,.433,1.55],[.356,.307,1.55],[.464,.253,1.5],[.62,.09,1.6]];
+  function ease(t){ return t*t*(3-2*t); }
+  function moveCamera(p){
+    var pos=Math.min(1,p/.88)*(STOPS.length-1), a=Math.min(STOPS.length-2,Math.floor(pos));
+    var f=ease(clamp((pos-a-.3)/.4)), s0=STOPS[a], s1=STOPS[a+1];
+    var fx=s0[0]+(s1[0]-s0[0])*f, fy=s0[1]+(s1[1]-s0[1])*f, z=s0[2]+(s1[2]-s0[2])*f;
+    /* From the whole rider down to the first joint. */
+    z=1+(z-1)*ease(clamp(p/.1));
+    var x=Math.min(0,Math.max(1-z,.5-fx*z)), y=Math.min(0,Math.max(1-z,.48-fy*z));
+    cam.style.transform='translate('+(x*100).toFixed(2)+'%,'+(y*100).toFixed(2)+'%) scale('+z.toFixed(3)+')';
+  }
+  function paint(s,p){
+    s.style.setProperty('--p',p.toFixed(4));
+    if(s._n){
+      /* Reached at 88%, so the last step holds before the scene dissolves. */
+      var pos=Math.min(1,p/.88)*(s._n-1), i=Math.round(pos);
+      s._lists.forEach(function(list){
+        list.forEach(function(el,k){
+          var d=k-pos, a=Math.abs(d);
+          /* Words leave before the next ones arrive, pictures dip through the
+             ground: at no point do two numbers sit on top of each other. */
+          var isText=el.classList.contains('rp-step')||el.classList.contains('bk-step');
+          el.style.opacity=clamp(((isText?.4:.5)-a)/(isText?.1:.14)).toFixed(3);
+          el.style.setProperty('--d',d.toFixed(3));
+          el.style.setProperty('--a',a.toFixed(3));
+          el.classList.toggle('on',k===i);
+        });
+      });
+      if(s._i!==i){ s._i=i; s.dataset.i=i; }
+    }
+    if(s===hero) s.classList.toggle('past',p>.2);
+    if(cam && s===bike) moveCamera(p);
+    /* The wipe follows the scroll until the visitor takes the handle. */
+    if(s===proof && !held){
+      var v=100-clamp((p-.08)/.8)*100;
+      range.value=v; cmp.style.setProperty('--pos',v+'%');
+      if(cmp._score) cmp._score(v);
+    }
+  }
+  var running=false, last=0;
+  function frame(now){
+    var vh=innerHeight, moving=false, dt=Math.min(64,now-last||16), k=1-Math.exp(-dt/85);
+    last=now;
+    scenes.forEach(function(s){
+      var r=s.getBoundingClientRect(), span=r.height-vh;
+      var t=span>0?clamp(-r.top/span):1;
+      /* Off screen there is nothing to ease; arrive at the right place. */
+      var seen=r.bottom>-vh*.5 && r.top<vh*1.5;
+      var p=seen ? s._p+(t-s._p)*k : t;
+      if(Math.abs(t-p)<.0006) p=t; else moving=true;
+      if(p!==s._p || s._painted===undefined){ s._p=p; s._painted=1; paint(s,p); }
+    });
+    if(moving) requestAnimationFrame(frame); else running=false;
+  }
+  function ask(){ if(!running){ running=true; last=0; requestAnimationFrame(frame); } }
+  addEventListener('scroll',ask,{passive:true});
+  addEventListener('resize',function(){ measure(); ask(); });
+  addEventListener('load',function(){ measure(); ask(); });
+  measure(); ask();
+})();
+
+/* The swim block of the price list belongs to the swim chapter on this page. */
+(function(){
+  var slot=document.getElementById('swimSlot'), block=document.getElementById('pr-swim');
+  if(slot&&block) slot.appendChild(block);
+})();
+
+/* Side rail: which chapter this is. */
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.rail a'));
+  if(!links.length||!('IntersectionObserver' in window)) return;
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      if(!en.isIntersecting) return;
+      links.forEach(function(a){ a.setAttribute('aria-current',a.getAttribute('href')==='#'+en.target.id?'true':'false'); });
+    });
+  },{rootMargin:'-50% 0px -50% 0px'});
+  links.forEach(function(a){ var el=document.querySelector(a.getAttribute('href')); if(el) io.observe(el); });
+})();
+
+/* Videos: the file is fetched on approach, and plays only while on screen. An
+   autoplaying video makes the browser fetch it at once whatever its preload says,
+   which on this page was 9 MB before the first scroll. Reduced motion gets the
+   poster and no download. */
+(function(){
+  var vids=[].slice.call(document.querySelectorAll('video[data-src]'));
+  if(!vids.length||!('IntersectionObserver' in window)) return;
+  if(!document.documentElement.classList.contains('m')) return;
+  var near=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      if(!en.isIntersecting) return;
+      near.unobserve(en.target);
+      en.target.src=en.target.dataset.src;
+      en.target.removeAttribute('data-src');
+      en.target.preload='auto';
+      if(en.target._wanted){ var p=en.target.play(); if(p&&p.catch) p.catch(function(){}); }
+    });
+  },{rootMargin:'100% 0px 100% 0px'});
+  var seen=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      en.target._wanted=en.isIntersecting;
+      if(!en.target.src) return;
+      if(en.isIntersecting){ var p=en.target.play(); if(p&&p.catch) p.catch(function(){}); }
+      else en.target.pause();
+    });
+  },{threshold:.2});
+  vids.forEach(function(v){ near.observe(v); seen.observe(v); });
+})();
+
+/* The aero tool. Same physics as aero_estimator.time_saved and the same
+   measured trunk-to-drag points; test_landing_v3.py pins both against it. */
+(function(){
+  var input=document.getElementById('aeroTrunk'); if(!input) return;
+  var PTS=[[8,.80*.302/.335],[16,.80*.318/.335],[24,.80],[33,.87]];
+  var P={rho:1.20,crr:.004,mass:84,eta:.975,cda:.26}, SPEED=35, TARGET=20, km=90;
+  function rel(a){
+    if(a<=PTS[0][0]) return PTS[0][1];
+    for(var i=1;i<PTS.length;i++){ if(a<=PTS[i][0]){ var p=PTS[i-1],q=PTS[i]; return p[1]+(q[1]-p[1])*(a-p[0])/(q[0]-p[0]); } }
+    return PTS[PTS.length-1][1];
+  }
+  function power(v,cda){ return (.5*P.rho*cda*v*v*v+P.crr*P.mass*9.81*v)/P.eta; }
+  function minutes(drop,dist){
+    var v0=SPEED/3.6, target=power(v0,P.cda), cda1=P.cda*(1-drop), lo=v0, hi=v0*1.5;
+    for(var i=0;i<60;i++){ var m=(lo+hi)/2; if(power(m,cda1)<target) lo=m; else hi=m; }
+    var v1=(lo+hi)/2, d=dist*1000;
+    return (d/v0-d/v1)/60;
+  }
+  var out=document.getElementById('aeroMin'), lbl=document.getElementById('aeroOut'), line=document.getElementById('aeroLine');
+  function draw(){
+    var a=+input.value, drop=1-rel(TARGET)/rel(a), m=minutes(drop,km);
+    lbl.textContent=a+'°';
+    out.textContent=m.toFixed(1);
+    line.textContent = a<=TARGET ? 'You are at the Kona pros’ median already.'
+      : 'From '+a+'° to the Kona pros’ median, over '+km+' km.';
+  }
+  function track(){ try{ if(window.flappAnalytics) window.flappAnalytics.capture('landing_aero_tool',{trunk:+input.value,km:km}); }catch(e){} }
+  input.addEventListener('input',draw);
+  input.addEventListener('change',track);
+  [].forEach.call(document.querySelectorAll('.aero-dist button'),function(b){
+    b.addEventListener('click',function(){
+      km=+b.dataset.km;
+      [].forEach.call(document.querySelectorAll('.aero-dist button'),function(x){ x.setAttribute('aria-pressed',x===b?'true':'false'); });
+      draw(); track();
+    });
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
