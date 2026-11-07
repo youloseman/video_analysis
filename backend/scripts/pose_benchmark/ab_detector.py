@@ -50,13 +50,14 @@ def main() -> None:
         "status": r.get("status"), "score": r.get("technique_score"), "grade": r.get("letter_grade"),
         "withheld": (r.get("score_withheld") or {}).get("reason"),
         "camera_side": r.get("camera_side"), "error": r.get("error_message"),
+        "camera_yaw": ((sm.get("summary") or sm).get("camera_view") or {}).get("yaw_deg"),
         "record": build_record(r),
     }
     os.makedirs(out_dir, exist_ok=True)
     name = os.path.splitext(os.path.basename(path))[0]
     with open(os.path.join(out_dir, f"{name}.{mode}.json"), "w") as f:
         json.dump(out, f, default=str, indent=1)
-    print(name, mode, out["seconds"], out["score"], out["grade"], out["withheld"], flush=True)
+    print(name, mode, out["seconds"], out["score"], out["grade"], out["withheld"], out["camera_yaw"], flush=True)
 
 
 if __name__ == "__main__":

@@ -174,7 +174,8 @@ def _framing_check(
     )
 
 
-def _camera_view_check(view: dict[str, Any] | None) -> dict[str, Any] | None:
+def _camera_view_check(view: dict[str, Any] | None,
+                       sport_type: str | None = None) -> dict[str, Any] | None:
     """Whether the clip was actually filmed from the side.
 
     Every angle in this pipeline assumes the camera is perpendicular to the
@@ -198,6 +199,19 @@ def _camera_view_check(view: dict[str, Any] | None) -> dict[str, Any] | None:
         return None
     verdict, ratio = view.get("view"), view.get("ratio")
     target = "filmed square-on to your side, so the joints move across the lens"
+    # A run filmed well off side-on: calibrated on real oblique clips
+    # (camera_view.RUN_OBLIQUE_YAW_DEG), and the runner withholds the score on
+    # it -- this row has to say the same, not "side on" off the depth ratio,
+    # which cannot see a 30-40 deg turn.
+    from app.services.video_analysis.biomechanics.camera_view import run_camera_oblique
+
+    if sport_type == "run" and run_camera_oblique(view):
+        return _check(
+            "camera_view", "The angle you filmed from", "bad", "high",
+            f"well off side-on (torso turned about {view.get('yaw_deg'):g} deg toward the lens)",
+            target,
+            "Point the phone straight across the treadmill or track, square to your side.",
+        )
     if verdict == "side":
         return _check(
             "camera_view", "The angle you filmed from", "good", "high",
@@ -597,7 +611,7 @@ def build_capture_report(
 
     checks = [
         framing_check,
-        _camera_view_check(camera_view),
+        _camera_view_check(camera_view, sport_type),
         _drive_side_check(sport_type, camera_side, pedal_circle),
         _orientation_check(frame_width, frame_height, framing_ok),
         legs,

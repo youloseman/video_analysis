@@ -1402,6 +1402,19 @@ def analyze_from_frames(
     # capture report that says how to refilm. What is withheld is the single
     # figure that summarises them, because that is the one this clip has not
     # earned.
+    # Was the camera square-on to the movement? Computed here, before the
+    # score, because a run filmed well off side-on is not graded (below).
+    from app.services.video_analysis.biomechanics.camera_view import (
+        detect_camera_view,
+        run_camera_oblique,
+    )
+
+    try:
+        camera_view_result = detect_camera_view(raw_frame_data)
+    except Exception as e:  # noqa: BLE001 -- a diagnostic, never fatal
+        logger.warning("CAMERA_VIEW_FAILED", err=str(e))
+        camera_view_result = None
+
     score_withheld: dict[str, Any] | None = None
     if quality_gate_result.get("triggered"):
         score_withheld = {
@@ -1414,6 +1427,22 @@ def analyze_from_frames(
     elif mismatch:
         # Measured right, graded against the wrong position: no number.
         score_withheld = {"reason": "position_mismatch", "detail": mismatch}
+    elif sport_type == "run" and run_camera_oblique(camera_view_result):
+        # Filmed well off side-on (camera_view.RUN_OBLIQUE_YAW_DEG): every
+        # joint angle is a projection of a movement partly toward the lens.
+        # Until 2026-11-07 the quality gate caught these only because MediaPipe
+        # swapped the legs on them; RTMPose does not, and a 40 deg treadmill
+        # clip scored 92/A. No correction (flapp-no-oblique-correction): no score.
+        score_withheld = {
+            "reason": "camera_oblique",
+            "detail": (
+                "The camera was well off side-on: we could see you turned toward "
+                "it, so the knee, hip and foot angles are a mix of side and front "
+                "views and would come out wrong. Point the phone straight across "
+                "the treadmill or track, square to your side."
+            ),
+            "yaw_deg": (camera_view_result or {}).get("yaw_deg"),
+        }
 
     # Step 5: score.
     #
@@ -1541,19 +1570,9 @@ def analyze_from_frames(
     try:
         from app.services.video_analysis.capture_report import build_capture_report
 
-        # Was the camera actually square-on to the movement? Every angle here
-        # assumes so, and nothing has ever checked -- ``camera_view`` is
-        # hardcoded to None ("side") a few hundred lines up. The photo path has
-        # had this check since it was written; the video path never got it.
-        from app.services.video_analysis.biomechanics.camera_view import (
-            detect_camera_view,
-        )
-
-        try:
-            summary["camera_view"] = detect_camera_view(raw_frame_data)
-        except Exception as e:  # noqa: BLE001 -- a diagnostic, never fatal
-            logger.warning("CAMERA_VIEW_FAILED", err=str(e))
-            summary["camera_view"] = None
+        # Was the camera actually square-on to the movement? Measured before
+        # the score (camera_view_result above); reported here.
+        summary["camera_view"] = camera_view_result
 
         summary["capture_report"] = build_capture_report(
             sport_type=sport_type,

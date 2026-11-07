@@ -66,6 +66,29 @@ UNCERTAIN_MIN_RATIO = 0.18
 # Frames with a readable torso needed before the verdict means anything.
 MIN_FRAMES = 20
 
+# How far the torso is turned from square-on to the lens, in degrees: the angle
+# of the hip line and of the shoulder line in the world landmarks' x-z plane
+# (0 = the line points straight at the camera, i.e. filmed exactly side-on;
+# 90 = face-on or from behind), averaged, median over the clip.
+#
+# The depth ratio above cannot see a 30 deg oblique: it goes as cos(yaw) and
+# Artur's 30 deg treadmill clip read 0.73 against 0.66-0.94 for clean side
+# views. This one goes as the angle itself. Calibrated 2026-11-07 on Artur's
+# treadmill set filmed at 0 / 15 / 30 deg either side (upload/photo_run) and 19
+# side-on run clips (golden, Check, the elite IMG_5455, stadium, slow motion):
+#
+#   side-on clips      4.0 - 17.6 deg   (worst: Run00000851 17.6, IMG_5455 17.5)
+#   "15_right"         21.5             "30_left"   18.7
+#   "30_right"         34.3 / 34.6 (HD)
+#
+# The set fits measured ~= 0.8 x true with its "0" itself ~10 deg off, so
+# 30_left is really ~20 deg and 30_right ~40 deg. Up to ~20 deg a knee angle
+# moves <= 2 deg (simulation, flapp-no-oblique-correction), so the bar sits
+# between: 9.5 deg above the worst side-on clip, 7 below the 40 deg one.
+# MediaPipe supplies z and the world landmarks whether or not RTMPose refines
+# x/y, so the reading is the same under either detector.
+RUN_OBLIQUE_YAW_DEG = 27.0
+
 # Landmark visibility below which a frame is not evidence of anything.
 MIN_VISIBILITY = 0.5
 
@@ -101,6 +124,32 @@ def _torso_depth_ratio(landmarks: Any) -> float:
     return abs(left_z - right_z) / width
 
 
+def _torso_yaw_deg(landmarks: Any) -> float:
+    """Mean angle of the hip and shoulder lines off the camera axis, or NaN."""
+    try:
+        pts = [landmarks[i] for i in (L_SHOULDER, R_SHOULDER, L_HIP, R_HIP)]
+    except (IndexError, KeyError, TypeError):
+        return math.nan
+    for lm in pts:
+        vis = getattr(lm, "visibility", 1.0)
+        if vis is not None and vis < MIN_VISIBILITY:
+            return math.nan
+        for axis in ("x", "z"):
+            v = getattr(lm, axis, None)
+            if v is None or not math.isfinite(float(v)):
+                return math.nan
+    ls, rs, lh, rh = pts
+    sh = math.degrees(math.atan2(abs(float(ls.x) - float(rs.x)), abs(float(ls.z) - float(rs.z))))
+    hp = math.degrees(math.atan2(abs(float(lh.x) - float(rh.x)), abs(float(lh.z) - float(rh.z))))
+    return (sh + hp) / 2.0
+
+
+def run_camera_oblique(view: dict[str, Any] | None) -> bool:
+    """A run clip filmed far enough off side-on that its angles are not graded."""
+    yaw = (view or {}).get("yaw_deg")
+    return yaw is not None and yaw >= RUN_OBLIQUE_YAW_DEG
+
+
 def detect_camera_view(frames: list[dict[str, Any]]) -> dict[str, Any]:
     """Judge the camera's angle to the movement from the whole clip.
 
@@ -109,6 +158,7 @@ def detect_camera_view(frames: list[dict[str, Any]]) -> dict[str, Any]:
     is not enough evidence -- an absent verdict, never a guessed one.
     """
     ratios = []
+    yaws = []
     for frame in frames or []:
         lms = frame.get("world_landmarks") or frame.get("normalized_landmarks")
         if not lms:
@@ -116,10 +166,17 @@ def detect_camera_view(frames: list[dict[str, Any]]) -> dict[str, Any]:
         r = _torso_depth_ratio(lms)
         if not math.isnan(r):
             ratios.append(r)
+        # World landmarks only: normalised x and z are in different units.
+        if frame.get("world_landmarks"):
+            y = _torso_yaw_deg(frame["world_landmarks"])
+            if not math.isnan(y):
+                yaws.append(y)
+    yaw_deg = round(float(np.median(yaws)), 1) if len(yaws) >= MIN_FRAMES else None
 
     if len(ratios) < MIN_FRAMES:
         return {
             "view": "unknown", "ratio": None, "frames": len(ratios),
+            "yaw_deg": yaw_deg,
             "reason": "too few frames with a readable torso",
         }
 
@@ -136,5 +193,6 @@ def detect_camera_view(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "view": view,
         "ratio": round(ratio, 3),
         "frames": len(ratios),
+        "yaw_deg": yaw_deg,
         "reason": None,
     }
