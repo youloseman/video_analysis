@@ -306,10 +306,10 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
     },
     "knee_swing_insufficient": {
         "problem": "Insufficient knee flexion in swing ({value} deg, the knee should fold to 100 deg or less)",
-        "drill": "High Knee March",
+        "drill": "Heel Flicks",
         "instruction": (
-            "March with maximum knee lift 3x20 m. "
-            "Knee should rise to hip level."
+            "Jog 3x20 m with short, quick steps, letting each heel "
+            "flick up toward your glute."
         ),
         "cue": "Pull your heel toward your glute in the swing phase",
         "weeks_to_improvement": 3,

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import select
 
 from app.api import me
 from app.models.analysis import Analysis
@@ -160,3 +161,73 @@ def test_a_photo_breakdown_comes_from_its_own_score():
 def test_the_numbers_are_drawn_like_the_app():
     html = render_report_html(example("bike-road"), {})
     assert "class='tile'" in html and "class='gr-band'" in html and "class='gr-mk'" in html
+
+
+# --- the clip a report is read against
+
+async def _clip(db, user, cid, at, **kw) -> Analysis:
+    result = {"sport_type": "bike", "technique_score": kw.pop("score", 70), "camera_side": kw.pop("side", "left"),
+              "cycling_position": kw.pop("position", "road_hoods"), "sport_specific_metrics": kw.pop("metrics", {})}
+    row = Analysis(user_id=user.id, client_id=cid, created_at_ms=at, sport="bike", kind="video",
+                   result=result, data=kw.pop("data", {}), **kw)
+    db.add(row)
+    await db.commit()
+    return row
+
+
+async def test_the_previous_clip_is_the_latest_like_for_like_one(db, make_user):
+    user = await make_user(TIER_FULL)
+    await _clip(db, user, "old", 1_000_000)
+    await _clip(db, user, "prev", 2_000_000, score=71)
+    now = await _clip(db, user, "now", 3_000_000)
+    await _clip(db, user, "later", 4_000_000, score=99)
+    prev = await me._previous_clip(db, now, None)
+    assert prev["result"]["technique_score"] == 71 and prev["filmed"] == "1 Jan 1970"
+
+
+async def test_a_different_side_or_position_is_no_before(db, make_user):
+    """The two sides of a bike read the knee apart, so the gap would be the camera."""
+    user = await make_user(TIER_FULL)
+    await _clip(db, user, "side", 1_000_000, side="right")
+    await _clip(db, user, "pos", 1_500_000, position="road_drops")
+    now = await _clip(db, user, "now", 3_000_000)
+    assert await me._previous_clip(db, now, None) is None
+
+
+async def test_a_clip_with_doubtful_numbers_is_no_before(db, make_user):
+    user = await make_user(TIER_FULL)
+    bad = {"capture_report": {"checks": [{"id": "framing", "status": "bad", "label": "How much of the frame you fill",
+                                          "measured": "200 px tall"}]}}
+    await _clip(db, user, "bad", 1_000_000, metrics=bad)
+    now = await _clip(db, user, "now", 3_000_000)
+    assert await me._previous_clip(db, now, None) is None
+    # A coach whose own size bar passes it can read against it.
+    assert await me._previous_clip(db, now, {"small_px": 150}) is not None
+
+
+async def test_the_date_filmed_decides_what_came_before(db, make_user):
+    user = await make_user(TIER_FULL)
+    await _clip(db, user, "uploaded_late", 5_000_000, data={"filmedAt": 1_000_000})
+    now = await _clip(db, user, "now", 3_000_000)
+    assert (await me._previous_clip(db, now, None)) is not None
+
+
+async def test_a_preview_or_another_account_is_no_before(db, make_user):
+    user = await make_user(TIER_FULL)
+    other = await make_user(TIER_FULL)
+    await _clip(db, user, "preview", 1_000_000, preview=True)
+    await _clip(db, other, "theirs", 2_000_000)
+    now = await _clip(db, user, "now", 3_000_000)
+    assert await me._previous_clip(db, now, None) is None
+
+
+async def test_the_report_route_reads_against_the_previous_clip(db, make_user):
+    user = await make_user(TIER_FULL)
+    bands = {"knee_at_bdc": {"lo": 135, "hi": 145}}
+    await _clip(db, user, "prev", 1_000_000, metrics={"knee_at_bdc": 172.0})
+    now = await _clip(db, user, "now", 3_000_000, metrics={"knee_at_bdc": 150.0}, score=80)
+    for row in (now, (await db.execute(select(Analysis).where(Analysis.client_id == "prev"))).scalar_one()):
+        row.result = {**row.result, "reference_bands": bands}
+    await db.commit()
+    html = await me.render_saved_report(db, reader=user, owner=user, row=now, athlete_id=None)
+    assert "172° → 150°" in html and "70 → 80" in html

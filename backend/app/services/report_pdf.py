@@ -337,8 +337,83 @@ def _fit_priorities(fit: dict[str, Any]) -> list[dict[str, Any]]:
         effort = d.get("effort") or {}
         if drill and effort.get("level") in _EFFORT:
             drill += f" · {_EFFORT[effort['level']]}"
-        out.append({"label": comp, "drill": drill or None, "why": d.get("reason"), "metric": d.get("metric_name")})
+        why, do = _why_and_do(d, bool(size and int(size.group(1)) > 5))
+        out.append({"label": comp, "drill": drill or None, "why": why, "instruction": do,
+                    "metric": d.get("metric_name")})
     return out
+
+
+def _why_and_do(d: dict[str, Any], steps: bool) -> tuple[str, str | None]:
+    """The fit plan's one sentence, split where it turns from the measurement to the
+    change, in the builder's own position-aware words."""
+    why, sep, do = str(d.get("reason") or "").rpartition(" -- ")
+    if not sep:
+        return do, None
+    do = do[0].upper() + do[1:] if do else do
+    if steps:
+        do += " Work in 5 mm steps."
+    note = (d.get("effort") or {}).get("note")
+    return why + ".", f"{do} {note}" if note else do
+
+
+# A saved run still carries the old drill: a march for knee lift under a cue about
+# folding the leg. Same fix as the builder's.
+_OLD_DRILL = {"High Knee March": {
+    "drill": "Heel Flicks",
+    "instruction": "Jog 3x20 m with short, quick steps, letting each heel flick up toward your glute.",
+}}
+# A finding about a number the plan already covers is the same advice twice.
+_ISSUE_METRIC = {"insufficient_knee_drive": "knee_swing", "low_cadence": "cadence",
+                 "excessive_forward_lean": "trunk_lean", "saddle_too_high": "knee_at_bdc",
+                 "saddle_too_low": "knee_at_bdc", "trunk_too_aggressive": "trunk_angle",
+                 "trunk_too_upright": "trunk_angle"}
+# The app's measurement floor (TREND_METRICS.noise): what the pose model moves by on
+# one clip run twice. Run metrics have no measured floor, so they count as changed
+# only when their verdict does.
+_ANGLE_NOISE = 3.0
+_RANK = {"good": 0, "warn": 1, "bad": 2}
+READ_EYEBROW = "The coach's read"
+
+
+def _miss(row: dict[str, Any], v: float) -> float:
+    lo, hi = row["band"]
+    return max(lo - v, v - hi, 0.0)
+
+
+def changes_since(rows: list[dict[str, Any]], before: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The numbers that moved between two like-for-like clips, by more than two clips
+    of an unchanged position already differ by."""
+    then = {r.get("field"): r for r in before if r.get("value") is not None}
+    moved = []
+    for row in rows:
+        old = then.get(row.get("field"))
+        if row.get("value") is None or old is None or not row.get("band"):
+            continue
+        v, was = float(row["value"]), float(old["value"])
+        better = _RANK.get(row.get("status"), 0) - _RANK.get(old.get("status"), 0)
+        if row.get("unit") == "°":
+            if abs(v - was) < _ANGLE_NOISE:
+                continue
+        elif not better:
+            continue
+        gap = _miss(row, v) - _miss(row, was)
+        if better:
+            word, tone = ("Further out", "bad") if better > 0 else ("Back in range" if row.get("status") == "good" else "Closer", "good")
+        elif gap:
+            word, tone = ("Further out", "bad") if gap > 0 else ("Closer", "good")
+        else:
+            word, tone = "Still in range", "info"
+        moved.append({"label": str(row["label"]).split(" · ")[0], "then": _row_value({**row, "value": was}),
+                      "now": _row_value(row), "word": word, "tone": tone})
+    return moved
+
+
+def _doc_title(meta: dict[str, Any], sport_name: str) -> str:
+    """A browser names the saved file after this, so it says whose report it is. An
+    account's email is left out: it isn't a name, and it would land in a file name."""
+    who = str(meta.get("athlete") or "").strip()
+    parts = [who if who and "@" not in who else "", sport_name, str(meta.get("filmed") or "")]
+    return ", ".join(p for p in parts if p) or "Flapp report"
 
 
 # The notes that make the whole clip doubtful, as against one number on it: a shaky
@@ -390,7 +465,8 @@ _EXTRA_CSS = """
 .flow{width:100%;border-collapse:collapse;break-before:page}
 .flow td{padding:0}
 .flow thead td{height:14mm}
-.flow tfoot td{height:16mm}
+.flow tfoot td{height:16mm;vertical-align:middle}
+.run-foot{display:flex;justify-content:space-between;gap:12px;font-size:7.6pt;color:#6E7787;border-top:1px solid #DCE2EA;padding-top:5px}
 .flow section:first-child{break-before:auto}
 @media screen{
   .flow,.flow tbody,.flow tr,.flow td{display:block}
@@ -400,14 +476,26 @@ _EXTRA_CSS = """
   background:#14294B;color:#fff;margin:0 -15mm 0;padding:10px 15mm;font:600 10pt 'Manrope',sans-serif}
 .screen button{font:700 10pt 'Manrope',sans-serif;background:#F1553F;color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
 @media print{.screen{display:none}}
-.cover-img{margin:14px 0 0}
-.cover-img img{display:block;width:100%;max-height:100mm;object-fit:contain;background:#0F1A2E;border-radius:8px}
+/* A phone clip is tall. In a wide box it was 63% dark bars, so the frame takes the
+   height it needs and the cards sit beside it. */
+.lead{display:flex;gap:14px;align-items:flex-start;margin:14px 0 0}
+.lead img{display:block;width:auto;max-width:100mm;max-height:150mm;border-radius:8px}
+.lead-side{flex:1;min-width:0}
+.lead-side .glance{grid-template-columns:minmax(0,1fr);margin:0}
+.lead-side .cap{margin:10px 0 0}
 .glance{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 0}
 .glance .card{border-top:3px solid #2F6DE0}
 .glance .card.fix{border-top-color:#F1553F}
 .glance .card.ok{border-top-color:#2E9E5B}
 .glance b{display:block;font:italic 800 11pt 'Archivo',sans-serif;color:#14294B;margin:2px 0 3px}
-.page{break-before:page}
+/* A heading stays with what it heads: break-after alone doesn't hold inside the
+   table the pages flow in. */
+.keep{break-inside:avoid}
+.since{border:1px solid #DCE2EA;border-radius:8px;padding:10px 14px;margin:0 0 14px;break-inside:avoid}
+.since-score{font:italic 800 13pt 'Archivo',sans-serif;color:#14294B;margin:2px 0 6px}
+.since-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:3px 0;border-top:1px solid #EEF1F5;font-size:9pt}
+.since-v{font:500 8.6pt 'IBM Plex Mono',monospace;color:#14294B}
+.since p:last-child{font-size:8pt;color:#6E7787;margin:6px 0 0}
 .finding{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;border:1px solid #DCE2EA;border-radius:8px;padding:10px 14px;margin:0 0 8px;break-inside:avoid}
 .finding h3{margin:0}
 .finding p{grid-column:1/-1;margin:0}
@@ -458,6 +546,7 @@ _EXTRA_CSS = """
 .gr-text{font-size:8.6pt;color:#5C6675;margin-top:8px}
 .gr-text b{color:#14294B;font-weight:700}
 .foot{margin:18px 0 0;padding-top:10px;border-top:1px solid #DCE2EA;font-size:8pt;color:#6E7787;display:flex;justify-content:space-between}
+@media print{.foot{display:none}}
 .filmnote{background:#FFF3DC;border-left:3px solid #E5A23A;border-radius:4px;padding:10px 14px;margin:0 0 14px;break-inside:avoid}
 .filmnote ul{margin:4px 0 0}
 .filmnote li{margin:0 0 3px}
@@ -475,7 +564,8 @@ _EXTRA_CSS = """
   .facts dd{overflow-wrap:anywhere;min-width:0}
   .bd{grid-column:1/-1;border-left:0;padding-left:0;border-top:1px solid #2A4170;padding-top:12px}
   .bd-row{grid-template-columns:minmax(0,1fr) 72px 26px 32px;font-size:13px}
-  .cover-img img{max-height:none}
+  .lead{flex-direction:column}
+  .lead img{width:100%;max-width:100%;max-height:none}
   .glance,.tiles,.two{grid-template-columns:minmax(0,1fr)}
   .prio dl{grid-template-columns:minmax(0,1fr)}
   .prio dt{padding-top:6px}
@@ -486,13 +576,19 @@ _EXTRA_CSS = """
 """
 
 
+def _rows_of(result: dict[str, Any], sport: str) -> list[dict[str, Any]]:
+    return metric_rows(result) if sport == "bike" else plan_rows(result)
+
+
 def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     """The whole document. ``meta``: athlete, setup, filmed, prepared,
-    position_label, keyframe and kinogram data URIs."""
+    position_label, keyframe and kinogram data URIs, and ``previous``:
+    {filmed, result} of the last like-for-like clip, when there is one."""
     sport = result.get("sport_type") or result.get("sport") or ""
     plan = result.get("training_plan") or {}
     # Filtered here as well as in the builder: a saved run still has it leading.
-    prios = [p for p in plan.get("top_3_priorities") or [] if p.get("metric") != "foot_strike"]
+    prios = [{**p, **_OLD_DRILL.get(str(p.get("drill")), {})} for p in plan.get("top_3_priorities") or []
+             if p.get("metric") != "foot_strike"]
     strong = plan.get("strong_points") or []
     fit = result.get("fit_plan") or {}
     if sport == "bike" and not prios:
@@ -503,7 +599,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     issues = result.get("detected_issues") or []
     coach = ((result.get("ai_recommendations") or {}).get("report")
              or (result.get("ai_recommendations") or {}).get("summary") or "")
-    rows = metric_rows(result) if sport == "bike" else plan_rows(result)
+    rows = _rows_of(result, sport)
     sc = result.get("score") if isinstance(result.get("score"), dict) else {}
     score = result.get("technique_score") if result.get("technique_score") is not None else sc.get("overall_score")
     grade = result.get("letter_grade") or sc.get("grade")
@@ -552,12 +648,23 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
 
     if wrong_ranges:
         ok_names = []
+    # Against the last clip of the same setup, side and position (me._previous_clip).
+    # A doubtful clip gets none: what moved is the one thing it can't say.
+    previous = meta.get("previous") if not low else None
+    moved = changes_since(rows, _rows_of(previous["result"], sport)) if previous else []
+    then_score = (previous or {}).get("result", {}).get("technique_score")
+    show_scores = bool(moved) and isinstance(then_score, (int, float)) and isinstance(score, (int, float))
+    since_card = (f"<div class='card'><div class='eyebrow'>Since {_e(previous['filmed'])}</div>"
+                  f"<b>{f'{then_score:.0f} → {score:.0f}' if show_scores else 'No real change'}</b>"
+                  + (f"{len(moved)} measurement{'s' if len(moved) != 1 else ''} moved" if moved
+                     else "Nothing moved beyond the method's own error") + "</div>") if previous else ""
     first = prios[0] if prios else None
     glance = "".join([
         f"<div class='card fix'><div class='eyebrow'>Film again first</div><b>{_e(str(low[0]['short']).capitalize())}</b>"
         "Confirm on a better clip before changing anything</div>" if low else
         f"<div class='card fix'><div class='eyebrow'>Fix first</div><b>{_e(prio_label(first))}</b>{_e(_clean(first.get('cue') or first.get('drill') or first.get('why')))}</div>"
         if first else "",
+        since_card,
         f"<div class='card ok'><div class='eyebrow'>Already working</div><b>{_e(ok_names[0])}</b>"
         f"{len(ok_names)} measurement{'s' if len(ok_names) != 1 else ''} where {'they' if len(ok_names) != 1 else 'it'} should be</div>" if ok_names else "",
         f"<div class='card'><div class='eyebrow'>Measured</div><b>{len(graded)} number{'s' if len(graded) != 1 else ''}</b>"
@@ -597,8 +704,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     <div class="sub">{"What this clip suggests, and what to film next." if low else "What to fix, in what order — and the numbers behind it."}</div>
     <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result), _score_notes(result, score))}</div>
   </div>
-  {f'<figure class="cover-img"><img src="{meta["keyframe"]}" alt="A frame from the clip, with its angles drawn on it"><p class="cap">One moment from the clip. The report reads its numbers across the whole clip, so they can differ from these.</p></figure>' if meta.get('keyframe') else ''}
-  {f'<div class="glance">{glance}</div>' if glance else ''}
+  {f'<div class="lead"><img src="{meta["keyframe"]}" alt="A frame from the clip, with its angles drawn on it"><div class="lead-side"><div class="glance">{glance}</div><p class="cap">One moment from the clip. The report reads its numbers across the whole clip, so they can differ from these.</p></div></div>' if meta.get('keyframe') else (f'<div class="glance">{glance}</div>' if glance else '')}
 </section>"""
 
     def finding(i: dict[str, Any]) -> str:
@@ -623,27 +729,39 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
                 f"<p>Outside its range of {_e(_num(lo))}–{_e(_num(hi))}{_e(r.get('unit') or '')}. No single change follows from this "
                 f"number alone, so it isn't in the plan. Worth going through with {who}.</p></div>")
 
-    findings = "" if wrong_ranges else "".join([finding(i) for i in issues] + [
+    findings = "" if wrong_ranges else "".join([
+        finding(i) for i in issues if _ISSUE_METRIC.get(str(i.get("type"))) not in planned] + [
         unplanned(r) for r in graded if r.get("status") == "bad"
         and str(r.get("field")).removesuffix("_avg") not in planned
         and str(r.get("field")).split("_")[0] not in named])
-    read = f"""
-<section class="page">
-  {head("The coach's read", "What this clip suggests" if low else "What's off, and what to change first")}
-  {note_html}
-  {film_html}
-  {f'<div class="coachtext">{markdown(coach)}</div>' if coach else ''}
-  {("<div class='eyebrow' style='margin-top:6px'>What the measurements flagged</div>" + findings) if findings else ''}
-  {'' if (coach or findings or film or note) else '<p class="lead">Nothing in this clip is outside its range. Keep filming the same way and watch the trend.</p>'}
-</section>"""
+    since_rows = "".join(
+        f"<div class='since-row'><span>{_e(m['label'])}</span><span class='since-v'>{_e(m['then'])} → {_e(m['now'])}</span>"
+        f"<span class='chip {m['tone']}'>{_e(m['word'])}</span></div>" for m in moved)
+    since_html = (
+        f"<div class='since'><div class='eyebrow'>Since {_e(previous['filmed'])} · same side, same position</div>"
+        + (f"<div class='since-score'>{then_score:.0f} → {score:.0f}</div>" if show_scores else "")
+        + since_rows
+        + ("<p>Two clips of an unchanged position differ by up to 3°, so smaller moves aren't listed.</p>" if moved
+           else "<p>No measurement moved by more than two clips of an unchanged position differ by.</p>")
+        + "</div>"
+    ) if previous else ""
+    read_body = "".join([
+        note_html, film_html, since_html,
+        f'<div class="coachtext">{markdown(coach)}</div>' if coach else "",
+        ("<div class='eyebrow' style='margin-top:6px'>What the measurements flagged</div>" + findings) if findings else "",
+    ])
+    # With nothing to say the plan doesn't already say, the plan comes first.
+    read_title = "What this clip suggests" if low else "What's off, and what to change first"
+    read = f"<section>{head(READ_EYEBROW, read_title)}{read_body}</section>" if read_body else ""
 
-    prio_html = "".join(
+    prio_cards = [
         f"<div class='prio'><div class='n'>{n}</div><div><h3>{_e(prio_label(p))}{' — ' + _e(_clean(p.get('drill'))) if p.get('drill') else ''}</h3><dl>"
         + "".join(f"<dt>{lbl}</dt><dd>{_e(_clean(p.get(k)))}</dd>" for k, lbl in
                   (("why", "Why"), ("instruction", "Do this"), ("cue", "Think")) if p.get(k))
         + (f"<dt>For</dt><dd>{_e(p.get('weeks'))} weeks</dd>" if p.get('weeks') and not low else "")
         + "</dl></div></div>"
-        for n, p in enumerate(prios, 1))
+        for n, p in enumerate(prios, 1)]
+    prio_html = "".join(prio_cards)
     weeks = [p.get("weeks") for p in prios if isinstance(p.get("weeks"), (int, float))]
     when = (f"In {int(min(weeks))} week{'s' if min(weeks) != 1 else ''}" if weeks
             else "After each change" if sport == "bike" and prios else "")
@@ -663,11 +781,14 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     # was a block that spilled onto a page of its own.
     ok_html = ("<div class='working' style='margin:0 0 12px'><h3>Already good — leave these alone</h3>"
                f"<p>{_e(', '.join(ok_names))}.</p></div>") if ok_names else ""
+    if not (read or prio_html or low):
+        read = (f"<section>{head(READ_EYEBROW, 'Nothing to change')}<p class='lead'>Nothing in this clip is "
+                "outside its range. Keep filming the same way and watch the trend.</p></section>")
     plan_sec = f"""
 <section>
-  {head('The plan', ('What to try, once a better clip confirms it' if prio_html else 'Film this again first') if low else 'Fix these, in this order')}
-  {retest if low else ''}
-  {prio_html}
+  <div class="keep">{head('The plan', ('What to try, once a better clip confirms it' if prio_html else 'Film this again first') if low else 'Fix these, in this order')}
+  {retest if low else (prio_cards[0] if prio_cards else '')}</div>
+  {''.join(prio_cards) if low else ''.join(prio_cards[1:])}
   {'' if low else retest}
 </section>""" if (prio_html or low) else ""
 
@@ -686,18 +807,23 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
               + "</div>")
     kino = meta.get("kinogram")
     numbers = f"""
-<section class="page">
-  {head('The numbers', 'Every measurement, against its range')}
+<section>
+  <div class="keep">{head('The numbers', 'Every measurement, against its range')}
   <p class="lead">Measured by Flapp from your clip. Ranges come from sports-science research{' and the Kona 2026 pro field' if has_pro else ''}.</p>
   {ok_html}
   {hob_html}
-  {legend if rows else ''}
+  {legend if rows else ''}</div>
   {f"<div class='tiles'>{tiles}</div>" if rows else ''}
-  {f'<div class="eyebrow" style="margin-top:12px">{"One stride, five positions" if sport == "run" else "One pedal revolution"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure>' if kino else ''}
+  {f'<div class="keep"><div class="eyebrow" style="margin-top:12px">{"One stride, five positions" if sport == "run" else "One pedal revolution"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure></div>' if kino else ''}
   <div class="foot"><span>Flapp · getflapp.com</span><span>{_e(meta.get('prepared'))}</span></div>
 </section>""" if (rows or kino) else ""
 
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Flapp report</title>
+    who_foot = str(meta.get("athlete") or "").strip()
+    foot_left = " · ".join(x for x in (who_foot, _SPORT.get(sport, sport.title()),
+                                       f"Filmed {meta['filmed']}" if meta.get("filmed") else "") if x)
+    run_foot = (f"<div class='run-foot'><span>{_e(foot_left)}</span>"
+                "<span>Measured with Flapp · getflapp.com</span></div>")
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{_e(_doc_title(meta, _SPORT.get(sport, sport.title())))}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>{_CSS}{_EXTRA_CSS}</style></head><body>{cover}<table class="flow"><thead><tr><td></td></tr></thead><tbody><tr><td>{read}{plan_sec}{numbers}</td></tr></tbody><tfoot><tr><td></td></tr></tfoot></table></body></html>"""
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@600&display=swap" rel="stylesheet">
+<style>{_CSS}{_EXTRA_CSS}</style></head><body>{cover}<table class="flow"><thead><tr><td></td></tr></thead><tbody><tr><td>{read}{plan_sec}{numbers}</td></tr></tbody><tfoot><tr><td>{run_foot}</td></tr></tfoot></table></body></html>"""

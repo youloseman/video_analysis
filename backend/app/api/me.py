@@ -590,6 +590,44 @@ async def analysis_report(
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 
+async def _previous_clip(
+    db: AsyncSession, row: Analysis, bars: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """The last clip this one can honestly be read against: the app's cmpSame (same
+    person, setup, side and position, since the two sides of a bike read differently),
+    and not one whose own numbers are in doubt. Same owner, so nothing crosses accounts."""
+    from datetime import datetime, timezone
+
+    from app.services.report_pdf import _low_trust
+    from app.services.video_analysis.capture_report import film_notes_of
+
+    result = row.result or {}
+    if not row.sport or result.get("kind") == "photo":
+        return None
+    def filmed(r: Analysis) -> int:
+        return (r.data or {}).get("filmedAt") or r.created_at_ms or 0
+    earlier = (await db.execute(
+        select(Analysis).where(
+            Analysis.user_id == row.user_id, Analysis.id != row.id,
+            Analysis.sport == row.sport, Analysis.kind == row.kind,
+            Analysis.athlete_id.is_(row.athlete_id) if row.athlete_id is None
+            else Analysis.athlete_id == row.athlete_id,
+            Analysis.profile_id.is_(row.profile_id) if row.profile_id is None
+            else Analysis.profile_id == row.profile_id,
+            Analysis.preview.is_(False), Analysis.result.is_not(None),
+        ).order_by(Analysis.created_at_ms.desc()).limit(12)
+    )).scalars().all()
+    for prev in sorted(earlier, key=filmed, reverse=True):
+        r = prev.result or {}
+        if (filmed(prev) < filmed(row)
+                and r.get("camera_side") == result.get("camera_side")
+                and r.get("cycling_position") == result.get("cycling_position")
+                and not _low_trust(film_notes_of(r, bars) or [])):
+            when = datetime.fromtimestamp(filmed(prev) / 1000, timezone.utc)
+            return {"filmed": f"{when.day} {when:%b %Y}", "result": r}
+    return None
+
+
 async def render_saved_report(
     db: AsyncSession, *, reader: User, owner: User, row: Analysis, athlete_id: int | None,
 ) -> str:
@@ -643,6 +681,7 @@ async def render_saved_report(
         "capture_bars": capture_bars,
         "coach_note": entry.get("coachNote") or "",
         "coach_note_by": entry.get("coachName") or "",
+        "previous": await _previous_clip(db, row, capture_bars),
     })
 
 

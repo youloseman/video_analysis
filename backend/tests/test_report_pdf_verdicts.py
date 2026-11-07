@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 
-from app.services.report_pdf import _score_notes, plan_rows, render_report_html
+from app.services.report_pdf import _score_notes, changes_since, plan_rows, render_report_html
 from app.services.video_analysis.biomechanics.action_plan_builder import (
     FIT_STEP_NOTE,
     build_action_plan,
@@ -331,7 +331,7 @@ def test_a_doubtful_clip_says_film_again_before_it_says_fix():
     assert "What this clip suggests" in html and "Low · little usable footage" in html
     assert "keep the whole body in the frame" in html
     # The drill stays, as something to try. The prescription of weeks goes.
-    assert "High Knee March" in html and "3 weeks" not in html
+    assert "Heel Flicks" in html and "3 weeks" not in html
 
 
 def test_a_clean_clip_is_unchanged():
@@ -398,3 +398,123 @@ def test_the_page_leaves_no_margin_for_the_browsers_date_and_address():
     assert re.findall(r"@page\{[^}]*\}", html)[-1] == "@page{size:A4;margin:0}"
     assert re.findall(r"@page:first\{[^}]*\}", html)[-1] == "@page:first{margin:0}"
     assert '<table class="flow"><thead>' in html
+
+
+# --- structure: one document, not three lists of the same fixes
+
+def _bike_plan(**extra) -> dict:
+    return {
+        "sport_type": "bike", "technique_score": 75, "cycling_position": "road_hoods", "camera_side": "left",
+        "reference_bands": {"knee_at_bdc": {"lo": 135, "hi": 145}, "trunk_angle_avg": {"lo": 40, "hi": 55}},
+        "detected_issues": [{"type": "saddle_too_high", "severity": "warning", "value": "150 deg",
+                             "recommendation": "Lower the saddle"}],
+        "fit_plan": {"diagnostics": [{
+            "component": "saddle_height", "status": "needs_adjustment", "metric_name": "knee_at_bdc",
+            "action": "lower_saddle", "amount": "≈23 mm (±7)", "priority": 1,
+            "reason": "Knee angle at BDC is 165 deg (optimal 135-145 deg). Overextension -- lower the saddle "
+                      "about ≈23 mm (±7) to bring the knee to mid-band, ride 30 min before reassessing.",
+        }]},
+        "sport_specific_metrics": {"knee_at_bdc": 165.0, "trunk_angle_avg": 45.0, "capture_report": {"checks": []}},
+        **extra,
+    }
+
+
+def test_a_fit_change_has_a_why_and_a_do_this():
+    html = render_report_html(_bike_plan(), {})
+    assert "<dt>Why</dt><dd>Knee angle at the bottom of the stroke is 165° (optimal 135-145°). Overextension.</dd>" in html
+    assert "<dt>Do this</dt><dd>Lower the saddle about 23 mm (±7)" in html
+    assert "Work in 5 mm steps." in html
+
+
+def test_a_finding_the_plan_covers_is_not_said_twice():
+    html = render_report_html(_bike_plan(), {})
+    assert "Saddle too high" not in html and "Lower saddle" in html
+
+
+def test_the_plan_comes_first_when_there_is_nothing_else_to_read():
+    html = render_report_html(_bike_plan(), {})
+    assert "The coach&#x27;s read" not in html and "The coach's read" not in html
+    assert html.index("The plan") < html.index("The numbers")
+
+
+def test_an_old_run_gets_the_drill_that_matches_its_cue():
+    res = _doubtful()
+    res["sport_specific_metrics"]["capture_report"]["checks"] = []
+    res["training_plan"]["top_3_priorities"][0].update(drill="High Knee March", instruction="March with maximum knee lift")
+    html = render_report_html(res, {})
+    assert "High Knee March" not in html and "March with" not in html and "Heel Flicks" in html
+
+
+def test_a_tall_frame_sits_beside_the_cards_not_in_a_wide_box():
+    html = render_report_html(_bike_plan(), {"keyframe": "data:image/jpeg;base64,AA"})
+    assert '<div class="lead"><img' in html and "cover-img" not in html
+
+
+# --- the document: whose it is, on every page and in the file name
+
+def test_the_saved_file_is_named_after_the_athlete():
+    html = render_report_html(_bike_plan(), {"athlete": "Maya Chen", "filmed": "6 Nov 2026"})
+    assert "<title>Maya Chen, Cycling, 6 Nov 2026</title>" in html
+
+
+def test_an_email_never_lands_in_a_file_name():
+    html = render_report_html(_bike_plan(), {"athlete": "maya@example.com", "filmed": "6 Nov 2026"})
+    assert "<title>Cycling, 6 Nov 2026</title>" in html
+
+
+def test_every_page_says_whose_report_it_is():
+    html = render_report_html(_bike_plan(), {"athlete": "Maya Chen", "filmed": "6 Nov 2026"})
+    tfoot = html[html.index("<tfoot>"):html.index("</tfoot>")]
+    assert "Maya Chen · Cycling · Filmed 6 Nov 2026" in tfoot and "getflapp.com" in tfoot
+
+
+def test_the_coach_font_is_loaded():
+    assert "IBM+Plex+Sans" in render_report_html(_bike_plan(), {})
+
+
+# --- what changed since the last clip
+
+def _since(then_knee, then_score=70, **kw) -> str:
+    before = _bike_plan(technique_score=then_score)
+    before["sport_specific_metrics"] = {**before["sport_specific_metrics"], "knee_at_bdc": then_knee}
+    return render_report_html(_bike_plan(**kw), {"previous": {"filmed": "12 Oct 2026", "result": before}})
+
+
+def test_what_moved_is_shown_with_both_numbers():
+    html = _since(172.0)
+    assert "Since 12 Oct 2026" in html and "70 → 75" in html
+    assert "172° → 165°" in html and "Closer" in html
+
+
+def test_a_move_inside_the_methods_error_is_not_a_change():
+    html = _since(164.0)
+    assert "No real change" in html and "164°" not in html
+    # The score is left out: it can move when the rules do.
+    assert "70 → 75" not in html
+
+
+def test_getting_further_out_is_said():
+    assert "Further out" in _since(158.0)
+
+
+def test_coming_back_into_range_is_said():
+    moved = changes_since(
+        [{"field": "x", "label": "Knee", "value": 140.0, "unit": "°", "band": (135, 145), "status": "good"}],
+        [{"field": "x", "label": "Knee", "value": 160.0, "unit": "°", "band": (135, 145), "status": "bad"}])
+    assert moved == [{"label": "Knee", "then": "160°", "now": "140°", "word": "Back in range", "tone": "good"}]
+
+
+def test_a_run_number_with_no_measured_floor_counts_only_when_its_verdict_moves():
+    row = {"field": "cadence", "label": "Cadence", "unit": " spm", "band": (170, 190)}
+    same = changes_since([{**row, "value": 176.0, "status": "good"}], [{**row, "value": 172.0, "status": "good"}])
+    assert same == []
+    moved = changes_since([{**row, "value": 172.0, "status": "good"}], [{**row, "value": 160.0, "status": "bad"}])
+    assert moved[0]["word"] == "Back in range"
+
+
+def test_a_doubtful_clip_makes_no_claim_about_what_moved():
+    res = _bike_plan()
+    res["sport_specific_metrics"]["capture_report"]["checks"] = [
+        {"id": "framing", "status": "bad", "label": "How much of the frame you fill", "measured": "237 px tall"}]
+    html = render_report_html(res, {"previous": {"filmed": "12 Oct 2026", "result": _bike_plan()}})
+    assert "Since 12 Oct" not in html
