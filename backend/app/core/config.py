@@ -36,6 +36,13 @@ class Settings:
     # baked into the frame extractor). Kept here so it is tunable later.
     max_analysis_frames: int = 450
 
+    # RTMPose-m refinement (detectors/rtmpose_refiner.py): MediaPipe keeps
+    # tracking, RTMPose places the body joints. Off unless a sport is listed in
+    # VA_RTMPOSE_SPORTS ("bike", "run" or "bike,run"); a missing model or
+    # onnxruntime falls back to MediaPipe alone, it never fails an analysis.
+    rtmpose_sports: tuple[str, ...] = ()
+    rtmpose_model_filename: str = "rtmpose-m_body7_halpe26.onnx"
+
     # Where the API stores uploaded clips + generated overlays (M3).
     uploads_dir: Path = BACKEND_DIR / "uploads"
 
@@ -256,6 +263,10 @@ class Settings:
         return self.models_dir / self.model_filename
 
     @property
+    def rtmpose_model_path(self) -> Path:
+        return self.models_dir / self.rtmpose_model_filename
+
+    @property
     def async_database_url(self) -> str:
         """Normalize to an async driver URL (asyncpg for Postgres)."""
         url = self.database_url
@@ -399,6 +410,10 @@ def _load_settings() -> Settings:
         ),
         posthog_session_recording=_bool_env(
             "POSTHOG_SESSION_RECORDING", Settings.posthog_session_recording,
+        ),
+        rtmpose_sports=tuple(
+            s for s in (x.strip().lower() for x in (os.environ.get("VA_RTMPOSE_SPORTS") or "").split(","))
+            if s in ("bike", "run")
         ),
     )
 

@@ -31,6 +31,11 @@ RUN mkdir -p models \
     && curl -fSL -o models/pose_landmarker_heavy.task \
        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
 
+# RTMPose-m (Halpe-26) for the refinement in detectors/rtmpose_refiner.py, pinned
+# by its SHA-256. Off unless VA_RTMPOSE_SPORTS is set, so a failed fetch must not
+# block a deploy: the app logs RTMPOSE_MODEL_MISSING and runs MediaPipe alone.
+RUN python -c "import urllib.request,zipfile,io,hashlib; d=urllib.request.urlopen('https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/rtmpose-m_simcc-body7_pt-body7-halpe26_700e-256x192-4d3e73dd_20230605.zip',timeout=180).read(); z=zipfile.ZipFile(io.BytesIO(d)); b=z.read([n for n in z.namelist() if n.endswith('end2end.onnx')][0]); assert hashlib.sha256(b).hexdigest()=='26f3a19e61304a600dfb82d1001d41d24343b89fc70a33ffc84657e0b0bf2ecf'; open('models/rtmpose-m_body7_halpe26.onnx','wb').write(b)"     || echo "RTMPose model not fetched: MediaPipe alone"
+
 # Application code (config.py resolves BACKEND_DIR to /app -> /app/models, /app/uploads).
 COPY backend/app ./app
 COPY backend/scripts ./scripts

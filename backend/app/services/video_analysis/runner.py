@@ -436,6 +436,11 @@ def extract_frames(
     # puts them back on the whole picture (see biomechanics/runner_path.py).
     base_sample_rate = max(SPORT_SAMPLE_RATES.get(sport_type, 3), int(min_sample_rate or 1))
     sample_rate = base_sample_rate
+    if meta is not None:
+        # Which detector measured these frames. A knee from MediaPipe alone and
+        # one placed by RTMPose differ by up to 5-8 deg on the far side of a
+        # bike, so a comparison across the switch must be able to tell.
+        meta["pose_detector"] = getattr(detector, "name", None)
 
     cap = cv2.VideoCapture(video_path)
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 1920
@@ -1054,6 +1059,7 @@ def analyze_from_frames(
             cycling_position=cycling_position,
             frame_aspect=(_fw / _fh) if _fw and _fh else None,
         )
+        analyzer.pose_detector = sampling_meta.get("pose_detector")
         # Bike side-view never physically flips: lock the side up front so
         # analyze_frame sees a stable camera_side from the first call.
         locked_side = (
@@ -1254,6 +1260,9 @@ def analyze_from_frames(
 
     # Step 3c: summaries.
     summary = analyzer.compute_summary()
+    # Which detector measured these frames, on the summary itself because the
+    # scorer, the fit plan and the bands read it before `sampling` is attached.
+    summary["pose_detector"] = sampling_meta.get("pose_detector")
     issues = analyzer.detect_issues()
     angle_stats = analyzer.compute_angle_statistics()
     if sport_type == "run":
@@ -1788,6 +1797,7 @@ def analyze_from_frames(
                 crank_length_mm,
                 bdc_variability_deg=_bdc_diag.get("bdc_variability_deg"),
                 camera_side=analyzer.camera_side,
+                pose_detector=summary.get("pose_detector"),
             )
             if _est:
                 summary["saddle_estimate"] = _est
@@ -1937,6 +1947,7 @@ def analyze_from_frames(
         "reference_bands": reference_bands(
             sport_type, cycling_position if is_bike else None,
             camera_side=analyzer.camera_side if is_bike else None,
+            pose_detector=summary.get("pose_detector") if is_bike else None,
         ),
         # Where the Kona pros sat (kona_field.py): shown beside the bands on
         # aero positions, graded against nowhere. None off the aero bars.

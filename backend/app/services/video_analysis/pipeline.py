@@ -328,10 +328,12 @@ class VideoAnalysisPipeline:
             from app.services.video_analysis.biomechanics.cycling_positions import (
                 get_cycling_reference,
                 knee_bdc_band,
+                pose_detector_of,
             )
             cycling_pos = cycling_position or (summary or {}).get("cycling_position")
             ref = get_cycling_reference(cycling_pos)
-            knee_band = knee_bdc_band(cycling_pos, (summary or {}).get("camera_side"))
+            knee_band = knee_bdc_band(cycling_pos, (summary or {}).get("camera_side"),
+                                      pose_detector_of(summary))
             camera_side = (summary or {}).get("camera_side", "left")
 
             if camera_side == "left":

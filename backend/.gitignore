@@ -18,3 +18,5 @@ Thumbs.db
 # Local scratch / outputs
 *.log
 uploads/
+# RTMPose refinement model (baked into the image, see Dockerfile)
+models/*.onnx

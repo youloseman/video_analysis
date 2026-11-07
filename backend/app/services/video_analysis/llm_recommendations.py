@@ -665,7 +665,11 @@ def _metric_statuses(
     # A video's summary has frames_analyzed. A photo's knee is its own reading,
     # with its own band, and the side's margin was measured on video only.
     side = summary.get("camera_side") if summary.get("frames_analyzed") else None
-    for field, band in (reference_bands(sport_type, position, camera_side=side) or {}).items():
+    from app.services.video_analysis.biomechanics.cycling_positions import pose_detector_of
+
+    bands = reference_bands(sport_type, position, camera_side=side,
+                            pose_detector=pose_detector_of(summary)) or {}
+    for field, band in bands.items():
         raw = summary.get(field)
         if raw is None:
             continue

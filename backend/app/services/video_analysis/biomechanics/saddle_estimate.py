@@ -72,6 +72,7 @@ def estimate_saddle_change(
     *,
     bdc_variability_deg: float | None = None,
     camera_side: str | None = None,
+    pose_detector: str | None = None,
 ) -> dict[str, Any] | None:
     """The saddle change that would put the knee at BDC mid-band, in mm.
 
@@ -109,7 +110,7 @@ def estimate_saddle_change(
     if drive_side:
         ci += abs(delta_mm) * DRIVE_SIDE_SCALE_ERR
 
-    margin = knee_bdc_high_margin(camera_side)
+    margin = knee_bdc_high_margin(camera_side, pose_detector)
     graded_hi = hi + margin
     in_band = lo <= knee <= graded_hi
     # The distance to the band's nearer EDGE, the smallest change that puts

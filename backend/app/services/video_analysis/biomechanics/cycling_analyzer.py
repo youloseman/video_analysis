@@ -285,6 +285,9 @@ class CyclingAnalyzer(SportAnalyzer):
     ):
         super().__init__(sport_type="bike", fps=fps)
         self.cycling_position = cycling_position
+        # Which detector measured the frames (runner sets it); it decides
+        # whether the non-drive knee margin applies (cycling_positions).
+        self.pose_detector: str | None = None
         self.reference = get_cycling_reference(cycling_position)
         # Width/height of the video frame. When known, every angle is
         # computed from the IMAGE landmarks in true image proportions --
@@ -869,7 +872,7 @@ class CyclingAnalyzer(SportAnalyzer):
         opt_min, opt_max = self.reference["knee_at_bdc"]
         if knee_at_bdc < opt_min - 5:
             return "too_low"
-        elif knee_at_bdc > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side)):
+        elif knee_at_bdc > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side, self.pose_detector)):
             return "too_high"
         elif opt_min <= knee_at_bdc <= opt_max:
             return "optimal"
@@ -1181,7 +1184,7 @@ class CyclingAnalyzer(SportAnalyzer):
                     "value": f"Knee at BDC: {bdc_val:.0f} deg",
                     "recommendation": f"Saddle may be too low. Knee at BDC is {bdc_val:.0f} deg (optimal: {opt_min}-{opt_max} deg).",
                 })
-            elif bdc_val > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side)):
+            elif bdc_val > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side, self.pose_detector)):
                 issues.append({
                     "type": "saddle_too_high",
                     "severity": "warning",

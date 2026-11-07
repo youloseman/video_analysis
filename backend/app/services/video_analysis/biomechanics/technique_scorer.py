@@ -406,12 +406,13 @@ def score_cycling(
     from app.services.video_analysis.biomechanics.cycling_positions import (
         get_cycling_reference,
         knee_bdc_band,
+        pose_detector_of,
     )
 
     ref = get_cycling_reference(cycling_position)
     components: dict[str, float] = {}
     near = summary.get("near_side", "left")
-    knee_band = knee_bdc_band(cycling_position, summary.get("camera_side"))
+    knee_band = knee_bdc_band(cycling_position, summary.get("camera_side"), pose_detector_of(summary))
 
     # Knee at BDC (near-side primary, fall back to any available)
     near_bdc = summary.get(f"{near}_knee_at_bdc") or 0
@@ -770,8 +771,9 @@ def build_severity_map(
         if severity_map["knee_at_bdc"] != "OPTIMAL":
             from app.services.video_analysis.biomechanics.cycling_positions import (
                 knee_bdc_band,
+                pose_detector_of,
             )
-            lo, hi = knee_bdc_band(position, summary.get("camera_side"))
+            lo, hi = knee_bdc_band(position, summary.get("camera_side"), pose_detector_of(summary))
             if lo <= bdc <= hi:
                 severity_map["knee_at_bdc"] = "ACCEPTABLE"
 

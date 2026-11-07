@@ -13,6 +13,14 @@ and then uses the abstract interface.
   (`mp.solutions.pose.Pose`). Reports `name` as `mediapipe_tasks` or
   `mediapipe_legacy`. Used for all sports. Confidence thresholds live
   in `DEFAULT_CONFIDENCE_TABLE` inside that file.
+- [`RTMPoseRefiner`](rtmpose_refiner.py) — wraps MediaPipe: MediaPipe
+  tracks, labels left/right and supplies z, visibility and world landmarks;
+  RTMPose-m (Halpe-26, ONNX) placed on MediaPipe's box replaces the image x/y
+  of the 16 body joints. Off unless `VA_RTMPOSE_SPORTS` lists the sport
+  (`bike`, `run`); `name` becomes `mediapipe_tasks+rtmpose_m` and is stamped
+  in `summary.sampling.pose_detector`. On 480 labelled bike-fit frames knee
+  scatter sd 7.1 -> 3.9 deg, ankle MAE 16.4 -> 7.4 deg. Model and licences:
+  see `backend/THIRD_PARTY_NOTICES.md`.
 
 ## Adding a new detector
 

@@ -90,3 +90,45 @@ def test_severity_does_not_shout_inside_the_margin():
     assert build_severity_map(POS, _summary(152.0, "left"))["knee_at_bdc"] == "ACCEPTABLE"
     assert build_severity_map(POS, _summary(143.0, "left"))["knee_at_bdc"] == "OPTIMAL"
     assert build_severity_map(POS, _summary(152.0, "right"))["knee_at_bdc"] not in ("OPTIMAL", "ACCEPTABLE")
+
+
+# --- RTMPose (detectors/rtmpose_refiner.py), 2026-11-07 -----------------------
+# Through the real pipeline on the same four pairs the drive/non-drive gap fell
+# from -9.2 to -2.5 deg, non-drive knees reading 144-148. The margin is
+# MediaPipe's error, so a clip RTMPose measured is graded on the plain band.
+RTM = "mediapipe_tasks+rtmpose_m"
+
+
+def _rtm(knee, side):
+    return {**_summary(knee, side), "pose_detector": RTM}
+
+
+def test_a_clip_rtmpose_measured_gets_no_margin_anywhere():
+    assert knee_bdc_band(POS, "left", RTM) == (138, 145)
+    assert knee_bdc_band(POS, "left", "mediapipe_tasks") == (138, 145 + NON_DRIVE_KNEE_MARGIN_DEG)
+    band = reference_bands("bike", POS, camera_side="left", pose_detector=RTM)["knee_at_bdc"]
+    assert band["hi"] == 145 and "9 degrees" not in band.get("source", "")
+    assert score_cycling(_rtm(152.0, "left"), {}, cycling_position=POS)["component_scores"]["knee_bdc"] < 100.0
+    assert build_severity_map(POS, _rtm(152.0, "left"))["knee_at_bdc"] not in ("OPTIMAL", "ACCEPTABLE")
+    plan = build_action_plan(POS, {}, _rtm(152.0, "left"), 90, "A", [])
+    assert "lower_saddle" in [d.action for d in plan.diagnostics if d.component == "saddle_height"]
+
+
+def test_the_stamp_is_read_from_the_summary_or_its_sampling():
+    from app.services.video_analysis.biomechanics.cycling_positions import pose_detector_of
+
+    assert pose_detector_of({"pose_detector": RTM}) == RTM
+    assert pose_detector_of({"sampling": {"pose_detector": RTM}}) == RTM
+    # A saved result from before the stamp was MediaPipe alone: margin kept.
+    assert pose_detector_of({"camera_side": "left"}) is None
+
+
+def test_the_analyzer_drops_the_margin_too():
+    from app.services.video_analysis.biomechanics.cycling_analyzer import CyclingAnalyzer
+
+    a = CyclingAnalyzer(cycling_position=POS)
+    a.camera_side = "left"
+    assert a._assess_saddle_height(152.0) != "too_high"
+    a.pose_detector = RTM
+    assert a._assess_saddle_height(160.0) == "too_high"
+    assert a._assess_saddle_height(152.0) == "too_high"

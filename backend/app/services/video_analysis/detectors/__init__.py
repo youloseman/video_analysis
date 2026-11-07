@@ -29,9 +29,9 @@ def build_detector(
 ) -> PoseDetector:
     """Factory that returns the detector appropriate for the given sport.
 
-    Currently always returns :class:`MediaPipePoseDetector`; future
-    research work (YOLO-Pose under-water, MMPose elite swim, etc.)
-    can branch here without touching the pipeline call-sites.
+    :class:`MediaPipePoseDetector`, wrapped in RTMPose-m refinement for the
+    sports listed in ``VA_RTMPOSE_SPORTS`` (see rtmpose_refiner.py). The
+    pipeline call-sites never know which they got; ``name`` says.
     """
     from app.services.video_analysis.detectors.mediapipe_detector import (
         DEFAULT_CONFIDENCE_TABLE,
@@ -48,7 +48,9 @@ def build_detector(
         min_presence_confidence=confidence,
         min_tracking_confidence=confidence,
     )
-    return MediaPipePoseDetector(config)
+    from app.services.video_analysis.detectors.rtmpose_refiner import maybe_refine
+
+    return maybe_refine(MediaPipePoseDetector(config), sport_type)
 
 
 __all__ = [

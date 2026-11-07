@@ -17,6 +17,7 @@ from typing import Any
 
 from app.services.video_analysis.biomechanics.cycling_positions import (
     knee_bdc_high_margin,
+    pose_detector_of,
     AERO_POSITIONS,
     AERO_TRUNK_EXTREME_DEG,
     AERO_TRUNK_LOW_CONCERN,
@@ -506,7 +507,7 @@ def build_action_plan(
         knee_class = _classify(knee_bdc, bdc_min, bdc_max, "knee_at_bdc")
         # Read high from this side by more than the deadband: no reason to move it.
         if (knee_class == "out_high"
-                and knee_bdc <= bdc_max + knee_bdc_high_margin(sm.get("camera_side"))):
+                and knee_bdc <= bdc_max + knee_bdc_high_margin(sm.get("camera_side"), pose_detector_of(sm))):
             knee_class = "borderline_high"
         if knee_class == "out_low":
             amt = format_amount(saddle_est, "raise")

@@ -374,6 +374,10 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
 # all four were told to lower a saddle the better model puts about in range. Nine
 # because 145 + 9 clears the highest of those readings (153.5). Goes when the
 # detector changes: it is a margin for one model's error, not a fact about knees.
+# It does not apply to a clip RTMPose measured (detectors/rtmpose_refiner.py):
+# through the real pipeline on the same four pairs the gap fell from -9.2 to
+# -2.5 deg (2026-11-07), the non-drive knees reading 144-148. A result with no
+# detector stamp predates the switch and was MediaPipe alone.
 NON_DRIVE_KNEE_MARGIN_DEG = 9.0
 NON_DRIVE_KNEE_NOTE = (
     "The top of this range is 9 degrees wider on this clip: filmed with the chainring "
@@ -382,16 +386,31 @@ NON_DRIVE_KNEE_NOTE = (
 )
 
 
-def knee_bdc_high_margin(camera_side: str | None) -> float:
+def measured_by_rtmpose(pose_detector: str | None) -> bool:
+    """Whether a clip's body joints were placed by RTMPose."""
+    return bool(pose_detector) and "rtmpose" in str(pose_detector)
+
+
+def pose_detector_of(summary: dict[str, Any] | None) -> str | None:
+    """The detector a video summary was measured with (runner stamps both)."""
+    s = summary or {}
+    return s.get("pose_detector") or (s.get("sampling") or {}).get("pose_detector")
+
+
+def knee_bdc_high_margin(camera_side: str | None, pose_detector: str | None = None) -> float:
     """Extra room above the knee-at-BDC band for this clip's side. ``both`` is a
-    merged session, whose knee does not come from one side's reading."""
+    merged session, whose knee does not come from one side's reading. None on a
+    clip RTMPose measured: the margin is MediaPipe's error, not the knee's."""
+    if measured_by_rtmpose(pose_detector):
+        return 0.0
     return NON_DRIVE_KNEE_MARGIN_DEG if camera_side == "left" else 0.0
 
 
-def knee_bdc_band(position: str | None, camera_side: str | None = None) -> tuple[float, float]:
+def knee_bdc_band(position: str | None, camera_side: str | None = None,
+                  pose_detector: str | None = None) -> tuple[float, float]:
     """The knee-at-BDC band this clip is graded against."""
     lo, hi = get_cycling_reference(position)["knee_at_bdc"]
-    return lo, hi + knee_bdc_high_margin(camera_side)
+    return lo, hi + knee_bdc_high_margin(camera_side, pose_detector)
 
 
 def get_cycling_reference(position: str | None = None) -> dict[str, tuple[float, float]]:
