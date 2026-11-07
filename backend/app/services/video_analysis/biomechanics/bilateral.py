@@ -500,6 +500,7 @@ def merge_summaries(
     # from the merged one -- carrying the base clip's verdict forward would
     # reintroduce exactly the disagreement we just resolved.
     merged["saddle_height_assessment"] = _assess_saddle(knee, cycling_position)
+    merged["saddle_fit_score"] = _saddle_fit(knee, cycling_position)
 
     merged["bilateral"] = fit.as_dict()
     merged["camera_side"] = "both"
@@ -568,14 +569,22 @@ def _assess_saddle(knee: float | None, cycling_position: str | None) -> str:
     from app.services.video_analysis.biomechanics.cycling_positions import (
         get_cycling_reference,
     )
+    from app.services.video_analysis.biomechanics.cycling_positions import saddle_verdict
+
     opt_min, opt_max = get_cycling_reference(cycling_position)["knee_at_bdc"]
-    if knee < opt_min - 5:
-        return "too_low"
-    if knee > opt_max + 5:
-        return "too_high"
-    if opt_min <= knee <= opt_max:
-        return "optimal"
-    return "acceptable"
+    return saddle_verdict(knee, opt_min, opt_max)
+
+
+def _saddle_fit(knee: float | None, cycling_position: str | None) -> float | None:
+    """saddle_fit on a ramp for a merged knee angle, in step with _assess_saddle."""
+    if knee is None:
+        return None
+    from app.services.video_analysis.biomechanics.cycling_positions import (
+        get_cycling_reference,
+        saddle_fit_score,
+    )
+    opt_min, opt_max = get_cycling_reference(cycling_position)["knee_at_bdc"]
+    return round(saddle_fit_score(knee, opt_min, opt_max), 2)
 
 
 def midline_agreement(

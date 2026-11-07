@@ -24,6 +24,8 @@ from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 from app.services.video_analysis.biomechanics.cycling_positions import (
     get_cycling_reference,
     knee_bdc_high_margin,
+    saddle_fit_score,
+    saddle_verdict,
     get_position_label,
 )
 from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
@@ -870,14 +872,14 @@ class CyclingAnalyzer(SportAnalyzer):
     def _assess_saddle_height(self, knee_at_bdc: float) -> str:
         """Assess saddle height based on knee angle at BDC."""
         opt_min, opt_max = self.reference["knee_at_bdc"]
-        if knee_at_bdc < opt_min - 5:
-            return "too_low"
-        elif knee_at_bdc > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side, self.pose_detector)):
-            return "too_high"
-        elif opt_min <= knee_at_bdc <= opt_max:
-            return "optimal"
-        else:
-            return "acceptable"
+        return saddle_verdict(knee_at_bdc, opt_min, opt_max,
+                              knee_bdc_high_margin(self.camera_side, self.pose_detector))
+
+    def _saddle_fit_score(self, knee_at_bdc: float) -> float:
+        """saddle_fit on a ramp, in step with _assess_saddle_height."""
+        opt_min, opt_max = self.reference["knee_at_bdc"]
+        return round(saddle_fit_score(knee_at_bdc, opt_min, opt_max,
+                                      knee_bdc_high_margin(self.camera_side, self.pose_detector)), 2)
 
     def _nan_safe_mean(self, values: list[float]) -> float | None:
         """Compute mean ignoring NaN values. Returns None if no valid values."""
@@ -1035,6 +1037,9 @@ class CyclingAnalyzer(SportAnalyzer):
         # present and within their plausibility envelope.
         summary: dict[str, Any] = {
             "saddle_height_assessment": saddle_assessment,
+            "saddle_fit_score": (
+                self._saddle_fit_score(bdc_for_assessment) if bdc_for_assessment else None
+            ),
             "position_archetype": archetype,
             "frames_analyzed": len(self.frame_results),
             # Unilateral focus info
@@ -1177,14 +1182,15 @@ class CyclingAnalyzer(SportAnalyzer):
         if bdc_key in bdc_tdc:
             bdc_val = bdc_tdc[bdc_key]
             opt_min, opt_max = self.reference["knee_at_bdc"]
-            if bdc_val < opt_min - 5:
+            verdict = self._assess_saddle_height(bdc_val)
+            if verdict == "too_low":
                 issues.append({
                     "type": "saddle_too_low",
                     "severity": "warning",
                     "value": f"Knee at BDC: {bdc_val:.0f} deg",
                     "recommendation": f"Saddle may be too low. Knee at BDC is {bdc_val:.0f} deg (optimal: {opt_min}-{opt_max} deg).",
                 })
-            elif bdc_val > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side, self.pose_detector)):
+            elif verdict == "too_high":
                 issues.append({
                     "type": "saddle_too_high",
                     "severity": "warning",

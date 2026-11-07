@@ -45,7 +45,7 @@ _RUN = {
 AERO_TRUNK_MAX = 45.0
 AERO_ELBOW_MAX = 140.0
 # A dropped knee reading takes the saddle verdict built on it with it.
-_DEPENDENTS = {"knee_at_bdc": ("saddle_height_assessment",)}
+_DEPENDENTS = {"knee_at_bdc": ("saddle_height_assessment", "saddle_fit_score")}
 
 
 def _num(v: Any) -> float | None:

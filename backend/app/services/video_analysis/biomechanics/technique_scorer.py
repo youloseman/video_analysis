@@ -449,10 +449,13 @@ def score_cycling(
             components["trunk_angle"] = score_in_range(trunk, *ref["trunk_angle"])
 
     # Saddle fit (derived from near-side BDC)
+    # On a ramp when the analyzer supplied one (cycling_positions.saddle_fit_score):
+    # the old 100/75/40 steps moved the total by points on tenths of a degree.
     saddle = summary.get("saddle_height_assessment", "")
     saddle_map = {"optimal": 100, "acceptable": 75, "too_low": 40, "too_high": 40}
     if saddle in saddle_map:
-        components["saddle_fit"] = float(saddle_map[saddle])
+        ramped = summary.get("saddle_fit_score")
+        components["saddle_fit"] = float(ramped) if ramped is not None else float(saddle_map[saddle])
 
     # Elbow angle (near-side from elbow_angle_avg which is now near-side)
     elbow = summary.get("elbow_angle_avg") or 0

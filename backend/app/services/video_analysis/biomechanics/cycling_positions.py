@@ -406,6 +406,60 @@ def knee_bdc_high_margin(camera_side: str | None, pose_detector: str | None = No
     return NON_DRIVE_KNEE_MARGIN_DEG if camera_side == "left" else 0.0
 
 
+# The saddle verdict is a step: "acceptable" a hair inside the edge, "too high"
+# a hair past it, and the saddle_fit component used to jump 75 -> 40 with it.
+# The same clip measured 150.0 on one machine and 149.75 on Railway (float drift
+# between CPUs, 2026-11-07) and flipped verdict, issue and 2 points of score.
+# So: "too high/low" only when the knee is clearly past the edge, and the
+# score crosses every edge on a ramp of this half-width instead of a step.
+SADDLE_VERDICT_DEADBAND_DEG = 1.0
+SADDLE_EDGE_MARGIN_DEG = 5.0
+
+
+def saddle_verdict(knee: float, opt_min: float, opt_max: float,
+                   high_margin: float = SADDLE_EDGE_MARGIN_DEG) -> str:
+    """optimal / acceptable / too_low / too_high for a knee angle at BDC.
+
+    ``high_margin`` is how far above the band "too high" starts (at least
+    SADDLE_EDGE_MARGIN_DEG; wider for the non-drive side, see
+    knee_bdc_high_margin). Within SADDLE_VERDICT_DEADBAND_DEG past either edge
+    the milder verdict stands.
+    """
+    db = SADDLE_VERDICT_DEADBAND_DEG
+    if knee < opt_min - SADDLE_EDGE_MARGIN_DEG - db:
+        return "too_low"
+    if knee > opt_max + max(SADDLE_EDGE_MARGIN_DEG, high_margin) + db:
+        return "too_high"
+    if opt_min <= knee <= opt_max:
+        return "optimal"
+    return "acceptable"
+
+
+def saddle_fit_score(knee: float, opt_min: float, opt_max: float,
+                     high_margin: float = SADDLE_EDGE_MARGIN_DEG) -> float:
+    """The saddle_fit component, continuous and in step with saddle_verdict.
+
+    100 in the band ("optimal"), 75 between the band and the too-low/too-high
+    edge ("acceptable"), 40 once saddle_verdict says too low/high. The steps
+    are linear ramps 2 x SADDLE_VERDICT_DEADBAND_DEG wide: from the band edge
+    outwards, and centred on the too-low/too-high edge so they reach 40 exactly
+    where the verdict turns. A few tenths of a degree now move this component by
+    a few points, not 35.
+    """
+    db = SADDLE_VERDICT_DEADBAND_DEG
+    if opt_min <= knee <= opt_max:
+        return 100.0
+    if knee > opt_max:
+        out, edge = knee - opt_max, max(SADDLE_EDGE_MARGIN_DEG, high_margin)
+    else:
+        out, edge = opt_min - knee, SADDLE_EDGE_MARGIN_DEG
+
+    def clip01(x: float) -> float:
+        return min(max(x, 0.0), 1.0)
+
+    return 100.0 - 25.0 * clip01(out / (2 * db)) - 35.0 * clip01((out - edge + db) / (2 * db))
+
+
 def knee_bdc_band(position: str | None, camera_side: str | None = None,
                   pose_detector: str | None = None) -> tuple[float, float]:
     """The knee-at-BDC band this clip is graded against."""
