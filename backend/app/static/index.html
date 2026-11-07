@@ -13550,7 +13550,6 @@ function batchAthleteOptions(cur){
     +squad.map(a=>`<option value="${a.id}"${String(a.id)===String(cur||'')?' selected':''}>${esc(a.name)}</option>`).join('');
 }
 function batchWhose(it){ return it.athleteId&&it.athleteId!=='me'?it.athleteId:null; }
-function batchSportOf(id){ const a=liveAthletes().find(x=>String(x.id)===String(id)); return a&&(a.sport==='run'||a.sport==='bike')?a.sport:null; }
 /* The file's own date. It decides the order and the date on the report, so a
    batch of May and June clips reads as May and June. */
 function batchFilmedAt(file){ const t=file.lastModified; return typeof t==='number'&&t>0&&t<=Date.now()?t:null; }
@@ -13654,8 +13653,9 @@ async function batchSendPhoto(it){
       if(fr.length){ const fd=new FormData(); fd.append('frames',fr[0],'p.jpg'); fd.append('mode','photo');
         const r=await fetch('/prescan',{method:'POST',headers:authHeaders(),body:fd}); if(r.ok) j=await r.json(); }
     }catch(_e){}
-    // The athlete's own sport only when the photo cannot tell.
-    sport=(j&&j.sport)||batchSportOf(batchWhose(it));
+    // A photo the look cannot call is asked about, never guessed from the
+    // athlete's sport: a triathlete sends runs and rides.
+    sport=j&&j.sport;
     if(!sport){ it.state='failed'; it.msg='Could not tell run from ride: choose one'; return; }
   }
   const d=new FormData(); d.append('photo',it.file); d.append('sport',sport); d.append('coaching','true');

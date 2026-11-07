@@ -128,23 +128,23 @@ def scan_clip(path: str, sport: str | None, thresholds: dict[str, Any] | None) -
     return {**look["capture"], "sport": look.get("sport"), "family": look.get("family")}
 
 
-def resolve_auto(sport: str, position: str | None, look: dict[str, Any] | None,
-                 fallback: str | None = None) -> tuple[str | None, str | None, dict[str, str] | None]:
+def resolve_auto(sport: str, position: str | None,
+                 look: dict[str, Any] | None) -> tuple[str | None, str | None, dict[str, str] | None]:
     """``(sport, position, note)`` for a row, with Auto read from the quick look.
 
-    Whatever the coach chose stays chosen. ``fallback`` is the athlete's own sport,
-    used only when the look cannot tell: a triathlete brings runs and rides, so it
-    never overrules what the clip shows. ``sport`` None means neither could tell
-    run from bike, and the clip is not analysed: a run graded as a ride is
-    worse than asking. A bike whose family it could not tell is read as road,
-    hoods, the app's default, and ``note`` says so.
+    Whatever the coach chose stays chosen. ``sport`` None means the look could
+    not tell run from bike, and the clip is not analysed: the coach is asked.
+    The athlete's own sport is no stand-in: a triathlete brings runs and rides,
+    and a run graded as a ride spends a clip on a wrong report. A bike whose
+    family it could not tell is read as road, hoods, the app's default, and
+    ``note`` says so.
     """
     from app.services.video_analysis.runner import DEFAULT_BIKE_POSITION
 
     look = look or {}
     seen = look.get("sport")
     if sport == AUTO:
-        sport = seen or (fallback if fallback in ("run", "bike") else None)
+        sport = seen or None
     if sport is None:
         return None, None, None
     if sport != "bike":
@@ -251,9 +251,7 @@ async def run_upload(upload_id: int) -> None:
                 logger.warning("LANE_SCAN_FAILED", upload_id=upload_id, err=str(e))
                 capture = None
             if auto:
-                athlete = await db.get(Athlete, up.athlete_id) if up.athlete_id else None
-                sport, position, auto_note = resolve_auto(
-                    up.sport, up.bike_position, capture, athlete.sport if athlete else None)
+                sport, position, auto_note = resolve_auto(up.sport, up.bike_position, capture)
                 logger.info("LANE_AUTO", upload_id=upload_id, sport=sport, position=position,
                             seen=(capture or {}).get("sport"), family=(capture or {}).get("family"))
                 if sport is None:

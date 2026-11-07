@@ -669,9 +669,21 @@ async def test_the_athletes_own_link_still_has_to_say_run_or_bike():
     assert api._clean_sport("auto", auto=True) == "auto"
 
 
-def test_the_athletes_sport_is_a_fallback_and_never_overrules_the_clip():
-    assert coach_lane.resolve_auto("auto", "auto", {"sport": "run"}, "bike")[0] == "run"
-    assert coach_lane.resolve_auto("auto", "auto", {"sport": None}, "run")[:2] == ("run", None)
-    assert coach_lane.resolve_auto("auto", "auto", {"sport": None}, "triathlon")[0] is None
-    sport, position, note = coach_lane.resolve_auto("auto", "auto", None, "bike")
-    assert (sport, position, note["code"]) == ("bike", "road_hoods", "position_guessed")
+def test_a_clip_the_look_cannot_call_is_asked_about_not_guessed():
+    # Artur 2026-11-07: the athlete's sport is no stand-in. A triathlete's track
+    # run read as their roster "bike" spent a clip on a road-hoods report.
+    assert coach_lane.resolve_auto("auto", "auto", {"sport": "run"})[0] == "run"
+    assert coach_lane.resolve_auto("auto", "auto", {"sport": None}) == (None, None, None)
+    assert coach_lane.resolve_auto("auto", "auto", None) == (None, None, None)
+    # What the coach chose still needs no look at all.
+    assert coach_lane.resolve_auto("bike", "road_drops", None) == ("bike", "road_drops", None)
+
+
+async def test_a_bike_athletes_unreadable_clip_is_still_asked_about(make_user, db, lane, monkeypatch):
+    _seen, ran = _look(monkeypatch, lane, None, None, verdict="check")
+    coach, a = await coach_with_athlete(make_user, db)
+    await roster.update_athlete(a["id"], roster.AthletePatch(sport="bike"), coach, db)
+    await coach_lane.run_upload((await send_auto(db, coach, a))["id"])
+    assert ran == []
+    item = (await api.list_uploads(None, coach, db))["items"][0]
+    assert item["status"] == "failed" and "Run or Bike" in item["error"]

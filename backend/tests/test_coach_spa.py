@@ -338,6 +338,6 @@ def test_the_batch_starts_on_auto_and_the_roster_does_not_overrule_it():
     assert "s.value='auto'" in body and "batchSportOf" not in body
     assert "Tom runs" not in SPA
     assert '<option value="auto" selected>Auto, from the clip</option>' in SPA
-    # A photo left on Auto asks the quick look, and only then the athlete's sport.
+    # A photo left on Auto asks the quick look, and the coach when it cannot tell.
     photo = fn("batchSendPhoto")
-    assert "fetch('/prescan'" in photo and "(j&&j.sport)||batchSportOf(batchWhose(it))" in photo
+    assert "fetch('/prescan'" in photo and "sport=j&&j.sport;" in photo and "batchSportOf" not in photo
