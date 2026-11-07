@@ -66,11 +66,14 @@ SAMPLES: dict[str, dict] = {
                  "five kinogram positions.",
     },
     "bike-road": {
-        "clip": "upload/IMG_4091.MOV",
-        "sport": "bike", "position": "road_drops", "mode": "video",
+        # IMG_4091 held this slot until 2026-11-06, entered as road drops. It is a
+        # TT bike on aero bars, so its 70/C and six flags were aero ridden against
+        # road ranges. This one is a road bike, hands on the hoods, non-drive side.
+        "clip": "upload/IMG_4529.MOV",
+        "sport": "bike", "position": "road_hoods", "mode": "video",
         "title": "Road bike on a trainer",
-        "blurb": "A road position with real fit findings -- what to change, "
-                 "in fitting order, with the measurement each one fired on.",
+        "blurb": "A road position on the hoods, with real fit findings: what to "
+                 "change, with the measurement each one fired on.",
     },
     "run-photo": {
         "clip": "upload/IMG_4258.MOV", "frame": 0.45,

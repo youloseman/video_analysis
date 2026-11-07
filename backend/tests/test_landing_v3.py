@@ -173,12 +173,12 @@ def test_the_report_table_is_the_sample_report(html):
     from app.services import examples
 
     data = examples.get_sample("bike-road").data
-    assert data["technique_score"] == 70
+    assert f'<div class="big">{data["technique_score"]}<small> / 100</small>' in html
+    assert data["cycling_position"] == "road_hoods"
     table = html[html.index('class="rp-table"'):]
     table = table[:table.index("</figure>")]
-    assert table.count("<li ") == 8
+    assert table.count("<li ") == 6
     diagnostics = {d["metric_name"]: d["current_value"] for d in data["fit_plan"]["diagnostics"]}
-    assert f'{diagnostics["knee_at_bdc"]}' in table
     assert f'{diagnostics["trunk_angle"]}' in table
 
 

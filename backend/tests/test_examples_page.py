@@ -159,6 +159,17 @@ def test_a_page_names_the_source_of_at_least_one_band(client):
     assert "Retul" in html or "Bini" in html
 
 
+def test_the_road_sample_is_a_road_position_and_says_what_is_out_of_range(client):
+    data = examples.get_sample("bike-road").data
+    assert data["cycling_position"] == "road_hoods"
+    html = client.get("/examples/bike-road").text
+    # An aero-bar measure, and not scored on the hoods.
+    assert "Forearm tilt" not in html
+    findings = html.split("<h2>Findings</h2>", 1)[1].split("</section>", 1)[0]
+    assert "Nothing outside its range" not in findings
+    assert "Elbow angle" in findings
+
+
 def test_every_page_is_marked_as_a_sample(client):
     for slug in examples.ORDER:
         assert "Sample report" in client.get(f"/examples/{slug}").text

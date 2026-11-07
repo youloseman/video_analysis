@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from app.services.academy.renderer import SITE_NAME, _esc, _page
+from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
 
 # backend/content/examples -- two levels up from app/services/, matching where
 # the Academy keeps its own content.
@@ -202,7 +203,14 @@ def _score_block(s: Sample) -> str:
     return head + cov_line
 
 
-def _bands_table(s: Sample) -> str:
+def _off_rubric(s: Sample, field: str) -> bool:
+    """Forearm tilt is an aero-bar measure and isn't scored anywhere else: on the
+    hoods the forearm slopes down by design, and its band would read as a fault."""
+    return (field.startswith("forearm_tilt") and s.sport == "bike"
+            and s.data.get("cycling_position") not in AERO_POSITIONS)
+
+
+def _bands_table(s: Sample, collect: list[str] | None = None) -> str:
     """Measurements against their reference bands, with the source named.
 
     This is the table the product is actually for, and the citation is why a
@@ -228,7 +236,7 @@ def _bands_table(s: Sample) -> str:
 
     rows = []
     for field, band in bands.items():
-        if not isinstance(band, dict):
+        if not isinstance(band, dict) or _off_rubric(s, field):
             continue
         # `lo`/`hi` is what reference_bands actually publishes; `low`/`high`
         # is the photo path's normalised form above.
@@ -257,6 +265,9 @@ def _bands_table(s: Sample) -> str:
         if cls is None:
             cls = "ok" if not delta else ("near" if abs(delta) <= _margin(field, lo, hi) else "out")
         label, unit = _label_unit(field, band)
+        if cls == "out" and collect is not None:
+            collect.append(f"<b>{_esc(label)}</b> — {_num(v)}{_esc(unit)}, against a reference of "
+                           f"{_num(lo)}–{_num(hi)}{_esc(unit)}")
         rows.append((cls, abs(delta), _meas_row(cls, label, unit, v, lo, hi, delta,
                                                  str(band.get("source") or ""))))
     if not rows:
@@ -379,6 +390,10 @@ def _findings(s: Sample) -> str:
     ]
     photo_out, near, unscored = _angle_findings(s)
     items += photo_out
+    # A clip can fire no rule and still sit outside its bands: "Nothing outside its
+    # range" under red rows.
+    if not items:
+        _bands_table(s, items)
 
     if items:
         body = '<ul class="ex-list">' + "".join(f"<li>{i}</li>" for i in items) + "</ul>"

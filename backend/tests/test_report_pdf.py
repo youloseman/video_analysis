@@ -47,9 +47,14 @@ def test_a_run_report_has_the_plan_and_the_numbers():
 
 
 def test_a_bike_report_turns_the_fit_plan_into_the_plan():
-    html = render_report_html(example("bike-road"), {})
-    assert "Saddle height" in html and "Lower saddle 5mm" in html
+    sample = example("bike-road")
+    assert "Bar position —" in render_report_html(sample, {})
     # In the order the fit plan gives: saddle before the bars.
+    saddle = {"component": "saddle_height", "status": "needs_adjustment", "metric_name": "knee_at_bdc",
+              "action": "lower_saddle", "amount": "5mm", "reason": "Knee reads open.", "priority": 1}
+    fit = {**sample["fit_plan"], "diagnostics": [saddle, *sample["fit_plan"]["diagnostics"]]}
+    html = render_report_html({**sample, "fit_plan": fit}, {})
+    assert "Lower saddle 5mm" in html
     assert html.index("Saddle height —") < html.index("Bar position —")
 
 
