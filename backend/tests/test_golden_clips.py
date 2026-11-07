@@ -44,16 +44,17 @@ BASELINE_DIR = BACKEND / "tests" / "golden"
 # Kept in step with scripts/golden_baseline.py -- a baseline recorded with
 # different arguments compares nothing, so the test imports the same table
 # rather than restating it.
-from scripts.golden_baseline import CLIPS  # noqa: E402
+from scripts.golden_baseline import CLIPS, production_detectors  # noqa: E402
 
 
 def _run(spec) -> dict:
     from app.services.video_analysis.runner import run_analysis
 
-    return build_record(run_analysis(
-        str(REPO / str(spec["path"])), str(spec["sport"]), spec["position"],
-        recommendations=False, kinogram=True, overlay_path=None,
-    ))
+    with production_detectors():
+        return build_record(run_analysis(
+            str(REPO / str(spec["path"])), str(spec["sport"]), spec["position"],
+            recommendations=False, kinogram=True, overlay_path=None,
+        ))
 
 
 @pytest.mark.golden

@@ -170,6 +170,10 @@ def build_record(result: dict[str, Any]) -> dict[str, Any]:
                 (sm.get("tracking_stability") or {}).get("framing") or {}
             ).get("verdict"),
             "sample_rate": sampling.get("sample_rate"),
+            # Which detector measured the clip. RTMPose is switched on per sport
+            # in production (VA_RTMPOSE_SPORTS); a machine without its model
+            # quietly runs MediaPipe alone, and that must read as a difference.
+            "pose_detector": sampling.get("pose_detector"),
             "coverage": _coverage(result.get("score_coverage")),
             "fit_plan": _fit_plan(result.get("fit_plan")),
             # Issue TYPES, not their prose: the wording is copy and changes

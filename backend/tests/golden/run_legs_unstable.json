@@ -109,6 +109,7 @@
   "has_pedaling_style": false,
   "issues": [],
   "letter_grade": null,
+  "pose_detector": "mediapipe_tasks",
   "quality_gate_profile": null,
   "quality_gate_triggered": true,
   "sample_rate": 1,

@@ -19,6 +19,8 @@ visible act instead of a silent one.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import dataclasses
 import json
 import sys
 from pathlib import Path
@@ -103,13 +105,39 @@ CLIPS: dict[str, dict[str, object]] = {
 }
 
 
+# The sports production refines with RTMPose (Railway VA_RTMPOSE_SPORTS). The
+# baseline is recorded and checked under the same switch whatever this
+# machine's environment says, so it pins what users get. Change it together
+# with the Railway variable, then --update.
+RTMPOSE_SPORTS: tuple[str, ...] = ("bike",)
+
+
+@contextlib.contextmanager
+def production_detectors():
+    """config.settings with production's RTMPose switch, restored afterwards."""
+    from app.core import config
+
+    saved = config.settings
+    config.settings = dataclasses.replace(saved, rtmpose_sports=RTMPOSE_SPORTS)
+    try:
+        yield
+    finally:
+        config.settings = saved
+
+
 def analyse(spec: dict[str, object]) -> dict:
     from app.services.video_analysis.runner import run_analysis
 
     path = BACKEND.parent / str(spec["path"])
     if not path.exists():
         raise FileNotFoundError(path)
-    result = run_analysis(
+    with production_detectors():
+        result = _run_analysis(run_analysis, path, spec)
+    return build_record(result)
+
+
+def _run_analysis(run_analysis, path: Path, spec: dict[str, object]) -> dict:
+    return run_analysis(
         str(path), str(spec["sport"]), spec["position"],  # type: ignore[arg-type]
         # Everything that is not deterministic measurement is off: the LLM
         # writes different prose every call, and the overlay is pixels nobody
@@ -120,7 +148,6 @@ def analyse(spec: dict[str, object]) -> dict:
         kinogram=True,
         overlay_path=None,
     )
-    return build_record(result)
 
 
 def main() -> int:
