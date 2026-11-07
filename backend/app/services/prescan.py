@@ -120,6 +120,12 @@ def summarize(frames: list[dict[str, float]]) -> dict[str, float]:
 # One photo of a runner (see classify): upright, a foot swung back behind.
 PHOTO_RUN_TRUNK = 80.0
 PHOTO_RUN_BACK = 0.3
+# ... or upright enough with the hands by the body rather than out on a bar, or
+# with a foot swung well back. Runners at 70-80 deg read as riders before
+# (upload/Check, 2026-11-07: 4 of 17; 5 of 95 in the older sets).
+PHOTO_RUN_UPRIGHT = 65.0
+PHOTO_RUN_HANDS_IN = 0.3
+PHOTO_RUN_FAR_BACK = 0.6
 
 
 def _valid(f: dict[str, float]) -> bool:
@@ -158,7 +164,12 @@ def classify(frames: list[dict[str, float]], *, photo: bool = False) -> dict[str
     upright_share = sum(f["trunk_deg"] >= 60 for f in good) / len(good)
 
     if photo:
-        out["sport"] = "run" if (trunk >= PHOTO_RUN_TRUNK and back >= PHOTO_RUN_BACK) else "bike"
+        # On 281 photos with a pose (89 runs, 192 rides) this reads every one
+        # right; the upright riders keep their hands 0.43-0.46 trunk lengths out.
+        hands_in = "wrist_fwd" in s and fwd < PHOTO_RUN_HANDS_IN
+        run = (trunk >= PHOTO_RUN_TRUNK and back >= PHOTO_RUN_BACK) or (
+            trunk >= PHOTO_RUN_UPRIGHT and (hands_in or back >= PHOTO_RUN_FAR_BACK))
+        out["sport"] = "run" if run else "bike"
     elif trunk >= 65 and back >= 0.6 and upright_share >= 2 / 3:
         out["sport"] = "run"
     elif trunk <= 45 and upright_share <= 1 / 3:
@@ -194,6 +205,13 @@ def classify(frames: list[dict[str, float]], *, photo: bool = False) -> dict[str
 # clip is still worth analysing, the athlete should know what it costs. The
 # camera being square to the bike is not judged here: camera_view's threshold
 # for it is not calibrated on a real off-axis clip.
+
+# A frame shorter than this, with the athlete filling a good share of it, is a
+# small file rather than a far camera (upload/Check 2026-11-07: social clips at
+# 848x464 put a rider who fills the frame at 230 px).
+LOW_RES_FRAME_PX = 720
+LOW_RES_FILLS = 0.45
+
 
 def capture_check(frames: list[dict[str, float]], *, sport: str | None,
                   video_w: int | None = None, video_h: int | None = None,
@@ -245,7 +263,17 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
         detect_h = video_h * min(1.0, DETECT_MAX_LONG_EDGE / max(video_w, video_h))
         px = round(frac * detect_h)
         out["subject_px"] = px
-        if px < tiny_px:
+        low_res = detect_h < LOW_RES_FRAME_PX and frac >= LOW_RES_FILLS
+        if px < tiny_px and low_res:
+            # The rider fills the frame and the frame itself is small: a copy
+            # shrunk by a messaging app. "Film closer" would be the wrong advice.
+            reasons.append({
+                "code": "tiny", "level": "no_go",
+                "text": (f"This video file is only {min(video_w, video_h)} px on its short side, so the "
+                         f"athlete is {px} px tall however well they fill it. Messaging apps shrink "
+                         "videos: ask for the original file (sent as a file, AirDrop or a cloud link)."),
+            })
+        elif px < tiny_px:
             reasons.append({
                 "code": "tiny", "level": "no_go",
                 "text": (

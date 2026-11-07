@@ -1239,7 +1239,7 @@ def analyze_from_frames(
             "the image we analyze). At that size the two legs are only a few "
             "pixels apart for much of the stride, which is what makes the "
             "skeleton jump between them. Filling more of the frame -- filming "
-            "closer, or zooming in so the runner spans most of the height -- "
+            "closer, or zooming in so the athlete spans most of the height -- "
             "does more for accuracy than any other change."
         )
 

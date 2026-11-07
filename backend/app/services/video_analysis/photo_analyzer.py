@@ -1533,10 +1533,28 @@ def _classify_angle_status(
     return "needs_work"
 
 
-def _auto_detect_cycling_position(trunk_angle: float) -> str:
-    """Guess cycling position from trunk angle."""
+def _auto_detect_cycling_position(trunk_angle: float, nl: Any = None, image: Any = None) -> str:
+    """Guess cycling position: the family from the arms, then the trunk.
+
+    The trunk alone sent aero photos with a 24-29 deg back to road drops and
+    graded them 13-32 points low (upload/Check, 2026-11-07). The arms tell aero
+    from road: the same reading the pre-scan proposes on Analyze.
+    """
+    family = None
+    if nl is not None and image is not None:
+        from app.services.prescan import classify, frame_features
+
+        f = frame_features(nl, image.shape[1], image.shape[0])
+        if f:
+            family = classify([f], photo=True).get("family")
+    if family == "aero":
+        return "tt_aero" if not math.isnan(trunk_angle) and trunk_angle < 22 else "triathlon"
+    if family == "upright":
+        return "casual"
     if math.isnan(trunk_angle):
         return "road_hoods"
+    if family == "road":
+        return "road_drops" if trunk_angle < 33 else "road_hoods"
 
     if trunk_angle < 22:
         return "tt_aero"
@@ -2727,7 +2745,7 @@ def analyze_from_pose(
         pedal_phase = _estimate_pedal_phase(knee_val) if knee_val is not None else "uncertain"
 
         if not cycling_position:
-            cycling_position = _auto_detect_cycling_position(trunk)
+            cycling_position = _auto_detect_cycling_position(trunk, nl, image)
             logger.info(
                 "PHOTO_CYCLING_AUTODETECT",
                 detected_position=cycling_position,

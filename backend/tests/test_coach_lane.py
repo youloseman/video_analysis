@@ -573,3 +573,105 @@ def test_a_clip_with_no_lane_running_waits_for_the_next_start(monkeypatch):
     assert coach_lane._queue.qsize() == 1
     monkeypatch.setattr(coach_lane, "_queue", None)
 
+
+
+# --------------------------------------------------------------------------
+# Auto: run or bike, and the bike's family, read from the clip
+# --------------------------------------------------------------------------
+def _look(monkeypatch, lane, sport, family, verdict="go"):
+    seen = []
+    monkeypatch.setattr(coach_lane, "scan_clip", lambda path, sp, bars: seen.append(sp) or {
+        "verdict": verdict, "reasons": [], "sport": sport, "family": family})
+    ran = []
+
+    def fake_run(job_id, path, params, coach_id):
+        ran.append(params)
+        core_jobs.JOBS[job_id] = {"status": "completed", "result": lane.job.get("result"), "owner_user_id": coach_id}
+        return lane.job
+
+    monkeypatch.setattr(coach_lane, "_run_job", fake_run)
+    return seen, ran
+
+
+async def send_auto(db, coach, a, sport="auto", position=None):
+    return await api.upload_to_batch(clip(), "batch01", sport, position, None, a["id"], None, coach, db)
+
+
+async def test_a_row_left_on_auto_runs_as_what_the_clip_shows(make_user, db, lane, monkeypatch):
+    seen, ran = _look(monkeypatch, lane, "bike", "aero")
+    coach, a = await coach_with_athlete(make_user, db)
+    out = await send_auto(db, coach, a)
+    assert out["sport"] == "auto" and out["position"] == "auto"
+    await coach_lane.run_upload(out["id"])
+    # The look is asked without a sport, so its bars are the ones for what it sees.
+    assert seen == [None]
+    assert ran[0]["sport"] == "bike" and ran[0]["position"] == "triathlon"
+    item = (await api.list_uploads(None, coach, db))["items"][0]
+    assert item["status"] == "done" and item["sport"] == "bike" and item["position"] == "triathlon"
+    row = (await db.execute(select(Analysis))).scalar_one()
+    assert row.sport == "bike"
+
+
+async def test_auto_reads_a_run_and_a_road_bike(make_user, db, lane, monkeypatch):
+    _seen, ran = _look(monkeypatch, lane, "run", None)
+    coach, a = await coach_with_athlete(make_user, db)
+    await coach_lane.run_upload((await send_auto(db, coach, a))["id"])
+    assert ran[-1]["sport"] == "run" and ran[-1]["position"] is None
+    assert coach_lane.resolve_auto("auto", "auto", {"sport": "bike", "family": "road"})[:2] == ("bike", "road_hoods")
+    assert coach_lane.resolve_auto("auto", "auto", {"sport": "bike", "family": "upright"})[:2] == ("bike", "casual")
+
+
+async def test_what_the_coach_chose_is_never_overruled(make_user, db, lane, monkeypatch):
+    _seen, ran = _look(monkeypatch, lane, "bike", "aero")
+    coach, a = await coach_with_athlete(make_user, db)
+    await coach_lane.run_upload((await send_auto(db, coach, a, "bike", "road_drops"))["id"])
+    assert ran[-1]["position"] == "road_drops"
+    # A bike row with the position on Auto takes only the position from the look.
+    assert coach_lane.resolve_auto("bike", "auto", {"sport": "bike", "family": "aero"})[:2] == ("bike", "triathlon")
+    assert coach_lane.resolve_auto("run", "auto", {"sport": "bike", "family": "aero"})[:2] == ("run", None)
+
+
+async def test_a_clip_nobody_can_call_run_or_bike_is_not_guessed(make_user, db, lane, monkeypatch):
+    _seen, ran = _look(monkeypatch, lane, None, None, verdict="check")
+    coach, a = await coach_with_athlete(make_user, db)
+    out = await send_auto(db, coach, a)
+    await coach_lane.run_upload(out["id"])
+    assert ran == []
+    assert (await db.execute(select(UsageEvent))).scalars().all() == []
+    item = (await api.list_uploads(None, coach, db))["items"][0]
+    assert item["status"] == "failed" and "Run or Bike" in item["error"]
+
+
+async def test_a_bike_of_no_clear_family_is_read_as_hoods_and_says_so(make_user, db, lane, monkeypatch):
+    _seen, ran = _look(monkeypatch, lane, "bike", None)
+    coach, a = await coach_with_athlete(make_user, db)
+    out = await send_auto(db, coach, a)
+    await coach_lane.run_upload(out["id"])
+    assert ran[-1]["position"] == "road_hoods"
+    item = (await api.list_uploads(None, coach, db))["items"][0]
+    assert item["status"] == "done" and [r["code"] for r in item["reasons"]] == ["position_guessed"]
+
+
+async def test_run_anyway_still_reads_a_row_left_on_auto(make_user, db, lane, monkeypatch):
+    seen, ran = _look(monkeypatch, lane, "bike", "aero", verdict="no_go")
+    coach, a = await coach_with_athlete(make_user, db)
+    out = await send_auto(db, coach, a)
+    await coach_lane.run_upload(out["id"])
+    assert ran == [] and (await db.get(CoachUpload, out["id"])).status == "no_go"
+    await api.run_anyway(out["id"], coach, db)
+    await coach_lane.run_upload(out["id"])
+    assert ran[-1]["sport"] == "bike" and ran[-1]["position"] == "triathlon"
+
+
+async def test_the_athletes_own_link_still_has_to_say_run_or_bike():
+    with pytest.raises(HTTPException):
+        api._clean_sport("auto")
+    assert api._clean_sport("auto", auto=True) == "auto"
+
+
+def test_the_athletes_sport_is_a_fallback_and_never_overrules_the_clip():
+    assert coach_lane.resolve_auto("auto", "auto", {"sport": "run"}, "bike")[0] == "run"
+    assert coach_lane.resolve_auto("auto", "auto", {"sport": None}, "run")[:2] == ("run", None)
+    assert coach_lane.resolve_auto("auto", "auto", {"sport": None}, "triathlon")[0] is None
+    sport, position, note = coach_lane.resolve_auto("auto", "auto", None, "bike")
+    assert (sport, position, note["code"]) == ("bike", "road_hoods", "position_guessed")

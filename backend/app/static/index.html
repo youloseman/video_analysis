@@ -1873,8 +1873,8 @@
     <p class="hint hidden" id="batNoSquad" style="text-align:left">No athletes yet, so these would be filed as your own clips. <a href="#" onclick="event.preventDefault();openAthletes(true)">Add an athlete first</a>.</p>
     <div class="bat-defaults">
       <div><label for="batAthlete">Whose, unless you say otherwise</label><select id="batAthlete"></select></div>
-      <div><label for="batSport">Sport</label><select id="batSport"><option value="bike">Bike</option><option value="run">Run</option></select></div>
-      <div id="batPosBox"><label for="batPos">Bike position</label><select id="batPos"><option value="triathlon">Triathlon / aero</option><option value="tt_aero">Time trial</option><option value="road_hoods">Road, hoods</option><option value="road_drops">Road, drops</option><option value="casual">Upright</option></select></div>
+      <div><label for="batSport">Sport</label><select id="batSport"><option value="auto" selected>Auto, from the clip</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
+      <div id="batPosBox"><label for="batPos">Bike position</label><select id="batPos"><option value="auto" selected>Auto: aero, road or upright</option><option value="triathlon">Triathlon / aero</option><option value="tt_aero">Time trial</option><option value="road_hoods">Road, hoods</option><option value="road_drops">Road, drops</option><option value="casual">Upright</option></select></div>
     </div>
     <label class="drop" id="batDrop" for="batFiles">
       <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
@@ -13519,8 +13519,11 @@ function openBatch(who){
   const id=typeof who==='string'||typeof who==='number'?String(who):'';
   // Rebuilt on every visit: the roster may have grown since the last.
   const def=$('#batAthlete'); if(def) def.innerHTML=batchAthleteOptions(id);
-  const sp=batchSportOf(id), s=$('#batSport');
-  if(sp&&s){ s.value=sp; $('#batPosBox').classList.toggle('hidden',sp!=='bike'); }
+  // Back to Auto on every visit. The athlete's sport is not the clip's: a
+  // triathlete brings both, and the lane falls back on it only when the clip
+  // itself cannot tell (coach_lane.resolve_auto).
+  const s=$('#batSport');
+  if(s){ s.value='auto'; $('#batPosBox').classList.remove('hidden'); }
   $('#batNoSquad').classList.toggle('hidden',liveAthletes().length>0);
   renderBatch();
   setState('batch',{focus:'#batTitle'});
@@ -13594,7 +13597,7 @@ function renderBatch(){
   host.innerHTML=b.items.map((it,i)=>`<div class="bat-row" data-i="${i}" data-k="${it.key}">
       <div class="bat-name bat-named">${batchThumbHtml(it)}<span class="bat-file">${esc(it.file.name)}<small>${it.kind}${batchFilmedAt(it.file)?' · '+esc(fmtWhen(batchFilmedAt(it.file))):''}</small></span></div>
       <select data-f="athleteId" aria-label="Whose clip"${b.running?' disabled':''}>${batchAthleteOptions(it.athleteId)}</select>
-      <select data-f="sport" aria-label="Sport"${b.running?' disabled':''}><option value="bike"${it.sport==='bike'?' selected':''}>Bike</option><option value="run"${it.sport==='run'?' selected':''}>Run</option></select>
+      <select data-f="sport" aria-label="Sport"${b.running?' disabled':''}><option value="auto"${it.sport==='auto'?' selected':''}>Auto</option><option value="bike"${it.sport==='bike'?' selected':''}>Bike</option><option value="run"${it.sport==='run'?' selected':''}>Run</option></select>
       <div class="bat-state ${it.state==='failed'?'sq-off':''}">${esc(it.msg||(it.state==='ready'?'':it.state))}</div>
       ${it.state==='sent'?'<span></span>':`<button type="button" class="p-copy" data-rm="${i}"${b.running?' disabled':''}>remove</button>`}
     </div>`).join('');
@@ -13615,7 +13618,7 @@ function batchAdd(files){
     const photo=(file.type||'').startsWith('image/');
     if(!photo&&!(file.type||'').startsWith('video/')&&!/\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(file.name)){ dropped++; return; }
     b.seq=(b.seq||0)+1;
-    b.items.push({key:b.seq,file,kind:photo?'photo':'video',athleteId:def&&def.value||'',sport:sp?sp.value:'bike',state:'ready',msg:''});
+    b.items.push({key:b.seq,file,kind:photo?'photo':'video',athleteId:def&&def.value||'',sport:sp?sp.value:'auto',state:'ready',msg:''});
   });
   if(dropped) toast(`Up to ${BATCH_MAX} clips and photos at a time. ${dropped} left out.`);
   renderBatch();
@@ -13624,7 +13627,7 @@ function batchAdd(files){
 function batchSendVideo(it){
   return new Promise(res=>{
     const d=new FormData(); d.append('video',it.file); d.append('batch_id',state.batch.id); d.append('sport',it.sport);
-    if(it.sport==='bike'){ const p=$('#batPos'); if(p&&p.value) d.append('position',p.value); }
+    if(it.sport!=='run'){ const p=$('#batPos'); if(p&&p.value) d.append('position',p.value); }
     if(batchWhose(it)) d.append('athlete_id',batchWhose(it));
     if(batchFilmedAt(it.file)) d.append('filmed_at_ms',String(batchFilmedAt(it.file)));
     const x=new XMLHttpRequest(); x.open('POST','/me/coach-uploads');
@@ -13640,8 +13643,23 @@ function batchSendVideo(it){
 }
 async function batchSendPhoto(it){
   it.msg='Measuring…'; renderBatch();
-  const d=new FormData(); d.append('photo',it.file); d.append('sport',it.sport); d.append('coaching','true');
-  if(it.sport==='bike'){ const p=$('#batPos'); if(p&&p.value) d.append('position',p.value); }
+  let sport=it.sport;
+  const pos=($('#batPos')||{}).value||'';
+  if(sport==='auto'){
+    // Auto: the quick look Analyze uses, on a small copy of the photo. A
+    // position left on Auto is not sent, and the photo analysis reads it.
+    let j=null;
+    try{
+      const fr=await grabPhoto(it.file);
+      if(fr.length){ const fd=new FormData(); fd.append('frames',fr[0],'p.jpg'); fd.append('mode','photo');
+        const r=await fetch('/prescan',{method:'POST',headers:authHeaders(),body:fd}); if(r.ok) j=await r.json(); }
+    }catch(_e){}
+    // The athlete's own sport only when the photo cannot tell.
+    sport=(j&&j.sport)||batchSportOf(batchWhose(it));
+    if(!sport){ it.state='failed'; it.msg='Could not tell run from ride: choose one'; return; }
+  }
+  const d=new FormData(); d.append('photo',it.file); d.append('sport',sport); d.append('coaching','true');
+  if(sport==='bike'&&pos&&pos!=='auto') d.append('position',pos);
   try{
     const r=await fetch('/analyze-photo',{method:'POST',headers:authHeaders(),body:d});
     const j=await r.json().catch(()=>({}));
@@ -13677,6 +13695,14 @@ async function batchGo(){
   await loadLane(); renderLane(); pollLane();
   loadAthletes();
 }
+/* What the lane ran a clip as. A row left on Auto says so until the quick look
+   has read it, then names what it read, so a wrong guess is in plain sight. */
+function laneWhat(i){
+  if(i.sport==='auto') return 'sport read from the clip';
+  if(i.sport==='run') return 'run';
+  if(i.position==='auto') return 'bike · position read from the clip';
+  return 'bike'+(i.position?' · '+(POSITION_NAMES[i.position]||i.position):'');
+}
 function renderLane(){
   const host=$('#batLane'); if(!host) return;
   const items=state.laneItems||[];
@@ -13685,7 +13711,7 @@ function renderLane(){
     const why=(i.reasons||[]).map(r=>r.text).join(' ')||i.error||'';
     const noted=i.status==='done'&&why;
     return `<div class="bat-row bat-lane" data-id="${i.id}">
-      <div class="bat-name">${esc(i.filename||'Clip')}<small>${i.athlete_name?esc(i.athlete_name)+' · ':''}${i.sport==='run'?'run':'bike'}${i.source==='intake'?' · sent by them':''}</small>${why?`<small class="bat-why">${esc(why)}</small>`:''}</div>
+      <div class="bat-name">${esc(i.filename||'Clip')}<small>${i.athlete_name?esc(i.athlete_name)+' · ':''}${esc(laneWhat(i))}${i.source==='intake'?' · sent by them':''}</small>${why?`<small class="bat-why">${esc(why)}</small>`:''}</div>
       <div class="bat-state ${['no_go','failed'].includes(i.status)?'sq-off':noted?'bat-noted':''}">${noted?'Ready, read the note':esc(LANE_WORD[i.status]||i.status)}</div>
       <div class="p-acts">
         ${i.status==='done'?`<button type="button" data-open="${esc(i.client_id)}">Open</button>`:''}
@@ -13719,20 +13745,17 @@ function renderLane(){
     const row=e.target.closest('[data-i]'), f=e.target.dataset.f; if(!row||!f) return;
     const it=state.batch.items[Number(row.dataset.i)];
     it[f]=e.target.value;
-    // Tom runs: choosing him answers the sport as well.
-    if(f==='athleteId'&&batchSportOf(it.athleteId)) it.sport=batchSportOf(it.athleteId);
     renderBatch();
   });
   $('#batList').addEventListener('click',e=>{
     const rm=e.target.closest('[data-rm]'); if(!rm) return;
     state.batch.items.splice(Number(rm.dataset.rm),1); renderBatch();
   });
-  $('#batSport').addEventListener('change',e=>{ $('#batPosBox').classList.toggle('hidden',e.target.value!=='bike'); });
+  $('#batSport').addEventListener('change',e=>{ $('#batPosBox').classList.toggle('hidden',e.target.value==='run'); });
   // "Unless you say otherwise" also reaches the rows nobody has answered yet.
   $('#batAthlete').addEventListener('change',e=>{
-    const v=e.target.value, sp=batchSportOf(v), s=$('#batSport');
-    if(sp&&s.value!==sp){ s.value=sp; $('#batPosBox').classList.toggle('hidden',sp!=='bike'); }
-    state.batch.items.forEach(it=>{ if(!it.athleteId&&it.state==='ready'){ it.athleteId=v; if(sp) it.sport=sp; } });
+    const v=e.target.value;
+    state.batch.items.forEach(it=>{ if(!it.athleteId&&it.state==='ready') it.athleteId=v; });
     renderBatch();
   });
 })();

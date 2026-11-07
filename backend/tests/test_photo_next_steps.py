@@ -81,3 +81,28 @@ def test_the_page_shows_both():
     i = SPA.index("renderNextSteps('pNextBlock'")
     assert i < SPA.index("if(res.locked){", i), "drawn before the teaser returns, so a free reader sees it"
     assert ".score-partial{" in CSS and ".next-steps li{" in CSS
+
+
+def test_an_aero_photo_with_a_high_back_is_not_read_as_road_drops():
+    """upload/Check 2026-11-07: three aero race photos with a 24-29 deg back were
+    graded as road drops by the trunk alone, 13-32 points low."""
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from app.services.video_analysis.photo_analyzer import _auto_detect_cycling_position
+
+    def lm(x, y):
+        return SimpleNamespace(x=x / 1000, y=y / 1000, z=0.0, visibility=0.99)
+
+    pts = {i: lm(500, 500) for i in range(33)}
+    # Facing right: shoulder ahead of the hip, elbow under it, forearm level on the pads.
+    pts.update({0: lm(700, 330), 11: lm(620, 380), 12: lm(620, 380), 23: lm(400, 500), 24: lm(400, 500),
+                13: lm(640, 520), 14: lm(640, 520), 15: lm(780, 500), 16: lm(780, 500),
+                25: lm(560, 650), 26: lm(560, 650), 27: lm(470, 860), 28: lm(470, 860)})
+    nl = [pts[i] for i in range(33)]
+    image = np.zeros((1000, 1000, 3), dtype=np.uint8)
+    assert _auto_detect_cycling_position(27.0, nl, image) == "triathlon"
+    assert _auto_detect_cycling_position(18.0, nl, image) == "tt_aero"
+    # Without the arms it falls back to the trunk, as before.
+    assert _auto_detect_cycling_position(27.0) == "road_drops"

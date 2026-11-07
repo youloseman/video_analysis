@@ -64,17 +64,20 @@ def _now_ms() -> int:
     return int(time.time() * 1000)
 
 
-def _clean_sport(sport: str | None) -> str:
-    if sport not in ("run", "bike"):
+def _clean_sport(sport: str | None, *, auto: bool = False) -> str:
+    """``auto`` lets a coach's batch say "read it from the clip" (coach_lane.AUTO)."""
+    if sport not in ("run", "bike") and not (auto and sport == coach_lane.AUTO):
         raise HTTPException(400, "sport must be 'run' or 'bike'")
-    return sport
+    return sport  # type: ignore[return-value]
 
 
 def _clean_position(sport: str, position: str | None) -> str | None:
     from app.main import DEFAULT_BIKE_POSITION, VALID_POSITIONS
 
-    if sport != "bike":
+    if sport not in ("bike", coach_lane.AUTO):
         return None
+    if position == coach_lane.AUTO or (sport == coach_lane.AUTO and not position):
+        return coach_lane.AUTO
     position = position or DEFAULT_BIKE_POSITION
     if position not in VALID_POSITIONS:
         raise HTTPException(400, f"invalid position; valid: {sorted(VALID_POSITIONS)}")
@@ -159,6 +162,7 @@ def _item(up: CoachUpload, names: dict[int, str]) -> dict[str, Any]:
     return {
         "id": up.id, "batch_id": up.batch_id, "source": up.source,
         "client_id": up.client_id, "filename": up.filename, "sport": up.sport,
+        "position": up.bike_position,
         "athlete_id": up.athlete_id, "athlete_name": names.get(up.athlete_id or 0),
         "status": up.status, "reasons": up.reasons or [], "error": up.error,
         "created_at_ms": up.created_at_ms, "finished_at_ms": up.finished_at_ms,
@@ -184,7 +188,7 @@ async def upload_to_batch(
     _require_coach(user)
     if not _BATCH_ID.match(batch_id or ""):
         raise HTTPException(400, "bad batch id")
-    sport = _clean_sport(sport)
+    sport = _clean_sport(sport, auto=True)
     position = _clean_position(sport, position)
     if camera_side not in (None, "", "left", "right"):
         raise HTTPException(400, "camera_side must be 'left' or 'right'")

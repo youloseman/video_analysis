@@ -52,6 +52,20 @@ MAX_LANE_BACKLOG = 60
 SCAN_FRAMES = 6
 SCAN_LONG_EDGE = 640
 
+# "Read it from the clip": a batch row the coach left on Auto. The quick look
+# that checks the framing already says run or bike and, on a bike, the family
+# (services/prescan.classify). Inside a family it cannot see time trial against
+# triathlon or hoods against drops, so each family has one position here.
+AUTO = "auto"
+FAMILY_POSITION = {"aero": "triathlon", "road": "road_hoods", "upright": "casual"}
+SPORT_UNKNOWN = ("We couldn't tell from the clip whether this is a run or a ride. "
+                 "Upload it again with Run or Bike chosen instead of Auto.")
+POSITION_GUESSED = {
+    "code": "position_guessed", "level": "check",
+    "text": "We couldn't tell the bike position from the clip, so it was read as road, hoods. "
+            "If that's wrong, upload it again with the position chosen.",
+}
+
 # Made by open_lane, on the running loop: a queue belongs to the loop that first
 # waits on it, and an import-time one would die on the second loop a process sees.
 _queue: asyncio.Queue[int] | None = None
@@ -107,7 +121,40 @@ def scan_clip(path: str, sport: str | None, thresholds: dict[str, Any] | None) -
         cap.release()
     if not images:
         return None
-    return (scan_images(images, video_w=w, video_h=h, thresholds=thresholds, sport=sport) or {}).get("capture")
+    look = scan_images(images, video_w=w, video_h=h, thresholds=thresholds, sport=sport) or {}
+    if look.get("capture") is None:
+        return None
+    # What the frames look like rides along: a row left on Auto is decided from it.
+    return {**look["capture"], "sport": look.get("sport"), "family": look.get("family")}
+
+
+def resolve_auto(sport: str, position: str | None, look: dict[str, Any] | None,
+                 fallback: str | None = None) -> tuple[str | None, str | None, dict[str, str] | None]:
+    """``(sport, position, note)`` for a row, with Auto read from the quick look.
+
+    Whatever the coach chose stays chosen. ``fallback`` is the athlete's own sport,
+    used only when the look cannot tell: a triathlete brings runs and rides, so it
+    never overrules what the clip shows. ``sport`` None means neither could tell
+    run from bike, and the clip is not analysed: a run graded as a ride is
+    worse than asking. A bike whose family it could not tell is read as road,
+    hoods, the app's default, and ``note`` says so.
+    """
+    from app.services.video_analysis.runner import DEFAULT_BIKE_POSITION
+
+    look = look or {}
+    seen = look.get("sport")
+    if sport == AUTO:
+        sport = seen or (fallback if fallback in ("run", "bike") else None)
+    if sport is None:
+        return None, None, None
+    if sport != "bike":
+        return sport, None, None
+    if position not in (None, "", AUTO):
+        return sport, position, None
+    family = look.get("family") if seen == "bike" else None
+    if family in FAMILY_POSITION:
+        return sport, FAMILY_POSITION[family], None
+    return sport, DEFAULT_BIKE_POSITION, dict(POSITION_GUESSED)
 
 
 def _shrink(path: str) -> None:
@@ -191,17 +238,38 @@ async def run_upload(upload_id: int) -> None:
         if clip is None:
             await _close(db, up, coach, STATUS_FAILED, "The clip is no longer stored.")
             return
-        if not up.run_anyway:
+        auto = up.sport == AUTO or up.bike_position == AUTO
+        auto_note = None
+        if not up.run_anyway or auto:
             up.status = STATUS_SCANNING
             await db.commit()
             bars = await capture_for(db, coach.id)
             try:
-                capture = await run_in_threadpool(scan_clip, str(clip), up.sport, bars)
+                capture = await run_in_threadpool(
+                    scan_clip, str(clip), None if up.sport == AUTO else up.sport, bars)
             except Exception as e:  # noqa: BLE001 -- the check must never block a clip
                 logger.warning("LANE_SCAN_FAILED", upload_id=upload_id, err=str(e))
                 capture = None
+            if auto:
+                athlete = await db.get(Athlete, up.athlete_id) if up.athlete_id else None
+                sport, position, auto_note = resolve_auto(
+                    up.sport, up.bike_position, capture, athlete.sport if athlete else None)
+                logger.info("LANE_AUTO", upload_id=upload_id, sport=sport, position=position,
+                            seen=(capture or {}).get("sport"), family=(capture or {}).get("family"))
+                if sport is None:
+                    await _close(db, up, coach, STATUS_FAILED, SPORT_UNKNOWN)
+                    return
+                up.sport, up.bike_position = sport, position
+                row = (await db.execute(select(Analysis).where(
+                    Analysis.user_id == coach.id, Analysis.client_id == up.client_id,
+                ))).scalar_one_or_none()
+                if row is not None:
+                    row.sport = sport
+                    row.data = {**(row.data or {}), "sport": sport, "position": position}
+            if up.run_anyway:
+                capture = None
             if capture:
-                up.reasons = capture.get("reasons") or None
+                up.reasons = (capture.get("reasons") or []) + ([auto_note] if auto_note else []) or None
                 if capture.get("verdict") == "no_go":
                     # It may wait weeks for "run anyway" or a delete, and an
                     # iPhone original is 60 MB against about 2 MB at 1080p.
@@ -252,7 +320,8 @@ async def run_upload(upload_id: int) -> None:
         # is stale once it has found them, and the look can't count frames tracked.
         notes = film_notes_of(row.result, await capture_for(db, coach_id))
         if notes is not None:
-            up.reasons = notes or None
+            guessed = [r for r in (up.reasons or []) if r.get("code") == POSITION_GUESSED["code"]]
+            up.reasons = (notes + guessed) or None
         await _close(db, up, coach, STATUS_DONE)
 
 

@@ -331,3 +331,13 @@ def test_both_squad_screens_carry_the_question_and_it_redraws_once_loaded():
     src = fn("renderSquadHome")
     assert src.count("${coachNameAsk()}") == 2 and src.count("wireCoachNameAsk()") == 2
     assert "renderSquadHome()" in fn("loadCoach")
+
+
+def test_the_batch_starts_on_auto_and_the_roster_does_not_overrule_it():
+    body = fn("openBatch")
+    assert "s.value='auto'" in body and "batchSportOf" not in body
+    assert "Tom runs" not in SPA
+    assert '<option value="auto" selected>Auto, from the clip</option>' in SPA
+    # A photo left on Auto asks the quick look, and only then the athlete's sport.
+    photo = fn("batchSendPhoto")
+    assert "fetch('/prescan'" in photo and "(j&&j.sport)||batchSportOf(batchWhose(it))" in photo

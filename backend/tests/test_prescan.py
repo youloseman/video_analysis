@@ -179,3 +179,30 @@ def test_a_small_runner_is_told_what_they_can_actually_do():
     got = _cap(dict(RUN, facing=1.0, height_frac=254 / 720), sport="run", video_w=1280, video_h=720)
     assert "sideways" in got["reasons"][0]["text"]
 
+
+
+# upload/Check, 2026-11-07: runners at 70-80 deg with the hands by the body, and
+# the riders upright enough to meet them, keep their hands out on the bar.
+@pytest.mark.parametrize("trunk,back,fwd", [(74.9, 0.47, 0.03), (75.0, 1.18, 0.25), (79.4, 0.9, -0.19),
+                                            (70.1, 0.66, -0.4), (87.5, -0.3, -0.22)])
+def test_an_upright_photo_with_the_hands_in_is_a_runner(trunk, back, fwd):
+    f = dict(RUN, trunk_deg=trunk, ankle_back=back, wrist_fwd=fwd)
+    assert classify([f], photo=True)["sport"] == "run"
+
+
+@pytest.mark.parametrize("trunk,back,fwd", [(77.3, -0.61, 0.46), (76.3, -0.54, 0.43), (40.0, 0.2, -0.1)])
+def test_an_upright_rider_with_the_hands_on_the_bar_stays_a_bike(trunk, back, fwd):
+    f = dict(UPRIGHT, trunk_deg=trunk, ankle_back=back, wrist_fwd=fwd)
+    assert classify([f], photo=True)["sport"] == "bike"
+
+
+def test_a_small_file_is_told_apart_from_a_far_camera():
+    # 848x464, the rider spanning half the frame: a messaging app's copy.
+    frames = [dict(AERO, height_frac=0.5) for _ in range(6)]
+    small_file = capture_check(frames, sport="bike", video_w=848, video_h=464)
+    assert small_file["verdict"] == "no_go"
+    assert "original file" in small_file["reasons"][0]["text"] and "464 px" in small_file["reasons"][0]["text"]
+    # The same share of a 1080p frame is no NO-GO; a far rider in a big file is told to come closer.
+    assert capture_check(frames, sport="bike", video_w=1080, video_h=1920)["verdict"] == "go"
+    far = capture_check([dict(AERO, height_frac=0.2) for _ in range(6)], sport="bike", video_w=1920, video_h=1080)
+    assert far["verdict"] == "no_go" and "original file" not in far["reasons"][0]["text"]
