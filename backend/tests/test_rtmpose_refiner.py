@@ -193,17 +193,18 @@ def test_off_unless_the_sport_is_listed_and_never_without_the_model(monkeypatch,
     assert R.maybe_refine(inner, "bike") is inner
 
 
-def test_by_default_the_factory_still_builds_mediapipe_alone():
-    from app.core.config import settings
+def test_the_factory_wraps_only_the_sports_switched_on(monkeypatch, tmp_path):
+    # No MediaPipe model in CI: the factory's MediaPipe is a stand-in here.
+    import app.services.video_analysis.detectors as detectors
 
-    assert settings.rtmpose_sports == () or __import__("os").environ.get("VA_RTMPOSE_SPORTS")
-    if settings.rtmpose_sports:
-        pytest.skip("VA_RTMPOSE_SPORTS set in this environment")
-    det = build_detector("bike", None)
-    try:
-        assert "rtmpose" not in det.name
-    finally:
-        det.close()
+    monkeypatch.setattr(detectors, "MediaPipePoseDetector", lambda config: FakeInner(_mp_points()))
+    _settings(monkeypatch, (), tmp_path)
+    assert build_detector("bike", None).name == "mediapipe_tasks"
+    (tmp_path / "rtmpose-m_body7_halpe26.onnx").write_bytes(b"x")
+    monkeypatch.setattr(R, "load_session", lambda p: object())
+    _settings(monkeypatch, ("bike",), tmp_path)
+    assert build_detector("bike", None).name == "mediapipe_tasks+rtmpose_m"
+    assert build_detector("run", None).name == "mediapipe_tasks"
 
 
 def test_the_env_switch_reads_bike_and_run_only(monkeypatch):
