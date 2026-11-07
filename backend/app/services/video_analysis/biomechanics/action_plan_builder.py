@@ -121,6 +121,10 @@ def _get_value(metric: str, summary: dict[str, Any]) -> float | None:
 # tolerance is uniformly 0.05. The dict structure mirrors the
 # run / swim builders so future integer-displayed metrics can opt
 # into 0.5 without re-plumbing.
+# How to make a change, whatever its size. It used to read "Each adjustment: 5mm
+# only", printed beside "Lower saddle about 23 mm": 5 mm is the step, not the total.
+FIT_STEP_NOTE = "One change at a time, at most 5 mm per step, ride 30 minutes before reassessing."
+
 _DISPLAY_PRECISION: dict[str, int] = {
     "knee_at_bdc": 1,
     "knee_at_tdc": 1,
@@ -832,7 +836,7 @@ def build_action_plan(
     if active_priorities:
         fitting_note = (
             f"Adjust in order: {' -> '.join(active_priorities)}. "
-            f"Each adjustment: 5mm only, ride 30 minutes before reassessing."
+            f"{FIT_STEP_NOTE}"
         )
     else:
         # Not "all metrics are within optimal ranges": knee at TDC above its

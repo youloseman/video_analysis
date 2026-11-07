@@ -21,11 +21,18 @@ from app.services.review_pdf import (
     _STATUS_WORD,
     _e,
     _ring,
+    _status,
     metric_rows,
 )
+from app.services.video_analysis.biomechanics.action_plan_builder import FIT_STEP_NOTE
+from app.services.video_analysis.biomechanics.running_action_plan_builder import (
+    _FAULT_DIRECTION,
+)
 from app.services.video_analysis.biomechanics.technique_scorer import (
+    CYCLING_DERIVED_COMPONENTS,
     CYCLING_WEIGHTS,
     RUNNING_WEIGHTS,
+    WORST_COMPONENT_PULL,
 )
 from app.services.video_analysis.capture_report import film_notes_of
 
@@ -70,18 +77,51 @@ def breakdown_items(result: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(items, key=lambda i: -i["weight"])
 
 
-def _bd_html(items: list[dict[str, Any]]) -> str:
-    """The cover's breakdown: one bar per component, coloured by its score."""
+def _score_notes(result: dict[str, Any], score: Any) -> list[str]:
+    """Why the table above does not simply average to the score: what the clip
+    could not measure, and the pull toward the worst part (a bike's score is
+    as good as its weakest point: technique_scorer.WORST_COMPONENT_PULL). Said
+    only when the sum checks out, so the sentence can't be wrong about a score
+    that was reached some other way."""
+    parts = result.get("score_breakdown")
+    if not (isinstance(parts, dict) and parts and isinstance(score, (int, float))):
+        return []
+    sport = result.get("sport_type") or result.get("sport")
+    weights = CYCLING_WEIGHTS if sport == "bike" else RUNNING_WEIGHTS
+    scored = {k: float(parts[k]) for k in weights if isinstance(parts.get(k), (int, float))}
+    notes = []
+    missing = [_PART_NAMES.get(k, k) for k in weights if k not in scored]
+    if missing:
+        notes.append(f"Not measured on this clip, so not counted: {', '.join(missing)}.")
+    candidates = {k: v for k, v in scored.items() if k not in CYCLING_DERIVED_COMPONENTS}
+    if sport == "bike" and candidates:
+        mean = sum(v * weights[k] for k, v in scored.items()) / sum(weights[k] for k in scored)
+        worst = min(candidates, key=lambda k: candidates[k])
+        pulled = mean - WORST_COMPONENT_PULL * (mean - candidates[worst])
+        if mean - score >= 1.5 and abs(pulled - score) <= 1.5:
+            notes.append(f"These average {mean:.0f}. The weakest, {_PART_NAMES.get(worst, worst)} at "
+                         f"{candidates[worst]:.0f}, pulls the score down to {score:.0f}.")
+    return notes
+
+
+def _bd_html(items: list[dict[str, Any]], notes: list[str] | None = None) -> str:
+    """The cover's breakdown: one bar per component, coloured by its score.
+
+    The weight shown is the share of what this clip counted, so the column adds
+    to 100 and the sum can be done by hand: the scorer's own weights add to less,
+    and it divides by the ones it used."""
     if not items:
         return ""
+    total = sum(i["weight"] for i in items) or 1.0
     rows = "".join(
         f"<div class='bd-row'><span class='bd-n'>{_e(i['name'])}</span>"
         f"<span class='bd-b'><i style='width:{max(2, min(100, round(i['score'])))}%;background:"
         f"{'#3DBE74' if i['score'] >= 80 else '#E5A23A' if i['score'] >= 60 else '#F1553F'}'></i></span>"
-        f"<span class='bd-v'>{round(i['score'])}</span><span class='bd-w'>{round(i['weight'] * 100)}%</span></div>"
+        f"<span class='bd-v'>{round(i['score'])}</span><span class='bd-w'>{round(i['weight'] / total * 100)}%</span></div>"
         for i in items)
+    note = "".join(f"<p class='bd-note'>{_e(n)}</p>" for n in notes or [])
     return (f"<div class='bd'><div class='bd-h'><span>Score built from</span>"
-            f"<span>score · weight</span></div>{rows}</div>")
+            f"<span>score · weight</span></div>{rows}{note}</div>")
 
 
 # The range bar as the app draws it (gradientRangeBar in index.html): a hairline
@@ -91,14 +131,16 @@ def _bd_html(items: list[dict[str, Any]]) -> str:
 _MARGIN_FLOOR = {"pelvic_ratio": 0.2, "pelvic_tilt": 0.2}
 
 
-def _zone(v: float, lo: float, hi: float, m: float) -> str:
-    if lo <= v <= hi:
-        return "good"
-    return "warn" if lo - m <= v <= hi + m else "bad"
+def _row_value(row: dict[str, Any]) -> str:
+    """A number as the report prints it, the same on the tile and on a finding."""
+    v, unit = row["value"], row.get("unit") or ""
+    return f"{v:.0f}°" if unit == "°" else _num(v) + unit
 
 
 def _grbar(row: dict[str, Any]) -> str:
     v, band, unit, pro = row["value"], row.get("band"), row.get("unit") or "", row.get("pro")
+    if row.get("text"):
+        return f"<div class='gr-text'><b>{_e(row['text'])}</b> {_e(row.get('note'))}</div>"
     if v is None:
         return "<div class='gr-none'>Not measured on this clip</div>"
     if not band:
@@ -114,9 +156,11 @@ def _grbar(row: dict[str, Any]) -> str:
     def pos(x: float) -> float:
         return max(0.0, min(100.0, (x - ax_min) / span * 100))
 
-    z = _zone(v, lo, hi, m)
+    # The colour is the row's verdict, not a second opinion on it: a verdict and
+    # a colour worked out apart gave "In range" in red.
+    z = row.get("status") if row.get("status") in ("good", "warn", "bad") else "good"
     mk = max(3.0, min(97.0, pos(v)))
-    vtxt = f"{v:.0f}°" if unit == "°" else _num(v) + unit
+    vtxt = _row_value(row)
     tick = (f"<span class='gr-pt' style='left:{pos(pro['median']):.1f}%'></span>"
             if pro and ax_min <= pro.get("median", ax_min - 1) <= ax_max else "")
     prol = (f"<div class='gr-pro'><span class='gr-pm'></span>Kona pros {_num(pro['median'])}{unit} "
@@ -130,8 +174,9 @@ def _grbar(row: dict[str, Any]) -> str:
 
 def _tile(row: dict[str, Any]) -> str:
     st = row.get("status") or "info"
+    word = row.get("word") or _STATUS_WORD.get(st, "")
     return (f"<div class='tile'><div class='tile-h'><span class='tile-l'>{_e(row['label'])}</span>"
-            f"<span class='chip {st}'>{_STATUS_WORD.get(st, '')}</span></div>{_grbar(row)}</div>")
+            f"<span class='chip {st}'>{_e(word)}</span></div>{_grbar(row)}</div>")
 
 
 def _inline(s: str) -> str:
@@ -176,6 +221,15 @@ def markdown(text: str) -> str:
     return "".join(out)
 
 
+def _clean(text: Any) -> str:
+    """Plan and finding text as the analyzers write it, in the report's words:
+    the degree sign and the rounding of the tiles, no crank jargon."""
+    s = re.sub(r"(-?\d+(?:\.\d+)?)\s*deg\b", lambda m: f"{float(m.group(1)):.0f}°", str(text or ""))
+    s = re.sub(r"\bBDC\b", "the bottom of the stroke", s)
+    s = re.sub(r"\bTDC\b", "the top of the stroke", s)
+    return s.replace("about ≈", "about ")
+
+
 def _status_of(severity: Any) -> str:
     return {"critical": "bad", "high": "bad", "warning": "warn", "moderate": "warn"}.get(
         str(severity or "").lower(), "warn")
@@ -192,23 +246,68 @@ def _range(item: dict[str, Any]) -> tuple[float, float] | None:
     return (float(m.group(1)), float(m.group(2))) if m else None
 
 
+# A run's numbers, under the names the cover's breakdown uses, with their units.
+_RUN_ROW = {
+    "cadence": ("Cadence", " spm"),
+    "overstride": ("Overstride", ""),
+    "vertical_osc": ("Vertical oscillation", " cm"),
+    "trunk_lean": ("Trunk lean", "°"),
+    "knee_contact": ("Knee at contact", "°"),
+    "knee_swing": ("Knee in swing", "°"),
+    "elbow_angle": ("Arm swing · elbow", "°"),
+}
+
+
+def _run_verdict(v: float, band: tuple[float, float] | None, metric: Any,
+                 severity: Any, listed_good: bool) -> tuple[str, str | None]:
+    """(status, word) for one row of a run, so the chip, the colour and the
+    "already good" list can't disagree.
+
+    The plan is lenient on purpose: a small miss is not a finding, and past the
+    band on its harmless side is not a fault (_FAULT_DIRECTION). It isn't "in
+    range" either, and a mark outside the green under those words reads as an error."""
+    if band is None:
+        return ("good" if listed_good else _status_of(severity)), None
+    lo, hi = band
+    if not listed_good:
+        return ("bad" if _status_of(severity) == "bad" or _status(v, lo, hi) == "bad" else "warn"), None
+    if lo <= v <= hi:
+        return "good", None
+    fault = _FAULT_DIRECTION.get(str(metric))
+    if (fault == "high" and v < lo) or (fault == "low" and v > hi):
+        return "good", "Better than range"
+    return "warn", None
+
+
 def plan_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
     """The run's measurements, from the plan's own strong points and issues:
     each one already carries its value and the range it was judged against."""
     plan = result.get("training_plan") or {}
     rows: list[dict[str, Any]] = []
-    for item, status in [(i, "good") for i in plan.get("strong_points") or []] + \
-                        [(i, _status_of(i.get("severity"))) for i in plan.get("issues") or []]:
+    for item, listed_good in [(i, True) for i in plan.get("strong_points") or []] + \
+                             [(i, False) for i in plan.get("issues") or []]:
         v = item.get("value")
-        if not isinstance(v, (int, float)):
+        metric = item.get("metric")
+        # Categorical: the plan carries a placeholder 0.0 and a 0-0 "range".
+        if not isinstance(v, (int, float)) or metric == "foot_strike":
             continue
         band = _range(item)
-        label = item.get("label") or str(item.get("description") or item.get("metric") or "").split(":")[0]
+        named = _RUN_ROW.get(str(metric))
+        label = named[0] if named else (
+            item.get("label") or str(item.get("description") or metric or "").split(":")[0])
         lo, hi = band if band else (float(v) - 1, float(v) + 1)
         span = max(hi - lo, 1e-6)
         scale = (min(lo - span, float(v) - span * 0.2), max(hi + span, float(v) + span * 0.2))
-        rows.append({"label": label, "value": float(v), "unit": "", "band": band, "pro": None,
-                     "status": status, "scale": scale, "field": item.get("metric")})
+        status, word = _run_verdict(float(v), band, metric, item.get("severity"), listed_good)
+        rows.append({"label": label, "value": float(v), "unit": named[1] if named else "", "band": band,
+                     "pro": None, "status": status, "word": word, "scale": scale, "field": metric})
+    metrics = result.get("sport_specific_metrics") or {}
+    strike = metrics.get("foot_strike")
+    if rows and strike:
+        made = "Estimated from 2D video. " if metrics.get("foot_strike_estimated") else ""
+        rows.append({"label": "Foot strike", "value": None, "text": str(strike).capitalize() + ".",
+                     "note": made + "Not graded: the landing pattern alone isn't a fault.",
+                     "band": None, "pro": None, "status": "info", "word": "Not graded", "field": "foot_strike"})
     return rows
 
 
@@ -230,13 +329,29 @@ def _fit_priorities(fit: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         action = str(d.get("action") or "").replace("_", " ").capitalize()
         amount = f" {d['amount']}" if d.get("amount") else ""
+        size = re.search(r"(\d+)\s*mm", amount)
+        if size and int(size.group(1)) > 5:
+            amount += ", in 5 mm steps"
         comp = _COMPONENT.get(d.get("component"), str(d.get("component") or "").replace("_", " ").capitalize())
         drill = (action + amount).strip()
         effort = d.get("effort") or {}
         if drill and effort.get("level") in _EFFORT:
             drill += f" · {_EFFORT[effort['level']]}"
-        out.append({"label": comp, "drill": drill or None, "why": d.get("reason")})
+        out.append({"label": comp, "drill": drill or None, "why": d.get("reason"), "metric": d.get("metric_name")})
     return out
+
+
+def _fit_note(note: Any, changes: int) -> str:
+    """The fit plan's sequence note. A saved report still carries the old "5mm
+    only" beside "Lower saddle about 23 mm", and an order of one is no order."""
+    s = str(note or "").replace("Each adjustment: 5mm only, ride 30 minutes before reassessing.", FIT_STEP_NOTE)
+    return re.sub(r"Adjust in order: [^.]*\.\s*", "", s) if changes < 2 else s
+
+
+# A finding about a number that also has a tile prints the tile's name and value:
+# the analyzer's "Min knee" is the single lowest frame, the tile the stride's.
+_ISSUE_ROW = {"insufficient_knee_drive": "knee_swing", "low_cadence": "cadence",
+              "excessive_forward_lean": "trunk_lean"}
 
 
 _EXTRA_CSS = """
@@ -245,7 +360,7 @@ _EXTRA_CSS = """
 .screen button{font:700 10pt 'Manrope',sans-serif;background:#F1553F;color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
 @media print{.screen{display:none}}
 .cover-img{margin:14px 0 0}
-.cover-img img{display:block;width:100%;max-height:118mm;object-fit:contain;background:#0F1A2E;border-radius:8px}
+.cover-img img{display:block;width:100%;max-height:100mm;object-fit:contain;background:#0F1A2E;border-radius:8px}
 .glance{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 0}
 .glance .card{border-top:3px solid #2F6DE0}
 .glance .card.fix{border-top-color:#F1553F}
@@ -255,6 +370,7 @@ _EXTRA_CSS = """
 .finding{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;border:1px solid #DCE2EA;border-radius:8px;padding:10px 14px;margin:0 0 8px;break-inside:avoid}
 .finding h3{margin:0}
 .finding p{grid-column:1/-1;margin:0}
+.finding .chip{justify-self:start}
 .coachtext{border-left:3px solid #2F6DE0;padding:2px 0 2px 14px;margin:0 0 14px}
 .coachbrand{display:flex;align-items:center;gap:12px;margin:0 0 6px}
 .coachbrand img{height:44px;width:auto;max-width:150px;background:#fff;border-radius:4px;padding:3px}
@@ -272,7 +388,8 @@ _EXTRA_CSS = """
 .bd-h span{white-space:nowrap}
 .bd{border-left:1px solid #2A4170;padding-left:16px}
 .bd-h{display:flex;justify-content:space-between;font:500 7pt 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8EA6CF;margin:0 0 5px}
-.bd-row{display:grid;grid-template-columns:minmax(0,1fr) 30mm 7mm 8mm;gap:6px;align-items:center;font-size:8.4pt;line-height:1.75;color:#fff}
+.bd-note{font-size:7.4pt;line-height:1.35;color:#C5D3EA;margin:6px 0 0}
+.bd-row{display:grid;grid-template-columns:minmax(0,1fr) 20mm 7mm 8mm;gap:6px;align-items:center;font-size:8.4pt;line-height:1.75;color:#fff}
 .bd-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bd-b{height:5px;background:#2A4170;border-radius:3px;overflow:hidden}
 .bd-b i{display:block;height:100%;border-radius:3px}
@@ -297,6 +414,8 @@ _EXTRA_CSS = """
 .gr-pro small{color:#8A93A1}
 .gr-pm{display:inline-block;width:2px;height:9px;background:#14294B;opacity:.55;margin-right:5px;vertical-align:-1px}
 .gr-none{font-size:8.4pt;color:#8A93A1;margin-top:8px}
+.gr-text{font-size:8.6pt;color:#5C6675;margin-top:8px}
+.gr-text b{color:#14294B;font-weight:700}
 .foot{margin:18px 0 0;padding-top:10px;border-top:1px solid #DCE2EA;font-size:8pt;color:#6E7787;display:flex;justify-content:space-between}
 .filmnote{background:#FFF3DC;border-left:3px solid #E5A23A;border-radius:4px;padding:10px 14px;margin:0 0 14px;break-inside:avoid}
 .filmnote ul{margin:4px 0 0}
@@ -331,7 +450,8 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     position_label, keyframe and kinogram data URIs."""
     sport = result.get("sport_type") or result.get("sport") or ""
     plan = result.get("training_plan") or {}
-    prios = plan.get("top_3_priorities") or []
+    # Filtered here as well as in the builder: a saved run still has it leading.
+    prios = [p for p in plan.get("top_3_priorities") or [] if p.get("metric") != "foot_strike"]
     strong = plan.get("strong_points") or []
     fit = result.get("fit_plan") or {}
     if sport == "bike" and not prios:
@@ -356,21 +476,43 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         ("Filmed", meta.get("filmed")),
         ("Camera", ("both sides" if side == "both" else f"{side} side"
                     + (" · chainring side" if sport == "bike" and side == "right" else "")) if side else None),
-        ("Prepared", meta.get("prepared")),
+        ("Prepared", str(meta.get("prepared") or "").removeprefix("Prepared ")),
     ]
     facts_html = "".join(f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in facts if v)
 
     def head(eyebrow: str, title: str) -> str:
         return f"<div class='head'><div class='eyebrow'>{_e(eyebrow)}</div><h2>{_e(title)}</h2><div class='speed'></div></div>"
 
+    # Read from the capture report here, so a report saved before these notes
+    # existed carries them as well. ``capture_bars`` is the coach's own grid.
+    film = film_notes_of(result, meta.get("capture_bars")) or []
+    film_codes = {n.get("code") for n in film}
+
+    # Everything that counts or lists the numbers reads the same rows, so the
+    # cover, the "leave these alone" line and the tiles can't disagree.
+    by_field = {r.get("field"): r for r in rows}
+    graded = [r for r in rows if r.get("value") is not None and r.get("band")]
+    has_pro = any(r.get("pro") for r in rows)
+    if rows:
+        # From the chainring side the knee reads low and the note says not to set
+        # the saddle from this clip, so it can't also be "leave this alone".
+        ok_names = [str(r["label"]).split(" · ")[0] for r in graded if r.get("status") == "good"
+                    and not (r.get("field") == "knee_at_bdc" and "drive_side" in film_codes)]
+    else:
+        ok_names = [n for n in (str(s.get("description") or "").split(":")[0].split(" (")[0] for s in strong) if n]
+
+    def prio_label(p: dict[str, Any]) -> str:
+        named = _RUN_ROW.get(str(p.get("metric")))
+        return named[0] if named else str(p.get("label") or "")
+
     first = prios[0] if prios else None
     glance = "".join([
-        f"<div class='card fix'><div class='eyebrow'>Fix first</div><b>{_e(first.get('label'))}</b>{_e(first.get('cue') or first.get('drill') or first.get('why'))}</div>"
+        f"<div class='card fix'><div class='eyebrow'>Fix first</div><b>{_e(prio_label(first))}</b>{_e(_clean(first.get('cue') or first.get('drill') or first.get('why')))}</div>"
         if first else "",
-        f"<div class='card ok'><div class='eyebrow'>Already working</div><b>{_e(str(strong[0].get('description') or '').split(':')[0])}</b>"
-        f"{_e(len(strong))} measurement{'s' if len(strong) != 1 else ''} in range</div>" if strong else "",
-        f"<div class='card'><div class='eyebrow'>Measured</div><b>{len(rows)} numbers</b>"
-        f"each against its range{', with the Kona pro field' if sport == 'bike' else ''}</div>" if rows else "",
+        f"<div class='card ok'><div class='eyebrow'>Already working</div><b>{_e(ok_names[0])}</b>"
+        f"{len(ok_names)} measurement{'s' if len(ok_names) != 1 else ''} where {'they' if len(ok_names) != 1 else 'it'} should be</div>" if ok_names else "",
+        f"<div class='card'><div class='eyebrow'>Measured</div><b>{len(graded)} number{'s' if len(graded) != 1 else ''}</b>"
+        f"each against its range{', with the Kona pro field' if has_pro else ''}</div>" if graded else "",
     ])
 
     # A coach's report carries the coach's mark where Flapp sat; Flapp moves to
@@ -391,9 +533,6 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         + "".join(f"<p>{_e(p)}</p>" for p in note.split("\n") if p.strip())
         + "</div>"
     ) if note else ""
-    # Read from the capture report here, so a report saved before these notes
-    # existed carries them as well. ``capture_bars`` is the coach's own grid.
-    film = film_notes_of(result, meta.get("capture_bars")) or []
     film_html = (
         "<div class='filmnote'><div class='eyebrow'>How this clip was filmed</div><ul>"
         + "".join(f"<li>{_e(n['text'])}</li>" for n in film)
@@ -407,17 +546,38 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     {brand}
     <h1>Technique Report</h1>
     <div class="sub">What to fix, in what order — and the numbers behind it.</div>
-    <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result))}</div>
+    <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result), _score_notes(result, score))}</div>
   </div>
-  {f'<figure class="cover-img"><img src="{meta["keyframe"]}" alt="Your frame, with the angles drawn on it"><p class="cap">The frame your angles were read on.</p></figure>' if meta.get('keyframe') else ''}
+  {f'<figure class="cover-img"><img src="{meta["keyframe"]}" alt="A frame from the clip, with its angles drawn on it"><p class="cap">One moment from the clip. The report reads its numbers across the whole clip, so they can differ from these.</p></figure>' if meta.get('keyframe') else ''}
   {f'<div class="glance">{glance}</div>' if glance else ''}
 </section>"""
 
-    findings = "".join(
-        f"<div class='finding'><h3>{_e(str(i.get('type') or '').replace('_', ' ').capitalize())}</h3>"
-        f"<span class='chip {_status_of(i.get('severity'))}'>{_e(i.get('value'))}</span>"
-        f"<p>{_e(i.get('recommendation'))}</p></div>"
-        for i in issues)
+    def finding(i: dict[str, Any]) -> str:
+        row = by_field.get(_ISSUE_ROW.get(str(i.get("type"))))
+        if row and row.get("value") is not None:
+            title, value, status = str(row["label"]).split(" · ")[0], _row_value(row), row.get("status")
+        else:
+            title = str(i.get("type") or "").replace("_", " ").capitalize()
+            value, status = _clean(i.get("value")), _status_of(i.get("severity"))
+        return (f"<div class='finding'><h3>{_e(title)}</h3><span class='chip {status}'>{_e(value)}</span>"
+                f"<p>{_e(_clean(i.get('recommendation')))}</p></div>")
+
+    # A number outside its range that neither the plan nor a finding mentions was
+    # just a red tile on the last page, however much it cost the score.
+    planned = {str(p.get("metric") or "").removesuffix("_avg") for p in prios}
+    named = " ".join(str(i.get("type") or "") for i in issues)
+    who = "your coach" if coach_brand.get("name") else "a coach or fitter" if sport == "bike" else "a coach"
+
+    def unplanned(r: dict[str, Any]) -> str:
+        lo, hi = r["band"]
+        return (f"<div class='finding'><h3>{_e(str(r['label']).split(' · ')[0])}</h3><span class='chip bad'>{_e(_row_value(r))}</span>"
+                f"<p>Outside its range of {_e(_num(lo))}–{_e(_num(hi))}{_e(r.get('unit') or '')}. No single change follows from this "
+                f"number alone, so it isn't in the plan. Worth going through with {who}.</p></div>")
+
+    findings = "".join([finding(i) for i in issues] + [
+        unplanned(r) for r in graded if r.get("status") == "bad"
+        and str(r.get("field")).removesuffix("_avg") not in planned
+        and str(r.get("field")).split("_")[0] not in named])
     read = f"""
 <section class="page">
   {head("The coach's read", "What's off, and what to change first")}
@@ -429,8 +589,8 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
 </section>"""
 
     prio_html = "".join(
-        f"<div class='prio'><div class='n'>{n}</div><div><h3>{_e(p.get('label'))}{' — ' + _e(p.get('drill')) if p.get('drill') else ''}</h3><dl>"
-        + "".join(f"<dt>{lbl}</dt><dd>{_e(p.get(k))}</dd>" for k, lbl in
+        f"<div class='prio'><div class='n'>{n}</div><div><h3>{_e(prio_label(p))}{' — ' + _e(_clean(p.get('drill'))) if p.get('drill') else ''}</h3><dl>"
+        + "".join(f"<dt>{lbl}</dt><dd>{_e(_clean(p.get(k)))}</dd>" for k, lbl in
                   (("why", "Why"), ("instruction", "Do this"), ("cue", "Think")) if p.get(k))
         + (f"<dt>For</dt><dd>{_e(p.get('weeks'))} weeks</dd>" if p.get('weeks') else "")
         + "</dl></div></div>"
@@ -438,15 +598,21 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     weeks = [p.get("weeks") for p in prios if isinstance(p.get("weeks"), (int, float))]
     when = (f"In {int(min(weeks))} week{'s' if min(weeks) != 1 else ''}" if weeks
             else "After each change" if sport == "bike" and prios else "")
-    note = fit.get("fitting_sequence_note") if sport == "bike" else ""
+    note = _fit_note(fit.get("fitting_sequence_note"), len(prios)) if sport == "bike" else ""
+    # The same note that says how this clip was filmed decides how the next one
+    # should be: "same side" under "film the other side" was two orders at once.
+    closer = any(n.get("code") == "framing" and str(n.get("short")).startswith("small") for n in film)
+    how = ("from the other side, so the knee can be read, same camera height, same speed. "
+           "Keep to that side and Flapp shows what moved between clips."
+           if "drive_side" in film_codes else
+           f"same camera height, same side, same speed{', but closer' if closer else ''}. "
+           "Flapp puts the two clips side by side and shows what moved.")
     retest = (f"<div class='retest'><div class='eyebrow' style='color:#2459C2'>Film again</div>"
-              f"<p>{_e(when)}: same camera height, same side, same speed. "
-              f"Flapp puts the two clips side by side and shows what moved.{' ' + _e(note) if note else ''}</p></div>") if when else ""
+              f"<p>{_e(when)}: {_e(how)}{' ' + _e(note) if note else ''}</p></div>") if when else ""
     # What already works sits on the numbers page as one line: on its own it
     # was a block that spilled onto a page of its own.
-    ok_names = [str(s.get("description") or "").split(":")[0].split(" (")[0] for s in strong[:8]]
-    ok_html = ("<div class='working' style='margin:0 0 12px'><h3>Already in range — leave these alone</h3>"
-               f"<p>{_e(', '.join(n for n in ok_names if n))}.</p></div>") if any(ok_names) else ""
+    ok_html = ("<div class='working' style='margin:0 0 12px'><h3>Already good — leave these alone</h3>"
+               f"<p>{_e(', '.join(ok_names))}.</p></div>") if ok_names else ""
     plan_sec = f"""
 <section>
   {head('The plan', 'Fix these, in this order')}
@@ -465,13 +631,13 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
                     f"<p style='margin:0'>Measured from the back, over the crank axle. {_e(where)}. Pros 88°, age-groupers 85°.</p></div></div>")
     legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='3' width='24' height='4' fill='#DDEFE3' stroke='#2E9E5B'/></svg></i>Healthy range</span>"
               "<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14181F'/></svg></i>You</span>"
-              + ("<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14294B' opacity='.6'/></svg></i>Kona 2026 pros' median</span>" if sport == "bike" else "")
+              + ("<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14294B' opacity='.6'/></svg></i>Kona 2026 pros' median</span>" if has_pro else "")
               + "</div>")
     kino = meta.get("kinogram")
     numbers = f"""
 <section class="page">
   {head('The numbers', 'Every measurement, against its range')}
-  <p class="lead">Measured by Flapp from your clip. Ranges come from sports-science research{' and the Kona 2026 pro field' if sport == 'bike' else ''}.</p>
+  <p class="lead">Measured by Flapp from your clip. Ranges come from sports-science research{' and the Kona 2026 pro field' if has_pro else ''}.</p>
   {ok_html}
   {hob_html}
   {legend if rows else ''}

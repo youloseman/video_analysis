@@ -507,10 +507,13 @@ def build_running_action_plan(
     # Apply kinematic chain links
     _apply_kinematic_links(plan)
 
-    # Top 3 priorities -- most severe first, then by diagnosis order
+    # Top 3 priorities -- most severe first, then by diagnosis order. Foot strike
+    # stays a diagnosis but never leads: it is estimated, not graded, and the app
+    # shows it with no verdict. As a priority it told a runner scoring 94 that
+    # the first thing to fix was the way most distance runners land.
     severity_order = {"critical": 0, "significant": 1, "minor": 2}
     sorted_issues = sorted(
-        plan.diagnostics,
+        (d for d in plan.diagnostics if d.metric_name != "foot_strike"),
         key=lambda d: severity_order.get(d.severity, 3),
     )
     plan.top_priorities = sorted_issues[:3]
