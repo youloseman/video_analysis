@@ -47,7 +47,8 @@ def test_a_run_report_has_the_plan_and_the_numbers():
 
 
 def test_a_bike_report_turns_the_fit_plan_into_the_plan():
-    html = render_report_html(example("bike-road"), {})
+    # The sample is a TT bike entered as road drops: as entered it now draws no plan.
+    html = render_report_html({**example("bike-road"), "cycling_position": "tt_aero"}, {})
     assert "Saddle height" in html and "Lower saddle 5mm" in html
     # In the order the fit plan gives: saddle before the bars.
     assert html.index("Saddle height —") < html.index("Bar position —")

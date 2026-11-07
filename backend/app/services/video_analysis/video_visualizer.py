@@ -569,8 +569,7 @@ class VideoVisualizer:
             # knee-agreement check below a handful of frames to choose from.
             cand = list(range(int(n * 0.15), int(n * 0.85)))
         else:
-            cand = sorted({int(n * p) for p in
-                           (0.30 + 0.02 * k for k in range(21))})
+            cand = list(range(int(n * 0.30), int(n * 0.70)))
         cand = [i for i in cand if 0 <= i < n] or [n // 2]
 
         side_leg = {
@@ -627,6 +626,9 @@ class VideoVisualizer:
                         close = [i for d, i in scored if d <= _KEYFRAME_KNEE_TOL]
                         pool = close or [scored[0][1]]
 
+        if self.sport_type == "run":
+            pool = self._chips_agree_with_clip(pool)
+
         best_idx, best_vis = pool[0], -1.0
         for i in pool:
             lms = self.frame_data_list[i]["normalized_landmarks"]
@@ -636,6 +638,43 @@ class VideoVisualizer:
             if vis > best_vis:
                 best_vis, best_idx = vis, i
         return best_idx
+
+    def _chips_agree_with_clip(self, pool: list[int]) -> list[int]:
+        """The frames whose chips read no worse than the clip's own typical value.
+
+        A stride swings through every angle. A 94/A clip (IMG_4258, 2026-11-06) led
+        with TRUNK -5 and ELBOW 76 in red over a whole-clip trunk and elbow in range,
+        because the frame was picked for visibility alone. Bike has the same rule,
+        for the knee, above. It chooses among frames and moves no measurement.
+        """
+        history = getattr(getattr(self, "analyzer", None), "angle_history", None) or {}
+        material = getattr(self, "_material_keys", None)
+        rank = {"good": 0, "warn": 1, "bad": 2}
+        checks = []
+        for cfg in getattr(self, "label_configs", None) or []:
+            series = history.get(cfg["key"])
+            if not series or (material is not None and cfg["key"] not in material):
+                continue
+            values = [v for v in series if v is not None and not math.isnan(v)]
+            if values:
+                typical = sorted(values)[len(values) // 2]
+                checks.append((cfg, series, rank.get(_status_for_cfg(cfg, typical), 0)))
+        if not checks:
+            return pool
+
+        def worse_than_clip(i: int) -> int:
+            total = 0
+            for cfg, series, allowed in checks:
+                v = series[i] if i < len(series) else None
+                if v is None or math.isnan(v):
+                    total += 1  # a dash where a number should be
+                else:
+                    total += max(0, rank.get(_status_for_cfg(cfg, v), 0) - allowed)
+            return total
+
+        cost = {i: worse_than_clip(i) for i in pool}
+        least = min(cost.values())
+        return [i for i in pool if cost[i] == least]
 
     def _near_knee_deg(self, i: int) -> float | None:
         """The near knee the keyframe PRINTS on one frame.

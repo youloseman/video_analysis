@@ -110,3 +110,51 @@ def test_the_keyframe_agrees_with_the_knee_it_prints():
     picked = v._pick_keyframe_idx()
     assert picked == 47
     assert abs(v._near_knee_deg(picked) - 144.7) <= 3.0
+
+
+def _run_viz(frames, elbow, trunk=None):
+    v = _viz(frames)
+    v.sport_type = "run"
+    v.camera_side = None
+    cfgs = [{"key": "elbow", "optimal": (85, 100)}]
+    history = {"elbow": elbow}
+    if trunk:
+        cfgs.append({"key": "trunk", "optimal": (-2, 10)})
+        history["trunk"] = trunk
+    v.label_configs = cfgs
+    v._material_keys = {c["key"] for c in cfgs}
+    v.analyzer = SimpleNamespace(angle_history=history)
+    return v
+
+
+def test_a_run_frame_is_picked_whose_chips_read_as_the_clip_does():
+    # Sharpest frame reads red; the clip's elbow is in range, and so must the chip.
+    frames = [_frame(vis=0.5) for _ in range(100)]
+    frames[40] = _frame(vis=1.0)
+    elbow = [90.0] * 100
+    elbow[40] = 60.0
+    assert _run_viz(frames, elbow)._pick_keyframe_idx() != 40
+
+
+def test_a_run_clip_that_really_is_out_of_range_may_show_it():
+    # A clip whose elbow sits out of range all along has nothing to hide:
+    # visibility decides as before.
+    frames = [_frame(vis=0.5) for _ in range(100)]
+    frames[40] = _frame(vis=1.0)
+    assert _run_viz(frames, [120.0] * 100)._pick_keyframe_idx() == 40
+
+
+def test_a_frame_with_a_number_beats_a_frame_with_a_dash():
+    frames = [_frame(vis=0.5) for _ in range(100)]
+    frames[40] = _frame(vis=1.0)
+    elbow = [90.0] * 100
+    elbow[40] = None
+    assert _run_viz(frames, elbow)._pick_keyframe_idx() != 40
+
+
+def test_a_run_with_no_series_falls_back_to_visibility():
+    frames = [_frame(vis=0.5) for _ in range(100)]
+    frames[40] = _frame(vis=1.0)
+    v = _viz(frames)
+    v.sport_type = "run"
+    assert v._pick_keyframe_idx() == 40

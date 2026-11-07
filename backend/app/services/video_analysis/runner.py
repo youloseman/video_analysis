@@ -1341,6 +1341,7 @@ def analyze_from_frames(
     from app.services.video_analysis.biomechanics.plausibility import (
         drop_implausible,
         implausible_warning,
+        looks_aero_on_road,
         position_mismatch,
     )
     implausible = drop_implausible(
@@ -1354,6 +1355,9 @@ def analyze_from_frames(
     mismatch = position_mismatch(cycling_position, summary) if is_bike else None
     if mismatch:
         quality_warnings.append(mismatch)
+    aero_on_road = looks_aero_on_road(cycling_position, summary) if is_bike else None
+    if aero_on_road:
+        quality_warnings.append(aero_on_road)
 
     # Step 4: partial-analysis quality gate.
     max_valid_frames = max(

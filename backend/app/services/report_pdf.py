@@ -341,6 +341,32 @@ def _fit_priorities(fit: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+# The notes that make the whole clip doubtful, as against one number on it: a shaky
+# camera costs vertical oscillation, the chainring side costs the knee.
+_LOW_TRUST_CODES = {"framing", "duration", "position"}
+_RESHOOT = {
+    "duration": "keep the whole body in the frame for the whole clip",
+    "position": "run the clip with the position actually ridden",
+}
+
+
+def _low_trust(film: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [n for n in film if n.get("level") == "bad" and n.get("code") in _LOW_TRUST_CODES]
+
+
+def _reshoot(low: list[dict[str, Any]]) -> str:
+    """What the next clip needs, from what was wrong with this one."""
+    asks = []
+    for n in low:
+        if n["code"] == "framing":
+            asks.append("film closer, so the body fills most of the frame"
+                        if str(n.get("short")).startswith("small")
+                        else "send the original file from the camera roll")
+        else:
+            asks.append(_RESHOOT[n["code"]])
+    return "; ".join(asks)
+
+
 def _fit_note(note: Any, changes: int) -> str:
     """The fit plan's sequence note. A saved report still carries the old "5mm
     only" beside "Lower saddle about 23 mm", and an order of one is no order."""
@@ -355,6 +381,21 @@ _ISSUE_ROW = {"insufficient_knee_drive": "knee_swing", "low_cadence": "cadence",
 
 
 _EXTRA_CSS = """
+/* A browser prints its date, title and the page's address in any page margin, and
+   the box for it is ticked by default: every page of a coach's document carried its
+   /r/ link. No margin, no room for them. A repeating table head and foot make the
+   space instead; the cover bleeds to the edge and sits outside. */
+@page{size:A4;margin:0}
+@page:first{margin:0}
+.flow{width:100%;border-collapse:collapse;break-before:page}
+.flow td{padding:0}
+.flow thead td{height:14mm}
+.flow tfoot td{height:16mm}
+.flow section:first-child{break-before:auto}
+@media screen{
+  .flow,.flow tbody,.flow tr,.flow td{display:block}
+  .flow thead,.flow tfoot{display:none}
+}
 .screen{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;
   background:#14294B;color:#fff;margin:0 -15mm 0;padding:10px 15mm;font:600 10pt 'Manrope',sans-serif}
 .screen button{font:700 10pt 'Manrope',sans-serif;background:#F1553F;color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
@@ -478,8 +519,6 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
                     + (" · chainring side" if sport == "bike" and side == "right" else "")) if side else None),
         ("Prepared", str(meta.get("prepared") or "").removeprefix("Prepared ")),
     ]
-    facts_html = "".join(f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in facts if v)
-
     def head(eyebrow: str, title: str) -> str:
         return f"<div class='head'><div class='eyebrow'>{_e(eyebrow)}</div><h2>{_e(title)}</h2><div class='speed'></div></div>"
 
@@ -487,6 +526,15 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     # existed carries them as well. ``capture_bars`` is the coach's own grid.
     film = film_notes_of(result, meta.get("capture_bars")) or []
     film_codes = {n.get("code") for n in film}
+    low = _low_trust(film)
+    # Advice worked out against the wrong ranges is worse than none: "raise the bars"
+    # to a rider on aero bars. The numbers stay, under a note that says what they are.
+    wrong_ranges = "position" in film_codes
+    if wrong_ranges:
+        prios, strong, issues = [], [], []
+    if low:
+        facts.append(("Reliability", "Low · " + ", ".join(str(n["short"]) for n in low)))
+    facts_html = "".join(f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in facts if v)
 
     # Everything that counts or lists the numbers reads the same rows, so the
     # cover, the "leave these alone" line and the tiles can't disagree.
@@ -505,8 +553,12 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         named = _RUN_ROW.get(str(p.get("metric")))
         return named[0] if named else str(p.get("label") or "")
 
+    if wrong_ranges:
+        ok_names = []
     first = prios[0] if prios else None
     glance = "".join([
+        f"<div class='card fix'><div class='eyebrow'>Film again first</div><b>{_e(str(low[0]['short']).capitalize())}</b>"
+        "Confirm on a better clip before changing anything</div>" if low else
         f"<div class='card fix'><div class='eyebrow'>Fix first</div><b>{_e(prio_label(first))}</b>{_e(_clean(first.get('cue') or first.get('drill') or first.get('why')))}</div>"
         if first else "",
         f"<div class='card ok'><div class='eyebrow'>Already working</div><b>{_e(ok_names[0])}</b>"
@@ -545,7 +597,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
   <div class="cover-band">
     {brand}
     <h1>Technique Report</h1>
-    <div class="sub">What to fix, in what order — and the numbers behind it.</div>
+    <div class="sub">{"What this clip suggests, and what to film next." if low else "What to fix, in what order — and the numbers behind it."}</div>
     <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result), _score_notes(result, score))}</div>
   </div>
   {f'<figure class="cover-img"><img src="{meta["keyframe"]}" alt="A frame from the clip, with its angles drawn on it"><p class="cap">One moment from the clip. The report reads its numbers across the whole clip, so they can differ from these.</p></figure>' if meta.get('keyframe') else ''}
@@ -574,13 +626,13 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
                 f"<p>Outside its range of {_e(_num(lo))}–{_e(_num(hi))}{_e(r.get('unit') or '')}. No single change follows from this "
                 f"number alone, so it isn't in the plan. Worth going through with {who}.</p></div>")
 
-    findings = "".join([finding(i) for i in issues] + [
+    findings = "" if wrong_ranges else "".join([finding(i) for i in issues] + [
         unplanned(r) for r in graded if r.get("status") == "bad"
         and str(r.get("field")).removesuffix("_avg") not in planned
         and str(r.get("field")).split("_")[0] not in named])
     read = f"""
 <section class="page">
-  {head("The coach's read", "What's off, and what to change first")}
+  {head("The coach's read", "What this clip suggests" if low else "What's off, and what to change first")}
   {note_html}
   {film_html}
   {f'<div class="coachtext">{markdown(coach)}</div>' if coach else ''}
@@ -592,7 +644,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         f"<div class='prio'><div class='n'>{n}</div><div><h3>{_e(prio_label(p))}{' — ' + _e(_clean(p.get('drill'))) if p.get('drill') else ''}</h3><dl>"
         + "".join(f"<dt>{lbl}</dt><dd>{_e(_clean(p.get(k)))}</dd>" for k, lbl in
                   (("why", "Why"), ("instruction", "Do this"), ("cue", "Think")) if p.get(k))
-        + (f"<dt>For</dt><dd>{_e(p.get('weeks'))} weeks</dd>" if p.get('weeks') else "")
+        + (f"<dt>For</dt><dd>{_e(p.get('weeks'))} weeks</dd>" if p.get('weeks') and not low else "")
         + "</dl></div></div>"
         for n, p in enumerate(prios, 1))
     weeks = [p.get("weeks") for p in prios if isinstance(p.get("weeks"), (int, float))]
@@ -609,16 +661,21 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
            "Flapp puts the two clips side by side and shows what moved.")
     retest = (f"<div class='retest'><div class='eyebrow' style='color:#2459C2'>Film again</div>"
               f"<p>{_e(when)}: {_e(how)}{' ' + _e(note) if note else ''}</p></div>") if when else ""
+    if low:
+        retest = (f"<div class='retest'><div class='eyebrow' style='color:#2459C2'>Film again first</div>"
+                  f"<p>Before changing anything: {_e(_reshoot(low))}. Flapp puts the two clips side by side "
+                  "and shows whether this holds.</p></div>")
     # What already works sits on the numbers page as one line: on its own it
     # was a block that spilled onto a page of its own.
     ok_html = ("<div class='working' style='margin:0 0 12px'><h3>Already good — leave these alone</h3>"
                f"<p>{_e(', '.join(ok_names))}.</p></div>") if ok_names else ""
     plan_sec = f"""
 <section>
-  {head('The plan', 'Fix these, in this order')}
+  {head('The plan', ('What to try, once a better clip confirms it' if prio_html else 'Film this again first') if low else 'Fix these, in this order')}
+  {retest if low else ''}
   {prio_html}
-  {retest}
-</section>""" if prio_html else ""
+  {'' if low else retest}
+</section>""" if (prio_html or low) else ""
 
     tiles = "".join(_tile(r) for r in rows)
     hob = (result.get("sport_specific_metrics") or {}).get("hip_over_bb") or result.get("hip_over_bb")
@@ -649,4 +706,4 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Flapp report</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>{_CSS}{_EXTRA_CSS}</style></head><body>{cover}{read}{plan_sec}{numbers}</body></html>"""
+<style>{_CSS}{_EXTRA_CSS}</style></head><body>{cover}<table class="flow"><thead><tr><td></td></tr></thead><tbody><tr><td>{read}{plan_sec}{numbers}</td></tr></tbody><tfoot><tr><td></td></tr></tfoot></table></body></html>"""

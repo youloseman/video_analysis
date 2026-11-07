@@ -89,6 +89,29 @@ def implausible_warning(dropped: list[dict[str, Any]]) -> str:
             "Film closer, side-on, so you fill most of the picture.")
 
 
+# A road position this low with elbows this bent is well past the warning limits of
+# both road bands (cycling_positions: trunk 35 and 25, elbow 140): 23 and 94 on a
+# rider on a TT bike, entered as hoods, scored 46/D with nothing to say why.
+ROAD_LOOKS_AERO = {"road_hoods": (30.0, 120.0), "road_drops": (25.0, 120.0)}
+_ROAD_NAME = {"road_hoods": "road hoods", "road_drops": "road drops"}
+
+
+def looks_aero_on_road(position: str | None, summary: dict[str, Any]) -> str | None:
+    """A sentence when a road clip looks like aero bars, else None.
+
+    Says so and leaves the score standing, unlike ``position_mismatch``: a rider
+    can hold a low, bent-arm position on the hoods, and only they know.
+    """
+    limits = ROAD_LOOKS_AERO.get(position or "")
+    trunk = _num(summary.get("trunk_angle_avg"))
+    elbow = _num(summary.get("elbow_angle_avg"))
+    if not limits or trunk is None or elbow is None or trunk >= limits[0] or elbow >= limits[1]:
+        return None
+    return (f"Entered as {_ROAD_NAME[position]}, but the torso at {trunk:.0f}° and elbows at "
+            f"{elbow:.0f}° look like aero bars, so these numbers are read against the wrong "
+            "ranges. If that's an aero position, run it again as one.")
+
+
 def position_mismatch(position: str | None, summary: dict[str, Any]) -> str | None:
     """A sentence when an aero-bar clip does not look like aero bars, else None."""
     if position not in AERO_POSITIONS:

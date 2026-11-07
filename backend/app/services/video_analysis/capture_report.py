@@ -37,6 +37,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.services.video_analysis.biomechanics.plausibility import looks_aero_on_road
 from app.services.video_analysis.biomechanics.tracking_diagnostics import (
     FRAMING_SMALL_PX,
     FRAMING_TINY_PX,
@@ -574,9 +575,14 @@ def film_notes_of(
     """The notes on a stored result; None when it holds no capture report (a
     photo, or a run that never got as far as one), which is not "nothing to say"."""
     r = result or {}
-    report = ((r.get("sport_specific_metrics") or {}).get("capture_report")
-              or (r.get("quality") or {}).get("capture_report"))
-    return film_notes(report.get("checks"), bars) if report else None
+    metrics = r.get("sport_specific_metrics") or {}
+    report = metrics.get("capture_report") or (r.get("quality") or {}).get("capture_report")
+    notes = film_notes(report.get("checks"), bars) if report else None
+    aero = looks_aero_on_road(r.get("cycling_position"), metrics)
+    if aero:
+        return [{"code": "position", "level": "bad", "short": "looks like aero bars", "text": aero},
+                *(notes or [])]
+    return notes
 
 
 def build_capture_report(

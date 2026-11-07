@@ -17,6 +17,7 @@ from app.services.video_analysis.biomechanics.action_plan_builder import (
     FIT_STEP_NOTE,
     build_action_plan,
 )
+from app.services.video_analysis.biomechanics.plausibility import looks_aero_on_road
 from app.services.video_analysis.biomechanics.running_action_plan_builder import (
     build_running_action_plan,
 )
@@ -309,3 +310,91 @@ def test_the_weights_on_the_cover_add_to_a_hundred():
 def test_a_run_score_is_not_given_the_bikes_explanation():
     res = {"sport_type": "run", "score_breakdown": {"trunk_lean": 100.0, "knee_swing": 20.0}}
     assert not any("These average" in n for n in _score_notes(res, 40))
+
+
+# --- how far to trust it: a doubtful clip doesn't get a confident plan
+
+def _doubtful(**extra) -> dict:
+    res = _run(issues=[{"metric": "knee_swing", "label": "Knee in swing", "value": 134.0}],
+               prios=[{"metric": "knee_swing", "label": "Knee in swing", "drill": "High Knee March",
+                       "why": "Knee stays open", "cue": "Heel to glute", "weeks": 3}],
+               capture_report={"checks": [{"id": "duration", "status": "bad", "label": "How much",
+                                           "measured": "9.5 s long, but you were only trackable in 3.7 s of it"}]})
+    res.update(extra)
+    return res
+
+
+def test_a_doubtful_clip_says_film_again_before_it_says_fix():
+    html = render_report_html(_doubtful(), {})
+    assert "Film again first" in html and "Before changing anything" in html
+    assert "Fix first" not in html and "Fix these, in this order" not in html
+    assert "What this clip suggests" in html and "Low · little usable footage" in html
+    assert "keep the whole body in the frame" in html
+    # The drill stays, as something to try. The prescription of weeks goes.
+    assert "High Knee March" in html and "3 weeks" not in html
+
+
+def test_a_clean_clip_is_unchanged():
+    res = _doubtful()
+    res["sport_specific_metrics"]["capture_report"]["checks"][0]["status"] = "good"
+    html = render_report_html(res, {})
+    assert "Film again first" not in html and "Reliability" not in html
+    assert "Fix these, in this order" in html and "3 weeks" in html
+
+
+def test_one_doubtful_number_does_not_make_the_clip_doubtful():
+    res = _doubtful()
+    res["sport_specific_metrics"]["capture_report"]["checks"] = [
+        {"id": "camera_motion", "status": "bad", "measured": "camera moved 80% as much as your hips did"}]
+    html = render_report_html(res, {})
+    assert "Shaky camera" in html and "Film again first" not in html
+
+
+def test_a_coachs_own_framing_bar_keeps_the_clip_trusted():
+    res = _doubtful()
+    res["sport_specific_metrics"]["capture_report"]["checks"] = [
+        {"id": "framing", "status": "bad", "label": "How much of the frame you fill", "measured": "237 px tall"}]
+    assert "Film again first" in render_report_html(res, {})
+    html = render_report_html(res, {"capture_bars": {"small_px": 200}})
+    assert "Film again first" not in html and "Small in the frame" not in html
+
+
+def test_road_clip_that_looks_aero_is_called_out_and_keeps_its_score():
+    res = {"sport_type": "bike", "technique_score": 46, "cycling_position": "road_hoods",
+           "sport_specific_metrics": {"trunk_angle_avg": 23.1, "elbow_angle_avg": 93.6,
+                                      "capture_report": {"checks": []}}}
+    html = render_report_html(res, {})
+    assert "torso at 23° and elbows at 94° look like aero bars" in html
+    assert "Low · looks like aero bars" in html
+    assert "run the clip with the position actually ridden" in html and "Film this again first" in html
+
+
+def test_no_advice_is_given_against_ranges_the_clip_was_not_ridden_in():
+    res = {"sport_type": "bike", "technique_score": 46, "cycling_position": "road_hoods",
+           "fit_plan": {"priorities": [{"metric": "trunk_angle", "label": "Bar position",
+                                        "what": "Raise bars", "why": "Too aggressive"}],
+                        "good_metrics": [{"metric": "knee_at_tdc", "label": "Knee at the top"}]},
+           "detected_issues": [{"type": "trunk_too_aggressive", "severity": "info", "value": "23°",
+                                "recommendation": "Raise the bars"}],
+           "sport_specific_metrics": {"trunk_angle_avg": 23.1, "elbow_angle_avg": 93.6,
+                                      "capture_report": {"checks": []}}}
+    html = render_report_html(res, {})
+    assert "Raise" not in html and "Too aggressive" not in html and "Trunk too aggressive" not in html
+    assert "Fix first" not in html and "Already working" not in html and "leave these alone" not in html
+    assert ">46<" in html
+
+
+def test_a_real_road_position_is_left_alone():
+    for pos, trunk, elbow in (("road_hoods", 42, 155), ("road_drops", 28, 110), ("road_hoods", 28, 150),
+                              ("road_hoods", 40, 100), ("triathlon", 23, 94), (None, 23, 94)):
+        assert looks_aero_on_road(pos, {"trunk_angle_avg": trunk, "elbow_angle_avg": elbow}) is None, pos
+
+
+# --- printing: the browser's own header and footer
+
+def test_the_page_leaves_no_margin_for_the_browsers_date_and_address():
+    html = render_report_html(_run(), {})
+    # The last @page rule wins, so read the last one, and the first-page one too.
+    assert re.findall(r"@page\{[^}]*\}", html)[-1] == "@page{size:A4;margin:0}"
+    assert re.findall(r"@page:first\{[^}]*\}", html)[-1] == "@page:first{margin:0}"
+    assert '<table class="flow"><thead>' in html
