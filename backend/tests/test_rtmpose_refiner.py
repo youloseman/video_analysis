@@ -229,3 +229,23 @@ def test_the_real_model_finds_a_person_where_mediapipe_put_the_box():
     kps, scores = R.predict(R.load_session(settings.rtmpose_model_path), img, (150, 40, 250, 290))
     assert kps.shape == (26, 2) and scores.shape == (26,)
     assert np.isfinite(kps).all()
+
+
+def test_the_session_does_not_spawn_a_thread_per_visible_core(monkeypatch, tmp_path):
+    # Railway shows 48 cores against an 8-CPU quota: the default ran 10x slower.
+    seen = {}
+
+    class FakeOrt:
+        class SessionOptions:
+            pass
+
+        @staticmethod
+        def InferenceSession(path, sess_options, providers):
+            seen["opts"] = sess_options
+            return object()
+
+    monkeypatch.setitem(__import__("sys").modules, "onnxruntime", FakeOrt)
+    monkeypatch.setattr(R, "_SESSIONS", {})
+    R.load_session(tmp_path / "m.onnx")
+    assert seen["opts"].intra_op_num_threads == R.INTRA_OP_THREADS == 4
+    assert seen["opts"].inter_op_num_threads == 1

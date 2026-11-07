@@ -50,6 +50,12 @@ MEAN = np.array([123.675, 116.28, 103.53], dtype=np.float32)
 STD = np.array([58.395, 57.12, 57.375], dtype=np.float32)
 # Below this SimCC score the joint keeps MediaPipe's point.
 MIN_SCORE = 0.3
+# onnxruntime's default spawns a thread per core it can SEE: 48 on Railway's
+# host against a cgroup quota of 8 CPUs, which throttled it to 224 ms a frame.
+# Measured in the container (2026-11-07): 1 thread 35 ms, 2 -> 33, 4 -> 23,
+# 8 -> 21, 16 -> 34. Four is nearly the best and leaves cores to MediaPipe and
+# to a second analysis running alongside.
+INTRA_OP_THREADS = 4
 
 # BlazePose index -> Halpe-26 index
 BLAZE_FROM_HALPE = {11: 5, 12: 6, 13: 7, 14: 8, 15: 9, 16: 10, 23: 11, 24: 12,
@@ -75,6 +81,8 @@ def load_session(model_path: Path) -> Any:
 
             opts = ort.SessionOptions()
             opts.log_severity_level = 3
+            opts.intra_op_num_threads = INTRA_OP_THREADS
+            opts.inter_op_num_threads = 1
             _SESSIONS[key] = ort.InferenceSession(
                 key, sess_options=opts, providers=["CPUExecutionProvider"],
             )
