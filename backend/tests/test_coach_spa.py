@@ -113,6 +113,14 @@ def test_progress_does_not_open_on_an_empty_mine():
     assert src.index("state.histAthlete=String(top.id)") < src.index("renderAthleteFilter('progAthleteFilter'")
 
 
+def test_a_coach_is_not_sold_notes_on_their_own_athlete():
+    assert "!(hasCoachPlan()&&e.athleteId!=null)&&(e.access==='full'" in fn("renderHistoryDetail")
+
+
+def test_the_forearm_is_not_graded_off_the_aero_bars():
+    assert "base==='forearm_tilt'&&!(res&&(res.cycling_position==='tt_aero'" in fn("angleOptimal")
+
+
 def test_the_camera_reads_the_coachs_bars():
     src = fn("camLiveVerdict")
     assert "COACH.capture" in src

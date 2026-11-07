@@ -73,6 +73,19 @@ def test_the_band_the_client_reads_says_so():
     assert reference_bands("bike", POS)["knee_at_bdc"]["hi"] == 145
 
 
+def test_the_document_says_why_the_range_is_wider():
+    from app.services.report_pdf import render_report_html
+
+    def doc(side):
+        return render_report_html({
+            "sport_type": "bike", "technique_score": 90, "camera_side": side,
+            "reference_bands": reference_bands("bike", POS, camera_side=side),
+            "sport_specific_metrics": {"knee_at_bdc": 150.0},
+        }, {})
+    assert "9 degrees wider" in doc("left")
+    assert "9 degrees wider" not in doc("right")
+
+
 def test_severity_does_not_shout_inside_the_margin():
     assert build_severity_map(POS, _summary(152.0, "left"))["knee_at_bdc"] == "ACCEPTABLE"
     assert build_severity_map(POS, _summary(143.0, "left"))["knee_at_bdc"] == "OPTIMAL"

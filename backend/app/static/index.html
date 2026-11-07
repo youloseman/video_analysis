@@ -3930,6 +3930,9 @@ function angleOptimal(key,sport,res){
   // bike: strip left_/right_ prefix, look up by base angle, pick position table
   const base=String(key).replace(/^left_|^right_/,'');
   const map=(res&&res.cycling_position&&BIKE_POSITION_OPT[res.cycling_position])||BIKE_ANGLE_OPT_DEFAULT;
+  // Forearm tilt is an aero-bar measure: on the hoods the forearm slopes down by
+  // geometry. The score leaves it out there, so the table must not call it red.
+  if(base==='forearm_tilt'&&!(res&&(res.cycling_position==='tt_aero'||res.cycling_position==='triathlon'))) return null;
   // 'trunk' in stats is the same as 'trunk_angle'
   if(base==='trunk') return map.trunk_angle||null;
   // The table's hip row is the stroke MEAN of a joint that swings 50 deg
@@ -11858,7 +11861,8 @@ function renderHistoryDetail(e){
   const cb=$('#hdCoachBlock'); if(e.report){ $('#hdCoach').innerHTML=mdToHtml(e.report); cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   renderCoachNote('hdCoachNote', e.id);
   renderCompareNext('cmpNextH', e.id, 'history');
-  renderNotesOffer('hdNotesOffer', !e.linkedAthleteId&&(e.access==='full'||!e.locked) ? e.id : null);
+  // A coach reading their athlete's clip is not a customer for somebody else's notes.
+  renderNotesOffer('hdNotesOffer', !e.linkedAthleteId&&!(hasCoachPlan()&&e.athleteId!=null)&&(e.access==='full'||!e.locked) ? e.id : null);
   renderCoachActions(e);
   placeCoachNote(e);
   const hb=$('#hBack'); if(hb) hb.lastChild.textContent=(hasCoachPlan()&&e.athleteId!=null&&athleteName(e.athleteId))?` Back to ${athleteName(e.athleteId)}`:' Back to history';

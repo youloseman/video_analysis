@@ -25,6 +25,7 @@ from app.services.review_pdf import (
     metric_rows,
 )
 from app.services.video_analysis.biomechanics.action_plan_builder import FIT_STEP_NOTE
+from app.services.video_analysis.biomechanics.cycling_positions import NON_DRIVE_KNEE_NOTE
 from app.services.video_analysis.biomechanics.running_action_plan_builder import (
     _FAULT_DIRECTION,
 )
@@ -806,13 +807,17 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
               + ("<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14294B' opacity='.6'/></svg></i>Kona 2026 pros' median</span>" if has_pro else "")
               + "</div>")
     kino = meta.get("kinogram")
+    # A fitter knows the knee range by heart: a wider one has to say why, here.
+    knee_band = (result.get("reference_bands") or {}).get("knee_at_bdc") or {}
+    knee_note = (f"<p class='lead' style='font-size:9.5pt'>{_e(NON_DRIVE_KNEE_NOTE)}</p>"
+                 if NON_DRIVE_KNEE_NOTE in str(knee_band.get("source") or "") else "")
     numbers = f"""
 <section>
   <div class="keep">{head('The numbers', 'Every measurement, against its range')}
   <p class="lead">Measured by Flapp from your clip. Ranges come from sports-science research{' and the Kona 2026 pro field' if has_pro else ''}.</p>
   {ok_html}
   {hob_html}
-  {legend if rows else ''}</div>
+  {legend if rows else ''}{knee_note}</div>
   {f"<div class='tiles'>{tiles}</div>" if rows else ''}
   {f'<div class="keep"><div class="eyebrow" style="margin-top:12px">{"One stride, five positions" if sport == "run" else "One pedal revolution"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure></div>' if kino else ''}
   <div class="foot"><span>Flapp · getflapp.com</span><span>{_e(meta.get('prepared'))}</span></div>
