@@ -138,13 +138,13 @@ async def test_a_finished_clip_carries_what_the_analysis_found(make_user, db, la
         "verdict": "check", "reasons": [{"code": "not_found", "level": "check", "text": "Couldn't find you."}],
     })
     lane.job = {**GOOD, "result": {**GOOD["result"], "sport_specific_metrics": {"capture_report": {"checks": [
-        {"id": "drive_side", "status": "warn", "measured": "drive side"},
+        {"id": "duration", "status": "bad", "measured": "9 s long"},
     ]}}}}
     coach, a = await coach_with_athlete(make_user, db)
     out = await send(db, coach, a)
     await coach_lane.run_upload(out["id"])
     item = (await api.list_uploads(None, coach, db))["items"][0]
-    assert item["status"] == "done" and [r["code"] for r in item["reasons"]] == ["drive_side"]
+    assert item["status"] == "done" and [r["code"] for r in item["reasons"]] == ["duration"]
 
 
 async def test_a_finished_clip_with_no_capture_report_keeps_the_quick_look(make_user, db, lane, monkeypatch):
@@ -470,12 +470,9 @@ def test_the_grid_moves_the_bars_and_the_default_stays(every_frame_valid):
     assert verdict(450, {"tiny_px": 500, "small_px": 600})["verdict"] == "no_go"
 
 
-def test_the_chainring_warning_can_be_switched_off(every_frame_valid):
+def test_the_chainring_side_is_not_worth_a_word(every_frame_valid):
     frames = [{**FRAME, "height_frac": 0.8, "facing": 1}] * 4
-    on = capture_check(frames, sport="bike", video_w=1280, video_h=720)
-    off = capture_check(frames, sport="bike", video_w=1280, video_h=720,
-                        thresholds={"tiny_px": 300, "small_px": 400, "drive_side": False})
-    assert [r["code"] for r in on["reasons"]] == ["drive_side"] and off["reasons"] == []
+    assert capture_check(frames, sport="bike", video_w=1280, video_h=720)["reasons"] == []
 
 
 def test_a_coach_is_not_called_you_and_gets_no_pixel_target(every_frame_valid):

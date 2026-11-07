@@ -463,48 +463,33 @@ def _time_base_check(
 def _drive_side_check(
     sport_type: str, camera_side: str | None, pedal_circle: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    """Which side of the bike the camera was on, and what that cost.
+    """Which side of the bike the camera was on. A fact, not a fault.
 
-    Every bike has a drive side, and from it the chainring sits behind the
-    near ankle at the bottom of the stroke. Measured on the 17 Sep pair: the
-    drive-side clip's near ankle stayed on its circle, but the far leg was
-    occluded on 138 of 180 frames and no pedal circle could be reduced;
-    admitting those frames put the bottom-of-stroke chord 7% short of the
-    other clip's with a spread 3.4x wider. So the knee at the bottom -- the
-    saddle-height number -- is the one reading this side cannot be trusted
-    for, while the upper body and hip are as good as from the other side.
+    This row used to warn on the chainring side and send the rider round the bike
+    for the saddle check. Measured 2026-11-06 on four same-session pairs, that was
+    backwards: the chainring side agrees with a better detector within a degree,
+    and it is the other side that reads 5-7 degrees high. About half of real clips
+    are from the chainring side, so it cost a re-film to get a worse number.
 
-    A two-sided session always has one such clip; this row is what tells the
-    rider which clip is which before the merge has to explain itself.
+    What does hold: the two sides disagree, so clips compare within one side.
     """
     if sport_type != "bike" or camera_side not in ("left", "right"):
         return None
     if camera_side == "left":
-        return _check(
-            "drive_side", "Which side of the bike you filmed", "good", "medium",
-            "non-drive side (chainring away from the camera)",
-            "non-drive side for the saddle-height check -- the chainring sits "
-            "behind the ankle at the bottom of the stroke on the other side",
-        )
-    revs = (pedal_circle or {}).get("revolutions")
-    measured = "drive side (chainring toward the camera)"
-    if revs:
-        sd = (pedal_circle or {}).get("chord_sd")
-        measured += f"; {revs} pedal revolutions reduced"
-        if isinstance(sd, (int, float)):
-            measured += f", bottom-of-stroke repeatability {sd * 100:.1f}% of crank radius"
+        measured = "non-drive side (chainring away from the camera)"
     else:
-        measured += "; no usable pedal circle"
+        measured = "drive side (chainring toward the camera)"
+        revs = (pedal_circle or {}).get("revolutions")
+        if revs:
+            sd = (pedal_circle or {}).get("chord_sd")
+            measured += f"; {revs} pedal revolutions reduced"
+            if isinstance(sd, (int, float)):
+                measured += f", bottom-of-stroke repeatability {sd * 100:.1f}% of crank radius"
     return _check(
-        "drive_side", "Which side of the bike you filmed", "warn", "medium",
+        "drive_side", "Which side of the bike you filmed", "good", "medium",
         measured,
-        "non-drive side for the saddle-height check -- the chainring sits "
-        "behind the ankle at the bottom of the stroke on this side",
-        "This side is fine for the trunk, shoulder, elbow and hip. For the "
-        "knee at the bottom of the stroke and the saddle verdict, film the "
-        "other side -- or film both and let the session merge them.",
+        "the same side every time -- the two sides of one bike read the knee at the bottom of the stroke up to 9 degrees apart",
     )
-
 
 def film_notes(
     checks: list[dict[str, Any]] | None, bars: dict[str, Any] | None = None,
@@ -522,8 +507,8 @@ def film_notes(
     - a long clip, a short-but-usable one, a landscape phone: advice, not error.
 
     Worded for two readers at once (coach and athlete), so never "you".
-    ``bars`` is a coach's grid (models.coach.clean_capture): their size bar and
-    their chainring switch silence these too, as they do the check before a run.
+    ``bars`` is a coach's grid (models.coach.clean_capture): their size bar
+    silences these too, as it does the check before a run.
     """
     grid = bars or {}
     notes: list[dict[str, Any]] = []
@@ -546,13 +531,6 @@ def film_notes(
                     "text": f"Small in the frame: {measured}. The legs can swap and angles read "
                             "less exactly. Film closer or zoom in.",
                 })
-        elif code == "drive_side" and status == "warn" and grid.get("drive_side", True):
-            notes.append({
-                "code": code, "level": status, "short": "chainring side, knee reads low",
-                "text": "Chainring side: the knee at the bottom of the stroke reads about 8 to 10 "
-                        "degrees low, so don't set the saddle from this clip. Trunk, shoulder, elbow "
-                        "and hip are fine. Film the other side for the knee.",
-            })
         elif code == "duration" and status == "bad":
             notes.append({
                 "code": code, "level": status, "short": "little usable footage",

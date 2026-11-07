@@ -268,12 +268,6 @@ def video_next_steps(
     # No helmet step: from the side the helmet's type cannot be told, and
     # "film in your race helmet" reached riders already wearing one (a Coach
     # Notes client and a 1-star review, 2026-10-14).
-    if sport == "bike" and summary.get("camera_side") == "right":
-        steps.append({"key": "side", "title": "Film from the non-drive side",
-                      "text": "This clip is from the chainring side. The chainring sits behind the "
-                              "ankle at the bottom of the stroke and disturbs the knee there, so the "
-                              "saddle-height reading is the least reliable number on it. The other "
-                              "side of the bike measures the leg cleanly."})
     if framing in _SMALL_FRAMING:
         steps.append({"key": "framing", "title": "Hold the phone sideways" if sport == "run" else "Fill the frame",
                       "text": "You are small in the picture, and at that size the two legs are a few "

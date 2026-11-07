@@ -367,6 +367,33 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
 # Public API: range lookups
 # ---------------------------------------------------------------------------
 
+# How far above its band the knee at BDC may read, on a clip filmed with the
+# chainring away from the camera, before it counts as high. Measured 2026-11-06 on
+# four same-session pairs: MediaPipe reads these clips 151-153 where RTMPose reads
+# 144-148, while on the chainring side the two agree within a degree. Without this,
+# all four were told to lower a saddle the better model puts about in range. Nine
+# because 145 + 9 clears the highest of those readings (153.5). Goes when the
+# detector changes: it is a margin for one model's error, not a fact about knees.
+NON_DRIVE_KNEE_MARGIN_DEG = 9.0
+NON_DRIVE_KNEE_NOTE = (
+    "The top of this range is 9 degrees wider on this clip: filmed with the chainring "
+    "away from the camera, the knee at the bottom of the stroke reads several degrees "
+    "high, so a reading in the extra 9 is no reason to move the saddle."
+)
+
+
+def knee_bdc_high_margin(camera_side: str | None) -> float:
+    """Extra room above the knee-at-BDC band for this clip's side. ``both`` is a
+    merged session, whose knee does not come from one side's reading."""
+    return NON_DRIVE_KNEE_MARGIN_DEG if camera_side == "left" else 0.0
+
+
+def knee_bdc_band(position: str | None, camera_side: str | None = None) -> tuple[float, float]:
+    """The knee-at-BDC band this clip is graded against."""
+    lo, hi = get_cycling_reference(position)["knee_at_bdc"]
+    return lo, hi + knee_bdc_high_margin(camera_side)
+
+
 def get_cycling_reference(position: str | None = None) -> dict[str, tuple[float, float]]:
     """Get optimal ranges for a cycling position.
 

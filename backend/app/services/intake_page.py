@@ -141,7 +141,7 @@ def render_intake_page(ctx: dict[str, Any] | None) -> str:
         "<li>Film from the side, square on, with the camera at hip height.</li>"
         "<li>Keep your whole body in shot, as big as you can. Running past the camera? Hold the phone sideways.</li>"
         "<li>Keep the camera still for 10 to 15 seconds.</li>"
-        "<li>On a bike, film the side without the chainring.</li>"
+        "<li>On a bike, film the same side every time.</li>"
         "</ul></div>"
         f'<form class="card" id="f" data-token="{token}">'
         f'<label class="f" for="sport">What is it</label><select id="sport">{options}</select>'

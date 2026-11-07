@@ -399,13 +399,12 @@ def test_the_non_drive_side_passes():
     assert "non-drive" in c["measured"]
 
 
-def test_the_drive_side_is_flagged_and_says_what_it_is_still_good_for():
+def test_the_drive_side_is_a_fact_not_a_fault():
+    """It agrees with a better detector within a degree; the row only asks for the same side."""
     c = check(report(sport_type="bike", camera_side="right"), "drive_side")
-    assert c["status"] == "warn" and c["impact"] == "medium"
+    assert c["status"] == "good"
     assert "chainring toward the camera" in c["measured"]
-    assert "no usable pedal circle" in c["measured"]
-    assert "trunk, shoulder, elbow and hip" in c["action"]
-    assert "film the other side" in c["action"]
+    assert "same side" in c["target"]
 
 
 def test_a_drive_side_clip_that_did_reduce_reports_its_repeatability():
@@ -459,9 +458,9 @@ def test_advice_for_the_next_clip_is_no_note():
 def test_what_can_make_a_number_wrong_is_a_note_worst_first():
     assert _codes(
         {"id": "framing", "status": "warn", "label": "x", "measured": "320 px tall"},
-        {"id": "drive_side", "status": "warn", "measured": "drive side"},
+        {"id": "drive_side", "status": "warn", "measured": "a saved clip's old warning"},
         {"id": "duration", "status": "bad", "measured": "9.5 s long, but you were only trackable in 3.7 s of it"},
-    ) == ["duration", "framing", "drive_side"]
+    ) == ["duration", "framing"]
 
 
 def test_the_notes_speak_to_a_coach_and_an_athlete_alike():
@@ -470,11 +469,10 @@ def test_the_notes_speak_to_a_coach_and_an_athlete_alike():
     notes = film_notes([
         {"id": "framing", "status": "warn", "label": "x", "measured": "320 px tall"},
         {"id": "framing", "status": "warn", "label": "Resolution of the file", "measured": "only 207 px of athlete"},
-        {"id": "drive_side", "status": "warn", "measured": "drive side"},
         {"id": "duration", "status": "bad", "measured": "9.5 s long, but you were only trackable in 3.7 s of it"},
         {"id": "camera_motion", "status": "bad", "measured": "camera moved 30% as much as your hips did"},
     ])
-    assert len(notes) == 5
+    assert len(notes) == 4
     for n in notes:
         assert " you " not in f" {n['text'].lower()} " and " your " not in f" {n['text'].lower()} "
     assert notes[0]["short"] and all(n["text"].isascii() for n in notes)
@@ -482,9 +480,8 @@ def test_the_notes_speak_to_a_coach_and_an_athlete_alike():
 
 def test_a_coachs_bars_silence_the_notes_they_silence_before_a_run():
     framing = {"id": "framing", "status": "warn", "label": "x", "measured": "320 px tall"}
-    chain = {"id": "drive_side", "status": "warn", "measured": "drive side"}
-    assert _codes(framing, chain, bars={"small_px": 300, "drive_side": False}) == []
-    assert _codes(framing, chain, bars={"small_px": 350, "drive_side": True}) == ["framing", "drive_side"]
+    assert _codes(framing, bars={"small_px": 300}) == []
+    assert _codes(framing, bars={"small_px": 350}) == ["framing"]
 
 
 def test_a_result_with_no_report_is_not_an_all_clear():
@@ -492,5 +489,6 @@ def test_a_result_with_no_report_is_not_an_all_clear():
 
     assert film_notes_of({}) is None and film_notes_of(None) is None
     assert film_notes_of({"sport_specific_metrics": {"capture_report": {"checks": []}}}) == []
-    gated = {"quality": {"capture_report": {"checks": [{"id": "drive_side", "status": "warn"}]}}}
-    assert [n["code"] for n in film_notes_of(gated)] == ["drive_side"]
+    gated = {"quality": {"capture_report": {"checks": [
+        {"id": "duration", "status": "bad", "measured": "3 s"}, {"id": "drive_side", "status": "warn"}]}}}
+    assert [n["code"] for n in film_notes_of(gated)] == ["duration"], "a saved clip's old chainring warning is gone too"

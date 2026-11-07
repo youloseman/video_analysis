@@ -243,8 +243,8 @@ def _video_caption(result: dict[str, Any], entry: dict[str, Any]) -> str:
         text += f" Снято {'справа' if side == 'right' else 'слева'}."
     if (m.get("saddle_estimate") or {}).get("drive_side") or any(
             c.get("id") == "drive_side" for c in ((m.get("capture_report") or {}).get("checks") or [])):
-        text += (" <b>Со стороны звёзд</b>: звезда мешает распознаванию лодыжки в нижней точке, "
-                 "поэтому колено внизу здесь наименее надёжная цифра.")
+        text += (" <b>Со стороны звёзд.</b> С разных сторон колено внизу читается по-разному, "
+                 "до 9°: сравнивать можно только клипы с одной стороны.")
     return text.strip()
 
 

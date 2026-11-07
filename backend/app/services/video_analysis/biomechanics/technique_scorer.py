@@ -403,21 +403,25 @@ def score_cycling(
     cycling_position: str | None = None,
 ) -> dict[str, Any]:
     """Score cycling technique (bike fit) using near-side angles."""
-    from app.services.video_analysis.biomechanics.cycling_positions import get_cycling_reference
+    from app.services.video_analysis.biomechanics.cycling_positions import (
+        get_cycling_reference,
+        knee_bdc_band,
+    )
 
     ref = get_cycling_reference(cycling_position)
     components: dict[str, float] = {}
     near = summary.get("near_side", "left")
+    knee_band = knee_bdc_band(cycling_position, summary.get("camera_side"))
 
     # Knee at BDC (near-side primary, fall back to any available)
     near_bdc = summary.get(f"{near}_knee_at_bdc") or 0
     if near_bdc > 0:
-        components["knee_bdc"] = score_in_range(near_bdc, *ref["knee_at_bdc"])
+        components["knee_bdc"] = score_in_range(near_bdc, *knee_band)
     else:
         # Fallback: check backward-compat key
         bdc = summary.get("knee_at_bdc") or 0
         if bdc > 0:
-            components["knee_bdc"] = score_in_range(bdc, *ref["knee_at_bdc"])
+            components["knee_bdc"] = score_in_range(bdc, *knee_band)
 
     # Knee at TDC (near-side primary)
     near_tdc = summary.get(f"{near}_knee_at_tdc") or 0
@@ -763,6 +767,13 @@ def build_severity_map(
     bdc = summary.get(f"{near}_knee_at_bdc") or summary.get("knee_at_bdc")
     if bdc and bdc > 0:
         severity_map["knee_at_bdc"] = classify_metric_severity(position, "knee_at_bdc", bdc)
+        if severity_map["knee_at_bdc"] != "OPTIMAL":
+            from app.services.video_analysis.biomechanics.cycling_positions import (
+                knee_bdc_band,
+            )
+            lo, hi = knee_bdc_band(position, summary.get("camera_side"))
+            if lo <= bdc <= hi:
+                severity_map["knee_at_bdc"] = "ACCEPTABLE"
 
     tdc = summary.get(f"{near}_knee_at_tdc") or summary.get("knee_at_tdc")
     if tdc and tdc > 0:

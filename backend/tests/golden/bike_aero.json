@@ -135,10 +135,10 @@
   "score_breakdown": {
    "elbow_angle": 100.0,
    "forearm_tilt": 100.0,
-   "knee_bdc": 58.6429,
+   "knee_bdc": 100.0,
    "knee_tdc": 100.0,
    "pelvic_ratio": 100.0,
-   "saddle_fit": 40.0,
+   "saddle_fit": 75.0,
    "shoulder_angle": 100.0,
    "trunk_angle": 100.0
   },
@@ -159,7 +159,7 @@
   "summary.pelvic_ratio": 3.17,
   "summary.shoulder_angle_avg": 90.28,
   "summary.trunk_angle_avg": 23.04,
-  "technique_score": 76.0
+  "technique_score": 99.0
  },
  "exact": {
   "camera_side": "left",
@@ -183,25 +183,15 @@
    "weight_covered": 1.0
   },
   "cycling_position": "tt_aero",
-  "fit_plan": [
-   {
-    "action": "lower_saddle",
-    "component": "saddle_height",
-    "current": 152.8,
-    "metric": "knee_at_bdc",
-    "status": "needs_adjustment"
-   }
-  ],
+  "fit_plan": [],
   "frames_analyzed": 570,
   "framing_verdict": "ok",
   "has_aero": true,
   "has_keyframe": true,
   "has_kinogram": true,
   "has_pedaling_style": true,
-  "issues": [
-   "saddle_too_high"
-  ],
-  "letter_grade": "B",
+  "issues": [],
+  "letter_grade": "A",
   "quality_gate_profile": null,
   "quality_gate_triggered": false,
   "sample_rate": 1,
@@ -221,7 +211,7 @@
   "summary.helmet_check": true,
   "summary.near_side": "left",
   "summary.position_archetype": "saddle_chaser",
-  "summary.saddle_height_assessment": "too_high",
+  "summary.saddle_height_assessment": "acceptable",
   "warning_count": 0
  }
 }

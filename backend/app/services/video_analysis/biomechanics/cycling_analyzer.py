@@ -23,6 +23,7 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
 from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 from app.services.video_analysis.biomechanics.cycling_positions import (
     get_cycling_reference,
+    knee_bdc_high_margin,
     get_position_label,
 )
 from app.services.video_analysis.biomechanics.landmarks import FrameAnalysis
@@ -868,7 +869,7 @@ class CyclingAnalyzer(SportAnalyzer):
         opt_min, opt_max = self.reference["knee_at_bdc"]
         if knee_at_bdc < opt_min - 5:
             return "too_low"
-        elif knee_at_bdc > opt_max + 5:
+        elif knee_at_bdc > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side)):
             return "too_high"
         elif opt_min <= knee_at_bdc <= opt_max:
             return "optimal"
@@ -1180,7 +1181,7 @@ class CyclingAnalyzer(SportAnalyzer):
                     "value": f"Knee at BDC: {bdc_val:.0f} deg",
                     "recommendation": f"Saddle may be too low. Knee at BDC is {bdc_val:.0f} deg (optimal: {opt_min}-{opt_max} deg).",
                 })
-            elif bdc_val > opt_max + 5:
+            elif bdc_val > opt_max + max(5.0, knee_bdc_high_margin(self.camera_side)):
                 issues.append({
                     "type": "saddle_too_high",
                     "severity": "warning",

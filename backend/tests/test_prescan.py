@@ -115,14 +115,14 @@ def test_a_rider_who_fills_the_frame_from_the_quiet_side_is_go():
 def test_too_small_to_hold_the_legs_is_no_go_and_says_so_first():
     got = _cap(dict(AERO, facing=1.0, height_frac=0.35), sport="bike", video_w=1920, video_h=1080)
     assert got["verdict"] == "no_go"
-    assert [r["code"] for r in got["reasons"]] == ["tiny", "drive_side"]
+    assert [r["code"] for r in got["reasons"]] == ["tiny"]
 
 
-def test_small_but_workable_and_the_chainring_side_are_only_check():
+def test_small_but_workable_is_only_check_and_the_chainring_side_is_fine():
     small = _cap(dict(RUN, facing=1.0, height_frac=0.5), sport="bike", video_w=1920, video_h=1080)
     assert small["verdict"] == "check" and [r["code"] for r in small["reasons"]][0] == "small"
     drive = _cap(dict(AERO, facing=1.0, height_frac=0.8), sport="bike", video_w=1920, video_h=1080)
-    assert drive["verdict"] == "check" and [r["code"] for r in drive["reasons"]] == ["drive_side"]
+    assert drive["verdict"] == "go" and drive["reasons"] == []
 
 
 def test_the_size_is_judged_in_the_frame_the_detector_sees_not_the_camera():
@@ -136,7 +136,7 @@ def test_without_the_clip_size_or_on_a_photo_the_size_is_not_judged():
     assert _cap(dict(AERO, facing=-1.0, height_frac=0.2), sport="bike")["verdict"] == "go"
     photo = _cap(dict(AERO, facing=1.0, height_frac=0.2), n=1, sport="bike",
                  video_w=1920, video_h=1080, photo=True)
-    assert [r["code"] for r in photo["reasons"]] == ["drive_side"]
+    assert photo["reasons"] == []
 
 
 def test_nobody_found_is_a_check_not_a_no_go():

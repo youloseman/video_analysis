@@ -154,13 +154,13 @@ def test_the_cover_counts_what_the_tiles_show():
     assert "3 measurements where they should be" in html
 
 
-def test_the_chainring_side_knee_is_not_leave_alone():
+def test_the_chainring_side_knee_is_a_number_like_any_other():
     res = _bike()
     res["sport_specific_metrics"].update(knee_at_bdc=140.0, capture_report={"checks": [
-        {"id": "drive_side", "status": "warn", "measured": "drive side"}]})
+        {"id": "drive_side", "status": "warn", "measured": "a saved clip's old warning"}]})
     res["fit_plan"]["diagnostics"] = []
     html = render_report_html(res, {})
-    assert "Knee at the bottom" not in _alone(html)
+    assert "Knee at the bottom" in _alone(html) and "from the other side" not in html
 
 
 def test_the_kona_field_is_only_claimed_where_it_is_drawn():
@@ -267,9 +267,9 @@ def test_film_again_follows_the_note():
          "measured": "320 px tall (25% of the frame height)"}]}
     assert "same side, same speed, but closer" in render_report_html(res, {})
     res["sport_specific_metrics"]["capture_report"] = {"checks": [
-        {"id": "drive_side", "status": "warn", "measured": "drive side"}]}
+        {"id": "drive_side", "status": "warn", "measured": "a saved clip's old warning"}]}
     html = render_report_html(res, {})
-    assert "from the other side" in html and "same side" not in html
+    assert "from the other side" not in html and "same side" in html
 
 
 # --- the cover's table can be done by hand

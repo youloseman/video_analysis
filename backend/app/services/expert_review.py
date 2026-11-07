@@ -369,7 +369,7 @@ def capture_notes(entry: dict[str, Any] | None) -> str:
 RETEST_DEFAULT = {
     "bike": (
         "Film again in four weeks, once the changes have settled: the same "
-        "bike and trainer, side-on from the side away from the chainring, the "
+        "bike and trainer, side-on from the same side as this clip, the "
         "camera level at hip height and close enough that you fill most of the "
         "frame, helmet on. We'll compare it with this clip."
     ),

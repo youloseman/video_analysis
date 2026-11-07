@@ -111,7 +111,7 @@ def test_a_clean_pair_has_no_warning():
 
 def test_opposite_sides_say_the_camera_may_be_the_difference():
     w = _caveats(cameraSide="right")
-    assert len(w) == 1 and "opposite sides" in w[0] and "8–10" in w[0]
+    assert len(w) == 1 and "opposite sides" in w[0] and "up to 9°" in w[0]
 
 
 def test_a_two_sided_session_is_not_called_opposite():

@@ -161,8 +161,8 @@ def test_inside_every_band_but_outside_the_pro_field_is_still_worth_a_look():
 def test_a_clean_clip_still_ends_with_where_to_go():
     steps = concern_hints.video_next_steps("bike", "triathlon", MY_CLIP, [{"field": "forearm_tilt_avg",
                                            "label": "Forearm tilt", "value": 17.1, "lo": 18.8, "hi": 32.0, "median": 25.9, "n": 32}])
-    assert [s["key"] for s in steps] == ["side", "framing", "pros", "refilm"]
-    assert "forearm tilt 17.1° against 18.8-32°" in steps[2]["text"]
+    assert [s["key"] for s in steps] == ["framing", "pros", "refilm"]
+    assert "forearm tilt 17.1° against 18.8-32°" in steps[1]["text"]
     # A clean, well-filmed clip on a road bike keeps only the re-film step.
     assert [s["key"] for s in concern_hints.video_next_steps("bike", "road_hoods", {"camera_side": "left"})] == ["refilm"]
 

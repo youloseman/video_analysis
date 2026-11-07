@@ -835,7 +835,7 @@
                and broke the line into columns. -->
           <ul class="guides" id="guides">
             <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg><span>Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close — a close-up wide lens bends the angles at the edges</span></li>
-            <li data-sport="bike"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>On the bike, film from the <b>non-drive side</b> (chainring away from the camera) — the chainring sits right behind your ankle at the bottom of the stroke and can pull the tracking off your foot</span></li>
+            <li data-sport="bike"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>On the bike, film the <b>same side every time</b> — the two sides read the knee differently, so only clips from one side compare</span></li>
             <!-- A head dropped to the floor or the screen reads lower than anyone
                  holds for a race, and the helmet metric grades it (order #9,
                  2026-10-24: helmet scored 100 while the rider looked at the floor). -->
@@ -2491,9 +2491,7 @@ function camLiveVerdict(rs){
   const bike=seen.filter(r=>r.bike).length>seen.length/2;
   // A runner passing the camera cannot fill the frame: running has lower bars.
   if(px<(grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx))) return {verdict:'no_go', code:'tiny', px, text:'Move closer — you’re too small to measure'};
-  const drive=bike && seen.filter(r=>r.facingRight).length>=seen.length*2/3;
   if(px<(grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx))) return {verdict:'check', code:'small', px, text:bike?'A bit closer for cleaner angles':'A bit small — fine, but closer is cleaner'};
-  if(drive&&grid.drive_side!==false) return {verdict:'check', code:'drive_side', px, text:'Chainring side — the other side reads the knee better'};
   return {verdict:'go', code:'go', px, text:'Good — this will measure'};
 }
 const CAM_LIVE_TAG={go:'GO', check:'CHECK', no_go:'NO-GO'};
@@ -3242,15 +3240,10 @@ const PAIR_SLOTS=[
   {slot:'a', id:'#pairCardA', label:'Left side', sub:'Your LEFT side faces the camera'},
   {slot:'b', id:'#pairCardB', label:'Right side', sub:'Your RIGHT side faces the camera'},
 ];
-/* What a rider should know BEFORE filming a bike pair, not after the merge
-   has to explain itself: one of the two clips is always the drive side,
-   and from there the chainring sits behind the ankle at the bottom of the
-   stroke -- that clip gives the upper body and hip, the other gives the
-   knee and the saddle verdict. Measured on the first pair filmed after the
-   feature shipped: the drive-side clip had no usable pedal circle at all. */
-const PAIR_BIKE_NOTE='<b>One of these is your drive side</b> (chainring toward the camera — the right side on most bikes). '
-  +'It reads the trunk, shoulder, elbow and hip fine; the knee at the bottom of the stroke and the saddle verdict come from the other clip. '
-  +'Give the <b>non-drive</b> side the careful take: square-on, whole crank circle in frame, camera about hip height, '
+/* What a rider should know BEFORE filming a bike pair: why two clips, and what
+   each take needs for the merge to have a few frames at the bottom of the stroke. */
+const PAIR_BIKE_NOTE='<b>One clip from each side of the bike.</b> The two sides read the knee at the bottom of the stroke differently, which is why a session uses both. '
+  +'Give both the same care: square-on, whole crank circle in frame, camera about hip height, '
   +'and <b>8–15 seconds</b> of steady pedalling — shorter clips are analysed too, but at 30 fps each revolution puts only a frame or two at the bottom of the stroke, and the merge wants a few of those.';
 function pairFileOf(slot){ return slot==='a' ? state.file : state.fileB; }
 function renderPairCards(){
@@ -6519,7 +6512,6 @@ function renderCoachCard(){
         <div><label for="capTiny">NO-GO under</label><input type="number" id="capTiny" min="200" max="600" step="10" value="${(COACH.capture&&COACH.capture.tiny_px)||300}"> <span class="hint">px</span></div>
         <div><label for="capSmall">Warn under</label><input type="number" id="capSmall" min="200" max="800" step="10" value="${(COACH.capture&&COACH.capture.small_px)||400}"> <span class="hint">px</span></div>
       </div>
-      <label class="switch"><input type="checkbox" id="capDrive"${!COACH.capture||COACH.capture.drive_side!==false?' checked':''}><span class="box" aria-hidden="true"></span><span>Warn about the chainring side<span class="subhint">From that side the chainring hides the ankle, so the knee reads low.</span></span></label>
       <div class="cnote-actions"><button class="btn btn-ghost btn-sm" type="button" id="capSave">Save the bars</button>${COACH.capture?'<button class="btn btn-link btn-sm" type="button" id="capReset">Back to the standard bars</button>':''}<span class="cnote-status" id="capStatus"></span></div>
     </div>`;
   const putCap=async body=>{
@@ -6528,7 +6520,7 @@ function renderCoachCard(){
     if(!r.ok){ toast(j.detail||'Could not save the bars.',{duration:6000}); return; }
     Object.assign(COACH,j); renderCoachCard(); toast('Framing bars saved.'); track('coach_capture_saved',{reset:!!body.reset});
   };
-  $('#capSave').addEventListener('click',()=>putCap({tiny_px:Number($('#capTiny').value),small_px:Number($('#capSmall').value),drive_side:$('#capDrive').checked}));
+  $('#capSave').addEventListener('click',()=>putCap({tiny_px:Number($('#capTiny').value),small_px:Number($('#capSmall').value)}));
   const capR=$('#capReset'); if(capR) capR.addEventListener('click',()=>putCap({reset:true}));
   const st=$('#coachStatus');
   $('#coachSave').addEventListener('click',async()=>{
@@ -12315,7 +12307,7 @@ function extractTrends(kind,res,sport){
     const s=res.sport_specific_metrics||{};
     put('score',res.technique_score);
     if(sport==='bike'){
-      put('knee',s.knee_at_bdc,[138,145]); put('hip',s.hip_at_tdc!=null?s.hip_at_tdc:s.hip_angle_avg);
+      const kb=(res.reference_bands||{}).knee_at_bdc; put('knee',s.knee_at_bdc,kb?[kb.lo,kb.hi]:[138,145]); put('hip',s.hip_at_tdc!=null?s.hip_at_tdc:s.hip_angle_avg);
       put('trunk',s.trunk_angle_avg); put('elbow',s.elbow_angle_avg);
       put('shoulder',s.shoulder_angle_avg); put('pelvic_ratio',s.pelvic_ratio,[2,4]);
       put('hip_over',(res.hip_over_bb||s.hip_over_bb||{}).angle_deg);
@@ -13269,12 +13261,12 @@ function squadEntriesFor(a){
 function filmNotesOf(e){
   const grid=(coachOn()&&COACH.capture)||{};
   return ((e&&e.filmNotes)||[]).filter(n=>
-    !(n.code==='drive_side'&&grid.drive_side===false)
+    n.code!=='drive_side'
     &&!(n.code==='framing'&&n.px!=null&&grid.small_px&&n.px>=grid.small_px));
 }
 /* Worth a line under Needs attention. "Small in the frame" alone isn't: most
    clips filmed in the wild are, and a list that always fills stops being read. */
-function filmLook(e){ return filmNotesOf(e).find(n=>n.level==='bad'||n.code==='drive_side')||null; }
+function filmLook(e){ return filmNotesOf(e).find(n=>n.level==='bad')||null; }
 function sideWord(e){ return e.cameraSide==='both'?'both sides':e.cameraSide?e.cameraSide+' side':''; }
 function filmFlag(e){
   const ns=filmNotesOf(e);
@@ -14122,7 +14114,7 @@ function cmpCaveats(A,B){
   if(A.kind!==B.kind) out.push('One is a photo and one is a video. A photo catches a single instant of the stroke; a video measures the whole of it. Compare like with like.');
   const sa=A.cameraSide, sb=B.cameraSide;
   if(sa&&sb&&sa!==sb&&sa!=='both'&&sb!=='both')
-    out.push('These were filmed from opposite sides. On a bike the drive side reads the knee at the bottom of the stroke about 8–10° low, so part of any gap here can be the camera, not the rider. Film both from the same side.');
+    out.push('These were filmed from opposite sides. On a bike the two sides read the knee at the bottom of the stroke up to 9° apart, so part of any gap here can be the camera, not the rider. Film both from the same side.');
   if((A.position||'')!==(B.position||'')&&A.position&&B.position)
     out.push(`Different positions (${esc(POSITION_NAMES[A.position]||A.position)} and ${esc(POSITION_NAMES[B.position]||B.position)}) have different target ranges.`);
   if(String(A.profileId==null?'':A.profileId)!==String(B.profileId==null?'':B.profileId))

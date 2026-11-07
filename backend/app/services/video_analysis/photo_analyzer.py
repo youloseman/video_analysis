@@ -793,11 +793,6 @@ def _photo_next_steps(
                               "top, or shoot a frame at the bottom of the stroke: the knee there is "
                               "the saddle-height reading, the one fit number everything else is set "
                               "from. Until then the score is your upper body."})
-    if sport == "bike" and camera_side == "right":
-        steps.append({"key": "side", "title": "Film from the non-drive side",
-                      "text": "This photo is from the chainring side. The chainring sits behind the "
-                              "ankle at the bottom of the stroke and disturbs the knee reading; the "
-                              "other side of the bike measures the leg cleanly."})
     steps.append({"key": "clip", "title": "Film a 10-second clip",
                   "text": ("A photo is one instant. A side-on clip measures the whole stroke: the "
                            "knee at the top and the bottom, the hip through the revolution, how "

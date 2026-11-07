@@ -47,8 +47,7 @@ def test_a_run_report_has_the_plan_and_the_numbers():
 
 
 def test_a_bike_report_turns_the_fit_plan_into_the_plan():
-    # The sample is a TT bike entered as road drops: as entered it now draws no plan.
-    html = render_report_html({**example("bike-road"), "cycling_position": "tt_aero"}, {})
+    html = render_report_html(example("bike-road"), {})
     assert "Saddle height" in html and "Lower saddle 5mm" in html
     # In the order the fit plan gives: saddle before the bars.
     assert html.index("Saddle height —") < html.index("Bar position —")
@@ -66,7 +65,7 @@ SMALL = {"id": "framing", "status": "warn", "label": "How much of the frame you 
 
 def test_the_report_says_how_the_clip_was_filmed():
     html = render_report_html(_filmed(CHAIN, SMALL), {})
-    assert "How this clip was filmed" in html and "knee at the bottom of the stroke reads about 8 to 10" in html
+    assert "How this clip was filmed" in html and "reads about 8 to 10" not in html
     assert "Small in the frame: 320 px tall" in html and "right side · chainring side" in html
     # "Keep filming the same way" can't stand under "film the other side".
     assert "Keep filming the same way" not in html

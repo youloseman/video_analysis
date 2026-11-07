@@ -36,7 +36,7 @@ def test_every_photo_ends_with_where_to_go_from_here():
     res = _measure(118.0)                         # right side = chainring toward the camera
     keys = [s["key"] for s in res["next_steps"]]
     assert keys[0] == "pedal", "the saddle-height reading comes first"
-    assert "side" in keys and "clip" in keys and "pros" in keys
+    assert "side" not in keys and "clip" in keys and "pros" in keys
     assert all(s["title"] and s["text"] for s in res["next_steps"])
     # Marked at the bottom of the stroke there is no pedal step to take.
     steps = PA._photo_next_steps("bike", "tt_aero", "bdc", False, "left", {"value": 15.0, "check": False})

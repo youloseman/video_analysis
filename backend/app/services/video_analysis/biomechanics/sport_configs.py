@@ -427,6 +427,7 @@ _RUN_FIELD_TO_BAND: dict[str, str] = {
 
 def reference_bands(
     sport_type: str, cycling_position: str | None = None,
+    camera_side: str | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Bands + citations, keyed by the summary field the client renders.
 
@@ -451,7 +452,10 @@ def reference_bands(
     if sport_type == "bike":
         from app.services.video_analysis.biomechanics.cycling_positions import (
             CYCLING_POSITIONS_META,
+            NON_DRIVE_KNEE_NOTE,
             get_cycling_reference,
+            knee_bdc_band,
+            knee_bdc_high_margin,
         )
         ref = get_cycling_reference(cycling_position)
         # META is keyed by position first, then by metric.
@@ -479,4 +483,10 @@ def reference_bands(
                    or {}).get("source")
             if src:
                 out[field]["source"] = src
+        # Everything that grades this clip reads these bands, so the tile, the
+        # document and the Squad row all carry the side's margin (cycling_positions).
+        if knee_bdc_high_margin(camera_side) and "knee_at_bdc" in out:
+            knee = out["knee_at_bdc"]
+            knee["hi"] = knee_bdc_band(cycling_position, camera_side)[1]
+            knee["source"] = f"{knee['source']} {NON_DRIVE_KNEE_NOTE}" if knee.get("source") else NON_DRIVE_KNEE_NOTE
     return out

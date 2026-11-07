@@ -215,7 +215,7 @@ When we first corrected the points, on the original fifteen photos, the medians 
 - **Do not copy a 15° torso.** Find the lowest angle you can hold for your race distance and still make your power, then test it in training at race effort.
 - **A closed shoulder is fine** if you are not shrugging and you can breathe.
 - **Keep the helmet within the pros' range.** Twenty-eight of the thirty-one Kona pros we could read kept the helmet within 23% of a torso length above the back. If yours rises more, drop the head a little, as far as you can while still seeing the road.
-- **Measure yourself the same way.** Film from the side away from the chainring, camera at hip height, and include the bottom of the pedal stroke. If a point lands off a joint, drag it into place before you read the numbers. Then you can put your own numbers next to the table above.
+- **Measure yourself the same way.** Film side-on, camera at hip height, and include the bottom of the pedal stroke. If a point lands off a joint, drag it into place before you read the numbers. Then you can put your own numbers next to the table above.
 
 ## What we changed in Flapp
 

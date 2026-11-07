@@ -325,9 +325,13 @@ class VideoAnalysisPipeline:
                 {"key": "elbow",  "idx": elbow_idx, "optimal": (85, 100),  "name": "Elbow",     "offset_dir": "up-left"},
             ]
         elif sport_type == "bike":
-            from app.services.video_analysis.biomechanics.cycling_positions import get_cycling_reference
+            from app.services.video_analysis.biomechanics.cycling_positions import (
+                get_cycling_reference,
+                knee_bdc_band,
+            )
             cycling_pos = cycling_position or (summary or {}).get("cycling_position")
             ref = get_cycling_reference(cycling_pos)
+            knee_band = knee_bdc_band(cycling_pos, (summary or {}).get("camera_side"))
             camera_side = (summary or {}).get("camera_side", "left")
 
             if camera_side == "left":
@@ -353,7 +357,7 @@ class VideoAnalysisPipeline:
             # iliac-artery floor); a hip open past it is a comfort trade-off,
             # never red. `open_ok` carries that to the colour.
             configs = [
-                {"key": near_knee_key,     "idx": near_knee_idx,     "optimal": ref["knee_at_bdc"],   "name": "Knee",    "offset_dir": "left"},
+                {"key": near_knee_key,     "idx": near_knee_idx,     "optimal": knee_band,   "name": "Knee",    "offset_dir": "left"},
                 {"key": near_hip_key,      "idx": near_hip_idx,      "optimal": ref["hip_at_tdc"],    "name": "Hip",     "offset_dir": "up-left", "open_ok": True},
                 {"key": "trunk_angle",     "idx": 11,                "optimal": ref["trunk_angle"],    "name": "Trunk",   "offset_dir": "up"},
                 {"key": near_elbow_key,    "idx": near_elbow_idx,    "optimal": ref["elbow_angle"],    "name": "Elbow",   "offset_dir": "up-left"},

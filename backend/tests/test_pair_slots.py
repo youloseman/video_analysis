@@ -172,12 +172,11 @@ class TestWhatTheUploaderSaysBeforeFilming:
         from pathlib import Path
         return (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
 
-    def test_the_bike_pair_form_names_the_drive_side_and_what_each_clip_is_for(self, html):
+    def test_the_bike_pair_form_says_why_two_clips_and_favours_neither(self, html):
         i = html.index("const PAIR_BIKE_NOTE=")
         note = html[i:html.index("\nfunction pairFileOf", i)]
-        assert "drive side" in note and "chainring" in note
-        assert "non-drive" in note
-        assert "saddle verdict" in note
+        assert "each side of the bike" in note and "both the same care" in note
+        assert "non-drive" not in note
 
     def test_the_note_is_shown_for_bike_pairs_only(self, html):
         i = html.index("function renderPairCards(")

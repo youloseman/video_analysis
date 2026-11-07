@@ -1215,28 +1215,6 @@ def analyze_from_frames(
             "separates them best."
         )
 
-    if is_bike and early_camera_side == "right":
-        # Filmed from the DRIVE side: the chainring disc sits exactly on the
-        # near ankle's bottom arc and disturbs the tracking there (the
-        # off-path gate flags noticeably more excluded frames on drive-side
-        # clips at that phase).
-        #
-        # An earlier version of this warning also named a DIRECTION -- "may
-        # read a few degrees high" -- from manual joint marking on gridded
-        # frames. Later measurement withdrew that claim: drive-side clips
-        # actually read LOWER than non-drive clips of the same fit, and the
-        # manual reference itself was unreliable because the hip joint is
-        # inside the pelvis and no view can see it. What survives is that
-        # the bottom of the stroke is the disturbed phase on this side, so
-        # the honest statement is reduced confidence, not a signed offset.
-        quality_warnings.append(
-            "This clip was filmed from the drive side (chainring toward the "
-            "camera). The chainring sits right behind the ankle at the "
-            "bottom of the stroke and disturbs the tracking there, so the "
-            "knee angle at the bottom is the least reliable number on this "
-            "clip. For the most accurate saddle-height check, film from the "
-            "other (non-drive) side."
-        )
     if assess_tracking_stability(tracking_stability) == "severe":
         # This warning renders as an amber banner in the UI and travels to
         # the free tier too (quality_warnings are never gated) -- the
@@ -1958,6 +1936,7 @@ def analyze_from_frames(
         # of the product disagree about what "good" is.
         "reference_bands": reference_bands(
             sport_type, cycling_position if is_bike else None,
+            camera_side=analyzer.camera_side if is_bike else None,
         ),
         # Where the Kona pros sat (kona_field.py): shown beside the bands on
         # aero positions, graded against nowhere. None off the aero bars.

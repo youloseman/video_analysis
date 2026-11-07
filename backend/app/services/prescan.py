@@ -202,8 +202,8 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
     """``verdict`` go / check / no_go, with ``reasons`` worst first.
 
     ``thresholds`` is a coach's own grid (models.coach.clean_capture): the size
-    bars, and whether the chainring side is worth a word. It decides what this
-    check says before a clip is analysed and nothing about what is measured.
+    bars. It decides what this check says before a clip is analysed and nothing
+    about what is measured.
     Not None means a coach is asking, even with an empty grid: the clip is
     usually somebody else's, so the wording does not say "you", and it names no
     pixel target that their own bars may contradict.
@@ -278,18 +278,6 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
                     f"You're a bit small in the frame ({px} px tall, aim for {FRAMING_TARGET_PX}+). "
                     "Closer or zoomed in gives cleaner angles."
                 ),
-            })
-
-    # Facing right in the image puts the rider's right side -- the chainring
-    # side -- toward the lens (a phone's back camera does not mirror).
-    if sport == "bike" and bars.get("drive_side", True):
-        facing = [f["facing"] for f in good if "facing" in f]
-        if facing and sum(1 for x in facing if x > 0) >= 2 / 3 * len(facing):
-            reasons.append({
-                "code": "drive_side", "level": "check",
-                "text": "This looks like the chainring side. From here the chainring hides the ankle "
-                        "at the bottom of the stroke, so the knee reads low. Film the other side "
-                        "for the saddle-height check.",
             })
 
     if any(r["level"] == "no_go" for r in reasons):

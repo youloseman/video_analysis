@@ -155,7 +155,7 @@ def test_no_screen_draws_a_line_or_a_delta_across_two_sides():
 
 @pytest.mark.skipif(not node, reason="node is not installed")
 def test_a_coachs_own_bars_silence_the_filming_notes():
-    script = "const coachOn=()=>true;let COACH={capture:{small_px:300,drive_side:false}};\n" + fn("filmNotesOf") + fn("filmLook") + """
+    script = "const coachOn=()=>true;let COACH={capture:{small_px:300}};\n" + fn("filmNotesOf") + fn("filmLook") + """
     const notes=[{code:'framing',level:'warn',px:320,short:'small'},{code:'drive_side',level:'warn',short:'chain'},{code:'duration',level:'bad',short:'little'}];
     const quiet=filmNotesOf({filmNotes:notes}).map(n=>n.code);
     COACH={};
@@ -163,9 +163,10 @@ def test_a_coachs_own_bars_silence_the_filming_notes():
     const small={filmNotes:[notes[0]]};
     console.log(JSON.stringify({quiet,all,look:filmLook({filmNotes:notes}).code,smallOnly:filmLook(small)}));"""
     got = run_js(script)
-    assert got["quiet"] == ["duration"] and got["all"] == ["framing", "drive_side", "duration"]
+    # A chainring note saved on an old clip stays quiet for everyone.
+    assert got["quiet"] == ["duration"] and got["all"] == ["framing", "duration"]
     # Small in the frame alone is on the row but not under Needs attention.
-    assert got["look"] == "drive_side" and got["smallOnly"] is None
+    assert got["look"] == "duration" and got["smallOnly"] is None
 
 
 @pytest.mark.skipif(not node, reason="node is not installed")

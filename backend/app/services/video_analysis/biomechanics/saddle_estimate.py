@@ -44,6 +44,7 @@ import math
 from typing import Any
 
 from app.services.video_analysis.biomechanics.bilateral import SideGeometry
+from app.services.video_analysis.biomechanics.cycling_positions import knee_bdc_high_margin
 
 DEFAULT_CRANK_MM = 172.5
 # The floor on the knee angle's own uncertainty: the mirror test.
@@ -108,16 +109,18 @@ def estimate_saddle_change(
     if drive_side:
         ci += abs(delta_mm) * DRIVE_SIDE_SCALE_ERR
 
-    in_band = lo <= knee <= hi
+    margin = knee_bdc_high_margin(camera_side)
+    graded_hi = hi + margin
+    in_band = lo <= knee <= graded_hi
     # The distance to the band's nearer EDGE, the smallest change that puts
     # the knee in range; ``delta_mm`` is the change to its middle.
-    edge = lo if knee < lo else (hi if knee > hi else knee)
+    edge = lo if knee < lo else (graded_hi if knee > graded_hi else knee)
     to_band_mm = (_chord(thigh, shin, edge) - d_now) * crank if not in_band else 0.0
     # A direction only where the report's own verdict says the saddle is
     # wrong (cycling_analyzer._assess_saddle_height: 5 deg past the band).
     # Inside that margin the verdict is "acceptable" and a number that says
     # "raise 18 mm" under it would be the page arguing with itself.
-    if in_band or abs(delta_mm) < MATERIAL_MM or (lo - ASSESS_MARGIN_DEG <= knee <= hi + ASSESS_MARGIN_DEG):
+    if in_band or abs(delta_mm) < MATERIAL_MM or (lo - ASSESS_MARGIN_DEG <= knee <= hi + max(ASSESS_MARGIN_DEG, margin)):
         direction = "none"
     else:
         direction = "raise" if delta_mm > 0 else "lower"

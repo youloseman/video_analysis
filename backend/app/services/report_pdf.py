@@ -542,10 +542,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     graded = [r for r in rows if r.get("value") is not None and r.get("band")]
     has_pro = any(r.get("pro") for r in rows)
     if rows:
-        # From the chainring side the knee reads low and the note says not to set
-        # the saddle from this clip, so it can't also be "leave this alone".
-        ok_names = [str(r["label"]).split(" · ")[0] for r in graded if r.get("status") == "good"
-                    and not (r.get("field") == "knee_at_bdc" and "drive_side" in film_codes)]
+        ok_names = [str(r["label"]).split(" · ")[0] for r in graded if r.get("status") == "good"]
     else:
         ok_names = [n for n in (str(s.get("description") or "").split(":")[0].split(" (")[0] for s in strong) if n]
 
@@ -654,10 +651,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     # The same note that says how this clip was filmed decides how the next one
     # should be: "same side" under "film the other side" was two orders at once.
     closer = any(n.get("code") == "framing" and str(n.get("short")).startswith("small") for n in film)
-    how = ("from the other side, so the knee can be read, same camera height, same speed. "
-           "Keep to that side and Flapp shows what moved between clips."
-           if "drive_side" in film_codes else
-           f"same camera height, same side, same speed{', but closer' if closer else ''}. "
+    how = (f"same camera height, same side, same speed{', but closer' if closer else ''}. "
            "Flapp puts the two clips side by side and shows what moved.")
     retest = (f"<div class='retest'><div class='eyebrow' style='color:#2459C2'>Film again</div>"
               f"<p>{_e(when)}: {_e(how)}{' ' + _e(note) if note else ''}</p></div>") if when else ""
