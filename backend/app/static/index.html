@@ -214,6 +214,7 @@
     <a href="#" id="navCompare" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg><span>Compare</span></a>
     <a href="#" id="navProfiles" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>Profiles</span></a>
     <a href="#" id="navAthletes" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span>Athletes</span></a>
+    <a href="#" id="navBatch" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg><span>Upload several clips</span></a>
     <!-- Admin-only: result feedback inbox and the Expert Review queue. -->
     <a href="#" id="navFeedback" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Feedback</span></a>
     <a href="#" id="navExpert" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Reviews</span></a>
@@ -602,6 +603,7 @@
               <span class="cam-d">Or record with the camera</span><span class="cam-m">Record with the camera</span>
             </button>
           </p>
+          <p class="hint hidden" id="upBatch" style="text-align:left">Several clips? <a href="#" onclick="event.preventDefault();openBatch(state.athleteId)">Upload up to 10 at once</a>.</p>
         </div>
 
       <div class="filepreview" id="filepreview">
@@ -1865,9 +1867,10 @@
   <section id="batch" class="hidden" aria-labelledby="batTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Squad</button></div>
     <div class="pagehead">
-      <h2 class="sec" id="batTitle" tabindex="-1">Upload a batch</h2>
+      <h2 class="sec" id="batTitle" tabindex="-1">Upload several clips</h2>
       <span class="ph-lede">Up to 10 clips and photos. Send them and go for a coffee: videos are analysed one by one, we email you when they are done, and you can close this page.</span>
     </div>
+    <p class="hint hidden" id="batNoSquad" style="text-align:left">No athletes yet, so these would be filed as your own clips. <a href="#" onclick="event.preventDefault();openAthletes(true)">Add an athlete first</a>.</p>
     <div class="bat-defaults">
       <div><label for="batAthlete">Whose, unless you say otherwise</label><select id="batAthlete"></select></div>
       <div><label for="batSport">Sport</label><select id="batSport"><option value="bike">Bike</option><option value="run">Run</option></select></div>
@@ -2101,7 +2104,7 @@ const SECTIONS={upload:'uploader', progress:'progress', results:'results', photo
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes', athletedetail:'#navAthletes', batch:'#navHome' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes', athletedetail:'#navAthletes', batch:'#navBatch' };
 const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
@@ -2285,8 +2288,15 @@ function renderQuota(){
 const fileInput=$('#file'), drop=$('#drop'), fprev=$('#filepreview');
 ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('drag')}));
-drop.addEventListener('drop',ev=>{ if(ev.dataTransfer.files[0]) setFile(ev.dataTransfer.files[0]); });
-fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) setFile(fileInput.files[0]); });
+/* A coach's several files are a batch. The single uploader would keep the first
+   and lose the rest without a word. */
+function severalToBatch(files){
+  if(!files||files.length<2||!hasCoachPlan()) return false;
+  openBatch(state.athleteId); batchAdd(files);
+  return true;
+}
+drop.addEventListener('drop',ev=>{ if(severalToBatch(ev.dataTransfer.files)) return; if(ev.dataTransfer.files[0]) setFile(ev.dataTransfer.files[0]); });
+fileInput.addEventListener('change',()=>{ if(severalToBatch(fileInput.files)){ fileInput.value=''; return; } if(fileInput.files[0]) setFile(fileInput.files[0]); });
 $('#change').addEventListener('click',()=>fileInput.click());
 
 /* ============================================================
@@ -3203,7 +3213,7 @@ function syncPairSlot(){
   // `pairmode-hide` is a class only this function touches, so whatever the
   // drop zone / preview / recorder had decided about their own visibility is
   // still there when the rider switches back.
-  [$('#drop'), $('#filepreview'), $('#camRow')].forEach(el=>
+  [$('#drop'), $('#filepreview'), $('#camRow'), $('#upBatch')].forEach(el=>
     el && el.classList.toggle('pairmode-hide', on));
   const hint=$('#sideHint');
   if(hint) hint.innerHTML = on
@@ -10753,6 +10763,9 @@ function renderAuth(){
   // The roster is the Coach plan's. Not shown as a locked link to the rest:
   // the plan has no public price yet (docs/COACH_AREA_PLAN_RU.md, phase 4).
   $('#navAthletes').classList.toggle('hidden', !hasCoachPlan());
+  $('#navBatch').classList.toggle('hidden', !hasCoachPlan());
+  const upBatch=$('#upBatch'); if(upBatch) upBatch.classList.toggle('hidden', !hasCoachPlan());
+  fileInput.multiple=hasCoachPlan();
   // The coach's home is the squad; the label says so.
   const homeLbl=document.querySelector('#navHome span'); if(homeLbl) homeLbl.textContent=hasCoachPlan()?'Squad':'My technique';
   document.body.classList.toggle('coach-plan', hasCoachPlan());
@@ -12167,6 +12180,7 @@ $('#navPricing').addEventListener('click',e=>{ e.preventDefault(); openPricing()
 $('#navCompare').addEventListener('click',e=>{ e.preventDefault(); openCompare(); });
 $('#navProfiles').addEventListener('click',e=>{ e.preventDefault(); openProfiles(); });
 $('#navAthletes').addEventListener('click',e=>{ e.preventDefault(); openAthletes(); });
+$('#navBatch').addEventListener('click',e=>{ e.preventDefault(); openBatch(); });
 $('#navAccount').addEventListener('click',e=>{ e.preventDefault(); openAccount(); });
 $('#botMore').addEventListener('click',e=>{ e.preventDefault(); openNav(); });
 $('#profileSel').addEventListener('change',e=>{
@@ -13352,10 +13366,10 @@ function renderSquadHome(){
       <h2>Your squad starts here</h2>
       <ol class="dk-fix">
         <li><b>Add your athletes.</b> A name is enough; email and a note are optional.</li>
-        <li><b>Get their clips in.</b> Run one on Analyze, drop a batch, send them their link, or have them link their own account with their code.</li>
+        <li><b>Get their clips in.</b> Run one on Analyze, upload several at once, send them their link, or have them link their own account with their code.</li>
         <li><b>Compare them here:</b> everyone on one table, against the range, against their last clip and against the Kona pros.</li>
       </ol>
-      <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes(true)">Add an athlete</button></div>
+      <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes(true)">Add an athlete</button> <button class="btn btn-ghost" type="button" onclick="openBatch()">Upload several clips</button></div>
       <p class="hint" style="text-align:left;margin-top:14px">Your own clips live under <a href="#" onclick="event.preventDefault();state.squadMe=true;openDashboard()">My technique</a>.</p>
     </div>`;
     wireCoachNameAsk();
@@ -13393,7 +13407,7 @@ function renderSquadHome(){
   };
   const feed=coachPool().filter(e=>e.athleteId!=null).slice(0,8);
   host.innerHTML=`${coachNameAsk()}
-    <div class="sq-toolbar"><button class="btn btn-ghost btn-sm" type="button" id="sqBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload a batch</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAthletes()">Manage athletes</button><button class="btn btn-ghost btn-sm" type="button" id="sqCompare" disabled>Compare two</button></div>
+    <div class="sq-toolbar"><button class="btn btn-primary btn-sm" type="button" id="sqBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload several clips</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAthletes()">Manage athletes</button><button class="btn btn-ghost btn-sm" type="button" id="sqCompare" disabled>Compare two</button></div>
     <div class="sq-kpis">${kpi(squad.length,'athletes')}${kpi(clips30,'clips · 30 days')}${kpi(inLine.length,'in the lane')}${kpi(refilm.length,'to film again')}</div>
     ${attention.length?`<div class="sq-att"><h2>Needs attention</h2><ul>${attention.join('')}</ul></div>`:`<div class="sq-att sq-att-ok">Everyone is filmed and in range.</div>`}
     <div class="sq-tablewrap"><table class="sq-table">
@@ -13456,6 +13470,7 @@ function openAthlete(id){
     list.innerHTML=`
       <div class="sq-toolbar">
         <button class="btn btn-primary btn-sm" type="button" id="adAnalyze"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip for ${esc(a.name)}</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="adBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload several</button>
         ${a.linked?'':`<button class="btn btn-ghost btn-sm" type="button" id="adLink">Copy their upload link</button>`}
         <button class="btn btn-ghost btn-sm" type="button" id="adCode">Copy their link code</button>
         <button class="btn btn-ghost btn-sm" type="button" id="adProgress"${ready.length<2?' disabled title="Two clips make a trend"':''}>Progress charts</button>
@@ -13472,6 +13487,7 @@ function openAthlete(id){
       ${notes.length?`<div class="sq-feed"><h2>Your notes</h2><ul class="ad-notes">${notes.map(e=>`<li><button type="button" class="sq-attbtn" data-entry="${esc(e.id)}">${esc(e.label||fmtWhen(e.filmedAt||e.at))}</button><div class="cnote-read">${esc(e.coachNote)}</div></li>`).join('')}</ul></div>`:''}`;
     list.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openHistory(b.dataset.entry)));
     $('#adAnalyze').addEventListener('click',()=>{ state.athleteId=String(a.id); state.profileId=null; if(a.sport==='run'||a.sport==='bike') startSportAnalysis(a.sport); else reset(); renderProfileField(); });
+    $('#adBatch').addEventListener('click',()=>openBatch(a.id));
     const lk=$('#adLink'); if(lk) lk.addEventListener('click',()=>{ track('athlete_link_copied',{}); copyText(athleteLink(a),'Link copied. It needs no account.'); });
     $('#adCode').addEventListener('click',()=>{ track('athlete_code_copied',{}); copyText(a.upload_token,'Code copied. They enter it under Account, My coach.'); });
     $('#adProgress').addEventListener('click',()=>{ state.histAthlete=String(a.id); state.histProfile=null; const r=ready[0]; if(r) state.progressSport=r.sport; openProgress(); });
@@ -13496,10 +13512,16 @@ async function loadLane(){
   try{ const r=await fetch('/me/coach-uploads',{headers:authHeaders()}); if(r.ok){ state.laneItems=(await r.json()).items||[]; } }catch(e){}
   return state.laneItems;
 }
-function openBatch(){
+function openBatch(who){
   if(!hasCoachPlan()){ openAccount(); return; }
+  // Called as a click listener too, so anything but an id means nobody. From the
+  // side menu the last athlete opened must not quietly collect the whole batch.
+  const id=typeof who==='string'||typeof who==='number'?String(who):'';
   // Rebuilt on every visit: the roster may have grown since the last.
-  const def=$('#batAthlete'); if(def) def.innerHTML='';
+  const def=$('#batAthlete'); if(def) def.innerHTML=batchAthleteOptions(id);
+  const sp=batchSportOf(id), s=$('#batSport');
+  if(sp&&s){ s.value=sp; $('#batPosBox').classList.toggle('hidden',sp!=='bike'); }
+  $('#batNoSquad').classList.toggle('hidden',liveAthletes().length>0);
   renderBatch();
   setState('batch',{focus:'#batTitle'});
   loadLane().then(renderLane);
@@ -13595,7 +13617,7 @@ function batchAdd(files){
     b.seq=(b.seq||0)+1;
     b.items.push({key:b.seq,file,kind:photo?'photo':'video',athleteId:def&&def.value||'',sport:sp?sp.value:'bike',state:'ready',msg:''});
   });
-  if(dropped) toast(`A batch holds ${BATCH_MAX} clips and photos. ${dropped} left out.`);
+  if(dropped) toast(`Up to ${BATCH_MAX} clips and photos at a time. ${dropped} left out.`);
   renderBatch();
   batchThumbs();
 }

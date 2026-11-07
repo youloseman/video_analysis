@@ -113,6 +113,35 @@ def test_progress_does_not_open_on_an_empty_mine():
     assert src.index("state.histAthlete=String(top.id)") < src.index("renderAthleteFilter('progAthleteFilter'")
 
 
+def test_several_clips_can_be_found_from_every_place_a_coach_starts():
+    assert 'id="navBatch"' in SPA
+    assert "$('#navBatch').classList.toggle('hidden', !hasCoachPlan())" in SPA
+    home = fn("renderSquadHome")
+    # With no athletes yet the page used to name a batch and offer no way to it.
+    empty = home[home.index("if(!squad.length)"):home.index("const now=Date.now()")]
+    assert 'onclick="openBatch()"' in empty
+    assert 'id="sqBatch"' in home
+    assert "openBatch(a.id)" in fn("openAthlete")
+    assert "openBatch(state.athleteId)" in SPA[SPA.index('id="upBatch"'):SPA.index('id="upBatch"') + 200]
+
+
+def test_several_files_on_analyze_are_not_cut_to_the_first():
+    assert "severalToBatch(ev.dataTransfer.files)" in SPA
+    assert "severalToBatch(fileInput.files)" in SPA
+    assert "fileInput.multiple=hasCoachPlan()" in SPA
+    body = fn("severalToBatch")
+    assert "files.length<2||!hasCoachPlan()" in body
+    assert "batchAdd(files)" in body
+
+
+def test_the_side_menu_does_not_file_a_batch_under_the_last_athlete():
+    body = fn("openBatch")
+    assert "batchAthleteOptions(id)" in body
+    assert "state.athleteId" not in body
+    # A click listener hands it an event, and an event is not somebody.
+    assert "typeof who==='string'||typeof who==='number'" in body
+
+
 def test_a_coach_is_not_sold_notes_on_their_own_athlete():
     assert "!(hasCoachPlan()&&e.athleteId!=null)&&(e.access==='full'" in fn("renderHistoryDetail")
 
