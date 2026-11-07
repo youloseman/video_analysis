@@ -204,6 +204,9 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
     ``thresholds`` is a coach's own grid (models.coach.clean_capture): the size
     bars, and whether the chainring side is worth a word. It decides what this
     check says before a clip is analysed and nothing about what is measured.
+    Not None means a coach is asking, even with an empty grid: the clip is
+    usually somebody else's, so the wording does not say "you", and it names no
+    pixel target that their own bars may contradict.
     """
     from app.services.video_analysis.biomechanics.tracking_diagnostics import (
         framing_bars,
@@ -214,6 +217,7 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
     )
 
     bars = thresholds or {}
+    coach = thresholds is not None
     std_tiny, std_small = framing_bars(sport)
     tiny_px = int(bars.get("tiny_px") or std_tiny)
     small_px = int(bars.get("small_px") or std_small)
@@ -223,7 +227,10 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
     if not good or (not photo and len(good) < 3):
         reasons.append({
             "code": "not_found", "level": "check",
-            "text": "We couldn't find you clearly in a quick look at the clip. "
+            "text": "We couldn't find the athlete clearly in a quick look at the clip. "
+                    "Make sure the whole body is in shot, side-on, with nobody else in the frame."
+                    if coach else
+                    "We couldn't find you clearly in a quick look at the clip. "
                     "Make sure the whole body is in shot, side-on, with nobody else in the frame.",
         })
         out["verdict"] = "check"
@@ -242,6 +249,12 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
             reasons.append({
                 "code": "tiny", "level": "no_go",
                 "text": (
+                    f"Too small in the frame ({px} px tall). Below {tiny_px} px the model starts to lose "
+                    "the athlete. Film closer or zoom in; for a pass by the camera, turn the phone sideways."
+                ) if coach and sport == "run" else (
+                    f"Too small in the frame ({px} px tall). At this size the model mixes up the legs. "
+                    "Film closer or zoom in so the athlete fills most of the frame."
+                ) if coach else (
                     f"You're too small in the frame ({px} px tall). Below {tiny_px} px the model starts "
                     "to lose you. Move closer or zoom in; running past the camera, turn the phone sideways."
                 ) if sport == "run" else (
@@ -254,6 +267,11 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
             reasons.append({
                 "code": "small", "level": "check",
                 "text": (
+                    f"A bit small in the frame ({px} px tall). The numbers usually hold at this size, "
+                    "but the legs can swap. For a pass by the camera, turn the phone sideways."
+                ) if coach and sport == "run" else (
+                    f"A bit small in the frame ({px} px tall). Closer or zoomed in gives cleaner angles."
+                ) if coach else (
                     f"You're a bit small in the frame ({px} px tall). The numbers usually hold at "
                     "this size, but the legs can swap. Running past the camera? Turn the phone sideways."
                 ) if sport == "run" else (

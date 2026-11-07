@@ -585,7 +585,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
   {film_html}
   {f'<div class="coachtext">{markdown(coach)}</div>' if coach else ''}
   {("<div class='eyebrow' style='margin-top:6px'>What the measurements flagged</div>" + findings) if findings else ''}
-  {'' if (coach or findings or film) else '<p class="lead">Nothing in this clip is outside its range. Keep filming the same way and watch the trend.</p>'}
+  {'' if (coach or findings or film or note) else '<p class="lead">Nothing in this clip is outside its range. Keep filming the same way and watch the trend.</p>'}
 </section>"""
 
     prio_html = "".join(

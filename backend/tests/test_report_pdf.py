@@ -71,6 +71,14 @@ def test_the_report_says_how_the_clip_was_filmed():
     assert "Keep filming the same way" not in html
 
 
+def test_a_coachs_note_is_not_followed_by_nothing_to_report():
+    """The coach has just said what to work on; "nothing is outside its range" argues with them."""
+    clean = _filmed({"id": "framing", "status": "good"})
+    assert "Nothing in this clip" in render_report_html(clean, {})
+    html = render_report_html(clean, {"coach_note": "Drop the saddle 5 mm."})
+    assert "Drop the saddle 5 mm." in html and "Nothing in this clip" not in html
+
+
 def test_a_clean_clip_has_no_filming_note():
     assert "How this clip was filmed" not in render_report_html(_filmed({"id": "framing", "status": "good"}), {})
 

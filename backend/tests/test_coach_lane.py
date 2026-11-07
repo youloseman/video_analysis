@@ -478,6 +478,14 @@ def test_the_chainring_warning_can_be_switched_off(every_frame_valid):
     assert [r["code"] for r in on["reasons"]] == ["drive_side"] and off["reasons"] == []
 
 
+def test_a_coach_is_not_called_you_and_gets_no_pixel_target(every_frame_valid):
+    """The clip is usually somebody else's, and "aim for 550+" can contradict their own bars."""
+    for px, grid in ((290, {}), (350, {}), (290, {"tiny_px": 300, "small_px": 400})):
+        text = verdict(px, grid)["reasons"][0]["text"]
+        assert "You're" not in text and "aim for" not in text
+    assert "You're" in verdict(290)["reasons"][0]["text"], "an athlete on their own clip stays addressed"
+
+
 async def test_the_grid_is_bounded_and_survives_a_profile_save(make_user, db):
     coach = await make_user(tier=TIER_COACH)
     for bad in ({"tiny_px": 100, "small_px": 400}, {"tiny_px": 300, "small_px": 250}, {"tiny_px": 900, "small_px": 900}):

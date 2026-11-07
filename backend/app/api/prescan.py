@@ -58,7 +58,8 @@ async def prescan(
     if isinstance(user, User) and has_coach(user.tier):
         from app.api.coach import capture_for
 
-        bars = await capture_for(db, user.id)
+        # {} still says a coach is asking: it changes who the wording addresses.
+        bars = await capture_for(db, user.id) or {}
     return await run_in_threadpool(scan_images, images, photo=(mode == "photo"),
                                    video_w=dims[0], video_h=dims[1], thresholds=bars,
                                    sport_hint=sport if sport in ("run", "bike") else None)

@@ -779,7 +779,7 @@
         <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
           Your clip never reaches an AI service &mdash; only anonymous joint angles do</li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk</li>
+          <span id="retentionLine">Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk</span></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
           No ad trackers in the app, nothing sold &mdash; <a href="/privacy">privacy policy</a></li>
       </ul>
@@ -7409,12 +7409,13 @@ function renderAthletes(){
   }
   const add=$('#athAdd'); if(add) add.disabled = used>=limit;
 }
-function openAthletes(){
+function openAthletes(add){
   if(!auth){ openAuth('login'); return; }
   if(!hasCoachPlan()){ openAccount(); return; }
   loadAthletes().then(renderAthletes);
   renderAthletes();
   setState('athletes',{focus:'#athTitle'});
+  if(add===true) showAthEdit(null);
 }
 function showAthEdit(a){
   const box=$('#athEdit'); if(!box) return;
@@ -10760,6 +10761,10 @@ function renderAuth(){
   // The coach's home is the squad; the label says so.
   const homeLbl=document.querySelector('#navHome span'); if(homeLbl) homeLbl.textContent=hasCoachPlan()?'Squad':'My technique';
   document.body.classList.toggle('coach-plan', hasCoachPlan());
+  const keep=$('#retentionLine');
+  if(keep) keep.textContent=auth&&auth.tier==='coach'
+    ? 'Clips auto-delete after 60 days on your plan; photos are never written to disk'
+    : 'Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk';
   // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
@@ -11719,7 +11724,7 @@ function renderAthleteFilter(hostId, list, opts){
   if(!hasCoachPlan() || !named.length){ host.classList.add('hidden'); host.innerHTML=''; return; }
   const chip=(val,label,n)=>`<button type="button" data-af="${val==null?'':val}"
     aria-pressed="${String(state.histAthlete??'')===String(val??'')}">${esc(label)} · ${n}</button>`;
-  host.innerHTML=(progress?chip(null,'Mine',counts.own):chip(null,'Everyone',histSource().length))
+  host.innerHTML=(progress?(counts.own?chip(null,'Mine',counts.own):''):chip(null,'Everyone',histSource().length))
     + named.map(a=>chip(a.id,a.name,counts[a.id])).join('')
     + (!progress&&counts.own?chip(0,'Mine',counts.own):'');
   host.classList.remove('hidden');
@@ -11863,6 +11868,7 @@ function renderHistoryDetail(e){
   renderCompareNext('cmpNextH', e.id, 'history');
   renderNotesOffer('hdNotesOffer', !e.linkedAthleteId&&(e.access==='full'||!e.locked) ? e.id : null);
   renderCoachActions(e);
+  placeCoachNote(e);
   const hb=$('#hBack'); if(hb) hb.lastChild.textContent=(hasCoachPlan()&&e.athleteId!=null&&athleteName(e.athleteId))?` Back to ${athleteName(e.athleteId)}`:' Back to history';
   const hs=$('#hShareBtn'); if(hs) hs.classList.toggle('hidden', !!e.linkedAthleteId);
   renderHistoryPlan(e);
@@ -12625,7 +12631,17 @@ function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
   // One person's trend: a line through a whole squad describes nobody. A coach
-  // with nobody chosen is looking at their own.
+  // with nobody chosen is looking at their own, unless they have none: then the
+  // page opens on whoever has the most clips, not on an empty "Mine".
+  if(hasCoachPlan()&&state.histAthlete==null&&!loadHist().some(e=>e&&e.athleteId==null)){
+    const counts={}; loadHist().forEach(e=>{ if(e&&e.athleteId!=null) counts[e.athleteId]=(counts[e.athleteId]||0)+1; });
+    (ATHLETES.athletes||[]).forEach(a=>{ if(a.linked&&!a.archived&&a.analyses) counts[a.id]=a.analyses; });
+    const top=(ATHLETES.athletes||[]).filter(a=>counts[a.id]).sort((x,y)=>counts[y.id]-counts[x.id])[0];
+    if(top){
+      state.histAthlete=String(top.id);
+      if(linkedAthlete(top.id)&&!state.linkedHist[String(top.id)]) loadLinkedHist(top.id).then(()=>renderProgress());
+    }
+  }
   renderAthleteFilter('progAthleteFilter', histSource(), {progress:true});
   const pool=(hasCoachPlan()&&state.histAthlete==null)?histSource().filter(e=>e.athleteId==null):histSource();
   const everySide=applyProfileFilter(
@@ -13343,7 +13359,7 @@ function renderSquadHome(){
         <li><b>Get their clips in.</b> Run one on Analyze, drop a batch, send them their link, or have them link their own account with their code.</li>
         <li><b>Compare them here:</b> everyone on one table, against the range, against their last clip and against the Kona pros.</li>
       </ol>
-      <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes()">Add an athlete</button></div>
+      <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes(true)">Add an athlete</button></div>
       <p class="hint" style="text-align:left;margin-top:14px">Your own clips live under <a href="#" onclick="event.preventDefault();state.squadMe=true;openDashboard()">My technique</a>.</p>
     </div>`;
     wireCoachNameAsk();
@@ -13723,21 +13739,40 @@ function confirmOthers(){
 }
 /* What the coach does with a filed report: send it, or see that the athlete
    already has it. Under the score on a saved report. */
+/* A coach watches the clip, then writes: their note follows the overlay video.
+   Everyone else reads it where it has always been, further down the report. */
+function placeCoachNote(e){
+  const note=$('#hdCoachNoteBlock'), video=$('#hdVideos'), hob=$('#hdHobBlock'); if(!note||!video||!hob) return;
+  if(hasCoachPlan()&&e&&e.athleteId!=null) video.after(note); else hob.before(note);
+}
+function goCoachNote(){
+  const ta=$('#hdCoachNoteText'); if(!ta) return;
+  ta.scrollIntoView({behavior:'smooth',block:'center'}); ta.focus({preventScroll:true});
+}
+/* Send reads what is saved, so a note still in the box goes first. */
+async function saveCoachNoteIfTyped(e){
+  const ta=$('#hdCoachNoteText'); if(!ta) return true;
+  const saved=String((findEntry(e.id)||e).coachNote||'').trim(), typed=ta.value.trim();
+  if(typed===saved) return true;
+  return !!(await patchEntry(e.id,{coachNote:typed,coachName:COACH.name||''}));
+}
 async function renderCoachActions(e){
   const host=$('#hdCoachActions'); if(!host) return;
   host.innerHTML='';
   if(!hasCoachPlan()||!e||e.athleteId==null) return;
   const name=athleteName(e.athleteId)||'your athlete';
-  if(e.linkedAthleteId){ host.innerHTML=`<p class="hint" style="text-align:left;margin:10px 0 0">${esc(name)} has this report in their own app. Your note reaches them there.</p>`; return; }
-  if(e.kind!=='video'||e.sellable===false) return;
+  const noteBtn=coachOn()&&!e.coachOrderId?`<button class="btn btn-ghost btn-sm" type="button" onclick="goCoachNote()"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Write a note</button>`:'';
+  if(e.linkedAthleteId){ host.innerHTML=`${noteBtn}<p class="hint" style="text-align:left;margin:10px 0 0">${esc(name)} has this report in their own app. Your note reaches them there.</p>`; return; }
+  if(e.kind!=='video'||e.sellable===false){ host.innerHTML=noteBtn; return; }
   const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(e.athleteId));
   const base='/me/athletes/'+encodeURIComponent(e.athleteId)+'/analyses/'+encodeURIComponent(e.id);
   const draw=url=>{
     // With no address to mail, once the link exists there is nothing left to press.
-    host.innerHTML=`${url&&!(a&&a.email)?'':`<button class="btn btn-ghost btn-sm" type="button" id="hdSend"><svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg> ${a&&a.email?(url?`Send to ${esc(name)} again`:`Send to ${esc(name)}`):'Make a link for '+esc(name)}</button>`}
+    host.innerHTML=`${noteBtn}${url&&!(a&&a.email)?'':`<button class="btn btn-ghost btn-sm" type="button" id="hdSend"><svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg> ${a&&a.email?(url?`Send to ${esc(name)} again`:`Send to ${esc(name)}`):'Make a link for '+esc(name)}</button>`}
       ${url?`<div class="hdlink"><button type="button" class="p-copy" id="hdLinkCopy">copy the link</button> · <button type="button" class="p-copy" id="hdLinkOff">turn it off</button><small>Opens without an account, for 90 days. Under your name and mark.</small></div>`:''}`;
     const sendBtn=$('#hdSend'); if(sendBtn) sendBtn.addEventListener('click',async()=>{
       try{
+        if(!await saveCoachNoteIfTyped(e)){ toast('Could not save your note, so nothing was sent.',{duration:6000}); return; }
         const r=await fetch(base+'/send',{method:'POST',headers:authHeaders()});
         const j=await r.json().catch(()=>({}));
         if(!r.ok){ toast(j.detail||'Could not send it.',{duration:6000}); return; }

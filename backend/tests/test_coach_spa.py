@@ -96,6 +96,23 @@ def test_the_batch_size_matches_the_servers():
     assert f"const BATCH_MAX={MAX_BATCH_FILES};" in SPA
 
 
+def test_send_takes_the_note_still_in_the_box():
+    """Send reads what is saved. A note typed and not saved used to stay behind."""
+    src = fn("renderCoachActions")
+    assert src.index("saveCoachNoteIfTyped(e)") < src.index("base+'/send'")
+
+
+def test_the_empty_squad_button_opens_the_form():
+    assert 'onclick="openAthletes(true)">Add an athlete' in SPA
+    assert "if(add===true) showAthEdit(null);" in fn("openAthletes")
+
+
+def test_progress_does_not_open_on_an_empty_mine():
+    assert "counts.own?chip(null,'Mine',counts.own):''" in fn("renderAthleteFilter")
+    src = fn("renderProgress")
+    assert src.index("state.histAthlete=String(top.id)") < src.index("renderAthleteFilter('progAthleteFilter'")
+
+
 def test_the_camera_reads_the_coachs_bars():
     src = fn("camLiveVerdict")
     assert "COACH.capture" in src
