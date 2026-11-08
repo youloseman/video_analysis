@@ -109,7 +109,7 @@ CLIPS: dict[str, dict[str, object]] = {
 # baseline is recorded and checked under the same switch whatever this
 # machine's environment says, so it pins what users get. Change it together
 # with the Railway variable, then --update.
-RTMPOSE_SPORTS: tuple[str, ...] = ("bike",)
+RTMPOSE_SPORTS: tuple[str, ...] = ("bike", "run")
 
 
 @contextlib.contextmanager
