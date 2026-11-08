@@ -191,6 +191,100 @@ class RTMPoseRefiner(PoseDetector):
         return self._inner.config
 
 
+def assign_near_side(rtm: np.ndarray, rsc: np.ndarray, camera_side: str) -> None:
+    """Swap RTMPose's chains, in place, so its surer leg (and arm) carries the
+    label of the side facing the camera.
+
+    On a still, MediaPipe's far-side points are often nowhere (the TT photo:
+    far knee at visibility 0.01, a quarter of the frame from the leg), so the
+    clip's nearest-label rule can hand the near leg's points to the far label
+    and the far leg's to the near one. The leg in view is the one RTMPose is
+    sure of; the label of the side in view is ``camera_side``.
+    """
+    near, far = ("left", "right") if camera_side == "left" else ("right", "left")
+    for groups in (LEG, ARM):
+        N, F = groups[near], groups[far]
+        if np.nanmean(rsc[F]) > np.nanmean(rsc[N]):
+            rtm[N + F], rsc[N + F] = rtm[F + N].copy(), rsc[F + N].copy()
+
+
+def refine_photo(image_rgb: np.ndarray, landmarks: Any, sport_type: str,
+                 camera_side: str | None = None,
+                 ) -> tuple[list[Any], dict[str, int] | None]:
+    """One still through RTMPose: ``(landmarks, stats)``.
+
+    The rules of a clip (``RTMPoseRefiner._refine``), with two changes a still
+    needs. Chains go to the side in view by RTMPose's own confidence
+    (``assign_near_side``) when ``camera_side`` is given, by nearness to
+    MediaPipe's labels otherwise. And a joint's visibility rises to RTMPose's
+    score where that is the higher.
+
+    On the 30 bike photos in upload/Check (2026-11-08) this measured the leg
+    on 7 that MediaPipe alone had withheld and withheld none it had measured;
+    on gym photos, where MediaPipe's left/right was wrong about half the time
+    (treadmill study), the knee moves by tens of degrees.
+    A photo has no neighbouring frames to borrow a reading from, and the angle
+    functions read nothing under MIN_LANDMARK_VISIBILITY (0.7). The TT race
+    photo that started this (2026-11-08) came out of MediaPipe's low-threshold
+    pass with a leg in plain view at knee 0.66 and ankle 0.61, so the report
+    said the leg could not be measured; RTMPose put them at 0.79 and 0.90. On
+    a photo a joint is now read when either model is 0.7 sure of it. Clips
+    keep MediaPipe's visibility: the golden baselines pin them.
+
+    ``stats`` is None when nothing ran (sport not switched on, no model, a
+    failure) and the landmarks come back as given. Never raises.
+    """
+    from types import SimpleNamespace
+
+    from app.core.config import settings
+
+    given = list(landmarks)
+    if sport_type not in settings.rtmpose_sports:
+        return given, None
+    path = settings.rtmpose_model_path
+    if not path.is_file():
+        return given, None
+    try:
+        session = load_session(path)
+        h, w = image_rgb.shape[:2]
+        mp_px = np.array([[float(lm.x) * w, float(lm.y) * h] for lm in given], dtype=np.float64)
+        ok = np.isfinite(mp_px).all(1)
+        if ok.sum() < 5:
+            return given, None
+        x0, y0 = mp_px[ok].min(0)
+        x1, y1 = mp_px[ok].max(0)
+        if x1 - x0 < 2 or y1 - y0 < 2:
+            return given, None
+        kps, sc = predict(session, image_rgb, (x0, y0, x1, y1))
+    except Exception as e:  # noqa: BLE001 -- MediaPipe's pose still analyses
+        logger.warning("RTMPOSE_PHOTO_FAILED", err=str(e))
+        return given, None
+    rtm = np.full((33, 2), np.nan)
+    rsc = np.zeros(33)
+    for b, hh in BLAZE_FROM_HALPE.items():
+        rtm[b], rsc[b] = kps[hh], sc[hh]
+    if camera_side in ("left", "right"):
+        assign_near_side(rtm, rsc, camera_side)
+    else:
+        assign_to_mediapipe(rtm, rsc, mp_px)
+    out = given
+    moved = lifted = 0
+    for b in BLAZE_FROM_HALPE:
+        if rsc[b] >= MIN_SCORE and np.isfinite(rtm[b]).all():
+            lm = out[b]
+            vis = getattr(lm, "visibility", 1.0)
+            vis = 1.0 if vis is None else float(vis)
+            new_vis = max(vis, float(rsc[b]))
+            lifted += int(new_vis > vis)
+            moved += 1
+            out[b] = SimpleNamespace(
+                x=float(rtm[b][0] / w), y=float(rtm[b][1] / h),
+                z=getattr(lm, "z", 0.0), visibility=new_vis,
+                presence=getattr(lm, "presence", None),
+            )
+    return out, {"moved": moved, "lifted": lifted}
+
+
 def maybe_refine(inner: PoseDetector, sport_type: str) -> PoseDetector:
     """``inner`` wrapped in RTMPose when the sport is switched on and the model
     loads; ``inner`` itself otherwise. Never raises."""

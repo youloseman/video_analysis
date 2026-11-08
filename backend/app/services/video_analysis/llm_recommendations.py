@@ -319,6 +319,16 @@ def hip_over_bb_prompt_line(hob: Any) -> str:
     pro, ag = f.get("pro") or {}, f.get("age_group") or {}
     ref = ("against the wheel axles" if hob.get("ref") == "axles"
            else "against the frame edge (phone assumed level)")
+    if hob.get("aero") is False:
+        # A road or upright position: the field was read on aero bars, where the
+        # hip sits further forward by design (biomechanics/hip_over_bb).
+        return (
+            f"- Hip over the crank axle (athlete marked the axle): {hob['angle_deg']} deg from "
+            f"horizontal on the back side, {ref}. This is NOT an aero position: the only field "
+            "we hold (Kona 2026) was read on aero bars and does not apply. Do not compare this "
+            "rider to the Kona pros or age-groupers, and do not prescribe a saddle fore-aft move "
+            "from this number; it is for comparing the rider's own setups over time."
+        )
     return (
         f"- Hip over the crank axle (athlete marked the axle): {hob['angle_deg']} deg from "
         f"horizontal on the back side, {ref}. Kona 2026 field: pros median {pro.get('median')} "

@@ -249,3 +249,90 @@ def test_the_session_does_not_spawn_a_thread_per_visible_core(monkeypatch, tmp_p
     R.load_session(tmp_path / "m.onnx")
     assert seen["opts"].intra_op_num_threads == R.INTRA_OP_THREADS == 4
     assert seen["opts"].inter_op_num_threads == 1
+
+
+# --- a still (2026-11-08) -----------------------------------------------------
+# A TT race photo came out of MediaPipe's low-threshold pass with the near knee at
+# 0.66 and the ankle at 0.61: under 0.7, so "the leg could not be measured" on a
+# leg in plain view. RTMPose had them at 0.79 and 0.90.
+
+def _photo_landmarks(vis_knee=0.66, vis_ankle=0.61):
+    pts = np.nan_to_num(_mp_points(), nan=200.0)
+    out = []
+    for i, (x, y) in enumerate(pts):
+        v = 0.95
+        if i == 26:
+            v = vis_knee
+        if i == 28:
+            v = vis_ankle
+        out.append(SimpleNamespace(x=x / W, y=y / H, z=0.1 * i, visibility=v, presence=0.9))
+    return out
+
+
+def _photo_scores():
+    sc = np.full(26, 0.9)
+    sc[R.BLAZE_FROM_HALPE[26]] = 0.79      # right knee
+    sc[R.BLAZE_FROM_HALPE[28]] = 0.90      # right ankle
+    sc[R.BLAZE_FROM_HALPE[15]] = 0.2       # left wrist: unsure, keeps MediaPipe
+    return sc
+
+
+def _photo_on(monkeypatch, tmp_path, sports=("bike",), shift=6.0, scores=None):
+    _settings(monkeypatch, sports, tmp_path)
+    (tmp_path / "rtmpose-m_body7_halpe26.onnx").write_bytes(b"x")
+    monkeypatch.setattr(R, "load_session", lambda p: object())
+    rtm = np.nan_to_num(_mp_points(), nan=200.0).copy()
+    rtm[26] += (shift, 0.0)                # RTMPose puts the knee a little aside
+    sc = _photo_scores() if scores is None else scores
+    monkeypatch.setattr(R, "predict", lambda session, img, box: (_halpe_from(rtm), sc))
+    return rtm
+
+
+def test_a_photo_takes_rtmposes_xy_and_lifts_visibility_to_its_score(monkeypatch, tmp_path):
+    rtm = _photo_on(monkeypatch, tmp_path)
+    given = _photo_landmarks()
+    out, stats = R.refine_photo(IMG, given, "bike")
+    assert stats and stats["moved"] == 15 and stats["lifted"] == 2
+    knee, ankle = out[26], out[28]
+    assert knee.x == pytest.approx(rtm[26][0] / W) and knee.visibility == pytest.approx(0.79)
+    assert ankle.visibility == pytest.approx(0.90)
+    assert knee.z == given[26].z and knee.presence == 0.9            # depth and presence stay MediaPipe's
+    assert out[11].visibility == pytest.approx(0.95)                 # a sure joint is not lowered to 0.9
+    assert out[15] is given[15] and out[0] is given[0]               # unsure wrist, and the face, untouched
+    from app.services.video_analysis.biomechanics.angle_calculator import MIN_LANDMARK_VISIBILITY
+    assert knee.visibility >= MIN_LANDMARK_VISIBILITY > given[26].visibility
+
+
+def test_on_a_photo_rtmposes_surer_leg_is_the_leg_facing_the_camera(monkeypatch, tmp_path):
+    # MediaPipe's far (left) knee is nowhere near the leg, so by nearness RTMPose's
+    # sure right leg would go to the LEFT label. The camera sees the right side:
+    # the sure chain is the right leg, whatever MediaPipe's labels say.
+    rtm = _photo_on(monkeypatch, tmp_path)          # MediaPipe's right knee 6 px off RTMPose's
+    given = _photo_landmarks()
+    given[25] = SimpleNamespace(x=rtm[26][0] / W, y=rtm[26][1] / H, z=0, visibility=0.01, presence=0.9)
+    given[27] = SimpleNamespace(x=rtm[28][0] / W, y=rtm[28][1] / H, z=0, visibility=0.03, presence=0.9)
+    sc = _photo_scores()
+    sc[R.BLAZE_FROM_HALPE[25]], sc[R.BLAZE_FROM_HALPE[27]] = 0.38, 0.57   # RTMPose's left leg: unsure
+    monkeypatch.setattr(R, "predict", lambda session, img, box: (_halpe_from(rtm), sc))
+    out, _ = R.refine_photo(IMG, list(given), "bike", camera_side="right")
+    assert out[26].visibility == pytest.approx(0.79) and out[28].visibility == pytest.approx(0.90)
+    assert out[26].x == pytest.approx(rtm[26][0] / W)
+    out, _ = R.refine_photo(IMG, list(given), "bike", camera_side="left")
+    assert out[25].visibility == pytest.approx(0.79)                      # the sure chain follows the label in view
+
+
+def test_a_photo_is_left_alone_when_off_without_a_model_or_on_a_failure(monkeypatch, tmp_path):
+    given = _photo_landmarks()
+    _settings(monkeypatch, (), tmp_path)
+    out, stats = R.refine_photo(IMG, given, "bike")
+    assert stats is None and out == given
+    _photo_on(monkeypatch, tmp_path, sports=("run",))
+    assert R.refine_photo(IMG, given, "bike")[1] is None
+    _photo_on(monkeypatch, tmp_path)
+
+    def broken(*_a):
+        raise RuntimeError("no")
+
+    monkeypatch.setattr(R, "predict", broken)
+    out, stats = R.refine_photo(IMG, given, "bike")
+    assert stats is None and out == given

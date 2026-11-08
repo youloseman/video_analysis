@@ -66,7 +66,7 @@ def test_the_crank_gives_the_centimetres_and_the_default_is_labelled():
     assert far["scale_source"] == "typical" and far["cm_per_deg"] == HOB.CM_PER_DEG_TYPICAL
     # pedal 0.2 below, hip 0.8 above: 0.8/0.2*17.5 = 70 cm, a rider.
     ok = HOB.hip_over_bb((0.47, 0.0), {"C": (0.5, 0.8), "P": (0.5, 1.0)}, aspect=1.0,
-                         crank_length_mm=175.0)
+                         crank_length_mm=175.0, cycling_position="triathlon")
     assert ok["scale_source"] == "crank_given" and ok["crank_to_hip_cm"] == pytest.approx(70.1, abs=0.2)
     assert ok["cm_per_deg"] == pytest.approx(70.1 * 3.14159 / 180, abs=0.01)
     assert ok["gap_pro_cm"] == pytest.approx(ok["gap_pro_deg"] * ok["cm_per_deg"], abs=0.1)
@@ -209,3 +209,38 @@ def test_the_photo_helper_reads_the_pose_blob():
     out = _photo_bike_auto(buf.tobytes(), {"landmarks": lm, "camera_side": "right"})
     assert out and out["method"] == "chainring"
     assert out["C"][0] * 1200 == pytest.approx(c[0], abs=8)
+
+
+# --- a road position (2026-11-08): the number, never the Kona comparison -----
+# The field was read on aero bars; a rider on the hoods measured against it read
+# "5 deg behind the pros" for sitting on a road bike.
+
+def test_a_road_position_gets_the_number_and_no_kona_comparison():
+    out = HOB.hip_over_bb((0.44, 0.2), {"C": (0.5, 1.0)}, aspect=1.0, cycling_position="road_hoods")
+    assert out["aero"] is False and out["angle_deg"] > 0
+    for k in ("gap_pro_deg", "gap_pro_cm", "gap_age_group_deg", "in_pro_middle_half", "in_age_group_middle_half"):
+        assert out[k] is None, k
+    assert out["field"]["pro"]["median"] == 88.0      # the field rides along, labelled
+    aero = HOB.hip_over_bb((0.44, 0.2), {"C": (0.5, 1.0)}, aspect=1.0, cycling_position="tt_aero")
+    assert aero["aero"] is True and aero["gap_pro_deg"] is not None
+
+
+def test_the_coach_prompt_and_the_pdf_do_not_place_a_road_rider_in_the_kona_field():
+    from app.services.report_pdf import render_report_html
+    from app.services.video_analysis.llm_recommendations import hip_over_bb_prompt_line
+
+    road = HOB.hip_over_bb((0.44, 0.2), {"C": (0.5, 1.0)}, aspect=1.0, cycling_position="road_hoods")
+    tri = HOB.hip_over_bb((0.44, 0.2), {"C": (0.5, 1.0)}, aspect=1.0, cycling_position="triathlon")
+    line = hip_over_bb_prompt_line(road)
+    assert "does not apply" in line and "vs the pro median" not in line and str(road["angle_deg"]) in line
+    assert "vs the pro median" in hip_over_bb_prompt_line(tri)
+
+    def res(hob, position):
+        return {"sport_type": "bike", "technique_score": 90, "cycling_position": position,
+                "sport_specific_metrics": {"knee_at_bdc": 140.0, "hip_over_bb": hob},
+                "reference_bands": {"knee_at_bdc": {"lo": 135, "hi": 145}}, "hip_over_bb": hob}
+    html = render_report_html(res(road, "road_hoods"), {})
+    assert "Kona pros" not in html and "not a reference for a road position" in html
+    assert f"{road['angle_deg']}°" in html
+    html = render_report_html(res(tri, "triathlon"), {})
+    assert "the Kona pros" in html and "not a reference" not in html

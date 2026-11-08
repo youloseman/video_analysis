@@ -2471,6 +2471,27 @@ def analyze_photo(
     # collect the warnings that apply to any still (see detect_pose_in_image).
     pose_result = detect_pose_in_image(image_bytes)
 
+    # 3b. RTMPose places the body joints, where the sport is switched on
+    # (VA_RTMPOSE_SPORTS, as for clips). The refined pose is what is measured
+    # AND what is signed into the pose blob, so a drag-and-re-measure starts
+    # from the same body the report did. See detectors/rtmpose_refiner.
+    if sport in ("bike", "run"):
+        import cv2
+
+        from app.services.video_analysis.detectors.rtmpose_refiner import refine_photo
+
+        refined, stats = refine_photo(
+            cv2.cvtColor(pose_result["image"], cv2.COLOR_BGR2RGB),
+            pose_result["normalized"], sport,
+            # The bike reads the camera-side leg by label, so RTMPose's surer
+            # leg takes that label. The run names its legs by position after
+            # this (_name_run_legs) and keeps the clip's nearest-label rule.
+            camera_side=pose_result["camera_side"] if sport == "bike" else None,
+        )
+        if stats:
+            pose_result = {**pose_result, "normalized": refined}
+            logger.info("PHOTO_RTMPOSE_REFINED", sport=sport, **stats)
+
     # 4-8. Everything measured, from the pose alone -- see analyze_from_pose.
     response = analyze_from_pose(
         pose_result["image"], pose_result["world"], pose_result["normalized"],

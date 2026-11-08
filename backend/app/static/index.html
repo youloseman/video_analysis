@@ -1576,6 +1576,7 @@
           <button class="btn btn-ghost btn-sm" type="button" id="hdLabelSave">Save</button>
         </div>
         <div class="hdcoach" id="hdCoachActions"></div>
+        <div class="hdcoach" id="hdPrintBtnHost"></div>
         <button class="btn btn-primary btn-sm sharebtn" id="hShareBtn" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="hShareBtnTxt">Share result</span>
         </button>
@@ -4971,6 +4972,10 @@ function renderHob(res, which, opts){
   const h=res.hip_over_bb||null, locked=!!res.locked||!full,
         canMark=(which==='history'?!!opts.canMark:!!state.file)&&!locked, aero=['tt_aero','triathlon'].includes(res.cycling_position);
   const intro=`The one number the Kona 2026 pros and age-groupers differed on: where the hip sits over the crank axle. Pros 88°, age-groupers 85° — about 3° or 4–5 cm further forward (${esc('31 pros, 68 age-groupers')}, every point placed by hand). Knee and hip angles did not differ.`;
+  // A road or upright position: the field was read on aero bars, where the hip
+  // sits further forward by design. The number stands on its own.
+  const roadIntro=`Where the hip sits over the crank axle, measured from the back. Our only field (Kona 2026: 31 pros, 68 age-groupers) was read on aero bars, where the hip sits further forward by design, so there is no road field to place you in yet. The number is for comparing your own setups — same side, same camera spot.`;
+  const introTxt=aero?intro:roadIntro;
   let body='';
   if(h){
     const gap=h.gap_pro_cm, ahead=h.gap_pro_deg>0, ref=h.ref==='axles'
@@ -4981,18 +4986,19 @@ function renderHob(res, which, opts){
     body=`<div class="hob-hero"><div class="hob-num">${h.angle_deg}<small>°</small></div>
         <div class="hob-cap">over the crank axle, from the back<br><span class="hint">${h.hip_source==='video_median'?`hip = median of ${h.frames} frames`:'from this one frame'} · repeatability ±${h.repeatability_deg}°</span></div></div>
       ${aero?hobScale(h):''}
-      <p class="hob-lead">${aero?`You sit <b>${Math.abs(gap).toFixed(1)} cm ${ahead?'ahead of':'behind'}</b> the Kona pros' middle (88°) — ${hobPlace(h)}.`:`Measured at ${h.angle_deg}°; the Kona field below was read on aero bars, so it is shown for context only.`}</p>
+      <p class="hob-lead">${aero?`You sit <b>${Math.abs(gap).toFixed(1)} cm ${ahead?'ahead of':'behind'}</b> the Kona pros' middle (88°) — ${hobPlace(h)}.`:`Measured at ${h.angle_deg}°. No road field yet: compare it between your own setups, filmed from the same side.`}</p>
       <ul class="hob-notes"><li>${{auto_chainring:'Crank axle found automatically on the chainring.',auto_wheels:'Crank axle placed from the wheels, not checked by hand — worth a look.',auto_guess:'Crank axle estimated, not found — mark it again for a real reading.',user:'Crank axle placed by you.'}[h.c_source]||'Crank axle placed by you.'} ${canMark?'If it is off, tap Mark again and drag it.':''}</li><li>${ref}</li><li>${scale}</li></ul>
       <details class="hob-more"><summary>What this does and doesn't mean</summary>
-        <p>${intro}</p>
-        <p>It is a field, not a target: it says where the fastest riders sat, not where you must. The pros also sat flatter, and further forward usually goes with lower and closer to the bars. Moving the saddle forward moves the hip about 1:1 — but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again. <a href="${esc(h.article||'/academy/kona-2026-pro-bike-positions')}">How we measured the Kona field →</a></p>
+        <p>${introTxt}</p>
+        ${aero?`<p>It is a field, not a target: it says where the fastest riders sat, not where you must. The pros also sat flatter, and further forward usually goes with lower and closer to the bars. Moving the saddle forward moves the hip about 1:1 — but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again. <a href="${esc(h.article||'/academy/kona-2026-pro-bike-positions')}">How we measured the Kona field →</a></p>`
+        :`<p>Moving the saddle forward moves the hip about 1:1 — but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again from the same spot.</p>`}
       </details>
       ${canMark?`<div class="aero-foot"><button class="btn btn-ghost btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark again</button></div>`:''}`;
   } else if(locked){
-    body=`<p class="hob-lead">${intro}</p>
+    body=`<p class="hob-lead">${introTxt}</p>
       <p class="hint" style="text-align:left"><span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Full plan</span> Mark the crank axle on your ${which==='photo'?'photo':'clip'} and get your own number against the field. <a href="#" onclick="openPricing();return false">See plans →</a></p>`;
   } else {
-    body=`<p class="hob-lead">${intro}</p>
+    body=`<p class="hob-lead">${introTxt}</p>
       ${canMark?`<div class="aero-foot"><button class="btn btn-primary btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark the crank axle</button>
         <span class="hint" style="margin-left:10px">One drag on your ${which==='photo'?'photo':'clip'}; the pedal and wheel axles are optional.</span></div>`
         :(which==='history'
@@ -11058,6 +11064,10 @@ function init(){
     const clean=()=>setUrl(location.pathname+location.search);
     if(location.hash==='#progress'){ clean(); openProgress(); }
     else if(location.hash==='#history'){ clean(); openHistoryView(); }
+    // A coach's note mail lands on the one report it was written on. Waits
+    // for the history (checkAuth loads it); a report not held falls back to
+    // the list rather than to a blank screen.
+    else if(location.hash.startsWith('#history=')){ const id=decodeURIComponent(location.hash.slice(9)); clean(); authReady.then(()=>{ if(!auth) openAuth('login'); else if(findEntry(id)) openHistory(id); else openHistoryView(); }); }
     else if(location.hash==='#home'){ clean(); }   // dashboard auto-opens in checkAuth when signed in
     else if(location.hash==='#login'){ clean(); openAuth('login'); }
     // The password-reset email lands here. The token rides in the fragment
@@ -11877,6 +11887,7 @@ function renderHistoryDetail(e){
   // A coach reading their athlete's clip is not a customer for somebody else's notes.
   renderNotesOffer('hdNotesOffer', !e.linkedAthleteId&&!(hasCoachPlan()&&e.athleteId!=null)&&(e.access==='full'||!e.locked) ? e.id : null);
   renderCoachActions(e);
+  renderHistoryPdf(e);
   placeCoachNote(e);
   const hb=$('#hBack'); if(hb) hb.lastChild.textContent=(hasCoachPlan()&&e.athleteId!=null&&athleteName(e.athleteId))?` Back to ${athleteName(e.athleteId)}`:' Back to history';
   const hs=$('#hShareBtn'); if(hs) hs.classList.toggle('hidden', !!e.linkedAthleteId);
@@ -11886,6 +11897,16 @@ function renderHistoryDetail(e){
   renderHistoryKinogram(e);
   renderHistoryExport(e);
   renderHistoryUpsell(e);
+}
+/* The Full plan's PDF from a saved report. It was only offered on the fresh
+   result (renderPrintable); a saved analysis had Share, the card, and no way
+   to the report (2026-11-08). Same server page, same plan; a linked athlete's
+   entry is read at the athlete's level, which the server enforces. */
+function renderHistoryPdf(e){
+  const host=$('#hdPrintBtnHost'); if(!host) return;
+  const ok=!!e&&e.kind==='video'&&!!e.jobId&&e.access==='full'&&hasFullPlan();
+  printEntryId=ok?e.id:null;
+  host.innerHTML=ok?printButtonHtml():'';
 }
 /* The session label on a saved report: own entries only (a linked athlete's
    entry is theirs to label). Saved through the usual upsert. */

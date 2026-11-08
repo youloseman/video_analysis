@@ -343,7 +343,8 @@ def _mail_note(athlete: User, coach_name: str, row: Analysis) -> None:
     base = settings.public_base_url or "https://getflapp.com"
     noun = "ride" if row.sport == "bike" else "run"
     subject = f"{coach_name} left a note on your {noun} report"
-    url = f"{base}/app#history"
+    # The one report, not the list: the app opens it from the fragment.
+    url = f"{base}/app#history={row.client_id}"
     text = (
         f"{coach_name} read your {noun} analysis on Flapp and left a note on the report.\n\n"
         f"Open it: {url}\n\n"

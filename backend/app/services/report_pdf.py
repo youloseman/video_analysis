@@ -797,11 +797,19 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     hob = (result.get("sport_specific_metrics") or {}).get("hip_over_bb") or result.get("hip_over_bb")
     hob_html = ""
     if isinstance(hob, dict) and hob.get("angle_deg") is not None:
-        gap = hob.get("gap_pro_cm")
-        where = (f"{abs(gap):.1f} cm {'ahead of' if (hob.get('gap_pro_deg') or 0) > 0 else 'behind'} the Kona pros' middle"
-                 if isinstance(gap, (int, float)) else "")
+        if hob.get("aero") is False:
+            # The field was read on aero bars; a road position sits further back
+            # by design (biomechanics/hip_over_bb), so no comparison is drawn.
+            text = ("Measured from the back, over the crank axle. The Kona 2026 field was read on "
+                    "aero bars, so it is not a reference for a road position; use this number to "
+                    "compare your own setups.")
+        else:
+            gap = hob.get("gap_pro_cm")
+            where = (f"{abs(gap):.1f} cm {'ahead of' if (hob.get('gap_pro_deg') or 0) > 0 else 'behind'} the Kona pros' middle"
+                     if isinstance(gap, (int, float)) else "")
+            text = f"Measured from the back, over the crank axle. {where}. Pros 88°, age-groupers 85°."
         hob_html = (f"<div class='hob'><div class='big'>{_e(hob['angle_deg'])}°</div><div><h3>Hip over the crank</h3>"
-                    f"<p style='margin:0'>Measured from the back, over the crank axle. {_e(where)}. Pros 88°, age-groupers 85°.</p></div></div>")
+                    f"<p style='margin:0'>{_e(text)}</p></div></div>")
     legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='3' width='24' height='4' fill='#DDEFE3' stroke='#2E9E5B'/></svg></i>Healthy range</span>"
               "<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14181F'/></svg></i>You</span>"
               + ("<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14294B' opacity='.6'/></svg></i>Kona 2026 pros' median</span>" if has_pro else "")

@@ -263,3 +263,18 @@ async def test_somebody_already_linked_keeps_the_way_to_unlink(make_user, db):
     await link(db, andy, a["upload_token"])
     assert (await api.get_coach_link(andy, db))["available"] is True
 
+
+
+def test_the_note_mail_opens_the_one_report(monkeypatch):
+    """The mail used to land on the History list (2026-11-08): the athlete had to find
+    the report. It names the report's id in the fragment; the app opens it from there."""
+    from types import SimpleNamespace
+
+    from app.services import notify
+
+    sent: dict = {}
+    monkeypatch.setattr(notify, "send_email",
+                        lambda to, subject, text, html: sent.update(to=to, subject=subject, text=text, html=html))
+    api._mail_note(SimpleNamespace(email="a@example.com"), "Coach K", SimpleNamespace(sport="bike", client_id="h123abc"))
+    assert sent["to"] == "a@example.com" and "Coach K" in sent["subject"]
+    assert "/app#history=h123abc" in sent["text"] and "/app#history=h123abc" in sent["html"]

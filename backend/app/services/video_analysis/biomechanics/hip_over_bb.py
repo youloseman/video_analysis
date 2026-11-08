@@ -19,6 +19,13 @@ rocks through the stroke, and one frame is one phase. On a photo it is that
 frame's hip. Both are measured against the same field, which was read from
 single dead-centre frames; within-rider repeatability in the study was
 +/-1.4 deg and the output carries that.
+
+The field is an AERO field: every rider in it sat on extensions, where the
+hip is further forward by design (a 78-80 deg seat tube against a road
+bike's 72-74). A rider on the hoods measured against it reads "5 deg behind
+the pros" for sitting on a road bike (2026-11-08). So on a road or upright
+position the comparison fields are None: the angle stands on its own, for
+the rider's own setups over time. A road field needs its own study.
 """
 from __future__ import annotations
 
@@ -149,6 +156,7 @@ def hip_over_bb(
                 crank_to_hip_cm = None
 
     pro, ag = FIELD["pro"], FIELD["age_group"]
+    aero = cycling_position in ("tt_aero", "triathlon")
     out: dict[str, Any] = {
         "angle_deg": round(angle, 1),
         "ref": ref,
@@ -161,15 +169,17 @@ def hip_over_bb(
         "cm_per_deg": cm_per_deg,
         "scale_source": scale_source,
         "crank_to_hip_cm": None if crank_to_hip_cm is None else round(crank_to_hip_cm, 1),
-        "gap_pro_deg": round(angle - pro["median"], 1),
-        "gap_pro_cm": round((angle - pro["median"]) * cm_per_deg, 1),
-        "gap_age_group_deg": round(angle - ag["median"], 1),
-        "in_pro_middle_half": pro["q1"] <= angle <= pro["q3"],
-        "in_age_group_middle_half": ag["q1"] <= angle <= ag["q3"],
+        # The comparison is only made where the field applies (see the module
+        # docstring); the field itself rides along so a reader can say why not.
+        "gap_pro_deg": round(angle - pro["median"], 1) if aero else None,
+        "gap_pro_cm": round((angle - pro["median"]) * cm_per_deg, 1) if aero else None,
+        "gap_age_group_deg": round(angle - ag["median"], 1) if aero else None,
+        "in_pro_middle_half": (pro["q1"] <= angle <= pro["q3"]) if aero else None,
+        "in_age_group_middle_half": (ag["q1"] <= angle <= ag["q3"]) if aero else None,
         "field": {k: dict(v) for k, v in FIELD.items()},
         "diff": dict(DIFF_DEG),
         "repeatability_deg": REPEATABILITY_DEG,
-        "aero": cycling_position in ("tt_aero", "triathlon"),
+        "aero": aero,
         "source": SOURCE,
         "article": ARTICLE,
     }
