@@ -177,7 +177,7 @@ def test_json_carries_the_same_rules_as_machine_readable_fields():
     assert "180 = fully straight limb" in payload["conventions"]["joint_angles"]
     assert payload["conventions"]["not_measured"]
     assert payload["conventions"]["missing_context"]
-    assert payload["reference_ranges"]["cadence_spm"] == [170, 190]
+    assert payload["reference_ranges"]["cadence_spm"] == [170, 225]
     json.dumps(payload)          # must be serializable as-is
 
 

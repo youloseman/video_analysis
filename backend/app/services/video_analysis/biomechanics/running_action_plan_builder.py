@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.video_analysis.biomechanics.sport_configs import (
+    CADENCE_TYPICAL,
     KNEE_SWING_TYPICAL,
     RUNNING_REFERENCE,
 )
@@ -51,7 +52,9 @@ RUNNING_ACADEMY_SLUGS: dict[str, str] = {
 # Optimal ranges  (from RUNNING_REFERENCE in sport_configs.py)
 # ---------------------------------------------------------------------------
 _RANGES: dict[str, tuple[float, float]] = {
-    "cadence":      (170, 190),   # steps per minute
+    # steps per minute. Typical band, not the one-sided display band: the
+    # severity scale follows its width, and _FAULT_DIRECTION makes high benign.
+    "cadence":      CADENCE_TYPICAL,
     "overstride":   (0.0, 0.15),  # foot-ahead / leg-length at contact (lower better)
     "vertical_osc": (6, 10),      # centimeters
     # Taken from the shared reference rather than copied. This was a hardcoded
@@ -209,7 +212,7 @@ def _boundary_tolerance(metric: str | None = None) -> float:
 # ---------------------------------------------------------------------------
 RUNNING_DRILLS: dict[str, dict[str, Any]] = {
     "cadence_low": {
-        "problem": "Low cadence ({value} spm, optimal 170-190)",
+        "problem": "Low cadence ({value} spm, typical 170 or more)",
         "drill": "High Knees Drill",
         "instruction": (
             "Run in place with high knee lift 3x30 seconds. "

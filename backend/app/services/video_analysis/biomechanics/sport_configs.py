@@ -32,6 +32,10 @@ from typing import Any
 # and the plan's severity scale with band width, and the 30-100 display band
 # would make a knee that does not fold cost 3.5x less than it did.
 KNEE_SWING_TYPICAL = (80, 100)
+# The cadence band the score was graded on before it became one-sided (see
+# RUNNING_REFERENCE["cadence_spm"]). Kept for the WIDTH, like the knee above:
+# the 170-225 display band would make a low cadence cost ~3x less.
+CADENCE_TYPICAL = (170, 190)
 
 RUNNING_REFERENCE = {
     # deg lean from vertical, SIGNED by the direction of travel: positive =
@@ -53,7 +57,13 @@ RUNNING_REFERENCE = {
     "trunk_lean": (-2, 10),
     # steps/min. Heiderscheit 2011: preferred ~172.6; a +5-10% increase reduces
     # knee/hip load. "180" is a rule of thumb, not a strict optimum (contested).
-    "cadence_spm": (170, 190),
+    # ONE-SIDED (2026-11-07): the fault is a LOW cadence. Cadence rises with
+    # speed and elite runners race at 185-205, so the old 190 ceiling graded a
+    # fast runner down for being fast (IMG_5585, ~200 spm: -13 on the
+    # component, ~2.5 points overall). The top is plausibility.py's ceiling
+    # (225), not a target. Below 170 the penalty keeps the slope of the
+    # typical band (CADENCE_TYPICAL), as before.
+    "cadence_spm": (170, 225),
     # internal knee angle at footstrike. Heiderscheit 2011: ~17.8 deg flexion at
     # contact = ~162 deg internal; near-locked (>~176) => overstriding.
     "knee_at_initial_contact": (160, 175),

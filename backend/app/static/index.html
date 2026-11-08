@@ -4378,7 +4378,7 @@ function bikeTiles(s, position){
 }
 function runTiles(s){
   const t=[];
-  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,RB('cadence_spm',s.cadence_spm,170,190,'spm')));
+  if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,RB('cadence_spm',s.cadence_spm,170,225,'spm')));
   /* Centimetres only exist because something in the picture had a known real
      length. Say which: with a stated height the torso is modelled from it,
      without one an average build is assumed — worth ~10% on this number, which
@@ -12331,7 +12331,7 @@ function extractTrends(kind,res,sport){
       put('hip_over',(res.hip_over_bb||s.hip_over_bb||{}).angle_deg);
       putVel(s);
     } else {
-      put('cadence',s.cadence_spm,[170,190]);
+      put('cadence',s.cadence_spm,[170,225]);
       put('vertical_oscillation', s.vertical_oscillation_cm!=null?s.vertical_oscillation_cm:(s.vertical_oscillation_m!=null?s.vertical_oscillation_m*100:null), [6,10]);
       put('trunk_lean',s.trunk_lean_avg,[2,10]);
       put('ground_contact',s.ground_contact_ms,[180,270]);

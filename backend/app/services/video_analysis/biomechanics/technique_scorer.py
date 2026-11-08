@@ -306,7 +306,16 @@ def score_running(
                 "so its timing is assumed rather than measured"
             )
         else:
-            components["cadence"] = score_in_range(cadence, *RUNNING_REFERENCE["cadence_spm"])
+            # One-sided: any cadence from the floor up is full marks (a fast
+            # runner is not penalised for being fast); below it the penalty
+            # runs on the typical band's slope, unchanged.
+            from app.services.video_analysis.biomechanics.sport_configs import (
+                CADENCE_TYPICAL,
+            )
+            components["cadence"] = (
+                100.0 if cadence >= RUNNING_REFERENCE["cadence_spm"][0]
+                else score_in_range(cadence, *CADENCE_TYPICAL)
+            )
 
     # Knee angles (unprefixed key -- near-side only from running_analyzer).
     # Score the two gait-phase extremes, not the full-cycle mean: knee_max is

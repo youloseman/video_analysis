@@ -525,7 +525,7 @@ def _run_data_block(
          "support one. Do not invent a score or a grade, and do not describe the run "
          "as good or bad overall; comment only on the individual measurements below "
          "that were actually taken."),
-        f"- Cadence: {_fmt(summary.get('cadence_spm'), ' spm')} (target ~170-185)"
+        f"- Cadence: {_fmt(summary.get('cadence_spm'), ' spm')} (170+ is typical and rises with speed; a high cadence is not a fault)"
         + (
             f" [clip is {summary['slow_motion_factor']}x slow motion; cadence, "
             "ground contact and flight time were rescaled to real time on a "

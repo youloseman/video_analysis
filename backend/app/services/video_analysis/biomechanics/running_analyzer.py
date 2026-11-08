@@ -1805,7 +1805,7 @@ class RunningAnalyzer(SportAnalyzer):
                 "type": "low_cadence",
                 "severity": "warning",
                 "value": f"{cadence:.0f} spm",
-                "recommendation": f"Cadence is {cadence:.0f} spm. Target: {RUNNING_REFERENCE['cadence_spm'][0]}-{RUNNING_REFERENCE['cadence_spm'][1]} spm.",
+                "recommendation": f"Cadence is {cadence:.0f} spm. Target: {RUNNING_REFERENCE['cadence_spm'][0]} spm or more.",
             })
 
         # Prolonged ground contact -- usually a downstream symptom of
@@ -1824,9 +1824,7 @@ class RunningAnalyzer(SportAnalyzer):
                 "recommendation": (
                     f"Ground contact time is ~{gct_ms:.0f} ms (target "
                     f"{gct_min}-{gct_max} ms). This is an estimate from 2D "
-                    f"video. Increasing cadence toward "
-                    f"{RUNNING_REFERENCE['cadence_spm'][0]}-"
-                    f"{RUNNING_REFERENCE['cadence_spm'][1]} spm typically "
+                    f"video. Raising cadence by 5-10% typically "
                     f"shortens contact time."
                 ),
             })
