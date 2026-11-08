@@ -91,7 +91,9 @@ def test_past_the_band_on_the_harmless_side_is_not_called_in_range():
 
 
 def test_a_small_miss_on_the_side_that_matters_is_at_the_edge_and_not_leave_alone():
-    res = _run(strong=[_good("elbow_angle", 83.0, 85, 100), _good("trunk_lean", 6.0, -2, 10)])
+    # The elbow fault is an arm carried too OPEN (one-sided since 2026-11-07),
+    # so the small miss is above the band.
+    res = _run(strong=[_good("elbow_angle", 102.0, 85, 100), _good("trunk_lean", 6.0, -2, 10)])
     by = {r["field"]: r for r in plan_rows(res)}
     assert by["elbow_angle"]["status"] == "warn"
     html = render_report_html(res, {})

@@ -3921,7 +3921,7 @@ function rangeStatus(v,lo,hi,slack){
 // knee & hip sweep the whole gait cycle, so their cycle-MEAN (what this table's
 // status is judged on) has no single valid band -> omit (shown as "--"), same as
 // bike knee/hip. trunk & elbow are stable enough to band. trunk = backend (2,10).
-const RUN_ANGLE_OPT={ trunk:[2,10], elbow:[85,100] };
+const RUN_ANGLE_OPT={ trunk:[2,10], elbow:[50,100] };   /* elbow one-sided: backend (50,100) */
 // Full per-position optimal ranges, mirroring backend cycling_positions.py
 // CYCLING_POSITIONS. Keep in sync with that file. hip_angle is the mean hip and
 // is asymmetric (above max = comfort/OK) -- handled in the tile logic.

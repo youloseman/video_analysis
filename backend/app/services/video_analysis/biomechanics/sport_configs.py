@@ -36,6 +36,9 @@ KNEE_SWING_TYPICAL = (80, 100)
 # RUNNING_REFERENCE["cadence_spm"]). Kept for the WIDTH, like the knee above:
 # the 170-225 display band would make a low cadence cost ~3x less.
 CADENCE_TYPICAL = (170, 190)
+# The run elbow band before it became one-sided (Napier ~90 deg carry). Kept
+# for the WIDTH of the penalty past 100 and the plan's severity scale.
+ELBOW_TYPICAL = (85, 100)
 
 RUNNING_REFERENCE = {
     # deg lean from vertical, SIGNED by the direction of travel: positive =
@@ -81,7 +84,14 @@ RUNNING_REFERENCE = {
     "knee_at_swing": (30, 100),
     # deg (~90 deg arm carry). Napier, "Science of Running": elbows ~90 deg;
     # restricting arm swing raises metabolic cost.
-    "elbow_angle": (85, 100),
+    # ONE-SIDED (2026-11-07): the fault is an arm carried too OPEN (a long,
+    # straight lever). A tighter carry shortens the lever and tightens with
+    # speed: every elite clip we hold carries 62-69 deg (IMG_5455, IMG_5585,
+    # IMG_5586, Check 00-00-14/00-00-46) and each lost 45-70 points on the
+    # component against 85-100. The floor (50) is below the tightest elite
+    # carry seen, not a target. Past 100 the penalty keeps the slope of the
+    # typical band (ELBOW_TYPICAL).
+    "elbow_angle": (50, 100),
     # cm COM vertical excursion. Heiderscheit 2011: ~8.7 cm at higher cadence
     # (10.7 -> 8.7 across preferred-10% -> +10%); lower is generally economical.
     "vertical_oscillation_cm": (6, 10),

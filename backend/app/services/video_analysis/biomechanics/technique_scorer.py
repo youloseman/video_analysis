@@ -352,8 +352,14 @@ def score_running(
     if "elbow" in angle_stats:
         elbow_mean = angle_stats["elbow"].get("mean")
         if elbow_mean is not None:
-            components["elbow_swing"] = score_in_range(
-                elbow_mean, *RUNNING_REFERENCE["elbow_angle"]
+            # One-sided: any carry up to the ceiling is full marks (elite
+            # runners carry 62-69 deg); past it the typical band's slope.
+            from app.services.video_analysis.biomechanics.sport_configs import (
+                ELBOW_TYPICAL,
+            )
+            components["elbow_swing"] = (
+                100.0 if elbow_mean <= RUNNING_REFERENCE["elbow_angle"][1]
+                else score_in_range(elbow_mean, *ELBOW_TYPICAL)
             )
 
     # Vertical oscillation

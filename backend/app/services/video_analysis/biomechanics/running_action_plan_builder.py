@@ -16,6 +16,7 @@ from typing import Any
 
 from app.services.video_analysis.biomechanics.sport_configs import (
     CADENCE_TYPICAL,
+    ELBOW_TYPICAL,
     KNEE_SWING_TYPICAL,
     RUNNING_REFERENCE,
 )
@@ -63,7 +64,9 @@ _RANGES: dict[str, tuple[float, float]] = {
     # by the action plan to lean forward more.
     "trunk_lean":   RUNNING_REFERENCE["trunk_lean"],
     "knee_contact": (160, 175),   # degrees  (knee_max from summary)
-    "elbow_angle":  (85, 100),    # degrees  (elbow_mean from summary)
+    # degrees (elbow_mean). Typical band for the severity scale; one-sided via
+    # _FAULT_DIRECTION: a tighter carry than 85 is not a fault.
+    "elbow_angle":  ELBOW_TYPICAL,
     # One-sided already: _FAULT_DIRECTION makes a deeper fold benign. The
     # typical band is kept for the severity scale, which follows its width.
     "knee_swing":   KNEE_SWING_TYPICAL,  # degrees (knee_min from summary)
@@ -168,6 +171,7 @@ _FAULT_DIRECTION: dict[str, str] = {
     "vertical_osc": "high",
     "knee_contact": "high",
     "knee_swing": "high",
+    "elbow_angle": "high",
 }
 
 _DISPLAY_PRECISION: dict[str, int] = {
@@ -277,7 +281,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
         "weeks_to_improvement": 4,
     },
     "elbow_angle_too_wide": {
-        "problem": "Elbow angle too wide ({value} deg, optimal 85-100 deg)",
+        "problem": "Elbow angle too wide ({value} deg, typical 100 deg or less)",
         "drill": "Arm Swing Drill",
         "instruction": (
             "Standing, practice pendulum arm swing with elbows at 90 deg. "

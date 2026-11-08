@@ -322,7 +322,7 @@ class VideoAnalysisPipeline:
                 # while the scorer said (2, 10), so the overlay could colour a
                 # trunk green that the score card marked down.
                 {"key": "trunk",  "idx": trunk_idx, "optimal": RUN_TRUNK_BAND, "name": "Trunk",     "offset_dir": "up"},
-                {"key": "elbow",  "idx": elbow_idx, "optimal": (85, 100),  "name": "Elbow",     "offset_dir": "up-left"},
+                {"key": "elbow",  "idx": elbow_idx, "optimal": _RUNNING_REFERENCE["elbow_angle"],  "name": "Elbow",     "offset_dir": "up-left"},
             ]
         elif sport_type == "bike":
             from app.services.video_analysis.biomechanics.cycling_positions import (
