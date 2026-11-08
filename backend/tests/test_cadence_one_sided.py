@@ -64,3 +64,43 @@ def test_action_plan_does_not_flag_a_tight_elbow():
 
     plan = build_running_action_plan({"score": 80, "summary": {"elbow_mean": 64.0}})
     assert not [d for d in plan.diagnostics if d.metric_name == "elbow_angle"]
+
+
+# --- knee at contact and ground contact: the same treatment (2026-11-08) ------
+# An elite clip (IMG_5585, 91/A) was told to extend the lower leg before contact
+# (153 deg vs 160-175) and to spend longer on the ground (167 ms vs 180-270).
+
+def _knee_contact_component(knee_max: float) -> float:
+    from app.services.video_analysis.biomechanics.technique_scorer import score_running
+
+    return score_running({}, {"knee": {"p95": knee_max, "p05": 70.0}})["component_scores"]["knee_contact"]
+
+
+def test_a_more_flexed_landing_is_full_marks_and_a_locked_knee_is_not():
+    from app.services.video_analysis.biomechanics.sport_configs import KNEE_CONTACT_TYPICAL
+
+    for deg in (145.0, 152.9, 160.0, 168.0, 175.0):
+        assert _knee_contact_component(deg) == 100.0, deg
+    assert _knee_contact_component(179.3) == score_in_range(179.3, *KNEE_CONTACT_TYPICAL) < 100.0
+
+
+def test_served_contact_bands_are_one_sided():
+    bands = reference_bands("run")
+    assert bands["knee_max"]["lo"] == 140 and bands["knee_max"]["hi"] == 175
+    assert bands["ground_contact_ms"]["lo"] == 100 and bands["ground_contact_ms"]["hi"] == 270
+
+
+def test_the_plan_names_the_locked_knee_and_leaves_a_soft_landing_alone():
+    import dataclasses
+    import json
+
+    from app.services.video_analysis.biomechanics.running_action_plan_builder import (
+        build_running_action_plan,
+    )
+
+    plan = build_running_action_plan({"score": 80, "summary": {"knee_max": 179.3}})
+    assert [x for x in plan.diagnostics if x.metric_name == "knee_contact"]
+    txt = json.dumps(dataclasses.asdict(plan), default=str) if dataclasses.is_dataclass(plan) else str(plan)
+    assert "near-locked" in txt and "Insufficient knee flexion" not in txt
+    soft = build_running_action_plan({"score": 80, "summary": {"knee_max": 152.9}})
+    assert not [x for x in soft.diagnostics if x.metric_name == "knee_contact"]

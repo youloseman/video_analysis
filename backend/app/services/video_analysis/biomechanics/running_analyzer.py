@@ -1832,7 +1832,7 @@ class RunningAnalyzer(SportAnalyzer):
                 "value": f"{gct_ms:.0f} ms (estimated)",
                 "recommendation": (
                     f"Ground contact time is ~{gct_ms:.0f} ms (target "
-                    f"{gct_min}-{gct_max} ms). This is an estimate from 2D "
+                    f"{gct_max} ms or less). This is an estimate from 2D "
                     f"video. Raising cadence by 5-10% typically "
                     f"shortens contact time."
                 ),

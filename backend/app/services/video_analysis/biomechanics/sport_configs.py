@@ -39,6 +39,9 @@ CADENCE_TYPICAL = (170, 190)
 # The run elbow band before it became one-sided (Napier ~90 deg carry). Kept
 # for the WIDTH of the penalty past 100 and the plan's severity scale.
 ELBOW_TYPICAL = (85, 100)
+# Knee at contact: the typical band (Heiderscheit 2011). The penalty slope past
+# the ceiling; below it is full marks (see RUNNING_REFERENCE).
+KNEE_CONTACT_TYPICAL = (160, 175)
 
 RUNNING_REFERENCE = {
     # deg lean from vertical, SIGNED by the direction of travel: positive =
@@ -69,7 +72,14 @@ RUNNING_REFERENCE = {
     "cadence_spm": (170, 225),
     # internal knee angle at footstrike. Heiderscheit 2011: ~17.8 deg flexion at
     # contact = ~162 deg internal; near-locked (>~176) => overstriding.
-    "knee_at_initial_contact": (160, 175),
+    # ONE-SIDED (2026-11-08): the fault is a knee near-LOCKED at contact. A
+    # more flexed landing is not a fault and comes with speed: an elite clip
+    # (IMG_5585, 153 deg) was told to "extend the lower leg earlier before
+    # contact" -- advice toward overstriding, the one thing this band is for.
+    # The floor (140) is where the straightest knee of the cycle stops being a
+    # landing and starts being a tracking problem, not a target. Past 175 the
+    # penalty keeps the slope of the typical band (KNEE_CONTACT_TYPICAL).
+    "knee_at_initial_contact": (140, 175),
     # internal at peak stance flexion. Heiderscheit 2011: ~46 deg flexion =
     # ~134 deg internal (more flexion at higher cadence).
     "knee_at_midstance": (130, 150),
@@ -98,7 +108,12 @@ RUNNING_REFERENCE = {
     # ms stance duration. Folland 2017: mean 246, range 190-303 across endurance
     # runners; SPEED-DEPENDENT (slower pace = longer contact), so easy runs read
     # high legitimately. Shorter correlates with performance; elite ~200.
-    "ground_contact_ms": (180, 270),
+    # ONE-SIDED (2026-11-08): the fault is a LONG contact. A short one is what
+    # speed and a stiff leg look like; the same elite clip (167 ms) was told to
+    # "increase contact time for better power transfer". Not scored; served
+    # as the band the table and the coach read. The floor (100) is one frame
+    # of 2D estimate below the fastest distance running, not a target.
+    "ground_contact_ms": (100, 270),
     # ms aerial phase (Weyand 2000; recreational ~100-140).
     "flight_time_ms": (80, 150),
     # foot-ahead/leg-length at contact; <0.15 = foot near under hip

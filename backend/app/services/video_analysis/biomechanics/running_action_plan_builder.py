@@ -17,6 +17,7 @@ from typing import Any
 from app.services.video_analysis.biomechanics.sport_configs import (
     CADENCE_TYPICAL,
     ELBOW_TYPICAL,
+    KNEE_CONTACT_TYPICAL,
     KNEE_SWING_TYPICAL,
     RUNNING_REFERENCE,
 )
@@ -63,7 +64,9 @@ _RANGES: dict[str, tuple[float, float]] = {
     # an upright runner could be "optimal" on the score card and still be told
     # by the action plan to lean forward more.
     "trunk_lean":   RUNNING_REFERENCE["trunk_lean"],
-    "knee_contact": (160, 175),   # degrees  (knee_max from summary)
+    # degrees (knee_max). Typical band for the severity scale; one-sided via
+    # _FAULT_DIRECTION: a more flexed landing than 160 is not a fault.
+    "knee_contact": KNEE_CONTACT_TYPICAL,
     # degrees (elbow_mean). Typical band for the severity scale; one-sided via
     # _FAULT_DIRECTION: a tighter carry than 85 is not a fault.
     "elbow_angle":  ELBOW_TYPICAL,
@@ -271,7 +274,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
         "weeks_to_improvement": 2,
     },
     "knee_contact_insufficient_flexion": {
-        "problem": "Insufficient knee flexion at contact ({value} deg, optimal 160-175 deg)",
+        "problem": "Knee near-locked at contact ({value} deg, typical 175 deg or less)",
         "drill": "Pose Running Drill",
         "instruction": (
             "Practice landing with foot under center of gravity "

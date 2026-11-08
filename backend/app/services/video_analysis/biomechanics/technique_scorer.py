@@ -334,8 +334,16 @@ def score_running(
         # legs the series is spliced from both, which is what the athlete's own
         # warning already tells them -- so it cannot also be graded.
         if knee_max is not None:
-            _score_or_exclude("knee_contact", score_in_range(
-                knee_max, *RUNNING_REFERENCE["knee_at_initial_contact"]
+            # One-sided (2026-11-08): the fault is a knee near-locked at
+            # contact. A more flexed landing is not a fault and comes with
+            # speed; past the ceiling the penalty keeps the typical band's
+            # slope (KNEE_CONTACT_TYPICAL), as the swing knee does.
+            from app.services.video_analysis.biomechanics.sport_configs import (
+                KNEE_CONTACT_TYPICAL,
+            )
+            _score_or_exclude("knee_contact", (
+                100.0 if knee_max <= RUNNING_REFERENCE["knee_at_initial_contact"][1]
+                else score_in_range(knee_max, *KNEE_CONTACT_TYPICAL)
             ))
         if knee_min is not None:
             # One-sided: any fold up to the ceiling is full marks; past it the

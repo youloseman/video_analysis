@@ -549,7 +549,9 @@ def _run_data_block(
         f"(signed: positive = leaning forward, NEGATIVE = leaning BACK. "
         f"Target 0-10 forward; upright is fine, leaning back is not)",
         f"- Ground contact time: {_fmt(summary.get('ground_contact_ms'), ' ms')}"
-        f"{' (estimated from 2D video)' if summary.get('ground_contact_ms_estimated') else ''}",
+        f"{' (estimated from 2D video)' if summary.get('ground_contact_ms_estimated') else ''} "
+        f"(shorter is better and shortens with speed; a short contact is NEVER a fault "
+        f"and must not be advised up; only a long one, well above 270 ms, is worth a word)",
         f"- Flight time: {_fmt(summary.get('flight_time_ms'), ' ms')} (aerial phase, target ~80-150"
         f"{', estimated from 2D video' if summary.get('flight_time_ms_estimated') else ''})",
         foot_strike_line,
@@ -561,8 +563,10 @@ def _run_data_block(
         # aligns with the camera, so it's flagged as an estimate.
         f"- Knee near initial contact (typical peak): "
         f"{_fmt(knee.get('p95', knee.get('max')), '°')} "
-        f"(optimal 160-175°; above ~176° = over-extended/near-locked at contact, "
-        f"which couples with overstriding; 2D estimate, can read slightly high)",
+        f"(175° or less is fine; above ~176° = over-extended/near-locked at contact, "
+        f"which couples with overstriding. A MORE flexed landing is not a fault, it comes "
+        f"with speed: never advise extending the leg before contact; 2D estimate, can read "
+        f"slightly high)",
         f"- Knee peak swing flexion (typical): "
         f"{_fmt(knee.get('p05', knee.get('min')), '°')} "
         f"(100° or less is fine; higher = insufficient knee drive; a deeper "
