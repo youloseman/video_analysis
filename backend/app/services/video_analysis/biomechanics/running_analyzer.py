@@ -876,7 +876,9 @@ class RunningAnalyzer(SportAnalyzer):
         read 124 spm on a ~165 spm run). The spectral method reads the
         averaged both-ankles bounce, which survives those swaps; when the
         two disagree by more than ``CADENCE_CROSSCHECK_TOLERANCE`` the
-        spectral value is used.
+        spectral value is used -- and when they agree, too (2026-11-07): the
+        agreement rules out a harmonic, and the spectrum is then the more
+        precise of the two.
 
         Returns ``0.0`` when no method produced a reliable cadence -- the
         caller (compute_summary) omits the value in that case so a phantom
@@ -916,17 +918,24 @@ class RunningAnalyzer(SportAnalyzer):
                     rel_diff=f"{rel_diff:.2f}",
                 )
                 return spectral
+            # They agree, so the spectrum is not on a harmonic -- and then it is
+            # the better number. Eye-counted against five clips (2026-11-07) the
+            # spectrum missed by <= 1.5 spm on both detectors, while the knee
+            # count missed by up to 20 on MediaPipe and swung 181.5 -> 189.5
+            # between two machines on the same clip under RTMPose: one extra or
+            # lost knee valley moves a short clip's count by several spm. The
+            # knee count stays as the harmonic guard above and the stride count.
             logger.info(
-                "CADENCE_RESULT", method="knee_angles",
-                cadence_spm=f"{knee_cadence:.1f}",
-                spectral_agrees=f"{spectral:.1f}",
+                "CADENCE_RESULT", method="spectral_confirmed",
+                cadence_spm=f"{spectral:.1f}",
+                knee_spm=f"{knee_cadence:.1f}",
             )
             if n_strides < 4:
                 self._record_warning(
                     f"Only {n_strides} strides detected -- cadence estimate may be "
                     f"imprecise. Longer clips (15+ seconds) give more reliable results."
                 )
-            return knee_cadence
+            return spectral
 
         if knee_cadence > 0:
             logger.info("CADENCE_RESULT", method="knee_angles", cadence_spm=f"{knee_cadence:.1f}")
