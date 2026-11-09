@@ -7117,11 +7117,11 @@ function tierLabel(tier){ return tier==='admin'?'Admin':tier==='coach'?'Coach':'
    blocker eats it; with no saved entry yet it falls back to printing the page. */
 let printEntryId=null;
 async function downloadReportPdf(id){
-  const e=findEntry(id);
-  if(!e||e.kind!=='video') return false;
+  // Same reach as the printable page below: no local entry needed, the server
+  // checks the plan and the access (a fresh device may not hold the entry).
   toast('Preparing the PDF…');
   try{
-    const r=await fetch(meUrl(e,'report.pdf'),{headers:authHeaders()});
+    const r=await fetch(meUrl(id,'report.pdf'),{headers:authHeaders()});
     if(!r.ok) return false;
     const blob=await r.blob();
     const cd=r.headers.get('Content-Disposition')||'';
