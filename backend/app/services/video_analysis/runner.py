@@ -581,6 +581,13 @@ def extract_frames(
             )
 
     cap.release()
+    # The RTMPose refiner settles the bike's leg labels once the whole clip is
+    # in (rtmpose_refiner.CLIP_LABEL_SPORTS), rewriting the frames above in place.
+    _finish = getattr(detector, "finish", None)
+    if callable(_finish):
+        _labels = _finish()
+        if meta is not None and isinstance(_labels, dict):
+            meta["clip_labels"] = _labels
 
     logger.info(
         "FRAME_EXTRACTION",

@@ -6,10 +6,10 @@
     "max": 117.6,
     "mean": 98.0,
     "min": 85.1,
-    "nan_pct": 3.9,
+    "nan_pct": 4.0,
     "range": 32.5,
-    "std": 8.6,
-    "valid_frames": 548
+    "std": 8.5,
+    "valid_frames": 547
    },
    "left_elbow": {
     "artefact_frames": 0,
@@ -36,20 +36,20 @@
     "max": 99.2,
     "mean": 74.9,
     "min": 48.8,
-    "nan_pct": 3.9,
+    "nan_pct": 4.0,
     "range": 50.4,
     "std": 16.3,
-    "valid_frames": 548
+    "valid_frames": 547
    },
    "left_knee": {
     "artefact_frames": 0,
     "max": 151.1,
     "mean": 106.8,
     "min": 69.3,
-    "nan_pct": 3.9,
+    "nan_pct": 4.0,
     "range": 81.8,
     "std": 27.6,
-    "valid_frames": 548
+    "valid_frames": 547
    },
    "left_shoulder": {
     "artefact_frames": 0,
@@ -151,11 +151,11 @@
   "summary.forearm_tilt_avg": 19.03,
   "summary.head_alignment_avg": 99.97,
   "summary.helmet_above_back": 16.1,
-  "summary.hip_angle_avg": 74.87,
+  "summary.hip_angle_avg": 74.89,
   "summary.knee_at_bdc": 147.79,
   "summary.knee_at_tdc": 70.03,
-  "summary.knee_extension_velocity_dps": 307.6,
-  "summary.knee_flexion_velocity_dps": 314.7,
+  "summary.knee_extension_velocity_dps": 305.0,
+  "summary.knee_flexion_velocity_dps": 315.3,
   "summary.pelvic_ratio": 3.01,
   "summary.shoulder_angle_avg": 86.23,
   "summary.trunk_angle_avg": 24.89,

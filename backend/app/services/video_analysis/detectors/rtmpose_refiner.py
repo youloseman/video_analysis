@@ -82,6 +82,19 @@ NAME_SUFFIX = "+rtmpose_m"
 # of the shake out without touching a leg. Turn on with "bike" once a labelled
 # set says the knee moves the right way.
 STEADY_BOX_SPORTS: frozenset[str] = frozenset()
+
+# Which of RTMPose's legs (and arms) is "left" is decided once for the whole
+# clip on the bike, not frame by frame. Frame by frame each RTMPose chain went
+# to whichever MediaPipe label it sat nearer, so every time MediaPipe swapped
+# the legs -- often on the chainring side, where the far leg shows through the
+# frame -- the refined skeleton swapped with it. RTMPose's own labels did not
+# swap once on five bike clips; through MediaPipe's they swapped 16 times on
+# IMG_4090 and 24 on IMG_5577, whose knee at the bottom then read anywhere from
+# 120 to 141 deg and told the athlete to raise the saddle 43 mm (2026-11-09).
+# Now RTMPose keeps its own labels, flipped as a whole only if MediaPipe's
+# labels disagree with them on most frames -- MediaPipe still names the sides,
+# by majority. Bike only: the run has its own leg-identity resolver.
+CLIP_LABEL_SPORTS = frozenset({"bike"})
 STEADY_BOX_MS = 1000
 _TORSO = (11, 12, 23, 24)
 
@@ -165,6 +178,10 @@ class RTMPoseRefiner(PoseDetector):
         self._steady = sport in STEADY_BOX_SPORTS
         self._boxes: list[tuple[float, np.ndarray]] = []  # (ms, box around the torso)
         self._frame = 0
+        self._clip_labels = sport in CLIP_LABEL_SPORTS
+        # Per refined frame: (output landmarks, MediaPipe's landmarks, RTMPose's
+        # own-label points, their scores, MediaPipe's points, width, height).
+        self._kept: list[tuple[list, list, np.ndarray, np.ndarray, np.ndarray, int, int]] = []
 
     def _box(self, mp_px: np.ndarray, ok: np.ndarray, w: int, h: int,
              timestamp_ms: int | None) -> tuple[float, float, float, float]:
@@ -212,8 +229,11 @@ class RTMPoseRefiner(PoseDetector):
         rsc = np.zeros(33)
         for b, hh in BLAZE_FROM_HALPE.items():
             rtm[b], rsc[b] = kps[hh], sc[hh]
+        own, own_sc = rtm.copy(), rsc.copy()
         assign_to_mediapipe(rtm, rsc, mp_px)
         out = list(frame.normalized_landmarks)
+        if self._clip_labels:
+            self._kept.append((out, list(frame.normalized_landmarks), own, own_sc, mp_px, w, h))
         for b in BLAZE_FROM_HALPE:
             if rsc[b] >= MIN_SCORE and np.isfinite(rtm[b]).all():
                 lm = out[b]
@@ -221,6 +241,49 @@ class RTMPoseRefiner(PoseDetector):
         self.refined += 1
         return DetectorFrame(normalized_landmarks=out, world_landmarks=frame.world_landmarks,
                              extras=frame.extras)
+
+    def finish(self) -> dict[str, Any] | None:
+        """After the last frame, on the bike: give every refined frame RTMPose's
+        own leg and arm labels, flipped as a whole where MediaPipe's labels
+        disagree with them on most frames (CLIP_LABEL_SPORTS). The landmark
+        lists the frames were returned with are rewritten in place. Returns
+        what it did, or None when there was nothing to do. Never raises."""
+        kept, self._kept = self._kept, []
+        if not kept:
+            return None
+        try:
+            stats: dict[str, Any] = {"frames": len(kept)}
+            for name, groups in (("legs", LEG), ("arms", ARM)):
+                L, R = groups["left"], groups["right"]
+                both = L + R
+                swapped_vs_mp = []
+                for _out, _mp, own, _sc, mp_px, _w, _h in kept:
+                    same = np.nansum(np.linalg.norm(own[L] - mp_px[L], axis=1)) +                         np.nansum(np.linalg.norm(own[R] - mp_px[R], axis=1))
+                    cross = np.nansum(np.linalg.norm(own[R] - mp_px[L], axis=1)) +                         np.nansum(np.linalg.norm(own[L] - mp_px[R], axis=1))
+                    swapped_vs_mp.append(cross < same)
+                flip = sum(swapped_vs_mp) > len(kept) / 2
+                for (out, mp_lms, own, own_sc, _px, w, h), sw in zip(kept, swapped_vs_mp):
+                    pts, sc = own.copy(), own_sc.copy()
+                    if flip:
+                        pts[both], sc[both] = own[R + L], own_sc[R + L]
+                    # This frame's MediaPipe names the legs the other way round
+                    # from the clip's labels: its z and visibility (and its
+                    # point, where RTMPose is unsure) come from its other side.
+                    other = sw != flip
+                    for b, o in zip(both, R + L):
+                        lm = mp_lms[o] if other else mp_lms[b]
+                        if sc[b] >= MIN_SCORE and np.isfinite(pts[b]).all():
+                            out[b] = DetectorLandmark(float(pts[b][0] / w), float(pts[b][1] / h),
+                                                      lm.z, lm.visibility)
+                        else:
+                            out[b] = lm
+                stats[name] = {"flipped": bool(flip),
+                               "mediapipe_disagreed": int(sum(s != flip for s in swapped_vs_mp))}
+            logger.info("RTMPOSE_CLIP_LABELS", **stats)
+            return stats
+        except Exception as e:  # noqa: BLE001 -- the frame-by-frame labels stand
+            logger.warning("RTMPOSE_CLIP_LABELS_FAILED", err=str(e))
+            return None
 
     def close(self) -> None:
         self._inner.close()
