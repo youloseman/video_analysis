@@ -645,10 +645,41 @@ def _rows_of(result: dict[str, Any], sport: str) -> list[dict[str, Any]]:
     return metric_rows(result) if sport == "bike" else plan_rows(result)
 
 
-def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
+def card_key(p: dict[str, Any]) -> str:
+    """A plan card's name for the coach's edits: what it measures and what it asks."""
+    return f"{p.get('metric') or p.get('label') or ''}|{p.get('action') or p.get('drill') or ''}"
+
+
+def _apply_card_edits(prios: list[dict[str, Any]], cards: Any) -> list[dict[str, Any]]:
+    """The plan as the coach left it: their order, their words, without the cards
+    they hid. A card they never saw (the plan changed after they edited it) keeps
+    Flapp's words and goes last."""
+    if not isinstance(cards, list):
+        return prios
+    by_key = {p["key"]: p for p in prios}
+    out = []
+    for c in cards:
+        p = by_key.pop(str((c or {}).get("key")), None) if isinstance(c, dict) else None
+        if p is None or c.get("hidden"):
+            continue
+        p = dict(p)
+        for field, slot in (("title", "drill"), ("why", "why"), ("do", "instruction")):
+            if isinstance(c.get(field), str):
+                p[slot] = c[field].strip() or None
+        out.append(p)
+    return out + list(by_key.values())
+
+
+def render_report_html(result: dict[str, Any], meta: dict[str, Any],
+                       out: dict[str, Any] | None = None) -> str:
     """The whole document. ``meta``: athlete, setup, filmed, prepared,
     position_label, keyframe and kinogram data URIs, and ``previous``:
-    {filmed, result} of the last like-for-like clip, when there is one."""
+    {filmed, result} of the last like-for-like clip, when there is one.
+
+    A coach's report carries ``edits`` (result.coach_edits: their words over
+    Flapp's), ``draft`` (not sent yet) and ``reviewed`` ("name · date"). ``out``,
+    when given, gets the plan cards and the coach text as Flapp wrote them, for
+    the coach's review screen."""
     sport = result.get("sport_type") or result.get("sport") or ""
     plan = result.get("training_plan") or {}
     # Filtered here as well as in the builder: a saved run still has it leading.
@@ -696,6 +727,13 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     wrong_ranges = "position" in film_codes
     if wrong_ranges:
         prios, strong, issues = [], [], []
+    for p in prios:
+        p["key"] = card_key(p)
+    base_prios = list(prios)
+    edits = meta.get("edits") if isinstance(meta.get("edits"), dict) else {}
+    prios = _apply_card_edits(prios, edits.get("cards"))
+    if meta.get("reviewed"):
+        facts.append(("Reviewed", meta["reviewed"]))
     if low:
         facts.append(("Reliability", "Low · " + ", ".join(str(n["short"]) for n in low)))
     facts_html = "".join(f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in facts if v)
@@ -765,7 +803,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
 
     cover = f"""
 <section>
-  <div class="screen"><span>Your Flapp report · use Print, then “Save as PDF”</span><button onclick="window.print()">Save as PDF</button></div>
+  <div class="screen"><span>{"Draft · only you see it until you approve and send it" if meta.get("draft") else "Your Flapp report · use Print, then “Save as PDF”"}</span><button onclick="window.print()">Save as PDF</button></div>
   <div class="cover-band">
     {brand}
     <h1>Technique Report</h1>
@@ -787,7 +825,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
 
     # A number outside its range that neither the plan nor a finding mentions was
     # just a red tile on the last page, however much it cost the score.
-    planned = {str(p.get("metric") or "").removesuffix("_avg") for p in prios}
+    planned = {str(p.get("metric") or "").removesuffix("_avg") for p in base_prios}
     named = " ".join(str(i.get("type") or "") for i in issues)
     who = "your coach" if coach_brand.get("name") else "a coach or fitter" if sport == "bike" else "a coach"
 
@@ -813,9 +851,16 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
            else "<p>No measurement moved by more than two clips of an unchanged position differ by.</p>")
         + "</div>"
     ) if previous else ""
+    flapp_text = _coach_text(coach, planned) if coach else ""
+    shown = edits.get("coachText") if isinstance(edits.get("coachText"), str) else flapp_text
+    if out is not None:
+        out["coach"] = flapp_text
+        out["cards"] = [{"key": p["key"], "label": prio_label(p), "title": _clean(p.get("drill")) or "",
+                         "why": _clean(p.get("why")) or "", "do": _clean(p.get("instruction")) or ""}
+                        for p in base_prios]
     read_body = "".join([
         note_html, film_html, since_html,
-        f'<div class="coachtext">{markdown(_coach_text(coach, planned))}</div>' if coach else "",
+        f'<div class="coachtext">{markdown(shown)}</div>' if shown.strip() else "",
         ("<div class='eyebrow' style='margin-top:6px'>What the measurements flagged</div>" + findings) if findings else "",
     ])
     # With nothing to say the plan doesn't already say, the plan comes first.

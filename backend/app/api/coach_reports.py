@@ -16,6 +16,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,6 +65,113 @@ async def _coach_row(db: AsyncSession, user: User, athlete_id: int, client_id: s
     return row
 
 
+class CardEdit(BaseModel):
+    key: str = Field(max_length=200)
+    hidden: bool = False
+    title: str | None = Field(default=None, max_length=300)
+    why: str | None = Field(default=None, max_length=2000)
+    do: str | None = Field(default=None, max_length=3000)
+
+
+class ReviewBody(BaseModel):
+    # None: Flapp's text. "": none at all.
+    coachText: str | None = Field(default=None, max_length=8000)
+    cards: list[CardEdit] = Field(default_factory=list, max_length=12)
+
+
+async def _review_state(db: AsyncSession, user: User, row: Analysis) -> dict[str, Any]:
+    """What the review screen edits: Flapp's plan cards and coach text, with the
+    coach's edits laid over them. The numbers are not here: they stay as measured."""
+    from app.api.me import _ensure_coaching, _refresh_fit_plan, saved_report_meta
+    from app.services.report_pdf import render_report_html
+
+    await _refresh_fit_plan(db, row)
+    await _ensure_coaching(db, row)
+    result, meta = await saved_report_meta(db, reader=user, owner=user, row=row, athlete_id=row.athlete_id)
+    flapp: dict[str, Any] = {}
+    render_report_html(result, {**meta, "edits": {}}, out=flapp)
+    edits = result.get("coach_edits") or {}
+    base = {c["key"]: c for c in flapp.get("cards") or []}
+    cards = []
+    for c in edits.get("cards") or []:
+        b = base.pop(c.get("key"), None)
+        if b is None:
+            continue
+        cards.append({**b, "orig": {k: b[k] for k in ("title", "why", "do")}, "hidden": bool(c.get("hidden")),
+                      **{k: c[k] for k in ("title", "why", "do") if isinstance(c.get(k), str)}})
+    cards += [{**b, "orig": {k: b[k] for k in ("title", "why", "do")}, "hidden": False} for b in base.values()]
+    text = edits.get("coachText")
+    return {
+        "coachText": text if isinstance(text, str) else flapp.get("coach") or "",
+        "coachTextFlapp": flapp.get("coach") or "",
+        "edited": bool(edits.get("cards") or isinstance(text, str)),
+        "cards": cards,
+        "reviewedAt": edits.get("reviewedAt"),
+        "reviewedBy": edits.get("reviewedBy"),
+    }
+
+
+def _set_edits(row: Analysis, edits: dict[str, Any] | None) -> None:
+    res = dict(row.result or {})
+    if edits:
+        res["coach_edits"] = edits
+    else:
+        res.pop("coach_edits", None)
+    row.result = res   # reassigned, not mutated: JSON columns don't track edits
+
+
+@router.get("/me/athletes/{athlete_id}/analyses/{client_id}/review")
+async def get_review(
+    athlete_id: int, client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    _require_coach(user)
+    row = await _coach_row(db, user, athlete_id, client_id)
+    if not row.result:
+        raise HTTPException(409, "A photo analysis has no report to review.")
+    return await _review_state(db, user, row)
+
+
+@router.put("/me/athletes/{athlete_id}/analyses/{client_id}/review")
+async def put_review(
+    athlete_id: int, client_id: str, body: ReviewBody,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Save the coach's words over Flapp's. Saving after sending keeps the report
+    reviewed: the link shows what the coach left there."""
+    _require_coach(user)
+    row = await _coach_row(db, user, athlete_id, client_id)
+    if not row.result:
+        raise HTTPException(409, "A photo analysis has no report to review.")
+    edits = dict((row.result or {}).get("coach_edits") or {})
+    edits["coachText"] = body.coachText
+    edits["cards"] = [c.model_dump() for c in body.cards]
+    _set_edits(row, edits)
+    await db.commit()
+    logger.info("REPORT_REVIEW_SAVED", coach_user_id=user.id, athlete_id=athlete_id,
+                cards=len(body.cards), hidden=sum(c.hidden for c in body.cards),
+                text=None if body.coachText is None else len(body.coachText))
+    return await _review_state(db, user, row)
+
+
+@router.delete("/me/athletes/{athlete_id}/analyses/{client_id}/review")
+async def reset_review(
+    athlete_id: int, client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Back to Flapp's words. An approval stays: it was given."""
+    _require_coach(user)
+    row = await _coach_row(db, user, athlete_id, client_id)
+    edits = dict((row.result or {}).get("coach_edits") or {})
+    kept = {k: edits[k] for k in ("reviewedAt", "reviewedBy") if k in edits}
+    _set_edits(row, kept)
+    await db.commit()
+    return await _review_state(db, user, row)
+
+
 @router.get("/me/athletes/{athlete_id}/analyses/{client_id}/share")
 async def get_share(
     athlete_id: int, client_id: str,
@@ -98,6 +206,13 @@ async def send_report(
     # Written now, while a coach is asking: an anonymous page view must not be
     # what triggers a billed model call.
     await _ensure_coaching(db, row)
+    # Sending is approving: the report leaves the draft with the coach's name on it.
+    who = await coach_display(db, user)
+    edits = dict((row.result or {}).get("coach_edits") or {})
+    if not edits.get("reviewedAt"):
+        edits.update(reviewedAt=_now_ms(), reviewedBy=who["name"] or "")
+        _set_edits(row, edits)
+        await db.commit()
     share = await _live_share(db, user.id, client_id)
     if share is None:
         now = _now_ms()
@@ -107,7 +222,6 @@ async def send_report(
         )
         db.add(share)
         await db.commit()
-    who = await coach_display(db, user)
     url = _url(share.token)
     mailed = bool(athlete.email) and _mail(athlete.email, athlete.name, who["name"], row.sport, url)
     logger.info("REPORT_SENT", coach_user_id=user.id, athlete_id=athlete_id, mailed=mailed)

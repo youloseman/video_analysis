@@ -1614,6 +1614,16 @@
       </div>
       <div class="coach" id="hdCoach"></div>
     </div>
+    <!-- A coach's own clip: Flapp's report is a draft the coach reviews -- the
+         words and the plan, never the numbers -- and sending it approves it. -->
+    <div class="block block-coach hidden" id="hdReviewBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Before you send</div>
+        <h3>Review the report</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="rv" id="hdReview"></div>
+    </div>
     <div class="block block-coach hidden" id="hdCoachNoteBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Your notes</div>
@@ -11889,6 +11899,7 @@ function renderHistoryDetail(e){
   // A coach reading their athlete's clip is not a customer for somebody else's notes.
   renderNotesOffer('hdNotesOffer', !e.linkedAthleteId&&!(hasCoachPlan()&&e.athleteId!=null)&&(e.access==='full'||!e.locked) ? e.id : null);
   renderCoachActions(e);
+  renderReview(e);
   renderHistoryPdf(e);
   placeCoachNote(e);
   const hb=$('#hBack'); if(hb) hb.lastChild.textContent=(hasCoachPlan()&&e.athleteId!=null&&athleteName(e.athleteId))?` Back to ${athleteName(e.athleteId)}`:' Back to history';
@@ -13808,6 +13819,7 @@ function confirmOthers(){
 function placeCoachNote(e){
   const note=$('#hdCoachNoteBlock'), video=$('#hdVideos'), hob=$('#hdHobBlock'); if(!note||!video||!hob) return;
   if(hasCoachPlan()&&e&&e.athleteId!=null) video.after(note); else hob.before(note);
+  const rv=$('#hdReviewBlock'); if(rv) note.after(rv);
 }
 function goCoachNote(){
   const ta=$('#hdCoachNoteText'); if(!ta) return;
@@ -13832,17 +13844,19 @@ async function renderCoachActions(e){
   const base='/me/athletes/'+encodeURIComponent(e.athleteId)+'/analyses/'+encodeURIComponent(e.id);
   const draw=url=>{
     // With no address to mail, once the link exists there is nothing left to press.
-    host.innerHTML=`${noteBtn}${url&&!(a&&a.email)?'':`<button class="btn btn-ghost btn-sm" type="button" id="hdSend"><svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg> ${a&&a.email?(url?`Send to ${esc(name)} again`:`Send to ${esc(name)}`):'Make a link for '+esc(name)}</button>`}
+    host.innerHTML=`${noteBtn}${url&&!(a&&a.email)?'':`<button class="btn btn-ghost btn-sm" type="button" id="hdSend"><svg class="ic" aria-hidden="true"><use href="#i-ext"/></svg> ${a&&a.email?(url?`Send to ${esc(name)} again`:`Approve and send to ${esc(name)}`):(url?'Make a link for '+esc(name):'Approve and make a link for '+esc(name))}</button>`}
       ${url?`<div class="hdlink"><button type="button" class="p-copy" id="hdLinkCopy">copy the link</button> · <button type="button" class="p-copy" id="hdLinkOff">turn it off</button><small>Opens without an account, for 90 days. Under your name and mark.</small></div>`:''}`;
     const sendBtn=$('#hdSend'); if(sendBtn) sendBtn.addEventListener('click',async()=>{
       try{
         if(!await saveCoachNoteIfTyped(e)){ toast('Could not save your note, so nothing was sent.',{duration:6000}); return; }
+        if(!await saveReviewIfDirty(e)){ toast('Could not save your edits, so nothing was sent.',{duration:6000}); return; }
         const r=await fetch(base+'/send',{method:'POST',headers:authHeaders()});
         const j=await r.json().catch(()=>({}));
         if(!r.ok){ toast(j.detail||'Could not send it.',{duration:6000}); return; }
         track('report_sent_to_athlete',{mailed:!!j.mailed});
         toast(j.mailed?`Sent to ${j.email}.`:'Link ready. Copy it and send it yourself.');
         draw(j.url);
+        renderReview(e);
       }catch(_e){ toast('Could not send it.'); }
     });
     const c=$('#hdLinkCopy'); if(c) c.addEventListener('click',()=>copyText(url,'Link copied.'));
@@ -13853,6 +13867,117 @@ async function renderCoachActions(e){
   };
   draw(null);
   try{ const r=await fetch(base+'/share',{headers:authHeaders()}); if(r.ok){ const j=await r.json(); if(state.histOpen&&state.histOpen.id===e.id) draw(j.url); } }catch(_e){}
+}
+/* The review: Flapp's draft of a coach's report. The coach changes the words
+   and the plan; the numbers are the measurement and stay. Saved on the server
+   (PUT .../review); sending approves it, and the PDF then says so. */
+let REVIEW=null;
+function reviewBase(e){ return '/me/athletes/'+encodeURIComponent(e.athleteId)+'/analyses/'+encodeURIComponent(e.id)+'/review'; }
+async function renderReview(e){
+  const block=$('#hdReviewBlock'), host=$('#hdReview'); if(!block||!host) return;
+  REVIEW=null; host.innerHTML='';
+  const own=hasCoachPlan()&&!!e&&e.athleteId!=null&&!e.linkedAthleteId&&e.kind==='video'&&e.sellable!==false;
+  block.classList.toggle('hidden',!own);
+  if(!own) return;
+  host.innerHTML='<p class="hint" style="text-align:left">Preparing the draft…</p>';
+  try{
+    const r=await fetch(reviewBase(e),{headers:authHeaders()});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.detail||'');
+    if(!state.histOpen||state.histOpen.id!==e.id) return;
+    REVIEW={e,data:j,dirty:false};
+    drawReview();
+  }catch(err){ host.innerHTML=`<p class="hint" style="text-align:left">${esc(err.message||'Could not prepare the draft. Reload the page to try again.')}</p>`; }
+}
+function reviewCardHtml(c,i,n){
+  const changed=c.title!==c.orig.title||c.why!==c.orig.why||c.do!==c.orig.do;
+  return `<div class="rv-card${c.hidden?' off':''}" data-i="${i}">
+    <div class="rv-card-h"><label class="rv-show"><input type="checkbox" data-f="show"${c.hidden?'':' checked'}> <b>${esc(c.label)}</b>${c.hidden?' <span>· left out</span>':''}</label>
+      <span class="rv-move"><button type="button" data-mv="-1" aria-label="Move up"${i?'':' disabled'}>↑</button><button type="button" data-mv="1" aria-label="Move down"${i<n-1?'':' disabled'}>↓</button></span></div>
+    <label class="rv-sub">Change<input type="text" data-f="title" value="${esc(c.title)}"></label>
+    <label class="rv-sub">Why<textarea data-f="why" rows="3">${esc(c.why)}</textarea></label>
+    <label class="rv-sub">Do this<textarea data-f="do" rows="3">${esc(c.do)}</textarea></label>
+    ${changed?'<button type="button" class="p-copy rv-orig" data-f="orig">Flapp’s words for this card</button>':''}
+  </div>`;
+}
+function drawReview(){
+  const host=$('#hdReview'); if(!host||!REVIEW) return;
+  const d=REVIEW.data, cards=d.cards||[];
+  const status=d.reviewedAt
+    ? `<span class="rv-st ok">Approved${d.reviewedBy?' by '+esc(d.reviewedBy):''} · ${esc(fmtWhen(d.reviewedAt))}</span>`
+    : '<span class="rv-st">Draft · only you see it</span>';
+  host.innerHTML=`<div class="rv-head">${status}${d.edited?'<span class="rv-st">Your edits are in</span>':''}</div>
+    <p class="rv-lede">Flapp wrote this report. The words and the plan are yours to change; the measured numbers stay as they are.</p>
+    <label class="rv-lbl" for="rvText">The coach’s read</label>
+    <textarea id="rvText" rows="9">${esc(d.coachText||'')}</textarea>
+    <div class="rv-links"><button type="button" class="p-copy" id="rvTextFlapp">Flapp’s text</button> · <button type="button" class="p-copy" id="rvTextNone">leave it out</button></div>
+    <div class="rv-lbl">The plan, in the order it prints</div>
+    <div class="rv-cards">${cards.length?cards.map((c,i)=>reviewCardHtml(c,i,cards.length)).join(''):'<p class="hint" style="text-align:left">No changes in the plan on this clip.</p>'}</div>
+    <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="rvSave">${d.reviewedAt?'Save changes':'Save the draft'}</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="rvPreview">See the PDF</button>
+      ${d.edited?'<button type="button" class="p-copy" id="rvReset">back to Flapp’s version</button>':''}
+      <span class="cnote-status" id="rvStatus">${REVIEW.dirty?'Not saved yet.':''}</span></div>
+    <p class="hint" style="text-align:left;margin-top:10px">${d.reviewedAt?'Sent. What you save now shows on the athlete’s link straight away.':'Sending it with the button at the top approves it: the PDF then says it was reviewed by you.'}</p>`;
+  const touch=()=>{ REVIEW.dirty=true; const s=$('#rvStatus'); if(s) s.textContent='Not saved yet.'; };
+  $('#rvText').addEventListener('input',e=>{ d.coachText=e.target.value; touch(); });
+  $('#rvTextFlapp').addEventListener('click',()=>{ d.coachText=d.coachTextFlapp||''; $('#rvText').value=d.coachText; touch(); });
+  $('#rvTextNone').addEventListener('click',()=>{ d.coachText=''; $('#rvText').value=''; touch(); });
+  host.querySelectorAll('.rv-card').forEach(el=>{
+    const c=cards[+el.dataset.i];
+    el.querySelectorAll('[data-f]').forEach(inp=>{
+      const f=inp.dataset.f;
+      if(f==='show') inp.addEventListener('change',()=>{ c.hidden=!inp.checked; touch(); drawReview(); });
+      else if(f==='orig') inp.addEventListener('click',()=>{ Object.assign(c,c.orig); touch(); drawReview(); });
+      else inp.addEventListener('input',()=>{ c[f]=inp.value; touch(); });
+    });
+    el.querySelectorAll('[data-mv]').forEach(b=>b.addEventListener('click',()=>{
+      const i=+el.dataset.i, j=i+(+b.dataset.mv); if(j<0||j>=cards.length) return;
+      [cards[i],cards[j]]=[cards[j],cards[i]]; touch(); drawReview();
+    }));
+  });
+  $('#rvSave').addEventListener('click',async()=>{ const s=$('#rvStatus'); s.textContent='Saving…'; s.textContent=(await saveReview())?'Saved.':'Could not save — check your connection.'; });
+  $('#rvPreview').addEventListener('click',()=>previewReview());
+  const reset=$('#rvReset'); if(reset) reset.addEventListener('click',async()=>{
+    const r=await fetch(reviewBase(REVIEW.e),{method:'DELETE',headers:authHeaders()});
+    if(!r.ok){ toast('Could not go back to Flapp’s version.'); return; }
+    REVIEW.data=await r.json(); REVIEW.dirty=false; drawReview(); toast('Back to Flapp’s version.');
+  });
+}
+async function saveReview(){
+  if(!REVIEW) return true;
+  const d=REVIEW.data;
+  const body={
+    coachText:(d.coachText||'')===(d.coachTextFlapp||'')?null:(d.coachText||''),
+    cards:(d.cards||[]).map(c=>({key:c.key,hidden:!!c.hidden,
+      title:c.title!==c.orig.title?c.title:null, why:c.why!==c.orig.why?c.why:null, do:c.do!==c.orig.do?c.do:null})),
+  };
+  try{
+    const r=await fetch(reviewBase(REVIEW.e),{method:'PUT',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(j.detail||'Could not save your edits.'); return false; }
+    REVIEW.data=j; REVIEW.dirty=false; drawReview();
+    track('report_review_saved',{cards:body.cards.length,hidden:body.cards.filter(c=>c.hidden).length,text:body.coachText!==null});
+    return true;
+  }catch(_e){ return false; }
+}
+async function saveReviewIfDirty(e){
+  if(!REVIEW||!REVIEW.dirty||!e||REVIEW.e.id!==e.id) return true;
+  return saveReview();
+}
+/* The PDF with the edits in it. The tab opens first, inside the click, or the
+   browser blocks it; the save and the fetch follow. */
+async function previewReview(){
+  if(!REVIEW) return;
+  const w=window.open('','_blank');
+  if(!w){ toast('Allow pop-ups for this site to see the PDF.'); return; }
+  w.document.write('<p style="font:16px system-ui,sans-serif;padding:24px;color:#14294B">Preparing the report…</p>');
+  if(!await saveReview()){ w.close(); return; }
+  try{
+    const r=await fetch(meUrl(REVIEW.e,'report'),{headers:authHeaders()});
+    if(!r.ok) throw new Error(String(r.status));
+    const html=await r.text();
+    w.document.open(); w.document.write(html); w.document.close();
+  }catch(_e){ w.close(); toast('The report could not be prepared.'); }
 }
 function openDashboard(){
   const sec=$('#dashboard'), host=$('#squadHome');

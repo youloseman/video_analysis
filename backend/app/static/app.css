@@ -1916,6 +1916,26 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .cnote-cues .cnote-cuelbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);align-self:center;margin-right:4px}
 .cnote-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
 .cnote-status{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
+/* The coach's review of Flapp's draft. */
+.rv-head{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 6px}
+.rv-st{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-soft);
+  background:var(--c-panel);border:1px solid var(--c-line);border-radius:var(--radius);padding:3px 8px}
+.rv-st.ok{color:#1F7A45;border-color:#B9DEC8;background:#EAF6EF}
+.rv-lede{font-size:14px;color:var(--c-ink-soft);margin:0 0 12px;max-width:62ch}
+.rv-lbl{display:block;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint);margin:14px 0 6px}
+.rv textarea,.rv input[type=text]{width:100%;font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink);
+  padding:8px 10px;border:1px solid var(--c-line-strong);border-radius:var(--radius-xs);background:var(--c-bg);resize:vertical;box-sizing:border-box}
+.rv-links{font-size:13px;margin-top:4px}
+.rv-cards{display:grid;gap:10px}
+.rv-card{border:1px solid var(--c-line);border-radius:var(--radius);padding:10px 12px;background:var(--c-bg);display:grid;gap:8px;min-width:0}
+.rv-card.off{opacity:.55}
+.rv-card-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rv-show{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--c-ink);cursor:pointer}
+.rv-show span{color:var(--c-ink-faint)}
+.rv-move button{font-size:14px;width:30px;height:30px;border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink);border-radius:var(--radius-xs);cursor:pointer;margin-left:4px}
+.rv-move button:disabled{opacity:.35;cursor:default}
+.rv-sub{display:grid;gap:4px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint)}
+.rv-orig{justify-self:start;font-size:13px}
 .cnote-read{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.55;color:var(--c-ink)}
 /* "upper body only" beside a photo score whose crank position is unknown. */
 .score-partial{font-family:var(--f-mono);font-size:12px;letter-spacing:.04em;color:#F0B44C;margin-top:8px;line-height:1.4}

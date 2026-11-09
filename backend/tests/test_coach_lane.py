@@ -687,3 +687,87 @@ async def test_a_bike_athletes_unreadable_clip_is_still_asked_about(make_user, d
     assert ran == []
     item = (await api.list_uploads(None, coach, db))["items"][0]
     assert item["status"] == "failed" and "Run or Bike" in item["error"]
+
+
+# --------------------------------------------------------------------------
+# The coach's draft: Flapp writes it, the coach edits the words, then approves
+# --------------------------------------------------------------------------
+FIT = {"diagnostics": [
+    {"component": "saddle_height", "status": "needs_adjustment", "metric_name": "knee_at_bdc", "current_value": 149.0,
+     "target_range": [138, 145], "action": "lower_saddle", "amount": "5mm", "priority": 1,
+     "reason": "Knee angle at BDC is 149 deg (optimal 138-145 deg). Overextension -- lower saddle by 5mm, "
+               "ride 30 min before reassessing."},
+    {"component": "bar_position", "status": "needs_adjustment", "metric_name": "trunk_angle", "current_value": 30.0,
+     "target_range": [20, 25], "action": "lower_bars", "amount": "", "priority": 3,
+     "reason": "Trunk angle is 30 deg (optimal 20-25 deg). Position is too upright -- lower the pads stack."}],
+    "fitting_sequence_note": "Adjust in order: saddle height -> bar position. One change at a time."}
+
+
+async def drafted(make_user, db, lane):
+    coach, a, row = await filed_report(make_user, db, lane)
+    row.result = {**row.result, "fit_plan": FIT, "ai_recommendations": {"report": "**Fix first**\n- Lower it."},
+                  "sport_specific_metrics": {"capture_report": {"checks": []}}}
+    await db.commit()
+    return coach, a, row
+
+
+async def report_of(db, coach, row) -> str:
+    return await me.render_saved_report(db, reader=coach, owner=coach, row=row, athlete_id=row.athlete_id)
+
+
+async def test_a_coachs_report_is_a_draft_until_it_is_sent(make_user, db, lane):
+    coach, a, row = await drafted(make_user, db, lane)
+    assert "Draft · only you see it" in await report_of(db, coach, row)
+    sent = await reports.send_report(a["id"], row.client_id, coach, db)
+    html = await report_of(db, coach, row)
+    assert "Draft ·" not in html and "<dt>Reviewed</dt><dd>Coach Mike · " in html
+    page = (await reports.shared_report(sent["url"].rsplit("/", 1)[1], req("5.5.5.9"), db)).body.decode()
+    assert "Reviewed" in page and "Draft" not in page
+
+
+async def test_the_coach_rewrites_hides_and_reorders_and_the_link_shows_it(make_user, db, lane):
+    coach, a, row = await drafted(make_user, db, lane)
+    st = await reports.get_review(a["id"], row.client_id, coach, db)
+    keys = [c["key"] for c in st["cards"]]
+    assert keys == ["knee_at_bdc|lower_saddle", "trunk_angle|lower_bars"] and "Lower it." in st["coachText"]
+    body = reports.ReviewBody(coachText="**Overall** Ride it a week first.", cards=[
+        reports.CardEdit(key=keys[1], why="Your back is happy; leave the bars.", do="Nothing yet."),
+        reports.CardEdit(key=keys[0], hidden=True)])
+    st = await reports.put_review(a["id"], row.client_id, body, coach, db)
+    assert st["edited"] and [c["key"] for c in st["cards"]] == [keys[1], keys[0]] and st["cards"][1]["hidden"]
+    sent = await reports.send_report(a["id"], row.client_id, coach, db)
+    page = (await reports.shared_report(sent["url"].rsplit("/", 1)[1], req("5.5.5.8"), db)).body.decode()
+    assert "Ride it a week first." in page and "Lower it." not in page
+    assert "Your back is happy; leave the bars." in page and "Lower saddle 5mm" not in page
+
+
+async def test_back_to_flapps_words_keeps_the_approval(make_user, db, lane):
+    coach, a, row = await drafted(make_user, db, lane)
+    await reports.put_review(a["id"], row.client_id, reports.ReviewBody(coachText=""), coach, db)
+    assert "Lower it." not in await report_of(db, coach, row)
+    await reports.send_report(a["id"], row.client_id, coach, db)
+    st = await reports.reset_review(a["id"], row.client_id, coach, db)
+    assert not st["edited"] and st["reviewedAt"] and "Lower it." in await report_of(db, coach, row)
+
+
+async def test_another_coach_cannot_read_or_edit_the_draft(make_user, db, lane):
+    coach, a, row = await drafted(make_user, db, lane)
+    other, _ = await coach_with_athlete(make_user, db)
+    for call in (reports.get_review(a["id"], row.client_id, other, db),
+                 reports.put_review(a["id"], row.client_id, reports.ReviewBody(), other, db),
+                 reports.reset_review(a["id"], row.client_id, other, db)):
+        with pytest.raises(HTTPException):
+            await call
+
+
+async def test_a_resave_of_the_entry_keeps_the_coachs_edits(make_user, db, lane):
+    from app.core.jobs import JOBS
+
+    coach, a, row = await drafted(make_user, db, lane)
+    await reports.put_review(a["id"], row.client_id, reports.ReviewBody(coachText="Mine."), coach, db)
+    JOBS["jre"] = {"result": {"sport_type": "bike", "technique_score": 81}}
+    try:
+        me._attach_result(row, "jre")
+    finally:
+        JOBS.pop("jre", None)
+    assert row.result["coach_edits"]["coachText"] == "Mine."

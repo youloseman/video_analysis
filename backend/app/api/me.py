@@ -285,6 +285,9 @@ def _attach_result(row: Analysis, job_id: str) -> None:
     prev = row.result or {}
     if prev.get("ai_recommendations") and not result.get("ai_recommendations"):
         result = {**result, "ai_recommendations": prev["ai_recommendations"]}
+    # A coach's edits live on the row too, and a re-save must not wipe them.
+    if prev.get("coach_edits") and not result.get("coach_edits"):
+        result = {**result, "coach_edits": prev["coach_edits"]}
     row.result = result
     # Whether this was the account's free preview is decided by the server at
     # upload time and recorded here, so re-opening the report a year later still
@@ -651,12 +654,37 @@ async def render_saved_report(
     """The branded document for one stored analysis. ``reader`` is whose mark
     goes on it (a coach's, when a coach is the one handing it over); ``owner``
     whose analysis it is."""
+    from app.services.report_pdf import render_report_html
+
+    result, meta = await saved_report_meta(db, reader=reader, owner=owner, row=row, athlete_id=athlete_id)
+    return render_report_html(result, meta)
+
+
+def coach_owned(reader: User, row: Analysis) -> bool:
+    """A clip a coach filmed and filed under an athlete: the report is theirs to
+    edit and approve. A linked athlete's own clip never is."""
+    return bool(row.athlete_id) and row.user_id == reader.id and has_coach(reader.tier)
+
+
+def reviewed_line(edits: dict[str, Any]) -> str | None:
+    from datetime import datetime, timezone
+
+    at = edits.get("reviewedAt")
+    if not isinstance(at, (int, float)):
+        return None
+    when = datetime.fromtimestamp(at / 1000, timezone.utc)
+    return " · ".join(x for x in (str(edits.get("reviewedBy") or ""), f"{when.day} {when:%b %Y}") if x)
+
+
+async def saved_report_meta(
+    db: AsyncSession, *, reader: User, owner: User, row: Analysis, athlete_id: int | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The result and the facts the report is drawn from."""
     from datetime import datetime, timezone
 
     from app.models.athlete import Athlete
     from app.models.coach import CoachProfile
     from app.models.profile import Profile
-    from app.services.report_pdf import render_report_html
     from app.services.video_analysis.biomechanics.cycling_positions import (
         get_position_label,
     )
@@ -686,7 +714,12 @@ async def render_saved_report(
     when = datetime.fromtimestamp((entry.get("filmedAt") or row.created_at_ms or 0) / 1000, timezone.utc)
     today = datetime.now(timezone.utc)
     position = result.get("cycling_position")
-    return render_report_html(result, {
+    own = coach_owned(reader, row)
+    edits = (result.get("coach_edits") or {}) if own else {}
+    return result, {
+        "edits": edits,
+        "draft": own and not edits.get("reviewedAt"),
+        "reviewed": reviewed_line(edits) if own else None,
         "athlete": who,
         "setup": setup,
         "filmed": f"{when.day} {when:%b %Y}",
@@ -699,7 +732,7 @@ async def render_saved_report(
         "coach_note": entry.get("coachNote") or "",
         "coach_note_by": entry.get("coachName") or "",
         "previous": await _previous_clip(db, row, capture_bars),
-    })
+    }
 
 
 @router.get("/analyses/{client_id}/timeline")
