@@ -65,6 +65,26 @@ ARM = {"left": [11, 13, 15], "right": [12, 14, 16]}
 
 NAME_SUFFIX = "+rtmpose_m"
 
+# On the bike the box RTMPose is cropped on spans the whole last second, not
+# the one frame. MediaPipe's box is the min/max of its points, and its bottom
+# edge rides the pedalling foot (~10 px a frame on IMG_5572), so the crop's
+# scale changed every frame and the whole body rocked at cadence -- the elbow,
+# which barely moves, five times as far per frame as MediaPipe's (2026-11-09).
+# The box's extent around the torso is the widest of the last second (about a
+# pedal revolution); its position follows the torso on this frame, so a rider
+# passing the camera is not chased by a box that lags behind.
+#
+# OFF (2026-11-09). On four clips it steadied the arms, but it also moves the
+# legs: the TT reference clip's knee at BDC went 150.0 -> 151.3, the saddle
+# verdict flipped from acceptable to too high and the score 86 -> 81. Without
+# labelled clips there is no telling which knee is right, and filtering the
+# arms at 3 Hz (landmark_stabilizer.BIKE_ARM_CUTOFF_RATIO) already took most
+# of the shake out without touching a leg. Turn on with "bike" once a labelled
+# set says the knee moves the right way.
+STEADY_BOX_SPORTS: frozenset[str] = frozenset()
+STEADY_BOX_MS = 1000
+_TORSO = (11, 12, 23, 24)
+
 # One ONNX session per model file for the process. The session holds weights,
 # not state: ``run`` is thread-safe and nothing about one video reaches the
 # next, so this does not break PoseDetector's "stateless across videos" rule.
@@ -141,27 +161,50 @@ class RTMPoseRefiner(PoseDetector):
         self._session = session
         self.refined = 0
         self.failed = 0
+        sport = getattr(getattr(inner, "config", None), "sport", None)
+        self._steady = sport in STEADY_BOX_SPORTS
+        self._boxes: list[tuple[float, np.ndarray]] = []  # (ms, box around the torso)
+        self._frame = 0
+
+    def _box(self, mp_px: np.ndarray, ok: np.ndarray, w: int, h: int,
+             timestamp_ms: int | None) -> tuple[float, float, float, float]:
+        """This frame's box, or on the bike the last second's (STEADY_BOX_MS)."""
+        x0, y0 = mp_px[ok].min(0)
+        x1, y1 = mp_px[ok].max(0)
+        if not self._steady:
+            return x0, y0, x1, y1
+        torso = mp_px[list(_TORSO)]
+        torso = torso[np.isfinite(torso).all(1)]
+        anchor = torso.mean(0) if len(torso) else np.array([(x0 + x1) / 2, (y0 + y1) / 2])
+        now = float(timestamp_ms) if timestamp_ms is not None else self._frame * 1000.0 / 30.0
+        self._frame += 1
+        self._boxes.append((now, np.array([x0, y0, x1, y1]) - np.tile(anchor, 2)))
+        self._boxes = [(t, b) for t, b in self._boxes if now - t <= STEADY_BOX_MS]
+        rel = np.array([b for _, b in self._boxes])
+        bx0, by0 = rel[:, 0].min() + anchor[0], rel[:, 1].min() + anchor[1]
+        bx1, by1 = rel[:, 2].max() + anchor[0], rel[:, 3].max() + anchor[1]
+        return max(bx0, 0.0), max(by0, 0.0), min(bx1, w - 1.0), min(by1, h - 1.0)
 
     def detect(self, image_rgb: np.ndarray, timestamp_ms: int | None = None) -> DetectorFrame | None:
         frame = self._inner.detect(image_rgb, timestamp_ms)
         if frame is None:
             return None
         try:
-            return self._refine(image_rgb, frame)
+            return self._refine(image_rgb, frame, timestamp_ms)
         except Exception as e:  # noqa: BLE001 -- MediaPipe's frame is still a frame
             self.failed += 1
             if self.failed == 1:
                 logger.warning("RTMPOSE_REFINE_FAILED", err=str(e))
             return frame
 
-    def _refine(self, image_rgb: np.ndarray, frame: DetectorFrame) -> DetectorFrame:
+    def _refine(self, image_rgb: np.ndarray, frame: DetectorFrame,
+                timestamp_ms: int | None = None) -> DetectorFrame:
         h, w = image_rgb.shape[:2]
         mp_px = np.array([[lm.x * w, lm.y * h] for lm in frame.normalized_landmarks], dtype=np.float64)
         ok = np.isfinite(mp_px).all(1)
         if ok.sum() < 5:
             return frame
-        x0, y0 = mp_px[ok].min(0)
-        x1, y1 = mp_px[ok].max(0)
+        x0, y0, x1, y1 = self._box(mp_px, ok, w, h, timestamp_ms)
         if x1 - x0 < 2 or y1 - y0 < 2:
             return frame
         kps, sc = predict(self._session, image_rgb, (x0, y0, x1, y1))

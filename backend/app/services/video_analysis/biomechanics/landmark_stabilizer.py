@@ -1374,6 +1374,15 @@ BUTTER_LANDMARK_CUTOFF_HZ: dict[tuple[str, str | None], float] = {
 RUN_SLOWMO_STRIDE_HZ = 1.0
 RUN_CUTOFF_PER_STRIDE = 5.5
 BUTTER_LANDMARK_ORDER = 4
+# On the bike the arms hold the bars: shoulders, elbows, wrists and hands move
+# far slower than the legs, so they are filtered at half the legs' cutoff
+# (3 Hz at 30 fps). RTMPose re-places every joint on every frame, and on arms
+# that barely move its frame-to-frame scatter WAS the motion the overlay drew:
+# the elbow of IMG_5572 (aero, 2026-11-09) wandered five times as far per frame
+# as MediaPipe's. At half the cutoff it moves as little as MediaPipe's, and the
+# elbow angle's median moved by 0.1 deg on four clips.
+BIKE_ARM_LANDMARKS = frozenset(range(11, 23))
+BIKE_ARM_CUTOFF_RATIO = 0.5
 # filtfilt needs enough samples beyond the padlen (default 3*order*2 for
 # SOS) to be numerically stable. 24 matches what the existing angle
 # Butterworth helper uses as its minimum.
@@ -1528,6 +1537,10 @@ def _apply_butterworth_landmarks(
     nyquist = cutoff_info["nyquist_hz"]
     wn = cutoff_hz / nyquist
     sos = butter(BUTTER_LANDMARK_ORDER, wn, btype="low", output="sos")
+    arm_sos = None
+    if sport_type == "bike":
+        arm_sos = butter(BUTTER_LANDMARK_ORDER, wn * BIKE_ARM_CUTOFF_RATIO, btype="low", output="sos")
+        cutoff_info["arm_cutoff_hz"] = round(cutoff_hz * BIKE_ARM_CUTOFF_RATIO, 2)
 
     first_wl = frame_results[0]["world_landmarks"]
     first_nl = frame_results[0]["normalized_landmarks"]
@@ -1556,7 +1569,10 @@ def _apply_butterworth_landmarks(
                     idx[nan_mask], idx[valid], series[valid]
                 )
                 try:
-                    out = sosfiltfilt(sos, series)
+                    out = sosfiltfilt(
+                        arm_sos if arm_sos is not None and i in BIKE_ARM_LANDMARKS else sos,
+                        series,
+                    )
                 except ValueError:
                     continue  # padlen mismatch -- leave original
                 # Restore NaN so visibility-gated positions stay hidden
