@@ -99,7 +99,7 @@ def test_the_batch_size_matches_the_servers():
 def test_send_takes_the_note_still_in_the_box():
     """Send reads what is saved. A note typed and not saved used to stay behind."""
     src = fn("renderCoachActions")
-    assert src.index("saveCoachNoteIfTyped(e)") < src.index("base+'/send'")
+    assert src.index("saveCoachNoteIfTyped(e, W.note)") < src.index("base+'/send'")
 
 
 def test_the_empty_squad_button_opens_the_form():

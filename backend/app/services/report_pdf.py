@@ -724,7 +724,8 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     low = _low_trust(film)
     # Advice worked out against the wrong ranges is worse than none: "raise the bars"
     # to a rider on aero bars. The numbers stay, under a note that says what they are.
-    wrong_ranges = "position" in film_codes
+    withheld = result.get("score_withheld") if isinstance(result.get("score_withheld"), dict) else {}
+    wrong_ranges = "position" in film_codes or withheld.get("reason") == "position_mismatch"
     if wrong_ranges:
         prios, strong, issues = [], [], []
     for p in prios:

@@ -643,3 +643,15 @@ def test_the_seatpost_card_links_the_article_behind_it():
     assert "They Sit Further Forward." in plan and "getflapp.com/academy/kona-2026-hip-over-crank" in plan
     assert "hobfig" not in html
     assert "kona-2026-hip-over-crank" not in render_report_html(_far(gap=-8.0, angle=82.5), {})
+
+
+def test_an_aero_clip_that_is_not_aero_gets_no_plan_either():
+    """The other direction of the position check: picked aero, ridden on the base bar.
+    The score is already withheld; the plan was still telling him to lower the pads."""
+    res = _bike_plan(cycling_position="triathlon", score_withheld={"reason": "position_mismatch", "detail": "x"},
+                     fit_plan={"diagnostics": [{"component": "bar_position", "status": "needs_adjustment",
+                                                "metric_name": "trunk_angle", "action": "lower_bars", "priority": 3,
+                                                "reason": "Trunk angle is 40 deg (optimal 20-25 deg). Position is "
+                                                          "too upright -- lower pad stack."}]})
+    html = render_report_html(res, {})
+    assert "Lower bars" not in html and "lower pad stack" not in html.lower()

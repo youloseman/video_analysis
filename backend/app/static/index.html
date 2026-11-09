@@ -936,6 +936,7 @@
           <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share result</span>
         </button>
         <span id="printBtnHost"></span>
+        <div class="hdcoach" id="coachActions"></div>
       </div>
       <div id="videoCol">
         <!-- Paper cannot play a video. The annotated still says the same thing
@@ -1090,6 +1091,14 @@
         <div class="speedline-sm"></div>
       </div>
       <div class="cnote" id="coachNote"></div>
+    </div>
+    <div class="block block-coach hidden" id="reviewBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Before you send</div>
+        <h3>Review the report</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="rv" id="review"></div>
     </div>
 
     <div class="block" id="planBlock">
@@ -9985,6 +9994,7 @@ function render(job,opts){
     {overlay:!!job.overlay_url, overlay_failed:!!job.overlay_failed});
   state.lastResult=r; $('#shareBtn').classList.remove('hidden');
   renderCoachNote('coachNote', state.videoHistId);
+  renderResultCoach(state.videoHistId);
   renderCompareNext('cmpNextV', state.videoHistId, 'result');
   renderNotesOffer('notesOffer', state.videoHistId);
   // The joint editor: bike, paid (the server refuses everything else), the
@@ -13821,23 +13831,37 @@ function placeCoachNote(e){
   if(hasCoachPlan()&&e&&e.athleteId!=null) video.after(note); else hob.before(note);
   const rv=$('#hdReviewBlock'); if(rv) note.after(rv);
 }
-function goCoachNote(){
-  const ta=$('#hdCoachNoteText'); if(!ta) return;
+function goCoachNote(sel){
+  const ta=$(sel||'#hdCoachNoteText'); if(!ta) return;
   ta.scrollIntoView({behavior:'smooth',block:'center'}); ta.focus({preventScroll:true});
 }
 /* Send reads what is saved, so a note still in the box goes first. */
-async function saveCoachNoteIfTyped(e){
-  const ta=$('#hdCoachNoteText'); if(!ta) return true;
+async function saveCoachNoteIfTyped(e, sel){
+  const ta=$(sel||'#hdCoachNoteText'); if(!ta) return true;
   const saved=String((findEntry(e.id)||e).coachNote||'').trim(), typed=ta.value.trim();
   if(typed===saved) return true;
   return !!(await patchEntry(e.id,{coachNote:typed,coachName:COACH.name||''}));
 }
-async function renderCoachActions(e){
-  const host=$('#hdCoachActions'); if(!host) return;
+/* Where the coach's buttons and review live: the saved report (History) by
+   default, or the result screen right after the analysis (renderResultCoach). */
+const HIST_COACH={host:'#hdCoachActions', note:'#hdCoachNoteText',
+  live:e=>!!state.histOpen&&state.histOpen.id===e.id,
+  review:{block:'#hdReviewBlock', host:'#hdReview', live:e=>!!state.histOpen&&state.histOpen.id===e.id}};
+const RESULT_COACH={host:'#coachActions', note:'#coachNoteText',
+  live:e=>state.videoHistId===e.id,
+  review:{block:'#reviewBlock', host:'#review', live:e=>state.videoHistId===e.id}};
+function renderResultCoach(id){
+  const e=id?findEntry(id):null;
+  renderCoachActions(e, RESULT_COACH);
+  renderReview(e, RESULT_COACH.review);
+}
+async function renderCoachActions(e, where){
+  const W=where||HIST_COACH;
+  const host=$(W.host); if(!host) return;
   host.innerHTML='';
   if(!hasCoachPlan()||!e||e.athleteId==null) return;
   const name=athleteName(e.athleteId)||'your athlete';
-  const noteBtn=coachOn()&&!e.coachOrderId?`<button class="btn btn-ghost btn-sm" type="button" onclick="goCoachNote()"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Write a note</button>`:'';
+  const noteBtn=coachOn()&&!e.coachOrderId?`<button class="btn btn-ghost btn-sm" type="button" onclick="goCoachNote('${esc(W.note)}')"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Write a note</button>`:'';
   if(e.linkedAthleteId){ host.innerHTML=`${noteBtn}<p class="hint" style="text-align:left;margin:10px 0 0">${esc(name)} has this report in their own app. Your note reaches them there.</p>`; return; }
   if(e.kind!=='video'||e.sellable===false){ host.innerHTML=noteBtn; return; }
   const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(e.athleteId));
@@ -13848,7 +13872,7 @@ async function renderCoachActions(e){
       ${url?`<div class="hdlink"><button type="button" class="p-copy" id="hdLinkCopy">copy the link</button> · <button type="button" class="p-copy" id="hdLinkOff">turn it off</button><small>Opens without an account, for 90 days. Under your name and mark.</small></div>`:''}`;
     const sendBtn=$('#hdSend'); if(sendBtn) sendBtn.addEventListener('click',async()=>{
       try{
-        if(!await saveCoachNoteIfTyped(e)){ toast('Could not save your note, so nothing was sent.',{duration:6000}); return; }
+        if(!await saveCoachNoteIfTyped(e, W.note)){ toast('Could not save your note, so nothing was sent.',{duration:6000}); return; }
         if(!await saveReviewIfDirty(e)){ toast('Could not save your edits, so nothing was sent.',{duration:6000}); return; }
         const r=await fetch(base+'/send',{method:'POST',headers:authHeaders()});
         const j=await r.json().catch(()=>({}));
@@ -13856,7 +13880,7 @@ async function renderCoachActions(e){
         track('report_sent_to_athlete',{mailed:!!j.mailed});
         toast(j.mailed?`Sent to ${j.email}.`:'Link ready. Copy it and send it yourself.');
         draw(j.url);
-        renderReview(e);
+        renderReview(e, W.review);
       }catch(_e){ toast('Could not send it.'); }
     });
     const c=$('#hdLinkCopy'); if(c) c.addEventListener('click',()=>copyText(url,'Link copied.'));
@@ -13866,28 +13890,37 @@ async function renderCoachActions(e){
     });
   };
   draw(null);
-  try{ const r=await fetch(base+'/share',{headers:authHeaders()}); if(r.ok){ const j=await r.json(); if(state.histOpen&&state.histOpen.id===e.id) draw(j.url); } }catch(_e){}
+  try{ const r=await fetch(base+'/share',{headers:authHeaders()}); if(r.ok){ const j=await r.json(); if(W.live(e)) draw(j.url); } }catch(_e){}
 }
 /* The review: Flapp's draft of a coach's report. The coach changes the words
    and the plan; the numbers are the measurement and stay. Saved on the server
    (PUT .../review); sending approves it, and the PDF then says so. */
 let REVIEW=null;
 function reviewBase(e){ return '/me/athletes/'+encodeURIComponent(e.athleteId)+'/analyses/'+encodeURIComponent(e.id)+'/review'; }
-async function renderReview(e){
-  const block=$('#hdReviewBlock'), host=$('#hdReview'); if(!block||!host) return;
+async function renderReview(e, where){
+  const W=where||HIST_COACH.review;
+  const block=$(W.block), host=$(W.host); if(!block||!host) return;
+  // One review on the page at a time: the other screen's goes.
+  [HIST_COACH.review, RESULT_COACH.review].forEach(o=>{ if(o.host!==W.host){ const h=$(o.host); if(h) h.innerHTML=''; } });
   REVIEW=null; host.innerHTML='';
-  const own=hasCoachPlan()&&!!e&&e.athleteId!=null&&!e.linkedAthleteId&&e.kind==='video'&&e.sellable!==false;
+  const own=hasCoachPlan()&&!!e&&e.athleteId!=null&&!e.linkedAthleteId&&e.kind==='video'&&e.sellable!==false&&!e.locked;
   block.classList.toggle('hidden',!own);
   if(!own) return;
   host.innerHTML='<p class="hint" style="text-align:left">Preparing the draft…</p>';
-  try{
-    const r=await fetch(reviewBase(e),{headers:authHeaders()});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(j.detail||'');
-    if(!state.histOpen||state.histOpen.id!==e.id) return;
-    REVIEW={e,data:j,dirty:false};
-    drawReview();
-  }catch(err){ host.innerHTML=`<p class="hint" style="text-align:left">${esc(err.message||'Could not prepare the draft. Reload the page to try again.')}</p>`; }
+  // Straight after the analysis the entry is still being saved: wait for it.
+  for(let tries=0; tries<8; tries++){
+    try{
+      const r=await fetch(reviewBase(e),{headers:authHeaders()});
+      const j=await r.json().catch(()=>({}));
+      if(r.status===404||r.status===409){ await new Promise(res=>setTimeout(res,1500)); if(!W.live(e)) return; continue; }
+      if(!r.ok) throw new Error(j.detail||'');
+      if(!W.live(e)) return;
+      REVIEW={e,data:j,dirty:false,host:W.host};
+      drawReview();
+      return;
+    }catch(err){ host.innerHTML=`<p class="hint" style="text-align:left">${esc(err.message||'Could not prepare the draft. Reload the page to try again.')}</p>`; return; }
+  }
+  host.innerHTML='<p class="hint" style="text-align:left">The report is still being saved. Open it from the athlete’s page in a minute to review it.</p>';
 }
 function reviewCardHtml(c,i,n){
   const changed=c.title!==c.orig.title||c.why!==c.orig.why||c.do!==c.orig.do;
@@ -13901,7 +13934,7 @@ function reviewCardHtml(c,i,n){
   </div>`;
 }
 function drawReview(){
-  const host=$('#hdReview'); if(!host||!REVIEW) return;
+  const host=REVIEW&&$(REVIEW.host); if(!host||!REVIEW) return;
   const d=REVIEW.data, cards=d.cards||[];
   const status=d.reviewedAt
     ? `<span class="rv-st ok">Approved${d.reviewedBy?' by '+esc(d.reviewedBy):''} · ${esc(fmtWhen(d.reviewedAt))}</span>`
