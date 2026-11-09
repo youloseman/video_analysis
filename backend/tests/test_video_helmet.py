@@ -17,9 +17,10 @@ from app.services.video_analysis.biomechanics.technique_scorer import (
     score_cycling,
 )
 from app.services.video_analysis.photo_analyzer import (
-    _HELMET_BAND,
-    _HELMET_SCORE_FLOOR,
-    _score_single_angle,
+    PHOTO_CYCLING_WEIGHTS_UNCERTAIN,
+    _get_cycling_optimal_ranges,
+    _score_photo_angles,
+    _with_helmet_band,
 )
 
 SUMMARY = {
@@ -37,19 +38,26 @@ def test_the_old_head_score_is_out_of_the_rubric():
 
 
 def test_the_clip_and_the_photo_grade_a_helmet_alike():
+    ranges = _with_helmet_band(_get_cycling_optimal_ranges("triathlon", "uncertain"), True)
     for v in (-4.0, 12.0, KONA_PRO_FREE_UP_TO, 26.0, 33.0, 60.0):
-        photo = max(_score_single_angle(v, *_HELMET_BAND), _HELMET_SCORE_FLOOR)
-        assert helmet_component_score(v) == photo, v
+        photo = _score_photo_angles({"trunk": 22.0, "helmet_above_back": v}, ranges, "bike",
+                                    PHOTO_CYCLING_WEIGHTS_UNCERTAIN, cycling_position="triathlon",
+                                    pedal_phase="uncertain")
+        assert helmet_component_score(v) == photo["per_angle"]["helmet_above_back"]["score"], v
 
 
-def test_a_high_helmet_on_aero_bars_costs_a_little_and_is_amber():
+def test_a_high_helmet_on_aero_bars_costs_points():
+    """2026-11-09: +29.6 %, head visibly up on aero bars, lost under a point and
+    kept 90/A (IMG_5572). Four points a percent above the free band, five above
+    the highest Kona pro, floor 20."""
+    assert [helmet_component_score(v) for v in (23.0, 26.0, 29.6, 33.0, 38.0, 60.0)] ==         [100.0, 88.0, 73.6, 60.0, 35.0, 20.0]
     ok = score_cycling({**SUMMARY, "helmet_above_back": 18.0}, {}, cycling_position="triathlon")
     high = score_cycling({**SUMMARY, "helmet_above_back": 33.0}, {}, cycling_position="triathlon")
     assert ok["component_scores"]["helmet_above_back"] == 100.0
-    assert high["component_scores"]["helmet_above_back"] == 80.0
-    assert high["overall_score"] < ok["overall_score"]
-    sev = build_severity_map("triathlon", {**SUMMARY, "helmet_above_back": 33.0})
-    assert sev["helmet_above_back"] == "ACCEPTABLE"
+    assert high["component_scores"]["helmet_above_back"] == 60.0
+    assert ok["overall_score"] - high["overall_score"] >= 10
+    sev = lambda v: build_severity_map("triathlon", {**SUMMARY, "helmet_above_back": v})["helmet_above_back"]  # noqa: E731
+    assert (sev(20.0), sev(33.0), sev(34.0)) == ("OPTIMAL", "ACCEPTABLE", "WARNING")
 
 
 def test_off_the_bars_or_flagged_it_is_shown_and_not_graded():

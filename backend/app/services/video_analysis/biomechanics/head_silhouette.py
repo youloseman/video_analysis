@@ -92,6 +92,28 @@ KONA_PRO_MEDIAN = _HELMET_FIELD["median"]
 # should not widen the free band for everyone. Unchanged from n=21.
 KONA_PRO_FREE_UP_TO = 23.0
 KONA_PRO_UNDER_FREE = "28 of the 31"
+# The highest pro (+33 %): above it no one in the field sat.
+KONA_PRO_HIGHEST = KONA_PRO_RANGE[1]
+# What a high head costs. Until 2026-11-09 it was 2 points a percent, floored
+# at 70, at 6 % of the score: a rider at +29.6 %, head visibly up on aero bars,
+# lost under a point and kept 90/A (IMG_5572); no head could cost more than
+# about two. Artur: a strongly raised head must cost points. Now 4 a percent up
+# to the highest pro, 5 above every pro, floor 20, at 10 % of the score: the
+# same clip reads 85/B, a position perfect but for a +33 % head 83/B, +38 % 73/C.
+# Inside the free band nothing changed.
+HELMET_POINTS_PER_PCT = 4.0
+HELMET_POINTS_PER_PCT_ABOVE_PROS = 5.0
+HELMET_SCORE_FLOOR = 20.0
+
+
+def helmet_points(value: float) -> float:
+    """The helmet reading as a 0-100 score component, for a clip and a photo alike."""
+    if value <= KONA_PRO_FREE_UP_TO:
+        return 100.0
+    score = 100.0 - HELMET_POINTS_PER_PCT * (min(value, KONA_PRO_HIGHEST) - KONA_PRO_FREE_UP_TO)
+    if value > KONA_PRO_HIGHEST:
+        score -= HELMET_POINTS_PER_PCT_ABOVE_PROS * (value - KONA_PRO_HIGHEST)
+    return round(max(HELMET_SCORE_FLOOR, score), 1)
 
 
 def graded_helmet(value: Any, check: Any) -> float | None:

@@ -46,12 +46,14 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
 from app.services.video_analysis.biomechanics.head_silhouette import (
     BACK_TOP_POINT,
     HELMET_TOP_POINT,
+    HELMET_SCORE_FLOOR,
     KONA_PRO_FREE_UP_TO,
     KONA_PRO_MEDIAN,
     KONA_PRO_RANGE,
     apply_point_corrections,
     graded_helmet,
     helmet_above_back,
+    helmet_points,
     top_contour,
 )
 from app.services.video_analysis.pipeline import _draw_dashed_line
@@ -536,7 +538,7 @@ _PHASE_DEPENDENT_BIKE = frozenset({"knee", "hip", "ankle", "pelvic_ratio"})
 # source gives a target for it (head_silhouette.py). 2026-10-11.
 PHOTO_CYCLING_WEIGHTS = {
     "knee": 0.24, "trunk": 0.20, "shoulder": 0.13,
-    "elbow": 0.11, "forearm_tilt": 0.05, "helmet_above_back": 0.06,
+    "elbow": 0.11, "forearm_tilt": 0.05, "helmet_above_back": 0.10,
 }
 # Near TDC/BDC from a single photo: the pedal phase is only a guess, so trust
 # the knee less than a true motion-capture dead-centre -- shift its weight to
@@ -550,23 +552,24 @@ PHOTO_CYCLING_WEIGHTS = {
 # a closed hip is the one cycling metric with a medical consequence.
 PHOTO_CYCLING_WEIGHTS_PHASED = {
     "knee": 0.14, "trunk": 0.24, "shoulder": 0.14,
-    "elbow": 0.11, "forearm_tilt": 0.05, "hip": 0.12, "helmet_above_back": 0.06,
+    "elbow": 0.11, "forearm_tilt": 0.05, "hip": 0.12, "helmet_above_back": 0.10,
 }
 # Crank position unknown: the score is the upper body only, and says so. The
 # knee used to stay in at 0.06 against a 60-155 band -- free points, since
 # almost any knee lands in that band.
 PHOTO_CYCLING_WEIGHTS_UNCERTAIN = {
     "trunk": 0.27, "shoulder": 0.15,
-    "elbow": 0.12, "forearm_tilt": 0.05, "helmet_above_back": 0.06,
+    "elbow": 0.12, "forearm_tilt": 0.05, "helmet_above_back": 0.10,
 }
 # The helmet term (2026-10-11, Artur's call) only exists in a score when the
 # reading is trustworthy and the position is an aero one -- see
 # _with_helmet_band. It costs nothing up to where twenty-eight of the thirty-one
-# Kona pros sat (+23 % of torso length) and is amber, never red, above it: the only study (Beaumont
-# 2018, CFD) compares head up with head down -- up to 6.4 % drag -- and gives
-# no curve to hang a red line on. Half the old head weight.
+# Kona pros sat (+23 % of torso length). The only study (Beaumont 2018, CFD)
+# compares head up with head down -- up to 6.4 % drag -- and gives no curve, so
+# the points above the band are a judgement: head_silhouette.helmet_points,
+# raised 2026-11-09 when a visibly high head cost under a point.
 _HELMET_BAND = (-100.0, KONA_PRO_FREE_UP_TO)
-_HELMET_SCORE_FLOOR = 70
+_HELMET_SCORE_FLOOR = HELMET_SCORE_FLOOR
 _BIKE_PHASE_WEIGHTS = {
     "bdc": PHOTO_CYCLING_WEIGHTS_PHASED,
     "tdc": PHOTO_CYCLING_WEIGHTS_PHASED,
@@ -860,7 +863,7 @@ def _score_photo_angles(
         if score is None:
             continue
         if angle_key == "helmet_above_back":
-            score = max(score, _HELMET_SCORE_FLOOR)  # amber at worst, see _HELMET_BAND
+            score = helmet_points(value)  # the clip's rule (head_silhouette)
 
         per_angle[angle_key] = {
             "score": score,

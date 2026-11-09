@@ -343,10 +343,10 @@ class TestTheHelmetPenalty:
         assert self._score(23.0)["per_angle"]["helmet_above_back"]["score"] == 100
         assert self._score(-5.0)["per_angle"]["helmet_above_back"]["score"] == 100
 
-    def test_above_it_costs_a_little_and_never_more_than_amber(self):
+    def test_above_it_costs_points(self):
         hi = self._score(33.0)
-        assert hi["per_angle"]["helmet_above_back"]["score"] == 80
-        assert self._score(80.0)["per_angle"]["helmet_above_back"]["score"] == 70, "floored"
+        assert hi["per_angle"]["helmet_above_back"]["score"] == 60
+        assert self._score(80.0)["per_angle"]["helmet_above_back"]["score"] == 20, "floored"
         assert hi["overall_score"] < self._score(20.0)["overall_score"]
 
     def test_a_flagged_reading_and_a_road_position_are_not_scored(self):

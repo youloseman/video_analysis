@@ -53,7 +53,8 @@ CYCLING_WEIGHTS = {
     # 100): a tenth of the score for free. Its replacement is the photo's
     # helmet-above-back reading, at the photo's weight, graded only on aero
     # positions and only when the reading can be trusted (score_cycling).
-    "helmet_above_back": 0.06,
+    # 0.10 since 2026-11-09 (head_silhouette.helmet_points).
+    "helmet_above_back": 0.10,
     "pelvic_ratio": 0.05,
     "forearm_tilt": 0.05,
     "saddle_fit": 0.05,
@@ -413,11 +414,9 @@ def score_running(
 
 def helmet_component_score(value: float) -> float:
     """The helmet reading as a 0-100 component: the photo scorer's rule."""
-    from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+    from app.services.video_analysis.biomechanics.head_silhouette import helmet_points
 
-    if value <= KONA_PRO_FREE_UP_TO:
-        return 100.0
-    return max(70.0, 100.0 - 2.0 * (value - KONA_PRO_FREE_UP_TO))
+    return helmet_points(value)
 
 
 def score_cycling(
@@ -820,17 +819,22 @@ def build_severity_map(
         if val is not None and (not isinstance(val, (int, float)) or val != 0):
             severity_map[ref_key] = classify_metric_severity(position, ref_key, float(val))
 
-    # Helmet above the back: graded where score_cycling grades it, amber at
-    # worst -- above where twenty-eight of the thirty-one Kona pros sat.
+    # Helmet above the back: graded where score_cycling grades it -- amber
+    # above where twenty-eight of the thirty-one Kona pros sat, a warning above
+    # the highest of them.
     from app.services.video_analysis.biomechanics.head_silhouette import graded_helmet
 
     helmet = graded_helmet(summary.get("helmet_above_back"), summary.get("helmet_check"))
     if helmet is not None:
         from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
-        from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+        from app.services.video_analysis.biomechanics.head_silhouette import (
+            KONA_PRO_FREE_UP_TO,
+            KONA_PRO_HIGHEST,
+        )
 
         if position in AERO_POSITIONS:
             severity_map["helmet_above_back"] = (
-                "OPTIMAL" if helmet <= KONA_PRO_FREE_UP_TO else "ACCEPTABLE")
+                "OPTIMAL" if helmet <= KONA_PRO_FREE_UP_TO
+                else "ACCEPTABLE" if helmet <= KONA_PRO_HIGHEST else "WARNING")
 
     return severity_map
