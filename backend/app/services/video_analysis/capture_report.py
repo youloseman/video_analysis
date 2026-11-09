@@ -570,6 +570,16 @@ def film_notes_of(
     metrics = r.get("sport_specific_metrics") or {}
     report = metrics.get("capture_report") or (r.get("quality") or {}).get("capture_report")
     notes = film_notes(report.get("checks"), bars) if report else None
+    steady = ((metrics.get("diagnostics") or {}).get("bdc_tdc") or {}).get("steadiness") or {}
+    if steady.get("unsteady"):
+        lo, hi = (steady.get("range_deg") or [None, None])[:2]
+        spread = f" ({lo:.0f}-{hi:.0f}°)" if lo is not None and hi is not None else ""
+        notes = [{
+            "code": "knee_unsteady", "level": "bad", "short": "knee read unsteadily",
+            "text": f"The knee at the bottom of the stroke read differently from one pedal stroke "
+                    f"to the next{spread}, so the saddle height is not judged from this clip. "
+                    "Film again: the near leg in full view, steady light, the camera still.",
+        }, *(notes or [])]
     aero = looks_aero_on_road(r.get("cycling_position"), metrics)
     if aero:
         return [{"code": "position", "level": "bad", "short": "looks like aero bars", "text": aero},

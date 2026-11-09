@@ -406,6 +406,52 @@ def knee_bdc_high_margin(camera_side: str | None, pose_detector: str | None = No
     return NON_DRIVE_KNEE_MARGIN_DEG if camera_side == "left" else 0.0
 
 
+# How much the knee at the bottom of the stroke may differ from one pedal stroke
+# to the next before the clip's reading of it is not trusted. A rider's real
+# stroke-to-stroke difference is a degree or two; a tracker that swaps or loses
+# the leg on some strokes reads 20 deg apart (IMG_5577 before 7474849:
+# 120-141 deg over eight strokes, "raise the saddle 43 mm"). Measured robustly,
+# because one bad stroke in ten does not move the median the report prints
+# (IMG_5571: nine strokes at 143-144, one at 128.5; plain SD 4.6, median right):
+#  - spread: 1.4826 x the median absolute deviation, a standard deviation that
+#    one or two wild strokes do not inflate;
+#  - off share: the share of strokes more than KNEE_BDC_OFF_DEG from the median.
+# Either past its limit and the reading is unsteady: no saddle verdict, no
+# millimetres, knee-at-bottom out of the score, and "film again".
+# Thresholds from 37 bike clips in upload/ (2026-11-09), see KNEE_BDC_* below.
+KNEE_BDC_OFF_DEG = 8.0
+KNEE_BDC_SPREAD_MAX_DEG = 4.0
+KNEE_BDC_OFF_SHARE_MAX = 0.34
+KNEE_BDC_MIN_STROKES = 4
+
+
+def knee_bdc_steadiness(values: list[float] | None) -> dict[str, Any] | None:
+    """Spread, off share and the verdict for the per-stroke knee-at-BDC peaks,
+    or None with too few strokes to say."""
+    import numpy as np
+
+    vals = [float(v) for v in (values or []) if v is not None and np.isfinite(v)]
+    if len(vals) < KNEE_BDC_MIN_STROKES:
+        return None
+    arr = np.asarray(vals)
+    med = float(np.median(arr))
+    spread = 1.4826 * float(np.median(np.abs(arr - med)))
+    off = float(np.mean(np.abs(arr - med) > KNEE_BDC_OFF_DEG))
+    return {
+        "spread_deg": round(spread, 1),
+        "off_share": round(off, 2),
+        "strokes": len(vals),
+        "range_deg": [round(float(arr.min()), 1), round(float(arr.max()), 1)],
+        "unsteady": spread > KNEE_BDC_SPREAD_MAX_DEG or off >= KNEE_BDC_OFF_SHARE_MAX,
+    }
+
+
+def knee_bdc_unsteady(summary: dict[str, Any] | None) -> bool:
+    """Whether a bike summary's knee at the bottom of the stroke is unsteady."""
+    diag = ((summary or {}).get("diagnostics") or {}).get("bdc_tdc") or {}
+    return bool((diag.get("steadiness") or {}).get("unsteady"))
+
+
 # The saddle verdict is a step: "acceptable" a hair inside the edge, "too high"
 # a hair past it, and the saddle_fit component used to jump 75 -> 40 with it.
 # The same clip measured 150.0 on one machine and 149.75 on Railway (float drift

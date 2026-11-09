@@ -1817,11 +1817,15 @@ def analyze_from_frames(
             )
 
             _bdc_diag = (summary.get("diagnostics") or {}).get("bdc_tdc") or {}
-            _est = estimate_saddle_change(
+            # No millimetres off an unsteady knee (knee_bdc_steadiness).
+            _est = None if (_bdc_diag.get("steadiness") or {}).get("unsteady") else estimate_saddle_change(
                 bilateral_geometry, summary.get("knee_at_bdc"),
                 get_cycling_reference(cycling_position)["knee_at_bdc"],
                 crank_length_mm,
-                bdc_variability_deg=_bdc_diag.get("bdc_variability_deg"),
+                # The robust spread when there is one: a plain SD let one
+                # misread stroke in ten widen the +- to 35 mm (IMG_5569).
+                bdc_variability_deg=(_bdc_diag.get("steadiness") or {}).get("spread_deg",
+                                                                            _bdc_diag.get("bdc_variability_deg")),
                 camera_side=analyzer.camera_side,
                 pose_detector=summary.get("pose_detector"),
             )

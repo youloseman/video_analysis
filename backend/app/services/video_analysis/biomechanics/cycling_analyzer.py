@@ -24,6 +24,7 @@ from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 from app.services.video_analysis.biomechanics.cycling_positions import (
     get_cycling_reference,
     knee_bdc_high_margin,
+    knee_bdc_steadiness,
     saddle_fit_score,
     saddle_verdict,
     get_position_label,
@@ -615,6 +616,7 @@ class CyclingAnalyzer(SportAnalyzer):
             # so the caller can sample other joint angles (e.g. ankle)
             # at the bottom of the pedal stroke.
             "bdc_indices": bdc_idx,
+            "bdc_values": [float(v) for v in bdc_vals],
             # ...and of the TDC extrema, where the hip is most closed.
             "tdc_indices": tdc_idx,
         }
@@ -719,6 +721,9 @@ class CyclingAnalyzer(SportAnalyzer):
                 diag["pedal_strokes"] = int(peaks["n_strokes"])
                 diag["bdc_variability_deg"] = round(peaks["bdc_std"], 1)
                 diag["tdc_variability_deg"] = round(peaks["tdc_std"], 1)
+                steady = knee_bdc_steadiness(peaks.get("bdc_values"))
+                if steady:
+                    diag["steadiness"] = steady
                 result[f"{side}_bdc_variability_deg"] = round(peaks["bdc_std"], 1)
                 # Ankle (foot) angle at the bottom of the stroke. Sampled
                 # at the same real BDC frames the knee peaks landed on, so
@@ -1008,6 +1013,10 @@ class CyclingAnalyzer(SportAnalyzer):
         near_bdc = bdc_tdc.get(f"{near}_knee_at_bdc")
         far_bdc = bdc_tdc.get(f"{far}_knee_at_bdc")
         bdc_for_assessment = near_bdc if near_bdc else far_bdc
+        # A knee that reads far apart from stroke to stroke is not a reading
+        # to move a saddle on (cycling_positions.knee_bdc_steadiness).
+        if ((self._bdc_tdc_diag.get(near) or {}).get("steadiness") or {}).get("unsteady"):
+            bdc_for_assessment = None
         saddle_assessment = (
             self._assess_saddle_height(bdc_for_assessment)
             if bdc_for_assessment else "insufficient_data"
@@ -1071,6 +1080,8 @@ class CyclingAnalyzer(SportAnalyzer):
                 "bdc_variability_deg": near_diag.get("bdc_variability_deg"),
                 "tdc_variability_deg": near_diag.get("tdc_variability_deg"),
             }
+            if near_diag.get("steadiness"):
+                bdc_tdc_diag["steadiness"] = near_diag["steadiness"]
             # Foot posture at BDC -- present only when measurable on the
             # peak path. plantarflexion_at_bdc lowers confidence in the
             # saddle-height assessment (toe-down inflates knee extension).

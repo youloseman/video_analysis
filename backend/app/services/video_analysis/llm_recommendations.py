@@ -353,6 +353,8 @@ def _bike_data_block(
     score: Any, grade: Any, position: str | None,
     issues: list[dict], summary: dict,
 ) -> str:
+    from app.services.video_analysis.biomechanics.cycling_positions import knee_bdc_unsteady
+
     try:
         from app.services.video_analysis.biomechanics.cycling_positions import (
             get_cycling_reference,
@@ -385,8 +387,12 @@ def _bike_data_block(
          "capture quality did not support one. Do not invent a score or a grade, "
          "and do not describe the ride as good or bad overall; comment only on the "
          "individual measurements below that were actually taken."),
-        f"- Knee angle at the bottom of the stroke: {_fmt(summary.get('knee_at_bdc'), '°')}"
-        f"{rng('knee_at_bdc', 'knee_at_bdc')}",
+        ("- Knee angle at the bottom of the stroke: UNSTEADY -- it read too differently from "
+         "one pedal stroke to the next to judge the saddle height. Do not recommend raising "
+         "or lowering the saddle; say the clip should be filmed again for it."
+         if knee_bdc_unsteady(summary) else
+         f"- Knee angle at the bottom of the stroke: {_fmt(summary.get('knee_at_bdc'), '°')}"
+         f"{rng('knee_at_bdc', 'knee_at_bdc')}"),
         f"- Knee angle at the top of the stroke: {_fmt(summary.get('knee_at_tdc'), '°')}"
         f"{rng('knee_at_tdc', 'knee_at_tdc')}",
         # ``hip_angle_max`` is the name of the reference BAND; the analyzer

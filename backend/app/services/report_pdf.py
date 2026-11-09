@@ -486,8 +486,9 @@ def _doc_title(meta: dict[str, Any], sport_name: str) -> str:
 
 # The notes that make the whole clip doubtful, as against one number on it: a shaky
 # camera costs vertical oscillation, the chainring side costs the knee.
-_LOW_TRUST_CODES = {"framing", "duration", "position"}
+_LOW_TRUST_CODES = {"framing", "duration", "position", "knee_unsteady"}
 _RESHOOT = {
+    "knee_unsteady": "keep the near leg in full view with the light behind the camera and the camera still",
     "duration": "keep the whole body in the frame for the whole clip",
     "position": "run the clip with the position actually ridden",
 }

@@ -503,7 +503,11 @@ def build_action_plan(
     from app.services.video_analysis.biomechanics.saddle_estimate import format_amount
     saddle_est = sm.get("saddle_estimate") if isinstance(sm.get("saddle_estimate"), dict) else None
 
-    if knee_bdc is not None:
+    # No saddle card on a knee that read far apart from stroke to stroke: the
+    # film notes ask for a new clip instead (cycling_positions.knee_bdc_steadiness).
+    from app.services.video_analysis.biomechanics.cycling_positions import knee_bdc_unsteady
+
+    if knee_bdc is not None and not knee_bdc_unsteady(sm):
         knee_class = _classify(knee_bdc, bdc_min, bdc_max, "knee_at_bdc")
         # Read high from this side by more than the deadband: no reason to move it.
         if (knee_class == "out_high"

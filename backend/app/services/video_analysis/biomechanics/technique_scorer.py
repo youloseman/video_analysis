@@ -436,9 +436,17 @@ def score_cycling(
     near = summary.get("near_side", "left")
     knee_band = knee_bdc_band(cycling_position, summary.get("camera_side"), pose_detector_of(summary))
 
-    # Knee at BDC (near-side primary, fall back to any available)
+    # Knee at BDC (near-side primary, fall back to any available). Not graded
+    # when it read far apart from stroke to stroke (knee_bdc_steadiness).
+    from app.services.video_analysis.biomechanics.cycling_positions import knee_bdc_unsteady
+
+    unsteady = knee_bdc_unsteady(summary)
+    excluded: dict[str, str] = {}
     near_bdc = summary.get(f"{near}_knee_at_bdc") or 0
-    if near_bdc > 0:
+    if unsteady:
+        excluded["knee_bdc"] = ("the knee at the bottom of the stroke read too differently "
+                                "from one pedal stroke to the next")
+    elif near_bdc > 0:
         components["knee_bdc"] = score_in_range(near_bdc, *knee_band)
     else:
         # Fallback: check backward-compat key
@@ -475,7 +483,7 @@ def score_cycling(
     # the old 100/75/40 steps moved the total by points on tenths of a degree.
     saddle = summary.get("saddle_height_assessment", "")
     saddle_map = {"optimal": 100, "acceptable": 75, "too_low": 40, "too_high": 40}
-    if saddle in saddle_map:
+    if saddle in saddle_map and not unsteady:
         ramped = summary.get("saddle_fit_score")
         components["saddle_fit"] = float(ramped) if ramped is not None else float(saddle_map[saddle])
 
@@ -548,7 +556,7 @@ def score_cycling(
         "overall_score": overall,
         "letter_grade": assign_grade(overall),
         "component_scores": components,
-        "coverage": score_coverage(components, weights),
+        "coverage": score_coverage(components, weights, excluded),
     }
 
 
