@@ -771,3 +771,26 @@ async def test_a_resave_of_the_entry_keeps_the_coachs_edits(make_user, db, lane)
     finally:
         JOBS.pop("jre", None)
     assert row.result["coach_edits"]["coachText"] == "Mine."
+
+
+async def test_the_athletes_link_offers_the_pdf_when_there_is_a_service(make_user, db, lane, monkeypatch):
+    import httpx
+
+    from app.services import pdf_render
+
+    coach, a, row = await drafted(make_user, db, lane)
+    sent = await reports.send_report(a["id"], row.client_id, coach, db)
+    token = sent["url"].rsplit("/", 1)[1]
+    monkeypatch.setattr(pdf_render, "service_url", lambda: None)
+    page = (await reports.shared_report(token, req("5.5.6.1"), db)).body.decode()
+    assert "Download PDF" not in page and "window.print()" in page
+    monkeypatch.setattr(pdf_render, "service_url", lambda: "http://pdf.internal:3000")
+    real = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, content=b"%PDF-1.7 x")), **kw))
+    page = (await reports.shared_report(token, req("5.5.6.2"), db)).body.decode()
+    assert f'href="/r/{token}/pdf">Download PDF' in page
+    pdf = await reports.shared_report_pdf(token, req("5.5.6.3"), db)
+    assert pdf.media_type == "application/pdf" and "Andy" in pdf.headers["content-disposition"]
+    await reports.stop_sharing(a["id"], row.client_id, coach, db)
+    assert (await reports.shared_report_pdf(token, req("5.5.6.4"), db)).status_code == 404

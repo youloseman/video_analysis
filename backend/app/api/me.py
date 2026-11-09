@@ -556,6 +556,37 @@ async def get_kinogram(
     return {"kinogram": (row.result or {}).get("kinogram_base64")}
 
 
+@router.get("/analyses/{client_id}/report.pdf")
+async def analysis_report_pdf(
+    client_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+    athlete_id: int | None = None,
+) -> Response:
+    """The report as a file: the same checks as the page, then the PDF service."""
+    if not has_full(user.tier):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="The PDF report is part of the Full plan.",
+        )
+    owner, row = await _row_for_reader(db, user, client_id, athlete_id)
+    if owner.id != user.id and access_for_stored(owner, row) != ACCESS_FULL:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="This report has not been unlocked on your athlete's plan.",
+        )
+    if not row.result:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This analysis was run before full reports were stored.",
+        )
+    await _refresh_fit_plan(db, row)
+    await _ensure_coaching(db, row)
+    resp = await saved_report_pdf(db, reader=user, owner=owner, row=row, athlete_id=athlete_id)
+    logger.info("REPORT_PDF_FILE", user_id=user.id, analysis=client_id, bytes=len(resp.body))
+    return resp
+
+
 @router.get("/analyses/{client_id}/report", response_class=HTMLResponse)
 async def analysis_report(
     client_id: str,
@@ -650,6 +681,7 @@ async def _previous_clip(
 
 async def render_saved_report(
     db: AsyncSession, *, reader: User, owner: User, row: Analysis, athlete_id: int | None,
+    pdf_url: str | None = None,
 ) -> str:
     """The branded document for one stored analysis. ``reader`` is whose mark
     goes on it (a coach's, when a coach is the one handing it over); ``owner``
@@ -657,7 +689,37 @@ async def render_saved_report(
     from app.services.report_pdf import render_report_html
 
     result, meta = await saved_report_meta(db, reader=reader, owner=owner, row=row, athlete_id=athlete_id)
+    from app.services.pdf_render import service_url
+
+    if pdf_url and service_url():
+        meta["pdf_url"] = pdf_url
     return render_report_html(result, meta)
+
+
+async def saved_report_pdf(
+    db: AsyncSession, *, reader: User, owner: User, row: Analysis, athlete_id: int | None,
+) -> Response:
+    """The same document as a PDF file, from the PDF service. 503 when there is
+    none, and the app prints the page instead."""
+    from app.services.pdf_render import PdfUnavailable, file_name, html_to_pdf
+    from app.services.report_pdf import doc_title, foot_line, render_report_html
+
+    result, meta = await saved_report_meta(db, reader=reader, owner=owner, row=row, athlete_id=athlete_id)
+    meta = {**meta, "pdf": True, "draft": False}
+    sport = result.get("sport_type") or result.get("sport") or ""
+    try:
+        pdf = await html_to_pdf(render_report_html(result, meta), foot_line(meta, sport))
+    except PdfUnavailable:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="The PDF could not be made just now. Print the report page instead.") from None
+    from urllib.parse import quote
+
+    name = file_name(doc_title(result, meta))
+    ascii_name = name.encode("ascii", "ignore").decode() or "Flapp report.pdf"
+    return Response(pdf, media_type="application/pdf", headers={
+        "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(name)}",
+        "Cache-Control": "no-store",
+    })
 
 
 def coach_owned(reader: User, row: Analysis) -> bool:

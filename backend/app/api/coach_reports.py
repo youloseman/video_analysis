@@ -35,6 +35,7 @@ SHARE_DAYS = 90
 DAY_MS = 24 * 3600 * 1000
 SENDS_PER_HOUR = 30
 VIEWS_PER_IP_HOUR = 60
+PDFS_PER_IP_HOUR = 20
 
 
 def _now_ms() -> int:
@@ -296,6 +297,33 @@ async def shared_report(
     if coach is None or row is None or not row.result:
         return HTMLResponse(_GONE, status_code=404, headers=headers)
     await _refresh_fit_plan(db, row)
-    html = await render_saved_report(db, reader=coach, owner=coach, row=row, athlete_id=share.athlete_id)
+    html = await render_saved_report(db, reader=coach, owner=coach, row=row, athlete_id=share.athlete_id,
+                                     pdf_url=f"/r/{token}/pdf")
     logger.info("REPORT_VIEWED", share_id=share.id)
     return HTMLResponse(html, headers=headers)
+
+
+@router.get("/r/{token}/pdf", include_in_schema=False)
+async def shared_report_pdf(
+    token: str, request: Request, db: AsyncSession = Depends(get_session),
+) -> Any:
+    """The athlete's report as a file, from the link their coach sent."""
+    from app.api.auth import _throttle
+    from app.api.me import _refresh_fit_plan, saved_report_pdf
+
+    _throttle(f"report-pdf:{client_ip(request)}", PDFS_PER_IP_HOUR, 3600)
+    headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex", "Referrer-Policy": "no-referrer"}
+    share = (await db.execute(select(ReportShare).where(ReportShare.token == token))).scalar_one_or_none()
+    if share is None or share.revoked_at_ms or share.expires_at_ms <= _now_ms():
+        return HTMLResponse(_GONE, status_code=404, headers=headers)
+    coach = await db.get(User, share.coach_user_id)
+    row = (await db.execute(select(Analysis).where(
+        Analysis.user_id == share.coach_user_id, Analysis.client_id == share.client_id,
+    ))).scalar_one_or_none()
+    if coach is None or row is None or not row.result:
+        return HTMLResponse(_GONE, status_code=404, headers=headers)
+    await _refresh_fit_plan(db, row)
+    resp = await saved_report_pdf(db, reader=coach, owner=coach, row=row, athlete_id=share.athlete_id)
+    resp.headers["X-Robots-Tag"] = "noindex"
+    logger.info("REPORT_PDF_VIEWED", share_id=share.id)
+    return resp

@@ -255,3 +255,77 @@ async def test_a_report_marked_before_the_seatpost_card_gets_it_and_a_new_coach_
     html = resp.body.decode()
     assert "A seatpost" in html and "Move saddle forward 5mm" not in html
     assert written and written[0]["diagnostics"][0]["action"] == "move_saddle_forward_far"
+
+
+# --- the report as a file (services/pdf_render, Gotenberg)
+
+class _FakeGotenberg:
+    def __init__(self, status=200, body=b"%PDF-1.7 fake"):
+        self.status, self.body, self.calls = status, body, []
+
+    def install(self, monkeypatch):
+        import httpx
+
+        from app.services import pdf_render
+
+        def handler(request):
+            self.calls.append(request)
+            return httpx.Response(self.status, content=self.body)
+
+        real = httpx.AsyncClient
+        monkeypatch.setattr(httpx, "AsyncClient",
+                            lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+        monkeypatch.setattr(pdf_render, "service_url", lambda: "http://pdf.internal:3000")
+        return self
+
+
+async def test_the_report_downloads_as_a_file_named_after_the_athlete(db, make_user, monkeypatch):
+    fake = _FakeGotenberg().install(monkeypatch)
+    user = await make_user(tier=TIER_FULL)
+    await _stored(db, user)
+    resp = await me.analysis_report_pdf("h1", user, db)
+    assert resp.media_type == "application/pdf" and resp.body.startswith(b"%PDF")
+    assert "filename*=UTF-8''" in resp.headers["content-disposition"] and "Running" in resp.headers["content-disposition"]
+    sent = fake.calls[0]
+    assert str(sent.url) == "http://pdf.internal:3000/forms/chromium/convert/html"
+    body = sent.content.decode("utf-8", "ignore")
+    # A4, the page count in the footer, and the document's own footer row gone.
+    assert 'name="paperWidth"' in body and "8.27" in body and 'class="pageNumber"' in body
+    assert ".flow tfoot{display:none}" in body
+
+
+async def test_no_pdf_service_is_a_503_and_the_app_prints_instead(db, make_user, monkeypatch):
+    from app.services import pdf_render
+
+    monkeypatch.setattr(pdf_render, "service_url", lambda: None)
+    user = await make_user(tier=TIER_FULL)
+    await _stored(db, user)
+    with pytest.raises(HTTPException) as e:
+        await me.analysis_report_pdf("h1", user, db)
+    assert e.value.status_code == 503
+
+
+async def test_a_failed_render_is_a_503_too(db, make_user, monkeypatch):
+    _FakeGotenberg(status=500, body=b"boom").install(monkeypatch)
+    user = await make_user(tier=TIER_FULL)
+    await _stored(db, user)
+    with pytest.raises(HTTPException) as e:
+        await me.analysis_report_pdf("h1", user, db)
+    assert e.value.status_code == 503
+
+
+async def test_the_pdf_file_is_a_full_plan_feature_like_the_page(db, make_user, monkeypatch):
+    _FakeGotenberg().install(monkeypatch)
+    user = await make_user(tier=TIER_ENTHUSIAST)
+    await _stored(db, user)
+    with pytest.raises(HTTPException) as e:
+        await me.analysis_report_pdf("h1", user, db)
+    assert e.value.status_code == 402
+
+
+def test_the_file_name_is_safe_everywhere():
+    from app.services.pdf_render import file_name
+
+    name = file_name('Maya: "Chen"/Cycling, 6 Nov')
+    assert name.endswith(".pdf") and not any(ch in name for ch in '\/:*?"<>|') and "Cycling, 6 Nov" in name
+    assert file_name("") == "Flapp report.pdf"

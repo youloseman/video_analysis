@@ -464,6 +464,18 @@ def _coach_text(text: str, planned: set[str]) -> str:
 _ARTICLES = {"/academy/kona-2026-hip-over-crank": "Kona Pros Don't Sit Higher. They Sit Further Forward."}
 
 
+def foot_line(meta: dict[str, Any], sport: str) -> str:
+    """Whose report, on every page after the cover: athlete, sport, when filmed."""
+    who = str(meta.get("athlete") or "").strip()
+    return " · ".join(x for x in (who, _SPORT.get(sport, sport.title()),
+                                  f"Filmed {meta['filmed']}" if meta.get("filmed") else "") if x)
+
+
+def doc_title(result: dict[str, Any], meta: dict[str, Any]) -> str:
+    sport = result.get("sport_type") or result.get("sport") or ""
+    return _doc_title(meta, _SPORT.get(sport, sport.title()))
+
+
 def _doc_title(meta: dict[str, Any], sport_name: str) -> str:
     """A browser names the saved file after this, so it says whose report it is. An
     account's email is left out: it isn't a name, and it would land in a file name."""
@@ -530,7 +542,7 @@ _EXTRA_CSS = """
 }
 .screen{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;
   background:#14294B;color:#fff;margin:0 -15mm 0;padding:10px 15mm;font:600 10pt 'Manrope',sans-serif}
-.screen button{font:700 10pt 'Manrope',sans-serif;background:#F1553F;color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
+.screen button,.screen .dl{font:700 10pt 'Manrope',sans-serif;background:#F1553F;color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer;text-decoration:none;white-space:nowrap}
 @media print{.screen{display:none}}
 /* A phone clip is tall. In a wide box it was 63% dark bars, so the frame takes the
    height it needs and the cards sit beside it. */
@@ -620,7 +632,7 @@ _EXTRA_CSS = """
 @media screen and (max-width:720px){
   body{padding:0 16px;font-size:14px}
   .screen{margin:0 -16px;padding:10px 16px;font-size:13px}
-  .screen button{flex:none;font-size:13px}
+  .screen button,.screen .dl{flex:none;font-size:13px}
   .cover-band{margin:0 -16px;padding:24px 16px 20px}
   .cover-band h1{font-size:30px}
   .cover-grid3{grid-template-columns:auto minmax(0,1fr);gap:14px}
@@ -804,7 +816,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
 
     cover = f"""
 <section>
-  <div class="screen"><span>{"Draft · only you see it until you approve and send it" if meta.get("draft") else "Your Flapp report · use Print, then “Save as PDF”"}</span><button onclick="window.print()">Save as PDF</button></div>
+  <div class="screen"><span>{"Draft · only you see it until you approve and send it" if meta.get("draft") else "Your Flapp report · use Print, then “Save as PDF”"}</span>{f'<a class="dl" href="{_e(meta["pdf_url"])}">Download PDF</a>' if meta.get("pdf_url") else '<button onclick="window.print()">Save as PDF</button>'}</div>
   <div class="cover-band">
     {brand}
     <h1>Technique Report</h1>
@@ -945,12 +957,12 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
   <div class="foot"><span>Flapp · getflapp.com</span><span>{_e(meta.get('prepared'))}</span></div>
 </section>""" if (rows or kino) else ""
 
-    who_foot = str(meta.get("athlete") or "").strip()
-    foot_left = " · ".join(x for x in (who_foot, _SPORT.get(sport, sport.title()),
-                                       f"Filmed {meta['filmed']}" if meta.get("filmed") else "") if x)
-    run_foot = (f"<div class='run-foot'><span>{_e(foot_left)}</span>"
+    run_foot = (f"<div class='run-foot'><span>{_e(foot_line(meta, sport))}</span>"
                 "<span>Measured with Flapp · getflapp.com</span></div>")
+    # Rendered to a file by the PDF service: its own footer carries the page
+    # count in the bottom margin, so the document's footer row goes.
+    pdf_css = ".flow tfoot{display:none}.foot{display:none}" if meta.get("pdf") else ""
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{_e(_doc_title(meta, _SPORT.get(sport, sport.title())))}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@600&display=swap" rel="stylesheet">
-<style>{_CSS}{_EXTRA_CSS}</style></head><body>{cover}<table class="flow"><thead><tr><td></td></tr></thead><tbody><tr><td>{read}{plan_sec}{numbers}</td></tr></tbody><tfoot><tr><td>{run_foot}</td></tr></tfoot></table></body></html>"""
+<style>{_CSS}{_EXTRA_CSS}{pdf_css}</style></head><body>{cover}<table class="flow"><thead><tr><td></td></tr></thead><tbody><tr><td>{read}{plan_sec}{numbers}</td></tr></tbody><tfoot><tr><td>{run_foot}</td></tr></tfoot></table></body></html>"""

@@ -184,6 +184,9 @@ class Settings:
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
     public_base_url: str | None = None
+    # The PDF service (Gotenberg) on Railway's private network, e.g.
+    # http://gotenberg.railway.internal:3000. Unset: reports are printed by the browser.
+    gotenberg_url: str | None = None
 
     # --- Outbound email (see services/notify.py). Optional: with none of this
     # set, a delivered Expert Review is only discoverable inside the app. ---
@@ -394,6 +397,7 @@ def _load_settings() -> Settings:
             "EXPERT_REVIEW_SLOTS_PER_WEEK", Settings.expert_review_slots_per_week,
         ),
         public_base_url=(os.environ.get("PUBLIC_BASE_URL") or "").rstrip("/") or None,
+        gotenberg_url=(os.environ.get("GOTENBERG_URL") or "").strip().rstrip("/") or None,
         email_provider=(os.environ.get("EMAIL_PROVIDER") or "").strip().lower(),
         email_api_key=os.environ.get("EMAIL_API_KEY") or None,
         email_from=os.environ.get("EMAIL_FROM") or None,
