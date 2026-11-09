@@ -64,10 +64,10 @@ def test_order_2_lists_both_red_rows_with_what_to_check():
     assert {"trunk_angle_avg", "knee_at_bdc"} <= edges
     section = concern_hints.worth_a_look(concerns)
     assert section.startswith("**Worth a look**")
-    assert "Knee angle at top of stroke (TDC)**: 85.3° vs 60-72°, outside the band" in section
+    assert "Knee angle at the top of the stroke**: 85.3° vs 60-72°, outside the band" in section
     assert "short cranks" in section
     # Clearly-out readings lead.
-    assert section.index("Knee angle at top") < section.index("Trunk angle")
+    assert section.index("Knee angle at the top") < section.index("Trunk angle")
 
 
 def test_nothing_to_fix_over_a_red_row_is_retried(monkeypatch):
@@ -85,7 +85,7 @@ def test_if_the_model_insists_the_section_becomes_the_list(monkeypatch):
     assert "Nothing to fix" not in report
     assert "no rule-based issues were flagged" not in report
     fix = report.split("**Fix first**")[1].split("**Worth a look**")[0]
-    assert "Knee angle at top of stroke" in fix and "Pelvic ratio" in fix
+    assert "Knee angle at the top of the stroke" in fix and "Pelvic ratio" in fix
 
 
 def test_the_checklist_sits_before_the_closing_cue(monkeypatch):

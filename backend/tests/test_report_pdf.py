@@ -231,3 +231,27 @@ async def test_the_report_route_reads_against_the_previous_clip(db, make_user):
     await db.commit()
     html = await me.render_saved_report(db, reader=user, owner=user, row=now, athlete_id=None)
     assert "172° → 150°" in html and "70 → 80" in html
+
+
+async def test_a_report_marked_before_the_seatpost_card_gets_it_and_a_new_coach_text(db, make_user, monkeypatch):
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from test_report_pdf_verdicts import _far
+
+    user = await make_user(TIER_FULL)
+    res = {**_far(), "ai_recommendations": {"report": "**Fix first**\n- Move saddle forward 5mm"}}
+    row = Analysis(user_id=user.id, client_id="far", created_at_ms=1, sport="bike", kind="video", result=res, data={})
+    db.add(row)
+    await db.commit()
+    written = []
+
+    def fake(*a, **k):
+        written.append(k.get("fit_plan"))
+        return {"report": "**Fix first**\n- A seatpost", "model": "fake"}
+
+    import app.services.video_analysis.llm_recommendations as llm
+    monkeypatch.setattr(llm, "generate_recommendations", fake)
+    resp = await me.analysis_report("far", user, db)
+    html = resp.body.decode()
+    assert "A seatpost" in html and "Move saddle forward 5mm" not in html
+    assert written and written[0]["diagnostics"][0]["action"] == "move_saddle_forward_far"

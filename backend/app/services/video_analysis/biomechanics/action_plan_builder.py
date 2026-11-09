@@ -1060,3 +1060,102 @@ def action_plan_to_json(plan: ActionPlan) -> dict[str, Any]:
         ],
         "mobility_fit": plan.mobility_fit,
     }
+
+
+# ---------------------------------------------------------------------------
+# Hip over the crank: when the saddle needs a different seatpost, not 5 mm
+# ---------------------------------------------------------------------------
+
+# A hip this far behind the aero field is a seatpost, not a rail adjustment. A road
+# frame with clip-ons (2026-11-08, 75 deg, 18 cm behind the Kona pros) was told
+# "move the saddle forward 5 mm" for a gap more than thirty times that.
+FAR_BEHIND_CM = 10.0
+# Moving a saddle forward on a 73-74 deg seat tube shortens the reach to the pedal
+# by about the seat tube's cosine: 0.29 cm per cm, call it 3 mm.
+_DROP_MM_PER_CM = 3
+_FAR_STEP_NOTE = ("One change at a time, ride 30 minutes before reassessing. The seatpost is "
+                  "the exception to small steps: set it with a fitter.")
+
+
+def _hip_far_behind(hob: Any, position: str | None) -> dict[str, float] | None:
+    """How far, if the reading is one to act on: an aero position, a crank axle the
+    rider placed or the chainring pinned (not the wheels-only or leg guesses), and
+    a gap past FAR_BEHIND_CM."""
+    from app.services.video_analysis.biomechanics.hip_over_bb import ARTICLE, FIELD, REPEATABILITY_DEG
+
+    if position not in AERO_POSITIONS or not isinstance(hob, dict) or not hob.get("aero"):
+        return None
+    if hob.get("c_source") in ("auto_wheels", "auto_guess"):
+        return None
+    gap, angle, per_deg = hob.get("gap_pro_cm"), hob.get("angle_deg"), hob.get("cm_per_deg")
+    if not all(isinstance(x, (int, float)) for x in (gap, angle, per_deg)) or gap > -FAR_BEHIND_CM:
+        return None
+    ag = FIELD["age_group"]
+    return {"angle": float(angle), "behind_pro_cm": -float(gap),
+            "forward_cm": max(1.0, (ag["q1"] - float(angle)) * float(per_deg)),
+            "plus_minus_cm": REPEATABILITY_DEG * float(per_deg),
+            "ag_lo": ag["lo"], "ag_hi": ag["hi"], "ag_n": ag["n"], "pro": FIELD["pro"]["median"],
+            "article": ARTICLE}
+
+
+def apply_hip_over_bb(fit_plan: dict[str, Any] | None, hob: Any,
+                      position: str | None) -> dict[str, Any] | None:
+    """The fit plan with the saddle fore-aft card rewritten for a hip far behind the
+    aero field, or as built when it isn't. Pure, and repeatable: the plan as the
+    builder made it is kept beside it, so a crank marked again reads from that.
+
+    Only a card that exists is rewritten: the hip closed at the top of the stroke is
+    what puts one in the plan, and the field on its own is a field, never a band.
+    """
+    if not isinstance(fit_plan, dict):
+        return fit_plan
+    base = fit_plan.get("diagnostics_base") or fit_plan.get("diagnostics") or []
+    note_base = fit_plan.get("fitting_sequence_note_base") or fit_plan.get("fitting_sequence_note")
+    far = _hip_far_behind(hob, position)
+    fore = next((d for d in base if d.get("component") == "saddle_fore_aft"
+                 and d.get("action") == "move_saddle_forward"), None)
+    out = {**fit_plan, "diagnostics": [dict(d) for d in base], "fitting_sequence_note": note_base}
+    out.pop("diagnostics_base", None)
+    out.pop("fitting_sequence_note_base", None)
+    if not far or fore is None:
+        return out
+    fwd, pm = round(far["forward_cm"]), max(1, round(far["plus_minus_cm"]))
+    tt = position == "tt_aero"
+    hip = fore.get("current_value")
+    lo, hi = (list(fore.get("target_range") or []) + [None, None])[:2]
+    diagnostics = []
+    for d in out["diagnostics"]:
+        if d is not None and d.get("component") == "saddle_fore_aft" and d.get("action") == "move_saddle_forward":
+            d = {**d, "action": "move_saddle_forward_far", "amount": f"about {fwd} cm (±{pm})", "priority": 1,
+                 "reason": (
+                     (f"Hip angle at the top of the stroke is {hip:.0f} deg (optimal {lo:.0f}-{hi:.0f} deg). "
+                      if isinstance(hip, (int, float)) and lo is not None else "")
+                     + f"Over the crank the hip sits at {far['angle']:.0f} deg, {far['behind_pro_cm']:.0f} cm "
+                     f"behind the middle of the Kona pros ({far['pro']:.0f} deg) and behind every one of "
+                     f"the {far['ag_n']:.0f} age-groupers ({far['ag_lo']:.0f}-{far['ag_hi']:.0f} deg). "
+                     f"Five millimetres won't reach it -- move the saddle forward about {fwd} cm, to where "
+                     "most age-groupers sit. The rails give 1-2 cm; past that it takes a forward-offset or "
+                     "dual-position seatpost, or a frame with a steeper seat tube. Each centimetre forward "
+                     f"lowers the saddle about {_DROP_MM_PER_CM} mm against the pedals, so raise it to match, "
+                     "and move the pads forward so the elbows stay under the shoulders. A move this size is "
+                     "worth doing with a fitter."
+                     + (" In a UCI time trial the saddle tip must stay at least 5 cm behind the crank axle."
+                        if tt else "")),
+                 "effort": {"level": "shop", "note": None}, "hip_over_bb": True, "article": far["article"]}
+        elif d is not None and d.get("component") == "saddle_height" and d.get("status") == "needs_adjustment":
+            first = str(d.get("reason") or "").split(" -- ")[0]
+            d = {**d, "action": "reassess_after_fore_aft", "amount": "", "priority": 2,
+                 "reason": (f"{first} -- set the height after the fore-aft change: a saddle "
+                            f"{fwd} cm further forward sits about {fwd * _DROP_MM_PER_CM} mm lower against "
+                            "the pedals, so the right height will be a different one. Film again then."),
+                 "effort": None, "linked_to": "saddle_fore_aft"}
+        diagnostics.append(d)
+    diagnostics.sort(key=lambda d: d.get("priority") or 99)
+    out["diagnostics"] = diagnostics
+    out["diagnostics_base"] = base
+    out["fitting_sequence_note_base"] = note_base
+    order = [d for d in ("saddle fore/aft", "saddle height") if any(
+        x.get("component") == d.replace(" ", "_").replace("/", "_") for x in diagnostics)]
+    out["fitting_sequence_note"] = (f"Adjust in order: {' -> '.join(order)}. {_FAR_STEP_NOTE}"
+                                    if order else note_base)
+    return out

@@ -790,6 +790,23 @@ async def _owned_job(
         }
 
 
+def with_hip_over_bb(result: dict[str, Any], block: dict[str, Any]) -> dict[str, Any]:
+    """A result with a crank reading, and its fit plan read against it. When that
+    changes the plan, the coach's text goes too: it was written to the old plan
+    ("move the saddle 5 mm" over a card for a new seatpost) and is written again
+    the next time the report is opened (api/me._ensure_coaching)."""
+    from app.services.video_analysis.biomechanics.action_plan_builder import apply_hip_over_bb
+
+    out = {**result, "hip_over_bb": block}
+    fit = result.get("fit_plan")
+    if isinstance(fit, dict):
+        new = apply_hip_over_bb(fit, block, result.get("cycling_position"))
+        if (new or {}).get("diagnostics") != fit.get("diagnostics"):
+            out["fit_plan"] = new
+            out.pop("ai_recommendations", None)
+    return out
+
+
 async def _persist_hob(db: AsyncSession, user: User, job_id: str, block: dict[str, Any]) -> None:
     """Write a crank reading into the stored analysis, so it survives the
     job store and shows on the saved report -- not only in this tab."""
@@ -803,8 +820,7 @@ async def _persist_hob(db: AsyncSession, user: User, job_id: str, block: dict[st
     for row in rows:
         if not row.result:
             continue
-        res = dict(row.result)
-        res["hip_over_bb"] = block
+        res = with_hip_over_bb(dict(row.result), block)
         res["bike_points"] = block.get("points")
         ssm = res.get("sport_specific_metrics")
         if isinstance(ssm, dict):
@@ -3053,7 +3069,9 @@ async def job_bike_points(
     # Onto the result the athlete's history copies (api/me._attach_result), and
     # beside the other bike readings so the coach prompt sees it next time.
     block["c_source"] = _clean_c_source(body.c_source)
-    result["hip_over_bb"] = block
+    updated = with_hip_over_bb(result, block)
+    result.clear()
+    result.update(updated)
     result["bike_points"] = block["points"]
     summary = result.get("sport_specific_metrics")
     if isinstance(summary, dict):

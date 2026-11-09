@@ -584,10 +584,27 @@ async def analysis_report(
             status_code=status.HTTP_409_CONFLICT,
             detail="This analysis was run before full reports were stored.",
         )
+    await _refresh_fit_plan(db, row)
     await _ensure_coaching(db, row)
     html = await render_saved_report(db, reader=user, owner=owner, row=row, athlete_id=athlete_id)
     logger.info("REPORT_PDF_SERVED", user_id=user.id, analysis=client_id)
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
+async def _refresh_fit_plan(db: AsyncSession, row: Analysis) -> None:
+    """Read a stored plan against its crank reading again. A crank marked before the
+    seatpost card existed left "5 mm" in the plan and in the coach's text; this puts
+    the card in and lets _ensure_coaching write the text again to match."""
+    from app.main import with_hip_over_bb
+
+    res = row.result or {}
+    hob = (res.get("sport_specific_metrics") or {}).get("hip_over_bb") or res.get("hip_over_bb")
+    if not isinstance(hob, dict) or not isinstance(res.get("fit_plan"), dict):
+        return
+    new = with_hip_over_bb(dict(res), hob)
+    if new.get("fit_plan") != res.get("fit_plan"):
+        row.result = new
+        await db.commit()
 
 
 async def _previous_clip(

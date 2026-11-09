@@ -168,7 +168,7 @@ async def shared_report(
     token: str, request: Request, db: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     from app.api.auth import _throttle
-    from app.api.me import render_saved_report
+    from app.api.me import _refresh_fit_plan, render_saved_report
 
     _throttle(f"report-view:{client_ip(request)}", VIEWS_PER_IP_HOUR, 3600)
     headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex", "Referrer-Policy": "no-referrer"}
@@ -181,6 +181,7 @@ async def shared_report(
     ))).scalar_one_or_none()
     if coach is None or row is None or not row.result:
         return HTMLResponse(_GONE, status_code=404, headers=headers)
+    await _refresh_fit_plan(db, row)
     html = await render_saved_report(db, reader=coach, owner=coach, row=row, athlete_id=share.athlete_id)
     logger.info("REPORT_VIEWED", share_id=share.id)
     return HTMLResponse(html, headers=headers)

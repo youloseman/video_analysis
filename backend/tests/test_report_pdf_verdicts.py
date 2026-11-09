@@ -520,3 +520,126 @@ def test_a_doubtful_clip_makes_no_claim_about_what_moved():
         {"id": "framing", "status": "bad", "label": "How much of the frame you fill", "measured": "237 px tall"}]
     html = render_report_html(res, {"previous": {"filmed": "12 Oct 2026", "result": _bike_plan()}})
     assert "Since 12 Oct" not in html
+
+
+# --- the coach's text in the report
+
+def test_crank_jargon_is_spelled_out_in_the_coachs_text():
+    res = _bike_plan(ai_recommendations={"report": "Your BDC knee angle is 149 and the hip is closed at TDC. "
+                                                   "Knee angle at top of stroke (TDC): 73."})
+    html = render_report_html(res, {})
+    assert "BDC" not in html.split("class=\"coachtext\"")[1].split("</div>")[0]
+    assert "knee angle at the bottom of the stroke is 149" in html and "closed at the top of the stroke" in html
+
+
+def test_worth_a_look_drops_what_the_plan_already_says():
+    text = ("**Overall** fine\n\n**Worth a look**\n- **Knee angle at bottom of stroke (BDC)**: 165° vs 135-145°. "
+            "Lower it 3-5 mm.\n- **Knee angle at top of stroke (TDC)**: 73° vs 60-72°, on the edge.\n\n"
+            "**Next session** — spin")
+    html = render_report_html(_bike_plan(ai_recommendations={"report": text}), {})
+    coach = html.split('class="coachtext"')[1].split("</div>")[0]
+    assert "Lower it 3-5 mm" not in coach and "top of the stroke</b>: 73°" in coach and "Worth a look" in coach
+
+
+def test_an_empty_worth_a_look_loses_its_heading():
+    text = "**Worth a look**\n- **Knee angle at bottom of stroke (BDC)**: 165°.\n\n**Next session** — spin"
+    html = render_report_html(_bike_plan(ai_recommendations={"report": text}), {})
+    assert "Worth a look" not in html.split('class="coachtext"')[1].split("</div>")[0]
+
+
+# --- printed on an iPhone
+
+def test_the_print_page_survives_letter_and_safari():
+    html = render_report_html(_bike_plan(), {"keyframe": "data:image/jpeg;base64,AA"})
+    assert "@media print{.lead img{max-height:108mm" in html
+    assert ".tile{display:inline-block" in html and ".bd-n{overflow-wrap:anywhere}" in html
+    assert ".facts dd{overflow-wrap:anywhere" in html
+
+
+# --- hip over the crank: a seatpost, not 5 mm
+
+def _far(gap=-18.2, angle=75.4, c_source="user", position="triathlon", hip_card=True) -> dict:
+    diags = [{"component": "saddle_height", "status": "needs_adjustment", "metric_name": "knee_at_bdc",
+              "current_value": 149.0, "target_range": [138, 145], "action": "lower_saddle", "amount": "5mm",
+              "priority": 1, "reason": "Knee angle at BDC is 149 deg (optimal 138-145 deg). Overextension -- "
+                                       "lower saddle by 5mm, ride 30 min before reassessing."}]
+    if hip_card:
+        diags.append({"component": "saddle_fore_aft", "status": "needs_adjustment", "metric_name": "hip_at_tdc",
+                      "current_value": 40.8, "target_range": [45, 62], "action": "move_saddle_forward",
+                      "amount": "5mm", "priority": 2, "reason": "Hip angle at the top of the stroke is 41 deg "
+                      "(optimal 45-62 deg). Hip is too closed -- move saddle forward 5mm to open hip angle."})
+    hob = {"angle_deg": angle, "gap_pro_cm": gap, "cm_per_deg": 1.44, "aero": True, "c_source": c_source}
+    return {"sport_type": "bike", "technique_score": 91, "cycling_position": position, "camera_side": "right",
+            "hip_over_bb": hob,
+            "fit_plan": {"diagnostics": diags, "fitting_sequence_note": "Adjust in order: saddle height -> "
+                         "saddle fore/aft. " + FIT_STEP_NOTE},
+            "sport_specific_metrics": {"capture_report": {"checks": []}, "hip_over_bb": hob}}
+
+
+def test_a_hip_far_behind_the_field_gets_a_seatpost_not_five_millimetres():
+    html = render_report_html(_far(), {})
+    plan = html[html.index("The plan"):html.index("The numbers")]
+    assert "Saddle fore-aft — Move the saddle forward about 12 cm (±2) · bike shop" in plan
+    assert "18 cm behind the middle of the Kona pros" in plan and "behind every one of the 68 age-groupers" in plan
+    assert "forward-offset or dual-position seatpost" in plan and "about 3 mm against the pedals" in plan
+    assert "move saddle forward 5mm" not in plan.lower()
+    # The seatpost first; the height is set after it, because the move changes it.
+    assert plan.index("Saddle fore-aft") < plan.index("Saddle height")
+    assert "Set the height after the fore-aft change" in plan and "about 36 mm lower" in plan
+    assert "Adjust in order: saddle fore/aft -&gt; saddle height" in plan
+    assert "at most 5 mm per step" not in plan
+
+
+def test_a_gap_under_ten_cm_keeps_the_rail_adjustment():
+    plan = render_report_html(_far(gap=-8.0, angle=82.5), {})
+    assert "Move saddle forward 5mm" in plan and "seatpost" not in plan
+
+
+def test_a_crank_axle_guessed_from_the_wheels_is_not_enough_for_a_new_seatpost():
+    for src in ("auto_wheels", "auto_guess"):
+        assert "seatpost" not in render_report_html(_far(c_source=src), {}), src
+
+
+def test_road_has_no_field_to_be_far_from():
+    assert "seatpost" not in render_report_html(_far(position="road_hoods"), {})
+
+
+def test_no_hip_card_no_new_one():
+    """The field is a field, never a band: on its own it doesn't put a change in the plan."""
+    html = render_report_html(_far(hip_card=False), {})
+    assert "seatpost" not in html and "Lower saddle 5mm" in html
+
+
+def test_a_time_trial_hears_the_uci_rule():
+    assert "UCI time trial" in render_report_html(_far(position="tt_aero"), {})
+
+
+def test_marking_the_crank_again_reads_from_the_plan_as_built():
+    from app.services.video_analysis.biomechanics.action_plan_builder import apply_hip_over_bb
+
+    res = _far()
+    far = apply_hip_over_bb(res["fit_plan"], res["hip_over_bb"], "triathlon")
+    assert far["diagnostics"][0]["action"] == "move_saddle_forward_far"
+    near = apply_hip_over_bb(far, {**res["hip_over_bb"], "gap_pro_cm": -3.0, "angle_deg": 86.0}, "triathlon")
+    assert [d["action"] for d in near["diagnostics"]] == ["lower_saddle", "move_saddle_forward"]
+    assert "diagnostics_base" not in near and near["fitting_sequence_note"].startswith("Adjust in order: saddle height")
+    assert apply_hip_over_bb(far, res["hip_over_bb"], "triathlon") == far
+
+
+def test_a_crank_mark_that_changes_the_plan_drops_the_coach_text_written_to_the_old_one():
+    from app.main import with_hip_over_bb
+
+    res = {**_far(), "ai_recommendations": {"report": "Move saddle forward 5mm"}}
+    out = with_hip_over_bb(res, res["hip_over_bb"])
+    assert "ai_recommendations" not in out and out["fit_plan"]["diagnostics"][0]["action"] == "move_saddle_forward_far"
+    same = with_hip_over_bb(out | {"ai_recommendations": {"report": "x"}}, res["hip_over_bb"])
+    assert same["ai_recommendations"] == {"report": "x"}
+
+
+def test_the_seatpost_card_links_the_article_behind_it():
+    html = render_report_html(_far(), {})
+    plan = html[html.index("The plan"):html.index("The numbers")]
+    assert "<a href='https://getflapp.com/academy/kona-2026-hip-over-crank'>" in plan
+    assert "They Sit Further Forward." in plan and "getflapp.com/academy/kona-2026-hip-over-crank" in plan
+    assert "hobfig" not in html
+    assert "kona-2026-hip-over-crank" not in render_report_html(_far(gap=-8.0, angle=82.5), {})

@@ -53,7 +53,7 @@ def test_the_clip_that_started_this_lists_both_red_rows():
         _summary(knee_at_tdc=76.1, shoulder_angle_avg=70.3, hip_angle_avg=72.9),
     )
     assert "MATERIAL PROBLEMS (" in block
-    assert "Knee angle at top of stroke (TDC)" in block
+    assert "Knee angle at the top of the stroke" in block
     assert "Shoulder angle" in block
     assert "NONE" not in block
 
@@ -61,7 +61,7 @@ def test_the_clip_that_started_this_lists_both_red_rows():
 def test_a_saddle_clearly_too_high_is_material():
     """FB-02: knee at BDC 156.7 against a 138-145 band."""
     block = _materiality_block("bike", POSITION, _summary(knee_at_bdc=156.7))
-    assert "Knee angle at bottom of stroke (BDC)" in block
+    assert "Knee angle at the bottom of the stroke" in block
 
 
 def test_a_miss_inside_the_instrument_s_own_spread_is_not_a_finding():
@@ -98,11 +98,11 @@ def test_the_metric_lines_carry_the_same_verdict_as_the_list():
         _summary(knee_at_tdc=76.1, shoulder_angle_avg=70.3),
     )
     knee_line = next(
-        ln for ln in prompt.splitlines() if ln.startswith("- Knee angle at top")
+        ln for ln in prompt.splitlines() if ln.startswith("- Knee angle at the top")
     )
     assert "OUT OF RANGE" in knee_line
     bdc_line = next(
-        ln for ln in prompt.splitlines() if ln.startswith("- Knee angle at bottom")
+        ln for ln in prompt.splitlines() if ln.startswith("- Knee angle at the bottom")
     )
     assert "in range" in bdc_line
 

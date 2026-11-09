@@ -24,7 +24,10 @@ from app.services.review_pdf import (
     _status,
     metric_rows,
 )
-from app.services.video_analysis.biomechanics.action_plan_builder import FIT_STEP_NOTE
+from app.services.video_analysis.biomechanics.action_plan_builder import (
+    FIT_STEP_NOTE,
+    apply_hip_over_bb,
+)
 from app.services.video_analysis.biomechanics.cycling_positions import NON_DRIVE_KNEE_NOTE
 from app.services.video_analysis.biomechanics.running_action_plan_builder import (
     _FAULT_DIRECTION,
@@ -316,8 +319,11 @@ def _num(v: float) -> str:
     return f"{v:.0f}" if abs(v) >= 20 else f"{v:.2f}".rstrip("0").rstrip(".")
 
 
-_COMPONENT = {"saddle_height": "Saddle height", "saddle_setback": "Saddle fore-aft",
+_COMPONENT = {"saddle_height": "Saddle height", "saddle_setback": "Saddle fore-aft", "saddle_fore_aft": "Saddle fore-aft",
               "bar_position": "Bar position", "bar_reach": "Bar reach", "cleats": "Cleats"}
+_ACTION_TITLE = {"move_saddle_forward_far": "Move the saddle forward",
+                 "reassess_after_fore_aft": "Set it after the fore-aft change",
+                 "reassess_after_saddle_height": "Set it after the saddle height"}
 # Same words as the app's FIT_EFFORT (index.html).
 _EFFORT = {"home": "at home, 5 min", "depends": "home or bike shop", "shop": "bike shop"}
 
@@ -328,7 +334,7 @@ def _fit_priorities(fit: dict[str, Any]) -> list[dict[str, Any]]:
     for d in sorted(fit.get("diagnostics") or [], key=lambda d: d.get("priority") or 99):
         if d.get("status") != "needs_adjustment":
             continue
-        action = str(d.get("action") or "").replace("_", " ").capitalize()
+        action = _ACTION_TITLE.get(str(d.get("action")), str(d.get("action") or "").replace("_", " ").capitalize())
         amount = f" {d['amount']}" if d.get("amount") else ""
         size = re.search(r"(\d+)\s*mm", amount)
         if size and int(size.group(1)) > 5:
@@ -339,7 +345,8 @@ def _fit_priorities(fit: dict[str, Any]) -> list[dict[str, Any]]:
         if drill and effort.get("level") in _EFFORT:
             drill += f" · {_EFFORT[effort['level']]}"
         why, do = _why_and_do(d, bool(size and int(size.group(1)) > 5))
-        out.append({"label": comp, "drill": drill or None, "why": why, "instruction": do,
+        out.append({"label": comp, "drill": drill or None, "why": why, "instruction": do, "action": d.get("action"),
+                    "article": d.get("article"),
                     "metric": d.get("metric_name")})
     return out
 
@@ -407,6 +414,54 @@ def changes_since(rows: list[dict[str, Any]], before: list[dict[str, Any]]) -> l
         moved.append({"label": str(row["label"]).split(" · ")[0], "then": _row_value({**row, "value": was}),
                       "now": _row_value(row), "word": word, "tone": tone})
     return moved
+
+
+# The coach's crank words, from text written before the prompt said not to.
+_COACH_WORDS = [
+    (re.compile(r"\s*\((?:BDC|TDC)\)"), ""),
+    (re.compile(r"\bBDC knee angle\b"), "knee angle at the bottom of the stroke"),
+    (re.compile(r"\bTDC knee angle\b"), "knee angle at the top of the stroke"),
+    (re.compile(r"\b(?:at )?BDC\b"), "at the bottom of the stroke"),
+    (re.compile(r"\b(?:at )?TDC\b"), "at the top of the stroke"),
+    (re.compile(r"\bbottom of stroke\b"), "bottom of the stroke"),
+    (re.compile(r"\btop of stroke\b"), "top of the stroke"),
+]
+# "Worth a look" lines name a metric the way the prompt does; the plan by field.
+_LOOK_FIELD = [("knee angle at bottom", "knee_at_bdc"), ("knee angle at the bottom", "knee_at_bdc"),
+               ("knee angle at top", "knee_at_tdc"), ("knee angle at the top", "knee_at_tdc"),
+               ("hip angle at top", "hip_at_tdc"), ("hip angle at the top", "hip_at_tdc"),
+               ("trunk angle", "trunk_angle"), ("elbow angle", "elbow_angle"),
+               ("shoulder angle", "shoulder_angle"), ("cadence", "cadence"), ("trunk lean", "trunk_lean")]
+
+
+def _coach_text(text: str, planned: set[str]) -> str:
+    """The coach's text as the report prints it: crank jargon spelled out, and the
+    checklist without the lines the plan below already says, so a fix isn't read
+    four times in two sizes ("3-5 mm" there, "5 mm" here)."""
+    for pat, rep in _COACH_WORDS:
+        text = pat.sub(rep, text)
+    out, in_look, kept = [], False, 0
+    for line in text.splitlines():
+        if re.match(r"\s*\**Worth a look\**\s*$", line):
+            in_look, kept = True, 0
+            out.append(line)
+            continue
+        if in_look and re.match(r"\s*\**(Next session|Overall|Fix first)", line):
+            in_look = False
+        if in_look and line.lstrip().startswith("- "):
+            head = line.split("**")[1].lower() if line.count("**") >= 2 else ""
+            field = next((f for k, f in _LOOK_FIELD if head.startswith(k)), None)
+            if field and field in planned:
+                continue
+            kept += 1
+        out.append(line)
+    if not kept:
+        out = [ln for ln in out if not re.match(r"\s*\**Worth a look\**\s*$", ln)]
+    return "\n".join(out)
+
+
+# The article behind a card, by the path the fit plan carries.
+_ARTICLES = {"/academy/kona-2026-hip-over-crank": "Kona Pros Don't Sit Higher. They Sit Further Forward."}
 
 
 def _doc_title(meta: dict[str, Any], sport_name: str) -> str:
@@ -481,6 +536,9 @@ _EXTRA_CSS = """
    height it needs and the cards sit beside it. */
 .lead{display:flex;gap:14px;align-items:flex-start;margin:14px 0 0}
 .lead img{display:block;width:auto;max-width:100mm;max-height:150mm;border-radius:8px}
+/* iPhone prints on US Letter with its own margins and ignores size:A4: the cover
+   was two pages there. Sized for the smaller page. */
+@media print{.lead img{max-height:108mm;max-width:80mm}}
 .lead-side{flex:1;min-width:0}
 .lead-side .glance{grid-template-columns:minmax(0,1fr);margin:0}
 .lead-side .cap{margin:10px 0 0}
@@ -512,21 +570,26 @@ _EXTRA_CSS = """
 .coachtext h3:first-child{margin-top:0}
 .ok-list li{margin:0 0 3px}
 .hob{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;background:#F3F5F8;border-radius:8px;padding:12px 16px;margin:4px 0 12px;break-inside:avoid}
+.prio a{color:#2459C2;font-weight:600;text-decoration:none}
+.prio .url{display:block;font:7.6pt 'IBM Plex Mono',monospace;color:#6E7787}
 .hob .big{font:italic 900 26pt/1 'Archivo',sans-serif;color:#14294B}
 .cover-grid3{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:center;margin:16px 0 4px}
 .brand{font-size:17pt;gap:0}
 .bd-h span{white-space:nowrap}
 .bd{border-left:1px solid #2A4170;padding-left:16px}
-.bd-h{display:flex;justify-content:space-between;font:500 7pt 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8EA6CF;margin:0 0 5px}
+.bd-h{display:flex;justify-content:space-between;gap:10px;font:500 7pt 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8EA6CF;margin:0 0 5px}
 .bd-note{font-size:7.4pt;line-height:1.35;color:#C5D3EA;margin:6px 0 0}
-.bd-row{display:grid;grid-template-columns:minmax(0,1fr) 20mm 7mm 8mm;gap:6px;align-items:center;font-size:8.4pt;line-height:1.75;color:#fff}
-.bd-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-row{display:grid;grid-template-columns:minmax(0,1fr) 14mm 7mm 8mm;gap:6px;align-items:center;font-size:8.4pt;line-height:1.3;padding:1.5px 0;color:#fff}
+.bd-n{overflow-wrap:anywhere}
 .bd-b{height:5px;background:#2A4170;border-radius:3px;overflow:hidden}
 .bd-b i{display:block;height:100%;border-radius:3px}
 .bd-v{font:600 8.4pt 'IBM Plex Mono',monospace;text-align:right}
 .bd-w{font:8pt 'IBM Plex Mono',monospace;color:#8EA6CF;text-align:right}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 12px}
 .tile{border:1px solid #DCE2EA;border-radius:8px;padding:10px 12px 8px;break-inside:avoid}
+/* Safari cuts a grid item across pages whatever break-inside says; an inline
+   block it can't. */
+@media print{.tiles{display:block;font-size:0}.tile{display:inline-block;vertical-align:top;width:calc(50% - 5px);margin:0 0 10px;font-size:9.6pt}.tile:nth-child(odd){margin-right:10px}}
 .tile-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .tile-l{font-weight:700;color:#14294B;font-size:9.6pt}
 .grbar{margin-top:6px}
@@ -546,6 +609,7 @@ _EXTRA_CSS = """
 .gr-none{font-size:8.4pt;color:#8A93A1;margin-top:8px}
 .gr-text{font-size:8.6pt;color:#5C6675;margin-top:8px}
 .gr-text b{color:#14294B;font-weight:700}
+.facts dd{overflow-wrap:anywhere;min-width:0}
 .foot{margin:18px 0 0;padding-top:10px;border-top:1px solid #DCE2EA;font-size:8pt;color:#6E7787;display:flex;justify-content:space-between}
 @media print{.foot{display:none}}
 .filmnote{background:#FFF3DC;border-left:3px solid #E5A23A;border-radius:4px;padding:10px 14px;margin:0 0 14px;break-inside:avoid}
@@ -591,7 +655,10 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     prios = [{**p, **_OLD_DRILL.get(str(p.get("drill")), {})} for p in plan.get("top_3_priorities") or []
              if p.get("metric") != "foot_strike"]
     strong = plan.get("strong_points") or []
-    fit = result.get("fit_plan") or {}
+    # Read against the crank here too: a crank marked before this rule existed
+    # left a plan saying 5 mm.
+    hob = (result.get("sport_specific_metrics") or {}).get("hip_over_bb") or result.get("hip_over_bb")
+    fit = apply_hip_over_bb(result.get("fit_plan") or {}, hob, result.get("cycling_position")) or {}
     if sport == "bike" and not prios:
         # A bike's plan is its fit plan: what to adjust, in order, by how much.
         prios = _fit_priorities(fit)
@@ -748,7 +815,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
     ) if previous else ""
     read_body = "".join([
         note_html, film_html, since_html,
-        f'<div class="coachtext">{markdown(coach)}</div>' if coach else "",
+        f'<div class="coachtext">{markdown(_coach_text(coach, planned))}</div>' if coach else "",
         ("<div class='eyebrow' style='margin-top:6px'>What the measurements flagged</div>" + findings) if findings else "",
     ])
     # With nothing to say the plan doesn't already say, the plan comes first.
@@ -760,6 +827,8 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
         + "".join(f"<dt>{lbl}</dt><dd>{_e(_clean(p.get(k)))}</dd>" for k, lbl in
                   (("why", "Why"), ("instruction", "Do this"), ("cue", "Think")) if p.get(k))
         + (f"<dt>For</dt><dd>{_e(p.get('weeks'))} weeks</dd>" if p.get('weeks') and not low else "")
+        + (f"<dt>Read</dt><dd><a href='https://getflapp.com{_e(p['article'])}'>{_e(_ARTICLES[p['article']])}</a> "
+           f"<span class='url'>getflapp.com{_e(p['article'])}</span></dd>" if p.get("article") in _ARTICLES else "")
         + "</dl></div></div>"
         for n, p in enumerate(prios, 1)]
     prio_html = "".join(prio_cards)
@@ -794,7 +863,6 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any]) -> str:
 </section>""" if (prio_html or low) else ""
 
     tiles = "".join(_tile(r) for r in rows)
-    hob = (result.get("sport_specific_metrics") or {}).get("hip_over_bb") or result.get("hip_over_bb")
     hob_html = ""
     if isinstance(hob, dict) and hob.get("angle_deg") is not None:
         if hob.get("aero") is False:
