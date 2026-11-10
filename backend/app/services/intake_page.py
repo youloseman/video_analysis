@@ -152,7 +152,7 @@ def render_intake_page(ctx: dict[str, Any] | None) -> str:
         '<button id="go" type="submit">Send to my coach</button>'
         '<div class="bar hidden" id="bar"><i></i></div><p class="msg" id="msg" role="status" aria-live="polite"></p>'
         "</form>"
-        '<p class="foot">Measured by Flapp. Your clip is kept for 60 days, then deleted. '
+        '<p class="foot">Measured by Flapp. Your clip is kept for a year, then deleted. '
         '<a href="/privacy#coach-upload">How this works</a>.</p>'
         f"<script>{_SCRIPT}</script>"
     ))

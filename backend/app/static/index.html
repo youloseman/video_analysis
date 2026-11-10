@@ -781,7 +781,7 @@
         <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
           Your clip never reaches an AI service &mdash; only anonymous joint angles do</li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          <span id="retentionLine">Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk</span></li>
+          <span id="retentionLine">Clips auto-delete (7 days free, a year on a plan); photos are never written to disk</span></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
           No ad trackers in the app, nothing sold &mdash; <a href="/privacy">privacy policy</a></li>
       </ul>
@@ -1872,7 +1872,7 @@
       </div>
       <span class="prof-note">open an athlete for their upload link and their code</span>
     </div>
-    <div class="ad-stays" id="athStays"><b>What stays, what goes.</b> Numbers, annotated frames, kinograms and the written notes stay with every analysis. Uploaded clips and overlay videos are kept for 60 days on this plan; a linked athlete’s, for as long as their own plan keeps them. A photo keeps its frame and numbers and has no stored report to reopen, so correct its joints while it is fresh.</div>
+    <div class="ad-stays" id="athStays"><b>What stays, what goes.</b> Numbers, annotated frames, kinograms and the written notes stay with every analysis. Uploaded clips and overlay videos are kept for a year on this plan; a linked athlete’s, for as long as their own plan keeps them. A photo keeps its frame and numbers and has no stored report to reopen, so correct its joints while it is fresh.</div>
     <div class="prof-list" id="athList"></div>
     <div class="prof-edit hidden" id="athEdit">
       <div><label for="athName" id="athEditLbl">Name</label><input id="athName" type="text" maxlength="60" placeholder="e.g. Andrew Solomon"></div>
@@ -11093,8 +11093,8 @@ function renderAuth(){
   document.body.classList.toggle('coach-plan', hasCoachPlan());
   const keep=$('#retentionLine');
   if(keep) keep.textContent=auth&&auth.tier==='coach'
-    ? 'Clips auto-delete after 60 days on your plan; photos are never written to disk'
-    : 'Clips auto-delete (7 days free, 30 on a plan); photos are never written to disk';
+    ? 'Clips are kept for a year on your plan, then deleted; photos are never written to disk'
+    : 'Clips auto-delete (7 days free, a year on a plan); photos are never written to disk';
   // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));

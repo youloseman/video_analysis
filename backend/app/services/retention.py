@@ -49,15 +49,28 @@ from app.models.user import (
 DAY_MS = 24 * 60 * 60 * 1000
 
 # Baseline retention, in days, by the tier of the account that uploaded.
+# A year on every paid plan (Artur, 2026-11-10): last season's clip next to
+# this season's is what a paid history is for, and a measured CdA arrives
+# months after the position was filmed. privacy.html sections 2 and 10 say so.
 RETENTION_DAYS: dict[str, int] = {
+    TIER_STARTER: 7,
+    TIER_ENTHUSIAST: 365,
+    TIER_FULL: 365,
+    TIER_COACH: 365,
+    TIER_ADMIN: 30,   # staff, not a paid plan
+}
+# What was promised before the year: a clip uploaded under that policy keeps
+# the period it was uploaded under. Footage is not kept longer than the page
+# said when it was taken.
+LEGACY_RETENTION_DAYS: dict[str, int] = {
     TIER_STARTER: 7,
     TIER_ENTHUSIAST: 30,
     TIER_FULL: 30,
-    # Sixty: a coach reviews a clip next to the one filmed after the change,
-    # weeks later. privacy.html sections 2 and 10 say so (Artur, 2026-11-06).
     TIER_COACH: 60,
     TIER_ADMIN: 30,
 }
+# 2026-11-11 00:00 UTC. Clips analysed before it are on the legacy periods.
+YEAR_FROM_MS = 1_794_355_200_000
 # An unknown tier is treated as the free one. Erring towards the shorter period
 # is the safe direction for a mistake here: keeping someone's footage longer
 # than promised is the failure that matters.
@@ -70,8 +83,16 @@ MAX_RETENTION_DAYS = max(RETENTION_DAYS.values())
 REVIEW_GRACE_DAYS = 7
 
 
-def retention_days(tier: str | None) -> int:
-    return RETENTION_DAYS.get(tier or "", DEFAULT_RETENTION_DAYS)
+def retention_days(tier: str | None, created_at_ms: int | None = None) -> int:
+    """Days a clip is kept, by the uploader's tier now.
+
+    The tier is read at sweep time, not at upload: a plan that ends puts the
+    free period on the clips from then on (privacy.html section 10 says so).
+    """
+    table = RETENTION_DAYS
+    if created_at_ms is not None and created_at_ms < YEAR_FROM_MS:
+        table = LEGACY_RETENTION_DAYS
+    return table.get(tier or "", DEFAULT_RETENTION_DAYS)
 
 
 def _now_ms(now_ms: int | None = None) -> int:
@@ -106,7 +127,7 @@ async def job_ids_to_keep(
         )
     )
     for job_id, created_at_ms, tier in rows:
-        if now - (created_at_ms or 0) <= retention_days(tier) * DAY_MS:
+        if now - (created_at_ms or 0) <= retention_days(tier, created_at_ms or 0) * DAY_MS:
             keep.add(str(job_id))
 
     # 2. Pinned: an Expert Review that is paid for and still owed, or one
