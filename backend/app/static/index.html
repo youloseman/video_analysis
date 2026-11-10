@@ -1206,6 +1206,8 @@
       <!-- The pro column, explained: a field to place yourself against, never a
            target. Filled by renderAngleTable from the served pro_field. -->
       <p class="hint hidden" id="angleProNote" style="text-align:left;margin-top:8px"></p>
+      <!-- Where the bike's Optimal column comes from (fitRangeNote). -->
+      <p class="hint hidden" id="angleSrcNote" style="text-align:left;margin-top:8px"></p>
     </div>
 
     <!-- Where to go from here, whatever the score (result.next_steps). -->
@@ -1407,6 +1409,7 @@
           <tbody id="pAngleRows"></tbody>
         </table>
       </div>
+      <p class="hint hidden" id="pAngleSrcNote" style="text-align:left;margin-top:12px"></p>
     </div>
 
     <!-- Running, at the instant the foot lands: the readings only that frame
@@ -4604,7 +4607,7 @@ function renderAeroPanel(s){
     ${(torsoSlider||headSlider)?`<div class="aero-levers-h">What if <span class="hint">— move a slider, the minutes above follow</span></div>
       <div class="aero-wi">${torsoSlider}${headSlider}</div>`:''}
     <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
-    <p class="aero-disc">An estimate, not a measurement: constant power on a flat course, rider + bike ${m.physics.mass_kg} kg, CdA ${m.physics.cda}. Torso from measured frontal area (Fintelman 2015, van Druenen &amp; Blocken 2023).${head?' Head interpolated between head-up and tucked (4.6–6.4% drag) across the Kona 2026 pro range.':''} Lower only pays if you can still hold power, breathe and see the road.</p>${aeroMeasuredHtml()}`;
+    <p class="aero-disc">An estimate, not a measurement: constant power on a flat course, rider + bike ${m.physics.mass_kg} kg, CdA ${m.physics.cda}. Torso from measured frontal area (Fintelman 2015, van Druenen &amp; Blocken 2023).${head?' Head interpolated between head-up and tucked (4.6–6.4% drag) across the Kona 2026 pro range.':''} Lower only pays if you can still hold power, breathe, see the road and handle the bike: stability on descents and in crosswinds is not measured here.</p>${aeroMeasuredHtml()}`;
   aeroUpdate();
   blk.classList.remove('hidden');
 }
@@ -4787,6 +4790,15 @@ function angleRow(k,a,pro){
     <td class="num">${val}</td><td class="num">${opt}</td>${proTd}
     <td><span class="pill pill-${cls}" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>${esc(word)}</span></td></tr>`;
 }
+/* John Bye (coach, 2026-11-10) asked twice where "Optimal" comes from. The
+   bike bands are fitters' ranges (cycling_positions.py), not an aero optimum,
+   and the table said neither. Bike only: the run bands have other sources. */
+function fitRangeNote(sel, sport, pro){
+  const el=$(sel); if(!el) return;
+  const on=sport==='bike';
+  el.classList.toggle('hidden', !on);
+  if(on) el.innerHTML=`<b>Optimal</b> is a bike-fit range for this position, not an aero optimum: where fitters place riders (Retul fit windows; Burt, <i>Bike Fit</i>, 2014; Fintelman 2015; BikeFit).${pro?' <b>Kona 2026</b> is what the pros actually rode.':''}`;
+}
 function renderPhotoAngles(){
   const res=state.photoRes; if(!res) return;
   const A=res.angles_with_context||{}, phase=state.pedalPhase||'uncertain';
@@ -4798,6 +4810,7 @@ function renderPhotoAngles(){
   }).join('');
   $('#pAngleRows').innerHTML=rows||'<tr><td colspan="5" class="muted">No angle data.</td></tr>';
   const pt=$('#pAngleTable'); if(pt) pt.classList.toggle('no-pro', !pro);
+  fitRangeNote('#pAngleSrcNote', res.sport||state.sport, pro);
   // No picker over a withheld photo: there is no score for it to move.
   const banded=Object.values(A).find(a=>a&&a.bands), pick=$('#pPhasePick');
   if(banded&&!(res.score&&res.score.withheld)){
@@ -9943,6 +9956,7 @@ function renderAngleTable(r, sport){
     pn.classList.toggle('hidden', !pro);
     if(pro) pn.innerHTML=`<b>Kona pros</b> — the median and middle half of ${pro.n} professional positions we measured at the 2026 Ironman World Championship (${pro.men} men, ${pro.women} women), every joint point checked by hand. A field to place yourself against, not a target: the pros hold positions most age-groupers cannot. <a href="${esc(pro.article||'/academy/kona-2026-pro-bike-positions')}" target="_blank" rel="noopener">Read the study</a>.`;
   }
+  fitRangeNote('#angleSrcNote', sport, pro);
   // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).
   $('#angleNorefNote').classList.toggle('hidden', sport!=='run');
   // no reference bands for this sport's angles -> hide the Optimal/Status columns
