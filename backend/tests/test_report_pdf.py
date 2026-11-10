@@ -143,7 +143,7 @@ def test_the_cover_shows_what_the_score_is_built_from():
     from app.services.report_pdf import breakdown_items
 
     items = breakdown_items(example("bike-road"))
-    assert items and items[0]["name"] == "Knee at bottom" and items[0]["weight"] == 0.22
+    assert items and items[0]["name"] == "Knee at bottom" and items[0]["weight"] == 0.25
     html = render_report_html(example("bike-road"), {})
     assert "Score built from" in html
 

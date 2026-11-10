@@ -42,12 +42,19 @@ RUNNING_WEIGHTS = {
     "waveform_similarity": 0.08,
 }
 
+# 2026-11-10: "saddle_fit" (0.05) and "pelvic_ratio" (0.05) left the score.
+# The saddle verdict is the knee at the bottom of the stroke against the same
+# band, so one measurement weighed 0.27 under two names (a reader of Gona's
+# report counted it twice). The ratio is the mean hip angle over the torso
+# angle, and its 2-4 band has no published source; the photo already shows it
+# without grading it. Both stay in the report as readings. The rest were scaled
+# to add to 1.
 CYCLING_WEIGHTS = {
-    "knee_bdc": 0.22,
-    "trunk_angle": 0.18,
-    "knee_tdc": 0.15,
-    "elbow_angle": 0.10,
-    "shoulder_angle": 0.10,
+    "knee_bdc": 0.25,
+    "trunk_angle": 0.20,
+    "knee_tdc": 0.17,
+    "elbow_angle": 0.11,
+    "shoulder_angle": 0.11,
     # Was "head_alignment": 0.10 -- the ear under a line through the joint
     # centres, which every aero rider passed (all twenty-one Kona pros scored
     # 100): a tenth of the score for free. Its replacement is the photo's
@@ -55,9 +62,7 @@ CYCLING_WEIGHTS = {
     # positions and only when the reading can be trusted (score_cycling).
     # 0.10 since 2026-11-09 (head_silhouette.helmet_points).
     "helmet_above_back": 0.10,
-    "pelvic_ratio": 0.05,
-    "forearm_tilt": 0.05,
-    "saddle_fit": 0.05,
+    "forearm_tilt": 0.06,
 }
 SWIMMING_WEIGHTS = {
     "elbow_catch": 0.18,
@@ -478,14 +483,8 @@ def score_cycling(
         else:
             components["trunk_angle"] = score_in_range(trunk, *ref["trunk_angle"])
 
-    # Saddle fit (derived from near-side BDC)
-    # On a ramp when the analyzer supplied one (cycling_positions.saddle_fit_score):
-    # the old 100/75/40 steps moved the total by points on tenths of a degree.
-    saddle = summary.get("saddle_height_assessment", "")
-    saddle_map = {"optimal": 100, "acceptable": 75, "too_low": 40, "too_high": 40}
-    if saddle in saddle_map and not unsteady:
-        ramped = summary.get("saddle_fit_score")
-        components["saddle_fit"] = float(ramped) if ramped is not None else float(saddle_map[saddle])
+    # No saddle component: the verdict is knee_bdc against the same band
+    # (CYCLING_WEIGHTS, 2026-11-10).
 
     # Elbow angle (near-side from elbow_angle_avg which is now near-side)
     elbow = summary.get("elbow_angle_avg") or 0
@@ -542,10 +541,7 @@ def score_cycling(
     else:
         weights.pop("helmet_above_back", None)
 
-    # Pelvic ratio (scored against ratio thresholds)
-    pelvic = summary.get("pelvic_ratio") or 0
-    if pelvic > 0:
-        components["pelvic_ratio"] = score_in_range(pelvic, *ref["pelvic_ratio"])
+    # Pelvic ratio: shown in the report, not graded (CYCLING_WEIGHTS, 2026-11-10).
 
     overall = compute_weighted_score(
         components, weights,

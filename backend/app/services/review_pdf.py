@@ -30,9 +30,28 @@ _BIKE_ROWS: tuple[tuple[str, str, str, tuple[float, float]], ...] = (
     ("shoulder_angle_avg", "Shoulder", "°", (60, 120)),
     ("elbow_angle_avg", "Elbow", "°", (60, 130)),
     ("forearm_tilt_avg", "Forearm tilt", "°", (-10, 40)),
-    ("pelvic_ratio", "Pelvis rocking (ratio)", "", (1, 6)),
+    # Not rocking: the mean hip angle over the torso angle (cycling_analyzer).
+    # "Pelvis rocking (ratio): 3.55" had a reader asking rocking of what, in
+    # what unit (Gona, 2026-11-10).
+    ("pelvic_ratio", "Hip ÷ torso angle", "", (1, 6)),
     ("helmet_above_back", "Helmet above the back", "%", (0, 40)),
 )
+# What each row measures, between which points, in a line under its bar. Knee
+# 141 is the inside angle (Retul writes 39 for the same leg), and the hip on
+# the lead picture (93, bottom of the stroke) is not "Hip at the top" (54).
+HOW_MEASURED = {
+    "knee_at_bdc": "Inside angle between thigh and shin at the bottom of the stroke; 180° is a straight leg.",
+    "knee_at_tdc": "Inside angle between thigh and shin at the top of the stroke.",
+    "hip_at_tdc": "Between torso and thigh at the top of the stroke, where the hip is most closed.",
+    "trunk_angle_avg": "The hip-to-shoulder line against the horizontal; 0° is a flat back.",
+    "shoulder_angle_avg": "Between the torso and the upper arm.",
+    "elbow_angle_avg": "Inside angle between upper arm and forearm; 180° is a straight arm.",
+    "forearm_tilt_avg": "The elbow-to-wrist line against the horizontal; above 0° the hands sit higher than the elbows.",
+    "pelvic_ratio": ("The average hip angle divided by the torso angle. Higher: the pelvis rolls "
+                     "forward and the back stays long; lower: the hip closes and the back rounds."),
+    "helmet_above_back": "How far the top of the helmet rises above the top of the back, as a share of torso length.",
+}
+
 _SUBTITLE = {
     "bike": "Your position, read by a coach.",
     "run": "Your running, read by a coach.",
@@ -104,13 +123,15 @@ def metric_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
             band = (0.0, 23.0)
             if s.get("helmet_check") or not isinstance(v, (int, float)):
                 rows.append({"field": field, "label": label, "value": None, "unit": unit, "band": band,
-                             "pro": pro.get(field), "status": "na", "scale": scale})
+                             "pro": pro.get(field), "status": "na", "scale": scale,
+                             "how": HOW_MEASURED.get(field)})
                 continue
         if not isinstance(v, (int, float)) or (isinstance(v, float) and math.isnan(v)):
             continue
         st = _status(float(v), *(band or (None, None)))
         rows.append({"field": field, "label": label, "value": float(v), "unit": unit, "band": band,
-                     "pro": pro.get(field), "status": st, "scale": scale})
+                     "pro": pro.get(field), "status": st, "scale": scale,
+                     "how": HOW_MEASURED.get(field)})
     return rows
 
 

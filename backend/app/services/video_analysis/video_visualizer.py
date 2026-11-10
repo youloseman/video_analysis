@@ -100,6 +100,9 @@ _RUN_STANCE_PHASES = frozenset({
 # The BDC read is a median over revolutions, so an honest bottom frame lands
 # within a degree or two of it; 133 against 139.7 is the leg drawn wrong.
 _KEYFRAME_KNEE_TOL = 3.0
+# Within the tolerance, a frame this close is taken first: 139 on the picture
+# over 141 in the table read as two measurements (Gona, 2026-11-10).
+_KEYFRAME_KNEE_NEAR = 1.0
 
 WATERMARK_ENABLED = False
 WATERMARK_OPACITY = 0.9                       # global blend strength on top of the PNG's own alpha
@@ -535,6 +538,7 @@ class VideoVisualizer:
             if not ok or frame is None:
                 return None
             h, w = frame.shape[:2]
+            self.keyframe_crop = self._keyframe_crop(best_idx) if h > w else None
             # Drawn full-size, delivered at max_width -- tell the renderer, or
             # the stroke it picks is for a frame nobody will see at this size.
             frame = self._draw_frame_overlay(
@@ -551,6 +555,36 @@ class VideoVisualizer:
         except Exception as e:  # noqa: BLE001
             logger.warning("KEYFRAME_FAILED", err=str(e))
             return None
+
+    # The rows of a portrait keyframe the report cuts it to: the rider, a
+    # quarter of their height above, 15 % below (on a bike that reaches the
+    # ground under the pedal). Gona's PDF (2026-11-10) spent over half the
+    # picture on a gym ceiling. The stored frame is untouched; the PDF cuts.
+    KEYFRAME_CROP_ABOVE = 0.25
+    KEYFRAME_CROP_BELOW = 0.15
+
+    def _keyframe_crop(self, idx: int) -> list[float] | None:
+        """[top, bottom] as fractions of the frame height, or None when the cut
+        would save little. A top under 10 % is left at 0, so the score badge is
+        kept whole or cut away whole, never halved."""
+        ys = []
+        for lm in self.frame_data_list[idx].get("normalized_landmarks") or []:
+            y, vis = getattr(lm, "y", None), getattr(lm, "visibility", 1.0)
+            if isinstance(y, (int, float)) and math.isfinite(y) and (vis or 0) >= 0.3:
+                ys.append(float(y))
+        if len(ys) < 8:
+            return None
+        top, bottom = min(ys), max(ys)
+        tall = bottom - top
+        if tall <= 0.05:
+            return None
+        y0 = top - self.KEYFRAME_CROP_ABOVE * tall
+        y1 = bottom + self.KEYFRAME_CROP_BELOW * tall
+        y0 = 0.0 if y0 < 0.10 else y0
+        y1 = 1.0 if y1 > 0.92 else y1
+        if y1 - y0 > 0.85:
+            return None
+        return [round(y0, 3), round(y1, 3)]
 
     def _pick_keyframe_idx(self) -> int:
         """The frame the keyframe still is drawn from.
@@ -623,8 +657,9 @@ class VideoVisualizer:
                         if (k := self._near_knee_deg(i)) is not None
                     )
                     if scored:
+                        near = [i for d, i in scored if d <= _KEYFRAME_KNEE_NEAR]
                         close = [i for d, i in scored if d <= _KEYFRAME_KNEE_TOL]
-                        pool = close or [scored[0][1]]
+                        pool = near or close or [scored[0][1]]
 
         if self.sport_type == "run":
             pool = self._chips_agree_with_clip(pool)

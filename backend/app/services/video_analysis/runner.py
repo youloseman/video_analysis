@@ -1701,6 +1701,8 @@ def analyze_from_frames(
         except Exception as e:  # noqa: BLE001
             logger.warning("TIMELINE_FAILED", err=str(e))
         keyframe_base64 = visualizer.render_keyframe()
+        if getattr(visualizer, "keyframe_crop", None):
+            summary["keyframe_crop"] = visualizer.keyframe_crop
         if keyframe_base64 is None:
             # Loud like overlay_failed: a null image with no flag reads as
             # "there was never supposed to be one".

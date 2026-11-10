@@ -43,8 +43,8 @@ def _unsteady(summary):
 def test_an_unsteady_knee_leaves_the_score():
     steady = score_cycling(SUMMARY, {}, cycling_position="triathlon")
     shaky = score_cycling(_unsteady(SUMMARY), {}, cycling_position="triathlon")
-    assert "knee_bdc" in steady["component_scores"] and "saddle_fit" in steady["component_scores"]
-    assert "knee_bdc" not in shaky["component_scores"] and "saddle_fit" not in shaky["component_scores"]
+    assert "knee_bdc" in steady["component_scores"] and "knee_bdc" not in shaky["component_scores"]
+    assert "saddle_fit" not in steady["component_scores"], "the saddle is the knee, counted once"
     assert "knee_bdc" in shaky["coverage"]["excluded"]
     assert shaky["overall_score"] > steady["overall_score"]
     assert knee_bdc_unsteady(_unsteady(SUMMARY)) and not knee_bdc_unsteady(SUMMARY)

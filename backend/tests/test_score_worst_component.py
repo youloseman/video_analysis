@@ -47,8 +47,9 @@ FB02 = {
 
 
 def test_a_saddle_clearly_too_high_no_longer_reads_as_a_b():
-    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 81   # the old mean
-    assert _scored(FB02) == 63
+    # 81 and 63 with the saddle verdict counted as well (to 2026-11-10).
+    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 82   # the plain mean
+    assert _scored(FB02) == 64
     assert assign_grade(_scored(FB02)) == "C"
 
 
@@ -64,16 +65,16 @@ def test_a_clean_position_is_left_alone():
 
 
 def test_one_wrecked_component_can_no_longer_hide_behind_eight_good_ones():
-    wrecked = _bike(knee_bdc=0.0, saddle_fit=40.0)
+    wrecked = _bike(knee_bdc=0.0)
     assert compute_weighted_score(wrecked, CYCLING_WEIGHTS) == 75
     assert _scored(wrecked) == 48
 
 
 def test_a_merely_acceptable_saddle_verdict_does_not_set_the_floor():
-    """``saddle_fit`` is derived from knee-at-BDC and is categorical: its
-    "acceptable" maps to 75. Letting that define the worst case would count one
-    measurement twice and dock an otherwise perfect fit for a non-fault."""
-    assert _scored(_bike(saddle_fit=75.0)) == 99
+    """``saddle_fit`` is derived from knee-at-BDC: since 2026-11-10 it is not
+    in the score at all, so a saved one cannot dock a perfect fit."""
+    assert "saddle_fit" not in CYCLING_WEIGHTS and "pelvic_ratio" not in CYCLING_WEIGHTS
+    assert _scored({**_bike(), "saddle_fit": 75.0}) == 100
 
 
 def test_an_unweighted_extra_score_cannot_define_the_worst_case():
@@ -85,7 +86,7 @@ def test_an_unweighted_extra_score_cannot_define_the_worst_case():
 def test_the_plain_mean_is_still_the_default():
     """Running and swimming keep the old aggregation until there is a fixture
     to measure the change against."""
-    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 81
+    assert compute_weighted_score(FB02, CYCLING_WEIGHTS) == 82
 
 
 def test_no_measured_component_still_returns_the_neutral_default():

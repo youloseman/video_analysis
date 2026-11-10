@@ -137,8 +137,6 @@
    "forearm_tilt": 100.0,
    "knee_bdc": 94.3571,
    "knee_tdc": 100.0,
-   "pelvic_ratio": 100.0,
-   "saddle_fit": 75.0,
    "shoulder_angle": 100.0,
    "trunk_angle": 100.0
   },
@@ -159,7 +157,7 @@
   "summary.pelvic_ratio": 3.01,
   "summary.shoulder_angle_avg": 86.23,
   "summary.trunk_angle_avg": 24.89,
-  "technique_score": 96.0
+  "technique_score": 97.0
  },
  "exact": {
   "camera_side": "left",
@@ -167,16 +165,14 @@
   "confidence_level": "medium",
   "coverage": {
    "excluded": [],
-   "measures_scored": 8,
-   "measures_total": 8,
+   "measures_scored": 6,
+   "measures_total": 6,
    "missing": [],
    "scored": [
     "elbow_angle",
     "forearm_tilt",
     "knee_bdc",
     "knee_tdc",
-    "pelvic_ratio",
-    "saddle_fit",
     "shoulder_angle",
     "trunk_angle"
    ],
@@ -201,8 +197,6 @@
    "forearm_tilt",
    "knee_bdc",
    "knee_tdc",
-   "pelvic_ratio",
-   "saddle_fit",
    "shoulder_angle",
    "trunk_angle"
   ],

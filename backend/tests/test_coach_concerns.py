@@ -64,7 +64,7 @@ def test_order_2_lists_both_red_rows_with_what_to_check():
     assert {"trunk_angle_avg", "knee_at_bdc"} <= edges
     section = concern_hints.worth_a_look(concerns)
     assert section.startswith("**Worth a look**")
-    assert "Knee angle at the top of the stroke**: 85.3° vs 60-72°, outside the band" in section
+    assert "Knee angle at the top of the stroke**: 85° vs 60-72°, outside the band" in section
     assert "short cranks" in section
     # Clearly-out readings lead.
     assert section.index("Knee angle at the top") < section.index("Trunk angle")
@@ -147,7 +147,7 @@ def test_inside_every_band_but_outside_the_pro_field_is_still_worth_a_look():
     assert gaps[0]["side"] == "low" and gaps[0]["lo"] == 18.8
     section = concern_hints.worth_a_look([], gaps)
     assert section.startswith("**Worth a look**")
-    assert "Forearm tilt**: 17.1°, inside its band but below every one of the 32 Kona pros" in section
+    assert "Forearm tilt**: 17°, inside its band but below every one of the 32 Kona pros (19-32°, median 26°)" in section
     # The flagged helmet (9.6, no edge) is not a gap: it was never read.
     assert "Helmet" not in section
     # A field already on the concern list is not listed twice.
@@ -173,7 +173,10 @@ def test_the_coach_is_told_about_the_field_and_the_next_step(monkeypatch):
                                        next_steps=[{"key": "side", "title": "Film from the non-drive side", "text": "x"}])
     p = prompts[0]
     assert "MATERIAL PROBLEMS: NONE" in p
-    assert "OUTSIDE the whole Kona 2026 pro field" in p and "Forearm tilt 17 (all 32 pros 19-32)" in p
+    assert "OUTSIDE the whole Kona 2026 pro field: Forearm tilt." in p
+    # The checklist states the numbers; the coach writing them too printed one
+    # forearm as 15 and 15.5 (Gona, 2026-11-10).
+    assert "do NOT restate them" in p and "(all 32 pros" not in p
     assert "Film from the non-drive side" in p and "Do not end the report with nothing to do." in p
     # And the checklist under the report carries the gap, before Next session.
     r = rec["report"]
@@ -202,7 +205,7 @@ def test_a_reading_at_the_limit_is_listed_and_never_called_optimal(monkeypatch):
     assert set(edges) == {"knee_at_bdc"}, "a flat torso on aero bars costs nothing: not an edge"
     assert edges["knee_at_bdc"]["side"] == "high" and not edges["knee_at_bdc"]["material"]
     section = concern_hints.worth_a_look(concerns)
-    assert "144.7° vs 138-145°, inside the band, at its upper limit" in section
+    assert "145° vs 138-145°, inside the band, at its upper limit" in section
     assert "saddle may be a touch high" in section
     prompts = _scripted(monkeypatch, "**Overall** — fine.\n\n**Nothing to fix** — Hold it.\n\n**Next session** — Relax.")
     llm.generate_recommendations("bike", 100, "A", [], {}, SEAT, cycling_position="triathlon",

@@ -205,7 +205,7 @@ def test_a_finding_prints_the_tiles_number():
 def test_the_frame_is_not_said_to_be_where_the_numbers_came_from():
     html = render_report_html(_bike(), {"keyframe": "data:image/png;base64,AAAA"})
     assert "frame your angles were read on" not in html
-    assert "across the whole clip" in html
+    assert "across every pedal stroke" in html and "the hip in the table is at the top" in html
 
 
 def test_prepared_is_said_once():
@@ -284,7 +284,7 @@ def test_the_pull_toward_the_worst_part_is_explained():
     res = _parts(knee_bdc=85.4, trunk_angle=50.3, knee_tdc=95.9, elbow_angle=0.0, shoulder_angle=100.0,
                  pelvic_ratio=100.0, saddle_fit=75.0)
     notes = " ".join(_score_notes(res, 46))
-    assert "These average 72" in notes and "Elbow at 0" in notes and "down to 46" in notes
+    assert "These average 70" in notes and "Elbow at 0" in notes and "down to 46" in notes
     assert "Helmet above back" in notes and "Forearm" in notes
 
 
@@ -295,9 +295,11 @@ def test_a_score_that_the_sum_does_not_explain_gets_no_explanation():
 
 
 def test_the_derived_saddle_part_cannot_be_named_as_the_worst():
+    """A saved report still carries saddle_fit; it is not a weight any more, so
+    it is neither listed nor named (2026-11-10)."""
     res = _parts(knee_bdc=56.2, trunk_angle=100.0, knee_tdc=100.0, elbow_angle=100.0, shoulder_angle=100.0,
                  pelvic_ratio=100.0, forearm_tilt=100.0, saddle_fit=40.0)
-    notes = " ".join(_score_notes(res, 75))
+    notes = " ".join(_score_notes(res, 76))
     assert "Knee at bottom at 56" in notes and "Saddle height at" not in notes
 
 

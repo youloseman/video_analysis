@@ -196,15 +196,15 @@ def test_cycling_score_carries_coverage():
 def test_cycling_missing_measures_are_named():
     summary = _bike_summary()
     del summary["shoulder_angle_avg"]
-    del summary["pelvic_ratio"]
+    del summary["elbow_angle_avg"]
     cov = score_cycling(summary, {}, cycling_position="triathlon")["coverage"]
-    assert set(cov["missing"]) == {"shoulder_angle", "pelvic_ratio"}
+    assert set(cov["missing"]) == {"shoulder_angle", "elbow_angle"}
     assert cov["measures_scored"] == len(CYCLING_WEIGHTS) - 2
 
 
 _NUMERIC_BIKE_KEYS = [
     "left_knee_at_bdc", "left_knee_at_tdc", "trunk_angle_avg",
-    "elbow_angle_avg", "shoulder_angle_avg", "pelvic_ratio",
+    "elbow_angle_avg", "shoulder_angle_avg",
 ]
 
 
@@ -219,7 +219,7 @@ def test_a_measure_present_as_none_is_missing_not_a_crash(key):
     component = {
         "left_knee_at_bdc": "knee_bdc", "left_knee_at_tdc": "knee_tdc",
         "trunk_angle_avg": "trunk_angle", "elbow_angle_avg": "elbow_angle",
-        "shoulder_angle_avg": "shoulder_angle", "pelvic_ratio": "pelvic_ratio",
+        "shoulder_angle_avg": "shoulder_angle",
     }[key]
     assert component in result["coverage"]["missing"]
 

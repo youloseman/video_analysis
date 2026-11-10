@@ -47,7 +47,7 @@ _SPORT = {"bike": "Cycling", "run": "Running"}
 _PART_NAMES = {
     "knee_bdc": "Knee at bottom", "trunk_angle": "Trunk", "knee_tdc": "Knee at top",
     "elbow_angle": "Elbow", "shoulder_angle": "Shoulder", "helmet_above_back": "Helmet above back",
-    "pelvic_ratio": "Pelvis", "forearm_tilt": "Forearm", "saddle_fit": "Saddle height",
+    "pelvic_ratio": "Hip ÷ torso", "forearm_tilt": "Forearm", "saddle_fit": "Saddle height",
     "cadence": "Cadence", "trunk_lean": "Trunk lean", "overstride": "Overstride",
     "knee_contact": "Knee at contact", "phase_stability": "Stride stability",
     "elbow_swing": "Arm swing", "vertical_osc": "Vertical oscillation",
@@ -108,6 +108,20 @@ def _score_notes(result: dict[str, Any], score: Any) -> list[str]:
     return notes
 
 
+def whole_percents(weights: list[float]) -> list[int]:
+    """Shares in whole percent that add to exactly 100: each rounded down, the
+    points left over to the largest remainders. Rounding each on its own made
+    the cover's column add to 101 (Gona, 2026-11-10)."""
+    total = sum(weights)
+    if total <= 0:
+        return [0 for _ in weights]
+    raw = [w / total * 100 for w in weights]
+    out = [int(r) for r in raw]
+    for k in sorted(range(len(raw)), key=lambda j: -(raw[j] - out[j]))[:100 - sum(out)]:
+        out[k] += 1
+    return out
+
+
 def _bd_html(items: list[dict[str, Any]], notes: list[str] | None = None) -> str:
     """The cover's breakdown: one bar per component, coloured by its score.
 
@@ -116,13 +130,13 @@ def _bd_html(items: list[dict[str, Any]], notes: list[str] | None = None) -> str
     and it divides by the ones it used."""
     if not items:
         return ""
-    total = sum(i["weight"] for i in items) or 1.0
+    shares = whole_percents([i["weight"] for i in items])
     rows = "".join(
         f"<div class='bd-row'><span class='bd-n'>{_e(i['name'])}</span>"
         f"<span class='bd-b'><i style='width:{max(2, min(100, round(i['score'])))}%;background:"
         f"{'#3DBE74' if i['score'] >= 80 else '#E5A23A' if i['score'] >= 60 else '#F1553F'}'></i></span>"
-        f"<span class='bd-v'>{round(i['score'])}</span><span class='bd-w'>{round(i['weight'] / total * 100)}%</span></div>"
-        for i in items)
+        f"<span class='bd-v'>{round(i['score'])}</span><span class='bd-w'>{s}%</span></div>"
+        for i, s in zip(items, shares))
     note = "".join(f"<p class='bd-note'>{_e(n)}</p>" for n in notes or [])
     return (f"<div class='bd'><div class='bd-h'><span>Score built from</span>"
             f"<span>score · weight</span></div>{rows}{note}</div>")
@@ -176,11 +190,75 @@ def _grbar(row: dict[str, Any]) -> str:
             f"<span>{_num(ax_max)}</span></div>{prol}</div>")
 
 
+# A rider on aero bars, side view, in a 52 x 40 box: the points each bike row
+# is measured between, so "knee 141" reads as the inside angle and the hip on
+# the picture is told from the hip at the top (Gona, 2026-11-10).
+# Drawn to a typical aero position: torso 20 deg, shoulder 84, elbow 90 (forearm
+# 14 up), hip 54 / knee 70 at the top, knee 141 at the bottom.
+_FIG = {"head": (42, 4), "sh": (35.6, 7.1), "hip": (14, 15), "el": (38, 16.8), "wr": (49.6, 13.9),
+        "kn": (20.5, 26.3), "an": (18.8, 37.2), "kn_t": (24.8, 22.3), "an_t": (15.9, 28.8)}
+# field -> (segments drawn in colour, angle vertex and its two arms, horizontal from)
+_GLYPH = {
+    "knee_at_bdc": ([("hip", "kn"), ("kn", "an")], ("kn", "hip", "an"), None, False),
+    "knee_at_tdc": ([("hip", "kn_t"), ("kn_t", "an_t")], ("kn_t", "hip", "an_t"), None, True),
+    "hip_at_tdc": ([("sh", "hip"), ("hip", "kn_t")], ("hip", "sh", "kn_t"), None, True),
+    "trunk_angle_avg": ([("hip", "sh")], None, "hip", False),
+    "shoulder_angle_avg": ([("hip", "sh"), ("sh", "el")], ("sh", "hip", "el"), None, False),
+    "elbow_angle_avg": ([("sh", "el"), ("el", "wr")], ("el", "sh", "wr"), None, False),
+    "forearm_tilt_avg": ([("el", "wr")], None, "el", False),
+    "pelvic_ratio": ([("sh", "hip"), ("hip", "kn")], ("hip", "sh", "kn"), "hip", False),
+}
+
+
+def angle_glyph(field: str) -> str:
+    """The rider with this row's angle in colour, or '' for a row without one."""
+    g = _GLYPH.get(field)
+    if not g:
+        return ""
+    import math
+
+    hot, vertex, level_from, top = g
+    p = dict(_FIG)
+    knee, ankle = ("kn_t", "an_t") if top else ("kn", "an")
+    base = [("hip", "sh"), ("sh", "el"), ("el", "wr"), ("hip", knee), (knee, ankle)]
+
+    def seg(a, b, colour, width):
+        (x1, y1), (x2, y2) = p[a], p[b]
+        return (f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' stroke='{colour}' "
+                f"stroke-width='{width}' stroke-linecap='round'/>")
+
+    out = [seg(a, b, "#C3CAD4", 1.6) for a, b in base]
+    hx, hy = p["head"]
+    out.append(f"<circle cx='{hx}' cy='{hy}' r='3.4' fill='none' stroke='#C3CAD4' stroke-width='1.6'/>")
+    if level_from:
+        x, y = p[level_from]
+        out.append(f"<line x1='{x}' y1='{y}' x2='{x + 18}' y2='{y}' stroke='#2459C2' "
+                   "stroke-width='1' stroke-dasharray='2 2'/>")
+    out += [seg(a, b, "#2459C2", 2.2) for a, b in hot]
+    if vertex:
+        v, a, b = (p[k] for k in vertex)
+        r = 5.0
+
+        def along(q):
+            d = math.hypot(q[0] - v[0], q[1] - v[1]) or 1.0
+            return v[0] + (q[0] - v[0]) * r / d, v[1] + (q[1] - v[1]) * r / d
+
+        (ax, ay), (bx, by) = along(a), along(b)
+        sweep = 1 if (a[0] - v[0]) * (b[1] - v[1]) - (a[1] - v[1]) * (b[0] - v[0]) > 0 else 0
+        out.append(f"<path d='M{ax:.1f} {ay:.1f} A{r} {r} 0 0 {sweep} {bx:.1f} {by:.1f}' "
+                   "fill='none' stroke='#F1553F' stroke-width='1.4'/>")
+    return ("<svg class='tile-fig' viewBox='0 0 54 40' width='54' height='40' aria-hidden='true'>"
+            + "".join(out) + "</svg>")
+
+
 def _tile(row: dict[str, Any]) -> str:
     st = row.get("status") or "info"
     word = row.get("word") or _STATUS_WORD.get(st, "")
     return (f"<div class='tile'><div class='tile-h'><span class='tile-l'>{_e(row['label'])}</span>"
-            f"<span class='chip {st}'>{_e(word)}</span></div>{_grbar(row)}</div>")
+            f"<span class='chip {st}'>{_e(word)}</span></div>{_grbar(row)}"
+            + (f"<div class='tile-how'>{angle_glyph(row.get('field') or '')}<span>{_e(row['how'])}</span></div>"
+               if row.get("how") else "")
+            + "</div>")
 
 
 def _inline(s: str) -> str:
@@ -438,6 +516,9 @@ def _coach_text(text: str, planned: set[str]) -> str:
     """The coach's text as the report prints it: crank jargon spelled out, and the
     checklist without the lines the plan below already says, so a fix isn't read
     four times in two sizes ("3-5 mm" there, "5 mm" here)."""
+    from app.services.video_analysis.llm_recommendations import split_glued_bullets
+
+    text = split_glued_bullets(text)
     for pat, rep in _COACH_WORDS:
         text = pat.sub(rep, text)
     out, in_look, kept = [], False, 0
@@ -492,6 +573,60 @@ _RESHOOT = {
     "duration": "keep the whole body in the frame for the whole clip",
     "position": "run the clip with the position actually ridden",
 }
+
+
+# Under the lead picture. On a bike the hip drawn on it (93 deg at the bottom of
+# the stroke) and the table's "Hip at the top" (54) were read as one angle
+# measured twice (Gona, 2026-11-10).
+_LEAD_CAPTION = {
+    "bike": ("One frame, near the bottom of the pedal stroke: the angles drawn are this moment's. "
+             "The report reads its numbers across every pedal stroke, and the hip in the "
+             "table is at the top of the stroke."),
+    "": "One moment from the clip. The report reads its numbers across the whole clip, so they can differ from these.",
+}
+
+
+def hob_gap_text(hob: dict[str, Any]) -> str:
+    """The gap to the Kona pros in centimetres, with what the centimetres are
+    scaled from. A bare "5.4 cm" off a 2D clip with nothing marked read as a
+    number from nowhere (Gona, 2026-11-10): it is the angle gap times the crank-
+    to-hip distance, measured off the crank arm when the pedal axle is marked
+    and a typical 83 cm when not -- and then it is approximate and says so."""
+    gap, deg = hob.get("gap_pro_cm"), hob.get("gap_pro_deg")
+    if not isinstance(gap, (int, float)) or not isinstance(deg, (int, float)):
+        return ""
+    side = "ahead of" if deg > 0 else "behind"
+    reach = hob.get("crank_to_hip_cm")
+    if hob.get("scale_source") in ("crank_given", "crank_default") and isinstance(reach, (int, float)):
+        return (f"{abs(gap):.1f} cm {side} the Kona pros' middle: {abs(deg):.1f}° at your "
+                f"{reach:.0f} cm from crank axle to hip, scaled off the crank arm.")
+    return (f"About {abs(gap):.0f} cm {side} the Kona pros' middle: {abs(deg):.1f}° at a typical "
+            "83 cm from crank axle to hip. Mark the pedal axle for your own scale.")
+
+
+def crop_keyframe(data_uri: Any, band: Any) -> Any:
+    """The lead picture cut to the rows the analysis kept for it
+    (video_visualizer._keyframe_crop); anything unexpected returns it as it was."""
+    if not (isinstance(data_uri, str) and data_uri.startswith("data:image/")
+            and isinstance(band, (list, tuple)) and len(band) == 2):
+        return data_uri
+    try:
+        import base64
+        import io
+
+        from PIL import Image
+
+        y0, y1 = float(band[0]), float(band[1])
+        if not 0.0 <= y0 < y1 <= 1.0 or y1 - y0 < 0.2:
+            return data_uri
+        img = Image.open(io.BytesIO(base64.b64decode(data_uri.split(",", 1)[1])))
+        w, h = img.size
+        cut = img.convert("RGB").crop((0, int(round(y0 * h)), w, int(round(y1 * h))))
+        buf = io.BytesIO()
+        cut.save(buf, "JPEG", quality=86)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    except Exception:  # noqa: BLE001 -- the uncut picture is always a fallback
+        return data_uri
 
 
 def _low_trust(film: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -620,6 +755,8 @@ _EXTRA_CSS = """
 .gr-pro small{color:#8A93A1}
 .gr-pm{display:inline-block;width:2px;height:9px;background:#14294B;opacity:.55;margin-right:5px;vertical-align:-1px}
 .gr-none{font-size:8.4pt;color:#8A93A1;margin-top:8px}
+.tile-how{font-size:7.8pt;line-height:1.35;color:#6B7584;margin-top:6px;display:flex;gap:8px;align-items:center}
+.tile-fig{flex:none}
 .gr-text{font-size:8.6pt;color:#5C6675;margin-top:8px}
 .gr-text b{color:#14294B;font-weight:700}
 .facts dd{overflow-wrap:anywhere;min-width:0}
@@ -824,7 +961,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     <div class="sub">{"What this clip suggests, and what to film next." if low else "What to fix, in what order — and the numbers behind it."}</div>
     <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result), _score_notes(result, score))}</div>
   </div>
-  {f'<div class="lead"><img src="{meta["keyframe"]}" alt="A frame from the clip, with its angles drawn on it"><div class="lead-side"><div class="glance">{glance}</div><p class="cap">One moment from the clip. The report reads its numbers across the whole clip, so they can differ from these.</p></div></div>' if meta.get('keyframe') else (f'<div class="glance">{glance}</div>' if glance else '')}
+  {f'<div class="lead"><img src="{crop_keyframe(meta["keyframe"], (result.get("sport_specific_metrics") or {}).get("keyframe_crop"))}" alt="A frame from the clip, with its angles drawn on it"><div class="lead-side"><div class="glance">{glance}</div><p class="cap">{_e(_LEAD_CAPTION.get(sport, _LEAD_CAPTION[""]))}</p></div></div>' if meta.get('keyframe') else (f'<div class="glance">{glance}</div>' if glance else '')}
 </section>"""
 
     def finding(i: dict[str, Any]) -> str:
@@ -931,10 +1068,9 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
                     "aero bars, so it is not a reference for a road position; use this number to "
                     "compare your own setups.")
         else:
-            gap = hob.get("gap_pro_cm")
-            where = (f"{abs(gap):.1f} cm {'ahead of' if (hob.get('gap_pro_deg') or 0) > 0 else 'behind'} the Kona pros' middle"
-                     if isinstance(gap, (int, float)) else "")
-            text = f"Measured from the back, over the crank axle. {where}. Pros 88°, age-groupers 85°."
+            where = hob_gap_text(hob)
+            text = ("Measured from the back, over the crank axle. "
+                    + (f"{where} " if where else "") + "Pros 88°, age-groupers 85°.")
         hob_html = (f"<div class='hob'><div class='big'>{_e(hob['angle_deg'])}°</div><div><h3>Hip over the crank</h3>"
                     f"<p style='margin:0'>{_e(text)}</p></div></div>")
     legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='3' width='24' height='4' fill='#DDEFE3' stroke='#2E9E5B'/></svg></i>Healthy range</span>"

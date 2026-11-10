@@ -20,14 +20,15 @@ SUMMARY = {
 }
 
 
-def test_the_hoods_are_scored_on_seven_measures_and_say_seven():
+def test_the_hoods_are_scored_on_five_measures_and_say_five():
     """Forearm tilt and the helmet reading are aero-bar measures: off the
     bars both leave the rubric rather than counting as missing."""
     out = score_cycling(SUMMARY, {}, cycling_position="road_hoods")
     assert "forearm_tilt" not in out["component_scores"]
     assert "helmet_above_back" not in out["component_scores"]
     cov = out["coverage"]
-    assert cov["measures_total"] == 7 and cov["measures_scored"] == 7
+    # Five since the saddle verdict and the hip/torso ratio left the score (2026-11-10).
+    assert cov["measures_total"] == 5 and cov["measures_scored"] == 5
     assert cov["missing"] == [] and cov["weight_covered"] == 1.0
     assert out["overall_score"] >= 95
     drops = score_cycling(SUMMARY, {}, cycling_position="road_drops")
@@ -41,7 +42,7 @@ def test_the_hoods_are_scored_on_seven_measures_and_say_seven():
 def test_aero_bars_still_score_it():
     out = score_cycling({**SUMMARY, "forearm_tilt_avg": 12.0}, {}, cycling_position="triathlon")
     assert out["component_scores"]["forearm_tilt"] == 100.0
-    assert out["coverage"]["measures_total"] == 9
+    assert out["coverage"]["measures_total"] == 7
 
 
 def test_the_plan_does_not_praise_a_hoods_forearm():

@@ -94,7 +94,15 @@ SYSTEM_PROMPT = (
     "- Say \"the bottom of the pedal stroke\" and \"the top of the pedal stroke\", "
     "never BDC, TDC or dead centre.\n"
     "- A reading the data marks borderline or on the edge is \"on the edge of its "
-    "band\", never \"within tolerance\" or \"in range\".\n\n"
+    "band\", never \"within tolerance\" or \"in range\".\n"
+    "- Angles in whole degrees (141°, never 141.1°); the report's tables carry the "
+    "decimals, and the same angle written two ways reads as two measurements.\n"
+    "- Nothing the data does not measure, in any section, Next session included: "
+    "on a bike that means no ankle, foot, heel, toe, pedalling force or "
+    "\"smooth stroke\" cue -- none of them is in the clip's numbers.\n\n"
+    "FORMAT: every bullet on its own line starting with \"- \", after a line "
+    "holding only the bold heading. Never run two points together in one line "
+    "with dashes.\n\n"
     "Rules: address the athlete as \"you\". Reference their actual numbers vs "
     "the optimal ranges given. Be direct and practical, no fluff, no medical "
     "diagnoses. Up to 260 words; a clean analysis should be shorter."
@@ -832,12 +840,17 @@ def _materiality_block(
         from app.services.video_analysis.biomechanics.kona_field import pro_gaps
         gaps = pro_gaps(position, summary) if sport_type == "bike" else []
         if gaps:
+            # The checklist under the text names them with their numbers; the
+            # coach naming them too printed the forearm twice, 15 and 15.5 deg,
+            # 19-32 and 18.8-32 (Gona, 2026-11-10).
             lines.append(
-                "INSIDE their bands but OUTSIDE the whole Kona 2026 pro field (not "
-                "faults, no drill, no fit change -- but name them in **Nothing to "
-                "fix** as where the next gain most likely is): "
-                + "; ".join(f"{g['label']} {g['value']:.0f} (all {g['n']} pros {g['lo']:.0f}-{g['hi']:.0f})"
-                            for g in gaps)
+                "INSIDE their bands but OUTSIDE the whole Kona 2026 pro field: "
+                + ", ".join(g["label"] for g in gaps)
+                + ". Not faults. The **Worth a look** checklist appended under your "
+                "text states them with their numbers and the pro field: do NOT "
+                "restate them, their numbers or the pros' numbers. In **Nothing to "
+                "fix** say only, in one short clause, that the checklist below names "
+                "where the next gain is."
             )
         steps = [s.get("title") for s in (next_steps or []) if s.get("title")]
         if steps:
@@ -983,6 +996,32 @@ def _road_kit_note(position: str | None) -> str:
     )
 
 
+# A list section the model wrote as one line: "**What's working** -- Knee ...
+# -- Trunk ..." (Gona, 2026-11-10). Only the list sections, and only a dash with
+# spaces round it before a capital, so an em dash inside a sentence stays.
+_LIST_HEADS = ("What's working", "What\u2019s working", "Fix first", "Improved", "Still work on")
+_GLUED_HEAD = re.compile(r"^\s*\*\*(" + "|".join(re.escape(h) for h in _LIST_HEADS)
+                         + r")\*\*\s*[:\u2014\u2013-]?\s*(.*)$")
+_GLUE = re.compile(r"\s+(?:[\u2014\u2013]|-{1,2})\s+(?=[A-Z0-9*])")
+
+
+def split_glued_bullets(text: str) -> str:
+    """Put a list section's points written on one line onto lines of their own."""
+    out = []
+    for line in str(text or "").splitlines():
+        m = _GLUED_HEAD.match(line)
+        rest = (m.group(2) if m else "").strip()
+        if rest.startswith("- "):
+            rest = rest[2:]
+        parts = [p.strip() for p in _GLUE.split(rest)] if rest else []
+        if m and len(parts) >= 2:
+            out.append(f"**{m.group(1)}**")
+            out.extend(f"- {p}" for p in parts if p)
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
            gaps: list[dict[str, Any]] = (), road: bool = False) -> dict[str, Any] | None:
     """Write the report, refuse "Nothing to fix" over a red row, add the checklist.
@@ -998,7 +1037,7 @@ def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
     got = _complete(SYSTEM_PROMPT, prompt, 1200, tag=tag)
     if not got:
         return None
-    text, model = got["text"], got["model"]
+    text, model = split_glued_bullets(got["text"]), got["model"]
     if road:
         concerns = concern_hints.for_road(concerns)
     material = [c for c in concerns if c["material"]]
@@ -1013,7 +1052,7 @@ def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
             "cause is uncertain, say what to check -- never that it is fine."
         ), 1200, tag=tag)
         if again and not concern_hints.NOTHING_TO_FIX.search(again["text"]):
-            text, model = again["text"], again["model"]
+            text, model = split_glued_bullets(again["text"]), again["model"]
         else:
             text = concern_hints.replace_nothing_to_fix(text, concerns)
     if road and _AERO_KIT_RE.search(text):
@@ -1025,7 +1064,7 @@ def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
         ), 1200, tag=tag)
         if (again and not _AERO_KIT_RE.search(again["text"])
                 and not (material and concern_hints.NOTHING_TO_FIX.search(again["text"]))):
-            text, model = again["text"], again["model"]
+            text, model = split_glued_bullets(again["text"]), again["model"]
         else:
             text = _AERO_KIT_SENTENCE.sub("", text)
     return {"report": concern_hints.with_worth_a_look(text, concerns, gaps), "model": model}

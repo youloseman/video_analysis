@@ -104,7 +104,7 @@ def test_the_checklist_writes_a_signed_band_as_one():
     from app.services.video_analysis.concern_hints import worth_a_look
 
     text = worth_a_look(_photo_concerns("run", _result(_touchdown("acceptable", -11.7))))
-    assert "-11.7° vs -10° to +20°" in text
+    assert "-12° vs -10° to +20°" in text
     assert "-10-20" not in text
 
 

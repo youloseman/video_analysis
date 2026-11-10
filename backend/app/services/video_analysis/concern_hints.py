@@ -206,22 +206,27 @@ def concern(field: str, label: str, value: float, lo: float | None,
             "side": side, "material": material, "hint": hint_for(field, side)}
 
 
-def _num(v: float) -> str:
+def _num(v: float, unit: str = "") -> str:
+    """Degrees whole, as the coach writes them (15.5 above 15 was one forearm
+    read as two, Gona 2026-11-10); a ratio or a length keeps its tenth."""
+    if unit == "°":
+        return f"{v:.0f}"
     return f"{v:.1f}".rstrip("0").rstrip(".")
 
 
 def _line(c: dict[str, Any]) -> str:
     unit = unit_for(c["field"])
-    value = _num(c["value"])
+    value = _num(c["value"], unit)
     if c["lo"] is None and c["hi"] is not None:
-        band = f"up to {_num(c['hi'])}{unit}"
+        band = f"up to {_num(c['hi'], unit)}{unit}"
     elif c["lo"] < 0:
         # A signed band: "-10-20°" read as a typo. Both ends and the value
         # carry their sign.
         band = f"{c['lo']:+g}{unit} to {c['hi']:+g}{unit}"
-        value = f"{c['value']:+.1f}".rstrip("0").rstrip(".")
+        value = (f"{c['value']:+.0f}" if unit == "°"
+                 else f"{c['value']:+.1f}".rstrip("0").rstrip("."))
     else:
-        band = f"{_num(c['lo'])}-{_num(c['hi'])}{unit}"
+        band = f"{_num(c['lo'], unit)}-{_num(c['hi'], unit)}{unit}"
     where = ("outside the band" if c["material"] else
              f"inside the band, at its {'upper' if c['side'] == 'high' else 'lower'} limit"
              if c.get("edge") else "on the edge of the band")
@@ -232,9 +237,9 @@ def _line(c: dict[str, Any]) -> str:
 def _gap_line(g: dict[str, Any]) -> str:
     unit = unit_for(g["field"])
     where = "below" if g["side"] == "low" else "above"
-    return (f"- **{g['label']}**: {_num(g['value'])}{unit}, inside its band but {where} "
-            f"every one of the {g['n']} Kona pros ({_num(g['lo'])}-{_num(g['hi'])}{unit}, "
-            f"median {_num(g['median'])}{unit}). Not a fault; the field is where the next gain "
+    return (f"- **{g['label']}**: {_num(g['value'], unit)}{unit}, inside its band but {where} "
+            f"every one of the {g['n']} Kona pros ({_num(g['lo'], unit)}-{_num(g['hi'], unit)}{unit}, "
+            f"median {_num(g['median'], unit)}{unit}). Not a fault; the field is where the next gain "
             f"usually is. {hint_for(g['field'], g['side'])}")
 
 
