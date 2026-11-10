@@ -2958,3 +2958,54 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .bat-row .bat-name{grid-column:1/-1}
   .sq-table .sq-thumb{display:none}
 }
+
+/* ---- Measured CdA (2026-11-10): numbers the athlete measured, never ours ---- */
+.cda-cmp,.prof-cda{background:var(--c-bg);border:1px solid var(--c-line);padding:14px 16px;display:grid;gap:10px;margin:0 0 14px}
+.prof-cda{margin:0;border-width:1px 0 0;background:var(--c-panel)}
+.cda-head,.cda-cmp-h{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between}
+.cda-cmp-h{justify-content:flex-start}
+.cda-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint)}
+.cda-cmp .hint,.prof-cda .hint{text-align:left;margin:0}
+.cda-tablewrap{overflow-x:auto;background:var(--c-bg);border:1px solid var(--c-line)}
+.cda-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.cda-table th,.cda-table td{padding:8px 10px;border-top:1px solid var(--c-line);text-align:left;vertical-align:top}
+.cda-table thead th{border-top:0;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint);font-weight:500;white-space:nowrap}
+.cda-table small{display:block;color:var(--c-ink-faint);font-size:12px;margin-top:2px}
+.cda-mono,.cda-val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cda-val{font-size:15px;color:var(--c-ink)}
+.cda-acts{text-align:right}
+.cda-acts button{background:none;border:0;color:var(--st-bad);font:inherit;font-size:13px;cursor:pointer;padding:2px 0}
+.cda-acts button:hover{text-decoration:underline;text-underline-offset:3px}
+.cda-chip{display:inline-block;font-size:11.5px;line-height:1.5;padding:0 8px;border-radius:999px;white-space:nowrap;border:1px solid var(--c-line-strong);color:var(--c-ink-soft)}
+.cda-warn{background:var(--st-warn-bg);color:var(--st-warn);border-color:transparent}
+.cda-good{background:var(--st-good-bg);color:var(--st-good);border-color:transparent}
+.cda-coach{border-style:dashed}
+.cda-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:end;background:var(--c-bg);border:1px solid var(--c-line);padding:14px}
+.cda-form label{display:block;font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint);margin-bottom:6px}
+.cda-form input[type=number],.cda-form input[type=date],.cda-form input[type=text],.cda-form select{width:100%;font:inherit;font-size:14px;padding:9px 12px;min-height:40px;border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink)}
+.cda-form select:disabled{color:var(--c-ink-faint)}
+.cda-wide{grid-column:1/-1}
+.cda-form label.cda-check{display:flex;gap:10px;align-items:flex-start;font-family:var(--f-body);font-size:13px;color:var(--c-ink-soft);margin:0}
+.cda-check input{margin-top:3px}
+.cda-btns{display:flex;gap:10px;flex-wrap:wrap}
+.cda-err{color:var(--st-bad);font-size:13px;margin:0}
+.cda-cmp-grid{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:start}
+.cda-side{display:grid;gap:8px;min-width:0}
+.cda-side select{width:100%;font:inherit;font-size:14px;padding:8px 10px;min-height:38px;border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink)}
+.cda-setup{border:1px solid var(--c-line);padding:10px 12px;display:grid;gap:6px;justify-items:start}
+.cda-num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:24px;line-height:1.1;color:var(--c-ink)}
+.cda-num small{font-size:13px;color:var(--c-ink-faint)}
+.cda-nonum{font-size:15px;color:var(--c-ink-faint)}
+.cda-meta{font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
+.cda-mid{display:grid;gap:4px;justify-items:center;text-align:center;align-self:center;min-width:140px}
+.cda-delta{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:22px;color:var(--c-ink)}
+.cda-dim{color:var(--c-ink-faint)}
+.cda-foot{margin:0}
+.cda-measured{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px solid var(--c-line);font-size:13.5px;color:var(--c-ink-soft)}
+#adCda .cda-cmp{margin:12px 0 14px}
+.ad-setup{display:grid;gap:6px}
+.ad-setup-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.ad-setup-h small{font-family:var(--f-mono);font-size:11px;color:var(--c-ink-faint)}
+.sq-table td.sq-cda b{font-family:var(--f-mono);font-weight:500;color:var(--c-ink)}
+.sq-table td.sq-cda small{display:block;font-family:var(--f-mono);font-size:10.5px;color:var(--c-ink-faint);margin-top:2px}
+@media(max-width:640px){ .cda-cmp-grid{grid-template-columns:minmax(0,1fr)} .cda-mid{justify-items:start;text-align:left} }

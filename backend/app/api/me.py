@@ -1229,8 +1229,16 @@ async def list_profiles(
         ).all()
     )
     live = sum(1 for p in rows if not p.archived)
+    # Measured CdA rides along on bike setups (api/cda.py): the history and
+    # the compare panel read it without a second call.
+    from app.api.cda import rows_by_profile
+
+    cda = await rows_by_profile(db, [p for p in rows if p.sport == "bike"], user.id)
     return {
-        "profiles": [_profile_out(p, int(counts.get(p.id, 0))) for p in rows],
+        "profiles": [
+            {**_profile_out(p, int(counts.get(p.id, 0))), "cda": cda.get(p.id, [])}
+            for p in rows
+        ],
         "limit": profile_limit(user.tier),
         "used": live,
     }
@@ -1308,6 +1316,11 @@ async def delete_profile(
         .where(Analysis.user_id == user.id, Analysis.profile_id == row.id)
         .values(profile_id=None)
     )
+    # What was measured on the bike goes with the bike (models/cda.py). Said
+    # here as well as by the FK: SQLite enforces no ON DELETE without a pragma.
+    from app.models.cda import CdaMeasurement
+
+    await db.execute(delete(CdaMeasurement).where(CdaMeasurement.profile_id == row.id))
     await db.delete(row)
     await db.commit()
     logger.info("PROFILE_DELETED", user_id=user.id, profile_id=profile_id)

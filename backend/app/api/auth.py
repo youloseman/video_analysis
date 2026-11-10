@@ -156,6 +156,10 @@ class MarketingBody(BaseModel):
     opt_in: bool
 
 
+class ResearchBody(BaseModel):
+    opt_in: bool
+
+
 class PreviewOut(BaseModel):
     """The free full report: still to spend, or spent on which entry and when."""
 
@@ -183,6 +187,7 @@ class UserOut(BaseModel):
     analytics_id: str = ""
     height_cm: int | None = None
     marketing_opt_in: bool = False
+    research_opt_in: bool = False
     # Only /auth/me fills this (it needs the job store and a query); the
     # sign-in answers leave it None and the SPA asks /auth/me after them.
     preview: PreviewOut | None = None
@@ -397,6 +402,7 @@ def _user_out(user: User) -> UserOut:
         analytics_id=analytics.person_id(user),
         height_cm=user.height_cm,
         marketing_opt_in=bool(user.marketing_opt_in),
+        research_opt_in=bool(user.research_opt_in),
     )
 
 
@@ -436,6 +442,23 @@ async def set_marketing(
     user.news_opt_out = not body.opt_in
     await db.commit()
     logger.info("MARKETING_CONSENT", user_id=user.id, opt_in=body.opt_in)
+    return _user_out(user)
+
+
+@router.put("/me/research", response_model=UserOut)
+async def set_research(
+    body: ResearchBody,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> UserOut:
+    """Give or withdraw consent to aero research (Account page, or the box
+    under a CdA measurement). Withdrawing stops any further use; what was
+    already taken out for research is deleted by hand from the R&D set
+    (services/research.py), which the time recorded here makes checkable."""
+    user.research_opt_in = body.opt_in
+    user.research_changed_at = _now()
+    await db.commit()
+    logger.info("RESEARCH_CONSENT", user_id=user.id, opt_in=body.opt_in)
     return _user_out(user)
 
 

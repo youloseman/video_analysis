@@ -150,6 +150,12 @@ def _migrate_users(conn) -> None:
          "ALTER TABLE users ADD COLUMN marketing_opt_in BOOLEAN NOT NULL DEFAULT false"),
         ("marketing_changed_at",
          "ALTER TABLE users ADD COLUMN marketing_changed_at TIMESTAMP WITH TIME ZONE"),
+        # Aero research (2026-11-10): the same shape, the same reason for no
+        # backfill -- nobody has said yes yet.
+        ("research_opt_in",
+         "ALTER TABLE users ADD COLUMN research_opt_in BOOLEAN NOT NULL DEFAULT false"),
+        ("research_changed_at",
+         "ALTER TABLE users ADD COLUMN research_changed_at TIMESTAMP WITH TIME ZONE"),
     ):
         if _col not in cols:
             conn.execute(text(_ddl))
@@ -331,7 +337,8 @@ def _migrate_profiles(conn) -> None:
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import (  # noqa: F401
-        analysis, athlete, coach, coach_link, coach_upload, feedback, order, profile, usage, user,
+        analysis, athlete, cda, coach, coach_link, coach_upload, feedback, order, profile, usage,
+    user,
     )
 
     async with engine.begin() as conn:

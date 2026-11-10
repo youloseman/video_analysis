@@ -493,6 +493,7 @@ app.include_router(prescan_routes.router)
 # The coach behind a Coach account: /me/coach (name, mark, cue library) and
 # /me/athletes (the roster). docs/COACH_AREA_PLAN_RU.md.
 from app.api import athletes as athlete_routes  # noqa: E402
+from app.api import cda as cda_routes  # noqa: E402
 from app.api import coach as coach_routes  # noqa: E402
 from app.api import coach_link as coach_link_routes  # noqa: E402
 from app.api import coach_reports as coach_report_routes  # noqa: E402
@@ -503,6 +504,8 @@ app.include_router(athlete_routes.router)
 app.include_router(coach_link_routes.router)
 app.include_router(coach_upload_routes.router)
 app.include_router(coach_report_routes.router)
+# Measured CdA on setups, and the coach's view of an athlete's setups.
+app.include_router(cda_routes.router)
 
 
 # --------------------------------------------------------------------------

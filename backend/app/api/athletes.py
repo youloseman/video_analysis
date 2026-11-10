@@ -296,9 +296,12 @@ async def list_athletes(
     ).scalars().all()
     stats = _merged(await _stats(db, user), await _linked_stats(db, rows))
     live = sum(1 for a in rows if not a.archived and a.linked_user_id is None)
+    from app.api.cda import latest_by_athlete
+
+    cda = await latest_by_athlete(db, list(rows))
     return {
         "allowed": True,
-        "athletes": [_out(a, stats.get(a.id)) for a in rows],
+        "athletes": [{**_out(a, stats.get(a.id)), "cda_latest": cda.get(a.id)} for a in rows],
         "limit": athlete_limit(user.tier),
         "used": live,
     }

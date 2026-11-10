@@ -320,6 +320,16 @@ class User(Base):
     marketing_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True,
     )
+    # research_opt_in: may Flapp use this account's clips and the CdA numbers
+    # it enters for aero research (2026-11-10). Separate, off unless switched
+    # on, withdrawable; never asked at sign-up. Without it nothing leaves the
+    # account for R&D (services/research.py is the one gate).
+    research_opt_in: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0",
+    )
+    research_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
     # The promo code this account redeemed (services/promo.py): one per
     # account, ever. NULL = none used.
     promo_code: Mapped[str | None] = mapped_column(String(32), nullable=True)

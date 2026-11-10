@@ -1793,6 +1793,13 @@
             <p class="acct-p" style="margin-top:8px">Emails about your own account — finished analyses, receipts, password resets — come either way.</p>
           </div>
           <div class="acct-body">
+            <h4>Research</h4>
+            <label class="switch"><input type="checkbox" id="acctResearch"><span class="box" aria-hidden="true"></span>
+              <span>Aero research<span class="subhint">Lets Flapp use your bike clips and the CdA numbers you enter to build better aero estimates. Never published, never sold. Off unless you turn it on.</span></span>
+            </label>
+            <p class="acct-p" style="margin-top:8px">Off: nothing you upload or enter is used for research. <a href="/privacy#research-consent">What this covers</a></p>
+          </div>
+          <div class="acct-body">
             <h4>Delete account</h4>
             <!-- The privacy policy promises deletion on request; this is that
                  request, self-serve. Folded: nobody opens their account page
@@ -1833,6 +1840,7 @@
       </div>
       <span class="prof-note">changing a profile does not rewrite past analyses — they keep the equipment they were run with</span>
     </div>
+    <div id="profCdaCmp" class="hidden"></div>
     <div class="prof-list" id="profList"></div>
     <div class="prof-edit hidden" id="profEdit">
       <div><label for="profName" id="profEditLbl">Name</label><input id="profName" type="text" maxlength="60" placeholder="e.g. Canyon Aeroad, Vaporfly 3"></div>
@@ -4557,7 +4565,7 @@ function renderAeroPanel(s){
     host.innerHTML=`<div class="aero-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
       <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag.${anyAvail?'':' Well-placed: no meaningful aero gains within a safe fit.'}</span></div>
       ${(anyAvail||head)?`<div class="aero-levers" style="margin-top:12px">${(anyAvail?levers:[head]).map(leverRow).join('')}</div>`:''}
-      <p class="aero-disc">${esc(ae.disclaimer||'')}</p>`;
+      <p class="aero-disc">${esc(ae.disclaimer||'')}</p>${aeroMeasuredHtml()}`;
     blk.classList.remove('hidden'); return;
   }
   const p=aeroPrefs();
@@ -4596,7 +4604,7 @@ function renderAeroPanel(s){
     ${(torsoSlider||headSlider)?`<div class="aero-levers-h">What if <span class="hint">— move a slider, the minutes above follow</span></div>
       <div class="aero-wi">${torsoSlider}${headSlider}</div>`:''}
     <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
-    <p class="aero-disc">An estimate, not a measurement: constant power on a flat course, rider + bike ${m.physics.mass_kg} kg, CdA ${m.physics.cda}. Torso from measured frontal area (Fintelman 2015, van Druenen &amp; Blocken 2023).${head?' Head interpolated between head-up and tucked (4.6–6.4% drag) across the Kona 2026 pro range.':''} Lower only pays if you can still hold power, breathe and see the road.</p>`;
+    <p class="aero-disc">An estimate, not a measurement: constant power on a flat course, rider + bike ${m.physics.mass_kg} kg, CdA ${m.physics.cda}. Torso from measured frontal area (Fintelman 2015, van Druenen &amp; Blocken 2023).${head?' Head interpolated between head-up and tucked (4.6–6.4% drag) across the Kona 2026 pro range.':''} Lower only pays if you can still hold power, breathe and see the road.</p>${aeroMeasuredHtml()}`;
   aeroUpdate();
   blk.classList.remove('hidden');
 }
@@ -7284,15 +7292,17 @@ function renderProfiles(){
   } else {
     list.innerHTML=rows.map(p=>`<div class="prof-row${p.archived?' is-archived':''}" data-id="${p.id}">
       <div><div class="p-name">${esc(p.name)} <span class="p-kind">${esc(PROFILE_KIND_LABEL[p.kind]||p.kind||'')}</span>${p.archived?'<span class="p-kind">archived</span>':''}</div>
-        <div class="p-sub">${athleteName(p.athlete_id)?esc(athleteName(p.athlete_id))+' · ':''}${p.sport==='run'?'run':'bike'}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}</div></div>
+        <div class="p-sub">${athleteName(p.athlete_id)?esc(athleteName(p.athlete_id))+' · ':''}${p.sport==='run'?'run':'bike'}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}${p.sport==='bike'&&p.cda&&p.cda.length?` · CdA ${cdaNum(p.cda[0].value_m2)} m² (${esc(cdaSrc(p.cda[0].source))})`:''}</div></div>
       <div class="p-sub">${p.archived?'out of the picker, still in your history':'in the picker on Analyze'}</div>
       <div class="p-n">${p.analyses!=null?p.analyses:'—'}<small>analyses</small></div>
       <div class="p-acts">
         ${p.archived
           ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
-          : `<button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
-      </div></div>`).join('');
+          : `${p.sport==='bike'?`<button type="button" data-act="cda" aria-expanded="${state.profCdaOpen===p.id}">Measured CdA${p.cda&&p.cda.length?' ('+p.cda.length+')':''}</button>`:''}<button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
+      </div></div>${p.sport==='bike'&&state.profCdaOpen===p.id?cdaPanel(p):''}`).join('');
   }
+  wireProfCda(list);
+  renderCdaCompare();
   const lim=$('#profLimit');
   if(lim){
     const full=used>=limit;
@@ -7376,6 +7386,14 @@ async function profPatch(id, body){
     const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
     const p=(PROFILES.profiles||[]).find(x=>x.id===id); if(!p) return;
     if(b.dataset.act==='edit'){ showProfEdit(p); return; }
+    if(b.dataset.act==='cda'){
+      const shut=state.profCdaOpen===id;
+      state.profCdaOpen=shut?null:id;
+      // An empty history opens straight onto the form.
+      state.cdaAdding=!shut&&!(p.cda&&p.cda.length);
+      if(!shut) track('cda_opened',{n:(p.cda||[]).length});
+      renderProfiles(); return;
+    }
     if(b.dataset.act==='archive'){ if(await profPatch(id,{archived:true})){ await loadProfiles(); renderProfiles(); toast(`${p.name} archived. Its analyses stay.`); } return; }
     if(b.dataset.act==='restore'){ if(await profPatch(id,{archived:false})){ await loadProfiles(); renderProfiles(); } return; }
     if(b.dataset.act==='delete'){
@@ -7387,6 +7405,236 @@ async function profPatch(id, body){
   });
 })();
 
+/* ============================================================
+   Measured CdA on a bike setup (api/cda.py, models/cda.py).
+
+   Numbers the athlete, or their linked coach, measured elsewhere: a field
+   test, a tunnel, a CFD service. Flapp does not calculate them and says so
+   wherever one is shown; the aero panel's zone stays an estimate. The source
+   and how it was taken decide whether two setups' numbers may be set side
+   by side: one ordinary ride can move by more than the difference between
+   two setups (John Bye, 2026-11-08).
+   ============================================================ */
+const CDA_SRC={windsock:'Windsock',notio:'Notio',airo:'AiRO',wind_tunnel:'Wind tunnel',field_test:'Field test (own protocol)',other:'Other'};
+const CDA_PROTO={repeated_loops:'Repeated loops, same day',single_ride:'One ordinary ride',not_a_ride:'Not on the road (tunnel or CFD)'};
+const CDA_NOT_A_RIDE=['airo','wind_tunnel'];
+const CDA_DISCLAIMER='Numbers measured with a field test, a wind tunnel or a CFD service. Flapp does not calculate these.';
+state.profCdaOpen=null; state.cdaAdding=false; state.cdaCmp=null; state.adSetups={}; state.adCdaAdding=false;
+function cdaNum(v){ return Number(v).toFixed(3); }
+function cdaSrc(s){ return CDA_SRC[s]||s||''; }
+function cdaDay(iso){ try{ return new Date(iso+'T12:00:00').toLocaleDateString(UI_LOCALE,{day:'numeric',month:'short',year:'numeric'}); }catch(_e){ return iso; } }
+function cdaToday(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function cdaDetail(j){
+  const d=j&&j.detail;
+  if(typeof d==='string') return d;
+  if(Array.isArray(d)&&d[0]&&d[0].msg) return String(d[0].msg).replace(/^Value error,\s*/,'');
+  return '';
+}
+function cdaProtoCell(p){ return p==='single_ride'?'<span class="cda-chip cda-warn">One ordinary ride</span>':esc(CDA_PROTO[p]||p||''); }
+/* The history of one setup. ``coachView``: the coach reading an athlete's
+   setup, where their own rows say "added by you" and the athlete's say
+   nothing; otherwise a coach's row on the reader's setup is marked as the
+   coach's. */
+function cdaTable(rows, opts){
+  opts=opts||{};
+  if(!rows||!rows.length) return '<p class="hint cda-none">No measurements yet. Add one from a field test, a tunnel or a CFD service.</p>';
+  const who=r=>{
+    if(opts.coachView) return opts.whose==='athlete'&&r.by_reader?'<span class="cda-chip cda-coach">added by you</span>':'';
+    if(!r.entered_by_coach) return '';
+    return `<span class="cda-chip cda-coach">added by ${r.entered_by_coach==='Your coach'?'your coach':'your coach, '+esc(r.entered_by_coach)}</span>`;
+  };
+  return `<div class="cda-tablewrap"><table class="cda-table"><thead><tr><th scope="col">Date</th><th scope="col">CdA, m²</th><th scope="col">Source</th><th scope="col">How it was measured</th><th scope="col"><span class="visually-hidden">Delete</span></th></tr></thead><tbody>${rows.map(r=>`<tr>
+    <td class="cda-mono">${esc(cdaDay(r.measured_on))}</td>
+    <td class="cda-val">${cdaNum(r.value_m2)}</td>
+    <td>${esc(cdaSrc(r.source))} ${who(r)}${r.note?`<small>${esc(r.note)}</small>`:''}</td>
+    <td>${cdaProtoCell(r.protocol)}</td>
+    <td class="cda-acts">${r.can_delete?`<button type="button" data-cdadel="${r.id}" data-cdaprof="${r.profile_id}">Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function cdaFormHtml(id, opts){
+  opts=opts||{};
+  const today=cdaToday();
+  return `<form class="cda-form" id="${id}" novalidate>
+    ${opts.setups?`<div class="cda-wide"><label for="${id}Setup">Setup</label><select id="${id}Setup">${opts.setups.map(s=>`<option value="${s.id}">${esc(s.name)}${s.whose==='athlete'?' (their account)':' (kept on your account)'}</option>`).join('')}</select></div>`:''}
+    <div><label for="${id}Val">CdA, m²</label><input id="${id}Val" type="number" inputmode="decimal" step="0.001" min="0.12" max="0.6" placeholder="0.230"></div>
+    <div><label for="${id}Date">Date measured</label><input id="${id}Date" type="date" value="${today}" max="${today}"></div>
+    <div><label for="${id}Src">Source</label><select id="${id}Src">${Object.entries(CDA_SRC).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('')}</select></div>
+    <div><label for="${id}Proto">How it was measured</label><select id="${id}Proto">${Object.entries(CDA_PROTO).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('')}</select></div>
+    <div class="cda-wide"><label for="${id}Note">Note (optional)</label><input id="${id}Note" type="text" maxlength="280" placeholder="e.g. new helmet, 40 km/h, calm morning"></div>
+    ${opts.research?`<label class="cda-wide cda-check"><input type="checkbox" id="${id}Res"><span>Also let Flapp use my clips and measured CdA for aero research. Optional, off unless you tick it; switch it off any time in Account. <a href="/privacy#research-consent" target="_blank" rel="noopener">What this covers</a></span></label>`:''}
+    ${opts.where?`<p class="hint cda-wide" id="${id}Where"></p>`:''}
+    <p class="cda-err cda-wide hidden" id="${id}Err" role="alert"></p>
+    <div class="cda-wide cda-btns"><button class="btn btn-primary btn-sm" type="submit">Save measurement</button><button class="btn btn-ghost btn-sm" type="button" data-cdacancel="1">Cancel</button></div>
+  </form>`;
+}
+function wireCdaForm(form, opts){
+  if(!form) return;
+  const id=form.id, q=s=>form.querySelector('#'+id+s);
+  const sync=()=>{
+    const p=q('Proto'), nr=CDA_NOT_A_RIDE.includes(q('Src').value);
+    if(nr){ p.value='not_a_ride'; p.disabled=true; }
+    else{ p.disabled=false; if(p.value==='not_a_ride') p.value='repeated_loops'; }
+  };
+  q('Src').addEventListener('change',sync); sync();
+  if(opts.onSetup&&q('Setup')){ q('Setup').addEventListener('change',()=>opts.onSetup(q('Setup').value,q('Where'))); opts.onSetup(q('Setup').value,q('Where')); }
+  form.querySelector('[data-cdacancel]').addEventListener('click',()=>{ if(opts.onCancel) opts.onCancel(); });
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const err=q('Err'), say=t=>{ err.textContent=t; err.classList.remove('hidden'); };
+    err.classList.add('hidden');
+    const v=parseFloat(String(q('Val').value).replace(',','.'));
+    if(!(v>=0.12&&v<=0.6)){ say('Enter CdA in m², between 0.120 and 0.600. A TT position is usually 0.18–0.30, a road position 0.28–0.40.'); q('Val').focus(); return; }
+    const pid=q('Setup')?Number(q('Setup').value):opts.profileId;
+    if(!pid){ say('Pick the setup it was measured on.'); return; }
+    const btn=form.querySelector('button[type=submit]'); btn.disabled=true;
+    try{
+      const url='/me/profiles/'+pid+'/cda'+(opts.athleteId?'?athlete_id='+encodeURIComponent(opts.athleteId):'');
+      const r=await fetch(url,{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),
+        body:JSON.stringify({value_m2:v, measured_on:q('Date').value||cdaToday(), source:q('Src').value, protocol:q('Proto').value, note:q('Note').value.trim()||null})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok){ say(cdaDetail(j)||'Could not save that measurement.'); return; }
+      track('cda_added',{source:j.source, protocol:j.protocol, coach:!!opts.athleteId});
+      const res=q('Res'); if(res&&res.checked) await setResearch(true,{quiet:true});
+      toast(`Saved ${cdaNum(j.value_m2)} m².`);
+      if(opts.onSaved) opts.onSaved(j);
+    }catch(_e){ say('Could not save that measurement. Check the connection and try again.'); }
+    finally{ btn.disabled=false; }
+  });
+}
+function cdaAskDelete(pid, mid, athleteId, done){
+  confirmDialog({title:'Delete this measurement?', body:'It goes from this setup for good. The setup and its analyses stay.', okLabel:'Delete', onOk:async()=>{
+    try{
+      const r=await fetch('/me/profiles/'+pid+'/cda/'+mid+(athleteId?'?athlete_id='+encodeURIComponent(athleteId):''),{method:'DELETE',headers:authHeaders()});
+      if(!r.ok) throw 0;
+      track('cda_deleted',{coach:!!athleteId});
+      if(done) done();
+    }catch(_e){ toast('Could not delete that measurement.'); }
+  }});
+}
+/* Profiles screen: the open setup's history and its form. */
+function cdaPanel(p){
+  const adding=state.cdaAdding;
+  return `<div class="prof-cda" data-cdafor="${p.id}">
+    <div class="cda-head"><span class="cda-lbl">Measured CdA · ${esc(p.name)}</span>${adding?'':`<button class="btn btn-ghost btn-sm" type="button" data-cdaadd="${p.id}">Add a measurement</button>`}</div>
+    <p class="hint">${CDA_DISCLAIMER}</p>
+    ${cdaTable(p.cda)}
+    ${adding?cdaFormHtml('cdaF'+p.id,{research:!(auth&&auth.research_opt_in)&&!p.athlete_id}):''}
+  </div>`;
+}
+function wireProfCda(list){
+  if(!list) return;
+  const reload=async()=>{ state.cdaAdding=false; await loadProfiles(); renderProfiles(); };
+  list.querySelectorAll('[data-cdaadd]').forEach(b=>b.addEventListener('click',()=>{ state.cdaAdding=true; renderProfiles(); const v=$('#cdaF'+b.dataset.cdaadd+'Val'); if(v) v.focus(); }));
+  list.querySelectorAll('.prof-cda [data-cdadel]').forEach(b=>b.addEventListener('click',()=>cdaAskDelete(b.dataset.cdaprof,b.dataset.cdadel,null,reload)));
+  const open=state.profCdaOpen;
+  if(open!=null&&state.cdaAdding) wireCdaForm($('#cdaF'+open),{profileId:open, onSaved:reload, onCancel:()=>{ state.cdaAdding=false; renderProfiles(); }});
+}
+/* Two setups side by side: a difference only when it can be believed. Same
+   source and method: shown plainly. Measured differently, or one of them on a
+   single ride: greyed, with why. Either one unmeasured: no difference. */
+function renderCdaCompare(){
+  const host=$('#profCdaCmp'); if(!host) return;
+  const bikes=(PROFILES.profiles||[]).filter(p=>p.sport==='bike');
+  const latest=p=>(p&&p.cda&&p.cda[0])||null;
+  const measured=bikes.filter(latest);
+  if(PROFILES.error||state.profFilter==='run'||!measured.length){ host.innerHTML=''; host.classList.add('hidden'); return; }
+  host.classList.remove('hidden');
+  const head=`<div class="cda-cmp-h"><span class="cda-lbl">Measured CdA · compare two setups</span><span class="hint">${CDA_DISCLAIMER}</span></div>`;
+  if(bikes.length<2){ host.innerHTML=`<div class="cda-cmp">${head}<p class="hint">Add a second bike setup with a measured CdA to compare the two.</p></div>`; return; }
+  let [a,b]=state.cdaCmp||[];
+  const has=id=>bikes.some(p=>p.id===id);
+  if(!has(a)||!has(b)){
+    const byNew=[...measured].sort((x,y)=>latest(y).measured_on.localeCompare(latest(x).measured_on));
+    b=byNew[0].id; a=(byNew[1]||bikes.find(p=>p.id!==b)).id; state.cdaCmp=[a,b];
+  }
+  const opt=sel=>bikes.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${esc(p.name)}${p.archived?' (archived)':''}</option>`).join('');
+  const pa=bikes.find(p=>p.id===a), pb=bikes.find(p=>p.id===b), ma=latest(pa), mb=latest(pb);
+  const card=(p,m)=>m
+    ?`<div class="cda-setup"><span class="cda-num">${cdaNum(m.value_m2)} <small>m²</small></span><span class="cda-meta">${esc(cdaSrc(m.source))}${m.protocol==='single_ride'?' · <span class="cda-chip cda-warn">one ride</span>':''} · ${esc(cdaDay(m.measured_on))}</span></div>`
+    :`<div class="cda-setup"><span class="cda-num cda-nonum">No measured CdA</span><button type="button" class="btn btn-ghost btn-sm" data-cdaopen="${p.id}">Add a measurement</button></div>`;
+  let mid, foot;
+  if(a===b){ mid='<span class="cda-delta cda-dim">—</span>'; foot='Pick two different setups.'; }
+  else if(!ma||!mb){ mid='<span class="cda-delta cda-dim">—</span>'; foot='Add a measured CdA to both setups to see the difference.'; }
+  else{
+    const d=mb.value_m2-ma.value_m2, pct=d/ma.value_m2*100, sg=x=>(x<0?'−':'+');
+    const same=ma.source===mb.source&&ma.protocol===mb.protocol&&ma.protocol!=='single_ride';
+    const single=ma.protocol==='single_ride'||mb.protocol==='single_ride';
+    mid=`<span class="cda-delta${same?'':' cda-dim'}">${sg(d)}${Math.abs(d).toFixed(3)} m²</span><span class="cda-meta">${sg(pct)}${Math.abs(pct).toFixed(1)}%</span>${same?'<span class="cda-chip cda-good">Same source and method</span>':'<span class="cda-chip cda-warn">Not like for like</span>'}`;
+    foot=same
+      ?'Both numbers were measured the same way. Flapp shows the difference; it does not calculate either number.'
+      :single
+        ?`One of these was measured on a single ordinary ride${ma.source!==mb.source?` (${esc(cdaSrc(ma.source))} vs ${esc(cdaSrc(mb.source))})`:''}. One ride can move by more than this difference. Measure both setups the same way, on the same day if you can.`
+        :`These were measured with different tools (${esc(cdaSrc(ma.source))} vs ${esc(cdaSrc(mb.source))}), and tools do not read alike: part of this difference may be the tool. Measure both setups the same way to compare them.`;
+  }
+  host.innerHTML=`<div class="cda-cmp">${head}
+    <div class="cda-cmp-grid">
+      <div class="cda-side"><label for="cdaCmpA" class="visually-hidden">First setup</label><select id="cdaCmpA">${opt(a)}</select>${card(pa,ma)}</div>
+      <div class="cda-mid" aria-live="polite"><span class="cda-lbl">Second vs first</span>${mid}</div>
+      <div class="cda-side"><label for="cdaCmpB" class="visually-hidden">Second setup</label><select id="cdaCmpB">${opt(b)}</select>${card(pb,mb)}</div>
+    </div><p class="hint cda-foot">${foot}</p></div>`;
+  host.querySelector('#cdaCmpA').addEventListener('change',e=>{ state.cdaCmp=[Number(e.target.value),b]; renderCdaCompare(); });
+  host.querySelector('#cdaCmpB').addEventListener('change',e=>{ state.cdaCmp=[a,Number(e.target.value)]; renderCdaCompare(); });
+  host.querySelectorAll('[data-cdaopen]').forEach(btn=>btn.addEventListener('click',()=>{ state.profCdaOpen=Number(btn.dataset.cdaopen); state.cdaAdding=true; renderProfiles(); }));
+}
+/* The fresh bike result, filed under a setup that has a measured CdA: the
+   number beside the estimate, marked as the athlete's own. */
+function aeroMeasuredHtml(){
+  const p=(PROFILES.profiles||[]).find(x=>x.sport==='bike'&&String(x.id)===String(state.profileId));
+  const m=p&&p.cda&&p.cda[0]; if(!m) return '';
+  return `<div class="cda-measured"><span class="cda-chip cda-good">Measured</span><span>CdA on ${esc(p.name)}: <b>${cdaNum(m.value_m2)} m²</b> · ${esc(cdaSrc(m.source))} · ${esc(cdaDay(m.measured_on))}. Your number, not Flapp's: the minutes above use the estimate.</span></div>`;
+}
+/* Aero research consent (PUT /auth/me/research): Account, or the box under a
+   measurement. Separate from news, off unless switched on. */
+async function setResearch(on, opts){
+  opts=opts||{};
+  try{
+    const r=await fetch('/auth/me/research',{method:'PUT',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({opt_in:on})});
+    if(!r.ok) throw new Error(String(r.status));
+    if(auth) auth.research_opt_in=on;
+    const box=$('#acctResearch'); if(box) box.checked=on;
+    track('research_consent_changed',{opt_in:on});
+    if(!opts.quiet) toast(on?'Aero research is on. Switch it off here any time.':'Aero research is off. Nothing of yours is used for it.');
+    return true;
+  }catch(_e){ toast('Could not save that — try again.'); return false; }
+}
+/* One athlete's setups and their measured CdA, for the coach. Cached per
+   athlete: the detail page redraws when a linked athlete's history lands. */
+async function renderAthleteCda(a, refetch){
+  const host=$('#adCda'); if(!host) return;
+  if(a.sport==='run'){ host.innerHTML=''; return; }
+  let setups=state.adSetups[a.id];
+  if(!setups||refetch){
+    if(!setups) host.innerHTML='<p class="hint" style="text-align:left">Loading their setups…</p>';
+    try{
+      const r=await fetch('/me/athletes/'+a.id+'/setups',{headers:authHeaders()});
+      if(!r.ok) throw 0;
+      setups=state.adSetups[a.id]=(await r.json()).setups||[];
+    }catch(_e){
+      host.innerHTML='<p class="hint" style="text-align:left">Their setups didn’t load. <a href="#" data-cdaretry="1">Retry</a></p>';
+      const rl=host.querySelector('[data-cdaretry]'); if(rl) rl.addEventListener('click',ev=>{ ev.preventDefault(); renderAthleteCda(a,true); });
+      return;
+    }
+    if(state.athleteOpen!==a.id) return;
+  }
+  const live=setups.filter(s=>!s.archived), adding=state.adCdaAdding&&live.length>0;
+  const first=a.name.split(' ')[0];
+  host.innerHTML=`<div class="cda-cmp">
+    <div class="cda-head"><span class="cda-lbl">Bike setups · measured CdA</span>${live.length&&!adding?`<button class="btn btn-ghost btn-sm" type="button" id="adCdaAdd">Add CdA for ${esc(first)}</button>`:''}</div>
+    <p class="hint">${CDA_DISCLAIMER}</p>
+    ${setups.length?setups.map(s=>`<div class="ad-setup"><div class="ad-setup-h"><b>${esc(s.name)}</b><small>${s.whose==='athlete'?`${esc(first)}’s own account`:'kept on your account'}${s.archived?' · archived':''}</small></div>${cdaTable(s.cda,{coachView:true,whose:s.whose})}</div>`).join('')
+      :`<p class="hint">No bike setup yet. ${a.linked?`${esc(first)} can add one under Profiles, or you can keep one for them on your account.`:`Keep one for ${esc(first)} on your account.`} <button type="button" class="btn btn-ghost btn-sm" id="adCdaNewSetup">Add a setup for ${esc(first)}</button></p>`}
+    ${adding?cdaFormHtml('adCdaF',{setups:live,where:true}):''}
+  </div>`;
+  const add=$('#adCdaAdd'); if(add) add.addEventListener('click',()=>{ state.adCdaAdding=true; renderAthleteCda(a); const v=$('#adCdaFVal'); if(v) v.focus(); });
+  const ns=$('#adCdaNewSetup'); if(ns) ns.addEventListener('click',()=>{ openProfiles(); showProfEdit(null); const sp=$('#profSport'); if(sp){ sp.value='bike'; sp.dispatchEvent(new Event('change')); } const w=$('#profAthlete'); if(w) w.value=String(a.id); });
+  host.querySelectorAll('[data-cdadel]').forEach(b=>b.addEventListener('click',()=>cdaAskDelete(b.dataset.cdaprof,b.dataset.cdadel,a.id,()=>renderAthleteCda(a,true).then(()=>loadAthletes().then(()=>{})))));
+  if(adding) wireCdaForm($('#adCdaF'),{athleteId:a.id,
+    onSetup:(sid,where)=>{ if(!where) return; const s=live.find(x=>String(x.id)===String(sid));
+      where.textContent=s&&s.whose==='athlete'
+        ?`Saved to ${first}’s setup in their own account and marked as added by you. ${first} can delete it.`
+        :`Saved on your account under ${first}. Never used for research: only an account holder can agree to that.`; },
+    onSaved:()=>{ state.adCdaAdding=false; renderAthleteCda(a,true); loadAthletes(); },
+    onCancel:()=>{ state.adCdaAdding=false; renderAthleteCda(a); }});
+}
 /* ============================================================
    Athletes — the Coach plan's roster (/me/athletes).
 
@@ -7546,6 +7794,7 @@ function renderAccount(){
   const pp=$('#acctProfPill'), ppt=$('#acctProfPillTxt');
   if(pp&&ppt){ pp.classList.toggle('hidden', !auth); ppt.textContent=`${PROFILES.used||0} of ${PROFILES.limit??0} used · ${planName}`; pp.className='pill '+((PROFILES.used||0)>=(PROFILES.limit??0)?'pill-warnchip':'pill-low'); }
   const mk=$('#acctMarketing'); if(mk) mk.checked=!!(auth&&auth.marketing_opt_in);
+  const rs=$('#acctResearch'); if(rs) rs.checked=!!(auth&&auth.research_opt_in);
   renderCoachCard();
   if(auth&&!COACH.loaded) loadCoach();
   renderCoachLink();
@@ -7608,6 +7857,10 @@ $('#acctMarketing').addEventListener('change',async e=>{
     track('marketing_consent_changed',{opt_in:on});
     toast(on?'You\'re on the list — unsubscribe any time.':'Done — no more news or offers.');
   }catch(err){ e.target.checked=!on; toast('Could not save that — try again.'); }
+});
+$('#acctResearch').addEventListener('change',async e=>{
+  const on=e.target.checked;
+  if(!(await setResearch(on))) e.target.checked=!on;
 });
 function openAccount(){
   if(!auth){ openAuth('login'); return; }
@@ -9490,9 +9743,9 @@ const CONF_META={
    Weights mirror CYCLING_WEIGHTS / RUNNING_WEIGHTS in technique_scorer.py;
    test_score_breakdown_spa.py reads both and fails if they drift. */
 const SCORE_PARTS={
-  bike:{knee_bdc:['Knee at bottom',.22],trunk_angle:['Trunk',.18],knee_tdc:['Knee at top',.15],
-        elbow_angle:['Elbow',.10],shoulder_angle:['Shoulder',.10],helmet_above_back:['Helmet above back',.10],
-        pelvic_ratio:['Pelvis',.05],forearm_tilt:['Forearm',.05],saddle_fit:['Saddle height',.05]},
+  bike:{knee_bdc:['Knee at bottom',.25],trunk_angle:['Trunk',.20],knee_tdc:['Knee at top',.17],
+        elbow_angle:['Elbow',.11],shoulder_angle:['Shoulder',.11],helmet_above_back:['Helmet above back',.10],
+        forearm_tilt:['Forearm',.06]},
   run:{cadence:['Cadence',.16],trunk_lean:['Trunk lean',.13],
        knee_contact:['Knee at contact',.12],phase_stability:['Stride stability',.12],
        elbow_swing:['Arm swing',.09],vertical_osc:['Vertical oscillation',.09],
@@ -9516,7 +9769,7 @@ function bdShow(host, rows, show){
 /* A photo carries its components on the score itself (score.per_angle), each
    with its own weight -- the photo rubric is not the video's. */
 const PHOTO_PARTS={knee:'Knee',trunk:'Trunk',shoulder:'Shoulder',elbow:'Elbow',forearm_tilt:'Forearm',
-  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Pelvis',overstride:'Overstride',shin:'Shin at touchdown'};
+  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Hip ÷ torso',overstride:'Overstride',shin:'Shin at touchdown'};
 function renderPhotoBreakdown(res){
   const host=$('#pScoreBd'); if(!host) return;
   const sc=res.score||{}, per=sc.per_angle||{};
@@ -9524,7 +9777,13 @@ function renderPhotoBreakdown(res){
      a photo with the shin added (run) or a joint left out (bike) shows the
      weights the number was really built with, summing to 100. */
   const tot=Object.values(per).reduce((a,p)=>a+(p.weight||0),0)||1;
-  const rows=Object.keys(per).map(k=>({k, v:per[k].score, w:Math.round((per[k].weight||0)/tot*100)}))
+  /* Whole percents that add to exactly 100: rounded down, the points left over
+     to the largest remainders (rounding each made 101, Gona 2026-11-10). */
+  const raw=Object.keys(per).map(k=>({k, v:per[k].score, r:(per[k].weight||0)/tot*100}));
+  raw.forEach(x=>{x.w=Math.floor(x.r);});
+  let left=raw.some(x=>x.r>0)?100-raw.reduce((a,x)=>a+x.w,0):0;
+  [...raw].sort((a,b)=>(b.r-b.w)-(a.r-a.w)).forEach(x=>{if(left>0){x.w++;left--;}});
+  const rows=raw
     .sort((a,b)=>b.w-a.w)
     .map(x=>bdRowHtml(PHOTO_PARTS[x.k]||pretty(x.k), x.v, x.w, `${Math.round(x.v)} of 100, weight ${x.w}%`));
   bdShow(host, rows, rows.length>0 && sc.overall_score!=null);
@@ -10948,7 +11207,7 @@ async function submitAuth(e){
       mode==='register' ? {pending_analysis: !!state.pendingAnalyze, marketing_opt_in: marketing}
                         : {pending_analysis: !!state.pendingAnalyze});
     // Login carries no consent flags; ask the server so the Account switch is right.
-    if(mode!=='register') fetch('/auth/me',{headers:authHeaders()}).then(r=>r.ok?r.json():null).then(u=>{ if(u&&auth){ auth.marketing_opt_in=!!u.marketing_opt_in; auth.preview=u.preview||null; syncPreframe(); } }).catch(()=>{});
+    if(mode!=='register') fetch('/auth/me',{headers:authHeaders()}).then(r=>r.ok?r.json():null).then(u=>{ if(u&&auth){ auth.marketing_opt_in=!!u.marketing_opt_in; auth.research_opt_in=!!u.research_opt_in; auth.preview=u.preview||null; syncPreframe(); } }).catch(()=>{});
     renderAuth(); closeAuth(); migrateAndLoad(); renderPromoBanner();
     if(mode==='register'){ const pc=($('#authPromo').value||'').trim(); if(pc) promoRemember(pc); }
     applyPendingPromo();
@@ -13468,6 +13727,7 @@ function renderSquadHome(){
       <th scope="row"><button type="button" class="sq-name" data-open="${r.a.id}">${esc(r.a.name)}</button>${r.a.linked?'<span class="p-kind p-linked">linked</span>':''}<small>${esc(ATHLETE_SPORT_LABEL[r.a.sport]||'')}${r.a.note?' · '+esc(r.a.note):''}</small></th>
       <td class="sq-last">${e?`${esc(fmtWhen(e.filmedAt||e.at))}<small>${e.sport==='run'?'run':'ride'}${sideWord(e)?' · '+sideWord(e):''}${e.label?' · '+esc(e.label):''}</small>${filmFlag(e)}`:'—'}</td>
       <td class="sq-chips">${e?squadChips(e,r.prev,r.prev?'':cmpGapWord(e,r.es)):'<span class="sq-na">no clip yet</span>'}</td>
+      <td class="sq-cda">${r.a.cda_latest?`<b>${cdaNum(r.a.cda_latest.value_m2)}</b><small>${esc(cdaSrc(r.a.cda_latest.source))}${r.a.cda_latest.protocol==='single_ride'?' · one ride':''} · ${esc(cdaDay(r.a.cda_latest.measured_on))}</small>`:'<span class="sq-na">—</span>'}</td>
       <td class="sq-score">${e&&e.score!=null?e.score:'—'}</td></tr>`;
   };
   const feed=coachPool().filter(e=>e.athleteId!=null).slice(0,8);
@@ -13476,7 +13736,7 @@ function renderSquadHome(){
     <div class="sq-kpis">${kpi(squad.length,'athletes')}${kpi(clips30,'clips · 30 days')}${kpi(inLine.length,'in the lane')}${kpi(refilm.length,'to film again')}</div>
     ${attention.length?`<div class="sq-att"><h2>Needs attention</h2><ul>${attention.join('')}</ul></div>`:`<div class="sq-att sq-att-ok">Everyone is filmed and in range.</div>`}
     <div class="sq-tablewrap"><table class="sq-table">
-      <thead><tr><th scope="col"></th><th scope="col"></th><th scope="col">Athlete</th><th scope="col">Last clip</th><th scope="col">Key readings · change since their last clip</th><th scope="col" class="sq-score">Score</th></tr></thead>
+      <thead><tr><th scope="col"></th><th scope="col"></th><th scope="col">Athlete</th><th scope="col">Last clip</th><th scope="col">Key readings · change since their last clip</th><th scope="col" title="Measured elsewhere and entered by hand; Flapp does not calculate it">Measured CdA</th><th scope="col" class="sq-score">Score</th></tr></thead>
       <tbody>${rows.map(row).join('')}</tbody></table></div>
     <p class="hint sq-foot" style="text-align:left">Red is outside the range the report uses; plain has no range or is inside it. Tick two to compare them side by side.</p>
     <div id="sqKona"></div>
@@ -13541,7 +13801,8 @@ function openAthlete(id){
         <button class="btn btn-ghost btn-sm" type="button" id="adProgress"${ready.length<2?' disabled title="Two clips make a trend"':''}>Progress charts</button>
       </div>
       <p class="hint" style="text-align:left">${a.linked?`${esc(a.name)} linked their own account. You see what their plan shows them; clips they film reach you by themselves.`:`The upload link needs no account: they send a clip and it lands here. The code links their own Flapp account to you instead.`}</p>
-      ${mine.length?`<p class="hint" style="text-align:left">Setups: ${mine.map(p=>esc(p.name)).join(' · ')}</p>`:''}
+      ${mine.filter(p=>p.sport!=='bike').length?`<p class="hint" style="text-align:left">Shoes: ${mine.filter(p=>p.sport!=='bike').map(p=>esc(p.name)).join(' · ')}</p>`:''}
+      <div id="adCda"></div>
       <div class="sq-tablewrap"><table class="sq-table">
         <thead><tr><th scope="col"></th><th scope="col">Session</th><th scope="col">Key readings · change since the one before</th><th scope="col" class="sq-score">Score</th></tr></thead>
         <tbody>${es.map(e=>{ const prev=cmpPrevious(e,es); return `<tr>
@@ -13556,8 +13817,10 @@ function openAthlete(id){
     const lk=$('#adLink'); if(lk) lk.addEventListener('click',()=>{ track('athlete_link_copied',{}); copyText(athleteLink(a),'Link copied. It needs no account.'); });
     $('#adCode').addEventListener('click',()=>{ track('athlete_code_copied',{}); copyText(a.upload_token,'Code copied. They enter it under Account, My coach.'); });
     $('#adProgress').addEventListener('click',()=>{ state.histAthlete=String(a.id); state.histProfile=null; const r=ready[0]; if(r) state.progressSport=r.sport; openProgress(); });
+    renderAthleteCda(a);
     observeKeyframes(list);
   };
+  if(state.athleteOpenPrev!==a.id){ state.adCdaAdding=false; state.athleteOpenPrev=a.id; }
   draw();
   setState('athletedetail',{focus:'#adName',route:{id:a.id}});
   if(a.linked) loadLinkedHist(a.id).then(()=>{ if(document.body.dataset.state==='athletedetail'&&state.athleteOpen===a.id) draw(); });
