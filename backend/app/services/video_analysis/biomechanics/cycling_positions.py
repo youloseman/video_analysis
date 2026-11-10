@@ -51,9 +51,9 @@ SHOULDER_CLOSED_FORGIVENESS = 3.0
 AERO_TRUNK_LOW_CONCERN = (
     "Flatter than the {lo:.0f}-{hi:.0f} deg band. That is faster through the "
     "air and costs nothing in the score -- but it is the position pros hold for "
-    "four-plus hours after years of conditioning. Most age-group athletes "
-    "cannot: a lower torso cuts the power you can make and raises the cost of "
-    "making it (Fintelman 2015). Keep it only if you can breathe, push and hold "
+    "four-plus hours after years of conditioning; age-group athletes can build "
+    "toward it, but a lower torso cuts the power you can make and raises the "
+    "cost of making it (Fintelman 2015). Keep it only if you can breathe, push and hold "
     "it late in the race."
 )
 AERO_TRUNK_LOW_CONCERN_SHORT = "Flatter than the band: faster, if you can hold it and still make power"

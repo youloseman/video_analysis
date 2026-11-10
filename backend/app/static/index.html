@@ -9960,7 +9960,7 @@ function renderAngleTable(r, sport){
   const pn=$('#angleProNote');
   if(pn){
     pn.classList.toggle('hidden', !pro);
-    if(pro) pn.innerHTML=`<b>Kona pros</b> — the median and middle half of ${pro.n} professional positions we measured at the 2026 Ironman World Championship (${pro.men} men, ${pro.women} women), every joint point checked by hand. A field to place yourself against, not a target: the pros hold positions most age-groupers cannot. <a href="${esc(pro.article||'/academy/kona-2026-pro-bike-positions')}" target="_blank" rel="noopener">Read the study</a>.`;
+    if(pro) pn.innerHTML=`<b>Kona pros</b> — the median and middle half of ${pro.n} professional positions we measured at the 2026 Ironman World Championship (${pro.men} men, ${pro.women} women), every joint point checked by hand. A field to place yourself against, not a target: the pros built up to these positions over years. Many age-groupers can move toward them in small steps; how far pays depends on whether you can still make power, breathe and handle the bike. <a href="${esc(pro.article||'/academy/kona-2026-pro-bike-positions')}" target="_blank" rel="noopener">Read the study</a>.`;
   }
   fitRangeNote('#angleSrcNote', sport, pro);
   // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).

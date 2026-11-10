@@ -84,7 +84,7 @@ The median torso was 20°, and half the field sat between 18° and 22°. That is
 
 There is a reason the back stops where it does. Fintelman's work on nineteen trained cyclists measured what a lower torso buys and what it costs. Going from 24° to 16° cut frontal area by about 5%, and going on to 8° cut about another 5%. But maximal power and every physiological variable fell as the torso dropped, and the flattest position was significantly worse than all the others. His models put the best torso angle around 17° for speeds between 32 and 39 km/h, and found that a fully flat back is never optimal.
 
-Almost half the field, fifteen of the thirty-two, rode below 20°, the lowest at 12°. Pros can hold that: years of conditioning, four or more hours at a time. Most age-group athletes cannot hold that and still make their power. Flapp does not take points for a torso flatter than the range on aero bars, but it says plainly that this is the trade, and that it only pays if you can still breathe, push and hold it late in the race.
+Almost half the field, fifteen of the thirty-two, rode below 20°, the lowest at 12°. Pros can hold that: years of conditioning, four or more hours at a time. Not every age-group athlete can hold that and still make their power, though many can move toward it in small steps. Flapp does not take points for a torso flatter than the range on aero bars, but it says plainly that this is the trade, and that it only pays if you can still breathe, push and hold it late in the race.
 
 ## 3. A closed shoulder is a choice, not an error
 

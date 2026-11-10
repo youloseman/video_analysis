@@ -291,8 +291,9 @@ def video_next_steps(
                          f"{_num(g['hi'])}{unit} for all {g['n']} of them")
         steps.append({"key": "pros", "title": "Where the Kona pros sit",
                       "text": "Inside the bands, but outside the whole pro field: " + "; ".join(parts)
-                              + ". Not a fault, and not a target (the pros hold positions most "
-                              "age-groupers cannot), but it is where your next gain most likely is."})
+                              + ". Not a fault, and not a target (the pros built up to these over years), "
+                              "but it is where your next gain most likely is: move toward it in small "
+                              "steps and keep what you can hold."})
     steps.append({"key": "refilm", "title": "Change one thing, then film again",
                   "text": ("One adjustment at a time, 30 minutes on it, then the same side and the "
                            "same framing: History puts the two clips side by side."

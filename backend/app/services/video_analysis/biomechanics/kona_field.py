@@ -8,7 +8,7 @@ beside the pros' median and middle half: a band says where the literature
 puts "good"; the field says where the fastest people on the day sat.
 
 It is a FIELD, not a band. Nothing is graded against it, and a rider outside
-it is not thereby wrong: the pros hold positions most age-groupers cannot.
+it is not thereby wrong: the pros built up to these positions over years.
 The one place it sets a threshold is the helmet (head_silhouette.py), and
 that is a penalty-free band up to where twenty-nine of the thirty-two sat.
 
@@ -116,6 +116,7 @@ def pro_field_prompt_block(cycling_position: str | None) -> str:
         f"{KONA_PRO_WOMEN} women, aero positions, median and middle half): "
         + "; ".join(rows) + ". Use it as CONTEXT for an aero rider -- 'the pros sit "
         "at...' -- when it helps them place a number. It is a field, not a band: "
-        "the pros hold positions most age-groupers cannot, so a rider outside it "
-        "is not thereby wrong, and a rider inside it is not thereby fine."
+        "the pros built up to these positions over years, so a rider outside it "
+        "is not thereby wrong, and a rider inside it is not thereby fine. Many "
+        "age-groupers can move toward it in small steps; never say they cannot."
     )
