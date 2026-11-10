@@ -9743,9 +9743,9 @@ const CONF_META={
    Weights mirror CYCLING_WEIGHTS / RUNNING_WEIGHTS in technique_scorer.py;
    test_score_breakdown_spa.py reads both and fails if they drift. */
 const SCORE_PARTS={
-  bike:{knee_bdc:['Knee at bottom',.25],trunk_angle:['Trunk',.20],knee_tdc:['Knee at top',.17],
-        elbow_angle:['Elbow',.11],shoulder_angle:['Shoulder',.11],helmet_above_back:['Helmet above back',.10],
-        forearm_tilt:['Forearm',.06]},
+  bike:{knee_bdc:['Knee at bottom',.22],trunk_angle:['Trunk',.18],knee_tdc:['Knee at top',.15],
+        elbow_angle:['Elbow',.10],shoulder_angle:['Shoulder',.10],helmet_above_back:['Helmet above back',.10],
+        pelvic_ratio:['Pelvis',.05],forearm_tilt:['Forearm',.05],saddle_fit:['Saddle height',.05]},
   run:{cadence:['Cadence',.16],trunk_lean:['Trunk lean',.13],
        knee_contact:['Knee at contact',.12],phase_stability:['Stride stability',.12],
        elbow_swing:['Arm swing',.09],vertical_osc:['Vertical oscillation',.09],
@@ -9769,7 +9769,7 @@ function bdShow(host, rows, show){
 /* A photo carries its components on the score itself (score.per_angle), each
    with its own weight -- the photo rubric is not the video's. */
 const PHOTO_PARTS={knee:'Knee',trunk:'Trunk',shoulder:'Shoulder',elbow:'Elbow',forearm_tilt:'Forearm',
-  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Hip ÷ torso',overstride:'Overstride',shin:'Shin at touchdown'};
+  helmet_above_back:'Helmet above back',hip:'Hip',ankle:'Ankle',pelvic_ratio:'Pelvis',overstride:'Overstride',shin:'Shin at touchdown'};
 function renderPhotoBreakdown(res){
   const host=$('#pScoreBd'); if(!host) return;
   const sc=res.score||{}, per=sc.per_angle||{};
@@ -9777,13 +9777,7 @@ function renderPhotoBreakdown(res){
      a photo with the shin added (run) or a joint left out (bike) shows the
      weights the number was really built with, summing to 100. */
   const tot=Object.values(per).reduce((a,p)=>a+(p.weight||0),0)||1;
-  /* Whole percents that add to exactly 100: rounded down, the points left over
-     to the largest remainders (rounding each made 101, Gona 2026-11-10). */
-  const raw=Object.keys(per).map(k=>({k, v:per[k].score, r:(per[k].weight||0)/tot*100}));
-  raw.forEach(x=>{x.w=Math.floor(x.r);});
-  let left=raw.some(x=>x.r>0)?100-raw.reduce((a,x)=>a+x.w,0):0;
-  [...raw].sort((a,b)=>(b.r-b.w)-(a.r-a.w)).forEach(x=>{if(left>0){x.w++;left--;}});
-  const rows=raw
+  const rows=Object.keys(per).map(k=>({k, v:per[k].score, w:Math.round((per[k].weight||0)/tot*100)}))
     .sort((a,b)=>b.w-a.w)
     .map(x=>bdRowHtml(PHOTO_PARTS[x.k]||pretty(x.k), x.v, x.w, `${Math.round(x.v)} of 100, weight ${x.w}%`));
   bdShow(host, rows, rows.length>0 && sc.overall_score!=null);
