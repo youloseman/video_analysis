@@ -575,7 +575,9 @@ async def delete_account(
     await _delete_stored_clips(db, user.id)
 
     uid, email = user.id, user.email
-    for model in (Analysis, UsageEvent, Feedback, Order):
+    from app.models.user import PlanLapse
+
+    for model in (Analysis, UsageEvent, Feedback, Order, PlanLapse):
         await db.execute(delete(model).where(model.user_id == uid))
     await db.delete(user)
     await db.commit()

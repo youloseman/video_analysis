@@ -129,6 +129,22 @@ async def expire_tier_grants(db: AsyncSession, now: datetime | None = None) -> i
     sweep can demote one.
     """
     cutoff = now or _now()
+    # A grant that falls to the free plan starts the clips' grace, the same as
+    # a subscription that ends (services/plan_lapse.py).
+    from app.services.plan_lapse import upsert_lapse
+    from app.services.retention import PAID_TIERS
+
+    to_free = (
+        await db.execute(
+            select(User.id, User.tier).where(
+                User.tier_until.is_not(None),
+                User.tier_until <= cutoff,
+                User.tier != TIER_ADMIN,
+                User.tier_after_grant.is_(None),
+                User.tier.in_(tuple(PAID_TIERS)),
+            )
+        )
+    ).all()
     result = await db.execute(
         update(User)
         .where(
@@ -143,6 +159,9 @@ async def expire_tier_grants(db: AsyncSession, now: datetime | None = None) -> i
         .returning(User.id, User.email)
     )
     rows = result.fetchall()
+    now_ms = int(cutoff.timestamp() * 1000)
+    for uid, was in to_free:
+        await upsert_lapse(db, uid, was, now_ms)
     if rows:
         await db.commit()
         for uid, email in rows:
@@ -171,13 +190,18 @@ async def grant_sweeper_loop() -> None:
     reader the time it takes to work out why user rows are being written by
     something called a file reaper.
     """
+    from app.services.plan_lapse import send_lapse_emails
+
     while True:
         try:
             await asyncio.sleep(SWEEP_INTERVAL_S)
             async with SessionLocal() as db:
                 n = await expire_tier_grants(db)
+                mailed = await send_lapse_emails(db)
             if n:
                 logger.info("TIER_GRANTS_SWEPT", expired=n)
+            if mailed:
+                logger.info("PLAN_LAPSE_EMAILS", sent=mailed)
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001 -- the sweeper must never die

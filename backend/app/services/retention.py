@@ -43,6 +43,7 @@ from app.models.user import (
     TIER_ENTHUSIAST,
     TIER_FULL,
     TIER_STARTER,
+    PlanLapse,
     User,
 )
 
@@ -77,6 +78,12 @@ YEAR_FROM_MS = 1_794_355_200_000
 DEFAULT_RETENTION_DAYS = RETENTION_DAYS[TIER_STARTER]
 MAX_RETENTION_DAYS = max(RETENTION_DAYS.values())
 
+PAID_TIERS = frozenset({TIER_ENTHUSIAST, TIER_FULL, TIER_COACH})
+# A paid plan that ends keeps its clips on the paid period this much longer,
+# and services/plan_lapse.py emails the owner twice (Artur, 2026-11-11). A
+# failed card used to cost up to a year of footage at the next sweep.
+LAPSE_GRACE_DAYS = 30
+
 # How long a clip survives after its review ships. Not zero: the athlete has
 # just been told to re-read the report, and the reviewer may need to correct
 # something they wrote about footage that would otherwise already be deleted.
@@ -93,6 +100,19 @@ def retention_days(tier: str | None, created_at_ms: int | None = None) -> int:
     if created_at_ms is not None and created_at_ms < YEAR_FROM_MS:
         table = LEGACY_RETENTION_DAYS
     return table.get(tier or "", DEFAULT_RETENTION_DAYS)
+
+
+def tier_for_clips(
+    tier: str | None, lapse_from: str | None, lapsed_at_ms: int | None, now_ms: int,
+) -> str | None:
+    """The tier whose period a clip is kept on: the plan that ended, while its
+    grace runs; the account's own tier otherwise."""
+    if (
+        tier == TIER_STARTER and lapse_from in PAID_TIERS and lapsed_at_ms is not None
+        and now_ms < lapsed_at_ms + LAPSE_GRACE_DAYS * DAY_MS
+    ):
+        return lapse_from
+    return tier
 
 
 def _now_ms(now_ms: int | None = None) -> int:
@@ -119,14 +139,19 @@ async def job_ids_to_keep(
     #    check -- they are past every tier's limit by definition.
     window_start = now - MAX_RETENTION_DAYS * DAY_MS
     rows = await db.execute(
-        select(Analysis.job_id, Analysis.created_at_ms, User.tier)
+        select(
+            Analysis.job_id, Analysis.created_at_ms, User.tier,
+            PlanLapse.from_tier, PlanLapse.lapsed_at_ms,
+        )
         .join(User, User.id == Analysis.user_id)
+        .outerjoin(PlanLapse, PlanLapse.user_id == Analysis.user_id)
         .where(
             Analysis.job_id.is_not(None),
             Analysis.created_at_ms >= window_start,
         )
     )
-    for job_id, created_at_ms, tier in rows:
+    for job_id, created_at_ms, tier, lapse_from, lapsed_at_ms in rows:
+        tier = tier_for_clips(tier, lapse_from, lapsed_at_ms, now)
         if now - (created_at_ms or 0) <= retention_days(tier, created_at_ms or 0) * DAY_MS:
             keep.add(str(job_id))
 

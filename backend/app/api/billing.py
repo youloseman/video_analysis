@@ -59,7 +59,8 @@ from app.models.user import (
     has_full,
 )
 from app.services import (
-    analytics, coach_brief, expert_review, guest, notify, pricing, swim, unlock_credit,
+    analytics, coach_brief, expert_review, guest, notify, plan_lapse, pricing, swim,
+    unlock_credit,
 )
 from app.services.result_gating import ACCESS_FULL, access_for_stored
 from app.services.tier_grants import clear_grant
@@ -1987,7 +1988,9 @@ async def _on_subscription_change(db: AsyncSession, obj: Any) -> None:
         # non-payer on the paid plan for as long as nobody noticed.
         # ``past_due`` is deliberately not here: Stripe is still retrying
         # the card, and the customer keeps access through the grace period.
+        was = user.tier
         _set_tier(user, TIER_STARTER)
+        await plan_lapse.record_lapse(db, user, was)
         logger.info("SUB_LAPSED", user_id=user.id, status=status_str)
 
 
@@ -1996,6 +1999,8 @@ async def _on_subscription_deleted(db: AsyncSession, obj: Any) -> None:
     if user is None:
         return
     user.subscription_status = "canceled"
+    was = user.tier
     _set_tier(user, TIER_STARTER)
+    await plan_lapse.record_lapse(db, user, was)
     logger.info("SUB_CANCELED", user_id=user.id)
     analytics.capture_bg(analytics.person_id(user), "subscription_canceled", {})

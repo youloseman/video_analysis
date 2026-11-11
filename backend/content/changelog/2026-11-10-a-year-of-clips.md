@@ -13,8 +13,9 @@ CdA you measure months after filming still has the clip it belongs to.
   under. We don't keep footage longer than we said we would when you sent it.
 - **Deleting still means deleting.** Remove an analysis or your account and the
   clip goes with it, straight away.
-- **If a paid plan ends,** the free plan's 7 days apply from then on. Download
-  any overlay you want to keep before that.
+- **If a paid plan ends,** your clips stay for 30 more days. We email you when
+  it ends and again 5 days before they go, so a failed card never costs you a
+  season of footage overnight. After that the free plan's 7 days apply.
 
 The numbers, frames and notes in your saved analyses were always kept for good;
 this is about the video behind them.

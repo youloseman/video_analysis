@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -341,3 +341,27 @@ class User(Base):
     def is_paid(self) -> bool:
         """True for any tier that unlocks full output (Enthusiast/Full/Admin)."""
         return self.tier in PAID_TIERS
+
+
+class PlanLapse(Base):
+    """A paid plan that ended, and the clips' grace after it (2026-11-11).
+
+    Retention is read from the tier at sweep time, so without this a card that
+    failed would take up to a year of footage at the next sweep. For
+    ``services.retention.LAPSE_GRACE_DAYS`` after ``lapsed_at_ms`` the clips
+    are kept as ``from_tier`` would keep them, and the owner is emailed twice.
+    A row is written only on a drop from a paid plan to the free one; it is
+    simply ignored once the account is paid again.
+    """
+
+    __tablename__ = "plan_lapses"
+
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True,
+    )
+    from_tier: Mapped[str] = mapped_column(String(20), nullable=False)
+    lapsed_at_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    # 0 nothing sent, 1 the notice, 2 the reminder (or nothing left to say).
+    emails_sent: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False,
+    )
