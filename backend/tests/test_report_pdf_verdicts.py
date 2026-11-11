@@ -77,17 +77,18 @@ def test_a_real_fault_still_leads_beside_a_heel_strike():
     assert plan.top_priorities[0].metric_name == "cadence"
 
 
-# --- one verdict per tile
+# --- one verdict per row (the app's range table, report_pdf.metrics_table)
 
 def _tile(html: str, label: str) -> str:
-    return html[html.index(f"<span class='tile-l'>{label}</span>"):].split("</div></div>")[0]
+    start = html.index(f"<b>{label}</b>", html.index("<table class='mt'>"))
+    return html[start:html.index("</tr>", start)]
 
 
 def test_past_the_band_on_the_harmless_side_is_not_called_in_range():
     html = render_report_html(_run(strong=[_good("vertical_osc", 3.8, 6, 10)]), {})
     tile = _tile(html, "Vertical oscillation")
     assert "Better than range" in tile and "In range" not in tile
-    assert "gr-chip good" in tile and "3.8 cm" in tile
+    assert "mt-y good" in tile and "3.8 cm" in tile
 
 
 def test_a_small_miss_on_the_side_that_matters_is_at_the_edge_and_not_leave_alone():
@@ -97,18 +98,18 @@ def test_a_small_miss_on_the_side_that_matters_is_at_the_edge_and_not_leave_alon
     by = {r["field"]: r for r in plan_rows(res)}
     assert by["elbow_angle"]["status"] == "warn"
     html = render_report_html(res, {})
-    assert "gr-chip warn" in _tile(html, "Arm swing · elbow")
+    assert "mt-y warn" in _tile(html, "Arm swing · elbow")
     assert re.search(r"leave these alone</h3><p>Trunk lean\.</p>", html)
 
 
 def test_the_chip_and_the_number_never_disagree():
     res = _run(strong=[_good("cadence", 195.0, 170, 190), _good("knee_contact", 168.0, 160, 175)],
                issues=[{"metric": "knee_swing", "value": 134.0, "optimal_range": "80-100", "severity": "critical"}])
-    word_colour = {"good": ("In range", "Better than range"), "warn": ("At the edge",), "bad": ("Outside",)}
-    tiles = re.findall(r"<span class='chip (\w+)'>([^<]+)</span></div><div class='grbar'><div class='gr-chips'>"
-                       r"<span class='gr-chip (\w+)'", render_report_html(res, {}))
-    assert len(tiles) == 3
-    for chip, word, number in tiles:
+    word_colour = {"good": ("In range", "Better than range"), "warn": ("Borderline",), "bad": ("Too high", "Too low")}
+    rows = re.findall(r"<td class='mt-y (\w+)'>[^<]*</td><td class='mt-b'>.*?<td class='mt-st (\w+)'><b>([^<]+)</b>",
+                      render_report_html(res, {}))
+    assert len(rows) == 3
+    for number, chip, word in rows:
         assert chip == number and word in word_colour[chip]
 
 

@@ -508,7 +508,12 @@ def reference_bands(
             ("knee_at_bdc", "knee_at_bdc"), ("knee_at_tdc", "knee_at_tdc"),
             ("hip_at_tdc", "hip_at_tdc"), ("elbow_angle_avg", "elbow_angle"),
             ("trunk_angle_avg", "trunk_angle"), ("shoulder_angle_avg", "shoulder_angle"),
-            ("forearm_tilt_avg", "forearm_tilt"), ("pelvic_ratio", "pelvic_ratio"),
+            ("forearm_tilt_avg", "forearm_tilt"),
+            # No pelvic_ratio band: it is mean hip / trunk, its 2-4 has no
+            # source, and it left the score on 2026-11-10. Served, it still
+            # made a red "Outside", a "flagged" card and a coach's "Fix first:
+            # drop your pelvic ratio" on Gona's report (2026-11-11). The number
+            # stays in the report as a reading.
         ):
             band = ref.get(band_key)
             if not band or len(band) != 2:

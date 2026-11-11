@@ -424,7 +424,8 @@ def _bike_data_block(
         f"{rng('elbow_angle', 'elbow_angle_avg')}",
         f"- Shoulder angle: {_fmt(summary.get('shoulder_angle_avg'), '°')}"
         f"{rng('shoulder_angle', 'shoulder_angle_avg')}",
-        f"- Pelvic ratio: {_fmt(summary.get('pelvic_ratio'), 'x')}",
+        # No pelvic ratio: ungraded and without a sourced band, and handed to
+        # the model it became "Fix first: drop your pelvic ratio" (2026-11-11).
         _helmet_prompt_line(summary),
         f"- Saddle height assessment: {summary.get('saddle_height_assessment', 'n/a')}",
     ]

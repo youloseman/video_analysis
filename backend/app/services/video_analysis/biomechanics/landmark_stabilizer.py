@@ -367,6 +367,8 @@ def stabilize_landmarks(
         leg_gate["cycle_frames"] = bike_cycle_frames
         leg_gate["patience"] = patience
         leg_gate["ankle_off_path"] = ankle_path
+        if camera_view in (None, "side"):
+            leg_gate["arms_held"] = hold_bike_arms(frame_results)
 
     if context is not None:
         # Surfaced so the pipeline can judge tracking stability: a clip where
@@ -433,6 +435,99 @@ def stabilize_landmarks(
     )
 
     return frame_results
+
+
+# On the bike the arms hold the bars: relative to the shoulder, the elbow,
+# wrist and hand do not move from one pedal stroke to the next. What moved on
+# the overlay was the detector. Gona's aero clip (IMG_3088, 2026-11-11) read
+# the elbow at 81 deg +/- 5 on frames where the knee was far from the arm and
+# 66 deg +/- 16 where it came up under the elbow at the top of the stroke: the
+# wrist was dragged up toward the knee once per revolution, so the arm swung
+# at pedalling frequency and a low-pass filter (BIKE_ARM_CUTOFF_RATIO) could
+# not tell it from motion. The report then said "widen your elbow" from 69 deg.
+#
+# So the arm is held: each arm point becomes the shoulder plus its median
+# offset over the frames where the near knee was well away from the arm, and
+# keeps that offset on every frame, the gated ones included.
+BIKE_ARM_HOLD_POINTS = {11: (13, 15, 17, 19, 21), 12: (14, 16, 18, 20, 22)}
+BIKE_ARM_KNEE = {11: 25, 12: 26}
+# "Well away": the knee further from the elbow AND the wrist than one upper arm.
+BIKE_ARM_CLEAR_UPPER_ARMS = 1.0
+# Fewer clean frames than this and the arm is left as detected.
+BIKE_ARM_MIN_CLEAN = 12
+BIKE_ARM_MIN_CLEAN_SHARE = 0.08
+
+
+def hold_bike_arms(frame_results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Hold each arm at its clean-frame offset from the shoulder (see above).
+
+    Distances are taken in pixel proportions (x scaled by the frame's aspect),
+    the offsets applied in each landmark space separately. Returns a small
+    diag: per side, how many frames were clean and the elbow's spread on them.
+    """
+    n = len(frame_results)
+    if n < BIKE_ARM_MIN_CLEAN:
+        return {"held": False, "reason": "short"}
+    fw = float(frame_results[0].get("frame_width") or 0)
+    fh = float(frame_results[0].get("frame_height") or 0)
+    aspect = fw / fh if fw and fh else 1.0
+
+    def xy(key: str, j: int) -> np.ndarray:
+        out = np.full((n, 2), np.nan)
+        for f, fr in enumerate(frame_results):
+            lms = fr.get(key) or []
+            if j < len(lms) and lms[j] is not None:
+                x, y = getattr(lms[j], "x", np.nan), getattr(lms[j], "y", np.nan)
+                out[f] = (np.nan if x is None else x, np.nan if y is None else y)
+        return out
+
+    diag: dict[str, Any] = {"held": False}
+    for sh, points in BIKE_ARM_HOLD_POINTS.items():
+        side = "left" if sh == 11 else "right"
+        s, el, wr, kn = (xy("normalized_landmarks", j) for j in (sh, points[0], points[1], BIKE_ARM_KNEE[sh]))
+        scale = np.array([aspect, 1.0])
+        upper = np.nanmedian(np.hypot(*((el - s) * scale).T)) if np.isfinite(el).any() else np.nan
+        if not np.isfinite(upper) or upper <= 0:
+            diag[side] = {"held": False, "reason": "no_upper_arm"}
+            continue
+        d_el = np.hypot(*((el - kn) * scale).T)
+        d_wr = np.hypot(*((wr - kn) * scale).T)
+        clean = (
+            np.isfinite(s).all(axis=1) & np.isfinite(el).all(axis=1) & np.isfinite(wr).all(axis=1)
+            & (d_el > BIKE_ARM_CLEAR_UPPER_ARMS * upper) & (d_wr > BIKE_ARM_CLEAR_UPPER_ARMS * upper)
+        )
+        need = max(BIKE_ARM_MIN_CLEAN, int(np.ceil(BIKE_ARM_MIN_CLEAN_SHARE * n)))
+        if int(clean.sum()) < need:
+            diag[side] = {"held": False, "reason": "few_clean_frames", "clean": int(clean.sum())}
+            continue
+        for key in ("normalized_landmarks", "world_landmarks"):
+            shoulder = xy(key, sh)
+            for j in points:
+                p = xy(key, j)
+                ok = clean & np.isfinite(p).all(axis=1)
+                if ok.sum() < need:
+                    continue
+                off = np.median(p[ok] - shoulder[ok], axis=0)
+                vis = [getattr((frame_results[f].get(key) or [])[j], "visibility", None) for f in np.flatnonzero(ok)]
+                vis = [v for v in vis if v is not None]
+                hold_vis = float(np.median(vis)) if vis else None
+                for f, fr in enumerate(frame_results):
+                    lms = fr.get(key) or []
+                    if j >= len(lms) or lms[j] is None or not np.isfinite(shoulder[f]).all():
+                        continue
+                    lms[j].x = float(shoulder[f][0] + off[0])
+                    lms[j].y = float(shoulder[f][1] + off[1])
+                    if hold_vis is not None and hasattr(lms[j], "visibility"):
+                        lms[j].visibility = hold_vis
+        u, v = el[clean] - s[clean], wr[clean] - el[clean]
+        u, v = u * scale, v * scale
+        cos = np.sum(-u * v, axis=1) / (np.hypot(*u.T) * np.hypot(*v.T))
+        clean_elbow = np.degrees(np.arccos(np.clip(cos, -1, 1)))
+        diag[side] = {"held": True, "clean": int(clean.sum()),
+                      "elbow_clean_sd": round(float(np.std(clean_elbow)), 1)}
+        diag["held"] = True
+    logger.info("BIKE_ARMS_HELD", **{k: v for k, v in diag.items()})
+    return diag
 
 
 def _gate_by_visibility(

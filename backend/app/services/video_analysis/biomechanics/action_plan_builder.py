@@ -835,10 +835,7 @@ def build_action_plan(
             good_metrics, "helmet_above_back", float(helmet),
             (-100.0, KONA_PRO_FREE_UP_TO), "Helmet above the back",
         )
-    _check_informational_metric(
-        good_metrics, "pelvic_ratio", _get_value("pelvic_ratio", sm),
-        ref["pelvic_ratio"], "Pelvic rotation ratio",
-    )
+    # No pelvic-ratio strong point: its band has no source (sport_configs.reference_bands).
 
     # ------------------------------------------------------------------
     # Build fitting sequence note

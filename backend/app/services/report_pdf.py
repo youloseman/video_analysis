@@ -13,7 +13,10 @@ save it the same way.
 """
 from __future__ import annotations
 
+import base64
 import re
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from app.services.review_pdf import (
@@ -155,7 +158,7 @@ def _row_value(row: dict[str, Any]) -> str:
     return f"{v:.0f}°" if unit == "°" else _num(v) + unit
 
 
-def _grbar(row: dict[str, Any]) -> str:
+def _grbar(row: dict[str, Any], chip: bool = True) -> str:
     v, band, unit, pro = row["value"], row.get("band"), row.get("unit") or "", row.get("pro")
     if row.get("text"):
         return f"<div class='gr-text'><b>{_e(row['text'])}</b> {_e(row.get('note'))}</div>"
@@ -181,13 +184,20 @@ def _grbar(row: dict[str, Any]) -> str:
     vtxt = _row_value(row)
     tick = (f"<span class='gr-pt' style='left:{pos(pro['median']):.1f}%'></span>"
             if pro and ax_min <= pro.get("median", ax_min - 1) <= ax_max else "")
-    prol = (f"<div class='gr-pro'><span class='gr-pm'></span>Kona pros {_num(pro['median'])}{unit} "
-            f"<small>· middle half {_num(pro['q1'])}–{_num(pro['q3'])}{unit}</small></div>") if pro else ""
-    return (f"<div class='grbar'><div class='gr-chips'><span class='gr-chip {z}' style='left:{max(9, min(91, mk)):.1f}%'>{vtxt}</span></div>"
+    prol = (f"<div class='gr-pro'><span class='gr-pm'></span>Kona pros {_ax(pro['median'], unit)}{unit} "
+            f"<small>· middle half {_ax(pro['q1'], unit)}–{_ax(pro['q3'], unit)}{unit}</small></div>") if pro else ""
+    chips = (f"<div class='gr-chips'><span class='gr-chip {z}' style='left:{max(9, min(91, mk)):.1f}%'>{vtxt}</span></div>"
+             if chip else "")
+    return (f"<div class='grbar'>{chips}"
             f"<div class='gr-track'><span class='gr-band' style='left:{pos(lo):.1f}%;width:{max(1.0, pos(hi) - pos(lo)):.1f}%'></span>"
-            f"<span class='gr-mk' style='left:{mk:.1f}%'></span>{tick}</div>"
-            f"<div class='gr-scale'><span>{_num(ax_min)}</span><span class='gr-opt'>{_num(lo)}–{_num(hi)}{unit}</span>"
-            f"<span>{_num(ax_max)}</span></div>{prol}</div>")
+            f"<span class='gr-mk {z}' style='left:{mk:.1f}%'></span>{tick}</div>"
+            f"<div class='gr-scale'><span>{_ax(ax_min, unit)}</span><span class='gr-opt'>{_num(lo)}–{_num(hi)}{unit}</span>"
+            f"<span>{_ax(ax_max, unit)}</span></div>{prol}</div>")
+
+
+def _ax(x: float, unit: str) -> str:
+    """An axis end: whole degrees ("10.91" under a trunk bar, 2026-11-11)."""
+    return f"{x:.0f}" if unit == "°" else _num(x)
 
 
 # A rider on aero bars, side view, in a 52 x 40 box: the points each bike row
@@ -249,6 +259,78 @@ def angle_glyph(field: str) -> str:
                    "fill='none' stroke='#F1553F' stroke-width='1.4'/>")
     return ("<svg class='tile-fig' viewBox='0 0 54 40' width='54' height='40' aria-hidden='true'>"
             + "".join(out) + "</svg>")
+
+
+# The numbers as the app's "Measured against published ranges" table
+# (index.html, metricsBlock): grouped by what they need, then Measurement |
+# Yours | vs reference | Status, the status saying how far past the edge.
+# Artur asked for the PDF to be that table, not a second design (2026-11-11).
+_GROUPS = (("attention", "Needs attention"), ("ok", "In range"), ("other", "Not graded"))
+
+
+def _group_of(row: dict[str, Any]) -> str:
+    st = row.get("status")
+    return "attention" if st in ("bad", "warn") else "ok" if st == "good" else "other"
+
+
+def _status_cell(row: dict[str, Any]) -> str:
+    st, v, band, unit = row.get("status") or "info", row.get("value"), row.get("band"), row.get("unit") or ""
+    if row.get("word"):
+        word = row["word"]
+    elif st == "bad" and band and isinstance(v, (int, float)):
+        word = "Too high" if v > band[1] else "Too low"
+    else:
+        word = {"good": "In range", "warn": "Borderline", "info": "Not graded",
+                "na": "Not measured"}.get(st, "")
+    delta = ""
+    if st in ("bad", "warn") and band and isinstance(v, (int, float)):
+        # From the number as printed, so 79 against 60-72 reads +7, not +6.5.
+        shown = round(v) if unit == "°" else v
+        d = shown - band[1] if shown > band[1] else shown - band[0] if shown < band[0] else 0
+        if d:
+            delta = f"<div class='mt-d'>{'+' if d > 0 else '−'}{_num(abs(d))}{unit}</div>"
+    return f"<td class='mt-st {st}'><b>{_e(word)}</b>{delta}</td>"
+
+
+_ICON_DIR = Path(__file__).resolve().parents[1] / "static" / "media" / "angle-icons"
+
+
+@lru_cache(maxsize=16)
+def angle_icon(field: str) -> str:
+    """The row's drawn icon (scripts/build_angle_icons.py), inlined so the PDF
+    renderer needs no URL; the SVG glyph when there is no icon for it."""
+    f = _ICON_DIR / f"{field}.png"
+    if not field or not f.is_file():
+        return angle_glyph(field)
+    data = base64.b64encode(f.read_bytes()).decode("ascii")
+    return f"<img class='mt-fig' src='data:image/png;base64,{data}' width='72' height='54' alt=''>"
+
+
+def _mt_row(row: dict[str, Any]) -> str:
+    st = row.get("status") or "info"
+    v = row.get("value")
+    yours = (_row_value(row) if isinstance(v, (int, float)) else
+             _e(row.get("text") or "—"))
+    how = f"<div class='mt-how'>{_e(row['how'])}</div>" if row.get("how") else ""
+    fig = angle_icon(row.get("field") or "")
+    bar = _grbar(row, chip=False) if not row.get("text") else f"<div class='gr-text'>{_e(row.get('note'))}</div>"
+    return (f"<tr class='mt-r'><td class='mt-m'><div class='mt-mh'>{fig}<div><b>{_e(row['label'])}</b>{how}</div></div></td>"
+            f"<td class='mt-y {st}'>{yours}</td><td class='mt-b'>{bar}</td>{_status_cell(row)}</tr>")
+
+
+def metrics_table(rows: list[dict[str, Any]]) -> str:
+    """Every row of the report in the app's grouped range table."""
+    body = []
+    for key, title in _GROUPS:
+        grp = [r for r in rows if _group_of(r) == key]
+        if not grp:
+            continue
+        body.append(f"<tr class='mt-g'><td colspan='4'><b>{title}</b> · {len(grp)}</td></tr>")
+        body += [_mt_row(r) for r in grp]
+    if not body:
+        return ""
+    return ("<table class='mt'><thead><tr><th>Measurement</th><th class='mt-yh'>Yours</th>"
+            "<th>vs reference</th><th>Status</th></tr></thead><tbody>" + "".join(body) + "</tbody></table>")
 
 
 def _tile(row: dict[str, Any]) -> str:
@@ -758,6 +840,28 @@ _EXTRA_CSS = """
 .tile-how{font-size:7.8pt;line-height:1.35;color:#6B7584;margin-top:6px;display:flex;gap:8px;align-items:center}
 .tile-fig{flex:none}
 .gr-text{font-size:8.6pt;color:#5C6675;margin-top:8px}
+/* The app's range table (metrics_table). */
+.mt{width:100%;border-collapse:collapse;border:1px solid #DCE2EA;border-radius:8px;margin:4px 0 12px;font-size:9pt}
+.mt th{font:500 7pt 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#6E7787;text-align:left;
+  padding:8px 10px;background:#F6F7F9;border-bottom:1px solid #DCE2EA}
+.mt th.mt-yh{text-align:right}
+.mt-g td{background:#EFF1F4;font-size:8pt;color:#5C6675;padding:5px 10px;border-top:1px solid #DCE2EA}
+.mt-g b{color:#14294B}
+.mt-r td{padding:8px 10px;border-top:1px solid #E6EAF0;vertical-align:middle}
+.mt-r{break-inside:avoid;page-break-inside:avoid}
+.mt-m{width:38%}
+.mt-mh{display:flex;gap:8px;align-items:center}
+.mt-fig{flex:none;width:72px;height:54px}
+.mt-mh b{color:#14294B;font-size:9.4pt}
+.mt-how{font-size:7.4pt;line-height:1.35;color:#6B7584;margin-top:2px}
+.mt-y{width:11%;text-align:right;font:700 12pt 'IBM Plex Mono',monospace;color:#14181F;white-space:nowrap}
+.mt-y.good{color:#1F7A45}.mt-y.warn{color:#9A5E0B}.mt-y.bad{color:#B8371F}
+.mt-b{width:33%}
+.mt-b .grbar{margin-top:0}
+.mt-st{width:18%;font-size:8.6pt;color:#5C6675}
+.mt-st.good b{color:#1F7A45}.mt-st.warn b{color:#9A5E0B}.mt-st.bad b{color:#B8371F}
+.mt-d{font:8pt 'IBM Plex Mono',monospace;color:#5C6675;margin-top:1px}
+.mt .gr-mk.good{background:#1F7A45}.mt .gr-mk.warn{background:#C97B10}.mt .gr-mk.bad{background:#B8371F}
 .gr-text b{color:#14294B;font-weight:700}
 .facts dd{overflow-wrap:anywhere;min-width:0}
 .foot{margin:18px 0 0;padding-top:10px;border-top:1px solid #DCE2EA;font-size:8pt;color:#6E7787;display:flex;justify-content:space-between}
@@ -1058,7 +1162,6 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
   {'' if low else retest}
 </section>""" if (prio_html or low) else ""
 
-    tiles = "".join(_tile(r) for r in rows)
     hob_html = ""
     if isinstance(hob, dict) and hob.get("angle_deg") is not None:
         if hob.get("aero") is False:
@@ -1073,8 +1176,11 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
                     + (f"{where} " if where else "") + "Pros 88°, age-groupers 85°.")
         hob_html = (f"<div class='hob'><div class='big'>{_e(hob['angle_deg'])}°</div><div><h3>Hip over the crank</h3>"
                     f"<p style='margin:0'>{_e(text)}</p></div></div>")
-    legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='3' width='24' height='4' fill='#DDEFE3' stroke='#2E9E5B'/></svg></i>Healthy range</span>"
-              "<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14181F'/></svg></i>You</span>"
+    # The app's legend: the band, then the three marker colours.
+    dot = "<i><svg width='8' height='8'><circle cx='4' cy='4' r='4' fill='{}'/></svg></i>"
+    legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='3' width='24' height='4' fill='#DDEFE3' stroke='#2E9E5B'/></svg></i>Reference range</span>"
+              f"<span>{dot.format('#B8371F')}Out of range</span><span>{dot.format('#C97B10')}Borderline</span>"
+              f"<span>{dot.format('#1F7A45')}In range</span>"
               + ("<span><i><svg width='6' height='12'><rect x='2' y='0' width='2' height='12' fill='#14294B' opacity='.6'/></svg></i>Kona 2026 pros' median</span>" if has_pro else "")
               + "</div>")
     kino = meta.get("kinogram")
@@ -1089,7 +1195,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
   {ok_html}
   {hob_html}
   {legend if rows else ''}{knee_note}</div>
-  {f"<div class='tiles'>{tiles}</div>" if rows else ''}
+  {metrics_table(rows) if rows else ''}
   {f'<div class="keep"><div class="eyebrow" style="margin-top:12px">{"One stride, five positions" if sport == "run" else "One pedal revolution"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure></div>' if kino else ''}
   <div class="foot"><span>Flapp · getflapp.com</span><span>{_e(meta.get('prepared'))}</span></div>
 </section>""" if (rows or kino) else ""

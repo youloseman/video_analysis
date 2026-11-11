@@ -957,7 +957,9 @@ class VideoVisualizer:
                     continue
 
                 opt_min, opt_max = cfg["optimal"]
-                status = _status_for_cfg(cfg, angle_val)
+                status = self._knee_phase_status(cfg, analyzed_idx)
+                if status is None:
+                    status = _status_for_cfg(cfg, angle_val)
                 status_rgb = overlay_style.STATUS_COLORS.get(
                     status, overlay_style.INK_SOFT,
                 )
@@ -1030,6 +1032,56 @@ class VideoVisualizer:
 
         # -- 6. Paint the header + all chips in a single PIL pass --
         return chips.flush()
+
+    # The bike knee has two bands, one per end of the stroke, and none in
+    # between: 110 deg on the way up is neither a saddle too low nor a crank
+    # too long, yet coloured against the bottom band it was red on every frame
+    # but a few (Artur, 2026-11-11). So the chip takes a colour only near a
+    # stroke's bottom or top -- within a twelfth of a revolution of it, about
+    # 30 deg of crank -- and the colour of that stroke's reading, so it does
+    # not flicker across the window. Everywhere else it is a plain white chip.
+    _KNEE_PHASE_WINDOW_OF_CYCLE = 1 / 12
+    _PLAIN = "plain"
+
+    def _knee_phase_status(self, cfg: dict[str, Any], analyzed_idx: int) -> str | None:
+        """The bike knee's colour on this frame, or None for every other joint."""
+        key = str(cfg["key"])
+        if self.sport_type != "bike" or not key.endswith("_knee"):
+            return None
+        phases = getattr(self, "_knee_phases", None)
+        if phases is None:
+            phases = self._knee_phases = self._build_knee_phases(key, cfg["optimal"])
+        hit = phases.get(analyzed_idx)
+        if hit is None:
+            return self._PLAIN
+        band, value = hit
+        if value is None or not np.isfinite(value):
+            return self._PLAIN
+        return overlay_style.status_for(value, *band)
+
+    def _build_knee_phases(
+        self, key: str, bdc_band: tuple[float, float],
+    ) -> dict[int, tuple[tuple[float, float], float | None]]:
+        side = key.split("_")[0]
+        diag = (getattr(self.analyzer, "_bdc_tdc_diag", None) or {}).get(side) or {}
+        bdc, tdc = list(diag.get("bdc_indices") or []), list(diag.get("tdc_indices") or [])
+        if len(bdc) < 2:
+            return {}
+        values = self.analyzer.angle_history.get(key) or []
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            get_cycling_reference,
+        )
+
+        tdc_band = tuple(get_cycling_reference(self.cycling_position)["knee_at_tdc"])
+        cycle = float(np.median(np.diff(sorted(bdc))))
+        w = max(1, int(round(cycle * self._KNEE_PHASE_WINDOW_OF_CYCLE)))
+        out: dict[int, tuple[tuple[float, float], float | None]] = {}
+        for events, band in ((bdc, tuple(bdc_band)), (tdc, tdc_band)):
+            for i in events:
+                v = values[i] if 0 <= i < len(values) else None
+                for j in range(i - w, i + w + 1):
+                    out[j] = (band, v)
+        return out
 
     # Share of a clip's readable frames that must sit outside the reference
     # band before a joint earns a callout of its own. Well under half: a fault

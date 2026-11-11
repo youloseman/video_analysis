@@ -1481,6 +1481,8 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .cg-more[open] summary::before{transform:rotate(45deg)}
 .cg-more[open] summary{border-bottom:1px solid var(--c-line)}
 .cg-more .guides{padding:12px 18px 14px}
+.tbl-notes{margin-top:14px}
+.tbl-notes .tbl-notes-body{padding:4px 18px 14px}
 .capguide[data-sport="run"] .fig-bike,.capguide[data-sport="bike"] .fig-run{display:none}
 .capguide[data-sport="run"] li[data-sport="bike"]{display:none}
 /* Arriving from a warning that named this rule: one colour step on the
@@ -1774,7 +1776,38 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .scorecard .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
 .scorecard .btn-ghost:hover{background:rgba(255,255,255,.1);border-color:#fff}
 .sc-scorerow{display:contents}
+/* The fresh result's card, laid out by area (Artur, 2026-11-11). Before, the
+   warning, the confidence chip and four buttons each took a row of their own
+   down the third column, and the card was mostly empty to both sides of them.
+   Now: score and grade | what was filmed and how sure | the breakdown, the
+   whole height on the right; the warning and one row of actions underneath. */
+.sc-main{grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto 1fr;
+  grid-template-areas:"label label tag" "ring grade meta" "ring grade conf" "delta delta ." "warn warn warn" "acts acts acts"}
+.sc-main.has-bd{grid-template-columns:auto auto minmax(0,1fr) minmax(260px,1.2fr);
+  grid-template-areas:"label label tag bd" "ring grade meta bd" "ring grade conf bd" "delta delta . bd" "warn warn warn bd" "acts acts acts bd"}
+.sc-main > .confwrap{align-self:start}
+.sc-main > .score-label{grid-area:label}
+.sc-main > .sporttag{grid-area:tag}
+.sc-main > .ring{grid-area:ring}
+.sc-main > .graderow{grid-area:grade;align-self:center;padding-bottom:0}
+.sc-main > .score-meta{grid-area:meta}
+.sc-main > .score-delta{grid-area:delta;margin-top:4px}
+.sc-main > .confwrap{grid-area:conf;margin-top:2px}
+.sc-main > .score-none-why{grid-area:warn;max-width:none;margin-top:12px}
+.sc-main > .score-bd{grid-area:bd}
+.sc-main > .score-acts{grid-area:acts}
+.score-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+.score-acts:not(:has(> :not(:empty):not(.hidden))){display:none}
+.score-acts .sharebtn{margin:0}
+.score-acts #printBtnHost:empty{display:none}
+.score-acts .hdcoach{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.score-acts .hdcoach .hdlink,.score-acts .hdcoach > p{flex:1 1 100%;margin:2px 0 0}
+@media(max-width:900px){
+  .sc-main.has-bd{grid-template-columns:auto auto minmax(0,1fr);
+    grid-template-areas:"label label tag" "ring grade meta" "ring grade conf" "delta delta ." "bd bd bd" "warn warn warn" "acts acts acts"}
+}
 @media(max-width:640px){
+  .scorecard .score-acts{order:10;flex:1 1 100%;margin:0}
   /* The phone card reads in two short lines -- what it is, then the score
      with its grade beside it -- and only then the prose. Stacked one item
      per row, the label, the sport, the ring, the grade and the meta were
@@ -2239,6 +2272,11 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .meastable .mrow th{font-weight:400}
 .m-name{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--c-ink);line-height:1.3}
 .m-sub{display:block;margin-top:2px;font-size:12px;color:var(--c-ink-faint);line-height:1.4}
+/* The drawn rider beside a bike row (BIKE_ICON in index.html). */
+.m-head{display:flex;align-items:center;gap:12px}
+.m-head > div{min-width:0}
+.m-fig{flex:none;width:64px;height:48px}
+@media(max-width:640px){.m-fig{width:44px;height:33px}.m-head{gap:8px}}
 .meastable .m-val{text-align:right;font-family:var(--f-mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--c-ink);white-space:nowrap}
 .m-val small{font-size:12px;font-weight:400;color:var(--c-ink-faint)}
 .m-val .m-txt{font-family:var(--f-body);font-size:14px;white-space:normal}

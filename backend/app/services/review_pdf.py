@@ -86,6 +86,29 @@ def _status(value: float, lo: float | None, hi: float | None) -> str:
     return "warn" if lo - margin <= value <= hi + margin else "bad"
 
 
+def _lenient(field: str, value: float, band: tuple[float, float] | None,
+             position: str | None, status: str) -> str:
+    """The score's own leniencies on the row's colour, so a reading that cost no
+    points is never red: a hip opened past its band is fine; on aero bars a
+    torso flatter than the band and a shoulder closed past it are the rider's
+    choice, amber at most (technique_scorer.score_cycling). Gona's report
+    printed both as "Outside" beside a score that took nothing for them."""
+    if not band or status not in ("bad", "warn"):
+        return status
+    lo, hi = band
+    if field == "hip_at_tdc" and value > hi:
+        return "good"
+    if value < lo:
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            SHOULDER_CLOSED_OK_POSITIONS,
+            trunk_below_aero_floor,
+        )
+        if (field == "trunk_angle_avg" and trunk_below_aero_floor(position, value)) or (
+                field == "shoulder_angle_avg" and position in SHOULDER_CLOSED_OK_POSITIONS):
+            return "warn"
+    return status
+
+
 def _bar(value: float | None, band: tuple[float, float] | None, pro: dict | None,
          scale: tuple[float, float], status: str) -> str:
     """Track, the band (green), the pro middle half (navy, median tick), you (dot)."""
@@ -119,6 +142,10 @@ def metric_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
         v = s.get(field)
         b = bands.get(field)
         band = (float(b["lo"]), float(b["hi"])) if isinstance(b, dict) and b.get("lo") is not None else None
+        if field == "pelvic_ratio":
+            # A reading, not graded: stored reports still carry the unsourced
+            # 2-4 band (sport_configs.reference_bands dropped it 2026-11-11).
+            band = None
         if field == "helmet_above_back":
             band = (0.0, 23.0)
             if s.get("helmet_check") or not isinstance(v, (int, float)):
@@ -128,7 +155,8 @@ def metric_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
                 continue
         if not isinstance(v, (int, float)) or (isinstance(v, float) and math.isnan(v)):
             continue
-        st = _status(float(v), *(band or (None, None)))
+        st = _lenient(field, float(v), band, result.get("cycling_position"),
+                      _status(float(v), *(band or (None, None))))
         rows.append({"field": field, "label": label, "value": float(v), "unit": unit, "band": band,
                      "pro": pro.get(field), "status": st, "scale": scale,
                      "how": HOW_MEASURED.get(field)})

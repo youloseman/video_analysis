@@ -907,7 +907,7 @@
     </div>
 
     <div class="result-top" id="resultTop">
-      <div class="card scorecard">
+      <div class="card scorecard sc-main">
         <span class="sporttag" id="sportTag"><svg class="ic" id="sportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="sportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
         <div class="ring" id="scoreRing" role="img" aria-label="Technique score">
@@ -932,11 +932,15 @@
         <div class="score-meta" id="scoreMeta"></div>
         <div class="score-bd hidden" id="scoreBd" aria-label="What the score is built from"></div>
         <div class="confwrap hidden" id="confBadge"></div>
-        <button class="btn btn-primary btn-sm sharebtn hidden" id="shareBtn" type="button">
-          <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share result</span>
-        </button>
-        <span id="printBtnHost"></span>
-        <div class="hdcoach" id="coachActions"></div>
+        <!-- One row of actions under the score, not a column of them down the
+             middle of the card (Artur, 2026-11-11: the card was mostly empty). -->
+        <div class="score-acts">
+          <button class="btn btn-primary btn-sm sharebtn hidden" id="shareBtn" type="button">
+            <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share result</span>
+          </button>
+          <span id="printBtnHost"></span>
+          <div class="hdcoach" id="coachActions"></div>
+        </div>
       </div>
       <div id="videoCol">
         <!-- Paper cannot play a video. The annotated still says the same thing
@@ -1081,6 +1085,16 @@
       <div class="coach" id="coach"></div>
     </div>
 
+    <!-- Review first, then the coach's own notes: the same order as a saved
+         report (hdReviewBlock above hdCoachNoteBlock), Artur 2026-11-11. -->
+    <div class="block block-coach hidden" id="reviewBlock">
+      <div class="blockhead">
+        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Before you send</div>
+        <h3>Review the report</h3>
+        <div class="speedline-sm"></div>
+      </div>
+      <div class="rv" id="review"></div>
+    </div>
     <!-- The human coach's note on this report (Full). Written here, saved on
          the history entry, printed under the coach's name, exported with the
          report. See renderCoachNote. -->
@@ -1091,14 +1105,6 @@
         <div class="speedline-sm"></div>
       </div>
       <div class="cnote" id="coachNote"></div>
-    </div>
-    <div class="block block-coach hidden" id="reviewBlock">
-      <div class="blockhead">
-        <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Before you send</div>
-        <h3>Review the report</h3>
-        <div class="speedline-sm"></div>
-      </div>
-      <div class="rv" id="review"></div>
     </div>
 
     <div class="block" id="planBlock">
@@ -1199,6 +1205,11 @@
           <tbody id="angleRows"></tbody>
         </table>
       </div>
+      <!-- How to read the table: folded by default (Artur, 2026-11-11) -- the
+           numbers are the page; the reading notes are there for whoever asks. -->
+      <details class="cg-more tbl-notes" id="angleNotes">
+      <summary>How to read this table</summary>
+      <div class="tbl-notes-body">
       <p class="hint norefnote hidden" id="angleNorefNote" style="text-align:left;margin-top:12px">
         <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
       <p class="hint" id="angleStatNote" style="text-align:left;margin-top:8px">
@@ -1208,6 +1219,8 @@
       <p class="hint hidden" id="angleProNote" style="text-align:left;margin-top:8px"></p>
       <!-- Where the bike's Optimal column comes from (fitRangeNote). -->
       <p class="hint hidden" id="angleSrcNote" style="text-align:left;margin-top:8px"></p>
+      </div>
+      </details>
     </div>
 
     <!-- Where to go from here, whatever the score (result.next_steps). -->
@@ -4271,7 +4284,7 @@ function measRow(m){
     : `${m.val}${unit==='°'||unit==='×'||unit==='%'?unit:(unit?` <small>${esc(unit)}</small>`:'')}`;
   const delta = m.range ? measDelta(m.delta,unit) : '';
   return `<tr class="mrow ${st.cls}">`
-    +`<th scope="row"><span class="m-name">${esc(m.lbl)}${what}</span>${sub?`<span class="m-sub">${sub}</span>`:''}${def}</th>`
+    +`<th scope="row">${m.icon?`<div class="m-head"><img class="m-fig" src="/media/angle-icons/${esc(m.icon)}.png" width="64" height="48" alt="" loading="lazy"><div>`:''}<span class="m-name">${esc(m.lbl)}${what}</span>${sub?`<span class="m-sub">${sub}</span>`:''}${def}${m.icon?'</div></div>':''}</th>`
     +`<td class="m-val num">${valHtml}</td>`
     +`<td class="m-ref">${m.range?measBar(m,st):'<span class="m-noref">no published range</span>'}</td>`
     +`<td class="m-st"><span class="m-pill">${st.word}</span>${delta?`<span class="m-delta">${delta}</span>`:''}${m.trend?`<span class="m-trend">${m.trend}</span>`:''}</td>`
@@ -4405,8 +4418,14 @@ function bikeTiles(s, position){
   }
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
   // Aero now has its own headline panel (renderAeroPanel), not a tile.
+  // The drawn rider with this row's angle (scripts/build_angle_icons.py), the
+  // same picture the PDF prints beside the row.
+  t.forEach(m=>{ const k=BIKE_ICON[String(m.lbl).replace(/ (flexion|dorsiflexion)/,'')]; if(k) m.icon=k; });
   return t;
 }
+const BIKE_ICON={'Knee · bottom':'knee_at_bdc','Knee · top':'knee_at_tdc','Hip · top of stroke':'hip_at_tdc',
+  'Elbow':'elbow_angle_avg','Trunk':'trunk_angle_avg','Shoulder':'shoulder_angle_avg','Forearm tilt':'forearm_tilt_avg',
+  'Pelvic ratio':'pelvic_ratio','Helmet above back':'helmet_above_back'};
 function runTiles(s){
   const t=[];
   if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,RB('cadence_spm',s.cadence_spm,170,225,'spm')));
@@ -9894,7 +9913,12 @@ function angleTableRows(A, sport, position, srcByKey, pro){
       // but a joint the tracker got wrong this often is not graded.
       statusCell=`<td class="col-status"><span class="pill pill-medium" title="${art} frame${art>1?'s':''} read outside the physiological range for this joint and were excluded from every number here"><span class="dot" aria-hidden="true"></span>artefact · ${art} frame${art>1?'s':''}</span></td>`;
     } else if(opt && !muted){
-      const z=grZone(a.mean,opt[0],opt[1],k);
+      /* The score's own leniencies, as the tiles already apply them: on aero
+         bars a flatter torso and a closed shoulder cost no points, so the
+         table must not call them red (Gona, 2026-11-11). */
+      const aeroPos=sport==='bike'&&(position==='tt_aero'||position==='triathlon');
+      const zk=aeroPos&&k==='trunk_angle'?'trunk_low_ok':aeroPos&&/_shoulder$/.test(k)?'shoulder_closed_ok':k;
+      const z=grZone(a.mean,opt[0],opt[1],zk);
       const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
       statusCell=`<td class="col-status"><span class="pill ${ANGLE_PILL_CLS[zc]}"><span class="dot" aria-hidden="true"></span>${ANGLE_PILL_WORD[zc]}</span></td>`;
     }
@@ -10011,13 +10035,25 @@ function render(job,opts){
   if(fw){
     const fr=((s.tracking_stability||{}).framing)||(r.quality&&r.quality.framing)||null;
     const small=!withheld && fr && (fr.verdict==='small'||fr.verdict==='tiny');
-    fw.innerHTML = small
+    /* The capture report already tells a small athlete from a small FILE
+       (capture_report.framing_check, "Resolution of the file"): framing that
+       would have been plenty on the original, lost to a downscaled export.
+       Telling that rider to film closer was wrong advice (Gona, 848x544,
+       filling the frame, 2026-11-11). */
+    const capChecks=((s.capture_report||(r.quality&&r.quality.capture_report)||{}).checks)||[];
+    const fileSmall=capChecks.some(c=>c.id==='framing'&&c.label==='Resolution of the file');
+    const fileH=(capChecks.find(c=>c.id==='framing')||{}).measured||'';
+    const fileHpx=(fileH.match(/from a (\d+) px tall file/)||[])[1];
+    fw.innerHTML = !small ? '' : fileSmall
       ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
+         <span><b>Accuracy reduced: the file is low-resolution</b>${fileHpx?` (${fileHpx} px tall)`:''}.
+         Your framing is fine; the clip was downscaled before it reached us, so each joint is only a few pixels and the points can wander.
+         Send the original straight from the camera roll, not through a messaging app or an “optimised” export.</span>`
+      : `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
          <span><b>Accuracy reduced: you’re small in the frame</b>${fr.subject_height_frac?` (about ${Math.round(fr.subject_height_frac*100)}% of the picture’s height)`:''}.
          At that size the legs are a few pixels apart and the model can swap them. ${(r.sport_type||r.sport)==='run'
            ?'Running past the camera? Hold the phone sideways: the same stretch of track has you about 1.8 times taller.'
-           :'Film closer or zoom in so you fill most of the height, and the same position will read more reliably.'}</span>`
-      : '';
+           :'Film closer or zoom in so you fill most of the height, and the same position will read more reliably.'}</span>`;
     fw.classList.toggle('hidden', !small);
   }
   setScoreRing('#scoreRing', withheld ? null : r.technique_score);

@@ -58,7 +58,8 @@ def _gen(summary):
 def test_order_2_lists_both_red_rows_with_what_to_check():
     concerns = llm._video_concerns("bike", "triathlon", ORDER_2)
     material = {c["field"] for c in concerns if c["material"]}
-    assert material == {"knee_at_tdc", "pelvic_ratio"}
+    # The pelvic ratio is a reading, not a band (sport_configs.reference_bands, 2026-11-11).
+    assert material == {"knee_at_tdc"}
     # The flat aero trunk and the borderline saddle are on the list too, as edges.
     edges = {c["field"] for c in concerns if not c["material"]}
     assert {"trunk_angle_avg", "knee_at_bdc"} <= edges
@@ -85,7 +86,7 @@ def test_if_the_model_insists_the_section_becomes_the_list(monkeypatch):
     assert "Nothing to fix" not in report
     assert "no rule-based issues were flagged" not in report
     fix = report.split("**Fix first**")[1].split("**Worth a look**")[0]
-    assert "Knee angle at the top of the stroke" in fix and "Pelvic ratio" in fix
+    assert "Knee angle at the top of the stroke" in fix and "Pelvic ratio" not in fix
 
 
 def test_the_checklist_sits_before_the_closing_cue(monkeypatch):

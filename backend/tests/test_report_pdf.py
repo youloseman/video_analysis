@@ -160,7 +160,7 @@ def test_a_photo_breakdown_comes_from_its_own_score():
 
 def test_the_numbers_are_drawn_like_the_app():
     html = render_report_html(example("bike-road"), {})
-    assert "class='tile'" in html and "class='gr-band'" in html and "class='gr-mk'" in html
+    assert "class='mt'" in html and "class='gr-band'" in html and "class='gr-mk " in html
 
 
 # --- the clip a report is read against
