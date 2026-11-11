@@ -138,6 +138,9 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
     ).scalar_one_or_none()
     # ``has_keyframe`` is a transport flag from the thin list, never stored.
     entry.pop("has_keyframe", None)
+    # Likewise the coach's "seen" mark: it lives in ``clip_reviews`` and is
+    # laid over the entry on the way out (api/squad.py), never kept in it.
+    entry.pop("reviewedAt", None)
     at = int(entry.get("at") or 0)
     # The upload behind this entry. Kept as a column, not just inside data,
     # because the storage sweeper joins on it -- and because it is what lets an
@@ -197,6 +200,14 @@ async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
         if job_id:
             _attach_result(row, job_id)
         db.add(row)
+    if athlete_id is not None and entry.get("coachNote"):
+        # A coach's note on their own clip arrives through this door (the
+        # linked athlete's goes through api/coach_link.write_note). Either
+        # way a written note means the clip has been looked at.
+        from app.api.squad import mark_reviewed
+
+        await db.flush()
+        await mark_reviewed(db, user, row.id)
 
 
 async def _owned_profile_id(
@@ -404,7 +415,17 @@ async def list_analyses(
     profile_id: int | None = None,
     athlete_id: int | None = None,
 ) -> list[dict[str, Any]]:
-    return await _list_rows(db, user, profile_id=profile_id, athlete_id=athlete_id)
+    rows = await _list_rows(db, user, profile_id=profile_id, athlete_id=athlete_id)
+    if has_coach(user.tier):
+        # The coach's own clips filed under athletes carry when they were
+        # marked as seen, so the squad can tell new from looked-at.
+        from app.api.squad import reviews_for
+
+        seen = await reviews_for(db, user, user.id)
+        for e in rows:
+            if e.get("athleteId") is not None:
+                e["reviewedAt"] = seen.get(str(e.get("id") or ""))
+    return rows
 
 
 async def _list_rows(

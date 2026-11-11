@@ -263,17 +263,27 @@ async def athlete_analyses(
     """
     from app.api import me as me_api
 
+    from app.api.squad import reviews_for
+
     _require_coach(user)
     row = await _owned(db, user, athlete_id)
     owner = await linked_owner(db, user, athlete_id)
+    # ``reviewedAt``: when this coach marked the clip as seen (api/squad.py).
+    # Set on a copy of what the list returns, never stored on the entry -- a
+    # linked athlete's entry is theirs, and the mark is the coach's.
+    seen_mine = await reviews_for(db, user, user.id)
+    mine = await me_api._list_rows(db, user, athlete_id=row.id)
+    for e in mine:
+        e["reviewedAt"] = seen_mine.get(str(e.get("id") or ""))
     if owner is None:
-        return await me_api._list_rows(db, user, athlete_id=row.id)
+        return mine
+    seen_theirs = await reviews_for(db, user, owner.id)
     theirs = [e for e in await me_api._list_rows(db, owner) if e.get("sport") != "swim"]
     for e in theirs:
         e["athleteId"] = row.id
         e["linkedAthleteId"] = row.id
+        e["reviewedAt"] = seen_theirs.get(str(e.get("id") or ""))
     # What the coach ran for them before they linked, or since, stays in view.
-    mine = await me_api._list_rows(db, user, athlete_id=row.id)
     return sorted(theirs + mine, key=lambda e: e.get("at") or 0, reverse=True)
 
 
@@ -326,6 +336,11 @@ async def write_note(
     data["coachName"] = who["name"]
     data["coachBio"] = who["tagline"]
     row.data = data   # reassigned, not mutated: JSON columns don't track edits
+    if note:
+        # Nobody writes on a report they have not looked at.
+        from app.api.squad import mark_reviewed
+
+        await mark_reviewed(db, user, row.id)
     await db.commit()
     if owner.id != user.id and note and not had:
         _mail_note(owner, who["name"], row)

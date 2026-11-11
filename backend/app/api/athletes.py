@@ -299,9 +299,16 @@ async def list_athletes(
     from app.api.cda import latest_by_athlete
 
     cda = await latest_by_athlete(db, list(rows))
+    # Next race, groups and how many clips the coach has not looked at yet.
+    from app.api.squad import roster_extras
+
+    extras = await roster_extras(db, user, list(rows))
     return {
         "allowed": True,
-        "athletes": [{**_out(a, stats.get(a.id)), "cda_latest": cda.get(a.id)} for a in rows],
+        "athletes": [
+            {**_out(a, stats.get(a.id)), "cda_latest": cda.get(a.id), **extras[a.id]}
+            for a in rows
+        ],
         "limit": athlete_limit(user.tier),
         "used": live,
     }
@@ -381,6 +388,9 @@ async def delete_athlete(
         .where(Profile.user_id == user.id, Profile.athlete_id == row.id)
         .values(athlete_id=None)
     )
+    from app.api.squad import forget_athlete
+
+    await forget_athlete(db, row.id)
     await db.delete(row)
     await db.commit()
     logger.info("ATHLETE_DELETED", user_id=user.id, athlete_id=athlete_id)

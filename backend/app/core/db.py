@@ -337,8 +337,8 @@ def _migrate_profiles(conn) -> None:
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import (  # noqa: F401
-        analysis, athlete, cda, coach, coach_link, coach_upload, feedback, order, profile, usage,
-    user,
+        analysis, athlete, cda, coach, coach_link, coach_upload, feedback, order, profile, squad,
+        usage, user,
     )
 
     async with engine.begin() as conn:
