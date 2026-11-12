@@ -118,7 +118,7 @@ def test_several_clips_can_be_found_from_every_place_a_coach_starts():
     assert "$('#navBatch').classList.toggle('hidden', !hasCoachPlan())" in SPA
     home = fn("renderSquadHome")
     # With no athletes yet the page used to name a batch and offer no way to it.
-    empty = home[home.index("if(!squad.length)"):home.index("const now=Date.now()")]
+    empty = home[home.index("if(!everyone.length)"):home.index("const now=Date.now()")]
     assert 'onclick="openBatch()"' in empty
     assert 'id="sqBatch"' in home
     assert "openBatch(a.id)" in fn("openAthlete")
@@ -341,3 +341,51 @@ def test_the_batch_starts_on_auto_and_the_roster_does_not_overrule_it():
     # A photo left on Auto asks the quick look, and the coach when it cannot tell.
     photo = fn("batchSendPhoto")
     assert "fetch('/prescan'" in photo and "sport=j&&j.sport;" in photo and "batchSportOf" not in photo
+
+
+# --- Races, groups and seen marks on the Squad (api/squad.py) -----------------
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_a_clip_is_unseen_only_from_the_day_the_mark_shipped():
+    """Older history is not an inbox, a swim clip never counts, and the coach's
+    own clips (no athlete) are nobody's to review."""
+    m = re.search(r"^const UNSEEN_SINCE_MS=.*$", SPA, re.M)
+    assert m
+    script = (
+        m.group(0) + "\n" + fn("clipUnseen") + "\n"
+        "const t=UNSEEN_SINCE_MS;\n"
+        "console.log(JSON.stringify(["
+        "clipUnseen({athleteId:1,sport:'bike',at:t+5}),"
+        "clipUnseen({athleteId:1,sport:'bike',at:t-5}),"
+        "clipUnseen({athleteId:1,sport:'bike',at:t+5,reviewedAt:9}),"
+        "clipUnseen({athleteId:1,sport:'swim',at:t+5}),"
+        "clipUnseen({athleteId:null,sport:'bike',at:t+5}),"
+        "t]));"
+    )
+    out = json.loads(subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout)
+    assert out[:5] == [True, False, False, False, False]
+    # The same day the server counts from (api/squad.UNSEEN_SINCE_MS).
+    from app.api.squad import UNSEEN_SINCE_MS
+
+    assert out[5] == UNSEEN_SINCE_MS
+
+
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_a_race_countdown_reads_as_words():
+    script = fn("raceWhen") + "\nconsole.log(JSON.stringify([-3,-1,0,1,9,21,56].map(d=>raceWhen({days_to_go:d}))));"
+    out = json.loads(subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout)
+    assert out == ["3 days ago", "1 day ago", "today", "tomorrow", "in 9 days", "in 21 days", "in 8 weeks"]
+
+
+def test_the_squad_reads_races_groups_and_seen_marks_from_the_server():
+    home, one = fn("renderSquadHome"), fn("openAthlete")
+    assert "state.squadGroup" in home and "To review" in home and "next_race" in home
+    assert "/races" in one and "/groups" in one and "reviewed-all" in one
+    assert "/reviewed'" in fn("clipSeen")
+    assert "athlete-groups" in fn("loadGroups")
+    # A report opened from the Squad is a report seen.
+    assert "clipSeen(e,true,true)" in fn("openClipAsCoach")
+
+
+def test_account_states_the_retention_the_policy_states():
+    assert "deleted from our servers after processing" not in SPA
+    assert "7 days on the free plan and 12 months on a paid plan" in SPA
