@@ -389,3 +389,10 @@ def test_the_squad_reads_races_groups_and_seen_marks_from_the_server():
 def test_account_states_the_retention_the_policy_states():
     assert "deleted from our servers after processing" not in SPA
     assert "7 days on the free plan and 12 months on a paid plan" in SPA
+
+
+def test_a_race_can_be_changed_in_place():
+    one = fn("openAthlete")
+    assert "data-raceedit" in one and "'PATCH','athletes/'+a.id+'/races/'+editR.id" in one
+    # Editing is still possible with all twelve places taken.
+    assert "races.length>=12&&!editR" in one

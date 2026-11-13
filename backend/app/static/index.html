@@ -13841,9 +13841,9 @@ function renderSquadHome(){
   const kpi=(n,l)=>`<div class="sq-kpi"><b>${n}</b><span>${l}</span></div>`;
   const att=(id,txt)=>`<li><button type="button" class="sq-attbtn" data-open="${id}">${txt}</button></li>`;
   // Unseen clips, the athlete racing soonest first: that report cannot wait.
-  const raceIn=a=>a.next_race?a.next_race.days_to_go:1e9;
+  const raceIn=a=>a.next_race?a.next_race.days_to_go:1e9, racePri=a=>a.next_race?a.next_race.priority:'Z';
   const review=rows.flatMap(r=>r.es.filter(clipUnseen).map(e=>({a:r.a,e})))
-    .sort((x,y)=>raceIn(x.a)-raceIn(y.a)||(y.e.at||0)-(x.e.at||0));
+    .sort((x,y)=>raceIn(x.a)-raceIn(y.a)||racePri(x.a).localeCompare(racePri(y.a))||(y.e.at||0)-(x.e.at||0));
   // A race inside three weeks and nothing filmed for two.
   const racing=rows.filter(r=>r.a.next_race&&r.a.next_race.days_to_go<=21&&(!r.last||now-(r.last.at||0)>=14*86400000));
   const attention=[
@@ -13936,15 +13936,16 @@ function openAthlete(id){
     const ready=es.filter(e=>e.trends);
     const unseenN=es.filter(clipUnseen).length;
     const races=a.races||[], nr=a.next_race, mineG=a.group_ids||[], allG=GROUPS.groups||[];
+    const editR=races.find(r=>String(r.id)===String(state.adRaceEdit))||null;
     const seenCell=e=>e.sport==='swim'||(e.at||0)<UNSEEN_SINCE_MS?''
       :e.reviewedAt?`<span class="ad-meta">Seen ${esc(fmtWhen(e.reviewedAt))}</span> <button type="button" class="p-copy" data-unseen="${esc(e.id)}">undo</button>`
       :`<button type="button" class="btn btn-ghost btn-sm" data-seen="${esc(e.id)}">Mark seen</button>`;
     const planHtml=`<div class="ad-plan">
         <div class="ad-box">
           <div class="ad-box-h"><h3>Races</h3>${nr?`<span class="ad-count${nr.days_to_go<=21?' sq-race-soon':''}">${esc(nr.name)} ${raceWhen(nr)}</span>`:''}</div>
-          ${races.length?`<ul class="ad-rows">${races.map(r=>`<li class="${r.past?'is-past':''}"><b>${esc(r.name)}</b><span class="ad-meta">${esc(cdaDay(r.race_on))} · ${esc(r.priority)} race · ${raceWhen(r)}</span><button type="button" class="p-copy" data-racedel="${r.id}">Remove</button></li>`).join('')}</ul>`:`<p class="hint" style="text-align:left">No race yet. With one here, the Squad puts ${esc(a.name.split(' ')[0])}’s clips first as it gets close.</p>`}
-          ${races.length>=12?'<p class="hint" style="text-align:left">Twelve races is the most one athlete keeps. Remove a past one to add another.</p>'
-            :`<form class="ad-form" id="adRaceNew"><input type="text" id="adRaceName" maxlength="80" placeholder="Race, e.g. Ironman 70.3 Victoria" aria-label="Race name"><input type="date" id="adRaceDay" aria-label="Race date"><select id="adRacePri" aria-label="Priority"><option value="A">A · main race</option><option value="B">B</option><option value="C">C</option></select><button class="btn btn-ghost btn-sm" type="submit">Add race</button></form>`}
+          ${races.length?`<ul class="ad-rows">${races.map(r=>`<li class="${r.past?'is-past':''}"><b>${esc(r.name)}</b><span class="ad-meta">${esc(cdaDay(r.race_on))} · ${esc(r.priority)} race · ${raceWhen(r)}</span><button type="button" class="p-copy" data-raceedit="${r.id}">Edit</button><button type="button" class="p-copy" data-racedel="${r.id}">Remove</button></li>`).join('')}</ul>`:`<p class="hint" style="text-align:left">No race yet. With one here, the Squad puts ${esc(a.name.split(' ')[0])}’s clips first as it gets close.</p>`}
+          ${races.length>=12&&!editR?'<p class="hint" style="text-align:left">Twelve races is the most one athlete keeps. Remove a past one to add another.</p>'
+            :`<form class="ad-form" id="adRaceNew"><input type="text" id="adRaceName" maxlength="80" placeholder="Race, e.g. Ironman 70.3 Victoria" aria-label="Race name" value="${editR?esc(editR.name):''}"><input type="date" id="adRaceDay" aria-label="Race date" value="${editR?esc(editR.race_on):''}"><select id="adRacePri" aria-label="Priority">${['A','B','C'].map(x=>`<option value="${x}"${(editR?editR.priority:'A')===x?' selected':''}>${x==='A'?'A · main race':x}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="submit">${editR?'Save race':'Add race'}</button>${editR?'<button class="btn btn-ghost btn-sm" type="button" id="adRaceCancel">Cancel</button>':''}</form>`}
         </div>
         <div class="ad-box">
           <div class="ad-box-h"><h3>Groups</h3><span class="prof-note">only you see these</span></div>
@@ -13982,10 +13983,15 @@ function openAthlete(id){
       const nm=$('#adRaceName'), dy=$('#adRaceDay');
       if(!nm.value.trim()){ nm.focus(); return; }
       if(!dy.value){ dy.focus(); return; }
-      if(await squadCall('POST','athletes/'+a.id+'/races',{name:nm.value.trim(),race_on:dy.value,priority:$('#adRacePri').value},'Could not add that race.')){ track('squad_race_added',{}); await again(); }
+      const body={name:nm.value.trim(),race_on:dy.value,priority:$('#adRacePri').value};
+      if(editR){
+        if(await squadCall('PATCH','athletes/'+a.id+'/races/'+editR.id,body,'Could not save that race.')){ state.adRaceEdit=null; track('squad_race_edited',{}); await again(); }
+      } else if(await squadCall('POST','athletes/'+a.id+'/races',body,'Could not add that race.')){ track('squad_race_added',{}); await again(); }
     });
+    list.querySelectorAll('[data-raceedit]').forEach(b=>b.addEventListener('click',()=>{ state.adRaceEdit=b.dataset.raceedit; draw(); const n=$('#adRaceName'); if(n) n.focus(); }));
+    const rc=$('#adRaceCancel'); if(rc) rc.addEventListener('click',()=>{ state.adRaceEdit=null; draw(); });
     list.querySelectorAll('[data-racedel]').forEach(b=>b.addEventListener('click',async()=>{
-      if(await squadCall('DELETE','athletes/'+a.id+'/races/'+b.dataset.racedel,null,'Could not remove that race.')) await again();
+      if(await squadCall('DELETE','athletes/'+a.id+'/races/'+b.dataset.racedel,null,'Could not remove that race.')){ if(String(state.adRaceEdit)===b.dataset.racedel) state.adRaceEdit=null; await again(); }
     }));
     const putGroups=ids=>squadCall('PUT','athletes/'+a.id+'/groups',{group_ids:ids},'Could not save the groups.');
     list.querySelectorAll('[data-agroup]').forEach(b=>b.addEventListener('click',async()=>{
@@ -14016,7 +14022,7 @@ function openAthlete(id){
     renderAthleteCda(a);
     observeKeyframes(list);
   };
-  if(state.athleteOpenPrev!==a.id){ state.adCdaAdding=false; state.athleteOpenPrev=a.id; }
+  if(state.athleteOpenPrev!==a.id){ state.adCdaAdding=false; state.adRaceEdit=null; state.athleteOpenPrev=a.id; }
   draw();
   setState('athletedetail',{focus:'#adName',route:{id:a.id}});
   if(a.linked) loadLinkedHist(a.id).then(()=>{ if(document.body.dataset.state==='athletedetail'&&state.athleteOpen===a.id) draw(); });
