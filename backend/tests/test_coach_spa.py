@@ -288,7 +288,10 @@ def test_a_row_is_not_filed_under_the_coach_by_default():
 
 def test_the_batch_waits_for_an_answer_and_sends_only_real_ids():
     src = fn("renderBatch")
-    assert "go.disabled=b.running||!todo||unnamed>0" in src and "first." in src
+    assert "go.disabled=!todo||unnamed>0" in src and "first." in src
+    # While it runs the button counts, and after it never sits there grey.
+    assert "Sending ${Math.min(finished+1,total)} of ${total}" in src
+    assert "Add more clips or photos" in src
     assert "batchWhose(it)" in fn("batchSendVideo") and "filmed_at_ms" in fn("batchSendVideo")
     assert "batchWhose(it)" in fn("batchSendPhoto")
     assert "batchWhose(x)" in fn("batchGo")
@@ -296,7 +299,27 @@ def test_the_batch_waits_for_an_answer_and_sends_only_real_ids():
 
 def test_a_sent_clip_leaves_the_list_for_the_lane():
     assert "!(x.state==='sent'&&x.kind==='video')" in fn("batchGo")
-    assert "it.state==='sent'?'<span></span>'" in fn("renderBatch")
+    assert "it.state==='sent'||it.state==='sending'?'<span></span>'" in fn("renderBatch")
+    # A photo is done on the spot: its row keeps an Open button instead.
+    assert "data-openph" in fn("renderBatch") and "it.entryId=e.id" in fn("batchSendPhoto")
+
+
+def test_a_batch_says_what_it_is_doing_and_how_it_ended():
+    """Artur, 2026-11-13: four photos sent from a phone, a grey button, and no
+    way to tell whether anything had happened."""
+    rows = fn("batchStateHtml")
+    assert "bat-dot" in rows and "#i-check" in rows and "#i-alert" in rows
+    status = fn("renderBatchStatus")
+    assert "done</b>" in status and "Keep this page open" in status
+    assert "photos':'photo'" not in status and "ready.</b>" in status and "did not go through" in status
+    go = fn("batchGo")
+    assert "beforeunload" in go and "batch_finished" in go
+
+
+def test_a_photo_check_that_never_answered_is_not_called_ambiguous():
+    src = fn("batchSendPhoto")
+    assert "if(!j){" in src and "Could not check this photo" in src
+    assert src.index("if(!j){") < src.index("Could not tell run from ride")
 
 
 def test_a_thumbnail_arriving_does_not_close_an_open_dropdown():

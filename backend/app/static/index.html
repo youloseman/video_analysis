@@ -1928,6 +1928,7 @@
     </label>
     <input type="file" id="batFiles" class="visually-hidden" accept="video/*,image/*" multiple aria-label="Clips and photos">
     <div class="prof-list bat-list" id="batList"></div>
+    <div class="bat-status hidden" id="batStatus" role="status" aria-live="polite"></div>
     <div class="bat-go"><button class="btn btn-primary" type="button" id="batGo" disabled>Send to analysis</button><span class="hint" id="batHint"></span></div>
     <div id="batLane"></div>
   </section>
@@ -14132,21 +14133,62 @@ function renderBatch(){
   host.innerHTML=b.items.map((it,i)=>`<div class="bat-row" data-i="${i}" data-k="${it.key}">
       <div class="bat-name bat-named">${batchThumbHtml(it)}<span class="bat-file">${esc(it.file.name)}<small>${it.kind}${batchFilmedAt(it.file)?' · '+esc(fmtWhen(batchFilmedAt(it.file))):''}</small></span></div>
       <select data-f="athleteId" aria-label="Whose clip"${b.running?' disabled':''}>${batchAthleteOptions(it.athleteId)}</select>
-      <select data-f="sport" aria-label="Sport"${b.running?' disabled':''}><option value="auto"${it.sport==='auto'?' selected':''}>Auto</option><option value="bike"${it.sport==='bike'?' selected':''}>Bike</option><option value="run"${it.sport==='run'?' selected':''}>Run</option></select>
-      <div class="bat-state ${it.state==='failed'?'sq-off':''}">${esc(it.msg||(it.state==='ready'?'':it.state))}</div>
-      ${it.state==='sent'?'<span></span>':`<button type="button" class="p-copy" data-rm="${i}"${b.running?' disabled':''}>remove</button>`}
+      <select data-f="sport" aria-label="Sport"${b.running?' disabled':''}${it.needSport?' class="bat-need"':''}><option value="auto"${it.sport==='auto'?' selected':''}>Auto</option><option value="bike"${it.sport==='bike'?' selected':''}>Bike</option><option value="run"${it.sport==='run'?' selected':''}>Run</option></select>
+      ${batchStateHtml(it)}
+      ${it.state==='sent'&&it.kind==='photo'&&it.entryId?`<button type="button" class="btn btn-ghost btn-sm" data-openph="${esc(it.entryId)}">Open</button>`:it.state==='sent'||it.state==='sending'?'<span></span>':`<button type="button" class="p-copy" data-rm="${i}"${b.running?' disabled':''}>remove</button>`}
     </div>`).join('');
   const go=$('#batGo');
   // A file that failed goes again: the ones already sent stay sent.
   const todo=b.items.filter(x=>x.state==='ready'||x.state==='failed').length;
   const unnamed=b.items.filter(x=>(x.state==='ready'||x.state==='failed')&&!x.athleteId).length;
-  if(go){ go.disabled=b.running||!todo||unnamed>0; go.textContent=b.running?'Sending…':`${b.items.some(x=>x.state==='failed')?'Send again':'Send'} ${todo||''} to analysis`; }
-  $('#batHint').textContent=unnamed?`Choose whose ${unnamed===1?'clip this is':'these '+unnamed+' clips are'} first.`:b.items.length?`${b.items.length} of ${BATCH_MAX}. Each clip uses one analysis from your plan; a clip stopped by the framing check uses none.`:'';
+  const total=b.total||b.items.length;
+  const finished=b.items.filter(x=>b.runKeys&&b.runKeys.has(x.key)&&(x.state==='sent'||x.state==='failed')).length;
+  if(go){
+    if(b.running){ go.disabled=true; go.innerHTML=`<span class="bat-spin" aria-hidden="true"></span>Sending ${Math.min(finished+1,total)} of ${total}…`; }
+    // Everything went: the next thing to do is pick more, not a dead button.
+    else if(!todo&&b.items.length){ go.disabled=false; go.textContent='Add more clips or photos'; go.dataset.more='1'; }
+    else { delete go.dataset.more; go.disabled=!todo||unnamed>0; go.textContent=`${b.items.some(x=>x.state==='failed')?'Send again':'Send'} ${todo||''} to analysis`; }
+  }
+  renderBatchStatus();
+  $('#batHint').textContent=b.running?'':unnamed?`Choose whose ${unnamed===1?'clip this is':'these '+unnamed+' clips are'} first.`:b.items.length?`${b.items.length} of ${BATCH_MAX}. Each clip uses one analysis from your plan; a clip stopped by the framing check uses none.`:'';
+}
+/* What a row is doing, in words and with something that moves while it moves.
+   Before, a row had 12 px of grey text and a phone showed a grey button and
+   nothing else, so a batch that had worked looked stuck (Artur, 2026-11-13). */
+function batchStateHtml(it){
+  const bar=it.pct!=null?`<span class="bat-mini"><i style="width:${it.pct}%"></i></span>`:'';
+  if(it.state==='sending') return `<div class="bat-state bat-live"><span class="bat-dot" aria-hidden="true"></span><span>${esc(it.msg||'Sending')}${it.pct!=null?' '+it.pct+'%':''}${bar}</span></div>`;
+  if(it.state==='sent') return `<div class="bat-state bat-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>${esc(it.msg||'Sent')}</span></div>`;
+  if(it.state==='failed') return `<div class="bat-state sq-off"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(it.msg||'Did not go through')}</span></div>`;
+  return `<div class="bat-state">${esc(it.msg||'')}</div>`;
+}
+/* The batch as a whole: a bar while it runs, the outcome in plain words after. */
+function renderBatchStatus(){
+  const host=$('#batStatus'); if(!host) return;
+  const b=state.batch, total=b.total||0;
+  if(b.running){
+    const finished=b.items.filter(x=>b.runKeys&&b.runKeys.has(x.key)&&(x.state==='sent'||x.state==='failed')).length;
+    const cur=b.items.find(x=>x.state==='sending');
+    const what=cur?(cur.kind==='photo'?`${esc(cur.msg||'Measuring')} · ${esc(cur.file.name)}`:`Uploading ${esc(cur.file.name)}${cur.pct!=null?' · '+cur.pct+'%':''}`):'Finishing';
+    const part=cur?(cur.pct!=null?cur.pct/100:.4):0;
+    host.innerHTML=`<div class="bat-st-h"><span class="bat-spin" aria-hidden="true"></span><b>${finished} of ${total} done</b><span class="bat-st-what">${what}</span></div>
+      <div class="pbar"><div class="fill" style="width:${total?Math.max(4,Math.round(100*(finished+part)/total)):4}%"></div></div>
+      <p class="bat-st-note">Keep this page open until the uploads finish. After that the analysis runs on our side and you can close it.</p>`;
+    host.classList.remove('hidden','bat-st-done'); return;
+  }
+  if(!b.summary){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  const m=b.summary, parts=[];
+  if(m.photos) parts.push(`<li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span><b>${m.photos} ${m.photos===1?'photo':'photos'} ready.</b> Open ${m.photos===1?'it':'them'} from the list above, or later from History and the athlete's page.</span></li>`);
+  if(m.videos) parts.push(`<li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span><b>${m.videos} ${m.videos===1?'clip':'clips'} uploaded.</b> Analysed one by one in the lane below; we email you when ${m.videos===1?'it is':'they are'} done. You can close this page.</span></li>`);
+  if(m.failed) parts.push(`<li class="bat-st-bad"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>${m.failed} did not go through.</b> The row says why; fix it and send again.</span></li>`);
+  host.innerHTML=`<ul class="bat-st-list">${parts.join('')}</ul>`;
+  host.classList.remove('hidden'); host.classList.add('bat-st-done');
 }
 const BATCH_MAX=10;
 function batchAdd(files){
   const b=state.batch, def=$('#batAthlete'), sp=$('#batSport');
   b.items=b.items.filter(x=>x.state!=='sent');
+  b.summary=null;
   let dropped=0;
   [...files].forEach(file=>{
     if(b.items.length>=BATCH_MAX){ dropped++; return; }
@@ -14167,17 +14209,19 @@ function batchSendVideo(it){
     if(batchFilmedAt(it.file)) d.append('filmed_at_ms',String(batchFilmedAt(it.file)));
     const x=new XMLHttpRequest(); x.open('POST','/me/coach-uploads');
     const h=authHeaders(); Object.keys(h).forEach(k=>x.setRequestHeader(k,h[k]));
-    x.upload.onprogress=ev=>{ if(ev.lengthComputable){ it.msg=`Sending ${Math.round(100*ev.loaded/ev.total)}%`; renderBatch(); } };
+    x.upload.onprogress=ev=>{ if(ev.lengthComputable){ it.pct=Math.round(100*ev.loaded/ev.total); it.msg=it.pct<100?'Uploading':'Uploaded, handing over'; renderBatch(); } };
     x.onload=()=>{ let j={}; try{ j=JSON.parse(x.responseText); }catch(_e){}
-      if(x.status>=200&&x.status<300){ it.state='sent'; it.msg='In line'; }
+      it.pct=null;
+      if(x.status>=200&&x.status<300){ it.state='sent'; it.msg='Uploaded, in line'; }
       else { it.state='failed'; it.msg=typeof j.detail==='string'?j.detail:'Did not go through'; }
       res(); };
-    x.onerror=()=>{ it.state='failed'; it.msg='The connection dropped'; res(); };
+    x.onerror=()=>{ it.pct=null; it.state='failed'; it.msg='The connection dropped'; res(); };
     x.send(d);
   });
 }
 async function batchSendPhoto(it){
-  it.msg='Measuring…'; renderBatch();
+  it.needSport=false;
+  it.msg=it.sport==='auto'?'Reading run or ride':'Measuring'; renderBatch();
   let sport=it.sport;
   const pos=($('#batPos')||{}).value||'';
   if(sport==='auto'){
@@ -14190,9 +14234,13 @@ async function batchSendPhoto(it){
         const r=await fetch('/prescan',{method:'POST',headers:authHeaders(),body:fd}); if(r.ok) j=await r.json(); }
     }catch(_e){}
     // A photo the look cannot call is asked about, never guessed from the
-    // athlete's sport: a triathlete sends runs and rides.
+    // athlete's sport: a triathlete sends runs and rides. A look that never
+    // answered (connection, server busy) is not "could not tell": it says so,
+    // and sending again is the fix.
     sport=j&&j.sport;
-    if(!sport){ it.state='failed'; it.msg='Could not tell run from ride: choose one'; return; }
+    if(!j){ it.state='failed'; it.msg='Could not check this photo. Send again, or choose Bike or Run'; return; }
+    if(!sport){ it.state='failed'; it.needSport=true; it.msg='Could not tell run from ride: choose Bike or Run'; return; }
+    it.msg='Measuring'; renderBatch();
   }
   const d=new FormData(); d.append('photo',it.file); d.append('sport',sport); d.append('coaching','true');
   if(sport==='bike'&&pos&&pos!=='auto') d.append('position',pos);
@@ -14202,8 +14250,9 @@ async function batchSendPhoto(it){
     if(!r.ok){ it.state='failed'; it.msg=typeof j.detail==='string'?j.detail:'Could not read this photo'; return; }
     const e=entryFromResult('photo',j,{id:'h'+Date.now()+Math.random().toString(36).slice(2,6),at:Date.now(),athleteId:batchWhose(it)?Number(batchWhose(it)):null,fileName:it.file.name,filmedAt:batchFilmedAt(it.file)});
     state.cloudHist=[e,...(state.cloudHist||[])];
+    it.msg='Saving'; renderBatch();
     await fetch('/me/analyses',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(e)});
-    it.state='sent'; it.msg='Ready';
+    it.state='sent'; it.entryId=e.id; it.msg=`Ready · ${sport==='run'?'run':'bike'}${typeof e.score==='number'?' · '+Math.round(e.score):''}`;
   }catch(_e){ it.state='failed'; it.msg='The connection dropped'; }
 }
 async function batchGo(){
@@ -14211,10 +14260,13 @@ async function batchGo(){
   if(b.running) return;
   b.items.forEach(x=>{ if(x.state==='failed'){ x.state='ready'; x.msg=''; } });
   if(b.items.some(x=>x.state==='ready'&&batchWhose(x))&&!await confirmOthers()) return;
-  b.running=true;
+  b.running=true; b.summary=null;
+  b.runKeys=new Set(b.items.filter(x=>x.state==='ready').map(x=>x.key)); b.total=b.runKeys.size;
+  window.addEventListener('beforeunload',batchLeaveGuard);
   b.id=b.id&&(state.laneItems||[]).some(i=>i.batch_id===b.id&&['queued','scanning','running'].includes(i.status))?b.id:Math.random().toString(36).slice(2,12).padEnd(8,'0');
   track('batch_started',{files:b.items.length});
   renderBatch();
+  const st0=$('#batStatus'); if(st0) st0.scrollIntoView({block:'center',behavior:'smooth'});
   for(const it of b.items){
     if(it.state!=='ready') continue;
     it.state='sending'; it.msg='Sending…'; renderBatch();
@@ -14222,15 +14274,21 @@ async function batchGo(){
     renderBatch();
   }
   b.running=false;
-  const sent=b.items.filter(x=>x.state==='sent').length, failed=b.items.filter(x=>x.state==='failed').length;
+  window.removeEventListener('beforeunload',batchLeaveGuard);
+  const ran=b.items.filter(x=>b.runKeys.has(x.key));
+  const sent=ran.filter(x=>x.state==='sent').length, failed=ran.filter(x=>x.state==='failed').length;
+  b.summary={photos:ran.filter(x=>x.state==='sent'&&x.kind==='photo').length,videos:ran.filter(x=>x.state==='sent'&&x.kind==='video').length,failed};
+  track('batch_finished',{...b.summary,files:ran.length});
   // A sent clip lives in the lane below from here on, with its real state. Its
   // row would stay "In line" for good, with a "remove" that removes nothing.
   b.items=b.items.filter(x=>!(x.state==='sent'&&x.kind==='video'));
   renderBatch();
-  toast(failed?`${sent} sent, ${failed} did not go through.`:'All sent. You can close this page; we will email you when they are ready.',{duration:7000});
+  toast(failed?`${sent} sent, ${failed} did not go through.`:b.summary.videos?'All sent. You can close this page; we will email you when the clips are ready.':'All photos measured.',{duration:7000});
+  const st=$('#batStatus'); if(st&&!st.classList.contains('hidden')) st.scrollIntoView({block:'nearest',behavior:'smooth'});
   await loadLane(); renderLane(); pollLane();
   loadAthletes();
 }
+function batchLeaveGuard(e){ e.preventDefault(); e.returnValue=''; }
 /* What the lane ran a clip as. A row left on Auto says so until the quick look
    has read it, then names what it read, so a wrong guess is in plain sight. */
 function laneWhat(i){
@@ -14248,7 +14306,7 @@ function renderLane(){
     const noted=i.status==='done'&&why;
     return `<div class="bat-row bat-lane" data-id="${i.id}">
       <div class="bat-name">${esc(i.filename||'Clip')}<small>${i.athlete_name?esc(i.athlete_name)+' · ':''}${esc(laneWhat(i))}${i.source==='intake'?' · sent by them':''}</small>${why?`<small class="bat-why">${esc(why)}</small>`:''}</div>
-      <div class="bat-state ${['no_go','failed'].includes(i.status)?'sq-off':noted?'bat-noted':''}">${noted?'Ready, read the note':esc(LANE_WORD[i.status]||i.status)}</div>
+      <div class="bat-state ${['no_go','failed'].includes(i.status)?'sq-off':noted?'bat-noted':['queued','scanning','running'].includes(i.status)?'bat-live':i.status==='done'?'bat-ok':''}">${['queued','scanning','running'].includes(i.status)?'<span class="bat-dot" aria-hidden="true"></span>':''}${noted?'Ready, read the note':esc(LANE_WORD[i.status]||i.status)}</div>
       <div class="p-acts">
         ${i.status==='done'?`<button type="button" data-open="${esc(i.client_id)}">Open</button>`:''}
         ${i.status==='no_go'?`<button type="button" data-any="${i.id}">Run anyway</button>`:''}
@@ -14276,14 +14334,16 @@ function renderLane(){
   ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('over')));
   drop.addEventListener('drop',e=>{ e.preventDefault(); batchAdd(e.dataTransfer.files); });
-  $('#batGo').addEventListener('click',batchGo);
+  $('#batGo').addEventListener('click',()=>{ if($('#batGo').dataset.more){ $('#batFiles').click(); return; } batchGo(); });
   $('#batList').addEventListener('change',e=>{
     const row=e.target.closest('[data-i]'), f=e.target.dataset.f; if(!row||!f) return;
     const it=state.batch.items[Number(row.dataset.i)];
     it[f]=e.target.value;
     renderBatch();
   });
-  $('#batList').addEventListener('click',e=>{
+  $('#batList').addEventListener('click',async e=>{
+    const op=e.target.closest('[data-openph]');
+    if(op){ if(!findEntry(op.dataset.openph)) await refreshCloud(); if(findEntry(op.dataset.openph)) openHistory(op.dataset.openph); else toast('That report is not in your history yet. Try History in a moment.'); return; }
     const rm=e.target.closest('[data-rm]'); if(!rm) return;
     state.batch.items.splice(Number(rm.dataset.rm),1); renderBatch();
   });
