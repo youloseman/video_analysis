@@ -108,7 +108,7 @@ def test_a_choice_the_score_forgives_is_never_red_in_the_pdf():
 
 
 def test_the_spa_tells_a_small_file_from_a_small_rider():
-    assert "Resolution of the file" in SPA and "the file is low-resolution" in SPA
+    assert "Resolution of the file" in SPA and "<b>Low-resolution file</b>" in SPA
 
 
 def test_review_comes_before_the_coach_notes_and_the_table_notes_fold():

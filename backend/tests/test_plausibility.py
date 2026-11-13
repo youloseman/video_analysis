@@ -73,5 +73,5 @@ def test_a_small_rider_is_told_at_the_top_free_or_paid():
         "verdict": "small", "subject_height_frac": 0.2757, "subject_height_px": 353}}}}
     assert RG.quality_block(res)["framing"] == {"verdict": "small", "subject_height_frac": 0.2757}
     spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
-    assert 'id="framingWarn"' in spa and "Accuracy reduced: you\u2019re small in the frame" in spa
+    assert 'id="framingWarn"' in spa and "<b>Small in the frame</b>" in spa
     assert "(r.quality&&r.quality.framing)" in spa
