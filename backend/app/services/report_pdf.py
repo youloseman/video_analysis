@@ -105,10 +105,23 @@ def _score_notes(result: dict[str, Any], score: Any) -> list[str]:
         mean = sum(v * weights[k] for k, v in scored.items()) / sum(weights[k] for k in scored)
         worst = min(candidates, key=lambda k: candidates[k])
         pulled = mean - WORST_COMPONENT_PULL * (mean - candidates[worst])
-        if mean - score >= 1.5 and abs(pulled - score) <= 1.5:
+        capped = (result.get("score_coverage") or {}).get("capped_by") or []
+        if capped:
+            notes.append(capped_note(capped, mean))
+        elif mean - score >= 1.5 and abs(pulled - score) <= 1.5:
             notes.append(f"These average {mean:.0f}. The weakest, {_PART_NAMES.get(worst, worst)} at "
                          f"{candidates[worst]:.0f}, pulls the score down to {score:.0f}.")
     return notes
+
+
+def capped_note(capped: list[str], mean: float | None = None) -> str:
+    """Why a score that averages into the A range reads 89/B
+    (technique_scorer.cycling_red_components)."""
+    names = [_PART_NAMES.get(k, k) for k in capped]
+    which = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+    verb = "is" if len(names) == 1 else "are"
+    lead = f"These average {mean:.0f}, but " if mean is not None else ""
+    return f"{lead}{which} {verb} outside {'its' if len(names) == 1 else 'their'} range, so the grade stops at B: an A has nothing red."
 
 
 def whole_percents(weights: list[float]) -> list[int]:

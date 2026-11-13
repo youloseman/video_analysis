@@ -9696,7 +9696,12 @@ function coverageLine(cov){
   if(!cov || !cov.measures_total) return '';
   const missing=(cov.missing||[]).map(covName);
   const excluded=cov.excluded||{};
-  if(!missing.length && !Object.keys(excluded).length) return '';
+  /* An A has nothing red (technique_scorer.cycling_red_components): a score
+     that averaged into the A range and was held at 89 says which row held it. */
+  const capped=(cov.capped_by||[]).map(covName);
+  const capLine=capped.length
+    ?`<span class="cov-why">Grade held at B: ${esc(capped.join(', '))} ${capped.length>1?'are':'is'} outside ${capped.length>1?'their':'its'} range, and an A has nothing red.</span>`:'';
+  if(!missing.length && !Object.keys(excluded).length) return capLine;
   let line=`Scored on <span class="mono">${cov.measures_scored}</span> of `
          + `<span class="mono">${cov.measures_total}</span> measures`;
   // Why a measure was left out reads very differently from it simply being
@@ -9704,6 +9709,7 @@ function coverageLine(cov){
   const why=Object.entries(excluded).map(([k,v])=>`${covName(k)} — ${esc(v)}`);
   if(why.length) line+=`<br><span class="cov-why">Not graded: ${why.join('; ')}</span>`;
   else if(missing.length) line+=`<br><span class="cov-why">Not measured on this clip: ${missing.join(', ')}</span>`;
+  if(capLine) line+=`<br>${capLine}`;
   return line;
 }
 

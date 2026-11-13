@@ -548,12 +548,75 @@ def score_cycling(
         worst_pull=WORST_COMPONENT_PULL,
         exclude_from_worst=CYCLING_DERIVED_COMPONENTS,
     )
+    coverage = score_coverage(components, weights, excluded)
+    # An A is a position with nothing red in it. Gona's clip (2026-11-11) read
+    # 90/A in green beside a knee at the top 7 deg past its band: the mean and
+    # the pull toward the worst part both left it at 90. A row the table shows
+    # red now holds the grade at B, whatever the average says.
+    reds = cycling_red_components(summary, cycling_position, components)
+    if reds and overall >= GRADE_A_MIN:
+        overall = GRADE_A_MIN - 1
+        coverage["capped_by"] = reds
     return {
         "overall_score": overall,
         "letter_grade": assign_grade(overall),
         "component_scores": components,
-        "coverage": score_coverage(components, weights, excluded),
+        "coverage": coverage,
     }
+
+
+GRADE_A_MIN = 90
+
+
+def cycling_red_components(
+    summary: dict[str, Any], cycling_position: str | None, components: dict[str, float],
+) -> list[str]:
+    """Graded components whose reading the report shows RED: past its band by
+    more than the warning margin (overlay_style.status_for, the table's rule),
+    after the leniencies the score already grants -- an aero torso flatter than
+    the band and an aero shoulder closed past it are amber, the helmet never
+    goes red."""
+    from app.services.video_analysis import overlay_style
+    from app.services.video_analysis.biomechanics.cycling_positions import (
+        SHOULDER_CLOSED_OK_POSITIONS,
+        get_cycling_reference,
+        knee_bdc_band,
+        pose_detector_of,
+        trunk_below_aero_floor,
+    )
+
+    ref = get_cycling_reference(cycling_position)
+    near = summary.get("near_side", "left")
+
+    def read(*keys: str) -> float | None:
+        for k in keys:
+            v = summary.get(k)
+            if isinstance(v, (int, float)) and v > 0:
+                return float(v)
+        return None
+
+    bands = {
+        "knee_bdc": (read(f"{near}_knee_at_bdc", "knee_at_bdc"),
+                     knee_bdc_band(cycling_position, summary.get("camera_side"), pose_detector_of(summary))),
+        "knee_tdc": (read(f"{near}_knee_at_tdc", "knee_at_tdc"), ref["knee_at_tdc"]),
+        "trunk_angle": (read("trunk_angle_avg"), ref["trunk_angle"]),
+        "elbow_angle": (read("elbow_angle_avg"), ref["elbow_angle"]),
+        "shoulder_angle": (read("shoulder_angle_avg"), ref["shoulder_angle"]),
+        "forearm_tilt": (summary.get("forearm_tilt_avg"), ref.get("forearm_tilt")),
+    }
+    reds = []
+    for comp, (value, band) in bands.items():
+        if comp not in components or value is None or not band:
+            continue
+        lo, hi = band
+        if value < lo and (
+            (comp == "trunk_angle" and trunk_below_aero_floor(cycling_position, value))
+            or (comp == "shoulder_angle" and cycling_position in SHOULDER_CLOSED_OK_POSITIONS)
+        ):
+            continue
+        if overlay_style.status_for(float(value), lo, hi) == "bad":
+            reds.append(comp)
+    return reds
 
 
 def score_swimming(
