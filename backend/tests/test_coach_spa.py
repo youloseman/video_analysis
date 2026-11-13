@@ -419,3 +419,17 @@ def test_a_race_can_be_changed_in_place():
     assert "data-raceedit" in one and "'PATCH','athletes/'+a.id+'/races/'+editR.id" in one
     # Editing is still possible with all twelve places taken.
     assert "races.length>=12&&!editR" in one
+
+
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_the_race_countdown_is_counted_on_the_coachs_own_day():
+    """Late on the 11th in Vancouver the server is already on the 12th."""
+    script = (
+        fn("localiseRaces") + "\n"
+        "const a=[{races:[{race_on:'2026-11-10',days_to_go:-2,past:true},{race_on:'2026-11-20',days_to_go:8,past:false}],next_race:null}];\n"
+        "localiseRaces(a,new Date(2026,10,11,23,40));\n"
+        "console.log(JSON.stringify([a[0].races.map(r=>[r.days_to_go,r.past]),a[0].next_race.race_on]));"
+    )
+    out = json.loads(subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout)
+    assert out == [[[-1, True], [9, False]], "2026-11-20"]
+    assert "localiseRaces(ATHLETES.athletes)" in fn("loadAthletes")

@@ -928,6 +928,9 @@
             <span class="pill pill-okchip hidden u-mt-2" id="confChip"><span class="dot" aria-hidden="true"></span>Full confidence</span>
           </div>
         </div>
+        <!-- The one thing to act on, in the card with the number it explains
+             (resultVerdict). Empty on a locked or withheld result. -->
+        <div class="sc-verdict hidden" id="scVerdict"></div>
         <p class="score-none-why hidden" id="scoreWithheld"></p>
         <p class="score-none-why hidden" id="framingWarn"></p>
         <div class="score-meta" id="scoreMeta"></div>
@@ -1003,7 +1006,7 @@
           </div>
           <div class="videocap">
             <span>Annotated overlay · skeleton + the joints worth watching<br>
-              <span class="note">Callouts mark what sits outside its range — every angle is in the table below. Results aren’t stored, so download to keep it.</span></span>
+              <span class="note">A number on the video is that frame’s; the table reads the whole clip, so the two can differ by a degree or two. Callouts mark what sits outside its range.</span></span>
             <span class="grp u-flex u-gap-2 u-wrap">
               <button class="btn btn-ghost btn-sm hidden" id="vAdjust" type="button"
                       title="Move a joint point the model placed wrong; the whole clip is measured again">
@@ -4093,7 +4096,7 @@ function rerenderAngleViews(){
   const r=state.lastResult;
   if(r&&r.sport_type&&!$('#results').classList.contains('hidden')&&!(r.locked&&r.locked.reason!=='preview')){
     const s=r.sport_specific_metrics||{}, sport=r.sport_type;
-    renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s));
+    renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null, r.fit_plan):runTiles(s));
     renderAngleTable(r, sport);
   }
   if(fpMain&&fpMain.tl) fpMain.paint();
@@ -4229,7 +4232,7 @@ function tile(lbl,val,unit,ref,cls,isText=false,range=null){
 }
 /* One handler for every [?] on the page: the table is rebuilt by a dozen renderers. */
 document.addEventListener('click',e=>{
-  const b=e.target.closest('.t-what'); if(!b) return;
+  const b=e.target.closest('.t-what,.m-srcbtn'); if(!b) return;
   const def=document.getElementById(b.getAttribute('aria-controls')); if(!def) return;
   const open=def.classList.toggle('hidden')===false;
   b.setAttribute('aria-expanded',String(open));
@@ -4299,7 +4302,12 @@ function measRow(m){
   }
   // Who decided this band, printed rather than hidden behind a hover, and the
   // reading's own caveat ("estimated from 2D video") beside it.
-  const sub=[m.ref?esc(m.ref):'', m.range&&m.range.src?`Band: ${esc(m.range.src)}`:''].filter(Boolean).join(' · ');
+  let src='';
+  if(m.range&&m.range.src){
+    const sid='tsrc'+(++_defSeq);
+    src=`<button type="button" class="m-srcbtn" aria-expanded="false" aria-controls="${sid}">Source</button><span class="m-src hidden" id="${sid}">Band: ${esc(m.range.src)}</span>`;
+  }
+  const sub=[m.ref?esc(m.ref):'', src].filter(Boolean).join(m.ref&&src?' · ':'');
   const valHtml = m.isText
     ? `<span class="m-txt">${esc(m.val)}</span>`
     : `${m.val}${unit==='°'||unit==='×'||unit==='%'?unit:(unit?` <small>${esc(unit)}</small>`:'')}`;
@@ -4342,7 +4350,7 @@ function RB(field, value, lo, hi, unit){
   return R(value, b.lo, b.hi, unit, b.source||null);
 }
 
-function bikeTiles(s, position){
+function bikeTiles(s, position, plan){
   const t=[];
   // Ranges are per-position (mirrors backend). rng(key) -> {value,lo,hi} or null.
   // Served band first (it knows the position and carries the citation), the
@@ -4438,7 +4446,13 @@ function bikeTiles(s, position){
       const tb=Math.abs(Math.round(est.to_band_mm||0));
       ref=tb<1?'at the edge of the band — within tolerance':`≈${tb} mm outside the band — within tolerance`;
     }
-    t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'',ref,s.saddle_height_assessment==='optimal'?'good':'warn',true));
+    /* The plan decides whether the saddle moves (action_plan_builder, on the
+       knee at the bottom of the stroke). This row used to read "Acceptable,
+       within tolerance" beside a card saying "Lower the saddle 5 mm": two
+       thresholds, one bike. Where the plan asks for a change, the row says it. */
+    const sd=plan&&(plan.diagnostics||[]).find(d=>d.component==='saddle_height'&&(d.action==='lower_saddle'||d.action==='raise_saddle'));
+    if(sd){ const m=tile('Saddle height',`${sd.action==='lower_saddle'?'Lower':'Raise'}${sd.amount?' '+sd.amount:''}`,'','from the knee at the bottom of the stroke: see What to change on the bike','warn',true); m.derived=true; t.push(m); }
+    else t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'',ref,s.saddle_height_assessment==='optimal'?'good':'warn',true));
   }
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
   // Aero now has its own headline panel (renderAeroPanel), not a tile.
@@ -7874,9 +7888,23 @@ async function loadAthletes(){
   if(!auth){ ATHLETES={allowed:false,athletes:[],limit:0,used:0}; renderAthleteField(); return; }
   try{
     const [r]=await Promise.all([fetch('/me/athletes',{headers:authHeaders()}), loadGroups()]);
-    if(r.ok){ ATHLETES=await r.json(); ATHLETES.error=false; } else ATHLETES.error=true;
+    if(r.ok){ ATHLETES=await r.json(); ATHLETES.error=false; localiseRaces(ATHLETES.athletes); } else ATHLETES.error=true;
   }catch(e){ ATHLETES.error=true; }
   renderAthleteField();
+}
+/* The countdown is counted on the coach's own calendar day. The server counts
+   from the UTC date, and in the evening in Vancouver that is already tomorrow:
+   a race nine days away read "in 8 days". Which race is next follows from it. */
+function localiseRaces(list, now){
+  const t=now||new Date(), today=Date.UTC(t.getFullYear(),t.getMonth(),t.getDate());
+  (list||[]).forEach(a=>{
+    if(!a.races) return;
+    a.races.forEach(r=>{
+      const p=String(r.race_on||'').split('-').map(Number);
+      if(p.length===3&&!p.some(isNaN)){ r.days_to_go=Math.round((Date.UTC(p[0],p[1]-1,p[2])-today)/86400000); r.past=r.days_to_go<0; }
+    });
+    a.next_race=a.races.find(r=>!r.past)||null;
+  });
 }
 /* The coach's groups (/me/athlete-groups): a club, a training camp, "Kona
    2027". An athlete sits in any number of them; the Squad filters by one. */
@@ -10240,6 +10268,116 @@ function renderAngleTable(r, sport){
   updateAngleMergeNote(paired, r.camera_side||null, sessionOther);
 }
 
+/* ============================================================
+   The verdict: the one thing to act on, in the score card, and the Findings
+   card built from the same readings.
+
+   Before (2026-11-13) the card held a number and where the camera stood, and
+   Findings read the server's issue list alone. A ride with the knee 5 deg past
+   its band and a "Lower the saddle" card further down opened on "No major
+   technique issues detected": three places, three answers. Now the table's
+   own rows decide. Whatever the measurements show outside its range is what
+   the card says and what Findings lists; the plan's first step is the action.
+   ============================================================ */
+const VERDICT_CHIP={bad:'Fix first',warn:'Worth a look',good:'In range'};
+function resultVerdict(r, sport, tiles){
+  const s=r.sport_specific_metrics||{};
+  // A row that restates another (the saddle, read off the knee) is one finding, not two.
+  const rows=(tiles||[]).filter(m=>m&&!m.derived).map(m=>({m,st:measStatus(m)}));
+  // How far out, as a share of the band's own width: degrees, centimetres and
+  // milliseconds cannot be ranked against each other raw.
+  const far=x=>x.m.range?Math.abs(x.m.delta||0)/((x.m.range.hi-x.m.range.lo)||1):-1;
+  const byFar=(a,b)=>far(b)-far(a);
+  const out=rows.filter(x=>x.st.cls==='m-out').sort(byFar);
+  const near=rows.filter(x=>x.st.cls==='m-near').sort(byFar);
+  const ok=rows.filter(x=>x.st.group==='ok');
+  const SEV={high:0,medium:1,low:2};
+  const issues=(r.detected_issues||[]).slice().sort((a,b)=>(SEV[(a.severity||'').toLowerCase()]??3)-(SEV[(b.severity||'').toLowerCase()]??3));
+  const diag=sport==='bike'?(((r.fit_plan||{}).diagnostics)||[]).find(d=>d.action&&['needs_adjustment','warning','critical','medical_risk'].includes((d.status||'').toLowerCase())):null;
+  const drill=sport==='run'?((((r.training_plan||{}).top_3_priorities)||[]).find(p=>p.drill)||null):null;
+  const lead=out[0]||near[0]||null;
+  const level=(out.length||diag)?'bad':(near.length||issues.length)?'warn':'good';
+  const unitOf=m=>m.range&&m.range.unit!=null?m.range.unit:m.unit;
+  let head, why='';
+  if(diag) head=`${FIT_ACTION[diag.action]||fitWords(diag.action)}${diag.amount?' '+diag.amount:''}`;
+  else if(lead&&lead.m.range) head=lead.st.cls==='m-out'?`${lead.m.lbl} is ${lead.m.delta>0?'too high':'too low'}`:`${lead.m.lbl} is at the edge of its range`;
+  else if(lead) head=`${lead.m.lbl}: ${String(lead.m.val).toLowerCase()}`;
+  else if(issues.length) head=pretty(issues[0].type||'');
+  else head='Nothing to fix in this clip';
+  if(lead&&lead.m.range){
+    const u=unitOf(lead.m);
+    why=`${esc(lead.m.lbl)} <b class="num">${esc(String(lead.m.val))}${measUnit(u)}</b>, range <span class="num">${measRange(lead.m.range.lo,lead.m.range.hi,u)}</span>.`;
+  } else if(!lead&&issues.length&&issues[0].recommendation) why=esc(issues[0].recommendation);
+  const more=out.length+near.length-(lead?1:0);
+  if(lead) why+=more>0?` ${more} more ${more===1?'reading is':'readings are'} outside or at the edge of ${more===1?'its':'their'} range${ok.length?`; ${ok.length} in range`:''}.`
+                      :(ok.length?' Everything else that is graded is in range.':'');
+  else if(level==='good'&&ok.length) why=`All ${ok.length} graded readings are inside their ranges.`;
+  let side='';
+  const ae=s.aero_estimate;
+  if(sport==='bike'&&ae&&ae.zone_label) side=`<b>Aero</b> ${esc(ae.zone_label)} zone · about <span class="num">${esc(String(ae.drag_vs_upright_pct))}%</span> of upright drag`;
+  else if(sport==='run'&&s.cadence_spm!=null) side=`<b>Rhythm</b> Cadence <span class="num">${num(s.cadence_spm)}</span> spm${s.ground_contact_ms!=null?` · ground contact <span class="num">${num(s.ground_contact_ms)}</span> ms`:''}`;
+  const go=diag?['fitBlock','What to change on the bike']:drill?['planBlock',`Drill: ${drill.drill}${drill.weeks?`, about ${drill.weeks} ${drill.weeks>1?'weeks':'week'}`:''}`]:(lead||issues.length)?['metricsBlock','The measurements']:null;
+  return {level, head, why, side, go, out, near, ok, issues, diag, drill};
+}
+function verdictGo(host){
+  host.querySelectorAll('[data-vgo]').forEach(b=>b.addEventListener('click',()=>{
+    const el=document.getElementById(b.dataset.vgo); if(el&&!el.classList.contains('hidden')) el.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+}
+function renderVerdict(v){
+  const host=$('#scVerdict'); if(!host) return;
+  const card=host.closest('.scorecard');
+  host.classList.toggle('hidden', !v);
+  if(card) card.classList.toggle('has-verdict', !!v);
+  if(!v){ host.innerHTML=''; return; }
+  host.innerHTML=`<span class="v-chip v-${v.level}">${VERDICT_CHIP[v.level]}</span>
+    <div class="v-head">${esc(v.head)}</div>
+    ${v.why?`<p class="v-why">${v.why}</p>`:''}
+    ${v.side?`<p class="v-side">${v.side}</p>`:''}
+    ${v.go?`<button type="button" class="v-go" data-vgo="${v.go[0]}">${esc(v.go[1])} <span aria-hidden="true">↓</span></button>`:''}`;
+  verdictGo(host);
+}
+/* Findings, beside the clip. The server's issues when it sent any (they carry
+   their own advice); otherwise the rows the table shows outside their range,
+   each with its bar; and only when neither exists, the all-clear. */
+function renderFindings(v){
+  const ib=$('#issues'); if(!ib) return;
+  const n=(k,w)=>k?`<span class="fd-n fd-${w}">${k} ${w==='out'?'outside range':w==='near'?'at the edge':'in range'}</span>`:'';
+  const counts=(v.out.length||v.near.length||v.ok.length)?`<p class="fd-counts">${n(v.out.length,'out')}${n(v.near.length,'near')}${n(v.ok.length,'ok')}</p>`:'';
+  let body;
+  if(v.issues.length){
+    body=v.issues.map((it,i)=>{
+      const sev=(it.severity||'').toLowerCase();
+      const sevCls=['high','medium','low'].includes(sev)?sev:'low';
+      const lead=i===0 && v.issues.length>1;
+      return `<div class="issue ${sevCls}${lead?' issue-lead':''}">
+        ${issueGlyph(it.type)}
+        ${lead?'<div class="i-first">Fix first</div>':''}
+        <div class="i-top"><span class="i-type">${esc(pretty(it.type||''))}</span>
+          <span class="pill pill-${sevCls}"><span class="dot" aria-hidden="true"></span>${esc(it.severity||'')}</span></div>
+        <div class="i-rec">${esc(it.recommendation||'')}</div>
+        ${it.value?`<div>${fmtIssueValue(it.value)}</div>`:''}</div>`;
+    }).join('');
+  } else if(v.out.length||v.near.length){
+    body=[...v.out,...v.near].slice(0,4).map(({m,st})=>{
+      const unit=m.range&&m.range.unit!=null?m.range.unit:m.unit;
+      const val=m.isText?esc(String(m.val)):`${esc(String(m.val))}${measUnit(unit)}`;
+      const delta=m.range?measDelta(m.delta,unit):'';
+      return `<div class="fd-row ${st.cls}"><div class="fd-top"><span class="fd-name">${esc(m.lbl)}</span><span class="fd-val num">${val}</span></div>
+        ${m.range?measBar(m,st):(m.ref?`<div class="fd-ref">${esc(m.ref)}</div>`:'')}
+        <div class="fd-st">${st.word}${delta?` <span class="num">${delta}</span>`:''}</div></div>`;
+    }).join('')
+    +(v.go?`<button type="button" class="fd-act" data-vgo="${v.go[0]}"><span class="fd-act-n" aria-hidden="true">1</span><span><b>${esc(v.diag?v.head:v.go[1])}</b>${v.diag&&v.diag.effort&&FIT_EFFORT[v.diag.effort.level]?`<small>${FIT_EFFORT[v.diag.effort.level]}</small>`:''}${!v.diag&&v.drill&&v.drill.cue?`<small>Cue: ${esc(v.drill.cue)}</small>`:''}<small>${v.diag?esc(v.go[1]):v.drill?'Your drills':'Open'} ↓</small></span></button>`:'');
+  } else {
+    body=`<div class="banner good u-mt-0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+      <span>No major technique issues detected in this clip.</span></div>`;
+  }
+  const okChips=v.ok.length&&(v.out.length||v.near.length||v.issues.length)
+    ?`<div class="fd-inrange"><b>In range · ${v.ok.length}</b>${v.ok.map(x=>`<span>${esc(x.m.lbl)}</span>`).join('')}</div>`:'';
+  ib.innerHTML=counts+body+okChips;
+  verdictGo(ib);
+}
+
 function render(job,opts){
   opts=opts||{};
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
@@ -10289,18 +10427,24 @@ function render(job,opts){
     const fileSmall=capChecks.some(c=>c.id==='framing'&&c.label==='Resolution of the file');
     const fileH=(capChecks.find(c=>c.id==='framing')||{}).measured||'';
     const fileHpx=(fileH.match(/from a (\d+) px tall file/)||[])[1];
+    /* One line beside the score, the reasoning behind "Why" (2026-11-13): on a
+       phone the full paragraph and its drawing filled the first screen and
+       pushed the score's own verdict below it. */
+    const fwLine=(lead,rest)=>`<span class="fw-line"><span>${lead}</span><button type="button" class="fw-why" aria-expanded="false" aria-controls="fwMore">Why <span aria-hidden="true">▾</span></button></span><span class="fw-more hidden" id="fwMore">${rest}</span>`;
     fw.innerHTML = !small ? '' : fileSmall
-      ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
-         <span><b>Accuracy reduced: the file is low-resolution</b>${fileHpx?` (${fileHpx} px tall)`:''}.
-         Your framing is fine; the clip was downscaled before it reached us, so each joint is only a few pixels and the points can wander.
-         Send the original straight from the camera roll, not through a messaging app or an “optimised” export.</span>`
-      : `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
-         <span><b>Accuracy reduced: you’re small in the frame</b>${fr.subject_height_frac?` (about ${Math.round(fr.subject_height_frac*100)}% of the picture’s height)`:''}.
-         At that size the legs are a few pixels apart and the model can swap them. ${(r.sport_type||r.sport)==='run'
+      ? fwLine(`<b>Accuracy reduced: the file is low-resolution</b>${fileHpx?` (${fileHpx} px tall)`:''}.`,
+         `Your framing is fine; the clip was downscaled before it reached us, so each joint is only a few pixels and the points can wander.
+         Send the original straight from the camera roll, not through a messaging app or an “optimised” export.`)
+      : fwLine(`<b>Accuracy reduced: you’re small in the frame</b>${fr.subject_height_frac?` (about ${Math.round(fr.subject_height_frac*100)}% of the picture’s height)`:''}.`,
+         `At that size the legs are a few pixels apart and the model can swap them. ${(r.sport_type||r.sport)==='run'
            ?'Running past the camera? Hold the phone sideways: the same stretch of track has you about 1.8 times taller.'
-           :'Film closer or zoom in so you fill most of the height, and the same position will read more reliably.'}</span>`;
+           :'Film closer or zoom in so you fill most of the height, and the same position will read more reliably.'}`);
     fw.classList.toggle('hidden', !small);
+    fw.classList.toggle('fw-compact', small);
+    const fb=fw.querySelector('.fw-why');
+    if(fb) fb.addEventListener('click',()=>{ const m=fw.querySelector('.fw-more'); const open=m.classList.toggle('hidden')===false; fb.setAttribute('aria-expanded',String(open)); });
   }
+  renderVerdict(null);
   setScoreRing('#scoreRing', withheld ? null : r.technique_score);
   // must run before saveToHistory() at the end of render(), or it compares
   // this analysis against itself
@@ -10372,7 +10516,7 @@ function render(job,opts){
   if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position))}</b>`);
   const cov=coverageLine(r.score_coverage);
   if(cov) parts.push(cov);
-  $('#scoreMeta').innerHTML=parts.join('<br>');
+  $('#scoreMeta').innerHTML=parts.map(x=>`<span class="sm-part">${x}</span>`).join('');
   renderScoreBreakdown(r, sport);
 
   renderBilateral(r.bilateral);
@@ -10435,7 +10579,9 @@ function render(job,opts){
     if(job.overlay_failed){
       ep.innerHTML='The annotated overlay video couldn’t be rendered for this clip — your score, angles and coaching above are unaffected. See your technique on the annotated keyframe saved in <b>History</b>.';
     } else {
-      ep.textContent='Results aren’t stored — save what you need before leaving.';
+      // Signed in, the report is in History the moment it is drawn; only a
+      // guest's goes with the tab.
+      ep.textContent=auth?'Saved to your History. There is no overlay video for this clip.':'Results aren’t stored — save what you need before leaving.';
     }
     ep.classList.remove('hidden');
   }
@@ -10491,36 +10637,19 @@ function render(job,opts){
   renderTrainingPlan(r.training_plan);
   renderFitPlan(r.fit_plan);
 
-  // findings — sort by severity so the biggest issue always leads, regardless
-  // of the order the backend returned them; the top one gets a "Fix first" cue.
-  const SEV_RANK={high:0,medium:1,low:2};
-  const issues=(r.detected_issues||[]).slice().sort((a,b)=>
-    (SEV_RANK[(a.severity||'').toLowerCase()]??3)-(SEV_RANK[(b.severity||'').toLowerCase()]??3));
-  const ib=$('#issues');
-  if(issues.length){
-    ib.innerHTML=issues.map((it,i)=>{
-      const sev=(it.severity||'').toLowerCase();
-      const sevCls=['high','medium','low'].includes(sev)?sev:'low';
-      const lead=i===0 && issues.length>1;
-      return `<div class="issue ${sevCls}${lead?' issue-lead':''}">
-        ${issueGlyph(it.type)}
-        ${lead?'<div class="i-first">Fix first</div>':''}
-        <div class="i-top"><span class="i-type">${esc(pretty(it.type||''))}</span>
-          <span class="pill pill-${sevCls}"><span class="dot" aria-hidden="true"></span>${esc(it.severity||'')}</span></div>
-        <div class="i-rec">${esc(it.recommendation||'')}</div>
-        ${it.value?`<div>${fmtIssueValue(it.value)}</div>`:''}</div>`;
-    }).join('');
-  } else {
-    ib.innerHTML=`<div class="banner good u-mt-0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-      <span>No major technique issues detected in this clip.</span></div>`;
-  }
+  // The readings, once: the table, the verdict in the score card and Findings
+  // are all drawn from this list, so they cannot disagree.
+  const tiles=sport==='bike'?bikeTiles(s, r.cycling_position||null, r.fit_plan):runTiles(s);
+  const verdict=resultVerdict(r, sport, tiles);
+  renderVerdict(withheld?null:verdict);
+  renderFindings(verdict);
 
   // aero & watts headline panel (bike only; hidden for run + when N/A)
   if(sport==='bike') renderAeroPanel(s); else $('#aeroBlock').classList.add('hidden');
   renderHob(r,'video');
 
   // The measurements table (built from the tile() calls).
-  renderTiles(sport==='bike'?bikeTiles(s, r.cycling_position||null):runTiles(s));
+  renderTiles(tiles);
   // Whose numbers these are. On a two-sided session the readings are either
   // the merge of both clips or, when the merge was refused, one clip's --
   // and a rider who uploaded two clips reads an unlabelled block as both.

@@ -1845,6 +1845,68 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   #historyDetail .scorecard .sharebtn{margin-top:8px}
   #historyDetail .score-meta{display:block}
 }
+/* The verdict in the score card (resultVerdict, 2026-11-13): the middle of the
+   card says what to act on; where the camera stood drops to one line under it. */
+.sm-part{display:block}
+.sc-verdict{grid-area:verdict;align-self:center;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.sc-main.has-verdict{grid-template-columns:auto auto minmax(0,1.3fr);
+  grid-template-areas:"label label tag" "ring grade verdict" "delta delta verdict" "meta meta meta" "conf conf conf" "warn warn warn" "acts acts acts"}
+.sc-main.has-verdict.has-bd{grid-template-columns:auto auto minmax(0,1.3fr) minmax(250px,1fr);
+  grid-template-areas:"label label tag bd" "ring grade verdict bd" "delta delta verdict bd" "meta meta meta bd" "conf conf conf bd" "warn warn warn bd" "acts acts acts bd"}
+.sc-main.has-verdict > .score-meta{font-size:12.5px;line-height:1.6;margin-top:10px}
+.sc-main.has-verdict > .score-meta .sm-part{display:inline}
+.sc-main.has-verdict > .score-meta .sm-part + .sm-part::before{content:" · ";color:rgba(255,255,255,.45)}
+.sc-main.has-verdict > .confwrap{margin-top:6px;justify-self:start}
+.v-chip{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;padding:2px 10px;border-radius:999px}
+.v-bad{background:rgba(241,85,63,.2);color:#FFB3A6}
+.v-warn{background:rgba(201,123,16,.25);color:#FFD08A}
+.v-good{background:rgba(46,158,91,.22);color:#7BE0A2}
+.v-head{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:28px;line-height:1.1;color:#fff;overflow-wrap:anywhere}
+.v-why{margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.8);max-width:52ch}
+.v-why b{color:#fff;font-weight:500}
+.v-why .num,.v-side .num{font-family:var(--f-mono);font-feature-settings:"tnum" 1}
+.v-side{margin:2px 0 0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.8);background:rgba(255,255,255,.08);padding:6px 10px}
+.v-side b{color:#A7C2F9;font-weight:600;margin-right:6px}
+.v-go{background:none;border:0;padding:2px 0;font:inherit;font-size:13px;font-weight:600;color:#A7C2F9;cursor:pointer;text-align:left}
+.v-go:hover{text-decoration:underline}
+/* The framing note as one line; the reasoning opens under "Why". */
+.score-none-why.fw-compact{display:block;padding:8px 12px}
+.fw-line{display:flex;gap:12px;align-items:baseline;justify-content:space-between}
+.fw-why{flex:none;background:none;border:0;padding:0;font:inherit;font-weight:600;color:#A7C2F9;cursor:pointer;white-space:nowrap}
+.fw-more{display:block;margin-top:6px}
+/* Findings built from the table's rows (renderFindings). */
+.fd-counts{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 10px;font-size:13px;font-weight:600}
+.fd-n.fd-out{color:var(--m-out)} .fd-n.fd-near{color:var(--m-near-text)} .fd-n.fd-ok{color:var(--m-ok)}
+.fd-row{display:grid;gap:8px;padding:12px 0;border-top:1px solid var(--c-line)}
+.fd-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.fd-name{font-weight:600;color:var(--c-head)}
+.fd-val{font-family:var(--f-mono);font-size:18px;font-weight:500;font-feature-settings:"tnum" 1}
+.fd-row.m-out .fd-val,.fd-row.m-out .fd-st{color:var(--m-out)}
+.fd-row.m-near .fd-val,.fd-row.m-near .fd-st{color:var(--m-near-text)}
+.fd-st{font-size:13px;font-weight:600}
+.fd-st .num{font-family:var(--f-mono);font-weight:500}
+.fd-ref{font-size:12.5px;color:var(--c-ink-faint)}
+.fd-act{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--c-panel);border:0;border-left:3px solid var(--m-near);padding:12px 14px;margin-top:4px;transition:background-color .15s}
+.fd-act:hover{background:var(--c-line)}
+.fd-act-n{font-family:var(--f-mono);font-weight:600;color:var(--m-near-text)}
+.fd-act b{display:block}
+.fd-act small{display:block;font-size:12.5px;color:var(--c-ink-soft);margin-top:2px}
+.fd-inrange{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid var(--c-line);padding-top:12px;margin-top:12px;font-size:13px}
+.fd-inrange b{color:var(--m-ok);margin-right:4px}
+.fd-inrange span{padding:1px 9px;border-radius:999px;background:var(--st-good-bg);color:var(--st-good)}
+/* A band's citation: one word until asked for. */
+.m-srcbtn{background:none;border:0;padding:0;font:inherit;font-size:12px;color:var(--c-blue);text-decoration:underline;cursor:pointer}
+.m-src{display:block;margin-top:2px}
+@media print{ .m-srcbtn,.fw-why{display:none} .m-src.hidden,.fw-more.hidden{display:block !important} }
+@media(max-width:900px){
+  .sc-main.has-verdict.has-bd{grid-template-columns:auto auto minmax(0,1fr);
+    grid-template-areas:"label label tag" "ring grade verdict" "delta delta verdict" "meta meta meta" "conf conf conf" "bd bd bd" "warn warn warn" "acts acts acts"}
+}
+@media(max-width:640px){
+  .scorecard .sc-verdict{order:5;flex:1 1 100%}
+  .v-head{font-size:24px}
+}
+
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,140%);z-index:120;
   background:var(--c-ink);color:var(--c-bg);font-weight:500;font-size:14px;padding:11px 16px;border-radius:var(--radius-ctl);
   box-shadow:var(--shadow);max-width:min(90vw,420px);text-align:center;
