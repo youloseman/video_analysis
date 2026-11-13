@@ -51,12 +51,51 @@ def test_report_sections_carry_no_shadow():
     assert m and "box-shadow" not in m.group(0), "a report section is a rectangle on a page, not an object on a table"
 
 
+RADIUS_ROLES = {"--radius-card": "16px", "--radius-panel": "12px", "--radius-ctl": "8px",
+                "--radius-tag": "6px", "--radius-bar": "2px"}
+
+
 def test_radii_come_from_tokens():
-    """xs 4 / btn 8 / panel 10 / lg 14, pills 999, dots 50%."""
-    for tok in ("--radius-xs:", "--radius-btn:", "--radius:", "--radius-lg:"):
-        assert tok in TOKENS
+    """By role (the 2026-11-13 redesign): card 16, panel and picture 12,
+    control 8, tag 6, the range bar's marker and the Kona strip 2; pills
+    999, dots 50%."""
+    for tok, val in RADIUS_ROLES.items():
+        assert f"{tok}:{val}" in TOKENS, tok
     literals = sorted(set(re.findall(r"border-radius:[^;}]*?\b([1-9]\d?px)", APP)))
     assert not literals, f"px radius literals in app.css: {literals}"
+    # The app speaks in roles. The old names stay in tokens.css for the
+    # Academy and inline styles, mapped onto the roles.
+    old = sorted(set(re.findall(r"var\((--radius(?:-xs|-lg|-btn|-cta)?)\)", APP)))
+    assert not old, f"app.css reads an old radius name: {old}"
+
+
+def _radius_of(selector: str) -> str:
+    m = re.search(r"(?:^|\})" + re.escape(selector) + r"\{[^}]*border-radius:var\((--radius-[a-z]+)\)", APP, re.M)
+    assert m, selector
+    return m.group(1)
+
+
+def test_each_kind_of_thing_wears_its_role():
+    for sel in (".card", ".block", ".dcard", ".modal-card", ".tier"):
+        assert _radius_of(sel) == "--radius-card", sel
+    for sel in (".btn", ".navlink", ".seg", ".fld input", ".toast"):
+        assert _radius_of(sel) == "--radius-ctl", sel
+    for sel in (".videoframe", ".hthumb", ".banner", ".issue"):
+        assert _radius_of(sel) == "--radius-panel", sel
+    # The range bar and the Kona strip keep their hairline corners (Artur, 2026-11-11).
+    for sel in (".mbar-mark", ".ks-range", ".ks-mid"):
+        assert _radius_of(sel) == "--radius-bar", sel
+
+
+def test_headings_and_controls_follow_the_scale():
+    assert "--fs-h1:40px; --fs-h2:24px;" in TOKENS
+    assert ":root{--fs-h1:28px;--fs-h2:22px}" in APP
+    for sel in ("h2.sec", ".uphead"):
+        assert re.search(re.escape(sel) + r"\{[^}]*font-size:var\(--fs-h1\)", APP), sel
+    for sel in (".blockhead h3", ".dcard-head h2"):
+        assert re.search(re.escape(sel) + r"\{[^}]*font-size:var\(--fs-h2\)", APP), sel
+    assert re.search(r"\.btn\{[^}]*min-height:44px", APP)
+    assert "@media(pointer:fine){ .btn{min-height:40px} }" not in APP
 
 
 def test_one_breakpoint_scale():

@@ -98,11 +98,20 @@
   --f-body:'IBM Plex Sans','Segoe UI',sans-serif;
   --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
 
-  /* ---- radii: a 4 px corner on cards and buttons -- the hairline structure
-     stays, the severity goes; inputs and bars r/2, dots full ---- */
-  --radius-xs:2px; --radius-btn:4px; --radius:4px; --radius-lg:6px; --skew:0deg;
-  /* the price list's corners, worn by the paywall cards too (2026-10-28) */
-  --radius-card:16px; --radius-cta:8px;
+  /* ---- radii by role (2026-11-13, the redesign mockups; the price list
+     already wore them). A card is 16; a panel inside a card, and every
+     picture, 12; a control -- button, field, nav item, segment -- 8; a tag
+     on a picture or a small badge 6; the range bar's marker and the Kona
+     strip 2. Chips and pills 999, dots 50%. ---- */
+  --radius-card:16px; --radius-panel:12px; --radius-ctl:8px; --radius-tag:6px; --radius-bar:2px;
+  /* The old names, for the surfaces that still read them (Academy, the
+     examples page, inline styles in the SPA). app.css uses the roles only. */
+  --radius:var(--radius-panel); --radius-lg:var(--radius-ctl); --radius-btn:var(--radius-ctl);
+  --radius-xs:var(--radius-tag); --radius-cta:var(--radius-ctl); --skew:0deg;
+
+  /* ---- headings: Archivo italic 900 for a page title and a section title,
+     smaller on a phone (app.css, max-width 640) ---- */
+  --fs-h1:40px; --fs-h2:24px;
 
   /* ---- elevation: two, plus the one over footage. Nothing lifts on hover. ---- */
   --shadow:0 2px 6px rgba(20,24,31,.10);                  /* shadow/pop: menus, toast */

@@ -56,7 +56,7 @@ a{color:var(--c-blue-dk)}
 .sidebar > .wordmark{height:56px;padding:0 10px 0 18px;font-size:22px;border-bottom:1px solid var(--c-line);margin:0 -8px 8px;align-items:center}
 .sidebar > .wordmark .dot{transform:translateY(-6px)}
 .sidenav{display:flex;flex-direction:column;gap:1px;margin-top:4px;flex:1}
-.navlink{position:relative;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius);min-height:36px;
+.navlink{position:relative;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-ctl);min-height:36px;
   color:var(--c-ink-soft);text-decoration:none;font-size:13.5px;font-weight:500;transition:background-color .15s ease-out,color .15s ease-out}
 .navlink svg{width:16px;height:16px;flex:none;color:var(--c-ink-faint)}
 .navlink:hover{background:var(--c-panel);color:var(--c-ink)}
@@ -79,7 +79,7 @@ a{color:var(--c-blue-dk)}
 .planline:hover .pl-name{color:var(--c-ink)}
 .navgroup-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--c-line);display:flex;flex-direction:column;gap:1px}
 /* account box (bottom of sidebar + mobile top bar), mirrors the app */
-.btn{font-family:var(--f-body);font-weight:500;letter-spacing:0;border-radius:var(--radius);cursor:pointer;
+.btn{font-family:var(--f-body);font-weight:500;letter-spacing:0;border-radius:var(--radius-ctl);cursor:pointer;
   border:1px solid transparent;transition:background-color .15s ease-out,color .15s ease-out,border-color .15s ease-out;display:inline-flex;align-items:center;justify-content:center;
   gap:8px;text-decoration:none;min-height:40px;padding:9px 20px;font-size:14px}
 .btn svg{width:16px;height:16px;flex:none}
@@ -97,7 +97,7 @@ a{color:var(--c-blue-dk)}
 /* mobile top bar + off-canvas */
 .topbar{display:none;position:sticky;top:0;z-index:30;background:var(--c-bg);border-bottom:1px solid var(--c-line);
   align-items:center;gap:12px;height:52px;padding:0 12px 0 16px}
-.topbar-toggle{width:40px;height:40px;border:0;border-radius:var(--radius);background:transparent;
+.topbar-toggle{width:40px;height:40px;border:0;border-radius:var(--radius-ctl);background:transparent;
   color:var(--c-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;order:3}
 .topbar-toggle:hover{background:var(--c-panel)}.topbar-toggle svg{width:20px;height:20px}
 .topbar .wordmark{font-size:20px;order:1}
