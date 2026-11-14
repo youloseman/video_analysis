@@ -109,6 +109,18 @@ SYSTEM_PROMPT = (
 )
 
 
+# Road trunk lower than its band (cycling_positions.ROAD_TRUNK_LOW_CONCERN,
+# 2026-11-13): amber, a third of the penalty -- the coach must not turn it into
+# "raise the bars".
+ROAD_TRUNK_LOW_PROMPT = (
+    "- The trunk is LOWER than its road band. That is a racing position and "
+    "only amber: do NOT list it as a fault and do NOT advise raising the bars "
+    "on its own. Say at most once that it is fine if they can hold it, breathe "
+    "and see the road, and that a sore neck or lower back is the sign to "
+    "shorten or raise the reach."
+)
+
+
 def _client(genai: Any, types: Any, timeout_s: float | None = None) -> Any:
     """Gemini client with an explicit request timeout.
 
@@ -438,6 +450,7 @@ def _bike_data_block(
     # said once.
     from app.services.video_analysis.biomechanics.cycling_positions import (
         trunk_below_aero_floor,
+        trunk_below_road_floor,
     )
     if trunk_below_aero_floor(position, summary.get("trunk_angle_avg")):
         lines.append(
@@ -449,6 +462,8 @@ def _bike_data_block(
             "maximal power and metabolic efficiency (Fintelman 2015) — so keep it "
             "only if they can breathe, push and hold it late in the race."
         )
+    if trunk_below_road_floor(position, summary.get("trunk_angle_avg")):
+        lines.append(ROAD_TRUNK_LOW_PROMPT)
 
     # Foot posture through the stroke. Given as a style plus where the stroke
     # was spent, so the coach can connect a toe-down foot to a saddle-height
@@ -737,9 +752,9 @@ def _metric_statuses(
         if value < lo and status == "bad" and sport_type == "bike":
             from app.services.video_analysis.biomechanics.cycling_positions import (
                 SHOULDER_CLOSED_OK_POSITIONS,
-                trunk_below_aero_floor,
+                trunk_low_is_amber,
             )
-            if (field == "trunk_angle_avg" and trunk_below_aero_floor(position, value)) or (
+            if (field == "trunk_angle_avg" and trunk_low_is_amber(position, value)) or (
                 field == "shoulder_angle_avg" and position in SHOULDER_CLOSED_OK_POSITIONS
             ):
                 status = "warn"
@@ -1414,7 +1429,16 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
         from app.services.video_analysis.biomechanics.cycling_positions import (
             AERO_TRUNK_EXTREME_DEG,
             trunk_below_aero_floor,
+            trunk_below_road_floor,
         )
+        if (sport == "bike" and k == "trunk"
+                and trunk_below_road_floor(res.get("cycling_position"), v.get("value"))):
+            lines.append(
+                f"- {v.get('label', k)}: {v.get('value')}{unit} "
+                f"(hoods/drops band {v.get('optimal_min')}-{v.get('optimal_max')}{unit}) "
+                + ROAD_TRUNK_LOW_PROMPT[2:]
+            )
+            continue
         if (sport == "bike" and k == "trunk"
                 and trunk_below_aero_floor(res.get("cycling_position"), v.get("value"))):
             extreme = (v.get("value") or 99) < AERO_TRUNK_EXTREME_DEG

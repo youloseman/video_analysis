@@ -57,8 +57,11 @@ class TestForearmTilt:
 
 
 class TestTheClosedShoulder:
-    def test_it_applies_on_aero_bars_only(self):
-        assert SHOULDER_CLOSED_OK_POSITIONS == AERO_POSITIONS
+    def test_it_applies_on_aero_bars_and_the_road(self):
+        # Road joined 2026-11-13 (ten hoods photos read 65-81 closed with bent
+        # elbows); the upright position keeps the symmetric rule.
+        assert SHOULDER_CLOSED_OK_POSITIONS == AERO_POSITIONS | {"road_hoods", "road_drops"}
+        assert "casual" not in SHOULDER_CLOSED_OK_POSITIONS
         assert SHOULDER_CLOSED_FORGIVENESS == 3.0
         assert CYCLING_POSITIONS["tt_aero"]["shoulder_angle"] == (80, 100), "the band itself did not move"
 
@@ -67,14 +70,16 @@ class TestTheClosedShoulder:
         assert c("triathlon", "shoulder_angle", 70.0) == "ACCEPTABLE"
         assert c("tt_aero", "shoulder_angle", 72.0) == "ACCEPTABLE"
         assert c("tt_aero", "shoulder_angle", 120.0) in ("WARNING", "CRITICAL")
-        assert c("road_hoods", "shoulder_angle", 65.0) in ("WARNING", "CRITICAL"), "road keeps the symmetric rule"
+        assert c("road_hoods", "shoulder_angle", 65.0) == "ACCEPTABLE"
+        assert c("road_hoods", "shoulder_angle", 120.0) in ("WARNING", "CRITICAL"), "over-reach still a fault"
+        assert c("casual", "shoulder_angle", 80.0) in ("WARNING", "CRITICAL"), "upright keeps the symmetric rule"
 
     def test_video_score_closed_costs_a_third(self):
         base = {"near_side": "left", "left_knee_at_bdc": 141.0, "knee_at_bdc": 141.0,
                 "trunk_angle_avg": 22.0, "elbow_angle_avg": 90.0, "frames_analyzed": 300,
                 "forearm_tilt_avg": 15.0, "head_alignment_avg": 95.0}
         closed = TS.score_cycling({**base, "shoulder_angle_avg": 70.0}, {}, cycling_position="triathlon")
-        road = TS.score_cycling({**base, "shoulder_angle_avg": 70.0}, {}, cycling_position="road_hoods")
+        road = TS.score_cycling({**base, "shoulder_angle_avg": 70.0}, {}, cycling_position="casual")
         comp = lambda r: (r.get("component_scores") or r.get("components") or {}).get("shoulder_angle")  # noqa: E731
         assert comp(closed) is not None and comp(road) is not None
         assert comp(closed) > comp(road)
@@ -108,7 +113,7 @@ class TestTheClosedShoulder:
     def test_the_overlay_marks_it_on_aero_positions(self):
         from app.services.video_analysis.pipeline import VideoAnalysisPipeline
         p = VideoAnalysisPipeline.__new__(VideoAnalysisPipeline)
-        for pos, expect in (("triathlon", True), ("road_hoods", False)):
+        for pos, expect in (("triathlon", True), ("road_hoods", True), ("casual", False)):
             cfgs = p._get_angle_display_config("bike", {"camera_side": "left"}, cycling_position=pos)
             sh = next(c for c in cfgs if c["key"].endswith("shoulder"))
             assert bool(sh.get("closed_ok")) is expect, pos

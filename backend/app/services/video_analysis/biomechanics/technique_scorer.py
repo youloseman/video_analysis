@@ -476,12 +476,20 @@ def score_cycling(
         # still took points for it. The concern is shown instead
         # (cycling_positions.AERO_TRUNK_LOW_CONCERN).
         from app.services.video_analysis.biomechanics.cycling_positions import (
+            ROAD_TRUNK_LOW_FORGIVENESS,
             trunk_below_aero_floor,
+            trunk_below_road_floor,
         )
+        tr_lo, tr_hi = ref["trunk_angle"]
         if trunk_below_aero_floor(cycling_position, trunk):
             components["trunk_angle"] = 100.0
+        elif trunk_below_road_floor(cycling_position, trunk):
+            # A road trunk lower than the band: a racing position, a third of
+            # the penalty (cycling_positions.ROAD_TRUNK_LOW_FORGIVENESS).
+            graded = tr_lo - (tr_lo - trunk) / ROAD_TRUNK_LOW_FORGIVENESS
+            components["trunk_angle"] = score_in_range(graded, tr_lo, tr_hi)
         else:
-            components["trunk_angle"] = score_in_range(trunk, *ref["trunk_angle"])
+            components["trunk_angle"] = score_in_range(trunk, tr_lo, tr_hi)
 
     # No saddle component: the verdict is knee_bdc against the same band
     # (CYCLING_WEIGHTS, 2026-11-10).
@@ -582,7 +590,7 @@ def cycling_red_components(
         get_cycling_reference,
         knee_bdc_band,
         pose_detector_of,
-        trunk_below_aero_floor,
+        trunk_low_is_amber,
     )
 
     ref = get_cycling_reference(cycling_position)
@@ -610,7 +618,7 @@ def cycling_red_components(
             continue
         lo, hi = band
         if value < lo and (
-            (comp == "trunk_angle" and trunk_below_aero_floor(cycling_position, value))
+            (comp == "trunk_angle" and trunk_low_is_amber(cycling_position, value))
             or (comp == "shoulder_angle" and cycling_position in SHOULDER_CLOSED_OK_POSITIONS)
         ):
             continue
@@ -802,8 +810,13 @@ def classify_metric_severity(
     # Trunk on aero bars, flatter than the band: no points, never past
     # ACCEPTABLE -- the concern is said, the rider is not marked down.
     if metric_key == "trunk_angle" and value < opt_min:
-        from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
-        if pos in AERO_POSITIONS:
+        from app.services.video_analysis.biomechanics.cycling_positions import (
+            AERO_POSITIONS,
+            ROAD_POSITIONS,
+        )
+        # Road too, lower than the band: a racing position, amber at most
+        # (cycling_positions.ROAD_TRUNK_LOW_CONCERN).
+        if pos in AERO_POSITIONS or pos in ROAD_POSITIONS:
             return "ACCEPTABLE"
 
     # Shoulder on aero bars, closed past the band: the athlete's choice, never

@@ -22,6 +22,8 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_TRUNK_EXTREME_DEG,
     AERO_TRUNK_LOW_CONCERN,
     CYCLING_POSITIONS,
+    ROAD_POSITIONS,
+    ROAD_TRUNK_LOW_CONCERN,
     get_cycling_reference,
     get_medical_warnings,
     get_position_label,
@@ -723,8 +725,22 @@ def build_action_plan(
                 medical_warnings.extend(get_medical_warnings(position, {
                     "trunk_angle_avg": trunk_avg,
                 }))
+        elif trunk_class == "out_low" and position in ROAD_POSITIONS:
+            # Road, lower than the band (2026-11-13): a racing position, a
+            # third of the penalty and amber -- not "raise the bars". The note
+            # names the fix for the rider whose neck or back says otherwise
+            # (ROAD_TRUNK_LOW_CONCERN).
+            _add_good_metric(
+                good_metrics, "trunk_angle", trunk_avg,
+                (trunk_min, trunk_max), "Trunk angle",
+                borderline=True,
+                note=(
+                    f"Trunk angle is {trunk_avg:.0f} deg. "
+                    + ROAD_TRUNK_LOW_CONCERN.format(lo=trunk_min, hi=trunk_max)
+                ),
+            )
         elif trunk_class == "out_low":
-            # Non-aero position: a low trunk really is over-aggressive here.
+            # Upright (casual) position: a low trunk really is over-aggressive here.
             diagnostics.append(Diagnostic(
                 component="bar_position",
                 status="needs_adjustment",

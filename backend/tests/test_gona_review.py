@@ -101,7 +101,8 @@ def test_the_pelvic_ratio_has_no_band_anywhere():
 def test_a_choice_the_score_forgives_is_never_red_in_the_pdf():
     assert _lenient("trunk_angle_avg", 14.0, (20, 25), "triathlon", "bad") == "warn"
     assert _lenient("shoulder_angle_avg", 70.0, (80, 105), "triathlon", "bad") == "warn"
-    assert _lenient("shoulder_angle_avg", 70.0, (80, 100), "road_hoods", "bad") == "bad"
+    assert _lenient("shoulder_angle_avg", 70.0, (80, 100), "road_hoods", "bad") == "warn"  # 2026-11-13
+    assert _lenient("shoulder_angle_avg", 80.0, (100, 140), "casual", "bad") == "bad"
     assert _lenient("hip_at_tdc", 70.0, (45, 62), "triathlon", "bad") == "good"
     assert _lenient("elbow_angle_avg", 60.0, (75, 110), "triathlon", "bad") == "bad"
 

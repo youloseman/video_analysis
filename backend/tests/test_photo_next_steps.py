@@ -104,5 +104,8 @@ def test_an_aero_photo_with_a_high_back_is_not_read_as_road_drops():
     image = np.zeros((1000, 1000, 3), dtype=np.uint8)
     assert _auto_detect_cycling_position(27.0, nl, image) == "triathlon"
     assert _auto_detect_cycling_position(18.0, nl, image) == "tt_aero"
-    # Without the arms it falls back to the trunk, as before.
-    assert _auto_detect_cycling_position(27.0) == "road_drops"
+    # Without the arms it falls back to the trunk -- but never to the drops:
+    # the grip is not readable from the side (2026-11-13).
+    assert _auto_detect_cycling_position(27.0) == "road_hoods"
+    assert _auto_detect_cycling_position(18.0) == "tt_aero"
+    assert _auto_detect_cycling_position(50.0) == "casual"

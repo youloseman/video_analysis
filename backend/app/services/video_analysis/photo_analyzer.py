@@ -37,6 +37,9 @@ from app.services.video_analysis.biomechanics.cycling_positions import (
     AERO_TRUNK_EXTREME_DEG,
     HIP_MEDICAL_MIN_DEG,
     AERO_TRUNK_LOW_CONCERN,
+    ROAD_POSITIONS,
+    ROAD_TRUNK_LOW_CONCERN,
+    ROAD_TRUNK_LOW_FORGIVENESS,
     SHOULDER_CLOSED_FORGIVENESS,
     SHOULDER_CLOSED_OK_POSITIONS,
     get_cycling_reference,
@@ -740,10 +743,36 @@ _AERO_TOLERANCES = {
 }
 _AERO_POSITIONS = AERO_POSITIONS
 
+# The road's own leniencies (cycling_positions, 2026-11-13): a trunk lower than
+# the hoods/drops band and a shoulder closed past it cost a third per degree.
+# Too upright and over-reached keep the full rate.
+_ROAD_TOLERANCES = {
+    "trunk": (ROAD_TRUNK_LOW_FORGIVENESS, 1.0),
+    "shoulder": (SHOULDER_CLOSED_FORGIVENESS, 1.0),
+}
+
+
+def _position_tolerances(sport: str, cycling_position: str | None) -> dict[str, tuple[float, float]]:
+    """(low, high) tolerance per angle for this position; absent = (1, 1)."""
+    if sport != "bike":
+        return {}
+    if cycling_position in _AERO_POSITIONS:
+        return _AERO_TOLERANCES
+    if cycling_position in ROAD_POSITIONS:
+        return _ROAD_TOLERANCES
+    return {}
+
+
 _SHOULDER_CLOSED_NOTE = (
     "Upper arm closer to the torso than the 90-degree fitters aim for. On aero "
     "bars that is the athlete's choice, not a fault -- check you can still "
     "breathe and push at race power, and that the arms carry you without a shrug."
+)
+_SHOULDER_CLOSED_ROAD_NOTE = (
+    "Upper arm closer to the torso than the 85-90 degrees fitters set on the "
+    "hoods. Riding with bent elbows closes it by itself, so it is no fault on "
+    "its own -- worth a look only if the reach feels short or the elbows feel "
+    "cramped."
 )
 
 _HELMET_NOTE = (
@@ -842,7 +871,8 @@ def _score_photo_angles(
     one fit number every other contact point is set from.
     """
     weights = weights_override or _PHOTO_WEIGHTS.get(sport, PHOTO_RUNNING_WEIGHTS)
-    is_aero = sport == "bike" and cycling_position in _AERO_POSITIONS
+    tolerances = _position_tolerances(sport, cycling_position)
+    reds: list[str] = []  # graded bike rows the table shows red
     per_angle: dict[str, dict[str, Any]] = {}
     total_weight = 0.0
     weighted_sum = 0.0
@@ -853,7 +883,7 @@ def _score_photo_angles(
             continue
 
         opt_min, opt_max = optimal_ranges[angle_key]
-        low_tol, high_tol = _AERO_TOLERANCES.get(angle_key, (1.0, 1.0)) if is_aero else (1.0, 1.0)
+        low_tol, high_tol = tolerances.get(angle_key, (1.0, 1.0))
         # The aero forgiveness on a closed hip assumes closed = deliberate. Past
         # the iliac-artery threshold that stops being true, so the discount ends
         # there -- otherwise the one hip reading with a medical consequence is
@@ -881,6 +911,11 @@ def _score_photo_angles(
             score = 100
         if angle_key == "helmet_above_back":
             score = helmet_points(value)  # the clip's rule (head_silhouette)
+        elif sport == "bike" and _row_is_red(
+            angle_key, value, opt_min, opt_max, low_tol,
+            slack if angle_key == "knee" and pedal_phase in _KNEE_SLACK else None,
+        ):
+            reds.append(angle_key)
 
         per_angle[angle_key] = {
             "score": score,
@@ -918,6 +953,12 @@ def _score_photo_angles(
         overall = _MEDICAL_SCORE_CAP
         capped_by = "hip_medical_threshold"
 
+    # "Excellent" has nothing red in it -- the clip's rule (technique_scorer,
+    # c6759bd) on the photo. Ten road photos (2026-11-13) read 91-95
+    # "Excellent" beside a red row; the same reading on a clip stops at 89/B.
+    if reds and overall >= _PHOTO_EXCELLENT_MIN:
+        overall = _PHOTO_EXCELLENT_MIN - 1
+
     result: dict[str, Any] = {
         "overall_score": overall,
         "grade": _assign_photo_grade(overall),
@@ -925,7 +966,32 @@ def _score_photo_angles(
     }
     if capped_by:
         result["capped_by"] = capped_by
+    if reds:
+        result["red_rows"] = reds
     return result
+
+
+_PHOTO_EXCELLENT_MIN = 90  # _assign_photo_grade's "Excellent"
+
+
+def _row_is_red(
+    angle_key: str, value: float, opt_min: float, opt_max: float,
+    low_tol: float, slack: tuple[float, float] | None,
+) -> bool:
+    """Whether the table shows this graded bike row red ("needs_work").
+
+    Mirrors the table's own leniencies (analyze_from_pose step 5): a trunk or
+    shoulder forgiven on its low side is amber there, never red, so it does not
+    hold the grade either. Nor does a hip opened past its band, which costs
+    nothing (c5866b1: a comfort trade-off, never a fault).
+    """
+    if value < opt_min and low_tol > 1.0 and angle_key in ("trunk", "shoulder"):
+        return False
+    if angle_key == "hip" and value > opt_max:
+        return False
+    return _classify_angle_status(
+        value, opt_min, opt_max, metric=angle_key, slack=slack,
+    ) == "needs_work"
 
 
 # ---------------------------------------------------------------------------
@@ -1571,15 +1637,19 @@ def _auto_detect_cycling_position(trunk_angle: float, nl: Any = None, image: Any
         return "tt_aero" if not math.isnan(trunk_angle) and trunk_angle < 22 else "triathlon"
     if family == "upright":
         return "casual"
-    if math.isnan(trunk_angle):
+    # Road is always the hoods. The trunk cannot tell hoods from drops: on ten
+    # race photos all on the hoods (2026-11-13) one rider at 31 deg was filed
+    # under drops and scored 100, another at 36 stayed on the hoods and lost
+    # points for the same low back -- lower read better. The grip is not
+    # readable from the side, the hoods are where road riders are photographed,
+    # and the road trunk band now forgives the low side
+    # (cycling_positions.ROAD_TRUNK_LOW_FORGIVENESS). Drops are the rider's
+    # choice in the picker, never a guess.
+    if math.isnan(trunk_angle) or family == "road":
         return "road_hoods"
-    if family == "road":
-        return "road_drops" if trunk_angle < 33 else "road_hoods"
 
     if trunk_angle < 22:
         return "tt_aero"
-    elif trunk_angle < 33:
-        return "road_drops"
     elif trunk_angle < 46:
         return "road_hoods"
     else:
@@ -2596,6 +2666,7 @@ def analyze_from_pose(
     angles: dict[str, float] = {}
     helmet: dict[str, Any] | None = None  # bike only: see head_silhouette.py
     helmet_scored = False
+    helmet_research: float | None = None  # off-aero helmet reading, kept for study
     pedal_phase: str | None = None  # Only set for cycling
     gait_phase: str = "uncertain"   # Only meaningful for running
     thigh_dev: float = math.nan     # Only measured for running
@@ -2800,6 +2871,20 @@ def analyze_from_pose(
         if cycling_position not in _AERO_POSITIONS:
             angles.pop("forearm_tilt", None)
 
+        # Off aero bars the helmet reading leaves the report (2026-11-13): no
+        # source gives a road target, the field it is compared with is Kona
+        # pros in aero helmets, on the hoods the head sits behind the shoulders
+        # and the reading mostly re-reads the trunk, and "head down" is not
+        # advice for a rider who has to see the road. On ten road photos its
+        # "check the green point" warning fired on all ten -- a chore for a
+        # number that counted for nothing. Kept, out of every surface, under
+        # helmet_research.
+        if helmet is not None and cycling_position not in _AERO_POSITIONS:
+            helmet_research = angles.pop("helmet_above_back", None)
+            if _HELMET_CHECK_WARNING in warnings:
+                warnings.remove(_HELMET_CHECK_WARNING)
+            helmet = None
+
         # The helmet term joins the score only on an aero position and only
         # when the reading can be trusted: no "check the point" flag, or a
         # point the athlete placed. A flagged reading can be 10 points low.
@@ -2993,6 +3078,24 @@ def analyze_from_pose(
                 "note": note,
             }
             continue
+        # Road trunk lower than the band: a racing position, a third of the
+        # penalty and amber (cycling_positions.ROAD_TRUNK_LOW_CONCERN).
+        if (
+            sport == "bike"
+            and angle_name == "trunk"
+            and cycling_position in ROAD_POSITIONS
+            and not math.isnan(angle_value)
+            and angle_value < opt_min
+        ):
+            angles_with_context[angle_name] = {
+                "value": angle_value,
+                "optimal_min": opt_min,
+                "optimal_max": opt_max,
+                "status": "acceptable",
+                "label": lbl,
+                "note": ROAD_TRUNK_LOW_CONCERN.format(lo=opt_min, hi=opt_max),
+            }
+            continue
         # Aero-bar shoulder closed past the band: a choice, not a fault --
         # amber at most, with the reason (see SHOULDER_CLOSED_OK_POSITIONS).
         if (
@@ -3008,7 +3111,8 @@ def analyze_from_pose(
                 "optimal_max": opt_max,
                 "status": "acceptable",
                 "label": lbl,
-                "note": _SHOULDER_CLOSED_NOTE,
+                "note": (_SHOULDER_CLOSED_ROAD_NOTE if cycling_position in ROAD_POSITIONS
+                         else _SHOULDER_CLOSED_NOTE),
             }
             continue
         angles_with_context[angle_name] = {
@@ -3145,6 +3249,8 @@ def analyze_from_pose(
         # measurement for an automatic one.
         "corrections": list(corrections) if corrections else None,
     }
+    if helmet_research is not None:
+        response["helmet_research"] = helmet_research
     if helmet is not None:
         # Where the two points were read, so the editor can offer them for
         # dragging: auto_* is the silhouette's own guess, which the client's

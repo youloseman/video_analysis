@@ -101,9 +101,9 @@ def _lenient(field: str, value: float, band: tuple[float, float] | None,
     if value < lo:
         from app.services.video_analysis.biomechanics.cycling_positions import (
             SHOULDER_CLOSED_OK_POSITIONS,
-            trunk_below_aero_floor,
+            trunk_low_is_amber,
         )
-        if (field == "trunk_angle_avg" and trunk_below_aero_floor(position, value)) or (
+        if (field == "trunk_angle_avg" and trunk_low_is_amber(position, value)) or (
                 field == "shoulder_angle_avg" and position in SHOULDER_CLOSED_OK_POSITIONS):
             return "warn"
     return status

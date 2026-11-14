@@ -35,8 +35,51 @@ AERO_POSITIONS = frozenset({"tt_aero", "triathlon"})
 # stays where the fitters put it (BikeFit "90 deg for most fits"; Fintelman's
 # 19 TT riders and triathletes 90.7 +/- 5.3); below it the penalty is a third
 # as steep and the status never goes past amber, on every surface.
-SHOULDER_CLOSED_OK_POSITIONS = AERO_POSITIONS
+#
+# Road joined 2026-11-13. The road source (BikeDynamics, "upper arm to torso
+# 85 to 90") measures to the ELBOW, as we do, and is a static fit-day number.
+# Riding, the elbows bend and the upper arm swings in toward the torso: ten
+# race-fit riders on the hoods (upload/landing/test_roadbike) read 65-81, eight
+# of them under 80, and the gap to the same angle taken to the wrist grew with
+# the elbow bend (+6 deg near-straight arms, +21 at an elbow of 128). Graded at
+# the full rate, a bent elbow was marked down twice -- once as the elbow, once
+# as the shoulder -- and the most race-like position of the ten scored worst.
+# No source names a closed road shoulder as a fault; an OPEN one (over-reach)
+# still costs the full rate.
+ROAD_POSITIONS = frozenset({"road_hoods", "road_drops"})
+SHOULDER_CLOSED_OK_POSITIONS = AERO_POSITIONS | ROAD_POSITIONS
 SHOULDER_CLOSED_FORGIVENESS = 3.0
+
+# On the road a trunk LOWER than the band is a racing position, not a fault:
+# the hoods band (40-55) is Retul's recreational norm, and racers on the hoods
+# ride 30-40. A third of the penalty per degree and amber at most, as for the
+# closed shoulder -- unlike aero, it is not free, because a road rider well
+# under the band on the hoods may simply be over-reached. Too UPRIGHT keeps the
+# full penalty. Added 2026-11-13 with the shoulder rule above: before it, a
+# rider at 36 deg on the hoods was marked "needs work" for the trunk while one
+# at 31 deg was auto-filed under drops and scored 100 -- lower read better and
+# a bit less low read worse.
+ROAD_TRUNK_LOW_FORGIVENESS = 3.0
+ROAD_TRUNK_LOW_CONCERN = (
+    "Lower than the {lo:.0f}-{hi:.0f} deg band -- a racing position, not a "
+    "fault, and it costs only a little in the score. Keep it if you can hold it "
+    "comfortably, breathe and still see the road; if your neck or lower back "
+    "complains, a shorter or higher reach is the usual fix."
+)
+
+
+def trunk_below_road_floor(position: str | None, trunk: float | None) -> bool:
+    """True when a road trunk is lower than its band: a third of the penalty,
+    amber with :data:`ROAD_TRUNK_LOW_CONCERN` everywhere it is shown."""
+    if position not in ROAD_POSITIONS or trunk is None or trunk != trunk:
+        return False
+    return trunk < CYCLING_POSITIONS[position]["trunk_angle"][0]
+
+
+def trunk_low_is_amber(position: str | None, trunk: float | None) -> bool:
+    """A trunk under its band that every surface shows amber, never red: flatter
+    on aero bars (free) or lower on the road (a third of the penalty)."""
+    return trunk_below_aero_floor(position, trunk) or trunk_below_road_floor(position, trunk)
 
 # On aero bars a trunk flatter than the band costs NO points and is never
 # called a strength either: amber, with this concern, on the photo, the video

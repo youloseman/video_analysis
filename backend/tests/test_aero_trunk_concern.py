@@ -62,10 +62,15 @@ class TestTheClip:
     def test_road_low_trunk_still_costs(self):
         road = TS.score_cycling({**self.BASE, "trunk_angle_avg": 20.0}, {}, cycling_position="road_drops")
         assert self._trunk(road) < 100
+        # ...but a third as steeply as the upright position (2026-11-13)
+        assert self._trunk(road) == pytest.approx(TS.score_in_range(30 - 10 / 3, 30, 45), abs=0.5)
 
     def test_severity_is_acceptable_not_a_warning(self):
         assert TS.classify_metric_severity("triathlon", "trunk_angle", 14.0) == "ACCEPTABLE"
-        assert TS.classify_metric_severity("road_drops", "trunk_angle", 15.0) in ("WARNING", "CRITICAL")
+        # road lower than its band: a racing position, amber (2026-11-13)
+        assert TS.classify_metric_severity("road_drops", "trunk_angle", 15.0) == "ACCEPTABLE"
+        assert TS.classify_metric_severity("road_hoods", "trunk_angle", 70.0) in ("WARNING", "CRITICAL")
+        assert TS.classify_metric_severity("casual", "trunk_angle", 20.0) in ("WARNING", "CRITICAL")
 
 
 class TestTheFitPlan:
@@ -138,7 +143,9 @@ class TestTheSurfaces:
         assert trunk.get("closed_ok") is True
         assert _status_for_cfg(trunk, 10.0) == "warn"
         road = p._get_angle_display_config("bike", {"camera_side": "left"}, cycling_position="road_drops")
-        assert not next(c for c in road if c["key"] == "trunk_angle").get("closed_ok")
+        assert next(c for c in road if c["key"] == "trunk_angle").get("closed_ok") is True
+        upright = p._get_angle_display_config("bike", {"camera_side": "left"}, cycling_position="casual")
+        assert not next(c for c in upright if c["key"] == "trunk_angle").get("closed_ok")
 
     def test_the_report_tile_is_amber_with_a_line(self):
         assert "metric==='trunk_low_ok'" in HTML
@@ -156,9 +163,15 @@ class TestTheCoachIsNotToldToFixIt:
         st = _metric_statuses("bike", "triathlon", {"trunk_angle_avg": 12.0, "shoulder_angle_avg": 68.0})
         assert st["trunk_angle_avg"][0] == "warn" and st["shoulder_angle_avg"][0] == "warn"
 
-    def test_road_keeps_them_material(self):
+    def test_road_low_side_is_borderline_too(self):
+        # Road joined 2026-11-13: lower and closed are a racing position.
         from app.services.video_analysis.llm_recommendations import _metric_statuses
         st = _metric_statuses("bike", "road_drops", {"trunk_angle_avg": 18.0, "shoulder_angle_avg": 60.0})
+        assert st["trunk_angle_avg"][0] == "warn" and st["shoulder_angle_avg"][0] == "warn"
+
+    def test_upright_keeps_them_material(self):
+        from app.services.video_analysis.llm_recommendations import _metric_statuses
+        st = _metric_statuses("bike", "casual", {"trunk_angle_avg": 30.0, "shoulder_angle_avg": 80.0})
         assert st["trunk_angle_avg"][0] == "bad" and st["shoulder_angle_avg"][0] == "bad"
 
 

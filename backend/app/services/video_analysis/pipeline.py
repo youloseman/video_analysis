@@ -377,7 +377,12 @@ class VideoAnalysisPipeline:
                 configs[-1]["closed_ok"] = True
             # Trunk flatter than the band on aero bars: no points, amber with
             # the concern (AERO_TRUNK_LOW_CONCERN) -- never red on the video.
-            if cycling_pos in AERO_POSITIONS_FOR_TRUNK:
+            # Road too: lower than the band is a racing position, a third of
+            # the penalty and amber (ROAD_TRUNK_LOW_CONCERN).
+            from app.services.video_analysis.biomechanics.cycling_positions import (
+                ROAD_POSITIONS,
+            )
+            if cycling_pos in AERO_POSITIONS_FOR_TRUNK or cycling_pos in ROAD_POSITIONS:
                 next(c for c in configs if c["key"] == "trunk_angle")["closed_ok"] = True
             # Forearm tilt is a fitted quantity on aero bars only (see
             # technique_scorer.score_cycling): off them the forearm slopes to

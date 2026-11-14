@@ -1314,11 +1314,23 @@ def analyze_from_frames(
         try:
             from app.services.video_analysis.video_helmet import measure_clip_helmet
 
+            from app.services.video_analysis.biomechanics.cycling_positions import (
+                AERO_POSITIONS,
+            )
+
             clip_helmet = measure_clip_helmet(video_path, raw_frame_data, analyzer.camera_side)
-            if clip_helmet:
+            if clip_helmet and cycling_position in AERO_POSITIONS:
                 summary["helmet_above_back"] = clip_helmet["value"]
                 summary["helmet_check"] = clip_helmet["check"]
                 summary["helmet_samples"] = clip_helmet["values"]
+            elif clip_helmet:
+                # Off aero bars the helmet is out of the report (2026-11-13; the
+                # photo's reasons, photo_analyzer.analyze_from_pose): no road
+                # target, a Kona aero-helmet field to compare with, and "head
+                # down" is no advice on the road. Kept where no surface reads it.
+                summary["helmet_research"] = {
+                    "value": clip_helmet["value"], "check": clip_helmet["check"],
+                }
         except Exception as e:  # noqa: BLE001 -- a metric must not break the run
             logger.warning("CLIP_HELMET_FAILED", err=str(e))
         # The aero read-out's head lever, from the helmet just measured.

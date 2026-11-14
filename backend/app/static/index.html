@@ -4103,6 +4103,10 @@ const MARGIN_FLOOR={pelvic_ratio:0.2,pelvic_tilt:0.2};
 function grMargin(lo,hi,metric){
   return Math.max((hi-lo)*0.10, MARGIN_FLOOR[metric]!=null?MARGIN_FLOOR[metric]:3);
 }
+/* Positions where a trunk lower than its band and a shoulder closed past it
+   are amber at most (server: cycling_positions SHOULDER_CLOSED_OK_POSITIONS,
+   trunk_below_aero_floor / trunk_below_road_floor). */
+const LOW_SIDE_OK_POS=new Set(['tt_aero','triathlon','road_hoods','road_drops']);
 function grZone(v,lo,hi,metric){
   const m=grMargin(lo,hi,metric);
   if(v>=lo && v<=hi) return 'optimal';
@@ -4364,13 +4368,15 @@ function bikeTiles(s, position){
        the trade said in a line -- pros hold it, most age-groupers cannot. */
     const trR=rng('trunk_angle',s.trunk_angle_avg,'trunk_angle_avg');
     const aero=(position==='tt_aero'||position==='triathlon');
-    const low=aero&&trR&&s.trunk_angle_avg<trR.lo;
+    const low=LOW_SIDE_OK_POS.has(position)&&trR&&s.trunk_angle_avg<trR.lo;
     if(low) trR.metric='trunk_low_ok';
-    t.push(tile('Trunk',num(s.trunk_angle_avg),'°',low?'Flatter than the band: faster, if you can hold it and still make power':null,null,false,trR));
+    const lowNote=aero?'Flatter than the band: faster, if you can hold it and still make power'
+                      :'Lower than the band: a racing position, if you can hold it and see the road';
+    t.push(tile('Trunk',num(s.trunk_angle_avg),'°',low?lowNote:null,null,false,trR));
   }
   if(s.shoulder_angle_avg!=null){
     const shR=rng('shoulder_angle',s.shoulder_angle_avg,'shoulder_angle_avg');
-    if(shR&&(position==='tt_aero'||position==='triathlon')) shR.metric='shoulder_closed_ok';
+    if(shR&&LOW_SIDE_OK_POS.has(position)) shR.metric='shoulder_closed_ok';
     t.push(tile('Shoulder',num(s.shoulder_angle_avg),'°',null,null,false,shR));
   }
   // Forearm tilt is a fitted quantity on aero bars only (on the hoods the
@@ -9971,7 +9977,7 @@ function angleTableRows(A, sport, position, srcByKey, pro){
       /* The score's own leniencies, as the tiles already apply them: on aero
          bars a flatter torso and a closed shoulder cost no points, so the
          table must not call them red (Gona, 2026-11-11). */
-      const aeroPos=sport==='bike'&&(position==='tt_aero'||position==='triathlon');
+      const aeroPos=sport==='bike'&&LOW_SIDE_OK_POS.has(position);
       const zk=aeroPos&&k==='trunk_angle'?'trunk_low_ok':aeroPos&&/_shoulder$/.test(k)?'shoulder_closed_ok':k;
       const z=grZone(a.mean,opt[0],opt[1],zk);
       const zc=z==='optimal'?'good':z==='warning'?'warn':'bad';
@@ -13308,7 +13314,7 @@ const FORM_DEC={overstride:2,pelvic_ratio:2,vertical_oscillation:1};
    its change since the entry before. */
 function formTiles(sport, entries){
   const cur=entries[0], prev=cmpPrevious(cur,entries), single=entries.length<2;
-  const aero=cur.position==='tt_aero'||cur.position==='triathlon';
+  const aero=LOW_SIDE_OK_POS.has(cur.position);
   if(!cur.trends) return [];
   return TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
     const v=cur.trends[m.key]; if(v==null) return null;
