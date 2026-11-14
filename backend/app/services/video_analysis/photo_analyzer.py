@@ -646,6 +646,13 @@ _RUN_OVERSTRIDE_WEIGHT = 0.30
 # overstride's 0.30, so one amber reading does not sink a good stride.
 _RUN_SHIN_BAND = (-10.0, 20.0)
 _RUN_SHIN_WEIGHT = 0.20
+# The lowest the shin scores, however far it leans back. One still cannot tell
+# the touchdown from the instant before it, when a leg reaching to land is at
+# its straightest; at the general floor of 20 the pull toward the worst metric
+# doubled the shin's weight and one reading took a pro from 99 to 60/Fair
+# (MSC race photo, shin -30, 2026-11-13). At 50 the worst touchdown still costs
+# about 25 points -- the bottom of Good -- and a moderate one (-15) is unchanged.
+_RUN_SHIN_FLOOR = 50
 _RUN_OVERSTRIDE_INFO = (
     "Shown, not scored: how far ahead of the hip the foot lands grows with "
     "speed, and a photo does not know how fast you were going. The shin angle "
@@ -909,6 +916,8 @@ def _score_photo_angles(
         # reads open too.
         if sport == "bike" and angle_key == "hip" and value > opt_max:
             score = 100
+        if sport == "run" and angle_key == "shin":
+            score = max(score, _RUN_SHIN_FLOOR)
         if angle_key == "helmet_above_back":
             score = helmet_points(value)  # the clip's rule (head_silhouette)
         elif sport == "bike" and _row_is_red(
