@@ -315,7 +315,17 @@ _BIKE_PHASE_NOTES = {
 }
 
 
+_FRONT_VIEW_WARNING = "The photo appears to be from the front or back"
+
 _WITHHELD_MESSAGES = {
+    # Replaces the other reasons when the photo is face-on: every angle read
+    # off it is foreshortened, and the "torso not low / rider not found" text
+    # sent a head-on Kona shot looking for the wrong fault (2026-11-13).
+    "not_side_view": (
+        "No score: this photo is taken from the front or the back, and joint "
+        "angles only read true from the side. Upload a side-on photo, the camera "
+        "level with the hip and the whole body in frame."
+    ),
     "leg_not_measured": (
         "No score: the leg nearest the camera could not be measured, so this "
         "photo cannot say anything about the fit. Usually another person or the "
@@ -862,6 +872,13 @@ def _score_photo_angles(
         )
         if score is None:
             continue
+        # A hip opened past its band is a comfort trade-off, never a fault --
+        # the video, the table and the overlay all say so (open_ok). The photo
+        # took 21-23 points for it on three Kona pros at the top of the stroke
+        # (hip 73-74 against 45-62, 2026-11-13); a frame caught just past TDC
+        # reads open too.
+        if sport == "bike" and angle_key == "hip" and value > opt_max:
+            score = 100
         if angle_key == "helmet_above_back":
             score = helmet_points(value)  # the clip's rule (head_silhouette)
 
@@ -2285,7 +2302,7 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
     if abs(left_z - right_z) < 0.05:
         warnings.append(
             "Side view works best for position analysis. "
-            "The photo appears to be from the front or back, "
+            f"{_FRONT_VIEW_WARNING}, "
             "which may give less accurate angle measurements."
         )
 
@@ -3024,6 +3041,10 @@ def analyze_from_pose(
         withheld = _run_photo_withheld(angles, gait_phase, legs)
     else:
         withheld = None
+    # A photo with no score that is also face-on: say that, not the other fault.
+    # Only the message changes; nothing is withheld that was scored before.
+    if withheld and any(_FRONT_VIEW_WARNING in w for w in warnings):
+        withheld = "not_side_view"
     if withheld:
         score_data = {"overall_score": None, "grade": None, "per_angle": {},
                       "withheld": withheld}
