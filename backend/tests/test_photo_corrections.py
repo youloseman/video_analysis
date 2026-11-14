@@ -172,11 +172,9 @@ def test_the_helmet_reading_survives_a_correction():
     after = res["angles"]["helmet_above_back"]
     assert before > 0 and after != before
     row = res["angles_with_context"]["helmet_above_back"]
-    if res["helmet_points"]["check"]:
-        assert row["status"] == "phase_dependent"
-        assert "helmet_above_back" not in res["score"]["per_angle"], "a flagged reading is not scored"
-    else:
-        assert row["status"] in ("optimal", "acceptable") and row["optimal_max"] == 23.0
+    # Flagged or not, the reading is graded on aero bars (graded_helmet, 2026-11-14).
+    assert row["status"] in ("optimal", "acceptable") and row["optimal_max"] == 23.0
+    if res["score"]["per_angle"]:  # a synthetic photo may carry no score at all
         assert "helmet_above_back" in res["score"]["per_angle"]
 
 

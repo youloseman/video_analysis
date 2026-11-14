@@ -1324,8 +1324,9 @@ def _helmet_prompt_line(summary: dict[str, Any]) -> str:
         note = (" -- a LOWER BOUND: the outline shows no clear edge between back and "
                 "helmet, which only ever reads low, so the head is at least this high"
                 if v > KONA_PRO_FREE_UP_TO else
-                " -- NOT graded: the outline shows no clear edge between back and helmet, "
-                "so the reading may be low; do NOT judge it either way")
+                " -- graded: the outline shows no clear edge between back and helmet, as "
+                "usual for an aero tail lying on the back; the reading may be a little "
+                "low, never high")
     return (f"- Helmet above the back: {v:+.1f}% of torso length [how far the top of "
             f"the helmet rises above a level line through the top of the back; NOT "
             f"degrees]. Kona pros {KONA_PRO_RANGE[0]:+.0f}% to {KONA_PRO_RANGE[1]:+.0f}%, "

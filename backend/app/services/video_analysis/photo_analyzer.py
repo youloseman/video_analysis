@@ -816,8 +816,9 @@ def _with_helmet_band(
 # helmets, so it means most with the race helmet on.
 _HELMET_CHECK_WARNING = (
     "We couldn't find a clear edge where your back ends and your helmet begins, "
-    "so the helmet reading may be low and is not graded. If the green point sits "
-    "on the helmet, use Adjust joints to drag it to the highest point of your back."
+    "as is usual with an aero helmet whose tail lies on the back. The reading is "
+    "taken from the green point: if it sits on the helmet rather than your back, "
+    "use Adjust joints to drag it to the highest point of your back."
 )
 
 

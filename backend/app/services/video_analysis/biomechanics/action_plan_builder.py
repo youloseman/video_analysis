@@ -840,11 +840,10 @@ def build_action_plan(
         )
     # No "Head alignment" strong point: that score praised every aero rider
     # (an ear under a line inside the body). The helmet reading that replaced
-    # it is praised only where it is graded -- aero bars, a trusted reading --
-    # and within where twenty-eight of the thirty-one Kona pros sat.
+    # it is praised only where it is graded -- aero bars -- and within where
+    # twenty-eight of the thirty-one Kona pros sat (graded_helmet, 2026-11-14).
     helmet = sm.get("helmet_above_back")
-    if (position in AERO_POSITIONS and isinstance(helmet, (int, float))
-            and not sm.get("helmet_check")):
+    if position in AERO_POSITIONS and isinstance(helmet, (int, float)):
         from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
 
         _check_informational_metric(

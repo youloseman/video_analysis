@@ -60,13 +60,11 @@ def test_a_high_helmet_on_aero_bars_costs_points():
     assert (sev(20.0), sev(33.0), sev(34.0)) == ("OPTIMAL", "ACCEPTABLE", "WARNING")
 
 
-def test_off_the_bars_or_flagged_it_is_shown_and_not_graded():
-    """Off the aero bars, or flagged inside the free band. A flagged reading
-    can only read LOW (the back point on a helmet tail), so one inside the band
-    says nothing about the head."""
+def test_off_the_bars_it_is_shown_and_not_graded():
+    """Off the aero bars the reading leaves the rubric. A flagged reading on
+    aero bars is graded since 2026-11-14 (test_flagged_inside_the_band_counts)."""
     for summary, position in (
         ({**SUMMARY, "helmet_above_back": 40.0}, "road_hoods"),
-        ({**SUMMARY, "helmet_above_back": 20.0, "helmet_check": True}, "triathlon"),
     ):
         out = score_cycling(summary, {}, cycling_position=position)
         assert "helmet_above_back" not in out["component_scores"]
@@ -89,6 +87,14 @@ def test_the_coach_is_told_what_the_number_is():
 
     line = _helmet_prompt_line({"helmet_above_back": 26.0})
     assert "+26.0% of torso length" in line and "NOT degrees" in line
-    assert "do NOT judge it" in _helmet_prompt_line({"helmet_above_back": 20.0, "helmet_check": True})
+    assert "graded" in _helmet_prompt_line({"helmet_above_back": 20.0, "helmet_check": True})
     assert "LOWER BOUND" in _helmet_prompt_line({"helmet_above_back": 26.0, "helmet_check": True})
     assert "not measured" in _helmet_prompt_line({})
+
+
+def test_flagged_inside_the_band_counts():
+    """The flag fired on 31 of 39 Kona photos and the hand check moved none of
+    their points: a flagged reading inside the free band is graded, at 100."""
+    out = score_cycling({**SUMMARY, "helmet_above_back": 20.0, "helmet_check": True}, {},
+                        cycling_position="triathlon")
+    assert out["component_scores"]["helmet_above_back"] == 100.0

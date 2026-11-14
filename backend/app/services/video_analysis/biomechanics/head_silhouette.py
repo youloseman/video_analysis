@@ -129,10 +129,15 @@ def graded_helmet(value: Any, check: Any) -> float | None:
     reading was dropped: a Coach Notes client sat at +27 %, head visibly high,
     and lost no points while the report told her, in her aero helmet, to film
     in her race helmet.
+
+    Since 2026-11-14 a flagged reading inside the free band is graded too. The
+    flag fired on 31 of the 39 Kona photos, and the hand check of that field
+    moved none of the 39 automatic back and helmet points: an aero tail lies
+    flush with the back by design, so "no clear edge" is the normal case on a
+    race helmet, not a sign the point is wrong. The rider is still told where
+    the point is and that it can be dragged.
     """
     if not isinstance(value, (int, float)):
-        return None
-    if check and value <= KONA_PRO_FREE_UP_TO:
         return None
     return float(value)
 

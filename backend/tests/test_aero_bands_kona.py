@@ -201,7 +201,8 @@ class TestTheHeadLever:
         base = AE.estimate_aero(29.0, "triathlon", optimal_trunk_band=(20, 30))
         out = AE.with_helmet_lever(base, 19.0, True, "triathlon")
         head = next(lv for lv in out["levers"] if lv["key"] == "head")
-        assert head["status"] == "unknown" and "helmet" not in head["cue"].split("helmet begins")[1]
+        # Graded since 2026-11-14 (graded_helmet): inside the free band is fine.
+        assert head["status"] == "ok"
         assert "race helmet" not in head["cue"]
         out = AE.with_helmet_lever(base, 25.9, True, "triathlon")
         head = next(lv for lv in out["levers"] if lv["key"] == "head")

@@ -135,6 +135,7 @@
   "score_breakdown": {
    "elbow_angle": 100.0,
    "forearm_tilt": 100.0,
+   "helmet_above_back": 100.0,
    "knee_bdc": 78.7857,
    "knee_tdc": 94.3333,
    "shoulder_angle": 100.0,
@@ -165,12 +166,13 @@
   "confidence_level": "medium",
   "coverage": {
    "excluded": [],
-   "measures_scored": 6,
-   "measures_total": 6,
+   "measures_scored": 7,
+   "measures_total": 7,
    "missing": [],
    "scored": [
     "elbow_angle",
     "forearm_tilt",
+    "helmet_above_back",
     "knee_bdc",
     "knee_tdc",
     "shoulder_angle",
@@ -203,6 +205,7 @@
   "score_components": [
    "elbow_angle",
    "forearm_tilt",
+   "helmet_above_back",
    "knee_bdc",
    "knee_tdc",
    "shoulder_angle",

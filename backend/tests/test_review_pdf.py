@@ -42,9 +42,9 @@ def test_rows_grade_against_the_band_and_skip_an_unreadable_helmet():
     assert rows["knee_at_bdc"]["status"] == "bad"
     assert rows["knee_at_tdc"]["status"] == "good"
     assert rows["trunk_angle_avg"]["pro"]["median"] == 20
-    # helmet_check set: the reading is not trusted, so no number is shown
-    assert rows["helmet_above_back"]["value"] is None
-    assert rows["helmet_above_back"]["status"] == "na"
+    # helmet_check set: still shown and graded (graded_helmet, 2026-11-14)
+    assert rows["helmet_above_back"]["value"] == 13.3
+    assert rows["helmet_above_back"]["status"] == "good"
     # not measured at all -> no row, rather than an empty one
     assert "elbow_angle_avg" not in rows
 
@@ -61,7 +61,7 @@ def test_page_carries_the_report_figures_and_escapes_text():
     assert "Lower the saddle 10 mm" in page
     assert page.count("class=\"week\"") == 2 and "Saddle down." in page
     assert "Bogdan &lt;script&gt;" in page and "Bogdan <script>" not in page
-    assert "Not measured" in page
+    assert "Helmet above the back" in page
 
 
 def test_page_renders_without_figures_or_fit():

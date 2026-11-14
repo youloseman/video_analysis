@@ -148,7 +148,7 @@ def metric_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
             band = None
         if field == "helmet_above_back":
             band = (0.0, 23.0)
-            if s.get("helmet_check") or not isinstance(v, (int, float)):
+            if not isinstance(v, (int, float)):
                 rows.append({"field": field, "label": label, "value": None, "unit": unit, "band": band,
                              "pro": pro.get(field), "status": "na", "scale": scale,
                              "how": HOW_MEASURED.get(field)})
