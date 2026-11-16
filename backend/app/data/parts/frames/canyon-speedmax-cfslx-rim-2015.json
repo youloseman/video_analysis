@@ -1,10 +1,10 @@
 {
   "id": "canyon-speedmax-cfslx-rim-2015",
   "family": "canyon-speedmax",
-  "generation": "Speedmax CF SLX rim brake (frame code R40, ~2015–2020; dual-tower cockpit to MY2018, single-tower from MY2019)",
+  "generation": "Speedmax CF SLX rim brake (2015–2020)",
   "years": [2015, 2020],
   "brakes": "rim",
-  "identify": "Rim brakes integrated into fork and frame, long and low geometry, Canyon carbon base bar with Canyon riser towers and 'flat spring' pad plates. Up to MY2018 two separate riser towers (dual-tower; H33 drop / H35 rise / flat bars); from MY2019 a closely spaced single-tower layout with the HB0048 flat bar and a two-part bottle between the arms. Not the cheaper Speedmax CF (Profile Design clip-ons on a standard stem).",
+  "identify": "Rim brakes hidden in the fork and frame, long and low, a Canyon carbon base bar with Canyon riser towers and flat 'spring' pad plates. Up to model year 2018 there are two separate riser towers; from 2019 a single, closely spaced tower with the HB0048 flat bar and a two-part bottle between the arms. Not the cheaper Speedmax CF, which has Profile Design clip-ons on a standard stem.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Proprietary Canyon front end with short or long Canyon stem",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": null,
     "pad_bolt_spacing": null,
-    "stack_system": "Canyon riser spacers under the pads: fitter puts the stock maximum at 45–55 mm of pedestal (MY2019 layout per TriRig: 45 mm of spacers + 10 mm cup mount, 0–55 mm). Beyond that only the High Stack Flat Spring (+7–10 mm) and Team Switch Plate (+3 mm). Fitter: Pad Y tops out around 620 on S and 650 on M even with every part.",
-    "reach_system": "Pads in holes along the switch plates; short vs long stem (~20 mm); Team Switch Plate shortens or lengthens the pad position beyond the stem limits.",
-    "angle_system": "MY2019 single-tower cockpit: 0° or 7° only (TriRig). Dual-tower bikes: Canyon 9° spacer kit.",
+    "stack_system": "Canyon spacers under the pads, up to about 45–55 mm (on the 2019–2020 cockpit, 45 mm of spacers plus a 10 mm cup mount). Beyond that only the High Stack Flat Spring (+7–10 mm) and the Team Switch Plate (+3 mm). A Canyon fitter puts the highest pad at about 620 mm on a size S and 650 mm on an M, even with every part.",
+    "reach_system": "The pads bolt in different holes along the plates. A short or long Canyon stem changes reach by about 20 mm; swapping it means re-routing the hidden brake cable. The Team Switch Plate moves the pads further forward or back than the stem alone allows.",
+    "angle_system": "2019–2020 single-tower cockpit: 0° or 7° only. Earlier two-tower bikes: Canyon's 9° spacer kit.",
     "notes": "Canyon-endorsed fitter: Canyon's rim-SLX charts measured Pad X to mid pad (≈45 mm more than to the back of the pad). Small proprietary parts were hard to source even when current; owners report Canyon shipping wrong spacer kits. Rim-SLX cockpit parts do not carry over to the 2021 disc bike."
   },
   "stock_range": [

@@ -1,10 +1,10 @@
 {
   "id": "canyon-speedmax-cfr-cfslx-2026",
   "family": "canyon-speedmax",
-  "generation": "Speedmax CFR / CF SLX (gen 6, MY2027, launched July 2026)",
+  "generation": "Speedmax CFR / CF SLX, gen 6 (2026 on, model year 2027)",
   "years": [2026, 2026],
   "brakes": "disc",
-  "identify": "Closed one-piece 'AeroShield' cockpit on a cockpit post that slides into the head tube and clamps like a seatpost; AeroModule box/reservoir between the forearms; four sizes S–XL, no XS/650b. Gen 5 (2021–2025) has a bolt-on base bar on a stacked spacer column instead.",
+  "identify": "A closed one-piece AeroShield cockpit on a post that slides into the head tube and clamps like a seatpost, with a storage box between the forearms. Four sizes, S to XL, no XS. The 2021–2025 bike has a bolt-on base bar on a stack of spacers instead.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Proprietary: the cockpit post inserts into the head tube (no conventional stem/steerer clamp)",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": null,
     "pad_bolt_spacing": null,
-    "stack_system": "Stepless along the post in three bands, 105 mm total: Low 0–35 mm (all sizes); Mid 35–70 (S), 30–70 (M), 25–70 (L), 20–70 (XL); High 70–105 (S), 65–105 (M), 60–105 (L), 55–105 (XL). Canyon gives no absolute pad-height numbers.",
-    "reach_system": "Each post length (Short, Long, X-Long) gives 50 mm of stepless fore-aft travel, 150 mm across all three; standard AeroShield extension length 70 mm stepless.",
-    "angle_system": "Pad tilt 0–20° stepless on a 10° (standard AeroShield) or 20° (AeroShield Pro) base: Short 10–30°, Long 10–40°, X-Long 20–40° (Pro only).",
+    "stack_system": "Stepless along the post, 105 mm in all, in three bands. Low: 0–35 mm on every size. Mid: 35–70 mm on S, 30–70 on M, 25–70 on L, 20–70 on XL. High: 70–105 mm on S, 65–105 on M, 60–105 on L, 55–105 on XL. Canyon gives no pad heights in absolute millimetres.",
+    "reach_system": "Three post lengths (Short, Long, X-Long), each with 50 mm of stepless fore-aft travel: 150 mm across all three. The post length is chosen when you order. The standard AeroShield extensions adjust 70 mm, stepless.",
+    "angle_system": "The pads tilt 0–20° stepless on a 10° base (standard AeroShield) or a 20° base (AeroShield Pro): 10–30° on the Short post, 10–40° on the Long, 20–40° on the X-Long (Pro only).",
     "notes": "Standard AeroShield pad width stepless 200–275 mm (S/M) or 225–300 mm (L/XL); AeroShield Pro comes in fixed shells. A fitter with 15+ fitted customers says Canyon's tool outputs a parts list but not how much adjustment is left, so where a rider sits in the range is unknown. Canyon told owners (July 2026 e-mail, per posters) that untested third-party reach extenders/adapters are not approved and may void the warranty; no aftermarket cockpit adapter for gen 6 was found."
   },
   "stock_range": [],

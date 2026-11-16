@@ -1,13 +1,13 @@
 {
   "id": "cervelo-p-series-2024",
   "family": "cervelo-p-series",
-  "generation": "P-Series 2nd gen (disc, 2024 onward; sold as MY2025-2027)",
+  "generation": "P-Series 2nd gen (disc, 2024 on)",
   "years": [
     2024,
     2027
   ],
   "brakes": "disc",
-  "identify": "Has a trap-door storage hatch under the down-tube bottle bosses (Cervélo's first in-frame storage), takes up to 34 mm tyres, rear hydration mount standard; the 1st-gen aero down-tube bottle does not fit. Profile Design Wing-family cockpit with 38 cm basebar on a Cervélo ST36 alloy stem.",
+  "identify": "A storage hatch under the down-tube bottle mounts, tyres up to 34 mm, a rear bottle mount as standard; the old aero down-tube bottle does not fit. A Profile Design Wing cockpit with a 38 cm base bar on a Cervélo ST36 alloy stem.",
   "cockpit": {
     "type": "standard",
     "steerer": "D-shaped steerer with a round stem interface (Cervélo); FSA IS2 headset 1-1/4 in top / 1-3/8 in bottom. Takes standard stems; one owner needed a shim to remove fork/steerer play with a BMC basebar sleeve.",
@@ -15,9 +15,9 @@
     "basebar_clamp_mm": 31.8,
     "extension_clamp_mm": 22.2,
     "pad_bolt_spacing": null,
-    "stack_system": "Stem spacers (Cervélo: up to 53 mm basebar stack with included spacers) plus Profile Design pad risers. Ultegra Di2 / Force AXS (Wing 20C+ II basebar, A2 bracket): Profile Design A3 riser kits via the A2-to-A3 adaptor. Rival / 105 Di2 / 105 (Wing 20C or Wing 10A basebar, Supersonic bracket): 31.8 mm Supersonic risers, 5-70 mm pieces, max 80 mm. Profile Design says the full pad-stack range on its chart requires buying these risers.",
-    "reach_system": "Stem length, plus Profile Design bracket and Ergo+ armrest positions (armrest offset -70 to -17.5 mm in 7.5 mm steps, 15 mm reach increments). Supersonic builds: most forward positions come from reversing the bracket so the pad wing sits ahead of the basebar. A2 builds: A3 Reach Extender adds about 30 mm.",
-    "angle_system": "Supersonic builds: tilt by rotating the bracket on the basebar. A2 builds: 0-15 deg natively by the bracket bolts, 18-30 deg with the A2 Tilt Booster.",
+    "stack_system": "Stem spacers (up to 53 mm with the ones supplied) plus Profile Design risers under the pads. Ultegra Di2 and Force AXS builds (A2 bracket) take Profile Design A3 riser kits through the A2-to-A3 adaptor. Rival, 105 Di2 and 105 builds (Supersonic bracket) take 31.8 mm Supersonic risers, 5–70 mm, up to 80 mm in all. The top of Profile Design's pad-height chart needs these risers, bought separately.",
+    "reach_system": "Stem length first, then the Profile Design bracket and armrest positions (15 mm steps). On Supersonic builds the bracket can be reversed so the pads sit ahead of the base bar. On A2 builds the A3 Reach Extender adds about 30 mm.",
+    "angle_system": "Supersonic builds: tilt by rotating the bracket on the base bar. A2 builds: 0–15° with the bracket bolts, 18–30° with the A2 Tilt Booster.",
     "notes": "Profile Design publishes a per-size Pad X/Y chart for this generation (2025 model) for both bracket types (see stock_range). Owners report the stock cable routing from basebar past the stem is untidy and that larger aftermarket stems foul the plastic cover in front of the bento."
   },
   "stock_range": [
@@ -244,7 +244,7 @@
       ],
       "url": "https://profile-design.com/products/a3-reach-extender",
       "price": null,
-      "needs": "A2-to-A3 adaptor on the stock A2 bracket; Ultegra Di2 / Force builds. Do not stack two extenders (maker warning in search snippet).",
+      "needs": "A2-to-A3 adaptor on the stock A2 bracket; Ultegra Di2 / Force builds. Profile Design warns against stacking two extenders.",
       "checked": "2026-11-16"
     },
     {
@@ -259,7 +259,7 @@
           18,
           30
         ],
-        "text": "Lifts the A2 bracket tilt range from 0-15 deg to 18-30 deg (angle_deg here is the absolute tilt with the booster, measured from flat). The part has its own height (Profile Design figures of 20.5-25 mm differ between the guide and a store snippet), so pads may also rise."
+        "text": "Lifts the A2 bracket's tilt range from 0–15° to 18–30°, measured from flat. The booster has its own height (Profile Design gives 20.5–25 mm in different places), so the pads may rise too."
       },
       "status": "manufacturer",
       "reason_incompatible": null,

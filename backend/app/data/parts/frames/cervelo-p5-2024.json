@@ -1,10 +1,10 @@
 {
   "id": "cervelo-p5-2024",
   "family": "cervelo-p5",
-  "generation": "P5 (disc, July 2024 onward; FM148 frame, sold as MY2025-2027)",
+  "generation": "P5 (disc, July 2024 on)",
   "years": [2024, 2027],
   "brakes": "disc",
-  "identify": "Six sizes including a 61, 34 mm tyre clearance, HB15 basebar on a Bayonet fork with no stem, EX14 riser whose extension cradle tilts 0-30 deg in 5 deg steps. The 2019-2023 P5 Disc has five sizes, 28 mm tyres and an EX11 or EX10 riser that tilts at most 15 deg.",
+  "identify": "Six sizes including a 61, tyres up to 34 mm, an HB15 base bar on a Bayonet fork with no stem, and the EX14 riser whose cradle tilts 0–30°. The 2019–2023 P5 Disc has five sizes, 28 mm tyres and an EX11 or EX10 riser that tilts 15° at most.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Proprietary Bayonet fork with one-piece basebar interface; no standard stem.",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": 22.2,
     "pad_bolt_spacing": null,
-    "stack_system": "Basebar stack from 'slammed' to +40 mm in 5 mm steps (basebar 10 mm lower than the 2019 P5 at its base setting). Stock HBP-045 hardware (45 mm screws) covers 0-20 mm; higher settings need the extra HBP-065 kit (65 mm screws). Pad height above that comes from the EX14 riser post (may be trimmed; keep at least 80 mm inside the fork).",
-    "reach_system": "EX10 pad mount attaches in two positions on the riser; pads are longer and larger than the 2019 P5 with more fore-aft travel and a much more rearward setting (Fit Werx). Basebar reach is 10 mm shorter than 2019.",
-    "angle_system": "EX14 curved cradle with insert: forward 0/10/20/30 deg, reversed 5/15/25 deg (seven settings, 0-30 deg). 2019 P5 stopped at 15 deg.",
+    "stack_system": "The base bar goes from slammed to +40 mm in 5 mm steps (10 mm lower than the 2019 P5 at its lowest). The stock 45 mm screws cover 0–20 mm; higher needs Cervélo's 65 mm screw kit (HBP-065), and Cervélo says to use only its own kits. Above that, the EX14 riser post sets pad height; it can be cut, but at least 80 mm must stay inside the fork.",
+    "reach_system": "The pad mount fits in two positions on the riser. The pads are longer than on the 2019 P5, with more fore-aft travel and a much further-back setting. The base bar is 10 mm shorter than in 2019. Big reach changes are harder than on a bike with a stem.",
+    "angle_system": "Seven settings from 0 to 30°: the curved cradle gives 0, 10, 20 or 30° facing forward and 5, 15 or 25° reversed.",
     "notes": "Cervélo's manual warns that specific basebar stack hardware kits must be used for specific stack ranges and only the supplied basebar-to-fork screws. Slowtwitch and Fit Werx: accepts aftermarket 22.2 mm extensions and third-party pads. Major reach changes beyond the pad positions are limited compared with a stem bike (owner comparison with the P-Series)."
   },
   "stock_range": [],
@@ -135,7 +135,7 @@
       ],
       "url": null,
       "price": null,
-      "needs": "A cup with a two-screw fore-aft pattern matching the rests; pattern spacing not published in sources reached.",
+      "needs": "A cup with a two-screw fore-aft pattern matching the rests; the spacing is not published.",
       "checked": "2026-11-16"
     },
     {

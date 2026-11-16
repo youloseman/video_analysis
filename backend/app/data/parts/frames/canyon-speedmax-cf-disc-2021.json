@@ -1,10 +1,10 @@
 {
   "id": "canyon-speedmax-cf-disc-2021",
   "family": "canyon-speedmax",
-  "generation": "Speedmax CF Disc (frame code R073, 2021–; facelift cockpit from mid-2024; CF 7 Di2 still sold 2026)",
+  "generation": "Speedmax CF Disc (2021 on; one-piece carbon cockpit from mid-2024)",
   "years": [2021, 2026],
   "brakes": "disc",
-  "identify": "The cheaper Speedmax with disc brakes and a conventional front end: standard 1-1/8 in steerer, Profile Design brackets/risers and extensions on a Canyon base bar. 2021–mid-2024 bikes have the alloy Canyon V21 aerostem with the HB0053 base bar (recall: V21 bikes sold May 2017–Jul 2024); the 2024 facelift (R073 Facelift) uses a one-piece carbon CP0041 flatbar. Not the CFR/CF SLX, which have Canyon's proprietary spacer column.",
+  "identify": "The more affordable disc Speedmax with an ordinary front end: a standard 1-1/8 in steerer, a Canyon base bar, and Profile Design brackets, risers and extensions. Bikes from 2021 to mid-2024 have Canyon's alloy V21 aero stem with the HB0053 base bar (the V21 stem was recalled for bikes sold May 2017 to July 2024). From mid-2024 the bar and stem are one carbon piece (CP0041). Not the CFR or CF SLX: those have Canyon's own spacer column under the pads.",
   "cockpit": {
     "type": "proprietary_stem_standard_bars",
     "steerer": "1-1/8 in fork steerer (Canyon CF 7 Di2 spec)",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": 22.2,
     "pad_bolt_spacing": "Profile Design A2/A3 armrest pattern (Ergo armrest: width steps 18.5 mm, reach steps 15 mm per Profile Design's Canyon guide)",
-    "stack_system": "Profile Design A3 risers on the base bar: 30 mm stock on 2021–2024 bikes, 35 mm on 2025 CF 7/CF 8 (Profile Design guide). Profile Design: the full stack range in its chart needs an A3 riser kit (up to 80 mm).",
-    "reach_system": "Arm pads slide on the Profile Design bracket (15 mm steps, offset −70 to −17.5 mm); CP0041 bar is 15 mm longer on M–XL than on XS–S; extension length set by clamping/cutting the 22.2 mm extensions. More reach: Profile Design A3 Reach Extender (2025 bar) or a longer aftermarket stem (2021–2024).",
-    "angle_system": "Profile Design A2 bracket: 0–15° stepless via bracket bolts; 18–30° with the A2 Tilt Booster (Profile Design, 2025 bar). Canyon calls the CF 7 extension tilt stepless.",
+    "stack_system": "Profile Design A3 risers under the pads: 30 mm as delivered on 2021–2024 bikes, 35 mm on the 2025 CF 7 and CF 8. Going higher, up to 80 mm, means buying an A3 riser kit.",
+    "reach_system": "The pads slide on the Profile Design bracket in 15 mm steps. The extensions are 22.2 mm round bars, cut or clamped to length. On the one-piece CP0041 bar, sizes M–XL are 15 mm longer than XS–S. For more reach: the Profile Design A3 Reach Extender on the 2025 bar, or a longer stem on 2021–2024 bikes (Canyon has refused warranty claims on bikes fitted with a non-Canyon stem).",
+    "angle_system": "0–15° stepless with the bracket bolts. 18–30° with the Profile Design A2 Tilt Booster on the 2025 bar.",
     "notes": "Profile Design says its Reach Extender and Tilt Booster have not been tested with the 2021–2024 HB0053 base bar. Canyon will not sell the facelift cockpit for pre-facelift R073 frames. Canyon e-mailed Speedmax owners in July 2026 that untested third-party reach extenders/adapters may void the warranty; a fitter on Slowtwitch read the Profile Design reach extender as the common option for the CF."
   },
   "stock_range": [

@@ -1,10 +1,10 @@
 {
   "id": "giant-trinity-advanced-pro-2016",
   "family": "giant-trinity",
-  "generation": "Trinity Advanced Pro / Advanced Pro TT (rim brake, MY2016-2024)",
+  "generation": "Trinity Advanced Pro / Advanced Pro TT (rim brake, 2016–2024)",
   "years": [2016, 2024],
   "brakes": "rim",
-  "identify": "Rim brakes integrated behind the fork and under the frame, AeroVault front bottle on the fork/head tube, two separate armrest stacks bolted on top of an AeroDrive base bar that sits on a Giant-only nose-cone stem (flat or +30 mm). Launched late 2015 as MY16; replaced by the disc Trinity Advanced SL in Jan 2025. NOT the cheaper Trinity Advanced (non-Pro), which has a normal stem and base-bar clamp, and NOT the 2011-2015 'Trinity Advanced SL'.",
+  "identify": "Rim brakes hidden behind the fork and under the frame, an AeroVault bottle on the fork, and two separate pad stacks bolted on an AeroDrive base bar. The base bar sits on a Giant-only nose-cone stem (flat or +30 mm). Sold from late 2015 until January 2025, when the disc Trinity Advanced SL replaced it. Not the cheaper Trinity Advanced without 'Pro', which has an ordinary stem and bar clamp, and not the 2011–2015 rim-brake bike also called Trinity Advanced SL.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Alloy OverDrive steerer on a composite fork (Giant spec); the stem and lower nose cone are Giant-specific and paired, so a standard stem cannot be clamped on per owners.",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": null,
     "pad_bolt_spacing": "About 30 mm centre-to-centre between the two armrest bolts (one owner's measurement, 2017); not published by Giant.",
-    "stack_system": "Armrest spacer stack under each armrest/extension clamp, bolted with long M5 bolts (stock lengths M5 x 40/50/60/70 per the Giant manual as quoted by an owner). Giant's 2022 tables give a 60 mm pad-stack range for the Tri setup and 50 mm for TT. Base bar is reversible (Giant: 40 mm of height adjustment) and the +30 mm stem raises the whole front end. Owners go beyond the stock range with extra Giant spacers and longer bolts; a Giant armrest bridge is advised for tall stacks.",
-    "reach_system": "Armrests bolt onto the extension clamps in four positions and can be reversed for five fore-aft positions in 15 mm steps, 60 mm in total (Giant manual, via search excerpt). No alternative stem lengths sold separately apart from the TT/UCI kit.",
-    "angle_system": "none stock. Owners add angled spacers (Fouriers 10/15 deg) or AeroCoach tilt-block adapters. One owner measured the stock extension clamps tilting about 2 deg nose-down on the risers.",
+    "stack_system": "Spacers under each pad, held by long M5 bolts. Giant gives a 60 mm pad-height range for the Tri setup and 50 mm for the TT setup. The base bar can be flipped (40 mm of height) and the +30 mm stem raises the whole front. Owners go higher with extra Giant spacers and longer bolts; for tall stacks, Giant's armrest bridge stops the two stacks from wobbling.",
+    "reach_system": "The pads bolt in four positions on the extension clamps and can be turned round: five positions 15 mm apart, 60 mm in total. Giant sells no other stem lengths, only the complete TT/UCI front end.",
+    "angle_system": "No tilt as delivered (one owner measured the clamps about 2° nose-down). Owners add angled spacers (Fouriers 10° or 15°) or AeroCoach tilt blocks.",
     "notes": "Fit range is narrow; owners report not getting long and low enough on small sizes even with spacers removed. Stock extensions are standard round bars and owners swapped them freely; the base bar and stem are Giant-only. The stem-to-fork bolt and stack-spacer threads strip if over-tightened (owner reports). A basebar break after a small impact and a crash crack were each reported once."
   },
   "stock_range": [
@@ -163,7 +163,7 @@
     {
       "id": "aerocoach-armrests-trinity",
       "brand": "AeroCoach",
-      "model": "arm pads/armrests (model not stated by owners)",
+      "model": "arm pads (model not named)",
       "category": "armrests",
       "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Replaces the stock cups. One owner found them already at their widest and still wanted wider elbows."},
       "status": "owners",

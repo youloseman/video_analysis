@@ -7437,6 +7437,7 @@ function syncProfGen(current){
   sel.innerHTML=`<option value="">Not sure</option>`+gens.map(f=>`<option value="${esc(f.id)}"${f.id===current?' selected':''}>${esc(f.generation)}</option>`).join('');
 }
 const PARTS_AXES={reach_mm:['Reach','mm'], stack_mm:['Pad height','mm'], angle_deg:['Tilt','°']};
+const PARTS_PAD_REF={back_of_pad:'measured to the back of the pad', pad_center:'measured to the middle of the pad'};
 function partsRange(r,unit){ if(!r) return ''; const f=x=>(x>0?'+':x<0?'−':'')+Math.abs(x); return r[0]===r[1]?f(r[0])+' '+unit:`${f(r[0])} to ${f(r[1])} ${unit}`; }
 function partsCardHtml(p){
   const eff=p.effect||{};
@@ -7483,7 +7484,7 @@ function partsResultHtml(r){
   return `<div class="parts-out">
     ${r.stale?'<p class="banner warn">This frame’s data is more than six months old. Check with the maker before you buy.</p>':''}
     <h4>What the stock cockpit already allows</h4>
-    <ul class="parts-stock">${stock||'<li>Not documented for this frame.</li>'}${sz?`<li><b>Size ${esc(sz.size)}:</b> pad height ${sz.pad_stack_mm?sz.pad_stack_mm.join('–')+' mm':'—'}, reach ${sz.pad_reach_mm?sz.pad_reach_mm.join('–')+' mm':'—'} (${esc(String(sz.pad_reference||'').replace(/_/g,' '))})</li>`:''}</ul>
+    <ul class="parts-stock">${stock||'<li>Not documented for this frame.</li>'}${sz?`<li><b>Size ${esc(sz.size)}:</b> pad height ${sz.pad_stack_mm?sz.pad_stack_mm.join('–')+' mm':'—'}, reach ${sz.pad_reach_mm?sz.pad_reach_mm.join('–')+' mm':'—'}${PARTS_PAD_REF[sz.pad_reference]?` (${PARTS_PAD_REF[sz.pad_reference]})`:' (the maker does not say where on the pad these are measured)'}</li>`:''}</ul>
     ${asked?`<h4>Parts that move the way you asked</h4>${r.helps.length?`<ul class="parts-list">${r.helps.map(partsCardHtml).join('')}</ul>`:'<p class="hint">No part on record states a change that way in numbers for this frame. Check the stock range above, and the other parts below: several change the cockpit without a stated figure.</p>'}`:''}
     ${r.other.length?`<details${asked&&r.helps.length?'':' open'}><summary>${asked?'Other parts that fit this frame':'Parts that fit this frame'} (${r.other.length})</summary><ul class="parts-list">${r.other.map(partsCardHtml).join('')}</ul></details>`:''}
     ${r.incompatible.length?`<h4>Does not fit this frame</h4><ul class="parts-list">${r.incompatible.map(partsCardHtml).join('')}</ul>`:''}

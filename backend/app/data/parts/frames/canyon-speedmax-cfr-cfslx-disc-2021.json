@@ -1,10 +1,10 @@
 {
   "id": "canyon-speedmax-cfr-cfslx-disc-2021",
   "family": "canyon-speedmax",
-  "generation": "Speedmax CFR / CF SLX Disc (gen 5, frame codes R085 / R091, MY2021–2025)",
+  "generation": "Speedmax CFR / CF SLX Disc, gen 5 (2021–2025)",
   "years": [2021, 2026],
   "brakes": "disc",
-  "identify": "Disc brakes, bolt-on Canyon base bar (CP0019 flat or CP0021 rise) on a stacked spacer column with a carbon 'spring' plate carrying the arm pads; internal top-tube storage lid and down-tube bladder. The 2026 Speedmax (gen 6) instead has a closed one-piece AeroShield on a cockpit post sliding into the head tube. Frame code R085 (CFR) or R091 (CF SLX) is on Canyon's documents; runout bikes were still sold in Nov 2026.",
+  "identify": "Disc brakes, a bolt-on Canyon base bar (flat CP0019 or rise CP0021) on a stack of spacers, and a carbon 'spring' plate that carries the arm pads. A storage lid on the top tube and a bladder in the down tube. Frame code R085 (CFR) or R091 (CF SLX) on Canyon's papers. The 2026 bike (gen 6) has a closed one-piece cockpit on a post instead.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "1-1/8 in steerer with Canyon wedge expander (Canyon part EP1296-01 'Wedge extension 1 1/8'); the stem/cockpit clamp is Canyon-only",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": null,
     "pad_bolt_spacing": null,
-    "stack_system": "Base spacer in four positions (High, Medium = factory default, Low, Slammed) plus purple fine spacers up to 40 mm (Low: 15–40 mm; Slammed: 0–10 mm). An extra angled spacer placed between carbon spring and extension raises the bar 15 mm. Canyon's geometry gives a 110 mm armpad-stack range per size.",
-    "reach_system": "Arm pads: 3 positions lengthways and 2 sideways (slotted holes). Extensions are telescopic grips that slide after loosening 2 bolts; extensions came in short/medium/long. Short or long cockpit: the long one adds about 20 mm of pad reach (fitter). Canyon's geometry gives about 54 mm of armpad-reach range per size.",
-    "angle_system": "Standard angled spacer of 3° or 6° (Canyon guide; Radsport Ibert's instructions call the stock wedges 3.5° and 7°) on up to 25 mm of spacers; a second angled spacer can go between carbon spring and extension (adds 15 mm height). Canyon's aftermarket Angle Fitting Kit goes to 22.5°.",
+    "stack_system": "A base spacer in four positions (High, Medium as delivered, Low, Slammed) plus thin spacers up to 40 mm. An extra angled spacer between the spring plate and the extension adds 15 mm. Canyon gives 110 mm of pad-height range per size.",
+    "reach_system": "The pads have three positions front to back and two side to side. The extensions are telescopic and slide after loosening two bolts. The cockpit comes short or long; the long one adds about 20 mm of pad reach. Canyon gives about 54 mm of pad-reach range per size.",
+    "angle_system": "An angled spacer of about 3° or 6° comes with the bike, on up to 25 mm of spacers; a second one can sit between the spring plate and the extension. Canyon's Angle Fitting Kit goes to 22.5°.",
     "notes": "Pad width is the most-cited limit: a Canyon-endorsed fitter gave stock pad widths of 88 / 140 / 159 mm (Dec 2020) and later called the maximum about 175 mm centre to centre; Canyon told an owner no wider spring exists. Canyon refused to give an owner the arm-pad bolt pattern, so third-party pad fit is trial and error. In July 2026 Canyon e-mailed Speedmax owners that untested third-party reach extenders/adapters are not approved and may void the warranty (owners' posts). Fitter: the gen-5 bike is shorter and taller than the rim SLX before it."
   },
   "stock_range": [
@@ -232,7 +232,7 @@
       ],
       "url": "https://shop.visiontechusa.com/aerobars/triathlon-time-trial/metron-tfe-evo-extensions",
       "price": null,
-      "needs": "Vision Metron TFE EVO extensions (USD 740 at Vision US). Vision's own page blocked (403), so generation fit is from retailer naming only.",
+      "needs": "Vision Metron TFE EVO extensions (USD 740 at Vision US). The fit on this generation comes from the retailer's listing; confirm with Vision.",
       "checked": "2026-11-16"
     },
     {
@@ -252,7 +252,7 @@
       ],
       "url": null,
       "price": null,
-      "needs": "Maker website was down when checked (stride.parts did not resolve); untested by Canyon.",
+      "needs": "Not tested by Canyon. The maker's website was unavailable when we checked.",
       "checked": "2026-11-16"
     },
     {

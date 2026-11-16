@@ -1,10 +1,10 @@
 {
   "id": "cervelo-p-series-2019",
   "family": "cervelo-p-series",
-  "generation": "P-Series 1st gen (disc, launched Sept 2019 as MY2020, sold to 2023)",
+  "generation": "P-Series 1st gen (disc, 2019–2023)",
   "years": [2019, 2023],
   "brakes": "disc",
-  "identify": "Launched Sept 2019 to replace the P2/P3: aero down-tube bottle in its own carrier, top-tube storage, no in-frame storage hatch, 28 mm-class tyres; the 105 build has mechanical TRP Spyre discs and microSHIFT bar-end shifters. The 2024+ P-Series has a trap-door storage hatch under the down tube and takes 34 mm tyres.",
+  "identify": "Replaced the P2 and P3 in September 2019 (model year 2020). An aero bottle on the down tube in its own carrier, storage on the top tube, no hatch in the frame, tyres up to about 28 mm. The 105 build has mechanical TRP disc brakes and microSHIFT bar-end shifters. The 2024 P-Series has a storage hatch under the down tube and takes 34 mm tyres.",
   "cockpit": {
     "type": "standard",
     "steerer": "Tapered 1-1/8 in (top) to 1-3/8 in (bottom), IS-2 headset, Cervélo carbon P fork (12x100 thru-axle).",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": 31.8,
     "extension_clamp_mm": 22.2,
     "pad_bolt_spacing": null,
-    "stack_system": "Stem spacers on an uncut steerer plus aerobar pedestals; Slowtwitch's 2019 test bike came with 30 mm of pedestals and bolts included. Above that, aftermarket riser kits of the fitted aerobar brand.",
-    "reach_system": "Stem length (stock 70-90 mm) is the main reach lever, plus fore-aft pad/bracket positions of the fitted aerobar. Build-dependent: 105 = Zipp Vuka Alumina basebar + extensions (40 cm); Ultegra Di2 = Vision Trimax Carbon base with Metron Si013 armrest hardware, whose armrest brackets can be flipped left-right to point back instead of forward.",
-    "angle_system": "Depends on the fitted aerobar; Zipp Vuka Alumina has armrest tilt shims. No frame-specific tilt system.",
+    "stack_system": "Spacers under a standard stem, plus pedestals under the pads (30 mm came on Slowtwitch's 2019 test bike). Higher than that: the riser kit of whichever aerobar brand is fitted.",
+    "reach_system": "The stem is a standard part, 70–90 mm long depending on size, so a stem swap is the main way to change reach. The pads and brackets also move fore and aft on the fitted aerobar. The 105 build has a Zipp Vuka Alumina bar; the Ultegra Di2 build a Vision Trimax Carbon with Metron hardware, whose pad brackets can be flipped to point back.",
+    "angle_system": "Depends on the aerobar fitted: the Zipp Vuka Alumina has tilt shims under the pads. The frame has no tilt system of its own.",
     "notes": "Because stem, steerer and basebar are standard, most fit changes are a stem/pedestal swap rather than a proprietary part. Fitter-reported limits: stock extensions on the Di2 test bike were too long and too high relative to the pads; one owner's aluminium base/aero bars rotated and had to be bonded after a 70.3; one owner broke the left elbow-pad holder three times in three years at the bar junction. Mechanical front-brake cable routing through integrated stems binds (see incompatible parts)."
   },
   "stock_range": [],

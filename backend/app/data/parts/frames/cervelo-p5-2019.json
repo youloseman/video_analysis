@@ -1,10 +1,10 @@
 {
   "id": "cervelo-p5-2019",
   "family": "cervelo-p5",
-  "generation": "P5 Disc 'P5D' (2019-2023; EX11 riser at launch, EX10 riser on later bikes)",
+  "generation": "P5 Disc (2019–2023; EX11 riser on early bikes, EX10 later)",
   "years": [2019, 2023],
   "brakes": "disc",
-  "identify": "Disc-brake P5 in five sizes (48-58), 28 mm tyre limit, integrated front end with a mono-riser post. Early bikes have the EX11 riser (no tilt); later bikes (about 2021 on) and converted bikes have the EX10 riser with a tilt plate. The 2024+ P5 has six sizes (adds 61), 34 mm tyres, the EX14 riser with 0-30 deg tilt and a basebar 10 mm lower.",
+  "identify": "The disc-brake P5 in five sizes (48–58), tyres up to 28 mm, an integrated front end with a single riser post under the pads. Early bikes have the EX11 riser, which does not tilt; later bikes (from about 2021) and converted ones have the EX10 with a tilt plate. Check which riser you have before buying: most aftermarket plates fit the EX10 only. The 2024 P5 has six sizes, 34 mm tyres and the EX14 riser.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Proprietary fork/basebar interface; no standard stem.",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": 22.2,
     "pad_bolt_spacing": null,
-    "stack_system": "Mono-riser post height (EX11 or EX10) plus basebar stack hardware. Fitter limits quoted on Slowtwitch for EX11-era bikes: max pad stack about 665 mm (54), 685 mm (56), about 700 mm (58).",
-    "reach_system": "Pad mount positions on the riser rest. EX11: limited reach range. EX10: forward and rear offset pad positions; fitter estimate about +12 mm more reach (or 20 mm more negative reach) than EX11.",
-    "angle_system": "EX11: none (0 deg). EX10: tilt plate with 5/10/15 deg settings. Above 15 deg needs an aftermarket adapter (AeroCoach, FastTT, TriRig plates on EX10).",
+    "stack_system": "The height of the riser post plus the base-bar stack hardware. On EX11 bikes a fitter puts the highest pad at about 665 mm on a 54, 685 mm on a 56 and 700 mm on a 58.",
+    "reach_system": "Pad positions on the riser rest. The EX11 has little range; the EX10 adds forward and rearward offset positions, about 12 mm more reach forward or 20 mm more back. Cervélo's published charts do not show that extra EX10 range.",
+    "angle_system": "EX11: none. EX10: a tilt plate at 5, 10 or 15°. More than 15° needs an aftermarket plate (AeroCoach, FastTT, TriRig) on the EX10.",
     "notes": "Know which riser your bike has before buying: most aftermarket plates fit the EX10 (and EX14) only. A Cervélo-thread fitter (2021) said the published P5D fit charts do not show the extra EX10 range, so charts understate it. Fitter (2021): P5D pad ranges are narrower and longer than the old rim P5; riders with short pad reach fall off the chart. The 2019 retailer manual (search snippet) lists EX11 monoriser, EX11 riser post rests/pads and an HB11 basebar assembly."
   },
   "stock_range": [],

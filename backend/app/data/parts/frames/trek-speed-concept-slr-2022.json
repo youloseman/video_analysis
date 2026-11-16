@@ -1,13 +1,13 @@
 {
   "id": "trek-speed-concept-slr-2022",
   "family": "trek-speed-concept",
-  "generation": "Speed Concept SLR / Speed Concept TT (disc brake, twin-tower cockpit, 2022–)",
+  "generation": "Speed Concept SLR / Speed Concept TT (disc, two towers, 2022 on)",
   "years": [
     2022,
     2026
   ],
   "brakes": "disc",
-  "identify": "Disc brakes and thru-axles; a one-piece basebar/stem with two separate towers (left/right) under the arm pads; SLR has the IsoSpeed decoupler behind the seat tube and a top-tube bento. Launched Nov 2021 as model year 2022; the rim-brake bikes before it have a single mono riser under the pads.",
+  "identify": "Disc brakes and thru-axles, a one-piece base bar and stem, and two separate towers under the pads. The SLR also has the IsoSpeed decoupler behind the seat tube and a box on the top tube. Launched November 2021 as model year 2022; the rim-brake bikes before it have one central riser.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Round steerer, 28.6 mm (1-1/8 in) upper / 38.8 mm lower OD (Trek service manual); must sit 0–6 mm below the top of the basebar/stem.",
@@ -15,9 +15,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": null,
     "pad_bolt_spacing": "Stock arm-pad holders bolt to a proprietary bracket with M4 screws (TriRig); one owner measured the stock cup pattern at about 15 mm side-to-side × 12 mm fore-aft. Holders sit in one of four outward hole sets for width; dogbone washers rotate the pads up to 10°.",
-    "stack_system": "Basebar rise (Low/Middle/High, each step about +15 mm at the pad) plus tower bases 0/15/30/45/60/75 mm and 5 mm fit spacers: 0–85 mm above the minimum on any one basebar; Trek quotes 115 mm total stack adjustment.",
-    "reach_system": "Left/right tower toppers in Near, Middle and Far (each about 59–60 mm of back-of-pad reach, overlapping); Trek quotes 160 mm reach adjustment and 120 mm pad width adjustment. Extensions slide in the extension base (Trek: 100 mm extension length adjustment; may be cut up to 25 mm).",
-    "angle_system": "Toppers carry 7° built in; -7°/+7° angled spacers give 0°, 7° or 14° extension tilt. Owners stack a second +7° spacer for 21°.",
+    "stack_system": "Base-bar rise (Low, Middle, High, about 15 mm apart at the pad) plus tower bases from 0 to 75 mm and 5 mm spacers: up to 85 mm above the lowest setting on one base bar. Trek quotes 115 mm of height in total.",
+    "reach_system": "The tower tops come in Near, Middle and Far (about 60 mm each, overlapping): Trek quotes 160 mm of pad reach and 120 mm of pad width. The extensions slide 100 mm in their base and can be cut by up to 25 mm. Aftermarket round extensions need an adapter plate.",
+    "angle_system": "The tower tops have 7° built in; a −7° or +7° spacer gives 0°, 7° or 14°. Owners stack a second +7° spacer for 21°.",
     "notes": "Extensions are not standard round 22.2 mm bars and clamp only in Trek's extension base, so aftermarket extensions need an adapter plate. Stock extensions cannot be set narrow (most common owner complaint). Trek warns some Low-basebar/Near-topper combinations let the pads hit the top tube. Fit chart values are at the standard 7° angle; changing reach at 7°/14° shifts stack slightly."
   },
   "stock_range": [

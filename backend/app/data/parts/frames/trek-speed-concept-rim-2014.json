@@ -1,10 +1,10 @@
 {
   "id": "trek-speed-concept-rim-2014",
   "family": "trek-speed-concept",
-  "generation": "Speed Concept 2nd generation (rim brake, mono riser cockpit, MY2014 to about 2021)",
+  "generation": "Speed Concept 2nd gen (rim brake, single riser, 2014 to about 2021)",
   "years": [2014, 2021],
   "brakes": "rim",
-  "identify": "Rim brakes and quick-release wheels, no IsoSpeed; a proprietary direct-mount stem with the basebar bolted on from below and a single mono riser ('pedestal') carrying the arm-pad wing and mono extension. Announced Sept 2013 for MY2014; Trek says parts interchange across 2014–2020. The 2022+ SLR has disc brakes and two towers; the 2010–2013 bike is a different first generation.",
+  "identify": "Rim brakes and quick-release wheels, no IsoSpeed, a Trek-only stem with the base bar bolted on from below, and one central riser carrying the pad wing and a one-piece extension. Announced September 2013; Trek says parts swap between 2014 and 2020 bikes. The 2022 SLR has disc brakes and two towers; the 2010–2013 bike is a different first generation.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Not verified (proprietary front end; no Trek spec sheet found).",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": null,
     "pad_bolt_spacing": null,
-    "stack_system": "Stem height (Low/Medium/High; Trek: over 14 cm of height adjustment per size across the stems) plus a mono riser/pedestal in four heights 10 mm apart and a 5 mm spacer under the pad wing. Owners and Trek cite riser stacks such as 15 mm (smallest), 35+5 and 45+5 mm.",
-    "reach_system": "Near/Far stem choice; mono extension and pad wing sit in different hole sets; the pad wing can be flipped 180° for more or less reach; pads also slide on the wing.",
-    "angle_system": "Tilt cradle angles pads and extensions upward (range not published). Aftermarket adapters add fixed or adjustable tilt (AeroCoach 15–27°, Wattshop 5–25°).",
+    "stack_system": "Six Trek stems in Low, Medium and High (over 14 cm of height between them), plus a riser in four heights 10 mm apart and a 5 mm spacer under the pad wing. Many of these stems and risers are discontinued and now found second-hand.",
+    "reach_system": "Each stem height comes in a Near and a Far version. The base bar has 10 mm of fore-aft adjustment; the extension and the pad wing bolt in different holes, the pad wing can be turned round, and the pads slide on it.",
+    "angle_system": "A tilt cradle angles the pads and extensions up (Trek does not publish the range). Aftermarket adapters go further: AeroCoach 15–27°, Wattshop 5–25°.",
     "notes": "Extensions come in four Trek styles (S-bend, straight, ergo, short ergo), cut to length, about 40 mm of fore-aft adjustment once fitted. The Mono Plug-In accepts extensions of the rider's choice (22.2 mm). Owners call the front end a lot of work to fit (many proprietary stems/risers), swapping risers awkward with mechanical shifting, and proprietary stems for extreme fits now hard to find. A newer plug-in/slider moved from 5 mm to 6 mm hardware."
   },
   "stock_range": [],

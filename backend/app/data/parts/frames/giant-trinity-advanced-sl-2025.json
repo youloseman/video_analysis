@@ -1,10 +1,10 @@
 {
   "id": "giant-trinity-advanced-sl-2025",
   "family": "giant-trinity",
-  "generation": "Trinity Advanced SL (disc, 2025+)",
+  "generation": "Trinity Advanced SL (disc, 2025 on)",
   "years": [2025, 2026],
   "brakes": "disc",
-  "identify": "Disc brakes and thru-axles; a single central mono-riser carrying the SYNC armrest/extension bridge on an AeroDrive base bar with integrated stem. Launched Jan 2025 (Liv Avow Advanced SL is the women's version on the same platform). Not the rim-brake Trinity Advanced Pro (twin armrest stacks) and not the 2011-2015 rim-brake 'Trinity Advanced SL'.",
+  "identify": "Disc brakes and thru-axles, one central riser carrying a bridge with both pads and extensions, on an AeroDrive base bar with the stem built in. Launched January 2025; the Liv Avow Advanced SL is the women's version of the same bike. Not the rim-brake Trinity Advanced Pro (two pad stacks), and not the 2011–2015 rim-brake bike with the same name.",
   "cockpit": {
     "type": "integrated_proprietary",
     "steerer": "Full-composite steerer. Tri frameset ships with a long fork (High position), TT frameset with a short fork (Low position); converting Tri to TT means cutting the steerer, which Giant calls irreversible.",
@@ -12,9 +12,9 @@
     "basebar_clamp_mm": null,
     "extension_clamp_mm": null,
     "pad_bolt_spacing": null,
-    "stack_system": "8 x 10 mm riser spacers under the armrest bridge: 0-80 mm in 10 mm steps (9 positions). Separately the Tri (High) vs TT (Low) fork/spacer sets about 47-48 mm of pad stack.",
-    "reach_system": "Armrests flip (long side front/back) x 5 hole pairs x 2 positions on the extension clamp = 20 combinations, 11 reach results over 75 mm in 7.5 mm steps. Extensions slide 0-93 mm. One owner relays a pro fitter's video saying the base plate is reversible for a little more pad reach (not in Giant's guide).",
-    "angle_system": "Extension wedges 0, 10 and 15 deg included (Giant spec and fitting guide tables).",
+    "stack_system": "Eight 10 mm spacers under the bridge: 0–80 mm in 10 mm steps. The Tri frameset comes with a long fork (high front) and the TT frameset with a short one, about 47 mm apart in pad height; cutting a Tri fork down to TT cannot be undone.",
+    "reach_system": "The pads flip front to back and bolt in several holes: 11 positions over 75 mm, 7.5 mm apart. The extensions slide 0–93 mm. Owners and fitters say pad reach is the tight limit on this bike.",
+    "angle_system": "Wedges of 0°, 10° and 15° come with the bike.",
     "notes": "Armrest width 8 positions 192-244 mm; extension width 82/102/146/166 mm; armrest length 125 mm. Owners and fitters say stock pad reach is the main limit (mono-riser sits only slightly ahead of the steerer); one size-M owner needed aftermarket reach parts. No XL; L tops out at 455 mm (Tri) / 470 mm (TT) back-of-pad reach at 0 deg."
   },
   "stock_range": [
@@ -59,7 +59,7 @@
       "brand": "FastTT",
       "model": "Extension adapter plate for Giant Trinity 2025 mono handlebar (TRINITY-MONO-PLATE)",
       "category": "adapter_plate",
-      "effect": {"reach_mm": [0, 35], "stack_mm": null, "angle_deg": null, "text": "Replaces the stock base plate on the mono-riser with a forward-curved plate whose extension mounts sit ahead of the riser (stock mounts sit behind). About 35 mm more forward reach per FastTT as relayed by a forum user; not on the product listing. Has a threaded BTA mount."},
+      "effect": {"reach_mm": [0, 35], "stack_mm": null, "angle_deg": null, "text": "Replaces the stock base plate on the mono-riser with a forward-curved plate whose extension mounts sit ahead of the riser (stock mounts sit behind). About 35 mm more forward reach, according to FastTT in an e-mail a rider shared; the product page gives no figure. Has a threaded BTA mount."},
       "status": "manufacturer",
       "reason_incompatible": null,
       "evidence": [
