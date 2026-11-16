@@ -163,7 +163,7 @@
     {
       "id": "aerocoach-armrests-trinity",
       "brand": "AeroCoach",
-      "model": "AeroCoach arm pads/armrests (model not stated by owners)",
+      "model": "arm pads/armrests (model not stated by owners)",
       "category": "armrests",
       "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Replaces the stock cups. One owner found them already at their widest and still wanted wider elbows."},
       "status": "owners",
@@ -198,7 +198,7 @@
     {
       "id": "carbonwasp-extensions-tilt-blocks-trinity-pro",
       "brand": "Carbon Wasp",
-      "model": "Carbon Wasp extensions with adjustable tilt blocks",
+      "model": "extensions with adjustable tilt blocks",
       "category": "extensions",
       "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Extensions plus adjustable tilt blocks on the Trinity stacks; one owner made his own plates to separate reach (~1 inch) and angle adjustment."},
       "status": "owners",
@@ -301,7 +301,7 @@
     {
       "id": "zipp-pad-extender-trinity-pro",
       "brand": "Zipp",
-      "model": "Zipp armrest pad extender (pad wing extension)",
+      "model": "armrest pad extender (pad wing extension)",
       "category": "armrests",
       "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Suggested for wider elbows; bolt pattern does not match."},
       "status": "incompatible",
