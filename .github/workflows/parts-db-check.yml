@@ -1,0 +1,33 @@
+# Check the parts-compatibility data (backend/app/data/parts) once a month:
+# schema, records older than six months, and every source URL.
+#
+# backend/scripts/check_parts_db.py exits 1 on a broken file, a stale record or
+# a dead (404/410) link; a 403/429 is printed but not failed, because several
+# makers block automated requests. A failed run fails the job, and GitHub mails
+# whoever last edited this file. stdlib only -- no install step.
+#
+# Run it now: Actions -> Parts data check -> Run workflow.
+
+name: Parts data check
+
+on:
+  schedule:
+    - cron: '0 16 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check parts data
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Schema, age and links
+        run: python backend/scripts/check_parts_db.py --links

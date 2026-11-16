@@ -50,6 +50,10 @@ class CdaMeasurement(Base):
     source: Mapped[str] = mapped_column(String(16), nullable=False)
     protocol: Mapped[str] = mapped_column(String(16), nullable=False)
     note: Mapped[str | None] = mapped_column(String(MAX_NOTE_CHARS), nullable=True)
+    # What this test changed (services/cda_math.VARIABLES): "baseline", "head",
+    # ... A tagged test is compared with the setup's baseline in watts. NULL =
+    # not said, which is every row logged before the tag existed.
+    variable: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # Who typed it: the owner, or a linked coach writing on the athlete's
     # setup. The athlete sees "added by your coach" and can delete it.
     entered_by_user_id: Mapped[int | None] = mapped_column(

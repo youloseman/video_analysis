@@ -38,6 +38,7 @@ from app.models.cda import (
     CdaMeasurement,
 )
 from app.models.profile import Profile
+from app.services import cda_math
 from app.models.user import User, has_coach
 
 logger = structlog.get_logger()
@@ -62,6 +63,13 @@ class CdaIn(BaseModel):
     source: str
     protocol: str = "repeated_loops"
     note: str | None = None
+    # What this test changed (services/cda_math.VARIABLES); unknown is dropped.
+    variable: str | None = None
+
+    @field_validator("variable")
+    @classmethod
+    def _variable(cls, v: str | None) -> str | None:
+        return cda_math.variable_or_none(v)
 
     @field_validator("value_m2")
     @classmethod
@@ -128,6 +136,7 @@ def _row_out(r: CdaMeasurement, owner_id: int, names: dict[int, str], reader_id:
         "id": r.id, "profile_id": r.profile_id, "value_m2": r.value_m2,
         "measured_on": r.measured_on, "source": r.source, "protocol": r.protocol,
         "note": r.note, "created_at_ms": r.created_at_ms,
+        "variable": r.variable,
         # None = the setup's owner typed it. Otherwise the coach's name, for
         # "added by your coach, <name>".
         "entered_by_coach": names.get(by) if by is not None and by != owner_id else None,
@@ -162,6 +171,9 @@ async def rows_by_profile(
     out: dict[int, list[dict[str, Any]]] = {}
     for r in rows:
         out.setdefault(r.profile_id, []).append(_row_out(r, owner_of[r.profile_id], names, reader_id))
+    # Each tagged test against the setup's baseline, in watts and seconds.
+    for setup_rows in out.values():
+        cda_math.annotate(setup_rows)
     return out
 
 
@@ -169,6 +181,7 @@ def _setup_out(p: Profile, rows: list[dict[str, Any]], whose: str) -> dict[str, 
     return {
         "id": p.id, "name": p.name, "kind": p.kind, "archived": p.archived,
         "position": p.bike_position, "whose": whose, "cda": rows,
+        "ladder": cda_math.ladder_status(rows),
     }
 
 
@@ -272,7 +285,8 @@ async def add_cda(
     row = CdaMeasurement(
         profile_id=p.id, user_id=p.user_id, value_m2=body.value_m2,
         measured_on=body.measured_on, source=body.source, protocol=protocol,
-        note=body.note, entered_by_user_id=user.id, created_at_ms=_now_ms(),
+        note=body.note, variable=body.variable,
+        entered_by_user_id=user.id, created_at_ms=_now_ms(),
     )
     db.add(row)
     await db.commit()

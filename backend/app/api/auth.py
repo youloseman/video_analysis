@@ -29,6 +29,7 @@ from app.core.security import (
     verify_reset_token,
 )
 from app.models.user import User, crank_access, run_photo_access
+from app.services.report_chat import chat_state as report_chat_state
 from app.services import analytics, notify, unlock_credit
 from app.services.preview_release import preview_state
 
@@ -134,6 +135,9 @@ class TokenOut(BaseModel):
     crank_access: bool = False
     # Whether the app offers "Run · photo" (models.user.run_photo_access).
     run_photo: bool = False
+    # Ask about this report: "open", "full" / "plans" (which plan has it), or
+    # "" while it is not launched (services/report_chat.chat_state).
+    report_chat: str = ""
     # Who this browser is, for analytics only (see services/analytics.py). The
     # server sends purchases under the same id, which is what joins "signed up,
     # analysed twice, opened pricing" to "paid" as one person rather than two.
@@ -245,6 +249,7 @@ async def register(
         unlock_credits=user.unlock_credits or 0,
         crank_access=crank_access(user),
         run_photo=run_photo_access(user),
+        report_chat=report_chat_state(user),
         analytics_id=analytics.person_id(user),
     )
 
@@ -278,6 +283,7 @@ async def login(
         unlock_credits=user.unlock_credits or 0,
         crank_access=crank_access(user),
         run_photo=run_photo_access(user),
+        report_chat=report_chat_state(user),
         analytics_id=analytics.person_id(user),
     )
 
@@ -384,6 +390,7 @@ async def reset_password(body: ResetBody, db: AsyncSession = Depends(get_session
         unlock_credits=user.unlock_credits or 0,
         crank_access=crank_access(user),
         run_photo=run_photo_access(user),
+        report_chat=report_chat_state(user),
         analytics_id=analytics.person_id(user),
     )
 
@@ -399,6 +406,7 @@ def _user_out(user: User) -> UserOut:
         unlock_credits=user.unlock_credits or 0,
         crank_access=crank_access(user),
         run_photo=run_photo_access(user),
+        report_chat=report_chat_state(user),
         analytics_id=analytics.person_id(user),
         height_cm=user.height_cm,
         marketing_opt_in=bool(user.marketing_opt_in),
@@ -579,6 +587,14 @@ async def delete_account(
 
     for model in (Analysis, UsageEvent, Feedback, Order, PlanLapse):
         await db.execute(delete(model).where(model.user_id == uid))
+    # Report chat: what they asked, and what a coach asked about their reports.
+    from app.models.chat import ChatMessage
+    from app.models.part_report import PartReport
+
+    await db.execute(delete(ChatMessage).where(
+        (ChatMessage.user_id == uid) | (ChatMessage.owner_user_id == uid)
+    ))
+    await db.execute(delete(PartReport).where(PartReport.user_id == uid))
     await db.delete(user)
     await db.commit()
     logger.info("ACCOUNT_DELETED", user_id=uid)

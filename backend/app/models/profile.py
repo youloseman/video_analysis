@@ -67,6 +67,18 @@ class Profile(Base):
     # "bike_position", not "position": POSITION is an SQL keyword, and the
     # raw ALTER that adds it never runs against Postgres in the tests.
     bike_position: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # What the bike IS (services/bike_catalog.py): a family slug, the model
+    # line with its generation as the rider says it, the frame size and the
+    # model year. Labels only -- nothing here changes a measurement. All NULL
+    # until told; the raw ALTERs that add them carry no DEFAULT on purpose
+    # (flapp-migrations-untested: a SQLite-only DEFAULT once took prod down).
+    bike_family: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    bike_model: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    frame_size: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    bike_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The frame generation in the parts data (app/data/parts/frames/<id>.json),
+    # when the rider picked one: what "which parts fit" is answered against.
+    bike_generation: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # On a coach's account, whose setup this is (models/athlete.py): the
     # picker on Analyze shows the chosen athlete's bikes, not the coach's own.
     # NULL = the account holder's.

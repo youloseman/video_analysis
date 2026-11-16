@@ -2530,6 +2530,26 @@ details.raw pre{background:var(--c-media-bg);color:#C6CCD6;font-family:var(--f-m
 .again-row{margin-top:32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
 .again-row .quota{margin:0;font-family:var(--f-mono);font-size:11.5px;color:var(--c-ink-faint)}
 .exportrow{display:flex;gap:8px;flex-wrap:wrap}
+/* Ask about this report (renderChat) */
+.chat-hint{text-align:left;margin:0 0 14px}
+.chat-log{display:flex;flex-direction:column;gap:10px}
+.chat-log:not(:empty){margin:0 0 14px}
+.chat-msg{padding:10px 14px;border-radius:var(--radius-lg);max-width:88%;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.chat-q{align-self:flex-end;background:var(--c-panel-blue);color:var(--c-ink);white-space:pre-wrap}
+.chat-a{align-self:flex-start;background:var(--c-panel);color:var(--c-ink-soft)}
+.chat-a p{margin:0 0 6px}
+.chat-a p:last-of-type{margin-bottom:0}
+.chat-a ul{margin:4px 0 6px 18px;padding:0}
+.chat-a h4{margin:6px 0 4px;font-size:15px;color:var(--c-ink)}
+.chat-wait{color:var(--c-ink-faint)}
+.chat-by{display:block;font-size:12px;color:var(--c-ink-faint);margin-top:6px}
+.chat-sugg{display:flex;flex-wrap:wrap;gap:8px}
+.chat-sugg:not(:empty){margin:0 0 12px}
+.chat-form{display:flex;gap:8px;align-items:flex-end}
+.chat-form textarea{flex:1;min-height:44px;resize:vertical;font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius);background:var(--c-bg);color:var(--c-ink)}
+.chat-foot{font-size:13px;color:var(--c-ink-faint);margin:8px 0 0}
+.chat-foot:empty{display:none}
+@media (max-width:560px){.chat-form{flex-direction:column;align-items:stretch}.chat-msg{max-width:100%}}
 /* On a report the "Analyze another" is the secondary action: outline. */
 #results .again-row .btn-primary,#photoResults .again-row .btn-primary{background:var(--c-bg);color:var(--c-ink);border-color:var(--c-line-strong)}
 #results .again-row .btn-primary:hover,#photoResults .again-row .btn-primary:hover{background:var(--c-panel);border-color:var(--c-ink)}
@@ -3069,6 +3089,30 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .cda-table th,.cda-table td{padding:8px 10px;border-top:1px solid var(--c-line);text-align:left;vertical-align:top}
 .cda-table thead th{border-top:0;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-faint);font-weight:500;white-space:nowrap}
 .cda-table small{display:block;color:var(--c-ink-faint);font-size:12px;margin-top:2px}
+.cda-ladder summary{cursor:pointer;font-weight:600;color:var(--c-ink);font-size:14px}
+.cda-ladder ol{margin:10px 0 6px 20px;padding:0;display:grid;gap:8px;font-size:14px}
+.cda-ladder li small{display:block;color:var(--c-ink-faint);font-size:12.5px;margin-top:2px}
+.cda-ladder li.is-done b{color:var(--c-ink-faint);font-weight:500}
+.cda-ladder li.is-next b{color:var(--c-ink)}
+.cda-ladder .hint{text-align:left;margin:4px 0 0}
+/* Parts that fit (partsPanel) */
+.parts-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
+.parts-form label{display:block;font-size:12.5px;color:var(--c-ink-faint);margin:0 0 4px}
+.parts-form select,.parts-form input{width:100%}
+.prof-parts .hint{text-align:left;margin:0}
+.parts-out h4{margin:14px 0 6px;font-size:14px;color:var(--c-ink)}
+.parts-stock{margin:0 0 4px 18px;padding:0;font-size:13.5px;display:grid;gap:4px}
+.parts-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.part-card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius);padding:10px 12px;font-size:13.5px}
+.part-card p{margin:4px 0 0}
+.part-h{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.part-moves{font-family:var(--f-mono);font-size:12.5px;color:var(--c-ink-soft);margin-top:4px}
+.part-foot{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;margin-top:6px;font-size:13px}
+.part-foot small{color:var(--c-ink-faint)}
+.part-foot details summary{cursor:pointer;color:var(--c-ink-faint)}
+.part-foot details ul{margin:4px 0 0 18px;padding:0}
+.part-rep{color:var(--c-ink-faint);font-size:12.5px}
+.part-rep .btn-link{font-size:12.5px}
 .cda-mono,.cda-val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .cda-val{font-size:15px;color:var(--c-ink)}
 .cda-acts{text-align:right}

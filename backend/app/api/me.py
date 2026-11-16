@@ -48,6 +48,7 @@ from app.models.profile import (
     Profile,
 )
 from app.models.user import User, has_coach, has_full, history_cap, profile_limit
+from app.services import bike_catalog, cda_math
 from app.services.keyframe_store import split_keyframe, stored_keyframe
 from app.services.result_gating import (
     ACCESS_FULL,
@@ -259,14 +260,15 @@ async def _enforce_cap(db: AsyncSession, user: User) -> None:
     # wrong trade (models.user.HISTORY_CAPS).
     stale = (
         await db.execute(
-            select(Analysis.id)
+            select(Analysis.id, Analysis.client_id)
             .where(Analysis.user_id == user.id)
             .order_by(Analysis.created_at_ms.desc())
             .offset(history_cap(user.tier))
         )
-    ).scalars().all()
+    ).all()
     if stale:
-        await db.execute(delete(Analysis).where(Analysis.id.in_(stale)))
+        await db.execute(delete(Analysis).where(Analysis.id.in_([i for i, _ in stale])))
+        await _delete_chats(db, user.id, [c for _, c in stale])
 
 
 def _attach_result(row: Analysis, job_id: str) -> None:
@@ -1065,7 +1067,20 @@ async def delete_all_analyses(
     polluted their stats). Distinct route from the per-item delete below."""
     await _delete_stored_clips(db, user.id)
     await db.execute(delete(Analysis).where(Analysis.user_id == user.id))
+    await _delete_chats(db, user.id)
     await db.commit()
+
+
+async def _delete_chats(db: AsyncSession, owner_id: int, client_ids: list[str] | None = None) -> None:
+    """The report chat goes with the report: a question about a deleted
+    analysis quotes numbers the athlete asked us to forget. Every reader's
+    thread, the coach's included."""
+    from app.models.chat import ChatMessage
+
+    q = delete(ChatMessage).where(ChatMessage.owner_user_id == owner_id)
+    if client_ids is not None:
+        q = q.where(ChatMessage.analysis_client_id.in_(client_ids))
+    await db.execute(q)
 
 
 @router.delete("/analyses/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -1080,6 +1095,7 @@ async def delete_analysis(
             Analysis.user_id == user.id, Analysis.client_id == client_id,
         )
     )
+    await _delete_chats(db, user.id, [client_id])
     await db.commit()
 
 
@@ -1105,7 +1121,62 @@ def _position(v: str | None) -> str | None:
     return v if v in PROFILE_POSITIONS else None
 
 
-class ProfileIn(BaseModel):
+def _short_text(v: str | None, limit: int) -> str | None:
+    v = " ".join((v or "").split())[:limit]
+    return v or None
+
+
+def _year(v: int | None) -> int | None:
+    if v is None:
+        return None
+    lo, hi = bike_catalog.YEAR_RANGE
+    if not lo <= int(v) <= hi:
+        raise ValueError(f"A model year between {lo} and {hi}, or leave it empty.")
+    return int(v)
+
+
+class _BikeFields(BaseModel):
+    """What the bike is (services/bike_catalog.py). Shared by create and patch."""
+
+    bike_family: str | None = None
+    bike_model: str | None = None
+    frame_size: str | None = None
+    bike_year: int | None = None
+    bike_generation: str | None = None
+
+    @field_validator("bike_generation")
+    @classmethod
+    def _generation(cls, v: str | None) -> str | None:
+        # A frame the parts data knows, or nothing (services/parts.py).
+        from app.services import parts
+
+        return v if v and v in parts.load_frames() else None
+
+    @field_validator("bike_family")
+    @classmethod
+    def _family(cls, v: str | None) -> str | None:
+        return bike_catalog.family_or_none(v)
+
+    @field_validator("bike_model")
+    @classmethod
+    def _model(cls, v: str | None) -> str | None:
+        return _short_text(v, bike_catalog.MAX_MODEL_CHARS)
+
+    @field_validator("frame_size")
+    @classmethod
+    def _size(cls, v: str | None) -> str | None:
+        return _short_text(v, bike_catalog.MAX_SIZE_CHARS)
+
+    @field_validator("bike_year")
+    @classmethod
+    def _bike_year(cls, v: int | None) -> int | None:
+        return _year(v)
+
+
+_BIKE_COLUMNS = ("bike_family", "bike_model", "frame_size", "bike_year", "bike_generation")
+
+
+class ProfileIn(_BikeFields):
     name: str = Field(min_length=1, max_length=MAX_NAME_CHARS)
     sport: str = "bike"
     kind: str = DEFAULT_KIND
@@ -1144,8 +1215,9 @@ class ProfileIn(BaseModel):
         return v if v in PROFILE_KINDS else DEFAULT_KIND
 
 
-class ProfilePatch(BaseModel):
-    """Only the fields sent change; sending ``null`` clears crank or position."""
+class ProfilePatch(_BikeFields):
+    """Only the fields sent change; sending ``null`` clears crank, position or
+    any of the bike fields."""
 
     name: str | None = Field(default=None, max_length=MAX_NAME_CHARS)
     kind: str | None = None
@@ -1169,6 +1241,9 @@ def _profile_out(p: Profile, used: int = 0) -> dict[str, Any]:
         "id": p.id, "name": p.name, "sport": p.sport, "kind": p.kind,
         "archived": p.archived, "created_at_ms": p.created_at_ms,
         "crank_length_mm": p.crank_length_mm, "position": p.bike_position,
+        "bike_family": p.bike_family, "bike_model": p.bike_model,
+        "frame_size": p.frame_size, "bike_year": p.bike_year,
+        "bike_generation": p.bike_generation,
         "athlete_id": p.athlete_id,
         "analyses": used,
     }
@@ -1257,11 +1332,20 @@ async def list_profiles(
     cda = await rows_by_profile(db, [p for p in rows if p.sport == "bike"], user.id)
     return {
         "profiles": [
-            {**_profile_out(p, int(counts.get(p.id, 0))), "cda": cda.get(p.id, [])}
+            {
+                **_profile_out(p, int(counts.get(p.id, 0))), "cda": cda.get(p.id, []),
+                **({"ladder": cda_math.ladder_status(cda.get(p.id, []))} if p.sport == "bike" else {}),
+            }
             for p in rows
         ],
         "limit": profile_limit(user.tier),
         "used": live,
+        # The family picker's list, from the one place that names them.
+        "bike_families": [
+            {"slug": k, "label": v} for k, v in bike_catalog.BIKE_FAMILIES.items()
+        ],
+        # What a CdA test can say it changed (services/cda_math.py).
+        "cda_variables": [{"key": k, "label": v} for k, v in cda_math.VARIABLES.items()],
     }
 
 
@@ -1281,6 +1365,7 @@ async def create_profile(
         crank_length_mm=body.crank_length_mm if bike else None,
         bike_position=body.position if bike else None,
         athlete_id=await owned_athlete_id(db, user, body.athlete_id),
+        **{c: (getattr(body, c) if bike else None) for c in _BIKE_COLUMNS},
     )
     db.add(row)
     await db.commit()
@@ -1308,6 +1393,9 @@ async def update_profile(
             row.crank_length_mm = body.crank_length_mm
         if "position" in body.model_fields_set:
             row.bike_position = body.position
+        for c in _BIKE_COLUMNS:
+            if c in body.model_fields_set:
+                setattr(row, c, getattr(body, c))
     if body.archived is not None:
         # Un-archiving can push the account back over its limit (they retired a
         # bike, then downgraded). Refuse rather than silently allow it.

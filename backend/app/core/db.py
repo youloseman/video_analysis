@@ -332,13 +332,36 @@ def _migrate_profiles(conn) -> None:
             "CREATE INDEX IF NOT EXISTS ix_profiles_athlete_id ON profiles (athlete_id)"
         ))
         logger.info("MIGRATED", change="profiles.athlete_id added")
+    # What the bike is (services/bike_catalog.py). Plain types both engines
+    # spell the same way, nullable, no DEFAULT.
+    for col, ddl in (
+        ("bike_family", "VARCHAR(40)"),
+        ("bike_model", "VARCHAR(80)"),
+        ("frame_size", "VARCHAR(12)"),
+        ("bike_year", "INTEGER"),
+        ("bike_generation", "VARCHAR(80)"),
+    ):
+        if col not in cols:
+            conn.execute(text(f"ALTER TABLE profiles ADD COLUMN {col} {ddl}"))
+            logger.info("MIGRATED", change=f"profiles.{col} added")
+
+
+def _migrate_cda(conn) -> None:
+    """Measured CdA rows learn what each test changed (services/cda_math).
+    Nullable, no DEFAULT: a row logged before the tag was never told."""
+    cols = _existing_columns(conn, "cda_measurements")
+    if not cols:
+        return
+    if "variable" not in cols:
+        conn.execute(text("ALTER TABLE cda_measurements ADD COLUMN variable VARCHAR(16)"))
+        logger.info("MIGRATED", change="cda_measurements.variable added")
 
 
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import (  # noqa: F401
-        analysis, athlete, cda, coach, coach_link, coach_upload, feedback, order, profile, squad,
-        usage, user,
+        analysis, athlete, cda, chat, coach, coach_link, coach_upload, feedback, order,
+        part_report, profile, squad, usage, user,
     )
 
     async with engine.begin() as conn:
@@ -347,4 +370,5 @@ async def init_db() -> None:
         await conn.run_sync(_migrate_orders)
         await conn.run_sync(_migrate_analyses)
         await conn.run_sync(_migrate_profiles)
+        await conn.run_sync(_migrate_cda)
     logger.info("DB_READY", backend=settings.async_database_url.split("://", 1)[0])

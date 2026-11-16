@@ -112,6 +112,7 @@
     <circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2"/></symbol>
   <symbol id="i-analyze" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="11" cy="11" r="7"/><path d="M11 8v3l2 2"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5A1.5 1.5 0 0 0 5.5 15"/></symbol>
   <symbol id="i-progress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1289,6 +1290,11 @@
       </div>
     </div>
 
+    <!-- Ask about this report: questions answered from this analysis's stored
+         numbers, the bike profile and logged CdA (services/report_chat.py).
+         Paid plans; filled by renderChat. -->
+    <div class="block hidden" id="chatBlock"></div>
+
     <details class="raw hidden" id="rawBlock"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
 
     <!-- A person's eyes on this report: Coach Notes ($) and, above it, the
@@ -1724,6 +1730,7 @@
         </button>
       </div>
     </div>
+    <div class="block hidden" id="hdChatBlock"></div>
     <div class="hidden" id="cmpNextH"></div>
     <div class="notes-offer hidden" id="hdNotesOffer"></div>
   </section>
@@ -1865,6 +1872,11 @@
       <div><label for="profKind">Type</label><select id="profKind"></select></div>
       <div class="prof-bike"><label for="profCrank">Crank length</label><input id="profCrank" type="number" inputmode="decimal" min="150" max="185" step="2.5" placeholder="172.5 mm"></div>
       <div class="prof-bike"><label for="profPos">Usual position</label><select id="profPos"></select></div>
+      <div class="prof-bike"><label for="profFamily">Bike</label><select id="profFamily"></select></div>
+      <div class="prof-bike prof-gen hidden"><label for="profGen">Generation</label><select id="profGen"></select></div>
+      <div class="prof-bike"><label for="profModel">Model and generation</label><input id="profModel" type="text" maxlength="80" placeholder="e.g. Trinity Advanced Pro"></div>
+      <div class="prof-bike"><label for="profSize">Frame size</label><input id="profSize" type="text" maxlength="12" placeholder="e.g. M or 54"></div>
+      <div class="prof-bike"><label for="profYear">Model year</label><input id="profYear" type="number" inputmode="numeric" min="1990" max="2030" step="1" placeholder="e.g. 2019"></div>
       <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="profSave">Save profile</button><button class="btn btn-ghost btn-sm" type="button" id="profCancel">Cancel</button></div>
     </div>
     <div class="prof-limit hidden" id="profLimit"></div>
@@ -7225,7 +7237,7 @@ async function loadProfiles(){
   if(!auth){ PROFILES={profiles:[],limit:1,used:0}; renderProfileField(); return; }
   try{
     const r=await fetch('/me/profiles',{headers:authHeaders()});
-    if(r.ok){ PROFILES=await r.json(); PROFILES.error=false; }
+    if(r.ok){ PROFILES=await r.json(); PROFILES.error=false; loadPartsFrames(); }
     else PROFILES.error=true;
   }catch(e){ PROFILES.error=true; } /* a select that quietly lost its options reads as "you have no setups" — say what happened instead */
   renderProfileField();
@@ -7333,16 +7345,17 @@ function renderProfiles(){
   } else {
     list.innerHTML=rows.map(p=>`<div class="prof-row${p.archived?' is-archived':''}" data-id="${p.id}">
       <div><div class="p-name">${esc(p.name)} <span class="p-kind">${esc(PROFILE_KIND_LABEL[p.kind]||p.kind||'')}</span>${p.archived?'<span class="p-kind">archived</span>':''}</div>
-        <div class="p-sub">${athleteName(p.athlete_id)?esc(athleteName(p.athlete_id))+' · ':''}${p.sport==='run'?'run':'bike'}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}${p.sport==='bike'&&p.cda&&p.cda.length?` · CdA ${cdaNum(p.cda[0].value_m2)} m² (${esc(cdaSrc(p.cda[0].source))})`:''}</div></div>
+        <div class="p-sub">${athleteName(p.athlete_id)?esc(athleteName(p.athlete_id))+' · ':''}${p.sport==='run'?'run':'bike'}${p.sport==='bike'&&profBikeLine(p)?` · ${esc(profBikeLine(p))}`:''}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}${p.sport==='bike'&&p.cda&&p.cda.length?` · CdA ${cdaNum(p.cda[0].value_m2)} m² (${esc(cdaSrc(p.cda[0].source))})`:''}</div></div>
       <div class="p-sub">${p.archived?'out of the picker, still in your history':'in the picker on Analyze'}</div>
       <div class="p-n">${p.analyses!=null?p.analyses:'—'}<small>analyses</small></div>
       <div class="p-acts">
         ${p.archived
           ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
-          : `${p.sport==='bike'?`<button type="button" data-act="cda" aria-expanded="${state.profCdaOpen===p.id}">Measured CdA${p.cda&&p.cda.length?' ('+p.cda.length+')':''}</button>`:''}<button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
-      </div></div>${p.sport==='bike'&&state.profCdaOpen===p.id?cdaPanel(p):''}`).join('');
+          : `${p.sport==='bike'?`<button type="button" data-act="cda" aria-expanded="${state.profCdaOpen===p.id}">Measured CdA${p.cda&&p.cda.length?' ('+p.cda.length+')':''}</button>`:''}${p.sport==='bike'&&partsFramesFor(p.bike_family).length?`<button type="button" data-act="parts" aria-expanded="${state.profPartsOpen===p.id}">Parts that fit</button>`:''}<button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
+      </div></div>${p.sport==='bike'&&state.profCdaOpen===p.id?cdaPanel(p):''}${p.sport==='bike'&&state.profPartsOpen===p.id?partsPanel(p):''}`).join('');
   }
   wireProfCda(list);
+  wireProfParts(list);
   renderCdaCompare();
   const lim=$('#profLimit');
   if(lim){
@@ -7378,6 +7391,11 @@ function showProfEdit(p){
   }
   $('#profCrank').value=p&&p.crank_length_mm?String(p.crank_length_mm):'';
   $('#profPos').innerHTML=profPosOptions(p?p.position:null);
+  $('#profFamily').innerHTML=profFamilyOptions(p?p.bike_family:null);
+  $('#profModel').value=p&&p.bike_model?p.bike_model:'';
+  $('#profSize').value=p&&p.frame_size?p.frame_size:'';
+  $('#profYear').value=p&&p.bike_year?String(p.bike_year):'';
+  syncProfGen(p?p.bike_generation:null);
   syncProfBikeFields();
   box.classList.remove('hidden'); $('#profName').focus();
 }
@@ -7385,6 +7403,127 @@ const PROFILE_POS_LABEL={road_hoods:'Road — hoods',road_drops:'Road — drops'
 function profPosOptions(current){
   return `<option value="">Ask each time</option>`+Object.entries(PROFILE_POS_LABEL)
     .map(([k,l])=>`<option value="${k}"${k===current?' selected':''}>${l}</option>`).join('');
+}
+/* The TT/tri families the server names (services/bike_catalog.py), then
+   "Other" -- a road bike or anything else goes there, with the model typed. */
+function profFamilyOptions(current){
+  const fams=PROFILES.bike_families||[];
+  return `<option value="">Not set</option>`+fams.map(f=>`<option value="${esc(f.slug)}"${f.slug===current?' selected':''}>${esc(f.label)}</option>`).join('')
+    +`<option value="other"${current==='other'?' selected':''}>Other</option>`;
+}
+function profBikeLine(p){
+  const fam=(PROFILES.bike_families||[]).find(f=>f.slug===p.bike_family);
+  return [fam?fam.label:null, p.bike_model, p.frame_size?'size '+p.frame_size:null, p.bike_year].filter(Boolean).join(' ');
+}
+/* ============================================================
+   Parts that fit this bike (services/parts.py, app/data/parts)
+   ============================================================
+   Every card is a row from the data: brand, model, what it moves, how sure we
+   are, and the sources. Nothing here infers a fit, and what does NOT fit is
+   listed with its reason, because that is the answer that saves the money. */
+var PARTS_FRAMES=null;   // [{id, family, generation, years, sizes, identify}] -- var: renderProfiles may run before this line
+async function loadPartsFrames(){
+  if(PARTS_FRAMES||!auth) return;
+  try{
+    const r=await fetch('/me/parts/frames',{headers:authHeaders()});
+    if(r.ok){ PARTS_FRAMES=(await r.json()).frames||[]; renderProfiles(); }
+  }catch(_e){}
+}
+function partsFramesFor(family){ return family?(PARTS_FRAMES||[]).filter(f=>f.family===family):[]; }
+function syncProfGen(current){
+  const sel=$('#profGen'), box=sel&&sel.closest('.prof-gen'); if(!sel||!box) return;
+  const gens=partsFramesFor($('#profFamily').value);
+  box.classList.toggle('hidden', !gens.length);
+  sel.innerHTML=`<option value="">Not sure</option>`+gens.map(f=>`<option value="${esc(f.id)}"${f.id===current?' selected':''}>${esc(f.generation)}</option>`).join('');
+}
+const PARTS_AXES={reach_mm:['Reach','mm'], stack_mm:['Pad height','mm'], angle_deg:['Tilt','°']};
+function partsRange(r,unit){ if(!r) return ''; const f=x=>(x>0?'+':x<0?'−':'')+Math.abs(x); return r[0]===r[1]?f(r[0])+' '+unit:`${f(r[0])} to ${f(r[1])} ${unit}`; }
+function partsCardHtml(p){
+  const eff=p.effect||{};
+  const moves=Object.entries(PARTS_AXES).filter(([k])=>eff[k]).map(([k,[l,u]])=>`${l} ${partsRange(eff[k],u)}`).join(' · ');
+  const tone=p.status==='manufacturer'?'cda-good':p.status==='incompatible'?'cda-warn':'';
+  const price=p.price?`<span>${esc(p.price.currency)} ${esc(String(p.price.amount))} <small>(price seen ${esc(cdaDay(p.price.checked))})</small></span>`:'';
+  return `<li class="part-card">
+    <div class="part-h"><b>${esc(p.brand)} ${esc(p.model)}</b> <span class="cda-chip ${tone}">${esc(p.status_label)}</span>${(p.covers||[]).length?' <span class="cda-chip cda-good">covers what you asked</span>':''}</div>
+    ${moves?`<div class="part-moves">${esc(moves)}</div>`:''}
+    ${eff.text?`<p>${esc(eff.text)}</p>`:''}
+    ${p.reason_incompatible?`<p><b>Why not:</b> ${esc(p.reason_incompatible)}</p>`:''}
+    ${p.needs?`<p><b>Also needs:</b> ${esc(p.needs)}</p>`:''}
+    <div class="part-foot">${price}${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">Maker’s page</a>`:''}
+      <details><summary>Sources (${(p.evidence||[]).length})</summary><ul>${(p.evidence||[]).map(e=>`<li><a href="${esc(e.url)}" target="_blank" rel="noopener nofollow">${esc(e.kind||'source')}</a>: ${esc(e.says||'')}</li>`).join('')}</ul></details>
+      <span class="part-rep">Tried it? <button class="btn btn-link" type="button" data-partrep="1" data-part="${esc(p.id)}">It fitted</button> · <button class="btn btn-link" type="button" data-partrep="0" data-part="${esc(p.id)}">It did not</button></span></div>
+  </li>`;
+}
+function partsPanel(p){
+  const gens=partsFramesFor(p.bike_family), q=state.partsQuery[p.id]||{};
+  const gen=gens.find(f=>f.id===p.bike_generation);
+  const sizes=gen&&gen.sizes&&gen.sizes.length?gen.sizes:[];
+  const res=state.partsResult[p.id];
+  const v=x=>x==null||x===0?'':String(x);
+  return `<div class="prof-cda prof-parts" data-partsfor="${p.id}">
+    <div class="cda-head"><span class="cda-lbl">Parts that fit · ${esc(p.name)}</span></div>
+    <div class="parts-form">
+      <div><label for="pg${p.id}">Generation</label><select id="pg${p.id}"><option value="">Pick yours</option>${gens.map(f=>`<option value="${esc(f.id)}"${gen&&f.id===gen.id?' selected':''}>${esc(f.generation)}</option>`).join('')}</select></div>
+      ${sizes.length?`<div><label for="ps${p.id}">Size</label><select id="ps${p.id}"><option value="">—</option>${sizes.map(z=>`<option${String(z).toLowerCase()===String(q.size||p.frame_size||'').toLowerCase()?' selected':''}>${esc(z)}</option>`).join('')}</select></div>`:''}
+      <div><label for="pr${p.id}">Pads forward, mm</label><input id="pr${p.id}" type="number" inputmode="numeric" step="5" min="-120" max="120" value="${v(q.reach_mm)}" placeholder="+30 or −20"></div>
+      <div><label for="pk${p.id}">Pads higher, mm</label><input id="pk${p.id}" type="number" inputmode="numeric" step="5" min="-120" max="120" value="${v(q.stack_mm)}" placeholder="+20 or −10"></div>
+      <div><label for="pa${p.id}">Tips up, degrees</label><input id="pa${p.id}" type="number" inputmode="numeric" step="1" min="-25" max="25" value="${v(q.angle_deg)}" placeholder="+10"></div>
+      <div class="parts-go"><button class="btn btn-primary btn-sm" type="button" data-partsgo="${p.id}"${gen?'':' disabled'}>Show parts</button></div>
+    </div>
+    ${gen?(gen.identify?`<p class="hint">${esc(gen.identify)}</p>`:''):'<p class="hint">Pick the generation of your frame: parts that fit one often do not fit the next.</p>'}
+    ${res?partsResultHtml(res):''}
+  </div>`;
+}
+function partsResultHtml(r){
+  if(r.error) return `<p class="hint">${esc(r.error)}</p>`;
+  const st=r.stock||{}, sz=st.size;
+  const stock=[['Pad height',st.stack_system],['Reach',st.reach_system],['Tilt',st.angle_system]].filter(([,v])=>v)
+    .map(([l,v])=>`<li><b>${l}:</b> ${esc(v)}</li>`).join('');
+  const asked=Object.keys(r.asked||{}).length;
+  return `<div class="parts-out">
+    ${r.stale?'<p class="banner warn">This frame’s data is more than six months old. Check with the maker before you buy.</p>':''}
+    <h4>What the stock cockpit already allows</h4>
+    <ul class="parts-stock">${stock||'<li>Not documented for this frame.</li>'}${sz?`<li><b>Size ${esc(sz.size)}:</b> pad height ${sz.pad_stack_mm?sz.pad_stack_mm.join('–')+' mm':'—'}, reach ${sz.pad_reach_mm?sz.pad_reach_mm.join('–')+' mm':'—'} (${esc(String(sz.pad_reference||'').replace(/_/g,' '))})</li>`:''}</ul>
+    ${asked?`<h4>Parts that move the way you asked</h4>${r.helps.length?`<ul class="parts-list">${r.helps.map(partsCardHtml).join('')}</ul>`:'<p class="hint">None on record for this frame. The stock range above may already cover it.</p>'}`:''}
+    ${r.other.length?`<details${asked?'':' open'}><summary>${asked?'Other parts that fit this frame':'Parts that fit this frame'} (${r.other.length})</summary><ul class="parts-list">${r.other.map(partsCardHtml).join('')}</ul></details>`:''}
+    ${r.incompatible.length?`<h4>Does not fit this frame</h4><ul class="parts-list">${r.incompatible.map(partsCardHtml).join('')}</ul>`:''}
+    <p class="hint">From fitting guides, makers’ pages and owners’ reports, each with its sources. Check with the seller before you buy: a frame’s year or size can change what fits.</p>
+  </div>`;
+}
+function wireProfParts(list){
+  if(!list) return;
+  list.querySelectorAll('.prof-parts').forEach(box=>{
+    const id=Number(box.dataset.partsfor), p=(PROFILES.profiles||[]).find(x=>x.id===id); if(!p) return;
+    const gen=box.querySelector('#pg'+id);
+    gen.addEventListener('change',async()=>{
+      if(await profPatch(id,{bike_generation:gen.value||null})){ p.bike_generation=gen.value||null; delete state.partsResult[id]; renderProfiles(); }
+    });
+    // A rider's word goes to a review queue, never into the data.
+    box.querySelectorAll('[data-partrep]').forEach(b=>b.addEventListener('click',async()=>{
+      const fits=b.dataset.partrep==='1';
+      try{
+        const r=await fetch('/me/parts/frames/'+encodeURIComponent(p.bike_generation)+'/reports',{method:'POST',
+          headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({part_id:b.dataset.part, fits})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok){ toast(typeof j.detail==='string'?j.detail:'Could not send that.'); return; }
+        const span=b.closest('.part-rep'); if(span) span.textContent='Thanks — we check every report before the list changes.';
+      }catch(_e){ toast('Could not send that.'); }
+    }));
+    const go=box.querySelector('[data-partsgo]');
+    if(go) go.addEventListener('click',async()=>{
+      const num=sel=>{ const el=box.querySelector(sel); return !el||el.value===''?0:Number(el.value); };
+      const sz=box.querySelector('#ps'+id);
+      const q={size:sz?sz.value:'', reach_mm:num('#pr'+id), stack_mm:num('#pk'+id), angle_deg:num('#pa'+id)};
+      state.partsQuery[id]=q; go.disabled=true;
+      try{
+        const qs=new URLSearchParams({size:q.size, reach_mm:q.reach_mm, stack_mm:q.stack_mm, angle_deg:q.angle_deg});
+        const r=await fetch('/me/parts/frames/'+encodeURIComponent(p.bike_generation)+'?'+qs,{headers:authHeaders()});
+        const j=await r.json().catch(()=>({}));
+        state.partsResult[id]=r.ok?j:{error:(typeof j.detail==='string'&&j.detail)||'Could not load the parts for this frame.'};
+      }catch(_e){ state.partsResult[id]={error:'Network problem. Try again.'}; }
+      renderProfiles();
+    });
+  });
 }
 function syncProfBikeFields(){
   const bike=$('#profSport').value==='bike';
@@ -7403,13 +7542,19 @@ async function profPatch(id, body){
   $('#profFilter').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.profFilter=b.dataset.pf; renderProfiles(); });
   $('#profAdd').addEventListener('click',()=>showProfEdit(null));
   $('#profCancel').addEventListener('click',()=>{ $('#profEdit').classList.add('hidden'); state.profEditId=null; });
+  $('#profFamily').addEventListener('change',()=>syncProfGen(null));
   $('#profSport').addEventListener('change',e=>{ $('#profKind').innerHTML=profKindOptions(e.target.value, e.target.value==='run'?'shoes':'road'); syncProfBikeFields(); });
   $('#profSave').addEventListener('click',async()=>{
     const name=$('#profName').value.trim(); if(!name){ $('#profName').focus(); return; }
     const sport=$('#profSport').value, kind=$('#profKind').value;
     const crankRaw=$('#profCrank').value.trim(), crank=crankRaw===''?null:parseFloat(crankRaw);
     if(sport==='bike' && crank!==null && !(crank>=150&&crank<=185)){ toast('Cranks run 150–185 mm — check the number.'); $('#profCrank').focus(); return; }
-    const bikeBits=sport==='bike'?{crank_length_mm:crank, position:$('#profPos').value||null}:{};
+    const yearRaw=$('#profYear').value.trim(), year=yearRaw===''?null:parseInt(yearRaw,10);
+    if(sport==='bike' && year!==null && !(year>=1990&&year<=2030)){ toast('A model year between 1990 and 2030, or leave it empty.'); $('#profYear').focus(); return; }
+    const bikeBits=sport==='bike'?{crank_length_mm:crank, position:$('#profPos').value||null,
+      bike_family:$('#profFamily').value||null, bike_model:$('#profModel').value.trim()||null,
+      frame_size:$('#profSize').value.trim()||null, bike_year:year,
+      bike_generation:$('#profGen').value||null}:{};
     let ok;
     if(state.profEditId!=null) ok=await profPatch(state.profEditId,{name,kind,...bikeBits});
     else{
@@ -7427,6 +7572,11 @@ async function profPatch(id, body){
     const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
     const p=(PROFILES.profiles||[]).find(x=>x.id===id); if(!p) return;
     if(b.dataset.act==='edit'){ showProfEdit(p); return; }
+    if(b.dataset.act==='parts'){
+      state.profPartsOpen=state.profPartsOpen===id?null:id;
+      if(state.profPartsOpen) track('parts_opened',{family:p.bike_family||null, generation:p.bike_generation||null});
+      renderProfiles(); return;
+    }
     if(b.dataset.act==='cda'){
       const shut=state.profCdaOpen===id;
       state.profCdaOpen=shut?null:id;
@@ -7461,6 +7611,7 @@ const CDA_PROTO={repeated_loops:'Repeated loops, same day',single_ride:'One ordi
 const CDA_NOT_A_RIDE=['airo','wind_tunnel'];
 const CDA_DISCLAIMER='Numbers measured with a field test, a wind tunnel or a CFD service. Flapp does not calculate these.';
 state.profCdaOpen=null; state.cdaAdding=false; state.cdaCmp=null; state.adSetups={}; state.adCdaAdding=false;
+state.profPartsOpen=null; state.partsQuery={}; state.partsResult={};
 function cdaNum(v){ return Number(v).toFixed(3); }
 function cdaSrc(s){ return CDA_SRC[s]||s||''; }
 function cdaDay(iso){ try{ return new Date(iso+'T12:00:00').toLocaleDateString(UI_LOCALE,{day:'numeric',month:'short',year:'numeric'}); }catch(_e){ return iso; } }
@@ -7470,6 +7621,25 @@ function cdaDetail(j){
   if(typeof d==='string') return d;
   if(Array.isArray(d)&&d[0]&&d[0].msg) return String(d[0].msg).replace(/^Value error,\s*/,'');
   return '';
+}
+/* What a test changed (services/cda_math.VARIABLES, served on /me/profiles). */
+function cdaVarLabel(k){ const v=(PROFILES.cda_variables||[]).find(x=>x.key===k); return v?v.label:''; }
+function cdaSigned(x,d){ return (x<0?'−':'+')+Math.abs(x).toFixed(d); }
+/* A tagged test against the setup's baseline, as the server worked it out --
+   the same numbers the report chat quotes, so the two never disagree. */
+function cdaVsCell(r){
+  if(!r.variable||r.variable==='baseline') return r.variable==='baseline'?'<span class="cda-chip">baseline</span>':'';
+  const d=r.vs_baseline;
+  if(!d) return `<small>${r.vs_baseline_missing==='measured_differently'?'No baseline measured the same way':'Log a baseline to compare'}</small>`;
+  const w=d.watts||{};
+  return `<span class="cda-mono">${cdaSigned(d.delta_m2,3)} m²</span><small>${Object.entries(w).map(([k,v])=>`${cdaSigned(v,0)} W at ${esc(k)} km/h`).join(' · ')} · ${cdaSigned(d.seconds,0)} s per 40 km</small>`;
+}
+/* The fixed order of what to field-test next (services/cda_math.LADDER). */
+function cdaLadderHtml(ladder){
+  if(!ladder||!ladder.length) return '';
+  return `<details class="cda-ladder"${ladder.some(s=>s.done)?' open':''}><summary>What to test next</summary><ol>${ladder.map(s=>
+    `<li class="${s.done?'is-done':''}${s.next?' is-next':''}"><b>${esc(s.title)}</b>${s.done?' <span class="cda-chip cda-good">tested</span>':s.next?' <span class="cda-chip">next</span>':''}<small>${esc(s.why)}</small></li>`).join('')}</ol>
+    <p class="hint">Tag each measurement with what you changed and it is compared with your baseline here, in watts.</p></details>`;
 }
 function cdaProtoCell(p){ return p==='single_ride'?'<span class="cda-chip cda-warn">One ordinary ride</span>':esc(CDA_PROTO[p]||p||''); }
 /* The history of one setup. ``coachView``: the coach reading an athlete's
@@ -7484,11 +7654,12 @@ function cdaTable(rows, opts){
     if(!r.entered_by_coach) return '';
     return `<span class="cda-chip cda-coach">added by ${r.entered_by_coach==='Your coach'?'your coach':'your coach, '+esc(r.entered_by_coach)}</span>`;
   };
-  return `<div class="cda-tablewrap"><table class="cda-table"><thead><tr><th scope="col">Date</th><th scope="col">CdA, m²</th><th scope="col">Source</th><th scope="col">How it was measured</th><th scope="col"><span class="visually-hidden">Delete</span></th></tr></thead><tbody>${rows.map(r=>`<tr>
+  return `<div class="cda-tablewrap"><table class="cda-table"><thead><tr><th scope="col">Date</th><th scope="col">CdA, m²</th><th scope="col">Source</th><th scope="col">How it was measured</th><th scope="col">Vs baseline</th><th scope="col"><span class="visually-hidden">Delete</span></th></tr></thead><tbody>${rows.map(r=>`<tr>
     <td class="cda-mono">${esc(cdaDay(r.measured_on))}</td>
     <td class="cda-val">${cdaNum(r.value_m2)}</td>
-    <td>${esc(cdaSrc(r.source))} ${who(r)}${r.note?`<small>${esc(r.note)}</small>`:''}</td>
+    <td>${esc(cdaSrc(r.source))} ${who(r)}${r.variable&&r.variable!=='baseline'?`<small>Tested: ${esc(cdaVarLabel(r.variable))}</small>`:''}${r.note?`<small>${esc(r.note)}</small>`:''}</td>
     <td>${cdaProtoCell(r.protocol)}</td>
+    <td>${cdaVsCell(r)}</td>
     <td class="cda-acts">${r.can_delete?`<button type="button" data-cdadel="${r.id}" data-cdaprof="${r.profile_id}">Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function cdaFormHtml(id, opts){
@@ -7500,6 +7671,7 @@ function cdaFormHtml(id, opts){
     <div><label for="${id}Date">Date measured</label><input id="${id}Date" type="date" value="${today}" max="${today}"></div>
     <div><label for="${id}Src">Source</label><select id="${id}Src">${Object.entries(CDA_SRC).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('')}</select></div>
     <div><label for="${id}Proto">How it was measured</label><select id="${id}Proto">${Object.entries(CDA_PROTO).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('')}</select></div>
+    <div class="cda-wide"><label for="${id}Var">What you tested</label><select id="${id}Var"><option value="">Not saying</option>${(PROFILES.cda_variables||[]).map(v=>`<option value="${esc(v.key)}">${esc(v.label)}</option>`).join('')}</select></div>
     <div class="cda-wide"><label for="${id}Note">Note (optional)</label><input id="${id}Note" type="text" maxlength="280" placeholder="e.g. new helmet, 40 km/h, calm morning"></div>
     ${opts.research?`<label class="cda-wide cda-check"><input type="checkbox" id="${id}Res"><span>Also let Flapp use my clips and measured CdA for aero research. Optional, off unless you tick it; switch it off any time in Account. <a href="/privacy#research-consent" target="_blank" rel="noopener">What this covers</a></span></label>`:''}
     ${opts.where?`<p class="hint cda-wide" id="${id}Where"></p>`:''}
@@ -7530,10 +7702,10 @@ function wireCdaForm(form, opts){
     try{
       const url='/me/profiles/'+pid+'/cda'+(opts.athleteId?'?athlete_id='+encodeURIComponent(opts.athleteId):'');
       const r=await fetch(url,{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),
-        body:JSON.stringify({value_m2:v, measured_on:q('Date').value||cdaToday(), source:q('Src').value, protocol:q('Proto').value, note:q('Note').value.trim()||null})});
+        body:JSON.stringify({value_m2:v, measured_on:q('Date').value||cdaToday(), source:q('Src').value, protocol:q('Proto').value, note:q('Note').value.trim()||null, variable:(q('Var')&&q('Var').value)||null})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok){ say(cdaDetail(j)||'Could not save that measurement.'); return; }
-      track('cda_added',{source:j.source, protocol:j.protocol, coach:!!opts.athleteId});
+      track('cda_added',{source:j.source, protocol:j.protocol, coach:!!opts.athleteId, variable:j.variable||null});
       const res=q('Res'); if(res&&res.checked) await setResearch(true,{quiet:true});
       toast(`Saved ${cdaNum(j.value_m2)} m².`);
       if(opts.onSaved) opts.onSaved(j);
@@ -7558,6 +7730,7 @@ function cdaPanel(p){
     <div class="cda-head"><span class="cda-lbl">Measured CdA · ${esc(p.name)}</span>${adding?'':`<button class="btn btn-ghost btn-sm" type="button" data-cdaadd="${p.id}">Add a measurement</button>`}</div>
     <p class="hint">${CDA_DISCLAIMER}</p>
     ${cdaTable(p.cda)}
+    ${cdaLadderHtml(p.ladder)}
     ${adding?cdaFormHtml('cdaF'+p.id,{research:!(auth&&auth.research_opt_in)&&!p.athlete_id}):''}
   </div>`;
 }
@@ -7599,7 +7772,11 @@ function renderCdaCompare(){
     const d=mb.value_m2-ma.value_m2, pct=d/ma.value_m2*100, sg=x=>(x<0?'−':'+');
     const same=ma.source===mb.source&&ma.protocol===mb.protocol&&ma.protocol!=='single_ride';
     const single=ma.protocol==='single_ride'||mb.protocol==='single_ride';
-    mid=`<span class="cda-delta${same?'':' cda-dim'}">${sg(d)}${Math.abs(d).toFixed(3)} m²</span><span class="cda-meta">${sg(pct)}${Math.abs(pct).toFixed(1)}%</span>${same?'<span class="cda-chip cda-good">Same source and method</span>':'<span class="cda-chip cda-warn">Not like for like</span>'}`;
+    // Watts at the pedals for the difference, same physics as the aero panel
+    // and services/cda_math.watts; only for a like-for-like pair.
+    const ph=AERO_MODEL_FALLBACK.physics, wAt=k=>0.5*ph.rho*d*Math.pow(k/3.6,3)/ph.eta;
+    const watts=same?`<span class="cda-meta">${[40,45].map(k=>`${sg(wAt(k))}${Math.abs(wAt(k)).toFixed(0)} W at ${k} km/h`).join(' · ')}</span>`:'';
+    mid=`<span class="cda-delta${same?'':' cda-dim'}">${sg(d)}${Math.abs(d).toFixed(3)} m²</span><span class="cda-meta">${sg(pct)}${Math.abs(pct).toFixed(1)}%</span>${watts}${same?'<span class="cda-chip cda-good">Same source and method</span>':'<span class="cda-chip cda-warn">Not like for like</span>'}`;
     foot=same
       ?'Both numbers were measured the same way. Flapp shows the difference; it does not calculate either number.'
       :single
@@ -7661,7 +7838,7 @@ async function renderAthleteCda(a, refetch){
   host.innerHTML=`<div class="cda-cmp">
     <div class="cda-head"><span class="cda-lbl">Bike setups · measured CdA</span>${live.length&&!adding?`<button class="btn btn-ghost btn-sm" type="button" id="adCdaAdd">Add CdA for ${esc(first)}</button>`:''}</div>
     <p class="hint">${CDA_DISCLAIMER}</p>
-    ${setups.length?setups.map(s=>`<div class="ad-setup"><div class="ad-setup-h"><b>${esc(s.name)}</b><small>${s.whose==='athlete'?`${esc(first)}’s own account`:'kept on your account'}${s.archived?' · archived':''}</small></div>${cdaTable(s.cda,{coachView:true,whose:s.whose})}</div>`).join('')
+    ${setups.length?setups.map(s=>`<div class="ad-setup"><div class="ad-setup-h"><b>${esc(s.name)}</b><small>${s.whose==='athlete'?`${esc(first)}’s own account`:'kept on your account'}${s.archived?' · archived':''}</small></div>${cdaTable(s.cda,{coachView:true,whose:s.whose})}${cdaLadderHtml(s.ladder)}</div>`).join('')
       :`<p class="hint">No bike setup yet. ${a.linked?`${esc(first)} can add one under Profiles, or you can keep one for them on your account.`:`Keep one for ${esc(first)} on your account.`} <button type="button" class="btn btn-ghost btn-sm" id="adCdaNewSetup">Add a setup for ${esc(first)}</button></p>`}
     ${adding?cdaFormHtml('adCdaF',{setups:live,where:true}):''}
   </div>`;
@@ -10271,6 +10448,7 @@ function render(job,opts){
     // saveToHistory returns the entry id -- the report has to be stored
     // before it can be sold, because that id is what the unlock buys.
     const entryId=saveToHistory('video', r);
+    renderChat('chatBlock', null);
     renderUpsell('upsellHost', r.locked,
       ['coachBlock','planBlock','fitBlock','issuesBlock','metricsBlock','anglesBlock',
        'biomechBlock','kinogramBlock','exportBlock'],
@@ -10401,6 +10579,8 @@ function render(job,opts){
   // path, so the tier that has the Save-as-PDF button printed a page with no
   // name, date or score on it.
   renderPrintable(r);
+  renderChat('chatBlock', state.videoHistId ? {id:state.videoHistId, kind:'video',
+    sport:r.sport_type||state.sport, access:r.locked?'gated':'full'} : null);
   // Last, deliberately: the rail lists the sections that are actually on this
   // report, and which those are is only settled once every block above has
   // decided whether to show itself.
@@ -10419,7 +10599,7 @@ const RAIL_SECTIONS=[
   ['issuesBlock','Findings'], ['aeroBlock','Aero'], ['coachBlock','Coach'],
   ['planBlock','Plan'], ['fitBlock','Fit'], ['kinogramBlock','Kinogram'],
   ['metricsBlock','Metrics'], ['anglesBlock','Angles'], ['hobBlock','Crank'],
-  ['biomechBlock','Lab'], ['exportBlock','Export'],
+  ['biomechBlock','Lab'], ['exportBlock','Export'], ['chatBlock','Ask'],
 ];
 function renderReportRail(r, sport){
   const rail=$('#reportRail'), nav=$('#railNav'), sc=$('#railScore');
@@ -11008,6 +11188,126 @@ function exportDownload(fmt,o){
 function historyExportOpts(e){
   return {url:fmt=>meUrl(e,'export?format='+fmt),
           ids:'#hdExport', where:'history'};
+}
+
+/* ============================================================
+   Ask about this report — a chat grounded in the saved analysis
+   ============================================================
+   The server holds the whole context (services/report_chat.py: the export
+   document above, the bike profile, logged CdA, earlier clips on the setup)
+   and the rules the model keeps (no CdA from video, no helmet advice, a
+   withheld score is only a reason to film again). This side shows the thread
+   and posts the question. Paid plans: a $4 unlock opens the report, not the
+   chat, and the block says so instead of offering a box that answers 402. */
+const CHAT_SUGGEST={
+  bike:['What should I change first, and what does it cost me?',
+        'How much could my position be worth over my race?',
+        'Why does the report say that about my saddle?'],
+  run:['What should I work on first?',
+       'Which drill fits this report best?',
+       'How should I film the next clip?'],
+};
+const chatThreads={};   // entry id -> {msgs, used, limit, busy}
+function renderChat(blockId, e){
+  const block=$('#'+blockId); if(!block) return;
+  // auth.report_chat (services/report_chat.chat_state): "open", or the plan
+  // that has it ("full" / "plans"), or "" while it is not launched for anyone
+  // this account could become.
+  const mode=(auth&&auth.report_chat)||'';
+  const show=!!(mode && e && e.id && e.access==='full');
+  block.classList.toggle('hidden', !show);
+  if(!show){ block.innerHTML=''; block.dataset.entry=''; return; }
+  block.dataset.entry=e.id;
+  const paid=mode==='open';
+  const head=`<div class="blockhead">
+      <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg> Ask</div>
+      <h3>Ask about this report</h3>
+      <div class="speedline-sm"></div>
+    </div>`;
+  if(!paid){
+    block.innerHTML=head+`<p class="hint chat-hint">Questions about a report are part of ${mode==='full'?'the Full plan':'the plans'}: why a number is flagged, what a change would cost you, how to film the next clip.</p>
+      <button class="btn btn-primary btn-sm" type="button" data-chatplans>See plans</button>`;
+    block.querySelector('[data-chatplans]').addEventListener('click',()=>{ track('chat_locked_clicked',{}); openPricing(); });
+    track('chat_locked_shown',{plan:mode});
+    return;
+  }
+  const bike=(e.sport||'')==='bike';
+  block.innerHTML=head+`<p class="hint chat-hint">Answers come from this report’s numbers${bike?', your bike profile and any CdA you have logged':''}. An assistant, not a fitter: it knows only what the clip measured.</p>
+    <div class="chat-log" aria-live="polite"></div>
+    <div class="chat-sugg"></div>
+    <form class="chat-form">
+      <textarea maxlength="600" rows="2" placeholder="Ask a question about this analysis…" aria-label="Your question"></textarea>
+      <button class="btn btn-primary btn-sm" type="submit">Ask</button>
+    </form>
+    <p class="chat-foot"></p>`;
+  const form=block.querySelector('.chat-form'), ta=form.querySelector('textarea');
+  form.addEventListener('submit',ev=>{ ev.preventDefault(); chatSend(blockId, e, ta.value); });
+  ta.addEventListener('keydown',ev=>{ if(ev.key==='Enter'&&!ev.shiftKey&&!ev.isComposing){ ev.preventDefault(); chatSend(blockId, e, ta.value); } });
+  drawChat(blockId, e);
+  if(!chatThreads[e.id]) chatLoad(blockId, e);
+}
+async function chatLoad(blockId, e){
+  chatThreads[e.id]={msgs:[], used:null, limit:null, busy:false};
+  try{
+    const r=await fetch(meUrl(e,'chat'),{headers:authHeaders()});
+    if(r.status===402){ delete chatThreads[e.id]; const b=$('#'+blockId); if(b&&b.dataset.entry===e.id) b.classList.add('hidden'); return; }
+    if(r.ok){
+      const j=await r.json();
+      Object.assign(chatThreads[e.id], {msgs:j.messages||[], used:j.used, limit:j.limit});
+    }
+    // 404: a fresh report still on its way to the server -- an empty thread.
+  }catch(_e){}
+  track('chat_opened', {where:blockId==='chatBlock'?'result':'history', sport:e.sport||null,
+    messages:(chatThreads[e.id]||{}).msgs?chatThreads[e.id].msgs.length:0});
+  drawChat(blockId, e);
+}
+function drawChat(blockId, e){
+  const block=$('#'+blockId); if(!block||block.dataset.entry!==e.id) return;
+  const t=chatThreads[e.id]||{msgs:[]};
+  const log=block.querySelector('.chat-log'), sugg=block.querySelector('.chat-sugg'), foot=block.querySelector('.chat-foot');
+  if(!log) return;
+  log.innerHTML=t.msgs.map(m=>m.role==='user'
+    ? `<div class="chat-msg chat-q">${esc(m.text)}</div>`
+    : `<div class="chat-msg chat-a">${mdToHtml(m.text)}${m.model?`<span class="chat-by">${esc(m.model)}</span>`:''}</div>`
+  ).join('')+(t.busy?'<div class="chat-msg chat-a chat-wait">Reading your report…</div>':'');
+  const list=CHAT_SUGGEST[(e.sport==='bike')?'bike':'run'];
+  sugg.innerHTML=(!t.msgs.length&&!t.busy)?list.map((q,i)=>`<button class="btn btn-ghost btn-sm" type="button" data-sugg="${i}">${esc(q)}</button>`).join(''):'';
+  sugg.querySelectorAll('[data-sugg]').forEach(b=>b.addEventListener('click',()=>{
+    track('chat_suggestion_used',{i:Number(b.dataset.sugg)}); chatSend(blockId, e, list[Number(b.dataset.sugg)]);
+  }));
+  const left=(t.limit!=null&&t.used!=null)?Math.max(0,t.limit-t.used):null;
+  const notes=$(blockId==='chatBlock'?'#notesOffer':'#hdNotesOffer');
+  const human=notes&&!notes.classList.contains('hidden')
+    ? ' Want a person’s eye on it? <button class="btn btn-link" type="button" data-chathuman>A coach can review this clip.</button>' : '';
+  foot.innerHTML=(left==null?'':`${left} of ${t.limit} questions left this month.`)+human;
+  const hb=foot.querySelector('[data-chathuman]');
+  if(hb) hb.addEventListener('click',()=>{ track('chat_human_clicked',{}); notes.scrollIntoView({behavior:'smooth',block:'start'}); });
+  const btn=block.querySelector('.chat-form button');
+  if(btn) btn.disabled=!!t.busy || left===0;
+}
+async function chatSend(blockId, e, text){
+  const q=String(text||'').trim();
+  const t=chatThreads[e.id]||(chatThreads[e.id]={msgs:[], used:null, limit:null, busy:false});
+  if(!q||t.busy) return;
+  if(q.length>600){ toast('Keep a question under 600 characters.'); return; }
+  const block=$('#'+blockId), ta=block&&block.querySelector('textarea');
+  t.busy=true; t.msgs.push({role:'user', text:q}); if(ta) ta.value='';
+  drawChat(blockId, e);
+  let ok=false;
+  try{
+    const r=await fetch(meUrl(e,'chat'),{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({question:q})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok){
+      t.msgs.pop(); t.msgs.push(j.question, j.answer); t.used=j.used; t.limit=j.limit; ok=true;
+    } else if(r.status===404){
+      toast('This report is still being saved. Try again in a moment.');
+    } else {
+      toast(typeof j.detail==='string'?j.detail:'The assistant could not answer. Try again in a minute.',{duration:6000});
+    }
+  }catch(_e){ toast('Network problem. Your question was not sent.'); }
+  if(!ok){ t.msgs.pop(); if(ta&&!ta.value) ta.value=q; }
+  t.busy=false;
+  drawChat(blockId, e);
 }
 
 async function doShare(card, btn, txtEl){
@@ -12311,6 +12611,7 @@ function renderHistoryDetail(e){
   renderHistoryHob(e);
   renderHistoryKinogram(e);
   renderHistoryExport(e);
+  renderChat('hdChatBlock', e);
   renderHistoryUpsell(e);
 }
 /* The Full plan's PDF from a saved report. It was only offered on the fresh

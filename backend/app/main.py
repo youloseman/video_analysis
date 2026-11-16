@@ -506,6 +506,14 @@ app.include_router(coach_upload_routes.router)
 app.include_router(coach_report_routes.router)
 # Measured CdA on setups, and the coach's view of an athlete's setups.
 app.include_router(cda_routes.router)
+# Ask about this report: a chat grounded in one saved analysis.
+from app.api import chat as chat_routes  # noqa: E402
+
+app.include_router(chat_routes.router)
+# Which parts fit this frame (app/data/parts).
+from app.api import parts as parts_routes  # noqa: E402
+
+app.include_router(parts_routes.router)
 # Races, "seen" marks on clips and groups: what a coach keeps about the squad.
 from app.api import squad as squad_routes  # noqa: E402
 

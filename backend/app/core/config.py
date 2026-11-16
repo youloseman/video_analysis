@@ -181,6 +181,11 @@ class Settings:
     # real broadcast frames (docs/RUN_PHOTO_PLAN_RU.md); admin accounts see
     # them regardless, which is how they get checked. RUN_CONTACT_METRICS=1.
     run_contact_metrics: bool = False
+    # Ask about this report (services/report_chat.py), rolled out in steps:
+    # "admin" -- admin accounts only, so the answers get read on the live
+    # models first (scripts/check_report_chat.py); "full" -- Full, Coach and
+    # admin; "all" -- every paid plan. REPORT_CHAT=full / all.
+    report_chat: str = "admin"
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
     public_base_url: str | None = None
@@ -392,6 +397,7 @@ def _load_settings() -> Settings:
         coach_notes_enabled=(os.environ.get("COACH_NOTES_ENABLED") or "1").strip().lower()
         not in ("0", "false", "no", "off"),
         run_contact_metrics=_bool_env("RUN_CONTACT_METRICS", Settings.run_contact_metrics),
+        report_chat=(os.environ.get("REPORT_CHAT") or Settings.report_chat).strip().lower(),
         stripe_price_unlock=os.environ.get("STRIPE_PRICE_UNLOCK") or None,
         expert_review_slots_per_week=_int_env(
             "EXPERT_REVIEW_SLOTS_PER_WEEK", Settings.expert_review_slots_per_week,
