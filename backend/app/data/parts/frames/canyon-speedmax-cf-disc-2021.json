@@ -1,0 +1,273 @@
+{
+  "id": "canyon-speedmax-cf-disc-2021",
+  "family": "canyon-speedmax",
+  "generation": "Speedmax CF Disc (frame code R073, 2021–; facelift cockpit from mid-2024; CF 7 Di2 still sold 2026)",
+  "years": [2021, 2026],
+  "brakes": "disc",
+  "identify": "The cheaper Speedmax with disc brakes and a conventional front end: standard 1-1/8 in steerer, Profile Design brackets/risers and extensions on a Canyon base bar. 2021–mid-2024 bikes have the alloy Canyon V21 aerostem with the HB0053 base bar (recall: V21 bikes sold May 2017–Jul 2024); the 2024 facelift (R073 Facelift) uses a one-piece carbon CP0041 flatbar. Not the CFR/CF SLX, which have Canyon's proprietary spacer column.",
+  "cockpit": {
+    "type": "proprietary_stem_standard_bars",
+    "steerer": "1-1/8 in fork steerer (Canyon CF 7 Di2 spec)",
+    "stem": "2021–2024: Canyon V21 alloy aerostem (an owner reports 90 mm stock on a size M), subject to the steerer recall; facelift: one-piece carbon CP0041 bar/stem. Owners have fitted non-Canyon stems, but Canyon has refused recall/fork warranty when a non-Canyon stem was fitted.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": 22.2,
+    "pad_bolt_spacing": "Profile Design A2/A3 armrest pattern (Ergo armrest: width steps 18.5 mm, reach steps 15 mm per Profile Design's Canyon guide)",
+    "stack_system": "Profile Design A3 risers on the base bar: 30 mm stock on 2021–2024 bikes, 35 mm on 2025 CF 7/CF 8 (Profile Design guide). Profile Design: the full stack range in its chart needs an A3 riser kit (up to 80 mm).",
+    "reach_system": "Arm pads slide on the Profile Design bracket (15 mm steps, offset −70 to −17.5 mm); CP0041 bar is 15 mm longer on M–XL than on XS–S; extension length set by clamping/cutting the 22.2 mm extensions. More reach: Profile Design A3 Reach Extender (2025 bar) or a longer aftermarket stem (2021–2024).",
+    "angle_system": "Profile Design A2 bracket: 0–15° stepless via bracket bolts; 18–30° with the A2 Tilt Booster (Profile Design, 2025 bar). Canyon calls the CF 7 extension tilt stepless.",
+    "notes": "Profile Design says its Reach Extender and Tilt Booster have not been tested with the 2021–2024 HB0053 base bar. Canyon will not sell the facelift cockpit for pre-facelift R073 frames. Canyon e-mailed Speedmax owners in July 2026 that untested third-party reach extenders/adapters may void the warranty; a fitter on Slowtwitch read the Profile Design reach extender as the common option for the CF."
+  },
+  "stock_range": [
+    {"size": "XS", "pad_stack_mm": [596, 666], "pad_reach_mm": [352, 463], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-bh/speedmax-cf-8-disc-di2/2556.html",
+     "note": "2021-era Speedmax CF 8 Disc Di2 (V21 + HB0053 cockpit). Canyon does not state the pad measuring point."},
+    {"size": "S", "pad_stack_mm": [633, 703], "pad_reach_mm": [377, 488], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-bh/speedmax-cf-8-disc-di2/2556.html",
+     "note": "2021-era HB0053 cockpit."},
+    {"size": "M", "pad_stack_mm": [658, 728], "pad_reach_mm": [399, 510], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-bh/speedmax-cf-8-disc-di2/2556.html",
+     "note": "2021-era HB0053 cockpit."},
+    {"size": "L", "pad_stack_mm": [692, 762], "pad_reach_mm": [411, 522], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-bh/speedmax-cf-8-disc-di2/2556.html",
+     "note": "2021-era HB0053 cockpit."},
+    {"size": "XL", "pad_stack_mm": [722, 792], "pad_reach_mm": [447, 558], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-bh/speedmax-cf-8-disc-di2/2556.html",
+     "note": "2021-era HB0053 cockpit."},
+    {"size": "XS (CP0041 cockpit)", "pad_stack_mm": [568, 662], "pad_reach_mm": [358, 438], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cf/speedmax-cf-7-di2/4597.html",
+     "note": "Current CF 7 Di2 with CP0041 one-piece bar; 650b wheels on XS."},
+    {"size": "S (CP0041 cockpit)", "pad_stack_mm": [604, 698], "pad_reach_mm": [387, 467], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cf/speedmax-cf-7-di2/4597.html"},
+    {"size": "M (CP0041 cockpit)", "pad_stack_mm": [629, 723], "pad_reach_mm": [416, 495], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cf/speedmax-cf-7-di2/4597.html"},
+    {"size": "L (CP0041 cockpit)", "pad_stack_mm": [663, 757], "pad_reach_mm": [448, 527], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cf/speedmax-cf-7-di2/4597.html"},
+    {"size": "XL (CP0041 cockpit)", "pad_stack_mm": [693, 787], "pad_reach_mm": [474, 553], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cf/speedmax-cf-7-di2/4597.html"}
+  ],
+  "parts": [
+    {
+      "id": "profile-design-a3a-high-riser-kit",
+      "brand": "Profile Design",
+      "model": "A3A High Riser Kit",
+      "category": "riser",
+      "effect": {"reach_mm": null, "stack_mm": [0, 50],
+                 "angle_deg": null,
+                 "text": "A3 risers (5/10/20/40 mm pairs) + 5 mm bridge, up to 80 mm total versus 30–35 mm stock: roughly +45–50 mm of pad height."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bikecorp.com.au/Documents/Installation%20Instructions/Profile%20DesignCanyon-Upgrade%20Guide.pdf", "kind": "manufacturer",
+         "says": "Profile Design's Canyon upgrade guide lists 'A3 High' as the riser upgrade for Speedmax CF 2021–2024 and CF 7/CF 8 2025; max height 80 mm; full stack range needs an A3 riser kit."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Longer bolts included (75–100 mm). On A2 risers needs the A2-to-A3 adaptor.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-a3c-riser-kit",
+      "brand": "Profile Design",
+      "model": "A3C Riser Kit (carbon bridge)",
+      "category": "riser",
+      "effect": {"reach_mm": null, "stack_mm": [0, 30], "angle_deg": null,
+                 "text": "A3 risers + 40 mm carbon bridge, up to 60 mm total versus 30–35 mm stock."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bikecorp.com.au/Documents/Installation%20Instructions/Profile%20DesignCanyon-Upgrade%20Guide.pdf", "kind": "manufacturer",
+         "says": "Profile Design lists the A3C riser kit (max 60 mm) in the upgrade path for Speedmax CF 2021–2024 and 2025."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Bolts included.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-profile-design-speedmax-cf-riser-kit",
+      "brand": "Canyon / Profile Design",
+      "model": "Profile Design Speedmax CF Riser Kit (Canyon 10006304)",
+      "category": "riser",
+      "effect": {"reach_mm": null, "stack_mm": [0, 40], "angle_deg": null,
+                 "text": "Two 40 mm risers + 5 mm bridge with M6 bolts 70–100 mm."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://canyon.com/en-gb/profile-design-speedmax-cf-riser-kit/10006304.html", "kind": "manufacturer",
+         "says": "Canyon: made for the Speedmax CF, works with Profile Design Sonic Ergo 35A extensions; contents named 'Aeria Ultimate Race Bracket Riser Kit'; GBP 9.99, sold out."},
+        {"url": "https://www.canyon.com/en-bh/speedmax-cf-8-disc-di2/2556.html", "kind": "manufacturer",
+         "says": "2021 Speedmax CF 8 Disc Di2 ships with Profile Design 35A extensions on the HB0053 base bar."}
+      ],
+      "url": "https://canyon.com/en-gb/profile-design-speedmax-cf-riser-kit/10006304.html",
+      "price": {"amount": 9.99, "currency": "GBP", "checked": "2026-11-16"},
+      "needs": "Sold out at Canyon GB. Canyon US sells a different kit (143422) for the rim-era H30 bar.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-a3-reach-extender",
+      "brand": "Profile Design",
+      "model": "A3 Reach Extender",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": [0, 30], "stack_mm": [25, 25], "angle_deg": null,
+                 "text": "Moves the arm pads about 30 mm forward (Profile Design guide; retailers quote 32 mm) and adds 25 mm of height."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bikecorp.com.au/Documents/Installation%20Instructions/Profile%20DesignCanyon-Upgrade%20Guide.pdf", "kind": "manufacturer",
+         "says": "Profile Design's Pad XY chart for CF 7/CF 8 (CP0041 bar) shows the most forward positions using the A3 Reach Extender; it notes the HB0053 bar (2021–2024) is untested with the Reach Extender."},
+        {"url": "https://forum.slowtwitch.com/t/its-here-meet-the-all-new-canyon-speedmax/1299051/101", "kind": "fitter",
+         "says": "Fitter names the PD reach extender as the usual reach part for the CF models."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "On 2021–2024 HB0053 bikes Profile Design has not tested it; on A2 risers needs the A2-to-A3 adaptor; longer bolts.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-a2-tilt-booster",
+      "brand": "Profile Design",
+      "model": "A2 Tilt Booster",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": [20.5, 20.5], "angle_deg": [0, 15],
+                 "text": "Adds 15° to the A2 bracket: 18–30° instead of 0–15°. Riser height 20.5 mm."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bikecorp.com.au/Documents/Installation%20Instructions/Profile%20DesignCanyon-Upgrade%20Guide.pdf", "kind": "manufacturer",
+         "says": "Guide: the bracket gives 0–15° natively, 18–30° with the A2 Tilt Booster (CF 7/CF 8, CP0041 bar); not tested on the HB0053 bar."},
+        {"url": "https://profile-design.com/products/a2-tilt-booster", "kind": "manufacturer",
+         "says": "Product page: +15° for the A2 system, 18–30°, 20.5 mm riser height, USD 63.50; mixing non-PD parts may void warranty."}
+      ],
+      "url": "https://profile-design.com/products/a2-tilt-booster",
+      "price": {"amount": 63.5, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "Untested by Profile Design on the 2021–2024 HB0053 bar.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-asc-extensions-upgrade",
+      "brand": "Profile Design",
+      "model": "52 ASA / 52 ASC / ASC Pro extensions",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Higher-rise extensions than stock (52 ASC: 400 mm, 52° bend, 137 mm rise; ASC Pro: 325/350/375 mm, 43° on a 15° base, 146 mm rise vs 87 mm on the 52A)."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bikecorp.com.au/Documents/Installation%20Instructions/Profile%20DesignCanyon-Upgrade%20Guide.pdf", "kind": "manufacturer",
+         "says": "Upgrade path for Speedmax CF 2021–2024 and 2025: 52 ASA, 52 ASC, ASC Pro extensions on the stock bracket."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "ASC Pro is for Di2/AXS wireless shifting only.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-armrest-upgrade",
+      "brand": "Profile Design",
+      "model": "Ergo+ / Race+ / Race-H armrest kits",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Alternative arm cups on the same bracket; change cup shape and width, not the stack/reach range."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bikecorp.com.au/Documents/Installation%20Instructions/Profile%20DesignCanyon-Upgrade%20Guide.pdf", "kind": "manufacturer",
+         "says": "Profile Design lists Ergo+, Race+ and Race-H armrests as upgrades for Speedmax CF 2021–2024 and 2025."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "cube-aerium-c68-cockpit",
+      "brand": "Cube",
+      "model": "Aerium C:68 base bar/stem with Profile Design fitting kit",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Replaces V21 stem + clip-ons with a one-piece aero bar on the standard 1-1/8 steerer; owner says the pads moved considerably forward and the front end is stiffer. No numbers given."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/speedmax-x-aerium-basebar/1289678/5", "kind": "forum",
+         "says": "Owner of an R073 Speedmax CF (V21) fitted a Cube Aerium bar (~EUR 200) and Cube kit (~EUR 230); tracks better and stiffer."},
+        {"url": "https://forum.slowtwitch.com/t/speedmax-x-aerium-basebar/1289678/19", "kind": "forum",
+         "says": "Same owner, 3 months on: no compatibility issues, stem 18° drop; rear hose routed between Canyon spacer and stem."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Cube bracket/fitting kit, brake hose rerouting, a 3 mm spacer on the Canyon base spacer. Hard to source outside Europe. Canyon has refused recall warranty on bikes with non-Canyon stems.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-cp0041-facelift-cockpit-on-r073",
+      "brand": "Canyon",
+      "model": "CP0041 one-piece carbon cockpit (2024 facelift) on a pre-facelift R073",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Retrofitting the newer Canyon bar to a 2021–2024 bike."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon told an owner the older frame is incompatible and would not sell the parts; another owner found the old fork crown has no channel for the new internal hose routing.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/speedmax-x-aerium-basebar/1289678/9", "kind": "forum",
+         "says": "Canyon said the frame is incompatible and refused to sell the newer bar, fork or the HB0053."},
+        {"url": "https://forum.slowtwitch.com/t/speedmax-x-aerium-basebar/1289678/7", "kind": "forum",
+         "says": "Owner: no space in the old fork crown for internal routing; new bikes have a moulded channel."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-angle-fitting-kit-on-cf",
+      "brand": "Canyon",
+      "model": "Speedmax Angle Fitting Kit / Monogrip Extension (CFR/SLX parts)",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Canyon's reach/tilt kit and mono extension for the CFR/CF SLX spacer column."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon lists both only for the Speedmax CFR (R085) and CF SLX (R091); the CF uses a Profile Design bracket on a standard base bar.",
+      "evidence": [
+        {"url": "https://www.canyon.com/en-us/gear/components/extensions/canyon-speedmax-angle-fitting-kit/10014636.html", "kind": "manufacturer",
+         "says": "Angle Fitting Kit compatibility: Speedmax CFR and SLX (R085, R91)."},
+        {"url": "https://app.canyon.com/en-ie/gear/bike-parts/contact-points/aero-bars-and-tri-extensions/canyon-speedmax-monogrip-extension/9102037.html", "kind": "manufacturer",
+         "says": "Monogrip compatibility: Speedmax SLX (R091) and CFR (R085) only."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "radsport-ibert-angle-spacer-on-cf",
+      "brand": "Radsport Ibert",
+      "model": "Winkel-Spacer for Speedmax SLX/CFR (RI10125)",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Angle/reach spacer made for the CFR/CF SLX spacer column."},
+      "status": "incompatible",
+      "reason_incompatible": "Maker lists it only for disc-brake Speedmax SLX/CFR; the CF has a Profile Design riser/bracket system instead of Canyon's spacer column.",
+      "evidence": [
+        {"url": "https://shop.radsport-ibert.de/de/komponenten/spacer/123/winkel-spacer-fuer-canyon-speedmax-slx/cfr", "kind": "manufacturer",
+         "says": "Compatibility given as Canyon Speedmax SLX/CFR with disc brakes."},
+        {"url": "https://forum.slowtwitch.com/t/its-here-meet-the-all-new-canyon-speedmax/1299051/101", "kind": "fitter",
+         "says": "Fitter pairs Radsport Ibert with the CF SLX/CFR and the PD reach extender with the CF models."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "No published pad reference point for either armpad table; 2021 and current tables differ a lot (2021 reach span ~111 mm, stack span 70 mm; current 80 / 94 mm), so they are listed separately.",
+    "TriRig Alpha One was reported on rim-brake Speedmax CF bikes (2017–2020) and on a V21 Speedmax CF of unstated year; no report confirmed on a disc R073, so it is not listed.",
+    "Aftermarket longer stems (e.g. a 130 mm stem on an M) reported by owners of V21-era CF bikes, model year not stated; Canyon's stance on non-Canyon stems for warranty is strict (owners' screenshots).",
+    "Canyon 'Speedmax CF Spacer Kit for Triathlon Stem' (117059, +20 mm stem height, workshop fitting) does not state which CF years it fits; not listed.",
+    "Profile Design guide lists the 2025 CF 7 handlebar both as CP0041 and as 'Wing 20C 38cm' on different pages; Canyon's current CF 7 page says CP0041.",
+    "Profile Design product pages for A3 riser kits, A3 Reach Extender and ASC extensions not opened (rate-limited); prices not collected.",
+    "Pad width limits on the CF not quantified from a source."
+  ],
+  "checked": "2026-11-16"
+}

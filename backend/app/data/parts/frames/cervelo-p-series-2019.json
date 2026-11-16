@@ -1,0 +1,241 @@
+{
+  "id": "cervelo-p-series-2019",
+  "family": "cervelo-p-series",
+  "generation": "P-Series 1st gen (disc, launched Sept 2019 as MY2020, sold to 2023)",
+  "years": [2019, 2023],
+  "brakes": "disc",
+  "identify": "Launched Sept 2019 to replace the P2/P3: aero down-tube bottle in its own carrier, top-tube storage, no in-frame storage hatch, 28 mm-class tyres; the 105 build has mechanical TRP Spyre discs and microSHIFT bar-end shifters. The 2024+ P-Series has a trap-door storage hatch under the down tube and takes 34 mm tyres.",
+  "cockpit": {
+    "type": "standard",
+    "steerer": "Tapered 1-1/8 in (top) to 1-3/8 in (bottom), IS-2 headset, Cervélo carbon P fork (12x100 thru-axle).",
+    "stem": "Standard Cervélo alloy stem, 84 deg (+/-6), 70 mm (48/51), 80 mm (54/56), 90 mm (58/61) per retailer spec of the 105 build; any standard stem can replace it (owners fitted Profile Design, Vision and other stems).",
+    "basebar_clamp_mm": 31.8,
+    "extension_clamp_mm": 22.2,
+    "pad_bolt_spacing": null,
+    "stack_system": "Stem spacers on an uncut steerer plus aerobar pedestals; Slowtwitch's 2019 test bike came with 30 mm of pedestals and bolts included. Above that, aftermarket riser kits of the fitted aerobar brand.",
+    "reach_system": "Stem length (stock 70-90 mm) is the main reach lever, plus fore-aft pad/bracket positions of the fitted aerobar. Build-dependent: 105 = Zipp Vuka Alumina basebar + extensions (40 cm); Ultegra Di2 = Vision Trimax Carbon base with Metron Si013 armrest hardware, whose armrest brackets can be flipped left-right to point back instead of forward.",
+    "angle_system": "Depends on the fitted aerobar; Zipp Vuka Alumina has armrest tilt shims. No frame-specific tilt system.",
+    "notes": "Because stem, steerer and basebar are standard, most fit changes are a stem/pedestal swap rather than a proprietary part. Fitter-reported limits: stock extensions on the Di2 test bike were too long and too high relative to the pads; one owner's aluminium base/aero bars rotated and had to be bonded after a 70.3; one owner broke the left elbow-pad holder three times in three years at the bar junction. Mechanical front-brake cable routing through integrated stems binds (see incompatible parts)."
+  },
+  "stock_range": [],
+  "parts": [
+    {
+      "id": "standard-stem-swap",
+      "brand": "Any maker",
+      "model": "Standard 31.8 mm stem for 1-1/8 in steerer (longer/shorter or different angle)",
+      "category": "stem",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Moves the whole cockpit: a longer stem moves pads forward by roughly the length difference, a positive-rise stem or flipped stem changes height. Stock stems are 70/80/90 mm at 84 deg, so there is room both ways. No maker-stated range."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.excelsports.com/cervelo-p-series-105-r7000-bicycle-2023", "kind": "retailer",
+         "says": "Spec lists a Cervélo alloy stem 84 deg, 70/80/90 mm by size, on a tapered 1-1/8 to 1-3/8 steerer with IS-2 headset."},
+        {"url": "https://slowtwitch.com/triathlon/making-a-cervelo-p-series-your-own/", "kind": "review",
+         "says": "Slowtwitch's own P-Series build: a standard, fairly short stem; reviewer adjusted height with pedestals rather than stem spacers."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=3", "kind": "forum",
+         "says": "Owner (Apr 2022) runs a Profile Design stem with a Zipp Vuka basebar on his P-Series."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=2", "kind": "forum",
+         "says": "Another owner build (Apr 2022) uses a Profile Design Aeria Ultimate V2 stem with Vision Trimax Si013 basebar."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Check steerer length above the stem; brake/Di2 routing may need re-running.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-carbon-extensions",
+      "brand": "TriRig",
+      "model": "Carbon extensions (cut to size)",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Replaced the stock aluminium extensions, which were too long and sat too high relative to the pads; cut to the rider's length."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://slowtwitch.com/triathlon/making-a-cervelo-p-series-your-own/", "kind": "review",
+         "says": "Reviewer cut the stock extensions, found an internal ring then blocked the Di2 bar-end shifter wedge, and switched to TriRig carbon extensions cut to size."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Bar-end shifters need about 20 mm of straight, clear inside diameter at the tip; check before cutting.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "51-speedshop-cockpit",
+      "brand": "51 Speedshop",
+      "model": "Aerobar setup (monobar/extensions/cups)",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Owner-fitted replacement aerobar; described as easy to adjust and comfortable. No numbers given."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463", "kind": "forum",
+         "says": "Di2 P-Series owner (Jan 2022) fitted a 51 Speedshop aerobar setup and TriRig closed-back scoops; warns to watch spacer bolt length."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Correct-length spacer bolts for the chosen stack.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-closed-back-scoops",
+      "brand": "TriRig",
+      "model": "Closed-back Scoop armrests",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Armrest cup swap; changes forearm support, not frame-specific reach/stack."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463", "kind": "forum",
+         "says": "Same Di2 P-Series owner (Jan 2022) added TriRig closed-back scoops to his 51 Speedshop setup."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "vision-metron-tfa",
+      "brand": "Vision",
+      "model": "Metron TFA aerobar",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Full aerobar swap on the standard steerer; owners report it fitted. No reach/stack numbers given."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463", "kind": "forum",
+         "says": "An owner (Jan 2022) built a P-Series for a friend with a Vision Metron TFA aerobar, without the Snakebite stem."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=2", "kind": "forum",
+         "says": "A second owner (Jan 2022) fitted Metron aerobars with the Snakebite stem; it mounted, but the mechanical front brake cable would not work through it (see incompatible record)."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Hydraulic or electronic routing if cables go inside the bar/stem; mechanical cables reported not to fit inside.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "vision-metron-integrated-routing-mechanical",
+      "brand": "Vision",
+      "model": "Metron aerobar / Snakebite stem with internal routing on mechanical-brake builds",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Mounts, but the brake does not work when the mechanical front cable is routed through the stem and steerer."},
+      "status": "incompatible",
+      "reason_incompatible": "On mechanical-disc builds (e.g. 105 with TRP Spyre) the front brake cable binds when routed through the Metron/Snakebite stem and steerer, and the Metron bar has too little internal room for mechanical cables and housing. Owners say it works only with hydraulic hose or Di2 wiring.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=2", "kind": "forum",
+         "says": "Owner (Jan 2022): front brake cable bound so much through stem and steerer that the brake would not work; new cables and other routings failed."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=2", "kind": "forum",
+         "says": "A second owner (Mar 2022): little room inside the Metron bars; mechanical cables and outers would not fit, hydraulic/Di2 route was workable."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "vision-metron-tfe-on-trimax",
+      "brand": "Vision",
+      "model": "Metron TFE extensions (on Trimax Si013 basebar, PD Aeria Ultimate V2 stem)",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Full-forearm-support extension swap; no numbers given."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=2", "kind": "forum",
+         "says": "Owner (Apr 2022) built a friend's P-Series with a Profile Design Aeria Ultimate V2 stem, Vision Trimax Si013 basebar and Vision Metron TFE extensions; no problems reported."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-aeria-ultimate-v2-stem",
+      "brand": "Profile Design",
+      "model": "Aeria Ultimate V2 stem",
+      "category": "stem",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Aero stem with integrated bottle option, replacing the stock alloy stem; no reach/stack numbers given."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=2", "kind": "forum",
+         "says": "Fitted to a P-Series with Vision Trimax Si013 base bar and Metron TFE extensions (Apr 2022)."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-alpha-x",
+      "brand": "TriRig",
+      "model": "Alpha X aerobar",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Integrated stem-and-bar swap; no numbers given."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463", "kind": "forum",
+         "says": "Owner (Jan 2022) reports his wife's Di2 P-Series runs a TriRig Alpha X with a custom Profile Design Aeria HSF bracket and bottle."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Custom bracket if an Aeria between-the-arms bottle is wanted.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "revolver-long-armrests",
+      "brand": "Revolver (now Evolve Aero)",
+      "model": "Long arm rests",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Longer forearm support; narrows the space for a between-the-arms bottle cage."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=2", "kind": "forum",
+         "says": "Owner (Jan 2022) fitted Revolver long arm rests; needed a 3D-printed platform for the BTA bottle because the rests narrowed the space."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "A raised or narrow BTA bottle platform.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "kismet-armrests",
+      "brand": "Kismet",
+      "model": "Arm rests (with USE extensions)",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Armrest and extension swap on a Zipp Vuka basebar with a Profile Design stem; no numbers given."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p-series-setups/812463?page=3", "kind": "forum",
+         "says": "Owner (Apr 2022) runs Zipp Vuka bar, Profile Design stem, Kismet arm rests and USE extensions; no problems reported."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "File id uses launch year 2019 (the first P-Series was announced Sept 2019 as model year 2020), not 2020/2021.",
+    "No per-size pad stack/reach chart for this generation was found; cervelo.com returned HTTP 429 earlier and was not retried. Slowtwitch fit-thread snippets mention a 58 cm max reach around 525 mm but the post was not opened, so no stock_range is given.",
+    "Cockpit spec varies by build and year: 105 = Zipp Vuka Alumina (confirmed); Ultegra Di2 = Vision Trimax Carbon + Metron Si013 hardware (confirmed); Ultegra mechanical and Force eTap AXS cockpits not verified. A used 2020 listing shows a Profile Design basebar, so mid-cycle changes are possible.",
+    "Zipp Vuka Alumina and Vision Metron Si riser/spacer kit compatibility on this frame not documented in any source reached.",
+    "Owner posts in the P-Series setups thread (2022) do not state the year; they are placed here because only the first generation existed in 2022.",
+    "No maker compatibility page names the 1st-gen P-Series specifically; all fits rest on its standard 1-1/8 in steerer and owner reports.",
+    "No prices recorded: maker pages not opened."
+  ],
+  "checked": "2026-11-16"
+}

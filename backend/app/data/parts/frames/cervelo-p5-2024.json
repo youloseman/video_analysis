@@ -1,0 +1,171 @@
+{
+  "id": "cervelo-p5-2024",
+  "family": "cervelo-p5",
+  "generation": "P5 (disc, July 2024 onward; FM148 frame, sold as MY2025-2027)",
+  "years": [2024, 2027],
+  "brakes": "disc",
+  "identify": "Six sizes including a 61, 34 mm tyre clearance, HB15 basebar on a Bayonet fork with no stem, EX14 riser whose extension cradle tilts 0-30 deg in 5 deg steps. The 2019-2023 P5 Disc has five sizes, 28 mm tyres and an EX11 or EX10 riser that tilts at most 15 deg.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Proprietary Bayonet fork with one-piece basebar interface; no standard stem.",
+    "stem": "None: HB15 basebar bolts to the fork; pad stack comes from the EX14 riser post (HBP-EX14-RISER) in the P5 riser post clamp.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": 22.2,
+    "pad_bolt_spacing": null,
+    "stack_system": "Basebar stack from 'slammed' to +40 mm in 5 mm steps (basebar 10 mm lower than the 2019 P5 at its base setting). Stock HBP-045 hardware (45 mm screws) covers 0-20 mm; higher settings need the extra HBP-065 kit (65 mm screws). Pad height above that comes from the EX14 riser post (may be trimmed; keep at least 80 mm inside the fork).",
+    "reach_system": "EX10 pad mount attaches in two positions on the riser; pads are longer and larger than the 2019 P5 with more fore-aft travel and a much more rearward setting (Fit Werx). Basebar reach is 10 mm shorter than 2019.",
+    "angle_system": "EX14 curved cradle with insert: forward 0/10/20/30 deg, reversed 5/15/25 deg (seven settings, 0-30 deg). 2019 P5 stopped at 15 deg.",
+    "notes": "Cervélo's manual warns that specific basebar stack hardware kits must be used for specific stack ranges and only the supplied basebar-to-fork screws. Slowtwitch and Fit Werx: accepts aftermarket 22.2 mm extensions and third-party pads. Major reach changes beyond the pad positions are limited compared with a stem bike (owner comparison with the P-Series)."
+  },
+  "stock_range": [],
+  "parts": [
+    {
+      "id": "cervelo-hbp-065-stack-kit",
+      "brand": "Cervélo",
+      "model": "HBP-065 basebar stack hardware kit (65 mm screws)",
+      "category": "spacer_kit",
+      "effect": {"reach_mm": null, "stack_mm": [0, 20],
+                 "angle_deg": null,
+                 "text": "Longer basebar screws for the upper part of the +40 mm basebar stack range; stock HBP-045 screws cover 0-20 mm."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.manualslib.com/manual/3613671/Cerv-Lo-P5.html", "kind": "manufacturer",
+         "says": "2024 P5 (FM148) manual: standard kit HBP-045 for 0-20 mm, extra kit HBP-065; specific stack hardware kits must be used for specific stack ranges."},
+        {"url": "https://www.slowtwitch.com/triathlon/the-newer-cervelo-p5/", "kind": "review",
+         "says": "Stack beyond the base range (an additional 20-40 mm) requires a separate spacer bolt kit."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Basebar spacers for the chosen height; use only Cervélo-supplied basebar-to-fork screws.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aftermarket-22-2-extensions",
+      "brand": "Any maker",
+      "model": "22.2 mm aftermarket extensions in the stock EX14 clamps",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Swap extension shape (ski bend, grip angle, length) without changing the riser; tilt still set by the EX14 cradle."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.slowtwitch.com/triathlon/the-newer-cervelo-p5/", "kind": "review",
+         "says": "Launch article relaying Cervélo: aerobar compatible with all aftermarket 22.2 mm extensions."},
+        {"url": "https://fitwerx.com/cervelos-new-p5-review-and-thoughts/", "kind": "fitter",
+         "says": "Cervélo dealer/fitter: the new P5 accommodates many third-party pads and extensions."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Cut to length; Di2 routing through the extensions as per the manual.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-plate-ex14",
+      "brand": "TriRig",
+      "model": "Super-X Adaptor Plate (Cervélo plate)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Metal plate replacing the Cervélo pad/extension mount so standard risers, extensions and a solid BTA mount can be used; adjustment depends on the bars fitted."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://tririg.com/products/super-extension-plate", "kind": "manufacturer",
+         "says": "Search result of TriRig's product page: the Cervélo plate only works with Cervélo EX10 and EX14 mono posts."}
+      ],
+      "url": "https://tririg.com/products/super-extension-plate",
+      "price": {"amount": 195, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "Bolt pattern does not match FastTT risers/bars (see incompatible record).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-p5-disc-adapter-ex14",
+      "brand": "FastTT",
+      "model": "Adapter kit / plate for Cervélo P5 Disc & P3X",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [0, 30],
+                 "text": "Replaces the EX14 mounting plate so FastTT risers and extensions fit; retailer gives max plate tilt 30 deg on EX14 (absolute)."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.materiel-velo.com/gb/1888195-fasttt-cervelo-p5-disc-p3x-triathlon-aerobar-adapter-plate.html", "kind": "retailer",
+         "says": "Retailer reproduces FastTT's listing: compatible with P5 Disc and P3X (EX10 / EX14); screws included; EUR 162.35 at that shop."},
+        {"url": "https://playtrisarasota.com/products/fasttt-adapter-kit-for-cervelo-p5-disc-p3x", "kind": "retailer",
+         "says": "Search result: replaces the EX10/EX14 mounting plate; max tilt 30 deg on EX14."},
+        {"url": "https://forum.slowtwitch.com/t/fasttt-cervelo-p5-disc-adapter-plate/1300333", "kind": "forum",
+         "says": "Owner of a MY26 P5 Disc (Sept 2026) set it up with no problems, using FastTT's adjustable BTA adapter."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "FastTT risers/extensions; FastTT BTA bracket or adjustable BTA adapter for a bottle. One owner dislikes the non-standard bolt spacing.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-ex14-adapter",
+      "brand": "AeroCoach",
+      "model": "Ascalon adapter, Cervélo P5 Disc EX14",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [15, 40],
+                 "text": "Tilt-adjustable adapter for Ascalon extensions, 15-40 deg in 5 deg steps (absolute) - beyond the stock 30 deg."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769", "kind": "manufacturer",
+         "says": "P5 Disc EX14 adapter, requires EX14 monopost, 15-40 deg in 5 deg steps; only for Ascalon extensions; GBP 115 base + GBP 252.50 option incl. VAT."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": {"amount": 367.5, "currency": "GBP", "checked": "2026-11-16"},
+      "needs": "AeroCoach Ascalon extensions. Settings above 30 deg may break UCI rules (retailers cite a 30 deg cap); check race rules. Price = base plus Cervélo option as listed, incl. 20% VAT.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aftermarket-pads",
+      "brand": "Any maker",
+      "model": "Third-party arm pads / cups on the stock pad rests",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Pad/cup swap; no maker-specific range given."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://fitwerx.com/cervelos-new-p5-review-and-thoughts/", "kind": "fitter",
+         "says": "Cervélo dealer/fitter: accommodates many third-party pads, as the previous P5 did."},
+        {"url": "https://www.manualslib.com/manual/3613671/Cerv-Lo-P5.html", "kind": "manufacturer",
+         "says": "Arm cups fix to the riser pad rests with two M5 screws, fore-aft (not diagonal), 4 Nm; both screws always fitted."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "A cup with a two-screw fore-aft pattern matching the rests; pattern spacing not published in sources reached.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-with-fasttt-risers",
+      "brand": "TriRig",
+      "model": "Super-X plate combined with FastTT risers/bars",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Bolt holes do not line up."},
+      "status": "incompatible",
+      "reason_incompatible": "Owner moving from a MY19/20 to a MY24 P5 Disc found the Super-X hole spacing does not line up with FastTT risers/bars; FastTT needs its own P5 adapter plate.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/fasttt-cervelo-p5-disc-adapter-plate/1300333", "kind": "forum",
+         "says": "Owner (Sept 2026): TriRig plate hole spacing does not line up for his FastTT bars."},
+        {"url": "https://forum.slowtwitch.com/t/2026-cervelo-p-ultegra-di2-front-end-clean-up-help/1295374", "kind": "forum",
+         "says": "Same owner (Feb 2026): with FastTT risers/bars the Super-X bolt patterns are a bit off; the plate is specific to EX10/EX11/EX14 monoposts."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "No per-size pad stack/reach table: cervelo.com (size finder, back-of-pad reference per search text) returned HTTP 429 earlier and was not retried; stock_range left empty.",
+    "Stock extensions differ by source: the 2024 manual lists Cervélo EX14 35-deg extensions (HBP-EX14-EXT35D), the frameset spec lists Profile Design 52ASC.",
+    "Arm-cup bolt spacing on the EX14 pad rests not published in the sources reached.",
+    "Whether 2019-2023 P5 Disc EX10/EX11 riser posts or HB basebars fit the 2024 fork: no source found (the 2024 manual reuses the EX10 pad mount part, HBP-EX10-PADMT).",
+    "Few owner reports specific to the 2024+ P5; Slowtwitch posts about Super-X, 51 Speedshop and Vision TFE on 'P5' mostly do not state the generation and were not used here.",
+    "Vision Metron TFE adapter for the EX14: not found.",
+    "FastTT's own product page not opened (retailer listings only); TriRig, Winter Park and Profile Design Shopify pages answered HTTP 429, facts taken from their search-result text."
+  ],
+  "checked": "2026-11-16"
+}

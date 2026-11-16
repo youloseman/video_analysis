@@ -1,0 +1,354 @@
+{
+  "id": "canyon-speedmax-cfr-cfslx-disc-2021",
+  "family": "canyon-speedmax",
+  "generation": "Speedmax CFR / CF SLX Disc (gen 5, frame codes R085 / R091, MY2021–2025)",
+  "years": [2021, 2026],
+  "brakes": "disc",
+  "identify": "Disc brakes, bolt-on Canyon base bar (CP0019 flat or CP0021 rise) on a stacked spacer column with a carbon 'spring' plate carrying the arm pads; internal top-tube storage lid and down-tube bladder. The 2026 Speedmax (gen 6) instead has a closed one-piece AeroShield on a cockpit post sliding into the head tube. Frame code R085 (CFR) or R091 (CF SLX) is on Canyon's documents; runout bikes were still sold in Nov 2026.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "1-1/8 in steerer with Canyon wedge expander (Canyon part EP1296-01 'Wedge extension 1 1/8'); the stem/cockpit clamp is Canyon-only",
+    "stem": "Canyon proprietary cockpit clamp in a short or a long version (exploded drawing lists CP0019 basebar short/flat and long/flat with separate stem covers S and L). Canyon's spec for a size M CFR lists the long flatbar with an 85 mm stem.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": null,
+    "pad_bolt_spacing": null,
+    "stack_system": "Base spacer in four positions (High, Medium = factory default, Low, Slammed) plus purple fine spacers up to 40 mm (Low: 15–40 mm; Slammed: 0–10 mm). An extra angled spacer placed between carbon spring and extension raises the bar 15 mm. Canyon's geometry gives a 110 mm armpad-stack range per size.",
+    "reach_system": "Arm pads: 3 positions lengthways and 2 sideways (slotted holes). Extensions are telescopic grips that slide after loosening 2 bolts; extensions came in short/medium/long. Short or long cockpit: the long one adds about 20 mm of pad reach (fitter). Canyon's geometry gives about 54 mm of armpad-reach range per size.",
+    "angle_system": "Standard angled spacer of 3° or 6° (Canyon guide; Radsport Ibert's instructions call the stock wedges 3.5° and 7°) on up to 25 mm of spacers; a second angled spacer can go between carbon spring and extension (adds 15 mm height). Canyon's aftermarket Angle Fitting Kit goes to 22.5°.",
+    "notes": "Pad width is the most-cited limit: a Canyon-endorsed fitter gave stock pad widths of 88 / 140 / 159 mm (Dec 2020) and later called the maximum about 175 mm centre to centre; Canyon told an owner no wider spring exists. Canyon refused to give an owner the arm-pad bolt pattern, so third-party pad fit is trial and error. In July 2026 Canyon e-mailed Speedmax owners that untested third-party reach extenders/adapters are not approved and may void the warranty (owners' posts). Fitter: the gen-5 bike is shorter and taller than the rim SLX before it."
+  },
+  "stock_range": [
+    {"size": "XS", "pad_stack_mm": [528, 638], "pad_reach_mm": [363, 417], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cfr/speedmax-cfr-di2/4351.html",
+     "note": "Canyon armpad stack/reach (m/n) for the gen-5 CFR Di2; measuring point not stated. A Canyon-endorsed fitter read the reach range as the short cockpit and added ~20 mm for the long one."},
+    {"size": "S", "pad_stack_mm": [561, 671], "pad_reach_mm": [386, 440], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cfr/speedmax-cfr-di2/4351.html",
+     "note": "Fitter: S reaches 460 only with the long cockpit."},
+    {"size": "M", "pad_stack_mm": [581, 691], "pad_reach_mm": [408, 463], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cfr/speedmax-cfr-di2/4351.html",
+     "note": "Fitter: M reaches about 483 with the long cockpit."},
+    {"size": "L", "pad_stack_mm": [619, 729], "pad_reach_mm": [430, 484], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cfr/speedmax-cfr-di2/4351.html",
+     "note": "Fitter: L maxes out at 504 with long cockpit and pads fully forward."},
+    {"size": "XL", "pad_stack_mm": [644, 754], "pad_reach_mm": [454, 508], "pad_reference": "unspecified",
+     "source": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cfr/speedmax-cfr-di2/4351.html",
+     "note": "Fitter: XL reaches about 528 with the long cockpit."}
+  ],
+  "parts": [
+    {
+      "id": "canyon-speedmax-angle-fitting-kit",
+      "brand": "Canyon",
+      "model": "Speedmax Angle Fitting Kit",
+      "category": "wedge",
+      "effect": {"reach_mm": [0, 25], "stack_mm": null, "angle_deg": [5, 22.5],
+                 "text": "Adds 25 mm of reach and sets extension angle from 5° to 22.5° in 3.5° steps (the top 5° comes from the carbon spring)."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.canyon.com/en-us/gear/components/extensions/canyon-speedmax-angle-fitting-kit/10014636.html", "kind": "manufacturer",
+         "says": "Canyon lists it for Speedmax CFR and SLX (R085, R91): +25 mm reach, 5–22.5° in 3.5° steps; out of stock in the US store."},
+        {"url": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/cfr/speedmax-cfr-di2/4351.html", "kind": "manufacturer",
+         "says": "The gen-5 CFR Di2 page offers the aftermarket angle fitting kit as an extra (+25 mm reach, up to 22.5°)."}
+      ],
+      "url": "https://www.canyon.com/en-us/gear/components/extensions/canyon-speedmax-angle-fitting-kit/10014636.html",
+      "price": {"amount": 119.95, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "Uses the bike's carbon spring for the last 5°; fixing screws included. Members-only/out of stock in several regions.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-long-cockpit-cp0019-long",
+      "brand": "Canyon",
+      "model": "Long cockpit (CP0019 Triathlon Flatbar long + long stem cover)",
+      "category": "basebar",
+      "effect": {"reach_mm": [0, 20], "stack_mm": null, "angle_deg": null,
+                 "text": "Swapping the short cockpit for the long one moves pads and base bar about 20 mm forward."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.canyon.com/on/demandware.static/-/Library-Sites-canyon-shared/default/dweb472ce2/explosiondrawings/explosiondrawing-R085-01.pdf", "kind": "manufacturer",
+         "says": "Canyon's R085 (CFR) and R091 (CF SLX) exploded drawings list a short and a long CP0019 flat basebar with matching stem covers."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/947", "kind": "fitter",
+         "says": "Canyon-endorsed fitter: the online Pad X ranges are for the short cockpit; the long one adds about 20 mm (S 460, M 483, L 504, XL 528), and in the US it had to be ordered separately."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1581", "kind": "fitter",
+         "says": "Same fitter (2022): on a small you would need the long cockpit, an aftermarket order in the US."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Cockpit swap with brake/shift routing through the front end; order via Canyon service (not listed in the web shop).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-gp0243-aerobar-large",
+      "brand": "Canyon",
+      "model": "GP0243 Aerobar, large (long extension)",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Longer telescopic extension and grips for riders with long forearms; moves the hands, not the pads."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/canyon-speedmax-cf-slx-8-aerobar-extension/831584/4", "kind": "forum",
+         "says": "Owner: ask Canyon for the 'GP0243 Aerobar Large'; not on the web shop; both the telescopic part and grips are longer."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1772", "kind": "fitter",
+         "says": "Fitter prescribes a size L CFR with short stem, mid spacer, tilt wedge and probably the long aero extension for a 193 cm rider."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1233", "kind": "forum",
+         "says": "XL owner with 39–40 cm forearms chose the long extensions."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Owners report Canyon tends to sell the whole cockpit rather than the extension alone.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-monogrip-extension",
+      "brand": "Canyon",
+      "model": "Speedmax Monogrip Extension",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Single mono-grip extension with front shift button; 112 mm upswept grip, 36° upsweep, 40 mm mounting area. Changes hand position, not pad position."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://app.canyon.com/en-ie/gear/bike-parts/contact-points/aero-bars-and-tri-extensions/canyon-speedmax-monogrip-extension/9102037.html", "kind": "manufacturer",
+         "says": "Canyon: fits Speedmax SLX (R091) and CFR (R085); not compatible with frame size XL; Shimano or SRAM version; on sale at EUR 82.99 (was 237.99)."}
+      ],
+      "url": "https://www.canyon.com/en-gb/gear/bike-parts/contact-points/aero-bars-and-tri-extensions/canyon-speedmax-monogrip-extension/9102037.html",
+      "price": {"amount": 82.99, "currency": "EUR", "checked": "2026-11-16"},
+      "needs": "Pick the Shimano or SRAM shifter version. Sizes XS–L only.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-monogrip-extension-xl",
+      "brand": "Canyon",
+      "model": "Speedmax Monogrip Extension (on size XL)",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Same part as above, on an XL frame."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon states the Monogrip is not compatible with bikes in frame size XL.",
+      "evidence": [
+        {"url": "https://app.canyon.com/en-ie/gear/bike-parts/contact-points/aero-bars-and-tri-extensions/canyon-speedmax-monogrip-extension/9102037.html", "kind": "manufacturer",
+         "says": "Product page warns the Monogrip does not fit frame size XL."}
+      ],
+      "url": "https://www.canyon.com/en-gb/gear/bike-parts/contact-points/aero-bars-and-tri-extensions/canyon-speedmax-monogrip-extension/9102037.html",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "radsport-ibert-angle-spacer-speedmax",
+      "brand": "Radsport Ibert",
+      "model": "Winkel-Spacer (angle spacer) for Speedmax SLX/CFR, RI10125",
+      "category": "wedge",
+      "effect": {"reach_mm": [0, 20], "stack_mm": null, "angle_deg": [10, 20],
+                 "text": "One-piece 10°, 15° or 20° angle spacer that also moves the bars about 20 mm forward; stock height spacers still usable."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://shop.radsport-ibert.de/de/komponenten/spacer/123/winkel-spacer-fuer-canyon-speedmax-slx/cfr", "kind": "manufacturer",
+         "says": "Maker lists it for disc-brake Speedmax SLX/CFR: 10/15/20°, ~20 mm more reach, works with Canyon spacers; with the 20 mm base spacer add at least 30 mm of 5 mm spacers."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/2061", "kind": "fitter",
+         "says": "Canyon-endorsed fitter: the Rad Sport tilt/extender works only on the disc SLX, not the rim SLX."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1727", "kind": "forum",
+         "says": "Owner runs the highest-angle Radsport angle spacer on his disc Speedmax."},
+        {"url": "https://forum.slowtwitch.com/t/its-here-meet-the-all-new-canyon-speedmax/1299051/103", "kind": "forum",
+         "says": "Owner of a 2024 Speedmax has a Radsport Ibert adapter/extender fitted."}
+      ],
+      "url": "https://shop.radsport-ibert.de/de/komponenten/spacer/123/winkel-spacer-fuer-canyon-speedmax-slx/cfr",
+      "price": {"amount": 159.9, "currency": "EUR", "checked": "2026-11-16"},
+      "needs": "Bolts 22/35/40 mm included; stacking a stock 3.5°/7° wedge on top needs longer riser bolts (maker's table). Canyon's July 2026 e-mail says untested third-party extenders may void the warranty.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "radsport-ibert-armpads-longo-slx",
+      "brand": "Radsport Ibert",
+      "model": "Armpads longo SLX, RI10118",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Full-carbon long armrest shells that bolt to the Canyon computer mount; the maker gives no reach or width figures."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://shop.radsport-ibert.de/de/carbon-pads/canyon/116/armpads-longo-slx", "kind": "manufacturer",
+         "says": "Maker: for disc-brake Speedmax SLX and CFR (mono cockpit only); mounts via an included aluminium bracket to the Canyon computer mount (not included)."}
+      ],
+      "url": "https://shop.radsport-ibert.de/de/carbon-pads/canyon/116/armpads-longo-slx",
+      "price": {"amount": 399.0, "currency": "EUR", "checked": "2026-11-16"},
+      "needs": "Canyon computer mount (not included).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-adapter-speedmax-monopost",
+      "brand": "AeroCoach",
+      "model": "Ascalon adapter, Canyon Speedmax CFR / CF SLX (monopost), tilt adjustable",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [15, 25],
+                 "text": "Mounts AeroCoach Ascalon extensions on the Speedmax monopost at 15° or 25°, fine-tuned with the bike's 3° wedges. Reach depends on the Ascalon length chosen (255–305 mm)."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769", "kind": "manufacturer",
+         "says": "Adapter dropdown lists 'Canyon Speedmax CFR / CF SLX (monopost) - tilt adjustable' in 15° or 25°, compatible with the bike's 3° wedges; adapters only work with Ascalon extensions."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": null,
+      "needs": "AeroCoach Ascalon extensions (sold separately); warranty only with Ascalon extensions.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-plate-speedmax-cfr",
+      "brand": "TriRig",
+      "model": "Super-X Adaptor Plate (Canyon Speedmax CFR)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Plate that carries TriRig-style super-extensions/cups on the CFR front end; TriRig publishes no reach/stack figures for the Canyon version."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://tririg.com/products/super-extension-plate", "kind": "manufacturer",
+         "says": "Search listing of TriRig's product page names Canyon Speedmax CFR among compatible bikes (CF SLX not named); USD 195 shown."},
+        {"url": "https://tririg.com/blogs/latest/tririg-super-x-plate-for-canyon-cfr-tech-demo", "kind": "manufacturer",
+         "says": "TriRig, 16 Feb 2026 (before gen 6 launched): Super-X plates now available for the Canyon Speedmax."}
+      ],
+      "url": "https://tririg.com/products/super-extension-plate",
+      "price": {"amount": 195, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "Extensions/cups sold separately. CF SLX shares the same cockpit parts in Canyon's drawings, but TriRig names only the CFR: confirm with TriRig.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "vision-metron-tfe-evo-adapter-speedmax-cfr",
+      "brand": "Vision",
+      "model": "Metron TFE EVO extensions adapter for Canyon Speedmax CFR, V3166",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Bike-specific carbon adapter (107 g) to mount Vision Metron TFE EVO extensions on the Speedmax CFR."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bike24.com/p21028660.html", "kind": "retailer",
+         "says": "Search listing: 'Vision Metron TFE EVO Extensions Adapter for Canyon Speedmax CFR - V3166', carbon, 107 g, EUR 112.60 (page itself returned 403)."},
+        {"url": "https://cycolo.com/products/metron-tfe-evo-extensions", "kind": "retailer",
+         "says": "Search listing gives the Speedmax CFR adapter code 670-0546000970 among the TFE EVO adapters."}
+      ],
+      "url": "https://shop.visiontechusa.com/aerobars/triathlon-time-trial/metron-tfe-evo-extensions",
+      "price": null,
+      "needs": "Vision Metron TFE EVO extensions (USD 740 at Vision US). Vision's own page blocked (403), so generation fit is from retailer naming only.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "stride-carbon-monobar-extension",
+      "brand": "Stride Parts",
+      "model": "Carbon mono-bar extension for Canyon Speedmax",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Longer carbon replacement for Canyon's aluminium mono-bar extension; moves the hands further forward. Length not published."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/canyon-speedmax-cf-slx-8-aerobar-extension/831584/5", "kind": "forum",
+         "says": "Owner (Speedmax CF SLX 8 thread): Stride's carbon mono-bar is longer than Canyon's and better made; shipped from Poland in about a month."},
+        {"url": "https://forum.slowtwitch.com/t/canyon-speedmax-cf-slx-8-cockpit-gap-closure-plate/1281174/30", "kind": "forum",
+         "says": "Same owner (Sep 2026): the longest Canyon mono-bar was not long enough, so he bought Stride's extra-long one."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Maker website was down when checked (stride.parts did not resolve); untested by Canyon.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-wingspan-extenders",
+      "brand": "TriRig",
+      "model": "Wingspan Extenders (incl. XL)",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Plates that move the arm cups outward to widen the narrow stock pad width (~175 mm c-c max)."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1815", "kind": "forum",
+         "says": "Owner fitted Wingspan Extenders plus TriRig open-back carbon arm cups on a Speedmax CF SLX; more comfortable with the wider fit (Feb 2023)."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/2276", "kind": "forum",
+         "says": "Owner added Wingspan XL Extenders on a 2024 Speedmax CF/SLX 8; so far so good (Mar 2025)."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/2275", "kind": "forum",
+         "says": "Conflicting: another owner says TriRig told him the extenders are not compatible with the Speedmax."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1781", "kind": "forum",
+         "says": "TriRig needed the bolt pattern to confirm fit; Canyon refused to supply it, citing warranty."}
+      ],
+      "url": "https://tririg.com/collections/scoops/products/wingspan-extenders",
+      "price": null,
+      "needs": "TriRig or other arm cups with a matching bolt pattern; check with TriRig first (mixed answers).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-scoops-armrests",
+      "brand": "TriRig",
+      "model": "Scoops arm cups (on the stock carbon spring)",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Replacement arm cups; one owner found they add at most ~1 cm of width and their pre-drilled holes hard to line up with the Canyon plate."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1727", "kind": "forum",
+         "says": "Owner fitted TriRig closed-back Scoops; pre-drilled holes were hard to match to the bike's hole layout; little width gained."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1815", "kind": "forum",
+         "says": "Another owner fitted TriRig full open-back carbon arm cups (with Wingspan Extenders) on a Speedmax CF SLX."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Undrilled version means drilling carbon; check hole alignment before buying.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-cfslx-rim-spacer-kits",
+      "brand": "Canyon",
+      "model": "Speedmax CF SLX 60 mm Spacer Kit (GP0017-01) / 9° Spacer Kit (GP0018-01)",
+      "category": "spacer_kit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Rim-brake SLX riser and angle kits."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon lists both kits only for the rim-brake Speedmax CF SLX (R40) dual-tower cockpit, model year 2018 and older; the disc bike uses a different spacer column.",
+      "evidence": [
+        {"url": "https://www.canyon.com/en-us/gear/components/spare-and-wear-parts/canyon-speedmax-cf-slx-60-mm-spacer-kit/140506.html", "kind": "manufacturer",
+         "says": "60 mm kit: Speedmax CF SLX (R40), dual-tower, MY2018 and older."},
+        {"url": "https://www.canyon.com/en-ca/gear/bike-parts/spare-wear-parts/canyon-gp0018-01-speedmax-9--spacer-kit/140505.html", "kind": "manufacturer",
+         "says": "9° kit: Speedmax CF SLX (R40), dual-tower, MY2018 and older."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-2026-aeroshield-cockpit",
+      "brand": "Canyon",
+      "model": "AeroShield / cockpit post of the 2026 Speedmax (gen 6)",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "The new closed cockpit and its head-tube post."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon France told an owner there is no front-end compatibility between the previous and the new Speedmax generation; the gen-6 cockpit post slides into a different head tube.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/its-here-meet-the-all-new-canyon-speedmax/1299051/116", "kind": "forum",
+         "says": "Owner reports Canyon France by phone: no front-end compatibility between old and new generation Speedmax."},
+        {"url": "https://slowtwitch.com/?p=83309", "kind": "review",
+         "says": "Gen 6 replaces the bolt-on aerobar with a closed AeroShield on a post that clamps inside the head tube."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "Pad reference point of Canyon's armpad stack/reach table not stated; fitter reads the reach range as the short cockpit (long cockpit +~20 mm). CF SLX assumed to share the CFR table (same cockpit parts in Canyon's R085/R091 drawings) but the CF SLX page was not checked.",
+    "Arm-pad bolt spacing and extension clamp diameter not published; Canyon refused to give the bolt pattern to an owner.",
+    "Canyon 'Pro Spacer' (+25 / +30 mm reach) described by the Canyon-endorsed fitter in Oct 2022 as not yet public; whether it became the Angle Fitting Kit (+25 mm) is not confirmed.",
+    "Stock angled wedge angle reported as 3°/6° (Canyon cockpit guide) vs 3.5°/7° (Radsport Ibert); Angle Fitting Kit uses 3.5° steps.",
+    "Pad width: fitter gave 88/140/159 mm (2020) and later ~175 mm c-c maximum; measuring basis differs or changed.",
+    "TriRig product page and Vision product page blocked (429/403); compatibility taken from search listings and blog. AeroCoach Speedmax adapter price unclear (dropdown shows an add-on of GBP 285 over a GBP 115 base); price left null.",
+    "No owner report found for 51 Speedshop, Wattshop or Profile Design extensions on the gen-5 cockpit; Radsport Ibert stock-bolt combinations and Canyon's warranty position on them are owner hearsay.",
+    "Canyon rise bar (CP0021) base-bar height change not quantified; long cockpit not sold in Canyon's web shop (price unknown)."
+  ],
+  "checked": "2026-11-16"
+}

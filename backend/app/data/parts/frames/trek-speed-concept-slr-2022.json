@@ -1,0 +1,662 @@
+{
+  "id": "trek-speed-concept-slr-2022",
+  "family": "trek-speed-concept",
+  "generation": "Speed Concept SLR / Speed Concept TT (disc brake, twin-tower cockpit, 2022–)",
+  "years": [
+    2022,
+    2026
+  ],
+  "brakes": "disc",
+  "identify": "Disc brakes and thru-axles; a one-piece basebar/stem with two separate towers (left/right) under the arm pads; SLR has the IsoSpeed decoupler behind the seat tube and a top-tube bento. Launched Nov 2021 as model year 2022; the rim-brake bikes before it have a single mono riser under the pads.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Round steerer, 28.6 mm (1-1/8 in) upper / 38.8 mm lower OD (Trek service manual); must sit 0–6 mm below the top of the basebar/stem.",
+    "stem": "No separate stem: one-piece carbon basebar/stem clamps the steerer with a faceplate (2× M5 bolts each side). Four versions: Low, Middle, High rise (SLR, 400 mm) and Low TT (380 mm).",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": null,
+    "pad_bolt_spacing": "Stock arm-pad holders bolt to a proprietary bracket with M4 screws (TriRig); one owner measured the stock cup pattern at about 15 mm side-to-side × 12 mm fore-aft. Holders sit in one of four outward hole sets for width; dogbone washers rotate the pads up to 10°.",
+    "stack_system": "Basebar rise (Low/Middle/High, each step about +15 mm at the pad) plus tower bases 0/15/30/45/60/75 mm and 5 mm fit spacers: 0–85 mm above the minimum on any one basebar; Trek quotes 115 mm total stack adjustment.",
+    "reach_system": "Left/right tower toppers in Near, Middle and Far (each about 59–60 mm of back-of-pad reach, overlapping); Trek quotes 160 mm reach adjustment and 120 mm pad width adjustment. Extensions slide in the extension base (Trek: 100 mm extension length adjustment; may be cut up to 25 mm).",
+    "angle_system": "Toppers carry 7° built in; -7°/+7° angled spacers give 0°, 7° or 14° extension tilt. Owners stack a second +7° spacer for 21°.",
+    "notes": "Extensions are not standard round 22.2 mm bars and clamp only in Trek's extension base, so aftermarket extensions need an adapter plate. Stock extensions cannot be set narrow (most common owner complaint). Trek warns some Low-basebar/Near-topper combinations let the pads hit the top tube. Fit chart values are at the standard 7° angle; changing reach at 7°/14° shifts stack slightly."
+  },
+  "stock_range": [
+    {
+      "size": "S",
+      "pad_stack_mm": [
+        537.9,
+        674.3
+      ],
+      "pad_reach_mm": [
+        310.5,
+        477.5
+      ],
+      "pad_reference": "back_of_pad",
+      "source": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D"
+    },
+    {
+      "size": "M",
+      "pad_stack_mm": [
+        562.8,
+        698.3
+      ],
+      "pad_reach_mm": [
+        326,
+        493
+      ],
+      "pad_reference": "back_of_pad",
+      "source": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D"
+    },
+    {
+      "size": "L",
+      "pad_stack_mm": [
+        586.6,
+        722.1
+      ],
+      "pad_reach_mm": [
+        344,
+        511
+      ],
+      "pad_reference": "back_of_pad",
+      "source": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D"
+    },
+    {
+      "size": "XL",
+      "pad_stack_mm": [
+        610.5,
+        746.0
+      ],
+      "pad_reach_mm": [
+        363.1,
+        530.1
+      ],
+      "pad_reference": "back_of_pad",
+      "source": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D"
+    }
+  ],
+  "parts": [
+    {
+      "id": "trek-sc-slr-basebar-stem-rise",
+      "brand": "Trek",
+      "model": "2022 Speed Concept SLR Basebar/Stem (Low / Middle / High rise)",
+      "category": "basebar",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": [
+          -30,
+          30
+        ],
+        "angle_deg": null,
+        "text": "Swapping between Low, Middle and High rise moves the whole pad range about 15 mm per step (30 mm Low to High) at the same toppers and spacers. Use when the 85 mm of tower spacers is not enough."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D",
+          "kind": "manufacturer",
+          "says": "Trek 2022 fit chart: per size, back-of-pad stack for the Mid bar is 15 mm above Low and High 15 mm above Mid, each with 0–85 mm of spacer range."
+        },
+        {
+          "url": "https://media.trekbikes.com/image/upload/TK_SpeedConcept_MY22_ServiceManual_2-2023.pdf",
+          "kind": "manufacturer",
+          "says": "Service manual lists basebar/stem Low, Middle, High (SLR) and Low (TT) as separate parts; bars must not be cut closer than 47 mm to the slotted holes."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=77",
+          "kind": "forum",
+          "says": "Owner notes off-the-shelf bikes may need a new basebar, towers or toppers to reach a position, which is costly; Project One lets buyers choose at order time."
+        }
+      ],
+      "url": "https://www.trekbikes.com/us/en_US/p/38001",
+      "price": {
+        "amount": 659.99,
+        "currency": "USD",
+        "checked": "2026-11-16"
+      },
+      "needs": "Trek requires the steerer to end 0–6 mm below the top of the basebar/stem, so check steerer length when changing rise; hoses/wires re-routed.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "trek-sc-tt-basebar",
+      "brand": "Trek",
+      "model": "2022 Speed Concept TT Basebar (Low TT, 380 mm)",
+      "category": "basebar",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "UCI-oriented low basebar, 380 mm wide versus 400 mm for the SLR bars; Trek's chart puts its grip about 10 mm below the Low SLR bar. Trek publishes no pad stack/reach table for it."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://media.trekbikes.com/image/upload/TK_SpeedConcept_MY22_ServiceManual_2-2023.pdf",
+          "kind": "manufacturer",
+          "says": "Manual covers SLR and TT together and lists the Low (TT) basebar/stem at 380 mm alongside the 400 mm SLR bars."
+        },
+        {
+          "url": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D",
+          "kind": "manufacturer",
+          "says": "Basebar grip stack table: TT bar 495/520/544/568 mm (S–XL) versus Low SLR 505/530/554/578 mm."
+        }
+      ],
+      "url": "https://trekbikes.com/us/en_US/equipment/cycling-components/bike-handlebars/aero-bike-handlebars/trek-2022-speed-concept-tt-basebar/p/38009",
+      "price": {
+        "amount": 659.99,
+        "currency": "USD",
+        "checked": "2026-11-16"
+      },
+      "needs": "Same steerer-length rule as other basebars; existing towers/toppers carry over.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "trek-sc-tower-toppers",
+      "brand": "Trek",
+      "model": "Speed Concept Handlebar Tower Toppers (Near / Mid / Far, left and right)",
+      "category": "other",
+      "effect": {
+        "reach_mm": [
+          -59,
+          49
+        ],
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "The main reach lever. Relative to Mid toppers, Near moves the minimum pad reach about 59 mm back and Far about 49 mm forward (size M: 326 / 385 / 434 mm minimum back-of-pad reach). Each topper gives about 59–60 mm of fore-aft range; pad stack changes only a few mm with reach."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D",
+          "kind": "manufacturer",
+          "says": "Per-size min/max back-of-pad reach for Near, Mid and Far toppers; e.g. size M Near 326–385, Mid 385–445, Far 434–493 mm."
+        },
+        {
+          "url": "https://media.trekbikes.com/image/upload/TK_SpeedConcept_MY22_ServiceManual_2-2023.pdf",
+          "kind": "manufacturer",
+          "says": "Tower toppers Near/Middle/Far are separate driveside and non-driveside parts, bolted to the tower at 5.2 Nm."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=76",
+          "kind": "forum",
+          "says": "Owner on a size L notes Trek data suggested a Far topper, which an off-the-shelf bike may need to buy separately."
+        }
+      ],
+      "url": "https://www.trekbikes.com/us/en_US/p/38042",
+      "price": {
+        "amount": 54.99,
+        "currency": "USD",
+        "checked": "2026-11-16"
+      },
+      "needs": "Price is per topper (one side); a pair is needed. Check Low basebar + Near topper for pad/top-tube contact when turning.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "trek-sc-tower-bases-fit-spacers",
+      "brand": "Trek",
+      "model": "Speed Concept tower bases (0–75 mm) and 5 mm fit spacers / Handlebar Spacer Kit",
+      "category": "spacer_kit",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": [
+          0,
+          85
+        ],
+        "angle_deg": null,
+        "text": "Tower bases in 15 mm steps (0–75 mm) plus 5/10 mm of fit spacers set pad stack anywhere 0–85 mm above the minimum for the fitted basebar. A used bike often comes with only the tower base it was built with."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://media.trekbikes.com/image/upload/TK_SpeedConcept_MY22_ServiceManual_2-2023.pdf",
+          "kind": "manufacturer",
+          "says": "Lists tower bases 0, 15, 30, 45, 60, 75 mm, 5 mm fit spacers per side, and tower bolts in 25/35/40 mm lengths to match."
+        },
+        {
+          "url": "https://retailerassetsprd.blob.core.windows.net/techassets/SCFitData_nov21.pdf?sv=2018-03-28&ss=bfqt&srt=sco&sp=r&se=2062-03-20T02:32:45Z&st=2019-03-19T18:32:45Z&spr=https&sig=UogJIteiFltPX66np2M0a3esSu1uZzABYHTFInUlT/o%3D",
+          "kind": "manufacturer",
+          "says": "Stack adjustment table: tower base plus 0/5/10 mm spacer gives 0 to 85 mm above minimum."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439/1809",
+          "kind": "forum",
+          "says": "Owner of a used SLR needed many spacers and bought Trek's full fit kit once discounted."
+        }
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Longer tower bolts (25/35/40 mm) to match the spacer height; cables route through the towers.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "trek-sc-angled-spacers",
+      "brand": "Trek",
+      "model": "Speed Concept -7° / +7° angled spacers (stacking a second +7° spacer)",
+      "category": "wedge",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": [
+          -7,
+          14
+        ],
+        "text": "Stock: topper's built-in 7° with a -7° or +7° spacer gives 0°, 7° or 14°. One owner stacked two +7° spacers for 21° and doubts more is possible because the bolt holes stop lining up. Tilt raises the hands, not the pads."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://media.trekbikes.com/image/upload/TK_SpeedConcept_MY22_ServiceManual_2-2023.pdf",
+          "kind": "manufacturer",
+          "says": "Angled spacers -7° and +7°, per side; diagram shows 0°, 7° and 14° extension angles."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=57",
+          "kind": "forum",
+          "says": "Owner added an extra 7° spacer to reach 21° per side; says stacking beyond that would not line up the screw holes. 21° is a single owner report."
+        }
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Longer tower bolts when stacking spacers.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "trek-sc-slr-tt-extensions",
+      "brand": "Trek",
+      "model": "Speed Concept SLR/TT Aerobar Extensions",
+      "category": "extensions",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Stock extensions slide in the extension base (Trek: 100 mm extension length adjustment) and can be cut up to 25 mm. Moves hands only, not pads. An owner's fitter ran out of stock extension length and needed 1–2 cm more."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://www.trekbikes.com/us/en_US/speed-concept-fit-travel/",
+          "kind": "manufacturer",
+          "says": "Trek lists 100 mm extension length adjustment, 120 mm pad width and 160 mm reach adjustment."
+        },
+        {
+          "url": "https://media.trekbikes.com/image/upload/TK_SpeedConcept_MY22_ServiceManual_2-2023.pdf",
+          "kind": "manufacturer",
+          "says": "Extension bars may be shortened at the marked lines, 25 mm maximum."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439/1163",
+          "kind": "forum",
+          "says": "Owner's fitter hit the limit of stock extension length and pads; wanted 0.5–1 in more."
+        }
+      ],
+      "url": "https://www.trekbikes.com/us/en_US/p/37730",
+      "price": {
+        "amount": 219.99,
+        "currency": "USD",
+        "checked": "2026-11-16"
+      },
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-adapter-trek-sc-disc",
+      "brand": "AeroCoach",
+      "model": "Ascalon adapter – Trek Speed Concept (disc brake), tilt adjustable",
+      "category": "adapter_plate",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": [
+          14,
+          28
+        ],
+        "text": "Mounts AeroCoach Ascalon extensions on the SLR towers at a 21° base angle; Trek's -7°/+7° wedges change it to 14° or 28°. Ascalon extension reach range 255–305 mm plus adapter reach (no Trek-specific pad numbers published). Owners call it clean and OEM-looking; one found 14° the minimum."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+          "kind": "manufacturer",
+          "says": "Lists a Trek Speed Concept (disc brake) tilt-adjustable adapter: 21° base, 14° or 28° with Trek's ±7° wedges; works and is warrantied only with Ascalon extensions."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439/1355",
+          "kind": "forum",
+          "says": "2023 SLR owner fitted Ascalon titanium extensions; SLR-specific adapter looks OEM; stock grips were too wide."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439/1465",
+          "kind": "forum",
+          "says": "Second owner runs AeroCoach adapters on two Speed Concepts and praises them."
+        }
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": {
+        "amount": 400.0,
+        "currency": "GBP",
+        "checked": "2026-11-16"
+      },
+      "needs": "AeroCoach Ascalon extensions (sold separately). Price = £115 base + £285 disc-brake option, incl. UK VAT.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-plate-trek-sc",
+      "brand": "TriRig",
+      "model": "Super-X Adaptor Plate (Trek Speed Concept twin post, disc)",
+      "category": "adapter_plate",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Replaces the stock arm-pad hardware with one plate on the Trek risers, so standard 22.2 mm extensions (via TriRig clamps) and long arm cups/super-extension cups can be fitted; extension clamps sit in one of four positions and can bring the bars about 25 mm inboard of the risers (narrower). An owner paired it with original Scoops Ultimate SL."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://tririg.com/pages/trek-sc-super-x-plate-installation-guide",
+          "kind": "manufacturer",
+          "says": "Plate is designed for the Trek Speed Concept Twin Post (disc brake); sits on the risers with locating holes; optional Alpha Prime extension clamps bolt underneath."
+        },
+        {
+          "url": "https://tririg.com/products/super-extension-plate",
+          "kind": "manufacturer",
+          "says": "Product listing states the Trek version only works with Speed Concept disc frames (seen in search results; page rate-limited when opened)."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=87",
+          "kind": "forum",
+          "says": "Owner ordered it to pair with Scoops Ultimate SL (about 20 × 15.5 mm bolt spacing); another poster says clamp holes are 25 mm from extension centre, putting bars about 25 mm inboard of the risers."
+        }
+      ],
+      "url": "https://tririg.com/products/super-extension-plate",
+      "price": {
+        "amount": 195.0,
+        "currency": "USD",
+        "checked": "2026-11-16"
+      },
+      "needs": "Extension clamps (Alpha Prime clamps, announced as separate items) and arm cups/scoops; existing risers stay.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-wingspan-sc",
+      "brand": "TriRig",
+      "model": "Wingspan Extenders SC (Trek Speed Concept disc)",
+      "category": "adapter_plate",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Two reversible plates on the stock arm-pad bracket that convert Trek's M4 mounting to M6, for longer arm cups, super-extension cups and Scoops Ultimate EVO; plates flip for lateral or fore-aft offset. Works with the stock extensions. TriRig gives no mm figures."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://tririg.com/pages/wingspan-sc",
+          "kind": "manufacturer",
+          "says": "Guide applies only to the Speed Concept disc/twin-post (2022+); 8 M4 screws to the bracket at 3 Nm, 4 M6 bolts for cups at 6 Nm; stock M4 bolts said too weak for long lever-arm cups."
+        },
+        {
+          "url": "https://mikesbikes.com/collections/components/products/tririg-wingspan-extenders",
+          "kind": "retailer",
+          "says": "Retailer notes the Speed Concept version fits only Gen 3 disc-brake Speed Concepts (seen in search results)."
+        }
+      ],
+      "url": "https://tririg.com/products/wingspan",
+      "price": null,
+      "needs": "Arm cups with M6 pattern; check extension and brake-line clearance.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-scoops-speed-concept-hardware",
+      "brand": "TriRig",
+      "model": "Scoops arm cups (non-SL variants) with Speed Concept Hardware kit",
+      "category": "armrests",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Replaces the stock cups; owners use it mainly to fix the stock cups' fore-aft holes and shallow shape. Long Scoops extend arm support forward; TriRig publishes no pad-position figures for the Trek."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439/1538",
+          "kind": "forum",
+          "says": "Owner replaced the stock front with TriRig Ultimate scoops because stock cannot go narrow; expensive."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=63",
+          "kind": "forum",
+          "says": "Poster says standard open/closed-back scoops fit the Trek bars with special M4 bolt washers, possibly with spacers."
+        }
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Speed Concept hardware kit; for long cups TriRig recommends Wingspan SC or the Super-X plate.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-scoops-ultimate-sl-direct",
+      "brand": "TriRig",
+      "model": "Scoops Ultimate SL on the stock Speed Concept arm-pad bracket",
+      "category": "armrests",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Not recommended by TriRig on the 2022+ bike directly; owners run it through the Super-X plate instead."
+      },
+      "status": "incompatible",
+      "reason_incompatible": "The SL's narrower hole pattern does not match the Gen 3 Speed Concept arm-pad bracket (TriRig).",
+      "evidence": [
+        {
+          "url": "https://tririg.com/products/scoops-ultimate-sl",
+          "kind": "manufacturer",
+          "says": "TriRig does not recommend the Ultimate SL on the Trek Speed Concept Gen 3 (2022+) because of its narrower hole pattern (seen in search results)."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=87",
+          "kind": "forum",
+          "says": "Owner pairs original Ultimate SL scoops with the Super-X plate."
+        }
+      ],
+      "url": "https://tririg.com/products/scoops-ultimate-sl",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-trek-sc-twin-post-plate",
+      "brand": "FastTT",
+      "model": "Adapter plate for Trek Speed Concept Twin Post (with FastTT aero bars)",
+      "category": "adapter_plate",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Mounts FastTT full-arm aero bars on the Trek struts with locating pins; integrated BTA mount. Owners report more reach and the elbow sitting a cm or two further forward versus stock."
+      },
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://www.materiel-velo.com/gb/1885949-fasttt-triathlon-extension-adapter-plate-for-trek-speed-concept-twin.html",
+          "kind": "retailer",
+          "says": "Plate for the recent-generation Trek Speed Concept Twin Post; mounts directly on the Trek strut with pre-drilled locating pin holes; pre-threaded BTA mount."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=87",
+          "kind": "forum",
+          "says": "Several 2022+ owners fitted FastTT bars (one replaced the Trek BTA, one built the bike with them); they report added reach."
+        }
+      ],
+      "url": null,
+      "price": {
+        "amount": 121.75,
+        "currency": "EUR",
+        "checked": "2026-11-16"
+      },
+      "needs": "FastTT aero bars (sold separately).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "vision-metron-tfe-evo-adapter-trek-sc-slr",
+      "brand": "Vision",
+      "model": "Metron TFE EVO extensions adapter for Trek Speed Concept SLR (V3157)",
+      "category": "adapter_plate",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Bike-specific adapter to run Vision Metron TFE EVO full-arm extensions on the SLR. Vision publishes no Trek-specific pad numbers that we could open."
+      },
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://shop.visiontechusa.com/aerobars/triathlon-time-trial/metron-tfe-evo-extensions",
+          "kind": "manufacturer",
+          "says": "Vision lists TFE EVO adapters per bike including a Trek Speed Concept SLR adapter (seen in search results; page returned 403 when opened)."
+        },
+        {
+          "url": "https://www.bike24.com/p21028663.html",
+          "kind": "retailer",
+          "says": "Listed as 'Metron TFE EVO Extensions Adapter for TREK Speed Concept SLR – V3157' at €136.13 (search result)."
+        }
+      ],
+      "url": "https://shop.visiontechusa.com/aerobars/triathlon-time-trial/metron-tfe-evo-extensions",
+      "price": {
+        "amount": 136.13,
+        "currency": "EUR",
+        "checked": "2026-11-16"
+      },
+      "needs": "Vision Metron TFE EVO extensions (sold separately).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "drag2zero-clamps-spacers-trek-sc-slr",
+      "brand": "Drag2Zero",
+      "model": "D2Z pole clamps, angled/flat spacers, extensions and arm cups on the Trek towers",
+      "category": "extensions",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Lets round aftermarket extensions sit on the Trek towers with D2Z 10° angled and 10/20 mm flat spacers; owners say it works but parts do not line up perfectly."
+      },
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=45",
+          "kind": "forum",
+          "says": "Owner fitted D2Z pole clamps, 10° angled and 10/20 mm spacers over a Trek 15 mm spacer; had to shave two pins and a bolt hole on the Trek spacer; D2Z cups came undrilled and were drilled (32 mm spacing)."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=58",
+          "kind": "forum",
+          "says": "Another owner says D2Z or Wattshop mounts need the nubs on the Trek spacers ground off to sit flush."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=77",
+          "kind": "forum",
+          "says": "A third owner ran Drag2Zero extensions before switching to TriRig scoops."
+        }
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Grinding locating pins off the top Trek spacer; drilling D2Z cups; check for play in the towers (one owner reported some).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "sync-aerobar-two-trek-sc-slr",
+      "brand": "Sync",
+      "model": "Aerobar Two (on the Trek basebar)",
+      "category": "full_cockpit",
+      "effect": {
+        "reach_mm": [
+          0,
+          45
+        ],
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Owner kept the Trek basebar and fitted the Sync Aerobar Two; matched his old pad stack/reach to the mm with room left, and reports 45 mm of forward elbow-pad adjustment. Ran Evolve Prorok pads on it for extra length."
+      },
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=76",
+          "kind": "forum",
+          "says": "Owner fitted the Sync Aerobar Two on the Speed Concept basebar, duplicated his stack/reach, notes 45 mm forward pad adjustment; unsure of the Trek adapter detail."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=77",
+          "kind": "forum",
+          "says": "Same owner later rates it above Vision Metron TFE and AeroCoach Ascalon on his bike."
+        }
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Sync-to-Trek mounting adapter (details not confirmed by Sync).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "round-extensions-on-stock-sc-slr-base",
+      "brand": "Generic",
+      "model": "Standard round 22.2 mm extensions in the stock Speed Concept SLR extension base",
+      "category": "extensions",
+      "effect": {
+        "reach_mm": null,
+        "stack_mm": null,
+        "angle_deg": null,
+        "text": "Not a direct swap: the stock extension base only takes Trek's own extensions."
+      },
+      "status": "incompatible",
+      "reason_incompatible": "The stock aerobar uses a proprietary extension base and Trek-specific extension bars, not a 22.2 mm round clamp; aftermarket extensions need an adapter plate (AeroCoach, TriRig Super-X, FastTT, Vision) or D2Z-style clamps.",
+      "evidence": [
+        {
+          "url": "https://www.triathlete.com/gear/bike/trek-speed-concept-slr-7-extended-review?scope=anon",
+          "kind": "review",
+          "says": "Review lists as a con that extensions cannot be swapped without changing the whole bar system."
+        },
+        {
+          "url": "https://media.trekbikes.com/image/upload/TK_SpeedConcept_MY22_ServiceManual_2-2023.pdf",
+          "kind": "manufacturer",
+          "says": "Extension bars (own part number) bolt into a proprietary extension base on the towers."
+        },
+        {
+          "url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=63",
+          "kind": "forum",
+          "says": "Owner wants an adapter to fit Profile Design round extensions; none from Trek at the time."
+        }
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "TriRig product pages (Speed Concept hardware, Super-X, Scoops Ultimate SL, Wingspan) returned HTTP 429 when opened; their compatibility statements come from search-result text and the TriRig install guides that did open. Wingspan SC and Scoops-hardware prices not confirmed.",
+    "FastTT's own site (fasttt.bike) returned 403; FastTT twin-post plate evidence is a retailer listing plus owners. Price is a retailer price.",
+    "Vision US shop and bike24 returned 403; the V3157 adapter is known from search results only; price is a retailer price.",
+    "Sync: no Sync maker page found confirming a Speed Concept SLR adapter; Ride Sync, 51speedshop, Profile Design, Zipp and Wattshop Anemoi had no SLR-specific product or owner confirmation found.",
+    "Trek prices for tower bases, fit spacers, angled spacers and the Handlebar Spacer Kit not found on trekbikes.com (pages are JS-rendered); listed only on retailer sites.",
+    "No Trek pad stack/reach table for the TT basebar; the SLR fit chart is at the 7° extension angle only.",
+    "Stock extension tube dimensions, shapes and lengths not published; stock arm-pad bolt pattern only owner-measured (about 15 × 12 mm).",
+    "No maker figures for how far AeroCoach, Super-X, Wingspan, FastTT or Vision move the pads versus stock (reach/stack).",
+    "Whether a standard stem + round basebar can replace the one-piece basebar/stem is undocumented.",
+    "Tilt above 21° with stacked Trek spacers is unconfirmed."
+  ],
+  "checked": "2026-11-16"
+}

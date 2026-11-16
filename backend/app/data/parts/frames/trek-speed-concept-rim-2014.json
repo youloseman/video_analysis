@@ -1,0 +1,224 @@
+{
+  "id": "trek-speed-concept-rim-2014",
+  "family": "trek-speed-concept",
+  "generation": "Speed Concept 2nd generation (rim brake, mono riser cockpit, MY2014 to about 2021)",
+  "years": [2014, 2021],
+  "brakes": "rim",
+  "identify": "Rim brakes and quick-release wheels, no IsoSpeed; a proprietary direct-mount stem with the basebar bolted on from below and a single mono riser ('pedestal') carrying the arm-pad wing and mono extension. Announced Sept 2013 for MY2014; Trek says parts interchange across 2014–2020. The 2022+ SLR has disc brakes and two towers; the 2010–2013 bike is a different first generation.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Not verified (proprietary front end; no Trek spec sheet found).",
+    "stem": "Proprietary direct-mount stem in six versions: Low/Medium/High height, each Near or Far. The basebar ('pursuit bar') bolts up through the stem from underneath, with 10 mm of fore-aft adjustment.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": null,
+    "pad_bolt_spacing": null,
+    "stack_system": "Stem height (Low/Medium/High; Trek: over 14 cm of height adjustment per size across the stems) plus a mono riser/pedestal in four heights 10 mm apart and a 5 mm spacer under the pad wing. Owners and Trek cite riser stacks such as 15 mm (smallest), 35+5 and 45+5 mm.",
+    "reach_system": "Near/Far stem choice; mono extension and pad wing sit in different hole sets; the pad wing can be flipped 180° for more or less reach; pads also slide on the wing.",
+    "angle_system": "Tilt cradle angles pads and extensions upward (range not published). Aftermarket adapters add fixed or adjustable tilt (AeroCoach 15–27°, Wattshop 5–25°).",
+    "notes": "Extensions come in four Trek styles (S-bend, straight, ergo, short ergo), cut to length, about 40 mm of fore-aft adjustment once fitted. The Mono Plug-In accepts extensions of the rider's choice (22.2 mm). Owners call the front end a lot of work to fit (many proprietary stems/risers), swapping risers awkward with mechanical shifting, and proprietary stems for extreme fits now hard to find. A newer plug-in/slider moved from 5 mm to 6 mm hardware."
+  },
+  "stock_range": [],
+  "parts": [
+    {
+      "id": "trek-sc-gen2-stems",
+      "brand": "Trek",
+      "model": "Speed Concept direct-mount stem (Low / Medium / High × Near / Far)",
+      "category": "stem",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "The main stack/reach lever on this generation: six stems give over 14 cm of height adjustment per frame size (Trek), with Near/Far versions for reach. Exact per-stem offsets were not found."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.active.com/triathlon/articles/trek-debuts-redesigned-speed-concept-bike?page=4",
+         "kind": "review", "says": "2013 launch coverage: six stem options (low/medium/high, each near/far) give over 14 cm height adjustment per size; base bar 10 mm fore-aft adjustment."},
+        {"url": "https://forum.slowtwitch.com/t/hey-slowtwitch-trek-community-manager-here/774506?page=14",
+         "kind": "forum", "says": "Trek's community manager suggests a High-Far stem plus 45 mm of spacers to raise pads on a size M, and says 2014–2020 Speed Concept parts are interchangeable."},
+        {"url": "https://forum.slowtwitch.com/t/wtb-gen2-speed-concept-stem-monorisers/828964",
+         "kind": "forum", "says": "2024 owners trade Gen 2 stems and monorisers second-hand (Low/Near stem part #436145); a Low/Far stem was sought."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Brake/shift cables re-routed; parts now mostly second-hand.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "trek-sc-gen2-mono-risers",
+      "brand": "Trek",
+      "model": "Speed Concept mono riser / pedestals and 5 mm spacer",
+      "category": "riser",
+      "effect": {"reach_mm": null, "stack_mm": [0, 35], "angle_deg": null,
+                 "text": "Four pedestal heights 10 mm apart plus a 5 mm spacer under the pad wing: about 35 mm of pad stack on a given stem. Owners report 15 mm as the smallest riser and Trek cites a 45+5 mm combination."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://slowtwitch.com/industry/find-your-superbike-trek/",
+         "kind": "review", "says": "2015 article on the Speed Concept fit chart (adapted from Trek's engineer): one pedestal on the pursuit bar, four options each 10 mm taller, plus a 5 mm spacer under the pad wing."},
+        {"url": "https://forum.slowtwitch.com/t/hey-slowtwitch-trek-community-manager-here/774506?page=5",
+         "kind": "forum", "says": "Trek's community manager: an XL with a 45+5 mm mono and a Far-Near stem hits a 740 mm pad stack / 555 mm reach."},
+        {"url": "https://forum.slowtwitch.com/t/where-is-the-fit-table-for-speed-concept/781544",
+         "kind": "forum", "says": "Owner on a size L runs the smallest 15 mm riser and says swapping risers is awkward with mechanical shifting."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Longer bolts for taller risers; cable re-routing with mechanical shifting.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "bontrager-sc-mono-plug-in",
+      "brand": "Trek / Bontrager",
+      "model": "Speed Concept Mono Extension Plug-In (W582446)",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Replaces the one-piece mono extension so standard 22.2 mm extensions of the rider's choice plug into its ends; this is how Gen 2 owners fit longer or different-shape bars. An owner says pad stack does not change versus stock even with longer poles. It has three pad-mounting holes per side, versus four on the S-bend mono."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/hey-slowtwitch-trek-community-manager-here/774506?page=6",
+         "kind": "forum", "says": "Trek's community manager: the Mono Plug-In lets a bar of your choice be installed into the ends; new version uses Mono Plugin W582446, 6 mm bolt/T-nut 596164 and Mono Slider W582447."},
+        {"url": "https://briellecyclery.com/product/bontrager-speed-concept-mono-extension-258628-1.htm",
+         "kind": "retailer", "says": "Bontrager Speed Concept mono extension family for the 2014 (Gen 2) bike, accepts standard 22.2 mm extensions, internally routed for Di2 or cable."},
+        {"url": "https://forum.slowtwitch.com/t/wtb-gen2-speed-concept-stem-monorisers/828964",
+         "kind": "forum", "says": "Owner: with the plug-in, elbow-pad stack stays the same as standard even with longer poles."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Your own 22.2 mm extensions; check old (5 mm) versus new (6 mm) hardware before mixing parts. Owners noted EU supply delays.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "trek-tt-mono-ergo-extension",
+      "brand": "Trek / Bontrager",
+      "model": "Speed Concept mono extensions (S-bend, straight, Ergo, Ergo Long – W582443)",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Trek's own one-piece mono extensions in four shapes; cut to length and about 40 mm of fore-aft adjustment once fitted. Changes hand position, not pad position."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.active.com/triathlon/articles/trek-debuts-redesigned-speed-concept-bike?page=4",
+         "kind": "review", "says": "Launch coverage: four extension styles (s-bend, straight, ergo, short ergo), can be cut, up to 40 mm adjustment once fixed."},
+        {"url": "https://www.sigmasport.co.uk/item/Bontrager/Speed-Concept-Mono-Aerobar-Extension-Ergo-Long-Black/DV6M",
+         "kind": "retailer", "says": "Mono Ergo Long described as designed for second-generation Speed Concept (2014 onwards) (search result; page refused connection)."},
+        {"url": "https://forum.slowtwitch.com/t/hey-slowtwitch-trek-community-manager-here/774506?page=14",
+         "kind": "forum", "says": "Trek's community manager: owners can swap the mono extension for a long-reach or plug-in version for more length; keep the set screw in place."}
+      ],
+      "url": "https://trekbikes.com/ie/en_IE/p/W582443",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-adapter-trek-sc-rim",
+      "brand": "AeroCoach",
+      "model": "Ascalon adapter – Trek Speed Concept (rim brake, monopost), tilt adjustable / low stack",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [15, 27],
+                 "text": "Mounts AeroCoach Ascalon extensions on the Gen 2 mono riser at a 15° base angle, tiltable up to 27°; a separate low-stack version is listed. No Trek-specific pad numbers published."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+         "kind": "manufacturer", "says": "Lists Trek Speed Concept (rim brake) monopost adapter, 15° base tiltable to 27°, plus a rim-brake low-stack tilt-adjustable option; works only with Ascalon extensions."},
+        {"url": "https://forum.slowtwitch.com/t/wtb-gen2-speed-concept-stem-monorisers/828964",
+         "kind": "forum", "says": "Gen 2 owner notes the Ascalon has an adapter but a BTA bottle would need extra hardware."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": {"amount": 367.5, "currency": "GBP", "checked": "2026-11-16"},
+      "needs": "AeroCoach Ascalon extensions (sold separately). Price = £115 base + £252.50 rim-brake option, incl. UK VAT.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-trek-sc-mono-riser-plate",
+      "brand": "FastTT",
+      "model": "Adapter plate for Trek Speed Concept mono riser (with FastTT aero bars)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Mounts FastTT full-arm bars on the Gen 2 mono riser; reversible with integrated BTA mount. One owner found the pads sit lower than stock (went up one riser) and the overall position longer."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.brownssports.ca/products/adapter-plate-for-trek-speed-concept-mono-riser",
+         "kind": "retailer", "says": "FastTT plate for the Trek Speed Concept mono riser, used with FastTT aero bars, reversible, integrated BTA mount, CAD 182 (search result; page rate-limited when opened)."},
+        {"url": "https://forum.slowtwitch.com/t/wtb-gen2-speed-concept-stem-monorisers/828964",
+         "kind": "forum", "says": "Gen 2 owner fitted the FastTT plate and extensions, very pleased; pads sit lower so he added one riser; fit came out longer."},
+        {"url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=76",
+         "kind": "forum", "says": "2018 Gen 2 owner lists the FastTT mono-riser adapter among options."}
+      ],
+      "url": null,
+      "price": {"amount": 182.0, "currency": "CAD", "checked": "2026-11-16"},
+      "needs": "FastTT aero bars (sold separately); BTA needs extra hardware per one owner.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "wattshop-anemoi-mono-riser",
+      "brand": "Wattshop",
+      "model": "Anemoi aero extension system (mono-riser version)",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [5, 25],
+                 "text": "Full extension system offered for mono-riser basebars 'like that on the Trek Speed Concept'; angled risers 5–25° in 5° steps, adjustable reach and width via mounting plates; replaces the mono riser plus pad plate per a Gen 2 owner."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.bikeradar.com/news/anemoi-aero-extension-system/",
+         "kind": "review", "says": "2020 launch report: Anemoi available for standard dual-mount or mono-riser base bars like the Trek Speed Concept; 5–25° risers; from £1,495 at launch."},
+        {"url": "https://forum.slowtwitch.com/t/new-trek-speed-concept/806439?page=76",
+         "kind": "forum", "says": "2018 Gen 2 owner leans towards the Anemoi mono-bracket adapter because it replaces the mono riser and horizontal plate."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Confirm the Speed Concept mono-riser bracket with Wattshop before ordering.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-wingspan-sc-on-rim",
+      "brand": "TriRig",
+      "model": "Wingspan Extenders SC",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Made for the 2022+ disc bike's arm-pad bracket only."},
+      "status": "incompatible",
+      "reason_incompatible": "Designed for the Gen 3 (disc, twin-post) Speed Concept arm-pad bracket; not for the Gen 1/2 rim-brake mono-riser cockpit.",
+      "evidence": [
+        {"url": "https://tririg.com/pages/wingspan-sc",
+         "kind": "manufacturer", "says": "Install guide applies only to the Trek Speed Concept disc brake, twin post, 2022+."},
+        {"url": "https://mikesbikes.com/collections/components/products/tririg-wingspan-extenders",
+         "kind": "retailer", "says": "Speed Concept version compatible only with Gen 3 disc-brake bikes, not Gen 1 or 2 rim-brake ones (search result)."}
+      ],
+      "url": "https://tririg.com/products/wingspan",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-on-rim",
+      "brand": "TriRig",
+      "model": "Super-X Adaptor Plate (Trek version)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Trek version mounts on the twin risers of the disc bike only."},
+      "status": "incompatible",
+      "reason_incompatible": "TriRig's Trek plate works only with Speed Concept disc (twin-post) frames; the rim-brake bike has a single mono riser.",
+      "evidence": [
+        {"url": "https://tririg.com/pages/trek-sc-super-x-plate-installation-guide",
+         "kind": "manufacturer", "says": "Plate designed specifically for the Trek Speed Concept Twin Post (disc brake); sits on the two risers."},
+        {"url": "https://tririg.com/products/super-extension-plate",
+         "kind": "manufacturer", "says": "Listing says the Trek plate only works with Speed Concept disc frames (search result; page rate-limited when opened)."}
+      ],
+      "url": "https://tririg.com/products/super-extension-plate",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "No per-size pad stack/reach table: the 2014 Speed Concept Fit Guide is only on a third-party mirror (docplayer.net, unreachable) and a Dutch manual site (not opened). Trek's own Gen 2 fit chart not found, so stock_range is empty.",
+    "Exact pedestal heights, per-stem stack/reach offsets and tilt-cradle range not found.",
+    "Steerer standard and basebar dimensions for Gen 2 not verified.",
+    "Last rim-brake model year not confirmed (Trek's community manager covers 2014–2020; the disc SLR replaced it for MY2022).",
+    "FastTT maker site (fasttt.bike) returned 403 and the Canadian retailer page was rate-limited; FastTT evidence is search-result text and one owner.",
+    "Drag2Zero, 51speedshop, Profile Design, Vision and Sync adapters for the Gen 2 mono riser: no maker page or owner confirmation found (an earlier Slowtwitch post said Vision had no Gen 2 adapter yet; date not checked).",
+    "Wattshop Anemoi price and current availability for the mono-riser version not verified (launch price only).",
+    "Prices for Trek Gen 2 stems, risers, plug-in and mono extensions not found; many parts appear discontinued and trade second-hand."
+  ],
+  "checked": "2026-11-16"
+}

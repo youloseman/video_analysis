@@ -7484,8 +7484,8 @@ function partsResultHtml(r){
     ${r.stale?'<p class="banner warn">This frame’s data is more than six months old. Check with the maker before you buy.</p>':''}
     <h4>What the stock cockpit already allows</h4>
     <ul class="parts-stock">${stock||'<li>Not documented for this frame.</li>'}${sz?`<li><b>Size ${esc(sz.size)}:</b> pad height ${sz.pad_stack_mm?sz.pad_stack_mm.join('–')+' mm':'—'}, reach ${sz.pad_reach_mm?sz.pad_reach_mm.join('–')+' mm':'—'} (${esc(String(sz.pad_reference||'').replace(/_/g,' '))})</li>`:''}</ul>
-    ${asked?`<h4>Parts that move the way you asked</h4>${r.helps.length?`<ul class="parts-list">${r.helps.map(partsCardHtml).join('')}</ul>`:'<p class="hint">None on record for this frame. The stock range above may already cover it.</p>'}`:''}
-    ${r.other.length?`<details${asked?'':' open'}><summary>${asked?'Other parts that fit this frame':'Parts that fit this frame'} (${r.other.length})</summary><ul class="parts-list">${r.other.map(partsCardHtml).join('')}</ul></details>`:''}
+    ${asked?`<h4>Parts that move the way you asked</h4>${r.helps.length?`<ul class="parts-list">${r.helps.map(partsCardHtml).join('')}</ul>`:'<p class="hint">No part on record states a change that way in numbers for this frame. Check the stock range above, and the other parts below: several change the cockpit without a stated figure.</p>'}`:''}
+    ${r.other.length?`<details${asked&&r.helps.length?'':' open'}><summary>${asked?'Other parts that fit this frame':'Parts that fit this frame'} (${r.other.length})</summary><ul class="parts-list">${r.other.map(partsCardHtml).join('')}</ul></details>`:''}
     ${r.incompatible.length?`<h4>Does not fit this frame</h4><ul class="parts-list">${r.incompatible.map(partsCardHtml).join('')}</ul>`:''}
     <p class="hint">From fitting guides, makers’ pages and owners’ reports, each with its sources. Check with the seller before you buy: a frame’s year or size can change what fits.</p>
   </div>`;

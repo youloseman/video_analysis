@@ -1,0 +1,330 @@
+{
+  "id": "giant-trinity-advanced-pro-2016",
+  "family": "giant-trinity",
+  "generation": "Trinity Advanced Pro / Advanced Pro TT (rim brake, MY2016-2024)",
+  "years": [2016, 2024],
+  "brakes": "rim",
+  "identify": "Rim brakes integrated behind the fork and under the frame, AeroVault front bottle on the fork/head tube, two separate armrest stacks bolted on top of an AeroDrive base bar that sits on a Giant-only nose-cone stem (flat or +30 mm). Launched late 2015 as MY16; replaced by the disc Trinity Advanced SL in Jan 2025. NOT the cheaper Trinity Advanced (non-Pro), which has a normal stem and base-bar clamp, and NOT the 2011-2015 'Trinity Advanced SL'.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Alloy OverDrive steerer on a composite fork (Giant spec); the stem and lower nose cone are Giant-specific and paired, so a standard stem cannot be clamped on per owners.",
+    "stem": "Proprietary Giant Trinity stem / nose cone, 80 mm long in the 2020-2022 tables (a 2018 table lists 80/90/90/100 mm by size). Complete bikes shipped with two alloy stems: zero stack and +30 mm. TT/UCI and Tri stems differ in height, angle and fasteners.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": null,
+    "pad_bolt_spacing": "About 30 mm centre-to-centre between the two armrest bolts (one owner's measurement, 2017); not published by Giant.",
+    "stack_system": "Armrest spacer stack under each armrest/extension clamp, bolted with long M5 bolts (stock lengths M5 x 40/50/60/70 per the Giant manual as quoted by an owner). Giant's 2022 tables give a 60 mm pad-stack range for the Tri setup and 50 mm for TT. Base bar is reversible (Giant: 40 mm of height adjustment) and the +30 mm stem raises the whole front end. Owners go beyond the stock range with extra Giant spacers and longer bolts; a Giant armrest bridge is advised for tall stacks.",
+    "reach_system": "Armrests bolt onto the extension clamps in four positions and can be reversed for five fore-aft positions in 15 mm steps, 60 mm in total (Giant manual, via search excerpt). No alternative stem lengths sold separately apart from the TT/UCI kit.",
+    "angle_system": "none stock. Owners add angled spacers (Fouriers 10/15 deg) or AeroCoach tilt-block adapters. One owner measured the stock extension clamps tilting about 2 deg nose-down on the risers.",
+    "notes": "Fit range is narrow; owners report not getting long and low enough on small sizes even with spacers removed. Stock extensions are standard round bars and owners swapped them freely; the base bar and stem are Giant-only. The stem-to-fork bolt and stack-spacer threads strip if over-tightened (owner reports). A basebar break after a small impact and a crash crack were each reported once."
+  },
+  "stock_range": [
+    {"size": "XS (Tri setup)", "pad_stack_mm": [582, 642], "pad_reach_mm": [394, 454], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/no/trinity-advanced-pro-tri-frameset-2022"},
+    {"size": "S (Tri setup)", "pad_stack_mm": [612, 672], "pad_reach_mm": [406, 466], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/no/trinity-advanced-pro-tri-frameset-2022"},
+    {"size": "M (Tri setup)", "pad_stack_mm": [640, 700], "pad_reach_mm": [413, 473], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/no/trinity-advanced-pro-tri-frameset-2022"},
+    {"size": "L (Tri setup)", "pad_stack_mm": [670, 730], "pad_reach_mm": [419, 479], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/no/trinity-advanced-pro-tri-frameset-2022"},
+    {"size": "XS (TT setup)", "pad_stack_mm": [550, 600], "pad_reach_mm": [403, 463], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/us/trinity-advanced-pro-tt-frameset-2022"},
+    {"size": "S (TT setup)", "pad_stack_mm": [580, 630], "pad_reach_mm": [415, 475], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/us/trinity-advanced-pro-tt-frameset-2022"},
+    {"size": "M (TT setup)", "pad_stack_mm": [610, 660], "pad_reach_mm": [422, 482], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/us/trinity-advanced-pro-tt-frameset-2022"},
+    {"size": "L (TT setup)", "pad_stack_mm": [640, 690], "pad_reach_mm": [428, 488], "pad_reference": "unspecified", "source": "https://www.giant-bicycles.com/no/trinity-advanced-pro-tri-frameset-2022"}
+  ],
+  "parts": [
+    {
+      "id": "giant-trinity-pro-30mm-riser-stem",
+      "brand": "Giant",
+      "model": "Trinity Advanced Pro +30 mm riser stem (part no. 170000187 at one retailer)",
+      "category": "stem",
+      "effect": {"reach_mm": null, "stack_mm": [0, 30], "angle_deg": null, "text": "Swaps the zero-stack stem for the +30 mm one, lifting base bar and pads about 30 mm (owners estimate about an inch). Complete bikes shipped with both stems, so check the box first."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.giant-bicycles.com/gb/trinity-advanced-pro-2-2021", "kind": "manufacturer", "says": "Spec lists two Trinity alloy stems: zero stack and +30 mm stack."},
+        {"url": "https://www.giant-bicycles.com/int/trinity-advanced-pro-1", "kind": "manufacturer", "says": "Pro 1 spec lists a Trinity alloy high/low stem."},
+        {"url": "https://performancebike.com/giant-trinity-advanced-pro-30mm-riser-stem-black-170000187/p705786", "kind": "retailer", "says": "Sells a 30 mm riser stem for 2016+ Trinity Advanced Pro bikes, part 170000187."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=15", "kind": "forum", "says": "Two 2016 owners fitted the riser stem through a dealer without issues; height gain estimated at about an inch."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=22", "kind": "forum", "says": "Owner notes one upper nose cone raises the base bar 30 mm, the other is flat."}
+      ],
+      "url": null,
+      "price": {"amount": 180, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "Dealer order; spacer arrangement under the stem changes; AeroVault bottle clearance differs by frame size with the raised stem.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "giant-trinity-pro-tt-uci-front-end",
+      "brand": "Giant",
+      "model": "Trinity Advanced Pro TT / UCI front-end kit (fork, base bar, stem)",
+      "category": "stem",
+      "effect": {"reach_mm": null, "stack_mm": [-25, 0], "angle_deg": null, "text": "TT stem sits roughly 25 mm lower than the Tri stem (owner estimate from photos). Sold as a set with fork and base bar; Tri and TT stems are not interchangeable piece by piece."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=26", "kind": "forum", "says": "Owner says the UCI kit (fork, base bar, stem) is sold as a set; another says the UCI stem has different height and fasteners from the Tri stem."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=25", "kind": "forum", "says": "Owner estimates about 25 mm height difference between high and low stems; TT owners add stack with longer aftermarket bolts."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=27", "kind": "forum", "says": "TT-frame owner: the Tri stem has a different angle so its bolt does not line up with the TT fork hole, and needs a wider base bar."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Matching fork and lower riser/nose cone; possibly a different fork steerer length. Pro models pair the stem with the nose cone.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "giant-trinity-pro-armrest-spacers-long-bolts",
+      "brand": "Giant",
+      "model": "Extra Trinity armrest stack spacers + longer M5 bolts",
+      "category": "spacer_kit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Raises pads above the stock spacer stack. Owners report running about 80-90 mm of armrest stack this way, beyond Giant's 50-60 mm published pad-stack range."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=20", "kind": "forum", "says": "Owner links Giant armrest spacers sold as a spare part; another confirms Giant ships them."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=21", "kind": "forum", "says": "Owner runs about 80 mm of arm-pad stack with a bridge added for rigidity."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=30", "kind": "forum", "says": "Owner raising armrests about 90 mm needed longer screws from the base bar to the armrests; hardware-store bolts suggested."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=27", "kind": "forum", "says": "Owner lists the Giant armrest spacer part number 13217OB0008A1 and plans about 60 mm total stack."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=14", "kind": "forum", "says": "Owner quotes the manual's stock pad bolt lengths as M5 x 70/60/50/40."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Longer M5 bolts sized to the new stack; Giant armrest bridge recommended for tall stacks.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "giant-trinity-pro-armrest-bridge",
+      "brand": "Giant",
+      "model": "Trinity Advanced Pro armrest bridge (part 1321-WS0180-001)",
+      "category": "other",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Ties the two armrest stacks together under the pads; does not move the pads but stops tall or wide stacks from wobbling."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=16", "kind": "forum", "says": "Owners say the bridge in the extras box sits under the arm pads and supports high, wide setups, around 50-60 mm stack and above."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=26", "kind": "forum", "says": "Owner reports the bridge stiffened the front end."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=31", "kind": "forum", "says": "Owner links the bridge as a Giant spare, part 1321-WS0180-001."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Must sit high enough to clear the AeroVault nose cap (owner note).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-trinity-twin-plate",
+      "brand": "FastTT",
+      "model": "Extension adapter plate for Giant Trinity twin-post 2015-2024 (TRINITY-TWIN-PLATE)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Replaces the two separate armrest/extension mounts with one plate pre-drilled for the Trinity spacer stacks, made for FastTT extensions, with a BTA bottle mount. Reach and stack offsets are not published."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.materiel-velo.com/gb/1891635-plaque-d-adaptation-prolongateurs-triathlon-fasttt-pour-giant-trinity-a-double-barres-2015-a-2024.html", "kind": "retailer", "says": "Maker's description: for Giant Trinity dual-mount models 2015-2024 with the original spacers; built for FastTT extensions, other brands to be checked; 2010-2014 bikes need the universal plate."},
+        {"url": "https://www.centrumrowerowe.pl/adapter-fasttt-giant-trinity-twin-post-2015-2024-pd56049/", "kind": "retailer", "says": "Lists the same FastTT twin-post 2015-2024 Trinity adapter, code TRINITY-TWIN-PLATE."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=30", "kind": "forum", "says": "Owner wanting wider elbows points to the FastTT Trinity adapter plate."}
+      ],
+      "url": null,
+      "price": {"amount": 126.88, "currency": "EUR", "checked": "2026-11-16"},
+      "needs": "FastTT extensions (others unconfirmed); keeps the stock Giant spacer stacks.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-tilt-block-trinity-rim",
+      "brand": "AeroCoach",
+      "model": "Tilt block adapter for aerobars, Giant Trinity Advanced (rim brake) option",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": [20, 20], "angle_deg": [15, 25], "text": "Tilts extensions 15, 20 or 25 deg; adapter plus matched spacer add 20 mm at the rear on top of 10 mm of Trinity stackers that must stay underneath. Extra bolt packs allow more stack."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-tilt-block-adapter-for-aerobars-p202236391", "kind": "manufacturer", "says": "Lists Giant Trinity Advanced (rim brake) as a base-bar option; 10 mm of Trinity stackers must be kept below the adapter because the bar is recessed; dual-mount extensions only."},
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769", "kind": "manufacturer", "says": "Ascalon adapters list a Giant Trinity Advanced rim brake (tilt blocks) option."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=29", "kind": "forum", "says": "Owner says AeroCoach tilt blocks made a big difference on his Trinity."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-tilt-block-adapter-for-aerobars-p202236391",
+      "price": {"amount": 115, "currency": "GBP", "checked": "2026-11-16"},
+      "needs": "Dual-mount (not monopost) extensions; correct AeroCoach bolt pack (+20 mm pack for 30 mm of Trinity stackers); not for threaded stackers. 25 deg version needs a short-head torque wrench.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fouriers-trinity-angled-spacers",
+      "brand": "Fouriers",
+      "model": "Angled armrest/extension spacers for Giant Trinity (10 deg / 15 deg)",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [10, 15], "text": "Sits in the Trinity spacer stack and tilts armrest and extensions together; also raises the pads somewhat. One owner measured 13 deg net with the 15 deg part because the stock clamps already tilt about 2 deg down."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=21", "kind": "forum", "says": "Owner bought 10 and 15 deg Fouriers armrest angle wedges for his Trinity and later sold spares."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=22", "kind": "forum", "says": "Owner fitted 15 deg Fouriers shims with D2Z poles."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=23", "kind": "forum", "says": "Owner used Fouriers ADP15 15 deg angled spacers, raising both pads and bars."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=24", "kind": "forum", "says": "Owner measured 13 deg instead of 15 deg with a Fouriers shim because the pole clamp tilts 2 deg down."},
+        {"url": "https://forum.slowtwitch.com/t/giant-trinity-fouriers-spacers/1285670", "kind": "forum", "says": "2025 thread: a Trinity owner runs a 10 deg Fouriers spacer (~USD 98); a fitter replies cheaper pad-only wedges tilt the pads, not the whole assembly."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Pins on stock spacers must align with the wedge; longer bolts may be needed.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-armrests-trinity",
+      "brand": "AeroCoach",
+      "model": "AeroCoach arm pads/armrests (model not stated by owners)",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Replaces the stock cups. One owner found them already at their widest and still wanted wider elbows."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=29", "kind": "forum", "says": "Owner ran AeroCoach arm pads with D2Z poles and Fouriers tilt blocks before a later cockpit change."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=30", "kind": "forum", "says": "Owner has AeroCoach pads at their widest setting on the Trinity and looks for a few more mm per side."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "zipp-vuka-evo-extensions-trinity-pro",
+      "brand": "Zipp",
+      "model": "Vuka Evo 70 / 110 extensions",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Swaps the stock S-bend/ski-bend poles; hand position changes, pad position does not. Owners could not angle them upward with the stock clamps."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=3", "kind": "forum", "says": "Owner replaced stock extensions with Zipp Evo 70s."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=12", "kind": "forum", "says": "Owner runs Zipp Evo 110 aluminium extensions with stock pads."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=10", "kind": "forum", "says": "Two owners with Vuka Evo 110s: upward angle not possible with the stock clamps."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Wedges or tilt blocks if the hands should rise.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "carbonwasp-extensions-tilt-blocks-trinity-pro",
+      "brand": "Carbon Wasp",
+      "model": "Carbon Wasp extensions with adjustable tilt blocks",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Extensions plus adjustable tilt blocks on the Trinity stacks; one owner made his own plates to separate reach (~1 inch) and angle adjustment."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=26", "kind": "forum", "says": "Pro TT owner removed the cockpit to install Carbonwasp bars."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=29", "kind": "forum", "says": "Owner switched to Carbon Wasp poles and adjustable tilt blocks with internal bar-end routing."},
+        {"url": "https://forum.slowtwitch.com/t/custom-giant-trinity-bridge-why-i-made-a-poor-mans-drill-mill-picture/816815", "kind": "forum", "says": "Owner's custom interface plate between Carbon Wasp tilt blocks and extensions; stock hardware made reach changes disturb the tilt."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Wire routing changes; reach changes with stock Carbon Wasp hardware require removing angle bolts.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "d2z-classic-extensions-trinity-pro",
+      "brand": "Drag2Zero (D2Z)",
+      "model": "D2Z Classic 40 deg extensions",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "High-rise extensions on the stock clamps; changes hand height, not pad position."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=23", "kind": "forum", "says": "Owner confirms his Trinity runs D2Z Classic 40 deg poles."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=26", "kind": "forum", "says": "Owner switched to Drag2zero bars; too long to route wires through base bar and stem, so wires run over the stem."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "External wire routing over the stem (one owner).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-t1plus-trinity-pro",
+      "brand": "Profile Design",
+      "model": "T1+ aluminium extensions",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Owner reports more hand reach and a higher hand position than stock; pads unchanged."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=3", "kind": "forum", "says": "Owner switched to PD T1+ extensions, kept stock cups, felt much better."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "standard-stem-basebar-on-trinity-pro",
+      "brand": "Any",
+      "model": "Standard stem + aftermarket base bar / full aftermarket cockpit",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Would unlock stem-length reach changes, but does not mount on the Pro."},
+      "status": "incompatible",
+      "reason_incompatible": "The Pro's base bar bolts to a Giant-only stem/nose cone paired with the fork; owners say only Giant bars fit and no standard stem clamps on. Only the non-Pro Trinity Advanced has a normal stem and base-bar clamp. Extensions can be swapped; the bar and stem cannot.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=20", "kind": "forum", "says": "After a cracked bar on a 2017 Pro, an owner answers that only Giant bars fit, though any extensions can be used."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=16", "kind": "forum", "says": "Owner: the base-bar fitting is proprietary; another bar would only fit if its holes lined up exactly."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=25", "kind": "forum", "says": "Owner: the non-Pro Trinity Advanced has a standard stem/base-bar clamp and can take a full Profile Design cockpit; Pro owners are limited to parts changes."},
+        {"url": "https://forum.slowtwitch.com/t/official-giant-trinity-advanced-owners-thread/738652?page=14", "kind": "forum", "says": "Owner: the Pro has an integrated stem/bar/fork while the 2016 non-Pro uses a traditional stem and alloy bars."},
+        {"url": "https://forum.slowtwitch.com/t/which-modern-tri-tt-superbikes-accept-third-party-aero-base-bars/828299", "kind": "forum", "says": "Pro TT owner: proprietary base-bar mounting means other base bars are not usable."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-trinity-2025-mono-plate-on-rim-gen",
+      "brand": "FastTT",
+      "model": "Extension adapter plate for Giant Trinity 2025 mono handlebar (TRINITY-MONO-PLATE)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Made for the 2025 mono-riser; does not fit this generation."},
+      "status": "incompatible",
+      "reason_incompatible": "Maker's description says it is designed specifically for the 2025 Trinity mono handlebar and not for older Trinity models; this generation needs the twin-post 2015-2024 plate.",
+      "evidence": [
+        {"url": "https://www.materiel-velo.com/gb/1891830-fasttt-triathlon-extension-adapter-plate-for-giant-trinity-2025-single-piece-handlebars.html", "kind": "retailer", "says": "Listing states the plate is for the 2025 mono handlebar and not for older Trinity models."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "giant-trinity-cockpit-extender-kit-on-rim-gen",
+      "brand": "Giant",
+      "model": "Trinity Cockpit Extender Kit (2026)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Giant's +50 mm-forward bridge is for the 2025+ cockpit only."},
+      "status": "incompatible",
+      "reason_incompatible": "Giant lists compatibility only with MY25+ Trinity / Liv Avow aero cockpits (the mono-riser SYNC system); the rim-brake Pro uses twin armrest stacks on the AeroDrive base bar.",
+      "evidence": [
+        {"url": "https://www.giant-bicycles.com/au/trinity-cockpit-extender-kit-2026", "kind": "manufacturer", "says": "Compatible with MY25+ Giant Trinity and Liv Avow aero cockpit systems."}
+      ],
+      "url": "https://www.giant-bicycles.com/au/trinity-cockpit-extender-kit-2026",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "zipp-pad-extender-trinity-pro",
+      "brand": "Zipp",
+      "model": "Zipp armrest pad extender (pad wing extension)",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Suggested for wider elbows; bolt pattern does not match."},
+      "status": "incompatible",
+      "reason_incompatible": "Owner measured about 30 mm centre-to-centre on the Trinity armrest bolts versus about 25 mm on the Zipp extender, so the holes do not line up (single owner measurement, 2017).",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/arm-pad-spacing-on-giant-trinity-2016/735262", "kind": "forum", "says": "2016 Trinity owner at maximum stock pad width measured 30 mm bolt spacing vs ~25 mm on the Zipp extender; a fitter suggested Profile Design F35 (2 x 15 mm) as a wider option."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "Giant's own Trinity Advanced Pro manual (Version 9/2015, with armrest reach and fork steerer tables) could only be seen as search excerpts: manualmachine.com and manuals.online returned 403. The '4 positions x reversible = 5 fore-aft positions, 15 mm steps, 60 mm' reach description comes from a search excerpt of that manual.",
+    "Pad stack/reach reference point is not stated anywhere for this generation, so stock_range uses 'unspecified'. Giant's tables also conflict: the 2018 and 2021 complete-bike pages give one range per size (stack XS 550-600, S 580-630, M 610-660, L 640-690; reach XS 443-503, S 455-515, M 462-532, L 468-538), which matches the 2022 TT stack but is about 50 mm longer in reach than the 2022 TT reach (403-463 ... 428-488). Likely a different reference point; not resolved.",
+    "Extension and base-bar clamp diameters for the Pro cockpit are not published; owners fitted standard round aftermarket extensions (Zipp, PD, D2Z, Carbon Wasp, Kismet) but no source states 22.2 mm for the Trinity clamps. One owner measured the base-bar ends at ~22.7 mm (SRAM Blip Grip clamps did not fit).",
+    "Which aftermarket armrests bolt directly onto the stock clamps: only a 30 mm bolt-spacing measurement and a Profile Design F35 suggestion exist; earlier research note that PD F40/Boom fit could not be re-verified.",
+    "One 2017 owner fitted a Deda Kronos Due base bar and another later fitted/bought a Profile Design Aeria cockpit, but neither post confirms the bike was a Pro (not the standard-stem non-Pro) or that it mounted; left out.",
+    "No maker product pages found for FastTT (only retailer copies of the maker text), Fouriers (only eBay listings, which returned 403), D2Z or Carbon Wasp Trinity compatibility.",
+    "Revolverwheels (UK) Trinity wedges and Aerocoach 'Angles' extensions were each mentioned once without a fit result; not listed.",
+    "Price of Giant spares (armrest spacers 13217OB0008A1, bridge 1321-WS0180-001, TT/UCI kit) not found; giantbikespares.com not reached.",
+    "Owners thread pages 2, 4, 6-9, 11 and 13 not re-read in this pass."
+  ],
+  "checked": "2026-11-16"
+}

@@ -1,0 +1,216 @@
+{
+  "id": "canyon-speedmax-cfslx-rim-2015",
+  "family": "canyon-speedmax",
+  "generation": "Speedmax CF SLX rim brake (frame code R40, ~2015–2020; dual-tower cockpit to MY2018, single-tower from MY2019)",
+  "years": [2015, 2020],
+  "brakes": "rim",
+  "identify": "Rim brakes integrated into fork and frame, long and low geometry, Canyon carbon base bar with Canyon riser towers and 'flat spring' pad plates. Up to MY2018 two separate riser towers (dual-tower; H33 drop / H35 rise / flat bars); from MY2019 a closely spaced single-tower layout with the HB0048 flat bar and a two-part bottle between the arms. Not the cheaper Speedmax CF (Profile Design clip-ons on a standard stem).",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Proprietary Canyon front end with short or long Canyon stem",
+    "stem": "Canyon stem, short (stock on almost all US bikes per the fitter; 65 mm per an owner) or long (85 mm per the fitter); swapping requires re-routing the integrated brake cable.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": null,
+    "pad_bolt_spacing": null,
+    "stack_system": "Canyon riser spacers under the pads: fitter puts the stock maximum at 45–55 mm of pedestal (MY2019 layout per TriRig: 45 mm of spacers + 10 mm cup mount, 0–55 mm). Beyond that only the High Stack Flat Spring (+7–10 mm) and Team Switch Plate (+3 mm). Fitter: Pad Y tops out around 620 on S and 650 on M even with every part.",
+    "reach_system": "Pads in holes along the switch plates; short vs long stem (~20 mm); Team Switch Plate shortens or lengthens the pad position beyond the stem limits.",
+    "angle_system": "MY2019 single-tower cockpit: 0° or 7° only (TriRig). Dual-tower bikes: Canyon 9° spacer kit.",
+    "notes": "Canyon-endorsed fitter: Canyon's rim-SLX charts measured Pad X to mid pad (≈45 mm more than to the back of the pad). Small proprietary parts were hard to source even when current; owners report Canyon shipping wrong spacer kits. Rim-SLX cockpit parts do not carry over to the 2021 disc bike."
+  },
+  "stock_range": [
+    {"size": "L", "pad_stack_mm": null, "pad_reach_mm": [498, 552], "pad_reference": "pad_center",
+     "source": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/797",
+     "note": "Canyon-endorsed fitter quoting the rim SLX Large with the short stem; Team Switch Plate takes it to 471–579. Rim-SLX charts were measured to mid pad (fitter)."}
+  ],
+  "parts": [
+    {
+      "id": "canyon-speedmax-cfslx-60mm-spacer-kit",
+      "brand": "Canyon",
+      "model": "Speedmax CF SLX 60 mm Spacer Kit (GP0017-01)",
+      "category": "spacer_kit",
+      "effect": {"reach_mm": null, "stack_mm": [0, 60], "angle_deg": null,
+                 "text": "Two 60 mm tower spacers with longer threaded rods and pins."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.canyon.com/en-us/gear/components/spare-and-wear-parts/canyon-speedmax-cf-slx-60-mm-spacer-kit/140506.html", "kind": "manufacturer",
+         "says": "Canyon: for Speedmax CF SLX (R40), dual-tower cockpit, MY2018 and older; 2x 60 mm spacers, 75 mm thread rods, 80 mm M5 pins; USD 114.95, 'coming soon'."}
+      ],
+      "url": "https://www.canyon.com/en-us/gear/components/spare-and-wear-parts/canyon-speedmax-cf-slx-60-mm-spacer-kit/140506.html",
+      "price": {"amount": 114.95, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "Dual-tower (MY2018 and older) only; Canyon does not list it for the MY2019–2020 single-tower cockpit.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-9deg-spacer-kit",
+      "brand": "Canyon",
+      "model": "Speedmax 9° Spacer Kit (GP0018-01)",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [0, 9],
+                 "text": "Left/right angled aluminium spacers tilting the extensions 9°."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.canyon.com/en-ca/gear/bike-parts/spare-wear-parts/canyon-gp0018-01-speedmax-9--spacer-kit/140505.html", "kind": "manufacturer",
+         "says": "Canyon: for Speedmax CF SLX (R40) dual-tower, MY2018 and older; CAD 249.99."}
+      ],
+      "url": "https://www.canyon.com/en-ca/gear/bike-parts/spare-wear-parts/canyon-gp0018-01-speedmax-9--spacer-kit/140505.html",
+      "price": {"amount": 249.99, "currency": "CAD", "checked": "2026-11-16"},
+      "needs": "Dual-tower only. An owner of a 2019 (single-tower) SLX could not find the advertised 7° option and expected to buy aftermarket wedges.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-switchblade-kit",
+      "brand": "Canyon",
+      "model": "Speedmax Switchblade Kit (GP0019-01)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Switch plates that move the arm pads closer together or further apart; height unchanged when spacers are swapped."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.canyon.com/en-us/gear/components/spare-and-wear-parts/canyon-gp0019-01-speedmax-switchblade-kit/140507.html", "kind": "manufacturer",
+         "says": "Canyon: for Speedmax CF SLX (R40) dual-tower, MY2018 and older; narrows/widens pads; USD 99.95."}
+      ],
+      "url": "https://www.canyon.com/en-us/gear/components/spare-and-wear-parts/canyon-gp0019-01-speedmax-switchblade-kit/140507.html",
+      "price": {"amount": 99.95, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "Dual-tower only.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-team-switch-plate",
+      "brand": "Canyon",
+      "model": "Team Switch Plate (TSP)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": [-27, 40], "stack_mm": [0, 3], "angle_deg": null,
+                 "text": "Longer, flippable switch plate: pads further forward (Canyon US measured +40 mm) or further back than the short stem allows; fitter's Large example 471–579 vs 498–552 stock; ~3 mm higher when stacked on the High Stack Flat Spring."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-canyon-speedmax-cf-owners-thread/762644/127", "kind": "manufacturer",
+         "says": "Canyon USA staff (ABGJay): Team Switchplate gives about 40 mm more fore position, flippable for width; not on the website, order by phone."},
+        {"url": "https://forum.slowtwitch.com/t/official-canyon-speedmax-cf-owners-thread/762644/113", "kind": "manufacturer",
+         "says": "Same Canyon rep: USD 20 a set (historic price)."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/797", "kind": "fitter",
+         "says": "Canyon-endorsed fitter: TSP takes a Large from 498–552 to 471–579 Pad X (mid-pad); prefers the long stem beyond 552."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Hard to source: owners say it was not on Canyon's site and some regions did not list it.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-high-stack-flat-spring",
+      "brand": "Canyon",
+      "model": "High Stack Flat Spring kit (GP0157-01)",
+      "category": "riser",
+      "effect": {"reach_mm": null, "stack_mm": [7, 10], "angle_deg": null,
+                 "text": "Replacement pad plate that lifts the pads 7–10 mm and slightly widens them; the last stack option once the towers are maxed."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1215", "kind": "fitter",
+         "says": "Canyon-endorsed fitter (2021): adds about 10 mm of pad height on a 2020 SLX; TSP on top adds 3 mm more."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/1220", "kind": "forum",
+         "says": "Owner of a 2020 SLX M with 45 mm already under the bars could order the High Stack Spring Kit GP0157-01."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/2132", "kind": "fitter",
+         "says": "Same fitter (2023): stock Canyon spacers max 55 mm; the flat spring lifts pads 7+ mm."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Fitter: even with it, Pad Y ends around 650 on an M; Canyon availability patchy.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-speedmax-cfslx-long-stem",
+      "brand": "Canyon",
+      "model": "Speedmax CF SLX long stem (85 mm)",
+      "category": "stem",
+      "effect": {"reach_mm": [0, 20], "stack_mm": null, "angle_deg": null,
+                 "text": "Long instead of short Canyon stem moves the whole cockpit about 20 mm forward."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/797", "kind": "fitter",
+         "says": "Fitter: beyond 552 mm Pad X on a Large go to the longer (85) stem rather than the TSP."},
+        {"url": "https://forum.slowtwitch.com/t/official-canyon-speedmax-cf-slx-thread/762726/164", "kind": "forum",
+         "says": "Owner swapped to the long stem; a big job, especially the rear brake cable."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/2133", "kind": "forum",
+         "says": "Owner of a Large swapped in the long stem with pads fully forward and is maxed out on reach."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Re-route the integrated rear brake cable.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-adapter-speedmax-h33-h35",
+      "brand": "AeroCoach",
+      "model": "Ascalon adapter, Canyon Speedmax H33 / H35 (tilt blocks)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [15, 25],
+                 "text": "Tilt-block adapters for Ascalon extensions on the H33 drop / H35 rise base bars; AeroCoach tilt blocks come in 15°, 20° or 25°."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769", "kind": "manufacturer",
+         "says": "Adapter dropdown lists 'Canyon Speedmax H33 / H35 (tilt blocks)'; adapters work only with Ascalon extensions."},
+        {"url": "https://www.canyon.com/en-us/canyon-h35-basebar-rise-cf/106331.html", "kind": "manufacturer",
+         "says": "Canyon: H35 rise bar is for Speedmax CF SLX MY2018 and older, dual-tower."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": null,
+      "needs": "AeroCoach Ascalon extensions; dual-tower bikes with H33/H35 bars.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "radsport-ibert-angle-spacer-on-rim-slx",
+      "brand": "Radsport Ibert",
+      "model": "Winkel-Spacer for Speedmax SLX/CFR (RI10125)",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Disc-bike angle/reach spacer."},
+      "status": "incompatible",
+      "reason_incompatible": "Made for the 2021+ disc SLX/CFR spacer column; the Canyon-endorsed fitter says it does not work on the rim SLX.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-canyon-speedmax-cfr-slx-and-cf/1284017/2061", "kind": "fitter",
+         "says": "Fitter: the Rad Sport tilt/extender only works on the disc SLX, not the 2018 rim SLX."},
+        {"url": "https://shop.radsport-ibert.de/de/komponenten/spacer/123/winkel-spacer-fuer-canyon-speedmax-slx/cfr", "kind": "manufacturer",
+         "says": "Maker lists disc-brake Speedmax SLX/CFR only."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-angle-fitting-kit-monogrip-on-rim-slx",
+      "brand": "Canyon",
+      "model": "Speedmax Angle Fitting Kit / Monogrip Extension (2021 disc parts)",
+      "category": "wedge",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Canyon's gen-5 reach/tilt kit and mono extension."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon lists both only for the disc Speedmax CFR (R085) and CF SLX (R091).",
+      "evidence": [
+        {"url": "https://www.canyon.com/en-us/gear/components/extensions/canyon-speedmax-angle-fitting-kit/10014636.html", "kind": "manufacturer",
+         "says": "Compatibility: Speedmax CFR and SLX (R085, R91)."},
+        {"url": "https://app.canyon.com/en-ie/gear/bike-parts/contact-points/aero-bars-and-tri-extensions/canyon-speedmax-monogrip-extension/9102037.html", "kind": "manufacturer",
+         "says": "Compatibility: Speedmax SLX (R091) and CFR (R085) only."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "No per-size Canyon armpad stack/reach table found for the rim SLX; only the fitter's Large reach figures (mid-pad) and his Pad Y ceilings (S ~620, M ~650).",
+    "Exact launch year and the R40 code for MY2019–2020 single-tower bikes not confirmed; Canyon's spacer/switchblade/9° kits are listed only for dual-tower MY2018 and older.",
+    "AeroCoach also lists an adapter for 'Canyon Speedmax H26 / HB0054 / HB0058'; which Speedmax bars those codes are was not found, so it is not listed.",
+    "51 Speedshop and TriRig front ends on the rim SLX were discussed by the fitter but no owner fit report was found.",
+    "Stock maximum pedestal given as 45 mm (2021) and 55 mm (2023) by the same fitter; TriRig gives 0–55 mm for the MY2019 cockpit.",
+    "Prices for TSP, High Stack Flat Spring and long stem not current (TSP USD 20 quoted years ago by Canyon US)."
+  ],
+  "checked": "2026-11-16"
+}

@@ -1,0 +1,286 @@
+{
+  "id": "cervelo-p5-2019",
+  "family": "cervelo-p5",
+  "generation": "P5 Disc 'P5D' (2019-2023; EX11 riser at launch, EX10 riser on later bikes)",
+  "years": [2019, 2023],
+  "brakes": "disc",
+  "identify": "Disc-brake P5 in five sizes (48-58), 28 mm tyre limit, integrated front end with a mono-riser post. Early bikes have the EX11 riser (no tilt); later bikes (about 2021 on) and converted bikes have the EX10 riser with a tilt plate. The 2024+ P5 has six sizes (adds 61), 34 mm tyres, the EX14 riser with 0-30 deg tilt and a basebar 10 mm lower.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Proprietary fork/basebar interface; no standard stem.",
+    "stem": "None: basebar bolts to the fork; pad stack comes from a mono-riser post (EX11 or EX10) clamped in the front end.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": 22.2,
+    "pad_bolt_spacing": null,
+    "stack_system": "Mono-riser post height (EX11 or EX10) plus basebar stack hardware. Fitter limits quoted on Slowtwitch for EX11-era bikes: max pad stack about 665 mm (54), 685 mm (56), about 700 mm (58).",
+    "reach_system": "Pad mount positions on the riser rest. EX11: limited reach range. EX10: forward and rear offset pad positions; fitter estimate about +12 mm more reach (or 20 mm more negative reach) than EX11.",
+    "angle_system": "EX11: none (0 deg). EX10: tilt plate with 5/10/15 deg settings. Above 15 deg needs an aftermarket adapter (AeroCoach, FastTT, TriRig plates on EX10).",
+    "notes": "Know which riser your bike has before buying: most aftermarket plates fit the EX10 (and EX14) only. A Cervélo-thread fitter (2021) said the published P5D fit charts do not show the extra EX10 range, so charts understate it. Fitter (2021): P5D pad ranges are narrower and longer than the old rim P5; riders with short pad reach fall off the chart. The 2019 retailer manual (search snippet) lists EX11 monoriser, EX11 riser post rests/pads and an HB11 basebar assembly."
+  },
+  "stock_range": [],
+  "parts": [
+    {
+      "id": "cervelo-ex10-riser-conversion",
+      "brand": "Cervélo",
+      "model": "EX10 mono-riser with extension/pad mount and tilt adjustment plate (EX11 to EX10 conversion)",
+      "category": "riser",
+      "effect": {"reach_mm": [-20, 12], "stack_mm": [-7, 30], "angle_deg": [0, 15],
+                 "text": "Fitter estimate versus EX11: about 12 mm more forward reach or 20 mm more rearward, about 7 mm less minimum stack, almost 30 mm more maximum stack, and native tilt of 5/10/15 deg."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.winterparkcycles.com/products/ex10-extension-and-pad-mount", "kind": "retailer",
+         "says": "Search result: Cervélo EX10 Extension and Pad Mount (HBP-EX10-PADMNT) listed as compatible with P3X, PX-Series and P5 Disc, other items required per Cervélo's chart."},
+        {"url": "https://www.winterparkcycles.com/products/ex10-extension-and-pad-mount-tilt-adjustment-plate", "kind": "retailer",
+         "says": "Search result: EX10 tilt adjustment plate (HBP-EX10-ADJPL) listed for P3X, PX-Series and P5 Disc."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-cervelo-tt-and-triathlon-bikes/775865?page=41", "kind": "fitter",
+         "says": "Fit-thread fitter (May 2021): EX10 adds about 12 mm reach or 20 mm negative reach, loses ~7 mm low stack, gains almost 30 mm high stack; another poster notes the P5 now ships with EX10."},
+        {"url": "https://forum.slowtwitch.com/t/official-fit-assistance-for-cervelo-tt-and-triathlon-bikes/775865?page=35", "kind": "fitter",
+         "says": "Fitter (Jan 2021): the EX11 that shipped with the P5D had more limited reach and zero tilt than the EX10."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5-disc-where-can-i-find-an-ex10-riser-kit/826506", "kind": "forum",
+         "says": "Owners (2023) converting EX11 to EX10 for more extension shapes and angle options; kit often sold out, dealers could order it."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "EX10 riser post, extension/pad mount and tilt plate (check Cervélo's compatibility chart for the full list); Di2 junction box goes in the front bento with EX10 routing.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-plate-ex10",
+      "brand": "TriRig",
+      "model": "Super-X Adaptor Plate (Cervélo plate)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Replaces the Cervélo pad/extension mount with a metal plate that takes standard riser/extension hardware and a solid BTA mount; adjustment depends on the bars fitted."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://tririg.com/products/super-extension-plate", "kind": "manufacturer",
+         "says": "Search result of TriRig's product page: the Cervélo plate only works with Cervélo EX10 and EX14 mono posts."}
+      ],
+      "url": "https://tririg.com/products/super-extension-plate",
+      "price": {"amount": 195, "currency": "USD", "checked": "2026-11-16"},
+      "needs": "EX10 riser. Bolt pattern does not line up with FastTT risers/bars (see incompatible record).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-plate-ex11",
+      "brand": "TriRig",
+      "model": "Super-X Adaptor Plate on an EX11 riser",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Does not mount on EX11."},
+      "status": "incompatible",
+      "reason_incompatible": "TriRig states its Cervélo plate only works with the EX10 and EX14 mono posts; early P5D bikes with the EX11 riser must convert to EX10 first.",
+      "evidence": [
+        {"url": "https://tririg.com/products/super-extension-plate", "kind": "manufacturer",
+         "says": "Search result of TriRig's product page: Cervélo plate only works with EX10 and EX14 mono posts."}
+      ],
+      "url": "https://tririg.com/products/super-extension-plate",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-p5-disc-p3x-adapter",
+      "brand": "FastTT",
+      "model": "Adapter kit / plate for Cervélo P5 Disc & P3X",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [0, 15],
+                 "text": "Replaces the stock EX10 pad/extension mounting plate so FastTT risers and extensions can be fitted; retailer gives max plate tilt of 15 deg on EX10 (absolute)."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.materiel-velo.com/gb/1888195-fasttt-cervelo-p5-disc-p3x-triathlon-aerobar-adapter-plate.html", "kind": "retailer",
+         "says": "Retailer reproduces FastTT's listing: compatible with Cervélo P5 Disc and P3X (EX10 / EX14), screws included, no cockpit modification."},
+        {"url": "https://playtrisarasota.com/products/fasttt-adapter-kit-for-cervelo-p5-disc-p3x", "kind": "retailer",
+         "says": "Search result: replaces the standard Cervélo EX10/EX14 mounting plate; max tilt 15 deg on EX10, 30 deg on EX14; will not fit P5 models with EX11."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "EX10 riser; FastTT risers/extensions. Owner disliked the non-standard bolt spacing and the separate BTA bracket.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-p5-disc-adapter-ex11",
+      "brand": "FastTT",
+      "model": "P5 Disc / P3X adapter kit on an EX11 riser",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Does not mount on EX11."},
+      "status": "incompatible",
+      "reason_incompatible": "The P5 Disc/P3X kit replaces the EX10/EX14 mounting plate and is listed as not fitting P5 models with the EX11 riser; the listing points EX11 owners to a separate EX11 adapter kit.",
+      "evidence": [
+        {"url": "https://playtrisarasota.com/products/fasttt-adapter-kit-for-cervelo-p5-disc-p3x", "kind": "retailer",
+         "says": "Search result: will not fit P5 models with an EX11 riser; separate EX11 kit available."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-ex10-adapter",
+      "brand": "AeroCoach",
+      "model": "Ascalon adapter, Cervélo P5 Disc / PX-Series EX10 (standard or low stack)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [15, 32],
+                 "text": "Tilt-adjustable adapter for Ascalon extensions: 15, 22, 25 or 32 deg (absolute); a low-stack version is offered."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769", "kind": "manufacturer",
+         "says": "Lists P5 Disc/PX-Series EX10 adapters (standard and low stack), require the EX10 monopost; angles 15/22/25/32 deg; only for Ascalon extensions; GBP 115 base + GBP 252.50 option incl. VAT."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": {"amount": 367.5, "currency": "GBP", "checked": "2026-11-16"},
+      "needs": "EX10 monopost (not included); AeroCoach Ascalon extensions. Price = base plus Cervélo option as listed, incl. 20% VAT.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-ex10-adapter-on-ex11",
+      "brand": "AeroCoach",
+      "model": "Ascalon P5 Disc EX10 adapter on an EX11 riser",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Needs the EX10 monopost."},
+      "status": "incompatible",
+      "reason_incompatible": "AeroCoach lists the P5 Disc adapter as requiring the EX10 monopost; an EX11 bike needs the EX10 conversion first.",
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769", "kind": "manufacturer",
+         "says": "P5 Disc adapter options state 'requires EX10 monopost'."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "vision-metron-tfe-p5-adapter",
+      "brand": "Vision",
+      "model": "Metron TFE extensions with Vision P5 adapter",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [0, 15],
+                 "text": "Full-forearm extensions on the EX10 riser; the adapter sets 0/5/10/15 deg like the stock plate. No provision for a BTA or computer mount."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/new-vision-metron-tfe-extensions/797616?page=5", "kind": "forum",
+         "says": "Owner (Nov 2021) installed TFE on a P5 Disc with EX10 using a Vision adapter: clean, 0-15 deg, no BTA/computer mount; size large fitted, medium did not."},
+        {"url": "https://forum.slowtwitch.com/t/cockpits-comparison-cervelo-ex10-11/830051", "kind": "forum",
+         "says": "Another owner (May 2024) says Vision TFE Pro works on an EX10 with an adapter."},
+        {"url": "https://www.bike24.com/p21028659.html", "kind": "retailer",
+         "says": "Search result: Vision Metron TFE EVO extension adapters for Cervélo P5 (V3142 B6)."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "EX10 riser; Vision P5 adapter; 3- or 5-port Di2 junction (bar-end junction will not fit).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-43asc-extensions",
+      "brand": "Profile Design",
+      "model": "43 ASC extensions",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Carbon ski-bend extensions in the stock EX10 clamps; shallower grip angle than 52 ASC."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5d-2019-full-length-forearm-options/819390", "kind": "fitter",
+         "says": "Profile Design staffer (Oct 2022) fitted Ergo+ armrests and 43 ASC extensions to a client's P5D using the Cervélo EX10 bracket (fore/aft offsets, 5/10/15 deg)."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5-ex11-to-ex-10-which-extensions-51-speedshop/829322", "kind": "forum",
+         "says": "Owner (Mar 2024) after EX11-to-EX10 swap runs PD 43 ASC with TriRig closed scoops and liked it."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "EX10 riser.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "profile-design-ergo-plus-armrests",
+      "brand": "Profile Design",
+      "model": "Ergo+ armrests",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Armrest swap on the EX10 bracket."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5d-2019-full-length-forearm-options/819390", "kind": "fitter",
+         "says": "Profile Design staffer fitted Ergo+ armrests on a client's P5D with the Cervélo EX10 bracket (Oct 2022)."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "EX10 riser.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-scoops",
+      "brand": "TriRig",
+      "model": "Scoop armrests (closed-back / Ultimate)",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Cup swap; one owner needed washers because the scoops do not sit flat on the stock platform."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5d-2019-full-length-forearm-options/819390", "kind": "forum",
+         "says": "Owner of a 2019 P5D (Oct 2022) bought Cervélo EX10 bars and TriRig pads; works well."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5-ex11-to-ex-10-which-extensions-51-speedshop/829322", "kind": "forum",
+         "says": "Owner (Mar 2024) runs TriRig closed scoops on EX10; added washers because they do not sit flat on the platform."},
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5-vs-trek-speed-concept/1286159/6", "kind": "forum",
+         "says": "P5D owner (Feb 2025) runs TriRig plates and Ultimate scoops."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Possibly washers to seat the scoops flat; EX10 riser in the reports.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "51-speedshop-arm-cups",
+      "brand": "51 Speedshop",
+      "model": "Arm cups (standard and high-sided)",
+      "category": "armrests",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Cup swap; one owner found the high-sided cups lock the arms in on long rides, another likes them with PD pads."},
+      "status": "owners",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/cervelo-p5-ex11-to-ex-10-which-extensions-51-speedshop/829322", "kind": "forum",
+         "says": "Two owners in the EX11-to-EX10 thread (Mar 2024): one liked standard 51S cups with ski-bend bars, the other uses 51SS high-side cups with PD 45/25 pads at 15 deg."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "EX10 riser in the reports.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "tririg-super-x-with-fasttt-risers",
+      "brand": "TriRig",
+      "model": "Super-X plate combined with FastTT risers/bars",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Bolt holes do not line up."},
+      "status": "incompatible",
+      "reason_incompatible": "Owner moving between P5 Disc generations found the Super-X hole spacing does not line up with FastTT risers/bars; FastTT needs its own P5 adapter plate.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/2026-cervelo-p-ultegra-di2-front-end-clean-up-help/1295374", "kind": "forum",
+         "says": "Owner (Feb 2026): with FastTT risers/bars the Super-X bolt patterns are a bit off; it fit his older Scoops pair."},
+        {"url": "https://forum.slowtwitch.com/t/fasttt-cervelo-p5-disc-adapter-plate/1300333", "kind": "forum",
+         "says": "Same owner (Sept 2026): TriRig plate hole spacing does not line up for FastTT bars on the P5D."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "File id uses launch year 2019 (P5 Disc launched 2019), not 2020.",
+    "No per-size pad stack/reach table: cervelo.com returned HTTP 429 earlier and was not retried; the Slowtwitch-hosted P5 chart PDF returns 404. Only fitter upper stack limits are known (EX11 era: ~665 mm 54, 685 mm 56, ~700 mm 58; one search snippet says 700 mm EX11 vs 730 mm EX10 max, post not opened), so stock_range is empty.",
+    "2019 retailer assembly manual (manuals.plus) returned 403; EX11/HB11 part names come from a search snippet only.",
+    "FastTT's own product page and its separate EX11 adapter kit were not opened (retailer listings only); FastTT kit price not recorded.",
+    "Shopify maker/retailer pages (TriRig, Winter Park, Cervélo parts shop) answered HTTP 429/403; facts taken from search-result text of those pages.",
+    "Evolve Aero (ex-Revolver) EX11 30-50 deg extensions were suggested on Slowtwitch with a price table, but no fit report was found; not listed.",
+    "Whether EX10 parts need a different basebar or hardware on early EX11 bikes depends on Cervélo's compatibility chart, which was not reached.",
+    "Whether 2024 P5 EX14 riser parts fit the 2019 P5D front end: no source found."
+  ],
+  "checked": "2026-11-16"
+}

@@ -1,0 +1,109 @@
+{
+  "id": "canyon-speedmax-cfr-cfslx-2026",
+  "family": "canyon-speedmax",
+  "generation": "Speedmax CFR / CF SLX (gen 6, MY2027, launched July 2026)",
+  "years": [2026, 2026],
+  "brakes": "disc",
+  "identify": "Closed one-piece 'AeroShield' cockpit on a cockpit post that slides into the head tube and clamps like a seatpost; AeroModule box/reservoir between the forearms; four sizes S–XL, no XS/650b. Gen 5 (2021–2025) has a bolt-on base bar on a stacked spacer column instead.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Proprietary: the cockpit post inserts into the head tube (no conventional stem/steerer clamp)",
+    "stem": "No separate stem; the AeroShield sits on a Canyon cockpit post in Short, Long or X-Long length, preset at the factory from Canyon's PPS 2.0 / AeroID inputs.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": null,
+    "pad_bolt_spacing": null,
+    "stack_system": "Stepless along the post in three bands, 105 mm total: Low 0–35 mm (all sizes); Mid 35–70 (S), 30–70 (M), 25–70 (L), 20–70 (XL); High 70–105 (S), 65–105 (M), 60–105 (L), 55–105 (XL). Canyon gives no absolute pad-height numbers.",
+    "reach_system": "Each post length (Short, Long, X-Long) gives 50 mm of stepless fore-aft travel, 150 mm across all three; standard AeroShield extension length 70 mm stepless.",
+    "angle_system": "Pad tilt 0–20° stepless on a 10° (standard AeroShield) or 20° (AeroShield Pro) base: Short 10–30°, Long 10–40°, X-Long 20–40° (Pro only).",
+    "notes": "Standard AeroShield pad width stepless 200–275 mm (S/M) or 225–300 mm (L/XL); AeroShield Pro comes in fixed shells. A fitter with 15+ fitted customers says Canyon's tool outputs a parts list but not how much adjustment is left, so where a rider sits in the range is unknown. Canyon told owners (July 2026 e-mail, per posters) that untested third-party reach extenders/adapters are not approved and may void the warranty; no aftermarket cockpit adapter for gen 6 was found."
+  },
+  "stock_range": [],
+  "parts": [
+    {
+      "id": "canyon-speedmax-cockpit-post-length",
+      "brand": "Canyon",
+      "model": "Speedmax cockpit post (Short / Long / X-Long)",
+      "category": "stem",
+      "effect": {"reach_mm": [-100, 100], "stack_mm": null, "angle_deg": null,
+                 "text": "Changing post length shifts the 50 mm reach window: Short→Long or Long→X-Long moves it one band, 150 mm of reach across all three posts. X-Long needs the AeroShield Pro."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://slowtwitch.com/?p=83309", "kind": "review",
+         "says": "Launch article from Canyon briefing: three posts, 50 mm stepless each, 150 mm total; Short 10–30°, Long 10–40°, X-Long 20–40° (Pro only)."},
+        {"url": "https://forum.slowtwitch.com/t/its-here-meet-the-all-new-canyon-speedmax/1299051/104", "kind": "fitter",
+         "says": "Fitter: Canyon makes three versions, each with 50 mm of reach to play with; you must know which one you need when ordering."}
+      ],
+      "url": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/",
+      "price": null,
+      "needs": "Chosen at order via PPS 2.0; whether posts are sold separately later, and at what price, is not published.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-aeroshield-pro",
+      "brand": "Canyon",
+      "model": "AeroShield Pro cockpit",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": [0, 10],
+                 "text": "Pro base tilt is 20° vs 10° on the standard AeroShield (so up to 40° pad tilt) and it unlocks the X-Long post; fixed-width shells chosen from forearm length/width; ~300 g lighter."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://slowtwitch.com/?p=83309", "kind": "review",
+         "says": "AeroShield Pro: +EUR 500 / +USD 500 upgrade, seven fixed shells, not available on the CF SLX 7."},
+        {"url": "https://media-centre.canyon.com/en-INT/267363-pure-personal-pure-cycling-new-canyon-speedmax-enables-every-triathlete-to-achieve-their-full-aerodynamic-potential/", "kind": "manufacturer",
+         "says": "Canyon press release: AeroShield Pro claimed ~3 W faster and 300 g lighter than the standard AeroShield."}
+      ],
+      "url": "https://www.canyon.com/en-us/road-bikes/triathlon-bikes/speedmax/",
+      "price": {"amount": 500, "currency": "EUR", "checked": "2026-11-16"},
+      "needs": "Not offered on the CF SLX 7. An owner says the Pro shipped without end plugs shown in Canyon's images.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "speedmax-gen5-cockpit-parts-on-gen6",
+      "brand": "Canyon",
+      "model": "Gen-5 (2021–2025) cockpit, spacers and gen-5 aftermarket adapters",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "Angle Fitting Kit, Monogrip, Radsport Ibert/AeroCoach/TriRig/Vision gen-5 adapters and the old base bar."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon France told an owner there is no front-end compatibility between the previous and the new Speedmax; gen 6 has no spacer column or base-bar clamp for those parts.",
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/its-here-meet-the-all-new-canyon-speedmax/1299051/116", "kind": "forum",
+         "says": "Owner reports Canyon France by phone: no compatibility of the front end between old and new generation."},
+        {"url": "https://slowtwitch.com/?p=83309", "kind": "review",
+         "says": "Gen 6 replaces gen 5's bolt-on aerobar with the closed AeroShield on a head-tube post."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "canyon-aeroshield-pro-on-cf-slx-7",
+      "brand": "Canyon",
+      "model": "AeroShield Pro on the Speedmax CF SLX 7",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null,
+                 "text": "The Pro cockpit (and with it the X-Long post and 20° base tilt) on the entry SLX 7."},
+      "status": "incompatible",
+      "reason_incompatible": "Canyon does not offer the AeroShield Pro on the CF SLX 7 (Slowtwitch launch report).",
+      "evidence": [
+        {"url": "https://slowtwitch.com/?p=83309", "kind": "review",
+         "says": "AeroShield Pro not available on the SLX 7; start at the SLX 8 to get it."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "No pad stack/reach (Pad X/Y) ranges per size published by Canyon or found elsewhere; only relative ranges (105 mm stack, 150 mm reach across posts). stock_range left empty.",
+    "Whether changing between Low/Mid/High stack bands needs a different part, and whether posts/AeroShields can be bought after delivery and at what price, is not published.",
+    "No aftermarket extension, adapter or pad for the gen-6 AeroShield found as of 2026-11-16 (a forum poster says some are in development).",
+    "AeroShield Pro shell widths in the Slowtwitch table look inconsistent; a forum user measured a medium Pro cockpit at 37 cm long (unverified).",
+    "Canyon US product pages showed 'coming soon' for gen 6 in Nov 2026; Canyon's own spare-part pages for posts/shells not found."
+  ],
+  "checked": "2026-11-16"
+}

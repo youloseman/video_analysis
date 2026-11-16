@@ -1,0 +1,188 @@
+{
+  "id": "giant-trinity-advanced-sl-2025",
+  "family": "giant-trinity",
+  "generation": "Trinity Advanced SL (disc, 2025+)",
+  "years": [2025, 2026],
+  "brakes": "disc",
+  "identify": "Disc brakes and thru-axles; a single central mono-riser carrying the SYNC armrest/extension bridge on an AeroDrive base bar with integrated stem. Launched Jan 2025 (Liv Avow Advanced SL is the women's version on the same platform). Not the rim-brake Trinity Advanced Pro (twin armrest stacks) and not the 2011-2015 rim-brake 'Trinity Advanced SL'.",
+  "cockpit": {
+    "type": "integrated_proprietary",
+    "steerer": "Full-composite steerer. Tri frameset ships with a long fork (High position), TT frameset with a short fork (Low position); converting Tri to TT means cutting the steerer, which Giant calls irreversible.",
+    "stem": "Integrated: Giant base bar with integrated stem combination (AeroDrive); no stem length options.",
+    "basebar_clamp_mm": null,
+    "extension_clamp_mm": null,
+    "pad_bolt_spacing": null,
+    "stack_system": "8 x 10 mm riser spacers under the armrest bridge: 0-80 mm in 10 mm steps (9 positions). Separately the Tri (High) vs TT (Low) fork/spacer sets about 47-48 mm of pad stack.",
+    "reach_system": "Armrests flip (long side front/back) x 5 hole pairs x 2 positions on the extension clamp = 20 combinations, 11 reach results over 75 mm in 7.5 mm steps. Extensions slide 0-93 mm. One owner relays a pro fitter's video saying the base plate is reversible for a little more pad reach (not in Giant's guide).",
+    "angle_system": "Extension wedges 0, 10 and 15 deg included (Giant spec and fitting guide tables).",
+    "notes": "Armrest width 8 positions 192-244 mm; extension width 82/102/146/166 mm; armrest length 125 mm. Owners and fitters say stock pad reach is the main limit (mono-riser sits only slightly ahead of the steerer); one size-M owner needed aftermarket reach parts. No XL; L tops out at 455 mm (Tri) / 470 mm (TT) back-of-pad reach at 0 deg."
+  },
+  "stock_range": [
+    {"size": "XS (Tri, High)", "pad_stack_mm": [629, 709], "pad_reach_mm": [323, 398], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "S (Tri, High)", "pad_stack_mm": [653, 733], "pad_reach_mm": [340, 415], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "M (Tri, High)", "pad_stack_mm": [672, 752], "pad_reach_mm": [360, 435], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "L (Tri, High)", "pad_stack_mm": [691, 771], "pad_reach_mm": [380, 455], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "XS (TT, Low)", "pad_stack_mm": [582, 662], "pad_reach_mm": [339, 414], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "S (TT, Low)", "pad_stack_mm": [605, 685], "pad_reach_mm": [355, 430], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "M (TT, Low)", "pad_stack_mm": [624, 704], "pad_reach_mm": [375, 450], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "L (TT, Low)", "pad_stack_mm": [643, 723], "pad_reach_mm": [395, 470], "pad_reference": "back_of_pad", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "XS (Tri, High)", "pad_stack_mm": [630, 711], "pad_reach_mm": [386, 461], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "S (Tri, High)", "pad_stack_mm": [653, 733], "pad_reach_mm": [403, 479], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "M (Tri, High)", "pad_stack_mm": [672, 752], "pad_reach_mm": [423, 499], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "L (Tri, High)", "pad_stack_mm": [691, 771], "pad_reach_mm": [443, 519], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "XS (TT, Low)", "pad_stack_mm": [582, 663], "pad_reach_mm": [401, 477], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "S (TT, Low)", "pad_stack_mm": [605, 685], "pad_reach_mm": [418, 494], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "M (TT, Low)", "pad_stack_mm": [624, 704], "pad_reach_mm": [437, 514], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"},
+    {"size": "L (TT, Low)", "pad_stack_mm": [643, 723], "pad_reach_mm": [457, 534], "pad_reference": "pad_center", "source": "https://static.giant-bicycles.com/Manuals/TrinityFittingGuide-20260618_1783588764.pdf"}
+  ],
+  "parts": [
+    {
+      "id": "giant-trinity-cockpit-extender-kit",
+      "brand": "Giant",
+      "model": "Trinity Cockpit Extender Kit (2026)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": [-25, 50], "stack_mm": null, "angle_deg": null, "text": "Carbon replacement for the stock extension bridge. Giant Japan: up to 50 mm further forward and 25 mm further back than the stock bridge, same lateral range. Giant Australia/Denmark instead say 50 mm forward and 50 mm wider."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.giant-bicycles.com/au/trinity-cockpit-extender-kit-2026", "kind": "manufacturer", "says": "Compatible with MY25+ Giant Trinity and Liv Avow aero cockpits; extension range 50 mm further forward and 50 mm wider than the previous bridge; RRP AUD 399.99."},
+        {"url": "https://www.giant-bicycles.com/jp/trinity-cockpit-extender-kit-2026", "kind": "manufacturer", "says": "Full-carbon bridge for Trinity and Liv Avow; up to 50 mm forward and 25 mm rearward vs the standard bridge, lateral unchanged; JPY 44,000."},
+        {"url": "https://www.giant-bicycles.com/dk/trinity-cockpit-extender-kit-2026", "kind": "manufacturer", "says": "DKK 2,099; this page's compatibility line names Giant Propel and Liv Avow (inconsistent with the other regions)."}
+      ],
+      "url": "https://www.giant-bicycles.com/au/trinity-cockpit-extender-kit-2026",
+      "price": {"amount": 399.99, "currency": "AUD", "checked": "2026-11-16"},
+      "needs": "Kit contents not listed; confirm with a Giant dealer (regional pages disagree on details).",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-trinity-2025-mono-plate",
+      "brand": "FastTT",
+      "model": "Extension adapter plate for Giant Trinity 2025 mono handlebar (TRINITY-MONO-PLATE)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": [0, 35], "stack_mm": null, "angle_deg": null, "text": "Replaces the stock base plate on the mono-riser with a forward-curved plate whose extension mounts sit ahead of the riser (stock mounts sit behind). About 35 mm more forward reach per FastTT as relayed by a forum user; not on the product listing. Has a threaded BTA mount."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://www.materiel-velo.com/gb/1891830-fasttt-triathlon-extension-adapter-plate-for-giant-trinity-2025-single-piece-handlebars.html", "kind": "retailer", "says": "Maker's description: designed specifically for the Giant Trinity 2025 mono handlebar, not older models; for FastTT extensions, other brands to be checked; forward-curved shape for extra reach."},
+        {"url": "https://forum.slowtwitch.com/t/giant-and-liv-launch-together/1285140?page=2", "kind": "forum", "says": "User relays FastTT: the new-Trinity plate adds around 35 mm forward reach; another notes its mounts sit forward of the riser and Di2 wires then run outside over the plate; a third expects stock extensions to fit (not confirmed)."}
+      ],
+      "url": null,
+      "price": {"amount": 126.88, "currency": "EUR", "checked": "2026-11-16"},
+      "needs": "FastTT extensions (others unconfirmed); Di2/eTap wires route externally over the plate.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "aerocoach-ascalon-adapter-trinity-disc",
+      "brand": "AeroCoach",
+      "model": "Ascalon adapters, 'Giant Trinity (disc brake)' option",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Mounts AeroCoach Ascalon extensions on the disc Trinity cockpit. Reach/stack offset not published."},
+      "status": "manufacturer",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769", "kind": "manufacturer", "says": "Lists a 'Giant Trinity (disc brake)' adapter option (+GBP 285 over the GBP 115 base) separate from the rim-brake Trinity tilt-block option; warranty only with Ascalon extensions."}
+      ],
+      "url": "https://aero-coach.co.uk/store/AeroCoach-Ascalon-adapters-p369629769",
+      "price": null,
+      "needs": "AeroCoach Ascalon extensions. Price shown as a GBP 115 base plus a GBP 285 option charge; total not confirmed.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fouriers-reach-adaptor-trinity-sl",
+      "brand": "Fouriers",
+      "model": "Reach adaptor (+50 mm) for the new Trinity",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": [0, 50], "stack_mm": null, "angle_deg": null, "text": "Owner of a size M fitted it because stock pad reach was too short."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/have-a-look-at-gustav-idens-giant-trinity-can-it-lift-him-to-another-world-title-in-nice/1292650", "kind": "forum", "says": "Owner (178 cm, size M) does not use the stock base plate; added a Fouriers +50 mm adaptor and FastTT reversible extender plates for more reach."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-reversible-extender-plates-trinity-sl",
+      "brand": "FastTT",
+      "model": "Reversible extension plates",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Used together with a reach adaptor to push the extensions forward; offset not stated."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/have-a-look-at-gustav-idens-giant-trinity-can-it-lift-him-to-another-world-title-in-nice/1292650", "kind": "forum", "says": "Same owner runs FastTT reversible extender plates on his new Trinity for more reach."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "ride-sync-aerobar-3-trinity-sl",
+      "brand": "Ride Sync",
+      "model": "Aerobar 3 extensions",
+      "category": "extensions",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Seen on a pro's race bike (Gustav Iden, Nice 2025) with TriRig hydration mounts. How the extensions mount to the SYNC bridge is not described."},
+      "status": "single_report",
+      "reason_incompatible": null,
+      "evidence": [
+        {"url": "https://forum.slowtwitch.com/t/have-a-look-at-gustav-idens-giant-trinity-can-it-lift-him-to-another-world-title-in-nice/1292650", "kind": "review", "says": "Slowtwitch bike feature: Iden's new Trinity runs Ride Sync Aerobar 3 extensions; sponsored pro bike, mounting hardware not described."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": "Mounting hardware on the pro bike not documented.",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "standard-stem-basebar-on-trinity-sl",
+      "brand": "Any",
+      "model": "Standard stem + aftermarket base bar / non-Giant cockpit",
+      "category": "full_cockpit",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Would allow stem-length reach changes, but there is no stem to replace."},
+      "status": "incompatible",
+      "reason_incompatible": "Base bar and stem are one integrated Giant part; Giant says the cockpit is designed for its base bar with SYNC extensions. Launch coverage and forum users note no option for a non-proprietary front end.",
+      "evidence": [
+        {"url": "https://www.giant-bicycles.com/us/trinity-advanced-sl-triathlon-frameset-2025", "kind": "manufacturer", "says": "Stem spec: Giant base bar with integrated stem combination; cockpit designed for Giant Base Bar with SYNC EVO Pro extensions."},
+        {"url": "https://slowtwitch.com/news/giant-and-liv-launch-together/", "kind": "review", "says": "Launch feature lists the still-integrated, proprietary front end as a con."},
+        {"url": "https://forum.slowtwitch.com/t/giant-and-liv-launch-together/1285140?page=2", "kind": "forum", "says": "Tall rider wants a non-proprietary front end and notes none is offered."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "fasttt-trinity-twin-plate-on-sl",
+      "brand": "FastTT",
+      "model": "Extension adapter plate for Giant Trinity twin-post 2015-2024 (TRINITY-TWIN-PLATE)",
+      "category": "adapter_plate",
+      "effect": {"reach_mm": null, "stack_mm": null, "angle_deg": null, "text": "Made for the previous twin-stack cockpit."},
+      "status": "incompatible",
+      "reason_incompatible": "Maker's description limits it to dual-mount Trinity models 2015-2024 with the original spacer stacks; the 2025 mono-riser needs the separate TRINITY-MONO-PLATE.",
+      "evidence": [
+        {"url": "https://www.materiel-velo.com/gb/1891635-plaque-d-adaptation-prolongateurs-triathlon-fasttt-pour-giant-trinity-a-double-barres-2015-a-2024.html", "kind": "retailer", "says": "Plate is for Giant Trinity dual-mount models 2015-2024 fitted with the original spacers."},
+        {"url": "https://www.materiel-velo.com/gb/1891830-fasttt-triathlon-extension-adapter-plate-for-giant-trinity-2025-single-piece-handlebars.html", "kind": "retailer", "says": "A separate plate exists for the 2025 mono handlebar."}
+      ],
+      "url": null,
+      "price": null,
+      "needs": null,
+      "checked": "2026-11-16"
+    }
+  ],
+  "gaps": [
+    "Extension clamp diameter, base-bar dimensions and armrest bolt pattern are not given in Giant's fitting guide or product pages; no owner measurement found. Whether standard 22.2 mm extensions or third-party armrests bolt to the SYNC clamps is unconfirmed.",
+    "Giant 'SYNC EVO Pro' extensions, spare riser spacers, wedges and armrests as separately sold parts: no Giant product page or part number found.",
+    "A second FastTT listing ('Giant Trinity 2025 centre mount', materiel-velo ref 1891634) exists but the page did not load its product text; unclear whether it differs from the mono plate.",
+    "FastTT's 35 mm reach figure comes only from a forum relay of an email; no FastTT page states it. FastTT's own website was not found; only retailer copies of the maker text.",
+    "Reversible stock base plate (more reach) is known only via a forum relay of Matt Bottrill's YouTube video; Giant's guide does not show it and no mm figure is given (a fitter guessed about 460 mm max pad reach on an M).",
+    "Fouriers +50 mm adaptor: no product page or listing found; single owner mention.",
+    "TriRig: pros run TriRig BTS/hydration mounts on this bike, but no TriRig fit part (riser, plate) for the Trinity mono-riser was found; TriRig's universal BTA plate is too wide for one owner's narrow cups.",
+    "AeroCoach tilt-block adapters list only the rim-brake Trinity; whether any AeroCoach tilt block suits the disc Trinity beyond the Ascalon disc option is unconfirmed.",
+    "Giant's Trinity Cockpit Extender Kit: regional pages disagree (Denmark lists Propel and Avow; Japan says +50 forward/+25 back; Australia +50 forward/+50 wider); no US/CA/EU price in EUR, kit contents or part number found; no owner report yet.",
+    "Owner reports for this generation are very few (two identifiable owners on Slowtwitch as of Nov 2026).",
+    "MY27 adds an XXS (Liv Avow geometry) with pad ranges in the Avow guide; not included here."
+  ],
+  "checked": "2026-11-16"
+}
