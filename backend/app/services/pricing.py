@@ -1274,6 +1274,7 @@ PRICING_CSS = """
 .pr-slot{display:block;width:100%}
 .pr-slot[data-slot=expert-price],.pr-slot[data-slot=sample]{display:inline;width:auto}
 .pr-btn-s{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:42px;padding:9px 18px;border-radius:999px;background:var(--c-brand-navy);color:#fff;font:700 14px var(--f-body);text-decoration:none;border:0;cursor:pointer}
+.pr-btn-s:disabled{opacity:.45;cursor:default}
 .pr-btn-o{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;padding:10px 18px;border-radius:8px;border:1.5px solid var(--c-head);color:var(--c-head);font:700 15px var(--f-body);text-decoration:none;background:var(--c-bg)}
 .pr-yes{color:var(--c-ink);font-weight:600;font-size:15px}
 .pr-no{color:var(--c-ink-faint)}

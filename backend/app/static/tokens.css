@@ -75,7 +75,7 @@
   /* ---- the speed gradient: blue running into coral, the old brand's one
      stripe. Motion and progress only -- never a surface, never a meter of
      good-to-bad. */
-  --g-speed:linear-gradient(90deg,var(--c-blue) 0%,#6A5AC8 45%,var(--c-coral) 100%);
+  --g-speed:linear-gradient(90deg,var(--c-blue) 0%,var(--brand-violet) 45%,var(--c-coral) 100%);
 
   /* ---- "good", said out loud: the landing's green for the moments that are
      positive -- in range, improving, high confidence, nothing to fix. The
@@ -112,12 +112,26 @@
   /* ---- headings: Archivo italic 900 for a page title and a section title,
      smaller on a phone (app.css, max-width 640) ---- */
   --fs-h1:40px; --fs-h2:22px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;   /* spacing: the 4-px scale */
 
   /* ---- elevation: two, plus the one over footage. Nothing lifts on hover. ---- */
   --shadow:0 2px 6px rgba(20,24,31,.10);                  /* shadow/pop: menus, toast */
   --shadow-lg:0 12px 32px rgba(20,24,31,.18);             /* shadow/modal */
   --ring:0 0 0 2px var(--c-bg),0 0 0 4px var(--c-blue);   /* focus */
   --sidebar-w:216px;                   /* the shared app/Academy shell */
+  /* Drawn on footage (canvas overlays): the same on light and dark. */
+  --ov-skel:#3DFF6E; --ov-skel-glow:rgba(30,190,80,.45); --ov-accent:#FFA82E;
+  --ov-ink:#FFFFFF; --ov-ink-soft:rgba(255,255,255,.85); --ov-ink-mid:rgba(255,255,255,.7); --ov-ink-faint:rgba(255,255,255,.55);
+  --ov-label:rgba(26,30,36,.9); --ov-label-mute:#DDDDDD;
+  /* The share card: always the dark card, whatever the app theme. */
+  --card-ground:#0E1116; --card-top:#161A21; --card-ink:#FFFFFF; --card-muted:#98A2B3; --card-soft:#C6CCD6;
+  --card-scrim:rgba(14,17,22,.78); --card-rule:rgba(255,255,255,.18); --card-logo:#14294B;
+  --brand-blue:#2457C5; --brand-violet:#6A5AC8;
+  /* Biomechanics charts: one hue per series, none of them a verdict colour. */
+  --chart-1:#2F6DE0; --chart-2:#7C4DD1; --chart-3:#B0417A; --chart-4:#5A6B8C;
+  --chart-ref:#6E7787; --chart-mean:#12B3A6; --chart-dev:rgba(241,85,63,.15); --chart-dev-key:rgba(241,85,63,.35);
+  --chart-band:rgba(138,148,163,.16); --chart-band-key:rgba(138,148,163,.4); --chart-cycles:rgba(47,109,224,.4);
+  --chart-ok-band:rgba(46,158,91,.13); --chart-ok-line:rgba(46,158,91,.45);
 }
 
 /* The dark set, corrected on the one screen that was drawn in it. Opt-in by

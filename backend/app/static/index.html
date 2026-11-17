@@ -66,7 +66,7 @@
 
 <a class="skip-link" href="#main">Skip to content</a>
 
-<svg style="display:none" aria-hidden="true">
+<svg class="hidden" aria-hidden="true">
   <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
   <symbol id="i-check-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -155,7 +155,7 @@
       <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".22" transform="translate(155.5 0) skewX(-11) translate(-148 0)"/>
       <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" opacity=".45" transform="translate(155.5 0) skewX(-11) translate(-74 0)"/>
       <path d="M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z" fill="currentColor" transform="translate(155.5 0) skewX(-11)"/>
-      <circle cx="446" cy="246" r="78" fill="#F1553F" transform="translate(155.5 0) skewX(-11)"/>
+      <circle cx="446" cy="246" r="78" fill="var(--c-coral)" transform="translate(155.5 0) skewX(-11)"/>
     </g>
   </symbol>
   <!-- Sport icons, from runner.svg / cyclist.svg in docs/icons/ (the
@@ -237,9 +237,9 @@
 <div class="modal hidden" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <div class="modal-card">
     <button class="modal-close" id="authClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="eyebrow" style="color:var(--c-blue)">Your account</div>
+    <div class="eyebrow eyebrow--blue">Your account</div>
     <h2 id="authTitle" class="modal-title">Log in</h2>
-    <p class="hint" id="authIntro" style="text-align:left;margin:0 0 16px">Save your history &amp; progress, and pick up on any device.</p>
+    <p class="hint u-m-0 u-mb-4" id="authIntro">Save your history &amp; progress, and pick up on any device.</p>
     <!-- One form, four modes (login / register / forgot / reset) -- see
          setAuthMode(). The email field is the login: there is no username. -->
     <form id="authForm" novalidate>
@@ -252,7 +252,7 @@
         </div>
         <small class="fldhint hidden" id="authPassHint">At least 8 characters. A short phrase you'll remember beats a clever word.</small>
       </div>
-      <label class="fld hidden" id="authPromoFld"><span>Promo code <small style="font-weight:400;color:var(--c-ink-faint)">optional</small></span><input type="text" id="authPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32"></label>
+      <label class="fld hidden" id="authPromoFld"><span>Promo code <small class="fld-opt">optional</small></span><input type="text" id="authPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32"></label>
       <!-- The two consents (2026-10-24), sign-up only. The first is required:
            no account without agreeing to how its data is handled. The second
            is separate and unticked: news and offers by email need their own
@@ -268,10 +268,10 @@
       </div>
       <div class="autherr" id="authErr" role="alert"></div>
       <div class="authsent hidden" id="authSent" role="status"></div>
-      <button class="btn btn-primary" id="authSubmit" type="submit" style="width:100%">Log in</button>
+      <button class="btn btn-primary u-w-full" id="authSubmit" type="submit">Log in</button>
       <p class="hint authnote" id="authNote"></p>
     </form>
-    <p class="hint" id="authToggleTxt" style="text-align:center;margin-top:14px"></p>
+    <p class="hint u-ta-center u-mt-4" id="authToggleTxt"></p>
   </div>
 </div>
 
@@ -284,8 +284,8 @@
     <button class="modal-close" id="pickClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
     <div class="eyebrow" id="pickEyebrow">Expert Review</div>
     <h2 id="pickTitle" class="modal-title">Which analysis?</h2>
-    <p class="hint" style="text-align:left;margin:0 0 16px">Pick the one you want a human to read. You'll get a written report against exactly this analysis.</p>
-    <div id="pickList" style="max-height:46vh;overflow:auto;margin:0 0 18px"></div>
+    <p class="hint u-m-0 u-mb-4">Pick the one you want a human to read. You'll get a written report against exactly this analysis.</p>
+    <div id="pickList" class="pick-list"></div>
     <div class="confirm-actions">
       <button class="btn btn-ghost" id="pickCancel" type="button">Cancel</button>
       <button class="btn btn-primary" id="pickOk" type="button">Continue to payment</button>
@@ -297,9 +297,9 @@
 <div class="modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
   <div class="modal-card">
     <button class="modal-close" id="confirmClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="eyebrow" id="confirmEyebrow" style="color:var(--st-bad)">Confirm</div>
+    <div class="eyebrow eyebrow--bad" id="confirmEyebrow">Confirm</div>
     <h2 id="confirmTitle" class="modal-title">Are you sure?</h2>
-    <p class="hint" id="confirmBody" style="text-align:left;margin:0 0 20px"></p>
+    <p class="hint u-m-0 u-mb-5" id="confirmBody"></p>
     <div class="confirm-actions">
       <button class="btn btn-ghost" id="confirmCancel" type="button">Cancel</button>
       <button class="btn btn-danger" id="confirmOk" type="button">Confirm</button>
@@ -310,15 +310,15 @@
 <div class="modal hidden" id="cardModal" role="dialog" aria-modal="true" aria-labelledby="cardModalTitle">
   <div class="modal-card cardmodal-card">
     <button class="modal-close" id="cardClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="eyebrow" style="color:var(--c-blue)">Share</div>
-    <h2 id="cardModalTitle" class="modal-title" style="margin-bottom:12px">Your result card</h2>
+    <div class="eyebrow eyebrow--blue">Share</div>
+    <h2 id="cardModalTitle" class="modal-title u-mb-3">Your result card</h2>
     <div class="cardprev-wrap"><img id="cardPreview" alt="Your Flapp result card" class="ph-no-capture"></div>
-    <p class="hint" id="cardSaveHint" style="text-align:center;margin:12px 0 14px">Long-press the image to save it to your photos.</p>
+    <p class="hint u-ta-center u-m-0 u-mt-3 u-mb-4" id="cardSaveHint">Long-press the image to save it to your photos.</p>
     <div class="cardmodal-actions">
-      <button class="btn btn-primary hidden" id="cardShareBtn" type="button" style="width:100%;justify-content:center">
+      <button class="btn btn-primary hidden u-w-full u-justify-center" id="cardShareBtn" type="button">
         <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Share…
       </button>
-      <a class="btn btn-ghost" id="cardDownloadBtn" download style="width:100%;justify-content:center">
+      <a class="btn btn-ghost u-w-full u-justify-center" id="cardDownloadBtn" download>
         <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download image
       </a>
     </div>
@@ -347,8 +347,8 @@
 <div class="modal hidden" id="camModal" role="dialog" aria-modal="true" aria-labelledby="camTitle">
   <div class="modal-card cammodal-card">
     <button class="modal-close" id="camClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="eyebrow" style="color:var(--c-blue)">Record</div>
-    <h2 id="camTitle" class="modal-title" style="margin-bottom:12px">Film it right here</h2>
+    <div class="eyebrow eyebrow--blue">Record</div>
+    <h2 id="camTitle" class="modal-title u-mb-3">Film it right here</h2>
     <p class="cam-err hidden" id="camErr" role="alert"></p>
     <div class="cam-stage" id="camStage">
       <video id="camView" autoplay muted playsinline class="ph-no-capture"></video>
@@ -604,7 +604,7 @@
               <span class="cam-d">Or record with the camera</span><span class="cam-m">Record with the camera</span>
             </button>
           </p>
-          <p class="hint hidden" id="upBatch" style="text-align:left">Several clips? <a href="#" onclick="event.preventDefault();openBatch(state.athleteId)">Upload up to 10 at once</a>.</p>
+          <p class="hint hidden" id="upBatch">Several clips? <a href="#" onclick="event.preventDefault();openBatch(state.athleteId)">Upload up to 10 at once</a>.</p>
         </div>
 
       <div class="filepreview" id="filepreview">
@@ -723,7 +723,7 @@
            see that without opening anything. -->
       <details class="askbox hidden" id="mobBox">
         <summary>Off-bike mobility <span class="askopt" id="mobSummary">not measured</span></summary>
-        <p class="askhint" style="margin-top:10px">Two photos taken lying on the floor.
+        <p class="askhint u-mt-3">Two photos taken lying on the floor.
           They decide whether &ldquo;you could go lower&rdquo; is advice we are entitled to give
           you &mdash; the position you can hold is bounded by your body before it is bounded
           by your stem. Measured once; every bike analysis after it uses the result.</p>
@@ -887,9 +887,9 @@
          heading, and it has to be at the top of page one to do that. -->
     <div class="printhead" id="printHead" aria-hidden="true"></div>
 
-    <div class="blockhead screenhead" style="margin-top:0">
+    <div class="blockhead screenhead u-mt-0">
       <div class="eyebrow">Report</div>
-      <h2 class="sec" id="resultsTitle" tabindex="-1" style="margin-bottom:8px">Your results</h2>
+      <h2 class="sec u-mb-2" id="resultsTitle" tabindex="-1">Your results</h2>
       <div class="speedline"></div>
     </div>
 
@@ -924,8 +924,8 @@
           <span class="grade" id="grade" role="img" aria-label="Grade">—</span>
           <div>
             <div class="gradelbl">Grade</div>
-            <span class="pill pill-warnchip hidden" id="gateChip" style="margin-top:8px"><span class="dot" aria-hidden="true"></span>Reference only</span>
-            <span class="pill pill-okchip hidden" id="confChip" style="margin-top:8px"><span class="dot" aria-hidden="true"></span>Full confidence</span>
+            <span class="pill pill-warnchip hidden u-mt-2" id="gateChip"><span class="dot" aria-hidden="true"></span>Reference only</span>
+            <span class="pill pill-okchip hidden u-mt-2" id="confChip"><span class="dot" aria-hidden="true"></span>Full confidence</span>
           </div>
         </div>
         <p class="score-none-why hidden" id="scoreWithheld"></p>
@@ -1004,7 +1004,7 @@
           <div class="videocap">
             <span>Annotated overlay · skeleton + the joints worth watching<br>
               <span class="note">Callouts mark what sits outside its range — every angle is in the table below. Results aren’t stored, so download to keep it.</span></span>
-            <span class="grp" style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="grp u-flex u-gap-2 u-wrap">
               <button class="btn btn-ghost btn-sm hidden" id="vAdjust" type="button"
                       title="Move a joint point the model placed wrong; the whole clip is measured again">
                 <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Adjust joints
@@ -1065,7 +1065,7 @@
 
     <div id="gateBanner"></div>
     <div id="bilateralBlock"></div>
-    <p class="hint hidden ephem-note" id="ephemNote" style="text-align:left;margin-top:16px">Results aren’t stored — save what you need before leaving.</p>
+    <p class="hint hidden ephem-note u-mt-4" id="ephemNote">Results aren’t stored — save what you need before leaving.</p>
 
     <div class="block hidden" id="aeroBlock">
       <div class="blockhead">
@@ -1114,7 +1114,7 @@
         <h3>Your drills to fix it</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 16px">Do these, then re-film and open <b>Before / after</b> to see the change.</p>
+      <p class="hint u-m-0 u-mb-4">Do these, then re-film and open <b>Before / after</b> to see the change.</p>
       <div id="planCards"></div>
     </div>
 
@@ -1127,7 +1127,7 @@
         <h3>What to change on the bike</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" id="fitLede" style="text-align:left;margin:0 0 16px"></p>
+      <p class="hint u-m-0 u-mb-4" id="fitLede"></p>
       <div id="fitRows"></div>
       <div id="fitGood"></div>
       <div id="fitMobility"></div>
@@ -1139,7 +1139,7 @@
         <h3 id="kinoTitle">One stride, five positions</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" id="kinoHint" style="text-align:left;margin:0 0 16px">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
+      <p class="hint u-m-0 u-mb-4" id="kinoHint">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
       <div class="videoframe">
         <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles" class="ph-no-capture"></div>
         <div class="videocap">
@@ -1160,8 +1160,8 @@
         <h3>Measured against published ranges</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" id="measLede" style="text-align:left;margin:0 0 12px">Every range names where it comes from. A value just past the edge of a range is inside the method&rsquo;s own error, so it is marked borderline rather than as a finding.</p>
-      <p class="hint hidden" id="metricsNote" style="text-align:left;margin:0 0 14px"></p>
+      <p class="hint u-m-0 u-mb-3" id="measLede">Every range names where it comes from. A value just past the edge of a range is inside the method&rsquo;s own error, so it is marked borderline rather than as a finding.</p>
+      <p class="hint hidden u-m-0 u-mb-4" id="metricsNote"></p>
       <!-- One row per reading, grouped by what it asks of you: the ones out of
            range first (furthest out on top), then the ones in range, then the
            readings no published range applies to. Status is a word and a
@@ -1211,15 +1211,15 @@
       <details class="cg-more tbl-notes" id="angleNotes">
       <summary>How to read this table</summary>
       <div class="tbl-notes-body">
-      <p class="hint norefnote hidden" id="angleNorefNote" style="text-align:left;margin-top:12px">
+      <p class="hint norefnote hidden u-mt-3" id="angleNorefNote">
         <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
-      <p class="hint" id="angleStatNote" style="text-align:left;margin-top:8px">
+      <p class="hint u-mt-2" id="angleStatNote">
         <b>Optimal</b> and <b>Status</b> are about the <b>mean</b> — the carry of the arm, the lean of the trunk over the whole clip. <b>Low / High</b> are the 5th and 95th percentile: how far the joint swings each cycle, which is the movement, not a fault — an elbow at 57° at the back of the swing and 100° at the front is one normal arm swing around a 84° carry. A frame that reads outside the physiological range for a joint is a tracking artefact: it is excluded from every number and counted in an <b>artefact</b> pill instead.</p>
       <!-- The pro column, explained: a field to place yourself against, never a
            target. Filled by renderAngleTable from the served pro_field. -->
-      <p class="hint hidden" id="angleProNote" style="text-align:left;margin-top:8px"></p>
+      <p class="hint hidden u-mt-2" id="angleProNote"></p>
       <!-- Where the bike's Optimal column comes from (fitRangeNote). -->
-      <p class="hint hidden" id="angleSrcNote" style="text-align:left;margin-top:8px"></p>
+      <p class="hint hidden u-mt-2" id="angleSrcNote"></p>
       </div>
       </details>
     </div>
@@ -1240,7 +1240,7 @@
         <h3>Where to go from here</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 10px">What this clip could not settle, where the pros sit, and what to film next.</p>
+      <p class="hint u-m-0 u-mb-3">What this clip could not settle, where the pros sit, and what to film next.</p>
       <ul class="next-steps" id="nextList"></ul>
     </div>
 
@@ -1276,7 +1276,7 @@
         <h3>Your numbers, as a file</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 18px">One file with every measurement, its reference range, how far to trust it — and the conventions a chatbot otherwise gets backwards (our joint angles are <b>internal</b>: 180° is a straight limb, not 180° of flexion). Paste it into any assistant, or hand it to your coach.</p>
+      <p class="hint u-m-0 u-mb-5">One file with every measurement, its reference range, how far to trust it — and the conventions a chatbot otherwise gets backwards (our joint angles are <b>internal</b>: 180° is a straight limb, not 180° of flexion). Paste it into any assistant, or hand it to your coach.</p>
       <div class="exportrow">
         <button class="btn btn-primary btn-sm" id="exportCopy" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="exportCopyTxt">Copy as text</span>
@@ -1320,9 +1320,9 @@
 
   <!-- ============ PHOTO RESULTS ============ -->
   <section id="photoResults" class="hidden" aria-labelledby="pResultsTitle">
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Report</div>
-      <h2 class="sec" id="pResultsTitle" tabindex="-1" style="margin-bottom:8px">Your results</h2>
+      <h2 class="sec u-mb-2" id="pResultsTitle" tabindex="-1">Your results</h2>
       <div class="speedline"></div>
     </div>
 
@@ -1354,11 +1354,11 @@
       <div>
         <div class="videoframe">
           <img id="pImage" alt="Annotated form analysis — skeleton and joint angles on your photo"
-               style="display:block;width:100%;background:var(--c-media-bg)" class="ph-no-capture">
+               class="ph-no-capture media-still">
           <div class="videocap">
             <span>Annotated photo · skeleton + joint angles<br>
               <span class="note">Results aren’t stored — download to keep it.</span></span>
-            <span class="grp" style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="grp u-flex u-gap-2 u-wrap">
               <button class="btn btn-ghost btn-sm hidden" id="pAdjust" type="button"
                       title="Move a joint point the model placed wrong; every angle is measured again">
                 <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Adjust joints
@@ -1428,7 +1428,7 @@
           <tbody id="pAngleRows"></tbody>
         </table>
       </div>
-      <p class="hint hidden" id="pAngleSrcNote" style="text-align:left;margin-top:12px"></p>
+      <p class="hint hidden u-mt-3" id="pAngleSrcNote"></p>
     </div>
 
     <!-- Running, at the instant the foot lands: the readings only that frame
@@ -1460,7 +1460,7 @@
         <h3>Where to go from here</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 10px">What one photo can't tell you, and the one thing that would.</p>
+      <p class="hint u-m-0 u-mb-3">What one photo can't tell you, and the one thing that would.</p>
       <ul class="next-steps" id="pNextList"></ul>
     </div>
 
@@ -1483,7 +1483,7 @@
     <div class="card error-card" id="errorCard" role="alert">
       <h2 id="errTitle" tabindex="-1">Analysis failed</h2>
       <p id="errText">Something went wrong.</p>
-      <p class="hint hidden" id="errNote" style="text-align:left;margin-top:8px">This attempt counted toward your daily limit.</p>
+      <p class="hint hidden u-mt-2" id="errNote">This attempt counted toward your daily limit.</p>
       <ul id="errTips" class="hidden">
         <li>Film from the side — the camera should see your full body.</li>
         <li>Keep one athlete in the frame, in good light.</li>
@@ -1504,10 +1504,10 @@
   <!-- ============ HISTORY ============ -->
   <section id="history" class="hidden" aria-labelledby="histTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <!-- eyebrow tells the truth about where this history lives (see renderHistList) -->
       <div class="eyebrow" id="histEyebrow">Saved on this device</div>
-      <h2 class="sec" id="histTitle" tabindex="-1" style="margin-bottom:8px">Your history</h2>
+      <h2 class="sec u-mb-2" id="histTitle" tabindex="-1">Your history</h2>
       <div class="speedline"></div>
     </div>
     <div class="hist-tools" id="histTools" hidden>
@@ -1516,7 +1516,7 @@
         <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg> Clear all
       </button>
     </div>
-    <p class="hint hist-hint" id="histHint" hidden style="text-align:left;margin:-4px 0 18px">
+    <p class="hint hist-hint u-m-0 u-mt-n1 u-mb-5" id="histHint" hidden>
       Analyses run for someone else? Tap <b>✕</b> on a card to remove just that one, or <b>Clear all</b> to reset your stats.
     </p>
     <div class="profilefilter" id="histAthleteFilter"></div>
@@ -1527,12 +1527,12 @@
   <!-- ============ PROGRESS / TRENDS ============ -->
   <section id="trends" class="hidden" aria-labelledby="trendsTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Monitor your technique</div>
-      <h2 class="sec" id="trendsTitle" tabindex="-1" style="margin-bottom:8px">Your progress</h2>
+      <h2 class="sec u-mb-2" id="trendsTitle" tabindex="-1">Your progress</h2>
       <div class="speedline"></div>
     </div>
-    <div style="margin:16px 0 22px">
+    <div class="u-m-0 u-mt-4 u-mb-6">
       <div class="seg" id="progSeg" role="group" aria-label="Sport">
         <button type="button" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg> Bike</button>
         <button type="button" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg> Run</button>
@@ -1540,8 +1540,8 @@
     </div>
     <div class="profilefilter" id="progAthleteFilter"></div>
     <div id="progSide"></div>
-    <p class="hint" style="text-align:left;margin:-8px 0 18px">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
-    <div class="again-row" id="compareCta" style="margin:0 0 18px;display:none">
+    <p class="hint u-m-0 u-mt-n2 u-mb-5">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
+    <div class="again-row u-m-0 u-mb-5 hidden" id="compareCta">
       <button class="btn btn-ghost btn-sm" id="btnCompare" type="button">
         <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Compare two analyses
       </button>
@@ -1552,19 +1552,19 @@
 
   <!-- ============ COMPARE (BEFORE / AFTER) ============ -->
   <section id="compare" class="hidden" aria-labelledby="compareTitle">
-    <div class="again-row" style="margin:0 0 18px">
+    <div class="again-row u-m-0 u-mb-5">
       <button class="btn btn-ghost btn-sm" id="cmpBack" type="button">
         <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to progress
       </button>
     </div>
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Track your change</div>
-      <h2 class="sec" id="compareTitle" tabindex="-1" style="margin-bottom:8px">Before / after</h2>
+      <h2 class="sec u-mb-2" id="compareTitle" tabindex="-1">Before / after</h2>
       <div class="speedline"></div>
     </div>
     <!-- Sessions vs setups. Only rendered when two setups actually have
          history, which is a structural gate rather than a tier check. -->
-    <div id="cmpMode" class="hidden" style="text-align:center"></div>
+    <div id="cmpMode" class="hidden u-ta-center"></div>
     <!-- Two-analysis (or two-setup) pickers -->
     <div class="cmp-pickers" id="cmpPickers"></div>
     <!-- AI progress summary -->
@@ -1576,7 +1576,7 @@
   <!-- ============ HISTORY DETAIL ============ -->
   <section id="historyDetail" class="hidden" aria-labelledby="hdTitle">
     <h2 id="hdTitle" class="visually-hidden" tabindex="-1">Saved analysis</h2>
-    <div class="again-row" style="margin:0 0 20px">
+    <div class="again-row u-m-0 u-mb-5">
       <button class="btn btn-ghost btn-sm" id="hBack" type="button">
         <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to history
       </button>
@@ -1617,7 +1617,7 @@
         <div class="videoframe" id="hdImgWrap">
           <!-- background-color (not the `background` shorthand) so .kf-wait can
                paint its loading shimmer over it -->
-          <img id="hdImg" alt="Saved annotated keyframe" style="display:block;width:100%;background-color:var(--c-media-bg)" class="ph-no-capture">
+          <img id="hdImg" alt="Saved annotated keyframe" class="ph-no-capture media-still">
           <div class="videocap">
             <span>Saved keyframe · skeleton + joint angles</span>
             <a class="btn btn-ghost btn-sm" id="hdDownload" download="flapp-analysis.jpg"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download</a>
@@ -1717,7 +1717,7 @@
         <h3>Your numbers, as a file</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint" style="text-align:left;margin:0 0 18px">Every measurement from this report, its reference range, and the conventions another reader otherwise gets backwards — built from the saved analysis, so it still works long after the clip is gone.</p>
+      <p class="hint u-m-0 u-mb-5">Every measurement from this report, its reference range, and the conventions another reader otherwise gets backwards — built from the saved analysis, so it still works long after the clip is gone.</p>
       <div class="exportrow">
         <button class="btn btn-primary btn-sm" id="hdExportCopy" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="hdExportCopyTxt">Copy as text</span>
@@ -1813,21 +1813,21 @@
             <label class="switch"><input type="checkbox" id="acctMarketing"><span class="box" aria-hidden="true"></span>
               <span>News, training tips and offers<span class="subhint">Rare. Off any time — here or from any issue.</span></span>
             </label>
-            <p class="acct-p" style="margin-top:8px">Emails about your own account — finished analyses, receipts, password resets — come either way.</p>
+            <p class="acct-p u-mt-2">Emails about your own account — finished analyses, receipts, password resets — come either way.</p>
           </div>
           <div class="acct-body">
             <h4>Research</h4>
             <label class="switch"><input type="checkbox" id="acctResearch"><span class="box" aria-hidden="true"></span>
               <span>Aero research<span class="subhint">Lets Flapp use your bike clips and the CdA numbers you enter to build better aero estimates. Never published, never sold. Off unless you turn it on.</span></span>
             </label>
-            <p class="acct-p" style="margin-top:8px">Off: nothing you upload or enter is used for research. <a href="/privacy#research-consent">What this covers</a></p>
+            <p class="acct-p u-mt-2">Off: nothing you upload or enter is used for research. <a href="/privacy#research-consent">What this covers</a></p>
           </div>
           <div class="acct-body">
             <h4>Delete account</h4>
             <!-- The privacy policy promises deletion on request; this is that
                  request, self-serve. Folded: nobody opens their account page
                  wanting to leave. -->
-            <details class="danger-disc hidden" id="delAccount" style="margin-top:0;border-top:0;padding-top:0">
+            <details class="danger-disc danger-disc--bare hidden" id="delAccount">
               <summary>Delete account and all its data</summary>
               <div class="dd-body">
                 <p>Removes your account, saved analyses, usage history, feedback and order
@@ -1839,7 +1839,7 @@
           </div>
         </div>
         <div class="acct-card">
-          <div class="acct-actions" style="border-top:0"><span>Signed in on this device</span><button class="btn btn-ghost btn-sm right" type="button" id="acctLogout">Sign out</button></div>
+          <div class="acct-actions acct-actions--first"><span>Signed in on this device</span><button class="btn btn-ghost btn-sm right" type="button" id="acctLogout">Sign out</button></div>
         </div>
         <p class="acct-foot">built by one triathlete who reads every reply · <a href="#" id="acctWhatsNew">What’s new</a> · <a href="mailto:support@getflapp.com">Send feedback</a></p>
       </div>
@@ -1877,7 +1877,7 @@
       <div class="prof-bike"><label for="profModel">Model</label><input id="profModel" type="text" maxlength="80" placeholder="e.g. Trinity Advanced Pro"></div>
       <div class="prof-bike"><label for="profSize">Frame size</label><input id="profSize" type="text" maxlength="12" placeholder="e.g. M or 54"></div>
       <div class="prof-bike"><label for="profYear">Model year</label><input id="profYear" type="number" inputmode="numeric" min="1990" max="2030" step="1" placeholder="e.g. 2019"></div>
-      <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="profSave">Save profile</button><button class="btn btn-ghost btn-sm" type="button" id="profCancel">Cancel</button></div>
+      <div class="u-span-all u-flex u-gap-3 u-items-center"><button class="btn btn-primary btn-sm" type="button" id="profSave">Save profile</button><button class="btn btn-ghost btn-sm" type="button" id="profCancel">Cancel</button></div>
     </div>
     <div class="prof-limit hidden" id="profLimit"></div>
   </section>
@@ -1904,7 +1904,7 @@
       <div><label for="athSport">Sport</label><select id="athSport"><option value="both">Triathlon · both</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
       <div><label for="athEmail">Email <span class="askopt">optional</span></label><input id="athEmail" type="email" maxlength="320" placeholder="their Flapp email, to link their account"></div>
       <div><label for="athNote">One line <span class="askopt">optional</span></label><input id="athNote" type="text" maxlength="240" placeholder="goal race, what you're working on"></div>
-      <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><button class="btn btn-primary btn-sm" type="button" id="athSave">Save athlete</button><button class="btn btn-ghost btn-sm" type="button" id="athCancel">Cancel</button></div>
+      <div class="u-span-all u-flex u-gap-3 u-items-center"><button class="btn btn-primary btn-sm" type="button" id="athSave">Save athlete</button><button class="btn btn-ghost btn-sm" type="button" id="athCancel">Cancel</button></div>
     </div>
     <div class="prof-limit hidden" id="athLimit"></div>
     <div id="athGroups"></div>
@@ -1927,7 +1927,7 @@
       <h2 class="sec" id="batTitle" tabindex="-1">Upload several clips</h2>
       <span class="ph-lede">Up to 10 clips and photos. Send them and go for a coffee: videos are analysed one by one, we email you when they are done, and you can close this page.</span>
     </div>
-    <p class="hint hidden" id="batNoSquad" style="text-align:left">No athletes yet, so these would be filed as your own clips. <a href="#" onclick="event.preventDefault();openAthletes(true)">Add an athlete first</a>.</p>
+    <p class="hint hidden" id="batNoSquad">No athletes yet, so these would be filed as your own clips. <a href="#" onclick="event.preventDefault();openAthletes(true)">Add an athlete first</a>.</p>
     <div class="bat-defaults">
       <div><label for="batAthlete">Whose, unless you say otherwise</label><select id="batAthlete"></select></div>
       <div><label for="batSport">Sport</label><select id="batSport"><option value="auto" selected>Auto, from the clip</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
@@ -1948,27 +1948,27 @@
   <!-- ============ WHAT'S NEW (release notes) ============ -->
   <section id="whatsnew" class="hidden" aria-labelledby="wnTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Changelog</div>
-      <h2 class="sec" id="wnTitle" tabindex="-1" style="margin-bottom:8px">What’s new</h2>
+      <h2 class="sec u-mb-2" id="wnTitle" tabindex="-1">What’s new</h2>
       <div class="speedline"></div>
     </div>
-    <p class="hint" style="text-align:left;margin:0 0 32px">Everything we’ve shipped, newest first. Most of it starts with someone telling us a result didn’t match what they saw — the prompt at the bottom of every report.</p>
+    <p class="hint u-m-0 u-mb-8">Everything we’ve shipped, newest first. Most of it starts with someone telling us a result didn’t match what they saw — the prompt at the bottom of every report.</p>
     <div id="wnList"></div>
   </section>
 
   <!-- ============ FEEDBACK INBOX (admin tier only) ============ -->
   <section id="feedbackAdmin" class="hidden" aria-labelledby="fbaTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Private · admin only</div>
-      <h2 class="sec" id="fbaTitle" tabindex="-1" style="margin-bottom:8px">Result feedback</h2>
+      <h2 class="sec u-mb-2" id="fbaTitle" tabindex="-1">Result feedback</h2>
       <div class="speedline"></div>
     </div>
-    <p class="hint" style="text-align:left;margin:0 0 24px">What athletes said about their own results. The negative rate split by <b>quality gate</b> and <b>confidence</b> is the signal: 👎 on runs the gate already flagged means the warning copy is too quiet; 👎 on clean, high-confidence runs means the scoring is wrong.</p>
+    <p class="hint u-m-0 u-mb-6">What athletes said about their own results. The negative rate split by <b>quality gate</b> and <b>confidence</b> is the signal: 👎 on runs the gate already flagged means the warning copy is too quiet; 👎 on clean, high-confidence runs means the scoring is wrong.</p>
     <div class="fb-stats" id="fbaStats"></div>
     <div id="fbaSplits"></div>
-    <div class="seg seg-sm" role="group" aria-label="Filter feedback" id="fbaFilter" style="margin:24px 0 16px">
+    <div class="seg seg-sm u-m-0 u-mt-6 u-mb-4" role="group" aria-label="Filter feedback" id="fbaFilter">
       <button type="button" data-fbf="all" aria-pressed="true">All</button>
       <button type="button" data-fbf="down" aria-pressed="false">Negative</button>
       <button type="button" data-fbf="up" aria-pressed="false">Positive</button>
@@ -1983,14 +1983,14 @@
        meant curl. -->
   <section id="expertAdmin" class="hidden" aria-labelledby="exaTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Private · admin only</div>
-      <h2 class="sec" id="exaTitle" tabindex="-1" style="margin-bottom:8px">Expert Review queue</h2>
+      <h2 class="sec u-mb-2" id="exaTitle" tabindex="-1">Expert Review queue</h2>
       <div class="speedline"></div>
     </div>
-    <p class="hint" style="text-align:left;margin:0 0 24px">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis, its annotated frame and — while it is still inside its retention window — the clip itself.</p>
-    <div class="ex-bar" style="position:static;background:none;padding:0;margin:0 0 16px">
-      <div class="seg seg-sm" role="group" aria-label="Filter orders" id="exaFilter" style="margin:0">
+    <p class="hint u-m-0 u-mb-6">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis, its annotated frame and — while it is still inside its retention window — the clip itself.</p>
+    <div class="ex-bar ex-bar--inline">
+      <div class="seg seg-sm u-m-0" role="group" aria-label="Filter orders" id="exaFilter">
         <button type="button" data-exf="open" aria-pressed="true">To do</button>
         <button type="button" data-exf="all" aria-pressed="false">All</button>
         <button type="button" data-exf="delivered" aria-pressed="false">Delivered</button>
@@ -1998,8 +1998,8 @@
       <!-- Mail config fails silently: a rotated key, an expired domain, a DNS
            change. All three surface as reviews that announce themselves to
            nobody. One click beats finding out from a customer. -->
-      <button class="btn btn-ghost btn-sm" type="button" id="exMailTest" style="margin-left:auto">Test email setup</button>
-      <span class="ex-status" id="exMailStatus" style="margin-right:0"></span>
+      <button class="btn btn-ghost btn-sm u-ml-auto" type="button" id="exMailTest">Test email setup</button>
+      <span class="ex-status u-mr-0" id="exMailStatus"></span>
     </div>
     <div id="exaList"></div>
     <div id="exaEditor" class="hidden"></div>
@@ -2010,7 +2010,7 @@
   <!-- Swimming: a raw clip a coach reviews by eye -- upload, then the clip's
        own page (player, order status, the offers). Drawn by renderSwim*(). -->
   <section id="swim" class="hidden" aria-labelledby="swTitle">
-    <div class="again-row" style="margin:0 0 20px">
+    <div class="again-row u-m-0 u-mb-5">
       <button class="btn btn-ghost btn-sm" id="swBack" type="button">
         <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> <span id="swBackTxt">Back</span>
       </button>
@@ -2039,7 +2039,7 @@
 </footer>
 </div><!-- /.appshell -->
 
-<noscript><div class="wrap" style="padding:24px"><p>Flapp needs JavaScript to upload and analyze clips.</p></div></noscript>
+<noscript><div class="wrap noscript-msg"><p>Flapp needs JavaScript to upload and analyze clips.</p></div></noscript>
 
 <script>
 'use strict';
@@ -2119,17 +2119,24 @@ function trackReset(){
 try{ if(window.flappAnalytics) window.flappAnalytics.register({build: BUILD}); }catch(e){}
 
 /* ---- brand colors for JS (mirror of the :root tokens above) ---- */
-const C = { blue:'#2457C5', navy:'#14181F', coral:'#F1553F', coralBtn:'#CE3F2B', warn:'#B7791F', orange:'#B7791F', ink3:'#5B6470', line:'#D9DDE3' };
-/* Semantic status scale — mirror of the --st-* tokens. `*_FILL` = the status
-   line (shapes, bands); the plain values are the text form, AA on its tint. */
-const ST = { good:'#14532A', warn:'#6B4E06', bad:'#7E1611',
-             goodFill:'#2E7D3A', warnFill:'#B7791F', badFill:'#C5221F',
-             goodBg:'#D5EBD9', warnBg:'#F7EAC8', badBg:'#F6D9D6' };
+/* Every colour the script draws with -- canvas, SVG, gradients -- lives in tokens.css.
+   SVG strings use a var() reference directly; the canvas needs real values, so tok() reads
+   them once and forgets them when <html data-theme> changes. */
+let _tok={};
+new MutationObserver(()=>{ _tok={}; }).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+function tok(name){ return _tok[name] ??= getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function tokSet(map){ const o={}; for(const k of Object.keys(map)) Object.defineProperty(o,k,{get:()=>tok(map[k]),enumerable:true}); return o; }
+/* drawn on footage: the same in light and dark */
+const OV=tokSet({skel:'--ov-skel', glow:'--ov-skel-glow', accent:'--ov-accent', ink:'--ov-ink', inkSoft:'--ov-ink-soft',
+  inkMid:'--ov-ink-mid', inkFaint:'--ov-ink-faint', label:'--ov-label', labelMute:'--ov-label-mute', halo:'--ov-halo'});
+/* the share card is always the dark card */
+const CARD=tokSet({ground:'--card-ground', top:'--card-top', ink:'--card-ink', muted:'--card-muted', soft:'--card-soft',
+  scrim:'--card-scrim', rule:'--card-rule', logo:'--card-logo', coral:'--c-coral', blue:'--brand-blue', violet:'--brand-violet'});
 /* Grade colours are retired on the Instrument system: a grade is a mono
    letter beside its number, and the number carries the meaning. The map
    stays because the share card and a few badges still ask for it, and
    every answer is ink. */
-const GRADE_COLORS = { A:C.navy, B:C.navy, C:C.navy, D:C.navy, F:C.navy };
+
 const POSITION_NAMES = { road_hoods:'Road · Hoods', road_drops:'Road · Drops', tt_aero:'Time Trial', triathlon:'Triathlon', casual:'Casual' };
 /* one-line description per position so users know which to pick (TT vs Tri, Hoods vs Drops) */
 const POSITION_HINTS = {
@@ -3443,7 +3450,7 @@ function setSteps(n){ // 1=upload 2=analyze 3=report
     el.classList.toggle('done', i<n);
     el.classList.toggle('active', i===n);
     el.querySelector('.sdot').innerHTML = i<n
-      ? '<svg class="ic" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check-sm"/></svg>' : i;
+      ? '<svg class="ic ic-xs" aria-hidden="true"><use href="#i-check-sm"/></svg>' : i;
   });
   announce(`Step ${n} of 3: ${STEP_NAMES[n]}`);
 }
@@ -3899,13 +3906,9 @@ function setGrade(sel,value){
   g.textContent=v;
   g.setAttribute('aria-label','Grade '+v);
   g.classList.toggle('grade-word', v.length>1 && v!=='—');
-  // The score card's grade is a filled chip coloured by CSS (green A/B,
-  // amber C, coral below); every other grade badge keeps its inline colour.
+  // The grade is a filled chip coloured by CSS from data-g (green A/B, amber C, coral below).
   const letter=/^[A-F]$/.test(v)?v.toLowerCase():'';
   if(letter) g.dataset.g=letter; else delete g.dataset.g;
-  if(g.closest('.scorecard')){ g.style.borderColor=''; g.style.color=''; return; }
-  const gc=GRADE_COLORS[v]||C.navy;
-  g.style.borderColor=gc; g.style.color=gc;
 }
 
 /* Sport tag: squared chip with a sport glyph (not a severity pill). */
@@ -4106,7 +4109,7 @@ const ST_WORD={good:'in range',warn:'check',bad:'out of range'};
    track. The warning and critical zones are transparent -- the marker's
    distance from the band says how far off a value is, and the chip says
    which way. `tri` (the marker colour) is overridden to ink by the CSS. */
-const GR_ZONE={optimal:ST.goodBg,warning:'transparent',critical:'transparent'};
+const GR_ZONE={get optimal(){ return tok('--st-good-bg'); }, warning:'transparent', critical:'transparent'};
 /* Warning margin = max(10% of range width, floor), matching the backend
    _metric_margin so the status pill agrees with the coach notes / score.
    The floor is 3 for degrees; metrics that aren't degrees carry their own,
@@ -4154,17 +4157,17 @@ function gradientRangeBar(value,lo,hi,unit,metric,src,pro){
     +`${GR_ZONE.warning} ${oh.toFixed(1)}%,${GR_ZONE.warning} ${wh.toFixed(1)}%,`
     +`${GR_ZONE.critical} ${wh.toFixed(1)}%,${GR_ZONE.critical} 100%)`;
   const u=unit&&unit!=='°'?' '+unit:(unit==='°'?'°':'');
-  const z=grZone(value,lo,hi,metric), tri=GR_ZONE[z];
+  const z=grZone(value,lo,hi,metric);
   const zWord=z==='optimal'?'in range':z==='warning'?'near the edge':'out of range';
   // value chip anchored at the marker so "where" and "what" read as one object
   const chipCls=z==='optimal'?'good':z==='warning'?'warn':'bad';
   const vtxt=Number.isInteger(value)?String(value):num(value,1);   // 164, not 164.0
   const chipL=Math.max(9,Math.min(91,mk));                          // keep chip off the edges
   return `<div class="grbar">`
-    +`<div class="gr-chiprow"><span class="gr-chip gr-${chipCls}" style="left:${chipL.toFixed(1)}%">${vtxt}${u}</span></div>`
-    +`<div class="gr-track" style="background:${grad}" role="img" aria-label="Value ${num(value,1)}${u}, optimal ${num(lo,1)} to ${num(hi,1)}${u}, ${zWord}">`
-    +`<span class="gr-tri" style="left:${mk.toFixed(1)}%;border-top-color:${tri}"></span>`
-    +(pro&&pro.median>=axMin&&pro.median<=axMax?`<span class="gr-pro-tick" style="left:${P(pro.median).toFixed(1)}%" title="Kona pros' median"></span>`:'')
+    +`<div class="gr-chiprow"><span class="gr-chip gr-${chipCls}" style="--x:${chipL.toFixed(1)}%">${vtxt}${u}</span></div>`
+    +`<div class="gr-track" style="--track:${grad}" role="img" aria-label="Value ${num(value,1)}${u}, optimal ${num(lo,1)} to ${num(hi,1)}${u}, ${zWord}">`
+    +`<span class="gr-tri" style="--x:${mk.toFixed(1)}%"></span>`
+    +(pro&&pro.median>=axMin&&pro.median<=axMax?`<span class="gr-pro-tick" style="--x:${P(pro.median).toFixed(1)}%" title="Kona pros' median"></span>`:'')
     +`</div>`
     +`<div class="gr-scale"><span>${num(axMin,0)}</span>`
     +`<span class="gr-opt">${num(lo,0)}–${num(hi,0)}${u}</span>`
@@ -4274,9 +4277,9 @@ function measBar(m,st){
   const pro=r.pro;
   const u=measUnit(unit);
   return `<div class="mbar" role="img" aria-label="${esc(`${m.val}${u}, reference ${measRange(lo,hi,unit)}, ${st.word.toLowerCase()}`)}">`
-    +`<span class="mbar-band" style="left:${P(lo).toFixed(1)}%;width:${(P(hi)-P(lo)).toFixed(1)}%"></span>`
-    +(pro&&pro.median>=min&&pro.median<=max?`<span class="mbar-pro" style="left:${P(pro.median).toFixed(1)}%" title="Kona pros' median"></span>`:'')
-    +`<span class="mbar-mark ${st.cls}" style="left:${P(v).toFixed(1)}%"></span></div>`
+    +`<span class="mbar-band" style="--x:${P(lo).toFixed(1)}%;--w:${(P(hi)-P(lo)).toFixed(1)}%"></span>`
+    +(pro&&pro.median>=min&&pro.median<=max?`<span class="mbar-pro" style="--x:${P(pro.median).toFixed(1)}%" title="Kona pros' median"></span>`:'')
+    +`<span class="mbar-mark ${st.cls}" style="--x:${P(v).toFixed(1)}%"></span></div>`
     +`<div class="mbar-cap">${measRange(lo,hi,unit)}`
     // The Kona field, where there is one: shown beside the band, never graded.
     +(pro?` <span class="mbar-procap"><span class="mbar-promark" aria-hidden="true"></span>Kona pros ${num(pro.median,0)}${u} <small>· middle half ${num(pro.q1,0)}–${num(pro.q3,0)}${u}</small></span>`:'')
@@ -4517,7 +4520,7 @@ function aeroGauge(cur,tgt){
     <text x="${W-pad}" y="${H-5}" text-anchor="end" font-size="10" fill="var(--c-ink-soft)">upright</text>
     <line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${y-11}" y2="${y+11}" stroke="var(--st-good-fill)" stroke-width="2.5"/>
     <text x="${xt.toFixed(1)}" y="${y-15}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--st-good)">target ${tgt}°</text>
-    <circle cx="${xc.toFixed(1)}" cy="${y}" r="7" fill="var(--c-blue)" stroke="#fff" stroke-width="2.5"/>
+    <circle cx="${xc.toFixed(1)}" cy="${y}" r="7" fill="var(--c-blue)" stroke="var(--c-bg)" stroke-width="2.5"/>
     <text x="${xc.toFixed(1)}" y="${y+24}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--c-blue)">now ${cur}°</text>
   </svg>`;
 }
@@ -4607,7 +4610,7 @@ function renderAeroPanel(s){
     state.aero=null;
     host.innerHTML=`<div class="aero-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
       <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag.${anyAvail?'':' Well-placed: no meaningful aero gains within a safe fit.'}</span></div>
-      ${(anyAvail||head)?`<div class="aero-levers" style="margin-top:12px">${(anyAvail?levers:[head]).map(leverRow).join('')}</div>`:''}
+      ${(anyAvail||head)?`<div class="aero-levers u-mt-3">${(anyAvail?levers:[head]).map(leverRow).join('')}</div>`:''}
       <p class="aero-disc">${esc(ae.disclaimer||'')}</p>${aeroMeasuredHtml()}`;
     blk.classList.remove('hidden'); return;
   }
@@ -4640,7 +4643,7 @@ function renderAeroPanel(s){
       <div class="aero-w-cap" id="aeroCap"></div>
     </div>
     <div class="aero-speed"><span class="aero-speed-lbl">Your race</span><div class="seg seg-sm" role="group" aria-label="Race distance">${distBtns}</div></div>
-    <div class="aero-speed" style="margin-top:8px"><span class="aero-speed-lbl">Bike speed</span><div class="seg seg-sm" role="group" aria-label="Your average bike speed">${spdBtns}</div><span class="aero-speed-unit">km/h</span></div>
+    <div class="aero-speed u-mt-2"><span class="aero-speed-lbl">Bike speed</span><div class="seg seg-sm" role="group" aria-label="Your average bike speed">${spdBtns}</div><span class="aero-speed-unit">km/h</span></div>
     <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Here's where the time is:</p>
     ${nz?aeroGauge(ae.trunk_angle, nz.target_trunk_angle):''}
     <div class="aero-levers">${levers.map(leverRow).join('')}</div>
@@ -4765,7 +4768,7 @@ function renderPhotoContact(res){
   host.innerHTML=`<div class="tablewrap"><table class="data"><caption class="visually-hidden">Readings at the instant the foot lands</caption>
     <thead><tr><th scope="col">Reading</th><th scope="col" class="num">Value</th><th scope="col">What it is</th><th scope="col" class="col-status">Status</th></tr></thead>
     <tbody>${rows.join('')||'<tr><td colspan="4" class="muted">The landing leg could not be read on this frame.</td></tr>'}</tbody></table></div>
-    <p class="muted" style="margin-top:8px">Measured on the leg on the ground. The dashed line on the picture drops from your hip; the bar runs out to where the foot landed.</p>`;
+    <p class="muted u-mt-2">Measured on the leg on the ground. The dashed line on the picture drops from your hip; the bar runs out to where the foot landed.</p>`;
 }
 /* Mirror backend _classify_angle_status so hip re-scoring on a phase change is
    instant + client-side (the measured angle never changes -- only the band). */
@@ -4947,28 +4950,28 @@ function hobDrawOn(ctx, W, H, k, hip, bike, aspect, shoulder, live){
   const [cx,cy]=px(C), [hx,hy]=px(hip);
   ctx.lineCap='round';
   // level stub on the back side, the line up to the hip
-  ctx.setLineDash([6*k,5*k]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle='rgba(255,255,255,.85)';
+  ctx.setLineDash([6*k,5*k]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle=OV.inkSoft;
   ctx.beginPath(); ctx.moveTo(cx-facing*70*k,cy); ctx.lineTo(cx,cy); ctx.stroke(); ctx.setLineDash([]);
   if(bike[HOB_FA]&&bike[HOB_RA]&&(bike[HOB_FA].set||bike[HOB_RA].set)){ const [ax,ay]=px(bike[HOB_FA]), [bx,by]=px(bike[HOB_RA]);
-    ctx.setLineDash([3*k,5*k]); ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]); }
-  [[7*k,'rgba(14,17,22,.6)'],[3*k,'#FFA82E']].forEach(([w,col])=>{ ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col;
+    ctx.setLineDash([3*k,5*k]); ctx.strokeStyle=OV.inkFaint; ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]); }
+  [[7*k,OV.halo],[3*k,OV.accent]].forEach(([w,col])=>{ ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col;
     ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(hx,hy); ctx.stroke(); });
-  if(bike[HOB_P]&&bike[HOB_P].set){ const [pxx,pyy]=px(bike[HOB_P]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle='#FFA82E';
+  if(bike[HOB_P]&&bike[HOB_P].set){ const [pxx,pyy]=px(bike[HOB_P]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle=OV.accent;
     ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(pxx,pyy); ctx.stroke(); }
   // the four points: orange rings with a short label
   [HOB_C,HOB_P,HOB_FA,HOB_RA].forEach(L=>{ const p=bike[L]; if(!p) return; const [x,y]=px(p);
     const r=Math.max(6,8*k), isC=L===HOB_C, on=isC||p.set, isLive=live===L;
     ctx.beginPath(); ctx.arc(x,y,r*(isLive?1.7:1.3),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k);
-    ctx.strokeStyle=on?'#FFA82E':'rgba(255,255,255,.7)'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(x,y,r*0.45,0,Math.PI*2); ctx.fillStyle=on?'#FFA82E':'rgba(255,255,255,.55)'; ctx.fill();
+    ctx.strokeStyle=on?OV.accent:OV.inkMid; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x,y,r*0.45,0,Math.PI*2); ctx.fillStyle=on?OV.accent:OV.inkFaint; ctx.fill();
     const fs=Math.max(10,12*k); ctx.font=`700 ${fs}px system-ui,sans-serif`; const txt=HOB_SHORT[L]+(on?'':' ·optional'), tw=ctx.measureText(txt).width+10*k;
     const lx=Math.min(W-tw-2,Math.max(2,x+r*1.6)), ly=Math.max(fs+4,y-r*1.2);
-    ctx.fillStyle='rgba(26,30,36,.85)'; ctx.beginPath(); ctx.roundRect(lx,ly-fs-2*k,tw,fs+6*k,4*k); ctx.fill();
-    ctx.fillStyle=on?'#FFA82E':'#ddd'; ctx.fillText(txt,lx+5*k,ly); });
+    ctx.fillStyle=OV.label; ctx.beginPath(); ctx.roundRect(lx,ly-fs-2*k,tw,fs+6*k,4*k); ctx.fill();
+    ctx.fillStyle=on?OV.accent:OV.labelMute; ctx.fillText(txt,lx+5*k,ly); });
   const ang=hobAngle(hip,bike,aspect,shoulder);
   if(ang!=null){ const txt=`hip over crank ${ang.toFixed(1)}°`, fs=Math.max(12,15*k); ctx.font=`700 ${fs}px system-ui,sans-serif`;
     const tw=ctx.measureText(txt).width+16*k, x=Math.min(W-tw-4,Math.max(4,(cx+hx)/2+14*k)), y=Math.max(fs+8,(cy+hy)/2);
-    ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); }
+    ctx.fillStyle=OV.label; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill(); ctx.fillStyle=OV.ink; ctx.fillText(txt,x+8*k,y); }
 }
 /* The server's find (biomechanics/bb_detect.py) as editor points: the crank
    axle flagged auto (the athlete confirms or drags it), the wheel axles only
@@ -5020,12 +5023,12 @@ function hobScale(h){
     <rect x="${X(ag[0]).toFixed(1)}" y="${y-7}" width="${(X(ag[1])-X(ag[0])).toFixed(1)}" height="14" rx="3" fill="var(--c-panel)" stroke="var(--c-line-strong)"/>
     <rect x="${X(pro[0]).toFixed(1)}" y="${y-7}" width="${(X(pro[1])-X(pro[0])).toFixed(1)}" height="14" rx="3" fill="var(--c-brand-navy)" opacity=".85"/>
     <line x1="${X(agM).toFixed(1)}" x2="${X(agM).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="var(--c-ink)" stroke-width="2"/>
-    <line x1="${X(proM).toFixed(1)}" x2="${X(proM).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="#fff" stroke-width="2"/>
+    <line x1="${X(proM).toFixed(1)}" x2="${X(proM).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="var(--c-bg)" stroke-width="2"/>
     <text x="${(X(agM)+30).toFixed(1)}" y="${y+24}" text-anchor="end" font-size="10" fill="var(--c-ink-soft)">age-groupers ${r(agM)}°</text>
     <text x="${(X(proM)-10).toFixed(1)}" y="${y+24}" text-anchor="start" font-size="10" fill="var(--c-ink-soft)">pros ${r(proM)}°</text>
     <text x="${pad}" y="${H-4}" font-size="10" fill="var(--c-ink-faint)">further back</text>
     <text x="${W-pad}" y="${H-4}" text-anchor="end" font-size="10" fill="var(--c-ink-faint)">further forward</text>
-    <circle cx="${X(angle).toFixed(1)}" cy="${y}" r="7" fill="var(--c-blue)" stroke="#fff" stroke-width="2.5"/>
+    <circle cx="${X(angle).toFixed(1)}" cy="${y}" r="7" fill="var(--c-blue)" stroke="var(--c-bg)" stroke-width="2.5"/>
     <text x="${Math.max(pad+26,Math.min(W-pad-26,X(angle))).toFixed(1)}" y="${y-13}" text-anchor="middle" font-size="11" font-weight="800" fill="var(--c-blue)">you ${angle}°${angle<lo?' ◂':angle>hi?' ▸':''}</text>
   </svg>`;
 }
@@ -5076,14 +5079,14 @@ function renderHob(res, which, opts){
       ${canMark?`<div class="aero-foot"><button class="btn btn-ghost btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark again</button></div>`:''}`;
   } else if(locked){
     body=`<p class="hob-lead">${introTxt}</p>
-      <p class="hint" style="text-align:left"><span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Full plan</span> Mark the crank axle on your ${which==='photo'?'photo':'clip'} and get your own number against the field. <a href="#" onclick="openPricing();return false">See plans →</a></p>`;
+      <p class="hint"><span class="lock-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Full plan</span> Mark the crank axle on your ${which==='photo'?'photo':'clip'} and get your own number against the field. <a href="#" onclick="openPricing();return false">See plans →</a></p>`;
   } else {
     body=`<p class="hob-lead">${introTxt}</p>
       ${canMark?`<div class="aero-foot"><button class="btn btn-primary btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark the crank axle</button>
-        <span class="hint" style="margin-left:10px">One drag on your ${which==='photo'?'photo':'clip'}; the pedal and wheel axles are optional.</span></div>`
+        <span class="hint u-ml-3">One drag on your ${which==='photo'?'photo':'clip'}; the pedal and wheel axles are optional.</span></div>`
         :(which==='history'
-          ? `<p class="hint" style="text-align:left">The clip behind this report is no longer stored (clips are kept for your plan’s retention period), so the crank can’t be marked on it. Analyze the clip again to mark it.</p>`
-          : `<p class="hint" style="text-align:left">Open this analysis with the ${which==='photo'?'photo':'clip'} still in the browser to mark the crank — after a reload the file is gone.</p>`)}`;
+          ? `<p class="hint">The clip behind this report is no longer stored (clips are kept for your plan’s retention period), so the crank can’t be marked on it. Analyze the clip again to mark it.</p>`
+          : `<p class="hint">Open this analysis with the ${which==='photo'?'photo':'clip'} still in the browser to mark the crank — after a reload the file is gone.</p>`)}`;
   }
   host.innerHTML=body; blk.classList.remove('hidden');
 }
@@ -5236,7 +5239,7 @@ function lmedDraw(){
   const P=i=>{ const p=pts[i]; return (p&&p.x!=null&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
   ctx.lineCap='round'; ctx.lineJoin='round';
   // bones: glow, then line
-  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
+  [[8*k,OV.glow],[3*k,OV.skel]].forEach(([w,col])=>{
     ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
     LMED_BONES[lmed.side].forEach(([a,b])=>{ if(pelvis!=null&&a===sh&&b===hipI) b=pelvis;
       const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
@@ -5245,40 +5248,40 @@ function lmedDraw(){
   // run, far stance leg: the trunk runs to the visible hip; the leg's own hip
   // (the draggable "hip") is hidden behind the body, joined to it by a dash
   if(pelvis!=null){ const A=P(pelvis), B=P(hipI);
-    if(A&&B){ ctx.setLineDash([6*k,5*k]); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#fff';
+    if(A&&B){ ctx.setLineDash([6*k,5*k]); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle=OV.ink;
       ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); ctx.stroke(); ctx.setLineDash([]);
-      ctx.beginPath(); ctx.arc(A[0],A[1],Math.max(3,4*k),0,Math.PI*2); ctx.fillStyle='#3DFF6E'; ctx.fill(); } }
+      ctx.beginPath(); ctx.arc(A[0],A[1],Math.max(3,4*k),0,Math.PI*2); ctx.fillStyle=OV.skel; ctx.fill(); } }
   // the helmet reading: a level line through the top of the back, and the gap up to the helmet
   const B=P(LMED_BACK), T=P(LMED_HELMET);
-  if(B&&T){ ctx.setLineDash([8*k,6*k]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle='#3DFF6E';
+  if(B&&T){ ctx.setLineDash([8*k,6*k]); ctx.lineWidth=Math.max(1,2*k); ctx.strokeStyle=OV.skel;
     ctx.beginPath(); ctx.moveTo(Math.min(B[0],T[0])-30*k,B[1]); ctx.lineTo(Math.max(B[0],T[0])+30*k,B[1]); ctx.stroke(); ctx.setLineDash([]);
-    ctx.strokeStyle='#FFA82E'; ctx.beginPath(); ctx.moveTo(T[0],B[1]); ctx.lineTo(T[0],T[1]); ctx.stroke(); }
+    ctx.strokeStyle=OV.accent; ctx.beginPath(); ctx.moveTo(T[0],B[1]); ctx.lineTo(T[0],T[1]); ctx.stroke(); }
   if(lmed.mode==='bike'){ const n=hobNear(lmed.side), hip=pts[n.H], sh=pts[n.S];
-    if(hip&&hip.x!=null){ const hp=[hip.x*W,hip.y*H]; ctx.beginPath(); ctx.arc(hp[0],hp[1],Math.max(5,7*k),0,Math.PI*2); ctx.fillStyle='#3DFF6E'; ctx.fill(); }
+    if(hip&&hip.x!=null){ const hp=[hip.x*W,hip.y*H]; ctx.beginPath(); ctx.arc(hp[0],hp[1],Math.max(5,7*k),0,Math.PI*2); ctx.fillStyle=OV.skel; ctx.fill(); }
     const bike={}; [HOB_C,HOB_P,HOB_FA,HOB_RA].forEach(L=>{ if(pts[L]) bike[L]={...pts[L], set:!!(pts[L].set||lmed.moved[L])}; });
     hobDrawOn(ctx,W,H,k,hip,bike,lmed.aspect,sh,lmed.drag); return; }
   // draggable joints: ring + dot; a moved one carries a second ring
   dots.forEach(i=>{ const p=P(i); if(!p) return;
     const r=Math.max(5,7*k), moved=!!lmed.moved[i], live=lmed.drag===i;
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
-    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle=OV.ink; ctx.stroke();
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?OV.accent:OV.skel; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle=OV.accent; ctx.stroke(); }
   });
   // live helmet reading while either of its points is dragged
   if(lmed.drag===LMED_BACK||lmed.drag===LMED_HELMET){ const v=lmedHelmetPct(pts), p=P(lmed.drag);
     if(v!=null&&p){ const txt=`Helmet ${v>=0?'+':''}${Math.round(v)}%`, fs=Math.max(12,15*k);
       ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;
       const x=Math.min(W-tw-4, Math.max(4, p[0]+18*k)), y=Math.max(fs+8, p[1]-18*k);
-      ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
-      ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } }
+      ctx.fillStyle=OV.label; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
+      ctx.fillStyle=OV.ink; ctx.fillText(txt,x+8*k,y); } }
   // live angle at the vertex being dragged
   const tri=lmed.sport==='run'&&(lmed.drag===11||lmed.drag===12||(pelvis!=null&&lmed.drag===hipI))?null:LMED_VERTEX[lmed.side][lmed.drag];
   if(tri){ const [a,b,cc]=tri.map(i=>pts[i]); const ang=lmedAngle(a,b,cc); const p=P(lmed.drag);
     if(ang!=null&&p){ const txt=`${LMED_NAMES[lmed.drag]} ${Math.round(ang)}°`, fs=Math.max(12,15*k);
       ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;
       const x=Math.min(W-tw-4, Math.max(4, p[0]+18*k)), y=Math.max(fs+8, p[1]-18*k);
-      ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
-      ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } }
+      ctx.fillStyle=OV.label; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
+      ctx.fillStyle=OV.ink; ctx.fillText(txt,x+8*k,y); } }
 }
 function lmedCanvasPoint(ev){
   const c=$('#pEdCanvas'), r=c.getBoundingClientRect();
@@ -5297,7 +5300,7 @@ function lmedLoupe(ev,show){
   const q=lmedCanvasPoint(ev), sz=132, src=sz/LMED_LOUPE_ZOOM*q.cssScale;
   const g=lp.getContext('2d'); g.clearRect(0,0,sz,sz);
   g.drawImage(c, q.x*c.width-src/2, q.y*c.height-src/2, src, src, 0,0,sz,sz);
-  g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=1; g.beginPath(); g.moveTo(sz/2-10,sz/2); g.lineTo(sz/2+10,sz/2); g.moveTo(sz/2,sz/2-10); g.lineTo(sz/2,sz/2+10); g.stroke();
+  g.strokeStyle=OV.inkSoft; g.lineWidth=1; g.beginPath(); g.moveTo(sz/2-10,sz/2); g.lineTo(sz/2+10,sz/2); g.moveTo(sz/2,sz/2-10); g.lineTo(sz/2,sz/2+10); g.stroke();
   // above the finger, clamped inside the picture
   let lx=ev.clientX-wr.left-sz/2, ly=ev.clientY-wr.top-sz-28;
   if(ly<0) ly=ev.clientY-wr.top+28;
@@ -5444,11 +5447,10 @@ const FP_EVENT_NAMES={contact:'step lands',toe_off:'step leaves',bdc:'BDC',tdc:'
 /* Statuses are the report's own tokens; the strip and the curve read them
    from the stylesheet so a theme change reaches the canvas too. */
 function fpTokens(){
-  const cs=getComputedStyle(document.documentElement), g=n=>cs.getPropertyValue(n).trim();
-  return {good:g('--st-good-fill')||'#2E7D3A', warn:g('--st-warn-fill')||'#B7791F', bad:g('--st-bad-fill')||'#C5221F',
-    band:g('--st-good-bg')||'#D5EBD9', ink:g('--c-ink')||'#14181F', faint:g('--c-ink-faint')||'#6B7280',
-    line:g('--c-line')||'#E5E7EB', bg:g('--c-bg')||'#fff', blue:g('--c-blue')||'#2457C5',
-    stance:g('--c-orange')||'#D97706', swing:g('--c-blue-soft')||'#BFD3F7', mono:g('--f-mono')||'ui-monospace,monospace'};
+  return {good:tok('--st-good-fill'), warn:tok('--st-warn-fill'), bad:tok('--st-bad-fill'),
+    band:tok('--st-good-bg'), ink:tok('--c-ink'), faint:tok('--c-ink-faint'),
+    line:tok('--c-line'), bg:tok('--c-bg'), blue:tok('--c-blue'),
+    stance:tok('--c-orange'), swing:tok('--c-blue-soft'), mono:tok('--f-mono')};
 }
 /* Same rule as the backend's overlay_style.status_for and the table. */
 function fpStatus(v,band,openOk){
@@ -5817,21 +5819,21 @@ FlappPlayer.prototype={
       for(let i=Math.max(0,k-N);i<=k;i++){
         const p=col[i]; if(!p||p[2]<0.3){ prev=null; continue; }
         const q=[p[0]*W,p[1]*H], a=(i-(k-N))/N;
-        if(prev){ g.strokeStyle='#FFA82E'; g.globalAlpha=0.15+0.85*a; g.lineWidth=Math.max(1,(1+3*a)*s);
+        if(prev){ g.strokeStyle=OV.accent; g.globalAlpha=0.15+0.85*a; g.lineWidth=Math.max(1,(1+3*a)*s);
           g.beginPath(); g.moveTo(prev[0],prev[1]); g.lineTo(q[0],q[1]); g.stroke(); }
         prev=q;
       }
       g.globalAlpha=1;
-      if(prev){ g.fillStyle='#FFA82E'; g.beginPath(); g.arc(prev[0],prev[1],Math.max(4,5*s),0,Math.PI*2); g.fill();
-        g.lineWidth=Math.max(1,1.5*s); g.strokeStyle='#fff'; g.stroke(); }
+      if(prev){ g.fillStyle=OV.accent; g.beginPath(); g.arc(prev[0],prev[1],Math.max(4,5*s),0,Math.PI*2); g.fill();
+        g.lineWidth=Math.max(1,1.5*s); g.strokeStyle=OV.ink; g.stroke(); }
     }
-    [[8*s,'rgba(30,190,80,.45)'],[3*s,'#3DFF6E']].forEach(([w,col])=>{
+    [[8*s,OV.glow],[3*s,OV.skel]].forEach(([w,col])=>{
       g.lineWidth=Math.max(1,w); g.strokeStyle=col; g.beginPath();
       tl.bones.forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ g.moveTo(A[0],A[1]); g.lineTo(B[0],B[1]); } });
       g.stroke(); });
     Object.keys(tl.points).forEach(j=>{ const p=P(+j); if(!p) return; const r=Math.max(4,5*s);
-      g.beginPath(); g.arc(p[0],p[1],r,0,Math.PI*2); g.fillStyle='#3DFF6E'; g.fill();
-      g.lineWidth=Math.max(1,1.5*s); g.strokeStyle='#fff'; g.stroke(); });
+      g.beginPath(); g.arc(p[0],p[1],r,0,Math.PI*2); g.fillStyle=OV.skel; g.fill();
+      g.lineWidth=Math.max(1,1.5*s); g.strokeStyle=OV.ink; g.stroke(); });
     const fs=Math.max(11,12*s); g.font=`700 ${fs}px ${this.tok.mono}`;
     this.metrics.filter(m=>m.callout&&m.joint!=null).forEach((m,ci)=>{
       // A joint drawn on a frame whose angle was refused (the knee at a leg
@@ -5843,14 +5845,14 @@ FlappPlayer.prototype={
       const right=p[0]<W*0.6; const x=right?Math.min(W-tw-4,p[0]+22*s):Math.max(4,p[0]-22*s-tw);
       const y=Math.max(fs+6,Math.min(H-6,p[1]-14*s+ci*0));
       g.strokeStyle=col; g.lineWidth=Math.max(1,1.5*s); g.beginPath(); g.moveTo(p[0],p[1]); g.lineTo(right?x:x+tw,y-fs/2+2); g.stroke();
-      g.fillStyle='rgba(20,24,31,.88)'; g.beginPath(); g.roundRect(x,y-fs-4*s,tw,fs+10*s,4*s); g.fill();
+      g.fillStyle=OV.label; g.beginPath(); g.roundRect(x,y-fs-4*s,tw,fs+10*s,4*s); g.fill();
       g.fillStyle=col; g.fillRect(x,y-fs-4*s,3*s,fs+10*s);
-      g.fillStyle='#fff'; g.textAlign='left'; g.fillText(txt,x+8*s,y); });
+      g.fillStyle=OV.ink; g.textAlign='left'; g.fillText(txt,x+8*s,y); });
     // The phase, top-left, on a run.
     if(tl.phases&&tl.phase_legend){ const ph=tl.phase_legend[tl.phases[k]];
       if(ph&&ph!=='unknown'){ const t=(FP_PHASE_NAMES[ph]||ph).toUpperCase(); g.font=`700 ${fs}px ${this.tok.mono}`;
-        const tw=g.measureText(t).width+16*s; g.fillStyle='rgba(20,24,31,.8)'; g.fillRect(10*s,10*s,tw,fs+10*s);
-        g.fillStyle='#fff'; g.fillText(t,18*s,10*s+fs+2*s); } }
+        const tw=g.measureText(t).width+16*s; g.fillStyle=OV.label; g.fillRect(10*s,10*s,tw,fs+10*s);
+        g.fillStyle=OV.ink; g.fillText(t,18*s,10*s+fs+2*s); } }
   }
 };
 let fpMain=null;
@@ -5943,7 +5945,7 @@ async function mountCompareVideo(Ae,Be,sides){
   // The screen moved on while these were in flight.
   if(!host.isConnected || !state.cmp || (state.cmp.aId!==Ae.id&&!sides) ) { if(!host.isConnected) return; }
   const ua=oa&&oa.overlays&&oa.overlays.single, ub=ob&&ob.overlays&&ob.overlays.single;
-  if(!ua||!ub){ host.innerHTML=`<p class="hint" style="text-align:left">The two clips can’t be played together — ${!ua&&!ub?'neither overlay is':'one overlay is no longer'} on the server (clips are kept for their retention period, the numbers above are kept for good).</p>`; return; }
+  if(!ua||!ub){ host.innerHTML=`<p class="hint">The two clips can’t be played together — ${!ua&&!ub?'neither overlay is':'one overlay is no longer'} on the server (clips are kept for their retention period, the numbers above are kept for good).</p>`; return; }
   const api=window.FLAPP_API_BASE||'';
   const sport=(ta&&ta.timeline&&ta.timeline.sport)||state.cmp.sport;
   // "step" on a run: the gait phase says a foot is down, either foot, so
@@ -6196,27 +6198,27 @@ function vedDraw(){
   ctx.clearRect(0,0,W,H);
   const P=L=>{ const p=vedPoint(L); return (p&&p.vis>=0.3)?[p.x*W,p.y*H]:null; };
   ctx.lineCap='round'; ctx.lineJoin='round';
-  [[8*k,'rgba(30,190,80,.45)'],[3*k,'#3DFF6E']].forEach(([w,col])=>{
+  [[8*k,OV.glow],[3*k,OV.skel]].forEach(([w,col])=>{
     ctx.lineWidth=Math.max(1,w); ctx.strokeStyle=col; ctx.beginPath();
     LMED_BONES[ved.side].forEach(([a,b])=>{ const A=P(a),B=P(b); if(A&&B){ ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); } });
     ctx.stroke();
   });
   if(ved.mode==='bike'){ const n=hobNear(ved.side), hip=vedPoint(n.H), sh=vedPoint(n.S);
-    if(hip){ ctx.beginPath(); ctx.arc(hip.x*W,hip.y*H,Math.max(5,7*k),0,Math.PI*2); ctx.fillStyle='#3DFF6E'; ctx.fill(); }
+    if(hip){ ctx.beginPath(); ctx.arc(hip.x*W,hip.y*H,Math.max(5,7*k),0,Math.PI*2); ctx.fillStyle=OV.skel; ctx.fill(); }
     hobDrawOn(ctx,W,H,k,hip,ved.bike,ved.aspect,sh,ved.drag); return; }
   ved.draggable.forEach(L=>{ const p=P(L); if(!p) return;
     const r=Math.max(5,7*k), moved=!!(ved.pending[L]||ved.existing[L]), live=ved.drag===L;
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle='#fff'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?'#FFA82E':'#3DFF6E'; ctx.fill();
-    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle='#FFA82E'; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*(live?1.6:1.25),0,Math.PI*2); ctx.lineWidth=Math.max(1.5,2*k); ctx.strokeStyle=OV.ink; ctx.stroke();
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*0.55,0,Math.PI*2); ctx.fillStyle=moved?OV.accent:OV.skel; ctx.fill();
+    if(moved){ ctx.beginPath(); ctx.arc(p[0],p[1],r*1.9,0,Math.PI*2); ctx.lineWidth=Math.max(1,1.5*k); ctx.strokeStyle=OV.accent; ctx.stroke(); }
   });
   const tri=LMED_VERTEX[ved.side][ved.drag];
   if(tri){ const pts=tri.map(vedPoint); if(pts.every(Boolean)){ const ang=lmedAngle(pts[0],pts[1],pts[2],ved.aspect), p=P(ved.drag);
     if(ang!=null&&p){ const txt=`${LMED_NAMES[ved.drag]} ${Math.round(ang)}°`, fs=Math.max(12,15*k);
       ctx.font=`700 ${fs}px system-ui,sans-serif`; const tw=ctx.measureText(txt).width+16*k;
       const x=Math.min(W-tw-4, Math.max(4, p[0]+18*k)), y=Math.max(fs+8, p[1]-18*k);
-      ctx.fillStyle='rgba(26,30,36,.9)'; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
-      ctx.fillStyle='#fff'; ctx.fillText(txt,x+8*k,y); } } }
+      ctx.fillStyle=OV.label; ctx.beginPath(); ctx.roundRect(x,y-fs-4*k,tw,fs+10*k,6*k); ctx.fill();
+      ctx.fillStyle=OV.ink; ctx.fillText(txt,x+8*k,y); } } }
 }
 function vedCanvasPoint(ev){ const c=$('#vEdCanvas'), r=c.getBoundingClientRect();
   return {x:(ev.clientX-r.left)/r.width, y:(ev.clientY-r.top)/r.height, cssScale:c.width/r.width}; }
@@ -6231,7 +6233,7 @@ function vedLoupe(ev,show){
   const g=lp.getContext('2d'); g.clearRect(0,0,sz,sz);
   try{ g.drawImage(v, q.x*v.videoWidth-srcW/2, q.y*v.videoHeight-srcW/2, srcW, srcW, 0,0,sz,sz); }catch(e){}
   g.drawImage(c, q.x*c.width-srcC/2, q.y*c.height-srcC/2, srcC, srcC, 0,0,sz,sz);
-  g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=1; g.beginPath(); g.moveTo(sz/2-10,sz/2); g.lineTo(sz/2+10,sz/2); g.moveTo(sz/2,sz/2-10); g.lineTo(sz/2,sz/2+10); g.stroke();
+  g.strokeStyle=OV.inkSoft; g.lineWidth=1; g.beginPath(); g.moveTo(sz/2-10,sz/2); g.lineTo(sz/2+10,sz/2); g.moveTo(sz/2,sz/2-10); g.lineTo(sz/2,sz/2+10); g.stroke();
   let lx=ev.clientX-wr.left-sz/2, ly=ev.clientY-wr.top-sz-28; if(ly<0) ly=ev.clientY-wr.top+28;
   lx=Math.max(0,Math.min(wr.width-sz,lx)); ly=Math.max(0,Math.min(wr.height-sz,ly));
   lp.style.left=lx+'px'; lp.style.top=ly+'px'; lp.classList.remove('hidden');
@@ -6601,12 +6603,12 @@ function renderCoachCard(){
         <p class="hint">PNG, JPEG or WebP; shown about 48 px tall on the report.</p></div></div>
       <div><label for="coachCues">Cue library — one per line</label>
         <textarea id="coachCues" placeholder="Land under your hips, not in front of them&#10;Quiet upper body — let the legs do the work&#10;Heel drops a touch earlier through the bottom">${esc((COACH.cues||[]).join('\n'))}</textarea>
-        <p class="hint" style="margin:4px 0 0">Offered as one-click chips when you write a note on a report. ${(COACH.cues||[]).length} of 40.</p></div>
+        <p class="hint u-m-0 u-mt-1">Offered as one-click chips when you write a note on a report. ${(COACH.cues||[]).length} of 40.</p></div>
       <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="coachSave">Save coach profile</button><span class="cnote-status" id="coachStatus"></span></div>
     </div>
     <div class="coachgrid">
       <h4>Framing check · GO / NO-GO</h4>
-      <p class="hint" style="text-align:left;margin:0">How tall the athlete must be in the frame the analysis sees. The standard bars are 300 and 400 px on a bike, 200 and 300 px on a run; bars you save here apply to both, on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
+      <p class="hint u-m-0">How tall the athlete must be in the frame the analysis sees. The standard bars are 300 and 400 px on a bike, 200 and 300 px on a run; bars you save here apply to both, on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
       <div class="gridrow">
         <div><label for="capTiny">NO-GO under</label><input type="number" id="capTiny" min="200" max="600" step="10" value="${(COACH.capture&&COACH.capture.tiny_px)||300}"> <span class="hint">px</span></div>
         <div><label for="capSmall">Warn under</label><input type="number" id="capSmall" min="200" max="800" step="10" value="${(COACH.capture&&COACH.capture.small_px)||400}"> <span class="hint">px</span></div>
@@ -6777,7 +6779,7 @@ async function renderNotesOffer(hostId, entryId){
       <p class="no-p">Your Coach Notes are on this report, under <b>Coach Notes</b> above. Want the full picture — which numbers to trust, a four-week plan, position trade-offs? That is the Expert Review${credits>0?', and your plan already includes one':''}.</p>
       <div class="no-cta">${credits>0?useReview
         :`<button class="btn btn-outline btn-sm" type="button" onclick="startCheckout('expert',${esc(JSON.stringify(entryId))})">Expert Review${expertPriceLabel()}</button>`}</div>
-      <div id="${hostId}Recheck" style="margin-top:14px"></div>`;
+      <div id="${hostId}Recheck" class="u-mt-4"></div>`;
   } else if(open){
     // The order's own status line talks about "your review"; the notes say
     // it in their own words.
@@ -7195,6 +7197,9 @@ async function downloadReportPdf(id){
     return true;
   }catch(_e){ return false; }
 }
+/* The PDF opens in a blank window first; it has no stylesheet yet, so this one line
+   carries its own font and ink (the only inline style left in this file). */
+function printWaitHtml(t){ return '<p style="font:16px system-ui,sans-serif;padding:24px;color:#14294B">'+esc(t)+'</p>'; }
 async function openReportPdf(){
   const id=printEntryId||state.videoHistId||state.photoHistId;
   if(!id){ window.print(); return; }
@@ -7203,7 +7208,7 @@ async function openReportPdf(){
   if(await downloadReportPdf(id)) return;
   const w=window.open('','_blank');
   if(!w){ window.print(); return; }
-  w.document.write('<p style="font:16px system-ui,sans-serif;padding:24px;color:#14294B">Preparing your report…</p>');
+  w.document.write(printWaitHtml('Preparing your report…'));
   track('report_pdf_opened',{});
   try{
     const r=await fetch(meUrl(id,'report'),{headers:authHeaders()});
@@ -7341,7 +7346,7 @@ function renderProfiles(){
   if(PROFILES.error){ list.innerHTML=`<div class="prof-row"><span class="p-name">Your profiles didn’t load.</span><span></span><span></span><span class="p-acts"><button type="button" data-retryprofiles="1">Retry</button></span></div>`;
     list.querySelector('[data-retryprofiles]').addEventListener('click',()=>loadProfiles().then(renderProfiles)); return; }
   if(!rows.length){
-    list.innerHTML=`<div class="prof-row"><span class="p-name" style="color:var(--c-ink-faint);font-weight:400">${f==='archived'?'Nothing archived.':'No profiles yet — add the bike or the shoes you film in.'}</span></div>`;
+    list.innerHTML=`<div class="prof-row"><span class="p-name p-name--empty">${f==='archived'?'Nothing archived.':'No profiles yet — add the bike or the shoes you film in.'}</span></div>`;
   } else {
     list.innerHTML=rows.map(p=>`<div class="prof-row${p.archived?' is-archived':''}" data-id="${p.id}">
       <div><div class="p-name">${esc(p.name)} <span class="p-kind">${esc(PROFILE_KIND_LABEL[p.kind]||p.kind||'')}</span>${p.archived?'<span class="p-kind">archived</span>':''}</div>
@@ -7822,13 +7827,13 @@ async function renderAthleteCda(a, refetch){
   if(a.sport==='run'){ host.innerHTML=''; return; }
   let setups=state.adSetups[a.id];
   if(!setups||refetch){
-    if(!setups) host.innerHTML='<p class="hint" style="text-align:left">Loading their setups…</p>';
+    if(!setups) host.innerHTML='<p class="hint">Loading their setups…</p>';
     try{
       const r=await fetch('/me/athletes/'+a.id+'/setups',{headers:authHeaders()});
       if(!r.ok) throw 0;
       setups=state.adSetups[a.id]=(await r.json()).setups||[];
     }catch(_e){
-      host.innerHTML='<p class="hint" style="text-align:left">Their setups didn’t load. <a href="#" data-cdaretry="1">Retry</a></p>';
+      host.innerHTML='<p class="hint">Their setups didn’t load. <a href="#" data-cdaretry="1">Retry</a></p>';
       const rl=host.querySelector('[data-cdaretry]'); if(rl) rl.addEventListener('click',ev=>{ ev.preventDefault(); renderAthleteCda(a,true); });
       return;
     }
@@ -7894,8 +7899,8 @@ function renderGroupsAdmin(){
   const gs=GROUPS.groups||[], full=gs.length>=(GROUPS.limit||30);
   host.innerHTML=`<div class="ad-box">
     <div class="ad-box-h"><h3>Groups</h3><span class="prof-note">a club, a camp, a race team: put an athlete in one from their page, then filter the Squad by it</span></div>
-    ${gs.length?`<ul class="ad-rows">${gs.map(g=>`<li data-gid="${g.id}"><input type="text" class="ad-gname" maxlength="40" value="${esc(g.name)}" aria-label="Group name"><span class="ad-meta">${g.athletes} ${g.athletes===1?'athlete':'athletes'}</span><button type="button" class="p-copy" data-gdel="${g.id}">Remove</button></li>`).join('')}</ul>`:'<p class="hint" style="text-align:left">No groups yet.</p>'}
-    ${full?`<p class="hint" style="text-align:left">A squad keeps ${GROUPS.limit} groups. Remove one you no longer use.</p>`
+    ${gs.length?`<ul class="ad-rows">${gs.map(g=>`<li data-gid="${g.id}"><input type="text" class="ad-gname" maxlength="40" value="${esc(g.name)}" aria-label="Group name"><span class="ad-meta">${g.athletes} ${g.athletes===1?'athlete':'athletes'}</span><button type="button" class="p-copy" data-gdel="${g.id}">Remove</button></li>`).join('')}</ul>`:'<p class="hint">No groups yet.</p>'}
+    ${full?`<p class="hint">A squad keeps ${GROUPS.limit} groups. Remove one you no longer use.</p>`
       :`<form class="ad-form" id="athGroupNew"><input type="text" id="athGroupName" maxlength="40" placeholder="New group, e.g. RMTC" aria-label="New group name"><button class="btn btn-ghost btn-sm" type="submit">Add group</button></form>`}
   </div>`;
   const again=async()=>{ await loadAthletes(); renderAthletes(); };
@@ -7952,7 +7957,7 @@ function renderAthletes(){
   if(ATHLETES.error){ list.innerHTML=`<div class="prof-row"><span class="p-name">Your athletes didn’t load.</span><span></span><span></span><span class="p-acts"><button type="button" data-retryath="1">Retry</button></span></div>`;
     list.querySelector('[data-retryath]').addEventListener('click',()=>loadAthletes().then(renderAthletes)); return; }
   if(!rows.length){
-    list.innerHTML=`<div class="prof-row"><span class="p-name" style="color:var(--c-ink-faint);font-weight:400">${f==='archived'?'Nobody archived.':'Nobody yet — add the first athlete you coach, then pick them on Analyze.'}</span></div>`;
+    list.innerHTML=`<div class="prof-row"><span class="p-name p-name--empty">${f==='archived'?'Nobody archived.':'Nobody yet — add the first athlete you coach, then pick them on Analyze.'}</span></div>`;
   } else {
     list.innerHTML=rows.map(a=>`<div class="prof-row${a.archived?' is-archived':''}" data-id="${a.id}">
       <div><div class="p-name">${esc(a.name)} <span class="p-kind">${esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||'')}</span>${a.linked?'<span class="p-kind p-linked">linked · own plan</span>':''}${a.archived?'<span class="p-kind">archived</span>':''}</div>
@@ -8084,7 +8089,7 @@ function renderCoachLink(){
   if(LINK.coach){
     const c=LINK.coach;
     body.innerHTML=`<p class="acct-p"><b>${esc(c.name)}</b>${c.tagline?' · '+esc(c.tagline):''} can see your analyses, annotated frames and clips since ${esc(fmtWhen(c.since_ms))}, and can leave notes on your reports.</p>
-      <div class="acct-actions" style="border-top:0;padding-top:0"><button class="btn btn-ghost btn-sm" type="button" id="linkOff">Unlink</button><span class="subhint">Stops their access right away. Notes they wrote stay.</span></div>`;
+      <div class="acct-actions acct-actions--bare"><button class="btn btn-ghost btn-sm" type="button" id="linkOff">Unlink</button><span class="subhint">Stops their access right away. Notes they wrote stay.</span></div>`;
     $('#linkOff').addEventListener('click',()=>confirmDialog({title:`Unlink ${c.name}?`, body:'They stop seeing your analyses and clips immediately. You can link a coach again any time.', okLabel:'Unlink', onOk:async()=>{
       try{ const r=await fetch('/me/coach-link',{method:'DELETE',headers:authHeaders()}); if(!r.ok) throw 0; track('coach_unlinked',{}); await loadCoachLink(); toast('Unlinked.'); }
       catch(_e){ toast('Could not unlink — try again.'); }
@@ -8096,7 +8101,7 @@ function renderCoachLink(){
       <input type="text" id="linkCode" maxlength="64" placeholder="Coach code" autocomplete="off" spellcheck="false" aria-label="Coach code">
       <label class="switch linkconsent"><input type="checkbox" id="linkConsent"><span class="box" aria-hidden="true"></span>
         <span>${esc(LINK.consent_text||'I want this coach to see my analyses, frames and clips, and to write notes on my reports. I can switch this off at any time.')}</span></label>
-      <p class="acct-p" style="margin:0">Your coach sees exactly what your plan shows you — no more. Clips are visible for as long as they are kept on your plan. Unlinking stops their access at once.</p>
+      <p class="acct-p u-m-0">Your coach sees exactly what your plan shows you — no more. Clips are visible for as long as they are kept on your plan. Unlinking stops their access at once.</p>
       <button class="btn btn-primary btn-sm" type="button" id="linkGo">Link my coach</button>
     </div>`;
   $('#linkGo').addEventListener('click',async()=>{
@@ -8513,7 +8518,7 @@ let billPeriod='monthly';   // 'monthly' | 'yearly'
 let reviewBump=false;
 
 const CURRENT_BADGE='<div class="current-badge"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Your current plan</div>';
-const MANAGE_BTN='<button class="btn btn-ghost btn-sm" type="button" style="width:100%;margin-top:8px" onclick="openPortal()">Manage subscription</button>';
+const MANAGE_BTN='<button class="btn btn-ghost btn-sm u-w-full u-mt-2" type="button" onclick="openPortal()">Manage subscription</button>';
 const DEAD_BTN='<button class="pr-btn pr-btn-dead" type="button" disabled>';
 
 function prPrice(card, cycle){
@@ -8560,7 +8565,7 @@ function prCoachFill(root){
   const fill=(slot,html)=>root.querySelectorAll(`[data-slot="${slot}"]`).forEach(el=>{el.innerHTML=html;});
   const buy=(plan,price,label)=>price&&price.available
     ? `<button class="pr-btn-s" type="button" onclick="startCheckout('${esc(plan)}')">${label}</button>`
-    : '<button class="pr-btn-s" type="button" disabled style="opacity:.45;cursor:default">Coming soon</button>';
+    : '<button class="pr-btn-s" type="button" disabled>Coming soon</button>';
   fill('expert-price', credits>0 ? 'Included' : 'US'+esc(member?rm.display:(ex?ex.display:'')));
   fill('expert-cta', credits>0
     ? `<button class="pr-btn-s" type="button" onclick="startCheckout('expert')">Use your included review</button>`
@@ -8652,7 +8657,7 @@ function unlockCount(){
 function unlockNudgeHtml(){
   const spent=unlockCount();
   if(spent<2) return '';
-  return `<p class="hint" style="text-align:left;margin:12px 0 0">You’ve unlocked <b>${spent}</b> reports.
+  return `<p class="hint u-m-0 u-mt-3">You’ve unlocked <b>${spent}</b> reports.
     A plan costs about the same per month and adds the overlay video, trends and before / after —
     which one report on its own can never show you.</p>`;
 }
@@ -8860,15 +8865,15 @@ async function openReviewReport(orderId){
   }
   const o=j.order||{};
   host.innerHTML=`
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Expert Review</div>
-      <h2 class="sec" id="rrTitle" tabindex="-1" style="margin-bottom:8px">Your Expert Review</h2>
+      <h2 class="sec u-mb-2" id="rrTitle" tabindex="-1">Your Expert Review</h2>
       <div class="speedline"></div>
     </div>`
     + renderReportHtml(j.report, j.sections,
         reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report), j.figures, j.capture)
-    + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`
-    + `<div id="rrRecheck" style="max-width:760px;margin:18px auto 0"></div>`;
+    + `<div class="rr-col u-mt-2"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`
+    + `<div id="rrRecheck" class="rr-col u-mt-5"></div>`;
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
   renderRecheck('rrRecheck');
 }
@@ -8883,14 +8888,14 @@ async function openSampleReport(){
   try{ j=await (await fetch('/billing/expert-review/sample')).json(); }
   catch(e){ host.innerHTML='<p class="hint">Couldn’t load the sample right now.</p>'; return; }
   host.innerHTML=`
-    <div class="blockhead" style="margin-top:0">
+    <div class="blockhead u-mt-0">
       <div class="eyebrow">Sample · this is what an Expert Review buys${expertPriceLabel()}</div>
-      <h2 class="sec" id="rrTitle" tabindex="-1" style="margin-bottom:8px">Expert Review — example</h2>
+      <h2 class="sec u-mb-2" id="rrTitle" tabindex="-1">Expert Review — example</h2>
       <div class="speedline"></div>
     </div>
-    <p class="hint" style="text-align:left;max-width:760px;margin:0 auto 22px">A real report for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by a human who has read it.</p>`
+    <p class="hint rr-col u-mb-6">A real report for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by a human who has read it.</p>`
     + renderReportHtml(j.report, j.sections, reportMeta(j.context, j.report), j.figures)
-    + `<div style="max-width:760px;margin:8px auto 0"><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See pricing</button></div>`;
+    + `<div class="rr-col u-mt-2"><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See pricing</button></div>`;
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
 }
 
@@ -8919,13 +8924,13 @@ function openExpertAdmin(){
 
 async function loadExpertQueue(){
   const list=$('#exaList');
-  list.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+  list.innerHTML='<p class="hint">Loading…</p>';
   let orders=[];
   try{
     const r=await fetch('/admin/orders',{headers:authHeaders()});
     if(!r.ok) throw new Error('http '+r.status);
     orders=await r.json();
-  }catch(e){ list.innerHTML='<p class="hint" style="text-align:left">Couldn’t load the queue.</p>'; return; }
+  }catch(e){ list.innerHTML='<p class="hint">Couldn’t load the queue.</p>'; return; }
   state.exFilter=state.exFilter||'open';
   const f=state.exFilter;
   // A paid unlock is a check: open until ticked, done once it is.
@@ -8935,7 +8940,7 @@ async function loadExpertQueue(){
     f==='delivered' ? done(o) :
     (!done(o) && o.status!=='refunded'));
   if(!shown.length){
-    list.innerHTML=`<p class="hint" style="text-align:left">${f==='open'?'Nothing waiting. Every paid review has been delivered.':'No orders here.'}</p>`;
+    list.innerHTML=`<p class="hint">${f==='open'?'Nothing waiting. Every paid review has been delivered.':'No orders here.'}</p>`;
     return;
   }
   list.innerHTML=shown.map(o=>`
@@ -8976,13 +8981,13 @@ async function openOrderEditor(orderId){
   const host=$('#exaEditor');
   $('#exaList').classList.add('hidden');
   host.classList.remove('hidden');
-  host.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+  host.innerHTML='<p class="hint">Loading…</p>';
   let d=null;
   try{
     const r=await fetch('/admin/orders/'+encodeURIComponent(orderId),{headers:authHeaders()});
     if(!r.ok) throw new Error('http '+r.status);
     d=await r.json();
-  }catch(e){ host.innerHTML='<p class="hint" style="text-align:left">Couldn’t open that order.</p>'; return; }
+  }catch(e){ host.innerHTML='<p class="hint">Couldn’t open that order.</p>'; return; }
   state.exOrder=d;
   host.innerHTML=d.kind==='check'?exCheckHtml(d):exEditorHtml(d);
   const kf=$('#exKeyframe'), kg=$('#exKinogram'), media=d.media||{};
@@ -9033,8 +9038,8 @@ function exFieldHtml(s, report){
       const p=rows[i]||{};
       return `<div class="ex-sub-card"><div class="rr-prio-n">Priority ${i+1}</div>
         ${['title','why','change','check'].map(k=>`
-          <div style="margin-top:8px">
-            <label style="font-size:10px" for="ex_p${i}_${k}">${esc(PRIO_LABELS[k])}</label>
+          <div class="u-mt-2">
+            <label class="ex-prio-lbl" for="ex_p${i}_${k}">${esc(PRIO_LABELS[k])}</label>
             ${k==='title'
               ? `<input type="text" id="ex_p${i}_${k}" data-exprio="${i}" data-exk="${k}" value="${esc(p[k]||'')}">`
               : `<textarea id="ex_p${i}_${k}" data-exprio="${i}" data-exk="${k}" rows="2">${esc(p[k]||'')}</textarea>`}
@@ -9048,8 +9053,8 @@ function exFieldHtml(s, report){
       const r=rows[i]||{};
       return `<div class="ex-sub-card"><div class="rr-prio-n">Change ${i+1}</div>
         ${FIT_COLS.map(([k,l])=>`
-          <div style="margin-top:8px">
-            <label style="font-size:10px" for="ex_f${i}_${k}">${esc(l)}</label>
+          <div class="u-mt-2">
+            <label class="ex-prio-lbl" for="ex_f${i}_${k}">${esc(l)}</label>
             <input type="text" id="ex_f${i}_${k}" data-exfit="${i}" data-exk="${k}" value="${esc(r[k]||'')}">
           </div>`).join('')}
       </div>`;
@@ -9070,14 +9075,14 @@ function exEditorHtml(d){
     `<option value="${esc(h.id)}"${h.id===d.analysis_client_id?' selected':''}>${h.score==null?'—':h.score}/100 · ${esc(pretty(h.sport||''))} · ${esc(h.kind||'')} · ${esc(shortDate(h.at))}</option>`).join('');
   return `
   <div class="backhome-row"><button class="btn btn-ghost btn-sm" type="button" id="exBack"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Queue</button></div>
-  <div class="blockhead" style="margin-top:0">
+  <div class="blockhead u-mt-0">
     <div class="eyebrow">Order #${d.id} · ${esc(d.email||'')} · ${esc(money(d.amount_total,d.currency))}</div>
-    <h3 class="sec" style="margin-bottom:8px">${d.plan==='notes'?(done?'Delivered Coach Notes':'Write the Coach Notes'):(done?'Delivered review':'Write the review')}</h3>
+    <h3 class="sec u-mb-2">${d.plan==='notes'?(done?'Delivered Coach Notes':'Write the Coach Notes'):(done?'Delivered review':'Write the review')}</h3>
     <div class="speedline"></div>
   </div>
-  ${d.sport==='swim'?'<p class="hint" style="text-align:left"><b>Swim clip.</b> Nothing was measured — no numbers, frame or kinogram. The review is written from the footage alone; the brief gives the coach a swim checklist.</p>':''}
-  ${d.plan==='notes'?'<p class="hint" style="text-align:left">One line and three notes, about 40 words each. They land on the athlete’s report under “Coach Notes”, print and export with it. Not a review: no trust judgement, no plan, no re-test — if you find yourself writing those, that is the $39 product.</p>':''}
-  ${done?'<p class="hint" style="text-align:left">This has been delivered. Edits you save and re-publish reach the athlete’s report immediately.</p>':''}
+  ${d.sport==='swim'?'<p class="hint"><b>Swim clip.</b> Nothing was measured — no numbers, frame or kinogram. The review is written from the footage alone; the brief gives the coach a swim checklist.</p>':''}
+  ${d.plan==='notes'?'<p class="hint">One line and three notes, about 40 words each. They land on the athlete’s report under “Coach Notes”, print and export with it. Not a review: no trust judgement, no plan, no re-test — if you find yourself writing those, that is the $39 product.</p>':''}
+  ${done?'<p class="hint">This has been delivered. Edits you save and re-publish reach the athlete’s report immediately.</p>':''}
   <div class="ex-grid">
     <div>
       <div class="ex-fld">
@@ -9102,13 +9107,13 @@ function exEditorHtml(d){
         <button class="btn btn-outline btn-sm" type="button" id="exSave">Save draft</button>
         <button class="btn btn-primary btn-sm" type="button" id="exPublish">${done?'Re-publish':'Send to athlete'}</button>
       </div>
-      <div id="exPreviewHost" class="hidden" style="margin-top:24px;border-top:1px solid var(--c-line);padding-top:24px"></div>
+      <div id="exPreviewHost" class="ex-preview hidden"></div>
     </div>
     <aside class="ex-side">
       <div class="rr-h">The analysis</div>
-      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);margin-bottom:12px;background:#000" aria-label="The athlete&#39;s original clip"></video><p class="hint" id="exClipNote" style="text-align:left;margin:0 0 12px">Loading the clip…</p>`:''}
-      ${(d.media&&d.media.keyframe)||a.keyframe||a.has_keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip">':'<p class="hint" style="text-align:left;margin:0 0 12px">No stored frame.</p>'}
-      ${d.media&&d.media.kinogram?'<img id="exKinogram" alt="Kinogram: one revolution of the athlete\'s pedal stroke" style="width:100%;border-radius:var(--radius);margin-bottom:12px">':''}
+      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" class="ex-media" aria-label="The athlete&#39;s original clip"></video><p class="hint u-m-0 u-mb-3" id="exClipNote">Loading the clip…</p>`:''}
+      ${(d.media&&d.media.keyframe)||a.keyframe||a.has_keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip">':'<p class="hint u-m-0 u-mb-3">No stored frame.</p>'}
+      ${d.media&&d.media.kinogram?'<img id="exKinogram" alt="Kinogram: one revolution of the athlete\'s pedal stroke" class="ex-media">':''}
       <dl>
         <dt>Score</dt><dd>${a.score==null?'—':esc(String(a.score))}/100${a.grade?' ('+esc(a.grade)+')':''}</dd>
         <dt>Sport</dt><dd>${esc(pretty(a.sport||d.sport||'—'))}</dd>
@@ -9118,11 +9123,11 @@ function exEditorHtml(d){
         ${a.cameraSide?`<dt>Camera</dt><dd>${esc(a.cameraSide)} side</dd>`:''}
       </dl>
       <div class="rr-h">Reviewing</div>
-      <select id="exAnalysisPick" style="width:100%;font:inherit;font-size:13px;padding:8px;border:1px solid var(--c-line);border-radius:8px">
+      <select id="exAnalysisPick" class="ex-select">
         <option value="">— pick the clip —</option>${opts}
       </select>
-      <p class="hint" style="text-align:left;font-size:12px;margin:8px 0 0">The athlete chose this at checkout. Change it if they picked the wrong one.</p>
-      ${a.report?`<div class="rr-h" style="margin-top:16px">What the report told them</div><div class="ex-sub-card" style="font-size:12.5px;max-height:220px;overflow:auto">${mdToHtml(a.report)}</div>`:''}
+      <p class="hint u-m-0 u-mt-2">The athlete chose this at checkout. Change it if they picked the wrong one.</p>
+      ${a.report?`<div class="rr-h u-mt-4">What the report told them</div><div class="ex-sub-card ex-sub-card--scroll">${mdToHtml(a.report)}</div>`:''}
     </aside>
   </div>`;
 }
@@ -9172,21 +9177,21 @@ function exCheckHtml(d){
   const checked=!!(d.qa&&d.qa.checked_at);
   return `
   <div class="backhome-row"><button class="btn btn-ghost btn-sm" type="button" id="exBack"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Queue</button></div>
-  <div class="blockhead" style="margin-top:0">
+  <div class="blockhead u-mt-0">
     <div class="eyebrow">Order #${d.id} · ${esc(d.email||'')} · ${esc(money(d.amount_total,d.currency))} · report unlock</div>
-    <h3 class="sec" style="margin-bottom:8px">Check a paid report</h3>
+    <h3 class="sec u-mb-2">Check a paid report</h3>
     <div class="speedline"></div>
   </div>
-  <p class="hint" style="text-align:left">Nothing here reaches the athlete. Read it the way they did: does the score fit the clip, do the bands flatter the position, does the coach text agree with the table? Write what you find in the note; fixes go to the product.</p>
+  <p class="hint">Nothing here reaches the athlete. Read it the way they did: does the score fit the clip, do the bands flatter the position, does the coach text agree with the table? Write what you find in the note; fixes go to the product.</p>
   <div class="ex-grid">
     <div>
-      <p style="margin:0 0 10px"><b>Score ${r.score==null?'—':esc(String(r.score))}/100${r.grade?' ('+esc(r.grade)+')':''}</b> · ${esc(pretty(r.sport||''))}${r.position?' · '+esc(pretty(r.position)):''}${r.camera_side?' · '+esc(r.camera_side)+' side':''}${r.helmet_check?' · helmet not read':''}</p>
-      ${parts?`<p class="hint" style="text-align:left;margin:0 0 12px">${parts}</p>`:''}
+      <p class="u-m-0 u-mb-3"><b>Score ${r.score==null?'—':esc(String(r.score))}/100${r.grade?' ('+esc(r.grade)+')':''}</b> · ${esc(pretty(r.sport||''))}${r.position?' · '+esc(pretty(r.position)):''}${r.camera_side?' · '+esc(r.camera_side)+' side':''}${r.helmet_check?' · helmet not read':''}</p>
+      ${parts?`<p class="hint u-m-0 u-mb-3">${parts}</p>`:''}
       <div class="tablewrap"><table class="data"><thead><tr><th scope="col">Measure</th><th scope="col" class="num">Value</th><th scope="col" class="num">Band</th><th scope="col" class="col-status">vs band</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="muted">No measurements stored.</td></tr>'}</tbody></table></div>
-      ${warns?`<div class="rr-h" style="margin-top:16px">Capture warnings shown</div><ul class="hint" style="text-align:left">${warns}</ul>`:''}
-      <div class="rr-h" style="margin-top:16px">Coach text the athlete got</div>
-      <div class="ex-sub-card" style="font-size:13px">${r.coach_report?mdToHtml(r.coach_report):'<p class="hint" style="text-align:left;margin:0"><b>None.</b> This report has no coach text.</p>'}</div>
-      <div class="ex-fld" style="margin-top:16px">
+      ${warns?`<div class="rr-h u-mt-4">Capture warnings shown</div><ul class="hint">${warns}</ul>`:''}
+      <div class="rr-h u-mt-4">Coach text the athlete got</div>
+      <div class="ex-sub-card ex-sub-card--text">${r.coach_report?mdToHtml(r.coach_report):'<p class="hint u-m-0"><b>None.</b> This report has no coach text.</p>'}</div>
+      <div class="ex-fld u-mt-4">
         <label for="ex_note">What's wrong, if anything</label>
         <p class="ex-hint">Never shown to the athlete.</p>
         <textarea id="ex_note" rows="4">${esc(d.admin_note||'')}</textarea>
@@ -9199,9 +9204,9 @@ function exCheckHtml(d){
     </div>
     <aside class="ex-side">
       <div class="rr-h">The analysis</div>
-      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);margin-bottom:12px;background:#000" aria-label="The athlete&#39;s original clip"></video><p class="hint" id="exClipNote" style="text-align:left;margin:0 0 12px">Loading the clip…</p>`:'<p class="hint" style="text-align:left;margin:0 0 12px">The clip is no longer stored.</p>'}
-      ${d.media&&d.media.keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip" style="width:100%;border-radius:var(--radius);margin-bottom:12px">':''}
-      ${d.media&&d.media.kinogram?'<img id="exKinogram" alt="Kinogram: one cycle" style="width:100%;border-radius:var(--radius);margin-bottom:12px">':''}
+      ${d.clip_available?`<video id="exClip" controls playsinline preload="metadata" class="ex-media" aria-label="The athlete&#39;s original clip"></video><p class="hint u-m-0 u-mb-3" id="exClipNote">Loading the clip…</p>`:'<p class="hint u-m-0 u-mb-3">The clip is no longer stored.</p>'}
+      ${d.media&&d.media.keyframe?'<img id="exKeyframe" alt="Annotated frame from the athlete\'s clip" class="ex-media">':''}
+      ${d.media&&d.media.kinogram?'<img id="exKinogram" alt="Kinogram: one cycle" class="ex-media">':''}
     </aside>
   </div>`;
 }
@@ -9648,7 +9653,7 @@ function pickAnalysis(plan){
   const ok=$('#pickOk');
   if(ok) ok.textContent = credits>0 ? 'Use my included review' : 'Continue to payment';
   $('#pickList').innerHTML=list.slice(0,20).map((e,i)=>`
-    <label class="ex-card" style="cursor:pointer;margin-bottom:8px">
+    <label class="ex-card ex-card--pick">
       <input type="radio" name="pickan" value="${esc(e.id)}"${i===0?' checked':''}>
       <div>
         <div class="ex-em">${isSwim(e)?'Swim · coach review':`${e.score==null?'—':esc(String(e.score))}/100 · ${esc(pretty(e.sport||''))}`}</div>
@@ -9784,7 +9789,7 @@ function renderCaptureReport(cr){
   // still says "two things limited this" rather than going quiet.
   const bad=(cr.checks||[]).filter(c=>c.status==='warn'||c.status==='bad').length;
   const count = bad ? `<span class="caprep-n">${bad} to fix</span>` : '';
-  return `<details class="caprep" style="margin-top:8px">
+  return `<details class="caprep u-mt-2">
     <summary class="caprep-head"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
       <span class="caprep-t">How this clip was filmed</span>
       <span class="caprep-v ${v}">${esc(CAPREP_VERDICT[v]||'')}</span>${count}
@@ -10029,7 +10034,7 @@ function bdRowHtml(name, v, w, title){
   const out=v==null;
   const cls=out?'bd-out':v>=80?'bd-good':v>=60?'bd-warn':'bd-bad';
   return `<div class="bd-row ${cls}" title="${esc(String(title))}"><span class="bd-name">${esc(name)}</span>
-        <span class="bd-bar" aria-hidden="true"><i style="width:${out?0:Math.max(2,Math.min(100,Math.round(v)))}%"></i></span>
+        <span class="bd-bar" aria-hidden="true"><i style="--w:${out?0:Math.max(2,Math.min(100,Math.round(v)))}%"></i></span>
         <span class="bd-val">${out?'—':Math.round(v)}</span><span class="bd-w">${w}%</span></div>`;
 }
 function bdShow(host, rows, show){
@@ -10342,21 +10347,21 @@ function render(job,opts){
     // are the ones a reshoot fixes, so they are worth their own banner even when
     // the gate itself did not trip.
     (q.warnings||[]).slice(0,2).forEach(w=>{
-      gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      gb.innerHTML+=`<div class="banner warn u-mt-2"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
         <span>${esc(w)}</span></div>`;
     });
   }
   // Slow-motion / time-base notice: cadence was unmeasurable, so the time-based
   // metrics (ground contact, flight) were withheld rather than shown wrong.
   if(q.time_base_uncertain){
-    gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+    gb.innerHTML+=`<div class="banner warn u-mt-2"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
       <span><b>Looks like slow-motion.</b> We couldn’t measure cadence, so ground-contact &amp; flight time are hidden — time-based metrics need a normal-speed clip to be accurate. Your joint angles are unaffected.</span></div>`;
   }
   // Sampling notice: a long clip is decimated to stay inside the frame budget,
   // which costs the time-based metrics their resolution. Say so rather than
   // quietly reporting a cadence computed from every 4th frame.
   if(q.sampling_degraded){
-    gb.innerHTML+=`<div class="banner warn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+    gb.innerHTML+=`<div class="banner warn u-mt-2"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
       <span><b>Long clip — sampled.</b> ${esc(q.sampling_degraded)} Joint angles are unaffected; a <b>5–10 s</b> clip measures the timing more precisely.</span></div>`;
   }
 
@@ -10506,7 +10511,7 @@ function render(job,opts){
         ${it.value?`<div>${fmtIssueValue(it.value)}</div>`:''}</div>`;
     }).join('');
   } else {
-    ib.innerHTML=`<div class="banner good" style="margin-top:0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+    ib.innerHTML=`<div class="banner good u-mt-0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
       <span>No major technique issues detected in this clip.</span></div>`;
   }
 
@@ -10782,7 +10787,7 @@ function renderFeedbackForm(host){
   const more=host.querySelector('[data-fb-more]');
   more.innerHTML=`<div class="fb-more">
       ${down?`<p class="fb-lbl">What’s wrong? Pick any that apply</p><div class="fb-tags">${chips}</div>`:''}
-      <p class="fb-lbl">Tell us in your words <span style="font-weight:600;text-transform:none;letter-spacing:0">(optional)</span></p>
+      <p class="fb-lbl">Tell us in your words <span class="fb-opt">(optional)</span></p>
       <textarea data-fb-msg maxlength="2000" placeholder="${down?'e.g. my knee angle reads 40° but it’s clearly much straighter than that':'e.g. the score felt right but the drills don’t suit my injury'}"></textarea>
       ${fb.frame?`<label class="fb-consent">
         <input type="checkbox" data-fb-consent checked>
@@ -10928,17 +10933,17 @@ const CARD_DISPLAY='Archivo,"Arial Black",sans-serif';   // the wordmark, nothin
 const MARK_F=new Path2D('M0 224 L430 224 L430 364 L150 364 L150 470 L390 470 L390 596 L150 596 L150 800 L0 800 Z');
 function drawMarkTile(x, px, py, s){
   x.save();
-  x.fillStyle='#14294B'; x.beginPath(); x.roundRect(px,py,s,s,s*0.23); x.fill();
-  x.lineWidth=2; x.strokeStyle='rgba(255,255,255,.18)'; x.stroke();
+  x.fillStyle=CARD.logo; x.beginPath(); x.roundRect(px,py,s,s,s*0.23); x.fill();
+  x.lineWidth=2; x.strokeStyle=CARD.rule; x.stroke();
   // the symbol's viewBox is 780 x 632; the mark fills ~70% of the tile
   const k=(s*0.7)/780; x.translate(px+s*0.15, py+(s-632*k)/2); x.scale(k,k); x.translate(148,-168);
   const skew=Math.tan(-11*Math.PI/180);
   for(const [dx,a] of [[-148,.22],[-74,.45],[0,1]]){
     x.save(); x.translate(155.5,0); x.transform(1,0,skew,1,0,0); x.translate(dx,0);
-    x.globalAlpha=a; x.fillStyle='#fff'; x.fill(MARK_F); x.restore();
+    x.globalAlpha=a; x.fillStyle=CARD.ink; x.fill(MARK_F); x.restore();
   }
   x.save(); x.translate(155.5,0); x.transform(1,0,skew,1,0,0);
-  x.fillStyle='#F1553F'; x.beginPath(); x.arc(446,246,78,0,7); x.fill(); x.restore();
+  x.fillStyle=CARD.coral; x.beginPath(); x.arc(446,246,78,0,7); x.fill(); x.restore();
   x.restore();
 }
 const CARD_BODY='"IBM Plex Sans",system-ui,sans-serif';  // labels
@@ -10971,7 +10976,7 @@ async function buildShareCard(card){
   const sport=card.sport||'run';
   const score=card.score;
   const grade=(card.grade && card.grade!=='—')?String(card.grade):null;
-  const W=1080, P=56, CORAL='#F1553F', INK='#0E1116', MUTED='#98A2B3', SOFT='#C6CCD6'; /* the wordmark dot is the one coral; the ground is surface/ground dark */
+  const W=1080, P=56, CORAL=CARD.coral, INK=CARD.ground, MUTED=CARD.muted, SOFT=CARD.soft; /* the wordmark dot is the one coral; the ground is surface/ground dark */
 
   let img=null;
   if(card.keyframe){ try{ img=await loadImg(card.keyframe); }catch(e){ img=null; } }
@@ -11003,17 +11008,17 @@ async function buildShareCard(card){
   x.fillStyle=INK; x.fillRect(0,0,W,H);
   if(img){
     drawBlurredCover(x,img,W,H);
-    x.fillStyle='rgba(14,17,22,.78)'; x.fillRect(0,0,W,H);
+    x.fillStyle=CARD.scrim; x.fillRect(0,0,W,H);
   }else{
     const bg=x.createLinearGradient(0,0,0,H);
-    bg.addColorStop(0,'#161A21'); bg.addColorStop(1,INK);
+    bg.addColorStop(0,CARD.top); bg.addColorStop(1,INK);
     x.fillStyle=bg; x.fillRect(0,0,W,H);
   }
 
   // ---- header: the lockup -- the navy tile with the mark, then the name ----
   drawMarkTile(x, P, HEAD/2-40, 80);
   x.textBaseline='middle'; x.textAlign='left';
-  x.fillStyle='#fff'; x.font=`900 italic 58px ${CARD_DISPLAY}`;
+  x.fillStyle=CARD.ink; x.font=`900 italic 58px ${CARD_DISPLAY}`;
   x.fillText('Flapp',P+80+24,HEAD/2);
   x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 22px ${CARD_MONO}`;
   x.fillText(sport==='bike'?'CYCLING · TECHNIQUE':'RUNNING · TECHNIQUE',W-P,HEAD/2);
@@ -11022,12 +11027,12 @@ async function buildShareCard(card){
   if(img){
     x.fillStyle=INK; x.fillRect(dx,dy,dw,dh);
     x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
-    x.lineWidth=2; x.strokeStyle='rgba(255,255,255,.16)'; x.strokeRect(dx+1,dy+1,dw-2,dh-2);
+    x.lineWidth=2; x.strokeStyle=CARD.rule; x.strokeRect(dx+1,dy+1,dw-2,dh-2);
   }else{
     // No still to show (a result the server kept the frame back from): the
     // score itself becomes the picture rather than an empty frame.
     const gcx=W/2, gcy=regionY+regionH/2;
-    x.textAlign='center'; x.fillStyle='#fff'; x.font=`900 italic 250px ${CARD_DISPLAY}`;
+    x.textAlign='center'; x.fillStyle=CARD.ink; x.font=`900 italic 250px ${CARD_DISPLAY}`;
     x.fillText(score==null?'—':String(score),gcx,gcy);
     x.textAlign='left';
   }
@@ -11041,12 +11046,12 @@ async function buildShareCard(card){
   // The rule above the score is the speed gradient -- the app's one stripe,
   // on the one image of it that travels.
   const rule=x.createLinearGradient(P,0,W-P,0);
-  rule.addColorStop(0,'#2457C5'); rule.addColorStop(.45,'#6A5AC8'); rule.addColorStop(1,CORAL);
+  rule.addColorStop(0,CARD.blue); rule.addColorStop(.45,CARD.violet); rule.addColorStop(1,CORAL);
   x.fillStyle=rule; x.fillRect(P,fy,W-2*P,3);
   let lx=P;
   const gradeTxt=(grade&&/^[A-F][+-]?$/.test(grade))?grade:null;
   if(img){                                   // without a frame the big numeral above already says it
-    x.fillStyle='#fff'; x.font=`900 italic 104px ${CARD_DISPLAY}`;
+    x.fillStyle=CARD.ink; x.font=`900 italic 104px ${CARD_DISPLAY}`;
     const sTxt=score==null?'—':String(score);
     x.fillText(sTxt,lx,cy-2);
     lx+=x.measureText(sTxt).width+18;
@@ -11136,7 +11141,7 @@ async function copyText(text){
   try{
     const ta=document.createElement('textarea');
     ta.value=text; ta.setAttribute('readonly','');
-    ta.style.cssText='position:fixed;top:-1000px;opacity:0';
+    ta.className='copy-buffer';
     document.body.appendChild(ta); ta.select();
     const ok=document.execCommand('copy');
     document.body.removeChild(ta);
@@ -11467,7 +11472,7 @@ function renderAuth(){
   if(side){
     side.innerHTML = auth
       ? `<a href="#account" class="planline" id="planLine" onclick="event.preventDefault();openAccount()">
-           <span class="pl-name"><span>${esc(planName)}</span><span class="ph-no-capture" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${esc(auth.email)}">${esc(auth.email.split('@')[0])}</span></span>
+           <span class="pl-name"><span>${esc(planName)}</span><span class="ph-no-capture pl-email" title="${esc(auth.email)}">${esc(auth.email.split('@')[0])}</span></span>
            <span class="pl-quota" id="planQuota"></span>
            <span class="pl-bar" id="planBar" aria-hidden="true"><i></i></span>
          </a>`
@@ -11653,8 +11658,8 @@ function renderGoalNote(){
   let off=false; try{ off=localStorage.getItem(GOAL_NOTE_OFF)==='1'; }catch(e){}
   const g=goalGet();
   if(!g||off){ el.classList.add('hidden'); el.innerHTML=''; return; }
-  el.innerHTML=`<div class="banner ok" style="margin:0 0 16px;align-items:center"><svg class="ic" aria-hidden="true" style="margin-top:0"><use href="#i-target"/></svg>
-    <span style="flex:1">${GOALS[g].text}</span>
+  el.innerHTML=`<div class="banner ok u-m-0 u-mb-4 u-items-center"><svg class="ic u-mt-0" aria-hidden="true"><use href="#i-target"/></svg>
+    <span class="u-grow">${GOALS[g].text}</span>
     <button type="button" class="goal-x" aria-label="Hide this note" id="goalNoteX"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>`;
   el.classList.remove('hidden');
   $('#goalNoteX').addEventListener('click',()=>{ try{ localStorage.setItem(GOAL_NOTE_OFF,'1'); }catch(e){} renderGoalNote(); track('goal_note_hidden',{goal:g}); });
@@ -11709,12 +11714,12 @@ async function renderPromoBanner(){
     }catch(e){ return; }
   }
   if(promoInfo.error){
-    el.innerHTML=`<div class="banner warn" style="margin-top:0;margin-bottom:16px"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>Code ${esc(code)}:</b> ${esc(promoInfo.error)}</span></div>`;
+    el.innerHTML=`<div class="banner warn u-mt-0 u-mb-4"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>Code ${esc(code)}:</b> ${esc(promoInfo.error)}</span></div>`;
     promoForget();
   }else{
     const until=new Date(promoInfo.until+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric'});
-    el.innerHTML=`<div class="banner ok" style="margin-top:0;margin-bottom:16px;align-items:center;flex-wrap:wrap"><svg class="ic" aria-hidden="true" style="margin-top:0"><use href="#i-tag"/></svg>
-      <span style="flex:1;min-width:220px"><b>Code ${esc(promoInfo.code)}: ${promoInfo.credits} full reports free.</b> Look around first, or <a href="/examples">see real reports</a>. When you're ready, create a free account and they're added to it. Sign up by ${esc(until)}.</span>
+    el.innerHTML=`<div class="banner ok u-mt-0 u-mb-4 u-items-center u-wrap"><svg class="ic u-mt-0" aria-hidden="true"><use href="#i-tag"/></svg>
+      <span class="banner-text"><b>Code ${esc(promoInfo.code)}: ${promoInfo.credits} full reports free.</b> Look around first, or <a href="/examples">see real reports</a>. When you're ready, create a free account and they're added to it. Sign up by ${esc(until)}.</span>
       <button class="btn btn-primary btn-sm" type="button" onclick="openAuth('register')">Create free account</button></div>`;
   }
   el.classList.remove('hidden');
@@ -12023,9 +12028,9 @@ function deleteAccount(){
   if(!auth) return;
   confirmDialog({
     title:'Delete your account?',
-    body:`<p style="margin:0 0 10px">This permanently removes <b>${esc(auth.email)}</b>, every saved analysis,
+    body:`<p class="u-m-0 u-mb-3">This permanently removes <b>${esc(auth.email)}</b>, every saved analysis,
       your usage history, any feedback you sent and your order history. It cannot be undone.</p>
-      <p class="hint" style="text-align:left;margin:0 0 10px">An active subscription is cancelled at the same
+      <p class="hint u-m-0 u-mb-3">An active subscription is cancelled at the same
       time — you won't be billed again.</p>
       <label class="fld"><span>Confirm your password</span>
         <input type="password" id="delPass" autocomplete="current-password"></label>`,
@@ -12514,7 +12519,7 @@ function renderHistList(){
   const clr=$('#histClear'); if(clr) clr.classList.toggle('hidden',hasCoachPlan());
   if(a.length){ const c=$('#histCount'); if(c) c.textContent=`${a.length} ${a.length===1?'analysis':'analyses'}`; }
   if(!a.length && all.length){
-    w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
+    w.innerHTML=`<div class="emptybox u-span-all">
       <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
       <h4>Nothing filmed on this setup yet</h4>
       <p>Your other analyses are still here — pick <b>All</b> above, or film a clip on this one.</p>
@@ -12523,7 +12528,7 @@ function renderHistList(){
   }
   if(!a.length && swims){ w.innerHTML=swims; return; }
   if(!a.length){
-    w.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
+    w.innerHTML=`<div class="emptybox u-span-all">
       <img class="empty-fig" src="/media/empty-first.webp" alt="" width="120" height="120">
       <h4>No analyses yet</h4>
       <p>Run your first clip and it’ll be saved here, so you can revisit scores and track your form over time.</p>
@@ -12552,14 +12557,14 @@ function renderHistList(){
 function renderHistoryKeyframe(e){
   const wrap=$('#hdImgWrap'), img=$('#hdImg'), dl=$('#hdDownload');
   const k=keyframeOf(e), waiting=!k && !!e.has_keyframe;
-  wrap.style.display=(k||waiting)?'':'none';
+  wrap.classList.toggle('hidden', !(k||waiting));
   img.classList.toggle('kf-wait', waiting);
   if(k){ img.src=k; dl.href=k; } else { img.removeAttribute('src'); dl.href='#'; }
   if(!waiting) return;
   fetchKeyframe(e).then(kf=>{
     if(!state.histOpen || state.histOpen.id!==e.id) return;
     img.classList.remove('kf-wait');
-    if(kf){ img.src=kf; dl.href=kf; } else { wrap.style.display='none'; }
+    if(kf){ img.src=kf; dl.href=kf; } else { wrap.classList.add('hidden'); }
   });
 }
 function openHistory(id){
@@ -12667,7 +12672,7 @@ function renderHistoryVideos(e){
     const sides=ovs.single ? [['single',ovs.single]] : ['left','right'].filter(k=>ovs[k]).map(k=>[k,ovs[k]]);
     if(!sides.length) return;
     const api=window.FLAPP_API_BASE||'';
-    host.innerHTML=`<div class="bil" style="margin-top:14px"><div class="bil-h"><b>Annotated overlay</b>
+    host.innerHTML=`<div class="bil u-mt-4"><div class="bil-h"><b>Annotated overlay</b>
         <span class="bil-flag bil-ok">from your clip${sides.length>1?'s':''}</span></div>
       <div class="bil-vids${sides.length===1?' bil-vids-one':''}">${sides.map(([k,url])=>`<div class="bil-vid">
         <div class="bil-vid-player" data-side="${k}"><video src="${api}${url}" controls playsinline preload="metadata" aria-label="${k==='single'?'':k+' side '}annotated overlay"></video></div>
@@ -12719,7 +12724,7 @@ function renderHistoryBilateral(e){
   host.innerHTML=`<div class="bil">
     <div class="bil-h"><b>Two-sided session</b>${flag}${b.slots_swapped?'<span class="bil-flag bil-warn">slots were swapped</span>':''}</div>
     ${val}
-    <p class="bil-note" style="margin-top:2px">${note}</p>
+    <p class="bil-note u-mt-1">${note}</p>
     ${sides?`<p class="bil-note">${sides}</p>`:''}
   </div>`;
 }
@@ -12735,7 +12740,7 @@ function renderHistoryUpsell(e){
   const gated = e && e.access!=='full' && entryLooksGated(e);
   // Their plan opens this, not the coach's card: nothing here is for sale to you.
   if(e&&e.linkedAthleteId){
-    host.innerHTML=gated?`<p class="hint" style="text-align:left">${esc(athleteName(e.athleteId)||'Your athlete')} is on the free plan, so you see what they see. The full report opens when they are on a paid plan.</p>`:'';
+    host.innerHTML=gated?`<p class="hint">${esc(athleteName(e.athleteId)||'Your athlete')} is on the free plan, so you see what they see. The full report opens when they are on a paid plan.</p>`:'';
     host.classList.toggle('hidden', !gated);
     return;
   }
@@ -13095,16 +13100,16 @@ function extractTrends(kind,res,sport){
    Recharts visuals with hand-built inline SVG like trendChart).
    Data source: result.sport_specific_metrics.biomechanics
    ============================================================ */
-const BM_ATHLETE='#2F6DE0';   /* athlete line (blue) */
-const BM_REF='#6E7787';       /* reference (grey — matches --c-ink-faint) */
-const BM_MEAN='#12B3A6';      /* coordination mean cycle (teal-cyan) */
-const BM_DEV='rgba(241,85,63,.15)'; /* deviation zone */
+const BM_ATHLETE='var(--chart-1)';   /* athlete line (blue) */
+const BM_REF='var(--chart-ref)';       /* reference (grey — matches --c-ink-faint) */
+const BM_MEAN='var(--chart-mean)';      /* coordination mean cycle (teal-cyan) */
+const BM_DEV='var(--chart-dev)'; /* deviation zone */
 /* Per-card series hues for the phase portraits. Deliberately drawn from OUTSIDE
    the status vocabulary: green, amber and red mean good/warn/bad everywhere in
    this app, so a chart that used amber for "the third joint" made a neutral
    series read as a warning. Each card carries exactly one hue and its own
    bm-badge, which is where the good/warn/bad signal actually lives. */
-const BM_SERIES=[BM_ATHLETE,'#7C4DD1','#B0417A','#5A6B8C'];
+const BM_SERIES=[BM_ATHLETE,'var(--chart-2)','var(--chart-3)','var(--chart-4)'];
 /* score -> badge class (emerald/amber/rose at 70/40) */
 function bmBadge(score){ return score>=70?'good':score>=40?'warn':'bad'; }
 /* strip left_/right_ prefix and Title-Case a joint key */
@@ -13112,8 +13117,7 @@ function bmJoint(k){ return pretty(String(k).replace(/^left_|^right_/,'')); }
 function bmLegend(items){
   return `<div class="bmlegend">`+items.map(i=>{
     const cls=i.kind==='dot'?'sw dot':i.kind==='dash'?'sw dash':'sw';
-    const st=i.kind==='dash'?`color:${i.c}`:`background:${i.c}`;
-    return `<span class="lg"><span class="${cls}" style="${st}"></span>${esc(i.label)}</span>`;
+    return `<span class="lg"><span class="${cls}" style="--sw:${i.c}"></span>${esc(i.label)}</span>`;
   }).join('')+`</div>`;
 }
 
@@ -13142,7 +13146,7 @@ function waveformChart(cmp){
   [lo,(lo+hi)/2,hi].forEach(v=>{ const y=Y(v);
     svg+=`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--c-line)" stroke-width="1"/>`
       +`<text x="${(pad.l-4).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="10">${Math.round(v)}</text>`; });
-  svg+=`<path d="${band}" fill="rgba(138,148,163,.16)"/>`;
+  svg+=`<path d="${band}" fill="var(--chart-band)"/>`;
   svg+=`<path d="${path('ref_mean')}" fill="none" stroke="${BM_REF}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
   svg+=`<path d="${path('athlete')}" fill="none" stroke="${BM_ATHLETE}" stroke-width="2.2" stroke-linejoin="round"/>`;
   // x axis
@@ -13243,7 +13247,7 @@ function renderBiomechanics(bio, sport){
           <span class="bm-badge ${b}">${num(c.similarity_score,0)}% match</span></div>
         <div class="bm-sub">Your averaged cycle against the literature norm band (mean ± 1 SD).</div>
         ${chart}
-        ${bmLegend([{kind:'line',c:BM_ATHLETE,label:'You'},{kind:'dash',c:BM_REF,label:'Reference mean'},{kind:'band',c:'rgba(138,148,163,.4)',label:'Normal range'},{kind:'band',c:'rgba(241,85,63,.35)',label:'Off-pattern'}])}
+        ${bmLegend([{kind:'line',c:BM_ATHLETE,label:'You'},{kind:'dash',c:BM_REF,label:'Reference mean'},{kind:'band',c:'var(--chart-band-key)',label:'Normal range'},{kind:'band',c:'var(--chart-dev-key)',label:'Off-pattern'}])}
         <div class="bm-metrics"><span>Correlation <b>${num(c.correlation_r,2)}</b></span><span>RMSD <b>${num(c.rmsd,1)}°</b></span>${dz?`<span><b>${dz}</b> deviation zone${dz>1?'s':''}</span>`:''}</div>
       </div>`);
     }
@@ -13283,7 +13287,7 @@ function renderBiomechanics(bio, sport){
           ${vb!=null?`<span class="bm-badge ${b}">${num(vb,0)}/100 stable</span>`:''}</div>
         <div class="bm-sub">How the two joints move together through the cycle (${p.num_cycles} cycle${p.num_cycles===1?'':'s'}).</div>
         ${chart}
-        ${bmLegend([{kind:'line',c:BM_MEAN,label:'Average cycle'},{kind:'line',c:'rgba(47,109,224,.4)',label:'Individual cycles'}])}
+        ${bmLegend([{kind:'line',c:BM_MEAN,label:'Average cycle'},{kind:'line',c:'var(--chart-cycles)',label:'Individual cycles'}])}
         <div class="bm-metrics">${r!=null?`<span>Coupling <b>${num(r,2)}</b></span>`:''}${p.coupling_angle_mean!=null?`<span>Mean coupling angle <b>${num(p.coupling_angle_mean,0)}°</b></span>`:''}</div>
       </div>`);
     }
@@ -13292,7 +13296,7 @@ function renderBiomechanics(bio, sport){
   if(!cards.length){ block.classList.add('hidden'); host.innerHTML=''; return; }
   renderBiomechSummary(bio, sport);
   const fps=bio.effective_fps, bw=bio.butterworth;
-  const foot=(fps||bw)?`<p class="bm-sub" style="margin-top:16px">Lab-grade analysis${fps?` · sampled at ${num(fps,1)} fps`:''}${bw&&bw.cutoff_hz?` · smoothed with a ${num(bw.cutoff_hz,1)} Hz low-pass filter`:''}. Side-view, near-leg only.</p>`:'';
+  const foot=(fps||bw)?`<p class="bm-sub u-mt-4">Lab-grade analysis${fps?` · sampled at ${num(fps,1)} fps`:''}${bw&&bw.cutoff_hz?` · smoothed with a ${num(bw.cutoff_hz,1)} Hz low-pass filter`:''}. Side-view, near-leg only.</p>`:'';
   host.innerHTML=`<div class="bmgrid">${cards.join('')}</div>${foot}`;
   block.classList.remove('hidden');
 }
@@ -13317,9 +13321,9 @@ function trendChart(vals,dates,opt,unit,wide){
   const Y=v=> pad.t + (H-pad.t-pad.b)*(1-(v-lo)/(hi-lo));
   let s=`<svg viewBox="0 0 ${W} ${H}" class="tchart" role="img" aria-label="Trend over ${n} analyses">`;
   if(opt){ const y1=Y(opt[1]), y2=Y(opt[0]);
-    s+=`<rect x="${pad.l}" y="${y1.toFixed(1)}" width="${(W-pad.l-pad.r).toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="rgba(46,158,91,.13)"/>`
-      +`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="rgba(46,158,91,.45)" stroke-width="1" stroke-dasharray="3 3"/>`
-      +`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(46,158,91,.45)" stroke-width="1" stroke-dasharray="3 3"/>`; }
+    s+=`<rect x="${pad.l}" y="${y1.toFixed(1)}" width="${(W-pad.l-pad.r).toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="var(--chart-ok-band)"/>`
+      +`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--chart-ok-line)" stroke-width="1" stroke-dasharray="3 3"/>`
+      +`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="var(--chart-ok-line)" stroke-width="1" stroke-dasharray="3 3"/>`; }
   const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
   s+=`<polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   // The latest point is emphasised by SHAPE (solid, larger, haloed), never by
@@ -13328,7 +13332,7 @@ function trendChart(vals,dates,opt,unit,wide){
   vals.forEach((v,i)=>{ const last=i===n-1;
     const cx=X(i).toFixed(1), cy=Y(v).toFixed(1);
     if(last) s+=`<circle cx="${cx}" cy="${cy}" r="7.5" fill="none" stroke="var(--c-blue)" stroke-opacity=".25" stroke-width="1.5"/>`;
-    s+=`<circle cx="${cx}" cy="${cy}" r="${last?4.5:3}" fill="${last?'var(--c-blue)':'#fff'}" stroke="${last?'#fff':'var(--c-blue)'}" stroke-width="2"><title>${esc(dates[i])}: ${Math.round(v*10)/10}${unit||''}</title></circle>`; });
+    s+=`<circle cx="${cx}" cy="${cy}" r="${last?4.5:3}" fill="${last?'var(--c-blue)':'var(--c-bg)'}" stroke="${last?'var(--c-bg)':'var(--c-blue)'}" stroke-width="2"><title>${esc(dates[i])}: ${Math.round(v*10)/10}${unit||''}</title></circle>`; });
   const lv=vals[n-1], ly=Y(lv);
   s+=`<text x="${(W-pad.r).toFixed(1)}" y="${(ly<26?ly+15:ly-9).toFixed(1)}" text-anchor="end" class="tval">${Math.round(lv*10)/10}${unit||''}</text></svg>`;
   return s;
@@ -13409,7 +13413,7 @@ function renderProgress(){
   if(all.length<2){
     const noun=sport==='bike'?'rides':'runs';
     const have=all.length;
-    grid.innerHTML=`<div class="emptybox" style="grid-column:1/-1">
+    grid.innerHTML=`<div class="emptybox u-span-all">
       <img class="empty-fig" src="/media/empty-trends.webp" alt="" width="120" height="120">
       <h4>${have===0?'No trends yet':'One more to go'}</h4>
       <p>Analyze at least <b>2</b> ${noun}${sides.length>1?' from this side':''} to unlock progress charts — you have <b>${have}</b> so far. Each new analysis adds a point.</p>
@@ -13439,7 +13443,7 @@ function renderProgress(){
   // locked previews with one upsell CTA (never more than one per screen).
   let lockCards='';
   if(isFreeUser()) lockCards=TREND_METRICS[sport].filter(m=>m.key!=='score' && !shown.has(m.key)).map(lockedTrendCard).join('');
-  grid.innerHTML=(realCards+lockCards) || `<p class="hint" style="grid-column:1/-1">Not enough data yet for ${sport} trends.</p>`;
+  grid.innerHTML=(realCards+lockCards) || `<p class="hint u-span-all">Not enough data yet for ${sport} trends.</p>`;
   if(teaser && isFreeUser() && lockCards){
     teaser.innerHTML=teaserPanelHtml(PROGRESS_TEASER_ITEMS, {src:'progress-teaser',
       title:'Track every metric, not just your score',
@@ -13468,7 +13472,7 @@ function miniSpark(vals,W=132,H=44){
   const X=i=>p+i*(W-2*p)/(n-1), Y=v=>p+(H-2*p)*(1-(v-lo)/(hi-lo));
   const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
   const lx=X(n-1),ly=Y(vals[n-1]);
-  return `<svg viewBox="0 0 ${W} ${H}" class="dspark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.4" fill="var(--c-blue)" stroke="#fff" stroke-width="1.6"/></svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="dspark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.4" fill="var(--c-blue)" stroke="var(--c-bg)" stroke-width="1.6"/></svg>`;
 }
 /* A KPI tile per sport: the latest score in its ring, the grade, how far it
    moved since the first analysis, the line of every score, the personal best.
@@ -13702,7 +13706,7 @@ function renderCurrentForm(all){
       <button class="btn btn-primary btn-sm" data-analyze="${sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a ${noun}</button></div>`;
   } else {
     body=currentFormTable(sport, entries) || (free ? lockedFormBody(sport, entries[0]) : '')
-      || `<p class="hint" style="margin:6px 0">No metric data for ${sport} yet.</p>`;
+      || `<p class="hint u-m-0 u-mt-2 u-mb-2">No metric data for ${sport} yet.</p>`;
   }
 
   host.innerHTML=`<div class="dcard dform">
@@ -13903,10 +13907,10 @@ function konaStrip(v,f){
   const lo=Math.min(f.lo,v), hi=Math.max(f.hi,v), pad=(hi-lo)*0.08||1;
   const a=lo-pad, b=hi+pad, P=x=>((x-a)/(b-a)*100).toFixed(1);
   return `<div class="kstrip" aria-hidden="true">
-    <span class="ks-range" style="left:${P(f.lo)}%;width:${(P(f.hi)-P(f.lo)).toFixed(1)}%"></span>
-    <span class="ks-mid" style="left:${P(f.q1)}%;width:${(P(f.q3)-P(f.q1)).toFixed(1)}%"></span>
-    <span class="ks-med" style="left:${P(f.median)}%"></span>
-    <span class="ks-you" style="left:${P(v)}%"></span></div>`;
+    <span class="ks-range" style="--x:${P(f.lo)}%;--w:${(P(f.hi)-P(f.lo)).toFixed(1)}%"></span>
+    <span class="ks-mid" style="--x:${P(f.q1)}%;--w:${(P(f.q3)-P(f.q1)).toFixed(1)}%"></span>
+    <span class="ks-med" style="--x:${P(f.median)}%"></span>
+    <span class="ks-you" style="--x:${P(v)}%"></span></div>`;
 }
 function renderDashKona(all){
   const host=$('#dashKona'); if(!host) return;
@@ -14138,7 +14142,7 @@ function renderSquadHome(){
         <li><b>Compare them here:</b> everyone on one table, against the range, against their last clip and against the Kona pros.</li>
       </ol>
       <div class="sq-actions"><button class="btn btn-primary" type="button" onclick="openAthletes(true)">Add an athlete</button> <button class="btn btn-ghost" type="button" onclick="openBatch()">Upload several clips</button></div>
-      <p class="hint" style="text-align:left;margin-top:14px">Your own clips live under <a href="#" onclick="event.preventDefault();state.squadMe=true;openDashboard()">My technique</a>.</p>
+      <p class="hint u-mt-4">Your own clips live under <a href="#" onclick="event.preventDefault();state.squadMe=true;openDashboard()">My technique</a>.</p>
     </div>`;
     wireCoachNameAsk();
     return;
@@ -14191,7 +14195,7 @@ function renderSquadHome(){
     <div class="sq-tablewrap"><table class="sq-table">
       <thead><tr><th scope="col"></th><th scope="col"></th><th scope="col">Athlete</th><th scope="col">Last clip</th><th scope="col">Key readings · change since their last clip</th><th scope="col" title="Measured elsewhere and entered by hand; Flapp does not calculate it">Measured CdA</th><th scope="col" class="sq-score">Score</th></tr></thead>
       <tbody>${rows.map(row).join('')}</tbody></table></div>
-    <p class="hint sq-foot" style="text-align:left">Red is outside the range the report uses; plain has no range or is inside it. Tick two to compare them side by side.</p>
+    <p class="hint sq-foot">Red is outside the range the report uses; plain has no range or is inside it. Tick two to compare them side by side.</p>
     <div id="sqKona"></div>
     ${feed.length?`<div class="sq-feed"><h2>Latest clips</h2><div class="sq-feedgrid">${feed.map(e=>`<button type="button" class="sq-clip" data-entry="${esc(e.id)}"><span class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</span><span class="sq-cliptxt"><b>${esc(athleteName(e.athleteId)||'')}</b><small>${e.sport==='run'?'Run':'Bike'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}${e.label?' · '+esc(e.label):''}</small></span></button>`).join('')}</div></div>`:''}
     <div class="sq-me"><button class="btn btn-ghost btn-sm" type="button" id="sqMe">My technique</button><span class="subhint">your own clips, as before</span></div>`;
@@ -14259,13 +14263,13 @@ function openAthlete(id){
     const planHtml=`<div class="ad-plan">
         <div class="ad-box">
           <div class="ad-box-h"><h3>Races</h3>${nr?`<span class="ad-count${nr.days_to_go<=21?' sq-race-soon':''}">${esc(nr.name)} ${raceWhen(nr)}</span>`:''}</div>
-          ${races.length?`<ul class="ad-rows">${races.map(r=>`<li class="${r.past?'is-past':''}"><b>${esc(r.name)}</b><span class="ad-meta">${esc(cdaDay(r.race_on))} · ${esc(r.priority)} race · ${raceWhen(r)}</span><button type="button" class="p-copy" data-raceedit="${r.id}">Edit</button><button type="button" class="p-copy" data-racedel="${r.id}">Remove</button></li>`).join('')}</ul>`:`<p class="hint" style="text-align:left">No race yet. With one here, the Squad puts ${esc(a.name.split(' ')[0])}’s clips first as it gets close.</p>`}
-          ${races.length>=12&&!editR?'<p class="hint" style="text-align:left">Twelve races is the most one athlete keeps. Remove a past one to add another.</p>'
+          ${races.length?`<ul class="ad-rows">${races.map(r=>`<li class="${r.past?'is-past':''}"><b>${esc(r.name)}</b><span class="ad-meta">${esc(cdaDay(r.race_on))} · ${esc(r.priority)} race · ${raceWhen(r)}</span><button type="button" class="p-copy" data-raceedit="${r.id}">Edit</button><button type="button" class="p-copy" data-racedel="${r.id}">Remove</button></li>`).join('')}</ul>`:`<p class="hint">No race yet. With one here, the Squad puts ${esc(a.name.split(' ')[0])}’s clips first as it gets close.</p>`}
+          ${races.length>=12&&!editR?'<p class="hint">Twelve races is the most one athlete keeps. Remove a past one to add another.</p>'
             :`<form class="ad-form" id="adRaceNew"><input type="text" id="adRaceName" maxlength="80" placeholder="Race, e.g. Ironman 70.3 Victoria" aria-label="Race name" value="${editR?esc(editR.name):''}"><input type="date" id="adRaceDay" aria-label="Race date" value="${editR?esc(editR.race_on):''}"><select id="adRacePri" aria-label="Priority">${['A','B','C'].map(x=>`<option value="${x}"${(editR?editR.priority:'A')===x?' selected':''}>${x==='A'?'A · main race':x}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="submit">${editR?'Save race':'Add race'}</button>${editR?'<button class="btn btn-ghost btn-sm" type="button" id="adRaceCancel">Cancel</button>':''}</form>`}
         </div>
         <div class="ad-box">
           <div class="ad-box-h"><h3>Groups</h3><span class="prof-note">only you see these</span></div>
-          ${allG.length?`<div class="sq-groups" role="group" aria-label="Groups ${esc(a.name)} is in">${allG.map(g=>`<button type="button" data-agroup="${g.id}" aria-pressed="${mineG.includes(g.id)}">${esc(g.name)}</button>`).join('')}</div>`:'<p class="hint" style="text-align:left">No groups yet. A group is a club, a camp or a race team; the Squad filters by it.</p>'}
+          ${allG.length?`<div class="sq-groups" role="group" aria-label="Groups ${esc(a.name)} is in">${allG.map(g=>`<button type="button" data-agroup="${g.id}" aria-pressed="${mineG.includes(g.id)}">${esc(g.name)}</button>`).join('')}</div>`:'<p class="hint">No groups yet. A group is a club, a camp or a race team; the Squad filters by it.</p>'}
           ${allG.length>=(GROUPS.limit||30)?'':`<form class="ad-form" id="adGroupNew"><input type="text" id="adGroupName" maxlength="40" placeholder="New group, e.g. RMTC" aria-label="New group name"><button class="btn btn-ghost btn-sm" type="submit">Add and put ${esc(a.name.split(' ')[0])} in it</button></form>`}
         </div>
       </div>`;
@@ -14278,8 +14282,8 @@ function openAthlete(id){
         <button class="btn btn-ghost btn-sm" type="button" id="adProgress"${ready.length<2?' disabled title="Two clips make a trend"':''}>Progress charts</button>
         ${unseenN?`<button class="btn btn-ghost btn-sm" type="button" id="adSeenAll">Mark all ${unseenN} seen</button>`:''}
       </div>
-      <p class="hint" style="text-align:left">${a.linked?`${esc(a.name)} linked their own account. You see what their plan shows them; clips they film reach you by themselves.`:`The upload link needs no account: they send a clip and it lands here. The code links their own Flapp account to you instead.`}</p>
-      ${mine.filter(p=>p.sport!=='bike').length?`<p class="hint" style="text-align:left">Shoes: ${mine.filter(p=>p.sport!=='bike').map(p=>esc(p.name)).join(' · ')}</p>`:''}
+      <p class="hint">${a.linked?`${esc(a.name)} linked their own account. You see what their plan shows them; clips they film reach you by themselves.`:`The upload link needs no account: they send a clip and it lands here. The code links their own Flapp account to you instead.`}</p>
+      ${mine.filter(p=>p.sport!=='bike').length?`<p class="hint">Shoes: ${mine.filter(p=>p.sport!=='bike').map(p=>esc(p.name)).join(' · ')}</p>`:''}
       ${planHtml}
       <div id="adCda"></div>
       <div class="sq-tablewrap"><table class="sq-table">
@@ -14465,7 +14469,7 @@ function renderBatch(){
    Before, a row had 12 px of grey text and a phone showed a grey button and
    nothing else, so a batch that had worked looked stuck (Artur, 2026-11-13). */
 function batchStateHtml(it){
-  const bar=it.pct!=null?`<span class="bat-mini"><i style="width:${it.pct}%"></i></span>`:'';
+  const bar=it.pct!=null?`<span class="bat-mini"><i style="--w:${it.pct}%"></i></span>`:'';
   if(it.state==='sending') return `<div class="bat-state bat-live"><span class="bat-dot" aria-hidden="true"></span><span>${esc(it.msg||'Sending')}${it.pct!=null?' '+it.pct+'%':''}${bar}</span></div>`;
   if(it.state==='sent') return `<div class="bat-state bat-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>${esc(it.msg||'Sent')}</span></div>`;
   if(it.state==='failed') return `<div class="bat-state sq-off"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>${esc(it.msg||'Did not go through')}</span></div>`;
@@ -14481,7 +14485,7 @@ function renderBatchStatus(){
     const what=cur?(cur.kind==='photo'?`${esc(cur.msg||'Measuring')} · ${esc(cur.file.name)}`:`Uploading ${esc(cur.file.name)}${cur.pct!=null?' · '+cur.pct+'%':''}`):'Finishing';
     const part=cur?(cur.pct!=null?cur.pct/100:.4):0;
     host.innerHTML=`<div class="bat-st-h"><span class="bat-spin" aria-hidden="true"></span><b>${finished} of ${total} done</b><span class="bat-st-what">${what}</span></div>
-      <div class="pbar"><div class="fill" style="width:${total?Math.max(4,Math.round(100*(finished+part)/total)):4}%"></div></div>
+      <div class="pbar"><div class="fill" style="--w:${total?Math.max(4,Math.round(100*(finished+part)/total)):4}%"></div></div>
       <p class="bat-st-note">Keep this page open until the uploads finish. After that the analysis runs on our side and you can close it.</p>`;
     host.classList.remove('hidden','bat-st-done'); return;
   }
@@ -14723,7 +14727,7 @@ async function renderCoachActions(e, where){
   if(!hasCoachPlan()||!e||e.athleteId==null) return;
   const name=athleteName(e.athleteId)||'your athlete';
   const noteBtn=coachOn()&&!e.coachOrderId?`<button class="btn btn-ghost btn-sm" type="button" onclick="goCoachNote('${esc(W.note)}')"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Write a note</button>`:'';
-  if(e.linkedAthleteId){ host.innerHTML=`${noteBtn}<p class="hint" style="text-align:left;margin:10px 0 0">${esc(name)} has this report in their own app. Your note reaches them there.</p>`; return; }
+  if(e.linkedAthleteId){ host.innerHTML=`${noteBtn}<p class="hint u-m-0 u-mt-3">${esc(name)} has this report in their own app. Your note reaches them there.</p>`; return; }
   if(e.kind!=='video'||e.sellable===false){ host.innerHTML=noteBtn; return; }
   const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(e.athleteId));
   const base='/me/athletes/'+encodeURIComponent(e.athleteId)+'/analyses/'+encodeURIComponent(e.id);
@@ -14767,7 +14771,7 @@ async function renderReview(e, where){
   const own=hasCoachPlan()&&!!e&&e.athleteId!=null&&!e.linkedAthleteId&&e.kind==='video'&&e.sellable!==false&&!e.locked;
   block.classList.toggle('hidden',!own);
   if(!own) return;
-  host.innerHTML='<p class="hint" style="text-align:left">Preparing the draft…</p>';
+  host.innerHTML='<p class="hint">Preparing the draft…</p>';
   // Straight after the analysis the entry is still being saved: wait for it.
   for(let tries=0; tries<8; tries++){
     try{
@@ -14779,9 +14783,9 @@ async function renderReview(e, where){
       REVIEW={e,data:j,dirty:false,host:W.host};
       drawReview();
       return;
-    }catch(err){ host.innerHTML=`<p class="hint" style="text-align:left">${esc(err.message||'Could not prepare the draft. Reload the page to try again.')}</p>`; return; }
+    }catch(err){ host.innerHTML=`<p class="hint">${esc(err.message||'Could not prepare the draft. Reload the page to try again.')}</p>`; return; }
   }
-  host.innerHTML='<p class="hint" style="text-align:left">The report is still being saved. Open it from the athlete’s page in a minute to review it.</p>';
+  host.innerHTML='<p class="hint">The report is still being saved. Open it from the athlete’s page in a minute to review it.</p>';
 }
 function reviewCardHtml(c,i,n){
   const changed=c.title!==c.orig.title||c.why!==c.orig.why||c.do!==c.orig.do;
@@ -14806,12 +14810,12 @@ function drawReview(){
     <textarea id="rvText" rows="9">${esc(d.coachText||'')}</textarea>
     <div class="rv-links"><button type="button" class="p-copy" id="rvTextFlapp">Flapp’s text</button> · <button type="button" class="p-copy" id="rvTextNone">leave it out</button></div>
     <div class="rv-lbl">The plan, in the order it prints</div>
-    <div class="rv-cards">${cards.length?cards.map((c,i)=>reviewCardHtml(c,i,cards.length)).join(''):'<p class="hint" style="text-align:left">No changes in the plan on this clip.</p>'}</div>
+    <div class="rv-cards">${cards.length?cards.map((c,i)=>reviewCardHtml(c,i,cards.length)).join(''):'<p class="hint">No changes in the plan on this clip.</p>'}</div>
     <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="rvSave">${d.reviewedAt?'Save changes':'Save the draft'}</button>
       <button class="btn btn-ghost btn-sm" type="button" id="rvPreview">See the PDF</button>
       ${d.edited?'<button type="button" class="p-copy" id="rvReset">back to Flapp’s version</button>':''}
       <span class="cnote-status" id="rvStatus">${REVIEW.dirty?'Not saved yet.':''}</span></div>
-    <p class="hint" style="text-align:left;margin-top:10px">${d.reviewedAt?'Sent. What you save now shows on the athlete’s link straight away.':'Sending it with the button at the top approves it: the PDF then says it was reviewed by you.'}</p>`;
+    <p class="hint u-mt-3">${d.reviewedAt?'Sent. What you save now shows on the athlete’s link straight away.':'Sending it with the button at the top approves it: the PDF then says it was reviewed by you.'}</p>`;
   const touch=()=>{ REVIEW.dirty=true; const s=$('#rvStatus'); if(s) s.textContent='Not saved yet.'; };
   $('#rvText').addEventListener('input',e=>{ d.coachText=e.target.value; touch(); });
   $('#rvTextFlapp').addEventListener('click',()=>{ d.coachText=d.coachTextFlapp||''; $('#rvText').value=d.coachText; touch(); });
@@ -14864,7 +14868,7 @@ async function previewReview(){
   if(!REVIEW) return;
   const w=window.open('','_blank');
   if(!w){ toast('Allow pop-ups for this site to see the PDF.'); return; }
-  w.document.write('<p style="font:16px system-ui,sans-serif;padding:24px;color:#14294B">Preparing the report…</p>');
+  w.document.write(printWaitHtml('Preparing the report…'));
   if(!await saveReview()){ w.close(); return; }
   try{
     const r=await fetch(meUrl(REVIEW.e,'report'),{headers:authHeaders()});
@@ -14882,7 +14886,7 @@ function openDashboard(){
     const t=$('#dashTitle'); if(t) t.textContent='My technique';
     renderDashboard();
     // A coach on their own page: a way back to the squad.
-    if(hasCoachPlan()){ const h=$('#dashSummary'); if(h) h.insertAdjacentHTML('beforebegin',`<p id="dashSquadBack" class="hint" style="text-align:left;margin:0 0 12px"><a href="#" onclick="event.preventDefault();state.squadMe=false;openDashboard()">Back to the squad</a></p>`); }
+    if(hasCoachPlan()){ const h=$('#dashSummary'); if(h) h.insertAdjacentHTML('beforebegin',`<p id="dashSquadBack" class="hint u-m-0 u-mb-3"><a href="#" onclick="event.preventDefault();state.squadMe=false;openDashboard()">Back to the squad</a></p>`); }
   }
   setState('dashboard',{focus:'#dashTitle'});
 }
@@ -14944,7 +14948,7 @@ function initChangelog(){
 function renderWhatsNew(seenAtOpen){
   const es=state.changelog||[];
   if(!es.length){
-    $('#wnList').innerHTML=`<p class="hint" style="text-align:left">Couldn’t load the release notes right now — they’re also on the <a href="/changelog">changelog page</a>.</p>`;
+    $('#wnList').innerHTML=`<p class="hint">Couldn’t load the release notes right now — they’re also on the <a href="/changelog">changelog page</a>.</p>`;
     return;
   }
   // `html` is our own Markdown, rendered server-side from files in the repo --
@@ -14957,7 +14961,7 @@ function renderWhatsNew(seenAtOpen){
       ${e.html||''}
     </article>`;
   }).join('')
-    +`<div class="wn-foot"><p class="hint" style="text-align:left;margin:0">Something here still not matching what you see in your own results? Rate your next analysis — that’s where this list comes from. <a href="/changelog" target="_blank" rel="noopener">Permanent link to these notes</a>.</p></div>`;
+    +`<div class="wn-foot"><p class="hint u-m-0">Something here still not matching what you see in your own results? Rate your next analysis — that’s where this list comes from. <a href="/changelog" target="_blank" rel="noopener">Permanent link to these notes</a>.</p></div>`;
 }
 
 function openWhatsNew(){
@@ -14992,7 +14996,7 @@ function openFeedbackAdmin(){
 
 async function loadFeedbackAdmin(){
   const list=$('#fbaList');
-  list.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+  list.innerHTML='<p class="hint">Loading…</p>';
   const f=state.fbaFilter||'all';
   const qs=f==='down'?'?rating=-1':f==='up'?'?rating=1':f==='new'?'?status_filter=new':'';
   try{
@@ -15017,7 +15021,7 @@ function fbSplit(title, bucket){
     .filter(k=>bucket[k].n>0)
     .sort((a,b)=>(bucket[b].down_rate||0)-(bucket[a].down_rate||0));
   if(!rows.length) return '';
-  return `<div class="block" style="margin-top:24px">
+  return `<div class="block u-mt-6">
     <div class="blockhead"><div class="eyebrow">Negative rate</div><h3>${esc(title)}</h3><div class="speedline-sm"></div></div>
     <div class="tablewrap"><table class="data">
       <thead><tr><th scope="col">Bucket</th><th scope="col" class="num">Rated</th><th scope="col" class="num">👍</th><th scope="col" class="num">👎</th><th scope="col" class="num">Negative</th></tr></thead>
@@ -15039,8 +15043,8 @@ function renderFbStats(s){
     `<div class="fb-stat"><div class="v">${esc(String(v==null?'—':v))}</div><div class="k">${esc(k)}</div></div>`).join('');
   const tags=Object.keys(s.top_tags||{});
   const tagLine=tags.length
-    ? `<div class="fb-tags" style="margin-top:20px">${tags.map(t=>
-        `<span class="fb-tag" style="cursor:default">${esc(t.replace(/_/g,' '))} · <b>${s.top_tags[t]}</b></span>`).join('')}</div>`
+    ? `<div class="fb-tags u-mt-5">${tags.map(t=>
+        `<span class="fb-tag u-cursor-default">${esc(t.replace(/_/g,' '))} · <b>${s.top_tags[t]}</b></span>`).join('')}</div>`
     : '';
   $('#fbaSplits').innerHTML=tagLine
       +fbSplit('By quality gate', s.by_quality_gate)
@@ -15051,7 +15055,7 @@ function renderFbStats(s){
 }
 
 function renderFbList(items){
-  if(!items.length){ $('#fbaList').innerHTML='<p class="hint" style="text-align:left">Nothing here yet.</p>'; return; }
+  if(!items.length){ $('#fbaList').innerHTML='<p class="hint">Nothing here yet.</p>'; return; }
   $('#fbaList').innerHTML=items.map(it=>{
     const cls=it.rating===1?'up':it.rating===-1?'down':'';
     const face=it.rating===1?'👍':it.rating===-1?'👎':'💬';
@@ -15060,22 +15064,21 @@ function renderFbList(items){
       .map(k=>`${k}=${String(ctx[k])}`).join(' · ');
     return `<div class="fb-item ${cls}" data-fb-id="${it.id}">
       <div class="fb-item-top">
-        <span style="font-size:17px">${face}</span>
+        <span class="fb-face">${face}</span>
         <span class="who">${esc(it.email||'anonymous')}</span>
         <span class="when">${esc(fmtWhen(it.at))}</span>
-        <select data-fb-status style="font-family:var(--f-body);font-size:12px;padding:4px 8px;border:1.5px solid var(--c-line);border-radius:6px">
+        <select data-fb-status class="fb-status">
           ${FB_STATUSES.map(s=>`<option value="${s}"${s===it.status?' selected':''}>${s}</option>`).join('')}
         </select>
         ${it.has_keyframe?'<button class="btn btn-ghost btn-sm" data-fb-frame type="button">Show still</button>':''}
       </div>
-      ${(it.tags||[]).length?`<div class="fb-tags" style="margin-bottom:0">${it.tags.map(t=>
-        `<span class="fb-tag" style="cursor:default">${esc(t.replace(/_/g,' '))}</span>`).join('')}</div>`:''}
+      ${(it.tags||[]).length?`<div class="fb-tags u-mb-0">${it.tags.map(t=>
+        `<span class="fb-tag u-cursor-default">${esc(t.replace(/_/g,' '))}</span>`).join('')}</div>`:''}
       ${it.message?`<p class="msg">${esc(it.message)}</p>`:''}
       ${ctxLine?`<p class="ctx">${esc(ctxLine)}</p>`:''}
       ${ctx.gate_reason?`<p class="ctx">gate: ${esc(ctx.gate_reason)}</p>`:''}
       <div class="fb-detail hidden" data-fb-detail></div>
-      <input type="text" data-fb-note value="${esc(it.admin_note||'')}" placeholder="Private triage note…"
-        style="width:100%;margin-top:12px;padding:8px 11px;border:1.5px solid var(--c-line);border-radius:8px;font-size:13px;font-family:var(--f-body)">
+      <input type="text" data-fb-note value="${esc(it.admin_note||'')}" placeholder="Private triage note…" class="fb-note">
     </div>`;
   }).join('');
 }
@@ -15088,13 +15091,13 @@ $('#feedbackAdmin').addEventListener('click',async e=>{
     const item=fbtn.closest('[data-fb-id]'), host=item.querySelector('[data-fb-detail]');
     if(!host.classList.contains('hidden')){ host.classList.add('hidden'); return; }
     host.classList.remove('hidden');
-    host.innerHTML='<p class="hint" style="text-align:left">Loading…</p>';
+    host.innerHTML='<p class="hint">Loading…</p>';
     try{
       const r=await fetch('/admin/feedback/'+item.dataset.fbId,{headers:authHeaders()});
       const j=await r.json();
-      host.innerHTML=(j.keyframe?`<img src="${j.keyframe}" alt="Annotated still from the rated analysis">`:'<p class="hint" style="text-align:left">No still attached.</p>')
-        +`<pre class="ctx" style="white-space:pre-wrap;margin:0">${esc(JSON.stringify(j.context||{},null,1))}</pre>`;
-    }catch(_e){ host.innerHTML='<p class="hint" style="text-align:left">Couldn’t load it.</p>'; }
+      host.innerHTML=(j.keyframe?`<img src="${j.keyframe}" alt="Annotated still from the rated analysis">`:'<p class="hint">No still attached.</p>')
+        +`<pre class="ctx ctx--raw">${esc(JSON.stringify(j.context||{},null,1))}</pre>`;
+    }catch(_e){ host.innerHTML='<p class="hint">Couldn’t load it.</p>'; }
     return;
   }
   const seg=e.target.closest('[data-fbf]');
@@ -15152,7 +15155,7 @@ $('#expertAdmin').addEventListener('change',e=>{
 function toggleCompareCta(){
   const sport=state.progressSport||'bike';
   const n=loadHist().filter(e=>e.sport===sport && e.trends).length;
-  const cta=$('#compareCta'); if(cta) cta.style.display = n>=2 ? '' : 'none';
+  const cta=$('#compareCta'); if(cta) cta.classList.toggle('hidden', n<2);
 }
 /* Pick the two most recent analyses (of the active sport) as the default
    A=older, B=newer pair, then let the user re-pick either side. */
@@ -15472,7 +15475,7 @@ function renderBilateral(b){
       ${c.keyframe_base64?`<button class="bil-shot-btn" type="button" data-shot="${esc(c.camera_side||'')}" aria-label="Open the ${esc(c.camera_side||'')} side frame full size">
         <img class="bil-shot" src="${c.keyframe_base64}" alt="${name} side annotated frame"></button>`:''}
       <span>${name} side alone</span>
-      <small class="bil-note" style="margin:2px 0 0">${evidence}</small>
+      <small class="bil-note u-m-0 u-mt-1">${evidence}</small>
       ${why?`<small class="bil-why">${esc(why)}</small>`:''}
     </div>`;
   }).join('');
@@ -15511,9 +15514,9 @@ function renderBilateral(b){
     host.innerHTML=`<div class="bil">
       <div class="bil-h"><b>Two-sided session</b>
         <span class="bil-flag bil-ok">merged, except the knee</span>${swappedFlag}</div>
-      <p class="bil-note" style="margin-top:0">Trunk, hip, shoulder and elbow were measured by <b>both</b> clips and pooled. The two clips agree to <b>${agree.worst}°</b> on them${gaps?` (${gaps})`:''} — that gap is this session’s own error bar, measured on the day.</p>
+      <p class="bil-note u-mt-0">Trunk, hip, shoulder and elbow were measured by <b>both</b> clips and pooled. The two clips agree to <b>${agree.worst}°</b> on them${gaps?` (${gaps})`:''} — that gap is this session’s own error bar, measured on the day.</p>
       <div class="bil-val">${ks.value==null?'—':Math.round(ks.value*10)/10}° <small>${esc(ks.side||'')} clip only${ks.revolutions!=null?` · ${ks.revolutions} revolutions`:''}</small></div>
-      <p class="bil-note" style="margin-top:2px">Knee at the bottom of the stroke, and the saddle verdict built on it, from the <b>${esc(ks.side||'one')}-side clip alone</b> — ${whyKnee}. It was not pooled with the other clip, because a knee the two clips cannot put on one scale would be an average of two different rulers.</p>
+      <p class="bil-note u-mt-1">Knee at the bottom of the stroke, and the saddle verdict built on it, from the <b>${esc(ks.side||'one')}-side clip alone</b> — ${whyKnee}. It was not pooled with the other clip, because a knee the two clips cannot put on one scale would be an average of two different rulers.</p>
       ${vids}
       <div class="bil-sides">${cards}</div>
       <p class="bil-note">A side view can only see the leg nearest the camera, so no left-right comparison is offered here either: the difference between the two clips’ own knee readings is the instrument, not your legs.</p>
@@ -15532,7 +15535,7 @@ function renderBilateral(b){
     host.innerHTML=`<div class="bil">
       <div class="bil-h"><b>Two-sided session</b>
         <span class="bil-flag bil-warn">not merged</span>${swappedFlag}</div>
-      <p class="bil-note" style="margin-top:0">${esc(reason)}
+      <p class="bil-note u-mt-0">${esc(reason)}
       ${b.scale_chord_disagreement_pct!=null?` (They disagree by <b>${b.scale_chord_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
       ${vids}
       <div class="bil-sides">${cards}</div>
@@ -15549,7 +15552,7 @@ function renderBilateral(b){
   host.innerHTML=`<div class="bil">
     <div class="bil-h"><b>Two-sided session</b>${agreeFlag}${swappedFlag}</div>
     <div class="bil-val">${Math.round(b.knee_at_bdc*10)/10}\u00b0${unc!=null?` <small>\u00b1${Math.round(unc)}\u00b0</small>`:''}</div>
-    <p class="bil-note" style="margin-top:2px">Knee at the bottom of the stroke, measured from <b>both</b> clips against one body. Each clip on its own only ever sees one leg.</p>
+    <p class="bil-note u-mt-1">Knee at the bottom of the stroke, measured from <b>both</b> clips against one body. Each clip on its own only ever sees one leg.</p>
     ${vids}
     <div class="bil-sides">${cards}</div>
     <p class="bil-note"><b>Read alone, the two clips put this knee a few degrees apart — and that gap is the instrument, not your legs.</b>
@@ -15600,7 +15603,7 @@ function renderRunSession(s){
     return `<div class="bil-side">
       ${c.keyframe_base64?`<img class="bil-shot" src="${c.keyframe_base64}" alt="${k} side annotated frame">`:''}
       <span>${k} side alone</span> ${flag}
-      <small class="bil-note" style="margin:4px 0 0">${
+      <small class="bil-note u-m-0 u-mt-1">${
         c.metrics && c.metrics.knee_mean!=null
           ? 'knee, average <b>'+Math.round(c.metrics.knee_mean)+'\u00b0</b>' : ''}</small>
     </div>`;
@@ -15612,7 +15615,7 @@ function renderRunSession(s){
     host.innerHTML=`<div class="bil">
       <div class="bil-h"><b>Two-sided run session</b>
         <span class="bil-flag bil-warn">not merged</span></div>
-      <p class="bil-note" style="margin-top:0">We didn\u2019t combine these two clips because ${esc(why)}${
+      <p class="bil-note u-mt-0">We didn\u2019t combine these two clips because ${esc(why)}${
         (s.unstable_sides||[]).length? ' on the <b>'+esc(s.unstable_sides.join(' and '))+'</b> clip':''}.
         Merging them would have folded that straight into the answer.</p>
       ${worst!=null?`<p class="bil-note">Both clips measure your <b>${esc(runMetricName((s.agreement||{}).worst_metric||''))}</b>
@@ -15641,14 +15644,14 @@ function renderRunSession(s){
   host.innerHTML=`<div class="bil">
     <div class="bil-h"><b>Two-sided run session</b>
       ${agree.worst!=null?`<span class="bil-flag bil-ok">clips agree to ${agree.worst}%</span>`:''}</div>
-    <p class="bil-note" style="margin-top:0">Both clips measure your cadence, contact time and trunk lean independently.
+    <p class="bil-note u-mt-0">Both clips measure your cadence, contact time and trunk lean independently.
       How far apart they land — <b>${agree.worst}%</b> at worst — is this session\u2019s own error, measured today rather than assumed.
       Every left-versus-right difference below is judged against it.</p>
     <div class="bil-sides">${cards}</div>
     ${whole?`<div class="cmp-grid"><div class="cmp-row cmp-row-head">
         <div class="cmp-lbl">Whole body, both clips averaged</div><div class="cmp-a"></div>
         <div class="cmp-d"></div><div class="cmp-b"></div></div>${whole}</div>`:''}
-    ${rows?`<div class="cmp-grid" style="margin-top:12px"><div class="cmp-row cmp-row-head">
+    ${rows?`<div class="cmp-grid u-mt-3"><div class="cmp-row cmp-row-head">
         <div class="cmp-lbl">Leg by leg</div><div class="cmp-a">Left</div>
         <div class="cmp-d">Difference</div><div class="cmp-b">Right</div></div>${rows}</div>`:''}
     <p class="bil-note">A difference smaller than the session\u2019s own error is not something these two clips can resolve — treat those legs as even.</p>
@@ -15747,7 +15750,7 @@ function renderCompare(){
       <div class="cmp-when">${setups
         ? esc(e._profile.name)+' · '+e._profile.n+' clip'+(e._profile.n>1?'s':'')+' averaged'
         : esc(fmtWhen(e.filmedAt||e.at))+(people&&sideWord(e)?' · '+sideWord(e):'')}</div>
-      ${ringHtml(e.score,80,`<div class="cmp-score" style="color:${GRADE_COLORS[e.grade]||C.navy}">${e.score==null?'—':e.score}<small>/100</small></div>`)}
+      ${ringHtml(e.score,80,`<div class="cmp-score">${e.score==null?'—':e.score}<small>/100</small></div>`)}
     </div>`).join('')}
   </div>`;
   const rowFn = people ? (m=>cmpGapRow(m,A,B)) : sidesMode
@@ -15761,7 +15764,7 @@ function renderCompare(){
   const verdict = (setups||sidesMode) ? '' : (()=>{
     const cv=cmpCaveats(A,B);
     const warn=head=>cv.length?`<div class="cmp-warn" role="note"><p><b>${head}</b></p>${cv.map(t=>`<p>${t}</p>`).join('')}</div>`:'';
-    if(people) return `<p class="hint" style="text-align:left;margin:0 0 14px">Two people, not a before and after. A gap here is a difference between them, and the right number for one body may not be the right one for the other.</p>`+warn('Filmed differently, so part of the gap can be the camera.');
+    if(people) return `<p class="hint u-m-0 u-mb-4">Two people, not a before and after. A gap here is a difference between them, and the right number for one body may not be the right one for the other.</p>`+warn('Filmed differently, so part of the gap can be the camera.');
     return warn('Not a clean comparison.') + cmpHeadline(A,B,sport,optOf);
   })();
   $('#cmpBody').innerHTML = head + verdict +
@@ -15771,9 +15774,9 @@ function renderCompare(){
        <div class="cmp-d">${setups?'Difference':(sidesMode?'Asymmetry':people?'Gap':'Change')}</div>
        <div class="cmp-b">${setups?'B':(sidesMode?'Right':people?tagB:'After')}</div>
      </div>${numRows}${catRows}</div>`
-    + (setups?`<p class="hint" style="text-align:left;margin:16px 0 0">Averaged across everything filmed on each setup. A difference here is
+    + (setups?`<p class="hint u-m-0 u-mt-4">Averaged across everything filmed on each setup. A difference here is
        the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'')
-    + (sidesMode?`<p class="hint" style="text-align:left;margin:16px 0 0">Each side-view clip measures the leg nearest the camera, so these two clips
+    + (sidesMode?`<p class="hint u-m-0 u-mt-4">Each side-view clip measures the leg nearest the camera, so these two clips
        together are your two legs — but they are also two separate readings of your body, taken
        from opposite sides, and the pose model rebuilds you from scratch in each one. We measured
        how much that alone moves the numbers: re-running the same clip with the pixels mirrored,
@@ -15822,7 +15825,7 @@ function renderCompareSummary(){
   if(pA&&pB&&String(pA.athleteId||'')!==String(pB.athleteId||'')){ host.innerHTML=''; return; }
   if(c.summary){ host.innerHTML=`<div class="cmp-ai"><div class="cmp-ai-h">Coach's read</div>${mdToHtml(c.summary)}</div>`; return; }
   if(c.summaryLoading){ host.innerHTML=`<div class="cmp-ai cmp-ai-load">Analyzing your progress…</div>`; return; }
-  host.innerHTML=`<div class="again-row" style="margin:0 0 16px"><button class="btn btn-ghost btn-sm" id="cmpAiBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Summarise the change</button></div>`;
+  host.innerHTML=`<div class="again-row u-m-0 u-mb-4"><button class="btn btn-ghost btn-sm" id="cmpAiBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg> Summarise the change</button></div>`;
   const btn=$('#cmpAiBtn'); if(btn) btn.addEventListener('click',fetchCompareSummary);
 }
 function fetchCompareSummary(){
