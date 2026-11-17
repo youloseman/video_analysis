@@ -59,3 +59,10 @@ def test_the_report_folds_on_a_phone_only():
     assert "(id==='fitBlock'&&!!(v&&v.diag))||(id==='planBlock'&&!!(v&&v.drill))" in SPA
     assert SPA.count("openSection(el)") >= 2
     assert "track('result_section_opened'" in SPA
+
+
+def test_not_graded_and_joint_angles_fold_on_every_screen():
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    assert "Shown, not graded <span>· ${g.length}" in SPA
+    assert "@media screen{ .meastable:not(.show-info) .m-info-row{display:none} }" in css   # paper shows it all
+    assert "el.classList.toggle('fold-all', id==='anglesBlock')" in SPA

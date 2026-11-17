@@ -1942,6 +1942,25 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   #results .block.foldable.is-open{padding:0 16px 16px}
   #results .block.foldable.is-open > .fold-head{margin:0 -16px;width:calc(100% + 32px)}
 }
+/* Joint angles fold on every screen (not on paper) */
+@media screen and (min-width:641px){
+  #results .block.fold-all{padding:0}
+  #results .block.fold-all > .fold-head{display:flex;align-items:baseline;gap:8px;width:100%;min-height:56px;padding:16px 24px;background:none;border:0;text-align:left;font:inherit;cursor:pointer}
+  #results .block.fold-all > .fold-head .fold-t{font-weight:600;color:var(--c-head)}
+  #results .block.fold-all > .fold-head .fold-s::before{content:"· "}
+  #results .block.fold-all > .fold-head .fold-ic{margin-left:auto;align-self:center;transform:rotate(-90deg)}
+  #results .block.fold-all.is-open > .fold-head .fold-ic{transform:none}
+  #results .block.fold-all > .blockhead{display:none}
+  #results .block.fold-all:not(.is-open) > :not(.fold-head){display:none}
+  #results .block.fold-all.is-open{padding:0 24px 24px}
+  #results .block.fold-all.is-open > .fold-head{margin:0 -24px;width:calc(100% + 48px)}
+}
+.fold-s{font-size:14px;color:var(--c-ink-faint)}
+/* Shown, not graded: one line until opened */
+.meastable .mg-toggle{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;padding:0;background:none;border:0;font:inherit;text-align:left;cursor:pointer;color:inherit}
+.meastable .mg-toggle .ic{margin-left:auto;transform:rotate(-90deg);transition:transform .15s}
+.meastable.show-info .mg-toggle .ic{transform:none}
+@media screen{ .meastable:not(.show-info) .m-info-row{display:none} }
 @media(min-width:901px){
   .fd-row{grid-template-columns:minmax(0,1fr) auto minmax(120px,42%)}
   .fd-bar{grid-column:auto}
