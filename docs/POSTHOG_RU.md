@@ -111,6 +111,8 @@ ANALYTICS_READY  host=https://us.i.posthog.com  session_recording=False
 | `ai_export` | выгрузка анализа для ChatGPT | `how`, `format` |
 | `share_card_built` | собрана картинка для Strava/Instagram | `sport`, `score` |
 | `result_feedback` | отправлен фидбек по результату | `rating`, `tags` (количество) — **без текста** |
+| `result_section_seen` | раздел отчёта впервые дошёл до зоны чтения (раз на раздел за показ результата) | `section` (id блока), `depth` (номер по порядку), `of` (сколько разделов), `sport` |
+| `result_rail_clicked` | переход по оглавлению отчёта | `section` |
 
 ### С сервера (вебхук Stripe)
 

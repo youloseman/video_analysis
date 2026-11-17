@@ -10643,8 +10643,17 @@ function watchRailSections(ids){
   if(!('IntersectionObserver' in window)) return;
   const mark=id=>{ document.querySelectorAll('#railNav [data-rail]').forEach(b=>b.classList.toggle('is-here', b.dataset.rail===id)); };
   const seen=new Map();
+  // How far people read: each section reports once per result, the first time it
+  // reaches the reading band. The baseline for the result-screen redesign.
+  const reported=new Set(), sport=state.sport||null;
   _railObs=new IntersectionObserver(entries=>{
-    entries.forEach(en=>seen.set(en.target.id, en.isIntersecting));
+    entries.forEach(en=>{
+      seen.set(en.target.id, en.isIntersecting);
+      if(en.isIntersecting && !reported.has(en.target.id)){
+        reported.add(en.target.id);
+        track('result_section_seen',{section:en.target.id, depth:ids.indexOf(en.target.id)+1, of:ids.length, sport});
+      }
+    });
     const first=ids.find(id=>seen.get(id));
     if(first) mark(first);
   },{rootMargin:'-20% 0px -60% 0px',threshold:0});
@@ -10653,6 +10662,7 @@ function watchRailSections(ids){
 $('#railNav').addEventListener('click',e=>{
   const b=e.target.closest('[data-rail]'); if(!b) return;
   const el=$('#'+b.dataset.rail); if(!el) return;
+  track('result_rail_clicked',{section:b.dataset.rail});
   // A folded section that someone navigated TO should be open when they get
   // there; being sent to a closed door is not an answer.
   if(el.tagName==='DETAILS') el.open=true;
