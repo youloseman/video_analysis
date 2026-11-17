@@ -69,3 +69,6 @@ upload/
 docs/design-v2-compare/
 # App Store screenshots: regenerated from production, not source
 docs/appstore/
+
+# pixel rig output (scratch DBs, screenshots)
+backend/scripts/ui_rig/out/

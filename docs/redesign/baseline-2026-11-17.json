@@ -1,0 +1,66 @@
+{
+  "window": {
+    "since": "2026-10-20",
+    "until": "2026-11-17",
+    "days": 28
+  },
+  "people": {
+    "opened_app": 391,
+    "signed_up": 72,
+    "started_analysis": 71,
+    "completed_analysis": 68,
+    "saw_paywall": 67,
+    "checkout": 21
+  },
+  "after_result": {
+    "pdf": {
+      "people": 1,
+      "of_completed": 0.0147
+    },
+    "share_card": {
+      "people": 10,
+      "of_completed": 0.1471
+    },
+    "player": {
+      "people": 10,
+      "of_completed": 0.1471
+    },
+    "feedback": {
+      "people": 1,
+      "of_completed": 0.0147
+    },
+    "chat": {
+      "people": 0,
+      "of_completed": 0.0
+    },
+    "compare": {
+      "people": 17,
+      "of_completed": 0.25
+    },
+    "ai_export": {
+      "people": 8,
+      "of_completed": 0.1176
+    }
+  },
+  "sections_seen": {},
+  "rates": {
+    "signup_of_opened": 0.1841,
+    "completed_of_started": 0.9577,
+    "paywall_to_checkout": 0.3134,
+    "failed_of_started": 0.2113
+  },
+  "time_to_first_result_min": {
+    "median": 3.0,
+    "p75": 13.25,
+    "people": 68
+  },
+  "return_14d": {
+    "returned": 27,
+    "people": 55,
+    "rate": 0.4909
+  },
+  "device_of_completed": {
+    "Mobile": 46,
+    "Desktop": 26
+  }
+}
