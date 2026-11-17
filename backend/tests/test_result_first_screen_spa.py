@@ -45,3 +45,17 @@ def test_one_trust_strip_folds_the_framing_note():
     assert "state.fwInfo=" in SPA
     # high confidence and a well-framed clip: nothing to say in the strip
     assert "if(level==='high' && !fw)" in SPA
+
+
+def test_the_report_folds_on_a_phone_only():
+    """ReportPhone board: each section one line until opened; desktop and paper
+    keep every section open, so the fold rule is phone-width and screen-only."""
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    assert "@media screen and (max-width:640px){" in css
+    i = css.index("#results .block.foldable:not(.is-open) > :not(.fold-head){display:none}")
+    assert css.rfind("@media screen and (max-width:640px){", 0, i) > css.rfind("}\n}", 0, i) - 1
+    assert "foldReport(r, sport, state.verdict);" in SPA
+    # what to do opens by itself; navigating to a section opens it
+    assert "(id==='fitBlock'&&!!(v&&v.diag))||(id==='planBlock'&&!!(v&&v.drill))" in SPA
+    assert SPA.count("openSection(el)") >= 2
+    assert "track('result_section_opened'" in SPA

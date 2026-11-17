@@ -10378,7 +10378,7 @@ function resultVerdict(r, sport, tiles){
 }
 function verdictGo(host){
   host.querySelectorAll('[data-vgo]').forEach(b=>b.addEventListener('click',()=>{
-    const el=document.getElementById(b.dataset.vgo); if(el&&!el.classList.contains('hidden')) el.scrollIntoView({behavior:'smooth',block:'start'});
+    const el=document.getElementById(b.dataset.vgo); if(el&&!el.classList.contains('hidden')){ openSection(el); el.scrollIntoView({behavior:'smooth',block:'start'}); }
   }));
 }
 function renderVerdict(v){
@@ -10705,6 +10705,7 @@ function render(job,opts){
   // are all drawn from this list, so they cannot disagree.
   const tiles=sport==='bike'?bikeTiles(s, r.cycling_position||null, r.fit_plan):runTiles(s);
   const verdict=resultVerdict(r, sport, tiles);
+  state.verdict=verdict;
   renderVerdict(withheld?null:verdict);
   renderGradeNext(r, sport, withheld?null:verdict);
   renderFindings(verdict);
@@ -10782,11 +10783,86 @@ function render(job,opts){
   renderPrintable(r);
   renderChat('chatBlock', state.videoHistId ? {id:state.videoHistId, kind:'video',
     sport:r.sport_type||state.sport, access:r.locked?'gated':'full'} : null);
+  foldReport(r, sport, state.verdict);
   // Last, deliberately: the rail lists the sections that are actually on this
   // report, and which those are is only settled once every block above has
   // decided whether to show itself.
   renderReportRail(r, sport);
   setState('results',{focus:'#resultsTitle'});
+}
+
+/* ============================================================
+   The report under the first screen, on a phone: each section is one line --
+   its name and what it says in a few words -- until it is opened (ReportPhone
+   board, 2026-11-17). The fit opens by itself when something on the bike is
+   out of range, the drills when there is a drill to do. Desktop and paper show
+   every section open: the fold is a phone-width rule in app.css.
+   ============================================================ */
+const FOLD_IDS=['fitBlock','planBlock','aeroBlock','kinogramBlock','metricsBlock','anglesBlock','hobBlock','nextBlock','exportBlock'];
+const FOLD_TITLE={fitBlock:'What to change on the bike',planBlock:'Your drills',aeroBlock:'Aero',kinogramBlock:'Kinogram',
+  metricsBlock:'Measurements',anglesBlock:'Joint angles',hobBlock:'Hip over the crank',nextBlock:'Where to go from here',exportBlock:'Your numbers, as a file'};
+function foldSummary(id, r, sport, v){
+  const s=r.sport_specific_metrics||{};
+  const lc=t=>t?t.charAt(0).toLowerCase()+t.slice(1):'';
+  if(id==='fitBlock'){
+    const acts=(((r.fit_plan||{}).diagnostics)||[]).filter(d=>d.action&&['needs_adjustment','warning','critical','medical_risk'].includes((d.status||'').toLowerCase()));
+    if(!acts.length) return 'nothing to move';
+    return `${acts.length} ${acts.length>1?'changes':'change'} · ${lc(v&&v.diag?v.head:(FIT_ACTION[acts[0].action]||fitWords(acts[0].action)))}`;
+  }
+  if(id==='planBlock'){
+    const p=(((r.training_plan||{}).top_3_priorities)||[]).filter(x=>x.drill);
+    return p.length?`${p.length} ${p.length>1?'drills':'drill'} · ${lc(p[0].drill)}`:'';
+  }
+  if(id==='aeroBlock'){
+    const ae=s.aero_estimate; return ae&&ae.drag_vs_upright_pct!=null?`${ae.drag_vs_upright_pct}% of upright drag${ae.zone_label?` · ${lc(ae.zone_label)} zone`:''}`:'';
+  }
+  if(id==='kinogramBlock'){ const t=$('#kinoTitle'); return t?lc(t.textContent.trim()):''; }
+  if(id==='metricsBlock'){
+    if(!v) return '';
+    const bits=[];
+    if(v.out.length+v.near.length) bits.push(`${v.out.length+v.near.length} need attention`);
+    if(v.ok.length) bits.push(`${v.ok.length} in range`);
+    return bits.join(' · ');
+  }
+  if(id==='anglesBlock') return 'every angle: low, mean, high';
+  if(id==='hobBlock') return 'where the hip sits over the crank axle';
+  if(id==='exportBlock') return 'copy as text · .md · .json';
+  return '';
+}
+function openSection(el){
+  if(!el) return;
+  if(el.tagName==='DETAILS') el.open=true;
+  if(el.classList.contains('foldable') && !el.classList.contains('is-open')){
+    el.classList.add('is-open');
+    const h=el.querySelector(':scope > .fold-head'); if(h) h.setAttribute('aria-expanded','true');
+  }
+}
+function foldReport(r, sport, v){
+  FOLD_IDS.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    let head=el.querySelector(':scope > .fold-head');
+    if(!head){
+      head=document.createElement('button');
+      head.type='button'; head.className='fold-head';
+      head.innerHTML=`<span class="fold-t"></span><span class="fold-s"></span><svg class="ic fold-ic" aria-hidden="true"><use href="#i-chev-d"/></svg>`;
+      el.prepend(head);
+      head.addEventListener('click',()=>{
+        const open=el.classList.toggle('is-open');
+        head.setAttribute('aria-expanded',String(open));
+        if(open) track('result_section_opened',{section:id, sport:state.sport||null});
+      });
+    }
+    el.classList.add('foldable');
+    head.querySelector('.fold-t').textContent=FOLD_TITLE[id];
+    const sum=foldSummary(id, r, sport, v);
+    head.querySelector('.fold-s').textContent=sum;
+    head.querySelector('.fold-s').classList.toggle('hidden', !sum);
+    // What to do opens by itself: the fit when something on the bike is out of
+    // range, the drills when there is one to do.
+    const open=(id==='fitBlock'&&!!(v&&v.diag))||(id==='planBlock'&&!!(v&&v.drill));
+    el.classList.toggle('is-open', open);
+    head.setAttribute('aria-expanded',String(open));
+  });
 }
 
 /* The report's table of contents, and the score it is about.
@@ -10860,7 +10936,7 @@ $('#railNav').addEventListener('click',e=>{
   track('result_rail_clicked',{section:b.dataset.rail});
   // A folded section that someone navigated TO should be open when they get
   // there; being sent to a closed door is not an answer.
-  if(el.tagName==='DETAILS') el.open=true;
+  openSection(el);
   const glide=!matchMedia('(prefers-reduced-motion: reduce)').matches;
   el.scrollIntoView({behavior:glide?'smooth':'auto',block:'start'});
 });
