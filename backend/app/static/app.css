@@ -1712,14 +1712,14 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .score-delta{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;font-weight:500;font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase;
   grid-column:1/span 2;grid-row:3;justify-self:start;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.75);background:rgba(255,255,255,.06)}
 .score-delta .sd-val{font-family:var(--f-mono);font-weight:500;font-feature-settings:"tnum" 1}
-.score-delta.imp{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:#7BE0A2}
-.score-delta.imp .sd-val{color:#7BE0A2}
-.score-delta.reg{background:rgba(241,85,63,.16);border-color:rgba(241,85,63,.45);color:#FFB3A6}
-.score-delta.reg .sd-val{color:#FFB3A6}
+.score-delta.imp{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:var(--hero-good)}
+.score-delta.imp .sd-val{color:var(--hero-good)}
+.score-delta.reg{background:rgba(241,85,63,.16);border-color:rgba(241,85,63,.45);color:var(--hero-bad)}
+.score-delta.reg .sd-val{color:var(--hero-bad)}
 .score-delta .sd-was{margin-left:2px;color:rgba(255,255,255,.5);text-transform:none;letter-spacing:0}
 .score-delta .ic{width:12px;height:12px}
-.score-delta.imp .ic{color:#7BE0A2}
-.score-delta.reg .ic{color:#FFB3A6;transform:rotate(180deg)}
+.score-delta.imp .ic{color:var(--hero-good)}
+.score-delta.reg .ic{color:var(--hero-bad);transform:rotate(180deg)}
 /* The grade: a chip in its colour beside the number -- green for A/B, amber
    for C, red below, like the landing's score card. */
 .graderow{display:flex;align-items:center;gap:8px;margin-top:0;grid-column:2;grid-row:2;align-self:end;padding-bottom:10px;flex-wrap:wrap}
@@ -1732,12 +1732,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .gradelbl{display:none}
 .graderow > div{display:flex;flex-direction:column;gap:4px}
 .graderow .pill{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
-.graderow .pill-okchip{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:#7BE0A2}
-.graderow .pill-warnchip{background:rgba(201,123,16,.22);border-color:rgba(201,123,16,.55);color:#FFD08A}
+.graderow .pill-okchip{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:var(--hero-good)}
+.graderow .pill-warnchip{background:rgba(201,123,16,.22);border-color:rgba(201,123,16,.55);color:var(--hero-warn)}
 .score-meta{font-size:14px;color:rgba(255,255,255,.72);margin-top:0;margin-bottom:0;line-height:1.7;border-top:0;padding-top:0;grid-column:3;grid-row:2/span 2;align-self:start}
 .score-meta b{color:#fff;font-weight:500}
 .score-meta .mono{font-family:var(--f-mono);font-weight:500;color:#fff}
-.score-meta a{color:#A7C2F9}
+.score-meta a{color:var(--hero-link)}
 /* What the score is built from (renderScoreBreakdown): a fourth column that
    exists only while there is a breakdown to show, so a withheld score or a
    teaser keeps the three-column tile. Under 900px it drops beneath the meta
@@ -1752,9 +1752,9 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .bd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bd-bar{height:5px;background:rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
 .bd-bar i{display:block;height:100%;background:rgba(255,255,255,.7);width:var(--w)}
-.bd-good .bd-bar i{background:#7BE0A2}
-.bd-warn .bd-bar i{background:#FFD08A}
-.bd-bad .bd-bar i{background:#FFB3A6}
+.bd-good .bd-bar i{background:var(--hero-good)}
+.bd-warn .bd-bar i{background:var(--hero-warn)}
+.bd-bad .bd-bar i{background:var(--hero-bad)}
 .bd-val{font-family:var(--f-mono);color:#fff;text-align:right;font-feature-settings:"tnum" 1}
 .bd-w{font-family:var(--f-mono);color:rgba(255,255,255,.45);text-align:right;font-feature-settings:"tnum" 1}
 .bd-out .bd-name,.bd-out .bd-val{color:rgba(255,255,255,.4)}
@@ -1766,7 +1766,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .score-none{font-family:var(--f-mono);font-style:normal;font-weight:500;text-transform:none;font-size:.4em;letter-spacing:0;color:rgba(255,255,255,.6)}
 .score-none-why{font-size:14px;line-height:1.55;color:rgba(255,255,255,.85);
   max-width:64ch;margin:8px 0 0;padding:12px 14px;background:rgba(255,255,255,.08);
-  border-left:3px solid #FFD08A;border-radius:0;grid-column:1/-1;display:flex;align-items:center;gap:14px}
+  border-left:3px solid var(--hero-warn);border-radius:0;grid-column:1/-1;display:flex;align-items:center;gap:14px}
 .score-none-why b{color:#fff}
 .score-none-why .wh-next{display:block;margin-top:6px}
 .score-none-why .wh-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -1778,12 +1778,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .score-meta .cov-why{display:inline-block;margin-top:2px;font-size:12px}
 .confwrap{grid-column:3}
 .scorecard .confbtn{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
-.scorecard .confbtn.c-high{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:#7BE0A2}
-.scorecard .confbtn.c-high .dot{background:#7BE0A2}
-.scorecard .confbtn.c-medium{background:rgba(201,123,16,.22);border-color:rgba(201,123,16,.55);color:#FFD08A}
-.scorecard .confbtn.c-medium .dot{background:#FFD08A}
-.scorecard .confbtn.c-low{background:rgba(241,85,63,.16);border-color:rgba(241,85,63,.45);color:#FFB3A6}
-.scorecard .confbtn.c-low .dot{background:#FFB3A6}
+.scorecard .confbtn.c-high{background:rgba(46,158,91,.2);border-color:rgba(46,158,91,.5);color:var(--hero-good)}
+.scorecard .confbtn.c-high .dot{background:var(--hero-good)}
+.scorecard .confbtn.c-medium{background:rgba(201,123,16,.22);border-color:rgba(201,123,16,.55);color:var(--hero-warn)}
+.scorecard .confbtn.c-medium .dot{background:var(--hero-warn)}
+.scorecard .confbtn.c-low{background:rgba(241,85,63,.16);border-color:rgba(241,85,63,.45);color:var(--hero-bad)}
+.scorecard .confbtn.c-low .dot{background:var(--hero-bad)}
 .scorecard .confexp{background:rgba(255,255,255,.08);color:rgba(255,255,255,.85)}
 .scorecard .conffactors{color:rgba(255,255,255,.55)}
 .scorecard .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
@@ -1853,29 +1853,29 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   grid-template-areas:"label label tag" "ring grade verdict" "delta delta verdict" "meta meta meta" "conf conf conf" "warn warn warn" "acts acts acts"}
 .sc-main.has-verdict.has-bd{grid-template-columns:auto auto minmax(0,1.3fr) minmax(250px,1fr);
   grid-template-areas:"label label tag bd" "ring grade verdict bd" "delta delta verdict bd" "meta meta meta bd" "conf conf conf bd" "warn warn warn bd" "acts acts acts bd"}
-.sc-main.has-verdict > .score-meta{font-size:12.5px;line-height:1.6;margin-top:10px}
+.sc-main.has-verdict > .score-meta{font-size:12px;line-height:1.6;margin-top:10px}
 .sc-main.has-verdict > .score-meta .sm-part{display:inline}
 .sc-main.has-verdict > .score-meta .sm-part + .sm-part::before{content:" · ";color:rgba(255,255,255,.45)}
 .sc-main.has-verdict > .confwrap{margin-top:6px;justify-self:start}
-.v-chip{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;padding:2px 10px;border-radius:999px}
-.v-bad{background:rgba(241,85,63,.2);color:#FFB3A6}
-.v-warn{background:rgba(201,123,16,.25);color:#FFD08A}
-.v-good{background:rgba(46,158,91,.22);color:#7BE0A2}
+.v-chip{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;padding:2px 10px;border-radius:999px}
+.v-bad{background:rgba(241,85,63,.2);color:var(--hero-bad)}
+.v-warn{background:rgba(201,123,16,.25);color:var(--hero-warn)}
+.v-good{background:rgba(46,158,91,.22);color:var(--hero-good)}
 .v-head{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:28px;line-height:1.1;color:#fff;overflow-wrap:anywhere}
 .v-why{margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.8);max-width:52ch}
 .v-why b{color:#fff;font-weight:500}
 .v-why .num,.v-side .num{font-family:var(--f-mono);font-feature-settings:"tnum" 1}
-.v-side{margin:2px 0 0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.8);background:rgba(255,255,255,.08);padding:6px 10px}
-.v-side b{color:#A7C2F9;font-weight:600;margin-right:6px}
-.v-go{background:none;border:0;padding:2px 0;font:inherit;font-size:13px;font-weight:600;color:#A7C2F9;cursor:pointer;text-align:left}
+.v-side{margin:2px 0 0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.8);background:rgba(255,255,255,.08);padding:6px 10px}
+.v-side b{color:var(--hero-link);font-weight:600;margin-right:6px}
+.v-go{background:none;border:0;padding:2px 0;font:inherit;font-size:14px;font-weight:600;color:var(--hero-link);cursor:pointer;text-align:left}
 .v-go:hover{text-decoration:underline}
 /* The framing note as one line; the reasoning opens under "Why". */
 .score-none-why.fw-compact{display:block;padding:8px 12px}
 .fw-line{display:flex;gap:12px;align-items:baseline;justify-content:space-between}
-.fw-why{flex:none;background:none;border:0;padding:0;font:inherit;font-weight:600;color:#A7C2F9;cursor:pointer;white-space:nowrap}
+.fw-why{flex:none;background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--hero-link);cursor:pointer;white-space:nowrap}
 .fw-more{display:block;margin-top:6px}
 /* Findings built from the table's rows (renderFindings). */
-.fd-counts{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 10px;font-size:13px;font-weight:600}
+.fd-counts{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 10px;font-size:14px;font-weight:600}
 .fd-n.fd-out{color:var(--m-out)} .fd-n.fd-near{color:var(--m-near-text)} .fd-n.fd-ok{color:var(--m-ok)}
 .fd-row{display:grid;gap:8px;padding:12px 0;border-top:1px solid var(--c-line)}
 .fd-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
@@ -1883,15 +1883,15 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fd-val{font-family:var(--f-mono);font-size:18px;font-weight:500;font-feature-settings:"tnum" 1}
 .fd-row.m-out .fd-val,.fd-row.m-out .fd-st{color:var(--m-out)}
 .fd-row.m-near .fd-val,.fd-row.m-near .fd-st{color:var(--m-near-text)}
-.fd-st{font-size:13px;font-weight:600}
+.fd-st{font-size:14px;font-weight:600}
 .fd-st .num{font-family:var(--f-mono);font-weight:500}
-.fd-ref{font-size:12.5px;color:var(--c-ink-faint)}
+.fd-ref{font-size:12px;color:var(--c-ink-faint)}
 .fd-act{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--c-panel);border:0;border-left:3px solid var(--m-near);padding:12px 14px;margin-top:4px;transition:background-color .15s}
 .fd-act:hover{background:var(--c-line)}
 .fd-act-n{font-family:var(--f-mono);font-weight:600;color:var(--m-near-text)}
 .fd-act b{display:block}
-.fd-act small{display:block;font-size:12.5px;color:var(--c-ink-soft);margin-top:2px}
-.fd-inrange{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid var(--c-line);padding-top:12px;margin-top:12px;font-size:13px}
+.fd-act small{display:block;font-size:12px;color:var(--c-ink-soft);margin-top:2px}
+.fd-inrange{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid var(--c-line);padding-top:12px;margin-top:12px;font-size:14px}
 .fd-inrange b{color:var(--m-ok);margin-right:4px}
 .fd-inrange span{padding:1px 9px;border-radius:999px;background:var(--st-good-bg);color:var(--st-good)}
 /* A band's citation: one word until asked for. */
@@ -1904,7 +1904,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 }
 @media(max-width:640px){
   .scorecard .sc-verdict{order:5;flex:1 1 100%}
-  .v-head{font-size:24px}
+  .v-head{font-size:22px}
 }
 
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,140%);z-index:120;
@@ -1914,10 +1914,10 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .toast.show{transform:translate(-50%,0);opacity:1}
 .toast{display:inline-flex;align-items:center;gap:14px;pointer-events:none}
 .toast.show{pointer-events:auto}
-.toast-action{font:inherit;font-weight:500;color:#A7C2F9;background:none;border:none;
+.toast-action{font:inherit;font-weight:500;color:var(--hero-link);background:none;border:none;
   padding:4px 6px;margin:-4px -2px;cursor:pointer;border-radius:var(--radius-ctl)}
 .toast-action:hover{color:#fff;text-decoration:underline;text-underline-offset:2px}
-.toast-action:focus-visible{outline:2px solid #A7C2F9;outline-offset:1px}
+.toast-action:focus-visible{outline:2px solid var(--hero-link);outline-offset:1px}
 
 .videoframe{border-radius:var(--radius-panel);overflow:hidden;border:1px solid var(--c-line);background:var(--c-media-bg)}
 .videoframe video{display:block;width:100%;max-height:560px;background:var(--c-media-bg)}
@@ -1945,9 +1945,9 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 /* On the navy score tile the track is a light hairline and the arc takes the
    tile's own chip colours, which are tuned for that ground. */
 .scorecard .ring-track{stroke:rgba(255,255,255,.16)}
-.scorecard .ring-good .ring-bar{stroke:#7BE0A2}
-.scorecard .ring-watch .ring-bar{stroke:#FFD08A}
-.scorecard .ring-fix .ring-bar{stroke:#FFB3A6}
+.scorecard .ring-good .ring-bar{stroke:var(--hero-good)}
+.scorecard .ring-watch .ring-bar{stroke:var(--hero-warn)}
+.scorecard .ring-fix .ring-bar{stroke:var(--hero-bad)}
 @media (prefers-reduced-motion:reduce){ .ring-bar{transition:none} }
 
 /* ---------- The player (FlappPlayer) ----------

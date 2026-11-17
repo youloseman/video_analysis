@@ -119,6 +119,8 @@
   --shadow-lg:0 12px 32px rgba(20,24,31,.18);             /* shadow/modal */
   --ring:0 0 0 2px var(--c-bg),0 0 0 4px var(--c-blue);   /* focus */
   --sidebar-w:216px;                   /* the shared app/Academy shell */
+  /* Status on the dark result hero (the score card): light tints that read on navy. */
+  --hero-good:#7BE0A2; --hero-warn:#FFD08A; --hero-bad:#FFB3A6; --hero-link:#A7C2F9;
   /* Drawn on footage (canvas overlays): the same on light and dark. */
   --ov-skel:#3DFF6E; --ov-skel-glow:rgba(30,190,80,.45); --ov-accent:#FFA82E;
   --ov-ink:#FFFFFF; --ov-ink-soft:rgba(255,255,255,.85); --ov-ink-mid:rgba(255,255,255,.7); --ov-ink-faint:rgba(255,255,255,.55);
