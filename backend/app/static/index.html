@@ -887,10 +887,15 @@
          heading, and it has to be at the top of page one to do that. -->
     <div class="printhead" id="printHead" aria-hidden="true"></div>
 
-    <div class="blockhead screenhead u-mt-0">
-      <div class="eyebrow">Report</div>
-      <h2 class="sec u-mb-2" id="resultsTitle" tabindex="-1">Your results</h2>
-      <div class="speedline"></div>
+    <!-- Title, what was filmed in one line, and the two actions (Result board,
+         2026-11-17). On a phone the actions stay in the score card instead:
+         placeResultActs() moves the one node between the two places. -->
+    <div class="blockhead screenhead rs-head u-mt-0">
+      <div class="rs-title">
+        <h2 class="sec" id="resultsTitle" tabindex="-1">Your results</h2>
+        <p class="rs-meta" id="resultMeta"></p>
+      </div>
+      <div class="rs-acts" id="resultActsTop"></div>
     </div>
 
     <!-- The report runs to several thousand pixels and every section below the
@@ -924,6 +929,7 @@
           <span class="grade" id="grade" role="img" aria-label="Grade">—</span>
           <div>
             <div class="gradelbl">Grade</div>
+            <div class="grade-next" id="gradeNext"></div>
             <span class="pill pill-warnchip hidden u-mt-2" id="gateChip"><span class="dot" aria-hidden="true"></span>Reference only</span>
             <span class="pill pill-okchip hidden u-mt-2" id="confChip"><span class="dot" aria-hidden="true"></span>Full confidence</span>
           </div>
@@ -10069,7 +10075,11 @@ function bdShow(host, rows, show){
   const card=host.closest('.scorecard');
   host.classList.toggle('hidden', !show);
   if(card) card.classList.toggle('has-bd', show);
-  host.innerHTML=show?`<div class="bd-h"><span>What the score is built from</span><span class="bd-key">score · weight</span></div>${rows.join('')}`:'';
+  host.innerHTML=show?`<button type="button" class="bd-toggle" aria-expanded="false">What the score is built from <span aria-hidden="true">↓</span></button>`
+    +`<div class="bd-h"><span>What the score is built from</span><span class="bd-key">score · weight</span></div>${rows.join('')}`:'';
+  host.classList.remove('bd-open');
+  const t=host.querySelector('.bd-toggle');
+  if(t) t.addEventListener('click',()=>{ const o=host.classList.toggle('bd-open'); t.setAttribute('aria-expanded',String(o)); });
 }
 /* A photo carries its components on the score itself (score.per_angle), each
    with its own weight -- the photo rubric is not the video's. */
@@ -10123,15 +10133,29 @@ function renderConfidence(conf){
   if(f.leg_swap_pct!=null&&f.leg_swap_pct>0) bits.push(`legs swapped ${num(f.leg_swap_pct,0)}%`);
   if(f.warning_count) bits.push(`${f.warning_count} warning${f.warning_count>1?'s':''}`);
   const factLine=bits.length?`<div class="conffactors">${esc(bits.join(' · '))}</div>`:'';
-  host.innerHTML=`<button class="confbtn ${meta.cls}" type="button" aria-expanded="false" aria-controls="confExp">`
-    +`<span class="dot" aria-hidden="true"></span>${meta.label}<span class="caret" aria-hidden="true">▾</span></button>`
-    +`<div class="confexp hidden" id="confExp">${esc(expl)}${factLine}</div>`;
-  const btn=host.querySelector('.confbtn'), exp=host.querySelector('#confExp');
-  btn.addEventListener('click',()=>{
+  /* One strip, one sentence, "Why" for the rest (Result board, 2026-11-17).
+     High confidence says nothing here -- the green "Full confidence" chip
+     beside the grade already does -- unless the athlete is small in the frame. */
+  const fw=state.fwInfo||null;
+  if(level==='high' && !fw){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  const fwSay=!fw?'':fw.fileSmall
+    ?`the clip was downscaled before it reached us${fw.fileHpx?` (${fw.fileHpx} px tall)`:''}. Send the original from the camera roll.`
+    :`you are small in the frame${fw.pct?` (${fw.pct}%)`:''}. ${fw.run?'Hold the phone sideways next time.':'Film closer next time.'}`;
+  const first=expl.split(/(?<=\.)\s/)[0]||'';
+  const say=fwSay||first;
+  const rest=[fwSay?expl:expl.slice(first.length).trim()].filter(Boolean).map(esc).join(' ');
+  const lbl=level==='high'?'Less accurate':meta.label;
+  host.innerHTML=`<div class="sc-trust t-${level}"><p class="t-line"><b>${lbl}${say?':':''}</b> ${esc(say)}</p>`
+    +((rest||factLine)?`<button class="t-why" type="button" aria-expanded="false" aria-controls="confExp">Why <span aria-hidden="true">↓</span></button>`
+      +`<div class="t-more hidden" id="confExp">${rest}${factLine}</div>`:'')+`</div>`;
+  const btn=host.querySelector('.t-why'), exp=host.querySelector('#confExp');
+  if(btn) btn.addEventListener('click',()=>{
     const open=exp.classList.toggle('hidden')===false;
     btn.setAttribute('aria-expanded', String(open));
   });
   host.classList.remove('hidden');
+  // the framing line is said here now; the card does not say it twice
+  if(fw){ const f=$('#framingWarn'); if(f) f.classList.add('hidden'); }
 }
 
 /* ---- Joint-angles table (shared by live result + saved history) ----
@@ -10280,6 +10304,39 @@ function renderAngleTable(r, sport){
    the card says and what Findings lists; the plan's first step is the action.
    ============================================================ */
 const VERDICT_CHIP={bad:'Fix first',warn:'Worth a look',good:'In range'};
+/* The grade in a word, and what the next one takes (technique_scorer.assign_grade:
+   A 90, B 75, C 60, D 40). On the bike an A also needs nothing red
+   (cycling_red_components): a score held at 89 says which row holds it. */
+const GRADE_WORD={A:'Excellent',B:'Good',C:'Fair',D:'Needs work',F:'Needs work'};
+const GRADE_NEXT={F:['D',40],D:['C',60],C:['B',75],B:['A',90]};
+function renderGradeNext(r, sport, v){
+  const g=$('#grade'), nx=$('#gradeNext'); if(!g||!nx) return;
+  const L=r.letter_grade, word=GRADE_WORD[L];
+  const on=!!(v && word && r.technique_score!=null);
+  g.classList.toggle('grade-pill', on);
+  if(on){ g.textContent=`${L} · ${word}`; g.setAttribute('aria-label',`Grade ${L}, ${word}`); }
+  let t='';
+  const capped=((r.score_coverage||{}).capped_by||[]).map(covName);
+  if(on && capped.length) t=`A needs ${capped.join(', ')} in range`;
+  else if(on && GRADE_NEXT[L]){
+    const [n,at]=GRADE_NEXT[L];
+    t=`${n} from ${at}`+(n==='A'&&sport==='bike'&&v.out.length?', nothing out of range':'');
+  }
+  nx.textContent=t; nx.classList.toggle('hidden', !t);
+}
+/* Share and PDF: beside the title on a wide screen, at the foot of the score
+   card on a phone (where the title has no room beside it). A coach's actions
+   are long and stay in the card. */
+const RESULT_WIDE=matchMedia('(min-width:901px)');
+function placeResultActs(){
+  const acts=$('#resultTop .sc-main .score-acts')||$('#resultActsTop .score-acts');
+  const top=$('#resultActsTop'), card=$('#resultTop .sc-main');
+  if(!acts||!top||!card) return;
+  const coach=$('#coachActions'); const hasCoach=coach&&coach.innerHTML.trim()!=='';
+  if(RESULT_WIDE.matches && !hasCoach){ if(acts.parentNode!==top) top.appendChild(acts); }
+  else if(acts.parentNode!==card) card.appendChild(acts);
+}
+RESULT_WIDE.addEventListener('change', placeResultActs);
 function resultVerdict(r, sport, tiles){
   const s=r.sport_specific_metrics||{};
   // A row that restates another (the saddle, read off the knee) is one finding, not two.
@@ -10363,9 +10420,10 @@ function renderFindings(v){
       const unit=m.range&&m.range.unit!=null?m.range.unit:m.unit;
       const val=m.isText?esc(String(m.val)):`${esc(String(m.val))}${measUnit(unit)}`;
       const delta=m.range?measDelta(m.delta,unit):'';
-      return `<div class="fd-row ${st.cls}"><div class="fd-top"><span class="fd-name">${esc(m.lbl)}</span><span class="fd-val num">${val}</span></div>
-        ${m.range?measBar(m,st):(m.ref?`<div class="fd-ref">${esc(m.ref)}</div>`:'')}
-        <div class="fd-st">${st.word}${delta?` <span class="num">${delta}</span>`:''}</div></div>`;
+      const band=m.range?`band <span class="num">${measRange(m.range.lo,m.range.hi,unit)}</span>`:(m.ref?esc(m.ref):'');
+      return `<div class="fd-row ${st.cls}"><span class="fd-name">${esc(m.lbl)}</span><span class="fd-val num">${val}</span>
+        ${m.range?`<div class="fd-bar">${measBar(m,st)}</div>`:''}
+        <div class="fd-st">${st.word}${delta?` <span class="num">${delta}</span>`:''}${band?`<span class="fd-band"> · ${band}</span>`:''}</div></div>`;
     }).join('')
     +(v.go?`<button type="button" class="fd-act" data-vgo="${v.go[0]}"><span class="fd-act-n" aria-hidden="true">1</span><span><b>${esc(v.diag?v.head:v.go[1])}</b>${v.diag&&v.diag.effort&&FIT_EFFORT[v.diag.effort.level]?`<small>${FIT_EFFORT[v.diag.effort.level]}</small>`:''}${!v.diag&&v.drill&&v.drill.cue?`<small>Cue: ${esc(v.drill.cue)}</small>`:''}<small>${v.diag?esc(v.go[1]):v.drill?'Your drills':'Open'} ↓</small></span></button>`:'');
   } else {
@@ -10440,6 +10498,9 @@ function render(job,opts){
            :'Film closer or zoom in to fill most of the height.'}`);
     fw.classList.toggle('hidden', !small);
     fw.classList.toggle('fw-compact', small);
+    // The trust strip folds this in when it shows (renderConfidence).
+    state.fwInfo=small?{fileSmall, pct:fr.subject_height_frac?Math.round(fr.subject_height_frac*100):null,
+      run:(r.sport_type||r.sport)==='run', fileHpx}:null;
     const fb=fw.querySelector('.fw-why');
     if(fb) fb.addEventListener('click',()=>{ const m=fw.querySelector('.fw-more'); const open=m.classList.toggle('hidden')===false; fb.setAttribute('aria-expanded',String(open)); });
   }
@@ -10508,14 +10569,18 @@ function render(job,opts){
       <span><b>Long clip — sampled.</b> ${esc(q.sampling_degraded)} Joint angles are unaffected; a <b>5–10 s</b> clip measures the timing more precisely.</span></div>`;
   }
 
-  // meta
-  const parts=[];
-  if(r.camera_side) parts.push(`Camera: <b>${r.camera_side==='both'?'both sides':esc(r.camera_side)+' side'}</b>`);
-  if(r.frames_analyzed!=null) parts.push(`<span class="mono">${r.frames_analyzed}</span> frames analyzed`);
-  if(sport==='bike'&&r.cycling_position) parts.push(`Position: <b>${esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position))}</b>`);
-  const cov=coverageLine(r.score_coverage);
-  if(cov) parts.push(cov);
-  $('#scoreMeta').innerHTML=parts.map(x=>`<span class="sm-part">${x}</span>`).join('');
+  // What was filmed, once, under the title: sport · position · side · frames.
+  const what=[sport==='bike'?'Bike':'Run'];
+  if(sport==='bike'&&r.cycling_position) what.push(esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position)));
+  if(r.camera_side) what.push(r.camera_side==='both'?'both sides':esc(r.camera_side)+' side');
+  if(r.frames_analyzed!=null) what.push(`<span class="num">${r.frames_analyzed}</span> frames`);
+  const rm=$('#resultMeta'); if(rm) rm.innerHTML=what.join(' · ');
+  // The card keeps what qualifies the number: how much of it was measured.
+  // A held grade is said beside the grade (renderGradeNext); not twice.
+  const cov=coverageLine(withheld?r.score_coverage:Object.assign({},r.score_coverage,{capped_by:[]}));
+  const sm=$('#scoreMeta');
+  sm.innerHTML=cov?`<span class="sm-part">${cov}</span>`:'';
+  sm.classList.toggle('hidden', !cov);
   renderScoreBreakdown(r, sport);
 
   renderBilateral(r.bilateral);
@@ -10641,7 +10706,9 @@ function render(job,opts){
   const tiles=sport==='bike'?bikeTiles(s, r.cycling_position||null, r.fit_plan):runTiles(s);
   const verdict=resultVerdict(r, sport, tiles);
   renderVerdict(withheld?null:verdict);
+  renderGradeNext(r, sport, withheld?null:verdict);
   renderFindings(verdict);
+  placeResultActs();
 
   // aero & watts headline panel (bike only; hidden for run + when N/A)
   if(sport==='bike') renderAeroPanel(s); else $('#aeroBlock').classList.add('hidden');

@@ -1885,6 +1885,71 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fd-row.m-near .fd-val,.fd-row.m-near .fd-st{color:var(--m-near-text)}
 .fd-st{font-size:14px;font-weight:600}
 .fd-st .num{font-family:var(--f-mono);font-weight:500}
+/* ---- Result first screen, as drawn (Result / ResultPhone boards, 2026-11-17) ---- */
+.rs-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;border-bottom:0;padding-bottom:0}
+.rs-title{min-width:0}
+.rs-meta{margin:4px 0 0;font-size:16px;color:var(--c-ink-faint)}
+.rs-meta .num{font-family:var(--f-mono);font-feature-settings:"tnum" 1}
+.rs-acts{display:flex}
+.rs-acts:empty{display:none}
+.rs-acts .score-acts{margin:0}
+/* the card no longer repeats the sport and its own name: the line under the title says it */
+.sc-main.has-verdict > .score-label,.sc-main.has-verdict > .sporttag{display:none}
+/* the grade sits under the ring: beside the report rail the card is ~830 px wide and the verdict needs the middle */
+.sc-main.has-verdict{grid-template-columns:auto minmax(0,1fr);column-gap:28px;
+  grid-template-areas:"ring verdict" "grade verdict" "delta verdict" "meta meta" "warn warn" "conf conf" "acts acts"}
+.sc-main.has-verdict.has-bd{grid-template-columns:auto minmax(0,1.2fr) minmax(260px,1fr);
+  grid-template-areas:"ring verdict bd" "grade verdict bd" "delta verdict bd" "meta meta bd" "warn warn warn" "conf conf conf" "acts acts acts"}
+.sc-main.has-verdict > .graderow{justify-self:center;align-items:center;text-align:center;margin-top:8px}
+.sc-main.has-verdict > .graderow > div{align-items:center}
+.sc-main.has-verdict > .score-delta{justify-self:center}
+.sc-main.has-verdict > .sc-verdict{align-self:start}
+.sc-main.has-verdict > .confwrap{justify-self:stretch;margin-top:16px}
+.sc-main .grade.grade-pill{min-width:0;height:auto;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;
+  font:600 16px var(--f-body);font-style:normal;letter-spacing:0;text-transform:none}
+.grade-next{font-size:14px;color:rgba(255,255,255,.7);margin-top:4px}
+.sc-main.has-verdict > .graderow{flex-direction:column;align-items:flex-start;gap:4px;max-width:200px;align-self:center}
+.sc-main.has-verdict > .graderow > div{gap:2px}
+.grade-next.hidden{display:none}
+.sc-trust{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 16px;align-items:center;padding:4px 14px;
+  background:rgba(255,255,255,.08);border-left:3px solid var(--hero-warn);border-radius:var(--radius-tag);font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)}
+.sc-trust.t-low{border-left-color:var(--hero-bad)}
+.sc-trust b{color:#fff;font-weight:600}
+.sc-trust .t-line{margin:8px 0}
+.t-why{background:none;border:0;padding:10px 0;min-height:44px;font:inherit;font-weight:600;color:var(--hero-link);cursor:pointer;white-space:nowrap}
+.t-more{grid-column:1/-1;padding:0 0 10px}
+.bd-toggle{display:none}
+/* Findings: name, value and bar on one line; what it means under them */
+.fd-row{grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:6px;align-items:center}
+.fd-bar{grid-column:1/-1}
+.fd-bar .mbar-cap{display:none}
+.fd-row .fd-st{grid-column:1/-1}
+.fd-band{font-weight:400;color:var(--c-ink-faint)}
+.fd-band .num{font-family:var(--f-mono)}
+@media(min-width:901px){
+  .fd-row{grid-template-columns:minmax(0,1fr) auto minmax(120px,42%)}
+  .fd-bar{grid-column:auto}
+}
+@media(max-width:900px){
+  .sc-main.has-verdict.has-bd{grid-template-columns:auto minmax(0,1fr);
+    grid-template-areas:"ring verdict" "grade verdict" "delta verdict" "meta meta" "bd bd" "warn warn" "conf conf" "acts acts"}
+}
+@media(max-width:640px){
+  .sc-main.has-verdict .ring{order:1}
+  .sc-main.has-verdict .graderow{order:2;flex:1 1 0;min-width:0;max-width:none;align-items:flex-start;text-align:left;margin:0}
+  .sc-main.has-verdict .graderow > div{align-items:flex-start}
+  .sc-main.has-verdict .score-delta{order:3}
+  .sc-main.has-verdict .sc-verdict{order:4;flex:1 1 100%}
+  .sc-main.has-verdict .score-none-why{order:5}
+  .sc-main.has-verdict .confwrap{order:6;margin-top:0}
+  .sc-main.has-verdict .score-meta{order:7}
+  .sc-main.has-verdict .score-bd{order:8;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}
+  .sc-main.has-verdict .score-acts{order:9}
+  .sc-main .bd-toggle{display:block;background:none;border:0;padding:10px 0;min-height:44px;font:inherit;font-size:14px;font-weight:600;color:var(--hero-link);cursor:pointer}
+  .sc-main .score-bd:not(.bd-open) > :not(.bd-toggle){display:none}
+  .sc-main .score-bd.bd-open .bd-toggle{display:none}
+  .rs-meta{font-size:14px}
+}
 .fd-ref{font-size:12px;color:var(--c-ink-faint)}
 .fd-act{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--c-panel);border:0;border-left:3px solid var(--m-near);padding:12px 14px;margin-top:4px;transition:background-color .15s}
 .fd-act:hover{background:var(--c-line)}

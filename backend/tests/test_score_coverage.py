@@ -254,7 +254,10 @@ def spa() -> str:
 
 
 def test_the_score_card_renders_coverage(spa: str):
-    assert "coverageLine(r.score_coverage)" in spa
+    # The held-grade note moves beside the grade (renderGradeNext) once a result
+    # has a verdict; the rest of the coverage line stays in the card.
+    assert "coverageLine(withheld?r.score_coverage:Object.assign({},r.score_coverage,{capped_by:[]}))" in spa
+    assert "A needs ${capped.join(', ')} in range" in spa
 
 
 def test_every_component_has_an_english_name(spa: str):
