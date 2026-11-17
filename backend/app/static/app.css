@@ -168,8 +168,6 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 /* ---------- Pricing section ---------- */
 .pricing-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
 .pricing-head .eyebrow{display:none}
-.eyebrow--blue{color:var(--c-blue)}
-.eyebrow--bad{color:var(--st-bad)}
 .pricing-head h2{font-family:var(--f-display);font-weight:600;font-size:18px;line-height:1.3;
   color:var(--c-head);letter-spacing:0;margin:0}
 .pricing-head p{color:var(--c-ink-soft);max-width:52ch;margin:0;font-size:14px;flex:1 1 320px}
@@ -493,7 +491,6 @@ video.ex-media{background:var(--c-media-bg)}
   gap:12px;min-height:38vh;padding:44px 32px;border:1px solid var(--c-line);border-radius:var(--radius-card);
   background:var(--c-bg);max-width:560px;margin:0 auto;width:100%}
 .emptybox .ic-lg{color:var(--c-ink-faint)}
-.ic-xs{width:12px;height:12px}
 .emptybox .empty-fig{margin-bottom:4px}
 .emptybox h4{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:0}
 .emptybox p{margin:0;max-width:44ch;color:var(--c-ink-soft);font-size:14px;line-height:1.55}
@@ -912,6 +909,7 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 /* ---------- Icons ---------- */
 .ic{width:16px;height:16px;flex:none}
 .ic-lg{width:40px;height:40px}
+.ic-xs{width:12px;height:12px}
 
 /* ---------- Shared brand elements ---------- */
 /* The speedline -- the old brand's gradient stripe -- is back under the
@@ -924,6 +922,8 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 /* The eyebrow carries the landing's coral dot: the one small brand mark on
    every section of every screen. */
 .eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--c-ink-faint);display:inline-flex;align-items:center;gap:8px}
+.eyebrow--blue{color:var(--c-blue)}
+.eyebrow--bad{color:var(--st-bad)}
 .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c-coral);flex:none}
 
 /* Status pill: a word beside a glyph, on its own tint, with a hairline in

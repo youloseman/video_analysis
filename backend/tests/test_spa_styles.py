@@ -84,3 +84,19 @@ def test_hidden_beats_every_utility():
     util_end = max(m.end() for m in re.finditer(r"^\.u-[a-z0-9-]+\{", APP, re.M))
     hidden = [m.start() for m in re.finditer(r"^\.hidden\{display:none!important\}", APP, re.M)]
     assert hidden and hidden[-1] > util_end
+
+
+def test_modifiers_come_after_their_base():
+    """.x--y has the same weight as .x, so it only wins if it comes later. A modifier
+    filed above its base silently loses (the sign-up eyebrow went grey that way)."""
+    first = {}
+    for m in re.finditer(r"^\.([a-z][a-z0-9-]*?)(--[a-z0-9-]+)?\{", APP, re.M):
+        name, mod = m.group(1), m.group(2)
+        if not mod:
+            first.setdefault(name, m.start())
+    late = []
+    for m in re.finditer(r"^\.([a-z][a-z0-9-]*?)(--[a-z0-9-]+)\{", APP, re.M):
+        base = first.get(m.group(1))
+        if base is not None and base > m.start():
+            late.append(m.group(0))
+    assert not late, f"modifiers above their base rule: {late}"
