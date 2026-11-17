@@ -10,7 +10,8 @@ puts "good"; the field says where the fastest people on the day sat.
 It is a FIELD, not a band. Nothing is graded against it, and a rider outside
 it is not thereby wrong: the pros built up to these positions over years.
 The one place it sets a threshold is the helmet (head_silhouette.py), and
-that is a penalty-free band up to where twenty-nine of the thirty-two sat.
+that is a penalty-free band up to where twenty-eight of the thirty-one
+helmets we could read sat.
 
 Aero positions only: the field was measured on TT and triathlon bikes, and
 a rider on the hoods has nothing to compare with it.
@@ -51,7 +52,30 @@ KONA_PRO_UNITS = {
     "forearm_tilt_avg": "°", "helmet_above_back": "% of torso",
 }
 
+# How many positions stand behind a field's numbers, where it is not all of
+# them. Until 2026-11-17 a helmet gap was printed "for all 32 of them" next to
+# a head cue counting "28 of the 31".
+KONA_PRO_FIELD_N = {"helmet_above_back": 31}
+
+# Readings past the field on the side the field is admired for: a torso
+# flatter than every pro, a helmet lower than every pro. "The field is where
+# your next gain is, move toward it" tells such a rider to sit up (a
+# time-trial rider at 9 deg and a helmet at -3 % read exactly that,
+# 2026-11-17). Here the question is whether the position can be held, not how
+# to get nearer the pros.
+PAST_THE_FIELD = frozenset({("trunk_angle_avg", "low"), ("helmet_above_back", "low")})
+
 AERO_FIELD_POSITIONS = frozenset({"tt_aero", "triathlon"})
+
+
+def field_n(field: str) -> int:
+    """Positions measured for this field."""
+    return KONA_PRO_FIELD_N.get(field, KONA_PRO_N)
+
+
+def past_the_field(gap: dict[str, Any]) -> bool:
+    """A gap on the far side of the field: nothing to move toward."""
+    return (gap.get("field"), gap.get("side")) in PAST_THE_FIELD
 
 
 def pro_field(cycling_position: str | None) -> dict[str, Any] | None:
@@ -98,7 +122,7 @@ def pro_gaps(cycling_position: str | None, summary: dict[str, Any]) -> list[dict
             continue
         out.append({"field": field, "label": KONA_PRO_LABELS[field], "value": float(v),
                     "lo": f["lo"], "hi": f["hi"], "median": f["median"],
-                    "side": "high" if v > f["hi"] else "low", "n": KONA_PRO_N})
+                    "side": "high" if v > f["hi"] else "low", "n": field_n(field)})
     return out
 
 

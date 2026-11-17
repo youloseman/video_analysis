@@ -38,7 +38,8 @@ from typing import Any
 import numpy as np
 
 # The points an athlete may move, per near side: the joints the bike angles
-# are read from, plus the ear (blended toward C7 for the trunk angle). Nothing
+# are read from, plus the ear (the head-alignment reading; the trunk angle has
+# not used it since 2026-11-17, cycling_analyzer.TRUNK_METHOD). Nothing
 # on the far side -- it is neither measured nor drawn on a side view -- and
 # nothing on the face or hands.
 DRAGGABLE_LANDMARKS: dict[str, tuple[int, ...]] = {

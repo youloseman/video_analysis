@@ -7,12 +7,21 @@ same code path the FastAPI service uses. Prints the result JSON to stdout
 
 Usage:
     python analyze_local.py <video_path> <run|bike> [--position road_hoods] [--overlay [PATH]]
+
+Detectors: production refines MediaPipe's points with RTMPose on bike and run
+(Railway VA_RTMPOSE_SPORTS=bike,run), and this script does the same unless told
+otherwise (``--detector mediapipe``, or VA_RTMPOSE_SPORTS set by hand). It used
+to run MediaPipe alone, and a local result was then not the one a user gets:
+one time-trial clip read 61/C "lower the saddle 30 mm" here and 89/B "no
+change" in production (2026-11-17). The detector that measured is printed last.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -28,6 +37,7 @@ import structlog  # noqa: E402
 # native logs already go to stderr.
 structlog.configure(logger_factory=structlog.PrintLoggerFactory(file=sys.stderr))
 
+from app.core import config  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.services.video_analysis.runner import (  # noqa: E402
     DEFAULT_BIKE_POSITION,
@@ -35,6 +45,41 @@ from app.services.video_analysis.runner import (  # noqa: E402
     _json_safe,
     run_analysis,
 )
+
+
+# What production runs (Railway VA_RTMPOSE_SPORTS), as in golden_baseline.py.
+PROD_RTMPOSE_SPORTS = ("bike", "run")
+REFINED_SUFFIX = "+rtmpose_m"
+
+
+def use_detector(choice: str) -> tuple[str, ...]:
+    """Point the shared settings at the detectors asked for; returns the sports
+    RTMPose will refine. An explicit VA_RTMPOSE_SPORTS in the environment wins
+    over the default, never over an explicit --detector."""
+    if choice == "mediapipe":
+        sports: tuple[str, ...] = ()
+    elif choice == "prod":
+        sports = PROD_RTMPOSE_SPORTS
+    elif os.environ.get("VA_RTMPOSE_SPORTS") is not None:
+        sports = settings.rtmpose_sports
+    else:
+        sports = PROD_RTMPOSE_SPORTS
+    config.settings = dataclasses.replace(config.settings, rtmpose_sports=sports)
+    return sports
+
+
+def detector_note(result: dict, sport_type: str, asked: tuple[str, ...]) -> str:
+    """One line for stderr: which detector measured, loud when it is not the
+    one production uses."""
+    used = (result.get("sport_specific_metrics") or {}).get("pose_detector") or "unknown"
+    if used.endswith(REFINED_SUFFIX):
+        return f"Detector: {used} (as production)."
+    if sport_type in asked:
+        return (f"WARNING: detector {used}: RTMPose was asked for but did not run "
+                "(model file or onnxruntime missing?). This is NOT what production "
+                "measures; do not compare these numbers with a user's report.")
+    return (f"WARNING: detector {used}: MediaPipe alone. Production refines with "
+            "RTMPose; these numbers are NOT what a user gets.")
 
 
 def main() -> int:
@@ -72,7 +117,15 @@ def main() -> int:
             "path: <video>_landmarks.npz next to the input."
         ),
     )
+    parser.add_argument(
+        "--detector", choices=["prod", "mediapipe"], default=None,
+        help=(
+            "prod: MediaPipe refined by RTMPose on bike and run, as production "
+            "(the default unless VA_RTMPOSE_SPORTS is set). mediapipe: MediaPipe alone."
+        ),
+    )
     args = parser.parse_args()
+    asked = use_detector(args.detector or "env")
 
     video_path = args.video_path
     sport_type = args.sport
@@ -130,6 +183,7 @@ def main() -> int:
     print(json.dumps(_json_safe(result), indent=2, ensure_ascii=False))
     if result.get("overlay_video_path"):
         print(f"\nOverlay video: {result['overlay_video_path']}", file=sys.stderr)
+    print(detector_note(result, sport_type, asked), file=sys.stderr)
     return 0 if result.get("status") == "completed" else 1
 
 

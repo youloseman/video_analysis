@@ -306,6 +306,17 @@ def helmet_lever(
                        "this clip, so the head is not graded on it."}
     now = float(helmet_above_back)
     lower_bound = bool(helmet_check)
+    if now < HEAD_FIELD[0]:
+        # Below the lowest pro: "where 28 of the 31 pros rode" was said to a
+        # helmet at -3 %, under every one of them (2026-11-17).
+        where = (f"{abs(now):.0f}% of a torso below the line of your back"
+                 if round(now) < 0 else
+                 "level with your back" if round(now) == 0 else
+                 f"{now:+.0f}% of a torso above your back")
+        return {"key": "head", "label": "Head", "status": "ok", "now": round(now, 1),
+                "cue": f"Helmet {where}: lower than every Kona pro we measured "
+                       f"(+{HEAD_FIELD[0]:.0f}% to +{HEAD_FIELD[1]:.0f}%). Nothing more to "
+                       "gain here, as long as you can still see the road."}
     if now <= KONA_PRO_FREE_UP_TO:
         return {"key": "head", "label": "Head", "status": "ok", "now": round(now, 1),
                 "cue": f"Helmet {now:+.0f}% of a torso above your back: "

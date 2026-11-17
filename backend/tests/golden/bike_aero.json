@@ -123,11 +123,11 @@
    },
    "trunk_angle": {
     "artefact_frames": 0,
-    "max": 27.2,
-    "mean": 24.9,
+    "max": 27.5,
+    "mean": 25.1,
     "min": 23.2,
     "nan_pct": 0.0,
-    "range": 3.9,
+    "range": 4.4,
     "std": 0.9,
     "valid_frames": 570
    }
@@ -155,9 +155,9 @@
   "summary.knee_at_tdc": 70.03,
   "summary.knee_extension_velocity_dps": 305.0,
   "summary.knee_flexion_velocity_dps": 315.3,
-  "summary.pelvic_ratio": 3.01,
+  "summary.pelvic_ratio": 2.98,
   "summary.shoulder_angle_avg": 86.16,
-  "summary.trunk_angle_avg": 24.89,
+  "summary.trunk_angle_avg": 25.12,
   "technique_score": 97.0
  },
  "exact": {

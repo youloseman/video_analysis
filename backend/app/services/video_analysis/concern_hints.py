@@ -19,6 +19,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.services.video_analysis.biomechanics.kona_field import past_the_field
+
 # (field, side) -> what to check. Field names are the summary fields served by
 # reference_bands(); photo keys are mapped onto them in photo_field().
 _HINTS: dict[tuple[str, str], str] = {
@@ -98,6 +100,10 @@ _HINTS: dict[tuple[str, str], str] = {
         "The helmet sits higher above the back than 28 of the 31 Kona pros. "
         "Dropping the head a little cuts drag, as long as you can still see the "
         "road."
+    ),
+    ("helmet_above_back", "low"): (
+        "The head sits lower than any pro we measured. It only pays if you can "
+        "still see the road without lifting the head every few seconds."
     ),
     # --- run --------------------------------------------------------------
     ("cadence_spm", "low"): (
@@ -237,10 +243,14 @@ def _line(c: dict[str, Any]) -> str:
 def _gap_line(g: dict[str, Any]) -> str:
     unit = unit_for(g["field"])
     where = "below" if g["side"] == "low" else "above"
+    # Past the field on its admired side (flatter, lower): nothing to move
+    # toward, so the line must not point back at the pros.
+    aim = ("Not a fault, and nothing to chase further: the question is whether you can hold it."
+           if past_the_field(g) else
+           "Not a fault; the field is where the next gain usually is.")
     return (f"- **{g['label']}**: {_num(g['value'], unit)}{unit}, inside its band but {where} "
             f"every one of the {g['n']} Kona pros ({_num(g['lo'], unit)}-{_num(g['hi'], unit)}{unit}, "
-            f"median {_num(g['median'], unit)}{unit}). Not a fault; the field is where the next gain "
-            f"usually is. {hint_for(g['field'], g['side'])}")
+            f"median {_num(g['median'], unit)}{unit}). {aim} {hint_for(g['field'], g['side'])}")
 
 
 def worth_a_look(concerns: list[dict[str, Any]], gaps: list[dict[str, Any]] = ()) -> str:
@@ -284,16 +294,29 @@ def video_next_steps(
                               "pixels apart. Film closer, or zoom in so you span most of the height: "
                               "it does more for accuracy than any other change."})
     if gaps:
-        parts = []
-        for g in gaps:
+        def _part(g: dict[str, Any]) -> str:
             unit = unit_for(g["field"])
-            parts.append(f"{g['label'].lower()} {_num(g['value'])}{unit} against {_num(g['lo'])}-"
-                         f"{_num(g['hi'])}{unit} for all {g['n']} of them")
-        steps.append({"key": "pros", "title": "Where the Kona pros sit",
-                      "text": "Inside the bands, but outside the whole pro field: " + "; ".join(parts)
-                              + ". Not a fault, and not a target (the pros built up to these over years), "
-                              "but it is where your next gain most likely is: move toward it in small "
-                              "steps and keep what you can hold."})
+            return (f"{g['label'].lower()} {_num(g['value'])}{unit} against {_num(g['lo'])}-"
+                    f"{_num(g['hi'])}{unit} for all {g['n']} of them")
+        # Two kinds of gap, two different things to say: short of the field
+        # (the next gain is toward it) and past it on the low side (a flatter
+        # torso or a lower head than any pro: moving "toward the field" would
+        # mean sitting up).
+        short = [g for g in gaps if not past_the_field(g)]
+        past = [g for g in gaps if past_the_field(g)]
+        text = ("Inside the bands, but outside the whole pro field: "
+                + "; ".join(map(_part, short or past)) + ".")
+        if short:
+            text += (" Not a fault, and not a target (the pros built up to these over years), "
+                     "but it is where your next gain most likely is: move toward it in small "
+                     "steps and keep what you can hold.")
+            if past:
+                text += " You are also lower than every pro: " + "; ".join(map(_part, past)) + "."
+        if past:
+            text += (" Lower than the whole field is not a fault and not a gain to chase "
+                     "further: check that you can breathe, make race power and see the road "
+                     "there for as long as your race lasts.")
+        steps.append({"key": "pros", "title": "Where the Kona pros sit", "text": text})
     steps.append({"key": "refilm", "title": "Change one thing, then film again",
                   "text": ("One adjustment at a time, 30 minutes on it, then the same side and the "
                            "same framing: History puts the two clips side by side."

@@ -18,7 +18,6 @@ from app.services.video_analysis.biomechanics.angle_calculator import (
     calculate_forearm_tilt_2d,
     calculate_head_alignment_2d,
     calculate_segment_to_vertical,
-    calculate_segment_to_vertical_from_points,
 )
 from app.services.video_analysis.biomechanics.base_analyzer import SportAnalyzer
 from app.services.video_analysis.biomechanics.cycling_positions import (
@@ -237,44 +236,12 @@ def _image_plane(lm: Any, aspect: float) -> SimpleNamespace:
     )
 
 
-# Ear visibility floor below which the C7 blend falls back to pure
-# shoulder. Helmet brims, sunglasses, and head turns can drop ear
-# confidence well under the bike-wide 0.45 floor, in which case the
-# blend would amplify noise rather than reduce systematic bias.
-EAR_FALLBACK_VISIBILITY = 0.4
-
-# Weighted blend used to approximate the C7 vertebra position from
-# MediaPipe's acromion (shoulder) and ear landmarks. C7 sits along the
-# spine between them, behind the acromion and below the ear. A 0.7/0.3
-# weighting compromises both forward biases (acromion is forward of
-# C7; ear is forward of C7 too, but less so when the head is tucked)
-# and brings the resulting trunk-segment angle within ~1-3 deg of the
-# bike-fitter standard, vs. ~3-7 deg with shoulder alone.
-SHOULDER_C7_WEIGHT = 0.7
-
-
-def _blend_landmarks(
-    landmark_a: Any,
-    landmark_b: Any,
-    weight_a: float = SHOULDER_C7_WEIGHT,
-) -> SimpleNamespace:
-    """Weighted blend of two landmarks into a synthetic anatomical point.
-
-    Used to approximate MediaPipe-unavailable points (e.g. C7 vertebra)
-    from adjacent landmarks. Visibility is the minimum of inputs so a
-    weak input drags the blend below downstream NaN guards instead of
-    silently averaging in unreliable coordinates.
-    """
-    weight_b = 1.0 - weight_a
-    return SimpleNamespace(
-        x=landmark_a.x * weight_a + landmark_b.x * weight_b,
-        y=landmark_a.y * weight_a + landmark_b.y * weight_b,
-        z=0.0,
-        visibility=min(
-            getattr(landmark_a, "visibility", 1.0),
-            getattr(landmark_b, "visibility", 1.0),
-        ),
-    )
+# How the trunk angle is read, stamped on every result
+# (diagnostics.trunk_angle_method.method) so a stored report says which
+# formula its number came from. Until 2026-11-17 the top of the segment was
+# a 0.7 shoulder / 0.3 ear blend meant to approximate C7 ("blended_c7");
+# results stored before that carry that name.
+TRUNK_METHOD = "shoulder_hip"
 
 
 class CyclingAnalyzer(SportAnalyzer):
@@ -317,16 +284,8 @@ class CyclingAnalyzer(SportAnalyzer):
         self.right_head_scores: list[float] = []
         self._min_vis = SPORT_LANDMARK_VISIBILITY.get("bike", 0.45)
         self._analyzer_warnings: list[str] = []
-        # Trunk-angle method bookkeeping: per-frame visibility samples and
-        # the blended-vs-fallback split. compute_summary aggregates these
-        # into summary["diagnostics"]["trunk_angle_method"] and emits a
-        # one-shot BIKE_TRUNK_ANGLE_METHOD log so operators can audit how
-        # often the C7 blend is in use vs falling back to pure shoulder.
-        self._trunk_method_counts: dict[str, int] = {
-            "blended_c7": 0,
-            "shoulder_only_fallback": 0,
-        }
-        self._ear_visibilities: list[float] = []
+        # Per-frame shoulder visibility behind the trunk reading, reported in
+        # summary["diagnostics"]["trunk_angle_method"].
         self._shoulder_visibilities: list[float] = []
         # Locked on the first analyze_frame call. Bike side-view doesn't
         # physically flip during a recording, so picking the camera-facing
@@ -476,62 +435,33 @@ class CyclingAnalyzer(SportAnalyzer):
     def _compute_trunk_angle(
         self, wl: list[Any], near: str, min_visibility: float,
     ) -> float:
-        """Bike trunk angle via blended C7 approximation, with ear-fallback.
+        """Bike trunk angle: the near shoulder -> hip line against horizontal.
 
-        Approximates the bike-fitter standard C7-vertebra -> hip vector
-        by blending the MediaPipe acromion (idx 11/12) with the ear
-        (idx 7/8). Acromion alone sits ~3-5 cm forward of C7 when the
-        rider is leaning forward, which biases the shoulder->hip vector
-        toward more horizontal -- understating trunk angle by 3-7 deg
-        relative to fitter convention. The 0.7/0.3 blend halves that.
+        The same line a photo is read on (photo_analyzer) and the Kona pro
+        field was measured on (scripts/field_study), so a clip, a still and
+        the field compare like with like.
 
-        Falls back to pure shoulder when ear visibility is below
-        ``EAR_FALLBACK_VISIBILITY`` (helmet brims, head turns, sunglass
-        glare). Returns NaN-via-downstream when min_visibility gates
-        either input.
+        Until 2026-11-17 the top of the line was a 0.7 shoulder / 0.3 ear
+        blend, meant to approximate C7. The ear is on the head, not the
+        spine, so the trunk followed the head: one rider, one back, read
+        10.6 deg with the head down and 16.5 with it up (13.4 and 15.7 on
+        this line), and a time-trial rider whose marker-to-marker back angle
+        was 20 deg read 8.9 -- "outside the whole pro field" by formula alone,
+        since the field never had the blend. On aero bars the head hangs
+        below the shoulders, so the blend pulled exactly the positions the
+        field exists for.
 
-        Side effects: appends per-frame visibilities to the analyzer
-        bookkeeping and increments the method counter; emits a one-shot
-        BIKE_TRUNK_FALLBACK log on the first fallback frame.
+        Still below a fitter's marker reading by a few degrees (the model's
+        shoulder sits under the acromion and its hip forward of the
+        trochanter); that gap is the model's convention and is not corrected
+        here.
         """
-        if near == "left":
-            sh_idx, ear_idx, hip_idx = 11, 7, 23
-        else:
-            sh_idx, ear_idx, hip_idx = 12, 8, 24
-
-        shoulder = wl[sh_idx]
-        ear = wl[ear_idx]
-        hip = wl[hip_idx]
-
-        sh_vis = float(getattr(shoulder, "visibility", 1.0))
-        ear_vis = float(getattr(ear, "visibility", 1.0))
-        self._shoulder_visibilities.append(sh_vis)
-        self._ear_visibilities.append(ear_vis)
-
-        if ear_vis >= EAR_FALLBACK_VISIBILITY:
-            c7_approx = _blend_landmarks(
-                shoulder, ear, weight_a=SHOULDER_C7_WEIGHT,
-            )
-            angle_from_vertical = calculate_segment_to_vertical_from_points(
-                top=c7_approx, bottom=hip, min_visibility=min_visibility,
-            )
-            self._trunk_method_counts["blended_c7"] += 1
-        else:
-            angle_from_vertical = calculate_segment_to_vertical(
-                wl, sh_idx, hip_idx, min_visibility,
-            )
-            self._trunk_method_counts["shoulder_only_fallback"] += 1
-            # First fallback frame only -- avoid per-frame log spam on
-            # clips where the helmet hides the ear for the entire run.
-            if self._trunk_method_counts["shoulder_only_fallback"] == 1:
-                logger.info(
-                    "BIKE_TRUNK_FALLBACK",
-                    reason="ear_visibility_below_threshold",
-                    ear_visibility=round(ear_vis, 3),
-                    threshold=EAR_FALLBACK_VISIBILITY,
-                    near=near,
-                )
-
+        sh_idx, hip_idx = (11, 23) if near == "left" else (12, 24)
+        self._shoulder_visibilities.append(
+            float(getattr(wl[sh_idx], "visibility", 1.0)))
+        angle_from_vertical = calculate_segment_to_vertical(
+            wl, sh_idx, hip_idx, min_visibility,
+        )
         if math.isnan(angle_from_vertical):
             return float("nan")
         return 90.0 - angle_from_vertical
@@ -1140,42 +1070,14 @@ class CyclingAnalyzer(SportAnalyzer):
             existing = summary.get("analysis_warnings", [])
             summary["analysis_warnings"] = existing + list(self._analyzer_warnings)
 
-        # Trunk-angle method diagnostics. Populated even when blended_c7
-        # is the sole method so downstream consumers can rely on the
-        # field's presence rather than its absence-as-default.
-        blended_n = self._trunk_method_counts["blended_c7"]
-        fallback_n = self._trunk_method_counts["shoulder_only_fallback"]
-        total_n = blended_n + fallback_n
-        if total_n > 0:
-            primary_method = (
-                "blended_c7" if blended_n >= fallback_n
-                else "shoulder_only_fallback"
-            )
-            avg_ear_vis = (
-                round(float(np.mean(self._ear_visibilities)), 3)
-                if self._ear_visibilities else 0.0
-            )
-            avg_sh_vis = (
-                round(float(np.mean(self._shoulder_visibilities)), 3)
-                if self._shoulder_visibilities else 0.0
-            )
+        # Which formula the trunk number came from (TRUNK_METHOD), so a
+        # stored report can be told from one made with the old ear blend.
+        if self._shoulder_visibilities:
             summary.setdefault("diagnostics", {})["trunk_angle_method"] = {
-                "method": primary_method,
-                "blended_frames": blended_n,
-                "fallback_frames": fallback_n,
-                "fallback_pct": round(fallback_n / total_n * 100, 1),
-                "avg_ear_visibility": avg_ear_vis,
-                "avg_shoulder_visibility": avg_sh_vis,
+                "method": TRUNK_METHOD,
+                "avg_shoulder_visibility": round(
+                    float(np.mean(self._shoulder_visibilities)), 3),
             }
-            logger.info(
-                "BIKE_TRUNK_ANGLE_METHOD",
-                method=primary_method,
-                blended_frames=blended_n,
-                fallback_frames=fallback_n,
-                fallback_pct=round(fallback_n / total_n * 100, 1),
-                avg_ear_visibility=avg_ear_vis,
-                avg_shoulder_visibility=avg_sh_vis,
-            )
 
         return summary
 

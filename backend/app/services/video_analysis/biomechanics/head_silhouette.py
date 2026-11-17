@@ -87,7 +87,7 @@ _HELMET_FIELD = KONA_PRO_FIELD["helmet_above_back"]
 # helmet tail, where the automatic reading runs up to 10 points low.
 KONA_PRO_RANGE = (float(round(_HELMET_FIELD["lo"])), float(round(_HELMET_FIELD["hi"])))
 KONA_PRO_MEDIAN = _HELMET_FIELD["median"]
-# Where the helmet starts to cost points. Not the highest pro: twenty-nine of
+# Where the helmet starts to cost points. Not the highest pro: twenty-eight of
 # the thirty-one readings sat at +23 % or lower, and the three above it (up to +33 %)
 # should not widen the free band for everyone. Unchanged from n=21.
 KONA_PRO_FREE_UP_TO = 23.0

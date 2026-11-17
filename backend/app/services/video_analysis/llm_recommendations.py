@@ -853,9 +853,12 @@ def _materiality_block(
         )
         # A clean clip is not a finished one. What sits outside the pro field,
         # and what to do next, so Nothing to fix never ends with nothing to do.
-        from app.services.video_analysis.biomechanics.kona_field import pro_gaps
+        from app.services.video_analysis.biomechanics.kona_field import past_the_field, pro_gaps
         gaps = pro_gaps(position, summary) if sport_type == "bike" else []
         if gaps:
+            # Lower than every pro (torso, head) is not a gain to point at.
+            names = ("what to check before going any lower"
+                     if all(past_the_field(g) for g in gaps) else "where the next gain is")
             # The checklist under the text names them with their numbers; the
             # coach naming them too printed the forearm twice, 15 and 15.5 deg,
             # 19-32 and 18.8-32 (Gona, 2026-11-10).
@@ -866,7 +869,7 @@ def _materiality_block(
                 "text states them with their numbers and the pro field: do NOT "
                 "restate them, their numbers or the pros' numbers. In **Nothing to "
                 "fix** say only, in one short clause, that the checklist below names "
-                "where the next gain is."
+                f"{names}."
             )
         steps = [s.get("title") for s in (next_steps or []) if s.get("title")]
         if steps:
