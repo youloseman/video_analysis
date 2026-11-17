@@ -88,7 +88,7 @@ def test_each_kind_of_thing_wears_its_role():
 
 
 def test_headings_and_controls_follow_the_scale():
-    assert "--fs-h1:40px; --fs-h2:24px;" in TOKENS
+    assert "--fs-h1:40px; --fs-h2:22px;" in TOKENS
     assert ":root{--fs-h1:28px;--fs-h2:22px}" in APP
     for sel in ("h2.sec", ".uphead"):
         assert re.search(re.escape(sel) + r"\{[^}]*font-size:var\(--fs-h1\)", APP), sel
@@ -96,6 +96,14 @@ def test_headings_and_controls_follow_the_scale():
         assert re.search(re.escape(sel) + r"\{[^}]*font-size:var\(--fs-h2\)", APP), sel
     assert re.search(r"\.btn\{[^}]*min-height:44px", APP)
     assert "@media(pointer:fine){ .btn{min-height:40px} }" not in APP
+
+
+def test_type_sizes_are_on_the_scale():
+    """Eight sizes, as in the redesign mockups (2026-11-17): 12 chips/ticks, 14 secondary,
+    16 body/buttons, 18 card title, 22 section title, 28 phone h1, 40 desktop h1, 52 big score.
+    96 is the countdown over the live camera."""
+    sizes = {float(v) for v in re.findall(r"(?:font-size:\s*|font:\s*\d+\s+)([0-9.]+)px", APP)}
+    assert sizes <= {12, 14, 16, 18, 22, 28, 40, 52, 96}, sorted(sizes)
 
 
 def test_one_breakpoint_scale():

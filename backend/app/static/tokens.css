@@ -111,7 +111,7 @@
 
   /* ---- headings: Archivo italic 900 for a page title and a section title,
      smaller on a phone (app.css, max-width 640) ---- */
-  --fs-h1:40px; --fs-h2:24px;
+  --fs-h1:40px; --fs-h2:22px;
 
   /* ---- elevation: two, plus the one over footage. Nothing lifts on hover. ---- */
   --shadow:0 2px 6px rgba(20,24,31,.10);                  /* shadow/pop: menus, toast */
