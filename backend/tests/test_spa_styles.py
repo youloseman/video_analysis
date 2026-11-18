@@ -24,7 +24,7 @@ SANS_EXCEPTIONS = PRINT_WAIT.sub("", HTML)
 # <meta name="theme-color"> must be a literal colour.
 SANS_EXCEPTIONS = re.sub(r'<meta name="theme-color" content="#[0-9A-Fa-f]{6}">', "", SANS_EXCEPTIONS)
 
-DATA_PROPS = {"--x", "--w", "--sw", "--track", "--used", "--pos"}   # the last two via setProperty
+DATA_PROPS = {"--x", "--o", "--w", "--sw", "--track", "--used", "--pos"}   # the last two via setProperty; --o spreads timeline dots
 
 
 def test_no_inline_style_but_data():
@@ -100,3 +100,11 @@ def test_modifiers_come_after_their_base():
         if base is not None and base > m.start():
             late.append(m.group(0))
     assert not late, f"modifiers above their base rule: {late}"
+
+
+def test_timeline_dots_that_would_overlap_are_spread():
+    """History's strip: two scores filmed days apart shared a spot and one hid
+    the other (audit 2026-11-18). They now spread by their own width."""
+    fn = HTML[HTML.index("function histStripSpread"):][:900]
+    assert "<6" in fn and "n-(k-1)/2" in fn
+    assert "left:calc(var(--x) + var(--o,0) * 32px)" in APP

@@ -478,7 +478,9 @@ video.ex-media{background:var(--c-media-bg)}
 .hstrip-l{font-size:14px;color:var(--c-ink-soft)}
 .hstrip-line{position:relative;height:32px}
 .hstrip-line::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--c-line-strong)}
-.hstrip-dot{position:absolute;top:50%;left:var(--x);transform:translate(-50%,-50%);min-width:30px;height:30px;padding:0 4px;border-radius:999px;border:0;font:600 12px var(--f-mono);color:#fff;cursor:pointer;background:var(--c-ink-faint)}
+.hh-phone{display:none}
+/* Dots close in time are spread by their own width around their shared spot. */
+.hstrip-dot{position:absolute;top:50%;left:calc(var(--x) + var(--o,0) * 32px);transform:translate(-50%,-50%);min-width:30px;height:30px;padding:0 4px;border-radius:999px;border:0;font:600 12px var(--f-mono);color:#fff;cursor:pointer;background:var(--c-ink-faint)}
 .hstrip-dot.sc-good,.hstrip-key i.sc-good{background:var(--c-live-good-fill)}
 .hstrip-dot.sc-watch,.hstrip-key i.sc-watch{background:var(--c-warn)}
 .hstrip-dot.sc-fix,.hstrip-key i.sc-fix{background:var(--c-coral-btn)}
@@ -488,7 +490,7 @@ video.ex-media{background:var(--c-media-bg)}
   border:0;border-bottom:1px solid var(--c-line);border-radius:0;background:transparent;cursor:pointer;
   transition:border-color .15s ease-out;text-align:left;padding:10px 96px 10px 0;overflow:visible}
 .hcard:last-child{border-bottom:0}
-.hgroup .hcard{grid-template-columns:72px minmax(0,1fr) auto 32px}
+.hgroup .hcard{grid-template-columns:72px minmax(0,1fr) auto 32px;padding-right:0}
 .hgroup .hthumb{width:72px;height:54px}
 .hstat{margin-top:2px;font-size:14px;font-weight:600}
 .hs-out{color:var(--m-out)} .hs-near{color:var(--m-near-text)} .hs-ok{color:var(--m-ok)}
@@ -507,10 +509,13 @@ video.ex-media{background:var(--c-media-bg)}
   .hgroup .hdel{display:none}
   .hgroup .hcard{overflow:hidden}
   .hgroup .hcard.swiped .hswipe-del{display:flex}
-  .hgroup .hscorebox{grid-template-columns:auto;grid-template-areas:"ring" "grade";justify-items:center}
   .hscorebox .ring{width:44px;height:44px} .hscorebox .ring .ds-score{font-size:18px}
-  .hgroup .hdelta{display:none}
-  .hstrip-dot{min-width:26px;height:26px}
+  /* Ring and change line only: the ring's colour carries the grade, and the date keeps its line. */
+  .hgroup .hscorebox{grid-template-areas:"ring" "delta";grid-template-columns:auto;justify-items:end}
+  .hgroup .hgrade{display:none}
+  .hgroup .hdelta .hd-w{display:none}
+  .hstrip-dot{min-width:26px;height:26px;left:calc(var(--x) + var(--o,0) * 28px)}
+  .hh-wide{display:none} .hh-phone{display:inline}
 }
 .hcard:hover .htitle{text-decoration:underline}
 .hcard:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
@@ -763,6 +768,8 @@ details.dform[open] > .dform-sum{margin-bottom:14px}
 @media(max-width:640px){
   .dkpis{grid-template-columns:minmax(0,1fr)}
   #dashSports .dsc{padding:0;grid-template-columns:104px minmax(0,1fr)}
+  /* No frame to stand beside: the card's text takes the whole width. */
+  #dashSports .dsc.no-fig{grid-template-columns:minmax(0,1fr)}
   .dsc-score{flex-wrap:wrap;gap:8px 12px}
   .dsc-pill{white-space:nowrap}
   .dsc-fig{min-height:0}
@@ -812,7 +819,7 @@ details.dform[open] > .dform-sum{margin-bottom:14px}
 .dvis > div:empty{display:none}
 .dvis:not(:has(> div:not(:empty))),#dashboard.dash-empty .dvis{display:none}
 .dthen-sub{margin:-8px 0 12px}
-.dthen-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dthen-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:460px}
 .dthen-fig{position:relative;margin:0;border-radius:var(--radius-panel);overflow:hidden;background:var(--c-media-bg);aspect-ratio:9/14}
 .dthen-fig img{display:block;width:100%;height:100%;object-fit:cover}
 .dthen-fig figcaption{position:absolute;left:6px;right:6px;bottom:6px;font-family:var(--f-mono);font-size:12px;color:#F5F7FA;
@@ -1995,7 +2002,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .gometa .quota-line{margin:0;padding:0;border:0;text-align:left;font-family:var(--f-body);font-size:14px;color:var(--c-ink)}
 .gometa .quota-line b{font-family:inherit;font-weight:700}
 /* What is left this month: a navy fill on a pale track. */
-.qbar{--left:0%;flex:1 1 80px;position:relative;height:6px;border-radius:999px;background:var(--c-ground);overflow:hidden}
+.qbar{--left:0%;flex:1 1 80px;position:relative;height:6px;border-radius:999px;background:var(--c-panel);overflow:hidden}
 .qbar.hidden{display:none}
 .qbar i{position:absolute;left:0;top:0;bottom:0;width:var(--left);background:var(--c-brand-navy);border-radius:999px}
 .gometa .plans-link{display:inline-flex;align-items:center;min-height:44px;margin:-12px 0;font-size:14px;color:var(--c-blue-dk);text-decoration:underline;text-underline-offset:2px;font-weight:500}
@@ -2185,7 +2192,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .scorecard.has-bd{grid-template-columns:auto auto minmax(0,1fr) minmax(250px,1.35fr)}
 .score-bd{grid-column:4;grid-row:1/span 5;align-self:start;font-size:12px;color:rgba(255,255,255,.72);
   padding-left:22px;border-left:1px solid rgba(255,255,255,.14);min-width:0}
-.bd-h{display:flex;justify-content:space-between;gap:8px;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;
+.bd-h{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;
   text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:8px}
 .bd-key{letter-spacing:.04em;text-transform:none;color:rgba(255,255,255,.45);white-space:nowrap}
 .bd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(44px,64px) 26px 30px;align-items:center;gap:8px;line-height:1.7}
@@ -4092,7 +4099,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 #batDrop.over{border-color:var(--c-blue)}
 .bat-list:empty{display:none}
 .bat-list{margin:12px 0 0}
-.bat-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(110px,.8fr) 90px minmax(90px,.8fr) auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--c-line);font-size:14px}
+.bat-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(110px,.8fr) 90px minmax(90px,.8fr) 64px;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--c-line);font-size:14px}
 .bat-row:first-child{border-top:0}
 .bat-row.bat-lane{grid-template-columns:minmax(0,1fr) auto auto}
 /* ---- Batch, as drawn (Batch board, 2026-11-17) ---- */

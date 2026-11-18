@@ -225,18 +225,18 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
             "Run in place with high knee lift 3x30 seconds. "
             "Use a metronome app set to 180 bpm."
         ),
-        "cue": "Imagine running on hot coals -- quick, light steps",
+        "cue": "Imagine running on hot coals: quick, light steps",
         "weeks_to_improvement": 3,
     },
     "overstride_high": {
-        "problem": "Overstriding -- foot lands {value}x leg length ahead of the hip (optimal under 0.15)",
+        "problem": "Overstriding: foot lands {value}x leg length ahead of the hip (optimal under 0.15)",
         "drill": "Quick-Feet Cadence Drill",
         "instruction": (
             "Run 4x20 seconds at a deliberately higher step rate on a "
             "metronome set to 180 bpm, focusing on landing with the foot "
             "under your hips rather than reaching out in front."
         ),
-        "cue": "Land under your body, not out in front -- shorter, quicker steps",
+        "cue": "Land under your body, not out in front: shorter, quicker steps",
         "weeks_to_improvement": 4,
     },
     "vertical_osc_high": {
@@ -254,7 +254,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
     # 0 deg is inside the band and gets no drill at all). Say that, rather than
     # the old "insufficient lean", which described a posture that is fine.
     "trunk_lean_insufficient": {
-        "problem": "Leaning back ({value} deg -- torso behind vertical)",
+        "problem": "Leaning back ({value} deg, torso behind vertical)",
         "drill": "Wall Lean Drill",
         "instruction": (
             "Lean hands against a wall at 45 deg, body straight. "
@@ -270,7 +270,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
             "Run with a book on your head 3x50 m. "
             "Focus: pull the crown of your head upward, keep torso upright."
         ),
-        "cue": "Grow tall from the ground -- imagine a string pulling you up by the crown",
+        "cue": "Grow tall from the ground: imagine a string pulling you up by the crown",
         "weeks_to_improvement": 2,
     },
     "knee_contact_insufficient_flexion": {
@@ -290,7 +290,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
             "Standing, practice pendulum arm swing with elbows at 90 deg. "
             "3x30 seconds, then transfer to running."
         ),
-        "cue": "Hold a crisp in your fist without breaking it -- soft hands, sharp angle",
+        "cue": "Hold a crisp in your fist without breaking it: soft hands, sharp angle",
         "weeks_to_improvement": 2,
     },
     "elbow_angle_too_narrow": {
@@ -300,7 +300,7 @@ RUNNING_DRILLS: dict[str, dict[str, Any]] = {
             "Run with deliberately relaxed arms 2x100 m. "
             "Shake out your hands every 200 m."
         ),
-        "cue": "Arms like pendulums -- no tension, no flailing",
+        "cue": "Arms like pendulums: no tension, no flailing",
         "weeks_to_improvement": 1,
     },
     "foot_strike_heel": {
@@ -485,7 +485,7 @@ def build_running_action_plan(
                 "range": (diagnosis.optimal_min, diagnosis.optimal_max),
                 "description": (
                     f"{_METRIC_LABELS.get(metric, metric)}: "
-                    f"{diagnosis.current_value:.1f} -- "
+                    f"{diagnosis.current_value:.1f}, "
                     + ("better than the target range" if better else "in optimal range")
                 ),
             })
@@ -693,7 +693,8 @@ def _diagnose_metric(
         severity=severity,
         drill_key=drill_key,
         problem_description=(
-            drill_data.get("problem", "").format(value=f"{value:.1f}")
+            drill_data.get("problem", "").format(
+                value=f"{value:.{_DISPLAY_PRECISION.get(metric, _DEFAULT_DISPLAY_PRECISION)}f}")
             if drill_key
             else ""
         ),
@@ -840,13 +841,13 @@ def running_action_plan_fallback_report(plan: RunningActionPlan) -> str:
             if d.linked_to:
                 linked_label = _METRIC_LABELS.get(d.linked_to, d.linked_to)
                 lines.append(
-                    f"(Connected to {linked_label} -- "
+                    f"(Connected to {linked_label}: "
                     "fixing that first may help resolve this.)"
                 )
             lines.append("")
     else:
         lines.append(
-            "Your running form looks solid -- no major changes needed."
+            "Your running form looks solid: no major changes needed."
         )
         lines.append("")
 

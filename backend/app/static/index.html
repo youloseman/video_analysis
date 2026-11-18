@@ -1583,7 +1583,7 @@
       </span>
     </div>
     <div id="histList"></div>
-    <p class="hint hist-hint" id="histHint" hidden>Analyses run for someone else? Tap <b>✕</b> on a card to remove just that one, or <b>Clear all</b> to reset your stats.</p>
+    <p class="hint hist-hint" id="histHint" hidden>Analyses run for someone else? <span class="hh-wide">Tap <b>✕</b> on a card</span><span class="hh-phone">Swipe a card left</span> to remove just that one, or <b>Clear all</b> to reset your stats.</p>
   </section>
 
   <!-- ============ PROGRESS / TRENDS ============ -->
@@ -13360,10 +13360,23 @@ function histStripHtml(list){
   const now=Date.now(), t=e=>e.filmedAt||e.at||now;
   const lo=Math.min(...rows.flatMap(([,es])=>es.map(t))), span=Math.max(864e5,now-lo);
   const X=ms=>((ms-lo)/span*92+4).toFixed(1);
+/* Dots that would sit on each other (under 6 % of the strip apart) share a
+   spot and are spread by their own width around it: inward at an edge, so
+   "today" does not run off the card. [entry, x %, offset in dot widths]. */
+function histStripSpread(es, t, X){
+  const pts=es.map(e=>[e,+X(t(e))]).sort((a,b)=>a[1]-b[1]), out=[];
+  for(let i=0;i<pts.length;){
+    let j=i+1; while(j<pts.length&&pts[j][1]-pts[j-1][1]<6) j++;
+    const grp=pts.slice(i,j), k=grp.length, mid=grp.reduce((a,p)=>a+p[1],0)/k;
+    grp.forEach((p,n)=>out.push([p[0], mid.toFixed(1), k===1?0:mid>88?n-(k-1):mid<12?n:n-(k-1)/2]));
+    i=j;
+  }
+  return out;
+}
   const ticks=[]; const d=new Date(lo); d.setDate(1); d.setMonth(d.getMonth()+1);
   for(;d.getTime()<now-6*864e5;d.setMonth(d.getMonth()+1)) ticks.push(d.getTime());
   return `<div class="hstrip"><div class="hstrip-h"><b>Every analysis, by date</b><span class="hstrip-key"><i class="sc-good"></i>86 and up <i class="sc-watch"></i>60–85 <i class="sc-fix"></i>under 60</span></div>
-    ${rows.map(([sp,es])=>`<div class="hstrip-row"><span class="hstrip-l">${sp==='run'?'Run':'Bike'}</span><div class="hstrip-line">${es.map(e=>`<button type="button" class="hstrip-dot sc-${scoreStatus(e.score)}" style="--x:${X(t(e))}%" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}">${e.score}</button>`).join('')}</div></div>`).join('')}
+    ${rows.map(([sp,es])=>`<div class="hstrip-row"><span class="hstrip-l">${sp==='run'?'Run':'Bike'}</span><div class="hstrip-line">${histStripSpread(es,t,X).map(([e,x,o])=>`<button type="button" class="hstrip-dot sc-${scoreStatus(e.score)}" style="--x:${x}%;--o:${o}" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}">${e.score}</button>`).join('')}</div></div>`).join('')}
     <div class="hstrip-axis"><span style="--x:${X(lo)}%">${esc(shortDate(lo))}</span>${ticks.map(ms=>`<span style="--x:${X(ms)}%">${esc(shortDate(ms))}</span>`).join('')}<span style="--x:${X(now)}%">today</span></div></div>`;
 }
 /* What one analysis says, in its own colours: how many readings are out of
@@ -13382,7 +13395,7 @@ function histDelta(e,list){
   const noun=e.sport==='run'?'run':'ride';
   const p=cmpPrevious(e,list);
   if(p&&p.score!=null&&e.score!=null){ const d=e.score-p.score;
-    return d===0?`same as last ${noun}`:`<span class="${d>0?'hd-up':'hd-down'}">${d>0?'▲ +':'▼ '}${Math.abs(d)}</span> vs last ${noun}`; }
+    return d===0?`same<span class="hd-w"> as last ${noun}</span>`:`<span class="${d>0?'hd-up':'hd-down'}">${d>0?'▲ +':'▼ '}${Math.abs(d)}</span><span class="hd-w"> vs last ${noun}</span>`; }
   const earlier=list.some(x=>x.sport===e.sport&&x.id!==e.id&&(x.filmedAt||x.at||0)<(e.filmedAt||e.at||0));
   return earlier?'':`first ${noun}`;
 }

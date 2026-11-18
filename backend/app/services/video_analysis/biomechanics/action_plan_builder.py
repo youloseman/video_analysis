@@ -236,7 +236,7 @@ def _borderline_note(side: str, opt_min: float, opt_max: float) -> str:
     where = "above" if side == "high" else "below"
     return (
         f"Marginally {where} the {opt_min:g}-{opt_max:g} optimal band but "
-        f"within measurement tolerance -- treat as on-target, no change needed."
+        f"within measurement tolerance: treat as on-target, no change needed."
     )
 
 
@@ -532,7 +532,7 @@ def build_action_plan(
                        f"{amt} to bring the knee to mid-band, "
                        f"ride 30 min before reassessing."
                        if amt else
-                       "Insufficient extension -- raise saddle by 5mm, "
+                       "Insufficient extension: raise saddle by 5mm, "
                        "ride 30 min before reassessing.")
                 ),
                 priority=1,
@@ -556,7 +556,7 @@ def build_action_plan(
                        f"to bring the knee to mid-band, "
                        f"ride 30 min before reassessing."
                        if amt else
-                       "Overextension -- lower saddle by 5mm, "
+                       "Overextension: lower saddle by 5mm, "
                        "ride 30 min before reassessing.")
                 ),
                 priority=1,
@@ -605,7 +605,7 @@ def build_action_plan(
                     reason=(
                         f"Hip angle at the top of the stroke is {hip_avg:.0f} deg "
                         f"(optimal {hip_min:.0f}-{hip_max:.0f} deg). "
-                        f"This is linked to saddle height -- raising the "
+                        f"This is linked to saddle height: raising the "
                         f"saddle will also open the hip angle. Reassess "
                         f"after saddle height correction."
                     ),
@@ -630,7 +630,7 @@ def build_action_plan(
                     reason=(
                         f"Hip angle at the top of the stroke is {hip_avg:.0f} deg "
                         f"(optimal {hip_min:.0f}-{hip_max:.0f} deg). "
-                        f"Hip is too closed -- move saddle forward 5mm "
+                        f"Hip is too closed: move saddle forward 5mm "
                         f"to open hip angle."
                     ),
                     priority=2,
@@ -694,7 +694,7 @@ def build_action_plan(
                 reason=(
                     f"Trunk angle is {trunk_avg:.0f} deg "
                     f"(optimal {trunk_min:.0f}-{trunk_max:.0f} deg). "
-                    f"Position is too upright -- lower {bar_height} "
+                    f"Position is too upright: lower {bar_height} "
                     f"or increase {bar_reach} to achieve a more "
                     f"forward position."
                 ),
@@ -752,7 +752,7 @@ def build_action_plan(
                 reason=(
                     f"Trunk angle is {trunk_avg:.0f} deg "
                     f"(optimal {trunk_min:.0f}-{trunk_max:.0f} deg). "
-                    f"Position is too aggressive -- raise {bar_height} "
+                    f"Position is too aggressive: raise {bar_height} "
                     f"for a more sustainable position."
                 ),
                 priority=3,
@@ -938,7 +938,7 @@ def _apply_mobility_limit(
                 f"and what that range supports is {ceiling}. Dropping "
                 f"{bar_height} from here would buy the angle from your lower "
                 "back rather than your hips. Work the range first, then "
-                "re-measure -- this is a rule of thumb from a floor "
+                "re-measure: this is a rule of thumb from a floor "
                 "measurement, so if you already hold a lower position "
                 "comfortably for a full event, trust that instead."
             ),
@@ -1149,7 +1149,7 @@ def apply_hip_over_bb(fit_plan: dict[str, Any] | None, hob: Any,
                      + f"Over the crank the hip sits at {far['angle']:.0f} deg, {far['behind_pro_cm']:.0f} cm "
                      f"behind the middle of the Kona pros ({far['pro']:.0f} deg) and behind every one of "
                      f"the {far['ag_n']:.0f} age-groupers ({far['ag_lo']:.0f}-{far['ag_hi']:.0f} deg). "
-                     f"Five millimetres won't reach it -- move the saddle forward about {fwd} cm, to where "
+                     f"Five millimetres won't reach it: move the saddle forward about {fwd} cm, to where "
                      "most age-groupers sit. The rails give 1-2 cm; past that it takes a forward-offset or "
                      "dual-position seatpost, or a frame with a steeper seat tube. Each centimetre forward "
                      f"lowers the saddle about {_DROP_MM_PER_CM} mm against the pedals, so raise it to match, "
