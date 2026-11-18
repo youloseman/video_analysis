@@ -3212,6 +3212,25 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .acct-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
 @media(max-width:900px){ .acct-grid{grid-template-columns:1fr} }
 .acct-card{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);margin-bottom:16px}
+/* More (phone, board: MorePhone): a plan card, two lists of rows, Log out. */
+.mo-stack{display:flex;flex-direction:column;gap:12px;max-width:560px}
+.mo-card{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);overflow:hidden}
+.mo-card.hidden{display:none}
+.mo-plan{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.mo-plan .qbar{flex:none;height:8px}
+.mo-planhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.mo-planhead b{color:var(--c-head)}
+.mo-planhead a{font-size:14px;font-weight:600;color:var(--c-blue-dk);text-decoration:none}
+.mo-cap{padding:12px 16px 8px;font-size:14px;font-weight:600;color:var(--c-ink-faint)}
+.mo-row{min-height:52px;padding:6px 16px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--c-panel);color:var(--c-ink);text-decoration:none}
+.mo-row:hover{background:var(--c-ground)}
+.mo-row:active{background:var(--c-panel)}
+.mo-row .ic{flex:none;width:18px;height:18px;color:var(--c-ink-faint)}
+.mo-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.mo-lbl{font-weight:600;display:flex;align-items:center;gap:8px}
+.mo-sub{font-size:14px;color:var(--c-ink-faint)}
+.mo-sub .num{font-family:var(--f-mono);font-weight:500;color:var(--c-ink)}
+.mo-out{min-height:48px;width:100%}
 .acct-card h3{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:0;padding:12px 18px;border-bottom:1px solid var(--c-line);display:flex;align-items:center;gap:10px}
 /* Account as drawn: each card headed in the display face, the plan's three
    meters with bars, the coach with initials. */

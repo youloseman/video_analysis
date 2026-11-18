@@ -85,6 +85,8 @@
     <path d="M12 4v12M6 10l6 6 6-6"/><path d="M4 20h16"/></symbol>
   <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M7 17 17 7M9 7h8v8"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 6l6 6-6 6"/></symbol>
   <symbol id="i-chev-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M6 9l6 6 6-6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -195,9 +197,10 @@
   <a href="#" id="botAnalyze" class="botlink"><span class="bot-plus"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg></span><span>Analyze</span></a>
   <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
   <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
-  <!-- Everything else lives in the drawer: Plans, Examples, Academy, Account.
-       One row, five thumbs. -->
-  <a href="#" id="botMore" class="botlink" aria-controls="sidebar"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span>More</span></a>
+  <!-- Everything else lives on the More page (board: MorePhone): the plan,
+       your work, Pricing, Examples, Academy, What's new, Log out. One row,
+       five thumbs. The top bar's menu button still opens the drawer. -->
+  <a href="#" id="botMore" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span>More</span></a>
 </nav>
 
 <!-- Left sidebar (primary navigation) -->
@@ -1901,6 +1904,21 @@
     </div>
   </section>
 
+  <!-- ============ MORE (phone) ============
+       What the More tab opens: the plan and what is left, the screens that
+       are not tabs, and Log out. Rows follow the same rules as the sidebar
+       (account features only with an account, coach rows on the Coach plan,
+       admin rows for admin); renderMore() builds them on every open. -->
+  <section id="more" class="hidden" aria-labelledby="moreTitle">
+    <div class="pagehead"><h2 class="sec" id="moreTitle" tabindex="-1">More</h2></div>
+    <div class="mo-stack">
+      <div class="mo-card mo-plan hidden" id="morePlan"></div>
+      <nav class="mo-card hidden" id="moreWork" aria-label="Your work"></nav>
+      <nav class="mo-card" id="moreSite" aria-label="Flapp"></nav>
+      <button class="btn btn-ghost mo-out" type="button" id="moreAuthBtn">Log out</button>
+    </div>
+  </section>
+
   <!-- ============ COACH PROFILE (Coach plan) ============
        What athletes see under the coach's name (on every report), how strict
        the framing check is, and the three ways a clip arrives. -->
@@ -2247,20 +2265,20 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
   whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp',
   expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp',
-  account:'Account — Flapp', coachprofile:'Coach profile — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp', athletedetail:'Athlete — Flapp', batch:'Batch — Flapp',
+  account:'Account — Flapp', more:'More — Flapp', coachprofile:'Coach profile — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp', athletedetail:'Athlete — Flapp', batch:'Batch — Flapp',
   swim:'Swim review — Flapp', swimdetail:'Your swim clip — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
   whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin',
   expertadmin:'expertAdmin', reviewreport:'reviewReport',
-  account:'account', coachprofile:'coachProfile', profiles:'profiles', athletes:'athletes', athletedetail:'athleteDetail', batch:'batch', swim:'swim', swimdetail:'swim'};
+  account:'account', more:'more', coachprofile:'coachProfile', profiles:'profiles', athletes:'athletes', athletedetail:'athleteDetail', batch:'batch', swim:'swim', swimdetail:'swim'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
 const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', coachprofile:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes', athletedetail:'#navAthletes', batch:'#navBatch' };
-const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', coachprofile:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
+const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', more:'#botMore', coachprofile:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -2324,6 +2342,7 @@ const ROUTED_STATES = {
   expertadmin:   () => openExpertAdmin(),
   account:       () => openAccount(),
   coachprofile:  () => openCoachProfile(),
+  more:          () => openMore(),
   profiles:      () => openProfiles(),
   // The sample needs no order; a delivered report is refetched by id.
   reviewreport:  (e) => e.sample ? openSampleReport() : openReviewReport(e.orderId),
@@ -8542,6 +8561,67 @@ $('#acctResearch').addEventListener('change',async e=>{
   const on=e.target.checked;
   if(!(await setResearch(on))) e.target.checked=!on;
 });
+/* ---- More (phone): the board's menu page ----
+   One row = one destination: a label, sometimes a line under it, a chevron.
+   `go` runs an in-app view; `href` is a real page (Examples, Academy). */
+function moreRow(r){
+  const sub=r.sub?`<span class="mo-sub">${r.sub}</span>`:'';
+  const inner=`<span class="mo-txt"><span class="mo-lbl">${esc(r.label)}${r.dot?'<span class="ac-chip mo-new">New</span>':''}</span>${sub}</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg>`;
+  return r.href
+    ? `<a class="mo-row" href="${r.href}">${inner}</a>`
+    : `<a class="mo-row" href="#" data-more="${r.go}">${inner}</a>`;
+}
+const MORE_GO={compare:()=>openCompare(), profiles:()=>openProfiles(), athletes:()=>openAthletes(), batch:()=>openBatch(),
+  coachprofile:()=>openCoachProfile(), pricing:()=>openPricing(), whatsnew:()=>openWhatsNew(),
+  feedback:()=>openFeedbackAdmin(), reviews:()=>openExpertAdmin()};
+function renderMore(){
+  const plan=$('#morePlan');
+  plan.classList.toggle('hidden', !auth);
+  if(auth){
+    const card=((PLANS&&PLANS.cards)||[]).find(c=>c.tier===auth.tier);
+    const nm=card?card.name:tierLabel(auth.tier), name=/plan$/i.test(nm)?nm:nm+' plan';
+    const q=quotaLoad(), period=auth.tier!=='admin'?'this month':'today';
+    const used=q?Math.max(0,q.limit-q.remaining):null;
+    plan.innerHTML=`<div class="mo-planhead"><b>${esc(name)}</b><a href="#account" data-more-account>Account</a></div>`
+      +(q?`<span class="qbar" aria-hidden="true"><i></i></span>
+          <span class="mo-sub"><b class="num">${used}</b> of <b class="num">${q.limit}</b> analyses used ${period}</span>`:'');
+    const bar=plan.querySelector('.qbar'); if(bar) bar.style.setProperty('--left', Math.round(100*Math.min(1,used/Math.max(1,q.limit)))+'%');
+  }
+  const work=[];
+  if(auth){
+    work.push({label:'Compare', sub:'two analyses side by side', go:'compare'});
+    const pu=PROFILES&&PROFILES.used!=null?` · ${PROFILES.used} of ${PROFILES.limit}`:'';
+    work.push({label:'Profiles', sub:'bikes and shoes'+pu, go:'profiles'});
+  }
+  if(hasCoachPlan()){
+    work.push({label:'Athletes', sub:'your squad, one by one', go:'athletes'});
+    work.push({label:'Upload several clips', go:'batch'});
+    work.push({label:'Coach profile', sub:'what athletes see under your name', go:'coachprofile'});
+  }
+  if(auth&&auth.tier==='admin'){
+    work.push({label:'Feedback', go:'feedback'});
+    work.push({label:'Reviews', go:'reviews'});
+  }
+  const w=$('#moreWork');
+  w.classList.toggle('hidden', !work.length);
+  w.innerHTML=work.length?`<div class="mo-cap">Your work</div>`+work.map(moreRow).join(''):'';
+  const cl=(state.changelog||[])[0];
+  const site=[{label:'Pricing', go:'pricing'}, {label:'Examples', href:'/examples'}, {label:'Academy', href:'/academy'},
+    {label:'What’s new', go:'whatsnew', dot:!$('#navNewDot').classList.contains('hidden'),
+     sub:cl?esc(`${cl.date_label||cl.date||''}: ${cl.title||''}`):''}];
+  $('#moreSite').innerHTML=`<div class="mo-cap">Flapp</div>`+site.map(moreRow).join('');
+  $('#moreAuthBtn').textContent=auth?'Log out':'Log in';
+}
+function openMore(){
+  renderMore();
+  setState('more',{focus:'#moreTitle'});
+}
+$('#more').addEventListener('click',e=>{
+  if(e.target.closest('[data-more-account]')){ e.preventDefault(); openAccount(); return; }
+  const r=e.target.closest('[data-more]'); if(!r) return;
+  e.preventDefault(); const go=MORE_GO[r.dataset.more]; if(go) go();
+});
+$('#moreAuthBtn').addEventListener('click',()=>{ if(auth) logout(); else openAuth('login'); });
 function openCoachProfile(){
   if(!auth){ openAuth('login'); return; }
   if(!COACH.loaded) loadCoach();
@@ -12191,6 +12271,7 @@ function renderAuth(){
   syncPreframe();
   if(!state.file && typeof noFileHint==='function') noFileHint();
   if(typeof renderAccount==='function') renderAccount();
+  if(document.body.dataset.state==='more') renderMore();
   // Both of these answer "who is asking", and both were rendered ONCE at boot
   // -- before checkAuth() had an answer. So a signed-in athlete read "Free
   // account required · 10 analyses" off their own uploader, having just signed
@@ -13704,7 +13785,7 @@ $('#navProfiles').addEventListener('click',e=>{ e.preventDefault(); openProfiles
 $('#navAthletes').addEventListener('click',e=>{ e.preventDefault(); openAthletes(); });
 $('#navBatch').addEventListener('click',e=>{ e.preventDefault(); openBatch(); });
 $('#navAccount').addEventListener('click',e=>{ e.preventDefault(); openAccount(); });
-$('#botMore').addEventListener('click',e=>{ e.preventDefault(); openNav(); });
+$('#botMore').addEventListener('click',e=>{ e.preventDefault(); openMore(); });
 $('#profileSel').addEventListener('change',e=>{
   if(e.target.value==='__new'){ showProfileInput(true); return; }
   state.profileId=e.target.value||null;
