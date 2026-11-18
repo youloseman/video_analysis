@@ -326,10 +326,13 @@ video.ex-media{background:var(--c-media-bg)}
 .ex-bar .ex-status{font-size:14px;color:var(--c-ink-faint);margin-right:auto}
 
 /* "Your review is ready" on the dashboard. */
-.rev-card{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 20px;
-  padding:16px 18px;border-radius:var(--radius-card);border:1px solid var(--c-line);background:var(--c-bg)}
+.rev-card{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;margin:0 0 16px;
+  padding:8px 18px;border-radius:var(--radius-card);border:1px solid var(--c-line);background:var(--c-bg)}
+.rev-card > div{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;min-width:0}
+.rev-card .new-pill{margin-left:0}
+.rev-card .btn-link{min-height:44px;font-size:14px}
 .rev-card.is-unread{border-color:var(--c-blue);background:var(--c-panel-blue)}
-.rev-card .rev-t{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head)}
+.rev-card .rev-t{font-weight:700;font-size:14px;color:var(--c-head)}
 .rev-card .rev-s{font-size:14px;color:var(--c-ink-soft);max-width:56ch}
 .rev-card .btn{margin-left:auto}
 .rev-dot{width:8px;height:8px;border-radius:50%;background:var(--c-blue);flex:none}
@@ -598,6 +601,28 @@ video.ex-media{background:var(--c-media-bg)}
 .dfx-also li{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:40px;font-size:14px;border-top:1px solid var(--c-line)}
 .dfx-also li:first-child{border-top:0}
 .dfx-also small{color:var(--c-ink-faint);font-size:12px}
+/* Then -> now and the Kona field: one line each, opening Progress */
+#dashLinks .dlinks{padding:0;overflow:hidden}
+.dlink{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;width:100%;min-height:64px;padding:12px 20px;
+  background:none;border:0;border-top:1px solid var(--c-line);text-align:left;font:inherit;color:var(--c-ink);cursor:pointer;transition:background-color .15s}
+.dlink:first-child{border-top:0}
+.dlink:hover{background:var(--c-panel)}
+.dlink-t{grid-column:1;font-size:16px;font-weight:700;color:var(--c-head)}
+.dlink-s{grid-column:1;font-size:14px;color:var(--c-ink-faint)}
+.dlink .ic{grid-column:2;grid-row:1/span 2;color:var(--c-ink-faint);transform:rotate(-90deg)}
+/* All measurements: one line until opened */
+details.dform > .dform-sum{display:flex;align-items:center;flex-wrap:wrap;gap:4px 14px;min-height:44px;list-style:none;cursor:pointer}
+details.dform > .dform-sum::-webkit-details-marker{display:none}
+.dform-sum-t{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-head)}
+.dform-sum-s{font-size:14px;color:var(--c-ink-faint)}
+.dform-sum-s b{font-weight:600} .dform-sum-s .fs-out{color:var(--m-out)} .dform-sum-s .fs-near{color:var(--m-near-text)}
+.fs-sep{color:var(--c-line-strong);margin:0 2px}
+.dform-sum-go{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--c-blue-dk)}
+.dform-sum-go .ic{width:14px;height:14px;transition:transform .15s}
+details.dform[open] .dform-sum-go .ic{transform:rotate(180deg)}
+.dform-hide{display:none} details.dform[open] .dform-hide{display:inline} details.dform[open] .dform-show{display:none}
+details.dform[open] > .dform-sum{margin-bottom:14px}
+.prog-vis{margin:0 0 24px}
 #dashboard .dfx .btn-primary{background:var(--c-bg);color:var(--c-ink);border-color:var(--c-line-strong)}
 @media(max-width:900px){
   .dfx,.dfx.no-fig,.dfx.no-side{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}

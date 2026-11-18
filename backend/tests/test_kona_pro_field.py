@@ -139,6 +139,8 @@ async def test_the_dashboard_is_served_the_same_field(make_user):
 
 
 def test_the_dashboard_card_shows_it_only_on_the_aero_bars():
-    card = SPA[SPA.index("function renderDashKona("):SPA.index("function renderDashboard(")]
+    # The field is fetched once (konaField) and drawn on Progress (renderKona)
+    # and as a line on the home screen (renderDashLinks), both via konaAero.
+    card = SPA[SPA.index("function konaField("):SPA.index("function renderDashboard(")]
     assert "fetch('/me/kona-field'" in card
     assert "position==='tt_aero'||" in card and "position==='triathlon'" in card

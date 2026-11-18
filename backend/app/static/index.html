@@ -406,8 +406,9 @@
     <!-- What to do (Main board): the latest report's first fix beside its frame,
          then the drills and what else to work on, in one card. -->
     <div id="dashFix"></div>
-    <!-- Progress as a picture, and where an aero rider sits among the pros. -->
-    <div class="dvis"><div id="dashThen"></div><div id="dashKona"></div></div>
+    <!-- Then -> now and the Kona field, one line each: they open Progress,
+         where the pictures and the strips are (Main board, short version). -->
+    <div id="dashLinks"></div>
     <div id="dashForm"></div>
     <!-- The swim review, last: the page is about your technique first. Until
          it is closed or a swim clip is sent. -->
@@ -1582,6 +1583,9 @@
         <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Compare two analyses
       </button>
     </div>
+    <!-- Progress as a picture, and where an aero rider sits among the pros
+         (moved here from the home screen, which links to them). -->
+    <div class="dvis prog-vis"><div id="progThen"></div><div id="progKona"></div></div>
     <div class="tgrid" id="progGrid"></div>
     <div id="progTeaser"></div>
   </section>
@@ -9005,7 +9009,7 @@ async function renderReviewCard(){
   // that report; a review has a page of its own.
   host.innerHTML=ready.slice(0,3).map(o=>{ const n=o.plan==='notes'; return `
     <div class="rev-card${o.unread?' is-unread':''}">
-      ${o.unread?'<span class="rev-dot" aria-hidden="true"></span>':''}
+      ${o.unread?'<i class="new-pill">New</i>':''}
       <div>
         <div class="rev-t">${n?(o.unread?'Your Coach Notes are on your report':'Your Coach Notes'):(o.unread?'Your Expert Review is ready':'Your Expert Review')}</div>
         <div class="rev-s">${o.unread
@@ -9013,7 +9017,7 @@ async function renderReviewCard(){
               :'A human read your analysis and wrote back — priorities, a four-week plan, and when to film again.')
           : 'Delivered '+esc(shortDate(o.delivered_at_ms))}</div>
       </div>
-      <button class="btn ${o.unread?'btn-primary':'btn-outline'} btn-sm" type="button" ${n?`data-opennotes="${o.id}" data-entry="${esc(o.analysis_client_id||'')}"`:`data-openreview="${o.id}"`}>${o.unread?'Read it':'Read again'}</button>
+      <button class="btn btn-link" type="button" ${n?`data-opennotes="${o.id}" data-entry="${esc(o.analysis_client_id||'')}"`:`data-openreview="${o.id}"`}>${o.unread?'Read it':'Read again'} →</button>
     </div>`; }).join('');
   host.querySelectorAll('[data-openreview]').forEach(b=>
     b.addEventListener('click',()=>openReviewReport(b.dataset.openreview)));
@@ -13815,6 +13819,8 @@ function renderProgress(){
   }
   renderAthleteFilter('progAthleteFilter', histSource(), {progress:true});
   const pool=(hasCoachPlan()&&state.histAthlete==null)?histSource().filter(e=>e.athleteId==null):histSource();
+  renderThenNow(pool,'progThen',sport);
+  if(sport==='bike') renderKona(pool,'progKona'); else $('#progKona').innerHTML='';
   const everySide=applyProfileFilter(
     pool.filter(e=>e.sport===sport && e.trends)
   ).slice().reverse();   // oldest -> newest
@@ -14176,10 +14182,20 @@ function renderCurrentForm(all){
       || `<p class="hint u-m-0 u-mt-2 u-mb-2">No metric data for ${sport} yet.</p>`;
   }
 
-  host.innerHTML=`<div class="dcard dform">
-    <div class="dcard-head"><h2>Current form</h2>${seg}</div>
+  // Folded to one line that says what is inside (Main board): the readings
+  // that matter are already on the sport cards above.
+  const sum=['run','bike'].map(sp=>{
+    const es=all.filter(e=>e.sport===sp && e.trends); if(!es.length) return '';
+    const rows=formTiles(sp,es).map(measStatus).filter(x=>x.group!=='info');
+    const out=rows.filter(x=>x.cls==='m-out').length, near=rows.filter(x=>x.cls==='m-near').length;
+    return `${sp==='run'?'Run':'Bike'} ${rows.length}${out?` · <b class="fs-out">${out} out of range</b>`:''}${near?` · <b class="fs-near">${near} borderline</b>`:''}`;
+  }).filter(Boolean).join(' <span class="fs-sep">|</span> ');
+  host.innerHTML=`<details class="dcard dform"${state.formOpen?' open':''}>
+    <summary class="dform-sum"><span class="dform-sum-t">All measurements</span><span class="dform-sum-s">${sum}</span><span class="dform-sum-go"><span class="dform-show">Show</span><span class="dform-hide">Hide</span> <svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg></span></summary>
+    <div class="dcard-head dform-head">${seg}</div>
     <div class="dform-body">${body}</div>
-  </div>`;
+  </details>`;
+  host.querySelector('details').addEventListener('toggle',ev=>{ state.formOpen=ev.target.open; });
 }
 /* One section of the coach's report ("Fix first", "Next session"...), as text. */
 function reportSection(md,name){
@@ -14238,35 +14254,36 @@ function thenPair(sport, all){
   const mine=every.filter(e=>!e.cameraSide||!every[0].cameraSide||e.cameraSide===every[0].cameraSide);
   return mine.length>=2 ? {now:mine[0], then:mine[mine.length-1]} : null;
 }
-function thenNowCard(all){
-  const both=['run','bike'].filter(s=>thenPair(s,all));
-  if(!both.length) return '';
-  if(!both.includes(state.thenSport)) state.thenSport=both.includes(all[0].sport)?all[0].sport:both[0];
-  const sport=state.thenSport, {now,then}=thenPair(sport,all);
-  const days=Math.max(1,Math.round((now.at-then.at)/864e5));
-  const seg=both.length>1?`<div class="seg seg-sm" role="group" aria-label="Sport shown">${both.map(s=>
-    `<button type="button" data-thensport="${s}" aria-pressed="${s===sport}">${s==='run'?'Run':'Bike'}</button>`).join('')}</div>`:'';
-  const fig=(e,lbl)=>`<figure class="dthen-fig kf-load" data-then-id="${esc(e.id)}"><img alt="" class="kf-slot">
-      <figcaption><b>${lbl}</b> · ${esc(shortDate(e.at))}${e.score!=null?` · <span class="dthen-sc">${e.score}</span>`:''}</figcaption></figure>`;
-  // The readings that moved, biggest change first; coloured by whether they
-  // moved toward their band (metricDelta), never by direction alone.
+/* The first and latest clip of one sport and the readings that moved most,
+   biggest change first; coloured by whether they moved toward their band
+   (metricDelta), never by direction alone. */
+function thenChanges(sport, all){
+  const pair=thenPair(sport,all); if(!pair) return null;
+  const {now,then}=pair, days=Math.max(1,Math.round((now.at-then.at)/864e5));
   const ch=TREND_METRICS[sport].filter(m=>THEN_KEYS[sport].includes(m.key)).map(m=>{
     const a=then.trends&&then.trends[m.key], b=now.trends&&now.trends[m.key];
     if(a==null||b==null) return null;
     const band=formBand(sport,m.key,now), d=metricDelta(a,b,band,m.hi), dec=FORM_DEC[m.key]||0, u=measUnit(String(m.unit||'').trim());
-    return {m,a,b,d,rel:Math.abs(b-a)/(band?Math.max(1e-6,band[1]-band[0]):Math.max(1,Math.abs(a))),
-      html:`<li><span>${esc(m.label)}</span><span class="dthen-v">${num(a,dec)}${u} → <b>${num(b,dec)}${u}</b></span>${d.delta===0?'<span class="dform-first">no change</span>':`<span class="tdelta ${d.cls}">${d.delta>0?'▲ +':'▼ '}${num(Math.abs(d.delta),dec||1)}${u}</span>`}</li>`};
-  }).filter(Boolean).sort((x,y)=>y.rel-x.rel).slice(0,3);
+    return {m,a,b,d,dec,u,rel:Math.abs(b-a)/(band?Math.max(1e-6,band[1]-band[0]):Math.max(1,Math.abs(a)))};
+  }).filter(Boolean).sort((x,y)=>y.rel-x.rel);
+  return {now,then,days,ch};
+}
+function thenNowCard(all, sport){
+  if(!sport||!thenPair(sport,all)) return '';
+  const {now,then,days}=thenChanges(sport,all);
+  const fig=(e,lbl)=>`<figure class="dthen-fig kf-load" data-then-id="${esc(e.id)}"><img alt="" class="kf-slot">
+      <figcaption><b>${lbl}</b> · ${esc(shortDate(e.at))}${e.score!=null?` · <span class="dthen-sc">${e.score}</span>`:''}</figcaption></figure>`;
+  const ch=thenChanges(sport,all).ch.slice(0,3).map(({m,a,b,d,dec,u})=>({html:`<li><span>${esc(m.label)}</span><span class="dthen-v">${num(a,dec)}${u} → <b>${num(b,dec)}${u}</b></span>${d.delta===0?'<span class="dform-first">no change</span>':`<span class="tdelta ${d.cls}">${d.delta>0?'▲ +':'▼ '}${num(Math.abs(d.delta),dec||1)}${u}</span>`}</li>`}));
   return `<div class="dcard dthen">
-    <div class="dcard-head"><h2>Then → now</h2>${seg}</div>
+    <div class="dcard-head"><h2>Then → now</h2></div>
     <p class="dcard-note dthen-sub">Your first and latest ${sport==='run'?'run':'ride'}, ${days} day${days===1?'':'s'} apart</p>
     <div class="dthen-pair">${fig(then,'First')}${fig(now,'Latest')}</div>
     ${ch.length?`<ul class="dthen-ch">${ch.map(c=>c.html).join('')}</ul>`:''}
   </div>`;
 }
-function renderDashThenNow(all){
-  const host=$('#dashThen'); if(!host) return;
-  host.innerHTML=thenNowCard(all);
+function renderThenNow(all, hostId, sport){
+  const host=$('#'+hostId); if(!host) return;
+  host.innerHTML=thenNowCard(all, sport);
   host.querySelectorAll('[data-then-id]').forEach(fig=>{
     const e=all.find(x=>x.id===fig.dataset.thenId); if(!e) return;
     fetchKeyframe(e).then(k=>{ const img=fig.querySelector('img'); fig.classList.remove('kf-load');
@@ -14292,18 +14309,29 @@ function konaStrip(v,f){
     <span class="ks-med" style="--x:${P(f.median)}%"></span>
     <span class="ks-you" style="--x:${P(v)}%"></span></div>`;
 }
-function renderDashKona(all){
-  const host=$('#dashKona'); if(!host) return;
+/* The Kona field, fetched once for the session. */
+function konaField(){
+  if(state.konaField) return Promise.resolve(state.konaField);
+  return fetch('/me/kona-field',{headers:authHeaders()}).then(r=>r.ok?r.json():null)
+    .then(f=>{ if(f&&f.metrics){ state.konaField=f; return f; } return null; }).catch(()=>null);
+}
+/* Where one reading sits in the field, in words. */
+function konaWhere(v,f,lowWord,highWord){
+  return v>=f.q1&&v<=f.q3 ? {k:'mid', t:'in the middle half of the pros'}
+    : v>=f.lo&&v<=f.hi ? {k:'in', t:`inside the field, ${v<f.median?lowWord:highWord} than most`}
+    : {k:'out', t:`outside the field — ${v<f.lo?lowWord:highWord} than every pro`, w:`${v<f.lo?lowWord:highWord} than every pro`};
+}
+const konaAero=all=>{ const e=all.find(x=>x.sport==='bike'); return e&&e.trends&&(e.position==='tt_aero'||e.position==='triathlon')?e:null; };
+function renderKona(all, hostId){
+  const host=$('#'+hostId); if(!host) return;
   host.innerHTML='';
-  const e=all.find(x=>x.sport==='bike');
-  if(!e||!e.trends||!(e.position==='tt_aero'||e.position==='triathlon')) return;
+  const e=konaAero(all);
+  if(!e) return;
   const draw=field=>{
     if(!field||!field.metrics||host.dataset.for!==e.id) return;
     const rows=KONA_ROWS.map(([k,fk,label,lowWord,highWord])=>{
       const v=e.trends[k], f=field.metrics[fk]; if(v==null||!f) return '';
-      const where = v>=f.q1&&v<=f.q3 ? 'in the middle half of the pros'
-        : v>=f.lo&&v<=f.hi ? `inside the field, ${v<f.median?lowWord:highWord} than most`
-        : `outside the field — ${v<f.lo?lowWord:highWord} than every pro`;
+      const where=konaWhere(v,f,lowWord,highWord).t;
       return `<li><div class="ks-top"><span>${esc(label)}</span><b>${num(v,0)}°</b></div>
         ${konaStrip(v,f)}
         <p class="ks-cap">Pros ${num(f.median,0)}° (middle half ${num(f.q1,0)}–${num(f.q3,0)}°) · you are ${where}</p></li>`;
@@ -14317,13 +14345,43 @@ function renderDashKona(all){
     </div>`;
   };
   host.dataset.for=e.id;
-  if(state.konaField) { draw(state.konaField); return; }
-  fetch('/me/kona-field',{headers:authHeaders()}).then(r=>r.ok?r.json():null)
-    .then(f=>{ if(f&&f.metrics){ state.konaField=f; draw(f); } }).catch(()=>{});
+  konaField().then(f=>{ if(f) draw(f); });
+}
+/* Then -> now and the Kona field as one line each (Main board, short version):
+   what changed, said in words, opening the full picture on Progress. */
+function renderDashLinks(all){
+  const host=$('#dashLinks'); if(!host) return;
+  host.innerHTML='';
+  const row=(t,s,sport,go)=>`<button type="button" class="dlink" data-progress="${sport}" data-goto="${go}"><span class="dlink-t">${t}</span><span class="dlink-s">${s}</span><svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg></button>`;
+  const rows=[];
+  const sp=['run','bike'].filter(x=>thenPair(x,all)).sort((a,b)=>all.findIndex(e=>e.sport===a)-all.findIndex(e=>e.sport===b))[0];
+  if(sp){
+    const {days,ch}=thenChanges(sp,all), top=ch[0];
+    const better=ch.filter(x=>x.d.cls==='imp').map(x=>x.m.label.toLowerCase()), worse=ch.filter(x=>x.d.cls==='reg').map(x=>x.m.label.toLowerCase());
+    const words=[better.length?`${better.slice(0,2).join(' and ')} better`:'', worse.length?`${worse.slice(0,2).join(' and ')} worse`:''].filter(Boolean).join(', ');
+    // a change that rounds away at the reading's own precision gets one more digit
+    const dp=top?(num(top.a,top.dec)===num(top.b,top.dec)?(top.dec||0)+1:top.dec):0;
+    const lead=top?`${sp==='run'?'Run':'Bike'} ${esc(top.m.label.toLowerCase())} ${num(top.a,dp)}${top.u} → ${num(top.b,dp)}${top.u}`:`Your first and latest ${sp==='run'?'run':'ride'}`;
+    rows.push(row('Then → now', `${lead} in ${days} day${days===1?'':'s'}${words?' · '+esc(words):''}`, sp, 'progThen'));
+  }
+  const e=konaAero(all);
+  const paint=()=>{ host.innerHTML=rows.length?`<div class="dcard dlinks">${rows.join('')}</div>`:''; };
+  paint();
+  if(e) konaField().then(f=>{
+    if(!f||!host.isConnected) return;
+    const by={mid:[],in:[],out:[]};
+    KONA_ROWS.forEach(([k,fk,label,lowWord,highWord])=>{ const v=e.trends[k], m=f.metrics[fk]; if(v==null||!m) return;
+      const w=konaWhere(v,m,lowWord,highWord); by[w.k].push(w.k==='out'?`${label.replace(/ angle$/,'').toLowerCase()} ${w.w}`:label.replace(/ angle$/,'').toLowerCase()); });
+    const cap=x=>x.charAt(0).toUpperCase()+x.slice(1);
+    const bits=[by.mid.length?`${by.mid.join(' and ')} in the middle half of ${f.n} pros`:'', by.in.length?`${by.in.join(' and ')} inside the field`:'', ...by.out].filter(Boolean);
+    if(!bits.length) return;
+    rows.push(row('You vs the Kona field', esc(cap(bits.join(' · '))), 'bike', 'progKona'));
+    paint();
+  });
 }
 function renderDashboard(){
-  renderReviewCard();
-  renderDashSwim();
+  // One banner at a time: the swim news only when no review news is up.
+  renderReviewCard().finally(renderDashSwim);
   const dd=$('#dashDate');
   if(dd){ try{ dd.textContent=new Date().toLocaleDateString(UI_LOCALE,{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dd.textContent=''; } }
   // On a coach's account, the coach's own clips: their athletes have the squad.
@@ -14339,15 +14397,14 @@ function renderDashboard(){
         <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
       </div>
     </div>`;
-    $('#dashSports').innerHTML=''; $('#dashFix').innerHTML=''; $('#dashThen').innerHTML=''; $('#dashKona').innerHTML=''; $('#dashForm').innerHTML='';
+    $('#dashSports').innerHTML=''; $('#dashFix').innerHTML=''; $('#dashLinks').innerHTML=''; $('#dashForm').innerHTML='';
     return;
   }
   $('#dashSummary').innerHTML='';
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
   fillSportFigs(all);
   renderDashFix(all);
-  renderDashThenNow(all);
-  renderDashKona(all);
+  renderDashLinks(all);
   renderCurrentForm(all);
 }
 /* The swim review at the foot of the home screen (Artur 2026-11-02: at the
@@ -14357,7 +14414,7 @@ const SWIM_NEWS_KEY='flapp_swim_news_closed';
 function renderDashSwim(){
   const host=$('#dashSwim'); if(!host) return;
   let closed=false; try{ closed=localStorage.getItem(SWIM_NEWS_KEY)==='1'; }catch(e){}
-  if(closed||!auth||swimList().length){ host.innerHTML=''; return; }
+  if(closed||!auth||swimList().length||document.querySelector('#dashReview .rev-card.is-unread')){ host.innerHTML=''; return; }
   host.innerHTML=`<div class="swim-news" role="region" aria-label="New: swim stroke reviews">
     <span class="swim-news-ic" aria-hidden="true"><svg class="ic"><use href="#i-swim"/></svg></span>
     <div class="swim-news-t">
@@ -15275,11 +15332,12 @@ $('#botHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard();
 document.querySelectorAll('.backhome').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); openDashboard(); }));
 $('#dashboard').addEventListener('click',e=>{
   const ft=e.target.closest('[data-formsport]'); if(ft){ state.formSport=ft.dataset.formsport; renderCurrentForm(loadHist()); return; }
-  const ts=e.target.closest('[data-thensport]'); if(ts){ state.thenSport=ts.dataset.thensport; renderDashThenNow(loadHist()); return; }
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
-  const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress(); return; }
+  const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress();
+    if(pg.dataset.goto) requestAnimationFrame(()=>{ const t=$('#'+pg.dataset.goto); if(t&&t.innerHTML) t.scrollIntoView({block:'start'}); });
+    return; }
   const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id); return; }
-  const sa=e.target.closest('[data-seeall]'); if(sa){ state.formSport=sa.dataset.seeall; renderCurrentForm(loadHist());
+  const sa=e.target.closest('[data-seeall]'); if(sa){ state.formSport=sa.dataset.seeall; state.formOpen=true; renderCurrentForm(loadHist());
     const f=$('#dashForm'); if(f) f.scrollIntoView({behavior:'smooth',block:'start'}); return; }
   const po=e.target.closest('[data-plan-open]'); if(po){ openHistory(po.dataset.planOpen); return; }
 });

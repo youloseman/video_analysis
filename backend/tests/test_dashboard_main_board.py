@@ -36,3 +36,26 @@ def test_a_bike_band_is_the_one_the_report_graded_against():
 
 def test_the_lead_is_not_repeated_under_also_work_on():
     assert "leadT.includes(" in _fn("renderDashFix")
+
+
+def test_then_now_and_kona_are_lines_on_home_and_pictures_on_progress():
+    assert 'id="dashLinks"' in SPA and 'id="dashThen"' not in SPA and 'id="dashKona"' not in SPA
+    assert 'id="progThen"' in SPA and 'id="progKona"' in SPA
+    assert "renderThenNow(pool,'progThen',sport);" in SPA
+    links = _fn("renderDashLinks")
+    assert "data-goto" in links and "konaField()" in links
+
+
+def test_all_measurements_fold_to_one_line():
+    body = _fn("renderCurrentForm")
+    assert '<details class="dcard dform"' in body and "All measurements" in body
+    assert "state.formOpen=true" in SPA          # See all on a sport card opens it
+
+
+def test_one_news_banner_and_one_coral_button():
+    """The review news no longer carries a second filled button, and the swim
+    news waits while a review is unread."""
+    card = SPA[SPA.index("async function renderReviewCard("):SPA.index("/* ---- the athlete's copy ---- */")]
+    assert "btn-primary" not in card
+    assert "#dashReview .rev-card.is-unread" in _fn("renderDashSwim")
+    assert "renderReviewCard().finally(renderDashSwim);" in SPA
