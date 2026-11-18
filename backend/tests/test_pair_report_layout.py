@@ -254,7 +254,7 @@ class TestGettingBackToTheReport:
         assert "reuseHistId: prior.id" in fn
 
     def test_the_history_card_says_both_sides(self, html):
-        fn = _fn(html, "renderHistList")
+        fn = _fn(html, "histCardHtml")
         assert "e.bilateral||e.cameraSide==='both'?'both sides'" in fn
 
     def test_the_saved_entry_carries_the_sessions_verdict(self, html):

@@ -65,7 +65,8 @@ def test_a_linked_athletes_report_is_never_saved_into_the_coachs_account():
 
 
 def test_nothing_on_a_linked_entry_edits_deletes_or_sells():
-    assert "e.linkedAthleteId?'':`<button class=\"hdel\"" in fn("renderHistList")
+    # the card is built by histCardHtml since the History board
+    assert "e.linkedAthleteId?'<span></span>':`<button class=\"hdel\"" in fn("histCardHtml")
     assert "e.linkedAthleteId" in fn("renderHistoryHob")
     assert "e.linkedAthleteId" in fn("renderHistoryUpsell")
     assert "!e.linkedAthleteId&&" in fn("renderHistoryDetail")

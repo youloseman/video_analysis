@@ -1542,24 +1542,24 @@
   <!-- ============ HISTORY ============ -->
   <section id="history" class="hidden" aria-labelledby="histTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead u-mt-0">
-      <!-- eyebrow tells the truth about where this history lives (see renderHistList) -->
-      <div class="eyebrow" id="histEyebrow">Saved on this device</div>
-      <h2 class="sec u-mb-2" id="histTitle" tabindex="-1">Your history</h2>
-      <div class="speedline"></div>
+    <!-- History board: what and where under the title (the line tells the truth
+         about where this history lives, see renderHistList), Analyze beside. -->
+    <div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="histTitle" tabindex="-1">Your history</h2><p class="ph-lede" id="histMeta"></p></div>
+      <span class="ph-right"><button class="btn btn-primary" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
     </div>
-    <div class="hist-tools" id="histTools" hidden>
-      <span class="hist-count" id="histCount"></span>
-      <button class="btn btn-ghost btn-sm hist-clear" id="histClear" type="button">
-        <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg> Clear all
-      </button>
-    </div>
-    <p class="hint hist-hint u-m-0 u-mt-n1 u-mb-5" id="histHint" hidden>
-      Analyses run for someone else? Tap <b>✕</b> on a card to remove just that one, or <b>Clear all</b> to reset your stats.
-    </p>
+    <div id="histStrip"></div>
     <div class="profilefilter" id="histAthleteFilter"></div>
-    <div class="profilefilter" id="histFilter"></div>
+    <div class="hist-filters">
+      <div class="profilefilter" id="histSportFilter"></div>
+      <div class="profilefilter" id="histFilter"></div>
+      <span class="hist-tools" id="histTools" hidden>
+        <button class="btn btn-ghost btn-sm" type="button" id="histCompare">Compare two…</button>
+        <button class="btn btn-link hist-clear" id="histClear" type="button">Clear all…</button>
+      </span>
+    </div>
     <div id="histList"></div>
+    <p class="hint hist-hint" id="histHint" hidden>Analyses run for someone else? Tap <b>✕</b> on a card to remove just that one, or <b>Clear all</b> to reset your stats.</p>
   </section>
 
   <!-- ============ PROGRESS / TRENDS ============ -->
@@ -12973,14 +12973,83 @@ function renderProfileFilter(hostId, list){
   }));
 }
 
+/* Every analysis by date, one strip per sport (History board): a dot per
+   score in its band's colour, the first date on the left and today on the
+   right. A dot opens its report. */
+function histStripHtml(list){
+  const rows=['run','bike'].map(sp=>[sp,list.filter(e=>e.sport===sp&&e.score!=null)]).filter(([,es])=>es.length);
+  if(!rows.length) return '';
+  const now=Date.now(), t=e=>e.filmedAt||e.at||now;
+  const lo=Math.min(...rows.flatMap(([,es])=>es.map(t))), span=Math.max(864e5,now-lo);
+  const X=ms=>((ms-lo)/span*92+4).toFixed(1);
+  const ticks=[]; const d=new Date(lo); d.setDate(1); d.setMonth(d.getMonth()+1);
+  for(;d.getTime()<now-6*864e5;d.setMonth(d.getMonth()+1)) ticks.push(d.getTime());
+  return `<div class="hstrip"><div class="hstrip-h"><b>Every analysis, by date</b><span class="hstrip-key"><i class="sc-good"></i>80 and up <i class="sc-watch"></i>60–79 <i class="sc-fix"></i>under 60</span></div>
+    ${rows.map(([sp,es])=>`<div class="hstrip-row"><span class="hstrip-l">${sp==='run'?'Run':'Bike'}</span><div class="hstrip-line">${es.map(e=>`<button type="button" class="hstrip-dot sc-${scoreStatus(e.score)}" style="--x:${X(t(e))}%" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}">${e.score}</button>`).join('')}</div></div>`).join('')}
+    <div class="hstrip-axis"><span style="--x:${X(lo)}%">${esc(shortDate(lo))}</span>${ticks.map(ms=>`<span style="--x:${X(ms)}%">${esc(shortDate(ms))}</span>`).join('')}<span style="--x:${X(now)}%">today</span></div></div>`;
+}
+/* What one analysis says, in its own colours: how many readings are out of
+   range or at the edge, from the same rows the dashboard shows. */
+function histStatus(e){
+  if(!e.trends) return '';
+  const rows=formTiles(e.sport,[e]).map(measStatus).filter(x=>x.group!=='info');
+  if(!rows.length) return '';
+  const out=rows.filter(x=>x.cls==='m-out').length, near=rows.filter(x=>x.cls==='m-near').length;
+  if(!out&&!near) return '<span class="hs-ok">all in range</span>';
+  return [out?`<span class="hs-out">${out} out of range</span>`:'',near?`<span class="hs-near">${near} borderline</span>`:''].filter(Boolean).join(' · ');
+}
+/* The change since the last analysis like this one (cmpPrevious: same sport,
+   side and setup), or "first" for the first of its sport. */
+function histDelta(e,list){
+  const noun=e.sport==='run'?'run':'ride';
+  const p=cmpPrevious(e,list);
+  if(p&&p.score!=null&&e.score!=null){ const d=e.score-p.score;
+    return d===0?`same as last ${noun}`:`<span class="${d>0?'hd-up':'hd-down'}">${d>0?'▲ +':'▼ '}${Math.abs(d)}</span> vs last ${noun}`; }
+  const earlier=list.some(x=>x.sport===e.sport&&x.id!==e.id&&(x.filmedAt||x.at||0)<(e.filmedAt||e.at||0));
+  return earlier?'':`first ${noun}`;
+}
+function histCardHtml(e,list){
+  const L=e.score==null?null:(GRADE_WORD[e.grade]?e.grade:scoreLetter(e.score)), st=scoreStatus(e.score);
+  const sub=[fmtWhen(e.filmedAt||e.at),e.position?esc(POSITION_NAMES[e.position]||e.position):'',e.label?'<b>'+esc(e.label)+'</b>':''].filter(Boolean).join(' · ');
+  const stat=histStatus(e), dl=histDelta(e,list);
+  return `<div class="hcard" data-id="${e.id}">
+    <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>
+    <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
+      <div class="hsub">${sub}</div>${stat?`<div class="hstat">${stat}</div>`:''}</div>
+    <div class="hscorebox">${ringHtml(e.score,56,`<div class="ds-score">${e.score==null?'—':e.score}</div>`)}${L?`<span class="hgrade hg-${st}">${L}</span>`:''}${dl?`<small class="hdelta">${dl}</small>`:''}</div>
+    ${e.linkedAthleteId?'<span></span>':`<button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button><button class="hswipe-del" data-del="${e.id}" type="button" tabindex="-1">Delete</button>`}
+  </div>`;
+}
+/* A phone deletes by swiping a card left (History board, Artur's ruling): the
+   x is a desktop control. Swipe right, or tap elsewhere, puts it back. */
+(function wireHistSwipe(){
+  const list=document.getElementById('histList'); if(!list) return;
+  let x0=null,y0=null,card=null;
+  const reset=except=>list.querySelectorAll('.hcard.swiped').forEach(c=>{ if(c!==except) c.classList.remove('swiped'); });
+  list.addEventListener('touchstart',e=>{ const c=e.target.closest('.hcard'); if(!c||!c.querySelector('.hswipe-del')) return;
+    card=c; x0=e.touches[0].clientX; y0=e.touches[0].clientY; },{passive:true});
+  list.addEventListener('touchend',e=>{ if(!card||x0==null) return;
+    const t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){ if(dx<0){ reset(card); card.classList.add('swiped'); } else card.classList.remove('swiped'); }
+    card=null; x0=null; },{passive:true});
+  document.addEventListener('click',e=>{ if(!e.target.closest('.hswipe-del')) reset(null); },true);
+})();
 function renderHistList(){
-  const all=histSource();
-  renderAthleteFilter('histAthleteFilter', all);
-  renderProfileFilter('histFilter', all);
-  const a=applyProfileFilter(all), w=$('#histList');
-  const swims=state.histProfile==null ? swimCardsHtml() : '';
-  const eb=$('#histEyebrow');
-  if(eb) eb.textContent = auth ? 'Synced to your account' : 'Saved on this device';
+  const every=histSource();
+  renderAthleteFilter('histAthleteFilter', every);
+  renderProfileFilter('histFilter', every);
+  // The sport, beside the setups: All, Run, Bike with their counts.
+  const pre=applyProfileFilter(every);
+  const sf=$('#histSportFilter');
+  if(sf){ const n=sp=>pre.filter(e=>e.sport===sp).length;
+    sf.innerHTML=(n('run')&&n('bike'))?[[null,'All',pre.length],['run','Run',n('run')],['bike','Bike',n('bike')]].map(([v,l,k])=>`<button type="button" data-hs="${v||''}" aria-pressed="${String(state.histSport||'')===String(v||'')}">${l} · ${k}</button>`).join(''):'';
+    sf.querySelectorAll('[data-hs]').forEach(b=>b.addEventListener('click',()=>{ state.histSport=b.dataset.hs||null; renderHistList(); })); }
+  const all=every;
+  const a=pre.filter(e=>!state.histSport||e.sport===state.histSport), w=$('#histList');
+  const swims=state.histProfile==null&&!state.histSport ? swimCardsHtml() : '';
+  const meta=$('#histMeta');
+  if(meta) meta.textContent=`${every.length} ${every.length===1?'analysis':'analyses'} · ${auth?'synced to your account':'saved on this device'}`;
+  const strip=$('#histStrip'); if(strip) strip.innerHTML=a.length>1?histStripHtml(a):'';
   // Management toolbar (count + Clear all) + the tidy-up hint only when non-empty.
   const tools=$('#histTools'), hint=$('#histHint');
   // Follows the cabinet rather than the filtered view: "Clear all" is about
@@ -12990,7 +13059,6 @@ function renderHistList(){
   // On a coach's account those clips are the work.
   if(hint) hint.hidden=!all.length||hasCoachPlan();
   const clr=$('#histClear'); if(clr) clr.classList.toggle('hidden',hasCoachPlan());
-  if(a.length){ const c=$('#histCount'); if(c) c.textContent=`${a.length} ${a.length===1?'analysis':'analyses'}`; }
   if(!a.length && all.length){
     w.innerHTML=`<div class="emptybox u-span-all">
       <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
@@ -13016,12 +13084,12 @@ function renderHistList(){
   // and Enter on the card had to be told not to fire when it came from the X.
   // Now the title is the real button and the whole card is a mouse-sized
   // target for it; the delete is a sibling, reachable on its own.
-  w.innerHTML=swims+a.map(e=>`<div class="hcard" data-id="${e.id}">
-    <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}<span class="hscore ${e.score==null?'':'sc-'+scoreStatus(e.score)}">${e.score==null?'—':e.score}</span>
-      ${e.linkedAthleteId?'':`<button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button>`}</div>
-    <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
-      <div class="hsub">${e.label?'<b>'+esc(e.label)+'</b> · ':''}${fmtWhen(e.filmedAt||e.at)}${e.position?' · '+esc(POSITION_NAMES[e.position]||e.position):''}</div></div>
-  </div>`).join('');
+  // By month (History board), newest first, each month a card of its own.
+  const months=[];
+  a.forEach(e=>{ const dt=new Date(e.filmedAt||e.at||Date.now());
+    const k=`${dt.getFullYear()}-${dt.getMonth()}`; let m=months.find(x=>x.k===k);
+    if(!m){ m={k,label:dt.toLocaleDateString(UI_LOCALE,{month:'long',year:'numeric'}),es:[]}; months.push(m); } m.es.push(e); });
+  w.innerHTML=(swims?`<div class="hgroup">${swims}</div>`:'')+months.map(m=>`<h3 class="hmonth">${esc(m.label)} · ${m.es.length}</h3><div class="hgroup">${m.es.map(e=>histCardHtml(e,every)).join('')}</div>`).join('');
   observeKeyframes(w);
 }
 /* The frame of a cloud entry is fetched on open. Hold the slot while it's in
@@ -13440,6 +13508,8 @@ $('#history').addEventListener('click',e=>{
   const oa=e.target.closest('[data-openauth]'); if(oa){ e.preventDefault(); openAuth(oa.dataset.openauth); return; }
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
   if(e.target.closest('#histClear')){ clearAllHistory(); return; }
+  if(e.target.closest('#histCompare')){ openCompare(); return; }
+  const ho=e.target.closest('[data-hopen]'); if(ho){ openHistory(ho.dataset.hopen); return; }
   const del=e.target.closest('[data-del]'); if(del){ e.stopPropagation(); historyDelete(del.dataset.del); return; }
   const card=e.target.closest('.hcard'); if(card) openHistory(card.dataset.id);
 });
