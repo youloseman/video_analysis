@@ -458,3 +458,13 @@ def test_batch_on_a_phone_folds_defaults_and_lane():
     assert 'id="batDefs"' in spa and 'id="batDefsTxt"' in spa
     assert "defs.open=!PHONE_MQ.matches" in spa
     assert 'id="batLaneFold"' in spa and "bat-lane-phone" in spa
+
+
+def test_athletes_on_a_phone_are_one_line_each_with_edit_behind_a_menu():
+    """Board AthletesPhone: the row opens the athlete's page on a phone; Edit and
+    Archive stay reachable behind a ⋯ menu (the athlete's page has neither)."""
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert 'class="pc-menu ath-menu"' in spa and 'data-act="archive"' in spa
+    assert "r&&PHONE_MQ.matches&&!e.target.closest('.pc-menu')" in spa
+    assert '<details class="ad-box ath-groups"' in spa

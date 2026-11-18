@@ -8329,13 +8329,13 @@ function renderGroupsAdmin(){
   const host=$('#athGroups'); if(!host) return;
   if(!hasCoachPlan()||ATHLETES.error){ host.innerHTML=''; return; }
   const gs=GROUPS.groups||[], full=gs.length>=(GROUPS.limit||30);
-  host.innerHTML=`<div class="ad-box ath-groups">
-    <div class="ad-box-h"><h3>Groups</h3><span class="prof-note">only you see these</span></div>
+  host.innerHTML=`<details class="ad-box ath-groups"${PHONE_MQ.matches?'':' open'}>
+    <summary class="ad-box-h"><h3>Groups</h3><span class="prof-note">only you see these</span><span class="ath-groups-ph">· ${gs.length?gs.map(g=>esc(g.name)).join(', '):'none yet'}</span><svg class="ic ath-groups-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></summary>
     <p class="hint u-m-0">A club, a camp, a race team: put an athlete in one from their page, then filter the Squad by it.</p>
     ${gs.length?`<ul class="ad-rows">${gs.map(g=>`<li data-gid="${g.id}"><input type="text" class="ad-gname" maxlength="40" value="${esc(g.name)}" aria-label="Group name"><span class="ad-meta">${g.athletes} ${g.athletes===1?'athlete':'athletes'}</span><button type="button" class="p-copy" data-gdel="${g.id}">Remove</button></li>`).join('')}</ul>`:'<p class="hint">No groups yet.</p>'}
     ${full?`<p class="hint">A squad keeps ${GROUPS.limit} groups. Remove one you no longer use.</p>`
       :`<form class="ad-form" id="athGroupNew"><input type="text" id="athGroupName" maxlength="40" placeholder="New group, e.g. RMTC" aria-label="New group name"><button class="btn btn-ghost btn-sm" type="submit">Add group</button></form>`}
-  </div>`;
+  </details>`;
   const again=async()=>{ await loadAthletes(); renderAthletes(); };
   const f=$('#athGroupNew'); if(f) f.addEventListener('submit',async ev=>{ ev.preventDefault();
     const inp=$('#athGroupName'), name=inp.value.trim(); if(!name){ inp.focus(); return; }
@@ -8406,7 +8406,8 @@ function renderAthletes(){
       return `<div class="prof-row ath-row${a.archived?' is-archived':''}" data-id="${a.id}">
       <div class="ath-fig">${e?`<div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>`:'<div class="hthumb"><span class="hthumb-none"><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg></span></div>'}</div>
       <div><div class="p-name">${esc(a.name)}${a.linked?'<span class="p-kind p-linked">linked · own plan</span>':''}${a.archived?'<span class="p-kind">archived</span>':''}</div>
-        <div class="ath-sub">${esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||'')} · ${a.note?esc(a.note):(a.email?esc(a.email):'no note yet')}</div></div>
+        <div class="ath-sub">${esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||'')} · ${a.note?esc(a.note):(a.email?esc(a.email):'no note yet')}</div>
+        <div class="ath-sub-ph${nr&&nr.days_to_go<=21&&nr.days_to_go>=0?' sq-race-soon':''}">${nr&&nr.days_to_go>=0?`${raceWhen(nr)} · ${esc(nr.priority)} · ${esc(nr.name)}`:[esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||''),...gs.filter(g=>(a.group_ids||[]).includes(g.id)).map(g=>esc(g.name))].filter(Boolean).join(' · ')}</div></div>
       <div class="ath-gr">${grs}${nr?`<span class="ath-chip ath-race${nr.days_to_go<=21?' sq-race-soon':''}">${esc(nr.name)} · ${esc(nr.priority)} · ${raceWhen(nr)}</span>`:''}${!grs&&!nr?'<span class="sq-na">no group</span>':''}</div>
       <div class="ath-last">${a.last_at_ms?`<span>last clip ${esc(fmtWhen(a.last_at_ms))}</span>${a.last_score!=null?`<b class="ath-score">${a.last_score}</b>`:''}`:'<span>no clips yet</span>'}</div>
       <div class="p-n">${a.analyses!=null?a.analyses:'—'}<small>analyses</small></div>
@@ -8414,7 +8415,10 @@ function renderAthletes(){
         ${a.archived
           ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
           : `<button type="button" data-act="open">Open</button><button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
-      </div></div>`; }).join('');
+      </div>
+      <details class="pc-menu ath-menu"><summary aria-label="More for ${esc(a.name)}">⋯</summary><div class="pc-menu-list">${a.archived
+        ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
+        : `<button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}</div></details></div>`; }).join('');
     observeKeyframes(list);
   }
   const lim=$('#athLimit');
@@ -8475,7 +8479,11 @@ async function athPatch(id, body){
     if(ok){ $('#athEdit').classList.add('hidden'); state.athEditId=null; await loadAthletes(); renderAthletes(); toast(editing?'Saved.':`${name} is on the squad.`); track(editing?'athlete_edited':'athlete_added',{n:ATHLETES.used}); }
   });
   list.addEventListener('click',async e=>{
-    const b=e.target.closest('[data-act]'); if(!b) return;
+    const b=e.target.closest('[data-act]');
+    if(!b){ const r=e.target.closest('.ath-row[data-id]');
+      if(r&&PHONE_MQ.matches&&!e.target.closest('.pc-menu')&&!r.classList.contains('is-archived')) openAthlete(Number(r.dataset.id));
+      return; }
+    const m=b.closest('details'); if(m) m.open=false;
     const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
     const a=(ATHLETES.athletes||[]).find(x=>x.id===id); if(!a) return;
     if(b.dataset.act==='open'){ openAthlete(id); return; }

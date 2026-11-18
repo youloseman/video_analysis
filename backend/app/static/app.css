@@ -3402,6 +3402,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .prof-row.ath-row{grid-template-columns:72px minmax(0,1.3fr) minmax(0,1.1fr) minmax(0,.9fr) 64px auto;gap:14px}
 .ath-fig .hthumb{width:72px;height:54px}
 .ath-sub{font-size:14px;color:var(--c-ink-faint);margin-top:2px}
+.ath-sub-ph,.ath-groups-ph,.ath-groups-chev{display:none}
+.ath-sub-ph{font-size:14px;color:var(--c-ink-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ath-groups > summary{list-style:none}
+.ath-groups > summary::-webkit-details-marker{display:none}
 .ath-gr{display:flex;flex-wrap:wrap;gap:6px}
 .ath-chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--c-panel);border:1px solid var(--c-line);font-size:12px;color:var(--c-ink-soft);white-space:nowrap}
 .ath-chip.ath-race{background:var(--c-panel);border-color:transparent}
@@ -3469,11 +3473,22 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 }
 @media(max-width:900px){ .ath-bottom{grid-template-columns:minmax(0,1fr)} }
 @media(max-width:640px){
-  .prof-row.ath-row{grid-template-columns:56px minmax(0,1fr) auto;row-gap:8px}
+  /* One line per athlete (board: AthletesPhone); the row opens their page. */
+  .prof-row.ath-row{grid-template-columns:56px minmax(0,1fr) auto auto;align-items:center;gap:12px;cursor:pointer}
   .ath-fig .hthumb{width:56px;height:42px}
-  .ath-row .ath-gr,.ath-row .ath-last{grid-column:2/-1}
-  .ath-row .p-n{grid-column:3;grid-row:1}
-  .ath-row .p-acts{grid-column:1/-1;justify-content:flex-start}
+  .ath-row .ath-gr,.ath-row .ath-last,.ath-row .ath-sub,.ath-row .p-acts,.ath-row .p-n small{display:none}
+  .ath-row .ath-sub-ph{display:block}
+  .ath-row .p-n{font-size:16px}
+  .ath-row .pc-menu{display:block;align-self:center}
+  .ath-row .pc-menu > summary{border:0;width:32px;color:var(--c-ink-faint)}
+  #athletes .ath-head .ph-lede{display:none}
+  .ath-groups > summary{cursor:pointer}
+  .ath-groups > summary .prof-note{display:none}
+  .ath-groups > summary.ad-box-h h3{font-family:var(--f-body);font-style:normal;font-weight:600;font-size:16px;margin:0}
+  .ath-groups-ph{display:inline;flex:1;min-width:0;font-size:14px;color:var(--c-ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ath-groups-chev{display:block;flex:none;width:18px;height:18px;color:var(--c-ink-faint)}
+  .ath-groups[open] > summary .ath-groups-chev{transform:rotate(90deg)}
+  .ath-groups > summary.ad-box-h{flex-wrap:nowrap;align-items:center}
   .ath-bottom #athEdit{grid-template-columns:minmax(0,1fr)}
   .ath-filters #athGroupFilter{padding-left:0;border-left:0}
 }
