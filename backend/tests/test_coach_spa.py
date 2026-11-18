@@ -468,3 +468,13 @@ def test_athletes_on_a_phone_are_one_line_each_with_edit_behind_a_menu():
     assert 'class="pc-menu ath-menu"' in spa and 'data-act="archive"' in spa
     assert "r&&PHONE_MQ.matches&&!e.target.closest('.pc-menu')" in spa
     assert '<details class="ad-box ath-groups"' in spa
+
+
+def test_approve_and_send_opens_the_sent_sheet():
+    """Board CoachReportPhone: after sending, a sheet with whom it went to, the
+    link and Copy, and Back to the Squad, instead of a toast."""
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "openSentSheet({name, email:j.email, mailed:!!j.mailed, url:j.url});" in spa
+    assert 'id="sentModal"' in spa and 'id="sentCopy"' in spa and "Back to the Squad" in spa
+    assert "Link ready. Copy it and send it yourself." not in spa

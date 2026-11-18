@@ -4422,3 +4422,19 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .bat-lane-chev{display:block;flex:none;width:18px;height:18px;color:var(--c-ink-faint)}
   .bat-lanecard[open] > summary .bat-lane-chev{transform:rotate(90deg)}
 }
+
+/* After Approve and send (board: CoachReportPhone). */
+.sent-grab{display:none}
+.sent-card .modal-title{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;line-height:1.2;margin:0 0 8px}
+.sent-line{margin:0 0 16px;font-size:14px;line-height:1.5;color:var(--c-ink-soft)}
+.sent-lbl{display:block;font-size:14px;font-weight:600;color:var(--c-ink);margin:0 0 6px}
+.sent-link{display:flex;gap:8px;margin:0 0 6px}
+.sent-link input{flex:1;min-width:0;min-height:44px;padding:0 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);font:400 14px var(--f-mono);color:var(--c-ink);background:var(--c-ground)}
+.sent-link .btn{min-height:44px}
+.sent-fine{margin:0 0 16px;font-size:14px;color:var(--c-ink-faint)}
+.sent-back{width:100%;min-height:48px;font-size:16px}
+@media(max-width:640px){
+  #sentModal{align-items:flex-end;padding:0}
+  #sentModal .sent-card{max-width:none;border-radius:var(--radius-card) var(--radius-card) 0 0;border-bottom:0;padding:12px 16px calc(20px + env(safe-area-inset-bottom))}
+  .sent-grab{display:block;width:40px;height:4px;border-radius:999px;background:var(--c-line-strong);margin:0 auto 12px}
+}

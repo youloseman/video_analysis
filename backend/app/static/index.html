@@ -299,6 +299,22 @@
 </div>
 
 <!-- Generic confirm dialog (destructive actions): driven by confirmDialog() -->
+<!-- After a coach approves and sends a report (board: CoachReportPhone):
+     whom it went to and the link, so the coach can also send it themselves.
+     Filled by openSentSheet(). -->
+<div class="modal hidden" id="sentModal" role="dialog" aria-modal="true" aria-labelledby="sentTitle">
+  <div class="modal-card sent-card">
+    <span class="sent-grab" aria-hidden="true"></span>
+    <button class="modal-close" id="sentClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+    <h2 id="sentTitle" class="modal-title">Sent</h2>
+    <p class="sent-line" id="sentLine"></p>
+    <label class="sent-lbl" for="sentUrl">Link to send yourself</label>
+    <div class="sent-link"><input type="text" id="sentUrl" readonly><button class="btn btn-ghost" type="button" id="sentCopy">Copy</button></div>
+    <p class="sent-fine">Opens without an account for 90 days, under your name and mark.</p>
+    <button class="btn btn-primary sent-back" type="button" id="sentBack">Back to the Squad</button>
+  </div>
+</div>
+
 <div class="modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
   <div class="modal-card">
     <button class="modal-close" id="confirmClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
@@ -16042,8 +16058,8 @@ async function renderCoachActions(e, where){
         const j=await r.json().catch(()=>({}));
         if(!r.ok){ toast(j.detail||'Could not send it.',{duration:6000}); return; }
         track('report_sent_to_athlete',{mailed:!!j.mailed});
-        toast(j.mailed?`Sent to ${j.email}.`:'Link ready. Copy it and send it yourself.');
         draw(j.url);
+        openSentSheet({name, email:j.email, mailed:!!j.mailed, url:j.url});
         renderReview(e, W.review);
       }catch(_e){ toast('Could not send it.'); }
     });
@@ -16055,6 +16071,22 @@ async function renderCoachActions(e, where){
   };
   draw(null);
   try{ const r=await fetch(base+'/share',{headers:authHeaders()}); if(r.ok){ const j=await r.json(); if(W.live(e)) draw(j.url); } }catch(_e){}
+}
+/* Whom it went to, the link, and the way back to the squad. */
+function openSentSheet({name, email, mailed, url}){
+  const m=$('#sentModal'), first=String(name||'your athlete').split(/\s+/)[0];
+  $('#sentTitle').textContent=mailed?`Sent to ${first}`:`A link for ${first}`;
+  $('#sentLine').innerHTML=(mailed?`Mailed to ${esc(email||first)}. `:`${esc(first)} has no email on file, so the link is yours to send. `)
+    +'The report says <b>Approved by your coach</b>.';
+  $('#sentUrl').value=url||'';
+  m.classList.remove('hidden');
+  const close=()=>{ m.classList.add('hidden'); modalClosed(m); };
+  $('#sentClose').onclick=close;
+  m.onclick=ev=>{ if(ev.target===m) close(); };
+  $('#sentCopy').onclick=()=>copyText(url,'Link copied.');
+  $('#sentBack').onclick=()=>{ close(); openDashboard(); };
+  modalOpened(m, close);
+  setTimeout(()=>{ try{ $('#sentCopy').focus(); }catch(_e){} },30);
 }
 /* The review: Flapp's draft of a coach's report. The coach changes the words
    and the plan; the numbers are the measurement and stay. Saved on the server
