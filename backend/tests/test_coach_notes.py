@@ -188,7 +188,8 @@ async def test_the_athlete_sees_who_wrote_the_notes(db, make_user, monkeypatch):
     assert row.data["coachName"] == "Bogdan Kovalenko"
     assert row.data["coachBio"] == "Professional triathlete"
     _, text, html = er.notes_ready_email(order.report, "https://x/app")
-    assert "— Bogdan Kovalenko, Professional triathlete" in text and "Professional triathlete" in html
+    # Signed on its own line, without a dash (no em dash in Flapp copy).
+    assert "\n\nBogdan Kovalenko, Professional triathlete\n\n" in text and "Professional triathlete" in html
 
 
 def test_the_bio_is_clipped_and_optional():

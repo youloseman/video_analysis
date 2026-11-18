@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import html
 import re
 import time
 from collections import deque
@@ -340,20 +339,22 @@ def _reset_mail(link: str) -> tuple[str, str, str]:
         "Someone asked to reset the password for this Flapp account.\n\n"
         f"Set a new password here (the link works for {hours} hour"
         f"{'s' if hours != 1 else ''}, once):\n{link}\n\n"
-        "If that wasn't you, ignore this email — your password stays as it is.\n\n"
-        "— Flapp"
+        "If that wasn't you, ignore this email. Your password stays as it is.\n\n"
+        "Flapp"
     )
-    safe = html.escape(link, quote=True)
-    body = (
-        "<p>Someone asked to reset the password for this Flapp account.</p>"
-        f"<p><a href=\"{safe}\" style=\"display:inline-block;padding:12px 20px;"
-        "background:#2F6DE0;color:#fff;font-weight:700;text-decoration:none;"
-        "border-radius:8px\">Set a new password</a></p>"
-        f"<p style=\"color:#555\">The link works for {hours} hour"
-        f"{'s' if hours != 1 else ''}, once. If the button does nothing, copy this "
-        f"address into your browser:<br><a href=\"{safe}\">{safe}</a></p>"
-        "<p style=\"color:#555\">If that wasn't you, ignore this email — your "
-        "password stays as it is.</p><p>— Flapp</p>"
+    from app.services import mail_layout as m
+    from app.services.notify import base_url
+
+    body = m.page(
+        title="Reset your password", kicker="Account",
+        preheader=f"The link works for {hours} hour{'s' if hours != 1 else ''}, once.",
+        body=(m.para("Someone asked to reset the password for this Flapp account.")
+              + m.button(link, "Set a new password")
+              + m.para(f"The link works for {hours} hour{'s' if hours != 1 else ''}, once.", muted=True, size=14)
+              + m.fallback_link(link)
+              + m.para("If that wasn't you, ignore this email. Your password stays as it is.",
+                       muted=True, size=14)),
+        base=base_url(),
     )
     return subject, text, body
 

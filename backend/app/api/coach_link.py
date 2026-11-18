@@ -365,18 +365,14 @@ def _mail_note(athlete: User, coach_name: str, row: Analysis) -> None:
         f"Open it: {url}\n\n"
         "You linked this coach yourself; you can unlink them any time from Account > My coach.\n"
     )
-    esc = notify._esc_html
-    html = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;'
-        'line-height:1.6;color:#14294B;max-width:520px">'
-        '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#2F6DE0;'
-        'margin:0 0 6px">Flapp</p>'
-        f'<h1 style="font-size:22px;margin:0 0 8px">{esc(coach_name)} left a note</h1>'
-        f'<p style="margin:0 0 22px;color:#5A6478">On your {esc(noun)} report.</p>'
-        f'<p style="margin:0 0 24px"><a href="{esc(url)}" style="background:#2F6DE0;color:#fff;'
-        'text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block;'
-        'font-weight:600">Open the report</a></p>'
-        '<p style="font-size:12px;color:#8A94A3;margin:0">You linked this coach yourself; '
-        'unlink any time from Account &rarr; My coach.</p></div>'
+    from app.services import mail_layout as m
+
+    html = m.page(
+        title=f"{coach_name} left a note", kicker="Your coach",
+        preheader=f"On your {noun} report.",
+        body=(m.para(f"{coach_name} read your {noun} analysis on Flapp and left a note on the report.")
+              + m.button(url, "Open the report")),
+        foot=m.txt("You linked this coach yourself; unlink any time from Account \u2192 My coach."),
+        base=base,
     )
     notify.send_email(athlete.email, subject, text, html)

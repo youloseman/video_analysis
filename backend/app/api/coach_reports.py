@@ -248,7 +248,8 @@ def _mail(to: str, athlete: str, coach: str, sport: str | None, url: str) -> boo
     from app.api.coach_link import in_sentence
     from app.services import notify
 
-    esc = notify._esc_html
+    from app.services import mail_layout as m
+
     noun = "ride" if sport == "bike" else "run"
     mid = in_sentence(coach)
     subject = f"{coach} sent you your {noun} report"
@@ -257,15 +258,14 @@ def _mail(to: str, athlete: str, coach: str, sport: str | None, url: str) -> boo
         f"The link works for {SHARE_DAYS} days. Measured by Flapp, sent because {mid} uploaded your clip; "
         "write to support@getflapp.com if that is wrong.\n"
     )
-    html = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;'
-        'line-height:1.6;color:#14294B;max-width:520px">'
-        f'<h1 style="font-size:22px;margin:0 0 8px">{esc(coach)} sent you your {esc(noun)} report</h1>'
-        f'<p style="margin:0 0 22px;color:#5A6478">Hi {esc(athlete)}. It opens without an account.</p>'
-        f'<p style="margin:0 0 24px"><a href="{esc(url)}" style="background:#2F6DE0;color:#fff;text-decoration:none;'
-        'padding:12px 20px;border-radius:8px;display:inline-block;font-weight:600">Open the report</a></p>'
-        f'<p style="font-size:12px;color:#8A94A3;margin:0">The link works for {SHARE_DAYS} days. Measured by Flapp, '
-        f'sent because {esc(mid)} uploaded your clip. If that is wrong, write to support@getflapp.com.</p></div>'
+    html = m.page(
+        title=f"{coach} sent you your {noun} report", kicker="Your coach",
+        preheader="It opens without an account.",
+        body=(m.para(f"Hi {athlete}. It opens without an account.")
+              + m.button(url, "Open the report")),
+        foot=m.txt(f"The link works for {SHARE_DAYS} days. Measured by Flapp, sent because {mid} "
+                   "uploaded your clip. If that is wrong, write to support@getflapp.com."),
+        base=notify.base_url(),
     )
     return notify.send_email(to, subject, text, html)
 

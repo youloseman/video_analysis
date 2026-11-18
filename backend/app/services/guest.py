@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta, timezone
-from html import escape
 from typing import Any
 
 import structlog
@@ -204,9 +203,9 @@ def welcome_email(plan: str, sport: str | None, link: str) -> tuple[str, str, st
     what, when = _WHAT.get(plan, _WHAT[PLAN_NOTES])
     days = LINK_TTL.days
     analysed = sport in ("bike", "run")
-    subject = "Your clip is with the coach — set a password to follow it"
+    subject = "Your clip is with the coach: set a password to follow it"
     paras = [
-        f"Thanks — we have your clip and your payment for {what}. A pro triathlete "
+        f"Thanks. We have your clip and your payment for {what}. A pro triathlete "
         f"watches it and writes back {when}. We'll email you when it's ready.",
         "We made a Flapp account with this email so you can read the answer. "
         f"Set a password with the button below (the link works for {days} days, once).",
@@ -214,17 +213,17 @@ def welcome_email(plan: str, sport: str | None, link: str) -> tuple[str, str, st
          if analysed else "In the app you'll find your clip under History."),
         "If the clip turns out too hard to read, we'll ask you to film it again or refund you.",
     ]
-    text = "\n\n".join(paras[:2]) + f"\n\n{link}\n\n" + "\n\n".join(paras[2:]) + "\n\n— Flapp"
-    safe = escape(link, quote=True)
-    body = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;'
-        'line-height:1.6;color:#14294B;max-width:520px">'
-        + "".join(f"<p>{escape(p)}</p>" for p in paras[:2])
-        + f'<p><a href="{safe}" style="display:inline-block;padding:12px 20px;background:#2F6DE0;'
-        'color:#fff;font-weight:700;text-decoration:none;border-radius:8px">Set my password</a></p>'
-        + "".join(f'<p style="color:#555">{escape(p)}</p>' for p in paras[2:])
-        + f'<p style="color:#555">If the button does nothing, copy this address into your '
-        f'browser:<br><a href="{safe}">{safe}</a></p><p>— Flapp</p></div>'
+    text = "\n\n".join(paras[:2]) + f"\n\n{link}\n\n" + "\n\n".join(paras[2:]) + "\n\nFlapp"
+    from app.services import mail_layout as m
+
+    body = m.page(
+        title="Your clip is with the coach", kicker="Coach Notes" if plan == PLAN_NOTES else "Expert Review",
+        preheader=f"Set a password to follow it. The coach writes back {when}.",
+        body=("".join(m.para(p) for p in paras[:2])
+              + m.button(link, "Set my password")
+              + "".join(m.para(p, muted=True, size=14) for p in paras[2:])
+              + m.fallback_link(link)),
+        base=notify.base_url(),
     )
     return subject, text, body
 

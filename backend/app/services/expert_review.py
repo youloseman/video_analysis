@@ -33,6 +33,7 @@ so they cannot drift into disagreeing about what a report is.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 REPORT_VERSION = 1
@@ -518,6 +519,12 @@ def _esc(s: str) -> str:
     )
 
 
+def _base(app_url: str) -> str:
+    """The site the mail's links point at: the origin of the app link."""
+    m = re.match(r"^(https?://[^/]+)", app_url or "")
+    return m.group(1) if m else "https://getflapp.com"
+
+
 def signed_by(report: dict[str, Any] | None, fallback: str) -> str:
     """'Name, who they are' -- the line a note or a review is signed with."""
     r = report or {}
@@ -540,26 +547,21 @@ def notes_ready_email(
     text = (
         "A coach has read your analysis.\n\n"
         f"First thing to change: {first}\n\n"
-        f"— {reviewer}\n\n"
+        f"{reviewer}\n\n"
         f"The three notes are on your report, under the coach's notes:\n{app_url}\n"
         + (f"\n{recheck}\n" if recheck else "")
     )
-    html = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
-        'font-size:16px;line-height:1.6;color:#14294B;max-width:520px">'
-        '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;'
-        'color:#2F6DE0;margin:0 0 6px">Flapp · Coach Notes</p>'
-        '<h1 style="font-size:22px;margin:0 0 18px">A coach has read your analysis</h1>'
-        f'<p style="margin:0 0 16px"><b>First thing to change:</b> {_esc(first)}</p>'
-        f'<p style="margin:0 0 24px;color:#5A6478">— {_esc(reviewer)}</p>'
-        f'<p style="margin:0 0 24px"><a href="{_esc(app_url)}" '
-        'style="background:#2F6DE0;color:#fff;text-decoration:none;'
-        'padding:12px 20px;border-radius:8px;display:inline-block;'
-        'font-weight:600">Read the three notes</a></p>'
-        '<p style="font-size:13px;color:#5A6478;margin:0">They sit on the report '
-        'they are about. Open it any time from History.</p>'
-        + (f'<p style="font-size:14px;margin:18px 0 0">{_esc(recheck)}</p>' if recheck else '')
-        + '</div>'
+    from app.services import mail_layout as m
+
+    html = m.page(
+        title="A coach has read your analysis", kicker="Coach Notes",
+        preheader=f"First thing to change: {first}",
+        body=(m.callout("First thing to change", first, by=reviewer)
+              + m.button(app_url, "Read the three notes")
+              + m.para("They sit on the report they are about. Open it any time from History.",
+                       muted=True, size=14)
+              + (m.para(recheck, size=14) if recheck else "")),
+        base=_base(app_url),
     )
     return subject, text, html
 
@@ -574,27 +576,22 @@ def ready_email(
     text = (
         "Your Expert Review is ready.\n\n"
         f"{verdict}\n\n"
-        f"— {reviewer}\n\n"
+        f"{reviewer}\n\n"
         f"Read the full review (priorities, the four-week plan and when to "
         f"film again):\n{app_url}\n"
         + (f"\n{recheck}\n" if recheck else "")
     )
-    html = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
-        'font-size:16px;line-height:1.6;color:#14294B;max-width:520px">'
-        '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;'
-        'color:#2F6DE0;margin:0 0 6px">Flapp · Expert Review</p>'
-        '<h1 style="font-size:22px;margin:0 0 18px">Your review is ready</h1>'
-        f'<p style="margin:0 0 16px">{_esc(verdict)}</p>'
-        f'<p style="margin:0 0 24px;color:#5A6478">— {_esc(reviewer)}</p>'
-        f'<p style="margin:0 0 24px"><a href="{_esc(app_url)}" '
-        'style="background:#2F6DE0;color:#fff;text-decoration:none;'
-        'padding:12px 20px;border-radius:8px;display:inline-block;'
-        'font-weight:600">Read the full review</a></p>'
-        '<p style="font-size:13px;color:#5A6478;margin:0">It has your ranked '
-        'priorities, a four-week plan, and when to film again.</p>'
-        + (f'<p style="font-size:14px;margin:18px 0 0">{_esc(recheck)}</p>' if recheck else '')
-        + '</div>'
+    from app.services import mail_layout as m
+
+    html = m.page(
+        title="Your review is ready", kicker="Expert Review",
+        preheader=verdict[:120],
+        body=(m.callout("The verdict", verdict, by=reviewer)
+              + m.button(app_url, "Read the full review")
+              + m.para("It has your ranked priorities, a four-week plan, and when to film again.",
+                       muted=True, size=14)
+              + (m.para(recheck, size=14) if recheck else "")),
+        base=_base(app_url),
     )
     return subject, text, html
 

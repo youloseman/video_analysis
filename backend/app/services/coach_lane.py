@@ -365,18 +365,13 @@ async def _tell_the_coach(db: Any, up: CoachUpload, coach: User) -> None:
             msg = (f"Your batch is ready: {done} of {len(rows)}", ", ".join(parts) + ".")
         subject, line = msg
         url = f"{notify.base_url()}/app#batch"
-        esc = notify._esc_html
+        from app.services import mail_layout as m
+
         notify.send_email(
             coach.email, subject,
             f"{subject}\n\n{line}\n\nOpen it: {url}\n",
-            '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;'
-            'line-height:1.6;color:#14294B;max-width:520px">'
-            '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#2F6DE0;'
-            'margin:0 0 6px">Flapp</p>'
-            f'<h1 style="font-size:22px;margin:0 0 8px">{esc(subject)}</h1>'
-            f'<p style="margin:0 0 22px;color:#5A6478">{esc(line)}</p>'
-            f'<a href="{esc(url)}" style="background:#2F6DE0;color:#fff;text-decoration:none;'
-            'padding:12px 20px;border-radius:8px;display:inline-block;font-weight:600">Open it</a></div>',
+            m.page(title=subject, kicker="Your squad", preheader=line,
+                   body=m.para(line) + m.button(url, "Open it in Flapp"), base=notify.base_url()),
         )
     except Exception as e:  # noqa: BLE001 -- a mail problem must not stop the lane
         logger.warning("LANE_MAIL_FAILED", upload_id=up.id, err=str(e))

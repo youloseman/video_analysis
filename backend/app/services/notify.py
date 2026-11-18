@@ -193,32 +193,25 @@ def analysis_ready_email(
         f"{score}/100" + (f" ({grade})" if grade else "")
         if score is not None else "ready to read"
     )
-    subject = f"Your {noun} analysis is ready — {verdict}"
+    subject = f"Your {noun} analysis is ready: {verdict}"
     text = (
         f"Your {noun} analysis finished while you were away.\n\n"
         f"Technique score: {verdict}\n\n"
-        f"Open the report — joint angles, what to fix first and the plan:\n"
+        f"Open the report (joint angles, what to fix first and the plan):\n"
         f"{report_url}\n\n"
         f"Don't want these? Turn them off in one click:\n{unsubscribe_url}\n"
     )
-    html = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;'
-        'font-size:16px;line-height:1.6;color:#14294B;max-width:520px">'
-        '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;'
-        'color:#2F6DE0;margin:0 0 6px">Flapp</p>'
-        f'<h1 style="font-size:22px;margin:0 0 8px">Your {_esc_html(noun)} '
-        'analysis is ready</h1>'
-        f'<p style="margin:0 0 22px;font-size:15px;color:#5A6478">Technique score '
-        f'<b style="color:#14294B">{_esc_html(verdict)}</b></p>'
-        f'<p style="margin:0 0 24px"><a href="{_esc_html(report_url)}" '
-        'style="background:#2F6DE0;color:#fff;text-decoration:none;'
-        'padding:12px 20px;border-radius:8px;display:inline-block;'
-        'font-weight:600">Open the report</a></p>'
-        '<p style="font-size:13px;color:#5A6478;margin:0 0 18px">Joint angles '
-        'against reference ranges, what to fix first, and the plan.</p>'
-        f'<p style="font-size:12px;color:#8A94A3;margin:0">'
-        f'<a href="{_esc_html(unsubscribe_url)}" style="color:#8A94A3">'
-        'Stop sending me these</a></p></div>'
+    from app.services import mail_layout as m
+
+    html = m.page(
+        title=f"Your {noun} analysis is ready", kicker="Analysis",
+        preheader=f"Technique score {verdict}",
+        body=(m.para_html(f"Technique score <b>{m.txt(verdict)}</b>")
+              + m.button(report_url, "Open the report")
+              + m.para("Joint angles against reference ranges, what to fix first, and the plan.",
+                       muted=True, size=14)),
+        foot=m.foot_link(unsubscribe_url, "Stop sending me these"),
+        base=base_url(),
     )
     return subject, text, html
 

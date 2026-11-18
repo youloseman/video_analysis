@@ -123,19 +123,16 @@ def lapse_email(kind: str, from_tier: str, clips: int, ends_ms: int) -> tuple[st
         f"To keep the clips, restart your plan before {when}:\n{pricing}\n\n"
         f"Or download the overlay videos you want to keep, from History:\n{history}\n"
     )
-    esc = notify._esc_html
-    html = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;'
-        'line-height:1.6;color:#14294B;max-width:520px">'
-        '<p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#2F6DE0;'
-        'margin:0 0 6px">Flapp</p>'
-        f'<p style="margin:0 0 12px">{esc(lead)}</p>'
-        f'<p style="margin:0 0 22px;color:#5A6478">{esc(after)}</p>'
-        f'<p style="margin:0 0 18px"><a href="{esc(pricing)}" style="background:#2F6DE0;color:#fff;'
-        'text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block;'
-        f'font-weight:600">Keep my clips</a></p>'
-        f'<p style="font-size:13px;color:#5A6478;margin:0">Or download the overlay videos you want '
-        f'from <a href="{esc(history)}" style="color:#2F6DE0">History</a>.</p></div>'
+    from app.services import mail_layout as m
+
+    html = m.page(
+        title=(f"Your clips are deleted on {when}" if kind == "reminder" else "Your Flapp plan has ended"),
+        kicker="Your plan", preheader=lead,
+        body=(m.para(lead) + m.para(after, muted=True)
+              + m.button(pricing, "Keep my clips")
+              + m.para_html(f"Or download the overlay videos you want from {m.link(history, 'History')}.",
+                            muted=True, size=14)),
+        base=base,
     )
     return subject, text, html
 
