@@ -14427,6 +14427,19 @@ function lockedTrendCard(m){
   </div>`;
 }
 const PROGRESS_TEASER_ITEMS=['Every joint & gait metric tracked','Optimal-range bands to aim for','A written read on what changed between runs'];
+/* A reading's line in a row's width: the band, the points, the latest dot. */
+function progSpark(series, opt){
+  if(!series||series.length<2) return '';
+  const W=120,H=40,P=4, vals=opt?series.concat(opt):series;
+  const lo=Math.min(...vals), hi=Math.max(...vals), sp=(hi-lo)||1;
+  const X=i=>P+i*(W-2*P)/(series.length-1), Y=v=>H-P-(v-lo)/sp*(H-2*P);
+  const band=opt?`<rect class="psp-band" x="0" y="${Y(opt[1]).toFixed(1)}" width="${W}" height="${Math.max(1,Y(opt[0])-Y(opt[1])).toFixed(1)}"/>`:'';
+  const pts=series.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const n=series.length-1;
+  return `<svg class="psp" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${band}<polyline class="psp-line" points="${pts}"/>${series.map((v,i)=>`<circle class="psp-pt${i===n?' psp-last':''}" cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${i===n?3.5:3}"/>`).join('')}</svg>`;
+}
+// Crossing the phone line redraws the page in the other composition.
+PHONE_MQ.addEventListener('change',()=>{ if(document.body.dataset.state==='trends'&&typeof renderProgress==='function') renderProgress(); });
 function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
@@ -14501,7 +14514,20 @@ function renderProgress(){
       <p class="pc-head">${esc(trendHeadline(x,noun,x.tser))}</p>
       ${trendChart2(x.series,x.opt,x.m.unit,{ts:x.tser,dec:FORM_DEC[x.m.key]})}
     </div>`; };
-  const group=(cls,h,sub,list)=>list.length?`<section class="pgroup"><h3 class="pg-h ${cls}">${h} <span>${sub}</span></h3><div class="tgrid">${list.map(card).join('')}</div></section>`:'';
+  // A phone shows a reading as one row that opens its full chart (board:
+  // ProgressPhone); Moving away stays open, it is the one to look at first.
+  const phone=PHONE_MQ.matches;
+  const row=x=>{ const u=x.m.unit||'', d=x.last-x.first, inR=x.opt&&x.last>=x.opt[0]&&x.last<=x.opt[1];
+    const word=!x.opt?'':x.dd.cls==='reg'?'further from the range':x.dd.cls==='imp'?(inR?'now in range':'closer to the range'):'steady';
+    const chg=Math.abs(d)<1e-9?word:`${d>0?'▲':'▼'} ${fmt(x,Math.abs(d))}${u}${word?' · '+word:''}`;
+    return `<details class="tcard pcard pc-fold"><summary>
+        <span class="pcf-l"><span class="tc-lbl">${esc(x.m.label)}</span>
+          <span class="pcf-v"><small class="num">${fmt(x,x.first)}${u} →</small> <b class="num">${fmt(x,x.last)}${u}</b></span>
+          ${chg?`<span class="pcf-d ${x.opt?x.dd.cls:'sta'}">${chg}</span>`:''}</span>
+        ${progSpark(x.series,x.opt)}</summary>
+      <p class="pc-head">${esc(trendHeadline(x,noun,x.tser))}</p>
+      ${trendChart2(x.series,x.opt,x.m.unit,{ts:x.tser,dec:FORM_DEC[x.m.key]})}</details>`; };
+  const group=(cls,h,sub,list)=>list.length?`<section class="pgroup"><h3 class="pg-h ${cls}">${h} <span>${sub}</span></h3><div class="tgrid${phone&&cls!=='pg-reg'?' pg-rows':''}">${list.map(phone&&cls!=='pg-reg'?row:card).join('')}</div></section>`:'';
   // The score, first to latest, and what moved under it.
   const sumHtml=sc?`<div class="psum">
       <div class="psum-l"><span class="psum-h">Technique score</span>
@@ -14509,16 +14535,20 @@ function renderProgress(){
         <ul class="psum-counts">
           <li class="pc-imp"><b>${imp.length}</b> ${imp.length===1?'reading':'readings'} moved toward ${imp.length===1?'its':'their'} range</li>
           ${away.length?`<li class="pc-reg"><b>${away.length}</b> moved away: ${esc(away.map(x=>x.m.label.toLowerCase()).join(', '))}</li>`:''}
-          <li class="pc-sta"><b>${steady.length}</b> held steady</li></ul></div>
+          <li class="pc-sta"><b>${steady.length}</b> held steady</li></ul>
+        <div class="psum-tiles"><span class="pst-imp"><b>${imp.length}</b>improving</span><span class="pst-reg${away.length?'':' pst-zero'}"><b>${away.length}</b>moving away</span><span class="pst-sta"><b>${steady.length}</b>steady</span></div></div>
       <div class="psum-chart"><p class="pc-head">${esc(sc.last>sc.first?`Score up ${Math.round(sc.last-sc.first)} points ${trendHeadline(sc,noun,sc.tser).replace(/^(Up|Down) \S+ /,'')}: ${Math.round(sc.first)} to ${Math.round(sc.last)}`:trendHeadline(sc,noun,sc.tser))}</p>${trendChart2(sc.series,null,'',{ts:sc.tser,dec:0,wide:window.innerWidth>640,grades:true})}</div></div>`:'';
-  const steadyHtml=steady.length?`<details class="pgroup pg-steady"><summary><b>Held steady</b><span>${esc(steady.map(x=>`${x.m.label} ${fmt(x,x.last)}${x.m.unit||''}`).join(' · '))} · across ${all.length} ${noun}s</span><span class="pg-show">Show</span></summary><div class="tgrid">${steady.map(card).join('')}</div></details>`:'';
+  const steadyHtml=steady.length?`<details class="pgroup pg-steady"><summary><b>Held steady</b><span>${esc(steady.map(x=>`${x.m.label} ${fmt(x,x.last)}${x.m.unit||''}`).join(' · '))} · across ${all.length} ${noun}s</span><span class="pg-show">Show</span></summary><div class="tgrid${phone?' pg-rows':''}">${steady.map(phone?row:card).join('')}</div></details>`:'';
+  // The end of the page on a phone: the first clip against the latest.
+  const cmpEnd=phone&&all.length>1?`<button class="btn btn-ghost pg-cmpend" type="button" data-cmpend="1">Compare ${esc(shortDate(all[0].filmedAt||all[0].at))} with ${esc(shortDate(lastE.filmedAt||lastE.at))} →</button>`:'';
   // Free tier: the score trend is real; the rest are gated -> show them as
   // locked previews with one upsell CTA (never more than one per screen).
   let lockCards='';
   if(isFreeUser()) lockCards=TREND_METRICS[sport].filter(m=>m.key!=='score' && !shown.has(m.key)).map(lockedTrendCard).join('');
   grid.innerHTML=(sumHtml+group('pg-reg','Moving away','look at these first',away)+group('pg-imp','Improving',`closer to the range than on your first ${noun}`,imp)
-    +group('pg-loose','No range to read against','the line alone, no verdict',loose)+steadyHtml+(lockCards?`<div class="tgrid">${lockCards}</div>`:''))
+    +group('pg-loose','No range to read against','the line alone, no verdict',loose)+steadyHtml+(lockCards?`<div class="tgrid">${lockCards}</div>`:'')+cmpEnd)
     || `<p class="hint">Not enough data yet for ${sport} trends.</p>`;
+  const ce=grid.querySelector('[data-cmpend]'); if(ce) ce.addEventListener('click',()=>openCompare(all[0].id,lastE.id,'progress'));
   toggleCompareCta();
   if(teaser && isFreeUser() && lockCards){
     teaser.innerHTML=teaserPanelHtml(PROGRESS_TEASER_ITEMS, {src:'progress-teaser',

@@ -108,3 +108,13 @@ def test_timeline_dots_that_would_overlap_are_spread():
     fn = HTML[HTML.index("function histStripSpread"):][:900]
     assert "<6" in fn and "n-(k-1)/2" in fn
     assert "left:calc(var(--x) + var(--o,0) * 32px)" in APP
+
+
+def test_progress_on_a_phone_folds_readings_but_keeps_the_charts():
+    """Board ProgressPhone, inside Artur's ruling that the consulting charts
+    stay: a phone shows a reading as a row that opens its full chart; Moving
+    away keeps its chart open; wider screens are unchanged."""
+    fn = HTML[HTML.index("function renderProgress"):][:12000]
+    assert "phone&&cls!=='pg-reg'?row:card" in fn
+    assert "trendChart2(x.series,x.opt,x.m.unit,{ts:x.tser,dec:FORM_DEC[x.m.key]})}</details>" in fn
+    assert "function progSpark" in HTML
