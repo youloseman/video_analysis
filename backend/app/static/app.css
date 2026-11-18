@@ -1912,6 +1912,35 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 #hdFindings .blockhead{margin-bottom:8px}
 #hdFindings .fd-row{grid-template-columns:minmax(0,1fr) auto}
 #hdFindings .fd-bar{grid-column:1/-1}
+/* ---- A coach's review, as drawn (CoachReport board, 2026-11-17) ---- */
+.cr-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;margin-top:16px}
+.cr-wrap.has-prev{grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr)}
+.cr-main{display:flex;flex-direction:column;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card);padding:20px}
+.cr-main > .block{margin:0;padding:0;border:0;background:none}
+.cr-main > .block + .block{margin-top:18px;padding-top:18px;border-top:1px solid var(--c-line)}
+.cr-main .blockhead h3{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px}
+.cr-main #hdCoachNoteBlock .blockhead h3{font-family:var(--f-body);font-style:normal;font-weight:600;font-size:14px}
+.cr-main #hdCoachNoteBlock .eyebrow,.cr-main #hdCoachNoteBlock .speedline-sm{display:none}
+.cr-main > .hdcoach{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:18px;padding-top:16px;border-top:1px solid var(--c-line)}
+.rv-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--c-brand-navy);color:#fff;font-style:normal;font-size:12px;font-weight:700}
+.cr-prev{position:sticky;top:16px;display:flex;flex-direction:column;gap:10px}
+.cr-prev-h{font-size:14px;font-weight:600;color:var(--c-ink-faint)}
+.cr-prev-card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:12px}
+.cr-coach{display:flex;align-items:center;gap:10px}
+.cr-coach img{width:40px;height:40px;object-fit:contain;border-radius:50%}
+.cr-ini{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:var(--c-brand-navy);color:#fff;font-weight:700;font-size:14px}
+.cr-coach b{display:block;color:var(--c-head)} .cr-coach small{font-size:12px;color:var(--c-ink-faint)}
+.cr-hero{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--radius-panel);background:var(--c-brand-navy);color:#fff}
+.cr-hero .ring{width:64px;height:64px} .cr-hero .ring .ds-score{font-size:22px;color:#fff!important}
+.cr-hero span{display:block;font-size:12px;color:rgba(255,255,255,.7)}
+.cr-hero b{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:18px}
+.cr-text{margin:0;font-size:14px;line-height:1.5;color:var(--c-ink-soft)}
+.cr-row{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr) auto;align-items:center;gap:10px;font-size:14px}
+.cr-row .mbar-cap{display:none}
+.cr-row b{font-family:var(--f-mono);font-weight:500}
+.cr-row.m-out b{color:var(--m-out)} .cr-row.m-near b{color:var(--m-near-text)}
+.cr-by{font-size:12px;color:var(--c-ink-faint)}
+@media(max-width:900px){ .cr-wrap.has-prev{grid-template-columns:minmax(0,1fr)} .cr-prev{position:static} }
 .sc-hd > .hdlabel{grid-column:3;grid-row:1/span 2;align-self:center}
 /* A two-sided session: the single player was the base clip twice over, so it
    leaves the screen and the session panel carries both clips. The column
@@ -3636,6 +3665,16 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .hdlink{margin:6px 0 0;font-size:12px}
 .hdlink small{display:block;color:rgba(255,255,255,.7)}
 .hdcoach .p-copy{color:#fff}
+/* in the review's column (light): the buttons as anywhere else, one filled */
+.cr-main .hdcoach{color:var(--c-ink-soft)}
+.cr-main .hdcoach .hint{color:var(--c-ink-faint)}
+.cr-main .hdcoach .p-copy{color:var(--c-blue-dk)}
+.cr-main .hdcoach .btn{background:var(--c-bg);border-color:var(--c-line-strong);color:var(--c-ink)}
+.cr-main .hdcoach .btn:hover{background:var(--c-panel);border-color:var(--c-ink)}
+.cr-main .hdcoach .btn-primary{background:var(--c-coral-btn);border-color:var(--c-coral-btn);color:#fff}
+.cr-main .hdcoach .btn-primary:hover{background:var(--c-coral-btn);filter:brightness(.92);border-color:var(--c-coral-btn)}
+.cr-main .cnote-actions .btn-primary{background:var(--c-bg);border-color:var(--c-line-strong);color:var(--c-ink)}
+.cr-main .cnote-actions .btn-primary:hover{background:var(--c-panel);border-color:var(--c-ink)}
 .hdlabel{grid-column:1/-1}
 .hdlabel input{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.3);color:#fff}
 .hdlabel input::placeholder{color:rgba(255,255,255,.55)}
