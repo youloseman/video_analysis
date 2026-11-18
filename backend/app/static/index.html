@@ -2393,6 +2393,9 @@ function renderQuota(){
     const q=card&&card.quota;
     txt = q
       ? `${esc(card.name)} · <b>${q.limit}</b> analyses per ${esc(q.window)}`
+/* /auth/me carries the same count as the X-RateLimit-* headers, so the
+   allowance is known from the first load, not only after an analysis. */
+function quotaFromMe(u){ const q=u&&u.quota; if(q&&q.limit!=null&&q.remaining!=null) quotaSave(+q.limit,+q.remaining); }
       : `<b>${tier==='admin'?'Admin':tier==='coach'?'Coach':'Free'}</b> plan`;
   }
   ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
@@ -8412,9 +8415,9 @@ function renderAccount(){
   const stats=$('#acctStats');
   if(stats){
     stats.innerHTML=[
-      // Before the first analysis of the session there is no count to show: the
-      // plan's allowance stands in, from the catalogue, never a copy kept here.
-      acctMeter(`Analyses ${per}`, q?`${q.limit-q.remaining}/${q.limit}`:(card&&card.quota&&card.quota.limit?String(card.quota.limit):'Counted'), q?(q.limit-q.remaining)/q.limit:null, q?`${q.remaining} left ${per}`:(card&&card.quota&&card.quota.limit?`a ${esc(card.quota.window||'month')}; the count shows once you analyse`:'as you analyse')),
+      // The count comes from /auth/me (quotaFromMe); if that has not answered,
+      // the meter says so rather than guessing.
+      acctMeter(`Analyses ${per}`, q?`${q.limit-q.remaining}/${q.limit}`:'', q?(q.limit-q.remaining)/q.limit:null, q?`${q.remaining} left ${per}`:'not loaded yet'),
       acctMeter('Equipment profiles', lim?`${used}/${lim}`:'none', lim?used/lim:null, lim?'each keeps its own trend · <a href="#" data-acctprof="1">open</a>':'part of a paid plan'),
       acctMeter('Clips kept', keepYear?'1 year':'7 days', keepYear?1:7/365, keepYear?'free plans keep 7 days':'a year on a paid plan', keepYear?'ac-full':''),
     ].join('');
@@ -9640,7 +9643,7 @@ function exShowPreview(){
 
 async function refreshAuth(){
   const t=getToken(); if(!t) return;
-  try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); renderAuth(); renderHeightField(); loadMobility(); } }catch(e){}
+  try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); quotaFromMe(auth); renderAuth(); renderHeightField(); loadMobility(); } }catch(e){}
 }
 
 /* ============================================================
@@ -12352,7 +12355,7 @@ async function renderPromoBanner(){
 async function checkAuth(){
   const t=getToken();
   if(t){
-    try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); } else if(r.status===401){ localStorage.removeItem(TKEY); } }catch(e){}
+    try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); quotaFromMe(auth); } else if(r.status===401){ localStorage.removeItem(TKEY); } }catch(e){}
   }
   // A returning session: identify on every boot, not only at sign-in, or a
   // 30-day token means 30 days of events filed under an anonymous visitor.

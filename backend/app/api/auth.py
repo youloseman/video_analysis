@@ -180,6 +180,12 @@ class UnlockCreditOut(BaseModel):
     order_id: int
 
 
+class QuotaOut(BaseModel):
+    limit: int
+    remaining: int
+    window: str
+
+
 class UserOut(BaseModel):
     email: str
     tier: str
@@ -198,6 +204,10 @@ class UserOut(BaseModel):
     # The $4 report that counts toward the next plan, while it still does.
     # Only /auth/me fills this too, and only with the coupon configured.
     unlock_credit: UnlockCreditOut | None = None
+    # This window's allowance and what is left of it, the same count the
+    # X-RateLimit-* headers carry after an analysis. Only /auth/me fills it,
+    # so Account can show the number before the first analysis of a visit.
+    quota: QuotaOut | None = None
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -430,6 +440,10 @@ async def me(
         await unlock_credit.credited_unlock(db, user, int(time.time() * 1000))
     )
     out.unlock_credit = UnlockCreditOut(**credit) if credit else None
+    from app.services.usage_limits import check_quota
+
+    _ok, used, limit, window = await check_quota(db, user)
+    out.quota = QuotaOut(limit=limit, remaining=max(0, limit - used), window=window)
     return out
 
 
