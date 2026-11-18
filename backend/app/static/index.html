@@ -3917,7 +3917,8 @@ const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
    square box. */
 /* Which band a score falls in. The same three steps the grade uses, kept
    here as one function so a ring, a badge and a chip can never disagree. */
-function scoreStatus(n){ return (n==null||!isFinite(n)) ? null : n>=80?'good':n>=60?'watch':'fix'; }
+/* The ring's colour (Artur, 2026-11-17): green only above 85; up to 85 is yellow. */
+function scoreStatus(n){ return (n==null||!isFinite(n)) ? null : n>=86?'good':n>=60?'watch':'fix'; }
 /* The ring around a score. The markup is static (three of them are in the
    page); this only moves the arc and names the band. r=66, so the circle is
    2*pi*66 = 414.7 long and the offset is what is left of it. */
@@ -12980,7 +12981,7 @@ function histStripHtml(list){
   const X=ms=>((ms-lo)/span*92+4).toFixed(1);
   const ticks=[]; const d=new Date(lo); d.setDate(1); d.setMonth(d.getMonth()+1);
   for(;d.getTime()<now-6*864e5;d.setMonth(d.getMonth()+1)) ticks.push(d.getTime());
-  return `<div class="hstrip"><div class="hstrip-h"><b>Every analysis, by date</b><span class="hstrip-key"><i class="sc-good"></i>80 and up <i class="sc-watch"></i>60–79 <i class="sc-fix"></i>under 60</span></div>
+  return `<div class="hstrip"><div class="hstrip-h"><b>Every analysis, by date</b><span class="hstrip-key"><i class="sc-good"></i>86 and up <i class="sc-watch"></i>60–85 <i class="sc-fix"></i>under 60</span></div>
     ${rows.map(([sp,es])=>`<div class="hstrip-row"><span class="hstrip-l">${sp==='run'?'Run':'Bike'}</span><div class="hstrip-line">${es.map(e=>`<button type="button" class="hstrip-dot sc-${scoreStatus(e.score)}" style="--x:${X(t(e))}%" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}">${e.score}</button>`).join('')}</div></div>`).join('')}
     <div class="hstrip-axis"><span style="--x:${X(lo)}%">${esc(shortDate(lo))}</span>${ticks.map(ms=>`<span style="--x:${X(ms)}%">${esc(shortDate(ms))}</span>`).join('')}<span style="--x:${X(now)}%">today</span></div></div>`;
 }

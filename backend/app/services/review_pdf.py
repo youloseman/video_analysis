@@ -282,8 +282,8 @@ def _ring(score: Any, grade: Any) -> str:
         sc = max(0.0, min(100.0, float(score)))
     except (TypeError, ValueError):
         return ""
-    # The app's ring bands (scoreStatus in index.html): good from 80, watch from 60.
-    col = "#2E9E5B" if sc >= 80 else "#C97B10" if sc >= 60 else "#F1553F"
+    # The app's ring bands (scoreStatus in index.html): green above 85, yellow from 60.
+    col = "#2E9E5B" if sc >= 86 else "#C97B10" if sc >= 60 else "#F1553F"
     r, c = 52, 2 * math.pi * 52
     return (f'<svg class="ring" viewBox="0 0 120 120"><circle cx="60" cy="60" r="{r}" fill="none" stroke="#2A4170" stroke-width="9"/>'
             f'<circle cx="60" cy="60" r="{r}" fill="none" stroke="{col}" stroke-width="9" stroke-linecap="round" '
