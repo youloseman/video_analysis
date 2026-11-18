@@ -260,18 +260,36 @@ table.fit{width:100%;border-collapse:collapse;font-size:8.8pt;margin:4px 0 12px}
 """
 
 
+# The grade in a word, as the app says it (GRADE_WORD in index.html). A photo
+# is graded in words on the same lines, so its letter is the score's.
+GRADE_WORD = {"A": "Excellent", "B": "Good", "C": "Fair", "D": "Needs work", "F": "Needs work"}
+
+
+def grade_label(score: Any, grade: Any) -> str:
+    """'B · Good' -- the letter the scorer gave, or the score's own on a photo."""
+    g = str(grade or "").strip()
+    if g not in GRADE_WORD:
+        try:
+            n = float(score)
+        except (TypeError, ValueError):
+            return g
+        g = "A" if n >= 90 else "B" if n >= 75 else "C" if n >= 60 else "D" if n >= 40 else "F"
+    return f"{g} · {GRADE_WORD[g]}"
+
+
 def _ring(score: Any, grade: Any) -> str:
     try:
         sc = max(0.0, min(100.0, float(score)))
     except (TypeError, ValueError):
         return ""
-    col = "#2E9E5B" if sc >= 85 else "#C97B10" if sc >= 70 else "#F1553F"
+    # The app's ring bands (scoreStatus in index.html): good from 80, watch from 60.
+    col = "#2E9E5B" if sc >= 80 else "#C97B10" if sc >= 60 else "#F1553F"
     r, c = 52, 2 * math.pi * 52
     return (f'<svg class="ring" viewBox="0 0 120 120"><circle cx="60" cy="60" r="{r}" fill="none" stroke="#2A4170" stroke-width="9"/>'
             f'<circle cx="60" cy="60" r="{r}" fill="none" stroke="{col}" stroke-width="9" stroke-linecap="round" '
             f'stroke-dasharray="{c * sc / 100:.1f} {c:.1f}" transform="rotate(-90 60 60)"/>'
             f'<text x="60" y="62" text-anchor="middle" font-family="Archivo" font-style="italic" font-weight="900" font-size="34" fill="#fff">{int(round(sc))}</text>'
-            f'<text x="60" y="84" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#B9CDF2">/100 · {_e(grade)}</text></svg>')
+            f'<text x="60" y="84" text-anchor="middle" font-family="IBM Plex Sans" font-weight="600" font-size="11" fill="#B9CDF2">{_e(grade_label(sc, grade))}</text></svg>')
 
 
 def _weeks(plan: str) -> str:

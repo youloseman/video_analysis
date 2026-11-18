@@ -83,3 +83,15 @@ def test_the_analysing_card_promises_only_what_a_reload_keeps():
 def test_a_failed_clip_says_what_to_film_and_how_to_report_it():
     assert 'id="errReport"' in SPA and "rep.classList.toggle('hidden',!tips)" in SPA
     assert "title:'We could not read this clip'" in SPA
+
+
+def test_the_pdf_ring_colours_on_the_apps_bands():
+    """83 was green in the app and amber on paper: one score, two verdicts."""
+    from app.services.review_pdf import _ring, grade_label
+    m = re.search(r"function scoreStatus\(n\)\{.*?n>=(\d+)\?'good':n>=(\d+)\?'watch'", SPA)
+    assert m, "scoreStatus moved"
+    good, watch = int(m.group(1)), int(m.group(2))
+    assert "#2E9E5B" in _ring(good, "B") and "#2E9E5B" not in _ring(good - 1, "B")
+    assert "#C97B10" in _ring(watch, "C") and "#C97B10" not in _ring(watch - 1, "D")
+    assert grade_label(83, "B") == "B · Good"
+    assert grade_label(93, "Excellent") == "A · Excellent"   # a photo grades in words

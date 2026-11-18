@@ -872,7 +872,8 @@ _EXTRA_CSS = """
 .mt-b{width:33%}
 .mt-b .grbar{margin-top:0}
 .mt-st{width:18%;font-size:8.6pt;color:#5C6675}
-.mt-st.good b{color:#1F7A45}.mt-st.warn b{color:#9A5E0B}.mt-st.bad b{color:#B8371F}
+.mt-st b{display:inline-block;padding:1px 7px;border-radius:4px;background:#EFF1F4;font-weight:600}
+.mt-st.good b{color:#14532A;background:#E6F4EC}.mt-st.warn b{color:#6B4E06;background:#F7EAC8}.mt-st.bad b{color:#7E1611;background:#F6D9D6}
 .mt-d{font:8pt 'IBM Plex Mono',monospace;color:#5C6675;margin-top:1px}
 .mt .gr-mk.good{background:#1F7A45}.mt .gr-mk.warn{background:#C97B10}.mt .gr-mk.bad{background:#B8371F}
 .gr-text b{color:#14294B;font-weight:700}
