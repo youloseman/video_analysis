@@ -220,7 +220,7 @@ def athlete_block(
                 "",
             ]
             for r in rows:
-                note = f" — {r['note']}" if r.get("note") else ""
+                note = f"; note: {r['note']}" if r.get("note") else ""
                 tested = cda_math.VARIABLES.get(r.get("variable") or "", "")
                 tested = f" [tested: {tested}]" if tested else ""
                 lines.append(
@@ -244,7 +244,7 @@ def athlete_block(
             lines.append("Test ladder (Flapp's fixed order of what to field-test next):")
             lines.append("- Already tested: " + ("; ".join(done) if done else "nothing tagged yet"))
             lines.append(
-                f"- Next on the ladder: {nxt['title']} — {nxt['why']}" if nxt
+                f"- Next on the ladder: {nxt['title']}. {nxt['why']}" if nxt
                 else "- Every step of the ladder has a tagged test."
             )
         else:
@@ -314,7 +314,9 @@ SYSTEM = (
     "the answer. Plain words; keep the report's metric names (Knee BDC, Trunk "
     "angle) as they are.\n"
     "- Off-topic questions (not about this analysis, training for it, or the "
-    "equipment in it): one line saying you only answer about this report."
+    "equipment in it): one line saying you only answer about this report.\n"
+    "- Never use the em dash character (the long dash, U+2014): use a colon, "
+    "comma or full stop instead."
 )
 
 

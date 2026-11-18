@@ -435,7 +435,7 @@ async def _require_review_slot(db: AsyncSession) -> None:
     raise HTTPException(
         status.HTTP_503_SERVICE_UNAVAILABLE,
         "This week's Expert Reviews are fully booked. They open again on "
-        "Monday — email support@getflapp.com if yours is time-sensitive.",
+        "Monday. Email support@getflapp.com if yours is time-sensitive.",
     )
 
 
@@ -464,7 +464,7 @@ async def _require_unlockable(
     if swim.is_swim(row.sport):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "A swim clip has no automatic report to unlock — a coach reviews it. "
+            "A swim clip has no automatic report to unlock: a coach reviews it. "
             "Book Coach Notes or an Expert Review on it instead.",
         )
     if access_for_stored(user, row) == ACCESS_FULL:
@@ -676,8 +676,8 @@ async def start_checkout(
         logger.error("PLAN_PRICE_UNCONFIGURED", plan=body.plan, user_id=user.id)
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "This plan can't be purchased right now. Please try again shortly "
-            "— or email support@getflapp.com and we'll sort it out.",
+            "This plan can't be purchased right now. Please try again shortly, "
+            "or email support@getflapp.com and we'll sort it out.",
         )
 
     is_subscription = body.plan not in (
@@ -857,7 +857,7 @@ async def _require_recheck(
     if (user.expert_credits or 0) > 0:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Your plan already includes an Expert Review — use that one for your new clip.",
+            "Your plan already includes an Expert Review. Use that one for your new clip.",
         )
     offer = await recheck_offer(db, user)
     if offer is None:
@@ -1384,7 +1384,7 @@ async def admin_publish_report(
     if missing:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Not ready to send — still empty: " + ", ".join(missing),
+            "Not ready to send, still empty: " + ", ".join(missing),
         )
     now = _now_ms()
     first_delivery = order.delivered_at_ms is None
@@ -1513,7 +1513,7 @@ async def admin_email_test(
     if not notify.email_enabled():
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Email is not configured — set EMAIL_PROVIDER, EMAIL_API_KEY and "
+            "Email is not configured: set EMAIL_PROVIDER, EMAIL_API_KEY and "
             "EMAIL_FROM, then restart.",
         )
     sent = await run_in_threadpool(
@@ -1560,7 +1560,7 @@ async def customer_portal(
     _require_stripe()
     if not user.stripe_customer_id:
         raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "No billing account yet — subscribe first.",
+            status.HTTP_400_BAD_REQUEST, "No billing account yet. Subscribe first.",
         )
     try:
         url = await _portal_url(str(user.stripe_customer_id), f"{_base_url(request)}/app")

@@ -509,6 +509,6 @@ def test_the_page_offers_a_granted_unlock_as_free():
     from pathlib import Path
     spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
     assert "function freeUnlocks()" in spa
-    assert "'Unlock this report — free'" in spa
+    assert "'Unlock this report · free'" in spa
     assert "j.mode==='unlock_credit'" in spa
     assert "unlock_credits:j.unlock_credits||0" in spa

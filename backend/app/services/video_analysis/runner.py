@@ -1218,7 +1218,7 @@ def analyze_from_frames(
     )
     if sport_type == "run" and _stability.get("unstable"):
         quality_warnings.append(
-            "On this clip the pose model kept swapping which leg is which — "
+            "On this clip the pose model kept swapping which leg is which: "
             "measured against the stride itself, the legs traded places about "
             f"{int(_stability.get('excess_crossings') or 0)} times more than "
             "running allows. The skeleton will visibly jump between legs, and "

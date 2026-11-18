@@ -62,7 +62,7 @@ def test_an_unlock_is_news_but_not_work():
     sale = {"plan": "unlock", "mode": "payment", "amount_total": 400, "currency": "usd",
             "email": "b@x.com", "paid_ms": 1_760_184_480_000}
     subject, text, _ = notify.sale_email(sale, "u")
-    assert subject == "New sale: Report unlock — 4.00 USD"
+    assert subject == "New sale: Report unlock · 4.00 USD"
     assert "Due" not in text
 
 

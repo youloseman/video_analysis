@@ -207,7 +207,7 @@ _RUN_HIP_BANDS: dict[str, tuple[float, float] | None] = {
 # capture warnings so "not scored" reads as a deliberate limit, not an error.
 _RUN_HIP_UNSCORED_NOTES: dict[str, str] = {
     "swing": (
-        "Thigh is mid-swing — at this instant the hip angle is set by when the "
+        "Thigh is mid-swing: at this instant the hip angle is set by when the "
         "shutter fired, not by technique. Use a frame at footstrike or at "
         "toe-off for a hip verdict."
     ),
@@ -222,9 +222,9 @@ _RUN_HIP_UNSCORED_NOTES: dict[str, str] = {
 }
 
 _RUN_HIP_SCORED_NOTES: dict[str, str] = {
-    "toe_off": "Thigh is behind you — scored against the hip-extension band.",
+    "toe_off": "Thigh is behind you: scored against the hip-extension band.",
     "initial_contact": (
-        "Foot is reaching ahead — scored against the footstrike band, where a "
+        "Foot is reaching ahead: scored against the footstrike band, where a "
         "closed hip means the foot lands ahead of your centre of mass."
     ),
 }
@@ -240,7 +240,7 @@ _RUN_ELBOW_UNSCORED_NOTE = (
 
 # Why the knee carries no verdict on a swing frame. Behind ``contact_metrics``.
 _RUN_KNEE_SWING_NOTE = (
-    "Leg is mid-swing — a tightly folded knee here is what a good stride "
+    "Leg is mid-swing: a tightly folded knee here is what a good stride "
     "looks like (it shortens the lever the hip has to swing), so this "
     "frame cannot fault it. Use a frame at footstrike for a knee verdict."
 )
@@ -311,9 +311,9 @@ BIKE_PHOTO_PHASES = ("bdc", "tdc", "uncertain")
 _LEGACY_PHASE = {"near_bdc": "bdc", "near_tdc": "tdc", "mid_stroke": "uncertain"}
 _BIKE_PHASE_NOTES = {
     "knee": ("The knee straightens at the bottom of the stroke and bends at the "
-             "top. Mark where the pedal was to score it — at the bottom it is "
+             "top. Mark where the pedal was to score it: at the bottom it is "
              "the saddle-height reading."),
-    "hip": ("Hip opens at the bottom of the stroke and closes at the top — pick "
+    "hip": ("Hip opens at the bottom of the stroke and closes at the top. Pick "
             "the pedal position to score it."),
 }
 
@@ -3011,7 +3011,7 @@ def analyze_from_pose(
                 "optimal_min": None, "optimal_max": None,
                 "status": "phase_dependent",
                 "unscored_reason": "pedal position",
-                "note": "Depends on the pedal position — not scored from a single photo.",
+                "note": "Depends on the pedal position: not scored from a single photo.",
             }
             continue
         # Run hip: scored only at the two instants where the band means

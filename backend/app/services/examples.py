@@ -140,9 +140,10 @@ def _label_unit(field: str, band: dict[str, Any]) -> tuple[str, str]:
 
 # The analyzer writes its user-facing prose with an ASCII "--" for a dash,
 # which is right in a terminal and a log line and wrong on a public page. Only
-# the dash is translated; nothing else about the sentence is touched.
+# the dash is translated, to a colon (no em dash in Flapp copy); nothing else
+# about the sentence is touched.
 def _prose(text: str) -> str:
-    return _esc(text).replace(" -- ", " &mdash; ")
+    return _esc(text).replace(" -- ", ": ")
 
 
 # The capture table shows status as a coloured dot. Colour alone is not a
@@ -186,7 +187,7 @@ def _score_block(s: Sample) -> str:
         detail = ""
         if cov.get("excluded"):
             reasons = "; ".join(
-                f"{_esc(k.replace('_', ' '))} — {_esc(str(v))}"
+                f"{_esc(k.replace('_', ' '))} ({_esc(str(v))})"
                 for k, v in (cov.get("excluded") or {}).items()
             )
             detail = f'<span class="ex-cov-why">Not graded: {reasons}</span>'
@@ -198,7 +199,7 @@ def _score_block(s: Sample) -> str:
             )
         cov_line = (
             f'<p class="ex-cov">Scored on <b>{scored}</b> of <b>{total}</b> '
-            f"measures — {round((weight or 0) * 100)}% of the rubric.{detail}</p>"
+            f"measures, {round((weight or 0) * 100)}% of the rubric.{detail}</p>"
         )
     return head + cov_line
 
@@ -266,7 +267,7 @@ def _bands_table(s: Sample, collect: list[str] | None = None) -> str:
             cls = "ok" if not delta else ("near" if abs(delta) <= _margin(field, lo, hi) else "out")
         label, unit = _label_unit(field, band)
         if cls == "out" and collect is not None:
-            collect.append(f"<b>{_esc(label)}</b> — {_num(v)}{_esc(unit)}, against a reference of "
+            collect.append(f"<b>{_esc(label)}</b>: {_num(v)}{_esc(unit)}, against a reference of "
                            f"{_num(lo)}–{_num(hi)}{_esc(unit)}")
         rows.append((cls, abs(delta), _meas_row(cls, label, unit, v, lo, hi, delta,
                                                  str(band.get("source") or ""))))
@@ -363,13 +364,13 @@ def _angle_findings(s: Sample) -> tuple[list[str], list[str], list[str]]:
         band = f"{_num(lo)}–{_num(hi)}°" if lo is not None and hi is not None else ""
         status = str(ctx.get("status"))
         if status == "needs_work":
-            out.append(f"<b>{label}</b> — {value}°, against a reference of {band}")
+            out.append(f"<b>{label}</b>: {value}°, against a reference of {band}")
         elif status == "acceptable":
-            near.append(f"<b>{label}</b> — {value}° against {band}")
+            near.append(f"<b>{label}</b>: {value}° against {band}")
         elif status in ("phase_dependent", "insufficient_visibility"):
             why = ctx.get("note") or ctx.get("unscored_reason") or ""
             unscored.append(
-                f"<b>{label}</b> — {value}°"
+                f"<b>{label}</b>: {value}°"
                 + (f". {_prose(str(why))}" if why else "")
             )
     return out, near, unscored
@@ -383,7 +384,7 @@ def _findings(s: Sample) -> str:
     # section, and this page shows what was measured.
     items = [
         f'<b>{_esc(str(i.get("issue") or i.get("type") or "")).replace("_", " ")}</b>'
-        + (" — " + _prose(str(detail))
+        + (": " + _prose(str(detail))
            if (detail := i.get("description") or i.get("message")
                or i.get("value")) else "")
         for i in issues
@@ -419,7 +420,7 @@ def _plan(s: Sample) -> str:
     if fit:
         rows = "".join(
             f'<li><b>{_esc(str(d.get("component", "")).replace("_", " "))}</b>'
-            f' — {_esc(str(d.get("reason") or ""))}</li>'
+            f': {_esc(str(d.get("reason") or ""))}</li>'
             for d in fit
         )
         return (
@@ -434,7 +435,7 @@ def _plan(s: Sample) -> str:
         return ""
     rows = "".join(
         f'<li><b>{_esc(str(d.get("drill") or d.get("title") or ""))}</b>'
-        f'{" — " + _esc(str(d.get("cue") or d.get("why") or "")) if (d.get("cue") or d.get("why")) else ""}</li>'
+        f'{": " + _esc(str(d.get("cue") or d.get("why") or "")) if (d.get("cue") or d.get("why")) else ""}</li>'
         for d in drills
     )
     return (
@@ -475,7 +476,7 @@ def _cta() -> str:
         '<section class="ex-cta"><h2>Film ten seconds and get your own</h2>'
         "<p>Side-on, phone upright, you filling the frame. Free account, no "
         "card.</p>"
-        '<a class="ex-btn" href="/app">Analyze your form — free</a></section>'
+        '<a class="ex-btn" href="/app">Analyze your form for free</a></section>'
     )
 
 
@@ -697,7 +698,7 @@ def render_hub(base_url: str) -> str:
         '<div class="ex-hero"><div class="wrap">'
         '<div class="eyebrow">Sample reports</div>'
         "<h1>See a real report<br>before you sign up</h1>"
-        "<p>These are complete analyses of real footage — the same numbers, the "
+        "<p>These are complete analyses of real footage: the same numbers, the "
         "same reference ranges and the same caveats you would get. Nothing here "
         "is a mock-up.</p>"
         "</div></div>"
@@ -710,7 +711,7 @@ def render_hub(base_url: str) -> str:
         f"{_cta()}</main>"
     )
     return _page(
-        title=f"Sample reports — {SITE_NAME}",
+        title=f"Sample reports · {SITE_NAME}",
         description="Complete Flapp analyses of real running and cycling "
                     "footage: joint angles against published reference ranges, "
                     "findings, and what to change.",
@@ -730,7 +731,7 @@ def render_hub(base_url: str) -> str:
 def render_sample(s: Sample, base_url: str) -> str:
     shot = (
         f'<div class="ex-shot"><img src="{_esc(s.keyframe)}" '
-        f'alt="Annotated keyframe — {_esc(s.title)}"></div>'
+        f'alt="Annotated keyframe: {_esc(s.title)}"></div>'
         if s.keyframe else ""
     )
     # A run kinogram is five stride positions; a bike one is six points around
@@ -744,14 +745,14 @@ def render_sample(s: Sample, base_url: str) -> str:
     else:
         kino_head, kino_lede = (
             "One stride, five positions",
-            "The ALTIS kinogram positions, found in the clip rather than posed "
-            "— and published only when the analyzer trusts its own stride "
+            "The ALTIS kinogram positions, found in the clip rather than posed, "
+            "and published only when the analyzer trusts its own stride "
             "timing.",
         )
     kino = (
         f'<section class="ex-kino"><h2>{kino_head}</h2>'
         f'<p class="ex-lede">{kino_lede}</p>'
-        f'<img src="{_esc(s.kinogram)}" alt="Kinogram — {_esc(s.title)}"></section>'
+        f'<img src="{_esc(s.kinogram)}" alt="Kinogram: {_esc(s.title)}"></section>'
         if s.kinogram else ""
     )
     body = (
@@ -772,7 +773,7 @@ def render_sample(s: Sample, base_url: str) -> str:
         f"{_cta()}</main>"
     )
     return _page(
-        title=f"{s.title} — sample report · {SITE_NAME}",
+        title=f"{s.title}: sample report · {SITE_NAME}",
         description=s.blurb,
         canonical=f"{base_url}/examples/{s.slug}",
         body=body,

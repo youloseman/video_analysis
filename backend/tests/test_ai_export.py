@@ -100,7 +100,7 @@ def test_the_limits_of_the_method_are_spelled_out():
     assert "## Not measured (do not infer these)" in md
     assert "frontal plane" in md            # pelvic drop / valgus are not in here
     assert "far side" in md.lower()
-    assert "## Missing context — ask before prescribing" in md
+    assert "## Missing context: ask before prescribing" in md
 
 
 def test_quality_flags_travel_with_the_numbers():

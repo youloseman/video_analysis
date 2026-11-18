@@ -35,7 +35,7 @@ ORDER_STATUSES = (ORDER_PAID, ORDER_IN_REVIEW, ORDER_DELIVERED, ORDER_REFUNDED)
 # What the customer is told each state means. Kept server-side so the wording
 # is identical in the account view and the admin queue.
 ORDER_STATUS_LABEL = {
-    ORDER_PAID: "Payment received — we'll start your review shortly.",
+    ORDER_PAID: "Payment received. We'll start your review shortly.",
     ORDER_IN_REVIEW: "A coach is reviewing your clip right now.",
     ORDER_DELIVERED: "Your review has been delivered.",
     ORDER_REFUNDED: "This order was refunded.",

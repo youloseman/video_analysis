@@ -43,7 +43,7 @@ DIAGNOSTICS_ID = "flapp-server-diagnostics"
 
 GENERIC = (
     "Something went wrong on our side while analysing this clip. Please try "
-    "again — if it happens twice, try a different clip."
+    "again. If it happens twice, try a different clip."
 )
 UNREADABLE = (
     "We couldn't read this video file. Try a different clip, or export it as "

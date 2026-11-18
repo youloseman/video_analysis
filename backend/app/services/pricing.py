@@ -280,11 +280,11 @@ CARDS: tuple[Card, ...] = (
     # athlete. Who may buy it, and once per delivery, is the checkout's rule.
     Card(
         id="recheck",
-        name="Expert Review — re-check",
+        name="Expert Review · re-check",
         kind="single",
         tagline=(
-            "A full Expert Review of the clip you film after making the changes "
-            "— open for a limited time after your last review or Coach Notes."
+            "A full Expert Review of the clip you film after making the changes, "
+            "open for a limited time after your last review or Coach Notes."
         ),
         prices=(
             Price(plan="expert_recheck", amount=RECHECK_AMOUNT, per="once",
@@ -307,7 +307,7 @@ CARDS: tuple[Card, ...] = (
         kind="addon",
         badge="Add-on · any plan",
         tagline=(
-            "A coach reads this analysis and writes back three things — "
+            "A coach reads this analysis and writes back three things, "
             "on the report, within 72 hours."
         ),
         prices=(
@@ -316,7 +316,7 @@ CARDS: tuple[Card, ...] = (
         ),
         features=(
             Feature("The first thing to change, in one line"),
-            Feature("Three notes — what a coach sees that the numbers didn't"),
+            Feature("Three notes: what a coach sees that the numbers didn't"),
             Feature("Written on your report: prints and exports with it"),
             # The fence, said out loud: those are the Expert Review's, and a
             # buyer who wanted them should know before paying a third.
@@ -343,7 +343,7 @@ CARDS: tuple[Card, ...] = (
         # and the deliverable cannot drift apart.
         features=(
             Feature("A verdict, and which numbers to trust"),
-            Feature("What's already working — so you don't &quot;fix&quot; it"),
+            Feature("What's already working, so you don't &quot;fix&quot; it"),
             Feature("Ranked priorities with drills and a re-test date"),
             Feature("Position changes with their trade-offs (cycling)"),
         ),
@@ -524,7 +524,7 @@ def render_terms_table() -> str:
             else:
                 cycle = _INTERVAL_WORD.get(price.interval, price.interval)
                 rows.append(
-                    f"<tr><td>{card.name} — {cycle}</td>"
+                    f"<tr><td>{card.name} ({cycle})</td>"
                     f"<td>{money(price.amount)} / {price.interval}, "
                     f"recurring.</td></tr>"
                 )
@@ -1055,7 +1055,7 @@ GUEST_STROKES = (("freestyle", "Freestyle"), ("breaststroke", "Breaststroke"),
 # (Artur, 2026-11-01).
 GUEST_NOTES_EXAMPLES = {
     "bike": (
-        "Slide the saddle forward 1–1.5 cm and bring the bars with it — you're sitting behind the bike, mate.",
+        "Slide the saddle forward 1–1.5 cm and bring the bars with it. You're sitting behind the bike, mate.",
         ("Your hips are well behind the cranks, so your arms just rest on the pads with no weight on them. "
          "Moving forward puts you over the pedals and takes the load off your lower back.",
          "Once the saddle's forward, check the height again. Forward makes it effectively lower, "
@@ -1064,14 +1064,14 @@ GUEST_NOTES_EXAMPLES = {
          "jammed after the move, shorter cranks are the next thing to try."),
     ),
     "run": (
-        "Stop reaching with the front foot — land under your hips.",
+        "Stop reaching with the front foot. Land under your hips.",
         ("Your foot lands well ahead of you with the knee nearly straight, so every step brakes a little. "
          "You can see the body check on each contact.",
          "Cadence will come up by itself once the step is shorter. Don't chase 180 with a metronome yet.",
          "Posture and arms are good: relaxed shoulders, a slight lean from the ankles. Leave them alone."),
     ),
     "swim": (
-        "Get your head down, mate — look at the bottom of the pool, not ahead.",
+        "Get your head down, mate. Look at the bottom of the pool, not ahead.",
         ("Because you look forward, your hips and legs sink and you drag them behind you. "
          "Head down and the legs come up on their own.",
          "When you breathe you lift the whole head. Turn it with the body and keep one goggle in the water.",

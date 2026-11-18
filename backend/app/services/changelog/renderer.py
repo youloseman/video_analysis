@@ -64,7 +64,7 @@ def render_changelog(entries: list[Entry], base_url: str) -> str:
         "</div></div>"
         f'<main class="cl-list">{inner}</main>'
         '<div class="cl-foot"><p>Found something the analyzer gets wrong? '
-        "Rate your next result — the prompt sits at the bottom of every report, "
+        "Rate your next result: the prompt sits at the bottom of every report, "
         "and it is where this list comes from.</p></div>"
     )
     jsonld = {
@@ -75,7 +75,7 @@ def render_changelog(entries: list[Entry], base_url: str) -> str:
         "description": _LEDE,
     }
     return _page(
-        title=f"What's new — {SITE_NAME}",
+        title=f"What's new · {SITE_NAME}",
         description="Release notes for Flapp: what changed in the running and "
         "cycling form analyzer, newest first.",
         canonical=canonical,

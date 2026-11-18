@@ -82,7 +82,7 @@ SECTIONS: tuple[dict[str, Any], ...] = (
         "title": "What's already working",
         "kind": "prose",
         "required": True,
-        "hint": "What is already right, by eye and by experience. Name it — "
+        "hint": "What is already right, by eye and by experience. Name it: "
                 "this is what stops them 'fixing' something that was fine.",
     },
     {
@@ -102,7 +102,7 @@ SECTIONS: tuple[dict[str, Any], ...] = (
         "required": False,
         "sports": ("bike",),
         "hint": "Only where you'd actually move something. Every row names its "
-                "risk — a fit change always costs something somewhere.",
+                "risk: a fit change always costs something somewhere.",
     },
     {
         "key": "plan",
@@ -117,7 +117,7 @@ SECTIONS: tuple[dict[str, Any], ...] = (
         "title": "Don't change this",
         "kind": "prose",
         "required": False,
-        "hint": "The anti-list — including anything the automated report told "
+        "hint": "The anti-list, including anything the automated report told "
                 "them that you wouldn't do.",
     },
     {
@@ -125,7 +125,7 @@ SECTIONS: tuple[dict[str, Any], ...] = (
         "title": "When to film again",
         "kind": "prose",
         "required": True,
-        "hint": "Pre-filled with the standard setup — change the timing or "
+        "hint": "Pre-filled with the standard setup. Change the timing or "
                 "what to look at if this athlete needs something else.",
     },
     {
@@ -621,21 +621,21 @@ SAMPLE_REPORT: dict[str, Any] = {
     "verdict": (
         "Your cadence is not the problem, and I'd ignore the app's suggestion to "
         "raise it. The problem is that you're landing with the foot well ahead of "
-        "your hips and braking on every step — the low cadence is a *symptom* of "
+        "your hips and braking on every step. The low cadence is a *symptom* of "
         "that long reach, not the cause. Fix where the foot lands and the cadence "
         "will come up on its own."
     ),
     "seen": (
         "**You reach for the ground.** Watch the front foot: it lands out in "
         "front of you with the knee nearly straight, and you can see the whole "
-        "body check slightly on every contact — a small brake, every step (the "
+        "body check slightly on every contact: a small brake, every step (the "
         "app has your shin about 12° past vertical at landing).\n\n"
         "**The rhythm is a beat slow, and that's the reach, not your legs.** A "
         "long step takes time to come back from; shorten where the foot lands "
         "and the turnover follows.\n\n"
         "**Your upper body is quiet.** No shoulder lift, no twisting, hands "
         "relaxed. That's rarer than it sounds at an easy pace.\n\n"
-        "**The left and right sides look the same** from here — no limp, no "
+        "**The left and right sides look the same** from here: no limp, no "
         "one arm working harder than the other."
     ),
     "working": (
@@ -649,7 +649,7 @@ SAMPLE_REPORT: dict[str, Any] = {
         {
             "title": "Land closer to your hips",
             "why": "The foot lands out in front with a straight knee, so every "
-                   "step brakes and the shock goes up through the shin — in my "
+                   "step brakes and the shock goes up through the shin. In my "
                    "experience that's exactly where shin splints come from in "
                    "runners who move like this (app: shin ~12° past vertical).",
             "change": "Don't reach for the ground with the front leg. Think "
@@ -659,9 +659,9 @@ SAMPLE_REPORT: dict[str, Any] = {
                      "at contact, and the knee visibly soft rather than locked.",
         },
         {
-            "title": "Let cadence rise on its own — to about 172",
+            "title": "Let cadence rise on its own, to about 172",
             "why": "Chasing 180 with the current landing just makes you "
-                   "shuffle — I see it all the time. Once the reach is gone, a "
+                   "shuffle. I see it all the time. Once the reach is gone, a "
                    "shorter step raises turnover for free (app: 163 spm).",
             "change": "Run 4×2 min at 170–174 spm with a metronome, easy pace, "
                       "once a week. Don't hold it for a whole run yet.",
@@ -678,28 +678,28 @@ SAMPLE_REPORT: dict[str, Any] = {
         },
     ],
     "plan": (
-        "**Weeks 1–2** — calf work twice a week (above). Keep running exactly as "
+        "**Weeks 1–2**: calf work twice a week (above). Keep running exactly as "
         "you do now; change nothing about your form yet.\n\n"
-        "**Weeks 2–4** — add one cadence session a week (4×2 min at 170–174). In "
+        "**Weeks 2–4**: add one cadence session a week (4×2 min at 170–174). In "
         "your easy runs, spend the first 5 minutes deliberately thinking 'land "
         "under the hip', then stop thinking about it.\n\n"
-        "**Every run** — the last 30 seconds at a comfortably quick turnover. "
+        "**Every run**: the last 30 seconds at a comfortably quick turnover. "
         "It's a small dose that teaches the pattern without a session for it."
     ),
     "dont_change": (
         "Don't change your shoes. Your current pair is doing nothing wrong, and "
         "changing footwear at the same time as a landing change means you won't "
         "know which one caused whatever happens next.\n\n"
-        "Don't try to land on your forefoot. Your midfoot strike is fine — the "
+        "Don't try to land on your forefoot. Your midfoot strike is fine: the "
         "issue is *where* the foot lands relative to your hips, not which part "
         "of it touches first."
     ),
     "retest": (
         "Film again in four weeks, same setup: same treadmill, same camera "
-        "height, same easy pace — and a second clip at the end of a long run, "
+        "height, same easy pace, and a second clip at the end of a long run, "
         "because tired form is what actually injures people and I can't see it "
         "here. I'll look at where the foot lands first, the rhythm second. "
-        "Ignore the overall score — it moves for reasons that have nothing to "
+        "Ignore the overall score: it moves for reasons that have nothing to "
         "do with what we're working on."
     ),
 }

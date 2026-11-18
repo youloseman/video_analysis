@@ -1076,7 +1076,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
   <div class="cover-band">
     {brand}
     <h1>Technique Report</h1>
-    <div class="sub">{"What this clip suggests, and what to film next." if low else "What to fix, in what order — and the numbers behind it."}</div>
+    <div class="sub">{"What this clip suggests, and what to film next." if low else "What to fix, in what order, and the numbers behind it."}</div>
     <div class="cover-grid3">{_ring(score, grade)}<dl class="facts">{facts_html}</dl>{_bd_html(breakdown_items(result), _score_notes(result, score))}</div>
   </div>
   {f'<div class="lead"><img src="{crop_keyframe(meta["keyframe"], (result.get("sport_specific_metrics") or {}).get("keyframe_crop"))}" alt="A frame from the clip, with its angles drawn on it"><div class="lead-side"><div class="glance">{glance}</div><p class="cap">{_e(_LEAD_CAPTION.get(sport, _LEAD_CAPTION[""]))}</p></div></div>' if meta.get('keyframe') else (f'<div class="glance">{glance}</div>' if glance else '')}
@@ -1137,7 +1137,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     read = f"<section>{head(READ_EYEBROW, read_title)}{read_body}</section>" if read_body else ""
 
     prio_cards = [
-        f"<div class='prio'><div class='n'>{n}</div><div><h3>{_e(prio_label(p))}{' — ' + _e(_clean(p.get('drill'))) if p.get('drill') else ''}</h3><dl>"
+        f"<div class='prio'><div class='n'>{n}</div><div><h3>{_e(prio_label(p))}{': ' + _e(_clean(p.get('drill'))) if p.get('drill') else ''}</h3><dl>"
         + "".join(f"<dt>{lbl}</dt><dd>{_e(_clean(p.get(k)))}</dd>" for k, lbl in
                   (("why", "Why"), ("instruction", "Do this"), ("cue", "Think")) if p.get(k))
         + (f"<dt>For</dt><dd>{_e(p.get('weeks'))} weeks</dd>" if p.get('weeks') and not low else "")
@@ -1163,7 +1163,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
                   "and shows whether this holds.</p></div>")
     # What already works sits on the numbers page as one line: on its own it
     # was a block that spilled onto a page of its own.
-    ok_html = ("<div class='working' style='margin:0 0 12px'><h3>Already good — leave these alone</h3>"
+    ok_html = ("<div class='working' style='margin:0 0 12px'><h3>Already good: leave these alone</h3>"
                f"<p>{_e(', '.join(ok_names))}.</p></div>") if ok_names else ""
     if not (read or prio_html or low):
         read = (f"<section>{head(READ_EYEBROW, 'Nothing to change')}<p class='lead'>Nothing in this clip is "

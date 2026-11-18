@@ -275,8 +275,8 @@ def sale_email(sale: dict, admin_url: str) -> tuple[str, str, str]:
     if sale.get("credit_granted"):
         rows.append(("Note", "Includes an Expert Review credit -- the athlete can now order one."))
 
-    subject = (f"ACTION: new {what} order — {money}" if review
-               else f"New sale: {what} — {money}")
+    subject = (f"ACTION: new {what} order · {money}" if review
+               else f"New sale: {what} · {money}")
     text = "\n".join(f"{k}: {v}" for k, v in rows)
     if review:
         text += f"\n\nOpen the review queue:\n{admin_url}\n"

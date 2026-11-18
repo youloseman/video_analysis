@@ -32,12 +32,12 @@ SYSTEM_PROMPT = (
     "biomechanics background. You are given side-view video pose-analysis data "
     "for ONE athlete (running or cycling). Write concise, specific, "
     "evidence-based feedback in Markdown with EXACTLY these sections:\n"
-    "**Overall** — 1-2 sentences on the headline takeaway.\n"
-    "**What's working** — 1-3 short bullets.\n"
-    "**Fix first** — ONLY genuinely material problems: 1-3 of them, "
+    "**Overall**: 1-2 sentences on the headline takeaway.\n"
+    "**What's working**: 1-3 short bullets.\n"
+    "**Fix first**: ONLY genuinely material problems: 1-3 of them, "
     "highest-impact first. For each: what it is, why it matters, and ONE "
     "concrete drill or position/fit change.\n"
-    "**Next session** — a single cue to focus on.\n\n"
+    "**Next session**: a single cue to focus on.\n\n"
     "MATERIALITY FLOOR (this governs the Fix first section):\n"
     "- These numbers come from 2D pose estimation. A degree or two either way "
     "is inside the method's own error, so a metric sitting just outside its "
@@ -102,7 +102,9 @@ SYSTEM_PROMPT = (
     "\"smooth stroke\" cue -- none of them is in the clip's numbers.\n\n"
     "FORMAT: every bullet on its own line starting with \"- \", after a line "
     "holding only the bold heading. Never run two points together in one line "
-    "with dashes.\n\n"
+    "with dashes.\n"
+    "Never use the em dash character (the long dash, U+2014): use a colon, "
+    "comma or full stop instead.\n\n"
     "Rules: address the athlete as \"you\". Reference their actual numbers vs "
     "the optimal ranges given. Be direct and practical, no fluff, no medical "
     "diagnoses. Up to 260 words; a clean analysis should be shorter."
@@ -443,7 +445,7 @@ def _bike_data_block(
     ]
     arch = summary.get("position_archetype")
     if isinstance(arch, dict) and arch.get("label"):
-        lines.append(f"- Position archetype: {arch['label']} — {arch.get('description', '')}")
+        lines.append(f"- Position archetype: {arch['label']} ({arch.get('description', '')})")
 
     # Aero trunk under the band: the same instruction the photo coach gets
     # (AERO_TRUNK_LOW_CONCERN) -- no fault, no "raise the bars", the trade
@@ -459,7 +461,7 @@ def _bike_data_block(
             "Say once, plainly, that this is faster through the air but is the "
             "position pros hold after years of conditioning; not every age-group "
             "athlete can hold it and make power, and a lower torso costs "
-            "maximal power and metabolic efficiency (Fintelman 2015) — so keep it "
+            "maximal power and metabolic efficiency (Fintelman 2015), so keep it "
             "only if they can breathe, push and hold it late in the race."
         )
     if trunk_below_road_floor(position, summary.get("trunk_angle_avg")):
@@ -507,7 +509,7 @@ def _bike_data_block(
         else:
             lines.append(
                 f"- Aero (relative, torso-angle only): {aero.get('zone_label')} "
-                f"(~{aero.get('drag_vs_upright_pct')}% of upright drag) — already "
+                f"(~{aero.get('drag_vs_upright_pct')}% of upright drag): already "
                 f"well-placed for this position; no flatter target advised."
             )
         # The same minutes the rider sees in the aero panel, so the coach
@@ -1240,13 +1242,15 @@ PROGRESS_SYSTEM_PROMPT = (
     "side-view form metrics from TWO analyses -- an earlier 'before' and a later "
     "'after' -- for the same sport. Write a short, encouraging but honest "
     "progress read in Markdown with EXACTLY these sections:\n"
-    "**Progress** — 1-2 sentences on the headline change (did form improve?).\n"
-    "**Improved** — 1-3 bullets naming metrics that moved toward optimal.\n"
-    "**Still work on** — 1-2 bullets on what regressed or is still off-target.\n"
-    "**Next** — one concrete cue for the next session.\n\n"
+    "**Progress**: 1-2 sentences on the headline change (did form improve?).\n"
+    "**Improved**: 1-3 bullets naming metrics that moved toward optimal.\n"
+    "**Still work on**: 1-2 bullets on what regressed or is still off-target.\n"
+    "**Next**: one concrete cue for the next session.\n\n"
     "Rules: address the athlete as \"you\". Cite the actual before->after numbers. "
     "'Closer to the optimal range' = improvement, even if the raw number went "
-    "down. Be direct, no fluff, no medical claims. 120-180 words total."
+    "down. Be direct, no fluff, no medical claims. 120-180 words total.\n"
+    "Never use the em dash character (the long dash, U+2014): use a colon, "
+    "comma or full stop instead."
 )
 
 
@@ -1414,7 +1418,7 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
                 else "not scorable from a single still at this point in the stride"
             )
             lines.append(
-                f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note} — this "
+                f"- {v.get('label', k)}: {v.get('value')}{unit}{unit_note}. This "
                 f"number depends entirely on the "
                 f"{v.get('unscored_reason', 'phase')} the frame caught, so it is "
                 f"{resolution}. Do NOT critique this angle, do NOT call it too "
@@ -1449,13 +1453,13 @@ def _build_photo_prompt(sport: str, res: dict[str, Any]) -> str:
             lines.append(
                 f"- {v.get('label', k)}: {v.get('value')}{unit} "
                 f"(comfort band {v.get('optimal_min')}-{v.get('optimal_max')}{unit}) "
-                f"— BELOW the band. It costs no points and is NOT a fault: do "
+                f": BELOW the band. It costs no points and is NOT a fault: do "
                 f"not list it as one, do not advise raising the bars. Say once, "
                 f"plainly, that this is faster through the air but is the "
                 f"position pros hold after years of conditioning; not every "
                 f"age-group athlete can hold it and make power, and a lower "
                 f"torso costs maximal power and metabolic efficiency "
-                f"(Fintelman 2015) — so keep it only if they can breathe, push "
+                f"(Fintelman 2015), so keep it only if they can breathe, push "
                 f"and hold it late in the race."
                 + (" At this angle that question is the main one, not a footnote."
                    if extreme else "")

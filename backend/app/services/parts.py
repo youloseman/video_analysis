@@ -271,7 +271,7 @@ def chat_block(frame_id: str | None) -> str | None:
             f"{ax.split('_')[0]} {eff[ax][0]:+g}..{eff[ax][1]:+g} {'deg' if ax == 'angle_deg' else 'mm'}"
             for ax in AXES if eff.get(ax)
         )
-        tail = f" — does NOT fit: {p['reason_incompatible']}" if p["status"] == "incompatible" else ""
+        tail = f"; does NOT fit: {p['reason_incompatible']}" if p["status"] == "incompatible" else ""
         lines.append(
             f"- {p['brand']} {p['model']} ({p['category']}; {STATUS_LABELS[p['status']]})"
             f"{': ' + moves if moves else ''}{tail}"

@@ -238,7 +238,7 @@ _ZOOM_JS = """
   function close(){ z.hidden=true; im.removeAttribute('src'); document.body.style.overflow=''; if(from) from.focus(); from=null; }
   imgs.forEach(function(img){
     img.tabIndex=0; img.setAttribute('role','button');
-    img.setAttribute('aria-label',(img.alt||'Figure')+' \u2014 open full screen');
+    img.setAttribute('aria-label',(img.alt||'Figure')+', open full screen');
     img.addEventListener('click',function(){ open(img); });
     img.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(img); } });
   });
@@ -796,7 +796,7 @@ def render_hub(articles: list[ArticleMeta], base_url: str) -> str:
             f'<div class="grid">{cards}</div></section>'
         )
         chips.append(f'<a class="hchip" href="#{key}">{chip} <span class="n">{n}</span></a>')
-    grid = "".join(sections) or '<p class="empty">No articles yet — check back soon.</p>'
+    grid = "".join(sections) or '<p class="empty">No articles yet. Check back soon.</p>'
     body = (
         '<header class="acad-hero">'
         f'<img class="bg" src="{HERO}" alt="{_esc(HERO_ALT)}"{_wh(HERO)} fetchpriority="high">'
@@ -835,9 +835,9 @@ def render_hub(articles: list[ArticleMeta], base_url: str) -> str:
         },
     }
     return _page(
-        title=f"Academy — {SITE_NAME} · Running & Cycling Technique Guides",
+        title=f"Academy · {SITE_NAME} · Running & Cycling Technique Guides",
         description="Evidence-based guides on running form, running economy, "
-        "cycling position and aerodynamics — the science behind good technique.",
+        "cycling position and aerodynamics: the science behind good technique.",
         canonical=canonical,
         body=body,
         extra_css=_HUB_CSS,

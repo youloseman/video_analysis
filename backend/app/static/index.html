@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light">
-<meta name="description" content="Flapp — upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay.">
-<title>Flapp — Running &amp; Cycling Form Analysis</title>
+<meta name="description" content="Flapp: upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay.">
+<title>Flapp · Running and Cycling Form Analysis</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <!-- PWA: installable to the home screen; also the asset set Capacitor reuses. -->
@@ -42,12 +42,12 @@
      root route so link previews resolve regardless of host. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Flapp">
-<meta property="og:title" content="Flapp — Running &amp; Cycling Form Analysis">
-<meta property="og:description" content="Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay — measured by computer vision, not estimated by eye.">
+<meta property="og:title" content="Flapp · Running and Cycling Form Analysis">
+<meta property="og:description" content="Upload a side-view clip of your run or ride and get joint angles, a technique score and an annotated overlay, measured by computer vision, not estimated by eye.">
 <meta property="og:image" content="/og-image.png">
 <meta property="og:url" content="/app">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Flapp — Running &amp; Cycling Form Analysis">
+<meta name="twitter:title" content="Flapp · Running and Cycling Form Analysis">
 <meta name="twitter:description" content="Upload a side-view clip and get joint angles, a technique score and an annotated overlay.">
 <meta name="twitter:image" content="/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -365,7 +365,7 @@
       <div class="cam-live hidden" id="camLive" role="status" aria-live="polite"><span class="cl-tag" id="camLiveTag"></span><span id="camLiveT"></span></div>
     </div>
     <div class="cam-actions">
-      <button class="btn btn-primary" id="camStart" type="button">Start — records after a 5&#8202;s countdown</button>
+      <button class="btn btn-primary" id="camStart" type="button">Start: records after a 5&#8202;s countdown</button>
       <button class="btn btn-go hidden" id="camStop" type="button">Stop recording</button>
     </div>
     <p class="cam-hint">Prop the phone at hip height, side-on, and fit yourself between the lines.
@@ -598,7 +598,7 @@
         <label for="profileSel">Which bike or shoes</label>
         <select id="profileSel" aria-describedby="profileHint"></select>
         <input id="profileNew" class="hidden" type="text" maxlength="60"
-               placeholder="Name it — e.g. Road bike, TT bike, Vaporflys"
+               placeholder="Name it, e.g. Road bike, TT bike, Vaporflys"
                aria-label="Name for the new setup">
         <button class="btn btn-ghost btn-sm hidden" id="profileSave" type="button">Save</button>
         <button class="btn btn-ghost btn-sm hidden" id="profileCancel" type="button">Cancel</button>
@@ -639,7 +639,7 @@
            player in it. Says what it is before it says what it costs. -->
       <p class="hint overlay-locked hidden" id="overlayLocked">
         <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
-        <span><b>Overlay video</b> — your own clip with the skeleton and angles drawn on it — is part of the paid plans.
+        <span><b>Overlay video</b> (your own clip with the skeleton and angles drawn on it) is part of the paid plans.
         <a href="#pricing" onclick="event.preventDefault();openPricing()">See plans</a></span>
       </p>
 
@@ -653,7 +653,7 @@
         <summary>Off-bike mobility <span class="askopt" id="mobSummary">not measured</span></summary>
         <p class="askhint u-mt-3">Two photos taken lying on the floor.
           They decide whether &ldquo;you could go lower&rdquo; is advice we are entitled to give
-          you &mdash; the position you can hold is bounded by your body before it is bounded
+          you: the position you can hold is bounded by your body before it is bounded
           by your stem. Measured once; every bike analysis after it uses the result.</p>
         <div id="mobScreens"></div>
         <div class="mob-goal" id="mobGoalRow">
@@ -675,9 +675,9 @@
         <summary>Want us to look at something specific? <span class="askopt">optional</span></summary>
         <label class="visually-hidden" for="focusInput">What should we look at closely?</label>
         <input id="focusInput" type="text" maxlength="200" autocomplete="off"
-               placeholder="e.g. my left ankle at foot strike — it aches after long runs">
+               placeholder="e.g. my left ankle at foot strike (it aches after long runs)">
         <p class="askhint">Your coaching notes answer it first. If this clip can&rsquo;t
-          &mdash; a view the camera didn&rsquo;t see, a force we can&rsquo;t measure &mdash; you&rsquo;ll be told that
+          (a view the camera didn&rsquo;t see, a force we can&rsquo;t measure), you&rsquo;ll be told that
           instead of given a guess.</p>
       </details>
       </details><!-- /stepDetails -->
@@ -851,13 +851,13 @@
                container, so a bare <b> mid-sentence became its own flex item
                and broke the line into columns. -->
           <ul class="guides" id="guides">
-            <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg><span>Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close — a close-up wide lens bends the angles at the edges</span></li>
-            <li data-sport="bike"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>On the bike, film the <b>same side every time</b> — the two sides read the knee differently, so only clips from one side compare</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-ruler"/></svg><span>Stand back <b>6–8 m and zoom in 2–3×</b> rather than filming close: a close-up wide lens bends the angles at the edges</span></li>
+            <li data-sport="bike"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg><span>On the bike, film the <b>same side every time</b>: the two sides read the knee differently, so only clips from one side compare</span></li>
             <!-- A head dropped to the floor or the screen reads lower than anyone
                  holds for a race, and the helmet metric grades it (order #9,
                  2026-10-24: helmet scored 100 while the rider looked at the floor). -->
-            <li data-sport="bike"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg><span>Ride as you race: <b>eyes on the road about 10 m ahead</b>, not on the floor or a screen &mdash; a dropped head measures lower than you can hold in a race</span></li>
-            <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span><b>5–10 seconds with you actually in shot</b>, one person in frame — start recording once you&rsquo;re already running, not before</span></li>
+            <li data-sport="bike"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg><span>Ride as you race: <b>eyes on the road about 10 m ahead</b>, not on the floor or a screen. A dropped head measures lower than you can hold in a race</span></li>
+            <li class="g-dur"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span><b>5–10 seconds with you actually in shot</b>, one person in frame. Start recording once you&rsquo;re already running, not before</span></li>
             <li><svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>A <b>treadmill</b> is the easiest way to get all of this at once: you stay put, so the camera can sit close, still, and pointed at one spot</span></li>
             <!-- Fork A (2026-08-22, Artur): accept both speeds, be honest about
                  the trade instead of banning one. Slow-mo gives the pose model
@@ -865,8 +865,8 @@
                  real-time base has to be guessed from the stride rate, so the
                  time metrics are estimates and cadence stays out of the score
                  (see technique_scorer: a guessed multiplier is not graded). -->
-            <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Normal speed or slow-mo — <b>both work</b>. Slow-mo sharpens joint detail; its cadence &amp; timing are estimates and aren&rsquo;t graded</span></li>
-            <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Light behind the camera, not behind you — a silhouette loses limbs</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Normal speed or slow-mo: <b>both work</b>. Slow-mo sharpens joint detail; its cadence &amp; timing are estimates and aren&rsquo;t graded</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><span>Light behind the camera, not behind you: a silhouette loses limbs</span></li>
           </ul>
         </details>
       </section>
@@ -1064,7 +1064,7 @@
              it follow. -->
         <div class="lmed hidden" id="vEditor" aria-label="Joint editor">
           <div class="lmed-head">
-            <span><b id="vEdTitle">Pause, then drag a joint</b><span id="vEdLead"> to where it really is. The move applies to the whole clip — scrub to check it.</span>
+            <span><b id="vEdTitle">Pause, then drag a joint</b><span id="vEdLead"> to where it really is. The move applies to the whole clip. Scrub to check it.</span>
               <span class="hint" id="vEdHint"></span></span>
           </div>
           <div class="lmed-wrap ved-wrap" id="vEdWrap">
@@ -1107,7 +1107,7 @@
 
     <div id="gateBanner"></div>
     <div id="bilateralBlock"></div>
-    <p class="hint hidden ephem-note u-mt-4" id="ephemNote">Results aren’t stored — save what you need before leaving.</p>
+    <p class="hint hidden ephem-note u-mt-4" id="ephemNote">Results aren’t stored. Save what you need before leaving.</p>
 
     <!-- How the clip was filmed beside Aero: two short cards on one row on a
          wide screen (Report board, 2026-11-17); stacked on a phone. -->
@@ -1186,7 +1186,7 @@
         <h3 id="kinoTitle">One stride, five positions</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint u-m-0 u-mb-4" id="kinoHint">The five postures coaches read a stride from — picked automatically from your best-tracked stride.</p>
+      <p class="hint u-m-0 u-mb-4" id="kinoHint">The five postures coaches read a stride from, picked automatically from your best-tracked stride.</p>
       <div class="videoframe">
         <div class="kinowrap"><img id="kinogramImg" alt="Kinogram: key positions of one cycle, each with its joint angles" class="ph-no-capture"></div>
         <div class="videocap">
@@ -1259,9 +1259,9 @@
       <summary>How to read this table</summary>
       <div class="tbl-notes-body">
       <p class="hint norefnote hidden u-mt-3" id="angleNorefNote">
-        <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target — they’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
+        <b>“no ref”</b> = no single optimal. Knee, hip and ankle sweep through the whole stride (flexed in swing, near-straight at contact), so the average has no meaningful target. They’re shown for reference, not scored. Phase-specific checks (knee drive, contact angle) feed the score instead.</p>
       <p class="hint u-mt-2" id="angleStatNote">
-        <b>Optimal</b> and <b>Status</b> are about the <b>mean</b> — the carry of the arm, the lean of the trunk over the whole clip. <b>Low / High</b> are the 5th and 95th percentile: how far the joint swings each cycle, which is the movement, not a fault — an elbow at 57° at the back of the swing and 100° at the front is one normal arm swing around a 84° carry. A frame that reads outside the physiological range for a joint is a tracking artefact: it is excluded from every number and counted in an <b>artefact</b> pill instead.</p>
+        <b>Optimal</b> and <b>Status</b> are about the <b>mean</b>: the carry of the arm, the lean of the trunk over the whole clip. <b>Low / High</b> are the 5th and 95th percentile: how far the joint swings each cycle, which is the movement, not a fault. An elbow at 57° at the back of the swing and 100° at the front is one normal arm swing around a 84° carry. A frame that reads outside the physiological range for a joint is a tracking artefact: it is excluded from every number and counted in an <b>artefact</b> pill instead.</p>
       <!-- The pro column, explained: a field to place yourself against, never a
            target. Filled by renderAngleTable from the served pro_field. -->
       <p class="hint hidden u-mt-2" id="angleProNote"></p>
@@ -1414,11 +1414,11 @@
       </div>
       <div>
         <div class="videoframe">
-          <img id="pImage" alt="Annotated form analysis — skeleton and joint angles on your photo"
+          <img id="pImage" alt="Annotated form analysis: skeleton and joint angles on your photo"
                class="ph-no-capture media-still">
           <div class="videocap">
             <span>Annotated photo · skeleton + joint angles<br>
-              <span class="note">Results aren’t stored — download to keep it.</span></span>
+              <span class="note">Results aren’t stored. Download to keep it.</span></span>
             <span class="grp u-flex u-gap-2 u-wrap">
               <button class="btn btn-ghost btn-sm hidden" id="pAdjust" type="button"
                       title="Move a joint point the model placed wrong; every angle is measured again">
@@ -1435,7 +1435,7 @@
              picture it edits so the two never scroll apart. -->
         <div class="lmed hidden" id="pEditor" aria-label="Joint editor">
           <div class="lmed-head">
-            <span><b id="pEdTitle">Drag a joint</b><span id="pEdLead"> to where it really is — the ringed points can be moved.</span>
+            <span><b id="pEdTitle">Drag a joint</b><span id="pEdLead"> to where it really is. The ringed points can be moved.</span>
               <span class="hint" id="pEdHint">Only the camera-side joints count.</span></span>
           </div>
           <div class="lmed-wrap" id="pEdWrap">
@@ -1664,7 +1664,7 @@
              coach's series of one athlete over time is a list of these; it
              used to be faked with equipment profiles. Own entries only. -->
         <div class="hdlabel hidden" id="hdLabelRow">
-          <input type="text" id="hdLabel" maxlength="40" placeholder="Label this session — e.g. May Race" aria-label="Session label">
+          <input type="text" id="hdLabel" maxlength="40" placeholder="Label this session, e.g. May Race" aria-label="Session label">
           <button class="btn btn-ghost btn-sm" type="button" id="hdLabelSave">Save</button>
         </div>
         <div class="hdcoach" id="hdCoachActions"></div>
@@ -1790,7 +1790,7 @@
         <h3>Your numbers, as a file</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint u-m-0 u-mb-5">Every measurement from this report, its reference range, and the conventions another reader otherwise gets backwards — built from the saved analysis, so it still works long after the clip is gone.</p>
+      <p class="hint u-m-0 u-mb-5">Every measurement from this report, its reference range, and the conventions another reader otherwise gets backwards. Built from the saved analysis, so it still works long after the clip is gone.</p>
       <div class="exportrow">
         <button class="btn btn-primary btn-sm" id="hdExportCopy" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="hdExportCopyTxt">Copy as text</span>
@@ -2106,7 +2106,7 @@
       <h2 class="sec u-mb-2" id="exaTitle" tabindex="-1">Expert Review queue</h2>
       <div class="speedline"></div>
     </div>
-    <p class="hint u-m-0 u-mb-6">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis, its annotated frame and — while it is still inside its retention window — the clip itself.</p>
+    <p class="hint u-m-0 u-mb-6">Paid reviews waiting to be written. Each one opens on the athlete's stored analysis, its annotated frame and (while it is still inside its retention window) the clip itself.</p>
     <div class="ex-bar ex-bar--inline">
       <div class="seg seg-sm u-m-0" role="group" aria-label="Filter orders" id="exaFilter">
         <button type="button" data-exf="open" aria-pressed="true">To do</button>
@@ -2205,12 +2205,12 @@ function track(name, props){
    rest (URL handling, the note) lives next to the promo code. */
 const GOAL_KEY='flapp-goal', GOAL_NOTE_OFF='flapp-goal-note-off';
 const GOALS={
-  knee:{sport:'bike', text:'<b>Knee on the bike.</b> The reading that matters is your knee at the bottom of the pedal stroke &mdash; the report gives the saddle change in millimetres. Ten seconds of steady pedalling, filmed side-on, is enough.'},
+  knee:{sport:'bike', text:'<b>Knee on the bike.</b> The reading that matters is your knee at the bottom of the pedal stroke. The report gives the saddle change in millimetres. Ten seconds of steady pedalling, filmed side-on, is enough.'},
   faster:{sport:null, text:'<b>Faster.</b> On the bike, the report estimates the minutes your position costs over your race; on the run, it measures overstride and cadence. Pick your sport below.'},
-  pain:{sport:null, text:'<b>Something started to hurt.</b> Flapp does not diagnose pain &mdash; see a professional if it is sharp or lasting. It checks the settings that load the joint: on the bike, saddle height and your knee at the bottom of the stroke; on the run, overstride and cadence.'},
+  pain:{sport:null, text:'<b>Something started to hurt.</b> Flapp does not diagnose pain. See a professional if it is sharp or lasting. It checks the settings that load the joint: on the bike, saddle height and your knee at the bottom of the stroke; on the run, overstride and cadence.'},
   gear:{sport:null, text:'<b>New bike or shoes.</b> Film the new setup before the first long session. If you have a clip on the old one, the report can line the two up.'},
-  doubt:{sport:null, text:'<b>A second opinion, in numbers.</b> Every joint is set against a published range, with the source named &mdash; so advice can be weighed against a measurement.'},
-  crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position &mdash; one photo or ten seconds of pedalling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimetres. Full plan.'},
+  doubt:{sport:null, text:'<b>A second opinion, in numbers.</b> Every joint is set against a published range, with the source named, so advice can be weighed against a measurement.'},
+  crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position: one photo or ten seconds of pedalling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimetres. Full plan.'},
   run:{sport:'run', text:'<b>Running form.</b> Film 10 seconds from the side, on a treadmill or a straight path, at an easy pace. The report measures your cadence, overstride, how your knee lands and your trunk lean, and names the one thing to change first.'},
   race:{sport:'bike', text:'<b>Before a race.</b> Film in your race position, on the bike you will race. The report checks it against the fit ranges and, in an aero position, against the Kona 2026 pro field.'},
 };
@@ -2268,15 +2268,15 @@ const POSITION_HINTS = {
 /* ============================================================
    State machine: upload | progress | results | error
    ============================================================ */
-const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Analyzing… — Flapp',
-  results:'Results — Flapp', photoresults:'Results — Flapp', error:'Flapp',
-  dashboard:'Dashboard — Flapp',
-  history:'History — Flapp', historydetail:'History — Flapp', trends:'Progress — Flapp',
-  compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
-  whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp',
-  expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp',
-  account:'Account — Flapp', more:'More — Flapp', coachprofile:'Coach profile — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp', athletedetail:'Athlete — Flapp', batch:'Batch — Flapp',
-  swim:'Swim review — Flapp', swimdetail:'Your swim clip — Flapp'};
+const TITLES={upload:'Flapp · Running and Cycling Form Analysis', progress:'Analyzing… · Flapp',
+  results:'Results · Flapp', photoresults:'Results · Flapp', error:'Flapp',
+  dashboard:'Dashboard · Flapp',
+  history:'History · Flapp', historydetail:'History · Flapp', trends:'Progress · Flapp',
+  compare:'Before / After · Flapp', pricing:'Pricing · Flapp',
+  whatsnew:'What’s new · Flapp', feedbackadmin:'Result feedback · Flapp',
+  expertadmin:'Expert Review queue · Flapp', reviewreport:'Your Expert Review · Flapp',
+  account:'Account · Flapp', more:'More · Flapp', coachprofile:'Coach profile · Flapp', profiles:'Profiles · Flapp', athletes:'Athletes · Flapp', athletedetail:'Athlete · Flapp', batch:'Batch · Flapp',
+  swim:'Swim review · Flapp', swimdetail:'Your swim clip · Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
@@ -2560,7 +2560,7 @@ async function openCam(slot){
     } else stream.getTracks().forEach(t=>t.stop());   // closed while we waited
   }catch(err){
     const msg = err && err.name==='NotAllowedError'
-      ? 'Camera access was blocked. Allow it in the browser and try again — or just film with your camera app and upload the clip.'
+      ? 'Camera access was blocked. Allow it in the browser and try again, or just film with your camera app and upload the clip.'
       : err && err.name==='NotFoundError'
         ? 'No camera found on this device. Film with your phone and upload the clip instead.'
         : 'Could not start the camera. Film with your camera app and upload the clip instead.';
@@ -2686,16 +2686,16 @@ function camLiveRead(lms, vw, vh){
 /* The last few readings decide, so one bad frame does not flash the border. */
 function camLiveVerdict(rs){
   const seen=rs.filter(Boolean);
-  if(seen.length<rs.length/2) return {verdict:'no_go', code:'not_found', text:'Can’t see you — get your whole body in the frame'};
+  if(seen.length<rs.length/2) return {verdict:'no_go', code:'not_found', text:'Can’t see you. Get your whole body in the frame'};
   const pxs=seen.map(r=>r.px).filter(v=>v!=null).sort((a,b)=>a-b);
-  if(pxs.length<seen.length/2) return {verdict:'no_go', code:'cut_off', text:'Head to feet in the frame — something’s cut off'};
+  if(pxs.length<seen.length/2) return {verdict:'no_go', code:'cut_off', text:'Head to feet in the frame. Something’s cut off'};
   const px=pxs[Math.floor(pxs.length/2)];
   const grid=(coachOn()&&COACH.capture)||{};
   const bike=seen.filter(r=>r.bike).length>seen.length/2;
   // A runner passing the camera cannot fill the frame: running has lower bars.
-  if(px<(grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx))) return {verdict:'no_go', code:'tiny', px, text:'Move closer — you’re too small to measure'};
-  if(px<(grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx))) return {verdict:'check', code:'small', px, text:bike?'A bit closer for cleaner angles':'A bit small — fine, but closer is cleaner'};
-  return {verdict:'go', code:'go', px, text:'Good — this will measure'};
+  if(px<(grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx))) return {verdict:'no_go', code:'tiny', px, text:'Move closer. You’re too small to measure'};
+  if(px<(grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx))) return {verdict:'check', code:'small', px, text:bike?'A bit closer for cleaner angles':'A bit small. Fine, but closer is cleaner'};
+  return {verdict:'go', code:'go', px, text:'Good, this will measure'};
 }
 const CAM_LIVE_TAG={go:'GO', check:'CHECK', no_go:'NO-GO'};
 function camLivePaint(v){
@@ -2827,20 +2827,20 @@ function setFile(f){
   const photo = state.mode==='photo';
   if(photo){
     if(!isImg){
-      rejectFile('That doesn’t look like a photo — please choose a jpg, png or heic image.');
+      rejectFile('That doesn’t look like a photo. Please choose a jpg, png or heic image.');
       return;
     }
     if(f.size > MAX_PHOTO_MB*1048576){
-      rejectFile(`This image is ${fmtSize(f.size)} — the limit is ${MAX_PHOTO_MB} MB.`);
+      rejectFile(`This image is ${fmtSize(f.size)}. The limit is ${MAX_PHOTO_MB} MB.`);
       return;
     }
   } else {
     if(!isVid){
-      rejectFile('That doesn’t look like a video — please choose an mp4, mov or webm clip.');
+      rejectFile('That doesn’t look like a video. Please choose an mp4, mov or webm clip.');
       return;
     }
     if(f.size > MAX_MB*1048576){
-      rejectFile(`This clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB. Trim it to 5–15 s and try again.`);
+      rejectFile(`This clip is ${fmtSize(f.size)}. The limit is ${MAX_MB} MB. Trim it to 5–15 s and try again.`);
       return;
     }
   }
@@ -3102,16 +3102,16 @@ function checkClip(vid){
       state.duration=d;
       const fs=$('#fsize'); if(fs&&state.file) fs.textContent=`${Math.round(d)} s · ${fmtSize(state.file.size)}`;
       state.longClip = d>LONG_CLIP_S;
-      if(d<MIN_CLIP_S) notes.push({s:'bad',t:`Only ${d.toFixed(1)} s — too short to hold several strides. Aim for 5–10 s.`});
+      if(d<MIN_CLIP_S) notes.push({s:'bad',t:`Only ${d.toFixed(1)} s, too short to hold several strides. Aim for 5–10 s.`});
       else if(d<SHORT_CLIP_S) notes.push({s:'warn',t:`${d.toFixed(1)} s is enough to measure but not to average. 5–10 s makes the timing steadier.`});
-      else if(state.longClip) notes.push({s:'warn',t:`${Math.round(d)} s — we’ll analyze all of it, but timing metrics get coarser on long clips. 5–10 s is the sweet spot.`});
+      else if(state.longClip) notes.push({s:'warn',t:`${Math.round(d)} s. We’ll analyze all of it, but timing metrics get coarser on long clips. 5–10 s is the sweet spot.`});
     }
 
     /* Orientation is the one free win in the whole capture process: we shrink
        every clip to a fixed long edge before measuring, so a tall frame leaves
        ~1280 px of height for the athlete to fill instead of ~720. */
     if(w && h && w>h)
-      notes.push({s:'warn',guide:true,t:'Filmed landscape. Turning the phone upright puts nearly twice as many pixels on your legs — it’s the cheapest accuracy you can buy.'});
+      notes.push({s:'warn',guide:true,t:'Filmed landscape. Turning the phone upright puts nearly twice as many pixels on your legs. It’s the cheapest accuracy you can buy.'});
 
     state.preflight=notes;
     renderPreflight();
@@ -3421,8 +3421,8 @@ function syncPairSlot(){
   const hint=$('#sideHint');
   if(hint) hint.innerHTML = on
     ? (state.sport==='run'
-        ? 'Two clips of the <b>same run</b>, one filmed from each side. Each clip can only measure the leg nearest the camera, so this is the only way to see both — and because both clips also measure your cadence, contact time and trunk lean independently, the gap between them tells us how much to trust the rest.'
-        : 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict — the only way to measure both legs.')
+        ? 'Two clips of the <b>same run</b>, one filmed from each side. Each clip can only measure the leg nearest the camera, so this is the only way to see both. And because both clips also measure your cadence, contact time and trunk lean independently, the gap between them tells us how much to trust the rest.'
+        : 'Two clips of the <b>same ride and same fit</b>, one per side. They are merged into one score and one saddle verdict, the only way to measure both legs.')
     : (state.sport==='run'
         ? 'A run side view measures the leg nearest the camera and reads cadence, contact and flight time from the whole stride.'
         : 'Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg.');
@@ -3457,7 +3457,7 @@ const PAIR_SLOTS=[
    each take needs for the merge to have a few frames at the bottom of the stroke. */
 const PAIR_BIKE_NOTE='<b>One clip from each side of the bike.</b> The two sides read the knee at the bottom of the stroke differently, which is why a session uses both. '
   +'Give both the same care: square-on, whole crank circle in frame, camera about hip height, '
-  +'and <b>8–15 seconds</b> of steady pedalling — shorter clips are analysed too, but at 30 fps each revolution puts only a frame or two at the bottom of the stroke, and the merge wants a few of those.';
+  +'and <b>8–15 seconds</b> of steady pedalling. Shorter clips are analysed too, but at 30 fps each revolution puts only a frame or two at the bottom of the stroke, and the merge wants a few of those.';
 function pairFileOf(slot){ return slot==='a' ? state.file : state.fileB; }
 function renderPairCards(){
   // Each empty card can be filmed right here, like the single-clip step: the
@@ -3490,16 +3490,16 @@ function renderPairCards(){
   // explains it cannot keep is worse than none.
   if(h) h.innerHTML = (n===2
     ? '<b>Both clips loaded.</b> They\u2019ll be analysed together into one score and one saddle verdict.'
-    : `<b>${n} of 2 clips.</b> Add the ${state.file?'right':'left'}-side clip — a session needs one of each side.`)
+    : `<b>${n} of 2 clips.</b> Add the ${state.file?'right':'left'}-side clip. A session needs one of each side.`)
     + (state.sport==='bike' ? `<br><span class="pairnote">${PAIR_BIKE_NOTE}</span>` : '');
 }
 function setFileB(f){
   if(!f) return;
   if(!f.type.startsWith('video/')){
-    hintMsg('The second clip doesn\u2019t look like a video — choose an mp4, mov or webm.','warn'); return;
+    hintMsg('The second clip doesn\u2019t look like a video. Choose an mp4, mov or webm.','warn'); return;
   }
   if(f.size > MAX_MB*1048576){
-    hintMsg(`The second clip is ${fmtSize(f.size)} — the limit is ${MAX_MB} MB.`,'warn'); return;
+    hintMsg(`The second clip is ${fmtSize(f.size)}. The limit is ${MAX_MB} MB.`,'warn'); return;
   }
   state.fileB=f; renderPairCards(); readyHint();
   track('analyze_step_done', {step:'clip', slot:'b'});
@@ -3659,13 +3659,13 @@ function analyze(){
     const pct=Math.round(e.loaded/e.total*100);
     setFill(pct);
     pbar.setAttribute('aria-valuenow',String(pct));
-    if(e.loaded>=e.total){ stage('Upload received — starting analysis…'); }
+    if(e.loaded>=e.total){ stage('Upload received. Starting analysis…'); }
     else stage(`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`);
     if(pct>=25 && pct<50) announce('Upload 25%');
     else if(pct>=50 && pct<75) announce('Upload 50%');
     else if(pct>=75 && pct<100) announce('Upload 75%');
   };
-  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true,status:0});
+  xhr.onerror=()=>fail('Network error during upload. Check your connection and try again.',{keepFile:true,status:0});
   xhr.onload=()=>{
     state.xhr=null;
     const limit=xhr.getResponseHeader('X-RateLimit-Limit'), rem=xhr.getResponseHeader('X-RateLimit-Remaining');
@@ -3674,7 +3674,7 @@ function analyze(){
     if(xhr.status===429){ showLimit(j.detail, xhr.getResponseHeader('Retry-After')); return; }
     // 503 = the server is at capacity, not a problem with the clip. Keep the
     // file so "Try again" is one tap, and don't blame their footage.
-    if(xhr.status===503){ fail(j.detail || 'We’re at capacity right now — please try again in a few minutes.',{keepFile:true,status:503}); return; }
+    if(xhr.status===503){ fail(j.detail || 'We’re at capacity right now. Please try again in a few minutes.',{keepFile:true,status:503}); return; }
     if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').'),{status:xhr.status}); return; }
     state.jobId=j.job_id;
     jobTokenSave(j.job_id, j.job_token);
@@ -3724,10 +3724,10 @@ function analyzePair(){
     const pct=Math.round(e.loaded/e.total*100);
     setFill(pct);
     pbar.setAttribute('aria-valuenow',String(pct));
-    if(e.loaded>=e.total) stage('Uploads received — starting the session…');
+    if(e.loaded>=e.total) stage('Uploads received. Starting the session…');
     else stage(`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`);
   };
-  xhr.onerror=()=>fail('Network error during upload — check your connection and try again.',{keepFile:true,status:0});
+  xhr.onerror=()=>fail('Network error during upload. Check your connection and try again.',{keepFile:true,status:0});
   xhr.onload=()=>{
     state.xhr=null;
     const limit=xhr.getResponseHeader('X-RateLimit-Limit'), rem=xhr.getResponseHeader('X-RateLimit-Remaining');
@@ -3735,7 +3735,7 @@ function analyzePair(){
     let j={}; try{ j=JSON.parse(xhr.responseText); }catch(e){}
     if(xhr.status===402){ fail(j.detail || 'Two-sided analysis is part of a paid plan.',{keepFile:true,status:402,event:'pair_needs_plan',title:'Two-sided analysis needs a plan'}); return; }
     if(xhr.status===429){ showLimit(j.detail, xhr.getResponseHeader('Retry-After')); return; }
-    if(xhr.status===503){ fail(j.detail || 'We\u2019re at capacity right now — please try again in a few minutes.',{keepFile:true,status:503}); return; }
+    if(xhr.status===503){ fail(j.detail || 'We\u2019re at capacity right now. Please try again in a few minutes.',{keepFile:true,status:503}); return; }
     if(xhr.status<200 || xhr.status>=300){ fail(j.detail || ('Upload failed (HTTP '+xhr.status+').'),{status:xhr.status}); return; }
     state.jobId=j.job_id;
     jobTokenSave(j.job_id, j.job_token);
@@ -3778,8 +3778,8 @@ document.addEventListener('error', e=>{
   if(!/\/jobs\/[a-z0-9]+\/overlay/i.test(src) || v.classList.contains('hidden')) return;
   const note=document.createElement('div'); note.className='video-gone';
   note.innerHTML = (typeof auth!=='undefined' && auth)
-    ? 'This overlay is no longer on the server — the footage behind it has passed its retention period. Every measurement on this page is unaffected.'
-    : 'This overlay is no longer on the server. Videos outlive the session only for signed-in accounts — sign in before analysing to keep them in your History.';
+    ? 'This overlay is no longer on the server. The footage behind it has passed its retention period. Every measurement on this page is unaffected.'
+    : 'This overlay is no longer on the server. Videos outlive the session only for signed-in accounts. Sign in before analysing to keep them in your History.';
   v.classList.add('hidden');
   v.insertAdjacentElement('afterend', note);
 }, true);
@@ -3808,10 +3808,10 @@ const POLL_ANALYZE_MS = 6*60*1000;
 const POLL_TOTAL_MS = 25*60*1000;
 async function pollOnce(){
   if(Date.now()-state.pollStart > POLL_ANALYZE_MS){
-    return fail('The analysis is taking longer than expected. Please try again — shorter clips process faster.',{keepFile:true});
+    return fail('The analysis is taking longer than expected. Please try again. Shorter clips process faster.',{keepFile:true});
   }
   if(state.pollFirst && Date.now()-state.pollFirst > POLL_TOTAL_MS){
-    return fail('Your clip sat in the queue for too long — the server is busy. Your upload was not charged twice; please try again in a few minutes.',{keepFile:true});
+    return fail('Your clip sat in the queue for too long. The server is busy. Your upload was not charged twice; please try again in a few minutes.',{keepFile:true});
   }
   try{
     const r=await fetch(withJobToken('/jobs/'+state.jobId, state.jobId),{headers:authHeaders()});
@@ -3828,7 +3828,7 @@ async function pollOnce(){
         clearInterval(state.polling);
         state.resubmitted=true;
         track('analysis_resubmitted',{mode:state.mode, sport:state.sport, seconds:Math.round((Date.now()-state.analyzeStart)/1000)});
-        stage('The server was updated mid-analysis — sending your clip again…');
+        stage('The server was updated mid-analysis. Sending your clip again…');
         announce('Server updated, resubmitting');
         setTimeout(analyze, 1500);
         return;
@@ -3871,8 +3871,8 @@ async function pollOnce(){
       state.pollStart=Date.now();
       const ahead=j.queue_ahead|0;
       stage(ahead>0
-        ? `Queued — ${ahead} clip${ahead>1?'s':''} ahead of yours…`
-        : 'Queued — yours is next…');
+        ? `Queued: ${ahead} clip${ahead>1?'s':''} ahead of yours…`
+        : 'Queued: yours is next…');
     }
     else if(j.status==='processing'){
       stage(j.stage ? esc(j.stage) : ANALYZE_STAGE);
@@ -4098,7 +4098,7 @@ function mdInline(s){
    first fails -- so an admin still sees it. */
 function coachDisclaimer(rec){
   const model=(rec&&rec.model&&auth&&auth.tier==='admin')?` · <span class="mono">${esc(rec.model)}</span>`:'';
-  return `<div class="disclaimer">Written from the measurements — sanity-check anything major with your coach.${model}</div>`;
+  return `<div class="disclaimer">Written from the measurements. Sanity-check anything major with your coach.${model}</div>`;
 }
 function mdToHtml(md){
   const e=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -4343,7 +4343,7 @@ const METRIC_DEFS={
   'Pelvic ratio':'Mean hip angle ÷ mean trunk angle. How the low position is produced: a higher ratio means the hip stays open while the back drops (pelvis rotated forward); a lower one means the hip closes for the same torso angle.',
   'Head align':'0–100: how close the ear sits to the line of the back, extended forward. 100 = head tucked on the back line; lower = head lifted above it. Higher is better.',
   'Saddle height':'Read from the knee angle at the bottom of the pedal stroke: a low saddle leaves the knee bent there, a high one stretches it.',
-  'Position':'The riding posture the trunk and elbow angles most resemble — a label, not a grade.',
+  'Position':'The riding posture the trunk and elbow angles most resemble. A label, not a grade.',
   'Foot through the stroke':'The ankle angle pattern across one pedal revolution: toe-down, flat or heel-down pedalling.',
   'Knee · bottom':'Knee angle with the pedal at the bottom of the stroke (most extended).',
   'Knee · top':'Knee angle with the pedal at the top of the stroke (most bent).',
@@ -4541,7 +4541,7 @@ function bikeTiles(s, position, plan){
     t.push(tileA('Hip · top of stroke','hip_at_tdc',s.hip_at_tdc,
       s.hip_angle_avg!=null?`averages ${num(angleDisp('hip_angle_avg',s.hip_angle_avg,'bike'))}° over the stroke`:null,hipRange,'bike'));
   } else if(s.hip_angle_avg!=null){
-    t.push(tileA('Hip · average','hip_angle_avg',s.hip_angle_avg,'stroke mean — the closed hip at the top was not measured',null,'bike'));
+    t.push(tileA('Hip · average','hip_angle_avg',s.hip_angle_avg,'stroke mean (the closed hip at the top was not measured)',null,'bike'));
   }
   if(s.elbow_angle_avg!=null) t.push(tileA('Elbow','elbow_angle_avg',s.elbow_angle_avg,null,rng('elbow_angle',s.elbow_angle_avg,'elbow_angle_avg'),'bike'));
   if(s.trunk_angle_avg!=null){
@@ -4602,7 +4602,7 @@ function bikeTiles(s, position, plan){
       ref=`${est.direction} ≈${toMid} mm (±${Math.round(est.ci_mm)}) to mid-band${toBand&&toBand<toMid?`, ≈${toBand} mm to reach it`:''} · ${est.crank_source==='given'?`your ${est.crank_length_mm} mm cranks`:'assuming 172.5 mm cranks'}${est.drive_side?' · drive-side clip, less certain':''}`;
     } else if(est&&!est.in_band&&s.saddle_height_assessment==='acceptable'){
       const tb=Math.abs(Math.round(est.to_band_mm||0));
-      ref=tb<1?'at the edge of the band — within tolerance':`≈${tb} mm outside the band — within tolerance`;
+      ref=tb<1?'at the edge of the band, within tolerance':`≈${tb} mm outside the band, within tolerance`;
     }
     /* The plan decides whether the saddle moves (action_plan_builder, on the
        knee at the bottom of the stroke). This row used to read "Acceptable,
@@ -4631,7 +4631,7 @@ function runTiles(s){
      is a third of the band it is graded in. */
   const voscNote = s.body_scale_source==='athlete_height'
     ? `scaled from your height (${s.athlete_height_cm} cm)`
-    : 'scaled from an average build — add your height for real centimetres';
+    : 'scaled from an average build. Add your height for real centimetres';
   const voscCm = s.vertical_oscillation_cm!=null ? s.vertical_oscillation_cm
     : (s.vertical_oscillation_m!=null ? s.vertical_oscillation_m*100 : null);
   if(voscCm!=null) t.push(tile('Vert. oscillation',num(voscCm,1),'cm',voscNote,null,false,R(voscCm,6,10,'cm')));
@@ -4828,10 +4828,10 @@ function renderAeroPanel(s){
     </div>
     <div class="aero-speed"><span class="aero-speed-lbl">Your race</span><div class="seg seg-sm" role="group" aria-label="Race distance">${distBtns}</div></div>
     <div class="aero-speed u-mt-2"><span class="aero-speed-lbl">Bike speed</span><div class="seg seg-sm" role="group" aria-label="Your average bike speed">${spdBtns}</div><span class="aero-speed-unit">km/h</span></div>
-    <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Here's where the time is:</p>
+    <p class="aero-lead">You're in the <b>${esc(ae.zone_label)}</b> zone, about <b>${ae.drag_vs_upright_pct}%</b> of upright drag. Here's where the time is:</p>
     ${nz?aeroGauge(ae.trunk_angle, nz.target_trunk_angle):''}
     <div class="aero-levers">${levers.map(leverRow).join('')}</div>
-    ${(torsoSlider||headSlider)?`<div class="aero-levers-h">What if <span class="hint">— move a slider, the minutes above follow</span></div>
+    ${(torsoSlider||headSlider)?`<div class="aero-levers-h">What if <span class="hint">(move a slider, the minutes above follow)</span></div>
       <div class="aero-wi">${torsoSlider}${headSlider}</div>`:''}
     <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
     <p class="aero-disc">An estimate, not a measurement: constant power on a flat course, rider + bike ${m.physics.mass_kg} kg, CdA ${m.physics.cda}. Torso from measured frontal area (Fintelman 2015, van Druenen &amp; Blocken 2023).${head?' Head interpolated between head-up and tucked (4.6–6.4% drag) across the Kona 2026 pro range.':''} Lower only pays if you can still hold power, breathe, see the road and handle the bike: stability on descents and in crosswinds is not measured here.</p>${aeroMeasuredHtml()}`;
@@ -4909,7 +4909,7 @@ async function analyzePhoto(){
     });
     renderPhoto(res);
   }catch(err){
-    fail('Network error while analyzing — check your connection and try again.',{keepFile:true,err:err});
+    fail('Network error while analyzing. Check your connection and try again.',{keepFile:true,err:err});
   }
 }
 
@@ -5149,7 +5149,7 @@ function setPhotoPartial(sc){
   const el=$('#pPartial'); if(!el) return;
   const p=sc&&sc.partial;
   el.classList.toggle('hidden',!p);
-  el.textContent=p?`${p} — ${(sc&&sc.partial_hint)||'mark the pedal position below to score the knee and hip'}`:'';
+  el.textContent=p?`${p}: ${(sc&&sc.partial_hint)||'mark the pedal position below to score the knee and hip'}`:'';
 }
 /* Where to go from here, whatever the score -- the photo's block and the
    clip's. Served with the result (free readers included: it is how to get a
@@ -5263,11 +5263,11 @@ function hobPayload(bike){
 function hobStatusText(bike, movedC){
   const c=bike[HOB_C], wheels=bike[HOB_FA]&&bike[HOB_FA].auto&&!movedC?' Both wheel axles found too, so the picture is levelled on them.':'';
   if(c&&c.auto&&!movedC){
-    if(c.auto==='chainring') return 'Found your crank axle on the chainring. Check the orange ring sits on its centre — drag it if not — then Measure.'+wheels;
+    if(c.auto==='chainring') return 'Found your crank axle on the chainring. Check the orange ring sits on its centre (drag it if not), then Measure.'+wheels;
     if(c.auto==='wheels') return 'Placed from your wheels, so approximate. Drag the ring onto the centre of the crank, then Measure.';
-    return 'We could not find the crank on this picture. Drag the CRANK ring onto the crank axle — where the two crank arms meet.';
+    return 'We could not find the crank on this picture. Drag the CRANK ring onto the crank axle, where the two crank arms meet.';
   }
-  if(!c||!c.set) return 'Drag the CRANK ring onto the crank axle — where the two crank arms meet.';
+  if(!c||!c.set) return 'Drag the CRANK ring onto the crank axle, where the two crank arms meet.';
   const set=[HOB_P,HOB_FA,HOB_RA].filter(L=>bike[L]&&bike[L].set).map(L=>HOB_LABEL[L]);
   return 'Crank axle placed by you'+(set.length?` · also: ${set.join(', ')}`:'')+'. Add the pedal axle for centimetres, both wheel axles to level the picture.';
 }
@@ -5318,27 +5318,27 @@ function renderHob(res, which, opts){
   // one on the file still in this browser.
   const h=res.hip_over_bb||null, locked=!!res.locked||!full,
         canMark=(which==='history'?!!opts.canMark:!!state.file)&&!locked, aero=['tt_aero','triathlon'].includes(res.cycling_position);
-  const intro=`The one number the Kona 2026 pros and age-groupers differed on: where the hip sits over the crank axle. Pros 88°, age-groupers 85° — about 3° or 4–5 cm further forward (${esc('31 pros, 68 age-groupers')}, every point placed by hand). Knee and hip angles did not differ.`;
+  const intro=`The one number the Kona 2026 pros and age-groupers differed on: where the hip sits over the crank axle. Pros 88°, age-groupers 85°: about 3° or 4–5 cm further forward (${esc('31 pros, 68 age-groupers')}, every point placed by hand). Knee and hip angles did not differ.`;
   // A road or upright position: the field was read on aero bars, where the hip
   // sits further forward by design. The number stands on its own.
-  const roadIntro=`Where the hip sits over the crank axle, measured from the back. Our only field (Kona 2026: 31 pros, 68 age-groupers) was read on aero bars, where the hip sits further forward by design, so there is no road field to place you in yet. The number is for comparing your own setups — same side, same camera spot.`;
+  const roadIntro=`Where the hip sits over the crank axle, measured from the back. Our only field (Kona 2026: 31 pros, 68 age-groupers) was read on aero bars, where the hip sits further forward by design, so there is no road field to place you in yet. The number is for comparing your own setups: same side, same camera spot.`;
   const introTxt=aero?intro:roadIntro;
   let body='';
   if(h){
     const gap=h.gap_pro_cm, ahead=h.gap_pro_deg>0, ref=h.ref==='axles'
-      ? `Levelled on the wheel axles — ${Math.abs(h.tilt_deg)>=0.5?`a ${Math.abs(h.tilt_deg)}° tilt of the picture taken out`:'the picture was level'}.`
+      ? `Levelled on the wheel axles: ${Math.abs(h.tilt_deg)>=0.5?`a ${Math.abs(h.tilt_deg)}° tilt of the picture taken out`:'the picture was level'}.`
       : `Assumes the phone was level: 2° of tilt is about 3 cm. Mark both wheel axles to take it out.`;
     const scale=h.scale_source==='typical' ? 'Centimetres at a typical crank-to-hip distance (1.45 cm per degree); mark the pedal axle for your own.'
       : `Centimetres from your cranks (${h.crank_to_hip_cm} cm crank to hip${h.scale_source==='crank_default'?', 172.5 mm cranks assumed':''}).`;
     body=`<div class="hob-hero"><div class="hob-num">${h.angle_deg}<small>°</small></div>
         <div class="hob-cap">over the crank axle, from the back<br><span class="hint">${h.hip_source==='video_median'?`hip = median of ${h.frames} frames`:'from this one frame'} · repeatability ±${h.repeatability_deg}°</span></div></div>
       ${aero?hobScale(h):''}
-      <p class="hob-lead">${aero?`You sit <b>${Math.abs(gap).toFixed(1)} cm ${ahead?'ahead of':'behind'}</b> the Kona pros' middle (88°) — ${hobPlace(h)}.`:`Measured at ${h.angle_deg}°. No road field yet: compare it between your own setups, filmed from the same side.`}</p>
-      <ul class="hob-notes"><li>${{auto_chainring:'Crank axle found automatically on the chainring.',auto_wheels:'Crank axle placed from the wheels, not checked by hand — worth a look.',auto_guess:'Crank axle estimated, not found — mark it again for a real reading.',user:'Crank axle placed by you.'}[h.c_source]||'Crank axle placed by you.'} ${canMark?'If it is off, tap Mark again and drag it.':''}</li><li>${ref}</li><li>${scale}</li></ul>
+      <p class="hob-lead">${aero?`You sit <b>${Math.abs(gap).toFixed(1)} cm ${ahead?'ahead of':'behind'}</b> the Kona pros' middle (88°), ${hobPlace(h)}.`:`Measured at ${h.angle_deg}°. No road field yet: compare it between your own setups, filmed from the same side.`}</p>
+      <ul class="hob-notes"><li>${{auto_chainring:'Crank axle found automatically on the chainring.',auto_wheels:'Crank axle placed from the wheels, not checked by hand. Worth a look.',auto_guess:'Crank axle estimated, not found. Mark it again for a real reading.',user:'Crank axle placed by you.'}[h.c_source]||'Crank axle placed by you.'} ${canMark?'If it is off, tap Mark again and drag it.':''}</li><li>${ref}</li><li>${scale}</li></ul>
       <details class="hob-more"><summary>What this does and doesn't mean</summary>
         <p>${introTxt}</p>
-        ${aero?`<p>It is a field, not a target: it says where the fastest riders sat, not where you must. The pros also sat flatter, and further forward usually goes with lower and closer to the bars. Moving the saddle forward moves the hip about 1:1 — but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again. <a href="${esc(h.article||'/academy/kona-2026-pro-bike-positions')}">How we measured the Kona field →</a></p>`
-        :`<p>Moving the saddle forward moves the hip about 1:1 — but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again from the same spot.</p>`}
+        ${aero?`<p>It is a field, not a target: it says where the fastest riders sat, not where you must. The pros also sat flatter, and further forward usually goes with lower and closer to the bars. Moving the saddle forward moves the hip about 1:1, but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again. <a href="${esc(h.article||'/academy/kona-2026-pro-bike-positions')}">How we measured the Kona field →</a></p>`
+        :`<p>Moving the saddle forward moves the hip about 1:1, but it also changes reach and the knee over the pedal. One change at a time, in 5 mm steps, then film again from the same spot.</p>`}
       </details>
       ${canMark?`<div class="aero-foot"><button class="btn btn-ghost btn-sm" type="button" data-hob-mark="${which}"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg> Mark again</button></div>`:''}`;
   } else if(locked){
@@ -5350,7 +5350,7 @@ function renderHob(res, which, opts){
         <span class="hint u-ml-3">One drag on your ${which==='photo'?'photo':'clip'}; the pedal and wheel axles are optional.</span></div>`
         :(which==='history'
           ? `<p class="hint">The clip behind this report is no longer stored (clips are kept for your plan’s retention period), so the crank can’t be marked on it. Analyze the clip again to mark it.</p>`
-          : `<p class="hint">Open this analysis with the ${which==='photo'?'photo':'clip'} still in the browser to mark the crank — after a reload the file is gone.</p>`)}`;
+          : `<p class="hint">Open this analysis with the ${which==='photo'?'photo':'clip'} still in the browser to mark the crank. After a reload the file is gone.</p>`)}`;
   }
   host.innerHTML=body; blk.classList.remove('hidden');
 }
@@ -5459,7 +5459,7 @@ function lmedOpen(mode){
   const ed=$('#pEditor'); ed.classList.remove('hidden'); lmed.open=true;
   $('#pEdApply').textContent=lmed.mode==='bike'?'Measure':'Re-measure';
   $('#pEdTitle').textContent=lmed.mode==='bike'?'Mark the crank axle':'Drag a joint';
-  $('#pEdLead').textContent=lmed.mode==='bike'?' — the orange ring, onto the centre of the crank. The other three are optional.':' to where it really is — the ringed points can be moved.';
+  $('#pEdLead').textContent=lmed.mode==='bike'?': the orange ring, onto the centre of the crank. The other three are optional.':' to where it really is. The ringed points can be moved.';
   const hpc=res.helmet_points&&res.helmet_points.check;
   const freeScope=state.photoPose.scope==='free';
   $('#pEdHint').textContent=lmed.mode==='bike'
@@ -5467,7 +5467,7 @@ function lmedOpen(mode){
     : freeScope
     ? 'On the free plan you can move the hip and the knee: the picture is redrawn on your points, the score stays the automatic one. Paid plans move every joint and measure every angle and the score again.'
     : lmed.sport==='run'
-    ? 'The leg drawn is the one on the ground — that is the leg measured. Drag its knee, ankle, heel or toe onto that leg if a point sits on the other one.'+(state.photoPose.pelvis_hip!=null?' That leg is the far one, so its hip is hidden behind you: the ringed hip should sit where the line along the middle of that thigh meets the hips.':'')
+    ? 'The leg drawn is the one on the ground. That is the leg measured. Drag its knee, ankle, heel or toe onto that leg if a point sits on the other one.'+(state.photoPose.pelvis_hip!=null?' That leg is the far one, so its hip is hidden behind you: the ringed hip should sit where the line along the middle of that thigh meets the hips.':'')
     : hpc
     ? 'Check the green top-of-back point first: if it sits on your helmet, drag it to the highest point of your back.'
     : `Only the ${lmed.side}-side joints count on a side view.`;
@@ -5480,7 +5480,7 @@ function lmedOpen(mode){
     // A format the browser cannot show (HEIC in Chrome): fall back to the
     // annotated copy so the editor still works, and say why it looks busy.
     const fb=new Image(); fb.onload=()=>{ lmed.img=fb; lmedFit(); lmedDraw(); };
-    fb.src=res.thumbnail_base64||''; $('#pEdHint').textContent='Showing the annotated copy — this format can’t be previewed directly.';
+    fb.src=res.thumbnail_base64||''; $('#pEdHint').textContent='Showing the annotated copy. This format can’t be previewed directly.';
   };
   img.src=lmed.url;
   track('joint_adjust_opened',{sport:'bike',position:res.cycling_position||null});
@@ -5646,10 +5646,10 @@ async function recomputePhoto(){
     lmedClose();
     renderPhoto(j,{reuseHistId:state.photoHistId});
     const pw=j.plausibility_warnings||[];
-    toast(bikePts?'Measured where you sit over the crank.':pw.length?'Re-measured — one adjustment looks unusual, see the note under the photo.':'Re-measured with your adjustments.');
+    toast(bikePts?'Measured where you sit over the crank.':pw.length?'Re-measured. One adjustment looks unusual, see the note under the photo.':'Re-measured with your adjustments.');
     if(bikePts){ const hb=$('#pHobBlock'); if(hb) hb.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'}); }
   }catch(e){
-    lmedStatus('Network error — check your connection and try again.',true); btn.setAttribute('aria-disabled','false');
+    lmedStatus('Network error. Check your connection and try again.',true); btn.setAttribute('aria-disabled','false');
   }
 }
 /* The badge under the picture: what was moved, and what the geometry said
@@ -5875,7 +5875,7 @@ FlappPlayer.prototype={
   setSpeed(s){ this.speed=s; [this.video,this.raw].forEach(v=>{ v.playbackRate=s; });
     this.root.querySelectorAll('.fp-speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===s))); },
   rawGuard(){
-    const why='Your clip’s format can’t be played in this browser — the annotated render still can.';
+    const why='Your clip’s format can’t be played in this browser. The annotated render still can.';
     this.root.querySelectorAll('.fp-layers button').forEach(b=>{ if(b.dataset.layer==='overlay') return;
       b.disabled=!!this.rawBad; if(this.rawBad) b.title=why; else b.removeAttribute('title'); });
   },
@@ -6209,7 +6209,7 @@ async function mountCompareVideo(Ae,Be,sides){
   // The screen moved on while these were in flight.
   if(!host.isConnected || !state.cmp || (state.cmp.aId!==Ae.id&&!sides) ) { if(!host.isConnected) return; }
   const ua=oa&&oa.overlays&&oa.overlays.single, ub=ob&&ob.overlays&&ob.overlays.single;
-  if(!ua||!ub){ host.innerHTML=`<p class="hint">The two clips can’t be played together — ${!ua&&!ub?'neither overlay is':'one overlay is no longer'} on the server (clips are kept for their retention period, the numbers above are kept for good).</p>`; return; }
+  if(!ua||!ub){ host.innerHTML=`<p class="hint">The two clips can’t be played together: ${!ua&&!ub?'neither overlay is':'one overlay is no longer'} on the server (clips are kept for their retention period, the numbers above are kept for good).</p>`; return; }
   const api=window.FLAPP_API_BASE||'';
   const sport=(ta&&ta.timeline&&ta.timeline.sport)||state.cmp.sport;
   // "step" on a run: the gait phase says a foot is down, either foot, so
@@ -6249,7 +6249,7 @@ async function mountCompareVideo(Ae,Be,sides){
   if(c.locked){
     const na=c.anchA.length-1, nb=c.anchB.length-1;
     lock.innerHTML=`<span class="bil-flag bil-ok">locked ${noun} to ${noun}</span>`;
-    note.textContent=`${tagA} leads; ${tagB} follows it through each ${noun} — the ${sport==='bike'?'bottom of the stroke':'landing'} on the left lands on the ${sport==='bike'?'bottom of the stroke':'landing'} on the right, whatever the cadence. `
+    note.textContent=`${tagA} leads; ${tagB} follows it through each ${noun}: the ${sport==='bike'?'bottom of the stroke':'landing'} on the left lands on the ${sport==='bike'?'bottom of the stroke':'landing'} on the right, whatever the cadence. `
       +(na!==nb?`${tagA} has ${na} ${noun}s and ${tagB} ${nb}; the shorter one repeats. `:'')
       +'Two clips are two camera setups: compare the positions, not the pixels.';
     host.querySelector('.sy-ev').classList.remove('hidden');
@@ -6414,7 +6414,7 @@ async function vedOpen(mode, ctx){
   ed.classList.remove('hidden'); ved.open=true;
   $('#vEdApply').textContent=ved.mode==='bike'?'Measure':'Re-measure clip';
   $('#vEdTitle').textContent=ved.mode==='bike'?'Mark the crank axle':'Pause, then drag a joint';
-  $('#vEdLead').textContent=ved.mode==='bike'?' — the orange ring, onto the centre of the crank. The bike does not move on a trainer, so one frame is enough; the pedal and wheel axles are optional.':' to where it really is. The move applies to the whole clip — scrub to check it.';
+  $('#vEdLead').textContent=ved.mode==='bike'?': the orange ring, onto the centre of the crank. The bike does not move on a trainer, so one frame is enough; the pedal and wheel axles are optional.':' to where it really is. The move applies to the whole clip. Scrub to check it.';
   $('#vEdStatus').textContent='Loading the measured points…'; $('#vEdStatus').classList.remove('warn');
   track('joint_adjust_opened',{sport:'bike',mode:'video',position:r.cycling_position||null});
   try{
@@ -6508,7 +6508,7 @@ function vedStatus(msg,warn){
   if(ved.mode==='bike'){ st.textContent=msg||hobStatusText(ved.bike, !!ved.movedC);
     $('#vEdApply').setAttribute('aria-disabled',String(!(ved.bike[HOB_C]&&ved.bike[HOB_C].set)||ved.busy)); return; }
   const n=vedCorrections().length;
-  st.textContent=msg||(n?`${n} joint${n>1?'s':''} moved: ${Object.keys(ved.pending).map(L=>LMED_NAMES[L]).join(', ')} — applies to every frame.`:'Nothing moved yet.');
+  st.textContent=msg||(n?`${n} joint${n>1?'s':''} moved: ${Object.keys(ved.pending).map(L=>LMED_NAMES[L]).join(', ')}. Applies to every frame.`:'Nothing moved yet.');
   $('#vEdApply').setAttribute('aria-disabled',String(!n||ved.busy));
 }
 function vedClose(){
@@ -6550,7 +6550,7 @@ function vedBind(){
 }
 async function applyVideoCorrections(){
   const fresh=vedCorrections(); if(!fresh.length||!state.jobId||ved.busy) return;
-  ved.busy=true; vedStatus('Measuring the clip again — about half a minute…');
+  ved.busy=true; vedStatus('Measuring the clip again (about half a minute)…');
   const t0=Date.now();
   try{
     const r=await fetch(withJobToken('/jobs/'+state.jobId+'/corrections', state.jobId),
@@ -6561,7 +6561,7 @@ async function applyVideoCorrections(){
     const pw=j.plausibility_warnings||[];
     if(pw.length) vedStatus('Re-measuring… note: '+pw[0].message,true);
     pollRecompute(t0,'apply');
-  }catch(e){ ved.busy=false; vedStatus('Network error — check your connection and try again.',true); }
+  }catch(e){ ved.busy=false; vedStatus('Network error. Check your connection and try again.',true); }
 }
 async function applyBikePoints(){
   const pts=hobPayload(ved.bike); if(!pts.C||!ved.job||ved.busy) return;
@@ -6587,7 +6587,7 @@ async function applyBikePoints(){
     state.videoHistId=saveToHistory('video', res, state.videoHistId||null);
     toast('Measured where you sit over the crank.');
     const hb=$('#hobBlock'); if(hb) hb.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'});
-  }catch(e){ ved.busy=false; vedStatus('Network error — check your connection and try again.',true); }
+  }catch(e){ ved.busy=false; vedStatus('Network error. Check your connection and try again.',true); }
 }
 async function resetVideoCorrections(){
   if(!state.jobId||ved.busy) return;
@@ -6599,7 +6599,7 @@ async function resetVideoCorrections(){
     ved.existing={}; ved.pending={};
     if(j.status!=='processing'){ ved.busy=false; vedStatus(); return; }
     pollRecompute(Date.now(),'reset');
-  }catch(e){ ved.busy=false; vedStatus('Network error — check your connection and try again.',true); }
+  }catch(e){ ved.busy=false; vedStatus('Network error. Check your connection and try again.',true); }
 }
 /* Same poll as the original analysis, without its timeouts and tracking:
    the job already succeeded once, and the previous result stays on screen
@@ -6651,7 +6651,7 @@ function renderPhoto(res,opts){
     pwh.innerHTML = sc.withheld
       ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
          <span><b>We didn\u2019t score this photo.</b> ${esc(why)}
-         <span class="wh-next">Take another photo side-on, with you filling most of the picture<span data-wh-adjust-txt class="hidden"> &mdash; or, if the skeleton landed in the wrong place, move the points by hand and the angles are measured again</span>.</span>
+         <span class="wh-next">Take another photo side-on, with you filling most of the picture<span data-wh-adjust-txt class="hidden">, or, if the skeleton landed in the wrong place, move the points by hand and the angles are measured again</span>.</span>
          <span class="wh-acts"><button class="btn btn-sm" type="button" data-wh-refilm>Take another photo</button><button class="btn btn-sm hidden" type="button" data-wh-adjust>Adjust the joints</button></span></span>`
       : '';
     pwh.classList.toggle('hidden', !sc.withheld);
@@ -6766,12 +6766,12 @@ function renderPhoto(res,opts){
    ============================================================ */
 const UNLOCK_COPY={
   coaching:'Coaching notes & a personal action plan',
-  plan:'Corrective drills — what to actually do about it',
-  fit:'Fit adjustments — what to move on the bike, and by how much',
+  plan:'Corrective drills: what to actually do about it',
+  fit:'Fit adjustments: what to move on the bike, and by how much',
   angles:'Exact joint-angle measurements',
   issues:'Every technique issue we found',
   ranges:'Cadence, ranges & benchmark metrics',
-  kinogram:'Kinogram — the five key positions of your stride, side by side',
+  kinogram:'Kinogram: the five key positions of your stride, side by side',
   video:'Annotated video + slow-motion replay',
   export:'Export your numbers as a file',
 };
@@ -6913,7 +6913,7 @@ function renderCoachCard(){
   $('#coachLogoPick').addEventListener('click',()=>$('#coachLogoFile').click());
   $('#coachLogoFile').addEventListener('change',async e=>{
     const f=e.target.files&&e.target.files[0]; if(!f) return;
-    try{ const uri=await coachLogoFromFile(f); if(uri.length>200*1024*1.4){ toast('That mark is still too large after resizing — try a simpler image.'); return; }
+    try{ const uri=await coachLogoFromFile(f); if(uri.length>200*1024*1.4){ toast('That mark is still too large after resizing. Try a simpler image.'); return; }
       await saveCoach({name:$('#coachName').value,tagline:$('#coachTag').value,logo:uri}); }
     catch(_e){ toast('That file could not be read as an image.'); }
   });
@@ -6950,12 +6950,12 @@ function renderCoachNote(hostId, entryId){
   const title=block.querySelector('h3'); if(title) title.textContent=editing?(COACH.name?`${COACH.name}’s notes`:'Coach’s own notes'):(bought?'Coach Notes':(by?`${by}’s notes`:'Coach’s notes'));
   const eb=block.querySelector('.eyebrow'); if(eb) eb.innerHTML=`<svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> ${editing?'Your notes':bought?'A person read this':'From your coach'}`;
   if(!editing){
-    host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">— ${esc(by)}${bought?' · read your clip and this analysis':''}</div>${bio?`<div class="cnote-bio">${esc(bio)}</div>`:''}`:''}`;
+    host.innerHTML=`<div class="cnote-read">${esc(note)}</div>${by?`<div class="cnote-by">${esc(by)}${bought?' · read your clip and this analysis':''}</div>${bio?`<div class="cnote-bio">${esc(bio)}</div>`:''}`:''}`;
     return;
   }
   const cues=(COACH.cues||[]);
   host.innerHTML=`<div class="cnote-read hidden">${esc(note)}</div>
-    <textarea id="${hostId}Text" placeholder="What you saw that the numbers did not — and the one thing to work on before the next clip.">${esc(note)}</textarea>
+    <textarea id="${hostId}Text" placeholder="What you saw that the numbers did not, and the one thing to work on before the next clip.">${esc(note)}</textarea>
     ${cues.length?`<div class="cnote-cues"><span class="cnote-cuelbl">Cues</span>${cues.map(c=>`<button type="button" data-cue="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:`<p class="cnote-empty">Add cues to your <a href="#coach-profile" onclick="event.preventDefault();openCoachProfile()">coach profile</a> and they appear here as one-click chips.</p>`}
     <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="${hostId}Save"${entryId?'':' disabled title="This report has not been saved yet"'}>Save note</button>
       <span class="cnote-status" id="${hostId}Status">${note?'Saved on this report · prints under your name · included in the export.':'Saved on this report, printed under your name, included in the AI export.'}</span></div>`;
@@ -6965,7 +6965,7 @@ function renderCoachNote(hostId, entryId){
   $('#'+hostId+'Save').addEventListener('click',async()=>{
     st.textContent='Saving…';
     const ok=e&&e.linkedAthleteId ? await putLinkedNote(e, ta.value.trim()) : await patchEntry(entryId,{coachNote:ta.value.trim(),coachName:COACH.name||''});
-    st.textContent=ok?'Saved.':'Could not save — check your connection.';
+    st.textContent=ok?'Saved.':'Could not save. Check your connection.';
     if(ok){ host.querySelector('.cnote-read').textContent=ta.value.trim(); track('coach_note_saved',{chars:ta.value.trim().length}); }
   });
 }
@@ -7056,7 +7056,7 @@ async function renderNotesOffer(hostId, entryId){
   let body;
   if(done){
     body=`<div class="no-head"><span class="no-chip">Coach Notes · delivered</span></div>
-      <p class="no-p">Your Coach Notes are on this report, under <b>Coach Notes</b> above. Want the full picture — which numbers to trust, a four-week plan, position trade-offs? That is the Expert Review${credits>0?', and your plan already includes one':''}.</p>
+      <p class="no-p">Your Coach Notes are on this report, under <b>Coach Notes</b> above. Want the full picture: which numbers to trust, a four-week plan, position trade-offs? That is the Expert Review${credits>0?', and your plan already includes one':''}.</p>
       <div class="no-cta">${credits>0?useReview
         :`<button class="btn btn-outline btn-sm" type="button" onclick="startCheckout('expert',${esc(JSON.stringify(entryId))})">Expert Review${expertPriceLabel()}</button>`}</div>
       <div id="${hostId}Recheck" class="u-mt-4"></div>`;
@@ -7065,26 +7065,26 @@ async function renderNotesOffer(hostId, entryId){
     // it in their own words.
     const st=open.status==='in_review'?'a coach is on it':'booked';
     body=`<div class="no-head"><span class="no-chip">Coach Notes · ${st}</span></div>
-      <p class="no-p">A coach has this report. You’ll get an email when the notes are on it — usually within 72 hours.</p>
-      ${credits>0?`<p class="no-p">Your plan also includes a full Expert Review — worth booking once you have made these changes and filmed again.</p>`:''}`;
+      <p class="no-p">A coach has this report. You’ll get an email when the notes are on it, usually within 72 hours.</p>
+      ${credits>0?`<p class="no-p">Your plan also includes a full Expert Review, worth booking once you have made these changes and filmed again.</p>`:''}`;
   } else if(credits>0){
     const avail=!!(price.available&&price.plan);
     body=`<div class="no-head"><span class="no-chip">A person’s eyes on this</span><span class="no-price">Included</span></div>
       <h3 class="no-t">Your plan includes a full Expert Review</h3>
       <p class="no-p">A coach reviews your clip in full: what they see, what to change first, a four-week plan and the position trade-offs. It is already paid for with your plan.</p>
-      <p class="no-p no-fence">Only want the short version? <b>Coach Notes</b> — one line and three notes — are ${esc(price.display||'')} on their own.</p>
+      <p class="no-p no-fence">Only want the short version? <b>Coach Notes</b> (one line and three notes) are ${esc(price.display||'')} on their own.</p>
       <div class="no-cta">${useReview}
-        ${avail?`<button class="btn btn-ghost btn-sm" type="button" data-notesbuy>Just the Coach Notes — ${esc(price.display||'')}</button>`:''}
+        ${avail?`<button class="btn btn-ghost btn-sm" type="button" data-notesbuy>Just the Coach Notes · ${esc(price.display||'')}</button>`:''}
         <span class="no-note" id="${hostId}Slots"></span></div>`;
   } else {
     const avail=!!(price.available&&price.plan);
     body=`<div class="no-head"><span class="no-chip">A person’s eyes on this</span><span class="no-price">${esc(price.display||'')} <small>${esc(price.per||'')}</small></span></div>
-      <h3 class="no-t">Coach Notes — three things a coach sees</h3>
-      <p class="no-p">A coach reads this analysis and your clip and writes back: <b>the first thing to change</b>, in one line, and <b>three notes</b> — what a person sees that the numbers didn’t. Written on this report, within 72 hours; prints and exports with it.</p>
+      <h3 class="no-t">Coach Notes: three things a coach sees</h3>
+      <p class="no-p">A coach reads this analysis and your clip and writes back: <b>the first thing to change</b>, in one line, and <b>three notes</b> (what a person sees that the numbers didn’t). Written on this report, within 72 hours; prints and exports with it.</p>
       <p class="no-p no-fence">Not a full review: no trust judgement, no four-week plan, no position trade-offs. Those are the <a href="#pricing" onclick="event.preventDefault();openPricing()">Expert Review</a>${expertPriceLabel()}.</p>
       <div class="no-cta">${avail
-        ?`<button class="btn btn-primary btn-sm" type="button" data-notesbuy><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Add Coach Notes — ${esc(price.display||'')}</button>`
-        :`<button class="btn btn-primary btn-sm" type="button" disabled>Coach Notes — coming soon</button>`}
+        ?`<button class="btn btn-primary btn-sm" type="button" data-notesbuy><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> Add Coach Notes · ${esc(price.display||'')}</button>`
+        :`<button class="btn btn-primary btn-sm" type="button" disabled>Coach Notes · coming soon</button>`}
         <span class="no-note" id="${hostId}Slots"></span></div>`;
   }
   host.innerHTML=`<div class="no-card">${body}</div>`;
@@ -7097,7 +7097,7 @@ async function renderNotesOffer(hostId, entryId){
     // Sold out or paused is better said before the click.
     fetch('/billing/expert-review/slots').then(r=>r.ok?r.json():null).then(j=>{
       const n=j&&j.notes; const sl=$('#'+hostId+'Slots'); if(!n||!sl) return;
-      if(!n.open){ buy.disabled=true; sl.textContent=n.paused?'Paused this week — the coach is away.':'This week’s notes are fully booked — open again Monday.'; }
+      if(!n.open){ buy.disabled=true; sl.textContent=n.paused?'Paused this week: the coach is away.':'This week’s notes are fully booked. Open again Monday.'; }
       else if(n.left!=null&&n.left<=3) sl.textContent=`${n.left} left this week`;
     }).catch(()=>{});
   }
@@ -7168,7 +7168,7 @@ function openSwim(){
   track('swim_tile_clicked',{signed_in:!!auth});
   // The clip is stored against an account and only worth anything once a
   // review is bought for it -- there is no guest version of this.
-  if(!auth){ toast('Create a free account first — the coach’s review is sent to it.',{action:'Sign up',onAction:()=>openAuth('register')}); return; }
+  if(!auth){ toast('Create a free account first. The coach’s review is sent to it.',{action:'Sign up',onAction:()=>openAuth('register')}); return; }
   state.swimOpen=null;
   renderSwimUpload();
   setState('swim',{focus:'#swTitle'});
@@ -7400,7 +7400,7 @@ function swimDelete(e){
         state.swimHist=swimList().filter(x=>x.id!==e.id);
         toast('Clip deleted.');
         openHistoryView();
-      }catch(err){ toast('Couldn’t delete the clip — try again.'); }
+      }catch(err){ toast('Couldn’t delete the clip. Try again.'); }
     }});
 }
 function swimCardsHtml(){
@@ -7469,10 +7469,10 @@ function renderPrintable(r, entry){
     foot.innerHTML =
       `<p><b>How to read this.</b> Every angle is measured from one side-view clip
         by 2D pose estimation. It is a comparison against reference ranges and
-        against your own earlier clips — not a laboratory measurement, and not a
+        against your own earlier clips, not a laboratory measurement, and not a
         substitute for a bike fit or a clinician.</p>`
       + (conf?`<p><b>Confidence on this clip:</b> ${esc(conf)}</p>`:'')
-      + ((coachOn()&&COACH.name)?`<p><b>Prepared by ${esc(COACH.name)}</b>${COACH.tagline?' · '+esc(COACH.tagline):''} — with Flapp by Clariva · getflapp.com</p>`:`<p>Flapp by Clariva · getflapp.com</p>`);
+      + ((coachOn()&&COACH.name)?`<p><b>Prepared by ${esc(COACH.name)}</b>${COACH.tagline?' · '+esc(COACH.tagline):''}, with Flapp by Clariva · getflapp.com</p>`:`<p>Flapp by Clariva · getflapp.com</p>`);
   }
 }
 /* Full and everything above it: Coach is Full plus a roster. */
@@ -7525,7 +7525,7 @@ async function openReportPdf(){
     w.document.open(); w.document.write(html); w.document.close();
   }catch(e){
     w.close();
-    toast('The PDF report could not be prepared — printing this page instead.');
+    toast('The PDF report could not be prepared. Printing this page instead.');
     window.print();
   }
 }
@@ -7878,7 +7878,7 @@ function wireProfParts(list){
           headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({part_id:b.dataset.part, fits})});
         const j=await r.json().catch(()=>({}));
         if(!r.ok){ toast(typeof j.detail==='string'?j.detail:'Could not send that.'); return; }
-        const span=b.closest('.part-rep'); if(span) span.textContent='Thanks — we check every report before the list changes.';
+        const span=b.closest('.part-rep'); if(span) span.textContent='Thanks. We check every report before the list changes.';
       }catch(_e){ toast('Could not send that.'); }
     }));
     const go=box.querySelector('[data-partsgo]');
@@ -7920,7 +7920,7 @@ async function profPatch(id, body){
     const name=$('#profName').value.trim(); if(!name){ $('#profName').focus(); return; }
     const sport=$('#profSport').value, kind=$('#profKind').value;
     const crankRaw=$('#profCrank').value.trim(), crank=crankRaw===''?null:parseFloat(crankRaw);
-    if(sport==='bike' && crank!==null && !(crank>=150&&crank<=185)){ toast('Cranks run 150–185 mm — check the number.'); $('#profCrank').focus(); return; }
+    if(sport==='bike' && crank!==null && !(crank>=150&&crank<=185)){ toast('Cranks run 150–185 mm. Check the number.'); $('#profCrank').focus(); return; }
     const yearRaw=$('#profYear').value.trim(), year=yearRaw===''?null:parseInt(yearRaw,10);
     if(sport==='bike' && year!==null && !(year>=1990&&year<=2030)){ toast('A model year between 1990 and 2030, or leave it empty.'); $('#profYear').focus(); return; }
     const bikeBits=sport==='bike'?{crank_length_mm:crank, position:$('#profPos').value||null,
@@ -8233,7 +8233,7 @@ async function setResearch(on, opts){
     track('research_consent_changed',{opt_in:on});
     if(!opts.quiet) toast(on?'Aero research is on. Switch it off here any time.':'Aero research is off. Nothing of yours is used for it.');
     return true;
-  }catch(_e){ toast('Could not save that — try again.'); return false; }
+  }catch(_e){ toast('Could not save that. Try again.'); return false; }
 }
 /* One athlete's setups and their measured CdA, for the coach. Cached per
    athlete: the detail page redraws when a linked athlete's history lands. */
@@ -8394,7 +8394,7 @@ function renderAthletes(){
   if(ATHLETES.error){ list.innerHTML=`<div class="prof-row"><span class="p-name">Your athletes didn’t load.</span><span></span><span></span><span class="p-acts"><button type="button" data-retryath="1">Retry</button></span></div>`;
     list.querySelector('[data-retryath]').addEventListener('click',()=>loadAthletes().then(renderAthletes)); return; }
   if(!rows.length){
-    list.innerHTML=`<div class="prof-row"><span class="p-name p-name--empty">${f==='archived'?'Nobody archived.':'Nobody yet — add the first athlete you coach, then pick them on Analyze.'}</span></div>`;
+    list.innerHTML=`<div class="prof-row"><span class="p-name p-name--empty">${f==='archived'?'Nobody archived.':'Nobody yet. Add the first athlete you coach, then pick them on Analyze.'}</span></div>`;
   } else {
     // A row per athlete (Athletes board): their last frame, who they are, their
     // groups and next race, the last clip and its score, how many analyses.
@@ -8466,7 +8466,7 @@ async function athPatch(id, body){
       try{
         const r=await fetch('/me/athletes',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({name,email,sport,note})});
         const j=await r.json().catch(()=>({}));
-        ok=r.ok; if(!ok) toast((j.detail&&typeof j.detail==='string')?j.detail:'Could not add that athlete — check the email.',{duration:6000});
+        ok=r.ok; if(!ok) toast((j.detail&&typeof j.detail==='string')?j.detail:'Could not add that athlete. Check the email.',{duration:6000});
       }catch(e){ ok=false; toast('Could not add that athlete.'); }
     }
     if(ok){ $('#athEdit').classList.add('hidden'); state.athEditId=null; await loadAthletes(); renderAthletes(); toast(editing?'Saved.':`${name} is on the squad.`); track(editing?'athlete_edited':'athlete_added',{n:ATHLETES.used}); }
@@ -8559,7 +8559,7 @@ function renderCoachLink(){
       <div class="acct-actions ac-unlink"><button class="btn btn-ghost btn-sm" type="button" id="linkOff">Unlink</button><span class="subhint">Stops their access right away. Notes they wrote stay.</span></div>`;
     $('#linkOff').addEventListener('click',()=>confirmDialog({title:`Unlink ${c.name}?`, body:'They stop seeing your analyses and clips immediately. You can link a coach again any time.', okLabel:'Unlink', onOk:async()=>{
       try{ const r=await fetch('/me/coach-link',{method:'DELETE',headers:authHeaders()}); if(!r.ok) throw 0; track('coach_unlinked',{}); await loadCoachLink(); toast('Unlinked.'); }
-      catch(_e){ toast('Could not unlink — try again.'); }
+      catch(_e){ toast('Could not unlink. Try again.'); }
     }}));
     return;
   }
@@ -8593,8 +8593,8 @@ $('#acctMarketing').addEventListener('change',async e=>{
     if(!r.ok) throw new Error(String(r.status));
     if(auth) auth.marketing_opt_in=on;
     track('marketing_consent_changed',{opt_in:on});
-    toast(on?'You\'re on the list — unsubscribe any time.':'Done — no more news or offers.');
-  }catch(err){ e.target.checked=!on; toast('Could not save that — try again.'); }
+    toast(on?'You\'re on the list. Unsubscribe any time.':'Done. No more news or offers.');
+  }catch(err){ e.target.checked=!on; toast('Could not save that. Try again.'); }
 });
 $('#acctResearch').addEventListener('change',async e=>{
   const on=e.target.checked;
@@ -8702,10 +8702,10 @@ function teaserPanelHtml(items, opts){
     }).join('')}</ul>
     <div class="cta-row">
       ${opts.planBuy
-        ? `<button class="btn btn-primary btn-planbuy" type="button" data-src="${esc(opts.src||'teaser')}" onclick="startCheckout(${esc(JSON.stringify(opts.planBuy.plan))})">Start ${esc(opts.planBuy.name)} — ${esc(opts.planBuy.display)}/mo <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
+        ? `<button class="btn btn-primary btn-planbuy" type="button" data-src="${esc(opts.src||'teaser')}" onclick="startCheckout(${esc(JSON.stringify(opts.planBuy.plan))})">Start ${esc(opts.planBuy.name)} · ${esc(opts.planBuy.display)}/mo <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>
            <a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare plans</a>`
         : `<button class="btn btn-primary" type="button" data-src="${esc(opts.src||'teaser')}" onclick="openUpgrade&&openUpgrade()">Upgrade to unlock <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></button>`}
-      ${opts.unlockId?`<button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Unlock this report — free':'Unlock just this report — '+esc(unlockPrice())}</button>`:''}
+      ${opts.unlockId?`<button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(opts.unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${freeUnlocks()>0?'Unlock this report · free':'Unlock just this report · '+esc(unlockPrice())}</button>`:''}
       ${opts.planBuy?'':`<span class="price-tag">${fromPriceLabel()}</span>`}
     </div>
     ${opts.unlockNudge||''}
@@ -8899,7 +8899,7 @@ function unlockOfferHtml(unlockId, title, blurb){
   return `<div class="tc-offer tc-pri">
       <div class="tc-h"><b>${esc(title)}</b><span class="tc-price tc-per">${free?'free':esc(price)}<small>one report</small></span></div>
       <p>${esc(blurb)}</p>
-      <button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${free?'Open this report — free':'Open this report — '+esc(price)}</button>
+      <button class="btn btn-go btn-unlock" type="button" onclick="startCheckout('unlock',${esc(JSON.stringify(unlockId))})"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg> ${free?'Open this report · free':'Open this report · '+esc(price)}</button>
     </div>`;
 }
 /* The plan box on a paywall card: name, price per month for the pressed
@@ -8991,8 +8991,8 @@ function renderPhotoUpsell(containerId, locked, blockIds){
       ?'It opens on your first side-on <b>video</b>: the findings, the coaching, and every angle measured across every stroke. A photo cannot give you that.'
       :'A side-on <b>video</b> is the accurate read: every angle, every stroke. The full report of a clip comes with a plan.'}</p>
     <div class="cta-row">
-      <button class="btn btn-go btn-unlock" type="button" data-src="photo" onclick="switchToVideo('card')"><svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg> ${waiting?'Analyze a video — free, in full':'Analyze a video'}</button>
-      ${plan?`<button class="btn btn-primary" type="button" data-src="photo" onclick="startCheckout(${esc(JSON.stringify(plan.plan))})">Start ${esc(plan.name)} — ${esc(plan.display)}/mo</button>`:''}
+      <button class="btn btn-go btn-unlock" type="button" data-src="photo" onclick="switchToVideo('card')"><svg class="ic" aria-hidden="true"><use href="#i-arr-r"/></svg> ${waiting?'Analyze a video: free, in full':'Analyze a video'}</button>
+      ${plan?`<button class="btn btn-primary" type="button" data-src="photo" onclick="startCheckout(${esc(JSON.stringify(plan.plan))})">Start ${esc(plan.name)} · ${esc(plan.display)}/mo</button>`:''}
       <a href="#pricing" class="plans-link" onclick="event.preventDefault();openUpgrade&&openUpgrade()">Compare plans</a>
     </div>
   </div>`;
@@ -9123,7 +9123,7 @@ function drawPricing(){
     /* Silently blank tier cards on the pricing page are a dead end that costs
        money — name the failure and offer the retry the network owed us. */
     if(PLANS_ERR) host.innerHTML=`<div class="planserr" role="alert">
-      <p>The price list didn&rsquo;t load &mdash; a network hiccup, not a missing plan.</p>
+      <p>The price list didn&rsquo;t load: a network hiccup, not a missing plan.</p>
       <button class="btn btn-outline btn-sm" type="button" onclick="retryPlans()">Retry</button></div>`;
     return;                        // renderPricing() re-enters when it lands
   }
@@ -9194,7 +9194,7 @@ function unlockNudgeHtml(){
   const spent=unlockCount();
   if(spent<2) return '';
   return `<p class="hint u-m-0 u-mt-3">You’ve unlocked <b>${spent}</b> reports.
-    A plan costs about the same per month and adds the overlay video, trends and before / after —
+    A plan costs about the same per month and adds the overlay video, trends and before / after,
     which one report on its own can never show you.</p>`;
 }
 /* The cheapest monthly plan we can actually charge for, with the card it
@@ -9377,8 +9377,8 @@ async function renderReviewCard(){
       <div>
         <div class="rev-t">${n?(o.unread?'Your Coach Notes are on your report':'Your Coach Notes'):(o.unread?'Your Expert Review is ready':'Your Expert Review')}</div>
         <div class="rev-s">${o.unread
-          ? (n?'A coach read your analysis and wrote back — the first thing to change, and three notes.'
-              :'A human read your analysis and wrote back — priorities, a four-week plan, and when to film again.')
+          ? (n?'A coach read your analysis and wrote back: the first thing to change, and three notes.'
+              :'A human read your analysis and wrote back: priorities, a four-week plan, and when to film again.')
           : 'Delivered '+esc(shortDate(o.delivered_at_ms))}</div>
       </div>
       <button class="btn btn-link" type="button" ${n?`data-opennotes="${o.id}" data-entry="${esc(o.analysis_client_id||'')}"`:`data-openreview="${o.id}"`}>${o.unread?'Read it':'Read again'} →</button>
@@ -9539,8 +9539,8 @@ async function exMailTest(){
     const r=await fetch('/admin/email-test',{method:'POST',headers:authHeaders()});
     const j=await r.json().catch(()=>({}));
     if(r.ok){
-      if(st) st.textContent=`Sent to ${j.to} via ${j.provider} — check your inbox.`;
-      toast('Test email sent — if it arrives, delivered reviews will too.');
+      if(st) st.textContent=`Sent to ${j.to} via ${j.provider}. Check your inbox.`;
+      toast('Test email sent. If it arrives, delivered reviews will too.');
     } else {
       // 503 = nothing configured; 502 = the provider refused it. Both carry a
       // sentence written for whoever is standing here.
@@ -9598,7 +9598,7 @@ async function exDownloadBrief(){
     const url=URL.createObjectURL(new Blob([await r.arrayBuffer()],{type:'text/html'}));
     const a=document.createElement('a'); a.href=url; a.download='Разбор_для_тренера_заказ_'+d.id+'.html';
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),10000);
-    if(st) st.textContent='Brief downloaded — send it to the coach.';
+    if(st) st.textContent='Brief downloaded. Send it to the coach.';
   }catch(e){ if(st) st.textContent='Couldn’t build the brief ('+(e.message||'error')+').'; }
   finally{ if(btn) btn.disabled=false; }
 }
@@ -9655,8 +9655,8 @@ function exEditorHtml(d){
     <h3 class="sec u-mb-2">${d.plan==='notes'?(done?'Delivered Coach Notes':'Write the Coach Notes'):(done?'Delivered review':'Write the review')}</h3>
     <div class="speedline"></div>
   </div>
-  ${d.sport==='swim'?'<p class="hint"><b>Swim clip.</b> Nothing was measured — no numbers, frame or kinogram. The review is written from the footage alone; the brief gives the coach a swim checklist.</p>':''}
-  ${d.plan==='notes'?'<p class="hint">One line and three notes, about 40 words each. They land on the athlete’s report under “Coach Notes”, print and export with it. Not a review: no trust judgement, no plan, no re-test — if you find yourself writing those, that is the $39 product.</p>':''}
+  ${d.sport==='swim'?'<p class="hint"><b>Swim clip.</b> Nothing was measured: no numbers, frame or kinogram. The review is written from the footage alone; the brief gives the coach a swim checklist.</p>':''}
+  ${d.plan==='notes'?'<p class="hint">One line and three notes, about 40 words each. They land on the athlete’s report under “Coach Notes”, print and export with it. Not a review: no trust judgement, no plan, no re-test. If you find yourself writing those, that is the $39 product.</p>':''}
   ${done?'<p class="hint">This has been delivered. Edits you save and re-publish reach the athlete’s report immediately.</p>':''}
   <div class="ex-grid">
     <div>
@@ -9699,7 +9699,7 @@ function exEditorHtml(d){
       </dl>
       <div class="rr-h">Reviewing</div>
       <select id="exAnalysisPick" class="ex-select">
-        <option value="">— pick the clip —</option>${opts}
+        <option value="">Pick the clip</option>${opts}
       </select>
       <p class="hint u-m-0 u-mt-2">The athlete chose this at checkout. Change it if they picked the wrong one.</p>
       ${a.report?`<div class="rr-h u-mt-4">What the report told them</div><div class="ex-sub-card ex-sub-card--scroll">${mdToHtml(a.report)}</div>`:''}
@@ -9827,7 +9827,7 @@ async function exPublish(){
     const r=await fetch('/admin/orders/'+d.id+'/publish',{method:'POST',headers:authHeaders()});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ toast(j.detail||'Could not send the review.',{duration:6000}); return; }
-    toast('Review delivered — the athlete can read it now.');
+    toast('Review delivered. The athlete can read it now.');
     openExpertAdmin();
   }catch(e){ toast('Could not send the review.'); }
 }
@@ -9836,7 +9836,7 @@ function exShowPreview(){
   const d=state.exOrder; if(!d) return;
   const host=$('#exPreviewHost');
   const report=exCollect();
-  host.innerHTML=`<div class="rr-h">Preview — exactly what the athlete sees</div>`
+  host.innerHTML=`<div class="rr-h">Preview: exactly what the athlete sees</div>`
     + renderReportHtml(report, (d.sections||[]).filter(s=>!s.internal), reportMeta({
         sport:d.sport, kind:(d.analysis||{}).kind, score:(d.analysis||{}).score,
         grade:(d.analysis||{}).grade,
@@ -9893,15 +9893,15 @@ function renderCrankField(){
   hint.textContent = bike
     ? (bike.crank_length_mm
         ? `Saved on ${bike.name}: the saddle verdict is scaled to its ${bike.crank_length_mm} mm cranks.`
-        : `Not set for ${bike.name} yet — type it once and it is kept on that bike. 172.5 mm is assumed until then.`)
+        : `Not set for ${bike.name} yet. Type it once and it is kept on that bike. 172.5 mm is assumed until then.`)
     : v!=null
       ? `Turns the saddle verdict into millimetres, scaled to your ${v} mm cranks.`
-      : 'Optional — the saddle-height estimate assumes 172.5 mm cranks without it (a 165 mm crank makes it 4% smaller).';
+      : 'Optional: the saddle-height estimate assumes 172.5 mm cranks without it (a 165 mm crank makes it 4% smaller).';
 }
 async function saveCrank(){
   const input=$('#crankInput'); if(!input) return;
   const raw=input.value.trim(), v=raw===''?null:parseFloat(raw);
-  if(v!==null && !(v>=150&&v<=185)){ $('#crankHint').textContent='Cranks run 150–185 mm — check the number.'; return; }
+  if(v!==null && !(v>=150&&v<=185)){ $('#crankHint').textContent='Cranks run 150–185 mm. Check the number.'; return; }
   const bike=chosenBikeProfile();
   if(bike){
     // A bike profile is chosen: the number belongs to that bike.
@@ -9923,7 +9923,7 @@ function renderHeightField(){
   if(document.activeElement!==input) input.value = auth.height_cm || '';
   hint.innerHTML = auth.height_cm
     ? 'Used to turn vertical oscillation into real centimetres.'
-    : 'Optional — without it we assume an average build, which can put centimetre readings out by ~10%.';
+    : 'Optional: without it we assume an average build, which can put centimetre readings out by ~10%.';
 }
 async function saveHeight(){
   const input=$('#heightInput'); if(!input||!auth) return;
@@ -9931,7 +9931,7 @@ async function saveHeight(){
   const value = raw==='' ? null : Math.round(+raw);
   if(value!==null && (!Number.isFinite(value) || value<120 || value>230)){
     // Say what is wrong rather than silently keeping the old value.
-    $('#heightHint').textContent='That looks like a different unit — enter your height in centimetres (120–230).';
+    $('#heightHint').textContent='That looks like a different unit. Enter your height in centimetres (120–230).';
     return;
   }
   if((auth.height_cm||null)===value) return;         // nothing changed
@@ -10057,7 +10057,7 @@ async function uploadMobScreen(input){
     state.mobility=j.profile;
     mobShotNotes[screen]=(j.measurement&&j.measurement.capture_warnings)||[];
     renderMobilityBox();
-    toast('Measured — every bike analysis from here on uses it.');
+    toast('Measured. Every bike analysis from here on uses it.');
   }catch(e){
     errBox.textContent='Could not reach the server.';
     errBox.classList.remove('hidden');
@@ -10102,8 +10102,8 @@ async function openPortal(){
     const r=await fetch('/billing/portal',{method:'POST',headers:authHeaders()});
     const j=await r.json().catch(()=>({}));
     if(r.ok && j.url){ window.location.href=j.url; return; }
-    toast(j.detail || 'Could not open billing management — please try again in a minute.');
-  }catch(e){ toast('Network error — check your connection and try again.'); }
+    toast(j.detail || 'Could not open billing management. Please try again in a minute.');
+  }catch(e){ toast('Network error. Check your connection and try again.'); }
 }
 // Handle the return from Stripe Checkout (success_url / cancel_url).
 async function handleCheckoutReturn(){
@@ -10116,13 +10116,13 @@ async function handleCheckoutReturn(){
   // from the webhook, server-side, because this line only runs if the browser
   // survived the round trip. This one measures the drop-off at the card form.
   track('checkout_returned', {result:c, plan:plan||null});
-  if(c==='cancel'){ toast('Checkout canceled — no charge was made.'); return; }
+  if(c==='cancel'){ toast('Checkout canceled. No charge was made.'); return; }
   if(c!=='success') return;
   // The Expert Review is a one-time purchase: it grants no tier, so polling
   // /auth/me for an upgrade would spin for 9 s and then quietly give up.
   // Confirm the order itself instead.
   if(plan==='expert_recheck'){
-    toast('Payment received — your re-check is booked. We’ll email you when it’s ready.',{duration:7000});
+    toast('Payment received. Your re-check is booked. We’ll email you when it’s ready.',{duration:7000});
     state.ordersCache=null; state.recheck=null;
     await renderOrders();
     openPricing();
@@ -10131,8 +10131,8 @@ async function handleCheckoutReturn(){
   let swimFor=null;
   try{ swimFor=sessionStorage.getItem('flapp_swim_for'); sessionStorage.removeItem('flapp_swim_for'); }catch(e){}
   if(swimFor && (plan==='expert'||plan==='notes')){
-    toast(plan==='notes'?'Payment received — a coach has your clip. You’ll get an email when the notes are here.'
-                        :'Payment received — your Expert Review is booked. We’ll email you when it’s ready.',{duration:7000});
+    toast(plan==='notes'?'Payment received. A coach has your clip. You’ll get an email when the notes are here.'
+                        :'Payment received. Your Expert Review is booked. We’ll email you when it’s ready.',{duration:7000});
     try{ sessionStorage.removeItem('flapp_notes_for'); }catch(e){}
     state.ordersCache=null;
     await refreshCloud();
@@ -10140,7 +10140,7 @@ async function handleCheckoutReturn(){
     return;
   }
   if(plan==='expert'){
-    toast('Payment received — your Expert Review is booked. We’ll email you when it’s ready.',{duration:7000});
+    toast('Payment received. Your Expert Review is booked. We’ll email you when it’s ready.',{duration:7000});
     await renderOrders();
     openPricing();
     return;
@@ -10149,7 +10149,7 @@ async function handleCheckoutReturn(){
   if(plan==='notes'){
     let id=null;
     try{ id=sessionStorage.getItem('flapp_notes_for'); sessionStorage.removeItem('flapp_notes_for'); }catch(e){}
-    toast('Payment received — a coach has your report. You’ll get an email when the notes are on it.',{duration:7000});
+    toast('Payment received. A coach has your report. You’ll get an email when the notes are on it.',{duration:7000});
     state.ordersCache=null;
     await refreshCloud();
     if(id&&loadHist().some(e=>e.id===id)) openHistory(id); else openDashboard();
@@ -10161,7 +10161,7 @@ async function handleCheckoutReturn(){
   if(plan==='unlock'){
     let id=null;
     try{ id=sessionStorage.getItem('flapp_unlocking'); sessionStorage.removeItem('flapp_unlocking'); }catch(e){}
-    toast('Unlocked — opening your report.',{duration:5000});
+    toast('Unlocked. Opening your report.',{duration:5000});
     // The entitlement is written by the webhook, server-side, which can land a
     // second or two after this redirect. Opening the report before it does
     // shows the teaser they just paid to get rid of, so wait for the listing
@@ -10178,13 +10178,13 @@ async function handleCheckoutReturn(){
     if(id) openHistory(id); else openHistoryView();
     return;
   }
-  toast('Payment received — activating your plan…',{duration:6000});
+  toast('Payment received. Activating your plan…',{duration:6000});
   // The webhook sets the tier server-side; it can lag a second or two. Poll
   // /auth/me until the tier upgrades, then confirm.
   for(let i=0;i<6;i++){
     await refreshAuth();
     if(auth && auth.tier && auth.tier!=='starter'){
-      toast(`You’re on ${TIER_NAMES[auth.tier]||auth.tier} — enjoy the full analysis!`);
+      toast(`You’re on ${TIER_NAMES[auth.tier]||auth.tier}. Enjoy the full analysis!`);
       renderPricing(); return;
     }
     await new Promise(r=>setTimeout(r,1500));
@@ -10211,8 +10211,8 @@ function pickAnalysis(plan){
     return Promise.resolve(null);
   }
   if(!list.length){
-    toast(notes?'Run an analysis first — Coach Notes are written on one of your reports.'
-               :'Run an analysis first — an Expert Review is written against one of yours.',
+    toast(notes?'Run an analysis first. Coach Notes are written on one of your reports.'
+               :'Run an analysis first. An Expert Review is written against one of yours.',
       {action:'Analyze',onAction:()=>reset(),duration:6000});
     return Promise.resolve(null);
   }
@@ -10302,13 +10302,13 @@ async function startCheckout(plan, analysisIdArg){
       if(j.mode==='unlock_credit'){
         try{ sessionStorage.removeItem('flapp_unlocking'); }catch(e){}
         if(auth) auth.unlock_credits=j.credits_left||0;
-        toast('Unlocked with your free report — opening it.',{duration:5000});
+        toast('Unlocked with your free report. Opening it.',{duration:5000});
         await refreshCloud();
         openHistory(analysisId); return;
       }
       if(j.mode==='credit'){
         if(auth) auth.expert_credits=j.credits_left||0;
-        toast('Booked with the Expert Review included in your plan — we’ll email you when it’s ready.',{duration:6000});
+        toast('Booked with the Expert Review included in your plan. We’ll email you when it’s ready.',{duration:6000});
         renderPricing(); renderOrders(); return;
       }
       if(j.url){
@@ -10316,7 +10316,7 @@ async function startCheckout(plan, analysisIdArg){
         // instead of a checkout, because a second checkout would mean a
         // second subscription on the same card.
         if(j.mode==='portal'){
-          toast('You already have a subscription — opening billing so you can switch plans.',{duration:5000});
+          toast('You already have a subscription. Opening billing so you can switch plans.',{duration:5000});
           setTimeout(()=>{ window.location.href=j.url; },1200);
           return;
         }
@@ -10327,8 +10327,8 @@ async function startCheckout(plan, analysisIdArg){
     // is either the server's own sentence (503 sold out, 400 pick a report)
     // or a plain error to retry. Telling a customer with a card out that
     // checkout "is being set up" was the pre-launch wording.
-    toast(j.detail || 'Could not start checkout — please try again in a minute.');
-  }catch(e){ toast('Network error — check your connection and try again.'); }
+    toast(j.detail || 'Could not start checkout. Please try again in a minute.');
+  }catch(e){ toast('Network error. Check your connection and try again.'); }
 }
 
 /* Capture report — how the RECORDING limited the measurement.
@@ -10338,11 +10338,11 @@ async function startCheckout(plan, analysisIdArg){
    the point is to show that the clip WAS assessed, so a clean row reads as
    evidence rather than as silence. Only failing rows carry their fix. */
 const CAPREP_VERDICT={good:'Good capture',fair:'Usable capture',poor:'Capture limited the measurement',unknown:'Capture not assessed'};
-/* Backend prose is written in ASCII (see the strings in capture_report.py), so
-   its "--" arrives literally. Promote it to a real dash at the render layer
-   rather than making the backend the first place in the codebase to carry
-   non-ASCII copy. Runs after esc(), on already-escaped text. */
-const dash=s=>String(s).replace(/ -- /g,' — ');
+/* Backend prose is ASCII (capture_report.py). New text has no "--"; a report
+   saved before 2026-11-18 still carries it, and there is no em dash in Flapp
+   copy, so a pair reads as parentheses and a single one as a colon. Runs
+   after esc(), on already-escaped text. */
+const dash=s=>String(s).replace(/ -- ([^]*?) -- /g,' ($1) ').replace(/ -- /g,': ');
 function renderCaptureReport(cr){
   const rows=(cr.checks||[]).map(c=>{
     const st=['good','warn','bad','unknown'].includes(c.status)?c.status:'unknown';
@@ -10392,8 +10392,8 @@ function renderKinogram(r){
   const t=$('#kinoTitle'), h=$('#kinoHint'), m=$('#kinoMethod');
   if(t) t.textContent = bike ? 'One revolution, six positions' : 'One stride, five positions';
   if(h) h.textContent = bike
-    ? 'Your pedal stroke at ±45° around top and bottom dead center — picked automatically from your best-tracked revolution.'
-    : 'The five postures coaches read a stride from — picked automatically from your best-tracked stride.';
+    ? 'Your pedal stroke at ±45° around top and bottom dead center, picked automatically from your best-tracked revolution.'
+    : 'The five postures coaches read a stride from, picked automatically from your best-tracked stride.';
   if(m) m.textContent = bike
     ? 'Positions timed off your own crank period'
     : 'Positions after the ALTIS Kinogram Method';
@@ -10406,7 +10406,7 @@ function renderKinogram(r){
      definition. A kinogram that quietly shows three tiles reads as a bug. */
   const meta=r.kinogram||{}, notes=[];
   const n=(meta.positions||[]).length;
-  if(n && n<5) notes.push(`${n} of 5 positions — the rest could not be located in this clip.`);
+  if(n && n<5) notes.push(`${n} of 5 positions. The rest could not be located in this clip.`);
   if(meta.strike_source==='near_max_hip_flexion')
     notes.push('Strike located from the near-side thigh (the far leg was not tracked well enough).');
   (meta.warnings||[]).forEach(w=>notes.push(w));
@@ -10472,7 +10472,7 @@ function coverageLine(cov){
          + `<span class="mono">${cov.measures_total}</span> measures`;
   // Why a measure was left out reads very differently from it simply being
   // absent, so a deliberate exclusion is quoted rather than counted.
-  const why=Object.entries(excluded).map(([k,v])=>`${covName(k)} — ${esc(v)}`);
+  const why=Object.entries(excluded).map(([k,v])=>`${covName(k)}: ${esc(v)}`);
   if(why.length) line+=`<br><span class="cov-why">Not graded: ${why.join('; ')}</span>`;
   else if(missing.length) line+=`<br><span class="cov-why">Not measured on this clip: ${missing.join(', ')}</span>`;
   if(capLine) line+=`<br>${capLine}`;
@@ -10543,7 +10543,7 @@ function renderFitPlan(plan){
   }
   $('#fitLede').textContent = diags.length
     ? (plan.fitting_sequence_note
-       || 'Work down the list in order — each change moves the ones below it.')
+       || 'Work down the list in order: each change moves the ones below it.')
     : '';
   $('#fitRows').innerHTML = diags.map((d,i)=>{
     const cls=FIT_STATUS_CLS[(d.status||'').toLowerCase()]||'';
@@ -10745,7 +10745,7 @@ function angleTableRows(A, sport, position, srcByKey, pro){
     const flagged=art>0 && artPct>ARTEFACT_FLAG_PCT;
     let statusCell='<td class="col-status muted"></td>';
     if(muted && art>0 && !valid){
-      statusCell=`<td class="col-status"><span class="pill pill-medium" title="Every frame read outside the physiological range for this joint — a tracking artefact, not a measurement"><span class="dot" aria-hidden="true"></span>outside envelope</span></td>`;
+      statusCell=`<td class="col-status"><span class="pill pill-medium" title="Every frame read outside the physiological range for this joint: a tracking artefact, not a measurement"><span class="dot" aria-hidden="true"></span>outside envelope</span></td>`;
     } else if(flagged){
       // The number is still shown (it was taken from the surviving frames),
       // but a joint the tracker got wrong this often is not graded.
@@ -10822,7 +10822,7 @@ function renderAngleTable(r, sport){
   const pn=$('#angleProNote');
   if(pn){
     pn.classList.toggle('hidden', !pro);
-    if(pro) pn.innerHTML=`<b>Kona pros</b> — the median and middle half of ${pro.n} professional positions we measured at the 2026 Ironman World Championship (${pro.men} men, ${pro.women} women), every joint point checked by hand. A field to place yourself against, not a target: the pros built up to these positions over years. Many age-groupers can move toward them in small steps; how far pays depends on whether you can still make power, breathe and handle the bike. <a href="${esc(pro.article||'/academy/kona-2026-pro-bike-positions')}" target="_blank" rel="noopener">Read the study</a>.`;
+    if(pro) pn.innerHTML=`<b>Kona pros</b>: the median and middle half of ${pro.n} professional positions we measured at the 2026 Ironman World Championship (${pro.men} men, ${pro.women} women), every joint point checked by hand. A field to place yourself against, not a target: the pros built up to these positions over years. Many age-groupers can move toward them in small steps; how far pays depends on whether you can still make power, breathe and handle the bike. <a href="${esc(pro.article||'/academy/kona-2026-pro-bike-positions')}" target="_blank" rel="noopener">Read the study</a>.`;
   }
   fitRangeNote('#angleSrcNote', sport, pro);
   // Explain the intentional "no ref" cells (run knee/hip/ankle are phase-dependent).
@@ -11002,10 +11002,10 @@ function render(job,opts){
     wh.innerHTML = withheld
       ? `<span class="sn-fig"><img src="/media/empty-withheld.webp" alt="" width="56" height="56"></span>
          <span><b>We didn\u2019t score this clip.</b> ${esc(withheld.detail||'')}
-         Everything we could measure is still below \u2014 the angles, the findings and
+         Everything we could measure is still below: the angles, the findings and
          how to refilm it. What we\u2019re holding back is the one number that would
          have summarised them.
-         <span class="wh-next">To get a score, film it again side-on and closer, with you filling most of the picture<span data-wh-adjust-txt class="hidden"> &mdash; or, if the skeleton landed in the wrong place, move the points by hand and the clip is measured again</span>.</span>
+         <span class="wh-next">To get a score, film it again side-on and closer, with you filling most of the picture<span data-wh-adjust-txt class="hidden">, or, if the skeleton landed in the wrong place, move the points by hand and the clip is measured again</span>.</span>
          <span class="wh-acts"><button class="btn btn-sm" type="button" data-wh-refilm>Film it again</button><button class="btn btn-sm hidden" type="button" data-wh-adjust>Adjust the joints</button></span></span>`
       : '';
     wh.classList.toggle('hidden', !withheld);
@@ -11080,7 +11080,7 @@ function render(job,opts){
   const gb=$('#gateBanner');
   gb.innerHTML = gated
     ? `<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
-      <span><b>Partial analysis</b> — capture quality was limited. ${esc((q.reasons||[])[0]||'Some metrics may be less reliable.')} Treat the score as a reference, not a measurement.</span></div>`
+      <span><b>Partial analysis</b>: capture quality was limited. ${esc((q.reasons||[])[0]||'Some metrics may be less reliable.')} Treat the score as a reference, not a measurement.</span></div>`
     : '';
   // The capture report supersedes the loose warning strings when it is present:
   // same facts, but measured, ordered by effect, and each with the change that
@@ -11102,14 +11102,14 @@ function render(job,opts){
   // metrics (ground contact, flight) were withheld rather than shown wrong.
   if(q.time_base_uncertain){
     gb.innerHTML+=`<div class="banner warn u-mt-2"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
-      <span><b>Looks like slow-motion.</b> We couldn’t measure cadence, so ground-contact &amp; flight time are hidden — time-based metrics need a normal-speed clip to be accurate. Your joint angles are unaffected.</span></div>`;
+      <span><b>Looks like slow-motion.</b> We couldn’t measure cadence, so ground-contact &amp; flight time are hidden: time-based metrics need a normal-speed clip to be accurate. Your joint angles are unaffected.</span></div>`;
   }
   // Sampling notice: a long clip is decimated to stay inside the frame budget,
   // which costs the time-based metrics their resolution. Say so rather than
   // quietly reporting a cadence computed from every 4th frame.
   if(q.sampling_degraded){
     gb.innerHTML+=`<div class="banner warn u-mt-2"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
-      <span><b>Long clip — sampled.</b> ${esc(q.sampling_degraded)} Joint angles are unaffected; a <b>5–10 s</b> clip measures the timing more precisely.</span></div>`;
+      <span><b>Long clip, sampled.</b> ${esc(q.sampling_degraded)} Joint angles are unaffected; a <b>5–10 s</b> clip measures the timing more precisely.</span></div>`;
   }
 
   // What was filmed, once, under the title: sport · position · side · frames.
@@ -11184,11 +11184,11 @@ function render(job,opts){
     $('#resultTop').classList.add('no-video');
     const ep=$('#ephemNote');
     if(job.overlay_failed){
-      ep.innerHTML='The annotated overlay video couldn’t be rendered for this clip — your score, angles and coaching above are unaffected. See your technique on the annotated keyframe saved in <b>History</b>.';
+      ep.innerHTML='The annotated overlay video couldn’t be rendered for this clip. Your score, angles and coaching above are unaffected. See your technique on the annotated keyframe saved in <b>History</b>.';
     } else {
       // Signed in, the report is in History the moment it is drawn; only a
       // guest's goes with the tab.
-      ep.textContent=auth?'Saved to your History. There is no overlay video for this clip.':'Results aren’t stored — save what you need before leaving.';
+      ep.textContent=auth?'Saved to your History. There is no overlay video for this clip.':'Results aren’t stored. Save what you need before leaving.';
     }
     ep.classList.remove('hidden');
   }
@@ -11271,10 +11271,10 @@ function render(job,opts){
       mn.classList.remove('hidden');
     } else if(bl && bl.partial){
       const ks=bl.knee_single||{}, ag=bl.agreement||{};
-      mn.innerHTML=`Trunk, hip, shoulder and elbow: <b>both clips</b>, pooled (they agree to ${ag.worst}°). Knee at the bottom and top of the stroke, and the saddle verdict: the <b>${esc(ks.side||'one')}-side clip alone</b> — see the session panel above for why.`;
+      mn.innerHTML=`Trunk, hip, shoulder and elbow: <b>both clips</b>, pooled (they agree to ${ag.worst}°). Knee at the bottom and top of the stroke, and the saddle verdict: the <b>${esc(ks.side||'one')}-side clip alone</b>. See the session panel above for why.`;
       mn.classList.remove('hidden');
     } else if(bl){
-      mn.innerHTML=`From the <b>${esc(bl.metrics_side||'one')}-side clip alone</b> — the two clips could not be merged (see the session panel above). The joint table below shows each clip’s own side.`;
+      mn.innerHTML=`From the <b>${esc(bl.metrics_side||'one')}-side clip alone</b>: the two clips could not be merged (see the session panel above). The joint table below shows each clip’s own side.`;
       mn.classList.remove('hidden');
     } else { mn.classList.add('hidden'); mn.textContent=''; }
   }
@@ -11604,7 +11604,7 @@ function setFeedbackRating(host, rating){
     // Post the thumbs-up straight away, then offer (not demand) a note.
     sendFeedback(host, {silent:true});
     const more=host.querySelector('[data-fb-more]');
-    more.innerHTML=`<p class="fb-note">Thanks — logged. <a href="#" data-fb-note-open>Add a note</a> if there’s still something off.</p>`;
+    more.innerHTML=`<p class="fb-note">Thanks, logged. <a href="#" data-fb-note-open>Add a note</a> if there’s still something off.</p>`;
     more.querySelector('[data-fb-note-open]').addEventListener('click',e=>{
       e.preventDefault(); renderFeedbackForm(host);
     });
@@ -11626,7 +11626,7 @@ function renderFeedbackForm(host){
       <textarea data-fb-msg maxlength="2000" placeholder="${down?'e.g. my knee angle reads 40° but it’s clearly much straighter than that':'e.g. the score felt right but the drills don’t suit my injury'}"></textarea>
       ${fb.frame?`<label class="fb-consent">
         <input type="checkbox" data-fb-consent checked>
-        <span>Attach the <b>annotated still</b> from this analysis so we can see what the analyzer saw. It’s the only way to diagnose a tracking problem. Stored privately, used only to fix the analyzer — see our <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</span>
+        <span>Attach the <b>annotated still</b> from this analysis so we can see what the analyzer saw. It’s the only way to diagnose a tracking problem. Stored privately, used only to fix the analyzer. See our <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</span>
       </label>`:''}
       <div class="fb-actions">
         <button class="btn btn-primary btn-sm" data-fb-send type="button">Send feedback</button>
@@ -11667,14 +11667,14 @@ function sendFeedback(host, opts){
       track('result_feedback', {rating:fb.rating, tags:(fb.tags||[]).length, context:fb.ctx});
       if(opts.silent) return;
       host.innerHTML=`<p class="fb-thanks"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-        Thanks — this goes straight to the person who builds the analyzer.</p>
+        Thanks. This goes straight to the person who builds the analyzer.</p>
         <p class="fb-note">We read every one of these. We don’t reply to each, but they decide what gets fixed next.</p>`;
     })
     .catch(()=>{
       fb.sending=false;
       if(opts.silent) return;   // a lost thumbs-up isn't worth an error banner
       if(btn){ btn.disabled=false; btn.textContent='Send feedback'; }
-      toast('Couldn’t send that — check your connection and try again.');
+      toast('Couldn’t send that. Check your connection and try again.');
     });
 }
 
@@ -11896,7 +11896,7 @@ async function buildShareCard(card){
   x.fillStyle=MUTED; x.font=`500 22px ${CARD_MONO}`;
   x.fillText('TECHNIQUE SCORE',lx,cy-22);
   x.fillStyle=SOFT; x.font=`400 28px ${CARD_BODY}`;
-  const gradeLine=score==null?'Not graded — see the report':!grade?'out of 100':gradeTxt?`${sport==='bike'?'Ride':'Run'} · grade ${grade}`:grade;
+  const gradeLine=score==null?'Not graded. See the report':!grade?'out of 100':gradeTxt?`${sport==='bike'?'Ride':'Run'} · grade ${grade}`:grade;
   x.fillText(gradeLine,lx,cy+20);
   x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 26px ${CARD_MONO}`;
   x.fillText(CARD_HOST,W-P,cy);
@@ -11948,10 +11948,10 @@ function filenameFromResponse(r, fmt){
    was analyzed -- so the cabinet passes the stored-analysis route instead. */
 async function fetchExport(fmt, url){
   url=(typeof url==='function')?url(fmt):(url||exportUrl(fmt));
-  if(!url){ toast('This analysis is no longer loaded — run it again to export.'); return null; }
+  if(!url){ toast('This analysis is no longer loaded. Run it again to export.'); return null; }
   let r;
   try{ r=await fetch(url,{headers:authHeaders()}); }
-  catch(e){ toast('Network problem — couldn’t build the export.'); return null; }
+  catch(e){ toast('Network problem. Couldn’t build the export.'); return null; }
   if(r.status===402){
     // Paid feature. The gated result is a score and nothing else, so a free
     // export would be an empty document — send them to the upgrade path
@@ -11961,10 +11961,10 @@ async function fetchExport(fmt, url){
     return null;
   }
   if(r.status===404 || r.status===409){
-    toast('This analysis has expired on the server — re-run the clip to export it.');
+    toast('This analysis has expired on the server. Re-run the clip to export it.');
     return null;
   }
-  if(!r.ok){ toast('Couldn’t build the export — please try again.'); return null; }
+  if(!r.ok){ toast('Couldn’t build the export. Please try again.'); return null; }
   return {text:await r.text(), name:filenameFromResponse(r,fmt)};
 }
 /* Clipboard with a fallback: navigator.clipboard needs a secure context, which
@@ -12010,8 +12010,8 @@ function exportCopy(o){
     where:o.where||'result'});
   return withExportBusy(btn,txt,'Preparing…',async()=>{
     const res=await fetchExport('md', o.url); if(!res) return;
-    if(await copyText(res.text)) toast('Copied — paste it into any assistant.');
-    else { downloadText(res.text,res.name,'text/markdown;charset=utf-8'); toast('Clipboard blocked — saved the file instead.'); }
+    if(await copyText(res.text)) toast('Copied. Paste it into any assistant.');
+    else { downloadText(res.text,res.name,'text/markdown;charset=utf-8'); toast('Clipboard blocked. Saved the file instead.'); }
   });
 }
 function exportDownload(fmt,o){
@@ -12159,13 +12159,13 @@ async function doShare(card, btn, txtEl){
     const blob=await buildShareCard(card);
     const sport=card.sport||'run', score=card.score;
     const file=new File([blob],`flapp-${sport}-${score==null?'result':score}.jpg`,{type:'image/jpeg'});
-    const text=`My ${sport==='bike'?'cycling':'running'} technique scored ${score==null?'—':score}/100 on Flapp — analyze yours free: ${location.origin}`;
+    const text=`My ${sport==='bike'?'cycling':'running'} technique scored ${score==null?'—':score}/100 on Flapp. Analyze yours free: ${location.origin}`;
     // The only organic acquisition channel the product has: a card that goes
     // to Strava or Instagram with our name on it.
     track('share_card_built', {sport:sport, score:score==null?null:score});
     openCardModal(blob, file, text);
   }catch(err){
-    toast('Could not create the card — please try again.');
+    toast('Could not create the card. Please try again.');
   }finally{ if(txtEl) txtEl.textContent=old; btn.removeAttribute('aria-disabled'); }
 }
 /* ---- Dialog focus containment -------------------------------------------
@@ -12555,7 +12555,7 @@ async function applyPendingPromo(){
     if(!r.ok){ toast(j.detail||'That code could not be used.',{duration:6000}); return; }
     auth.unlock_credits=j.unlock_credits; renderAuth();
     track('promo_applied',{code:j.code,added:j.added});
-    toast(`Code ${j.code}: ${j.added} free full reports added. Run an analysis and tap Unlock — it's on us.`,{duration:8000});
+    toast(`Code ${j.code}: ${j.added} free full reports added. Run an analysis and tap Unlock. It's on us.`,{duration:8000});
   }catch(e){ /* keep it for the next load */ }
 }
 /* A visitor who came by a promo link sees what it gives before being asked
@@ -12700,11 +12700,11 @@ queueMicrotask(init);
    the one that ships unreachable.
    ============================================================ */
 const SCROLL_REGIONS={
-  '.tablewrap':'Table — scrolls sideways',
+  '.tablewrap':'Table (scrolls sideways)',
   // The kinogram is five frames of one stride at a legible height; on a phone
   // that is wider than the screen by design, and it holds a single <img>, so
   // there is nothing inside it to tab to.
-  '.kinowrap':'Kinogram — scrolls sideways',
+  '.kinowrap':'Kinogram (scrolls sideways)',
 };
 function syncScrollRegions(){
   Object.keys(SCROLL_REGIONS).forEach(sel=>{
@@ -12891,7 +12891,7 @@ function deleteAccount(){
     body:`<p class="u-m-0 u-mb-3">This permanently removes <b>${esc(auth.email)}</b>, every saved analysis,
       your usage history, any feedback you sent and your order history. It cannot be undone.</p>
       <p class="hint u-m-0 u-mb-3">An active subscription is cancelled at the same
-      time — you won't be billed again.</p>
+      time. You won't be billed again.</p>
       <label class="fld"><span>Confirm your password</span>
         <input type="password" id="delPass" autocomplete="current-password"></label>`,
     okLabel:'Delete permanently',
@@ -12907,12 +12907,12 @@ async function doDeleteAccount(password){
     const r=await fetch('/auth/account',{method:'DELETE',
       headers:authHeaders({'Content-Type':'application/json'}),
       body:JSON.stringify({password})});
-    if(r.status===401){ toast('Wrong password — your account was not deleted.'); return; }
+    if(r.status===401){ toast('Wrong password. Your account was not deleted.'); return; }
     if(!r.ok){
       // A 502 here is "your subscription could not be cancelled, so nothing
       // was deleted" -- the server's sentence says what to do about it.
       const j=await r.json().catch(()=>({}));
-      toast(j.detail || 'Could not delete the account — please try again.',{duration:7000}); return;
+      toast(j.detail || 'Could not delete the account. Please try again.',{duration:7000}); return;
     }
     // Everything server-side is gone; drop the local copies too so nothing
     // lingers on this device.
@@ -12921,7 +12921,7 @@ async function doDeleteAccount(password){
     renderAuth(); reRenderData();
     toast('Your account and all its data have been deleted.',{duration:6000});
     setState('upload',{focus:'#uploaderTitle'});
-  }catch(e){ toast('Could not reach the server — your account was not deleted.'); }
+  }catch(e){ toast('Could not reach the server. Your account was not deleted.'); }
 }
 
 /* Wipe the whole history (someone else's runs polluting your stats). An explicit
@@ -13045,7 +13045,7 @@ function sessionOtherSide(r){
 function updateAngleMergeNote(paired, side, sessionOther){
   const el=$('#angleMergeNote'); if(!el) return;
   if(sessionOther){
-    el.innerHTML=`Both sides shown: each clip of this session measured its own near side — the <b>${esc(sessionOther.camera_side)}</b> rows come from the ${esc(sessionOther.camera_side)}-side clip.`;
+    el.innerHTML=`Both sides shown: each clip of this session measured its own near side: the <b>${esc(sessionOther.camera_side)}</b> rows come from the ${esc(sessionOther.camera_side)}-side clip.`;
     el.classList.remove('hidden');
   } else if(paired){
     const other=paired.cameraSide||'the other side';
@@ -13053,7 +13053,7 @@ function updateAngleMergeNote(paired, side, sessionOther){
     el.classList.remove('hidden');
   } else {
     const s=side==='left'?'right':side==='right'?'left':'other';
-    el.innerHTML=`Side-view captures the near side only. Analyze the <b>${esc(s)} side</b> to complete the table — it saves to your profile.`;
+    el.innerHTML=`Side-view captures the near side only. Analyze the <b>${esc(s)} side</b> to complete the table. It saves to your profile.`;
     el.classList.remove('hidden');
   }
 }
@@ -13463,7 +13463,7 @@ function renderHistList(){
     w.innerHTML=`<div class="emptybox u-span-all">
       <svg class="ic-lg" aria-hidden="true"><use href="#i-clock"/></svg>
       <h4>Nothing filmed on this setup yet</h4>
-      <p>Your other analyses are still here — pick <b>All</b> above, or film a clip on this one.</p>
+      <p>Your other analyses are still here. Pick <b>All</b> above, or film a clip on this one.</p>
     </div>`;
     return;
   }
@@ -13832,7 +13832,7 @@ function persistEntryPatch(e){
 function planProgressHtml(plan,done){
   const n=plan.filter(p=>done[planKey(p)]).length;
   return `<b>${n}</b> of <b>${plan.length}</b> drills done`
-    + (n===plan.length ? ' — nice work. Re-film and open <b>Before / after</b> to see the change.' : '');
+    + (n===plan.length ? '. Nice work. Re-film and open <b>Before / after</b> to see the change.' : '');
 }
 /* One editable drill card (mirrors renderTrainingPlan's card + a Done toggle). */
 function historyPlanCard(p,i,done){
@@ -14182,7 +14182,7 @@ function renderBiomechSummary(bio, sport){
   if(!bits.length){ out.innerHTML=''; return; }
   const isRun = sport==='run';
   out.innerHTML=`<p class="bm-verdict"><b>Overall:</b> ${bits.join(' · ')}. ` + (isRun
-    ? `Both feed your technique score — these overall figures, not the individual cards below, `
+    ? `Both feed your technique score: these overall figures, not the individual cards below, `
       + `which are here to show you <i>where</i> the difference is.`
     : `A ride is scored on its fit angles, so these do not feed your score. They are here to `
       + `compare against your own later clips.`) + `</p>`;
@@ -14441,7 +14441,7 @@ function renderProgress(){
     grid.innerHTML=`<div class="emptybox u-span-all">
       <img class="empty-fig" src="/media/empty-trends.webp" alt="" width="120" height="120">
       <h4>${have===0?'No trends yet':'One more to go'}</h4>
-      <p>Analyze at least <b>2</b> ${noun}${sides.length>1?' from this side':''} to unlock progress charts — you have <b>${have}</b> so far. Each new analysis adds a point.</p>
+      <p>Analyze at least <b>2</b> ${noun}${sides.length>1?' from this side':''} to unlock progress charts. You have <b>${have}</b> so far. Each new analysis adds a point.</p>
       <button class="btn btn-primary" data-analyze="${sport==='bike'?'bike':'run'}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a ${sport==='bike'?'ride':'run'}</button>
       ${auth?'':'<p class="emptysub">Saved on this device. <a href="#" data-openauth="register">Log in</a> to sync across devices.</p>'}
     </div>`;
@@ -14496,7 +14496,7 @@ function renderProgress(){
   if(teaser && isFreeUser() && lockCards){
     teaser.innerHTML=teaserPanelHtml(PROGRESS_TEASER_ITEMS, {src:'progress-teaser',
       title:'Track every metric, not just your score',
-      body:'You’re seeing your <em>score</em> trend. Upgrade to chart cadence, joint angles and gait metrics over time — and see exactly where your form is heading.'});
+      body:'You’re seeing your <em>score</em> trend. Upgrade to chart cadence, joint angles and gait metrics over time, and see exactly where your form is heading.'});
   }
 }
 function openProgress(){
@@ -14548,7 +14548,7 @@ function sportCard(sport, entries){
   const scores=chron.map(e=>e.score).filter(v=>v!=null);
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
   // Says WHAT it is compared against. "0 · steady" read as a measurement.
-  const deltaHtml=!dd ? '<span class="dkpi-note">first analysis — trends build from #2</span>'
+  const deltaHtml=!dd ? '<span class="dkpi-note">first analysis: trends build from #2</span>'
     : (dd.delta===0 ? `<span class="tdelta sta">no change since first</span>`
       : `<span class="tdelta ${dd.cls}">${dd.delta>0?'▲ +':'▼ '}${dd.delta} since first</span>`);
   // Personal record: the latest score is a *new* PB only when it strictly beats
@@ -14943,7 +14943,7 @@ function konaField(){
 function konaWhere(v,f,lowWord,highWord){
   return v>=f.q1&&v<=f.q3 ? {k:'mid', t:'in the middle half of the pros'}
     : v>=f.lo&&v<=f.hi ? {k:'in', t:`inside the field, ${v<f.median?lowWord:highWord} than most`}
-    : {k:'out', t:`outside the field — ${v<f.lo?lowWord:highWord} than every pro`, w:`${v<f.lo?lowWord:highWord} than every pro`};
+    : {k:'out', t:`outside the field, ${v<f.lo?lowWord:highWord} than every pro`, w:`${v<f.lo?lowWord:highWord} than every pro`};
 }
 const konaAero=all=>{ const e=all.find(x=>x.sport==='bike'); return e&&e.trends&&(e.position==='tt_aero'||e.position==='triathlon')?e:null; };
 function renderKona(all, hostId){
@@ -16029,7 +16029,7 @@ function drawReview(){
       [cards[i],cards[j]]=[cards[j],cards[i]]; touch(); drawReview();
     }));
   });
-  $('#rvSave').addEventListener('click',async()=>{ const s=$('#rvStatus'); s.textContent='Saving…'; s.textContent=(await saveReview())?'Saved.':'Could not save — check your connection.'; });
+  $('#rvSave').addEventListener('click',async()=>{ const s=$('#rvStatus'); s.textContent='Saving…'; s.textContent=(await saveReview())?'Saved.':'Could not save. Check your connection.'; });
   $('#rvPreview').addEventListener('click',()=>previewReview());
   const reset=$('#rvReset'); if(reset) reset.addEventListener('click',async()=>{
     const r=await fetch(reviewBase(REVIEW.e),{method:'DELETE',headers:authHeaders()});
@@ -16475,7 +16475,7 @@ function cmpHeadline(A,B,sport,optOf){
   const head=rows.slice(0,2).map(r=>r.head).filter(Boolean).join(', ');
   return `<div class="cmp-what"><div class="cmp-ai-h">What changed</div>${head?`<h3 class="cmp-what-h">${esc(head.charAt(0).toUpperCase()+head.slice(1))}</h3>`:''}${
     (sc||body)?`<ul>${sc}${body}</ul>`:''}${
-    body?'':`<p>No measurement moved by more than the method can tell apart. If you made a change, it is smaller than a camera can see — trust how it feels, and give it a few rides.</p>`}</div>`;
+    body?'':`<p>No measurement moved by more than the method can tell apart. If you made a change, it is smaller than a camera can see. Trust how it feels, and give it a few rides.</p>`}</div>`;
 }
 
 /* ============================================================
@@ -16547,7 +16547,7 @@ function renderCmpMode(){
   host.innerHTML=`<div class="billtoggle" role="group" aria-label="What to compare">
     <button type="button" data-mode="sessions" aria-pressed="${m==='sessions'}">Two sessions</button>
     ${setupsOpen?`<button type="button" data-mode="setups" aria-pressed="${m==='setups'}">Two setups</button>`
-      :setups.length>=2?`<button type="button" data-locked="setups" aria-label="Two setups — Full plan"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Two setups · Full</button>`:''}
+      :setups.length>=2?`<button type="button" data-locked="setups" aria-label="Two setups (Full plan)"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Two setups · Full</button>`:''}
     ${hasSides?`<button type="button" data-mode="sides" aria-pressed="${m==='sides'}">Left vs right</button>`:''}
   </div>`;
   host.classList.remove('hidden');
@@ -16688,16 +16688,16 @@ function cmpCatRow(label,map,good,a,b,people){
    clip contributed, and -- when the two clips cannot share a ruler -- says so
    instead of averaging them anyway. */
 const BIL_REASONS={
-  scale_mismatch:'The two clips don\u2019t agree on scale — most often they were filmed from different distances, or the chainring pulled the ankle tracking off the pedal path in one of them. Re-film both sides from the same spot, same distance, and they will merge.',
+  scale_mismatch:'The two clips don\u2019t agree on scale. Most often they were filmed from different distances, or the chainring pulled the ankle tracking off the pedal path in one of them. Re-film both sides from the same spot, same distance, and they will merge.',
   no_shared_scale:'Neither the crank circle nor your torso could be measured in both clips, so there is no common ruler to put them on.',
-  leg_mismatch:'These two clips don\u2019t look like the same rider on the same fit — the leg they measure is too different for any scaling to reconcile.',
-  geometry_unavailable:'One clip couldn\u2019t be reduced to a usable pedal circle — the tracker never held the ankle on the path long enough.',
+  leg_mismatch:'These two clips don\u2019t look like the same rider on the same fit: the leg they measure is too different for any scaling to reconcile.',
+  geometry_unavailable:'One clip couldn\u2019t be reduced to a usable pedal circle: the tracker never held the ankle on the path long enough.',
   sides_not_identified:'We couldn\u2019t tell which side each clip was filmed from.',
   same_side:'Both clips were filmed from the same side. A session needs one of each.',
   missing_side:'Only one side came through.',
-  degenerate_geometry:'The two clips produced a leg geometry that cannot be solved — usually a tracking failure rather than anything about your fit.',
+  degenerate_geometry:'The two clips produced a leg geometry that cannot be solved, usually a tracking failure rather than anything about your fit.',
   not_combinable:'These two clips could not be merged into one verdict.',
-  midline_disagree:'The two clips disagree about the rider’s trunk, shoulder or hip by more than the method’s own error allows — they don’t read as two views of the same ride. Re-film both sides in one sitting, same position, same bike.',
+  midline_disagree:'The two clips disagree about the rider’s trunk, shoulder or hip by more than the method’s own error allows: they don’t read as two views of the same ride. Re-film both sides in one sitting, same position, same bike.',
 };
 const BIL_GAP_NAMES={trunk_angle_avg:'trunk',hip_angle_avg:'hip',shoulder_angle_avg:'shoulder',elbow_angle_avg:'elbow'};
 function renderBilateral(b){
@@ -16759,14 +16759,14 @@ function renderBilateral(b){
     const gaps=Object.entries(agree.gaps||{}).map(([k,v])=>`${esc(BIL_GAP_NAMES[k]||k)} ${v}°`).join(' · ');
     const drive=b.reason==='geometry_unavailable' && ks.side==='left';
     const whyKnee=b.reason==='geometry_unavailable'
-      ? `the ${esc(ks.side==='left'?'right':'left')}-side clip’s pedal circle couldn’t be measured${drive?' — it was filmed from the drive side, where the chainring sits behind the ankle at the bottom of the stroke':''}`
+      ? `the ${esc(ks.side==='left'?'right':'left')}-side clip’s pedal circle couldn’t be measured${drive?' (it was filmed from the drive side, where the chainring sits behind the ankle at the bottom of the stroke)':''}`
       : `the two clips couldn’t be put on one scale${b.scale_chord_disagreement_pct!=null?` (they disagree by ${b.scale_chord_disagreement_pct}% on a length that cannot change)`:''}`;
     host.innerHTML=`<div class="bil">
       <div class="bil-h"><b>Two-sided session</b>
         <span class="bil-flag bil-ok">merged, except the knee</span>${swappedFlag}</div>
-      <p class="bil-note u-mt-0">Trunk, hip, shoulder and elbow were measured by <b>both</b> clips and pooled. The two clips agree to <b>${agree.worst}°</b> on them${gaps?` (${gaps})`:''} — that gap is this session’s own error bar, measured on the day.</p>
+      <p class="bil-note u-mt-0">Trunk, hip, shoulder and elbow were measured by <b>both</b> clips and pooled. The two clips agree to <b>${agree.worst}°</b> on them${gaps?` (${gaps})`:''}. That gap is this session’s own error bar, measured on the day.</p>
       <div class="bil-val">${ks.value==null?'—':Math.round(ks.value*10)/10}° <small>${esc(ks.side||'')} clip only${ks.revolutions!=null?` · ${ks.revolutions} revolutions`:''}</small></div>
-      <p class="bil-note u-mt-1">Knee at the bottom of the stroke, and the saddle verdict built on it, from the <b>${esc(ks.side||'one')}-side clip alone</b> — ${whyKnee}. It was not pooled with the other clip, because a knee the two clips cannot put on one scale would be an average of two different rulers.</p>
+      <p class="bil-note u-mt-1">Knee at the bottom of the stroke, and the saddle verdict built on it, from the <b>${esc(ks.side||'one')}-side clip alone</b>: ${whyKnee}. It was not pooled with the other clip, because a knee the two clips cannot put on one scale would be an average of two different rulers.</p>
       ${vids}
       <div class="bil-sides">${cards}</div>
       <p class="bil-note">A side view can only see the leg nearest the camera, so no left-right comparison is offered here either: the difference between the two clips’ own knee readings is the instrument, not your legs.</p>
@@ -16780,7 +16780,7 @@ function renderBilateral(b){
     const failedSide=b.reason==='geometry_unavailable'
       ? (sides.find(c=>c.revolutions==null)||{}).camera_side : null;
     const reason=failedSide
-      ? `The ${failedSide}-side clip couldn\u2019t be reduced to a usable pedal circle — the tracker never held the ankle on the path long enough — so there was nothing to merge the other clip against.`
+      ? `The ${failedSide}-side clip couldn\u2019t be reduced to a usable pedal circle (the tracker never held the ankle on the path long enough), so there was nothing to merge the other clip against.`
       : (BIL_REASONS[b.reason]||'These two clips could not be merged.');
     host.innerHTML=`<div class="bil">
       <div class="bil-h"><b>Two-sided session</b>
@@ -16805,9 +16805,9 @@ function renderBilateral(b){
     <p class="bil-note u-mt-1">Knee at the bottom of the stroke, measured from <b>both</b> clips against one body. Each clip on its own only ever sees one leg.</p>
     ${vids}
     <div class="bil-sides">${cards}</div>
-    <p class="bil-note"><b>Read alone, the two clips put this knee a few degrees apart — and that gap is the instrument, not your legs.</b>
+    <p class="bil-note"><b>Read alone, the two clips put this knee a few degrees apart, and that gap is the instrument, not your legs.</b>
       A side view can only see the leg nearest the camera, so the two clips have to be put on a common
-      scale before they can be pooled — and we measured that whatever difference is left between the
+      scale before they can be pooled, and we measured that whatever difference is left between the
       sides afterwards is just that scaling, restated. Left-right difference and scale error cannot be
       told apart this way, so this session deliberately reports <b>no asymmetry number</b>. If you want
       one, that is a fitter with hands on you.</p>
@@ -16869,7 +16869,7 @@ function renderRunSession(s){
         (s.unstable_sides||[]).length? ' on the <b>'+esc(s.unstable_sides.join(' and '))+'</b> clip':''}.
         Merging them would have folded that straight into the answer.</p>
       ${worst!=null?`<p class="bil-note">Both clips measure your <b>${esc(runMetricName((s.agreement||{}).worst_metric||''))}</b>
-        independently, and they disagree by <b>${worst}%</b> — on a number that cannot differ between two clips of one run.</p>`:''}
+        independently, and they disagree by <b>${worst}%</b>, on a number that cannot differ between two clips of one run.</p>`:''}
       <div class="bil-sides">${cards}</div>
       <p class="bil-note">Both clips were analysed and both are shown above. What is withheld is the combined verdict, not the measurements.</p>
     </div>`;
@@ -16895,7 +16895,7 @@ function renderRunSession(s){
     <div class="bil-h"><b>Two-sided run session</b>
       ${agree.worst!=null?`<span class="bil-flag bil-ok">clips agree to ${agree.worst}%</span>`:''}</div>
     <p class="bil-note u-mt-0">Both clips measure your cadence, contact time and trunk lean independently.
-      How far apart they land — <b>${agree.worst}%</b> at worst — is this session\u2019s own error, measured today rather than assumed.
+      How far apart they land (<b>${agree.worst}%</b> at worst) is this session\u2019s own error, measured today rather than assumed.
       Every left-versus-right difference below is judged against it.</p>
     <div class="bil-sides">${cards}</div>
     ${whole?`<div class="cmp-grid"><div class="cmp-row cmp-row-head">
@@ -16904,12 +16904,12 @@ function renderRunSession(s){
     ${rows?`<div class="cmp-grid u-mt-3"><div class="cmp-row cmp-row-head">
         <div class="cmp-lbl">Leg by leg</div><div class="cmp-a">Left</div>
         <div class="cmp-d">Difference</div><div class="cmp-b">Right</div></div>${rows}</div>`:''}
-    <p class="bil-note">A difference smaller than the session\u2019s own error is not something these two clips can resolve — treat those legs as even.</p>
+    <p class="bil-note">A difference smaller than the session\u2019s own error is not something these two clips can resolve. Treat those legs as even.</p>
     ${s.base_side?`<p class="bil-note">Only the numbers above come from both clips.
       Two running clips share no ruler to pool the rest against, so the <b>score, the
       joint-angle table and the findings</b> on this page are measured on your
-      <b>${esc(s.base_side)}-side clip</b> \u2014 the one with more frames behind it
-      \u2014 not on both.</p>`:''}
+      <b>${esc(s.base_side)}-side clip</b> (the one with more frames behind it),
+      not on both.</p>`:''}
   </div>`;
 }
 /* Compare keyframe: held (or absent) frames render straight; a cloud frame
@@ -16941,7 +16941,7 @@ function baSliderHtml(A,B){
     <input type="range" min="0" max="100" value="50" id="baRange"
            aria-label="Wipe between the before and after frames">
   </div>
-  <p class="ba-note">Drag to wipe. Two clips mean two camera setups &mdash; this compares your positions, not pixels.</p>`;
+  <p class="ba-note">Drag to wipe. Two clips mean two camera setups: this compares your positions, not pixels.</p>`;
 }
 function wireBaSlider(){
   const host=$('#baSlider'); if(!host) return;
@@ -17032,9 +17032,9 @@ function renderCompare(){
        <div class="cmp-b">${setups?'B':(sidesMode?'Right':people?tagB:'After')}</div>
      </div>${numRows}${catRows}</div>`)
     + (setups?`<p class="hint u-m-0 u-mt-4">Averaged across everything filmed on each setup. A difference here is
-       the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'')
+       the setup, not the day: one clip carries that session's fatigue and camera angle.</p>`:'')
     + (sidesMode?`<p class="hint u-m-0 u-mt-4">Each side-view clip measures the leg nearest the camera, so these two clips
-       together are your two legs — but they are also two separate readings of your body, taken
+       together are your two legs, but they are also two separate readings of your body, taken
        from opposite sides, and the pose model rebuilds you from scratch in each one. We measured
        how much that alone moves the numbers: re-running the same clip with the pixels mirrored,
        which cannot change a real angle, still shifts the knee at the bottom of the stroke by up
@@ -17042,7 +17042,7 @@ function renderCompare(){
        Because a nearly straight leg turns a 1% length error into about 4°, ordinary
        differences of this size say nothing about your legs. So a gap is only called out here
        once it is <b>bigger than we can explain by measurement</b>. Below that line, treat the
-       two sides as equal — and if you want a real asymmetry answer, that is a fitter with
+       two sides as equal. And if you want a real asymmetry answer, that is a fitter with
        hands on you, not a phone.</p>`:'');
   if(!setups&&!sidesMode){ observeKeyframes($('#cmpBody')); wireBaSlider(); }
   // The two clips themselves, locked stride to stride (or stroke to stroke).
@@ -17075,7 +17075,7 @@ function renderSidePickers(){
    nudge for signed-out users. Cached per A/B pair in state.cmp.summary. */
 function renderCompareSummary(){
   const host=$('#cmpSummary'); if(!host) return;
-  if(!auth){ host.innerHTML=`<div class="cmp-ai cmp-ai-lock"><b>Progress summary</b> — sign in to get a coach's read on what changed between these two runs.</div>`; return; }
+  if(!auth){ host.innerHTML=`<div class="cmp-ai cmp-ai-lock"><b>Progress summary</b>: sign in to get a coach's read on what changed between these two runs.</div>`; return; }
   const c=state.cmp;
   // "What changed" has no meaning between two people.
   const pA=cmpEntry(c.aId), pB=cmpEntry(c.bId);

@@ -264,7 +264,7 @@ def _issues(result: dict[str, Any]) -> str:
         head = f"- **{kind}**" + (f" ({severity})" if severity else "")
         value = issue.get("value")
         if value:
-            head += f" — measured: {value}"
+            head += f", measured: {value}"
         lines.append(head)
         if issue.get("recommendation"):
             lines.append(f"  - {issue['recommendation']}")
@@ -286,7 +286,7 @@ def _plan(result: dict[str, Any]) -> str:
         if not isinstance(item, dict):
             continue
         label = item.get("label") or item.get("metric") or "priority"
-        lines.append(f"- **{label}** — drill: {item.get('drill', 'n/a')}")
+        lines.append(f"- **{label}** (drill: {item.get('drill', 'n/a')})")
         if item.get("why"):
             lines.append(f"  - why: {item['why']}")
         if item.get("instruction"):
@@ -319,13 +319,13 @@ def _advanced(result: dict[str, Any]) -> str:
     stability = (bio.get("phase_portraits") or {}).get("overall_stability_score")
     if stability is not None:
         items.append(
-            f"- Movement stability (phase-portrait, 0-100): {_num(stability)} — "
+            f"- Movement stability (phase-portrait, 0-100): {_num(stability)}, "
             "how repeatable the joint trajectories are cycle to cycle."
         )
     bsi = (bio.get("symmetry") or {}).get("bilateral_symmetry_index")
     if bsi is not None:
         items.append(
-            f"- Bilateral symmetry index: {_num(bsi)} — from side-view data, so it "
+            f"- Bilateral symmetry index: {_num(bsi)}, from side-view data, so it "
             "compares near vs far side estimates and is the least reliable number "
             "in this file."
         )
@@ -351,7 +351,7 @@ def _quality(result: dict[str, Any]) -> str:
     if level:
         line = f"- Analysis confidence: **{level}**"
         if confidence.get("explanation"):
-            line += f" — {confidence['explanation']}"
+            line += f". {confidence['explanation']}"
         lines.append(line)
 
     if result.get("quality_gate_triggered") or gated.get("triggered"):
@@ -408,7 +408,7 @@ def _quality(result: dict[str, Any]) -> str:
 _NOT_MEASURED_COMMON = [
     "The far side of the body. A side view sees one side; the other is not "
     "symmetrical by assumption, it is simply absent.",
-    "Anything in the frontal plane — pelvic drop, hip adduction, knee valgus, "
+    "Anything in the frontal plane: pelvic drop, hip adduction, knee valgus, "
     "foot pronation. These need a rear-view clip and are not in this file.",
     "Forces, loading rates and torque. Nothing here is force-plate data.",
     "Anything about the athlete's body: mobility, strength, leg-length "
@@ -420,7 +420,7 @@ _NOT_MEASURED = {
         "flight time and cadence are all pace-dependent, so a slow easy-run clip "
         "reads long on contact time legitimately.",
         "Footwear, surface and gradient.",
-        "Fatigue state — late-run form differs from a fresh 10-second clip.",
+        "Fatigue state: late-run form differs from a fresh 10-second clip.",
     ],
     "bike": [
         "Actual bike measurements: saddle height, setback, stack, reach, crank "
@@ -456,7 +456,7 @@ _MISSING_CONTEXT = {
     ],
     "bike": [
         "Weekly hours, event type (road race, TT, triathlon, sportive) and goal date.",
-        "Any pain or numbness — knees, lower back, hands, saddle contact.",
+        "Any pain or numbness: knees, lower back, hands, saddle contact.",
         "How long they can currently hold this position before sitting up.",
         "What has already been adjusted on the bike, and when.",
         "Hip and hamstring mobility, and any history of back or knee injury.",
@@ -467,7 +467,7 @@ _MISSING_CONTEXT = {
 def _missing_context(sport: str) -> str:
     items = [f"- {line}" for line in _MISSING_CONTEXT.get(sport, _MISSING_CONTEXT["run"])]
     return "\n".join([
-        "## Missing context — ask before prescribing",
+        "## Missing context: ask before prescribing",
         "",
         "This analysis contains no training or medical context whatsoever. Ask "
         "for what you need rather than assuming it:",
@@ -519,7 +519,7 @@ def build_markdown(
     generated = _now_iso(generated_at)
     sections = [
         _front_matter(result, generated, job_id),
-        f"# {PRODUCT} — {'cycling' if sport == 'bike' else 'running'} form analysis",
+        f"# {PRODUCT}: {'cycling' if sport == 'bike' else 'running'} form analysis",
         _how_to_read(sport),
         _metrics_section(result),
         _angle_table(result),

@@ -120,8 +120,8 @@ def _framing_check(
     run = sport_type == "run"
     warn_px, good_px = framing_bars(sport_type) if run else (FRAMING_WARN_PX, FRAMING_GOOD_PX)
     target = (
-        f"{good_px} px or more -- enough for the legs to stay apart" if run else
-        f"{FRAMING_TARGET_PX} px or more -- roughly two thirds of the frame height"
+        f"{good_px} px or more: enough for the legs to stay apart" if run else
+        f"{FRAMING_TARGET_PX} px or more: roughly two thirds of the frame height"
     )
     if px >= good_px:
         return _check(
@@ -143,7 +143,7 @@ def _framing_check(
             "framing", "Resolution of the file", status, "high",
             f"only {px} px of athlete{pct}, from a {frame_height} px tall file",
             f"{FRAMING_TARGET_PX} px or more of athlete",
-            "Your framing is fine -- the file itself is small. This is a "
+            "Your framing is fine; the file itself is small. This is a "
             "downscaled export rather than the original recording, and no "
             "amount of zooming can put the detail back. Send the clip straight "
             "from the camera roll, and avoid anything that re-compresses it on "
@@ -169,7 +169,7 @@ def _framing_check(
         f"{px} px tall{pct}", target,
         f"Zoom in about {zoom:.1f}x, or step closer, so you span most of the "
         "frame from head to feet. This does more for accuracy than any other "
-        "change -- at your size the two legs are only a few pixels apart for "
+        "change: at your size the two legs are only a few pixels apart for "
         "much of the stride, which is what makes the skeleton jump between them.",
     )
 
@@ -219,7 +219,7 @@ def _camera_view_check(view: dict[str, Any] | None,
         )
     measured = (
         f"could not be judged ({view.get('reason')})" if ratio is None
-        else f"unclear -- depth ratio {ratio}, and a clean side view reads about 0.9"
+        else f"unclear: depth ratio {ratio}, and a clean side view reads about 0.9"
     )
     return _check(
         "camera_view", "The angle you filmed from", "unknown", "high",
@@ -238,7 +238,7 @@ def _orientation_check(
     portrait = height > width
     shape = "portrait" if portrait else ("square" if height == width else "landscape")
     measured = f"{shape} ({width}x{height})"
-    target = "portrait -- a tall frame puts nearly twice the pixels on your legs"
+    target = "portrait: a tall frame puts nearly twice the pixels on your legs"
     if portrait:
         return _check(
             "orientation", "Which way you held the phone", "good", "medium",
@@ -255,7 +255,7 @@ def _orientation_check(
         measured, target,
         "Turn the phone upright. We shrink every clip to a fixed long edge "
         "before measuring, so a tall frame leaves about 1280 px of height for "
-        "you to fill instead of 720 -- roughly double the detail on your legs, "
+        "you to fill instead of 720: roughly double the detail on your legs, "
         "for free.",
     )
 
@@ -278,7 +278,7 @@ def _leg_identity_check(
     warn = THRESHOLDS.get("leg_swap_pct_medium", 6.0)
     bad = THRESHOLDS.get("leg_swap_pct_low", 15.0)
     measured = f"legs confused on {leg_swap_pct:.1f}% of frames"
-    target = "under 5% -- on a well-framed clip this sits near zero"
+    target = "under 5%: on a well-framed clip this sits near zero"
     if leg_swap_pct < warn:
         return _check(
             "leg_identity", "Telling your left leg from your right", "good",
@@ -293,8 +293,8 @@ def _leg_identity_check(
         # either.
         "This is almost always a symptom of how few pixels of you there were "
         "(the row above) rather than a fault of its own. If that was fine, the "
-        "other two causes are a body reading as a dark silhouette -- keep the "
-        "light behind the camera, not behind the athlete -- and a view almost "
+        "other two causes are a body reading as a dark silhouette (keep the "
+        "light behind the camera, not behind the athlete) and a view almost "
         "exactly side-on, where a few degrees of angle helps separate the legs.",
     )
 
@@ -337,7 +337,7 @@ def _duration_check(
         return _check(
             "duration", "How much running the clip holds", status, "medium",
             f"{duration_s:.1f} s of playback, but filmed at {slow:.0f}x slow "
-            f"motion -- {real_s:.1f} s of actual running",
+            f"motion: {real_s:.1f} s of actual running",
             target,
             "Slow motion is the sharpest footage for contact and flight, but it "
             f"stretches the picture and not the stride: this holds {real_s:.1f} s of "
@@ -356,7 +356,7 @@ def _duration_check(
             "The rest is footage with nobody findable in it: either you are "
             "outside the frame, or the pose model lost you. Start recording "
             "once you are already in shot and running steadily, and keep the "
-            "light behind the camera -- a body lit from behind reads as a "
+            "light behind the camera: a body lit from behind reads as a "
             "silhouette, and a silhouette has no joints in it.",
         )
 
@@ -385,7 +385,7 @@ def _duration_check(
             measured, f"{DURATION_GOOD_BIKE_S:.0f}-15 s of steady pedalling",
             "Analysed in full. At 30 fps each pedal revolution puts only one "
             "or two frames at the bottom of the stroke, where the knee is "
-            "read and a two-sided session finds its shared ruler -- eight "
+            "read and a two-sided session finds its shared ruler. Eight "
             "seconds gives the average about ten revolutions instead of six.",
         )
     if sampling_degraded or duration_s > DURATION_LONG_S:
@@ -422,7 +422,7 @@ def _camera_motion_check(motion: dict[str, Any] | None) -> dict[str, Any] | None
         f"camera moved {share * 100:.0f}% as much as your hips did "
         f"({motion.get('vertical_bounce_px')} px)"
     )
-    target = "under 15% -- a camera on a tripod or a fence post reads near zero"
+    target = "under 15%: a camera on a tripod or a fence post reads near zero"
     if status == "good":
         return _check(
             "camera_motion", "How steady the camera was", "good", "medium",
@@ -434,7 +434,7 @@ def _camera_motion_check(motion: dict[str, Any] | None) -> dict[str, Any] | None
         "Rest the phone on something, or lean against a wall. Vertical "
         "oscillation is measured as your hips rising and falling in the frame, "
         "so a camera that rises and falls with the operator's breathing or "
-        "footsteps adds itself to the reading -- and it does it at roughly your "
+        "footsteps adds itself to the reading, and it does it at roughly your "
         "step frequency, which is why it cannot simply be filtered out.",
     )
 
@@ -460,7 +460,7 @@ def _time_base_check(
             "are withheld",
             "measurable cadence",
             "Most likely a consequence of the leg tracking above rather than a "
-            "separate fault -- a stride the model cannot follow has no cadence "
+            "separate fault: a stride the model cannot follow has no cadence "
             "to read. Worth checking slow motion is off, but fix the framing "
             "first.",
         )
@@ -469,7 +469,7 @@ def _time_base_check(
         "reads as slow motion (or a very slow pace)",
         "normal-speed recording",
         "Cadence could not be measured, so ground-contact and flight time are "
-        "withheld rather than shown wrong. Re-film with slow-motion off -- your "
+        "withheld rather than shown wrong. Re-film with slow-motion off; your "
         "joint angles are unaffected either way.",
     )
 
@@ -502,7 +502,7 @@ def _drive_side_check(
     return _check(
         "drive_side", "Which side of the bike you filmed", "good", "medium",
         measured,
-        "the same side every time -- the two sides of one bike read the knee at the bottom of the stroke up to 9 degrees apart",
+        "the same side every time: the two sides of one bike read the knee at the bottom of the stroke up to 9 degrees apart",
     )
 
 def film_notes(

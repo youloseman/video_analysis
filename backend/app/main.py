@@ -404,7 +404,7 @@ _docs_on = os.environ.get("VA_ENABLE_DOCS") == "1" or not os.environ.get("RAILWA
 app = FastAPI(
     title="Flapp",
     version="0.6.0",
-    description="Flapp — side-view running & cycling form analysis with AI coaching.",
+    description="Flapp: side-view running & cycling form analysis with AI coaching.",
     lifespan=lifespan,
     docs_url="/docs" if _docs_on else None,
     redoc_url="/redoc" if _docs_on else None,
@@ -1575,7 +1575,7 @@ async def unsubscribe(
         'div{max-width:34rem}h1{font-family:Archivo,sans-serif;color:var(--c-navy);'
         'font-size:24px;margin:0 0 12px}p{color:var(--c-ink-soft);line-height:1.6}'
         'a{color:var(--c-blue)}</style>'
-        '<div><h1>Done — no more of those</h1>'
+        '<div><h1>Done: no more of those</h1>'
         + ('<p>We won\'t send you Flapp news any more. Mail about your own '
            'analyses and purchases still comes.</p>' if list == "news" else
            '<p>We won\'t email you when an analysis finishes. Your reports are all '
@@ -1895,7 +1895,7 @@ async def analyze_endpoint(
         raise HTTPException(
             status_code=503,
             detail=(
-                "We're at capacity right now — too many clips are being analyzed. "
+                "We're at capacity right now: too many clips are being analyzed. "
                 "Please try again in a few minutes."
             ),
             headers={"Retry-After": "120"},
@@ -2312,7 +2312,7 @@ async def analyze_pair_endpoint(
         raise HTTPException(
             status_code=503,
             detail=(
-                "We're at capacity right now — too many clips are being analyzed. "
+                "We're at capacity right now: too many clips are being analyzed. "
                 "Please try again in a few minutes."
             ),
             headers={"Retry-After": "120"},
@@ -2422,7 +2422,7 @@ async def analyze_pair_endpoint(
         "job_dir": str(job_dir),
         "token": job_token,
         "owner_user_id": user.id,
-        "stage": "Queued — two clips to analyze…",
+        "stage": "Queued: two clips to analyze…",
         "pair": True,
     }
 

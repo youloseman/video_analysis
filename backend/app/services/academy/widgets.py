@@ -34,7 +34,7 @@ _AERO_CALC = """
 <figure class="aero-calc" data-widget-ready="1">
   <figcaption class="wcap">
     <span class="weyebrow">Interactive</span>
-    Aero position calculator — how much your torso angle is worth
+    Aero position calculator: how much your torso angle is worth
   </figcaption>
 
   <div class="wgrid">
@@ -184,7 +184,7 @@ _CRANK_FIT = """
 <figure class="crank-fit" data-widget-ready="1">
   <figcaption class="wcap">
     <span class="weyebrow">Interactive</span>
-    Crank-swap fit helper — keep your leg extension when you go shorter
+    Crank-swap fit helper: keep your leg extension when you go shorter
   </figcaption>
   <div class="wgrid">
     <div class="wcontrols">
@@ -210,7 +210,7 @@ _CRANK_FIT = """
   <p class="wnote">
     Geometry only: a shorter crank lowers the bottom of the pedal stroke, so to
     keep the same leg extension you <b>raise the saddle by the crank difference</b>
-    (and vice-versa). Your reach to the bars also opens a touch — re-check it. This
+    (and vice-versa). Your reach to the bars also opens a touch, so re-check it. This
     is a starting point, not a substitute for a proper bike fit.
   </p>
 </figure>
@@ -279,7 +279,7 @@ _CLEAT_SADDLE = """
 <figure class="cleat-fit" data-widget-ready="1">
   <figcaption class="wcap">
     <span class="weyebrow">Interactive</span>
-    Cleat shift → saddle-height helper — keep your leg extension
+    Cleat shift → saddle-height helper: keep your leg extension
   </figcaption>
   <div class="wgrid">
     <div class="wcontrols">
@@ -303,7 +303,7 @@ _CLEAT_SADDLE = """
     Geometry / fit consensus: moving the cleat <b>back</b> shortens your reach to
     the pedal, so <b>raise the saddle</b> by about the same amount (moving it
     forward → lower the saddle). A first-approximation starting point, not a
-    substitute for a proper bike fit — re-check knee comfort over a few rides.
+    substitute for a proper bike fit. Re-check knee comfort over a few rides.
   </p>
 </figure>
 """

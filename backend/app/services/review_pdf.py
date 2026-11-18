@@ -398,7 +398,7 @@ def render_review_html(report: dict[str, Any], result: dict[str, Any], meta: dic
     numbers = f"""
 <section class="numbers">
   {head('Appendix', 'The numbers behind it')}
-  <p class="lead">Measured by Flapp from your clip. Your coach used them as support — where the eye and the numbers disagree, the review follows the eye.</p>
+  <p class="lead">Measured by Flapp from your clip. Your coach used them as support: where the eye and the numbers disagree, the review follows the eye.</p>
   <div class="legend"><span><i><svg width="26" height="10"><rect x="1" y="1" width="24" height="8" rx="2" fill="#E6F4EC" stroke="#2E9E5B"/></svg></i>Flapp range</span>
     {'<span><i><svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#14294B" stroke-width="3" stroke-linecap="round"/></svg></i>Kona 2026 pros, middle half · tick = median</span>' if bike else ''}
     <span><i><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#2F6DE0"/></svg></i>You</span></div>

@@ -1111,7 +1111,7 @@ def _crank(v: float | None) -> float | None:
         return None
     lo, hi = CRANK_MM_RANGE
     if not lo <= v <= hi:
-        raise ValueError(f"Cranks run {lo:g}–{hi:g} mm — check the number.")
+        raise ValueError(f"Cranks run {lo:g}–{hi:g} mm. Check the number.")
     return round(float(v), 1)
 
 

@@ -74,7 +74,7 @@ def _throttle(key: str, limit: int, window_s: int) -> None:
         minutes = max(1, -(-wait // 60))
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
-            f"Too many attempts — try again in {minutes} min.",
+            f"Too many attempts. Try again in {minutes} min.",
         )
     dq.append(now)
 
@@ -389,7 +389,7 @@ async def reset_password(body: ResetBody, db: AsyncSession = Depends(get_session
     if user is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "This reset link is invalid or has expired — request a new one.",
+            "This reset link is invalid or has expired. Request a new one.",
         )
     user.password_hash = await run_in_threadpool(hash_password, body.password)
     await db.commit()
@@ -555,7 +555,7 @@ async def delete_account(
     """
     if not await run_in_threadpool(verify_password, body.password, user.password_hash):
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Wrong password — the account was not deleted.",
+            status.HTTP_401_UNAUTHORIZED, "Wrong password: the account was not deleted.",
         )
 
     from app.api.billing import cancel_live_subscriptions, has_live_subscription

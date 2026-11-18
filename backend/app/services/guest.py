@@ -80,8 +80,8 @@ async def account_for(db: AsyncSession, email: str, marketing: bool) -> User:
     if user is not None and not is_guest(user):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "This email already has a Flapp account. Log in and send the clip from the app "
-            "— it takes the same minute.",
+            "This email already has a Flapp account. Log in and send the clip from the app: "
+            "it takes the same minute.",
         )
     if user is None:
         user = User(

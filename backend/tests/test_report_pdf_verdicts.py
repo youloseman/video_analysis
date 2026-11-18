@@ -582,7 +582,7 @@ def _far(gap=-18.2, angle=75.4, c_source="user", position="triathlon", hip_card=
 def test_a_hip_far_behind_the_field_gets_a_seatpost_not_five_millimetres():
     html = render_report_html(_far(), {})
     plan = html[html.index("The plan"):html.index("The numbers")]
-    assert "Saddle fore-aft — Move the saddle forward about 12 cm (±2) · bike shop" in plan
+    assert "Saddle fore-aft: Move the saddle forward about 12 cm (±2) · bike shop" in plan
     assert "18 cm behind the middle of the Kona pros" in plan and "behind every one of the 68 age-groupers" in plan
     assert "forward-offset or dual-position seatpost" in plan and "about 3 mm against the pedals" in plan
     assert "move saddle forward 5mm" not in plan.lower()
