@@ -1904,6 +1904,15 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .result-top.no-video > #issuesBlock,.result-top.pair > #issuesBlock{grid-column:1/-1}
 #historyDetail .result-top{grid-template-columns:minmax(0,1fr)}
 #historyDetail .result-top > *{grid-column:1}
+/* The saved report as the fresh one: the frame and Findings side by side */
+#historyDetail .result-top{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+#historyDetail .result-top > .scorecard,#historyDetail .result-top > #hdFilmNotes{grid-column:1/-1}
+#historyDetail .result-top > #hdFindings{grid-column:2;margin-top:0}
+#historyDetail .result-top:has(#hdImgWrap.hidden) > #hdFindings{grid-column:1/-1}
+#hdFindings .blockhead{margin-bottom:8px}
+#hdFindings .fd-row{grid-template-columns:minmax(0,1fr) auto}
+#hdFindings .fd-bar{grid-column:1/-1}
+.sc-hd > .hdlabel{grid-column:3;grid-row:1/span 2;align-self:center}
 /* A two-sided session: the single player was the base clip twice over, so it
    leaves the screen and the session panel carries both clips. The column
    stays in the DOM because print wants the annotated still it holds. */
@@ -3200,7 +3209,9 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .result-top > #issuesBlock,
   .result-top.no-video > #issuesBlock,
   .result-top.pair > #issuesBlock,
-  .result-top > #pFindings{grid-column:1}
+  .result-top > #pFindings,
+  #historyDetail .result-top > #hdFindings,
+  #historyDetail .result-top > #hdFilmNotes{grid-column:1}
   .result-top > #issuesBlock{margin-top:0}
   .scorecard{max-width:none}
 }

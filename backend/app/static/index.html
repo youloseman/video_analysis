@@ -1612,19 +1612,20 @@
 
   <!-- ============ HISTORY DETAIL ============ -->
   <section id="historyDetail" class="hidden" aria-labelledby="hdTitle">
-    <h2 id="hdTitle" class="visually-hidden" tabindex="-1">Saved analysis</h2>
-    <div class="again-row u-m-0 u-mb-5">
+    <div class="again-row u-m-0 u-mb-3">
       <button class="btn btn-ghost btn-sm" id="hBack" type="button">
         <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to history
       </button>
     </div>
+    <!-- What it is and when, the line under it, Share and PDF beside it on a
+         wide screen (as the fresh report). -->
+    <div class="blockhead rs-head u-mt-0">
+      <div class="rs-title"><h2 class="sec" id="hdTitle" tabindex="-1">Saved analysis</h2><p class="rs-meta" id="hdHeadMeta"></p></div>
+      <div class="rs-acts" id="hdActsTop"></div></div>
     <div class="result-top">
-      <div class="card scorecard">
+      <div class="card scorecard sc-photo sc-hd">
         <span class="sporttag" id="hdSportTag"><svg class="ic" id="hdSportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="hdSportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
-        <!-- wrapper lets mobile put the grade to the RIGHT of the score; on
-             desktop it's a plain block so they stack as before -->
-        <div class="sc-scorerow">
           <div class="ring" id="hdScoreRing" role="img" aria-label="Technique score">
             <svg viewBox="0 0 144 144" aria-hidden="true">
               <circle class="ring-track" cx="72" cy="72" r="66" fill="none" stroke-width="12"/>
@@ -1633,8 +1634,8 @@
             </svg>
             <div class="ring-inner"><div class="score-num" id="hdScore">—<small>/100</small></div></div>
           </div>
-          <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div></div></div>
-        </div>
+          <div class="graderow"><span class="grade" id="hdGrade" role="img" aria-label="Grade">—</span><div><div class="gradelbl">Grade</div>
+            <div class="grade-next" id="hdGradeSub">Technique score</div><div class="grade-next hidden" id="hdGradeNext"></div></div></div>
         <div class="score-meta" id="hdMeta"></div>
         <!-- The session label: "May Race", "new saddle", "Current setup". A
              coach's series of one athlete over time is a list of these; it
@@ -1660,6 +1661,12 @@
             <a class="btn btn-ghost btn-sm" id="hdDownload" download="flapp-analysis.jpg"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download</a>
           </div>
         </div>
+      </div>
+      <!-- Beside the frame: what is outside its range, at the edge, in range,
+           from the same rows as the dashboard. -->
+      <div class="block hidden" id="hdFindings">
+        <div class="blockhead"><h3>Findings</h3></div>
+        <div id="hdFindingsBody"></div>
       </div>
     </div>
     <!-- The overlay video(s) of a saved report, fetched on open through a
@@ -1721,15 +1728,19 @@
       <p class="hdplan-prog" id="hdPlanProgress"></p>
       <div id="hdPlanCards"></div>
     </div>
-    <div class="block">
-      <div class="blockhead">
-        <div class="eyebrow">Detail</div>
-        <h3>Measurements</h3>
-        <div class="speedline-sm"></div>
+    <!-- Every angle through the clip, folded to one line as on the fresh report:
+         Findings above already says what is out. Opened for printing. -->
+    <details class="block foldblock" id="hdAnglesFold">
+      <summary class="fold-head">
+        <span class="fold-h"><span class="fold-title">Joint angles</span></span>
+        <span class="fold-peek">every angle through the clip: low, mean, high</span>
+        <svg class="ic fold-chev" aria-hidden="true"><use href="#i-chev-d"/></svg>
+      </summary>
+      <div class="fold-body">
+        <p class="anglemerge hidden" id="hdAngleMergeNote"></p>
+        <div class="tablewrap" id="hdAngleHost"></div>
       </div>
-      <p class="anglemerge hidden" id="hdAngleMergeNote"></p>
-      <div class="tablewrap" id="hdAngleHost"></div>
-    </div>
+    </details>
 
     <div class="block hidden" id="hdKinogramBlock">
       <div class="blockhead">
@@ -10009,9 +10020,9 @@ function renderCaptureReport(cr){
 /* A PDF is read without a mouse, and "capture limited the measurement" is
    exactly the caveat a coach must see next to the numbers. Open the block for
    the print, then put it back the way the reader had it. */
-addEventListener('beforeprint',()=>document.querySelectorAll('.caprep:not([open])')
+addEventListener('beforeprint',()=>document.querySelectorAll('.caprep:not([open]),#hdAnglesFold:not([open])')
   .forEach(d=>{ d.dataset.reopen='1'; d.open=true; }));
-addEventListener('afterprint',()=>document.querySelectorAll('.caprep[data-reopen]')
+addEventListener('afterprint',()=>document.querySelectorAll('.caprep[data-reopen],#hdAnglesFold[data-reopen]')
   .forEach(d=>{ d.open=false; delete d.dataset.reopen; }));
 
 /* Kinogram: the five ALTIS stride positions the backend composed into one
@@ -13120,12 +13131,48 @@ function openHistory(id){
     renderHistList();   // the card behind it was showing the teaser too
   });
 }
+/* Findings on a saved report: the rows the dashboard reads for this entry,
+   out of range first with their bars, then what is in range by name. */
+function renderHistoryFindings(e){
+  const blk=$('#hdFindings'), host=$('#hdFindingsBody'); if(!blk||!host) return;
+  const rows=e.trends&&e.access!=='teaser'?formTiles(e.sport,[e]).map(m=>({m,st:measStatus(m)})).filter(x=>x.st.group!=='info'):[];
+  if(!rows.length){ blk.classList.add('hidden'); host.innerHTML=''; return; }
+  const far=x=>x.m.range?Math.abs(x.m.delta||0)/((x.m.range.hi-x.m.range.lo)||1):0;
+  const out=rows.filter(x=>x.st.cls==='m-out').sort((a,b)=>far(b)-far(a)), near=rows.filter(x=>x.st.cls==='m-near').sort((a,b)=>far(b)-far(a)), ok=rows.filter(x=>x.st.group==='ok');
+  const n=(k,w,t)=>k?`<span class="fd-n fd-${w}">${k} ${t}</span>`:'';
+  let html=`<p class="fd-counts">${n(out.length,'out','outside range')}${n(near.length,'near','at the edge')}${n(ok.length,'ok','in range')}</p>`;
+  if(out.length||near.length){
+    html+=[...out,...near].slice(0,3).map(({m,st})=>{ const u=measUnit(m.unit), delta=m.range?measDelta(m.delta,m.unit):'';
+      return `<div class="fd-row ${st.cls}"><span class="fd-name">${esc(m.lbl)}</span><span class="fd-val num">${m.val}${u}</span>
+        ${m.range?`<div class="fd-bar">${measBar(m,st)}</div>`:''}
+        <div class="fd-st">${st.word}${delta?` <span class="num">${delta}</span>`:''}${m.range?`<span class="fd-band"> · band <span class="num">${measRange(m.range.lo,m.range.hi,m.unit)}</span></span>`:''}</div></div>`; }).join('');
+    if(ok.length) html+=`<div class="fd-inrange"><b>In range · ${ok.length}</b>${ok.map(x=>`<span>${esc(x.m.lbl)}</span>`).join('')}</div>`;
+  } else html+=`<div class="banner good u-mt-0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Every reading with a range is inside it.</span></div>`;
+  host.innerHTML=html; blk.classList.remove('hidden');
+}
+/* Share and PDF beside the title on a wide screen, in the card on a phone. */
+function placeHistoryActs(){
+  const top=$('#hdActsTop'), card=$('#historyDetail .sc-hd'); if(!top||!card) return;
+  ['#hdPrintBtnHost','#hShareBtn'].forEach(sel=>{ const el=$(sel); if(!el) return;
+    if(RESULT_WIDE.matches){ if(el.parentNode!==top) top.appendChild(el); } else if(el.parentNode!==card) card.appendChild(el); });
+}
+RESULT_WIDE.addEventListener('change', ()=>placeHistoryActs());
 function renderHistoryDetail(e){
   state.histOpen=e;
   renderHistoryKeyframe(e);
   $('#hdScore').innerHTML=(e.score==null?'—':e.score)+'<small>/100</small>';
   setScoreRing('#hdScoreRing', e.score);
   setGrade('#hdGrade', e.grade);
+  // The title says what it is and when; the grade reads in a word.
+  const when=e.filmedAt||e.at;
+  $('#hdTitle').textContent=`${e.sport==='run'?'Run':'Ride'}${e.kind==='photo'?' photo':''} · ${shortDate(when)}`;
+  $('#hdHeadMeta').innerHTML=[athleteName(e.athleteId)?esc(athleteName(e.athleteId)):'', e.label?`<b>${esc(e.label)}</b>`:'',
+    e.position?esc(POSITION_NAMES[e.position]||e.position):'', e.cameraSide?(e.cameraSide==='both'?'both sides':esc(e.cameraSide)+' side'):'', fmtWhen(when)].filter(Boolean).join(' · ');
+  { const L=e.score==null?null:(GRADE_WORD[e.grade]?e.grade:scoreLetter(e.score)), g=$('#hdGrade'), nx=$('#hdGradeNext');
+    g.classList.toggle('grade-pill', !!L);
+    if(L){ g.textContent=`${L} · ${GRADE_WORD[L]}`; g.setAttribute('aria-label',`Grade ${L}, ${GRADE_WORD[L]}`); }
+    $('#hdGradeSub').textContent=`Technique score · ${e.kind==='photo'?'one frame':'video'}`;
+    const t=L&&GRADE_NEXT[L]?`${GRADE_NEXT[L][0]} from ${GRADE_NEXT[L][1]}`:''; nx.textContent=t; nx.classList.toggle('hidden',!t); }
   setSportTag('#hdSportTag','#hdSportTagIcon','#hdSportTagText',e.sport);
   const parts=[esc(e.kind)];
   if(athleteName(e.athleteId)) parts.unshift(`Athlete: <b>${esc(athleteName(e.athleteId))}</b>`);
@@ -13134,7 +13181,8 @@ function renderHistoryDetail(e){
   if(e.cameraSide) parts.push(`Camera: <b>${e.cameraSide==='both'?'both sides':esc(e.cameraSide)+' side'}</b>`);
   if(e.position) parts.push(`Position: <b>${esc(POSITION_NAMES[e.position]||e.position)}</b>`);
   parts.push(fmtWhen(e.filmedAt||e.at));
-  $('#hdMeta').innerHTML=parts.join('<br>');
+  // What it is now lives under the title; the card keeps the label box.
+  $('#hdMeta').innerHTML='';
   const film=filmNotesOf(e);
   $('#hdFilmNotes').innerHTML=film.length?`<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>How this clip was filmed.</b> ${film.map(n=>esc(n.text)).join(' ')}</span></div>`:'';
   renderHistoryVideos(e);
@@ -13157,6 +13205,8 @@ function renderHistoryDetail(e){
   renderHistoryExport(e);
   renderChat('hdChatBlock', e);
   renderHistoryUpsell(e);
+  renderHistoryFindings(e);
+  placeHistoryActs();
 }
 /* The Full plan's PDF from a saved report. It was only offered on the fresh
    result (renderPrintable); a saved analysis had Share, the card, and no way
