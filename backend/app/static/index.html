@@ -13822,6 +13822,68 @@ function renderBiomechanics(bio, sport){
    to a full row stood 400 px tall. A flat series (every value the same) gets
    a short strip instead of a tall box with one straight line across it --
    the card's chip already says "steady"; the chart only needs to agree. */
+/* A trend the way a consulting exhibit draws one: the y axis on round
+   numbers with hairline gridlines, dates along the bottom, the band named
+   where it sits, the first and the latest value labelled (never every point),
+   and the distance still to go drawn as a bracket when the latest is outside
+   the band. On the score, the grade lines are drawn and named. `o`:
+   {ts:[ms], dec, wide, grades}. */
+function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw||1))), f=raw/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
+function trendChart2(vals,opt,unit,o){
+  o=o||{}; const n=vals.length, ts=o.ts||[], dec=o.dec??(Math.max(...vals.map(Math.abs))<10?1:0), u=unit||'';
+  const f=v=>num(v,dec)+u, W=o.wide?600:340, H=o.wide?200:178;
+  const pad={l:34,r:o.wide?64:66,t:22,b:24};
+  let lo=Math.min(...vals), hi=Math.max(...vals);
+  if(opt){ lo=Math.min(lo,opt[0]); hi=Math.max(hi,opt[1]); }
+  if(o.grades){ lo=Math.min(lo,70); hi=Math.max(hi,95); }
+  if(lo===hi){ lo-=1; hi+=1; }
+  const step=niceStep((hi-lo)/3); lo=Math.floor(lo/step)*step; hi=Math.ceil(hi/step)*step;
+  if(o.grades) hi=Math.min(100,hi);
+  const X=i=>n<=1?(pad.l+W-pad.r)/2:pad.l+i*(W-pad.l-pad.r)/(n-1);
+  const Y=v=>pad.t+(H-pad.t-pad.b)*(1-(v-lo)/((hi-lo)||1));
+  const x0=pad.l, x1=W-pad.r;
+  let g='';
+  for(let v=lo; v<=hi+1e-9; v+=step){ const y=Y(v).toFixed(1);
+    g+=`<line class="t2-grid" x1="${x0}" x2="${x1}" y1="${y}" y2="${y}"/><text class="t2-tick" x="${x0-6}" y="${(+y+4).toFixed(1)}" text-anchor="end">${num(v,step<1?1:0)}</text>`; }
+  let band='';
+  if(opt){ const y1=Y(Math.min(opt[1],hi)), y2=Y(Math.max(opt[0],lo));
+    band=`<rect class="t2-band" x="${x0}" y="${y1.toFixed(1)}" width="${x1-x0}" height="${Math.max(1,y2-y1).toFixed(1)}"/>`
+      +`<text class="t2-bandlbl" x="${x0+6}" y="${(y1+13).toFixed(1)}">range ${num(opt[0],dec)}–${f(opt[1])}</text>`; }
+  let grades='';
+  if(o.grades) [[90,'A from 90'],[75,'B from 75']].forEach(([v,l])=>{ if(v<lo||v>hi) return; const y=Y(v).toFixed(1);
+    grades+=`<line class="t2-gradeline" x1="${x0}" x2="${x1}" y1="${y}" y2="${y}"/><text class="t2-gradelbl" x="${x1+6}" y="${(+y+4).toFixed(1)}">${l}</text>`; });
+  const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const area=o.wide?`<polygon class="t2-area" points="${X(0).toFixed(1)},${Y(lo).toFixed(1)} ${pts} ${X(n-1).toFixed(1)},${Y(lo).toFixed(1)}"/>`:'';
+  const last=vals[n-1], first=vals[0], lx=X(n-1), ly=Y(last), fy=Y(first);
+  let dots='';
+  vals.forEach((v,i)=>{ const L=i===n-1;
+    dots+=`<circle class="${L?'t2-last':'t2-pt'}" cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${L?5:3.5}"><title>${esc(ts[i]?shortDate(ts[i]):'')}: ${f(v)}</title></circle>`; });
+  // first and latest, labelled; the latest in ink
+  const lab=`<text class="t2-first" x="${X(0).toFixed(1)}" y="${(fy<pad.t+14?fy+18:fy-10).toFixed(1)}" text-anchor="start">${f(first)}</text>`
+    +(ly<pad.t+16?`<text class="t2-lastlbl" x="${(lx-9).toFixed(1)}" y="${(ly+5).toFixed(1)}" text-anchor="end">${f(last)}</text>`
+      :`<text class="t2-lastlbl" x="${lx.toFixed(1)}" y="${(ly-10).toFixed(1)}" text-anchor="end">${f(last)}</text>`);
+  // the gap still to go, as a bracket from the latest point to the band
+  let gap='';
+  if(opt&&(last<opt[0]||last>opt[1])){ const edge=last<opt[0]?opt[0]:opt[1], ey=Y(edge), bx=lx+12;
+    gap=`<path class="t2-gap" d="M${(lx+6).toFixed(1)} ${ly.toFixed(1)} H${bx.toFixed(1)} V${ey.toFixed(1)} H${(lx+6).toFixed(1)}"/>`
+      +`<text class="t2-gaplbl" x="${(bx+4).toFixed(1)}" y="${((ly+ey)/2+4).toFixed(1)}">${num(Math.abs(edge-last),dec)}${u} to go</text>`; }
+  // dates: first, latest, and the middle when there is room
+  const dlab=i=>ts[i]?`<text class="t2-date" x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${esc(shortDate(ts[i]))}</text>`:'';
+  const dates=dlab(0)+(n>2?dlab(Math.floor((n-1)/2)):'')+dlab(n-1);
+  return `<svg viewBox="0 0 ${W} ${H}" class="tchart t2" role="img" aria-label="${esc(`From ${f(first)} to ${f(last)} over ${n} analyses${opt?`, range ${num(opt[0],dec)} to ${f(opt[1])}`:''}`)}">${g}${band}${grades}${area}<polyline class="t2-line" points="${pts}"/>${gap}${dots}${lab}${dates}</svg>`;
+}
+/* The finding in one line, the way an exhibit's title says it. */
+function trendHeadline(x, noun, ts){
+  const u=x.m.unit||'', dec=FORM_DEC[x.m.key]??(Math.abs(x.last)<10?1:0), d=x.last-x.first, mag=num(Math.abs(d),dec);
+  const days=ts.length>1?Math.round((ts[ts.length-1]-ts[0])/864e5):0;
+  const span=days>=14?`in ${Math.round(days/7)} weeks`:days>1?`in ${days} days`:`over ${x.series.length} ${noun}s`;
+  const moved=Math.abs(d)<Math.pow(10,-dec)?null:`${d>0?'Up':'Down'} ${mag}${u} ${span}`;
+  if(!x.opt) return moved||`Held at ${num(x.last,dec)}${u} ${span}`;
+  const inR=x.last>=x.opt[0]&&x.last<=x.opt[1];
+  if(inR) return moved?`${moved}, now inside the range`:`Held inside the range ${span}`;
+  const gap=num(x.last<x.opt[0]?x.opt[0]-x.last:x.last-x.opt[1],dec);
+  return `${moved||`Held ${span}`}, ${gap}${u} ${x.last<x.opt[0]?'below':'above'} the range`;
+}
 function trendChart(vals,dates,opt,unit,wide){
   const n=vals.length;
   if(n>=2 && Math.max(...vals)===Math.min(...vals)){
@@ -13948,27 +14010,27 @@ function renderProgress(){
   // Each reading against the band the dashboard and the report use for this
   // position (formBand), else the band the entries kept.
   const ms=TREND_METRICS[sport].map(m=>{
-    const series=[], dser=[];
-    all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); } });
+    const series=[], dser=[], tser=[];
+    all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); tser.push(e.filmedAt||e.at); } });
     if(series.length<2) return null;
     shown.add(m.key);
     let opt=m.key==='score'?null:formBand(sport,m.key,lastE);
     if(!opt&&m.key!=='score') for(let i=all.length-1;i>=0;i--){ if(all[i].trendOpt && all[i].trendOpt[m.key]){ opt=all[i].trendOpt[m.key]; break; } }
     const first=series[0], last=series[series.length-1];
-    return {m,series,dser,opt,first,last,dd:metricDelta(first,last,opt,m.hi)};
+    return {m,series,dser,tser,opt,first,last,dd:metricDelta(first,last,opt,m.hi)};
   }).filter(Boolean);
   const sc=ms.find(x=>x.m.key==='score'), rest=ms.filter(x=>x.m.key!=='score');
   const away=rest.filter(x=>x.opt&&x.dd.cls==='reg'), imp=rest.filter(x=>x.opt&&x.dd.cls==='imp');
   const steady=rest.filter(x=>x.opt&&x.dd.cls==='sta'), loose=rest.filter(x=>!x.opt);
-  const fmt=(x,v)=>{ const d=FORM_DEC[x.m.key]??(Math.abs(v)<10?1:0); return num(v,d); };
+  const fmt=(x,v)=>{ const d=FORM_DEC[x.m.key]??(Math.abs(x.last)<10?1:0); return num(v,d); };
   const card=x=>{ const u=x.m.unit||'', inR=x.opt&&x.last>=x.opt[0]&&x.last<=x.opt[1];
     const d=x.last-x.first, mag=fmt(x,Math.abs(d));
     const word=!x.opt?'':x.dd.cls==='reg'?'further from the range':x.dd.cls==='imp'?(inR?'now in range':'closer to the range'):'steady';
     const chip=Math.abs(d)<1e-9?word:`${d>0?'▲':'▼'} ${mag}${u}${word?' · '+word:''}`;
     return `<div class="tcard pcard">
       <div class="tc-head"><span class="tc-lbl">${esc(x.m.label)}</span>${chip?`<span class="tdelta ${x.opt?x.dd.cls:'sta'}">${chip}</span>`:''}</div>
-      <div class="pc-big"><span>${fmt(x,x.first)}${u} →</span><b>${fmt(x,x.last)}${u}</b>${x.opt?`<small>band ${fmt(x,x.opt[0])}–${fmt(x,x.opt[1])}${u}</small>`:''}</div>
-      ${trendChart(x.series,x.dser,x.opt,x.m.unit,false)}
+      <p class="pc-head">${esc(trendHeadline(x,noun,x.tser))}</p>
+      ${trendChart2(x.series,x.opt,x.m.unit,{ts:x.tser,dec:FORM_DEC[x.m.key]})}
     </div>`; };
   const group=(cls,h,sub,list)=>list.length?`<section class="pgroup"><h3 class="pg-h ${cls}">${h} <span>${sub}</span></h3><div class="tgrid">${list.map(card).join('')}</div></section>`:'';
   // The score, first to latest, and what moved under it.
@@ -13979,7 +14041,7 @@ function renderProgress(){
           <li class="pc-imp"><b>${imp.length}</b> ${imp.length===1?'reading':'readings'} moved toward ${imp.length===1?'its':'their'} range</li>
           ${away.length?`<li class="pc-reg"><b>${away.length}</b> moved away: ${esc(away.map(x=>x.m.label.toLowerCase()).join(', '))}</li>`:''}
           <li class="pc-sta"><b>${steady.length}</b> held steady</li></ul></div>
-      <div class="psum-chart">${trendChart(sc.series,sc.dser,null,'',window.innerWidth>640)}</div></div>`:'';
+      <div class="psum-chart"><p class="pc-head">${esc(sc.last>sc.first?`Score up ${Math.round(sc.last-sc.first)} points ${trendHeadline(sc,noun,sc.tser).replace(/^(Up|Down) \S+ /,'')}: ${Math.round(sc.first)} to ${Math.round(sc.last)}`:trendHeadline(sc,noun,sc.tser))}</p>${trendChart2(sc.series,null,'',{ts:sc.tser,dec:0,wide:window.innerWidth>640,grades:true})}</div></div>`:'';
   const steadyHtml=steady.length?`<details class="pgroup pg-steady"><summary><b>Held steady</b><span>${esc(steady.map(x=>`${x.m.label} ${fmt(x,x.last)}${x.m.unit||''}`).join(' · '))} · across ${all.length} ${noun}s</span><span class="pg-show">Show</span></summary><div class="tgrid">${steady.map(card).join('')}</div></details>`:'';
   // Free tier: the score trend is real; the rest are gated -> show them as
   // locked previews with one upsell CTA (never more than one per screen).

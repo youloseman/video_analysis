@@ -847,6 +847,23 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
   #dashboard .dplan{padding:16px}
 }
 .tchart .tval{font-family:var(--f-mono);font-size:12px;font-weight:500;fill:var(--c-ink)}
+/* Progress charts, consulting style (trendChart2) */
+.t2 .t2-grid{stroke:var(--c-line);stroke-width:1}
+.t2 .t2-tick,.t2 .t2-date{font-family:var(--f-mono);font-size:12px;fill:var(--c-ink-faint)}
+.t2 .t2-band{fill:var(--chart-ok-band)}
+.t2 .t2-bandlbl{font-family:var(--f-body);font-size:12px;font-weight:600;fill:var(--m-ok)}
+.t2 .t2-gradeline{stroke:var(--c-ink-soft);stroke-width:1;opacity:.6}
+.t2 .t2-gradelbl{font-family:var(--f-body);font-size:12px;fill:var(--c-ink-soft)}
+.t2 .t2-area{fill:var(--c-blue);opacity:.08}
+.t2 .t2-line{fill:none;stroke:var(--c-blue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.t2 .t2-pt{fill:var(--c-bg);stroke:var(--c-blue);stroke-width:2}
+.t2 .t2-last{fill:var(--c-blue);stroke:var(--c-bg);stroke-width:2}
+.t2 .t2-first{font-family:var(--f-mono);font-size:12px;fill:var(--c-ink-faint)}
+.t2 .t2-lastlbl{font-family:var(--f-mono);font-size:14px;font-weight:600;fill:var(--c-ink)}
+.t2 .t2-gap{fill:none;stroke:var(--m-near);stroke-width:1.5}
+.t2 .t2-gaplbl{font-family:var(--f-body);font-size:12px;font-weight:600;fill:var(--m-near-text)}
+.pc-head{margin:6px 0 0;font-size:14px;font-weight:600;line-height:1.35;color:var(--c-ink)}
+.psum-chart .pc-head{font-size:16px}
 /* before / after compare */
 .cmp-pickers{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 20px}
 .cmp-pick{display:flex;flex-direction:column;gap:5px;flex:1;min-width:220px}
