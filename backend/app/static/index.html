@@ -403,12 +403,11 @@
          about it (focus, drills), what it is made of (current form), and what
          you did (recent). -->
     <div class="dkpis"><div id="dashSports" class="dash-sports"></div></div>
-    <!-- The latest run, then the latest ride: the kinogram (or the frame) and
-         what the report says to do about it. -->
-    <div id="dashKino" class="dkinos"></div>
+    <!-- What to do (Main board): the latest report's first fix beside its frame,
+         then the drills and what else to work on, in one card. -->
+    <div id="dashFix"></div>
     <!-- Progress as a picture, and where an aero rider sits among the pros. -->
     <div class="dvis"><div id="dashThen"></div><div id="dashKona"></div></div>
-    <div class="dgrid"><div id="dashFocus"></div><div id="dashPlan"></div></div>
     <div id="dashForm"></div>
     <!-- The swim review, last: the page is about your technique first. Until
          it is closed or a swim clip is sent. -->
@@ -13333,30 +13332,8 @@ $('#hdPlanCards').addEventListener('change',ev=>{
   const plan=(e.plan||[]).filter(p=>p&&p.drill);
   $('#hdPlanProgress').innerHTML=planProgressHtml(plan, e.planDone);
 });
-/* Dashboard "Training plan" summary: the most recent analysis that carries a
-   plan, as a compact checklist. All drills ticked -> a re-test CTA (this is the
-   loop back into a new analysis); otherwise a link into the full plan. */
+/* The tick on a drill row (the dashboard's Fix first card). */
 const DPLAN_CHECK='<span class="dplan-check"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
-function renderDashPlan(all){
-  const host=$('#dashPlan'); if(!host) return;
-  const e=all.find(x=>(x.plan||[]).some(p=>p&&p.drill));
-  if(!e){ host.innerHTML=''; return; }
-  const plan=e.plan.filter(p=>p&&p.drill), done=e.planDone||{};
-  const nDone=plan.filter(p=>done[planKey(p)]).length, allDone=nDone===plan.length;
-  const noun=e.sport==='run'?'run':'ride';
-  const items=plan.map(p=>{
-    const on=!!done[planKey(p)];
-    return `<div class="dplan-item${on?' done':''}">${DPLAN_CHECK}<span class="dplan-drill">${esc(p.drill)}</span><small>${esc(p.label||'')}</small></div>`;
-  }).join('');
-  const foot=allDone
-    ? `<span class="dplan-done-note">✓ All drills done</span><button class="btn btn-primary btn-sm" data-analyze="${e.sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Re-test — new ${noun}</button>`
-    : `<span class="dplan-prog"><b>${nDone}</b> of <b>${plan.length}</b> done</span><button class="btn btn-ghost btn-sm" data-plan-open="${e.id}">Open plan →</button>`;
-  host.innerHTML=`<div class="dcard dplan">
-    <div class="dcard-head"><h2>Your drills</h2><span class="dcard-note">${e.sport==='run'?'run':'bike'} plan</span></div>
-    <div class="dplan-list">${items}</div>
-    <div class="dplan-foot">${foot}</div>
-  </div>`;
-}
 function openHistoryView(){ renderHistList(); setState('history',{focus:'#histTitle'}); }
 Object.assign(ROUTED_STATES,{athletes:()=>openAthletes(), athletedetail:r=>openAthlete(r.id), batch:()=>openBatch()});
 $('#navHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
@@ -13916,9 +13893,14 @@ function miniSpark(vals,W=132,H=44){
   const lx=X(n-1),ly=Y(vals[n-1]);
   return `<svg viewBox="0 0 ${W} ${H}" class="dspark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.4" fill="var(--c-blue)" stroke="var(--c-bg)" stroke-width="1.6"/></svg>`;
 }
-/* A KPI tile per sport: the latest score in its ring, the grade, how far it
-   moved since the first analysis, the line of every score, the personal best.
-   Same facts as the old sport card, at a third of the height. */
+/* A card per sport (Main board): the latest frame beside the score in its
+   ring, the grade in a word, the change since the first, the last few scores;
+   under them the readings out of range first, then what is in range. */
+const DSC_WORD={'m-out':'out of range','m-near':'borderline','m-ok':'in range'};
+function scoreStrip(scores){
+  const s=scores.slice(-4);
+  return `<span class="dsc-strip">${s.map((v,i)=>i===s.length-1?`<b>${v}</b>`:`<span>${v}</span>`).join('<i aria-hidden="true"></i>')}</span>`;
+}
 function sportCard(sport, entries){
   const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
   if(!entries.length){
@@ -13949,17 +13931,49 @@ function sportCard(sport, entries){
   const pb=newPB
     ? `<span class="ds-pb ds-pb-new"><svg class="ic" aria-hidden="true"><use href="#i-arr-up"/></svg> New personal best</span>`
     : (best!=null && sameSide.length>=2 ? `<span class="ds-pb">Best <b>${best}</b>${bestEntry?' · '+esc(shortDate(bestEntry.at)):''}</span>` : '');
-  return `<div class="dkpi dkpi-sport">
-    <div class="dkpi-lbl"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}
-      <span class="dkpi-n">${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
-    <div class="dkpi-main">
-      ${ringHtml(last.score,64,`<div class="ds-score">${last.score==null?'—':last.score}</div>`)}
-      <div class="dkpi-side"><span class="dkpi-grade">${esc(last.grade||'—')} <small>· ${agoStr(last.at)}</small></span>${deltaHtml}</div>
+  // A clip is graded in letters, a photo in words on the same lines.
+  const L=last.score==null?null:(GRADE_WORD[last.grade]?last.grade:scoreLetter(last.score));
+  const st=scoreStatus(last.score);
+  const pos=sport==='bike'&&last.position&&POSITION_NAMES[last.position]?` · ${esc(POSITION_NAMES[last.position])}`:'';
+  // The readings: out of range and borderline first, furthest first; in range
+  // fills the card to three lines, the rest are counted.
+  const rows=formTiles(sport, sameSide).map(m=>({m,st:measStatus(m)})).filter(x=>x.st.group!=='info');
+  const far=x=>x.m.range?Math.abs(x.m.delta||0)/((x.m.range.hi-x.m.range.lo)||1):0;
+  const attn=rows.filter(x=>x.st.group==='attn').sort((a,b)=>far(b)-far(a)), ok=rows.filter(x=>x.st.group==='ok');
+  const shown=attn.slice(0,3), okShown=ok.slice(0,Math.max(0,3-shown.length-(ok.length>3-shown.length?1:0)));
+  const rest=ok.length-okShown.length;
+  const li=({m,st})=>`<li class="${st.cls}"><span class="dsc-dot" aria-hidden="true"></span><span class="dsc-n">${esc(m.lbl)}</span>`
+    +`${st.group==='attn'?`<span class="dsc-w">· ${DSC_WORD[st.cls]}</span>`:''}<span class="dsc-v">${m.val}${measUnit(m.unit)}</span></li>`;
+  const list=[...shown,...okShown].map(li).join('')
+    +(rest>0?`<li class="m-ok"><span class="dsc-dot" aria-hidden="true"></span><span class="dsc-n">${rest} more reading${rest>1?'s':''}</span><span class="dsc-w">· in range</span><button type="button" class="btn btn-link dsc-all" data-seeall="${sport}">See all</button></li>`:'');
+  return `<div class="dkpi dkpi-sport dsc" data-dsc="${esc(last.id)}">
+    <figure class="dsc-fig kf-load" data-dsc-fig="${esc(last.id)}"><img alt="" class="kf-slot"></figure>
+    <div class="dsc-top">
+      <div class="dsc-h"><b><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}${pos}</b>
+        <span>${agoStr(last.at)} · ${entries.length} ${entries.length===1?'analysis':'analyses'}</span></div>
+      <div class="dsc-score">
+        ${ringHtml(last.score,96,`<div class="ds-score">${last.score==null?'—':last.score}</div>`)}
+        <div class="dsc-grade">${L?`<span class="dsc-pill dsc-${st}">${L} · ${GRADE_WORD[L]}</span>`:''}${deltaHtml}</div>
+      </div>
+      ${scores.length>=2?`<div class="dsc-scores"><span>Your scores</span>${scoreStrip(scores)}</div>`:''}
+      ${pb?`<div class="dsc-pb">${pb}</div>`:''}
     </div>
-    ${scores.length>=2?miniSpark(scores,240,36):''}
-    <div class="dkpi-foot">${pb}
-      ${entries.length>=2?`<button class="btn btn-link dkpi-act" type="button" data-progress="${sport}">Progress →</button>`:''}</div>
+    ${list?`<ul class="dsc-rows">${list}</ul>`:''}
+    <div class="dsc-foot"><button class="btn btn-link" type="button" data-id="${esc(last.id)}" data-focus-open="1">Open report →</button>
+      ${entries.length>=2?`<button class="btn btn-link" type="button" data-progress="${sport}">Progress →</button>`:''}</div>
   </div>`;
+}
+/* The latest frame on each sport card; a card with none closes up. */
+function fillSportFigs(all){
+  document.querySelectorAll('#dashSports [data-dsc-fig]').forEach(fig=>{
+    const e=all.find(x=>x.id===fig.dataset.dscFig), card=fig.closest('.dsc');
+    if(!e){ fig.remove(); card.classList.add('no-fig'); return; }
+    fetchKeyframe(e).then(k=>{
+      if(k){ const img=fig.querySelector('img'); img.src=k; img.alt=`${e.sport==='run'?'Run':'Ride'} frame from ${shortDate(e.at)}`;
+        img.classList.remove('kf-slot'); fig.classList.remove('kf-load'); }
+      else { fig.remove(); card.classList.add('no-fig'); }
+    });
+  });
 }
 /* Issue type -> human label + which Academy drill/article addresses it.
    drill=null when we don't have a matching article yet (link is omitted). */
@@ -13992,53 +14006,60 @@ function focusAreas(all, N=6){
   areas.sort((a,b)=> (b.inLatest-a.inLatest) || (b.count/b.total - a.count/a.total) || (b.count-a.count));
   return areas.slice(0,3);
 }
-function focusCard(a,i){
-  const meta=ISSUE_META[a.type]||{label:pretty(a.type),drill:null};
-  const noun=a.sport==='run'?(a.total===1?'run':'runs'):(a.total===1?'ride':'rides');
-  const statusCls=a.inLatest?'reg':'imp';
-  const statusTxt=a.inLatest?'needs work':'improving';
-  const drill=meta.drill?`<a class="btn btn-link dfoc-drill" href="${meta.drill}">Drill →</a>`:'';
-  return `<li class="dfoc">
-    <span class="dfoc-n" aria-hidden="true">${i+1}</span>
-    <div class="dfoc-t"><span class="focus-lbl">${esc(meta.label)}</span>
-      <small>${a.count} of your last ${a.total} ${noun}${a.inLatest?'':' · gone from your latest'}</small></div>
-    <span class="tdelta ${statusCls}">${statusTxt}</span>${drill}
-  </li>`;
-}
-/* Phase 2: aggregated focus areas from typed issues; falls back to the
-   latest coach "Fix first" note when there aren't enough issue data yet. */
-function renderDashFocus(all){
-  const host=$('#dashFocus'); if(!host) return;
+/* Fix first (Main board): the newest report's first fix and the cue for the
+   next session beside that clip's frame, then the drills of the newest plan
+   and what else keeps coming up. Tips and frame come from one entry, so they
+   never disagree. A free account gets the one upsell here instead. */
+function renderDashFix(all){
+  const host=$('#dashFix'); if(!host) return;
+  const e=all.find(x=>{ const t=dashTips(x); return t.fix.length||t.clean||t.next; });
+  const pe=all.find(x=>(x.plan||[]).some(p=>p&&p.drill));
   const areas=focusAreas(all);
-  if(areas.length){
-    host.innerHTML=`<div class="dcard dfocus">
-      <div class="dcard-head"><h2>Work on this</h2><span class="dcard-note">from your recent analyses</span></div>
-      <ol class="dfoc-list">${areas.map(focusCard).join('')}</ol>
-    </div>`;
+  if(!e && !pe && !areas.length){
+    host.innerHTML=(isFreeUser() && all.length) ? teaserPanelHtml(DASH_TEASER_ITEMS, {src:'dashboard-teaser',
+      title:'Unlock your full technique',
+      body:'You’re seeing your score and history. Upgrade to see the measurements, ranked focus areas and a personal drill plan that tell you <em>what to change</em>.'}) : '';
     return;
   }
-  // Fallback: latest coach "Fix first" block -- or its "Nothing to fix"
-  // variant, which the coach uses when nothing clears the materiality floor.
-  // That case must still say so out loud; dropping through to an empty panel
-  // would read as missing data rather than as a clean analysis.
-  const withReport=all.find(e=>e.report);
-  const m=withReport&&withReport.report.match(/\*\*(Fix first|Nothing to fix)\*\*\s*[—:-]?\s*([\s\S]*?)(?:\n\*\*|$)/i);
-  const clean=!!m&&/nothing/i.test(m[1]);
-  const body=m?m[2].trim():'';
-  if(body){
-    host.innerHTML=`<div class="dcard dfocus${clean?' dfocus-clean':''}">
-      ${clean?'<img class="empty-fig" src="/media/empty-nothing-to-fix.webp" alt="" width="96" height="96">':''}
-      <div class="dcard-head"><h2>${clean?'Nothing to fix':'Work on this'}</h2></div>
-      <div class="dfocus-body">${mdToHtml(body)}</div>
-      <button class="btn btn-ghost btn-sm" data-id="${withReport.id}" data-focus-open="1">Open full analysis →</button>
+  let lead='', fig='';
+  if(e){
+    const tips=dashTips(e), noun=e.sport==='run'?'run':'ride', first=tips.fix[0];
+    lead=`<div class="dfx-lead">
+      <span class="dfx-chip${tips.clean?' dfx-clean':''}">${tips.clean?'Nothing to fix':'Fix first'} · ${e.sport==='run'?'Run':'Ride'}</span>
+      <h2>${tips.clean?`Nothing to fix on this ${noun}`:esc(first&&first.t||'What to change first')}</h2>
+      ${first&&first.d?`<p>${esc(first.d)}</p>`:''}
+      ${tips.fix[1]&&tips.fix[1].t?`<p class="dfx-then"><b>Then:</b> ${esc(tips.fix[1].t)}</p>`:''}
+      ${tips.next?`<p class="dfx-next"><b>Next session.</b> ${esc(tips.next)}</p>`:''}
+      <button class="btn btn-link dfx-open" type="button" data-id="${esc(e.id)}" data-focus-open="1">Open report →</button>
     </div>`;
-    return;
+    fig=`<figure class="dfx-fig kf-load" data-dfx-fig="${esc(e.id)}"><img alt="" class="kf-slot"></figure>`;
   }
-  // Free tier: no issues/coaching in the gated result -> this is the dashboard's
-  // single upsell CTA (the form + plan blocks stay quiet lock previews).
-  host.innerHTML=(isFreeUser() && all.length) ? teaserPanelHtml(DASH_TEASER_ITEMS, {src:'dashboard-teaser',
-    title:'Unlock your full technique',
-    body:'You’re seeing your score and history. Upgrade to see the measurements, ranked focus areas and a personal drill plan that tell you <em>what to change</em>.'}) : '';
+  let drills='';
+  if(pe){
+    const plan=pe.plan.filter(p=>p&&p.drill), done=pe.planDone||{};
+    const nDone=plan.filter(p=>done[planKey(p)]).length, allDone=nDone===plan.length;
+    drills=`<div class="dfx-drills">
+      <div class="dfx-h"><b>Your drills</b><span><b>${nDone}</b> of <b>${plan.length}</b> done</span></div>
+      <div class="dfx-prog" aria-hidden="true"><i style="--w:${Math.round(nDone/plan.length*100)}%"></i></div>
+      <div class="dplan-list">${plan.map(p=>{ const on=!!done[planKey(p)];
+        return `<div class="dplan-item${on?' done':''}">${DPLAN_CHECK}<span class="dplan-drill">${esc(p.drill)}</span></div>`; }).join('')}</div>
+      ${allDone?`<button class="btn btn-primary btn-sm" data-analyze="${pe.sport}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Re-test with a new ${pe.sport==='run'?'run':'ride'}</button>`
+        :`<button class="btn btn-link dfx-open" type="button" data-plan-open="${esc(pe.id)}">Open plan →</button>`}
+    </div>`;
+  }
+  // What the lead already says is not "also" (Overstride, then Overstriding).
+  const leadT=e?String((dashTips(e).fix[0]||{}).t||'').toLowerCase():'';
+  const rest=areas.filter(a=>!(e&&a.sport===e.sport&&leadT&&leadT.includes(String((ISSUE_META[a.type]||{label:pretty(a.type)}).label).toLowerCase().slice(0,5))));
+  const also=rest.length?`<div class="dfx-also"><div class="dfx-h"><b>Also work on</b></div><ul>${rest.map(a=>{
+      const meta=ISSUE_META[a.type]||{label:pretty(a.type)};
+      return `<li><span>${esc(meta.label)} <small>· ${a.sport==='run'?'run':'bike'}</small></span><span class="tdelta ${a.inLatest?'reg':'imp'}">${a.inLatest?'needs work':'improving'}</span></li>`;
+    }).join('')}</ul></div>`:'';
+  host.innerHTML=`<div class="dcard dfx${fig?'':' no-fig'}${(drills||also)?'':' no-side'}">${lead}${fig}${(drills||also)?`<div class="dfx-side">${drills}${also}</div>`:''}</div>`;
+  const f=host.querySelector('[data-dfx-fig]');
+  if(f) fetchKeyframe(e).then(k=>{
+    if(k){ const img=f.querySelector('img'); img.src=k; img.alt=`The frame from ${shortDate(e.at)}`; img.classList.remove('kf-slot'); f.classList.remove('kf-load'); }
+    else { f.remove(); host.querySelector('.dfx').classList.add('no-fig'); }
+  });
 }
 const DASH_TEASER_ITEMS=['Every joint & gait metric, tracked over time','Your ranked focus areas','A personal action plan with drills','Coaching notes on what to change'];
 /* ---------- Current form: the latest reading per metric in the report's
@@ -14052,6 +14073,10 @@ const FORM_BIKE_BAND={knee:'knee_at_bdc',trunk:'trunk_angle',elbow:'elbow_angle'
 function formBand(sport, key, entry){
   if(sport==='bike'){
     if(key==='hip') return null;
+    // The band the server graded this clip against, where the entry kept it:
+    // the knee's carries the non-drive-side margin, and without it a knee the
+    // report called in range read "out of range" here.
+    if(entry.trendOpt&&entry.trendOpt[key]) return entry.trendOpt[key];
     const k=FORM_BIKE_BAND[key];
     const b=k&&bikePosRange(entry.position,k);
     if(b) return b;
@@ -14156,21 +14181,6 @@ function renderCurrentForm(all){
     <div class="dform-body">${body}</div>
   </div>`;
 }
-/* ---------- The latest picture of each sport, with what to do about it ----------
-   The dashboard was all numbers. This puts the athlete back on it: the kinogram
-   of the latest run, then of the latest ride, each beside the two things its
-   report says to fix and the one cue for the next session. A ride with no
-   kinogram shows its annotated frame; one with no picture at all shows the
-   readings furthest from their range, as bars -- something to look at either
-   way. Tips come from the same entry as the picture, so they never disagree. */
-function fetchKinogram(e){
-  if(!e||!e.hasKinogram||e.access!=='full'||!auth) return Promise.resolve(null);
-  if(Object.prototype.hasOwnProperty.call(state.kinoCache,e.id)) return Promise.resolve(state.kinoCache[e.id]);
-  return fetch(meUrl(e,'kinogram'),{headers:authHeaders()})
-    .then(r=>r.ok?r.json():null)
-    .then(j=>{ const k=(j&&j.kinogram)||null; state.kinoCache[e.id]=k; return k; })
-    .catch(()=>null);
-}
 /* One section of the coach's report ("Fix first", "Next session"...), as text. */
 function reportSection(md,name){
   const m=String(md||'').match(new RegExp('\\*\\*'+name+'\\*\\*\\s*[—:-]?\\s*([\\s\\S]*?)(?=\\n\\s*\\*\\*[A-Z][^*\\n]*\\*\\*\\s*[—:-]|$)','i'));
@@ -14215,78 +14225,6 @@ function dashTips(e){
     return out;
   }
   return out;
-}
-function tipsHtml(e,tips){
-  const fix = tips.clean
-    ? `<p class="dk-clean"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Nothing to fix on this ${e.sport==='run'?'run':'ride'}.</p>`
-    : (tips.fix.length ? `<h3 class="dk-h">Fix first</h3><ol class="dk-fix">${tips.fix.map(f=>
-        `<li>${f.t?`<b>${esc(f.t)}</b>`:''}${f.d?`<span>${esc(f.d)}</span>`:''}</li>`).join('')}</ol>` : '');
-  const next = tips.next ? `<h3 class="dk-h">Next session</h3><p class="dk-next">${esc(tips.next)}</p>` : '';
-  // No coach notes on this one (no report, no plan): the readings furthest
-  // from their range say what the labels alone cannot.
-  const bars = !tips.next ? worstBarsHtml(e) : '';
-  const worst = bars ? `<h3 class="dk-h">Furthest from range</h3>${bars}` : '';
-  return fix||next||worst ? fix+next+worst : '<p class="dkpi-note">No coaching notes on this analysis.</p>';
-}
-/* The readings of one entry furthest outside their range, as bars: the
-   picture a ride without a picture still has. */
-function worstBarsHtml(e){
-  const rows=formTiles(e.sport,[e]).filter(m=>m.range&&m.zone!=='optimal')
-    .sort((a,b)=>Math.abs(b.delta||0)-Math.abs(a.delta||0)).slice(0,3);
-  if(!rows.length) return '';
-  return `<ul class="dk-bars">${rows.map(m=>{ const st=measStatus(m);
-    return `<li class="mrow ${st.cls}"><div class="dk-bar-top"><span>${esc(m.lbl)}</span><b class="m-val">${m.val}${measUnit(m.unit)}</b><span class="m-pill">${st.word}</span></div>${measBar(m,st)}</li>`; }).join('')}</ul>`;
-}
-function kinoCard(sport, all){
-  const mine=all.filter(e=>e.sport===sport);
-  if(!mine.length) return '';
-  // The newest analysis that has a kinogram, else the newest one.
-  const e=mine.find(x=>x.hasKinogram&&x.access==='full')||mine[0];
-  const tips=dashTips(e);
-  const label=sport==='run'?'Run':'Ride', icon=sport==='run'?'i-run':'i-bike';
-  const pos=e.position&&POSITION_NAMES[e.position]?` · ${esc(POSITION_NAMES[e.position])}`:'';
-  return `<div class="dcard dkino" data-kino-card="${esc(e.id)}">
-    <div class="dcard-head"><h2><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> Latest ${label.toLowerCase()}</h2>
-      <span class="dcard-note">${esc(shortDate(e.at))}${pos}${e.score!=null?` · <b>${e.score}</b>${e.grade?' '+esc(e.grade):''}`:''}</span>
-      <button type="button" class="btn btn-link" data-id="${esc(e.id)}" data-focus-open="1">Open report →</button></div>
-    <div class="dkino-body">
-      <figure class="dkino-fig kf-load" data-kino-fig="${esc(e.id)}"><img alt="" class="kf-slot"></figure>
-      <div class="dkino-tips">${tipsHtml(e,tips)}</div>
-    </div>
-  </div>`;
-}
-/* Fill each card's picture: kinogram, else the frame, else the bars. */
-function fillKinoCards(all){
-  // A phone gets the tips without the picture: five positions shrunk to a
-  // 360 px column cannot be read, and a strip to swipe was no better.
-  const phone=matchMedia('(max-width:640px)').matches;
-  document.querySelectorAll('#dashKino [data-kino-fig]').forEach(fig=>{
-    const e=all.find(x=>x.id===fig.dataset.kinoFig); if(!e) return;
-    if(phone){ fig.parentElement.classList.add('no-fig'); fig.remove(); return; }
-    const img=fig.querySelector('img');
-    // A run kinogram is five positions of one stride; a ride's is the positions
-    // of one revolution, and not always five of them.
-    const cap=e.sport==='run'?'Five positions of one stride':'One pedal revolution';
-    fetchKinogram(e).then(k=>{
-      if(k){ img.src=k; img.alt=`Kinogram: ${cap.toLowerCase()}, ${shortDate(e.at)}`;
-        fig.classList.add('is-kino'); fig.classList.remove('kf-load'); img.classList.remove('kf-slot');
-        fig.insertAdjacentHTML('beforeend',`<figcaption>${cap}</figcaption>`); return; }
-      return fetchKeyframe(e).then(f=>{
-        if(f){ img.src=f; img.alt=`The annotated frame from ${shortDate(e.at)}`;
-          fig.classList.add('is-frame'); fig.classList.remove('kf-load'); img.classList.remove('kf-slot'); return; }
-        // No picture: the readings furthest from range take its place --
-        // unless the tips column already shows them.
-        const body=fig.parentElement, bars=body.querySelector('.dk-bars')?'':worstBarsHtml(e);
-        if(bars) fig.outerHTML=`<div class="dkino-fig is-bars"><h3 class="dk-h">Furthest from range</h3>${bars}</div>`;
-        else { fig.remove(); body.classList.add('no-fig'); }
-      });
-    });
-  });
-}
-function renderDashKino(all){
-  const host=$('#dashKino'); if(!host) return;
-  host.innerHTML=kinoCard('run',all)+kinoCard('bike',all);
-  fillKinoCards(all);
 }
 /* ---------- Then -> now: the first and the latest frame of one sport ----------
    Progress as a picture: the athlete's own position on the first day and on
@@ -14401,17 +14339,16 @@ function renderDashboard(){
         <button class="btn btn-primary" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a clip</button>
       </div>
     </div>`;
-    $('#dashSports').innerHTML=''; $('#dashKino').innerHTML=''; $('#dashThen').innerHTML=''; $('#dashKona').innerHTML=''; $('#dashForm').innerHTML=''; $('#dashFocus').innerHTML=''; $('#dashPlan').innerHTML='';
+    $('#dashSports').innerHTML=''; $('#dashFix').innerHTML=''; $('#dashThen').innerHTML=''; $('#dashKona').innerHTML=''; $('#dashForm').innerHTML='';
     return;
   }
   $('#dashSummary').innerHTML='';
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
-  renderDashKino(all);
+  fillSportFigs(all);
+  renderDashFix(all);
   renderDashThenNow(all);
   renderDashKona(all);
   renderCurrentForm(all);
-  renderDashFocus(all);
-  renderDashPlan(all);
 }
 /* The swim review at the foot of the home screen (Artur 2026-11-02: at the
    top it read as an ad). Gone for good once closed, and not shown to anyone
@@ -15342,6 +15279,8 @@ $('#dashboard').addEventListener('click',e=>{
   const an=e.target.closest('[data-analyze]'); if(an){ startSportAnalysis(an.dataset.analyze); return; }
   const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress(); return; }
   const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id); return; }
+  const sa=e.target.closest('[data-seeall]'); if(sa){ state.formSport=sa.dataset.seeall; renderCurrentForm(loadHist());
+    const f=$('#dashForm'); if(f) f.scrollIntoView({behavior:'smooth',block:'start'}); return; }
   const po=e.target.closest('[data-plan-open]'); if(po){ openHistory(po.dataset.planOpen); return; }
 });
 /* Go to the uploader preselected for a sport (from a dashboard CTA). */
@@ -16290,7 +16229,7 @@ $('#cmpBack').addEventListener('click',e=>{ e.preventDefault();
   if(hasCoachPlan()&&c&&(people||c.from==='squad')){ state.squadMe=false; openDashboard(); } else openProgress(); });
 
 /* Exposed for testing/screenshots */
-window.__flapp={setState,render,renderBilateral,renderRunSession,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,renderDashPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overlayBounds};
+window.__flapp={setState,render,renderBilateral,renderRunSession,renderPhoto,analyzePhoto,fail,showLimit,setSteps,stage,renderHistList,openHistory,saveToHistory,loadHist,renderProgress,openProgress,extractTrends,renderBiomechanics,gradientRangeBar,openCompare,renderCompare,metricDelta,renderConfidence,angleTableRows,mergeAngleStats,findPairedEntry,renderHistoryAngles,renderDashboard,keyframeOf,fetchKeyframe,renderHistoryPlan,persistEntryPatch,planKey,renderCurrentForm,currentFormTable,isFreeUser,teaserPanelHtml,lockedTrendCard,clearAllHistory,doClearAll,historyDelete,confirmDialog,buildShareCard,shareVerdict,overlayBounds};
 </script>
 </body>
 </html>

@@ -537,6 +537,86 @@ video.ex-media{background:var(--c-media-bg)}
 .ds-pb b{color:var(--c-ink);font-weight:500}
 .ds-pb .ic{width:14px;height:14px}
 .ds-pb-new{color:var(--st-good)}
+/* ---- Dashboard, as drawn (Main board, short version, 2026-11-17) ---- */
+/* a sport: the frame beside the score, the readings under both */
+.dsc{padding:0;gap:0;overflow:hidden;display:grid;border-radius:var(--radius-card);
+  grid-template-columns:minmax(0,5fr) minmax(0,6fr);grid-template-areas:"fig top" "rows rows" "foot foot"}
+.dsc.no-fig{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "rows" "foot"}
+.dsc-fig{grid-area:fig;position:relative;margin:0;min-height:200px;background:var(--c-media-bg)}
+.dsc-fig img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dsc-top{grid-area:top;display:flex;flex-direction:column;gap:12px;padding:16px 18px;min-width:0}
+.dsc-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 12px}
+.dsc-h b{display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:700;color:var(--c-head)}
+.dsc-h b .ic{width:16px;height:16px;color:var(--c-ink-faint)}
+.dsc-h > span{font-size:12px;color:var(--c-ink-faint)}
+.dsc-score{display:flex;align-items:center;gap:14px}
+.dsc .ring{width:96px;height:96px;flex:none}
+.dsc .ring .ds-score{font-size:40px}
+.dsc-grade{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+.dsc-pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:14px;font-weight:600;background:var(--c-panel);color:var(--c-ink)}
+.dsc-pill.dsc-good{background:var(--st-good-bg);color:var(--m-ok)}
+.dsc-pill.dsc-watch{background:var(--st-warn-bg);color:var(--m-near-text)}
+.dsc-pill.dsc-fix{background:var(--st-bad-bg);color:var(--st-bad-text)}
+.dsc-scores{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--c-ink-faint)}
+.dsc-strip{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:14px;color:var(--c-ink-faint)}
+.dsc-strip i{flex:1 1 0;max-width:72px;height:2px;background:var(--c-line-strong)}
+.dsc-strip b{padding:1px 8px;border-radius:999px;background:var(--c-brand-navy);color:#fff;font-weight:600}
+.dsc-rows{grid-area:rows;list-style:none;margin:0;padding:0;border-top:1px solid var(--c-line)}
+.dsc-rows li{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 18px;font-size:14px;border-top:1px solid var(--c-line)}
+.dsc-rows li:first-child{border-top:0}
+.dsc-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--m-ok)}
+.dsc-rows .m-near .dsc-dot{background:var(--m-near)} .dsc-rows .m-out .dsc-dot{background:var(--m-out)}
+.dsc-n{font-weight:600;color:var(--c-ink)}
+.dsc-w{color:var(--c-ink-faint)} .dsc-rows .m-near .dsc-w{color:var(--m-near-text)} .dsc-rows .m-out .dsc-w{color:var(--m-out)}
+.dsc-v{margin-left:auto;font-family:var(--f-mono);font-weight:500;color:var(--c-ink);white-space:nowrap}
+.dsc-rows .m-near .dsc-v{color:var(--m-near-text)} .dsc-rows .m-out .dsc-v{color:var(--m-out)}
+.dsc-all{margin-left:auto;min-height:44px;font-size:14px}
+.dsc-foot{grid-area:foot;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px;border-top:1px solid var(--c-line)}
+.dsc-foot .btn-link{min-height:44px;font-size:14px}
+/* Fix first: what to change and the frame it is about; drills and the rest beside */
+.dfx{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.8fr) minmax(0,1fr);gap:20px;align-items:start}
+.dfx.no-fig{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+.dfx.no-side{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+.dfx.no-fig.no-side{grid-template-columns:minmax(0,1fr)}
+.dfx-lead{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0}
+.dfx-lead h2{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:28px;line-height:1.1;color:var(--c-head);margin:0}
+.dfx-lead p{margin:0;font-size:14px;line-height:1.5;color:var(--c-ink-soft)}
+.dfx-lead p b{color:var(--c-ink)}
+.dfx-chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--st-bad-bg);color:var(--st-bad-text)}
+.dfx-chip.dfx-clean{background:var(--st-good-bg);color:var(--m-ok)}
+.dfx-open{min-height:44px;padding:0;font-size:14px}
+.dfx-fig{position:relative;margin:0;border-radius:var(--radius-panel);overflow:hidden;background:var(--c-media-bg);aspect-ratio:3/4}
+.dfx-fig img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dfx-side{display:flex;flex-direction:column;gap:18px;min-width:0}
+.dfx-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;color:var(--c-ink-faint)}
+.dfx-h > b{color:var(--c-head);font-size:14px}
+.dfx-h span b{color:var(--c-ink);font-family:var(--f-mono);font-weight:600}
+.dfx-prog{height:6px;border-radius:999px;background:var(--c-line);margin:8px 0 4px;overflow:hidden}
+.dfx-prog i{display:block;height:100%;width:var(--w);background:var(--m-ok);border-radius:999px}
+.dfx-drills .dplan-list{margin-bottom:6px}
+.dfx-also ul{list-style:none;margin:6px 0 0;padding:0}
+.dfx-also li{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:40px;font-size:14px;border-top:1px solid var(--c-line)}
+.dfx-also li:first-child{border-top:0}
+.dfx-also small{color:var(--c-ink-faint);font-size:12px}
+#dashboard .dfx .btn-primary{background:var(--c-bg);color:var(--c-ink);border-color:var(--c-line-strong)}
+@media(max-width:900px){
+  .dfx,.dfx.no-fig,.dfx.no-side{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+  .dfx-side{grid-column:1/-1}
+  .dfx.no-fig .dfx-side{grid-column:auto}
+}
+@media(max-width:640px){
+  .dkpis{grid-template-columns:minmax(0,1fr)}
+  #dashSports .dsc{padding:0;grid-template-columns:104px minmax(0,1fr)}
+  .dsc-score{flex-wrap:wrap;gap:8px 12px}
+  .dsc-pill{white-space:nowrap}
+  .dsc-fig{min-height:0}
+  .dsc-top{padding:14px}
+  .dsc .ring{width:72px;height:72px} .dsc .ring .ds-score{font-size:28px}
+  .dsc-rows li{padding:6px 14px} .dsc-foot{padding:0 14px}
+  .dfx,.dfx.no-fig,.dfx.no-side{grid-template-columns:minmax(0,1fr)}
+  .dfx-fig{display:none}
+  .dfx-side{grid-column:auto}
+}
 /* The latest run, then the latest ride: the picture on the left, what the
    report says to do about it on the right. */
 .dkinos{display:flex;flex-direction:column;gap:16px}
