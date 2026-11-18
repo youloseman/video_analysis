@@ -9275,7 +9275,7 @@ function reportProse(md){ return `<div class="rr-body">${mdToHtml(md||'')}</div>
 function reportPriorities(rows){
   return (rows||[]).map((p,i)=>`
     <div class="rr-prio">
-      <div class="rr-prio-n">Priority ${i+1}</div>
+      <div class="rr-prio-n" aria-label="Priority ${i+1}">${i+1}</div>
       <div class="rr-prio-t">${esc(p.title||'')}</div>
       <dl>${['why','change','check'].filter(k=>p[k]).map(k=>`
         <div class="rr-row"><dt>${esc(PRIO_LABELS[k])}</dt><dd>${esc(p[k])}</dd></div>`).join('')}
@@ -9289,6 +9289,18 @@ function reportFit(rows){
     <thead><tr>${FIT_COLS.map(([,l])=>`<th>${esc(l)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(r=>`<tr>${FIT_COLS.map(([k])=>`<td>${esc(r[k]||'—')}</td>`).join('')}</tr>`).join('')}</tbody>
   </table></div>`;
+}
+
+/* The verdict in the dark card (board: ExpertReview): its first sentence is
+   the headline, the rest sits under it. A verdict that is one sentence, or
+   whose first sentence is long, is the headline alone or the body alone. */
+function reportVerdict(title, md){
+  const t=String(md||'').trim();
+  const m=t.match(/^([^\n]{12,180}?[.!?])\s+([\s\S]+)$/);
+  const lead=m?m[1]:(t.length<=180&&!t.includes('\n')?t:'');
+  const rest=m?m[2]:(lead?'':t);
+  return `<div class="rr-sec rr-verdict"><div class="rr-h">${esc(title)}</div>
+    ${lead?`<div class="rr-lead">${mdToHtml(lead)}</div>`:''}${rest?reportProse(rest):''}</div>`;
 }
 
 /* The athlete's own pictures, right after the verdict: the evidence for it. */
@@ -9318,7 +9330,8 @@ function renderReportHtml(report, sections, meta, figures, capture){
                : s.kind==='fit'        ? reportFit(v)
                : reportProse(v);
     const after = (!placed && s.key==='verdict') ? (placed=true, figs) : '';
-    return `<div class="rr-sec"><div class="rr-h">${esc(s.title)}</div>${body}</div>${after}`;
+    if(s.key==='verdict' && s.kind!=='priorities' && s.kind!=='fit') return reportVerdict(s.title, v)+'<!--rrfig-->'+after;
+    return `<div class="rr-sec rr-sec--${esc(s.kind||'prose')}"><div class="rr-h">${esc(s.title)}</div>${body}</div>${after}`;
   }).join('')+tail;
   if(!placed && figs) return renderReportHtml.wrap(meta, figs+bits);
   return renderReportHtml.wrap(meta, bits);
@@ -9377,6 +9390,42 @@ async function renderReviewCard(){
     }));
 }
 
+/* ---- the page around the report (board: ExpertReview) ----
+   Title and one line of context, the action top right; the report in the
+   main column; the athlete's frame, the coach and what comes next beside it
+   (under it on a phone). */
+function reportLede(ctx, extra){
+  const c=ctx||{};
+  return [c.sport?esc(pretty(c.sport))+(c.kind?' · '+esc(c.kind):''):'',
+    c.score!=null?`automated score ${esc(String(c.score))}/100${c.grade?' ('+esc(c.grade)+')':''}`:'',
+    c.delivered_at_ms?'delivered '+esc(shortDate(c.delivered_at_ms)):'', extra||''].filter(Boolean).join(' · ');
+}
+function reportCoachCard(r, line){
+  if(!r||!r.reviewer) return '';
+  const ini=String(r.reviewer).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+  return `<div class="rr-card rr-coach"><div class="rr-coachhead"><span class="ac-ini" aria-hidden="true">${esc(ini)}</span>
+    <div><b>${esc(r.reviewer)}</b>${r.reviewer_bio?`<span>${esc(r.reviewer_bio)}</span>`:''}</div></div>
+    <p>${esc(line||'Wrote this against your analysis, by eye.')}</p></div>`;
+}
+function reportFigCard(figures, entryId){
+  const figs=reportFigures(figures); if(!figs) return '';
+  const open=entryId&&loadHist().some(e=>e.id===entryId);
+  return `<div class="rr-card rr-figcard">${figs}${open?`<p class="rr-figfoot"><a href="#" data-rropen="${esc(entryId)}">Open the analysis</a></p>`:''}</div>`;
+}
+function reportPage({title, lede, action, report, sections, figures, capture, aside, coachLine}){
+  return `<div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="rrTitle" tabindex="-1">${esc(title)}</h2>${lede?`<p class="ph-lede">${lede}</p>`:''}</div>
+      ${action?`<span class="ph-right">${action}</span>`:''}
+    </div>
+    <div class="rr-grid"><div class="rr-main">${renderReportHtml(report, sections, null, null, capture).replace('<!--rrfig-->',
+        reportFigures(figures)?`<div class="rr-figinline">${reportFigures(figures)}</div>`:'')}</div>
+      <aside class="rr-aside">${reportFigCard(figures, aside&&aside.entryId)}${reportCoachCard(report, coachLine)}${aside&&aside.html||''}</aside></div>`;
+}
+$('#rrHost').addEventListener('click',e=>{
+  const a=e.target.closest('[data-rropen]'); if(!a) return;
+  e.preventDefault(); openHistory(a.dataset.rropen);
+});
+
 /* ---- the athlete's copy ---- */
 async function openReviewReport(orderId){
   const host=$('#rrHost');
@@ -9397,16 +9446,11 @@ async function openReviewReport(orderId){
     return;
   }
   const o=j.order||{};
-  host.innerHTML=`
-    <div class="blockhead u-mt-0">
-      <div class="eyebrow">Expert Review</div>
-      <h2 class="sec u-mb-2" id="rrTitle" tabindex="-1">Your Expert Review</h2>
-      <div class="speedline"></div>
-    </div>`
-    + renderReportHtml(j.report, j.sections,
-        reportMeta(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{}), j.report), j.figures, j.capture)
-    + `<div class="rr-col u-mt-2"><button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Save as PDF</button></div>`
-    + `<div id="rrRecheck" class="rr-col u-mt-5"></div>`;
+  host.innerHTML=reportPage({title:'Your Expert Review',
+    lede:reportLede(Object.assign({delivered_at_ms:o.delivered_at_ms}, j.context||{})),
+    action:'<button class="btn btn-ghost" type="button" onclick="window.print()">Save as PDF</button>',
+    report:j.report, sections:j.sections, figures:j.figures, capture:j.capture,
+    aside:{entryId:o.analysis_client_id, html:'<div id="rrRecheck"></div>'}});
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
   renderRecheck('rrRecheck');
 }
@@ -9420,15 +9464,11 @@ async function openSampleReport(){
   let j=null;
   try{ j=await (await fetch('/billing/expert-review/sample')).json(); }
   catch(e){ host.innerHTML='<p class="hint">Couldn’t load the sample right now.</p>'; return; }
-  host.innerHTML=`
-    <div class="blockhead u-mt-0">
-      <div class="eyebrow">Sample · this is what an Expert Review buys${expertPriceLabel()}</div>
-      <h2 class="sec u-mb-2" id="rrTitle" tabindex="-1">Expert Review — example</h2>
-      <div class="speedline"></div>
-    </div>
-    <p class="hint rr-col u-mb-6">A real report for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by a human who has read it.</p>`
-    + renderReportHtml(j.report, j.sections, reportMeta(j.context, j.report), j.figures)
-    + `<div class="rr-col u-mt-2"><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See pricing</button></div>`;
+  host.innerHTML=reportPage({title:'Expert Review: an example',
+    lede:`A sample of what an Expert Review${expertPrice()?' ('+esc(expertPrice())+')':''} buys: a real report for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by a person who has read it.`,
+    action:'<button class="btn btn-primary" type="button" onclick="openPricing()">See pricing</button>',
+    report:j.report, sections:j.sections, figures:j.figures,
+    coachLine:'Wrote this against the athlete’s analysis, by eye.'});
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
 }
 

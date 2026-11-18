@@ -397,8 +397,12 @@ def test_the_page_draws_them_after_the_verdict_everywhere():
     spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
     assert "function renderReportHtml(report, sections, meta, figures, capture)" in spa
     assert "s.key==='verdict'" in spa
-    # the athlete's copy, the sample, and the reviewer's preview
-    assert spa.count("j.report), j.figures") == 2
+    # the athlete's copy and the sample hand the figures to the page, which
+    # puts them right after the verdict on a phone and beside the report on
+    # a wide screen (board: ExpertReview); the reviewer's preview inlines them
+    assert spa.count("figures:j.figures") == 2
+    assert "reportVerdict(s.title, v)+'<!--rrfig-->'" in spa
+    assert "replace('<!--rrfig-->'" in spa
     # internal sections never render on the athlete's page or in the preview
     assert "filter(s=>!s.internal)" in spa
     assert "{src:d.media.kinogram, kind:'kinogram'" in spa

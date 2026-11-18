@@ -251,7 +251,13 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .rr-meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12px;color:var(--c-ink-faint);font-family:var(--f-mono);
   margin:0 0 28px;padding-bottom:16px;border-bottom:1px solid var(--c-line)}
 .rr-meta b{color:var(--c-ink);font-weight:500}
-.rr-sec{margin:0 0 30px}
+/* Board: ExpertReview. Every section a card, the verdict the dark one. */
+.rr-sec{margin:0 0 16px;padding:20px 24px;border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line)}
+.rr-verdict{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
+.rr-verdict .rr-h{font-family:var(--f-body);font-style:normal;font-weight:600;font-size:14px;color:rgba(255,255,255,.75);margin:0 0 6px}
+.rr-lead,.rr-lead p{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:28px;line-height:1.15;color:#fff;margin:0}
+.rr-verdict .rr-body{color:#fff;font-size:16px;margin-top:12px}
+.rr-verdict .rr-body a{color:#fff}
 /* The kinogram full width, then the frame -- a portrait frame capped in
    height so it does not take the page. */
 .rr-figs{display:grid;gap:16px}
@@ -260,25 +266,57 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .rr-fig-kinogram img{width:100%}
 .rr-fig-keyframe img{max-height:480px;width:auto}
 .rr-fig figcaption{font-size:12px;color:var(--c-ink-faint);margin-top:6px;line-height:1.4}
-.rr-h{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--c-ink-faint);margin:0 0 10px}
-.rr-body{font-size:14px;line-height:1.65;color:var(--c-ink)}
+.rr-h{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;line-height:1.2;color:var(--c-head);margin:0 0 12px}
+.rr-body{font-size:16px;line-height:1.6;color:var(--c-ink)}
 .rr-body p{margin:0 0 12px}
 .rr-body p:last-child{margin-bottom:0}
-.rr-prio{border:1px solid var(--c-line);border-radius:var(--radius-tag);padding:16px 18px;margin:0 0 12px;background:var(--c-bg)}
-.rr-prio-n{font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--c-ink-faint);letter-spacing:.08em}
-.rr-prio-t{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:2px 0 12px}
-.rr-row{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;margin:0 0 9px;font-size:14px;line-height:1.55}
+.rr-prio{display:grid;grid-template-columns:32px minmax(0,1fr);gap:0 14px;padding:16px 0;border-top:1px solid var(--c-panel)}
+.rr-prio:first-of-type{border-top:0;padding-top:4px}
+.rr-prio:last-child{padding-bottom:0}
+.rr-prio-n{grid-row:1/span 2;width:32px;height:32px;border-radius:50%;background:var(--c-brand-navy);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
+.rr-prio-t{font-weight:600;font-size:18px;line-height:1.3;color:var(--c-head);margin:4px 0 8px}
+.rr-prio dl{margin:0}
+.rr-row{display:grid;grid-template-columns:150px 1fr;gap:4px 16px;margin:0 0 8px;font-size:16px;line-height:1.5}
 .rr-row:last-child{margin-bottom:0}
-.rr-row dt{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--c-ink-faint);padding-top:3px}
+.rr-row dt{font-size:14px;font-weight:600;color:var(--c-ink-faint);padding-top:2px}
 .rr-row dd{margin:0;color:var(--c-ink)}
 .rr-fit{width:100%;border-collapse:collapse;font-size:14px}
-.rr-fit th{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--c-ink-faint);text-align:left;padding:0 12px 8px 0;white-space:nowrap}
+.rr-fit th{font-size:14px;font-weight:600;color:var(--c-ink-faint);text-align:left;padding:0 12px 8px 0;white-space:nowrap}
 .rr-fit td{padding:10px 12px 10px 0;border-top:1px solid var(--c-line);vertical-align:top;color:var(--c-ink)}
 .rr-fitwrap{overflow-x:auto}
+/* The page: report beside the frame, the coach and the re-check. */
+.rr-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:16px;align-items:start;max-width:1100px}
+.rr-main .rr-wrap{max-width:none;margin:0}
+.rr-aside{display:flex;flex-direction:column;gap:16px;min-width:0}
+.rr-aside:empty{display:none}
+.rr-card{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);padding:20px}
+.rr-figcard{padding:0;overflow:hidden}
+.rr-figcard .rr-figs{gap:0;margin:0;padding:0;border:0;border-radius:0;background:none}
+.rr-figcard .rr-fig img{border:0;border-radius:0;width:100%;max-height:none}
+.rr-figcard .rr-fig figcaption{padding:8px 16px 0}
+.rr-figfoot{margin:0;padding:8px 16px 16px;font-size:14px;color:var(--c-ink-faint)}
+.rr-figcard .rr-fig:last-child figcaption{padding-bottom:16px}
+.rr-figinline{display:none}
+.rr-figfoot a{color:var(--c-blue-dk);font-weight:600}
+.rr-coachhead{display:flex;align-items:center;gap:12px}
+.rr-coachhead b{display:block;font-size:16px;color:var(--c-ink)}
+.rr-coachhead span:not(.ac-ini){display:block;font-size:14px;color:var(--c-ink-faint)}
+.rr-coach p{margin:12px 0 0;font-size:14px;color:var(--c-ink-soft)}
+.rr-aside .recheck-offer{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);padding:20px;margin:0;flex-direction:column;align-items:stretch}
+.rr-aside .recheck-offer p{margin:0 0 12px;font-size:14px;flex:none}
+.rr-aside .recheck-offer .btn{min-height:44px}
+@media (max-width:900px){
+  .rr-grid{grid-template-columns:1fr}
+  /* On a phone the frame follows the verdict, as on the board. */
+  .rr-figinline{display:block}
+  .rr-figinline .rr-figs{padding:0;overflow:hidden}
+  .rr-figinline .rr-fig img{border:0;border-radius:0;width:100%;max-height:none}
+  .rr-figinline .rr-fig figcaption{padding:8px 16px 12px}
+  .rr-aside .rr-figcard{display:none}
+}
 @media (max-width:640px){
+  .rr-sec{padding:16px}
+  .rr-lead,.rr-lead p{font-size:22px}
   .rr-row{grid-template-columns:1fr;gap:2px}
   .rr-row dt{padding-top:0}
 }
@@ -349,6 +387,12 @@ video.ex-media{background:var(--c-media-bg)}
   .rr-wrap{max-width:none}
   .rr-sec,.rr-prio,.rr-fig{break-inside:avoid;page-break-inside:avoid}
   .rr-h{color:#14181F !important}
+  .rr-sec,.rr-card{border-color:#ccc !important}
+  .rr-verdict{background:#fff !important}
+  .rr-verdict .rr-h,.rr-verdict .rr-body,.rr-lead,.rr-lead p{color:#14181F !important}
+  .rr-grid{display:block}
+  .rr-aside .rr-fig img{max-height:110mm;width:auto !important;margin:0 auto}
+  .rr-prio-n{background:#fff !important;color:#14181F !important;border:1.5px solid #14181F}
   button{display:none !important}
   .upsell,.fb-host,.again-row,.quota-line,.switch,.drop,.filepreview,
   .guides,.share-row,.disclaimer-cta,.profilefield,.profilehint,
