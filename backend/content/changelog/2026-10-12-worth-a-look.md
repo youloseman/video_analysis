@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: No more "Nothing to fix" above a red row.
+---
 # Worth a look: every reading outside its range, with what to check
 
 A coach's report once said "Nothing to fix" directly under a table with two

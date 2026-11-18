@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: The app, the landing page and the Terms now read the same prices.
+---
 # One price list, and a Full plan that keeps its promise
 
 Prices lived in four documents: the pricing screen, the billing toggle that

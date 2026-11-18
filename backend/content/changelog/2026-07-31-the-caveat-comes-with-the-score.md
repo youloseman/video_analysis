@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Free reports say how well you were tracked and filmed, next to the score.
+---
 # The caveat now comes with the score
 
 A number with no caveat reads as a fact. That was the problem with the free

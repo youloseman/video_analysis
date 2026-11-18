@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Switch every angle between included and anatomical, bands included.
+---
 # Angles, in the convention you read
 
 Every joint angle here is measured as the angle *between* two segments: a

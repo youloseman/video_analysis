@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Clips are no longer deleted six hours after the analysis.
+---
 # Your clip sticks around now
 
 Until today, footage was deleted six hours after the analysis. That rule was

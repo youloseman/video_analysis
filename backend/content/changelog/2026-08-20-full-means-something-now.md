@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: More than one bike profile, a branded PDF and an Expert Review, now real.
+---
 # The Full plan means something now
 
 For a while the Full card promised three things that did not exist: profiles

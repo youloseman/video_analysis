@@ -1,7 +1,7 @@
 """Changelog routes: JSON for the in-app "What's new" view + a public page.
 
 Routes
-    GET /changelog.json  -> {latest, entries:[{id, date, date_label, title, html}]}
+    GET /changelog.json  -> {latest, entries:[{id, date, date_label, title, summary, audience, html}]}
     GET /changelog       -> server-rendered release-notes page
 
 Both read the same Markdown files (``backend/content/changelog/``). The SPA uses
@@ -51,6 +51,8 @@ def changelog_json(response: Response) -> dict[str, Any]:
                 "date": e.date,
                 "date_label": e.date_label,
                 "title": e.title,
+                "summary": e.summary,
+                "audience": list(e.audience),
                 "html": e.body_html,
             }
             for e in get_entries()

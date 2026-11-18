@@ -1,3 +1,7 @@
+---
+audience: bike
+summary: Every pro scored 100 on the old ear check. Head position now reads the helmet.
+---
 # The helmet, not the ear: a head reading that means something
 
 A reader looked at the Kona figures and asked why every pro scored 100/100

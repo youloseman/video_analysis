@@ -1,3 +1,7 @@
+---
+audience: bike
+summary: How far to move it, scaled from your crank length.
+---
 # The saddle, in millimetres
 
 The report has always known which way your saddle should go — the knee at

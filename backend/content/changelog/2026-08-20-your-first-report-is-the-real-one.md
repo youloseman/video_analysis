@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Findings and coach notes in full on your first analysis, no card.
+---
 # Your first report is the real one
 
 The free tier showed a score and nothing else. That proves the thing runs; it

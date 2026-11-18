@@ -1,3 +1,7 @@
+---
+audience: run
+summary: The elbow is judged on its mean, not its swing, and the table says so.
+---
 # The band says what it grades
 
 A runner wrote in: "Elbow 57–100°, optimal 80–95°, and you say in range?"

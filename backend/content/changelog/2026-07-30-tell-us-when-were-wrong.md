@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Rate any analysis when it does not match the athlete you know yourself to be.
+---
 # Tell us when the analysis is wrong
 
 You can't verify a pose estimate or a 0–100 score by looking at it — you can only

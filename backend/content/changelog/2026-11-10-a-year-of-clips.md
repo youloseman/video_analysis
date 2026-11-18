@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: The free plan keeps 7 days. Clips from before 11 November keep their old period.
+---
 # Your clips now stay for a year on a paid plan
 
 Until today a paid plan kept your uploaded clips for 30 days (60 on the Coach

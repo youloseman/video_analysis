@@ -1,3 +1,7 @@
+---
+audience: bike
+summary: Graded on aero positions only, not on the hoods or in the drops.
+---
 # Forearm tilt leaves the road rubric
 
 Forearm tilt is an aero-bar measure: how much the extensions and armrests

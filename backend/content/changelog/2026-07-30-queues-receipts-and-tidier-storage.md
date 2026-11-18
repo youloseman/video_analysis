@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Your clip says how many are ahead of it, and an Expert Review shows its status.
+---
 # Queues, receipts, and clips that don't linger
 
 Housekeeping, mostly — the kind you only notice when it's missing.

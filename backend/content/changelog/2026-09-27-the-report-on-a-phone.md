@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: One column, the score in two lines, the findings under the video.
+---
 # The report on a phone
 
 Most reports are read on a phone, and on a phone the report was hard work.

@@ -1,3 +1,7 @@
+---
+audience: run
+summary: Cadence and ground contact are held back on a slow-motion clip, not shown wrong.
+---
 # Slow-motion clips no longer produce wrong numbers
 
 If you filmed in slow motion, your phone's frame rate lies about time — and

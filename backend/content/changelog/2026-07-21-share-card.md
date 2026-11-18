@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Built around your annotated photo, with the score and one line from the coach.
+---
 # A share card actually worth posting
 
 The share card was a wall of metric tiles that nobody would post to Strava. It's

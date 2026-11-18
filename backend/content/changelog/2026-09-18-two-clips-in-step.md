@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Your two overlays play side by side, locked stroke to stroke or step to step.
+---
 # Two clips, in step
 
 Before/after compared numbers. Now it compares the clips.

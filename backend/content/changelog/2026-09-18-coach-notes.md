@@ -1,4 +1,8 @@
-# Coach Notes — three things a coach sees, $12
+---
+audience: everyone
+summary: The rung between the AI notes and the $39 Expert Review.
+---
+# Coach Notes: three things a coach sees, $12
 
 Between the AI coach's notes and the $39 Expert Review there was nothing.
 Plenty of people want a person to look at their clip; fewer want the full

@@ -1,3 +1,7 @@
+---
+audience: swim
+summary: A pro triathlete who swam first watches your pool clip and writes back.
+---
 # New: your swim stroke, reviewed by a pro
 
 Flapp has been run and bike only. Now you can send a swim clip too.

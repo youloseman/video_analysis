@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Paid plans arrive, and the free tier says exactly what it includes.
+---
 # Plans, quotas and a free tier that's honest about it
 
 Flapp now has paid plans, and a free tier that shows you exactly what it is

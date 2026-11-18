@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: An Export button on every analysis: paste it into any AI and keep asking.
+---
 # Take your numbers to any AI
 
 Your report has always had more in it than one screen can say. Now you can lift

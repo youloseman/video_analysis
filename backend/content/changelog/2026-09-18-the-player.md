@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: Step frame by frame, jump to each event, read the curve under the clip.
+---
 # The video has a player now
 
 The annotated overlay was a picture of the analysis: skeleton, chips, a phase

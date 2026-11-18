@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: A one-row tab bar, and the whole path from filming to reading tightened for a phone.
+---
 # A phone-first pass over the whole app
 
 You film on a phone, so you read your results on a phone. This release tightened

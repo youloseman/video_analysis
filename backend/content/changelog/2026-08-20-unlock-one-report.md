@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: One full report when you need one answer, no subscription.
+---
 # Unlock one report for $4
 
 Flapp is used episodically. You change your saddle height, or your shoes, or

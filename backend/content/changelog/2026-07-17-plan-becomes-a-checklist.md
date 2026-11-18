@@ -1,3 +1,7 @@
+---
+audience: everyone
+summary: The drills from your analysis land on your dashboard to tick off.
+---
 # Your training plan lives on as a checklist
 
 A drill list you read once and forget is worthless. The corrective drills from

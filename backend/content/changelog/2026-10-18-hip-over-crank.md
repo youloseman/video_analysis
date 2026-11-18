@@ -1,3 +1,7 @@
+---
+audience: bike
+summary: Your hip over the crank axle, next to 25 pros and 58 age-groupers.
+---
 # Where you sit over the crank, against the Kona pros
 
 We measured every side-on photo from Kona 2026: 25 pros and 58 age-groupers, with the crank axle and the hip marked on every frame. Saddle height was not what separated them — the knee at the bottom of the stroke came out the same, 145° for the pros and 146° for the age-groupers. Where they sit was.

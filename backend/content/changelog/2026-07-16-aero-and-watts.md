@@ -1,3 +1,7 @@
+---
+audience: bike
+summary: Bike reports open with the drag in watts, and the time it costs over a distance.
+---
 # Aero & watts: what your position actually costs you
 
 Cycling analyses now open with an **Aero & watts** panel. Instead of just telling
