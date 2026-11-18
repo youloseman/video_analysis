@@ -3197,7 +3197,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 /* Account as drawn: each card headed in the display face, the plan's three
    meters with bars, the coach with initials. */
 #account .acct-card{padding:4px 4px 8px}
-#account .acct-card h3{font-style:italic;font-weight:800;font-size:22px;border-bottom:0;padding:16px 20px 8px;flex-wrap:wrap;align-items:baseline}
+#account .acct-card h3{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;border-bottom:0;padding:16px 20px 8px;flex-wrap:wrap;align-items:baseline}
 #account .acct-row,#account .acct-body,#account .acct-actions{padding-left:20px;padding-right:20px}
 #account .acct-row{font-size:16px}
 #account .acct-row .a{font-size:16px;font-weight:600}
@@ -3208,7 +3208,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ac-meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;padding:8px 20px 16px}
 .ac-meter{display:grid;gap:6px;align-content:start}
 .ac-meter .k{font-size:14px;color:var(--c-ink-soft)}
-.ac-meter .v{font-family:var(--f-display);font-style:italic;font-weight:800;font-size:28px;color:var(--c-head);line-height:1.1}
+.ac-meter .v{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:28px;color:var(--c-head);line-height:1.1}
 .ac-meter .qbar{flex:none;width:100%}
 .ac-meter.ac-full .qbar i{background:var(--st-good)}
 .ac-meter .s{font-size:14px;color:var(--c-ink-soft)}
