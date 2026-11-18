@@ -3194,6 +3194,36 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 @media(max-width:900px){ .acct-grid{grid-template-columns:1fr} }
 .acct-card{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);margin-bottom:16px}
 .acct-card h3{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:0;padding:12px 18px;border-bottom:1px solid var(--c-line);display:flex;align-items:center;gap:10px}
+/* Account as drawn: each card headed in the display face, the plan's three
+   meters with bars, the coach with initials. */
+#account .acct-card{padding:4px 4px 8px}
+#account .acct-card h3{font-style:italic;font-weight:800;font-size:22px;border-bottom:0;padding:16px 20px 8px;flex-wrap:wrap;align-items:baseline}
+#account .acct-row,#account .acct-body,#account .acct-actions{padding-left:20px;padding-right:20px}
+#account .acct-row{font-size:16px}
+#account .acct-row .a{font-size:16px;font-weight:600}
+#account .acct-p{font-size:16px}
+.ac-plan{font-size:28px}
+.ac-price{font-family:var(--f-mono);font-size:16px;font-style:normal;font-weight:400;color:var(--c-ink-soft)}
+.ac-chip{font-family:var(--f-body);font-style:normal;font-size:12px;font-weight:600;color:var(--st-good);background:var(--st-good-bg);padding:2px 8px;border-radius:var(--radius-tag)}
+.ac-meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;padding:8px 20px 16px}
+.ac-meter{display:grid;gap:6px;align-content:start}
+.ac-meter .k{font-size:14px;color:var(--c-ink-soft)}
+.ac-meter .v{font-family:var(--f-display);font-style:italic;font-weight:800;font-size:28px;color:var(--c-head);line-height:1.1}
+.ac-meter .qbar{flex:none;width:100%}
+.ac-meter.ac-full .qbar i{background:var(--st-good)}
+.ac-meter .s{font-size:14px;color:var(--c-ink-soft)}
+.ac-meter .s a,.ac-link{color:var(--c-blue-dk);font-weight:600;text-decoration:none}
+.ac-coach{display:flex;gap:14px;align-items:flex-start}
+.ac-ini{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--c-brand-navy);color:#fff;font-weight:700;font-size:16px}
+.ac-who{margin:0 0 2px;font-size:16px;color:var(--c-ink)}
+#account .ac-unlink{border-top:1px solid var(--c-line);margin-top:12px;padding:12px 0 0}
+#account .subhint a{color:var(--c-blue-dk)}
+.ac-switches{display:grid;gap:16px}
+@media(max-width:640px){
+  .ac-meters{grid-template-columns:minmax(0,1fr);gap:16px}
+  .ac-coach .acct-p{font-size:14px}
+}
+@media(max-width:560px){ #account .acct-row{grid-template-columns:72px minmax(0,1fr) auto;gap:8px;font-size:14px} }
 .acct-row{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 18px;border-top:1px solid var(--c-line);font-size:14px}
 .acct-row:first-of-type,.acct-card h3 + .acct-row{border-top:0}
 .acct-row .k{color:var(--c-ink-faint)}

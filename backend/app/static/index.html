@@ -1834,32 +1834,20 @@
     <div class="pagehead"><h2 class="sec" id="acctTitle" tabindex="-1">Account</h2></div>
     <div class="acct-grid">
       <div>
-        <div class="acct-card">
-          <h3>Sign-in</h3>
-          <div class="acct-row"><span class="k">Email</span><span class="v ph-no-capture" id="acctEmail">—</span><span></span></div>
-          <div class="acct-row"><span class="k">Password</span><span class="v">set</span><button class="a" type="button" id="acctPwChange">Change</button></div>
-        </div>
         <div class="acct-card" id="acctPlanCard">
-          <h3>Plan <span class="pill pill-okchip hidden" id="acctPlanPill"><span class="dot" aria-hidden="true"></span>active</span></h3>
-          <div class="acct-stats" id="acctStats"></div>
+          <h3>Plan <b class="ac-plan" id="acctPlanName"></b><span class="ac-price" id="acctPlanPrice"></span><span class="ac-chip hidden" id="acctPlanPill">active</span></h3>
+          <div class="ac-meters" id="acctStats"></div>
           <div id="acctCredit"></div>
           <div class="acct-actions">
-            <button class="btn btn-ghost btn-sm hidden" type="button" id="acctPortal">Manage subscription</button>
-            <a href="#pricing" class="btn btn-link btn-sm" onclick="event.preventDefault();openPricing()">Compare plans</a>
-          </div>
-        </div>
-        <div class="acct-card">
-          <h3>Equipment profiles <span class="pill hidden" id="acctProfPill"><span class="dot" aria-hidden="true"></span><span id="acctProfPillTxt"></span></span></h3>
-          <div class="acct-body">
-            <p class="acct-p" id="acctProfNote">Which bike or shoes each clip was filmed on. One profile per setup keeps the trend lines honest.</p>
-            <button class="btn btn-ghost btn-sm" type="button" id="acctProfiles">Open profiles</button>
+            <button class="btn btn-ghost hidden" type="button" id="acctPortal">Manage subscription</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="acctPlans">Compare plans</button>
           </div>
         </div>
         <!-- The athlete's side of the coach link (model A): one coach at a
              time, let in by code and a ticked box, out with one button.
              Filled by renderCoachLink(). -->
         <div class="acct-card" id="acctLinkCard">
-          <h3>My coach</h3>
+          <h3>My coach <span class="ac-chip hidden" id="acctLinkPill">linked</span></h3>
           <div class="acct-body" id="acctLinkBody"></div>
         </div>
         <!-- The coach behind the account (Coach plan). Name and mark on every
@@ -1868,30 +1856,31 @@
           <h3>Coach profile <span class="pill pill-low hidden" id="acctCoachPill"><span class="dot" aria-hidden="true"></span>Full</span></h3>
           <div class="acct-body" id="acctCoachBody"></div>
         </div>
+        <div class="acct-card">
+          <h3>Sign-in</h3>
+          <div class="acct-row"><span class="k">Email</span><span class="v ph-no-capture" id="acctEmail"></span><span></span></div>
+          <div class="acct-row"><span class="k">Password</span><span class="v">set</span><button class="a" type="button" id="acctPwChange">Change</button></div>
+        </div>
       </div>
       <div>
         <div class="acct-card">
-          <h3>Data &amp; privacy</h3>
+          <h3>Data and privacy</h3>
           <div class="acct-body">
-            <p class="acct-p">Uploaded clips and overlay videos are kept for 7 days on the free plan and 12 months on a paid plan, then deleted automatically. Delete an analysis and its clip goes at once. The numbers and frames of a saved report stay, and every measurement can be copied out as text from the report itself.</p>
-            <a href="/privacy" class="btn btn-link btn-sm">Privacy policy</a>
+            <p class="acct-p" id="acctKeep"></p>
+            <a href="/privacy" class="ac-link">Privacy policy</a>
           </div>
-          <div class="acct-body">
-            <h4>Emails</h4>
+          <div class="acct-body ac-switches">
             <label class="switch"><input type="checkbox" id="acctMarketing"><span class="box" aria-hidden="true"></span>
-              <span>News, training tips and offers<span class="subhint">Rare. Off any time — here or from any issue.</span></span>
+              <span>News, training tips and offers<span class="subhint">Rare. Off any time, here or from any issue. Emails about your own account (finished analyses, receipts, password resets) come either way.</span></span>
             </label>
-            <p class="acct-p u-mt-2">Emails about your own account — finished analyses, receipts, password resets — come either way.</p>
-          </div>
-          <div class="acct-body">
-            <h4>Research</h4>
             <label class="switch"><input type="checkbox" id="acctResearch"><span class="box" aria-hidden="true"></span>
-              <span>Aero research<span class="subhint">Lets Flapp use your bike clips and the CdA numbers you enter to build better aero estimates. Never published, never sold. Off unless you turn it on.</span></span>
+              <span>Aero research<span class="subhint">Lets Flapp use your bike clips and the CdA numbers you enter to build better aero estimates. Never published, never sold. Off unless you turn it on: off, nothing you upload or enter is used for research. <a href="/privacy#research-consent">What this covers</a></span></span>
             </label>
-            <p class="acct-p u-mt-2">Off: nothing you upload or enter is used for research. <a href="/privacy#research-consent">What this covers</a></p>
           </div>
+        </div>
+        <div class="acct-card">
+          <div class="acct-actions acct-actions--first"><span>Signed in on this device</span><button class="btn btn-ghost btn-sm right" type="button" id="acctLogout">Sign out</button></div>
           <div class="acct-body">
-            <h4>Delete account</h4>
             <!-- The privacy policy promises deletion on request; this is that
                  request, self-serve. Folded: nobody opens their account page
                  wanting to leave. -->
@@ -1905,9 +1894,6 @@
               </div>
             </details>
           </div>
-        </div>
-        <div class="acct-card">
-          <div class="acct-actions acct-actions--first"><span>Signed in on this device</span><button class="btn btn-ghost btn-sm right" type="button" id="acctLogout">Sign out</button></div>
         </div>
         <p class="acct-foot">built by one triathlete who reads every reply · <a href="#" id="acctWhatsNew">What’s new</a> · <a href="mailto:support@getflapp.com">Send feedback</a></p>
       </div>
@@ -8405,24 +8391,41 @@ async function athPatch(id, body){
    Everything on it already existed somewhere (the pricing page, the sidebar,
    the uploader); this is the one place that gathers it.
    ============================================================ */
+function acctMeter(k, v, frac, sub, cls){
+  return `<div class="ac-meter${cls?' '+cls:''}"><div class="k">${k}</div><div class="v">${v}</div>${frac==null?'':`<span class="qbar" aria-hidden="true"><i data-left="${Math.round(Math.max(0,Math.min(1,frac))*100)}"></i></span>`}<div class="s">${sub}</div></div>`;
+}
 function renderAccount(){
   const sec=$('#account'); if(!sec) return;
-  const em=$('#acctEmail'); if(em) em.textContent=auth?auth.email:'—';
+  const em=$('#acctEmail'); if(em) em.textContent=auth?auth.email:'';
   const card=((PLANS&&PLANS.cards)||[]).find(c=>auth&&c.tier===auth.tier);
   const q=quotaLoad();
   const planName=card?card.name:tierLabel(auth&&auth.tier);
   const price=card&&card.prices&&card.prices[0]?`${card.prices[0].display||''}`:(auth&&auth.tier==='starter'?'free':'');
-  const stats=$('#acctStats');
-  if(stats) stats.innerHTML=`
-    <div class="acct-stat"><div class="k">Current</div><div class="v">${esc(planName)}</div><div class="s">${esc(price)}</div></div>
-    <div class="acct-stat"><div class="k">This ${auth&&auth.tier==='admin'?'day':'month'}</div><div class="v">${q?`${q.limit-q.remaining} / ${q.limit}`:'—'}</div><div class="s">analyses used</div></div>
-    <div class="acct-stat"><div class="k">Profiles</div><div class="v">${PROFILES.used||0} / ${PROFILES.limit??0}</div><div class="s">equipment profiles</div></div>`;
   const paid=auth&&auth.tier&&auth.tier!=='starter'&&auth.tier!=='admin';
+  const nm=$('#acctPlanName'); if(nm) nm.textContent=planName;
+  const pr=$('#acctPlanPrice'); if(pr) pr.textContent=price;
+  const per=auth&&auth.tier==='admin'?'today':'this month';
+  const used=PROFILES.used||0, lim=PROFILES.limit??0;
+  // Clips kept: the retention the server applies (services/retention.py):
+  // a year on any paid plan, seven days free.
+  const keepYear=!!(auth&&auth.tier&&auth.tier!=='starter');
+  const stats=$('#acctStats');
+  if(stats){
+    stats.innerHTML=[
+      // Before the first analysis of the session there is no count to show: the
+      // plan's allowance stands in, from the catalogue, never a copy kept here.
+      acctMeter(`Analyses ${per}`, q?`${q.limit-q.remaining}/${q.limit}`:(card&&card.quota&&card.quota.limit?String(card.quota.limit):'Counted'), q?(q.limit-q.remaining)/q.limit:null, q?`${q.remaining} left ${per}`:(card&&card.quota&&card.quota.limit?`a ${esc(card.quota.window||'month')}; the count shows once you analyse`:'as you analyse')),
+      acctMeter('Equipment profiles', lim?`${used}/${lim}`:'none', lim?used/lim:null, lim?'each keeps its own trend · <a href="#" data-acctprof="1">open</a>':'part of a paid plan'),
+      acctMeter('Clips kept', keepYear?'1 year':'7 days', keepYear?1:7/365, keepYear?'free plans keep 7 days':'a year on a paid plan', keepYear?'ac-full':''),
+    ].join('');
+    stats.querySelectorAll('.qbar i[data-left]').forEach(i=>i.parentNode.style.setProperty('--left', i.dataset.left+'%'));
+    const op=stats.querySelector('[data-acctprof]'); if(op) op.addEventListener('click',e=>{ e.preventDefault(); openProfiles(); });
+  }
+  const keep=$('#acctKeep');
+  if(keep) keep.textContent=`Clips and overlay videos are kept for 7 days on the free plan and 12 months on a paid plan, then deleted. ${keepYear?'Yours stay 12 months.':'Yours stay 7 days.'} Delete an analysis and its clip goes at once. The numbers and frames of a saved report stay, and every measurement can be copied out as text.`;
   const uc=$('#acctCredit'); if(uc) uc.innerHTML=unlockCreditHtml('account');
   const pill=$('#acctPlanPill'); if(pill) pill.classList.toggle('hidden', !paid);
   const portal=$('#acctPortal'); if(portal) portal.classList.toggle('hidden', !paid);
-  const pp=$('#acctProfPill'), ppt=$('#acctProfPillTxt');
-  if(pp&&ppt){ pp.classList.toggle('hidden', !auth); ppt.textContent=`${PROFILES.used||0} of ${PROFILES.limit??0} used · ${planName}`; pp.className='pill '+((PROFILES.used||0)>=(PROFILES.limit??0)?'pill-warnchip':'pill-low'); }
   const mk=$('#acctMarketing'); if(mk) mk.checked=!!(auth&&auth.marketing_opt_in);
   const rs=$('#acctResearch'); if(rs) rs.checked=!!(auth&&auth.research_opt_in);
   renderCoachCard();
@@ -8445,22 +8448,25 @@ function renderCoachLink(){
   if(!LINK.loaded){ card.classList.add('hidden'); if(!LINK.loading){ LINK.loading=true; loadCoachLink(); } return; }
   if(!LINK.available){ card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
+  const lp=$('#acctLinkPill'); if(lp) lp.classList.toggle('hidden', !LINK.coach);
   if(LINK.coach){
     const c=LINK.coach;
-    body.innerHTML=`<p class="acct-p"><b>${esc(c.name)}</b>${c.tagline?' · '+esc(c.tagline):''} can see your analyses, annotated frames and clips since ${esc(fmtWhen(c.since_ms))}, and can leave notes on your reports.</p>
-      <div class="acct-actions acct-actions--bare"><button class="btn btn-ghost btn-sm" type="button" id="linkOff">Unlink</button><span class="subhint">Stops their access right away. Notes they wrote stay.</span></div>`;
+    const ini=String(c.name||'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+    body.innerHTML=`<div class="ac-coach"><span class="ac-ini" aria-hidden="true">${esc(ini)}</span><div><p class="ac-who"><b>${esc(c.name)}</b>${c.tagline?' · '+esc(c.tagline):''}</p>
+      <p class="acct-p">Sees your analyses, annotated frames and clips since ${esc(shortDate(c.since_ms))}, and can leave notes on your reports.</p></div></div>
+      <div class="acct-actions ac-unlink"><button class="btn btn-ghost btn-sm" type="button" id="linkOff">Unlink</button><span class="subhint">Stops their access right away. Notes they wrote stay.</span></div>`;
     $('#linkOff').addEventListener('click',()=>confirmDialog({title:`Unlink ${c.name}?`, body:'They stop seeing your analyses and clips immediately. You can link a coach again any time.', okLabel:'Unlink', onOk:async()=>{
       try{ const r=await fetch('/me/coach-link',{method:'DELETE',headers:authHeaders()}); if(!r.ok) throw 0; track('coach_unlinked',{}); await loadCoachLink(); toast('Unlinked.'); }
       catch(_e){ toast('Could not unlink — try again.'); }
     }}));
     return;
   }
-  body.innerHTML=`<p class="acct-p">Your coach gives you a code. Enter it here and they can see what you film — the analyses, the frames and the clips — and leave notes on your reports.</p>
+  body.innerHTML=`<p class="acct-p">Your coach gives you a code. Enter it here and they can see what you film (the analyses, the frames and the clips) and leave notes on your reports.</p>
     <div class="linkform">
       <input type="text" id="linkCode" maxlength="64" placeholder="Coach code" autocomplete="off" spellcheck="false" aria-label="Coach code">
       <label class="switch linkconsent"><input type="checkbox" id="linkConsent"><span class="box" aria-hidden="true"></span>
         <span>${esc(LINK.consent_text||'I want this coach to see my analyses, frames and clips, and to write notes on my reports. I can switch this off at any time.')}</span></label>
-      <p class="acct-p u-m-0">Your coach sees exactly what your plan shows you — no more. Clips are visible for as long as they are kept on your plan. Unlinking stops their access at once.</p>
+      <p class="acct-p u-m-0">Your coach sees exactly what your plan shows you, no more. Clips are visible for as long as they are kept on your plan. Unlinking stops their access at once.</p>
       <button class="btn btn-primary btn-sm" type="button" id="linkGo">Link my coach</button>
     </div>`;
   $('#linkGo').addEventListener('click',async()=>{
@@ -8501,7 +8507,7 @@ function openAccount(){
   const sec=$('#account'); if(!sec) return;
   $('#acctLogout').addEventListener('click',logout);
   $('#acctPortal').addEventListener('click',()=>{ if(typeof openPortal==='function') openPortal(); });
-  $('#acctProfiles').addEventListener('click',openProfiles);
+  $('#acctPlans').addEventListener('click',()=>openPricing());
   $('#acctPwChange').addEventListener('click',()=>openAuth('forgot'));
   $('#acctWhatsNew').addEventListener('click',e=>{ e.preventDefault(); openWhatsNew(); });
 })();
