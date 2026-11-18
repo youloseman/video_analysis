@@ -1076,6 +1076,10 @@
     <div id="bilateralBlock"></div>
     <p class="hint hidden ephem-note u-mt-4" id="ephemNote">Results aren’t stored — save what you need before leaving.</p>
 
+    <!-- How the clip was filmed beside Aero: two short cards on one row on a
+         wide screen (Report board, 2026-11-17); stacked on a phone. -->
+    <div class="rs-pair" id="filmAero">
+    <div id="capRep"></div>
     <div class="block hidden" id="aeroBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-aero"/></svg> Aerodynamics</div>
@@ -1083,6 +1087,7 @@
         <div class="speedline-sm"></div>
       </div>
       <div id="aeroPanel"></div>
+    </div>
     </div>
 
     <div class="block block-coach" id="coachBlock">
@@ -1279,25 +1284,34 @@
          convention, reference bands, what was NOT measured). Built server-side
          so there is one source of truth for all of that — see
          services/export/ai_export.py. -->
+    <!-- The end of the report: your data and a person's eyes on it, two cards
+         on one row on a wide screen (Report board, 2026-11-17). -->
+    <div class="rs-end" id="rsEnd">
     <div class="block hidden" id="exportBlock">
       <div class="blockhead">
         <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Your data</div>
         <h3>Your numbers, as a file</h3>
         <div class="speedline-sm"></div>
       </div>
-      <p class="hint u-m-0 u-mb-5">One file with every measurement, its reference range, how far to trust it — and the conventions a chatbot otherwise gets backwards (our joint angles are <b>internal</b>: 180° is a straight limb, not 180° of flexion). Paste it into any assistant, or hand it to your coach.</p>
+      <p class="hint u-m-0 u-mb-5">Every measurement, its range and how far to trust it, with the angle convention spelled out so an assistant reads it right. Paste it into any assistant, or hand it to your coach.</p>
       <div class="exportrow">
-        <button class="btn btn-primary btn-sm" id="exportCopy" type="button">
+        <button class="btn btn-ghost btn-sm" id="exportCopy" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="exportCopyTxt">Copy as text</span>
         </button>
-        <button class="btn btn-ghost btn-sm" id="exportMd" type="button">
-          <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .md
+        <button class="btn btn-ghost btn-sm" id="exportMd" type="button" aria-label="Download .md">
+          <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> .md
         </button>
-        <button class="btn btn-ghost btn-sm" id="exportJson" type="button">
+        <button class="btn btn-ghost btn-sm" id="exportJson" type="button" aria-label="Download .json">
           <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> .json
         </button>
       </div>
     </div>
+    <!-- A person's eyes on this report: Coach Notes ($) and, above it, the
+         Expert Review. Offered at the bottom, after the athlete has read what
+         the machine had to say -- see renderNotesOffer. -->
+    <div class="notes-offer hidden" id="notesOffer"></div>
+    </div>
+    <div class="hidden" id="cmpNextV"></div>
 
     <!-- Ask about this report: questions answered from this analysis's stored
          numbers, the bike profile and logged CdA (services/report_chat.py).
@@ -1305,12 +1319,6 @@
     <div class="block hidden" id="chatBlock"></div>
 
     <details class="raw hidden" id="rawBlock"><summary>Raw result JSON</summary><pre id="rawJson"></pre></details>
-
-    <!-- A person's eyes on this report: Coach Notes ($) and, above it, the
-         Expert Review. Offered at the bottom, after the athlete has read what
-         the machine had to say -- see renderNotesOffer. -->
-    <div class="hidden" id="cmpNextV"></div>
-    <div class="notes-offer hidden" id="notesOffer"></div>
 
     <!-- Result feedback: the only way to learn where the analyzer misfires. -->
     <div class="fb hidden" id="fbHost"></div>
@@ -4539,6 +4547,16 @@ function kneeVelocityTiles(s){
    N-M W" with a torso-angle gauge. Physics from aero_estimator.py
    (relative CdA zones + dP/P = dCdA/CdA). NOT an absolute CdA.
    ============================================================ */
+/* The zone scale, upright to flat: aero_estimator.AERO_ZONES in order, said
+   the way a rider says it. The rider's zone is the filled one. */
+const AERO_ZONE_SHORT=[['upright','Upright'],['dropped_high','Hoods'],['dropped_low','Drops'],
+  ['tt_tuck','Tuck'],['tt_low','Low tuck'],['tt_flat','Flat']];
+function aeroZones(key){
+  if(!AERO_ZONE_SHORT.some(([k])=>k===key)) return '';
+  const cur=AERO_ZONE_SHORT.find(([k])=>k===key)[1];
+  return `<div class="aero-zones" role="img" aria-label="Zone ${esc(cur)}, on a scale from upright to flat">${
+    AERO_ZONE_SHORT.map(([k,l])=>`<span class="az${k===key?' is-on':''}"><i></i>${l}</span>`).join('')}</div>`;
+}
 function aeroGauge(cur,tgt){
   const lo=12,hi=55,W=340,H=66,pad=16,y=32;
   const clamp=a=>Math.max(lo,Math.min(hi,a));
@@ -4640,8 +4658,10 @@ function renderAeroPanel(s){
   // levers as cues, no minutes.
   if(!anyAvail || !(levers.some(l=>l.drag_reduction_pct) || head)){
     state.aero=null;
-    host.innerHTML=`<div class="aero-ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-      <span>You're in the <b>${esc(ae.zone_label)}</b> zone — about <b>${ae.drag_vs_upright_pct}%</b> of upright drag.${anyAvail?'':' Well-placed: no meaningful aero gains within a safe fit.'}</span></div>
+    host.innerHTML=`<div class="aero-big"><span class="num aero-pct">${ae.drag_vs_upright_pct}%</span>
+      <span class="aero-pct-l">of upright drag · ${esc(ae.zone_label)} zone</span></div>
+      ${aeroZones(ae.zone_key)}
+      ${anyAvail?'':'<p class="aero-say">Well placed: no meaningful aero gain left within a safe fit.</p>'}
       ${(anyAvail||head)?`<div class="aero-levers u-mt-3">${(anyAvail?levers:[head]).map(leverRow).join('')}</div>`:''}
       <p class="aero-disc">${esc(ae.disclaimer||'')}</p>${aeroMeasuredHtml()}`;
     blk.classList.remove('hidden'); return;
@@ -9835,7 +9855,7 @@ function renderCaptureReport(cr){
   // still says "two things limited this" rather than going quiet.
   const bad=(cr.checks||[]).filter(c=>c.status==='warn'||c.status==='bad').length;
   const count = bad ? `<span class="caprep-n">${bad} to fix</span>` : '';
-  return `<details class="caprep u-mt-2">
+  return `<details class="caprep">
     <summary class="caprep-head"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
       <span class="caprep-t">How this clip was filmed</span>
       <span class="caprep-v ${v}">${esc(CAPREP_VERDICT[v]||'')}</span>${count}
@@ -10556,8 +10576,9 @@ function render(job,opts){
   // same facts, but measured, ordered by effect, and each with the change that
   // fixes it. Falling back to the prose keeps older saved results readable.
   const cr=q.capture_report||s.capture_report;
+  const capHost=$('#capRep'); capHost.innerHTML='';
   if(cr && cr.checks && cr.checks.length){
-    gb.innerHTML+=renderCaptureReport(cr);
+    capHost.innerHTML=renderCaptureReport(cr);
   } else {
     // Capture warnings ("too far away", "more than one person in frame"): these
     // are the ones a reshoot fixes, so they are worth their own banner even when
@@ -10796,6 +10817,7 @@ function render(job,opts){
   renderChat('chatBlock', state.videoHistId ? {id:state.videoHistId, kind:'video',
     sport:r.sport_type||state.sport, access:r.locked?'gated':'full'} : null);
   foldReport(r, sport, state.verdict);
+  openFilmCard();
   // Last, deliberately: the rail lists the sections that are actually on this
   // report, and which those are is only settled once every block above has
   // decided whether to show itself.
@@ -10848,6 +10870,14 @@ function openSection(el){
     el.classList.add('is-open');
     const h=el.querySelector(':scope > .fold-head'); if(h) h.setAttribute('aria-expanded','true');
   }
+}
+/* How the clip was filmed opens as a card where it shares a row with Aero
+   (wide screen, plain aero case); alone, it stays one line, since five rows of
+   camera notes on their own would lengthen the report for nothing. */
+function openFilmCard(){
+  const d=$('#capRep .caprep'); if(!d) return;
+  const ab=$('#aeroBlock');
+  d.open=RESULT_WIDE.matches && !!ab && !ab.classList.contains('hidden') && !$('#aeroPanel .aero-hero');
 }
 function foldReport(r, sport, v){
   FOLD_IDS.forEach(id=>{

@@ -1546,6 +1546,23 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .caprep-meas{color:var(--c-ink-soft);font-family:var(--f-mono);font-size:12px}
 .caprep-meas b{color:var(--c-ink);font-weight:500}
 .caprep-act{margin-top:6px;color:var(--c-ink-soft);line-height:1.5}
+/* Filming beside Aero on a wide screen (Report board): two cards on one row.
+   The full aero panel (minutes, sliders) needs the width, so it takes the row. */
+@media screen and (min-width:901px){
+  #filmAero{display:flex;flex-wrap:wrap;gap:16px;align-items:stretch;margin-top:16px}
+  #filmAero > *{flex:1 1 360px;min-width:0}
+  #filmAero > :empty{display:none}
+  #filmAero > #aeroBlock{margin-top:0}
+  #filmAero:has(.aero-hero) > *{flex-basis:100%}
+  #filmAero .caprep{margin-top:0;height:100%}
+  #filmAero .caprep-head{background:none;padding:16px 20px;font-size:16px;font-weight:600}
+  #filmAero .caprep-head .ic{width:16px;height:16px}
+  #filmAero .caprep-row{padding:10px 20px}
+  /* a passed check is one line; the count of what to fix says the verdict */
+  #filmAero .caprep-row:has(.caprep-dot.good) > div{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 8px}
+  #filmAero .caprep-head:has(.caprep-n) .caprep-v{display:none}
+  #filmAero .caprep-n{margin-left:auto}
+}
 
 /* overlay toggle: a row on a hairline, the switch on the right */
 /* Sign-up consents (index.html #authConsent): a real checkbox, the label
@@ -2174,6 +2191,13 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
    A rectangle on the page like every report section, on the accent tint the
    upsell panel uses, one filled button. Not a card that floats. */
 .notes-offer{margin-top:20px}
+/* Your data beside Coach Notes on a wide screen (Report board): two cards on one row. */
+@media screen and (min-width:901px){
+  #rsEnd{display:flex;flex-wrap:wrap;gap:16px;align-items:stretch;margin-top:16px}
+  #rsEnd > *{flex:1 1 320px;min-width:0;margin-top:0}
+  #rsEnd > .notes-offer > .no-card{height:100%}
+}
+#rsEnd + #cmpNextV{margin-top:16px}
 .no-card{border:1px solid var(--c-line);border-radius:var(--radius-card);background:var(--c-panel-blue);padding:18px 22px}
 .no-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
 .no-chip{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--c-blue-dk)}
@@ -2531,8 +2555,15 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .aero-cue .ic{width:16px;height:16px;color:var(--c-ink-faint);flex:none;margin-top:1px}
 .aero-foot{margin:12px 0 4px}
 .aero-disc{font-size:12px;color:var(--c-ink-faint);line-height:1.5;margin:10px 0 0;font-family:var(--f-mono)}
-.aero-ok{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--c-ink)}
-.aero-ok .ic{width:18px;height:18px;color:var(--st-good);flex:none;margin-top:1px}
+.aero-big{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
+.aero-pct{font-size:28px;color:var(--c-head)}
+.aero-pct-l{font-size:14px;color:var(--c-ink-soft)}
+.aero-zones{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:12px}
+.aero-zones .az{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--c-ink-faint);text-align:center}
+.aero-zones .az i{display:block;width:100%;height:10px;border-radius:var(--radius-bar);background:var(--c-line)}
+.aero-zones .az.is-on{color:var(--c-head);font-weight:700}
+.aero-zones .az.is-on i{background:var(--c-head)}
+.aero-say{font-size:14px;color:var(--c-ink);margin:12px 0 0}
 /* "What if" sliders: torso and head, the hero minutes follow them. */
 .aero-wi{display:flex;flex-direction:column;gap:12px;border:1px solid var(--c-line);border-radius:var(--radius-panel);padding:14px 16px;background:var(--c-bg)}
 .aero-wi-row{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:4px 14px;align-items:center}
