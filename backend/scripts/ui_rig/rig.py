@@ -49,7 +49,7 @@ CLOCK = """(()=>{ window.__T=%s; const R=Date;
   window.Date=D; })()""" % T0
 FREEZE = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}"
 ATHLETE = ["home", "history", "progress", "compare", "profiles", "account"]
-COACH = ATHLETE + ["pricing", "whatsnew", "swim", "reviews", "athletes", "batch", "feedback"]
+COACH = ATHLETE + ["pricing", "whatsnew", "swim", "reviews", "athletes", "batch", "feedback", "coach-profile"]
 PW = "Rig-pass-2026!"
 
 

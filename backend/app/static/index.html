@@ -1900,6 +1900,34 @@
     </div>
   </section>
 
+  <!-- ============ COACH PROFILE (Coach plan) ============
+       What athletes see under the coach's name (on every report), how strict
+       the framing check is, and the three ways a clip arrives. -->
+  <section id="coachProfile" class="hidden" aria-labelledby="cpTitle">
+    <div class="backhome-row"><button class="btn btn-ghost btn-sm" type="button" id="cpBack"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Account</button></div>
+    <div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="cpTitle" tabindex="-1">Coach profile</h2>
+        <p class="ph-lede">What your athletes see under your name, and how strict the framing check is.</p></div>
+      <span class="ph-right"><span class="ac-chip">Coach plan</span></span>
+    </div>
+    <div class="cp-grid">
+      <div class="acct-card"><h3>On the report</h3><div class="acct-body" id="cpReport"></div></div>
+      <div>
+        <div class="acct-card"><h3>Framing check · GO / NO-GO</h3><div class="acct-body" id="cpCapture"></div></div>
+        <div class="acct-card"><h3>How clips reach you</h3>
+          <div class="acct-body">
+            <dl class="cp-ways">
+              <div><dt>Upload link</dt><dd>No account. The athlete sends a clip and it lands on your Squad, on your plan.</dd></div>
+              <div><dt>Link code</dt><dd>The athlete links their own Flapp account. You see what their plan shows them.</dd></div>
+              <div><dt>You upload</dt><dd>One clip on Analyze, or up to ten at once.</dd></div>
+            </dl>
+            <p class="hint u-m-0">Each athlete’s link and code are on their page.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ PROFILES ============ -->
   <section id="profiles" class="hidden" aria-labelledby="profTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
@@ -2218,20 +2246,20 @@ const TITLES={upload:'Flapp — Running & Cycling Form Analysis', progress:'Anal
   compare:'Before / After — Flapp', pricing:'Pricing — Flapp',
   whatsnew:'What’s new — Flapp', feedbackadmin:'Result feedback — Flapp',
   expertadmin:'Expert Review queue — Flapp', reviewreport:'Your Expert Review — Flapp',
-  account:'Account — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp', athletedetail:'Athlete — Flapp', batch:'Batch — Flapp',
+  account:'Account — Flapp', coachprofile:'Coach profile — Flapp', profiles:'Profiles — Flapp', athletes:'Athletes — Flapp', athletedetail:'Athlete — Flapp', batch:'Batch — Flapp',
   swim:'Swim review — Flapp', swimdetail:'Your swim clip — Flapp'};
 const SECTIONS={upload:'uploader', progress:'progress', results:'results', photoresults:'photoResults', error:'error',
   dashboard:'dashboard',
   history:'history', historydetail:'historyDetail', trends:'trends', compare:'compare', pricing:'pricing',
   whatsnew:'whatsnew', feedbackadmin:'feedbackAdmin',
   expertadmin:'expertAdmin', reviewreport:'reviewReport',
-  account:'account', profiles:'profiles', athletes:'athletes', athletedetail:'athleteDetail', batch:'batch', swim:'swim', swimdetail:'swim'};
+  account:'account', coachprofile:'coachProfile', profiles:'profiles', athletes:'athletes', athletedetail:'athleteDetail', batch:'batch', swim:'swim', swimdetail:'swim'};
 // Which sidebar link is "current" for a given app state. ('trends' is the
 // Progress/charts view; 'progress' is the transient "analyzing…" screen, which
 // belongs to the Analyze flow so it keeps Analyze highlighted.)
 // ('historydetail' is a saved analysis opened *from* History, so History stays lit.)
-const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes', athletedetail:'#navAthletes', batch:'#navBatch' };
-const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
+const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', coachprofile:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes', athletedetail:'#navAthletes', batch:'#navBatch' };
+const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', coachprofile:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
   const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
@@ -2294,6 +2322,7 @@ const ROUTED_STATES = {
   compare:       () => openCompare(),
   expertadmin:   () => openExpertAdmin(),
   account:       () => openAccount(),
+  coachprofile:  () => openCoachProfile(),
   profiles:      () => openProfiles(),
   // The sample needs no order; a delivered report is refetched by id.
   reviewreport:  (e) => e.sample ? openSampleReport() : openReviewReport(e.orderId),
@@ -2364,6 +2393,9 @@ function quotaLoad(){
   }catch(e){}
   return null;
 }
+/* /auth/me carries the same count as the X-RateLimit-* headers, so the
+   allowance is known from the first load, not only after an analysis. */
+function quotaFromMe(u){ const q=u&&u.quota; if(q&&q.limit!=null&&q.remaining!=null) quotaSave(+q.limit,+q.remaining); }
 function quotaSave(limit,remaining,until=null){
   try{ localStorage.setItem(QUOTA_KEY, JSON.stringify({limit,remaining,at:Date.now(),until})); }catch(e){}
   renderQuota();
@@ -2393,9 +2425,6 @@ function renderQuota(){
     const q=card&&card.quota;
     txt = q
       ? `${esc(card.name)} · <b>${q.limit}</b> analyses per ${esc(q.window)}`
-/* /auth/me carries the same count as the X-RateLimit-* headers, so the
-   allowance is known from the first load, not only after an analysis. */
-function quotaFromMe(u){ const q=u&&u.quota; if(q&&q.limit!=null&&q.remaining!=null) quotaSave(+q.limit,+q.remaining); }
       : `<b>${tier==='admin'?'Admin':tier==='coach'?'Coach':'Free'}</b> plan`;
   }
   ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
@@ -6801,28 +6830,39 @@ function renderCoachCard(){
   if(!coachOn()){ card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
   pill.classList.remove('hidden'); pill.lastChild.textContent='Coach';
-  body.innerHTML=`<div class="coachform">
-      <div><label for="coachName">Name on the report</label><input type="text" id="coachName" maxlength="60" placeholder="Coach Artur" value="${esc(COACH.name||'')}"></div>
-      <div><label for="coachTag">One line under it</label><input type="text" id="coachTag" maxlength="120" placeholder="UESCA-certified · Nanaimo, BC" value="${esc(COACH.tagline||'')}"></div>
-      <div><label>Mark</label><div class="coachlogo">
-        ${COACH.logo?`<img src="${COACH.logo}" alt="Your mark">`:''}
+  const cap=COACH.capture||{}, nc=(COACH.cues||[]).length;
+  // Account says what is set; the page is where it is changed.
+  body.innerHTML=`<p class="acct-p">${COACH.name?`<b>${esc(COACH.name)}</b>${COACH.tagline?' · '+esc(COACH.tagline):''}`:'No name on your reports yet.'}</p>
+    <p class="acct-p">${nc} ${nc===1?'cue':'cues'} · framing bars ${cap.tiny_px||300} and ${cap.small_px||400} px${COACH.capture?'':' (standard)'}</p>
+    <button class="btn btn-ghost btn-sm" type="button" id="acctCoachOpen">Open coach profile</button>`;
+  $('#acctCoachOpen').addEventListener('click',openCoachProfile);
+  const rep=$('#cpReport'), capHost=$('#cpCapture'); if(!rep||!capHost) return;
+  const ini=String(COACH.name||'').replace(/^coach\s+/i,'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+  rep.innerHTML=`<div class="coachform">
+      <div class="cp-two"><div><label for="coachName">Name on the report</label><input type="text" id="coachName" maxlength="60" placeholder="Coach Artur" value="${esc(COACH.name||'')}"></div>
+      <div><label for="coachTag">One line under it</label><input type="text" id="coachTag" maxlength="120" placeholder="UESCA-certified · Nanaimo, BC" value="${esc(COACH.tagline||'')}"></div></div>
+      <div class="cp-mark"><span class="cp-lbl">Mark</span>
+        ${COACH.logo?`<img src="${COACH.logo}" alt="Your mark">`:ini?`<span class="ac-ini" aria-hidden="true">${esc(ini)}</span>`:''}
         <input type="file" id="coachLogoFile" accept="image/png,image/jpeg,image/webp" class="visually-hidden">
         <button class="btn btn-ghost btn-sm" type="button" id="coachLogoPick">${COACH.logo?'Replace':'Add a mark'}</button>
-        ${COACH.logo?`<button class="btn btn-ghost btn-sm" type="button" id="coachLogoDrop">Remove</button>`:''}
-        <p class="hint">PNG, JPEG or WebP; shown about 48 px tall on the report.</p></div></div>
-      <div><label for="coachCues">Cue library — one per line</label>
-        <textarea id="coachCues" placeholder="Land under your hips, not in front of them&#10;Quiet upper body — let the legs do the work&#10;Heel drops a touch earlier through the bottom">${esc((COACH.cues||[]).join('\n'))}</textarea>
-        <p class="hint u-m-0 u-mt-1">Offered as one-click chips when you write a note on a report. ${(COACH.cues||[]).length} of 40.</p></div>
-      <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="coachSave">Save coach profile</button><span class="cnote-status" id="coachStatus"></span></div>
-    </div>
-    <div class="coachgrid">
-      <h4>Framing check · GO / NO-GO</h4>
-      <p class="hint u-m-0">How tall the athlete must be in the frame the analysis sees. The standard bars are 300 and 400 px on a bike, 200 and 300 px on a run; bars you save here apply to both, on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
-      <div class="gridrow">
-        <div><label for="capTiny">NO-GO under</label><input type="number" id="capTiny" min="200" max="600" step="10" value="${(COACH.capture&&COACH.capture.tiny_px)||300}"> <span class="hint">px</span></div>
-        <div><label for="capSmall">Warn under</label><input type="number" id="capSmall" min="200" max="800" step="10" value="${(COACH.capture&&COACH.capture.small_px)||400}"> <span class="hint">px</span></div>
+        ${COACH.logo?`<button class="btn btn-link btn-sm" type="button" id="coachLogoDrop">Remove</button>`:''}
+        <p class="hint">PNG, JPEG or WebP; shown about 48 px tall.</p></div>
+      <div><div class="cp-lblrow"><label for="coachCues">Cue library · one per line</label><span class="cp-count">${nc} of 40</span></div>
+        <textarea id="coachCues" placeholder="Land under your hips, not in front of them&#10;Quiet upper body, let the legs do the work&#10;Heel drops a touch earlier through the bottom">${esc((COACH.cues||[]).join('\n'))}</textarea>
+        <p class="hint u-m-0 u-mt-1">Offered as one-click chips when you write a note on a report.</p></div>
+      <div class="cnote-actions"><button class="btn btn-primary" type="button" id="coachSave">Save coach profile</button><span class="cnote-status" id="coachStatus"></span></div>
+    </div>`;
+  capHost.innerHTML=`<div class="cp-cap">
+      <figure class="cp-fig" aria-hidden="true"><img src="/media/examples/bike-road.webp" alt="" loading="lazy"><i class="cp-top"></i><i class="cp-bot"></i><span class="cp-tag">athlete height</span></figure>
+      <div class="coachgrid">
+        <p class="hint u-m-0">How tall the athlete must be in the frame the analysis sees. Your bars apply on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
+        <div class="gridrow">
+          <div><label for="capTiny">NO-GO under</label><span class="cp-px"><input type="number" id="capTiny" min="200" max="600" step="10" value="${cap.tiny_px||300}"><span>px</span></span></div>
+          <div><label for="capSmall">Warn under</label><span class="cp-px"><input type="number" id="capSmall" min="200" max="800" step="10" value="${cap.small_px||400}"><span>px</span></span></div>
+        </div>
+        <p class="hint u-m-0">Standard: 300 and 400 px on a bike, 200 and 300 px on a run. Bars you save here apply to both.</p>
+        <div class="cnote-actions"><button class="btn btn-ghost btn-sm" type="button" id="capSave">Save the bars</button>${COACH.capture?'<button class="btn btn-link btn-sm" type="button" id="capReset">Back to standard</button>':''}<span class="cnote-status" id="capStatus"></span></div>
       </div>
-      <div class="cnote-actions"><button class="btn btn-ghost btn-sm" type="button" id="capSave">Save the bars</button>${COACH.capture?'<button class="btn btn-link btn-sm" type="button" id="capReset">Back to the standard bars</button>':''}<span class="cnote-status" id="capStatus"></span></div>
     </div>`;
   const putCap=async body=>{
     const r=await fetch('/me/coach/capture',{method:'PUT',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body)});
@@ -6885,7 +6925,7 @@ function renderCoachNote(hostId, entryId){
   const cues=(COACH.cues||[]);
   host.innerHTML=`<div class="cnote-read hidden">${esc(note)}</div>
     <textarea id="${hostId}Text" placeholder="What you saw that the numbers did not — and the one thing to work on before the next clip.">${esc(note)}</textarea>
-    ${cues.length?`<div class="cnote-cues"><span class="cnote-cuelbl">Cues</span>${cues.map(c=>`<button type="button" data-cue="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:`<p class="cnote-empty">Add cues to your <a href="#account" onclick="event.preventDefault();openAccount()">coach profile</a> and they appear here as one-click chips.</p>`}
+    ${cues.length?`<div class="cnote-cues"><span class="cnote-cuelbl">Cues</span>${cues.map(c=>`<button type="button" data-cue="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:`<p class="cnote-empty">Add cues to your <a href="#coach-profile" onclick="event.preventDefault();openCoachProfile()">coach profile</a> and they appear here as one-click chips.</p>`}
     <div class="cnote-actions"><button class="btn btn-primary btn-sm" type="button" id="${hostId}Save"${entryId?'':' disabled title="This report has not been saved yet"'}>Save note</button>
       <span class="cnote-status" id="${hostId}Status">${note?'Saved on this report · prints under your name · included in the export.':'Saved on this report, printed under your name, included in the AI export.'}</span></div>`;
   const ta=$('#'+hostId+'Text'), st=$('#'+hostId+'Status');
@@ -8501,6 +8541,12 @@ $('#acctResearch').addEventListener('change',async e=>{
   const on=e.target.checked;
   if(!(await setResearch(on))) e.target.checked=!on;
 });
+function openCoachProfile(){
+  if(!auth){ openAuth('login'); return; }
+  if(!COACH.loaded) loadCoach();
+  renderCoachCard();
+  setState('coachprofile',{focus:'#cpTitle'});
+}
 function openAccount(){
   if(!auth){ openAuth('login'); return; }
   renderAccount();
@@ -8513,6 +8559,7 @@ function openAccount(){
   $('#acctPlans').addEventListener('click',()=>openPricing());
   $('#acctPwChange').addEventListener('click',()=>openAuth('forgot'));
   $('#acctWhatsNew').addEventListener('click',e=>{ e.preventDefault(); openWhatsNew(); });
+  $('#cpBack').addEventListener('click',openAccount);
 })();
 
 /* The shared upsell panel. `data-src` tags where the CTA fired for later
@@ -12426,6 +12473,7 @@ function init(){
     else if(location.hash==='#signup'){ clean(); openAuth('register'); }
     else if(location.hash==='#pricing'){ clean(); openPricing(); }
     else if(location.hash==='#account'){ clean(); authReady.then(openAccount); }
+    else if(location.hash==='#coach-profile'){ clean(); authReady.then(openCoachProfile); }
     else if(location.hash==='#profiles'){ clean(); authReady.then(openProfiles); }
     else if(location.hash==='#athletes'){ clean(); authReady.then(openAthletes); }
     else if(location.hash==='#batch'){ clean(); authReady.then(openBatch); }

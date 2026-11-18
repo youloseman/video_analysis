@@ -3196,12 +3196,12 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .acct-card h3{font-family:var(--f-display);font-weight:600;font-size:16px;color:var(--c-head);margin:0;padding:12px 18px;border-bottom:1px solid var(--c-line);display:flex;align-items:center;gap:10px}
 /* Account as drawn: each card headed in the display face, the plan's three
    meters with bars, the coach with initials. */
-#account .acct-card{padding:4px 4px 8px}
-#account .acct-card h3{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;border-bottom:0;padding:16px 20px 8px;flex-wrap:wrap;align-items:baseline}
-#account .acct-row,#account .acct-body,#account .acct-actions{padding-left:20px;padding-right:20px}
+:is(#account,#coachProfile) .acct-card{padding:4px 4px 8px}
+:is(#account,#coachProfile) .acct-card h3{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;border-bottom:0;padding:16px 20px 8px;flex-wrap:wrap;align-items:baseline}
+:is(#account,#coachProfile) :is(.acct-row,.acct-body,.acct-actions){padding-left:20px;padding-right:20px}
 #account .acct-row{font-size:16px}
 #account .acct-row .a{font-size:16px;font-weight:600}
-#account .acct-p{font-size:16px}
+:is(#account,#coachProfile) .acct-p{font-size:16px}
 .ac-plan{font-size:28px}
 .ac-price{font-family:var(--f-mono);font-size:16px;font-style:normal;font-weight:400;color:var(--c-ink-soft)}
 .ac-chip{font-family:var(--f-body);font-style:normal;font-size:12px;font-weight:600;color:var(--st-good);background:var(--st-good-bg);padding:2px 8px;border-radius:var(--radius-tag)}
@@ -3219,6 +3219,44 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 #account .ac-unlink{border-top:1px solid var(--c-line);margin-top:12px;padding:12px 0 0}
 #account .subhint a{color:var(--c-blue-dk)}
 .ac-switches{display:grid;gap:16px}
+/* Coach profile (board: CoachProfile): the report card on the left, the
+   framing check with its picture and the three ways in on the right. */
+.cp-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+#coachProfile .acct-body{border-top:0}
+#coachProfile .coachform{display:grid;gap:16px}
+#coachProfile label,.cp-lbl{display:block;font-size:14px;font-weight:600;color:var(--c-ink);margin-bottom:6px;font-family:var(--f-body);letter-spacing:0;text-transform:none}
+#coachProfile input[type=text],#coachProfile textarea{width:100%;font:inherit;font-size:16px;padding:10px 12px;min-height:48px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);color:var(--c-ink)}
+#coachProfile textarea{min-height:120px;line-height:1.5}
+.cp-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.cp-mark{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cp-mark .cp-lbl{margin:0}
+.cp-mark img{height:48px;width:auto}
+.cp-mark .hint{margin:0;flex:1 1 160px;text-align:left}
+.cp-lblrow{display:flex;justify-content:space-between;align-items:baseline}
+.cp-count{font-family:var(--f-mono);font-size:14px;color:var(--c-ink-soft)}
+.cp-cap{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:start}
+.cp-fig{position:relative;margin:0;border-radius:var(--radius-panel);overflow:hidden;aspect-ratio:9/16;background:var(--c-ground)}
+.cp-fig img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cp-fig i{position:absolute;left:0;right:0;border-top:2px dashed var(--st-good)}
+.cp-fig .cp-top{top:29.5%}
+.cp-fig .cp-bot{top:81.5%}
+.cp-tag{position:absolute;left:6px;top:calc(29.5% - 26px);font-size:12px;font-weight:600;color:var(--c-ink);background:var(--c-bg);padding:2px 6px;border-radius:var(--radius-tag)}
+#coachProfile .coachgrid{display:grid;gap:12px;margin:0;padding:0;border:0}
+#coachProfile .gridrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.cp-px{display:flex;align-items:center;gap:6px}
+.cp-px input{width:100%;min-height:48px;font-family:var(--f-mono);font-size:16px;padding:8px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);color:var(--c-ink)}
+.cp-px span{font-size:14px;color:var(--c-ink-soft)}
+.cp-ways{margin:0 0 12px;display:grid}
+.cp-ways > div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--c-line)}
+.cp-ways dt{font-weight:700;color:var(--c-ink)}
+.cp-ways dd{margin:0;font-size:14px;color:var(--c-ink-soft)}
+#coachProfile .cp-ways + .hint{text-align:left;font-size:14px}
+@media(max-width:900px){ .cp-grid{grid-template-columns:minmax(0,1fr)} }
+@media(max-width:640px){
+  .cp-two,.cp-cap{grid-template-columns:minmax(0,1fr)}
+  .cp-fig{width:150px}
+  .cp-ways > div{grid-template-columns:minmax(0,1fr);gap:4px}
+}
 @media(max-width:640px){
   .ac-meters{grid-template-columns:minmax(0,1fr);gap:16px}
   .ac-coach .acct-p{font-size:14px}
