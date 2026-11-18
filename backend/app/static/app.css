@@ -1928,6 +1928,38 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .sc-main.has-verdict > .graderow{flex-direction:column;align-items:flex-start;gap:4px;max-width:200px;align-self:center}
 .sc-main.has-verdict > .graderow > div{gap:2px}
 .grade-next.hidden{display:none}
+/* ---- Photo result, as drawn (PhotoResult board, 2026-11-17) ---- */
+.sc-photo > .score-label,.sc-photo > .sporttag{display:none}
+.sc-photo .grade.grade-pill{min-width:0;height:auto;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;
+  font:600 16px var(--f-body);font-style:normal;letter-spacing:0;text-transform:none}
+.sc-photo > .graderow{flex-direction:column;align-items:flex-start;gap:4px;align-self:center;padding-bottom:0}
+.sc-photo > .graderow > div{gap:2px}
+.sc-photo > .score-meta:empty{display:none}
+.sc-photo > .phasepick{grid-column:3;grid-row:1/span 3;align-self:center;flex-direction:column;align-items:flex-start;gap:8px;
+  margin:0;padding:0 0 0 22px;background:none;border:0;border-left:1px solid rgba(255,255,255,.14);border-radius:0}
+.sc-photo .phasepick-lbl{font-family:var(--f-body);font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;color:rgba(255,255,255,.85)}
+.sc-photo .phasepick .hint{font-size:14px;color:rgba(255,255,255,.7)}
+.sc-photo .seg{background:transparent;border-color:rgba(255,255,255,.4)}
+.sc-photo .seg button{color:#fff;border-color:rgba(255,255,255,.4)}
+.sc-photo .seg button:hover{background:rgba(255,255,255,.1);color:#fff}
+.sc-photo .seg button[aria-pressed="true"]{background:#fff;color:var(--c-brand-navy)}
+.rs-acts > .sharebtn{margin:0}
+/* the photo's joint angles read like the report's measurements */
+.pa-table thead th.col-range{width:34%}
+.pa-table .mrow .m-val{font-size:18px}
+.pa-table .mrow.m-ok .m-val{color:var(--m-ok)} .pa-table .mrow.m-near .m-val{color:var(--m-near-text)} .pa-table .mrow.m-out .m-val{color:var(--m-out)}
+.pa-table .m-pill{display:inline-block;padding:2px 8px;border-radius:var(--radius-tag);font-size:12px;font-weight:600;background:var(--c-panel);color:var(--c-ink-faint);white-space:nowrap}
+.pa-table .mrow.m-ok .m-pill{background:var(--st-good-bg);color:var(--m-ok)}
+.pa-table .mrow.m-near .m-pill{background:var(--st-warn-bg);color:var(--m-near-text)}
+.pa-table .mrow.m-out .m-pill{background:var(--st-bad-bg);color:var(--st-bad-text)}
+@media(max-width:640px){
+  .sc-photo > .phasepick{flex:1 1 100%;order:6;padding:12px 0 0;border-left:0;border-top:1px solid rgba(255,255,255,.14)}
+  .pa-table thead th.col-range{width:auto}
+  /* a row is the name and its chip, then the value with the bar beside it */
+  #pAngleTable td::before{display:none}
+  #pAngleTable td.m-val{flex:0 0 auto;align-self:center}
+  #pAngleTable td.col-range{flex:1 1 0;min-width:0}
+}
 .sc-trust{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 16px;align-items:center;padding:4px 14px;
   background:rgba(255,255,255,.08);border-left:3px solid var(--hero-warn);border-radius:var(--radius-tag);font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)}
 .sc-trust.t-low{border-left-color:var(--hero-bad)}
@@ -2527,8 +2559,8 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 #measTable .mrow.m-out .m-pill{background:var(--st-bad-bg);color:var(--st-bad-text)}
 #measTable .m-delta{display:inline;margin-left:6px}
 #measTable td.m-st{white-space:nowrap}
-@media(min-width:641px){
-  #measTable thead th:nth-child(4){width:180px}
+#measTable thead th:nth-child(4){width:180px}
+@media(min-width:901px){
   #measTable .mrow > *{padding-top:10px;padding-bottom:10px}
   #measTable .m-fig{width:48px;height:36px}
 }

@@ -40,3 +40,23 @@ def test_the_pairs_are_wide_screen_only():
     for sel in ("#filmAero{display:flex", "#rsEnd{display:flex"):
         i = CSS.index(sel)
         assert CSS.rfind("@media screen and (min-width:901px){", 0, i) > CSS.rfind("\n}", 0, i)
+
+
+def test_a_photo_letter_is_the_photo_scorers_own_lines():
+    """The photo is graded in words (Excellent / Good / Fair / Needs Work); the
+    letter beside the word must not say more than the word does."""
+    from app.services.video_analysis.photo_analyzer import _assign_photo_grade
+    m = re.search(r"const scoreLetter=n=>(.*?);", SPA)
+    assert m, "scoreLetter missing"
+    cuts = [int(x) for x in re.findall(r"n>=(\d+)", m.group(1))]
+    words = {"A": "Excellent", "B": "Good", "C": "Fair"}
+    for at, letter in zip(cuts, "ABC"):
+        assert _assign_photo_grade(at) == words[letter]
+        assert _assign_photo_grade(at - 1) != words[letter]
+
+
+def test_the_photo_header_says_what_was_shot_and_the_pedal_sits_with_the_score():
+    assert 'id="pResultMeta"' in SPA and 'id="pActsTop"' in SPA
+    card = SPA.index('class="card scorecard sc-photo"')
+    assert card < SPA.index('id="pPhasePick"') < SPA.index('id="pAnglesBlock"')
+    assert "function photoAngleRow(" in SPA and "function angleRow(" not in SPA

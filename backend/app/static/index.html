@@ -1337,14 +1337,12 @@
 
   <!-- ============ PHOTO RESULTS ============ -->
   <section id="photoResults" class="hidden" aria-labelledby="pResultsTitle">
-    <div class="blockhead u-mt-0">
-      <div class="eyebrow">Report</div>
-      <h2 class="sec u-mb-2" id="pResultsTitle" tabindex="-1">Your results</h2>
-      <div class="speedline"></div>
-    </div>
+    <div class="blockhead rs-head u-mt-0">
+      <div class="rs-title"><h2 class="sec" id="pResultsTitle" tabindex="-1">Your results</h2><p class="rs-meta" id="pResultMeta"></p></div>
+      <div class="rs-acts" id="pActsTop"></div></div>
 
     <div class="result-top">
-      <div class="card scorecard">
+      <div class="card scorecard sc-photo">
         <span class="sporttag" id="pSportTag"><svg class="ic" id="pSportTagIcon" aria-hidden="true"><use href="#i-bike"/></svg><span id="pSportTagText">Bike</span></span>
         <div class="score-label">Technique score</div>
         <div class="ring" id="pScoreRing" role="img" aria-label="Technique score">
@@ -1358,9 +1356,22 @@
         <div class="score-delta hidden" id="pScoreDelta"></div>
         <div class="graderow">
           <span class="grade" id="pGrade" role="img" aria-label="Grade">—</span>
-          <div><div class="gradelbl">Grade</div></div>
+          <div><div class="gradelbl">Grade</div>
+            <div class="grade-next">Technique score · one frame</div>
+            <div class="grade-next hidden" id="pGradeNext"></div></div>
         </div>
         <div class="score-partial hidden" id="pPartial"></div>
+        <!-- A photo has no stroke: where the pedal is decides how the knee and
+             hip are graded, so the question sits with the score it moves. -->
+        <div class="phasepick hidden" id="pPhasePick">
+          <span class="phasepick-lbl">Where is the pedal in this photo?</span>
+          <div class="seg seg-sm" role="group" aria-label="Pedal position">
+            <button type="button" data-phase="bdc">Bottom</button>
+            <button type="button" data-phase="tdc">Top</button>
+            <button type="button" data-phase="uncertain">Not sure</button>
+          </div>
+          <span class="hint" id="pPhaseHint"></span>
+        </div>
         <div class="score-meta" id="pScoreMeta"></div>
         <p class="score-none-why hidden" id="pScoreWithheld"></p>
         <div class="score-bd hidden" id="pScoreBd" aria-label="What the score is built from"></div>
@@ -1430,18 +1441,10 @@
         <h3>Joint angles</h3>
         <div class="speedline-sm"></div>
       </div>
-      <div class="phasepick hidden" id="pPhasePick">
-        <span class="phasepick-lbl">Pedal position<br><span class="hint" id="pPhaseHint"></span></span>
-        <div class="seg seg-sm" role="group" aria-label="Pedal position">
-          <button type="button" data-phase="bdc">Bottom</button>
-          <button type="button" data-phase="tdc">Top</button>
-          <button type="button" data-phase="uncertain">Not sure</button>
-        </div>
-      </div>
       <div class="tablewrap">
-        <table class="data" id="pAngleTable">
-          <caption class="visually-hidden">Joint angles with measured value, optimal range, the Kona pro field and status</caption>
-          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="num">Optimal</th><th scope="col" class="num col-pro" title="Kona 2026 pros: median, and the middle half of the field under it">Kona 2026</th><th scope="col" class="col-status">Status</th></tr></thead>
+        <table class="data pa-table" id="pAngleTable">
+          <caption class="visually-hidden">Joint angles with measured value, reference range, the Kona pro field and status</caption>
+          <thead><tr><th scope="col">Angle</th><th scope="col" class="num">Value</th><th scope="col" class="col-range">Range</th><th scope="col" class="num col-pro" title="Kona 2026 pros: median, and the middle half of the field under it">Kona 2026</th><th scope="col" class="col-status">Status</th></tr></thead>
           <tbody id="pAngleRows"></tbody>
         </table>
       </div>
@@ -4862,37 +4865,47 @@ function proCell(key,pro,sport,unit){
   const sign=u==='%'&&med>=0?'+':'';
   return `<td class="num col-pro" title="Median of ${pro.n} Kona pros; the middle half sat between ${num(mid[0],0)} and ${num(mid[1],0)}${u}"><span class="pro-v">${sign}${num(med,0)}${u} <small class="pro-mid">${num(mid[0],0)}–${num(mid[1],0)}</small></span></td>`;
 }
-function angleRow(k,a,pro){
+/* A photo row as the report's measurement rows read (PhotoResult board): the
+   value in its status colour, the band as a bar with the range under it, the
+   Kona field beside, and the status as a chip. */
+const PHOTO_DEG=new Set(['knee','hip','ankle','elbow','shoulder','trunk','forearm_tilt']);
+const P_CHIP={good:['In range','m-ok'],medium:['Borderline','m-near'],high:['Out of range','m-out']};
+function photoAngleRow(k,a,pro){
   const stt=a.status||'unknown';
-  const val=a.value==null?'—':(typeof a.value==='number'?Math.round(a.value*10)/10:a.value);
+  // Joints in whole degrees, as on a clip; head tuck (0-100) and the pelvic
+  // ratio are not angles and carry no unit.
+  const deg=PHOTO_DEG.has(k), unit=deg?'°':'';
+  const v=typeof a.value==='number'?(deg?Math.round(a.value):Math.round(a.value*10)/10):null;
+  const val=v==null?(a.value==null?'—':esc(a.value)):`${v}${unit}`;
   const proTd=pro===undefined?'':proCell(k,pro,null,k==='helmet_above_back'?'%':'°');
+  const name=esc(a.label||pretty(k));
   if(stt==='phase_dependent'){
-    return `<tr class="row-info"><th scope="row">${esc(a.label||pretty(k))}</th>
-      <td class="num">${val}</td><td class="num muted">—</td>${proTd}
-      <td><span class="pill pill-info" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>not scored · ${esc(a.unscored_reason||'phase')}</span></td></tr>`;
+    return `<tr class="mrow m-info"><th scope="row">${name}</th><td class="num m-val">${val}</td>
+      <td class="col-range"><span class="m-noref">${a.unscored_reason==='pedal position'?'graded once the pedal is set':'not graded at this instant'}</span></td>${proTd}
+      <td class="col-status"><span class="m-pill" title="${esc(a.note||'')}">Not scored</span></td></tr>`;
   }
-  const cls=P_STATUS_CLS[stt]||'low';
-  const word=P_STATUS_WORD[stt]||stt.replace(/_/g,' ');
-  /* An en dash between a negative low bound and a high one reads as a minus
-     sign doing double duty ("-2–10"). Spell the range out in that case. */
-  const opt=(a.optimal_min!=null&&a.optimal_max!=null)
-    ? (a.optimal_min<0 ? `${a.optimal_min} to ${a.optimal_max}` : `${a.optimal_min}–${a.optimal_max}`)
-    : (a.optimal_max!=null ? `≤ ${a.optimal_max}` : '—');   /* one-sided band: helmet above back */
+  const P=P_STATUS_CLS[stt]||'low';
+  const [word,cls]=P_STATUS_WORD[stt]?[P_STATUS_WORD[stt].charAt(0).toUpperCase()+P_STATUS_WORD[stt].slice(1), P==='good'?'m-ok':'m-info']
+    : (P_CHIP[P]||[stt.replace(/_/g,' '),'m-info']);
+  let ref='<span class="m-noref">no published range</span>';
+  if(v!=null&&a.optimal_min!=null&&a.optimal_max!=null){
+    ref=measBar({val:v,unit,range:{value:v,lo:a.optimal_min,hi:a.optimal_max,unit}},{word,cls});
+  } else if(a.optimal_max!=null) ref=`<div class="mbar-cap">≤ ${a.optimal_max}${unit}</div>`;
   /* a.check (run): the two knees overlap, so the point may sit on the wrong
      leg -- scored, but the athlete is told to look. */
   const chk=a.check?` <small class="muted" title="${esc(a.note||'')}">· check the point</small>`:'';
-  return `<tr><th scope="row">${esc(a.label||pretty(k))}${chk}</th>
-    <td class="num">${val}</td><td class="num">${opt}</td>${proTd}
-    <td><span class="pill pill-${cls}" title="${esc(a.note||'')}"><span class="dot" aria-hidden="true"></span>${esc(word)}</span></td></tr>`;
+  return `<tr class="mrow ${cls}"><th scope="row">${name}${chk}</th><td class="num m-val">${val}</td>
+    <td class="col-range">${ref}</td>${proTd}
+    <td class="col-status"><span class="m-pill" title="${esc(a.note||'')}">${esc(word)}</span></td></tr>`;
 }
 /* John Bye (coach, 2026-11-10) asked twice where "Optimal" comes from. The
    bike bands are fitters' ranges (cycling_positions.py), not an aero optimum,
    and the table said neither. Bike only: the run bands have other sources. */
-function fitRangeNote(sel, sport, pro){
+function fitRangeNote(sel, sport, pro, col){
   const el=$(sel); if(!el) return;
   const on=sport==='bike';
   el.classList.toggle('hidden', !on);
-  if(on) el.innerHTML=`<b>Optimal</b> is a bike-fit range for this position, not an aero optimum: where fitters place riders (Retul fit windows; Burt, <i>Bike Fit</i>, 2014; Fintelman 2015; BikeFit).${pro?' <b>Kona 2026</b> is what the pros actually rode.':''}`;
+  if(on) el.innerHTML=`<b>${col||'Optimal'}</b> is a bike-fit range for this position, not an aero optimum: where fitters place riders (Retul fit windows; Burt, <i>Bike Fit</i>, 2014; Fintelman 2015; BikeFit).${pro?' <b>Kona 2026</b> is what the pros actually rode.':''}`;
 }
 function renderPhotoAngles(){
   const res=state.photoRes; if(!res) return;
@@ -4901,19 +4914,19 @@ function renderPhotoAngles(){
   const rows=Object.keys(A).map(k=>{
     let a=A[k];
     if(a.bands) a=rowForPhase(a,phase);   // knee + hip: scored at the chosen pedal position
-    return angleRow(k,a,pro);
+    return photoAngleRow(k,a,pro);
   }).join('');
   $('#pAngleRows').innerHTML=rows||'<tr><td colspan="5" class="muted">No angle data.</td></tr>';
   const pt=$('#pAngleTable'); if(pt) pt.classList.toggle('no-pro', !pro);
-  fitRangeNote('#pAngleSrcNote', res.sport||state.sport, pro);
+  fitRangeNote('#pAngleSrcNote', res.sport||state.sport, pro, 'Range');
   // No picker over a withheld photo: there is no score for it to move.
   const banded=Object.values(A).find(a=>a&&a.bands), pick=$('#pPhasePick');
   if(banded&&!(res.score&&res.score.withheld)){
     pick.classList.remove('hidden');
     document.querySelectorAll('#pPhasePick [data-phase]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.phase===phase)));
     $('#pPhaseHint').textContent = phase==='uncertain'
-      ? "we couldn't tell — pick to score the knee and hip"
-      : (phase===res.pedal_phase ? 'auto-detected · fix if wrong' : 'you set this');
+      ? "We couldn't tell. Pick one to grade the knee and hip."
+      : (phase===res.pedal_phase ? 'Read from the photo. Change it if it is wrong.' : 'You set this.');
   } else pick.classList.add('hidden');
 }
 /* The server scored every pedal position; a correction swaps the number as
@@ -4926,9 +4939,30 @@ function setPhotoPedalPhase(p){
     $('#pScoreNum').innerHTML=(sc.overall_score==null?'—':sc.overall_score)+'<small>/100</small>';
     setScoreRing('#pScoreRing', sc.overall_score);
     setGrade('#pGrade', sc.grade);
+    photoGradeWord(sc);
     setPhotoPartial(sc);
   }
   renderPhotoAngles();
+}
+/* The grade in a word and what the next one takes, as on a clip's card. A
+   photo is graded in words on the clip's own lines (photo_analyzer.
+   _assign_photo_grade: 90 / 75 / 60), so the letter is the score's. */
+const scoreLetter=n=>n>=90?'A':n>=75?'B':n>=60?'C':n>=40?'D':'F';
+function photoGradeWord(sc){
+  const g=$('#pGrade'), nx=$('#pGradeNext'); if(!g||!nx) return;
+  const n=sc&&!sc.withheld?sc.overall_score:null;
+  const L=n!=null?scoreLetter(n):null, word=L&&GRADE_WORD[L];
+  g.classList.toggle('grade-pill', !!word);
+  if(word){ g.textContent=`${L} · ${word}`; g.setAttribute('aria-label',`Grade ${L}, ${word}`); }
+  const t=word&&GRADE_NEXT[L]?`${GRADE_NEXT[L][0]} from ${GRADE_NEXT[L][1]}`:'';
+  nx.textContent=t; nx.classList.toggle('hidden', !t);
+}
+/* Share: beside the title on a wide screen, in the card on a phone. */
+function placePhotoActs(){
+  const b=$('#pShareBtn'), top=$('#pActsTop'), card=$('#photoResults .sc-photo');
+  if(!b||!top||!card) return;
+  if(RESULT_WIDE.matches){ if(b.parentNode!==top) top.appendChild(b); }
+  else if(b.parentNode!==card) card.appendChild(b);
 }
 /* "upper body only": the crank position is unknown, so the knee and hip are
    not in the number. Said beside the score, because a bare 100 on such a
@@ -6447,18 +6481,21 @@ function renderPhoto(res,opts){
   setScoreRing('#pScoreRing', score);
   renderScoreDelta('#pScoreDelta', 'photo', sport, score);   // before saveToHistory()
   setGrade('#pGrade', sc.grade);
+  photoGradeWord(sc);
   setPhotoPartial(sc);
 
   setSportTag('#pSportTag','#pSportTagIcon','#pSportTagText',sport);
 
-  const parts=[];
-  if(res.camera_side) parts.push(`Camera: <b>${esc(res.camera_side)} side</b>`);
-  if(sport==='bike'&&res.cycling_position) parts.push(`Position: <b>${esc(res.cycling_position_label||POSITION_NAMES[res.cycling_position]||pretty(res.cycling_position))}</b>`);
-  if(sport==='bike'&&res.pedal_phase) parts.push(`Pedal: <b>${esc({bdc:'bottom of stroke',tdc:'top of stroke',uncertain:'not sure'}[res.pedal_phase]||String(res.pedal_phase).replace(/_/g,' '))}</b>`);
+  // What was shot, under the title (PhotoResult board): sport, photo, position,
+  // side. The pedal position is the picker's to say, in the card.
+  const what=[sport==='bike'?'Bike':'Run','photo'];
+  if(sport==='bike'&&res.cycling_position) what.push(esc(res.cycling_position_label||POSITION_NAMES[res.cycling_position]||pretty(res.cycling_position)));
+  if(res.camera_side) what.push(`${esc(res.camera_side)} side`);
   // Which instant of the stride the frame caught — it decides which bands the
-  // hip is judged against, so it belongs next to the score, not buried.
-  if(sport==='run'&&res.gait_phase) parts.push(`Stride: <b>${esc(String(res.gait_phase).replace(/_/g,' '))}</b>`);
-  $('#pScoreMeta').innerHTML=parts.join('<br>');
+  // hip is judged against, so it is said with what was shot.
+  if(sport==='run'&&res.gait_phase) what.push(`stride: ${esc(String(res.gait_phase).replace(/_/g,' '))}`);
+  $('#pResultMeta').innerHTML=what.join(' · ');
+  $('#pScoreMeta').innerHTML='';
   renderPhotoBreakdown(res);
 
   const img=res.thumbnail_base64||'';
@@ -6507,6 +6544,7 @@ function renderPhoto(res,opts){
     renderQuota();
     mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));
     state.photoRes=res; $('#pShareBtn').classList.remove('hidden');
+    placePhotoActs();
     setState('photoresults',{focus:'#pResultsTitle'});
     return;
   }
@@ -6538,6 +6576,7 @@ function renderPhoto(res,opts){
   mountFeedback('pFbHost','photo',res,state.photoHistId);
   renderCompareNext('cmpNextP', state.photoHistId, 'result');
   $('#pShareBtn').classList.remove('hidden');
+  placePhotoActs();
   setState('photoresults',{focus:'#pResultsTitle'});
 }
 
@@ -10369,6 +10408,7 @@ function placeResultActs(){
   else if(acts.parentNode!==card) card.appendChild(acts);
 }
 RESULT_WIDE.addEventListener('change', placeResultActs);
+RESULT_WIDE.addEventListener('change', ()=>placePhotoActs());
 function resultVerdict(r, sport, tiles){
   const s=r.sport_specific_metrics||{};
   // A row that restates another (the saddle, read off the knee) is one finding, not two.
