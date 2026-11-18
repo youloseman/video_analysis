@@ -60,3 +60,12 @@ def test_the_photo_header_says_what_was_shot_and_the_pedal_sits_with_the_score()
     card = SPA.index('class="card scorecard sc-photo"')
     assert card < SPA.index('id="pPhasePick"') < SPA.index('id="pAnglesBlock"')
     assert "function photoAngleRow(" in SPA and "function angleRow(" not in SPA
+
+
+def test_photo_findings_sit_beside_the_photo_and_stay_paid():
+    """Exact angles are a paid read: a locked photo hides Findings with the table."""
+    assert SPA.index('id="pImage"') < SPA.index('id="pFindings"') < SPA.index('id="pWarnings"')
+    assert "['pCoachBlock','pAnglesBlock','pFindings']" in SPA
+    body = SPA[SPA.index("function renderPhotoFindings("):]
+    assert "if(res.locked || sc.withheld || sc.overall_score==null)" in body[:600]
+    assert "renderPhotoFindings(A, phase, res);" in SPA

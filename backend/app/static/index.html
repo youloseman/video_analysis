@@ -1419,6 +1419,12 @@
           </div>
         </div>
       </div>
+      <!-- Beside the photo: what is out, what is at the edge, what is in range
+           (PhotoResult board). Paid and scored results only. -->
+      <div class="block hidden" id="pFindings">
+        <div class="blockhead"><h3>Findings</h3></div>
+        <div id="pFindingsBody"></div>
+      </div>
     </div>
 
     <div id="pWarnings"></div>
@@ -4865,6 +4871,54 @@ function proCell(key,pro,sport,unit){
   const sign=u==='%'&&med>=0?'+':'';
   return `<td class="num col-pro" title="Median of ${pro.n} Kona pros; the middle half sat between ${num(mid[0],0)} and ${num(mid[1],0)}${u}"><span class="pro-v">${sign}${num(med,0)}${u} <small class="pro-mid">${num(mid[0],0)}–${num(mid[1],0)}</small></span></td>`;
 }
+/* Findings beside the photo, from the same rows as the table under it: out of
+   range first, then at the edge, each with its bar; what is in range as names;
+   what a photo cannot grade said in one line. Redrawn when the pedal moves. */
+function renderPhotoFindings(A, phase, res){
+  const blk=$('#pFindings'), host=$('#pFindingsBody'); if(!blk||!host) return;
+  const sc=res.score||{};
+  if(res.locked || sc.withheld || sc.overall_score==null){ blk.classList.add('hidden'); host.innerHTML=''; return; }
+  const rows=[], none=[];
+  Object.keys(A).forEach(k=>{
+    const a=A[k].bands?rowForPhase(A[k],phase):A[k];
+    const name=a.label||pretty(k);
+    if(a.status==='phase_dependent'||a.value==null){ none.push(name.replace(/ Angle$/,'').toLowerCase()); return; }
+    const P=P_STATUS_CLS[a.status]||'low';
+    const chip=P_STATUS_WORD[a.status]?[P_STATUS_WORD[a.status], P==='good'?'m-ok':'m-info']:(P_CHIP[P]||null);
+    if(!chip||chip[1]==='m-info') return;
+    const deg=PHOTO_DEG.has(k), unit=deg?'°':'';
+    const v=typeof a.value==='number'?(deg?Math.round(a.value):Math.round(a.value*10)/10):a.value;
+    const hasBand=typeof v==='number'&&a.optimal_min!=null&&a.optimal_max!=null;
+    const m={lbl:name, val:v, unit, range:hasBand?{value:v,lo:a.optimal_min,hi:a.optimal_max,unit}:null,
+      delta:hasBand?(v<a.optimal_min?v-a.optimal_min:v>a.optimal_max?v-a.optimal_max:0):0};
+    rows.push({m, st:{word:chip[0].charAt(0).toUpperCase()+chip[0].slice(1), cls:chip[1]}});
+  });
+  const far=x=>x.m.range?Math.abs(x.m.delta)/((x.m.range.hi-x.m.range.lo)||1):0;
+  const out=rows.filter(x=>x.st.cls==='m-out').sort((a,b)=>far(b)-far(a));
+  const near=rows.filter(x=>x.st.cls==='m-near').sort((a,b)=>far(b)-far(a));
+  const ok=rows.filter(x=>x.st.cls==='m-ok');
+  const n=(k,w,t)=>k?`<span class="fd-n fd-${w}">${k} ${t}</span>`:'';
+  let html=`<p class="fd-counts">${n(out.length,'out','outside range')}${n(near.length,'near','at the edge')}${n(ok.length,'ok','in range')}</p>`;
+  if(out.length||near.length){
+    html+=[...out,...near].slice(0,3).map(({m,st})=>{
+      const delta=m.range?measDelta(m.delta,m.unit):'';
+      const band=m.range?`band <span class="num">${measRange(m.range.lo,m.range.hi,m.unit)}</span>`:'';
+      return `<div class="fd-row ${st.cls}"><span class="fd-name">${esc(m.lbl)}</span><span class="fd-val num">${esc(String(m.val))}${m.unit}</span>
+        ${m.range?`<div class="fd-bar">${measBar(m,st)}</div>`:''}
+        <div class="fd-st">${st.word}${delta?` <span class="num">${delta}</span>`:''}${band?`<span class="fd-band"> · ${band}</span>`:''}</div></div>`;
+    }).join('');
+    // A point the model put on the wrong spot reads as a finding; say how to check.
+    if(!$('#pAdjust').classList.contains('hidden'))
+      html+=`<button type="button" class="fd-act" data-padjust><span><b>The skeleton sat wrong?</b><small>Drag a joint to where it really is and every angle is measured again.</small></span></button>`;
+    if(ok.length) html+=`<div class="fd-inrange"><b>In range · ${ok.length}</b>${ok.map(x=>`<span>${esc(x.m.lbl)}</span>`).join('')}</div>`;
+  } else {
+    html+=`<div class="banner good u-mt-0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Every graded angle on this photo is in range.</span></div>`;
+  }
+  if(none.length) html+=`<p class="fd-none">Not graded on this photo: ${esc(none.join(', '))}.</p>`;
+  host.innerHTML=html;
+  const adj=host.querySelector('[data-padjust]'); if(adj) adj.addEventListener('click',()=>$('#pAdjust').click());
+  blk.classList.remove('hidden');
+}
 /* A photo row as the report's measurement rows read (PhotoResult board): the
    value in its status colour, the band as a bar with the range under it, the
    Kona field beside, and the status as a chip. */
@@ -4918,6 +4972,7 @@ function renderPhotoAngles(){
   }).join('');
   $('#pAngleRows').innerHTML=rows||'<tr><td colspan="5" class="muted">No angle data.</td></tr>';
   const pt=$('#pAngleTable'); if(pt) pt.classList.toggle('no-pro', !pro);
+  renderPhotoFindings(A, phase, res);
   fitRangeNote('#pAngleSrcNote', res.sport||state.sport, pro, 'Range');
   // No picker over a withheld photo: there is no score for it to move.
   const banded=Object.values(A).find(a=>a&&a.bands), pick=$('#pPhasePick');
@@ -6539,7 +6594,7 @@ function renderPhoto(res,opts){
   // Free-tier teaser: hide paid sections, show upgrade panel, stop early.
   $('#pUpsellHost').classList.add('hidden');
   if(res.locked){
-    renderPhotoUpsell('pUpsellHost', res.locked, ['pCoachBlock','pAnglesBlock']);
+    renderPhotoUpsell('pUpsellHost', res.locked, ['pCoachBlock','pAnglesBlock','pFindings']);
     $('#pContactBlock').classList.add('hidden');
     renderQuota();
     mountFeedback('pFbHost','photo',res,saveToHistory('photo', res));

@@ -1945,6 +1945,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .sc-photo .seg button[aria-pressed="true"]{background:#fff;color:var(--c-brand-navy)}
 .rs-acts > .sharebtn{margin:0}
 /* the photo's joint angles read like the report's measurements */
+/* Findings beside the photo: a narrow column, so the bar sits under the name */
+.result-top > #pFindings{grid-column:2;margin-top:0}
+#pFindings .blockhead{margin-bottom:8px}
+#pFindings .fd-row{grid-template-columns:minmax(0,1fr) auto}
+#pFindings .fd-bar{grid-column:1/-1}
+.fd-none{margin:12px 0 0;font-size:14px;color:var(--c-ink-faint)}
 .pa-table thead th.col-range{width:34%}
 .pa-table .mrow .m-val{font-size:18px}
 .pa-table .mrow.m-ok .m-val{color:var(--m-ok)} .pa-table .mrow.m-near .m-val{color:var(--m-near-text)} .pa-table .mrow.m-out .m-val{color:var(--m-out)}
@@ -1957,6 +1963,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   .pa-table thead th.col-range{width:auto}
   /* a row is the name and its chip, then the value with the bar beside it */
   #pAngleTable td::before{display:none}
+  #pFindings .fd-inrange{display:none}   /* the table right under it lists them */
   #pAngleTable td.m-val{flex:0 0 auto;align-self:center}
   #pAngleTable td.col-range{flex:1 1 0;min-width:0}
 }
@@ -2895,7 +2902,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .result-top > #videoCol,
   .result-top > #issuesBlock,
   .result-top.no-video > #issuesBlock,
-  .result-top.pair > #issuesBlock{grid-column:1}
+  .result-top.pair > #issuesBlock,
+  .result-top > #pFindings{grid-column:1}
   .result-top > #issuesBlock{margin-top:0}
   .scorecard{max-width:none}
 }
