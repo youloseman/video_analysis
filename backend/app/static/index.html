@@ -2032,14 +2032,17 @@
     </div>
     <p class="hint hidden" id="batNoSquad">No athletes yet, so these would be filed as your own clips. <a href="#" onclick="event.preventDefault();openAthletes(true)">Add an athlete first</a>.</p>
     <div class="bat-card">
+    <!-- Folded to one line on a phone (board: BatchPhone), open on wider screens. -->
+    <details class="bat-defs" id="batDefs" open><summary><span><b>Defaults</b> <span id="batDefsTxt">· sport and position: Auto</span></span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></summary>
     <div class="bat-defaults">
       <div><label for="batAthlete">Whose, unless you say otherwise</label><select id="batAthlete"></select></div>
       <div><label for="batSport">Sport</label><select id="batSport"><option value="auto" selected>Auto, from the clip</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
       <div id="batPosBox"><label for="batPos">Bike position</label><select id="batPos"><option value="auto" selected>Auto: aero, road or upright</option><option value="triathlon">Triathlon / aero</option><option value="tt_aero">Time trial</option><option value="road_hoods">Road, hoods</option><option value="road_drops">Road, drops</option><option value="casual">Upright</option></select></div>
     </div>
+    </details>
     <label class="drop" id="batDrop" for="batFiles">
       <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
-      <b>Drop clips and photos here, or click to pick them</b>
+      <b class="bat-drop-wide">Drop clips and photos here, or click to pick them</b><b class="bat-drop-phone">Add clips or photos</b>
       <small>Side-on, whole body in frame. Each one is checked against your framing bars first.</small>
     </label>
     </div>
@@ -15872,7 +15875,10 @@ function renderLane(){
   if(!items.length){ host.innerHTML=''; return; }
   // The lane (Batch board): the athlete first, the file and what it is after,
   // the state as a chip; a stopped clip says why beside it.
-  host.innerHTML=`<div class="bat-lanecard"><div class="bat-lane-h"><h3 class="bat-h">In the lane</h3><span>last two weeks · one at a time, in the order sent</span></div><div class="bat-lanelist">`+items.map(i=>{
+  const cnt=k=>items.filter(i=>k.includes(i.status)).length;
+  const counts=[[cnt(['running','scanning']),'analysing'],[cnt(['queued']),'waiting'],[cnt(['no_go']),'to film again'],[cnt(['failed']),'failed'],[cnt(['done']),'ready']]
+    .filter(([n])=>n).map(([n,w])=>`${n} ${w}`).join(', ');
+  host.innerHTML=`<details class="bat-lanecard" id="batLaneFold"${PHONE_MQ.matches?'':' open'}><summary class="bat-lane-h"><h3 class="bat-h">In the lane</h3><span class="bat-lane-wide">last two weeks · one at a time, in the order sent</span><span class="bat-lane-phone">· ${esc(counts)}</span><svg class="ic bat-lane-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></summary><div class="bat-lanelist">`+items.map(i=>{
     const why=(i.reasons||[]).map(r=>r.text).join(' ')||i.error||'';
     const noted=i.status==='done'&&why;
     const st=['no_go','failed'].includes(i.status)?'bat-c-bad':noted?'bat-c-warn':['queued','scanning','running'].includes(i.status)?'bat-c-live':i.status==='done'?'bat-c-ok':'';
@@ -15884,7 +15890,7 @@ function renderLane(){
         ${['running','scanning'].includes(i.status)?'':`<button type="button" data-del="${i.id}">Remove</button>`}
       </div>
       <span class="bat-chip ${st}">${['queued','scanning','running'].includes(i.status)?'<span class="bat-dot" aria-hidden="true"></span>':''}${noted?'Ready, read the note':esc(LANE_WORD[i.status]||i.status)}</span></div>`;
-  }).join('')+`</div></div>`;
+  }).join('')+`</div></details>`;
   host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',async()=>{
     if(!findEntry(b.dataset.open)) await refreshCloud();
     const e=findEntry(b.dataset.open);
@@ -15901,6 +15907,17 @@ function renderLane(){
 }
 (function wireBatch(){
   const inp=$('#batFiles'); if(!inp) return;
+  // The defaults fold: shut on a phone, open on wider screens; its summary says
+  // what is set, so a folded row is never a guess.
+  const defs=$('#batDefs');
+  const defsTxt=()=>{ const pick=id=>{ const el=$(id); return el&&el.selectedIndex>=0?el.options[el.selectedIndex].text:''; };
+    const who=($('#batAthlete')||{}).value?pick('#batAthlete'):'';
+    const sp=($('#batSport')||{}).value, pos=($('#batPos')||{}).value;
+    const auto=sp==='auto'&&(!pos||pos==='auto');
+    $('#batDefsTxt').textContent='· '+[who, auto?'sport and position: Auto':[pick('#batSport'), sp!=='run'?pick('#batPos'):''].filter(Boolean).join(', ')].filter(Boolean).join(' · '); };
+  const fold=()=>{ if(defs) defs.open=!PHONE_MQ.matches; const l=$('#batLaneFold'); if(l) l.open=!PHONE_MQ.matches; };
+  ['#batAthlete','#batSport','#batPos'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('change',defsTxt); });
+  PHONE_MQ.addEventListener('change',fold); fold();
   inp.addEventListener('change',e=>{ batchAdd(e.target.files); inp.value=''; });
   const drop=$('#batDrop');
   ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.add('over'); }));

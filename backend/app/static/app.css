@@ -4136,7 +4136,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .bat-name small{display:block;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
 .bat-name .bat-why{font-family:var(--f-body);font-size:12px;color:var(--c-ink-soft);margin-top:2px}
 .bat-name .p-kind,.bat-list .p-kind{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);border:1px solid var(--c-line-strong);padding:0 5px;border-radius:var(--radius-tag)}
-.bat-state{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-soft)}
+.bat-state{font-family:var(--f-body);font-size:14px;color:var(--c-ink-soft)}
 .bat-state.sq-off{color:var(--c-coral-btn)}
 .bat-state.bat-noted{color:var(--st-warn)}
 .bat-named{display:flex;align-items:center;gap:12px}
@@ -4382,3 +4382,28 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .sql-acts .btn{min-height:44px}
 .sql-all{display:block;width:100%;min-height:48px;border:0;border-top:1px solid var(--c-panel);background:var(--c-bg);color:var(--c-blue-dk);font:600 14px var(--f-body);cursor:pointer}
 .sql-kona #sqKona{padding:0 12px 12px}
+
+/* Batch on a phone (board: BatchPhone). Wider screens: the folds are open and
+   their summaries are not drawn. */
+.bat-defs > summary,.bat-lane-phone,.bat-lane-chev,.bat-drop-phone{display:none}
+.bat-lanecard > summary{list-style:none}
+.bat-lanecard > summary::-webkit-details-marker,.bat-defs > summary::-webkit-details-marker{display:none}
+@media(max-width:640px){
+  .bat-card{padding:4px 16px 16px;gap:10px}
+  .bat-defs > summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;cursor:pointer;list-style:none;font-size:14px;color:var(--c-ink-faint)}
+  .bat-defs > summary b{font-size:16px;color:var(--c-ink)}
+  .bat-defs > summary .ic{flex:none;width:18px;height:18px}
+  .bat-defs[open] > summary .ic{transform:rotate(90deg)}
+  .bat-defs[open] > summary{margin-bottom:8px}
+  #batDrop{min-height:48px;padding:12px 16px;border-style:solid;flex-direction:row}
+  #batDrop .ic-lg,#batDrop small,#batDrop .bat-drop-wide{display:none}
+  #batDrop .bat-drop-phone{display:inline;font-size:16px}
+  .bat-go{flex-direction:column;align-items:stretch;gap:8px}
+  .bat-go #batGo{width:100%;min-height:52px;font-size:16px}
+  .bat-lanecard > summary{cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .bat-lanecard > summary .bat-h{margin:0;font-size:16px;font-family:var(--f-body);font-style:normal;font-weight:600}
+  .bat-lane-wide{display:none}
+  .bat-lane-phone{display:inline;flex:1;min-width:0;font-size:14px;color:var(--c-ink-faint)}
+  .bat-lane-chev{display:block;flex:none;width:18px;height:18px;color:var(--c-ink-faint)}
+  .bat-lanecard[open] > summary .bat-lane-chev{transform:rotate(90deg)}
+}

@@ -448,3 +448,13 @@ def test_a_phone_gets_the_lite_squad():
     fn = spa[spa.index("function renderSquadLite"):][:9000]
     for bit in ("sql-kpis", "Swipe a row left to mark it without opening", "Needs attention", "Show the other", "aeroN?"):
         assert bit in fn, bit
+
+
+def test_batch_on_a_phone_folds_defaults_and_lane():
+    """Board BatchPhone: defaults folded to one row whose summary says what is
+    set, the lane folded to its counts; both open on wider screens."""
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert 'id="batDefs"' in spa and 'id="batDefsTxt"' in spa
+    assert "defs.open=!PHONE_MQ.matches" in spa
+    assert 'id="batLaneFold"' in spa and "bat-lane-phone" in spa
