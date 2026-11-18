@@ -434,7 +434,6 @@
            across the top steps aside (CSS), so this h1 is the page's root. -->
       <header class="pagehead uphero">
         <div class="uphero-t">
-          <span class="eyebrow">Video biomechanics · Run &amp; Bike</span>
           <h1 class="uphead" id="uploaderTitle" tabindex="-1">Analyze a <span id="fileNounCap">clip</span></h1>
         </div>
         <span class="ph-lede">One side-view clip, 20–90 seconds to a report.</span>
@@ -460,22 +459,27 @@
           <h3>What are we analysing?</h3></div>
         <div class="modetabs bigtiles what" id="whatSeg" role="group" aria-label="What to analyse">
           <button type="button" data-what="run-video" aria-pressed="false">
-            <span><b>Run · video</b><small>side view</small></span>
+            <svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>
+            <span><b>Run<i class="wk"> · video</i></b><small>side view</small></span>
           </button>
           <button type="button" data-what="bike-video" aria-pressed="true">
-            <span><b>Bike · video</b><small>side view</small></span>
+            <svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg>
+            <span><b>Bike<i class="wk"> · video</i></b><small>side view</small></span>
           </button>
           <button type="button" data-what="bike-photo" aria-pressed="false">
-            <span><b>Bike · photo</b><small>static fit</small></span>
+            <svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
+            <span><b>Bike<i class="wd"> ·</i> photo</b><small>static fit</small></span>
           </button>
           <!-- Offered only where the account has it (auth.run_photo): the
                touchdown readings are still being checked on real frames. -->
           <button type="button" data-what="run-photo" aria-pressed="false" id="whatRunPhoto" hidden>
-            <span><b>Run · photo</b><small>foot landing</small></span>
+            <svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
+            <span><b>Run<i class="wd"> ·</i> photo</b><small>foot landing</small></span>
           </button>
           <!-- Not an analysis: a swim clip goes to a coach (openSwim). It opens
                its own screen rather than reshaping this form. -->
           <button type="button" data-what="swim" aria-pressed="false" id="whatSwim">
+            <svg class="ic" aria-hidden="true"><use href="#i-swim"/></svg>
             <span><b>Swim · coach review <i class="new-pill">New</i></b><small id="whatSwimNote">a pro watches your clip</small></span>
           </button>
         </div>
@@ -543,10 +547,10 @@
         <div class="filmtiles" id="sideField">
           <div class="modetabs bigtiles film" id="filmSeg" role="group" aria-label="Camera setup">
             <button type="button" data-film="one" aria-pressed="true">
-              <span><b>One side</b><small>Measures the leg nearest the camera</small></span>
+              <span><b>One side</b><small><i class="wd">Measures the leg nearest the camera</i><i class="wm">nearest leg</i></small></span>
             </button>
             <button type="button" data-film="both" aria-pressed="false">
-              <span><b>Both sides · 2 clips</b><small>Uses <b>2</b> of your monthly analyses</small></span>
+              <span><b>Both sides<i class="wk"> · 2 clips</i></b><small><i class="wd">Uses <b>2</b> of your monthly analyses</i><i class="wm">2 clips · uses 2</i></small></span>
             </button>
           </div>
           <div class="sidesub" id="sideSub">
@@ -574,92 +578,10 @@
           <select id="athleteSel" aria-describedby="athleteHint"></select>
         </div>
       </div>
-      </div><!-- /upsetup -->
-
-      <div class="upclip">
-      <!-- Step 04: the footage. Its shape follows step 03 -- one drop zone
-           (with the camera under it), two labelled cards, or a photo -- and
-           never changes once a file is in it. The lede only speaks when the
-           step is not the plain single clip (syncClipHead). -->
-      <div class="ustep" id="stepClip">
-        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <div><h3 id="clipTitle">Your clip</h3><span id="fileNounLow" hidden>clip</span><p id="clipLede"></p></div></div>
-        <div class="cliprow">
-          <input type="file" id="file" class="visually-hidden" accept="video/*,image/*"
-                 aria-describedby="dropHelp" aria-labelledby="uploaderTitle">
-          <label class="drop" id="drop" for="file">
-            <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
-            <b id="dropTitle">Drag &amp; drop video or click to browse</b>
-            <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
-          </label>
-
-          <!-- Outside the <label> on purpose: a button inside it would also open
-               the file picker. Hidden when the browser can't record (no camera
-               API, no MediaRecorder) — a dead button teaches distrust, and the
-               file path above is the fallback either way. -->
-          <!-- Desktop: a secondary line under the drop zone. Phone: the first
-               and filled option, since that is where the clip gets filmed. -->
-          <p class="camrow hidden" id="camRow">
-            <button class="camtile" id="camOpen" type="button">
-              <svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
-              <span class="cam-d">Or record with the camera</span><span class="cam-m">Record with the camera</span>
-            </button>
-          </p>
-          <p class="hint hidden" id="upBatch">Several clips? <a href="#" onclick="event.preventDefault();openBatch(state.athleteId)">Upload up to 10 at once</a>.</p>
-        </div>
-
-      <div class="filepreview" id="filepreview">
-        <video id="preview" muted playsinline aria-label="Preview of your selected clip" class="ph-no-capture"></video>
-        <img id="previewImg" class="hidden ph-no-capture" alt="Preview of your selected photo">
-        <!-- Shown when the browser cannot decode the clip it was just handed --
-             an iPhone .MOV is usually HEVC, which Chrome on Windows will not
-             play. The analysis is server-side and unaffected; only the preview
-             is. It used to render as a black rectangle, which reads as a
-             broken upload rather than an unsupported codec. -->
-        <div class="fplace hidden" id="previewPlace" aria-hidden="true">
-          <svg class="ic" aria-hidden="true"><use href="#i-film"/></svg>
-          <span>No preview in this browser<br><small>The clip is fine — it just can’t play here</small></span>
-        </div>
-        <div class="fmeta">
-          <div class="fname" id="fname">clip.mp4</div>
-          <div class="fsize" id="fsize">—</div>
-          <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
-        </div>
-      </div>
-
-      <!-- Both-sides session. Two clips only read as ONE thing if the rider
-           can see at a glance that both are loaded and which is which -- the
-           first version showed one big preview and a bare filename above it,
-           which looked like a single clip had been added twice. So: two
-           identical cards, each with its own frame, each labelled with the
-           side it was filmed from. In this mode these cards ARE the uploader;
-           the single-clip drop zone, preview and recorder are hidden so there
-           is never a third, unlabelled slot on screen. -->
-      <div class="pairslot hidden" id="pairSlot">
-        <input type="file" id="fileB" class="visually-hidden" accept="video/*"
-               aria-label="Right-side clip">
-        <div class="pairgrid">
-          <div class="paircard" id="pairCardA" data-slot="a"></div>
-          <div class="paircard" id="pairCardB" data-slot="b"></div>
-        </div>
-        <p class="hint pairhint" id="pairHint"></p>
-      </div>
-
-      <!-- What the clip was read as (prescanClip): sport and, on a bike,
-           the position family, filled into the steps that follow it. -->
-      <div class="scannote hidden" id="scanNote" role="status" aria-live="polite"></div>
-
-      <!-- GO / NO-GO on the filming, from the same frames (prescan.capture_check). -->
-      <div class="capcheck hidden" id="capCheck" role="status" aria-live="polite"></div>
-
-      <!-- Pre-flight notes on the selected clip (duration, orientation).
-           Filled by checkClip() from the browser's own metadata. -->
-      <ul class="preflight hidden" id="preflight"></ul>
-      </div><!-- /stepClip -->
-
-      <!-- The optional details: one fold inside the clip card, and inside it
-           each fold's summary line still states what is set. The camera side
-           lives in step 03. -->
+      <!-- The optional details: one fold closing the setup card (Analyze board:
+           "Details · optional" under step 03), and inside it each fold's
+           summary line still states what is set. Not inside #stepFilm: that
+           step hides for a photo, and a photo has details too. -->
       <details class="ustep-details" id="stepDetails">
         <summary>Details <span class="askopt">· optional</span></summary>
       <!-- Which setup this was filmed on. Sits next to the clip rather than
@@ -754,6 +676,90 @@
           instead of given a guess.</p>
       </details>
       </details><!-- /stepDetails -->
+      </div><!-- /upsetup -->
+
+      <div class="upclip">
+      <!-- Step 04: the footage. Its shape follows step 03 -- one drop zone
+           (with the camera under it), two labelled cards, or a photo -- and
+           never changes once a file is in it. The lede only speaks when the
+           step is not the plain single clip (syncClipHead). -->
+      <div class="ustep" id="stepClip">
+        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
+          <div><h3 id="clipTitle">Your clip</h3><span id="fileNounLow" hidden>clip</span><p id="clipLede"></p></div></div>
+        <div class="cliprow">
+          <input type="file" id="file" class="visually-hidden" accept="video/*,image/*"
+                 aria-describedby="dropHelp" aria-labelledby="uploaderTitle">
+          <label class="drop" id="drop" for="file">
+            <svg class="ic-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+            <b id="dropTitle">Drag &amp; drop video or click to browse</b>
+            <small id="dropHelp">MP4, MOV, or WEBM · 5–15 s · 1080p is plenty (4K just uploads slower)</small>
+          </label>
+
+          <!-- Outside the <label> on purpose: a button inside it would also open
+               the file picker. Hidden when the browser can't record (no camera
+               API, no MediaRecorder) — a dead button teaches distrust, and the
+               file path above is the fallback either way. -->
+          <!-- Desktop: a secondary line under the drop zone. Phone: the first
+               and filled option, since that is where the clip gets filmed. -->
+          <p class="camrow hidden" id="camRow">
+            <button class="camtile" id="camOpen" type="button">
+              <svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
+              <span class="cam-d">Or record with the camera</span><span class="cam-m">Record with the camera</span><span class="cam-n">Record new</span>
+            </button>
+          </p>
+          <p class="hint hidden" id="upBatch">Several clips? <a href="#" onclick="event.preventDefault();openBatch(state.athleteId)">Upload up to 10 at once</a>.</p>
+        </div>
+
+      <div class="filepreview" id="filepreview">
+        <video id="preview" muted playsinline aria-label="Preview of your selected clip" class="ph-no-capture"></video>
+        <img id="previewImg" class="hidden ph-no-capture" alt="Preview of your selected photo">
+        <!-- Shown when the browser cannot decode the clip it was just handed --
+             an iPhone .MOV is usually HEVC, which Chrome on Windows will not
+             play. The analysis is server-side and unaffected; only the preview
+             is. It used to render as a black rectangle, which reads as a
+             broken upload rather than an unsupported codec. -->
+        <div class="fplace hidden" id="previewPlace" aria-hidden="true">
+          <svg class="ic" aria-hidden="true"><use href="#i-film"/></svg>
+          <span>No preview in this browser<br><small>The clip is fine, it just can’t play here</small></span>
+        </div>
+        <!-- On the frame, as on the board: what the file is in one chip, and
+             the way to swap it, over the picture. -->
+        <div class="fmeta">
+          <span class="fpchip"><span class="fname" id="fname">clip.mp4</span><span class="fsize" id="fsize"></span></span>
+          <button class="btn btn-ghost btn-sm change" id="change" type="button">Change clip</button>
+        </div>
+      </div>
+
+      <!-- Both-sides session. Two clips only read as ONE thing if the rider
+           can see at a glance that both are loaded and which is which -- the
+           first version showed one big preview and a bare filename above it,
+           which looked like a single clip had been added twice. So: two
+           identical cards, each with its own frame, each labelled with the
+           side it was filmed from. In this mode these cards ARE the uploader;
+           the single-clip drop zone, preview and recorder are hidden so there
+           is never a third, unlabelled slot on screen. -->
+      <div class="pairslot hidden" id="pairSlot">
+        <input type="file" id="fileB" class="visually-hidden" accept="video/*"
+               aria-label="Right-side clip">
+        <div class="pairgrid">
+          <div class="paircard" id="pairCardA" data-slot="a"></div>
+          <div class="paircard" id="pairCardB" data-slot="b"></div>
+        </div>
+        <p class="hint pairhint" id="pairHint"></p>
+      </div>
+
+      <!-- What the clip was read as (prescanClip): sport and, on a bike,
+           the position family, filled into the steps that follow it. -->
+      <div class="scannote hidden" id="scanNote" role="status" aria-live="polite"></div>
+
+      <!-- GO / NO-GO on the filming, from the same frames (prescan.capture_check). -->
+      <div class="capcheck hidden" id="capCheck" role="status" aria-live="polite"></div>
+
+      <!-- Pre-flight notes on the selected clip (duration, orientation).
+           Filled by checkClip() from the browser's own metadata. -->
+      <ul class="preflight hidden" id="preflight"></ul>
+      </div><!-- /stepClip -->
+
 
       <!-- Submit. What the button will analyse, said back in one line (the
            steps on the left can be off-screen on a phone), then the one
@@ -770,23 +776,14 @@
         </button>
         <p class="hint" id="hint" role="status" aria-live="polite">Upload a video to continue</p>
         <div class="gometa">
+          <!-- What is left, as a bar (renderQuota): shown once the server has
+               said how many are left, never guessed from the plan. -->
+          <span class="qbar hidden" id="quotaBar" aria-hidden="true"><i></i></span>
           <p class="quota-line" id="quota">Free account · monthly analyses included</p>
           <a href="#pricing" class="plans-link" onclick="event.preventDefault();openPricing()">Compare plans</a>
         </div>
       </div>
 
-      <!-- What happens to the footage, said where the footage is handed over.
-           Every claim here is one the privacy policy already makes and the
-           code already keeps: only numbers reach Gemini, photo analysis never
-           touches the disk, clips expire on the tier's retention schedule. -->
-      <ul class="trustrow">
-        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          Your clip never reaches an AI service &mdash; only anonymous joint angles do</li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          <span id="retentionLine">Clips auto-delete (7 days free, a year on a plan); photos are never written to disk</span></li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
-          No ad trackers in the app, nothing sold &mdash; <a href="/privacy">privacy policy</a></li>
-      </ul>
       </div><!-- /upclip -->
       </div><!-- /upgrid -->
 
@@ -798,29 +795,40 @@
            nothing else in the product recovers that much accuracy, and a rule
            you can see in one glance is a rule people actually follow. -->
       <section class="capguide" id="capguide" data-sport="bike">
-        <div class="eyebrow">How to film it</div>
+        <div class="cg-head"><h2 class="cg-title">How to film it</h2><span class="cg-swipe" aria-hidden="true">swipe · 3</span></div>
 
         <ol class="cg-body">
           <li class="cg-step">
             <!-- Two files, one per sport; the [data-sport] rule below hides the
                  other. Decorative — the rule beside each figure is the content,
                  which is why alt is empty rather than a description. -->
+            <div class="cg-figs"><span class="cg-frame">
             <img class="cg-fig fig-run" src="/media/film-fill-run.webp" alt=""
                  width="512" height="512" decoding="async">
             <img class="cg-fig fig-bike" src="/media/film-fill-bike.webp" alt=""
                  width="512" height="512" decoding="async">
-            <p><b>Fill the frame</b> Head to feet spans about two thirds of the screen &mdash; worth more than every other rule here.</p>
+            </span></div>
+            <p><b>Fill the frame</b> Head to feet spans about two thirds of the screen: worth more than every other rule here.</p>
           </li>
 
           <li class="cg-step">
+            <!-- One drawing, two frames (Analyze board): the upright phone in
+                 a green frame, the sideways one in a red frame. -->
+            <div class="cg-figs"><span class="cg-frame cg-crop cg-crop-l">
             <img class="cg-fig" src="/media/film-portrait.webp" alt=""
                  width="512" height="512" decoding="async">
+            </span><span class="cg-frame cg-crop cg-crop-r cg-no">
+            <img class="cg-fig" src="/media/film-portrait.webp" alt=""
+                 width="512" height="512" decoding="async">
+            </span></div>
             <p><b>Hold the phone upright</b> Portrait gives nearly twice the pixels on your legs.</p>
           </li>
 
           <li class="cg-step">
+            <div class="cg-figs"><span class="cg-frame">
             <img class="cg-fig" src="/media/film-side.webp" alt=""
                  width="512" height="512" decoding="async">
+            </span></div>
             <!-- "Steady" used to be the word here, and it made the rest of
                  this page impossible to follow: a locked-off camera sees a
                  runner filling two thirds of a portrait frame for 0.43 s at
@@ -857,6 +865,18 @@
           </ul>
         </details>
       </section>
+      <!-- What happens to the footage: three short claims under the guide
+           (Analyze board). Every claim is one the privacy policy already makes
+           and the code already keeps: only numbers reach Gemini, photo analysis
+           never touches the disk, clips expire on the tier's retention schedule. -->
+      <ul class="trustrow">
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          <span>Your clip never reaches an AI service, only anonymous joint angles do</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          <span id="retentionLine">Clips auto-delete: 7 days free, a year on a plan</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check-sm"/></svg>
+          <span>No ad trackers in the app, nothing sold &middot; <a href="/privacy">privacy policy</a></span></li>
+      </ul>
     </div>
   </section>
 
@@ -2197,11 +2217,11 @@ const CARD=tokSet({ground:'--card-ground', top:'--card-top', ink:'--card-ink', m
 const POSITION_NAMES = { road_hoods:'Road · Hoods', road_drops:'Road · Drops', tt_aero:'Time Trial', triathlon:'Triathlon', casual:'Casual' };
 /* one-line description per position so users know which to pick (TT vs Tri, Hoods vs Drops) */
 const POSITION_HINTS = {
-  road_hoods:'<b>Road · Hoods</b> — hands on the brake hoods, upright endurance posture.',
-  road_drops:'<b>Road · Drops</b> — hands in the drops, lower and more aggressive than hoods.',
-  tt_aero:'<b>Time Trial</b> — full aero tuck on a TT bike: flat back, closed hip, max aerodynamics.',
-  triathlon:'<b>Triathlon</b> — aero but slightly opened up to preserve the legs for the run.',
-  casual:'<b>Casual</b> — upright comfort/commuter riding.',
+  road_hoods:'<b>Road · Hoods</b>: hands on the brake hoods, upright endurance posture.',
+  road_drops:'<b>Road · Drops</b>: hands in the drops, lower and more aggressive than hoods.',
+  tt_aero:'<b>Time Trial</b>: full aero tuck on a TT bike: flat back, closed hip, max aerodynamics.',
+  triathlon:'<b>Triathlon</b>: aero but slightly opened up to preserve the legs for the run.',
+  casual:'<b>Casual</b>: upright comfort/commuter riding.',
 };
 
 /* ============================================================
@@ -2402,6 +2422,10 @@ function renderQuota(){
     else { pl.innerHTML=''; }
   }
   if(bar){ const used=q&&q.limit?Math.max(0,Math.min(100,100*(q.limit-q.remaining)/q.limit)):0; bar.style.setProperty('--used',used+'%'); }
+  // Beside the button: what is LEFT, filled navy (Analyze board).
+  const qb=$('#quotaBar');
+  if(qb){ const on=!!(auth&&q&&q.limit); qb.classList.toggle('hidden',!on);
+    if(on) qb.style.setProperty('--left',Math.max(0,Math.min(100,100*q.remaining/q.limit))+'%'); }
 }
 
 /* ============================================================
@@ -2943,14 +2967,20 @@ function applyPrescan(j){
    blocks the button -- a NO-GO clip can still be analysed, the athlete just
    knows the numbers will not hold up. */
 const CAP_HEAD={go:['GO','Good to analyse'],check:['CHECK','Worth a look before you upload'],no_go:['NO-GO','Re-film recommended']};
+/* What a GO has actually checked, and nothing more: capture_check finds the
+   athlete and, on a clip, measures how tall they stand in the frame. It does
+   not judge the camera angle or the shake, so the ticks do not claim either. */
+function capPassed(){ return state.mode==='photo' ? ['In shot'] : ['In shot','Big enough in the frame']; }
 function renderCapCheck(c){
   const el=$('#capCheck'); if(!el) return;
+  const fp=$('#filepreview'); if(fp){ if(c&&CAP_HEAD[c.verdict]) fp.dataset.cc=c.verdict; else delete fp.dataset.cc; }
   if(!c||!CAP_HEAD[c.verdict]){ el.classList.add('hidden'); el.innerHTML=''; delete el.dataset.verdict; return; }
   const [tag,head]=CAP_HEAD[c.verdict];
   const rs=(c.reasons||[]).map(r=>`<li>${esc(r.text||'')}</li>`).join('');
-  el.innerHTML=`<div class="cc-head"><span class="cc-tag">${tag}</span><span>${head}</span></div>`
-    +(rs?`<ul class="cc-list">${rs}</ul>`:'')
-    +(c.verdict==='no_go'?'<p class="cc-foot">You can still analyse it, but the numbers won’t hold up.</p>':'');
+  const ok=!rs&&c.verdict==='go' ? `<p class="cc-ok">${capPassed().map(t=>`<span>✓ ${t}</span>`).join('')}</p>` : '';
+  el.innerHTML=`<span class="cc-tag">${tag}</span><div class="cc-body"><b class="cc-h">${head}</b>`
+    +ok+(rs?`<ul class="cc-list">${rs}</ul>`:'')
+    +(c.verdict==='no_go'?'<p class="cc-foot">You can still analyse it, but the numbers won’t hold up.</p>':'')+'</div>';
   el.dataset.verdict=c.verdict; el.classList.remove('hidden');
 }
 function scanNote(kind,j,ask){
@@ -2961,10 +2991,12 @@ function scanNote(kind,j,ask){
     const fam=FAMILY_NAME[posCatOf(state.position)]||'', name=POSITION_NAMES[state.position]||'';
     return ['Bike', name.startsWith(fam)?name:`${fam} · ${name}`].join(' · ');
   };
+  // The choices sit below the clip on a phone and beside it on a desktop.
+  const where=footageFirst()?'below':'on the left';
   let html;
   if(kind==='scan') html='<span class="sn-dot" aria-hidden="true"></span><span>Reading the clip to fill in the choices…</span>';
-  else if(kind==='unsure') html='<svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span>We couldn’t tell from the clip what it shows — check the choices below.</span>';
-  else if(kind==='done') html=`<svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>From the ${state.mode==='photo'?'photo':'clip'}: <b>${esc(what())}</b>. Not right? Change it below.</span>`;
+  else if(kind==='unsure') html=`<svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span>We couldn’t tell what the clip shows. Check the choices ${where}.</span>`;
+  else if(kind==='done') html=`<svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>From the ${state.mode==='photo'?'photo':'clip'}: <b>${esc(what())}</b>. Not right? Change it ${where}.</span>`;
   else html=`<svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>This looks like ${ask.map(a=>`<b>${esc(a.label)}</b>`).join(' in a ')}, not what’s selected. ${ask.map((a,i)=>`<button class="btn btn-ghost btn-sm" type="button" data-scan-fix="${i}">Switch</button>`).join(' ')}</span>`;
   el.innerHTML=html; el.dataset.kind=kind; el.classList.remove('hidden');
   el.querySelectorAll('[data-scan-fix]').forEach(b=>b.addEventListener('click',()=>{
@@ -3021,6 +3053,7 @@ function checkClip(vid){
 
     if(isFinite(d) && d>0){
       state.duration=d;
+      const fs=$('#fsize'); if(fs&&state.file) fs.textContent=`${Math.round(d)} s · ${fmtSize(state.file.size)}`;
       state.longClip = d>LONG_CLIP_S;
       if(d<MIN_CLIP_S) notes.push({s:'bad',t:`Only ${d.toFixed(1)} s — too short to hold several strides. Aim for 5–10 s.`});
       else if(d<SHORT_CLIP_S) notes.push({s:'warn',t:`${d.toFixed(1)} s is enough to measure but not to average. 5–10 s makes the timing steadier.`});
@@ -3066,17 +3099,17 @@ function showCaptureGuide(){
    clip; signed out the button signs you up, with or without one. */
 function noFileHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
-  hintMsg(auth ? `Upload a ${noun} to continue` : `Sign up now, or add a ${noun} first — it runs right after`);
+  hintMsg(auth ? `Upload a ${noun} to continue` : `Sign up now, or add a ${noun} first: it runs right after`);
 }
 function readyHint(){
   syncSetupSummary();     // every choice ends here, so the summary rides along
   if(!state.file){ noFileHint(); return; }
   if(isPair() && !state.fileB){ hintMsg('Add the right-side clip to run the two-sided session'); return; }
-  const sportTxt = state.sport==='bike' ? `Cycling — ${POSITION_NAMES[state.position]}` : 'Running';
-  // Keep the long-clip advisory visible — changing sport should not silently
-  // clear a caveat that still applies to the loaded file.
-  if(state.longClip){ hintMsg(`Ready · ${sportTxt} · long clip — timing metrics will be coarser`,'warn'); return; }
-  hintMsg(`Ready · ${sportTxt}`);
+  // Keep the long-clip advisory visible: changing sport should not silently
+  // clear a caveat that still applies to the loaded file. Otherwise the line
+  // is empty, because the summary above the button already says what will run.
+  if(state.longClip){ hintMsg('Long clip: timing metrics will be coarser','warn'); return; }
+  hintMsg('');
 }
 
 /* ---- input mode tabs (video / photo) ---- */
@@ -3170,8 +3203,8 @@ function syncSetupSummary(){
       if(state.sport==='bike') second.push({auto:'Auto-detect side',left:'Left side to camera',right:'Right side to camera'}[state.cameraSide]||'Auto-detect side');
     }
   }
-  // Nodes, not innerHTML: this runs at boot, before esc() is declared.
-  el.replaceChildren(first.join(' · '), ...(second.length ? [document.createElement('br'), second.join(' · ')] : []));
+  // One line, as drawn. Text, not innerHTML: this runs at boot, before esc() is declared.
+  el.textContent=first.concat(second).join(' · ');
 }
 /* The button says what it will do. Called after auth is known (renderAuth)
    and whenever the session type changes -- never at script load, since
@@ -8147,7 +8180,7 @@ function renderAthleteField(){
   step.classList.toggle('hidden', none);
   if(none){ state.athleteId=null; return; }
   if(state.athleteId&&!mine.some(a=>String(a.id)===String(state.athleteId))) state.athleteId=null;
-  sel.innerHTML=`<option value="">Me — my own clip</option>`
+  sel.innerHTML=`<option value="">Me, my own clip</option>`
     + mine.map(a=>`<option value="${a.id}"${String(a.id)===String(state.athleteId)?' selected':''}>${esc(a.name)}</option>`).join('');
 }
 function renderAthletes(){
@@ -11978,8 +12011,8 @@ function renderAuth(){
   document.body.classList.toggle('coach-plan', hasCoachPlan());
   const keep=$('#retentionLine');
   if(keep) keep.textContent=auth&&auth.tier==='coach'
-    ? 'Clips are kept for a year on your plan, then deleted; photos are never written to disk'
-    : 'Clips auto-delete (7 days free, a year on a plan); photos are never written to disk';
+    ? 'Clips are kept a year on your plan, then deleted'
+    : 'Clips auto-delete: 7 days free, a year on a plan';
   // Feedback inbox is admin-only. The endpoints 404 for everyone else anyway;
   // this just keeps the link out of normal users' navigation.
   $('#navFeedback').classList.toggle('hidden', !(auth && auth.tier==='admin'));
