@@ -237,9 +237,8 @@
 <div class="modal hidden" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <div class="modal-card">
     <button class="modal-close" id="authClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="eyebrow eyebrow--blue">Your account</div>
     <h2 id="authTitle" class="modal-title">Log in</h2>
-    <p class="hint u-m-0 u-mb-4" id="authIntro">Save your history &amp; progress, and pick up on any device.</p>
+    <p class="hint u-m-0 u-mb-4" id="authIntro">Your history and progress, on any device.</p>
     <!-- One form, four modes (login / register / forgot / reset) -- see
          setAuthMode(). The email field is the login: there is no username. -->
     <form id="authForm" novalidate>
@@ -252,6 +251,9 @@
         </div>
         <small class="fldhint hidden" id="authPassHint">At least 8 characters. A short phrase you'll remember beats a clever word.</small>
       </div>
+      <!-- Behind a link: most people have no code (board: Auth). A code that
+           came with the link is shown filled in. -->
+      <button type="button" class="authlink hidden" id="authPromoOpen" aria-controls="authPromoFld" aria-expanded="false">I have a promo code</button>
       <label class="fld hidden" id="authPromoFld"><span>Promo code <small class="fld-opt">optional</small></span><input type="text" id="authPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32"></label>
       <!-- The two consents (2026-10-24), sign-up only. The first is required:
            no account without agreeing to how its data is handled. The second
@@ -264,14 +266,13 @@
           <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>, including how my personal data is processed. <em>Required</em></span></label>
         <label class="consent"><input type="checkbox" id="authMarketing">
           <span>Send me Flapp news, training tips and offers by email. <em>Optional · unsubscribe any time</em></span></label>
-        <p class="consent-note">Emails about your own account — finished analyses, receipts, password resets — come either way.</p>
+        <p class="consent-note">Emails about your own account (finished analyses, receipts, password resets) come either way.</p>
       </div>
       <div class="autherr" id="authErr" role="alert"></div>
       <div class="authsent hidden" id="authSent" role="status"></div>
       <button class="btn btn-primary u-w-full" id="authSubmit" type="submit">Log in</button>
-      <p class="hint authnote" id="authNote"></p>
+      <div class="authlinks"><span id="authNote"></span><span id="authToggleTxt"></span></div>
     </form>
-    <p class="hint u-ta-center u-mt-4" id="authToggleTxt"></p>
   </div>
 </div>
 
@@ -12208,21 +12209,21 @@ function openAuth(mode,opts){
   setTimeout(()=>$(state.authMode==='reset'?'#authPass':'#authEmail').focus(),30);
 }
 function closeAuth(){
-  $('#authModal').classList.add('hidden'); $('#authErr').textContent=''; $('#authForm').reset();
+  $('#authModal').classList.add('hidden'); authSay(''); $('#authForm').reset();
   showPassword(false); state.resetToken=null; modalClosed($('#authModal'));
 }
 /* The one form wears four faces. Copy per mode lives here so the markup stays
    one set of fields; what changes is which are shown and what they promise. */
 const AUTH_MODES={
-  login:   {title:'Log in', intro:'Save your history & progress, and pick up on any device.',
+  login:   {title:'Log in', intro:'Your history and progress, on any device.',
             submit:'Log in', email:true, pass:true, passLabel:'Password', passAc:'current-password', passHint:false,
-            note:'<a href="#" data-authmode="forgot">Forgot password?</a>',
-            toggle:'New here? <a href="#" data-authmode="register">Create an account</a>'},
-  register:{title:'Create account', intro:'Free to start. Your email is your login — no username to remember.',
+            note:'<a href="#" data-authmode="forgot">Forgot the password?</a>',
+            toggle:'<a href="#" data-authmode="register">Create an account</a>'},
+  register:{title:'Create your account', intro:'Free to start. Your email is your login, no username to remember.',
             submit:'Create account', email:true, pass:true, passLabel:'Password', passAc:'new-password', passHint:true,
             note:'',
             toggle:'Have an account? <a href="#" data-authmode="login">Log in</a>'},
-  forgot:  {title:'Reset password', intro:'Enter the email you signed up with — that\'s your login. We\'ll send a link to set a new password.',
+  forgot:  {title:'Reset the password', intro:'Enter the email you signed up with: that\'s your login. We\'ll send a link to set a new password.',
             submit:'Send reset link', email:true, pass:false, note:'',
             toggle:'<a href="#" data-authmode="login">Back to log in</a>'},
   reset:   {title:'Set a new password', intro:'Choose a new password for your account. You\'ll be logged in right after.',
@@ -12237,13 +12238,28 @@ function setAuthMode(mode,opts){
   $('#authPassFld').classList.toggle('hidden',!m.pass); $('#authPass').required=m.pass;
   if(m.pass){ $('#authPassLabel').textContent=m.passLabel; $('#authPass').setAttribute('autocomplete',m.passAc); }
   $('#authPassHint').classList.toggle('hidden',!m.passHint);
-  $('#authPromoFld').classList.toggle('hidden',mode!=='register');
   $('#authConsent').classList.toggle('hidden',mode!=='register');
   if(mode==='register'&&!$('#authPromo').value) $('#authPromo').value=promoPending();
+  // The code field opens itself when a code came with the link.
+  const promoShown=mode==='register'&&!!$('#authPromo').value;
+  $('#authPromoFld').classList.toggle('hidden',!promoShown);
+  $('#authPromoOpen').classList.toggle('hidden',mode!=='register'||promoShown);
   $('#authNote').innerHTML=m.note; $('#authToggleTxt').innerHTML=m.toggle;
   document.querySelectorAll('#authModal [data-authmode]').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); setAuthMode(a.dataset.authmode); $(state.authMode==='reset'?'#authPass':'#authEmail').focus(); }));
-  $('#authErr').textContent=''; $('#authSent').classList.add('hidden'); $('#authSubmit').classList.remove('hidden');
+  authSay(''); $('#authSent').classList.add('hidden'); $('#authSubmit').classList.remove('hidden');
   showPassword(false);
+}
+$('#authPromoOpen').addEventListener('click',e=>{ e.currentTarget.classList.add('hidden'); e.currentTarget.setAttribute('aria-expanded','true');
+  $('#authPromoFld').classList.remove('hidden'); $('#authPromo').focus(); });
+/* The error sits under the field it is about, and that field turns red;
+   one with no field (network, server) sits above the button. */
+function authSay(msg, field){
+  const err=$('#authErr');
+  document.querySelectorAll('#authForm [aria-invalid]').forEach(el=>el.removeAttribute('aria-invalid'));
+  err.textContent=msg||'';
+  const inp=field?$(field):null, host=inp?(inp.closest('.consent')||inp.closest('.fld')):null;
+  if(msg&&host){ host.after(err); inp.setAttribute('aria-invalid','true'); }
+  else $('#authSent').before(err);
 }
 /* Show/hide beats a "confirm password" field: one box, no typo-twice, and the
    person can see what they typed on a phone keyboard. */
@@ -12256,25 +12272,25 @@ function authErr(j){
   const d=j&&j.detail;
   if(typeof d==='string') return d;
   if(Array.isArray(d)&&d[0]&&d[0].msg) return d[0].msg.replace(/^Value error,\s*/,'');
-  return 'Something went wrong — please try again.';
+  return 'Something went wrong. Please try again.';
 }
 async function submitAuth(e){
   e.preventDefault();
   const mode=state.authMode, email=$('#authEmail').value.trim(), password=$('#authPass').value;
-  const btn=$('#authSubmit'); $('#authErr').textContent='';
+  const btn=$('#authSubmit'); authSay('');
   // Say what's missing before a round trip: the browser's own bubbles are
   // suppressed (novalidate) so the message can sit where the other errors do.
-  if(AUTH_MODES[mode].email && !email){ $('#authErr').textContent='Enter your email address.'; $('#authEmail').focus(); return; }
-  if(AUTH_MODES[mode].pass && password.length<8){ $('#authErr').textContent='Password must be at least 8 characters.'; $('#authPass').focus(); return; }
+  if(AUTH_MODES[mode].email && !email){ authSay('Enter your email address.','#authEmail'); $('#authEmail').focus(); return; }
+  if(AUTH_MODES[mode].pass && password.length<8){ authSay('Password must be at least 8 characters.','#authPass'); $('#authPass').focus(); return; }
   const marketing=mode==='register' && $('#authMarketing').checked;
-  if(mode==='register' && !$('#authPrivacy').checked){ $('#authErr').textContent='Please agree to the Terms and the Privacy Policy to create an account.'; $('#authPrivacy').focus(); return; }
+  if(mode==='register' && !$('#authPrivacy').checked){ authSay('Please agree to the Terms and the Privacy Policy to create an account.','#authPrivacy'); $('#authPrivacy').focus(); return; }
   btn.disabled=true;
   const post=(path,body)=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   try{
     if(mode==='forgot'){
       const r=await post('/auth/forgot',{email});
       const j=await r.json().catch(()=>({}));
-      if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
+      if(!r.ok){ authSay(authErr(j),'#authEmail'); return; }
       track('password_reset_requested',{});
       // Same answer whether or not the address has an account -- the form
       // must not double as a directory of who has signed up.
@@ -12288,7 +12304,9 @@ async function submitAuth(e){
         ? await post('/auth/register',{email,password,accept_privacy:true,marketing})
         : await post('/auth/login',{email,password});
     const j=await r.json().catch(()=>({}));
-    if(!r.ok){ $('#authErr').textContent=authErr(j); return; }
+    // Wrong password on log in: the password field. Taken email on sign up:
+    // the email field. Anything else (a 422 on the body, a 5xx) above the button.
+    if(!r.ok){ authSay(authErr(j), mode==='login'&&r.status===401?'#authPass':mode==='register'&&r.status===409?'#authEmail':mode==='reset'&&r.status===422?'#authPass':null); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
     auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,crank_access:!!j.crank_access,run_photo:!!j.run_photo,
       analytics_id:j.analytics_id||null, marketing_opt_in:mode==='register'?marketing:undefined};
@@ -12304,11 +12322,11 @@ async function submitAuth(e){
     renderAuth(); closeAuth(); migrateAndLoad(); renderPromoBanner();
     if(mode==='register'){ const pc=($('#authPromo').value||'').trim(); if(pc) promoRemember(pc); }
     applyPendingPromo();
-    if(mode==='reset') toast('Password updated — you\'re logged in.');
+    if(mode==='reset') toast('Password updated. You\'re logged in.');
     // Someone who hit "Analyze" before signing up gets their run started now,
     // with the file they already chose (see the #analyze handler).
     if(state.pendingAnalyze){ state.pendingAnalyze=false; if(state.file) analyze(); }
-  }catch(err){ $('#authErr').textContent='Network error — check your connection and try again.'; }
+  }catch(err){ authSay('Network error. Check your connection and try again.'); }
   finally{ btn.disabled=false; }
 }
 function logout(){ try{ localStorage.removeItem(TKEY); }catch(e){}
