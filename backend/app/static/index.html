@@ -862,17 +862,24 @@
   <!-- ============ PROGRESS ============ -->
   <section id="progress" class="hidden" aria-labelledby="progTitle">
     <div class="card progress-card">
-      <h2 id="progTitle" tabindex="-1">Analyzing your clip</h2>
-      <div class="jobchip" id="jobchip"></div>
+      <!-- The clip's own frame and what it is (Flow board, 2026-11-17). -->
+      <div class="prog-head">
+        <img class="prog-frame hidden" id="progFrame" alt="">
+        <div class="prog-titles"><h2 id="progTitle" tabindex="-1">Analyzing your clip</h2>
+          <p class="jobchip" id="jobchip"></p></div>
+      </div>
       <div class="steps" aria-hidden="true">
         <div class="step" id="step1"><span class="sdot">1</span><span class="slbl">Upload</span><span class="sline"></span></div>
         <div class="step" id="step2"><span class="sdot">2</span><span class="slbl">Analyze</span><span class="sline"></span></div>
-        <div class="step" id="step3"><span class="sdot">3</span><span class="slbl">Report</span></div>
+        <div class="step" id="step3"><span class="sdot">3</span><span class="slbl">Report</span><span class="sline"></span></div>
       </div>
+      <div class="prog-now"><p class="stagetext" id="stageText">Preparing upload…</p><span class="prog-pct" id="progPct" aria-hidden="true"></span></div>
       <div class="pbar" id="pbar" role="progressbar" aria-label="Analysis progress"
            aria-valuemin="0" aria-valuemax="100"><div class="fill" id="pfill"></div></div>
-      <p class="stagetext" id="stageText">Preparing upload…</p>
       <p class="visually-hidden" id="srStage" role="status" aria-live="polite"></p>
+      <!-- True for the job's lifetime: a reload rehydrates from #job= (see
+           "rehydrate from #job="). Leaving for good does not save the report. -->
+      <p class="prog-note">Keep this tab open. If the page reloads, the analysis picks up where it was.</p>
       <div class="cancelrow">
         <button class="btn btn-ghost btn-sm" id="cancel" type="button">
           <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg> Cancel
@@ -1509,12 +1516,15 @@
     <div class="card error-card" id="errorCard" role="alert">
       <h2 id="errTitle" tabindex="-1">Analysis failed</h2>
       <p id="errText">Something went wrong.</p>
-      <p class="hint hidden u-mt-2" id="errNote">This attempt counted toward your daily limit.</p>
-      <ul id="errTips" class="hidden">
-        <li>Film from the side — the camera should see your full body.</li>
-        <li>Keep one athlete in the frame, in good light.</li>
-        <li>5–15 seconds at a steady pace works best.</li>
-      </ul>
+      <div class="err-tips hidden" id="errTips">
+        <p class="err-tips-h">Next time</p>
+        <ul>
+          <li>Film from the side, whole body in frame</li>
+          <li>One athlete in the frame, in good light</li>
+          <li>5 to 15 seconds at a steady pace</li>
+        </ul>
+      </div>
+      <p class="err-note hidden" id="errNote">This attempt counted toward your limit.</p>
       <div class="actions-row">
         <button class="btn btn-primary" id="errAgain" type="button">
           <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> <span id="errAgainLbl">Try another clip</span>
@@ -1522,6 +1532,7 @@
         <button class="btn btn-primary hidden" id="errBack" type="button">
           <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to upload
         </button>
+        <a class="btn btn-ghost hidden" id="errReport" href="mailto:support@getflapp.com?subject=Flapp%20analysis%20failed">Report a problem</a>
         <span class="quota" id="errQuota"></span>
       </div>
     </div>
@@ -2693,6 +2704,7 @@ new MutationObserver(muts=>{
 function setFill(pct){
   const f=$('#pfill'); if(!f) return;
   const p=Math.max(0,Math.min(100,+pct||0));
+  const pc=$('#progPct'); if(pc) pc.textContent=p>0?Math.round(p)+'%':'';
   f.style.width=p+'%';
   f.style.backgroundSize=(p>0?(10000/p).toFixed(1):'100')+'% 100%';
 }
@@ -3480,6 +3492,14 @@ function setSteps(n){ // 1=upload 2=analyze 3=report
   });
   announce(`Step ${n} of 3: ${STEP_NAMES[n]}`);
 }
+/* What is being analysed, in one line under the title, and the clip's own
+   frame beside it when this browser has one (the prescan's poster, or the photo). */
+function jobMeta(parts){
+  $('#jobchip').textContent=parts.filter(Boolean).join(' · ');
+  const fr=$('#progFrame'); if(!fr) return;
+  const src=state.mode==='photo'?(($('#previewImg')||{}).src||''):(previewPosterUrl||'');
+  if(src){ fr.src=src; fr.classList.remove('hidden'); } else { fr.removeAttribute('src'); fr.classList.add('hidden'); }
+}
 function stage(msgHtml){
   const el=$('#stageText');
   if(el.innerHTML!==msgHtml) el.innerHTML=msgHtml;
@@ -3518,8 +3538,7 @@ function analyze(){
   if(state.sport==='bike' && crankMm()!=null) fd.append('crank_length_mm', String(crankMm()));
 
   const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
-  $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
-    <span class="sporttag sporttag-${state.sport}"><svg class="ic" aria-hidden="true"><use href="#i-${state.sport}"/></svg>${esc(sportTxt)}</span>`;
+  jobMeta([sportTxt, state.file.name, state.duration?`${Math.round(state.duration)} s`:null]);
 
   setState('progress',{focus:'#progTitle'});
   $('#progTitle').textContent='Analyzing your clip';
@@ -3587,9 +3606,7 @@ function analyzePair(){
     file_mb: Math.round((state.file.size+state.fileB.size)/104857.6)/10,
   });
 
-  $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
-    <span class="fchip">${esc(state.fileB.name)}</span>
-    <span class="sporttag sporttag-${state.sport}"><svg class="ic" aria-hidden="true"><use href="#i-${state.sport}"/></svg>${state.sport==='run'?'Run':'Bike'} · both sides</span>`;
+  jobMeta([`${state.sport==='run'?'Run':'Bike'} · both sides`, state.file.name, state.fileB.name]);
   setState('progress',{focus:'#progTitle'});
   $('#progTitle').textContent='Analyzing both sides';
   setSteps(1);
@@ -3746,7 +3763,7 @@ async function pollOnce(){
       const prior=loadHist().find(e=>e && e.jobId && e.jobId===state.jobId);
       render(j, prior ? {reuseHistId: prior.id} : undefined);
     }
-    else if(j.status==='failed'){ clearInterval(state.polling); fail(j.error||'The analysis failed on this clip.',{tips:true,counted:true}); }
+    else if(j.status==='failed'){ clearInterval(state.polling); fail(j.error||'The analysis failed on this clip.',{tips:true,counted:true,title:'We could not read this clip'}); }
     else if(j.status==='queued'){
       // Time spent in the queue is not time spent analyzing — keep pushing the
       // timeout forward so a busy server shows a growing queue instead of
@@ -3829,6 +3846,10 @@ function fail(msg,{tips=false,keepFile=false,counted=false,status=null,err=null,
   $('#errText').textContent=msg;
   $('#errNote').classList.toggle('hidden',!counted);
   $('#errTips').classList.toggle('hidden',!tips);
+  // The clip was read and still failed: worth a person's look, with the job id.
+  const rep=$('#errReport');
+  rep.classList.toggle('hidden',!tips);
+  rep.href='mailto:support@getflapp.com?subject='+encodeURIComponent('Flapp analysis failed'+(state.jobId?' · '+state.jobId:''));
   $('#errAgainLbl').textContent = keepFile ? 'Try again' : (state.mode==='photo'?'Try another photo':'Try another clip');
   $('#errAgain').classList.remove('hidden');
   $('#errBack').classList.add('hidden');
@@ -3858,6 +3879,7 @@ function showLimit(detail,retryAfter){
     (addWait?` Next analysis available in <span class="bigwait">~${hrs}h</span>.`:'');
   $('#errNote').classList.add('hidden');
   $('#errTips').classList.add('hidden');
+  $('#errReport').classList.add('hidden');
   $('#errAgain').classList.add('hidden');
   $('#errBack').classList.remove('hidden');
   renderQuota();
@@ -4749,8 +4771,7 @@ async function analyzePhoto(){
   if(focusText()) fd.append('focus', focusText());
 
   const sportTxt = state.sport==='bike' ? `Bike · ${POSITION_NAMES[state.position]}` : 'Run';
-  $('#jobchip').innerHTML=`<span class="fchip">${esc(state.file.name)}</span>
-    <span class="sporttag sporttag-${state.sport}"><svg class="ic" aria-hidden="true"><use href="#i-${state.sport}"/></svg>${esc(sportTxt)}</span>`;
+  jobMeta([sportTxt, 'photo', state.file.name]);
 
   setState('progress',{focus:'#progTitle'});
   $('#progTitle').textContent='Analyzing your photo';
@@ -4771,7 +4792,8 @@ async function analyzePhoto(){
     if(!r.ok){
       const j=await r.json().catch(()=>({detail:r.statusText}));
       // 422 = no pose detected / bad capture → actionable tips
-      fail(j.detail || ('Photo analysis failed (HTTP '+r.status+').'), {tips:r.status===422, counted:r.ok, status:r.status});
+      fail(j.detail || ('Photo analysis failed (HTTP '+r.status+').'), {tips:r.status===422, counted:r.ok, status:r.status,
+        title:r.status===422?'We could not read this photo':'Analysis failed'});
       return;
     }
     const res=await r.json();
@@ -12196,7 +12218,7 @@ function init(){
     // Marks a failure from here as an old tab, not a live run: 8 of the 14
     // "lost track" reports were this, read as analyses killed by a deploy.
     state.restored=true;
-    $('#jobchip').innerHTML='<span class="fchip">restored session</span>';
+    jobMeta(['Picked up again after a reload']);
     setState('progress');
     startPolling();
   } else {

@@ -69,3 +69,17 @@ def test_photo_findings_sit_beside_the_photo_and_stay_paid():
     body = SPA[SPA.index("function renderPhotoFindings("):]
     assert "if(res.locked || sc.withheld || sc.overall_score==null)" in body[:600]
     assert "renderPhotoFindings(A, phase, res);" in SPA
+
+
+def test_the_analysing_card_promises_only_what_a_reload_keeps():
+    """A reload picks the job up again from #job=; leaving for good saves nothing,
+    so the card must not say the report will be in History (the board did)."""
+    assert "If the page reloads, the analysis picks up where it was." in SPA
+    assert "the report will be in History" not in SPA
+    assert "function jobMeta(parts)" in SPA and "fchip" not in SPA
+    assert SPA.count('<span class="sline"></span>') == 3
+
+
+def test_a_failed_clip_says_what_to_film_and_how_to_report_it():
+    assert 'id="errReport"' in SPA and "rep.classList.toggle('hidden',!tips)" in SPA
+    assert "title:'We could not read this clip'" in SPA

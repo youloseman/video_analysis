@@ -25,7 +25,7 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
 /* Every numeral in the product is mono and tabular, so a '1' takes the
    width of an '8' and columns never jitter on update. */
-.tc-val,.tchart .tval,.t-val,.quota b,.quota-line b,.jobchip .fchip,.fmeta .fsize,
+.tc-val,.tchart .tval,.t-val,.quota b,.quota-line b,.fmeta .fsize,
 .issue .i-val,.limit-card .bigwait,table.data td.num,table.data td.pct,
 .score-num,.hscore,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
@@ -1642,23 +1642,27 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 /* ---------- Progress (the analysing screen) ----------
    Four named stages down the left, a bar, what is happening now. No card
    chrome; elapsed time in mono. */
-.progress-card{padding:28px 0;max-width:640px;margin:0}
-.progress-card{background:transparent;border:0}
-.progress-card h2{font-family:var(--f-display);font-weight:600;text-transform:none;color:var(--c-head);font-size:18px;text-align:left}
-.jobchip{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;margin:8px 0 20px}
-.jobchip .fchip{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);background:transparent;
-  border:1px solid var(--c-line-strong);border-radius:var(--radius-tag);padding:2px 8px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.steps{border-radius:var(--radius-panel);display:flex;flex-direction:column;justify-content:flex-start;gap:0;margin-bottom:20px;border:1px solid var(--c-line);background:var(--c-bg)}
-.step{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:400;letter-spacing:0;
-  text-transform:none;color:var(--c-ink-faint);padding:10px 16px;border-top:1px solid var(--c-line)}
-.step:first-child{border-top:0}
-.step .sdot{width:22px;height:22px;border-radius:50%;border:1px solid var(--c-line-strong);display:flex;align-items:center;justify-content:center;
-  font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--c-ink-faint);background:var(--c-bg);flex:none}
-.step.active{color:var(--c-ink);background:var(--c-panel-blue)}
-.step.active .sdot{border-color:var(--c-blue);color:var(--c-blue)}
-.step.done{color:var(--c-ink-soft)}
-.step.done .sdot{border-color:var(--c-brand-navy);background:var(--c-brand-navy);color:#fff}
-.step .sline{display:none}
+.progress-card{padding:24px;max-width:640px;margin:0;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card)}
+.progress-card h2{font-family:var(--f-brand);font-style:italic;font-weight:900;text-transform:none;color:var(--c-head);font-size:22px;line-height:1.15;text-align:left;margin:0}
+.prog-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.prog-titles{min-width:0}
+.prog-frame{flex:none;width:96px;height:64px;object-fit:cover;border-radius:var(--radius-panel);background:var(--c-media-bg)}
+.jobchip{margin:2px 0 0;font-size:14px;color:var(--c-ink-faint);overflow-wrap:anywhere}
+/* Three steps as three short bars, the name under each */
+.steps{display:flex;gap:8px;margin-bottom:20px}
+.step{flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--c-ink-faint)}
+.step .sline{order:-1;flex:1 1 100%;display:block;height:6px;border-radius:999px;background:var(--c-line)}
+.step .sdot{font-family:var(--f-mono);font-size:14px;font-weight:500;display:inline-flex;align-items:center}
+.step.active{color:var(--c-ink);font-weight:700}
+.step.active .sline{background:var(--c-blue)}
+.step.done{color:var(--c-ink)}
+.step.done .sline{background:var(--c-brand-navy)}
+.step.done .sdot{color:var(--c-brand-navy)}
+.prog-now{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
+.prog-now .stagetext{margin:0}
+.prog-pct{font-family:var(--f-mono);font-size:14px;font-weight:500;color:var(--c-ink);font-feature-settings:"tnum" 1}
+.prog-note{margin:16px 0 0;padding:12px 14px;background:var(--c-panel);border-radius:var(--radius-panel);font-size:14px;color:var(--c-ink-soft)}
+@media(max-width:640px){ .prog-frame{width:72px;height:48px} .progress-card h2{font-size:18px} }
 /* The progress bar is the speed gradient: blue running into coral as the
    analysis runs, the way the old brand drew it. */
 .pbar{height:8px;background:var(--c-line);border-radius:999px;overflow:hidden;max-width:none;margin:0}
@@ -1677,7 +1681,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 @media (prefers-reduced-motion:reduce){#loadbar.on{animation:none;width:85%}}
 .stagetext{text-align:left;color:var(--c-ink-soft);font-size:14px;margin-top:12px;min-height:24px}
 .stagetext b{font-family:var(--f-mono);font-weight:500;color:var(--c-ink)}
-.progress-card .cancelrow{text-align:left;margin-top:20px}
+.progress-card .cancelrow{text-align:left;margin-top:16px}
 
 /* ---------- Results ----------
    The score card is the landing's dark tile: brand navy with the hero's
@@ -2816,9 +2820,12 @@ details.raw pre{background:var(--c-media-bg);color:#C6CCD6;font-family:var(--f-m
 
 /* ---------- Error / limit ---------- */
 .error-card{padding:24px;border-left:3px solid var(--st-bad-fill);max-width:640px}
-.error-card h2{font-family:var(--f-display);font-weight:600;text-transform:none;color:var(--c-head);font-size:18px;margin-bottom:8px}
+.error-card h2{font-family:var(--f-brand);font-style:italic;font-weight:900;text-transform:none;color:var(--c-head);font-size:22px;line-height:1.15;margin-bottom:8px}
 .error-card p{color:var(--c-ink-soft)}
-.error-card ul{margin:14px 0 0;padding-left:20px;color:var(--c-ink-soft);font-size:14px;line-height:1.7}
+.error-card ul{margin:6px 0 0;padding-left:20px;color:var(--c-ink-soft);font-size:14px;line-height:1.7}
+.err-tips{margin-top:14px}
+.err-tips-h{margin:0;font-size:14px;font-weight:600;color:var(--c-ink)}
+.err-note{margin:14px 0 0;font-size:14px}
 .error-card .actions-row{margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .limit-card{border-left-color:var(--st-warn-fill)}
 .limit-card h2{color:var(--c-head)}
@@ -2921,7 +2928,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .filepreview video{width:100%}
   .filepreview img#previewImg{width:100%;max-width:260px;margin:0 auto}
   .guides{grid-template-columns:1fr;gap:8px}
-  .progress-card{padding:20px 0}
+  .progress-card{padding:20px 16px}
   .step span.slbl{display:inline}
   .videocap{flex-direction:column;align-items:flex-start}
   /* Five rows of controls under a phone-sized clip is more chrome than
