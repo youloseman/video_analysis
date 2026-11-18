@@ -2056,13 +2056,22 @@
   <!-- ============ WHAT'S NEW (release notes) ============ -->
   <section id="whatsnew" class="hidden" aria-labelledby="wnTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead u-mt-0">
-      <div class="eyebrow">Changelog</div>
-      <h2 class="sec u-mb-2" id="wnTitle" tabindex="-1">What’s new</h2>
-      <div class="speedline"></div>
+    <div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="wnTitle" tabindex="-1">What’s new</h2>
+        <p class="ph-lede">Everything we have shipped, newest first. Most of it starts with someone telling us a result did not match what they saw.</p></div>
     </div>
-    <p class="hint u-m-0 u-mb-8">Everything we’ve shipped, newest first. Most of it starts with someone telling us a result didn’t match what they saw — the prompt at the bottom of every report.</p>
-    <div id="wnList"></div>
+    <!-- Board: WhatsNew. One row per release (date, who it is for, title, one
+         line); the full note opens under its row. Chips filter by audience,
+         and only audiences that have an entry get a chip. -->
+    <div class="wn-card">
+      <div class="profilefilter wn-filter" id="wnFilter" role="group" aria-label="Show"></div>
+      <div id="wnList"></div>
+    </div>
+    <div class="wn-foot">
+      <p><b>Did a result not match what you saw?</b> <span>Tell us at the bottom of any report. One triathlete reads every reply.</span></p>
+      <a class="btn btn-ghost" href="mailto:support@getflapp.com?subject=Flapp%20feedback">Send feedback</a>
+    </div>
+    <p class="wn-perma"><a href="/changelog" target="_blank" rel="noopener">All notes on one page</a></p>
   </section>
 
   <!-- ============ FEEDBACK INBOX (admin tier only) ============ -->
@@ -8566,7 +8575,7 @@ $('#acctResearch').addEventListener('change',async e=>{
    `go` runs an in-app view; `href` is a real page (Examples, Academy). */
 function moreRow(r){
   const sub=r.sub?`<span class="mo-sub">${r.sub}</span>`:'';
-  const inner=`<span class="mo-txt"><span class="mo-lbl">${esc(r.label)}${r.dot?'<span class="ac-chip mo-new">New</span>':''}</span>${sub}</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg>`;
+  const inner=`<span class="mo-txt"><span class="mo-lbl">${esc(r.label)}${r.dot?'<span class="wn-badge">New</span>':''}</span>${sub}</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg>`;
   return r.href
     ? `<a class="mo-row" href="${r.href}">${inner}</a>`
     : `<a class="mo-row" href="#" data-more="${r.go}">${inner}</a>`;
@@ -8608,7 +8617,7 @@ function renderMore(){
   const cl=(state.changelog||[])[0];
   const site=[{label:'Pricing', go:'pricing'}, {label:'Examples', href:'/examples'}, {label:'Academy', href:'/academy'},
     {label:'What’s new', go:'whatsnew', dot:!$('#navNewDot').classList.contains('hidden'),
-     sub:cl?esc(`${cl.date_label||cl.date||''}: ${cl.title||''}`):''}];
+     sub:cl?esc(`${wnDay(cl.date)}: ${cl.title||''}`):''}];
   $('#moreSite').innerHTML=`<div class="mo-cap">Flapp</div>`+site.map(moreRow).join('');
   $('#moreAuthBtn').textContent=auth?'Log out':'Log in';
 }
@@ -16048,24 +16057,47 @@ function initChangelog(){
     .catch(()=>{});
 }
 
+const WN_AUD={everyone:'Everyone', bike:'Bike', run:'Run', swim:'Swim', coaches:'Coaches'};
+/* "Nov 16"; the year only when it is not this year's. */
+function wnDay(iso){
+  try{ const d=new Date(iso+'T12:00:00'), o={month:'short',day:'numeric'};
+    if(d.getFullYear()!==new Date().getFullYear()) o.year='numeric';
+    return d.toLocaleDateString(UI_LOCALE,o); }catch(e){ return iso||''; }
+}
+function wnAud(e){ return (e.audience&&e.audience.length)?e.audience:['everyone']; }
 function renderWhatsNew(seenAtOpen){
+  if(seenAtOpen!==undefined) state.wnSeen=seenAtOpen;
   const es=state.changelog||[];
+  const filt=$('#wnFilter');
   if(!es.length){
-    $('#wnList').innerHTML=`<p class="hint">Couldn’t load the release notes right now — they’re also on the <a href="/changelog">changelog page</a>.</p>`;
+    filt.innerHTML='';
+    $('#wnList').innerHTML=`<p class="hint wn-empty">Could not load the release notes right now. They are also on the <a href="/changelog">changelog page</a>.</p>`;
     return;
   }
+  // Chips for the audiences that have an entry; "Everyone" notes show under
+  // every chip, since they are for everyone.
+  const have=['bike','run','swim','coaches'].filter(a=>es.some(e=>wnAud(e).includes(a)));
+  const on=have.includes(state.wnFilter)?state.wnFilter:'all';
+  filt.innerHTML=[['all','Everything'],...have.map(a=>[a,WN_AUD[a]])]
+    .map(([k,l])=>`<button type="button" data-wnf="${k}" aria-pressed="${k===on}">${l}</button>`).join('');
+  const shown=es.filter(e=>on==='all'||wnAud(e).includes(on)||wnAud(e).includes('everyone'));
   // `html` is our own Markdown, rendered server-side from files in the repo --
   // not user input, so innerHTML is the right tool here.
-  $('#wnList').innerHTML=es.map(e=>{
-    const fresh=clIsNew(e.id, seenAtOpen);
-    return `<article class="wn-entry${fresh?' is-new':''}">
-      <div class="wn-when">${esc(e.date_label||e.date||'')}${fresh?'<span class="wn-badge">New</span>':''}</div>
-      <h3>${esc(e.title||'')}</h3>
-      ${e.html||''}
-    </article>`;
-  }).join('')
-    +`<div class="wn-foot"><p class="hint u-m-0">Something here still not matching what you see in your own results? Rate your next analysis — that’s where this list comes from. <a href="/changelog" target="_blank" rel="noopener">Permanent link to these notes</a>.</p></div>`;
+  $('#wnList').innerHTML=shown.map(e=>{
+    const fresh=clIsNew(e.id, state.wnSeen);
+    const tag=wnAud(e).map(a=>WN_AUD[a]||a).join(' · ');
+    return `<details class="wn-entry${fresh?' is-new':''}">
+      <summary><span class="wn-when">${esc(wnDay(e.date))}</span>
+        <span class="wn-main"><span class="wn-title">${esc(e.title||'')}</span>${e.summary?`<span class="wn-sum">${esc(e.summary)}</span>`:''}</span>
+        <span class="wn-side"><span class="wn-tags">${fresh?'<span class="wn-badge">New</span>':''}<span class="wn-tag">${esc(tag)}</span></span><svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg></span></summary>
+      <div class="wn-body">${e.html||''}</div>
+    </details>`;
+  }).join('');
 }
+$('#wnFilter').addEventListener('click',e=>{
+  const b=e.target.closest('[data-wnf]'); if(!b) return;
+  state.wnFilter=b.dataset.wnf; renderWhatsNew();
+});
 
 function openWhatsNew(){
   // Read "seen" before marking, or the New badges vanish on the very render
