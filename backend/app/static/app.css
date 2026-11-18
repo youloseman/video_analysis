@@ -4327,3 +4327,58 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 /* state beats layout: an element hidden by JS stays hidden whatever utility it carries */
 .hidden{display:none!important}
+
+/* The Squad on a phone (board: SquadPhoneLite). */
+.sql-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.sql-kpi{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.sql-kpi b{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;line-height:1.1;color:var(--c-head)}
+.sql-kpi-race b{color:var(--st-warn)} .sql-kpi-bad b{color:var(--st-bad)}
+.sql-kpi span{font-size:12px;color:var(--c-ink-faint)}
+.sql-card{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);margin:0 0 12px;overflow:hidden}
+.sql-card > summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:10px 16px}
+.sql-card > summary::-webkit-details-marker{display:none}
+.sql-card > summary b,.sql-h b{font-size:16px;color:var(--c-ink)}
+.sql-card > summary span,.sql-h span{font-size:14px;color:var(--c-ink-faint)}
+.sql-fold{flex:none;width:18px;height:18px;color:var(--c-ink-faint)}
+.sql-card[open] > summary .sql-fold{transform:rotate(180deg)}
+.sql-att[open] > summary .sql-fold,.sql-kona[open] > summary .sql-fold{transform:rotate(90deg)}
+.sql-att-t{display:flex;flex-direction:column;min-width:0}
+.sql-att-t small{font-size:14px;color:var(--c-ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sql-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 16px 8px}
+.sql-h small{font-size:12px;color:var(--c-ink-faint)}
+.sql-list{list-style:none;margin:0;padding:0}
+.sql-list > li{position:relative;border-top:1px solid var(--c-panel);overflow:hidden}
+.sql-row{display:grid;grid-template-columns:56px minmax(0,1fr) auto auto;gap:12px;align-items:center;width:100%;min-height:64px;padding:8px 16px;background:var(--c-bg);border:0;text-align:left;font:inherit;color:var(--c-ink);cursor:pointer}
+.sql-rev .sql-row{grid-template-columns:56px minmax(0,1fr) auto 18px}
+.sql-fig{width:56px;height:42px}
+.sql-txt{display:flex;flex-direction:column;min-width:0}
+.sql-txt b{font-size:16px;font-weight:600;display:flex;align-items:center;gap:6px}
+.sql-txt small{font-size:14px;color:var(--c-ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sql-chev{width:18px;height:18px;color:var(--c-ink-faint)}
+.sql-score{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-ink);min-width:28px;text-align:right}
+.sql-chip{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--c-panel);color:var(--c-ink-soft)}
+.sql-chip-ok{background:var(--st-good-bg);color:var(--st-good)}
+.sql-chip-bad{background:var(--st-bad-bg);color:var(--st-bad)}
+.sql-chip-race{background:var(--st-warn-bg);color:var(--st-warn)}
+.sql-seen{display:none;position:absolute;top:0;bottom:0;right:0;width:96px;border:0;background:var(--c-brand-navy);color:#fff;font:600 14px var(--f-body);cursor:pointer}
+.sql-rev.swiped .sql-seen{display:block}
+.sql-foot{margin:0;padding:8px 16px 12px;font-size:14px;color:var(--c-ink-faint);border-top:1px solid var(--c-panel)}
+.sql-attlist{list-style:none;margin:0;padding:0 16px 12px;display:flex;flex-direction:column;gap:8px}
+.sql-groups{display:flex;gap:8px;overflow-x:auto;margin:0 -16px 12px;padding:0 16px 2px;scrollbar-width:none}
+.sql-groups::-webkit-scrollbar{display:none}
+.sql-groups button{flex:none;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--c-line-strong);background:var(--c-bg);color:var(--c-ink);font:500 14px var(--f-body);white-space:nowrap;cursor:pointer}
+.sql-groups button small{font-size:12px;color:var(--c-ink-faint);margin-left:2px}
+.sql-groups button[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
+.sql-groups button[aria-pressed="true"] small{color:rgba(255,255,255,.75)}
+.sql-more{padding:0 16px 14px}
+.sql-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px}
+.sql-tile{border-radius:var(--radius-panel);background:var(--c-ground);padding:8px 10px;display:flex;flex-direction:column}
+.sql-tile span{font-size:12px;color:var(--c-ink-faint)}
+.sql-tile b{font-size:18px;font-weight:500;color:var(--c-ink)}
+.sql-tile b.sql-off{color:var(--st-bad)}
+.sql-tile small{font-size:12px;color:var(--c-ink-faint)}
+.sql-note{margin:0 0 10px;font-size:14px;color:var(--c-ink-soft)}
+.sql-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sql-acts .btn{min-height:44px}
+.sql-all{display:block;width:100%;min-height:48px;border:0;border-top:1px solid var(--c-panel);background:var(--c-bg);color:var(--c-blue-dk);font:600 14px var(--f-body);cursor:pointer}
+.sql-kona #sqKona{padding:0 12px 12px}

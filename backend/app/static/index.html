@@ -15303,6 +15303,8 @@ function renderSquadHome(){
         <tbody>${list.map(tr).join('')}</tbody></table></div>
       <p class="hint sq-foot">${sp==='bike'&&cdaCol?'Measured CdA is entered by hand from a tunnel, a field test or a sensor; Flapp does not calculate it. ':''}Tick two athletes to compare them side by side.</p></section>`;
   };
+  // A phone gets the compact Squad (board: SquadPhoneLite), from these rows.
+  if(PHONE_MQ.matches){ renderSquadLite({host, everyone, groups, squad, rows, review, attention, off}); return; }
   // The counts, under the title (Squad board); the two actions beside it.
   const meta=$('#dashMeta');
   if(meta) meta.innerHTML=[`<b>${squad.length}</b> athlete${squad.length===1?'':'s'}`,`<b>${clips30}</b> clip${clips30===1?'':'s'} in 30 days`,
@@ -15371,6 +15373,107 @@ function renderSquadHome(){
   renderSquadKona(rows);
   if(!state.squadSeen){ state.squadSeen=true; track('squad_opened',{athletes:squad.length}); loadLane().then(()=>{ if(document.body.dataset.state==='dashboard'&&!state.squadMe) renderSquadHome(); }); }
 }
+/* ---- The Squad on a phone (board: SquadPhoneLite) ----
+   Counts first, then what to open: unseen clips, a folded list of who needs
+   attention, the athletes one line each with the top one open. The tables
+   stay for wider screens. */
+state.sqlOpen=null; state.sqlAll=false;
+function sqlOutCount(e){
+  if(!e||!e.trends) return 0;
+  return (SQUAD_METRICS[e.sport]||[]).filter(m=>{ const v=e.trends[m.key], o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1]); }).length;
+}
+function sqlChip(r, now){
+  const e=r.last;
+  if(!e) return '<span class="sql-chip sql-chip-na">no clip yet</span>';
+  const age=Math.round((now-(e.at||0))/86400000);
+  if(age>=14) return `<span class="sql-chip sql-chip-na">no clip ${age} d</span>`;
+  const n=sqlOutCount(e);
+  return n?`<span class="sql-chip sql-chip-bad">${n} out</span>`:(e.trends?'<span class="sql-chip sql-chip-ok">in range</span>':'');
+}
+function sqlSub(r){
+  const nr=r.a.next_race, e=r.last;
+  const clip=e?`${e.sport==='run'?'Run':'Ride'} ${esc(fmtWhen(e.filmedAt||e.at))}`:'';
+  return nr&&nr.days_to_go>=0?`${esc(nr.name)} ${raceWhen(nr)}${clip?' · '+clip.toLowerCase():''}`:(clip||'no clip yet');
+}
+function sqlTiles(e){
+  if(!e||!e.trends) return '';
+  const ms=(SQUAD_METRICS[e.sport]||[]).filter(m=>e.trends[m.key]!=null).slice(0,4);
+  return ms.length?`<div class="sql-tiles">${ms.map(m=>{ const v=e.trends[m.key], o=(e.trendOpt||{})[m.key], off=o&&(v<o[0]||v>o[1]), dec=m.key==='overstride'?2:0;
+    return `<div class="sql-tile"><span>${esc(m.label)}</span><b class="num${off?' sql-off':''}">${num(v,dec)}${m.unit}</b>${o?`<small class="num">${num(o[0],dec)}–${num(o[1],dec)}</small>`:''}</div>`; }).join('')}</div>`:'';
+}
+function renderSquadLite({host, everyone, groups, squad, rows, review, attention, off}){
+  const now=Date.now();
+  const meta=$('#dashMeta'); if(meta) meta.innerHTML='';
+  const acts=$('#sqHeadActs');
+  if(acts) acts.innerHTML=`<button class="btn btn-primary" type="button" id="sqBatch">Upload clips</button>`;
+  const racing=rows.filter(r=>r.a.next_race&&r.a.next_race.days_to_go>=0&&r.a.next_race.days_to_go<=21).length;
+  const rIn=r=>r.a.next_race&&r.a.next_race.days_to_go>=0?r.a.next_race.days_to_go:1e9;
+  const list=rows.slice().sort((x,y)=>(rIn(x)-rIn(y))||x.a.name.localeCompare(y.a.name));
+  const openId=state.sqlOpen!=null&&list.some(r=>String(r.a.id)===String(state.sqlOpen))?String(state.sqlOpen):(list[0]?String(list[0].a.id):null);
+  const shown=state.sqlAll?list:list.slice(0,5);
+  const note=r=>{ const n=r.es.find(e=>e.coachNote); return n?`<p class="sql-note">Your last note, ${esc(shortDate(n.at))}: “${esc(String(n.coachNote).slice(0,90))}${String(n.coachNote).length>90?'…':''}”</p>`:''; };
+  const row=r=>{ const id=String(r.a.id), open=id===openId, e=r.last;
+    return `<li class="sql-ath${open?' is-open':''}">
+      <button type="button" class="sql-row" data-sqlopen="${id}" aria-expanded="${open}">
+        <span class="hthumb sql-fig${e?thumbPendCls(e):''}"${e?thumbPendData(e):''}>${e?thumbMarkup(e,''):''}</span>
+        <span class="sql-txt"><b>${esc(r.a.name)}${r.a.unreviewed?` <i class="wn-badge">${r.a.unreviewed} new</i>`:''}</b><small>${sqlSub(r)}</small></span>
+        ${sqlChip(r,now)}<span class="sql-score">${e&&e.score!=null?e.score:'—'}</span></button>
+      ${open?`<div class="sql-more">${sqlTiles(e)}${note(r)}
+        <div class="sql-acts">${e?`<button type="button" class="btn btn-ghost" data-entry="${esc(e.id)}">Open report</button>`:''}<button type="button" class="btn btn-ghost" data-open="${id}">Athlete page</button></div></div>`:''}</li>`; };
+  const rev=({a,e})=>{ const nr=a.next_race;
+    return `<li class="sql-rev"><button type="button" class="sql-row" data-entry="${esc(e.id)}">
+        <span class="hthumb sql-fig${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</span>
+        <span class="sql-txt"><b>${esc(a.name)}</b><small>${e.sport==='run'?'Run':'Ride'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}</small></span>
+        ${nr&&nr.days_to_go>=0&&nr.days_to_go<=21?`<span class="sql-chip sql-chip-race">${nr.days_to_go===0?'today':nr.days_to_go+' days'}</span>`:'<span></span>'}
+        <svg class="ic sql-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      <button type="button" class="sql-seen" data-seen="${esc(e.id)}">Seen</button></li>`; };
+  // The Kona row only when someone has an aero clip to place in the field.
+  const aeroN=rows.filter(r=>r.es.some(x=>x.sport==='bike'&&x.trends&&(x.position==='tt_aero'||x.position==='triathlon'))).length;
+  const firstAtt=attention.length?attention[0].replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim():'';
+  host.innerHTML=`${coachNameAsk()}
+    <div class="sql-kpis">
+      <div class="sql-kpi"><b>${review.length}</b><span>to review</span></div>
+      <div class="sql-kpi sql-kpi-race"><b>${racing}</b><span>racing soon</span></div>
+      <div class="sql-kpi sql-kpi-bad"><b>${off.length}</b><span>out of range</span></div>
+    </div>
+    ${review.length?`<details class="sql-card" open><summary><span><b>To review</b> ${review.length}</span><svg class="ic sql-fold" aria-hidden="true"><use href="#i-chev-d"/></svg></summary>
+      <ul class="sql-list" id="sqlRev">${review.slice(0,6).map(rev).join('')}</ul>
+      ${review.length>6?`<p class="sql-foot">and ${review.length-6} more: open an athlete to see theirs.</p>`:''}
+      <p class="sql-foot">Opening a report marks it seen. Swipe a row left to mark it without opening.</p></details>`:''}
+    ${attention.length?`<details class="sql-card sql-att"><summary><span class="sql-att-t"><span><b>Needs attention</b> ${attention.length}</span><small>${esc(firstAtt)}</small></span><svg class="ic sql-fold" aria-hidden="true"><use href="#i-chev-r"/></svg></summary>
+      <ul class="sql-attlist">${attention.join('')}</ul></details>`:`<p class="sq-att-ok">Everyone is filmed and in range.</p>`}
+    ${groups.length?`<div class="sql-groups" role="group" aria-label="Show"><button type="button" data-group="" aria-pressed="${state.squadGroup==null}">Everyone <small>${everyone.length}</small></button>${groups.map(g=>`<button type="button" data-group="${g.id}" aria-pressed="${String(g.id)===String(state.squadGroup)}">${esc(g.name)} <small>${everyone.filter(a=>(a.group_ids||[]).includes(g.id)).length}</small></button>`).join('')}</div>`:''}
+    <section class="sql-card"><div class="sql-h"><span><b>Athletes</b> ${squad.length}</span><small>racing soonest first</small></div>
+      <ul class="sql-list">${shown.map(row).join('')}</ul>
+      ${list.length>shown.length?`<button type="button" class="sql-all" id="sqlAll">Show the other ${list.length-shown.length}</button>`:''}</section>
+    ${aeroN?`<details class="sql-card sql-kona" id="sqlKona"><summary><span class="sql-att-t"><span><b>Against the Kona pros</b> ${aeroN} aero</span><small>each athlete's latest aero clip against the 2026 pro field</small></span><svg class="ic sql-fold" aria-hidden="true"><use href="#i-chev-r"/></svg></summary><div id="sqKona"></div></details>`:''}
+    <div class="sq-me"><button class="btn btn-ghost btn-sm" type="button" id="sqMe">My technique</button><span class="subhint">your own clips, as before</span></div>`;
+  wireCoachNameAsk();
+  host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openAthlete(b.dataset.open)));
+  host.querySelectorAll('[data-batch]').forEach(b=>b.addEventListener('click',openBatch));
+  host.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openClipAsCoach(b.dataset.entry)));
+  host.querySelectorAll('[data-sqlopen]').forEach(b=>b.addEventListener('click',()=>{ state.sqlOpen=b.dataset.sqlopen===openId?'':b.dataset.sqlopen; renderSquadHome(); }));
+  host.querySelectorAll('[data-group]').forEach(b=>b.addEventListener('click',()=>{ state.squadGroup=b.dataset.group||null; state.squadSport=null; track('squad_group_filtered',{}); renderSquadHome(); }));
+  host.querySelectorAll('[data-seen]').forEach(b=>b.addEventListener('click',async ev=>{ ev.stopPropagation();
+    const e=findEntry(b.dataset.seen); if(!e) return;
+    if(await clipSeen(e,true)){ track('squad_clip_seen',{how:'swiped'}); renderSquadHome(); }
+  }));
+  const all=$('#sqlAll'); if(all) all.addEventListener('click',()=>{ state.sqlAll=true; renderSquadHome(); });
+  const sb=$('#sqBatch'); if(sb) sb.onclick=openBatch;
+  $('#sqMe').addEventListener('click',()=>{ state.squadMe=true; openDashboard(); });
+  // Swipe a To review row left: its Seen button slides in (History's gesture).
+  const revList=$('#sqlRev');
+  if(revList){ let x0=null,y0=null,li=null;
+    revList.addEventListener('touchstart',e=>{ li=e.target.closest('.sql-rev'); if(!li) return; x0=e.touches[0].clientX; y0=e.touches[0].clientY; },{passive:true});
+    revList.addEventListener('touchend',e=>{ if(!li||x0==null) return; const t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0;
+      if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){ revList.querySelectorAll('.sql-rev.swiped').forEach(x=>{ if(x!==li) x.classList.remove('swiped'); }); li.classList.toggle('swiped',dx<0); }
+      x0=null; li=null; },{passive:true}); }
+  const kona=$('#sqlKona'); if(kona) kona.addEventListener('toggle',()=>{ if(kona.open) renderSquadKona(rows); });
+  observeKeyframes(host);
+  if(!state.squadSeen){ state.squadSeen=true; track('squad_opened',{athletes:squad.length,view:'phone'}); loadLane().then(()=>{ if(document.body.dataset.state==='dashboard'&&!state.squadMe) renderSquadHome(); }); }
+}
+// Turning a tablet or resizing across the phone line redraws the Squad in the other composition.
+PHONE_MQ.addEventListener('change',()=>{ if(document.body.dataset.state==='dashboard'&&hasCoachPlan()&&!state.squadMe&&typeof renderSquadHome==='function') renderSquadHome(); });
 /* ============================================================
    One athlete: the series over time. A coach asked for May Race, June Race,
    Current Setup in one place, and was faking it with equipment profiles.

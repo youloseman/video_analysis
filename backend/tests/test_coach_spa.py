@@ -436,3 +436,15 @@ def test_the_race_countdown_is_counted_on_the_coachs_own_day():
     out = json.loads(subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout)
     assert out == [[[-1, True], [9, False]], "2026-11-20"]
     assert "localiseRaces(ATHLETES.athletes)" in fn("loadAthletes")
+
+
+def test_a_phone_gets_the_lite_squad():
+    """Artur 2026-11-18: SquadPhoneLite is the phone's Squad. Counts, To review
+    rows with swipe-to-seen, attention folded, compact athlete rows, the Kona
+    field folded and only when someone has an aero clip."""
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "if(PHONE_MQ.matches){ renderSquadLite(" in spa
+    fn = spa[spa.index("function renderSquadLite"):][:9000]
+    for bit in ("sql-kpis", "Swipe a row left to mark it without opening", "Needs attention", "Show the other", "aeroN?"):
+        assert bit in fn, bit
