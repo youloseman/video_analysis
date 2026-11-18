@@ -143,6 +143,23 @@ def seed(a):
                 pg.evaluate("""([R, kind, back]) => { window.__T = %s - back*86400000; state.sport = R.sport_type;
                                  return saveToHistory(kind, R); }""" % T0, [r, kind, len(examples()) - i])
                 pg.wait_for_timeout(600)
+            # Earlier clips of the same two, a little different each time, so
+            # Progress has lines to draw and History months to group: every number
+            # in the result moves by a small step, the score with it.
+            ex0 = dict(examples())
+            for name, back, k in (("bike-road", 40, -3), ("bike-road", 30, -2), ("bike-road", 20, -1),
+                                  ("run-treadmill", 35, -2), ("run-treadmill", 25, -1)):
+                if name not in ex0:
+                    continue
+                pg.evaluate("""([R, back, k]) => { window.__T = %s - back*86400000;
+                    const C=JSON.parse(JSON.stringify(R));
+                    const walk=o=>{ for(const key in o){ const v=o[key];
+                      if(typeof v==='number'&&!/^(id|frame|fps|n_|width|height)/i.test(key)) o[key]=Math.round(v*(1+k*0.03)*100)/100;
+                      else if(v&&typeof v==='object') walk(v); } };
+                    walk(C.sport_specific_metrics||{});
+                    if(C.technique_score!=null) C.technique_score=Math.max(0,Math.min(100,Math.round(C.technique_score+k*3)));
+                    state.sport=C.sport_type; return saveToHistory('video', C); }""" % T0, [ex0[name], back, k])
+                pg.wait_for_timeout(600)
             # The coach's athletes get clips the same way: Analyze with the athlete
             # picked. Anna two rides and a run, Marc a ride, Ines a run; Ines's is
             # older than the Squad's inbox start, so it is not "to review".

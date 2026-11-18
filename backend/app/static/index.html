@@ -1565,30 +1565,26 @@
   <!-- ============ PROGRESS / TRENDS ============ -->
   <section id="trends" class="hidden" aria-labelledby="trendsTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="blockhead u-mt-0">
-      <div class="eyebrow">Monitor your technique</div>
-      <h2 class="sec u-mb-2" id="trendsTitle" tabindex="-1">Your progress</h2>
-      <div class="speedline"></div>
-    </div>
-    <div class="u-m-0 u-mt-4 u-mb-6">
-      <div class="seg" id="progSeg" role="group" aria-label="Sport">
-        <button type="button" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg> Bike</button>
-        <button type="button" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg> Run</button>
-      </div>
+    <!-- Progress board: what and when under the title; sport, side and
+         Compare beside it. -->
+    <div class="pagehead ath-head prog-head">
+      <div class="ath-title"><h2 class="sec" id="trendsTitle" tabindex="-1">Your progress</h2><p class="ph-lede" id="progMeta"></p></div>
+      <span class="ph-right prog-ctl">
+        <div class="seg" id="progSeg" role="group" aria-label="Sport">
+          <button type="button" data-sport="bike" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-bike"/></svg> Bike</button>
+          <button type="button" data-sport="run" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg> Run</button>
+        </div>
+        <span id="progSide"></span>
+        <span class="hidden" id="compareCta"><button class="btn btn-ghost" id="btnCompare" type="button">Compare two analyses</button></span>
+      </span>
     </div>
     <div class="profilefilter" id="progAthleteFilter"></div>
-    <div id="progSide"></div>
-    <p class="hint u-m-0 u-mt-n2 u-mb-5">The shaded band is the optimal range. Watch each metric trend toward it over time.</p>
-    <div class="again-row u-m-0 u-mb-5 hidden" id="compareCta">
-      <button class="btn btn-ghost btn-sm" id="btnCompare" type="button">
-        <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Compare two analyses
-      </button>
-    </div>
     <!-- Progress as a picture, and where an aero rider sits among the pros
          (moved here from the home screen, which links to them). -->
-    <div class="dvis prog-vis"><div id="progThen"></div><div id="progKona"></div></div>
-    <div class="tgrid" id="progGrid"></div>
+    <div id="progGrid"></div>
     <div id="progTeaser"></div>
+    <div class="dvis prog-vis"><div id="progThen"></div><div id="progKona"></div></div>
+    <p class="hint prog-foot">The green band is the optimal range. Each camera side keeps its own line: changing side moves the numbers by itself.</p>
   </section>
 
   <!-- ============ COMPARE (BEFORE / AFTER) ============ -->
@@ -13929,7 +13925,9 @@ function renderProgress(){
   if(!sides.includes(state.progressSide)) state.progressSide=[...everySide].reverse().map(e=>e.cameraSide).find(s=>sides.includes(s))||null;
   const all=everySide.filter(e=>!e.cameraSide||!state.progressSide||e.cameraSide===state.progressSide);
   const sideHost=$('#progSide');
-  sideHost.innerHTML=sides.length>1?`<div class="prog-side"><div class="seg seg-sm" role="group" aria-label="Camera side">${sides.map(s=>`<button type="button" data-pside="${s}" aria-pressed="${s===state.progressSide}">${s==='both'?'Both sides':s==='left'?'Left side':'Right side'}</button>`).join('')}</div><span class="subhint">Each side keeps its own line: changing side moves the numbers by itself.</span></div>`:'';
+  sideHost.innerHTML=sides.length>1?`<div class="seg" role="group" aria-label="Camera side">${sides.map(s=>`<button type="button" data-pside="${s}" aria-pressed="${s===state.progressSide}">${s==='both'?'Both sides':s==='left'?'Left side':'Right side'}</button>`).join('')}</div>`:'';
+  const pm=$('#progMeta');
+  if(pm) pm.textContent=all.length?`${sport==='bike'?'Bike':'Run'} · ${all.length} ${all.length===1?'analysis':'analyses'}${all.length>1?` · ${shortDate(all[0].filmedAt||all[0].at)} to ${shortDate(all[all.length-1].filmedAt||all[all.length-1].at)}`:''}`:'';
   sideHost.querySelectorAll('[data-pside]').forEach(b=>b.addEventListener('click',()=>{ state.progressSide=b.dataset.pside; renderProgress(); }));
   const grid=$('#progGrid'), teaser=$('#progTeaser');
   if(teaser) teaser.innerHTML='';
@@ -13946,27 +13944,51 @@ function renderProgress(){
     return;
   }
   const dates=all.map(e=>fmtWhen(e.filmedAt||e.at));
-  const shown=new Set();
-  const realCards=TREND_METRICS[sport].map(m=>{
+  const shown=new Set(), lastE=all[all.length-1], noun=sport==='bike'?'ride':'run';
+  // Each reading against the band the dashboard and the report use for this
+  // position (formBand), else the band the entries kept.
+  const ms=TREND_METRICS[sport].map(m=>{
     const series=[], dser=[];
     all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); } });
-    if(series.length<2) return '';
+    if(series.length<2) return null;
     shown.add(m.key);
-    let opt=null; for(let i=all.length-1;i>=0;i--){ if(all[i].trendOpt && all[i].trendOpt[m.key]){ opt=all[i].trendOpt[m.key]; break; } }
+    let opt=m.key==='score'?null:formBand(sport,m.key,lastE);
+    if(!opt&&m.key!=='score') for(let i=all.length-1;i>=0;i--){ if(all[i].trendOpt && all[i].trendOpt[m.key]){ opt=all[i].trendOpt[m.key]; break; } }
     const first=series[0], last=series[series.length-1];
-    const dd=metricDelta(first,last,opt,m.hi), tcls=dd.cls, trend=dd.trend, delta=dd.delta;
-    const deltaStr=(delta>0?'+':'')+delta+(m.unit||'');
-    return `<div class="tcard${m.key==='score'?' tcard-score':''}">
-      <div class="tc-head"><span class="tc-lbl">${esc(m.label)}</span><span class="tc-val">${Math.round(last*10)/10}${m.unit||''}</span></div>
-      <div class="tc-sub"><span class="tdelta ${tcls}">${deltaStr}${trend?' · '+trend:''}</span> · ${series.length} analyses</div>
-      ${trendChart(series,dser,opt,m.unit, m.key==='score' && window.innerWidth>640)}
-    </div>`;
-  }).join('');
+    return {m,series,dser,opt,first,last,dd:metricDelta(first,last,opt,m.hi)};
+  }).filter(Boolean);
+  const sc=ms.find(x=>x.m.key==='score'), rest=ms.filter(x=>x.m.key!=='score');
+  const away=rest.filter(x=>x.opt&&x.dd.cls==='reg'), imp=rest.filter(x=>x.opt&&x.dd.cls==='imp');
+  const steady=rest.filter(x=>x.opt&&x.dd.cls==='sta'), loose=rest.filter(x=>!x.opt);
+  const fmt=(x,v)=>{ const d=FORM_DEC[x.m.key]??(Math.abs(v)<10?1:0); return num(v,d); };
+  const card=x=>{ const u=x.m.unit||'', inR=x.opt&&x.last>=x.opt[0]&&x.last<=x.opt[1];
+    const d=x.last-x.first, mag=fmt(x,Math.abs(d));
+    const word=!x.opt?'':x.dd.cls==='reg'?'further from the range':x.dd.cls==='imp'?(inR?'now in range':'closer to the range'):'steady';
+    const chip=Math.abs(d)<1e-9?word:`${d>0?'▲':'▼'} ${mag}${u}${word?' · '+word:''}`;
+    return `<div class="tcard pcard">
+      <div class="tc-head"><span class="tc-lbl">${esc(x.m.label)}</span>${chip?`<span class="tdelta ${x.opt?x.dd.cls:'sta'}">${chip}</span>`:''}</div>
+      <div class="pc-big"><span>${fmt(x,x.first)}${u} →</span><b>${fmt(x,x.last)}${u}</b>${x.opt?`<small>band ${fmt(x,x.opt[0])}–${fmt(x,x.opt[1])}${u}</small>`:''}</div>
+      ${trendChart(x.series,x.dser,x.opt,x.m.unit,false)}
+    </div>`; };
+  const group=(cls,h,sub,list)=>list.length?`<section class="pgroup"><h3 class="pg-h ${cls}">${h} <span>${sub}</span></h3><div class="tgrid">${list.map(card).join('')}</div></section>`:'';
+  // The score, first to latest, and what moved under it.
+  const sumHtml=sc?`<div class="psum">
+      <div class="psum-l"><span class="psum-h">Technique score</span>
+        <div class="psum-score"><span class="psum-first">${Math.round(sc.first)} →</span>${ringHtml(Math.round(sc.last),96,`<div class="ds-score">${Math.round(sc.last)}</div>`)}${Math.round(sc.last-sc.first)?`<span class="tdelta ${sc.dd.cls}">${sc.last>sc.first?'▲ +':'▼ '}${Math.abs(Math.round(sc.last-sc.first))}</span>`:'<span class="tdelta sta">no change</span>'}</div>
+        <ul class="psum-counts">
+          <li class="pc-imp"><b>${imp.length}</b> ${imp.length===1?'reading':'readings'} moved toward ${imp.length===1?'its':'their'} range</li>
+          ${away.length?`<li class="pc-reg"><b>${away.length}</b> moved away: ${esc(away.map(x=>x.m.label.toLowerCase()).join(', '))}</li>`:''}
+          <li class="pc-sta"><b>${steady.length}</b> held steady</li></ul></div>
+      <div class="psum-chart">${trendChart(sc.series,sc.dser,null,'',window.innerWidth>640)}</div></div>`:'';
+  const steadyHtml=steady.length?`<details class="pgroup pg-steady"><summary><b>Held steady</b><span>${esc(steady.map(x=>`${x.m.label} ${fmt(x,x.last)}${x.m.unit||''}`).join(' · '))} · across ${all.length} ${noun}s</span><span class="pg-show">Show</span></summary><div class="tgrid">${steady.map(card).join('')}</div></details>`:'';
   // Free tier: the score trend is real; the rest are gated -> show them as
   // locked previews with one upsell CTA (never more than one per screen).
   let lockCards='';
   if(isFreeUser()) lockCards=TREND_METRICS[sport].filter(m=>m.key!=='score' && !shown.has(m.key)).map(lockedTrendCard).join('');
-  grid.innerHTML=(realCards+lockCards) || `<p class="hint u-span-all">Not enough data yet for ${sport} trends.</p>`;
+  grid.innerHTML=(sumHtml+group('pg-reg','Moving away','look at these first',away)+group('pg-imp','Improving',`closer to the range than on your first ${noun}`,imp)
+    +group('pg-loose','No range to read against','the line alone, no verdict',loose)+steadyHtml+(lockCards?`<div class="tgrid">${lockCards}</div>`:''))
+    || `<p class="hint">Not enough data yet for ${sport} trends.</p>`;
+  toggleCompareCta();
   if(teaser && isFreeUser() && lockCards){
     teaser.innerHTML=teaserPanelHtml(PROGRESS_TEASER_ITEMS, {src:'progress-teaser',
       title:'Track every metric, not just your score',
