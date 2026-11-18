@@ -2519,6 +2519,19 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
   .mbar-cap{margin-top:4px;font-size:12px}
   .mbar-procap{white-space:normal;margin-left:0;display:block}
 }
+/* The report's table, compact (Report board): the verdict is one chip with the
+   distance beside it on one line, a smaller figure and less air per row. */
+#measTable .m-pill{display:inline-block;padding:2px 8px;border-radius:var(--radius-tag);font-size:12px;background:var(--c-panel)}
+#measTable .mrow.m-ok .m-pill{background:var(--st-good-bg)}
+#measTable .mrow.m-near .m-pill{background:var(--st-warn-bg)}
+#measTable .mrow.m-out .m-pill{background:var(--st-bad-bg);color:var(--st-bad-text)}
+#measTable .m-delta{display:inline;margin-left:6px}
+#measTable td.m-st{white-space:nowrap}
+@media(min-width:641px){
+  #measTable thead th:nth-child(4){width:180px}
+  #measTable .mrow > *{padding-top:10px;padding-bottom:10px}
+  #measTable .m-fig{width:48px;height:36px}
+}
 @media print{ .meastable .mrow{break-inside:avoid} }
 /* ---------- Aero panel ---------- */
 #aeroBlock .eyebrow .ic{width:13px;height:13px;vertical-align:-2px;margin-right:5px}
