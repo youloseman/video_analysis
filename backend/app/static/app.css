@@ -969,6 +969,48 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .cmp-row:last-child{border-bottom:none}
 .cmp-row-head{background:var(--c-bg);font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint)}
 .cmp-row-head .cmp-a,.cmp-row-head .cmp-b,.cmp-row-head .cmp-d{font-family:var(--f-mono);font-size:12px}
+/* ---- Compare, as drawn (Compare board, 2026-11-17) ---- */
+.cmp-headrow{align-items:center}
+.cmp-headrow #cmpMode{margin:0}
+.cmp-pickers{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:end;gap:16px;background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card);padding:16px 18px}
+.cmp-pickers .cmp-pick{min-width:0}
+.cmp-pick-lbl{font-family:var(--f-body);font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--c-ink-soft)}
+.cmp-mid{display:flex;flex-direction:column;align-items:center;gap:0;padding:0 8px;text-align:center}
+.cmp-mid-ab{font-family:var(--f-mono);font-size:14px;color:var(--c-ink-faint)}
+.cmp-mid b{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:40px;line-height:1.05;color:var(--c-ink)}
+.cmp-mid b.up{color:var(--m-ok)} .cmp-mid b.down{color:var(--m-out)}
+.cmp-mid small{font-size:12px;color:var(--c-ink-faint)}
+.cmp-has-mid .cmp-card .ring{display:none}
+.cmp-what-h{margin:4px 0 8px;font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;line-height:1.2;color:var(--c-head)}
+.cmp-grid-db{padding:0}
+.cmp-gh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 14px;padding:14px 16px 6px}
+.cmp-gh h3{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-head)}
+.cmp-key{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--c-ink-faint)}
+.cmp-key i{display:inline-block;margin-left:8px}
+.cmp-k-was{width:9px;height:9px;border-radius:50%;border:2px solid var(--c-ink-faint);background:var(--c-bg)}
+.cmp-k-now{width:3px;height:12px;border-radius:var(--radius-bar);background:var(--c-ink)}
+.cmp-k-band{width:16px;height:8px;border-radius:var(--radius-bar);background:var(--m-band)}
+.cmp-row.cmp-db{grid-template-columns:minmax(0,1.1fr) 64px minmax(0,1.6fr) 64px minmax(0,1.3fr);gap:12px}
+.cmp-db .cmp-a{text-align:right;font-family:var(--f-mono);color:var(--c-ink-faint)}
+.cmp-db .cmp-b{font-family:var(--f-mono);font-size:16px;font-weight:600;color:var(--c-ink)}
+.cmp-db .cmp-b.imp{color:var(--m-ok)} .cmp-db .cmp-b.reg{color:var(--m-near-text)}
+.cmp-db .cmp-d .tdelta{font-family:var(--f-body);letter-spacing:0;text-transform:none;font-size:12px;white-space:normal}
+.cmp-track{position:relative;height:16px}
+.cmp-track::before{content:"";position:absolute;left:0;right:0;top:7px;height:2px;background:var(--c-line)}
+.cmp-track i{position:absolute;display:block}
+.cmp-band{top:4px;height:8px;left:var(--x);width:var(--w);border-radius:var(--radius-bar);background:var(--m-band)}
+.cmp-link{top:7px;height:2px;left:var(--x);width:var(--w);background:var(--c-ink-faint)}
+.cmp-was{top:3px;width:10px;height:10px;margin-left:-5px;left:var(--x);border-radius:50%;border:2px solid var(--c-ink-faint);background:var(--c-bg)}
+.cmp-now{top:1px;width:4px;height:14px;margin-left:-2px;left:var(--x);border-radius:var(--radius-bar);background:var(--c-ink)}
+.cmp-now.imp{background:var(--m-ok)} .cmp-now.reg{background:var(--m-near)}
+@media(max-width:640px){
+  .cmp-pickers{grid-template-columns:minmax(0,1fr)}
+  .cmp-mid{flex-direction:row;gap:10px;align-items:baseline;justify-content:center}
+  .cmp-mid b{font-size:28px}
+  .cmp-row.cmp-db{grid-template-columns:minmax(0,1fr) auto auto;row-gap:6px}
+  .cmp-db .cmp-lbl{grid-column:1} .cmp-db .cmp-a{grid-column:2;grid-row:1} .cmp-db .cmp-b{grid-column:3;grid-row:1}
+  .cmp-db .cmp-bar{grid-column:1/-1} .cmp-db .cmp-d{grid-column:1/-1}
+}
 .cmp-lbl{font-weight:500;font-size:14px;color:var(--c-ink)}
 .cmp-a,.cmp-b{font-family:var(--f-mono);font-weight:500;font-size:14px;color:var(--c-ink);text-align:center;font-variant-numeric:tabular-nums}
 .cmp-a{color:var(--c-ink-faint)}

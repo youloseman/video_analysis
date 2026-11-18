@@ -1594,14 +1594,12 @@
         <svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Back to progress
       </button>
     </div>
-    <div class="blockhead u-mt-0">
-      <div class="eyebrow">Track your change</div>
-      <h2 class="sec u-mb-2" id="compareTitle" tabindex="-1">Before / after</h2>
-      <div class="speedline"></div>
+    <!-- Compare board: the title, the mode beside it (sessions vs setups vs
+         sides, only rendered when there is more than one to choose). -->
+    <div class="pagehead ath-head cmp-headrow">
+      <div class="ath-title"><h2 class="sec" id="compareTitle" tabindex="-1">Before / after</h2></div>
+      <span class="ph-right"><span id="cmpMode" class="hidden"></span></span>
     </div>
-    <!-- Sessions vs setups. Only rendered when two setups actually have
-         history, which is a structural gate rather than a tier check. -->
-    <div id="cmpMode" class="hidden u-ta-center"></div>
     <!-- Two-analysis (or two-setup) pickers -->
     <div class="cmp-pickers" id="cmpPickers"></div>
     <!-- AI progress summary -->
@@ -16052,13 +16050,16 @@ function cmpHeadline(A,B,sport,optOf){
     if(!tail && !m.noise) return;
     const r=v=>Math.round(v*10)/10;
     rows.push({w:opt?Math.abs(distOut(a,opt)-distOut(b,opt)):Math.abs(b-a),
-      html:`<b>${esc(m.label)}</b> ${r(a)}${m.unit||''} → ${r(b)}${m.unit||''}${tail?' — '+tail:''}`});
+      head:tail?`${m.label.toLowerCase()} ${tail.replace(/ the \S+ range$/,' its range').replace('closer to the range','closer to its range').replace('further from the range','further from its range')}`:'',
+      html:`<b>${esc(m.label)}</b> ${r(a)}${m.unit||''} → ${r(b)}${m.unit||''}${tail?': '+tail:''}`});
   });
   rows.sort((x,y)=>y.w-x.w);
   const sc=(typeof A.score==='number'&&typeof B.score==='number')
     ? `<li><b>Score</b> ${A.score} → ${B.score}</li>` : '';
   const body=rows.slice(0,3).map(r=>`<li>${r.html}</li>`).join('');
-  return `<div class="cmp-what"><div class="cmp-ai-h">What changed</div>${
+  // The finding as a heading (Compare board): the two biggest moves in words.
+  const head=rows.slice(0,2).map(r=>r.head).filter(Boolean).join(', ');
+  return `<div class="cmp-what"><div class="cmp-ai-h">What changed</div>${head?`<h3 class="cmp-what-h">${esc(head.charAt(0).toUpperCase()+head.slice(1))}</h3>`:''}${
     (sc||body)?`<ul>${sc}${body}</ul>`:''}${
     body?'':`<p>No measurement moved by more than the method can tell apart. If you made a change, it is smaller than a camera can see — trust how it feels, and give it a few rides.</p>`}</div>`;
 }
@@ -16197,7 +16198,12 @@ function renderComparePickers(){
       <span class="cmp-pick-lbl">${people?(side==='a'?'First':'Second'):side==='a'?'Before':'After'}</span>
       <select class="cmp-select" data-side="${side}">${list.map(e=>opt(e,cur)).join('')}</select>
     </label>`;
-  $('#cmpPickers').innerHTML = sel('a',aId)+`<div class="cmp-arrow" aria-hidden="true"><svg class="ic"><use href="#i-arr-l"/></svg></div>`+sel('b',bId);
+  const A=cmpEntry(aId), B=cmpEntry(bId);
+  // Between the two (Compare board): the score, first to second, and how far apart.
+  const mid=!people&&A&&B&&A.score!=null&&B.score!=null ? (()=>{ const d=B.score-A.score, days=Math.round(Math.abs((B.filmedAt||B.at)-(A.filmedAt||A.at))/864e5);
+      return `<div class="cmp-mid"><span class="cmp-mid-ab">${A.score} → ${B.score}</span><b class="${d>0?'up':d<0?'down':''}">${d>0?'+':d<0?'−':''}${Math.abs(d)}</b><small>score${days?`, ${days} day${days===1?'':'s'} apart`:''}</small></div>`; })()
+    : `<div class="cmp-arrow" aria-hidden="true"><svg class="ic"><use href="#i-arr-l"/></svg></div>`;
+  $('#cmpPickers').innerHTML = sel('a',aId)+mid+sel('b',bId);
 }
 /* One delta row: label, A value, B value, and a colored delta verdict. */
 function cmpRow(label,unit,a,b,opt,hi,noise){
@@ -16215,6 +16221,25 @@ function cmpRow(label,unit,a,b,opt,hi,noise){
     <div class="cmp-a">${fmt(a)}</div>
     <div class="cmp-d"><span class="tdelta ${dd.cls}">${dstr}${dd.trend?'<span class="cmp-trend"> · '+dd.trend+'</span>':''}</span></div>
     <div class="cmp-b">${fmt(b)}</div></div>`;
+}
+/* One reading as a dumbbell on its range (Compare board): before a ring,
+   after a solid mark, the band in green behind; the change said in words. */
+function cmpDbRow(label,unit,a,b,opt,hi,noise,dec){
+  if(a==null&&b==null) return '';   // nothing on either side: no row
+  const u=unit||'', dp=dec??(Math.max(Math.abs(a??0),Math.abs(b??0))<10?1:0), f=v=>v==null?'—':num(v,dp)+u;
+  if(a==null||b==null) return `<div class="cmp-row cmp-db"><div class="cmp-lbl">${esc(label)}</div><div class="cmp-a">${f(a)}</div><div class="cmp-bar"></div><div class="cmp-b">${f(b)}</div><div class="cmp-d"><span class="tdelta sta">—</span></div></div>`;
+  const dd=metricDelta(a,b,opt,hi), small=noise&&Math.abs(b-a)<noise;
+  let word='';
+  if(small) word='within measurement error';
+  else if(opt){ const inA=a>=opt[0]&&a<=opt[1], inB=b>=opt[0]&&b<=opt[1];
+    word=!inA&&inB?'now inside the range':inA&&!inB?'now outside the range':dd.cls==='imp'?'closer to the range':dd.cls==='reg'?'further from the range':inB?'in range':'steady'; }
+  else word=Math.abs(b-a)<1e-9?'steady':'';
+  const cls=small?'sta':opt?dd.cls:'sta';
+  const d=b-a, chip=Math.abs(d)<1e-9||small?word:`${d>0?'▲':'▼'} ${f(Math.abs(d))}${word?' · '+word:''}`;
+  let lo=Math.min(a,b), hi2=Math.max(a,b); if(opt){ lo=Math.min(lo,opt[0]); hi2=Math.max(hi2,opt[1]); }
+  const pad=(hi2-lo)*0.12||1; lo-=pad; hi2+=pad; const P=v=>((v-lo)/(hi2-lo)*100).toFixed(1);
+  const bar=`<div class="cmp-track" role="img" aria-label="${esc(`${label}: ${f(a)} to ${f(b)}${opt?`, range ${opt[0]} to ${opt[1]}${u}`:''}`)}">${opt?`<i class="cmp-band" style="--x:${P(opt[0])}%;--w:${(P(opt[1])-P(opt[0])).toFixed(1)}%"></i>`:''}<i class="cmp-link" style="--x:${P(Math.min(a,b))}%;--w:${(Math.abs(P(b)-P(a))).toFixed(1)}%"></i><i class="cmp-was" style="--x:${P(a)}%"></i><i class="cmp-now ${cls}" style="--x:${P(b)}%"></i></div>`;
+  return `<div class="cmp-row cmp-db"><div class="cmp-lbl">${esc(label)}</div><div class="cmp-a">${f(a)}</div><div class="cmp-bar">${bar}</div><div class="cmp-b ${cls}">${f(b)}</div><div class="cmp-d">${chip?`<span class="tdelta ${cls}">${chip}</span>`:''}</div></div>`;
 }
 /* Two people's reading: the gap and nothing about direction. Neutral, like left
    vs right. Red is outside the range that person's own report uses. */
@@ -16546,9 +16571,13 @@ function renderCompare(){
   const toSquad=hasCoachPlan()&&(people||state.cmp.from==='squad');
   $('#cmpBack').lastChild.textContent=toSquad?' Back to Squad':' Back to progress';
   $('#cmpBody').classList.toggle('cmp-people',people);
+  // The score already sits between the pickers: the cards keep the frames.
+  $('#cmpBody').classList.toggle('cmp-has-mid',!people&&!setups&&!sidesMode);
   const at=A.trends||{}, bt=B.trends||{}, ac=A.trendCat||{}, bc=B.trendCat||{};
   // Prefer B's optimal band, fall back to A's.
-  const optOf=k=> (B.trendOpt&&B.trendOpt[k]) || (A.trendOpt&&A.trendOpt[k]) || null;
+  // The band the dashboard and Progress use for this position (formBand), else
+  // the one either entry kept.
+  const optOf=k=> (!setups&&formBand(sport,k,B)) || (B.trendOpt&&B.trendOpt[k]) || (A.trendOpt&&A.trendOpt[k]) || null;
   // Header: the wipe (when both frames exist) over two cards with date + score.
   // No wipe between two people: it reads as the same rider, moved.
   const wipe = (setups||sidesMode||people) ? '' : baSliderHtml(A,B);
@@ -16564,9 +16593,11 @@ function renderCompare(){
       ${ringHtml(e.score,80,`<div class="cmp-score">${e.score==null?'—':e.score}<small>/100</small></div>`)}
     </div>`).join('')}
   </div>`;
+  const db=!people&&!sidesMode&&!setups;
   const rowFn = people ? (m=>cmpGapRow(m,A,B)) : sidesMode
     ? (m=>cmpSideRow(m.label,m.unit,at[m.key],bt[m.key],m.sideFloor))
-    : (m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi,m.noise));
+    : setups ? (m=>cmpRow(m.label,m.unit,at[m.key],bt[m.key],optOf(m.key),m.hi,m.noise))
+    : (m=>cmpDbRow(m.label,m.unit,at[m.key],bt[m.key],m.key==='score'?null:optOf(m.key),m.hi,m.noise,m.key==='score'?0:FORM_DEC[m.key]));
   const numRows=TREND_METRICS[sport].map(rowFn).join('');
   const catRows=sidesMode?'':(TREND_CATEGORICAL[sport]||[]).map(m=>cmpCatRow(m.label,m.map,m.good,ac[m.key],bc[m.key],people)).join('');
   // Sessions only: a verdict in words first, and the warning if the pair was
@@ -16578,13 +16609,14 @@ function renderCompare(){
     if(people) return `<p class="hint u-m-0 u-mb-4">Two people, not a before and after. A gap here is a difference between them, and the right number for one body may not be the right one for the other.</p>`+warn('Filmed differently, so part of the gap can be the camera.');
     return warn('Not a clean comparison.') + cmpHeadline(A,B,sport,optOf);
   })();
-  $('#cmpBody').innerHTML = head + verdict +
-    `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
+  $('#cmpBody').innerHTML = head + verdict + (db
+    ? `<div class="cmp-grid cmp-grid-db"><div class="cmp-gh"><h3>Every measurement</h3><span class="cmp-key"><i class="cmp-k-was"></i>Before <i class="cmp-k-now"></i>After <i class="cmp-k-band"></i>Optimal range</span></div>${numRows}${catRows}</div>`
+    : `<div class="cmp-grid"><div class="cmp-row cmp-row-head">
        <div class="cmp-lbl">Metric</div>
        <div class="cmp-a">${setups?'A':(sidesMode?'Left':people?tagA:'Before')}</div>
        <div class="cmp-d">${setups?'Difference':(sidesMode?'Asymmetry':people?'Gap':'Change')}</div>
        <div class="cmp-b">${setups?'B':(sidesMode?'Right':people?tagB:'After')}</div>
-     </div>${numRows}${catRows}</div>`
+     </div>${numRows}${catRows}</div>`)
     + (setups?`<p class="hint u-m-0 u-mt-4">Averaged across everything filmed on each setup. A difference here is
        the setup, not the day — one clip carries that session's fatigue and camera angle.</p>`:'')
     + (sidesMode?`<p class="hint u-m-0 u-mt-4">Each side-view clip measures the leg nearest the camera, so these two clips
