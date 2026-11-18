@@ -3542,7 +3542,37 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .bat-list{margin:12px 0 0}
 .bat-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(110px,.8fr) 90px minmax(90px,.8fr) auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--c-line);font-size:14px}
 .bat-row:first-child{border-top:0}
-.bat-row.bat-lane{grid-template-columns:minmax(0,1.6fr) minmax(100px,.6fr) auto}
+.bat-row.bat-lane{grid-template-columns:minmax(0,1fr) auto auto}
+/* ---- Batch, as drawn (Batch board, 2026-11-17) ---- */
+.bat-card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card);padding:16px;margin:0 0 16px;display:flex;flex-direction:column;gap:14px}
+.bat-card .bat-defaults{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px;margin:0}
+.bat-card .bat-defaults label{font-family:var(--f-body);font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--c-ink-soft);margin:0 0 6px}
+.bat-card .bat-defaults select{width:100%;min-height:44px}
+#batDrop{min-height:120px;padding:24px;margin:0;border:2px dashed var(--c-line-strong);background:var(--c-bg);color:var(--c-ink)}
+#batDrop::before,#batDrop::after{display:none}
+#batDrop:hover,#batDrop.over{border-color:var(--c-blue);background:var(--c-panel-blue)}
+#batDrop .ic-lg{color:var(--c-ink-faint);width:24px;height:24px;margin-bottom:8px}
+#batDrop b{color:var(--c-head)}
+#batDrop small{background:none;padding:0;color:var(--c-ink-faint);font-size:14px}
+.bat-queue{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card);overflow:hidden;margin:0 0 16px}
+.bat-queue .bat-status{margin:0;border:0;border-bottom:1px solid var(--c-line);border-radius:0;background:var(--c-panel-blue)}
+.bat-queue .bat-list{margin:0;border:0;border-radius:0}
+.bat-queue .bat-thumb{width:56px;height:42px}
+.bat-queue .bat-go{margin:0;padding:12px 16px;border-top:1px solid var(--c-line);justify-content:space-between}
+.bat-queue .bat-list:empty + .bat-go{border-top:0}
+.bat-lanecard{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card);overflow:hidden}
+.bat-lane-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;padding:14px 16px 6px}
+.bat-lane-h .bat-h{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-head);text-transform:none;letter-spacing:0}
+.bat-lane-h span{font-size:14px;color:var(--c-ink-faint)}
+.bat-lane-who{font-size:14px;color:var(--c-ink-soft)}
+.bat-lane-who b{color:var(--c-ink);font-weight:600}
+.bat-chip{display:inline-flex;align-items:center;gap:6px;justify-self:end;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--c-panel);color:var(--c-ink-soft);white-space:nowrap}
+.bat-chip.bat-c-live{background:var(--c-panel-blue);color:var(--c-blue-dk)}
+.bat-chip.bat-c-ok{background:var(--st-good-bg);color:var(--m-ok)}
+.bat-chip.bat-c-warn{background:var(--st-warn-bg);color:var(--m-near-text)}
+.bat-chip.bat-c-bad{background:var(--st-bad-bg);color:var(--st-bad-text)}
+.bat-lane .p-acts{display:flex;gap:12px}
+.bat-lane .p-acts button{background:none;border:0;color:var(--c-blue-dk);font:inherit;font-size:14px;cursor:pointer;padding:4px 0}
 .bat-name{min-width:0;overflow-wrap:anywhere}
 .bat-name small{display:block;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
 .bat-name .bat-why{font-family:var(--f-body);font-size:12px;color:var(--c-ink-soft);margin-top:2px}

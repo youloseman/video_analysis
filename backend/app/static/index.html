@@ -1967,11 +1967,12 @@
   <!-- ============ BATCH (Coach plan) ============ -->
   <section id="batch" class="hidden" aria-labelledby="batTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Squad</button></div>
-    <div class="pagehead">
-      <h2 class="sec" id="batTitle" tabindex="-1">Upload several clips</h2>
-      <span class="ph-lede">Up to 10 clips and photos. Send them and go for a coffee: videos are analysed one by one, we email you when they are done, and you can close this page.</span>
+    <div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="batTitle" tabindex="-1">Upload several clips</h2>
+        <p class="ph-lede">Up to 10 clips and photos. Send them and go for a coffee: videos are analysed one by one, we email you when they are done, and you can close this page.</p></div>
     </div>
     <p class="hint hidden" id="batNoSquad">No athletes yet, so these would be filed as your own clips. <a href="#" onclick="event.preventDefault();openAthletes(true)">Add an athlete first</a>.</p>
+    <div class="bat-card">
     <div class="bat-defaults">
       <div><label for="batAthlete">Whose, unless you say otherwise</label><select id="batAthlete"></select></div>
       <div><label for="batSport">Sport</label><select id="batSport"><option value="auto" selected>Auto, from the clip</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
@@ -1982,10 +1983,15 @@
       <b>Drop clips and photos here, or click to pick them</b>
       <small>Side-on, whole body in frame. Each one is checked against your framing bars first.</small>
     </label>
+    </div>
     <input type="file" id="batFiles" class="visually-hidden" accept="video/*,image/*" multiple aria-label="Clips and photos">
-    <div class="prof-list bat-list" id="batList"></div>
+    <!-- The files picked (Batch board): what the batch is doing on top, a row
+         per file, the hint and Send at the foot. Hidden until there is one. -->
+    <div class="bat-queue hidden" id="batQueue">
     <div class="bat-status hidden" id="batStatus" role="status" aria-live="polite"></div>
-    <div class="bat-go"><button class="btn btn-primary" type="button" id="batGo" disabled>Send to analysis</button><span class="hint" id="batHint"></span></div>
+    <div class="prof-list bat-list" id="batList"></div>
+    <div class="bat-go"><span class="hint" id="batHint"></span><button class="btn btn-primary" type="button" id="batGo" disabled>Send to analysis</button></div>
+    </div>
     <div id="batLane"></div>
   </section>
 
@@ -15000,6 +15006,7 @@ function renderBatch(){
       ${batchStateHtml(it)}
       ${it.state==='sent'&&it.kind==='photo'&&it.entryId?`<button type="button" class="btn btn-ghost btn-sm" data-openph="${esc(it.entryId)}">Open</button>`:it.state==='sent'||it.state==='sending'?'<span></span>':`<button type="button" class="p-copy" data-rm="${i}"${b.running?' disabled':''}>remove</button>`}
     </div>`).join('');
+  const q=$('#batQueue'); if(q) q.classList.toggle('hidden', !b.items.length&&!b.running&&!b.summary);
   const go=$('#batGo');
   // A file that failed goes again: the ones already sent stay sent.
   const todo=b.items.filter(x=>x.state==='ready'||x.state==='failed').length;
@@ -15164,18 +15171,21 @@ function renderLane(){
   const host=$('#batLane'); if(!host) return;
   const items=state.laneItems||[];
   if(!items.length){ host.innerHTML=''; return; }
-  host.innerHTML=`<h3 class="bat-h">The lane · last two weeks</h3><div class="prof-list">`+items.map(i=>{
+  // The lane (Batch board): the athlete first, the file and what it is after,
+  // the state as a chip; a stopped clip says why beside it.
+  host.innerHTML=`<div class="bat-lanecard"><div class="bat-lane-h"><h3 class="bat-h">In the lane</h3><span>last two weeks · one at a time, in the order sent</span></div><div class="bat-lanelist">`+items.map(i=>{
     const why=(i.reasons||[]).map(r=>r.text).join(' ')||i.error||'';
     const noted=i.status==='done'&&why;
+    const st=['no_go','failed'].includes(i.status)?'bat-c-bad':noted?'bat-c-warn':['queued','scanning','running'].includes(i.status)?'bat-c-live':i.status==='done'?'bat-c-ok':'';
     return `<div class="bat-row bat-lane" data-id="${i.id}">
-      <div class="bat-name">${esc(i.filename||'Clip')}<small>${i.athlete_name?esc(i.athlete_name)+' · ':''}${esc(laneWhat(i))}${i.source==='intake'?' · sent by them':''}</small>${why?`<small class="bat-why">${esc(why)}</small>`:''}</div>
-      <div class="bat-state ${['no_go','failed'].includes(i.status)?'sq-off':noted?'bat-noted':['queued','scanning','running'].includes(i.status)?'bat-live':i.status==='done'?'bat-ok':''}">${['queued','scanning','running'].includes(i.status)?'<span class="bat-dot" aria-hidden="true"></span>':''}${noted?'Ready, read the note':esc(LANE_WORD[i.status]||i.status)}</div>
+      <div class="bat-name"><span class="bat-lane-who"><b>${esc(i.athlete_name||i.filename||'Clip')}</b>${i.athlete_name?` · ${esc(i.filename||'clip')}`:''} · ${esc(laneWhat(i))}${i.source==='intake'?' · sent by them':''}</span>${why?`<small class="bat-why">${esc(why)}</small>`:''}</div>
       <div class="p-acts">
-        ${i.status==='done'?`<button type="button" data-open="${esc(i.client_id)}">Open</button>`:''}
+        ${i.status==='done'?`<button type="button" data-open="${esc(i.client_id)}">Open report</button>`:''}
         ${i.status==='no_go'?`<button type="button" data-any="${i.id}">Run anyway</button>`:''}
         ${['running','scanning'].includes(i.status)?'':`<button type="button" data-del="${i.id}">Remove</button>`}
-      </div></div>`;
-  }).join('')+`</div>`;
+      </div>
+      <span class="bat-chip ${st}">${['queued','scanning','running'].includes(i.status)?'<span class="bat-dot" aria-hidden="true"></span>':''}${noted?'Ready, read the note':esc(LANE_WORD[i.status]||i.status)}</span></div>`;
+  }).join('')+`</div></div>`;
   host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',async()=>{
     if(!findEntry(b.dataset.open)) await refreshCloud();
     const e=findEntry(b.dataset.open);

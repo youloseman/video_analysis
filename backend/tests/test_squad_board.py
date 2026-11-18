@@ -50,3 +50,11 @@ def test_athletes_rows_and_the_athlete_page_as_drawn():
     # the same honest line the Squad card uses
     assert "function clipChange(e){" in SPA and "const revLine=clipChange;" in SPA
     assert "squadChips" not in SPA
+
+
+def test_batch_as_drawn_keeps_the_analyze_drop_zone_dark():
+    """The light dashed zone is the batch's own; Analyze's viewfinder is step 5."""
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    assert "#batDrop::before,#batDrop::after{display:none}" in css
+    assert 'id="batQueue"' in SPA and "$('#batQueue')" in SPA
+    assert 'class="bat-lanecard"' in SPA and "bat-chip" in SPA
