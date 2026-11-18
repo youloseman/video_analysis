@@ -362,7 +362,9 @@ video.ex-media{background:var(--c-media-bg)}
   .foldblock > .fold-head{border-bottom:1px solid var(--c-line)}
   .kinowrap{overflow:visible !important}
   .kinowrap img,.kinowrap>*{max-width:100% !important;height:auto !important}
-  #results,#photoResults{display:block !important}
+  /* Only on the report itself: printing another page (an Expert Review)
+     must not pull the empty report sections onto the paper. */
+  body[data-state="results"] #results,body[data-state="photoresults"] #photoResults{display:block !important}
   .printhead{display:block;border-bottom:2px solid #14181F;padding-bottom:8px;margin-bottom:16px}
   .printhead .ph-brand{font-family:var(--f-brand);font-weight:900;font-style:italic;
     font-size:18px;color:var(--c-head);letter-spacing:-.02em}
