@@ -173,7 +173,8 @@
 
 <!-- Mobile top bar (shown < 900px): brand + hamburger -->
 <div class="topbar">
-  <button class="topbar-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+  <!-- One menu on a phone: this opens the More page, as the More tab does. -->
+  <button class="topbar-toggle" id="navToggle" type="button" aria-label="More">
     <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
     <!-- Unread-release dot. On phones the "What's new" link lives inside the
          drawer, so without this the dot would only be visible to someone who
@@ -2290,7 +2291,8 @@ const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydeta
 const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', more:'#botMore', coachprofile:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
   const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
-  const botActive = BOTNAV_FOR_STATE[name] || '#botAnalyze';
+  // A coach's Progress lives on the More page; their Compare is the tab.
+  const botActive = (hasCoachPlan()&&name==='trends') ? '#botMore' : (BOTNAV_FOR_STATE[name] || '#botAnalyze');
   document.querySelectorAll('.sidenav .navlink').forEach(a=>a.removeAttribute('aria-current'));
   document.querySelectorAll('.botnav .botlink').forEach(a=>a.removeAttribute('aria-current'));
   const el = $(active); if(el) el.setAttribute('aria-current','page');
@@ -8608,7 +8610,7 @@ function moreRow(r){
     ? `<a class="mo-row" href="${r.href}">${inner}</a>`
     : `<a class="mo-row" href="#" data-more="${r.go}">${inner}</a>`;
 }
-const MORE_GO={compare:()=>openCompare(), profiles:()=>openProfiles(), athletes:()=>openAthletes(), batch:()=>openBatch(),
+const MORE_GO={compare:()=>openCompare(), progress:()=>openProgress(), profiles:()=>openProfiles(), athletes:()=>openAthletes(), batch:()=>openBatch(),
   coachprofile:()=>openCoachProfile(), pricing:()=>openPricing(), whatsnew:()=>openWhatsNew(),
   feedback:()=>openFeedbackAdmin(), reviews:()=>openExpertAdmin()};
 function renderMore(){
@@ -8626,7 +8628,8 @@ function renderMore(){
   }
   const work=[];
   if(auth){
-    work.push({label:'Compare', sub:'two analyses side by side', go:'compare'});
+    if(hasCoachPlan()) work.push({label:'Progress', sub:'your own scores over time', go:'progress'});
+    else work.push({label:'Compare', sub:'two analyses side by side', go:'compare'});
     const pu=PROFILES&&PROFILES.used!=null?` · ${PROFILES.used} of ${PROFILES.limit}`:'';
     work.push({label:'Profiles', sub:'bikes and shoes'+pu, go:'profiles'});
   }
@@ -12326,6 +12329,12 @@ function renderAuth(){
   fileInput.multiple=hasCoachPlan();
   // The coach's home is the squad; the label says so.
   const homeLbl=document.querySelector('#navHome span'); if(homeLbl) homeLbl.textContent=hasCoachPlan()?'Squad':'My technique';
+  // The coach's tab bar as drawn: Squad / History / Analyze / Compare / More.
+  // Their own Progress moves to the More page.
+  const bh=document.querySelector('#botHome span'); if(bh) bh.textContent=hasCoachPlan()?'Squad':'Home';
+  const bp=$('#botProgress');
+  if(bp){ bp.querySelector('span').textContent=hasCoachPlan()?'Compare':'Progress';
+    bp.querySelector('use').setAttribute('href',hasCoachPlan()?'#i-compare':'#i-progress'); }
   document.body.classList.toggle('coach-plan', hasCoachPlan());
   const keep=$('#retentionLine');
   if(keep) keep.textContent=auth&&auth.tier==='coach'
@@ -13351,15 +13360,6 @@ function renderProfileFilter(hostId, list){
   }));
 }
 
-/* Every analysis by date, one strip per sport (History board): a dot per
-   score in its band's colour, the first date on the left and today on the
-   right. A dot opens its report. */
-function histStripHtml(list){
-  const rows=['run','bike'].map(sp=>[sp,list.filter(e=>e.sport===sp&&e.score!=null)]).filter(([,es])=>es.length);
-  if(!rows.length) return '';
-  const now=Date.now(), t=e=>e.filmedAt||e.at||now;
-  const lo=Math.min(...rows.flatMap(([,es])=>es.map(t))), span=Math.max(864e5,now-lo);
-  const X=ms=>((ms-lo)/span*92+4).toFixed(1);
 /* Dots that would sit on each other (under 6 % of the strip apart) share a
    spot and are spread by their own width around it: inward at an edge, so
    "today" does not run off the card. [entry, x %, offset in dot widths]. */
@@ -13373,6 +13373,15 @@ function histStripSpread(es, t, X){
   }
   return out;
 }
+/* Every analysis by date, one strip per sport (History board): a dot per
+   score in its band's colour, the first date on the left and today on the
+   right. A dot opens its report. */
+function histStripHtml(list){
+  const rows=['run','bike'].map(sp=>[sp,list.filter(e=>e.sport===sp&&e.score!=null)]).filter(([,es])=>es.length);
+  if(!rows.length) return '';
+  const now=Date.now(), t=e=>e.filmedAt||e.at||now;
+  const lo=Math.min(...rows.flatMap(([,es])=>es.map(t))), span=Math.max(864e5,now-lo);
+  const X=ms=>((ms-lo)/span*92+4).toFixed(1);
   const ticks=[]; const d=new Date(lo); d.setDate(1); d.setMonth(d.getMonth()+1);
   for(;d.getTime()<now-6*864e5;d.setMonth(d.getMonth()+1)) ticks.push(d.getTime());
   return `<div class="hstrip"><div class="hstrip-h"><b>Every analysis, by date</b><span class="hstrip-key"><i class="sc-good"></i>86 and up <i class="sc-watch"></i>60–85 <i class="sc-fix"></i>under 60</span></div>
@@ -13922,9 +13931,8 @@ $('#wordmarkM').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ')
 
 /* ---- Mobile off-canvas navigation ---- */
 const navToggle=$('#navToggle'), navScrim=$('#navScrim');
-function openNav(){ document.body.classList.add('nav-open'); navToggle.setAttribute('aria-expanded','true'); navScrim.hidden=false; }
-function closeNav(){ document.body.classList.remove('nav-open'); navToggle.setAttribute('aria-expanded','false'); navScrim.hidden=true; }
-navToggle.addEventListener('click',()=>{ document.body.classList.contains('nav-open') ? closeNav() : openNav(); });
+function closeNav(){ document.body.classList.remove('nav-open'); navScrim.hidden=true; }
+navToggle.addEventListener('click',()=>{ closeNav(); openMore(); });
 navScrim.addEventListener('click',closeNav);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && document.body.classList.contains('nav-open')) closeNav(); });
 // Any sidebar link closes the drawer (mobile); desktop ignores (drawer not shown)
@@ -13932,7 +13940,7 @@ document.querySelectorAll('.sidenav .navlink').forEach(a=>a.addEventListener('cl
 
 // Bottom tab bar (mobile) — same destinations as the sidebar; Academy is a real link
 $('#botAnalyze').addEventListener('click',e=>{ e.preventDefault(); reset(); });
-$('#botProgress').addEventListener('click',e=>{ e.preventDefault(); openProgress(); });
+$('#botProgress').addEventListener('click',e=>{ e.preventDefault(); hasCoachPlan()?openCompare():openProgress(); });
 $('#botHistory').addEventListener('click',e=>{ e.preventDefault(); openHistoryView(); });
 $('#history').addEventListener('click',e=>{
   const oa=e.target.closest('[data-openauth]'); if(oa){ e.preventDefault(); openAuth(oa.dataset.openauth); return; }
