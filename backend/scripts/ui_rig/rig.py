@@ -113,8 +113,20 @@ def seed(a):
         con.execute("update users set tier='coach' where email='rig-coach@example.com'")
         con.commit()
         con.close()
+        ids = {}
         for name, sport in (("Anna Reid", "both"), ("Marc Olsen", "bike"), ("Ines Duarte", "run")):
-            srv.call("POST", "/me/athletes", {"name": name, "sport": sport}, toks["coach"])
+            st, j = srv.call("POST", "/me/athletes", {"name": name, "sport": sport}, toks["coach"])
+            ids[name] = j.get("id") if isinstance(j, dict) else None
+        # A squad worth looking at: a race close enough to put someone first, a
+        # group to filter by. Dates are relative to the frozen clock (T0).
+        races = (("Anna Reid", "Ironman 70.3 Victoria", "2026-11-26", "A"),
+                 ("Marc Olsen", "Regional TT champs", "2026-12-27", "B"))
+        for who, race, day, pri in races:
+            srv.call("POST", f"/me/athletes/{ids[who]}/races", {"name": race, "race_on": day, "priority": pri}, toks["coach"])
+        st, g = srv.call("POST", "/me/athlete-groups", {"name": "Long course"}, toks["coach"])
+        if isinstance(g, dict) and g.get("id"):
+            for who in ("Anna Reid", "Marc Olsen"):
+                srv.call("PUT", f"/me/athletes/{ids[who]}/groups", {"group_ids": [g["id"]]}, toks["coach"])
         # The athlete's history is written the way a user writes it: the app's own
         # saveToHistory, one example a day apart, so Progress has a line to draw.
         from playwright.sync_api import sync_playwright
@@ -131,12 +143,30 @@ def seed(a):
                 pg.evaluate("""([R, kind, back]) => { window.__T = %s - back*86400000; state.sport = R.sport_type;
                                  return saveToHistory(kind, R); }""" % T0, [r, kind, len(examples()) - i])
                 pg.wait_for_timeout(600)
+            # The coach's athletes get clips the same way: Analyze with the athlete
+            # picked. Anna two rides and a run, Marc a ride, Ines a run; Ines's is
+            # older than the Squad's inbox start, so it is not "to review".
+            ex = dict(examples())
+            cctx = b.new_context()
+            cctx.add_init_script(CLOCK)
+            cctx.add_init_script("try{localStorage.setItem('flapp_token',%s)}catch(e){}" % json.dumps(toks["coach"]))
+            cp = cctx.new_page()
+            cp.goto(srv.base + "/app#home", wait_until="networkidle")
+            cp.wait_for_timeout(1500)
+            for who, name, back in (("Anna Reid", "bike-road", 9), ("Anna Reid", "bike-road", 2),
+                                    ("Anna Reid", "run-treadmill", 1), ("Marc Olsen", "bike-road", 3),
+                                    ("Ines Duarte", "run-treadmill", 12)):
+                if ids.get(who) is None or name not in ex:
+                    continue
+                cp.evaluate("""([R, id, back]) => { window.__T = %s - back*86400000; state.sport = R.sport_type;
+                                 state.athleteId = String(id); return saveToHistory('video', R); }""" % T0, [ex[name], ids[who], back])
+                cp.wait_for_timeout(600)
             b.close()
         (OUT / "tokens.json").write_text(json.dumps(toks), encoding="utf-8")
         con = sqlite3.connect(SEED)
         n = con.execute("select count(*) from analyses").fetchone()[0]
         con.close()
-        print(f"seeded {SEED}: {n} analyses, coach with 3 athletes")
+        print(f"seeded {SEED}: {n} analyses, coach with 3 athletes, races, a group")
     finally:
         srv.stop()
 

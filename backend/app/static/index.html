@@ -391,8 +391,9 @@
       <div class="uphero-t">
         <span class="eyebrow" id="dashDate"></span>
         <h1 class="uphead" id="dashTitle" tabindex="-1">My technique</h1>
+        <p class="dash-meta" id="dashMeta"></p>
       </div>
-      <span class="ph-right"><button class="btn btn-primary" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
+      <span class="ph-right"><span class="sq-headacts" id="sqHeadActs"></span><button class="btn btn-primary dash-analyze" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
     </div>
     <!-- Delivered Expert Reviews. Filled by renderReviewCard(). -->
     <div id="dashReview"></div>
@@ -14448,7 +14449,23 @@ const SQUAD_METRICS={
   bike:[{key:'knee',label:'Knee BDC',unit:'°'},{key:'trunk',label:'Trunk',unit:'°'},{key:'hip',label:'Hip TDC',unit:'°'},{key:'hip_over',label:'Hip over crank',unit:'°'}],
   run:[{key:'cadence',label:'Cadence',unit:''},{key:'overstride',label:'Overstride',unit:'×'},{key:'trunk_lean',label:'Lean',unit:'°'}],
 };
-state.squadMe=false; state.squadPick=[]; state.squadKona='trunk';
+state.squadMe=false; state.squadPick=[]; state.squadKona='trunk'; state.squadSport=null; state.squadSort='race'; state.squadFind='';
+/* One reading in a sport table (Squad board): the value, red outside its
+   range, the change since the last clip like this one, and a small bar of
+   the range where the clip kept one. */
+function squadCell(e, prev, m){
+  const v=e&&e.trends?e.trends[m.key]:null;
+  if(v==null) return `<td class="sq-c" data-l="${esc(m.label)}"><span class="sq-na">—</span></td>`;
+  const o=(e.trendOpt||{})[m.key], off=o&&(v<o[0]||v>o[1]);
+  const pv=prev&&prev.trends?prev.trends[m.key]:null, d=pv!=null?v-pv:null;
+  const dec=m.key==='overstride'?2:0;
+  const dTxt=d==null||Math.abs(d)<0.05?'':`<small class="sq-d">${d>0?'▲':'▼'}${Math.abs(d).toFixed(dec)}</small>`;
+  let bar='';
+  if(o){ const span=(o[1]-o[0])||1, lo=Math.min(o[0]-span*0.8,v-span*0.2), hi=Math.max(o[1]+span*0.8,v+span*0.2), P=x=>((x-lo)/(hi-lo)*100).toFixed(1);
+    bar=`<span class="sq-bar" aria-hidden="true"><i style="--x:${P(o[0])}%;--w:${(P(o[1])-P(o[0])).toFixed(1)}%"></i><b style="--x:${P(v)}%"></b></span>`; }
+  return `<td class="sq-c${off?' sq-off':''}" data-l="${esc(m.label)}" title="${o?`range ${o[0]}–${o[1]}${m.unit}`:'no range for this one'}"><span class="sq-v">${num(v,dec)}${m.unit}</span>${dTxt}${bar}</td>`;
+}
+function athleteDoes(a, sp){ return a.sport===sp||a.sport==='both'||!a.sport; }
 function squadEntriesFor(a){
   return coachPool().filter(e=>e&&String(e.athleteId)===String(a.id));
 }
@@ -14594,56 +14611,129 @@ function renderSquadHome(){
   const lane=state.laneItems||[];
   const refilm=lane.filter(i=>i.status==='no_go');
   const inLine=lane.filter(i=>['queued','scanning','running'].includes(i.status));
-  const kpi=(n,l)=>`<div class="sq-kpi"><b>${n}</b><span>${l}</span></div>`;
-  const att=(id,txt)=>`<li><button type="button" class="sq-attbtn" data-open="${id}">${txt}</button></li>`;
+  // Also (Squad board): one tag and one line each, the tag saying why.
+  const att=(id,tag,cls,name,why)=>`<li><button type="button" class="sq-also" data-open="${id}"><i class="sq-tag ${cls}">${tag}</i><b>${esc(name)}</b> <span>${why}</span></button></li>`;
   // Unseen clips, the athlete racing soonest first: that report cannot wait.
   const raceIn=a=>a.next_race?a.next_race.days_to_go:1e9, racePri=a=>a.next_race?a.next_race.priority:'Z';
   const review=rows.flatMap(r=>r.es.filter(clipUnseen).map(e=>({a:r.a,e})))
     .sort((x,y)=>raceIn(x.a)-raceIn(y.a)||racePri(x.a).localeCompare(racePri(y.a))||(y.e.at||0)-(x.e.at||0));
   // A race inside three weeks and nothing filmed for two.
   const racing=rows.filter(r=>r.a.next_race&&r.a.next_race.days_to_go<=21&&(!r.last||now-(r.last.at||0)>=14*86400000));
+  // A clip already in To review says "outside the range" on its card.
+  const inReview=new Set(review.map(x=>String(x.a.id)));
   const attention=[
-    ...racing.map(r=>att(r.a.id,`${esc(r.a.name)}: ${esc(r.a.next_race.name)} ${raceWhen(r.a.next_race)}, ${r.last?'no clip for '+Math.round((now-r.last.at)/86400000)+' days':'no clip yet'}`)),
-    ...refilm.slice(0,3).map(i=>`<li><button type="button" class="sq-attbtn" data-batch="1">${esc(i.athlete_name||i.filename||'A clip')}: clip to film again</button></li>`),
-    ...rows.filter(r=>filmLook(r.last)).map(r=>att(r.a.id,`${esc(r.a.name)}: last ${r.last.sport==='run'?'run':'ride'}, ${esc(filmLook(r.last).short)}`)),
-    ...off.map(r=>att(r.a.id,`${esc(r.a.name)}: outside the range in the last ${r.last.sport==='run'?'run':'ride'}`)),
-    ...lapsed.map(r=>att(r.a.id,`${esc(r.a.name)}: on the free plan, so you see what they see`)),
-    ...quiet.filter(r=>!racing.includes(r)).map(r=>att(r.a.id,`${esc(r.a.name)}: ${r.last?'no clip for '+Math.round((now-r.last.at)/86400000)+' days':'no clip yet'}`)),
-  ].slice(0,5);
-  const row=r=>{
-    const e=r.last, picked=state.squadPick.includes(String(r.a.id));
-    return `<tr data-id="${r.a.id}">
-      <td class="sq-pick"><input type="checkbox" data-pick="${r.a.id}" aria-label="Compare ${esc(r.a.name)}"${picked?' checked':''}${e&&e.trends?'':' disabled'}></td>
-      <td class="sq-thumb">${e?`<div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>`:''}</td>
-      <th scope="row"><button type="button" class="sq-name" data-open="${r.a.id}">${esc(r.a.name)}</button>${r.a.linked?'<span class="p-kind p-linked">linked</span>':''}${r.a.unreviewed?`<i class="new-pill" title="Clips you have not opened yet">${r.a.unreviewed} new</i>`:''}<small>${esc(ATHLETE_SPORT_LABEL[r.a.sport]||'')}${r.a.note?' · '+esc(r.a.note):''}</small>${r.a.next_race?`<small class="sq-race${r.a.next_race.days_to_go<=21?' sq-race-soon':''}">${esc(r.a.next_race.name)} · ${esc(r.a.next_race.priority)} · ${raceWhen(r.a.next_race)}</small>`:''}</th>
-      <td class="sq-last">${e?`${esc(fmtWhen(e.filmedAt||e.at))}<small>${e.sport==='run'?'run':'ride'}${sideWord(e)?' · '+sideWord(e):''}${e.label?' · '+esc(e.label):''}</small>${filmFlag(e)}`:'—'}</td>
-      <td class="sq-chips">${e?squadChips(e,r.prev,r.prev?'':cmpGapWord(e,r.es)):'<span class="sq-na">no clip yet</span>'}</td>
-      <td class="sq-cda">${r.a.cda_latest?`<b>${cdaNum(r.a.cda_latest.value_m2)}</b><small>${esc(cdaSrc(r.a.cda_latest.source))}${r.a.cda_latest.protocol==='single_ride'?' · one ride':''} · ${esc(cdaDay(r.a.cda_latest.measured_on))}</small>`:'<span class="sq-na">—</span>'}</td>
-      <td class="sq-score">${e&&e.score!=null?e.score:'—'}</td></tr>`;
+    ...racing.map(r=>att(r.a.id,`Race ${raceWhen(r.a.next_race)}`,'sq-tag-race',r.a.name,r.last?`no clip for ${Math.round((now-r.last.at)/86400000)} days`:'no clip yet')),
+    ...refilm.slice(0,3).map(i=>`<li><button type="button" class="sq-also" data-batch="1"><i class="sq-tag sq-tag-bad">Film again</i><b>${esc(i.athlete_name||i.filename||'A clip')}</b> <span>clip to film again</span></button></li>`),
+    ...rows.filter(r=>filmLook(r.last)).map(r=>att(r.a.id,'Film again','sq-tag-bad',r.a.name,`last ${r.last.sport==='run'?'run':'ride'}, ${esc(filmLook(r.last).short)}`)),
+    ...off.filter(r=>!inReview.has(String(r.a.id))).map(r=>att(r.a.id,'Out of range','sq-tag-bad',r.a.name,`in the last ${r.last.sport==='run'?'run':'ride'}`)),
+    ...lapsed.map(r=>att(r.a.id,'Free plan','sq-tag-info',r.a.name,'you see what they see')),
+    ...quiet.filter(r=>!racing.includes(r)).map(r=>att(r.a.id,r.last?'Quiet':'No clip yet','sq-tag-info',r.a.name,r.last?`no clip for ${Math.round((now-r.last.at)/86400000)} days`:'send the upload link')),
+  ].slice(0,6);
+  // The card's one line: what is outside the range, else what moved most.
+  const revLine=e=>{
+    const t=e.trends; if(!t) return '<span class="sq-na">numbers appear when the report opens</span>';
+    const ms=SQUAD_METRICS[e.sport]||[], o=e.trendOpt||{};
+    const out=ms.filter(m=>t[m.key]!=null&&o[m.key]&&(t[m.key]<o[m.key][0]||t[m.key]>o[m.key][1])).map(m=>m.label.replace(/ (BDC|TDC)$/,'').toLowerCase());
+    if(out.length){ const w=out.length>1?`${out.slice(0,-1).join(', ')} and ${out[out.length-1]}`:out[0];
+      return `<span class="sq-rev-bad">${esc(w.charAt(0).toUpperCase()+w.slice(1))} outside the range</span>`; }
+    const p=cmpPrevious(e,coachPool().filter(x=>String(x.athleteId)===String(e.athleteId)));
+    const moved=p&&p.trends?ms.filter(m=>t[m.key]!=null&&p.trends[m.key]!=null).map(m=>({m,d:t[m.key]-p.trends[m.key]})).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d))[0]:null;
+    // "In range" only for the readings that have a range: a ride keeps one for
+    // the knee, so the card names it rather than claiming everything.
+    const shown=ms.filter(m=>t[m.key]!=null), banded=shown.filter(m=>o[m.key]);
+    const inR=!banded.length?'':banded.length===shown.length?'everything in range'
+      :`${banded.map(m=>m.label.replace(/ (BDC|TDC)$/,'').toLowerCase()).join(' and ')} in range`;
+    const mv=moved&&Math.abs(moved.d)>=0.05?`${esc(moved.m.label)} ${moved.d>0?'▲':'▼'}${Math.abs(moved.d).toFixed(moved.m.key==='overstride'?2:0)}${moved.m.unit}`:'';
+    const txt=[mv,inR].filter(Boolean).join(' · ');
+    return txt?`<span class="sq-rev-ok">${txt.charAt(0).toUpperCase()+txt.slice(1)}</span>`:'<span class="sq-na">no range on these readings</span>';
   };
-  const feed=coachPool().filter(e=>e.athleteId!=null).slice(0,8);
+  const revCard=({a,e})=>`<li class="sq-revcard">
+      <div class="hthumb sq-revfig${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>
+      <div class="sq-revbody"><b class="sq-revname">${esc(a.name)}</b>
+        <small>${e.sport==='run'?'Run':'Ride'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}${sideWord(e)?' · '+sideWord(e):''}${e.label?' · '+esc(e.label):''}${a.next_race&&a.next_race.days_to_go<=21?` · <span class="sq-race-soon">${esc(a.next_race.name)} ${raceWhen(a.next_race)}</span>`:''}</small>
+        <p>${revLine(e)}</p>
+        <div class="sq-revacts"><button type="button" class="btn btn-link" data-entry="${esc(e.id)}">Open report</button><button type="button" class="btn btn-link" data-note="${esc(e.id)}">Write a note</button><button type="button" class="btn btn-ghost btn-sm" data-seen="${esc(e.id)}">✓ Seen</button></div>
+      </div></li>`;
+  // A table per sport (Squad board): one column per reading so the eye runs
+  // down it; an athlete who does both is in both, each with that sport's clip.
+  const find=state.squadFind.trim().toLowerCase();
+  const sorted=list=>{
+    const rIn=r=>r.a.next_race?r.a.next_race.days_to_go:1e9;
+    const attn=r=>(squadOutOfRange(r.last)?2:0)+(r.es.some(clipUnseen)?1:0);
+    return list.slice().sort((x,y)=>state.squadSort==='name'?x.a.name.localeCompare(y.a.name)
+      :state.squadSort==='attention'?(attn(y)-attn(x))||x.a.name.localeCompare(y.a.name)
+      :(rIn(x)-rIn(y))||x.a.name.localeCompare(y.a.name));
+  };
+  const sportTable=sp=>{
+    const list=sorted(rows.filter(r=>athleteDoes(r.a,sp)&&(!find||r.a.name.toLowerCase().includes(find))).map(r=>{
+      const last=r.es.find(e=>e.sport===sp)||null; return {...r,last,prev:last?cmpPrevious(last,r.es):null}; }));
+    if(!list.length) return '';
+    // A column nobody has a number in is width for nothing.
+    const ms=SQUAD_METRICS[sp].filter(m=>list.some(r=>r.last&&r.last.trends&&r.last.trends[m.key]!=null));
+    const cdaCol=sp==='run'||list.some(r=>r.a.cda_latest);
+    const note=r=>{ const n=r.es.find(e=>e.sport===sp&&e.coachNote); return n?`<span class="sq-note">${esc(shortDate(n.at))}: “${esc(String(n.coachNote).slice(0,70))}${String(n.coachNote).length>70?'…':''}”</span>`:'<span class="sq-na">No note on this clip yet.</span>'; };
+    const tr=r=>{ const e=r.last, picked=state.squadPick.includes(String(r.a.id)), nr=r.a.next_race;
+      return `<tr data-id="${r.a.id}">
+        <td class="sq-pick"><input type="checkbox" data-pick="${r.a.id}" aria-label="Compare ${esc(r.a.name)}"${picked?' checked':''}${e&&e.trends?'':' disabled'}></td>
+        <td class="sq-thumb">${e?`<div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>`:'<div class="hthumb"></div>'}</td>
+        <th scope="row"><button type="button" class="sq-name" data-open="${r.a.id}">${esc(r.a.name)}</button>${r.a.unreviewed?`<i class="new-pill" title="Clips you have not opened yet">${r.a.unreviewed} new</i>`:''}<small>${esc(ATHLETE_SPORT_LABEL[r.a.sport]||'')}${r.a.linked?' · linked':''}${r.a.note?' · '+esc(r.a.note):''}</small></th>
+        <td class="sq-racec" data-l="Next race">${nr?`<span class="sq-racen">${esc(nr.name)}</span><small class="sq-racechip${nr.days_to_go<=21?' sq-race-soon':''}">${esc(nr.priority)} · ${raceWhen(nr)}</small>`:`<span class="sq-na">no race yet</span><button type="button" class="p-copy" data-open="${r.a.id}">add one</button>`}</td>
+        <td class="sq-last" data-l="Last clip">${e?`${esc(fmtWhen(e.filmedAt||e.at))}<small>${sideWord(e)}${e.label?' · '+esc(e.label):''}</small>${filmFlag(e)}${!r.prev&&r.es.filter(x=>x.sport===sp).length>1?`<small class="sq-na">${esc(cmpGapWord(e,r.es))}</small>`:''}`:'<span class="sq-na">no clip yet</span>'}</td>
+        ${ms.map(m=>e?squadCell(e,r.prev,m):`<td class="sq-c" data-l="${esc(m.label)}"><span class="sq-na">—</span></td>`).join('')}
+        ${sp==='bike'&&!cdaCol?'':sp==='bike'?`<td class="sq-cda" data-l="Measured CdA">${r.a.cda_latest?`<b>${cdaNum(r.a.cda_latest.value_m2)}</b><small>${esc(cdaSrc(r.a.cda_latest.source))}${r.a.cda_latest.protocol==='single_ride'?' · one ride':''} · ${esc(cdaDay(r.a.cda_latest.measured_on))}</small>`:'<span class="sq-na">not measured</span>'}</td>`
+          :`<td class="sq-notec" data-l="Your last note">${note(r)}</td>`}
+        <td class="sq-score">${e&&e.score!=null?e.score:'—'}</td></tr>`; };
+    const order={race:'nearest race first',attention:'needs attention first',name:'by name'}[state.squadSort];
+    return `<section class="sq-sport"><div class="sq-sport-h"><h2>${sp==='run'?'Run':'Bike'}</h2><span>· ${list.length} athlete${list.length===1?'':'s'} · ${order}</span>
+        <span class="sq-key" aria-hidden="true"><i class="sq-k-band"></i>optimal range <i class="sq-k-off"></i>outside the range ▲▼ since their last clip like this one</span></div>
+      <div class="sq-tablewrap"><table class="sq-table sq-t2">
+        <thead><tr><th scope="col"></th><th scope="col"></th><th scope="col">Athlete</th><th scope="col">Next race</th><th scope="col">Last clip</th>${ms.map(m=>`<th scope="col" class="sq-ch">${esc(m.label)}</th>`).join('')}${cdaCol?`<th scope="col"${sp==='bike'?' title="Measured elsewhere and entered by hand; Flapp does not calculate it"':''}>${sp==='bike'?'Measured CdA':'Your last note'}</th>`:''}<th scope="col" class="sq-score">Score</th></tr></thead>
+        <tbody>${list.map(tr).join('')}</tbody></table></div>
+      <p class="hint sq-foot">${sp==='bike'&&cdaCol?'Measured CdA is entered by hand from a tunnel, a field test or a sensor; Flapp does not calculate it. ':''}Tick two athletes to compare them side by side.</p></section>`;
+  };
+  // The counts, under the title (Squad board); the two actions beside it.
+  const meta=$('#dashMeta');
+  if(meta) meta.innerHTML=[`<b>${squad.length}</b> athlete${squad.length===1?'':'s'}`,`<b>${clips30}</b> clip${clips30===1?'':'s'} in 30 days`,
+    inLine.length?`<b>${inLine.length}</b> in the lane`:'', refilm.length?`<b>${refilm.length}</b> to film again`:'', `<b>${review.length}</b> to review`].filter(Boolean).join(' · ');
+  const acts=$('#sqHeadActs');
+  if(acts) acts.innerHTML=`<button class="btn btn-ghost" type="button" onclick="openAthletes()">Manage athletes</button><button class="btn btn-primary" type="button" id="sqBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload several clips</button>`;
   host.innerHTML=`${coachNameAsk()}
-    <div class="sq-toolbar"><button class="btn btn-primary btn-sm" type="button" id="sqBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload several clips</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAthletes()">Manage athletes</button><button class="btn btn-ghost btn-sm" type="button" id="sqCompare" disabled>Compare two</button></div>
-    ${groups.length?`<div class="sq-groups" role="group" aria-label="Show a group"><button type="button" data-group="" aria-pressed="${state.squadGroup==null}">Everyone <small>${everyone.length}</small></button>${groups.map(g=>`<button type="button" data-group="${g.id}" aria-pressed="${String(g.id)===String(state.squadGroup)}">${esc(g.name)} <small>${everyone.filter(a=>(a.group_ids||[]).includes(g.id)).length}</small></button>`).join('')}</div>`:''}
-    <div class="sq-kpis">${kpi(squad.length,'athletes')}${kpi(review.length,'to review')}${kpi(clips30,'clips · 30 days')}${kpi(inLine.length,'in the lane')}${kpi(refilm.length,'to film again')}</div>
-    ${review.length?`<div class="sq-att sq-rev"><h2>To review · ${review.length}</h2><ul>${review.slice(0,6).map(({a,e})=>`<li><button type="button" class="sq-attbtn" data-entry="${esc(e.id)}"><b>${esc(a.name)}</b> · ${e.sport==='run'?'run':'ride'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}${e.label?' · '+esc(e.label):''}${a.next_race&&a.next_race.days_to_go<=21?` · <span class="sq-race-soon">${esc(a.next_race.name)} ${raceWhen(a.next_race)}</span>`:''}</button><button type="button" class="p-copy" data-seen="${esc(e.id)}">Mark seen</button></li>`).join('')}</ul>${review.length>6?`<p class="sq-more">and ${review.length-6} more: open an athlete to see theirs.</p>`:''}</div>`:''}
-    ${attention.length?`<div class="sq-att"><h2>Needs attention</h2><ul>${attention.join('')}</ul></div>`:`<div class="sq-att sq-att-ok">Everyone is filmed and in range.</div>`}
-    <div class="sq-tablewrap"><table class="sq-table">
-      <thead><tr><th scope="col"></th><th scope="col"></th><th scope="col">Athlete</th><th scope="col">Last clip</th><th scope="col">Key readings · change since their last clip</th><th scope="col" title="Measured elsewhere and entered by hand; Flapp does not calculate it">Measured CdA</th><th scope="col" class="sq-score">Score</th></tr></thead>
-      <tbody>${rows.map(row).join('')}</tbody></table></div>
-    <p class="hint sq-foot">Red is outside the range the report uses; plain has no range or is inside it. Tick two to compare them side by side.</p>
+    ${review.length?`<section class="sq-review" aria-labelledby="sqRevH"><div class="sq-review-h"><h2 id="sqRevH">To review</h2><span>${review.length} clip${review.length===1?'':'s'} you have not seen yet</span><button type="button" class="btn btn-ghost btn-sm" id="sqSeenAll">Mark all as seen</button></div>
+      <ul class="sq-revcards">${review.slice(0,6).map(revCard).join('')}</ul>${review.length>6?`<p class="sq-more">and ${review.length-6} more: open an athlete to see theirs.</p>`:''}</section>`:''}
+    ${attention.length?`<div class="sq-alsorow"><span class="sq-also-h">${review.length?'Also':'Needs attention'}</span><ul>${attention.join('')}</ul></div>`:`<p class="sq-att-ok">Everyone is filmed and in range.</p>`}
+    <div class="sq-filter">
+      <div class="sq-groups" role="group" aria-label="Show"><button type="button" data-group="" data-ssport="" aria-pressed="${state.squadGroup==null&&!state.squadSport}">Everyone <small>${everyone.length}</small></button>${['bike','run'].map(sp=>{ const n=everyone.filter(a=>athleteDoes(a,sp)).length; return n?`<button type="button" data-ssport="${sp}" aria-pressed="${state.squadSport===sp}">${sp==='run'?'Run':'Bike'} <small>${n}</small></button>`:''; }).join('')}${groups.length?'<span class="sq-fsep" aria-hidden="true"></span>':''}${groups.map(g=>`<button type="button" data-group="${g.id}" aria-pressed="${String(g.id)===String(state.squadGroup)}">${esc(g.name)} <small>${everyone.filter(a=>(a.group_ids||[]).includes(g.id)).length}</small></button>`).join('')}</div>
+      <label class="sq-fl">Sort <select id="sqSort"><option value="race"${state.squadSort==='race'?' selected':''}>Next race</option><option value="attention"${state.squadSort==='attention'?' selected':''}>Needs attention</option><option value="name"${state.squadSort==='name'?' selected':''}>Name</option></select></label>
+      <label class="sq-fl">Find <input type="search" id="sqFind" placeholder="athlete name" value="${esc(state.squadFind)}" autocomplete="off"></label>
+      <button class="btn btn-ghost btn-sm" type="button" id="sqCompare" disabled>Compare two</button>
+    </div>
+    ${['bike','run'].filter(sp=>!state.squadSport||state.squadSport===sp).map(sportTable).join('')||'<p class="sq-att-ok">Nobody here matches.</p>'}
     <div id="sqKona"></div>
-    ${feed.length?`<div class="sq-feed"><h2>Latest clips</h2><div class="sq-feedgrid">${feed.map(e=>`<button type="button" class="sq-clip" data-entry="${esc(e.id)}"><span class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</span><span class="sq-cliptxt"><b>${esc(athleteName(e.athleteId)||'')}</b><small>${e.sport==='run'?'Run':'Bike'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}${e.label?' · '+esc(e.label):''}</small></span></button>`).join('')}</div></div>`:''}
     <div class="sq-me"><button class="btn btn-ghost btn-sm" type="button" id="sqMe">My technique</button><span class="subhint">your own clips, as before</span></div>`;
   wireCoachNameAsk();
   host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openAthlete(b.dataset.open)));
   host.querySelectorAll('[data-batch]').forEach(b=>b.addEventListener('click',openBatch));
   host.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openClipAsCoach(b.dataset.entry)));
-  host.querySelectorAll('[data-group]').forEach(b=>b.addEventListener('click',()=>{ state.squadGroup=b.dataset.group||null; track('squad_group_filtered',{}); renderSquadHome(); }));
+  host.querySelectorAll('[data-group]').forEach(b=>b.addEventListener('click',()=>{ state.squadGroup=b.dataset.group||null; if(!b.dataset.group) state.squadSport=null; track('squad_group_filtered',{}); renderSquadHome(); }));
+  host.querySelectorAll('[data-ssport]:not([data-group])').forEach(b=>b.addEventListener('click',()=>{ state.squadSport=b.dataset.ssport||null; state.squadGroup=null; renderSquadHome(); }));
+  const so=$('#sqSort'); if(so) so.addEventListener('change',()=>{ state.squadSort=so.value; track('squad_sorted',{by:so.value}); renderSquadHome(); });
+  const fi=$('#sqFind'); if(fi) fi.addEventListener('input',()=>{ state.squadFind=fi.value; const at=fi.selectionStart; renderSquadHome();
+    const nf=$('#sqFind'); if(nf){ nf.focus(); try{ nf.setSelectionRange(at,at); }catch(_e){} } });
   host.querySelectorAll('[data-seen]').forEach(b=>b.addEventListener('click',async()=>{
     const e=findEntry(b.dataset.seen); if(!e) return;
     if(await clipSeen(e,true)){ track('squad_clip_seen',{how:'marked'}); renderSquadHome(); }
   }));
+  // Write a note: the report, at the coach's note box.
+  host.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>{
+    openClipAsCoach(b.dataset.note); track('squad_note_started',{});
+    let n=0; const go=()=>{ if($('#hdCoachNoteText')) goCoachNote(); else if(++n<20) setTimeout(go,150); }; setTimeout(go,150);
+  }));
+  const sa=$('#sqSeenAll');
+  if(sa) sa.addEventListener('click',async()=>{
+    sa.disabled=true;
+    for(const {e} of review) await clipSeen(e,true,true);
+    track('squad_clip_seen',{how:'all',n:review.length}); renderSquadHome();
+  });
   const syncPick=()=>{ const c=$('#sqCompare'); if(c){ c.disabled=state.squadPick.length!==2; c.textContent=state.squadPick.length===2?'Compare these two':'Compare two'; } };
   host.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('change',()=>{
     const id=b.dataset.pick;
@@ -14663,7 +14753,7 @@ function renderSquadHome(){
     track('squad_compared',{});
     openCompare(a.id,b.id,'squad');
   });
-  $('#sqBatch').addEventListener('click',openBatch);
+  const sb=$('#sqBatch'); if(sb) sb.onclick=openBatch;
   $('#sqMe').addEventListener('click',()=>{ state.squadMe=true; openDashboard(); });
   observeKeyframes(host);
   renderSquadKona(rows);
@@ -15320,6 +15410,7 @@ function openDashboard(){
   else {
     if(sec) sec.classList.remove('dash-squad'); if(host) host.classList.add('hidden');
     const t=$('#dashTitle'); if(t) t.textContent='My technique';
+    const m=$('#dashMeta'); if(m) m.innerHTML=''; const sa=$('#sqHeadActs'); if(sa) sa.innerHTML='';
     renderDashboard();
     // A coach on their own page: a way back to the squad.
     if(hasCoachPlan()){ const h=$('#dashSummary'); if(h) h.insertAdjacentHTML('beforebegin',`<p id="dashSquadBack" class="hint u-m-0 u-mb-3"><a href="#" onclick="event.preventDefault();state.squadMe=false;openDashboard()">Back to the squad</a></p>`); }
