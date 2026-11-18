@@ -329,3 +329,26 @@ def test_choosing_a_bike_profile_sets_the_ruler_the_analysis_sends():
     spa = read_front_end()
     assert "function chosenBikeProfile()" in spa
     assert "const p=chosenBikeProfile(); if(p&&p.crank_length_mm) return p.crank_length_mm;" in spa
+
+
+# --------------------------------------------------------------------------
+# The score trail on the Profiles card
+# --------------------------------------------------------------------------
+async def test_the_trail_is_the_last_four_video_scores_oldest_first(db, make_user):
+    """Profiles shows each setup's last scores and rings the latest. Same
+    column as History; a withheld score (null) and a photo stay out."""
+    user = await make_user(tier=TIER_FULL)
+    tt = await make_profile(db, user, name="TT", kind="tt")
+    other = await make_profile(db, user, name="Road")
+    rows = [(1, 70, "video"), (2, 78, "video"), (3, None, "video"), (4, 81, "video"),
+            (5, 95, "photo"), (6, 85, "video"), (7, 88, "video")]
+    for at, score, kind in rows:
+        entry = {"id": f"h{at}", "at": at, "profileId": tt["id"], "sport": "bike",
+                 "kind": kind, "score": score}
+        await me._upsert(db, user, entry)
+    await me._upsert(db, user, {"id": "r1", "at": 9, "profileId": other["id"],
+                                "sport": "bike", "kind": "photo", "score": 90})
+    await db.commit()
+    listing = {p["name"]: p for p in (await me.list_profiles(user, db))["profiles"]}
+    assert listing["TT"]["scores"] == [78, 81, 85, 88]
+    assert listing["Road"]["scores"] == []

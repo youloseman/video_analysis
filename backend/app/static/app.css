@@ -3316,8 +3316,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .ath-bottom #athEdit{grid-template-columns:minmax(0,1fr)}
   .ath-filters #athGroupFilter{padding-left:0;border-left:0}
 }
-.prof-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
-.prof-head .seg{margin-right:auto}
 .prof-note{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);margin:10px 0 0}
 .prof-edit{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);padding:16px 18px;margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:end}
 .prof-edit label{display:block;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);margin-bottom:6px}
@@ -3325,6 +3323,91 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .prof-limit{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-top:16px;border:1px solid var(--c-line);background:var(--c-panel-blue);font-size:14px;color:var(--c-ink)}
 .prof-limit .btn{margin-left:auto}
 @media(max-width:640px){ .prof-row{grid-template-columns:1fr 1fr} .prof-row .p-acts{grid-column:1/-1;justify-content:flex-start} .prof-edit{grid-template-columns:1fr} }
+
+/* ============ Profiles (board: Profiles / ProfilesPhone) ============
+   One card per setup: name and kind, the line that says what it is, the last
+   scores with the latest ringed, the latest measured CdA, the actions. An open
+   bike card carries its measurements as a step chart beside the list. */
+.pf-use{display:grid;gap:6px;min-width:150px;font-family:var(--f-body);font-size:14px;color:var(--c-ink-soft)}
+.pf-use b{color:var(--c-ink);font-weight:600}
+.pf-use .qbar{flex:none;width:100%}
+.pf-tabs{margin:0 0 16px}
+.pf-tabs button{min-height:44px;padding:0 14px;font-size:16px}
+.pf-list{display:grid;gap:16px}
+.pcard{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-card);overflow:hidden}
+.pcard.is-archived{background:var(--c-panel)}
+.pc-empty{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:20px}
+.pc-empty p{margin:0;font-size:16px;color:var(--c-ink-soft)}
+.pc-top{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) auto;gap:16px 24px;align-items:center;padding:20px 20px}
+.pc-name{margin:0;font-size:18px;font-weight:700;color:var(--c-head);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pcard.is-archived .pc-name{color:var(--c-ink-soft)}
+.pc-kind{font-size:12px;font-weight:600;color:var(--c-ink);background:var(--c-ground);padding:2px 8px;border-radius:var(--radius-tag)}
+.pc-sub{margin:4px 0 0;font-size:14px;color:var(--c-ink-soft)}
+.pc-nums{display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap}
+.pc-score,.pc-cda{display:grid;gap:6px}
+.pc-score small,.pc-cda small{font-size:12px;color:var(--c-ink-faint)}
+.pc-trail{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:14px;color:var(--c-ink-soft)}
+.pc-trail i{font-style:normal;color:var(--c-ink-faint)}
+.pc-trail .ring{width:48px;height:48px}
+.pc-trail .ring .ds-score{font-size:18px}
+.pc-cda span{display:flex;align-items:baseline;gap:6px}
+.pc-cda b{font-family:var(--f-mono);font-size:18px;font-weight:600;color:var(--c-ink)}
+.pc-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pc-acts .pc-del{color:var(--st-bad)}
+.pc-cdabtn[aria-expanded="true"]{border-color:var(--c-brand-navy)}
+.pc-menu{display:none;position:relative}
+.pc-menu > summary{list-style:none;display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);font-size:18px;color:var(--c-ink);cursor:pointer}
+.pc-menu > summary::-webkit-details-marker{display:none}
+.pc-menu-list{position:absolute;right:0;top:calc(100% + 4px);z-index:5;display:grid;min-width:168px;background:var(--c-bg);border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);box-shadow:var(--shadow-lg);padding:4px}
+.pc-menu-list button{text-align:left;background:none;border:0;font:inherit;font-size:16px;color:var(--c-ink);padding:10px 12px;min-height:44px;border-radius:var(--radius-bar);cursor:pointer}
+.pc-menu-list button:hover{background:var(--c-panel)}
+.pc-menu-list button.del{color:var(--st-bad)}
+.cda-d{font-family:var(--f-mono);font-size:14px;white-space:nowrap}
+.cda-d.cda-dim{color:var(--c-ink-faint);font-size:12px}
+.cda-d.cda-dn{color:var(--st-good)}
+.cda-d.cda-up{color:var(--st-bad)}
+/* The open setup: chart on the left, the list on the right. */
+.pc-panel.prof-cda{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 32px;padding:20px;border-top:1px solid var(--c-line);background:var(--c-panel)}
+.pc-h{margin:0 0 8px;font-size:16px;font-weight:700;color:var(--c-head)}
+.pc-h small{font-size:14px;font-weight:400;color:var(--c-ink-soft)}
+.cda-step{width:100%;height:auto;display:block}
+.pc-listcol{display:grid;gap:12px;align-content:start}
+.cda-rows{list-style:none;margin:0;padding:0;border-top:1px solid var(--c-line)}
+.cda-rows li{display:grid;grid-template-columns:56px minmax(0,1fr) auto auto;gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--c-line);font-size:14px}
+.cda-v{font-family:var(--f-mono);font-size:14px;color:var(--c-ink)}
+.cda-w{display:grid;gap:2px;color:var(--c-ink-soft)}
+.cda-w b{color:var(--c-ink);font-weight:600}
+.cda-w small{font-size:12px;color:var(--c-ink-faint)}
+.cda-del{background:none;border:0;font:inherit;font-size:12px;color:var(--c-ink-faint);cursor:pointer;padding:0}
+.cda-del:hover{color:var(--st-bad);text-decoration:underline}
+.pc-btns{display:flex;gap:8px;flex-wrap:wrap}
+.pc-form{grid-column:1/-1}
+.pf-foot{display:grid;gap:12px;justify-items:start;margin-top:16px}
+.pf-note{margin:0;font-size:14px;color:var(--c-ink-soft)}
+.pf-note a{color:var(--c-blue-dk)}
+#profCdaCmp .cda-cmp{margin:16px 0 0}
+#profEdit{margin-top:16px}
+@media(max-width:900px){
+  .pc-top{grid-template-columns:minmax(0,1fr) auto}
+  .pc-nums{grid-column:1/-1}
+  .pc-acts{grid-column:1/-1;justify-content:flex-start}
+  .pc-panel.prof-cda{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:640px){
+  .pf-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .pf-tabs button{padding:0 6px;justify-content:center}
+  .pf-tabs .pf-n{display:none}
+  .pc-top{grid-template-columns:minmax(0,1fr) auto;padding:16px;gap:12px}
+  .pc-menu{display:block;align-self:start}
+  .pc-nums{border-top:1px solid var(--c-line);padding-top:12px;justify-content:space-between}
+  .pc-acts .btn:not(.pc-cdabtn){display:none}
+  .pc-acts:not(:has(.pc-cdabtn)){display:none}
+  .pc-cdabtn{width:100%;justify-content:center;min-height:44px}
+  .pc-panel.prof-cda{padding:16px}
+  .cda-rows li{grid-template-columns:52px minmax(0,1fr) auto}
+  .cda-rows .cda-del{grid-column:3;justify-self:end}
+  .pf-cmpbtn{width:100%;justify-content:center;min-height:48px}
+}
 
 /* ---------- Responsive ---------- */
 @media(max-width:900px){

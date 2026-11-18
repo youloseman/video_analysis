@@ -1295,6 +1295,41 @@ async def _owned_profile(db: AsyncSession, user: User, profile_id: int) -> Profi
     return row
 
 
+TRAIL_LEN = 4
+
+
+async def _score_trails(
+    db: AsyncSession, user_id: int, profile_ids: list[int],
+) -> dict[int, list[int]]:
+    """The last few video scores filed under each setup, oldest first.
+
+    The same ``Analysis.score`` the history card and the squad table show: a
+    withheld score was saved as null and stays out. Photos are left out too --
+    a photo is graded on a different scale, and one in the middle of a row of
+    video scores would read as a jump that never happened.
+    """
+    if not profile_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(Analysis.profile_id, Analysis.score)
+            .where(
+                Analysis.user_id == user_id,
+                Analysis.profile_id.in_(profile_ids),
+                Analysis.score.is_not(None),
+                Analysis.kind == "video",
+            )
+            .order_by(Analysis.created_at_ms.desc())
+        )
+    ).all()
+    out: dict[int, list[int]] = {}
+    for pid, score in rows:
+        got = out.setdefault(int(pid), [])
+        if len(got) < TRAIL_LEN:
+            got.append(int(score))
+    return {pid: list(reversed(s)) for pid, s in out.items()}
+
+
 @router.get("/profiles")
 async def list_profiles(
     user: User = Depends(get_current_user),
@@ -1324,6 +1359,7 @@ async def list_profiles(
             )
         ).all()
     )
+    trail = await _score_trails(db, user.id, [p.id for p in rows])
     live = sum(1 for p in rows if not p.archived)
     # Measured CdA rides along on bike setups (api/cda.py): the history and
     # the compare panel read it without a second call.
@@ -1334,6 +1370,7 @@ async def list_profiles(
         "profiles": [
             {
                 **_profile_out(p, int(counts.get(p.id, 0))), "cda": cda.get(p.id, []),
+                "scores": trail.get(p.id, []),
                 **({"ladder": cda_math.ladder_status(cda.get(p.id, []))} if p.sport == "bike" else {}),
             }
             for p in rows

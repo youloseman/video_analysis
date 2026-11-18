@@ -1917,22 +1917,20 @@
   <!-- ============ PROFILES ============ -->
   <section id="profiles" class="hidden" aria-labelledby="profTitle">
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Home</button></div>
-    <div class="pagehead">
-      <h2 class="sec" id="profTitle" tabindex="-1">Profiles</h2>
-      <span class="ph-lede">Equipment is what makes two analyses comparable. One profile per bike, per pair of shoes.</span>
-      <span class="ph-right"><span class="pill" id="profCount"><span class="dot" aria-hidden="true"></span><span id="profCountTxt"></span></span><button class="btn btn-ghost btn-sm" type="button" id="profAdd">Add profile</button></span>
+    <div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="profTitle" tabindex="-1">Profiles</h2>
+        <p class="ph-lede">One profile per bike, per pair of shoes. Equipment is what makes two analyses comparable.</p></div>
+      <span class="ph-right"><span class="pf-use" id="profCount"><span id="profCountTxt"></span><span class="qbar" id="profBar" aria-hidden="true"><i></i></span></span><button class="btn btn-ghost" type="button" id="profAdd">+ Add profile</button></span>
     </div>
-    <div class="prof-head">
-      <div class="seg seg-sm" role="group" aria-label="Filter profiles" id="profFilter">
-        <button type="button" data-pf="all" aria-pressed="true">All</button>
-        <button type="button" data-pf="bike" aria-pressed="false">Bikes</button>
-        <button type="button" data-pf="run" aria-pressed="false">Shoes</button>
-        <button type="button" data-pf="archived" aria-pressed="false">Archived</button>
-      </div>
-      <span class="prof-note">changing a profile does not rewrite past analyses — they keep the equipment they were run with</span>
+    <div class="seg pf-tabs" role="group" aria-label="Filter profiles" id="profFilter">
+      <button type="button" data-pf="all" aria-pressed="true">All<span class="pf-n"></span></button>
+      <button type="button" data-pf="bike" aria-pressed="false">Bike<span class="pf-n"></span></button>
+      <button type="button" data-pf="run" aria-pressed="false">Run<span class="pf-n"></span></button>
+      <button type="button" data-pf="archived" aria-pressed="false">Archived<span class="pf-n"></span></button>
     </div>
+    <div class="pf-list" id="profList"></div>
+    <div class="pf-foot" id="profFoot"></div>
     <div id="profCdaCmp" class="hidden"></div>
-    <div class="prof-list" id="profList"></div>
     <div class="prof-edit hidden" id="profEdit">
       <div><label for="profName" id="profEditLbl">Name</label><input id="profName" type="text" maxlength="60" placeholder="e.g. Canyon Aeroad, Vaporfly 3"></div>
       <div><label for="profSport">Sport</label><select id="profSport"><option value="bike">Bike</option><option value="run">Run</option></select></div>
@@ -7557,30 +7555,88 @@ state.profFilter='all'; state.profEditId=null;
 function profKindOptions(sport, current){
   return (PROFILE_KINDS_FOR[sport]||PROFILE_KINDS_FOR.bike).map(k=>`<option value="${k}"${k===current?' selected':''}>${PROFILE_KIND_LABEL[k]||k}</option>`).join('');
 }
+/* The chip on a setup's card: what kind of thing it is, in a rider's words. */
+const PROFILE_CHIP={road:'Road bike',tt:'TT bike',trainer:'Trainer',gravel:'Gravel bike',mtb:'MTB',shoes:'Shoes'};
+function profChip(p){ return PROFILE_CHIP[p.kind]||(p.sport==='run'?'Run':'Bike'); }
+function profSubLine(p){
+  const bits=[];
+  if(athleteName(p.athlete_id)) bits.push(athleteName(p.athlete_id));
+  bits.push(p.sport==='run'?'Run':(p.position&&PROFILE_POS_LABEL[p.position])||'Bike');
+  if(p.sport==='bike'&&profBikeLine(p)) bits.push(profBikeLine(p));
+  if(p.crank_length_mm) bits.push(`${p.crank_length_mm} mm cranks`);
+  bits.push(p.archived?'out of the picker, still in your history':'in the picker on Analyze');
+  return bits.map(esc).join(' · ');
+}
+/* The setup's last video scores (api/me._score_trails), the latest ringed:
+   the same numbers History shows, so the two never disagree. */
+function profScoreHtml(p){
+  const s=p.scores||[], n=p.analyses||0, an=`${n} ${n===1?'analysis':'analyses'}`;
+  if(!s.length) return `<div class="pc-score"><small>${n?an:'No analyses yet'}</small></div>`;
+  const last=s[s.length-1];
+  return `<div class="pc-score"><small>${an} · score</small>
+    <div class="pc-trail">${s.slice(0,-1).map(v=>`<span>${v}</span><i aria-hidden="true">·</i>`).join('')}${ringHtml(last,48,`<div class="ds-score">${last}</div>`)}</div></div>`;
+}
+/* Two measurements are set against each other only when they were taken the
+   same way: one ordinary ride moves by more than most changes do. */
+function cdaLike(a,b){ return !!(a&&b)&&a.source===b.source&&a.protocol===b.protocol&&a.protocol!=='single_ride'; }
+function cdaStepCell(cur,prev){
+  if(!prev) return '<span class="cda-d cda-dim">first</span>';
+  if(!cdaLike(cur,prev)) return '<span class="cda-d cda-dim">measured differently</span>';
+  const d=cur.value_m2-prev.value_m2;
+  if(Math.abs(d)<0.0005) return '<span class="cda-d cda-dim">no change</span>';
+  return `<span class="cda-d ${d<0?'cda-dn':'cda-up'}"><span class="visually-hidden">${d<0?'down':'up'} </span>${d<0?'▼':'▲'}${Math.abs(d).toFixed(3)}</span>`;
+}
+function profCdaHead(p){
+  const c=p.cda||[];
+  if(p.sport!=='bike'||!c.length) return '';
+  return `<div class="pc-cda"><small>Measured CdA</small><span><b>${cdaNum(c[0].value_m2)}</b>${c[1]&&cdaLike(c[0],c[1])?cdaStepCell(c[0],c[1]):''}</span></div>`;
+}
+function profActs(p){
+  if(p.archived) return [['restore','Restore'],['delete','Delete']];
+  return [...(p.sport==='bike'&&partsFramesFor(p.bike_family).length?[['parts','Parts that fit']]:[]),['edit','Edit'],['archive','Archive']];
+}
+function profCardHtml(p){
+  const acts=profActs(p), n=(p.cda||[]).length;
+  const cdaBtn=p.sport==='bike'&&!p.archived
+    ?`<button class="btn btn-ghost btn-sm pc-cdabtn" type="button" data-act="cda" aria-expanded="${state.profCdaOpen===p.id}">${n?`Measured CdA · ${n}`:'Add measured CdA'}</button>`:'';
+  return `<article class="pcard${p.archived?' is-archived':''}" data-id="${p.id}">
+    <div class="pc-top">
+      <div class="pc-id"><h3 class="pc-name">${esc(p.name)} <span class="pc-kind">${esc(profChip(p))}</span>${p.archived?'<span class="pc-kind">archived</span>':''}</h3>
+        <p class="pc-sub">${profSubLine(p)}</p></div>
+      <details class="pc-menu"><summary aria-label="More for ${esc(p.name)}">⋯</summary><div class="pc-menu-list">${acts.map(([a,l])=>`<button type="button" data-act="${a}"${a==='delete'?' class="del"':''}>${l}</button>`).join('')}</div></details>
+      <div class="pc-nums">${profScoreHtml(p)}${profCdaHead(p)}</div>
+      <div class="pc-acts">${cdaBtn}${acts.map(([a,l])=>`<button class="btn btn-ghost btn-sm${a==='delete'?' pc-del':''}" type="button" data-act="${a}">${l}</button>`).join('')}</div>
+    </div>${p.sport==='bike'&&state.profCdaOpen===p.id?cdaPanel(p):''}${p.sport==='bike'&&state.profPartsOpen===p.id?partsPanel(p):''}
+  </article>`;
+}
 function renderProfiles(){
   const list=$('#profList'); if(!list) return;
   const all=PROFILES.profiles||[], f=state.profFilter;
-  const rows=all.filter(p=> f==='archived' ? p.archived : (!p.archived && (f==='all' || p.sport===f)));
+  const live=all.filter(p=>!p.archived), arch=all.filter(p=>p.archived);
+  const rows=f==='archived'?arch:live.filter(p=>f==='all'||p.sport===f);
   const used=PROFILES.used||0, limit=PROFILES.limit??0;
-  const cnt=$('#profCountTxt'); if(cnt) cnt.textContent=`${used} of ${limit} used`;
-  const pill=$('#profCount'); if(pill){ pill.className='pill '+(used>=limit?'pill-warnchip':'pill-low'); }
-  [...$('#profFilter').children].forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.pf===f)));
-  if(PROFILES.error){ list.innerHTML=`<div class="prof-row"><span class="p-name">Your profiles didn’t load.</span><span></span><span></span><span class="p-acts"><button type="button" data-retryprofiles="1">Retry</button></span></div>`;
+  const plan=auth?(((PLANS&&PLANS.cards)||[]).find(c=>c.tier===auth.tier)||{}).name||tierLabel(auth.tier):'';
+  const cnt=$('#profCountTxt'); if(cnt) cnt.innerHTML=`<b>${used}</b> of <b>${limit}</b> used${plan?' · '+esc(plan):''}`;
+  const bar=$('#profBar'); if(bar){ bar.classList.toggle('hidden', !limit); bar.style.setProperty('--left', (limit?Math.min(100,100*used/limit):0)+'%'); }
+  const counts={all:live.length, bike:live.filter(p=>p.sport==='bike').length, run:live.filter(p=>p.sport==='run').length, archived:arch.length};
+  [...$('#profFilter').children].forEach(b=>{ b.setAttribute('aria-pressed', String(b.dataset.pf===f)); const n=b.querySelector('.pf-n'); if(n) n.textContent=PROFILES.error?'':' · '+counts[b.dataset.pf]; });
+  const foot=$('#profFoot');
+  if(PROFILES.error){ list.innerHTML=`<div class="pcard pc-empty"><p>Your profiles didn’t load.</p><button class="btn btn-ghost btn-sm" type="button" data-retryprofiles="1">Retry</button></div>`;
+    if(foot) foot.innerHTML='';
     list.querySelector('[data-retryprofiles]').addEventListener('click',()=>loadProfiles().then(renderProfiles)); return; }
-  if(!rows.length){
-    list.innerHTML=`<div class="prof-row"><span class="p-name p-name--empty">${f==='archived'?'Nothing archived.':'No profiles yet — add the bike or the shoes you film in.'}</span></div>`;
-  } else {
-    list.innerHTML=rows.map(p=>`<div class="prof-row${p.archived?' is-archived':''}" data-id="${p.id}">
-      <div><div class="p-name">${esc(p.name)} <span class="p-kind">${esc(PROFILE_KIND_LABEL[p.kind]||p.kind||'')}</span>${p.archived?'<span class="p-kind">archived</span>':''}</div>
-        <div class="p-sub">${athleteName(p.athlete_id)?esc(athleteName(p.athlete_id))+' · ':''}${p.sport==='run'?'run':'bike'}${p.sport==='bike'&&profBikeLine(p)?` · ${esc(profBikeLine(p))}`:''}${p.crank_length_mm?` · ${esc(String(p.crank_length_mm))} mm cranks`:''}${p.position&&PROFILE_POS_LABEL[p.position]?` · ${esc(PROFILE_POS_LABEL[p.position])}`:''}${p.created_at_ms?' · added '+esc(fmtWhen(p.created_at_ms)):''}${p.sport==='bike'&&p.cda&&p.cda.length?` · CdA ${cdaNum(p.cda[0].value_m2)} m² (${esc(cdaSrc(p.cda[0].source))})`:''}</div></div>
-      <div class="p-sub">${p.archived?'out of the picker, still in your history':'in the picker on Analyze'}</div>
-      <div class="p-n">${p.analyses!=null?p.analyses:'—'}<small>analyses</small></div>
-      <div class="p-acts">
-        ${p.archived
-          ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
-          : `${p.sport==='bike'?`<button type="button" data-act="cda" aria-expanded="${state.profCdaOpen===p.id}">Measured CdA${p.cda&&p.cda.length?' ('+p.cda.length+')':''}</button>`:''}${p.sport==='bike'&&partsFramesFor(p.bike_family).length?`<button type="button" data-act="parts" aria-expanded="${state.profPartsOpen===p.id}">Parts that fit</button>`:''}<button type="button" data-act="edit">Edit</button><button type="button" data-act="archive">Archive</button>`}
-      </div></div>${p.sport==='bike'&&state.profCdaOpen===p.id?cdaPanel(p):''}${p.sport==='bike'&&state.profPartsOpen===p.id?partsPanel(p):''}`).join('');
+  list.innerHTML=rows.length?rows.map(profCardHtml).join('')
+    :`<div class="pcard pc-empty"><p>${f==='archived'?'Nothing archived.':f==='all'?'No profiles yet. Add the bike or the shoes you film in: each keeps its own trend line.':`No ${f==='bike'?'bike':'running'} profiles yet.`}</p></div>`;
+  // Compare sits under the list: it reads two setups, not the one that is open.
+  const bikes=all.filter(p=>p.sport==='bike'), canCmp=bikes.length>=2&&bikes.some(p=>p.cda&&p.cda.length)&&f!=='run';
+  if(foot){
+    foot.innerHTML=`${canCmp?`<button class="btn btn-ghost pf-cmpbtn" type="button" id="profCmpBtn" aria-expanded="${!!state.cdaCmpOpen}">Compare two setups</button>`:''}
+      <p class="pf-note">Changing a profile never rewrites past analyses: they keep the equipment they were filmed with. Archiving takes a profile out of the picker and keeps its history.${arch.length&&f!=='archived'?` ${arch.length===1?'One archived profile':arch.length+' archived'}: <a href="#" data-pfarch="1">${arch.slice(0,3).map(p=>esc(p.name)).join(', ')}${arch.length>3?'…':''}</a>.`:''}</p>`;
+    const cb=foot.querySelector('#profCmpBtn');
+    if(cb) cb.addEventListener('click',()=>{ state.cdaCmpOpen=!state.cdaCmpOpen; renderProfiles(); if(state.cdaCmpOpen){ const h=$('#profCdaCmp'); if(h) h.scrollIntoView({block:'nearest'}); } });
+    const al=foot.querySelector('[data-pfarch]');
+    if(al) al.addEventListener('click',e=>{ e.preventDefault(); state.profFilter='archived'; renderProfiles(); });
   }
+  if(!canCmp) state.cdaCmpOpen=false;
   wireProfCda(list);
   wireProfParts(list);
   renderCdaCompare();
@@ -7590,7 +7646,7 @@ function renderProfiles(){
     lim.classList.toggle('hidden', !full || f==='archived');
     if(full) lim.innerHTML=limit===0
       ? `<span>Saving your bike and your shoes is part of a paid plan: Enthusiast keeps two setups, Full keeps ten and compares one against another.</span><button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>`
-      : `<span>You’ve used ${limit===1?'your one profile':`all ${limit} profiles`}. ${limit<10?'Full gives you ten, so each bike and each pair of shoes keeps its own trend line — and you can compare one setup against another instead of averaging them.':'Archive one to add another.'}</span>${limit<10?'<button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>':''}`;
+      : `<span>You’ve used ${limit===1?'your one profile':`all ${limit} profiles`}. ${limit<10?'Full gives you ten, so each bike and each pair of shoes keeps its own trend line, and you can compare one setup against another instead of averaging them.':'Archive one to add another.'}</span>${limit<10?'<button class="btn btn-primary btn-sm" type="button" onclick="openPricing()">See plans</button>':''}`;
   }
   const add=$('#profAdd'); if(add) add.disabled = used>=limit;
 }
@@ -7626,7 +7682,7 @@ function showProfEdit(p){
   syncProfBikeFields();
   box.classList.remove('hidden'); $('#profName').focus();
 }
-const PROFILE_POS_LABEL={road_hoods:'Road — hoods',road_drops:'Road — drops',tt_aero:'Time trial',triathlon:'Triathlon',casual:'Casual'};
+const PROFILE_POS_LABEL={road_hoods:'Road, hoods',road_drops:'Road, drops',tt_aero:'Time trial',triathlon:'Triathlon',casual:'Casual'};
 function profPosOptions(current){
   return `<option value="">Ask each time</option>`+Object.entries(PROFILE_POS_LABEL)
     .map(([k,l])=>`<option value="${k}"${k===current?' selected':''}>${l}</option>`).join('');
@@ -7799,6 +7855,7 @@ async function profPatch(id, body){
     const b=e.target.closest('[data-act]'); if(!b) return;
     const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
     const p=(PROFILES.profiles||[]).find(x=>x.id===id); if(!p) return;
+    const menu=b.closest('details.pc-menu'); if(menu) menu.open=false;
     if(b.dataset.act==='edit'){ showProfEdit(p); return; }
     if(b.dataset.act==='parts'){
       state.profPartsOpen=state.profPartsOpen===id?null:id;
@@ -7838,7 +7895,7 @@ const CDA_SRC={windsock:'Windsock',notio:'Notio',airo:'AiRO',wind_tunnel:'Wind t
 const CDA_PROTO={repeated_loops:'Repeated loops, same day',single_ride:'One ordinary ride',not_a_ride:'Not on the road (tunnel or CFD)'};
 const CDA_NOT_A_RIDE=['airo','wind_tunnel'];
 const CDA_DISCLAIMER='Numbers measured with a field test, a wind tunnel or a CFD service. Flapp does not calculate these.';
-state.profCdaOpen=null; state.cdaAdding=false; state.cdaCmp=null; state.adSetups={}; state.adCdaAdding=false;
+state.profCdaOpen=null; state.cdaAdding=false; state.cdaCmp=null; state.cdaCmpOpen=false; state.adSetups={}; state.adCdaAdding=false;
 state.profPartsOpen=null; state.partsQuery={}; state.partsResult={};
 function cdaNum(v){ return Number(v).toFixed(3); }
 function cdaSrc(s){ return CDA_SRC[s]||s||''; }
@@ -7951,15 +8008,63 @@ function cdaAskDelete(pid, mid, athleteId, done){
     }catch(_e){ toast('Could not delete that measurement.'); }
   }});
 }
-/* Profiles screen: the open setup's history and its form. */
+/* Profiles screen: the open setup's measurements as a step chart (lower is
+   faster) beside the list, then the form. The chart says when the steps were
+   measured differently: a step between two tools may be the tool. */
+function cdaShortDay(iso){ try{ const d=new Date(iso+'T12:00:00'); return d.toLocaleDateString(UI_LOCALE,{day:'numeric',month:'short',...(d.getFullYear()!==new Date().getFullYear()?{year:'numeric'}:{})}); }catch(_e){ return iso; } }
+function cdaStepChart(rows){
+  const pts=[...rows].reverse(), n=pts.length; if(n<2) return '';
+  const t=pts.map(r=>new Date(r.measured_on+'T12:00:00').getTime()), v=pts.map(r=>r.value_m2);
+  // Drawn at the width it is shown, so 12 px text stays 12 px on a phone.
+  const W=PHONE_MQ.matches?340:520, H=PHONE_MQ.matches?180:200, pad={l:46,r:12,t:26,b:26};
+  let lo=Math.min(...v), hi=Math.max(...v); if(hi-lo<0.006){ const m=(hi+lo)/2; lo=m-0.003; hi=m+0.003; }
+  const step=niceStep((hi-lo)/3); lo=Math.floor(lo/step)*step; hi=Math.ceil(hi/step)*step;
+  // The line runs on past the latest point, so the last level reads as "now".
+  const xEnd=W-pad.r, xLast=pad.l+(xEnd-pad.l)*0.86, t0=t[0], span=(t[n-1]-t0)||1;
+  const X=i=>pad.l+(xLast-pad.l)*((t[i]-t0)/span), Y=x=>pad.t+(H-pad.t-pad.b)*(1-(x-lo)/((hi-lo)||1));
+  let g='';
+  for(let y=lo; y<=hi+1e-9; y+=step){ const yy=Y(y).toFixed(1); g+=`<line class="t2-grid" x1="${pad.l}" x2="${xEnd}" y1="${yy}" y2="${yy}"/><text class="t2-tick" x="${pad.l-6}" y="${(+yy+4).toFixed(1)}" text-anchor="end">${y.toFixed(3)}</text>`; }
+  let d=`M${X(0).toFixed(1)} ${Y(v[0]).toFixed(1)}`;
+  for(let i=1;i<n;i++) d+=` H${X(i).toFixed(1)} V${Y(v[i]).toFixed(1)}`;
+  d+=` H${xEnd}`;
+  const every=n<=4;
+  let dots='', labs='', dates='';
+  pts.forEach((r,i)=>{ const L=i===n-1, x=X(i).toFixed(1), y=Y(v[i]);
+    dots+=`<circle class="${L?'t2-last':'t2-pt'}" cx="${x}" cy="${y.toFixed(1)}" r="${L?5:4}"><title>${esc(cdaShortDay(r.measured_on))}: ${cdaNum(v[i])} m²</title></circle>`;
+    if(every||i===0||L){
+      labs+=`<text class="${L?'t2-lastlbl':'t2-first'}" x="${(+x+8).toFixed(1)}" y="${(y-8).toFixed(1)}">${cdaNum(v[i])}</text>`;
+      dates+=`<text class="t2-date" x="${x}" y="${H-6}" text-anchor="${i===0?'start':'middle'}">${esc(cdaShortDay(r.measured_on))}</text>`; } });
+  return `<svg viewBox="0 0 ${W} ${H}" class="tchart t2 cda-step" role="img" aria-label="${esc(`Measured CdA from ${cdaNum(v[0])} to ${cdaNum(v[n-1])} m² over ${n} measurements`)}">${g}<path class="t2-line" d="${d}"/>${dots}${labs}${dates}</svg>`;
+}
+function cdaRowsHtml(rows){
+  const who=r=>!r.entered_by_coach?'':` <span class="cda-chip cda-coach">added by ${r.entered_by_coach==='Your coach'?'your coach':'your coach, '+esc(r.entered_by_coach)}</span>`;
+  return `<ul class="cda-rows">${rows.map((r,i)=>{
+    const what=r.variable==='baseline'?'baseline':r.variable?cdaVarLabel(r.variable):(r.note||'');
+    const vs=r.vs_baseline, w=vs&&vs.watts?Object.entries(vs.watts)[0]:null;
+    const meta=[esc(cdaSrc(r.source)), r.protocol==='single_ride'?'<span class="cda-chip cda-warn">One ordinary ride</span>':esc(CDA_PROTO[r.protocol]||r.protocol||''),
+      ...(r.variable&&r.note?[esc(r.note)]:[]),
+      ...(vs?[`${cdaSigned(vs.delta_m2,3)} m² vs baseline${w?`, ${cdaSigned(w[1],0)} W at ${esc(w[0])} km/h`:''}`]:[])].filter(Boolean).join(' · ');
+    return `<li><span class="cda-v">${cdaNum(r.value_m2)}</span>
+      <span class="cda-w"><span><b>${esc(cdaShortDay(r.measured_on))}</b>${what?' · '+esc(what):''}${who(r)}</span><small>${meta}</small></span>
+      ${cdaStepCell(r,rows[i+1])}
+      ${r.can_delete?`<button type="button" class="cda-del" data-cdadel="${r.id}" data-cdaprof="${r.profile_id}" aria-label="Delete the ${esc(cdaShortDay(r.measured_on))} measurement">Delete</button>`:'<span></span>'}</li>`; }).join('')}</ul>`;
+}
 function cdaPanel(p){
-  const adding=state.cdaAdding;
-  return `<div class="prof-cda" data-cdafor="${p.id}">
-    <div class="cda-head"><span class="cda-lbl">Measured CdA · ${esc(p.name)}</span>${adding?'':`<button class="btn btn-ghost btn-sm" type="button" data-cdaadd="${p.id}">Add a measurement</button>`}</div>
-    <p class="hint">${CDA_DISCLAIMER}</p>
-    ${cdaTable(p.cda)}
-    ${cdaLadderHtml(p.ladder)}
-    ${adding?cdaFormHtml('cdaF'+p.id,{research:!(auth&&auth.research_opt_in)&&!p.athlete_id}):''}
+  const adding=state.cdaAdding, rows=p.cda||[];
+  const mixed=rows.length>=2&&rows.some(r=>!cdaLike(r,rows[0]));
+  return `<div class="prof-cda pc-panel" data-cdafor="${p.id}">
+    <div class="pc-chartcol">
+      <h4 class="pc-h">Measured CdA on this setup <small>· lower is faster</small></h4>
+      ${rows.length>=2?cdaStepChart(rows):`<p class="hint">${rows.length?'One measurement so far. The second one draws the line.':'No measurements yet. Add one from a field test, a tunnel or a CFD service.'}</p>`}
+      ${mixed?'<p class="hint">Measured with different tools or methods: a step between them may be the tool, not the change.</p>':''}
+    </div>
+    <div class="pc-listcol">
+      ${rows.length?cdaRowsHtml(rows):''}
+      ${adding?'':`<div class="pc-btns"><button class="btn btn-ghost btn-sm" type="button" data-cdaadd="${p.id}">+ Add a measurement</button></div>`}
+      <p class="hint">${CDA_DISCLAIMER}</p>
+      ${cdaLadderHtml(p.ladder)}
+    </div>
+    ${adding?`<div class="pc-form">${cdaFormHtml('cdaF'+p.id,{research:!(auth&&auth.research_opt_in)&&!p.athlete_id})}</div>`:''}
   </div>`;
 }
 function wireProfCda(list){
@@ -7978,7 +8083,7 @@ function renderCdaCompare(){
   const bikes=(PROFILES.profiles||[]).filter(p=>p.sport==='bike');
   const latest=p=>(p&&p.cda&&p.cda[0])||null;
   const measured=bikes.filter(latest);
-  if(PROFILES.error||state.profFilter==='run'||!measured.length){ host.innerHTML=''; host.classList.add('hidden'); return; }
+  if(PROFILES.error||state.profFilter==='run'||!measured.length||!state.cdaCmpOpen){ host.innerHTML=''; host.classList.add('hidden'); return; }
   host.classList.remove('hidden');
   const head=`<div class="cda-cmp-h"><span class="cda-lbl">Measured CdA · compare two setups</span><span class="hint">${CDA_DISCLAIMER}</span></div>`;
   if(bikes.length<2){ host.innerHTML=`<div class="cda-cmp">${head}<p class="hint">Add a second bike setup with a measured CdA to compare the two.</p></div>`; return; }
