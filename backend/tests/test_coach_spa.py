@@ -182,7 +182,9 @@ def test_the_squad_reads_a_clip_against_one_from_the_same_side_only():
 
 def test_no_screen_draws_a_line_or_a_delta_across_two_sides():
     assert "cmpPrevious(es[0],es)" in fn("renderSquadHome")
-    assert "cmpPrevious(e,es)" in fn("openAthlete")
+    # the athlete page's line per clip is clipChange, the Squad card's too
+    assert "clipChange(e)" in fn("openAthlete")
+    assert "cmpPrevious(e,coachPool()" in fn("clipChange")
     assert "state.progressSide" in fn("renderProgress")
     assert "e.cameraSide===state.progressSide" in fn("renderProgress")
     assert "sameSide" in fn("sportCard")

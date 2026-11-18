@@ -22,8 +22,9 @@ def test_the_header_carries_the_counts_and_the_coach_actions():
 def test_a_card_only_says_in_range_for_readings_that_have_one():
     """A ride keeps a range for the knee alone: "everything in range" over an
     ungraded trunk and hip was a claim the data did not make."""
+    change = SPA[SPA.index("function clipChange(e){"):SPA.index("function raceWhen(")]
+    assert "banded.length===shown.length?'everything in range'" in change
     body = _squad()
-    assert "banded.length===shown.length?'everything in range'" in body
     assert "data-note=" in body and "goCoachNote()" in body
     assert "id=\"sqSeenAll\"" in body
 
@@ -39,3 +40,13 @@ def test_one_table_per_sport_and_no_empty_columns():
 def test_the_rig_seeds_a_squad_worth_looking_at():
     rig = (Path(__file__).resolve().parents[1] / "scripts" / "ui_rig" / "rig.py").read_text(encoding="utf-8")
     assert "/races" in rig and "/me/athlete-groups" in rig and "state.athleteId = String(id)" in rig
+
+
+def test_athletes_rows_and_the_athlete_page_as_drawn():
+    assert 'id="athGroupFilter"' in SPA and 'class="prof-row ath-row' in SPA
+    page = SPA[SPA.index("function openAthlete(id){"):SPA.index("function openBatch(")]
+    assert "ad-countdown" in page and "data-agroup" in page and "data-pri" in page
+    assert "clipChange(e)" in page and "data-unseen" in page and "data-seen" in page
+    # the same honest line the Squad card uses
+    assert "function clipChange(e){" in SPA and "const revLine=clipChange;" in SPA
+    assert "squadChips" not in SPA

@@ -2984,6 +2984,91 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .prof-row .p-acts button{background:none;border:0;color:var(--c-blue-dk);font:inherit;font-size:14px;cursor:pointer;padding:4px 0}
 .prof-row .p-acts button:hover{text-decoration:underline;text-underline-offset:3px}
 .prof-row .p-acts button.del{color:var(--st-bad)}
+/* ---- Athletes, as drawn (Athletes board, 2026-11-17) ---- */
+.ath-head{align-items:flex-end}
+.ath-title .ph-lede{display:block;margin:4px 0 0;max-width:none}
+.ath-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:0 0 14px}
+.ath-filters .sq-groups{margin:0}
+.ath-filters #athGroupFilter:empty{display:none}
+.ath-filters #athGroupFilter{padding-left:16px;border-left:1px solid var(--c-line-strong)}
+.prof-row.ath-row{grid-template-columns:72px minmax(0,1.3fr) minmax(0,1.1fr) minmax(0,.9fr) 64px auto;gap:14px}
+.ath-fig .hthumb{width:72px;height:54px}
+.ath-sub{font-size:14px;color:var(--c-ink-faint);margin-top:2px}
+.ath-gr{display:flex;flex-wrap:wrap;gap:6px}
+.ath-chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--c-panel);border:1px solid var(--c-line);font-size:12px;color:var(--c-ink-soft);white-space:nowrap}
+.ath-chip.ath-race{background:var(--c-panel);border-color:transparent}
+.ath-chip.ath-race.sq-race-soon{background:var(--st-warn-bg);color:var(--m-near-text);font-weight:500}
+.ath-last{display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--c-ink-faint)}
+.ath-score{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:18px;color:var(--c-ink)}
+.prof-row.ath-row .p-n{text-align:right}
+.ath-bottom{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start;margin-top:16px}
+.ath-bottom #athEdit{margin-top:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.ath-bottom #athEdit.hidden + #athGroups{grid-column:1/-1}
+.ath-edit-h{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-head)}
+.ath-groups .ad-box-h h3{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px}
+#athStays{margin-top:16px;font-size:14px;color:var(--c-ink-faint)}
+#athStays b{color:var(--c-ink)}
+#athStays{background:none;border:0;padding:0}
+/* ---- One athlete, as drawn (Athlete board, 2026-11-17) ---- */
+.ad-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;margin:0 0 16px}
+.ad-grp{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ad-grp-l{font-size:14px;color:var(--c-ink-faint)}
+.ad-gpill{font:inherit;font-size:14px;font-weight:500;min-height:40px;padding:4px 14px;border:1px solid var(--c-line-strong);border-radius:999px;background:var(--c-bg);color:var(--c-ink);cursor:pointer}
+.ad-gpill:hover{border-color:var(--c-brand-navy)}
+.ad-gpill[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy);color:#fff}
+.ad-countdown{display:flex;align-items:center;gap:14px;padding:12px 20px;border-radius:var(--radius-card);background:var(--c-panel)}
+.ad-countdown.is-soon{background:var(--st-bad-bg)}
+.ad-countdown > b{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:40px;line-height:1;color:var(--c-head)}
+.ad-countdown.is-soon > b{color:var(--st-bad-text)}
+.ad-countdown span{display:block;font-size:16px;font-weight:600;color:var(--c-ink)}
+.ad-countdown small{display:block;font-size:14px;color:var(--c-ink-soft)}
+.ad-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:16px;align-items:start;margin:12px 0 16px}
+.ad-cols .ad-box-h h3{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;display:flex;align-items:center;gap:8px}
+.ad-racelist,.ad-cliplist{list-style:none;margin:0;padding:0}
+.ad-racelist li{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto 32px;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--c-line)}
+.ad-racelist li:first-child{border-top:0}
+.ad-racelist li.is-past{opacity:.6}
+.ad-pri{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:var(--radius-tag);font-style:normal;font-weight:700;font-size:14px;background:var(--c-panel);color:var(--c-ink-soft)}
+.ad-pri.ad-pri-A{background:var(--c-brand-navy);color:#fff}
+.ad-racen b{display:block;font-size:14px;color:var(--c-ink)} .ad-racen small{font-size:12px;color:var(--c-ink-faint)}
+.ad-togo{font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;background:var(--c-panel);color:var(--c-ink-soft);white-space:nowrap}
+.ad-togo.is-soon{background:var(--st-bad-bg);color:var(--st-bad-text)}
+.ad-x{background:none;border:0;min-width:32px;min-height:32px;font-size:18px;color:var(--c-ink-faint);cursor:pointer}
+.ad-x:hover{color:var(--st-bad)}
+.ad-raceform{display:flex;flex-direction:column;gap:10px;margin-top:6px;padding-top:12px;border-top:1px solid var(--c-line)}
+.ad-raceform h4{margin:0;font-size:14px;color:var(--c-head)}
+.ad-raceform label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--c-ink-soft)}
+.ad-raceform input[type=text],.ad-raceform input[type=date]{min-height:40px;font:inherit;font-size:14px;padding:0 10px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);color:var(--c-ink)}
+.ad-raceform-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.ad-clip{display:grid;grid-template-columns:10px 72px minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--c-line)}
+.ad-clip:first-child{border-top:0}
+.ad-dot{width:8px;height:8px;border-radius:50%;background:transparent}
+.ad-clip.is-new .ad-dot{background:var(--c-blue)}
+.ad-clip .hthumb{width:72px;height:54px}
+.ad-clip-t{min-width:0}
+.ad-clip-t .sq-name{text-decoration:none;font-weight:600}
+.ad-clip.is-new .ad-clip-t .sq-name{font-weight:700}
+.ad-clip-t small{display:block;font-size:12px;color:var(--c-ink-faint)}
+.ad-clip-t p{margin:2px 0 0;font-size:14px;font-weight:600}
+.ad-clip-seen{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c-ink-faint);white-space:nowrap}
+.ad-clip-seen .ad-unseen{color:var(--c-ink-soft)}
+@media(max-width:900px){ .ad-cols{grid-template-columns:minmax(0,1fr)} }
+@media(max-width:640px){
+  .ad-clip{grid-template-columns:10px 56px minmax(0,1fr)}
+  .ad-clip .hthumb{width:56px;height:42px}
+  .ad-clip-seen{grid-column:3}
+  .ad-racelist li{gap:8px}
+}
+@media(max-width:900px){ .ath-bottom{grid-template-columns:minmax(0,1fr)} }
+@media(max-width:640px){
+  .prof-row.ath-row{grid-template-columns:56px minmax(0,1fr) auto;row-gap:8px}
+  .ath-fig .hthumb{width:56px;height:42px}
+  .ath-row .ath-gr,.ath-row .ath-last{grid-column:2/-1}
+  .ath-row .p-n{grid-column:3;grid-row:1}
+  .ath-row .p-acts{grid-column:1/-1;justify-content:flex-start}
+  .ath-bottom #athEdit{grid-template-columns:minmax(0,1fr)}
+  .ath-filters #athGroupFilter{padding-left:0;border-left:0}
+}
 .prof-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
 .prof-head .seg{margin-right:auto}
 .prof-note{font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint);margin:10px 0 0}
