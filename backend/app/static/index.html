@@ -7174,44 +7174,56 @@ function openSwim(){
 function renderSwimUpload(){
   $('#swBackTxt').textContent='Back';
   const waiting=swimList();
-  $('#swHost').innerHTML=`<div class="card swim-card">
-    <span class="eyebrow">Swim · coach review</span>
-    <h1 class="swim-h" id="swTitle" tabindex="-1">Get your swim stroke reviewed by a pro</h1>
-    <p class="swim-lede">Upload a clip of yourself swimming. A professional triathlete — a swimmer before that — watches it and writes back what to change first.
-      <b>There is no automatic analysis for swimming yet</b>: no angles and no score, just a coach’s eye on your stroke.</p>
+  $('#swHost').innerHTML=`<div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="swTitle" tabindex="-1">Swim · coach review</h2>
+        <p class="ph-lede">There is no automatic analysis for swimming yet: no angles and no score. A pro triathlete who was a swimmer first watches your clip and writes back what to change first.</p></div>
+    </div>
     ${swimPlan()?swimPlanBox(swimPlan()):''}
-    <div class="swim-grid">
-      <div class="swim-guide">
-        <h3>How to film it</h3>
-        <ol>
-          <li><b>Underwater, from the side.</b> A GoPro or a phone in a waterproof case, 30–60 cm under the surface, square to your lane, with you passing 3–5 m away.</li>
-          <li><b>Two or three lengths</b> at your normal steady pace — not a sprint for the camera — so both breathing sides are on it.</li>
-          <li><b>15–60 seconds</b> is plenty. 1080p, and 60 fps if your camera has it.</li>
-          <li>Someone to film a second angle? <b>From the front, underwater</b>, shows the hand entry and the rotation. One clip per upload.</li>
-        </ol>
-        <p class="swim-rules"><b>Pool rules first.</b> Many pools don’t allow filming, or need the staff’s OK. Ask, film only your own lane, and keep other swimmers — children above all — out of the frame.</p>
-      </div>
-      <form class="swim-form" id="swForm" novalidate>
+    <div class="sw-grid">
+      <form class="sw-card swim-form" id="swForm" novalidate>
+        <h3 class="sw-h">Send a swim clip</h3>
+        <label class="sw-drop" id="swDrop"><input type="file" id="swFile" accept="video/*">
+          <b id="swDropT">Drop your clip here, or click to pick it</b>
+          <span id="swDropS">Underwater, from the side, 15 to 60 seconds of steady swimming.</span></label>
         <div class="swim-row">
-          <label>Stroke<select id="swStroke">${swimOpts(SWIM_STROKES,'freestyle')}</select></label>
-          <label>Where<select id="swPool">${swimOpts(SWIM_POOLS,'pool_25m')}</select></label>
+          <label><span>Stroke</span><select id="swStroke">${swimOpts(SWIM_STROKES,'freestyle')}</select></label>
+          <label><span>Where</span><select id="swPool">${swimOpts(SWIM_POOLS,'pool_25m')}</select></label>
+          <label><span>Camera</span><select id="swView">${swimOpts(SWIM_VIEWS,'underwater_side')}</select></label>
         </div>
-        <label>Camera<select id="swView">${swimOpts(SWIM_VIEWS,'underwater_side')}</select></label>
         <label><span>What should the coach look at? <span class="swim-opt">optional</span></span>
-          <textarea id="swFocus" maxlength="200" placeholder="e.g. My legs sink and I run out of breath after 100 m"></textarea></label>
-        <label class="swim-file">Your clip<input type="file" id="swFile" accept="video/*"></label>
+          <input type="text" id="swFocus" maxlength="200" placeholder="e.g. my legs sink, breathing to the left"></label>
         <label class="swim-consent"><input type="checkbox" id="swConsent">
-          <span>You may use this clip to help build automatic swim analysis. <span class="swim-opt">Optional — the coach sees it either way, and nobody else does without this.</span></span></label>
+          <span>You may use this clip to help build automatic swim analysis. <span class="swim-opt">Optional. The coach sees it either way, and nobody else does without this.</span></span></label>
         <button class="btn btn-primary" type="submit" id="swGo">Upload clip</button>
         <div class="swim-prog hidden" id="swProg"><div class="swim-bar"><i id="swBar"></i></div><span id="swProgTxt"></span></div>
         <p class="swim-err" id="swErr" role="alert"></p>
         <p class="swim-fine">Nothing is charged at upload: you choose Coach Notes or an Expert Review on the next screen.</p>
       </form>
+      <aside class="sw-card swim-guide">
+        <h3 class="sw-h">How to film it</h3>
+        <ol>
+          <li><b>Underwater, from the side.</b> A GoPro or a phone in a waterproof case, 30–60 cm under the surface, square to your lane, with you passing 3–5 m away.</li>
+          <li><b>Two or three lengths</b> at your normal steady pace, not a sprint for the camera, so both breathing sides are on it.</li>
+          <li><b>15–60 seconds</b> is plenty. 1080p, and 60 fps if your camera has it.</li>
+          <li>Someone to film a second angle? <b>From the front, underwater</b>, shows the hand entry and the rotation. One clip per upload.</li>
+        </ol>
+        <p class="swim-rules"><b>Pool rules first.</b> Many pools don’t allow filming, or need the staff’s OK. Ask, film only your own lane, and keep other swimmers, children above all, out of the frame.</p>
+      </aside>
     </div>
-    ${waiting.length?`<div class="swim-mine"><h3>Your swim clips</h3>${waiting.map(e=>`<button type="button" class="swim-mineitem" data-swopen="${esc(e.id)}"><b>${esc(fmtWhen(e.filmedAt||e.at))}</b> · ${esc(swimMeta(e))}</button>`).join('')}</div>`:''}
-  </div>`;
+    ${waiting.length?`<nav class="sw-card swim-mine" aria-label="Your swim clips"><h3 class="sw-h">Your swim clips</h3>${waiting.map(e=>`<button type="button" class="swim-mineitem" data-swopen="${esc(e.id)}"><span><b>${esc(fmtWhen(e.filmedAt||e.at))}</b><span class="swim-opt">${esc(swimMeta(e))}</span></span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></button>`).join('')}</nav>`:''}`;
   $('#swForm').addEventListener('submit',ev=>{ ev.preventDefault(); swimUpload(); });
   $('#swHost').querySelectorAll('[data-swopen]').forEach(b=>b.addEventListener('click',()=>openSwimEntry(b.dataset.swopen)));
+  // The drop zone is the file input's label: a click picks, a drop hands the
+  // file to the same input, and the line under it names what was picked.
+  const drop=$('#swDrop'), inp=$('#swFile');
+  const said=()=>{ const f=inp.files[0];
+    $('#swDropT').textContent=f?f.name:'Drop your clip here, or click to pick it';
+    $('#swDropS').textContent=f?fmtSize(f.size)+' · click to pick another':'Underwater, from the side, 15 to 60 seconds of steady swimming.';
+    drop.classList.toggle('has-file',!!f); };
+  inp.addEventListener('change',said);
+  ['dragenter','dragover'].forEach(t=>drop.addEventListener(t,ev=>{ ev.preventDefault(); drop.classList.add('is-over'); }));
+  ['dragleave','drop'].forEach(t=>drop.addEventListener(t,()=>drop.classList.remove('is-over')));
+  drop.addEventListener('drop',ev=>{ ev.preventDefault(); const fl=ev.dataTransfer&&ev.dataTransfer.files; if(fl&&fl.length){ inp.files=fl; said(); } });
 }
 function swimUpload(){
   const f=$('#swFile').files[0], err=$('#swErr');
@@ -7236,7 +7248,7 @@ function swimUpload(){
     txt.innerHTML=e.loaded>=e.total?'Saving…':`Uploading… <b>${fmtSize(e.loaded)}</b> of <b>${fmtSize(e.total)}</b>`;
   };
   const stop=msg=>{ go.disabled=false; prog.classList.add('hidden'); err.textContent=msg; };
-  xhr.onerror=()=>stop('Network error during upload — check your connection and try again.');
+  xhr.onerror=()=>stop('Network error during upload. Check your connection and try again.');
   xhr.onload=()=>{
     let j={}; try{ j=JSON.parse(xhr.responseText); }catch(e){}
     if(xhr.status<200||xhr.status>=300){ stop(j.detail||('Upload failed (HTTP '+xhr.status+').')); return; }
@@ -7255,16 +7267,19 @@ function openSwimEntry(id){
 }
 function renderSwimEntry(e){
   $('#swBackTxt').textContent='Back to history';
-  $('#swHost').innerHTML=`<div class="card swim-card">
-    <span class="eyebrow">Swim · coach review</span>
-    <h1 class="swim-h" id="swTitle" tabindex="-1">Your swim clip</h1>
-    <p class="swim-meta">${esc(swimMeta(e))} · ${esc(fmtWhen(e.filmedAt||e.at))}</p>
-    <div class="swim-player" id="swPlayer"><p class="swim-fine">Loading your clip…</p></div>
-    ${e.focus?`<p class="swim-q"><b>Your question for the coach:</b> “${esc(e.focus)}”</p>`:''}
-    <div id="swNotes"></div>
-    <div id="swOrders"></div>
-    <div class="swim-foot"><button class="btn btn-ghost btn-sm" type="button" id="swDel">Delete this clip</button></div>
-  </div>`;
+  $('#swHost').innerHTML=`<div class="pagehead ath-head">
+      <div class="ath-title"><h2 class="sec" id="swTitle" tabindex="-1">Your swim clip</h2>
+        <p class="ph-lede">${esc(swimMeta(e))} · filmed ${esc(fmtWhen(e.filmedAt||e.at))}</p></div>
+    </div>
+    <div class="sw-grid sw-grid--clip">
+      <div class="sw-col">
+        <div class="swim-player" id="swPlayer"><p class="swim-fine">Loading your clip…</p></div>
+        ${e.focus?`<p class="swim-q"><b>Your question for the coach:</b> “${esc(e.focus)}”</p>`:''}
+        <div id="swNotes"></div>
+      </div>
+      <div class="sw-col" id="swOrders"></div>
+    </div>
+    <div class="swim-foot"><button class="btn btn-ghost btn-sm" type="button" id="swDel">Delete this clip</button></div>`;
   renderSwimPlayer(e);
   renderSwimNotes(e);
   renderSwimOrders(e);
@@ -7279,17 +7294,30 @@ async function renderSwimPlayer(e){
     host.innerHTML=j.source
       ? `<video controls playsinline preload="metadata" src="${esc(j.source)}"></video>`
       : '<p class="swim-fine">This clip is no longer stored on our side.</p>';
-  }catch(err){ if(host.isConnected) host.innerHTML='<p class="swim-fine">Couldn’t load the clip — check your connection.</p>'; }
+  }catch(err){ if(host.isConnected) host.innerHTML='<p class="swim-fine">Couldn’t load the clip. Check your connection.</p>'; }
 }
 /* Delivered Coach Notes are written onto the entry by the queue (coachNote),
-   exactly as on a run or bike report. */
+   exactly as on a run or bike report, as plain text in the shape
+   expert_review.notes_text gives it: "First thing to change: ..." on the
+   first line, then the three notes numbered. Drawn as the board draws it
+   when it has that shape; anything else is shown as written. */
+function swimNoteParts(text){
+  const lines=String(text||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  const m=lines.length&&lines[0].match(/^First thing to change:\s*(.+)$/i);
+  const notes=lines.slice(m?1:0).map(l=>l.match(/^\d+\.\s*(.+)$/)).filter(Boolean).map(x=>x[1]);
+  if(!m||notes.length!==lines.length-1) return null;
+  return {first:m[1], notes};
+}
 function renderSwimNotes(e){
   const host=$('#swNotes'); if(!host) return;
   if(!e.coachNote){ host.innerHTML=''; return; }
-  host.innerHTML=`<div class="swim-note"><span class="no-chip">Coach Notes</span>
-    <div class="cnote-read">${esc(e.coachNote)}</div>
-    ${e.coachName?`<div class="cnote-by">— ${esc(e.coachName)} · watched your clip</div>`:''}
-    ${e.coachBio?`<div class="cnote-bio">${esc(e.coachBio)}</div>`:''}</div>`;
+  const p=swimNoteParts(e.coachNote);
+  const by=e.coachName?`<p class="sw-by">${esc(e.coachName)} · watched your clip${e.coachBio?`<span>${esc(e.coachBio)}</span>`:''}</p>`:'';
+  host.innerHTML=p
+    ? `<div class="sw-notes"><h3 class="sw-h">Coach Notes</h3>
+        <div class="sw-first"><span>First thing to change</span><b>${esc(p.first)}</b></div>
+        ${p.notes.length?`<ol class="sw-list">${p.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>`:''}${by}</div>`
+    : `<div class="sw-notes"><h3 class="sw-h">Coach Notes</h3><div class="cnote-read">${esc(e.coachNote)}</div>${by}</div>`;
 }
 async function renderSwimOrders(e){
   const host=$('#swOrders'); if(!host) return;
@@ -7307,9 +7335,9 @@ async function renderSwimOrders(e){
     <p class="no-p">Your full review is ready.</p>
     <div class="no-cta"><button class="btn btn-primary btn-sm" type="button" data-swreport="${revDone.id}">Read your Expert Review</button></div></div>`);
   if(revOpen) parts.push(`<div class="no-card"><div class="no-head"><span class="no-chip">Expert Review · ${revOpen.status==='in_review'?'a coach is on it':'booked'}</span></div>
-    <p class="no-p">A coach has your clip. You’ll get an email when the review is ready — within five days.</p></div>`);
+    <p class="no-p">A coach has your clip. You’ll get an email when the review is ready, within five days.</p></div>`);
   if(notesOpen) parts.push(`<div class="no-card"><div class="no-head"><span class="no-chip">Coach Notes · ${notesOpen.status==='in_review'?'a coach is on it':'booked'}</span></div>
-    <p class="no-p">A coach has your clip. You’ll get an email when the notes are here — usually within 72 hours.</p></div>`);
+    <p class="no-p">A coach has your clip. You’ll get an email when the notes are here, usually within 72 hours.</p></div>`);
   if(!revDone&&!revOpen&&!notesOpen) parts.push(swimOffersHtml(!!notesDone));
   host.innerHTML=parts.join('');
   host.querySelectorAll('[data-swreport]').forEach(b=>b.addEventListener('click',()=>openReviewReport(+b.dataset.swreport)));
@@ -7327,14 +7355,14 @@ function swimOffersHtml(notesDone){
       <h3 class="no-t">Three things a coach sees</h3>
       <p class="no-p"><b>The first thing to change</b>, in one line, and <b>three short notes</b> on your stroke. Within 72 hours.</p>
       <div class="no-cta">${np.available&&np.plan
-        ?`<button class="btn btn-outline btn-sm" type="button" data-swbuy="notes">Add Coach Notes — ${esc(np.display||'')}</button>`
-        :'<button class="btn btn-outline btn-sm" type="button" disabled>Coach Notes — coming soon</button>'}
+        ?`<button class="btn btn-outline btn-sm" type="button" data-swbuy="notes">Add Coach Notes · ${esc(np.display||'')}</button>`
+        :'<button class="btn btn-outline btn-sm" type="button" disabled>Coach Notes: coming soon</button>'}
         <span class="no-note" data-slots="notes"></span></div></div>`;
   const review=`<div class="no-card">
       <div class="no-head"><span class="no-chip">Expert Review</span><span class="no-price">${credits>0?'Included'
         :(memberReview()?`${esc(memberReview().display)}<small>member price</small><s>${esc(memberReview().was)}</s>`:esc(expertPrice()||''))}</span></div>
       <h3 class="no-t">The full review of your stroke</h3>
-      <p class="no-p">What the coach sees, what is already working, the fixes in order — each with a drill — and a four-week plan you can take to the pool. Within five days, as a report and a PDF.</p>
+      <p class="no-p">What the coach sees, what is already working, the fixes in order, each with a drill, and a four-week plan you can take to the pool. Within five days, as a report and a PDF.</p>
       <div class="no-cta"><button class="btn btn-primary btn-sm" type="button" data-swbuy="expert">${credits>0?'Use your included Expert Review':'Book an Expert Review'+esc(expertPriceLabel())}</button>
         <span class="no-note" data-slots="expert"></span></div></div>`;
   const p=swimPlan();
@@ -7349,7 +7377,7 @@ function swimSlots(host){
     [['notes',j.notes],['expert',j]].forEach(([k,s])=>{
       const b=host.querySelector(`[data-swbuy="${k}"]`), sl=host.querySelector(`[data-slots="${k}"]`);
       if(!s||!b||!sl) return;
-      if(s.open===false){ b.disabled=true; sl.textContent=s.paused?'Paused this week — the coach is away.':'Fully booked this week — open again Monday.'; }
+      if(s.open===false){ b.disabled=true; sl.textContent=s.paused?'Paused this week: the coach is away.':'Fully booked this week. Open again Monday.'; }
       else if(s.left!=null&&s.left<=3) sl.textContent=`${s.left} left this week`;
     });
   }).catch(()=>{});
