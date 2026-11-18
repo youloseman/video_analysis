@@ -289,6 +289,8 @@ body{font-family:var(--f-body);font-size:14px;line-height:1.5;color:var(--c-ink)
 .rr-main .rr-wrap{max-width:none;margin:0}
 .rr-aside{display:flex;flex-direction:column;gap:16px;min-width:0}
 .rr-aside:empty{display:none}
+/* Nothing beside it (the sample has no frame and no reviewer): one reading column. */
+.rr-grid:has(> .rr-aside:empty){grid-template-columns:minmax(0,1fr);max-width:760px}
 .rr-card{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);padding:20px}
 .rr-figcard{padding:0;overflow:hidden}
 .rr-figcard .rr-figs{gap:0;margin:0;padding:0;border:0;border-radius:0;background:none}

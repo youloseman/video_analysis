@@ -9465,10 +9465,9 @@ async function openSampleReport(){
   try{ j=await (await fetch('/billing/expert-review/sample')).json(); }
   catch(e){ host.innerHTML='<p class="hint">Couldn’t load the sample right now.</p>'; return; }
   host.innerHTML=reportPage({title:'Expert Review: an example',
-    lede:`A sample of what an Expert Review${expertPrice()?' ('+esc(expertPrice())+')':''} buys: a real report for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by a person who has read it.`,
+    lede:`A sample of what an Expert Review${expertPrice()?' ('+esc(expertPrice())+')':''} buys, written to show the format for ${esc((j.context||{}).when||'a submitted clip')}. Yours is written against your own analysis, by the coach who reads it.`,
     action:'<button class="btn btn-primary" type="button" onclick="openPricing()">See pricing</button>',
-    report:j.report, sections:j.sections, figures:j.figures,
-    coachLine:'Wrote this against the athlete’s analysis, by eye.'});
+    report:j.report, sections:j.sections, figures:j.figures});
   const t=$('#rrTitle'); if(t) t.focus({preventScroll:true});
 }
 
@@ -9660,7 +9659,7 @@ function exEditorHtml(d){
     <div>
       <div class="ex-fld">
         <label for="ex_reviewer">Signed by</label>
-        <input type="text" id="ex_reviewer" data-exmeta="reviewer" value="${esc(r.reviewer||'')}" placeholder="Artur Podgornyi">
+        <input type="text" id="ex_reviewer" data-exmeta="reviewer" value="${esc(r.reviewer||'')}" placeholder="Coach’s name">
       </div>
       <div class="ex-fld">
         <label for="ex_reviewer_bio">Who they are</label>

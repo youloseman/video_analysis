@@ -406,3 +406,13 @@ def test_the_page_draws_them_after_the_verdict_everywhere():
     # internal sections never render on the athlete's page or in the preview
     assert "filter(s=>!s.internal)" in spa
     assert "{src:d.media.kinogram, kind:'kinogram'" in spa
+
+
+def test_the_sample_is_signed_by_nobody():
+    """The sample is an example of the format, not a review anyone was sent:
+    no name on it, and the page does not call it a real report."""
+    assert er.SAMPLE_REPORT["reviewer"] == ""
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    fn = spa[spa.index("async function openSampleReport"):][:1500]
+    assert "a real report" not in fn and "written to show the format" in fn

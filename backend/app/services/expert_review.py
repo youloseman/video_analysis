@@ -603,9 +603,10 @@ def ready_email(
 # The sample shown on the pricing page
 #
 # The Expert Review button currently sells something invisible: nobody knows
-# what the review buys until after they have spent it. This is a real, complete report
-# rendered by the same code as a real one -- if the template changes, the
-# sample changes with it or the tests fail.
+# what the review buys until after they have spent it. This is a complete
+# example, written to show the format -- not a review anyone was sent, so it
+# carries no reviewer's name. It is rendered by the same code as a real one:
+# if the template changes, the sample changes with it or the tests fail.
 # --------------------------------------------------------------------------
 SAMPLE_SPORT = "run"
 SAMPLE_CONTEXT = {
@@ -619,7 +620,7 @@ SAMPLE_CONTEXT = {
 SAMPLE_FIGURES: list[dict[str, str]] = []
 SAMPLE_REPORT: dict[str, Any] = {
     "version": REPORT_VERSION,
-    "reviewer": "Artur Podgornyi",
+    "reviewer": "",
     "verdict": (
         "Your cadence is not the problem, and I'd ignore the app's suggestion to "
         "raise it. The problem is that you're landing with the foot well ahead of "
