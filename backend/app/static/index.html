@@ -13581,11 +13581,19 @@ function renderHistoryKeyframe(e){
     if(kf){ img.src=kf; dl.href=kf; } else { wrap.classList.add('hidden'); }
   });
 }
-function openHistory(id){
+/* A link that names a section lands on it: the first of `to` (a list of
+   selectors) that is showing, else the top. */
+function jumpToBlock(to){
+  if(!to) return;
+  setTimeout(()=>{ const el=String(to).split(',').map(s=>$(s.trim())).find(x=>x&&!x.classList.contains('hidden')&&x.offsetParent!==null);
+    if(el) el.scrollIntoView({block:'start'}); }, 0);
+}
+function openHistory(id, to=null){
   if(swimEntry(id)){ openSwimEntry(id); return; }
   const e=findEntry(id); if(!e) return;
   renderHistoryDetail(e);
   setState('historydetail',{focus:'#hdTitle',route:{id:e.id}});
+  jumpToBlock(to);
   // A report bought after it was first rendered. Draw what we hold immediately
   // and swap in the real thing when it arrives: the fetch usually has nothing
   // to gain, and making every history open wait on it would be a tax paid by
@@ -14774,13 +14782,13 @@ function dashFixTips(x){
   const far=r=>Math.abs(r.m.delta||0)/((r.m.range.hi-r.m.range.lo)||1);
   const out=rows.filter(r=>r.st.cls==='m-out').sort((a,b)=>far(b)-far(a));
   const edge=rows.filter(r=>r.st.cls==='m-near').sort((a,b)=>far(b)-far(a));
-  const said=r=>`${r.m.val}${measUnit(r.m.unit)}, range ${measRange(r.m.range.lo,r.m.range.hi,r.m.unit)}`;
-  const outFix=()=>out.slice(0,2).map(r=>({t:`${r.m.lbl} is ${r.m.delta>0?'too high':'too low'}`, d:said(r)+'.'}));
+  const said=r=>`${String(r.m.val).replace(/^-/,'−')}${measUnit(r.m.unit)}, range ${measRange(r.m.range.lo,r.m.range.hi,r.m.unit)}`;
+  const outFix=()=>out.slice(0,2).map(r=>({t:`${r.m.lbl} is ${r.m.delta>0?'too high':'too low'}`, d:said(r)}));
   // Written advice, or a reading out of range (also when the text said clean).
-  if(tips.fix.length&&!tips.clean) return {...tips, edge, said, level:'fix'};
+  if(tips.fix.length&&!tips.clean) return {...tips, edge, said, level:'fix', written:true};
   if(out.length) return {...tips, clean:false, fix:outFix(), edge, said, level:'fix'};
   // Nothing out, nothing written, something at the edge: that is the lead.
-  if(!tips.clean&&edge.length) return {...tips, clean:false, fix:edge.slice(0,2).map(r=>({t:`${r.m.lbl} is at the edge`, d:said(r)+'.'})), edge:[], said, level:'edge'};
+  if(!tips.clean&&edge.length) return {...tips, clean:false, fix:edge.slice(0,2).map(r=>({t:`${r.m.lbl} is at the edge`, d:said(r)})), edge:[], said, level:'edge'};
   return {...tips, edge, said, level:tips.clean||!tips.fix.length?'clean':'fix'};
 }
 function renderDashFix(all){
@@ -14794,7 +14802,10 @@ function renderDashFix(all){
   const e=withFix[0]||latest.find(x=>{ const t=dashTips(x); return t.clean||t.next; })
     ||all.find(x=>{ const t=dashTips(x); return t.fix.length||t.clean||t.next; });
   // Drills of that sport only: a run drill under a ride is noise.
-  const pe=all.find(x=>(!e||x.sport===e.sport)&&(x.plan||[]).some(p=>p&&p.drill));
+  // The lead clip's own plan first (Artur 2026-11-19: drills from another
+  // clip under this lead opened a different analysis); an older one says whose.
+  const hasDrill=x=>(x.plan||[]).some(p=>p&&p.drill);
+  const pe=(e&&hasDrill(e))?e:all.find(x=>(!e||x.sport===e.sport)&&hasDrill(x));
   const areas=focusAreas(all);
   if(!e && !pe && !areas.length){
     host.innerHTML=(isFreeUser() && all.length) ? teaserPanelHtml(DASH_TEASER_ITEMS, {src:'dashboard-teaser',
@@ -14814,7 +14825,7 @@ function renderDashFix(all){
       ${tips.fix[1]&&tips.fix[1].t?`<p class="dfx-then"><b>Then:</b> ${dash(esc(tips.fix[1].t))}</p>`:''}
       ${watch}
       ${tips.next?`<p class="dfx-next"><b>Next session.</b> ${dash(esc(tips.next))}</p>`:''}
-      <button class="btn btn-link dfx-open" type="button" data-id="${esc(e.id)}" data-focus-open="1">Open report →</button>
+      <button class="btn btn-link dfx-open" type="button" data-id="${esc(e.id)}" data-focus-open="1" data-to="${tips.written?'#hdCoachBlock,#hdFindings':'#hdFindings'}">Open report →</button>
     </div>`;
     fig=`<figure class="dfx-fig kf-load" data-dfx-fig="${esc(e.id)}"><img alt="" class="kf-slot"></figure>`;
   }
@@ -14823,7 +14834,7 @@ function renderDashFix(all){
     const plan=pe.plan.filter(p=>p&&p.drill), done=pe.planDone||{};
     const nDone=plan.filter(p=>done[planKey(p)]).length, allDone=nDone===plan.length;
     drills=`<div class="dfx-drills">
-      <div class="dfx-h"><b>Your drills</b><span><b>${nDone}</b> of <b>${plan.length}</b> done</span></div>
+      <div class="dfx-h"><b>Your drills</b><span>${e&&pe!==e?`from the ${pe.sport==='run'?'run':'ride'} on ${esc(shortDate(pe.filmedAt||pe.at))} · `:''}<b>${nDone}</b> of <b>${plan.length}</b> done</span></div>
       <div class="dfx-prog" aria-hidden="true"><i style="--w:${Math.round(nDone/plan.length*100)}%"></i></div>
       <div class="dplan-list">${plan.map(p=>{ const on=!!done[planKey(p)];
         return `<div class="dplan-item${on?' done':''}">${DPLAN_CHECK}<span class="dplan-drill">${esc(p.drill)}</span></div>`; }).join('')}</div>
@@ -16399,10 +16410,10 @@ $('#dashboard').addEventListener('click',e=>{
   const pg=e.target.closest('[data-progress]'); if(pg){ state.progressSport=pg.dataset.progress; openProgress();
     if(pg.dataset.goto) requestAnimationFrame(()=>{ const t=$('#'+pg.dataset.goto); if(t&&t.innerHTML) t.scrollIntoView({block:'start'}); });
     return; }
-  const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id); return; }
+  const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id, fo.dataset.to||null); return; }
   const sa=e.target.closest('[data-seeall]'); if(sa){ state.formSport=sa.dataset.seeall; state.formOpen=true; renderCurrentForm(loadHist());
     const f=$('#dashForm'); if(f) f.scrollIntoView({behavior:'smooth',block:'start'}); return; }
-  const po=e.target.closest('[data-plan-open]'); if(po){ openHistory(po.dataset.planOpen); return; }
+  const po=e.target.closest('[data-plan-open]'); if(po){ openHistory(po.dataset.planOpen, '#hdPlanBlock'); return; }
 });
 /* Go to the uploader preselected for a sport (from a dashboard CTA). */
 function startSportAnalysis(sport){

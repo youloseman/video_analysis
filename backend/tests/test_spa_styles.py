@@ -157,3 +157,17 @@ def test_fix_first_reads_the_readings_when_the_report_says_nothing():
     fn = HTML[HTML.index("function dashFixTips"):][:2500]
     assert "level:'fix'" in fn and "level:'edge'" in fn and "is at the edge" in fn
     assert "const RANK={fix:2,edge:1,clean:0};" in HTML
+
+
+def test_fix_first_drills_and_links_belong_to_the_lead_clip():
+    """Artur 2026-11-19: the lead came from the latest run, the drills and
+    "Open plan" from an older run, so the link opened another analysis at its
+    top. Drills come from the lead's own clip first (an older plan names its
+    date), and both links land on the section they name."""
+    fn = HTML[HTML.index("function renderDashFix"):][:6000]
+    assert "const pe=(e&&hasDrill(e))?e:" in fn
+    assert "pe!==e?`from the " in fn
+    assert 'data-to="${tips.written?' in fn
+    assert "openHistory(po.dataset.planOpen, '#hdPlanBlock')" in HTML
+    assert "openHistory(fo.dataset.id, fo.dataset.to||null)" in HTML
+    assert "#historyDetail .block{scroll-margin-top:68px}" in APP

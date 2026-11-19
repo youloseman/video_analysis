@@ -1486,6 +1486,8 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .rrail-nav button.is-here{background:var(--c-panel-blue);color:var(--c-ink);border-left:2px solid var(--c-blue);padding-left:12px}
 .rrail-nav button:focus-visible{outline:2px solid var(--c-blue);outline-offset:-2px}
 #results .block,#results .rrail-target{scroll-margin-top:68px}
+/* A dashboard link lands on a saved report's section, below the bar. */
+#historyDetail .block{scroll-margin-top:68px}
 @media(max-width:900px){ .rrail{top:52px} #results .block{scroll-margin-top:110px} }
 @media(min-width:901px){
   /* The report as two columns: a 200 px rail that sticks, and the report. */
