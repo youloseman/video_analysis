@@ -173,8 +173,9 @@
 
 <!-- Mobile top bar (shown < 900px): brand + hamburger -->
 <div class="topbar">
-  <!-- One menu on a phone: this opens the More page, as the More tab does. -->
-  <button class="topbar-toggle" id="navToggle" type="button" aria-label="More">
+  <!-- One menu on a phone: the drawer, from here and from the More tab
+       (Artur 2026-11-18: the drawer reads better than a More page). -->
+  <button class="topbar-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
     <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
     <!-- Unread-release dot. On phones the "What's new" link lives inside the
          drawer, so without this the dot would only be visible to someone who
@@ -13944,7 +13945,7 @@ $('#navProfiles').addEventListener('click',e=>{ e.preventDefault(); openProfiles
 $('#navAthletes').addEventListener('click',e=>{ e.preventDefault(); openAthletes(); });
 $('#navBatch').addEventListener('click',e=>{ e.preventDefault(); openBatch(); });
 $('#navAccount').addEventListener('click',e=>{ e.preventDefault(); openAccount(); });
-$('#botMore').addEventListener('click',e=>{ e.preventDefault(); openMore(); });
+$('#botMore').addEventListener('click',e=>{ e.preventDefault(); document.body.classList.contains('nav-open')?closeNav():openNav(); });
 $('#profileSel').addEventListener('change',e=>{
   if(e.target.value==='__new'){ showProfileInput(true); return; }
   state.profileId=e.target.value||null;
@@ -13992,8 +13993,9 @@ $('#wordmarkM').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ')
 
 /* ---- Mobile off-canvas navigation ---- */
 const navToggle=$('#navToggle'), navScrim=$('#navScrim');
-function closeNav(){ document.body.classList.remove('nav-open'); navScrim.hidden=true; }
-navToggle.addEventListener('click',()=>{ closeNav(); openMore(); });
+function openNav(){ document.body.classList.add('nav-open'); navToggle.setAttribute('aria-expanded','true'); navScrim.hidden=false; }
+function closeNav(){ document.body.classList.remove('nav-open'); navToggle.setAttribute('aria-expanded','false'); navScrim.hidden=true; }
+navToggle.addEventListener('click',()=>{ document.body.classList.contains('nav-open') ? closeNav() : openNav(); });
 navScrim.addEventListener('click',closeNav);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && document.body.classList.contains('nav-open')) closeNav(); });
 // Any sidebar link closes the drawer (mobile); desktop ignores (drawer not shown)
