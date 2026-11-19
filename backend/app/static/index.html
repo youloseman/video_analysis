@@ -14992,9 +14992,13 @@ function dashTips(e){
 const THEN_KEYS={bike:['trunk','knee','elbow','shoulder'],run:['cadence','overstride','trunk_lean','ground_contact']};
 function thenPair(sport, all){
   const every=all.filter(e=>e.sport===sport && (keyframeOf(e)||e.has_keyframe));
-  // First and latest from one side, or the readings under the pictures are the camera's.
-  const mine=every.filter(e=>!e.cameraSide||!every[0].cameraSide||e.cameraSide===every[0].cameraSide);
-  return mine.length>=2 ? {now:mine[0], then:mine[mine.length-1]} : null;
+  // The latest clip and the one before it filmed the same way (Artur
+  // 2026-11-18): same kind, side, position and setup (cmpSame). The first
+  // clip against the latest compared a photo's knee at the top of the stroke
+  // with a video's at the bottom: 75° -> 145° that nobody rode.
+  const now=every[0]; if(!now) return null;
+  const then=cmpPrevious(now, every);
+  return then ? {now, then} : null;
 }
 /* The first and latest clip of one sport and the readings that moved most,
    biggest change first; coloured by whether they moved toward their band
@@ -15005,6 +15009,9 @@ function thenChanges(sport, all){
   const ch=TREND_METRICS[sport].filter(m=>THEN_KEYS[sport].includes(m.key)).map(m=>{
     const a=then.trends&&then.trends[m.key], b=now.trends&&now.trends[m.key];
     if(a==null||b==null) return null;
+    // An angle that moved more than 35° between two clips filmed the same way
+    // was measured differently, not ridden differently: not shown.
+    if(String(m.unit||'').trim()==='°'&&Math.abs(b-a)>35) return null;
     const band=formBand(sport,m.key,now), d=metricDelta(a,b,band,m.hi), dec=FORM_DEC[m.key]||0, u=measUnit(String(m.unit||'').trim());
     return {m,a,b,d,dec,u,rel:Math.abs(b-a)/(band?Math.max(1e-6,band[1]-band[0]):Math.max(1,Math.abs(a)))};
   }).filter(Boolean).sort((x,y)=>y.rel-x.rel);
@@ -15018,8 +15025,8 @@ function thenNowCard(all, sport){
   const ch=thenChanges(sport,all).ch.slice(0,3).map(({m,a,b,d,dec,u})=>({html:`<li><span>${esc(m.label)}</span><span class="dthen-v">${num(a,dec)}${u} → <b>${num(b,dec)}${u}</b></span>${d.delta===0?'<span class="dform-first">no change</span>':`<span class="tdelta ${d.cls}">${d.delta>0?'▲ +':'▼ '}${num(Math.abs(d.delta),dec||1)}${u}</span>`}</li>`}));
   return `<div class="dcard dthen">
     <div class="dcard-head"><h2>Then → now</h2></div>
-    <p class="dcard-note dthen-sub">Your first and latest ${sport==='run'?'run':'ride'}, ${days} day${days===1?'':'s'} apart</p>
-    <div class="dthen-pair">${fig(then,'First')}${fig(now,'Latest')}</div>
+    <p class="dcard-note dthen-sub">Your last two ${sport==='run'?'runs':'rides'} filmed the same way, ${days} day${days===1?'':'s'} apart</p>
+    <div class="dthen-pair">${fig(then,'Before')}${fig(now,'Latest')}</div>
     ${ch.length?`<ul class="dthen-ch">${ch.map(c=>c.html).join('')}</ul>`:''}
   </div>`;
 }

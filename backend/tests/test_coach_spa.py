@@ -190,7 +190,9 @@ def test_no_screen_draws_a_line_or_a_delta_across_two_sides():
     assert "e.cameraSide===state.progressSide" in fn("renderProgress")
     assert "sameSide" in fn("sportCard")
     assert "cmpPrevious(cur,entries)" in fn("formTiles") and "cmpPrevious(cur,entries)" in fn("currentFormTable")
-    assert "every[0].cameraSide" in fn("thenPair")
+    # Then -> now: the latest against the previous clip filmed the same way
+    # (cmpSame covers the side, the kind, the position and the setup).
+    assert "cmpPrevious(now, every)" in fn("thenPair")
 
 
 @pytest.mark.skipif(not node, reason="node is not installed")
