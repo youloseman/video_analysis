@@ -214,7 +214,11 @@
          "My technique", "Compare" and "Profiles" are account features and are
          revealed by renderAuth(). -->
     <a href="#" id="navAnalyze" class="navlink navlink-cta"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg><span>Analyze</span></a>
-    <a href="#" id="navHome" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg><span>My technique</span></a>
+    <!-- The home item: the house in the markup (a coach's Squad); an athlete's
+         reads My technique and wears the runner (renderAuth). -->
+    <a href="#" id="navHome" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>My technique</span></a>
+    <!-- A coach's home is the Squad; their own clips are one step away here. -->
+    <a href="#" id="navMine" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-run"/></svg><span>My technique</span></a>
     <a href="#" id="navProgress" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
     <a href="#" id="navHistory" class="navlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
     <a href="#" id="navCompare" class="navlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg><span>Compare</span></a>
@@ -2310,7 +2314,8 @@ const SECTIONS={upload:'uploader', progress:'progress', results:'results', photo
 const NAV_FOR_STATE = { dashboard:'#navHome', history:'#navHistory', historydetail:'#navHistory', swimdetail:'#navHistory', trends:'#navProgress', compare:'#navCompare', pricing:'#navPricing', whatsnew:'#navNew', feedbackadmin:'#navFeedback', expertadmin:'#navExpert', account:'#navAccount', coachprofile:'#navAccount', profiles:'#navProfiles', athletes:'#navAthletes', athletedetail:'#navAthletes', batch:'#navBatch' };
 const BOTNAV_FOR_STATE = { dashboard:'#botHome', history:'#botHistory', historydetail:'#botHistory', swimdetail:'#botHistory', trends:'#botProgress', compare:'#botProgress', account:'#botMore', more:'#botMore', coachprofile:'#botMore', profiles:'#botMore', athletes:'#botMore', athletedetail:'#botMore', batch:'#botHome', pricing:'#botMore', whatsnew:'#botMore' };
 function syncActiveNav(name){
-  const active = NAV_FOR_STATE[name] || '#navAnalyze';        // default: Analyze
+  // A coach on their own page: My technique is lit, not the Squad.
+  const active = (name==='dashboard'&&hasCoachPlan()&&state.squadMe) ? '#navMine' : (NAV_FOR_STATE[name] || '#navAnalyze');        // default: Analyze
   // A coach's Progress lives on the More page; their Compare is the tab.
   const botActive = (hasCoachPlan()&&name==='trends') ? '#botMore' : (BOTNAV_FOR_STATE[name] || '#botAnalyze');
   document.querySelectorAll('.sidenav .navlink').forEach(a=>a.removeAttribute('aria-current'));
@@ -12367,6 +12372,8 @@ function renderAuth(){
   fileInput.multiple=hasCoachPlan();
   // The coach's home is the squad; the label says so.
   const homeLbl=document.querySelector('#navHome span'); if(homeLbl) homeLbl.textContent=hasCoachPlan()?'Squad':'My technique';
+  const homeIc=document.querySelector('#navHome use'); if(homeIc) homeIc.setAttribute('href',hasCoachPlan()?'#i-home':'#i-run');   // the coach's home; Athletes keeps the people
+  $('#navMine').classList.toggle('hidden',!hasCoachPlan());
   // The coach's tab bar as drawn: Squad / History / Analyze / Compare / More.
   // Their own Progress moves to the More page.
   const bh=document.querySelector('#botHome span'); if(bh) bh.textContent=hasCoachPlan()?'Squad':'Home';
@@ -16319,8 +16326,9 @@ function openDashboard(){
   }
   setState('dashboard',{focus:'#dashTitle'});
 }
-$('#navHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); });
-$('#botHome').addEventListener('click',e=>{ e.preventDefault(); openDashboard(); closeNav(); });
+$('#navHome').addEventListener('click',e=>{ e.preventDefault(); state.squadMe=false; openDashboard(); });
+$('#botHome').addEventListener('click',e=>{ e.preventDefault(); state.squadMe=false; openDashboard(); closeNav(); });
+$('#navMine').addEventListener('click',e=>{ e.preventDefault(); state.squadMe=true; openDashboard(); });
 // Mobile back-to-home buttons on the Progress/History views.
 document.querySelectorAll('.backhome').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); openDashboard(); }));
 $('#dashboard').addEventListener('click',e=>{

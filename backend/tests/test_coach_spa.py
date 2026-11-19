@@ -478,3 +478,13 @@ def test_approve_and_send_opens_the_sent_sheet():
     assert "openSentSheet({name, email:j.email, mailed:!!j.mailed, url:j.url});" in spa
     assert 'id="sentModal"' in spa and 'id="sentCopy"' in spa and "Back to the Squad" in spa
     assert "Link ready. Copy it and send it yourself." not in spa
+
+
+def test_a_coach_reaches_their_own_technique_from_the_drawer():
+    """Artur 2026-11-18: a coach's drawer had no My technique (the home item
+    reads Squad). Now it does, and Squad always goes back to the squad."""
+    from pathlib import Path
+    spa = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert 'id="navMine"' in spa
+    assert "$('#navMine').classList.toggle('hidden',!hasCoachPlan());" in spa
+    assert "$('#navHome').addEventListener('click',e=>{ e.preventDefault(); state.squadMe=false; openDashboard(); });" in spa
