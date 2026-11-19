@@ -149,3 +149,20 @@ def test_app_css_has_no_raw_colours():
     values = " ".join(m.group(1) for m in re.finditer(r"\{([^{}]*)\}", css))
     bad = [m.group(0) for m in re.finditer(r"(?<![\w-])#[0-9A-Fa-f]{3,8}\b", values)]
     assert not bad, f"raw colours in app.css, use a token: {sorted(set(bad))}"
+
+
+def test_spacing_keeps_the_two_px_rhythm():
+    """The boards space on a 2 px rhythm (10, 14, 6 and 2 are nearly half of
+    their values), so the app does: margins, paddings and gaps are even, and
+    1 px is the one nudge allowed (a hairline)."""
+    import re
+    from pathlib import Path
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    odd = []
+    for m in re.finditer(r"(?<![\w-])(?:margin|padding|gap|row-gap|column-gap)[a-z-]*\s*:\s*([^;}]+)", css):
+        for v in re.findall(r"(-?\d+(?:\.\d+)?)px", m.group(1)):
+            x = float(v)
+            if x != int(x) or (int(x) % 2 and abs(int(x)) != 1):
+                odd.append(m.group(0)[:60])
+    assert not odd, f"odd spacing in app.css (use an even value): {odd[:8]}"
