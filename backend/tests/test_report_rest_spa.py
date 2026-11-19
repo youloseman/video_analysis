@@ -74,7 +74,7 @@ def test_photo_findings_sit_beside_the_photo_and_stay_paid():
 def test_the_analysing_card_promises_only_what_a_reload_keeps():
     """A reload picks the job up again from #job=; leaving for good saves nothing,
     so the card must not say the report will be in History (the board did)."""
-    assert "If the page reloads, the analysis picks up where it was." in SPA
+    assert "If the page reloads, the analysis picks up where it was</p>" in SPA
     assert "the report will be in History" not in SPA
     assert "function jobMeta(parts)" in SPA and "fchip" not in SPA
     assert SPA.count('<span class="sline"></span>') == 3

@@ -78,7 +78,7 @@ def test_auth_me_carries_the_preview_and_the_sign_in_answers_leave_it_out():
     'id="preframe"',
     "function syncPreframe(){",
     "state.mode!=='photo'",
-    "Your free full report ${when}. This clip shows the <b>score and the skeleton</b>.",
+    "Your free full report ${when}. This clip shows the <b>score and the skeleton</b><br>",
     "track('preframe_shown', {sport:state.sport, has_date:!!pv.spent_at_ms, has_last:!!last});",
     "track('preframe_clicked', {to:a.dataset.pf, sport:state.sport});",
     # The "last report" link opens a locked clip, never a photo and never the

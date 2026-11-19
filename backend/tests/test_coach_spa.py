@@ -293,7 +293,7 @@ def test_a_row_is_not_filed_under_the_coach_by_default():
 
 def test_the_batch_waits_for_an_answer_and_sends_only_real_ids():
     src = fn("renderBatch")
-    assert "go.disabled=!todo||unnamed>0" in src and "first." in src
+    assert "go.disabled=!todo||unnamed>0" in src and "first`" in src
     # While it runs the button counts, and after it never sits there grey.
     assert "Sending ${Math.min(finished+1,total)} of ${total}" in src
     assert "Add more clips or photos" in src

@@ -23,7 +23,7 @@ def test_the_locked_video_report_renders_the_teaser_card_not_the_bullet_list():
     assert ": teaserCardHtml(locked, sellable?unlockId:null, items, offer, delta, ctx);" in SPA
     # The preview has its own card (step 5), with the same title as before.
     assert "? previewCardHtml(locked, sellable?unlockId:null, offer, ctx)" in SPA
-    assert "<h3>That was one report. The plan is what changes the next one.</h3>" in SPA
+    assert "<h3>That was one report. The plan is what changes the next one</h3>" in SPA
 
 
 def test_the_card_names_the_finding_and_blurs_the_number():
