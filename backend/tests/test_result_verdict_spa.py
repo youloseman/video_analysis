@@ -75,7 +75,7 @@ def test_a_knee_past_its_band_leads_with_the_plans_first_step():
 @pytest.mark.skipif(not node, reason="node is not installed")
 def test_nothing_out_of_range_says_so_and_only_then():
     v = run("const v=resultVerdict({},'bike',[row('Knee · bottom',142,138,145,'optimal'),row('Trunk',22,20,25,'optimal')]);")
-    assert v["level"] == "good" and v["head"] == "Nothing to fix in this clip" and v["go"] is None
+    assert v["level"] == "good" and v["head"] == "Every graded reading is in range" and v["go"] is None
     assert "All 2 graded readings" in v["why"]
 
 
