@@ -118,3 +118,15 @@ def test_progress_on_a_phone_folds_readings_but_keeps_the_charts():
     assert "phone&&cls!=='pg-reg'?row:card" in fn
     assert "trendChart2(x.series,x.opt,x.m.unit,{ts:x.tser,dec:FORM_DEC[x.m.key]})}</details>" in fn
     assert "function progSpark" in HTML
+
+
+def test_audit_small_gaps():
+    """Audit 2026-11-18, the small ones: History says when it is loading or did
+    not load (never "0 analyses"), Compare's change can be copied, the CdA chip
+    counts only like-for-like, old " -- " in plan text never reaches the screen."""
+    assert "History did not load" in HTML and "data-histretry" in HTML
+    assert "state.cloudSlow=true" in HTML and "300)" in HTML
+    assert "Copy summary" in HTML and "state.cmpSummary=" in HTML
+    fn = HTML[HTML.index("function cdaSinceChip"):][:600]
+    assert "cdaLike(r,last)" in fn
+    assert "${dash(esc(p.cue))}" in HTML and "${dash(esc(first.d))}" in HTML

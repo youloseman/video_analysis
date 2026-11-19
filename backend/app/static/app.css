@@ -726,6 +726,8 @@ video.ex-media{background:var(--c-media-bg)}
 .dfx-open{min-height:44px;padding:0;font-size:14px}
 .dfx-fig{position:relative;margin:0;border-radius:var(--radius-panel);overflow:hidden;background:var(--c-media-bg);aspect-ratio:3/4}
 .dfx-fig img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dfx-fig figcaption{position:absolute;left:0;right:0;bottom:0;padding:20px 10px 8px;font-size:12px;color:#F5F7FA;background:linear-gradient(transparent,rgba(14,17,22,.75))}
+.cmp-what-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .dfx-side{display:flex;flex-direction:column;gap:18px;min-width:0}
 .dfx-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;color:var(--c-ink-faint)}
 .dfx-h > b{color:var(--c-head);font-size:14px}
@@ -4473,3 +4475,23 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .pg-rows .pc-fold:first-child{border-top:0}
   .pg-cmpend{display:flex;width:100%;min-height:48px;margin:16px 0 0}
 }
+
+/* History loading and did-not-load (board: EmptyStates). */
+.hist-skel{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);padding:8px 24px}
+.hsk-row{display:grid;grid-template-columns:72px minmax(0,1fr) 48px;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--c-panel)}
+.hsk-row:first-child{border-top:0}
+.hsk-row i{display:block;background:var(--c-panel);border-radius:var(--radius-bar)}
+.hsk-fig{height:54px;border-radius:var(--radius-panel)!important}
+.hsk-row span{display:flex;flex-direction:column;gap:8px}
+.hsk-row span i{height:12px;width:60%}
+.hsk-row span i + i{width:35%}
+.hsk-ring{width:48px;height:48px;border-radius:50%!important}
+.hist-fail .ic-lg{color:var(--st-bad-fill)}
+.empty-acts{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+@media(max-width:640px){ .hist-skel{padding:4px 16px} .hsk-row{grid-template-columns:56px minmax(0,1fr) 44px} .hsk-fig{height:42px} .hsk-ring{width:44px;height:44px} }
+
+/* The CdA change since the first like-for-like measurement (board: Setups). */
+.cda-since{display:inline-flex;align-items:center;gap:4px;margin:8px 0 0;padding:6px 12px;border-radius:var(--radius-tag);background:var(--st-good-bg);color:var(--st-good);font-size:14px;font-weight:600}
+.cda-since .num{font-family:var(--f-mono);font-weight:600}
+.cda-since-up{background:var(--st-warn-bg);color:var(--st-warn)}
+.cda-since-flat{background:var(--c-panel);color:var(--c-ink-soft)}

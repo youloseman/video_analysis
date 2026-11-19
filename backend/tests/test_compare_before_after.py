@@ -138,7 +138,7 @@ def _headline(a_trends, b_trends, a_score=70, b_score=85):
 
 def test_a_knee_that_moves_into_its_range_is_called_so():
     h = _headline({"knee": 151.4}, {"knee": 144.7})
-    assert "151.4° → 144.7°" in h
+    assert "151° → 145°" in h      # whole degrees, as the table shows them
     assert "now inside the 138–145° range" in h
     assert "Score</b> 70 → 85" in h
 
