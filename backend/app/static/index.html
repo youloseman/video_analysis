@@ -14704,7 +14704,13 @@ function fillSportFigs(all){
     if(!e){ fig.remove(); card.classList.add('no-fig'); return; }
     fetchKeyframe(e).then(k=>{
       if(k){ const img=fig.querySelector('img'); img.src=k; img.alt=`${e.sport==='run'?'Run':'Ride'} frame from ${shortDate(e.at)}`;
-        img.classList.remove('kf-slot'); fig.classList.remove('kf-load'); }
+        img.classList.remove('kf-slot'); fig.classList.remove('kf-load');
+        // A tap shows the whole frame across the card; another folds it back
+        // (Artur 2026-11-18: the cropped frame hid the overlay's labels).
+        fig.setAttribute('role','button'); fig.tabIndex=0; fig.setAttribute('aria-expanded','false'); fig.setAttribute('aria-label','Show the whole frame');
+        const flip=()=>{ const on=card.classList.toggle('fig-open'); fig.setAttribute('aria-expanded',String(on)); fig.setAttribute('aria-label',on?'Fold the frame':'Show the whole frame'); };
+        fig.addEventListener('click',flip);
+        fig.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); flip(); } }); }
       else { fig.remove(); card.classList.add('no-fig'); }
     });
   });
