@@ -15042,10 +15042,11 @@ function renderThenNow(all, hostId, sport){
 const KONA_ROWS=[['trunk','trunk_angle_avg','Trunk angle','flatter','more upright'],
   ['shoulder','shoulder_angle_avg','Shoulder angle','more closed','more open'],
   ['elbow','elbow_angle_avg','Elbow angle','more closed','more open']];
-function konaStrip(v,f){
-  const lo=Math.min(f.lo,v), hi=Math.max(f.hi,v), pad=(hi-lo)*0.08||1;
+function konaStrip(v,f,opt){
+  // One axis for the pros, the reading and our own range (opt), when given.
+  const lo=Math.min(f.lo,v,...(opt?[opt[0]]:[])), hi=Math.max(f.hi,v,...(opt?[opt[1]]:[])), pad=(hi-lo)*0.08||1;
   const a=lo-pad, b=hi+pad, P=x=>((x-a)/(b-a)*100).toFixed(1);
-  return `<div class="kstrip" aria-hidden="true">
+  return `<div class="kstrip${opt?' ks-has-opt':''}" aria-hidden="true">${opt?`<span class="ks-opt" style="--x:${P(opt[0])}%;--w:${(P(opt[1])-P(opt[0])).toFixed(1)}%"></span>`:''}
     <span class="ks-range" style="--x:${P(f.lo)}%;--w:${(P(f.hi)-P(f.lo)).toFixed(1)}%"></span>
     <span class="ks-mid" style="--x:${P(f.q1)}%;--w:${(P(f.q3)-P(f.q1)).toFixed(1)}%"></span>
     <span class="ks-med" style="--x:${P(f.median)}%"></span>
@@ -15074,14 +15075,17 @@ function renderKona(all, hostId){
     const rows=KONA_ROWS.map(([k,fk,label,lowWord,highWord])=>{
       const v=e.trends[k], f=field.metrics[fk]; if(v==null||!f) return '';
       const where=konaWhere(v,f,lowWord,highWord).t;
+      // Our own range for this position beside the pros (Artur 2026-11-18):
+      // the band the report grades against, then where the field sits.
+      const opt=formBand('bike',k,e), inR=opt&&v>=opt[0]&&v<=opt[1];
       return `<li><div class="ks-top"><span>${esc(label)}</span><b>${num(v,0)}°</b></div>
-        ${konaStrip(v,f)}
-        <p class="ks-cap">Pros ${num(f.median,0)}° (middle half ${num(f.q1,0)}–${num(f.q3,0)}°) · you are ${where}</p></li>`;
+        ${konaStrip(v,f,opt)}
+        <p class="ks-cap">${opt?`<span class="ks-optcap${inR?'':' ks-optout'}">Range ${num(opt[0],0)}–${num(opt[1],0)}°, ${inR?'in range':v<opt[0]?'below it':'above it'}</span> · `:''}Pros ${num(f.median,0)}° (middle half ${num(f.q1,0)}–${num(f.q3,0)}°) · you are ${where}</p></li>`;
     }).join('');
     if(!rows) return;
     host.innerHTML=`<div class="dcard dkona">
       <div class="dcard-head"><h2>You vs the Kona field</h2><span class="dcard-note">${esc(POSITION_NAMES[e.position]||'Aero')} · ${esc(shortDate(e.at))}</span></div>
-      <ul class="ks-legend" aria-hidden="true"><li><i class="ks-l-range"></i>All ${field.n} pros</li><li><i class="ks-l-mid"></i>Middle half</li><li><i class="ks-l-med"></i>Median</li><li><i class="ks-l-you"></i>You</li></ul>
+      <ul class="ks-legend" aria-hidden="true"><li><i class="ks-l-range"></i>All ${field.n} pros</li><li><i class="ks-l-mid"></i>Middle half</li><li><i class="ks-l-med"></i>Median</li><li><i class="ks-l-you"></i>You</li><li><i class="ks-l-opt"></i>Our range</li></ul>
       <ul class="ks-rows">${rows}</ul>
       <p class="dkpi-note">${field.n} professional positions measured at the 2026 Ironman World Championship. A field to place yourself in, not a target. <a href="${esc(field.article||'/academy/kona-2026-pro-bike-positions')}">Read the study</a></p>
     </div>`;

@@ -139,3 +139,12 @@ def test_knee_speed_is_not_a_progress_trend():
     fn = HTML[HTML.index("function renderProgress"):][:6000]
     assert "TREND_METRICS[sport].filter(m=>!m.noTrend)" in fn
     assert HTML.count("label:'Knee opening speed',unit:'°/s',noTrend:true") == 2
+
+
+def test_the_kona_block_shows_our_range_beside_the_pros():
+    """Artur 2026-11-18: the Kona block shows the optimal range too, on the
+    same axis as the pro field, from the band the report grades against."""
+    fn = HTML[HTML.index("function renderKona"):][:2500]
+    assert "const opt=formBand('bike',k,e)" in fn and "konaStrip(v,f,opt)" in fn
+    assert "Our range" in fn
+    assert ".ks-opt{" in APP

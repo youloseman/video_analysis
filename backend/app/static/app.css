@@ -858,6 +858,11 @@ details.dform[open] > .dform-sum{margin-bottom:14px}
 .ks-mid{position:absolute;top:3px;height:8px;background:var(--c-line-strong);border-radius:var(--radius-bar);left:var(--x);width:var(--w)}
 .ks-med{position:absolute;top:0;width:2px;height:14px;margin-left:-1px;background:var(--c-ink);left:var(--x)}
 .ks-you{position:absolute;top:1px;width:12px;height:12px;margin-left:-6px;box-sizing:border-box;border-radius:50%;background:var(--c-blue);border:2px solid var(--c-bg);outline:1px solid var(--c-blue);left:var(--x)}
+.kstrip.ks-has-opt{height:20px}
+.ks-opt{position:absolute;top:16px;height:4px;background:var(--st-good-fill);border-radius:var(--radius-bar);left:var(--x);width:var(--w)}
+.ks-l-opt{width:20px;height:4px;background:var(--st-good-fill);border-radius:var(--radius-bar)}
+.ks-optcap{color:var(--st-good);font-weight:600}
+.ks-optcap.ks-optout{color:var(--st-warn)}
 .ks-cap{margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--c-ink-soft)}
 .dkona .dkpi-note a{color:var(--c-blue-dk)}
 /* What to work on beside the drills; either one alone takes the row. */
