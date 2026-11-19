@@ -148,3 +148,12 @@ def test_the_kona_block_shows_our_range_beside_the_pros():
     assert "const opt=formBand('bike',k,e)" in fn and "konaStrip(v,f,opt)" in fn
     assert "Our range" in fn
     assert ".ks-opt{" in APP
+
+
+def test_fix_first_reads_the_readings_when_the_report_says_nothing():
+    """Artur 2026-11-18: advice showed for the bike only. A run with a reading
+    out of range (or at the edge) but no written "Fix first" counted as clean,
+    so the clean ride won. Readings now count, ranked fix > edge > clean."""
+    fn = HTML[HTML.index("function dashFixTips"):][:2500]
+    assert "level:'fix'" in fn and "level:'edge'" in fn and "is at the edge" in fn
+    assert "const RANK={fix:2,edge:1,clean:0};" in HTML
