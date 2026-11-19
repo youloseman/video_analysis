@@ -12,7 +12,7 @@ the whole thing out and keep the conversation going wherever you like.
 One file, your numbers, your data.
 
 **It is written to be read correctly, which is the hard part.** Hand a chatbot a
-bare list of angles and it fills the gaps from its own assumptions — and the
+bare list of angles and it fills the gaps from its own assumptions, and the
 assumptions are wrong. Our joint angles are *internal*: 180° means a straight
 limb, while the research literature reports flexion measured from straight. Get
 that backwards and a knee at 140° reads as almost the opposite position. Running
@@ -22,8 +22,8 @@ export states all of it up front, before a single number.
 **It also says what it does not know.** Which side of you was measured and which
 was not. That a side view sees one plane, so pelvic drop and knee valgus are
 simply absent. How well each joint was tracked, frame by frame. Whether the
-quality gate tripped. And, at the end, the context no video can supply — your
-volume, injuries, goal race, the pace of the clip — so the model asks you
+quality gate tripped. And, at the end, the context no video can supply (your
+volume, injuries, goal race, the pace of the clip), so the model asks you
 instead of guessing.
 
 **Your own coach's notes travel with it,** framed as prior work, so the next

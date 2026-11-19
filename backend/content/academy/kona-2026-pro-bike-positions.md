@@ -130,22 +130,22 @@ Every position we measured, ordered from the flattest forearms to the steepest. 
 | 14 | Gustav Iden | Men | 25° | 22° | 74° | 71° | +13% |
 | 15 | Sam Long | Men | 26° | 22° | 92° | 88° | +18% |
 | 16 | Kristian Høgenhaug | Men | 26° | 13° | 96° | 82° | +17% |
-| 17 | — | Men | 26° | 27° | 86° | 87° | +23% |
+| 17 | unnamed | Men | 26° | 27° | 86° | 87° | +23% |
 | 18 | Matthew Hanson | Men | 26° | 25° | 94° | 93° | +23% |
-| 19 | — | Women | 26° | 23° | 87° | 84° | +18% |
-| 20 | — | Women | 27° | 21° | 83° | 77° | +33% |
-| 21 | — | Men | 28° | 18° | 79° | 70° | +8% |
-| 22 | — | Women | 28° | 17° | 82° | 71° | +22% |
+| 19 | unnamed | Women | 26° | 23° | 87° | 84° | +18% |
+| 20 | unnamed | Women | 27° | 21° | 83° | 77° | +33% |
+| 21 | unnamed | Men | 28° | 18° | 79° | 70° | +8% |
+| 22 | unnamed | Women | 28° | 17° | 82° | 71° | +22% |
 | 23 | Imogen Simmonds | Women | 28° | 16° | 91° | 78° | +17% |
 | 24 | Jason West | Men | 28° | 19° | 76° | 66° | +13% |
-| 25 | — | Women | 28° | 18° | 95° | 84° | +20% |
-| 26 | — | Men | 29° | 12° | 88° | 71° | — |
+| 25 | unnamed | Women | 28° | 18° | 95° | 84° | +20% |
+| 26 | unnamed | Men | 29° | 12° | 88° | 71° | |
 | 27 | Trevor Foley | Men | 29° | 19° | 81° | 70° | +14% |
-| 28 | — | Men | 29° | 13° | 95° | 79° | +7% |
+| 28 | unnamed | Men | 29° | 13° | 95° | 79° | +7% |
 | 29 | Jana Uderstadt | Women | 29° | 21° | 78° | 70° | +14% |
-| 30 | — | Men | 31° | 20° | 88° | 77° | +21% |
-| 31 | — | Men | 32° | 21° | 87° | 76° | +19% |
-| 32 | — | Women | 32° | 19° | 91° | 78° | +23% |
+| 30 | unnamed | Men | 31° | 20° | 88° | 77° | +21% |
+| 31 | unnamed | Men | 32° | 21° | 87° | 76° | +19% |
+| 32 | unnamed | Women | 32° | 19° | 91° | 78° | +23% |
 
 Position 27 is Trevor Foley, from a photo a reader shared; an earlier Kona, not the 2026 race. Positions 5 and 18 are the same athlete, Matthew Hanson, in two frames: a broadcast still and a race photograph. We kept both; dropping either moves no median by more than half a degree. The one helmet left blank is the rider caught with the head ducked under the line of the back (section 4).
 

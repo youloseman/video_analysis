@@ -4,13 +4,13 @@ summary: Your clip says how many are ahead of it, and an Expert Review shows its
 ---
 # Queues, receipts, and clips that don't linger
 
-Housekeeping, mostly — the kind you only notice when it's missing.
+Housekeeping, mostly: the kind you only notice when it's missing.
 
 **Your clip now tells you where it is in line.** Analysis is heavy work, and
 until now several clips arriving at once all pretended to be processing while
 they queued behind each other. The app now runs a fixed number at a time and
 says so plainly: *"2 clips ahead of yours."* If we're genuinely at capacity, the
-upload is refused up front, with your file kept ready for one-tap retry —
+upload is refused up front, with your file kept ready for one-tap retry,
 instead of being accepted and left to time out.
 
 **Uploads are deleted on a schedule, not by luck.** Your video and its overlay

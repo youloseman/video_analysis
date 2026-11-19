@@ -1,7 +1,7 @@
 ---
 slug: "kona-2026-hip-over-crank"
 title: "Kona Pros Don't Sit Higher. They Sit Further Forward."
-description: "We measured 31 pros and 68 age-groupers at the Ironman World Championship 2026. Their knees at the bottom of the stroke were the same. Their hips over the crank were not: the pros sit about 3° — 4–5 cm — further forward, men and women alike."
+description: "We measured 31 pros and 68 age-groupers at the Ironman World Championship 2026. Their knees at the bottom of the stroke were the same. Their hips over the crank were not: the pros sit about 3° (4–5 cm) further forward, men and women alike."
 category: "bike-position"
 sport: "bike"
 read_time: 6

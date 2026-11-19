@@ -91,7 +91,7 @@ class TestTheKonaDraft:
         assert "https://www.scottflathousephoto.com/events/" in text
         assert "The race photographs are Scott Flathouse's, published with his permission." in text
         assert not re.search(r"/media/academy/kona-2026/rider-[abc]\.webp", text)
-        rows = re.findall(r"^\| (\d+) \| [^|]+ \| (?:Men|Women) \| (\d+)° \|", text, re.M)
+        rows = re.findall(r"^\| (\d+) \|[^|]*\| (?:Men|Women) \| (\d+)° \|", text, re.M)
         assert [int(n) for n, _ in rows] == list(range(1, 33))
         tilts = [int(t) for _, t in rows]
         assert tilts == sorted(tilts), "ordered from the flattest forearms to the steepest"

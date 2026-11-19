@@ -9,7 +9,7 @@ red rows. The numbers were right; the summary was wrong, and somebody who came
 looking for room to improve was told there was none.
 
 That cannot happen any more. When a measurement is clearly outside its range,
-the coach's notes have to deal with it — "Nothing to fix" is reserved for a
+the coach's notes have to deal with it: "Nothing to fix" is reserved for a
 position where nothing is.
 
 And every report now ends with **Worth a look**: each reading outside its

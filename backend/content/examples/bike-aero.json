@@ -36,7 +36,7 @@
     ]
    },
    "phase": "bdc",
-   "note": "Hip opens at the bottom of the stroke and closes at the top — pick the pedal position to score it.",
+   "note": "Hip opens at the bottom of the stroke and closes at the top. Pick the pedal position to score it.",
    "optimal_min": 85,
    "optimal_max": 110,
    "status": "optimal"
@@ -48,7 +48,7 @@
    "optimal_max": null,
    "status": "phase_dependent",
    "unscored_reason": "pedal position",
-   "note": "Depends on the pedal position — not scored from a single photo."
+   "note": "Depends on the pedal position: not scored from a single photo."
   },
   "elbow": {
    "value": 90.1,

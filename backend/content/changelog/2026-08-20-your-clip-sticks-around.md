@@ -16,8 +16,8 @@ is kept until the review ships, however long that takes. Your reviewer watches
 the movement now, not one frame of it.
 
 Two things had to be fixed to make that work, and only one of them was storage.
-A saved analysis and the upload it came from were **unrelated objects** — your
-history entry had no idea which file produced it — so even footage that had
+A saved analysis and the upload it came from were **unrelated objects**: your
+history entry had no idea which file produced it, so even footage that had
 survived would have been unfindable. Analyses record their upload from now on.
 
 **Deleting still means deleting.** Because clips now live for weeks, "delete
@@ -28,4 +28,4 @@ with the real numbers rather than "within hours".
 
 One honest limit: analyses from before today have no link to their footage, and
 that footage is long gone anyway. Reviews bought against them still work the way
-they always did — from the stored analysis and its annotated frame.
+they always did, from the stored analysis and its annotated frame.

@@ -1,7 +1,7 @@
 ---
 slug: "nyc-2026-landing-ahead-of-the-hip"
 title: "New York's Winner Lands Half a Leg in Front of His Hips. That Isn't the Fault."
-description: "Andreas Almgren won the 2026 New York City Marathon on debut. In both frames we measured, his foot lands 0.45 leg lengths ahead of his hip — textbook overstriding. His shin and knee say otherwise, and that's where the difference between a stride and a reach actually lives."
+description: "Andreas Almgren won the 2026 New York City Marathon on debut. In both frames we measured, his foot lands 0.45 leg lengths ahead of his hip: textbook overstriding. His shin and knee say otherwise, and that's where the difference between a stride and a reach actually lives."
 category: "running-form"
 sport: "run"
 read_time: 4

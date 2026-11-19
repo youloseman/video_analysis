@@ -6,7 +6,7 @@ summary: The app, the landing page and the Terms now read the same prices.
 
 Prices lived in four documents: the pricing screen, the billing toggle that
 rewrote the same three numbers, the landing page, and the Terms of Service.
-They drifted, and the drift landed somewhere it shouldn't have — the pricing
+They drifted, and the drift landed somewhere it shouldn't have: the pricing
 footer said the amounts were in US dollars while the Terms said Canadian ones.
 That is a 37% gap between two documents you read before paying, and one of them
 is the agreement.
@@ -19,7 +19,7 @@ explain what that means if your card is issued in another currency.
 
 **The Full plan now actually includes the Expert Review it advertises.** It said
 "1 Expert Review included" while nothing in the product could grant one or let
-you claim it — you'd have had to email and ask, and nothing on our side would
+you claim it. You'd have had to email and ask, and nothing on our side would
 have agreed with you. The review is added to your account when you pay, the
 pricing screen offers to spend it instead of selling you another, and an unused
 one stays yours if you cancel: you paid for the term that included it.

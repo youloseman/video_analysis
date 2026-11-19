@@ -13,4 +13,4 @@ Film yourself in the pool and upload it under **Analyze → Swim · video**. A p
 
 How to film it: a camera underwater, 30–60 cm deep, side-on to your lane, 3–5 m away. Two or three lengths at your normal pace, so both breathing sides are in it. Ask the pool first: many don't allow filming, or need the staff's OK. Film only your own lane.
 
-There is no automatic analysis for swimming yet — no score and no angles. The pose models we use for running and cycling can't read a body underwater, so for now a person watches every clip. Nothing is charged at upload: you choose Notes or a review on the next screen.
+There is no automatic analysis for swimming yet: no score and no angles. The pose models we use for running and cycling can't read a body underwater, so for now a person watches every clip. Nothing is charged at upload: you choose Notes or a review on the next screen.
