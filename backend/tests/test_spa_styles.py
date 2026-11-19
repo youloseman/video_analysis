@@ -130,3 +130,12 @@ def test_audit_small_gaps():
     fn = HTML[HTML.index("function cdaSinceChip"):][:600]
     assert "cdaLike(r,last)" in fn
     assert "${dash(esc(p.cue))}" in HTML and "${dash(esc(first.d))}" in HTML
+
+
+def test_knee_speed_is_not_a_progress_trend():
+    """Artur 2026-11-18: knee opening/closing speed (deg/s) reads as strange
+    angles on Progress and mostly follows cadence and our filtering. It stays
+    in Compare and the report, not in Progress."""
+    fn = HTML[HTML.index("function renderProgress"):][:6000]
+    assert "TREND_METRICS[sport].filter(m=>!m.noTrend)" in fn
+    assert HTML.count("label:'Knee opening speed',unit:'°/s',noTrend:true") == 2

@@ -14051,8 +14051,10 @@ const TREND_METRICS={
     {key:'elbow',label:'Elbow angle',unit:'°',sideFloor:12,noise:3},
     {key:'shoulder',label:'Shoulder angle',unit:'°',sideFloor:12,noise:3},
     {key:'pelvic_ratio',label:'Pelvic ratio',unit:'×'},
-    {key:'knee_open_speed',label:'Knee opening speed',unit:'°/s'},
-    {key:'knee_close_speed',label:'Knee closing speed',unit:'°/s'},
+    // Not on Progress (Artur 2026-11-18): a derivative that follows cadence and
+    // our filter and frame rate, with no range; Compare and the report keep it.
+    {key:'knee_open_speed',label:'Knee opening speed',unit:'°/s',noTrend:true},
+    {key:'knee_close_speed',label:'Knee closing speed',unit:'°/s',noTrend:true},
   ],
   run:[
     {key:'score',label:'Technique score',unit:'',hi:true},
@@ -14063,8 +14065,10 @@ const TREND_METRICS={
     {key:'flight_time',label:'Flight time',unit:' ms'},
     {key:'overstride',label:'Overstride',unit:'×'},
     {key:'knee',label:'Knee angle',unit:'°'},
-    {key:'knee_open_speed',label:'Knee opening speed',unit:'°/s'},
-    {key:'knee_close_speed',label:'Knee closing speed',unit:'°/s'},
+    // Not on Progress (Artur 2026-11-18): a derivative that follows cadence and
+    // our filter and frame rate, with no range; Compare and the report keep it.
+    {key:'knee_open_speed',label:'Knee opening speed',unit:'°/s',noTrend:true},
+    {key:'knee_close_speed',label:'Knee closing speed',unit:'°/s',noTrend:true},
   ],
 };
 /* Categorical (non-numeric) metrics compared as changed/unchanged, not deltas.
@@ -14527,7 +14531,7 @@ function renderProgress(){
   const shown=new Set(), lastE=all[all.length-1], noun=sport==='bike'?'ride':'run';
   // Each reading against the band the dashboard and the report use for this
   // position (formBand), else the band the entries kept.
-  const ms=TREND_METRICS[sport].map(m=>{
+  const ms=TREND_METRICS[sport].filter(m=>!m.noTrend).map(m=>{
     const series=[], dser=[], tser=[];
     all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); tser.push(e.filmedAt||e.at); } });
     if(series.length<2) return null;
@@ -14580,7 +14584,7 @@ function renderProgress(){
   // Free tier: the score trend is real; the rest are gated -> show them as
   // locked previews with one upsell CTA (never more than one per screen).
   let lockCards='';
-  if(isFreeUser()) lockCards=TREND_METRICS[sport].filter(m=>m.key!=='score' && !shown.has(m.key)).map(lockedTrendCard).join('');
+  if(isFreeUser()) lockCards=TREND_METRICS[sport].filter(m=>m.key!=='score' && !m.noTrend && !shown.has(m.key)).map(lockedTrendCard).join('');
   grid.innerHTML=(sumHtml+group('pg-reg','Moving away','look at these first',away)+group('pg-imp','Improving',`closer to the range than on your first ${noun}`,imp)
     +group('pg-loose','No range to read against','the line alone, no verdict',loose)+steadyHtml+(lockCards?`<div class="tgrid">${lockCards}</div>`:'')+cmpEnd)
     || `<p class="hint">Not enough data yet for ${sport} trends.</p>`;
