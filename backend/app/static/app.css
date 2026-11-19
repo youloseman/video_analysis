@@ -1847,17 +1847,16 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .cg-figs{display:flex;gap:8px}
 .cg-frame{box-sizing:border-box;height:140px;padding:8px 14px;border:2px solid var(--st-good-fill);border-radius:var(--radius-panel);
   display:flex;align-items:center;justify-content:center;background:var(--c-bg)}
-.cg-frame.cg-no{border-color:var(--st-bad-fill)}
 .cg-fig{width:120px;height:120px;aspect-ratio:1;display:block;margin:0;flex:none}
-.cg-crop{position:relative;overflow:hidden}
-.cg-crop .cg-fig{position:absolute;top:8px}
-.cg-crop-l{width:76px}
-.cg-crop-l .cg-fig{left:0}
-.cg-crop-r{width:99px}
-.cg-crop-r .cg-fig{right:12px}
+/* Upright vs sideways: both phones in one neutral frame, drawn to one phone
+   length (the sideways one is as tall as the upright one is wide). */
+.cg-frame.cg-pair{gap:16px;border-color:var(--c-line)}
+.cg-ori{display:block;width:auto;flex:none}
+.cg-ori-ok{height:112px}
+.cg-ori-no{height:76px}
 .cg-step p{position:relative;padding-left:0;margin:0;font-size:14px;line-height:1.45;color:var(--c-ink-soft)}
 .cg-step p b{color:var(--c-ink);font-weight:600}
-.cg-step p b:first-child{display:block;margin-bottom:4px;font-size:16px;font-weight:700;color:var(--c-head)}
+.cg-step p b:first-child{display:block;font-size:16px;font-weight:700;color:var(--c-head)}
 .cg-step p::before{display:none}
 .cg-more{border-radius:var(--radius-panel);margin-top:16px;border:1px solid var(--c-line);background:var(--c-bg);padding:0}
 .cg-more summary{font-size:14px;font-weight:500;color:var(--c-ink);cursor:pointer;min-height:44px;display:flex;align-items:center;gap:10px;padding:0 18px;list-style:none}
