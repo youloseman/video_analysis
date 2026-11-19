@@ -13601,15 +13601,26 @@ function renderHistoryFindings(e){
   const far=x=>x.m.range?Math.abs(x.m.delta||0)/((x.m.range.hi-x.m.range.lo)||1):0;
   const out=rows.filter(x=>x.st.cls==='m-out').sort((a,b)=>far(b)-far(a)), near=rows.filter(x=>x.st.cls==='m-near').sort((a,b)=>far(b)-far(a)), ok=rows.filter(x=>x.st.group==='ok');
   const n=(k,w,t)=>k?`<span class="fd-n fd-${w}">${k} ${t}</span>`:'';
-  let html=`<p class="fd-counts">${n(out.length,'out','outside range')}${n(near.length,'near','at the edge')}${n(ok.length,'ok','in range')}</p>`;
-  if(out.length||near.length){
-    html+=[...out,...near].slice(0,3).map(({m,st})=>{ const u=measUnit(m.unit), delta=m.range?measDelta(m.delta,m.unit):'';
+  // Every reading with its range (Artur 2026-11-18), the ones to look at
+  // first; an aero position adds where the Kona pros sit, on the same axis.
+  const aero=e.sport==='bike'&&(e.position==='tt_aero'||e.position==='triathlon');
+  const KF={trunk:'trunk_angle_avg',shoulder:'shoulder_angle_avg',elbow:'elbow_angle_avg'};
+  const draw=field=>{
+    if(state.histOpen!==e) return;
+    let kona=false;
+    let html=`<p class="fd-counts">${n(out.length,'out','outside range')}${n(near.length,'near','at the edge')}${n(ok.length,'ok','in range')}</p>`;
+    html+=[...out,...near,...ok].map(({m,st})=>{ const u=measUnit(m.unit), delta=m.range&&st.group!=='ok'?measDelta(m.delta,m.unit):'';
+      const f=field&&KF[m.key]&&field.metrics[KF[m.key]];
+      if(f) kona=true;
+      const bar=f?konaStrip(m.raw,f,m.range?[m.range.lo,m.range.hi]:null):(m.range?measBar(m,st):'');
       return `<div class="fd-row ${st.cls}"><span class="fd-name">${esc(m.lbl)}</span><span class="fd-val num">${m.val}${u}</span>
-        ${m.range?`<div class="fd-bar">${measBar(m,st)}</div>`:''}
-        <div class="fd-st">${st.word}${delta?` <span class="num">${delta}</span>`:''}${m.range?`<span class="fd-band"> · band <span class="num">${measRange(m.range.lo,m.range.hi,m.unit)}</span></span>`:''}</div></div>`; }).join('');
-    if(ok.length) html+=`<div class="fd-inrange"><b>In range · ${ok.length}</b>${ok.map(x=>`<span>${esc(x.m.lbl)}</span>`).join('')}</div>`;
-  } else html+=`<div class="banner good u-mt-0"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Every reading with a range is inside it.</span></div>`;
-  host.innerHTML=html; blk.classList.remove('hidden');
+        ${bar?`<div class="fd-bar">${bar}</div>`:''}
+        <div class="fd-st">${st.word}${delta?` <span class="num">${delta}</span>`:''}${m.range?`<span class="fd-band"> · band <span class="num">${measRange(m.range.lo,m.range.hi,m.unit)}</span></span>`:''}${f?`<span class="fd-band"> · pros <span class="num">${num(f.median,0)}°</span> (middle half <span class="num">${num(f.q1,0)}–${num(f.q3,0)}°</span>)</span>`:''}</div></div>`; }).join('');
+    if(kona) html=`<ul class="ks-legend fd-legend" aria-hidden="true"><li><i class="ks-l-opt"></i>Our range</li><li><i class="ks-l-range"></i>All ${field.n} Kona pros</li><li><i class="ks-l-mid"></i>Middle half</li><li><i class="ks-l-you"></i>You</li></ul>`+html;
+    host.innerHTML=html; blk.classList.remove('hidden');
+  };
+  draw(null);
+  if(aero) konaField().then(f=>{ if(f) draw(f); });
 }
 /* Share and PDF beside the title on a wide screen, in the card on a phone. */
 function placeHistoryActs(){
@@ -14846,6 +14857,7 @@ function formTiles(sport, entries){
     if(range&&aero&&m.key==='shoulder') range.metric='shoulder_closed_ok';
     if(range&&aero&&m.key==='trunk'&&v<band[0]) range.metric='trunk_low_ok';
     const t=tile(m.label,num(v,FORM_DEC[m.key]||0),unit,null,null,false,range);
+    t.key=m.key; t.raw=v;
     if(single) t.trend='<span class="dform-first">first analysis</span>';
     else {
       const pv=prev?prev.trends[m.key]:null;

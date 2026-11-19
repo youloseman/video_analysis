@@ -129,3 +129,14 @@ def test_the_phone_report_is_one_column_all_the_way_down():
     placed = set(re.findall(r"\.result-top[^,{]*>\s*#(\w+)\s*[,{]", CSS))
     reset = set(re.findall(r"\.result-top[^,{]*>\s*#(\w+)\s*[,{]", phone))
     assert placed <= reset, f"placed on the desktop grid but not reset for a phone: {placed - reset}"
+
+
+def test_the_saved_report_is_one_column_on_a_phone_and_findings_show_every_range():
+    """Artur 2026-11-18: a saved report from History cut Findings to half the
+    phone (the #historyDetail grid rule beat the phone reset), and he wants
+    every reading's range plus the Kona field there."""
+    import re as _re
+    phone = _media_block(CSS, "max-width:900px")
+    assert "#historyDetail .result-top{grid-template-columns:minmax(0,1fr)}" in phone
+    fn = SPA[SPA.index("function renderHistoryFindings"):][:3000]
+    assert "[...out,...near,...ok].map(" in fn and "konaStrip(m.raw,f," in fn

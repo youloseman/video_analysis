@@ -2110,6 +2110,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 #hdFindings .blockhead{margin-bottom:8px}
 #hdFindings .fd-row{grid-template-columns:minmax(0,1fr) auto}
 #hdFindings .fd-bar{grid-column:1/-1}
+#hdFindings .fd-legend{margin:0 0 8px}
 /* ---- A coach's review, as drawn (CoachReport board, 2026-11-17) ---- */
 .cr-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;margin-top:16px}
 .cr-wrap.has-prev{grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr)}
@@ -3624,6 +3625,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .result-top > #pFindings,
   #historyDetail .result-top > #hdFindings,
   #historyDetail .result-top > #hdFilmNotes{grid-column:1}
+  /* The saved report's own two-column rule carries an id; it needs its own reset. */
+  #historyDetail .result-top{grid-template-columns:minmax(0,1fr)}
   .result-top > #issuesBlock{margin-top:0}
   .scorecard{max-width:none}
 }
