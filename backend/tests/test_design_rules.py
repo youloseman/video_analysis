@@ -135,3 +135,17 @@ def test_landing_keyframes_show_process_not_decoration():
     something happening."""
     names = set(re.findall(r"@keyframes ([A-Za-z]+)", LANDING))
     assert names <= {"blink", "pulse", "tpScan", "tpRead", "tpOver", "tpDone", "tpRec", "tpCorners"}, names
+
+
+def test_app_css_has_no_raw_colours():
+    """Every colour in app.css comes from tokens.css (2026-11-18 cleanup). The
+    one exception is the black of a mask-image, which is a shape, not a colour."""
+    import re
+    from pathlib import Path
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    css = re.sub(r"mask-image:[^;}]*", "", css)
+    # Values only: an id selector such as #adCda is not a colour.
+    values = " ".join(m.group(1) for m in re.finditer(r"\{([^{}]*)\}", css))
+    bad = [m.group(0) for m in re.finditer(r"(?<![\w-])#[0-9A-Fa-f]{3,8}\b", values)]
+    assert not bad, f"raw colours in app.css, use a token: {sorted(set(bad))}"
