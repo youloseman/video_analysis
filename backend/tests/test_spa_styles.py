@@ -171,3 +171,20 @@ def test_fix_first_drills_and_links_belong_to_the_lead_clip():
     assert "openHistory(po.dataset.planOpen, '#hdPlanBlock')" in HTML
     assert "openHistory(fo.dataset.id, fo.dataset.to||null)" in HTML
     assert "#historyDetail .block{scroll-margin-top:68px}" in APP
+
+
+def test_my_technique_review_2026_11_19():
+    """Artur 2026-11-19, the My technique review: Fix first on top, one sport
+    card at a time on a phone, borderline neutral on the card, no second
+    coral Analyze, no "Back to the squad", the footer's links in the drawer,
+    and a ring with no score says why instead of a delta beside a dash."""
+    assert HTML.index('<div id="dashFix"></div>') < HTML.index('<div id="dashSeg"></div>') < HTML.index('id="dashSports"')
+    assert "function renderDashSeg(all)" in HTML and 'data-sport="${sport}"' in HTML
+    assert ".seg.dsc-seg{display:none}" in APP and ".seg.dsc-seg{display:flex}" in APP
+    assert ".dsc-rows .m-near .dsc-dot{background:var(--c-line-strong)}" in APP
+    assert "dashSquadBack" not in HTML.replace("const back=$('#dashSquadBack'); if(back) back.remove();", "")
+    assert 'id="botAnalyze" class="botlink"><span class="bot-plus"><svg class="ic" aria-hidden="true"><use href="#i-video"/>' in HTML
+    phone = APP[APP.index("  .botnav{display:grid}"):][:900]
+    assert ".dash-analyze{display:none}" in phone and "footer{display:none}" in phone and ".nav-legal{display:block" in phone
+    assert '<p class="nav-legal"><a href="/privacy">Privacy</a>' in HTML
+    assert "Not scored${last.kind==='photo'?' · photo':''}" in HTML

@@ -712,11 +712,11 @@ video.ex-media{background:var(--c-media-bg)}
 .dsc-rows li{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 18px;font-size:14px;border-top:1px solid var(--c-line)}
 .dsc-rows li:first-child{border-top:0}
 .dsc-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--m-ok)}
-.dsc-rows .m-near .dsc-dot{background:var(--m-near)} .dsc-rows .m-out .dsc-dot{background:var(--m-out)}
+.dsc-rows .m-near .dsc-dot{background:var(--c-line-strong)} .dsc-rows .m-out .dsc-dot{background:var(--m-out)}
 .dsc-n{font-weight:600;color:var(--c-ink)}
-.dsc-w{color:var(--c-ink-faint)} .dsc-rows .m-near .dsc-w{color:var(--m-near-text)} .dsc-rows .m-out .dsc-w{color:var(--m-out)}
+.dsc-w{color:var(--c-ink-faint)} .dsc-rows .m-near .dsc-w{color:var(--c-ink-soft)} .dsc-rows .m-out .dsc-w{color:var(--m-out)}
 .dsc-v{margin-left:auto;font-family:var(--f-mono);font-weight:500;color:var(--c-ink);white-space:nowrap}
-.dsc-rows .m-near .dsc-v{color:var(--m-near-text)} .dsc-rows .m-out .dsc-v{color:var(--m-out)}
+.dsc-rows .m-near .dsc-v{color:var(--c-ink)} .dsc-rows .m-out .dsc-v{color:var(--m-out)}
 .dsc-all{margin-left:auto;min-height:44px;font-size:14px}
 .dsc-foot{grid-area:foot;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px;border-top:1px solid var(--c-line)}
 .dsc-foot .btn-link{min-height:44px;font-size:14px}
@@ -761,7 +761,7 @@ details.dform > .dform-sum{display:flex;align-items:center;flex-wrap:wrap;gap:4p
 details.dform > .dform-sum::-webkit-details-marker{display:none}
 .dform-sum-t{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-head)}
 .dform-sum-s{font-size:14px;color:var(--c-ink-faint)}
-.dform-sum-s b{font-weight:600} .dform-sum-s .fs-out{color:var(--m-out)} .dform-sum-s .fs-near{color:var(--m-near-text)}
+.dform-sum-s b{font-weight:600} .dform-sum-s .fs-out{color:var(--m-out)} .dform-sum-s .fs-near{color:var(--c-ink)}
 .fs-sep{color:var(--c-line-strong);margin:0 2px}
 .dform-sum-go{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--c-blue-dk)}
 .dform-sum-go .ic{width:14px;height:14px;transition:transform .15s}
@@ -903,6 +903,15 @@ details.dform[open] > .dform-sum{margin-bottom:14px}
 .dform .m-trend .tdelta{font-size:12px}
 .dform-first{color:var(--c-ink-faint);font-family:var(--f-mono);font-size:12px}
 .dform-seg{margin:0}
+/* Run / Bike over the sport cards: a phone shows one card at a time. */
+.seg.dsc-seg{display:none}
+@media(max-width:640px){
+  .seg.dsc-seg{display:flex}
+  .dsc-seg button{flex:1 1 0;justify-content:center;min-height:44px}
+  #dashSports[data-show="run"] .dsc[data-sport="bike"],#dashSports[data-show="run"] .dkpi-empty[data-sport="bike"],
+  #dashSports[data-show="bike"] .dsc[data-sport="run"],#dashSports[data-show="bike"] .dkpi-empty[data-sport="run"]{display:none}
+}
+.nav-legal{display:none}
 .dform-seg button{min-height:40px}
 table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:nowrap;text-align:right}
 .dform-tr .tdelta{font-size:12px}
@@ -3612,6 +3621,12 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .scrim[hidden]{display:none}
   .botnav{display:grid}
   .appshell{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
+  /* The tab bar's Analyze is the screen's one coral button; the footer's
+     links sit at the foot of the drawer. */
+  .dash-analyze{display:none}
+  footer{display:none}
+  .nav-legal{display:block;margin:0;padding:12px 10px calc(12px + env(safe-area-inset-bottom,0));font-size:12px;color:var(--c-ink-faint)}
+  .nav-legal a{color:var(--c-ink-soft);text-decoration:none}
   body.authed .backhome-row{display:block}
   /* One column, and the placements above have to be beaten at their own
      specificity: #issuesBlock carries an id, so a `> *` reset never reaches

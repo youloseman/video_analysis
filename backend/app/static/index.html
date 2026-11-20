@@ -196,7 +196,7 @@
   <a href="#" id="botHome" class="botlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
   <!-- The plus sits in a span of its own so the disc can rise out of the row
        without moving the label with it (see .bot-plus). -->
-  <a href="#" id="botAnalyze" class="botlink"><span class="bot-plus"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg></span><span>Analyze</span></a>
+  <a href="#" id="botAnalyze" class="botlink"><span class="bot-plus"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg></span><span>Analyze</span></a>
   <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
   <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
   <!-- Everything else lives on the More page (board: MorePhone): the plan,
@@ -239,6 +239,9 @@
   <!-- The plan line: which plan, what is left this month, a 3 px bar. Signed
        out it holds the one Log in button. Filled by renderAuth(). -->
   <div class="authbox" id="authbox"></div>
+  <!-- The footer's links, in the drawer: under 900 px the page has no footer
+       (2026-11-19: it trailed the swim card on a phone). -->
+  <p class="nav-legal"><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="mailto:support@getflapp.com?subject=Flapp%20bug%20report">Report a bug</a> · <a href="/health" target="_blank" rel="noopener">status</a></p>
 </aside>
 
 <div class="appshell">
@@ -429,10 +432,13 @@
          counts), where it is going (the score over time) beside what to do
          about it (focus, drills), what it is made of (current form), and what
          you did (recent). -->
-    <div class="dkpis"><div id="dashSports" class="dash-sports"></div></div>
-    <!-- What to do (Main board): the latest report's first fix beside its frame,
-         then the drills and what else to work on, in one card. -->
+    <!-- What to do first (Main board): the latest report's first fix beside
+         its frame, then the drills and what else to work on, in one card. On
+         top: the one change that matters is the page's promise (2026-11-19). -->
     <div id="dashFix"></div>
+    <!-- A phone shows one sport card at a time (Artur 2026-11-19). -->
+    <div id="dashSeg"></div>
+    <div class="dkpis"><div id="dashSports" class="dash-sports"></div></div>
     <!-- Then -> now and the Kona field, one line each: they open Progress,
          where the pictures and the strips are (Main board, short version). -->
     <div id="dashLinks"></div>
@@ -14661,7 +14667,7 @@ function scoreStrip(scores){
 function sportCard(sport, entries){
   const label=sport==='run'?'Run':'Bike', icon=sport==='run'?'i-run':'i-bike';
   if(!entries.length){
-    return `<div class="dkpi dkpi-sport dkpi-empty">
+    return `<div class="dkpi dkpi-sport dkpi-empty" data-sport="${sport}">
       <div class="dkpi-lbl"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}</div>
       <p class="dkpi-note">No ${label.toLowerCase()} analyses yet</p>
       <button class="btn btn-link dkpi-act" type="button" data-analyze="${sport}">Analyze a ${sport==='run'?'run':'ride'} →</button>
@@ -14675,7 +14681,8 @@ function sportCard(sport, entries){
   const scores=chron.map(e=>e.score).filter(v=>v!=null);
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
   // Says WHAT it is compared against. "0 · steady" read as a measurement.
-  const deltaHtml=!dd ? '<span class="dkpi-note">first analysis: trends build from #2</span>'
+  const deltaHtml=last.score==null ? `<span class="dsc-pill">Not scored${last.kind==='photo'?' · photo':''}</span>`
+    : !dd ? '<span class="dkpi-note">first analysis: trends build from #2</span>'
     : (dd.delta===0 ? `<span class="tdelta sta">no change since first</span>`
       : `<span class="tdelta ${dd.cls}">${dd.delta>0?'▲ +':'▼ '}${dd.delta} since first</span>`);
   // Personal record: the latest score is a *new* PB only when it strictly beats
@@ -14703,7 +14710,7 @@ function sportCard(sport, entries){
     +`${st.group==='attn'?`<span class="dsc-w">· ${DSC_WORD[st.cls]}</span>`:''}<span class="dsc-v">${m.val}${measUnit(m.unit)}</span></li>`;
   const list=[...shown,...okShown].map(li).join('')
     +(rest>0?`<li class="m-ok"><span class="dsc-dot" aria-hidden="true"></span><span class="dsc-n">${rest} more reading${rest>1?'s':''}</span><span class="dsc-w">· in range</span><button type="button" class="btn btn-link dsc-all" data-seeall="${sport}">See all</button></li>`:'');
-  return `<div class="dkpi dkpi-sport dsc" data-dsc="${esc(last.id)}">
+  return `<div class="dkpi dkpi-sport dsc" data-dsc="${esc(last.id)}" data-sport="${sport}">
     <figure class="dsc-fig kf-load" data-dsc-fig="${esc(last.id)}"><img alt="" class="kf-slot"></figure>
     <div class="dsc-top">
       <div class="dsc-h"><b><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg> ${label}${pos}</b>
@@ -14814,6 +14821,7 @@ function renderDashFix(all){
     return;
   }
   let lead='', fig='';
+  if(e) host.dataset.sport=e.sport; else delete host.dataset.sport;
   if(e){
     const tips=dashFixTips(e), noun=e.sport==='run'?'run':'ride', first=tips.fix[0];
     // A clean card still names what sits at the edge: something to watch.
@@ -15207,8 +15215,22 @@ function renderDashboard(){
   $('#dashSports').innerHTML=sportCard('run',all.filter(e=>e.sport==='run'))+sportCard('bike',all.filter(e=>e.sport==='bike'));
   fillSportFigs(all);
   renderDashFix(all);
+  renderDashSeg(all);
   renderDashLinks(all);
   renderCurrentForm(all);
+}
+/* Run / Bike on a phone (Artur 2026-11-19): two sport cards were two
+   screens of scrolling. Only when both sports have clips; it starts on the
+   sport Fix first leads with. The wide layout shows both cards (CSS). */
+function renderDashSeg(all){
+  const host=$('#dashSeg'), cards=$('#dashSports'); if(!host||!cards) return;
+  const both=all.some(e=>e.sport==='run')&&all.some(e=>e.sport==='bike');
+  if(!both){ host.innerHTML=''; delete cards.dataset.show; return; }
+  if(state.dscSport!=='run'&&state.dscSport!=='bike') state.dscSport=($('#dashFix')||{dataset:{}}).dataset.sport||all[0].sport;
+  const sp=state.dscSport;
+  host.innerHTML=`<div class="seg dsc-seg" role="group" aria-label="Sport card shown">${['bike','run'].map(s=>
+    `<button type="button" data-dscsport="${s}" aria-pressed="${s===sp}"><svg class="ic" aria-hidden="true"><use href="#i-${s}"/></svg> ${s==='run'?'Run':'Bike'}</button>`).join('')}</div>`;
+  cards.dataset.show=sp;
 }
 /* The swim review at the foot of the home screen (Artur 2026-11-02: at the
    top it read as an ad). Gone for good once closed, and not shown to anyone
@@ -16394,8 +16416,6 @@ function openDashboard(){
     const t=$('#dashTitle'); if(t) t.textContent='My technique';
     const m=$('#dashMeta'); if(m) m.innerHTML=''; const sa=$('#sqHeadActs'); if(sa) sa.innerHTML='';
     renderDashboard();
-    // A coach on their own page: a way back to the squad.
-    if(hasCoachPlan()){ const h=$('#dashSummary'); if(h) h.insertAdjacentHTML('beforebegin',`<p id="dashSquadBack" class="hint u-m-0 u-mb-3"><a href="#" onclick="event.preventDefault();state.squadMe=false;openDashboard()">Back to the squad</a></p>`); }
   }
   setState('dashboard',{focus:'#dashTitle'});
 }
@@ -16413,6 +16433,8 @@ $('#dashboard').addEventListener('click',e=>{
   const fo=e.target.closest('[data-focus-open]'); if(fo){ openHistory(fo.dataset.id, fo.dataset.to||null); return; }
   const sa=e.target.closest('[data-seeall]'); if(sa){ state.formSport=sa.dataset.seeall; state.formOpen=true; renderCurrentForm(loadHist());
     const f=$('#dashForm'); if(f) f.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  const ds=e.target.closest('[data-dscsport]'); if(ds){ state.dscSport=ds.dataset.dscsport; const c=$('#dashSports'); if(c) c.dataset.show=state.dscSport;
+    document.querySelectorAll('[data-dscsport]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.dscsport===state.dscSport))); return; }
   const po=e.target.closest('[data-plan-open]'); if(po){ openHistory(po.dataset.planOpen, '#hdPlanBlock'); return; }
 });
 /* Go to the uploader preselected for a sport (from a dashboard CTA). */
