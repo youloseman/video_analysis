@@ -129,7 +129,7 @@ def test_audit_small_gaps():
     assert "Copy summary" in HTML and "state.cmpSummary=" in HTML
     fn = HTML[HTML.index("function cdaSinceChip"):][:600]
     assert "cdaLike(r,last)" in fn
-    assert "${dash(esc(p.cue))}" in HTML and "${dash(esc(first.d))}" in HTML
+    assert "${dash(esc(p.cue))}" in HTML and "${dash(esc(i.d))}" in HTML
 
 
 def test_knee_speed_is_not_a_progress_trend():
@@ -165,7 +165,7 @@ def test_fix_first_drills_and_links_belong_to_the_lead_clip():
     top. Drills come from the lead's own clip first (an older plan names its
     date), and both links land on the section they name."""
     fn = HTML[HTML.index("function renderDashFix"):][:6000]
-    assert "const pe=(e&&hasDrill(e))?e:" in fn
+    assert "const pe=hasDrill(e)?e:" in fn
     assert "pe!==e?`from the " in fn
     assert 'data-to="${tips.written?' in fn
     assert "openHistory(po.dataset.planOpen, '#hdPlanBlock')" in HTML
@@ -178,7 +178,8 @@ def test_my_technique_review_2026_11_19():
     card at a time on a phone, borderline neutral on the card, no second
     coral Analyze, no "Back to the squad", the footer's links in the drawer,
     and a ring with no score says why instead of a delta beside a dash."""
-    assert HTML.index('<div id="dashFix"></div>') < HTML.index('<div id="dashSeg"></div>') < HTML.index('id="dashSports"')
+    # Fix first went back under the cards the same day (the What to fix list).
+    assert HTML.index('<div id="dashSeg"></div>') < HTML.index('id="dashSports"') < HTML.index('<div id="dashFix"></div>')
     assert "function renderDashSeg(all)" in HTML and 'data-sport="${sport}"' in HTML
     assert ".seg.dsc-seg{display:none}" in APP and ".seg.dsc-seg{display:flex}" in APP
     assert ".dsc-rows .m-near .dsc-dot{background:var(--c-line-strong)}" in APP

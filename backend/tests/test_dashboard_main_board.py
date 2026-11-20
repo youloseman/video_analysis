@@ -34,8 +34,17 @@ def test_a_bike_band_is_the_one_the_report_graded_against():
     assert body.index("entry.trendOpt&&entry.trendOpt[key]") < body.index("bikePosRange(")
 
 
-def test_the_lead_is_not_repeated_under_also_work_on():
-    assert "leadT.includes(" in _fn("renderDashFix")
+def test_what_to_fix_is_a_checklist_per_sport_under_the_cards():
+    """Artur 2026-11-19: the latest analyses on top, then what to fix and how,
+    sport by sport (the one with something out of range first), each fix and
+    drill a checkbox that strikes through and stays ticked."""
+    assert SPA.index('id="dashSports"') < SPA.index('<div id="dashFix"></div>')
+    body = _fn("renderDashFix")
+    assert 'class="fx-cb" data-fx="${i.fx}"' in body and "(red(b)-red(a))" in body
+    assert "lead?'Fix first':'To fix'" in body
+    assert "const f=cb.dataset.fx==='drill'?'planDone':'fixDone';" in SPA and "persistEntryPatch(e);" in SPA
+    assert "'fileName','fixDone']" in SPA          # a rebuilt entry keeps its ticks
+    assert "const lead=($('#dashFix').dataset.sport)||'run';" in SPA   # cards follow the list
 
 
 def test_then_now_and_kona_are_lines_on_home_and_pictures_on_progress():
