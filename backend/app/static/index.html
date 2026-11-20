@@ -13446,9 +13446,16 @@ function histStripHtml(list){
   const lo=Math.min(...rows.flatMap(([,es])=>es.map(t))), span=Math.max(864e5,now-lo);
   const X=ms=>((ms-lo)/span*92+4).toFixed(1);
   const ticks=[]; const d=new Date(lo); d.setDate(1); d.setMonth(d.getMonth()+1);
-  for(;d.getTime()<now-6*864e5;d.setMonth(d.getMonth()+1)) ticks.push(d.getTime());
+  // A month mark too close to the first date would print over it.
+  for(;d.getTime()<now-6*864e5;d.setMonth(d.getMonth()+1)) if(X(d.getTime())-X(lo)>=(PHONE_MQ.matches?16:6)) ticks.push(d.getTime());
   return `<div class="hstrip"><div class="hstrip-h"><b>Every analysis, by date</b><span class="hstrip-key"><i class="sc-good"></i>86 and up <i class="sc-watch"></i>60–85 <i class="sc-fix"></i>under 60</span></div>
-    ${rows.map(([sp,es])=>`<div class="hstrip-row"><span class="hstrip-l">${sp==='run'?'Run':'Bike'}</span><div class="hstrip-line">${histStripSpread(es,t,X).map(([e,x,o])=>`<button type="button" class="hstrip-dot sc-${scoreStatus(e.score)}" style="--x:${x}%;--o:${o}" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}">${e.score}</button>`).join('')}</div></div>`).join('')}
+    ${rows.map(([sp,es])=>{
+      // Many analyses (Artur 2026-11-20: 117 ran off the card): a small mark
+      // per analysis at its own date, the newest keeps its number.
+      const dense=es.length>(PHONE_MQ.matches?8:16), newest=es.reduce((a,e)=>t(e)>t(a)?e:a,es[0]);
+      const pts=dense?es.map(e=>[e,X(t(e)),0]):histStripSpread(es,t,X);
+      return `<div class="hstrip-row${dense?' hstrip-dense':''}"><span class="hstrip-l">${sp==='run'?'Run':'Bike'}</span><div class="hstrip-line">${pts.map(([e,x,o])=>{ const pip=dense&&e!==newest;
+        return `<button type="button" class="hstrip-dot${pip?' hstrip-pip':''} sc-${scoreStatus(e.score)}" style="--x:${x}%;--o:${o}" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}" aria-label="${esc(shortDate(t(e)))}, score ${e.score}">${pip?'':e.score}</button>`; }).join('')}</div></div>`; }).join('')}
     <div class="hstrip-axis"><span style="--x:${X(lo)}%">${esc(shortDate(lo))}</span>${ticks.map(ms=>`<span style="--x:${X(ms)}%">${esc(shortDate(ms))}</span>`).join('')}<span style="--x:${X(now)}%">today</span></div></div>`;
 }
 /* What one analysis says, in its own colours: how many readings are out of
@@ -14789,20 +14796,62 @@ function focusAreas(all, N=6){
 /* What a clip says to change: its written advice (dashTips), else the
    readings outside their range, farthest first, in the report verdict's
    words. `edge` is what sits at the edge, for a card with nothing out. */
+/* How to bring a reading back into its range (Artur 2026-11-20: "a fix with
+   no way to do it"). The bike: the fitter's adjustments of
+   action_plan_builder (saddle height for the knee at the bottom, fore-aft for
+   the hip at the top, pad stack or bar height and reach for the trunk) and the
+   usual reach and extension rules for the shoulder and elbow, in the words
+   of the position (_POSITION_TERMINOLOGY: pads on aero bars, stem and spacers
+   on a road bike). The run: the cues of running_action_plan_builder
+   (RUNNING_DRILLS; cadence +5 % after Heiderscheit 2011). Pelvic ratio has
+   none: it is mean hip over trunk, with no sourced band, and it left the
+   score on 2026-11-10. */
+function fixHow(e, key, dir){
+  const aero=e.position==='tt_aero'||e.position==='triathlon';
+  const B={
+    knee:{low:'Raise the saddle about 5 mm', high:'Lower the saddle about 5 mm'},
+    hip:{low:'Move the saddle forward about 5 mm. If the knee is also too bent at the bottom, raise the saddle first'},
+    trunk:{high:aero?'Lower the pads: take a 5 mm spacer out from under them, or move the pads forward':'Lower the bars: move a 5 mm spacer from under the stem to above it, or fit a longer stem',
+           low:aero?'Lower than the range costs nothing on aero bars. Add a 5 mm spacer under the pads only if you cannot hold it or your neck complains':'Raise the bars: move a 5 mm spacer from above the stem to under it'},
+    shoulder:{high:aero?'Bring the pads back toward you, so the elbows sit under the shoulders':'Shorten the reach: a stem about 10 mm shorter',
+              low:aero?'A closed shoulder is your choice on aero bars. If the neck or breathing feels cramped, move the pads forward':'Lengthen the reach: a stem about 10 mm longer'},
+    elbow:{low:aero?'Flatten the extensions a few degrees, or move the pads forward':'The bars may sit too close: try a stem about 10 mm longer',
+           high:aero?'The arms are stretched: bring the pads back, or tilt the extensions up a few degrees':'Keep a soft bend in the elbows. If you cannot, try a stem about 10 mm shorter'},
+  };
+  const RUN={
+    cadence:{low:'Take quicker steps at the same pace: set a metronome app to your cadence plus 5%'},
+    overstride:{high:'Land with the foot closer under the hip: quicker, shorter steps, cadence up about 5%'},
+    vertical_oscillation:{high:'Push the ground back, not down: quicker steps (cadence up about 5%) flatten the bounce'},
+    trunk_lean:{low:'Lean slightly forward from the ankles, body in one line, not bent at the waist',
+                high:'Run taller: hips under the shoulders, the lean from the ankles, not the waist'},
+    ground_contact:{high:'Quick, light steps: cadence up about 5%, plus skips or fast-feet drills'},
+  };
+  return ((e.sport==='bike'?B:RUN)[key]||{})[dir]||'';
+}
 function dashFixTips(x){
   const tips=dashTips(x);
   const rows=x.trends?formTiles(x.sport,[x]).map(m=>({m,st:measStatus(m)})).filter(r=>r.m.range):[];
   const far=r=>Math.abs(r.m.delta||0)/((r.m.range.hi-r.m.range.lo)||1);
+  const dir=r=>r.m.delta>0?'high':'low';
+  // A written fix gets the how of the reading it names.
+  const howOf=t=>{ const r=rows.find(r=>String(t||'').toLowerCase().includes(String(r.m.lbl).toLowerCase().slice(0,5)));
+    if(r) return r.st.cls!=='m-ok'?fixHow(x,r.m.key,dir(r)):'';
+    // A reading shown without a band (a clip's overstride): its how when the
+    // fault runs one way only.
+    const m=(TREND_METRICS[x.sport]||[]).find(m=>m.key!=='score'&&String(t||'').toLowerCase().includes(m.label.toLowerCase().slice(0,5)));
+    if(!m) return '';
+    const hi=fixHow(x,m.key,'high'), lo=fixHow(x,m.key,'low');
+    return hi&&!lo?hi:lo&&!hi?lo:''; };
   const out=rows.filter(r=>r.st.cls==='m-out').sort((a,b)=>far(b)-far(a));
   const edge=rows.filter(r=>r.st.cls==='m-near').sort((a,b)=>far(b)-far(a));
   const said=r=>`${String(r.m.val).replace(/^-/,'−')}${measUnit(r.m.unit)}, range ${measRange(r.m.range.lo,r.m.range.hi,r.m.unit)}`;
-  const outFix=()=>out.slice(0,2).map(r=>({t:`${r.m.lbl} is ${r.m.delta>0?'too high':'too low'}`, d:said(r)}));
+  const outFix=()=>out.slice(0,2).map(r=>({t:`${r.m.lbl} is ${r.m.delta>0?'too high':'too low'}`, d:said(r), how:fixHow(x,r.m.key,dir(r))}));
   // Written advice, or a reading out of range (also when the text said clean).
-  if(tips.fix.length&&!tips.clean) return {...tips, edge, said, level:'fix', written:true, out:out.length};
-  if(out.length) return {...tips, clean:false, fix:outFix(), edge, said, level:'fix', out:out.length};
+  if(tips.fix.length&&!tips.clean) return {...tips, fix:tips.fix.map(f=>({...f, how:f.how||howOf(f.t)})), edge, said, level:'fix', written:true, out:out.length, howOf:r=>fixHow(x,r.m.key,dir(r))};
+  if(out.length) return {...tips, clean:false, fix:outFix(), edge, said, level:'fix', out:out.length, howOf:r=>fixHow(x,r.m.key,dir(r))};
   // Nothing out, nothing written, something at the edge: that is the lead.
-  if(!tips.clean&&edge.length) return {...tips, clean:false, fix:edge.slice(0,2).map(r=>({t:`${r.m.lbl} is at the edge`, d:said(r)})), edge:[], said, level:'edge'};
-  return {...tips, edge, said, level:tips.clean||!tips.fix.length?'clean':'fix'};
+  if(!tips.clean&&edge.length) return {...tips, clean:false, fix:edge.slice(0,2).map(r=>({t:`${r.m.lbl} is at the edge`, d:said(r), how:fixHow(x,r.m.key,dir(r))})), edge:[], said, level:'edge', howOf:r=>fixHow(x,r.m.key,dir(r))};
+  return {...tips, edge, said, level:tips.clean||!tips.fix.length?'clean':'fix', howOf:r=>fixHow(x,r.m.key,dir(r))};
 }
 function renderDashFix(all){
   const host=$('#dashFix'); if(!host) return;
@@ -14822,14 +14871,14 @@ function renderDashFix(all){
     // The lead clip's own plan first; an older one says whose it is.
     const pe=hasDrill(e)?e:all.find(x=>x.sport===e.sport&&hasDrill(x));
     const items=[];
-    if(!tips.clean) tips.fix.forEach(f=>{ if(f&&f.t) items.push({fx:'fix',x:e,key:f.t,t:f.t,d:f.d||''}); });
+    if(!tips.clean) tips.fix.forEach(f=>{ if(f&&f.t) items.push({fx:'fix',x:e,key:f.t,t:f.t,d:f.d||'',how:f.how||''}); });
     const named=t=>items.some(i=>i.t.toLowerCase().startsWith(t.toLowerCase()));
-    (tips.edge||[]).filter(r=>!named(r.m.lbl)).slice(0,2).forEach(r=>items.push({fx:'fix',x:e,key:'edge:'+r.m.key,t:`${r.m.lbl} is at the edge`,d:tips.said(r)}));
+    (tips.edge||[]).filter(r=>!named(r.m.lbl)).slice(0,2).forEach(r=>items.push({fx:'fix',x:e,key:'edge:'+r.m.key,t:`${r.m.lbl} is at the edge`,d:tips.said(r),how:tips.howOf?tips.howOf(r):''}));
     if(pe) pe.plan.filter(p=>p&&p.drill).forEach(p=>items.push({fx:'drill',x:pe,key:planKey(p),t:p.drill,d:p.cue||'',from:pe!==e?`from the ${noun} on ${shortDate(pe.filmedAt||pe.at)}`:''}));
     if(!items.length&&!tips.clean&&!tips.next) return '';
     const row=i=>{ const on=!!((i.fx==='drill'?i.x.planDone:i.x.fixDone)||{})[i.key];
       return `<label class="dplan-item fx-item${on?' done':''}"><input type="checkbox" class="fx-cb" data-fx="${i.fx}" data-id="${esc(i.x.id)}" data-key="${esc(i.key)}"${on?' checked':''}>${DPLAN_CHECK}
-        <span class="fx-txt"><span class="dplan-drill">${i.fx==='drill'?'<span class="fx-tag">Drill</span>':''}${dash(esc(i.t))}</span>${i.d||i.from?`<span class="fx-d">${dash(esc(i.d))}${i.d&&i.from?' · ':''}${esc(i.from||'')}</span>`:''}</span></label>`; };
+        <span class="fx-txt"><span class="dplan-drill">${i.fx==='drill'?'<span class="fx-tag">Drill</span>':''}${dash(esc(i.t))}</span>${i.d||i.from?`<span class="fx-d">${dash(esc(i.d))}${i.d&&i.from?' · ':''}${esc(i.from||'')}</span>`:''}${i.how?`<span class="fx-how"><b>How:</b> ${esc(i.how)}</span>`:''}</span></label>`; };
     // One sport is first; the other's fixes are just to fix.
     const chip=tips.clean?'In range':tips.level==='edge'?'Worth a look':lead?'Fix first':'To fix';
     // The cue once: a drill that carries it already says it.
@@ -14839,6 +14888,7 @@ function renderDashFix(all){
         <span class="dfx-chip${tips.clean?' dfx-clean':''}">${chip}</span><span class="fx-when">${esc(shortDate(e.filmedAt||e.at))}</span></div>
       ${tips.clean?`<p class="fx-clean">${e.sport==='run'?'Keep this form on the next run':'Hold this position on the next ride'}</p>`:''}
       ${items.length?`<div class="dplan-list">${items.map(row).join('')}</div>`:''}
+      ${e.sport==='bike'&&items.some(i=>i.how)?'<p class="fx-note">One change at a time, in small steps, then ride 30 minutes before you film again</p>':''}
       ${next?`<p class="dfx-next"><b>Next session.</b> ${dash(esc(next))}</p>`:''}
       <div class="fx-foot"><button class="btn btn-link" type="button" data-id="${esc(e.id)}" data-focus-open="1" data-to="${tips.written?'#hdCoachBlock,#hdFindings':'#hdFindings'}">Open report →</button>
         ${pe?`<button class="btn btn-link" type="button" data-plan-open="${esc(pe.id)}">Open plan →</button>`:''}</div>
@@ -14901,7 +14951,9 @@ function formTiles(sport, entries){
   return TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
     const v=cur.trends[m.key]; if(v==null) return null;
     const unit=String(m.unit||'').trim();
-    const band=ungraded&&ungraded.has(m.key)?null:formBand(sport,m.key,cur);
+    // Pelvic ratio: mean hip over trunk, no sourced band (sport_configs),
+    // out of the score since 2026-11-10; shown, never a fix.
+    const band=(m.key==='pelvic_ratio'||(ungraded&&ungraded.has(m.key)))?null:formBand(sport,m.key,cur);
     const range=band?{value:v,lo:band[0],hi:band[1],unit,metric:m.key}:null;
     if(range&&aero&&m.key==='shoulder') range.metric='shoulder_closed_ok';
     if(range&&aero&&m.key==='trunk'&&v<band[0]) range.metric='trunk_low_ok';

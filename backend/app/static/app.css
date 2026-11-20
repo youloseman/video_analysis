@@ -481,6 +481,10 @@ video.ex-media{background:var(--c-media-bg)}
 .hh-phone{display:none}
 /* Dots close in time are spread by their own width around their shared spot. */
 .hstrip-dot{position:absolute;top:50%;left:calc(var(--x) + var(--o,0) * 32px);transform:translate(-50%,-50%);min-width:30px;height:30px;padding:0 4px;border-radius:999px;border:0;font:600 12px var(--f-mono);color:var(--c-on-dark);cursor:pointer;background:var(--c-ink-faint)}
+/* Many analyses: a 10 px mark each, at its date, with a finger-sized target. */
+.hstrip-dot.hstrip-pip{min-width:0;width:10px;height:10px;padding:0;left:var(--x);opacity:.85}
+.hstrip-pip::after{content:"";position:absolute;inset:-8px}
+.hstrip-dense .hstrip-dot:not(.hstrip-pip){z-index:1}
 .hstrip-dot.sc-good,.hstrip-key i.sc-good{background:var(--c-live-good-fill)}
 .hstrip-dot.sc-watch,.hstrip-key i.sc-watch{background:var(--c-warn)}
 .hstrip-dot.sc-fix,.hstrip-key i.sc-fix{background:var(--c-coral-btn)}
@@ -771,7 +775,15 @@ details.dform > .dform-sum::-webkit-details-marker{display:none}
 details.dform[open] .dform-sum-go .ic{transform:rotate(180deg)}
 .dform-hide{display:none} details.dform[open] .dform-hide{display:inline} details.dform[open] .dform-show{display:none}
 details.dform[open] > .dform-sum{margin-bottom:14px}
-.prog-vis{margin:0 0 24px}
+.prog-vis{margin:0 0 24px;grid-template-columns:minmax(0,1fr)}
+/* Then -> now across Progress (Artur 2026-11-20): the two frames on the
+   left, what changed beside them. */
+@media(min-width:901px){
+  #progThen .dthen{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);column-gap:32px;align-items:start}
+  #progThen .dthen > .dcard-head,#progThen .dthen-sub{grid-column:1/-1}
+  #progThen .dthen-pair{max-width:none}
+  #progThen .dthen-ch{margin:0}
+}
 #dashboard .dfx .btn-primary{background:var(--c-bg);color:var(--c-ink);border-color:var(--c-line-strong)}
 @media(max-width:900px){
   .dfx,.dfx.no-fig,.dfx.no-side{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
@@ -2959,6 +2971,10 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fx-tag{margin-right:6px;font-family:var(--f-mono);font-size:12px;color:var(--c-ink-faint)}
 .fx-d{font-size:12px;color:var(--c-ink-soft)}
 .fx-item.done .fx-d{text-decoration:line-through;color:var(--c-ink-faint)}
+.fx-how{font-size:14px;color:var(--c-ink)}
+.fx-how b{font-weight:600}
+.fx-item.done .fx-how{text-decoration:line-through;color:var(--c-ink-faint)}
+.fx-note{margin:0;font-size:12px;color:var(--c-ink-faint)}
 .fx-foot{display:flex;justify-content:space-between;gap:12px;margin-top:auto}
 /* On a desk the sports sit side by side, in the cards' order above. */
 @media(min-width:901px){

@@ -79,3 +79,18 @@ def test_the_card_and_what_to_fix_agree_and_line_up():
     css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
     assert ".dsc{grid-template-rows:auto 1fr auto}" in css
     assert ".fx-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))" in css
+
+
+def test_every_fix_says_how_and_history_holds_a_hundred():
+    """Artur 2026-11-20: a fix with no way to do it ("Pelvic ratio is too
+    high, range 2-4"); 117 analyses ran off the History strip; Then -> now
+    spans Progress. Fit adjustments in the position's words, cues for the
+    run; pelvic ratio is shown, never a fix."""
+    assert "function fixHow(e, key, dir)" in SPA and "Raise the saddle about 5 mm" in SPA
+    assert "aero?'Lower the pads" in SPA and "Take quicker steps at the same pace" in SPA
+    assert "m.key==='pelvic_ratio'||(ungraded&&ungraded.has(m.key))" in SPA
+    assert '<span class="fx-how"><b>How:</b>' in SPA
+    assert "const dense=es.length>(PHONE_MQ.matches?8:16)" in SPA and "hstrip-pip" in SPA
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    assert ".prog-vis{margin:0 0 24px;grid-template-columns:minmax(0,1fr)}" in css
+    assert ".hstrip-dot.hstrip-pip{" in css
