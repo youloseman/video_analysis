@@ -68,3 +68,14 @@ def test_one_news_banner_and_one_coral_button():
     assert "btn-primary" not in card
     assert "#dashReview .rev-card.is-unread" in _fn("renderDashSwim")
     assert "renderReviewCard().finally(renderDashSwim);" in SPA
+
+
+def test_the_card_and_what_to_fix_agree_and_line_up():
+    """Review 2026-11-19: What to fix in two columns on a desk under the two
+    cards, the cards' footers on one line, and a reading the report says to
+    fix leads its sport card even when it is not scored (a clip's overstride)."""
+    card = _fn("sportCard")
+    assert "say:'to fix',named:true" in card and "st.say||DSC_WORD[st.cls]" in card
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    assert ".dsc{grid-template-rows:auto 1fr auto}" in css
+    assert ".fx-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))" in css

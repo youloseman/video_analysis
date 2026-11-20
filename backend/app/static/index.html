@@ -14701,13 +14701,19 @@ function sportCard(sport, entries){
   const pos=sport==='bike'&&last.position&&POSITION_NAMES[last.position]?` · ${esc(POSITION_NAMES[last.position])}`:'';
   // The readings: out of range and borderline first, furthest first; in range
   // fills the card to three lines, the rest are counted.
-  const rows=formTiles(sport, sameSide).map(m=>({m,st:measStatus(m)})).filter(x=>x.st.group!=='info');
+  // A reading the report's written fix names leads the card, graded or not
+  // (a clip's overstride is not scored, yet the report can still say to fix
+  // it): the card and What to fix under it must not disagree.
+  const lt=dashFixTips(last), fixSaid=lt.written?lt.fix.map(f=>String(f.t||'').toLowerCase()):[];
+  const named=m=>fixSaid.some(t=>t.includes(String(m.lbl).toLowerCase().slice(0,5)));
+  const rows=formTiles(sport, sameSide).map(m=>({m,st:named(m)?{word:'To fix',cls:'m-out',group:'attn',say:'to fix',named:true}:measStatus(m)}))
+    .filter(x=>x.st.group!=='info');
   const far=x=>x.m.range?Math.abs(x.m.delta||0)/((x.m.range.hi-x.m.range.lo)||1):0;
-  const attn=rows.filter(x=>x.st.group==='attn').sort((a,b)=>far(b)-far(a)), ok=rows.filter(x=>x.st.group==='ok');
+  const attn=rows.filter(x=>x.st.group==='attn').sort((a,b)=>((b.st.named?1:0)-(a.st.named?1:0))||(far(b)-far(a))), ok=rows.filter(x=>x.st.group==='ok');
   const shown=attn.slice(0,3), okShown=ok.slice(0,Math.max(0,3-shown.length-(ok.length>3-shown.length?1:0)));
   const rest=ok.length-okShown.length;
   const li=({m,st})=>`<li class="${st.cls}"><span class="dsc-dot" aria-hidden="true"></span><span class="dsc-n">${esc(m.lbl)}</span>`
-    +`${st.group==='attn'?`<span class="dsc-w">· ${DSC_WORD[st.cls]}</span>`:''}<span class="dsc-v">${m.val}${measUnit(m.unit)}</span></li>`;
+    +`${st.group==='attn'?`<span class="dsc-w">· ${st.say||DSC_WORD[st.cls]}</span>`:''}<span class="dsc-v">${m.val}${measUnit(m.unit)}</span></li>`;
   const list=[...shown,...okShown].map(li).join('')
     +(rest>0?`<li class="m-ok"><span class="dsc-dot" aria-hidden="true"></span><span class="dsc-n">${rest} more reading${rest>1?'s':''}</span><span class="dsc-w">· in range</span><button type="button" class="btn btn-link dsc-all" data-seeall="${sport}">See all</button></li>`:'');
   return `<div class="dkpi dkpi-sport dsc" data-dsc="${esc(last.id)}" data-sport="${sport}">
