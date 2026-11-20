@@ -3769,6 +3769,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .sidenav .navlink .newdot{margin-left:auto}
 .topbar-toggle{position:relative}
 .topbar-toggle .newdot{position:absolute;top:8px;right:8px;border:2px solid var(--c-bg);box-sizing:content-box}
+/* One menu button on a phone: the More tab opens the drawer (2026-11-19). */
+.topbar-toggle{display:none}
+.bot-ic{position:relative;display:inline-flex}
+.bot-ic .newdot{position:absolute;top:-2px;right:-4px;border:2px solid var(--c-bg);box-sizing:content-box}
 /* What's new (board: WhatsNew): one card of rows, date | title + one line | tag;
    the full note opens under its row. */
 .wn-card{border-radius:var(--radius-card);background:var(--c-bg);border:1px solid var(--c-line);overflow:hidden;max-width:1100px}

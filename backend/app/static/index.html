@@ -173,8 +173,9 @@
 
 <!-- Mobile top bar (shown < 900px): brand + hamburger -->
 <div class="topbar">
-  <!-- One menu on a phone: the drawer, from here and from the More tab
-       (Artur 2026-11-18: the drawer reads better than a More page). -->
+  <!-- One menu on a phone: the drawer, from the More tab (Artur 2026-11-19:
+       the same icon top and bottom was one too many; this button is hidden
+       by CSS and kept for the drawer's open/closed state). -->
   <button class="topbar-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
     <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
     <!-- Unread-release dot. On phones the "What's new" link lives inside the
@@ -202,7 +203,7 @@
   <!-- Everything else lives on the More page (board: MorePhone): the plan,
        your work, Pricing, Examples, Academy, What's new, Log out. One row,
        five thumbs. The top bar's menu button still opens the drawer. -->
-  <a href="#" id="botMore" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span>More</span></a>
+  <a href="#" id="botMore" class="botlink" aria-controls="sidebar"><span class="bot-ic"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="newdot hidden" id="botMoreDot" aria-hidden="true"></span></span><span>More</span></a>
 </nav>
 
 <!-- Left sidebar (primary navigation) -->
@@ -4298,7 +4299,7 @@ const GR_ZONE={get optimal(){ return tok('--st-good-bg'); }, warning:'transparen
    _metric_margin so the status pill agrees with the coach notes / score.
    The floor is 3 for degrees; metrics that aren't degrees carry their own,
    or a ratio whose whole band is 2.0 wide could never leave "warning". */
-const MARGIN_FLOOR={pelvic_ratio:0.2,pelvic_tilt:0.2};
+const MARGIN_FLOOR={pelvic_ratio:0.2,pelvic_tilt:0.2,overstride:0.05,shin:6};
 function grMargin(lo,hi,metric){
   return Math.max((hi-lo)*0.10, MARGIN_FLOOR[metric]!=null?MARGIN_FLOOR[metric]:3);
 }
@@ -14792,8 +14793,8 @@ function dashFixTips(x){
   const said=r=>`${String(r.m.val).replace(/^-/,'−')}${measUnit(r.m.unit)}, range ${measRange(r.m.range.lo,r.m.range.hi,r.m.unit)}`;
   const outFix=()=>out.slice(0,2).map(r=>({t:`${r.m.lbl} is ${r.m.delta>0?'too high':'too low'}`, d:said(r)}));
   // Written advice, or a reading out of range (also when the text said clean).
-  if(tips.fix.length&&!tips.clean) return {...tips, edge, said, level:'fix', written:true};
-  if(out.length) return {...tips, clean:false, fix:outFix(), edge, said, level:'fix'};
+  if(tips.fix.length&&!tips.clean) return {...tips, edge, said, level:'fix', written:true, out:out.length};
+  if(out.length) return {...tips, clean:false, fix:outFix(), edge, said, level:'fix', out:out.length};
   // Nothing out, nothing written, something at the edge: that is the lead.
   if(!tips.clean&&edge.length) return {...tips, clean:false, fix:edge.slice(0,2).map(r=>({t:`${r.m.lbl} is at the edge`, d:said(r)})), edge:[], said, level:'edge'};
   return {...tips, edge, said, level:tips.clean||!tips.fix.length?'clean':'fix'};
@@ -14805,7 +14806,8 @@ function renderDashFix(all){
   const latest=['run','bike'].map(sp=>all.find(x=>x.sport===sp)).filter(Boolean);
   // Something to change beats something at the edge beats clean; the newest wins a tie.
   const RANK={fix:2,edge:1,clean:0};
-  const withFix=latest.filter(x=>dashFixTips(x).fix.length).sort((a,b)=>(RANK[dashFixTips(b).level]-RANK[dashFixTips(a).level])||((b.filmedAt||b.at||0)-(a.filmedAt||a.at||0)));
+  const red=x=>dashFixTips(x).out?1:0;
+  const withFix=latest.filter(x=>dashFixTips(x).fix.length).sort((a,b)=>(red(b)-red(a))||(RANK[dashFixTips(b).level]-RANK[dashFixTips(a).level])||((b.filmedAt||b.at||0)-(a.filmedAt||a.at||0)));
   const e=withFix[0]||latest.find(x=>{ const t=dashTips(x); return t.clean||t.next; })
     ||all.find(x=>{ const t=dashTips(x); return t.fix.length||t.clean||t.next; });
   // Drills of that sport only: a run drill under a ride is noise.
@@ -14889,17 +14891,22 @@ function formBand(sport, key, entry){
   return (entry.trendOpt&&entry.trendOpt[key])||null;
 }
 const FORM_DEC={overstride:2,pelvic_ratio:2,vertical_oscillation:1};
+/* Shown on a clip's report, not scored (technique_scorer: overstride left the
+   run score 2026-11-02, pelvic ratio the bike's 2026-11-10). A photo grades
+   both, so a photo keeps its band. */
+const FORM_VIDEO_UNGRADED=new Set(['overstride','pelvic_ratio']);
 /* The latest entry's readings as measurement rows (tile() objects), each with
    its change since the entry before. */
 function formTiles(sport, entries){
   const cur=entries[0], prev=cmpPrevious(cur,entries), single=entries.length<2;
   const aero=LOW_SIDE_OK_POS.has(cur.position);
   if(!cur.trends) return [];
+  const ungraded=cur.kind==='video'?FORM_VIDEO_UNGRADED:null;
   return TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
     const v=cur.trends[m.key]; if(v==null) return null;
     const unit=String(m.unit||'').trim();
-    const band=formBand(sport,m.key,cur);
-    const range=band?{value:v,lo:band[0],hi:band[1],unit}:null;
+    const band=ungraded&&ungraded.has(m.key)?null:formBand(sport,m.key,cur);
+    const range=band?{value:v,lo:band[0],hi:band[1],unit,metric:m.key}:null;
     if(range&&aero&&m.key==='shoulder') range.metric='shoulder_closed_ok';
     if(range&&aero&&m.key==='trunk'&&v<band[0]) range.metric='trunk_low_ok';
     const t=tile(m.label,num(v,FORM_DEC[m.key]||0),unit,null,null,false,range);
@@ -16459,7 +16466,7 @@ function clMarkSeen(id){ try{ if(id) localStorage.setItem(CL_SEEN_KEY,id); }catc
 function clIsNew(id, seen){ return !!seen && !!id && id>seen; }
 
 function setNewDot(on){
-  ['#navNewDot','#navToggleDot'].forEach(sel=>{
+  ['#navNewDot','#navToggleDot','#botMoreDot'].forEach(sel=>{
     const el=$(sel); if(el) el.classList.toggle('hidden', !on);
   });
 }

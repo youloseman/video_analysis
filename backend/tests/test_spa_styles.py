@@ -188,3 +188,17 @@ def test_my_technique_review_2026_11_19():
     assert ".dash-analyze{display:none}" in phone and "footer{display:none}" in phone and ".nav-legal{display:block" in phone
     assert '<p class="nav-legal"><a href="/privacy">Privacy</a>' in HTML
     assert "Not scored${last.kind==='photo'?' · photo':''}" in HTML
+
+
+def test_dashboard_follow_up_2026_11_19():
+    """Artur 2026-11-19: one menu button on a phone (More, carrying the
+    unread dot); the dashboard grades what the report grades (a clip's
+    overstride and pelvic ratio are shown, not scored) and a ratio gets its
+    own amber width, as photo_analyzer._NON_DEGREE_SCALES does; a reading out
+    of range outranks written advice on a sport with nothing out."""
+    assert ".topbar-toggle{display:none}" in APP
+    assert 'id="botMoreDot"' in HTML and "'#navNewDot','#navToggleDot','#botMoreDot'" in HTML
+    assert "const FORM_VIDEO_UNGRADED=new Set(['overstride','pelvic_ratio']);" in HTML
+    assert "const MARGIN_FLOOR={pelvic_ratio:0.2,pelvic_tilt:0.2,overstride:0.05,shin:6};" in HTML
+    assert "metric:m.key}" in HTML
+    assert "(red(b)-red(a))||(RANK[" in HTML
