@@ -32,3 +32,12 @@ def test_the_ring_numeral_and_readings_never_take_the_gradient():
 def test_drills_done_is_a_progress_bar_without_inline_style():
     assert '<progress class="gprog"' in SPA
     assert ".gprog::-webkit-progress-value{background:var(--g-speed)" in APP
+
+
+def test_the_drop_frame_is_a_gradient_viewfinder_that_respects_reduced_motion():
+    after = APP[APP.index(".drop::after{"):]
+    after = after[:after.index("}\n")]
+    assert "background:var(--g-speed)" in after and "mask:" in after
+    assert "animation:dropscan" in APP
+    rm = APP[APP.index("@keyframes dropscan"):]
+    assert "prefers-reduced-motion:reduce" in rm[:600] and ".drop.drag{animation:none" in rm[:600]

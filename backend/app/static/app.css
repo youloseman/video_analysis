@@ -1817,25 +1817,52 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .drop::before{content:"";position:absolute;inset:0;pointer-events:none;
   background-image:linear-gradient(rgba(245,247,250,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(245,247,250,.10) 1px,transparent 1px);
   background-size:100% 33.34%,33.34% 100%}
-/* Four corner brackets. Inset by 12px so each one is a plain keyword corner
-   of this box; four-value background positions are where the first attempt
-   lost three of them. */
+/* Four corner brackets, cut out of the speed gradient: the colour runs across
+   the frame, blue on the left into coral on the right (2026-11-21). The
+   brackets are a mask over one gradient, so the run is continuous. Inset by
+   12px so each one is a plain keyword corner of this box. Lifted a little:
+   the brand blue alone sinks into the media black. */
 .drop::after{content:"";position:absolute;inset:12px;pointer-events:none;
-  background:
-    linear-gradient(var(--c-on-media),var(--c-on-media)) left top/26px 3px no-repeat,
-    linear-gradient(var(--c-on-media),var(--c-on-media)) left top/3px 26px no-repeat,
-    linear-gradient(var(--c-on-media),var(--c-on-media)) right top/26px 3px no-repeat,
-    linear-gradient(var(--c-on-media),var(--c-on-media)) right top/3px 26px no-repeat,
-    linear-gradient(var(--c-on-media),var(--c-on-media)) left bottom/26px 3px no-repeat,
-    linear-gradient(var(--c-on-media),var(--c-on-media)) left bottom/3px 26px no-repeat,
-    linear-gradient(var(--c-on-media),var(--c-on-media)) right bottom/26px 3px no-repeat,
-    linear-gradient(var(--c-on-media),var(--c-on-media)) right bottom/3px 26px no-repeat}
+  background:var(--g-speed);filter:brightness(1.35) saturate(1.1);
+  -webkit-mask:
+    linear-gradient(var(--c-ink),var(--c-ink)) left top/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) left top/3px 26px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right top/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right top/3px 26px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) left bottom/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) left bottom/3px 26px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right bottom/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right bottom/3px 26px no-repeat;
+  mask:
+    linear-gradient(var(--c-ink),var(--c-ink)) left top/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) left top/3px 26px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right top/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right top/3px 26px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) left bottom/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) left bottom/3px 26px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right bottom/26px 3px no-repeat,
+    linear-gradient(var(--c-ink),var(--c-ink)) right bottom/3px 26px no-repeat;
+  transition:inset .15s ease}
 .drop > *{position:relative}
 .drop:hover,.drop.drag,#file:focus-visible + .drop{border-color:var(--c-on-media);background:var(--c-media-bg)}
 /* A file held over it: the frame runs in the gradient (the moment the app
    starts moving). 2 px of border, the padding 2 px less. */
 .drop.drag{border:2px solid transparent;padding:34px 22px;
-  background:linear-gradient(var(--c-media-bg),var(--c-media-bg)) padding-box,var(--g-speed) border-box}
+  background:
+    var(--g-speed) 0 0/100% 3px no-repeat padding-box,
+    linear-gradient(var(--c-media-bg),var(--c-media-bg)) padding-box,
+    var(--g-speed) border-box;
+  animation:dropscan 1.6s cubic-bezier(.45,0,.55,1) infinite}
+/* A scan line runs down the frame while the file is held over it, and the
+   brackets close in a little. */
+@keyframes dropscan{
+  from{background-position:0 0,0 0,0 0}
+  to{background-position:0 100%,0 0,0 0}}
+.drop.drag::after{inset:8px}
+@media (prefers-reduced-motion:reduce){
+  .drop.drag{animation:none;background-position:0 50%,0 0,0 0}
+  .drop::after{transition:none}
+}
 #file:focus-visible + .drop{box-shadow:var(--ring)}
 .drop.err{border-color:var(--st-bad-fill)}
 .drop .ic-lg{margin:0 auto 12px;color:var(--c-on-media);display:block;width:32px;height:32px}
