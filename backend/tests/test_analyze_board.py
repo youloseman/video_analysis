@@ -62,3 +62,17 @@ def test_the_choices_are_named_where_they_are():
     note = _fn("scanNote")
     assert "footageFirst()?'below':'on the left'" in note
     assert "—" not in note
+
+
+def test_analyze_review_2026_11_20():
+    """One promise for the wait, the measured one (PostHog, 30 days: video
+    median 78 s, 80th percentile 111 s); one level of folding under the setup;
+    the tab bar's markup in the order it is seen; US spelling on the screen."""
+    assert "One side-view clip, about 1–2 minutes to a report" in UPLOADER
+    assert "20–90 seconds" not in SPA and "usually takes <b>1–2 min</b>" in SPA
+    assert '<div class="ustep-details" id="stepDetails">' in UPLOADER and "<details class=\"ustep-details\"" not in UPLOADER
+    bar = SPA[SPA.index('<nav class="botnav"'):SPA.index("</nav>", SPA.index('<nav class="botnav"'))]
+    order = [bar.index(f'id="{i}"') for i in ("botHome", "botHistory", "botAnalyze", "botProgress", "botMore")]
+    assert order == sorted(order)
+    assert "body.authed #botHistory{order" not in CSS
+    assert "What are we analyzing?" in UPLOADER and "analysing" not in UPLOADER.split("<!--")[0]

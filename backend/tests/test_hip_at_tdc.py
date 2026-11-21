@@ -188,7 +188,7 @@ class TestShortBikeClips:
         html = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
         i = html.index("const PAIR_BIKE_NOTE=")
         note = html[i:html.index("\nfunction pairFileOf", i)]
-        assert "8–15 seconds" in note and "Shorter clips are analysed too" in note
+        assert "8–15 seconds" in note and "Shorter clips are analyzed too" in note
 
     def test_one_bottom_sample_per_revolution_is_enough(self):
         from app.services.video_analysis.biomechanics import bilateral as B

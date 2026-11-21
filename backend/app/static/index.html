@@ -195,11 +195,11 @@
 <!-- Mobile bottom tab bar (shown < 900px): thumb-reachable primary nav -->
 <nav class="botnav" id="botnav" aria-label="Primary">
   <a href="#" id="botHome" class="botlink hidden"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
+  <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
   <!-- The plus sits in a span of its own so the disc can rise out of the row
        without moving the label with it (see .bot-plus). -->
   <a href="#" id="botAnalyze" class="botlink"><span class="bot-plus"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg></span><span>Analyze</span></a>
   <a href="#" id="botProgress" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></a>
-  <a href="#" id="botHistory" class="botlink"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span></a>
   <!-- Everything else lives on the More page (board: MorePhone): the plan,
        your work, Pricing, Examples, Academy, What's new, Log out. One row,
        five thumbs. The top bar's menu button still opens the drawer. -->
@@ -468,7 +468,7 @@
         <div class="uphero-t">
           <h1 class="uphead" id="uploaderTitle" tabindex="-1">Analyze a <span id="fileNounCap">clip</span></h1>
         </div>
-        <span class="ph-lede">One side-view clip, 20–90 seconds to a report</span>
+        <span class="ph-lede">One side-view clip, about 1–2 minutes to a report</span>
       </header>
       <!-- Filled by renderGoalNote() when the visitor came in through one of
            the landing page's "What brings you here?" buttons. -->
@@ -488,8 +488,8 @@
            capture guide) hangs off them and is untouched. -->
       <div class="ustep" id="stepWhat">
         <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <h3>What are we analysing?</h3></div>
-        <div class="modetabs bigtiles what" id="whatSeg" role="group" aria-label="What to analyse">
+          <h3>What are we analyzing?</h3></div>
+        <div class="modetabs bigtiles what" id="whatSeg" role="group" aria-label="What to analyze">
           <button type="button" data-what="run-video" aria-pressed="false">
             <svg class="ic" aria-hidden="true"><use href="#i-run"/></svg>
             <span><b>Run<i class="wk"> · video</i></b><small>side view</small></span>
@@ -614,8 +614,9 @@
            "Details · optional" under step 03), and inside it each fold's
            summary line still states what is set. Not inside #stepFilm: that
            step hides for a photo, and a photo has details too. -->
-      <details class="ustep-details" id="stepDetails">
-        <summary>Details <span class="askopt">· optional</span></summary>
+      <!-- One level of folding (review 2026-11-20): the optional controls sit
+           here directly, each its own fold saying it is optional. -->
+      <div class="ustep-details" id="stepDetails">
       <!-- Which setup this was filmed on. Sits next to the clip rather than
            on a settings screen because it is a property of THIS recording:
            asking afterwards gets you an honest shrug. -->
@@ -684,7 +685,7 @@
           by your stem. Measured once; every bike analysis after it uses the result.</p>
         <div id="mobScreens"></div>
         <div class="mob-goal" id="mobGoalRow">
-          <label for="mobGoal">What are you optimising for?</label>
+          <label for="mobGoal">What are you optimizing for?</label>
           <select id="mobGoal">
             <option value="">Not saying</option>
             <option value="comfort">Comfort</option>
@@ -707,7 +708,7 @@
           (a view the camera didn&rsquo;t see, a force we can&rsquo;t measure), you&rsquo;ll be told that
           instead of given a guess.</p>
       </details>
-      </details><!-- /stepDetails -->
+      </div><!-- /stepDetails -->
       </div><!-- /upsetup -->
 
       <div class="upclip">
@@ -2059,7 +2060,7 @@
     <div class="backhome-row"><button class="btn btn-ghost btn-sm backhome" type="button"><svg class="ic arr-l" aria-hidden="true"><use href="#i-arr-l"/></svg> Squad</button></div>
     <div class="pagehead ath-head">
       <div class="ath-title"><h2 class="sec" id="batTitle" tabindex="-1">Upload several clips</h2>
-        <p class="ph-lede">Up to 10 clips and photos. Send them and go for a coffee: videos are analysed one by one, we email you when they are done, and you can close this page</p></div>
+        <p class="ph-lede">Up to 10 clips and photos. Send them and go for a coffee: videos are analyzed one by one, we email you when they are done, and you can close this page</p></div>
     </div>
     <p class="hint hidden" id="batNoSquad">No athletes yet, so these would be filed as your own clips. <a href="#" onclick="event.preventDefault();openAthletes(true)">Add an athlete first</a></p>
     <div class="bat-card">
@@ -2239,12 +2240,12 @@ function track(name, props){
    rest (URL handling, the note) lives next to the promo code. */
 const GOAL_KEY='flapp-goal', GOAL_NOTE_OFF='flapp-goal-note-off';
 const GOALS={
-  knee:{sport:'bike', text:'<b>Knee on the bike.</b> The reading that matters is your knee at the bottom of the pedal stroke. The report gives the saddle change in millimetres. Ten seconds of steady pedalling, filmed side-on, is enough.'},
+  knee:{sport:'bike', text:'<b>Knee on the bike.</b> The reading that matters is your knee at the bottom of the pedal stroke. The report gives the saddle change in millimeters. Ten seconds of steady pedaling, filmed side-on, is enough.'},
   faster:{sport:null, text:'<b>Faster.</b> On the bike, the report estimates the minutes your position costs over your race; on the run, it measures overstride and cadence. Pick your sport below.'},
   pain:{sport:null, text:'<b>Something started to hurt.</b> Flapp does not diagnose pain. See a professional if it is sharp or lasting. It checks the settings that load the joint: on the bike, saddle height and your knee at the bottom of the stroke; on the run, overstride and cadence.'},
   gear:{sport:null, text:'<b>New bike or shoes.</b> Film the new setup before the first long session. If you have a clip on the old one, the report can line the two up.'},
   doubt:{sport:null, text:'<b>A second opinion, in numbers.</b> Every joint is set against a published range, with the source named, so advice can be weighed against a measurement.'},
-  crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position: one photo or ten seconds of pedalling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimetres. Full plan.'},
+  crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position: one photo or ten seconds of pedaling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimeters. Full plan.'},
   run:{sport:'run', text:'<b>Running form.</b> Film 10 seconds from the side, on a treadmill or a straight path, at an easy pace. The report measures your cadence, overstride, how your knee lands and your trunk lean, and names the one thing to change first.'},
   race:{sport:'bike', text:'<b>Before a race.</b> Film in your race position, on the bike you will race. The report checks it against the fit ranges and, in an aero position, against the Kona 2026 pro field.'},
 };
@@ -3048,7 +3049,7 @@ function applyPrescan(j){
 /* GO / NO-GO: what the filming will cost, said before the upload. Never
    blocks the button -- a NO-GO clip can still be analysed, the athlete just
    knows the numbers will not hold up. */
-const CAP_HEAD={go:['GO','Good to analyse'],check:['CHECK','Worth a look before you upload'],no_go:['NO-GO','Re-film recommended']};
+const CAP_HEAD={go:['GO','Good to analyze'],check:['CHECK','Worth a look before you upload'],no_go:['NO-GO','Re-film recommended']};
 /* What a GO has actually checked, and nothing more: capture_check finds the
    athlete and, on a clip, measures how tall they stand in the frame. It does
    not judge the camera angle or the shake, so the ticks do not claim either. */
@@ -3062,7 +3063,7 @@ function renderCapCheck(c){
   const ok=!rs&&c.verdict==='go' ? `<p class="cc-ok">${capPassed().map(t=>`<span>✓ ${t}</span>`).join('')}</p>` : '';
   el.innerHTML=`<span class="cc-tag">${tag}</span><div class="cc-body"><b class="cc-h">${head}</b>`
     +ok+(rs?`<ul class="cc-list">${rs}</ul>`:'')
-    +(c.verdict==='no_go'?'<p class="cc-foot">You can still analyse it, but the numbers won’t hold up</p>':'')+'</div>';
+    +(c.verdict==='no_go'?'<p class="cc-foot">You can still analyze it, but the numbers won’t hold up</p>':'')+'</div>';
   el.dataset.verdict=c.verdict; el.classList.remove('hidden');
 }
 function scanNote(kind,j,ask){
@@ -3492,7 +3493,7 @@ const PAIR_SLOTS=[
    each take needs for the merge to have a few frames at the bottom of the stroke. */
 const PAIR_BIKE_NOTE='<b>One clip from each side of the bike.</b> The two sides read the knee at the bottom of the stroke differently, which is why a session uses both. '
   +'Give both the same care: square-on, whole crank circle in frame, camera about hip height, '
-  +'and <b>8–15 seconds</b> of steady pedalling. Shorter clips are analysed too, but at 30 fps each revolution puts only a frame or two at the bottom of the stroke, and the merge wants a few of those.';
+  +'and <b>8–15 seconds</b> of steady pedaling. Shorter clips are analyzed too, but at 30 fps each revolution puts only a frame or two at the bottom of the stroke, and the merge wants a few of those.';
 function pairFileOf(slot){ return slot==='a' ? state.file : state.fileB; }
 function renderPairCards(){
   // Each empty card can be filmed right here, like the single-clip step: the
@@ -3524,7 +3525,7 @@ function renderPairCards(){
   // number on purpose (see renderBilateral), and a promise the panel then
   // explains it cannot keep is worse than none.
   if(h) h.innerHTML = (n===2
-    ? '<b>Both clips loaded.</b> They\u2019ll be analysed together into one score and one saddle verdict'
+    ? '<b>Both clips loaded.</b> They\u2019ll be analyzed together into one score and one saddle verdict'
     : `<b>${n} of 2 clips.</b> Add the ${state.file?'right':'left'}-side clip. A session needs one of each side`)
     + (state.sport==='bike' ? `<br><span class="pairnote">${PAIR_BIKE_NOTE}</span>` : '');
 }
@@ -3814,12 +3815,12 @@ document.addEventListener('error', e=>{
   const note=document.createElement('div'); note.className='video-gone';
   note.innerHTML = (typeof auth!=='undefined' && auth)
     ? 'This overlay is no longer on the server. The footage behind it has passed its retention period. Every measurement on this page is unaffected.'
-    : 'This overlay is no longer on the server. Videos outlive the session only for signed-in accounts. Sign in before analysing to keep them in your History.';
+    : 'This overlay is no longer on the server. Videos outlive the session only for signed-in accounts. Sign in before analyzing to keep them in your History.';
   v.classList.add('hidden');
   v.insertAdjacentElement('afterend', note);
 }, true);
 
-const ANALYZE_STAGE='Detecting pose &amp; computing biomechanics… usually takes <b>30–60 s</b>';
+const ANALYZE_STAGE='Detecting pose &amp; computing biomechanics… usually takes <b>1–2 min</b>';
 function startPolling(){
   setSteps(2);
   const pbar=$('#pbar');
@@ -4379,13 +4380,13 @@ const METRIC_DEFS={
   'Head align':'0–100: how close the ear sits to the line of the back, extended forward. 100 = head tucked on the back line; lower = head lifted above it. Higher is better.',
   'Saddle height':'Read from the knee angle at the bottom of the pedal stroke: a low saddle leaves the knee bent there, a high one stretches it.',
   'Position':'The riding posture the trunk and elbow angles most resemble. A label, not a grade.',
-  'Foot through the stroke':'The ankle angle pattern across one pedal revolution: toe-down, flat or heel-down pedalling.',
+  'Foot through the stroke':'The ankle angle pattern across one pedal revolution: toe-down, flat or heel-down pedaling.',
   'Knee · bottom':'Knee angle with the pedal at the bottom of the stroke (most extended).',
   'Knee · top':'Knee angle with the pedal at the top of the stroke (most bent).',
   'Knee opening speed':'Peak rate at which the knee straightens through the down-stroke, in degrees per second.',
   'Knee closing speed':'Peak rate at which the knee bends through the up-stroke, in degrees per second.',
   'Cadence':'Steps per minute, both feet counted.',
-  'Vert. oscillation':'How far the hips rise and fall each stride, in centimetres. Less bounce means less energy spent going up rather than forward.',
+  'Vert. oscillation':'How far the hips rise and fall each stride, in centimeters. Less bounce means less energy spent going up rather than forward.',
   'Ground contact':'Time the foot spends on the ground per step, in milliseconds. From 2D video this is read off the ankle path, so it is an estimate.',
   'Flight time':'Time with both feet off the ground between steps, in milliseconds.',
   'Foot strike':'Which part of the foot touches down first, read from the foot angle at contact.',
@@ -4666,7 +4667,7 @@ function runTiles(s){
      is a third of the band it is graded in. */
   const voscNote = s.body_scale_source==='athlete_height'
     ? `scaled from your height (${s.athlete_height_cm} cm)`
-    : 'scaled from an average build. Add your height for real centimetres';
+    : 'scaled from an average build. Add your height for real centimeters';
   const voscCm = s.vertical_oscillation_cm!=null ? s.vertical_oscillation_cm
     : (s.vertical_oscillation_m!=null ? s.vertical_oscillation_m*100 : null);
   if(voscCm!=null) t.push(tile('Vert. oscillation',num(voscCm,1),'cm',voscNote,null,false,R(voscCm,6,10,'cm')));
@@ -5298,13 +5299,13 @@ function hobPayload(bike){
 function hobStatusText(bike, movedC){
   const c=bike[HOB_C], wheels=bike[HOB_FA]&&bike[HOB_FA].auto&&!movedC?' Both wheel axles found too, so the picture is levelled on them.':'';
   if(c&&c.auto&&!movedC){
-    if(c.auto==='chainring') return 'Found your crank axle on the chainring. Check the orange ring sits on its centre (drag it if not), then Measure.'+wheels;
-    if(c.auto==='wheels') return 'Placed from your wheels, so approximate. Drag the ring onto the centre of the crank, then Measure.';
+    if(c.auto==='chainring') return 'Found your crank axle on the chainring. Check the orange ring sits on its center (drag it if not), then Measure.'+wheels;
+    if(c.auto==='wheels') return 'Placed from your wheels, so approximate. Drag the ring onto the center of the crank, then Measure.';
     return 'We could not find the crank on this picture. Drag the CRANK ring onto the crank axle, where the two crank arms meet.';
   }
   if(!c||!c.set) return 'Drag the CRANK ring onto the crank axle, where the two crank arms meet.';
   const set=[HOB_P,HOB_FA,HOB_RA].filter(L=>bike[L]&&bike[L].set).map(L=>HOB_LABEL[L]);
-  return 'Crank axle placed by you'+(set.length?` · also: ${set.join(', ')}`:'')+'. Add the pedal axle for centimetres, both wheel axles to level the picture.';
+  return 'Crank axle placed by you'+(set.length?` · also: ${set.join(', ')}`:'')+'. Add the pedal axle for centimeters, both wheel axles to level the picture.';
 }
 
 /* ---- the report block ---- */
@@ -5363,8 +5364,8 @@ function renderHob(res, which, opts){
     const gap=h.gap_pro_cm, ahead=h.gap_pro_deg>0, ref=h.ref==='axles'
       ? `Levelled on the wheel axles: ${Math.abs(h.tilt_deg)>=0.5?`a ${Math.abs(h.tilt_deg)}° tilt of the picture taken out`:'the picture was level'}.`
       : `Assumes the phone was level: 2° of tilt is about 3 cm. Mark both wheel axles to take it out.`;
-    const scale=h.scale_source==='typical' ? 'Centimetres at a typical crank-to-hip distance (1.45 cm per degree); mark the pedal axle for your own.'
-      : `Centimetres from your cranks (${h.crank_to_hip_cm} cm crank to hip${h.scale_source==='crank_default'?', 172.5 mm cranks assumed':''}).`;
+    const scale=h.scale_source==='typical' ? 'Centimeters at a typical crank-to-hip distance (1.45 cm per degree); mark the pedal axle for your own.'
+      : `Centimeters from your cranks (${h.crank_to_hip_cm} cm crank to hip${h.scale_source==='crank_default'?', 172.5 mm cranks assumed':''}).`;
     body=`<div class="hob-hero"><div class="hob-num">${h.angle_deg}<small>°</small></div>
         <div class="hob-cap">over the crank axle, from the back<br><span class="hint">${h.hip_source==='video_median'?`hip = median of ${h.frames} frames`:'from this one frame'} · repeatability ±${h.repeatability_deg}°</span></div></div>
       ${aero?hobScale(h):''}
@@ -5494,11 +5495,11 @@ function lmedOpen(mode){
   const ed=$('#pEditor'); ed.classList.remove('hidden'); lmed.open=true;
   $('#pEdApply').textContent=lmed.mode==='bike'?'Measure':'Re-measure';
   $('#pEdTitle').textContent=lmed.mode==='bike'?'Mark the crank axle':'Drag a joint';
-  $('#pEdLead').textContent=lmed.mode==='bike'?': the orange ring, onto the centre of the crank. The other three are optional.':' to where it really is. The ringed points can be moved.';
+  $('#pEdLead').textContent=lmed.mode==='bike'?': the orange ring, onto the center of the crank. The other three are optional.':' to where it really is. The ringed points can be moved.';
   const hpc=res.helmet_points&&res.helmet_points.check;
   const freeScope=state.photoPose.scope==='free';
   $('#pEdHint').textContent=lmed.mode==='bike'
-    ? 'Pedal axle gives centimetres; both wheel axles level the picture (a tilted phone is otherwise read as a position).'
+    ? 'Pedal axle gives centimeters; both wheel axles level the picture (a tilted phone is otherwise read as a position).'
     : freeScope
     ? 'On the free plan you can move the hip and the knee: the picture is redrawn on your points, the score stays the automatic one. Paid plans move every joint and measure every angle and the score again.'
     : lmed.sport==='run'
@@ -6449,7 +6450,7 @@ async function vedOpen(mode, ctx){
   ed.classList.remove('hidden'); ved.open=true;
   $('#vEdApply').textContent=ved.mode==='bike'?'Measure':'Re-measure clip';
   $('#vEdTitle').textContent=ved.mode==='bike'?'Mark the crank axle':'Pause, then drag a joint';
-  $('#vEdLead').textContent=ved.mode==='bike'?': the orange ring, onto the centre of the crank. The bike does not move on a trainer, so one frame is enough; the pedal and wheel axles are optional.':' to where it really is. The move applies to the whole clip. Scrub to check it.';
+  $('#vEdLead').textContent=ved.mode==='bike'?': the orange ring, onto the center of the crank. The bike does not move on a trainer, so one frame is enough; the pedal and wheel axles are optional.':' to where it really is. The move applies to the whole clip. Scrub to check it.';
   $('#vEdStatus').textContent='Loading the measured points…'; $('#vEdStatus').classList.remove('warn');
   track('joint_adjust_opened',{sport:'bike',mode:'video',position:r.cycling_position||null});
   try{
@@ -6463,7 +6464,7 @@ async function vedOpen(mode, ctx){
     if(ved.mode==='bike'){ $('#vEdStatus').textContent='Looking for your crank…'; await vedFetchBikeAuto(); }
     ved.bike=ved.mode==='bike'?vedBikeStart():{};
     $('#vEdHint').textContent=ved.mode==='bike'
-      ? 'Pedal axle gives centimetres; both wheel axles level the picture (a tilted phone is otherwise read as a position).'
+      ? 'Pedal axle gives centimeters; both wheel axles level the picture (a tilted phone is otherwise read as a position).'
       : `Only the ${ved.side}-side joints count. ${j.rounds_left} round${j.rounds_left===1?'':'s'} of adjustment left on this clip.`;
     $('#vEdResetSrv').classList.toggle('hidden',!(j.corrections&&j.corrections.length));
     const sc=$('#vEdScrub'); sc.max=String(Math.max(0,ved.idx.length-1)); sc.value='0';
@@ -9948,7 +9949,7 @@ function renderCrankField(){
         ? `Saved on ${bike.name}: the saddle verdict is scaled to its ${bike.crank_length_mm} mm cranks`
         : `Not set for ${bike.name} yet. Type it once and it is kept on that bike. 172.5 mm is assumed until then.`)
     : v!=null
-      ? `Turns the saddle verdict into millimetres, scaled to your ${v} mm cranks`
+      ? `Turns the saddle verdict into millimeters, scaled to your ${v} mm cranks`
       : 'Optional: the saddle-height estimate assumes 172.5 mm cranks without it (a 165 mm crank makes it 4% smaller)';
 }
 async function saveCrank(){
@@ -9975,8 +9976,8 @@ function renderHeightField(){
   if(!show) return;
   if(document.activeElement!==input) input.value = auth.height_cm || '';
   hint.innerHTML = auth.height_cm
-    ? 'Used to turn vertical oscillation into real centimetres'
-    : 'Optional: without it we assume an average build, which can put centimetre readings out by ~10%';
+    ? 'Used to turn vertical oscillation into real centimeters'
+    : 'Optional: without it we assume an average build, which can put centimeter readings out by ~10%';
 }
 async function saveHeight(){
   const input=$('#heightInput'); if(!input||!auth) return;
@@ -9984,7 +9985,7 @@ async function saveHeight(){
   const value = raw==='' ? null : Math.round(+raw);
   if(value!==null && (!Number.isFinite(value) || value<120 || value>230)){
     // Say what is wrong rather than silently keeping the old value.
-    $('#heightHint').textContent='That looks like a different unit. Enter your height in centimetres (120–230).';
+    $('#heightHint').textContent='That looks like a different unit. Enter your height in centimeters (120–230).';
     return;
   }
   if((auth.height_cm||null)===value) return;         // nothing changed
@@ -12297,7 +12298,7 @@ document.addEventListener('click',e=>{
 async function cardModalShare(){
   const file=state.cardFile; if(!file) return;
   try{ await navigator.share({files:[file], title:'My Flapp technique score', text:state.cardText}); }
-  catch(err){ if(err && err.name!=='AbortError') toast('Sharing was cancelled or failed.'); }
+  catch(err){ if(err && err.name!=='AbortError') toast('Sharing was canceled or failed.'); }
 }
 function shareResult(){ doShare(cardFromVideo(state.lastResult||{}), $('#shareBtn'), $('#shareBtnTxt')); }
 function sharePhoto(){ if(state.photoRes) doShare(cardFromPhoto(state.photoRes), $('#pShareBtn'), $('#pShareBtnTxt')); }
@@ -12953,7 +12954,7 @@ function deleteAccount(){
     title:'Delete your account?',
     body:`<p class="u-m-0 u-mb-3">This permanently removes <b>${esc(auth.email)}</b>, every saved analysis,
       your usage history, any feedback you sent and your order history. It cannot be undone.</p>
-      <p class="hint u-m-0 u-mb-3">An active subscription is cancelled at the same
+      <p class="hint u-m-0 u-mb-3">An active subscription is canceled at the same
       time. You won't be billed again.</p>
       <label class="fld"><span>Confirm your password</span>
         <input type="password" id="delPass" autocomplete="current-password"></label>`,
@@ -16131,7 +16132,7 @@ function renderLane(){
   // The lane (Batch board): the athlete first, the file and what it is after,
   // the state as a chip; a stopped clip says why beside it.
   const cnt=k=>items.filter(i=>k.includes(i.status)).length;
-  const counts=[[cnt(['running','scanning']),'analysing'],[cnt(['queued']),'waiting'],[cnt(['no_go']),'to film again'],[cnt(['failed']),'failed'],[cnt(['done']),'ready']]
+  const counts=[[cnt(['running','scanning']),'analyzing'],[cnt(['queued']),'waiting'],[cnt(['no_go']),'to film again'],[cnt(['failed']),'failed'],[cnt(['done']),'ready']]
     .filter(([n])=>n).map(([n,w])=>`${n} ${w}`).join(', ');
   host.innerHTML=`<details class="bat-lanecard" id="batLaneFold"${PHONE_MQ.matches?'':' open'}><summary class="bat-lane-h"><h3 class="bat-h">In the lane</h3><span class="bat-lane-wide">last two weeks · one at a time, in the order sent</span><span class="bat-lane-phone">· ${esc(counts)}</span><svg class="ic bat-lane-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></summary><div class="bat-lanelist">`+items.map(i=>{
     const why=(i.reasons||[]).map(r=>r.text).join(' ')||i.error||'';
@@ -16206,7 +16207,7 @@ function confirmOthers(){
   return new Promise(res=>{
     let answered=false;
     confirmDialog({title:'Someone else’s clip',
-      body:'<p>You’re about to analyse footage of another person. Flapp processes it the same way as yours, and the report lands in your account under their name.</p><p><b>By continuing you confirm you have this person’s permission to upload their footage and keep their report in your account, and that you’ll delete it if they ask.</b></p>',
+      body:'<p>You’re about to analyze footage of another person. Flapp processes it the same way as yours, and the report lands in your account under their name.</p><p><b>By continuing you confirm you have this person’s permission to upload their footage and keep their report in your account, and that you’ll delete it if they ask.</b></p>',
       okLabel:'I have their permission',
       onOk:async()=>{
         answered=true;
@@ -17188,7 +17189,7 @@ function renderBilateral(b){
       ${b.scale_chord_disagreement_pct!=null?` (They disagree by <b>${b.scale_chord_disagreement_pct}%</b> on a length that cannot change between two clips of one bike.)`:''}</p>
       ${vids}
       <div class="bil-sides">${cards}</div>
-      <p class="bil-note">Both clips were analysed and both are real, but <b>the score, the readings and the saddle verdict above were measured from the ${esc(b.metrics_side||'one')}-side clip alone</b>, not from the pair; the joint table shows each clip\u2019s own near side. We are withholding the merged verdict, not the measurements: a combined number we can\u2019t stand behind is worse than none.</p>
+      <p class="bil-note">Both clips were analyzed and both are real, but <b>the score, the readings and the saddle verdict above were measured from the ${esc(b.metrics_side||'one')}-side clip alone</b>, not from the pair; the joint table shows each clip\u2019s own near side. We are withholding the merged verdict, not the measurements: a combined number we can\u2019t stand behind is worse than none.</p>
     </div>`;
     return;
   }
@@ -17270,7 +17271,7 @@ function renderRunSession(s){
       ${worst!=null?`<p class="bil-note">Both clips measure your <b>${esc(runMetricName((s.agreement||{}).worst_metric||''))}</b>
         independently, and they disagree by <b>${worst}%</b>, on a number that cannot differ between two clips of one run.</p>`:''}
       <div class="bil-sides">${cards}</div>
-      <p class="bil-note">Both clips were analysed and both are shown above. What is withheld is the combined verdict, not the measurements.</p>
+      <p class="bil-note">Both clips were analyzed and both are shown above. What is withheld is the combined verdict, not the measurements.</p>
     </div>`;
     return;
   }
