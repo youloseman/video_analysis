@@ -12591,7 +12591,7 @@ async function submitAuth(e){
                         : {pending_analysis: !!state.pendingAnalyze});
     // Login carries no consent flags; ask the server so the Account switch is right.
     if(mode!=='register') fetch('/auth/me',{headers:authHeaders()}).then(r=>r.ok?r.json():null).then(u=>{ if(u&&auth){ auth.marketing_opt_in=!!u.marketing_opt_in; auth.research_opt_in=!!u.research_opt_in; auth.preview=u.preview||null; syncPreframe(); } }).catch(()=>{});
-    renderAuth(); closeAuth(); migrateAndLoad(); renderPromoBanner();
+    renderAuth(); closeAuth(); loadSignedIn(); renderPromoBanner();
     if(mode==='register'){ const pc=($('#authPromo').value||'').trim(); if(pc) promoRemember(pc); }
     applyPendingPromo();
     if(mode==='reset') toast('Password updated. You\'re logged in.');
@@ -12689,10 +12689,24 @@ async function renderPromoBanner(){
   }
   el.classList.remove('hidden');
 }
+/* Everything a signed-in session reads, the same on a page load and on a
+   sign-in (2026-11-21: a coach who signed in again saw an empty Squad until
+   a reload -- the form fetched the history and never the roster). */
+async function loadSignedIn(){
+  loadCoach();
+  await loadAthletes();
+  await migrateAndLoad();
+  if(hasCoachPlan()) loadAllLinked().then(reRenderData);
+  reRenderData();
+}
 async function checkAuth(){
   const t=getToken();
   if(t){
-    try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json(); quotaFromMe(auth); } else if(r.status===401){ localStorage.removeItem(TKEY); } }catch(e){}
+    try{ const r=await fetch('/auth/me',{headers:authHeaders()}); if(r.ok){ auth=await r.json();
+      // A fresh 30 days on every visit: the session ends after a month away,
+      // not a month after the last sign-in (2026-11-21).
+      if(auth.token){ try{ localStorage.setItem(TKEY,auth.token); }catch(_e){} delete auth.token; }
+      quotaFromMe(auth); } else if(r.status===401){ localStorage.removeItem(TKEY); } }catch(e){}
   }
   // A returning session: identify on every boot, not only at sign-in, or a
   // 30-day token means 30 days of events filed under an anonymous visitor.
@@ -12700,11 +12714,8 @@ async function checkAuth(){
   renderAuth();
   if(auth) applyPendingPromo(); else renderPromoBanner();
   if(auth){
-    loadCoach();
-    await loadAthletes();
-    await migrateAndLoad();
-    // A coach's home draws from linked athletes' histories too.
-    if(hasCoachPlan()) loadAllLinked().then(reRenderData);
+    // A coach's home draws from linked athletes' histories too (loadSignedIn).
+    await loadSignedIn();
     // Signed-in users land on their dashboard ("My technique"), unless a job is
     // being restored or they've already navigated off the initial screen.
     if(document.body.dataset.state==='upload' && !location.hash.startsWith('#job=')) openDashboard();

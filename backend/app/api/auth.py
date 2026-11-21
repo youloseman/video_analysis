@@ -207,6 +207,10 @@ class UserOut(BaseModel):
     # X-RateLimit-* headers carry after an analysis. Only /auth/me fills it,
     # so Account can show the number before the first analysis of a visit.
     quota: QuotaOut | None = None
+    # A fresh session token, from /auth/me only: every visit renews the 30
+    # days, so a coach using Flapp daily is never signed out mid-season
+    # (2026-11-21: the token ran out a month after the last sign-in).
+    token: str | None = None
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -445,6 +449,7 @@ async def me(
 
     _ok, used, limit, window = await check_quota(db, user)
     out.quota = QuotaOut(limit=limit, remaining=max(0, limit - used), window=window)
+    out.token = create_token(user.id)
     return out
 
 
