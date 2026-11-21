@@ -94,3 +94,20 @@ def test_every_fix_says_how_and_history_holds_a_hundred():
     css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
     assert ".prog-vis{margin:0 0 24px;grid-template-columns:minmax(0,1fr)}" in css
     assert ".hstrip-dot.hstrip-pip{" in css
+
+
+def test_progress_reads_one_way_of_filming_and_draws_clean_lines():
+    """Artur 2026-11-20: the knee line ran 75 -> 145 "closer to the range"
+    across photos (any point of the stroke) and clips (the bottom), and road
+    and aero positions shared one line; markers on 46 points were noise; a
+    reading at the band's edge read "0° to go"."""
+    body = _fn("renderProgress")
+    assert "(e.kind||'video')===(ref.kind||'video')&&(sport!=='bike'||(e.position||'')===(ref.position||''))" in body
+    chart = _fn("trendChart2")
+    assert "smoothPath(P)" in chart and "t2-hit" in chart and "!inBandShown(last,opt,dec)" in chart
+    assert 'y="12">Range ' in chart
+    assert "function smoothPath(P)" in SPA and "function inBandShown(v,opt,dec)" in SPA
+    assert "psp-pt psp-last" in _fn("progSpark") and "smoothPath(" in _fn("progSpark")
+    assert '<span class="dthen-tag">${lbl}</span>' in SPA
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
+    assert ".pc-fold > summary::after{" in css and "body.authed .backhome-row{display:none}" in css

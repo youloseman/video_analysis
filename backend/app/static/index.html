@@ -14381,6 +14381,24 @@ function renderBiomechanics(bio, sport){
    and the distance still to go drawn as a bracket when the latest is outside
    the band. On the score, the grade lines are drawn and named. `o`:
    {ts:[ms], dec, wide, grades}. */
+/* In the band to the digit shown: 145.3 against 145 prints as 145, so it
+   must not read "0° above the range" or "0° to go". */
+function inBandShown(v,opt,dec){ if(!opt) return false; const e=0.5*Math.pow(10,-(dec||0)); return v>=opt[0]-e&&v<=opt[1]+e; }
+/* A smooth line through the points that never overshoots them (monotone
+   cubic, Fritsch-Carlson): a curve may not invent a peak the data lacks. */
+function smoothPath(P){
+  const n=P.length; if(n<2) return n?`M${P[0][0]},${P[0][1]}`:'';
+  const dx=[],dy=[],m=[],t=[];
+  for(let i=0;i<n-1;i++){ dx[i]=P[i+1][0]-P[i][0]; dy[i]=P[i+1][1]-P[i][1]; m[i]=dx[i]?dy[i]/dx[i]:0; }
+  t[0]=m[0]; t[n-1]=m[n-2];
+  for(let i=1;i<n-1;i++) t[i]=m[i-1]*m[i]<=0?0:(m[i-1]+m[i])/2;
+  for(let i=0;i<n-1;i++){ if(m[i]===0){ t[i]=0; t[i+1]=0; continue; }
+    const a=t[i]/m[i], b=t[i+1]/m[i], h=a*a+b*b; if(h>9){ const k=3/Math.sqrt(h); t[i]=k*a*m[i]; t[i+1]=k*b*m[i]; } }
+  let d=`M${P[0][0].toFixed(1)},${P[0][1].toFixed(1)}`;
+  for(let i=0;i<n-1;i++){ const h=dx[i]/3;
+    d+=` C${(P[i][0]+h).toFixed(1)},${(P[i][1]+t[i]*h).toFixed(1)} ${(P[i+1][0]-h).toFixed(1)},${(P[i+1][1]-t[i+1]*h).toFixed(1)} ${P[i+1][0].toFixed(1)},${P[i+1][1].toFixed(1)}`; }
+  return d;
+}
 function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw||1))), f=raw/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
 function trendChart2(vals,opt,unit,o){
   o=o||{}; const n=vals.length, ts=o.ts||[], dec=o.dec??(Math.max(...vals.map(Math.abs))<10?1:0), u=unit||'';
@@ -14401,29 +14419,33 @@ function trendChart2(vals,opt,unit,o){
   let band='';
   if(opt){ const y1=Y(Math.min(opt[1],hi)), y2=Y(Math.max(opt[0],lo));
     band=`<rect class="t2-band" x="${x0}" y="${y1.toFixed(1)}" width="${x1-x0}" height="${Math.max(1,y2-y1).toFixed(1)}"/>`
-      +`<text class="t2-bandlbl" x="${x0+6}" y="${(y1+13).toFixed(1)}">range ${num(opt[0],dec)}–${f(opt[1])}</text>`; }
+      // Named above the plot, where no line can cross it.
+      +`<text class="t2-bandlbl" x="${x0}" y="12">Range ${num(opt[0],dec)}–${f(opt[1])}</text>`; }
   let grades='';
   if(o.grades) [[90,'A from 90'],[75,'B from 75']].forEach(([v,l])=>{ if(v<lo||v>hi) return; const y=Y(v).toFixed(1);
     grades+=`<line class="t2-gradeline" x1="${x0}" x2="${x1}" y1="${y}" y2="${y}"/><text class="t2-gradelbl" x="${x1+6}" y="${(+y+4).toFixed(1)}">${l}</text>`; });
-  const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-  const area=o.wide?`<polygon class="t2-area" points="${X(0).toFixed(1)},${Y(lo).toFixed(1)} ${pts} ${X(n-1).toFixed(1)},${Y(lo).toFixed(1)}"/>`:'';
+  const P=vals.map((v,i)=>[X(i),Y(v)]), line=smoothPath(P);
+  const area=o.wide?`<path class="t2-area" d="${line} L${X(n-1).toFixed(1)},${Y(lo).toFixed(1)} L${X(0).toFixed(1)},${Y(lo).toFixed(1)} Z"/>`:'';
   const last=vals[n-1], first=vals[0], lx=X(n-1), ly=Y(last), fy=Y(first);
+  // A mark on the first and the latest; the points between are drawn only
+  // while there are few of them, and every point keeps its hover target.
+  const marks=n<=8;
   let dots='';
-  vals.forEach((v,i)=>{ const L=i===n-1;
-    dots+=`<circle class="${L?'t2-last':'t2-pt'}" cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${L?5:3.5}"><title>${esc(ts[i]?shortDate(ts[i]):'')}: ${f(v)}</title></circle>`; });
+  vals.forEach((v,i)=>{ const L=i===n-1, F=i===0;
+    dots+=`<circle class="${L?'t2-last':F||marks?'t2-pt':'t2-hit'}" cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${L?5:F||marks?3.5:6}"><title>${esc(ts[i]?shortDate(ts[i]):'')}: ${f(v)}</title></circle>`; });
   // first and latest, labelled; the latest in ink
   const lab=`<text class="t2-first" x="${X(0).toFixed(1)}" y="${(fy<pad.t+14?fy+18:fy-10).toFixed(1)}" text-anchor="start">${f(first)}</text>`
     +(ly<pad.t+16?`<text class="t2-lastlbl" x="${(lx-9).toFixed(1)}" y="${(ly+5).toFixed(1)}" text-anchor="end">${f(last)}</text>`
       :`<text class="t2-lastlbl" x="${lx.toFixed(1)}" y="${(ly-10).toFixed(1)}" text-anchor="end">${f(last)}</text>`);
   // the gap still to go, as a bracket from the latest point to the band
   let gap='';
-  if(opt&&(last<opt[0]||last>opt[1])){ const edge=last<opt[0]?opt[0]:opt[1], ey=Y(edge), bx=lx+12;
+  if(opt&&!inBandShown(last,opt,dec)){ const edge=last<opt[0]?opt[0]:opt[1], ey=Y(edge), bx=lx+12;
     gap=`<path class="t2-gap" d="M${(lx+6).toFixed(1)} ${ly.toFixed(1)} H${bx.toFixed(1)} V${ey.toFixed(1)} H${(lx+6).toFixed(1)}"/>`
       +`<text class="t2-gaplbl" x="${(bx+4).toFixed(1)}" y="${((ly+ey)/2+4).toFixed(1)}">${num(Math.abs(edge-last),dec)}${u} to go</text>`; }
   // dates: first, latest, and the middle when there is room
   const dlab=i=>ts[i]?`<text class="t2-date" x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${esc(shortDate(ts[i]))}</text>`:'';
   const dates=dlab(0)+(n>2?dlab(Math.floor((n-1)/2)):'')+dlab(n-1);
-  return `<svg viewBox="0 0 ${W} ${H}" class="tchart t2" role="img" aria-label="${esc(`From ${f(first)} to ${f(last)} over ${n} analyses${opt?`, range ${num(opt[0],dec)} to ${f(opt[1])}`:''}`)}">${g}${band}${grades}${area}<polyline class="t2-line" points="${pts}"/>${gap}${dots}${lab}${dates}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="tchart t2" role="img" aria-label="${esc(`From ${f(first)} to ${f(last)} over ${n} analyses${opt?`, range ${num(opt[0],dec)} to ${f(opt[1])}`:''}`)}">${g}${band}${grades}${area}<path class="t2-line" d="${line}"/>${gap}${dots}${lab}${dates}</svg>`;
 }
 /* The finding in one line, the way an exhibit's title says it. */
 function trendHeadline(x, noun, ts){
@@ -14432,7 +14454,7 @@ function trendHeadline(x, noun, ts){
   const span=days>=14?`in ${Math.round(days/7)} weeks`:days>1?`in ${days} days`:`over ${x.series.length} ${noun}s`;
   const moved=Math.abs(d)<Math.pow(10,-dec)?null:`${d>0?'Up':'Down'} ${mag}${u} ${span}`;
   if(!x.opt) return moved||`Held at ${num(x.last,dec)}${u} ${span}`;
-  const inR=x.last>=x.opt[0]&&x.last<=x.opt[1];
+  const inR=inBandShown(x.last,x.opt,dec);
   if(inR) return moved?`${moved}, now inside the range`:`Held inside the range ${span}`;
   const gap=num(x.last<x.opt[0]?x.opt[0]-x.last:x.last-x.opt[1],dec);
   return `${moved||`Held ${span}`}, ${gap}${u} ${x.last<x.opt[0]?'below':'above'} the range`;
@@ -14518,9 +14540,8 @@ function progSpark(series, opt){
   const lo=Math.min(...vals), hi=Math.max(...vals), sp=(hi-lo)||1;
   const X=i=>P+i*(W-2*P)/(series.length-1), Y=v=>H-P-(v-lo)/sp*(H-2*P);
   const band=opt?`<rect class="psp-band" x="0" y="${Y(opt[1]).toFixed(1)}" width="${W}" height="${Math.max(1,Y(opt[0])-Y(opt[1])).toFixed(1)}"/>`:'';
-  const pts=series.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
   const n=series.length-1;
-  return `<svg class="psp" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${band}<polyline class="psp-line" points="${pts}"/>${series.map((v,i)=>`<circle class="psp-pt${i===n?' psp-last':''}" cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${i===n?3.5:3}"/>`).join('')}</svg>`;
+  return `<svg class="psp" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${band}<path class="psp-line" d="${smoothPath(series.map((v,i)=>[X(i),Y(v)]))}"/><circle class="psp-pt psp-last" cx="${X(n).toFixed(1)}" cy="${Y(series[n]).toFixed(1)}" r="3.5"/></svg>`;
 }
 // Crossing the phone line redraws the page in the other composition.
 PHONE_MQ.addEventListener('change',()=>{ if(document.body.dataset.state==='trends'&&typeof renderProgress==='function') renderProgress(); });
@@ -14551,11 +14572,15 @@ function renderProgress(){
   // from before the side was recorded stays on the line: it can't be told apart.
   const sides=['left','right','both'].filter(s=>everySide.some(e=>e.cameraSide===s));
   if(!sides.includes(state.progressSide)) state.progressSide=[...everySide].reverse().map(e=>e.cameraSide).find(s=>sides.includes(s))||null;
-  const all=everySide.filter(e=>!e.cameraSide||!state.progressSide||e.cameraSide===state.progressSide);
+  const sideAll=everySide.filter(e=>!e.cameraSide||!state.progressSide||e.cameraSide===state.progressSide);
+  // Filmed the same way as the latest: a photo against a clip, or a road
+  // position against an aero one, is a different measurement, not progress.
+  const ref=sideAll[sideAll.length-1];
+  const all=ref?sideAll.filter(e=>(e.kind||'video')===(ref.kind||'video')&&(sport!=='bike'||(e.position||'')===(ref.position||''))):sideAll;
   const sideHost=$('#progSide');
   sideHost.innerHTML=sides.length>1?`<div class="seg" role="group" aria-label="Camera side">${sides.map(s=>`<button type="button" data-pside="${s}" aria-pressed="${s===state.progressSide}">${s==='both'?'Both sides':s==='left'?'Left side':'Right side'}</button>`).join('')}</div>`:'';
   const pm=$('#progMeta');
-  if(pm) pm.textContent=all.length?`${sport==='bike'?'Bike':'Run'} · ${all.length} ${all.length===1?'analysis':'analyses'}${all.length>1?` · ${shortDate(all[0].filmedAt||all[0].at)} to ${shortDate(all[all.length-1].filmedAt||all[all.length-1].at)}`:''}`:'';
+  if(pm) pm.textContent=all.length?`${sport==='bike'?'Bike':'Run'}${ref&&ref.kind==='photo'?' photos':''}${sport==='bike'&&ref&&ref.position&&POSITION_NAMES[ref.position]?` · ${POSITION_NAMES[ref.position]}`:''} · ${all.length} ${all.length===1?'analysis':'analyses'}${all.length>1?` · ${shortDate(all[0].filmedAt||all[0].at)} to ${shortDate(all[all.length-1].filmedAt||all[all.length-1].at)}`:''}`:'';
   sideHost.querySelectorAll('[data-pside]').forEach(b=>b.addEventListener('click',()=>{ state.progressSide=b.dataset.pside; renderProgress(); }));
   const grid=$('#progGrid'), teaser=$('#progTeaser');
   if(teaser) teaser.innerHTML='';
@@ -14589,7 +14614,7 @@ function renderProgress(){
   const away=rest.filter(x=>x.opt&&x.dd.cls==='reg'), imp=rest.filter(x=>x.opt&&x.dd.cls==='imp');
   const steady=rest.filter(x=>x.opt&&x.dd.cls==='sta'), loose=rest.filter(x=>!x.opt);
   const fmt=(x,v)=>{ const d=FORM_DEC[x.m.key]??(Math.abs(x.last)<10?1:0); return num(v,d); };
-  const card=x=>{ const u=x.m.unit||'', inR=x.opt&&x.last>=x.opt[0]&&x.last<=x.opt[1];
+  const card=x=>{ const u=x.m.unit||'', inR=inBandShown(x.last,x.opt,FORM_DEC[x.m.key]??(Math.abs(x.last)<10?1:0));
     const d=x.last-x.first, mag=fmt(x,Math.abs(d));
     const word=!x.opt?'':x.dd.cls==='reg'?'further from the range':x.dd.cls==='imp'?(inR?'now in range':'closer to the range'):'steady';
     const chip=Math.abs(d)<1e-9?word:`${d>0?'▲':'▼'} ${mag}${u}${word?' · '+word:''}`;
@@ -14601,7 +14626,7 @@ function renderProgress(){
   // A phone shows a reading as one row that opens its full chart (board:
   // ProgressPhone); Moving away stays open, it is the one to look at first.
   const phone=PHONE_MQ.matches;
-  const row=x=>{ const u=x.m.unit||'', d=x.last-x.first, inR=x.opt&&x.last>=x.opt[0]&&x.last<=x.opt[1];
+  const row=x=>{ const u=x.m.unit||'', d=x.last-x.first, inR=inBandShown(x.last,x.opt,FORM_DEC[x.m.key]??(Math.abs(x.last)<10?1:0));
     const word=!x.opt?'':x.dd.cls==='reg'?'further from the range':x.dd.cls==='imp'?(inR?'now in range':'closer to the range'):'steady';
     const chg=Math.abs(d)<1e-9?word:`${d>0?'▲':'▼'} ${fmt(x,Math.abs(d))}${u}${word?' · '+word:''}`;
     return `<details class="tcard pcard pc-fold"><summary>
@@ -15135,7 +15160,8 @@ function thenNowCard(all, sport){
   if(!sport||!thenPair(sport,all)) return '';
   const {now,then,days}=thenChanges(sport,all);
   const fig=(e,lbl)=>`<figure class="dthen-fig kf-load" data-then-id="${esc(e.id)}"><img alt="" class="kf-slot">
-      <figcaption><b>${lbl}</b> · ${esc(shortDate(e.at))}${e.score!=null?` · <span class="dthen-sc">${e.score}</span>`:''}</figcaption></figure>`;
+      <span class="dthen-tag">${lbl}</span>
+      <figcaption>${esc(shortDate(e.at))}${e.score!=null?` · <span class="dthen-sc">${e.score}</span>`:''}</figcaption></figure>`;
   const ch=thenChanges(sport,all).ch.slice(0,3).map(({m,a,b,d,dec,u})=>({html:`<li><span>${esc(m.label)}</span><span class="dthen-v">${num(a,dec)}${u} → <b>${num(b,dec)}${u}</b></span>${d.delta===0?'<span class="dform-first">no change</span>':`<span class="tdelta ${d.cls}">${d.delta>0?'▲ +':'▼ '}${num(Math.abs(d.delta),dec||1)}${u}</span>`}</li>`}));
   return `<div class="dcard dthen">
     <div class="dcard-head"><h2>Then → now</h2></div>
