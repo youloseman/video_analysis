@@ -679,7 +679,9 @@ video.ex-media{background:var(--c-media-bg)}
 .ds-pb{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--c-ink-faint);font-family:var(--f-mono)}
 .ds-pb b{color:var(--c-ink);font-weight:500}
 .ds-pb .ic{width:14px;height:14px}
-.ds-pb-new{color:var(--st-good)}
+.ds-pb-new{color:var(--c-ink);padding:2px 10px;border:1.5px solid transparent;border-radius:999px;
+  background:linear-gradient(var(--c-bg),var(--c-bg)) padding-box,var(--g-speed) border-box}
+.ds-pb-new .ic{color:var(--c-coral)}
 /* ---- Dashboard, as drawn (Main board, short version, 2026-11-17) ---- */
 /* a sport: the frame beside the score, the readings under both */
 .dsc{padding:0;gap:0;overflow:hidden;display:grid;border-radius:var(--radius-card);
@@ -958,6 +960,12 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
    crosses a number. */
 .t2 .t2-first,.t2 .t2-lastlbl,.t2 .t2-gaplbl,.t2 .t2-bandlbl{paint-order:stroke;stroke:var(--c-bg);stroke-width:4px;stroke-linejoin:round}
 .t2 .t2-last{fill:var(--c-blue);stroke:var(--c-bg);stroke-width:2}
+/* The score over time in the speed gradient (trendChart2 grades:true only --
+   never a reading with a range). The stops are tokens; the path's stroke
+   attribute names the gradient, so this rule sets everything but the stroke. */
+.t2 .t2-sline{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.t2 .t2-gs0{stop-color:var(--c-blue)} .t2 .t2-gs1{stop-color:var(--brand-violet)} .t2 .t2-gs2{stop-color:var(--c-coral)}
+.t2-g .t2-last{fill:var(--c-coral)}
 .t2 .t2-first{font-family:var(--f-mono);font-size:12px;fill:var(--c-ink-faint)}
 .t2 .t2-lastlbl{font-family:var(--f-mono);font-size:14px;font-weight:600;fill:var(--c-ink)}
 .t2 .t2-gap{fill:none;stroke:var(--m-near);stroke-width:1.5}
@@ -1260,6 +1268,10 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
    per screen. The small one under every block stays off; blocks are
    structured with hairlines. */
 .speedline{height:4px;width:72px;border-radius:999px;background:var(--g-speed);margin:2px 0 0}
+/* Every page title carries it (2026-11-21), drawn by the title itself so no
+   screen can forget the div. */
+h1.uphead::after,.rs-title > h2.sec::after,.ath-title > h2.sec::after,.pagehead > h2.sec::after{
+  content:"";display:block;height:4px;width:72px;border-radius:999px;background:var(--g-speed);margin:10px 0 0}
 .speedline-sm{display:none}
 /* Eyebrow = h3 in the type scale: mono, 11 px, caps, +8% tracking, muted. */
 /* The eyebrow carries the landing's coral dot: the one small brand mark on
@@ -1820,6 +1832,10 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
     linear-gradient(var(--c-on-media),var(--c-on-media)) right bottom/3px 26px no-repeat}
 .drop > *{position:relative}
 .drop:hover,.drop.drag,#file:focus-visible + .drop{border-color:var(--c-on-media);background:var(--c-media-bg)}
+/* A file held over it: the frame runs in the gradient (the moment the app
+   starts moving). 2 px of border, the padding 2 px less. */
+.drop.drag{border:2px solid transparent;padding:34px 22px;
+  background:linear-gradient(var(--c-media-bg),var(--c-media-bg)) padding-box,var(--g-speed) border-box}
 #file:focus-visible + .drop{box-shadow:var(--ring)}
 .drop.err{border-color:var(--st-bad-fill)}
 .drop .ic-lg{margin:0 auto 12px;color:var(--c-on-media);display:block;width:32px;height:32px}
@@ -2178,6 +2194,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .scorecard{padding:22px 24px;position:relative;overflow:hidden;display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 22px;align-items:start;
   color:var(--c-on-dark);border-color:var(--c-brand-navy);
   background:
+    var(--g-speed) left top/100% 4px no-repeat,
     radial-gradient(520px 260px at 92% -30%, rgba(47,109,224,.55), transparent 60%),
     radial-gradient(360px 220px at -8% 130%, rgba(241,85,63,.30), transparent 60%),
     linear-gradient(135deg,var(--c-brand-navy) 0%,var(--c-brand-deep) 60%,var(--c-brand-mid) 100%)}
@@ -2945,6 +2962,13 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .plan-card.done .plan-done{color:var(--st-good)}
 .hdplan-prog{font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--c-ink-faint);margin:0 0 14px}
 .hdplan-prog b{color:var(--c-ink);font-weight:500}
+.hdplan-prog .gprog{display:block;width:100%;max-width:240px;margin:0 0 6px}
+/* One progress bar for what an athlete has done: a <progress>, so the width
+   needs no inline style. */
+.gprog{-webkit-appearance:none;appearance:none;height:6px;border:0;border-radius:999px;background:var(--c-panel);overflow:hidden;vertical-align:middle}
+.gprog::-webkit-progress-bar{background:var(--c-panel);border-radius:999px}
+.gprog::-webkit-progress-value{background:var(--g-speed);border-radius:999px}
+.gprog::-moz-progress-bar{background:var(--g-speed);border-radius:999px}
 .dplan{border:1px solid var(--c-line);border-radius:var(--radius-card);background:var(--c-bg);padding:16px 18px;margin-bottom:20px}
 .dplan .ic{width:16px;height:16px;vertical-align:-2px;margin-right:4px}
 .dplan-list{display:flex;flex-direction:column;gap:0;margin:4px 0 14px;border:1px solid var(--c-line)}
@@ -2959,7 +2983,11 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .dplan-item.done .dplan-check svg{display:block}
 /* What to fix (2026-11-19): a section per sport, each fix and drill a box
    that strikes through when ticked. */
-.fx-card{display:flex;flex-direction:column;gap:16px}
+.fx-card{display:flex;flex-direction:column;gap:16px;background:var(--g-speed) left top/100% 4px no-repeat,var(--c-bg)}
+/* How much of a sport's list is ticked: progress the athlete makes. */
+.fx-prog{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c-ink-faint)}
+.fx-prog b{color:var(--c-ink);font-weight:600}
+.fx-prog .gprog{flex:1 1 auto;max-width:160px}
 .fx-title{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-head)}
 .fx-sec{display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:1px solid var(--c-line)}
 .fx-h{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px}
@@ -3208,6 +3236,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 table.data{width:100%;border-collapse:collapse;font-size:14px}
 table.data thead th{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint);
   font-weight:500;text-align:left;padding:8px 14px;border-bottom:1px solid var(--c-line-strong)}
+/* On screen the header's rule is the gradient, painted once across the
+   header (not per cell); status colours keep the rows. Paper keeps the grey. */
+@media screen{
+  table.data thead{background:var(--g-speed) left bottom/100% 2px no-repeat}
+  table.data thead th{border-bottom-color:transparent}
+}
 table.data th.num,table.data td.num{text-align:right;font-variant-numeric:tabular-nums}
 /* Equal columns. Left to itself the browser sizes each column to its widest
    cell, so a table of numbers came out ragged: a wide Optimal, a narrow Mean.
@@ -4582,3 +4616,18 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .cda-since .num{font-family:var(--f-mono);font-weight:600}
 .cda-since-up{background:var(--st-warn-bg);color:var(--st-warn)}
 .cda-since-flat{background:var(--c-panel);color:var(--c-ink-soft)}
+
+/* Numerals in the gradient (last in the file: it must beat each base rule's
+   colour): the step numbers and the counts that are neither
+   a score nor a status (a count in a warning colour keeps its colour). The
+   box shrinks to the digits so the whole run of colour lands on them; the
+   padding keeps the italic's overhang inside the painted box. */
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .ustep-n,.sq-kpi b,.sql-kpi:not(.sql-kpi-race):not(.sql-kpi-bad) b,.ac-meter .v,
+  .ad-countdown:not(.is-soon) > b{
+    background:var(--g-speed);-webkit-background-clip:text;background-clip:text;color:transparent;
+    width:fit-content;max-width:100%;padding-right:.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+}
+@media print{
+  .ustep-n,.sq-kpi b,.sql-kpi b,.ac-meter .v,.ad-countdown > b{background:none !important;color:var(--print-ink) !important}
+}

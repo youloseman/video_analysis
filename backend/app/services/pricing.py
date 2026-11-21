@@ -1263,6 +1263,11 @@ PRICING_CSS = """
 .pr-col-enthusiast .pr-pill{background:color-mix(in srgb,var(--c-coral-btn) 12%,var(--c-bg));border-color:color-mix(in srgb,var(--c-coral-btn) 40%,var(--c-bg));color:var(--c-coral-dk)}
 .pr-col-full .pr-pill{background:color-mix(in srgb,var(--c-blue) 11%,var(--c-bg));border-color:color-mix(in srgb,var(--c-blue) 35%,var(--c-bg));color:var(--c-head)}
 .pr-amt{font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:34px;line-height:1.05;color:var(--c-head)}
+/* The plan we recommend: its price and its edge in the speed gradient. */
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .pr-col-full .pr-amt{background:var(--g-speed);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.12em}
+}
+.pr-table thead th.pr-col-full{background:var(--g-speed) left top/100% 4px no-repeat}
 .pr-per{font:400 13px var(--f-mono);font-style:normal;letter-spacing:0;color:var(--c-ink-faint)}
 .pr-billed{font-size:13px;color:var(--c-ink-soft);font-weight:500}
 .pr-btn{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;min-height:48px;padding:12px 14px;border-radius:8px;font:700 15px var(--f-body);text-decoration:none;cursor:pointer;border:1.5px solid transparent;text-align:center}
@@ -1306,7 +1311,7 @@ PRICING_CSS = """
 .pr-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .pr-tile{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;padding:14px 6px 12px;background:var(--c-bg);border:1.5px solid var(--c-line);border-radius:14px;text-decoration:none;color:inherit}
 .pr-tile.pr-col-enthusiast{border-color:color-mix(in srgb,var(--c-coral-btn) 40%,var(--c-bg))}
-.pr-tile.pr-col-full{border:2px solid var(--c-brand-navy);background:color-mix(in srgb,var(--c-blue) 8%,var(--c-bg))}
+.pr-tile.pr-col-full{border:2px solid transparent;background:linear-gradient(color-mix(in srgb,var(--c-blue) 8%,var(--c-bg)),color-mix(in srgb,var(--c-blue) 8%,var(--c-bg))) padding-box,var(--g-speed) border-box}
 .pr-tile .pr-name{font-size:15px}
 .pr-short{font:500 9.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-faint)}
 .pr-col-enthusiast .pr-short{color:var(--c-coral-dk)} .pr-col-full .pr-short{color:var(--c-blue)}
@@ -1318,7 +1323,7 @@ PRICING_CSS = """
 .pr-tocompare{align-self:center;display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border:1.5px solid var(--c-head);border-radius:999px;font-size:15px;font-weight:700;color:var(--c-head);text-decoration:none;background:var(--c-bg)}
 .pr-card{background:var(--c-bg);border:1px solid var(--c-line);border-radius:16px;padding:22px 20px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:72px}
 .pr-card.pr-col-enthusiast{border:2px solid color-mix(in srgb,var(--c-coral-btn) 40%,var(--c-bg))}
-.pr-card.pr-col-full{border:2px solid var(--c-brand-navy);box-shadow:var(--shadow)}
+.pr-card.pr-col-full{border:2px solid transparent;box-shadow:var(--shadow);background:linear-gradient(var(--c-bg),var(--c-bg)) padding-box,var(--g-speed) border-box}
 .pr-cardhead{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .pr-cardhead .pr-name{font-size:22px}
 .pr-cardhead .pr-pills{justify-content:flex-start}

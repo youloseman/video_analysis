@@ -14000,7 +14000,7 @@ function persistEntryPatch(e){
 }
 function planProgressHtml(plan,done){
   const n=plan.filter(p=>done[planKey(p)]).length;
-  return `<b>${n}</b> of <b>${plan.length}</b> drills done`
+  return `<progress class="gprog" max="${plan.length}" value="${n}" aria-hidden="true"></progress><b>${n}</b> of <b>${plan.length}</b> drills done`
     + (n===plan.length ? '. Nice work. Re-film and open <b>Before / after</b> to see the change' : '');
 }
 /* One editable drill card (mirrors renderTrainingPlan's card + a Done toggle). */
@@ -14463,6 +14463,7 @@ function smoothPath(P){
   return d;
 }
 function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw||1))), f=raw/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
+let T2G=0;
 function trendChart2(vals,opt,unit,o){
   o=o||{}; const n=vals.length, ts=o.ts||[], dec=o.dec??(Math.max(...vals.map(Math.abs))<10?1:0), u=unit||'';
   const f=v=>num(v,dec)+u, W=o.wide?600:340, H=o.wide?200:178;
@@ -14508,7 +14509,12 @@ function trendChart2(vals,opt,unit,o){
   // dates: first, latest, and the middle when there is room
   const dlab=i=>ts[i]?`<text class="t2-date" x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${esc(shortDate(ts[i]))}</text>`:'';
   const dates=dlab(0)+(n>2?dlab(Math.floor((n-1)/2)):'')+dlab(n-1);
-  return `<svg viewBox="0 0 ${W} ${H}" class="tchart t2" role="img" aria-label="${esc(`From ${f(first)} to ${f(last)} over ${n} analyses${opt?`, range ${num(opt[0],dec)} to ${f(opt[1])}`:''}`)}">${g}${band}${grades}${area}<path class="t2-line" d="${line}"/>${gap}${dots}${lab}${dates}</svg>`;
+  // The score over time runs in the speed gradient; a reading with a range
+  // never does (blue to coral there would say good to bad).
+  const gid=o.grades?'t2g'+(++T2G):'';
+  const defs=gid?`<defs><linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${x0}" x2="${x1}" y1="0" y2="0"><stop offset="0" class="t2-gs0"/><stop offset=".45" class="t2-gs1"/><stop offset="1" class="t2-gs2"/></linearGradient></defs>`:'';
+  const path=gid?`<path class="t2-sline" stroke="url(#${gid})" d="${line}"/>`:`<path class="t2-line" d="${line}"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="tchart t2${gid?' t2-g':''}" role="img" aria-label="${esc(`From ${f(first)} to ${f(last)} over ${n} analyses${opt?`, range ${num(opt[0],dec)} to ${f(opt[1])}`:''}`)}">${defs}${g}${band}${grades}${area}${path}${gap}${dots}${lab}${dates}</svg>`;
 }
 /* The finding in one line, the way an exhibit's title says it. */
 function trendHeadline(x, noun, ts){
@@ -14980,6 +14986,7 @@ function renderDashFix(all){
         <span class="dfx-chip${tips.clean?' dfx-clean':''}">${chip}</span><span class="fx-when">${esc(shortDate(e.filmedAt||e.at))}</span></div>
       ${tips.clean?`<p class="fx-clean">${e.sport==='run'?'Keep this form on the next run':'Hold this position on the next ride'}</p>`:''}
       ${items.length?`<div class="dplan-list">${items.map(row).join('')}</div>`:''}
+      ${items.length>1?fxProgHtml(items.filter(i=>((i.fx==='drill'?i.x.planDone:i.x.fixDone)||{})[i.key]).length,items.length):''}
       ${e.sport==='bike'&&items.some(i=>i.how)?'<p class="fx-note">One change at a time, in small steps, then ride 30 minutes before you film again</p>':''}
       ${next?`<p class="dfx-next"><b>Next session.</b> ${dash(esc(next))}</p>`:''}
       <div class="fx-foot"><button class="btn btn-link" type="button" data-id="${esc(e.id)}" data-focus-open="1" data-to="${tips.written?'#hdCoachBlock,#hdFindings':'#hdFindings'}">Open report →</button>
@@ -14996,6 +15003,10 @@ function renderDashFix(all){
   }
   host.innerHTML=`<div class="dcard fx-card"><h2 class="fx-title">What to fix</h2>${secs.map(x=>x.html).join('')}</div>`;
 }
+/* How much of one sport's list is ticked (the bar is the speed gradient). */
+function fxProgHtml(n,total){
+  return `<div class="fx-prog"><progress class="gprog" max="${total}" value="${n}" aria-hidden="true"></progress><span><b>${n}</b> of <b>${total}</b> done</span></div>`;
+}
 /* A tick on the list: kept on the entry the item came from, struck through. */
 document.addEventListener('change',ev=>{
   const cb=ev.target.closest('.fx-cb'); if(!cb) return;
@@ -15005,6 +15016,8 @@ document.addEventListener('change',ev=>{
   if(cb.checked) e[f][cb.dataset.key]=true; else delete e[f][cb.dataset.key];
   persistEntryPatch(e);
   const row=cb.closest('.fx-item'); if(row) row.classList.toggle('done', cb.checked);
+  const sec=cb.closest('.fx-sec'), pr=sec&&sec.querySelector('.fx-prog');
+  if(pr){ const all=sec.querySelectorAll('.fx-cb'); pr.outerHTML=fxProgHtml([...all].filter(x=>x.checked).length,all.length); }
 });
 const DASH_TEASER_ITEMS=['Every joint & gait metric, tracked over time','Your ranked focus areas','A personal action plan with drills','Coaching notes on what to change'];
 /* ---------- Current form: the latest reading per metric in the report's

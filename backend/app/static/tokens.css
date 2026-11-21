@@ -73,8 +73,13 @@
   --st-bad-text:#7E1611;
 
   /* ---- the speed gradient: blue running into coral, the old brand's one
-     stripe. Motion and progress only -- never a surface, never a meter of
-     good-to-bad. */
+     stripe. Where it goes (2026-11-21): numerals that carry identity (step
+     numbers, counts), anything that advances (loading, upload, drills done),
+     one accent edge per screen (the card that matters, the plan we
+     recommend), the stripe under page titles, and the score line over time.
+     Never a surface or a button, never body text, never a reading with a
+     range or a status, never the score inside the ring: blue to coral there
+     would read as good to bad. */
   --g-speed:linear-gradient(90deg,var(--c-blue) 0%,var(--brand-violet) 45%,var(--c-coral) 100%);
 
   /* ---- "good", said out loud: the landing's green for the moments that are
