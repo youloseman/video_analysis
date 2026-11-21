@@ -128,3 +128,15 @@ def test_readings_taken_at_different_points_of_the_stroke_are_never_compared():
     assert "const [at,bt]=cmpPairTrends(A,B)" in SPA
     assert "photoPhase(e)===photoPhase(last)" in _fn("sportCard")
     assert "photoPhase(e)===photoPhase(ref)" in _fn("renderProgress")
+
+
+def test_the_report_saves_its_video_and_offers_share_and_pdf():
+    """2026-11-20: a user pressed Download and no video came (the link carried
+    a job token a deploy forgets and could not send the sign-in header), and
+    the share image did not work; Artur: Share and PDF side by side."""
+    assert "$('#downloadOverlay').addEventListener('click',async ev=>{" in SPA
+    assert "const r=await fetch(url,{headers:authHeaders()});" in SPA
+    assert "navigator.share({files:[state.ovFile]})" in SPA and "track('download_failed',{what:'overlay',status:r.status})" in SPA
+    assert "host.innerHTML=printButtonHtml(true);" in SPA and "function pdfUpsell()" in SPA
+    assert "flapp-native" in _fn("printButtonHtml")
+    assert '<span id="shareBtnTxt">Share</span>' in SPA

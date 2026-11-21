@@ -1011,7 +1011,7 @@
              middle of the card (Artur, 2026-11-11: the card was mostly empty). -->
         <div class="score-acts">
           <button class="btn btn-primary btn-sm sharebtn hidden" id="shareBtn" type="button">
-            <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share result</span>
+            <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span id="shareBtnTxt">Share</span>
           </button>
           <span id="printBtnHost"></span>
           <div class="hdcoach" id="coachActions"></div>
@@ -1084,7 +1084,7 @@
                 <svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Adjust joints
               </button>
               <a class="btn btn-ghost btn-sm" id="downloadOverlay" download>
-                <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download .mp4
+                <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> <span id="dlOverlayTxt">Download .mp4</span>
               </a>
             </span>
           </div>
@@ -3605,6 +3605,50 @@ $('#exportCopy').addEventListener('click',()=>exportCopy());
 $('#exportMd').addEventListener('click',()=>exportDownload('md'));
 $('#exportJson').addEventListener('click',()=>exportDownload('json'));
 $('#shareBtn').addEventListener('click',shareResult);
+/* The overlay video, saved (2026-11-20: "I press Download and the video does
+   not download"). The link carried the job's token, which a deploy forgets,
+   and a link cannot send the sign-in header: the file answered 404 and the
+   browser said nothing. Fetched with the header instead. A phone that can
+   share files gets the file on the second tap ("Save video" puts it in
+   Photos; a share needs a fresh tap); a desk downloads it; a failure says so. */
+function blobDownload(blob,name){
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+$('#downloadOverlay').addEventListener('click',async ev=>{
+  ev.preventDefault();
+  const a=ev.currentTarget, txt=$('#dlOverlayTxt');
+  if(state.ovFile){
+    try{ await navigator.share({files:[state.ovFile]}); track('overlay_saved',{via:'share'}); }
+    catch(err){ if(err&&err.name!=='AbortError'){ blobDownload(state.ovFile,state.ovFile.name); track('overlay_saved',{via:'download_fallback'}); } }
+    return;
+  }
+  const url=a.getAttribute('href'); if(!url||url==='#'||a.dataset.busy) return;
+  a.dataset.busy='1'; txt.textContent='Preparing…';
+  try{
+    const r=await fetch(url,{headers:authHeaders()});
+    if(!r.ok){
+      track('download_failed',{what:'overlay',status:r.status});
+      toast(r.status===404?'This video is no longer on the server. Open the report from History to play it again.':'The video could not be downloaded. Try again in a minute.');
+      txt.textContent='Download .mp4'; return;
+    }
+    const cd=r.headers.get('Content-Disposition')||'', m=/filename="?([^";]+)"?/i.exec(cd);
+    const name=m?m[1]:'flapp-overlay.mp4', blob=await r.blob();
+    const file=new File([blob],name,{type:'video/mp4'});
+    if(('ontouchstart' in window)&&navigator.canShare&&navigator.canShare({files:[file]})){
+      state.ovFile=file; txt.textContent='Save video';
+      toast('Ready: tap Save video, then Save Video to keep it in Photos');
+      return;
+    }
+    blobDownload(blob,name); txt.textContent='Download .mp4';
+    track('overlay_saved',{via:'download'});
+  }catch(_e){
+    track('download_failed',{what:'overlay',status:0});
+    toast('The video could not be downloaded. Check your connection and try again.');
+    txt.textContent='Download .mp4';
+  }finally{ delete a.dataset.busy; }
+});
 $('#pShareBtn').addEventListener('click',sharePhoto);
 $('#pPhasePick').addEventListener('click',e=>{ const b=e.target.closest('[data-phase]'); if(b) setPhotoPedalPhase(b.dataset.phase); });
 $('#hShareBtn').addEventListener('click',shareHistory);
@@ -7477,7 +7521,7 @@ function renderPrintHead(meta){
 function renderPrintable(r, entry){
   printEntryId=(entry&&entry.id)||null;
   const host=$('#printBtnHost');
-  if(host) host.innerHTML=printButtonHtml();
+  if(host) host.innerHTML=printButtonHtml(true);
   renderPrintHead({
     sport: r.sport_type || r.sport || (entry&&entry.sport) || '',
     profile: profileName((entry&&entry.profileId) || state.profileId) || '',
@@ -7565,12 +7609,17 @@ async function openReportPdf(){
     window.print();
   }
 }
-function printButtonHtml(){
-  return hasFullPlan()
-    ? `<button class="btn btn-ghost btn-sm" type="button" onclick="openReportPdf()">
-         <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Save as PDF</button>`
-    : '';
+/* PDF beside Share (Artur 2026-11-20). On Full it downloads the report; on
+   the live report a plan without it gets the same button leading to Pricing
+   (the web only: the app shows no purchase path). */
+function printButtonHtml(upsell){
+  if(hasFullPlan()) return `<button class="btn btn-ghost btn-sm" type="button" onclick="openReportPdf()">
+         <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> PDF</button>`;
+  if(upsell&&!document.documentElement.classList.contains('flapp-native')) return `<button class="btn btn-ghost btn-sm" type="button" onclick="pdfUpsell()">
+         <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> PDF</button>`;
+  return '';
 }
+function pdfUpsell(){ track('pdf_upsell_clicked',{}); toast('The PDF report comes with the Full plan'); openPricing(); }
 
 /* ============================================================
    Equipment profiles — which bike (or which shoes) a clip was filmed on.
@@ -11228,7 +11277,7 @@ function render(job,opts){
     // clip layers. Without a record (older job, or a run that failed to
     // build one) the <video> keeps its native controls.
     fpMainPlayer().load(r.timeline, {rawFile: state.file, cameraMotion: (s.camera_motion||{}).verdict});
-    $('#downloadOverlay').href=ov;
+    $('#downloadOverlay').href=ov; state.ovFile=null; $('#dlOverlayTxt').textContent='Download .mp4';
     $('#videoCol').classList.remove('hidden');
     $('#resultTop').classList.remove('no-video');
     $('#ephemNote').classList.add('hidden');
@@ -12219,6 +12268,7 @@ async function doShare(card, btn, txtEl){
     track('share_card_built', {sport:sport, score:score==null?null:score});
     openCardModal(blob, file, text);
   }catch(err){
+    track('share_failed',{stage:'build',name:(err&&err.name)||'error'});
     toast('Could not create the card. Please try again.');
   }finally{ if(txtEl) txtEl.textContent=old; btn.removeAttribute('aria-disabled'); }
 }
@@ -12298,7 +12348,7 @@ document.addEventListener('click',e=>{
 async function cardModalShare(){
   const file=state.cardFile; if(!file) return;
   try{ await navigator.share({files:[file], title:'My Flapp technique score', text:state.cardText}); }
-  catch(err){ if(err && err.name!=='AbortError') toast('Sharing was canceled or failed.'); }
+  catch(err){ if(err && err.name!=='AbortError'){ track('share_failed',{name:err.name||'error'}); toast('Sharing did not work here. Use Download image instead.'); } }
 }
 function shareResult(){ doShare(cardFromVideo(state.lastResult||{}), $('#shareBtn'), $('#shareBtnTxt')); }
 function sharePhoto(){ if(state.photoRes) doShare(cardFromPhoto(state.photoRes), $('#pShareBtn'), $('#pShareBtnTxt')); }
