@@ -111,3 +111,20 @@ def test_progress_reads_one_way_of_filming_and_draws_clean_lines():
     assert '<span class="dthen-tag">${lbl}</span>' in SPA
     css = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.css").read_text(encoding="utf-8")
     assert ".pc-fold > summary::after{" in css and "body.authed .backhome-row{display:none}" in css
+
+
+def test_readings_taken_at_different_points_of_the_stroke_are_never_compared():
+    """Artur 2026-11-20: "so that BDC and TDC are never compared". One rule
+    for every comparison (filmedAlike: sport, kind, side, position and a bike
+    photo's crank phase); a bike photo's knee, hip and pelvic ratio with no
+    known phase are not read (tv); Compare drops the stroke-dependent rows
+    when the pair was not read alike."""
+    assert "function filmedAlike(a,b)" in SPA and "photoPhase(a)===photoPhase(b)" in SPA
+    assert "return filmedAlike(a,b)" in _fn("cmpSame")
+    assert "const PHOTO_PHASED=new Set(['knee','hip','pelvic_ratio']);" in SPA
+    assert "o?(o[0]>100?'bdc':'tdc'):null" in _fn("photoPhase")
+    assert "e.phase=res.pedal_phase" in SPA
+    assert "const v=tv(cur,m.key)" in SPA and "const a=tv(then,m.key), b=tv(now,m.key);" in SPA
+    assert "const [at,bt]=cmpPairTrends(A,B)" in SPA
+    assert "photoPhase(e)===photoPhase(last)" in _fn("sportCard")
+    assert "photoPhase(e)===photoPhase(ref)" in _fn("renderProgress")

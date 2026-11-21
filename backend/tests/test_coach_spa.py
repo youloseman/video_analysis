@@ -82,7 +82,7 @@ def test_every_report_url_goes_through_the_one_that_knows_about_the_link():
 def test_my_technique_and_a_trend_are_about_one_person():
     assert "filter(e=>e.athleteId==null)" in fn("renderDashboard")
     assert "state.histAthlete==null" in fn("renderProgress")
-    assert "a.athleteId" in fn("cmpSame")
+    assert "a.athleteId" in fn("cmpSame") and "a.kind" in fn("filmedAlike")
 
 
 def test_somebody_elses_footage_is_asked_about_before_it_is_filed():
@@ -169,7 +169,7 @@ def run_js(body: str) -> dict:
 
 @pytest.mark.skipif(not node, reason="node is not installed")
 def test_the_squad_reads_a_clip_against_one_from_the_same_side_only():
-    script = fn("cmpSame") + fn("cmpPrevious") + fn("cmpGapWord") + """
+    script = fn("photoPhase") + fn("filmedAlike") + fn("cmpSame") + fn("cmpPrevious") + fn("cmpGapWord") + """
     const base={sport:'bike',kind:'video',athleteId:1,position:'tt_aero',trends:{knee:150}};
     const right={...base,id:'r',at:30,cameraSide:'right'}, left={...base,id:'l',at:20,cameraSide:'left'},
           left0={...base,id:'l0',at:10,cameraSide:'left'};

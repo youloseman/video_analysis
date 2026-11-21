@@ -13169,6 +13169,8 @@ function entryFromResult(kind,res,base){
     // Whether a kinogram exists for this analysis. A boolean, not the image:
     // see renderHistoryKinogram for why the picture is fetched separately.
     if(res.kinogram_base64) e.hasKinogram=true;
+    // The crank phase a bike photo was read at (photoPhase).
+    if(!isV&&(res.pedal_phase==='bdc'||res.pedal_phase==='tdc')) e.phase=res.pedal_phase;
     // Full joint-angle stats (video only) so the exact table can be rebuilt
     // from history AND merged with the opposite side later. Compact numeric dict.
     if(isV) e.angleStats=compactAngleStats(res.angle_statistics);
@@ -14576,7 +14578,7 @@ function renderProgress(){
   // Filmed the same way as the latest: a photo against a clip, or a road
   // position against an aero one, is a different measurement, not progress.
   const ref=sideAll[sideAll.length-1];
-  const all=ref?sideAll.filter(e=>(e.kind||'video')===(ref.kind||'video')&&(sport!=='bike'||(e.position||'')===(ref.position||''))):sideAll;
+  const all=ref?sideAll.filter(e=>(e.kind||'video')===(ref.kind||'video')&&(sport!=='bike'||(e.position||'')===(ref.position||''))&&photoPhase(e)===photoPhase(ref)):sideAll;
   const sideHost=$('#progSide');
   sideHost.innerHTML=sides.length>1?`<div class="seg" role="group" aria-label="Camera side">${sides.map(s=>`<button type="button" data-pside="${s}" aria-pressed="${s===state.progressSide}">${s==='both'?'Both sides':s==='left'?'Left side':'Right side'}</button>`).join('')}</div>`:'';
   const pm=$('#progMeta');
@@ -14602,7 +14604,7 @@ function renderProgress(){
   // position (formBand), else the band the entries kept.
   const ms=TREND_METRICS[sport].filter(m=>!m.noTrend).map(m=>{
     const series=[], dser=[], tser=[];
-    all.forEach((e,i)=>{ const v=e.trends[m.key]; if(v!=null){ series.push(v); dser.push(dates[i]); tser.push(e.filmedAt||e.at); } });
+    all.forEach((e,i)=>{ const v=tv(e,m.key); if(v!=null){ series.push(v); dser.push(dates[i]); tser.push(e.filmedAt||e.at); } });
     if(series.length<2) return null;
     shown.add(m.key);
     let opt=m.key==='score'?null:formBand(sport,m.key,lastE);
@@ -14709,7 +14711,10 @@ function sportCard(sport, entries){
   // The delta, the line and the personal best stay on the latest clip's side: a
   // change of side is not a change of rider (cmpSame).
   const last=entries[0];
-  const sameSide=entries.filter(e=>!e.cameraSide||!last.cameraSide||e.cameraSide===last.cameraSide);
+  // Filmed like the latest: a photo's score against a clip's, or a road
+  // position against an aero one, is a different rubric, not a change.
+  const sameSide=entries.filter(e=>(!e.cameraSide||!last.cameraSide||e.cameraSide===last.cameraSide)
+    &&(e.kind||'video')===(last.kind||'video')&&(sport!=='bike'||(e.position||'')===(last.position||''))&&photoPhase(e)===photoPhase(last));
   const chron=sameSide.slice().reverse();               // oldest -> newest
   const scores=chron.map(e=>e.score).filter(v=>v!=null);
   const dd=(scores.length>=2)?metricDelta(scores[0],scores[scores.length-1],null,true):null;
@@ -14975,7 +14980,7 @@ function formTiles(sport, entries){
   if(!cur.trends) return [];
   const ungraded=cur.kind==='video'?FORM_VIDEO_UNGRADED:null;
   return TREND_METRICS[sport].filter(m=>m.key!=='score').map(m=>{
-    const v=cur.trends[m.key]; if(v==null) return null;
+    const v=tv(cur,m.key); if(v==null) return null;
     const unit=String(m.unit||'').trim();
     // Pelvic ratio: mean hip over trunk, no sourced band (sport_configs),
     // out of the score since 2026-11-10; shown, never a fix.
@@ -14987,7 +14992,7 @@ function formTiles(sport, entries){
     t.key=m.key; t.raw=v;
     if(single) t.trend='<span class="dform-first">first analysis</span>';
     else {
-      const pv=prev?prev.trends[m.key]:null;
+      const pv=prev?tv(prev,m.key):null;
       if(pv!=null){ const d=metricDelta(pv,v,band,m.hi);
         t.trend = d.delta===0 ? '<span class="dform-first">no change</span>'
           : `<span class="tdelta ${d.cls}">${d.delta>0?'▲ +':'▼ '}${Math.round(Math.abs(d.delta)*100)/100}${measUnit(unit)}</span>`; }
@@ -15146,7 +15151,7 @@ function thenChanges(sport, all){
   const pair=thenPair(sport,all); if(!pair) return null;
   const {now,then}=pair, days=Math.max(1,Math.round((now.at-then.at)/864e5));
   const ch=TREND_METRICS[sport].filter(m=>THEN_KEYS[sport].includes(m.key)).map(m=>{
-    const a=then.trends&&then.trends[m.key], b=now.trends&&now.trends[m.key];
+    const a=tv(then,m.key), b=tv(now,m.key);
     if(a==null||b==null) return null;
     // An angle that moved more than 35° between two clips filmed the same way
     // was measured differently, not ridden differently: not shown.
@@ -15362,10 +15367,10 @@ state.squadMe=false; state.squadPick=[]; state.squadKona='trunk'; state.squadSpo
    range, the change since the last clip like this one, and a small bar of
    the range where the clip kept one. */
 function squadCell(e, prev, m){
-  const v=e&&e.trends?e.trends[m.key]:null;
+  const v=tv(e,m.key);
   if(v==null) return `<td class="sq-c" data-l="${esc(m.label)}"><span class="sq-na">—</span></td>`;
   const o=(e.trendOpt||{})[m.key], off=o&&(v<o[0]||v>o[1]);
-  const pv=prev&&prev.trends?prev.trends[m.key]:null, d=pv!=null?v-pv:null;
+  const pv=prev?tv(prev,m.key):null, d=pv!=null?v-pv:null;
   const dec=m.key==='overstride'?2:0;
   const dTxt=d==null||Math.abs(d)<0.05?'':`<small class="sq-d">${d>0?'▲':'▼'}${Math.abs(d).toFixed(dec)}</small>`;
   let bar='';
@@ -15400,11 +15405,12 @@ function cmpGapWord(e,es){
   if((o.cameraSide||'')!==(e.cameraSide||'')) return 'no change shown: filmed from the other side';
   if(o.kind!==e.kind) return 'no change shown: one is a photo';
   if((o.position||'')!==(e.position||'')) return 'no change shown: another position';
+  if(typeof photoPhase==='function'&&photoPhase(o)!==photoPhase(e)) return 'no change shown: another point of the pedal stroke';
   return 'no change shown: another setup';
 }
 function squadOutOfRange(e){
   if(!e||!e.trends) return false;
-  return (SQUAD_METRICS[e.sport]||[]).some(m=>{ const v=e.trends[m.key], o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1]); });
+  return (SQUAD_METRICS[e.sport]||[]).some(m=>{ const v=tv(e,m.key), o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1]); });
 }
 function renderSquadKona(rows){
   const host=$('#sqKona'); if(!host) return;
@@ -15474,11 +15480,11 @@ function openClipAsCoach(id){
 function clipChange(e){
   const t=e.trends; if(!t) return '<span class="sq-na">numbers appear when the report opens</span>';
   const ms=SQUAD_METRICS[e.sport]||[], o=e.trendOpt||{};
-  const out=ms.filter(m=>t[m.key]!=null&&o[m.key]&&(t[m.key]<o[m.key][0]||t[m.key]>o[m.key][1])).map(m=>m.label.replace(/ (BDC|TDC)$/,'').toLowerCase());
+  const out=ms.filter(m=>tv(e,m.key)!=null&&o[m.key]&&(tv(e,m.key)<o[m.key][0]||tv(e,m.key)>o[m.key][1])).map(m=>m.label.replace(/ (BDC|TDC)$/,'').toLowerCase());
   if(out.length){ const w=out.length>1?`${out.slice(0,-1).join(', ')} and ${out[out.length-1]}`:out[0];
     return `<span class="sq-rev-bad">${esc(w.charAt(0).toUpperCase()+w.slice(1))} outside the range</span>`; }
   const p=cmpPrevious(e,coachPool().filter(x=>String(x.athleteId)===String(e.athleteId)));
-  const moved=p&&p.trends?ms.filter(m=>t[m.key]!=null&&p.trends[m.key]!=null).map(m=>({m,d:t[m.key]-p.trends[m.key]})).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d))[0]:null;
+  const moved=p&&p.trends?ms.filter(m=>tv(e,m.key)!=null&&tv(p,m.key)!=null).map(m=>({m,d:tv(e,m.key)-tv(p,m.key)})).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d))[0]:null;
   // "In range" only for the readings that have a range: a ride keeps one for
   // the knee, so the card names it rather than claiming everything.
   const shown=ms.filter(m=>t[m.key]!=null), banded=shown.filter(m=>o[m.key]);
@@ -15647,7 +15653,7 @@ function renderSquadHome(){
     if(!p||!q||!p.last||!q.last) return;
     // Same sport, or there is nothing to line up.
     // Their clip from the same side when there is one: the gap is then the riders.
-    const b=q.last, a=p.es.find(e=>e.sport===b.sport&&e.trends&&e.cameraSide===b.cameraSide)||p.es.find(e=>e.sport===b.sport&&e.trends);
+    const b=q.last, a=p.es.find(e=>e.trends&&filmedAlike(e,b))||p.es.find(e=>e.sport===b.sport&&e.trends&&e.cameraSide===b.cameraSide)||p.es.find(e=>e.sport===b.sport&&e.trends);
     if(!a){ toast(`${p.a.name} has no ${b.sport==='run'?'run':'ride'} to set beside this one.`); return; }
     track('squad_compared',{});
     openCompare(a.id,b.id,'squad');
@@ -15665,7 +15671,7 @@ function renderSquadHome(){
 state.sqlOpen=null; state.sqlAll=false;
 function sqlOutCount(e){
   if(!e||!e.trends) return 0;
-  return (SQUAD_METRICS[e.sport]||[]).filter(m=>{ const v=e.trends[m.key], o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1]); }).length;
+  return (SQUAD_METRICS[e.sport]||[]).filter(m=>{ const v=tv(e,m.key), o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1]); }).length;
 }
 function sqlChip(r, now){
   const e=r.last;
@@ -15682,8 +15688,8 @@ function sqlSub(r){
 }
 function sqlTiles(e){
   if(!e||!e.trends) return '';
-  const ms=(SQUAD_METRICS[e.sport]||[]).filter(m=>e.trends[m.key]!=null).slice(0,4);
-  return ms.length?`<div class="sql-tiles">${ms.map(m=>{ const v=e.trends[m.key], o=(e.trendOpt||{})[m.key], off=o&&(v<o[0]||v>o[1]), dec=m.key==='overstride'?2:0;
+  const ms=(SQUAD_METRICS[e.sport]||[]).filter(m=>tv(e,m.key)!=null).slice(0,4);
+  return ms.length?`<div class="sql-tiles">${ms.map(m=>{ const v=tv(e,m.key), o=(e.trendOpt||{})[m.key], off=o&&(v<o[0]||v>o[1]), dec=m.key==='overstride'?2:0;
     return `<div class="sql-tile"><span>${esc(m.label)}</span><b class="num${off?' sql-off':''}">${num(v,dec)}${m.unit}</b>${o?`<small class="num">${num(o[0],dec)}–${num(o[1],dec)}</small>`:''}</div>`; }).join('')}</div>`:'';
 }
 function renderSquadLite({host, everyone, groups, squad, rows, review, attention, off}){
@@ -16807,12 +16813,46 @@ function toggleCompareCta(){
    the knee at the bottom of the stroke 8-10 deg low, so "before" from one
    side and "after" from the other reports an improvement that is only the
    lens. Null when nothing matches; the caller decides what to do then. */
-function cmpSame(a,b){
-  return a.sport===b.sport && a.kind===b.kind
-    && String(a.athleteId==null?'':a.athleteId)===String(b.athleteId==null?'':b.athleteId)
-    && String(a.profileId==null?'':a.profileId)===String(b.profileId==null?'':b.profileId)
+/* A bike photo's knee, hip and pelvic ratio depend on where the crank is
+   (photo_analyzer._PHASE_DEPENDENT_BIKE): a knee at the top of the stroke
+   against one at the bottom is 75 -> 145 nobody rode. They compare only
+   between photos at the same dead centre. The phase is stored from
+   2026-11-20 (pedal_phase); an older photo carries it in its knee band, which
+   the server gives only at a detected dead centre (bottom ~138-145, top
+   ~60-72). Unknown phase: those readings are not read at all. */
+const PHOTO_PHASED=new Set(['knee','hip','pelvic_ratio']);
+function photoPhase(e){
+  if(!e||e.sport!=='bike'||e.kind!=='photo') return null;
+  if(e.phase==='bdc'||e.phase==='tdc') return e.phase;
+  const o=(e.trendOpt||{}).knee; return o?(o[0]>100?'bdc':'tdc'):null;
+}
+/* A stored reading, or null when it cannot be read as the number it claims. */
+function tv(e,key){
+  const v=e&&e.trends?e.trends[key]:null;
+  if(v==null) return null;
+  if(e.sport==='bike'&&e.kind==='photo'&&PHOTO_PHASED.has(key)&&!photoPhase(e)) return null;
+  return v;
+}
+/* Filmed the same way: the one rule every comparison reads (Compare,
+   Then -> now, Progress, the cards' deltas, History, the Squad). */
+/* Two analyses side by side (Compare): the stroke-dependent readings only
+   when both were read at the same point of the stroke the same way. */
+function cmpPairTrends(A,B){
+  const at=Object.assign({},A.trends||{}), bt=Object.assign({},B.trends||{});
+  const same=(A.kind||'video')===(B.kind||'video')&&photoPhase(A)===photoPhase(B);
+  PHOTO_PHASED.forEach(k=>{ if(!same||tv(A,k)==null||tv(B,k)==null){ delete at[k]; delete bt[k]; } });
+  return [at,bt];
+}
+function filmedAlike(a,b){
+  return a.sport===b.sport && (a.kind||'video')===(b.kind||'video')
     && (a.cameraSide||'')===(b.cameraSide||'')
-    && (a.position||'')===(b.position||'');
+    && (a.position||'')===(b.position||'')
+    && photoPhase(a)===photoPhase(b);
+}
+function cmpSame(a,b){
+  return filmedAlike(a,b)
+    && String(a.athleteId==null?'':a.athleteId)===String(b.athleteId==null?'':b.athleteId)
+    && String(a.profileId==null?'':a.profileId)===String(b.profileId==null?'':b.profileId);
 }
 function cmpPrevious(e,list){
   return (list||loadHist()).find(x=>x.id!==e.id && x.trends && (x.filmedAt||x.at||0)<(e.filmedAt||e.at||0) && cmpSame(x,e))||null;
@@ -16863,7 +16903,7 @@ function cmpCaveats(A,B){
    differ by a few degrees, and reporting that as progress would teach people
    to chase noise. Metrics with neither a floor nor a target range say nothing. */
 function cmpHeadline(A,B,sport,optOf){
-  const at=A.trends||{}, bt=B.trends||{};
+  const [at,bt]=typeof cmpPairTrends==='function'?cmpPairTrends(A,B):[A.trends||{},B.trends||{}];
   const rows=[];
   TREND_METRICS[sport].forEach(m=>{
     if(m.key==='score') return;
@@ -16934,7 +16974,7 @@ function profileAggregate(pid, sport){
     return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
   const trends={};
   (TREND_METRICS[sport]||[]).forEach(m=>{
-    trends[m.key]=mean(rows.map(e=>(e.trends||{})[m.key]));
+    trends[m.key]=mean(rows.map(e=>tv(e,m.key)));
   });
   const scored=rows.filter(e=>typeof e.score==='number');
   return {
@@ -17084,7 +17124,8 @@ function cmpDbRow(label,unit,a,b,opt,hi,noise,dec){
 /* Two people's reading: the gap and nothing about direction. Neutral, like left
    vs right. Red is outside the range that person's own report uses. */
 function cmpGapRow(m,A,B){
-  const a=(A.trends||{})[m.key], b=(B.trends||{})[m.key], unit=m.unit||'';
+  const [ta,tb]=typeof cmpPairTrends==='function'?cmpPairTrends(A,B):[A.trends||{},B.trends||{}];
+  const a=ta[m.key], b=tb[m.key], unit=m.unit||'';
   const fmt=v=> v==null?'—':(Math.round(v*100)/100)+unit;
   const off=(v,e)=>{ const o=(e.trendOpt||{})[m.key]; return v!=null&&o&&(v<o[0]||v>o[1])?' cmp-off':''; };
   const gap=a==null||b==null?'—':m.noise&&Math.abs(b-a)<m.noise?'within error':Math.round(Math.abs(b-a)*100)===0?'same':fmt(Math.abs(b-a));
@@ -17413,7 +17454,7 @@ function renderCompare(){
   $('#cmpBody').classList.toggle('cmp-people',people);
   // The score already sits between the pickers: the cards keep the frames.
   $('#cmpBody').classList.toggle('cmp-has-mid',!people&&!setups&&!sidesMode);
-  const at=A.trends||{}, bt=B.trends||{}, ac=A.trendCat||{}, bc=B.trendCat||{};
+  const [at,bt]=cmpPairTrends(A,B), ac=A.trendCat||{}, bc=B.trendCat||{};
   // Prefer B's optimal band, fall back to A's.
   // The band the dashboard and Progress use for this position (formBand), else
   // the one either entry kept.

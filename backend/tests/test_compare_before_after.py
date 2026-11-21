@@ -48,7 +48,7 @@ def _run(expr: str):
         "const track=()=>{};",
         _const(html, "TREND_METRICS"),
         _fn(html, "distOut"), _fn(html, "metricDelta"),
-        _fn(html, "cmpSame"), _fn(html, "cmpPrevious"),
+        _fn(html, "photoPhase"), _fn(html, "filmedAlike"), _fn(html, "cmpSame"), _fn(html, "cmpPrevious"),
         _fn(html, "cmpCaveats"), _fn(html, "cmpHeadline"),
         f"console.log(JSON.stringify({expr}));",
     ])
