@@ -21,7 +21,7 @@ import math
 import re
 from typing import Any
 
-from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS, UNGRADED_NOTE, is_graded
 
 # field, label, unit, scale (lo, hi) for the bar
 _BIKE_ROWS: tuple[tuple[str, str, str, tuple[float, float]], ...] = (
@@ -155,6 +155,8 @@ def metric_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
             # does not grade it, yet stored road reports still carry the band,
             # so the PDF graded a hoods forearm "too low" (2026-11-22).
             band, noband = None, "an aero-bar measure: shown, not graded off the aero bars"
+        if band is None and not is_graded(result.get("cycling_position"), field.removesuffix("_avg")):
+            noband = UNGRADED_NOTE      # the drops elbow and shoulder (2026-11-22)
         if field == "helmet_above_back":
             band = (0.0, 23.0)
             if not isinstance(v, (int, float)):

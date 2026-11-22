@@ -29,22 +29,22 @@ def _road_ranges():
 class TestTheScore:
     def test_a_low_road_trunk_costs_a_third(self):
         ranges = _road_ranges()
-        base = {"knee": 70.0, "hip": 62.0, "shoulder": 90.0, "elbow": 155.0}
-        low = PA._score_photo_angles({**base, "trunk": 31.0}, ranges, "bike",
+        base = {"knee": 70.0, "hip": 62.0, "shoulder": 80.0, "elbow": 155.0}
+        low = PA._score_photo_angles({**base, "trunk": 23.0}, ranges, "bike",
                                      PA._BIKE_PHASE_WEIGHTS["tdc"], "road_hoods", "tdc")
         upright = PA._score_photo_angles({**base, "trunk": 64.0}, ranges, "bike",
                                          PA._BIKE_PHASE_WEIGHTS["tdc"], "road_hoods", "tdc")
         # 9 deg under the band costs what 3 deg over it costs
         assert low["per_angle"]["trunk"]["score"] == PA._score_single_angle(
-            40 - 9 / ROAD_TRUNK_LOW_FORGIVENESS, 40, 55)
+            32 - 9 / ROAD_TRUNK_LOW_FORGIVENESS, 32, 50)
         assert upright["per_angle"]["trunk"]["score"] < low["per_angle"]["trunk"]["score"]
 
     def test_a_closed_road_shoulder_costs_a_third_and_holds_nothing(self):
         ranges = _road_ranges()
         r = PA._score_photo_angles(
-            {"knee": 70.0, "hip": 62.0, "trunk": 42.0, "shoulder": 65.0, "elbow": 150.0},
+            {"knee": 70.0, "hip": 62.0, "trunk": 42.0, "shoulder": 55.0, "elbow": 150.0},
             ranges, "bike", PA._BIKE_PHASE_WEIGHTS["tdc"], "road_hoods", "tdc")
-        assert r["per_angle"]["shoulder"]["score"] == PA._score_single_angle(80 - 15 / 3, 80, 100)
+        assert r["per_angle"]["shoulder"]["score"] == PA._score_single_angle(70 - 15 / 3, 70, 90)
         assert "red_rows" not in r and r["grade"] == "Excellent"
 
     def test_excellent_has_nothing_red(self):

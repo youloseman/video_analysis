@@ -952,7 +952,7 @@ def _check_informational_metric(
     good_metrics: list[dict[str, Any]],
     metric: str,
     value: float | None,
-    opt_range: tuple[float, float],
+    opt_range: tuple[float, float] | None,
     label: str,
 ) -> None:
     """Add metric to good_metrics if it's within the optimal range.
@@ -961,7 +961,9 @@ def _check_informational_metric(
     reading was outside :data:`_IMPLAUSIBLE_BOUNDS` -- in either case we
     must not emit a card.
     """
-    if value is None:
+    # No band on this position (the drops elbow and shoulder): a reading, not
+    # a strong point (cycling_positions.UNGRADED_METRICS).
+    if value is None or opt_range is None:
         return
     opt_min, opt_max = opt_range
     # Apply the clinical deadband so a value marginally outside the band

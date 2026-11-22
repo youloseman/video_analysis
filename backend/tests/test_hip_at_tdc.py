@@ -86,7 +86,8 @@ class TestTheBands:
         h, d = get_cycling_reference("road_hoods"), get_cycling_reference("road_drops")
         assert h["knee_at_bdc"] == d["knee_at_bdc"] and h["knee_at_tdc"] == d["knee_at_tdc"]
         assert d["trunk_angle"][0] < h["trunk_angle"][0] and d["trunk_angle"][1] < h["trunk_angle"][1]
-        assert d["elbow_angle"][0] < h["elbow_angle"][0]
+        # No study measured the elbow in the drops: no band (2026-11-22)
+        assert h["elbow_angle"] and d["elbow_angle"] is None
         assert d["hip_at_tdc"][0] < h["hip_at_tdc"][0]
 
 
@@ -143,27 +144,28 @@ class TestTheReport:
 
 
 class TestTheShoulderBand:
-    """Checked against sources on 2026-09-18 (see META): fitters put the
-    torso-to-upper-arm angle on the hoods at about 90 (85-90, ~90, 90-100).
-    The band this replaced was 90-120 -- floor on the textbook value, thirty
-    degrees of room above it -- and every road clip in the repo failed it."""
+    """Checked against sources on 2026-09-18 (fitters: about 90, static) and
+    again on 2026-11-22 against riders measured in this convention, who read
+    76-78 on the hoods (Bouillod 2016, Branco 2022). The drops band was
+    derived, never measured, and is gone."""
 
-    def test_the_road_bands_sit_around_ninety_not_above_it(self):
+    def test_the_road_bands_sit_on_the_measured_riders(self):
         h = CYCLING_POSITIONS["road_hoods"]["shoulder_angle"]
-        d = CYCLING_POSITIONS["road_drops"]["shoulder_angle"]
-        assert h[0] < 90 < h[1], h
-        assert d[0] < h[0] and d[1] < h[1], "drops lower the torso, so the arm closes"
-        for pos, meta in (("road_hoods", "BikeDynamics"), ("road_drops", "Derived")):
-            from app.services.video_analysis.biomechanics.cycling_positions import get_position_meta
-            assert meta in get_position_meta(pos, "shoulder_angle")["source"]
+        assert h[0] < 77 < h[1] and h[1] <= 90, h
+        assert CYCLING_POSITIONS["road_drops"]["shoulder_angle"] is None
+        from app.services.video_analysis.biomechanics.cycling_positions import UNGRADED_NOTE, get_position_meta
+        assert "Branco 2022" in get_position_meta("road_hoods", "shoulder_angle")["source"]
+        assert get_position_meta("road_drops", "shoulder_angle")["source"] == UNGRADED_NOTE
 
     def test_the_spa_table_mirrors_them(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
-        h = CYCLING_POSITIONS["road_hoods"]["shoulder_angle"]
-        d = CYCLING_POSITIONS["road_drops"]["shoulder_angle"]
-        assert f"road_hoods:{{trunk_angle:[40,55],elbow_angle:[145,165],shoulder_angle:[{h[0]},{h[1]}]" in html
-        assert f"road_drops:{{trunk_angle:[30,45],elbow_angle:[130,160],shoulder_angle:[{d[0]},{d[1]}]" in html
+        h, d = CYCLING_POSITIONS["road_hoods"], CYCLING_POSITIONS["road_drops"]
+        t, e, s = h["trunk_angle"], h["elbow_angle"], h["shoulder_angle"]
+        assert (f"road_hoods:{{trunk_angle:[{t[0]},{t[1]}],elbow_angle:[{e[0]},{e[1]}],"
+                f"shoulder_angle:[{s[0]},{s[1]}]") in html
+        t = d["trunk_angle"]
+        assert f"road_drops:{{trunk_angle:[{t[0]},{t[1]}],knee_at_bdc:" in html
 
 
 class TestShortBikeClips:

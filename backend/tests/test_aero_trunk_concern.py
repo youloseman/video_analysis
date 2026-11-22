@@ -60,10 +60,11 @@ class TestTheClip:
         assert self._trunk(high) < 100
 
     def test_road_low_trunk_still_costs(self):
-        road = TS.score_cycling({**self.BASE, "trunk_angle_avg": 20.0}, {}, cycling_position="road_drops")
+        road = TS.score_cycling({**self.BASE, "trunk_angle_avg": 12.0}, {}, cycling_position="road_drops")
         assert self._trunk(road) < 100
-        # ...but a third as steeply as the upright position (2026-11-13)
-        assert self._trunk(road) == pytest.approx(TS.score_in_range(30 - 10 / 3, 30, 45), abs=0.5)
+        # ...but a third as steeply as the upright position (2026-11-13);
+        # drops band 22-38 since 2026-11-22
+        assert self._trunk(road) == pytest.approx(TS.score_in_range(22 - 10 / 3, 22, 38), abs=0.5)
 
     def test_severity_is_acceptable_not_a_warning(self):
         assert TS.classify_metric_severity("triathlon", "trunk_angle", 14.0) == "ACCEPTABLE"
@@ -166,8 +167,11 @@ class TestTheCoachIsNotToldToFixIt:
     def test_road_low_side_is_borderline_too(self):
         # Road joined 2026-11-13: lower and closed are a racing position.
         from app.services.video_analysis.llm_recommendations import _metric_statuses
-        st = _metric_statuses("bike", "road_drops", {"trunk_angle_avg": 18.0, "shoulder_angle_avg": 60.0})
+        st = _metric_statuses("bike", "road_hoods", {"trunk_angle_avg": 24.0, "shoulder_angle_avg": 58.0})
         assert st["trunk_angle_avg"][0] == "warn" and st["shoulder_angle_avg"][0] == "warn"
+        # The drops shoulder has no band (2026-11-22): a reading, no status
+        st = _metric_statuses("bike", "road_drops", {"trunk_angle_avg": 14.0, "shoulder_angle_avg": 60.0})
+        assert st["trunk_angle_avg"][0] == "warn" and "shoulder_angle_avg" not in st
 
     def test_upright_keeps_them_material(self):
         from app.services.video_analysis.llm_recommendations import _metric_statuses

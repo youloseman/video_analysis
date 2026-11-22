@@ -495,8 +495,16 @@ def score_cycling(
     # (CYCLING_WEIGHTS, 2026-11-10).
 
     # Elbow angle (near-side from elbow_angle_avg which is now near-side)
+    # A band of None: measured, shown, not graded on this position (no study
+    # measured it there -- cycling_positions.UNGRADED_METRICS). Like the
+    # forearm off aero bars it leaves the rubric rather than counting missing.
+    weights = dict(CYCLING_WEIGHTS)
+    for comp in ("elbow_angle", "shoulder_angle"):
+        if ref.get(comp) is None:
+            weights.pop(comp, None)
+
     elbow = summary.get("elbow_angle_avg") or 0
-    if elbow > 0:
+    if elbow > 0 and ref.get("elbow_angle"):
         components["elbow_angle"] = score_in_range(elbow, *ref["elbow_angle"])
 
     # Shoulder angle (near-side). On aero bars a shoulder closed past the band
@@ -504,7 +512,7 @@ def score_cycling(
     # degree, the same forgiveness the photo path applies. Opened past it is a
     # fault at the full rate. See cycling_positions.SHOULDER_CLOSED_OK_POSITIONS.
     shoulder = summary.get("shoulder_angle_avg") or 0
-    if shoulder > 0:
+    if shoulder > 0 and ref.get("shoulder_angle"):
         from app.services.video_analysis.biomechanics.cycling_positions import (
             SHOULDER_CLOSED_FORGIVENESS,
             SHOULDER_CLOSED_OK_POSITIONS,
@@ -527,7 +535,6 @@ def score_cycling(
     # a road position is scored on eight measures, and says eight.
     from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
 
-    weights = dict(CYCLING_WEIGHTS)
     forearm = summary.get("forearm_tilt_avg")
     if cycling_position in AERO_POSITIONS:
         if forearm is not None and not (forearm == 0 and summary.get("frames_analyzed", 0) == 0):
@@ -893,8 +900,13 @@ def build_severity_map(
     if hip and hip > 0:
         severity_map["hip_at_tdc"] = classify_metric_severity(position, "hip_at_tdc", hip)
 
-    # Other metrics
+    # Other metrics. One without a band on this position (UNGRADED_METRICS) has
+    # no severity: it is a reading, not a verdict.
+    from app.services.video_analysis.biomechanics.cycling_positions import is_graded
+
     for summary_key, ref_key in metric_keys_map.items():
+        if not is_graded(position, ref_key):
+            continue
         val = summary.get(summary_key)
         if val is not None and (not isinstance(val, (int, float)) or val != 0):
             severity_map[ref_key] = classify_metric_severity(position, ref_key, float(val))

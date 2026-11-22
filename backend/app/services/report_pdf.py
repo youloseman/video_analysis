@@ -32,7 +32,7 @@ from app.services.video_analysis.biomechanics.action_plan_builder import (
     FIT_STEP_NOTE,
     apply_hip_over_bb,
 )
-from app.services.video_analysis.biomechanics.cycling_positions import NON_DRIVE_KNEE_NOTE
+from app.services.video_analysis.biomechanics.cycling_positions import NON_DRIVE_KNEE_NOTE, is_graded
 from app.services.video_analysis.biomechanics.running_action_plan_builder import (
     _FAULT_DIRECTION,
 )
@@ -101,11 +101,21 @@ def _score_notes(result: dict[str, Any], score: Any) -> list[str]:
     # Forearm tilt off the aero bars is measured but not part of the score
     # (technique_scorer drops it there): that is not "not measured".
     road = sport == "bike" and result.get("cycling_position") not in AERO_POSITIONS
-    missing = [_PART_NAMES.get(k, k) for k in weights if k not in scored and not (road and k == "forearm_tilt")]
+    # Likewise a reading with no band on this position (the drops elbow and
+    # shoulder: cycling_positions.UNGRADED_METRICS).
+    position = result.get("cycling_position")
+    ungraded = [k for k in weights if sport == "bike" and not is_graded(position, k) and k not in scored]
+    missing = [_PART_NAMES.get(k, k) for k in weights
+               if k not in scored and not (road and k == "forearm_tilt") and k not in ungraded]
     if missing:
         notes.append(f"Not measured on this clip, so not counted: {', '.join(missing)}.")
     if road and "forearm_tilt" in weights and "forearm_tilt" not in scored:
         notes.append("Forearm tilt is an aero-bar measure, so it does not count on this position.")
+    if ungraded:
+        names = " and ".join(_PART_NAMES.get(k, k).lower() for k in ungraded)
+        one = len(ungraded) == 1
+        notes.append(f"No study has measured the {names} {'angle' if one else 'angles'} in the drops, "
+                     f"so {'it does' if one else 'they do'} not count on this position.")
     candidates = {k: v for k, v in scored.items() if k not in CYCLING_DERIVED_COMPONENTS}
     if sport == "bike" and candidates:
         mean = sum(v * weights[k] for k, v in scored.items()) / sum(weights[k] for k in scored)

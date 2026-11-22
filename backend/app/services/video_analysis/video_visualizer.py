@@ -37,6 +37,10 @@ def _status_for_cfg(cfg: dict[str, Any], value: float) -> str:
     ``_get_angle_display_config``). Everything else is the shared symmetric
     rule, so the overlay colours what the score card and the coach notes do.
     """
+    # No band on this position (the drops elbow and shoulder,
+    # cycling_positions.UNGRADED_METRICS): drawn, not judged.
+    if not cfg.get("optimal"):
+        return "muted"
     opt_min, opt_max = cfg["optimal"]
     if cfg.get("open_ok") and value is not None and value > opt_max:
         return "good"
@@ -956,7 +960,6 @@ class VideoVisualizer:
                                       "muted", scale=_sk, align="right" if dx < 0 else "left")
                     continue
 
-                opt_min, opt_max = cfg["optimal"]
                 status = self._knee_phase_status(cfg, analyzed_idx)
                 if status is None:
                     status = _status_for_cfg(cfg, angle_val)
@@ -1126,7 +1129,8 @@ class VideoVisualizer:
         scored: list[tuple[float, float, str]] = []
         for cfg in self.label_configs:
             key = str(cfg["key"])
-            if key in material:
+            # No band, no verdict: an ungraded reading is never material.
+            if key in material or not cfg.get("optimal"):
                 continue
             values = self.analyzer.angle_history.get(key) or []
             readable = flagged = bad = 0

@@ -190,6 +190,11 @@ def build_timeline(
         vals += [None] * (n - len(vals))
         if all(v is None for v in vals):
             continue
+        if not cfg.get("optimal"):
+            # No band on this position (the drops elbow and shoulder,
+            # cycling_positions.UNGRADED_METRICS): the table shows the
+            # reading; a curve against nothing is not drawn.
+            continue
         series[key] = vals
         lo, hi = cfg["optimal"]
         # Where the band applies. The bike knee band is a statement about

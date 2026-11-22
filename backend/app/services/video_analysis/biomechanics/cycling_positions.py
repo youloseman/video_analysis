@@ -51,8 +51,8 @@ SHOULDER_CLOSED_OK_POSITIONS = AERO_POSITIONS | ROAD_POSITIONS
 SHOULDER_CLOSED_FORGIVENESS = 3.0
 
 # On the road a trunk LOWER than the band is a racing position, not a fault:
-# the hoods band (40-55) is Retul's recreational norm, and racers on the hoods
-# ride 30-40. A third of the penalty per degree and amber at most, as for the
+# the hoods band was Retul's recreational 40-55 until 2026-11-22 and is now the
+# measured 32-50 (CYCLING_POSITIONS_META), and racers on the hoods ride 30-40. A third of the penalty per degree and amber at most, as for the
 # closed shoulder -- unlike aero, it is not free, because a road rider well
 # under the band on the hoods may simply be over-reached. Too UPRIGHT keeps the
 # full penalty. Added 2026-11-13 with the shoulder rule above: before it, a
@@ -120,18 +120,39 @@ AERO_TRUNK_EXTREME_DEG = 12.0
 HIP_MEDICAL_MIN_DEG = 45.0
 
 
+# Measured and shown, never graded: no study has measured these angles on that
+# position, so any band would be invented. Their band is None in
+# CYCLING_POSITIONS and get_cycling_reference; every surface that grades reads
+# None as "no band" (the score leaves them out of the rubric, the table and the
+# overlay show them neutral).
+UNGRADED_NOTE = "no study has measured this angle in the drops: shown, not graded"
+UNGRADED_METRICS: dict[str, frozenset[str]] = {
+    "road_drops": frozenset({"elbow_angle", "shoulder_angle"}),
+}
+
+
+def is_graded(position: str | None, metric: str) -> bool:
+    """False for a metric that is measured but has no band on this position."""
+    return metric not in UNGRADED_METRICS.get(position or "road_hoods", frozenset())
+
+
+# Road bands re-read against measured riders on 2026-11-22 (Artur asked for
+# the studies, not the fitters): docs/research/road-fit-bands-2026-11-22.md.
+# Trunk, shoulder and elbow moved; the knee band stays until the marker study
+# (the model reads the knee ~9 deg off Retul markers, flapp-hip-convention-gap);
+# the hip band has no study in this definition and is fitter guidance.
 CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
     "road_hoods": {
         "label": "Road - Hoods",
         "category": "road",
-        "trunk_angle": (40, 55),        # Retul recreational rider norms
-        "elbow_angle": (145, 165),      # Retul road: slightly bent, not locked
+        "trunk_angle": (32, 50),        # measured trained riders 37-42; see META
+        "elbow_angle": (145, 170),      # measured 145-161, static and riding; see META
         "knee_at_bdc": (135, 145),      # Retul: 35-45 deg extension = 135-145 internal
         "knee_at_tdc": (65, 75),        # Retul fit window
         "hip_angle_max": (55, 65),      # avg hip angle (above optimal = comfort/OK)
         "hip_at_tdc": (55, 70),         # hip angle at top of stroke (closed)
         "hip_at_bdc": (100, 120),       # hip angle at bottom of stroke (open)
-        "shoulder_angle": (80, 100),    # torso-to-upper-arm ~85-90 (fitters); see META
+        "shoulder_angle": (70, 90),     # measured 76-78 in this convention; see META
         "forearm_tilt": (5, 20),
         "head_alignment": (50, 100),    # less critical on road
         "pelvic_ratio": (1.5, 3.5),
@@ -139,14 +160,17 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
     "road_drops": {
         "label": "Road - Drops",
         "category": "road",
-        "trunk_angle": (30, 45),        # competitive road in drops
-        "elbow_angle": (130, 160),      # slightly more bent than hoods
+        "trunk_angle": (22, 38),        # measured 8-10 deg under the hoods; see META
+        # No study has measured the elbow or the shoulder in the drops: the two
+        # bands here were made up (the shoulder one "derived" from the hoods).
+        # Shown, not graded -- see UNGRADED_METRICS.
+        "elbow_angle": None,
         "knee_at_bdc": (135, 145),      # Retul; Bini et al. 2011
         "knee_at_tdc": (65, 75),        # Retul fit window
         "hip_angle_max": (50, 65),      # avg hip angle in drops (above = OK)
         "hip_at_tdc": (52, 68),
         "hip_at_bdc": (95, 118),
-        "shoulder_angle": (75, 95),     # hoods band less the ~10 deg the torso drops; see META
+        "shoulder_angle": None,
         "forearm_tilt": (0, 15),
         "head_alignment": (60, 100),
         "pelvic_ratio": (1.8, 3.5),
@@ -209,26 +233,44 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
 CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
     "road_hoods": {
         "trunk_angle": {
-            "source": "Retul; recreational rider norms",
-            "warning_low": 35,
-            "warning_high": 60,
+            # Hip-shoulder line from horizontal, measured on the hoods: trained
+            # riders 37-42 in three datasets (~108 riders). The old 40-55 was
+            # Retul's recreational norm, and 55 had no measurement behind it.
+            # The top stays at 50, not the 47 the data alone gives, so a
+            # recreational rider (42 +/- 4) is not told to get lower.
+            "source": (
+                "Skovereng 2020 PLoS ONE (pros 38, recreational 42, 3D); "
+                "Jongerius 2022 J Biomech (37 club riders, 42); "
+                "Bini, Hume & Croft 2014 (competitive 37-38, recreational 41-43)"
+            ),
+            "warning_low": 27,
+            "warning_high": 55,
         },
         "elbow_angle": {
-            "source": "Retul standard road fit window",
+            # Included angle on the hoods: 157-161 +/- 8 standing on the bike
+            # (n=50, n=19), 145-149 riding (3D), bending more with effort.
+            # Mostly one lab (Holliday/Swart), male riders.
+            "source": (
+                "Holliday & Swart 2021 (n=50, 161 +/- 8); Holliday 2017 (n=19, "
+                "157 static, 145 riding); Holliday 2019 (n=17, 3D, 137-149); "
+                "Bouillod 2016 (n=3, 158)"
+            ),
             "warning_low": 140,
-            "warning_high": 170,
+            "warning_high": 175,
         },
         "knee_at_bdc": {
             "source": "Retul fit window; Burt 'Bike Fit' 2014",
             "warning_low": 130,
             "warning_high": 150,
-            "note": "Dynamic measurement ~8 deg greater than static (Bini & Hume 2016)",
+            "note": "Read while pedalling the knee is ~8 deg MORE bent than the static fit-day reading (Bini & Hume 2016: 142 vs 150)",
         },
         "knee_at_tdc": {
             "source": "Retul fit window",
         },
         "hip_angle_max": {
-            "source": "Retul recommended normal ranges",
+            # No study measures the hip as shoulder-hip-knee at the top of the
+            # stroke; the band is fitter guidance, and is labelled so.
+            "source": "Fitter guidance (Burt 'Bike Fit' 2014: 55-65); no study measures this angle",
             "warning_low": 50,
             "note": "ASYMMETRIC: above optimal = comfort (OK). Below optimal = closed hip (risk).",
         },
@@ -248,40 +290,49 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             # and the rider is inside it, as an included angle it is not --
             # the paper's definition could not be checked, so it is recorded
             # and not used.
-            "source": "BikeDynamics fit guidelines (upper arm to torso 85-90 deg); BikeFit (~90 deg)",
-            "warning_low": 72,
-            "warning_high": 108,
+            # 2026-11-22: it was checked. That 112 is the humerus against the
+            # T1-T4 thoracic spine (inclinometer, paper appendix), as is the
+            # same lab's 103-115 against C7-T5 (2017, 2019) -- not the
+            # hip-shoulder line, and not convertible. The two studies that
+            # measured this convention read 76-78: Bouillod 2016 (Vicon, n=3,
+            # 77.7 +/- 4.5) and Branco 2022 (Retul, n=10 amateurs, 76.2 +/- 6.4,
+            # 65-88). The fitters' 85-90 is a static fit-day number. Band
+            # 80-100 -> 70-90. Weak evidence: thirteen riders.
+            "source": (
+                "Bouillod 2016 icSPORTS (n=3, 77.7); Branco 2022 J Sci Cycling "
+                "(n=10, 76.2, 65-88); fitters 85-90 static (BikeDynamics, BikeFit)"
+            ),
+            "warning_low": 65,
+            "warning_high": 98,
             "note": "The angle at the shoulder between torso and upper arm. Less critical than the knee; a closed reading usually means a short reach.",
         },
     },
     "road_drops": {
         "trunk_angle": {
-            "source": "Competitive road rider norms",
-            "warning_low": 25,
-            "warning_high": 50,
+            # One 3D study gives hoods and drops for the same riders: the drops
+            # read 8-10 deg under the hoods (pros 28 +/- 4, recreational
+            # 34 +/- 4). The band is the hoods band moved down by that much.
+            "source": "Skovereng 2020 PLoS ONE (drops: pros 28, recreational 34, n=18, 3D)",
+            "warning_low": 17,
+            "warning_high": 43,
         },
         "elbow_angle": {
-            "source": "Retul road fit window",
-            "warning_high": 170,
+            "source": UNGRADED_NOTE,
         },
         "knee_at_bdc": {
-            "source": "Retul; Bini et al. 2011",
+            "source": "Retul fit window; Bini et al. 2011",
             "warning_low": 130,
             "warning_high": 150,
         },
         "hip_angle_max": {
-            "source": "Retul; derived from competitive rider trunk 30-45 deg",
+            "source": "Fitter guidance (Burt 'Bike Fit' 2014), a little more closed in the drops; no study measures this angle",
             "warning_low": 45,
             "note": "ASYMMETRIC: above optimal = comfort (OK). Below optimal = closed hip.",
         },
         "shoulder_angle": {
-            # No source gives a separate drops number. Derived: the hoods band
-            # shifted down by the ~10 deg the torso drops between hoods and
-            # drops (BikeDynamics), since the hands stay on the same bar and
-            # the elbows bend more. Recorded as derived, not measured.
-            "source": "Derived from the hoods band (BikeDynamics: torso ~10 deg lower in the drops)",
-            "warning_low": 67,
-            "warning_high": 103,
+            # Was the hoods band shifted down ~10 deg -- derived, never
+            # measured. No study measures it in the drops (2026-11-22).
+            "source": UNGRADED_NOTE,
         },
     },
     "tt_aero": {
@@ -301,7 +352,7 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             "source": "Retul TT/Triathlon fit window",
             "warning_low": 133,
             "warning_high": 148,
-            "note": "Dynamic measurement ~8 deg greater than static (Bini & Hume 2016)",
+            "note": "Read while pedalling the knee is ~8 deg MORE bent than the static fit-day reading (Bini & Hume 2016: 142 vs 150)",
         },
         "hip_angle_max": {
             "source": "Retul TT fit window; Fintelman et al. 2015",
@@ -773,6 +824,10 @@ def detect_position_archetype(
     pos = CYCLING_POSITIONS.get(
         cycling_position or "road_hoods", CYCLING_POSITIONS["road_hoods"],
     )
+    # Read against the position's bands: with none (the drops elbow and
+    # shoulder, UNGRADED_METRICS) there is nothing to read it against.
+    if not pos["shoulder_angle"] or not pos["elbow_angle"]:
+        return None
     sh_min, sh_max = pos["shoulder_angle"]
     el_min, el_max = pos["elbow_angle"]
 

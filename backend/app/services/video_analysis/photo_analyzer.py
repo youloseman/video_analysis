@@ -506,6 +506,10 @@ def _get_cycling_optimal_ranges(
         "forearm_tilt": ref["forearm_tilt"],
         "head_alignment": ref["head_alignment"],
     }
+    # A band of None is a reading with no reference on this position (the
+    # drops elbow and shoulder, cycling_positions.UNGRADED_METRICS): it
+    # leaves the score and its chip is drawn neutral.
+    ranges = {k: v for k, v in ranges.items() if v is not None}
     if phase in ("bdc", "tdc"):
         bands = _bike_phase_bands(cycling_position)
         ranges["knee"] = tuple(bands["knee"][phase])
