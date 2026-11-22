@@ -94,6 +94,13 @@ async def _readable(
             status_code=status.HTTP_409_CONFLICT,
             detail="This analysis was run before full reports were stored.",
         )
+    if row.kind == "photo":
+        # One frame, a differently shaped result (no technique_score, no
+        # sport_type): the assistant read a scored photo as "withheld".
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Questions are answered about video reports.",
+        )
     return owner, row
 
 
@@ -377,7 +384,8 @@ async def _progress_rows(db: AsyncSession, user: User, sport: str, ids: list[str
         select(Analysis).where(Analysis.user_id == user.id, Analysis.client_id.in_(ids[:MAX_PROGRESS_IDS]))
         .order_by(Analysis.created_at_ms)
     )).scalars().all()
-    rows = [r for r in got if r.result and str((r.result or {}).get("sport_type") or r.sport) == sport
+    rows = [r for r in got if r.result and r.kind != "photo"
+            and str((r.result or {}).get("sport_type") or r.sport) == sport
             and access_for_stored(user, r) == ACCESS_FULL]
     if len(rows) < 2:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,

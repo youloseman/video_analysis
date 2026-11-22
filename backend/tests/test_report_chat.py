@@ -721,3 +721,25 @@ async def test_the_chat_context_carries_the_directions(db, make_user, fake_model
 def test_no_invented_causes_and_no_account_facts_in_the_notes():
     assert "Never say a reading CAUSES a symptom" in report_chat.SYSTEM
     assert "never copy what the account already records" in report_chat.MEMORY_SYSTEM
+
+
+
+async def test_a_photo_report_has_no_chat(db, make_user, fake_model):
+    """A photo result has no technique_score or sport_type where the chat reads
+    them: the assistant was told the score was withheld (2026-11-22)."""
+    u = await make_user(tier=TIER_FULL)
+    row = await add_report(db, u, client_id="p1")
+    row.kind = "photo"
+    await db.commit()
+    with pytest.raises(HTTPException) as e:
+        await chat_api.get_chat("p1", u, db, None)
+    assert e.value.status_code == 409
+    assert fake_model["prompts"] == []
+
+
+def test_the_spa_keeps_the_chat_to_video():
+    from pathlib import Path
+
+    s = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "e.access==='full' && e.kind!=='photo'" in s
+    assert "const vid=x=>x.access==='full'&&x.kind!=='photo';" in s

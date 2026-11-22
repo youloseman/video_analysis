@@ -45,7 +45,7 @@ STUBS = (
     "const esc=x=>String(x), pretty=s=>String(s).replace(/_/g,' '), num=(v,d)=>String(Math.round(v));\n"
     "const fitWords=s=>String(s||'').replace(/_/g,' ');\n"
     # the verdict's chip reads the fix table (index.html); not under test here
-    "const VERDICT_FIX_KEY={}, ISSUE_FIX={}, fixHow=()=>'', fixChip=()=>null;\n"
+    "const VERDICT_FIX_KEY={}, ISSUE_FIX={}, DIAG_LABEL={trunk_angle:'Trunk'}, fixHow=()=>'', fixChip=()=>null;\n"
 )
 ROW = ("const row=(lbl,val,lo,hi,zone,unit)=>({lbl,val:String(val),unit:unit||'°',range:{value:val,lo,hi,unit:unit||'°'},"
        "zone,delta:val<lo?val-lo:(val>hi?val-hi:0),cls:zone==='optimal'?'good':zone==='warning'?'warn':'bad'});\n")
@@ -124,3 +124,15 @@ def test_a_bands_source_is_one_word_until_asked_for():
     row = fn("measRow")
     assert 'class="m-srcbtn"' in row and 'class="m-src hidden"' in row
     assert "e.target.closest('.t-what,.m-srcbtn')" in SPA
+
+
+
+@pytest.mark.skipif(not node, reason="node is not installed")
+def test_fix_first_line_is_about_its_own_reading():
+    """'Raise the bars' over 'Elbow 131°' read as two unrelated things."""
+    v = run(
+        "const v=resultVerdict({fit_plan:{diagnostics:[{action:'raise_bars',status:'needs_adjustment',metric_name:'trunk_angle',"
+        "current_value:35.5,target_range:[40,55]}]}},'bike',[row('Elbow',131,145,165,'critical')]);"
+    )
+    assert v["head"] == "Raise the bars"
+    assert v["why"].startswith("Trunk") and "40" in v["why"] and "Elbow" not in v["why"]

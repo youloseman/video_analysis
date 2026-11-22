@@ -11094,7 +11094,13 @@ function resultVerdict(r, sport, tiles){
   else if(lead) head=`${lead.m.lbl}: ${String(lead.m.val).toLowerCase()}`;
   else if(issues.length) head=pretty(issues[0].type||'');
   else head='Every graded reading is in range';
-  if(lead&&lead.m.range){
+  // The line under the head is about the head's own reading: "Raise the
+  // bars" over "Elbow 131°" read as two unrelated things (bug, 2026-11-22).
+  const dv=diag&&diag.current_value!=null&&Array.isArray(diag.target_range)&&diag.target_range.length===2?diag:null;
+  if(dv){
+    const lbl=DIAG_LABEL[dv.metric_name]||pretty(dv.metric_name||'');
+    why=`${esc(lbl)} <b class="num">${esc(num(dv.current_value,1))}°</b>, range <span class="num">${measRange(dv.target_range[0],dv.target_range[1],'°')}</span>.`;
+  } else if(lead&&lead.m.range){
     const u=unitOf(lead.m);
     why=`${esc(lead.m.lbl)} <b class="num">${esc(String(lead.m.val))}${measUnit(u)}</b>, range <span class="num">${measRange(lead.m.range.lo,lead.m.range.hi,u)}</span>.`;
   } else if(!lead&&issues.length&&issues[0].recommendation) why=esc(String(issues[0].recommendation).split(/(?<=\.)\s/)[0]);
@@ -11117,6 +11123,9 @@ function resultVerdict(r, sport, tiles){
   const go=diag?['fitBlock','What to change on the bike']:drill?['planBlock',`Drill: ${drill.drill}${drill.weeks?`, about ${drill.weeks} ${drill.weeks>1?'weeks':'week'}`:''}`]:(lead||issues.length)?['metricsBlock','The measurements']:null;
   return {level, head, why, side, go, out, near, ok, issues, diag, drill, chip};
 }
+/* A fit-plan metric -> the name the report uses for it, for Fix first's line. */
+const DIAG_LABEL={trunk_angle:'Trunk',knee_at_bdc:'Knee at the bottom',knee_angle_bdc:'Knee at the bottom',knee_at_tdc:'Knee at the top',
+  hip_at_tdc:'Hip at the top',hip_angle_max:'Hip at the top',elbow_angle:'Elbow',shoulder_angle:'Shoulder',forearm_tilt:'Forearm tilt'};
 /* A server issue -> the fix table's key and side, for the verdict's chip. */
 const ISSUE_FIX={overstriding:['overstride','high'],low_cadence:['cadence','low'],
   excessive_vertical_oscillation:['vertical_oscillation','high'],long_ground_contact:['ground_contact','high']};
@@ -12298,7 +12307,9 @@ function renderChat(blockId, e, opts){
   // that has it ("full" / "plans"), or "" while it is not launched for anyone
   // this account could become.
   const mode=(auth&&auth.report_chat)||'';
-  const show=!!(mode && e && e.id && e.access==='full');
+  // Video reports only: a photo is one frame, its result is shaped
+  // differently, and the assistant read it as "score withheld" (2026-11-22).
+  const show=!!(mode && e && e.id && e.access==='full' && e.kind!=='photo');
   block.classList.toggle('hidden', !show);
   if(!show){ block.innerHTML=''; block.dataset.entry=''; return; }
   block.dataset.entry=e.id;
@@ -14831,7 +14842,7 @@ PHONE_MQ.addEventListener('change',()=>{ if(document.body.dataset.state==='trend
    to the athlete and stay with their reports. */
 function renderProgChat(all, sport){
   const ids=all.map(e=>e.id).filter(Boolean).slice(-12);
-  const ok=!!(auth&&auth.report_chat==='open')&&ids.length>=2&&!all.some(e=>e.linkedAthleteId);
+  const ok=!!(auth&&auth.report_chat==='open')&&ids.length>=2&&!all.some(e=>e.linkedAthleteId||e.kind==='photo');
   if(!ok){ renderChat('progChatBlock', null); return; }
   const noun=sport==='bike'?'rides':'runs', first=all[0], last=all[all.length-1];
   const e={id:`progress:${sport}:${ids.length}:${ids[ids.length-1]}`, sport, access:'full',
@@ -15687,7 +15698,8 @@ function renderDashboard(){
    grounded in that one report. Paid plans only here: the locked line stays on
    the report, and Home keeps one coral button (Analyze a clip). */
 function renderDashChat(all, lead){
-  const e=all.find(x=>x.sport===lead&&x.access==='full')||all.find(x=>x.access==='full')||null;
+  const vid=x=>x.access==='full'&&x.kind!=='photo';
+  const e=all.find(x=>x.sport===lead&&vid(x))||all.find(vid)||null;
   const open=!!(auth&&auth.report_chat==='open');
   renderChat('dashChatBlock', open?e:null, open&&e?{
     title:`Ask about your latest ${e.sport==='run'?'run':'ride'}`,
