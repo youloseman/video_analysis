@@ -10859,9 +10859,11 @@ function renderConfidence(conf){
   const say=fwSay||first;
   const rest=[fwSay?expl:expl.slice(first.length).trim()].filter(Boolean).map(esc).join(' ');
   const lbl=level==='high'?'Less accurate':meta.label;
-  host.innerHTML=`<div class="sc-trust t-${level}"><p class="t-line"><b>${lbl}${say?':':''}</b> ${esc(say)}</p>`
-    +((rest||factLine)?`<button class="t-why" type="button" aria-expanded="false" aria-controls="confExp">Why <span aria-hidden="true">↓</span></button>`
-      +`<div class="t-more hidden" id="confExp">${rest}${factLine}</div>`:'')+`</div>`;
+  // Two words and three bars; the sentence opens under Why (Artur 2026-11-22: simpler).
+  const why=[say?esc(say):'', rest].filter(Boolean).join(' ');
+  host.innerHTML=`<div class="sc-trust t-${level}"><p class="t-line"><span class="t-meter m-${level}" aria-hidden="true"><i></i><i></i><i></i></span><b>${lbl}</b></p>`
+    +((why||factLine)?`<button class="t-why" type="button" aria-expanded="false" aria-controls="confExp">Why <span aria-hidden="true">↓</span></button>`
+      +`<div class="t-more hidden" id="confExp">${why}${factLine}</div>`:'')+`</div>`;
   const btn=host.querySelector('.t-why'), exp=host.querySelector('#confExp');
   if(btn) btn.addEventListener('click',()=>{
     const open=exp.classList.toggle('hidden')===false;
@@ -11034,7 +11036,7 @@ function renderGradeNext(r, sport, v){
   if(on && capped.length) t=`A needs ${capped.join(', ')} in range`;
   else if(on && GRADE_NEXT[L]){
     const [n,at]=GRADE_NEXT[L];
-    t=`${n} from ${at}`+(n==='A'&&sport==='bike'&&v.out.length?', nothing out of range':'');
+    t=`${n} from ${at}`;   // what to fix to get there is said right under it
   }
   nx.textContent=t; nx.classList.toggle('hidden', !t);
 }
@@ -11053,7 +11055,6 @@ function placeResultActs(){
 RESULT_WIDE.addEventListener('change', placeResultActs);
 RESULT_WIDE.addEventListener('change', ()=>placePhotoActs());
 function resultVerdict(r, sport, tiles){
-  const s=r.sport_specific_metrics||{};
   // A row that restates another (the saddle, read off the knee) is one finding, not two.
   const rows=(tiles||[]).filter(m=>m&&!m.derived).map(m=>({m,st:measStatus(m)}));
   // How far out, as a share of the band's own width: degrees, centimetres and
@@ -11080,17 +11081,25 @@ function resultVerdict(r, sport, tiles){
     const u=unitOf(lead.m);
     why=`${esc(lead.m.lbl)} <b class="num">${esc(String(lead.m.val))}${measUnit(u)}</b>, range <span class="num">${measRange(lead.m.range.lo,lead.m.range.hi,u)}</span>.`;
   } else if(!lead&&issues.length&&issues[0].recommendation) why=esc(issues[0].recommendation);
-  const more=out.length+near.length-(lead?1:0);
-  if(lead) why+=more>0?` ${more} more ${more===1?'reading is':'readings are'} outside or at the edge of ${more===1?'its':'their'} range${ok.length?`; ${ok.length} in range`:''}.`
-                      :(ok.length?' Everything else that is graded is in range.':'');
-  else if(level==='good'&&ok.length) why=`All ${ok.length} graded readings are inside their ranges.`;
-  let side='';
-  const ae=s.aero_estimate;
-  if(sport==='bike'&&ae&&ae.zone_label) side=`<b>Aero</b> ${esc(ae.zone_label)} zone · about <span class="num">${esc(String(ae.drag_vs_upright_pct))}%</span> of upright drag`;
-  else if(sport==='run'&&s.cadence_spm!=null) side=`<b>Rhythm</b> Cadence <span class="num">${num(s.cadence_spm)}</span> spm${s.ground_contact_ms!=null?` · ground contact <span class="num">${num(s.ground_contact_ms)}</span> ms`:''}`;
+  // One line under the head, not three (Artur 2026-11-22: simpler): the
+  // reading against its range. The counts are in Findings below, the aero
+  // zone in its own section.
+  if(level==='good'&&ok.length&&!lead) why=`All ${ok.length} graded readings are inside their ranges.`;
+  const side='';
+  // The one change, as the chip Home shows: a picture of the action, not a sentence.
+  let chip=null;
+  if(lead&&lead.m.range&&!diag){
+    const key=VERDICT_FIX_KEY[lead.m.lbl];
+    const x={sport, position:r.cycling_position||null};
+    const how=key?fixHow(x,key,lead.m.delta>0?'high':'low'):'';
+    chip=how?fixChip(x,how):null;
+  }
   const go=diag?['fitBlock','What to change on the bike']:drill?['planBlock',`Drill: ${drill.drill}${drill.weeks?`, about ${drill.weeks} ${drill.weeks>1?'weeks':'week'}`:''}`]:(lead||issues.length)?['metricsBlock','The measurements']:null;
-  return {level, head, why, side, go, out, near, ok, issues, diag, drill};
+  return {level, head, why, side, go, out, near, ok, issues, diag, drill, chip};
 }
+/* A tile's label -> the fix table's key, for the verdict's chip. */
+const VERDICT_FIX_KEY={'Elbow':'elbow','Shoulder':'shoulder','Trunk':'trunk','Knee · bottom':'knee','Hip · top of stroke':'hip',
+  'Cadence':'cadence','Overstride':'overstride','Vert. oscillation':'vertical_oscillation','Ground contact':'ground_contact'};
 function verdictGo(host){
   host.querySelectorAll('[data-vgo]').forEach(b=>b.addEventListener('click',()=>{
     const el=document.getElementById(b.dataset.vgo); if(el&&!el.classList.contains('hidden')){ openSection(el); el.scrollIntoView({behavior:'smooth',block:'start'}); }
@@ -11105,6 +11114,7 @@ function renderVerdict(v){
   host.innerHTML=`<span class="v-chip v-${v.level}">${VERDICT_CHIP[v.level]}</span>
     <div class="v-head">${esc(v.head)}</div>
     ${v.why?`<p class="v-why">${v.why}</p>`:''}
+    ${v.chip?`<p class="v-fix"><span class="fx-chip"><i class="fx-ar">${v.chip[0]}</i>${esc(v.chip[1])} <b>${esc(v.chip[2])}</b></span>${v.chip[3]?`<span class="v-fix-n">${esc(v.chip[3])}</span>`:''}</p>`:''}
     ${v.side?`<p class="v-side">${v.side}</p>`:''}
     ${v.go?`<button type="button" class="v-go" data-vgo="${v.go[0]}">${esc(v.go[1])} <span aria-hidden="true">↓</span></button>`:''}`;
   verdictGo(host);
@@ -12281,8 +12291,7 @@ function renderChat(blockId, e, opts){
     track('chat_locked_shown',{plan:mode});
     return;
   }
-  const bike=(e.sport||'')==='bike';
-  block.innerHTML=head+`<p class="hint chat-hint">${opts&&opts.hint?esc(opts.hint):`Answers come from this report’s numbers${bike?', your bike profile and any CdA you have logged':''}. An assistant, not a fitter: it knows only what the clip measured`}</p>
+  block.innerHTML=head+`
     <div class="chat-log" aria-live="polite"></div>
     <div class="chat-sugg"></div>
     <form class="chat-form">
@@ -12338,14 +12347,12 @@ function drawChat(blockId, e){
     chatSend(blockId, e, q, {asked_from:'suggestion', suggestion_i:all.indexOf(q)});
   }));
   const left=(t.limit!=null&&t.used!=null)?Math.max(0,t.limit-t.used):null;
-  const notes=blockId==='chatBlock'?$('#notesOffer'):blockId==='hdChatBlock'?$('#hdNotesOffer'):null;
-  const human=notes&&!notes.classList.contains('hidden')
-    ? ' Want a person’s eye on it? <button class="btn btn-link" type="button" data-chathuman>A coach can review this clip</button>' : '';
+
   // What it carries over from earlier chats (report_chat "Memory"): shown on
   // request and forgettable in one tap -- it can hold an injury the athlete
   // mentioned, and it is theirs to clear.
-  const mem=t.memory?` <button class="btn btn-link" type="button" data-chatmem aria-expanded="false">What it remembers</button>`:'';
-  foot.innerHTML=(left==null?'':`${left} of ${t.limit} questions left this month.`)+mem+human
+  const mem=t.memory?` · <button class="btn btn-link" type="button" data-chatmem aria-expanded="false">What it remembers</button>`:'';
+  foot.innerHTML=(left==null?'':`${left} questions left this month`)+mem
     +(t.memory?`<span class="chat-mem hidden"><span class="chat-mem-t">${esc(t.memory)}</span>`
       +`<span class="chat-mem-n">Notes from what you told it in earlier chats, used as context, never as measurements</span>`
       +`<button class="btn btn-ghost btn-sm" type="button" data-chatforget>Forget all of it</button></span>`:'');
@@ -12362,8 +12369,6 @@ function drawChat(blockId, e){
       drawChat(blockId, e);
     }catch(_e){ toast('Could not clear it. Try again in a minute.'); }
   });
-  const hb=foot.querySelector('[data-chathuman]');
-  if(hb) hb.addEventListener('click',()=>{ track('chat_human_clicked',{}); notes.scrollIntoView({behavior:'smooth',block:'start'}); });
   const btn=block.querySelector('.chat-form button');
   if(btn) btn.disabled=!!t.busy || left===0;
 }

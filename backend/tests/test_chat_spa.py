@@ -120,5 +120,5 @@ def test_progress_asks_about_the_series_the_page_draws():
     body = s.split("function renderProgChat", 1)[1][:1500]
     assert "/me/progress/chat" in body and "linkedAthleteId" in body and "max:3" in body
     assert "renderProgChat(all, sport);" in s
-    # the coach-review link appears only where a report is on screen
-    assert "blockId==='hdChatBlock'?$('#hdNotesOffer'):null" in s
+    # the chat stays plain: no coach-review link under it (2026-11-22)
+    assert "data-chathuman" not in s

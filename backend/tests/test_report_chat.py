@@ -444,18 +444,19 @@ BANDED_BIKE = dict(BIKE_RESULT, cycling_position="road_hoods", sport_specific_me
 def test_suggestions_start_from_the_worst_reading():
     qs = report_chat.suggestions(BANDED_BIKE)
     assert 1 <= len(qs) <= report_chat.MAX_SUGGESTIONS
-    assert qs[0].startswith("My ") and "the range is" in qs[0]
-    assert "knee" in qs[0] or "elbow" in qs[0]
+    # short, the way people tap them (2026-11-22): the model has the numbers
+    assert qs[0] in ("How do I fix my knee at the bottom?", "How do I fix my elbow?")
     assert any("worth fixing" in q for q in qs)
+    assert all(len(q) <= 45 for q in qs)
     assert all("\u2014" not in q for q in qs)
 
 
 def test_suggestions_follow_the_account_and_the_clip():
     aero = report_chat.suggestions(dict(BIKE_RESULT), has_cda=True, has_previous=True)
-    assert any("over my race" in q for q in aero)
-    assert any("CdA" in q for q in aero)
+    assert any("time is my position worth" in q for q in aero)
+    assert any("test next" in q for q in aero)
     withheld = report_chat.suggestions(dict(BIKE_RESULT, score_withheld=True))
-    assert withheld[0].startswith("Why could this clip not be scored")
+    assert withheld[0] == "Why no score? How do I refilm?"
     run = report_chat.suggestions({"sport_type": "run"})
     assert any("drill" in q for q in run)
 
@@ -464,7 +465,7 @@ async def test_the_thread_comes_with_its_suggestions(db, make_user, fake_model):
     u = await make_user(tier=TIER_FULL)
     await add_report(db, u, result=BANDED_BIKE)
     j = await chat_api.get_chat("h1", u, db, None)
-    assert j["suggestions"] and j["suggestions"][0].startswith("My ")
+    assert j["suggestions"] and j["suggestions"][0].startswith("How do I fix my ")
 
 
 async def test_admin_sees_what_the_chat_cost(db, make_user, fake_model):
@@ -627,8 +628,8 @@ def test_the_series_reads_oldest_first_with_its_ranges():
     assert "2026-10-01 | 2026-11-01" in md
     assert "OUT" in md and "135-145" in md
     qs = report_chat.progress_suggestions(series)
-    assert qs[0] == "My score went from 78 to 85 since Oct 1. What changed the most?"
-    assert "elbow" in qs[1] and "noise" in qs[1]           # the biggest mover
+    assert qs[0] == "Why did my score go up?"
+    assert qs[1] == "Is the change in my elbow real?"      # the biggest mover
     assert len(qs) <= report_chat.MAX_SUGGESTIONS
 
 
@@ -642,7 +643,7 @@ async def test_progress_chat_answers_from_the_series(db, make_user, fake_model):
     await add_report(db, u, client_id="a1", result=_clip(78, 152.0, 128.0), at=1_000)
     await add_report(db, u, client_id="a2", result=_clip(85, 146.0, 140.0), at=2_000)
     j = await chat_api.get_progress_chat("bike", "a1,a2", u, db)
-    assert j["clips"] == 2 and j["suggestions"][0].startswith("My score went from 78 to 85")
+    assert j["clips"] == 2 and j["suggestions"][0] == "Why did my score go up?"
     out = await chat_api.ask_progress_chat(
         chat_api.ProgressQuestionIn(question="What changed the most?", sport="bike", ids=["a1", "a2"]), u, db)
     assert out["used"] == 1

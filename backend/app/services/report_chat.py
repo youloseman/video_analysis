@@ -186,7 +186,7 @@ def suggestions(
     pos = result.get("cycling_position")
     out: list[str] = []
     if result.get("score_withheld") or result.get("quality_gate_triggered"):
-        out.append("Why could this clip not be scored, and how should I film the next one?")
+        out.append("Why no score? How do I refilm?")
     flagged: list[dict[str, Any]] = []
     try:
         if sport == "bike":
@@ -209,32 +209,26 @@ def suggestions(
         lbl = str(r.get("label") or "").split(" · ")[0].strip()
         return lbl[:1].lower() + lbl[1:] if lbl[1:2].islower() else lbl
 
-    def reading(r: dict[str, Any]) -> str:
-        unit = (r.get("unit") or "").strip()
-        return _fmt(float(r["value"]), unit)
-
+    # Short, the way people tap them (Artur 2026-11-22): the model has the
+    # numbers, the chip only has to name the reading.
     if flagged and not out:
-        r = flagged[0]
-        unit = (r.get("unit") or "").strip()
-        lo, hi = r["band"]
-        out.append(f"My {name(r)} is {reading(r)} and the range is {lo:g}-{hi:g}{unit}. "
-                   "What should I change first, and what does it cost me?")
+        out.append(f"How do I fix my {name(flagged[0])}?")
     if len(flagged) > 1:
-        out.append(f"Is my {name(flagged[1])} ({reading(flagged[1])}) worth fixing, or can it wait?")
+        out.append(f"Is my {name(flagged[1])} worth fixing?")
     if sport == "bike":
         if pos in ("tt_aero", "triathlon"):
-            out.append("How much time could my position be worth over my race, and where is it hiding?")
+            out.append("How much time is my position worth?")
         elif pos in ("road_hoods", "road_drops"):
-            out.append("Is this a racing or an endurance position, and what would you change for a long ride?")
+            out.append("Is this good for long rides?")
         if has_cda:
-            out.append("What did my CdA tests show, and what should I test next?")
+            out.append("What should I test next?")
     else:
-        out.append("Which drill fits this report best, and how often should I do it?")
+        out.append("Which drill helps most?")
     if has_previous:
-        out.append("What changed since my last clip on this setup?")
+        out.append("What changed since last time?")
     if not flagged and not out[:1]:
-        out.insert(0, "Everything reads inside its range. Where would you look for more speed?")
-    out.append("How should I film the next clip to get the most from it?")
+        out.insert(0, "Where can I still get faster?")
+    out.append("How do I film a better clip?")
     seen: list[str] = []
     for q in out:
         if q not in seen:
@@ -828,8 +822,7 @@ def progress_suggestions(series: dict[str, Any]) -> list[str]:
     scored = [c for c in clips if c["score"] is not None]
     if len(scored) >= 2:
         a, b = scored[0], scored[-1]
-        out.append(f"My score went from {a['score']} to {b['score']} since {_human_day(a['date'])}. "
-                   "What changed the most?")
+        out.append(f"Why did my score go {'up' if b['score'] > a['score'] else 'down' if b['score'] < a['score'] else 'nowhere'}?")
     moves = []
     for lbl in series["labels"]:
         pts = [c["values"][lbl] for c in clips if lbl in c["values"]]
@@ -840,10 +833,8 @@ def progress_suggestions(series: dict[str, Any]) -> list[str]:
         _d, lbl, first, last = moves[0]
         name = lbl.split(" · ")[0]
         name = name[:1].lower() + name[1:] if name[1:2].islower() else name
-        out.append(f"My {name} moved from {first[0]:.0f}{first[1]} to {last[0]:.0f}{last[1]}. "
-                   "Is that real, or measurement noise?")
-    out.append("What should I work on next to keep improving?")
-    out.append("Which of my changes is worth keeping, and which should I undo?")
+        out.append(f"Is the change in my {name} real?")
+    out.append("What should I work on next?")
     return out[:MAX_SUGGESTIONS]
 
 

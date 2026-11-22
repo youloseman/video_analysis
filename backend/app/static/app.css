@@ -3455,6 +3455,15 @@ details.raw pre{background:var(--c-media-bg);color:var(--card-soft);font-family:
 .exportrow{display:flex;gap:8px;flex-wrap:wrap}
 /* Ask about this report (renderChat) */
 .chat-hint{text-align:left;margin:0 0 14px}
+/* The verdict's one change (resultVerdict chip), on the dark score card */
+.v-fix{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0}
+.v-fix .fx-chip{background:var(--c-bg);color:var(--c-ink)}
+.v-fix-n{font-size:14px;color:inherit;opacity:.75}
+/* Confidence as three bars, beside two words */
+.t-meter{display:inline-flex;gap:2px;align-items:flex-end;margin-right:8px;vertical-align:-1px}
+.t-meter i{display:block;width:4px;border-radius:var(--radius-bar);background:currentColor;opacity:.25}
+.t-meter i:nth-child(1){height:6px} .t-meter i:nth-child(2){height:9px} .t-meter i:nth-child(3){height:12px}
+.t-meter.m-low i:nth-child(1),.t-meter.m-medium i:nth-child(-n+2),.t-meter.m-high i{opacity:1}
 .chat-about{margin:-4px 0 10px;font-size:14px;color:var(--c-ink-soft)}
 .chat-about-a{color:var(--c-blue);font-weight:500}
 .chat-log{display:flex;flex-direction:column;gap:10px}
