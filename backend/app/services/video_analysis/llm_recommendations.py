@@ -400,7 +400,11 @@ def _bike_data_block(
             return ""
         st = statuses.get(field or "")
         verdict = f", {_WORD[st[0]]}" if st and st[0] in _WORD else ""
-        return f" (optimal {r[0]}-{r[1]}{verdict})"
+        # The band the verdict was reached on (it carries the far-side knee
+        # margin), not the position table's: "optimal 135-145, in range" under
+        # a 148.9 reads as a contradiction and was answered as one.
+        lo, hi = (st[2], st[3]) if st else (r[0], r[1])
+        return f" (optimal {lo:g}-{hi:g}{verdict})"
 
     lines = [
         (f"Sport: cycling | Position: {pos_label} | Technique score: {score}/100 ({grade})"

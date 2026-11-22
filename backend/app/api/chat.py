@@ -202,6 +202,9 @@ async def _context(db: AsyncSession, owner: User, row: Analysis, reader: User) -
     parts_md = parts.chat_block((profile or {}).get("bike_generation")) if sport == "bike" else None
     if parts_md:
         athlete_md = athlete_md + "\n\n" + parts_md
+    dirs = report_chat.directions_block(result)
+    if dirs:
+        report_md = f"{report_md}\n\n{dirs}"
     return {
         "report_md": report_md,
         "athlete_md": athlete_md,

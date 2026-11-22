@@ -53,6 +53,14 @@ PRODUCT_URL = "https://getflapp.com"
 _STABLE_ANGLES = frozenset({"trunk", "trunk_angle", "elbow", "left_elbow", "right_elbow"})
 
 
+
+# reference_bands' fields -> the position table's keys (sport_configs.reference_bands).
+_BIKE_FIELD_TO_BAND = {
+    "knee_at_bdc": "knee_at_bdc", "knee_at_tdc": "knee_at_tdc", "hip_at_tdc": "hip_at_tdc",
+    "elbow_angle_avg": "elbow_angle", "trunk_angle_avg": "trunk_angle",
+    "shoulder_angle_avg": "shoulder_angle", "forearm_tilt_avg": "forearm_tilt",
+}
+
 def _now_iso(dt: datetime | None = None) -> str:
     dt = dt or datetime.now(timezone.utc)
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -200,6 +208,12 @@ def _metrics_section(result: dict[str, Any]) -> str:
     """The numbers, rendered by the same builder the in-app coach prompt uses."""
     from app.services.video_analysis.llm_recommendations import build_metrics_block
 
+    # The classifier reads the camera side (the far-side knee margin) and the
+    # detector from the summary; a stored result keeps them a level up.
+    summary = dict(result.get("sport_specific_metrics") or {})
+    for k in ("camera_side", "frames_analyzed", "pose_detector"):
+        if summary.get(k) is None and result.get(k) is not None:
+            summary[k] = result[k]
     block = build_metrics_block(
         _sport_of(result),
         result.get("technique_score"),
@@ -207,7 +221,7 @@ def _metrics_section(result: dict[str, Any]) -> str:
         result.get("cycling_position"),
         result.get("detected_issues") or [],
         result.get("angle_statistics") or {},
-        result.get("sport_specific_metrics") or {},
+        summary,
     )
     return f"## Measurements\n\n{block}"
 
@@ -587,6 +601,21 @@ def build_json(
             reference = {k: list(v) for k, v in RUNNING_REFERENCE.items()}
     except Exception:  # noqa: BLE001 -- bands are context, never a reason to fail
         reference = {}
+    # The bands this clip was GRADED on win over the position table: they carry
+    # the far-side knee margin (+9 on a non-drive clip) and anything else the
+    # scorer applied. Without this the export said "knee 148.9, optimal
+    # 135-145, OUT OF RANGE" under a report that showed it in range 135-154,
+    # and the report chat told that rider to lower the saddle (live check,
+    # 2026-11-22).
+    served = result.get("reference_bands") or {}
+    if isinstance(served, dict) and served:
+        from app.services.video_analysis.biomechanics.sport_configs import _RUN_FIELD_TO_BAND
+
+        fmap = _BIKE_FIELD_TO_BAND if sport == "bike" else _RUN_FIELD_TO_BAND
+        for field, b in served.items():
+            key = fmap.get(field)
+            if key and isinstance(b, dict) and b.get("lo") is not None and b.get("hi") is not None:
+                reference[key] = [b["lo"], b["hi"]]
 
     return {
         "flapp_export_schema": EXPORT_SCHEMA,

@@ -51,6 +51,7 @@ one for a ceiling.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -464,9 +465,33 @@ SYSTEM = (
     "name helmet models: from a side view we cannot tell which helmet is on.\n\n"
     "FIT ADVICE\n"
     "- Body angles on a bike are coupled. When you suggest a change, say what it "
-    "costs in the same breath (opening the hip with more stack sits the rider up).\n"
+    "costs in the same breath (opening the hip with more stack sits the rider up). "
+    "Name only couplings that follow from the geometry: saddle height moves the "
+    "knee and the hip; bar reach and stack move the elbow, the shoulder and the "
+    "trunk. Do not claim a saddle change moves the elbow.\n"
+    "- Directions, never reversed (angles are internal, 180 = straight): a LONGER "
+    "reach (longer stem, bars further forward) straightens the elbow, opens the "
+    "shoulder and lowers the trunk; a SHORTER reach bends the elbow more and "
+    "raises the trunk. More stack (spacers, riser) raises the trunk and opens "
+    "the hip; less stack does the opposite. A higher saddle straightens the knee "
+    "at the bottom of the stroke; a lower saddle bends it. An elbow below its "
+    "band is bent more than the target, so shortening the reach makes it worse.\n"
+    "- Hoods and drops are road positions, not aero positions: do not call them "
+    "aero or tell a road rider they are leaving an aero position.\n"
+    "- Stiffness or discomfort on long rides is a fit question: answer it from "
+    "the numbers (what in this position could load that area, what to try "
+    "first, in small steps, well before an event), then say in one line that a "
+    "fitter can check it in person. Only pain, numbness or an injury is the "
+    "fitter-or-physio-only case below.\n"
+    "- Never say a reading CAUSES a symptom (stiffness, discomfort, fatigue): "
+    "the clip cannot tell. Say which readings could play a part, the trade-off "
+    "of changing each (a longer reach also flattens the torso, which can load "
+    "the lower back more), and that a fitter can find the cause in person.\n"
     "- When the report has a ranked list of adjustment options, recommend from the "
     "top of it.\n"
+    "- Mention part compatibility ONLY when the athlete asks about buying, "
+    "fitting or swapping a part; never add it to an answer that needs no part "
+    "(a saddle height change needs none).\n"
     "- Give sizes of change only as the report gives them. Name a part (stem, "
     "extension, riser, pads, wedge) ONLY when it appears under 'Parts on record "
     "for this frame', and say its status (confirmed by the maker, several owners, "
@@ -474,19 +499,30 @@ SYSTEM = (
     "say compatibility is unknown for this frame and suggest checking with the "
     "maker. Never guess that a part fits.\n"
     "- Pain, numbness or injury: say the clip cannot assess it and suggest a "
-    "fitter or a physio. No diagnosis.\n"
+    "fitter or a physio. No diagnosis. Do not add this line to answers where the "
+    "athlete mentioned no pain.\n"
     "- If a human review would answer better (a judgement call, a position the "
     "numbers cannot settle), say that a Flapp coach can review this clip.\n\n"
     "STYLE\n"
     "- Answer in the language the athlete wrote in.\n"
     "- Short: two to six sentences, or a few bullets when listing steps. Lead with "
-    "the answer. Plain words; keep the report's metric names (Knee BDC, Trunk "
+    "a direct answer to the question asked (yes or no, which way, what first), "
+    "then the reason. Plain words; keep the report's metric names (Knee BDC, Trunk "
     "angle) as they are.\n"
     "- Off-topic questions (not about this analysis, training for it, or the "
     "equipment in it): one line saying you only answer about this report.\n"
     "- Never use the em dash character (the long dash, U+2014): use a colon, "
     "comma or full stop instead."
 )
+
+
+_ANSWER_LANG = {"ru": "Russian"}
+
+
+def _lang(text: str) -> str:
+    from app.services.chat_topics import language
+
+    return language(text)
 
 
 def build_prompt(
@@ -525,6 +561,11 @@ def build_prompt(
         )
         parts.append(f"# CONVERSATION SO FAR\n\n{convo}")
     parts.append(f"# THE ATHLETE'S QUESTION\n\n{question}")
+    lang = _ANSWER_LANG.get(_lang(question))
+    if lang:
+        # Flash-Lite answered a Russian question in English with the rule only
+        # in the system prompt (live check, 2026-11-22): said last, it holds.
+        parts.append(f"Write your whole answer in {lang}.")
     return "\n\n".join(p.strip() for p in parts if p and p.strip())
 
 
@@ -562,7 +603,8 @@ MEMORY_SYSTEM = (
     "limits, kit they own or cannot change, what they tried and how it went, "
     "preferences about how they want answers.\n"
     "- Only what the athlete said. Never copy numbers from the report or the "
-    "assistant's advice, unless the athlete said they acted on it.\n"
+    "assistant's advice, unless the athlete said they acted on it, and never "
+    "copy what the account already records (their bike, height, flexibility).\n"
     "- At most 8 bullets starting with '- ', under 600 characters, in English. "
     "Drop what a newer statement replaced.\n"
     "- If the exchange adds nothing durable, reply with exactly NO_CHANGE."
@@ -599,7 +641,12 @@ def clean_memory(text: str | None) -> str | None:
     t = (text or "").strip()
     if not t or t.upper().startswith(NO_CHANGE):
         return None
-    lines = [ln.strip() for ln in t.splitlines() if ln.strip().startswith("- ")]
+    # Small models vary the bullet ("* ", "• ", "1. "): any of them is a note.
+    lines = []
+    for ln in t.splitlines():
+        m = re.match(r"\s*(?:[-*\u2022]|\d+[.)])\s+(.+)", ln)
+        if m:
+            lines.append("- " + m.group(1).strip())
     if not lines:
         return None
     out = "\n".join(lines).replace("\u2014", ",")
@@ -617,6 +664,59 @@ def remember(notes: str | None, question: str, answer: str) -> dict[str, Any] | 
     return {"text": clean_memory(got.get("text")), "model": got.get("model"),
             "tokens_in": estimate_tokens(MEMORY_SYSTEM) + estimate_tokens(prompt),
             "tokens_out": estimate_tokens(got.get("text") or "")}
+
+
+# --------------------------------------------------------------------------
+# Which way each flagged reading moves, worked out here, not by the model
+# --------------------------------------------------------------------------
+# Live check 2026-11-22: with the rule only in SYSTEM, Flash-Lite still told a
+# rider with bent elbows that a SHORTER reach would straighten them (one answer
+# in ten, a different one each run). The directions for this report's own
+# flagged readings are now written out in its context, for the model to quote.
+# Bike only: a run's fixes are drills, already in the report's plan.
+_DIRECTIONS: dict[str, tuple[str, str]] = {
+    # field: (below the band, above the band)
+    "knee_at_bdc": ("the knee is more bent than the target at the bottom: raising the saddle straightens it, "
+                    "lowering it bends it more",
+                    "the knee is straighter than the target at the bottom: lowering the saddle bends it, "
+                    "raising it straightens it further"),
+    "knee_at_tdc": ("the knee is more closed than the target at the top: a higher saddle or shorter cranks open it",
+                    "the knee is more open than the target at the top: a lower saddle closes it"),
+    "hip_at_tdc": ("the hip is more closed than the target at the top: more stack, a shorter reach or a "
+                   "higher saddle opens it; less stack or a longer reach closes it further",
+                   "the hip is more open than the target: that is comfort, not a fault"),
+    "trunk_angle_avg": ("the torso is lower than the band: more stack or a shorter reach raises it",
+                        "the torso is more upright than the band: a longer or lower front (longer stem, fewer "
+                        "spacers) lowers it; a shorter or higher front raises it further"),
+    "shoulder_angle_avg": ("the shoulder is more closed than the band: a longer reach opens it; a shorter "
+                           "reach closes it further",
+                           "the shoulder is more open than the band: a shorter reach closes it; a longer reach "
+                           "opens it further"),
+    "elbow_angle_avg": ("the arms are more bent than the target: a LONGER reach straightens them; a SHORTER "
+                        "reach bends them more",
+                        "the arms are nearly straight: a SHORTER reach bends them; a longer reach straightens "
+                        "them further"),
+}
+
+
+def directions_block(result: dict[str, Any]) -> str | None:
+    """Which change moves each out-of-band bike reading which way, or None."""
+    if str(result.get("sport_type") or "") != "bike":
+        return None
+    lines = []
+    for r in _rows_for(result):
+        f, v, band = r.get("field"), r.get("value"), r.get("band")
+        if f not in _DIRECTIONS or r.get("status") not in ("bad", "warn") or not band or not isinstance(v, (int, float)):
+            continue
+        side = 0 if v < band[0] else 1 if v > band[1] else None
+        if side is None:
+            continue
+        lines.append(f"- {r['label']} {v:.0f}{r.get('unit') or ''} (range {band[0]:g}-{band[1]:g}): {_DIRECTIONS[f][side]}.")
+    if not lines:
+        return None
+    return ("## Which way each flagged reading moves\n\n"
+            "Worked out from the bike's geometry. Quote these directions; never reverse them.\n\n"
+            + "\n".join(lines))
 
 
 # --------------------------------------------------------------------------

@@ -672,3 +672,51 @@ async def test_progress_chat_is_for_paid_plans(db, make_user, fake_model):
     with pytest.raises(HTTPException) as e:
         await chat_api.get_progress_chat("bike", "a1,a2", u, db)
     assert e.value.status_code == 402
+
+
+
+def test_the_export_grades_on_the_bands_the_clip_was_graded_on():
+    """A non-drive clip's knee band is 135-154: the export said 135-145, OUT OF
+    RANGE, and the chat told the rider to lower the saddle (2026-11-22)."""
+    from app.services.export import ai_export
+
+    r = dict(BANDED_BIKE, sport_specific_metrics={"knee_at_bdc": 148.9},
+             reference_bands={"knee_at_bdc": {"lo": 135, "hi": 154}})
+    md = ai_export.build_markdown(r, job_id="x")
+    assert "optimal 135-154, in range" in md and "OUT OF RANGE" not in md.split("Knee angle at the bottom")[1][:60]
+
+
+def test_memory_accepts_any_bullet():
+    assert report_chat.clean_memory("* Races in June\n• Back stiff after 3 h\n1. Cannot change stem") == (
+        "- Races in June\n- Back stiff after 3 h\n- Cannot change stem")
+
+
+def test_the_prompt_states_reach_directions_and_the_language():
+    assert "shortening the reach makes it worse" in report_chat.SYSTEM
+    p = report_chat.build_prompt(report_md="R", athlete_md="A", withheld_md=None, history=[],
+                                 question="Седло поднять или опустить?")
+    assert p.endswith("Write your whole answer in Russian.")
+    assert "Write your whole answer" not in report_chat.build_prompt(
+        report_md="R", athlete_md="A", withheld_md=None, history=[], question="Saddle up or down?")
+
+
+
+def test_the_directions_for_flagged_readings_are_worked_out_in_code():
+    """Flash-Lite reversed the reach-elbow direction once in ten (2026-11-22)."""
+    d = report_chat.directions_block(BANDED_BIKE)       # knee 152 high, elbow 131 low
+    assert "LONGER reach straightens them" in d and "lowering the saddle bends it" in d
+    assert "never reverse them" in d
+    assert report_chat.directions_block({"sport_type": "run"}) is None
+
+
+async def test_the_chat_context_carries_the_directions(db, make_user, fake_model):
+    u = await make_user(tier=TIER_FULL)
+    await add_report(db, u, result=BANDED_BIKE)
+    await ask(db, u, question="Should I buy a shorter stem?")
+    assert "Which way each flagged reading moves" in fake_model["prompts"][-1]
+
+
+
+def test_no_invented_causes_and_no_account_facts_in_the_notes():
+    assert "Never say a reading CAUSES a symptom" in report_chat.SYSTEM
+    assert "never copy what the account already records" in report_chat.MEMORY_SYSTEM
