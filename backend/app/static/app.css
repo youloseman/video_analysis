@@ -2000,6 +2000,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .cgs-mk{stroke:var(--c-bg);stroke-width:2.2}
 .cgs-t{fill:currentColor;stroke:none;font:600 12px var(--f-mono)}
 .cgs-sun{fill:var(--c-warn)}
+.cgs-ray{stroke:var(--c-warn);stroke-width:2}
 .cgs-glow{fill:var(--c-warn);opacity:.25}
 .cgs-sil{opacity:.55}
 /* Arriving from a warning that named this rule: one colour step on the
