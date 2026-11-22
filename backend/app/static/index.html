@@ -12300,7 +12300,7 @@ async function chatLoad(blockId, e){
     if(r.status===402||r.status===409){ delete chatThreads[e.id]; const b=$('#'+blockId); if(b&&b.dataset.entry===e.id) b.classList.add('hidden'); return; }
     if(r.ok){
       const j=await r.json();
-      Object.assign(chatThreads[e.id], {msgs:j.messages||[], used:j.used, limit:j.limit, sugg:j.suggestions||null});
+      Object.assign(chatThreads[e.id], {msgs:j.messages||[], used:j.used, limit:j.limit, sugg:j.suggestions||null, memory:j.memory||null});
     }
     // 404: a fresh report still on its way to the server -- an empty thread.
   }catch(_e){}
@@ -12327,20 +12327,41 @@ function drawChat(blockId, e){
   sugg.innerHTML=(!t.busy&&list.length&&(t.limit==null||t.used==null||t.used<t.limit))
     ?(t.msgs.length?'<span class="chat-sugg-h">More to ask</span>':'')+list.map((q,i)=>`<button class="btn btn-ghost btn-sm" type="button" data-sugg="${i}">${esc(q)}</button>`).join(''):'';
   sugg.querySelectorAll('[data-sugg]').forEach(b=>b.addEventListener('click',()=>{
-    track('chat_suggestion_used',{i:Number(b.dataset.sugg), from_report:!!(t.sugg&&t.sugg.length), turn:t.msgs.length/2|0});
-    chatSend(blockId, e, list[Number(b.dataset.sugg)]);
+    const q=list[Number(b.dataset.sugg)];
+    track('chat_suggestion_used',{i:all.indexOf(q), from_report:!!(t.sugg&&t.sugg.length), turn:t.msgs.length/2|0});
+    chatSend(blockId, e, q, {asked_from:'suggestion', suggestion_i:all.indexOf(q)});
   }));
   const left=(t.limit!=null&&t.used!=null)?Math.max(0,t.limit-t.used):null;
   const notes=$(blockId==='chatBlock'?'#notesOffer':'#hdNotesOffer');
   const human=notes&&!notes.classList.contains('hidden')
     ? ' Want a person’s eye on it? <button class="btn btn-link" type="button" data-chathuman>A coach can review this clip</button>' : '';
-  foot.innerHTML=(left==null?'':`${left} of ${t.limit} questions left this month.`)+human;
+  // What it carries over from earlier chats (report_chat "Memory"): shown on
+  // request and forgettable in one tap -- it can hold an injury the athlete
+  // mentioned, and it is theirs to clear.
+  const mem=t.memory?` <button class="btn btn-link" type="button" data-chatmem aria-expanded="false">What it remembers</button>`:'';
+  foot.innerHTML=(left==null?'':`${left} of ${t.limit} questions left this month.`)+mem+human
+    +(t.memory?`<span class="chat-mem hidden"><span class="chat-mem-t">${esc(t.memory)}</span>`
+      +`<span class="chat-mem-n">Notes from what you told it in earlier chats, used as context, never as measurements</span>`
+      +`<button class="btn btn-ghost btn-sm" type="button" data-chatforget>Forget all of it</button></span>`:'');
+  const mb=foot.querySelector('[data-chatmem]');
+  if(mb) mb.addEventListener('click',()=>{ const p=foot.querySelector('.chat-mem'); const open=p.classList.toggle('hidden')===false;
+    mb.setAttribute('aria-expanded',String(open)); if(open) track('chat_memory_viewed',{chars:t.memory.length}); });
+  const fb=foot.querySelector('[data-chatforget]');
+  if(fb) fb.addEventListener('click',async()=>{
+    try{
+      const r=await fetch((window.FLAPP_API_BASE||'')+'/me/chat/memory',{method:'DELETE',headers:authHeaders()});
+      if(!r.ok) throw new Error('http');
+      Object.values(chatThreads).forEach(x=>{ if(x) x.memory=null; });
+      toast('Forgotten. Your threads are still here');
+      drawChat(blockId, e);
+    }catch(_e){ toast('Could not clear it. Try again in a minute.'); }
+  });
   const hb=foot.querySelector('[data-chathuman]');
   if(hb) hb.addEventListener('click',()=>{ track('chat_human_clicked',{}); notes.scrollIntoView({behavior:'smooth',block:'start'}); });
   const btn=block.querySelector('.chat-form button');
   if(btn) btn.disabled=!!t.busy || left===0;
 }
-async function chatSend(blockId, e, text){
+async function chatSend(blockId, e, text, how){
   const q=String(text||'').trim();
   const t=chatThreads[e.id]||(chatThreads[e.id]={msgs:[], used:null, limit:null, busy:false});
   if(!q||t.busy) return;
@@ -12350,7 +12371,7 @@ async function chatSend(blockId, e, text){
   drawChat(blockId, e);
   let ok=false;
   try{
-    const r=await fetch(meUrl(e,'chat'),{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({question:q})});
+    const r=await fetch(meUrl(e,'chat'),{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(Object.assign({question:q, asked_from:'typed'}, how||{}))});
     const j=await r.json().catch(()=>({}));
     if(r.ok){
       t.msgs.pop(); t.msgs.push(j.question, j.answer); t.used=j.used; t.limit=j.limit; ok=true;
@@ -16984,6 +17005,12 @@ function renderChatUsage(u){
     ${rows?`<div class="tablewrap"><table class="data">
       <thead><tr><th scope="col">Reader</th><th scope="col">Plan</th><th scope="col" class="num">Questions</th><th scope="col" class="num">Reports</th><th scope="col" class="num">Tokens in / out</th><th scope="col" class="num">Est. cost</th><th scope="col" class="num">Of ceiling</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`:'<p class="hint">No questions yet this month</p>'}
+    ${Object.keys(u.topics||{}).length?`<h4 class="u-mt-6">What they ask about</h4><div class="fb-tags">${Object.entries(u.topics).map(([tp,n])=>
+      `<span class="fb-tag u-cursor-default">${esc(tp.replace(/_/g,' '))} · <b>${n}</b></span>`).join('')}</div>`:''}
+    ${(u.top_questions||[]).length?`<h4 class="u-mt-6">Asked more than once</h4><ol class="chat-adm-list">${u.top_questions.map(q=>
+      `<li>${esc(q.text)} <b>× ${q.n}</b></li>`).join('')}</ol>`:''}
+    ${(u.recent||[]).length?`<h4 class="u-mt-6">Latest questions</h4><ul class="chat-adm-list">${u.recent.map(q=>
+      `<li><span class="chat-adm-meta">${esc(fmtWhen(q.at))} · ${esc(q.email||'')} · ${esc((q.topic||'').replace(/_/g,' '))}</span>${esc(q.text)}</li>`).join('')}</ul>`:''}
   </div>`;
 }
 

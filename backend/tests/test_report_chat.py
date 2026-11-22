@@ -479,3 +479,132 @@ async def test_admin_sees_what_the_chat_cost(db, make_user, fake_model):
     assert row["email"] == "rider@example.com" and row["limit"] == 50
     assert 0 < row["budget_used"] < 0.1
     assert j["limits"][TIER_COACH]["budget_usd"] == 2.5
+
+
+# --------------------------------------------------------------------------
+# 2026-11-22: what people ask, what it cost them, what the assistant keeps
+# --------------------------------------------------------------------------
+from app.services import chat_topics  # noqa: E402
+
+
+@pytest.mark.parametrize("q,topic", [
+    ("My knee hurts after long rides", "pain"),
+    ("У меня болит спина после гонки", "pain"),
+    ("Стоит ли опустить седло больше?", "saddle"),          # "больше" is not pain
+    ("Как снять следующее видео?", "filming"),
+    ("What did my CdA tests show?", "cda_test"),
+    ("How much time could I save over 180 km?", "aero_time"),
+    ("Is my elbow worth fixing?", "arms"),
+    ("warm up drill?", "drills"),                            # "arm" inside "warm" is not arms
+    ("Почему колено 149?", "knee"),
+    ("hello", "other"),
+])
+def test_questions_get_a_topic(q, topic):
+    assert chat_topics.classify(q) == topic
+
+
+def test_language_hint():
+    assert chat_topics.language("Почему колено 149?") == "ru"
+    assert chat_topics.language("Why is my knee 149?") == "en"
+
+
+@pytest.fixture
+def events(monkeypatch):
+    from app.services import analytics
+
+    got: list[tuple[str, dict]] = []
+    monkeypatch.setattr(analytics, "capture_bg", lambda _d, ev, props=None: got.append((ev, props or {})))
+    return got
+
+
+async def test_posthog_gets_the_topic_and_the_cost_never_the_text(db, make_user, fake_model, events):
+    u = await make_user(tier=TIER_ENTHUSIAST)
+    await add_report(db, u)
+    q = "My lower back hurts on long rides, John from the club says raise the bars"
+    await chat_api.ask_chat("h1", chat_api.QuestionIn(question=q, asked_from="suggestion", suggestion_i=1), u, db, None)
+    ev, props = next(x for x in events if x[0] == "chat_question")
+    assert props["topic"] == "pain" and props["asked_from"] == "suggestion" and props["suggestion_i"] == 1
+    assert props["tokens_in"] > 0 and props["cost_usd"] > 0 and props["questions_left"] == 49
+    assert 0 < props["budget_used"] < 1
+    assert props["$set"]["chat_questions_month"] == 1
+    assert all(q not in str(v) and "John" not in str(v) for v in props.values())
+
+
+async def test_limit_hits_are_tracked(db, make_user, fake_model, events, monkeypatch):
+    monkeypatch.setitem(report_chat.CHAT_LIMITS, TIER_ENTHUSIAST, 1)
+    u = await make_user(tier=TIER_ENTHUSIAST)
+    await add_report(db, u)
+    await ask(db, u)
+    with pytest.raises(HTTPException):
+        await ask(db, u)
+    assert next(p for e, p in events if e == "chat_limit_reached")["kind"] == "questions"
+
+
+def test_older_turns_go_in_as_their_questions():
+    hist = []
+    for i in range(12):
+        hist.append(ChatMessage(role=ROLE_USER, text=f"question {i}", user_id=1, owner_user_id=1,
+                                analysis_client_id="h1", created_at_ms=i * 10))
+        hist.append(ChatMessage(role=ROLE_ASSISTANT, text=f"answer {i}", user_id=1, owner_user_id=1,
+                                analysis_client_id="h1", created_at_ms=i * 10 + 1))
+    p = report_chat.build_prompt(report_md="R", athlete_md="A", withheld_md=None, history=hist,
+                                 question="now?", memory="- Racing Ironman Canada in July")
+    assert "EARLIER QUESTIONS IN THIS THREAD" in p and "- question 0" in p
+    assert "answer 0" not in p and "answer 11" in p          # old answers dropped, recent kept
+    assert "Racing Ironman Canada" in p and "never quote a note" in p
+
+
+def test_memory_answers_are_cleaned():
+    assert report_chat.clean_memory("NO_CHANGE") is None
+    assert report_chat.clean_memory("Sure! Here are notes") is None
+    got = report_chat.clean_memory("Notes:\n- Races Ironman Canada \u2014 July\n- Cannot change the stem")
+    assert got == "- Races Ironman Canada , July\n- Cannot change the stem"
+    assert len(report_chat.clean_memory("- " + "x" * 2000)) == report_chat.MEMORY_MAX_CHARS
+
+
+async def test_memory_is_kept_used_counted_and_forgettable(db, make_user, fake_model, monkeypatch):
+    from contextlib import asynccontextmanager
+
+    u = await make_user(tier=TIER_FULL)
+    await add_report(db, u)
+
+    @asynccontextmanager
+    async def same_session():
+        yield db
+
+    monkeypatch.setattr(chat_api, "SessionLocal", same_session)
+    monkeypatch.setattr(report_chat, "remember", lambda notes, q, a: {
+        "text": "- Races Ironman Canada in July", "model": "fake-1", "tokens_in": 900, "tokens_out": 20})
+    await chat_api._update_memory(u.id, u.id, report_chat.memory_key(None), "I race Ironman Canada in July", "ok")
+    mem = await report_chat.memory_of(db, u.id, u.id, "_memory")
+    assert mem.text == "- Races Ironman Canada in July"
+    # never listed as a thread message, never a question
+    assert await report_chat.used_this_month(db, u.id) == 0
+    assert all(m.role != "memory" for m in await report_chat.thread(db, u.id, u.id, "h1"))
+    # counted against the dollar ceiling
+    assert await report_chat.spent_this_month(db, u.id) > 0
+    # the next question carries it
+    await ask(db, u)
+    assert "Races Ironman Canada" in fake_model["prompts"][-1]
+    j = await chat_api.get_chat("h1", u, db, None)
+    assert j["memory"] == "- Races Ironman Canada in July"
+    # and the athlete can clear it
+    assert (await chat_api.forget_memory(u, db))["forgotten"] == 1
+    assert await report_chat.memory_of(db, u.id, u.id, "_memory") is None
+
+
+def test_a_coach_keeps_notes_per_athlete():
+    assert report_chat.memory_key(None) == "_memory"
+    assert report_chat.memory_key(7) == "_memory:a7" != report_chat.memory_key(8)
+
+
+async def test_admin_sees_topics_repeats_and_recent(db, make_user, fake_model):
+    u = await make_user(tier=TIER_ENTHUSIAST)
+    admin = await make_user(tier=TIER_ADMIN)
+    await add_report(db, u)
+    for q in ("Why lower the saddle?", "Why lower the saddle?", "My knee hurts"):
+        await ask(db, u, question=q)
+    j = await chat_api.chat_usage(admin, db)
+    assert j["topics"]["saddle"] == 2 and j["topics"]["pain"] == 1
+    assert j["top_questions"][0] == {"text": "why lower the saddle?", "n": 2}
+    assert j["recent"][0]["text"] == "My knee hurts" and len(j["recent"]) == 3

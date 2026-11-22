@@ -665,6 +665,49 @@ def standing(days: int | None) -> None:
     # 8. Pricing -----------------------------------------------------------
     pricing(where, "8. Pricing funnel")
 
+    # 9. AI chat -----------------------------------------------------------
+    # Server events (api/chat.py): chat_question carries topic, cost and what
+    # is left of the month; never the text, which lives in our own table and
+    # on the admin Feedback screen.
+    ai_chat(where)
+
+
+def ai_chat(where: str) -> None:
+    head("9. AI chat")
+    c = q(f"""SELECT countIf(event='chat_question'), uniqIf(person_id, event='chat_question'),
+                     sumIf(toFloat(properties.cost_usd), event='chat_question'),
+                     sumIf(toFloat(properties.cost_usd), event='chat_memory_updated'),
+                     countIf(event='chat_limit_reached' AND properties.kind='questions'),
+                     countIf(event='chat_limit_reached' AND properties.kind='budget'),
+                     countIf(event='chat_failed'), uniqIf(person_id, event='chat_opened')
+              FROM events WHERE {where} LIMIT 1""")[0]
+    asked, askers, cost, mem_cost, hit_q, hit_b, failed, opened = c
+    cost, mem_cost = cost or 0.0, mem_cost or 0.0
+    table(["questions", "askers", "opened the chat", "est. cost", "per question", "memory cost",
+           "hit question cap", "hit $ cap", "no answer"],
+          [[asked, askers, opened, f"${cost:.3f}", f"${cost / asked:.4f}" if asked else "—",
+            f"${mem_cost:.3f}", hit_q, hit_b, failed]])
+    table(["plan", "questions", "askers", "est. cost", "max of $ ceiling"],
+          q(f"""SELECT properties.tier, count(), uniq(person_id), round(sum(toFloat(properties.cost_usd)), 3),
+                       round(max(toFloat(properties.budget_used)), 2)
+                FROM events WHERE event='chat_question' AND {where}
+                GROUP BY 1 ORDER BY 2 DESC LIMIT 10"""))
+    table(["topic", "questions", "askers"],
+          q(f"""SELECT properties.topic, count(), uniq(person_id)
+                FROM events WHERE event='chat_question' AND {where}
+                GROUP BY 1 ORDER BY 2 DESC LIMIT 20"""), bar=1)
+    table(["asked from", "questions"],
+          q(f"""SELECT properties.asked_from, count()
+                FROM events WHERE event='chat_question' AND {where}
+                GROUP BY 1 ORDER BY 2 DESC LIMIT 5"""))
+    table(["person", "plan", "questions", "est. cost", "of $ ceiling", "questions left"],
+          q(f"""SELECT person_id, any(properties.tier), count(), round(sum(toFloat(properties.cost_usd)), 4),
+                       round(max(toFloat(properties.budget_used)), 2), min(toInt(properties.questions_left))
+                FROM events WHERE event='chat_question' AND {where}
+                GROUP BY 1 ORDER BY 4 DESC LIMIT 10"""))
+    note("Cost is estimated from characters at list prices, on the high side. The words "
+         "people asked are on the admin Feedback screen, not here.")
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()

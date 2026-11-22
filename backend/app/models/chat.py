@@ -23,6 +23,11 @@ from app.core.db import Base
 
 ROLE_USER = "user"
 ROLE_ASSISTANT = "assistant"
+# What the assistant remembers about an athlete across reports: one row per
+# update, the newest is the memory (services/report_chat, "Memory"). Filed
+# under a pseudo report id (MEMORY_KEY...) so no thread ever lists it.
+ROLE_MEMORY = "memory"
+MEMORY_KEY = "_memory"
 
 MAX_QUESTION_CHARS = 600
 

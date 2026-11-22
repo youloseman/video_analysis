@@ -3470,6 +3470,12 @@ details.raw pre{background:var(--c-media-bg);color:var(--card-soft);font-family:
 .chat-sugg:not(:empty){margin:0 0 12px}
 .chat-sugg .btn{white-space:normal;text-align:left;height:auto;min-height:36px;line-height:1.35;padding-top:8px;padding-bottom:8px}
 .chat-sugg-h{flex-basis:100%;font-size:12px;color:var(--c-ink-faint)}
+.chat-mem{display:block;margin-top:10px;padding:10px 12px;border:1px dashed var(--c-line-strong);border-radius:var(--radius-ctl)}
+.chat-mem-t{display:block;white-space:pre-wrap;color:var(--c-ink-soft)}
+.chat-mem-n{display:block;font-size:12px;margin:6px 0 8px}
+.chat-adm-list{margin:8px 0 0;padding-left:18px;font-size:14px;color:var(--c-ink-soft)}
+.chat-adm-list li{margin:0 0 6px}
+.chat-adm-meta{display:block;font-size:12px;color:var(--c-ink-faint)}
 .chat-form{display:flex;gap:8px;align-items:flex-end}
 .chat-form textarea{flex:1;min-height:44px;resize:vertical;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);color:var(--c-ink)}
 .chat-foot{font-size:14px;color:var(--c-ink-faint);margin:8px 0 0}

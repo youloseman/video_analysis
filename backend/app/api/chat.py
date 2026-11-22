@@ -21,20 +21,22 @@ import time
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Literal
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionLocal, get_session
 from app.core.security import get_current_user, require_admin
 from app.models.analysis import Analysis
 from app.models.cda import CdaMeasurement
-from app.models.chat import MAX_QUESTION_CHARS, ROLE_ASSISTANT, ROLE_USER, ChatMessage
+from app.models.chat import MAX_QUESTION_CHARS, ROLE_ASSISTANT, ROLE_MEMORY, ROLE_USER, ChatMessage
 from app.models.profile import Profile
 from app.models.user import User
-from app.services import report_chat
+from app.services import chat_topics, report_chat
 from app.services.result_gating import ACCESS_FULL, access_for_stored
 
 logger = structlog.get_logger()
@@ -47,6 +49,9 @@ OUT_OF_BUDGET = ("You have used this month's questions. They reset on the 1st; "
 
 class QuestionIn(BaseModel):
     question: str = Field(min_length=1, max_length=MAX_QUESTION_CHARS * 2)
+    # Analytics only: typed, or one of the offered questions (and which).
+    asked_from: Literal["typed", "suggestion"] = "typed"
+    suggestion_i: int | None = Field(default=None, ge=0, le=9)
 
     @field_validator("question")
     @classmethod
@@ -107,8 +112,10 @@ async def get_chat(
     # than offer a box that will refuse.
     if await report_chat.spent_this_month(db, user.id) >= report_chat.chat_budget(user.tier):
         used = max(used, limit)
+    mem = await report_chat.memory_of(db, user.id, owner.id, report_chat.memory_key(row.athlete_id))
     return {
         "messages": [report_chat.message_out(m) for m in msgs],
+        "memory": mem.text if mem else None,
         "suggestions": report_chat.suggestions(
             row.result or {},
             has_cda=await _has_cda(db, row),
@@ -203,6 +210,44 @@ async def _context(db: AsyncSession, owner: User, row: Analysis, reader: User) -
     }
 
 
+def _track(user: User, event: str, props: dict[str, Any]) -> None:
+    try:
+        from app.services import analytics
+
+        analytics.capture_bg(analytics.person_id(user), event, props)
+    except Exception:  # noqa: BLE001 -- analytics never fails a request
+        pass
+
+
+async def _update_memory(reader_id: int, owner_id: int, key: str, question: str, answer: str) -> None:
+    """After the answer is out: the notes rewritten with this exchange. Its own
+    session (the request's is closed by now); a failure only loses an update."""
+    try:
+        async with SessionLocal() as db:
+            reader = await db.get(User, reader_id)
+            if reader is None:
+                return
+            spent = await report_chat.spent_this_month(db, reader_id)
+            if spent >= report_chat.chat_budget(reader.tier):
+                return
+            old = await report_chat.memory_of(db, reader_id, owner_id, key)
+            got = await run_in_threadpool(report_chat.remember, old.text if old else None, question, answer)
+            if not got or not got["text"] or (old and got["text"] == old.text):
+                return
+            m = ChatMessage(user_id=reader_id, owner_user_id=owner_id, analysis_client_id=key,
+                            role=ROLE_MEMORY, text=got["text"], model=got["model"],
+                            created_at_ms=int(time.time() * 1000),
+                            tokens_in=got["tokens_in"], tokens_out=got["tokens_out"])
+            db.add(m)
+            await db.commit()
+            _track(reader, "chat_memory_updated", {
+                "chars": len(got["text"]), "first": old is None, "model": got["model"],
+                "cost_usd": round(report_chat.answer_cost(m), 5),
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.warning("CHAT_MEMORY_FAILED", err=str(e)[:200])
+
+
 @router.post("/analyses/{client_id}/chat")
 async def ask_chat(
     client_id: str,
@@ -210,11 +255,15 @@ async def ask_chat(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
     athlete_id: int | None = None,
+    # Injected by FastAPI; None when a test calls the route directly.
+    background: BackgroundTasks = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     owner, row = await _readable(db, user, client_id, athlete_id)
     limit = report_chat.chat_limit(user.tier)
     used = await report_chat.used_this_month(db, user.id)
+    topic = chat_topics.classify(body.question)
     if used >= limit:
+        _track(user, "chat_limit_reached", {"kind": "questions", "tier": user.tier, "used": used, "limit": limit})
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"You have asked all {limit} questions this month. They reset on the 1st.",
@@ -222,17 +271,24 @@ async def ask_chat(
 
     ctx = await _context(db, owner, row, user)
     history = await report_chat.thread(db, user.id, owner.id, client_id)
+    mkey = report_chat.memory_key(row.athlete_id)
+    mem = await report_chat.memory_of(db, user.id, owner.id, mkey)
     prompt = report_chat.build_prompt(
         report_md=ctx["report_md"] or "", athlete_md=ctx["athlete_md"] or "",
         withheld_md=ctx["withheld_md"], history=history, question=body.question,
+        memory=mem.text if mem else None,
     )
     spent = await report_chat.spent_this_month(db, user.id)
-    if spent + report_chat.projected_cost_usd(prompt) > report_chat.chat_budget(user.tier):
+    budget = report_chat.chat_budget(user.tier)
+    if spent + report_chat.projected_cost_usd(prompt) > budget:
         logger.warning("CHAT_BUDGET_REACHED", user_id=user.id, tier=user.tier, spent_usd=round(spent, 4))
+        _track(user, "chat_limit_reached", {"kind": "budget", "tier": user.tier, "used": used, "limit": limit,
+                                            "month_cost_usd": round(spent, 4), "budget_usd": budget})
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=OUT_OF_BUDGET)
     answer = await run_in_threadpool(report_chat.ask, prompt)
     if not answer:
         logger.warning("CHAT_NO_ANSWER", user_id=user.id, analysis=client_id)
+        _track(user, "chat_failed", {"reason": "no_answer", "tier": user.tier, "topic": topic})
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The assistant did not answer. Your question was not counted; try again in a minute.",
@@ -251,24 +307,46 @@ async def ask_chat(
         tokens_in=rows[1].tokens_in, tokens_out=rows[1].tokens_out,
         cost_usd=round(report_chat.answer_cost(rows[1]), 5),
     )
-    try:
-        from app.services import analytics
-
-        # Lengths and the turn number, not the text: the questions live in our
-        # own table, which is where they are read from.
-        analytics.capture_bg(analytics.person_id(user), "chat_question", {
-            "sport": ctx["sport"], "turn": len(history) // 2 + 1,
-            "question_chars": len(body.question), "model": answer.get("model"),
-            "withheld": bool(ctx["withheld_md"]), "coach_reading": owner.id != user.id,
-            "tier": user.tier,
-        })
-    except Exception:  # noqa: BLE001 -- analytics never fails a request
-        pass
+    # A topic, lengths and counts -- never the text: the questions live in our
+    # own table (and on the admin screen), not in the analytics service.
+    cost = report_chat.answer_cost(rows[1])
+    month_cost = spent + cost
+    _track(user, "chat_question", {
+        "sport": ctx["sport"], "position": (row.result or {}).get("cycling_position"),
+        "turn": len(history) // 2 + 1, "topic": topic, "lang": chat_topics.language(body.question),
+        "asked_from": body.asked_from, "suggestion_i": body.suggestion_i,
+        "question_chars": len(body.question), "answer_chars": len(answer["text"]),
+        "model": answer.get("model"), "withheld": bool(ctx["withheld_md"]),
+        "coach_reading": owner.id != user.id, "tier": user.tier, "has_memory": mem is not None,
+        "tokens_in": rows[1].tokens_in, "tokens_out": rows[1].tokens_out, "cost_usd": round(cost, 5),
+        "used": used + 1, "limit": limit, "questions_left": max(0, limit - used - 1),
+        "month_cost_usd": round(month_cost, 4), "budget_used": round(month_cost / budget, 3) if budget else None,
+        "$set": {"chat_questions_month": used + 1, "chat_cost_month_usd": round(month_cost, 4),
+                 "chat_budget_used": round(month_cost / budget, 3) if budget else None},
+    })
+    if background is not None and len(body.question) >= 12:
+        background.add_task(_update_memory, user.id, owner.id, mkey, body.question, answer["text"])
     return {
         "answer": report_chat.message_out(rows[1]),
         "question": report_chat.message_out(rows[0]),
         **_quota(used + 1, limit),
     }
+
+
+@router.delete("/chat/memory")
+async def forget_memory(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Forget everything the assistant kept about this reader's athletes and
+    themselves (every memory row they own as reader). Threads stay."""
+    from sqlalchemy import delete
+
+    res = await db.execute(delete(ChatMessage).where(ChatMessage.user_id == user.id,
+                                                     ChatMessage.role == ROLE_MEMORY))
+    await db.commit()
+    _track(user, "chat_memory_forgotten", {"rows": res.rowcount or 0})
+    return {"forgotten": res.rowcount or 0}
 
 
 # --------------------------------------------------------------------------
@@ -297,7 +375,7 @@ async def chat_usage(
         if m.role == ROLE_USER:
             u["questions"] += 1
             u["reports"].add(m.analysis_client_id)
-        elif m.role == ROLE_ASSISTANT:
+        elif m.role in (ROLE_ASSISTANT, ROLE_MEMORY):
             u["tokens_in"] += m.tokens_in if m.tokens_in is not None else report_chat.LEGACY_TOKENS_IN
             u["tokens_out"] += m.tokens_out if m.tokens_out is not None else report_chat.estimate_tokens(m.text)
             u["cost_usd"] += report_chat.answer_cost(m)
@@ -313,6 +391,15 @@ async def chat_usage(
             "budget_used": round(u["cost_usd"] / budget, 3) if budget else None,
         })
     users.sort(key=lambda x: -x["cost_usd"])
+    asked = sorted(((m, email) for m, email, _t in rows if m.role == ROLE_USER),
+                   key=lambda x: -x[0].created_at_ms)
+    topics: dict[str, int] = {}
+    repeats: dict[str, int] = {}
+    for m, _e in asked:
+        t = chat_topics.classify(m.text)
+        topics[t] = topics.get(t, 0) + 1
+        k = " ".join(m.text.lower().split())
+        repeats[k] = repeats.get(k, 0) + 1
     return {
         "since_ms": start,
         "resets_at": report_chat.resets_at(),
@@ -328,4 +415,9 @@ async def chat_usage(
         },
         "models": models,
         "users": users,
+        "topics": dict(sorted(topics.items(), key=lambda kv: -kv[1])),
+        "top_questions": [{"text": k, "n": n} for k, n in
+                          sorted(repeats.items(), key=lambda kv: -kv[1]) if n > 1][:10],
+        "recent": [{"email": e, "text": m.text, "topic": chat_topics.classify(m.text), "at": m.created_at_ms}
+                   for m, e in asked[:30]],
     }

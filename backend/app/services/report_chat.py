@@ -57,7 +57,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.chat import ROLE_ASSISTANT, ROLE_USER, ChatMessage
+from app.models.chat import MEMORY_KEY, ROLE_ASSISTANT, ROLE_MEMORY, ROLE_USER, ChatMessage
 from app.models.user import TIER_ADMIN, TIER_COACH, TIER_ENTHUSIAST, TIER_FULL
 from app.services import bike_catalog, cda_math
 from app.services.usage_limits import next_reset, window_start_ms
@@ -75,6 +75,9 @@ CHAT_WINDOW = "month"
 
 # Earlier messages of the thread replayed into each call (both roles).
 HISTORY_MESSAGES = 8
+# Older turns of the same thread go in as their questions only.
+OLDER_QUESTIONS = 20
+OLDER_QUESTION_CHARS = 200
 ANSWER_MAX_TOKENS = 900
 # Earlier clips on the same setup, by date and score: enough to say "you were
 # 78, then 84", not a trend analysis.
@@ -154,7 +157,7 @@ async def spent_this_month(db: AsyncSession, user_id: int) -> float:
         await db.execute(
             select(ChatMessage).where(
                 ChatMessage.user_id == user_id,
-                ChatMessage.role == ROLE_ASSISTANT,
+                ChatMessage.role.in_((ROLE_ASSISTANT, ROLE_MEMORY)),
                 ChatMessage.created_at_ms >= window_start_ms(CHAT_WINDOW),
             )
         )
@@ -493,11 +496,27 @@ def build_prompt(
     withheld_md: str | None,
     history: list[ChatMessage],
     question: str,
+    memory: str | None = None,
 ) -> str:
     parts = []
     if withheld_md:
         parts.append(withheld_md)
     parts += ["# THE REPORT", report_md, athlete_md]
+    if memory:
+        parts.append(
+            "# WHAT THE ATHLETE TOLD YOU IN EARLIER CHATS\n\n"
+            "Their own words, kept as notes. Use them for context (goals, races, "
+            "limits, what they tried). They are not measurements: the report's "
+            "numbers win, and you never quote a note as if the clip measured it.\n\n"
+            + memory
+        )
+    older = [m for m in history[:-HISTORY_MESSAGES] if m.role == ROLE_USER] if len(history) > HISTORY_MESSAGES else []
+    if older:
+        # The thread's earlier turns, compressed to the questions: what the
+        # athlete wanted to know is the part that carries meaning; the answers
+        # came from this same report and can be given again from it.
+        qs = "\n".join(f"- {m.text[:OLDER_QUESTION_CHARS]}" for m in older[-OLDER_QUESTIONS:])
+        parts.append(f"# EARLIER QUESTIONS IN THIS THREAD (answered before)\n\n{qs}")
     recent = history[-HISTORY_MESSAGES:]
     if recent:
         convo = "\n\n".join(
@@ -516,6 +535,87 @@ def ask(prompt: str) -> dict[str, Any] | None:
     from app.services.video_analysis.llm_recommendations import _complete
 
     return _complete(SYSTEM, prompt, ANSWER_MAX_TOKENS, "chat")
+
+
+# --------------------------------------------------------------------------
+# Memory: what the athlete told the assistant, kept across reports
+# --------------------------------------------------------------------------
+# Each report keeps its whole thread (shown again when the athlete comes
+# back). Across reports the assistant keeps NOTES, not transcripts: a few
+# bullets of what the athlete said about themselves -- the race, the back
+# that complains, the stem they cannot change -- rewritten by the cheapest
+# model after each answer. A transcript would grow every call's prompt for
+# good; the notes stay under MEMORY_MAX_CHARS whatever the history.
+#
+# Keyed by reader, report owner and athlete: an athlete's own notes; a coach
+# keeps separate notes for each athlete they read, never one mixed pile.
+MEMORY_MAX_CHARS = 700
+MEMORY_ANSWER_TOKENS = 300
+NO_CHANGE = "NO_CHANGE"
+
+MEMORY_SYSTEM = (
+    "You keep short notes about one athlete for a bike and run technique "
+    "assistant. You get the current notes and the latest exchange. Return the "
+    "updated notes: durable facts the ATHLETE stated about themselves -- goals, "
+    "races and dates, distances, injuries or pain they mentioned, flexibility "
+    "limits, kit they own or cannot change, what they tried and how it went, "
+    "preferences about how they want answers.\n"
+    "- Only what the athlete said. Never copy numbers from the report or the "
+    "assistant's advice, unless the athlete said they acted on it.\n"
+    "- At most 8 bullets starting with '- ', under 600 characters, in English. "
+    "Drop what a newer statement replaced.\n"
+    "- If the exchange adds nothing durable, reply with exactly NO_CHANGE."
+)
+
+
+def memory_key(athlete_id: int | None) -> str:
+    return MEMORY_KEY if athlete_id is None else f"{MEMORY_KEY}:a{athlete_id}"
+
+
+async def memory_of(db: AsyncSession, reader_id: int, owner_id: int, key: str) -> ChatMessage | None:
+    return (
+        await db.execute(
+            select(ChatMessage)
+            .where(
+                ChatMessage.user_id == reader_id,
+                ChatMessage.owner_user_id == owner_id,
+                ChatMessage.analysis_client_id == key,
+                ChatMessage.role == ROLE_MEMORY,
+            )
+            .order_by(ChatMessage.created_at_ms.desc(), ChatMessage.id.desc())
+            .limit(1)
+        )
+    ).scalars().first()
+
+
+def memory_prompt(notes: str | None, question: str, answer: str) -> str:
+    return (f"# CURRENT NOTES\n\n{notes or '(none yet)'}\n\n"
+            f"# LATEST EXCHANGE\n\nATHLETE: {question}\n\nASSISTANT: {answer[:1500]}")
+
+
+def clean_memory(text: str | None) -> str | None:
+    """The notes as stored, or None for "nothing new"."""
+    t = (text or "").strip()
+    if not t or t.upper().startswith(NO_CHANGE):
+        return None
+    lines = [ln.strip() for ln in t.splitlines() if ln.strip().startswith("- ")]
+    if not lines:
+        return None
+    out = "\n".join(lines).replace("\u2014", ",")
+    return out[:MEMORY_MAX_CHARS]
+
+
+def remember(notes: str | None, question: str, answer: str) -> dict[str, Any] | None:
+    """One cheap call: the notes rewritten with the latest exchange, or None."""
+    from app.services.video_analysis.llm_recommendations import _complete
+
+    prompt = memory_prompt(notes, question, answer)
+    got = _complete(MEMORY_SYSTEM, prompt, MEMORY_ANSWER_TOKENS, "chat_memory")
+    if not got:
+        return None
+    return {"text": clean_memory(got.get("text")), "model": got.get("model"),
+            "tokens_in": estimate_tokens(MEMORY_SYSTEM) + estimate_tokens(prompt),
+            "tokens_out": estimate_tokens(got.get("text") or "")}
 
 
 def new_rows(
