@@ -345,14 +345,14 @@
     <div class="eyebrow eyebrow--blue">Share</div>
     <h2 id="cardModalTitle" class="modal-title u-mb-3">Your result card</h2>
     <div class="cardprev-wrap"><img id="cardPreview" alt="Your Flapp result card" class="ph-no-capture"></div>
-    <p class="hint u-ta-center u-m-0 u-mt-3 u-mb-4" id="cardSaveHint">Long-press the image to save it to your photos</p>
+    <p class="hint u-ta-center u-m-0 u-mt-3 u-mb-4 hidden" id="cardSaveHint">In the sheet, tap Save Image to put it in Photos</p>
     <div class="cardmodal-actions">
-      <button class="btn btn-primary hidden u-w-full u-justify-center" id="cardShareBtn" type="button">
+      <button class="btn btn-primary u-w-full u-justify-center" id="cardSaveBtn" type="button">
+        <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> <span id="cardSaveTxt">Download image</span>
+      </button>
+      <button class="btn btn-ghost hidden u-w-full u-justify-center" id="cardShareBtn" type="button">
         <svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Share…
       </button>
-      <a class="btn btn-ghost u-w-full u-justify-center" id="cardDownloadBtn" download>
-        <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download image
-      </a>
     </div>
   </div>
 </div>
@@ -3656,7 +3656,7 @@ $('#pShareBtn').addEventListener('click',sharePhoto);
 $('#pPhasePick').addEventListener('click',e=>{ const b=e.target.closest('[data-phase]'); if(b) setPhotoPedalPhase(b.dataset.phase); });
 $('#hShareBtn').addEventListener('click',shareHistory);
 $('#cardShareBtn').addEventListener('click',cardModalShare);
-$('#cardDownloadBtn').addEventListener('click',()=>toast('Saving image…'));
+$('#cardSaveBtn').addEventListener('click',cardModalSave);
 $('#cardClose').addEventListener('click',closeCardModal);
 $('#cardModal').addEventListener('click',e=>{ if(e.target===$('#cardModal')) closeCardModal(); });
 /* Escape for #cardModal is handled by the shared dialog focus containment. */
@@ -7581,10 +7581,8 @@ async function downloadReportPdf(id){
     const cd=r.headers.get('Content-Disposition')||'';
     const m=/filename\*=UTF-8''([^;]+)/i.exec(cd);
     const name=m?decodeURIComponent(m[1]):'Flapp report.pdf';
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
-    track('report_pdf_downloaded',{});
+    const how=await saveBlob(new File([blob], name, {type:'application/pdf'}), name, 'pdf');
+    track('report_pdf_downloaded',{how});
     return true;
   }catch(_e){ return false; }
 }
@@ -12340,15 +12338,44 @@ document.addEventListener('keydown',e=>{
 /* Preview modal: show the rendered card so the user can see it, then
    Share (native sheet) and/or Download it. Works on every platform —
    on iOS, long-pressing the visible image saves it to Photos. */
+/* Saving a file the app built (the result card, the PDF report), wherever it
+   runs. In the iPhone app an image goes straight into Photos and a PDF to the
+   share sheet (mobile/bridge/bridge.js, section 7): a WebView ignores
+   <a download>, so both buttons used to do nothing there. On a phone's
+   browser the share sheet is the only road into Photos ("Save Image"); a
+   download would land in Files. Everywhere else, a plain download. The sheet
+   needs a fresh tap, so a file that took seconds to fetch (the PDF) may be
+   refused it and falls through to the download. Returns what happened. */
+function nativeSave(){ const b=window.FLAPP_BRIDGE; return !!(b&&b.native&&b.saveFile); }
+function webSheetFor(file){
+  return !nativeSave() && matchMedia('(pointer:coarse)').matches
+    && !!(navigator.canShare && navigator.canShare({files:[file]}));
+}
+async function saveBlob(blob, name, kind){
+  if(nativeSave()) return await window.FLAPP_BRIDGE.saveFile(blob, name, kind, 'Flapp');
+  const file=blob instanceof File?blob:new File([blob], name, {type:blob.type});
+  if(webSheetFor(file)){
+    try{ await navigator.share({files:[file]}); return 'shared'; }
+    catch(e){ if(e&&e.name==='AbortError') return 'cancelled'; }
+  }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  return 'downloaded';
+}
 function openCardModal(blob, file, text){
   if(state.cardUrl){ try{ URL.revokeObjectURL(state.cardUrl); }catch(e){} }
   const url=URL.createObjectURL(blob);
   state.cardUrl=url; state.cardFile=file; state.cardText=text;
   $('#cardPreview').src=url;
-  const dl=$('#cardDownloadBtn'); dl.href=url; dl.download=file.name;
-  const canShare=!!(navigator.canShare && navigator.canShare({files:[file]}));
-  $('#cardShareBtn').classList.toggle('hidden', !canShare);
-  $('#cardSaveHint').classList.toggle('hidden', !('ontouchstart' in window));
+  // In the app the card goes straight into Photos and Share is its own sheet.
+  // On a phone's browser the share sheet is the only road into Photos, so the
+  // one button opens it and the hint names the row to tap; a second button
+  // would open the same sheet. On a desktop it is a download.
+  const sheet=webSheetFor(file), app=nativeSave();
+  $('#cardSaveTxt').textContent=(app||sheet)?'Save to Photos':'Download image';
+  $('#cardSaveHint').classList.toggle('hidden', !sheet || app);
+  $('#cardShareBtn').classList.toggle('hidden', !(app || (!sheet && navigator.canShare && navigator.canShare({files:[file]}))));
   $('#cardModal').classList.remove('hidden');
   modalOpened($('#cardModal'), closeCardModal);
 }
@@ -12383,8 +12410,21 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('.bil-shot-btn'); if(!b) return;
   const img=b.querySelector('img'); if(img&&img.src) openShot(img.src, img.alt);
 });
+async function cardModalSave(){
+  const file=state.cardFile; if(!file) return;
+  try{
+    const how=await saveBlob(file, file.name, 'image');
+    track('share_card_saved',{how});
+    if(how==='photos') toast('Saved to Photos');
+  }catch(err){ track('share_failed',{stage:'save',name:(err&&err.name)||'error'}); toast('Could not save the image. Long-press it instead.'); }
+}
 async function cardModalShare(){
   const file=state.cardFile; if(!file) return;
+  if(nativeSave()){
+    try{ await window.FLAPP_BRIDGE.shareFile(file, file.name, 'My Flapp technique score'); }
+    catch(err){ track('share_failed',{name:(err&&err.name)||'error'}); toast('Sharing did not work here. Save the image instead.'); }
+    return;
+  }
   try{ await navigator.share({files:[file], title:'My Flapp technique score', text:state.cardText}); }
   catch(err){ if(err && err.name!=='AbortError'){ track('share_failed',{name:err.name||'error'}); toast('Sharing did not work here. Use Download image instead.'); } }
 }

@@ -22,6 +22,8 @@
  *      window on Android 15.
  *   6. Android's hardware Back button, which Capacitor leaves as "close the
  *      app" -- see the section for the policy.
+ *   7. Saving what the SPA builds (the result card into Photos, the PDF
+ *      through the share sheet): FLAPP_BRIDGE.saveFile / shareFile.
  */
 (function () {
   'use strict';
@@ -262,9 +264,54 @@
     });
   }
 
+  /* -- 7. Saving a file the SPA built (the result card, the PDF report) ----
+   * A WebView ignores <a download> on a blob, so the card's "Download image"
+   * and the report's PDF did nothing in the app. Here:
+   *   - an image on iOS goes straight into Photos (Media plugin, add-only
+   *     permission from NSPhotoLibraryAddUsageDescription) -> 'photos';
+   *   - anything else, or an image where that fails (Android needs an album),
+   *     is written to the cache and handed to the system share sheet, whose
+   *     "Save Image" / "Save to Files" finishes the job -> 'shared'.
+   * Resolves 'cancelled' when the sheet is dismissed; throws on a real error. */
+  function blobToBase64(blob) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result)); };
+      r.onerror = function () { rej(r.error); };
+      r.readAsDataURL(blob);
+    });
+  }
+  function shareViaFile(dataUrl, name, title) {
+    var fs = plugins.Filesystem, sh = plugins.Share;
+    if (!fs || !sh) return Promise.reject(new Error('share unavailable'));
+    var b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+    var safe = String(name || 'flapp').replace(/[^\w.\- ]+/g, '_');
+    return fs.writeFile({ path: safe, data: b64, directory: 'CACHE' }).then(function (w) {
+      return sh.share({ title: title || safe, files: [w.uri] });
+    }).then(function () { return 'shared'; }, function (e) {
+      if (e && /cancel/i.test(String(e.message || e))) return 'cancelled';
+      throw e;
+    });
+  }
+  function saveFile(blob, name, kind, title) {
+    return blobToBase64(blob).then(function (dataUrl) {
+      var ios = cap && cap.getPlatform && cap.getPlatform() === 'ios';
+      if (kind === 'image' && ios && plugins.Media && plugins.Media.savePhoto) {
+        return plugins.Media.savePhoto({ path: dataUrl }).then(function () { return 'photos'; },
+          function () { return shareViaFile(dataUrl, name, title); });
+      }
+      return shareViaFile(dataUrl, name, title);
+    });
+  }
+  function shareFile(blob, name, title) {
+    return blobToBase64(blob).then(function (dataUrl) { return shareViaFile(dataUrl, name, title); });
+  }
+
   window.FLAPP_BRIDGE = {
     ready: ready,
     native: !!(cap && cap.isNativePlatform && cap.isNativePlatform()) || !!cfg.forceNative,
-    base: BASE
+    base: BASE,
+    saveFile: saveFile,
+    shareFile: shareFile
   };
 })();
