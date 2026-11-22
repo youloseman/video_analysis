@@ -1983,6 +1983,25 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .tbl-notes .tbl-notes-body{padding:4px 18px 14px}
 .capguide[data-sport="run"] .fig-bike,.capguide[data-sport="bike"] .fig-run{display:none}
 .capguide[data-sport="run"] li[data-sport="bike"]{display:none}
+/* The scenes (docs/design-assets/pictograms/capture_scenes.py): each pair
+   is the way to film it and the usual mistake, the badge says which. */
+.cg-frame.cg-scene{height:auto;padding:8px;border-color:var(--c-line)}
+.cg-body:has(.cg-scene){grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.cgs{display:block;width:100%;max-width:300px;height:auto;aspect-ratio:200/120;fill:none;stroke-linecap:round;stroke-linejoin:round;color:var(--c-head)}
+.cgs-sep{stroke:var(--c-line);stroke-width:1}
+.cgs-ph{stroke:currentColor;stroke-width:2.4}
+.cgs-scr{fill:var(--c-panel)}
+.cgs-gr{stroke:currentColor;stroke-width:2;opacity:.3}
+.cgs-d{stroke:currentColor;stroke-width:1.6;stroke-dasharray:2 4;opacity:.7}
+.cgs-cam{fill:currentColor}
+.cgs-lens{fill:var(--c-bg)}
+.cgs-head{fill:currentColor}
+.cgs-ok{fill:var(--m-ok)} .cgs-no{fill:var(--m-out)}
+.cgs-mk{stroke:var(--c-bg);stroke-width:2.2}
+.cgs-t{fill:currentColor;stroke:none;font:600 12px var(--f-mono)}
+.cgs-sun{fill:var(--c-warn)}
+.cgs-glow{fill:var(--c-warn);opacity:.25}
+.cgs-sil{opacity:.55}
 /* Arriving from a warning that named this rule: one colour step on the
    figure's ring, no motion. */
 .cg-flash{animation:cgflash 1.6s ease-out}
