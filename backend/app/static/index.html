@@ -603,9 +603,11 @@
            It decides the shape of the footage step, so it comes before it.
            #sideSeg keeps its four values (auto / left / right / both): the
            tiles and the sub-control are inputs to the same state. -->
-      <div class="ustep" id="stepFilm">
-        <div class="ustep-head"><span class="ustep-n" aria-hidden="true"></span>
-          <h3>How was it filmed?</h3></div>
+      <div class="ustep ustep-quiet" id="stepFilm">
+        <!-- One line, not a step (Artur 2026-11-22: simpler): Auto and one
+             side are right for almost every clip; the choice opens on a tap. -->
+        <details class="askbox optbox filmbox" id="filmBox">
+        <summary>Camera <b id="filmSum">one side · side found for you</b> <span class="askopt">change</span></summary>
         <div class="filmtiles" id="sideField">
           <div class="modetabs bigtiles film" id="filmSeg" role="group" aria-label="Camera setup">
             <button type="button" data-film="one" aria-pressed="true">
@@ -626,6 +628,7 @@
           </div>
           <p class="poshint" id="sideHint">Auto works on most clips; set it yourself if the skeleton ever lands on the wrong leg</p>
         </div>
+        </details>
       </div>
       <!-- Step: whose clip (a coach's roster). Its own numbered step, not a
            line inside the optional fold (Artur, 2026-11-06): for a coach it is
@@ -685,12 +688,11 @@
         <span class="hunit">mm</span>
       </div>
       <p class="hint profilehint hidden" id="crankHint"></p>
-      </details>
-
-      <!-- Overlay toggle (video only) -->
+      <!-- Overlay toggle (video only): on by default, inside the fold -->
       <label class="switch" id="overlayField"><input type="checkbox" id="overlay" checked><span class="box" aria-hidden="true"></span>
         <span>Render overlay video<span class="subhint">Draws the skeleton and joint angles on your clip. Adds ~20 s</span></span>
       </label>
+      </details>
       <!-- Shown INSTEAD of the switch on a free plan. The server never renders
            an overlay for one, so offering the toggle promised a video, charged
            the athlete the ~20 s it advertises, and returned a report with no
@@ -2515,6 +2517,12 @@ function renderQuota(){
       : `<b>${tier==='admin'?'Admin':tier==='coach'?'Coach':'Free'}</b> plan`;
   }
   ['#quota','#quotaResults','#quotaPhotoResults','#errQuota'].forEach(sel=>{ const el=$(sel); if(el) el.innerHTML=txt; });
+  // A paid plan with plenty left hears it once, in the corner (Artur 2026-11-22:
+  // simpler); the line under the button and under a report is for the free
+  // plan and for the last five.
+  const plenty=!!(auth&&q&&tier&&tier!=='starter'&&q.remaining>5);
+  const gm=$('#quota')&&$('#quota').closest('.gometa'); if(gm) gm.classList.toggle('hidden', plenty);
+  ['#quotaResults','#quotaPhotoResults'].forEach(sel=>{ const el=$(sel); if(el) el.classList.toggle('hidden', plenty); });
   // The corner of the phone's top bar and the plan line under the sidebar:
   // "7 / 10 left", and a bar that fills with what is used.
   const top=$('#quotaTop');
@@ -3204,8 +3212,16 @@ function noFileHint(){
   const noun = state.mode==='photo' ? 'photo' : 'video';
   hintMsg(auth ? `Upload a ${noun} to continue` : `Sign up now, or add a ${noun} first: it runs right after`);
 }
+function syncFilmSum(){
+  const el=$('#filmSum'); if(!el) return;
+  const film=(document.querySelector('#filmSeg [aria-pressed="true"]')||{}).dataset||{};
+  const side=(document.querySelector('#sideSeg [aria-pressed="true"]')||{}).dataset||{};
+  el.textContent=film.film==='both'?'both sides · 2 clips'
+    :`one side · ${side.side&&side.side!=='auto'?side.side+' side to the camera':'side found for you'}`;
+}
 function readyHint(){
   syncSetupSummary();     // every choice ends here, so the summary rides along
+  syncFilmSum();
   if(!state.file){ noFileHint(); return; }
   if(isPair() && !state.fileB){ hintMsg('Add the right-side clip to run the two-sided session'); return; }
   // Keep the long-clip advisory visible: changing sport should not silently
@@ -7183,8 +7199,7 @@ function renderCompareNext(hostId, entryId, from){
   const e=entryId&&loadHist().find(x=>x.id===entryId);
   const prev=e&&e.trends&&cmpPrevious(e);
   if(!prev) return;
-  host.innerHTML=`<div class="cmp-next"><p><b>Changed something since ${esc(fmtWhen(prev.at))}?</b> See what it did: your two clips side by side, what moved and what stayed put.</p>
-    <button class="btn btn-outline btn-sm" type="button" data-cmpnext><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Compare with that clip</button></div>`;
+  host.innerHTML=`<div class="cmp-next cmp-next-1"><button class="btn btn-outline btn-sm" type="button" data-cmpnext><svg class="ic" aria-hidden="true"><use href="#i-compare"/></svg> Compare with ${esc(shortDate(prev.at))}</button></div>`;
   host.classList.remove('hidden');
   host.querySelector('[data-cmpnext]').addEventListener('click',()=>openCompare(prev.id,e.id,from));
 }
@@ -11080,7 +11095,7 @@ function resultVerdict(r, sport, tiles){
   if(lead&&lead.m.range){
     const u=unitOf(lead.m);
     why=`${esc(lead.m.lbl)} <b class="num">${esc(String(lead.m.val))}${measUnit(u)}</b>, range <span class="num">${measRange(lead.m.range.lo,lead.m.range.hi,u)}</span>.`;
-  } else if(!lead&&issues.length&&issues[0].recommendation) why=esc(issues[0].recommendation);
+  } else if(!lead&&issues.length&&issues[0].recommendation) why=esc(String(issues[0].recommendation).split(/(?<=\.)\s/)[0]);
   // One line under the head, not three (Artur 2026-11-22: simpler): the
   // reading against its range. The counts are in Findings below, the aero
   // zone in its own section.
@@ -11093,10 +11108,16 @@ function resultVerdict(r, sport, tiles){
     const x={sport, position:r.cycling_position||null};
     const how=key?fixHow(x,key,lead.m.delta>0?'high':'low'):'';
     chip=how?fixChip(x,how):null;
+  } else if(!lead&&issues.length&&ISSUE_FIX[issues[0].type]){
+    const [key,dir]=ISSUE_FIX[issues[0].type], x={sport, position:r.cycling_position||null};
+    const how=fixHow(x,key,dir); chip=how?fixChip(x,how):null;
   }
   const go=diag?['fitBlock','What to change on the bike']:drill?['planBlock',`Drill: ${drill.drill}${drill.weeks?`, about ${drill.weeks} ${drill.weeks>1?'weeks':'week'}`:''}`]:(lead||issues.length)?['metricsBlock','The measurements']:null;
   return {level, head, why, side, go, out, near, ok, issues, diag, drill, chip};
 }
+/* A server issue -> the fix table's key and side, for the verdict's chip. */
+const ISSUE_FIX={overstriding:['overstride','high'],low_cadence:['cadence','low'],
+  excessive_vertical_oscillation:['vertical_oscillation','high'],long_ground_contact:['ground_contact','high']};
 /* A tile's label -> the fix table's key, for the verdict's chip. */
 const VERDICT_FIX_KEY={'Elbow':'elbow','Shoulder':'shoulder','Trunk':'trunk','Knee · bottom':'knee','Hip · top of stroke':'hip',
   'Cadence':'cadence','Overstride':'overstride','Vert. oscillation':'vertical_oscillation','Ground contact':'ground_contact'};
@@ -11371,9 +11392,11 @@ function render(job,opts){
     } else {
       // Signed in, the report is in History the moment it is drawn; only a
       // guest's goes with the tab.
-      ep.textContent=auth?'Saved to your History. There is no overlay video for this clip':'Results aren’t stored. Save what you need before leaving';
+      // Signed in there is nothing to say: the report is in History, as every
+      // report is. A guest still needs to hear it goes with the tab.
+      ep.textContent=auth?'':'Results aren’t stored. Save what you need before leaving';
     }
-    ep.classList.remove('hidden');
+    ep.classList.toggle('hidden', !ep.textContent);
   }
 
   // Free-tier teaser: paid sections were stripped server-side. Hide them,
@@ -15256,7 +15279,7 @@ function renderDashFix(all){
       ${tips.clean?`<p class="fx-clean">${e.sport==='run'?'Keep this form on the next run':'Hold this position on the next ride'}</p>`:''}
       ${items.length?`<div class="dplan-list">${items.map(row).join('')}</div>`:''}
       ${items.length>1?fxProgHtml(items.filter(i=>((i.fx==='drill'?i.x.planDone:i.x.fixDone)||{})[i.key]).length,items.length):''}
-      ${e.sport==='bike'&&items.some(i=>i.how)?'<p class="fx-note">One change at a time, in small steps, then ride 30 minutes before you film again</p>':''}
+      ${e.sport==='bike'&&items.some(i=>i.how)?'<p class="fx-note">One change at a time · ride 30 min · film again</p>':''}
       ${next?`<p class="dfx-next"><b>Next session.</b> ${dash(esc(next))}</p>`:''}
       <div class="fx-foot"><button class="btn btn-link" type="button" data-id="${esc(e.id)}" data-focus-open="1" data-to="${tips.written?'#hdCoachBlock,#hdFindings':'#hdFindings'}">Open report →</button>
         ${pe?`<button class="btn btn-link" type="button" data-plan-open="${esc(pe.id)}">Open plan →</button>`:''}</div>

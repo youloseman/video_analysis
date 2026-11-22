@@ -3455,6 +3455,10 @@ details.raw pre{background:var(--c-media-bg);color:var(--card-soft);font-family:
 .exportrow{display:flex;gap:8px;flex-wrap:wrap}
 /* Ask about this report (renderChat) */
 .chat-hint{text-align:left;margin:0 0 14px}
+/* Upload: the camera setup as one line (filmBox) */
+.ustep-quiet{padding-top:0;padding-bottom:0;background:none;border:0}
+.filmbox summary b{font-weight:600}
+.cmp-next-1{display:flex;justify-content:flex-start}
 /* The verdict's one change (resultVerdict chip), on the dark score card */
 .v-fix{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0}
 .v-fix .fx-chip{background:var(--c-bg);color:var(--c-ink)}

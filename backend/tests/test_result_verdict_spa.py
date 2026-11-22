@@ -45,7 +45,7 @@ STUBS = (
     "const esc=x=>String(x), pretty=s=>String(s).replace(/_/g,' '), num=(v,d)=>String(Math.round(v));\n"
     "const fitWords=s=>String(s||'').replace(/_/g,' ');\n"
     # the verdict's chip reads the fix table (index.html); not under test here
-    "const VERDICT_FIX_KEY={}, fixHow=()=>'', fixChip=()=>null;\n"
+    "const VERDICT_FIX_KEY={}, ISSUE_FIX={}, fixHow=()=>'', fixChip=()=>null;\n"
 )
 ROW = ("const row=(lbl,val,lo,hi,zone,unit)=>({lbl,val:String(val),unit:unit||'°',range:{value:val,lo,hi,unit:unit||'°'},"
        "zone,delta:val<lo?val-lo:(val>hi?val-hi:0),cls:zone==='optimal'?'good':zone==='warning'?'warn':'bad'});\n")
