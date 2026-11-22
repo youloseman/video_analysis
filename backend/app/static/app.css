@@ -3455,6 +3455,8 @@ details.raw pre{background:var(--c-media-bg);color:var(--card-soft);font-family:
 .exportrow{display:flex;gap:8px;flex-wrap:wrap}
 /* Ask about this report (renderChat) */
 .chat-hint{text-align:left;margin:0 0 14px}
+.chat-about{margin:-4px 0 10px;font-size:14px;color:var(--c-ink-soft)}
+.chat-about-a{color:var(--c-blue);font-weight:500}
 .chat-log{display:flex;flex-direction:column;gap:10px}
 .chat-log:not(:empty){margin:0 0 14px}
 .chat-msg{padding:10px 14px;border-radius:var(--radius-ctl);max-width:88%;font-size:16px;line-height:1.5;overflow-wrap:anywhere}

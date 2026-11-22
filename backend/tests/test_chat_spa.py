@@ -101,3 +101,13 @@ def test_the_generation_is_picked_from_the_data():
     assert 'id="profGen"' in SPA
     assert "bike_generation:$('#profGen').value||null" in SPA
     assert "/me/parts/frames" in _fn("loadPartsFrames")
+
+
+def test_home_asks_about_the_latest_report_without_a_second_coral_button():
+    """Artur 2026-11-22: the chat on the dashboard too, under What to fix,
+    on the latest full report; Home keeps Analyze a clip as its one coral."""
+    s = SPA
+    assert 'id="dashChatBlock"' in s
+    body = s.split("function renderDashChat", 1)[1][:1200]
+    assert "auth.report_chat==='open'" in body and "quiet:true" in body and "max:2" in body
+    assert "opts&&opts.quiet?'btn-ghost':'btn-primary'" in s

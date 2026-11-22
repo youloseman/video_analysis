@@ -467,6 +467,8 @@
     <div class="dkpis"><div id="dashSports" class="dash-sports"></div></div>
     <!-- What to fix, sport by sport, as a checklist (Artur 2026-11-19). -->
     <div id="dashFix"></div>
+    <!-- Ask about the latest report, under the list it explains (renderDashChat). -->
+    <div class="block hidden" id="dashChatBlock"></div>
     <!-- Then -> now and the Kona field, one line each: they open Progress,
          where the pictures and the strips are (Main board, short version). -->
     <div id="dashLinks"></div>
@@ -12253,7 +12255,7 @@ const CHAT_SUGGEST={
        'How should I film the next clip?'],
 };
 const chatThreads={};   // entry id -> {msgs, used, limit, busy}
-function renderChat(blockId, e){
+function renderChat(blockId, e, opts){
   const block=$('#'+blockId); if(!block) return;
   // auth.report_chat (services/report_chat.chat_state): "open", or the plan
   // that has it ("full" / "plans"), or "" while it is not launched for anyone
@@ -12263,12 +12265,13 @@ function renderChat(blockId, e){
   block.classList.toggle('hidden', !show);
   if(!show){ block.innerHTML=''; block.dataset.entry=''; return; }
   block.dataset.entry=e.id;
+  block.dataset.max=(opts&&opts.max)||'';
   const paid=mode==='open';
   const head=`<div class="blockhead">
       <div class="eyebrow"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg> Ask</div>
-      <h3>Ask about this report</h3>
+      <h3>${esc((opts&&opts.title)||'Ask about this report')}</h3>
       <div class="speedline-sm"></div>
-    </div>`;
+    </div>${opts&&opts.sub?`<p class="chat-about">${opts.sub}</p>`:''}`;
   if(!paid){
     block.innerHTML=head+`<p class="hint chat-hint">Questions about a report are part of ${mode==='full'?'the Full plan':'the plans'}: why a number is flagged, what a change would cost you, how to film the next clip</p>
       <button class="btn btn-primary btn-sm" type="button" data-chatplans>See plans</button>`;
@@ -12282,7 +12285,7 @@ function renderChat(blockId, e){
     <div class="chat-sugg"></div>
     <form class="chat-form">
       <textarea maxlength="600" rows="2" placeholder="Ask a question about this analysis…" aria-label="Your question"></textarea>
-      <button class="btn btn-primary btn-sm" type="submit">Ask</button>
+      <button class="btn ${opts&&opts.quiet?'btn-ghost':'btn-primary'} btn-sm" type="submit">Ask</button>
     </form>
     <p class="chat-foot"></p>`;
   const form=block.querySelector('.chat-form'), ta=form.querySelector('textarea');
@@ -12304,7 +12307,7 @@ async function chatLoad(blockId, e){
     }
     // 404: a fresh report still on its way to the server -- an empty thread.
   }catch(_e){}
-  track('chat_opened', {where:blockId==='chatBlock'?'result':'history', sport:e.sport||null,
+  track('chat_opened', {where:blockId==='chatBlock'?'result':blockId==='dashChatBlock'?'home':'history', sport:e.sport||null,
     messages:(chatThreads[e.id]||{}).msgs?chatThreads[e.id].msgs.length:0});
   drawChat(blockId, e);
 }
@@ -12323,7 +12326,8 @@ function drawChat(blockId, e){
   // the ones not yet asked stay offered, fewer of them.
   const asked=new Set(t.msgs.filter(m=>m.role==='user').map(m=>m.text));
   const all=(t.sugg&&t.sugg.length)?t.sugg:CHAT_SUGGEST[(e.sport==='bike')?'bike':'run'];
-  const list=all.filter(q=>!asked.has(q)).slice(0, t.msgs.length?2:4);
+  const max=Number(block.dataset.max)||4;
+  const list=all.filter(q=>!asked.has(q)).slice(0, t.msgs.length?Math.min(2,max):max);
   sugg.innerHTML=(!t.busy&&list.length&&(t.limit==null||t.used==null||t.used<t.limit))
     ?(t.msgs.length?'<span class="chat-sugg-h">More to ask</span>':'')+list.map((q,i)=>`<button class="btn btn-ghost btn-sm" type="button" data-sugg="${i}">${esc(q)}</button>`).join(''):'';
   sugg.querySelectorAll('[data-sugg]').forEach(b=>b.addEventListener('click',()=>{
@@ -15607,12 +15611,14 @@ function renderDashboard(){
       </div>
     </div>`;
     $('#dashSports').innerHTML=''; $('#dashFix').innerHTML=''; $('#dashLinks').innerHTML=''; $('#dashForm').innerHTML='';
+    renderChat('dashChatBlock', null);
     return;
   }
   $('#dashSummary').innerHTML='';
   // The list decides which sport leads; the cards stand in the same order.
   renderDashFix(all);
   const lead=($('#dashFix').dataset.sport)||'run';
+  renderDashChat(all, lead);
   $('#dashSports').innerHTML=[lead, lead==='run'?'bike':'run'].map(sp=>sportCard(sp,all.filter(e=>e.sport===sp))).join('');
   fillSportFigs(all);
   renderDashSeg(all);
@@ -15622,6 +15628,21 @@ function renderDashboard(){
 /* Run / Bike on a phone (Artur 2026-11-19): two sport cards were two
    screens of scrolling. Only when both sports have clips; it starts on the
    sport Fix first leads with. The wide layout shows both cards (CSS). */
+/* Ask about the latest report, on Home (Artur 2026-11-22): the question
+   comes up reading "What to fix", and the answer should not be three taps
+   away. The same thread as that report's own chat (chatThreads by entry id),
+   grounded in that one report. Paid plans only here: the locked line stays on
+   the report, and Home keeps one coral button (Analyze a clip). */
+function renderDashChat(all, lead){
+  const e=all.find(x=>x.sport===lead&&x.access==='full')||all.find(x=>x.access==='full')||null;
+  const open=!!(auth&&auth.report_chat==='open');
+  renderChat('dashChatBlock', open?e:null, open&&e?{
+    title:`Ask about your latest ${e.sport==='run'?'run':'ride'}`,
+    sub:`${shortDate(e.filmedAt||e.at)}${e.score!=null?` · ${e.score}/100`:''} · <a href="#" class="chat-about-a" data-dashchat-open>Open the report</a>`,
+    quiet:true, max:2}:null);
+  const a=$('#dashChatBlock [data-dashchat-open]');
+  if(a&&e) a.addEventListener('click',ev=>{ ev.preventDefault(); track('chat_dash_open_report',{sport:e.sport}); openHistory(e.id); });
+}
 function renderDashSeg(all){
   const host=$('#dashSeg'), cards=$('#dashSports'); if(!host||!cards) return;
   const both=all.some(e=>e.sport==='run')&&all.some(e=>e.sport==='bike');
