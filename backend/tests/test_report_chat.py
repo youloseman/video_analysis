@@ -608,3 +608,66 @@ async def test_admin_sees_topics_repeats_and_recent(db, make_user, fake_model):
     assert j["topics"]["saddle"] == 2 and j["topics"]["pain"] == 1
     assert j["top_questions"][0] == {"text": "why lower the saddle?", "n": 2}
     assert j["recent"][0]["text"] == "My knee hurts" and len(j["recent"]) == 3
+
+
+# --------------------------------------------------------------------------
+# 2026-11-22: the same assistant over the Progress page's series
+# --------------------------------------------------------------------------
+def _clip(score, knee, elbow):
+    return dict(BANDED_BIKE, technique_score=score, sport_specific_metrics={
+        "knee_at_bdc": knee, "trunk_angle_avg": 40.0, "elbow_angle_avg": elbow})
+
+
+def test_the_series_reads_oldest_first_with_its_ranges():
+    series = report_chat.progress_series([("2026-10-01", _clip(78, 152.0, 128.0)),
+                                          ("2026-11-01", _clip(85, 146.0, 140.0))])
+    md = report_chat.progress_block(series)
+    assert "Progress across 2 clips" in md and "| 78" in md and "85" in md
+    assert "2026-10-01 | 2026-11-01" in md
+    assert "OUT" in md and "135-145" in md
+    qs = report_chat.progress_suggestions(series)
+    assert qs[0] == "My score went from 78 to 85 since Oct 1. What changed the most?"
+    assert "elbow" in qs[1] and "noise" in qs[1]           # the biggest mover
+    assert len(qs) <= report_chat.MAX_SUGGESTIONS
+
+
+def test_progress_rules_name_the_noise_floor_and_forbid_invented_causes():
+    r = report_chat.PROGRESS_RULES
+    assert "3 degrees" in r and "Do not invent a cause" in r
+
+
+async def test_progress_chat_answers_from_the_series(db, make_user, fake_model):
+    u = await make_user(tier=TIER_ENTHUSIAST)
+    await add_report(db, u, client_id="a1", result=_clip(78, 152.0, 128.0), at=1_000)
+    await add_report(db, u, client_id="a2", result=_clip(85, 146.0, 140.0), at=2_000)
+    j = await chat_api.get_progress_chat("bike", "a1,a2", u, db)
+    assert j["clips"] == 2 and j["suggestions"][0].startswith("My score went from 78 to 85")
+    out = await chat_api.ask_progress_chat(
+        chat_api.ProgressQuestionIn(question="What changed the most?", sport="bike", ids=["a1", "a2"]), u, db)
+    assert out["used"] == 1
+    prompt = fake_model["prompts"][-1]
+    assert "THIS IS A PROGRESS CHAT" in prompt and "Progress across 2 clips" in prompt
+    assert "THE LATEST REPORT IN FULL" in prompt
+    # one thread per sport, shared quota with the report chat
+    again = await chat_api.get_progress_chat("bike", "a1,a2", u, db)
+    assert [m["role"] for m in again["messages"]] == ["user", "assistant"]
+    assert await report_chat.used_this_month(db, u.id) == 1
+
+
+async def test_progress_chat_needs_two_of_the_readers_own_full_reports(db, make_user, fake_model):
+    u = await make_user(tier=TIER_FULL)
+    other = await make_user(tier=TIER_FULL)
+    await add_report(db, u, client_id="a1", result=_clip(78, 152.0, 128.0))
+    await add_report(db, other, client_id="b1", result=_clip(85, 146.0, 140.0), at=2_000)
+    with pytest.raises(HTTPException) as e:
+        await chat_api.get_progress_chat("bike", "a1,b1", u, db)     # b1 is not theirs
+    assert e.value.status_code == 409
+
+
+async def test_progress_chat_is_for_paid_plans(db, make_user, fake_model):
+    u = await make_user(tier=TIER_STARTER)
+    await add_report(db, u, client_id="a1", result=_clip(78, 152.0, 128.0), unlocked=True)
+    await add_report(db, u, client_id="a2", result=_clip(85, 146.0, 140.0), at=2_000, unlocked=True)
+    with pytest.raises(HTTPException) as e:
+        await chat_api.get_progress_chat("bike", "a1,a2", u, db)
+    assert e.value.status_code == 402

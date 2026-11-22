@@ -1657,6 +1657,8 @@
     <div id="progGrid"></div>
     <div id="progTeaser"></div>
     <div class="dvis prog-vis"><div id="progThen"></div><div id="progKona"></div></div>
+    <!-- Ask about this series of clips (renderProgChat). -->
+    <div class="block hidden" id="progChatBlock"></div>
     <p class="hint prog-foot">The green band is the optimal range. Each camera side keeps its own line: changing side moves the numbers by itself</p>
   </section>
 
@@ -12280,11 +12282,11 @@ function renderChat(blockId, e, opts){
     return;
   }
   const bike=(e.sport||'')==='bike';
-  block.innerHTML=head+`<p class="hint chat-hint">Answers come from this report’s numbers${bike?', your bike profile and any CdA you have logged':''}. An assistant, not a fitter: it knows only what the clip measured</p>
+  block.innerHTML=head+`<p class="hint chat-hint">${opts&&opts.hint?esc(opts.hint):`Answers come from this report’s numbers${bike?', your bike profile and any CdA you have logged':''}. An assistant, not a fitter: it knows only what the clip measured`}</p>
     <div class="chat-log" aria-live="polite"></div>
     <div class="chat-sugg"></div>
     <form class="chat-form">
-      <textarea maxlength="600" rows="2" placeholder="Ask a question about this analysis…" aria-label="Your question"></textarea>
+      <textarea maxlength="600" rows="2" placeholder="${esc((opts&&opts.placeholder)||'Ask a question about this analysis…')}" aria-label="Your question"></textarea>
       <button class="btn ${opts&&opts.quiet?'btn-ghost':'btn-primary'} btn-sm" type="submit">Ask</button>
     </form>
     <p class="chat-foot"></p>`;
@@ -12297,7 +12299,7 @@ function renderChat(blockId, e, opts){
 async function chatLoad(blockId, e){
   chatThreads[e.id]={msgs:[], used:null, limit:null, busy:false};
   try{
-    const r=await fetch(meUrl(e,'chat'),{headers:authHeaders()});
+    const r=await fetch(e.chatUrl?`${e.chatUrl}?${e.chatQuery}`:meUrl(e,'chat'),{headers:authHeaders()});
     // 402: not this reader's plan; 409: a report from before full results were
     // stored -- nothing to answer from. Either way no box that would refuse.
     if(r.status===402||r.status===409){ delete chatThreads[e.id]; const b=$('#'+blockId); if(b&&b.dataset.entry===e.id) b.classList.add('hidden'); return; }
@@ -12307,7 +12309,7 @@ async function chatLoad(blockId, e){
     }
     // 404: a fresh report still on its way to the server -- an empty thread.
   }catch(_e){}
-  track('chat_opened', {where:blockId==='chatBlock'?'result':blockId==='dashChatBlock'?'home':'history', sport:e.sport||null,
+  track('chat_opened', {where:blockId==='chatBlock'?'result':blockId==='dashChatBlock'?'home':blockId==='progChatBlock'?'progress':'history', sport:e.sport||null,
     messages:(chatThreads[e.id]||{}).msgs?chatThreads[e.id].msgs.length:0});
   drawChat(blockId, e);
 }
@@ -12336,7 +12338,7 @@ function drawChat(blockId, e){
     chatSend(blockId, e, q, {asked_from:'suggestion', suggestion_i:all.indexOf(q)});
   }));
   const left=(t.limit!=null&&t.used!=null)?Math.max(0,t.limit-t.used):null;
-  const notes=$(blockId==='chatBlock'?'#notesOffer':'#hdNotesOffer');
+  const notes=blockId==='chatBlock'?$('#notesOffer'):blockId==='hdChatBlock'?$('#hdNotesOffer'):null;
   const human=notes&&!notes.classList.contains('hidden')
     ? ' Want a person’s eye on it? <button class="btn btn-link" type="button" data-chathuman>A coach can review this clip</button>' : '';
   // What it carries over from earlier chats (report_chat "Memory"): shown on
@@ -12375,7 +12377,7 @@ async function chatSend(blockId, e, text, how){
   drawChat(blockId, e);
   let ok=false;
   try{
-    const r=await fetch(meUrl(e,'chat'),{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(Object.assign({question:q, asked_from:'typed'}, how||{}))});
+    const r=await fetch(e.chatUrl||meUrl(e,'chat'),{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(Object.assign({question:q, asked_from:'typed'}, e.chatBody||{}, how||{}))});
     const j=await r.json().catch(()=>({}));
     if(r.ok){
       t.msgs.pop(); t.msgs.push(j.question, j.answer); t.used=j.used; t.limit=j.limit; ok=true;
@@ -14792,6 +14794,25 @@ function progSpark(series, opt){
 }
 // Crossing the phone line redraws the page in the other composition.
 PHONE_MQ.addEventListener('change',()=>{ if(document.body.dataset.state==='trends'&&typeof renderProgress==='function') renderProgress(); });
+/* Ask about your progress (Artur 2026-11-22): the series this page draws --
+   one sport, one camera side, one kind, one bike position -- is the series
+   the assistant is given (api/chat.py /me/progress/chat), so it compares only
+   what the page compares. The reader's own clips; a linked athlete's belong
+   to the athlete and stay with their reports. */
+function renderProgChat(all, sport){
+  const ids=all.map(e=>e.id).filter(Boolean).slice(-12);
+  const ok=!!(auth&&auth.report_chat==='open')&&ids.length>=2&&!all.some(e=>e.linkedAthleteId);
+  if(!ok){ renderChat('progChatBlock', null); return; }
+  const noun=sport==='bike'?'rides':'runs', first=all[0], last=all[all.length-1];
+  const e={id:`progress:${sport}:${ids.length}:${ids[ids.length-1]}`, sport, access:'full',
+    chatUrl:(window.FLAPP_API_BASE||'')+'/me/progress/chat',
+    chatQuery:`sport=${sport}&ids=${ids.map(encodeURIComponent).join(',')}`, chatBody:{sport, ids}};
+  renderChat('progChatBlock', e, {title:'Ask about your progress',
+    sub:`${ids.length} ${noun} · ${esc(shortDate(first.filmedAt||first.at))} to ${esc(shortDate(last.filmedAt||last.at))}`,
+    hint:'Answers compare the clips on this page, filmed the same way. A change of a few degrees is inside what the camera measures twice',
+    placeholder:'Ask about your progress…',
+    quiet:true, max:3});
+}
 function renderProgress(){
   const sport=state.progressSport||'bike';
   [...$('#progSeg').children].forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.sport===sport)));
@@ -14841,8 +14862,10 @@ function renderProgress(){
       <button class="btn btn-primary" data-analyze="${sport==='bike'?'bike':'run'}"><svg class="ic" aria-hidden="true"><use href="#i-analyze"/></svg> Analyze a ${sport==='bike'?'ride':'run'}</button>
       ${auth?'':'<p class="emptysub">Saved on this device. <a href="#" data-openauth="register">Log in</a> to sync across devices</p>'}
     </div>`;
+    renderChat('progChatBlock', null);
     return;
   }
+  renderProgChat(all, sport);
   const dates=all.map(e=>fmtWhen(e.filmedAt||e.at));
   const shown=new Set(), lastE=all[all.length-1], noun=sport==='bike'?'ride':'run';
   // Each reading against the band the dashboard and the report use for this

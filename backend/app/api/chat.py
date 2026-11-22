@@ -259,9 +259,25 @@ async def ask_chat(
     background: BackgroundTasks = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     owner, row = await _readable(db, user, client_id, athlete_id)
+    await _check_questions_left(user, db)
+    ctx = await _context(db, owner, row, user)
+
+    def build(history: list[ChatMessage], memory: str | None) -> str:
+        return report_chat.build_prompt(
+            report_md=ctx["report_md"] or "", athlete_md=ctx["athlete_md"] or "",
+            withheld_md=ctx["withheld_md"], history=history, question=body.question, memory=memory,
+        )
+
+    return await _answer(
+        db, user, owner, client_id, report_chat.memory_key(row.athlete_id), body, build,
+        background, where="report", sport=ctx["sport"],
+        position=(row.result or {}).get("cycling_position"), withheld=bool(ctx["withheld_md"]),
+    )
+
+
+async def _check_questions_left(user: User, db: AsyncSession) -> None:
     limit = report_chat.chat_limit(user.tier)
     used = await report_chat.used_this_month(db, user.id)
-    topic = chat_topics.classify(body.question)
     if used >= limit:
         _track(user, "chat_limit_reached", {"kind": "questions", "tier": user.tier, "used": used, "limit": limit})
         raise HTTPException(
@@ -269,26 +285,31 @@ async def ask_chat(
             detail=f"You have asked all {limit} questions this month. They reset on the 1st.",
         )
 
-    ctx = await _context(db, owner, row, user)
-    history = await report_chat.thread(db, user.id, owner.id, client_id)
-    mkey = report_chat.memory_key(row.athlete_id)
+
+async def _answer(
+    db: AsyncSession, user: User, owner: User, thread_key: str, mkey: str, body: QuestionIn,
+    build: Any, background: BackgroundTasks | None, *, where: str, sport: str,
+    position: str | None, withheld: bool,
+) -> dict[str, Any]:
+    """Everything after the context: the dollar ceiling, the call, the two
+    rows, analytics and the memory update. Shared by every chat surface."""
+    limit = report_chat.chat_limit(user.tier)
+    used = await report_chat.used_this_month(db, user.id)
+    topic = chat_topics.classify(body.question)
+    history = await report_chat.thread(db, user.id, owner.id, thread_key)
     mem = await report_chat.memory_of(db, user.id, owner.id, mkey)
-    prompt = report_chat.build_prompt(
-        report_md=ctx["report_md"] or "", athlete_md=ctx["athlete_md"] or "",
-        withheld_md=ctx["withheld_md"], history=history, question=body.question,
-        memory=mem.text if mem else None,
-    )
+    prompt = build(history, mem.text if mem else None)
     spent = await report_chat.spent_this_month(db, user.id)
     budget = report_chat.chat_budget(user.tier)
     if spent + report_chat.projected_cost_usd(prompt) > budget:
         logger.warning("CHAT_BUDGET_REACHED", user_id=user.id, tier=user.tier, spent_usd=round(spent, 4))
         _track(user, "chat_limit_reached", {"kind": "budget", "tier": user.tier, "used": used, "limit": limit,
-                                            "month_cost_usd": round(spent, 4), "budget_usd": budget})
+                                            "month_cost_usd": round(spent, 4), "budget_usd": budget, "where": where})
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=OUT_OF_BUDGET)
     answer = await run_in_threadpool(report_chat.ask, prompt)
     if not answer:
-        logger.warning("CHAT_NO_ANSWER", user_id=user.id, analysis=client_id)
-        _track(user, "chat_failed", {"reason": "no_answer", "tier": user.tier, "topic": topic})
+        logger.warning("CHAT_NO_ANSWER", user_id=user.id, analysis=thread_key)
+        _track(user, "chat_failed", {"reason": "no_answer", "tier": user.tier, "topic": topic, "where": where})
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The assistant did not answer. Your question was not counted; try again in a minute.",
@@ -296,27 +317,26 @@ async def ask_chat(
 
     now_ms = int(time.time() * 1000)
     rows = report_chat.new_rows(
-        reader_id=user.id, owner_id=owner.id, client_id=client_id,
+        reader_id=user.id, owner_id=owner.id, client_id=thread_key,
         question=body.question, answer=answer, now_ms=now_ms, prompt=prompt,
     )
     db.add_all(rows)
     await db.commit()
+    cost = report_chat.answer_cost(rows[1])
     logger.info(
-        "CHAT_ANSWERED", user_id=user.id, analysis=client_id, model=answer.get("model"),
+        "CHAT_ANSWERED", user_id=user.id, analysis=thread_key, where=where, model=answer.get("model"),
         prompt_chars=len(prompt), answer_chars=len(answer["text"]),
-        tokens_in=rows[1].tokens_in, tokens_out=rows[1].tokens_out,
-        cost_usd=round(report_chat.answer_cost(rows[1]), 5),
+        tokens_in=rows[1].tokens_in, tokens_out=rows[1].tokens_out, cost_usd=round(cost, 5),
     )
     # A topic, lengths and counts -- never the text: the questions live in our
     # own table (and on the admin screen), not in the analytics service.
-    cost = report_chat.answer_cost(rows[1])
     month_cost = spent + cost
     _track(user, "chat_question", {
-        "sport": ctx["sport"], "position": (row.result or {}).get("cycling_position"),
+        "where": where, "sport": sport, "position": position,
         "turn": len(history) // 2 + 1, "topic": topic, "lang": chat_topics.language(body.question),
         "asked_from": body.asked_from, "suggestion_i": body.suggestion_i,
         "question_chars": len(body.question), "answer_chars": len(answer["text"]),
-        "model": answer.get("model"), "withheld": bool(ctx["withheld_md"]),
+        "model": answer.get("model"), "withheld": withheld,
         "coach_reading": owner.id != user.id, "tier": user.tier, "has_memory": mem is not None,
         "tokens_in": rows[1].tokens_in, "tokens_out": rows[1].tokens_out, "cost_usd": round(cost, 5),
         "used": used + 1, "limit": limit, "questions_left": max(0, limit - used - 1),
@@ -331,6 +351,103 @@ async def ask_chat(
         "question": report_chat.message_out(rows[0]),
         **_quota(used + 1, limit),
     }
+
+
+# --------------------------------------------------------------------------
+# Progress: the same assistant over the series the Progress page shows
+# --------------------------------------------------------------------------
+MAX_PROGRESS_IDS = 12
+
+
+class ProgressQuestionIn(QuestionIn):
+    sport: Literal["bike", "run"]
+    ids: list[str] = Field(min_length=2, max_length=MAX_PROGRESS_IDS)
+
+
+async def _progress_rows(db: AsyncSession, user: User, sport: str, ids: list[str]) -> list[Analysis]:
+    """The reader's own clips among ``ids``, readable in full, oldest first.
+    A coach's linked athletes are not here: their clips belong to the athlete."""
+    if report_chat.chat_state(user) != "open":
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                            detail="Asking about your progress is part of the paid plans.")
+    got = (await db.execute(
+        select(Analysis).where(Analysis.user_id == user.id, Analysis.client_id.in_(ids[:MAX_PROGRESS_IDS]))
+        .order_by(Analysis.created_at_ms)
+    )).scalars().all()
+    rows = [r for r in got if r.result and str((r.result or {}).get("sport_type") or r.sport) == sport
+            and access_for_stored(user, r) == ACCESS_FULL]
+    if len(rows) < 2:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="Progress questions need two full reports of this sport.")
+    return rows
+
+
+def _day_of(r: Analysis) -> str:
+    from datetime import datetime, timezone
+
+    ms = (r.data or {}).get("filmedAt") or r.created_at_ms
+    try:
+        return datetime.fromtimestamp(int(ms) / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+    except (TypeError, ValueError, OSError):
+        return "?"
+
+
+def _series(rows: list[Analysis]) -> dict[str, Any]:
+    return report_chat.progress_series([(_day_of(r), r.result or {}) for r in rows])
+
+
+@router.get("/progress/chat")
+async def get_progress_chat(
+    sport: Literal["bike", "run"],
+    ids: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    rows = await _progress_rows(db, user, sport, [i for i in ids.split(",") if i])
+    athlete_id = rows[-1].athlete_id
+    key = report_chat.progress_key(sport, athlete_id)
+    msgs = await report_chat.thread(db, user.id, user.id, key)
+    used = await report_chat.used_this_month(db, user.id)
+    limit = report_chat.chat_limit(user.tier)
+    if await report_chat.spent_this_month(db, user.id) >= report_chat.chat_budget(user.tier):
+        used = max(used, limit)
+    mem = await report_chat.memory_of(db, user.id, user.id, report_chat.memory_key(athlete_id))
+    return {
+        "messages": [report_chat.message_out(m) for m in msgs],
+        "memory": mem.text if mem else None,
+        "suggestions": report_chat.progress_suggestions(_series(rows)),
+        "clips": len(rows),
+        **_quota(used, limit),
+    }
+
+
+@router.post("/progress/chat")
+async def ask_progress_chat(
+    body: ProgressQuestionIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+    background: BackgroundTasks = None,  # type: ignore[assignment]
+) -> dict[str, Any]:
+    rows = await _progress_rows(db, user, body.sport, body.ids)
+    await _check_questions_left(user, db)
+    latest = rows[-1]
+    ctx = await _context(db, user, latest, user)
+    series_md = report_chat.progress_block(_series(rows))
+
+    def build(history: list[ChatMessage], memory: str | None) -> str:
+        return report_chat.build_prompt(
+            heading=report_chat.PROGRESS_RULES,
+            report_md=series_md + "\n\n# THE LATEST REPORT IN FULL\n\n" + (ctx["report_md"] or ""),
+            athlete_md=ctx["athlete_md"] or "", withheld_md=None, history=history,
+            question=body.question, memory=memory,
+        )
+
+    return await _answer(
+        db, user, user, report_chat.progress_key(body.sport, latest.athlete_id),
+        report_chat.memory_key(latest.athlete_id), body, build, background,
+        where="progress", sport=body.sport, position=(latest.result or {}).get("cycling_position"),
+        withheld=False,
+    )
 
 
 @router.delete("/chat/memory")

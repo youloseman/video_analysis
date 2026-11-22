@@ -111,3 +111,14 @@ def test_home_asks_about_the_latest_report_without_a_second_coral_button():
     body = s.split("function renderDashChat", 1)[1][:1200]
     assert "auth.report_chat==='open'" in body and "quiet:true" in body and "max:2" in body
     assert "opts&&opts.quiet?'btn-ghost':'btn-primary'" in s
+
+
+
+def test_progress_asks_about_the_series_the_page_draws():
+    s = SPA
+    assert 'id="progChatBlock"' in s
+    body = s.split("function renderProgChat", 1)[1][:1500]
+    assert "/me/progress/chat" in body and "linkedAthleteId" in body and "max:3" in body
+    assert "renderProgChat(all, sport);" in s
+    # the coach-review link appears only where a report is on screen
+    assert "blockId==='hdChatBlock'?$('#hdNotesOffer'):null" in s

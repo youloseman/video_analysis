@@ -497,11 +497,12 @@ def build_prompt(
     history: list[ChatMessage],
     question: str,
     memory: str | None = None,
+    heading: str = "# THE REPORT",
 ) -> str:
     parts = []
     if withheld_md:
         parts.append(withheld_md)
-    parts += ["# THE REPORT", report_md, athlete_md]
+    parts += [heading, report_md, athlete_md]
     if memory:
         parts.append(
             "# WHAT THE ATHLETE TOLD YOU IN EARLIER CHATS\n\n"
@@ -616,6 +617,134 @@ def remember(notes: str | None, question: str, answer: str) -> dict[str, Any] | 
     return {"text": clean_memory(got.get("text")), "model": got.get("model"),
             "tokens_in": estimate_tokens(MEMORY_SYSTEM) + estimate_tokens(prompt),
             "tokens_out": estimate_tokens(got.get("text") or "")}
+
+
+# --------------------------------------------------------------------------
+# Progress: the same assistant over a series of comparable clips
+# --------------------------------------------------------------------------
+# The Progress page already picks a like-for-like series (one sport, one
+# camera side, one kind, one bike position); the chat is given exactly that
+# series, so it can only compare what the page compares. One thread per sport
+# (and per athlete, for a coach's own uploads), under a pseudo report id.
+PROGRESS_KEY = "_progress"
+PROGRESS_MAX_CLIPS = 8
+# Below these a change is inside what 2D video measures twice on one rider.
+NOISE_DEG = 3.0
+NOISE_SCORE = 3.0
+
+PROGRESS_RULES = (
+    "# THIS IS A PROGRESS CHAT\n\n"
+    "The athlete is asking about a series of their own clips, oldest first, all "
+    "filmed the same way (same sport, camera side, kind and bike position). "
+    "Rules on top of the usual ones:\n"
+    f"- A change smaller than {NOISE_DEG:g} degrees, or {NOISE_SCORE:g} score points, is "
+    "within what the method measures twice on the same rider: call it steady, "
+    "not progress and not a decline.\n"
+    "- Do not invent a cause. If the athlete did not say what they changed "
+    "between clips, say what moved and ask what they changed.\n"
+    "- Compare clips only through the table below; the latest report in full "
+    "follows it for detail and for what to do next.\n"
+)
+
+
+def progress_key(sport: str, athlete_id: int | None) -> str:
+    base = f"{PROGRESS_KEY}:{sport}"
+    return base if athlete_id is None else f"{base}:a{athlete_id}"
+
+
+def _rows_for(result: dict[str, Any]) -> list[dict[str, Any]]:
+    try:
+        if str(result.get("sport_type") or "run") == "bike":
+            from app.services.review_pdf import metric_rows
+
+            return metric_rows(result)
+        from app.services.report_pdf import plan_rows
+
+        return plan_rows(result)
+    except Exception:  # noqa: BLE001 -- one odd stored result never sinks the chat
+        return []
+
+
+_MARK = {"good": "in range", "warn": "near edge", "bad": "OUT"}
+
+
+def progress_series(clips: list[tuple[str, dict[str, Any]]]) -> dict[str, Any]:
+    """{labels, clips:[{date, score, grade, values:{label:(v, unit, status)}}], bands}."""
+    out: list[dict[str, Any]] = []
+    labels: list[str] = []
+    bands: dict[str, Any] = {}
+    for day, res in clips[-PROGRESS_MAX_CLIPS:]:
+        vals = {}
+        for r in _rows_for(res):
+            v = r.get("value")
+            if not isinstance(v, (int, float)):
+                continue
+            lbl = str(r.get("label") or r.get("field") or "?")
+            vals[lbl] = (float(v), (r.get("unit") or "").strip(), r.get("status"))
+            if lbl not in labels:
+                labels.append(lbl)
+            if r.get("band"):
+                bands[lbl] = r["band"]
+        out.append({"date": day, "score": None if res.get("score_withheld") else res.get("technique_score"),
+                    "grade": res.get("letter_grade"), "values": vals})
+    return {"labels": labels, "clips": out, "bands": bands}
+
+
+def progress_block(series: dict[str, Any]) -> str:
+    clips = series["clips"]
+    head = "| Reading | " + " | ".join(c["date"] for c in clips) + " | Range |"
+    lines = [f"## Progress across {len(clips)} clips (oldest first)", "",
+             "| Score | " + " | ".join("withheld" if c["score"] is None else f"{c['score']}" + (f" ({c['grade']})" if c.get("grade") else "")
+                                      for c in clips) + " | |", "", head,
+             "|" + "---|" * (len(clips) + 2)]
+    for lbl in series["labels"]:
+        cells = []
+        unit = ""
+        for c in clips:
+            got = c["values"].get(lbl)
+            if not got:
+                cells.append("-")
+                continue
+            v, unit, st = got
+            cells.append(f"{v:.0f}{unit}" + (f" {_MARK[st]}" if st in _MARK else "") if abs(v) >= 10
+                         else f"{v:.2f}{unit}" + (f" {_MARK[st]}" if st in _MARK else ""))
+        band = series["bands"].get(lbl)
+        lines.append(f"| {lbl} | " + " | ".join(cells) + f" | {f'{band[0]:g}-{band[1]:g}{unit}' if band else 'not graded'} |")
+    return "\n".join(lines)
+
+
+def _human_day(iso: str) -> str:
+    """2026-10-08 -> Oct 8 (the table keeps ISO for the model)."""
+    try:
+        d = datetime.strptime(iso, "%Y-%m-%d")
+        return f"{d:%b} {d.day}"
+    except ValueError:
+        return iso
+
+
+def progress_suggestions(series: dict[str, Any]) -> list[str]:
+    clips = series["clips"]
+    out: list[str] = []
+    scored = [c for c in clips if c["score"] is not None]
+    if len(scored) >= 2:
+        a, b = scored[0], scored[-1]
+        out.append(f"My score went from {a['score']} to {b['score']} since {_human_day(a['date'])}. "
+                   "What changed the most?")
+    moves = []
+    for lbl in series["labels"]:
+        pts = [c["values"][lbl] for c in clips if lbl in c["values"]]
+        if len(pts) >= 2:
+            moves.append((abs(pts[-1][0] - pts[0][0]), lbl, pts[0], pts[-1]))
+    moves.sort(reverse=True)
+    if moves:
+        _d, lbl, first, last = moves[0]
+        name = lbl.split(" · ")[0]
+        name = name[:1].lower() + name[1:] if name[1:2].islower() else name
+        out.append(f"My {name} moved from {first[0]:.0f}{first[1]} to {last[0]:.0f}{last[1]}. "
+                   "Is that real, or measurement noise?")
+    out.append("What should I work on next to keep improving?")
+    out.append("Which of my changes is worth keeping, and which should I undo?")
+    return out[:MAX_SUGGESTIONS]
 
 
 def new_rows(
