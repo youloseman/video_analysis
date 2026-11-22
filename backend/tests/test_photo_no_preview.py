@@ -66,8 +66,9 @@ def test_the_spa_renders_the_photo_card_and_the_loud_banner():
     assert "renderUpsell('pUpsellHost'" not in spa
     # A saved photo in the cabinet gets the same card, never the $4 one.
     assert "if(e.kind==='photo'){ renderPhotoUpsell('hdUpsellHost'" in spa
-    # The banner, on every photo report whatever the tier, in two lines.
-    assert "<b>A photo is a rough read.</b> One frame, approximate angles." in spa
+    # The banner, on every photo report whatever the tier: one line and the
+    # way to the clip (2026-11-22: information, not an alarm).
+    assert "<b>Photo: one frame, approximate angles.</b>" in spa
     assert "switchToVideo('banner')" in spa
     assert "card: 'c_photo'" in spa
     assert ".banner.ph-limit{" in CSS.read_text(encoding="utf-8")

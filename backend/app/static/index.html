@@ -5250,7 +5250,8 @@ function fitRangeNote(sel, sport, pro, col){
   const el=$(sel); if(!el) return;
   const on=sport==='bike';
   el.classList.toggle('hidden', !on);
-  if(on) el.innerHTML=`<b>${col||'Optimal'}</b> is a bike-fit range for this position, not an aero optimum: where fitters place riders (Retul fit windows; Burt, <i>Bike Fit</i>, 2014; Fintelman 2015; BikeFit).${pro?' <b>Kona 2026</b> is what the pros actually rode.':''}`;
+  // One line: the [?] on each range names its studies (band_evidence.py).
+  if(on) el.innerHTML=`<b>${col||'Optimal'}</b>: where bike fitters place riders, not an aero optimum.${pro?' <b>Kona 2026</b>: what the pros rode.':''}`;
 }
 function renderPhotoAngles(){
   const res=state.photoRes; if(!res) return;
@@ -6879,8 +6880,9 @@ function renderPhoto(res,opts){
   // 2026-10-28: of the first 183 accounts to meet a paywall, 95 had read a
   // photo first and 2 of them paid, against 14 of 88 who had read a clip.
   // The banner's job is to send the reader to the clip, whatever they pay.
-  const adj=sport==='bike'&&canAdjust;
-  $('#pAccNote').innerHTML=`<div class="banner warn ph-limit"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><b>A photo is a rough read.</b> One frame, approximate angles. A short side-on <b>video</b> is measured ${sport==='bike'?'every pedal stroke':'every stride'} and is the accurate result.${adj?` A joint point off? <b>Adjust joints</b>${res.pose&&res.pose.scope==='free'?' (hip and knee on the free plan)':''}.`:''}<br><a href="#" class="ph-limit-go" onclick="event.preventDefault();switchToVideo('banner')">Analyze a video instead <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></a></span></div>`;
+  // Information, not an alarm (Artur 2026-11-22: simpler): one line and the
+  // way to the clip, which is the banner's job.
+  $('#pAccNote').innerHTML=`<div class="banner ph-limit"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span><b>Photo: one frame, approximate angles.</b> A video measures ${sport==='bike'?'every pedal stroke':'every stride'}<br><a href="#" class="ph-limit-go" onclick="event.preventDefault();switchToVideo('banner')">Analyze a video instead <svg class="ic arr-r" aria-hidden="true"><use href="#i-arr-r"/></svg></a></span></div>`;
 
   // Free-tier teaser: hide paid sections, show upgrade panel, stop early.
   $('#pUpsellHost').classList.add('hidden');
