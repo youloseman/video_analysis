@@ -99,6 +99,12 @@ REFS: dict[str, dict[str, str]] = {
     "weyand2000": {"cite": "Weyand et al. 2000", "venue": "Journal of Applied Physiology",
         "title": "Faster top running speeds are achieved with greater ground forces not more rapid leg movements",
         "url": "https://doi.org/10.1152/jappl.2000.89.5.1991"},
+    "arellano2014": {"cite": "Arellano & Kram 2014", "venue": "Journal of Experimental Biology",
+        "title": "The metabolic cost of human running: is swinging the arms worth it?",
+        "url": "https://doi.org/10.1242/jeb.100420"},
+    "yegian2019": {"cite": "Yegian et al. 2019", "venue": "Journal of Experimental Biology",
+        "title": "Straight arm walking, bent arm running: gait-specific elbow angles",
+        "url": "https://doi.org/10.1242/jeb.197228"},
     "souza2016": {"cite": "Souza 2016", "venue": "Physical Medicine and Rehabilitation Clinics of North America",
         "title": "An evidence-based videotaped running biomechanics analysis",
         "url": "https://doi.org/10.1016/j.pmr.2015.08.006"},
@@ -375,6 +381,18 @@ EVIDENCE: dict[tuple[str, str | None, str], dict[str, Any]] = {
         ),
         "refs": ["heiderscheit2011", "folland2017"], "article": "vosc",
     },
+    # Not in reference_bands (no elbow row on a run's table); the PDF's plan
+    # row draws the typical band (85-100), graded one-sided like the 50-100.
+    ("run", None, "elbow_mean"): {
+        "lo": 50, "hi": 100, "also": [(85, 100)], "ref_key": "elbow_angle", "basis": "measured",
+        "why": (
+            "The fault is an arm carried too open, a long straight lever to swing. "
+            "Runners bend the elbow and walkers do not, and running with the arms "
+            "held still cost up to 13% more energy. The usual carry is near 90°; a "
+            "tighter one is not a fault: every elite runner we filmed carried 62-69°"
+        ),
+        "refs": ["arellano2014", "yegian2019"],
+    },
 }
 
 
@@ -388,6 +406,10 @@ def _entry_out(entry: dict[str, Any]) -> dict[str, Any]:
     }
     if entry.get("article"):
         out["article"] = "/academy/" + ARTICLES[entry["article"]]
+    if entry.get("also"):
+        # Other bands drawn for the same reading that this entry also explains
+        # (a run plan row draws the typical band; the fault side is the same).
+        out["also"] = [list(b) for b in entry["also"]]
     return out
 
 

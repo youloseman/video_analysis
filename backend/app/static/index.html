@@ -4612,7 +4612,9 @@ function loadBandEvidence(){
 function bandEv(sport,position,field,lo,hi){
   const t=BAND_EV&&BAND_EV[sport]&&BAND_EV[sport][sport==='bike'?(position||'road_hoods'):'_'];
   const e=t&&t[field];
-  if(!e||e.lo!==lo) return null;
+  if(!e) return null;
+  if((e.also||[]).some(b=>b[0]===lo&&b[1]===hi)) return Object.assign({field,shownHi:e.hi},e);
+  if(e.lo!==lo) return null;
   if(e.hi!==hi&&!(BAND_EV_OPEN_TOP.has(field)&&hi>e.hi)) return null;
   return Object.assign({field,shownHi:hi},e);
 }

@@ -321,7 +321,7 @@ def metrics_table(rows: list[dict[str, Any]]) -> str:
 
 # The report's name for a run reading -> the band's field (band_evidence.py).
 _RUN_EV_FIELD = {"cadence": "cadence_spm", "vertical_osc": "vertical_oscillation_cm", "trunk_lean": "trunk_lean_avg",
-                 "knee_contact": "knee_max", "knee_swing": "knee_min"}
+                 "knee_contact": "knee_max", "knee_swing": "knee_min", "elbow_angle": "elbow_mean"}
 # Bands whose top may be wider than the entry's: the knee's far-side margin and
 # the hip, whose top is open (comfort).
 _EV_OPEN_TOP = {"knee_at_bdc", "hip_at_tdc"}
@@ -338,12 +338,16 @@ def ranges_sources(rows: list[dict[str, Any]], sport: str, position: str | None)
         if not band or not field:
             continue
         ev = band_evidence(sport, position, field)
-        if not ev or ev["lo"] != band[0] or (ev["hi"] != band[1] and not (field in _EV_OPEN_TOP and band[1] > ev["hi"])):
+        if not ev:
             continue
+        also = any(b[0] == band[0] and b[1] == band[1] for b in ev.get("also", []))
+        if not also and (ev["lo"] != band[0] or (
+                ev["hi"] != band[1] and not (field in _EV_OPEN_TOP and band[1] > ev["hi"]))):
+            continue
+        lo, hi = band if also else (ev["lo"], ev["hi"])
         unit = (r.get("unit") or "").strip()
         refs = ", ".join(f"<a href='{_e(x['url'])}'>{_e(x['cite'])}</a>" for x in ev["refs"])
-        span = (f"{_num(ev['lo'])} to {_num(ev['hi'])}" if ev["lo"] < 0
-                else f"{_num(ev['lo'])}–{_num(ev['hi'])}")
+        span = f"{_num(lo)} to {_num(hi)}" if lo < 0 else f"{_num(lo)}–{_num(hi)}"
         items.append(f"<li><b>{_e(r['label'])} {span}{_e(unit)}</b>"
                      f"<span class='src-b'>{_e(ev['basis_label'])}</span> {_e(ev['why'])}"
                      + (f" <span class='src-r'>{refs}</span>" if refs else "") + "</li>")

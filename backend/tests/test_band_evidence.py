@@ -17,10 +17,23 @@ SPA = Path(__file__).resolve().parents[1] / "app" / "static" / "index.html"
 
 
 def test_every_entry_explains_the_live_band():
+    from app.services.video_analysis.biomechanics.sport_configs import ELBOW_TYPICAL, RUNNING_REFERENCE
+
     for (sport, position, field), e in BE.EVIDENCE.items():
         band = reference_bands(sport, position).get(field)
+        if e.get("ref_key"):  # graded, not served to the table
+            band = dict(zip(("lo", "hi"), RUNNING_REFERENCE[e["ref_key"]]))
         assert band, (sport, position, field)
         assert (e["lo"], e["hi"]) == (band["lo"], band["hi"]), (sport, position, field)
+    assert BE.EVIDENCE[("run", None, "elbow_mean")]["also"] == [ELBOW_TYPICAL]
+
+
+def test_the_run_elbow_is_explained_in_the_pdf():
+    from app.services.report_pdf import ranges_sources
+
+    rows = [{"label": "Arm swing · elbow", "field": "elbow_angle", "band": (85.0, 100.0), "unit": "°"}]
+    html = ranges_sources(rows, "run", None)
+    assert "Arellano &amp; Kram 2014" in html and "85–100" in html and "jeb.100420" in html
 
 
 def test_every_served_band_has_an_answer():
@@ -65,5 +78,5 @@ def test_the_spa_puts_the_question_mark_on_the_range():
     assert "/bands/evidence.json" in s
     assert 'aria-label="Why this range?"' in s
     # an entry shows only for the band it was written for
-    assert re.search(r"if\(!e\|\|e\.lo!==lo\) return null;", s)
+    assert re.search(r"if\(e\.lo!==lo\) return null;", s)
     assert "noopener" in s.split("function evRow", 1)[1][:900]
