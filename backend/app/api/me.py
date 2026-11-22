@@ -931,9 +931,11 @@ async def get_analysis_result(
     access = access_for_stored(owner, row)
     if access == ACCESS_FULL:
         await _ensure_coaching(db, row)
+    from app.services.video_analysis.biomechanics.action_plan_builder import current_road_trunk
+
     return {
         "access": access,
-        "result": gate_for_access(row.result, access),
+        "result": gate_for_access(current_road_trunk(row.result), access),
     }
 
 

@@ -914,6 +914,9 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     Flapp's), ``draft`` (not sent yet) and ``reviewed`` ("name · date"). ``out``,
     when given, gets the plan cards and the coach text as Flapp wrote them, for
     the coach's review screen."""
+    from app.services.video_analysis.biomechanics.action_plan_builder import current_road_trunk
+
+    result = current_road_trunk(result)
     sport = result.get("sport_type") or result.get("sport") or ""
     plan = result.get("training_plan") or {}
     # Filtered here as well as in the builder: a saved run still has it leading.

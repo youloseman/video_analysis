@@ -49,6 +49,13 @@ def test_a_run_report_has_the_plan_and_the_numbers():
 
 def test_a_bike_report_turns_the_fit_plan_into_the_plan():
     sample = example("bike-road")
+    # The sample's own bar step raised the bars for a low road trunk, which is a
+    # racing position now (current_road_trunk, 2026-11-22): a bar step that still
+    # stands is given here.
+    bars = {"component": "bar_position", "status": "needs_adjustment", "metric_name": "trunk_angle",
+            "current_value": 60.0, "target_range": [40, 55], "action": "lower_bars", "amount": "",
+            "reason": "Trunk angle is 60 deg (optimal 40-55 deg).", "priority": 3}
+    sample = {**sample, "fit_plan": {**sample["fit_plan"], "diagnostics": [bars]}}
     assert "Bar position:" in render_report_html(sample, {})
     # In the order the fit plan gives: saddle before the bars.
     saddle = {"component": "saddle_height", "status": "needs_adjustment", "metric_name": "knee_at_bdc",

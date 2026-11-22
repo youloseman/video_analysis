@@ -15034,7 +15034,7 @@ function fixHowTable(e){
     knee:{low:'Raise the saddle about 5 mm', high:'Lower the saddle about 5 mm'},
     hip:{low:'Move the saddle forward about 5 mm. If the knee is also too bent at the bottom, raise the saddle first'},
     trunk:{high:aero?'Lower the pads: take a 5 mm spacer out from under them, or move the pads forward':'Lower the bars: move a 5 mm spacer from under the stem to above it, or fit a longer stem',
-           low:aero?'Lower than the range costs nothing on aero bars. Add a 5 mm spacer under the pads only if you cannot hold it or your neck complains':'Raise the bars: move a 5 mm spacer from above the stem to under it'},
+           low:aero?'Lower than the range costs nothing on aero bars. Add a 5 mm spacer under the pads only if you cannot hold it or your neck complains':'Lower than the range is a racing position: keep it if you can hold it and see the road. If your neck or lower back complains, move a 5 mm spacer from above the stem to under it'},
     shoulder:{high:aero?'Bring the pads back toward you, so the elbows sit under the shoulders':'Shorten the reach: a stem about 10 mm shorter',
               low:aero?'A closed shoulder is your choice on aero bars. If the neck or breathing feels cramped, move the pads forward':'Lengthen the reach: a stem about 10 mm longer'},
     elbow:{low:aero?'Flatten the extensions a few degrees, or move the pads forward':'The bars may sit too close: try a stem about 10 mm longer',
@@ -15057,7 +15057,7 @@ function fixHow(e, key, dir){ return (fixHowTable(e)[key]||{})[dir]||''; }
 const FIX_CHIP={
   bike:{knee:{low:['↑','Saddle','5 mm',''], high:['↓','Saddle','5 mm','']},
     hip:{low:['→','Saddle','5 mm','if the knee is also too bent at the bottom, raise the saddle first']},
-    trunk:{high:['↓','Bars','5 mm','move a spacer from under the stem to above it'], low:['↑','Bars','5 mm','move a spacer from above the stem to under it']},
+    trunk:{high:['↓','Bars','5 mm','move a spacer from under the stem to above it']},
     shoulder:{high:['←','Stem','−10 mm','a shorter reach'], low:['→','Stem','+10 mm','a longer reach']},
     elbow:{low:['→','Stem','+10 mm','the bars may sit too close']}},
   aero:{knee:{low:['↑','Saddle','5 mm',''], high:['↓','Saddle','5 mm','']},

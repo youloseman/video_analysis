@@ -178,8 +178,11 @@ def test_the_report_table_is_the_sample_report(html):
     table = html[html.index('class="rp-table"'):]
     table = table[:table.index("</figure>")]
     assert table.count("<li ") == 6
-    diagnostics = {d["metric_name"]: d["current_value"] for d in data["fit_plan"]["diagnostics"]}
-    assert f'{diagnostics["trunk_angle"]}' in table
+    # The trunk is a racing position on the hoods now, read as a good-but-amber
+    # metric rather than a step (current_road_trunk, 2026-11-22).
+    plan = data["fit_plan"]
+    trunk = {d["metric_name"]: d["current_value"] for d in plan["diagnostics"]}.get("trunk_angle")         or next(g["value"] for g in plan["good_metrics"] if g["metric"] == "trunk_angle")
+    assert f'{trunk}' in table
 
 
 def test_every_full_size_scott_frame_links_to_his_events_page(html):

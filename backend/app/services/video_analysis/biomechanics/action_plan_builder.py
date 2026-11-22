@@ -1175,3 +1175,33 @@ def apply_hip_over_bb(fit_plan: dict[str, Any] | None, hob: Any,
     out["fitting_sequence_note"] = (f"Adjust in order: {' -> '.join(order)}. {_FAR_STEP_NOTE}"
                                     if order else note_base)
     return out
+
+
+def current_road_trunk(result: dict[str, Any]) -> dict[str, Any]:
+    """A stored road report read with today's trunk rule.
+
+    Since 2026-11-13 a road trunk lower than its band is a racing position:
+    amber, :data:`ROAD_TRUNK_LOW_CONCERN`, a third of the penalty, never "raise
+    the bars". A plan built before that still carries the old raise_bars
+    diagnostic, and every surface that reads the stored plan (the report, the
+    PDF, the sample pages) kept telling a racer to raise the bars (Artur,
+    2026-11-22). This swaps that one diagnostic for the amber note, on a copy;
+    the stored row and the score are left as they were.
+    """
+    if not isinstance(result, dict) or result.get("cycling_position") not in ROAD_POSITIONS:
+        return result
+    plan = result.get("fit_plan")
+    if not isinstance(plan, dict):
+        return result
+    diags = [d for d in plan.get("diagnostics") or [] if isinstance(d, dict)]
+    stale = [d for d in diags if d.get("metric_name") == "trunk_angle" and d.get("action") == "raise_bars"]
+    if not stale:
+        return result
+    d = stale[0]
+    value, rng = d.get("current_value"), list(d.get("target_range") or [])
+    good = [g for g in plan.get("good_metrics") or [] if not (isinstance(g, dict) and g.get("metric") == "trunk_angle")]
+    if isinstance(value, (int, float)) and len(rng) == 2:
+        _add_good_metric(good, "trunk_angle", float(value), (rng[0], rng[1]), "Trunk angle", borderline=True,
+                         note=f"Trunk angle is {value:.0f} deg. " + ROAD_TRUNK_LOW_CONCERN.format(lo=rng[0], hi=rng[1]))
+    new_plan = {**plan, "diagnostics": [x for x in diags if x is not d], "good_metrics": good}
+    return {**result, "fit_plan": new_plan}

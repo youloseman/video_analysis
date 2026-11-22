@@ -244,7 +244,9 @@ def test_a_big_change_is_made_in_steps_and_a_saved_note_no_longer_contradicts_it
 
 def test_an_order_of_one_is_not_an_order_and_an_order_of_two_stays():
     assert "Adjust in order" not in _saddle()
-    second = {**SADDLE, "component": "bar_position", "metric_name": "trunk_angle", "action": "raise_bars",
+    # A bar step that still stands on the hoods: too upright (a low road trunk
+    # is a racing position and no longer a step, 2026-11-22).
+    second = {**SADDLE, "component": "bar_position", "metric_name": "trunk_angle", "action": "lower_bars",
               "amount": None, "priority": 2}
     assert "Adjust in order: saddle height -&gt; bar position." in _saddle(
         "Adjust in order: saddle height -> bar position. Each adjustment: 5mm only, ride 30 minutes before reassessing.",

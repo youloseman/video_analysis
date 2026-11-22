@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from app.services.academy.renderer import SITE_NAME, _esc, _page
+from app.services.video_analysis.biomechanics.action_plan_builder import current_road_trunk
 from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
 
 # backend/content/examples -- two levels up from app/services/, matching where
@@ -87,7 +88,7 @@ def load_samples() -> list[Sample]:
         path = CONTENT_DIR / f"{slug}.json"
         if not path.exists():
             continue
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = current_road_trunk(json.loads(path.read_text(encoding="utf-8")))
         out.append(Sample(
             slug=slug,
             title=data.get("title") or slug,
