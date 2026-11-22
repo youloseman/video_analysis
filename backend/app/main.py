@@ -79,6 +79,7 @@ from app.api import auth as auth_routes
 from app.api import billing as billing_routes
 from app.api.billing import log_billing_configuration
 from app.api import changelog as changelog_routes
+from app.api import evidence as evidence_routes
 from app.api import examples as examples_routes
 from app.api import feedback as feedback_routes
 from app.api import me as me_routes
@@ -486,6 +487,8 @@ app.include_router(changelog_routes.router)
 # somebody who has not signed up, which is the one thing a score-only free
 # tier cannot show them.
 app.include_router(examples_routes.router)
+# Why each reference range is what it is: /bands/evidence.json (the [?] on a band).
+app.include_router(evidence_routes.router)
 # Off-bike mobility screens: /mobility (profile), /mobility/screen (measure).
 app.include_router(mobility_routes.router)
 from app.api import prescan as prescan_routes  # noqa: E402

@@ -32,6 +32,7 @@ from app.services.video_analysis.biomechanics.action_plan_builder import (
     FIT_STEP_NOTE,
     apply_hip_over_bb,
 )
+from app.services.video_analysis.biomechanics.band_evidence import band_evidence
 from app.services.video_analysis.biomechanics.cycling_positions import NON_DRIVE_KNEE_NOTE, is_graded
 from app.services.video_analysis.biomechanics.running_action_plan_builder import (
     _FAULT_DIRECTION,
@@ -316,6 +317,40 @@ def metrics_table(rows: list[dict[str, Any]]) -> str:
         return ""
     return ("<table class='mt'><thead><tr><th>Measurement</th><th class='mt-yh'>Yours</th>"
             "<th>vs reference</th><th>Status</th></tr></thead><tbody>" + "".join(body) + "</tbody></table>")
+
+
+# The report's name for a run reading -> the band's field (band_evidence.py).
+_RUN_EV_FIELD = {"cadence": "cadence_spm", "vertical_osc": "vertical_oscillation_cm", "trunk_lean": "trunk_lean_avg",
+                 "knee_contact": "knee_max", "knee_swing": "knee_min"}
+# Bands whose top may be wider than the entry's: the knee's far-side margin and
+# the hip, whose top is open (comfort).
+_EV_OPEN_TOP = {"knee_at_bdc", "hip_at_tdc"}
+
+
+def ranges_sources(rows: list[dict[str, Any]], sport: str, position: str | None) -> str:
+    """Why each range on the page is what it is, with the studies linked: the
+    app's [?] on a band, printed (John Bye asked why our ranges are "optimal").
+    A row graded on a band the entry was not written for gets no entry."""
+    items = []
+    for r in rows:
+        band = r.get("band")
+        field = _RUN_EV_FIELD.get(str(r.get("field"))) if sport == "run" else r.get("field")
+        if not band or not field:
+            continue
+        ev = band_evidence(sport, position, field)
+        if not ev or ev["lo"] != band[0] or (ev["hi"] != band[1] and not (field in _EV_OPEN_TOP and band[1] > ev["hi"])):
+            continue
+        unit = (r.get("unit") or "").strip()
+        refs = ", ".join(f"<a href='{_e(x['url'])}'>{_e(x['cite'])}</a>" for x in ev["refs"])
+        span = (f"{_num(ev['lo'])} to {_num(ev['hi'])}" if ev["lo"] < 0
+                else f"{_num(ev['lo'])}–{_num(ev['hi'])}")
+        items.append(f"<li><b>{_e(r['label'])} {span}{_e(unit)}</b>"
+                     f"<span class='src-b'>{_e(ev['basis_label'])}</span> {_e(ev['why'])}"
+                     + (f" <span class='src-r'>{refs}</span>" if refs else "") + "</li>")
+    if not items:
+        return ""
+    return ("<div class='srcs'><div class='eyebrow'>Where the ranges come from</div>"
+            "<ul>" + "".join(items) + "</ul></div>")
 
 
 def _tile(row: dict[str, Any]) -> str:
@@ -843,6 +878,11 @@ _EXTRA_CSS = """
 .tile-how .pm{flex:none;width:34px;height:34px}
 .mt-mh b{color:#14294B;font-size:9.4pt}
 .mt-how{font-size:7.4pt;line-height:1.35;color:#6B7584;margin-top:2px}
+.srcs{margin-top:12px;break-inside:auto}
+.srcs ul{list-style:none;margin:6px 0 0;padding:0}
+.srcs li{font-size:7.8pt;line-height:1.45;color:#3A4558;margin:0 0 5px;break-inside:avoid}
+.srcs .src-b{font-size:6.6pt;letter-spacing:.06em;text-transform:uppercase;color:#6B7584;border:.6pt solid #C9CED6;border-radius:8pt;padding:0 5pt;margin:0 6pt}
+.srcs a{color:#2457C5;text-decoration:none}
 .mt-y{width:11%;text-align:right;font:700 12pt 'IBM Plex Mono',monospace;color:#14181F;white-space:nowrap}
 .mt-y.good{color:#1F7A45}.mt-y.warn{color:#9A5E0B}.mt-y.bad{color:#B8371F}
 .mt-b{width:33%}
@@ -1190,11 +1230,12 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     numbers = f"""
 <section class="numbers-start">
   <div class="keep">{head('The numbers', 'Every measurement, against its range')}
-  <p class="lead">Measured by Flapp from your clip. Ranges come from sports-science research{' and the Kona 2026 pro field' if has_pro else ''}.</p>
+  <p class="lead">Measured by Flapp from your clip. Ranges come from {'studies and bike-fit guidance' if sport == 'bike' else 'running studies'}{' and the Kona 2026 pro field' if has_pro else ''}: where each one comes from is under the table.</p>
   {ok_html}
   {hob_html}
   {legend if rows else ''}{knee_note}</div>
   {metrics_table(rows) if rows else ''}
+  {ranges_sources(rows, sport, result.get('cycling_position')) if rows else ''}
   {f'<div class="keep"><div class="eyebrow" style="margin-top:12px">{"One stride, five positions" if sport == "run" else "One pedal revolution"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure></div>' if kino else ''}
   <div class="foot"><span>Flapp · getflapp.com</span><span>{_e(meta.get('prepared'))}</span></div>
 </section>""" if (rows or kino) else ""

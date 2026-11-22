@@ -4514,7 +4514,7 @@ function measRange(lo,hi,unit){
 /* The range bar: a grey track, the reference band in green, a 4 px marker at
    the reading. The scale gives the band room on both sides and always takes
    the reading in, so how far out a value is reads as distance. */
-function measBar(m,st){
+function measBar(m,st,capExtra){
   const r=m.range, lo=r.lo, hi=r.hi, v=r.value, unit=r.unit!=null?r.unit:m.unit;
   const span=(hi-lo)||Math.max(Math.abs(hi)*0.1,1);
   const min=Math.min(lo-span*0.8, v-span*0.2), max=Math.max(hi+span*0.8, v+span*0.2);
@@ -4527,6 +4527,7 @@ function measBar(m,st){
     +`<span class="mbar-mark ${st.cls}" style="--x:${P(v).toFixed(1)}%"></span></div>`
     +`<div class="mbar-cap">${measRange(lo,hi,unit)}`
     // The Kona field, where there is one: shown beside the band, never graded.
+    +(capExtra||'')
     +(pro?` <span class="mbar-procap"><span class="mbar-promark" aria-hidden="true"></span>Kona pros ${num(pro.median,0)}${u} <small>· middle half ${num(pro.q1,0)}–${num(pro.q3,0)}${u}</small></span>`:'')
     +`</div>`;
 }
@@ -4544,8 +4545,9 @@ function measRow(m){
   }
   // Who decided this band, printed rather than hidden behind a hover, and the
   // reading's own caveat ("estimated from 2D video") beside it.
-  let src='';
-  if(m.range&&m.range.src){
+  let src='', evId='';
+  if(m.range&&m.range.ev) evId='tev'+(++_defSeq);
+  else if(m.range&&m.range.src){
     const sid='tsrc'+(++_defSeq);
     src=`<button type="button" class="m-srcbtn" aria-expanded="false" aria-controls="${sid}">Source</button><span class="m-src hidden" id="${sid}">Band: ${esc(m.range.src)}</span>`;
   }
@@ -4557,9 +4559,10 @@ function measRow(m){
   return `<tr class="mrow ${st.cls}">`
     +`<th scope="row">${m.icon?`<div class="m-head"><svg class="pm m-fig" aria-hidden="true"><use href="#pm-${esc(m.icon)}"/></svg><div>`:''}<span class="m-name">${esc(m.lbl)}${what}</span>${sub?`<span class="m-sub">${sub}</span>`:''}${def}${m.icon?'</div></div>':''}</th>`
     +`<td class="m-val num">${valHtml}</td>`
-    +`<td class="m-ref">${m.range?measBar(m,st):'<span class="m-noref">no published range</span>'}</td>`
+    +`<td class="m-ref">${m.range?measBar(m,st,evId?evBtn(evId):''):'<span class="m-noref">no published range</span>'}</td>`
     +`<td class="m-st"><span class="m-pill">${st.word}</span>${delta?`<span class="m-delta">${delta}</span>`:''}${m.trend?`<span class="m-trend">${m.trend}</span>`:''}</td>`
-    +`</tr>`;
+    +`</tr>`
+    +(evId?evRow(m.range.ev,evId,4):'');
 }
 /* The grouped rows of a measurements table: needs attention (furthest out
    first), in range, not graded -- each under a header that counts it. The
@@ -4593,6 +4596,40 @@ function renderTiles(list){
 }
 /* helper: {value,lo,hi,unit} for the range bar */
 function R(value,lo,hi,unit,src){ return {value,lo,hi,unit,src}; }
+/* Why a band is what it is (band_evidence.py, /bands/evidence.json): the [?]
+   beside a range. John Bye asked why our ranges are "optimal"; the answer is
+   the studies, one tap away, and what kind of evidence it is. Fetched once. An
+   entry is shown only when its band is the one on screen, so an old report
+   graded on an older band gets no explanation written for a newer one. The
+   top may differ on two bands: the knee's far-side margin and the hip, whose
+   top is open (comfort). */
+let BAND_EV=null;
+const BAND_EV_OPEN_TOP=new Set(['knee_at_bdc','hip_at_tdc']);
+function loadBandEvidence(){
+  return fetch((window.FLAPP_API_BASE||'')+'/bands/evidence.json')
+    .then(r=>r.ok?r.json():null).then(j=>{ if(j) BAND_EV=j; }).catch(()=>{});
+}
+function bandEv(sport,position,field,lo,hi){
+  const t=BAND_EV&&BAND_EV[sport]&&BAND_EV[sport][sport==='bike'?(position||'road_hoods'):'_'];
+  const e=t&&t[field];
+  if(!e||e.lo!==lo) return null;
+  if(e.hi!==hi&&!(BAND_EV_OPEN_TOP.has(field)&&hi>e.hi)) return null;
+  return Object.assign({field,shownHi:hi},e);
+}
+/* The [?] at the range and the row it opens, under the whole reading. */
+function evBtn(id){ return `<button type="button" class="t-what ev-what" aria-label="Why this range?" aria-expanded="false" aria-controls="${id}">?</button>`; }
+function evRow(ev,id,cols){
+  const refs=(ev.refs||[]).map(r=>`<li><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.cite)}</a>`
+    +`<span class="ev-ref-t">${esc(r.title)}${r.venue?` · ${esc(r.venue)}`:''}</span></li>`).join('');
+  const wider=ev.field==='knee_at_bdc'&&ev.shownHi>ev.hi
+    ?`<p class="ev-why">On this clip the top is ${num(ev.shownHi-ev.hi,0)}° wider: filmed from the far side of the bike, the knee at the bottom reads a few degrees high.</p>`:'';
+  return `<tr class="ev-row hidden" id="${id}"><td colspan="${cols}"><div class="ev">`
+    +`<p class="ev-h"><b>Why this range</b><span class="ev-basis">${esc(ev.basis_label)}</span></p>`
+    +`<p class="ev-why">${esc(ev.why)}</p>${wider}`
+    +(refs?`<ul class="ev-refs">${refs}</ul>`:'<p class="ev-none">No study we can link sets this range</p>')
+    +(ev.article?`<p class="ev-more"><a href="${esc(ev.article)}" target="_blank" rel="noopener">Read the full article</a></p>`:'')
+    +`</div></td></tr>`;
+}
 /* The band the server graded against, preferred over the copy below.
    `state.bands` is filled from the result's `reference_bands`; the literals at
    each call site stay as a fallback for a result rendered before this shipped
@@ -4600,8 +4637,9 @@ function R(value,lo,hi,unit,src){ return {value,lo,hi,unit,src}; }
    it brings the citation with it. */
 function RB(field, value, lo, hi, unit){
   const b=(state.bands||{})[field];
-  if(!b) return R(value,lo,hi,unit);
-  return R(value, b.lo, b.hi, unit, b.source||null);
+  const r=b?R(value, b.lo, b.hi, unit, b.source||null):R(value,lo,hi,unit);
+  r.ev=bandEv('run',null,field,r.lo,r.hi);
+  return r;
 }
 
 function bikeTiles(s, position, plan){
@@ -4612,6 +4650,7 @@ function bikeTiles(s, position, plan){
   const rng=(key,val,field)=>{
     const b=(state.bands||{})[field], pr=bikePosRange(position,key);
     const r=b?R(val,b.lo,b.hi,'°',b.source||null):(pr?R(val,pr[0],pr[1],'°'):null);
+    if(r) r.ev=bandEv('bike',position,field,r.lo,r.hi);
     // The Kona field beside the band, on aero positions: a tick on the track
     // at the pros' median and a line under it (kona_field.py).
     const p=state.pro&&state.pro.metrics&&state.pro.metrics[field];
@@ -4634,6 +4673,7 @@ function bikeTiles(s, position, plan){
     const hipRange = hb
       ? R(s.hip_at_tdc, hb.lo, Math.max(hb.hi, s.hip_at_tdc), '°', hb.source||null)
       : (hr ? R(s.hip_at_tdc, hr[0], Math.max(hr[1], s.hip_at_tdc), '°') : null);
+    if(hipRange) hipRange.ev=bandEv('bike',position,'hip_at_tdc',hipRange.lo,hb?hb.hi:hr[1]);
     t.push(tileA('Hip · top of stroke','hip_at_tdc',s.hip_at_tdc,
       s.hip_angle_avg!=null?`averages ${num(angleDisp('hip_angle_avg',s.hip_angle_avg,'bike'))}° over the stroke`:null,hipRange,'bike'));
   } else if(s.hip_angle_avg!=null){
@@ -4729,7 +4769,7 @@ function runTiles(s){
     : 'scaled from an average build. Add your height for real centimeters';
   const voscCm = s.vertical_oscillation_cm!=null ? s.vertical_oscillation_cm
     : (s.vertical_oscillation_m!=null ? s.vertical_oscillation_m*100 : null);
-  if(voscCm!=null) t.push(tile('Vert. oscillation',num(voscCm,1),'cm',voscNote,null,false,R(voscCm,6,10,'cm')));
+  if(voscCm!=null) t.push(tile('Vert. oscillation',num(voscCm,1),'cm',voscNote,null,false,Object.assign(R(voscCm,6,10,'cm'),{ev:bandEv('run',null,'vertical_oscillation_cm',6,10)})));
   if(s.trunk_lean_avg!=null) t.push(tile('Trunk lean',num(s.trunk_lean_avg),'°',null,null,false,RB('trunk_lean_avg',s.trunk_lean_avg,2,10,'°')));
   if(s.ground_contact_ms!=null) t.push(tile('Ground contact',num(s.ground_contact_ms),'ms',s.ground_contact_ms_estimated?'estimated from 2D video':null,null,false,RB('ground_contact_ms',s.ground_contact_ms,100,270,'ms')));
   if(s.flight_time_ms!=null) t.push(tile('Flight time',num(s.flight_time_ms),'ms',s.flight_time_ms_estimated?'estimated from 2D video':null,null,false,RB('flight_time_ms',s.flight_time_ms,80,150,'ms')));
@@ -5160,16 +5200,25 @@ function photoAngleRow(k,a,pro){
   const P=P_STATUS_CLS[stt]||'low';
   const [word,cls]=P_STATUS_WORD[stt]?[P_STATUS_WORD[stt].charAt(0).toUpperCase()+P_STATUS_WORD[stt].slice(1), P==='good'?'m-ok':'m-info']
     : (P_CHIP[P]||[stt.replace(/_/g,' '),'m-info']);
-  let ref='<span class="m-noref">no published range</span>';
+  let ref='<span class="m-noref">no published range</span>', evTr='';
   if(v!=null&&a.optimal_min!=null&&a.optimal_max!=null){
-    ref=measBar({val:v,unit,range:{value:v,lo:a.optimal_min,hi:a.optimal_max,unit}},{word,cls});
+    const res=state.photoRes||{}, sp=res.sport||state.sport, f=photoEvField(k,sp,state.pedalPhase);
+    const ev=f&&bandEv(sp,res.cycling_position,f,a.optimal_min,a.optimal_max), evId=ev?'tev'+(++_defSeq):'';
+    ref=measBar({val:v,unit,range:{value:v,lo:a.optimal_min,hi:a.optimal_max,unit}},{word,cls},evId?evBtn(evId):'');
+    if(ev) evTr=evRow(ev,evId,pro?5:4);
   } else if(a.optimal_max!=null) ref=`<div class="mbar-cap">≤ ${a.optimal_max}${unit}</div>`;
   /* a.check (run): the two knees overlap, so the point may sit on the wrong
      leg -- scored, but the athlete is told to look. */
   const chk=a.check?` <small class="muted" title="${esc(a.note||'')}">· check the point</small>`:'';
   return `<tr class="mrow ${cls}"><th scope="row">${name}${chk}</th><td class="num m-val">${val}</td>
     <td class="col-range">${ref}</td>${proTd}
-    <td class="col-status"><span class="m-pill" title="${esc(a.note||'')}">${esc(word)}</span></td></tr>`;
+    <td class="col-status"><span class="m-pill" title="${esc(a.note||'')}">${esc(word)}</span></td></tr>${evTr}`;
+}
+/* A photo row's key as the clip report names the same reading, for its [?]. */
+function photoEvField(k,sport,phase){
+  if(sport==='run') return k==='trunk'?'trunk_lean_avg':null;
+  return {trunk:'trunk_angle_avg',shoulder:'shoulder_angle_avg',elbow:'elbow_angle_avg',forearm_tilt:'forearm_tilt_avg',
+    knee:phase==='bdc'?'knee_at_bdc':phase==='tdc'?'knee_at_tdc':null, hip:phase==='tdc'?'hip_at_tdc':null}[k]||null;
 }
 /* John Bye (coach, 2026-11-10) asked twice where "Optimal" comes from. The
    bike bands are fitters' ranges (cycling_positions.py), not an aero optimum,
@@ -16786,6 +16835,7 @@ function setNewDot(on){
    silently and no dot: the dot means "new since you last looked", not "here is a
    backlog you never asked for". */
 function initChangelog(){
+  loadBandEvidence();
   return fetch('/changelog.json')
     .then(r=>r.ok?r.json():null)
     .then(j=>{
