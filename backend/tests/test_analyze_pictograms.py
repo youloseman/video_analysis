@@ -42,7 +42,7 @@ def test_a_chosen_tile_turns_its_glyphs_light():
 
 def test_figure_classes_are_defined_and_prefixed():
     used = set()
-    for body in re.findall(r'<symbol id="pic-[a-z]+"[^>]*>(.*?)</symbol>', SPA, re.S):
+    for body in re.findall(r'<symbol id="(?:pic|pm|pmb)-[a-z0-9_]+"[^>]*>(.*?)</symbol>', SPA, re.S):
         for cls in re.findall(r'class="([^"]*)"', body):
             used.update(cls.split())
     assert used and all(c.startswith("pg-") for c in used)

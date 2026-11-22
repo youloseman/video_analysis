@@ -726,6 +726,16 @@ video.ex-media{background:var(--c-media-bg)}
 .dsc-w{color:var(--c-ink-faint)} .dsc-rows .m-near .dsc-w{color:var(--c-ink-soft)} .dsc-rows .m-out .dsc-w{color:var(--m-out)}
 .dsc-v{margin-left:auto;font-family:var(--f-mono);font-weight:500;color:var(--c-ink);white-space:nowrap}
 .dsc-rows .m-near .dsc-v{color:var(--c-ink)} .dsc-rows .m-out .dsc-v{color:var(--m-out)}
+/* A reading on the sport card: its pictogram where the status dot was, and a
+   short scale where the words were (the words stay for a screen reader).
+   Borderline is neutral here, as the dot was. */
+.dsc-rows .pm{width:44px;height:44px;margin:-10px 2px -10px -6px}
+.dsc-rows .m-out .pm{--pm-dot:var(--m-out)} .dsc-rows .m-near .pm{--pm-dot:var(--c-ink-faint)} .dsc-rows .m-ok .pm{--pm-dot:var(--m-ok)}
+.pmbar{position:relative;flex:none;width:72px;height:6px;margin-left:auto;border-radius:999px;background:var(--c-line)}
+.pmbar-band{position:absolute;top:0;bottom:0;left:var(--x);width:var(--w);border-radius:999px;background:var(--st-good-band)}
+.pmbar-mark{position:absolute;top:-4px;left:calc(var(--x) - 2px);width:4px;height:14px;border-radius:var(--radius-bar);background:var(--c-ink-soft)}
+.dsc-rows .m-out .pmbar-mark{background:var(--m-out)}
+.dsc-rows li:has(.pmbar) .dsc-v{margin-left:12px;min-width:44px;text-align:right}
 .dsc-all{margin-left:auto;min-height:44px;font-size:14px}
 .dsc-foot{grid-area:foot;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px;border-top:1px solid var(--c-line)}
 .dsc-foot .btn-link{min-height:44px;font-size:14px}
@@ -1728,24 +1738,27 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .modetabs.what button[aria-pressed="true"],.modetabs.film button[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy)}
 .modetabs.what button small,.modetabs.film button small{color:var(--c-ink-soft)}
 .modetabs.what button[aria-pressed="true"] small,.modetabs.film button[aria-pressed="true"] small{color:var(--c-on-navy-soft)}
-/* The house pictograms (docs/design-assets/pictograms/rider_icons.py): the
-   same chunky rider and runner the metric icons are built from, plain here.
-   --c-bg is the colour the far limbs are knocked out of, so it follows the
-   tile's own ground (white, panel on hover, navy when chosen). */
-.pic{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;stroke-linejoin:round;color:var(--c-head)}
+/* The house pictograms (docs/design-assets/pictograms/rider_icons.py): one
+   chunky rider and one runner. Plain on the Analyze tiles (pic-*); on a
+   reading (pm-*, metricPic) the logo's dot sits on the joint it measures, in
+   the row's status colour (--pm-dot, set by the row below). --c-bg is the
+   ground the far limbs are knocked out of, so it follows the surface. */
+.pic,.pm{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;stroke-linejoin:round;color:var(--c-head)}
 .pg-fbk{opacity:.3}
 .pg-fw{stroke:currentColor;stroke-width:3.6}
 .pg-ff{stroke:currentColor;stroke-width:2.4}
 .pg-fs{stroke-width:3.2}
 .pg-fg{stroke-width:3.4}
+.pg-fbar{stroke-width:6.5}
 .pg-fbody{fill:currentColor;stroke:currentColor;stroke-width:0}
 .pg-fkf{fill:var(--c-bg);stroke:var(--c-bg);stroke-width:0}
-.pg-ft{stroke:currentColor;stroke-width:12.5}
-.pg-fl{stroke:currentColor;stroke-width:6.8}
-.pg-fa2{stroke-width:6}
-.pg-fk{stroke:var(--c-bg)}
+.pg-fshoe{fill:var(--pm-dot,var(--c-coral));stroke:var(--pm-dot,var(--c-coral))}
 .pg-fo{opacity:.35}
-.pg-fh{fill:currentColor;stroke:none}
+.pg-fr{stroke:currentColor;stroke-width:2.8;stroke-dasharray:.1 4.6;opacity:.75}
+.pg-fa{stroke:var(--pm-dot,var(--c-coral));stroke-width:4.4}
+.pg-fm{stroke:var(--pm-dot,var(--c-coral));stroke-width:4.4}
+.pg-fj{fill:var(--pm-dot,var(--c-coral));stroke:var(--c-bg);stroke-width:2.8}
+.pg-fhm{fill:var(--pm-dot,var(--c-coral));stroke:var(--c-bg);stroke-width:2;paint-order:stroke}
 .modetabs.what button .pic{width:56px;height:56px;margin:-6px 0 -4px -8px}
 .modetabs.what button:hover .pic{--c-bg:var(--c-panel)}
 .pic-photo{position:relative;display:inline-flex}
@@ -2447,6 +2460,10 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fd-val{font-family:var(--f-mono);font-size:18px;font-weight:500;font-feature-settings:"tnum" 1}
 .fd-row.m-out .fd-val,.fd-row.m-out .fd-st{color:var(--m-out)}
 .fd-row.m-near .fd-val,.fd-row.m-near .fd-st{color:var(--m-near-text)}
+/* The reading's pictogram leads its name; the dot says what the value says. */
+.fd-name{display:flex;align-items:center;gap:10px}
+.fd-name .pm{width:44px;height:44px;margin:-10px 0 -2px -4px}
+.fd-row.m-out .pm{--pm-dot:var(--m-out)} .fd-row.m-near .pm{--pm-dot:var(--m-near-text)} .fd-row.m-ok .pm{--pm-dot:var(--m-ok)}
 .fd-st{font-size:14px;font-weight:600}
 .fd-st .num{font-family:var(--f-mono);font-weight:500}
 /* ---- Result first screen, as drawn (Result / ResultPhone boards, 2026-11-17) ---- */
@@ -3061,6 +3078,16 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .fx-how{font-size:14px;color:var(--c-ink)}
 .fx-how b{font-weight:600}
 .fx-item.done .fx-how{text-decoration:line-through;color:var(--c-ink-faint)}
+/* A fix: the reading's pictogram, and the change as a chip (which part, which
+   way, how much) with the reason beside it. The full sentence stays for a
+   screen reader. */
+.fx-item .pm{width:52px;height:52px;margin:-6px 0 0 -4px}
+.fx-out .pm{--pm-dot:var(--m-out)} .fx-near .pm{--pm-dot:var(--c-ink-faint)}
+.fx-act{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px}
+.fx-chip{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:4px 14px 4px 10px;border:1px solid var(--c-line-strong);border-radius:999px;background:var(--c-bg);font-size:14px;font-weight:600;color:var(--c-ink)}
+.fx-ar{font-style:normal;font-weight:700;color:var(--c-blue)}
+.fx-act em{font-style:normal;font-size:12px;color:var(--c-ink-soft)}
+.fx-item.done .fx-act{opacity:.5}
 .fx-note{margin:0;font-size:12px;color:var(--c-ink-faint)}
 .fx-foot{display:flex;justify-content:space-between;gap:12px;margin-top:auto}
 /* On a desk the sports sit side by side, in the cards' order above. */
