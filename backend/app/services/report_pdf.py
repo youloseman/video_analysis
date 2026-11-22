@@ -13,7 +13,6 @@ save it the same way.
 """
 from __future__ import annotations
 
-import base64
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -213,67 +212,6 @@ def _ax(x: float, unit: str) -> str:
     return f"{x:.0f}" if unit == "°" else _num(x)
 
 
-# A rider on aero bars, side view, in a 52 x 40 box: the points each bike row
-# is measured between, so "knee 141" reads as the inside angle and the hip on
-# the picture is told from the hip at the top (Gona, 2026-11-10).
-# Drawn to a typical aero position: torso 20 deg, shoulder 84, elbow 90 (forearm
-# 14 up), hip 54 / knee 70 at the top, knee 141 at the bottom.
-_FIG = {"head": (42, 4), "sh": (35.6, 7.1), "hip": (14, 15), "el": (38, 16.8), "wr": (49.6, 13.9),
-        "kn": (20.5, 26.3), "an": (18.8, 37.2), "kn_t": (24.8, 22.3), "an_t": (15.9, 28.8)}
-# field -> (segments drawn in colour, angle vertex and its two arms, horizontal from)
-_GLYPH = {
-    "knee_at_bdc": ([("hip", "kn"), ("kn", "an")], ("kn", "hip", "an"), None, False),
-    "knee_at_tdc": ([("hip", "kn_t"), ("kn_t", "an_t")], ("kn_t", "hip", "an_t"), None, True),
-    "hip_at_tdc": ([("sh", "hip"), ("hip", "kn_t")], ("hip", "sh", "kn_t"), None, True),
-    "trunk_angle_avg": ([("hip", "sh")], None, "hip", False),
-    "shoulder_angle_avg": ([("hip", "sh"), ("sh", "el")], ("sh", "hip", "el"), None, False),
-    "elbow_angle_avg": ([("sh", "el"), ("el", "wr")], ("el", "sh", "wr"), None, False),
-    "forearm_tilt_avg": ([("el", "wr")], None, "el", False),
-    "pelvic_ratio": ([("sh", "hip"), ("hip", "kn")], ("hip", "sh", "kn"), "hip", False),
-}
-
-
-def angle_glyph(field: str) -> str:
-    """The rider with this row's angle in colour, or '' for a row without one."""
-    g = _GLYPH.get(field)
-    if not g:
-        return ""
-    import math
-
-    hot, vertex, level_from, top = g
-    p = dict(_FIG)
-    knee, ankle = ("kn_t", "an_t") if top else ("kn", "an")
-    base = [("hip", "sh"), ("sh", "el"), ("el", "wr"), ("hip", knee), (knee, ankle)]
-
-    def seg(a, b, colour, width):
-        (x1, y1), (x2, y2) = p[a], p[b]
-        return (f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' stroke='{colour}' "
-                f"stroke-width='{width}' stroke-linecap='round'/>")
-
-    out = [seg(a, b, "#C3CAD4", 1.6) for a, b in base]
-    hx, hy = p["head"]
-    out.append(f"<circle cx='{hx}' cy='{hy}' r='3.4' fill='none' stroke='#C3CAD4' stroke-width='1.6'/>")
-    if level_from:
-        x, y = p[level_from]
-        out.append(f"<line x1='{x}' y1='{y}' x2='{x + 18}' y2='{y}' stroke='#2459C2' "
-                   "stroke-width='1' stroke-dasharray='2 2'/>")
-    out += [seg(a, b, "#2459C2", 2.2) for a, b in hot]
-    if vertex:
-        v, a, b = (p[k] for k in vertex)
-        r = 5.0
-
-        def along(q):
-            d = math.hypot(q[0] - v[0], q[1] - v[1]) or 1.0
-            return v[0] + (q[0] - v[0]) * r / d, v[1] + (q[1] - v[1]) * r / d
-
-        (ax, ay), (bx, by) = along(a), along(b)
-        sweep = 1 if (a[0] - v[0]) * (b[1] - v[1]) - (a[1] - v[1]) * (b[0] - v[0]) > 0 else 0
-        out.append(f"<path d='M{ax:.1f} {ay:.1f} A{r} {r} 0 0 {sweep} {bx:.1f} {by:.1f}' "
-                   "fill='none' stroke='#F1553F' stroke-width='1.4'/>")
-    return ("<svg class='tile-fig' viewBox='0 0 54 40' width='54' height='40' aria-hidden='true'>"
-            + "".join(out) + "</svg>")
-
-
 # The numbers as the app's "Measured against published ranges" table
 # (index.html, metricsBlock): grouped by what they need, then Measurement |
 # Yours | vs reference | Status, the status saying how far past the edge.
@@ -305,18 +243,34 @@ def _status_cell(row: dict[str, Any]) -> str:
     return f"<td class='mt-st {st}'><b>{_e(word)}</b>{delta}</td>"
 
 
-_ICON_DIR = Path(__file__).resolve().parents[1] / "static" / "media" / "angle-icons"
+_SPRITE = Path(__file__).resolve().parents[1] / "static" / "media" / "pictograms.svg"
+# The row's pictogram (scripts/pictograms): the house rider or runner with the
+# logo's dot on the joint the row measures, the same figures the app shows.
+_PM_FIELD = {
+    "knee_at_bdc": "knee_bdc", "knee_at_tdc": "knee_tdc", "hip_at_tdc": "hip_tdc", "trunk_angle_avg": "trunk",
+    "shoulder_angle_avg": "shoulder", "elbow_angle_avg": "elbow", "forearm_tilt_avg": "forearm",
+    "helmet_above_back": "helmet", "cadence": "cadence", "overstride": "overstride", "vertical_osc": "vosc",
+    "trunk_lean": "lean", "knee_contact": "knee_run", "knee_swing": "knee_run", "foot_strike": "footstrike",
+}
+# A run row without a figure of its own gets the plain runner, a bike row the rider.
+_RUN_FIELDS = {"cadence", "overstride", "vertical_osc", "trunk_lean", "knee_contact", "knee_swing",
+               "elbow_angle", "foot_strike", "ground_contact", "flight_time"}
 
 
-@lru_cache(maxsize=16)
-def angle_icon(field: str) -> str:
-    """The row's drawn icon (scripts/build_angle_icons.py), inlined so the PDF
-    renderer needs no URL; the SVG glyph when there is no icon for it."""
-    f = _ICON_DIR / f"{field}.png"
-    if not field or not f.is_file():
-        return angle_glyph(field)
-    data = base64.b64encode(f.read_bytes()).decode("ascii")
-    return f"<img class='mt-fig' src='data:image/png;base64,{data}' width='72' height='54' alt=''>"
+@lru_cache(maxsize=1)
+def pictogram_sprite() -> str:
+    """The symbols, once per document (scripts/pictograms/build.py)."""
+    return _SPRITE.read_text(encoding="utf-8") if _SPRITE.is_file() else ""
+
+
+def angle_icon(field: str, status: str = "info") -> str:
+    """The row's pictogram, its dot in the row's status colour (.pm-good/...)."""
+    if not field:
+        return ""
+    key = _PM_FIELD.get(field)
+    href = f"pm-{key}" if key else ("pic-run" if field in _RUN_FIELDS else "pic-bike")
+    st = status if status in ("good", "warn", "bad") else "info"
+    return f"<svg class='pm mt-fig pm-{st}' aria-hidden='true'><use href='#{href}'/></svg>"
 
 
 def _mt_row(row: dict[str, Any]) -> str:
@@ -325,7 +279,7 @@ def _mt_row(row: dict[str, Any]) -> str:
     yours = (_row_value(row) if isinstance(v, (int, float)) else
              _e(row.get("text") or "—"))
     how = f"<div class='mt-how'>{_e(row['how'])}</div>" if row.get("how") else ""
-    fig = angle_icon(row.get("field") or "")
+    fig = angle_icon(row.get("field") or "", st)
     bar = _grbar(row, chip=False) if not row.get("text") else f"<div class='gr-text'>{_e(row.get('note'))}</div>"
     return (f"<tr class='mt-r'><td class='mt-m'><div class='mt-mh'>{fig}<div><b>{_e(row['label'])}</b>{how}</div></div></td>"
             f"<td class='mt-y {st}'>{yours}</td><td class='mt-b'>{bar}</td>{_status_cell(row)}</tr>")
@@ -351,7 +305,7 @@ def _tile(row: dict[str, Any]) -> str:
     word = row.get("word") or _STATUS_WORD.get(st, "")
     return (f"<div class='tile'><div class='tile-h'><span class='tile-l'>{_e(row['label'])}</span>"
             f"<span class='chip {st}'>{_e(word)}</span></div>{_grbar(row)}"
-            + (f"<div class='tile-how'>{angle_glyph(row.get('field') or '')}<span>{_e(row['how'])}</span></div>"
+            + (f"<div class='tile-how'>{angle_icon(row.get('field') or '', st)}<span>{_e(row['how'])}</span></div>"
                if row.get("how") else "")
             + "</div>")
 
@@ -851,7 +805,6 @@ _EXTRA_CSS = """
 .gr-pm{display:inline-block;width:2px;height:9px;background:#14294B;opacity:.55;margin-right:5px;vertical-align:-1px}
 .gr-none{font-size:8.4pt;color:#8A93A1;margin-top:8px}
 .tile-how{font-size:7.8pt;line-height:1.35;color:#6B7584;margin-top:6px;display:flex;gap:8px;align-items:center}
-.tile-fig{flex:none}
 .gr-text{font-size:8.6pt;color:#5C6675;margin-top:8px}
 /* The app's range table (metrics_table). */
 .mt{width:100%;border-collapse:collapse;border:1px solid #DCE2EA;border-radius:8px;margin:4px 0 12px;font-size:9pt}
@@ -864,7 +817,11 @@ _EXTRA_CSS = """
 .mt-r{break-inside:avoid;page-break-inside:avoid}
 .mt-m{width:38%}
 .mt-mh{display:flex;gap:8px;align-items:center}
-.mt-fig{flex:none;width:72px;height:54px}
+.mt-fig{flex:none;width:52px;height:52px}
+.pm-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.pm{--c-head:#14294B;--c-bg:#fff;--c-coral:#F1553F;--pm-dot:#F1553F}
+.pm-good{--pm-dot:#1F7A45}.pm-warn{--pm-dot:#9A5E0B}.pm-bad{--pm-dot:#B8371F}.pm-info{--pm-dot:#8A929E}
+.tile-how .pm{flex:none;width:34px;height:34px}
 .mt-mh b{color:#14294B;font-size:9.4pt}
 .mt-how{font-size:7.4pt;line-height:1.35;color:#6B7584;margin-top:2px}
 .mt-y{width:11%;text-align:right;font:700 12pt 'IBM Plex Mono',monospace;color:#14181F;white-space:nowrap}
@@ -1222,4 +1179,4 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{_e(_doc_title(meta, _SPORT.get(sport, sport.title())))}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@600&display=swap" rel="stylesheet">
-<style>{_CSS}{_EXTRA_CSS}{pdf_css}</style></head><body>{cover}<table class="flow"><thead><tr><td></td></tr></thead><tbody><tr><td>{read}{plan_sec}{numbers}</td></tr></tbody><tfoot><tr><td>{run_foot}</td></tr></tfoot></table></body></html>"""
+<style>{_CSS}{_EXTRA_CSS}{pdf_css}</style></head><body>{pictogram_sprite()}{cover}<table class="flow"><thead><tr><td></td></tr></thead><tbody><tr><td>{read}{plan_sec}{numbers}</td></tr></tbody><tfoot><tr><td>{run_foot}</td></tr></tfoot></table></body></html>"""

@@ -25,8 +25,8 @@ def test_every_figure_the_code_names_is_in_the_sprite():
 
 
 def test_a_run_reading_never_gets_a_bike_figure():
-    fn = SPA[SPA.index("function metricPic("):SPA.index("function pmBar(")]
-    assert "if(k&&run!==PM_RUN.has(k)) k=null;" in fn
+    fn = SPA[SPA.index("function pmKey("):SPA.index("function metricPic(")]
+    assert "return k&&run===PM_RUN.has(k)?k:null;" in fn
 
 
 def test_findings_lead_every_reading_with_its_pictogram():

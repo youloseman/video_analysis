@@ -4554,7 +4554,7 @@ function measRow(m){
     : `${m.val}${unit==='°'||unit==='×'||unit==='%'?unit:(unit?` <small>${esc(unit)}</small>`:'')}`;
   const delta = m.range ? measDelta(m.delta,unit) : '';
   return `<tr class="mrow ${st.cls}">`
-    +`<th scope="row">${m.icon?`<div class="m-head"><img class="m-fig" src="/media/angle-icons/${esc(m.icon)}.png" width="64" height="48" alt="" loading="lazy"><div>`:''}<span class="m-name">${esc(m.lbl)}${what}</span>${sub?`<span class="m-sub">${sub}</span>`:''}${def}${m.icon?'</div></div>':''}</th>`
+    +`<th scope="row">${m.icon?`<div class="m-head"><svg class="pm m-fig" aria-hidden="true"><use href="#pm-${esc(m.icon)}"/></svg><div>`:''}<span class="m-name">${esc(m.lbl)}${what}</span>${sub?`<span class="m-sub">${sub}</span>`:''}${def}${m.icon?'</div></div>':''}</th>`
     +`<td class="m-val num">${valHtml}</td>`
     +`<td class="m-ref">${m.range?measBar(m,st):'<span class="m-noref">no published range</span>'}</td>`
     +`<td class="m-st"><span class="m-pill">${st.word}</span>${delta?`<span class="m-delta">${delta}</span>`:''}${m.trend?`<span class="m-trend">${m.trend}</span>`:''}</td>`
@@ -4709,14 +4709,13 @@ function bikeTiles(s, position, plan){
   }
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
   // Aero now has its own headline panel (renderAeroPanel), not a tile.
-  // The drawn rider with this row's angle (scripts/build_angle_icons.py), the
-  // same picture the PDF prints beside the row.
+  // The row's pictogram (scripts/pictograms), the same figure the PDF prints
+  // beside the row.
   t.forEach(m=>{ const k=BIKE_ICON[String(m.lbl).replace(/ (flexion|dorsiflexion)/,'')]; if(k) m.icon=k; });
   return t;
 }
-const BIKE_ICON={'Knee · bottom':'knee_at_bdc','Knee · top':'knee_at_tdc','Hip · top of stroke':'hip_at_tdc',
-  'Elbow':'elbow_angle_avg','Trunk':'trunk_angle_avg','Shoulder':'shoulder_angle_avg','Forearm tilt':'forearm_tilt_avg',
-  'Pelvic ratio':'pelvic_ratio','Helmet above back':'helmet_above_back'};
+const BIKE_ICON={'Knee · bottom':'knee_bdc','Knee · top':'knee_tdc','Hip · top of stroke':'hip_tdc',
+  'Elbow':'elbow','Trunk':'trunk','Shoulder':'shoulder','Forearm tilt':'forearm','Helmet above back':'helmet'};
 function runTiles(s){
   const t=[];
   if(s.cadence_spm!=null) t.push(tile('Cadence',num(s.cadence_spm),'spm',null,null,false,RB('cadence_spm',s.cadence_spm,170,225,'spm')));
@@ -4749,6 +4748,7 @@ function runTiles(s){
   if(s.knee_max!=null) t.push(tileA('Knee · contact','knee_max',s.knee_max,null,RB('knee_max',s.knee_max,140,175,'°'),'run'));
   if(s.knee_min!=null) t.push(tileA('Knee · swing','knee_min',s.knee_min,null,RB('knee_min',s.knee_min,80,100,'°'),'run'));
   t.push(...kneeVelocityTiles(s));
+  t.forEach(m=>{ const k=pmKey(m.lbl,'run'); if(k) m.icon=k; });
   return t;
 }
 
@@ -14861,13 +14861,16 @@ const PM_RX=[[/helmet|head pos/i,'helmet'],[/hip over|over (the )?crank|over (th
   [/elbow/i,'elbow'],[/shoulder/i,'shoulder'],[/overstrid/i,'overstride'],[/foot ?strike|foot landing/i,'footstrike'],
   [/shin/i,'shin'],[/cadence/i,'cadence'],[/vertical|oscillation|bounce/i,'vosc'],[/ground contact|contact time/i,'contact'],
   [/knee.*(top|tdc)/i,'knee_tdc'],[/knee/i,'KNEE'],[/trunk|lean|torso/i,'TRUNK'],[/hip/i,'hip_tdc']];
-function metricPic(label, sport, bare){
+function pmKey(label, sport){
   const run=sport==='run';
   let k=null;
   for(const [re,v] of PM_RX) if(re.test(String(label||''))){ k=v; break; }
   if(k==='KNEE') k=run?'knee_run':'knee_bdc';
   if(k==='TRUNK') k=run?'lean':'trunk';
-  if(k&&run!==PM_RUN.has(k)) k=null;           // a bike figure never stands for a run reading
+  return k&&run===PM_RUN.has(k)?k:null;        // a bike figure never stands for a run reading
+}
+function metricPic(label, sport, bare){
+  const run=sport==='run', k=pmKey(label, sport);
   if(!k&&bare) return '';
   return `<svg class="pm" aria-hidden="true"><use href="#${k?'pm-'+k:(run?'pic-run':'pic-bike')}"/></svg>`;
 }

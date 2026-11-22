@@ -3147,8 +3147,9 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 /* The drawn rider beside a bike row (BIKE_ICON in index.html). */
 .m-head{display:flex;align-items:center;gap:12px}
 .m-head > div{min-width:0}
-.m-fig{flex:none;width:64px;height:48px}
-@media(max-width:640px){.m-fig{width:44px;height:33px}.m-head{gap:8px}}
+.m-fig{flex:none;width:52px;height:52px}
+.mrow.m-out .pm{--pm-dot:var(--m-out)} .mrow.m-near .pm{--pm-dot:var(--m-near-text)} .mrow.m-ok .pm{--pm-dot:var(--m-ok)} .mrow.m-info .pm,.m-info-row .pm{--pm-dot:var(--c-ink-faint)}
+@media(max-width:640px){.m-fig{width:44px;height:44px}.m-head{gap:8px}}
 .meastable .m-val{text-align:right;font-family:var(--f-mono);font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--c-ink);white-space:nowrap}
 .m-val small{font-size:12px;font-weight:400;color:var(--c-ink-faint)}
 .m-val .m-txt{font-family:var(--f-body);font-size:14px;white-space:normal}
@@ -3203,7 +3204,7 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 #measTable thead th:nth-child(4){width:180px}
 @media(min-width:901px){
   #measTable .mrow > *{padding-top:10px;padding-bottom:10px}
-  #measTable .m-fig{width:48px;height:36px}
+  #measTable .m-fig{width:44px;height:44px}
 }
 @media print{ .meastable .mrow{break-inside:avoid} }
 /* ---------- Aero panel ---------- */

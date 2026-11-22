@@ -118,8 +118,22 @@ def test_review_comes_before_the_coach_notes_and_the_table_notes_fold():
 
 
 def test_every_bike_row_has_its_drawn_icon():
-    from app.services.report_pdf import angle_icon
+    import re
+
+    from app.services.report_pdf import angle_icon, pictogram_sprite
     from app.services.review_pdf import _BIKE_ROWS
 
+    sprite = pictogram_sprite()
     for field, *_ in _BIKE_ROWS:
-        assert angle_icon(field).startswith("<img class='mt-fig' src='data:image/png;base64,"), field
+        svg = angle_icon(field, "bad")
+        assert svg.startswith("<svg class='pm mt-fig pm-bad'"), field
+        href = re.search(r"href='#([^']+)'", svg).group(1)
+        assert f'<symbol id="{href}" ' in sprite, (field, href)
+
+
+def test_the_report_carries_the_sprite_once():
+    from app.services.report_pdf import render_report_html
+    from tests.test_report_pdf import example
+
+    html = render_report_html(example("bike-road"), {})
+    assert html.count('class="pm-sprite"') == 1 and "<use href='#pm-" in html
