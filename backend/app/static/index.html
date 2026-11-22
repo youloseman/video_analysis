@@ -2135,6 +2135,7 @@
     <p class="hint u-m-0 u-mb-6">What athletes said about their own results. The negative rate split by <b>quality gate</b> and <b>confidence</b> is the signal: 👎 on runs the gate already flagged means the warning copy is too quiet; 👎 on clean, high-confidence runs means the scoring is wrong.</p>
     <div class="fb-stats" id="fbaStats"></div>
     <div id="fbaSplits"></div>
+    <div id="fbaChat"></div>
     <div class="seg seg-sm u-m-0 u-mt-6 u-mb-4" role="group" aria-label="Filter feedback" id="fbaFilter">
       <button type="button" data-fbf="all" aria-pressed="true">All</button>
       <button type="button" data-fbf="down" aria-pressed="false">Negative</button>
@@ -12294,10 +12295,12 @@ async function chatLoad(blockId, e){
   chatThreads[e.id]={msgs:[], used:null, limit:null, busy:false};
   try{
     const r=await fetch(meUrl(e,'chat'),{headers:authHeaders()});
-    if(r.status===402){ delete chatThreads[e.id]; const b=$('#'+blockId); if(b&&b.dataset.entry===e.id) b.classList.add('hidden'); return; }
+    // 402: not this reader's plan; 409: a report from before full results were
+    // stored -- nothing to answer from. Either way no box that would refuse.
+    if(r.status===402||r.status===409){ delete chatThreads[e.id]; const b=$('#'+blockId); if(b&&b.dataset.entry===e.id) b.classList.add('hidden'); return; }
     if(r.ok){
       const j=await r.json();
-      Object.assign(chatThreads[e.id], {msgs:j.messages||[], used:j.used, limit:j.limit});
+      Object.assign(chatThreads[e.id], {msgs:j.messages||[], used:j.used, limit:j.limit, sugg:j.suggestions||null});
     }
     // 404: a fresh report still on its way to the server -- an empty thread.
   }catch(_e){}
@@ -12314,10 +12317,18 @@ function drawChat(blockId, e){
     ? `<div class="chat-msg chat-q">${esc(m.text)}</div>`
     : `<div class="chat-msg chat-a">${mdToHtml(m.text)}${m.model?`<span class="chat-by">${esc(m.model)}</span>`:''}</div>`
   ).join('')+(t.busy?'<div class="chat-msg chat-a chat-wait">Reading your report…</div>':'');
-  const list=CHAT_SUGGEST[(e.sport==='bike')?'bike':'run'];
-  sugg.innerHTML=(!t.msgs.length&&!t.busy)?list.map((q,i)=>`<button class="btn btn-ghost btn-sm" type="button" data-sugg="${i}">${esc(q)}</button>`).join(''):'';
+  // The server writes them from this report (report_chat.suggestions): its
+  // worst readings, the CdA tests, earlier clips. The fixed three are the
+  // fallback for a thread that has not loaded. Once the athlete has asked,
+  // the ones not yet asked stay offered, fewer of them.
+  const asked=new Set(t.msgs.filter(m=>m.role==='user').map(m=>m.text));
+  const all=(t.sugg&&t.sugg.length)?t.sugg:CHAT_SUGGEST[(e.sport==='bike')?'bike':'run'];
+  const list=all.filter(q=>!asked.has(q)).slice(0, t.msgs.length?2:4);
+  sugg.innerHTML=(!t.busy&&list.length&&(t.limit==null||t.used==null||t.used<t.limit))
+    ?(t.msgs.length?'<span class="chat-sugg-h">More to ask</span>':'')+list.map((q,i)=>`<button class="btn btn-ghost btn-sm" type="button" data-sugg="${i}">${esc(q)}</button>`).join(''):'';
   sugg.querySelectorAll('[data-sugg]').forEach(b=>b.addEventListener('click',()=>{
-    track('chat_suggestion_used',{i:Number(b.dataset.sugg)}); chatSend(blockId, e, list[Number(b.dataset.sugg)]);
+    track('chat_suggestion_used',{i:Number(b.dataset.sugg), from_report:!!(t.sugg&&t.sugg.length), turn:t.msgs.length/2|0});
+    chatSend(blockId, e, list[Number(b.dataset.sugg)]);
   }));
   const left=(t.limit!=null&&t.used!=null)?Math.max(0,t.limit-t.used):null;
   const notes=$(blockId==='chatBlock'?'#notesOffer':'#hdNotesOffer');
@@ -12723,7 +12734,7 @@ async function submitAuth(e){
     if(!r.ok){ authSay(authErr(j), mode==='login'&&r.status===401?'#authPass':mode==='register'&&r.status===409?'#authEmail':mode==='reset'&&r.status===422?'#authPass':null); return; }
     try{ localStorage.setItem(TKEY,j.token); }catch(_e){}
     auth={email:j.email,tier:j.tier,is_pro:j.is_pro,expert_credits:j.expert_credits||0,unlock_credits:j.unlock_credits||0,crank_access:!!j.crank_access,run_photo:!!j.run_photo,
-      analytics_id:j.analytics_id||null, marketing_opt_in:mode==='register'?marketing:undefined};
+      report_chat:j.report_chat||'', analytics_id:j.analytics_id||null, marketing_opt_in:mode==='register'?marketing:undefined};
     // Name the person first, then record the act — so the sign-up itself is
     // attributed to the account rather than to the anonymous visitor who
     // stopped existing a millisecond ago.
@@ -16935,6 +16946,7 @@ async function loadFeedbackAdmin(){
     if(!sr.ok||!lr.ok) throw new Error('http');
     renderFbStats(await sr.json());
     renderFbList((await lr.json()).items||[]);
+    loadChatUsage();
   }catch(e){
     $('#fbaStats').innerHTML='';
     list.innerHTML='<div class="banner warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>Couldn’t load feedback. Admin accounts only.</span></div>';
@@ -16942,6 +16954,38 @@ async function loadFeedbackAdmin(){
 }
 
 function fbPct(v){ return v==null?'—':Math.round(v*100)+'%'; }
+
+/* Ask about this report: what it cost this month, per reader, against the
+   plan's dollar ceiling (report_chat.CHAT_BUDGET_USD). Estimated from
+   characters, on the high side; the provider's bill is the truth. */
+async function loadChatUsage(){
+  const host=$('#fbaChat'); if(!host) return;
+  try{
+    const r=await fetch('/admin/chat/usage',{headers:authHeaders()});
+    if(!r.ok) throw new Error('http');
+    renderChatUsage(await r.json());
+  }catch(_e){ host.innerHTML=''; }
+}
+function renderChatUsage(u){
+  const host=$('#fbaChat'); if(!host) return;
+  const usd=v=>'$'+(v<1?Number(v).toFixed(3):Number(v).toFixed(2));
+  const k=v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?Math.round(v/1e3)+'k':String(v);
+  const t=u.totals||{};
+  const tiles=[['Asked',t.askers||0],['Questions',t.questions||0],['Tokens in',k(t.tokens_in||0)],['Tokens out',k(t.tokens_out||0)],['Est. cost',usd(t.cost_usd||0)]];
+  const lim=Object.entries(u.limits||{}).map(([tier,l])=>`${tier} ${l.questions} q · ${usd(l.budget_usd)}`).join(' · ');
+  const rows=(u.users||[]).map(x=>`<tr><td>${esc(x.email||'')}</td><td>${esc(x.tier||'')}</td>`
+    +`<td class="num">${x.questions} / ${x.limit}</td><td class="num">${x.reports}</td>`
+    +`<td class="num">${k(x.tokens_in)} / ${k(x.tokens_out)}</td><td class="num">${usd(x.cost_usd)}</td>`
+    +`<td class="num"><b>${x.budget_used==null?'—':Math.round(x.budget_used*100)+'%'}</b></td></tr>`).join('');
+  host.innerHTML=`<div class="block u-mt-6">
+    <div class="blockhead"><div class="eyebrow">This month · ${esc(u.rollout||'')}</div><h3>AI chat usage</h3><div class="speedline-sm"></div></div>
+    <div class="fb-stats">${tiles.map(([a,b])=>`<div class="fb-stat"><div class="v">${esc(String(b))}</div><div class="k">${esc(a)}</div></div>`).join('')}</div>
+    <p class="hint u-mt-4">Limits a month: ${esc(lim)}. Cost is estimated from characters at list prices, on the high side${Object.keys(u.models||{}).length?` · answers by ${esc(Object.entries(u.models).map(([m,n])=>m+' '+n).join(', '))}`:''}</p>
+    ${rows?`<div class="tablewrap"><table class="data">
+      <thead><tr><th scope="col">Reader</th><th scope="col">Plan</th><th scope="col" class="num">Questions</th><th scope="col" class="num">Reports</th><th scope="col" class="num">Tokens in / out</th><th scope="col" class="num">Est. cost</th><th scope="col" class="num">Of ceiling</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`:'<p class="hint">No questions yet this month</p>'}
+  </div>`;
+}
 
 /* One split table: "gated 41% negative (n=17)" per bucket, worst first. */
 function fbSplit(title, bucket){

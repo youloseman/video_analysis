@@ -122,7 +122,8 @@ def test_the_rollout_steps(monkeypatch, step, tier, state):
     monkeypatch.setattr(report_chat, "rollout",
                         lambda: step if step in report_chat.ROLLOUTS else "admin")
     assert report_chat.chat_state(SimpleNamespace(tier=tier)) == state
-    assert settings.report_chat == "admin", "the default must be admin-only"
+    # Every paid plan since 2026-11-22 (Artur), behind the dollar ceiling.
+    assert settings.report_chat == "all"
 
 
 async def test_before_launch_a_paid_reader_is_refused(db, make_user, fake_model, monkeypatch):
@@ -353,3 +354,128 @@ async def test_shoes_carry_no_bike(db, make_user):
     ), u, db)
     row = await db.get(Profile, p["id"])
     assert row.bike_family is None and row.bike_year is None
+
+
+# --------------------------------------------------------------------------
+# 2026-11-22: visible at last, a dollar ceiling, questions from the report
+# --------------------------------------------------------------------------
+def test_auth_me_carries_the_chat_state():
+    """/auth/me's model had no report_chat field, so pydantic dropped it and
+    nobody -- the admin included -- was ever shown the chat."""
+    from types import SimpleNamespace
+
+    from app.api.auth import UserOut, _user_out
+
+    assert "report_chat" in UserOut.model_fields
+    admin = SimpleNamespace(email="a@x", tier=TIER_ADMIN, is_paid=True, expert_credits=0, unlock_credits=0,
+                            height_cm=None, marketing_opt_in=False, research_opt_in=False, id=1,
+                            crank_until_ms=None, created_at=None)
+    try:
+        out = _user_out(admin)
+    except Exception:  # noqa: BLE001 -- the helpers may want a real row
+        pytest.skip("needs a real user row")
+    assert out.report_chat == "open"
+
+
+def test_the_spa_keeps_the_chat_state_on_form_sign_in():
+    from pathlib import Path
+
+    s = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "report_chat:j.report_chat||''" in s
+
+
+def test_enthusiast_full_and_coach_have_it_by_default():
+    from types import SimpleNamespace
+
+    for tier in (TIER_ENTHUSIAST, TIER_FULL, TIER_COACH, TIER_ADMIN):
+        assert report_chat.chat_state(SimpleNamespace(tier=tier)) == "open"
+    assert report_chat.chat_state(SimpleNamespace(tier=TIER_STARTER)) == "plans"
+
+
+def test_each_paid_plan_has_a_dollar_ceiling_under_its_price():
+    price = {TIER_ENTHUSIAST: 9, TIER_FULL: 13, TIER_COACH: 25}
+    for tier, monthly in price.items():
+        assert 0 < report_chat.chat_budget(tier) <= monthly * 0.1 + 1e-9
+    assert report_chat.chat_budget(TIER_STARTER) == 0
+
+
+def test_a_question_is_cheap_and_an_unknown_model_is_priced_dear():
+    prompt = "x" * 30_000      # ~8.6k tokens: a long report and a long thread
+    assert report_chat.projected_cost_usd(prompt) < 0.02
+    assert report_chat.model_price("some-new-model") == report_chat.UNKNOWN_MODEL_PRICE
+    assert report_chat.cost_usd("gemini-3.5-flash-lite", 1_000_000, 0) == pytest.approx(0.30)
+
+
+async def test_an_answer_records_what_it_cost(db, make_user, fake_model):
+    u = await make_user(tier=TIER_ENTHUSIAST)
+    await add_report(db, u)
+    await ask(db, u)
+    a = (await db.execute(select(ChatMessage).where(ChatMessage.role == ROLE_ASSISTANT))).scalars().one()
+    assert a.tokens_in > 1000 and a.tokens_out > 0
+    assert 0 < await report_chat.spent_this_month(db, u.id) < 0.05
+
+
+async def test_the_dollar_ceiling_refuses_before_the_model_is_called(db, make_user, fake_model, monkeypatch):
+    monkeypatch.setitem(report_chat.CHAT_BUDGET_USD, TIER_ENTHUSIAST, 0.0001)
+    u = await make_user(tier=TIER_ENTHUSIAST)
+    await add_report(db, u)
+    with pytest.raises(HTTPException) as e:
+        await ask(db, u)
+    assert e.value.status_code == 429
+    assert "reset on the 1st" in e.value.detail
+    assert fake_model["prompts"] == []
+
+
+async def test_out_of_dollars_reads_as_no_questions_left(db, make_user, fake_model, monkeypatch):
+    u = await make_user(tier=TIER_ENTHUSIAST)
+    await add_report(db, u)
+    await ask(db, u)
+    monkeypatch.setitem(report_chat.CHAT_BUDGET_USD, TIER_ENTHUSIAST, 0.0000001)
+    j = await chat_api.get_chat("h1", u, db, None)
+    assert j["used"] == j["limit"] == 50
+
+
+BANDED_BIKE = dict(BIKE_RESULT, cycling_position="road_hoods", sport_specific_metrics={
+    "knee_at_bdc": 152.0, "trunk_angle_avg": 40.0, "elbow_angle_avg": 131.0,
+}, reference_bands={"knee_at_bdc": {"lo": 135, "hi": 145}, "trunk_angle_avg": {"lo": 32, "hi": 50},
+                    "elbow_angle_avg": {"lo": 145, "hi": 170}})
+
+
+def test_suggestions_start_from_the_worst_reading():
+    qs = report_chat.suggestions(BANDED_BIKE)
+    assert 1 <= len(qs) <= report_chat.MAX_SUGGESTIONS
+    assert qs[0].startswith("My ") and "the range is" in qs[0]
+    assert "knee" in qs[0] or "elbow" in qs[0]
+    assert any("worth fixing" in q for q in qs)
+    assert all("\u2014" not in q for q in qs)
+
+
+def test_suggestions_follow_the_account_and_the_clip():
+    aero = report_chat.suggestions(dict(BIKE_RESULT), has_cda=True, has_previous=True)
+    assert any("over my race" in q for q in aero)
+    assert any("CdA" in q for q in aero)
+    withheld = report_chat.suggestions(dict(BIKE_RESULT, score_withheld=True))
+    assert withheld[0].startswith("Why could this clip not be scored")
+    run = report_chat.suggestions({"sport_type": "run"})
+    assert any("drill" in q for q in run)
+
+
+async def test_the_thread_comes_with_its_suggestions(db, make_user, fake_model):
+    u = await make_user(tier=TIER_FULL)
+    await add_report(db, u, result=BANDED_BIKE)
+    j = await chat_api.get_chat("h1", u, db, None)
+    assert j["suggestions"] and j["suggestions"][0].startswith("My ")
+
+
+async def test_admin_sees_what_the_chat_cost(db, make_user, fake_model):
+    u = await make_user(tier=TIER_ENTHUSIAST, email="rider@example.com")
+    admin = await make_user(tier=TIER_ADMIN)
+    await add_report(db, u)
+    await ask(db, u)
+    await ask(db, u, question="And the trunk?")
+    j = await chat_api.chat_usage(admin, db)
+    assert j["totals"]["questions"] == 2 and j["totals"]["askers"] == 1
+    row = j["users"][0]
+    assert row["email"] == "rider@example.com" and row["limit"] == 50
+    assert 0 < row["budget_used"] < 0.1
+    assert j["limits"][TIER_COACH]["budget_usd"] == 2.5

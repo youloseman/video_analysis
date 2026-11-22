@@ -186,6 +186,9 @@ class QuotaOut(BaseModel):
 
 
 class UserOut(BaseModel):
+    # Was missing until 2026-11-22: _user_out set it, pydantic dropped it, and
+    # no account -- the admin's included -- was ever shown the report chat.
+    report_chat: str = ""
     email: str
     tier: str
     is_pro: bool  # kept for back-compat; derived from tier

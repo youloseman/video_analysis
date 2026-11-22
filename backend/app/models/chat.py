@@ -45,3 +45,7 @@ class ChatMessage(Base):
     # Which model wrote an answer; NULL on the athlete's own question.
     model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at_ms: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+    # What an answer cost, in tokens (estimated from characters; services/
+    # report_chat). NULL on questions and on answers stored before 2026-11-22.
+    tokens_in: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_out: Mapped[int | None] = mapped_column(Integer, nullable=True)

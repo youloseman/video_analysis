@@ -31,9 +31,22 @@ Rules the model is held to, and why each exists:
 * **Red rows are not fine.** The coach code refuses "Nothing to fix" over a
   red row; the chat bypasses that code, so the rule is restated here.
 
-Cost: one call is ~4-6k tokens in, a few hundred out, on the cheapest Gemini
-the chain runs (llm_recommendations._complete, OpenAI behind it) -- a fraction
-of a cent. The monthly cap per plan is an abuse ceiling, not a cost control.
+Cost, and the two limits on it (Artur, 2026-11-22: "the chat must never cost
+more than the subscription brings in"):
+
+* **Questions a month** (CHAT_LIMITS) -- what the athlete sees: "12 of 50
+  left". One call is ~5-9k tokens in (the report, the account, the last few
+  turns), a few hundred out: about $0.004 on Gemini 3.5 Flash-Lite.
+* **Dollars a month** (CHAT_BUDGET_USD) -- the backstop the athlete never
+  sees until it bites: a tenth of the plan's monthly price, priced per model
+  (MODEL_PRICES) from the tokens each answer used. It exists for the day the
+  chain falls back to a dearer model, a model turns up its thinking, or the
+  context grows: the question count alone would not notice any of them.
+
+Tokens are estimated from characters (CHARS_PER_TOKEN) with a margin on the
+answer for the thinking a model may bill and not show (OUTPUT_MARGIN): the
+chain returns text, not usage, and an estimate on the high side is the safe
+one for a ceiling.
 """
 
 from __future__ import annotations
@@ -70,6 +83,159 @@ PREVIOUS_CLIPS = 5
 
 def chat_limit(tier: str | None) -> int:
     return CHAT_LIMITS.get(tier or "", 0)
+
+
+# What a month of answers may cost us, per plan: a tenth of its monthly price
+# (Enthusiast $9, Full $13, Coach $25). Typical use spends a fraction of it.
+CHAT_BUDGET_USD: dict[str, float] = {
+    TIER_ENTHUSIAST: 0.90,
+    TIER_FULL: 1.30,
+    TIER_COACH: 2.50,
+    TIER_ADMIN: 5.00,
+}
+
+# USD per million tokens (input, output), first matching prefix wins. Public
+# list prices, 2026-11-22: Gemini 3.5 Flash-Lite 0.30 / 2.50 (aggregators
+# quoting ai.google.dev), gpt-5-mini 0.25 / 2.00. Anything unlisted is priced
+# like a large model, so a surprise model can only make the ceiling tighter.
+MODEL_PRICES: tuple[tuple[str, float, float], ...] = (
+    ("gemini-3.5-flash-lite", 0.30, 2.50),
+    ("gemini-2.5-flash-lite", 0.10, 0.40),
+    ("gemini", 0.30, 2.50),
+    ("gpt-5-mini", 0.25, 2.00),
+    ("gpt-5-nano", 0.05, 0.40),
+    ("fake", 0.30, 2.50),
+)
+UNKNOWN_MODEL_PRICE = (2.50, 10.00)
+CHARS_PER_TOKEN = 3.5
+OUTPUT_MARGIN = 1.5
+# An answer stored before tokens were (2026-11-22): the average prompt.
+LEGACY_TOKENS_IN = 7000
+
+
+def chat_budget(tier: str | None) -> float:
+    return CHAT_BUDGET_USD.get(tier or "", 0.0)
+
+
+def estimate_tokens(text: str) -> int:
+    return int(len(text or "") / CHARS_PER_TOKEN) + 1
+
+
+def model_price(model: str | None) -> tuple[float, float]:
+    m = (model or "").lower()
+    for prefix, p_in, p_out in MODEL_PRICES:
+        if m.startswith(prefix):
+            return p_in, p_out
+    return UNKNOWN_MODEL_PRICE
+
+
+def cost_usd(model: str | None, tokens_in: int, tokens_out: int) -> float:
+    p_in, p_out = model_price(model)
+    return (tokens_in * p_in + tokens_out * OUTPUT_MARGIN * p_out) / 1_000_000
+
+
+def projected_cost_usd(prompt: str) -> float:
+    """What the next answer may cost at most: the prompt, a full-length
+    answer, priced as the primary model or the dearer fallback, whichever is
+    more."""
+    t_in = estimate_tokens(SYSTEM) + estimate_tokens(prompt)
+    return max(cost_usd(m, t_in, ANSWER_MAX_TOKENS) for m, _i, _o in MODEL_PRICES[:4])
+
+
+def answer_cost(m: ChatMessage) -> float:
+    t_in = m.tokens_in if m.tokens_in is not None else LEGACY_TOKENS_IN
+    t_out = m.tokens_out if m.tokens_out is not None else estimate_tokens(m.text)
+    return cost_usd(m.model, t_in, t_out)
+
+
+async def spent_this_month(db: AsyncSession, user_id: int) -> float:
+    """Dollars this reader's answers cost this month (estimated)."""
+    rows = (
+        await db.execute(
+            select(ChatMessage).where(
+                ChatMessage.user_id == user_id,
+                ChatMessage.role == ROLE_ASSISTANT,
+                ChatMessage.created_at_ms >= window_start_ms(CHAT_WINDOW),
+            )
+        )
+    ).scalars().all()
+    return sum(answer_cost(m) for m in rows)
+
+
+# --------------------------------------------------------------------------
+# Questions worth asking, written from the report itself
+# --------------------------------------------------------------------------
+MAX_SUGGESTIONS = 4
+
+
+def _fmt(v: float, unit: str) -> str:
+    return f"{v:.0f}{unit}" if unit in ("°", "") and abs(v) >= 20 else f"{v:g}{unit}"
+
+
+def suggestions(
+    result: dict[str, Any], *, has_cda: bool = False, has_previous: bool = False,
+) -> list[str]:
+    """Up to four questions about THIS report: its worst readings first, then
+    what the account adds (a measured CdA, earlier clips). Asked in English,
+    answered in whatever language the athlete writes in."""
+    sport = str(result.get("sport_type") or "run")
+    pos = result.get("cycling_position")
+    out: list[str] = []
+    if result.get("score_withheld") or result.get("quality_gate_triggered"):
+        out.append("Why could this clip not be scored, and how should I film the next one?")
+    flagged: list[dict[str, Any]] = []
+    try:
+        if sport == "bike":
+            from app.services.review_pdf import metric_rows
+
+            rows = metric_rows(result)
+        else:
+            from app.services.report_pdf import plan_rows
+
+            rows = plan_rows(result)
+        rank = {"bad": 0, "warn": 1}
+        flagged = sorted((r for r in rows if r.get("status") in rank and r.get("band")
+                          and isinstance(r.get("value"), (int, float))),
+                         key=lambda r: rank[r["status"]])
+    except Exception:  # noqa: BLE001 -- a suggestion is never worth a failed request
+        flagged = []
+    def name(r: dict[str, Any]) -> str:
+        # "Knee at the bottom · saddle height" -> "knee at the bottom"; an
+        # acronym-led name (BDC, CdA) keeps its capitals.
+        lbl = str(r.get("label") or "").split(" · ")[0].strip()
+        return lbl[:1].lower() + lbl[1:] if lbl[1:2].islower() else lbl
+
+    def reading(r: dict[str, Any]) -> str:
+        unit = (r.get("unit") or "").strip()
+        return _fmt(float(r["value"]), unit)
+
+    if flagged and not out:
+        r = flagged[0]
+        unit = (r.get("unit") or "").strip()
+        lo, hi = r["band"]
+        out.append(f"My {name(r)} is {reading(r)} and the range is {lo:g}-{hi:g}{unit}. "
+                   "What should I change first, and what does it cost me?")
+    if len(flagged) > 1:
+        out.append(f"Is my {name(flagged[1])} ({reading(flagged[1])}) worth fixing, or can it wait?")
+    if sport == "bike":
+        if pos in ("tt_aero", "triathlon"):
+            out.append("How much time could my position be worth over my race, and where is it hiding?")
+        elif pos in ("road_hoods", "road_drops"):
+            out.append("Is this a racing or an endurance position, and what would you change for a long ride?")
+        if has_cda:
+            out.append("What did my CdA tests show, and what should I test next?")
+    else:
+        out.append("Which drill fits this report best, and how often should I do it?")
+    if has_previous:
+        out.append("What changed since my last clip on this setup?")
+    if not flagged and not out[:1]:
+        out.insert(0, "Everything reads inside its range. Where would you look for more speed?")
+    out.append("How should I film the next clip to get the most from it?")
+    seen: list[str] = []
+    for q in out:
+        if q not in seen:
+            seen.append(q)
+    return seen[:MAX_SUGGESTIONS]
 
 
 ROLLOUTS = ("admin", "full", "all")
@@ -354,9 +520,10 @@ def ask(prompt: str) -> dict[str, Any] | None:
 
 def new_rows(
     *, reader_id: int, owner_id: int, client_id: str, question: str,
-    answer: dict[str, Any], now_ms: int,
+    answer: dict[str, Any], now_ms: int, prompt: str = "",
 ) -> list[ChatMessage]:
-    """The question and its answer, written together or not at all."""
+    """The question and its answer, written together or not at all. The
+    answer carries what it cost in tokens (estimated: see the module notes)."""
     return [
         ChatMessage(
             user_id=reader_id, owner_user_id=owner_id, analysis_client_id=client_id,
@@ -366,5 +533,7 @@ def new_rows(
             user_id=reader_id, owner_user_id=owner_id, analysis_client_id=client_id,
             role=ROLE_ASSISTANT, text=answer["text"], model=answer.get("model"),
             created_at_ms=now_ms + 1,
+            tokens_in=estimate_tokens(SYSTEM) + estimate_tokens(prompt or question),
+            tokens_out=estimate_tokens(answer["text"]),
         ),
     ]

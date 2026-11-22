@@ -513,6 +513,7 @@ app.include_router(cda_routes.router)
 from app.api import chat as chat_routes  # noqa: E402
 
 app.include_router(chat_routes.router)
+app.include_router(chat_routes.admin_router)
 # Which parts fit this frame (app/data/parts).
 from app.api import parts as parts_routes  # noqa: E402
 

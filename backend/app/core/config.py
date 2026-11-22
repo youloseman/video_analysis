@@ -184,8 +184,10 @@ class Settings:
     # Ask about this report (services/report_chat.py), rolled out in steps:
     # "admin" -- admin accounts only, so the answers get read on the live
     # models first (scripts/check_report_chat.py); "full" -- Full, Coach and
-    # admin; "all" -- every paid plan. REPORT_CHAT=full / all.
-    report_chat: str = "admin"
+    # admin; "all" -- every paid plan. REPORT_CHAT=full / all. Default "all"
+    # since 2026-11-22 (Artur: Enthusiast, Full and Coach), with the dollar
+    # ceiling in report_chat.CHAT_BUDGET_USD behind the question count.
+    report_chat: str = "all"
     # Absolute base URL for Checkout success/cancel redirects. Falls back to the
     # request origin when unset (works on any host).
     public_base_url: str | None = None

@@ -357,6 +357,18 @@ def _migrate_cda(conn) -> None:
         logger.info("MIGRATED", change="cda_measurements.variable added")
 
 
+def _migrate_chat(conn) -> None:
+    """Chat answers learn what they cost (services/report_chat budget).
+    Nullable, no DEFAULT: an answer stored before was never measured."""
+    cols = _existing_columns(conn, "chat_messages")
+    if not cols:
+        return
+    for col in ("tokens_in", "tokens_out"):
+        if col not in cols:
+            conn.execute(text(f"ALTER TABLE chat_messages ADD COLUMN {col} INTEGER"))
+            logger.info("MIGRATED", change=f"chat_messages.{col} added")
+
+
 async def init_db() -> None:
     # Import models so they register on Base.metadata before create_all.
     from app.models import (  # noqa: F401
@@ -371,4 +383,5 @@ async def init_db() -> None:
         await conn.run_sync(_migrate_analyses)
         await conn.run_sync(_migrate_profiles)
         await conn.run_sync(_migrate_cda)
+        await conn.run_sync(_migrate_chat)
     logger.info("DB_READY", backend=settings.async_database_url.split("://", 1)[0])
