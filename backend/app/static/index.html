@@ -2286,7 +2286,8 @@ const OV=tokSet({skel:'--ov-skel', glow:'--ov-skel-glow', accent:'--ov-accent', 
   inkMid:'--ov-ink-mid', inkFaint:'--ov-ink-faint', label:'--ov-label', labelMute:'--ov-label-mute', halo:'--ov-halo'});
 /* the share card is always the dark card */
 const CARD=tokSet({ground:'--card-ground', top:'--card-top', ink:'--card-ink', muted:'--card-muted', soft:'--card-soft',
-  scrim:'--card-scrim', rule:'--card-rule', logo:'--card-logo', coral:'--c-coral', blue:'--brand-blue', violet:'--brand-violet'});
+  scrim:'--card-scrim', rule:'--card-rule', logo:'--card-logo', coral:'--c-coral', blue:'--brand-blue', violet:'--brand-violet',
+  good:'--hero-good', warn:'--hero-warn', bad:'--hero-bad'});
 /* Grade colours are retired on the Instrument system: a grade is a mono
    letter beside its number, and the number carries the meaning. The map
    stays because the share card and a few badges still ask for it, and
@@ -11802,13 +11803,14 @@ function cardFromPhoto(res){
 }
 function cardFromHistory(e){
   return { sport:e.sport, score:e.score, grade:e.grade||'—',
-    keyframe:keyframeOf(e) };
+    keyframe:keyframeOf(e), entry:e };
 }
 function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
-/* Where the analyser's overlay sits in the frame, as normalised 0..1 bounds.
-   The skeleton and the angle numbers are drawn in vivid, fully-saturated colours
-   that nothing in a real photo of grass/trees/sky matches, so a saturation +
-   brightness threshold isolates them. Sampled small (a few hundred px wide) —
+/* Where the analyser's skeleton sits in the frame, as normalised 0..1 bounds.
+   The skeleton is drawn in the overlay green (--ov-skel, a bright green)
+   that a real photo of grass or trees does not reach. Only that green counts:
+   any vivid pixel used to, and a red fire alarm or a blue mat stretched the
+   bounds over the whole frame, so the share card could never crop to the athlete. Sampled small (a few hundred px wide) —
    this only has to be accurate to a few percent. Returns null when nothing
    looks like an overlay, in which case the caller falls back to a fixed crop. */
 function overlayBounds(img,yFrom){
@@ -11824,8 +11826,7 @@ function overlayBounds(img,yFrom){
     const yStart=Math.max(0,Math.floor((yFrom||0)*SH));
     for(let y=yStart;y<SH;y++) for(let xp=0;xp<SW;xp++){
       const i=(y*SW+xp)*4, r=d[i], gg=d[i+1], b=d[i+2];
-      const mx=Math.max(r,gg,b), mn=Math.min(r,gg,b);
-      if(mx<140 || mx-mn<90) continue;           // not vivid enough to be overlay
+      if(gg<160 || gg-r<70 || gg-b<45) continue;  // not the overlay green
       n++;
       if(xp<x0)x0=xp; if(xp>x1)x1=xp; if(y<y0)y0=y; if(y>y1)y1=y;
     }
@@ -11888,8 +11889,8 @@ function drawMarkTile(x, px, py, s){
 }
 const CARD_BODY='"IBM Plex Sans",system-ui,sans-serif';  // labels
 const CARD_MONO='"IBM Plex Mono",ui-monospace,Menlo,monospace';   // every numeral
-const CARD_FACES=['900 italic 58px Archivo','900 italic 104px Archivo','500 40px "IBM Plex Mono"',
-  '500 22px "IBM Plex Mono"','500 26px "IBM Plex Mono"','400 28px "IBM Plex Sans"'];
+const CARD_FACES=['900 italic 60px Archivo','900 italic 122px Archivo','500 22px "IBM Plex Mono"',
+  '500 26px "IBM Plex Mono"','600 54px "IBM Plex Sans"','500 48px "IBM Plex Sans"'];
 /* The address on the card is the product's, not the page's: a card built on a
    phone in the LAN test build or on a dev box must not advertise localhost. */
 const CARD_HOST='getflapp.com';
@@ -11911,107 +11912,142 @@ function drawBlurredCover(x,img,W,H){
   x.save(); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
   x.drawImage(t,0,0,W,H); x.restore();
 }
+/* How far the score has come since the athlete's first comparable analysis
+   (same sport, kind, position and side), up to the one being shared. Only a
+   rise is said on the card: nobody posts a drop. */
+function cardSinceFirst(card){
+  try{
+    if(card.score==null) return null;
+    const own=loadHist().filter(e=>e.athleteId==null&&e.sport===card.sport&&e.score!=null);
+    const ref=card.entry||own[0]; if(!ref) return null;
+    const upto=own.slice(own.indexOf(ref)<0?0:own.indexOf(ref));   // newest first: the shared one and older
+    const same=upto.filter(e=>(e.kind||'video')===(ref.kind||'video')&&(card.sport!=='bike'||(e.position||'')===(ref.position||''))
+      &&(!e.cameraSide||!ref.cameraSide||e.cameraSide===ref.cameraSide)&&photoPhase(e)===photoPhase(ref));
+    if(same.length<2) return null;
+    const d=Math.round(card.score-same[same.length-1].score);
+    return d>0?d:null;
+  }catch(e){ return null; }
+}
+/* The ring on the card: a track and the score's arc in the band colour the
+   app's ring uses (green from 86, yellow from 60, scoreStatus), glowing in
+   that colour. Never the brand gradient: blue to coral would read good to bad. */
+function drawCardRing(x,cx,cy,r,lw,score){
+  x.save();
+  x.lineCap='round'; x.lineWidth=lw;
+  x.strokeStyle=CARD.rule; x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.stroke();
+  if(score!=null){
+    const st=scoreStatus(score), col=st==='good'?CARD.good:st==='watch'?CARD.warn:CARD.bad;
+    const a0=-Math.PI/2, a1=a0+Math.PI*2*Math.max(.02,Math.min(1,score/100));
+    x.strokeStyle=col; x.shadowColor=col;
+    x.shadowBlur=34; x.beginPath(); x.arc(cx,cy,r,a0,a1); x.stroke();
+    x.shadowBlur=10; x.beginPath(); x.arc(cx,cy,r,a0,a1); x.stroke();
+  }
+  x.restore();
+  x.textAlign='center'; x.textBaseline='middle'; x.fillStyle=CARD.ink;
+  x.font=`900 italic ${Math.round(r*1.03)}px ${CARD_DISPLAY}`;
+  x.fillText(score==null?'—':String(score),cx-r*0.04,cy+r*0.05);
+  x.textAlign='left'; x.textBaseline='alphabetic';
+}
 async function buildShareCard(card){
   await cardFontsReady();
   const sport=card.sport||'run';
   const score=card.score;
   const grade=(card.grade && card.grade!=='—')?String(card.grade):null;
-  const W=1080, P=56, CORAL=CARD.coral, INK=CARD.ground, MUTED=CARD.muted, SOFT=CARD.soft; /* the wordmark dot is the one coral; the ground is surface/ground dark */
+  const W=1080, P=56, INK=CARD.ground, MUTED=CARD.muted;
 
   let img=null;
   if(card.keyframe){ try{ img=await loadImg(card.keyframe); }catch(e){ img=null; } }
 
-  // Source rect. The analyser stamps its own small score badge across the top
-  // strip of the frame; when the skeleton stays clear of that strip, trim it
-  // so the card states the score once, at a size a feed can read. When the
-  // athlete's head is up there, the strip stays -- nothing of them is cut.
-  let sx=0, sy=0, sw=img?img.width:9, sh=img?img.height:16;
+  // ---- where the frame goes ----
+  // The photo runs the full width of the card, as a story does. All it may
+  // lose to fit is empty ground above and below the athlete: the band the
+  // skeleton and its labels occupy, plus a margin, is always kept whole (the
+  // 2026-09 card that cropped into the legs was rejected for exactly that).
+  // If the band is taller than the space, the frame is scaled down instead
+  // and stands on a blurred copy of itself. The analyser's own score badge
+  // strip (top 6.5%) is left out whenever the skeleton is clear of it.
+  const HEAD=150, FOOT=380;
+  let sx=0, sy=0, sw=9, sh=16, H=1350, regionH=H-HEAD-FOOT, dw=W, dh=regionH, dx=0, dy=HEAD;
   if(img){
-    const ov=overlayBounds(img,0.07);
-    if(!ov || ov.y0>0.085){ sy=Math.round(img.height*0.065); sh=img.height-sy; }
+    const iw=img.width, ih=img.height, ov=overlayBounds(img,0.07);
+    const minTop=(!ov||ov.y0>0.085)?Math.round(ih*0.065):0;
+    const bandTop=Math.max(minTop, ov?Math.floor((ov.y0-0.08)*ih):minTop);
+    const bandBot=Math.min(ih, ov?Math.ceil((ov.y1+0.05)*ih):ih);
+    const full=W/iw;                                        // scale at full width
+    H=Math.round(Math.max(1350,Math.min(1920,HEAD+FOOT+(ih-minTop)*full)));
+    regionH=H-HEAD-FOOT;
+    const win=regionH/full;                                 // source rows that fit at full width
+    if(bandBot-bandTop<=win+0.5){
+      sw=iw; sh=Math.min(ih-minTop,win);
+      const c=(bandTop+bandBot)/2;
+      sy=Math.round(Math.max(minTop,Math.min(ih-sh,c-sh/2)));
+      dw=W; dh=Math.round(sh*full); dx=0; dy=HEAD+Math.round((regionH-dh)/2);
+    }else{
+      const s=regionH/(bandBot-bandTop);
+      sw=iw; sy=bandTop; sh=bandBot-bandTop;
+      dw=Math.round(iw*s); dh=regionH; dx=Math.round((W-dw)/2); dy=HEAD;
+    }
   }
-  // Card height follows the frame: as tall as the frame needs at full width,
-  // never shorter than a 4:5 post nor taller than a 9:16 story. A vertical
-  // clip fills a story; a photo or a landscape clip gets a shorter card
-  // instead of a story with bars at both ends.
-  const HEAD=132, FOOT=236, GAP=24, regionW=W-2*P;
-  const H=img?Math.round(Math.max(1350,Math.min(1920,HEAD+FOOT+2*GAP+regionW*sh/sw))):1350;
-  const regionY=HEAD+GAP, regionH=H-HEAD-FOOT-2*GAP;
-  const fit=Math.min(regionW/sw, regionH/sh);
-  const dw=Math.round(sw*fit), dh=Math.round(sh*fit);
-  const dx=Math.round((W-dw)/2), dy=Math.round(regionY+(regionH-dh)/2);
 
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const x=cv.getContext('2d');
 
-  // ---- ground: the frame itself, blurred and darkened ----
+  // ---- ground ----
   x.fillStyle=INK; x.fillRect(0,0,W,H);
-  if(img){
-    drawBlurredCover(x,img,W,H);
-    x.fillStyle=CARD.scrim; x.fillRect(0,0,W,H);
-  }else{
-    const bg=x.createLinearGradient(0,0,0,H);
-    bg.addColorStop(0,CARD.top); bg.addColorStop(1,INK);
-    x.fillStyle=bg; x.fillRect(0,0,W,H);
+  if(img && (dw<W || dh<regionH)){                          // only a frame that doesn't fill shows the ground
+    x.save(); x.beginPath(); x.rect(0,HEAD,W,regionH); x.clip();
+    drawBlurredCover(x,img,W,H); x.fillStyle=CARD.scrim; x.fillRect(0,0,W,H); x.restore();
   }
 
-  // ---- header: the lockup -- the navy tile with the mark, then the name ----
-  drawMarkTile(x, P, HEAD/2-40, 80);
+  // ---- the frame ----
+  if(img) x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
+  else drawCardRing(x,W/2,HEAD+regionH/2,200,32,score);     // no still: the score is the picture
+
+  // ---- header: the lockup, and what this is ----
+  x.fillStyle=CARD.top; x.fillRect(0,0,W,HEAD);
+  drawMarkTile(x, P, HEAD/2-42, 84);
   x.textBaseline='middle'; x.textAlign='left';
-  x.fillStyle=CARD.ink; x.font=`900 italic 58px ${CARD_DISPLAY}`;
-  x.fillText('Flapp',P+80+24,HEAD/2);
-  x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 22px ${CARD_MONO}`;
-  x.fillText(sport==='bike'?'CYCLING · TECHNIQUE':'RUNNING · TECHNIQUE',W-P,HEAD/2);
-
-  // ---- the frame, whole: a rectangle on a hairline, no lift ----
-  if(img){
-    x.fillStyle=INK; x.fillRect(dx,dy,dw,dh);
-    x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
-    x.lineWidth=2; x.strokeStyle=CARD.rule; x.strokeRect(dx+1,dy+1,dw-2,dh-2);
-  }else{
-    // No still to show (a result the server kept the frame back from): the
-    // score itself becomes the picture rather than an empty frame.
-    const gcx=W/2, gcy=regionY+regionH/2;
-    x.textAlign='center'; x.fillStyle=CARD.ink; x.font=`900 italic 250px ${CARD_DISPLAY}`;
-    x.fillText(score==null?'—':String(score),gcx,gcy);
-    x.textAlign='left';
-  }
-
-  // ---- footer: the score, said once, and where to get one ----
-  // The header's last word was right-aligned and the alignment is canvas
-  // state, not per-call: left as it was, the score below drew leftwards from
-  // x=56 and fell off the card, and the grade landed on top of its own line.
-  x.textAlign='left';
-  const fy=H-FOOT, cy=fy+FOOT/2;
-  // The rule above the score is the speed gradient -- the app's one stripe,
-  // on the one image of it that travels.
-  const rule=x.createLinearGradient(P,0,W-P,0);
-  rule.addColorStop(0,CARD.blue); rule.addColorStop(.45,CARD.violet); rule.addColorStop(1,CORAL);
-  x.fillStyle=rule; x.fillRect(P,fy,W-2*P,3);
-  let lx=P;
-  const gradeTxt=(grade&&/^[A-F][+-]?$/.test(grade))?grade:null;
-  if(img){                                   // without a frame the big numeral above already says it
-    x.fillStyle=CARD.ink; x.font=`900 italic 104px ${CARD_DISPLAY}`;
-    const sTxt=score==null?'—':String(score);
-    x.fillText(sTxt,lx,cy-2);
-    lx+=x.measureText(sTxt).width+18;
-    if(gradeTxt){ x.fillStyle=MUTED; x.font=`500 40px ${CARD_MONO}`; x.fillText(gradeTxt,lx,cy+16); lx+=x.measureText(gradeTxt).width+36; }
-    else lx+=18;
-  }
-  x.fillStyle=MUTED; x.font=`500 22px ${CARD_MONO}`;
-  x.fillText('TECHNIQUE SCORE',lx,cy-22);
-  x.fillStyle=SOFT; x.font=`400 28px ${CARD_BODY}`;
-  const gradeLine=score==null?'Not graded. See the report':!grade?'out of 100':gradeTxt?`${sport==='bike'?'Ride':'Run'} · grade ${grade}`:grade;
-  x.fillText(gradeLine,lx,cy+20);
+  x.fillStyle=CARD.ink; x.font=`900 italic 60px ${CARD_DISPLAY}`;
+  x.fillText('Flapp',P+84+26,HEAD/2);
   x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 26px ${CARD_MONO}`;
-  x.fillText(CARD_HOST,W-P,cy);
+  x.fillText(sport==='bike'?'CYCLING · TECHNIQUE':'RUNNING · TECHNIQUE',W-P,HEAD/2);
+  // Alignment is canvas state, not per call: left as 'right', the footer
+  // once drew the score leftwards off the card (fa85a0b).
   x.textAlign='left'; x.textBaseline='alphabetic';
 
+  // ---- footer: the ring, what it is, how it has moved, where to get one ----
+  const fy=H-FOOT;
+  // The rule above the score is the speed gradient: the app's one stripe,
+  // on the one image of it that travels.
+  const rule=x.createLinearGradient(0,0,W,0);
+  rule.addColorStop(0,CARD.blue); rule.addColorStop(.45,CARD.violet); rule.addColorStop(1,CARD.coral);
+  x.fillStyle=rule; x.fillRect(0,fy,W,4);
+  const R=118, cx=P+R+14, cy=fy+FOOT/2-14;
+  if(img) drawCardRing(x,cx,cy,R,22,score);
+  const tx=img?cx+R+52:P;
+  const up=cardSinceFirst(card), ty=cy+(up?0:30);           // without the pill the two lines centre on the ring
+  x.fillStyle=CARD.ink; x.font=`600 54px ${CARD_BODY}`;
+  x.fillText('TECHNIQUE SCORE',tx,ty-14);
+  const letter=(grade&&/^[A-F][+-]?$/.test(grade))?grade[0]:null;
+  const word=score==null?'Not graded':letter?`${GRADE_WORD[letter]} · ${grade}`:(grade||'out of 100');
+  x.font=`500 48px ${CARD_BODY}`; x.fillStyle=CARD.soft;
+  x.fillText(word,tx,ty+56);
+  if(up){
+    const t=`▲ +${up} SINCE FIRST`;
+    x.font=`500 26px ${CARD_MONO}`;
+    const pw=Math.ceil(x.measureText(t).width)+44, ph=52, px=tx, py=cy+90;
+    x.save(); rrect(x,px,py,pw,ph,ph/2);
+    x.globalAlpha=.16; x.fillStyle=CARD.good; x.fill(); x.globalAlpha=1;
+    x.lineWidth=2; x.strokeStyle=CARD.good; x.stroke(); x.restore();
+    x.fillStyle=CARD.good; x.textBaseline='middle'; x.fillText(t,px+22,py+ph/2+1); x.textBaseline='alphabetic';
+  }
+  x.textAlign='right'; x.fillStyle=MUTED; x.font=`500 26px ${CARD_MONO}`;
+  x.fillText(CARD_HOST,W-P,H-44);
+  x.textAlign='left';
+
   // JPEG, not PNG: the card is a photograph under type, so PNG's lossless
-  // encoding bought nothing and cost 2-4 MB per share (and the quality argument
-  // passed to the encoder was silently ignored for PNG anyway). At q=0.9 this lands
-  // around 300 KB with no visible difference. The ground fills the canvas
-  // first, so there's no alpha to lose.
+  // encoding bought nothing and cost 2-4 MB per share. At q=0.9 this lands
+  // around 300 KB with no visible difference.
   return await canvasJpeg(cv,0.9);
 }
 /* toast(msg) — plain message; toast(msg,{action,onAction,duration}) adds an

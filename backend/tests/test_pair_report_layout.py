@@ -167,11 +167,27 @@ class TestTheShareCard:
         fn = html[html.index("async function buildShareCard("):]
         fn = fn[:fn.index("\nfunction toast(")]
         header_right = fn.index("x.textAlign='right'")
+        reset = fn.index("x.textAlign='left'", header_right)
         footer = fn.index("// ---- footer:")
-        reset = fn.index("x.textAlign='left'", footer)
-        assert header_right < footer < reset
-        # and the reset comes before the score is drawn
-        assert reset < fn.index("x.fillText(sTxt", footer)
+        # reset after the header's right-aligned label, before the footer draws
+        assert header_right < reset < footer
+        assert "x.textAlign='right'" not in fn[reset:fn.index("x.fillText('TECHNIQUE SCORE'", footer)]
+
+    def test_the_ring_is_the_band_colour_never_the_gradient(self, html):
+        ring = html[html.index("function drawCardRing("):html.index("async function buildShareCard(")]
+        assert "scoreStatus(score)" in ring and "CARD.good" in ring and "CARD.warn" in ring
+        assert "createLinearGradient" not in ring
+
+    def test_since_first_is_said_only_for_a_rise(self, html):
+        fn = html[html.index("function cardSinceFirst("):html.index("function drawCardRing(")]
+        assert "return d>0?d:null" in fn
+        card = html[html.index("async function buildShareCard("):]
+        card = card[:card.index("\nfunction toast(")]
+        assert "if(up){" in card and "SINCE FIRST" in card
+
+    def test_the_crop_reads_only_the_skeleton_green(self, html):
+        fn = html[html.index("function overlayBounds("):html.index("function rrect(")]
+        assert "gg<160 || gg-r<70 || gg-b<45" in fn
 
 
 class TestTheOverlayAfterARestart:
