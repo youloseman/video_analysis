@@ -1728,6 +1728,34 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .modetabs.what button[aria-pressed="true"],.modetabs.film button[aria-pressed="true"]{background:var(--c-brand-navy);border-color:var(--c-brand-navy)}
 .modetabs.what button small,.modetabs.film button small{color:var(--c-ink-soft)}
 .modetabs.what button[aria-pressed="true"] small,.modetabs.film button[aria-pressed="true"] small{color:var(--c-on-navy-soft)}
+/* The house pictograms (docs/design-assets/pictograms/rider_icons.py): the
+   same chunky rider and runner the metric icons are built from, plain here.
+   --c-bg is the colour the far limbs are knocked out of, so it follows the
+   tile's own ground (white, panel on hover, navy when chosen). */
+.pic{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;stroke-linejoin:round;color:var(--c-head)}
+.pg-fbk{opacity:.3}
+.pg-fw{stroke:currentColor;stroke-width:3.6}
+.pg-ff{stroke:currentColor;stroke-width:2.4}
+.pg-fs{stroke-width:3.2}
+.pg-fg{stroke-width:3.4}
+.pg-fbody{fill:currentColor;stroke:currentColor;stroke-width:0}
+.pg-fkf{fill:var(--c-bg);stroke:var(--c-bg);stroke-width:0}
+.pg-ft{stroke:currentColor;stroke-width:12.5}
+.pg-fl{stroke:currentColor;stroke-width:6.8}
+.pg-fa2{stroke-width:6}
+.pg-fk{stroke:var(--c-bg)}
+.pg-fo{opacity:.35}
+.pg-fh{fill:currentColor;stroke:none}
+.modetabs.what button .pic{width:56px;height:56px;margin:-6px 0 -4px -8px}
+.modetabs.what button:hover .pic{--c-bg:var(--c-panel)}
+.pic-photo{position:relative;display:inline-flex}
+.pic-photo .ic{position:absolute;right:-18px;top:-8px;width:22px;height:22px;padding:2px;border-radius:999px;background:var(--c-bg)}
+.modetabs.what button:hover .pic-photo .ic{background:var(--c-panel)}
+/* Chosen: the tile is navy, so every glyph on it turns light (the bike icon
+   used to sit navy on navy and vanish). */
+.modetabs.what button[aria-pressed="true"] .ic,
+.modetabs.what button[aria-pressed="true"] .pic{color:var(--c-on-dark);--c-bg:var(--c-brand-navy)}
+.modetabs.what button[aria-pressed="true"] .pic-photo .ic{background:var(--c-brand-navy)}
 .modetabs.film small b{font-weight:600;color:inherit;font-size:inherit}
 .sidesub{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-top:12px}
 .sidesub-lbl{font-size:14px;font-weight:600;color:var(--c-ink)}
@@ -3821,7 +3849,10 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .camtile:hover{background:var(--c-brand-mid);border-color:var(--c-brand-mid)}
   .camtile .cam-d{display:none}
   .camtile .cam-m{display:inline}
-  .cliprow:not(:has(.camrow.hidden)) .drop{min-height:56px;padding:10px 16px;border:2px dashed rgba(245,247,250,.38)}
+  /* The compact library slot keeps the viewfinder's colour: a 2 px frame in
+     the speed gradient instead of a grey dash (the brackets have no room). */
+  .cliprow:not(:has(.camrow.hidden)) .drop{min-height:56px;padding:10px 16px;border:2px solid transparent;
+    background:linear-gradient(var(--c-media-bg),var(--c-media-bg)) padding-box,var(--g-speed) border-box}
   .cliprow:not(:has(.camrow.hidden)) .drop::before,
   .cliprow:not(:has(.camrow.hidden)) .drop::after,
   .cliprow:not(:has(.camrow.hidden)) .drop .ic-lg{display:none}
