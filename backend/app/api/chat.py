@@ -466,6 +466,10 @@ async def forget_memory(
     return {"forgotten": res.rowcount or 0}
 
 
+def _where(key: str) -> str:
+    return "progress" if key.startswith(report_chat.PROGRESS_KEY) else "report"
+
+
 # --------------------------------------------------------------------------
 # Admin: what the chat costs, this month
 # --------------------------------------------------------------------------
@@ -510,6 +514,12 @@ async def chat_usage(
     users.sort(key=lambda x: -x["cost_usd"])
     asked = sorted(((m, email) for m, email, _t in rows if m.role == ROLE_USER),
                    key=lambda x: -x[0].created_at_ms)
+    # Each question's answer is written 1 ms after it (report_chat.new_rows):
+    # read together on the admin screen, to check what the model says.
+    answers = {(m.user_id, m.analysis_client_id, m.created_at_ms): m.text
+               for m, _e, _t in rows if m.role == ROLE_ASSISTANT}
+    models_by = {(m.user_id, m.analysis_client_id, m.created_at_ms): m.model
+                 for m, _e, _t in rows if m.role == ROLE_ASSISTANT}
     topics: dict[str, int] = {}
     repeats: dict[str, int] = {}
     for m, _e in asked:
@@ -535,6 +545,8 @@ async def chat_usage(
         "topics": dict(sorted(topics.items(), key=lambda kv: -kv[1])),
         "top_questions": [{"text": k, "n": n} for k, n in
                           sorted(repeats.items(), key=lambda kv: -kv[1]) if n > 1][:10],
-        "recent": [{"email": e, "text": m.text, "topic": chat_topics.classify(m.text), "at": m.created_at_ms}
+        "recent": [{"email": e, "text": m.text, "topic": chat_topics.classify(m.text), "at": m.created_at_ms,
+                    "where": _where(m.analysis_client_id), "answer": answers.get((m.user_id, m.analysis_client_id, m.created_at_ms + 1)),
+                    "model": models_by.get((m.user_id, m.analysis_client_id, m.created_at_ms + 1))}
                    for m, e in asked[:30]],
     }

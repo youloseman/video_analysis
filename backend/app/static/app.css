@@ -3478,6 +3478,8 @@ details.raw pre{background:var(--c-media-bg);color:var(--card-soft);font-family:
 .chat-adm-list{margin:8px 0 0;padding-left:18px;font-size:14px;color:var(--c-ink-soft)}
 .chat-adm-list li{margin:0 0 6px}
 .chat-adm-meta{display:block;font-size:12px;color:var(--c-ink-faint)}
+.chat-adm-a summary{cursor:pointer;font-size:12px;color:var(--c-blue);margin-top:4px}
+.chat-adm-a .chat-a{margin-top:6px;max-width:none}
 .chat-form{display:flex;gap:8px;align-items:flex-end}
 .chat-form textarea{flex:1;min-height:44px;resize:vertical;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);color:var(--c-ink)}
 .chat-foot{font-size:14px;color:var(--c-ink-faint);margin:8px 0 0}

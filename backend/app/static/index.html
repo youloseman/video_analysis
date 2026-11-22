@@ -17054,7 +17054,8 @@ function renderChatUsage(u){
     ${(u.top_questions||[]).length?`<h4 class="u-mt-6">Asked more than once</h4><ol class="chat-adm-list">${u.top_questions.map(q=>
       `<li>${esc(q.text)} <b>× ${q.n}</b></li>`).join('')}</ol>`:''}
     ${(u.recent||[]).length?`<h4 class="u-mt-6">Latest questions</h4><ul class="chat-adm-list">${u.recent.map(q=>
-      `<li><span class="chat-adm-meta">${esc(fmtWhen(q.at))} · ${esc(q.email||'')} · ${esc((q.topic||'').replace(/_/g,' '))}</span>${esc(q.text)}</li>`).join('')}</ul>`:''}
+      `<li><span class="chat-adm-meta">${esc(fmtWhen(q.at))} · ${esc(q.email||'')} · ${esc((q.topic||'').replace(/_/g,' '))} · ${esc(q.where||'report')}</span>${esc(q.text)}`
+      +(q.answer?`<details class="chat-adm-a"><summary>Answer${q.model?` · ${esc(q.model)}`:''}</summary><div class="chat-a">${mdToHtml(q.answer)}</div></details>`:'')+`</li>`).join('')}</ul>`:''}
   </div>`;
 }
 

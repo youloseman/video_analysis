@@ -608,6 +608,7 @@ async def test_admin_sees_topics_repeats_and_recent(db, make_user, fake_model):
     assert j["topics"]["saddle"] == 2 and j["topics"]["pain"] == 1
     assert j["top_questions"][0] == {"text": "why lower the saddle?", "n": 2}
     assert j["recent"][0]["text"] == "My knee hurts" and len(j["recent"]) == 3
+    assert j["recent"][0]["answer"].startswith("Your knee at BDC") and j["recent"][0]["where"] == "report"
 
 
 # --------------------------------------------------------------------------
