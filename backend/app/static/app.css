@@ -597,6 +597,14 @@ video.ex-media{background:var(--c-media-bg)}
 @media(max-width:640px){ .psum{grid-template-columns:minmax(0,1fr)} .pc-big small{margin-left:0;flex-basis:100%} }
 .tc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .tc-lbl{font-weight:600;font-size:14px;color:var(--c-head)}
+/* Progress: the reading's pictogram leads its card and its phone row; the dot
+   is the latest reading's status (.pg-st), the chip beside it is the trend. */
+.pg-st{display:inline-flex;flex:none;align-self:center}
+.pg-st .pm{width:44px;height:44px;margin:-10px 0 -10px -6px}
+.pcard .tc-head:has(.pg-st){justify-content:flex-start;align-items:center}
+.pcard .tc-head:has(.pg-st) .tdelta{margin-left:auto}
+.pg-st.m-out .pm{--pm-dot:var(--m-out)} .pg-st.m-near .pm{--pm-dot:var(--m-near-text)}
+.pg-st.m-ok .pm{--pm-dot:var(--m-ok)} .pg-st.m-info .pm{--pm-dot:var(--c-ink-faint)}
 .tc-val{font-family:var(--f-brand);font-weight:900;font-style:italic;font-size:22px;color:var(--c-ink);letter-spacing:-.01em}
 .tc-sub{font-size:12px;color:var(--c-ink-faint);margin-top:6px;font-family:var(--f-mono);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tdelta{font-weight:500}

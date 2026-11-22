@@ -14773,12 +14773,16 @@ function renderProgress(){
   const away=rest.filter(x=>x.opt&&x.dd.cls==='reg'), imp=rest.filter(x=>x.opt&&x.dd.cls==='imp');
   const steady=rest.filter(x=>x.opt&&x.dd.cls==='sta'), loose=rest.filter(x=>!x.opt);
   const fmt=(x,v)=>{ const d=FORM_DEC[x.m.key]??(Math.abs(x.last)<10?1:0); return num(v,d); };
+  // Each reading's pictogram, its dot in the status the latest analysis gives
+  // it (the Home card's and the report's), not the colour of the trend.
+  const stNow=Object.fromEntries(formTiles(sport,[lastE]).map(t=>[t.key, measStatus(t).cls]));
+  const pic=x=>`<span class="pg-st ${stNow[x.m.key]||'m-info'}">${metricPic(x.m.label,sport)}</span>`;
   const card=x=>{ const u=x.m.unit||'', inR=inBandShown(x.last,x.opt,FORM_DEC[x.m.key]??(Math.abs(x.last)<10?1:0));
     const d=x.last-x.first, mag=fmt(x,Math.abs(d));
     const word=!x.opt?'':x.dd.cls==='reg'?'further from the range':x.dd.cls==='imp'?(inR?'now in range':'closer to the range'):'steady';
     const chip=Math.abs(d)<1e-9?word:`${d>0?'▲':'▼'} ${mag}${u}${word?' · '+word:''}`;
     return `<div class="tcard pcard">
-      <div class="tc-head"><span class="tc-lbl">${esc(x.m.label)}</span>${chip?`<span class="tdelta ${x.opt?x.dd.cls:'sta'}">${chip}</span>`:''}</div>
+      <div class="tc-head">${pic(x)}<span class="tc-lbl">${esc(x.m.label)}</span>${chip?`<span class="tdelta ${x.opt?x.dd.cls:'sta'}">${chip}</span>`:''}</div>
       <p class="pc-head">${esc(trendHeadline(x,noun,x.tser))}</p>
       ${trendChart2(x.series,x.opt,x.m.unit,{ts:x.tser,dec:FORM_DEC[x.m.key]})}
     </div>`; };
@@ -14789,7 +14793,7 @@ function renderProgress(){
     const word=!x.opt?'':x.dd.cls==='reg'?'further from the range':x.dd.cls==='imp'?(inR?'now in range':'closer to the range'):'steady';
     const chg=Math.abs(d)<1e-9?word:`${d>0?'▲':'▼'} ${fmt(x,Math.abs(d))}${u}${word?' · '+word:''}`;
     return `<details class="tcard pcard pc-fold"><summary>
-        <span class="pcf-l"><span class="tc-lbl">${esc(x.m.label)}</span>
+        ${pic(x)}<span class="pcf-l"><span class="tc-lbl">${esc(x.m.label)}</span>
           <span class="pcf-v"><small class="num">${fmt(x,x.first)}${u} →</small> <b class="num">${fmt(x,x.last)}${u}</b></span>
           ${chg?`<span class="pcf-d ${x.opt?x.dd.cls:'sta'}">${chg}</span>`:''}</span>
         ${progSpark(x.series,x.opt)}</summary>

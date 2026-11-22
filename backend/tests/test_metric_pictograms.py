@@ -58,3 +58,11 @@ def test_the_dot_takes_the_status_colour_from_the_row():
     for rule in (".fd-row.m-out .pm{--pm-dot:var(--m-out)}", ".dsc-rows .m-out .pm{--pm-dot:var(--m-out)}",
                  ".dsc-rows .m-near .pm{--pm-dot:var(--c-ink-faint)}", ".fx-out .pm{--pm-dot:var(--m-out)}"):
         assert rule in APP, rule
+
+
+def test_progress_cards_lead_with_the_reading_in_its_current_status():
+    i = SPA.index("const stNow=Object.fromEntries(formTiles(sport,[lastE])")
+    block = SPA[i:SPA.index("const group=(cls,h,sub,list)=>", i)]
+    assert "measStatus(t).cls" in block
+    assert '<div class="tc-head">${pic(x)}' in block and "${pic(x)}<span class=\"pcf-l\">" in block
+    assert ".pg-st.m-out .pm{--pm-dot:var(--m-out)}" in APP
