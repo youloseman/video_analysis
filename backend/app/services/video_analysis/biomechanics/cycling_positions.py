@@ -32,12 +32,13 @@ AERO_POSITIONS = frozenset({"tt_aero", "triathlon"})
 # degrees ... is the personal choice of the athlete"; "an angle more obtuse
 # than 90 degrees can become an issue". No source names a number below 80 as a
 # target or a fault, and five of fourteen Kona 2026 pros rode 70-77. The band
-# stays where the fitters put it (BikeFit "90 deg for most fits"; Fintelman's
-# 19 TT riders and triathletes 90.7 +/- 5.3); below it the penalty is a third
+# stays where the fitters put it (Empfield's 90; BikeFit's "around 90" is a
+# road page); below it the penalty is a third
 # as steep and the status never goes past amber, on every surface.
 #
-# Road joined 2026-11-13. The road source (BikeDynamics, "upper arm to torso
-# 85 to 90") measures to the ELBOW, as we do, and is a static fit-day number.
+# Road joined 2026-11-13. The fitters' road number (BikeFit, "around 90"
+# between torso and upper arm) measures to the ELBOW, as we do, and is a static
+# fit-day number.
 # Riding, the elbows bend and the upper arm swings in toward the torso: ten
 # race-fit riders on the hoods (upload/landing/test_roadbike) read 65-81, eight
 # of them under 80, and the gap to the same angle taken to the wrist grew with
@@ -180,14 +181,14 @@ CYCLING_POSITIONS: dict[str, dict[str, Any]] = {
         "category": "tt",
         # Upper end 30 -> 25 (Artur, 2026-10-13): a rider sitting up at 29 deg
         # on a TT bike read "in range" and scored 98. See META for why 25.
-        "trunk_angle": (15, 25),        # Retul TT ~20 deg; track 4.5-8.6 deg
+        "trunk_angle": (15, 25),        # Kona 2026 pros median 20; see META
         "elbow_angle": (75, 110),       # elbows bent on aero pads, NOT straight
         "knee_at_bdc": (138, 145),      # Retul TT/Tri: 37-42 deg extension
         "knee_at_tdc": (60, 72),        # more closed hip angle in aero
         "hip_angle_max": (35, 55),      # TT avg hip angle; above 55 = comfort/OK
         "hip_at_tdc": (42, 60),         # aggressive closed hip at TDC
         "hip_at_bdc": (85, 110),        # open hip at BDC
-        "shoulder_angle": (80, 100),    # surplus power optimal 88.9-105.3 deg
+        "shoulder_angle": (80, 100),    # fitters ~90 (Empfield); no study sets it
         "forearm_tilt": (5, 30),        # UCI pad cap 30 deg (2023); see META
         "head_alignment": (75, 100),    # head tuck saves ~4.6% drag
         "pelvic_ratio": (2.0, 4.0),    # forward rotation enables aero
@@ -240,7 +241,7 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             # recreational rider (42 +/- 4) is not told to get lower.
             "source": (
                 "Skovereng 2020 PLoS ONE (pros 38, recreational 42, 3D); "
-                "Jongerius 2022 J Biomech (37 club riders, 42); "
+                "Jongerius 2022 J Biomech (road group of 55 club riders, 42); "
                 "Bini, Hume & Croft 2014 (competitive 37-38, recreational 41-43)"
             ),
             "warning_low": 27,
@@ -277,9 +278,9 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
         "shoulder_angle": {
             # Checked against sources on 2026-09-18. Fitters converge on the
             # torso-to-upper-arm angle at the shoulder being ABOUT 90 on the
-            # hoods: BikeDynamics fit guidelines "upper arm to torso angle of
-            # 85 to 90 deg" (bikedynamics.co.uk/guidelines.htm), BikeFit
-            # "around 90 degrees" (bikefit.com, handlebar adjustments), and
+            # hoods: BikeFit "around 90 degrees" (bikefit.com, handlebar
+            # adjustments; BikeDynamics' 85-90 page dropped 2026-11-22, its
+            # HTTPS certificate is broken), and
             # one approach at 90-100. The band this replaced was 90-120 --
             # its FLOOR sat on the textbook value and it ran 30 deg above it,
             # so every road clip in the repo failed it (73-88 measured) while
@@ -300,7 +301,7 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             # 80-100 -> 70-90. Weak evidence: thirteen riders.
             "source": (
                 "Bouillod 2016 icSPORTS (n=3, 77.7); Branco 2022 J Sci Cycling "
-                "(n=10, 76.2, 65-88); fitters 85-90 static (BikeDynamics, BikeFit)"
+                "(n=10, 76.2, 65-88); fitters ~90 static (BikeFit 2019)"
             ),
             "warning_low": 65,
             "warning_high": 98,
@@ -338,7 +339,8 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
     "tt_aero": {
         "trunk_angle": {
             "source": (
-                "Retul TT fit; surplus power peak 4.5-8.6 deg (track); upper end 25: "
+                "Fintelman 2014 J Biomech (19 riders): a fully flat torso is not "
+                "optimal, power falls faster than drag; upper end 25: "
                 "Kona 2026 pro field (n=32) median 20, middle half 18-22, max 27"
             ),
             "warning_low": 10,
@@ -364,8 +366,13 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
             ),
         },
         "shoulder_angle": {
-            "source": "Wind tunnel: surplus power 88.9-105.3 deg; pure power 88-93 deg",
-            "power_optimal": (88, 93),
+            # Was "Wind tunnel: surplus power 88.9-105.3 deg" -- not in
+            # Fintelman 2014 (the abstract has no shoulder range), unconfirmed
+            # anywhere else (link check, 2026-11-22). Fitter guidance only.
+            "source": (
+                "Fitter guidance: Empfield 2007 (Slowtwitch), about 90 deg, below "
+                "is the athlete's choice, above can become an issue; no study sets it"
+            ),
             "note": (
                 "Elbow directly below shoulder (~90 deg) provides skeletal support. "
                 "Closed past the band: amber, a third of the penalty "
@@ -375,14 +382,14 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
 "forearm_tilt": {
             "source": (
                 "UCI (in force 1 Jan 2023): forearm-support inclination cap raised "
-                "from 15 to 30 deg; Maddocks & Walker 2025 (Sports Eng 28:11, CFD, "
-                "one pro): drag kept falling to ~35 deg, most with narrow elbows; "
-                "Steinmetz 2024: Kona pros add 10-20 deg of bar tilt"
+                "from 15 to 30 deg; Maddocks & Walker 2025 (Sports Eng 28:11, CFD): "
+                "hands higher with narrower elbows cut drag area ~11%; "
+                "Steinmetz 2024 (Slowtwitch): Kona pros add 10-20 deg of bar tilt"
             ),
             "note": (
-                "Ceiling 30 = the UCI pad cap. No source shows tilt hurting below "
-                "35 deg; the gain is rider-specific and tied to elbow width. Kona "
-                "2026 pros: median 25, half above 25."
+                "Ceiling 30 = the UCI pad cap. No source we checked shows tilt "
+                "hurting inside the cap; the gain is rider-specific and tied to "
+                "elbow width. Kona 2026 pros: median 25, half above 25."
             ),
         },
         "pelvic_ratio": {
@@ -397,21 +404,20 @@ CYCLING_POSITIONS_META: dict[str, dict[str, dict[str, Any]]] = {
         "forearm_tilt": {
             "source": (
                 "UCI (in force 1 Jan 2023): forearm-support inclination cap raised "
-                "from 15 to 30 deg; Maddocks & Walker 2025 (Sports Eng 28:11, CFD, "
-                "one pro): drag kept falling to ~35 deg, most with narrow elbows; "
-                "Steinmetz 2024: Kona pros add 10-20 deg of bar tilt"
+                "from 15 to 30 deg; Maddocks & Walker 2025 (Sports Eng 28:11, CFD): "
+                "hands higher with narrower elbows cut drag area ~11%; "
+                "Steinmetz 2024 (Slowtwitch): Kona pros add 10-20 deg of bar tilt"
             ),
             "note": (
-                "Ceiling 30 = the UCI pad cap. No source shows tilt hurting below "
-                "35 deg; the gain is rider-specific and tied to elbow width. Kona "
-                "2026 pros: median 25, half above 25."
+                "Ceiling 30 = the UCI pad cap. No source we checked shows tilt "
+                "hurting inside the cap; the gain is rider-specific and tied to "
+                "elbow width. Kona 2026 pros: median 25, half above 25."
             ),
         },
         "shoulder_angle": {
             "source": (
-                "BikeFit: 90 deg for most fits; Empfield 2007: below 90 is the "
-                "athlete's choice, above 90 can become an issue; Fintelman 2015 "
-                "(n=19 TT/tri): 90.7 +/- 5.3"
+                "Fitter guidance: Empfield 2007 (Slowtwitch), about 90 deg, below "
+                "is the athlete's choice, above can become an issue; no study sets it"
             ),
             "note": "Closed past the band: amber, a third of the penalty (SHOULDER_CLOSED_OK_POSITIONS).",
         },

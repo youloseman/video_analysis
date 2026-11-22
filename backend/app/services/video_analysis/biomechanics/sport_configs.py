@@ -15,8 +15,10 @@ Running references:
   - Folland et al. 2017, "Running Technique is an Important Component
     of Running Economy and Performance" (MSSE) -- lower vertical
     oscillation and modest trunk lean track better economy.
-  - Hunter et al. 2004 / Weyand et al. 2000 -- ground contact time:
-    elite ~200 ms, recreational up to ~300 ms.
+  - Folland et al. 2017 -- ground contact time: 190-303 ms across
+    endurance runners. Weyand et al. 2000 -- flight time (faster runners
+    push harder, not faster). (Hunter 2004, cited here before, is sprint
+    step length vs rate, not contact time; dropped 2026-11-22.)
 """
 
 from typing import Any
@@ -36,7 +38,7 @@ KNEE_SWING_TYPICAL = (80, 100)
 # RUNNING_REFERENCE["cadence_spm"]). Kept for the WIDTH, like the knee above:
 # the 170-225 display band would make a low cadence cost ~3x less.
 CADENCE_TYPICAL = (170, 190)
-# The run elbow band before it became one-sided (Napier ~90 deg carry). Kept
+# The run elbow band before it became one-sided (~90 deg carry). Kept
 # for the WIDTH of the penalty past 100 and the plan's severity scale.
 ELBOW_TYPICAL = (85, 100)
 # Knee at contact: the typical band (Heiderscheit 2011). The penalty slope past
@@ -92,8 +94,10 @@ RUNNING_REFERENCE = {
     # through the worst-component pull (IMG_5455, 2026-11-01). Past 100 the
     # penalty keeps the slope of the typical band (KNEE_SWING_TYPICAL).
     "knee_at_swing": (30, 100),
-    # deg (~90 deg arm carry). Napier, "Science of Running": elbows ~90 deg;
-    # restricting arm swing raises metabolic cost.
+    # deg (~90 deg arm carry). Runners bend the elbow, walkers do not (Yegian
+    # et al. 2019, J Exp Biol); restricting arm swing raises metabolic cost
+    # (Arellano & Kram 2014, J Exp Biol). The "Napier, Science of Running"
+    # citation this replaced (a book) could not be checked (2026-11-22).
     # ONE-SIDED (2026-11-07): the fault is an arm carried too OPEN (a long,
     # straight lever). A tighter carry shortens the lever and tightens with
     # speed: every elite clip we hold carries 62-69 deg (IMG_5455, IMG_5585,
@@ -405,7 +409,7 @@ RUNNING_REFERENCE_SOURCES: dict[str, str] = {
     "knee_at_initial_contact": "Heiderscheit 2011",
     "knee_at_midstance": "Heiderscheit 2011",
     "knee_at_swing": "Folland 2017",
-    "elbow_angle": "Napier, Science of Running",
+    "elbow_angle": "Arellano & Kram 2014; Yegian 2019",
     "vertical_oscillation_cm": "Heiderscheit 2011",
     "ground_contact_ms": "Folland 2017",
     "flight_time_ms": "Weyand 2000",

@@ -40,7 +40,7 @@ def test_every_running_band_carries_a_citation():
 def test_citations_only_name_papers_the_config_actually_cites():
     """A citation invented at the render layer would be worse than none."""
     cited = " ".join(RUNNING_REFERENCE_SOURCES.values())
-    for name in ("Heiderscheit", "Folland", "Weyand", "Napier", "Souza"):
+    for name in ("Heiderscheit", "Folland", "Weyand", "Arellano", "Souza"):
         assert name in cited
     # ...and nothing claims a study the module docstring never mentions.
     assert "Retul" not in cited          # that is a cycling source
