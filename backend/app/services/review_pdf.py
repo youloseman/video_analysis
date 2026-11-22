@@ -21,6 +21,8 @@ import math
 import re
 from typing import Any
 
+from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+
 # field, label, unit, scale (lo, hi) for the bar
 _BIKE_ROWS: tuple[tuple[str, str, str, tuple[float, float]], ...] = (
     ("knee_at_bdc", "Knee at the bottom · saddle height", "°", (120, 170)),
@@ -33,7 +35,7 @@ _BIKE_ROWS: tuple[tuple[str, str, str, tuple[float, float]], ...] = (
     # Not rocking: the mean hip angle over the torso angle (cycling_analyzer).
     # "Pelvis rocking (ratio): 3.55" had a reader asking rocking of what, in
     # what unit (Gona, 2026-11-10).
-    ("pelvic_ratio", "Hip ÷ torso angle", "", (1, 6)),
+    ("pelvic_ratio", "Pelvic ratio", "", (1, 6)),
     ("helmet_above_back", "Helmet above the back", "%", (0, 40)),
 )
 # What each row measures, between which points, in a line under its bar. Knee
@@ -142,10 +144,17 @@ def metric_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
         v = s.get(field)
         b = bands.get(field)
         band = (float(b["lo"]), float(b["hi"])) if isinstance(b, dict) and b.get("lo") is not None else None
+        noband = None
         if field == "pelvic_ratio":
             # A reading, not graded: stored reports still carry the unsourced
             # 2-4 band (sport_configs.reference_bands dropped it 2026-11-11).
             band = None
+        if field == "forearm_tilt_avg" and result.get("cycling_position") not in AERO_POSITIONS:
+            # An aero-bar measure (5-20 deg is a pad-and-extension band): the
+            # scorer drops it off the aero bars (2026-09-18) and the app's table
+            # does not grade it, yet stored road reports still carry the band,
+            # so the PDF graded a hoods forearm "too low" (2026-11-22).
+            band, noband = None, "an aero-bar measure: shown, not graded off the aero bars"
         if field == "helmet_above_back":
             band = (0.0, 23.0)
             if not isinstance(v, (int, float)):
@@ -159,7 +168,7 @@ def metric_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
                       _status(float(v), *(band or (None, None))))
         rows.append({"field": field, "label": label, "value": float(v), "unit": unit, "band": band,
                      "pro": pro.get(field), "status": st, "scale": scale,
-                     "how": HOW_MEASURED.get(field)})
+                     "how": HOW_MEASURED.get(field), **({"noband": noband} if noband else {})})
     return rows
 
 

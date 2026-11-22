@@ -18,6 +18,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
+
 from app.services.review_pdf import (
     _CSS,
     _STATUS_WORD,
@@ -49,7 +51,7 @@ _SPORT = {"bike": "Cycling", "run": "Running"}
 _PART_NAMES = {
     "knee_bdc": "Knee at bottom", "trunk_angle": "Trunk", "knee_tdc": "Knee at top",
     "elbow_angle": "Elbow", "shoulder_angle": "Shoulder", "helmet_above_back": "Helmet above back",
-    "pelvic_ratio": "Hip ÷ torso", "forearm_tilt": "Forearm", "saddle_fit": "Saddle height",
+    "pelvic_ratio": "Pelvic ratio", "forearm_tilt": "Forearm", "saddle_fit": "Saddle height",
     "cadence": "Cadence", "trunk_lean": "Trunk lean", "overstride": "Overstride",
     "knee_contact": "Knee at contact", "phase_stability": "Stride stability",
     "elbow_swing": "Arm swing", "vertical_osc": "Vertical oscillation",
@@ -96,9 +98,14 @@ def _score_notes(result: dict[str, Any], score: Any) -> list[str]:
     weights = CYCLING_WEIGHTS if sport == "bike" else RUNNING_WEIGHTS
     scored = {k: float(parts[k]) for k in weights if isinstance(parts.get(k), (int, float))}
     notes = []
-    missing = [_PART_NAMES.get(k, k) for k in weights if k not in scored]
+    # Forearm tilt off the aero bars is measured but not part of the score
+    # (technique_scorer drops it there): that is not "not measured".
+    road = sport == "bike" and result.get("cycling_position") not in AERO_POSITIONS
+    missing = [_PART_NAMES.get(k, k) for k in weights if k not in scored and not (road and k == "forearm_tilt")]
     if missing:
         notes.append(f"Not measured on this clip, so not counted: {', '.join(missing)}.")
+    if road and "forearm_tilt" in weights and "forearm_tilt" not in scored:
+        notes.append("Forearm tilt is an aero-bar measure, so it does not count on this position.")
     candidates = {k: v for k, v in scored.items() if k not in CYCLING_DERIVED_COMPONENTS}
     if sport == "bike" and candidates:
         mean = sum(v * weights[k] for k, v in scored.items()) / sum(weights[k] for k in scored)
@@ -177,7 +184,8 @@ def _grbar(row: dict[str, Any], chip: bool = True) -> str:
     if v is None:
         return "<div class='gr-none'>Not measured on this clip</div>"
     if not band:
-        return f"<div class='gr-none'>{_e(_num(v))}{_e(unit)} · no reference range for this one</div>"
+        why = row.get("noband") or "no reference range for this one"
+        return f"<div class='gr-none'>{_e(_num(v))}{_e(unit)} · {_e(why)}</div>"
     lo, hi = band
     m = max((hi - lo) * 0.10, _MARGIN_FLOOR.get(row.get("field") or "", 3.0 if unit == "°" else (hi - lo) * 0.25 or 0.1))
     ax_min, ax_max = lo - 2 * m, hi + 2 * m
@@ -818,6 +826,7 @@ _EXTRA_CSS = """
 .mt-m{width:38%}
 .mt-mh{display:flex;gap:8px;align-items:center}
 .mt-fig{flex:none;width:52px;height:52px}
+.numbers-start{break-before:page}
 .pm-sprite{position:absolute;width:0;height:0;overflow:hidden}
 .pm{--c-head:#14294B;--c-bg:#fff;--c-coral:#F1553F;--pm-dot:#F1553F}
 .pm-good{--pm-dot:#1F7A45}.pm-warn{--pm-dot:#9A5E0B}.pm-bad{--pm-dot:#B8371F}.pm-info{--pm-dot:#8A929E}
@@ -1055,17 +1064,23 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     named = " ".join(str(i.get("type") or "") for i in issues)
     who = "your coach" if coach_brand.get("name") else "a coach or fitter" if sport == "bike" else "a coach"
 
+    loose = [r for r in graded if r.get("status") == "bad"
+             and str(r.get("field")).removesuffix("_avg") not in planned
+             and str(r.get("field")).split("_")[0] not in named]
+    # One reason per section, not per row: two flags in a row read the same
+    # sentence twice (2026-11-22).
+    why_loose = f"No single change follows from {'this number' if len(loose) == 1 else 'these numbers'} alone, " \
+                f"so {'it isn' if len(loose) == 1 else 'they aren'}'t in the plan. Worth going through with {who}."
+
     def unplanned(r: dict[str, Any]) -> str:
         lo, hi = r["band"]
+        tail = f" {why_loose}" if len(loose) == 1 else ""
         return (f"<div class='finding'><h3>{_e(str(r['label']).split(' · ')[0])}</h3><span class='chip bad'>{_e(_row_value(r))}</span>"
-                f"<p>Outside its range of {_e(_num(lo))}–{_e(_num(hi))}{_e(r.get('unit') or '')}. No single change follows from this "
-                f"number alone, so it isn't in the plan. Worth going through with {who}.</p></div>")
+                f"<p>Outside its range of {_e(_num(lo))}–{_e(_num(hi))}{_e(r.get('unit') or '')}.{tail}</p></div>")
 
     findings = "" if wrong_ranges else "".join([
         finding(i) for i in issues if _ISSUE_METRIC.get(str(i.get("type"))) not in planned] + [
-        unplanned(r) for r in graded if r.get("status") == "bad"
-        and str(r.get("field")).removesuffix("_avg") not in planned
-        and str(r.get("field")).split("_")[0] not in named])
+        unplanned(r) for r in loose] + ([f"<p class='finding-why'>{why_loose}</p>"] if len(loose) > 1 else []))
     since_rows = "".join(
         f"<div class='since-row'><span>{_e(m['label'])}</span><span class='since-v'>{_e(m['then'])} → {_e(m['now'])}</span>"
         f"<span class='chip {m['tone']}'>{_e(m['word'])}</span></div>" for m in moved)
@@ -1160,7 +1175,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     knee_note = (f"<p class='lead' style='font-size:9.5pt'>{_e(NON_DRIVE_KNEE_NOTE)}</p>"
                  if NON_DRIVE_KNEE_NOTE in str(knee_band.get("source") or "") else "")
     numbers = f"""
-<section>
+<section class="numbers-start">
   <div class="keep">{head('The numbers', 'Every measurement, against its range')}
   <p class="lead">Measured by Flapp from your clip. Ranges come from sports-science research{' and the Kona 2026 pro field' if has_pro else ''}.</p>
   {ok_html}

@@ -146,15 +146,17 @@ def _alone(html: str) -> str:
 def test_at_the_edge_is_not_leave_alone_and_every_good_tile_is():
     alone = _alone(render_report_html(_bike(), {}))
     assert "Knee at the top" not in alone and "TDC" not in alone
-    assert "Forearm tilt" in alone and "Hip at the top" in alone and "Shoulder" in alone
+    # Forearm tilt is not graded on the hoods (an aero-bar measure), so it is
+    # neither a fix nor a "leave alone" (2026-11-22).
+    assert "Forearm tilt" not in alone and "Hip at the top" in alone and "Shoulder" in alone
 
 
 def test_the_cover_counts_what_the_tiles_show():
     res = _bike()
     res["sport_specific_metrics"]["helmet_check"] = True  # helmet: a tile that says not measured
     html = render_report_html(res, {})
-    assert "<b>6 numbers</b>" in html
-    assert "3 measurements where they should be" in html
+    assert "<b>5 numbers</b>" in html          # forearm tilt is not graded on the hoods
+    assert "2 measurements where they should be" in html
 
 
 def test_the_chainring_side_knee_is_a_number_like_any_other():
@@ -658,3 +660,34 @@ def test_an_aero_clip_that_is_not_aero_gets_no_plan_either():
                                                           "too upright -- lower pad stack."}]})
     html = render_report_html(res, {})
     assert "Lower bars" not in html and "lower pad stack" not in html.lower()
+
+
+def test_forearm_tilt_is_shown_not_graded_off_the_aero_bars():
+    """Artur's PDF review 2026-11-22: a hoods report graded the forearm against
+    the aero band (5-20) as "too low" and flagged it, while the cover said it
+    was not measured."""
+    res = _bike()
+    res["sport_specific_metrics"]["forearm_tilt_avg"] = -25.0
+    res["reference_bands"] = {**(res.get("reference_bands") or {}), "forearm_tilt_avg": {"lo": 5, "hi": 20}}
+    res["score_breakdown"] = {**(res.get("score_breakdown") or {})}
+    res["score_breakdown"].pop("forearm_tilt", None)
+    html = render_report_html(res, {})
+    assert "an aero-bar measure: shown, not graded off the aero bars" in html
+    assert "<h3>Forearm tilt</h3>" not in html                 # not among the flagged numbers
+    assert "not counted: Forearm" not in html
+    aero = _bike()
+    aero["cycling_position"] = "tt_aero"
+    aero["sport_specific_metrics"]["forearm_tilt_avg"] = -25.0
+    aero["reference_bands"] = {**(aero.get("reference_bands") or {}), "forearm_tilt_avg": {"lo": 5, "hi": 20}}
+    assert "an aero-bar measure" not in render_report_html(aero, {})
+
+
+def test_two_unplanned_numbers_share_one_reason():
+    from app.services.report_pdf import render_report_html as r
+    res = _bike()
+    sm = res["sport_specific_metrics"]
+    sm["elbow_angle_avg"], sm["shoulder_angle_avg"] = 100.0, 40.0
+    res["fit_plan"]["diagnostics"] = []
+    html = r(res, {})
+    if html.count("<div class='finding'>") >= 2:
+        assert html.count("No single change follows") == 1
