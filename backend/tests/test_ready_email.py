@@ -32,9 +32,9 @@ def _run_timer_now(monkeypatch, sent: list):
     monkeypatch.setattr(main.threading, "Timer", Immediate)
     monkeypatch.setattr(main, "_send_ready_mail",
                         lambda job_id, job: sent.append(job_id))
-    # _schedule_ready_mail hands the coroutine to asyncio.run; with the stub
-    # above it is a plain function, so run it directly.
-    monkeypatch.setattr(main.asyncio, "run", lambda coro: coro)
+    # _schedule_ready_mail hands the coroutine to the server loop; with the
+    # stub above it has already run, so there is nothing to hand over.
+    monkeypatch.setattr(main, "_submit_to_server_loop", lambda coro, what, **ctx: True)
 
 
 def test_no_mail_when_the_athlete_is_watching(monkeypatch):
@@ -106,3 +106,50 @@ def test_a_run_is_called_a_run():
     subject, _t, _h = analysis_ready_email("run", None, None, "u", "un")
     assert "run analysis" in subject
     assert "ready to read" in subject       # no score, no fake number
+
+
+def test_the_mail_runs_on_the_server_loop_not_a_new_one(monkeypatch):
+    """The timer fires on its own thread; the coroutine must still run on the
+    loop that owns the database pool. asyncio.run there opened a second loop
+    and took pooled asyncpg connections across loops."""
+    import asyncio
+    import threading
+
+    loop = asyncio.new_event_loop()
+    t = threading.Thread(target=loop.run_forever, daemon=True)
+    t.start()
+    ran_on: list = []
+    finished = threading.Event()
+
+    async def probe():
+        ran_on.append(asyncio.get_running_loop())
+        finished.set()
+
+    try:
+        monkeypatch.setattr(main, "SERVER_LOOP", loop)
+        worker = threading.Thread(target=lambda: main._submit_to_server_loop(probe(), "TEST"))
+        worker.start()
+        worker.join()
+        assert finished.wait(5)
+        assert ran_on == [loop]
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+        t.join(5)
+        loop.close()
+
+
+def test_without_a_server_loop_the_mail_is_dropped_not_run_elsewhere(monkeypatch):
+    monkeypatch.setattr(main, "SERVER_LOOP", None)
+    ran: list = []
+
+    async def probe():
+        ran.append(1)
+
+    assert main._submit_to_server_loop(probe(), "TEST") is False
+    assert ran == []
+
+
+def test_ready_mail_no_longer_opens_its_own_loop():
+    import inspect
+
+    assert "asyncio.run(" not in inspect.getsource(main._schedule_ready_mail)

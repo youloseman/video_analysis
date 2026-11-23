@@ -347,8 +347,36 @@ def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -
         return None
 
 
+# The loop uvicorn serves on. Worker threads (the ready-mail timer) hand
+# coroutines to it instead of starting their own: the database engine's pooled
+# asyncpg connections belong to this loop, and a second loop checking one out
+# fails with "attached to a different loop" or leaves the pool broken.
+SERVER_LOOP: asyncio.AbstractEventLoop | None = None
+
+
+def _submit_to_server_loop(coro: Any, what: str, **ctx: Any) -> bool:
+    """Run ``coro`` on the server loop from any thread; False if there is none."""
+    loop = SERVER_LOOP
+    if loop is None or loop.is_closed():
+        coro.close()
+        logger.warning(what + "_NO_LOOP", **ctx)
+        return False
+
+    def done(fut: Any) -> None:
+        if fut.cancelled():
+            return
+        err = fut.exception()
+        if err is not None:
+            logger.warning(what + "_FAILED", err=str(err), **ctx)
+
+    asyncio.run_coroutine_threadsafe(coro, loop).add_done_callback(done)
+    return True
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global SERVER_LOOP
+    SERVER_LOOP = asyncio.get_running_loop()
     # Refuse to serve rather than serve fail-open. Railway keeps the previous
     # container while a new one fails its health check, so this costs a
     # blocked deploy, never an outage.
@@ -1229,10 +1257,7 @@ def _schedule_ready_mail(job_id: str) -> None:
         if not job or job.get("seen") or job.get("mailed"):
             return
         job["mailed"] = True
-        try:
-            asyncio.run(_send_ready_mail(job_id, job))
-        except Exception as e:  # noqa: BLE001
-            logger.warning("READY_MAIL_FAILED", job_id=job_id, err=str(e))
+        _submit_to_server_loop(_send_ready_mail(job_id, job), "READY_MAIL", job_id=job_id)
 
     timer = threading.Timer(READY_MAIL_GRACE_S, check)
     timer.daemon = True          # never hold a shutdown open for a courtesy mail
