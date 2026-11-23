@@ -370,6 +370,26 @@ def draw_speed_rule(frame: np.ndarray, x0: int, x1: int, y: int, thickness: int 
 
 # --- PIL chip layer -------------------------------------------------------
 
+def _ink_boxes(alpha: np.ndarray, gap: int = 8) -> list[tuple[int, int, int, int]]:
+    """Boxes (x1, y1, x2, y2) covering every non-transparent pixel of ``alpha``.
+
+    One box per band of inked rows (bands closer than ``gap`` rows merge), cut
+    to that band's own columns: the header at the top and the wordmark at the
+    bottom stay two small boxes instead of one that spans the frame.
+    """
+    rows = np.flatnonzero(alpha.any(axis=1))
+    if rows.size == 0:
+        return []
+    breaks = np.flatnonzero(np.diff(rows) > gap)
+    starts = np.concatenate(([rows[0]], rows[breaks + 1]))
+    ends = np.concatenate((rows[breaks], [rows[-1]])) + 1
+    boxes = []
+    for y1, y2 in zip(starts.tolist(), ends.tolist()):
+        cols = np.flatnonzero(alpha[y1:y2].any(axis=0))
+        boxes.append((int(cols[0]), y1, int(cols[-1]) + 1, y2))
+    return boxes
+
+
 class ChipLayer:
     """Batches every chip/text draw into ONE PIL round-trip per frame.
 
@@ -506,9 +526,8 @@ class ChipLayer:
 
         from PIL import Image, ImageDraw
 
-        img = Image.fromarray(self._frame[:, :, ::-1])  # BGR -> RGB
-        base = img.convert("RGBA")
-        layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        h, w = self._frame.shape[:2]
+        layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(layer)
 
         for kind, args, _ in self._ops:
@@ -521,8 +540,18 @@ class ChipLayer:
             elif kind == "caption":
                 self._render_caption(d, *args)
 
-        out = Image.alpha_composite(base, layer).convert("RGB")
-        return np.array(out)[:, :, ::-1]  # RGB -> BGR
+        # Composite only where the layer has ink. The chips, header and brand
+        # cover a few percent of a 1080x1920 frame, and converting the whole
+        # frame BGR -> RGBA -> RGB -> BGR for them was ~10 s of a 25 s overlay
+        # render (503 frames). Where the layer is transparent alpha_composite
+        # returns the base unchanged, so this is pixel-identical: the bands
+        # below are the rows that hold ink, each cut to its own columns.
+        out = self._frame.copy()
+        for x1, y1, x2, y2 in _ink_boxes(np.asarray(layer.getchannel("A"))):
+            base = Image.fromarray(np.ascontiguousarray(out[y1:y2, x1:x2, ::-1])).convert("RGBA")
+            part = Image.alpha_composite(base, layer.crop((x1, y1, x2, y2))).convert("RGB")
+            out[y1:y2, x1:x2] = np.asarray(part)[:, :, ::-1]
+        return out
 
     # -- painters --------------------------------------------------------
     @staticmethod

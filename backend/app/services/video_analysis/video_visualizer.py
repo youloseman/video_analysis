@@ -154,6 +154,86 @@ CROP_HEIGHT_MULT = 1.9
 CROP_FOLLOW_S = 0.7
 
 
+class _FfmpegPipe:
+    """Drawn BGR frames into ffmpeg's stdin, out as web-safe H.264 MP4.
+
+    The overlay used to be written twice: an XVID AVI through OpenCV (6 s of
+    a 25 s render on a 503-frame clip), then decoded and re-encoded to H.264
+    by ffmpeg after the last frame (another ~3 s, nothing else happening).
+    Piped, x264 runs in its own process while the next frames are drawn, and
+    the intermediate AVI -- and its generation of compression loss -- is gone.
+    Same output settings as before: libx264 fast, CRF 23, yuv420p, faststart,
+    capped by ``_even_target_dims``.
+
+    The VideoWriter surface the loop uses: ``isOpened``, ``write``, and a
+    ``release`` that returns whether the file is good.
+    """
+
+    TIMEOUT_S = 300
+
+    def __init__(self, path: str, fps: float, w: int, h: int, out_w: int, out_h: int) -> None:
+        import tempfile
+
+        self._path = path
+        self._w, self._h = w, h
+        self._broken = False
+        # stderr to a file, not a pipe: a chatty ffmpeg filling an unread
+        # stderr pipe would block, and then so would our writes to stdin.
+        self._err = tempfile.TemporaryFile()
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{w}x{h}", "-r", f"{float(fps):.6g}",
+            "-i", "-",
+            "-vf", f"scale={out_w}:{out_h}",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an",
+            path,
+        ]
+        try:
+            self._proc: subprocess.Popen | None = subprocess.Popen(
+                cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=self._err,
+            )
+        except OSError as e:
+            logger.error("ffmpeg could not start", err=str(e))
+            self._proc = None
+
+    def isOpened(self) -> bool:  # noqa: N802 -- the cv2.VideoWriter name
+        return self._proc is not None and self._proc.poll() is None
+
+    def write(self, frame: Any) -> None:
+        if self._broken or self._proc is None or self._proc.stdin is None:
+            return
+        try:
+            self._proc.stdin.write(np.ascontiguousarray(frame, dtype=np.uint8).tobytes())
+        except (BrokenPipeError, OSError):
+            # ffmpeg died; release() reports why. Keep the loop cheap.
+            self._broken = True
+
+    def release(self) -> bool:
+        if self._proc is None:
+            return False
+        try:
+            if self._proc.stdin is not None:
+                try:
+                    self._proc.stdin.close()
+                except OSError:
+                    self._broken = True
+            code = self._proc.wait(timeout=self.TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            self._proc.kill()
+            self._proc.wait()
+            logger.error("ffmpeg timed out", seconds=self.TIMEOUT_S)
+            return False
+        finally:
+            self._err.seek(0)
+            stderr = self._err.read().decode("utf-8", "replace")
+            self._err.close()
+        if code != 0 or self._broken:
+            logger.error("ffmpeg encode failed", returncode=code, stderr=stderr[:500])
+            return False
+        return True
+
+
 class VideoVisualizer:
     """Generates an overlay video with skeleton + biomechanical annotations."""
 
@@ -396,10 +476,11 @@ class VideoVisualizer:
         os.makedirs(self.output_dir, exist_ok=True)
         final_mp4 = os.path.join(self.output_dir, f"{self.analysis_id}.mp4")
 
-        # With ffmpeg: write a temp AVI (XVID) then re-encode to web-safe H.264.
-        # Without ffmpeg (common on dev machines): write the MP4 directly via
-        # OpenCV's mp4v muxer -- plays in VLC/most players. Install ffmpeg and
-        # re-run for browser-safe H.264 + faststart.
+        # With ffmpeg: drawn frames go straight into ffmpeg's stdin and come
+        # out as web-safe H.264 (see _FfmpegPipe). Without ffmpeg (common on
+        # dev machines): write the MP4 directly via OpenCV's mp4v muxer --
+        # plays in VLC/most players. Install ffmpeg and re-run for
+        # browser-safe H.264 + faststart.
         self._use_ffmpeg = shutil.which("ffmpeg") is not None
 
         # What the encode will do to every drawn pixel (1.0 without ffmpeg,
@@ -412,14 +493,14 @@ class VideoVisualizer:
         if self._use_ffmpeg and draw_w:
             out_scale = min(1.0, self._even_target_dims(draw_w, draw_h)[0] / draw_w)
         if self._use_ffmpeg:
-            temp_avi = os.path.join(self.output_dir, f"{self.analysis_id}_temp.avi")
-            writer = cv2.VideoWriter(temp_avi, cv2.VideoWriter_fourcc(*"XVID"), fps, (draw_w, draw_h))
-            writer_target = temp_avi
+            # The encode target follows what is DRAWN -- the crop when one
+            # applies -- or ffmpeg is handed the source aspect and stretches it.
+            out_w, out_h = self._even_target_dims(draw_w, draw_h)
+            writer = _FfmpegPipe(final_mp4, fps, draw_w, draw_h, out_w, out_h)
         else:
             logger.warning("ffmpeg not found -- writing MP4 directly via OpenCV (mp4v)")
-            temp_avi = None
             writer = cv2.VideoWriter(final_mp4, cv2.VideoWriter_fourcc(*"mp4v"), fps, (draw_w, draw_h))
-            writer_target = final_mp4
+        writer_target = final_mp4
 
         if not writer.isOpened():
             logger.error("Cannot create VideoWriter", path=writer_target)
@@ -484,32 +565,24 @@ class VideoVisualizer:
             if WATERMARK_ENABLED:
                 self._draw_watermark(cv2, frame, draw_w, draw_h)
 
+            if frame.shape[1] != draw_w or frame.shape[0] != draw_h:
+                # A raw pipe has no container to resync on: one frame of the
+                # wrong size shears every frame after it.
+                frame = cv2.resize(frame, (draw_w, draw_h))
             writer.write(frame)
             frames_written += 1
             video_frame_idx += 1
 
         cap.release()
-        writer.release()
+        encoded = writer.release()
 
         if frames_written == 0:
             logger.warning("No frames written to overlay video")
-            if temp_avi:
-                self._cleanup_file(temp_avi)
+            self._cleanup_file(final_mp4)
             return None
-
-        # Re-encode with ffmpeg to web-safe H.264 MP4 (only when ffmpeg exists;
-        # otherwise final_mp4 was written directly by the mp4v writer above).
-        # The re-encode also downscales to ~720p -- overlays are for phone
-        # viewing, so a smaller clip downloads faster and encodes quicker.
-        if self._use_ffmpeg:
-            # The AVI on disk is whatever was DRAWN -- the crop when one
-            # applied -- so the encode target has to follow it, or ffmpeg is
-            # handed the source aspect and stretches the result.
-            out_w, out_h = self._even_target_dims(draw_w, draw_h)
-            success = self._reencode_to_mp4(temp_avi, final_mp4, out_w, out_h)
-            self._cleanup_file(temp_avi)
-            if not success:
-                return None
+        if encoded is False:
+            self._cleanup_file(final_mp4)
+            return None
 
         logger.info(
             "Overlay video generated",
@@ -1426,48 +1499,6 @@ class VideoVisualizer:
         w = int(round(width * scale)) & ~1   # round down to even
         h = int(round(height * scale)) & ~1
         return max(2, w), max(2, h)
-
-    def _reencode_to_mp4(
-        self, input_path: str, output_path: str, out_w: int, out_h: int,
-    ) -> bool:
-        """Re-encode AVI to web-safe H.264 MP4 (capped to out_w x out_h)."""
-        cmd = [
-            "ffmpeg",
-            "-i", input_path,
-            # Concrete even target dims (see _even_target_dims): caps the clip to
-            # ~720p for a small, fast download and guarantees the even dimensions
-            # libx264 + yuv420p needs -- odd dims would abort the encode.
-            "-vf", f"scale={out_w}:{out_h}",
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "23",
-            "-pix_fmt", "yuv420p",
-            "-movflags", "+faststart",
-            "-an",  # no audio
-            "-y",   # overwrite
-            output_path,
-        ]
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300,  # 5 min max
-            )
-            if result.returncode != 0:
-                logger.error(
-                    "ffmpeg re-encode failed",
-                    returncode=result.returncode,
-                    stderr=result.stderr[:500],
-                )
-                return False
-            return True
-        except subprocess.TimeoutExpired:
-            logger.error("ffmpeg timed out after 300s")
-            return False
-        except Exception as e:
-            logger.error("ffmpeg execution failed",err=str(e))
-            return False
 
     @staticmethod
     def _cleanup_file(path: str) -> None:
