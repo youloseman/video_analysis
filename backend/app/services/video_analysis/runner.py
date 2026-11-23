@@ -26,6 +26,7 @@ not rewritten, to keep the numeric behaviour identical.
 from __future__ import annotations
 
 import math
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -1657,6 +1658,8 @@ def analyze_from_frames(
     # annotated frame for the history record); render the full overlay video
     # only when requested. Wrapped so a rendering failure never kills the result.
     overlay_video_path = None
+    overlay_render: threading.Thread | None = None
+    overlay_out: dict[str, Any] = {}
     keyframe_base64 = None
     keyframe_free_base64 = None
     timeline = None
@@ -1730,8 +1733,23 @@ def analyze_from_frames(
             visualizer.hide_angle_values = False
             visualizer.teaser_watermark = False
         if overlay_path:
-            overlay_video_path = visualizer.generate()
-            logger.info("OVERLAY_DONE", path=overlay_video_path)
+            # Rendered on its own thread while the kinogram, the action plan
+            # and the coach (a network call of several seconds) run here, and
+            # joined before the result is assembled. It was the longest step
+            # after pose detection and everything after it waited for it; the
+            # render is mostly cv2/PIL/numpy and an ffmpeg process, which leave
+            # the GIL. Nothing below touches the visualizer, and it reads
+            # ``summary`` only through .get().
+            def _render_overlay() -> None:
+                try:
+                    overlay_out["path"] = visualizer.generate()
+                except Exception as e:  # noqa: BLE001 -- same rule as VISUALS_FAILED
+                    logger.warning("OVERLAY_FAILED", err=str(e))
+
+            overlay_render = threading.Thread(
+                target=_render_overlay, name="overlay-render", daemon=True,
+            )
+            overlay_render.start()
     except Exception as e:  # noqa: BLE001
         logger.warning("VISUALS_FAILED", err=str(e))
 
@@ -1925,6 +1943,10 @@ def analyze_from_frames(
         except Exception as e:  # noqa: BLE001
             logger.warning("TRAINING_PLAN_FAILED", err=str(e))
 
+    if overlay_render is not None:
+        overlay_render.join()
+        overlay_video_path = overlay_out.get("path")
+        logger.info("OVERLAY_DONE", path=overlay_video_path)
 
     return {
         "status": "completed",
