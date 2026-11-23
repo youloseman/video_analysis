@@ -1371,7 +1371,7 @@ PRICING_CSS = """
 .pr-coachtable td{color:var(--c-ink)}
 .pr-coachtable tr:last-child>*{border-bottom:0}
 .pr-coachtable small{margin-top:8px}
-.pr-cname{display:flex;align-items:baseline;gap:10px;white-space:nowrap;font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:24px;color:var(--c-head)}
+.pr-cname{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 10px;white-space:nowrap;font-family:var(--f-brand);font-style:italic;font-weight:900;letter-spacing:-.02em;font-size:24px;color:var(--c-head)}
 .pr-cname span{font:inherit}
 .pr-good-sub{color:var(--st-good-fill)!important;font-weight:600!important}
 .pr-coachmob{display:none;flex-direction:column;gap:12px}

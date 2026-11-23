@@ -2113,7 +2113,7 @@ svg.pic,svg.pm{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;s
 .authlinks a{color:var(--c-blue-dk);font-weight:600;text-decoration:none}
 .authlinks a:hover{text-decoration:underline;text-underline-offset:3px}
 .switch{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:400;cursor:pointer;user-select:none;
-  margin:0;padding:12px 0;border:0;border-bottom:1px solid var(--c-line);border-radius:var(--radius-ctl);background:transparent;flex-direction:row-reverse;justify-content:flex-end}
+  margin:0;padding:12px 0;border:0;border-bottom:1px solid var(--c-line);border-radius:0;background:transparent;flex-direction:row-reverse;justify-content:flex-end}
 .switch input{position:absolute;opacity:0;width:36px;height:20px;cursor:pointer}
 .switch .box{width:36px;height:20px;background:var(--c-line-strong);border-radius:999px;position:relative;transition:background-color .15s ease-out;flex:none;margin-top:0}
 .switch .box::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--c-on-dark);border-radius:50%;transition:transform .15s ease-out}
@@ -2368,6 +2368,13 @@ svg.pic,svg.pm{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;s
 @media(max-width:900px){
   .scorecard.has-bd{grid-template-columns:auto auto minmax(0,1fr)}
   .score-bd{grid-column:1/span 3;grid-row:auto;padding-left:0;border-left:0;
+    border-top:1px solid rgba(255,255,255,.14);padding-top:12px;margin-top:10px}
+}
+/* Photo hero: ring, grade and the pedal picker already fill the card beside the
+   report rail (~760 px at 1024), so the breakdown drops beneath them earlier. */
+@media(max-width:1100px){
+  .scorecard.sc-photo.has-bd{grid-template-columns:auto auto minmax(0,1fr)}
+  .sc-photo > .score-bd{grid-column:1/span 3;grid-row:auto;padding-left:0;border-left:0;
     border-top:1px solid rgba(255,255,255,.14);padding-top:12px;margin-top:10px}
 }
 .score-none{font-family:var(--f-mono);font-style:normal;font-weight:500;text-transform:none;font-size:.4em;letter-spacing:0;color:rgba(255,255,255,.6)}
@@ -3670,7 +3677,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ath-groups > summary::-webkit-details-marker{display:none}
 .ath-gr{display:flex;flex-wrap:wrap;gap:6px}
 .ath-chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--c-panel);border:1px solid var(--c-line);font-size:12px;color:var(--c-ink-soft);white-space:nowrap}
-.ath-chip.ath-race{background:var(--c-panel);border-color:transparent}
+.ath-chip.ath-race{background:var(--c-panel);border-color:transparent;white-space:normal;border-radius:var(--radius-tag);max-width:100%}
 .ath-chip.ath-race.sq-race-soon{background:var(--st-warn-bg);color:var(--m-near-text);font-weight:500}
 .ath-last{display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--c-ink-faint)}
 .ath-score{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:18px;color:var(--c-ink)}
@@ -4262,7 +4269,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .sq-t2 td.sq-score{font-size:16px;color:var(--c-ink)}
 .sq-t2 th,.sq-t2 td{padding:10px 8px}
 .sq-t2 .hthumb{width:56px;height:42px}
-@media (max-width:900px){
+@media (max-width:1100px){
   .sq-t2 tbody tr{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 18px}
   .sq-t2 tbody tr>td.sq-pick{order:1}
   .sq-t2 tbody tr>th{order:2;flex:1 1 calc(100% - 110px);min-width:0}
@@ -4271,6 +4278,8 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .sq-t2 tbody tr>td.sq-c{order:5;flex:0 0 auto;min-width:72px}
   .sq-t2 tbody tr>td.sq-cda,.sq-t2 tbody tr>td.sq-notec{order:6;flex:1 1 100%;max-width:none}
   .sq-t2 td[data-l]::before{content:attr(data-l);display:block;font-size:12px;color:var(--c-ink-faint)}
+}
+@media (max-width:900px){
   .sq-filter #sqCompare{margin-left:0}
   .sq-key{display:none}
 }
@@ -4482,7 +4491,13 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .sq-actions{display:flex;gap:10px;flex-wrap:wrap}
 @media (max-width:900px){
   .sq-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-  /* The table folds into one card per athlete: name, date, then the readings. */
+  .bat-row{grid-template-columns:minmax(0,1fr) auto}
+  .bat-row .bat-name{grid-column:1/-1}
+}
+/* The Squad table needs ~900 px of its own; beside the sidebar that is a
+   1100 px window, so it folds into one card per athlete below that:
+   name, date, then the readings. */
+@media (max-width:1100px){
   .sq-tablewrap{overflow:visible}
   .sq-table thead{display:none}
   .sq-table,.sq-table tbody{display:block}
@@ -4494,8 +4509,6 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .sq-table tbody tr>td.sq-score{grid-column:3;grid-row:1}
   .sq-table tbody tr>td.sq-last,.sq-table tbody tr>td.sq-chips,.sq-table tbody tr>td.ad-seen{grid-column:1/-1;min-width:0}
   .sq-table tbody tr>td.ad-seen:empty{display:none}
-  .bat-row{grid-template-columns:minmax(0,1fr) auto}
-  .bat-row .bat-name{grid-column:1/-1}
   .sq-table .sq-thumb{display:none}
 }
 

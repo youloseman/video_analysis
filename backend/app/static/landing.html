@@ -186,8 +186,10 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 .nav-cta .login{color:rgba(255,255,255,.8);text-decoration:none;font-weight:700;font-size:14px}
 .nav-cta .login:hover{color:#fff}
 .nav .btn{padding:10px 20px;font-size:14px;border-radius:999px}
+/* Five links, Log in and the button need ~840 px: under 960 they wrap to two
+   lines, so the links go and Log in stays until the phone. */
+@media(max-width:960px){.nav-links{display:none}}
 @media(max-width:760px){
-  .nav-links{display:none}
   .nav-cta .login{display:none}
   .nav-inner{height:54px}
 }
@@ -249,6 +251,10 @@ h2.sec::after{content:"";display:block;width:72px;height:4px;border-radius:999px
 
 /* ---------- Phone frame with the real overlay video ---------- */
 .stage{position:relative;display:flex;justify-content:center;will-change:transform}
+/* Below the wide desktop the column is wider than the phone, so the cards'
+   right:-13% landed past the screen edge (768, 1024). Shrink the stage to the
+   phone and the cards hang off the phone instead. */
+@media(max-width:1180px){.stage{width:fit-content;margin-inline:auto}}
 .phone{
   position:relative;width:min(310px,74vw);aspect-ratio:9/16;
   border-radius:40px;background:#05101F;padding:10px;
