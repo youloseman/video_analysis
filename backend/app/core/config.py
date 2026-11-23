@@ -15,6 +15,7 @@ scope for this milestone.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -431,3 +432,26 @@ def _load_settings() -> Settings:
 
 
 settings = _load_settings()
+
+
+def production_config_errors(
+    env: Mapping[str, str] | None = None, s: Settings | None = None,
+) -> list[str]:
+    """What would make this process unsafe to serve on Railway, in words.
+
+    Both defaults exist so that a laptop runs with no setup, and both are
+    silent in production: with JWT_SECRET missing every session is signed with
+    a string that is in this file (anyone could mint one for the admin), and
+    with DATABASE_URL missing accounts and paid orders go to a SQLite file that
+    the next deploy throws away while /health stays green. Empty off Railway.
+    """
+    env = os.environ if env is None else env
+    s = settings if s is None else s
+    if not env.get("RAILWAY_ENVIRONMENT"):
+        return []
+    errors: list[str] = []
+    if not s.auth_secure:
+        errors.append("JWT_SECRET is not set: sessions would be signed with the public default")
+    if s.database_url.startswith("sqlite"):
+        errors.append("DATABASE_URL is not set: accounts would go to a file inside the container")
+    return errors

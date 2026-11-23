@@ -90,7 +90,7 @@ from app.core.compression import (
     accepts_brotli,
     brotli_encode,
 )
-from app.core.config import settings
+from app.core.config import production_config_errors, settings
 from app.core.db import SessionLocal, get_session, init_db
 from app.core.headers import SecurityHeadersMiddleware
 from app.core.meminfo import memory_health
@@ -349,6 +349,14 @@ def _small_keyframe(data_uri: str | None, max_w: int = 720, quality: int = 82) -
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Refuse to serve rather than serve fail-open. Railway keeps the previous
+    # container while a new one fails its health check, so this costs a
+    # blocked deploy, never an outage.
+    unsafe = production_config_errors()
+    if unsafe:
+        for problem in unsafe:
+            logger.critical("UNSAFE_PRODUCTION_CONFIG", problem=problem)
+        raise RuntimeError("Refusing to start: " + "; ".join(unsafe))
     await init_db()
     # Same class of problem as the two below: a missing volume breaks nothing
     # visible until somebody's footage is needed weeks later and is not there.
