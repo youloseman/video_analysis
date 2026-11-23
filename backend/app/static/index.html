@@ -16194,9 +16194,12 @@ PHONE_MQ.addEventListener('change',()=>{ if(document.body.dataset.state==='dashb
    Current Setup in one place, and was faking it with equipment profiles.
    ============================================================ */
 function athleteLink(a){ return location.origin+'/a/'+a.upload_token; }
-async function copyText(text, done){
-  try{ await navigator.clipboard.writeText(text); toast(done); }
-  catch(_e){ toast('Could not copy. Select it and copy by hand.'); }
+/* Copy and say so. Built on copyText (which has the textarea fallback for
+   non-secure contexts and WebViews) -- this used to be a second function of
+   the same name, which silently replaced that one for the whole app and made
+   the AI export's Copy report "Clipboard blocked" every time. */
+async function copyWithToast(text, done){
+  toast(await copyText(text) ? done : 'Could not copy. Select it and copy by hand.');
 }
 function openAthlete(id){
   const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(id));
@@ -16309,8 +16312,8 @@ function openAthlete(id){
     });
     $('#adAnalyze').addEventListener('click',()=>{ state.athleteId=String(a.id); state.profileId=null; if(a.sport==='run'||a.sport==='bike') startSportAnalysis(a.sport); else reset(); renderProfileField(); });
     $('#adBatch').addEventListener('click',()=>openBatch(a.id));
-    const lk=$('#adLink'); if(lk) lk.addEventListener('click',()=>{ track('athlete_link_copied',{}); copyText(athleteLink(a),'Link copied. It needs no account.'); });
-    $('#adCode').addEventListener('click',()=>{ track('athlete_code_copied',{}); copyText(a.upload_token,'Code copied. They enter it under Account, My coach.'); });
+    const lk=$('#adLink'); if(lk) lk.addEventListener('click',()=>{ track('athlete_link_copied',{}); copyWithToast(athleteLink(a),'Link copied. It needs no account.'); });
+    $('#adCode').addEventListener('click',()=>{ track('athlete_code_copied',{}); copyWithToast(a.upload_token,'Code copied. They enter it under Account, My coach.'); });
     $('#adProgress').addEventListener('click',()=>{ state.histAthlete=String(a.id); state.histProfile=null; const r=ready[0]; if(r) state.progressSport=r.sport; openProgress(); });
     renderAthleteCda(a);
     observeKeyframes(list);
@@ -16754,7 +16757,7 @@ async function renderCoachActions(e, where){
         renderReview(e, W.review);
       }catch(_e){ toast('Could not send it.'); }
     });
-    const c=$('#hdLinkCopy'); if(c) c.addEventListener('click',()=>copyText(url,'Link copied.'));
+    const c=$('#hdLinkCopy'); if(c) c.addEventListener('click',()=>copyWithToast(url,'Link copied.'));
     const off=$('#hdLinkOff'); if(off) off.addEventListener('click',async()=>{
       const r=await fetch(base+'/share',{method:'DELETE',headers:authHeaders()});
       if(r.ok){ toast('That link no longer works.'); draw(null); } else toast('Could not turn it off.');
@@ -16774,7 +16777,7 @@ function openSentSheet({name, email, mailed, url}){
   const close=()=>{ m.classList.add('hidden'); modalClosed(m); };
   $('#sentClose').onclick=close;
   m.onclick=ev=>{ if(ev.target===m) close(); };
-  $('#sentCopy').onclick=()=>copyText(url,'Link copied.');
+  $('#sentCopy').onclick=()=>copyWithToast(url,'Link copied.');
   $('#sentBack').onclick=()=>{ close(); openDashboard(); };
   modalOpened(m, close);
   setTimeout(()=>{ try{ $('#sentCopy').focus(); }catch(_e){} },30);
@@ -17407,7 +17410,7 @@ function cmpHeadline(A,B,sport,optOf){
     head?head.charAt(0).toUpperCase()+head.slice(1)+'.':'',
     (typeof A.score==='number'&&typeof B.score==='number')?`Score ${A.score} → ${B.score}`:'',
     ...rows.slice(0,3).map(r=>r.txt)].filter(Boolean).join('\n');
-  return `<div class="cmp-what"><div class="cmp-what-top"><div class="cmp-ai-h">What changed</div>${(sc||body)?'<button type="button" class="btn btn-ghost btn-sm" onclick="copyText(state.cmpSummary,\'Summary copied.\')">Copy summary</button>':''}</div>${head?`<h3 class="cmp-what-h">${esc(head.charAt(0).toUpperCase()+head.slice(1))}</h3>`:''}${
+  return `<div class="cmp-what"><div class="cmp-what-top"><div class="cmp-ai-h">What changed</div>${(sc||body)?'<button type="button" class="btn btn-ghost btn-sm" onclick="copyWithToast(state.cmpSummary,\'Summary copied.\')">Copy summary</button>':''}</div>${head?`<h3 class="cmp-what-h">${esc(head.charAt(0).toUpperCase()+head.slice(1))}</h3>`:''}${
     (sc||body)?`<ul>${sc}${body}</ul>`:''}${
     body?'':`<p>No measurement moved by more than the method can tell apart. If you made a change, it is smaller than a camera can see. Trust how it feels, and give it a few rides.</p>`}</div>`;
 }
