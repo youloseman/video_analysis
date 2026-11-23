@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.api.athletes import _now_ms, _owned, _require_coach
 from app.core.db import get_session
@@ -343,7 +344,8 @@ async def write_note(
         await mark_reviewed(db, user, row.id)
     await db.commit()
     if owner.id != user.id and note and not had:
-        _mail_note(owner, who["name"], row)
+        # A blocking HTTPS round trip (up to the mail timeout): off the loop.
+        await run_in_threadpool(_mail_note, owner, who["name"], row)
     logger.info("COACH_NOTE_WRITTEN", coach_user_id=user.id, athlete_id=athlete_id,
                 analysis=client_id, linked=owner.id != user.id, chars=len(note))
     return {"coachNote": note, "coachName": who["name"], "coachBio": who["tagline"]}

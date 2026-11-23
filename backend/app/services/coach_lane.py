@@ -367,8 +367,8 @@ async def _tell_the_coach(db: Any, up: CoachUpload, coach: User) -> None:
         url = f"{notify.base_url()}/app#batch"
         from app.services import mail_layout as m
 
-        notify.send_email(
-            coach.email, subject,
+        await run_in_threadpool(
+            notify.send_email, coach.email, subject,
             f"{subject}\n\n{line}\n\nOpen it: {url}\n",
             m.page(title=subject, kicker="Your squad", preheader=line,
                    body=m.para(line) + m.button(url, "Open it in Flapp"), base=notify.base_url()),

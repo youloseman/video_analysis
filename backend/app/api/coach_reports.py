@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.api.athletes import _owned, _require_coach
 from app.core.db import get_session
@@ -224,7 +225,9 @@ async def send_report(
         db.add(share)
         await db.commit()
     url = _url(share.token)
-    mailed = bool(athlete.email) and _mail(athlete.email, athlete.name, who["name"], row.sport, url)
+    mailed = bool(athlete.email) and await run_in_threadpool(
+        _mail, athlete.email, athlete.name, who["name"], row.sport, url,
+    )
     logger.info("REPORT_SENT", coach_user_id=user.id, athlete_id=athlete_id, mailed=mailed)
     return {"url": url, "expires_at_ms": share.expires_at_ms, "mailed": mailed, "email": athlete.email}
 

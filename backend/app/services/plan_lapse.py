@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.models.analysis import Analysis
 from app.models.user import TIER_STARTER, PlanLapse, User
@@ -167,7 +168,8 @@ async def send_lapse_emails(db: AsyncSession, now_ms: int | None = None) -> int:
         else:
             continue
         subject, text, html = lapse_email(kind, lapse.from_tier, clips, end)
-        if notify.send_email(user.email, subject, text, html):
+        # One blocking HTTPS round trip per lapsed user: off the event loop.
+        if await run_in_threadpool(notify.send_email, user.email, subject, text, html):
             lapse.emails_sent = stage
             sent += 1
             logger.info("PLAN_LAPSE_EMAIL", user_id=user.id, kind=kind, clips=clips)
