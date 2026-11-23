@@ -1,0 +1,23 @@
+# Ruff ran on its defaults (pyflakes + a few pycodestyle errors) until the
+# 2026-11-23 code audit. These add the families that catch bugs this codebase
+# has actually had, without a mass edit of working code:
+#   ASYNC  blocking calls inside async def (the single worker stalls for all)
+#   DTZ    naive datetimes (a timestamp without a zone is a bug on a UTC box
+#          that someone later reads as local)
+#   B      bugbear: mutable defaults, closures over loop variables, etc.
+[lint]
+extend-select = ["ASYNC", "B", "DTZ"]
+ignore = [
+    "B008",   # Depends()/Query() in defaults is how FastAPI is written
+    "B904",   # raise-from inside except: style, 19 sites, no behaviour change
+    "B905",   # zip(strict=): adding it to the pipeline could raise on real clips
+    "DTZ007", # strptime of a calendar date for display
+    "DTZ011", # date.today(): day-level checks, the container runs UTC
+]
+
+[lint.per-file-ignores]
+# The closures here are defined and called within the same loop iteration,
+# which is what B023 cannot see.
+"app/services/video_analysis/biomechanics/landmark_stabilizer.py" = ["B023"]
+# Tests build naive fixtures and open files freely.
+"tests/**" = ["ASYNC", "B007", "DTZ"]

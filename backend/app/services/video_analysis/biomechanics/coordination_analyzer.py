@@ -231,7 +231,7 @@ def compute_coordination(
         # Build chart data for angle-angle diagram
         # Downsample individual cycles to max 5 cycles for display
         cycle_data_for_chart: list[list[dict[str, float]]] = []
-        for i, (cp, cd) in enumerate(zip(normalized_cycles_prox[:5], normalized_cycles_dist[:5])):
+        for cp, cd in zip(normalized_cycles_prox[:5], normalized_cycles_dist[:5]):
             cycle_points = [
                 {"proximal": round(float(cp[j]), 1), "distal": round(float(cd[j]), 1), "pct": j}
                 for j in range(0, NORM_POINTS, 2)  # Every other point
