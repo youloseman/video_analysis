@@ -1621,7 +1621,6 @@
          about where this history lives, see renderHistList), Analyze beside. -->
     <div class="pagehead ath-head">
       <div class="ath-title"><h2 class="sec" id="histTitle" tabindex="-1">Your history</h2><p class="ph-lede" id="histMeta"></p></div>
-      <span class="ph-right"><button class="btn btn-primary" type="button" data-analyze="run"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button></span>
     </div>
     <div id="histStrip"></div>
     <div class="profilefilter" id="histAthleteFilter"></div>
@@ -1630,11 +1629,10 @@
       <div class="profilefilter" id="histFilter"></div>
       <span class="hist-tools" id="histTools" hidden>
         <button class="btn btn-ghost btn-sm" type="button" id="histCompare">Compare two…</button>
-        <button class="btn btn-link hist-clear" id="histClear" type="button">Clear all…</button>
       </span>
     </div>
     <div id="histList"></div>
-    <p class="hint hist-hint" id="histHint" hidden>Analyses run for someone else? <span class="hh-wide">Tap <b>✕</b> on a card</span><span class="hh-phone">Swipe a card left</span> to remove just that one, or <b>Clear all</b> to reset your stats</p>
+    <p class="hint hist-hint" id="histHint" hidden>Analyses run for someone else? <span class="hh-wide">Tap <b>✕</b> on a card</span><span class="hh-phone">Swipe a card left</span> to remove just that one, or <button class="btn-inline" id="histClear" type="button">clear all</button> to reset your stats</p>
   </section>
 
   <!-- ============ PROGRESS / TRENDS ============ -->
@@ -2062,7 +2060,7 @@
     <div id="athGroups"></div>
     </div>
     <div class="prof-limit hidden" id="athLimit"></div>
-    <p class="ad-stays" id="athStays"><b>What stays, what goes.</b> Numbers, annotated frames, kinograms and the written notes stay with every analysis. Uploaded clips and overlay videos are kept for a year on this plan; a linked athlete’s, for as long as their own plan keeps them. A photo keeps its frame and numbers and has no stored report to reopen, so correct its joints while it is fresh.</p>
+    <details class="ad-stays" id="athStays"><summary>Clips are kept a year on this plan · what stays</summary><p>Numbers, annotated frames, kinograms and the written notes stay with every analysis. Uploaded clips and overlay videos are kept for a year on this plan; a linked athlete’s, for as long as their own plan keeps them. A photo keeps its frame and numbers and has no stored report to reopen, so correct its joints while it is fresh.</p></details>
   </section>
 
   <!-- ============ ONE ATHLETE (Coach plan) ============ -->
@@ -8438,6 +8436,9 @@ async function renderAthleteCda(a, refetch){
   }
   const live=setups.filter(s=>!s.archived), adding=state.adCdaAdding&&live.length>0;
   const first=a.name.split(' ')[0];
+  if(!setups.length){
+    host.innerHTML=`<div class="cda-cmp cda-none"><span class="cda-lbl">Measured CdA</span><button type="button" class="btn btn-ghost btn-sm" id="adCdaNewSetup">+ Add a bike setup</button></div>`;
+  } else
   host.innerHTML=`<div class="cda-cmp">
     <div class="cda-head"><span class="cda-lbl">Bike setups · measured CdA</span>${live.length&&!adding?`<button class="btn btn-ghost btn-sm" type="button" id="adCdaAdd">Add CdA for ${esc(first)}</button>`:''}</div>
     <p class="hint">${CDA_DISCLAIMER}</p>
@@ -8508,9 +8509,9 @@ function renderGroupsAdmin(){
   const host=$('#athGroups'); if(!host) return;
   if(!hasCoachPlan()||ATHLETES.error){ host.innerHTML=''; return; }
   const gs=GROUPS.groups||[], full=gs.length>=(GROUPS.limit||30);
-  host.innerHTML=`<details class="ad-box ath-groups"${PHONE_MQ.matches?'':' open'}>
-    <summary class="ad-box-h"><h3>Groups</h3><span class="prof-note">only you see these</span><span class="ath-groups-ph">· ${gs.length?gs.map(g=>esc(g.name)).join(', '):'none yet'}</span><svg class="ic ath-groups-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></summary>
-    <p class="hint u-m-0">A club, a camp, a race team: put an athlete in one from their page, then filter the Squad by it</p>
+  host.innerHTML=`<details class="ad-box ath-groups">
+    <summary class="ad-box-h"><h3>Manage groups</h3><svg class="ic ath-groups-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></summary>
+    <p class="hint u-m-0">A club, a camp, a race team: put an athlete in one from their page, then filter the Squad by it. Only you see them</p>
     ${gs.length?`<ul class="ad-rows">${gs.map(g=>`<li data-gid="${g.id}"><input type="text" class="ad-gname" maxlength="40" value="${esc(g.name)}" aria-label="Group name"><span class="ad-meta">${g.athletes} ${g.athletes===1?'athlete':'athletes'}</span><button type="button" class="p-copy" data-gdel="${g.id}">Remove</button></li>`).join('')}</ul>`:'<p class="hint">No groups yet</p>'}
     ${full?`<p class="hint">A squad keeps ${GROUPS.limit} groups. Remove one you no longer use</p>`
       :`<form class="ad-form" id="athGroupNew"><input type="text" id="athGroupName" maxlength="40" placeholder="New group, e.g. RMTC" aria-label="New group name"><button class="btn btn-ghost btn-sm" type="submit">Add group</button></form>`}
@@ -8588,7 +8589,7 @@ function renderAthletes(){
         <div class="ath-sub">${esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||'')} · ${a.note?esc(a.note):(a.email?esc(a.email):'no note yet')}</div>
         <div class="ath-sub-ph${nr&&nr.days_to_go<=21&&nr.days_to_go>=0?' sq-race-soon':''}">${nr&&nr.days_to_go>=0?`${raceWhen(nr)} · ${esc(nr.priority)} · ${esc(nr.name)}`:[esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||''),...gs.filter(g=>(a.group_ids||[]).includes(g.id)).map(g=>esc(g.name))].filter(Boolean).join(' · ')}</div></div>
       <div class="ath-gr">${grs}${nr?`<span class="ath-chip ath-race${nr.days_to_go<=21?' sq-race-soon':''}">${esc(nr.name)} · ${esc(nr.priority)} · ${raceWhen(nr)}</span>`:''}${!grs&&!nr?'<span class="sq-na">no group</span>':''}</div>
-      <div class="ath-last">${a.last_at_ms?`<span>last clip ${esc(fmtWhen(a.last_at_ms))}</span>${a.last_score!=null?`<b class="ath-score">${a.last_score}</b>`:''}`:'<span>no clips yet</span>'}</div>
+      <div class="ath-last">${a.last_at_ms?`<span>last clip ${esc(shortDate(a.last_at_ms))}</span>${a.last_score!=null?`<b class="ath-score">${a.last_score}</b>`:''}`:'<span>no clips yet</span>'}</div>
       <div class="p-n">${a.analyses!=null?a.analyses:'—'}<small>${a.analyses===1?'analysis':'analyses'}</small></div>
       <div class="p-acts">
         ${a.archived
@@ -8660,7 +8661,7 @@ async function athPatch(id, body){
   list.addEventListener('click',async e=>{
     const b=e.target.closest('[data-act]');
     if(!b){ const r=e.target.closest('.ath-row[data-id]');
-      if(r&&PHONE_MQ.matches&&!e.target.closest('.pc-menu')&&!r.classList.contains('is-archived')) openAthlete(Number(r.dataset.id));
+      if(r&&!e.target.closest('.pc-menu')&&!r.classList.contains('is-archived')) openAthlete(Number(r.dataset.id));
       return; }
     const m=b.closest('details'); if(m) m.open=false;
     const row=b.closest('[data-id]'); const id=Number(row.dataset.id);
@@ -13784,14 +13785,13 @@ function histDelta(e,list){
   return earlier?'':`first ${noun}`;
 }
 function histCardHtml(e,list){
-  const L=e.score==null?null:(GRADE_WORD[e.grade]?e.grade:scoreLetter(e.score)), st=scoreStatus(e.score);
-  const sub=[fmtWhen(e.filmedAt||e.at),e.position?esc(POSITION_NAMES[e.position]||e.position):'',e.label?'<b>'+esc(e.label)+'</b>':''].filter(Boolean).join(' · ');
+  const sub=[shortDate(e.filmedAt||e.at),e.position?esc(POSITION_NAMES[e.position]||e.position):'',e.label?'<b>'+esc(e.label)+'</b>':''].filter(Boolean).join(' · ');
   const stat=histStatus(e), dl=histDelta(e,list);
   return `<div class="hcard" data-id="${e.id}">
     <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>
     <div class="hmeta"><button type="button" class="htitle" aria-label="Open ${esc(e.sport)} ${esc(e.kind)} analysis${e.score==null?'':', score '+e.score}">${athleteName(e.athleteId)?esc(athleteName(e.athleteId))+' · ':''}${e.sport==='run'?'Run':'Bike'} · ${e.bilateral||e.cameraSide==='both'?'both sides':esc(e.kind)}</button>
       <div class="hsub">${sub}</div>${stat?`<div class="hstat">${stat}</div>`:''}</div>
-    <div class="hscorebox">${ringHtml(e.score,56,`<div class="ds-score">${e.score==null?'—':e.score}</div>`)}${L?`<span class="hgrade hg-${st}">${L}</span>`:''}${dl?`<small class="hdelta">${dl}</small>`:''}</div>
+    <div class="hscorebox">${ringHtml(e.score,56,`<div class="ds-score">${e.score==null?'—':e.score}</div>`)}${dl?`<small class="hdelta">${dl}</small>`:''}</div>
     ${e.linkedAthleteId?'<span></span>':`<button class="hdel" data-del="${e.id}" type="button" title="Delete" aria-label="Delete analysis"><span class="hdel-glyph" aria-hidden="true"><svg class="ic"><use href="#i-x"/></svg></span></button><button class="hswipe-del" data-del="${e.id}" type="button" tabindex="-1">Delete</button>`}
   </div>`;
 }
@@ -13839,7 +13839,7 @@ function renderHistList(){
   const a=pre.filter(e=>!state.histSport||e.sport===state.histSport), w=$('#histList');
   const swims=state.histProfile==null&&!state.histSport ? swimCardsHtml() : '';
   const meta=$('#histMeta');
-  if(meta) meta.textContent=`${every.length} ${every.length===1?'analysis':'analyses'} · ${auth?'synced to your account':'saved on this device'}`;
+  if(meta){ meta.textContent=auth?'':'Saved on this device'; meta.hidden=!!auth; }
   const strip=$('#histStrip'); if(strip){ strip.innerHTML=a.length>1?histStripHtml(a):''; fitHistStrip(strip); }
   // Management toolbar (count + Clear all) + the tidy-up hint only when non-empty.
   const tools=$('#histTools'), hint=$('#histHint');
@@ -15970,7 +15970,7 @@ function renderSquadHome(){
   const revCard=({a,e})=>`<li class="sq-revcard">
       <div class="hthumb sq-revfig${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>
       <div class="sq-revbody"><b class="sq-revname">${esc(a.name)}</b>
-        <small>${e.sport==='run'?'Run':'Ride'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}${sideWord(e)?' · '+sideWord(e):''}${e.label?' · '+esc(e.label):''}${a.next_race&&a.next_race.days_to_go<=21?` · <span class="sq-race-soon">${esc(a.next_race.name)} ${raceWhen(a.next_race)}</span>`:''}</small>
+        <small>${e.sport==='run'?'Run':'Ride'}${e.kind==='photo'?' photo':''} · ${esc(shortDate(e.filmedAt||e.at))}${sideWord(e)?' · '+sideWord(e):''}${e.label?' · '+esc(e.label):''}${a.next_race&&a.next_race.days_to_go<=21?` · <span class="sq-race-soon">${esc(a.next_race.name)} ${raceWhen(a.next_race)}</span>`:''}</small>
         <p>${revLine(e)}</p>
         <div class="sq-revacts"><button type="button" class="btn btn-link" data-entry="${esc(e.id)}">Open report</button><button type="button" class="btn btn-link" data-note="${esc(e.id)}">Write a note</button><button type="button" class="btn btn-ghost btn-sm" data-seen="${esc(e.id)}">✓ Seen</button></div>
       </div></li>`;
@@ -16220,42 +16220,44 @@ function openAthlete(id){
         <div class="ad-box-h"><h3>Races</h3></div>
         ${races.length?`<ul class="ad-racelist">${races.map(r=>`<li class="${r.past?'is-past':''}"><i class="ad-pri ad-pri-${esc(r.priority)}">${esc(r.priority)}</i><div class="ad-racen"><b>${esc(r.name)}</b><small>${esc(cdaDay(r.race_on))}</small></div><span class="ad-togo${!r.past&&r.days_to_go<=21?' is-soon':''}">${r.past?'done':raceWhen(r)}</span><button type="button" class="p-copy" data-raceedit="${r.id}">Edit</button><button type="button" class="ad-x" data-racedel="${r.id}" aria-label="Remove ${esc(r.name)}">×</button></li>`).join('')}</ul>`:`<p class="hint">No race yet. With one here, the Squad puts ${esc(a.name.split(' ')[0])}’s clips first as it gets close.</p>`}
         ${races.length>=12&&!editR?'<p class="hint">Twelve races is the most one athlete keeps. Remove a past one to add another</p>'
+          :!editR&&!state.adRaceAdd?'<button class="btn btn-ghost btn-sm" type="button" id="adRaceAdd">+ Add a race</button>'
           :`<form class="ad-raceform" id="adRaceNew"><h4>${editR?'Edit the race':'Add a race'}</h4>
             <label>Name<input type="text" id="adRaceName" maxlength="80" placeholder="Ironman 70.3 Oceanside" value="${editR?esc(editR.name):''}"></label>
             <div class="ad-raceform-row"><label>Date<input type="date" id="adRaceDay" value="${editR?esc(editR.race_on):''}"></label>
               <input type="hidden" id="adRacePri" value="${pri}"><div class="seg seg-sm" role="group" aria-label="Priority">${['A','B','C'].map(x=>`<button type="button" data-pri="${x}" aria-pressed="${pri===x}">${x}</button>`).join('')}</div>
-              <button class="btn btn-ghost btn-sm" type="submit">${editR?'Save':'Add'}</button>${editR?'<button class="btn btn-ghost btn-sm" type="button" id="adRaceCancel">Cancel</button>':''}</div></form>`}
+              <button class="btn btn-ghost btn-sm" type="submit">${editR?'Save':'Add'}</button><button class="btn btn-ghost btn-sm" type="button" id="adRaceCancel">Cancel</button></div></form>`}
       </div>`;
     // Clips (Athlete board): new ones carry a dot, each says what changed and
     // takes or gives back its seen mark.
     const clipRow=e=>{ const unseen=clipUnseen(e), markable=e.sport!=='swim'&&(e.at||0)>=UNSEEN_SINCE_MS;
       const note=e.coachNote?`${e.label||e.position||e.score!=null?' · ':''}your note: “${esc(String(e.coachNote).slice(0,40))}${String(e.coachNote).length>40?'…':''}”`:'';
-      return `<li class="ad-clip${unseen?' is-new':''}"><span class="ad-dot" aria-hidden="true"></span>
+      return `<li class="ad-clip${unseen?' is-new':''}"><span class="ad-dot"${unseen?' title="New: opening its report marks it seen"':''} aria-hidden="true"></span>
         <div class="hthumb${thumbPendCls(e)}"${thumbPendData(e)}>${thumbMarkup(e,'')}</div>
-        <div class="ad-clip-t"><button type="button" class="sq-name" data-entry="${esc(e.id)}">${e.sport==='run'?'Run':e.sport==='swim'?'Swim':'Ride'}${e.kind==='photo'?' photo':''} · ${esc(fmtWhen(e.filmedAt||e.at))}${sideWord(e)?' · '+sideWord(e):''}</button>
+        <div class="ad-clip-t"><button type="button" class="sq-name" data-entry="${esc(e.id)}">${e.sport==='run'?'Run':e.sport==='swim'?'Swim':'Ride'}${e.kind==='photo'?' photo':''} · ${esc(shortDate(e.filmedAt||e.at))}${sideWord(e)?' · '+sideWord(e):''}</button>
           <small>${[e.label?esc(e.label):(e.position?esc(POSITION_NAMES[e.position]||e.position):''),e.score!=null?`score ${e.score}`:''].filter(Boolean).join(' · ')}${note}</small>${filmFlag(e)}
           <p>${e.sport==='swim'?'':clipChange(e)}</p></div>
-        <div class="ad-clip-seen">${!markable?'':unseen?`<span>new</span><button type="button" class="btn btn-ghost btn-sm" data-seen="${esc(e.id)}">✓ Seen</button>`
-          :`<span>seen ${esc(fmtWhen(e.reviewedAt))}</span><button type="button" class="btn btn-ghost btn-sm ad-unseen" data-unseen="${esc(e.id)}">Mark as new</button>`}</div></li>`; };
+        <div class="ad-clip-seen">${!markable||unseen?'':`<span>seen ${esc(fmtWhen(e.reviewedAt))}</span><button type="button" class="btn btn-ghost btn-sm ad-unseen" data-unseen="${esc(e.id)}">Mark as new</button>`}</div></li>`; };
     const clipsHtml=`<div class="ad-box ad-clips">
         <div class="ad-box-h"><h3>Clips${unseenN?` <i class="new-pill">${unseenN} new</i>`:''}</h3>${unseenN?`<button class="btn btn-ghost btn-sm" type="button" id="adSeenAll">Mark all as seen</button>`:''}</div>
         ${es.length?`<ul class="ad-cliplist">${es.map(clipRow).join('')}</ul>`:'<p class="sq-na">No clips yet</p>'}
-        <p class="hint">A blue dot is a clip you have not looked at yet; opening its report marks it as seen. The mark is yours: the athlete does not see it</p>
       </div>`;
     list.innerHTML=`${headHtml}
       <div class="sq-toolbar">
-        <button class="btn btn-primary btn-sm" type="button" id="adAnalyze"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip for ${esc(a.name)}</button>
-        <button class="btn btn-ghost btn-sm" type="button" id="adBatch"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload several</button>
-        ${a.linked?'':`<button class="btn btn-ghost btn-sm" type="button" id="adLink">Copy their upload link</button>`}
-        <button class="btn btn-ghost btn-sm" type="button" id="adCode">Copy their link code</button>
-        <button class="btn btn-ghost btn-sm" type="button" id="adProgress"${ready.length<2?' disabled title="Two clips make a trend"':''}>Progress charts</button>
+        <button class="btn btn-primary btn-sm" type="button" id="adAnalyze"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg> Analyze a clip</button>
+        ${a.linked?'':`<button class="btn btn-ghost btn-sm" type="button" id="adLink" title="A link that needs no account: their clip lands here">Copy link</button>`}
+        <details class="pc-menu ad-more"><summary aria-label="More for ${esc(a.name)}">⋯</summary><div class="pc-menu-list">
+          <button type="button" id="adBatch">Upload several clips</button>
+          <button type="button" id="adCode">Copy account link code</button>
+          <button type="button" id="adProgress"${ready.length<2?' disabled title="Two clips make a trend"':''}>Progress charts</button>
+        </div></details>
       </div>
-      <p class="hint">${a.linked?`${esc(a.name)} linked their own account. You see what their plan shows them; clips they film reach you by themselves`:`The upload link needs no account: they send a clip and it lands here. The code links their own Flapp account to you instead`}</p>
+      ${a.linked?`<p class="hint">${esc(a.name)} linked their own account. Clips they film reach you by themselves</p>`:''}
       ${mine.filter(p=>p.sport!=='bike').length?`<p class="hint">Shoes: ${mine.filter(p=>p.sport!=='bike').map(p=>esc(p.name)).join(' · ')}</p>`:''}
       <div class="ad-cols">${racesHtml}${clipsHtml}</div>
       <div id="adCda"></div>
       ${notes.length?`<div class="sq-feed"><h2>Your notes</h2><ul class="ad-notes">${notes.map(e=>`<li><button type="button" class="sq-attbtn" data-entry="${esc(e.id)}">${esc(e.label||fmtWhen(e.filmedAt||e.at))}</button><div class="cnote-read">${esc(e.coachNote)}</div></li>`).join('')}</ul></div>`:''}`;
     list.querySelectorAll('[data-entry]').forEach(b=>b.addEventListener('click',()=>openClipAsCoach(b.dataset.entry)));
+    list.querySelectorAll('.ad-more .pc-menu-list button').forEach(b=>b.addEventListener('click',()=>{ b.closest('details').open=false; }));
     // Races, groups, seen marks. The roster row is re-read after each change:
     // the countdown and the counts are the server's.
     const again=async()=>{ await loadAthletes(); if(document.body.dataset.state==='athletedetail'&&state.athleteOpen===a.id) openAthleteRefresh(); };
@@ -16266,10 +16268,11 @@ function openAthlete(id){
       const body={name:nm.value.trim(),race_on:dy.value,priority:$('#adRacePri').value};
       if(editR){
         if(await squadCall('PATCH','athletes/'+a.id+'/races/'+editR.id,body,'Could not save that race.')){ state.adRaceEdit=null; track('squad_race_edited',{}); await again(); }
-      } else if(await squadCall('POST','athletes/'+a.id+'/races',body,'Could not add that race.')){ track('squad_race_added',{}); await again(); }
+      } else if(await squadCall('POST','athletes/'+a.id+'/races',body,'Could not add that race.')){ state.adRaceAdd=false; track('squad_race_added',{}); await again(); }
     });
     list.querySelectorAll('[data-raceedit]').forEach(b=>b.addEventListener('click',()=>{ state.adRaceEdit=b.dataset.raceedit; draw(); const n=$('#adRaceName'); if(n) n.focus(); }));
-    const rc=$('#adRaceCancel'); if(rc) rc.addEventListener('click',()=>{ state.adRaceEdit=null; draw(); });
+    const rc=$('#adRaceCancel'); if(rc) rc.addEventListener('click',()=>{ state.adRaceEdit=null; state.adRaceAdd=false; draw(); });
+    const ra=$('#adRaceAdd'); if(ra) ra.addEventListener('click',()=>{ state.adRaceAdd=true; draw(); const n=$('#adRaceName'); if(n) n.focus(); });
     list.querySelectorAll('[data-pri]').forEach(b=>b.addEventListener('click',()=>{ state.adRacePri=b.dataset.pri; $('#adRacePri').value=b.dataset.pri;
       list.querySelectorAll('[data-pri]').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); }));
     const ng=$('#adNewG'); if(ng) ng.addEventListener('click',()=>{ state.adNewG=!state.adNewG; draw(); if(state.adNewG){ const i=$('#adGroupName'); if(i) i.focus(); } });
@@ -16305,7 +16308,7 @@ function openAthlete(id){
     renderAthleteCda(a);
     observeKeyframes(list);
   };
-  if(state.athleteOpenPrev!==a.id){ state.adCdaAdding=false; state.adRaceEdit=null; state.athleteOpenPrev=a.id; }
+  if(state.athleteOpenPrev!==a.id){ state.adCdaAdding=false; state.adRaceEdit=null; state.adRaceAdd=false; state.athleteOpenPrev=a.id; }
   draw();
   setState('athletedetail',{focus:'#adName',route:{id:a.id}});
   if(a.linked) loadLinkedHist(a.id).then(()=>{ if(document.body.dataset.state==='athletedetail'&&state.athleteOpen===a.id) draw(); });

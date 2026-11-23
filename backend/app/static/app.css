@@ -3679,7 +3679,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ath-bottom #athEdit{margin-top:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .ath-bottom #athEdit.hidden + #athGroups{grid-column:1/-1}
 .ath-edit-h{margin:0;font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px;color:var(--c-head)}
-.ath-groups .ad-box-h h3{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:22px}
+.ath-groups .ad-box-h h3{font-family:var(--f-body);font-style:normal;font-weight:600;font-size:16px;margin:0}
 #athStays{margin-top:16px;font-size:14px;color:var(--c-ink-faint)}
 #athStays b{color:var(--c-ink)}
 #athStays{background:none;border:0;padding:0}
@@ -4788,3 +4788,21 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 @media print{
   .ustep-n,.sq-kpi b,.sql-kpi b,.ac-meter .v,.ad-countdown > b{background:none !important;color:var(--print-ink) !important}
 }
+
+/* Squad simplified (2026-11-22): rows open at any width, Edit and Archive in the menu */
+.ath-row{cursor:pointer}
+.ath-row .p-acts{display:none}
+.ath-row .pc-menu{display:block;align-self:center}
+.ath-row .pc-menu > summary{border:0;width:32px;color:var(--c-ink-faint)}
+.sq-toolbar .ad-more{display:block}
+.sq-toolbar .ad-more > summary{width:40px;height:36px}
+.ad-more .pc-menu-list{left:0;right:auto}
+.ad-more .pc-menu-list button:disabled{color:var(--c-ink-faint);cursor:default}
+#athStays > summary{cursor:pointer;font-size:14px;color:var(--c-ink-faint)}
+#athStays > p{margin:8px 0 0}
+.cda-none{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.btn-inline{background:none;border:0;padding:0;font:inherit;color:var(--c-blue-dk);text-decoration:underline;cursor:pointer}
+.ath-groups:not([open]){padding-top:12px;padding-bottom:12px}
+.ath-groups > summary{cursor:pointer;align-items:center}
+.ath-groups > summary .ath-groups-chev{display:inline-block;margin-left:auto}
+.ath-groups[open] > summary .ath-groups-chev{transform:rotate(90deg)}
