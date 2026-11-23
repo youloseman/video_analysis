@@ -605,6 +605,9 @@ class JobStatus(BaseModel):
     overlay_available: bool = False
     overlay_url: str | None = None
     overlay_failed: bool = False
+    # The report is complete and the overlay video is still being rendered:
+    # keep polling, it becomes overlay_available (or overlay_failed).
+    overlay_rendering: bool = False
     result: dict[str, Any] | None = None
     # A two-sided session analyses two clips in one job, so "processing" lasts
     # about twice as long. Without a word for which clip is running, the wait
@@ -680,6 +683,20 @@ def _process_job(
         return
     job["status"] = "processing"
     logger.info("JOB_START", job_id=job_id, sport=sport, position=cycling_position)
+    # The report is served the moment it is measured; the overlay video
+    # renders on behind it (runner ``overlay_done``) and the poll says
+    # ``overlay_rendering`` until the file is whole. 12 s on a 1080p clip,
+    # ~40 s on 4K, that nobody waits through any more.
+    rendered = threading.Event()
+
+    def _overlay_done(path: str | None) -> None:
+        job["overlay_rendering"] = False
+        if not path:
+            logger.warning("OVERLAY_RENDER_FAILED", job_id=job_id)
+        rendered.set()
+
+    wants_overlay = bool(overlay_path) and not free
+    job["overlay_rendering"] = wants_overlay
     try:
         result = run_analysis(
             input_path, sport, cycling_position,
@@ -723,8 +740,12 @@ def _process_job(
             frames_store=str(Path(input_path).parent / "landmarks.npz"),
             crank_length_mm=crank_length_mm,
             progress=job_progress_hook(job, sport),
+            overlay_done=_overlay_done if wants_overlay else None,
         )
         safe = _json_safe(result)
+        # A moment's state, not part of the report: the poll carries it as
+        # overlay_rendering, and the stored result must not say it forever.
+        safe.pop("overlay_pending", None)
         # Don't leak the server filesystem path; expose the API URL instead.
         if safe.get("overlay_video_path"):
             safe["overlay_video_path"] = f"/jobs/{job_id}/overlay"
@@ -747,8 +768,14 @@ def _process_job(
         )
         if job["status"] == "completed":
             _schedule_ready_mail(job_id)
+        if wants_overlay and not rendered.wait(OVERLAY_RENDER_WAIT_S):
+            # The render still reads the clip; re-encoding it underneath
+            # would break the video. Keep the full-size clip this once.
+            logger.warning("OVERLAY_RENDER_SLOW", job_id=job_id)
+        elif job["status"] == "completed":
             # The clip is kept for weeks; keep it at 1080p (clip_store.py).
-            # Still inside the slot, so encoding never runs beside two analyses.
+            # Still inside the slot, so encoding never runs beside two
+            # analyses -- and after the overlay render, which reads the clip.
             from app.services.clip_store import compress_clip
             smaller = compress_clip(input_path)
             if smaller is not None:
@@ -763,6 +790,7 @@ def _process_job(
         # Never the exception's own text: that is how three athletes were
         # told "'>' not supported between instances of 'NoneType' and 'int'".
         job["error"] = failure_log.user_message(e)
+        job["overlay_rendering"] = False
     finally:
         ANALYSIS_SLOTS.release()
 
@@ -1235,6 +1263,11 @@ def unsubscribe_token(user_id: int, kind: str = "ready") -> str:
         settings.jwt_secret.encode(), msg.encode(), hashlib.sha256,
     ).hexdigest()[:32]
 
+
+# How long the job keeps its analysis slot after the report is served while
+# the overlay renders behind it (ffmpeg's own limit is 300 s). Past it the clip
+# is left uncompressed rather than re-encoded under a render still reading it.
+OVERLAY_RENDER_WAIT_S = 360
 
 # How long after a result lands we wait to see whether anybody came for it.
 # The client polls every 2.5 s, so a tab that is still open marks the job seen
@@ -2806,8 +2839,13 @@ def job_status(
     result = job.get("result")
     if result is not None:
         result = gate_for_access(result, access)
+    # A file that exists while the render is still writing it is not ready:
+    # ffmpeg writes the index last (faststart), and a half file plays as
+    # broken.
+    overlay_rendering = bool(job.get("overlay_rendering"))
     overlay_ready = (
         OVERLAY_ENCODER_PRESENT
+        and not overlay_rendering
         and bool(job.get("overlay_path"))
         and Path(job["overlay_path"]).exists()
     )
@@ -2817,6 +2855,7 @@ def job_status(
     overlay_failed = (
         bool(job.get("overlay_path"))
         and job.get("status") == "completed"
+        and not overlay_rendering
         and not overlay_ready
     )
     return JobStatus(
@@ -2829,6 +2868,7 @@ def job_status(
         overlay_available=overlay_ready,
         overlay_url=f"/jobs/{job_id}/overlay" if overlay_ready else None,
         overlay_failed=overlay_failed,
+        overlay_rendering=overlay_rendering and job.get("status") == "completed",
         result=result,
         stage=job.get("stage"),
         progress=job.get("progress") if job["status"] == "processing" else None,
@@ -3342,6 +3382,9 @@ async def job_overlay(
         overlay_path = job.get("overlay_path")
         if side in ("left", "right"):
             overlay_path = (job.get("overlay_paths") or {}).get(side)
+        if job.get("overlay_rendering"):
+            # Half a file plays as a broken video; the poll says when it is whole.
+            raise HTTPException(409, "overlay is still rendering")
     if not overlay_path or not Path(overlay_path).exists():
         raise HTTPException(404, "overlay not available for this job")
     suffix = f"_{side}" if side in ("left", "right") else ""

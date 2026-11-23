@@ -11194,6 +11194,70 @@ function renderFindings(v){
   verdictGo(ib);
 }
 
+/* The annotated video into the result's player. */
+function mountOverlay(job, r, s, opts){
+  // <video> and the download link can't send an Authorization header, so the
+  // job token travels in the query string for these two.
+  let ov=withJobToken(job.overlay_url, job.job_id);
+  // A re-measurement rewrote the file under the same URL; make the player
+  // fetch it rather than replay the cached one.
+  if(opts && opts.recomputed) ov+=(ov.includes('?')?'&':'?')+'v='+Date.now();
+  // Poster = the annotated keyframe the report already carries, not frame 1.
+  // Frame 1 of a self-filmed clip is usually the athlete still walking into
+  // position (the in-app camera counts down five seconds), so the player sat
+  // on an empty gym until somebody pressed play. The keyframe is the moment
+  // the analysis actually read.
+  $('#videoCol').querySelectorAll('.video-rendering').forEach(n=>n.remove());
+  const vEl=$('#overlayVideo');
+  vEl.classList.remove('hidden');
+  if(r.keyframe_base64) vEl.setAttribute('poster', r.keyframe_base64);
+  else vEl.removeAttribute('poster');
+  vEl.src=ov;
+  // The player over it: frame stepping, the event jumps, the curve, and
+  // -- while the clip is still in this browser -- the skeleton and bare
+  // clip layers. Without a record (older job, or a run that failed to
+  // build one) the <video> keeps its native controls.
+  fpMainPlayer().load(r.timeline, {rawFile: state.file, cameraMotion: (s.camera_motion||{}).verdict});
+  $('#downloadOverlay').href=ov; state.ovFile=null; $('#dlOverlayTxt').textContent='Download .mp4';
+  $('#downloadOverlay').classList.remove('hidden');
+  $('#videoCol').classList.remove('hidden');
+  $('#resultTop').classList.remove('no-video');
+  $('#ephemNote').classList.add('hidden');
+}
+
+/* The report was served while its video still rendered: poll the job until
+   the file is whole, then put the player in. Stops when another result is on
+   screen, after five minutes, or when the render failed (the note then says
+   so; the report above is complete either way). */
+function waitForOverlay(job, r, s, opts){
+  const id=job.job_id, started=Date.now();
+  state.overlayWait=id;
+  const tick=async ()=>{
+    if(state.overlayWait!==id) return;
+    const note=$('#videoCol').querySelector('.video-rendering');
+    if(!note) return;
+    let j=null;
+    try{
+      const res=await fetch(withJobToken('/jobs/'+id, id),{headers:authHeaders()});
+      if(res.ok) j=await res.json();
+    }catch(e){ /* a dropped poll is retried below */ }
+    if(state.overlayWait!==id) return;
+    if(j && j.overlay_url){
+      state.overlayWait=null;
+      track('overlay_ready',{seconds:Math.round((Date.now()-started)/1000)});
+      mountOverlay(j, r, s, opts);
+      return;
+    }
+    if((j && !j.overlay_rendering) || Date.now()-started>300000){
+      state.overlayWait=null;
+      note.textContent='The annotated video could not be rendered for this clip. Your score, angles and coaching are unaffected';
+      return;
+    }
+    setTimeout(tick, 3000);
+  };
+  setTimeout(tick, 3000);
+}
+
 function render(job,opts){
   opts=opts||{};
   const r=job.result||{}; const s=r.sport_specific_metrics||{};
@@ -11370,30 +11434,24 @@ function render(job,opts){
     $('#resultTop').classList.remove('no-video');
     $('#ephemNote').classList.add('hidden');
   } else if(job.overlay_url){
-    // <video> and the download link can't send an Authorization header, so the
-    // job token travels in the query string for these two.
-    let ov=withJobToken(job.overlay_url, job.job_id);
-    // A re-measurement rewrote the file under the same URL; make the player
-    // fetch it rather than replay the cached one.
-    if(opts.recomputed) ov+=(ov.includes('?')?'&':'?')+'v='+Date.now();
-    // Poster = the annotated keyframe the report already carries, not frame 1.
-    // Frame 1 of a self-filmed clip is usually the athlete still walking into
-    // position (the in-app camera counts down five seconds), so the player sat
-    // on an empty gym until somebody pressed play. The keyframe is the moment
-    // the analysis actually read.
+    mountOverlay(job, r, s, opts);
+  } else if(job.overlay_rendering){
+    // The report is measured and served; the video is still rendering behind
+    // it (12 s on a 1080p clip, ~40 s on 4K). Say so in the player's place and
+    // swap the player in when the poll says the file is whole.
+    fpMainPlayer().unload();
     const vEl=$('#overlayVideo');
-    if(r.keyframe_base64) vEl.setAttribute('poster', r.keyframe_base64);
-    else vEl.removeAttribute('poster');
-    vEl.src=ov;
-    // The player over it: frame stepping, the event jumps, the curve, and
-    // -- while the clip is still in this browser -- the skeleton and bare
-    // clip layers. Without a record (older job, or a run that failed to
-    // build one) the <video> keeps its native controls.
-    fpMainPlayer().load(r.timeline, {rawFile: state.file, cameraMotion: (s.camera_motion||{}).verdict});
-    $('#downloadOverlay').href=ov; state.ovFile=null; $('#dlOverlayTxt').textContent='Download .mp4';
+    vEl.pause(); vEl.removeAttribute('src'); vEl.load();
+    vEl.classList.add('hidden');
+    const note=document.createElement('div'); note.className='video-gone video-rendering';
+    note.textContent='Rendering your annotated video. It appears here in a few seconds';
+    vEl.insertAdjacentElement('afterend', note);
+    // Nothing to download until the file is whole (the server answers 409).
+    $('#downloadOverlay').classList.add('hidden');
     $('#videoCol').classList.remove('hidden');
     $('#resultTop').classList.remove('no-video');
     $('#ephemNote').classList.add('hidden');
+    waitForOverlay(job, r, s, opts);
   } else {
     fpMainPlayer().unload();
     $('#videoCol').classList.add('hidden');

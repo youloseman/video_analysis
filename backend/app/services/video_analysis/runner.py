@@ -780,6 +780,7 @@ def run_analysis(
     frames_store: str | Path | None = None,
     crank_length_mm: float | None = None,
     progress: ProgressFn | None = None,
+    overlay_done: Callable[[str | None], None] | None = None,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
 
@@ -944,6 +945,7 @@ def run_analysis(
         camera_side_override=camera_side_override,
         crank_length_mm=crank_length_mm,
         progress=progress,
+        overlay_done=overlay_done,
     )
 
 
@@ -967,8 +969,16 @@ def analyze_from_frames(
     corrections: list[dict[str, Any]] | None = None,
     crank_length_mm: float | None = None,
     progress: ProgressFn | None = None,
+    overlay_done: Callable[[str | None], None] | None = None,
 ) -> dict[str, Any]:
     """Everything the report says, from STABILIZED landmark frames.
+
+    ``overlay_done``: return the result WITHOUT waiting for the overlay video
+    and call this with its path (None if it failed) when the render ends --
+    always exactly once when an overlay was asked for. The report is ready
+    long before the video (12 s on a 1080p clip, ~40 s on 4K), and an athlete
+    waiting for numbers should not wait for the video too. Without it the
+    render is joined before returning, as before.
 
     ``crank_length_mm`` (cycling only): the rider's crank, the one length a
     side view of a bike carries. It scales the saddle estimate; omitted, the
@@ -1746,10 +1756,15 @@ def analyze_from_frames(
             # the GIL. Nothing below touches the visualizer, and it reads
             # ``summary`` only through .get().
             def _render_overlay() -> None:
+                path = None
                 try:
-                    overlay_out["path"] = visualizer.generate()
+                    path = visualizer.generate()
                 except Exception as e:  # noqa: BLE001 -- same rule as VISUALS_FAILED
                     logger.warning("OVERLAY_FAILED", err=str(e))
+                overlay_out["path"] = path
+                if overlay_done is not None:
+                    logger.info("OVERLAY_DONE", path=path)
+                    overlay_done(path)
 
             overlay_render = threading.Thread(
                 target=_render_overlay, name="overlay-render", daemon=True,
@@ -1948,10 +1963,20 @@ def analyze_from_frames(
         except Exception as e:  # noqa: BLE001
             logger.warning("TRAINING_PLAN_FAILED", err=str(e))
 
-    if overlay_render is not None:
+    overlay_pending = False
+    if overlay_render is not None and overlay_done is not None:
+        # The caller hears about the file from the render thread itself; the
+        # path is the one the visualizer writes to, promised not yet true.
+        overlay_pending = True
+        overlay_video_path = str(Path(overlay_path).resolve().with_suffix(".mp4"))
+    elif overlay_render is not None:
         overlay_render.join()
         overlay_video_path = overlay_out.get("path")
         logger.info("OVERLAY_DONE", path=overlay_video_path)
+    elif overlay_path and overlay_done is not None:
+        # Asked for, never started (the visuals failed before the render):
+        # the caller is still waiting to be told, so tell it.
+        overlay_done(None)
 
     return {
         "status": "completed",
@@ -1980,6 +2005,8 @@ def analyze_from_frames(
         "score_coverage": scoring.get("coverage"),
         "quality_gate_triggered": bool(quality_gate_result.get("triggered")),
         "overlay_video_path": overlay_video_path,
+        # True while the video is still rendering (see ``overlay_done``).
+        "overlay_pending": overlay_pending,
         # The frame-by-frame record behind the overlay -- the skeleton, the
         # angle curves, the phases and the events -- for the player to scrub,
         # step and graph. Paid by construction: absent from the free
