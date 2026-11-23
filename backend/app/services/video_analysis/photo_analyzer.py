@@ -2239,6 +2239,11 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
     # count it -- a marginal reading that looks identical to a confident one is
     # the thing this whole ladder must not produce.
     low_confidence = False
+    # Why the detector never got to look, if it did not. A detector that
+    # crashed (or a model file missing from the image) is our failure, not the
+    # athlete's: without this it fell through to "No body pose detected", a
+    # 422 that tells them to fix their photo and logs a rejection, not a crash.
+    detector_failure: Exception | None = None
 
     try:
         from pathlib import Path as _Path
@@ -2353,7 +2358,11 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
                 nl = result.pose_landmarks[0]
                 if want_mask and result.segmentation_masks:
                     silhouette_top = top_contour(result.segmentation_masks[0].numpy_view())
+        else:
+            detector_failure = FileNotFoundError(
+                "pose model not found in: " + ", ".join(str(p) for p in _model_paths))
     except Exception as tasks_err:
+        detector_failure = tasks_err
         logger.warning("Tasks API failed for photo, trying legacy", err=str(tasks_err))
 
     # Fallback: Legacy Solutions API (mediapipe < 0.10.31)
@@ -2366,12 +2375,15 @@ def detect_pose_in_image(image_bytes: bytes) -> dict[str, Any]:
                 min_detection_confidence=0.5,
             ) as pose:
                 result = pose.process(image_rgb)
+            detector_failure = None   # the legacy detector did look
             if result.pose_world_landmarks:
                 wl = result.pose_world_landmarks.landmark
                 nl = result.pose_landmarks.landmark
         except AttributeError:
             pass  # mp.solutions removed in mediapipe >= 0.10.31
 
+    if wl is None and detector_failure is not None:
+        raise RuntimeError("photo pose detector failed") from detector_failure
     if wl is None:
         raise ValueError(
             "No body pose detected in the image. "
