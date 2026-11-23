@@ -45,6 +45,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # The SPA is ~16k lines of inline JS with no other check: a second
+      # `function copyText` once replaced the first app-wide and nothing
+      # noticed. Seconds, so it runs before the Python install.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/lint/package-lock.json
+
+      - name: Lint SPA
+        working-directory: backend/lint
+        run: npm ci --no-audit --no-fund && npm run lint
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'      # matches the Dockerfile base image

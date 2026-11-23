@@ -1,0 +1,12 @@
+{
+  "name": "flapp-spa-lint",
+  "private": true,
+  "description": "ESLint for the SPA script inlined in app/static/index.html (served as /app.js). CI: npm ci && npm run lint",
+  "scripts": {
+    "lint": "node extract.mjs && eslint build/app.js"
+  },
+  "devDependencies": {
+    "eslint": "9.17.0",
+    "globals": "15.14.0"
+  }
+}
