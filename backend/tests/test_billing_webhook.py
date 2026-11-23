@@ -299,3 +299,80 @@ async def test_live_subscription_detection(make_user, status, expected):
 async def test_a_user_with_no_stripe_customer_has_no_live_subscription(make_user):
     user = await make_user(subscription_status="active")
     assert has_live_subscription(user) is False
+
+
+# --------------------------------------------------------------------------
+# Events out of order: the subscription is read again, not trusted from the
+# snapshot the event carries.
+# --------------------------------------------------------------------------
+def _live_stripe(monkeypatch, current):
+    import dataclasses
+
+    import stripe
+
+    from app.api import billing
+
+    monkeypatch.setattr(billing, "settings", dataclasses.replace(settings, stripe_secret_key="sk_test_x"))
+    asked = []
+
+    def retrieve(sub_id):
+        asked.append(sub_id)
+        return stripe.StripeObject.construct_from(current, "sk_test_x")
+
+    monkeypatch.setattr(stripe.Subscription, "retrieve", staticmethod(retrieve))
+    return asked
+
+
+def _with_id(event, sub_id="sub_1"):
+    event["data"]["object"]["id"] = sub_id
+    return event
+
+
+async def test_a_stale_active_update_after_the_cancellation_does_not_restore_the_plan(
+    db, make_user, monkeypatch,
+):
+    user = await make_user(tier=TIER_FULL, stripe_customer_id="cus_1")
+    await _apply_event(db, _with_id(subscription_event("customer.subscription.deleted")))
+    asked = _live_stripe(monkeypatch, {
+        "id": "sub_1", "customer": "cus_1", "status": "canceled",
+        "items": {"data": [{"price": {"id": PRICE_FULL_Y}}]},
+    })
+    # Created before the cancellation, delivered after it.
+    await _apply_event(db, _with_id(subscription_event(
+        "customer.subscription.updated", status="active", price=PRICE_FULL_Y,
+    )))
+    await db.refresh(user)
+    assert asked == ["sub_1"]
+    assert user.tier == TIER_STARTER
+    assert user.subscription_status == "canceled"
+
+
+async def test_an_old_price_landing_after_an_upgrade_keeps_the_new_plan(db, make_user, monkeypatch):
+    user = await make_user(tier=TIER_FULL, stripe_customer_id="cus_1")
+    _live_stripe(monkeypatch, {
+        "id": "sub_1", "customer": "cus_1", "status": "active",
+        "items": {"data": [{"price": {"id": PRICE_FULL_Y}}]},
+    })
+    await _apply_event(db, _with_id(subscription_event(
+        "customer.subscription.updated", price=PRICE_ENTHUSIAST_M,
+    )))
+    await db.refresh(user)
+    assert user.tier == TIER_FULL
+
+
+async def test_stripe_unreachable_is_a_failed_delivery_not_a_guess(db, make_user, monkeypatch):
+    import stripe
+
+    user = await make_user(tier=TIER_FULL, stripe_customer_id="cus_1")
+    _live_stripe(monkeypatch, {})
+
+    def down(_sub_id):
+        raise stripe.APIConnectionError("no route")
+
+    monkeypatch.setattr(stripe.Subscription, "retrieve", staticmethod(down))
+    with pytest.raises(stripe.StripeError):
+        await _apply_event(db, _with_id(subscription_event(
+            "customer.subscription.updated", status="canceled",
+        )))
+    await db.refresh(user)
+    assert user.tier == TIER_FULL

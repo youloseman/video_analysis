@@ -1701,7 +1701,7 @@ async def _apply_event(db: AsyncSession, event: Any) -> dict[str, Any] | None:
     if etype == "checkout.session.completed":
         sale = await _on_checkout_completed(db, obj)
     elif etype in ("customer.subscription.created", "customer.subscription.updated"):
-        await _on_subscription_change(db, obj)
+        await _on_subscription_change(db, await _current_subscription(obj))
     elif etype == "customer.subscription.deleted":
         await _on_subscription_deleted(db, obj)
     elif etype == "invoice.payment_succeeded":
@@ -2011,6 +2011,35 @@ def _price_from_subscription(obj: Any) -> str | None:
         return _price_id_from_item(obj["items"]["data"][0])
     except (KeyError, IndexError, TypeError):
         return None
+
+
+async def _current_subscription(obj: Any) -> Any:
+    """The subscription as Stripe holds it now, not as this event saw it.
+
+    Stripe does not deliver events in order, and retries a failed delivery for
+    days. The payload is a snapshot from when the event was created, so a stale
+    ``updated`` (status active) that lands after the ``deleted`` gave a
+    cancelled customer their plan back for free, and an old price landing
+    after a portal upgrade put them back on the plan they had left. Reading the
+    subscription again makes every event say "look now", which is the same
+    answer whatever order they come in.
+
+    A Stripe error raises: the webhook answers 500 and Stripe redelivers,
+    which is better than acting on a snapshot we just said is unreliable. Off
+    Stripe (tests, a laptop) or with no id the payload is used as it is.
+    """
+    sub_id = obj.get("id")
+    if not sub_id or not settings.stripe_enabled:
+        return obj
+    stripe.api_key = settings.stripe_secret_key
+    try:
+        fresh = await run_in_threadpool(stripe.Subscription.retrieve, str(sub_id))
+    except stripe.StripeError as e:
+        logger.warning("SUB_REFRESH_FAILED", subscription=str(sub_id), err=str(e))
+        raise
+    # Plain dict, the shape every handler here is written and tested against
+    # (see the webhook route for why not the StripeObject itself).
+    return json.loads(str(fresh))
 
 
 async def _on_subscription_change(db: AsyncSession, obj: Any) -> None:
