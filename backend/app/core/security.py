@@ -32,26 +32,56 @@ def verify_password(pw: str, ph: str) -> bool:
         return False
 
 
-def create_token(user_id: int) -> str:
+def create_token(user_id: int, password_hash: str | None = None) -> str:
+    """A session. ``password_hash``: the account's current hash, so that
+    changing the password ends every session issued before it (see
+    ``_session_matches``). Every sign-in path passes it."""
     now = _dt.datetime.now(_dt.timezone.utc)
     payload = {
         "sub": str(user_id),
         "iat": now,
         "exp": now + _dt.timedelta(days=settings.jwt_expire_days),
     }
+    if password_hash is not None:
+        payload["ph"] = _hash_fingerprint(password_hash)
     return jwt.encode(payload, settings.jwt_secret, algorithm=_JWT_ALG)
 
 
-def _decode_uid(token: str) -> int | None:
+def _decode_session(token: str) -> tuple[int, str | None] | None:
+    """(user id, password fingerprint or None) of a session token, or None."""
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[_JWT_ALG])
         # A reset token is signed with the same secret; it must never pass as
         # a session, or the reset email becomes a login link.
         if payload.get("purpose"):
             return None
-        return int(payload["sub"])
+        ph = payload.get("ph")
+        return int(payload["sub"]), (str(ph) if ph is not None else None)
     except Exception:  # noqa: BLE001
         return None
+
+
+def _decode_uid(token: str) -> int | None:
+    claims = _decode_session(token)
+    return claims[0] if claims else None
+
+
+def _session_matches(user: User | None, ph: str | None) -> bool:
+    """Is this session still the account's? A reset password ends the others.
+
+    Until sessions carried the fingerprint, a reset changed the password and
+    left every token already issued -- including one on a stolen phone, the
+    usual reason to reset -- valid for its full 30 days. The fingerprint is
+    the reset token's own trick: no table, no migration, and the session dies
+    the moment the hash it was issued against is replaced.
+
+    A token without one was issued before this check; it is accepted until it
+    expires (/auth/me reissues a fingerprinted one on the next app open), so
+    the deploy signs nobody out.
+    """
+    if user is None:
+        return False
+    return ph is None or ph == _hash_fingerprint(user.password_hash)
 
 
 # ---------------------------------------------------------------------------
@@ -164,9 +194,9 @@ async def get_current_user(
 ) -> User:
     if cred is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
-    uid = _decode_uid(cred.credentials)
-    user = await db.get(User, uid) if uid is not None else None
-    if user is None:
+    claims = _decode_session(cred.credentials)
+    user = await db.get(User, claims[0]) if claims else None
+    if not claims or not _session_matches(user, claims[1]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
     return user
 
@@ -190,5 +220,6 @@ async def optional_user(
 ) -> User | None:
     if cred is None:
         return None
-    uid = _decode_uid(cred.credentials)
-    return await db.get(User, uid) if uid is not None else None
+    claims = _decode_session(cred.credentials)
+    user = await db.get(User, claims[0]) if claims else None
+    return user if claims and _session_matches(user, claims[1]) else None

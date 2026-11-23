@@ -259,7 +259,7 @@ async def register(
     await db.commit()
     await db.refresh(user)
     return TokenOut(
-        token=create_token(user.id), email=user.email,
+        token=create_token(user.id, user.password_hash), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
@@ -293,7 +293,7 @@ async def login(
     if not ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password.")
     return TokenOut(
-        token=create_token(user.id), email=user.email,
+        token=create_token(user.id, user.password_hash), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
@@ -402,7 +402,7 @@ async def reset_password(body: ResetBody, db: AsyncSession = Depends(get_session
     await db.commit()
     logger.info("PASSWORD_RESET", user_id=user.id)
     return TokenOut(
-        token=create_token(user.id), email=user.email,
+        token=create_token(user.id, user.password_hash), email=user.email,
         tier=user.tier, is_pro=user.is_paid,
         expert_credits=user.expert_credits or 0,
         unlock_credits=user.unlock_credits or 0,
@@ -452,7 +452,7 @@ async def me(
 
     _ok, used, limit, window = await check_quota(db, user)
     out.quota = QuotaOut(limit=limit, remaining=max(0, limit - used), window=window)
-    out.token = create_token(user.id)
+    out.token = create_token(user.id, user.password_hash)
     return out
 
 
