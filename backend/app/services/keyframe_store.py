@@ -32,6 +32,7 @@ handle, and the next boot finishes the job.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import structlog
@@ -55,6 +56,19 @@ BATCH = 50
 MAX_PER_BOOT = 5000
 
 
+# A frame is only ever a JPEG/PNG/WebP data URI (canvas.toDataURL on the client,
+# cv2.imencode on the server). The SPA puts it straight into <img src>, and an
+# athlete's rows are shown to their coach, so anything else -- a URL, a
+# javascript: scheme, markup -- is dropped on the way in AND on the way out
+# (rows written before this check existed).
+_SAFE_FRAME = re.compile(r"data:image/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+")
+
+
+def safe_frame(value: Any) -> str | None:
+    """``value`` when it is an image data URI, else None."""
+    return value if isinstance(value, str) and _SAFE_FRAME.fullmatch(value) else None
+
+
 def split_keyframe(entry: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
     """``(entry without its frame, the frame)``.
 
@@ -64,8 +78,7 @@ def split_keyframe(entry: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
     if not isinstance(entry, dict) or "keyframe" not in entry:
         return entry, None
     rest = {k: v for k, v in entry.items() if k != "keyframe"}
-    frame = entry.get("keyframe")
-    return rest, (frame if isinstance(frame, str) and frame else None)
+    return rest, safe_frame(entry.get("keyframe"))
 
 
 def stored_keyframe(row: Analysis) -> str | None:
@@ -76,9 +89,8 @@ def stored_keyframe(row: Analysis) -> str | None:
     an athlete an empty card where their own frame should be.
     """
     if row.keyframe:
-        return row.keyframe
-    legacy = (row.data or {}).get("keyframe")
-    return legacy if isinstance(legacy, str) and legacy else None
+        return safe_frame(row.keyframe)
+    return safe_frame((row.data or {}).get("keyframe"))
 
 
 async def backfill_keyframes(db: AsyncSession, limit: int = MAX_PER_BOOT) -> int:

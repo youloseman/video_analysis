@@ -24,6 +24,7 @@ the move and for why rows written earlier are read from both places.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -31,7 +32,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
@@ -112,10 +113,16 @@ def _now_ms() -> int:
 MAX_PER_USER = 100
 
 
+# An entry id is made by the client ('h' + Date.now()) and ends up in HTML
+# attributes on this user's screens AND their coach's, so it is held to
+# characters that need no escaping anywhere.
+CLIENT_ID_RE = re.compile(r"[A-Za-z0-9_.:-]{1,64}")
+
+
 class AnalysisIn(BaseModel):
     # The full frontend entry; only these are read explicitly, the rest is kept.
     model_config = ConfigDict(extra="allow")
-    id: str = Field(min_length=1, max_length=64)
+    id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.:-]+$")
     at: int = 0
     kind: str | None = None
     sport: str | None = None
@@ -123,12 +130,14 @@ class AnalysisIn(BaseModel):
 
 
 class ImportIn(BaseModel):
-    items: list[AnalysisIn] = Field(default_factory=list)
+    # Raw dicts, validated one by one: a device's history is imported once at
+    # sign-in, and one odd legacy entry must not reject the other ninety-nine.
+    items: list[dict[str, Any]] = Field(default_factory=list)
 
 
 async def _upsert(db: AsyncSession, user: User, entry: dict[str, Any]) -> None:
-    cid = str(entry.get("id") or "")[:64]
-    if not cid:
+    cid = str(entry.get("id") or "")
+    if not CLIENT_ID_RE.fullmatch(cid):
         return
     row = (
         await db.execute(
@@ -1005,11 +1014,17 @@ async def import_analyses(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    for item in body.items[:MAX_PER_USER]:
+    imported = 0
+    for raw in body.items[:MAX_PER_USER]:
+        try:
+            item = AnalysisIn.model_validate(raw)
+        except ValidationError:
+            continue
         await _upsert(db, user, item.model_dump())
+        imported += 1
     await _enforce_cap(db, user)
     await db.commit()
-    return {"imported": len(body.items[:MAX_PER_USER])}
+    return {"imported": imported}
 
 
 class CompareSide(BaseModel):

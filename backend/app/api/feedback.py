@@ -43,6 +43,7 @@ from app.models.feedback import (
     Feedback,
 )
 from app.models.user import User
+from app.services.keyframe_store import safe_frame
 
 logger = structlog.get_logger()
 
@@ -143,10 +144,10 @@ async def submit_feedback(
     if _over_limit(f"u{user.id}" if user else ihash):
         raise HTTPException(429, "Too much feedback from this client today.")
 
-    keyframe = body.keyframe or None
-    if keyframe and (
-        not keyframe.startswith("data:image/") or len(keyframe) > MAX_KEYFRAME_CHARS
-    ):
+    # Not just "starts with data:image/": the admin view puts it into <img src>,
+    # and a quote after the prefix would break out of the attribute.
+    keyframe = safe_frame(body.keyframe)
+    if keyframe and len(keyframe) > MAX_KEYFRAME_CHARS:
         keyframe = None  # oversized / not an image -> drop it, keep the rating
 
     cid = (body.analysis_client_id or "").strip()[:64] or None
