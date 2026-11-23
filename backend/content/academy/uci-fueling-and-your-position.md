@@ -61,22 +61,19 @@ Forty times in an Ironman. If each one means sitting up, that is eight minutes o
 
 ## What it costs
 
-We ran the Ironman bike leg through Flapp's aero model at the same power throughout: once with every feed taken on the base bar, once sitting up for each, and against the whole race ridden a few degrees higher.
+We rode each bike leg through Flapp's aero model at the same power three times: all of it in the race position, with every feed taken on the base bar, and sitting up for every feed.
 
-![Eating costs seconds, your position costs minutes: all 40 feeds cost 16 s on the base bar or 35 s sitting up, against 2.7 min for a torso 4° higher and 6.7 min for 8° higher over the whole race.](/media/academy/uci-fueling/cost.webp)
+![What eating and drinking cost you: Olympic +3 s on the base bar or +6 s sitting up, 70.3 +8 s or +17 s, Ironman +16 s or +35 s.](/media/academy/uci-fueling/cost.webp)
 
-| Race | Every feed sitting up | Whole race 4° higher | Whole race 8° higher |
+| Race | All in aero | Feeds on the base bar | Feeds sitting up |
 |---|---|---|---|
-| Olympic | 6 s | 30 s | 80 s |
-| 70.3 | 17 s | 80 s | 3.2 min |
-| Ironman | 35 s | 2.7 min | 6.7 min |
+| Olympic | 1:08:34 | +3 s | +6 s |
+| 70.3 | 2:43:38 | +8 s | +17 s |
+| Ironman | 5:48:23 | +16 s | +35 s |
 
-Two things follow:
+Sitting up for all 40 feeds in an Ironman costs about half a minute, less than 0.2% of the bike split. Running out of fuel in the last hour costs far more. So eat, even if it means sitting up.
 
-- **Eat.** Sitting up for every feed in an Ironman costs about half a minute. Running out of fuel in the last hour costs far more, and no position wins that back.
-- **The position you can hold is worth more than the one you can hit.** A torso 4° lower than you can hold for five hours is worth nothing if you sit up at 120 km. The 4° you keep all day is worth minutes.
-
-A bottle between the arms takes most of this away: 23 of the 40 Ironman feeds are drinks, and you take them without leaving the extensions. It is the cheapest fix on this page.
+A bottle between the arms takes most of this away: 23 of the 40 Ironman feeds are drinks, and you take them without leaving the extensions.
 
 ## Check yours with Flapp: three photos
 
@@ -96,7 +93,7 @@ What to look for:
 - **The gap between 1 and 2 is your bottle setup.** If reaching for a bottle takes you 10° or more up, move the bottle where you can get it lower.
 - **Photo 3 shows how far up you go to eat.** If it is close to upright, take gels from a bento box or a flask on the extensions, and practice it on long rides.
 
-Then film a 10 to 15 second clip in the race position, at race effort, after a couple of hours if you can. Joint angles change with effort: in one 3D study the elbow bent more as intensity rose. A clip at an easy spin shows a position you don't race in.
+Then film a 10 to 15 second clip in the race position, at race effort, after a couple of hours if you can. Joint angles change with effort: in one 3D study the elbow bent more as intensity rose. A clip at an easy spin shows a position you don't race in, and the position you hold for hours is worth more than the one you hit for a minute.
 
 ## How these numbers were made
 
