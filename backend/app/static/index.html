@@ -8589,7 +8589,7 @@ function renderAthletes(){
         <div class="ath-sub-ph${nr&&nr.days_to_go<=21&&nr.days_to_go>=0?' sq-race-soon':''}">${nr&&nr.days_to_go>=0?`${raceWhen(nr)} · ${esc(nr.priority)} · ${esc(nr.name)}`:[esc(ATHLETE_SPORT_LABEL[a.sport]||a.sport||''),...gs.filter(g=>(a.group_ids||[]).includes(g.id)).map(g=>esc(g.name))].filter(Boolean).join(' · ')}</div></div>
       <div class="ath-gr">${grs}${nr?`<span class="ath-chip ath-race${nr.days_to_go<=21?' sq-race-soon':''}">${esc(nr.name)} · ${esc(nr.priority)} · ${raceWhen(nr)}</span>`:''}${!grs&&!nr?'<span class="sq-na">no group</span>':''}</div>
       <div class="ath-last">${a.last_at_ms?`<span>last clip ${esc(fmtWhen(a.last_at_ms))}</span>${a.last_score!=null?`<b class="ath-score">${a.last_score}</b>`:''}`:'<span>no clips yet</span>'}</div>
-      <div class="p-n">${a.analyses!=null?a.analyses:'—'}<small>analyses</small></div>
+      <div class="p-n">${a.analyses!=null?a.analyses:'—'}<small>${a.analyses===1?'analysis':'analyses'}</small></div>
       <div class="p-acts">
         ${a.archived
           ? `<button type="button" data-act="restore">Restore</button><button type="button" class="del" data-act="delete">Delete</button>`
@@ -13724,6 +13724,26 @@ function histStripSpread(es, t, X){
 /* Every analysis by date, one strip per sport (History board): a dot per
    score in its band's colour, the first date on the left and today on the
    right. A dot opens its report. */
+/* After layout: each strip's dots placed by their rendered width, 3 px apart,
+   kept inside the line. Starts from each dot's own date (data-x0), so it
+   re-runs cleanly when the window is resized. */
+function fitHistStrip(host){
+  (host||document).querySelectorAll('.hstrip-line').forEach(line=>{
+    const W=line.clientWidth; if(!W) return;
+    const ds=[...line.querySelectorAll('.hstrip-dot:not(.hstrip-pip)')].map(el=>({el,w:el.offsetWidth,c:parseFloat(el.dataset.x0)/100*W}))
+      .sort((a,b)=>a.c-b.c);
+    if(ds.length<2) return;
+    const gap=(a,b)=>(a.w+b.w)/2+3;
+    for(let i=1;i<ds.length;i++) ds[i].c=Math.max(ds[i].c, ds[i-1].c+gap(ds[i-1],ds[i]));
+    const n=ds.length-1; ds[n].c=Math.min(ds[n].c, W-ds[n].w/2);
+    for(let i=n-1;i>=0;i--) ds[i].c=Math.min(ds[i].c, ds[i+1].c-gap(ds[i],ds[i+1]));
+    ds[0].c=Math.max(ds[0].c, ds[0].w/2);
+    for(let i=1;i<ds.length;i++) ds[i].c=Math.max(ds[i].c, ds[i-1].c+gap(ds[i-1],ds[i]));
+    ds.forEach(d=>{ d.el.style.setProperty('--x',(d.c/W*100).toFixed(2)+'%'); d.el.style.setProperty('--o','0'); });
+  });
+}
+let _fitStripT=0;
+window.addEventListener('resize',()=>{ clearTimeout(_fitStripT); _fitStripT=setTimeout(()=>fitHistStrip($('#histStrip')),120); });
 function histStripHtml(list){
   const rows=['run','bike'].map(sp=>[sp,list.filter(e=>e.sport===sp&&e.score!=null)]).filter(([,es])=>es.length);
   if(!rows.length) return '';
@@ -13740,7 +13760,7 @@ function histStripHtml(list){
       const dense=es.length>(PHONE_MQ.matches?8:16), newest=es.reduce((a,e)=>t(e)>t(a)?e:a,es[0]);
       const pts=dense?es.map(e=>[e,X(t(e)),0]):histStripSpread(es,t,X);
       return `<div class="hstrip-row${dense?' hstrip-dense':''}"><span class="hstrip-l">${sp==='run'?'Run':'Bike'}</span><div class="hstrip-line">${pts.map(([e,x,o])=>{ const pip=dense&&e!==newest;
-        return `<button type="button" class="hstrip-dot${pip?' hstrip-pip':''} sc-${scoreStatus(e.score)}" style="--x:${x}%;--o:${o}" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}" aria-label="${esc(shortDate(t(e)))}, score ${e.score}">${pip?'':e.score}</button>`; }).join('')}</div></div>`; }).join('')}
+        return `<button type="button" class="hstrip-dot${pip?' hstrip-pip':''} sc-${scoreStatus(e.score)}" style="--x:${x}%;--o:${o}" data-x0="${X(t(e))}" data-hopen="${esc(e.id)}" title="${esc(shortDate(t(e)))} · ${e.score}" aria-label="${esc(shortDate(t(e)))}, score ${e.score}">${pip?'':e.score}</button>`; }).join('')}</div></div>`; }).join('')}
     <div class="hstrip-axis"><span style="--x:${X(lo)}%">${esc(shortDate(lo))}</span>${ticks.map(ms=>`<span style="--x:${X(ms)}%">${esc(shortDate(ms))}</span>`).join('')}<span style="--x:${X(now)}%">today</span></div></div>`;
 }
 /* What one analysis says, in its own colours: how many readings are out of
@@ -13820,7 +13840,7 @@ function renderHistList(){
   const swims=state.histProfile==null&&!state.histSport ? swimCardsHtml() : '';
   const meta=$('#histMeta');
   if(meta) meta.textContent=`${every.length} ${every.length===1?'analysis':'analyses'} · ${auth?'synced to your account':'saved on this device'}`;
-  const strip=$('#histStrip'); if(strip) strip.innerHTML=a.length>1?histStripHtml(a):'';
+  const strip=$('#histStrip'); if(strip){ strip.innerHTML=a.length>1?histStripHtml(a):''; fitHistStrip(strip); }
   // Management toolbar (count + Clear all) + the tidy-up hint only when non-empty.
   const tools=$('#histTools'), hint=$('#histHint');
   // Follows the cabinet rather than the filtered view: "Clear all" is about

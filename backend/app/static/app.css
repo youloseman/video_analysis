@@ -3738,7 +3738,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   /* One line per athlete (board: AthletesPhone); the row opens their page. */
   .prof-row.ath-row{grid-template-columns:56px minmax(0,1fr) auto auto;align-items:center;gap:12px;cursor:pointer}
   .ath-fig .hthumb{width:56px;height:42px}
-  .ath-row .ath-gr,.ath-row .ath-last,.ath-row .ath-sub,.ath-row .p-acts,.ath-row .p-n small{display:none}
+  .ath-row .ath-gr,.ath-row .ath-last,.ath-row .ath-sub,.ath-row .p-acts{display:none}
   .ath-row .ath-sub-ph{display:block}
   .ath-row .p-n{font-size:16px}
   .ath-row .pc-menu{display:block;align-self:center}
