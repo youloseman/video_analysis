@@ -99,11 +99,11 @@ def test_an_analysed_guest_clip_is_filed_as_a_teaser():
     result = {
         "status": "completed", "sport_type": "bike", "cycling_position": "triathlon",
         "camera_side": "right", "technique_score": 71, "letter_grade": "C",
-        "keyframe_base64": "FRAME", "angle_statistics": {"knee": {"mean": 140}},
+        "keyframe_base64": "data:image/jpeg;base64,RlJBTUU=", "angle_statistics": {"knee": {"mean": 140}},
         "detected_issues": [{"type": "saddle_low", "severity": "minor"}],
     }
     entry, frame = guest.finish_entry(_pending(), {"status": "completed", "result": result})
-    assert frame == "FRAME" and "keyframe" not in entry
+    assert frame == "data:image/jpeg;base64,RlJBTUU=" and "keyframe" not in entry
     assert entry["score"] == 71 and entry["cameraSide"] == "right"
     assert entry["locked"] is True and "pending" not in entry
     # No measurements in the entry: a later unlock rebuilds it from the stored result.
