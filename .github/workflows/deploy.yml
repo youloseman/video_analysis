@@ -67,7 +67,9 @@ jobs:
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          # The same constraints the image installs with: CI tests the set
+          # that ships, transitive packages included.
+          pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
 
       # Lint before the (slow) suite so an unused import fails in seconds rather
       # than after the ML stack has finished importing. `ruff` is pinned in

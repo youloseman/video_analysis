@@ -1,0 +1,86 @@
+# Every package the image installs, at the version it was built and tested
+# with -- the transitive ones too. requirements.txt says what we depend on;
+# this says exactly what gets installed, so a build next week is the build
+# that passed CI today. starlette 1.8.0 arriving unannounced as a transitive
+# turned every 304 into a 500 (2026-10-13); this closes that for every one of them.
+#
+# Used as a constraints file (pip -c): it pins versions but installs nothing
+# by itself, so a line for a package nobody needs any more is harmless.
+#
+# Regenerate after changing requirements.txt (Linux, py3.11 -- what the image
+# is), then let CI prove it:
+#   pip install --dry-run --ignore-installed --report r.json #     --platform manylinux_2_28_x86_64 --platform manylinux2014_x86_64 #     --implementation cp --python-version 3.11 --abi cp311 --only-binary=:all: #     -r requirements.txt
+# On a non-Linux host markers resolve for the host: drop colorama, add uvloop.
+# Resolved 2026-11-23.
+
+absl-py==2.5.1
+aiosqlite==0.22.1
+annotated-doc==0.0.7
+annotated-types==0.8.0
+anyio==4.16.0
+asyncpg==0.31.0
+bcrypt==4.0.1
+brotli==1.2.0
+certifi==2026.11.20
+cffi==2.1.1
+charset-normalizer==3.5.3
+click==8.5.1
+contourpy==1.3.3
+cryptography==50.0.2
+cycler==0.12.1
+distro==1.9.0
+fastapi==0.136.1
+flatbuffers==25.12.19
+fonttools==4.68.0
+google-auth==2.63.1
+google-genai==2.6.0
+greenlet==3.5.1
+h11==0.16.0
+httpcore==1.0.9
+httpcore2==2.16.2
+httptools==0.9.0
+httpx==0.28.1
+httpx2==2.16.2
+idna==3.20
+jiter==0.19.0
+kiwisolver==1.5.1
+matplotlib==3.11.2
+mediapipe==1.1.0
+numpy==2.4.6
+onnxruntime==1.31.1
+openai==3.13.0
+opencv-contrib-python==4.13.0.92
+opencv-python-headless==4.13.0.92
+packaging==26.3
+pillow==12.2.0
+pillow_heif==1.3.0
+protobuf==7.36.2
+pyasn1==0.6.5
+pyasn1_modules==0.4.2
+pycparser==3.12
+pydantic==2.13.4
+pydantic_core==2.46.4
+pyjwt==2.13.0
+pyparsing==3.3.3
+python-dateutil==4.0.0
+python-dotenv==1.2.4
+python-multipart==0.0.29
+pyyaml==6.0.4
+requests==2.34.2
+scipy==1.17.1
+sniffio==1.3.1
+sounddevice==0.5.6
+sqlalchemy==2.0.49
+starlette==1.8.0
+stripe==15.1.0
+structlog==25.5.0
+tenacity==9.1.4
+truststore==0.10.5
+typing-inspection==0.4.5
+typing_extensions==4.16.0
+tzdata==2026.6
+urllib3==2.8.0
+uvicorn==0.47.0
+uvloop==0.23.0
+watchfiles==1.3.0
+websockets==16.1.1

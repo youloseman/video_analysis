@@ -23,13 +23,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Python deps first for layer caching.
-COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# constraints.txt pins the transitive packages too (see the file).
+COPY backend/requirements.txt backend/constraints.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -c constraints.txt
 
 # Bake the MediaPipe pose model into the image (~30 MB, git-ignored in the repo).
+# Version 1 by URL and by SHA-256, not "latest": every number the app reports
+# and the golden baseline were recorded on this exact file (latest == 1 ==
+# the local model, checked 2026-11-23). A new model is a change somebody makes
+# on purpose and re-records the baseline for; a mismatch fails the build.
 RUN mkdir -p models \
     && curl -fSL -o models/pose_landmarker_heavy.task \
-       "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
+       "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task" \
+    && echo "64437af838a65d18e5ba7a0d39b465540069bc8aae8308de3e318aad31fcbc7b  models/pose_landmarker_heavy.task" | sha256sum -c -
 
 # RTMPose-m (Halpe-26) for the refinement in detectors/rtmpose_refiner.py, pinned
 # by its SHA-256. Off unless VA_RTMPOSE_SPORTS is set, so a failed fetch must not
