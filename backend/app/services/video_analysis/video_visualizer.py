@@ -489,17 +489,29 @@ class VideoVisualizer:
         # crop makes the drawing surface SMALLER while the encoder shrinks it
         # further, and scaling the stroke to the surface let both effects land
         # on the athlete as a hairline.
-        out_scale = 1.0
-        if self._use_ffmpeg and draw_w:
-            out_scale = min(1.0, self._even_target_dims(draw_w, draw_h)[0] / draw_w)
+        #
+        # The overlay is now DRAWN at the size it is delivered at: the crop is
+        # shrunk to the encode target first and the annotation painted on
+        # that, so the render is 1.0 and nothing downstream resizes it. Drawing
+        # on the full-resolution crop and letting ffmpeg shrink it cost every
+        # per-pixel step 4-5x on 4K clips (a 4K crop is ~4.6 MP, the delivered
+        # clip 0.9) -- the overlay was 56 s of a 106 s 4K analysis. It also
+        # made 4K overlays look different from 1080p ones: chip and stroke
+        # sizes are clamped against the surface, so the big surface then
+        # shrunk carried smaller labels. Now every clip gets the same picture.
+        render_w, render_h = draw_w, draw_h
         if self._use_ffmpeg:
             # The encode target follows what is DRAWN -- the crop when one
-            # applies -- or ffmpeg is handed the source aspect and stretches it.
-            out_w, out_h = self._even_target_dims(draw_w, draw_h)
-            writer = _FfmpegPipe(final_mp4, fps, draw_w, draw_h, out_w, out_h)
+            # applies -- or the source aspect would be stretched.
+            render_w, render_h = self._even_target_dims(draw_w, draw_h)
+        kx = render_w / draw_w if draw_w else 1.0
+        ky = render_h / draw_h if draw_h else 1.0
+        out_scale = 1.0
+        if self._use_ffmpeg:
+            writer = _FfmpegPipe(final_mp4, fps, render_w, render_h, render_w, render_h)
         else:
             logger.warning("ffmpeg not found -- writing MP4 directly via OpenCV (mp4v)")
-            writer = cv2.VideoWriter(final_mp4, cv2.VideoWriter_fourcc(*"mp4v"), fps, (draw_w, draw_h))
+            writer = cv2.VideoWriter(final_mp4, cv2.VideoWriter_fourcc(*"mp4v"), fps, (render_w, render_h))
         writer_target = final_mp4
 
         if not writer.isOpened():
@@ -510,7 +522,7 @@ class VideoVisualizer:
         # Phase overlay (swim + run): cache timeline bar once (saves ~0.5 ms
         # per frame vs rebuilding).
         if self._phase_sequence:
-            self._timeline_cache = self._build_phase_timeline(draw_w)
+            self._timeline_cache = self._build_phase_timeline(render_w)
             self._overlay_fps = fps
 
         # Track the last resolvable pose (frames past the final analyzed one
@@ -547,28 +559,37 @@ class VideoVisualizer:
                 _ai = last_analyzed_idx if last_analyzed_idx is not None else 0
                 _x0 = crop["xs"][min(_ai, len(crop["xs"]) - 1)]
                 _y0 = crop["y0"]
-                frame = frame[_y0:_y0 + crop["h"], _x0:_x0 + crop["w"]].copy()
+                frame = frame[_y0:_y0 + crop["h"], _x0:_x0 + crop["w"]]
                 crop_offset = (_x0, _y0)
+            if frame.shape[1] != render_w or frame.shape[0] != render_h:
+                # INTER_AREA: the filter for shrinking. A copy either way, so
+                # the crop above no longer needs its own.
+                frame = cv2.resize(frame, (render_w, render_h), interpolation=cv2.INTER_AREA)
+            else:
+                frame = frame.copy()
 
             # Draw overlay if we have landmark data. The chip layer is painted
             # with PIL and returns a NEW array -- rebind rather than assume
             # in-place mutation.
             if last_analyzed_idx is not None:
                 frame = self._draw_frame_overlay(
-                    cv2, frame, last_analyzed_idx, draw_w, draw_h,
+                    cv2, frame, last_analyzed_idx, render_w, render_h,
                     landmarks_override=last_landmarks,
-                    source_dims=(width, height), crop_offset=crop_offset,
+                    # Landmarks are normalized to the whole source frame: the
+                    # source and the crop origin, both in render pixels.
+                    source_dims=(width * kx, height * ky),
+                    crop_offset=(crop_offset[0] * kx, crop_offset[1] * ky),
                     out_scale=out_scale,
                 )
 
             # Brand watermark on every frame (even un-analyzed ones)
             if WATERMARK_ENABLED:
-                self._draw_watermark(cv2, frame, draw_w, draw_h)
+                self._draw_watermark(cv2, frame, render_w, render_h)
 
-            if frame.shape[1] != draw_w or frame.shape[0] != draw_h:
+            if frame.shape[1] != render_w or frame.shape[0] != render_h:
                 # A raw pipe has no container to resync on: one frame of the
                 # wrong size shears every frame after it.
-                frame = cv2.resize(frame, (draw_w, draw_h))
+                frame = cv2.resize(frame, (render_w, render_h))
             writer.write(frame)
             frames_written += 1
             video_frame_idx += 1
