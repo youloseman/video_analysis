@@ -15,7 +15,14 @@ from app.core.config import settings
 
 
 def client_ip(request: Request) -> str:
-    """Best-effort client IP. Railway sits behind a proxy, so prefer XFF."""
+    """Best-effort client IP. Railway sits behind a proxy, so prefer XFF.
+
+    Leftmost is safe HERE because Railway's edge replaces a caller's
+    X-Forwarded-For (and X-Real-IP) rather than appending to it. Measured on
+    prod 2026-11-23: ten failed logins, then the same with forged XFF and
+    X-Real-IP values -- all still 429, so a forged header does not change the
+    key. Re-check this if a CDN or a second proxy is ever put in front.
+    """
     xff = request.headers.get("x-forwarded-for")
     if xff:
         return xff.split(",")[0].strip()
