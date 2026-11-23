@@ -14,6 +14,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import cv2
+import mediapipe
 import numpy as np
 import pytest
 from mediapipe.tasks.python import vision
@@ -64,6 +65,9 @@ def test_a_detector_that_looked_and_found_nothing_still_says_no_body(monkeypatch
 
     monkeypatch.setattr(vision.PoseLandmarker, "create_from_options",
                         staticmethod(lambda _o: Empty()))
+    # A real mp.Image needs libEGL, which the CI runner does not have; the
+    # stub detector never reads it.
+    monkeypatch.setattr(mediapipe, "Image", lambda **_kw: object())
     with pytest.raises(ValueError, match="No body pose detected"):
         pa.detect_pose_in_image(_jpeg())
 
