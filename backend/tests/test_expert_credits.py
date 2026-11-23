@@ -372,3 +372,59 @@ async def test_zero_disables_the_ceiling(db, make_user, monkeypatch):
     for i in range(50):
         await make_review_order(db, user, session=f"x{i}", when_ms=billing._now_ms())
     assert await billing.review_slots_left(db) is None
+
+
+# --------------------------------------------------------------------------
+# Spending under concurrency. Two requests that both read "1 credit" used to
+# both pass: the balance was decremented in Python and written back. The
+# second request is modelled by a user object that still says 1 while the
+# database already says 0 -- exactly what a request in flight holds.
+# --------------------------------------------------------------------------
+def _stale(user, column: str, value: int) -> None:
+    from sqlalchemy.orm.attributes import set_committed_value
+
+    set_committed_value(user, column, value)
+
+
+async def test_the_last_credit_cannot_be_spent_twice_on_two_clips(db, make_user, monkeypatch):
+    _no_stripe(monkeypatch)
+    user = await make_user(tier=TIER_FULL)
+    user.expert_credits = 1
+    await db.commit()
+
+    await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h1"), None, user, db)
+    _stale(user, "expert_credits", 1)          # the other request still sees 1
+    with pytest.raises(HTTPException) as exc:
+        await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h2"), None, user, db)
+    assert exc.value.status_code == 409
+
+    orders = (await db.execute(select(Order).where(Order.user_id == user.id))).scalars().all()
+    assert [o.analysis_client_id for o in orders] == ["h1"]
+    await db.refresh(user)
+    assert user.expert_credits == 0
+
+
+async def test_a_racing_double_click_on_the_last_credit_gets_the_same_order(
+    db, make_user, monkeypatch,
+):
+    _no_stripe(monkeypatch)
+    user = await make_user(tier=TIER_FULL)
+    user.expert_credits = 1
+    await db.commit()
+
+    first = await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h1"), None, user, db)
+    _stale(user, "expert_credits", 1)
+    second = await create_checkout(CheckoutIn(plan="expert", analysis_client_id="h1"), None, user, db)
+    assert second["order_id"] == first["order_id"]
+    assert second["credits_left"] == 0
+
+
+async def test_an_unlock_credit_cannot_be_spent_twice(db, make_user):
+    user = await make_user(tier=TIER_STARTER)
+    user.unlock_credits = 0
+    await db.commit()
+    _stale(user, "unlock_credits", 1)
+    with pytest.raises(HTTPException) as exc:
+        await billing._redeem_unlock_credit(db, user, "h9")
+    assert exc.value.status_code == 409
+    assert (await db.execute(select(Order).where(Order.user_id == user.id))).scalars().all() == []

@@ -31,7 +31,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -493,6 +493,33 @@ def _credit_session_key(user_id: int, analysis_client_id: str) -> str:
 _BACKGROUND: set[asyncio.Task] = set()
 
 
+async def _spend_credit(db: AsyncSession, user: User, column: str) -> bool:
+    """Take one credit in the database, or report that there was none left.
+
+    ``user.x = max(0, user.x - 1)`` read the balance in Python and wrote it
+    back, so two requests for two different clips that both saw 1 both
+    passed, both created an order and both wrote 0: two reviews (Bogdan's
+    hours) or two unlocks for one credit. A conditional UPDATE lets the
+    database decide; the decrement is part of the caller's transaction, so a
+    rollback (a duplicate order) gives the credit back.
+    """
+    col = getattr(User, column)
+    res = await db.execute(
+        update(User).where(User.id == user.id, col > 0).values({column: col - 1})
+        .execution_options(synchronize_session=False)
+    )
+    return res.rowcount == 1
+
+
+async def _existing_order(db: AsyncSession, key: str) -> Order | None:
+    return (
+        await db.execute(select(Order).where(Order.stripe_session_id == key))
+    ).scalar_one_or_none()
+
+
+_CREDIT_GONE = "That credit was just used on another report. Reload to see your plan."
+
+
 async def _redeem_unlock_credit(
     db: AsyncSession, user: User, analysis_client_id: str,
 ) -> dict[str, Any]:
@@ -504,6 +531,14 @@ async def _redeem_unlock_credit(
     keeps a double click from spending two.
     """
     key = f"unlock-credit:{user.id}:{analysis_client_id}"
+    if not await _spend_credit(db, user, "unlock_credits"):
+        await db.rollback()
+        await db.refresh(user)
+        if await _existing_order(db, key) is not None:
+            # The double click that spent the last credit a moment ago.
+            logger.info("UNLOCK_CREDIT_DUPLICATE", user_id=user.id, analysis=analysis_client_id)
+            return {"mode": "unlock_credit", "credits_left": user.unlock_credits or 0}
+        raise HTTPException(status.HTTP_409_CONFLICT, _CREDIT_GONE)
     now = _now_ms()
     order = Order(
         user_id=user.id, stripe_session_id=key, plan="unlock_credit",
@@ -511,7 +546,6 @@ async def _redeem_unlock_credit(
         created_at_ms=now, updated_at_ms=now, analysis_client_id=analysis_client_id,
     )
     db.add(order)
-    user.unlock_credits = max(0, (user.unlock_credits or 0) - 1)
     await _apply_unlock(db, user, analysis_client_id)
     try:
         await db.commit()
@@ -520,6 +554,7 @@ async def _redeem_unlock_credit(
         await db.refresh(user)
         logger.info("UNLOCK_CREDIT_DUPLICATE", user_id=user.id, analysis=analysis_client_id)
         return {"mode": "unlock_credit", "credits_left": user.unlock_credits or 0}
+    await db.refresh(user)
     # The coach text, written after the response like a paid unlock's; the
     # task is held so the loop cannot collect it mid-call.
     task = asyncio.create_task(_coach_after_unlock(user.id, analysis_client_id))
@@ -540,6 +575,15 @@ async def _redeem_expert_credit(
     to show someone who already paid for this a year ago.
     """
     key = _credit_session_key(user.id, analysis_client_id)
+    if not await _spend_credit(db, user, "expert_credits"):
+        await db.rollback()
+        await db.refresh(user)
+        existing = await _existing_order(db, key)
+        if existing is not None:
+            # Same clip, already redeemed: hand back the order that exists.
+            logger.info("CREDIT_REDEEM_DUPLICATE", user_id=user.id, order_id=existing.id)
+            return {"mode": "credit", "order_id": existing.id, "credits_left": user.expert_credits}
+        raise HTTPException(status.HTTP_409_CONFLICT, _CREDIT_GONE)
     now = _now_ms()
     order = Order(
         user_id=user.id,
@@ -553,7 +597,6 @@ async def _redeem_expert_credit(
         analysis_client_id=analysis_client_id,
     )
     db.add(order)
-    user.expert_credits = max(0, (user.expert_credits or 0) - 1)
     try:
         await db.commit()
     except IntegrityError:
@@ -578,6 +621,7 @@ async def _redeem_expert_credit(
             "mode": "credit", "order_id": existing.id,
             "credits_left": user.expert_credits,
         }
+    await db.refresh(user)
     logger.info(
         "CREDIT_REDEEMED", user_id=user.id, order_id=order.id,
         analysis=analysis_client_id, credits_left=user.expert_credits,
