@@ -1795,11 +1795,31 @@ def terms() -> Response:
     return HTMLResponse(analytics.inject(doc))
 
 
+def build_commit(app_dir: Path = Path(__file__).parent) -> str:
+    """The git commit this process was built from, or "dev".
+
+    CI writes ``app/BUILD_SHA`` right before ``railway up`` (the CLI uploads a
+    directory, so Railway's own RAILWAY_GIT_COMMIT_SHA is never set), and the
+    deploy smoke test waits for /health to report that exact commit. Without it
+    a deploy whose new container never went live -- Railway keeps the old one
+    serving -- passed the smoke test on the old container's 200.
+    """
+    try:
+        sha = (app_dir / "BUILD_SHA").read_text(encoding="ascii").strip()
+    except (OSError, UnicodeDecodeError):
+        sha = ""
+    return sha or os.environ.get("RAILWAY_GIT_COMMIT_SHA", "") or "dev"
+
+
+BUILD_COMMIT = build_commit()
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     pending = pending_jobs()
     return {
         "status": "ok",
+        "commit": BUILD_COMMIT,
         "model_present": settings.model_path.exists(),
         # Deliberately alongside model_present: both are "a dependency the image
         # is supposed to bake in", and both degrade a feature rather than the

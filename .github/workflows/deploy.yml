@@ -92,20 +92,25 @@ jobs:
           COMMIT_MESSAGE: >-
             ${{ github.event.head_commit.message
                 || format('manual deploy of {0}', github.sha) }}
-        run: railway up --ci --service video-analysis -m "$COMMIT_MESSAGE"
+        # /health reports this file as "commit"; the smoke test below waits
+        # for it, so the job proves the NEW container is serving.
+        run: |
+          echo "$GITHUB_SHA" > backend/app/BUILD_SHA
+          railway up --ci --service video-analysis -m "$COMMIT_MESSAGE"
 
-      # The deploy command returning 0 means the image built and started, not
-      # that the app is serving. /health is what railway.json already gates the
-      # rollout on -- check it ourselves so a red X here means "production is
-      # broken", not "the build finished".
+      # The deploy command returning 0 means the image built, not that it is
+      # serving: Railway rolls over only after railway.json's /health check
+      # passes, and keeps the old container if it never does (a startup guard
+      # refusing a bad config, a crash on import). A 200 from the old container
+      # proved nothing, so wait for /health to report THIS commit.
       - name: Smoke-test /health
         run: |
-          for i in $(seq 1 10); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' \
-              https://video-analysis-production-1f54.up.railway.app/health || true)
-            if [ "$code" = "200" ]; then echo "healthy"; exit 0; fi
-            echo "attempt $i: HTTP $code"
+          for i in $(seq 1 40); do
+            got=$(curl -s https://video-analysis-production-1f54.up.railway.app/health \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit",""))' 2>/dev/null || true)
+            if [ "$got" = "$GITHUB_SHA" ]; then echo "serving $got"; exit 0; fi
+            echo "attempt $i: serving '${got:-nothing}', want $GITHUB_SHA"
             sleep 15
           done
-          echo "::error::/health never returned 200 after the deploy"
+          echo "::error::the new container never went live: /health still serves '${got:-nothing}' (check Railway deploy logs)"
           exit 1
