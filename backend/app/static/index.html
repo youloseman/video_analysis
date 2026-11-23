@@ -15147,8 +15147,8 @@ function sportCard(sport, entries){
   // Says WHAT it is compared against. "0 · steady" read as a measurement.
   const deltaHtml=last.score==null ? `<span class="dsc-pill">Not scored${last.kind==='photo'?' · photo':''}</span>`
     : !dd ? '<span class="dkpi-note">first analysis: trends build from #2</span>'
-    : (dd.delta===0 ? `<span class="tdelta sta">no change since first</span>`
-      : `<span class="tdelta ${dd.cls}">${dd.delta>0?'▲ +':'▼ '}${dd.delta} since first</span>`);
+    : (dd.delta===0 ? `<span class="tdelta sta">same as first</span>`
+      : `<span class="tdelta ${dd.cls}">${dd.delta>0?'▲ +':'▼ '}${dd.delta} vs first</span>`);
   // Personal record: the latest score is a *new* PB only when it strictly beats
   // every prior one (a tie just shows "Best N · date", no fanfare).
   const best=scores.length?Math.max(...scores):null;
