@@ -238,6 +238,25 @@ async def _enforce_quota(
         )
 
 
+async def claim_preview(db: AsyncSession, user: User, job_id: str) -> bool:
+    """Record ``job_id`` as the free preview iff nobody changed the claim since
+    ``user`` was read. True when this job holds the preview."""
+    from sqlalchemy import update
+    from sqlalchemy.orm.attributes import set_committed_value
+
+    seen = user.free_preview_job_id
+    same = User.free_preview_job_id.is_(None) if seen is None else User.free_preview_job_id == seen
+    res = await db.execute(
+        update(User).where(User.id == user.id, same).values(free_preview_job_id=job_id)
+        .execution_options(synchronize_session=False)
+    )
+    await db.commit()
+    if res.rowcount != 1:
+        return False
+    set_committed_value(user, "free_preview_job_id", job_id)
+    return True
+
+
 def preview_available(user: User) -> bool:
     """Whether this account still has its one free preview to spend.
 
@@ -2017,9 +2036,16 @@ async def analyze_endpoint(
     }
 
     if preview:
-        user.free_preview_job_id = job_id
-        await db.commit()
-        logger.info("PREVIEW_CLAIMED", user_id=user.id, job_id=job_id)
+        # Claimed by compare-and-swap on the value preview_available() read:
+        # ``user`` was loaded before the upload, so two clips sent together
+        # both saw the preview free and both wrote their job id -- two full
+        # reports for the one free preview. The loser runs as a normal free
+        # analysis.
+        preview = await claim_preview(db, user, job_id)
+        if preview:
+            logger.info("PREVIEW_CLAIMED", user_id=user.id, job_id=job_id)
+        else:
+            logger.info("PREVIEW_CLAIM_LOST", user_id=user.id, job_id=job_id)
 
     background_tasks.add_task(
         _process_job, job_id, str(input_path), sport, cycling_position,
