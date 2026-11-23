@@ -252,13 +252,20 @@ def estimate_camera_motion(
         idx = 0
         last = max(targets)
         while idx <= last:
+            fd = targets.get(idx)
+            if fd is None:
+                # Frames that are not used are still decoded (later frames are
+                # predicted from them) but never converted to BGR: grab() skips the
+                # colour conversion read() pays on every frame -- a real share of the
+                # cost on 4K clips, and the frames that ARE used come out identical.
+                if not cap.grab():
+                    break
+                idx += 1
+                continue
             ok, frame = cap.read()
             if not ok:
                 break
-            fd = targets.get(idx)
             idx += 1
-            if fd is None:
-                continue
             if height == 1:
                 height = frame.shape[0] or 1
                 long_edge = max(frame.shape[0], frame.shape[1])

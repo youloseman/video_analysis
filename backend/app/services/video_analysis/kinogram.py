@@ -940,13 +940,21 @@ def _read_frames(cv2_mod: Any, video_path: str, wanted: list[int]) -> dict[int, 
             return {}
         idx = 0
         while idx <= last:
+            if idx not in targets:
+                # Frames that are not used are still decoded (later frames are
+                # predicted from them) but never converted to BGR: grab() skips the
+                # colour conversion read() pays on every frame -- a real share of the
+                # cost on 4K clips, and the frames that ARE used come out identical.
+                if not cap.grab():
+                    break
+                idx += 1
+                continue
             ok, frame = cap.read()
             if not ok:
                 break
-            if idx in targets:
-                out[idx] = frame.copy()
-                if len(out) == len(targets):
-                    break
+            out[idx] = frame.copy()
+            if len(out) == len(targets):
+                break
             idx += 1
     finally:
         cap.release()

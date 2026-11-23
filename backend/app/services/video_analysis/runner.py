@@ -509,13 +509,18 @@ def extract_frames(
     _report(progress, "detect", 0.0 if expected_sampled else None)
 
     while cap.isOpened():
+        if frame_idx % sample_rate != 0:
+            # Frames that are not used are still decoded (later frames are
+            # predicted from them) but never converted to BGR: grab() skips the
+            # colour conversion read() pays on every frame -- a real share of the
+            # cost on 4K clips, and the frames that ARE used come out identical.
+            if not cap.grab():
+                break
+            frame_idx += 1
+            continue
         success, frame = cap.read()
         if not success:
             break
-
-        if frame_idx % sample_rate != 0:
-            frame_idx += 1
-            continue
 
         total_sampled += 1
         timestamp_ms = (frame_idx / video_fps) * 1000.0
