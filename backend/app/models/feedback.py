@@ -29,10 +29,11 @@ from app.core.db import Base
 STATUS_NEW = "new"
 VALID_STATUSES = (STATUS_NEW, "triaged", "fixed", "wontfix")
 
-# What the rating is about. Only "analysis" is submitted today; the column
-# exists so a general idea/bug channel can share the table later without a
-# migration.
+# What the row is about: a rating of one result, or a feature idea ("Suggest a
+# feature" on What's new). Ideas carry no rating; ``context.notified_at`` marks
+# the "it shipped" mail to their author.
 KIND_ANALYSIS = "analysis"
+KIND_IDEA = "idea"
 
 
 class Feedback(Base):

@@ -53,6 +53,7 @@ def changelog_json(response: Response) -> dict[str, Any]:
                 "title": e.title,
                 "summary": e.summary,
                 "audience": list(e.audience),
+                "asked": e.asked,
                 "html": e.body_html,
             }
             for e in get_entries()

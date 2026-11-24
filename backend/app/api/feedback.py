@@ -21,6 +21,7 @@ Endpoints
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -28,7 +29,7 @@ from collections import deque
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,11 +39,13 @@ from app.core.net import client_ip, ip_hash
 from app.core.security import optional_user, require_admin
 from app.models.feedback import (
     KIND_ANALYSIS,
+    KIND_IDEA,
     STATUS_NEW,
     VALID_STATUSES,
     Feedback,
 )
 from app.models.user import User
+from app.services import ideas_mail
 from app.services.keyframe_store import safe_frame
 
 logger = structlog.get_logger()
@@ -67,6 +70,8 @@ _WINDOW_S = 24 * 3600
 _hits: dict[str, deque] = {}
 
 _TAG_RE = re.compile(r"[^a-z0-9_-]+")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+MIN_IDEA_CHARS = 5
 
 
 def _over_limit(key: str) -> bool:
@@ -117,21 +122,69 @@ class FeedbackIn(BaseModel):
     # Annotated keyframe (data URI). Sent only when the user ticks the consent
     # box in the widget -- the client omits it otherwise.
     keyframe: str | None = None
+    # "analysis" (default) or "idea". An idea is a message only; a guest may
+    # leave an email so the "it shipped" mail has somewhere to go.
+    kind: str | None = None
+    email: str | None = None
+
+
+async def _submit_idea(
+    body: FeedbackIn, request: Request, user: User | None,
+    db: AsyncSession, background: BackgroundTasks,
+) -> dict[str, Any]:
+    message = (body.message or "").strip()[:MAX_MESSAGE_CHARS]
+    if len(message) < MIN_IDEA_CHARS:
+        raise HTTPException(400, "Write a few words about the idea.")
+    email = user.email if user else (body.email or "").strip().lower()[:320] or None
+    if email and not _EMAIL_RE.match(email):
+        raise HTTPException(400, "That email address does not look right.")
+    ihash = ip_hash(client_ip(request))
+    if _over_limit(f"u{user.id}" if user else ihash):
+        raise HTTPException(429, "Too much feedback from this client today.")
+    tier = user.tier if user else None
+    row = Feedback(
+        created_at_ms=int(time.time() * 1000),
+        user_id=user.id if user else None,
+        email=email,
+        ip_hash=ihash,
+        kind=KIND_IDEA,
+        rating=None,
+        tags=[],
+        message=message,
+        analysis_client_id=None,
+        context={"tier": tier or "guest"},
+        keyframe=None,
+        status=STATUS_NEW,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    logger.info("FEEDBACK_IDEA", id=row.id, user_id=row.user_id, has_email=bool(email))
+    base = str(request.base_url).rstrip("/")
+    background.add_task(
+        ideas_mail.notify_idea,
+        {"message": message, "email": email, "tier": tier or "guest"},
+        f"{base}/app#feedback",
+    )
+    return {"ok": True, "id": row.id}
 
 
 @router.post("/feedback", status_code=status.HTTP_201_CREATED)
 async def submit_feedback(
     body: FeedbackIn,
     request: Request,
+    background: BackgroundTasks,
     user: User | None = Depends(optional_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    """Record one rating of an analysis result.
+    """Record one rating of an analysis result, or one feature idea.
 
     Amends in place when the same author re-rates the same analysis (👍 then 👎,
     or adding a comment after the thumb) so one result yields one row instead of
     a trail of contradictory ones.
     """
+    if body.kind == KIND_IDEA:
+        return await _submit_idea(body, request, user, db, background)
     if body.rating not in (None, 1, -1):
         raise HTTPException(400, "rating must be 1, -1 or null")
 
@@ -229,6 +282,7 @@ def _row_dict(r: Any, *, has_keyframe: bool | None = None) -> dict[str, Any]:
 async def list_feedback(
     status_filter: str | None = None,
     rating: int | None = None,
+    kind: str | None = None,
     limit: int = 100,
     offset: int = 0,
     _admin: User = Depends(require_admin),
@@ -236,6 +290,8 @@ async def list_feedback(
 ) -> dict[str, Any]:
     """Newest-first feedback, keyframes excluded (fetch one via the detail route)."""
     q = select(*_LIST_COLS, (Feedback.keyframe.isnot(None)).label("has_kf"))
+    if kind in (KIND_ANALYSIS, KIND_IDEA):
+        q = q.where(Feedback.kind == kind)
     if status_filter in VALID_STATUSES:
         q = q.where(Feedback.status == status_filter)
     if rating in (1, -1):
@@ -270,9 +326,14 @@ async def feedback_stats(
                 Feedback.rating, Feedback.tags, Feedback.context,
                 Feedback.created_at_ms, Feedback.status,
                 (Feedback.message.isnot(None)).label("has_message"),
-            )
+            ).where(Feedback.kind != KIND_IDEA)
         )
     ).all()
+    ideas = (
+        await db.execute(
+            select(Feedback.status).where(Feedback.kind == KIND_IDEA)
+        )
+    ).scalars().all()
 
     now_ms = int(time.time() * 1000)
     day = 24 * 3600 * 1000
@@ -339,6 +400,8 @@ async def feedback_stats(
         "untriaged": new,
         "last_7d": last_7,
         "last_30d": last_30,
+        "ideas": len(ideas),
+        "ideas_new": sum(1 for s in ideas if s == STATUS_NEW),
         "top_tags": dict(
             sorted(tag_counts.items(), key=lambda kv: -kv[1])[:12]
         ),
@@ -368,6 +431,29 @@ async def get_feedback(
 class TriageIn(BaseModel):
     status: str | None = None
     admin_note: str | None = None
+    # Ideas only: mail the author "it is in Flapp now" (once), with an
+    # optional line of what changed. Marks the idea fixed.
+    notify_shipped: bool = False
+    shipped_note: str | None = None
+
+
+async def _notify_shipped(row: Feedback, note: str | None) -> None:
+    if row.kind != KIND_IDEA:
+        raise HTTPException(400, "Only ideas get a shipped mail.")
+    if not row.email:
+        raise HTTPException(400, "No email on this idea.")
+    ctx = dict(row.context or {})
+    if ctx.get("notified_at"):
+        raise HTTPException(409, "Already told them.")
+    note = (note or "").strip()[:600] or None
+    sent = await asyncio.to_thread(
+        ideas_mail.send_idea_shipped, row.email, row.message or "", note,
+    )
+    if not sent:
+        raise HTTPException(502, "The mail did not go. Try again later.")
+    ctx["notified_at"] = int(time.time() * 1000)
+    row.context = ctx
+    row.status = "fixed"
 
 
 @router.patch("/admin/feedback/{fid}")
@@ -386,5 +472,8 @@ async def triage_feedback(
         row.status = body.status
     if body.admin_note is not None:
         row.admin_note = body.admin_note.strip()[:MAX_NOTE_CHARS] or None
+    if body.notify_shipped:
+        await _notify_shipped(row, body.shipped_note)
     await db.commit()
-    return {"ok": True, "id": row.id, "status": row.status}
+    return {"ok": True, "id": row.id, "status": row.status,
+            "notified_at": (row.context or {}).get("notified_at")}

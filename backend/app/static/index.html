@@ -2121,10 +2121,12 @@
       <div class="profilefilter wn-filter" id="wnFilter" role="group" aria-label="Show"></div>
       <div id="wnList"></div>
     </div>
-    <div class="wn-foot">
-      <p><b>Did a result not match what you saw?</b> <span>Tell us at the bottom of any report. One triathlete reads every reply</span></p>
-      <a class="btn btn-ghost" href="mailto:support@getflapp.com?subject=Flapp%20feedback">Send feedback</a>
-    </div>
+    <form class="wn-foot wn-idea" id="wnIdea" novalidate>
+      <p><b>Missing something?</b> <span>Tell us what to build. When it ships, we write to you</span></p>
+      <textarea id="wnIdeaText" rows="2" maxlength="2000" placeholder="I wish Flapp could…" aria-label="Your idea"></textarea>
+      <input type="email" id="wnIdeaEmail" class="hidden" autocomplete="email" placeholder="Your email, to hear when it ships" aria-label="Your email, optional">
+      <div class="wn-idea-row"><button class="btn btn-ghost" type="submit" id="wnIdeaSend">Send idea</button><span class="hint" id="wnIdeaMsg" aria-live="polite"></span></div>
+    </form>
     <p class="wn-perma"><a href="/changelog" target="_blank" rel="noopener">All notes on one page</a></p>
   </section>
 
@@ -2145,6 +2147,7 @@
       <button type="button" data-fbf="down" aria-pressed="false">Negative</button>
       <button type="button" data-fbf="up" aria-pressed="false">Positive</button>
       <button type="button" data-fbf="new" aria-pressed="false">Untriaged</button>
+      <button type="button" data-fbf="ideas" aria-pressed="false">Ideas</button>
     </div>
     <div id="fbaList"></div>
   </section>
@@ -17067,7 +17070,9 @@ function wnDay(iso){
     return d.toLocaleDateString(UI_LOCALE,o); }catch(e){ return iso||''; }
 }
 function wnAud(e){ return (e.audience&&e.audience.length)?e.audience:['everyone']; }
+function wnIdeaSync(){ $('#wnIdeaEmail').classList.toggle('hidden', !!auth); }
 function renderWhatsNew(seenAtOpen){
+  wnIdeaSync();
   if(seenAtOpen!==undefined) state.wnSeen=seenAtOpen;
   const es=state.changelog||[];
   const filt=$('#wnFilter');
@@ -17091,7 +17096,7 @@ function renderWhatsNew(seenAtOpen){
     return `<details class="wn-entry${fresh?' is-new':''}">
       <summary><span class="wn-when">${esc(wnDay(e.date))}</span>
         <span class="wn-main"><span class="wn-title">${esc(e.title||'')}</span>${e.summary?`<span class="wn-sum">${esc(e.summary)}</span>`:''}</span>
-        <span class="wn-side"><span class="wn-tags">${fresh?'<span class="wn-badge">New</span>':''}<span class="wn-tag">${esc(tag)}</span></span><svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg></span></summary>
+        <span class="wn-side"><span class="wn-tags">${fresh?'<span class="wn-badge">New</span>':''}${e.asked?'<span class="wn-tag">Asked for by riders</span>':''}<span class="wn-tag">${esc(tag)}</span></span><svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg></span></summary>
       <div class="wn-body">${e.html||''}</div>
     </details>`;
   }).join('');
@@ -17112,6 +17117,26 @@ function openWhatsNew(){
   setNewDot(false);
 }
 $('#navNew').addEventListener('click',e=>{ e.preventDefault(); openWhatsNew(); });
+/* Suggest a feature: lands in the private feedback inbox as kind "idea".
+   Its author hears back by mail when it ships (admin inbox, "Shipped: tell them"). */
+$('#wnIdeaText').addEventListener('focus',wnIdeaSync);
+$('#wnIdea').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const ta=$('#wnIdeaText'), em=$('#wnIdeaEmail'), msg=$('#wnIdeaMsg'), btn=$('#wnIdeaSend');
+  const text=ta.value.trim();
+  if(text.length<5){ msg.textContent='Write a few words about it'; ta.focus(); return; }
+  btn.disabled=true; msg.textContent='Sending…';
+  try{
+    const r=await fetch('/feedback',{method:'POST', headers:authHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({kind:'idea', message:text, email:auth?null:(em.value.trim()||null)})});
+    if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(typeof j.detail==='string'?j.detail:'Could not send it'); }
+    const told=!!auth||!!em.value.trim();
+    ta.value=''; em.value='';
+    msg.textContent=told?'Thanks. We will write to you when it ships':'Thanks, it is in the inbox';
+    track('idea_sent',{signed_in:!!auth, chars:text.length});
+  }catch(err){ msg.textContent=err.message||'Could not send it'; }
+  finally{ btn.disabled=false; }
+});
 
 /* ============================================================
    Feedback inbox (admin tier only)
@@ -17135,7 +17160,7 @@ async function loadFeedbackAdmin(){
   const list=$('#fbaList');
   list.innerHTML='<p class="hint">Loading…</p>';
   const f=state.fbaFilter||'all';
-  const qs=f==='down'?'?rating=-1':f==='up'?'?rating=1':f==='new'?'?status_filter=new':'';
+  const qs=f==='down'?'?rating=-1':f==='up'?'?rating=1':f==='new'?'?status_filter=new':f==='ideas'?'?kind=idea':'';
   try{
     const [sr,lr]=await Promise.all([
       fetch('/admin/feedback/stats',{headers:authHeaders()}),
@@ -17215,6 +17240,7 @@ function renderFbStats(s){
     ['With a note', s.with_message],
     ['Untriaged', s.untriaged],
     ['Last 7 days', s.last_7d],
+    [s.ideas_new?`Ideas · ${s.ideas_new} new`:'Ideas', s.ideas||0],
   ];
   $('#fbaStats').innerHTML=tiles.map(([k,v])=>
     `<div class="fb-stat"><div class="v">${esc(String(v==null?'—':v))}</div><div class="k">${esc(k)}</div></div>`).join('');
@@ -17235,7 +17261,8 @@ function renderFbList(items){
   if(!items.length){ $('#fbaList').innerHTML='<p class="hint">Nothing here yet</p>'; return; }
   $('#fbaList').innerHTML=items.map(it=>{
     const cls=it.rating===1?'up':it.rating===-1?'down':'';
-    const face=it.rating===1?'👍':it.rating===-1?'👎':'💬';
+    const idea=it.kind==='idea';
+    const face=idea?'💡':it.rating===1?'👍':it.rating===-1?'👎':'💬';
     const ctx=it.context||{};
     const ctxLine=FB_CTX_KEYS.filter(k=>ctx[k]!=null&&ctx[k]!=='')
       .map(k=>`${k}=${String(ctx[k])}`).join(' · ');
@@ -17254,6 +17281,8 @@ function renderFbList(items){
       ${it.message?`<p class="msg">${esc(it.message)}</p>`:''}
       ${ctxLine?`<p class="ctx">${esc(ctxLine)}</p>`:''}
       ${ctx.gate_reason?`<p class="ctx">gate: ${esc(ctx.gate_reason)}</p>`:''}
+      ${idea&&it.email?(ctx.notified_at?`<p class="ctx">Told them it shipped · ${esc(fmtWhen(ctx.notified_at))}</p>`
+        :`<div class="fb-ship"><input type="text" data-fb-shipnote placeholder="Optional: one line on what changed" class="fb-note"><button class="btn btn-ghost btn-sm" type="button" data-fb-ship>Shipped: tell them</button></div>`):''}
       <div class="fb-detail hidden" data-fb-detail></div>
       <input type="text" data-fb-note value="${esc(it.admin_note||'')}" placeholder="Private triage note…" class="fb-note">
     </div>`;
@@ -17275,6 +17304,21 @@ $('#feedbackAdmin').addEventListener('click',async e=>{
       host.innerHTML=(safeFrame(j.keyframe)?`<img src="${safeFrame(j.keyframe)}" alt="Annotated still from the rated analysis">`:'<p class="hint">No still attached</p>')
         +`<pre class="ctx ctx--raw">${esc(JSON.stringify(j.context||{},null,1))}</pre>`;
     }catch(_e){ host.innerHTML='<p class="hint">Couldn’t load it.</p>'; }
+    return;
+  }
+  const ship=e.target.closest('[data-fb-ship]');
+  if(ship){
+    const item=ship.closest('[data-fb-id]'), note=item.querySelector('[data-fb-shipnote]');
+    if(!confirm('Mail '+(item.querySelector('.who')||{}).textContent+' that their idea is in Flapp?')) return;
+    ship.disabled=true;
+    try{
+      const r=await fetch('/admin/feedback/'+item.dataset.fbId,{method:'PATCH',
+        headers:authHeaders({'Content-Type':'application/json'}),
+        body:JSON.stringify({notify_shipped:true, shipped_note:note?note.value:null})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(typeof j.detail==='string'?j.detail:'Could not send it');
+      toast('Sent.'); loadFeedbackAdmin();
+    }catch(err){ ship.disabled=false; toast(err.message||'Could not send it'); }
     return;
   }
   const seg=e.target.closest('[data-fbf]');

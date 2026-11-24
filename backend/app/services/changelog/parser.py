@@ -15,11 +15,13 @@ File format:
 * **Date comes from the filename**, which also makes the directory sort
   chronologically in any file browser.
 * **Title is the first ``# `` heading**, body is everything after it.
-* **The two frontmatter lines are optional.** ``audience`` is who it is for
+* **The frontmatter lines are optional.** ``audience`` is who it is for
   (``everyone``, ``bike``, ``run``, ``swim``, ``coaches``; default everyone),
   and it drives the list's filter chips. ``summary`` is the one line under
   the title in the app; without it the first sentence of the body stands in.
-  Nothing else is configurable.
+  ``asked: yes`` marks a release that riders asked for ("Suggest a feature"):
+  the note then wears an "Asked for by riders" tag. Nothing else is
+  configurable.
 
 Markdown conversion is borrowed from the Academy parser rather than
 reimplemented, so both surfaces support exactly the same subset.
@@ -59,6 +61,7 @@ class Entry:
     body_html: str
     summary: str = ""
     audience: tuple[str, ...] = ("everyone",)
+    asked: bool = False
 
     @property
     def date_label(self) -> str:
@@ -87,6 +90,7 @@ def _parse_file(path: Path) -> Entry | None:
         body_html=markdown_to_html(body),
         summary=str(meta.get("summary") or "").strip() or _first_sentence(body),
         audience=aud,
+        asked=str(meta.get("asked") or "").strip().lower() in ("yes", "true", "1"),
     )
 
 

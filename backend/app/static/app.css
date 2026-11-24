@@ -4819,3 +4819,12 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ath-groups > summary{cursor:pointer;align-items:center}
 .ath-groups > summary .ath-groups-chev{display:inline-block;margin-left:auto}
 .ath-groups[open] > summary .ath-groups-chev{transform:rotate(90deg)}
+
+/* Suggest a feature (What's new foot) + the inbox's shipped mail */
+.wn-idea{flex-direction:column;align-items:stretch;gap:12px}
+.wn-idea textarea,.wn-idea input[type=email]{width:100%;font-family:var(--f-body);font-size:16px;line-height:1.5;color:var(--c-ink);
+  padding:10px 12px;border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);resize:vertical}
+.wn-idea-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.wn-idea-row .hint{margin:0}
+.fb-ship{display:flex;gap:8px;align-items:center;margin-top:8px}
+.fb-ship .fb-note{flex:1;margin:0}

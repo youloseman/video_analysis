@@ -35,6 +35,8 @@ _CSS = """
 .cl-entry li{font-size:15px;line-height:1.65;color:var(--c-ink);margin:6px 0;max-width:64ch}
 .cl-entry strong{color:var(--c-navy);font-weight:800}
 .cl-empty{color:var(--c-ink-soft);font-size:15px}
+.cl-asked{display:inline-block;margin:0 0 10px;padding:2px 10px;border-radius:999px;font-size:12px;
+  font-weight:600;color:var(--c-navy);background:var(--c-bg);border:1px solid var(--c-line)}
 .cl-foot{max-width:760px;margin:0 auto 72px;padding:20px 24px;border-top:1px solid var(--c-line)}
 .cl-foot p{font-size:14px;color:var(--c-ink-soft);line-height:1.6;margin:0}
 """
@@ -51,7 +53,8 @@ def render_changelog(entries: list[Entry], base_url: str) -> str:
         '<article class="cl-entry">'
         f'<span class="when">{_esc(e.date_label)}</span>'
         f"<h2>{_esc(e.title)}</h2>"
-        f"{e.body_html}"
+        + ('<span class="cl-asked">Asked for by riders</span>' if e.asked else "")
+        + f"{e.body_html}"
         "</article>"
         for e in entries
     )
@@ -65,7 +68,8 @@ def render_changelog(entries: list[Entry], base_url: str) -> str:
         f'<main class="cl-list">{inner}</main>'
         '<div class="cl-foot"><p>Found something the analyzer gets wrong? '
         "Rate your next result: the prompt sits at the bottom of every report, "
-        "and it is where this list comes from.</p></div>"
+        "and it is where this list comes from. Missing something? Suggest it "
+        'in the app, under <a href="/app#whatsnew">What\'s new</a>.</p></div>'
     )
     jsonld = {
         "@context": "https://schema.org",
