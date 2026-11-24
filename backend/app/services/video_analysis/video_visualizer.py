@@ -252,7 +252,13 @@ class VideoVisualizer:
         summary: dict[str, Any] | None = None,
         hide_angle_values: bool = False,
         annotation_level: str = "material",
+        fps: float | None = None,
     ):
+        # The rate the analysis timed the clip at. It can differ from the
+        # header (an edit list, runner.decoded_fps), and the player maps frame
+        # numbers to seconds with the analysis's rate, so the overlay is
+        # written at that rate too.
+        self.fps = fps
         self.video_path = video_path
         self.frame_data_list = frame_data_list
         self.analyzer = analyzer
@@ -456,7 +462,7 @@ class VideoVisualizer:
             logger.error("Cannot open video for overlay generation", path=self.video_path)
             return None
 
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        fps = self.fps or cap.get(cv2.CAP_PROP_FPS) or 30.0
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 

@@ -507,6 +507,10 @@ def extract_frames(
         math.ceil(total_video_frames / sample_rate) if total_video_frames > 0 else 0
     )
     _report(progress, "detect", 0.0 if expected_sampled else None)
+    # The decoder's own clock, first and last frame: the header's rate can be
+    # wrong (see decoded_fps below).
+    first_ms: float | None = None
+    last_ms: float | None = None
 
     while cap.isOpened():
         if frame_idx % sample_rate != 0:
@@ -516,11 +520,17 @@ def extract_frames(
             # cost on 4K clips, and the frames that ARE used come out identical.
             if not cap.grab():
                 break
+            last_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
+            if first_ms is None:
+                first_ms = last_ms
             frame_idx += 1
             continue
         success, frame = cap.read()
         if not success:
             break
+        last_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
+        if first_ms is None:
+            first_ms = last_ms
 
         total_sampled += 1
         timestamp_ms = (frame_idx / video_fps) * 1000.0
@@ -587,6 +597,18 @@ def extract_frames(
             )
 
     cap.release()
+    header_fps = video_fps
+    real_fps = decoded_fps(frame_idx, first_ms, last_ms, video_fps)
+    if real_fps is not None:
+        # Timing downstream reads these, never the detector's own clock, which
+        # keeps the header's spacing so the tracker runs as it always has.
+        k = video_fps / real_fps
+        for rec in frame_results:
+            rec["timestamp_ms"] *= k
+        logger.info("FPS_FROM_DECODER", header_fps=round(video_fps, 3), decoded_fps=round(real_fps, 3),
+                    header_frames=total_video_frames, decoded_frames=frame_idx)
+        video_fps = real_fps
+        total_video_frames = frame_idx
     # The RTMPose refiner settles the bike's leg labels once the whole clip is
     # in (rtmpose_refiner.CLIP_LABEL_SPORTS), rewriting the frames above in place.
     _finish = getattr(detector, "finish", None)
@@ -619,6 +641,10 @@ def extract_frames(
             # this sport's baseline -- i.e. timing resolution was traded away.
             "downsampled": sample_rate > base_sample_rate,
         })
+        if real_fps is not None:
+            meta["fps_from_header"] = round(header_fps, 3)
+            meta["decoded_fps"] = real_fps
+            meta["decoded_frames"] = frame_idx
     if len(frame_results) < 30:
         logger.warning(
             "LOW_FRAME_COUNT",
@@ -626,6 +652,29 @@ def extract_frames(
             hint="Video may be too short. Recommend 5+ seconds.",
         )
     return frame_results
+
+
+# A header off by less than this is rounding, not an edit list.
+DECODED_FPS_TOLERANCE = 0.005
+
+
+def decoded_fps(frames: int, first_ms: float | None, last_ms: float | None,
+                header_fps: float) -> float | None:
+    """The frame rate the frames actually decode at, when the header misstates it.
+
+    A clip trimmed in the iPhone's Photos app keeps the frames it cut and an
+    edit list that hides them: the header then counts them and spreads the
+    shorter play time over all of them. IMG_4091 says 707 frames at 27.93 fps
+    and decodes as 655 at 29.98; IMG_4088 57.5 for 60; IMG_4004 58.2 for 60.
+    Every time-based number (cadence, contact, flight) was that much low.
+    None when the header is right, or the clock cannot be read.
+    """
+    if frames < 10 or first_ms is None or last_ms is None or last_ms <= first_ms or header_fps <= 0:
+        return None
+    real = (frames - 1) / ((last_ms - first_ms) / 1000.0)
+    if not 5.0 <= real <= 300.0 or abs(real - header_fps) / header_fps <= DECODED_FPS_TOLERANCE:
+        return None
+    return real
 
 
 # ===========================================================================
@@ -857,6 +906,13 @@ def run_analysis(
                 "and the pose model file is present in backend/models/."
             ),
         }
+    if sampling_meta.get("decoded_fps"):
+        # The header misstated the rate (an edit list): everything after this
+        # -- stabiliser, second look, half-rate pass, every timing metric --
+        # runs on the rate the frames decode at.
+        fps = float(sampling_meta["decoded_fps"])
+        n = int(sampling_meta["decoded_frames"])
+        video_info = {**video_info, "fps": fps, "frame_count": float(n), "duration": n / fps}
 
     # Step 2a: did the detector stay on the runner? Reads the raw landmarks: the
     # stabiliser below would smooth a jump into a glide.
@@ -1702,6 +1758,7 @@ def analyze_from_frames(
         _base = Path(overlay_path) if overlay_path else Path(video_path)
         visualizer = VideoVisualizer(
             video_path=video_path,
+            fps=fps,
             frame_data_list=raw_frame_data,
             analyzer=analyzer,
             sport_type=sport_type,
