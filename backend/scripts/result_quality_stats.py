@@ -39,6 +39,7 @@ from app.models.analysis import Analysis  # noqa: E402
 from app.models.feedback import Feedback  # noqa: E402
 from app.models.user import TIER_ADMIN, User  # noqa: E402
 from app.services.newsletter import is_test_address  # noqa: E402
+from app.services.video_analysis.biomechanics.cycling_positions import pose_detector_of  # noqa: E402
 
 AERO = {"tt_aero", "triathlon"}
 THIGH_CM = 43.0   # adult femur ~0.245 x 175 cm: only to put a % of thigh into cm
@@ -112,7 +113,7 @@ def corrections_section(rows) -> None:
         front = -1.0 if side == "left" else 1.0     # filming the left side, the rider faces image-left
         wh = frame_wh(res)
         th = thigh_px(res, side)
-        det = str(summary_of(res).get("pose_detector") or "none")
+        det = str(pose_detector_of(summary_of(res)) or "none")
         for c in res.get("corrections") or []:
             name = JOINT.get(c.get("landmark"), f"lm{c.get('landmark')}")
             dx, dy = float(c.get("dx") or 0), float(c.get("dy") or 0)
@@ -149,7 +150,7 @@ def corrections_section(rows) -> None:
     fams = defaultdict(lambda: defaultdict(list))
     verdict = Counter()
     score_d = []
-    for kind, res, _ in corrected:
+    for _kind, res, _ in corrected:
         base = (res.get("baseline") or {})
         bm = base.get("metrics") or {}
         s = summary_of(res)
@@ -177,22 +178,23 @@ def corrections_section(rows) -> None:
 def failures_section(rows, fb_by_client: dict) -> None:
     print("\n" + "=" * 78 + "\n2. WHERE ANALYSES FAIL\n" + "=" * 78)
     groups = defaultdict(list)
-    for kind, res, _, cid, sport in rows:
-        groups[(sport or res.get("sport_type") or "?", kind)].append((res, cid))
+    for kind, res, uid, cid, sport in rows:
+        groups[(sport or res.get("sport_type") or "?", kind)].append((res, cid, uid))
     for (sport, kind), items in sorted(groups.items(), key=lambda kv: -len(kv[1])):
         n = len(items)
         print(f"\n--- {sport} / {kind}: {n} results")
-        wh = Counter(((r.get("score_withheld") or {}).get("reason") or "scored") for r, _ in items)
+        wh = Counter(((r.get("score_withheld") or {}).get("reason") or "scored") for r, *_ in items)
         print("  score:", {k: pct(v, n) for k, v in wh.most_common()})
-        reasons = Counter()
-        for r, _ in items:
+        reasons, who = Counter(), defaultdict(set)
+        for r, _, uid in items:
             for x in ((summary_of(r).get("quality_gate") or {}).get("reasons") or []):
                 reasons[str(x)[:90]] += 1
+                who[str(x)[:90]].add(uid)
         if reasons:
-            print("  quality-gate reasons:")
+            print("  quality-gate reasons (clips / athletes):")
             for k, v in reasons.most_common(8):
-                print(f"     {v:4d}  {k}")
-        cr = [summary_of(r).get("capture_report") or {} for r, _ in items]
+                print(f"     {v:4d} /{len(who[k]):3d}  {k}")
+        cr = [summary_of(r).get("capture_report") or {} for r, *_ in items]
         print("  capture verdict:", dict(Counter(c.get("verdict") or "none" for c in cr).most_common()))
         checks = defaultdict(Counter)
         for c in cr:
@@ -208,7 +210,7 @@ def failures_section(rows, fb_by_client: dict) -> None:
                 print(f"     {v:4d}  {k}")
         # numbers about the recording
         fps, eff, short_side, dur, slow, down = [], [], [], [], [], 0
-        for r, _ in items:
+        for r, *_ in items:
             s = summary_of(r)
             smp = s.get("sampling") or {}
             if isinstance(smp.get("video_fps"), (int, float)):
@@ -234,11 +236,11 @@ def failures_section(rows, fb_by_client: dict) -> None:
             print(f"  slow-motion factor: {q(slow)}")
         if sport == "bike":
             print("  camera side:", dict(Counter((r.get("camera_side") or summary_of(r).get("camera_side") or "?")
-                                                for r, _ in items)))
-            print("  position:", dict(Counter((r.get("cycling_position") or "none") for r, _ in items).most_common(8)))
-        print("  detector:", dict(Counter(str(summary_of(r).get("pose_detector") or "none") for r, _ in items)))
+                                                for r, *_ in items)))
+            print("  position:", dict(Counter((r.get("cycling_position") or "none") for r, *_ in items).most_common(8)))
+        print("  detector:", dict(Counter(str(pose_detector_of(summary_of(r)) or "none") for r, *_ in items)))
         # feedback against the capture verdict
-        rated = [(r, fb_by_client[cid]) for r, cid in items if cid in fb_by_client]
+        rated = [(r, fb_by_client[cid]) for r, cid, _ in items if cid in fb_by_client]
         if rated:
             print(f"  result feedback on {len(rated)} of these:")
             by_v = defaultdict(list)
@@ -254,13 +256,47 @@ def failures_section(rows, fb_by_client: dict) -> None:
             print("     tags:", dict(tags.most_common(12)))
 
 
+def trend_section(kept) -> None:
+    """Is it getting better? Score withheld and poor capture by ISO week, and
+    whether a thinned (downsampled) clip loses its score more often."""
+    import datetime as dt
+
+    print("\n" + "=" * 78 + "\n3. TREND BY WEEK, AND WHAT THINNING COSTS\n" + "=" * 78)
+    for sport in ("bike", "run"):
+        sub = [(res, ms, uid) for uid, kind, _, res, sp, ms in kept if sp == sport and kind == "video" and ms]
+        if not sub:
+            continue
+        weeks = defaultdict(list)
+        for res, ms, uid in sub:
+            y, w, _ = dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).isocalendar()
+            weeks[f"{y}-W{w:02d}"].append((res, uid))
+        print(f"\n  {sport}: week  clips athletes  withheld  poor-capture  downsampled  rtmpose")
+        for wk in sorted(weeks):
+            rs = [r for r, _ in weeks[wk]]
+            n = len(rs)
+            ath = len({u for _, u in weeks[wk]})
+            rtm = sum("rtmpose" in str(pose_detector_of(summary_of(r)) or "") for r in rs)
+            wh = sum(bool(r.get("score_withheld")) for r in rs)
+            poor = sum((summary_of(r).get("capture_report") or {}).get("verdict") == "poor" for r in rs)
+            down = sum(bool((summary_of(r).get("sampling") or {}).get("downsampled")) for r in rs)
+            print(f"     {wk}  {n:5d}  {ath:5d}  {pct(wh, n):>13s}  {pct(poor, n):>13s}  {pct(down, n):>13s}"
+                  f"  {pct(rtm, n):>11s}")
+        for label, flag in (("downsampled", True), ("full rate", False)):
+            grp = [r for r, *_ in sub if bool((summary_of(r).get("sampling") or {}).get("downsampled")) == flag]
+            wh = sum(bool(r.get("score_withheld")) for r in grp)
+            pedal = sum(any("Pedal stroke" in str(x) for x in
+                            ((summary_of(r).get("quality_gate") or {}).get("reasons") or [])) for r in grp)
+            print(f"     {label:11s}: withheld {pct(wh, len(grp))}, pedal stroke not found {pct(pedal, len(grp))}")
+
+
 async def run(days: int | None, include_staff: bool = False) -> int:
     since = int((time.time() - days * 86400) * 1000) if days else 0
     async with SessionLocal() as db:
         users = {uid: (tier, email) for uid, tier, email in
                  (await db.execute(select(User.id, User.tier, User.email))).all()}
         rows = (await db.execute(
-            select(Analysis.user_id, Analysis.kind, Analysis.client_id, Analysis.result, Analysis.sport)
+            select(Analysis.user_id, Analysis.kind, Analysis.client_id, Analysis.result, Analysis.sport,
+                   Analysis.created_at_ms)
             .where(Analysis.created_at_ms >= since)
         )).all()
         fbs = (await db.execute(
@@ -274,8 +310,8 @@ async def run(days: int | None, include_staff: bool = False) -> int:
         tier, email = users.get(uid, (None, None))
         return tier == TIER_ADMIN or is_test_address(email)
 
-    kept = [(uid, kind or "video", cid, res, sport or res.get("sport_type")) for uid, kind, cid, res, sport in rows
-            if isinstance(res, dict) and not staff(uid)]
+    kept = [(uid, kind or "video", cid, res, sport or res.get("sport_type"), ms)
+            for uid, kind, cid, res, sport, ms in rows if isinstance(res, dict) and not staff(uid)]
     print(f"results {len(rows)}, with a stored result and not staff/test {len(kept)}"
           + (f", last {days} days" if days else ", all time"))
     print(f"athletes: {len({u for u, *_ in kept})}")
@@ -284,9 +320,10 @@ async def run(days: int | None, include_staff: bool = False) -> int:
         if cid and not staff(uid):
             fb_by_client[cid].append({"rating": rating, "tags": tags})
 
-    bike = [(kind, res, uid) for uid, kind, cid, res, sport in kept if sport == "bike"]
+    bike = [(kind, res, uid) for uid, kind, cid, res, sport, _ in kept if sport == "bike"]
     corrections_section(bike)
-    failures_section([(kind, res, uid, cid, sport) for uid, kind, cid, res, sport in kept], fb_by_client)
+    failures_section([(kind, res, uid, cid, sport) for uid, kind, cid, res, sport, _ in kept], fb_by_client)
+    trend_section(kept)
     return 0
 
 

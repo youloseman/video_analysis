@@ -5781,6 +5781,37 @@ function lmedBind(){
   $('#pEdApply').addEventListener('click',()=>{ if($('#pEdApply').getAttribute('aria-disabled')!=='true') recomputePhoto(); });
   window.addEventListener('resize',()=>{ if(lmed.open) lmedDraw(); });
 }
+/* Joint adjustments as numbers for analytics (no picture, no person): which
+   joint the athlete moved, which way and how far, in % of their thigh. Stored
+   results cannot say this (photos are never stored, and result stats on
+   2026-11-24 found no video correction kept), so the model's habitual misses
+   can only be seen across athletes from here. +fwd toward the rider's front,
+   +down lower in the picture. */
+function adjOffsets(corrs, hip, knee, aspect, side){
+  try{
+    if(!corrs||!corrs.length||!hip||!knee||!(aspect>0)) return null;
+    const th=Math.hypot((hip[0]-knee[0])*aspect, hip[1]-knee[1]); if(!(th>0)) return null;
+    const front=side==='left'?-1:1, r=v=>Math.round(v*1000)/10;
+    return corrs.slice(0,12).filter(c=>isFinite(c.dx)&&isFinite(c.dy))
+      .map(c=>({j:c.landmark, fwd:r(front*c.dx*aspect/th), down:r(c.dy/th)}));
+  }catch(e){ return null; }
+}
+function adjOffsetsVideo(corrs, res){
+  try{
+    const tl=res&&res.timeline, side=res&&res.camera_side; if(!tl||!tl.points||!tl.width||!tl.height) return null;
+    const [hi,ki]=side==='left'?['23','25']:['24','26'];
+    const med=col=>{ const xs=[],ys=[]; (col||[]).forEach(p=>{ if(p&&p[2]>=0.3){ xs.push(p[0]); ys.push(p[1]); } });
+      if(xs.length<5) return null; xs.sort((a,b)=>a-b); ys.sort((a,b)=>a-b); const m=xs.length>>1; return [xs[m],ys[m]]; };
+    return adjOffsets(corrs, med(tl.points[hi]), med(tl.points[ki]), tl.width/tl.height, side);
+  }catch(e){ return null; }
+}
+function adjOffsetsPhoto(corrs, pose, aspect){
+  try{
+    const lm=pose&&pose.landmarks, side=pose&&pose.camera_side; if(!lm) return null;
+    const [hi,ki]=side==='left'?[23,25]:[24,26];
+    return adjOffsets(corrs, lm[hi], lm[ki], aspect, side);
+  }catch(e){ return null; }
+}
 async function recomputePhoto(){
   const res=state.photoRes, bikeMode=lmed.mode==='bike', fresh=bikeMode?[]:lmedCorrections();
   if(!res||!state.photoPose||!state.file||(!bikeMode&&!fresh.length)) return;
@@ -5809,7 +5840,8 @@ async function recomputePhoto(){
     }
     state.photoCorrections=j.corrections||[];
     if(bikePts&&j.hip_over_bb) track('hip_over_bb_measured',{mode:'photo',angle:j.hip_over_bb.angle_deg,ref:j.hip_over_bb.ref});
-    track('joint_adjust_applied',{n:state.photoCorrections.length, sport,
+    track('joint_adjust_applied',{n:state.photoCorrections.length, sport, mode:'photo',
+      offsets:bikeMode?null:adjOffsetsPhoto(state.photoCorrections, state.photoPose, lmed.aspect||1),
       seconds:Math.round((Date.now()-t0)/1000),
       score_before:(j.baseline&&j.baseline.score&&j.baseline.score.overall_score)!=null?j.baseline.score.overall_score:null,
       score_after:(j.score&&j.score.overall_score)!=null?j.score.overall_score:null});
@@ -6786,6 +6818,7 @@ function pollRecompute(t0,kind){
       if(j.recompute_error){ vedStatus(j.recompute_error,true); track('joint_adjust_failed',{mode:'video',status:'recompute_error'}); return; }
       const n=(j.corrections||[]).length;
       track(kind==='reset'?'joint_adjust_reset':'joint_adjust_applied',{mode:'video',n,seconds:Math.round((Date.now()-t0)/1000),
+        offsets:kind==='reset'?null:adjOffsetsVideo(j.corrections,j.result),
         score_after:j.result?j.result.technique_score:null,
         score_before:(j.result&&j.result.baseline)?j.result.baseline.technique_score:null});
       vedClose();
