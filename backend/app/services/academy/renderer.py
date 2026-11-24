@@ -214,6 +214,92 @@ _READ_JS = """
 })();
 """
 
+# The call to action (2026-11-24, from the session recordings): readers go
+# through a study to the end (median 8 screens) but 2% start an analysis, and
+# the one link to the app sat at the bottom. Now the article can put it where
+# the reader has just seen the number that matters ([[widget:cta]]), the end
+# block goes into the app instead of the landing, and on a phone a thin bar
+# offers it once they are a third of the way in. The bar steps aside while a
+# CTA block is on screen, while the ad-consent bar is up and while a figure
+# is zoomed; closed, it stays closed for the visit.
+_CTA_CSS = """
+.try-cta{margin:28px 0;padding:20px 22px;border:1px solid var(--c-line);border-radius:var(--radius);
+  background:var(--c-panel-blue);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.try-cta p{margin:0;flex:1 1 280px;font-weight:500;color:var(--c-ink);font-size:15px;line-height:1.45}
+.try-cta .btn{flex:none}
+.cta-bar{position:fixed;left:0;right:0;bottom:0;z-index:250;display:flex;align-items:center;gap:10px;
+  padding:10px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
+  background:var(--c-brand-navy);color:#fff;box-shadow:0 -2px 10px rgba(11,24,47,.18)}
+.cta-bar[hidden]{display:none}
+.cta-bar span{flex:1;min-width:0;font-size:14px;font-weight:500;line-height:1.3}
+.cta-bar .btn{flex:none;padding:9px 14px}
+.cta-bar .cta-x{flex:none;background:none;border:0;color:#C9D1DE;font-size:22px;line-height:1;padding:4px 6px;cursor:pointer}
+@media (min-width:901px){.cta-bar{display:none !important}}
+"""
+
+_CTA_JS = """
+(function(){
+  function cap(n,p){ try{ if(window.flappAnalytics) window.flappAnalytics.capture(n,p||{}); }catch(e){} }
+  document.addEventListener('click',function(e){
+    var l=e.target.closest&&e.target.closest('[data-cta-link]');
+    if(l) cap('academy_cta_clicked',{slug:l.getAttribute('data-slug'),where:l.getAttribute('data-cta-link')});
+  });
+  var bar=document.getElementById('ctaBar'), a=document.querySelector('article');
+  if(!bar||!a) return;
+  var slug=bar.getAttribute('data-slug'), closed=false, shown=false, seen=new Set(), t=null;
+  try{ closed=sessionStorage.getItem('flapp-cta-bar')==='1'; }catch(e){}
+  function visible(el){ return !!(el&&!el.hidden&&el.offsetParent!==null); }
+  function upd(){
+    t=null;
+    if(closed){ bar.hidden=true; return; }
+    var h=a.offsetHeight-window.innerHeight, p=h>0?(window.scrollY-a.offsetTop)/h:1;
+    var show=p>=0.33&&!seen.size&&!visible(document.querySelector('.adc'))&&!visible(document.getElementById('zoom'));
+    bar.hidden=!show;
+    if(show&&!shown){ shown=true; cap('academy_cta_bar_shown',{slug:slug}); }
+  }
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(x){ if(x.isIntersecting) seen.add(x.target); else seen.delete(x.target); }); upd();
+    });
+    [].slice.call(document.querySelectorAll('.try-cta')).forEach(function(b){ io.observe(b); });
+  }
+  bar.querySelector('.cta-x').addEventListener('click',function(){
+    closed=true; bar.hidden=true; try{ sessionStorage.setItem('flapp-cta-bar','1'); }catch(e){}
+    cap('academy_cta_bar_closed',{slug:slug});
+  });
+  window.addEventListener('scroll',function(){ if(!t) t=requestAnimationFrame(upd); },{passive:true});
+  window.addEventListener('resize',upd); document.addEventListener('click',function(){ setTimeout(upd,50); }); upd();
+})();
+"""
+
+CTA_DEFAULT_TEXT = "Want this checked on your own form? Film yourself side-on and upload the clip"
+CTA_DEFAULT_BUTTON = "Analyze my video"
+CTA_DEFAULT_BAR = "Check your own position"
+
+
+def _cta_block(m: ArticleMeta, where: str, cls: str = "try-cta") -> str:
+    """The article's call to action as a block: mid-article or at the end."""
+    return (
+        f'<div class="{cls}" data-cta="{where}">'
+        f"<p>{_esc(m.cta or CTA_DEFAULT_TEXT)}</p>"
+        f'<a class="btn btn-primary" href="{_esc(m.cta_href)}" data-cta-link="{where}" data-slug="{_esc(m.slug)}">'
+        f'{_esc(m.cta_button or CTA_DEFAULT_BUTTON)}{_ICONS["arr-r"]}</a>'
+        "</div>"
+    )
+
+
+def _cta_bar(m: ArticleMeta) -> str:
+    """The phone's sticky bar (hidden until the reader is a third of the way in)."""
+    return (
+        f'<div class="cta-bar" id="ctaBar" data-slug="{_esc(m.slug)}" hidden>'
+        f"<span>{_esc(m.cta_bar or CTA_DEFAULT_BAR)}</span>"
+        f'<a class="btn btn-primary" href="{_esc(m.cta_href)}" data-cta-link="bar" data-slug="{_esc(m.slug)}">'
+        f"{_esc(m.cta_button or CTA_DEFAULT_BUTTON)}</a>"
+        '<button type="button" class="cta-x" aria-label="Close">×</button>'
+        "</div>"
+    )
+
+
 # Figures open full screen (Artur, 2026-10-25: most readers are on a phone, and a
 # chart or a joint table at column width is too small to read). Tap a figure:
 # it fills the screen; tap again for its own pixels, pan with a finger, the
@@ -854,7 +940,8 @@ def render_article(article: Article, base_url: str) -> str:
     canonical = f"{base_url}/academy/{m.slug}"
     # Swap any [[widget:...]] placeholders for real markup + collect their
     # CSS/JS. Runs before the lede split so a widget can never be the lede.
-    body_html, widget_css, widget_js = render_widgets(article.body_html)
+    body_html = article.body_html.replace('<div data-widget="cta"></div>', _cta_block(m, "inline"))
+    body_html, widget_css, widget_js = render_widgets(body_html)
     lede, rest = _lede_and_rest(body_html)
 
     # The cover. A study whose cover is one of its own figures shows it once,
@@ -936,13 +1023,11 @@ def render_article(article: Article, base_url: str) -> str:
         + '<div class="speedline"></div>'
         f'<div class="prose">{rest}</div>'
         f"{sources_html}"
-        '<div class="article-cta">'
-        "<p>Want this checked on your own form? Upload a side-view clip.</p>"
-        f'<a class="btn btn-primary" href="/">Analyze my video{_ICONS["arr-r"]}</a>'
-        "</div>"
-        "</article>"
+        + _cta_block(m, "end", cls="article-cta try-cta")
+        + "</article>"
         f"{more_html}"
         "</div>"
+        + _cta_bar(m)
     )
 
     image = base_url + m.cover if m.cover else None
@@ -975,11 +1060,11 @@ def render_article(article: Article, base_url: str) -> str:
         description=m.description,
         canonical=canonical,
         body=body,
-        extra_css=_ARTICLE_CSS + _CARD_CSS + widget_css,
+        extra_css=_ARTICLE_CSS + _CARD_CSS + _CTA_CSS + widget_css,
         active="academy",
         jsonld=jsonld,
         og_type="article",
-        extra_js=widget_js + _READ_JS + _ZOOM_JS,
+        extra_js=widget_js + _READ_JS + _ZOOM_JS + _CTA_JS,
         image=image,
         image_alt=m.cover_alt,
     )

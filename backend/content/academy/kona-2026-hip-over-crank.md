@@ -13,6 +13,10 @@ cover_alt: "Illustration to scale: the hip over the crank axle at 88° for the t
 cover_credit: "Illustration: Flapp"
 cover_fit: "contain"
 card: "wide"
+cta: "Got a side-on photo of you on your bike, from a race or the trainer? That's enough to start. Your hip over crank against the Kona field is in the Full plan"
+cta_button: "Analyze my photo"
+cta_href: "/app?goal=crank&what=bike-photo"
+cta_bar: "Have a side-on bike photo? Start there"
 sources:
   - author: "Steinmetz, M."
     year: 2024
@@ -63,6 +67,8 @@ Same knee, different place to sit. The difference isn't saddle height.
 | Hip angle at the top of the stroke | 56.5° | 53–58° | 54° | 50–57° | +3° (−1 to +7°) |
 | Torso, from horizontal | 21° | 19–24° | 24° | 21–27° | −3° (−4 to −1°) |
 
+[[widget:cta]]
+
 ## Men and women sit the same way
 
 Women are 39% of our pros and about a third of our age-groupers, so it's fair to ask whether the gap is really a men-versus-women gap. It isn't. Inside each group, men and women sit within a degree of each other (0.7° among the pros, 0.8° among the age-groupers, neither clear of noise), and the pro gap shows up in each on its own.
@@ -103,7 +109,7 @@ Nobody gets told why with their race number, but the usual two reasons hold up.
 
 ## Check your own
 
-This measurement is now in Flapp. Film yourself side-on, photo or video: Flapp finds the crank axle and the hip on its own, works out your hip over crank and shows where you sit against the Kona pros (86–90°) and the Kona age-groupers (83–87°), in degrees and in centimetres. [Try it in Flapp](/app?goal=crank).
+This measurement is now in Flapp. Film yourself side-on, photo or video: Flapp finds the crank axle and the hip on its own, works out your hip over crank and shows where you sit against the Kona pros (86–90°) and the Kona age-groupers (83–87°), in degrees and in centimetres. The reading is part of the Full plan. A race photo is enough to start: [try it with a photo](/app?goal=crank&what=bike-photo).
 
 ![What you get: here 87°, 1.4 cm behind the Kona pros' middle, inside their middle half. The hip is the median of 503 frames.](/media/academy/kona-2026-hip-over-crank/app-result.webp)
 

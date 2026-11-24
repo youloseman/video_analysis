@@ -200,7 +200,8 @@ class TestTheHipOverCrankArticle:
     def test_the_app_links_here_and_the_link_into_the_app_opens_the_crank_goal(self):
         from app.services.video_analysis.biomechanics import hip_over_bb
         assert hip_over_bb.ARTICLE == f"/academy/{self.SLUG}"
-        assert "(/app?goal=crank)" in (CONTENT_DIR / f"{self.SLUG}.md").read_text(encoding="utf-8")
+        # Since 2026-11-24 the link also opens the photo tile: readers have a race photo.
+        assert "(/app?goal=crank&what=bike-photo)" in (CONTENT_DIR / f"{self.SLUG}.md").read_text(encoding="utf-8")
 
     def test_the_numbers_are_the_fields(self):
         # The article's middle halves are the app's FIELD, rounded: one study, one set of numbers.

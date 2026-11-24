@@ -12913,14 +12913,24 @@ function renderGoalNote(){
   $('#goalNoteX').addEventListener('click',()=>{ try{ localStorage.setItem(GOAL_NOTE_OFF,'1'); }catch(e){} renderGoalNote(); track('goal_note_hidden',{goal:g}); });
 }
 (function(){ try{
-  const q=new URLSearchParams(location.search).get('goal');
+  const params=new URLSearchParams(location.search);
+  const q=params.get('goal');
+  // ?what=bike-photo (an Academy call to action, 2026-11-24): open on that
+  // tile. Readers on a phone have a race photo, rarely a trainer clip.
+  const w=params.get('what');
+  if(q||w){ const u=new URL(location.href); u.searchParams.delete('goal'); u.searchParams.delete('what'); history.replaceState(null,'',u.pathname+u.search+u.hash); }
   if(q&&GOALS[q]){
     localStorage.setItem(GOAL_KEY,q);
     localStorage.removeItem(GOAL_NOTE_OFF);     // a fresh choice gets its note back
-    const u=new URL(location.href); u.searchParams.delete('goal'); history.replaceState(null,'',u.pathname+u.search+u.hash);
     const sport=GOALS[q].sport;
     if(sport&&state.sport!==sport){ $(`#sportSeg [data-sport="${sport}"]`).click(); syncWhatTiles(); }
     track('entry_goal_landed',{goal:q});
+  }
+  if(w&&WHAT_OF[w]&&w!=='run-photo'){
+    const t=$(`#whatSeg [data-what="${w}"]`);
+    // Not a step the visitor took (no analyze_step_done), but a choice that
+    // stands: the link asked for this tile, so nothing auto-picks over it.
+    if(t){ autoPick(()=>t.click()); state.userSet.what=true; }
   }
   const g=goalGet();
   if(g&&window.flappAnalytics) window.flappAnalytics.register({entry_goal:g});

@@ -78,7 +78,7 @@ def test_the_definitions_come_before_their_first_reader(app_html):
 
 
 def test_the_url_is_cleaned_and_the_note_has_a_home(app_html):
-    handler = app_html[app_html.index("const q=new URLSearchParams(location.search).get('goal')"):]
+    handler = app_html[app_html.index("const q=params.get('goal')"):]
     handler = handler[:handler.index("})();")]
     assert "searchParams.delete('goal')" in handler
     assert "track('entry_goal_landed'" in handler

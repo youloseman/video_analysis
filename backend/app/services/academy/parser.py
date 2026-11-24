@@ -37,6 +37,12 @@ example)::
     cover_fit    str   opt       cover (default) | contain, for a chart or a drawing
     card         str   opt       wide | full: the card's size on the hub
     byline       bool  opt       false: no person under the title, only the date
+    cta          str   opt       the call to action's sentence (in-article block and the end)
+    cta_button   str   opt       its button label
+    cta_href     str   opt       where it goes: a path into /app only (default /app)
+    cta_bar      str   opt       the short line in the phone's sticky bar
+
+A ``[[widget:cta]]`` line in the body puts the call to action mid-article.
 """
 
 from __future__ import annotations
@@ -88,6 +94,10 @@ class ArticleMeta:
     cover_fit: str = "cover"
     card: str = ""  # "" | wide | full
     byline: bool = True
+    cta: str = ""
+    cta_button: str = ""
+    cta_href: str = "/app"
+    cta_bar: str = ""
 
 
 @dataclass(frozen=True)
@@ -419,6 +429,14 @@ def _own_media(value: Any) -> str | None:
     return v if re.fullmatch(r"/media/[A-Za-z0-9._/-]+\.(?:webp|jpg|jpeg|png)", v) and ".." not in v else None
 
 
+def _app_href(value: Any) -> str:
+    """A call to action goes into the app and nowhere else (CTAs lead to /app,
+    never /app#signup): anything that is not a plain /app path falls back."""
+    v = str(value or "").strip()
+    ok = re.fullmatch(r"/app(?:\?[A-Za-z0-9_=&-]*)?", v) and "#signup" not in v
+    return v if ok else "/app"
+
+
 def _parse_file(path: Path) -> Article | None:
     """Parse one ``.md`` file into an :class:`Article`; None if unusable.
 
@@ -470,6 +488,10 @@ def _parse_file(path: Path) -> Article | None:
         cover_fit="contain" if str(fm.get("cover_fit") or "").strip() == "contain" else "cover",
         card=str(fm.get("card") or "").strip() if str(fm.get("card") or "").strip() in ("wide", "full") else "",
         byline=fm.get("byline") is not False,
+        cta=str(fm.get("cta") or "").strip(),
+        cta_button=str(fm.get("cta_button") or "").strip(),
+        cta_href=_app_href(fm.get("cta_href")),
+        cta_bar=str(fm.get("cta_bar") or "").strip(),
     )
     sources = fm.get("sources") if isinstance(fm.get("sources"), list) else []
     return Article(meta=meta, body_html=markdown_to_html(body), sources=sources)
