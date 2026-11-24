@@ -11433,6 +11433,9 @@ function render(job,opts){
   if(sport==='bike'&&r.cycling_position) what.push(esc(POSITION_NAMES[r.cycling_position]||pretty(r.cycling_position)));
   if(r.camera_side) what.push(r.camera_side==='both'?'both sides':esc(r.camera_side)+' side');
   if(r.frames_analyzed!=null) what.push(`<span class="num">${r.frames_analyzed}</span> frames`);
+  // A long clip was cut to its clearest stretch and read at full rate (clip_window.py).
+  const trimmed=(r.quality&&r.quality.clip_trimmed)||s.clip_trimmed;
+  if(trimmed) what.push(`<span title="Measured at full frame rate, the stretch with the clearest view">${esc(trimmed)}</span>`);
   const rm=$('#resultMeta'); if(rm) rm.innerHTML=what.join(' · ');
   // The card keeps what qualifies the number: how much of it was measured.
   // A held grade is said beside the grade (renderGradeNext); not twice.

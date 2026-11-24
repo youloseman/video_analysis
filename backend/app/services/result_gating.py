@@ -70,7 +70,7 @@ _SAFE_KEYS = frozenset({
 # be charging admission to the instructions.
 _QUALITY_KEYS = (
     "quality_warnings", "time_base_uncertain", "sampling_degraded",
-    "capture_report",
+    "capture_report", "clip_trimmed",
 )
 
 # Where each result shape keeps its capture warnings. The video path files them

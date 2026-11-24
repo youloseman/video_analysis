@@ -741,6 +741,8 @@ def _process_job(
             crank_length_mm=crank_length_mm,
             progress=job_progress_hook(job, sport),
             overlay_done=_overlay_done if wants_overlay else None,
+            # The upload is the job's own file: a long one is cut in place.
+            trim_long=sport in settings.clip_trim_sports,
         )
         safe = _json_safe(result)
         # A moment's state, not part of the report: the poll carries it as
@@ -1114,6 +1116,7 @@ def _process_pair_job(
                 # does not have. The slots still say which clip is which.
                 camera_side_override=side if sport == "bike" else None,
                 progress=hook,
+                trim_long=sport in settings.clip_trim_sports,
             )
             if res.get("status") != "completed":
                 job["status"] = "failed"

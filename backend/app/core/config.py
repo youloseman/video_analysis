@@ -44,6 +44,13 @@ class Settings:
     rtmpose_sports: tuple[str, ...] = ()
     rtmpose_model_filename: str = "rtmpose-m_body7_halpe26.onnx"
 
+    # A clip long enough to be thinned is cut to its clearest window and read
+    # at full rate (video_analysis/clip_window.py). On for bike by default
+    # (Artur, 2026-11-24); VA_CLIP_TRIM_SPORTS overrides ("bike", "run",
+    # "bike,run", or "none" / empty to switch it off). Run stays off until a
+    # long 30 fps run clip has been compared.
+    clip_trim_sports: tuple[str, ...] = ("bike",)
+
     # Where the API stores uploaded clips + generated overlays (M3).
     uploads_dir: Path = BACKEND_DIR / "uploads"
 
@@ -427,6 +434,12 @@ def _load_settings() -> Settings:
         rtmpose_sports=tuple(
             s for s in (x.strip().lower() for x in (os.environ.get("VA_RTMPOSE_SPORTS") or "").split(","))
             if s in ("bike", "run")
+        ),
+        clip_trim_sports=(
+            Settings.clip_trim_sports if os.environ.get("VA_CLIP_TRIM_SPORTS") is None else tuple(
+                s for s in (x.strip().lower() for x in os.environ["VA_CLIP_TRIM_SPORTS"].split(","))
+                if s in ("bike", "run")
+            )
         ),
     )
 

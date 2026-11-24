@@ -781,8 +781,13 @@ def run_analysis(
     crank_length_mm: float | None = None,
     progress: ProgressFn | None = None,
     overlay_done: Callable[[str | None], None] | None = None,
+    trim_long: bool = False,
 ) -> dict[str, Any]:
     """Reproduce the proven Motus side-view path and return a result dict.
+
+    ``trim_long``: a clip long enough to be thinned is first cut, IN PLACE, to
+    its best window and read at full rate (see ``clip_window``). Only for a
+    file the job owns; never for a local or golden clip.
 
     Detection + stabilization happen here; everything measured after that is
     :func:`analyze_from_frames`, which this hands the stabilized frames to.
@@ -818,6 +823,12 @@ def run_analysis(
     """
     camera_angle = None   # side view only in Milestone 1
     camera_view = None    # None == side view (implicit default in Motus)
+
+    trimmed: dict[str, Any] | None = None
+    if trim_long:
+        from app.services.video_analysis.clip_window import trim_long_clip
+
+        trimmed = trim_long_clip(video_path)
 
     # Step 1: video info (fps) via cv2.
     video_info = get_video_info(video_path)
@@ -912,6 +923,10 @@ def run_analysis(
 
     if follow is not None:
         follow.restore(raw_frame_data)
+    if trimmed:
+        # Set after every pass that rebuilds sampling_meta, and before the
+        # store, so a re-measure with joint corrections still says it.
+        sampling_meta["trimmed"] = trimmed
 
     # The frames as measured -- post-stabilization, so a re-analysis starts
     # from resolved leg identities and gated gaps, and does not run the
@@ -1546,6 +1561,10 @@ def analyze_from_frames(
     summary["tracking_stability"] = tracking_stability
     summary["quality_gate"] = quality_gate_result
     summary["sampling"] = sampling_meta
+    if sampling_meta.get("trimmed"):
+        from app.services.video_analysis.clip_window import trimmed_note
+
+        summary["clip_trimmed"] = trimmed_note(sampling_meta["trimmed"])
     # A long clip is analyzed end to end, but at a coarser stride -- so the
     # frame-counted metrics (cadence, ground contact, flight time) lose
     # resolution. Report that instead of presenting them as full-rate measures.
