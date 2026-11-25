@@ -52,8 +52,9 @@ SOURCE = ("Flapp field study, Ironman World Championship 2026: 31 professional a
 ARTICLE = "/academy/kona-2026-hip-over-crank"
 
 # What the athlete places, in normalized image coordinates.
-POINT_KEYS = ("C", "P", "FA", "RA")
-POINT_NAMES = {"C": "crank axle", "P": "pedal axle", "FA": "front axle", "RA": "rear axle"}
+POINT_KEYS = ("C", "P", "FA", "RA", "SN", "ST")
+POINT_NAMES = {"C": "crank axle", "P": "pedal axle", "FA": "front axle", "RA": "rear axle",
+               "SN": "saddle nose", "ST": "saddle back"}
 
 
 def normalize_bike_points(raw: Any) -> dict[str, tuple[float, float]]:
@@ -84,7 +85,117 @@ def normalize_bike_points(raw: Any) -> dict[str, tuple[float, float]]:
         raise ValueError("The two wheel axles sit on top of each other.")
     if "P" in out and math.dist(out["P"], out["C"]) < 0.005:
         raise ValueError("The pedal axle sits on the crank axle.")
+    if ("SN" in out) != ("ST" in out):
+        raise ValueError("Mark both ends of the saddle, or neither.")
+    if "SN" in out and math.dist(out["SN"], out["ST"]) < 0.02:
+        raise ValueError("The two saddle points sit on top of each other.")
     return out
+
+
+# ---------------------------------------------------------------------------
+# Saddle tilt: the line along the top of the saddle against the wheel axles
+# ---------------------------------------------------------------------------
+
+# Fitter guidance, not a measured band (no study has measured where riders do
+# best): level, at most 2-3 deg nose down, and nose down past that is usually
+# a saddle that is too high -- the rider tips the nose to get off the front.
+# Burt, Bike Fit 2014, and his saddle interview on MyVeloFit: heavy tilt compensates
+# for something else (a high saddle, long cranks, a big drop). Fitters'
+# practice (research/myvelofit) says the same. The line runs nose to back, which on a saddle with a kicked-up tail reads a
+# little more nose down than its flat middle, so the "nose down" call starts
+# a degree past the fitters' 3.
+TILT_NOSE_DOWN_DEG = -4.0
+TILT_NOSE_UP_DEG = 2.0
+# One tap lands within about 0.4 % of the picture; two of them over a saddle
+# a tenth of the picture long are a couple of degrees.
+_TAP_ERR = 0.004
+TILT_SOURCE = ("Fitter guidance, not a measured range (Burt, Bike Fit 2014): start level, at most "
+               "2-3 deg nose down; more than that usually makes up for something else, most often "
+               "a saddle that is too high")
+
+
+def saddle_tilt(points: dict[str, tuple[float, float]], *, aspect: float,
+                knee_bdc_high: bool = False) -> dict[str, Any] | None:
+    """The saddle's nose-to-back line in degrees, + nose up, - nose down.
+
+    Levelled on the wheel axles when both are marked: that line is the bike's
+    own horizontal whatever the trainer or the phone does. Without them it is
+    the frame edge, and the result says so. None when the saddle is not marked.
+    """
+    if "SN" not in points or "ST" not in points:
+        return None
+    nx, ny = points["SN"]
+    tx, ty = points["ST"]
+    # Up is positive from here on; the saddle runs back -> nose.
+    sx, sy = (nx - tx) * aspect, ty - ny
+    length = math.hypot(sx, sy)
+    if length < 1e-6:
+        raise ValueError("The two saddle points sit on top of each other.")
+    if "FA" in points and "RA" in points:
+        gx = (points["FA"][0] - points["RA"][0]) * aspect
+        gy = points["RA"][1] - points["FA"][1]
+        ref = "axles"
+    else:
+        # Forward is wherever the nose points.
+        gx, gy = (1.0 if sx >= 0 else -1.0), 0.0
+        ref = "frame"
+    g = math.hypot(gx, gy)
+    gx, gy = gx / g, gy / g
+    ux, uy = (-gy, gx) if gx >= 0 else (gy, -gx)  # the normal that points up
+    deg = math.degrees(math.atan2(sx * ux + sy * uy, sx * gx + sy * gy))
+    if abs(deg) > 25.0:
+        raise ValueError("That saddle line is steeper than any saddle sits "
+                         "-- check the nose and the back points.")
+    pm = max(1.0, round(math.degrees(math.atan(_TAP_ERR * math.sqrt(2) / length)), 0))
+    if deg <= TILT_NOSE_DOWN_DEG:
+        verdict = "nose_down"
+    elif deg >= TILT_NOSE_UP_DEG:
+        verdict = "nose_up"
+    else:
+        verdict = "level"
+    return {
+        "deg": round(deg, 1),
+        "plus_minus_deg": pm,
+        "ref": ref,
+        "verdict": verdict,
+        "nose_down_from_deg": TILT_NOSE_DOWN_DEG,
+        "nose_up_from_deg": TILT_NOSE_UP_DEG,
+        "note": _tilt_note(deg, verdict, knee_bdc_high),
+        "source": TILT_SOURCE,
+    }
+
+
+def _tilt_note(deg: float, verdict: str, knee_bdc_high: bool) -> str:
+    d = f"{abs(deg):.0f}"
+    if verdict == "nose_down" and knee_bdc_high:
+        return (f"Nose down {d}°, and the knee opens past its range at the bottom: the saddle "
+                "is probably high and the nose went down to get off the front. Lower the "
+                "saddle first, then level it and film again")
+    if verdict == "nose_down":
+        return (f"Nose down {d}°. Fitters start level and stop at 2-3° nose down; more than "
+                "that usually makes up for something else, most often a saddle that is too "
+                "high. Check the height, then level the middle of the saddle")
+    if verdict == "nose_up":
+        return (f"Nose up {d}°. No saddle is shaped to be ridden nose up: it rolls the pelvis "
+                "back and loads the front. Level the middle of the saddle")
+    return "Level, inside what fitters aim for"
+
+
+def report_says_knee_high(result: dict[str, Any] | None) -> bool:
+    """Whether the report already says the knee opens too far at the bottom.
+
+    A video plan says it as "lower the saddle"; a photo says it on the knee row
+    of a frame caught at the bottom of the stroke.
+    """
+    if not isinstance(result, dict):
+        return False
+    for d in (result.get("fit_plan") or {}).get("diagnostics") or []:
+        if isinstance(d, dict) and d.get("action") == "lower_saddle":
+            return True
+    knee = (result.get("angles_with_context") or {}).get("knee") or {}
+    hi, val = knee.get("optimal_max"), knee.get("value")
+    return (result.get("pedal_phase") == "bdc" and knee.get("status") == "needs_work"
+            and isinstance(hi, (int, float)) and isinstance(val, (int, float)) and val > hi)
 
 
 def _facing(shoulder_x: float | None, hip_x: float) -> int:
@@ -104,6 +215,7 @@ def hip_over_bb(
     hip_source: str = "photo",
     frames: int | None = None,
     cycling_position: str | None = None,
+    knee_bdc_high: bool = False,
 ) -> dict[str, Any]:
     """The angle, its horizontal, its scale and its place in the field.
 
@@ -182,6 +294,9 @@ def hip_over_bb(
         "aero": aero,
         "source": SOURCE,
         "article": ARTICLE,
+        # The saddle line, when the athlete marked it: same picture, same
+        # horizontal (hip_over_bb and saddle_tilt both level on the axles).
+        "saddle_tilt": saddle_tilt(points, aspect=aspect, knee_bdc_high=knee_bdc_high),
     }
     return out
 
@@ -220,5 +335,5 @@ def median_hip(frames: list[dict[str, Any]], camera_side: str,
 __all__ = [
     "ARTICLE", "CM_PER_DEG_TYPICAL", "DEFAULT_CRANK_MM", "DIFF_DEG", "FIELD",
     "POINT_KEYS", "POINT_NAMES", "REPEATABILITY_DEG", "SOURCE",
-    "hip_over_bb", "median_hip", "normalize_bike_points",
+    "hip_over_bb", "median_hip", "normalize_bike_points", "report_says_knee_high", "saddle_tilt",
 ]

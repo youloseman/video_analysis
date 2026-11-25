@@ -1219,6 +1219,13 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
                     + (f"{where} " if where else "") + "Pros 88°, age-groupers 85°.")
         hob_html = (f"<div class='hob'><div class='big'>{_e(hob['angle_deg'])}°</div><div><h3>Hip over the crank</h3>"
                     f"<p style='margin:0'>{_e(text)}</p></div></div>")
+        tilt = hob.get("saddle_tilt")
+        if isinstance(tilt, dict) and isinstance(tilt.get("deg"), (int, float)):
+            deg = float(tilt["deg"])
+            what = "level" if round(abs(deg)) < 1 else f"{'nose up' if deg > 0 else 'nose down'} {abs(deg):.0f}°"
+            lvl = "levelled on the wheel axles" if tilt.get("ref") == "axles" else "levelled on the picture edge"
+            hob_html += (f"<div class='hob'><div class='big'>{_e(f'{deg:+.0f}')}°</div><div><h3>Saddle tilt: {_e(what)}</h3>"
+                         f"<p style='margin:0'>{_e(tilt.get('note') or '')} (±{_e(tilt.get('plus_minus_deg'))}°, {lvl})</p></div></div>")
     # The app's legend: the band, then the three marker colours.
     dot = "<i><svg width='8' height='8'><circle cx='4' cy='4' r='4' fill='{}'/></svg></i>"
     legend = ("<div class='legend'><span><i><svg width='26' height='10'><rect x='1' y='3' width='24' height='4' fill='#DDEFE3' stroke='#2E9E5B'/></svg></i>Reference range</span>"

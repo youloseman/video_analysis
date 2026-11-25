@@ -199,6 +199,7 @@ def recompute_photo(
     from app.services.video_analysis.biomechanics.hip_over_bb import (
         hip_over_bb,
         normalize_bike_points,
+        report_says_knee_high,
     )
     from app.services.video_analysis.photo_analyzer import (
         analyze_from_pose,
@@ -286,6 +287,7 @@ def recompute_photo(
             shoulder=sh if all(math.isfinite(v) for v in sh) else None,
             crank_length_mm=crank_length_mm, hip_source="photo",
             cycling_position=result.get("cycling_position") or cycling_position,
+            knee_bdc_high=report_says_knee_high(result),
         )
         result["bike_points"] = result["hip_over_bb"]["points"]
         result["thumbnail_base64"] = _with_hip_over_bb(

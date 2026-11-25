@@ -3183,6 +3183,7 @@ async def job_bike_points(
         hip_over_bb,
         median_hip,
         normalize_bike_points,
+        report_says_knee_high,
     )
     from app.services.video_analysis.landmark_store import load_frames
 
@@ -3204,6 +3205,7 @@ async def job_bike_points(
             hip, points, aspect=aspect, shoulder=shoulder, crank_length_mm=crank,
             hip_source="video_median", frames=n,
             cycling_position=result.get("cycling_position") or job.get("cycling_position"),
+            knee_bdc_high=report_says_knee_high(result),
         )
     except ValueError as e:
         raise HTTPException(422, str(e))

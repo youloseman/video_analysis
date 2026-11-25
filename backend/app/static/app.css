@@ -3284,6 +3284,8 @@ svg.pic,svg.pm{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;s
 .hob-scale{width:100%;max-width:420px;height:auto;display:block;margin:4px 0 8px}
 .hob-lead{font-size:14px;line-height:1.55;color:var(--c-ink);margin:8px 0}
 .hob-notes{margin:0 0 8px;padding-left:18px;font-size:12px;color:var(--c-ink-soft);line-height:1.5}
+.hob-saddle{border-top:1px solid var(--c-line);margin:12px 0 8px;padding-top:10px}
+.hob-saddle p{margin:4px 0}
 .hob-more{font-size:14px;color:var(--c-ink-soft);margin-top:6px}
 .hob-more summary{cursor:pointer;color:var(--c-blue-dk);font-weight:500}
 .hob-more p{margin:8px 0 0}
