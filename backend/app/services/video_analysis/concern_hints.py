@@ -48,9 +48,10 @@ _HINTS: dict[tuple[str, str], str] = {
     ),
     ("hip_at_tdc", "low"): (
         "The hip closes hard at the top of the stroke, which costs power and "
-        "can pinch. Moving the saddle forward, raising the front a little or "
-        "shorter cranks all open it -- each changes something else, so one at "
-        "a time."
+        "can pinch. Shorter cranks open it without moving the saddle or the "
+        "bars; raising the front a little does too. On a TT bike moving the "
+        "saddle forward is the usual first step; on a road bike it puts more "
+        "weight on your hands. One change at a time."
     ),
     ("trunk_angle_avg", "low"): (
         "A very low torso is fast but hard to hold. Test it: can you breathe "

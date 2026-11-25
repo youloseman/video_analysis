@@ -108,7 +108,11 @@ _OFF_AERO_LABELS = {
     "extend_reach": "a stem about 10mm longer",
     "shorten_reach": "a stem about 10mm shorter",
 }
-_AERO_ONLY = frozenset({"tilt_extensions_up"})
+# Rotating the pelvis forward (saddle forward / nose down) is the aero answer to
+# a closed hip. On the hoods it moves the body over the bottom bracket and the
+# weight onto the hands, and a nose-down saddle slides the rider forward on top
+# of that -- the road plan opens the hip with shorter cranks instead.
+_AERO_ONLY = frozenset({"tilt_extensions_up", "rotate_pelvis_forward"})
 
 # Below this share of its band remaining in the direction of travel, a metric
 # that is currently in range is treated as about to leave it.

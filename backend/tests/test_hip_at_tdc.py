@@ -116,8 +116,11 @@ class TestTheGraders:
             sport_specific_metrics={"knee_at_bdc": 141.0, "hip_at_tdc": 40.0, "hip_angle_avg": 75.0},
             technique_score=80, letter_grade="B", detected_issues=[],
         )
-        step = next(d for d in plan.diagnostics if d.component == "saddle_fore_aft")
-        assert step.metric_name == "hip_at_tdc"
+        # On a road bike the step is shorter cranks, not the saddle
+        # (test_closed_hip_road_cranks); what matters here is that it fires
+        # on the closed-hip reading, not the stroke mean.
+        step = next(d for d in plan.diagnostics if d.metric_name == "hip_at_tdc")
+        assert step.component == "crank_length"
         assert step.current_value == 40.0
 
     def test_the_overlay_callout_grades_the_hip_against_the_closed_band(self):

@@ -425,6 +425,76 @@ def _is_tt_category(position: str) -> bool:
     return pos_data.get("category") == "tt"
 
 
+# Shorter than this and a road crank is already the short option: the plan
+# raises the bars instead of naming a crank nobody sells for the bike.
+_SHORTEST_ROAD_CRANK_MM = 160.0
+
+
+def _shorter_crank_size(crank_mm: float) -> float:
+    """A stock size 5 mm shorter (165, 167.5, 170 ... step 2.5)."""
+    return round((crank_mm - 5.0) / 2.5) * 2.5
+
+
+def _shorter_cranks_for_hip(
+    hip: float,
+    lo: float,
+    hi: float,
+    crank_mm: float | None,
+    terminology: dict[str, Any],
+) -> "Diagnostic":
+    """The road answer to a hip closed at the top of the stroke."""
+    head = (
+        f"Hip angle at the top of the stroke is {hip:.0f} deg "
+        f"(optimal {lo:.0f}-{hi:.0f} deg). The hip closes hard at the top "
+        f"of the stroke"
+    )
+    hands = (
+        "Sliding the saddle forward would open it too, but on a road bike it "
+        "puts more weight on your hands."
+    )
+    if crank_mm is not None and float(crank_mm) <= _SHORTEST_ROAD_CRANK_MM:
+        return Diagnostic(
+            component="bar_position",
+            status="needs_adjustment",
+            metric_name="hip_at_tdc",
+            current_value=round(hip, 1),
+            target_range=(lo, hi),
+            action="raise_bars",
+            amount="10mm",
+            reason=(
+                f"{head}, and your {float(crank_mm):g} mm cranks are already "
+                f"short. Raise the {terminology['bar_height_term']} about "
+                f"10 mm to open it. {hands}"
+            ),
+            priority=2,
+        )
+    if crank_mm is not None:
+        to = _shorter_crank_size(float(crank_mm))
+        amount = f"{float(crank_mm):g} to {to:g} mm"
+        swap = (f"Cranks about 5 mm shorter ({float(crank_mm):g} to {to:g} mm), "
+                f"with the saddle raised up to 5 mm to keep the bottom of the "
+                f"stroke where it is, open the top")
+    else:
+        amount = "about 5mm shorter"
+        swap = ("Cranks about 5 mm shorter, with the saddle raised up to 5 mm "
+                "to keep the bottom of the stroke where it is, open the top")
+    return Diagnostic(
+        component="crank_length",
+        status="needs_adjustment",
+        metric_name="hip_at_tdc",
+        current_value=round(hip, 1),
+        target_range=(lo, hi),
+        action="consider_shorter_cranks",
+        amount=amount,
+        reason=(
+            f"{head}. {swap} without moving the saddle or the bars; in lab "
+            f"tests shorter cranks cost no power. Raising the "
+            f"{terminology['bar_height_term']} a little also opens it. {hands}"
+        ),
+        priority=2,
+    )
+
+
 def _add_good_metric(
     good_metrics: list[dict[str, Any]],
     metric: str,
@@ -469,6 +539,7 @@ def build_action_plan(
     letter_grade: str,
     detected_issues: list[dict[str, Any]],
     mobility_fit: dict[str, Any] | None = None,
+    crank_length_mm: float | None = None,
 ) -> ActionPlan:
     """Build a deterministic action plan from cycling analysis results.
 
@@ -487,6 +558,12 @@ def build_action_plan(
     ref = get_cycling_reference(position)
     terminology = _get_terminology(position)
     sm = sport_specific_metrics or {}
+    if crank_length_mm is None:
+        # The rider's crank as the saddle estimate recorded it -- the merged
+        # (two-clip) plan is rebuilt from the summary alone.
+        est = sm.get("saddle_estimate") or {}
+        if isinstance(est, dict) and est.get("crank_source") == "given":
+            crank_length_mm = est.get("crank_length_mm")
 
     diagnostics: list[Diagnostic] = []
     good_metrics: list[dict[str, Any]] = []
@@ -612,7 +689,7 @@ def build_action_plan(
                     priority=2,
                     linked_to="saddle_height",
                 ))
-            else:
+            elif _is_tt_category(position):
                 # Forward, not back: a steeper effective seat angle rotates
                 # the rider over the bottom bracket and opens the torso-thigh
                 # angle (the steep-seat-tube doctrine fit_tradeoffs encodes
@@ -631,11 +708,27 @@ def build_action_plan(
                         f"Hip angle at the top of the stroke is {hip_avg:.0f} deg "
                         f"(optimal {hip_min:.0f}-{hip_max:.0f} deg). "
                         f"Hip is too closed: move saddle forward 5mm "
-                        f"to open hip angle."
+                        f"to open hip angle. If it is still closed after "
+                        f"that, shorter cranks open the top of the stroke "
+                        f"without moving the front end."
                     ),
                     priority=2,
                 ))
-            active_priorities.append("saddle fore/aft")
+            else:
+                # Road and casual: cranks first, not the saddle. On the hoods
+                # the hands carry the torso, and sliding the saddle forward
+                # puts the body further over the bottom bracket -- more weight
+                # on the hands, the commonest road complaint. Shorter cranks
+                # open the top of the stroke and leave the contact points
+                # where they are; across 145-195 mm they changed neither
+                # maximal power nor efficiency (Martin & Spirduso 2001;
+                # Barratt, Korff, Martin 2011).
+                diagnostics.append(_shorter_cranks_for_hip(
+                    hip_avg, hip_min, hip_max, crank_length_mm, terminology,
+                ))
+            active_priorities.append(
+                diagnostics[-1].component.replace("_", " ").replace("fore aft", "fore/aft")
+            )
         else:
             # in_range or borderline_low (just-closed, within tolerance)
             border = hip_class == "borderline_low"
@@ -783,7 +876,14 @@ def build_action_plan(
             d.component == "saddle_height" and d.status == "needs_adjustment"
             for d in diagnostics
         )
-        if knee_tdc < 55 and saddle_is_optimal:
+        cranks_already = any(d.component == "crank_length" for d in diagnostics)
+        # Any knee past the band's deadband, not only below 55: a road knee
+        # at 58 against 65-75 used to fall through both branches and vanish
+        # from the plan -- neither a fix nor a good metric.
+        if cranks_already and _classify(knee_tdc, tdc_min, tdc_max, "knee_at_tdc") == "out_low":
+            pass  # the hip card already says shorter cranks; one card, not two
+        elif (_classify(knee_tdc, tdc_min, tdc_max, "knee_at_tdc") == "out_low"
+              and saddle_is_optimal):
             diagnostics.append(Diagnostic(
                 component="crank_length",
                 status="needs_adjustment",

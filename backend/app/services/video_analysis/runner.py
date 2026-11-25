@@ -1982,6 +1982,7 @@ def analyze_from_frames(
                 letter_grade=scoring.get("letter_grade") or "--",
                 detected_issues=issues,
                 mobility_fit=mobility_fit,
+                crank_length_mm=crank_length_mm,
             ))
         except Exception as e:  # noqa: BLE001
             logger.warning("FIT_PLAN_FAILED", err=str(e))
