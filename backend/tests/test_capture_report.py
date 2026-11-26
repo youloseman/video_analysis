@@ -47,11 +47,13 @@ def test_the_clip_that_fooled_the_old_threshold_now_fails():
     """255 px was rated OK while the pose model swapped the legs on 46% of
     frames. A false all-clear on the measurement everything rests on. Running
     has lower bars since 2026-11-06, and this is why 255 px is still a warning
-    there and not a pass."""
+    there and not a pass. The bike joined it on 2026-11-26, on its own ladder."""
     rep = report(framing={"subject_height_px": 255, "subject_height_frac": 0.199})
     assert check(rep, "framing")["status"] == "warn"
     bike = report(sport_type="bike", framing={"subject_height_px": 255, "subject_height_frac": 0.199})
-    assert check(bike, "framing")["status"] == "bad"
+    assert check(bike, "framing")["status"] == "warn"
+    far = report(sport_type="bike", framing={"subject_height_px": 190, "subject_height_frac": 0.148})
+    assert check(far, "framing")["status"] == "bad"
 
 
 def test_the_cropped_version_of_that_same_clip_passes():
@@ -82,7 +84,7 @@ def test_a_downscaled_export_is_not_blamed_on_standing_too_far_away():
     c = check(report(sport_type="bike", frame_width=312, frame_height=554,
                      framing={"subject_height_px": 207,
                               "subject_height_frac": 0.373}), "framing")
-    assert c["status"] == "bad"
+    assert c["status"] == "warn"             # "bad" under the old 300 px bar; 207 px is over 200
     assert c["label"] == "Resolution of the file"
     assert "Your framing is fine" in c["action"]
     assert "Zoom in" not in c["action"]      # the one instruction that cannot help
@@ -301,7 +303,7 @@ def test_high_impact_wins_ties_within_the_same_status():
     rep = report(
         sport_type="bike",
         duration_s=4.0,                                    # warn, medium impact
-        framing={"subject_height_px": 300},                # warn, high impact
+        framing={"subject_height_px": 250},                # warn, high impact
         tracking_stability={"leg_swap_pct": 2.0},
     )
     assert rep["checks"][0]["id"] == "framing"

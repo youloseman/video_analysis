@@ -162,7 +162,7 @@
  },
  "exact": {
   "camera_side": "right",
-  "capture_verdict": "fair",
+  "capture_verdict": "good",
   "confidence_level": "medium",
   "coverage": {
    "excluded": [],
@@ -191,7 +191,7 @@
    }
   ],
   "frames_analyzed": 503,
-  "framing_verdict": "small",
+  "framing_verdict": "ok",
   "has_aero": true,
   "has_keyframe": true,
   "has_kinogram": true,

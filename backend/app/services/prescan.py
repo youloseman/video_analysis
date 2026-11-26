@@ -291,6 +291,15 @@ def capture_check(frames: list[dict[str, float]], *, sport: str | None,
                     "or zoom in so you fill most of the frame."
                 ),
             })
+        elif px < small_px and low_res:
+            # Between the bars for the same reason: the frame is small, not the
+            # rider in it. Same remedy as above, one level down.
+            reasons.append({
+                "code": "small", "level": "check",
+                "text": (f"This video file is only {min(video_w, video_h)} px on its short side, so the "
+                         f"athlete is {px} px tall however well they fill it. The original file "
+                         "(sent as a file, AirDrop or a cloud link) gives cleaner angles."),
+            })
         elif px < small_px:
             reasons.append({
                 "code": "small", "level": "check",

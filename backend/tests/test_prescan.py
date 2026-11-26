@@ -113,13 +113,14 @@ def test_a_rider_who_fills_the_frame_from_the_quiet_side_is_go():
 
 
 def test_too_small_to_hold_the_legs_is_no_go_and_says_so_first():
-    got = _cap(dict(AERO, facing=1.0, height_frac=0.35), sport="bike", video_w=1920, video_h=1080)
+    # 0.25 of 720 is 180 px: under the bike's NO-GO bar of 200 (2026-11-26).
+    got = _cap(dict(AERO, facing=1.0, height_frac=0.25), sport="bike", video_w=1920, video_h=1080)
     assert got["verdict"] == "no_go"
     assert [r["code"] for r in got["reasons"]] == ["tiny"]
 
 
 def test_small_but_workable_is_only_check_and_the_chainring_side_is_fine():
-    small = _cap(dict(RUN, facing=1.0, height_frac=0.5), sport="bike", video_w=1920, video_h=1080)
+    small = _cap(dict(RUN, facing=1.0, height_frac=0.35), sport="bike", video_w=1920, video_h=1080)   # 252 px
     assert small["verdict"] == "check" and [r["code"] for r in small["reasons"]][0] == "small"
     drive = _cap(dict(AERO, facing=1.0, height_frac=0.8), sport="bike", video_w=1920, video_h=1080)
     assert drive["verdict"] == "go" and drive["reasons"] == []
@@ -168,11 +169,17 @@ def test_a_runner_has_lower_bars(px, verdict, code):
     assert [r["code"] for r in got["reasons"]] == ([code] if code else [])
 
 
-def test_the_bike_bars_did_not_move():
-    bike = _cap(dict(AERO, facing=-1.0, height_frac=254 / 720), sport="bike", video_w=1280, video_h=720)
-    assert bike["verdict"] == "no_go"
-    unknown = _cap(dict(RUN, facing=-1.0, height_frac=254 / 720), sport=None, video_w=1280, video_h=720)
-    assert unknown["verdict"] == "no_go"
+@pytest.mark.parametrize("px,verdict", [(450, "go"), (350, "go"), (300, "go"), (254, "check"), (200, "check"), (190, "no_go")])
+def test_the_bike_bars_are_its_own_ladders(px, verdict):
+    """300/400 until 2026-11-26, never measured on a bike. The shrink ladder
+    (tracking_diagnostics.FRAMING_*) put the cliff between 150 and 200 px, and a
+    rider with the whole bike in a portrait frame is 350-450 px at best: under
+    the old bar the camera could not say GO without the wheels cut off. A clip
+    of unknown sport is held to the same numbers."""
+    bike = _cap(dict(AERO, facing=-1.0, height_frac=px / 720), sport="bike", video_w=1280, video_h=720)
+    assert bike["verdict"] == verdict
+    unknown = _cap(dict(RUN, facing=-1.0, height_frac=px / 720), sport=None, video_w=1280, video_h=720)
+    assert unknown["verdict"] == verdict
 
 
 def test_a_small_runner_is_told_what_they_can_actually_do():
@@ -199,9 +206,14 @@ def test_an_upright_rider_with_the_hands_on_the_bar_stays_a_bike(trunk, back, fw
 def test_a_small_file_is_told_apart_from_a_far_camera():
     # 848x464, the rider spanning half the frame: a messaging app's copy.
     frames = [dict(AERO, height_frac=0.5) for _ in range(6)]
+    # 232 px: between the bars, and still the file's fault rather than the framing's.
     small_file = capture_check(frames, sport="bike", video_w=848, video_h=464)
-    assert small_file["verdict"] == "no_go"
+    assert small_file["verdict"] == "check"
     assert "original file" in small_file["reasons"][0]["text"] and "464 px" in small_file["reasons"][0]["text"]
+    assert "aim for" not in small_file["reasons"][0]["text"], "a shrunk file cannot be zoomed back"
+    smaller = capture_check(frames, sport="bike", video_w=640, video_h=360)          # 180 px
+    assert smaller["verdict"] == "no_go"
+    assert "original file" in smaller["reasons"][0]["text"] and "360 px" in smaller["reasons"][0]["text"]
     # The same share of a 1080p frame is no NO-GO; a far rider in a big file is told to come closer.
     assert capture_check(frames, sport="bike", video_w=1080, video_h=1920)["verdict"] == "go"
     far = capture_check([dict(AERO, height_frac=0.2) for _ in range(6)], sport="bike", video_w=1920, video_h=1080)

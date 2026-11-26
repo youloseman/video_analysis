@@ -30,6 +30,10 @@ being swapped on half the frames -- a false all-clear on the single measurement
 that mattered most. Two crops of one clip is calibration, not proof, so the bar
 is set where the evidence points and the numbers behind it are stated here
 rather than buried.
+
+The bars themselves have since been measured per sport on a shrink ladder
+(running 2026-11-06, bike 2026-11-26) and both now stand at 200/300 px; the
+numbers and their caveats are in tracking_diagnostics.FRAMING_*.
 """
 
 from __future__ import annotations

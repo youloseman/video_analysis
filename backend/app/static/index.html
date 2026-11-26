@@ -2972,7 +2972,7 @@ function camLevelStop(){
 
    A verdict is a COMMAND, not a grade: Move closer, Step back, Tilt up. The
    athlete has a phone in one hand and nothing to look "NO-GO" up in. */
-const CAM_LIVE={tinyPx:300, smallPx:400, runTinyPx:200, runSmallPx:300, detectLongEdge:1280, everyMs:200, keep:6, tightPct:80};
+const CAM_LIVE={tinyPx:200, smallPx:300, runTinyPx:200, runSmallPx:300, detectLongEdge:1280, everyMs:200, keep:6, tightPct:80};
 const CAM_LIVE_LIB='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const CAM_LIVE_MODEL='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 const camLiveState={on:false, verdict:null, shown:null, recent:[], raf:0, last:0};
@@ -7409,7 +7409,7 @@ function renderCoachCard(){
   const cap=COACH.capture||{}, nc=(COACH.cues||[]).length;
   // Account says what is set; the page is where it is changed.
   body.innerHTML=`<p class="acct-p">${COACH.name?`<b>${esc(COACH.name)}</b>${COACH.tagline?' · '+esc(COACH.tagline):''}`:'No name on your reports yet'}</p>
-    <p class="acct-p">${nc} ${nc===1?'cue':'cues'} · framing bars ${cap.tiny_px||300} and ${cap.small_px||400} px${COACH.capture?'':' (standard)'}</p>
+    <p class="acct-p">${nc} ${nc===1?'cue':'cues'} · framing bars ${cap.tiny_px||200} and ${cap.small_px||300} px${COACH.capture?'':' (standard)'}</p>
     <button class="btn btn-ghost btn-sm" type="button" id="acctCoachOpen">Open coach profile</button>`;
   $('#acctCoachOpen').addEventListener('click',openCoachProfile);
   const rep=$('#cpReport'), capHost=$('#cpCapture'); if(!rep||!capHost) return;
@@ -7433,10 +7433,10 @@ function renderCoachCard(){
       <div class="coachgrid">
         <p class="hint u-m-0">How tall the athlete must be in the frame the analysis sees. Your bars apply on the camera, the batch and your athletes’ upload link. They never change what is measured.</p>
         <div class="gridrow">
-          <div><label for="capTiny">NO-GO under</label><span class="cp-px"><input type="number" id="capTiny" min="200" max="600" step="10" value="${cap.tiny_px||300}"><span>px</span></span></div>
-          <div><label for="capSmall">Warn under</label><span class="cp-px"><input type="number" id="capSmall" min="200" max="800" step="10" value="${cap.small_px||400}"><span>px</span></span></div>
+          <div><label for="capTiny">NO-GO under</label><span class="cp-px"><input type="number" id="capTiny" min="200" max="600" step="10" value="${cap.tiny_px||200}"><span>px</span></span></div>
+          <div><label for="capSmall">Warn under</label><span class="cp-px"><input type="number" id="capSmall" min="200" max="800" step="10" value="${cap.small_px||300}"><span>px</span></span></div>
         </div>
-        <p class="hint u-m-0">Standard: 300 and 400 px on a bike, 200 and 300 px on a run. Bars you save here apply to both</p>
+        <p class="hint u-m-0">Standard: 200 and 300 px, bike and run. Bars you save here apply to both</p>
         <div class="cnote-actions"><button class="btn btn-ghost btn-sm" type="button" id="capSave">Save the bars</button>${COACH.capture?'<button class="btn btn-link btn-sm" type="button" id="capReset">Back to standard</button>':''}<span class="cnote-status" id="capStatus"></span></div>
       </div>
     </div>`;

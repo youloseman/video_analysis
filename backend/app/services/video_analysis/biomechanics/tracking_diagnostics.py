@@ -58,30 +58,33 @@ _CUE_CAP = 3.0
 # noise floor and of whatever points the other way.
 _MIN_NEAR_SIDE_SCORE = 1.0
 
-# Athlete height in the frame MediaPipe actually sees. Below "tiny" the legs
-# are too few pixels apart to tell reliably; between the two it is workable but
-# degraded.
+# Athlete height (nose to the lower ankle) in the frame MediaPipe actually sees.
+# Below "tiny" the model starts to lose the athlete; between the two it is
+# workable but degraded.
 #
-# Raised 2026-08-21 from 150/250 on measured evidence. One clip, cropped three
-# ways, with everything else held constant:
+# History. 150/250 until 2026-08-21, then 300/400 on one RUNNING clip cropped
+# three ways (116 px -> legs swapped on 42.7% of frames, 255 px -> 45.6%,
+# 452 px -> 1.8%), from before RTMPose and the leg resolver. Running got its own
+# measured bars on 2026-11-06 (below); the bike kept 300/400 untested.
 #
-#     116 px -> legs swapped on 42.7% of frames
-#     255 px -> legs swapped on 45.6% of frames   <- the old bar called this OK
-#     452 px -> legs swapped on  1.8% of frames
-#
-# The old "ok" bar handed a clean bill of health to a clip whose left and right
-# legs were interchangeable half the time -- a false all-clear on the one
-# measurement everything else rests on.
-#
-# Three crops of one clip is calibration, not proof, so the bars are placed
-# where that evidence AND a geometric argument agree. What the pose model has
-# to resolve is not the athlete's height but the width of a limb: a thigh is
-# roughly a tenth of body height, so a 400 px athlete gives it ~40 px of thigh
-# to separate from the other one, and a 255 px athlete gives it ~25. The "tiny"
-# bar sits above the largest height we have measured failing, and the "small"
-# bar at the limb width where it demonstrably works.
-FRAMING_TINY_PX = 300
-FRAMING_SMALL_PX = 400
+# Lowered to 200/300 on 2026-11-26, measured the way running's were: the rider
+# shrunk on a same-size grey canvas, each size through the whole production
+# pipeline (MediaPipe heavy + RTMPose), four trainer clips (three TT/aero, one
+# road on the hoods), differences against the same clip at its own size:
+#   300-400 px  every angle within 1 deg on all four
+#   250 px      knee BDC/TDC and hip within 1.2 deg, trunk 1.4, shoulder up to 2
+#   200 px      knee and hip within 1.3 deg, trunk 1.7, elbow/shoulder up to 3
+#   150 px      no pose found on one of four (the 720p file); the other three
+#               hold the legs within 1.4 deg, elbow/shoulder drift 3.6
+# So the cliff is between 150 and 200, as for running, and 200-300 costs the
+# upper body a couple of degrees: a warning, not a stop. Why it mattered: a
+# rider with the WHOLE bike in a portrait frame is 350-450 px at best, so the
+# old 400 bar made GO unreachable without cutting the wheels (the in-app
+# camera's lite model also reads 7-11% smaller than this one). Same caveats as
+# the run ladder: grey padding is kinder than a real far-away background, and
+# all four clips are indoors.
+FRAMING_TINY_PX = 200
+FRAMING_SMALL_PX = 300
 # Running has its own, lower bars (Artur, 2026-11-06). A runner passing the camera
 # cannot fill the frame: a portrait phone that holds 5 m of track has them about
 # 250 px tall, and telling them to come closer means losing the stride.
@@ -94,7 +97,8 @@ FRAMING_SMALL_PX = 400
 # So the cliff is between 150 and 200, and 200-300 is a warning rather than a stop.
 # The padding was plain grey, kinder than a real far-away background, and one real
 # clip at 255 px did swap its legs on 45.6% of frames, which is why it is a warning.
-# The bike bars were not part of this and stay where they are.
+# The two sports now share their numbers by measurement, not by definition:
+# each has its own ladder, and either may move without the other.
 RUN_FRAMING_TINY_PX = 200
 RUN_FRAMING_SMALL_PX = 300
 

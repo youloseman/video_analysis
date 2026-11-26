@@ -463,9 +463,9 @@ def every_frame_valid(monkeypatch):
 
 
 def test_the_grid_moves_the_bars_and_the_default_stays(every_frame_valid):
-    assert verdict(290)["verdict"] == "no_go"
-    assert verdict(350)["verdict"] == "check"
-    assert verdict(450)["verdict"] == "go"
+    assert verdict(190)["verdict"] == "no_go"
+    assert verdict(250)["verdict"] == "check"
+    assert verdict(350)["verdict"] == "go"
     assert verdict(290, {"tiny_px": 250, "small_px": 280})["verdict"] == "go"
     assert verdict(450, {"tiny_px": 500, "small_px": 600})["verdict"] == "no_go"
 
@@ -477,7 +477,7 @@ def test_the_chainring_side_is_not_worth_a_word(every_frame_valid):
 
 def test_a_coach_is_not_called_you_and_gets_no_pixel_target(every_frame_valid):
     """The clip is usually somebody else's, and "aim for 550+" can contradict their own bars."""
-    for px, grid in ((290, {}), (350, {}), (290, {"tiny_px": 300, "small_px": 400})):
+    for px, grid in ((190, {}), (250, {}), (290, {"tiny_px": 300, "small_px": 400})):
         text = verdict(px, grid)["reasons"][0]["text"]
         assert "You're" not in text and "aim for" not in text
     assert "You're" in verdict(290)["reasons"][0]["text"], "an athlete on their own clip stays addressed"
