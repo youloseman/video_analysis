@@ -1806,7 +1806,12 @@ h2.sec{font-family:var(--f-brand);font-weight:900;font-style:italic;color:var(--
 .modetabs.what button,.modetabs.film button{border:1px solid var(--c-line-strong);border-radius:var(--radius-ctl);background:var(--c-bg);
   padding:8px 12px;min-height:56px;align-items:center}
 .modetabs.film button{min-height:64px;padding:10px 14px}
-.modetabs.what button:not([data-what="swim"]){flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;min-height:96px;padding:12px 14px}
+/* A row: the figure, then the name (Artur 2026-11-26: the tall tiles with the
+   figure in one corner and the name in another were mostly empty). */
+.modetabs.what button:not([data-what="swim"]){gap:8px;min-height:56px;padding:8px 12px}
+/* Three across (no "Run photo" tile, which is most accounts) is too narrow
+   for a row at any width: the name goes under the figure. */
+.modetabs.what:not(:has(> button[data-what="run-photo"]:not([hidden]))) button:not([data-what="swim"]){flex-direction:column;align-items:flex-start;gap:4px;min-height:64px}
 .modetabs.what button .ic{width:28px;height:28px;color:var(--c-head)}
 .modetabs.what button b,.modetabs.film button b{font-size:16px}
 .modetabs.what button small,.modetabs.film button small{font-size:14px}
@@ -1841,10 +1846,11 @@ svg.pic,svg.pm{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;s
 .pg-fm{stroke:var(--pm-dot,var(--c-coral));stroke-width:4.4}
 .pg-fj{fill:var(--pm-dot,var(--c-coral));stroke:var(--c-bg);stroke-width:2.8}
 .pg-fhm{fill:var(--pm-dot,var(--c-coral));stroke:var(--c-bg);stroke-width:2;paint-order:stroke}
-.modetabs.what button .pic{width:56px;height:56px;margin:-6px 0 -4px -8px}
+.modetabs.what button .pic{width:36px;height:36px;margin:0 8px 0 -4px}
+.modetabs.what button .pic-photo .pic{margin-right:0}
 .modetabs.what button:hover .pic{--c-bg:var(--c-panel)}
-.pic-photo{position:relative;display:inline-flex}
-.pic-photo .ic{position:absolute;right:-18px;top:-8px;width:22px;height:22px;padding:2px;border-radius:999px;background:var(--c-bg)}
+.pic-photo{position:relative;display:inline-flex;margin-right:8px}
+.modetabs.what button .pic-photo .ic{position:absolute;right:-12px;top:-4px;width:18px;height:18px;padding:2px;border-radius:999px;background:var(--c-bg)}
 .modetabs.what button:hover .pic-photo .ic{background:var(--c-panel)}
 /* Chosen: the tile is navy, so every glyph on it turns light (the bike icon
    used to sit navy on navy and vanish). */
@@ -4009,7 +4015,7 @@ footer .footlinks{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
   .upgrid > #stepClip{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-panel);padding:16px;margin-bottom:16px}
   .upsetup .ustep-details{background:var(--c-bg);border:1px solid var(--c-line);border-radius:var(--radius-panel);padding:4px 16px}
   /* The what tiles as drawn on the phone: the icon and the name. */
-  .modetabs.what button:not([data-what="swim"]){min-height:84px;padding:10px}
+  .modetabs.what button:not([data-what="swim"]){min-height:52px;padding:8px 10px}
   .modetabs.what button:not([data-what="swim"]) small{display:none}
   .modetabs.what button b{font-size:16px}
   .modetabs.film button{min-height:60px}
