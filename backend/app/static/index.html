@@ -2270,6 +2270,7 @@ const GOALS={
   crank:{sport:'bike', text:'<b>Where you sit over the crank.</b> Film side-on in your race position: one photo or ten seconds of pedaling. In the report, open <b>Crank</b> and tap Mark: Flapp finds the crank axle on the chainring, you check it, and it reads your hip over it against the Kona 2026 pros (88&deg;) and age-groupers (85&deg;), in degrees and centimeters. Full plan.'},
   run:{sport:'run', text:'<b>Running form.</b> Film 10 seconds from the side, on a treadmill or a straight path, at an easy pace. The report measures your cadence, overstride, how your knee lands and your trunk lean, and names the one thing to change first.'},
   race:{sport:'bike', text:'<b>Before a race.</b> Film in your race position, on the bike you will race. The report checks it against the fit ranges and, in an aero position, against the Kona 2026 pro field.'},
+  helmet:{sport:'bike', text:'<b>Before you buy a helmet.</b> Film side-on in your race position - one photo or ten seconds of pedaling. The report measures how high your helmet sits above your back against the Kona 2026 pros, and the aero panel shows what lowering it is worth in minutes over your race.'},
 };
 function goalGet(){ try{ const g=localStorage.getItem(GOAL_KEY); return GOALS[g]?g:null; }catch(e){ return null; } }
 /* Tie this browser to the account, using the id the SERVER also files
@@ -4993,7 +4994,7 @@ function renderAeroPanel(s){
     <div class="aero-levers">${levers.map(leverRow).join('')}</div>
     ${(torsoSlider||headSlider)?`<div class="aero-levers-h">What if <span class="hint">(move a slider, the minutes above follow)</span></div>
       <div class="aero-wi">${torsoSlider}${headSlider}</div>`:''}
-    <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a></div>
+    <div class="aero-foot"><a class="btn btn-ghost btn-sm" href="/academy/bike-aero-position">How to get lower →</a> <a class="btn btn-ghost btn-sm" href="/academy/triathlon-helmets-2026">Which helmet →</a></div>
     <p class="aero-disc">An estimate, not a measurement: constant power on a flat course, rider + bike ${m.physics.mass_kg} kg, CdA ${m.physics.cda}. Torso from measured frontal area (Fintelman 2015, van Druenen &amp; Blocken 2023).${head?' Head interpolated between head-up and tucked (4.6–6.4% drag) across the Kona 2026 pro range.':''} Lower only pays if you can still hold power, breathe, see the road and handle the bike: stability on descents and in crosswinds is not measured here.</p>${aeroMeasuredHtml()}`;
   aeroUpdate();
   blk.classList.remove('hidden');
