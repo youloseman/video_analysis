@@ -99,6 +99,11 @@
     <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></symbol>
+  <!-- The viewfinder's two side buttons: pick a clip instead, and turn the camera round. -->
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 15.5l-4.6-4.6L7 19.5"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><path d="M9.2 12.2a3 3 0 0 1 5.2-1.2l.8.9"/><path d="M15.4 9.9v2.2h-2.2"/><path d="M14.8 14.8a3 3 0 0 1-5.2 1.2l-.8-.9"/><path d="M8.6 17.1v-2.2h2.2"/></symbol>
   <symbol id="i-person" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></symbol>
   <!-- Two people: the roster. -->
@@ -397,32 +402,47 @@
   </div>
 </div>
 
-<!-- Built-in camera. The countdown and auto-stop exist because the athlete is
-     alone: the phone leans on a bottle, they press Start, and by the time the
-     count reaches zero they are on the bike or already running — nobody is
-     free to press Stop. The framing guides sit on the LIVE preview, which is
-     the one moment framing advice can still change the clip. -->
-<div class="modal hidden" id="camModal" role="dialog" aria-modal="true" aria-labelledby="camTitle">
-  <div class="modal-card cammodal-card">
-    <button class="modal-close" id="camClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
-    <div class="eyebrow eyebrow--blue">Record</div>
-    <h2 id="camTitle" class="modal-title u-mb-3">Film it right here</h2>
+<!-- Built-in camera: a full-screen viewfinder. The countdown and auto-stop
+     exist because the athlete is alone: the phone leans on a bottle, they press
+     the button, and by the time the count reaches zero they are on the bike or
+     already running, with nobody free to press Stop. Everything that judges
+     the shot (guide lines, level, GO / NO-GO) sits on the LIVE preview, the one
+     moment framing advice can still change the clip. -->
+<div class="modal modal-cam hidden" id="camModal" role="dialog" aria-modal="true" aria-labelledby="camTitle">
+  <div class="cam-stage" id="camStage" data-phase="idle">
+    <h2 id="camTitle" class="visually-hidden">Record your clip</h2>
+    <video id="camView" autoplay muted playsinline class="ph-no-capture"></video>
+    <!-- The recorded picture's own rectangle (camLayout sizes it): the guide
+         lines and the level are placed against what is filmed, not against the screen. -->
+    <div class="cam-frame" id="camFrame" aria-hidden="true">
+      <span class="cam-guide">Head</span><span class="cam-guide cam-guide--feet">Feet</span>
+      <div class="cam-level hidden" id="camLevel"><i class="cam-level-line"></i><span class="cam-level-deg" id="camLevelDeg">0&deg;</span></div>
+    </div>
+    <div class="cam-count hidden" id="camCount" aria-hidden="true"></div>
+    <div class="cam-top">
+      <button class="cam-btn" id="camClose" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+      <span class="cam-chip" id="camSport"></span>
+      <!-- Live GO / NO-GO (camLive*): one short command, in the verdict's colour. -->
+      <span class="cam-live hidden" id="camLive" role="status" aria-live="polite"><i class="dot" aria-hidden="true"></i><span id="camLiveT"></span></span>
+      <span class="cam-rec hidden" id="camRec"><i class="dot" aria-hidden="true"></i><span id="camRecT">0:00 / 0:15</span></span>
+    </div>
     <p class="cam-err hidden" id="camErr" role="alert"></p>
-    <div class="cam-stage" id="camStage">
-      <video id="camView" autoplay muted playsinline class="ph-no-capture"></video>
-      <div class="cam-guides" aria-hidden="true"><span class="cam-guide-lbl">Head to feet between the lines</span></div>
-      <div class="cam-count hidden" id="camCount" aria-hidden="true"></div>
-      <div class="cam-rec hidden" id="camRec"><span class="dot" aria-hidden="true"></span><span id="camRecT">0:00 / 0:15</span></div>
-      <!-- Live GO / NO-GO on the preview (camLive*): the frame turns green
-           when the shot will measure, red when it will not. -->
-      <div class="cam-live hidden" id="camLive" role="status" aria-live="polite"><span class="cl-tag" id="camLiveTag"></span><span id="camLiveT"></span></div>
+    <div class="cam-bottom">
+      <div class="cam-opts">
+        <!-- Shown only where the camera can zoom (camZoomRead); two fingers pinch it too. -->
+        <button class="cam-btn cam-zoom hidden" id="camZoom" type="button" aria-label="Zoom">1x</button>
+        <div class="cam-timer" id="camTimer" role="group" aria-label="Countdown before recording">
+          <button type="button" data-t="0">0s</button><button type="button" data-t="5">5s</button><button type="button" data-t="10">10s</button>
+        </div>
+      </div>
+      <div class="cam-row">
+        <button class="cam-btn" id="camPick" type="button" aria-label="Choose a clip from your library instead"><svg aria-hidden="true"><use href="#i-image"/></svg></button>
+        <button class="cam-shutter" id="camStart" type="button" aria-label="Start recording"><i aria-hidden="true"></i></button>
+        <button class="cam-shutter cam-shutter--stop hidden" id="camStop" type="button" aria-label="Stop recording"><i aria-hidden="true"></i></button>
+        <button class="cam-btn" id="camFlip" type="button" aria-label="Switch camera"><svg aria-hidden="true"><use href="#i-flip"/></svg></button>
+      </div>
+      <p class="cam-hint">Hip height &middot; Side-on &middot; Auto-stops at 15&#8202;s</p>
     </div>
-    <div class="cam-actions">
-      <button class="btn btn-primary" id="camStart" type="button">Start: records after a 5&#8202;s countdown</button>
-      <button class="btn btn-go hidden" id="camStop" type="button">Stop recording</button>
-    </div>
-    <p class="cam-hint">Prop the phone at hip height, side-on, and fit yourself between the lines.
-      Recording stops by itself at 15&#8202;s</p>
   </div>
 </div>
 
@@ -2574,9 +2594,13 @@ $('#change').addEventListener('click',()=>fileInput.click());
    the file path IS the feature.
    ============================================================ */
 const CAM_MAX_S=15, CAM_COUNTDOWN_S=5;
-const camEls={};
-let camState=null;   // {stream, rec, chunks, mime, timers:[]} while the modal is open
+/* The countdown is the athlete's to choose. 0 s: a friend holds the phone and
+   five seconds is just standing there. 10 s: alone on a trainer, five is not
+   enough to walk over, climb on, clip in and start pedaling. */
+const CAM_TIMERS=[0,5,10], CAM_TIMER_KEY='flapp-cam-timer';
+let camState=null;   // {stream, rec, chunks, mime, timers:[], facing, zoom} while the camera is open
 let camSlot='a';     // which clip the recording becomes -- see openCam()
+let camTimerS=CAM_COUNTDOWN_S;
 
 function camSupported(){
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia
@@ -2599,44 +2623,121 @@ function camClearTimers(){
   camState.timers.forEach(t=>{ clearTimeout(t); clearInterval(t); });
   camState.timers=[];
 }
+function camTimerGet(){
+  try{ const raw=localStorage.getItem(CAM_TIMER_KEY), v=Number(raw); return raw!==null && CAM_TIMERS.includes(v) ? v : CAM_COUNTDOWN_S; }
+  catch(e){ return CAM_COUNTDOWN_S; }
+}
+function camTimerSet(v){
+  camTimerS=v;
+  try{ localStorage.setItem(CAM_TIMER_KEY,String(v)); }catch(e){}
+  camTimerPaint();
+}
+function camTimerPaint(){
+  document.querySelectorAll('#camTimer button').forEach(b=>b.setAttribute('aria-pressed', String(Number(b.dataset.t)===camTimerS)));
+}
+/* idle: framing. count: the countdown runs, a second tap calls it off.
+   rec: recording. err: no camera, only Close and the picker are left.
+   The stylesheet hides what each phase has no use for. */
+function camPhase(p){
+  $('#camStage').dataset.phase=p;
+  $('#camCount').classList.toggle('hidden', p!=='count');
+  $('#camRec').classList.toggle('hidden', p!=='rec');
+  $('#camStart').classList.toggle('hidden', p==='rec' || p==='err');
+  $('#camStop').classList.toggle('hidden', p!=='rec');
+  $('#camStart').setAttribute('aria-label', p==='count' ? 'Cancel the countdown' : 'Start recording');
+  camLivePaint();
+}
+function camErrShow(msg){
+  $('#camErr').textContent=msg; $('#camErr').classList.remove('hidden');
+}
+/* The picture is shown whole -- what you see is what is filmed -- and as high
+   on the screen as the controls allow: the feet, at the bottom of the frame,
+   are worth more than the ceiling. The guide lines and the level live in the same
+   rectangle, so they sit on the footage and not on the black around it. */
+function camLayout(){
+  const st=$('#camStage'), v=$('#camView'), f=$('#camFrame');
+  const W=st.clientWidth, H=st.clientHeight;
+  if(!W || !H) return;
+  let w=W, h=H;
+  if(v.videoWidth && v.videoHeight){ const k=Math.min(W/v.videoWidth, H/v.videoHeight); w=v.videoWidth*k; h=v.videoHeight*k; }
+  const free=H-h, left=(W-w)/2;
+  const top=Math.max(0, Math.min(free/2, free-st.querySelector('.cam-bottom').offsetHeight));
+  [v,f].forEach(el=>{
+    el.style.left=left+'px'; el.style.top=top+'px';
+    el.style.width=w+'px'; el.style.height=h+'px';
+  });
+}
 /* `slot` is which clip the recording becomes: 'a' (the single clip, or the
    LEFT card) or 'b' (the RIGHT card of a both-sides session). Called from a
    click listener too, so anything that is not a slot name means 'a'. */
 async function openCam(slot){
   camSlot = slot==='b' ? 'b' : 'a';
-  const modal=$('#camModal');
+  const modal=$('#camModal'), bike=state.sport==='bike';
   $('#camErr').classList.add('hidden'); $('#camErr').textContent='';
-  $('#camCount').classList.add('hidden'); $('#camRec').classList.add('hidden');
-  $('#camStart').classList.remove('hidden'); $('#camStop').classList.add('hidden');
+  camPhase('idle');
+  $('#camStage').dataset.sport=bike?'bike':'run';     // the live check's bars are the sport's own
+  $('#camSport').textContent=`${bike?'Bike':'Run'} · ${isPair()?(camSlot==='b'?'Right side':'Left side'):'Side-on'}`;
+  camTimerS=camTimerGet(); camTimerPaint();
+  $('#camFlip').classList.add('hidden'); $('#camZoom').classList.add('hidden');
   modal.classList.remove('hidden');
   modalOpened(modal, closeCam);
+  camLayout();
+  camLevelAsk();     // inside the tap: iOS only asks for motion access from a gesture
+  camWake(true);
+  await camStream('environment');
+}
+/* Open (or swap) the camera. The old stream is stopped FIRST: a phone will
+   not run its two cameras at once, and the second request just fails. */
+async function camStream(facing, quiet){
+  camLiveStop();
+  if(camState){ camState.stream.getTracks().forEach(t=>t.stop()); camState=null; }
+  let stream;
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({
-      // The clip of yourself is filmed with the phone facing you — but on a
-      // laptop 'user' is the only camera anyway, so prefer the back camera
-      // and let the browser fall back. audio:false on purpose: the analysis
-      // never uses sound, and not asking is one permission prompt fewer.
-      video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1920}},
+    stream=await navigator.mediaDevices.getUserMedia({
+      // Alone, the back camera films you and the front one lets you watch the
+      // framing; on a laptop there is only one and the browser falls back.
+      // audio:false on purpose: the analysis never uses sound, and not asking
+      // is one permission prompt fewer.
+      video:{facingMode:facing, width:{ideal:1920}, height:{ideal:1920}},
       audio:false,
     });
-    if(!$('#camModal').classList.contains('hidden')){
-      camState={stream, rec:null, chunks:[], mime:camMime(), timers:[]};
-      $('#camView').srcObject=stream;
-      camLiveStart();
-    } else stream.getTracks().forEach(t=>t.stop());   // closed while we waited
   }catch(err){
+    if(quiet) return false;
     const msg = err && err.name==='NotAllowedError'
       ? 'Camera access was blocked. Allow it in the browser and try again, or just film with your camera app and upload the clip.'
       : err && err.name==='NotFoundError'
         ? 'No camera found on this device. Film with your phone and upload the clip instead.'
         : 'Could not start the camera. Film with your camera app and upload the clip instead.';
-    $('#camErr').textContent=msg; $('#camErr').classList.remove('hidden');
-    $('#camStart').classList.add('hidden');
+    camPhase('err'); camErrShow(msg);
+    return false;
   }
+  if($('#camModal').classList.contains('hidden')){ stream.getTracks().forEach(t=>t.stop()); return false; }   // closed while we waited
+  const vt=stream.getVideoTracks()[0], set=(vt && vt.getSettings && vt.getSettings())||{};
+  const front = set.facingMode ? set.facingMode==='user' : facing==='user';
+  camState={stream, rec:null, chunks:[], mime:camMime(), timers:[], facing:front?'user':'environment', zoom:null};
+  camZoomRead();
+  // A selfie preview is a mirror: you step left, the picture steps left. Only
+  // the preview is flipped -- the recording stays the way the camera saw it.
+  $('#camStage').classList.toggle('mirror', front);
+  $('#camView').srcObject=stream;
+  camPhase('idle');
+  camLiveStart();
+  if(navigator.mediaDevices.enumerateDevices) navigator.mediaDevices.enumerateDevices().then(ds=>{
+    $('#camFlip').classList.toggle('hidden', ds.filter(d=>d.kind==='videoinput').length<2);
+  }).catch(()=>{});
+  return true;
+}
+async function camFlip(){
+  if(!camState || $('#camStage').dataset.phase!=='idle') return;
+  const was=camState.facing, want=was==='user'?'environment':'user';
+  if(!(await camStream(want, true))) await camStream(was);
+  track('cam_flip',{to:camState?camState.facing:null});
 }
 function closeCam(){
   camLiveStop();
+  camLevelStop();
   camClearTimers();
+  camWake(false);
   if(camState){
     if(camState.rec && camState.rec.state!=='inactive'){
       camState.rec.onstop=null;                        // cancelled, not kept
@@ -2651,16 +2752,22 @@ function closeCam(){
 }
 function camStartFlow(){
   if(!camState) return;
-  track('cam_start',{live:(camLiveState.verdict&&camLiveState.verdict.verdict)||null});
-  $('#camStart').classList.add('hidden');
-  let n=CAM_COUNTDOWN_S;
+  if($('#camStage').dataset.phase==='count'){ camClearTimers(); camPhase('idle'); return; }   // a second tap calls it off
+  const lv=camLiveState.shown;
+  track('cam_start',{live:(lv&&lv.verdict)||null, code:(lv&&lv.code)||null, timer:camTimerS, facing:camState.facing,
+                     roll:camLevel.roll==null?null:Math.round(camLevel.roll), zoom:camZoomX()});
+  camAudioWake();
+  let n=camTimerS;
+  if(!n){ camRecord(); return; }
+  camPhase('count');
   const count=$('#camCount');
-  count.textContent=n; count.classList.remove('hidden');
+  // Heard from the saddle: a tick a second, higher for the last three.
+  const show=()=>{ count.textContent=n; camBeep(n<=3?880:660, 90); };
+  show();
   const tick=setInterval(()=>{
     n-=1;
-    if(n>0){ count.textContent=n; return; }
+    if(n>0){ show(); return; }
     clearInterval(tick);
-    count.classList.add('hidden');
     camRecord();
   },1000);
   camState.timers.push(tick);
@@ -2670,8 +2777,8 @@ function camRecord(){
   let rec;
   try{ rec=new MediaRecorder(camState.stream, camState.mime?{mimeType:camState.mime}:undefined); }
   catch(e){
-    $('#camErr').textContent='This browser could not start recording. Film with your camera app and upload the clip instead.';
-    $('#camErr').classList.remove('hidden');
+    camPhase('idle');
+    camErrShow('This browser could not start recording. Film with your camera app and upload the clip instead.');
     return;
   }
   // The pose model shares the phone's GPU with the encoder; a weak phone
@@ -2679,15 +2786,21 @@ function camRecord(){
   camLiveStop();
   camState.rec=rec; camState.chunks=[];
   rec.ondataavailable=e=>{ if(e.data && e.data.size) camState.chunks.push(e.data); };
-  rec.onstop=()=>camKeep();
+  // Two short notes: it is over, you can get off.
+  rec.onstop=()=>{ camBeep(660,90); camBeep(660,90,0.16); camKeep(); };
   rec.start();
-  $('#camStop').classList.remove('hidden');
-  $('#camRec').classList.remove('hidden');
-  const t0=Date.now();
+  camBeep(1320,260);                                   // one long note: rolling
+  try{ if(navigator.vibrate) navigator.vibrate(80); }catch(e){}
+  camPhase('rec');
+  const t0=Date.now(), stopBtn=$('#camStop');
   const mmss=s=>`0:${String(s).padStart(2,'0')}`;
-  const clock=setInterval(()=>{
-    $('#camRecT').textContent=`${mmss(Math.min(CAM_MAX_S,Math.round((Date.now()-t0)/1000)))} / ${mmss(CAM_MAX_S)}`;
-  },250);
+  const paint=()=>{
+    const el=Math.min(CAM_MAX_S,(Date.now()-t0)/1000);
+    $('#camRecT').textContent=`${mmss(Math.round(el))} / ${mmss(CAM_MAX_S)}`;
+    stopBtn.style.setProperty('--cam-p', (el/CAM_MAX_S).toFixed(3));
+  };
+  paint();
+  const clock=setInterval(paint,250);
   // The auto-stop is the feature: at second 15 the athlete is mid-stride or
   // mid-pedal-stroke, not standing at the phone.
   const stop=setTimeout(()=>{ if(rec.state!=='inactive') rec.stop(); },CAM_MAX_S*1000);
@@ -2705,6 +2818,144 @@ function camKeep(){
   if(slot==='b') setFileB(file); else setFile(file);
   track('analyze_step_done', {step:'clip', slot, source:'record'});
 }
+/* ---- Zoom ----
+   The phone can then stand further back: the athlete is as big in the frame,
+   the whole bike fits, and from further away the picture is flatter (less
+   perspective on the near leg). It is the camera's own zoom, set on the
+   track, so the RECORDING is zoomed, not just the preview -- a preview
+   scaled in CSS would promise a frame the clip does not have. Offered only
+   where the browser exposes it; nothing is asked for in getUserMedia, so no
+   extra permission prompt appears. */
+const CAM_ZOOMS=[1,1.5,2,3];
+function camZoomRead(){
+  let z=null;
+  try{
+    const vt=camState.stream.getVideoTracks()[0];
+    const caps=vt.getCapabilities ? vt.getCapabilities() : null;
+    if(caps && caps.zoom && caps.zoom.max>caps.zoom.min){
+      const now=(vt.getSettings && vt.getSettings().zoom)||caps.zoom.min;
+      // `base` is what this camera calls no zoom; the stops are multiples of it
+      z={min:caps.zoom.min, max:caps.zoom.max, base:now, val:now, busy:false, again:false};
+      if(z.base*CAM_ZOOMS[1]>z.max+1e-6) z=null;
+    }
+  }catch(e){}
+  camState.zoom=z;
+  $('#camZoom').classList.toggle('hidden', !z);
+  if(z) $('#camZoom').textContent='1x';
+}
+function camZoomX(){
+  const z=camState && camState.zoom;
+  return z ? Math.round(z.val/z.base*10)/10 : null;
+}
+function camZoomSet(v){
+  const z=camState && camState.zoom;
+  if(!z) return;
+  z.val=Math.max(z.min, Math.min(z.max, v));
+  $('#camZoom').textContent=camZoomX()+'x';
+  // one request at a time: a pinch fires faster than a camera can refocus
+  if(z.busy){ z.again=true; return; }
+  z.busy=true;
+  const done=()=>{ z.busy=false; if(z.again && camState && camState.zoom===z){ z.again=false; camZoomSet(z.val); } };
+  camState.stream.getVideoTracks()[0].applyConstraints({advanced:[{zoom:z.val}]}).then(done, done);
+}
+function camZoomStep(){
+  const z=camState && camState.zoom;
+  if(!z) return;
+  const stops=CAM_ZOOMS.map(k=>z.base*k).filter(v=>v<=z.max+1e-6);
+  camZoomSet(stops.find(v=>v>z.val+1e-3) || stops[0]);
+}
+/* ---- Sound, and a screen that stays awake ----
+   The athlete is three or four metres from the phone and often cannot see the
+   screen at all, so the countdown and both ends of the take are HEARD. Output
+   only: no microphone is opened. The context is made on the Start tap, which
+   is the gesture browsers want before they let a page make a sound. */
+let camAudio=null, camWakeLock=null;
+function camAudioWake(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return;
+    camAudio=camAudio||new AC();
+    if(camAudio.state==='suspended') camAudio.resume();
+  }catch(e){}
+}
+function camBeep(hz, ms, delay){
+  if(!camAudio) return;
+  try{
+    const t=camAudio.currentTime+(delay||0), o=camAudio.createOscillator(), g=camAudio.createGain();
+    o.type='sine'; o.frequency.value=hz;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.6,t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+ms/1000);
+    o.connect(g); g.connect(camAudio.destination);
+    o.start(t); o.stop(t+ms/1000+0.03);
+  }catch(e){}
+}
+function camWake(on){
+  try{
+    if(!on){ if(camWakeLock){ camWakeLock.release().catch(()=>{}); camWakeLock=null; } return; }
+    if(!navigator.wakeLock) return;
+    navigator.wakeLock.request('screen').then(l=>{
+      if($('#camModal').classList.contains('hidden')) l.release().catch(()=>{}); else camWakeLock=l;
+    }).catch(()=>{});
+  }catch(e){}
+}
+/* ---- Level ----
+   A phone rolled 4 degrees reads every angle taken against the horizon or the
+   vertical (trunk, shin, forearm) 4 degrees off; joint angles survive, those
+   do not. The roll comes from gravity in the screen's own axes, so it is the
+   same number portrait or landscape. Near flat (lying on a table) there is no
+   horizon to speak of and the level hides. No sensor, no permission: no
+   level, and the camera is as it was. */
+const CAM_LEVEL={okDeg:2, offDeg:3, pitchDeg:20, flatDeg:60};
+const camLevel={on:false, roll:null, pitch:null, ok:false, t:0};
+function camLevelAsk(){
+  const D=window.DeviceOrientationEvent;
+  if(!D || camLevel.on) return;
+  const listen=()=>{
+    if(camLevel.on || $('#camModal').classList.contains('hidden')) return;
+    camLevel.on=true; window.addEventListener('deviceorientation',camLevelRead);
+  };
+  if(typeof D.requestPermission==='function') D.requestPermission().then(s=>{ if(s==='granted') listen(); }).catch(()=>{});
+  else listen();
+}
+function camLevelRead(e){
+  if(e.beta==null || e.gamma==null) return;
+  const b=e.beta*Math.PI/180, g=e.gamma*Math.PI/180;
+  // gravity in the device's axes: x to the right of the screen, y to its top, z out of it
+  const gx=Math.sin(g)*Math.cos(b), gy=-Math.sin(b), gz=-Math.cos(g)*Math.cos(b);
+  const pitch=Math.asin(Math.max(-1,Math.min(1,-gz)))*180/Math.PI;      // 0 = upright, 90 = flat
+  let roll=null;
+  if(Math.abs(pitch)<=CAM_LEVEL.flatDeg){
+    const turned=(screen.orientation&&screen.orientation.angle)||window.orientation||0;
+    let raw=((Math.atan2(gx,-gy)*180/Math.PI+turned+540)%360)-180;      // clockwise, as you look at the screen
+    if(Math.abs(raw)>90) raw-=Math.sign(raw)*180;                       // a horizon has no up: 178 is 2 the other way
+    const d=camLevel.roll==null ? 0 : ((raw-camLevel.roll+540)%360)-180;
+    roll=camLevel.roll==null ? raw : camLevel.roll+0.25*d;
+  }
+  camLevel.roll=roll; camLevel.pitch=pitch;
+  const now=performance.now();
+  if(now-camLevel.t<80) return;                        // the sensor fires 60 times a second
+  camLevel.t=now;
+  camLevelPaint();
+}
+function camLevelPaint(){
+  const box=$('#camLevel'), r=camLevel.roll;
+  if(r==null){ box.classList.add('hidden'); camLevel.ok=false; }
+  else{
+    // in at 2, out at 3: a phone resting at the edge does not blink
+    camLevel.ok=Math.abs(r)<=(camLevel.ok?CAM_LEVEL.offDeg:CAM_LEVEL.okDeg);
+    box.classList.remove('hidden');
+    box.classList.toggle('is-level', camLevel.ok);
+    box.style.setProperty('--roll', (-r).toFixed(1)+'deg');   // the horizon turns against the phone
+    $('#camLevelDeg').textContent=Math.round(Math.abs(r))+'°';
+  }
+  camLivePaint();                                      // the pill weighs the level too
+}
+function camLevelStop(){
+  window.removeEventListener('deviceorientation',camLevelRead);
+  camLevel.on=false; camLevel.roll=null; camLevel.pitch=null; camLevel.ok=false;
+  $('#camLevel').classList.add('hidden');
+}
 /* ---- Live GO / NO-GO on the preview ----
    Mike (bike fitter, 2026-11-01) wanted a badly framed clip caught before it
    is analysed; the prescan does that once a clip is picked, this does it while
@@ -2713,14 +2964,18 @@ function camKeep(){
 
    Same bars as prescan.capture_check, in pixels of the frame the server's
    detector will see (long edge capped at 1280); test_cam_live_spa.py fails if
-   these drift from the Python. The lite model is plenty for the two things
-   judged here -- how tall the rider is and which way they face -- and the
-   angles are still measured on the server. Anything that fails (old phone, no
-   WebGL, no network for the model) leaves the camera exactly as it was. */
-const CAM_LIVE={tinyPx:300, smallPx:400, runTinyPx:200, runSmallPx:300, detectLongEdge:1280, everyMs:200, keep:6};
+   these drift from the Python. The lite model is plenty for the things judged
+   here -- how tall the rider is, what is cut off, which way they face -- and
+   the angles are still measured on the server. Anything that fails (old
+   phone, no WebGL, no network for the model) leaves the guide lines and the level
+   and takes only the verdict away.
+
+   A verdict is a COMMAND, not a grade: Move closer, Step back, Tilt up. The
+   athlete has a phone in one hand and nothing to look "NO-GO" up in. */
+const CAM_LIVE={tinyPx:300, smallPx:400, runTinyPx:200, runSmallPx:300, detectLongEdge:1280, everyMs:200, keep:6, tightPct:80};
 const CAM_LIVE_LIB='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const CAM_LIVE_MODEL='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
-const camLiveState={on:false, verdict:null, recent:[], raf:0, last:0};
+const camLiveState={on:false, verdict:null, shown:null, recent:[], raf:0, last:0};
 let camLiveModel=null;   // kept across openings: building it is the slow part
 async function camLiveLoad(){
   if(camLiveModel) return camLiveModel;
@@ -2732,43 +2987,68 @@ async function camLiveLoad(){
   return camLiveModel;
 }
 /* One frame's reading: null when nobody is there, else the rider's height in
-   detector pixels (null when the feet or the head are out of shot), which
-   way they face, and whether they lean over handlebars. */
+   detector pixels (null when the feet or the head are out of shot, with `cut`
+   saying which end), the share of the frame's height they fill, and which way
+   they face. */
 function camLiveRead(lms, vw, vh){
   const P=i=>lms[i], ok=i=>P(i)&&(P(i).visibility==null||P(i).visibility>=0.3);
   if(![11,12,23,24].every(ok)) return null;
-  const sh={x:(P(11).x+P(12).x)/2, y:(P(11).y+P(12).y)/2}, hp={x:(P(23).x+P(24).x)/2, y:(P(23).y+P(24).y)/2};
-  // 0 = flat, 90 = upright, in pixels so a portrait frame reads true
-  const trunk=Math.atan2((hp.y-sh.y)*vh, Math.abs(sh.x-hp.x)*vw)*180/Math.PI;
+  const hpx=(P(23).x+P(24).x)/2;
   const ankles=[27,28].filter(ok).map(i=>P(i).y);
-  let px=null;
+  let px=null, fill=null;
   if(ok(0) && ankles.length){
     const low=Math.max(...ankles), span=low-P(0).y;
-    if(span>0.01 && low<=0.99 && P(0).y>=0.01)
+    if(span>0.01 && low<=0.99 && P(0).y>=0.01){
+      fill=span;
       px=Math.round(span*vh*Math.min(1, CAM_LIVE.detectLongEdge/Math.max(vw,vh)));
+    }
   }
-  return {px, facingRight:P(0).x>=hp.x, bike:trunk<=55};
+  let cut=null;
+  if(px==null){
+    // The model still guesses where a joint is once it has left the picture.
+    const top=!!P(0) && P(0).y<0.01, bottom=[27,28].some(i=>P(i) && P(i).y>0.99);
+    cut = top&&bottom ? 'both' : top ? 'top' : bottom ? 'bottom' : 'hidden';
+  }else if([15,16,27,28].some(i=>ok(i) && (P(i).x<0.01 || P(i).x>0.99))) cut='side';
+  return {px, fill, cut, facingRight:P(0).x>=hpx};
 }
-/* The last few readings decide, so one bad frame does not flash the border. */
+const CAM_CUT_TEXT={both:'Step back', side:'Step back', top:'Tilt up', bottom:'Tilt down', hidden:'Head to feet in frame'};
+/* The last few readings decide, so one bad frame does not flash the frame. */
 function camLiveVerdict(rs){
   const seen=rs.filter(Boolean);
-  if(seen.length<rs.length/2) return {verdict:'no_go', code:'not_found', text:'Can’t see you. Get your whole body in the frame'};
+  if(seen.length<rs.length/2) return {verdict:'no_go', code:'not_found', text:'Can’t see you'};
+  const most=k=>{ const n={}; seen.forEach(r=>{ if(r[k]) n[r[k]]=(n[r[k]]||0)+1; }); return Object.keys(n).sort((a,b)=>n[b]-n[a])[0]; };
   const pxs=seen.map(r=>r.px).filter(v=>v!=null).sort((a,b)=>a-b);
-  if(pxs.length<seen.length/2) return {verdict:'no_go', code:'cut_off', text:'Head to feet in the frame. Something’s cut off'};
+  if(pxs.length<seen.length/2) return {verdict:'no_go', code:'cut_off', cut:most('cut'), text:CAM_CUT_TEXT[most('cut')]||CAM_CUT_TEXT.hidden};
   const px=pxs[Math.floor(pxs.length/2)];
   const grid=(coachOn()&&COACH.capture)||{};
-  const bike=seen.filter(r=>r.bike).length>seen.length/2;
-  // A runner passing the camera cannot fill the frame: running has lower bars.
-  if(px<(grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx))) return {verdict:'no_go', code:'tiny', px, text:'Move closer. You’re too small to measure'};
-  if(px<(grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx))) return {verdict:'check', code:'small', px, text:bike?'A bit closer for cleaner angles':'A bit small. Fine, but closer is cleaner'};
-  return {verdict:'go', code:'go', px, text:'Good, this will measure'};
+  // The sport is the tab the camera was opened from. A runner passing the
+  // camera cannot fill the frame: running has lower bars.
+  const bike=$('#camStage').dataset.sport==='bike';
+  if(px<(grid.tiny_px||(bike?CAM_LIVE.tinyPx:CAM_LIVE.runTinyPx))) return {verdict:'no_go', code:'tiny', px, text:'Move closer'};
+  if(seen.filter(r=>r.cut==='side').length>seen.length/2) return {verdict:'check', code:'side', px, text:CAM_CUT_TEXT.side};
+  if(seen.filter(r=>r.fill!=null && r.fill*100>CAM_LIVE.tightPct).length>seen.length/2) return {verdict:'check', code:'tight', px, text:'Step back'};
+  if(px<(grid.small_px||(bike?CAM_LIVE.smallPx:CAM_LIVE.runSmallPx))) return {verdict:'check', code:'small', px, text:'A bit closer'};
+  return {verdict:'go', code:'go', px, text:'Go · Good distance'};
 }
-const CAM_LIVE_TAG={go:'GO', check:'CHECK', no_go:'NO-GO'};
-function camLivePaint(v){
+/* What the pill says: the distance first, then the phone itself. A good
+   distance on a tilted phone is not a GO. */
+function camLiveShown(){
+  const v=camLiveState.verdict;
+  if(v && v.verdict!=='go') return v;
+  if(camLevel.roll!=null){
+    if(!camLevel.ok) return {verdict:'check', code:'roll', text:'Level the phone'};
+    if(Math.abs(camLevel.pitch)>CAM_LEVEL.pitchDeg) return {verdict:'check', code:'pitch', text:'Stand the phone upright'};
+  }
+  return v;
+}
+function camLivePaint(){
   const stage=$('#camStage'), box=$('#camLive');
+  const v=(camLiveState.on || camLevel.on) && stage.dataset.phase!=='rec' ? camLiveShown() : null;
+  const was=camLiveState.shown;
+  camLiveState.shown=v;
   if(!v){ delete stage.dataset.live; box.classList.add('hidden'); return; }
+  if(was && was.code===v.code && was.text===v.text) return;
   stage.dataset.live=v.verdict;
-  $('#camLiveTag').textContent=CAM_LIVE_TAG[v.verdict];
   $('#camLiveT').textContent=v.text;
   box.classList.remove('hidden');
 }
@@ -2792,15 +3072,15 @@ async function camLiveStart(){
     }catch(e){ camLiveStop(); return; }
     const rs=camLiveState.recent; rs.push(r); if(rs.length>CAM_LIVE.keep) rs.shift();
     if(rs.length<3) return;
-    const v=camLiveVerdict(rs);
-    if(!camLiveState.verdict || v.code!==camLiveState.verdict.code){ camLiveState.verdict=v; camLivePaint(v); }
+    camLiveState.verdict=camLiveVerdict(rs);
+    camLivePaint();
   };
   camLiveState.raf=requestAnimationFrame(step);
 }
 function camLiveStop(){
-  camLiveState.on=false;
+  camLiveState.on=false; camLiveState.verdict=null;
   cancelAnimationFrame(camLiveState.raf);
-  camLivePaint(null);
+  camLivePaint();
 }
 
 $('#camOpen').addEventListener('click',openCam);
@@ -2809,6 +3089,34 @@ $('#camStart').addEventListener('click',camStartFlow);
 $('#camStop').addEventListener('click',()=>{
   if(camState && camState.rec && camState.rec.state!=='inactive') camState.rec.stop();
 });
+$('#camFlip').addEventListener('click',camFlip);
+$('#camZoom').addEventListener('click',camZoomStep);
+(function camPinch(){
+  const st=$('#camStage');
+  let p=null;
+  const gap=e=>Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+  st.addEventListener('touchstart',e=>{
+    p = e.touches.length===2 && camState && camState.zoom && st.dataset.phase==='idle' ? {d:gap(e), v:camState.zoom.val} : null;
+  },{passive:true});
+  st.addEventListener('touchmove',e=>{
+    if(!p || e.touches.length!==2) return;
+    e.preventDefault();                                // the page itself must not zoom
+    camZoomSet(p.v*gap(e)/Math.max(1,p.d));
+  },{passive:false});
+  st.addEventListener('touchend',()=>{ p=null; },{passive:true});
+})();
+$('#camTimer').addEventListener('click',e=>{
+  const b=e.target.closest('[data-t]'); if(b) camTimerSet(Number(b.dataset.t));
+});
+// The way out that every camera error names: the same picker the upload step opens.
+$('#camPick').addEventListener('click',()=>{
+  const slot=camSlot;
+  closeCam();
+  track('cam_pick',{slot});
+  (slot==='b' ? $('#fileB') : $('#file')).click();
+});
+['loadedmetadata','resize'].forEach(ev=>$('#camView').addEventListener(ev,camLayout));
+window.addEventListener('resize',()=>{ if(!$('#camModal').classList.contains('hidden')) camLayout(); });
 renderCamRow();
 
 const MAX_MB=200;

@@ -128,6 +128,7 @@
   --hero-good:#7BE0A2; --hero-warn:#FFD08A; --hero-bad:#FFB3A6; --hero-link:#A7C2F9;
   /* Drawn on footage (canvas overlays): the same on light and dark. */
   --ov-skel:#3DFF6E; --ov-skel-glow:rgba(30,190,80,.45); --ov-accent:#FFA82E;
+  --ov-bad:#FF5A4D;                    /* the live camera's NO-GO: a red that reads on footage */
   --ov-ink:#FFFFFF; --ov-ink-soft:rgba(255,255,255,.85); --ov-ink-mid:rgba(255,255,255,.7); --ov-ink-faint:rgba(255,255,255,.55);
   --ov-label:rgba(26,30,36,.9); --ov-label-mute:#DDDDDD;
   /* The share card: always the dark card, whatever the app theme. */

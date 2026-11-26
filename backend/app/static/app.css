@@ -1197,44 +1197,116 @@ table.data td.dform-tr{font-family:var(--f-mono);font-weight:500;white-space:now
 .shot-bar .btn-ghost{color:var(--c-on-dark);border-color:rgba(255,255,255,.35);background:transparent}
 .shot-bar .btn-ghost:hover{background:rgba(255,255,255,.1)}
 .cardmodal-card{max-width:420px}
-/* ---- Built-in camera ---- */
-.cammodal-card{max-width:440px}
-.cam-stage{position:relative;background:var(--c-media-bg);border-radius:var(--radius-card);overflow:hidden;margin:0 0 14px}
-.cam-stage video{display:block;width:100%;max-height:56vh;object-fit:contain}
-.cam-guides{position:absolute;inset:0;pointer-events:none}
-.cam-guides::before,.cam-guides::after{content:"";position:absolute;left:6%;right:6%;
-  border-top:2px dashed rgba(255,255,255,.55)}
-.cam-guides::before{top:16.6%}
-.cam-guides::after{top:83.3%}
-.cam-guide-lbl{position:absolute;left:0;right:0;top:16.6%;transform:translateY(-125%);
-  text-align:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;
-  text-transform:uppercase;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6)}
-.cam-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:var(--f-mono);font-weight:500;font-size:96px;color:var(--c-on-dark);
-  text-shadow:0 2px 16px rgba(0,0,0,.55);background:rgba(3,10,24,.25)}
-.cam-rec{position:absolute;top:10px;left:12px;display:flex;align-items:center;gap:8px;
-  font-family:var(--f-mono);font-size:14px;font-weight:500;color:var(--c-on-dark);text-shadow:0 1px 3px rgba(0,0,0,.6)}
-.cam-rec .dot{width:10px;height:10px;border-radius:50%;background:var(--st-bad-fill)}
+/* ---- Built-in camera: a full-screen viewfinder ----
+   The athlete props the phone three or four metres away and has to find
+   themselves in it, so the picture takes the whole screen and the controls
+   float on it. One colour (--cam-tone) carries the verdict to the frame's
+   edge, the guide lines and the pill: from that distance colour is all that reads. */
+.modal-cam{padding:0;background:var(--c-media-bg);align-items:stretch}
+.cam-stage{position:relative;flex:1;min-width:0;overflow:hidden;touch-action:none;background:var(--c-media-bg);color:var(--c-on-dark);
+  --cam-tone:var(--ov-ink-mid)}
+.cam-stage[data-live="go"]{--cam-tone:var(--ov-skel)}
+.cam-stage[data-live="check"]{--cam-tone:var(--ov-accent)}
+.cam-stage[data-live="no_go"]{--cam-tone:var(--ov-bad)}
+.cam-stage video{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain}
+.cam-stage.mirror video{transform:scaleX(-1)}
+/* The filmed picture's rectangle; camLayout() keeps it on the video. */
+.cam-frame{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;pointer-events:none;container-type:size;
+  border:4px solid transparent;transition:border-color .15s}
+.cam-stage[data-live] .cam-frame{border-color:var(--cam-tone)}
+.cam-stage[data-phase="err"] .cam-frame{display:none}
+/* The guide: two hairlines, the head under the upper and the feet over the
+   lower (Artur 2026-11-25: lines, not a silhouette). They mark 60% of the
+   frame's height: an athlete who fills it stands about 650 px tall for the
+   detector, well over the GO bar, with room left for a bounce or a raised
+   arm. Whether a smaller figure is still big enough is the live check's
+   call, said in the pill. The lines fade out towards the edges and
+   take the verdict's colour. */
+.cam-guide{position:absolute;left:0;right:0;top:20%;transform:translateY(-100%);padding:0 0 8px;color:var(--cam-tone);
+  font-family:var(--f-mono);font-size:12px;font-weight:500;line-height:1;letter-spacing:.16em;text-transform:uppercase;text-align:center;
+  text-shadow:0 1px 3px rgba(0,0,0,.6);transition:color .15s}
+.cam-guide::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor 16%,currentColor 84%,transparent)}
+.cam-guide--feet{top:80%;transform:none;padding:8px 0 0}
+.cam-guide--feet::after{bottom:auto;top:0}
+.cam-stage[data-phase="rec"] .cam-guide{display:none}
+/* The level: two fixed ticks at the frame's edges and the horizon between
+   them. Level, the three make one green line. The degrees sit in a dark pill
+   at the edge, off the athlete. */
+.cam-level{position:absolute;left:0;right:0;top:50%;height:0;--roll:0deg;color:var(--ov-ink-soft)}
+.cam-level::before,.cam-level::after{content:"";position:absolute;top:-1px;width:20px;height:2px;background:currentColor}
+.cam-level::before{left:4px}
+.cam-level::after{right:4px}
+.cam-level-line{position:absolute;left:30px;right:30px;top:-1px;height:2px;background:currentColor;opacity:.75;transform:rotate(var(--roll))}
+.cam-level-deg{position:absolute;right:28px;top:-34px;padding:2px 8px;border-radius:999px;background:var(--ov-label);
+  font:500 14px var(--f-mono);font-style:normal;color:var(--ov-ink)}
+.cam-level.is-level{color:var(--ov-skel)}
+.cam-level.is-level .cam-level-line{opacity:.35}
+.cam-level.is-level .cam-level-deg{color:var(--ov-skel)}
+.cam-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  font-family:var(--f-mono);font-weight:500;font-size:96px;font-size:max(96px,38vmin);line-height:1;color:var(--c-on-dark);
+  text-shadow:0 2px 16px rgba(0,0,0,.55);background:rgba(3,10,24,.3)}
+.cam-top{position:absolute;left:0;right:0;top:0;z-index:1;display:flex;align-items:center;gap:6px;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 10px 24px;
+  background:linear-gradient(rgba(3,10,24,.62),rgba(3,10,24,0))}
+.cam-btn{flex:none;width:44px;height:44px;padding:0;border:none;border-radius:50%;background:rgba(3,10,24,.45);color:var(--c-on-dark);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background-color .15s}
+.cam-btn svg{width:22px;height:22px}
+.cam-btn:hover{background:rgba(3,10,24,.7)}
+.cam-btn:focus-visible,.cam-shutter:focus-visible,.cam-timer button:focus-visible{outline:2px solid var(--c-on-dark);outline-offset:2px}
+.cam-chip,.cam-live,.cam-rec{min-height:32px;padding:4px 10px;border-radius:999px;
+  font-family:var(--f-mono);font-size:12px;font-weight:500;line-height:24px;letter-spacing:.03em;white-space:nowrap}
+.cam-chip{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;background:rgba(3,10,24,.55);
+  color:var(--ov-ink-soft);border:1px solid var(--ov-ink-faint);line-height:22px}
+.cam-live,.cam-rec{flex:none;display:inline-flex;align-items:center;gap:6px}
+.cam-live{background:var(--cam-tone);color:var(--c-media-bg);text-transform:uppercase;transition:background-color .15s}
+.cam-live .dot{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.55}
+.cam-rec{background:rgba(3,10,24,.62);color:var(--c-on-dark);font-size:14px}
+.cam-rec .dot{width:10px;height:10px;border-radius:50%;background:var(--ov-bad)}
 @media (prefers-reduced-motion: no-preference){
   .cam-rec .dot{animation:campulse 1.2s ease-in-out infinite}
   @keyframes campulse{50%{opacity:.35}}
 }
-.cam-stage::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
-  border:5px solid transparent;transition:border-color .15s}
-.cam-stage[data-live="go"]::after{border-color:var(--st-good-fill)}
-.cam-stage[data-live="check"]::after{border-color:var(--st-warn-fill)}
-.cam-stage[data-live="no_go"]::after{border-color:var(--st-bad-fill)}
-.cam-live{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;align-items:center;
-  padding:6px 10px;border-radius:var(--radius-panel);background:rgba(3,10,24,.72);color:var(--c-on-dark);font-size:14px;font-weight:500;line-height:1.35}
-.cl-tag{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;padding:2px 6px;border-radius:var(--radius-tag);color:var(--c-on-dark);flex:none}
-.cam-stage[data-live="go"] .cl-tag{background:var(--st-good-fill)}
-.cam-stage[data-live="check"] .cl-tag{background:var(--st-warn-fill)}
-.cam-stage[data-live="no_go"] .cl-tag{background:var(--st-bad-fill)}
-@media (prefers-reduced-motion: reduce){.cam-stage::after{transition:none}}
-.cam-actions{display:flex;gap:10px}
-.cam-actions .btn{flex:1}
-.cam-err{font-size:14px;color:var(--st-bad);line-height:1.5;margin:0 0 12px}
-.cam-hint{font-size:12px;color:var(--c-ink-faint);line-height:1.5;margin:10px 0 0}
+.cam-err{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);margin:0;padding:16px;
+  border-radius:var(--radius-panel);background:rgba(3,10,24,.82);color:var(--c-on-dark);font-size:14px;line-height:1.5;text-align:center}
+.cam-bottom{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding:28px 16px calc(14px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(rgba(3,10,24,0),rgba(3,10,24,.72) 45%)}
+.cam-opts{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;width:100%;max-width:340px}
+.cam-zoom{grid-column:1;border:1px solid var(--ov-ink-faint);font-family:var(--f-mono);font-size:14px;font-weight:500}
+.cam-timer{grid-column:2;display:inline-flex;border-radius:999px;overflow:hidden;background:rgba(3,10,24,.55);border:1px solid var(--ov-ink-faint)}
+.cam-timer button{min-width:56px;min-height:36px;padding:0 12px;border:none;border-left:1px solid var(--ov-ink-faint);
+  background:transparent;color:var(--ov-ink-mid);font-family:var(--f-mono);font-size:16px;cursor:pointer;
+  transition:background-color .15s,color .15s}
+.cam-timer button:first-child{border-left:0}
+.cam-timer button[aria-pressed="true"]{background:var(--c-on-dark);color:var(--c-media-bg)}
+.cam-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;width:100%;max-width:340px}
+#camPick{grid-column:1}
+#camFlip{grid-column:3}
+.cam-shutter{grid-column:2;position:relative;width:76px;height:76px;padding:0;border:4px solid var(--c-on-dark);border-radius:50%;
+  background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cam-shutter i{display:block;width:58px;height:58px;border-radius:50%;background:var(--ov-bad)}
+/* Counting down, the button is the way to call it off: the square says stop. */
+.cam-stage[data-phase="count"] .cam-shutter i{width:30px;height:30px;border-radius:var(--radius-tag)}
+/* Recording: the ring fills over the fifteen seconds. */
+.cam-shutter--stop{--cam-p:0;border:none;background:conic-gradient(var(--c-on-dark) calc(var(--cam-p) * 1turn),var(--ov-ink-faint) 0)}
+.cam-shutter--stop::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--c-media-bg)}
+.cam-shutter--stop i{position:relative;width:30px;height:30px;border-radius:var(--radius-tag)}
+.cam-hint{margin:0;font-family:var(--f-mono);font-size:12px;letter-spacing:.04em;line-height:1.5;color:var(--ov-ink-mid);text-align:center}
+/* What a phase has no use for goes, without the controls jumping. */
+.cam-stage[data-phase="count"] :is(.cam-opts,.cam-hint,#camPick,#camFlip),
+.cam-stage[data-phase="rec"] :is(.cam-opts,.cam-hint,#camPick,#camFlip,.cam-live){visibility:hidden}
+.cam-stage[data-phase="err"] :is(.cam-opts,.cam-hint,.cam-chip){display:none}
+/* A phone on its side: the controls move to the thumb's side of the picture. */
+@media (orientation:landscape) and (max-height:560px){
+  .cam-bottom{left:auto;top:0;width:128px;justify-content:center;
+    padding:12px calc(12px + env(safe-area-inset-right,0px)) 12px 12px;
+    background:linear-gradient(90deg,rgba(3,10,24,0),rgba(3,10,24,.72) 45%)}
+  .cam-row,.cam-opts{grid-template-columns:auto;gap:12px;width:auto}
+  #camPick,#camFlip,.cam-shutter,.cam-zoom,.cam-timer{grid-column:1}
+  .cam-hint{display:none}
+  .cam-timer button{min-width:36px;padding:0 6px;font-size:14px}
+}
 .camrow{text-align:left;margin:8px 0 0}
 .camrow .btn{min-height:36px}
 .cardprev-wrap{display:flex;justify-content:center;background:var(--c-media-bg);border-radius:var(--radius-panel);padding:10px}
