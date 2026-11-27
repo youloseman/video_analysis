@@ -660,47 +660,6 @@ def get_position_meta(position: str | None, metric: str) -> dict[str, Any]:
 # Auto-detection: resolve cycling config from measured metrics
 # ---------------------------------------------------------------------------
 
-def determine_cycling_config(
-    cycling_position: str | None,
-    detected_metrics: dict[str, Any],
-) -> tuple[str, str | None]:
-    """Determine the best cycling config based on user selection + measured metrics.
-
-    Returns (resolved_position, override_reason).
-    override_reason is None if the user-selected position matches the data.
-    """
-    pos = cycling_position or "road_hoods"
-
-    trunk = detected_metrics.get("trunk_angle_avg", 0)
-    elbow = detected_metrics.get("elbow_angle_avg", 0)
-
-    if trunk <= 0 or elbow <= 0:
-        return pos, None
-
-    # User said road but metrics clearly show TT position
-    if pos in ("road_hoods", "road_drops", "casual"):
-        if trunk < 30 and elbow < 115:
-            return "tt_aero", (
-                f"Measured trunk {trunk:.0f} deg and elbow {elbow:.0f} deg "
-                f"suggest a TT/aero position rather than {get_position_label(pos)}."
-            )
-        if pos == "road_hoods" and trunk < 40:
-            return "road_drops", (
-                f"Measured trunk {trunk:.0f} deg is more aggressive than "
-                f"typical hoods position -- using Drops ranges for more accurate scoring."
-            )
-
-    # User said TT but metrics show upright position
-    if pos in ("tt_aero", "triathlon"):
-        if trunk > 40 and elbow > 130:
-            return "road_hoods", (
-                f"Measured trunk {trunk:.0f} deg and elbow {elbow:.0f} deg "
-                f"suggest a road position rather than {get_position_label(pos)}."
-            )
-
-    return pos, None
-
-
 # ---------------------------------------------------------------------------
 # Medical warnings based on measured metrics + position
 # ---------------------------------------------------------------------------

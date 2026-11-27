@@ -169,19 +169,25 @@ _TT_REL_POINTS: tuple[tuple[float, float], ...] = (
     # two measured postures, not at the step between them. Without this a
     # rider at 28.9 was told a degree flatter was worth 8 % (2026-10-13).
     (33.0, 0.87),
+    # The upright road posture (1.00). The anchor study gives it no angle, and
+    # the zones jumped 0.87 -> 1.00 at 38.0 deg: a rider at 39 deg on the hoods,
+    # inside the measured 32-50 band, was told 33 deg was worth 13 % and ~25 W.
+    # Placed so the slope is the one measured on a single rider, QEF's CFD on
+    # the hoods (30 -> 38 deg cost 13.4 W at 39.6 km/h, ~0.9 % a degree):
+    # 13 % over 15 deg. Flat (1.00) above it (2026-11-26).
+    (48.0, 1.00),
 )
-_TT_RANGE_TOP = 33.0
+_TT_RANGE_TOP = 48.0
 
 
 def _rel_for_trunk(trunk_angle: float) -> float:
     """Drag relative to upright at this trunk angle.
 
-    Up to the road-drops posture (33 deg) it is interpolated between measured
-    postures, so a two-degree change is worth two degrees: the zone-step figure
-    would have credited a triathlete moving 22 -> 20 deg with the whole
-    24 -> 16 deg saving (5 %) where the measured slope gives 1.3 %. Above it the
-    zones are qualitative postures with no angles, and their step is all there
-    is.
+    Up to an upright road torso (48 deg) it is interpolated between postures,
+    so a two-degree change is worth two degrees: the zone-step figure would
+    have credited a triathlete moving 22 -> 20 deg with the whole 24 -> 16 deg
+    saving (5 %) where the measured slope gives 1.3 %, and a road rider at 39
+    deg with a 13 % step one degree away. Above it, upright: 1.00.
     """
     if trunk_angle >= _TT_RANGE_TOP:
         return float(_zone_for_trunk(trunk_angle)["rel"])
@@ -332,7 +338,8 @@ def helmet_lever(
                f"above your back, higher than {KONA_PRO_UNDER_FREE} Kona pros (up to "
                f"+{KONA_PRO_FREE_UP_TO:.0f}%). Dropping it toward the pros' median "
                f"(+{HEAD_TARGET:.0f}%) is worth about {lo:.1f}-{hi:.1f}% of drag"
-               f"{' or more' if lower_bound else ''}, as far as you can still see the road.",
+               f"{' or more' if lower_bound else ''}. Lower the head, not the eyes: keep "
+               "looking up the road.",
     }
 
 
@@ -486,6 +493,8 @@ def estimate_aero(
             "van Druenen & Blocken 2023 (Computers & Fluids 257)"
             + ("; below 28 deg: Fintelman 2015 (PhD, Birmingham), measured frontal area"
                if trunk_angle < 28.0 else "")
+            + ("; 33-48 deg: slope from QEF Cycling Science CFD, one rider on the hoods"
+               if 33.0 < trunk_angle < _TT_RANGE_TOP else "")
         ),
         "next_zone": None,
     }

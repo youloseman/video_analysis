@@ -5184,7 +5184,7 @@ function aeroGauge(cur,tgt){
 const AERO_DISTANCES=[[20,'Sprint'],[40,'Olympic'],[90,'70.3'],[180,'Ironman']], AERO_SPEEDS=[30,35,40,45];
 // Results stored before the model was served carry none: the same constants.
 const AERO_MODEL_FALLBACK={physics:{rho:1.2,crr:0.004,mass_kg:84,eta:0.975,cda:0.26},
-  torso_points:[[8,0.8*0.302/0.335],[16,0.8*0.318/0.335],[24,0.8],[33,0.87]],
+  torso_points:[[8,0.8*0.302/0.335],[16,0.8*0.318/0.335],[24,0.8],[33,0.87],[48,1]],
   head_per_point_pct:[4.6/26.3,6.4/26.3], head_field:[6.7,33], default_distance_km:40, default_speed_kmh:35};
 function aeroPower(v,cda,ph){ return (0.5*ph.rho*cda*v*v*v + ph.crr*ph.mass_kg*9.81*v)/ph.eta; }
 function aeroTimeSaved(red,kmh,km,ph){
@@ -5270,8 +5270,8 @@ function renderAeroPanel(s){
   const p=aeroPrefs();
   const dist=AERO_DISTANCES.some(([d])=>d===p.dist)?p.dist:(m.default_distance_km||40);
   const speed=AERO_SPEEDS.includes(p.speed)?p.speed:(m.default_speed_kmh||35);
-  // The torso slider lives on the measured curve (aero bars, <= 33 deg);
-  // above it the zones have no angles, so the server's step is used as is.
+  // The torso slider lives on the curve (up to an upright road torso, 48 deg);
+  // results stored before 2026-11-26 end it at 33, and above that the step is used as is.
   const onCurve=ae.trunk_angle!=null && ae.trunk_angle<=m.torso_points[m.torso_points.length-1][0];
   const torsoFloor=Math.max(m.torso_points[0][0], Math.round(ae.torso_floor ?? m.torso_points[0][0]));
   const torso=onCurve?{now:Math.round(ae.trunk_angle)}:null;

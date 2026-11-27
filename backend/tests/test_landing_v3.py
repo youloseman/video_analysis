@@ -118,7 +118,8 @@ def test_every_local_media_file_exists(html):
 def test_the_aero_tool_mirrors_the_backend(html):
     tool = html[html.index("/* The aero tool."):]
     assert "PTS=[[8,.80*.302/.335],[16,.80*.318/.335],[24,.80],[33,.87]]" in tool
-    assert [a for a, _ in _TT_REL_POINTS] == [8.0, 16.0, 24.0, 33.0]
+    # The landing slider runs 20-33 deg; the road slope above 33 (2026-11-26) is not on it.
+    assert [a for a, _ in _TT_REL_POINTS][:4] == [8.0, 16.0, 24.0, 33.0]
     assert _TT_REL_POINTS[0][1] == pytest.approx(0.80 * 0.302 / 0.335)
     assert _TT_REL_POINTS[1][1] == pytest.approx(0.80 * 0.318 / 0.335)
     assert (_TT_REL_POINTS[2][1], _TT_REL_POINTS[3][1]) == (0.80, 0.87)

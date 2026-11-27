@@ -99,8 +99,8 @@ _HINTS: dict[tuple[str, str], str] = {
     ),
     ("helmet_above_back", "high"): (
         "The helmet sits higher above the back than 28 of the 31 Kona pros. "
-        "Dropping the head a little cuts drag, as long as you can still see the "
-        "road."
+        "Lowering the head a little cuts drag; lowering only the eyes to the "
+        "ground adds it. Keep looking up the road."
     ),
     ("helmet_above_back", "low"): (
         "The head sits lower than any pro we measured. It only pays if you can "

@@ -797,8 +797,8 @@ _HELMET_NOTE = (
 _HELMET_HIGH_NOTE = (
     "Higher than twenty-eight of the thirty-one Kona pros. A head up against a head down "
     "cost up to 6.4 % more drag in a CFD study of time-trial helmets (Beaumont "
-    "2018). Amber, a small penalty: drop the head if you can still see the "
-    "road and hold it."
+    "2018). Amber, a small penalty: drop the head, not the eyes, if you can "
+    "still see the road and hold it."
 )
 
 
