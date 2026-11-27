@@ -25,6 +25,10 @@ sources:
     year: 2024
     title: "Aero road helmet wind tunnel test, Silverstone (May 2024)"
     finding: "Live rider in a head-up road position at 40 km/h: POC Procen Air fastest, 1.8 W ahead of the S-Works Evade 3; 2.3 W slower with its visor off."
+  - author: "QEF | Cycling Science"
+    year: 2026
+    title: "CFD helmet series and summary tables (YouTube, 2025-2026)"
+    finding: "Computer simulations of one rider's torso and head, no arms or bike. Extra watts against a bare head in a low road position at 50.4 km/h: Oakley Velo Mach 10.6, Sweet Protection Tucker III 12.2, Van Rysel FCR (the RCR-F without MIPS) 12.6, Giro Eclipse Pro 13.7, S-Works Evade 4 15.1, Fizik Kudo Aero 22.4. Air through the helmet at 39.6 km/h: Evade 4 36.1 g/s, FCR 34.9, Eclipse Pro 28.2, Velo Mach 23.2, Tucker III 20.1. Looking at the ground with a relaxed neck added drag. Who funds the channel isn't stated."
   - author: "Virginia Tech Helmet Lab"
     year: 2025
     title: "Bicycle helmet ratings memorandum (July 2025)"
@@ -55,13 +59,13 @@ sources:
     finding: "40% off a new cycling helmet after a crash, up to two years from the purchase date of the damaged one, once per helmet."
 ---
 
-Black Friday ideas for next season's helmet. We scored 28 helmets, read 913 opinions and checked this week's prices. The short version: buy last year's model. Helmets from 2024 are a median 38% off this week, 2025 helmets 30%, and most 2026 helmets aren't discounted at all. The scores are strict: every helmet gives something up, in cooling, weight, price or certification, so the best here is 73 of 100.
+Black Friday ideas for next season's helmet. We scored 28 helmets, read 913 opinions and checked this week's prices. The short version: buy last year's model. Helmets from 2024 are a median 38% off this week, 2025 helmets 30%, and most 2026 helmets aren't discounted at all. The scores are strict: every helmet gives something up, in cooling, weight, price or certification, so the best here is 77 of 100.
 
 - **Buy last year's model.** The discounts are on 2024 and 2025 helmets, and a helmet doesn't get slower in a year.
 - **Best TT helmet: ABUS TimeShifter, 63 of 100,** a point ahead of the Giant Rivet MIPS. A 2026 model, so no Black Friday price, and three catches below.
 - **Best TT value: Giant Rivet MIPS, 62.** Second of 47 helmets in a wind tunnel test, at $350 list, about half the ABUS. This week only in the UK, on pre-order; we found no US shop.
 - **Racing in the US: Rudy Project Wingdream.** The best TT helmet here with CPSC certification.
-- **Best for hot races: Van Rysel RCR-F, ≈$137 (€125),** in the UK and EU. In the US, where it isn't sold, the S-Works Evade 4 at $350.
+- **Best for hot races: Van Rysel RCR-F, ≈$137 (€125),** in the UK and EU. In the US, where it isn't sold, the S-Works Evade 4 at $350, the one that moved the most air in a simulation.
 - **Skip: Giro Aerohead II,** even at 38% off.
 - **Your head is worth 3-4 W at 35 km/h.** The best helmet swap, about 1 W.
 
@@ -80,10 +84,10 @@ New models mostly hold their price; shops clear last season's to make room. Our 
 | Scott Cadence Plus | road | 2024 | 71 | ≈$88 (€80) | -68% | UK/EU, yellow S only |
 | HJC Furion 3 | road | 2025 | 65 | ≈$166 (€151) | -28% | UK/EU |
 | Canyon Stingr CFR | road | 2024 | 65 | ≈$132 (€120) | -40% | UK/EU, members price |
-| Oakley Velo Mach MIPS † | road | 2025 | 64 | ≈$202 (£154) | -45% | UK/EU, black/red S-M |
+| Oakley Velo Mach MIPS † | road | 2025 | 63 | ≈$202 (£154) | -45% | UK/EU, black/red S-M |
+| Giro Eclipse Pro † | road | 2026 | 58 | ≈$251 (£191) | -35% | UK/EU, matte black |
 | POC Procen Air † | road | 2024 | 55 | $235 ‡ | -50% | US |
 | KASK Nirvana † | road | 2024 | 55 | ≈$261 (£199) | -38% | UK/EU, three colours |
-| Giro Eclipse Pro † | road | 2026 | 53 | ≈$251 (£191) | -35% | UK/EU, matte black |
 
 Scores compare within a type: TT with TT, road with road. † CPSC certification listed. ‡ Seen in search results; the shop's page didn't open for us
 
@@ -129,31 +133,31 @@ A TT tail only helps while your head stays still. On a hot Ironman, or if you lo
 
 | Helmet | Score | List | Lowest seen, US | Lowest seen, UK/EU |
 |---|---|---|---|---|
-| Van Rysel RCR-F MIPS | 73 | ≈$132 (€120) | not sold | ≈$137 (€125) |
+| Van Rysel RCR-F MIPS | 77 | ≈$132 (€120) | not sold | ≈$137 (€125) |
 | Scott Cadence Plus | 71 | $230 | $80 ‡, -65%, one left | ≈$88 (€80), -68%, yellow S only |
-| S-Works Evade 4 † | 66 | $350 | $350, back order | ≈$327 (£249) |
 | HJC Furion 3 | 65 | ≈$229 (€209) | not sold | ≈$166 (€151), -28% |
 | Canyon Stingr CFR | 65 | ≈$219 (€200) | not sold | ≈$132 (€120), -40%, members price |
-| Oakley Velo Mach MIPS † | 64 | $340 | $340 | ≈$202 (£154), -45%, black/red S-M |
+| S-Works Evade 4 † | 64 | $350 | $350, back order | ≈$327 (£249) |
+| Oakley Velo Mach MIPS † | 63 | $340 | $340 | ≈$202 (£154), -45%, black/red S-M |
 | MET Manta 3 MIPS | 61 | $375 | not yet | ≈$329 (€300) |
 | Uvex Surge Aero MIPS | 61 | ≈$274 (€250) | $220 ‡ | ≈$177 (€162) |
+| Giro Eclipse Pro † | 58 | $350 | $350 | ≈$251 (£191), -35%, matte black |
 | Giant Pursuit MIPS | 57 | $300 | $300 | ≈$263 (£200) |
 | POC Procen Air † | 55 | $470 | $235 ‡, -50% | ≈$273 (€249), -38% |
 | KASK Nirvana † | 55 | $400 | $300 ‡, -25% | ≈$261 (£199), -38%, three colours, M-L |
 | Specialized Propero 4 † | 55 | $230 | $160 ‡, -30% | ≈$176 (£134), -19% |
-| Giro Eclipse Pro † | 53 | $350 | $350 | ≈$251 (£191), -35%, matte black |
 | Ekoï R-Aero | 53 | ≈$307 (€280) | $135 ‡, pre-order | ≈$205 (£156) ‡ |
-| Sweet Protection Tucker III † | 51 | $350 | $210 ‡, -40% | ≈$249 (€227), -35%, low stock |
+| Sweet Protection Tucker III † | 53 | $350 | $210 ‡, -40% | ≈$249 (€227), -35%, low stock |
 | Oakley ARO7 Road † | 51 | $300 | $210 ‡, -30% | ≈$241 (€220), -31% |
 | Fizik Kudo Aero † | 46 | $290 | $159 ‡, -45% | ≈$196 (£149), -45% |
 
-![The aero road helmets, best score first. Photos: Van Rysel, Scott, Specialized, HJC, Canyon, Oakley, MET, Uvex, Giant, POC, KASK, Giro, Ekoï, Sweet Protection, Fizik](/media/academy/triathlon-helmets-2026/lineup-road.webp)
+![The aero road helmets, best score first. Photos: Van Rysel, Scott, HJC, Canyon, Specialized, Oakley, MET, Uvex, Giro, Giant, POC, KASK, Ekoï, Sweet Protection, Fizik](/media/academy/triathlon-helmets-2026/lineup-road.webp)
 
-**Van Rysel RCR-F.** Tied with the KASK Nirvana in the 2025 tunnel test at a third of the price. MIPS and a magnetic buckle. Decathlon shows 4.7 stars from about 570 reviews; the complaint is heat on slow, hot climbs.
+**Van Rysel RCR-F.** Tied with the KASK Nirvana in the 2025 tunnel test at a third of the price. In QEF's computer simulations the same shell without MIPS moved almost as much air as the Evade 4, the best ventilated of the six they measured. MIPS and a magnetic buckle. Decathlon shows 4.7 stars from about 570 reviews; the complaint is heat on slow, hot climbs.
 
 **Scott Cadence Plus.** Second on our score: cool, a magnetic buckle, fourth in a Cyclingnews tunnel test. It is also being cleared out: one left at $80 in the US and only yellow size S at ≈$88 (€80) in Europe when we looked, and since Virginia Tech tightened its scale in 2025 it rates it 3 stars, not 5. A bargain if you find your size; not one to wait for.
 
-**Oakley Velo Mach.** The fastest road helmet in that test, and ≈$202 (£154) in the UK this week in black/red, S and M; other colours £179. It runs narrow: a tester with a 61 cm head found the L too small.
+**Oakley Velo Mach.** The fastest road helmet in that test, and ≈$202 (£154) in the UK this week in black/red, S and M; other colours £179. It runs narrow: a tester with a 61 cm head found the L too small. And it runs warm: in QEF's simulations it moved a third less air than the Evade 4, nine tenths of it through the front vent.
 
 **Canyon Stingr CFR.** Third in the tunnel, but two testers found its rigid HighBar strap presses on the throat when the head drops. On a tri bike your head drops for hours. Try it in your race position first.
 
@@ -187,7 +191,7 @@ The ranking says which helmets are good. Which one is good for you takes four qu
 
 **2. How hot is the race?** Hot, or with long climbs: an aero road helmet, for the reasons above. Flat and cool: a TT helmet.
 
-**3. Where does your head sit?** This step decides most. A long tail is built for a rider who holds the head still with the tail on the back. Makers of short-tail helmets argue nobody holds that for hours; nobody has published numbers either way. What has been measured points the same way as our estimate: in a tunnel session with several helmets, dropping the head cut drag 1.4% even with the tail pointing up. So set your head first and pick the tail to fit it, never the other way round.
+**3. Where does your head sit?** This step decides most. A long tail is built for a rider who holds the head still with the tail on the back. Makers of short-tail helmets argue nobody holds that for hours; nobody has published numbers either way. What has been measured points the same way as our estimate: in a tunnel session with several helmets, dropping the head cut drag 1.4% even with the tail pointing up. Dropping only the eyes is different: in QEF's simulations a rider who relaxed the neck and looked at the ground added about 1.5 W at 35 km/h. Lower the head and keep looking up the road. So set your head first and pick the tail to fit it, never the other way round.
 
 - **Helmet near the pros' +18%, and it stays there:** a long tail can pay.
 - **Higher, or it moves when you look up the road:** a short tail (the TimeShifter, KASK Mistral 3.0, Van Rysel RCR-X 2) or an aero road helmet.
@@ -204,9 +208,9 @@ Every helmet gets 0 to 10 on eight criteria, weighted for a long triathlon bike 
 
 | Criterion | Weight | What earns points |
 |---|---|---|
-| Aero evidence | 22% | An independent test and how it came out; for a TT helmet, a test in a road position counts a little less. A brand's own claim scores a little below neutral |
+| Aero evidence | 22% | An independent test and how it came out; for a TT helmet, a test in a road position counts a little less. A computer simulation counts halfway between a test and a claim. A brand's own claim scores a little below neutral |
 | Head movement | 17% | A short tail, as a rough proxy: over hours you look down and around |
-| Cooling | 13% | Real vents and channels, not a closed shell |
+| Cooling | 13% | Airflow through the helmet where a simulation measured it; otherwise real vents and channels, not a closed shell |
 | Value | 13% | List price, not this week's sale, so the rank doesn't depend on your country |
 | T1 | 8% | Magnetic buckle, visor over prescription glasses |
 | Safety | 8% | Rotational protection and the Virginia Tech rating |
@@ -220,3 +224,5 @@ The owner score comes from 913 opinions coded by topic: 377 from owners on Slowt
 To check the weights weren't deciding the result, we redrew every weight 5,000 times at half to one and a half its value. The TimeShifter and the Rivet stayed in the top three every time and split first place 52 to 48; the Wingdream made the top three 98% of the time.
 
 Prices are the lowest we found from 23 to 25 November, rechecked on 25 November, at shops we could read; sale prices change daily. No affiliate links, and nobody paid to be here.
+
+**Updated 26 November.** A reader pointed us to QEF's helmet simulations. They raised the RCR-F, better ventilated than we'd credited, and the Eclipse Pro, now tested rather than only claimed. They lowered the Evade 4, slower than the Evade 3 in their runs, and the Velo Mach, which runs warm.
