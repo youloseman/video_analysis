@@ -168,9 +168,9 @@ def saddle_tilt(points: dict[str, tuple[float, float]], *, aspect: float,
 def _tilt_note(deg: float, verdict: str, knee_bdc_high: bool) -> str:
     d = f"{abs(deg):.0f}"
     if verdict == "nose_down" and knee_bdc_high:
-        return (f"Nose down {d}°, and the knee opens past its range at the bottom: the saddle "
-                "is probably high and the nose went down to get off the front. Lower the "
-                "saddle first, then level it and film again")
+        return (f"Nose down {d}°, and the bottom of the stroke already says the saddle is "
+                "high: the nose went down to get off the front. Lower the saddle first, then "
+                "level it and film again")
     if verdict == "nose_down":
         return (f"Nose down {d}°. Fitters start level and stop at 2-3° nose down; more than "
                 "that usually makes up for something else, most often a saddle that is too "

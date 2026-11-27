@@ -5078,7 +5078,7 @@ function bikeTiles(s, position, plan){
        within tolerance" beside a card saying "Lower the saddle 5 mm": two
        thresholds, one bike. Where the plan asks for a change, the row says it. */
     const sd=plan&&(plan.diagnostics||[]).find(d=>d.component==='saddle_height'&&(d.action==='lower_saddle'||d.action==='raise_saddle'));
-    if(sd){ const m=tile('Saddle height',`${sd.action==='lower_saddle'?'Lower':'Raise'}${sd.amount?' '+sd.amount:''}`,'','from the knee at the bottom of the stroke: see What to change on the bike','warn',true); m.derived=true; t.push(m); }
+    if(sd){ const m=tile('Saddle height',`${sd.action==='lower_saddle'?'Lower':'Raise'}${sd.amount?' '+sd.amount:''}`,'',(sd.metric_name==='ankle_at_bdc'?'from the toe pointing down at the bottom of the stroke':'from the knee at the bottom of the stroke')+': see What to change on the bike','warn',true); m.derived=true; t.push(m); }
     else t.push(tile('Saddle height',pretty(s.saddle_height_assessment),'',ref,s.saddle_height_assessment==='optimal'?'good':'warn',true));
   }
   if(s.position_archetype&&s.position_archetype.label) t.push(tile('Position',s.position_archetype.label,'','','',true));
@@ -11502,7 +11502,7 @@ function resultVerdict(r, sport, tiles){
   return {level, head, why, side, go, out, near, ok, issues, diag, drill, chip};
 }
 /* A fit-plan metric -> the name the report uses for it, for Fix first's line. */
-const DIAG_LABEL={trunk_angle:'Trunk',knee_at_bdc:'Knee at the bottom',knee_angle_bdc:'Knee at the bottom',knee_at_tdc:'Knee at the top',
+const DIAG_LABEL={trunk_angle:'Trunk',knee_at_bdc:'Knee at the bottom',ankle_at_bdc:'Foot at the bottom',knee_angle_bdc:'Knee at the bottom',knee_at_tdc:'Knee at the top',
   hip_at_tdc:'Hip at the top',hip_angle_max:'Hip at the top',elbow_angle:'Elbow',shoulder_angle:'Shoulder',forearm_tilt:'Forearm tilt'};
 /* A server issue -> the fix table's key and side, for the verdict's chip. */
 const ISSUE_FIX={overstriding:['overstride','high'],low_cadence:['cadence','low'],

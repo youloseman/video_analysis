@@ -495,6 +495,24 @@ def _shorter_cranks_for_hip(
     )
 
 
+def _toe_down_at_bdc(sm: dict[str, Any]) -> float | None:
+    """The ankle at BDC when the toe points down past the flag, else None.
+
+    The analyzer already dropped readings outside its plausibility envelope;
+    what reaches the summary is a foot, not tracking noise.
+    """
+    from app.services.video_analysis.biomechanics.cycling_analyzer import (
+        ANKLE_TOE_DOWN_MIN_DEG,
+    )
+    try:
+        val = float(sm.get("ankle_at_bdc"))
+    except (TypeError, ValueError):
+        return None
+    if val != val or val <= ANKLE_TOE_DOWN_MIN_DEG:
+        return None
+    return val
+
+
 def _add_good_metric(
     good_metrics: list[dict[str, Any]],
     metric: str,
@@ -635,6 +653,37 @@ def build_action_plan(
                        if amt else
                        "Overextension: lower saddle by 5mm, "
                        "ride 30 min before reassessing.")
+                    + (f" The toe also points down at the bottom ({toe:.0f} deg): "
+                       "the foot reaching for the pedal, a second sign of the same high saddle."
+                       if (toe := _toe_down_at_bdc(sm)) is not None else "")
+                ),
+                priority=1,
+            ))
+            active_priorities.append("saddle height")
+        elif (toe := _toe_down_at_bdc(sm)) is not None and knee_bdc >= (bdc_min + bdc_max) / 2:
+            # The knee reads in range, but in the top half of it, and the toe
+            # points down at the bottom: reaching for the pedal with the toe
+            # is how a high saddle hides from the knee angle. Two signs
+            # agreeing, so a card, with the toe as the number it rests on.
+            from app.services.video_analysis.biomechanics.cycling_analyzer import (
+                ANKLE_HEEL_DOWN_MAX_DEG,
+                ANKLE_TOE_DOWN_MIN_DEG,
+            )
+            diagnostics.append(Diagnostic(
+                component="saddle_height",
+                status="needs_adjustment",
+                metric_name="ankle_at_bdc",
+                current_value=round(toe, 1),
+                target_range=(ANKLE_HEEL_DOWN_MAX_DEG, ANKLE_TOE_DOWN_MIN_DEG),
+                action="lower_saddle",
+                amount="5mm",
+                reason=(
+                    f"Knee angle at BDC is {knee_bdc:.0f} deg, in range but near the top of "
+                    f"{bdc_min:.0f}-{bdc_max:.0f}, and the toe points down at the bottom "
+                    f"({toe:.0f} deg, past {ANKLE_TOE_DOWN_MIN_DEG:.0f}). Reaching for the "
+                    "pedal with the toe hides a saddle that is too high. Lower it 5mm, "
+                    "ride 30 min and film again: the toe should come up with the knee "
+                    "still in range."
                 ),
                 priority=1,
             ))
