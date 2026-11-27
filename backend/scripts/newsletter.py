@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Send one product-news issue to every registered athlete who has not opted out.
 
+    # how it looks: writes the HTML part to a file to open in a browser
+    python scripts/newsletter.py 2026-12-example --preview out.html
     # who would get it (nothing is sent)
     python scripts/newsletter.py 2026-10-kona-crank --list
     # one copy to one address, to look at it in a real mail client
@@ -80,6 +82,8 @@ async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("issue")
     g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--preview", metavar="FILE",
+                   help="write the HTML part to FILE (and the text beside it); needs no database")
     g.add_argument("--list", action="store_true", help="print who would get it")
     g.add_argument("--to", help="send one copy to this address only")
     g.add_argument("--send", action="store_true", help="send to every recipient")
@@ -92,6 +96,14 @@ async def main() -> int:
 
     issue = NL.load_issue(a.issue)
     address = os.environ.get("NEWSLETTER_ADDRESS", "")
+    if a.preview:
+        subject, text, html = NL.render(issue, "https://getflapp.com/unsubscribe?preview=1",
+                                        address or "Vancouver, BC, Canada")
+        out = Path(a.preview)
+        out.write_text(html, encoding="utf-8")
+        out.with_suffix(".txt").write_text(f"Subject: {subject}\n\n{text}", encoding="utf-8")
+        print("wrote", out, "and", out.with_suffix(".txt"))
+        return 0
     only = read_only_list(a.only) if a.only else None
     people = await _recipients(only)
 

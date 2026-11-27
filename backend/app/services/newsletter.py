@@ -52,9 +52,50 @@ def is_recipient(user: Any) -> bool:
     )
 
 
+# The legal lines under every issue written as Markdown: why they get it, who
+# sends it with the postal address CASL asks for, and the way off the list.
+FOOTER = (
+    "You're getting this because you said yes to product news when you signed up "
+    "for Flapp. Flapp is operated by Clariva, " + ADDRESS_PLACEHOLDER + ".\n"
+    "Don't want product news? [Unsubscribe in one click](" + UNSUB_PLACEHOLDER + "). "
+    "Mail about your own analyses keeps coming."
+)
+
+
+def _frontmatter(raw: str) -> tuple[dict[str, str], str]:
+    raw = raw.replace("\r\n", "\n")
+    if not raw.startswith("---\n"):
+        return {}, raw
+    head, _, body = raw[4:].partition("\n---\n")
+    meta = {}
+    for line in head.splitlines():
+        key, sep, val = line.partition(":")
+        if sep:
+            meta[key.strip().lower()] = val.strip()
+    return meta, body
+
+
 def load_issue(slug: str) -> dict[str, str]:
-    """``content/newsletters/<slug>.html`` (+ ``.txt`` and ``.subject``)."""
+    """``content/newsletters/<slug>.md`` -- one file, rendered into both parts
+    by ``email_layout`` -- or, for the issues written before it, ``<slug>.html``
+    with ``.txt`` and ``.subject`` beside it.
+
+    The Markdown issue's frontmatter: ``subject`` (required), ``kicker`` (the
+    small line under the mark) and ``preheader`` (the inbox preview line)."""
     base = CONTENT_DIR / slug
+    md = base.with_suffix(".md")
+    if md.is_file():
+        from app.services import email_layout
+
+        meta, body = _frontmatter(md.read_text(encoding="utf-8"))
+        subject = meta.get("subject") or ""
+        if not subject:
+            raise ValueError(f"{md.name} has no subject: in its frontmatter")
+        text, html = email_layout.render(
+            body, kicker=meta.get("kicker") or "Product news",
+            preheader=meta.get("preheader"), footer=FOOTER,
+        )
+        return {"slug": slug, "subject": subject, "html": html, "text": text}
     html = (base.with_suffix(".html")).read_text(encoding="utf-8")
     text = (base.with_suffix(".txt")).read_text(encoding="utf-8")
     subject = (base.with_suffix(".subject")).read_text(encoding="utf-8").strip()
@@ -81,5 +122,5 @@ def render(issue: dict[str, str], unsubscribe_url: str, address: str) -> tuple[s
     )
 
 
-__all__ = ["ADDRESS_PLACEHOLDER", "CONTENT_DIR", "UNSUB_PLACEHOLDER",
+__all__ = ["ADDRESS_PLACEHOLDER", "CONTENT_DIR", "FOOTER", "UNSUB_PLACEHOLDER",
            "is_recipient", "is_test_address", "load_issue", "render"]

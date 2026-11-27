@@ -7416,7 +7416,7 @@ function renderCoachCard(){
   const ini=String(COACH.name||'').replace(/^coach\s+/i,'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
   rep.innerHTML=`<div class="coachform">
       <div class="cp-two"><div><label for="coachName">Name on the report</label><input type="text" id="coachName" maxlength="60" placeholder="Coach Artur" value="${esc(COACH.name||'')}"></div>
-      <div><label for="coachTag">One line under it</label><input type="text" id="coachTag" maxlength="120" placeholder="UESCA-certified · Nanaimo, BC" value="${esc(COACH.tagline||'')}"></div></div>
+      <div><label for="coachTag">One line under it</label><input type="text" id="coachTag" maxlength="120" placeholder="UESCA-certified · Vancouver, BC" value="${esc(COACH.tagline||'')}"></div></div>
       <div class="cp-mark"><span class="cp-lbl">Mark</span>
         ${COACH.logo?`<img src="${COACH.logo}" alt="Your mark">`:ini?`<span class="ac-ini" aria-hidden="true">${esc(ini)}</span>`:''}
         <input type="file" id="coachLogoFile" accept="image/png,image/jpeg,image/webp" class="visually-hidden">
