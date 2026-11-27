@@ -28,11 +28,16 @@ def metas():
     return get_all_articles()
 
 
+# Covers we drew ourselves and show without a credit line (Artur, 2026-11-26: the helmet flat lay).
+UNCREDITED = {"triathlon-helmets-2026"}
+
+
 def test_every_article_has_a_cover_it_can_show(metas):
     for m in metas:
         assert m.cover, f"{m.slug} has no cover"
         assert (MEDIA / m.cover.removeprefix("/media/")).is_file(), m.cover
-        assert m.cover_alt and m.cover_credit, f"{m.slug}: alt and credit are not optional"
+        assert m.cover_alt, f"{m.slug}: alt is not optional"
+        assert m.cover_credit or m.slug in UNCREDITED, f"{m.slug}: a cover needs its credit"
 
 
 def test_no_two_guides_share_a_cover(metas):

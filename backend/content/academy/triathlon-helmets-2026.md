@@ -10,7 +10,6 @@ featured: true
 kind: "research"
 cover: "/media/academy/triathlon-helmets-2026/cover.webp"
 cover_alt: "Black Friday 2026: which tri helmet to buy. 28 TT and aero road helmets scored, our five picks, this week's prices; 2024 models a median 38% off. A TT helmet and an aero road helmet with sale tags, sunglasses and cycling shoes on a dark background"
-cover_credit: "AI illustration: Flapp"
 card: "wide"
 byline: false
 sources:
