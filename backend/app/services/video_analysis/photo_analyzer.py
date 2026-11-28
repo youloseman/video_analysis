@@ -2549,13 +2549,30 @@ def _segmentation_mask_supported() -> bool:
     moment a float segmentation mask is read -- on Windows and on Linux alike,
     verified 2026-10-11. 1.x reads it. A CHECK cannot be caught, so the mask is
     never even requested from an older build.
+
+    1.0.1 dies in the helmet step too (2026-11-14), so the floor is 1.1, the
+    version requirements.txt pins. Below it the helmet reading and the head
+    lever are skipped: said once in the log, because a local run on an old
+    build otherwise just shows no helmet and looks like a detection miss.
     """
     import mediapipe as mp
 
+    global _MASK_SKIP_LOGGED
+    version = str(getattr(mp, "__version__", ""))
     try:
-        return int(str(mp.__version__).split(".")[0]) >= 1
-    except (ValueError, AttributeError):
-        return False
+        major, minor = (int(p) for p in version.split(".")[:2])
+        ok = (major, minor) >= MASK_MIN_MEDIAPIPE
+    except ValueError:
+        ok = False
+    if not ok and not _MASK_SKIP_LOGGED:
+        _MASK_SKIP_LOGGED = True
+        logger.warning("HELMET_SKIPPED_OLD_MEDIAPIPE", mediapipe=version,
+                       needs=".".join(map(str, MASK_MIN_MEDIAPIPE)))
+    return ok
+
+
+MASK_MIN_MEDIAPIPE = (1, 1)
+_MASK_SKIP_LOGGED = False
 
 
 def analyze_photo(
