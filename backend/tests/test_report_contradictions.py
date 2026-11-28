@@ -49,6 +49,16 @@ def test_a_head_just_past_the_free_band_stays_on_the_edge():
 # --------------------------------------------------------------------------
 # The coach's text
 # --------------------------------------------------------------------------
+def test_a_head_the_model_would_not_fix_is_listed_once():
+    summary = {**CLEAN, "helmet_above_back": 36.0}
+    concerns = llm._video_concerns("bike", "triathlon", summary)
+    text = concern_hints.replace_nothing_to_fix("**Overall**\nGood.\n\n**Nothing to fix**\nHold on to it.\n",
+                                                concerns)
+    gaps = [{"field": "helmet_above_back", "label": "Helmet above the back", "value": 36.0}]
+    out = concern_hints.with_worth_a_look(text, concerns, gaps)
+    assert out.count("Helmet above the back") == 1 and "**Fix first**" in out
+
+
 def test_a_next_session_that_only_says_keep_going_is_left_out():
     text = ("**Overall**\nGood.\n\n**Nothing to fix**\nHold on to it.\n\n"
             "**Next session**\nFocus on maintaining your established shoulder relaxation.\n")
@@ -85,6 +95,8 @@ def test_a_short_clip_is_told_to_film_longer_a_lost_rider_to_stay_in_frame():
     lost = [{"code": "duration", "text": "Little usable footage: 9.5 s long, but the athlete was only "
                                          "trackable in 3.7 s of it."}]
     assert "film 10-15 seconds" in report_pdf._reshoot(short)
+    assert report_pdf._reshoot(short, "bike").endswith("eight pedal strokes")
+    assert report_pdf._reshoot(short, "run").endswith("eight strides")
     assert "keep the whole body in the frame" in report_pdf._reshoot(lost)
 
 

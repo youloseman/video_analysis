@@ -359,8 +359,14 @@ def drop_idle_next_session(report: str) -> str:
 
 def with_worth_a_look(report: str, concerns: list[dict[str, Any]],
                       gaps: list[dict[str, Any]] = ()) -> str:
-    """The checklist goes before Next session, so the single cue still ends it."""
-    section = worth_a_look(concerns, gaps)
+    """The checklist goes before Next session, so the single cue still ends it.
+
+    A row already printed word for word under Fix first (replace_nothing_to_fix,
+    when the model insisted) is not listed twice: Gona's before-fit head read
+    the same line in both sections (2026-11-28)."""
+    fields = {c["field"] for c in concerns}
+    concerns = [c for c in concerns if _line(c) not in report]
+    section = worth_a_look(concerns, [g for g in gaps if g["field"] not in fields])
     if not section:
         return report
     m = _NEXT_SESSION.search(report)

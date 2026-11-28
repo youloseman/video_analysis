@@ -1088,7 +1088,9 @@ def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
             f"{prompt}\n\nYOUR PREVIOUS DRAFT WAS REJECTED: it used **Nothing to "
             f"fix** although these measurements are clearly outside their bands: "
             f"{names}. Write the **Fix first** section and address them. If the "
-            "cause is uncertain, say what to check -- never that it is fine."
+            "cause is uncertain, say what to check -- never that it is fine. "
+            "**Overall** names them too: never that the position is well-balanced "
+            "or that everything sits inside its band."
         ), 1200, tag=tag)
         if again and not concern_hints.NOTHING_TO_FIX.search(again["text"]):
             text, model = split_glued_bullets(again["text"]), again["model"]

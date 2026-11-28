@@ -753,7 +753,7 @@ def _low_trust(film: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [n for n in film if n.get("level") == "bad" and n.get("code") in _LOW_TRUST_CODES]
 
 
-def _reshoot(low: list[dict[str, Any]]) -> str:
+def _reshoot(low: list[dict[str, Any]], sport: str = "") -> str:
     """What the next clip needs, from what was wrong with this one."""
     asks = []
     for n in low:
@@ -765,7 +765,8 @@ def _reshoot(low: list[dict[str, Any]]) -> str:
             # A clip that is simply short: "keep the whole body in the frame"
             # was the advice for a 2.9 s clip the rider never left (Gona,
             # 2026-11-28). The frame advice stays for footage the body left.
-            asks.append("film 10-15 seconds, at least eight pedal strokes or strides")
+            moves = {"bike": "pedal strokes", "run": "strides"}.get(sport, "pedal strokes or strides")
+            asks.append(f"film 10-15 seconds, at least eight {moves}")
         else:
             asks.append(_RESHOOT[n["code"]])
     return "; ".join(asks)
@@ -1230,7 +1231,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
               f"<p>{_e(when)}: {_e(how)}{' ' + _e(note) if note else ''}</p></div>") if when else ""
     if low:
         retest = (f"<div class='retest'><div class='eyebrow' style='color:#2459C2'>Film again first</div>"
-                  f"<p>Before changing anything: {_e(_reshoot(low))}. Flapp puts the two clips side by side "
+                  f"<p>Before changing anything: {_e(_reshoot(low, sport))}. Flapp puts the two clips side by side "
                   "and shows whether this holds.</p></div>")
     # What already works sits on the numbers page as one line: on its own it
     # was a block that spilled onto a page of its own.
