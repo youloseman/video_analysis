@@ -20,7 +20,7 @@ sources:
   - author: "van Druenen, T. & Blocken, B."
     year: 2023
     title: "Aerodynamic impact of cycling postures on drafting in single paceline configurations (Computers & Fluids, 257)"
-    finding: "Measured CdA: dropped-high 0.266, dropped-low 0.231, time-trial 0.213 m² at 15 m/s: the drop-to-TT change is ~20% less drag."
+    finding: "CdA computed with CFD, validated against wind-tunnel tests: dropped-high 0.266, dropped-low 0.231, time-trial 0.213 m² at 15 m/s: the drop-to-TT change is ~20% less drag."
   - author: "Schaffarczyk, A., et al."
     year: 2022
     title: "Aerodynamic Benefits by Optimizing Cycling Posture (Applied Sciences, 12, 8475)"
@@ -51,7 +51,7 @@ The number that captures all of this is **CdA**: your drag coefficient multiplie
 
 ## What the evidence shows
 
-The cleanest position comparison comes from van Druenen & Blocken (2023), who measured the same rig in three postures. Because the numbers come from **one study with one method**, they are directly comparable to each other:
+The cleanest position comparison comes from van Druenen & Blocken (2023), who computed the same rider in three postures with CFD and checked the method against wind-tunnel tests. Because the numbers come from **one study with one method**, they are directly comparable to each other:
 
 | Position | CdA (m²) | Relative drag |
 |---|---|---|
@@ -61,13 +61,13 @@ The cleanest position comparison comes from van Druenen & Blocken (2023), who me
 
 Read the bottom row against the top: going from a high-torso drops position to a genuine TT tuck is about a **20% reduction in drag**, from *how you hold your body*, not from any part you bolt on.
 
-Smaller changes add up too. In wind-tunnel testing, **tucking the head and dropping into a crouch reduced drag by an average of 3.5%**, the single most effective individual tweak in that study, worth close to three seconds over a 4000 m pursuit. To put drag in perspective, one rule of thumb holds that **cutting 10 g of aerodynamic drag equals shedding 1 kg** of body or bike weight on the flat.
+Smaller changes add up too. In wind-tunnel testing, **tucking the head and dropping into a crouch reduced drag by an average of 3.5%**, the single most effective individual tweak in that study, worth close to three seconds over a 4000 m pursuit. To put drag in perspective: on the flat, **10 g of aerodynamic drag costs about as much as 2.5 kg** of extra body or bike weight (rolling resistance 0.004).
 
 > The rider's body causes 70–80% of aerodynamic drag; the bike only 20–30%. Your position is the biggest free upgrade you own.
 
 ## Try it: what your torso angle is worth
 
-Move the slider between positions and watch what the drag difference does to your speed (at a fixed power) or your power (at a fixed speed). The CdA values are the measured ones from van Druenen & Blocken (2023); the speed–power maths is standard cycling physics.
+Move the slider between positions and watch what the drag difference does to your speed (at a fixed power) or your power (at a fixed speed). The CdA values are the computed ones from van Druenen & Blocken (2023); the speed–power maths is standard cycling physics.
 
 [[widget:aero-calculator]]
 

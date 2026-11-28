@@ -17,8 +17,8 @@ a qualitative CdA *zone* keyed off torso angle, plus the drag/watts
 
 Methodology (kept deliberately transparent)
 -------------------------------------------
-1. Anchors. van Druenen & Blocken (2023) measured one rig in three
-   postures at 15 m/s:
+1. Anchors. van Druenen & Blocken (2023) computed one rider in three
+   postures at 15 m/s (CFD, validated against wind-tunnel tests):
        dropped-high (upright) torso : CdA 0.266 m^2   (baseline 100%)
        dropped-low  torso           : CdA 0.231 m^2   (~87%)
        time-trial tuck              : CdA 0.213 m^2   (~80%)
