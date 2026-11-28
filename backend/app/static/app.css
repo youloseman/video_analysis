@@ -2355,6 +2355,8 @@ svg.pic,svg.pm{width:40px;height:40px;flex:none;fill:none;stroke-linecap:round;s
 .cr-hero span{display:block;font-size:12px;color:rgba(255,255,255,.7)}
 .cr-hero b{font-family:var(--f-brand);font-style:italic;font-weight:900;font-size:18px}
 .cr-text{margin:0;font-size:14px;line-height:1.5;color:var(--c-ink-soft)}
+.cr-frame{display:block;width:100%;border-radius:var(--radius-panel);background:var(--c-media-bg)}
+.cr-coach .cr-brand{margin-left:auto;font-size:12px}
 .cr-row{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr) auto;align-items:center;gap:10px;font-size:14px}
 .cr-row .mbar-cap{display:none}
 .cr-row b{font-family:var(--f-mono);font-weight:500}

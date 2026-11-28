@@ -91,6 +91,10 @@ KONA_PRO_MEDIAN = _HELMET_FIELD["median"]
 # the thirty-one readings sat at +23 % or lower, and the three above it (up to +33 %)
 # should not widen the free band for everyone. Unchanged from n=21.
 KONA_PRO_FREE_UP_TO = 23.0
+# Where the report's table turns the row red: the free band plus the table's
+# own 3-point margin (review_pdf._status). Above it the coach's text must treat
+# the head as a fix, not "on the edge" (Gona before-fit clip, 35 %, 2026-11-28).
+HELMET_RED_ABOVE = KONA_PRO_FREE_UP_TO + 3.0
 KONA_PRO_UNDER_FREE = "28 of the 31"
 # The highest pro (+33 %): above it no one in the field sat.
 KONA_PRO_HIGHEST = KONA_PRO_RANGE[1]

@@ -235,12 +235,15 @@ def _ax(x: float, unit: str) -> str:
 # (index.html, metricsBlock): grouped by what they need, then Measurement |
 # Yours | vs reference | Status, the status saying how far past the edge.
 # Artur asked for the PDF to be that table, not a second design (2026-11-11).
-_GROUPS = (("attention", "Needs attention"), ("ok", "In range"), ("other", "Not graded"))
+# Borderline rows get their own group: under "Needs attention" two of them sat
+# beside 99/A Excellent, which no reader squares (Gona after-fit, 2026-11-28).
+_GROUPS = (("attention", "Needs attention"), ("edge", "On the edge"), ("ok", "In range"),
+           ("other", "Not graded"))
 
 
 def _group_of(row: dict[str, Any]) -> str:
     st = row.get("status")
-    return "attention" if st in ("bad", "warn") else "ok" if st == "good" else "other"
+    return "attention" if st == "bad" else "edge" if st == "warn" else "ok" if st == "good" else "other"
 
 
 def _status_cell(row: dict[str, Any]) -> str:
@@ -644,7 +647,18 @@ def _coach_text(text: str, planned: set[str]) -> str:
         out.append(line)
     if not kept:
         out = [ln for ln in out if not re.match(r"\s*\**Worth a look\**\s*$", ln)]
-    return "\n".join(out)
+    text = "\n".join(out)
+    # "Nothing to fix" over a checklist that names a saddle change read as a
+    # contradiction; with things to look at it is "Nothing urgent".
+    if kept:
+        text = re.sub(r"\*\*\s*Nothing to fix\s*\*\*", "**Nothing urgent**", text, count=1, flags=re.I)
+    return text
+
+
+# Red readings whose fix is one thing the rider does, not a bike change with
+# several possible causes: for these the flagged block says what to try
+# instead of "no single change follows" (the head, Gona 2026-11-28).
+_ONE_CHANGE_FIELDS = {"helmet_above_back"}
 
 
 # The article behind a card, by the path the fit plan carries.
@@ -747,6 +761,11 @@ def _reshoot(low: list[dict[str, Any]]) -> str:
             asks.append("film closer, so the body fills most of the frame"
                         if str(n.get("short")).startswith("small")
                         else "send the original file from the camera roll")
+        elif n["code"] == "duration" and "trackable" not in str(n.get("text")):
+            # A clip that is simply short: "keep the whole body in the frame"
+            # was the advice for a 2.9 s clip the rider never left (Gona,
+            # 2026-11-28). The frame advice stays for footage the body left.
+            asks.append("film 10-15 seconds, at least eight pedal strokes or strides")
         else:
             asks.append(_RESHOOT[n["code"]])
     return "; ".join(asks)
@@ -1121,9 +1140,24 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     named = " ".join(str(i.get("type") or "") for i in issues)
     who = "your coach" if coach_brand.get("name") else "a coach or fitter" if sport == "bike" else "a coach"
 
-    loose = [r for r in graded if r.get("status") == "bad"
-             and str(r.get("field")).removesuffix("_avg") not in planned
-             and str(r.get("field")).split("_")[0] not in named]
+    from app.services.video_analysis import concern_hints
+
+    def own_hint(r: dict[str, Any]) -> str | None:
+        """What to try for this reading, when there is something specific: the
+        helmet at +35 % printed "no single change follows" under a checklist
+        that said to lower the head (Gona before-fit, 2026-11-28)."""
+        if r.get("field") not in _ONE_CHANGE_FIELDS:
+            return None
+        lo, hi = r["band"]
+        side = "high" if isinstance(r.get("value"), (int, float)) and r["value"] > hi else "low"
+        h = concern_hints.hint_for(str(r.get("field")), side)
+        return None if h == concern_hints.hint_for("", "") else h
+
+    loose_all = [r for r in graded if r.get("status") == "bad"
+                 and str(r.get("field")).removesuffix("_avg") not in planned
+                 and str(r.get("field")).split("_")[0] not in named]
+    hinted = [r for r in loose_all if own_hint(r)]
+    loose = [r for r in loose_all if not own_hint(r)]
     # One reason per section, not per row: two flags in a row read the same
     # sentence twice (2026-11-22).
     why_loose = f"No single change follows from {'this number' if len(loose) == 1 else 'these numbers'} alone, " \
@@ -1135,8 +1169,16 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
         return (f"<div class='finding'><h3>{_e(str(r['label']).split(' · ')[0])}</h3><span class='chip bad'>{_e(_row_value(r))}</span>"
                 f"<p>Outside its range of {_e(_num(lo))}–{_e(_num(hi))}{_e(r.get('unit') or '')}.{tail}</p></div>")
 
+    def hinted_row(r: dict[str, Any]) -> str:
+        lo, hi = r["band"]
+        return (f"<div class='finding'><h3>{_e(str(r['label']).split(' · ')[0])}</h3><span class='chip bad'>{_e(_row_value(r))}</span>"
+                f"<p>Outside its range of {_e(_num(lo))}–{_e(_num(hi))}{_e(r.get('unit') or '')}. {_e(own_hint(r))}</p></div>")
+
     findings = "" if wrong_ranges else "".join([
         finding(i) for i in issues if _ISSUE_METRIC.get(str(i.get("type"))) not in planned] + [
+        # Once is enough: the coach's checklist above already prints the hint.
+        hinted_row(r) for r in hinted
+        if str(r["label"]).split(" · ")[0].lower() not in str(coach or "").lower()] + [
         unplanned(r) for r in loose] + ([f"<p class='finding-why'>{why_loose}</p>"] if len(loose) > 1 else []))
     since_rows = "".join(
         f"<div class='since-row'><span>{_e(m['label'])}</span><span class='since-v'>{_e(m['then'])} → {_e(m['now'])}</span>"
@@ -1238,6 +1280,9 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
     knee_band = (result.get("reference_bands") or {}).get("knee_at_bdc") or {}
     knee_note = (f"<p class='lead' style='font-size:9.5pt'>{_e(NON_DRIVE_KNEE_NOTE)}</p>"
                  if NON_DRIVE_KNEE_NOTE in str(knee_band.get("source") or "") else "")
+    # The client's table leaves out the pelvic ratio: no range, no meaning to an
+    # athlete ("3.25, Not graded", Gona 2026-11-28).
+    table_rows = [r for r in rows if r.get("field") != "pelvic_ratio"]
     numbers = f"""
 <section class="numbers-start">
   <div class="keep">{head('The numbers', 'Every measurement, against its range')}
@@ -1245,7 +1290,7 @@ def render_report_html(result: dict[str, Any], meta: dict[str, Any],
   {ok_html}
   {hob_html}
   {legend if rows else ''}{knee_note}</div>
-  {metrics_table(rows) if rows else ''}
+  {metrics_table(table_rows) if table_rows else ''}
   {ranges_sources(rows, sport, result.get('cycling_position')) if rows else ''}
   {f'<div class="keep"><div class="eyebrow" style="margin-top:12px">{"One stride, five positions" if sport == "run" else "One pedal revolution"}</div><figure class="fig"><img src="{kino}" alt="Kinogram"></figure></div>' if kino else ''}
   <div class="foot"><span>Flapp · getflapp.com</span><span>{_e(meta.get('prepared'))}</span></div>

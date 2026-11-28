@@ -341,6 +341,22 @@ def replace_nothing_to_fix(report: str, concerns: list[dict[str, Any]]) -> str:
     return _NOTHING_SECTION.sub(lambda _m: fix, report, count=1)
 
 
+_NEXT_SESSION_SECTION = re.compile(
+    r"\n\s*\*\*\s*Next session\s*\*\*:?\s*(?P<body>[\s\S]*?)(?=\n\s*\*\*[^*\n]+\*\*|\Z)", re.I,
+)
+# "Focus on maintaining your established shoulder relaxation": a cue to keep
+# what is already fine, in both of Gona's before/after reports (2026-11-28).
+_IDLE_CUE = re.compile(r"^[-*\s]*(focus on\s+)?(maintain|maintaining|keep|keeping|hold|holding|continue|continuing)\b", re.I)
+
+
+def drop_idle_next_session(report: str) -> str:
+    """Next session goes when all it says is to keep doing what is fine."""
+    m = _NEXT_SESSION_SECTION.search(report)
+    if not m or not _IDLE_CUE.match(m.group("body").strip()):
+        return report
+    return (report[:m.start()] + report[m.end():]).rstrip() + "\n"
+
+
 def with_worth_a_look(report: str, concerns: list[dict[str, Any]],
                       gaps: list[dict[str, Any]] = ()) -> str:
     """The checklist goes before Next session, so the single cue still ends it."""

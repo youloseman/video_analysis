@@ -4528,7 +4528,10 @@ function coachDisclaimer(rec){
 }
 function mdToHtml(md){
   const e=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  const lines=String(md).split('\n'); let html='',inList=false;
+  md=String(md);
+  // "Nothing to fix" above a checklist read as a contradiction (Gona, 2026-11-28).
+  if(/\*\*\s*Worth a look\s*\*\*/i.test(md)) md=md.replace(/\*\*\s*Nothing to fix\s*\*\*/i,'**Nothing urgent**');
+  const lines=md.split('\n'); let html='',inList=false;
   for(const raw of lines){
     const line=raw.trim();
     if(!line){ if(inList){html+='</ul>';inList=false;} continue; }
@@ -4900,8 +4903,10 @@ function measRow(m){
    report's table and the dashboard's current form are both this. */
 function measBody(list){
   const rows=(list||[]).filter(Boolean);
-  const by={attn:[],ok:[],info:[]};
-  rows.forEach(m=>by[measStatus(m).group].push(m));
+  const by={attn:[],edge:[],ok:[],info:[]};
+  // Borderline apart from out of range: two of them under "Needs attention"
+  // beside 99/A read as a contradiction (Gona after-fit, 2026-11-28).
+  rows.forEach(m=>{ const st=measStatus(m); by[st.group==='attn'&&st.cls==='m-near'?'edge':st.group].push(m); });
   by.attn.sort((a,b)=>Math.abs(b.delta||0)-Math.abs(a.delta||0));
   const head=(t,n)=>`<tr class="mgroup"><th colspan="4" scope="colgroup">${t} <span>· ${n}</span></th></tr>`;
   // What is shown but not graded folds into one line (Report board): it is
@@ -4909,7 +4914,7 @@ function measBody(list){
   const infoHead=g=>`<tr class="mgroup mg-info"><th colspan="4" scope="colgroup"><button type="button" class="mg-toggle" aria-expanded="false">`
     +`Shown, not graded <span>· ${g.length} · ${esc(g.map(m=>String(m.lbl).toLowerCase()).join(', '))}</span>`
     +`<svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg></button></th></tr>`;
-  return [['Needs attention',by.attn],['In range',by.ok],['Not graded',by.info]]
+  return [['Needs attention',by.attn],['On the edge',by.edge],['In range',by.ok],['Not graded',by.info]]
     .filter(([,g])=>g.length)
     .map(([t,g])=>t==='Not graded'
       ? infoHead(g)+g.map(m=>measRow(m).replace('<tr class="mrow ','<tr class="mrow m-info-row ')).join('')
@@ -17271,6 +17276,19 @@ function reviewCardHtml(c,i,n){
     ${changed?'<button type="button" class="p-copy rv-orig" data-f="orig">Flapp’s words for this card</button>':''}
   </div>`;
 }
+/* The coach's read as the preview card prints it: the Overall section's first
+   one or two sentences, without the headings that glued into "Overall Your..."
+   and cut at a sentence, never mid-word with an ellipsis (2026-11-28). */
+function coachLead(md){
+  const src=String(md||'');
+  const m=src.match(/\*\*\s*Overall\s*\*\*:?\s*([\s\S]*?)(?=\n\s*\*\*[^*\n]+\*\*|$)/i);
+  let body=(m?m[1]:src.split(/\n\s*\n/).find(p=>p.trim()&&!/^\s*\*\*[^*]+\*\*:?\s*$/.test(p))||'');
+  body=body.replace(/\*\*|__|`|#/g,'').replace(/^\s*[-*]\s+/gm,'').replace(/\s+/g,' ').trim();
+  const sent=body.match(/[^.!?]+[.!?]+(\s|$)/g)||(body?[body]:[]);
+  let outText='';
+  for(const s of sent.slice(0,2)){ if(outText&&(outText+s).length>240) break; outText+=s; if(outText.length>=160) break; }
+  return outText.trim();
+}
 /* What the athlete gets (CoachReport board): the coach's name and mark, the
    score, the first change that will print, the start of the coach's read and
    the two readings furthest out. Redrawn as the review is edited. */
@@ -17280,20 +17298,29 @@ function renderCoachPreview(){
   const e=REVIEW.e, d=REVIEW.data, name=athleteName(e.athleteId)||'your athlete', first=name.split(' ')[0];
   const a=(ATHLETES.athletes||[]).find(x=>String(x.id)===String(e.athleteId));
   const card=(d.cards||[]).find(x=>!x.hidden);
-  const text=String(d.coachText||'').replace(/\*\*|__|`|#/g,'').replace(/\s+/g,' ').trim();
-  const rows=e.trends?formTiles(e.sport,[e]).map(m=>({m,st:measStatus(m)})).filter(x=>x.m.range)
-    .sort((x,y)=>Math.abs(y.m.delta||0)/((y.m.range.hi-y.m.range.lo)||1)-Math.abs(x.m.delta||0)/((x.m.range.hi-x.m.range.lo)||1)).slice(0,2):[];
+  const text=coachLead(d.coachText);
+  const graded=e.trends?formTiles(e.sport,[e]).map(m=>({m,st:measStatus(m)})).filter(x=>x.m.range)
+    .sort((x,y)=>Math.abs(y.m.delta||0)/((y.m.range.hi-y.m.range.lo)||1)-Math.abs(x.m.delta||0)/((x.m.range.hi-x.m.range.lo)||1)):[];
+  const rows=graded.slice(0,2);
+  // A red reading the plan has no card for (the head is how you ride, not the
+  // bike) is still the first thing to change: "Nothing to change on the bike"
+  // under a yellow 79 read as a contradiction (Gona, 2026-11-28).
+  const out=graded.find(x=>x.st.cls==='m-out');
+  const frame=keyframeOf(e);
+  if(!frame&&!REVIEW.kfAsked){ REVIEW.kfAsked=true; fetchKeyframe(e).then(f=>{ if(f) renderCoachPreview(); }); }
   const ini=(COACH.name||'Coach').split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
   host.innerHTML=`<div class="cr-prev-h">What ${esc(first)} gets</div>
     <div class="cr-prev-card">
-      <div class="cr-coach">${COACH.logo?`<img src="${esc(COACH.logo)}" alt="">`:`<span class="cr-ini">${esc(ini)}</span>`}<div><b>${esc(COACH.name||'Your coach')}</b>${COACH.tagline?`<small>${esc(COACH.tagline)}</small>`:''}</div></div>
-      <div class="cr-hero">${ringHtml(e.score,64,`<div class="ds-score">${e.score==null?'—':e.score}</div>`)}<div>${card?`<span>First thing to change</span><b>${esc(card.title||card.label)}</b>`:'<span>Nothing to change on the bike</span>'}</div></div>
-      ${text?`<p class="cr-text">${esc(text.length>170?text.slice(0,170).replace(/\s+\S*$/,'')+'…':text)}</p>`:''}
+      <div class="cr-coach">${COACH.logo?`<img src="${esc(COACH.logo)}" alt="">`:`<span class="cr-ini">${esc(ini)}</span>`}<div><b>${esc(COACH.name||'Your coach')}</b>${COACH.tagline?`<small>${esc(COACH.tagline)}</small>`:''}</div>${COACH.name&&COACH.logo?'':`<button type="button" class="p-copy cr-brand" id="crBrand">Add your ${COACH.name?'logo':'name & logo'}</button>`}</div>
+      <div class="cr-hero">${ringHtml(e.score,64,`<div class="ds-score">${e.score==null?'—':e.score}</div>`)}<div>${card?`<span>First thing to change</span><b>${esc(card.title||card.label)}</b>`:out?`<span>First thing to change</span><b>${esc(out.m.lbl)}</b>`:'<span>Nothing to change on the bike</span>'}</div></div>
+      ${frame?`<img class="cr-frame" src="${frame}" alt="A frame from the clip, with its angles drawn on it">`:''}
+      ${text?`<p class="cr-text">${esc(text)}</p>`:''}
       ${rows.map(({m,st})=>`<div class="cr-row ${st.cls}"><span>${esc(m.lbl)}</span>${measBar(m,st)}<b>${m.val}${measUnit(m.unit)}</b></div>`).join('')}
       <small class="cr-by">${d.reviewedAt?'Approved by your coach':'Approved when you send it'} · measured with Flapp</small>
     </div>
-    <p class="hint">${a&&a.email?`It goes to ${esc(a.email)} when you approve and send`:`${esc(first)} has no email on file, so the link is yours to send. With an email the button reads “Approve and send”`}</p>`;
+    <p class="hint">${a&&a.email?`It goes to ${esc(a.email)} when you approve and send`:`No email on file for ${esc(first)}: share the link directly, or add an email`}</p>`;
   host.classList.remove('hidden'); if(wrap) wrap.classList.add('has-prev');
+  const br=$('#crBrand'); if(br) br.addEventListener('click',openCoachProfile);
 }
 function drawReview(){
   const host=REVIEW&&$(REVIEW.host); if(!host||!REVIEW) return;

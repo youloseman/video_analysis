@@ -37,7 +37,10 @@ SYSTEM_PROMPT = (
     "**Fix first**: ONLY genuinely material problems: 1-3 of them, "
     "highest-impact first. For each: what it is, why it matters, and ONE "
     "concrete drill or position/fit change.\n"
-    "**Next session**: a single cue to focus on.\n\n"
+    "**Next session**: a single cue to focus on, about the first item in Fix "
+    "first; with nothing to fix, about the first reading the data lists as on "
+    "the edge or outside the pro field. Never a cue to keep or maintain something "
+    "already fine: with nothing to work on, leave the section out.\n\n"
     "MATERIALITY FLOOR (this governs the Fix first section):\n"
     "- These numbers come from 2D pose estimation. A degree or two either way "
     "is inside the method's own error, so a metric sitting just outside its "
@@ -828,18 +831,26 @@ def _materiality_block(
         elif side := _edge_side(field, value, lo, hi, position):
             edges.append(f"{shown}, at the {'upper' if side == 'high' else 'lower'} limit")
 
-    # The helmet reading: amber at worst (never a fix-first item), and only
-    # where the scorer grades it -- aero bars, a reading that did not flag
-    # itself.
+    # The helmet reading, only where the scorer grades it -- aero bars, a
+    # reading that did not flag itself. Red where the table is red: a head at
+    # +35 % cost 16 points and was "on the edge" with "Nothing to fix" above
+    # it (Gona before-fit clip, 2026-11-28).
     from app.services.video_analysis.biomechanics.head_silhouette import graded_helmet
 
     helmet = graded_helmet(summary.get("helmet_above_back"), summary.get("helmet_check"))
     if helmet is not None:
-        from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+        from app.services.video_analysis.biomechanics.head_silhouette import (
+            HELMET_RED_ABOVE,
+            KONA_PRO_FREE_UP_TO,
+        )
 
-        if helmet > KONA_PRO_FREE_UP_TO:
-            borderline.append(f"Helmet {helmet:+.0f}% of torso above the back "
-                              f"(Kona pros: up to +{KONA_PRO_FREE_UP_TO:.0f}%)")
+        shown = (f"Helmet {helmet:+.0f}% of torso above the back "
+                 f"(Kona pros: up to +{KONA_PRO_FREE_UP_TO:.0f}%)")
+        if helmet > HELMET_RED_ABOVE:
+            material.append(shown + ": a position change (lower the head and "
+                            "shoulders, not the eyes), not a bike change")
+        elif helmet > KONA_PRO_FREE_UP_TO:
+            borderline.append(shown)
 
     lines: list[str] = []
     if material:
@@ -928,12 +939,15 @@ def _video_concerns(
     helmet = graded_helmet(summary.get("helmet_above_back"), summary.get("helmet_check"))
     if sport_type == "bike" and helmet is not None:
         from app.services.video_analysis.biomechanics.cycling_positions import AERO_POSITIONS
-        from app.services.video_analysis.biomechanics.head_silhouette import KONA_PRO_FREE_UP_TO
+        from app.services.video_analysis.biomechanics.head_silhouette import (
+            HELMET_RED_ABOVE,
+            KONA_PRO_FREE_UP_TO,
+        )
 
         if position in AERO_POSITIONS and helmet > KONA_PRO_FREE_UP_TO:
             out.append(concern_hints.concern(
                 "helmet_above_back", "Helmet above the back", float(helmet),
-                None, KONA_PRO_FREE_UP_TO, material=False,
+                None, KONA_PRO_FREE_UP_TO, material=helmet > HELMET_RED_ABOVE,
             ))
     return out
 
@@ -1092,6 +1106,7 @@ def _coach(prompt: str, concerns: list[dict[str, Any]], tag: str,
             text, model = split_glued_bullets(again["text"]), again["model"]
         else:
             text = _AERO_KIT_SENTENCE.sub("", text)
+    text = concern_hints.drop_idle_next_session(text)
     return {"report": concern_hints.with_worth_a_look(text, concerns, gaps), "model": model}
 
 
