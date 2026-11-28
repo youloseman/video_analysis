@@ -69,3 +69,10 @@ def test_the_app_opens_the_tile_a_link_asks_for_without_logging_a_step():
     assert "autoPick(()=>t.click())" in block           # not counted as analyze_step_done
     assert "state.userSet.what=true" in block           # and nothing auto-picks over it
     assert "w!=='run-photo'" in block                   # the run photo stays behind its flag
+
+
+def test_the_mid_article_button_keeps_its_white_label():
+    """Prod 2026-11-27: `.prose a` out-ranked `.btn-primary`, so the inline CTA
+    read blue on coral. The block's own rule has to win inside the prose."""
+    html = render_article(_article("x\n\n[[widget:cta]]", cta="Start there"), "https://getflapp.com")
+    assert ".try-cta .btn-primary{color:var(--c-action-ink)" in html

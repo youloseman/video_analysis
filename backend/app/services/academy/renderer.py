@@ -227,6 +227,7 @@ _CTA_CSS = """
   background:var(--c-panel-blue);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .try-cta p{margin:0;flex:1 1 280px;font-weight:500;color:var(--c-ink);font-size:15px;line-height:1.45}
 .try-cta .btn{flex:none}
+.try-cta .btn-primary{color:var(--c-action-ink);text-decoration:none}
 .cta-bar{position:fixed;left:0;right:0;bottom:0;z-index:250;display:flex;align-items:center;gap:10px;
   padding:10px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
   background:var(--c-brand-navy);color:#fff;box-shadow:0 -2px 10px rgba(11,24,47,.18)}
